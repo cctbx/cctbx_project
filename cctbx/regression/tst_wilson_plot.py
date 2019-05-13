@@ -61,7 +61,7 @@ def exercise(space_group_info, anomalous_flag,
   n_bins = f_obs.binner().n_bins_used()
   try:
     statistics.wilson_plot(f_obs, asu_contents)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), """\
 wilson_plot error: %d empty bins:
   Number of bins: %d

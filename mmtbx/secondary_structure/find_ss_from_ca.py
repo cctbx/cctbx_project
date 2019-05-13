@@ -763,7 +763,7 @@ def remove_bad_annotation(annotation,hierarchy=None,
     try:
         verify_existence(hierarchy=ph,helix=helix)
         new_helices.append(helix)
-    except Exception,e: # the helix needs to be deleted
+    except Exception as e: # the helix needs to be deleted
         print("%s\nDeleting this helix" %(str(e)), file=out)
         deleted_something=True
   if deleted_something:
@@ -782,14 +782,14 @@ def remove_bad_annotation(annotation,hierarchy=None,
       try:
         verify_existence(hierarchy=ph,prev_hierarchy=prev_hierarchy,
          strand=strand)
-      except Exception,e: # the strand needs to be deleted
+      except Exception as e: # the strand needs to be deleted
         print("%s\nDeleting this strand" %(str(e)), file=out)
         strands_ok=False
         deleted_something=True
       try:
         verify_existence(hierarchy=ph,prev_hierarchy=prev_hierarchy,
          registration=registration)
-      except Exception,e: # the registration needs to be deleted
+      except Exception as e: # the registration needs to be deleted
         print("Deleting registration\n%s" %(str(e)), file=out)
         registrations_ok=False
         deleted_something=True

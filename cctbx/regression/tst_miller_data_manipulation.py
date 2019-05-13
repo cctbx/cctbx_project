@@ -124,7 +124,7 @@ def exercise_twinning():
   assert not fc_twin_tmp.data().all_approx_equal(fc_tmp.data())
   try :
     fc_twin = fc.twin_data("k,h,l", 0.5)
-  except Sorry, s:
+  except Sorry as s:
     pass
   else :
     raise Exception_expected

@@ -324,7 +324,7 @@ def create_helix_hydrogen_bond_proxies(
     return generated_proxies, hb_angle_proxies
   try :
     helix_selection = selection_cache.selection(params.selection)
-  except Exception, e :
+  except Exception as e :
     print(str(e), file=log)
     return generated_proxies, hb_angle_proxies
   assert (helix_step in [3, 4, 5])

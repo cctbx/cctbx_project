@@ -226,7 +226,7 @@ class algorithm2:
         input_queue.task_done()
         return igroup,result
 
-    except Exception, e :
+    except Exception as e :
       print("Exception within __call__",e)
       return None
 
@@ -414,7 +414,7 @@ def run_multiprocess(L, asymmetric=3, nproc=20, verbose=False, show_plot=True,
                      save_plot=False):
   try :
       import multiprocessing
-  except ImportError, e :
+  except ImportError as e :
       print("multiprocessing module not available (requires Python >= 2.6)"); exit()
   algo2 = algorithm2(data = L[0],lattice_id = L[1], resort=True, verbose = verbose)
   alternates = algo2.generate_reindex_sets()

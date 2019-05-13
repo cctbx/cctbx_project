@@ -312,7 +312,7 @@ def exercise_10(verbose):
       other_constrained_groups = other_constrained_groups,
       other_individual_selection_strings = ['resseq 0'],
       as_flex_arrays    = False)
-  except Exception, e: pass
+  except Exception as e: pass
   assert e.__str__() == "Duplicate selection: same atoms selected for individual and group occupancy refinement."
 
 def exercise_11(verbose):
@@ -329,7 +329,7 @@ def exercise_11(verbose):
       remove_selection = ['resseq 0'],
       other_individual_selection_strings = ['resseq 0'],
       as_flex_arrays    = False)
-  except Exception, e: pass
+  except Exception as e: pass
   assert e.__str__() == "Duplicate selection: occupancies of same atoms selected to be fixed and to be refined."
   e = None
   try:
@@ -340,7 +340,7 @@ def exercise_11(verbose):
       other_constrained_groups = other_constrained_groups,
       remove_selection = ['resseq 0'],
       as_flex_arrays    = False)
-  except Exception, e: pass
+  except Exception as e: pass
   assert e.__str__() == "Duplicate selection: occupancies of same atoms selected to be fixed and to be refined."
 
 def exercise_12(verbose):
@@ -498,7 +498,7 @@ def exercise_19(verbose):
       model = model,
       other_constrained_groups = other_constrained_groups,
       as_flex_arrays    = False)
-  except Exception, e: pass
+  except Exception as e: pass
   assert str(e) == \
     'Selection string results in empty selection (selects no atoms): "%s"' \
       % tmp
@@ -1251,7 +1251,7 @@ def exercise_regroup_3d(verbose):
         model = model,
         constrain_correlated_3d_groups=True,
         log=null_out())
-    except Sorry, s :
+    except Sorry as s :
       if (i_file == 0):
         raise
       else :

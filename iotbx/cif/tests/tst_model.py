@@ -355,11 +355,11 @@ loop_
   l2.delete_row(index=0)
   l2.delete_row(index=0)
   try: l2.show(out=s)
-  except AssertionError, e: pass
+  except AssertionError as e: pass
   else: raise Exception_expected
   l.clear()
   try: l.show(out=s)
-  except AssertionError, e: pass
+  except AssertionError as e: pass
   else: raise Exception_expected
   #
   loop = model.loop(data={"_a_1": ('string with spaces','nospaces'),

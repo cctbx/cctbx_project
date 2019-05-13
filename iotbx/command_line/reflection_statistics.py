@@ -130,7 +130,7 @@ class array_cache(object):
         info = ""
         try:
           cb_sg = self.input.space_group_info().change_basis(cb_op=cb_op)
-        except RuntimeError, e:
+        except RuntimeError as e:
           if (str(e).find("Unsuitable value for rational") < 0): raise
           info = " # Info: this changes the setting of the input space group"
         else:
@@ -417,7 +417,7 @@ def run(
           crystal_symmetry=command_line.symmetry,
           force_symmetry=not command_line.options.weak_symmetry,
           merge_equivalents=False)
-      except Sorry, KeyboardInterrupt: raise
+      except Sorry as KeyboardInterrupt: raise
       except Exception: pass
     if (miller_arrays is None):
       print("Warning: unknown file format:", file_name, file=sys.stderr)

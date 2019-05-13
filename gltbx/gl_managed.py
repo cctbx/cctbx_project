@@ -10,7 +10,7 @@ class display_lists_owner:
 
   def __del__(self):
     try: gl.glDeleteLists(list=self.list, range=self.range)
-    except RuntimeError, e:
+    except RuntimeError as e:
       if (str(e) != 'OpenGL: invalid operation'): raise
       # else: apparently the GL context was destroyed already
 

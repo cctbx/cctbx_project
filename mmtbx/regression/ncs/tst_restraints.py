@@ -122,7 +122,7 @@ def exercise_pair_registry_basic():
   assert sel_registry.number_of_additional_isolated_sites == 1
   iselection = flex.size_t([0,30,1])
   try: registry.proxy_select(iselection=iselection)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith(
       "): MMTBX_ASSERT("
       "result_i_seq < result_n_seq || iselection[result_i_seq] >= n_seq)"

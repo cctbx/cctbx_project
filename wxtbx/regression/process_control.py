@@ -256,7 +256,7 @@ class download_file_basic(object):
   def run(self):
     try :
       result = self.dl_func(self.args)
-    except Exception, e :
+    except Exception as e :
       result = (None, str(e))
     finally :
       wx.PostEvent(self.window, DownloadCompleteEvent(result))

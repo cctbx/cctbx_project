@@ -80,7 +80,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       if adps is not None:
         try:
           adps = [flex.double(adp) for adp in adps]
-        except ValueError, e:
+        except ValueError as e:
           raise CifBuilderError("Error interpreting ADPs: " + str(e))
         adps = flex.sym_mat3_double(*adps)
     py_adps = {}
@@ -133,7 +133,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
           or current_model_id != last_model_id):
         try:
           resseq = hy36encode(width=4, value=int(current_residue_id))
-        except ValueError, e:
+        except ValueError as e:
           resseq = current_residue_id
           assert len(resseq)==4
         residue_group = hierarchy.residue_group(

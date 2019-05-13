@@ -46,7 +46,7 @@ def validate_pdb_ids(id_list):
   for id in id_list :
     try :
       validate_pdb_id(id)
-    except RuntimeError, e :
+    except RuntimeError as e :
       raise Sorry(str(e))
 
 def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
@@ -166,7 +166,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       url = "https://www.rcsb.org/pdb/download/downloadFastaFiles.do?structureIdList=%s&compressionType=uncompressed" % id
     try :
       data = libtbx.utils.urlopen(url)
-    except urllib2.HTTPError, e :
+    except urllib2.HTTPError as e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download sequence for %s." % id)
       else :
@@ -176,7 +176,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       url = url_base + sf_prefix + id + sf_ext
     try :
       data = libtbx.utils.urlopen(url)
-    except urllib2.HTTPError, e :
+    except urllib2.HTTPError as e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download structure factors for %s." % id)
       else :
@@ -189,7 +189,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
         url = url_base + id + "." + format
     try :
       data = libtbx.utils.urlopen(url)
-    except urllib2.HTTPError, e :
+    except urllib2.HTTPError as e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download model for %s." % id)
       else :
@@ -229,7 +229,7 @@ def get_pdb(id, data_type, mirror, log, quiet=False, format="pdb"):
   """
   try :
     data = fetch(id, data_type, mirror=mirror, format=format, log=log)
-  except RuntimeError, e :
+  except RuntimeError as e :
     raise Sorry(str(e))
   file_name = None
   if data_type == "xray" :
@@ -264,7 +264,7 @@ def get_chemical_components_cif(code, return_none_if_already_present=False):
     url = "http://www.rcsb.org/pdb/files/ligand/%s.cif" % code
     try :
       data = libtbx.utils.urlopen(url)
-    except urllib2.HTTPError, e :
+    except urllib2.HTTPError as e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download sequence for %s." % id)
       else :

@@ -27,7 +27,7 @@ def exercise_basic():
   try:
     xray_scattering.get_standard_label(label="SI1+",
       exact=True, optional=False)
-  except ValueError, e:
+  except ValueError as e:
     assert str(e) == 'Unknown scattering type label: "SI1+"'
   else: raise Exception_expected
   #

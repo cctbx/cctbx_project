@@ -21,7 +21,7 @@ from libtbx.utils import to_str
 
 try :
   import coot_python
-except Exception, e :
+except Exception as e :
   print("Could not import coot_python module!")
   print("Coot GUI extensions will be disabled.")
   class empty(object):
@@ -56,7 +56,7 @@ class coot_interface(object):
         interface=self,
         addr=("127.0.0.1", port))
       self.xmlrpc_server.socket.settimeout(0.01)
-    except Exception, e :
+    except Exception as e :
       print("Error starting XML-RPC server:")
       print(str(e))
     else :
@@ -132,7 +132,7 @@ class coot_xmlrpc_server(SimpleXMLRPCServer.SimpleXMLRPCServer):
     else :
       try :
         result = func(*params)
-      except Exception, e :
+      except Exception as e :
         traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
         raise Exception("%s\nOriginal traceback:%s" % (str(e), traceback_str))
       else :

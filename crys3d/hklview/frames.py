@@ -342,7 +342,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     if (not self.is_3d_view) or (self.slice_ctrl.GetValue()) :
       try :
         self.parent.update_settings()
-      except ValueError, e : # TODO set limits
+      except ValueError as e : # TODO set limits
         raise Sorry(str(e))
 
   def OnChangeSpaceGroup (self, event) :
@@ -674,7 +674,7 @@ class HKLViewFrame (wx.Frame) :
       from iotbx.gui_tools.reflections import get_array_description
       try :
         hkl_file = any_reflection_file(file_name)
-      except Exception, e :
+      except Exception as e :
         raise Sorry(to_str(e))
       arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
         )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)

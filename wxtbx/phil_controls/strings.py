@@ -42,7 +42,7 @@ def parse_strings(value):
       value = "\"" + "\" \"".join(value.split()) + "\""
     words = list(tokenizer.word_iterator(value))
     string_list = strings_from_words(words)
-  except ValueError, e :
+  except ValueError as e :
     raise Sorry(str(e))
   else :
     return string_list

@@ -133,7 +133,7 @@ def run(args,
   try:
     pdb_inp = iotbx.pdb.input(source_info = None,
                               lines       = flex.std_string(raw_records))
-  except ValueError, e :
+  except ValueError as e :
     raise Sorry("Model format (PDB or mmCIF) error:\n%s" % str(e))
   model = mmtbx.model.manager(
     model_input      = pdb_inp,

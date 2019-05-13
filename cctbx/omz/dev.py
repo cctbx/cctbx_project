@@ -894,7 +894,7 @@ class refinement(object):
         gradients=O.grads,
         search_direction=dests,
         initial_estimate_of_satisfactory_step_length=stp)
-    except RuntimeError, e:
+    except RuntimeError as e:
       if (str(e) != "Search direction not descent."):
         raise
       return None

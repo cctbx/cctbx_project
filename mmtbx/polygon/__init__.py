@@ -203,7 +203,7 @@ def get_statistics_percentiles(d_min, stats):
     return dict([ (s, None) for s in stats.keys()  ])
   try :
     db = load_db()
-  except Exception, e :
+  except Exception as e :
     return {}
   d_min_mvd = flex.double([ float(x) for x in db['high_resolution'] ])
   sel_perm = flex.sort_permutation(d_min_mvd)

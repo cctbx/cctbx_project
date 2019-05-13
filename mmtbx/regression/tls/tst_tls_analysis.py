@@ -122,7 +122,7 @@ def run():
 
       of.close()
       print(fn, "OK")
-    except Exception, e:
+    except Exception as e:
       print(fn, str(e))
 
 

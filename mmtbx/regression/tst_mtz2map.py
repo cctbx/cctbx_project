@@ -98,7 +98,7 @@ def exercise():
   try :
     file_info = mtz2map.run([pdb_file, map_file, "selection=\"resname ZN\""],
       log=null_out())
-  except Sorry, s  :
+  except Sorry as s  :
     assert (str(s) == "No atoms found matching the specified selection.")
   else :
     raise Exception_expected

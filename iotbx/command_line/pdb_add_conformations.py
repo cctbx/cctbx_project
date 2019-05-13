@@ -74,7 +74,7 @@ def run(args=(), params=None, out=sys.stdout):
       else :
         try :
           arg_phil = interpreter.process(arg=arg)
-        except RuntimeError, e :
+        except RuntimeError as e :
           raise Sorry("Error parsing '%s': %s" % (arg, str(e)))
         else :
           user_phil.append(arg_phil)

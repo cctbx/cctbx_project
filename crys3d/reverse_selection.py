@@ -202,7 +202,7 @@ class mouse_selection_manager (object) :
         atom_selection = self.selection_cache.selection(selection_string)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
+    except Exception as e :
       raise
       atom_selection =None
     return atom_selection

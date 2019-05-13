@@ -20,7 +20,7 @@ def run(args):
       print("Writing %s" % (basename+".pdb"))
       with open(basename+".pdb", 'w') as f:
         f.write(pdb_text)
-    except Exception, e:
+    except Exception as e:
       print("Error converting %s to PDB format:" %file_name)
       print(" ", str(e))
       continue

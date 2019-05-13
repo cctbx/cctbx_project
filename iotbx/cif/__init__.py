@@ -435,6 +435,6 @@ def category_sort_function(key):
   key_category = key.split('.')[0]
   try:
     return category_order.index(key_category)
-  except ValueError, e:
+  except ValueError as e:
     # any categories we don't know about will end up at the end of the file
     return key_category

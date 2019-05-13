@@ -171,7 +171,7 @@ def process_input(argv=None):
       else:
         try:
           user_phil.append(iotbx.phil.parse(open(arg).read()))
-        except RuntimeError, e :
+        except RuntimeError as e :
           print('Error reading input: run phenix.sisa -h for help')
           raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
     else :
@@ -183,7 +183,7 @@ def process_input(argv=None):
       else:
         try :
           user_phil.append(iotbx.phil.parse(arg))
-        except RuntimeError, e :
+        except RuntimeError as e :
           print('Error reading input: run phenix.sisa -h for help')
           raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 

@@ -90,7 +90,7 @@ def run(args, command_name):
     except KeyboardInterrupt:
       print("CAUGHT EXCEPTION: KeyboardInterrupt")
       return
-    except CifBuilderError, e:
+    except CifBuilderError as e:
       e_str = str(e)
       if not verbose and (
         e_str.startswith("No atomic coordinates could be found") or
@@ -105,7 +105,7 @@ def run(args, command_name):
         print(file=sys.stderr)
       build_errors.setdefault(cod_id, e_str)
       sys.stderr.flush()
-    except CifParserError, e:
+    except CifParserError as e:
       sys.stdout.flush()
       e_str = str(e)
       parsing_errors.setdefault(cod_id, e_str)
@@ -114,7 +114,7 @@ def run(args, command_name):
         traceback.print_exc()
         print(file=sys.stderr)
       sys.stderr.flush()
-    except Exception, e:
+    except Exception as e:
       sys.stdout.flush()
       e_str = str(e)
       build_errors.setdefault(cod_id, e_str)

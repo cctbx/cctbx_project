@@ -27,7 +27,7 @@ class linking_class(dict):
   def __getitem__(self, key):
     try:
       return dict.__getitem__(self, key)
-    except KeyError, e:
+    except KeyError as e:
       print('''
 Look for a key in the list below
 

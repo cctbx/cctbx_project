@@ -149,7 +149,7 @@ class lbfgs(object):
             site_frac        = scatterers_shifted[i_seq].site,
             site_label       = scatterers_shifted[i_seq].label,
             tolerance        = self.correct_special_position_tolerance)
-        except Exception, e:
+        except Exception as e:
           print(str(e), file=self.log)
     self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
     #
@@ -208,7 +208,7 @@ class lbfgs(object):
             )
           try:
             qblib_call.run()
-          except Exception, e:
+          except Exception as e:
             if e.__class__.__name__=="QB_none_fatal_error":
               raise Sorry(e.message)
             else:

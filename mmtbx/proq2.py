@@ -106,7 +106,7 @@ if __name__ == "__main__":
     try:
       timeout = float( sys.argv[2] )
 
-    except ValueError, e:
+    except ValueError as e:
       print("Cannot interpret as number: %s (%s)" % ( sys.argv[2], e ))
 
   else:
@@ -120,7 +120,7 @@ if __name__ == "__main__":
   try:
     myjob = Job( pdbstr = pdbstr, name = "phenix.proq2" )
 
-  except JobFolderParseError, e:
+  except JobFolderParseError as e:
     sys.stdout.write( "failed\n" )
     print("Unexpected response: cannot find job folder")
     sys.exit( 1 )
@@ -143,7 +143,7 @@ if __name__ == "__main__":
       callback = progress.streamprint( stream = sys.stdout, character = "." ),
       )
 
-  except progress.TimeoutError, e:
+  except progress.TimeoutError as e:
     sys.stdout.write( "%s\n" % e )
     sys.exit( 1 )
 

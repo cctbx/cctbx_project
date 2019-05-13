@@ -621,7 +621,7 @@ def exercise_non_crystallographic_eight_point_interpolation():
   try:
     val = maptbx.non_crystallographic_eight_point_interpolation(
       map, grid_mat, (5,5,5))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "cctbx Error: non_crystallographic_eight_point_interpolation:" \
       " point required for interpolation is out of bounds."
@@ -732,7 +732,7 @@ def exercise_grid_indices_around_sites():
     maptbx.grid_indices_around_sites(
       unit_cell=unit_cell, fft_n_real=fft_n_real, fft_m_real=fft_m_real,
       sites_cart=sites_cart, site_radii=site_radii)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).startswith("product of fft_m_real")
   else: raise Exception_expected
 
@@ -859,7 +859,7 @@ def exercise_set_box_0():
       map_data_to = b1,
       start       = b1.all(),
       end         = b1.all())
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
   else: raise Exception_expected
   # test 1: transform entire unit cell
@@ -894,7 +894,7 @@ def exercise_set_box_0():
       map_data_to = b1,
       start       = [1,2,3],
       end         = [2,2,3])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
   else: raise Exception_expected
   # test 5: another slice
@@ -905,7 +905,7 @@ def exercise_set_box_0():
       map_data_to = b1,
       start       = [-1,0,2],
       end         = [0,0,3])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
   else: raise Exception_expected
   # test 6: one point changed
@@ -950,7 +950,7 @@ def exercise_set_box_0():
       map_data_to = b1,
       start       = [0,0,0],
       end         = [9,0,0])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
   else: raise Exception_expected
   # test 11: box within unit cell one period apart

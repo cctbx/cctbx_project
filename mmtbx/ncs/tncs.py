@@ -199,7 +199,7 @@ def lbfgs_run(target_evaluator, use_bounds, lower_bound, upper_bound):
         continue
       assert not minimizer.requests_f_and_g()
       if(minimizer.is_terminated()): break
-  except RuntimeError, e:
+  except RuntimeError as e:
     minimizer.error = str(e)
   minimizer.n_calls = icall
   return minimizer

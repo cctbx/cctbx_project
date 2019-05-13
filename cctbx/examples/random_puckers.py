@@ -113,7 +113,7 @@ def run(args):
         sites_cart[i] = mt.random_double_point_on_sphere()
       try:
         lbfgs(sites_cart=sites_cart)
-      except RuntimeError, e:
+      except RuntimeError as e:
         if (not str(e).startswith(
               "Bond distance > max_reasonable_bond_distance: ")):
           raise

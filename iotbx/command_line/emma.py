@@ -186,7 +186,7 @@ def run(args, command_name="phenix.emma"):
       try:
         second_model_as_pdb_inp=iotbx.pdb.input(
            file_name=file_name)
-      except Exception,e:
+      except Exception as e:
         pass
   emma_models[0].show("Reference model")
   emma_models[1].show("Other model")

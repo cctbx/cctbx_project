@@ -15,7 +15,7 @@ amber_installed = False
 if libtbx.env.has_module("amber_adaptbx"):
   build_dir = libtbx.env.under_build("amber_adaptbx")
   try: import sander
-  except ImportError, e: sander = False
+  except ImportError as e: sander = False
   if sander:
   #if (build_dir is not None) and (os.path.isdir(build_dir)):
     amber_installed = True

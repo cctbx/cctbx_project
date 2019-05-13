@@ -290,7 +290,7 @@ def exercise_alteration():
     a.action = action
     assert a.action == action
   try: a.action = "chnage"
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Unknown cctbx::geometry_restraints::motif::alteration' \
       '::action_type: "chnage"\n' \
       '  Possible action types are: "", "add", "delete", "change"'
@@ -300,7 +300,7 @@ def exercise_alteration():
     a.operand = operand
     assert a.operand == operand
   try: a.operand = "diehdral"
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Unknown cctbx::geometry_restraints::motif::alteration' \
       '::operand_type: "diehdral"\n' \
       '  Possible operand types are: "", "atom", "bond", "angle",' \
@@ -329,7 +329,7 @@ def exercise_alteration():
   a.set_planarity_atom_actions(["add", "change", "delete"])
   assert a.planarity_atom_actions_as_list() == ["add", "change", "delete"]
   try: a.set_planarity_atom_actions(["add", "chnage", "delete"])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Unknown cctbx::geometry_restraints::motif::alteration' \
       '::action_type: "chnage"\n' \
       '  Possible action types are: "", "add", "delete", "change"'

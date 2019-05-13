@@ -207,7 +207,7 @@ def run():
             space_group_info=space_group_info,
             anomalous_flag=anomalous_flag,
             verbose=verbose)
-        except RuntimeError, e:
+        except RuntimeError as e:
           if (str(e) != "max(double_coset_repetitions) > 1"): raise
           print(e, "(ignored since it may happen by chance)")
           run_away_counter += 1

@@ -23,7 +23,7 @@ def exercise_atom():
   a.name = "abcd"
   assert a.name == "abcd"
   try: a.name = "xyzhkl"
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "string is too long for target variable " \
       "(maximum length is 4 characters, 6 given)."
   else: raise Exception_expected
@@ -128,7 +128,7 @@ def exercise_atom():
   assert approx_equal(a.fdp, 0.4)
   assert a.tmp == 0
   try: a.set_name(new_name="12345")
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "string is too long for target variable " \
       "(maximum length is 4 characters, 5 given)."
   else: raise Exception_expected
@@ -310,24 +310,24 @@ def exercise_atom():
   a.serial = 100000
   assert a.serial == "A0000"
   try: a.set_serial(new_serial="ABCDEF")
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "string is too long for target variable " \
       "(maximum length is 5 characters, 6 given)."
   else: raise Exception_expected
   try: a.set_serial(new_serial=-10000)
-  except ValueError, e:
+  except ValueError as e:
     assert str(e) == "value is less than -9999"
   else: raise Exception_expected
   try: a.set_serial(new_serial=87440032)
-  except ValueError, e:
+  except ValueError as e:
     assert str(e) == "value is greater than 87440031"
   else: raise Exception_expected
   try: a.set_serial(new_serial=sys)
-  except TypeError, e:
+  except TypeError as e:
     assert str(e) == "value must be a Python str or int."
   else: raise Exception_expected
   try: a.serial = sys
-  except TypeError, e:
+  except TypeError as e:
     assert str(e) == "value must be a Python str or int."
   else: raise Exception_expected
   #
@@ -379,7 +379,7 @@ def exercise_atom():
   #
   sentinel = atoms.reset_tmp()
   try: atoms.reset_tmp()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "Another associated atom_tmp_sentinel instance still exists."
   else: raise Exception_expected
@@ -405,7 +405,7 @@ def exercise_atom():
   assert sorted([atom.name for atom in d.values()]) == ["NA  ", "x   "]
   try:
     atoms.build_dict(strip_names=True, upper_names=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), '''\
 Duplicate keys in build_dict(strip_names=true, upper_names=true,\
  convert_stars_to_primes=false):
@@ -493,7 +493,7 @@ def exercise_atom_group():
   assert ag.parent() is None
   try:
     ag.parent(optional=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "atom_group has no parent residue_group")
   else: raise Exception_expected
   #
@@ -545,7 +545,7 @@ def exercise_atom_group():
   a = pdb.hierarchy.atom().set_name(new_name="y")
   assert ag.find_atom_index(atom=a) == -1
   try: ag.find_atom_index(atom=a, must_be_present=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "atom not in atom_group."
   else: raise Exception_expected
   ag.insert_atom(i=4, atom=a)
@@ -562,7 +562,7 @@ def exercise_atom_group():
   else: raise Exception_expected
   #
   try: pdb.hierarchy.atom_group(altloc="ab")
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "string is too long for target variable " \
       "(maximum length is 1 character, 2 given)."
   else: raise Exception_expected
@@ -579,7 +579,7 @@ def exercise_atom_group():
   assert atom.parent() is None
   try:
     atom.parent(optional=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "atom has no parent atom_group")
   else: raise Exception_expected
 
@@ -640,7 +640,7 @@ def exercise_residue_group():
   assert rg.parent() is None
   try:
     rg.parent(optional=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "residue_group has no parent chain")
   else: raise Exception_expected
   #
@@ -676,7 +676,7 @@ def exercise_residue_group():
   assert ag.parent() is None
   assert rg.find_atom_group_index(atom_group=ag) == -1
   try: rg.find_atom_group_index(atom_group=ag, must_be_present=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "atom_group not in residue_group."
   else: raise Exception_expected
   #
@@ -685,7 +685,7 @@ def exercise_residue_group():
   a = pdb.hierarchy.atom()
   ag1.append_atom(atom=a)
   try: ag2.append_atom(atom=a)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "atom has another parent atom_group already."
   else: raise Exception_expected
   #
@@ -723,7 +723,7 @@ def exercise_residue_group():
   rg = pdb.hierarchy.residue_group()
   rg.resseq = "x"
   try: rg.resseq_as_int()
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert not show_diff(str(e), 'invalid residue sequence number: "x"')
   else: raise Exception_expected
   #
@@ -764,7 +764,7 @@ def exercise_chain():
   assert c.parent() is None
   try:
     c.parent(optional=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "chain has no parent model")
   else: raise Exception_expected
   #
@@ -821,7 +821,7 @@ def exercise_chain():
   assert rg.parent() is None
   assert c.find_residue_group_index(residue_group=rg) == -1
   try: c.find_residue_group_index(residue_group=rg, must_be_present=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "residue_group not in chain."
   else: raise Exception_expected
   #
@@ -830,7 +830,7 @@ def exercise_chain():
   ag = pdb.hierarchy.atom_group()
   rg1.append_atom_group(atom_group=ag)
   try: rg2.append_atom_group(atom_group=ag)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "atom_group has another parent residue_group already."
   else: raise Exception_expected
   #
@@ -1076,7 +1076,7 @@ def exercise_model():
   assert c.parent() is None
   assert m.find_chain_index(chain=c) == -1
   try: m.find_chain_index(chain=c, must_be_present=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "chain not in model."
   else: raise Exception_expected
   #
@@ -1085,7 +1085,7 @@ def exercise_model():
   c = pdb.hierarchy.chain()
   m1.append_chain(chain=c)
   try: m2.append_chain(chain=c)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "chain has another parent model already."
   else: raise Exception_expected
 
@@ -1103,7 +1103,7 @@ def exercise_root():
   assert m.parent() is None
   try:
     m.parent(optional=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "model has no parent root")
   else: raise Exception_expected
   #
@@ -1170,7 +1170,7 @@ def exercise_root():
   assert m.parent() is None
   assert r.find_model_index(model=m) == -1
   try: r.find_model_index(model=m, must_be_present=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "model not in root."
   else: raise Exception_expected
   #
@@ -1179,7 +1179,7 @@ def exercise_root():
   m = pdb.hierarchy.model()
   r1.append_model(model=m)
   try: r2.append_model(model=m)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "model has another parent root already."
   else: raise Exception_expected
 
@@ -1262,7 +1262,7 @@ def exercise_atom_id_str():
   assert rd.id_str(suppress_segid=1) == 'model="12345678" pdbres="GLYCh1234J"'
   assert rd.id_str(suppress_segid=-1) == 'model="12345678" pdbres="GLYCh1234J"'
   try: rd.id_str()
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), '''\
 residue.id_str(suppress_segid=false): segid is not unique:
   model="12345678" pdbres="GLYCh1234J" segid="1234"''')
@@ -1419,7 +1419,7 @@ B1234 NaMexuvw%2spqrst  -10000 -10000 -10000 -10000 -10000 -10000  \
 ATOM        NaMe              1000000.-100000.100000.09999.099999.""")
   atom.xyz = (0,1.e7,0)
   try: atom.format_atom_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom Y coordinate value does not fit into F8.3 format:
   "ATOM        NaMe           "
   value: 10000000.000""")
@@ -1427,7 +1427,7 @@ atom Y coordinate value does not fit into F8.3 format:
   atom.xyz = (0,0,0)
   atom.occ = 100000
   try: atom.format_atom_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom occupancy factor does not fit into F6.2 format:
   "ATOM        NaMe           "
   occupancy factor: 100000.00""")
@@ -1435,7 +1435,7 @@ atom occupancy factor does not fit into F6.2 format:
   atom.occ = 0
   atom.b = 200000
   try: atom.format_atom_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom B-factor does not fit into F6.2 format:
   "ATOM        NaMe           "
   B-factor: 200000.00""")
@@ -1448,7 +1448,7 @@ atom B-factor does not fit into F6.2 format:
 SIGATM      NaMe              1000000.-100000.100000.099999.9999.0""")
   atom.sigxyz = (0,0,2.e7)
   try: atom.format_sigatm_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom sigma Z coordinate value does not fit into F8.3 format:
   "SIGATM      NaMe           "
   value: 20000000.000""")
@@ -1456,7 +1456,7 @@ atom sigma Z coordinate value does not fit into F8.3 format:
   atom.sigxyz = (0,0,0)
   atom.sigocc = 200000
   try: atom.format_sigatm_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom sigma occupancy factor does not fit into F6.2 format:
   "SIGATM      NaMe           "
   sigma occupancy factor: 200000.00""")
@@ -1464,7 +1464,7 @@ atom sigma occupancy factor does not fit into F6.2 format:
   atom.sigocc = 0
   atom.sigb = 300000
   try: atom.format_sigatm_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom sigma B-factor does not fit into F6.2 format:
   "SIGATM      NaMe           "
   sigma B-factor: 300000.00""")
@@ -1472,7 +1472,7 @@ atom sigma B-factor does not fit into F6.2 format:
   #
   atom.uij = (0,1000,0,0,0,0)
   try: atom.format_anisou_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom U22 value * 10000 does not fit into F7.0 format:
   "ANISOU      NaMe           "
   value * 10000: 10000000""")
@@ -1481,7 +1481,7 @@ atom U22 value * 10000 does not fit into F7.0 format:
   atom.siguij = (0,0,0,0,3333,0)
   if (pdb.hierarchy.atom.has_siguij()):
     try: atom.format_siguij_record()
-    except RuntimeError, e: assert not show_diff(str(e), """\
+    except RuntimeError as e: assert not show_diff(str(e), """\
 atom sigma U13 value * 10000 does not fit into F7.0 format:
   "SIGUIJ      NaMe           "
   value * 10000: 33330000""")
@@ -2005,7 +2005,7 @@ ATOM      1  CB  LYS   109
 BREAK
 ATOM      2  CG  LYS   109
 """)).construct_hierarchy()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "Misplaced BREAK record (input line 3).")
   else: raise Exception_expected
   try: pdb.input(
@@ -2019,7 +2019,7 @@ ATOM      3  CA  LYS   110
 BREAK
 ATOM      4  CB  LYS   110
 """)).construct_hierarchy()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "Misplaced BREAK record (file abc, line 6).")
   else: raise Exception_expected
   #
@@ -2290,7 +2290,7 @@ ATOM     73  HD2 LEU B 441
   oc.raise_improper_alt_conf_if_necessary()
   oc.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
   try: oc.raise_duplicate_atom_labels_if_necessary(max_show=1)
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), '''\
 number of groups of duplicate atom labels: 2
   total number of affected atoms:          6
@@ -2362,7 +2362,7 @@ ATOM     72  HD1 LEU   441
       oc.raise_duplicate_atom_labels_if_necessary()
     else:
       try: oc.raise_duplicate_atom_labels_if_necessary()
-      except Sorry, e:
+      except Sorry as e:
         assert not show_diff(str(e), '''\
 number of groups of duplicate atom labels: 1
   total number of affected atoms:          2
@@ -2692,7 +2692,7 @@ ATOM         N2  R02     2
   assert len(oc.warnings()) == 0
   oc.raise_duplicate_atom_labels_if_necessary()
   try: oc.raise_improper_alt_conf_if_necessary()
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), '''\
 residue with proper altloc
   "ATOM         N2  R02     2 .*.        "
@@ -2703,7 +2703,7 @@ residue with improper altloc
   "ATOM         N1 BR01     1 .*.        "''')
   else: raise Exception_expected
   try: oc.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), '''\
 chains with mix of proper and improper alt. conf.: 1
   residue with proper altloc
@@ -2827,7 +2827,7 @@ ATOM         CA AGLY     2
   try: oc \
    .raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary(
       max_show=1)
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), """\
 residue groups with multiple resnames using same altloc: 2
   residue group:
@@ -3072,7 +3072,7 @@ def exercise_merge_atom_groups():
       residue_groups[0].merge_atom_groups(
         primary=secondary_atom_group,
         secondary=primary_atom_group)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert not show_diff(str(e), """\
 "primary" atom_group has a different or no parent\
  (this residue_group must be the parent).""")
@@ -3081,7 +3081,7 @@ def exercise_merge_atom_groups():
       residue_groups[0].merge_atom_groups(
         primary=primary_atom_group,
         secondary=primary_atom_group)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert not show_diff(str(e), """\
 "primary" and "secondary" atom_groups are identical.""")
     else: raise Exception_expected
@@ -3089,7 +3089,7 @@ def exercise_merge_atom_groups():
       residue_groups[0].merge_atom_groups(
         primary=primary_atom_group,
         secondary=residue_groups[2].atom_groups()[i_ag])
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e).find("secondary.data->altloc == primary.data->altloc") > 0
     else: raise Exception_expected
     assert primary_atom_group.atoms_size() == 4
@@ -3130,7 +3130,7 @@ def exercise_merge_residue_groups():
     chain.merge_residue_groups(
       primary=residue_groups[0],
       secondary=residue_groups[1])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("secondary.data->resseq == primary.data->resseq") > 0
   else: raise Exception_expected
   assert residue_groups[0].atom_groups_size() == 2
@@ -3173,7 +3173,7 @@ ATOM   9723  O  CLEU   190      25.693   5.796  20.563  0.70  3.68           O
       chain.merge_residue_groups(
         primary=residue_groups[i_rg],
         secondary=residue_groups[j_rg])
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert not show_diff(str(e), """\
 "%s" residue_group has a different or no parent\
  (this chain must be the parent).""" % s)
@@ -3913,7 +3913,7 @@ def exercise_conformers():
         assert cf.residues_size() == 1
         try:
           cf.parent(optional=False)
-        except RuntimeError, e:
+        except RuntimeError as e:
           assert not show_diff(str(e), "conformer has no parent chain")
         else: raise Exception_expected
       #
@@ -4397,7 +4397,7 @@ ATOM      2  CA  MET A   1
   assert residue.find_atom_by(name=" CA ").name == " CA "
   try:
     residue.parent(optional=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "residue has no parent conformer")
   else: raise Exception_expected
 
@@ -4588,7 +4588,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   assert list(atoms.extract_tmp_as_size_t()) == [3,4,5,6,7,8,9]
   atoms[3].tmp = -1
   try: atoms.extract_tmp_as_size_t()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "atom.tmp less than zero: cannot convert to unsigned value.")
   else: raise Exception_expected
@@ -5182,13 +5182,13 @@ ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00""")
   a = pdb.hierarchy.atom()
   a.serial = "   1A"
   try: a.serial_as_int()
-  except (RuntimeError, ValueError), e:
+  except (RuntimeError, ValueError) as e:
     assert not show_diff(str(e), 'invalid atom serial number: "   1A"')
   else: raise Exception_expected
   #
   awl.serial = "   1A"
   try: awl.serial_as_int()
-  except (RuntimeError, ValueError), e:
+  except (RuntimeError, ValueError) as e:
     assert not show_diff(str(e), """\
 invalid atom serial number:
   ATOM     1A NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00
@@ -5197,7 +5197,7 @@ invalid atom serial number:
   #
   awl.resseq = " 18A"
   try: awl.resseq_as_int()
-  except (RuntimeError, ValueError), e:
+  except (RuntimeError, ValueError) as e:
     assert not show_diff(str(e), """\
 invalid residue sequence number:
   ATOM     1A NaMelrNmCh 18AI      0.000   0.000   0.000  0.00  0.00
@@ -5209,7 +5209,7 @@ ATOM                    1B
 """)).construct_hierarchy(sort_atoms=False)
   for r in [h.only_residue_group(), h.only_residue()]:
     try: r.resseq_as_int()
-    except (RuntimeError, ValueError), e:
+    except (RuntimeError, ValueError) as e:
       assert not show_diff(str(e), """\
 invalid residue sequence number:
   ATOM                    1B       0.000   0.000   0.000  0.00  0.00
@@ -5221,7 +5221,7 @@ invalid residue sequence number:
   ch.residue_groups()[0].append_atom_group(pdb.hierarchy.atom_group())
   for r in[ch.only_residue_group(), ch.only_conformer().only_residue()]:
     try: r.resseq_as_int()
-    except (RuntimeError, ValueError), e:
+    except (RuntimeError, ValueError) as e:
       assert not show_diff(str(e), 'invalid residue sequence number: "  1C"')
     else: raise Exception_expected
   #
@@ -5250,7 +5250,7 @@ ENDMDL
         assert awlc.parent() is None
         try:
           awlc.parent(optional=False)
-        except RuntimeError, e:
+        except RuntimeError as e:
           assert not show_diff(str(e), "atom has no parent atom_group")
         else: raise Exception_expected
         print(getattr(awl, fmt)(), \
@@ -5436,19 +5436,19 @@ ATOM     18
 ENDMDL
 """)).construct_hierarchy(sort_atoms=False)
   try: h_all.select(atom_selection=flex.bool())
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "atom_selection array too short."
   else: raise Exception_expected
   try: h_all.select(atom_selection=flex.bool(17, False))
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "atom_selection array too large."
   else: raise Exception_expected
   try: h_all.select(atom_selection=flex.size_t([1,0]))
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "atom_selection indices not in strictly ascending order."
   else: raise Exception_expected
   try: h_all.select(atom_selection=flex.size_t([16]))
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) \
         == "atom_selection indices greater than or equal to number of atoms."
   else: raise Exception_expected
@@ -5458,11 +5458,11 @@ ENDMDL
     assert h_sel.models_size() == 0
     assert h_sel.select(atom_selection=atom_selections[1]).models_size() == 0
   try: h_sel.select(atom_selection=flex.bool(1, False))
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "atom_selection array too large."
   else: raise Exception_expected
   try: h_sel.select(atom_selection=flex.size_t([0]))
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) \
         == "atom_selection indices greater than or equal to number of atoms."
   else: raise Exception_expected
@@ -6215,7 +6215,7 @@ ANISOU    6  O   HOH     1      788    626    677   -344    621   -232       O
     assert s1.scattering_type == s2.scattering_type
   xrs_new3 = xrs.concatenate(other = xrs_new1)
   try: hierarchy.adopt_xray_structure(xray_structure = xrs_new3)
-  except RuntimeError, e: pass
+  except RuntimeError as e: pass
   assert str(e) == "Incompatible size of hierarchy and scatterers array."
   xrs_new4 = xrs.deep_copy_scatterers()
   xrs_new4.set_inelastic_form_factors(photon=1.4, table="sasaki")
@@ -6238,7 +6238,7 @@ ANISOU    6  O   HOH     1      788    626    677   -344    621   -232       O
     for chain in model.chains():
       if chain.id == "A": chain.id = "C"
   try: hierarchy.adopt_xray_structure(xray_structure=xrs)
-  except Exception, e: pass
+  except Exception as e: pass
   else: raise Exception_expected
   hierarchy.adopt_xray_structure(
     xray_structure=xrs, assert_identical_id_str=False)
@@ -6535,7 +6535,7 @@ ATOM  10851  OXT ILE A1445      50.752  78.273  41.078  1.00189.50      A
 ATOM  27953  ZN  ZN  A1506    9999.9999999.9999999.999  1.00166.17      A
 ATOM  27954  ZN  ZN  A1508    9999.9999999.9999999.999  1.00166.17      A
 """))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find(
       "IOTBX_ASSERT(! (xyz[0]>9999 && xyz[1]>9999 && xyz[2]>9999)) failure.") >0
   else: raise Exception_expected

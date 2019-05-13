@@ -180,7 +180,7 @@ def compare_essence_and_fast_tardy_models(
   assert approx_equal(e, f)
   try:
     ftm.reset_e_kin(e_kin_target=1, e_kin_epsilon=0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("e_kin_epsilon > 0") > 0
   else: raise Exception_expected
   etm.assign_zero_velocities()

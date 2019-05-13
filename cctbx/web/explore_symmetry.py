@@ -85,7 +85,7 @@ def show_group_generic(sg_type, status):
   print()
   print("Parallelepiped containing an asymmetric unit:")
   try: brick = sgtbx.brick(sg_type)
-  except RuntimeError, e:
+  except RuntimeError as e:
     print(" ", e)
   else:
     print(" ", str(brick).replace("<", "&lt;").replace(">", "&gt;"))
@@ -176,7 +176,7 @@ def run(server_info, inp, status):
   try:
     ps = sgtbx.parse_string(hall_symbol)
     sg = sgtbx.space_group(ps)
-  except RuntimeError, e:
+  except RuntimeError as e:
     print("--&gt;" + ps.string() + "&lt;--")
     print(("-" * (ps.where() + 3)) + "^")
     raise
@@ -195,7 +195,7 @@ def run(server_info, inp, status):
       ps = sgtbx.parse_string(s)
       try:
         s = sgtbx.rt_mx(ps)
-      except RuntimeError, e:
+      except RuntimeError as e:
         print("</table><pre>")
         status.in_table = False
         print("--&gt;" + ps.string() + "&lt;--")

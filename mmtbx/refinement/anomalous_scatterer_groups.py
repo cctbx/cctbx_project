@@ -134,7 +134,7 @@ def find_anomalous_scatterer_groups(
     element = scatterer.element_symbol().strip()
     try :
       atomic_number = sasaki.table(element).atomic_number()
-    except RuntimeError, e :
+    except RuntimeError as e :
       print("Error for %s" % pdb_atoms[i_seq].id_str(), file=out)
       print("  " + str(e), file=out)
       continue

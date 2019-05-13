@@ -47,7 +47,7 @@ def run_implementation(server_info, inp, status):
     print("Extracting Miller arrays:")
     try:
       miller_arrays = reader.as_miller_arrays()
-    except iotbx.cif.builders.CifBuilderError, e:
+    except iotbx.cif.builders.CifBuilderError as e:
       print("CifBuilderError: %s" %str(e))
     else:
       for ma in miller_arrays:
@@ -61,7 +61,7 @@ def run_implementation(server_info, inp, status):
     print("Extracting crystal structures:")
     try:
       crystal_structures = reader.build_crystal_structures()
-    except iotbx.cif.builders.CifBuilderError, e:
+    except iotbx.cif.builders.CifBuilderError as e:
       print("CifBuilderError: %s" %str(e))
     else:
       for xs in crystal_structures.values():

@@ -1042,7 +1042,7 @@ def exercise_corrupt_cif_link():
   log = StringIO()
   try:
     monomer_library.pdb_interpretation.run(args=file_paths, log=log)
-  except Sorry, e:
+  except Sorry as e:
     assert str(e).startswith("Corrupt CIF link definition:")
   else: raise Exception_expected
 
@@ -1830,7 +1830,7 @@ ATOM     10  CA  VAL A  10      50.711  63.858  50.117  1.00  0.00           C
       file_name=None,
       raw_records=raw_records,
       force_symmetry=True)
-  except Sorry, e:
+  except Sorry as e:
     assert str(e).startswith(
       "Unit cell volume is incompatible with number of atoms")
   else: raise Exception_expected
@@ -2480,7 +2480,7 @@ END
       params = params.pdb_interpretation,
       log=None).xray_structure()
   except KeyboardInterrupt: raise
-  except Exception, e:
+  except Exception as e:
     for line in str(e).splitlines():
       if(line.strip() in exp_lines):
         cntr+=1

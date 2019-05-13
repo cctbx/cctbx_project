@@ -511,7 +511,7 @@ def get_fp_fpp_from_sasaki(guess_ha,wavelength):
     return None, None
   try:
     table = sasaki.table(guess_ha)
-  except Exception, e :
+  except Exception as e :
     return None, None
   fp_fdp = table.at_angstrom(wavelength)
   f_prime=fp_fdp.fp()

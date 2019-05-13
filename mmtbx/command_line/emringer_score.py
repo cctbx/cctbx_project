@@ -26,7 +26,7 @@ def run(args, out=sys.stdout):
     #if (not args.show_gui):
     try :
       import matplotlib
-    except ImportError, e :
+    except ImportError as e :
       print("WARNING: matplotlib not present, plotting disabled", file=out)
       matplotlib = None
       args.show_gui = False

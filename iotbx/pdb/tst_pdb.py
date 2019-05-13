@@ -674,7 +674,7 @@ ATOM   4  CG  LYS 109  27.664   2.793  16.091  1.00 20.00      B
   f.write(bad_pdb_string)
   f.close()
   try: pdb_inp = pdb.input(file_name=f.name, source_info=None)
-  except ValueError, e:
+  except ValueError as e:
     err_message = str(e)
     assert bad_pdb_string.splitlines()[0] in err_message
   else: raise Exception_expected
@@ -708,7 +708,7 @@ ATOM  60  CA . VAL  C   26  ?  -12.16900  22.54800  -4.78000  1.000   8.45988  C
   f.write(bad_cif_loop_string)
   f.close()
   try: pdb_inp = pdb.input(file_name=f.name, source_info=None)
-  except iotbx.cif.CifParserError, e:
+  except iotbx.cif.CifParserError as e:
     err_message = str(e)
     assert err_message == \
            "Wrong number of data items for loop containing _atom_site.group_PDB"

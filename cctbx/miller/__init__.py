@@ -3387,7 +3387,7 @@ class array(set):
       matched_indices = match_indices(self.indices(), indices)
     try:
       return self.select(matched_indices.pair_selection(0), negate=negate)
-    except RuntimeError, e:
+    except RuntimeError as e:
       if ('CCTBX_ASSERT(miller_indices_[1].size() == size_processed(1))'
           in str(e)):
         raise RuntimeError(
@@ -5151,7 +5151,7 @@ class array(set):
     else:
       try :
         cb_op = sgtbx.change_of_basis_op(change_of_basis)
-      except ValueError, e :
+      except ValueError as e :
         raise Sorry(("The change-of-basis operator '%s' is invalid "+
           "(original error: %s)") % (change_of_basis, str(e)))
     if (cb_op.c_inv().t().is_zero()):
@@ -5443,7 +5443,7 @@ class merge_equivalents(object):
           merge_ext = merge_type(
             asu_array.indices().select(perm),
             asu_array.data().select(perm))
-      except RuntimeError, e :
+      except RuntimeError as e :
         if ("merge_equivalents_exact: incompatible" in str(e)):
           raise Sorry(str(e) + " (mismatch between Friedel mates)")
         raise

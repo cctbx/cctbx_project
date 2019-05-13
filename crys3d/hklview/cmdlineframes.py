@@ -528,7 +528,7 @@ class HKLViewFrame () :
         arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
           )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)
         #arrays = f.file_server.miller_arrays
-      except Exception, e :
+      except Exception as e :
         self.NewFileLoaded=False
         self.mprint(to_str(e))
         arrays = []

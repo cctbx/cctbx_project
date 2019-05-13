@@ -213,7 +213,7 @@ class align_pdb_residues(object):
       return resid
     try :
       return self._lookup_table[seq_name][resid.strip()]
-    except KeyError, e :
+    except KeyError as e :
       raise RuntimeError("""\
 Encountered IndexError attempting to convert residue ID!
 Values:
@@ -236,7 +236,7 @@ Dump of full alignment:
     i_res = resseq + offset - 1
     try :
       return self._lookup_table[seq_name][i_res]
-    except IndexError, e :
+    except IndexError as e :
       raise RuntimeError("""\
 Encountered IndexError attempting to convert residue number!
 Values:
@@ -439,7 +439,7 @@ def run(args=(), params=None, out=sys.stdout):
         seq_objects, non_compliant = any_sequence_format(file_name,
           assign_name_if_not_defined=True)
         seqs.extend(seq_objects)
-      except Exception, e :
+      except Exception as e :
         raise Sorry(("Error parsing '%s' - not a recognizable sequence "+
           "format.  (Original message: %s)") % (file_name, str(e)))
   if (len(seqs) < 2):

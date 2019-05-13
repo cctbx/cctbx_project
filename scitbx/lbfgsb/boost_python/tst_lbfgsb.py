@@ -39,7 +39,7 @@ def exercise_minimizer_interface():
     if (not enable_stp_init):
       try:
         minimizer.requests_stp_init()
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert str(e).endswith(": SCITBX_ASSERT(enable_stp_init()) failure.")
       else: raise Exception_expected
     else:

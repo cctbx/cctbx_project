@@ -133,7 +133,7 @@ def run(args):
       time.sleep(1)
   except KeyboardInterrupt:
     print ("Shutting down")
-  except Exception, e:
+  except Exception as e:
     print ("Unhandled exception, shutting down")
     print (str(e))
 

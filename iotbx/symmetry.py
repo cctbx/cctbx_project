@@ -60,7 +60,7 @@ class manager(object):
       from cctbx import sgtbx
       try :
         self.current_space_group = sgtbx.space_group_info(space_group)
-      except RuntimeError, e :
+      except RuntimeError as e :
         if ("symbol not recognized" in str(e)):
           raise Sorry(("The current value for the space group parameter, "+
             "'%s', could not be recognized as a valid space group symbol.") %
@@ -125,7 +125,7 @@ class manager(object):
       try :
         symm = crystal.symmetry(space_group=self.current_space_group.group(),
           unit_cell=self.current_unit_cell)
-      except AssertionError, e :
+      except AssertionError as e :
         raise Sorry("Unit cell parameters are not consistent with the "+
           "currently set space group.  Please make sure that the symmetry "+
           "information is entered correctly.")

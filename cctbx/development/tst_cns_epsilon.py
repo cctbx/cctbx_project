@@ -45,7 +45,7 @@ def verify(crystal_symmetry, anomalous_flag, reflection_file):
       assert e_i == e, 'epsilon mismatch'
       assert c_i == c, 'centric mismatch'
       assert p_i == p, 'restricted phase mismatch'
-    except AssertionError, exc:
+    except AssertionError as exc:
       print(crystal_symmetry.space_group_info())
       print('index=', h)
       print('m:', m_i, m)

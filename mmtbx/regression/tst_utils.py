@@ -240,7 +240,7 @@ END"""
       model = model,
       selection_strings=["resseq 18:19", "resseq 19:20"],
       parameter_name="refine.occupancy")
-  except Sorry, s :
+  except Sorry as s :
     assert (str(s) == """\
 One or more overlapping selections for refine.occupancy:
 resseq 18:19

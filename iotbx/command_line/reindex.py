@@ -83,7 +83,7 @@ def convert_operator(change_of_basis):
   from cctbx import sgtbx
   try :
     c_o_b = sgtbx.change_of_basis_op(change_of_basis)
-  except RuntimeError, e :
+  except RuntimeError as e :
     raise Sorry(str(e))
   else :
     return c_o_b

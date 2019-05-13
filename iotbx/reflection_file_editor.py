@@ -369,7 +369,7 @@ class process_arrays(object):
             if (info.wavelength is not None):
               try :
                 file_wavelengths[info.source] = float(info.wavelength)
-              except ValueError, e :
+              except ValueError as e :
                 print("Warning: bad wavelength '%s'" % info.wavelength, file=log)
       all_wavelengths = set([ w for f, w in file_wavelengths.iteritems() ])
       if (len(all_wavelengths) == 1):
@@ -812,7 +812,7 @@ class process_arrays(object):
               "own choice of labels.") % labels[i])
         try :
           column.set_label(label)
-        except RuntimeError, e :
+        except RuntimeError as e :
           if ("new_label is used already" in str(e)):
             col_names = [ col.label() for col in mtz_object.columns() ]
             raise RuntimeError(("Duplicate column label '%s': current labels "+
@@ -885,7 +885,7 @@ def get_best_resolution(miller_arrays, input_symm=None):
         best_d_max = d_max
       if best_d_min is None or d_min < best_d_min :
         best_d_min = d_min
-    except Exception, e :
+    except Exception as e :
       pass
   return (best_d_max, best_d_min)
 

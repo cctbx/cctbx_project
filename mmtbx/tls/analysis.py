@@ -47,7 +47,7 @@ def cmd_driver(pdb_file_name):
     S = matrix.sqr(tlso.s)*deg_to_rad_scale
     try:
       r = run(T=T, L=L, S=S, log=log)
-    except Exception, e:
+    except Exception as e:
       print(str(e), file=log)
     log.close()
 

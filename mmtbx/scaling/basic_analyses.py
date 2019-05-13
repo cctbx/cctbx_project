@@ -125,7 +125,7 @@ class basic_analyses(object):  # XXX is this ever used?
     self.aniso_scale_and_b = aniso_scale_and_b
 
     try: b_cart = aniso_scale_and_b.b_cart
-    except AttributeError, e:
+    except AttributeError as e:
       print("*** ERROR ***", file=out)
       print(str(e), file=out)
       show_exception_info_if_full_testing()
@@ -217,7 +217,7 @@ class basic_analyses(object):  # XXX is this ever used?
         self.rel_wilson = relative_wilson.relative_wilson(
           miller_obs=miller_array,
           miller_calc=miller_calc)
-      except RuntimeError, e :
+      except RuntimeError as e :
         print("*** Error calculating relative Wilson plot - skipping.", file=out)
         print("", file=out)
 

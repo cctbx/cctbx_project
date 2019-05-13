@@ -287,7 +287,7 @@ Examples:
       else:
         try:
           phil_objects.append(iotbx.phil.parse(arg))
-        except RuntimeError, e:
+        except RuntimeError as e:
           raise Sorry("Unrecognized parameter or command-line argument '%s'." %
             arg)
     if (n_files > 2):

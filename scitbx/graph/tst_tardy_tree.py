@@ -745,20 +745,20 @@ def exercise_fixed_vertices(n_trials=10):
     [11], [20]]
   try:
     tc.tardy_tree_construct(fixed_vertex_lists=[[0],[1]])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "connect_clusters(): fixed vertex lists in same connected tree."
   else: raise Exception_expected
   try:
     tc.tardy_tree_construct(fixed_vertex_lists=[[0],[10]])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "determine_weighted_order_for_construct_spanning_tree():" \
       " fixed vertex lists in same connected tree."
   else: raise Exception_expected
   try:
     tc.tardy_tree_construct(fixed_vertex_lists=[[0],[11]])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "construct_spanning_trees():" \
       " fixed vertex lists in same connected tree."

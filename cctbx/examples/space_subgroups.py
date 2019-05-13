@@ -27,7 +27,7 @@ def loop_over_super_cells(max_index, all_subgroups, subgroup):
         cb_op = sgtbx.change_of_basis_op("x/%d,y/%d,z/%d" % (ia,ib,ic))
         try:
           scsubgroup = subgroup.change_basis(cb_op=cb_op)
-        except RuntimeError, e:
+        except RuntimeError as e:
           if (str(e).endswith(
                 "Unsuitable value for rational rotation matrix.")):
             all_subgroups["incompatible_rotation_denominator"] += 1

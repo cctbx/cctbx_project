@@ -441,7 +441,7 @@ def exercise_r_t_matrices():
                       (1.6740, -1.2223, -2.0756),
                       eps = 0.0001)
   try: ssb.get_r_t_matrices_from_structure(t_pdb_str)
-  except Exception, e:
+  except Exception as e:
     assert str(e) == "pdb_str should contain at least 2 residues"
 
 def exercise_secondary_structure_from_sequence():
@@ -477,7 +477,7 @@ def exercise_secondary_structure_from_sequence():
   assert approx_equal(test_h.atoms().extract_xyz(),
                       correct_h.atoms().extract_xyz(), eps=0.002)
   try: ssb.secondary_structure_from_sequence(alpha_pdb_str, sequence="")
-  except Exception, e:
+  except Exception as e:
     assert str(e) == "sequence should contain at least one residue."
 
 

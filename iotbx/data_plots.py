@@ -648,7 +648,7 @@ class simple_matplotlib_plot(object):
       import matplotlib
       import matplotlib.figure
       from matplotlib.backends.backend_agg import FigureCanvasAgg
-    except ImportError, e :
+    except ImportError as e :
       print(e)
       raise Sorry("Plotting requires that matplotlib be installed.")
     self.figure = matplotlib.figure.Figure(figure_size, 72, linewidth=0,

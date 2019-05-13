@@ -502,7 +502,7 @@ def exercise_get_r_free_flags():
                   test_flag_value=trial_test_flag_value,
                   disable_suitability_test=False,
                   parameter_scope="r_free_flags")
-            except Sorry, e:
+            except Sorry as e:
               if (trial_label != "foo"):
                 assert i_exercise > 0
                 if (trial_label is None):
@@ -569,7 +569,7 @@ No matching array: r_free_flags.label=foo
         test_flag_value=None,
         disable_suitability_test=False,
         parameter_scope="r_free_flags")
-    except Sorry, e:
+    except Sorry as e:
       assert str(e)=="Multiple equally suitable arrays of R-free flags found."
       assert err.getvalue() == """\
 
@@ -603,7 +603,7 @@ to specify an unambiguous substring of the target label.
         test_flag_value=test_flag_value,
         disable_suitability_test=True,
         parameter_scope="r_free_flags")
-    except Sorry, e:
+    except Sorry as e:
       assert str(e) == "r_free_flags.disable_suitability_test=True:" \
         " Suitability test for R-free flags can only be disabled if both" \
         " r_free_flags.label and r_free_flags.test_flag_value are defined."
@@ -664,7 +664,7 @@ def exercise_get_experimental_phases():
       labels=None,
       ignore_all_zeros=True,
       parameter_scope="experimental_phases")
-  except Sorry, e:
+  except Sorry as e:
     assert str(e) == "No array of experimental phases found."
     assert err.getvalue() == """\
 
@@ -710,7 +710,7 @@ def exercise_extract_miller_array_from_file():
     mtz_dataset.mtz_object().write("tmp.mtz")
     try:
       rfu.extract_miller_array_from_file(file_name="tmp.mtz",type=tp, log=log)
-    except Sorry, e:
+    except Sorry as e:
       assert ("Multiple choices available." in str(e))
       sorry_counts += 1
   #
@@ -720,7 +720,7 @@ def exercise_extract_miller_array_from_file():
       miller_array=a3, column_root_label="A3")
     mtz_dataset.mtz_object().write("tmp.mtz")
     try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",type=tp,log=log)
-    except Sorry, e:
+    except Sorry as e:
       assert ("Multiple choices available." in str(e))
       sorry_counts += 1
   #
@@ -729,7 +729,7 @@ def exercise_extract_miller_array_from_file():
     miller_array=a4, column_root_label="A4")
   mtz_dataset.mtz_object().write("tmp.mtz")
   try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",log=log)
-  except Sorry, e:
+  except Sorry as e:
     assert ("Multiple choices available." in str(e))
     sorry_counts += 1
   #
@@ -740,7 +740,7 @@ def exercise_extract_miller_array_from_file():
   try:
     rfu.extract_miller_array_from_file(file_name="tmp.mtz",type="real",
       log=log)
-  except Sorry, e:
+  except Sorry as e:
     assert str(e)=="No suitable arrays."
     sorry_counts += 1
   #
@@ -751,7 +751,7 @@ def exercise_extract_miller_array_from_file():
   try:
     rfu.extract_miller_array_from_file(file_name="tmp.mtz",type="complex",
       log=log)
-  except Sorry, e:
+  except Sorry as e:
     assert str(e)=="No suitable arrays."
     sorry_counts += 1
   #
@@ -770,7 +770,7 @@ def exercise_extract_miller_array_from_file():
   try:
     rfu.extract_miller_array_from_file(file_name="tmp.mtz",
       label="A5,PHIA5", type="real", log=log)
-  except Sorry, e:
+  except Sorry as e:
     assert str(e)=="No suitable arrays."
     sorry_counts += 1
   #

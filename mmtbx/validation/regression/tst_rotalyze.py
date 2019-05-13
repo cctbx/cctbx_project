@@ -244,7 +244,7 @@ ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
   hierarchy = pdb_io.construct_hierarchy()
   try :
     rotalyze.rotalyze(pdb_hierarchy=hierarchy)
-  except Sorry, e :
+  except Sorry as e :
     assert ("GLY A 262" in str(e))
   else :
     raise Exception_expected

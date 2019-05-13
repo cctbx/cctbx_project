@@ -245,7 +245,7 @@ def run(args, command_name):
     except KeyboardInterrupt:
       print("CAUGHT EXCEPTION: KeyboardInterrupt")
       return
-    except Exception, e:
+    except Exception as e:
       sys.stdout.flush()
       print("CAUGHT EXCEPTION: %s: %s: %s" % (command_name, cod_id, str(e)), file=sys.stderr)
       traceback.print_exc()

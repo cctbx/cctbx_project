@@ -369,7 +369,7 @@ class validation(object):
       pdb_chain = pdb_chains[i]
       try :
         c.set_alignment(alignment, seq_name, seq_id)
-      except Exception, e :
+      except Exception as e :
         print("Error processing chain %s" % c.chain_id)
         raise
         print(e)

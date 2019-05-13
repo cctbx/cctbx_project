@@ -156,7 +156,7 @@ class structure_factor_symmetry(object):
         tr_vec = sgtbx.tr_vec(num, den)
         try:
           tr_vec = tr_vec.new_denominator(sg_t_den)
-        except RuntimeError, e:
+        except RuntimeError as e:
           if (not str(e).endswith(
                 "Unsuitable value for rational translation vector.")):
             raise

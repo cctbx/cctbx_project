@@ -667,7 +667,7 @@ def get_b_aniso_mean(i_obs):
         n_residues = 200,
         n_bases = 0)
   try: b_cart=aniso_scale_and_b.b_cart
-  except AttributeError, e:
+  except AttributeError as e:
         raise Sorry("\nCannot correct the column %s for anisotropy\n"%(
           best_label))
   b_aniso_mean=0.

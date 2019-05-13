@@ -46,7 +46,7 @@ iotbx.file_reader filename [force_type=None]
         arg = "file_reader." + arg
       try :
         user_phil.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         print(e)
         print("Unrecognized argument '%s'" % arg)
   params = master_phil.fetch(sources=user_phil).extract()

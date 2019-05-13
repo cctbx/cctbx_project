@@ -26,7 +26,7 @@ class IntCtrl(ValidatedTextCtrl):
     spinner.SetMin(-2147483647)
     try :
       val = self.GetPhilValue()
-    except Exception, e :
+    except Exception as e :
       print(e)
     else :
       if (not self.GetPhilValue() in [None, Auto]):

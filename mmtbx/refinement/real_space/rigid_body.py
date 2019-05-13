@@ -271,7 +271,7 @@ class refine_mz(object):
             use_sg         = True)
         done = True
       except KeyboardInterrupt: raise
-      except Exception, e:
+      except Exception as e:
         if(str(e)=="cctbx Error: Miller index not in structure factor map."):
           d_min += 0.1
       cntr+=1

@@ -60,7 +60,7 @@ Full parameters:
     else :
       try :
         sources.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Unrecognized argument '%s'.")
   params = master_phil.fetch(sources=sources).extract()
   if (params.data_file_1 is not None):

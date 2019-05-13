@@ -1580,7 +1580,7 @@ def exercise_15():
   try:
     ncs_inp = ncs.input(hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str_12).construct_hierarchy())
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
-  except Exception, e:
+  except Exception as e:
     exc = e
   assert str(exc)=="Multi-model PDB (with MODEL-ENDMDL) is not supported."
 

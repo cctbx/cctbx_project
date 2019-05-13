@@ -36,7 +36,7 @@ if not env.initialised and try_to_initialise:
           if env.initialised:
             print("Successfully initialised SciPy OpenBlas:")
             print(env.build_config)
-      except Exception, e:
+      except Exception as e:
         print("Could not initialise OpenBlas: %s" %e)
     else:
       print("Could not initialise OpenBlas")

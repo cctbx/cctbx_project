@@ -33,7 +33,7 @@ def run(filename,
   from libtbx.utils import Sorry
   try:
     import iotbx.pdb
-  except ImportError, e:
+  except ImportError as e:
     raise Sorry("iotbx not available")
   if os.path.exists(filename):
     pdb_io = iotbx.pdb.input(filename)

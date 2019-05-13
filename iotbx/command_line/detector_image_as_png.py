@@ -47,7 +47,7 @@ class convert_image:
     import Image
   try :
     img = ImageFactory(file_name)
-  except ImageException, e :
+  except ImageException as e :
     raise Sorry(str(e))
   img.read()
   self.img = img

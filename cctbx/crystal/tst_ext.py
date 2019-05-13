@@ -1525,7 +1525,7 @@ i_seq: 1
     assert am.mappings().size() == 1
     assert am.site_symmetry_table().indices().size() == 1
   try: site_cluster_analysis.discard_last()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == """\
 site_cluster_analysis::discard_last() failure. Potential problems are:
   - discard_last() called twice
@@ -1602,7 +1602,7 @@ def exercise_cubicles_max_memory():
   if (1 and mm < 333333*666666*999999):
     sites_cart.append((1.e6,2.e6,3.e6))
     try: fast_pair_generator_init()
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e).startswith("Excessive number of cubicles:")
     else: raise Exception_expected
     sites_cart.pop_back()
@@ -1610,7 +1610,7 @@ def exercise_cubicles_max_memory():
     crystal.cubicles_max_memory_allocation_set(number_of_bytes=3*6*9)
     sites_cart.append((10,20,30))
     try: fast_pair_generator_init()
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert not show_diff(str(e), """\
 Estimated memory allocation for cubicles exceeds max_number_of_bytes:
   This may be due to unreasonable parameters:

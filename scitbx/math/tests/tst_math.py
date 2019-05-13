@@ -281,13 +281,13 @@ def exercise_gamma_incomplete():
   assert approx_equal(gamma_incomplete(20.0,15.5),0.154492096867129)
   assert approx_equal(gamma_incomplete(20.0,21.0),0.615737227735658)
   try: gamma_incomplete(a=20.0, x=15.5, max_iterations=5)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "scitbx Error: gamma::incomplete_series(" \
       "a=20, x=15.5, max_iterations=5) failed to converge"
   else: raise Exception_expected
   try: gamma_incomplete(a=20.0, x=25.5, max_iterations=5)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "scitbx Error: gamma::incomplete_continued_fraction(" \
       "a=20, x=25.5, max_iterations=5) failed to converge"
@@ -314,13 +314,13 @@ def exercise_gamma_complete():
   assert "%.8g" % gamma_complete(171.624-1.e-6) == "1.7942025e+308"
   #
   try: gamma_complete(171.624)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) \
         == "scitbx Error: gamma::complete_minimax(171.624): domain error"
   else: raise Exception_expected
   assert "%.8g" % gamma_complete(141.691-1.e-6) == "4.1104518e+242"
   try: gamma_complete(141.691, minimax=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) \
         == "scitbx Error: gamma::complete_lanczos(141.691): domain error"
   else: raise Exception_expected
@@ -507,11 +507,11 @@ def exercise_lambertw():
     check_lambertw(x=5.**i)
     check_lambertw(x=10.**i)
   try: lambertw(x=-math.exp(-1)-1.e-4)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "lambertw(x) domain error: x < -exp(-1)"
   else: raise Exception_expected
   try: lambertw(x=1, max_iterations=1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "lambertw error: iteration did not converge"
   else: raise Exception_expected
 
@@ -534,7 +534,7 @@ def exercise_golay():
   assert weights == [1,0,0,0,0,0,0,0,759,0,0,0,2576,0,0,0,759,0,0,0,0,0,0,0,1]
   try:
     gg.next()
-  except StopIteration, e:
+  except StopIteration as e:
     assert str(e) == "golay_24_12_generator is exhausted."
   else:
     raise Exception_expected
@@ -1014,7 +1014,7 @@ def exercise_row_echelon_full_pivoting():
   assert approx_equal(m_inp * matrix.col(s), [0,0,-2])
   #
   try: refp(a_work=flex.double())
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "a_work matrix must be two-dimensional."
   else: raise Exception_expected
   for v in [0,1,-1]:
@@ -1529,34 +1529,34 @@ def exercise_slatec_dlngam():
     else:
       assert approx_equal((a-b)/(abs(a+b)), 0, eps=1.e-10)
   try: slatec_dlngam(x=0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)=="slatec: dgamma: x is 0 (nerr=4, level=2)"
   else: raise Exception_expected
   try: slatec_dlngam(x=-1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)=="slatec: dgamma: x is a negative integer (nerr=4, level=2)"
   else: raise Exception_expected
   for i in xrange(1,10000):
     x = i/100.
     cmp(slatec_dgamma(x=x), gamma_complete(x))
   try: slatec_dlngam(x=0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)=="slatec: dgamma: x is 0 (nerr=4, level=2)"
   else: raise Exception_expected
   try: slatec_dlngam(-1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)=="slatec: dgamma: x is a negative integer (nerr=4, level=2)"
   else: raise Exception_expected
   assert approx_equal(slatec_dlngam(-1+1.e-8), 18.4206807543)
   assert approx_equal(slatec_dlngam(-1-1.e-8), 18.4206807458)
   assert eps_eq(slatec_dlngam( 2.53273727e+305),  1.77853307723e+308)
   try: slatec_dlngam(-2.53273727e+305)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)=="slatec: dlngam: x is a negative integer (nerr=3, level=2)"
   else: raise Exception_expected
   for x in [2.53273728e+305, -2.53273728e+305]:
     try: slatec_dlngam(x=x)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == \
         "slatec: dlngam: abs(x) so big dlngam overflows (nerr=2, level=2)"
     else: raise Exception_expected
@@ -1678,7 +1678,7 @@ def exercise_slatec_dlngam():
     x = v
     while True:
       try: s = slatec_dlngam(x)
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert str(e) == \
           "slatec: dlngam: abs(x) so big dlngam overflows (nerr=2, level=2)"
         break
@@ -1686,7 +1686,7 @@ def exercise_slatec_dlngam():
         m = cmath_lgamma(x)
         cmp(s, m)
       try: s = slatec_dlngam(-x)
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert str(e) in [
           "slatec: dlngam: x is a negative integer (nerr=3, level=2)",
           "slatec: dgamma: x is a negative integer (nerr=4, level=2)"]
@@ -1700,7 +1700,7 @@ def exercise_slatec_dlngam():
 def exercise_slatec_dbinom():
   f = scitbx.math.slatec_dlnrel
   try: f(-1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "slatec: dlnrel: x is le -1 (nerr=2, level=2)"
   else: raise Exception_expected
@@ -1713,7 +1713,7 @@ def exercise_slatec_dbinom():
   assert eps_eq(f(0.4), 0.336472236621)
   f = scitbx.math.slatec_dbinom
   try: f(n=0, m=1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "slatec: dbinom: n lt m (nerr=2, level=2)"
   else: raise Exception_expected
   expected = [
@@ -1747,7 +1747,7 @@ def exercise_slatec_dbinom():
     assert eps_eq(f(*nm), e)
   assert eps_eq(f(n=2**32-1,m=2**5), 6.83193552992e+272)
   try: f(n=2**32-1,m=2**6)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "slatec: dbinom: result overflows" \
       " because n and/or m too big (nerr=3, level=2)"
@@ -1857,7 +1857,7 @@ def exercise_distributions():
   # student's t distribution
   try:
     stu = distributions.students_t_distribution(10)
-  except RuntimeError, e:
+  except RuntimeError as e:
     print("Skipping exercise students_t_distribution:", e)
   else:
     assert stu.degrees_of_freedom() == 10

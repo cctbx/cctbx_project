@@ -100,7 +100,7 @@ def run(args, command_name = "phenix.cif_as_mtz", out=sys.stdout,
           help="Extend R-free flags to cover all reflections if necessary.")
 
     ).process(args=args)
-  except Exception, e:
+  except Exception as e:
     if(str(e) != "0"): print(str(e))
     sys.exit(0)
   crystal_symmetry = command_line.symmetry
@@ -262,7 +262,7 @@ def extract(file_name,
         crystal_symmetry = other_symmetry.join_symmetry(
           other_symmetry=ma.crystal_symmetry(),
           force=True)
-      except AssertionError, e:
+      except AssertionError as e:
         str_e = str(e)
         from cStringIO import StringIO
         s = StringIO()
@@ -371,7 +371,7 @@ def extract(file_name,
           else:
             try:
               merging = ma.merge_equivalents()
-            except Sorry, e:
+            except Sorry as e:
               if ("merge_equivalents_exact: incompatible" in str(e)):
                 raise Sorry(str(e) + " for %s" %ma.info().labels[-1] + "\n" +
                   "Add --incompatible_flags_to_work_set to command line "
@@ -643,7 +643,7 @@ def validate_params(params):
     import iotbx.pdb.fetch
     try :
       iotbx.pdb.fetch.validate_pdb_id(params.input.pdb_id)
-    except RuntimeError, e :
+    except RuntimeError as e :
       raise Sorry(str(e))
   else :
     if ((params.crystal_symmetry.space_group is None) or

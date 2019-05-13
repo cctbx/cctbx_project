@@ -779,7 +779,7 @@ def exercise_array():
   indices=flex.miller_index(((0,0,1),))
   try:
     sa = ma2.select_indices(indices=indices)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(
       str(e),
       ("cctbx.miller.array.select_indices(): "

@@ -656,7 +656,7 @@ class restraint_parser(parser):
         for arg in args:
           try:
             floats.append(float(arg))
-          except TypeError, e:
+          except TypeError as e:
             if isinstance(arg, tokens.atomname_token):
               atoms.append(arg)
             elif isinstance(arg, tokens.element_token):

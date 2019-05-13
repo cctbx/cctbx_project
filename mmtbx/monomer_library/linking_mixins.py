@@ -975,7 +975,7 @@ Residue classes
           j_seq=j_seq,
           rt_mx_ji=sym_pair.rt_mx_ji)
         added_to_asu_table = True
-      except RuntimeError, e:
+      except RuntimeError as e:
         error = """
     Difficulties linking atoms
       %s

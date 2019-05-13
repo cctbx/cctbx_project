@@ -28,13 +28,13 @@ def parse_database(file_name):
       pdb_id = fields[0]
       try :
         uc = uctbx.unit_cell([ float(x.replace(",","")) for x in fields[2:8] ])
-      except RuntimeError, e :
+      except RuntimeError as e :
         print("Unit cell error:")
         print(line)
         continue
       try :
         sg = sgtbx.space_group_info(" ".join(fields[8:-1]))
-      except RuntimeError, e :
+      except RuntimeError as e :
         print("Unrecognized space group:")
         print(line)
         continue

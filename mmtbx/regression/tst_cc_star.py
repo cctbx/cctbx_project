@@ -61,7 +61,7 @@ def exercise_space_group_handling():
   ]
   try :
     cc_star.run(args=args, out=null_out())
-  except Sorry, s :
+  except Sorry as s :
     assert (str(s) == "Incompatible space groups in merged and unmerged data:P 1 21 1 versus P 1"), s
   else :
     raise Exception_expected
@@ -90,7 +90,7 @@ def exercise_space_group_handling():
   ]
   try :
     cc_star.run(args=args, out=null_out())
-  except Sorry, s :
+  except Sorry as s :
     assert ("Incompatible symmetry definitions:" in str(s)), s
   else :
     raise Exception_expected

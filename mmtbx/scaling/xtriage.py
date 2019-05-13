@@ -676,7 +676,7 @@ class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
         print("References:", file=text_out)
         print(iotbx.merging_statistics.citations_str, file=text_out)
         print("", file=text_out)
-      except Exception, e :
+      except Exception as e :
         print("WARNING: calculation of merging statistics failed", file=text_out)
         print("  error: %s" % str(e), file=text_out)
 
@@ -692,7 +692,7 @@ class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
           sites=params.scaling.input.asu_contents.n_sites,
           skip_scaling=True,
           out=null_out()).analysis
-      except Exception, e :
+      except Exception as e :
         print("WARNING: calculation of anomalous statistics failed", file=text_out)
         print("  error: %s\n" % str(e), file=text_out)
     ###
@@ -768,11 +768,11 @@ class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
         self.relative_wilson = relative_wilson.relative_wilson(
           miller_obs=miller_obs,
           miller_calc=miller_calc).summary()
-      except Sorry, e :
+      except Sorry as e :
         print("*** Error calculating relative Wilson plot - skipping.", file=text_out)
         print(str(e), file=text_out)
         print("", file=text_out)
-      except Exception, e :
+      except Exception as e :
         print("RELATIVE WILSON ERROR")
         raise
         print("", file=text_out)

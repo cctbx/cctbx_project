@@ -79,7 +79,7 @@ if (__name__ == "__main__"):
   choice2.SetValue(None)
   try :
     print(choice2.GetPhilValue())
-  except Exception, e :
+  except Exception as e :
     assert (str(e) == "Value required for 'choice'.")
   else :
     assert 0

@@ -40,7 +40,7 @@ and other inconsistencies (similar to validation upon PDB deposition).""")
   params = cmdline.work.extract()
   try :
     validate_params(params)
-  except Sorry, e :
+  except Sorry as e :
     print(e)
     raise Usage("phenix.model_vs_sequence model.pdb sequence.fa")
   import mmtbx.validation.sequence

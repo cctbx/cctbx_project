@@ -290,7 +290,7 @@ def update_restraints(hierarchy,
                 chis_str,
                 value,
               ), file=log)
-            except TypeError, e:
+            except TypeError as e:
               print("  %s %s %s %-5s %-60s %s" % (
                 chain.id,
                 atom_group.resname,

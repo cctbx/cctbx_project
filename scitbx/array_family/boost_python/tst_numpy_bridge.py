@@ -61,7 +61,7 @@ def run(args):
     if (flex.int().as_numpy_array(optional=True) is None):
       try:
         flex.int().as_numpy_array()
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert not show_diff(str(e), "numpy API not available")
       else:
         raise Exception_expected

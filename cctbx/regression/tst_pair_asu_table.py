@@ -22,7 +22,7 @@ def exercise_icosahedron(max_level=2, verbose=0):
     try:
       distance_cutoff = icosahedron.next_neighbors_distance()*(1+1.e-3)
       estimated_distance_cutoff = False
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == "next_neighbors_distance not known."
       distance_cutoff = 0.4/(2**(level-1))
       estimated_distance_cutoff = True

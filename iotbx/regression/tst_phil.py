@@ -190,7 +190,7 @@ unit_cell = None
   try :
     hkl_in = any_file(params.data, force_type="hkl")
     print(hkl_in.file_server.miller_arrays[0].is_xray_intensity_array())
-  except Sorry, s :
+  except Sorry as s :
     assert ("Unresolved amplitude/intensity ambiguity" in str(s))
   else :
     raise Exception_expected

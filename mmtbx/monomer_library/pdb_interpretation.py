@@ -721,7 +721,7 @@ def all_atoms_are_in_main_conf(atoms):
 def residue_id_str(residue, suppress_segid=0):
   try :
     return residue.id_str(suppress_segid=suppress_segid)
-  except ValueError, e :
+  except ValueError as e :
     raise Sorry(str(e))
 
 class counters(object):
@@ -1492,7 +1492,7 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
         # mod previously applied already, e.g. two links to same carbohydrate
     try:
       mod_mon = self.monomer.apply_mod(mod_mod_id)
-    except Exception, e:
+    except Exception as e:
       import traceback
       msg = traceback.format_exc().splitlines()
       msg.extend([
@@ -4093,7 +4093,7 @@ class build_all_chain_proxies(linking_mixins):
     try:
       return self.selection(string=string, cache=cache)
     except KeyboardInterrupt: raise
-    except Exception, e: # keep e alive to avoid traceback
+    except Exception as e: # keep e alive to avoid traceback
       fe = format_exception()
       raise Sorry('Invalid atom selection:\n  %s="%s"\n  (%s)' % (
         parameter_name, string, fe))
@@ -4120,7 +4120,7 @@ class build_all_chain_proxies(linking_mixins):
         parameter_name()))
     try: result = self.selection(string=string, cache=cache)
     except KeyboardInterrupt: raise
-    except Exception, e: # keep e alive to avoid traceback
+    except Exception as e: # keep e alive to avoid traceback
       fe = format_exception()
       raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
         parameter_name(), show_string(string), fe))
@@ -4152,7 +4152,7 @@ class build_all_chain_proxies(linking_mixins):
       try:
         result.append(self.selection(string=string, cache=cache).iselection())
       except KeyboardInterrupt: raise
-      except Exception, e: # keep e alive to avoid traceback
+      except Exception as e: # keep e alive to avoid traceback
         fe = format_exception()
         raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
           parameter_name(), show_string(string), fe))
@@ -4754,7 +4754,7 @@ class build_all_chain_proxies(linking_mixins):
                                       self.pdb_atoms[j_seq].id_str()), file=log)
       try :
         shell_asu_tables[1].add_pair(i_seq, j_seq, rt_mx_ji)
-      except RuntimeError, e :
+      except RuntimeError as e :
         print("    WARNING: could not process nonbonded pair", file=log)
         print("    Original error:", file=log)
         print("      %s" % str(e), file=log)
@@ -5019,7 +5019,7 @@ class build_all_chain_proxies(linking_mixins):
               try:
                 alt_value_angle = map(float,
                                       disulfide_torsion.alt_value_angle.split(","))
-              except ValueError, AttributeError:
+              except ValueError as AttributeError:
                 raise Sorry("Wrong format of alt_value_angle in SS bond in cif file")
             i_seqs = []
             for nwm in range(1,5):
