@@ -409,8 +409,8 @@ class bayesian_estimator:
             ' to ',self.new_bin_after_end_list[bin], file=self.out)
        if self.new_bin_start_list[bin] is None or  \
           self.new_bin_after_end_list[bin] is None:
-          raise AssertionError,"Sorry, need more data or smaller value of "+\
-             "min_in_bin (currently "+str(self.min_in_bin)+")"
+          raise AssertionError("Sorry, need more data or smaller value of "+\
+             "min_in_bin (currently "+str(self.min_in_bin)+")")
        if self.verbose:
          print("New number of records: ", \
          -self.new_bin_start_list[bin] +self.new_bin_after_end_list[bin], file=self.out)

@@ -308,7 +308,7 @@ def analyze_redundancies(asu, n, redundancies, verbose=1):
       print("    Not in cuts:")
       for point in not_in_cuts.keys():
         print("     ", point)
-      raise AssertionError, "Some redundant points not in any cuts."
+      raise AssertionError("Some redundant points not in any cuts.")
     print()
 
 def check_multiplicities(asu, n):

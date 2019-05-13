@@ -331,7 +331,7 @@ def build_run(a_out, n_scatt, n_refl, build_cmd, check_max_a_b):
         n_refl=n_refl,
         output_lines=buffers.stdout_lines)
     else:
-      raise RuntimeError, (max_a, max_b)
+      raise RuntimeError(max_a, max_b)
   utime = float(buffers.stderr_lines[1].split()[1])
   return utime
 

@@ -17,7 +17,7 @@ def exercise_std_vector_conversions(verbose=0):
   assert rt.std_vector((8,9,10,11)) == 38
   try: rt.std_vector((0,1,"c"))
   except TypeError: pass
-  else: raise RuntimeError, "TypeError expected."
+  else: raise RuntimeError("TypeError expected.")
   if (verbose): print('OK')
 
 def exercise_std_list_conversions(verbose=0):
@@ -29,7 +29,7 @@ def exercise_std_list_conversions(verbose=0):
   assert rt.std_list((8,9,10,11)) == 38
   try: rt.std_list((0,1,"c"))
   except TypeError: pass
-  else: raise RuntimeError, "TypeError expected."
+  else: raise RuntimeError("TypeError expected.")
   if (verbose): print('OK')
 
 def exercise_boost_array_conversions(verbose=0):
@@ -41,10 +41,10 @@ def exercise_boost_array_conversions(verbose=0):
   assert rt.boost_array((8,9,10,11)) == 38
   try: rt.boost_array((8,9,10,11,12))
   except TypeError: pass
-  else: raise RuntimeError, "TypeError expected."
+  else: raise RuntimeError("TypeError expected.")
   try: rt.boost_array((0, 1, "c"))
   except TypeError: pass
-  else: raise RuntimeError, "TypeError expected."
+  else: raise RuntimeError("TypeError expected.")
   if (verbose): print('OK')
 
 def exercise_small_conversions(verbose=0):
@@ -56,7 +56,7 @@ def exercise_small_conversions(verbose=0):
   assert rt.small((8,9,10,11)) == 38
   try: rt.small((0,1,"c"))
   except TypeError: pass
-  else: raise RuntimeError, "TypeError expected."
+  else: raise RuntimeError("TypeError expected.")
   if (verbose): print('OK')
 
 def exercise_shared_flex_conversions(verbose=0):

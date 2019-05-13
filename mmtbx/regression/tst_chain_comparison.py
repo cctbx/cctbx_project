@@ -514,7 +514,7 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
   from libtbx.test_utils import approx_equal
   print(r.get_values("forward"))
   assert approx_equal(r.get_values("forward"),(1.6751069901864204, 14))
@@ -554,7 +554,7 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
 
   from libtbx.test_utils import approx_equal
   print(r.get_values("forward"))
@@ -606,7 +606,7 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
   print("OK")
 
 def tst_04():
@@ -837,7 +837,7 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
 
   print("OK")
 

@@ -419,7 +419,7 @@ class structure_base(object):
     "Count residues in this secondary structure"
 
     if hierarchy is None:
-      raise AssertionError,"Require hierarchy for count_residues"
+      raise AssertionError("Require hierarchy for count_residues")
 
     atom_selection=self.combine_atom_selections(self.as_atom_selections())
     if not atom_selection:
@@ -438,7 +438,7 @@ class structure_base(object):
     "Not appropriate for large structures unless you set ss_by_chain=True"
     "Use instead annotation.count_h_bonds in general."
     if hierarchy is None:
-      raise AssertionError,"Require hierarchy for count_h_bonds"
+      raise AssertionError("Require hierarchy for count_h_bonds")
 
     atom_selection=self.combine_atom_selections(self.as_atom_selections())
     if not atom_selection:
@@ -468,7 +468,7 @@ class structure_base(object):
     if self.is_same_as(other=other): return True  # always quicker
 
     if hierarchy is None:
-      raise AssertionError,"Require hierarchy for is_similar_to"
+      raise AssertionError("Require hierarchy for is_similar_to")
 
     # Check for different objects
     if type(self) != type(other): return False

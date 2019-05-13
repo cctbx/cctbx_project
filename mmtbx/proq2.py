@@ -56,7 +56,7 @@ def parse_submission_page(stream):
     if parser.job_folder is not None:
       return parser.job_folder
 
-  raise JobFolderParseError, "Could not find job folder text"
+  raise JobFolderParseError("Could not find job folder text")
 
 
 class Job(object):

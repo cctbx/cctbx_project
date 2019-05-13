@@ -22,8 +22,7 @@ def run(args):
   for arg in command_line.args:
     crystal_symmetry = crystal_symmetry_from_any.extract_from(arg)
     if (crystal_symmetry is None):
-      raise RuntimeError, \
-        "Unknown file format or unit cell and space group missing from file."
+      raise RuntimeError("Unknown file format or unit cell and space group missing from file.")
     if (co.niggli_cell
           and crystal_symmetry.unit_cell() is not None
           and crystal_symmetry.space_group_info() is not None):

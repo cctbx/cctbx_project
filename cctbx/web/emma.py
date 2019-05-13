@@ -33,9 +33,9 @@ def interpret_form_data(form):
 def interpret_generic_coordinate_line(line, skip_columns):
   flds = line.replace(",", " ").split()
   try: site = [float(x) for x in flds[skip_columns: skip_columns+3]]
-  except Exception: raise RuntimeError, "FormatError: " + line
+  except Exception: raise RuntimeError("FormatError: " + line)
   if (len(site) != 3):
-    raise RuntimeError, "FormatError: " + line
+    raise RuntimeError("FormatError: " + line)
   return " ".join(flds[:skip_columns]), site
 
 def pdb_file_to_emma_model(crystal_symmetry, pdb_inp, other_symmetry):
@@ -200,7 +200,7 @@ def run_implementation(server_info, inp, status):
   tolerance = float(inp.tolerance)
   print("Tolerance:", tolerance)
   if (tolerance <= 0.):
-    raise ValueError, "Tolerance must be greater than zero."
+    raise ValueError("Tolerance must be greater than zero.")
   print()
 
   diffraction_index_equivalent = int(inp.diffraction_index_equivalent)

@@ -87,8 +87,7 @@ def export_as_cns_hkl(self,
       print("DECLare NAME=%s  DOMAin=RECIprocal TYPE=INTEger END" % array_names[0], file=out)
       fmt = "%d"
     else:
-      raise RuntimeError, \
-        "Cannot write array type %s to CNS reflection file" % type(self.data())
+      raise RuntimeError("Cannot write array type %s to CNS reflection file" % type(self.data()))
     fmt = array_names[0] + "= " + fmt
     for h,d in zip(self.indices(),self.data()):
       print("INDEx %d %d %d" % h, fmt % d, file=out)

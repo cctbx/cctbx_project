@@ -352,7 +352,7 @@ class random_abcpq(object):
       self.c = self.b
       if (rr(0,2)): self.c += rr(10,101)
     else:
-      raise RuntimeError, "Unknown ck_type."
+      raise RuntimeError("Unknown ck_type.")
 
   def eval_defks(self, defks):
     a,b,c,p,q = tuple([float(x) for x in (self.a,self.b,self.c,self.p,self.q)])

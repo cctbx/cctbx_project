@@ -122,7 +122,7 @@ class symmetry_callback(object):
       if (crystal_symmetry.space_group_info() is not None):
         self.space_group_info = crystal_symmetry.space_group_info()
     else:
-      raise RuntimeError, "Programming error."
+      raise RuntimeError("Programming error.")
 
   def get(self):
     return crystal.symmetry(

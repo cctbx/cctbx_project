@@ -31,7 +31,7 @@ def p_solc_calc(sc):
   Calculate solvent fraction probability
   """
   if sc < 0 or 1.0 < sc:
-    raise ValueError, "solvent content out of range"
+    raise ValueError("solvent content out of range")
   log_p_solc = get_log_p_solc()
   return math.exp(log_p_solc.f(sc))
 
@@ -45,7 +45,7 @@ class density_calculator(object):
 
   def vm(self, weight):
     if weight <= 0:
-      raise ValueError, "Incorrect weight"
+      raise ValueError("Incorrect weight")
     return self.asu_volume / weight
 
   def macromolecule_fraction(self, weight, rho_spec):
@@ -76,7 +76,7 @@ class component(object):
 
 def number_table(components, density_calculator):
   if not components:
-    raise ValueError, "Empty component list"
+    raise ValueError("Empty component list")
   unit_mfrac = sum([
     density_calculator.macromolecule_fraction(
       weight = c.mw,

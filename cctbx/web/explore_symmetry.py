@@ -112,7 +112,7 @@ def show_symbols(symbols):
     elif (e == "R"):
       print("  Trigonal using rhombohedral axes")
     else:
-      raise RuntimeError, "Internal error"
+      raise RuntimeError("Internal error")
   q = symbols.qualifier()
   if (q != ""):
     if (symbols.number() < 16):
@@ -145,7 +145,7 @@ def expand_shelx_latt(sg, n_fld):
     n = int(n_fld)
     z = n_dict[abs(n)]
   except Exception:
-    raise RuntimeError, "Format Error: LATT " + str(n_fld)
+    raise RuntimeError("Format Error: LATT " + str(n_fld))
   print("Addition of SHELX LATT " + str(n) + ":")
   if (n > 0):
     print("  Addition of centre of inversion at the origin.")

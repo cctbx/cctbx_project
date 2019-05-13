@@ -22,7 +22,7 @@ class reader(object):
     elif (flds[2] == "FRIEDEL'S_LAW=TRUE"):
       self.anomalous_flag = self.unmerged_data
     else:
-      raise RuntimeError, "Expected FRIEDEL'S_LAW=FALSE|TRUE"
+      raise RuntimeError("Expected FRIEDEL'S_LAW=FALSE|TRUE")
     self.unit_cell = None
     self.space_group_number = None
     self.number_of_items_in_each_data_record = None

@@ -90,21 +90,21 @@ def tst_01():
   if remove_blank(" ".join(found_text.split("source_info")[1:]) ) != \
      remove_blank(" ".join(expected_text.split("source_info")[1:])):
     print("Expected: \n%s \nFound: \n%s" %(expected_text_group_specification,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
 
   f=StringIO()
   ncs_object.format_all_for_resolve(out=f)
   found_text=f.getvalue()
   if remove_blank(found_text)!=remove_blank(expected_text_resolve):
     print("Expected: \n%s \nFound: \n%s" %(expected_text_resolve,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
 
   f=StringIO()
   ncs_object.format_all_for_phenix_refine(out=f)
   found_text=f.getvalue()
   if remove_blank(found_text)!=remove_blank(expected_text_refine):
     print("Expected: \n%s \nFound: \n%s" %(expected_text_refine,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
 
   print("OK")
 
@@ -1251,7 +1251,7 @@ def tst_03():
   if remove_blank(" ".join(found_text.split("source_info")[1:]) ) != \
      remove_blank(" ".join(expected_text2.split("source_info")[1:])):
     print("Expected: \n%s \nFound: \n%s" %(expected_text_group_specification,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
 
 
   print("OK")
@@ -1279,7 +1279,7 @@ def tst_04():
   if remove_blank(" ".join(found_text.split("source_info")[1:]) ) != \
      remove_blank(" ".join(expected_text2b.split("source_info")[1:])):
     print("Expected: \n%s \nFound: \n%s" %(expected_text_group_specification,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
 
 
   print("OK")
@@ -1307,7 +1307,7 @@ def tst_05():
   if remove_blank(" ".join(found_text.split("source_info")[1:]) ) != \
      remove_blank(" ".join(expected_text2c.split("source_info")[1:])):
     print("Expected: \n%s \nFound: \n%s" %(expected_text2c,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
 
 
   print("OK")
@@ -1379,7 +1379,7 @@ def tst_06():
 
   if remove_blank(found_text) != remove_blank(expected_text6):
     print("Expected: \n%s \nFound: \n%s" %(expected_text6,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
 
   print("OK")
 

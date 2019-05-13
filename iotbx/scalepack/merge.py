@@ -29,21 +29,21 @@ class reader(object):
   def __init__(self, file_handle, header_only=False):
     line = file_handle.readline()
     if (line.rstrip() != "    1"):
-      raise FormatError, "line 1: expecting '    1'"
+      raise FormatError("line 1: expecting '    1'")
     file_handle.readline() # ignore line 2
     line_error = "line 3: expecting unit cell parameters and space group label"
     line = file_handle.readline()
     if (len(line) < 63 or line[60] != ' '):
-      raise FormatError, line_error
+      raise FormatError(line_error)
     try:
       uc_params = [float(line[i * 10 : (i + 1) * 10]) for i in xrange(6)]
     except KeyboardInterrupt: raise
     except Exception:
-      raise FormatError, line_error
+      raise FormatError(line_error)
     self.unit_cell = uctbx.unit_cell(uc_params)
     self.space_group_symbol = line[61:].strip()
     if (len(self.space_group_symbol) == 0):
-      raise FormatError, line_error
+      raise FormatError(line_error)
     try:
       self.space_group_info = sgtbx.space_group_info(self.space_group_symbol)
     except KeyboardInterrupt: raise
@@ -73,7 +73,7 @@ class reader(object):
         h = [int(flds[i]) for i in xrange(3)]
       except KeyboardInterrupt: raise
       except Exception:
-        raise FormatError, line_error
+        raise FormatError(line_error)
       for i in (0,1):
         j = 3+2*i
         if (len(flds[j])):
@@ -83,7 +83,7 @@ class reader(object):
           except Exception:
             if (flds[j] == "*"*len(flds[j])) : # XXX overload
               continue
-            raise FormatError, line_error
+            raise FormatError(line_error)
           # XXX scalepack uses I=0, sigmaI=-1 to denote a missing Friedel
           # mate
           if (i_obs == 0) and (sigma == -1):

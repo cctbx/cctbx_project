@@ -28,8 +28,8 @@ def test(out=sys.stdout):
   o=float(text.split()[-1])
   e=float(expected_text.split()[-1])
   if abs(o-e) > 0.02:
-    raise AssertionError,"test of mean_f_rms_f failed: Expected %7.3f got %7.3f: diff is %7.3f" %(
-      o,e,abs(o-e))
+    raise AssertionError("test of mean_f_rms_f failed: Expected %7.3f got %7.3f: diff is %7.3f" %(
+      o,e,abs(o-e)))
 
 def exercise_mean_fh():
   i=-1

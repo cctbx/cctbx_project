@@ -52,7 +52,7 @@ def verify(crystal_symmetry, anomalous_flag, reflection_file):
       print('e:', e_i, e)
       print('c:', c_i, c)
       print('p:', p_i, p)
-      raise AssertionError, exc
+      raise AssertionError(exc)
 
     assert (not space_group.is_sys_absent(h))
     assert (e == space_group.order_p() // space_group.multiplicity(h, True))

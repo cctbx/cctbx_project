@@ -40,7 +40,7 @@ class reader(object):
         if (raw_line.strip().lower() == "end"):
           break
         if (self.n_lines == max_header_lines or have_data):
-          raise RuntimeError, "Unkown file format."
+          raise RuntimeError("Unkown file format.")
       else:
         if (self._names is None): self._names = ifs.names
         self._indices.append(ifs.index)
@@ -48,7 +48,7 @@ class reader(object):
         self._sigmas.append(ifs.sigma)
         have_data = True
     if (not have_data):
-      raise RuntimeError, "No data found in file."
+      raise RuntimeError("No data found in file.")
 
   def indices(self):
     return self._indices

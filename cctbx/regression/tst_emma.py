@@ -225,7 +225,7 @@ class test_model(emma.model):
            pos("SI3", (-0.8358, 0.7, 0.3431)),
            pos("SI4", (0.4799, 1.836, 0.6598))))
       else:
-        raise RuntimeError, "Unknown model_id: " + model_id
+        raise RuntimeError("Unknown model_id: " + model_id)
     else:
       structure = random_structure.xray_structure(
         model_id,

@@ -10,7 +10,7 @@ class store(object):
 class sorted_store(object):
 
   def keys(self):
-    raise RuntimeError, "Programming error: derived class must override keys()"
+    raise RuntimeError("Programming error: derived class must override keys()")
 
   def __init__(self, *args, **kw):
     assert len(args) + len(kw) == len(self.keys())

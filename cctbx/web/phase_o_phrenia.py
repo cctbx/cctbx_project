@@ -74,19 +74,19 @@ def run(server_info, inp, status):
   d_min = float(inp.d_min)
   print("Minimum d-spacing:", d_min)
   if (d_min <= 0.):
-    raise ValueError, "d-spacing must be greater than zero."
+    raise ValueError("d-spacing must be greater than zero.")
   print()
 
   min_peak_distance = float(inp.min_peak_distance)
   print("Minimum peak distance:", min_peak_distance)
   if (min_peak_distance <= 0.):
-    raise ValueError, "min_peak_distance must be greater than zero."
+    raise ValueError("min_peak_distance must be greater than zero.")
   print()
 
   max_reduced_peaks = int(inp.max_reduced_peaks)
   print("Maximum number of peaks:", max_reduced_peaks)
   if (max_reduced_peaks <= 0):
-    raise ValueError, "max_reduced_peaks must be greater than zero."
+    raise ValueError("max_reduced_peaks must be greater than zero.")
   print()
 
   for structure in structures:

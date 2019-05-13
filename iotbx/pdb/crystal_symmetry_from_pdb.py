@@ -24,4 +24,4 @@ def extract_from(file_name=None, file=None, monitor_initial=None):
       pdb_record=line)
     if (crystal_symmetry is not None):
       return crystal_symmetry
-  raise RuntimeError, "No CRYST1 record."
+  raise RuntimeError("No CRYST1 record.")

@@ -27,7 +27,7 @@ def run(server_info, inp, status):
   d_min = float(inp.d_min)
   print("Minimum d-spacing:", d_min)
   if (d_min <= 0.):
-    raise ValueError, "d-spacing must be greater than zero."
+    raise ValueError("d-spacing must be greater than zero.")
   print()
 
   structure = io_utils.structure_from_inp(

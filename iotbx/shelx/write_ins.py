@@ -14,13 +14,13 @@ def LATT_SYMM(s, space_group, decimal=False):
   try:
     LATT_N = Z_dict[Z]
   except Exception:
-    raise RuntimeError, "Error: Lattice type not supported by SHELX."
+    raise RuntimeError("Error: Lattice type not supported by SHELX.")
   # N must be made negative if the structure is non-centrosymmetric.
   if (space_group.is_centric()):
     if (not space_group.is_origin_centric()):
-      raise RuntimeError, "Error: " \
+      raise RuntimeError("Error: " \
         + " SHELX manual: If the structure is centrosymmetric, the" \
-        + " origin MUST lie on a center of symmetry."
+        + " origin MUST lie on a center of symmetry.")
   else:
     LATT_N = -LATT_N;
   print("LATT", LATT_N, file=s)

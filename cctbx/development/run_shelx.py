@@ -100,14 +100,14 @@ def HKLF(lapp, f_calc, skip_zeros=False):
 def pre_check(xray_structure):
   if (len(xray_structure.scatterers()) > 99):
     # SHELX WPDB will mess up atom labels.
-    raise RuntimeError, "Cannot handle more than 99 scatterer."
+    raise RuntimeError("Cannot handle more than 99 scatterer.")
   for scatterer in xray_structure.scatterers():
     if (scatterer.occupancy > 1.1):
-      raise RuntimeError, "Error: occupancy too large: %s: %.6g" % (
-        scatterer.label, scatterer.occupancy)
+      raise RuntimeError("Error: occupancy too large: %s: %.6g" % (
+        scatterer.label, scatterer.occupancy))
     if (scatterer.u_iso > 1.0):
-      raise RuntimeError, "Error: u_iso too large: %s: %.6g" % (
-        scatterer.label, scatterer.u_iso)
+      raise RuntimeError("Error: u_iso too large: %s: %.6g" % (
+        scatterer.label, scatterer.u_iso))
 
 def check_r1(miller_set, shelx_lst, verbose):
   for l in shelx_lst:
@@ -116,13 +116,13 @@ def check_r1(miller_set, shelx_lst, verbose):
       R1 = float(flds[9])
       n_data = int(flds[12])
       if (len(miller_set.indices()) != n_data):
-        raise RuntimeError, "Shelx lost Miller indices."
+        raise RuntimeError("Shelx lost Miller indices.")
       if (0 or verbose):
         print("R1", R1, miller_set.space_group_info())
       if (R1 > 0.01):
-        raise RuntimeError, "Error: " + l[:-1]
+        raise RuntimeError("Error: " + l[:-1])
       return
-  raise RuntimeError, "R1 not found in Shelx .lst file."
+  raise RuntimeError("R1 not found in Shelx .lst file.")
 
 def check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose):
   # SHELXL WPDB does not include H atoms. Therefore we

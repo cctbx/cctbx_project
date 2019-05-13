@@ -43,7 +43,7 @@ class Text(object):
     child = elem.find( self.tag )
 
     if child is None:
-      raise RuntimeError, "Element '%s' has no child '%s'" % (elem.tag, self.tag )
+      raise RuntimeError("Element '%s' has no child '%s'" % (elem.tag, self.tag ))
 
     setattr( node, self.attribute, self.conversion( child.text ) )
 
@@ -91,10 +91,10 @@ class Attribute(object):
     res = elem.get( self.name )
 
     if res is None:
-      raise RuntimeError, "Element '%s' has no attribute '%s'" % (
+      raise RuntimeError("Element '%s' has no attribute '%s'" % (
         elem.tag,
         self.name,
-        )
+        ))
 
     setattr( node, self.attribute, self.conversion( res ) )
 
@@ -172,10 +172,10 @@ class Single(object):
         setattr( node, attribute, child )
 
     if unseen:
-      raise RuntimeError, "Missing children for element '%s': %s" % (
+      raise RuntimeError("Missing children for element '%s': %s" % (
         endtag,
         ", ".join( "'%s'" % t for t in unseen ),
-        )
+        ))
 
     return node
 
@@ -227,7 +227,7 @@ class DataAttribute(object):
         raw = elem.get( self.name )
 
         if raw is None:
-          raise RuntimeError, "%s has no %s attribute" % ( elem.tag, self.name )
+          raise RuntimeError("%s has no %s attribute" % ( elem.tag, self.name ))
 
         result = self.conversion( raw )
         elem.clear()
@@ -263,5 +263,5 @@ class Parser(object):
           )
 
     else:
-      raise RuntimeError, "Start tag %s not found" % self.tag
+      raise RuntimeError("Start tag %s not found" % self.tag)
 

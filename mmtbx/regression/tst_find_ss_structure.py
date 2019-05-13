@@ -762,7 +762,7 @@ FINAL PDB selections:
   """
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
 
 
   print("OK")
@@ -797,7 +797,7 @@ FINAL PDB selections:
   #assert not test_utils.show_diff(found_text, expected_text)
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
   print("OK")
 
 def tst_02():
@@ -856,7 +856,7 @@ FINAL PDB selections:
   #assert not test_utils.show_diff(found_text, expected_text)
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
   print("OK")
 
 def tst_03():
@@ -893,7 +893,7 @@ FINAL PDB selections:
   #assert not test_utils.show_diff(found_text, expected_text)
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
   print("OK")
 
 def tst_04():
@@ -1007,7 +1007,7 @@ FINAL PDB selections:
   #assert not test_utils.show_diff(found_text, expected_text)
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
   print("OK")
 
 def tst_05():
@@ -1040,7 +1040,7 @@ FINAL PDB selections:
   found_text=f.getvalue()
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
   print("OK")
 
 def tst_06():
@@ -1089,7 +1089,7 @@ FINAL PDB selections:
   found_text=f.getvalue()
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
   print("OK")
 
 def tst_07():
@@ -1121,7 +1121,7 @@ Class:  Beta strand  N: 4 Start: 4 End: 7  Rise: 3.27 A Dot: 0.91"""
   found_text=f.getvalue()
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
-    raise AssertionError, "FAILED"
+    raise AssertionError("FAILED")
   print("OK")
 
 def tst_08():
