@@ -46,7 +46,7 @@ def exercise_geo_reduce_for_tardy(
   awl = list(processed_pdb_file.all_chain_proxies.pdb_hierarchy
     .atoms_with_labels())
   for proxy in geo.get_dihedral_proxies():
-    if (not proxy_i_seqs_red.has_key(proxy.i_seqs)):
+    if (proxy.i_seqs not in proxy_i_seqs_red):
       sigma = 1/proxy.weight**0.5
       if (sigma > 10):
         assert awl[proxy.i_seqs[0]].resname in [ "PRO", "CYS" ]

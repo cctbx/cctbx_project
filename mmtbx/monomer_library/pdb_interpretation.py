@@ -1243,7 +1243,7 @@ class monomer_mapping(slots_getstate_setstate):
         atom_name = self.mon_lib_names[i_atom]
         if (atom_name is None):
           atom_name = atom_name_given
-      if (len(atom_name) != 0 and not atom_dict.has_key(atom_name)):
+      if (len(atom_name) != 0 and atom_name not in atom_dict):
         auto_synomyms = []
         if (atom_name[0] in string.digits):
           auto_synomyms.append(atom_name[1:] + atom_name[0])
@@ -1258,7 +1258,7 @@ class monomer_mapping(slots_getstate_setstate):
             elif (atom_name[-1] in string.digits):
               auto_synomyms.append(atom_name[-1] + atom_name[0:-1])
         for atom_name in auto_synomyms:
-          if (atom_dict.has_key(atom_name)): break
+          if (atom_name in atom_dict): break
         else:
           auto_synomyms.insert(0, atom_name_given)
           if (deuterium_aliases is None):
@@ -1274,7 +1274,7 @@ class monomer_mapping(slots_getstate_setstate):
             else:
               atom_name = atom_name_given
       if (    len(atom_name) != 0
-          and not atom_dict.has_key(atom_name)
+          and atom_name not in atom_dict
           and ((self.is_rna_dna) or (self.monomer.normalized_rna_dna))):
         aliases = pdb.rna_dna_atom_names_backbone_aliases
         if (rna_dna_bb_cif_by_ref is None):
@@ -1290,7 +1290,7 @@ class monomer_mapping(slots_getstate_setstate):
       prev_atom = processed_atom_names.get(atom_name)
       if (prev_atom is None):
         processed_atom_names[atom_name] = atom
-        if (atom_dict.has_key(atom_name)):
+        if (atom_name in atom_dict):
           self.expected_atoms[atom_name] = atom
         else:
           self.unexpected_atoms[atom_name] = atom
@@ -1303,7 +1303,7 @@ class monomer_mapping(slots_getstate_setstate):
     self._set_missing_atoms()
 
   def _rename_ot1_ot2(self, oxt_in_atom_dict):
-    if (not self.expected_atoms.has_key("O")):
+    if ("O" not in self.expected_atoms):
       i_seq = self.unexpected_atoms.get("OT1", None)
       if (i_seq is not None):
         self.expected_atoms["O"] = i_seq
@@ -1312,7 +1312,7 @@ class monomer_mapping(slots_getstate_setstate):
       oxt_dict = self.expected_atoms
     else:
       oxt_dict = self.unexpected_atoms
-    if (not oxt_dict.has_key("OXT")):
+    if ("OXT" not in oxt_dict):
       i_seq = self.unexpected_atoms.get("OT2", None)
       if (i_seq is not None):
         oxt_dict["OXT"] = i_seq
@@ -1322,7 +1322,7 @@ class monomer_mapping(slots_getstate_setstate):
     if (self.monomer_atom_dict.get("H1") is None):
       return
     e = self.expected_atoms
-    if (e.has_key("H1") or e.has_key("D1")):
+    if ("H1" in e or "D1" in e):
       return
     u = self.unexpected_atoms
     h = u.get("H")
@@ -1341,7 +1341,7 @@ class monomer_mapping(slots_getstate_setstate):
     self.missing_non_hydrogen_atoms = {}
     self.missing_hydrogen_atoms = {}
     for atom in self.monomer.atom_list:
-      if (not self.expected_atoms.has_key(atom.atom_id)):
+      if (atom.atom_id not in self.expected_atoms):
         if (atom.type_symbol != "H"):
           self.missing_non_hydrogen_atoms[atom.atom_id] = atom
         else:
@@ -1852,13 +1852,13 @@ class add_bond_proxies(object):
         value = "value_dist"
         if getattr(bond, "value_dist_neutron", None):
           value = "value_dist_neutron"
-      if (   not m_i.monomer_atom_dict.has_key(bond.atom_id_1)
-          or not m_j.monomer_atom_dict.has_key(bond.atom_id_2)):
+      if (   bond.atom_id_1 not in m_i.monomer_atom_dict
+          or bond.atom_id_2 not in m_j.monomer_atom_dict):
         #
         # replace primes with stars to see if that will work!!!
         #
-        if (    m_i.monomer_atom_dict.has_key(bond.atom_id_1.replace("'", "*"))
-            and m_j.monomer_atom_dict.has_key(bond.atom_id_2.replace("'", "*"))):
+        if (    bond.atom_id_1.replace("'", "*") in m_i.monomer_atom_dict
+            and bond.atom_id_2.replace("'", "*") in m_j.monomer_atom_dict):
           bond.atom_id_1 = bond.atom_id_1.replace("'", "*")
           bond.atom_id_2 = bond.atom_id_2.replace("'", "*")
         else:
@@ -1919,12 +1919,12 @@ class add_angle_proxies(object):
       if (m_j is not None):
         m_1,m_2,m_3 = [(m_i, m_j)[comp_id-1] for comp_id in (
           angle.atom_1_comp_id, angle.atom_2_comp_id, angle.atom_3_comp_id)]
-      if (   not m_1.monomer_atom_dict.has_key(angle.atom_id_1)
-          or not m_2.monomer_atom_dict.has_key(angle.atom_id_2)
-          or not m_3.monomer_atom_dict.has_key(angle.atom_id_3)):
-        if (    m_1.monomer_atom_dict.has_key(angle.atom_id_1.replace("'", "*"))
-            and m_2.monomer_atom_dict.has_key(angle.atom_id_2.replace("'", "*"))
-            and m_3.monomer_atom_dict.has_key(angle.atom_id_3.replace("'", "*"))):
+      if (   angle.atom_id_1 not in m_1.monomer_atom_dict
+          or angle.atom_id_2 not in m_2.monomer_atom_dict
+          or angle.atom_id_3 not in m_3.monomer_atom_dict):
+        if (    angle.atom_id_1.replace("'", "*") in m_1.monomer_atom_dict
+            and angle.atom_id_2.replace("'", "*") in m_2.monomer_atom_dict
+            and angle.atom_id_3.replace("'", "*") in m_3.monomer_atom_dict):
           angle.atom_id_1 = angle.atom_id_1.replace("'", "*")
           angle.atom_id_2 = angle.atom_id_2.replace("'", "*")
           angle.atom_id_3 = angle.atom_id_3.replace("'", "*")
@@ -1993,14 +1993,14 @@ class add_dihedral_proxies(object):
           tor.atom_2_comp_id,
           tor.atom_3_comp_id,
           tor.atom_4_comp_id)]
-      if (   not m_1.monomer_atom_dict.has_key(tor.atom_id_1)
-          or not m_2.monomer_atom_dict.has_key(tor.atom_id_2)
-          or not m_3.monomer_atom_dict.has_key(tor.atom_id_3)
-          or not m_4.monomer_atom_dict.has_key(tor.atom_id_4)):
-        if (    m_1.monomer_atom_dict.has_key(tor.atom_id_1.replace("'", "*"))
-            and m_2.monomer_atom_dict.has_key(tor.atom_id_2.replace("'", "*"))
-            and m_3.monomer_atom_dict.has_key(tor.atom_id_3.replace("'", "*"))
-            and m_4.monomer_atom_dict.has_key(tor.atom_id_4.replace("'", "*"))):
+      if (   tor.atom_id_1 not in m_1.monomer_atom_dict
+          or tor.atom_id_2 not in m_2.monomer_atom_dict
+          or tor.atom_id_3 not in m_3.monomer_atom_dict
+          or tor.atom_id_4 not in m_4.monomer_atom_dict):
+        if (    tor.atom_id_1.replace("'", "*") in m_1.monomer_atom_dict
+            and tor.atom_id_2.replace("'", "*") in m_2.monomer_atom_dict
+            and tor.atom_id_3.replace("'", "*") in m_3.monomer_atom_dict
+            and tor.atom_id_4.replace("'", "*") in m_4.monomer_atom_dict):
           tor.atom_id_1 = tor.atom_id_1.replace("'", "*")
           tor.atom_id_2 = tor.atom_id_2.replace("'", "*")
           tor.atom_id_3 = tor.atom_id_3.replace("'", "*")
@@ -2134,14 +2134,14 @@ class add_chirality_proxies(object):
       if (volume_sign not in ["posi", "nega", "both"]):
         counters.unsupported_volume_sign[volume_sign] += 1
         continue
-      if (   not m_c.monomer_atom_dict.has_key(chir.atom_id_centre)
-          or not m_1.monomer_atom_dict.has_key(chir.atom_id_1)
-          or not m_2.monomer_atom_dict.has_key(chir.atom_id_2)
-          or not m_3.monomer_atom_dict.has_key(chir.atom_id_3)):
-        if (    m_1.monomer_atom_dict.has_key(chir.atom_id_1.replace("'", "*"))
-            and m_2.monomer_atom_dict.has_key(chir.atom_id_2.replace("'", "*"))
-            and m_3.monomer_atom_dict.has_key(chir.atom_id_3.replace("'", "*"))
-            and m_c.monomer_atom_dict.has_key(chir.atom_id_centre.replace("'", "*"))):
+      if (   chir.atom_id_centre not in m_c.monomer_atom_dict
+          or chir.atom_id_1 not in m_1.monomer_atom_dict
+          or chir.atom_id_2 not in m_2.monomer_atom_dict
+          or chir.atom_id_3 not in m_3.monomer_atom_dict):
+        if (    chir.atom_id_1.replace("'", "*") in m_1.monomer_atom_dict
+            and chir.atom_id_2.replace("'", "*") in m_2.monomer_atom_dict
+            and chir.atom_id_3.replace("'", "*") in m_3.monomer_atom_dict
+            and chir.atom_id_centre.replace("'", "*") in m_c.monomer_atom_dict):
           chir.atom_id_1 = chir.atom_id_1.replace("'", "*")
           chir.atom_id_2 = chir.atom_id_2.replace("'", "*")
           chir.atom_id_3 = chir.atom_id_3.replace("'", "*")
@@ -2217,8 +2217,8 @@ class add_planarity_proxies(object):
         else:
           assert plane_atom.atom_comp_id in (1,2)
           m_x = (m_i, m_j)[plane_atom.atom_comp_id-1]
-        if (not m_x.monomer_atom_dict.has_key(plane_atom.atom_id)):
-          if (   m_x.monomer_atom_dict.has_key(plane_atom.atom_id.replace("'", "*"))):
+        if (plane_atom.atom_id not in m_x.monomer_atom_dict):
+          if (   plane_atom.atom_id.replace("'", "*") in m_x.monomer_atom_dict):
             plane_atom.atom_id = plane_atom.atom_id.replace("'", "*")
           else:
             counters.corrupt_monomer_library_definitions += 1

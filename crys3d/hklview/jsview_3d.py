@@ -86,7 +86,7 @@ class hklview_3d:
     if kwds.has_key('verbose'):
       self.verbose = kwds['verbose']
     self.mprint = sys.stdout.write
-    if kwds.has_key('mprint'):
+    if 'mprint' in kwds:
       self.mprint = kwds['mprint']
     self.nbin = 0
     self.websockclient = None
@@ -96,13 +96,13 @@ class hklview_3d:
     self.hklfname = os.path.join(tempdir, "hkl.htm" )
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
-    if kwds.has_key('htmlfname'):
+    if 'htmlfname' in kwds:
       self.hklfname = kwds['htmlfname']
     self.hklfname = os.path.abspath( self.hklfname )
     self.jscriptfname = os.path.join(tempdir, "hkljstr.js")
     if os.path.isfile(self.jscriptfname):
       os.remove(self.jscriptfname)
-    if kwds.has_key('jscriptfname'):
+    if 'jscriptfname' in kwds:
       self.jscriptfname = kwds['jscriptfname']
     self.mprint('Output will be written to \"%s\"\n' \
       'including reference to NGL JavaScript \"%s\"' %(self.hklfname, self.jscriptfname))
@@ -127,7 +127,7 @@ class hklview_3d:
     """
     self.colourgradientvalues = []
     self.UseOSBrowser = True
-    if kwds.has_key('UseOSBrowser'):
+    if 'UseOSBrowser' in kwds:
       self.UseOSBrowser = kwds['UseOSBrowser']
     self.viewmtrxelms = None
     self.pendingmessage = None

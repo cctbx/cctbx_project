@@ -132,7 +132,7 @@ def make_peak_dict(peaks, selection, obs_map, cutoff):
       continue
     i_seq = peaks.iseqs_of_closest_atoms[i]
     if(selection[i_seq]):
-      if result.has_key(i_seq):
+      if i_seq in result:
         result[i_seq].extend( [(h, s)] )
       else:
         result[i_seq] = [(h, s)]
@@ -415,7 +415,7 @@ def distances_to_peaks(xray_structure, sites_frac, peak_heights,
     if use_selection is not None:
       height = peak_heights[i_seq_new_site_frac]
       if(use_selection[jn]):
-        if result.has_key(jn):
+        if jn in result:
           result[jn].extend( [(height, new_site_frac)] )
         else:
           result[jn] = [(height, new_site_frac)]
@@ -668,7 +668,7 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
     else:
       assert False
     o_i = o_atom.i_seq
-    if pks.has_key(o_i):
+    if o_i in pks:
       o_site = scatterers[o_i].site
       o_u = scatterers[o_i].u_iso_or_equiv(unit_cell)
       h_sites = pks[o_i]
@@ -680,7 +680,7 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
           h_swap = h1_site
         else:
           h_swap = hh[0]
-        assert pkss.has_key(o_i)
+        assert o_i in pkss
         h_sitess = pkss[o_i]
         hhs = choose_h_for_water(unit_cell, h_swap, h_sitess, h1_site=o_site,
             min_dod_angle=min_dod_angle, max_dod_angle=max_dod_angle)
@@ -835,7 +835,7 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
     else:
       assert False
     o_i = o_atom.i_seq
-    if pkss.has_key(o_i):
+    if o_i in pkss:
       o_site = scatterers[o_i].site
       site_symmetry = sgtbx.site_symmetry(xs.unit_cell(), xs.space_group(),
         o_site, 0.5, True)

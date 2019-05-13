@@ -487,7 +487,7 @@ def run(args, command_name="phenix.xmanip"):
           if xray_data.name is not None:
             this_name = xray_data.name
           #check if this name is allready used
-          if names.has_key( this_name ):
+          if this_name in names:
             raise Sorry( "Non unique dataset name. Please change the input script" )
           names.update( {this_name:count} )
           count += 1

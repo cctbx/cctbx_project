@@ -916,7 +916,7 @@ def get_chains_info(ph, selection_list=None):
   for ch in model.chains():
     # print "ch_id", ch.id
     gr = True
-    if not chains_info.has_key(ch.id):
+    if ch.id not in chains_info:
       chains_info[ch.id] = Chains_info()
       gr = False
       # This is very time-consuming

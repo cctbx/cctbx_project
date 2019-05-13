@@ -235,7 +235,7 @@ class HKLViewFrame () :
     self.dmin = -1
     self.settings = display.settings()
     self.verbose = True
-    if kwds.has_key('verbose'):
+    if 'verbose' in kwds:
       self.verbose = kwds['verbose']
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
