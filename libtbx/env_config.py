@@ -852,6 +852,14 @@ Wait for the command to finish, then try again.""" % vars())
       self.process_module(
         dependent_module=None, module_name=module_name, optional=False)
     self.scons_dist_path = self.find_dist_path("scons", optional=True)
+    if self.scons_dist_path is None:
+      # try to use SCons in Python installation
+      try:
+        import SCons
+      except ImportError:
+        pass
+      else:
+        self.scons_dist_path = self.as_relocatable_path(sys.prefix)
     self.path_utility = self.under_dist(
       "libtbx", "command_line/path_utility.py",
       return_relocatable_path=True)
