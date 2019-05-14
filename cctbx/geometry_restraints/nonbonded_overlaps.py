@@ -360,13 +360,20 @@ class compute(object):
 class info(object):
 
   def __init__(self,
-    geometry_restraints_manager,
+    model,
+#    geometry_restraints_manager,
     macro_molecule_selection,
-    sites_cart,
-    hd_sel,
-    site_labels=None,
+#    sites_cart,
+#    hd_sel,
+#    site_labels=None,
     do_only_macro_molecule=False,
     check_for_unknown_pairs=True):
+
+    geometry_restraints_manager = model.get_restraints_manager().geometry
+    xrs = model.get_xray_structure()
+    sites_cart = model.get_sites_cart()
+    site_labels = xrs.scatterers().extract_labels()
+    hd_sel = model.get_hd_selection()
     '''
     Construct nonbonded_overlaps_info, the non-bonded overlaps number and list
 
@@ -547,7 +554,7 @@ class info(object):
       out_list.append(out_str.format(*rec_list))
     out_string = '\n'.join(out_list)
     print >> log,out_string
-    print argmented_counts
+    #print argmented_counts
     return out_string
 
 def get_macro_mol_sel(pdb_processed_file,selection='protein or dna or rna'):

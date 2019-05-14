@@ -6,15 +6,15 @@ import mmtbx.model
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 from cctbx import adptbx
 from iotbx import phil
-from cctbx.array_family import flex
+#from cctbx.array_family import flex
 from libtbx import group_args
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
 from libtbx import easy_run
-from cctbx import miller
+#from cctbx import miller
 from mmtbx import monomer_library
 from mmtbx import real_space_correlation
-from mmtbx import map_tools
+#from mmtbx import map_tools
 
 master_params_str = """
 validate_ligands {
@@ -538,16 +538,17 @@ class ligand_result(object):
       #isel_within = self.readyset_model.iselection(sel_within_str)
       sel_within = self.readyset_model.selection(sel_within_str)
       sel_ligand_within = self.readyset_model.select(sel_within).selection(self.sel_str)
-      xrs_within = self.readyset_model.select(sel_within).get_xray_structure()
+      #xrs_within = self.readyset_model.select(sel_within).get_xray_structure()
       #xrs = self.model.get_xray_structure()
-      geometry = self.readyset_model.get_restraints_manager().select(sel_within).geometry
+      #geometry = self.readyset_model.get_restraints_manager().select(sel_within).geometry
       #sel = flex.bool([True]*len(sel_within))
       self._nb_overlaps = nbo.info(
-        geometry_restraints_manager=geometry,
+#        geometry_restraints_manager=geometry,
         macro_molecule_selection=~sel_ligand_within, #TODO should be only ligand, not sel_within?
-        sites_cart=xrs_within.sites_cart(),
-        site_labels=xrs_within.scatterers().extract_labels(),
-        hd_sel=xrs_within.hd_selection())
+        model = self.readyset_model.select(sel_within))
+#        sites_cart=xrs_within.sites_cart(),
+#        site_labels=xrs_within.scatterers().extract_labels(),
+#        hd_sel=xrs_within.hd_selection())
 
     return self._nb_overlaps
 

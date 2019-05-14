@@ -637,10 +637,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     Test that overlapping atoms are being counted
     '''
     msg = 'Overlapping atoms are not counted properly.'
-    grm = process_raw_records(
-      raw_record_number=5,
-      # nonbonded_distance_threshold=None,
-      )
+    grm = process_raw_records(raw_record_number=5)
     self.assertEqual(grm.nb_overlaps_all, 6,msg)
     self.assertEqual(grm.normalized_nbo_all, 1500,msg)
 
@@ -649,29 +646,19 @@ class test_nonbonded_overlaps(unittest.TestCase):
     Test that working correctly when atom is removed
     '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
-    params = iotbx.phil.parse(
-    monomer_library.pdb_interpretation.grand_master_phil_str,
-    process_includes=True).extract()
+    params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     params.pdb_interpretation.allow_polymer_cross_special_position=True
-    params = params.pdb_interpretation
-    processed_pdb_file = pdb_inter.process(
-      mon_lib_srv    = mon_lib_srv,
-      ener_lib       = ener_lib,
-      raw_records    = raw_records3,
-      params         = params,
-      force_symmetry = True)
-    grm = processed_pdb_file.geometry_restraints_manager(
-      show_energies      = False,
-      plain_pairs_radius = 5.0)
-    xrs = processed_pdb_file.xray_structure()
-    params = get_nb_overlaps_param(xrs,grm)
-    sites_cart,site_labels,hd_sel,full_connectivity_table = params
-    macro_mol_sel = nbo.get_macro_mol_sel(processed_pdb_file)
-    nb_overlaps = grm.nb_overlaps_info(
-      sites_cart=sites_cart,
-      macro_mol_sel=macro_mol_sel,
-      site_labels=site_labels,
-      hd_sel=hd_sel)
+    pdb_inp = iotbx.pdb.input(lines=raw_records3.split("\n"), source_info=None)
+    model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      pdb_interpretation_params = params,
+      build_grm   = True,
+      log         = null_out())
+
+    macro_mol_sel = get_macro_mol_sel(model = model)
+    nb_overlaps = nbo.info(
+      model = model,
+      macro_molecule_selection=macro_mol_sel).result
     expected = 1000
     result = nb_overlaps.normalized_nbo_all
     msg = outstring.format('Selection related clashscore', expected, result)
@@ -682,15 +669,9 @@ class test_nonbonded_overlaps(unittest.TestCase):
     self.assertEqual(result, expected, msg=msg)
     # Select
     sel = flex.bool([True, True, False])
-    grm = grm.select(selection=sel)
-    xrs = xrs.select(selection=sel)
-    params = get_nb_overlaps_param(xrs,grm)
-    sites_cart,site_labels,hd_sel,full_connectivity_table = params
-    nb_overlaps = grm.nb_overlaps_info(
-      sites_cart=sites_cart,
-      macro_mol_sel=flex.bool([True, True]),
-      site_labels=site_labels,
-      hd_sel=hd_sel)
+    nb_overlaps = nbo.info(
+      model = model.select(sel),
+      macro_molecule_selection=flex.bool([True, True])).result
     expected = 500
     result = nb_overlaps.normalized_nbo_all
     msg = outstring.format('Selection related clashscore', expected, result)
@@ -705,20 +686,18 @@ class test_nonbonded_overlaps(unittest.TestCase):
     Test overlaps when adding and moving scatterers
     Test water scatterers with and without labels
     '''
-    mol = mmtbx.model.manager(
-        model_input = iotbx.pdb.input(source_info=None, lines=raw_records3.split('\n')),
-        build_grm = True)
+    pdb_inp = iotbx.pdb.input(lines=raw_records3.split('\n'), source_info=None)
+    model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      build_grm   = True,
+      log         = null_out())
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
-
-    processed_pdb_file = mol._processed_pdb_file # DO NOT REPEAT THAT
-    geometry = mol.get_restraints_manager().geometry
-    xrs = mol.get_xray_structure()
-    macro_mol_sel = nbo.get_macro_mol_sel(processed_pdb_file)
-    nb_overlaps = geometry.nb_overlaps_info(
-      sites_cart  = xrs.sites_cart(),
-      macro_mol_sel=macro_mol_sel,
-      site_labels = xrs.scatterers().extract_labels(),
-      hd_sel      = xrs.hd_selection())
+    geometry = model.get_restraints_manager().geometry
+    xrs = model.get_xray_structure()
+    macro_mol_sel = get_macro_mol_sel(model=model)
+    nb_overlaps = nbo.info(
+      model = model,
+      macro_molecule_selection=macro_mol_sel).result
     result = nb_overlaps.nb_overlaps_all
     msg = outstring.format('Selection related overlaps', 3, result)
     self.assertEqual(result, 3, msg=msg)
@@ -734,28 +713,23 @@ class test_nonbonded_overlaps(unittest.TestCase):
     new_xrs = xray.structure(
       special_position_settings = xrs,
       scatterers                = new_scatterers)
-    mol.add_solvent(
+    model.add_solvent(
       solvent_xray_structure = new_xrs,
       refine_occupancies     = False,
       refine_adp             = "isotropic")
-    pdb_str = mol.model_as_pdb()
-    params = iotbx.phil.parse(
-    monomer_library.pdb_interpretation.grand_master_phil_str,
-    process_includes=True).extract()
+    pdb_str = model.model_as_pdb()
+    params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     params.pdb_interpretation.allow_polymer_cross_special_position=True
-    params = params.pdb_interpretation
-    processed_pdb_file = pdb_inter.process(
-      mon_lib_srv    = mon_lib_srv,
-      ener_lib       = ener_lib,
-      params         = params,
-      raw_records    = pdb_str,
-      force_symmetry = True)
-    macro_mol_sel = nbo.get_macro_mol_sel(processed_pdb_file)
-    nb_overlaps = mol.restraints_manager.geometry.nb_overlaps_info(
-      sites_cart  = mol.get_sites_cart(),
-      macro_mol_sel=macro_mol_sel,
-      site_labels = mol.get_xray_structure().scatterers().extract_labels(),
-      hd_sel      = mol.get_hd_selection())
+    pdb_inp = iotbx.pdb.input(lines=pdb_str.split('\n'), source_info=None)
+    model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      build_grm   = True,
+      pdb_interpretation_params = params,
+      log         = null_out())
+    macro_mol_sel = get_macro_mol_sel(model=model)
+    nb_overlaps = nbo.info(
+      model=model,
+      macro_molecule_selection=macro_mol_sel).result
     expected = 2500
     result = nb_overlaps.normalized_nbo_all
     msg = outstring.format('Selection related clashscore', expected, result)
@@ -764,36 +738,36 @@ class test_nonbonded_overlaps(unittest.TestCase):
     result = nb_overlaps.nb_overlaps_all
     msg = outstring.format('Selection related overlaps', expected, result)
     self.assertEqual(result, expected, msg=msg)
-    # Test the modified pdb data with scatterers lables
-    params = iotbx.phil.parse(
-    monomer_library.pdb_interpretation.grand_master_phil_str,
-    process_includes=True).extract()
-    params.pdb_interpretation.allow_polymer_cross_special_position=True
-    params = params.pdb_interpretation
-    processed_pdb_file = pdb_inter.process(
-      mon_lib_srv    = mon_lib_srv,
-      ener_lib       = ener_lib,
-      raw_records    = raw_records4,
-      params         = params,
-      force_symmetry = True)
-    geometry = processed_pdb_file.geometry_restraints_manager(
-      show_energies      = False,
-      plain_pairs_radius = 5.0)
-    xrs = processed_pdb_file.xray_structure()
-    macro_mol_sel = nbo.get_macro_mol_sel(processed_pdb_file)
-    nb_overlaps = geometry.nb_overlaps_info(
-      sites_cart  = xrs.sites_cart(),
-      macro_mol_sel=macro_mol_sel,
-      site_labels = xrs.scatterers().extract_labels(),
-      hd_sel      = xrs.hd_selection())
-    expected = 2500
-    result = nb_overlaps.normalized_nbo_all
-    msg = outstring.format('Selection related clashscore', expected, result)
-    self.assertEqual(result, expected, msg=msg)
-    expected = 15
-    result = nb_overlaps.nb_overlaps_all
-    msg = outstring.format('Selection related overlaps', expected, result)
-    self.assertEqual(result, expected, msg=msg)
+
+# DL what's the difference to above test?
+#    # Test the modified pdb data with scatterers lables
+#    params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+#    params.pdb_interpretation.allow_polymer_cross_special_position=True
+#    params = params.pdb_interpretation
+#    processed_pdb_file = pdb_inter.process(
+#      mon_lib_srv    = mon_lib_srv,
+#      ener_lib       = ener_lib,
+#      raw_records    = raw_records4,
+#      params         = params,
+#      force_symmetry = True)
+#    geometry = processed_pdb_file.geometry_restraints_manager(
+#      show_energies      = False,
+#      plain_pairs_radius = 5.0)
+#    xrs = processed_pdb_file.xray_structure()
+#    macro_mol_sel = nbo.get_macro_mol_sel(processed_pdb_file)
+#    nb_overlaps = geometry.nb_overlaps_info(
+#      sites_cart  = xrs.sites_cart(),
+#      macro_mol_sel=macro_mol_sel,
+#      site_labels = xrs.scatterers().extract_labels(),
+#      hd_sel      = xrs.hd_selection())
+#    expected = 2500
+#    result = nb_overlaps.normalized_nbo_all
+#    msg = outstring.format('Selection related clashscore', expected, result)
+#    self.assertEqual(result, expected, msg=msg)
+#    expected = 15
+#    result = nb_overlaps.nb_overlaps_all
+#    msg = outstring.format('Selection related overlaps', expected, result)
+#    self.assertEqual(result, expected, msg=msg)
 
   def test_unknown_pair_type(self):
     '''Make sure unknown pair types are not processed'''
@@ -804,23 +778,27 @@ class test_nonbonded_overlaps(unittest.TestCase):
     overlaps_count_info = process_overlaps_count(self.file_name2)
     results_str = overlaps_count_info.show(log=null_out())
 
-    # inspect at output
     results = results_str.split('\n')
     # check number of lines in output
-    self.assertEqual(len(results),17)
+    self.assertEqual(len(results),19)
     # check general table structure
     self.assertTrue(results[4].startswith('========'))
     self.assertTrue(results[6].startswith('--------'))
     self.assertTrue('1' in results[7])
-    # print results_str
 
   def test_running_from_command_line(self):
     """
     make sure mmtbx.nonbonded_overlaps can run without errors when showing
     overlaps info """
+
+    file_name = 'test_pdb_file.pdb'
+    if not os.path.isfile(file_name):
+      open(file_name,'w').write(raw_records1)
+      self.file_to_delete.append(self.file_name)
     cmd = 'mmtbx.nonbonded_overlaps {}'
     cmd = cmd.format(self.file_name)
     r = easy_run.go(cmd,join_stdout_stderr=False)
+
     self.assertFalse(bool(r.stderr_lines))
 
   def test_compute(self):
@@ -855,70 +833,65 @@ class test_nonbonded_overlaps(unittest.TestCase):
 
   def test_info(self):
     """ Test that there are no error when collecting non-bonded overlaps info"""
-    params = iotbx.phil.parse(
-    monomer_library.pdb_interpretation.grand_master_phil_str,
-    process_includes=True).extract()
+    params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     params.pdb_interpretation.allow_polymer_cross_special_position=True
-    params = params.pdb_interpretation
-    pdb_processed_file = pdb_inter.run(
-      params=params,
-      args=[self.file_name2],
-      assume_hydrogens_all_missing=False,
-      substitute_non_crystallographic_unit_cell_if_necessary=True,
-      log=null_out())
-
-    grm = pdb_processed_file.geometry_restraints_manager()
-    xrs = pdb_processed_file.xray_structure()
-    sites_cart = xrs.sites_cart()
-    site_labels = xrs.scatterers().extract_labels()
-    hd_sel = xrs.hd_selection()
-
-    macro_mol_sel = nbo.get_macro_mol_sel(pdb_processed_file)
+    pdb_inp = iotbx.pdb.input(file_name=self.file_name2, source_info=None)
+    model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      pdb_interpretation_params = params,
+      build_grm   = True,
+      stop_for_unknowns = False,
+      log         = null_out())
+    macro_mol_sel = get_macro_mol_sel(model=model)
     # Make sure we don't have only macro molecule
     self.assertTrue(macro_mol_sel.size() > macro_mol_sel.count(True))
 
     # Run with site labels
-    result = nbo.info(geometry_restraints_manager=grm,
-      macro_molecule_selection=macro_mol_sel,
-      sites_cart=sites_cart,
-      hd_sel=hd_sel,
-      site_labels=site_labels)
-    sym_overlaps = result.result.nb_overlaps_due_to_sym_op
-    all_overlaps = result.result.nb_overlaps_all
-    macro_mol_overlaps = result.result.nb_overlaps_macro_molecule
+    result = nbo.info(
+      model = model,
+      macro_molecule_selection=macro_mol_sel).result
+    sym_overlaps = result.nb_overlaps_due_to_sym_op
+    all_overlaps = result.nb_overlaps_all
+    macro_mol_overlaps = result.nb_overlaps_macro_molecule
     self.assertTrue(sym_overlaps < all_overlaps)
     self.assertTrue(macro_mol_overlaps > 0)
 
-    # Run without site labels
-    result = nbo.info(geometry_restraints_manager=grm,
-      macro_molecule_selection=macro_mol_sel,
-      sites_cart=sites_cart,
-      hd_sel=hd_sel)
-    self.assertTrue(bool(result.result.nb_overlaps_proxies_macro_molecule))
-    self.assertTrue(bool(result.result.nb_overlaps_proxies_due_to_sym_op))
+# DL: below is not necessary because site_labels is not a parameter anymore
+#    # Run without site labels
+#    result = nbo.info(
+#      model = model,
+#      macro_molecule_selection=macro_mol_sel).result
+#    self.assertTrue(bool(result.nb_overlaps_proxies_macro_molecule))
+#    self.assertTrue(bool(result.nb_overlaps_proxies_due_to_sym_op))
 
+# DL 5/14/2019: I had to adapt these numbers.
+# In the original, process_overlaps_count did create grm with assume_hydrogens_all_missing=False
+# however the input file does not have any H and no H are added
+# This effects the vdW radii for nonbonded interactions
+# Using model class, assume_hydrogens_all_missing=True, which yields dfferent
+# vdw radii and therefore 2 more clashes
   def test_overlaps(self):
     overlaps_count_info,n_atoms,n_atoms_macro_mol = process_overlaps_count(
       self.file_name2,return_n_atoms=True)
     results = overlaps_count_info.result
-    self.assertEqual(len(results.nb_overlaps_proxies_due_to_sym_op),1)
+    self.assertEqual(len(results.nb_overlaps_proxies_due_to_sym_op),2)
     self.assertEqual(len(results.nb_overlaps_proxies_macro_molecule),3)
-    self.assertEqual(len(results.nb_overlaps_proxies_all),10)
+    self.assertEqual(len(results.nb_overlaps_proxies_all),12)
     # results
     r_overlaps_all = round(results.nb_overlaps_all,2)
     r_overlaps_sym = round(results.nb_overlaps_due_to_sym_op,2)
     r_overlaps_macro_mol = round(results.nb_overlaps_macro_molecule,2)
     # test
-    self.assertEqual(r_overlaps_all,10)
-    self.assertEqual(r_overlaps_sym,1)
+    self.assertEqual(r_overlaps_all,12)
+    self.assertEqual(r_overlaps_sym,2)
     self.assertEqual(r_overlaps_macro_mol,3)
     # results
     r_overlaps_all = round(results.normalized_nbo_all,2)
     r_overlaps_sym = round(results.normalized_nbo_sym,2)
     r_overlaps_macro_mol = round(results.normalized_nbo_macro_molecule,2)
     #
-    overlaps_all = round(1000*10/n_atoms,2)
-    overlaps_sym = round(1000*1/n_atoms,2)
+    overlaps_all = round(1000*12/n_atoms,2)
+    overlaps_sym = round(1000*2/n_atoms,2)
     overlaps_macro_mol = round(1000*3/n_atoms_macro_mol,2)
     # test
     self.assertEqual(r_overlaps_all,overlaps_all)
@@ -961,17 +934,19 @@ class test_nonbonded_overlaps(unittest.TestCase):
     self.file_to_delete.append(fn_eff)
     open(fn_with_h,'w').write(pdb_with_h)
     # set input parameters for pdb_interpretation
-    interpretation_inp = {
-      'args':[fn_with_h],
-      'assume_hydrogens_all_missing':False,
-      'hard_minimum_nonbonded_distance':0.0,
-      'nonbonded_distance_threshold':None,
-      'substitute_non_crystallographic_unit_cell_if_necessary':True,
-      'log':null_out()}
-    pdb_processed_file = pdb_inter.run(**interpretation_inp)
-    grm = pdb_processed_file.geometry_restraints_manager()
-    xrs = pdb_processed_file.xray_structure()
-    sites = xrs.sites_cart()
+
+    params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    pdb_inp = iotbx.pdb.input(file_name=fn_with_h, source_info=None)
+    model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      pdb_interpretation_params = params,
+      build_grm   = True,
+      stop_for_unknowns = False,
+      log         = null_out())
+    grm = model.get_restraints_manager().geometry
+    xrs = model.get_xray_structure()
+    sites = model.get_sites_cart()
+
     labels = xrs.scatterers().extract_labels()
     test = nbo.unknown_pairs_present(grm=grm,sites_cart=sites,site_labels=labels)
     # make sure we have unknown pairs
@@ -1053,34 +1028,29 @@ class test_nonbonded_overlaps(unittest.TestCase):
         if os.path.isfile(fn): os.remove(fn)
 
 def process_overlaps_count(file_name,return_n_atoms=False,cif_file_name=None):
-  files = [file_name]
-  if cif_file_name: files.append(cif_file_name)
-  params = iotbx.phil.parse(
-  monomer_library.pdb_interpretation.grand_master_phil_str,
-  process_includes=True).extract()
+  cif_objects = list()
+  if cif_file_name:
+    cif_object = iotbx.cif.reader(file_path=cif_file_name).model()
+    cif_objects = [(cif_file_name, cif_object)]
+
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.allow_polymer_cross_special_position=True
-  params = params.pdb_interpretation
-  pdb_processed_file = pdb_inter.run(
-      args=files,
-      params=params,
-      assume_hydrogens_all_missing=False,
-      substitute_non_crystallographic_unit_cell_if_necessary=True,
-      log=null_out())
+  params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+  pdb_inp = iotbx.pdb.input(file_name=file_name, source_info=None)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    pdb_interpretation_params = params,
+    build_grm   = True,
+    restraint_objects = cif_objects,
+    log         = null_out())
 
-  grm = pdb_processed_file.geometry_restraints_manager()
-  xrs = pdb_processed_file.xray_structure()
-
+  macro_mol_sel = get_macro_mol_sel(model = model)
+  xrs = model.get_xray_structure()
   sites_cart = xrs.sites_cart()
-  site_labels = xrs.scatterers().extract_labels()
-  hd_sel = xrs.hd_selection()
-  macro_mol_sel = nbo.get_macro_mol_sel(pdb_processed_file)
 
   overlaps_count_info = nbo.info(
-      geometry_restraints_manager=grm,
-      macro_molecule_selection=macro_mol_sel,
-      sites_cart=sites_cart,
-      site_labels=site_labels,
-      hd_sel=hd_sel)
+      model=model,
+      macro_molecule_selection=macro_mol_sel)
   if return_n_atoms:
     return overlaps_count_info,sites_cart.size(),macro_mol_sel.count(True)
   else:
@@ -1107,40 +1077,23 @@ def process_raw_records(
   elif raw_record_number == 5: records = raw_records5.splitlines()
   elif raw_record_number == 6: records = raw_records6.splitlines()
   else: print ('Wrong raw_records number')
-  # create a geometry_restraints_manager (grm)
-  log = StringIO()
-  # process pdb data
-  params = iotbx.phil.parse(
-    monomer_library.pdb_interpretation.grand_master_phil_str,
-    process_includes=True).extract()
+
+  #log = StringIO()
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.allow_polymer_cross_special_position=True
-  params = params.pdb_interpretation
-  pdb_processed_file = pdb_inter.process(
-    file_name=None,
-    raw_records=records,
-    params = params,
-    substitute_non_crystallographic_unit_cell_if_necessary=True,
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    log=log,
-    )
-  # get geometry restraints object
-  grm = pdb_processed_file.geometry_restraints_manager(
-    assume_hydrogens_all_missing=False)
+  params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+  pdb_inp = iotbx.pdb.input(lines=records, source_info=None)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    pdb_interpretation_params = params,
+    build_grm   = True,
+    log         = null_out())
+  macro_mol_sel = get_macro_mol_sel(model = model)
 
-  xrs = pdb_processed_file.xray_structure()
-  params = get_nb_overlaps_param(
-      xrs=xrs,
-      grm=grm,
-      use_site_labels=use_site_labels)
-  sites_cart,site_labels,hd_sel,full_connectivity_table = params
-  macro_mol_sel = nbo.get_macro_mol_sel(pdb_processed_file)
+  result = nbo.info(
+    model = model,
+    macro_molecule_selection=macro_mol_sel).result
 
-  result = grm.nb_overlaps_info(
-    sites_cart=sites_cart,
-    macro_mol_sel=macro_mol_sel,
-    site_labels=site_labels,
-    hd_sel=hd_sel)
   return result
 
 def get_nb_overlaps_param(xrs,grm,use_site_labels=True):
@@ -1165,6 +1118,14 @@ def get_nb_overlaps_param(xrs,grm,use_site_labels=True):
   full_connectivity_table = table_bonds.full_simple_connectivity()
   return sites_cart,site_labels,hd_sel,full_connectivity_table
 
+def get_macro_mol_sel(model):
+  proxies = model.all_chain_proxies
+  cache = proxies.pdb_hierarchy.atom_selection_cache()
+  macro_mol_sel = proxies.selection(
+    cache  = cache,
+    string = 'protein or dna or rna')
+  return macro_mol_sel
+
 
 def run_selected_tests():
   """  Run selected tests
@@ -1173,14 +1134,13 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  # tests = ['test_abort_when_bad_cryst_records']
-  tests = ['test_abort_when_bad_cryst_records']
+  tests = ['test_file_with_unknown_pair_type']
   suite = unittest.TestSuite(map(test_nonbonded_overlaps, tests))
   return suite
 
 if (__name__ == "__main__"):
   # use for individual tests
-  # unittest.TextTestRunner().run(run_selected_tests())
+  #unittest.TextTestRunner().run(run_selected_tests())
 
   if (chem_data is None):
     print "chem_data not present, skipping"

@@ -7,6 +7,7 @@ import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 import mmtbx.validation.clashscore as mvc
 from libtbx.utils import null_out
 import mmtbx.model
+import iotbx.pdb
 
 master_phil_str = """
   model = None
@@ -90,7 +91,7 @@ Example:
 '''
 
   # TODO: read in cif files
-  datatypes = ['model', 'phil']
+  datatypes = ['model', 'phil', 'restraint']
 
   master_phil_str = master_phil_str
 
@@ -122,9 +123,8 @@ Example:
     pi_params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
     #print(pi_params.pdb_interpretation.substitute_non_crystallographic_unit_cell_if_necessary)
 
-
-    # TODO: This should be replaced with readyset in the future
     # add H atoms with reduce
+    # TODO: This should be replaced with readyset in the future
     pdb_fn = self.params.model
     if not self.params.skip_hydrogen_test:
       pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
@@ -140,19 +140,21 @@ Example:
         pdb_fn = pdb_fn.replace('.pdb','_with_h.pdb')
         open(pdb_fn,'w').write(pdb_with_h)
         pdb_inp = iotbx.pdb.input(file_name=pdb_fn)
+
         model = mmtbx.model.manager(
           model_input = pdb_inp,
           #restraint_objects = cif_objects,
           pdb_interpretation_params = pi_params,
+          stop_for_unknowns = False,
           log         = null_out())
+        if self.data_manager.has_restraints():
+          restraint_objects = list()
+          for filename in self.data_manager.get_restraint_names():
+            restraint_objects.append((filename, self.data_manager.get_restraint(filename)))
+          model.set_restraint_objects(restraint_objects)
 
     model.set_pdb_interpretation_params(pi_params)
-    geometry = model.get_restraints_manager().geometry
-
-    xrs = model.get_xray_structure()
-    sites_cart = model.get_sites_cart()
-    site_labels = xrs.scatterers().extract_labels()
-    hd_sel = model.get_hd_selection()
+    model.get_restraints_manager()
 
     # TODO: do we need macro_mol_sel, do we care?
     proxies = model.all_chain_proxies
@@ -163,11 +165,12 @@ Example:
 
     # TODO replace input parameters with model object
     nb_overlaps = nbo.info(
-      geometry_restraints_manager=geometry,
-      macro_molecule_selection=macro_mol_sel,
-      sites_cart=sites_cart,
-      site_labels=site_labels,
-      hd_sel=hd_sel)
+      model = model,
+#      geometry_restraints_manager=geometry,
+      macro_molecule_selection=macro_mol_sel)
+#      sites_cart=sites_cart,
+#      site_labels=site_labels,
+#      hd_sel=hd_sel)
 
     if self.params.verbose:
       nb_overlaps.show(
