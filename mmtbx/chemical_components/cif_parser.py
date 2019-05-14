@@ -78,7 +78,7 @@ class empty(object):
     return outl
 
   def __len__(self):
-    return len(self.__dict__.keys())
+    return len(self.__dict__)
 
 def smart_split_cif_line(line):
   line = " %s " % line
@@ -230,7 +230,7 @@ def run(filename):
             print(key)
             print(sk)
             print(cif_key)
-            print(cif_keyword_dictionary[cif_key].keys())
+            print(list(cif_keyword_dictionary[cif_key].keys()))
             raise
         setattr(obj, sk, item)
     if len(obj):

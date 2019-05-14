@@ -632,7 +632,7 @@ class SourceModule(object):
       self.update_subclasses()
 
   def items(self):
-    return self._modules.items()
+    return list(self._modules.items())
 
   @classmethod
   def update_subclasses(cls):
@@ -2506,7 +2506,7 @@ def run(root=None):
   parser.add_argument('action', nargs='*', help="Actions for building")
   parser.add_argument(
     "--builder",
-    help="Builder: " + ",".join(builders.keys()),
+    help="Builder: " + ",".join(list(builders.keys())),
     default="cctbx")
   parser.add_argument("--cciuser", help="CCI SVN username.")
   parser.add_argument("--sfuser", help="SourceForge SVN username.")

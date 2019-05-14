@@ -158,10 +158,11 @@ class loop_idealization():
         and self.params.enabled):
       print("CCD try number, outliers:", self.number_of_ccd_trials, self.berkeley_p_before_minimization_rama_outliers, file=self.log)
       processed_chain_ids = []
+      # TODO: verify tried_rama_angles is a dict or not
       for chain in self.model.get_master_hierarchy().only_model().chains():
-        if chain.id not in self.tried_rama_angles.keys():
+        if chain.id not in self.tried_rama_angles:
           self.tried_rama_angles[chain.id] = {}
-        if chain.id not in self.tried_final_rama_angles.keys():
+        if chain.id not in self.tried_final_rama_angles:
           self.tried_final_rama_angles[chain.id] = {}
         print("Idealizing chain %s" % chain.id, file=self.log)
         if chain.id not in processed_chain_ids:
@@ -379,8 +380,9 @@ class loop_idealization():
       final_angles,
       tried_final_rama_angles_for_chain):
     # first checking for repeated solutions:
+    # TODO verify these arguments final_fnales and tried_final* are dicts
     for rn, angles in final_angles:
-      if rn in tried_final_rama_angles_for_chain.keys():
+      if rn in tried_final_rama_angles_for_chain:
         for previous_angles in tried_final_rama_angles_for_chain[rn]:
           if self.rangle_decart_dist(angles, previous_angles) < 20:
             print("Rejecting the same solution:", angles, previous_angles)
@@ -563,7 +565,7 @@ class loop_idealization():
         for three in generate_protein_threes(
             hierarchy=moving_h,
             geometry=None):
-          if three[1].resseq in tried_rama_angles_for_chain.keys():
+          if three[1].resseq in list(tried_rama_angles_for_chain.keys()):
             filter_out.append(tried_rama_angles_for_chain[three[1].resseq])
           else:
             filter_out.append((None, None))
@@ -740,12 +742,12 @@ class loop_idealization():
             print("Choosen result (mc_rmsd, anchor_rmsd, map_target, n_iter):", mc_rmsd, resulting_rmsd, map_target, n_iter, file=self.log)
           # Save to tried_ccds
           for rn, angles in start_angles:
-            if rn not in tried_rama_angles_for_chain.keys():
+            if rn not in list(tried_rama_angles_for_chain.keys()):
               tried_rama_angles_for_chain[rn] = []
             tried_rama_angles_for_chain[rn].append(angles)
           # Save final angles
           for rn, angles in final_angles:
-            if rn not in tried_final_rama_angles_for_chain.keys():
+            if rn not in list(tried_final_rama_angles_for_chain.keys()):
               tried_final_rama_angles_for_chain[rn] = []
             tried_final_rama_angles_for_chain[rn].append(angles)
           if self.verbose:

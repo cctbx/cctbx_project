@@ -76,8 +76,8 @@ class indamb_handler(object):
         corr = miller_array_ref.correlation(alternates[key], assert_is_similar_symmetry=False)
         cc_set.append(corr.coefficient())
       i_best = np.argmax(cc_set)
-      txt_out = ' {0:40} ==> CC:{1:6.2f}'.format(img_filename_only+' '+alternates.keys()[i_best], cc_set[i_best])
-      return alternates.keys()[i_best], txt_out
+      txt_out = ' {0:40} ==> CC:{1:6.2f}'.format(img_filename_only+' '+list(alternates.keys())[i_best], cc_set[i_best])
+      return list(alternates.keys())[i_best], txt_out
     except Exception:
       txt_out = ' {0:40} ==> CC:{1:6.2f}'.format(img_filename_only+' (h,k,l)', 0)
       return "h,k,l", txt_out

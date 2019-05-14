@@ -11,6 +11,7 @@ from cctbx.array_family import flex
 from cctbx.eltbx import covalent_radii
 from scitbx import matrix as mat
 import itertools
+import six
 
 
 def display(**kwds):
@@ -172,7 +173,7 @@ class xray_structure_viewer(qttbx.widget):
 
   def draw_object_in_cartesian_coordinates(self):
     self.principal_ellipses_tex.bind()
-    for element, transforms in self.ellipsoid_to_sphere_transforms.iteritems():
+    for element, transforms in six.iteritems(self.ellipsoid_to_sphere_transforms):
       material = self.material_for.get(element, self.default_material)
       material.execute()
       transforms.draw(self.ellipsoid_proto)

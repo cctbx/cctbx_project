@@ -67,7 +67,7 @@ class xscale6e(object):
 
   def __init__(self,Ibase,Gbase,FSIM,curvatures=False,**kwargs):
     # For backward compatibility handle the case where phil is undefined
-    if "params" in kwargs.keys():
+    if "params" in kwargs:
       self.params = kwargs["params"]
     else:
       from xfel.command_line.cxi_merge import master_phil

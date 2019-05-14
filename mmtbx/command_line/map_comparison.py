@@ -277,6 +277,7 @@ def run(args, out=sys.stdout, validated=False):
   results['cc_quantile'] = cc_quantile
   results['cc_peaks'] = cc_peaks
   results['discrepancies'] = discrepancies
+  # TODO, verify h1,h2 are not dicts, e.g. .values is py2/3 compat. I assume it is here
   results['map_histograms'] = ( (h1.arguments(), h1.c_values(), h1.values()),
                                 (h2.arguments(), h2.c_values(), h2.values()) )
 

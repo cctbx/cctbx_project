@@ -127,7 +127,7 @@ def __get_cache():
   return __cache
 
 def ito_vol_c_2011_table_4_3_2_2_elements():
-  return __get_cache().keys()
+  return list(__get_cache().keys())
 
 def ito_vol_c_2011_table_4_3_2_2_entry_as_gaussian(label, exact=False):
   from cctbx.eltbx import xray_scattering

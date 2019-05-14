@@ -16,6 +16,8 @@ import random
 import os
 import time
 import sys
+import six
+
 
 
 master_phil = libtbx.phil.parse("""
@@ -818,7 +820,7 @@ def find_tls(params,
       print("      groups   best   rand.pick  diff.  score permutation", file=out)
       score_best = -1.e+9
       perm_choice = None
-      for k, v in zip(dic.keys(),dic.values()):
+      for k, v in six.iteritems(dic):
         t_best = v[0][0]
         perm_best = v[0][1]
         for v_ in v:

@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import re
+import six
 
 single_quote = re.compile(r"'")
 
@@ -382,7 +383,7 @@ class mouse_selection_manager (object) :
     final_selection = ""
     # Part 1: stuff we want
     clauses = []
-    for chain_id, chain_info in self.selected_chains.iteritems() :
+    for chain_id, chain_info in six.iteritems(self.selected_chains) :
       clauses.append(str(chain_info))
     chains_selection_str = assemble_selection_clauses(clauses)
     selection1 = self.get_atom_selection(chains_selection_str)

@@ -17,6 +17,7 @@ import libtbx.phil
 from libtbx.introspection import method_debug_log
 from libtbx import adopt_init_args
 import wx
+import six
 
 debug = method_debug_log()
 
@@ -553,7 +554,7 @@ class model_viewer_mixin (wxGLWindow) :
     if len(self.scene_objects) > 0 :
       from scitbx.array_family import flex
       points = flex.vec3_double()
-      for object_id, scene in self.scene_objects.iteritems() :
+      for object_id, scene in six.iteritems(self.scene_objects) :
         points.extend(scene.points)
       self.update_mcs(points)
 
@@ -718,7 +719,7 @@ class model_viewer_mixin (wxGLWindow) :
     self.flag_show_labels = show_labels
 
   def clear_all_labels (self) :
-    for object_id, scene in self.scene_objects.iteritems() :
+    for object_id, scene in six.iteritems(self.scene_objects) :
       scene.clear_labels()
 
   #---------------------------------------------------------------------

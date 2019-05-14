@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME prime.cluster_isoform
 """ cluster diffraction images by """
 from __future__ import absolute_import, division, print_function
+import six
 __author__ = 'Monarin Uervirojnangkoorn, monarin@gmail.com'
 
 from prime.isoform_cluster.mod_isoform_cluster import isoform_cluster_handler
@@ -34,7 +35,7 @@ def get_obs_mproc(args):
 def write_out_solutions(iparams, sol_pickle):
   cluster_files = [os.path.join(iparams.run_no,'cluster_'+str(i)+'.lst') for i in range(iparams.isoform_cluster.n_clusters)]
   cluster_text_set = ['']*iparams.isoform_cluster.n_clusters
-  for frame, cluster_id in sol_pickle.iteritems():
+  for frame, cluster_id in six.iteritems(sol_pickle):
     cluster_text_set[cluster_id] += frame + '\n'
   for i in range(iparams.isoform_cluster.n_clusters):
     with open(cluster_files[i], 'w') as f: f.write(cluster_text_set[i])

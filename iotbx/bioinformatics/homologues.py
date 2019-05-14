@@ -8,6 +8,7 @@ import iotbx.bioinformatics.pdb_info
 from iotbx.bioinformatics import local_blast
 from iotbx.bioinformatics.structure import summarize_blast_output
 from iotbx.pdb.fetch import fetch
+import six
 
 def get_best_homologues(model, chain_ids=None):
   """
@@ -45,7 +46,7 @@ def get_best_homologues(model, chain_ids=None):
         continue
       pdb_ids_to_study[hit.pdb_id] = hit.chain_id # can add more info
     #
-    info_list = pdb_info.get_info_list(pdb_ids_to_study.keys())
+    info_list = pdb_info.get_info_list(list(pdb_ids_to_study.keys()))
     # It would be good to merge info_list with hits in blast_summary in
     # one data structure here and do better filtering.
     # Let's go without it for now.
@@ -74,7 +75,7 @@ def run(args):
   model = mmtbx.model.manager(model_input=iotbx.pdb.input("1ucs.pdb"))
   r = get_best_homologues(model)
   print(r)
-  for chain, model in r.iteritems():
+  for chain, model in six.iteritems(r):
     with open("chain_%s.pdb" % chain, 'w') as f:
       f.write(model.model_as_pdb())
 

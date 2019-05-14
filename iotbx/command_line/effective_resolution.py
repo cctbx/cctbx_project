@@ -7,6 +7,7 @@ from cctbx.array_family import flex
 from libtbx.utils import Sorry
 import sys, math, time
 from scitbx import regular_grid_on_unit_sphere
+import six
 
 def one_d_image_along_axis(n, step, uc_length):
   rho  = flex.double()
@@ -14,7 +15,7 @@ def one_d_image_along_axis(n, step, uc_length):
   r = 0
   while r < uc_length/2:
     rho_ = 0
-    for n_key, n_value in zip(n.keys(), n.values()):
+    for n_key, n_value in six.iteritems(n):
       rho_ += n_value*math.cos(2*math.pi*r*n_key/uc_length)
     dist.append(r)
     rho.append(rho_)

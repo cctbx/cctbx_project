@@ -141,7 +141,8 @@ def check_protein(protein, motif_name_list):
   debug = False
   found_motifs = {}
   motif_list = fetch_fingerprints(motif_name_list)
-  reslist = protein.keys()
+  # TODO: is protein a dict, if so put a hint comment
+  reslist = list(protein.keys())
   reslist.sort()
   for motif in motif_list:
     found_motifs[motif.motif_name] = []
@@ -301,6 +302,7 @@ def fail_required_bond_check(check_bond, active_residue, candidate):
 def fail_forbidden_bond_check(check_bond, active_residue):
   if not check_bond.banned:
     return 0
+  # TODO: is active residie.prob a dict ? if so put a hint comment
   if check_bond.src_atom not in active_residue.probe.keys():
     return 0
   src_atom = check_bond.src_atom

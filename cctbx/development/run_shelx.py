@@ -24,7 +24,7 @@ def SFAC_DISP_UNIT(xray_structure, short_sfac):
   UNIT = []
   if (short_sfac):
     celcon = calculate_cell_content(xray_structure)
-    l("SFAC " + " ".join(celcon.keys()))
+    l("SFAC " + " ".join(celcon))
     for sf in celcon.keys():
       l("DISP %s 0 0 0" % (sf,))
       UNIT.append(str(max(1, int(celcon[sf] + 0.5))))
@@ -58,7 +58,7 @@ def FIX(x):
 
 def atoms(xray_structure, short_sfac):
   if (short_sfac):
-    celcon = calculate_cell_content(xray_structure).keys()
+    celcon = list(calculate_cell_content(xray_structure).keys())
   lines = []
   l = lines.append
   i = 0

@@ -18,7 +18,6 @@ def run(file_names):
   all_labels = {}
   for tab in tabs:
     for label in tab.elements: all_labels[label] = 1
-  all_labels = all_labels.keys()
   for label in all_labels:
     e0 = tabs[0].entries.get(label, None)
     e1 = tabs[1].entries.get(label, None)

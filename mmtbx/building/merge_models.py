@@ -407,10 +407,10 @@ def get_crossover_dict(
             x2=col(xyz2[i])
             dd=(x1-x2).norm_sq()
             if dd<= dist_max_sq:  # can crossover here
-              if not i in crossover_dict.keys(): crossover_dict[i]={}
-              if not model1.id in crossover_dict[i].keys():
+              if not i in crossover_dict: crossover_dict[i]={}
+              if not model1.id in crossover_dict[i]:
                 crossover_dict[i][model1.id]=[]
-              if not model2.id in crossover_dict[i].keys():
+              if not model2.id in crossover_dict[i]:
                 crossover_dict[i][model2.id]=[]
               if not model2.id in crossover_dict[i][model1.id]:
                   crossover_dict[i][model1.id].append(model2.id)
@@ -427,20 +427,20 @@ def get_crossover_dict(
       if n != 0: offset_range.append(n)
     delete_dict={}
     for i in xrange(n_residues):
-      if not i in crossover_dict.keys(): continue
-      for id1 in crossover_dict[i].keys():
+      if not i in crossover_dict: continue
+      for id1 in crossover_dict[i]:
         for id2 in crossover_dict[i][id1]:
           # check to see if i-1 and i+1 are both ok (if not off the ends)
           for offset in offset_range:
             i1=min(n_residues-1,max(0,i+offset))
             if not id2 in crossover_dict.get(i1,{}).get(id1,[]):
-              if not i in delete_dict.keys(): delete_dict[i]={}
-              if not id1 in delete_dict[i].keys(): delete_dict[i][id1]=[]
+              if not i in delete_dict: delete_dict[i]={}
+              if not id1 in delete_dict[i]: delete_dict[i][id1]=[]
               if not id2 in delete_dict[i][id1]:delete_dict[i][id1].append(id2)
 
     for i in xrange(n_residues):
-      if not i in crossover_dict.keys(): continue
-      for id1 in crossover_dict[i].keys():
+      if not i in crossover_dict: continue
+      for id1 in crossover_dict[i]:
         new_list=[]
         for id2 in crossover_dict[i][id1]:
           if not id2 in delete_dict.get(i,{}).get(id1,[]):
@@ -450,23 +450,23 @@ def get_crossover_dict(
   # Now add all ends to crossover (always ok)
 
   for pos in [0,n_residues-1]:
-    if not pos in crossover_dict.keys():
+    if not pos in crossover_dict:
       crossover_dict[pos]={}
     for id1 in used_model_ids:
       for id2 in used_model_ids:
         if id1==id2: continue
-        if not id1 in crossover_dict[pos].keys():
+        if not id1 in crossover_dict[pos]:
           crossover_dict[pos][id1]=[]
         if not id2 in crossover_dict[pos][id1]:
           crossover_dict[pos][id1].append(id2)
 
 
   if verbose:
-    i_list=crossover_dict.keys()
+    i_list=list(crossover_dict.keys())
     i_list.sort()
     for i in i_list:
       print("\nAllowed crossovers at position %d" %(i), file=out)
-      id_list=crossover_dict[i].keys()
+      id_list=list(crossover_dict[i].keys())
       id_list.sort()
       print("Crossover pairs:", end=' ')
       for id in id_list:
@@ -538,7 +538,7 @@ def smooth_cc_values(cc_dict=None,
       smoothed_cc_list.append(r.min_max_mean().mean)
     smoothed_cc_dict[id]=smoothed_cc_list
 
-  keys=smoothed_cc_dict.keys()
+  keys=list(smoothed_cc_dict.keys())
   keys.sort()
   if verbose:
       for key in keys:
@@ -721,8 +721,8 @@ def run(
        verbose=verbose,out=out)
 
     # figure out all the places where crossover can occur.
-
-    n_residues=cc_dict[cc_dict.keys()[0]].size()
+    # FIXME: order of keys changes in py2/3 vthis could be bad
+    n_residues=cc_dict[list(cc_dict.keys())[0]].size()
 
     crossover_dict=get_crossover_dict(
       n_residues=n_residues,
@@ -737,7 +737,7 @@ def run(
     # Each change from model a to model b between residues i and i+1 must have
     #  a crossover between a and b at either residue i or i+1
 
-    keys=cc_dict.keys()
+    keys=list(cc_dict.keys())
     keys.sort()
 
     sorted_working_model_list=[]

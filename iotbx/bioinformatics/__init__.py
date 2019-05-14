@@ -635,7 +635,7 @@ class generic_sequence_parser(object):
           non_compliant.append( unknown )
 
         objects.append(
-          self.type( **dict( kwargs.items() + match.groupdict().items() ) )
+          self.type( **dict( list(kwargs.items()) + list(match.groupdict().items()) ) )
           )
 
       else:
@@ -856,7 +856,7 @@ def sequence_parser_for_extension(extension):
 
 def known_sequence_formats():
 
-  return _implemented_sequence_parsers.keys()
+  return list(_implemented_sequence_parsers.keys())
 
 
 def parse_sequence(data):
@@ -1234,7 +1234,7 @@ def alignment_parser_for_extension(extension):
 
 def known_alignment_formats():
 
-  return _implemented_alignment_parsers.keys()
+  return list(_implemented_alignment_parsers.keys())
 
 def any_alignment_file(file_name):
   base, ext = os.path.splitext(file_name)

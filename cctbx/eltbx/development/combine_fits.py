@@ -76,7 +76,7 @@ def main():
         n_terms_dict[fit.n_terms()] = fit
       n_terms_dicts.append(n_terms_dict)
       all_n_terms.update(n_terms_dicts[-1])
-    all_n_terms = all_n_terms.keys()
+    all_n_terms = list(all_n_terms.keys())
     all_n_terms.sort()
     for n_terms in all_n_terms:
       fit_0 = n_terms_dicts[0].get(n_terms, None)

@@ -3,7 +3,6 @@ import cctbx.crystal.direct_space_asu # import dependency
 from cctbx.array_family import flex
 import scitbx.array_family.shared # import dependency
 import cctbx.geometry # import dependency
-
 from libtbx.test_utils import approx_equal
 from libtbx.str_utils import show_string
 
@@ -15,6 +14,7 @@ import scitbx.stl.map
 import math
 import sys
 import StringIO
+import six
 
 nonbonded_radius_table = scitbx.stl.map.stl_string_double
 
@@ -1076,7 +1076,7 @@ class _():
         rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
         #if str(rt_mx)=="x,y,z": continue # why do I need this?
         result.setdefault(j_seq, []).append(rt_mx)
-    for k,v in zip(result.keys(), result.values()):
+    for k,v in six.iteritems(result):
       result[k] = list(set(v))
     return result
 

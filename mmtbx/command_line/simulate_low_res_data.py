@@ -353,7 +353,7 @@ class prepare_data(object):
       pdbtools.remove_alt_confs(hierarchy=pdb_hierarchy)
     xray_structure = self.pdb_in.xray_structure_simple(
       crystal_symmetry=apply_symm)
-    sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
+    sctr_keys = xray_structure.scattering_type_registry().type_count_dict()
     hd_selection = xray_structure.hd_selection()
     if (not (("H" in sctr_keys) or ("D" in sctr_keys))):
       print("  WARNING: this model does not contain hydrogen atoms!", file=out)

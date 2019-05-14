@@ -361,7 +361,7 @@ overwrite = False
 
   def _get_names(self, datatype):
     self._set_datatype(datatype)
-    return self._get_current_storage().keys()
+    return list(self._get_current_storage().keys())
 
   def _get_default_name(self, datatype):
     self._set_datatype(datatype)

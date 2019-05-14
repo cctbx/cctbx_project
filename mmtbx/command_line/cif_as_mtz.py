@@ -16,6 +16,7 @@ import string
 import re
 import os
 import sys
+import six
 
 """
 Notes on CIF (source: http://www.ccp4.ac.uk/html/mtz2various.html)
@@ -254,7 +255,8 @@ def extract(file_name,
   column_labels = set()
   if (extend_flags):
     map_to_asu = True
-  for (data_name, miller_arrays) in all_miller_arrays.iteritems():
+  # TODO: is all_mille_arrays a dict ? If not change back
+  for (data_name, miller_arrays) in six.iteritems(all_miller_arrays):
     for ma in miller_arrays.values():
       other_symmetry = crystal_symmetry
       try:
@@ -286,13 +288,13 @@ def extract(file_name,
   # generate list of all reflections (for checking R-free flags)
   from iotbx.reflection_file_utils import make_joined_set
   all_arrays = []
-  for (data_name, miller_arrays) in all_miller_arrays.iteritems():
+  for (data_name, miller_arrays) in six.iteritems(all_miller_arrays):
     for ma in miller_arrays.values():
       all_arrays.append(ma)
   complete_set = make_joined_set(all_arrays)
   if return_as_miller_arrays:
     miller_array_list=[]
-  for i, (data_name, miller_arrays) in enumerate(all_miller_arrays.iteritems()):
+  for i, (data_name, miller_arrays) in enumerate(six.iteritems(all_miller_arrays)):
     for ma in miller_arrays.values():
       ma = ma.customized_copy(
         crystal_symmetry=crystal_symmetry).set_info(ma.info())

@@ -5,6 +5,7 @@ from libtbx import easy_run
 import iotbx.pdb
 import math
 import sys
+import six
 
 class nonbonded_overlaps_results(object):
   """ Container for non-bonded overlaps results """
@@ -348,7 +349,7 @@ class compute(object):
               temp_nbo_list.append(overlap_atoms_dict[key][j])
               temp_nbo_list.append(overlap_atoms_dict[key][i])
         overlap_atoms_dict[key] = temp_nbo_list
-    for (key,val) in overlaps_dict.iteritems():
+    for (key,val) in six.iteritems(overlaps_dict):
       if key.split('::')[2] != '':
         # not to symmetry operation
         Overlapping_atoms_list[0].append(val[2])

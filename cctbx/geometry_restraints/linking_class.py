@@ -40,7 +40,7 @@ Look for a key in the list below
     return rc
 
   def _get_origin_id_labels(self, internals=None):
-    keys = self.keys()
+    keys = list(self.keys())
     def _sort_on_values(k1, k2):
       if self[k1]<self[k2]: return -1
       return 1

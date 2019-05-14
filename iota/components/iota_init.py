@@ -183,7 +183,10 @@ def initialize_processing(paramfile, run_no):
                viz_base=os.path.join(int_base, 'visualization'),
                tmp_base=os.path.join(int_base, 'tmp'),
                input_base=input_base)
-  for bkey, bvalue in paths.items()[:-1]:
+  # FIXME: ordering of items in dictionaries changes depending on python version
+  for bkey, bvalue in paths.items():
+    if bkey == "input_base":  # I think this is what the original code wanted to do
+      continue
     if not os.path.isdir(bvalue):
       os.makedirs(bvalue)
   info.update(paths)

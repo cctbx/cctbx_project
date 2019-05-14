@@ -31,6 +31,7 @@ import cPickle
 import os
 import re
 import sys
+import six
 
 standard_file_types = ["hkl", "ccp4_map", "xplor_map", "pdb", "cif", "phil",
   "hhr", "ncs", "aln", "seq", "xml", "pkl", "txt",]
@@ -130,7 +131,7 @@ def guess_file_type(file_name, extensions=standard_file_extensions):
     return None
   if (ext == ".mtz") : # XXX gross
     return "hkl"
-  for known_type, known_extensions in extensions.iteritems():
+  for known_type, known_extensions in six.iteritems(extensions):
     if ext[1:] in known_extensions :
       return known_type
   return None

@@ -16,6 +16,7 @@ from scitbx.matrix import rotate_point_around_axis
 from mmtbx.refinement.geometry_minimization import run2
 from mmtbx.building.loop_closure.utils import list_rama_outliers_h
 from mmtbx.secondary_structure import manager as ss_manager_class
+import six
 
 
 master_phil_str = '''
@@ -75,7 +76,8 @@ class cablam_idealization(object):
     self.outliers_by_chain = self.identify_outliers()
 
     # idealization
-    for chain, outliers in self.outliers_by_chain.iteritems():
+    # TODO: verify if outliers by chain is dict
+    for chain, outliers in six.iteritems(self.outliers_by_chain):
       b_selection = self.model.selection("chain %s" % chain)
       self.atoms_around = self.model.get_xray_structure().selection_within(7, b_selection).iselection()
 

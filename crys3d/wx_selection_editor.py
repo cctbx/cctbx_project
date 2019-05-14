@@ -12,6 +12,7 @@ from gltbx import viewer_utils
 from scitbx import graphics_utils
 import iotbx.phil
 import wx
+import six
 
 viewer_phil = iotbx.phil.parse("""
 include scope crys3d.wx_model_viewer.opengl_phil
@@ -214,7 +215,7 @@ class selection_editor_mixin (model_viewer_mixin) :
     glLineWidth(line_width)
     glEnable(GL_LINE_SMOOTH)
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
-    for object_id, scene in self.scene_objects.iteritems() :
+    for object_id, scene in six.iteritems(self.scene_objects) :
       if self.show_object[object_id] :
         scene.draw_selection(color=self.settings.selections.selection_color,
           use_global_color=self.settings.selections.use_global_selection_color)
@@ -223,12 +224,12 @@ class selection_editor_mixin (model_viewer_mixin) :
   def zoom_selections (self) :
     from scitbx.array_family import flex
     points = flex.vec3_double()
-    for object_id, scene in self.scene_objects.iteritems() :
+    for object_id, scene in six.iteritems(self.scene_objects) :
       if self.show_object[object_id] :
         for point in scene.get_selected_xyz() :
           points.append(point)
     if points.size() == 0 :
-      for object_id, scene in self.scene_objects.iteritems() :
+      for object_id, scene in six.iteritems(self.scene_objects) :
         if self.show_object[object_id] :
           points.extend(scene.points)
     if points.size() != 0 :
@@ -282,7 +283,7 @@ class selection_editor_mixin (model_viewer_mixin) :
     #self.flag_show_all_selected_atoms = show
     for model_id, model in self.iter_models() :
       model.flag_show_all_selected_atoms = show
-    for object_id, scene in self.scene_objects.iteritems() :
+    for object_id, scene in six.iteritems(self.scene_objects) :
       scene.flag_show_all_selected_atoms = show
     self.update_scene = True
 

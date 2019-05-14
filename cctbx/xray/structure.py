@@ -15,6 +15,7 @@ import math
 from itertools import count
 import sys
 import random
+import six
 from libtbx.utils import count_max, Sorry, Keep
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
@@ -1458,8 +1459,8 @@ class structure(crystal.special_position_settings):
   def concatenate_inplace(self, other):
     d1 = self.scattering_type_registry().as_type_gaussian_dict()
     d2 = other.scattering_type_registry().as_type_gaussian_dict()
-    for key1, item1 in zip(d1.keys(), d1.items()):
-      for key2, item2 in zip(d2.keys(), d2.items()):
+    for key1, item1 in six.iteritems(d1):
+      for key2, item2 in six.iteritems(d2):
         if(key1 == key2):
           i1 = item1[1]
           i2 = item2[1]

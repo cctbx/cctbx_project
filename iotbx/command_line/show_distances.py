@@ -120,7 +120,7 @@ def run(args):
         cif_data_block_name_use_counter += 1
         xray_structures = [xray_structure]
       else:
-        xray_structures = xray_structures.values()
+        xray_structures = xray_structures.values()  # NOTE: in py3 Im just an iterable!
       for xray_structure in xray_structures:
         call_display(xray_structure)
       continue

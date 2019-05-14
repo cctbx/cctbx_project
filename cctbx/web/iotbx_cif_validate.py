@@ -72,6 +72,7 @@ def run_implementation(server_info, inp, status):
 
   if inp.extract_pdb_hierarchy:
     print("Extracting pdb.hierarchy:")
+    # TODO am I a dictionary ?- if so change me accordingly..
     hierarchy = iotbx.pdb.mmcif.pdb_hierarchy_builder(
       cif_model.blocks.values()[0]).hierarchy
     hierarchy.show()

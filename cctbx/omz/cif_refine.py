@@ -87,6 +87,7 @@ class extract_from_cif_files(object):
     O.c_obs.show_comprehensive_summary()
     print("."*79)
     #
+    # TODO verify that this values is not a dictionary call
     O.xray_structure = cctbx.xray.structure.from_cif(
       file_path=model_file).values()[0]
     O.xray_structure = O.xray_structure.customized_copy(

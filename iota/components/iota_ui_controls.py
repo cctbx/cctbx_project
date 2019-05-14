@@ -242,7 +242,7 @@ class VirtualInputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin,
   def InitializeDataMap(self, data):
     self.data = data
     self.itemDataMap = self.data
-    self.itemIndexMap = self.data.keys()
+    self.itemIndexMap = list(self.data.keys())
     self.SetItemCount(len(self.data))
 
   def GetListCtrl(self):

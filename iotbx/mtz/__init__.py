@@ -612,7 +612,7 @@ class _():
         dataset,
         strict=True,
         skip_incompatible_values=True):
-    known_mtz_column_types = "".join(column_type_legend.keys())
+    known_mtz_column_types = "".join(column_type_legend)
     assert len(known_mtz_column_types) == 17 # safety guard
     all_columns = dataset.columns()
     all_column_labels = dataset.column_labels()

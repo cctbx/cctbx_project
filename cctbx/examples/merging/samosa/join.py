@@ -14,6 +14,7 @@ import math
 import time
 import sys
 from scitbx import matrix
+import six
 op = os.path
 
 from xfel.command_line.cxi_merge import master_phil
@@ -249,7 +250,7 @@ class scaling_manager(scaling_manager_base):
       self.summed_N      += data.summed_N
       self.summed_weight += data.summed_weight
       self.summed_wt_I   += data.summed_wt_I
-      for index, isigi in data.ISIGI.iteritems():
+      for index, isigi in six.iteritems(data.ISIGI):
         if (index in self.ISIGI):
           self.ISIGI[index] += isigi
         else:
@@ -278,7 +279,7 @@ class scaling_manager(scaling_manager_base):
     self.n_wrong_bravais += data.n_wrong_bravais
     self.n_wrong_cell += data.n_wrong_cell
 
-    for index, isigi in data.ISIGI.iteritems():
+    for index, isigi in six.iteritems(data.ISIGI):
       if (index in self.ISIGI):
         self.ISIGI[index] += isigi
       else:

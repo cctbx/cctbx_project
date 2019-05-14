@@ -395,7 +395,7 @@ def exercise_bond_sorted_asu_proxies(
     for proxy in proxies_2.simple:
       assert proxy.i_seqs in ctrl
       ctrl[proxy.i_seqs] += 1
-    assert ctrl.values() == [1]*len(ctrl)
+    assert list(ctrl.values()) == [1]*len(ctrl)
     ctrl = {}
     for proxy in proxies_1.asu:
       key = proxy.i_seq,proxy.j_seq,proxy.j_sym
@@ -405,7 +405,7 @@ def exercise_bond_sorted_asu_proxies(
       key = proxy.i_seq,proxy.j_seq,proxy.j_sym
       assert key in ctrl
       ctrl[key] += 1
-    assert ctrl.values() == [1]*len(ctrl)
+    assert list(ctrl.values()) == [1]*len(ctrl)
   compare_proxies(proxies_1=proxies_fast, proxies_2=proxies_conservative)
   compare_proxies(proxies_1=proxies_fast, proxies_2=proxies_slow)
   sites_cart = structure.sites_cart()

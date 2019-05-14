@@ -95,7 +95,7 @@ class cumulative_intensity_distribution_python(object):
         else:
           continue
 
-    xy_data = data.items()
+    xy_data = list(data.items())
     xy_data.sort()
     self.x = [float(x) for x, y in xy_data]
     self.y = [y/n_reflections for x, y in xy_data]

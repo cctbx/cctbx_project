@@ -40,7 +40,7 @@ class vdw_radii:
 
   def show(self, log=None):
     if log is None: log = sys.stdout
-    symbols = self.table.keys()
+    symbols = list(self.table.keys())
     symbols.sort()
     print(" ".join("%5s" %symbol for symbol in symbols), file=log)
     print(" ".join("%5.2f" %self.table[symbol] for symbol in symbols), file=log)

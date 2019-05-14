@@ -45,7 +45,7 @@ class indexing_ambiguity_handler(object):
     #if no indexing ambiguity problem detected and mode is not set to "Forced"
     idah = indamb_handler()
     alt_dict = idah.get_observations(pickle_filename, iparams)
-    if len(alt_dict.keys()) == 1 and iparams.indexing_ambiguity.mode != 'Forced':
+    if len(alt_dict) == 1 and iparams.indexing_ambiguity.mode != 'Forced':
       return True
     if iparams.indexing_ambiguity.mode == 'Forced' and len(iparams.indexing_ambiguity.assigned_basis) == 0:
       return True

@@ -1475,7 +1475,7 @@ i_seq: 1
     j_syms: [0]
 """
   assert not show_diff(out.getvalue(), expected_out)
-  assert incremental_pairs.cubicle_size_counts().items() == [(0,239), (1,6)]
+  assert list(incremental_pairs.cubicle_size_counts().items()) == [(0,239), (1,6)]
   site_symmetry_table = incremental_pairs.asu_mappings().site_symmetry_table()
   sites_cart = sps.unit_cell().orthogonalize(sites_frac=sites_frac)
   for i_pass in xrange(4):
