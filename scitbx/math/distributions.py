@@ -44,9 +44,8 @@ class __distribution_mixin(object):
   def quantiles(self, n):
     return ext.quantiles(self, n)
 
-class _(boost.python.injector, normal_distribution, __distribution_mixin):
-  pass
+boost.python.inject(normal_distribution, __distribution_mixin)
 
 if (hasattr(ext, "students_t_distribution")):
-  class _(boost.python.injector, students_t_distribution, __distribution_mixin):
-    pass
+  boost.python.inject(students_t_distribution, __distribution_mixin)
+

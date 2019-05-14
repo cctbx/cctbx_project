@@ -1068,7 +1068,10 @@ class pdb_input_mixin(object):
       raise Sorry(str(e))
     return result
 
-class _(boost.python.injector, ext.input, pdb_input_mixin):
+boost.python.inject(ext.input, pdb_input_mixin)
+@boost.python.inject_into(ext.input)
+class _():
+
   """
   This class parses PDB format, including non-ATOM records.  Atom objects will
   be created as part of the parsing, but the full PDB hierarchy object requires

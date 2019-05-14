@@ -40,7 +40,8 @@ class ConflictingConstraintWarning(UserWarning):
 bad_connectivity_msg = "Invalid %s constraint involving %s: bad connectivity"
 
 
-class _(boost.python.injector, ext.parameter):
+@boost.python.inject_into(ext.parameter)
+class _():
 
   def arguments(self):
     """ An iterator over its arguments """
@@ -65,7 +66,8 @@ class _(boost.python.injector, ext.parameter):
       scatt, self.index)
     return lbl
 
-class _(boost.python.injector, ext.reparametrisation):
+@boost.python.inject_into(ext.reparametrisation)
+class _():
 
   def __str__(self):
     """ String representation using the graphviz DOT language """

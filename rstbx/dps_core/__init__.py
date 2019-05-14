@@ -13,7 +13,8 @@ import math
 from cctbx.crystal_orientation import basis_type
 from cctbx.crystal_orientation import ext as coext
 
-class _(boost.python.injector, coext.crystal_orientation):
+@boost.python.inject_into(coext.crystal_orientation)
+class _():
 
   def constrain(self,constraints):
 
@@ -76,7 +77,8 @@ def directional_show(direction,message):
     direction.real,180*direction.psi/math.pi, 180.*direction.phi/math.pi,
     direction.kmax, direction.kval,direction.kval2,direction.kval3))
 
-class _(boost.python.injector, ext.dps_core):
+@boost.python.inject_into(ext.dps_core)
+class _():
 
   def combos(self,basis=10):
     """All interesting combinations of the directional candidates.

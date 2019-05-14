@@ -19,7 +19,8 @@ from mmtbx_validation_ramachandran_ext import rama_eval
 ext2 = boost.python.import_ext("mmtbx_building_loop_closure_ext")
 from mmtbx_building_loop_closure_ext import ccd_cpp
 
-class _(boost.python.injector, ccd_cpp):
+@boost.python.inject_into(ccd_cpp)
+class _():
 
   def run(self, direction_forward=True, save_states=False):
     if save_states:

@@ -135,7 +135,8 @@ class adp_aniso_restraints(object):
     self.gradients_aniso_star = adptbx.grad_u_cart_as_u_star(unit_cell,
                                                self.gradients_aniso_cart)
 
-class _(boost.python.injector, adp_similarity):
+@boost.python.inject_into(adp_similarity)
+class _():
 
   def _show_sorted_item(self, f, prefix):
     adp_labels = ("U11","U22","U33","U12","U13","U23")
@@ -158,7 +159,8 @@ class _(boost.python.injector, adp_similarity):
         prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr), file=f)
       rdr = ""
 
-class _(boost.python.injector, shared_adp_similarity_proxy):
+@boost.python.inject_into(shared_adp_similarity_proxy)
+class _():
 
   def deltas_rms(self, params):
     return adp_similarity_deltas_rms(params=params, proxies=self)
@@ -184,7 +186,8 @@ class _(boost.python.injector, shared_adp_similarity_proxy):
         site_labels=site_labels, f=f, prefix=prefix,
         max_items=max_items)
 
-class _(boost.python.injector, adp_u_eq_similarity):
+@boost.python.inject_into(adp_u_eq_similarity)
+class _():
 
   def _show_sorted_item(self, f, prefix):
     print("%s Mean Ueq=%6.2e" %(prefix, self.mean_u_eq), file=f)
@@ -192,7 +195,8 @@ class _(boost.python.injector, adp_u_eq_similarity):
       %(prefix, self.weight, weight_as_sigma(weight=self.weight),
         self.rms_deltas(), self.residual()), file=f)
 
-class _(boost.python.injector, shared_adp_u_eq_similarity_proxy):
+@boost.python.inject_into(shared_adp_u_eq_similarity_proxy)
+class _():
 
   def deltas_rms(self, params):
     return adp_u_eq_similarity_deltas_rms(params=params, proxies=self)
@@ -218,7 +222,8 @@ class _(boost.python.injector, shared_adp_u_eq_similarity_proxy):
         site_labels=site_labels, f=f, prefix=prefix,
         max_items=max_items)
 
-class _(boost.python.injector, adp_volume_similarity):
+@boost.python.inject_into(adp_volume_similarity)
+class _():
 
   def _show_sorted_item(self, f, prefix):
     print("%s Mean Volume=%6.2e" %(prefix, self.mean_u_volume), file=f)
@@ -226,7 +231,8 @@ class _(boost.python.injector, adp_volume_similarity):
       %(prefix, self.weight, weight_as_sigma(weight=self.weight),
         self.rms_deltas(), self.residual()), file=f)
 
-class _(boost.python.injector, shared_adp_volume_similarity_proxy):
+@boost.python.inject_into(shared_adp_volume_similarity_proxy)
+class _():
 
   def deltas_rms(self, params):
     return adp_volume_similarity_deltas_rms(params=params, proxies=self)
@@ -252,7 +258,8 @@ class _(boost.python.injector, shared_adp_volume_similarity_proxy):
         site_labels=site_labels, f=f, prefix=prefix,
         max_items=max_items)
 
-class _(boost.python.injector, isotropic_adp):
+@boost.python.inject_into(isotropic_adp)
+class _():
 
   def _show_sorted_item(self, f, prefix):
     adp_labels = ("U11","U22","U33","U12","U13","U23")
@@ -266,7 +273,8 @@ class _(boost.python.injector, isotropic_adp):
         self.weight, rdr), file=f)
       rdr = ""
 
-class _(boost.python.injector, shared_isotropic_adp_proxy):
+@boost.python.inject_into(shared_isotropic_adp_proxy)
+class _():
 
   def deltas_rms(self, params):
     return isotropic_adp_deltas_rms(params=params, proxies=self)
@@ -293,7 +301,8 @@ class _(boost.python.injector, shared_isotropic_adp_proxy):
         max_items=max_items)
 
 
-class _(boost.python.injector, fixed_u_eq_adp):
+@boost.python.inject_into(fixed_u_eq_adp)
+class _():
 
   def _show_sorted_item(self, f, prefix):
     adp_label = "Ueq"
@@ -304,7 +313,8 @@ class _(boost.python.injector, fixed_u_eq_adp):
       prefix, adp_label, self.delta(), weight_as_sigma(weight=self.weight),
       self.weight, rdr), file=f)
 
-class _(boost.python.injector, shared_fixed_u_eq_adp_proxy):
+@boost.python.inject_into(shared_fixed_u_eq_adp_proxy)
+class _():
 
   def deltas_rms(self, params):
     return fixed_u_eq_adp_deltas_rms(params=params, proxies=self)
@@ -331,7 +341,8 @@ class _(boost.python.injector, shared_fixed_u_eq_adp_proxy):
         max_items=max_items)
 
 
-class _(boost.python.injector, rigid_bond):
+@boost.python.inject_into(rigid_bond)
+class _():
 
   def _show_sorted_item(self, f, prefix):
     print("%s   delta_z    sigma   weight residual" % (prefix), file=f)
@@ -339,7 +350,8 @@ class _(boost.python.injector, rigid_bond):
       prefix, self.delta_z(), weight_as_sigma(weight=self.weight),
       self.weight, self.residual()), file=f)
 
-class _(boost.python.injector, shared_rigid_bond_proxy):
+@boost.python.inject_into(shared_rigid_bond_proxy)
+class _():
 
   def deltas(self, params):
     return rigid_bond_deltas(params=params, proxies=self)
@@ -364,7 +376,8 @@ class _(boost.python.injector, shared_rigid_bond_proxy):
         site_labels=site_labels, f=f, prefix=prefix,
         max_items=max_items)
 
-class _(boost.python.injector, rigu):
+@boost.python.inject_into(rigu)
+class _():
 
   def _show_sorted_item(self, f, prefix):
     print("%s   delta_z    sigma   weight residual" % (prefix), file=f)
@@ -378,7 +391,8 @@ class _(boost.python.injector, rigu):
       prefix, self.delta_13(), weight_as_sigma(weight=self.weight),
       self.weight, self.residual23()), file=f)
 
-class _(boost.python.injector, shared_rigu_proxy):
+@boost.python.inject_into(shared_rigu_proxy)
+class _():
 
   def deltas(self, params):
     return rigu_deltas(params=params, proxies=self)

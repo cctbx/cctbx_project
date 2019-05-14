@@ -9,7 +9,8 @@ from scitbx import matrix
 
 class pickle_import_trigger(object): pass
 
-class _(boost.python.injector, ext.tardy_model):
+@boost.python.inject_into(ext.tardy_model)
+class _():
 
   def __getinitargs__(O):
     return (

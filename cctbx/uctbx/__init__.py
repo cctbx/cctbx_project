@@ -111,7 +111,8 @@ Conversion of Cartesian coordinates to fractional coordinates.
 """
 
 
-class _(boost.python.injector, ext.unit_cell):
+@boost.python.inject_into(ext.unit_cell)
+class _():
 
   def __str__(self):
     return format(self, "({:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g})")

@@ -9,7 +9,8 @@ from rstbx.array_family import flex
 from scitbx.matrix import col
 from rstbx_ext import * # gets us SpotClass
 
-class _(boost.python.injector, ext.dps_extended):
+@boost.python.inject_into(ext.dps_extended)
+class _():
 
   def set_beam_vector(self,beam):
     # input vector "beam" points from crystal to source.

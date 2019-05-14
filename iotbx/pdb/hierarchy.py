@@ -343,7 +343,10 @@ class __hash_eq_mixin(object):
   def __ne__(self, other):
     return not ( self == other )
 
-class _(boost.python.injector, ext.root, __hash_eq_mixin):
+boost.python.inject(ext.root, __hash_eq_mixin)
+@boost.python.inject_into(ext.root)
+class _():
+
   __doc__ = """
   Root node of the PDB hierarchy object.  This is returned by the method
   construct_hierarchy() of the PDB/mmCIF input objects, but it may also be
@@ -1596,7 +1599,10 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       result = result and model.is_ca_only()
     return result
 
-class _(boost.python.injector, ext.model, __hash_eq_mixin):
+boost.python.inject(ext.model, __hash_eq_mixin)
+@boost.python.inject_into(ext.model)
+class _():
+
   """
   Class representing MODEL blocks in a PDB file (or equivalent mmCIF).  There
   will always be at least one of these in a hierarchy root extracted from a
@@ -1654,7 +1660,10 @@ class _(boost.python.injector, ext.model, __hash_eq_mixin):
       result = result and chain.is_ca_only()
     return result
 
-class _(boost.python.injector, ext.chain, __hash_eq_mixin):
+boost.python.inject(ext.chain, __hash_eq_mixin)
+@boost.python.inject_into(ext.chain)
+class _():
+
   """
   Class representing a continuous chain of atoms, as defined by the combination
   of chain ID field and TER records (or the chain index in mmCIF format).  Note
@@ -1922,7 +1931,9 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     atom_names = self.atoms().extract_name()
     return atom_names.all_eq(" CA ")
 
-class _(boost.python.injector, ext.residue_group, __hash_eq_mixin):
+boost.python.inject(ext.residue_group, __hash_eq_mixin)
+@boost.python.inject_into(ext.residue_group)
+class _():
 
   def only_atom_group(self):
     assert self.atom_groups_size() == 1
@@ -1938,7 +1949,9 @@ class _(boost.python.injector, ext.residue_group, __hash_eq_mixin):
       chain_id = chain.id
     return "%2s%4s%1s" % (chain_id, self.resseq, self.icode)
 
-class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
+boost.python.inject(ext.atom_group, __hash_eq_mixin)
+@boost.python.inject_into(ext.atom_group)
+class _():
 
   def only_atom(self):
     assert self.atoms_size() == 1
@@ -1971,7 +1984,9 @@ class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
           min_max_mean.max))
     return min_max_mean.mean
 
-class _(boost.python.injector, ext.atom, __hash_eq_mixin):
+boost.python.inject(ext.atom, __hash_eq_mixin)
+@boost.python.inject_into(ext.atom)
+class _():
   __doc__ = """
   The basic unit of the PDB hierarchy (or the PDB input object in general),
   representing a single point scatterer corresponding to an ATOM or HETATM
@@ -2052,7 +2067,9 @@ class _(boost.python.injector, ext.atom, __hash_eq_mixin):
     else:
       return 0
 
-class _(boost.python.injector, ext.conformer):
+@boost.python.inject_into(ext.conformer)
+class _():
+
   __doc__ = """
   Alternate view into a chain object, grouping sequential residues with
   equivalent altlocs.  As a general rule it is preferrable to iterate over
@@ -2244,8 +2261,8 @@ class _(boost.python.injector, ext.conformer):
     return resnames
 
 
-
-class _(boost.python.injector, ext.residue):
+@boost.python.inject_into(ext.residue)
+class _():
 
   def __getinitargs__(self):
     result_root = self.root()
@@ -2288,7 +2305,10 @@ class _(boost.python.injector, ext.residue):
       translate_cns_dna_rna_residue_names=translate_cns_dna_rna_residue_names,
       return_mon_lib_dna_name=return_mon_lib_dna_name)
 
-class _(boost.python.injector, ext.atom_with_labels):
+
+@boost.python.inject_into(ext.atom_with_labels)
+class _():
+
   __doc__ = """
   Stand-in for atom object, which explicitly records the attributes normally
   reserved for parent classes such as residue name, chain ID, etc.

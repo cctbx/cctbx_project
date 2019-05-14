@@ -39,7 +39,8 @@ def bool_md5(self):
   return hashlib.md5(self.__getstate__()[1])
 bool.md5 = bool_md5
 
-class _(boost.python.injector, grid):
+@boost.python.inject_into(grid)
+class _():
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
@@ -160,7 +161,8 @@ def _format_mean(values, format):
   return format_value(
     format=format, value=mean_default(values=values, default=None))
 
-class _(boost.python.injector, ext.min_max_mean_double):
+@boost.python.inject_into(ext.min_max_mean_double)
+class _():
 
   def show(self, out=None, prefix="", format="%.6g", show_n=True):
     if out is None: out = sys.stdout
@@ -228,7 +230,8 @@ def condense_as_ranges(integer_array):
   store_range()
   return result
 
-class _(boost.python.injector, mersenne_twister):
+@boost.python.inject_into(mersenne_twister)
+class _():
 
   def random_selection(self, population_size, sample_size):
     assert population_size >= 0
@@ -286,7 +289,8 @@ class py_object(object):
   def __setitem__(self, index, value):
     self._data[self._accessor(index)] = value
 
-class _(boost.python.injector, ext.linear_regression_core):
+@boost.python.inject_into(ext.linear_regression_core)
+class _():
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
@@ -294,7 +298,8 @@ class _(boost.python.injector, ext.linear_regression_core):
     print(prefix+"y_intercept:", self.y_intercept(), file=f)
     print(prefix+"slope:", self.slope(), file=f)
 
-class _(boost.python.injector, ext.double):
+@boost.python.inject_into(ext.double)
+class _():
 
   def matrix_inversion(self):
     result = self.deep_copy()
@@ -304,7 +309,8 @@ class _(boost.python.injector, ext.double):
   def as_scitbx_matrix(self):
     return as_scitbx_matrix(self)
 
-class _(boost.python.injector, ext.linear_correlation):
+@boost.python.inject_into(ext.linear_correlation)
+class _():
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
@@ -323,7 +329,8 @@ class histogram_slot_info(object):
   def center(self):
     return (self.high_cutoff + self.low_cutoff) / 2
 
-class _(boost.python.injector, ext.histogram):
+@boost.python.inject_into(ext.histogram)
+class _():
 
   def __getinitargs__(self):
     return (
@@ -393,7 +400,8 @@ class weighted_histogram_slot_info(object):
   def center(self):
     return (self.high_cutoff + self.low_cutoff) / 2
 
-class _(boost.python.injector, ext.weighted_histogram):
+@boost.python.inject_into(ext.weighted_histogram)
+class _():
 
   def __getinitargs__(self):
     return (
