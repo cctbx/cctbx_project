@@ -418,15 +418,20 @@ class hklview_3d:
 
     self.workingbinvals = []
     if not self.binarray=="Resolution":
-      self.workingbinvals = [ self.othermindata[self.binarray] - 0.1 , self.othermaxdata[self.binarray] + 0.1 ]
+      ibinarray= int(self.binarray)
+      self.workingbinvals = [ self.othermindata[ibinarray] - 0.1 , self.othermaxdata[ibinarray] + 0.1 ]
       self.workingbinvals.extend( self.binvals )
       self.workingbinvals.sort()
       if self.workingbinvals[0] < 0.0:
          self.workingbinvals.append(0.0)
          self.workingbinvals.sort()
+      bindata = self.otherscenes[ibinarray].data
+      if self.otherscenes[ibinarray].work_array.is_complex_array():
+        bindata = self.otherscenes[ibinarray].ampl
     else:
       self.workingbinvals = self.binvals
       colstr = "dres"
+      bindata = 1.0/dres
     self.nbin = len(self.workingbinvals)
 
     for ibin in range(self.nbin):
@@ -443,12 +448,6 @@ class hklview_3d:
           return ibin
       raise Sorry("Should never get here")
 
-    if self.binarray=="Resolution":
-      bindata = 1.0/dres
-    else:
-      bindata = self.otherscenes[self.binarray].data
-      if self.otherscenes[self.binarray].work_array.is_complex_array():
-        bindata = self.otherscenes[self.binarray].ampl
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array

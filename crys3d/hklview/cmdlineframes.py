@@ -242,23 +242,34 @@ class HKLViewFrame () :
     self.old_phil = self.master_phil
 
 
-
-  def update_settings (self, *args, **kwds) :
-
-    new_phil = self.master_phil.format(python_object = self.params)
+  def update_settings(self, new_phil=None):
+    if not new_phil:
+      new_phil = self.master_phil.format(python_object = self.params)
     working_phil = self.master_phil.fetch(source = new_phil)
     diff_phil = self.master_phil.fetch_diff(source = working_phil)
-
-    self.mprint("diff phil:\n" + diff_phil.as_str() )
-    self.master_phil = new_phil
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     diff = diff_phil.extract()
+    self.mprint("diff phil:\n" + diff_phil.as_str() )
+    self.master_phil = working_phil
+    self.params = working_phil.extract()
+    phl = self.params
 
-    if hasattr(diff, "column"):
-      self.set_column(self.params.column, self.params.fomcolumn )
+    if hasattr(diff, "column") or hasattr(diff, "fomcolumn"):
+      self.set_column(phl.column, phl.fomcolumn )
 
+    if hasattr(diff, "spacegroupchoice"):
+      self.set_spacegroup_choice(phl.spacegroupchoice)
 
-    msg = self.viewer.update_settings(*args, **kwds)
+    if hasattr(diff, "columnbinthresholds"):
+      self.set_column_bin_thresholds(phl.columnbinthresholds, phl.binarray)
+
+    if hasattr(diff, "cameratype"):
+      self.set_camera_type(phl.cameratype)
+
+    if hasattr(diff, "viewer"):
+      self.viewer.settings = self.params.viewer
+      self.settings = self.params.viewer
+
+    msg = self.viewer.update_settings()
     self.mprint( msg)
 
     if (self.miller_array is None) :
@@ -391,7 +402,7 @@ class HKLViewFrame () :
       self.current_spacegroup = sg_info
 
 
-  def SetSpaceGroupChoice(self, n) :
+  def set_spacegroup_choice(self, n) :
     if (self.miller_array is None) :
       raise Sorry("No data loaded!")
     self.current_spacegroup = self.spacegroup_choices[n]
@@ -410,8 +421,13 @@ class HKLViewFrame () :
       arr = self.detect_Rfree(arr)
       othervalidarrays.append( arr )
     self.mprint( "MERGING 2")
-    self.viewer.set_miller_array(array, valid_arrays=othervalidarrays)
+    self.viewer.set_miller_array(array, proc_arrays=othervalidarrays)
     self.viewer.DrawNGLJavaScript()
+
+
+  def SetSpaceGroupChoice(self, n):
+    self.params.spacegroupchoice = n
+    self.update_settings()
 
 
   def LoadReflectionsFile (self, file_name, set_array=True, data_only=False):
@@ -424,7 +440,7 @@ class HKLViewFrame () :
       self.viewer.iradiicol = 0
       display.reset_settings()
       self.settings = display.settings()
-      self.viewer.settings = self.settings
+      self.viewer.settings = self.params.viewer
       self.viewer.mapcoef_fom_dict = {}
       try :
         hkl_file = any_reflection_file(file_name)
@@ -458,58 +474,65 @@ class HKLViewFrame () :
         #return valid_arrays[0]
 
 
-  def SetCameraType(self, camtype):
-    if camtype.lower() in "orthographic":
-      self.viewer.cameratype = "orthographic"
-    if camtype.lower() in "perspective":
-      self.viewer.cameratype = "perspective"
+  def set_camera_type(self, camtype):
+    self.viewer.cameratype = self.params.cameratype
     self.viewer.DrawNGLJavaScript()
 
 
+  def SetCameraType(self, camtype):
+    self.params.cameratype = camtype
+    self.update_settings()
+
+
   def ExpandToP1(self, val):
-    self.settings.expand_to_p1 = val
+    self.params.viewer.expand_to_p1 = val
     self.update_settings()
 
 
   def ExpandAnomalous(self, val):
-    self.settings.expand_anomalous = val
+    self.params.viewer.expand_anomalous = val
     self.update_settings()
 
 
   def ShowOnlyMissing(self, val):
-    self.settings.show_only_missing = val
+    self.params.viewer.show_only_missing = val
     self.update_settings()
 
 
   def ShowMissing(self, val):
-    self.settings.show_missing = val
+    self.params.viewer.show_missing = val
     self.update_settings()
 
 
   def ShowDataOverSigma(self, val):
-    self.settings.show_data_over_sigma = val
+    self.params.viewer.show_data_over_sigma = val
     self.update_settings()
 
 
   def ShowSystematicAbsences(self, val):
-    self.settings.show_systematic_absences = val
+    self.params.viewer.show_systematic_absences = val
     self.update_settings()
 
 
   def ShowSlice(self, val, axis="h", index=0):
-    self.settings.slice_mode = val
-    self.settings.slice_axis = axis.lower()
-    self.settings.slice_index = index
+    self.params.viewer.slice_mode = val
+    self.params.viewer.slice_axis = axis.lower()
+    self.params.viewer.slice_index = index
     self.update_settings()
 
 
-  def SetColumnBinThresholds(self, binvals=[], binarray="Resolution"):
+  def set_column_bin_thresholds(self, binvals=[], binarray="Resolution"):
     self.viewer.binarray = binarray
     if binvals:
       if self.viewer.binarray=="Resolution":
         binvals = list( 1.0/flex.double(binvals) )
       binvals.sort()
     self.viewer.UpdateBinValues( binvals )
+
+
+  def SetColumnBinThresholds(self, binvals, binarray="Resolution"):
+    self.params.columnbinthresholds = binvals
+    self.params.binarray = binarray
     self.update_settings()
 
 
@@ -550,12 +573,12 @@ class HKLViewFrame () :
 
 
   def SetColourColumn(self, colourcol):
-    self.viewer.icolourcol = colourcol
+    self.params.viewer.icolourcol = colourcol
     self.update_settings()
 
 
   def SetRadiusColumn(self, radiuscol):
-    self.viewer.iradiicol = radiuscol
+    self.params.viewer.iradiicol = radiuscol
     self.update_settings()
 
 
@@ -566,29 +589,36 @@ class HKLViewFrame () :
     If nth_power_scale < 0.0 an automatic power will be computed ensuring the smallest radius
     is 0.1 the maximum radius
     """
-    self.settings.scale = scale
-    self.settings.nth_power_scale_radii = nth_power_scale
+    self.params.viewer.scale = scale
+    self.params.viewer.nth_power_scale_radii = nth_power_scale
     self.update_settings()
 
 
   def SetRadiiToSigmas(self, val):
-    self.settings.sigma_radius = val
+    self.params.viewer.sigma_radius = val
     self.update_settings()
 
 
   def SetColoursToSigmas(self, val):
-    self.settings.sigma_color = val
+    self.params.viewer.sigma_color = val
     self.update_settings()
 
 
   def SetSqrtScaleColours(self, val):
-    self.settings.sqrt_scale_colors = val
+    self.params.viewer.sqrt_scale_colors = val
     self.update_settings()
 
 
   def SetColoursToPhases(self, val):
-    self.settings.phase_color = val
+    self.params.viewer.phase_color = val
     self.update_settings()
+
+
+  def PhilStringToSettings(self, philstr):
+    user_phil = libtbx.phil.parse(philstr)
+    new_phil = self.master_phil.fetch(source = user_phil)
+    self.update_settings( new_phil)
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
   def GetSpaceGroupChoices(self):
@@ -635,23 +665,25 @@ class HKLViewFrame () :
 
 
 
-
-
-
 philstr = """
   column = None
     .type = int
   fomcolumn = None
     .type = int
-  spacegroup = None
+  spacegroupchoice = None
     .type = int
   columnbinthresholds = None
     .type = float
     .multiple = True
-  binarray = -1
-    .type = int
+  binarray = 'Resolution'
+    .type = str
+  cameratype = *'orthographic' 'perspective'
+    .type = choice
   viewer {
     %s
   }
 
 """ %display.philstr
+
+
+
