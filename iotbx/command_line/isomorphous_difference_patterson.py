@@ -1,7 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME cctbx.isomorphous_difference_patterson
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, Usage, show_development_warning
 import libtbx.callbacks # import dependency
 import libtbx.phil

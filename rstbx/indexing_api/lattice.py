@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from rstbx.array_family import flex
 from rstbx.indexing_api import dps_extended

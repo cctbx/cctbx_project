@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 class reader:
   """A class to read the INTEGRATE.HKL file used in XDS"""

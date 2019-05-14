@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.xmanip import write_as_pdb_file
 import iotbx.pdb
 from iotbx import reflection_file_utils

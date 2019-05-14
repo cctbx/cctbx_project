@@ -2,8 +2,7 @@
 # TODO:
 #  - cached scenes
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import object_oriented_patterns as oop

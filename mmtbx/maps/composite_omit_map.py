@@ -5,8 +5,7 @@ end-user application, phenix.composite_omit_map, is part of the phenix
 sources.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import mmtbx.f_model
 from cctbx import miller
 from cctbx import maptbx

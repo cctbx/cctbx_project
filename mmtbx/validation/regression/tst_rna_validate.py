@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.command_line import rna_validate
 import mmtbx.validation.rna_validate
 from iotbx import file_reader

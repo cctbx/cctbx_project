@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.web.asu_gallery import web_links
 from cctbx.web.asu_gallery import html_head_title
 from cctbx import sgtbx

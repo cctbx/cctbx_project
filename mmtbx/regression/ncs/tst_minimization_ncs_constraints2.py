@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import mmtbx.refinement.minimization_ncs_constraints
 from scitbx.array_family import flex
 from libtbx import group_args

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 hb_database = { # donor acceptor
   ("F", "F") : 38.6, #(161.5 kJ/mol or 38.6 kcal/mol)

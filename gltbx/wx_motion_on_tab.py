@@ -3,8 +3,7 @@ Example:
   - use results from a function with callback (motion() in this example)
   - return from callback only after an event in the GUI (Tab-key)
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from gltbx import wx_viewer
 from libtbx.thread_utils import thread_with_callback_and_wait

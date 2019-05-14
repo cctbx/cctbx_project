@@ -1,11 +1,10 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.plot_energy_spectrum
 """
 Author      : Uervirojnangkoorn, M.
 Created     : 5/16/2016
 Description : read a single energy spectrum file (csv) and plot the spectrum
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import sys
 from cctbx.array_family import flex
 import matplotlib.pyplot as plt

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.fab_elbow_angle
 from mmtbx.utils.fab_elbow_angle import fab_elbow_angle
 import iotbx.pdb

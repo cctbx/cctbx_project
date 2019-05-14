@@ -2,8 +2,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cspad.metrology
 #
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from scipy.optimize import leastsq # special import
 from xfel.metrology.mark10 import fit_translation4
 from libtbx.utils import Sorry

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 from mmtbx.scaling import sad_scale, sir_scale, rip_scale, siras_scale
 from mmtbx.scaling import twmad_scale

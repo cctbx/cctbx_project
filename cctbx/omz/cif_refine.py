@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 def report_fraction_of_negative_observations_if_any(id_code, obs):
   d = obs.data()
   n_neg = (d < 0).count(True)

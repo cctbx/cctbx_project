@@ -1,11 +1,10 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.postrefine
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 7/13/2014
 Description : Main commandline for prime.
 '''
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from libtbx.easy_mp import parallel_map
 from cctbx.array_family import flex

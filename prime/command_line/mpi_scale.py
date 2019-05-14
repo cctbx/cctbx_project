@@ -1,9 +1,8 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.mpi_scale
 """
 Find initial scaling factors for all integration results
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mpi4py import MPI
 import sys, os
 from prime.postrefine.mod_input import process_input, read_pickles

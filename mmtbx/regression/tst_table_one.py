@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.regression import model_1yjp
 from mmtbx.command_line import table_one
 import iotbx.pdb.hierarchy

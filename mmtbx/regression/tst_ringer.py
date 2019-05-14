@@ -1,5 +1,5 @@
 
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx import easy_run
 import libtbx.load_env # import dependency

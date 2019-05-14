@@ -6,8 +6,7 @@ the simpler wx.html.HtmlWindow.  This is used in the Phenix GUI to display
 documentation.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import wxtbx.bitmaps
 import wx.html
 import wx

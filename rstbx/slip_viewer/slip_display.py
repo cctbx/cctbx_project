@@ -2,8 +2,7 @@
 # -*- coding= utf-8 -*-
 
 """pySlip demonstration program."""
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 # Copyright (c) 2010, Ross Wilson (rzzzwilson@gmail.com). All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or

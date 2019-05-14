@@ -2,8 +2,7 @@
 #
 
 ''' Filters shots from FEE spectrometer '''
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.phil import parse
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import skip_event_flag

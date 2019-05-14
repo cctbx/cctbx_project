@@ -1,7 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.flip_symmetric_amino_acids
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Usage
 import sys
 import iotbx.pdb

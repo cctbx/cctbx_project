@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.conformation_dependent_library.cdl_database import cdl_database
 
 step = 10

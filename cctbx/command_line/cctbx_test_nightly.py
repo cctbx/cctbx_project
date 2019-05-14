@@ -1,6 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME cctbx_regression.test_nightly
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.command_line import run_tests_parallel
 import sys, os
 import libtbx.load_env

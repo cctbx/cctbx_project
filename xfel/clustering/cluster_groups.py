@@ -1,6 +1,5 @@
 """ Utilitites for dealing with lists of clusters. """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 __author__ = 'zeldin'
 
 def unit_cell_info(sub_clusters):

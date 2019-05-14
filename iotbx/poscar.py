@@ -1,5 +1,5 @@
 "http://cms.mpi.univie.ac.at/vasp/vasp/POSCAR_file.html"
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from libtbx import slots_getstate_setstate
 

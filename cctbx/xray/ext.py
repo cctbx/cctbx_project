@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import boost.python
 ext = boost.python.import_ext("cctbx_xray_ext")
 from cctbx_xray_ext import *

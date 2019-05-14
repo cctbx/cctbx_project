@@ -1,6 +1,4 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 from scitbx.lstbx import normal_eqns_solving
 from cctbx import geometry_restraints, adp_restraints, sgtbx, adptbx
 from cctbx.array_family import flex

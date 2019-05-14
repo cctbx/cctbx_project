@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.ncs.ncs_search import mmtbx_res_alignment
 from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.cns.crystal_symmetry_utils import crystal_symmetry_as_sg_uc
 from cctbx.array_family import flex
 

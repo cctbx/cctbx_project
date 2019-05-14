@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 pdb = """HETATM    1  N   ALA A   1      -0.424   1.960   3.877  1.00 20.00      A    N+1
 HETATM    2  H   ALA A   1       0.452   1.694   3.861  1.00 20.00      A    H

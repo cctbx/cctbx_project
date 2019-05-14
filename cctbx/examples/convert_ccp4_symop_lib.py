@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 # Example by Kevin Cowtan, 2001. Public Domain.
 # Converted to Python by Ralf W. Grosse-Kunstleve.
 # This little program reads the CCP4 symmetry library file, and interprets

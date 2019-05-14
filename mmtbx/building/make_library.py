@@ -6,8 +6,7 @@ Tools for assembling an ensemble of related structures for local rebuilding by
 homology.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate_default_initializer
 from libtbx import Auto, adopt_init_args
 from libtbx.utils import null_out

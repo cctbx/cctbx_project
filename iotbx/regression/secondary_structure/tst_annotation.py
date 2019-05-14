@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import time
 from iotbx.pdb.secondary_structure import annotation, pdb_helix, pdb_strand
 import iotbx

@@ -2,8 +2,7 @@
 # XXX This is a very minimal test with no file dependencies - a more thorough
 # set of tests is located in phenix_regression.
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.regression import model_1yjp
 from mmtbx.command_line import cc_star
 import iotbx.pdb.hierarchy

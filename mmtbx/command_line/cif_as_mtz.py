@@ -1,8 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.cif_as_mtz
 # LIBTBX_SET_DISPATCHER_NAME iotbx.cif_as_mtz
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.option_parser import iotbx_option_parser
 from iotbx import crystal_symmetry_from_any
 import iotbx.phil

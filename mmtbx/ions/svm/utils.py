@@ -2,7 +2,7 @@
 """
 Utility functions used within this module.
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 try : # XXX required third-party dependencies
   import numpy as np

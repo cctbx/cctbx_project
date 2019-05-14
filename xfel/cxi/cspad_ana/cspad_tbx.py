@@ -9,7 +9,7 @@ XXX Better named cspad_common?
 
 XXX Read out detector temperature (see Hart et al., 2012)?
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 
 import math

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import math,time
 from iotbx.detectors.context.camera_convention import Cameras
 from iotbx.detectors.context.config_detector import ADSC910_at_BioCARS

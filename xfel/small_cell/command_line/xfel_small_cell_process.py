@@ -2,7 +2,7 @@
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.small_cell_process
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 help_message = '''
 

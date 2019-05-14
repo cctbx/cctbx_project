@@ -5,8 +5,7 @@ Boost.Python extensions into the local namespace, and provides core functions
 for displaying the results of Xtriage.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex # import dependency
 from libtbx.str_utils import make_sub_header, make_header, make_big_header
 from libtbx import slots_getstate_setstate

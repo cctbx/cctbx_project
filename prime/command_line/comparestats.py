@@ -1,11 +1,10 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.comparestats
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 6/25/2016
 Description : Given list of log files, compare completeness, n_obs, rmerge, and cc12.
 '''
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import matplotlib.pyplot as plt
 import sys
 

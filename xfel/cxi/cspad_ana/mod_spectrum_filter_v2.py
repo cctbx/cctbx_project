@@ -4,8 +4,7 @@
 ''' Filters shots from FEE spectrometer that are two color and flags xtc
     stream events as being a two color event or not.
 '''
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import skip_event_flag

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from rstbx.indexing_api import cpp_absence_test
 from rstbx.dps_core.cell_assessment import unit_cell_too_small

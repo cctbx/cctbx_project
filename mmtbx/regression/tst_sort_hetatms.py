@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.command_line import sort_hetatms
 from iotbx import file_reader
 from cStringIO import StringIO

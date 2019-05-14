@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import cif_triage
 import iotbx.pdb.amino_acid_codes
 import libtbx.load_env

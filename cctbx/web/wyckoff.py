@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 # When studying a crystal structure it can be helpful to know the Wyckoff
 # positions of the atoms in the structure. This script can be used to
 # assign Wyckoff letters.

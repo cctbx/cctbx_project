@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.examples.exp_i_alpha_derivatives \
   import least_squares, exp_i_alpha_sum
 from libtbx.test_utils import approx_equal

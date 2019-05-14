@@ -5,8 +5,7 @@ of which are access via the mmtbx.f_model.manager API.  It has some overlap
 with the separate mmtbx.maps module.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import maptbx

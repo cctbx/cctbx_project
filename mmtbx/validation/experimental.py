@@ -5,8 +5,7 @@ This does not actually handle any of the scaling and fmodel calculations,
 which are performed approximately as in model_vs_data.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import residue, validation
 from libtbx import Auto, slots_getstate_setstate
 from libtbx.str_utils import format_value

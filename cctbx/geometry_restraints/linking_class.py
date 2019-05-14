@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.geometry_restraints.auto_linking_types import origin_ids
 
 class linking_class(dict):

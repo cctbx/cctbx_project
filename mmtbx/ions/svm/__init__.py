@@ -12,8 +12,7 @@ See Also
 phenix_dev.ion_identification.nader_ml
 """
 
-from __future__ import division, absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from collections import Iterable
 from cStringIO import StringIO

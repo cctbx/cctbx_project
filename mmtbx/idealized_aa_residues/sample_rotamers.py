@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import time
 from mmtbx import monomer_library
 import mmtbx.refinement.real_space.fit_residue

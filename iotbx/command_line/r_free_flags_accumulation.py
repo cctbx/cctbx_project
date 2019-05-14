@@ -3,8 +3,7 @@ Extracts R-free flags from reflection files.
 Writes reflection count, free fraction pairs to file (for plotting).
 Also shows free fraction in bins.
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from iotbx import reflection_file_utils
 from iotbx import reflection_file_reader

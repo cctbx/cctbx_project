@@ -33,9 +33,7 @@ flipping method has converged.
 Cryst. A64:123-134, 2008
 """
 
-from __future__ import division, generators
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 
 from libtbx import object_oriented_patterns as oop
 from libtbx import adopt_optional_init_args

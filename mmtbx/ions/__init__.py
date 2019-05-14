@@ -11,8 +11,7 @@ Notes
        Crystallogr. 70, 1104–14 (2014).
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import iotbx.cif
 from libtbx import group_args, Auto, slots_getstate_setstate
 from libtbx.utils import Sorry

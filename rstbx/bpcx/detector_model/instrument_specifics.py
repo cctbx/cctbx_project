@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 # Hardware specific code that makes use of the abstract definitions in
 # module detector
 

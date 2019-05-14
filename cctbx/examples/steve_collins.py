@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 def examples():
   # Generate space groups (in matrix/vector form) based on spacegroup number
   # (names are *not* a pain)

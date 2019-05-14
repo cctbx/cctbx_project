@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 def get_bad_hydrogen_i_seqs(hierarchy,
                             restraints_manager=None,

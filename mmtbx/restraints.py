@@ -4,8 +4,7 @@ Wrapper module for computing targets and gradients for restraints (or other
 energy functions) on coordinates and B-factors; used in phenix.refine.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import cctbx.adp_restraints
 import math
 from cctbx.array_family import flex

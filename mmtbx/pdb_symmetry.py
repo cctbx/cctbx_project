@@ -5,8 +5,7 @@ This can be used for comparison with "novel" datasets, possibly indicating
 whether a crystallized is actually a previously characterized contaminant.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 from libtbx import easy_pickle
 from libtbx import group_args

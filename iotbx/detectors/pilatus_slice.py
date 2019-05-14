@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import copy
 from six.moves import cPickle as pickle
 from iotbx.detectors.pilatus_minicbf import PilatusImage

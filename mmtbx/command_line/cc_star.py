@@ -1,7 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.cc_star
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, Usage
 from libtbx import runtime_utils

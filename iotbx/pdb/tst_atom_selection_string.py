@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb.atom_selection import selection_string_from_selection
 from iotbx.pdb.atom_selection import get_clean_selection_string
 from mmtbx.ncs.ncs_search import get_chains_info

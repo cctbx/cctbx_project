@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 from dials.array_family import flex
 from six.moves import cStringIO as StringIO

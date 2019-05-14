@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import mmtbx.monomer_library.pdb_interpretation as pdb_inter
 from cctbx.geometry_restraints.nonbonded_overlaps import compute
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo

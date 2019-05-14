@@ -7,7 +7,7 @@ the asu have to be weighted by site-multiplicity/order_z.
 As an aside, this script also exercises space_group.multiplicity(site).
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import maptbx
 from cctbx import miller
 from cctbx import sgtbx

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # find_ss_from_ca.py
 # a tool to find helices, strands, non-helices/strands in segments of

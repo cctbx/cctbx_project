@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 from mmtbx.secondary_structure.build.tst_2 import tst_01_start_lines
 import libtbx.load_env

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from mmtbx import hydrogens
 from mmtbx import monomer_library

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cctbx.integration_pickle_viewer
 from cctbx.array_family import flex # implicit dependency

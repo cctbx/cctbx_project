@@ -1,7 +1,6 @@
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 #Phil parameters required to process data from Stanford LCLS CXI instrument
 
 def cxi_basic_start():

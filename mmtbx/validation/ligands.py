@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.math_utils import percentile_based_spread
 from libtbx import slots_getstate_setstate
 from libtbx.utils import Sorry

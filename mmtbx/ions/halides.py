@@ -4,7 +4,7 @@ Functions specific to identifying halide ions.  Very preliminary - needs
 much more sophisticated analysis.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.ions import server
 from scitbx.matrix import col, distance_from_plane
 from libtbx import Auto

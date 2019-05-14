@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 # -*- coding: utf-8 -*-
 from cctbx.array_family import flex
 import boost.python

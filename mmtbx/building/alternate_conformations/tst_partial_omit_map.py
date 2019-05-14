@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.command_line import partial_omit_map
 from mmtbx.regression import tst_build_alt_confs
 from libtbx.utils import null_out

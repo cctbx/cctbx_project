@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 def exercise_real_to_complex_3d(benchmark=True):
   sizes_1 = [((32,32,32), 16, 0.0000001),

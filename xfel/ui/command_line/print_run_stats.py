@@ -1,12 +1,10 @@
-from __future__ import division
-
 '''
 Author      : Young, I.D.
 Created     : 07/14/2016
 Last Changed: 07/14/2016
 Description : XFEL UI plot real-time run stats
 '''
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from libtbx.phil import parse
 from libtbx.utils import Sorry

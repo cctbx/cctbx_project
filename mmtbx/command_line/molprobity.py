@@ -2,8 +2,7 @@
 # LIBTBX_SET_DISPATCHER_NAME molprobity.molprobity
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.program_utils.result import program_result
 from libtbx.utils import Sorry, multi_out
 from libtbx import Auto, easy_pickle, runtime_utils

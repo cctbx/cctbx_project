@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 import iotbx.pdb.cryst1_interpretation
 import iotbx.pdb.remark_290_interpretation

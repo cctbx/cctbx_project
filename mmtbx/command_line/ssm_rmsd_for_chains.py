@@ -1,6 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.ssm_rmsd_for_chains
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import sys
 from mmtbx.geometry_restraints.torsion_restraints import utils
 from libtbx.utils import Sorry

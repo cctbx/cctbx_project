@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.alignment import align
 from mmtbx.alignment import amino_acid_codes, blosum62, dayhoff_mdm78_similarity_scores, \
     blosum50_similarity_scores, pairwise_global, dayhoff, blosum50, blosum62, \

@@ -2,7 +2,7 @@
 # TODO:
 #  - cached scenes
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from crys3d import hklview
 #from crys3d.leapmotion import wxGLWindowLeapEnabled as wxGLWindow
 from gltbx.wx_viewer import wxGLWindow

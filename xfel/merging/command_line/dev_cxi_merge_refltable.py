@@ -3,8 +3,7 @@
 # LIBTBX_SET_DISPATCHER_NAME dev.cxi.merge_refltable
 #
 # $Id$
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 
 from xfel.command_line.cxi_merge import scaling_manager

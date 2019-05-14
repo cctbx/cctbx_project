@@ -1,11 +1,10 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.ray_trace
 """
 Author      : Uervirojnangkoorn, M.
 Created     : 11/1/2015
 Description : read integration pickles and view systemetic absences and beam X, Y position
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from six.moves import cPickle as pickle
 from cctbx.array_family import flex

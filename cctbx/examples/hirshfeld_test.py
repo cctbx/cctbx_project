@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx import crystal, adp_restraints, xray
 
 def run(structure_file_path):

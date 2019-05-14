@@ -1,9 +1,7 @@
 #
 # Data from Acta Cryst. D62 (2006), 678-682.
 #
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
 import sys
 

@@ -10,8 +10,7 @@
 #
 # Graeme Winter, Diamond Light Source, 2012/OCT/16
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 class bucket:
   pass

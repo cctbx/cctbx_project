@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from mmtbx.building.loop_closure.utils import list_rama_outliers_h
 from mmtbx.rotamer import ramachandran_eval

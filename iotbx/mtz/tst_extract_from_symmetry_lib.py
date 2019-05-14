@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.mtz import extract_from_symmetry_lib
 from cctbx import sgtbx
 from libtbx.utils import format_cpu_times

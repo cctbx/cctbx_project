@@ -7,7 +7,7 @@
 
 # Does it even make sense to run this on more than one core?  NO IT DOES NOT!
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import math
 import numpy

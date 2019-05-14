@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 def run(args):
   if (len(args) == 0): args = ["--help"]
   from libtbx.option_parser import libtbx_option_parser

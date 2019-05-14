@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 from libtbx import easy_pickle, dlite
 #from libtbx import dlite
@@ -76,7 +75,7 @@ def rebuild_pickle_files(data_dir, file_prefix, target_db, suffixes):
 
 
 
-###from __future__ import division
+###from __future__ import absolute_import, division, print_function
 ###from libtbx import easy_pickle
 ###from libtbx.utils import format_cpu_times
 ###from libtbx.str_utils import show_string

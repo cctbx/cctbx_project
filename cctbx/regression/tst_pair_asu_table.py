@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.kriber import strudat
 from cctbx import geometry_restraints
 from cctbx import crystal

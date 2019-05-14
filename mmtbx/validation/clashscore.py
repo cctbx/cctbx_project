@@ -3,8 +3,7 @@
 All-atom contact analysis.  Requires Reduce and Probe (installed separately).
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import validation, atoms, atom_info, residue
 from mmtbx.utils import run_reduce_with_timeout
 from libtbx.utils import Sorry

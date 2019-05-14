@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 # This script reports a number of space group properties given a space
 # group symbol or symmetry matrices, or a combination of the two.
 

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import sys
 from iotbx.option_parser import iotbx_option_parser
 from mmtbx import utils

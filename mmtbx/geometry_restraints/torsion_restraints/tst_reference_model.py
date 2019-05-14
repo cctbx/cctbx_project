@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx import monomer_library
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     reference_model, reference_model_params

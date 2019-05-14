@@ -7,7 +7,7 @@ Installer script for cctbx.xfel packages based on automatically generated
 template.  This must be moved to the proper location to work.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os.path
 import sys
 libtbx_path = os.path.join(

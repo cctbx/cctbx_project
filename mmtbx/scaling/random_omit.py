@@ -8,8 +8,7 @@ the parameters should have this scope
     root_name = 'omit_'
   }
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 class random_omit_data(object):
   def __init__(self,

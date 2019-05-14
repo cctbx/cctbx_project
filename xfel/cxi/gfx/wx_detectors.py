@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 #-----------------------------------------------------------------------
 # more-or-less real-time plotting of Bragg peak count and XES detector

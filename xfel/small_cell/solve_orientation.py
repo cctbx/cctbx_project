@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 class small_cell_orientation:
  """ Class for determining an orientation matrix given a set of reflections """

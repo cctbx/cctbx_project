@@ -4,8 +4,7 @@
 #
 # $Id: stills_merge.py 20545 2014-08-25 22:22:15Z idyoung $
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 
 import iotbx.phil

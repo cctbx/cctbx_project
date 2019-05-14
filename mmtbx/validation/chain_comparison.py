@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # chain_comparison.py
 # a tool to compare main-chain from two structures with or without crystal

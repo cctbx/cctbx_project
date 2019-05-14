@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import miller
 from cctbx import maptbx
 import mmtbx.masks
@@ -60,7 +60,7 @@ class target_map(object):
 # COMPLETE REMOVAL.
 #
 #
-#from __future__ import division
+#from __future__ import absolute_import, division, print_function
 #import mmtbx.monomer_library.pdb_interpretation
 #import iotbx.mtz
 #import iotbx.phil, libtbx.phil

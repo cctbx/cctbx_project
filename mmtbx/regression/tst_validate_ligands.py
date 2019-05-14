@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 import time
 from mmtbx.validation import validate_ligands
 from mmtbx.validation.validate_ligands import master_params_str

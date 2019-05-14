@@ -19,8 +19,7 @@ See also: http://en.wikipedia.org/wiki/Bravais_lattice
 
 Note that "trigonal P" and "hexagonal P" are the same Bravais type.
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from cctbx import crystal
 import sys

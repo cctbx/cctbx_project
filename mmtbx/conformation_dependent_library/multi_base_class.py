@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.conformation_dependent_library.LinkedResidues import LinkedResidues
 from mmtbx.conformation_dependent_library.cdl_utils import \
   get_c_ca_n

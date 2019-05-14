@@ -7,8 +7,7 @@ Example:
 This will write a file map_coeff.pickle that can be used to
 view the electron density map with PyMOL (see view_fft_map.py).
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from cctbx.development import random_structure
 from cctbx import sgtbx

@@ -1,7 +1,7 @@
 """ Tools for optimizing the parameters of the images in a graph to minimize the overall residual.
 **Author:**   Oliver Zeldin <zeldin@stanford.edu>
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 __author__ = 'zeldin'
 import logging
 import numpy as np

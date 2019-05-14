@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 def test_dps_single_panel_labelit_input_optimal_S0(process_dictionary,data,phil_set):
     from rstbx.indexing_api.lattice import DPS_primitive_lattice

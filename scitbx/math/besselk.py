@@ -12,8 +12,7 @@ The total range has been split in 3 regions:
 No efforst have been made to ensure continuity, nor a rigorous error analyses has been
 carried out. The error should be lower then a 5% over the x range 1E-4 to 100.
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import libtbx # for enumerate forward compatibility
 

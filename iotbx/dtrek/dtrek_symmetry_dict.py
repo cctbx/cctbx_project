@@ -3,8 +3,7 @@
 
    usage: python dtrek_symmetry_dict.py DTREK_SPACEGROUP_FILE
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from libtbx.str_utils import line_feeder
 from cctbx import sgtbx

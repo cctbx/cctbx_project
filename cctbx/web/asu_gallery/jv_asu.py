@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.web.asu_gallery import jvx
 from cctbx.web.asu_gallery import jv_index
 from cctbx.web.asu_gallery import guide_to_notation

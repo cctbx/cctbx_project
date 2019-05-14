@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 # Compare intensities and positions of measurements from XDS INTEGRATE (which
 # are not necessarily correctly LP corrected) and from Mosflm via sortmtz and
 # scala to sum partials but not merge or scale e.g.

@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex # import dependency
 from cctbx import uctbx # import dependency
 import boost.python

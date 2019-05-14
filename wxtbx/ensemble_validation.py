@@ -4,7 +4,7 @@ Classes for display of MolProbity validation statistics for multi-model PDB
 files, used in GUI for phenix.ensemble_refinement.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
 from wxtbx import app, path_dialogs, plots

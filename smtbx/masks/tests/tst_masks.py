@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 
 from scitbx.lstbx import normal_eqns_solving
 from cctbx import miller

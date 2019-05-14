@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from mmtbx.validation.ramalyze import ramalyze, find_region_max_value, get_favored_peaks, \
     RAMALYZE_FAVORED, res_types

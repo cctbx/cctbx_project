@@ -1,7 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_value_at_point
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import sys
 import mmtbx.utils
 from libtbx.utils import Sorry

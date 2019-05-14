@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from xfel.merging.algorithms.error_model.sdfac_refine_lbfgs import sdfac_refinery, sdfac_refine_refltable_lbfgs, lbfgs_minimizer
 from xfel.merging.algorithms.error_model.sdfac_propagate import sdfac_propagate, error_terms, r2d

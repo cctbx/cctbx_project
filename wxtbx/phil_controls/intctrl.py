@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # XXX this is mostly redundant with wx.IntCtrl, but that control doesn't have
 # a way to deal with None or Auto.

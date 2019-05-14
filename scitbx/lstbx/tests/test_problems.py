@@ -1,5 +1,5 @@
 """ A collection of L.S. test problems """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from scitbx.array_family import flex
 from scitbx.lstbx import normal_eqns

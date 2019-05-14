@@ -6,8 +6,7 @@ attributes stored in a PDB file, scattering information, and geometry
 restraints.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry, user_plus_sys_time, null_out

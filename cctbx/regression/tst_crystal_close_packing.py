@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb.tst_pdb import dump_pdb
 from cctbx.crystal import close_packing
 from cctbx import crystal

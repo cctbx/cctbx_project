@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import math
 """assume data collection at two-theta angle of zero.
    assume a flat square detector normal to beam.

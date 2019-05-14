@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 class unique_list(object):
 
   __slots__ = ["value_list", "value_set"]

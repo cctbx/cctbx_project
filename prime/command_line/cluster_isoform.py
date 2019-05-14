@@ -1,7 +1,6 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.cluster_isoform
 """ cluster diffraction images by """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 __author__ = 'Monarin Uervirojnangkoorn, monarin@gmail.com'
 
 from prime.isoform_cluster.mod_isoform_cluster import isoform_cluster_handler

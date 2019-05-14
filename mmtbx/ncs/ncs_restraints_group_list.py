@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from StringIO import StringIO
 from scitbx.math import superpose
 from scitbx.array_family import flex

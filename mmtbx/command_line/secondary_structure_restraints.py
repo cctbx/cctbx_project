@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.secondary_structure_restraints
 
 from mmtbx.secondary_structure import sec_str_master_phil_str, \

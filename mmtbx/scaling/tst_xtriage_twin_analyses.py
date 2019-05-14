@@ -2,8 +2,7 @@
 # XXX This overlaps heavily with tst_scaling.py, which is much more
 # comprehensive.  Maybe remove this one?
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.scaling import twin_analyses
 import iotbx.pdb.hierarchy
 from scitbx.array_family import flex

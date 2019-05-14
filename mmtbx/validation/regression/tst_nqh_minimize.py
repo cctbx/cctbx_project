@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation.molprobity import nqh_minimize
 from iotbx import pdb
 from libtbx.utils import null_out

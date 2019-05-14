@@ -11,8 +11,7 @@ replaced (using an idealized copy) and its placement optimized by a grid
 search that also allows for backbone flexibility.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.building import extend_sidechains
 from mmtbx.building import alternate_conformations as alt_confs
 from mmtbx import building

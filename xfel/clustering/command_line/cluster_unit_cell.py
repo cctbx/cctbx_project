@@ -1,6 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME cluster.unit_cell
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import logging
 from xfel.clustering.cluster import Cluster
 from xfel.clustering.cluster_groups import unit_cell_info

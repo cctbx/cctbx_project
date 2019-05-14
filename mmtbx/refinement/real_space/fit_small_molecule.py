@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from mmtbx.refinement.real_space import individual_sites
 from libtbx.test_utils import approx_equal

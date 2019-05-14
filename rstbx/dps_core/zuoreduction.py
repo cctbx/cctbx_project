@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.uctbx import unit_cell,fast_minimum_reduction
 from rstbx.dps_core.cell_assessment import unit_cell_too_small
 from scitbx import matrix

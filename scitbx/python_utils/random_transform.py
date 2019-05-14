@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 ## This file conatins some usefull transformations
 ## for the generation of specific random variables
 import random

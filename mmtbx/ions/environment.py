@@ -4,7 +4,7 @@ Deals with examing the atoms around a site and recognizing distinct and useful
 chemical environments.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx import ions
 from iotbx.pdb import common_residue_names_get_class as get_class
 from cctbx.eltbx import sasaki

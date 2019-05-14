@@ -1,8 +1,7 @@
 
 # TODO reduce to one outlier per residue
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.validation import utils

@@ -8,8 +8,7 @@ Run this module with:
 phenix.python -m mmtbx.ions.svm.dump_sites [args]
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 import sys

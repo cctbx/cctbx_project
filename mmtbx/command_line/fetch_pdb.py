@@ -3,8 +3,7 @@ Provides a command-line utility for fetching PDB files and their associated
 reflection data.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # LIBTBX_SET_DISPATCHER_NAME phenix.fetch_pdb
 # LIBTBX_SET_DISPATCHER_NAME iotbx.fetch_pdb

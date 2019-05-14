@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint
 from math import pi

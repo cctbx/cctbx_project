@@ -1,8 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.fem
 # LIBTBX_SET_DISPATCHER_NAME phenix.feature_enhanced_map
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import mmtbx.command_line
 import mmtbx.maps
 import iotbx.phil

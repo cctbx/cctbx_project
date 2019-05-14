@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # XXX: To keep these classes as clean as possible, selections are handled
 # entirely in wx_selection_editor.py.

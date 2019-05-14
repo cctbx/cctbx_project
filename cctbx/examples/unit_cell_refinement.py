@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 two_theta_and_index_list = """\
   8.81   0  1  1
  12.23   0  0  2

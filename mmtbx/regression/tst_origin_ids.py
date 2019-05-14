@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.regression import model_1yjp, model_1yjp_with_waters
 from iotbx.data_manager import DataManager
 

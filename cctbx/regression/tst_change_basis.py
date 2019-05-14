@@ -1,5 +1,4 @@
-from __future__ import division, absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils

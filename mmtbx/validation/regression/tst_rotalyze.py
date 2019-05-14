@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from mmtbx.validation import rotalyze
 from iotbx import file_reader

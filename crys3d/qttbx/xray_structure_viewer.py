@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from PyQt4 import QtGui
 from PyQt4.QtCore import Qt
 from crys3d import qttbx

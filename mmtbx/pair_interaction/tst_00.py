@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from mmtbx.pair_interaction import pair_interaction
 from libtbx.test_utils import approx_equal

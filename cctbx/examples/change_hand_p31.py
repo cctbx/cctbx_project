@@ -5,8 +5,7 @@ Note that the interatomic distances do not change if the space group
 symmetry is transformed correctly, but do change if the original space
 group symmetry is simply retained.
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from cctbx import xray
 from cctbx import crystal

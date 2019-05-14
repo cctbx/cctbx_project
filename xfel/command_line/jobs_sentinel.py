@@ -1,4 +1,3 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME xpp.jobs_sentinel
 
 """
@@ -8,7 +7,7 @@ and submit new runs at 0.1 Hz.
 Example usage:
 xpp.jobs_sentinel db.name=xppi6115 db.user=xppi6115 experiment=xppi6115 experiment_tag=debug
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import iotbx.phil
 import libtbx.load_env

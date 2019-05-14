@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import iotbx.cns.xray_structure
 import iotbx.cns.miller_array
 import iotbx.cns.reflection_reader

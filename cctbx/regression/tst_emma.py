@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx import euclidean_model_matching as emma
 from iotbx.command_line.emma import get_emma_model_from_pdb
 from cctbx import xray

@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.secondary_structure import sec_str_master_phil_str, manager
 from cctbx import geometry_restraints
 from iotbx import file_reader

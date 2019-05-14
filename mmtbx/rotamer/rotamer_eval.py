@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 from mmtbx.rotamer.n_dim_table import NDimTable
 from libtbx import easy_pickle

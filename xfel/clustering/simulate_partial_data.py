@@ -3,7 +3,7 @@
 This module contains tools for simulating partial integration data. In
 particular, it is intended to help test XFEL data merging tools.
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from iotbx import mtz
 import cctbx.miller

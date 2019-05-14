@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.building import alternate_conformations as alt_confs
 import mmtbx.building
 from libtbx.str_utils import make_sub_header

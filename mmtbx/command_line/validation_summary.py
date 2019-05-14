@@ -3,8 +3,7 @@
 Convenience tool for collecting validation statistics with minimal overhead.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import molprobity
 from iotbx import file_reader
 from libtbx import slots_getstate_setstate, Auto

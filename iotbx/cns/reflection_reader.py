@@ -1,6 +1,5 @@
 "Transfer of CNS reflection files to flex arrays."
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from iotbx.cns.crystal_symmetry_utils import \
   re_sg_uc, re_uc_sg, crystal_symmetry_from_re_match

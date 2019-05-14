@@ -9,8 +9,7 @@ See mmtbx.ions.build to actually modify the structure, the code in this module
 handles ion identification, but only prints out messages to a log.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.ions.geometry import find_coordination_geometry
 from mmtbx.ions import environment
 from mmtbx.ions import halides

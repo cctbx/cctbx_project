@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # Copyright 2010 University of California
 # derived from wx.lib.platebtn (see copyright below).
