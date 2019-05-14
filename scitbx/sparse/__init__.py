@@ -9,7 +9,8 @@ from scitbx.array_family import flex
 import scitbx.random
 scitbx.random.variate.register_module(ext)
 
-class _(boost.python.injector, matrix):
+@boost.python.inject_into(matrix)
+class _():
 
   def cols(self):
     for j in xrange(self.n_cols): yield self.col(j)

@@ -9,7 +9,8 @@ from scitbx_math_ext import *
 
 import sys
 
-class _(boost.python.injector, ext.basic_statistics):
+@boost.python.inject_into(ext.basic_statistics)
+class _():
 
   def show(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
@@ -34,7 +35,8 @@ class _(boost.python.injector, ext.basic_statistics):
         print(prefix+"kurtosis:", self.kurtosis, file=f)
         print(prefix+"kurtosis_excess:", self.kurtosis_excess, file=f)
 
-class _(boost.python.injector, ext.line_search_more_thuente_1994):
+@boost.python.inject_into(ext.line_search_more_thuente_1994)
+class _():
 
   def show_status(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
@@ -49,7 +51,8 @@ class _(boost.python.injector, ext.line_search_more_thuente_1994):
     print(prefix+"stp:", self.stp, file=f)
     print(prefix+"nfev:", self.nfev, file=f)
 
-class _(boost.python.injector, ext.unimodular_generator):
+@boost.python.inject_into(ext.unimodular_generator)
+class _():
 
   def all(self):
     while (not self.at_end()): yield next(self)

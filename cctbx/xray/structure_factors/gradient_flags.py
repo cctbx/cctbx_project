@@ -27,7 +27,8 @@ class gradient_flags(ext.gradient_flags):
     ext.gradient_flags.__init__(self,
       site, u_iso, u_aniso, occupancy, fp, fdp, sqrt_u_iso, tan_b_iso_max)
 
-class _(boost.python.injector, ext.gradient_flags):
+@boost.python.inject_into(ext.gradient_flags)
+class _():
 
   def copy(self):
     return ext.gradient_flags(self)

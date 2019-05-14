@@ -37,7 +37,8 @@ def angle_delta_deg(angle_1, angle_2, periodicity=1):
   elif (d >  half_period): d -= 2*half_period
   return d
 
-class _(boost.python.injector, bond_params_table):
+@boost.python.inject_into(bond_params_table)
+class _():
 
   def lookup(self, i_seq, j_seq):
     if (i_seq > j_seq): i_seq, j_seq = j_seq, i_seq
@@ -427,7 +428,8 @@ class parallelity_proxy_registry(proxy_registry_base):
         self.counts[i_list] += 1 # mark somewhere that this is duplicated
     return result
 
-class _(boost.python.injector, prolsq_repulsion_function):
+@boost.python.inject_into(prolsq_repulsion_function)
+class _():
 
   def customized_copy(O, c_rep=None, k_rep=None, irexp=None, rexp=None):
     if (c_rep is None): c_rep = O.c_rep
@@ -493,7 +495,9 @@ def _bond_show_sorted_impl(self,
   if (n_not_shown != 0):
     print(prefix + "... (remaining %d not shown)" % n_not_shown, file=f)
 
-class _(boost.python.injector, shared_bond_asu_proxy):
+@boost.python.inject_into(shared_bond_asu_proxy)
+class _():
+
   def get_proxies_without_origin_id(self, origin_id):
     result = shared_bond_asu_proxy()
     for p in self:
@@ -501,7 +505,8 @@ class _(boost.python.injector, shared_bond_asu_proxy):
         result.append(p)
     return result
 
-class _(boost.python.injector, shared_bond_simple_proxy):
+@boost.python.inject_into(shared_bond_simple_proxy)
+class _():
 
   def _generate_proxy_and_atom_labels(self, pdb_hierarchy):
     pdb_atoms = pdb_hierarchy.atoms()
@@ -672,7 +677,8 @@ class _(boost.python.injector, shared_bond_simple_proxy):
         result.append(p)
     return result
 
-class _(boost.python.injector, bond_sorted_asu_proxies):
+@boost.python.inject_into(bond_sorted_asu_proxies)
+class _():
 
   def show_histogram_of_model_distances(self,
         sites_cart,
@@ -914,7 +920,8 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
                           max_items=max_items,
                           origin_id=origin_id)
 
-class _(boost.python.injector, nonbonded_sorted_asu_proxies):
+@boost.python.inject_into(nonbonded_sorted_asu_proxies)
+class _():
 
   def deltas(self, sites_cart):
     return nonbonded_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
@@ -1117,7 +1124,8 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
     if (n_not_shown != 0):
       print(prefix + "... (remaining %d not shown)" % n_not_shown, file=f)
 
-class _(boost.python.injector, angle):
+@boost.python.inject_into(angle)
+class _():
 
   def _show_sorted_item(O, f, prefix):
     print("%s    ideal   model   delta" \
@@ -1131,7 +1139,8 @@ class _(boost.python.injector, angle):
     return [O.angle_ideal, O.angle_model, O.delta,
             weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
-class _(boost.python.injector, shared_angle_proxy):
+@boost.python.inject_into(shared_angle_proxy)
+class _():
 
   def as_pymol_dashes(self, pdb_hierarchy):
     # copied from mmtbx/geometry_restraints/hbond.py due to deprecation of
@@ -1247,7 +1256,9 @@ class _(boost.python.injector, shared_angle_proxy):
         result.append([i,j,k])
     return result
 
-class _(boost.python.injector, dihedral):
+@boost.python.inject_into(dihedral)
+class _():
+
   def _show_sorted_item(O, f, prefix):
     print("%s    ideal   model   delta" \
       " %        s    sigma   weight residual" % (
@@ -1263,7 +1274,8 @@ class _(boost.python.injector, dihedral):
     return [O.angle_ideal, O.angle_model, O.delta, O.periodicity,
             weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
-class _(boost.python.injector, shared_dihedral_proxy):
+@boost.python.inject_into(shared_dihedral_proxy)
+class _():
 
   def deltas(self, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -1335,7 +1347,8 @@ class _(boost.python.injector, shared_dihedral_proxy):
         result.append(ind)
     return result
 
-class _(boost.python.injector, chirality):
+@boost.python.inject_into(chirality)
+class _():
 
   def _show_sorted_item(O, f, prefix):
     print("%s  both_signs  ideal   model" \
@@ -1349,7 +1362,8 @@ class _(boost.python.injector, chirality):
     return [str(O.both_signs), O.volume_ideal, O.volume_model, O.delta,
       weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
-class _(boost.python.injector, shared_chirality_proxy):
+@boost.python.inject_into(shared_chirality_proxy)
+class _():
 
   def deltas(self, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -1404,7 +1418,8 @@ class _(boost.python.injector, shared_chirality_proxy):
         site_labels=site_labels, max_items=max_items,
         get_restraints_only=False)
 
-class _(boost.python.injector, shared_planarity_proxy):
+@boost.python.inject_into(shared_planarity_proxy)
+class _():
 
   def deltas_rms(O, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -1557,7 +1572,8 @@ class _(boost.python.injector, shared_planarity_proxy):
       print("%sSorted by %s:" % (prefix, by_value), file=f)
       print(outl[:-1], file=f)
 
-class _(boost.python.injector, parallelity):
+@boost.python.inject_into(parallelity)
+class _():
 
   def _show_sorted_item(O, f, prefix):
     assert 0
@@ -1567,7 +1583,8 @@ class _(boost.python.injector, parallelity):
   def _get_sorted_item(self):
     return [self.residual(), self.weight, self.delta]
 
-class _(boost.python.injector, shared_parallelity_proxy):
+@boost.python.inject_into(shared_parallelity_proxy)
+class _():
 
   def deltas(O, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -1640,7 +1657,8 @@ class _(boost.python.injector, shared_parallelity_proxy):
         get_restraints_only=False,
         origin_id=origin_id)
 
-class _(boost.python.injector, shared_bond_similarity_proxy):
+@boost.python.inject_into(shared_bond_similarity_proxy)
+class _():
 
   def deltas_rms(self, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -1951,7 +1969,8 @@ class pair_proxies(object):
         min_cubicle_edge=min_cubicle_edge,
         shell_asu_tables=shell_asu_tables)
 
-class _(boost.python.injector, ext.motif):
+@boost.python.inject_into(ext.motif)
+class _():
 
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
@@ -2062,7 +2081,8 @@ class _(boost.python.injector, ext.motif):
           print(prefix+"  atom = %s %.6g" % (show_string(an), w), file=out)
         print(prefix+"}", file=out)
 
-class _(boost.python.injector, ext.motif_alteration):
+@boost.python.inject_into(ext.motif_alteration)
+class _():
 
   def show(self, out=None, prefix="", previous_help=None):
     if (out is None): out = sys.stdout
@@ -2274,7 +2294,8 @@ class _(boost.python.injector, ext.motif_alteration):
       raise RuntimeError("Internal Error: unknown operand: %s" % operand)
     return help
 
-class _(boost.python.injector, ext.motif_manipulation):
+@boost.python.inject_into(ext.motif_manipulation)
+class _():
 
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout

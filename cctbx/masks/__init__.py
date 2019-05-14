@@ -47,7 +47,8 @@ class vdw_radii:
     print(" ".join("%5.2f" %self.table[symbol] for symbol in symbols), file=log)
 
 
-class _(boost.python.injector, flood_fill):
+@boost.python.inject_into(flood_fill)
+class _():
 
   def eigensystems_frac(self):
     inertia_tensors = self.inertia_tensors_frac()

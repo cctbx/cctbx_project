@@ -256,7 +256,8 @@ def tidy_show_column_data_format_keyword(input):
       "Column data format keyword not recognized: %s\n" % show_string(input)
     + "  Valid keywords are: %s" % ", ".join(show_column_data_format_keywords))
 
-class _(boost.python.injector, ext.object):
+@boost.python.inject_into(ext.object)
+class _():
 
   def space_group_info(self):
     return sgtbx.space_group_info(group=self.space_group())
@@ -851,7 +852,8 @@ def mend_non_conforming_anomalous_column_types(all_types, all_labels):
     all_types_x = overwrite_at(all_types_x, i_group_start, replacement)
   return all_types
 
-class _(boost.python.injector, ext.crystal):
+@boost.python.inject_into(ext.crystal)
+class _():
 
   def crystal_symmetry(self):
     try :
@@ -868,7 +870,8 @@ class _(boost.python.injector, ext.crystal):
       indices=self.mtz_object().extract_miller_indices(),
       anomalous_flag=anomalous_flag)
 
-class _(boost.python.injector, ext.dataset):
+@boost.python.inject_into(ext.dataset)
+class _():
 
   def column_labels(self):
     return [column.label() for column in self.columns()]
@@ -1084,7 +1087,8 @@ class column_values_and_selection_valid(slots_getstate_setstate):
   def as_tuple(O):
     return (O.values, O.selection_valid)
 
-class _(boost.python.injector, ext.column):
+@boost.python.inject_into(ext.column)
+class _():
 
   def extract_values_and_selection_valid(self, not_a_number_substitute=0):
     return column_values_and_selection_valid(
@@ -1139,7 +1143,8 @@ def miller_array_as_mtz_dataset(self,
         column_types=column_types,
         label_decorator=label_decorator)
 
-class _(boost.python.injector, ext.batch):
+@boost.python.inject_into(ext.batch)
+class _():
 
   def show(self, out=None):
     if (out is None): out = sys.stdout

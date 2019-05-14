@@ -9,7 +9,8 @@ class basis_type:
   direct = False
   reciprocal = True
 
-class _(boost.python.injector,ext.crystal_orientation):
+@boost.python.inject_into(ext.crystal_orientation)
+class _():
 
   def __getattr__(self,tag):
     if tag in 'abc':

@@ -26,7 +26,9 @@ from cctbx import uctbx
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
 
-class _(boost.python.injector, connectivity):
+@boost.python.inject_into(connectivity)
+class _():
+
   def get_blobs_boundaries_tuples(self):
     """
     get lists of minimum and maximum coordinates for each connected
@@ -285,7 +287,8 @@ class statistics(ext.statistics):
   def __init__(self, map):
     ext.statistics.__init__(self, map)
 
-class _(boost.python.injector, ext.statistics):
+@boost.python.inject_into(ext.statistics)
+class _():
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
@@ -297,7 +300,9 @@ class _(boost.python.injector, ext.statistics):
 use_space_group_symmetry = sgtbx.search_symmetry_flags(
   use_space_group_symmetry=True)
 
-class _(boost.python.injector, ext.histogram):
+@boost.python.inject_into(ext.histogram)
+class _():
+
   """
   Injector for extending cctbx.maptbx.histogram
   """

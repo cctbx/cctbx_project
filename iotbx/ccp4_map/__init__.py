@@ -99,7 +99,10 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
     alpha,beta,gamma = self.unit_cell_parameters[3:6]
     return uctbx.unit_cell((a,b,c,alpha,beta,gamma))
 
-class _(boost.python.injector, ext.map_reader, utils) : # A way to access these
+boost.python.inject(ext.map_reader, utils) # A way to access these
+@boost.python.inject_into(ext.map_reader) # A way to access these
+class _():
+
   def dummy(self):
     pass # don't do anything
 

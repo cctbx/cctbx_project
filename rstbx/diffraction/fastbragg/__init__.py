@@ -4,7 +4,8 @@ import boost.python
 ext = boost.python.import_ext("rstbx_diffraction_fastbragg_ext")
 from rstbx_diffraction_fastbragg_ext import *
 
-class _(boost.python.injector,ext.detector):
+@boost.python.inject_into(ext.detector)
+class _():
 
   def show(self):
     print("Detector with %d x %d square pixels each with %5.3f mm edge"%(

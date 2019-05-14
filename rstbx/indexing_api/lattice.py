@@ -10,7 +10,8 @@ from scitbx import matrix
 from libtbx.test_utils import approx_equal
 import boost.python
 
-class _(boost.python.injector, dps_extended):
+@boost.python.inject_into(dps_extended)
+class _():
 
   def index(self, raw_spot_input=None, reciprocal_space_vectors=None,
             panel_addresses=None):

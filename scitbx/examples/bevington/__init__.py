@@ -6,7 +6,8 @@ ext = boost.python.import_ext("scitbx_examples_bevington_ext")
 from scitbx_examples_bevington_ext import *
 
 #inject python method into non_linear_ls_eigen_wrapper
-class _(boost.python.injector, ext.non_linear_ls_eigen_wrapper):
+@boost.python.inject_into(ext.non_linear_ls_eigen_wrapper)
+class _():
 
   def get_eigen_summary(self): # ported from c++ code to encapsulate printing
     from six.moves import StringIO

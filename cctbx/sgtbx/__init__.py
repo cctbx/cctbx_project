@@ -39,7 +39,8 @@ def vec3_rat_from_str(s):
     result.append(rational.int(n, d))
   return result
 
-class _(boost.python.injector, ext.space_group):
+@boost.python.inject_into(ext.space_group)
+class _():
 
   def smx(self, with_inversion=False):
     if with_inversion: n = 2*self.n_smx()
@@ -405,7 +406,8 @@ def reference_space_group_infos():
   for number in xrange(1,230+1):
     yield space_group_info(number=number)
 
-class _(boost.python.injector, tr_vec):
+@boost.python.inject_into(tr_vec)
+class _():
 
   def as_rational(self):
     return matrix.col(rational.vector(self.num(), self.den()))
@@ -426,7 +428,8 @@ class le_page_1982_delta_details:
     else:
       self.delta = self.t.accute_angle(self.tau, deg=deg)
 
-class _(boost.python.injector, rot_mx):
+@boost.python.inject_into(rot_mx)
+class _():
 
   def as_rational(self):
     return matrix.sqr(rational.vector(self.num(), self.den()))
@@ -447,7 +450,8 @@ class _(boost.python.injector, rot_mx):
     return ((sirms * sirms).trace() / 12)**0.5
 
 
-class _(boost.python.injector, rot_mx_info):
+@boost.python.inject_into(rot_mx_info)
+class _():
 
   def basis_of_invariant(self):
     from cctbx.math_module import basis_of_mirror_plane_with_normal
@@ -469,7 +473,8 @@ class _(boost.python.injector, rot_mx_info):
     result += " |(%i, %i, %i)" % self.ev()
     return result
 
-class _(boost.python.injector, translation_part_info):
+@boost.python.inject_into(translation_part_info)
+class _():
 
   def __str__(self):
     result = "+(%s) @(%s) t_l=(%s)" % (self.intrinsic_part().mod_positive(),
@@ -478,7 +483,8 @@ class _(boost.python.injector, translation_part_info):
     return result
 
 
-class _(boost.python.injector, ext.rt_mx):
+@boost.python.inject_into(ext.rt_mx)
+class _():
 
   def __getinitargs__(self):
     return (flex.int(self.as_int_array() + (self.r().den(), self.t().den())),)
@@ -503,7 +509,8 @@ class _(boost.python.injector, ext.rt_mx):
     t_info = translation_part_info(self)
     print("%s %s" % (r_info, t_info), file=out)
 
-class _(boost.python.injector, ext.search_symmetry_flags):
+@boost.python.inject_into(ext.search_symmetry_flags)
+class _():
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
@@ -609,7 +616,8 @@ def special_op_simplifier(special_op):
         [i_row], [m], t[j_row] - m*t[i_row])
   return special_op_simplified(terms=terms)
 
-class _(boost.python.injector, ext.site_symmetry_ops):
+@boost.python.inject_into(ext.site_symmetry_ops)
+class _():
 
   def __getinitargs__(self):
     return (self.multiplicity(), self.special_op(), self.matrices())
@@ -622,7 +630,8 @@ class _(boost.python.injector, ext.site_symmetry_ops):
     return fvar_encoding.site_constraints_site_symmetry_ops(
       O=self, fvars=fvars, site=site, p_tolerance=p_tolerance)
 
-class _(boost.python.injector, ext.site_symmetry_table):
+@boost.python.inject_into(ext.site_symmetry_table)
+class _():
 
   def __getinitargs__(self):
     return (self.indices(), self.table(), self.special_position_indices())
@@ -728,12 +737,14 @@ class _(boost.python.injector, ext.site_symmetry_table):
       for _ in g: result.append(_)
     return result
 
-class _(boost.python.injector, wyckoff_position):
+@boost.python.inject_into(wyckoff_position)
+class _():
 
   def special_op_simplified(self):
     return special_op_simplifier(special_op=self.special_op())
 
-class _(boost.python.injector, wyckoff_table):
+@boost.python.inject_into(wyckoff_table)
+class _():
 
   def random_site_symmetry(self,
         special_position_settings,
@@ -753,7 +764,8 @@ class _(boost.python.injector, wyckoff_table):
         assert site_symmetry.multiplicity() == position.multiplicity()
         return site_symmetry
 
-class _(boost.python.injector, structure_seminvariants):
+@boost.python.inject_into(structure_seminvariants)
+class _():
 
   def __str__(self):
     result = []
