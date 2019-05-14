@@ -684,6 +684,3 @@ philstr = """
   }
 
 """ %display.philstr
-
-
-
