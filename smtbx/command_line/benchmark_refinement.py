@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import itertools
 from smtbx.development import random_xray_structure
 import smtbx.utils

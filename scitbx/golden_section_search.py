@@ -1,5 +1,4 @@
-from __future__ import absolute_import, division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import sys
 
 def print_progress_dots(out,ii,n_monitor=10,width=80,offset=5, is_final=False):

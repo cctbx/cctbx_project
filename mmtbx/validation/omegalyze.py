@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import residue, validation, atom
 import os.path
 from libtbx import slots_getstate_setstate

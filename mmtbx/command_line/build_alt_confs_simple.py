@@ -1,7 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.simple_build_alt_confs
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.str_utils import make_header
 from libtbx.utils import multi_out
 import os.path

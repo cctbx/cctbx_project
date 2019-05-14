@@ -3,8 +3,7 @@
 # LIBTBX_SET_DISPATCHER_NAME dev.cxi.merge
 #
 # $Id$
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from xfel.command_line.cxi_merge import master_phil
 from libtbx.utils import Usage, multi_out

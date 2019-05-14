@@ -1,11 +1,10 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.viewstats
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 9/19/2014
 Description : View convergence and other stats for post-refinement.
 '''
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import matplotlib.pyplot as plt
 import sys
 import numpy as np

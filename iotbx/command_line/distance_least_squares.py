@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 def run(args, distance_cutoff=3.5):
   from iotbx.option_parser import option_parser
   command_line = (option_parser(

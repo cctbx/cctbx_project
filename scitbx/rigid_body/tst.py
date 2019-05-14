@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import scitbx.rigid_body.essence
 from scitbx.rigid_body.essence import tst_tardy
 from scitbx.graph import test_cases_tardy_pdb

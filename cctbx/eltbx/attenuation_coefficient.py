@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex # import dependency
 import boost.python
 ext = boost.python.import_ext("cctbx_eltbx_attenuation_coefficient_ext")

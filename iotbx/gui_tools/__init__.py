@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # This module is used by the PHENIX GUI to manage file objects and associated
 # phil parameters.

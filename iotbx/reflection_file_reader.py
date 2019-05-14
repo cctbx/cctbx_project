@@ -51,8 +51,7 @@ Other formats (CNS, unmerged Scalepack) may have incomplete or missing crystal
 symmetry.  MTZ, XDS, and (usually) CIF files will be more complete.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx import mtz
 from iotbx.scalepack import merge as scalepack_merge
 from iotbx.scalepack import no_merge_original_index as scalepack_no_merge

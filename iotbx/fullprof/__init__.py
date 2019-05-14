@@ -1,6 +1,4 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx import wavelengths
 
 """ The purpose of this module is to interface cctbx with the FullProf progamm

@@ -3,7 +3,7 @@
 
 """Create the CSPAD image dict and put it in the event
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx

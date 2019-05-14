@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 #
 # Command to run this example:
 #   iotbx.python pdbx_mmcif_tutorial.py

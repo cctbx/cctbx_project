@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 def h0_scaling(sk, yk):
   "Nocedal & Wright (1999) Eq. 8.20; same as Eq. 9.6"

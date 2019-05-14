@@ -5,8 +5,7 @@ density around their ligand.  Handy for making figures, but prone to abuse,
 which is why it's not in the command_line directory.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import sys
 
 def flatten_map(map, xray_structure, selection):

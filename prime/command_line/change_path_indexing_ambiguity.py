@@ -1,11 +1,10 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.change_path_indexing_ambiguity
 """
 Author      : Uervirojnangkoorn, M.
 Created     : 8/20/2015
 Description : read indexing_ambiguity pickle and overwrite oldpath with new path
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import sys
 from six.moves import cPickle as pickle
 

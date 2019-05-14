@@ -6,8 +6,7 @@ and refinement of such models, see mmtbx.building.alternate_conformations or
 mmtbx.refinement.ensemble_refinement.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import math
 
 def set_ensemble_b_factors_to_xyz_displacement(pdb_hierarchy,

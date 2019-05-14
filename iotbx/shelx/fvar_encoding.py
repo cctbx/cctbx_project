@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 def site_constraints_special_op_simplified(O, fvars, site, p_tolerance):
   assert len(fvars) > 0
   new_fvars = []

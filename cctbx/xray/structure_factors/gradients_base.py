@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.xray.structure_factors.manager import managed_calculation_base
 
 class gradients_base(managed_calculation_base):

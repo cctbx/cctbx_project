@@ -1,11 +1,10 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.frame_extractor
 """
 Author      : Uervirojnangkoorn, M.
 Desc        : Taking the original code from xfel/command_line/frame_extractor.py
               and adding by scan so that each scan is output as a single pickle file.
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from dials.array_family import flex
 from dials.util.options import Importer, flatten_reflections, flatten_experiments, OptionParser

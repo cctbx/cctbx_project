@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from scitbx.matrix import rotate_point_around_axis

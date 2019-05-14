@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 #
 # Required input files:
 #   http://journals.iucr.org/c/issues/2001/05/00/vj1132/vj1132Isup2.hkl

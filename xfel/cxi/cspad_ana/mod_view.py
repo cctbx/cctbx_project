@@ -12,7 +12,7 @@ XXX Known issues, wishlist:
   * Coordinate and resolution tool-tips in sub-pixel zoom.  Can we
     choose the colour automagically?
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 __version__ = "$Revision$"
 

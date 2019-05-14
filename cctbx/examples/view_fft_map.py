@@ -11,8 +11,7 @@ launch PyMOL from the command line. Inside PyMOL enter:
 run view_fft_map.py
 show_fft()
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 print("Loading module:", __name__)
 

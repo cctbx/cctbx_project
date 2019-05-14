@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 # Convert coordinates from/to Fractional or Orthogonal.
 
 from cctbx import uctbx

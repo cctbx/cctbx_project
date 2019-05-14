@@ -2,8 +2,7 @@
 Module to automatically attempt to load "low" pH range restraints from
 restraints library - useful for various protonation states
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import time
 
 from mmtbx.monomer_library import server

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 # CNS 1.1 spacegroup.lib symbols
 sgtbx_lookup_symbol_as_cns_symbol = {
 "P1": "P1",

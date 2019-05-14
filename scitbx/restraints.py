@@ -3,7 +3,7 @@
 Handling for normalized target and gradients.
 """
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from scitbx.stdlib import math
 from libtbx.utils import Sorry
 

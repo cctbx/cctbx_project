@@ -7,7 +7,7 @@ methods (phenix.refine, phenix.model_vs_data, phenix.merging_statistics, etc.)
 to extract statistics for display.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate
 from libtbx.utils import Sorry
 from libtbx import str_utils

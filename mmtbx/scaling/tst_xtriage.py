@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.scaling import data_statistics as ds
 from mmtbx.scaling import xtriage
 from mmtbx.command_line import fmodel

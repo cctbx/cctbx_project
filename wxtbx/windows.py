@@ -3,7 +3,7 @@
 Miscellaneous custom wxPython windowing objects.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import wx
 
 class ChoiceBook(wx.Panel):

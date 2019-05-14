@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import wxtbx.plots
 from wxtbx.phil_controls import strctrl, floatctrl
 from libtbx.utils import Sorry

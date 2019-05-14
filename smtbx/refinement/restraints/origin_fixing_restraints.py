@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from cctbx.eltbx import tiny_pse
 from smtbx.refinement.restraints import origin_fixing as base

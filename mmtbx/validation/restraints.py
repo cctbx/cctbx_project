@@ -5,8 +5,7 @@ By default this will flag all restrained atoms deviating by more than 4 sigma
 from the target value.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import atoms, validation, get_atoms_info
 from libtbx.str_utils import make_sub_header
 from libtbx import slots_getstate_setstate

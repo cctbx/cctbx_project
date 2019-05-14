@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.cif import cod_tools
 import iotbx.cif
 from iotbx.cif.builders import CifBuilderError

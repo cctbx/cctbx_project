@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 inner_phil_str = """\
   scanbox_windows = 101 51 51
     #.type = ints(size_min=1, size_max=3, value_min=10)

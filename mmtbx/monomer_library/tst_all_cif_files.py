@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import server
 from libtbx import dict_with_default_0
 import string

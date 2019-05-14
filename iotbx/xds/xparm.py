@@ -6,8 +6,7 @@
 #
 #   Class to read all the data from a (G)XPARM.XDS file
 #
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import sys
 from libtbx import adopt_init_args
 

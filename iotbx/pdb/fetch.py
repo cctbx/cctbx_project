@@ -22,8 +22,7 @@
 # https://pdb-redo.eu/db/1aba/1aba_final.pdb
 # https://pdb-redo.eu/db/1aba/1aba_final.cif
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, null_out
 from libtbx import smart_open
 from libtbx import Auto

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb import common_residue_names_get_class
 import sys
 from scitbx.array_family import flex

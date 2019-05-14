@@ -1,7 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.analyze_static_disorder
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.str_utils import make_header, make_sub_header
 from libtbx import easy_pickle
 import os.path

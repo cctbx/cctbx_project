@@ -3,8 +3,7 @@
 # TODO sort waters by distance from macromolecule
 # FIXME special treatment required for carbohydrates?
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, Usage, null_out
 from libtbx import adopt_init_args
 from libtbx import runtime_utils

@@ -2,7 +2,7 @@
 PDB web service API
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from iotbx.pdb.download import openurl, NotFound, identity_encoding
 

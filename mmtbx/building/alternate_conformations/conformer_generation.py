@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.building import generate_sidechain_clusters
 from libtbx.str_utils import format_value
 from libtbx.math_utils import ifloor, iceil

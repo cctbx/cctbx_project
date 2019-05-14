@@ -1,8 +1,7 @@
 ###
 # XXX Severe duplicaiton. Remove equivalent code from mmtbx.utils.
 ###
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from libtbx import adopt_init_args
 from cctbx.array_family import flex

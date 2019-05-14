@@ -9,8 +9,7 @@ origin = N-dim indices of lower-left corner of box
 Motivation for focus/last distinction:
   padding required by real-to-complex FFT algorithms
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from scitbx.array_family.flex import grid
 

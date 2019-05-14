@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.omegalyze
 # LIBTBX_SET_DISPATCHER_NAME molprobity.omegalyze
 ###

@@ -9,8 +9,7 @@
 # 2577-2637 (1983).
 #
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import libtbx.phil
 from libtbx.utils import null_out
 from libtbx import group_args, adopt_init_args

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import time
 from mmtbx.building.minimize_chain import run,ccp4_map

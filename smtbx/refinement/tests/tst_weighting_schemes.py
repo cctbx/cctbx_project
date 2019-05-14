@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from libtbx.test_utils import show_diff
 import libtbx.utils

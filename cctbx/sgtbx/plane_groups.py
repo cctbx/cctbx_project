@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 hermann_mauguin_hall_table = (
   ('p_1',     'P 1'),
   ('p_2',     'P 2'),

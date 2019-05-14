@@ -1,5 +1,4 @@
-from __future__ import division, absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import scitbx.math
 from scitbx.math import r3_rotation_vector_to_vector as vector_to_vector
 from scitbx.math import r3_rotation_vector_to_001 as vector_to_001

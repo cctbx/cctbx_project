@@ -1,8 +1,7 @@
 
 # XXX depends on internet connectivity, so not run as part of standard tests
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 def exercise():
   from mmtbx.wwpdb import rcsb_web_services

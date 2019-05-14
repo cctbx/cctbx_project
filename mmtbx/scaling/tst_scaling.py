@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 ## Peter Zwart July 5, 2005
 from cctbx.array_family import flex
 from cctbx import crystal

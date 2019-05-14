@@ -4,7 +4,7 @@
 #
 # $Id: cxi_merge.py 22906 2015-09-15 22:32:08Z phyy-nx $
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.phil
 import sys
 

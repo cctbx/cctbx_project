@@ -11,8 +11,7 @@ Reference:
   20499387
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.ringer import * # this is deliberate!
 import libtbx.phil
 from libtbx import easy_pickle

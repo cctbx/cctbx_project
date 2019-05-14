@@ -3,7 +3,7 @@
 Various tools and controls for displaying tabular data.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import wxtbx.plots
 import wx
 import sys

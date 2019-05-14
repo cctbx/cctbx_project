@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME prime.explore_twin_operators
 
 from prime.index_ambiguity.mod_indexing_ambiguity import indamb_handler

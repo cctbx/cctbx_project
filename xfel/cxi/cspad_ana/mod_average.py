@@ -8,7 +8,7 @@ standard deviation from the images in an XTC stream.  On successful
 completion, the mean and standard deviation images are written to disk
 as pickled dictionaries.
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 __version__ = "$Revision$"
 

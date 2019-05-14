@@ -1,11 +1,9 @@
-from __future__ import division
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 12/1/2014
 Description : Optimizer main module.
 '''
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 import numpy as np
 import math, random
 from cctbx.array_family import flex

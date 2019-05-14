@@ -10,8 +10,7 @@ wraps much of the functionality in :py:mod:`mmtbx.utils` while hiding the
 messy details.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.scaling import twin_analyses
 from cctbx import miller
 from cctbx import crystal

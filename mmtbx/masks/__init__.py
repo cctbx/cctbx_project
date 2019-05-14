@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import boost.python
 from cctbx.array_family import flex
 ext = boost.python.import_ext("mmtbx_masks_ext")

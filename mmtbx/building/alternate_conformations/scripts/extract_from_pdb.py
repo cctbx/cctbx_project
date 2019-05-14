@@ -2,8 +2,7 @@
 # return a list of all PDB entries with at least one alternate conformation
 # in a protein chain.
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.easy_mp import pool_map
 import os
 

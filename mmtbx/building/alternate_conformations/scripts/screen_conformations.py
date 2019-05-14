@@ -1,7 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.screen_conformations
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from libtbx.utils import Sorry
 from libtbx import easy_run

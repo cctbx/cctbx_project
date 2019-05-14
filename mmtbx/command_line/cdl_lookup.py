@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # XXX most of this code is unused when run from the command line, but the
 # PHENIX GUI includes a simple frontend that uses the phil interface.

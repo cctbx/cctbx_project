@@ -6,7 +6,7 @@
 #
 #   Class to read the X/Y-CORRECTIONS.CBF files used in XDS
 #
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 class reader:
   """A class to read the X/Y-CORRECTIONS.CBF files used in XDS"""

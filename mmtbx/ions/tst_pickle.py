@@ -1,7 +1,6 @@
  # -*- coding: utf-8; py-indent-offset: 2 -*-
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 from pickle import loads, dumps

@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb import common_residue_names_get_class
 from libtbx import group_args
 from libtbx.str_utils import make_sub_header

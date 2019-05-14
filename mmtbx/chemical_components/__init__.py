@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.chemical_components import cif_parser
 from libtbx.utils import Sorry
 import libtbx.load_env

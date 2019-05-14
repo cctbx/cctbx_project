@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from scitbx.rigid_body.proto import tst_molecules
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex

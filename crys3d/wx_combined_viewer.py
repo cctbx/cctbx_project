@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from crys3d import wx_tools
 from crys3d.wx_selection_editor import selection_editor_mixin

@@ -1,4 +1,3 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME xpp.runs_sentinel
 
 """
@@ -9,7 +8,7 @@ new runs at 0.1 Hz.
 Example usage:
 xpp.runs_sentinel db.name=xppi6115 db.user=xppi6115 experiment=xppi6115 experiment_tag=debug web.user=<username> web.password=<password>
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import iotbx.phil
 from libtbx.utils import Usage, Sorry

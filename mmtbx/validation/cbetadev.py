@@ -12,8 +12,7 @@ and Cbeta deviation.  Proteins. 2003 Feb 15;50(3):437-50.
 http://www.ncbi.nlm.nih.gov/pubmed/12557186
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import residue, validation
 from scitbx.matrix import col, dihedral_angle, rotate_point_around_axis
 import sys

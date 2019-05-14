@@ -12,8 +12,7 @@
 #
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_statistics
 #
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from libtbx.phil import parse
 import libtbx.load_env

@@ -6,8 +6,7 @@
 #
 #   Class to read the BLANK.CBF files used in XDS
 #
-from __future__ import division
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 
 from iotbx.xds import xds_cbf
 

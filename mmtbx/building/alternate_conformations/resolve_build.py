@@ -1,8 +1,7 @@
 
 # XXX requires solve_resolve (inline import)
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx import building
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out

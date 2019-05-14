@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 
 class reflection_table_editor(worker):

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 class misc_handler(object):
   def calculate_SE(self, results, iparams):

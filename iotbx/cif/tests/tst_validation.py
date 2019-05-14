@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx import cif
 from iotbx.cif import validation
 from iotbx.cif.validation import smart_load_dictionary

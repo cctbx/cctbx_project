@@ -1,5 +1,3 @@
-from __future__ import division
-
 """
 Generic file input module, used in Phenix GUI and elsewhere.  This trades some
 loss of efficiency for a simplified API for loading any file type more or less
@@ -22,7 +20,7 @@ Examples
 >>> mtz_in = any_file("data.mtz", force_type="hkl")
 >>> miller_arrays = mtz_in.file_server.miller_arrays
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # MTZ file handling is kludgy, but unfortunately there are circumstances
 # where only an MTZ file will do, so it requires some extra code to work

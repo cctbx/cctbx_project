@@ -4,8 +4,7 @@ Utilities for re-refining (or otherwise working with) structures downloaded
 directly from the PDB.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 from libtbx.utils import null_out, Sorry
 import os

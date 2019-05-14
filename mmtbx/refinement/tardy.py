@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.dynamics import \
   kinetic_energy_as_temperature, \
   temperature_as_kinetic_energy

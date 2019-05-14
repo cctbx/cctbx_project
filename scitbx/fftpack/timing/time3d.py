@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 path_random_picks_pickle = (
   "/net/anaconda/scratch1/rwgk/pdbtools/minidb/random_picks.pickle")
 

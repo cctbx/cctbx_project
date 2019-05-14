@@ -8,8 +8,7 @@ crystallography. Proc Natl Acad Sci U S A. 2011 Sep 27;108(39):16247-52.
 <http://www.ncbi.nlm.nih.gov/pubmed/21918110>`_
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import sys
 
 def find_crystal_contacts(xray_structure,

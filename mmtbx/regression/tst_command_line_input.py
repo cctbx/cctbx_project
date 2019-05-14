@@ -1,8 +1,7 @@
 
 # TODO make this much more comprehensive
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.regression import model_1yjp
 import mmtbx.command_line
 from iotbx.scalepack import no_merge_original_index

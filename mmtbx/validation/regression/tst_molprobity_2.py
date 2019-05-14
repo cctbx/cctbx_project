@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.command_line import molprobity
 import mmtbx.model
 import mmtbx.validation.molprobity

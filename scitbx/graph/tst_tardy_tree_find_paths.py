@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from scitbx.graph.tardy_tree import find_paths, construct
 from scitbx.graph import rigidity
 from scitbx.graph import utils

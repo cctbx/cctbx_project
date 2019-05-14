@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation.clashscore import clashscore
 import libtbx.load_env
 import iotbx.pdb

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import mmtbx.chemical_components
 from mmtbx.chemical_components import get_atom_names, get_hydrogen_names
 from mmtbx.chemical_components import get_bond_pairs

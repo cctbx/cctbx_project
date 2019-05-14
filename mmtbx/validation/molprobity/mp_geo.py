@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import os
 from mmtbx.validation import restraints
 from mmtbx.monomer_library import server, pdb_interpretation

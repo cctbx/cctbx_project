@@ -4,8 +4,7 @@ Created     : 7/13/2014
 Detecting outliers with Wilson statistics (Read, 1999)
 use the normalized intensity (E) limits (acentric 3.72, centric 4.89)
 '''
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from cctbx import statistics
 

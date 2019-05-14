@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx import group_args, adopt_init_args
 import sys
 import mmtbx.refinement.real_space

@@ -12,8 +12,7 @@ See also: RBDA:
   ISBN-10: 0387743146
 """
 
-from __future__ import division
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 from scitbx.rigid_body.essence.spatial_lib import \
   matrix, cb_as_spatial_transform, crm, crf, kinetic_energy
 

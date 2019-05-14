@@ -2,8 +2,7 @@
 ## Peter Zwart Mai 10, 2005
 ## refactored by Gabor & Nat 20111104
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx import scaling
 import math
 import sys

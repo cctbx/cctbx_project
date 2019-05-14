@@ -6,8 +6,7 @@ solving a series of ligand-bound structures, partly to save time, and partly
 to avoid changing the frame of reference when running molecular replacement.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.str_utils import make_sub_header
 from libtbx import slots_getstate_setstate
 from libtbx.utils import null_out, Sorry

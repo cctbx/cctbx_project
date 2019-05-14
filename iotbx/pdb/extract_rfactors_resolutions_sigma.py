@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import sys
 from libtbx.str_utils import format_value
 from libtbx import smart_open

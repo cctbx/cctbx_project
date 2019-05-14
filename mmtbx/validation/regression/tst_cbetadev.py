@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps

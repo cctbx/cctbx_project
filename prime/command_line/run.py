@@ -1,7 +1,6 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.run
 """ handle prime run """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 __author__ = 'Monarin Uervirojnangkoorn, monarin@gmail.com'
 
 from subprocess import call

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb.tst_pdb import dump_pdb
 from iotbx.pymol import pml_stick, pml_write
 from cctbx import geometry_restraints

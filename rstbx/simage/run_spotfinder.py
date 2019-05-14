@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 def process(work_params, pixels, show_spots=True):
   from spotfinder import core_toolbox
   import time

@@ -3,8 +3,7 @@
 Analysis of model properties, independent of data.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import atom, residue, validation, dummy_validation
 from libtbx import slots_getstate_setstate
 from libtbx.test_utils import approx_equal

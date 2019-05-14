@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from scitbx.lstbx import normal_eqns # import dependency
 import boost.python
 ext = boost.python.import_ext("scitbx_examples_bevington_ext")

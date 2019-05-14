@@ -4,8 +4,7 @@
 # simple frontend to mmtbx.find_peaks, primarily intended for use in quickly
 # analyzing structures in the PDB (and storing results)
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx import utils
 from scitbx.array_family import flex
 from libtbx.str_utils import make_header, format_value

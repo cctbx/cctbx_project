@@ -1,4 +1,3 @@
-from __future__ import division
 """Specialized version of xes_histograms.
 1) no support for background region of interest
 2) photon_counting method only; uses integrated area under 1-photon Gaussian
@@ -9,7 +8,7 @@ from __future__ import division
 7) Fixed constraints for ratio of 1-photon gain: 0-photon sigma
 8) 60-fold speed improvement over xes_histograms.py; takes 7 seconds.
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 import sys

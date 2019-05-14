@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.refinement.occupancies import occupancy_selections
 from mmtbx.command_line import fmodel

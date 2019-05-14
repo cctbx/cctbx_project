@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.lbfgs
 import mmtbx.refinement.minimization_ncs_constraints

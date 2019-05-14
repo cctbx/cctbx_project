@@ -1,10 +1,8 @@
-from __future__ import division
-
 """
 Utility for matching a dials-format non-image pickle file to an experiment list and producing a cctbx-format dictionary
 from the pair.
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 from dials.util.options import Importer, flatten_reflections, flatten_experiments

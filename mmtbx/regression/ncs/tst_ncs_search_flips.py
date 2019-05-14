@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import iotbx.ncs
 import iotbx.pdb
 import mmtbx.ncs.ncs_utils as nu

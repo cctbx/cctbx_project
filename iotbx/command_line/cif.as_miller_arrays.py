@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import iotbx.cif
 from libtbx import easy_pickle, smart_open
 from libtbx.str_utils import show_string

@@ -1,7 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.maximum_entropy_map
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import mmtbx.utils
 import iotbx.phil
 from iotbx import reflection_file_utils

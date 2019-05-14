@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 from libtbx.str_utils import make_header
 from libtbx import Auto, adopt_init_args

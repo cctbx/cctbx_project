@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.refinement import tst_tardy_pdb
 from gltbx import wx_viewer
 from gltbx import gl_managed

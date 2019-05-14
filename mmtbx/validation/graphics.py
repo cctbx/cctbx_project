@@ -3,7 +3,7 @@
 Base classes for visualization of MolProbity analysis using matplotlib.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate
 import itertools
 

@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.command_line import merging_statistics
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected

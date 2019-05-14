@@ -1,6 +1,4 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 from scitbx.rigid_body.essence import featherstone, body_lib, joint_lib, spatial_lib
 
 matrix = featherstone.matrix

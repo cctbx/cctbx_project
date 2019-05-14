@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.scaling import absolute_scaling
 from mmtbx import scaling
 from iotbx import data_plots

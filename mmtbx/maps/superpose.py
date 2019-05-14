@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import mmtbx.maps.utils
 import iotbx.pdb
 from iotbx import crystal_symmetry_from_any

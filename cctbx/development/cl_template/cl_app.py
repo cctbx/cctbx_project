@@ -10,8 +10,7 @@
 # This file will end up somewhere like libtbx/command_line/base_cl_app.py
 #
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import sys
 import iotbx.phil

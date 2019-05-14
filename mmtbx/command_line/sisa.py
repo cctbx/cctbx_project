@@ -1,11 +1,10 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.sisa
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 12/1/2014
 Description : Commands linked to sisa libraries.
 '''
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from libtbx.easy_mp import pool_map
 import math

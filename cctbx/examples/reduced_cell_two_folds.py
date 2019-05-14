@@ -3,8 +3,7 @@ Enumeration of the 81 2-fold symmetry operations possible for reduced cells.
 Show the matrix elements and the axis directions in direct space and
 reciprocal space.
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from cctbx import sgtbx
 from cctbx.array_family import flex

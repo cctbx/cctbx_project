@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb.atom_name_interpretation import interpreters
 from cStringIO import StringIO
 from libtbx.test_utils import show_diff

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from mmtbx.building.loop_closure import utils
 from mmtbx.validation import ramalyze

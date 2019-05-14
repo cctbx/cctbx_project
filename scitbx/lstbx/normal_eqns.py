@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 import boost.python
 boost.python.import_ext("scitbx_lstbx_normal_equations_ext")

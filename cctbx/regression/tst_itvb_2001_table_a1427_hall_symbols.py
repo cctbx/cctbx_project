@@ -1,8 +1,7 @@
 """Check if sgtbx Hermann-Mauguin vs. Hall symbol table is fully
    consistent with ITVB 2001.
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
 import os
 

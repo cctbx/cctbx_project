@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import scitbx.math as sm
 import math
 from libtbx.test_utils import approx_equal

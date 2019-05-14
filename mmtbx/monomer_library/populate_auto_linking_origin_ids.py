@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from mmtbx.monomer_library.server import mon_lib_list_cif, geostd_list_cif
 from mmtbx.monomer_library.server import merge_and_overwrite_cifs

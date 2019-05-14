@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import cif_types
 import iotbx.cif
 from iotbx.pdb import residue_name_plus_atom_names_interpreter

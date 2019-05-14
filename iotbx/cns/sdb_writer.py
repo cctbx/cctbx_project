@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.cns import space_group_symbols
 from cctbx import adptbx
 from cStringIO import StringIO

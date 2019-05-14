@@ -6,8 +6,7 @@ structures.
 
 # derived from BackrubFinder2.java by Ian Davis
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate
 import math
 import sys

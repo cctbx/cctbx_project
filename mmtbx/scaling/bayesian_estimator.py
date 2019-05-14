@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 #
 # bayesian_estimator.py
 # tct 053008, updated 2014-10-29

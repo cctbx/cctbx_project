@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from iotbx.pdb.mmcif import cif_input
 import inspect

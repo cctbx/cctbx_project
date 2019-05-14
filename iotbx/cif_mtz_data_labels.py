@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 '''
 This file contains the data labels used in CIF and MTZ formats and a mapping
 between the two formats

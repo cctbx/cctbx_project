@@ -6,8 +6,7 @@ for the entire dataset and for resolution shells.  This serves as an example
 both for processing MTZ files, and for cctbx.miller functionality.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.reflection_file_utils import get_r_free_flags_scores
 from iotbx.file_reader import any_file
 import sys

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # regularize_from_pdb.py
 # a tool to replace segments of a structure with similar segment with good

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 expected_output_test1  = """Left cosets of :
   subgroup  H: P 3
   and group G: P 6 2 2

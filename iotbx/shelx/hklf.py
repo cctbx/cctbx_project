@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import boost.python
 iotbx_shelx_ext = boost.python.import_ext("iotbx_shelx_ext")
 import sys

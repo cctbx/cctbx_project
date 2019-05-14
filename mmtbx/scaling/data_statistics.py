@@ -5,7 +5,7 @@ signal-to-noise ratio, completeness, ice rings and other suspicious
 outliers, anomalous measurability, and Wilson plot.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.scaling import absolute_scaling
 from mmtbx import scaling
 from iotbx import data_plots

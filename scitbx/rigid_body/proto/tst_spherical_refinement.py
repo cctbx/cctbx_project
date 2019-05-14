@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto import test_utils
 from scitbx.rigid_body.proto.utils import center_of_mass_from_sites

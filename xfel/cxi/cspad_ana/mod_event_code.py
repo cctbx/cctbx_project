@@ -4,7 +4,7 @@
 """The mod_event_code module creates an "alist" for cxi.merge based on what events integrated
 (using DIALS or LABELIT backends), given a set of psana evr event codes.
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import logging, os
 

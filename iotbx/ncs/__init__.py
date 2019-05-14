@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb.atom_selection import selection_string_from_selection
 from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search

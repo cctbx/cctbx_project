@@ -3,8 +3,7 @@
 Regression tests for mmtbx.scaling.absences
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.scaling.absences import *
 from cctbx.development import random_structure
 from cctbx import sgtbx

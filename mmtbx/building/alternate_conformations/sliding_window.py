@@ -1,8 +1,7 @@
 
 # TODO handle existing alternate conformations more sensibly
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.building import alternate_conformations as alt_confs
 import mmtbx.building
 from libtbx import adopt_init_args, Auto, slots_getstate_setstate

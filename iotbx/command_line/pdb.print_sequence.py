@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import os, sys
 
 from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as \

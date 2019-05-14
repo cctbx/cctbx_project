@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # TODO:
 #  - prompt user for missing symmetry
@@ -167,7 +167,6 @@ myHKLview.ShowMissing(True)
 
 
 """
-from __future__ import print_function
 
 
 

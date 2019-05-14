@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 from scitbx.math import ext
 
 normal_distribution = ext.normal_distribution

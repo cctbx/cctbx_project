@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.cspad_pinwheel
 #
 # Removes all but the central sensors from a CSPAD CBF

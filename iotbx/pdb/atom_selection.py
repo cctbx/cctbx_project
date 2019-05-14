@@ -4,7 +4,7 @@ Tools for creating atom selection arrays (flex.bool or flex.size_t) based on
 a simple keyword syntax and boolean operators.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import simple_parser
 from iotbx import wildcard
 from cctbx import crystal

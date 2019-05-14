@@ -4,8 +4,7 @@
 # anneal Phe113 from 3k0n into partial omit map - if the protocol is working
 # properly, the sidechain should usually pop into the secondary conformation.
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.building import disorder
 from mmtbx import building
 import libtbx.load_env

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import clashscore
 from iotbx import pdb
 from libtbx.test_utils import approx_equal

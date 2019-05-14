@@ -8,8 +8,7 @@ Sophia-Antipolis by the TROPICS team.
 
 http://www-sop.inria.fr/tropics/tapenade.html
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 def run(args):
   file_names = []

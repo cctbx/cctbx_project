@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 def exercise_cubicles_max_memory():
   import scitbx.cubicle_neighbors as cn
   assert cn.cubicles_max_memory_allocation_get() != 0

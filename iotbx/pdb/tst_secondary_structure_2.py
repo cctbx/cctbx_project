@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import sys
 from iotbx.pdb.tst_secondary_structure import pdb_1ywf_sample_strings, \

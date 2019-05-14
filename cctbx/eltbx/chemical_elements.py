@@ -2,7 +2,7 @@
 This module can be used to retrieve a list or set of all chemical symbols on the
 periodic table, from hydrogen up to roentgenium.
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.stl.set # import dependency
 
 import boost.python

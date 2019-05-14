@@ -12,8 +12,7 @@ automatically.  This is superficially similar to the setup for phenix.refine
 (single-dataset only) and more general-purpose.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx import uctbx
 from iotbx import file_reader
 import iotbx.pdb

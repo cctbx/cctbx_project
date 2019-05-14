@@ -1,8 +1,7 @@
 
 # XXX has phenix dependency (imports inline)
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.building.alternate_conformations import single_residue
 from mmtbx.building.alternate_conformations import sliding_window
 from mmtbx.building import alternate_conformations

@@ -18,7 +18,7 @@ The class implements Leveberg-Marquardt algorithms to scale the refined paramete
 using the lamda updates. The unit-cell parameters are refined with restraints based
 on the 7 crystal systems (6 conditions).
 '''
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math
 from cctbx.array_family import flex
 from scitbx.matrix import sqr

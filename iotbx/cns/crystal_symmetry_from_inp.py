@@ -16,7 +16,7 @@ crystal.symmetry(
   unit_cell=(76.4, 76.4, 180.94, 90, 90, 120),
   space_group_symbol="P3(2)21")
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from cctbx import crystal
 

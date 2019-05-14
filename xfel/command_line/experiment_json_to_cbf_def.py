@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.experiment_json_to_cbf_def
 
 # Script to convert the output from a joint refinement using dials.refine to a CSPAD

@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 from iotbx.cli_parser import run_program
 from mmtbx.programs import emringer
@@ -30,7 +30,7 @@ References:
 
 # Any software that wants to use the pkl output of this tool
 # should import ringer_residue and ringer_chi from it.
-#from __future__ import division
+#from __future__ import absolute_import, division, print_function
 import libtbx.phil
 from libtbx import easy_pickle
 from libtbx.str_utils import make_header

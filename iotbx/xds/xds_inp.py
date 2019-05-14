@@ -6,7 +6,7 @@
 #
 #   Class to read all the data from a XDS.INP file
 #
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 class reader:
   """A class to read the XDS.INP file used in XDS"""

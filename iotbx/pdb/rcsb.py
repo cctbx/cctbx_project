@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from iotbx.pdb.web_service_api import FTPService
 from iotbx.pdb.download import openurl, urlopener, gzip_encoding

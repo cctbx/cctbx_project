@@ -21,8 +21,7 @@
 #
 #
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # LIBTBX_SET_DISPATCHER_NAME phenix.cl_app_example
 

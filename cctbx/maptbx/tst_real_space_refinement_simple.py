@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.maptbx import real_space_refinement_simple
 import cctbx.geometry_restraints.manager
 from cctbx import xray

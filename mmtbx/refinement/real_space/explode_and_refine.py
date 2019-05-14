@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from  mmtbx.refinement import geometry_minimization
 import mmtbx.refinement.real_space.individual_sites
 from cctbx import maptbx

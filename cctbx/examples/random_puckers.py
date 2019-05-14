@@ -4,8 +4,7 @@ RNA sugar ring, performing geometry minimization starting with
 random coordinates, how many configurations are found?
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import cctbx.geometry_restraints.manager
 import cctbx.geometry_restraints.lbfgs
 from cctbx.array_family import flex

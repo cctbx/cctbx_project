@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # (jEdit options) :folding=explicit:collapseFolds=1:
 #The cablam_math module provides functions to calculate the backbone measures
 #  used by the cablam system.

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import boost.python
 try:
     boost.python.import_ext("determine_unit_cell_ext")

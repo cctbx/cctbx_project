@@ -1,10 +1,9 @@
-from __future__ import division
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 12/1/2014
 Description : Handling mtz file.
 '''
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import sys
 import numpy as np
 from iotbx import reflection_file_reader

@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.command_line import plan_sad_experiment
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import null_out, Sorry

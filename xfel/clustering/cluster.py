@@ -8,9 +8,7 @@ on an existing cluster, e.g. to plot the unit cell distributions.
 **Author:**   Oliver Zeldin <zeldin@stanford.edu>
 """
 
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import os
 import math

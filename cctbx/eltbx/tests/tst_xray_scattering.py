@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx import xray_scattering
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal

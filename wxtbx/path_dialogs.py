@@ -1,6 +1,5 @@
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from wxtbx.utils import add_ok_cancel_buttons, std_sizer_flags
 from wxtbx.phil_controls import choice_multi, path
 import wx

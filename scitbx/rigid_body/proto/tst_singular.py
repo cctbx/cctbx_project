@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from scitbx.rigid_body.proto.tst_joint_lib import exercise_sim
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto.test_simulation import simulation

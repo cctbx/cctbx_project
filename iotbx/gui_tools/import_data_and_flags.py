@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # XXX this should probably be moved to iotbx/command_line at some point (once
 # code for handling command-line arguments is added).  However, it is very

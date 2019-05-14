@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 from dials.array_family import flex
 from scitbx import matrix
 from xfel.merging.application.worker import worker
