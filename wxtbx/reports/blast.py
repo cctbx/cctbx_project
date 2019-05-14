@@ -58,7 +58,7 @@ class BlastList(wx.ListCtrl):
   def SetResults(self, results):
     self.DeleteAllItems()
     for result in results :
-      i = self.InsertStringItem(sys.maxint, result.pdb_id)
+      i = self.InsertStringItem(sys.maxsize, result.pdb_id)
       self.SetStringItem(i, 1, result.chain_id)
       self.SetStringItem(i, 2, "%g" % result.evalue)
       self.SetStringItem(i, 3, "%d" % result.length)

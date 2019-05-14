@@ -186,7 +186,7 @@ class manager(object):
     if (min_dist is None):
       min_dist = 0.
     if (max_dist is None):
-      max_dist = float(sys.maxint)
+      max_dist = float(sys.maxsize)
     xray_structure = self.fmodel.xray_structure.deep_copy_scatterers()
     use_selection = None
     if(not self.params.map_next_to_model.use_hydrogens):

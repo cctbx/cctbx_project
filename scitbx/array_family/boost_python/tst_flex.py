@@ -1578,13 +1578,13 @@ def exercise_random():
       if (j == 0): mt = flex.mersenne_twister()
       else: mt.seed()
       assert tuple(mt.random_size_t(3)) \
-          == (1791095845, 4282876139L, 3093770124L)
+          == (1791095845, 4282876139, 3093770124)
       assert approx_equal(mt.random_double(3),
        (0.9325573593386588, 0.12812444792935673, 0.99904051532414473))
       if (j == 0): mt = flex.mersenne_twister(seed=4357)
       else: mt.seed(value=4357)
       assert tuple(mt.random_size_t(size=3)) \
-          == (2983900864L, 1547366158, 1775641839)
+          == (2983900864, 1547366158, 1775641839)
       assert approx_equal(mt.random_double(size=3),
         (0.10064729869939604, 0.89184217257908471, 0.20721445761797463))
   assert mt.random_size_t(size=3).size() == 3
@@ -1608,7 +1608,7 @@ def exercise_random():
       flex.mean(a*a) - flex.mean(a)*flex.mean(a), 8.25, eps=0.2)
   flex.set_random_seed(value=0)
   assert tuple(flex.random_size_t(3)) \
-      == (1791095845, 4282876139L, 3093770124L)
+      == (1791095845, 4282876139, 3093770124)
   assert approx_equal(flex.random_double(3),
     (0.9325573593386588, 0.12812444792935673, 0.99904051532414473))
   assert list(flex.random_permutation(size=5)) == [2, 1, 4, 0, 3]
@@ -3425,7 +3425,7 @@ def pickle_large_arrays(max_exp, verbose):
           val = -2147483647
         elif (array_type == flex.long):
           val = -9223372036854775807
-          if (type(val) == type(1L)):
+          if (type(val) == type(1)):
             val = -2147483647
         elif (array_type == flex.complex_double):
           val = complex(-1.234567809123456e+20, -1.234567809123456e+20)

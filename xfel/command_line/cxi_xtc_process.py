@@ -174,7 +174,7 @@ class Script(object):
 
     # set this to sys.maxint to analyze all events
     if params.dispatch.max_events is None:
-      max_events = sys.maxint
+      max_events = sys.maxsize
     else:
       max_events = params.dispatch.max_events
 

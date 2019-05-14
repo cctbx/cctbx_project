@@ -147,7 +147,7 @@ class sample_operators(object):
     print("Copy #%d was the best, using that as reference" % (best_k+1), file=log)
     print("", file=log)
     sites_ref = best_ligand.atoms().extract_xyz()
-    min_dist = sys.maxint
+    min_dist = sys.maxsize
     best_group = None
     shifts = ncs_operators.get_ncs_groups_shifts(
       self.xray_structure.sites_cart(),
@@ -445,7 +445,7 @@ def combine_ligands_and_hierarchy(pdb_hierarchy, ligands, log=None):
   for i_lig, ligand in enumerate(ligands):
     xyz_mean = ligand.atoms().extract_xyz().mean()
     best_chain = None
-    min_dist = sys.maxint
+    min_dist = sys.maxsize
     for chain in model.chains():
       last_resseq = chain.residue_groups()[-1].resseq_as_int()
       if ((not chain.id in chain_id_counts) or

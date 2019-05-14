@@ -231,7 +231,7 @@ class xray_structure_statistics(validation):
     self.n_npd = xrs.is_positive_definite_u().count(False)
     self.n_zero_b = (u_isos == 0).count(True)
     self.n_zero_occ = (occ == 0).count(True)
-    u_cutoff_high = sys.maxint
+    u_cutoff_high = sys.maxsize
     u_cutoff_low = 0
     u_non_zero = u_isos.select(u_isos > 0)
     if (len(u_non_zero) > 1):

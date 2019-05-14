@@ -235,7 +235,7 @@ def sort_hetatms(
       is_water = (atom_groups[0].resname in ["HOH", "WAT", "DOD"])
       rg_atoms = rg.atoms()
       i_seqs = rg_atoms.extract_tmp_as_size_t()
-      closest_distance = sys.maxint
+      closest_distance = sys.maxsize
       closest_i_seq = None
       closest_rt_mx = None
       for i_seq, atom in zip(i_seqs, rg_atoms):

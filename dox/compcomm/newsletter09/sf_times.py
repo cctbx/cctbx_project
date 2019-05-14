@@ -308,7 +308,7 @@ def build_run(a_out, n_scatt, n_refl, build_cmd, check_max_a_b):
     easy_run.fully_buffered(command=build_cmd).raise_if_errors_or_output()
   else:
     open("a.out", "w").write(a_out)
-    os.chmod("a.out", 0755)
+    os.chmod("a.out", 0o755)
   assert op.isfile("a.out")
   run_cmd = "/usr/bin/time  -p ./a.out"
   buffers = easy_run.fully_buffered(command=run_cmd)

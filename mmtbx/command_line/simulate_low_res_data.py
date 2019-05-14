@@ -589,7 +589,7 @@ def elliptical_truncation(array,
   from scitbx.array_family import flex
   indices = array.indices()
   axis_index = -1
-  min_b_directional = sys.maxint
+  min_b_directional = sys.maxsize
   for n, b_index in enumerate(b_cart[0:3]):
     if (b_index < min_b_directional):
       min_b_directional = b_index

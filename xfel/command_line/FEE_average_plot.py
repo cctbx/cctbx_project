@@ -99,7 +99,7 @@ def run(args):
   size = comm.Get_size() # size: number of processes running in this job
 
   if params.dispatch.max_events is None:
-    max_events = sys.maxint
+    max_events = sys.maxsize
   else:
     max_events = params.dispatch.max_events
   if params.input.dark is not None:

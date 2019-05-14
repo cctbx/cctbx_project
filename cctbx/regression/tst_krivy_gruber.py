@@ -184,7 +184,8 @@ def reduce(inp):
     print("Problem parameters:", inp.parameters())
     raise
 
-def ucgmx((a,b,c,d,e,f)): # unit cell given Gruber matrix
+def ucgmx(gruber_matrix): # unit cell given Gruber matrix
+  (a,b,c,d,e,f) = gruber_matrix
   return uctbx.unit_cell(metrical_matrix=(a,b,c,f/2.,e/2.,d/2.))
 
 def exercise_gruber_1973_example():

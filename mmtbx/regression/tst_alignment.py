@@ -10,6 +10,7 @@ from libtbx.test_utils import approx_equal
 
 import operator
 import unittest
+from functools import reduce
 
 def exercise_align_mask():
   B="GCGAGATAAAGGGACCCATAAA" +"TGTCG"+ "TAGCATCGGGCTAATAGATAAGACACA"

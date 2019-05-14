@@ -128,7 +128,7 @@ class hklview_2d (wx.PyPanel, cctbx.miller.display.render_2d) :
       c = memory.GetPixel(x, y)
     bg = self.GetBackgroundColour()
     self._clicked = None
-    min_dist = sys.maxint
+    min_dist = sys.maxsize
     closest_hkl = None
     for k, (x2,y2) in enumerate(self._points_2d) :
       dist = sqrt((x2-x)**2 + (y2-y)**2)

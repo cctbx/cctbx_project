@@ -213,8 +213,8 @@ def demo():
   sizer2.Add(btn2, 0, wx.ALL, 5)
   frame.Bind(wx.EVT_BUTTON, OnShow2, btn2)
   for i in range(10):
-    ctrl1.InsertStringItem(sys.maxint, "Item %d" % i)
-    item = ctrl2.InsertStringItem(sys.maxint, "Item %d" % i)
+    ctrl1.InsertStringItem(sys.maxsize, "Item %d" % i)
+    item = ctrl2.InsertStringItem(sys.maxsize, "Item %d" % i)
     ctrl2.SetStringItem(item, 1, str(random.random() * 1000))
   sizer2.Layout()
   sizer.Layout()

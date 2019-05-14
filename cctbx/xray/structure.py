@@ -14,7 +14,6 @@ import scitbx.math
 from scitbx import matrix
 import math
 from itertools import count
-import types
 import sys
 import random
 from libtbx.utils import count_max, Sorry, Keep
@@ -1379,7 +1378,7 @@ class structure(crystal.special_position_settings):
          / self.unit_cell().volume()
 
   def __getitem__(self, slice_object):
-    assert type(slice_object) == types.SliceType
+    assert type(slice_object) == slice
     assert self.scatterers() is not None
     sel = flex.slice_indices(
       array_size=self._scatterers.size(),

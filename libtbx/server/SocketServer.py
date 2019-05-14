@@ -370,7 +370,7 @@ class BaseRequestHandler:
             self.handle()
             self.finish()
         finally:
-            sys.exc_traceback = None    # Help garbage collection
+            sys.exc_info()[2] = None    # Help garbage collection
 
     def setup(self):
         pass

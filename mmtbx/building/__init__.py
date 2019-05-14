@@ -233,7 +233,7 @@ class local_density_quality(object):
     if (not require_difference_map_peaks):
       sel_outside_two_fofc = (self.two_fofc_map_levels < two_fofc_cutoff)
     else :
-      sel_outside_two_fofc = self.two_fofc_map_levels < float(sys.maxint)
+      sel_outside_two_fofc = self.two_fofc_map_levels < float(sys.maxsize)
     return (sel_outside_fofc & sel_outside_two_fofc)
 
   def atoms_outside_density(self, **kwds):
@@ -324,7 +324,7 @@ def get_model_map_stats(
   sites_selected = flex.vec3_double()
   map1 = flex.double()
   map2 = flex.double()
-  min_density = sys.maxint
+  min_density = sys.maxsize
   sum_density = n_sites = 0
   worst_atom = None
   # XXX I'm not sure the strict density cutoff is a good idea here

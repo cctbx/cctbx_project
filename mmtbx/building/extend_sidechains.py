@@ -130,7 +130,7 @@ class conformation_scorer(object):
       self.dist_min = abs(col(sites_cart[first_i_seq]) -
         col(self.sites_old[self.selection_mappings[first_i_seq]]))
     else :
-      self.dist_min = sys.maxint
+      self.dist_min = sys.maxsize
 
   def apply_final(self):
     self.new_residue_atoms.set_xyz(self.sites_cart)

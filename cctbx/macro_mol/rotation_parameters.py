@@ -62,12 +62,12 @@ class matrix33(object):
             + m[2] * (m[3] * m[7] - m[4] * m[6]))
 
 def degree_as_radians(angles):
-  if (type(angles) in (types.TupleType, types.ListType)):
+  if (type(angles) in (tuple, list)):
     return [a * math.pi / 180 for a in angles]
   return angles * math.pi / 180
 
 def degree_from_radians(angles):
-  if (type(angles) in (types.TupleType, types.ListType)):
+  if (type(angles) in (tuple, list)):
     return [a / math.pi * 180 for a in angles]
   return angles / math.pi * 180
 

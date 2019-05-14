@@ -202,8 +202,8 @@ class ladder(object):
       next_ladder=None):
     from iotbx.pdb import secondary_structure
     start_i_res = end_i_res = None
-    next_ladder_i_start = sys.maxint
-    next_ladder_i_end = - sys.maxint
+    next_ladder_i_start = sys.maxsize
+    next_ladder_i_end = - sys.maxsize
     if (next_ladder is not None):
       next_ladder_i_start = min(next_ladder.bridges[0].i_res,
                                 next_ladder.bridges[-1].i_res)
@@ -250,7 +250,7 @@ class ladder(object):
     start_atom_name = None
     curr_i_res = prev_i_res = None
     start_on_n = False
-    min_i_res = sys.maxint
+    min_i_res = sys.maxsize
     o_label = " O  "
     n_label = " N  "
     for hbond in hbonds :
@@ -477,7 +477,7 @@ class dssp(object):
   def find_helices(self):
     from iotbx.pdb import secondary_structure
     turns = []
-    i_prev = j_prev = -sys.maxint
+    i_prev = j_prev = -sys.maxsize
     current_turn = []
     prev_n_turn = None
     prev_hbond = None
@@ -592,7 +592,7 @@ class dssp(object):
     all_indices = sorted(list(all_i_res.union(all_j_res)))
     strands = []
     curr_strand = []
-    prev_i_res = -sys.maxint
+    prev_i_res = -sys.maxsize
     for i_res in all_indices :
       if (i_res == prev_i_res + 1):
         curr_strand.append(i_res)
@@ -641,7 +641,7 @@ class dssp(object):
     # total number of residues.  Currently it will pick the longest strand
     # where multiple are possible, which is not necessarily the best choice.
     # XXX it also needs to be smarter about where to start!
-    n_left_last = -sys.maxint
+    n_left_last = -sys.maxsize
     start_on_next_strand = False
     #print connections
     while (n_processed < n_connected):

@@ -2525,7 +2525,7 @@ def get_contiguous_ranges(hierarchy):
     resid_ranges = []
     start_resid = None
     last_resid = None
-    last_resseq = - sys.maxint
+    last_resseq = - sys.maxsize
     for residue_group in chain.residue_groups():
       resseq = residue_group.resseq_as_int()
       resid = residue_group.resid()

@@ -1,6 +1,7 @@
 from __future__ import division
 from __future__ import print_function
 import boost.python
+from functools import reduce
 ext = boost.python.import_ext("cctbx_masks_ext")
 from cctbx_masks_ext import *
 

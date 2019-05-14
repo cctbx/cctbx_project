@@ -1021,7 +1021,7 @@ class manager(object):
     filtered_candidates = []
     halide_candidates = False
     nuc_phosphate_site = atom_props.looks_like_nucleotide_phosphate_site()
-    max_carbon_fo_map_value = sys.maxint
+    max_carbon_fo_map_value = sys.maxsize
     if (self.carbon_fo_values is not None):
       max_carbon_fo_map_value = flex.max(self.carbon_fo_values)
 

@@ -25,8 +25,8 @@ class SettingsToolBase(object):
                        setting,
                        label,
                        captions=None,
-                       min=-sys.maxint,
-                       max=sys.maxint):
+                       min=-sys.maxsize,
+                       max=sys.maxsize):
     panel = self.panel
     value = getattr(self.settings, setting)
     ctrls = []

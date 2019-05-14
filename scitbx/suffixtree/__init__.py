@@ -2,6 +2,7 @@ from __future__ import division
 from __future__ import print_function
 
 import boost.python
+from functools import reduce
 ext = boost.python.import_ext( "scitbx_suffixtree_shared_ext" )
 from scitbx_suffixtree_shared_ext import *
 

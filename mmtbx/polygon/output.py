@@ -62,7 +62,7 @@ class renderer(object):
     histograms = convert_histogram_data(histogram_data)
     self.stats = structure_stats
     self.n_pdb = 0
-    max = - sys.maxint
+    max = - sys.maxsize
     self.slot_avg = None
     for stat_key, histogram in histograms.iteritems():
       n_pdb = 0

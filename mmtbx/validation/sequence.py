@@ -387,8 +387,8 @@ class validation(object):
     best_sequence = None
     best_seq_id = None
     best_identity = self.minimum_identity
-    best_width = sys.maxint
-    best_length = sys.maxint
+    best_width = sys.maxsize
+    best_length = sys.maxsize
     for i_seq, seq_object in enumerate(self.sequences):
       alignment = mmtbx.alignment.align(
         seq_a=chain.sequence,
