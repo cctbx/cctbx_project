@@ -10,6 +10,7 @@ on an existing cluster, e.g. to plot the unit cell distributions.
 
 from __future__ import division
 from __future__ import print_function
+from __future__ import absolute_import
 from cctbx.array_family import flex
 import os
 import math
@@ -1001,7 +1002,7 @@ class Cluster:
     :param cluster: a cluster object.
     :param inputfile: a Prime .inp file.
     """
-    from api import refine_many
+    from .api import refine_many
     miller_fullies = refine_many(self.members, inputfile)
     for mil, sf in zip(miller_fullies, self.members):
       sf.miller_fullies = mil

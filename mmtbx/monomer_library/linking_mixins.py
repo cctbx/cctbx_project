@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from __future__ import absolute_import
 import time
 from cctbx import sgtbx
 from cctbx import geometry_restraints
@@ -7,7 +8,7 @@ from cctbx import geometry_restraints
 from mmtbx.monomer_library import linking_setup
 from mmtbx.monomer_library import linking_utils
 from mmtbx.monomer_library import glyco_utils
-import bondlength_defaults
+from mmtbx.monomer_library import bondlength_defaults
 from libtbx.utils import Sorry
 
 origin_ids = geometry_restraints.linking_class.linking_class()

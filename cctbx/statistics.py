@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import absolute_import
 
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx

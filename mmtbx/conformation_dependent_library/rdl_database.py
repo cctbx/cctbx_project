@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from __future__ import absolute_import
 import sys
 
 rdl_database = {
@@ -3640,7 +3641,7 @@ rdl_database = {
 def get_rdl_database(truncate_restaints_to_gamma=False, # chi1 angles & torsions
                      apply_unrestrained_dihedrals=False,
                      verbose=False):
-  from investigate_rotamer_space import results
+  from mmtbx.conformation_dependent_library.investigate_rotamer_space import results
   pdbs = []
   if apply_unrestrained_dihedrals:
     for resname, rotamers in results.items():

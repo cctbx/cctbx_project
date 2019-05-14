@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from __future__ import absolute_import
 import copy
 
 from mmtbx.conformation_dependent_library.cdl_utils import \
@@ -295,7 +296,7 @@ class FiveProteinResidues(FourProteinResidues):
 if __name__=="__main__":
   import sys
   from iotbx import pdb
-  from tst_rdl import get_geometry_restraints_manager
+  from mmtbx.conformation_dependent_library.tst_rdl import get_geometry_restraints_manager
   filename=sys.argv[1]
   pdb_inp = pdb.input(filename)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
