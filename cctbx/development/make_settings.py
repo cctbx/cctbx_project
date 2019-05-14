@@ -30,7 +30,7 @@ def run():
   print("settings = (")
   for i in xrange(1, 231):
     print("#", i)
-    symbols = settings[i].keys()
+    symbols = list(settings[i].keys())
     symbols.sort()
     for s in symbols:
       print("'" + s + "',")

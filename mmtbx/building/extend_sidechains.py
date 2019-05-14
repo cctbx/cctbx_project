@@ -194,7 +194,7 @@ def extend_protein_model(
       for residue in residue_group.atom_groups():
         i_seqs = residue.atoms().extract_i_seq()
         residue_sel = selection.select(i_seqs)
-        if(not residue.resname.lower() in ideal_dict.keys()): continue
+        if not residue.resname.lower() in ideal_dict: continue
         missing_atoms = rotamer_eval.eval_residue_completeness(
           residue          = residue,
           mon_lib_srv      = mon_lib_srv,

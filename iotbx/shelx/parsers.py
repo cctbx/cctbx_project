@@ -16,6 +16,7 @@ import scitbx.math
 from iotbx.shelx.errors import error as shelx_error
 from iotbx.shelx import tokens
 from functools import reduce
+import six
 
 class parser(object):
 
@@ -447,7 +448,7 @@ class atom_parser(parser, variable_decoder):
     if not self.builder_does_occupancy_pair_affine_constraint: return
 
     for free_var_idx, affine_occupancies \
-        in self.occupancies_depending_on_free_variable.iteritems():
+        in six.iteritems(self.occupancies_depending_on_free_variable):
       if len(affine_occupancies) == 1:
         # useless reparametrisation: we keep the occupancy as an independent
         # parameter
@@ -602,7 +603,7 @@ class restraint_parser(parser):
 
   def cache_restraint(self, cmd, cmd_residue, line, args):
     from libtbx.containers import OrderedDict
-    if cmd not in self.cached_restraints.keys():
+    if cmd not in self.cached_restraints:
       self.cached_restraints.setdefault(cmd, OrderedDict())
     self.cached_restraints[cmd].setdefault(line, (cmd_residue, args))
 
@@ -634,7 +635,7 @@ class restraint_parser(parser):
 
   def parse_restraints(self):
     for cmd, restraints in sorted(self.cached_restraints.items()):
-      for line, args in restraints.iteritems():
+      for line, args in six.iteritems(restraints):
         cmd_residue = args[0]
         if cmd_residue is None:
           residues = [None]
@@ -645,7 +646,7 @@ class restraint_parser(parser):
           elif tok == tokens.residue_class_tok:
             residues = self.builder.residue_numbers_having_class[cmd_residue[1]]
           elif tok == tokens.all_residues_tok:
-            residues = self.builder.residue_class_of_residue_number.keys()
+            residues = list(self.builder.residue_class_of_residue_number.keys())
         args = args[1]
         floats = []
         atoms = []

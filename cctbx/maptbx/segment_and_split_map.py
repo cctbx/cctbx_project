@@ -5849,8 +5849,8 @@ def get_solvent_fraction(params,
 def top_key(dd):
   if not dd:
     return None,None
-  elif len(dd.keys())==1:
-    return dd.keys()[0],dd[dd.keys()[0]]
+  elif len(dd)==1:
+    return list(dd.items())[0]
   else:
     best_key=None
     best_n=None
@@ -5949,7 +5949,7 @@ def run_get_duplicates_and_ncs(
   complete=True
   missing=[]
   for i in xrange(1,max_regions_to_consider+1):
-    if not i in region_centroid_dict.keys():
+    if not i in region_centroid_dict:
       if (regions_left is None) or (i in regions_left):
          complete=False
          missing.append(i)
@@ -6058,11 +6058,11 @@ def get_duplicates_and_ncs(
             duplicate_dict[id]+=1
             break # only count once
           elif value>0:  # notice which one is matched
-            if not value in equiv_dict[id].keys():
+            if not value in equiv_dict[id]:
               equiv_dict[id][value]=0
               equiv_dict_ncs_copy_dict[id][value]={}
             equiv_dict[id][value]+=1
-            if not n in equiv_dict_ncs_copy_dict[id][value].keys():
+            if not n in equiv_dict_ncs_copy_dict[id][value]:
               equiv_dict_ncs_copy_dict[id][value][n]=0
             equiv_dict_ncs_copy_dict[id][value][n]+=1  # how many are ncs copy n
   return duplicate_dict,equiv_dict,equiv_dict_ncs_copy_dict,\
@@ -6194,7 +6194,7 @@ def get_ncs_equivalents(
   for id in region_list:
     if id in bad_region_list: continue
     match_dict=equiv_dict.get(id,{}) # which are matches
-    matches=match_dict.keys()
+    matches=list(match_dict.keys())
     if not matches: continue
     key_list=sort_by_ncs_overlap(matches,equiv_dict_ncs_copy_dict[id])
     n_found=0
@@ -6206,7 +6206,7 @@ def get_ncs_equivalents(
       if n<min_coverage*region_scattered_points_dict[id].size():
         break
       else:
-        if not id in equiv_dict_ncs_copy.keys():equiv_dict_ncs_copy[id]={}
+        if not id in equiv_dict_ncs_copy:equiv_dict_ncs_copy[id]={}
         equiv_dict_ncs_copy[id][id1]=key
         n_found+=1
         if n_found>=ncs_copies-1:
@@ -6241,7 +6241,7 @@ def group_ncs_equivalents(params,
     equiv_group[0]=[id] # always
     for id1 in equiv_dict_ncs_copy.get(id,{}).keys():
       ncs_copy=equiv_dict_ncs_copy[id][id1]
-      if not ncs_copy in equiv_group.keys(): equiv_group[ncs_copy]=[]
+      if not ncs_copy in equiv_group: equiv_group[ncs_copy]=[]
       equiv_group[ncs_copy].append(id1) # id1 is ncs_copy of id
     all_single=True
     equiv_group_as_list=[]
@@ -6276,7 +6276,7 @@ def group_ncs_equivalents(params,
       else:
         complete=False
     if complete and \
-        (not str(equiv_group_as_list) in ncs_equiv_groups_as_dict.keys() or
+        (not str(equiv_group_as_list) in ncs_equiv_groups_as_dict or
          total_grid_points>ncs_equiv_groups_as_dict[str(equiv_group_as_list)]) \
         and (all_single or (not split_if_possible)):
       ncs_equiv_groups_as_dict[str(equiv_group_as_list)]=total_grid_points
@@ -6333,7 +6333,7 @@ def group_ncs_equivalents(params,
   for ncs_group in ncs_group_list:
     for group_list in ncs_group:
       for id1 in group_list:
-        if not id1 in shared_group_dict.keys(): shared_group_dict[id1]=[]
+        if not id1 in shared_group_dict: shared_group_dict[id1]=[]
         for other_group_list in ncs_group:
           if other_group_list is group_list:continue
           for other_id1 in other_group_list:
@@ -6524,14 +6524,14 @@ def get_inter_region_dist_dict(ncs_group_obj=None,
   dd={}
   for i in xrange(len(selected_regions)):
     id=selected_regions[i]
-    if not id in dd.keys(): dd[id]={}
+    if not id in dd: dd[id]={}
     test_centers=ncs_group_obj.region_scattered_points_dict[id]
     for j in xrange(i+1,len(selected_regions)):
       id1=selected_regions[j]
       test_centers1=ncs_group_obj.region_scattered_points_dict[id1]
       dist=get_closest_dist(test_centers,test_centers1)
       dd[id][id1]=dist
-      if not id1 in dd.keys(): dd[id1]={}
+      if not id1 in dd: dd[id1]={}
       dd[id1][id]=dist
   return dd
 
@@ -6592,7 +6592,7 @@ def get_closest_neighbor_rms(ncs_group_obj=None,selected_regions=None,
      selected_regions=selected_regions)
   if verbose:
     print("Inter-region distance dict:", file=out)
-    keys=inter_region_dist_dict.keys()
+    keys=list(inter_region_dist_dict.keys())
     keys.sort()
     for key in keys:
       for key2 in inter_region_dist_dict[key].keys():
@@ -6605,7 +6605,7 @@ def get_closest_neighbor_rms(ncs_group_obj=None,selected_regions=None,
 
   if verbose:
     print("Distance-to-first dict:", file=out)
-    keys=dist_to_first_dict.keys()
+    keys=list(dist_to_first_dict.keys())
     keys.sort()
     for key in keys: print("\n %s:  %.1f " %(key,dist_to_first_dict[key]), file=out)
 

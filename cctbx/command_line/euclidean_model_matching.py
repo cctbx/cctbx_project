@@ -69,7 +69,7 @@ def run():
     print()
     sys.stdout.flush()
   print("match_list:", match_list)
-  keys = match_histogram.keys()
+  keys = list(match_histogram.keys())
   keys.sort()
   keys.reverse()
   print("matches: frequency")

@@ -152,7 +152,7 @@ def exercise():
       file_path="ur0013.sf.reflections.cif")
     miller_arrays = cif_reader.as_miller_arrays()
     cif_object = cif_reader.model()
-    assert cif_object.keys() == ['ur0013.sf_neutron']
+    assert list(cif_object.keys()) == ['ur0013.sf_neutron']
     mtz_arrays = mtz.object(file_name=file_name).as_miller_arrays()
     iobs_cif = get_array_by_label(miller_arrays, '_refln.pdbx_I_plus')
     iobs_mtz = get_array_by_label(mtz_arrays, 'IOBS_N(+)')

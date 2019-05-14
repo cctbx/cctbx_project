@@ -34,6 +34,7 @@ import mmtbx.idealized_aa_residues.rotamer_manager
 from elbow.command_line.ready_set import model_interface as ready_set_model_interface
 
 from phenix.programs import phi_psi_2
+import six
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -296,7 +297,8 @@ class model_idealization():
     motifs = phi_psi_2.results_manager(model=model, log=null_out()).get_motif_count()
     mcounts = motifs.get_counts()
     res = {}
-    for key, value in mcounts.iteritems():
+    # TODO is mcounts a dict ? If not consider changing back
+    for key, value in six.iteritems(mcounts):
       res[key] = value.percent
     geometry.merge(group_args(**res))
     return geometry

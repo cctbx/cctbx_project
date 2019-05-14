@@ -262,7 +262,8 @@ class linked_residue(object):
 #  improve performance if their three-letter codes are known.
 #-------------------------------------------------------------------------------
 def prunerestype(resdata, restype):
-  reslist = resdata.keys()
+  # TODO is resdata a dict ? put a hint
+  reslist = list(resdata.keys())
   for residue in reslist:
     for alt in resdata[residue].alts:
       if resdata[residue].alts[alt]['resname'].strip() == restype:

@@ -109,7 +109,7 @@ def exercise(space_group_info, anomalous_flag, verbose):
     failure = (max(repetitions) > 1)
     if (failure or verbose):
       print(subgroup_info)
-      print("self_ccs ops:", self_ccs.values())
+      print("self_ccs ops:", list(self_ccs.values()))
     if (failure):
       for cc,ops in self_ccs.items():
         if (len(ops) > 1):
@@ -162,8 +162,8 @@ def exercise_double_coset_decomposition(
   failure = (max(double_coset_repetitions) > 1)
   if (failure or verbose):
     print([str(sgtbx.space_group_info(group=g)) for g in (group_a, group_b)])
-    print("single_coset ops:", single_coset_ccs.values())
-    print("double_coset ops:", double_coset_ccs.values())
+    print("single_coset ops:", list(single_coset_ccs.values()))
+    print("double_coset ops:", list(double_coset_ccs.values()))
   if (failure):
     for cc,ops in double_coset_ccs.items():
       if (len(ops) > 1):
@@ -172,8 +172,8 @@ def exercise_double_coset_decomposition(
           ri = sgtbx.rt_mx(op).r().info()
           print("   ", ri.type(), ri.sense(), ri.ev())
     raise RuntimeError("max(double_coset_repetitions) > 1")
-  single_coset_ccs = single_coset_ccs.keys()
-  double_coset_ccs = double_coset_ccs.keys()
+  single_coset_ccs = list(single_coset_ccs.keys())
+  double_coset_ccs = list(double_coset_ccs.keys())
   single_coset_ccs.sort()
   double_coset_ccs.sort()
   failure = (double_coset_ccs != single_coset_ccs)

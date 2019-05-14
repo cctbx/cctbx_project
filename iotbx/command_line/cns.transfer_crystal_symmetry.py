@@ -63,7 +63,7 @@ iotbx.cns.transfer_crystal_symmetry any_symmetry_source_file cns_input_file
             if (line_out != line): parameters_changed.append(p)
             break
         lines_out.append(line_out)
-  if (parameters_found.values().count(1) != 7):
+  if (list(parameters_found.values()).count(1) != 7):
     raise Sorry("Unexpected set of variable names in %s:\n  counts: %s" % (
       show_string(target), str(parameters_found)))
   elif (len(parameters_changed) == 0):

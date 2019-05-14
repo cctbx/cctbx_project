@@ -67,6 +67,7 @@ class refinery(object):
     #
     bk = O.fgh.h(xk)
     es = eigensystem.real_symmetric(bk)
+    # TODO: verify es is not a dictionary yet has a values method
     if (es.values().all_gt(0)):
       hk = bk.deep_copy()
       hk.matrix_inversion_in_place()

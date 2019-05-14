@@ -430,10 +430,11 @@ def exercise_bond():
 
   tab = geometry_restraints.extract_bond_params(
     n_seq=2, bond_simple_proxies=proxies)
-  assert tab[0].keys() == [1]
-  assert approx_equal(tab[0].values()[0].distance_ideal, 3.5)
-  assert approx_equal(tab[0].values()[0].weight, 1)
-  assert tab[1].keys() == []
+  assert list(tab[0].keys()) == [1]
+  # FIXME: if tab[0] is a dictionary, this might break py2/3 compat, order of values and keys changes depending on py 2/3
+  assert approx_equal(list(tab[0].values())[0].distance_ideal, 3.5)
+  assert approx_equal(list(tab[0].values())[0].weight, 1)
+  assert list(tab[1].keys()) == []
   assert approx_equal(geometry_restraints.bond_distances_model(
     sites_cart=sites_cart,
     proxies=proxies), [14**0.5]*2)
@@ -625,11 +626,11 @@ def exercise_bond():
   assert sorted_asu_proxies.asu.size() == 0
   #
   pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-  assert pair_asu_table.table()[0].keys() == []
+  assert list(pair_asu_table.table()[0].keys()) == []
   geometry_restraints.add_pairs(
     pair_asu_table=pair_asu_table,
     bond_simple_proxies=proxies)
-  assert pair_asu_table.table()[0].keys() == [1]
+  assert list(pair_asu_table.table()[0].keys()) == [1]
   #
   pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
   sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(

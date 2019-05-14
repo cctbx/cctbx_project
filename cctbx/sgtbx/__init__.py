@@ -810,7 +810,7 @@ class symmetry_equivalent_pair_interactions(libtbx.slots_getstate_setstate):
         add(mi, rt_mx_ji_inv)
 
   def get(O):
-    result = O.registry.values()
+    result = list(O.registry.values())
     result.sort()
     return result
 

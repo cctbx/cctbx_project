@@ -292,8 +292,8 @@ class get_r_free_flags_scores(object):
         try: counts = data.counts(max_keys=200)
         except RuntimeError: pass
         else:
-          c_keys = counts.keys()
-          c_values = counts.values()
+          c_keys = list(counts.keys())
+          c_values = list(counts.values())
           if (   test_flag_value is None
               or test_flag_value in c_keys):
             if (counts.size() == 2):

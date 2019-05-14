@@ -52,7 +52,7 @@ for param_file in param_file_list:
 data_dict_0 = data_dict_list[0]
 data_dict_1 = data_dict_list[1]
 for i in range(n_data):
-  test_key = data_dict_list[0].keys()[i]
+  test_key = list(data_dict_list[0].keys())[i]
   if (test_key in data_dict_0) and (test_key in data_dict_1):
     test_id = i
     break

@@ -12,6 +12,7 @@ import gltbx.images
 from scitbx.array_family import flex
 import scitbx.math
 from scitbx import matrix
+import six
 try:
   import wx
 except ImportError:
@@ -945,7 +946,7 @@ class OpenGLSettingsToolbox(wx.MiniFrame):
     self.Bind(wx.EVT_CLOSE, self.OnClose)
 
   def OnUpdate(self, event=None):
-    for setting_name, widget in self.widgets.iteritems():
+    for setting_name, widget in six.iteritems(self.widgets):
       new_value = float(widget.GetValue()) / 100.0
       setattr(self.parent, setting_name, new_value)
     self.parent.flag_show_fog = self.fog_box.GetValue()

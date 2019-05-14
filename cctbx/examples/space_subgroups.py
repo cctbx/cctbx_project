@@ -91,7 +91,7 @@ cctbx.python space_subgroups.py max_index space_group_symbol
         loop_over_super_cells(
           max_index=max_index, all_subgroups=all_subgroups, subgroup=subgr3)
   #
-  show_sorted_by_counts(label_count_pairs=all_subgroups.items())
+  show_sorted_by_counts(label_count_pairs=list(all_subgroups.items()))
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

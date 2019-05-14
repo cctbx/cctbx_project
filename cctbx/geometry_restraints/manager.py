@@ -396,7 +396,7 @@ class manager(Base_geometry):
         raise RuntimeError("Cannot determine n_seq.")
       if (len(n_seqs) != 1):
         raise RuntimeError("Selection size mismatches: %s." % str(n_seqs))
-      return n_seqs.keys()[0]
+      return list(n_seqs.keys())[0]  # FIXME this might break py2/3 compat unless there is only 1 key
 
     n_seq = get_n_seq()
 

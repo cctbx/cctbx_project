@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 from prime.index_ambiguity.mod_indexing_ambiguity import indamb_handler
 import argparse, os
 from prime.postrefine.mod_input import read_frame, read_pickles
+import six
 
 def main(data, only_merohedral):
   indambh = indamb_handler()
@@ -18,7 +19,7 @@ def main(data, only_merohedral):
       except Exception as e:
         print("Warning:", e)
         pass
-    for key,value in obsList.iteritems():
+    for key,value in six.iteritems(obsList):
       if only_merohedral:
         flag_all = False
       else:

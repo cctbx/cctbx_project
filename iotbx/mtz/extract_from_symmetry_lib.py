@@ -22,7 +22,7 @@ P 21/m 21/m 2/n a
 """.splitlines())
 
 def ccp4_symbol(space_group_info, lib_name, require_at_least_one_lib=True):
-  assert lib_name in _ccp4_symbol_cache.keys()
+  assert lib_name in _ccp4_symbol_cache
   sg_type = space_group_info.type()
   lookup_symbol = sg_type.lookup_symbol()
   cache = _ccp4_symbol_cache[lib_name]

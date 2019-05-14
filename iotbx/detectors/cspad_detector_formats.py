@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from calendar import timegm
 from time import strptime
+import six
 
 
 def reverse_timestamp(timestamp):
@@ -176,7 +177,7 @@ def detector_format_version(address, timestamp):
     return None # time can be None if any time is valid for the format version
 
   ret = None
-  for format_name, format in _detector_format_version_dict.iteritems():
+  for format_name, format in six.iteritems(_detector_format_version_dict):
     if address == format['address'] and \
        (format['start_time'] is None or timestamp >  format['start_time']) and \
        (format['end_time']   is None or timestamp <= format['end_time']):

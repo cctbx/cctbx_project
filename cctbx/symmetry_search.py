@@ -147,8 +147,8 @@ class structure_factor_symmetry(object):
       t = [ scitbx.math.continued_fraction.from_real(x, 1e-2).as_rational()
             for x in d ]
       if t.count(0) > 1: continue
-      unique_denominators = dict(
-        [ (r.denominator(), 1) for r in t if r.numerator() != 0 ]).keys()
+      unique_denominators = list(dict(
+        [ (r.denominator(), 1) for r in t if r.numerator() != 0 ]).keys())
       assert len(unique_denominators) in (0, 1)
       if len(unique_denominators) == 1:
         den = unique_denominators[0]

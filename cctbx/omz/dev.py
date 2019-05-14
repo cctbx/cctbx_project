@@ -205,6 +205,7 @@ class refinement(object):
       assert p.ix_random.samples_each_scattering_type > 0
       assert p.ix_random.random_seed is not None
       mt = flex.mersenne_twister(seed=p.ix_random.random_seed)
+      # TODO: verify this values is not a dictionary method
       i_seqs_grouped = O.xray_structure.scatterers() \
         .extract_scattering_types().i_seqs_by_value().values()
       i_seqs_selected = flex.bool(O.x.size(), False)

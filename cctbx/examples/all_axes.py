@@ -56,7 +56,7 @@ def list_all_axes(space_group_symbol=None, space_group_info=None):
           ts = t.plus(sgtbx.tr_vec(shift, 1)).new_denominator(t.den())
           ss = sgtbx.rt_mx(r, ts)
           axes_dict[rt_mx_analysis(ss)] = 0
-  axes_list = axes_dict.keys()
+  axes_list = list(axes_dict.keys())
   axes_list.sort()
   for a in axes_list:
     print(a)

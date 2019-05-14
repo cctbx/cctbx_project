@@ -97,7 +97,7 @@ class column(slots_getstate_setstate):
   def __init__(self, **kwds):
     kwds = dict(kwds)
     for name in self.__slots__ :
-      if (name in kwds.keys()):
+      if (name in kwds):
         setattr(self, name, kwds[name])
       else :
         setattr(self, name, None)

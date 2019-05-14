@@ -310,7 +310,7 @@ def exercise_monoclinic_cell_choices_core(space_group_number, verbose):
         done.setdefault(hm, 0)
         done[hm] += 1
   assert len(done) in [3, 9, 18]
-  assert done.values() == [18/len(done)]*len(done)
+  assert list(done.values()) == [18/len(done)]*len(done)
   if (0 or verbose): print()
   return done
 
@@ -320,7 +320,7 @@ def exercise_monoclinic_cell_choices(verbose=0):
     done.update(exercise_monoclinic_cell_choices_core(
       space_group_number=space_group_number, verbose=verbose))
   assert len(done) == 105
-  assert done.values().count(0) == 0
+  assert list(done.values()).count(0) == 0
   n = 0
   for s in sgtbx.space_group_symbol_iterator():
     if (s.number() < 3): continue
@@ -328,7 +328,7 @@ def exercise_monoclinic_cell_choices(verbose=0):
     done[s.universal_hermann_mauguin()] = 0
     n += 1
   assert n == 105
-  assert done.values().count(0) == 105
+  assert list(done.values()).count(0) == 105
 
 def exercise_orthorhombic_hm_qualifier_as_cb_symbol():
   cb_symbols = {

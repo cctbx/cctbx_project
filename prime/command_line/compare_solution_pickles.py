@@ -14,7 +14,7 @@ def main(sol_fname, ind_fname):
         cn_match += 1
       else:
         print(key, sol_pickle[key], ind_pickle[key])
-  print('Found %d images with %d matches'%(len(sol_pickle.keys()), cn_match))
+  print('Found %d images with %d matches'%(len(sol_pickle), cn_match))
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(

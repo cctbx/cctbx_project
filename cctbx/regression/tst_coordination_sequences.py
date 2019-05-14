@@ -65,7 +65,7 @@ def exercise_shell_asu_tables(structure, verbose):
   have_redundancies = False
   for o_pst,t_pst in zip(shell_sym_tables_orig[1:], shell_sym_tables[1:]):
     for o_pair_sym_dict,t_pair_sym_dict in zip(o_pst, t_pst):
-      assert o_pair_sym_dict.keys() == t_pair_sym_dict.keys()
+      assert list(o_pair_sym_dict.keys()) == list(t_pair_sym_dict.keys())
       if (verbose and not have_redundancies):
         for j_seq,o_sym_ops in o_pair_sym_dict.items():
           t_sym_ops = t_pair_sym_dict[j_seq]

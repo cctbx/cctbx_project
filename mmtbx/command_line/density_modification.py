@@ -128,9 +128,10 @@ def run(args, log = sys.stdout, as_gui_program=False):
       reflection_files.setdefault(
         rfn, iotbx.reflection_file_reader.any_reflection_file(
           file_name=rfn, ensure_read_access=False))
+  # TODO is reflection_files a dict ?
   server = iotbx.reflection_file_utils.reflection_file_server(
     crystal_symmetry=crystal_symmetry,
-    reflection_files=reflection_files.values())
+    reflection_files=list(reflection_files.values()))
   fo = mmtbx.utils.determine_data_and_flags(
     server,
     parameters=params.input.reflection_data,

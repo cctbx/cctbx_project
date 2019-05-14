@@ -75,7 +75,7 @@ def show_terms(structure, term_table, coseq_dict=None):
     if (coseq_dict is not None):
       terms_to_match = list(terms[1:])
       have_match = False
-      tags = coseq_dict.keys()
+      tags = list(coseq_dict.keys())
       tags.sort()
       for tag in tags:
         for coseq_terms in coseq_dict[tag]:

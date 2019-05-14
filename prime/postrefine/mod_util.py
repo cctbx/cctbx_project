@@ -31,8 +31,8 @@ class intensities_scaler(object):
     fname = iparams.run_no+'/stats/pickle_'+str(os.getpid())+'.stat'
     if os.path.isfile(fname):
       pickle_stat = pickle.load(open(fname,"rb"))
-      for key in stat_dict.keys():
-        if key in pickle_stat.keys():
+      for key in stat_dict:
+        if key in pickle_stat:
           pickle_stat[key].append(stat_dict[key][0])
         else:
           pickle_stat[key] = stat_dict[key]

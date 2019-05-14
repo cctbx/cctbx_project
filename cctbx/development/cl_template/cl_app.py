@@ -15,6 +15,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 import iotbx.phil
 import iotbx.pdb
+import six
 
 input_model_phil_str = """\
 input_model_fname = None
@@ -29,7 +30,7 @@ class cl_app(object):
     self.cl_args = cl_args
     self.new_master_par_str = self.master_params_str
     self.pdbf_def = None
-    for k, v in self.needed_info.iteritems():
+    for k, v in six.iteritems(self.needed_info):
       setattr(self, v, None)
       # adjust params_str for files
       if k == "model":

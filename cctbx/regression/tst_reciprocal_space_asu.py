@@ -16,7 +16,7 @@ def get_all_incides(space_group, abs_range):
           h_s = h_e.h()
           assert h_s == h_e.hr()
           result[h_s] = 0
-  return flex.miller_index(result.keys())
+  return flex.miller_index(list(result.keys()))
 
 cond_dict = {}
 
@@ -47,7 +47,7 @@ def expand_indices(space_group, asu_indices):
       assert h_s == h_e.hr()
       assert h_s not in result
       result[h_s] = 0
-  return flex.miller_index(result.keys())
+  return flex.miller_index(list(result.keys()))
 
 def exercise(space_group_info, verbose=0):
   if (not space_group_info.reciprocal_space_asu().is_reference()): return
