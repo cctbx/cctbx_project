@@ -208,8 +208,7 @@ class installer(object):
     python_executable = 'python'
     self.python3 = options.python3
     if self.python3: python_executable = 'python3'
-    self.wxpython4 = options.wxpython4 # or self.python3 # Python3 should imply wxpython4, but
-                                                         # wait until we can actually build it
+    self.wxpython4 = options.wxpython4 or self.python3
     if os.path.exists(os.path.join(self.build_dir, 'base', 'bin', python_executable)):
       self.python_exe = os.path.join(self.build_dir, 'base', 'bin', python_executable)
     elif options.with_python:
@@ -1462,11 +1461,8 @@ _replace_sysconfig_paths(build_time_vars)
     os.chdir(self.tmp_dir)
 
   def build_wxpython(self):
-    if self.wxpython4 or self.python3:
-      self.build_python_module_pip(
-        'wxPython', package_version="4.0.3",
-        confirm_import_module='wx')
-      return
+    if self.wxpython4:
+      return self.build_wxpython4()
 
     pkg_log = self.start_building_package("wxPython")
     pkg_name = WXPYTHON_PKG
@@ -1594,6 +1590,92 @@ _replace_sysconfig_paths(build_time_vars)
     self.call("%s setup.py %s build_ext %s" % (self.python_exe,
       " ".join(wxpy_build_opts), debug_flag), log=pkg_log)
     self.call("%s setup.py %s install" % (self.python_exe,
+      " ".join(wxpy_build_opts)), log=pkg_log)
+    self.verify_python_module("wxPython", "wx")
+
+  def build_wxpython4(self):
+    pkg_log = self.start_building_package("wxPython")
+    pkg_name = WXPYTHON4_PKG
+    pkg = self.fetch_package(pkg_name, pkg_url=DEPENDENCIES_BASE)
+    if self.check_download_only(pkg_name): return
+
+    pkg_dir = untar(pkg, log=pkg_log)
+
+    # Stage 1: build wxWidgets libraries
+    config_opts = [
+      self.prefix,
+      "--disable-mediactrl",
+      "--with-opengl",
+      "--without-libjbig",
+      "--without-liblzma",
+      "--with-libjpeg=builtin", # Prevents system version, https://github.com/dials/dials/issues/523
+    ]
+
+    if (self.options.debug):
+      config_opts.extend(["--disable-optimise",
+                          "--enable-debug"])
+      if (self.flag_is_linux):
+        config_opts.append("--disable-debug_gdb")
+
+    # if (cocoa):
+    if (self.flag_is_mac):
+      config_opts.extend([
+        "--with-osx_cocoa",
+        "--with-macosx-version-min=%s" % self.min_macos_version,
+        "--with-mac",
+        "--enable-monolithic",
+      ])
+      if get_os_version().startswith('10.') and int(get_os_version().split('.')[1]) >= 12:
+        # See https://trac.wxwidgets.org/ticket/17929 fixed for wxWidgets 3.0.4
+        # Does not affect 10.12, but using macro does not hurt
+        # Also, -stdlib flag breaks things on Xcode 9, so leave it out.
+        config_opts.append('CPPFLAGS="-D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1 %s"' % self.min_macos_version_flag)
+        config_opts.append('LDFLAGS="%s"' % self.min_macos_version_flag)
+
+    elif (self.flag_is_linux):
+      config_opts.extend([
+        "--with-gtk=2",
+        "--with-gtk-prefix=\"%s\"" % self.base_dir,
+        "--with-gtk-exec-prefix=\"%s\"" % op.join(self.base_dir, "lib"),
+        "--enable-graphics_ctx",
+        "--enable-display",
+        "--without-libnotify",
+      ])
+
+    print("  building wxWidgets with options:", file=self.log)
+    for opt in config_opts :
+      print("    %s" % opt, file=self.log)
+    os.chdir(os.path.join(pkg_dir, "ext", "wxWidgets"))
+    self.call("./configure %s" % " ".join(config_opts), log=pkg_log)
+    self.call("make -j %d" % self.nproc, log=pkg_log)
+    self.call("make install", log=pkg_log)
+
+    # Stage 2: build wxPython itself
+    wxpy_build_opts = [
+      "--python=%s" % self.python_exe,
+      "--prefix=%s" % self.base_dir,
+      "--gtk2",
+      "-j %d" % self.nproc,
+      "-v",
+    ]
+    if self.flag_is_mac:
+      os.environ['CFLAGS'] = os.environ.get('CFLAGS', '') + " -arch x86_64"
+      wxpy_build_opts.append("--osx_cocoa")
+      # Xcode 9 fails with -stdlib flag
+      if get_os_version().startswith('10.') and int(get_os_version().split('.')[1]) >= 12:
+        os.environ['CPPFLAGS'] = self.min_macos_version_flag
+        os.environ['LDFLAGS'] = self.min_macos_version_flag
+    else:
+      wxpy_build_opts.append("--build_dir=%s" % os.path.join(self.base_dir, "bin"))
+    if (self.options.debug):
+      wxpy_build_opts.append("--debug")
+    print("  building wxPython4 with options:", file=self.log)
+    for opt in wxpy_build_opts:
+      print("    %s" % opt, file=self.log)
+    os.chdir(pkg_dir)
+    self.call("%s build.py build_py %s" % (self.python_exe,
+      " ".join(wxpy_build_opts)), log=pkg_log)
+    self.call("%s build.py install_py %s" % (self.python_exe,
       " ".join(wxpy_build_opts)), log=pkg_log)
     self.verify_python_module("wxPython", "wx")
 
