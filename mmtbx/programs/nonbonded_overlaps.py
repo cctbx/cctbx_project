@@ -10,12 +10,12 @@ import mmtbx.model
 import iotbx.pdb
 
 master_phil_str = """
-  model = None
+  model_file_name = None
     .type = path
     .optional = False
-    .help = '''input PDB file'''
+    .help = '''Input model file name'''
 
-  cif = None
+  restraints_files = None
     .type = path
     .optional = True
     .help = '''Optional Crystallographic Information File (CIF)'''
@@ -36,21 +36,11 @@ master_phil_str = """
     .type = bool
     .help = '''Use nuclear hydrogen positions'''
 
-  time_limit = 120
-    .type = int
-    .help = '''Time limit (sec) for Reduce optimization'''
-
   show_overlap_type = *all sym macro selection
   .type = choice(multi=False)
   .help = '''When using cctbx method, this parameter allows selecting to show
   all clashes 'all', clashes dues to symmetry operation 'sym' or clashes in
   the macro molecule 'macro'.'''
-
-  substitute_non_crystallographic_unit_cell_if_necessary = False
-    .type = bool
-    .help = '''\
-    Will replace the crystallographic unit cell when the model
-    crystallographic information is bad'''
 
   show_normalized_nbo = False
     .type = bool
@@ -70,27 +60,26 @@ phenix.nonbonded_overlaps file.pdb [params.eff] [options ...]
 
 Options:
 
-  model=input_file          input PDB file
-  cif=input_file            input CIF file for additional model information
+  model_file_name           input model file
+  restraints_files          input CIF file for additional restraints information
   keep_hydrogens=True       keep input hydrogen files (otherwise regenerate)
   skip_hydrogen_test=False  Ignore hydrogen considerations,
-                            check NBO on PDB file as-is
+                            check NBO on model file as-is
   nuclear=False             use nuclear x-H distances and vdW radii
   verbose=True              verbose text output
-  time_limit=120            Time limit (sec) for Reduce optimization
-  show_overlap_type=all     what type of overlaps to show (all,sym or macro)
+  show_overlap_type=all     what type of overlaps to show (all, sym or macro)
   show_normalized_nbo=False Show non-bonded overlaps per 1000 atoms
-  substitute_non_crystallographic_unit_cell_if_necessary=false
-                            fix CRYST1 records if needed
+
 
 Example:
 
 >>> mmtbx.nonbonded_overlaps xxxx.pdb keep_hydrogens=True
 
 >>> mmtbx.nonbonded_overlaps xxxx.pdb verbose=false
+
+>>> mmtbx.nonbonded_overlaps xxxx.pdb yyyyy.cif
 '''
 
-  # TODO: read in cif files
   datatypes = ['model', 'phil', 'restraint']
 
   master_phil_str = master_phil_str
@@ -103,36 +92,41 @@ Example:
       raise_sorry = True,
       expected_n  = 1,
       exact_count = True)
-    if (self.params.model is None):
-      self.params.model = self.data_manager.get_default_model_name()
+    if (self.params.model_file_name is None):
+      self.params.model_file_name = self.data_manager.get_default_model_name()
+    if (self.params.restraints_files is None):
+      self.params.restraints_files = self.data_manager.get_restraint_names()
 
   # ---------------------------------------------------------------------------
 
   def run(self):
 
-    print('Using model file:', self.params.model, file=self.logger)
+    print('Using model file:', self.params.model_file_name, file=self.logger)
+    if self.params.restraints_files:
+      print('Using restraints files', self.params.restraints_files,
+        file=self.logger)
+
     model = self.data_manager.get_model()
 
     pi_params = model.get_default_pdb_interpretation_params()
+    pi_params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
 
     # TODO: below are some non-defaults for pdb_interpretation,
-    # but they cannot be changed once model is created.
+    # but they cannot be changed
     # Do we need the non-defaults?
-    #print(pi_params.pdb_interpretation.assume_hydrogens_all_missing) default is False, but becomes True if H are present
-    #print(pi_params.pdb_interpretation.hard_minimum_nonbonded_distance)
-    pi_params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
-    #print(pi_params.pdb_interpretation.substitute_non_crystallographic_unit_cell_if_necessary)
+    # assume_hydrogens_all_missing --> default is False, but becomes True if H are present
+    # hard_minimum_nonbonded_distance --> default is 0.001 but is 0 in NBO
+    # substitute_non_crystallographic_unit_cell_if_necessary --> not necessary
 
     # add H atoms with reduce
     # TODO: This should be replaced with readyset in the future
-    pdb_fn = self.params.model
+    pdb_fn = self.params.model_file_name
     if not self.params.skip_hydrogen_test:
       pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
           file_name      = pdb_fn,
           model_number   = 0,
           nuclear        = self.params.nuclear,
           verbose        = self.params.verbose,
-          time_limit     = self.params.time_limit,
           keep_hydrogens = self.params.keep_hydrogens,
           allow_multiple_models = False,
           log            = self.logger)
@@ -143,7 +137,6 @@ Example:
 
         model = mmtbx.model.manager(
           model_input = pdb_inp,
-          #restraint_objects = cif_objects,
           pdb_interpretation_params = pi_params,
           stop_for_unknowns = False,
           log         = null_out())
@@ -157,20 +150,16 @@ Example:
     model.get_restraints_manager()
 
     # TODO: do we need macro_mol_sel, do we care?
+    # If we use model.select(), we don't need it.
     proxies = model.all_chain_proxies
     cache = proxies.pdb_hierarchy.atom_selection_cache()
     macro_mol_sel = proxies.selection(
       cache  = cache,
       string = 'protein or dna or rna')
 
-    # TODO replace input parameters with model object
     nb_overlaps = nbo.info(
       model = model,
-#      geometry_restraints_manager=geometry,
       macro_molecule_selection=macro_mol_sel)
-#      sites_cart=sites_cart,
-#      site_labels=site_labels,
-#      hd_sel=hd_sel)
 
     if self.params.verbose:
       nb_overlaps.show(
