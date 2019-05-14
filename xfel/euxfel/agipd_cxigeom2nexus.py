@@ -1,9 +1,10 @@
 from __future__ import division
+from __future__ import absolute_import
 from six.moves import range
 import os
 import h5py
 import numpy as np
-from read_geom import read_geom
+from .read_geom import read_geom
 from libtbx.phil import parse
 from libtbx.utils import Sorry
 

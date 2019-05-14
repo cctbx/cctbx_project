@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from __future__ import absolute_import
 try:
   import scitbx
 except ImportError:
@@ -10,7 +11,7 @@ if (scitbx is not None):
   from scitbx import matrix
   from libtbx.test_utils import approx_equal
 else:
-  import featherstone as fs
+  from scitbx.rigid_body.proto import featherstone as fs
   import scitbx_matrix as matrix
   def approx_equal(a1, a2): return True
   print("libtbx.test_utils not available: approx_equal() disabled")

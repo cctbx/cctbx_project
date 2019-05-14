@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from __future__ import absolute_import
 from iotbx import pdb
 import iotbx.phil
 import iotbx.ncs
@@ -3784,7 +3785,7 @@ class build_all_chain_proxies(linking_mixins):
                   verbose=False,
                   ):
     assert 0
-    import linking_utils
+    from mmtbx.monomer_library import linking_utils
     from math import sqrt
     from mmtbx.monomer_library.cif_types import link_link_id, chem_comp
     from mmtbx.monomer_library.cif_types import chem_link_bond, chem_link_angle
@@ -3938,7 +3939,7 @@ class build_all_chain_proxies(linking_mixins):
                            indent=10,
                            verbose=False,
                            ):
-    import linking_utils
+    from mmtbx.monomer_library import linking_utils
     outl = ""
     classes1 = linking_utils.get_classes(atoms[0])
     classes2 = linking_utils.get_classes(atoms[1])

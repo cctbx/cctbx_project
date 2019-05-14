@@ -5,6 +5,7 @@ Created     : 12/1/2014
 Description : Optimizer main module.
 '''
 from __future__ import print_function
+from __future__ import absolute_import
 import numpy as np
 import math, random
 from cctbx.array_family import flex
@@ -90,7 +91,7 @@ class sisa_optimizer(object):
         list_phis_good.append(list_idv[i_idv])
 
     #find centroid phase for phis_good
-    from mod_util import util_handler
+    from mmtbx.sisa.optimize.mod_util import util_handler
     uth = util_handler()
     flex_phi_bar, dummy = uth.calcphibar(list_phis_good)
 
@@ -108,7 +109,7 @@ class sisa_optimizer(object):
     mapcc_phi = 0
     if iparams.hklrefin is not None and \
       np.sum(phic_selected) > 0:
-      from mod_util import util_handler
+      from mmtbx.sisa.optimize.mod_util import util_handler
       uth = util_handler()
       mapcc_phi, mpe_phi = uth.calcphicc(fp_selected,
                                            [1]*len(fom_selected),
@@ -121,10 +122,10 @@ class sisa_optimizer(object):
   def run_optimize(self, micro_cycle_no, stack_no, miller_arrays, indices_selected, cdf_set, iparams):
 
     #start ga
-    from mod_ga import ga_handler
+    from mmtbx.sisa.optimize.mod_ga import ga_handler
     gah = ga_handler()
 
-    from mod_util import util_handler
+    from mmtbx.sisa.optimize.mod_util import util_handler
     uth = util_handler()
 
     list_phis_intcycle = []

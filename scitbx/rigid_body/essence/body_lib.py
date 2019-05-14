@@ -1,6 +1,7 @@
 from __future__ import division
-import joint_lib
-import spatial_lib
+from __future__ import absolute_import
+from scitbx.rigid_body.essence import joint_lib, spatial_lib
+
 matrix = spatial_lib.matrix
 
 class mass_points(object):

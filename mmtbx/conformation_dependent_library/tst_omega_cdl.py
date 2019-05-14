@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from __future__ import absolute_import
 import os, sys
 import time
 from StringIO import StringIO
@@ -9,7 +10,8 @@ from mmtbx.conformation_dependent_library import cdl_utils
 from mmtbx.conformation_dependent_library.omega_database import omega_database
 from mmtbx.conformation_dependent_library import omega
 
-from tst_cdl import output_filenames, filenames, get_managers
+from mmtbx.conformation_dependent_library.tst_cdl import \
+  output_filenames, filenames, get_managers
 
 '''
  A   2  VAL:33.01:-99.29:113.00:Favored:Isoleucine or valine

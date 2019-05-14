@@ -1,6 +1,7 @@
 from __future__ import division
 from __future__ import print_function
-from rigidity import \
+from __future__ import absolute_import
+from scitbx.graph.rigidity import \
   gcd, \
   float_row_echelon_form_back_substitution, \
   row_reduced_float_rigidity_matrix, \
