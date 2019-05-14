@@ -2,7 +2,6 @@ from __future__ import division
 from scitbx.array_family import flex
 from math import floor
 import re
-import types
 
 
 class NDimTable:
@@ -26,7 +25,7 @@ class NDimTable:
         '''Loads rotamer or Ramachandran data from a text file, returning a new object.
 
         Can pass in either a file handle or a file name'''
-        if isinstance(infile, types.StringTypes):
+        if isinstance(infile, (str,)):
             infile = file(infile, 'r')
         ndt = NDimTable()
         ndt.ourName = re.search(r': +"(.+)"$', infile.readline()).group(1)

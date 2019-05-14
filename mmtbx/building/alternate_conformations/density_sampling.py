@@ -146,9 +146,9 @@ def score_density(self, two_fofc_map, fofc_map, unit_cell, params,
   if (sidechain_only):
     sum_fofc = 0
     sum_2fofc = 0
-    min_fofc = sys.maxint
-    min_2fofc = sys.maxint
-    min_cbeta_2fofc = sys.maxint
+    min_fofc = sys.maxsize
+    min_2fofc = sys.maxsize
+    min_cbeta_2fofc = sys.maxsize
     min_2fofc_atom_name = None
     n_atoms = 0
     for atom in self.residue.atoms():

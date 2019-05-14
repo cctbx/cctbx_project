@@ -495,8 +495,8 @@ def _order_sensors(sensors):
 
   # Sort x-major sensors by increasing y-value of the center, and
   # y-major sensors by increasing x-value of the center.
-  sorted(sensors_x, key=lambda (v, m): m.elems[1])
-  sorted(sensors_y, key=lambda (v, m): m.elems[0])
+  sorted(sensors_x, key=lambda v_m: v_m[1].elems[1])
+  sorted(sensors_y, key=lambda v_m1: v_m1[1].elems[0])
 
   # Write a dictionary with the sensors in the correct order, and
   # discard the sensor centers and convert to deque.  Now remains only

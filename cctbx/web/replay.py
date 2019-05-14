@@ -10,7 +10,7 @@ def run(file_names):
     f = open(file_name, "rb")
     server_info, target_module, inp = pickle.load(f)
     f.close()
-    exec "import " + target_module + " as target"
+    exec("import " + target_module + " as target")
     status = empty()
     status.in_table = False
     target.run(server_info, inp, status)

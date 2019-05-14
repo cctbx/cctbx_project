@@ -127,7 +127,7 @@ def compare_ligands_impl(ligand,
             continue
           j_seq_best = None
           name_best = None
-          dxyz_best = sys.maxint
+          dxyz_best = sys.maxsize
           for j_seq, atom_2 in enumerate(ligand_2.atoms()):
             if (atom_1.element == atom_2.element):
               dxyz = abs(col(atom_1.xyz) - col(atom_2.xyz))

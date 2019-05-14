@@ -366,10 +366,10 @@ def short_repr(obj):
                         types.BuiltinFunctionType)):
         return obj.__name__
     if isinstance(obj, types.MethodType):
-        if obj.im_self is not None:
-            return obj.im_func.__name__ + ' (bound)'
+        if obj.__self__ is not None:
+            return obj.__func__.__name__ + ' (bound)'
         else:
-            return obj.im_func.__name__
+            return obj.__func__.__name__
     if isinstance(obj, (tuple, list, dict, set)):
         return '%d items' % len(obj)
     if isinstance(obj, weakref.ref):

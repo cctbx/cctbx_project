@@ -15,6 +15,7 @@ import scitbx.math
 
 from iotbx.shelx.errors import error as shelx_error
 from iotbx.shelx import tokens
+from functools import reduce
 
 class parser(object):
 

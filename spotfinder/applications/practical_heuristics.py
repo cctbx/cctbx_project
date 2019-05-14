@@ -11,6 +11,7 @@ from spotfinder.math_support import scitbx_stats
 from spotfinder.applications.heuristic_tbx.spotreporter import spotreporter
 from libtbx.development.timers import Timer, Profiler
 from libtbx.utils import Sorry
+from functools import reduce
 
 TALLY2=0
 OVERLAY = 1

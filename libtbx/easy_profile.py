@@ -11,7 +11,7 @@ class easy_profile(object):
     import cProfile
     self.prof = cProfile.Profile()
     self.func = func
-    self.file_name, self.func_name, self.line = file_name, func_name, line
+    self.file_name, self.__name__, self.line = file_name, func_name, line
     self.runs = runs
 
   def time(self, *args, **kwds):
@@ -22,8 +22,8 @@ class easy_profile(object):
     for (file_name, line, func), data in self.prof.stats.items():
       if self.file_name is not None:
         if not file_name.endswith(self.file_name): continue
-      if self.func_name is not None:
-        if func != self.func_name: continue
+      if self.__name__ is not None:
+        if func != self.__name__: continue
       if self.line is not None:
         if line != self.line: continue
       break

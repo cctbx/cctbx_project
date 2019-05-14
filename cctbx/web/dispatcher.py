@@ -23,7 +23,7 @@ def run():
   form = cgi.FieldStorage()
   target_module = form["target_module"].value
 
-  exec "import " + target_module + " as target"
+  exec("import " + target_module + " as target")
   inp = target.interpret_form_data(form)
 
   # optionally capture input to facilitate debugging

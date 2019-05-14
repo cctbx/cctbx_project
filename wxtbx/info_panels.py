@@ -291,7 +291,7 @@ class PDBChainBisoPanel(InfoPanelBase):
       b_min = flex.min(b_iso)
       b_mean = flex.mean(b_iso)
       b_info = "%.2f (%.2f - %.2f)" % (b_mean, b_min, b_max)
-      item = chain_list.InsertStringItem(sys.maxint, chain_info)
+      item = chain_list.InsertStringItem(sys.maxsize, chain_info)
       chain_list.SetStringItem(item, 1, b_info)
     self.panel_sizer.Add(chain_list, 1, wx.EXPAND|wx.ALL, 5)
     self.panel.Layout()

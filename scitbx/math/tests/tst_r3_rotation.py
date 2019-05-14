@@ -181,7 +181,7 @@ def check_vector_to_100(g):
   assert approx_equal(r.determinant(), 1)
 
 def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
-  principal_vectors = [matrix.col(v) for v in (1,0,0), (0,1,0), (0,0,1)]
+  principal_vectors = [matrix.col(v) for v in ((1,0,0), (0,1,0), (0,0,1))]
   for g0 in principal_vectors:
     for t0 in principal_vectors:
       for g in [g0, -g0]:

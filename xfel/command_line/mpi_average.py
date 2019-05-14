@@ -203,7 +203,7 @@ the output images in the folder cxi49812.
 
   # set this to sys.maxint to analyze all events
   if command_line.options.numevents is None:
-    maxevents = sys.maxint
+    maxevents = sys.maxsize
   else:
     maxevents = command_line.options.numevents
 

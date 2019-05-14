@@ -95,7 +95,7 @@ class fast_maps_from_hkl_file(object):
         "F,SIGF","FOBS,SIGFOBS", "FOBS_X", "IOBS,SIGIOBS"]
       default_rfree_labels = ["FreeR_flag", "FREE", "R-free-flags"]
       all_labels = []
-      best_label = sys.maxint
+      best_label = sys.maxsize
       data_file = file_reader.any_file(file_name, force_type="hkl")
       for miller_array in data_file.file_server.miller_arrays :
         labels = miller_array.info().label_string()

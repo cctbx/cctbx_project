@@ -16,6 +16,7 @@ from gltbx.gl import *
 from gltbx.glu import *
 import math
 import sys
+import atexit
 
 
 def v3distsq(a,b):
@@ -29,7 +30,7 @@ if hasattr(sys, 'exitfunc'):
     oldexitfunc = sys.exitfunc
 def cleanup():
     if oldexitfunc: oldexitfunc()
-sys.exitfunc = cleanup
+atexit.register(cleanup)
 
 class wxGLWindow(wxGLCanvas):
   """Implements a simple wxPython OpenGL window.
@@ -37,7 +38,7 @@ class wxGLWindow(wxGLCanvas):
   This class provides a simple window, into which GL commands can be issued. This is done by overriding the built in functions InitGL(), DrawGL(), and FinishGL(). The main difference between it and the plain wxGLCanvas is that it copes with refreshing and resizing the window"""
   def __init__(self, parent,*args,**kw):
     self.GL_uninitialised = 1
-    apply(wxGLCanvas.__init__,(self, parent)+args, kw)
+    wxGLCanvas.__init__(*(self, parent)+args, **kw)
     EVT_SIZE(self,self.wxSize)
     EVT_PAINT(self,self.wxPaint)
     EVT_ERASE_BACKGROUND(self, self.wxEraseBackground)
@@ -199,7 +200,7 @@ class wxAdvancedGLWindow(wxGLWindow):
       del kw['autospin_allowed']
     else:
       self.autospin_allowed = 0
-    apply(wxGLWindow.__init__,(self, parent)+args, kw)
+    wxGLWindow.__init__(*(self, parent)+args, **kw)
 
     # The _back color
     self.r_back = 0.7

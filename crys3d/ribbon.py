@@ -21,7 +21,7 @@ class cartoon (object) :
     last_labels = None
     last_site = None
     last_ss = None
-    last_resseq = - sys.maxint
+    last_resseq = - sys.maxsize
     current_segment = None
     t1 = time.time()
     for model in pdb_hierarchy.models() :

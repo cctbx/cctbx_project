@@ -149,8 +149,8 @@ def coord_stats_with_flips(sites1, sites2, atoms):
             max_deviation_flip = distance
           break
       else : # didn't find the symmetry atom,
-        rmsd_flip = float(sys.maxint)
-        max_deviation_flip = float(sys.maxint)
+        rmsd_flip = float(sys.maxsize)
+        max_deviation_flip = float(sys.maxsize)
         break
     else :
       distance = abs(col(site1) - col(site2))

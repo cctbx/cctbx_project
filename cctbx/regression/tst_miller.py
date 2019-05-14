@@ -1736,7 +1736,8 @@ def exercise_phased_translation_coeff(d_min = 1.0,
     expected_shift = [1.-(0.7/5), 1.-(1.2/5), 1.-(1.4/5)]
     assert approx_equal(expected_shift, cluster_analysis.sites()[0], eps=1e-2)
 
-def exercise_common_set((a, b), permutation_only):
+def exercise_common_set(arrays, permutation_only):
+  (a, b) = arrays
   ab = a.common_set(b)
   ba = b.common_set(a)
   if (permutation_only):

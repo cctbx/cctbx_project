@@ -53,7 +53,7 @@ class SitesList(wx.ListCtrl,
     self.DeleteAllItems()
     self._atoms = atoms
     for atom in atoms :
-      item = self.InsertStringItem(sys.maxint, atom.serial.strip())
+      item = self.InsertStringItem(sys.maxsize, atom.serial.strip())
       self.SetStringItem(item, 1, atom.element.strip())
       self.SetStringItem(item, 2, "%.3f" % atom.xyz[0])
       self.SetStringItem(item, 3, "%.3f" % atom.xyz[1])

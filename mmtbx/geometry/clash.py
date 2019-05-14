@@ -4,6 +4,7 @@ from cctbx import sgtbx # import dependency
 import mmtbx.geometry.shared_types # import dependency
 
 import boost.python
+from functools import reduce
 ext = boost.python.import_ext( "mmtbx_geometry_clash_ext" )
 from mmtbx_geometry_clash_ext import *
 

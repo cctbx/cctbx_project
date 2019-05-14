@@ -7,11 +7,13 @@ import random
 import math
 import sys
 
-def gauss2d0((x,y), s11, s12, s22):
+def gauss2d0(xy, s11, s12, s22):
+  (x,y) = xy
   return -math.log(1/math.sqrt(4*math.pi**2*(s11*s22-s12**2))
            *math.exp(-(s22*x**2-2*s12*x*y+s11*y**2)/(2*(s11*s22-s12**2))))
 
-def twisted_gauss2d0((x,y), s11, s12, s22, twist):
+def twisted_gauss2d0(xy, s11, s12, s22, twist):
+  (x,y) = xy
   arg = twist*math.sqrt(x**2+y**2)
   c = math.cos(arg)
   s = math.sin(arg)
@@ -24,7 +26,8 @@ Sin = math.sin
 Sqrt = math.sqrt
 Pi = math.pi
 
-def analytic_grad_x((x,y), s11, s12, s22, twist):
+def analytic_grad_x(xy, s11, s12, s22, twist):
+  (x,y) = xy
   if (x == 0 and y == 0): return 0.
   return (
          (-2*s12*(y*Cos(twist*Sqrt(x**2 + y**2)) +
@@ -49,7 +52,8 @@ def analytic_grad_x((x,y), s11, s12, s22, twist):
               (twist*x*y*Sin(twist*Sqrt(x**2 + y**2)))/Sqrt(x**2 + y**2)))/
          (2.*(-s12**2 + s11*s22)))
 
-def analytic_grad_y((x,y), s11, s12, s22, twist):
+def analytic_grad_y(xy, s11, s12, s22, twist):
+  (x,y) = xy
   if (x == 0 and y == 0): return 0.
   return (
          (-2*s12*(y*Cos(twist*Sqrt(x**2 + y**2)) +
@@ -74,7 +78,8 @@ def analytic_grad_y((x,y), s11, s12, s22, twist):
               (twist*y**2*Sin(twist*Sqrt(x**2 + y**2)))/Sqrt(x**2 + y**2)))/
          (2.*(-s12**2 + s11*s22)))
 
-def analytic_curv_xx((x,y), s11, s12, s22, twist):
+def analytic_curv_xx(xy, s11, s12, s22, twist):
+  (x,y) = xy
   if (x == 0 and y == 0): return None
   return (
          (-2*s12*(y*Cos(twist*Sqrt(x**2 + y**2)) +
@@ -127,7 +132,8 @@ def analytic_curv_xx((x,y), s11, s12, s22, twist):
                (twist*x*y*Sin(twist*Sqrt(x**2 + y**2)))/Sqrt(x**2 + y**2))**2)
           /(2.*(-s12**2 + s11*s22)))
 
-def analytic_curv_yy((x,y), s11, s12, s22, twist):
+def analytic_curv_yy(xy, s11, s12, s22, twist):
+  (x,y) = xy
   if (x == 0 and y == 0): return None
   return (
          (-2*s12*(y*Cos(twist*Sqrt(x**2 + y**2)) +
@@ -180,7 +186,8 @@ def analytic_curv_yy((x,y), s11, s12, s22, twist):
                (twist*y**2*Sin(twist*Sqrt(x**2 + y**2)))/Sqrt(x**2 + y**2))**2
            )/(2.*(-s12**2 + s11*s22)))
 
-def analytic_curv_xy((x,y), s11, s12, s22, twist):
+def analytic_curv_xy(xy, s11, s12, s22, twist):
+  (x,y) = xy
   if (x == 0 and y == 0): return None
   return (
          (2*s11*(y*Cos(twist*Sqrt(x**2 + y**2)) +
@@ -247,32 +254,38 @@ def analytic_curv_xy((x,y), s11, s12, s22, twist):
               (twist*y**2*Sin(twist*Sqrt(x**2 + y**2)))/Sqrt(x**2 + y**2)))/
          (2.*(-s12**2 + s11*s22)))
 
-def finite_grad_x((x,y), s11, s12, s22, twist, eps=1.e-6):
+def finite_grad_x(xy, s11, s12, s22, twist, eps=1.e-6):
+  (x,y) = xy
   tm = twisted_gauss2d0((x-eps,y), s11, s12, s22, twist)
   tp = twisted_gauss2d0((x+eps,y), s11, s12, s22, twist)
   return (tp-tm)/(2*eps)
 
-def finite_grad_y((x,y), s11, s12, s22, twist, eps=1.e-6):
+def finite_grad_y(xy, s11, s12, s22, twist, eps=1.e-6):
+  (x,y) = xy
   tm = twisted_gauss2d0((x,y-eps), s11, s12, s22, twist)
   tp = twisted_gauss2d0((x,y+eps), s11, s12, s22, twist)
   return (tp-tm)/(2*eps)
 
-def finite_curv_xx((x,y), s11, s12, s22, twist, eps=1.e-6):
+def finite_curv_xx(xy, s11, s12, s22, twist, eps=1.e-6):
+  (x,y) = xy
   tm = finite_grad_x((x-eps,y), s11, s12, s22, twist, eps)
   tp = finite_grad_x((x+eps,y), s11, s12, s22, twist, eps)
   return (tp-tm)/(2*eps)
 
-def finite_curv_yy((x,y), s11, s12, s22, twist, eps=1.e-6):
+def finite_curv_yy(xy, s11, s12, s22, twist, eps=1.e-6):
+  (x,y) = xy
   tm = finite_grad_y((x,y-eps), s11, s12, s22, twist, eps)
   tp = finite_grad_y((x,y+eps), s11, s12, s22, twist, eps)
   return (tp-tm)/(2*eps)
 
-def finite_curv_xy((x,y), s11, s12, s22, twist, eps=1.e-6):
+def finite_curv_xy(xy, s11, s12, s22, twist, eps=1.e-6):
+  (x,y) = xy
   tm = finite_grad_x((x,y-eps), s11, s12, s22, twist, eps)
   tp = finite_grad_x((x,y+eps), s11, s12, s22, twist, eps)
   return (tp-tm)/(2*eps)
 
-def finite_curv_yx((x,y), s11, s12, s22, twist, eps=1.e-6):
+def finite_curv_yx(xy, s11, s12, s22, twist, eps=1.e-6):
+  (x,y) = xy
   tm = finite_grad_y((x-eps,y), s11, s12, s22, twist, eps)
   tp = finite_grad_y((x+eps,y), s11, s12, s22, twist, eps)
   return (tp-tm)/(2*eps)

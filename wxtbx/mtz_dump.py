@@ -151,7 +151,7 @@ class MtzColumnList(wx.ListCtrl):
   def AddMtzColumn(self, fields):
     assert (len(fields) == len(columns))
     n = self.GetItemCount() + 1
-    item = self.InsertStringItem(sys.maxint, str(n))
+    item = self.InsertStringItem(sys.maxsize, str(n))
     for i, field in enumerate(fields[:-2]):
       self.SetStringItem(item, i+1, field)
     self.SetStringItem(item, len(fields)-1, "%s %s" % (fields[-2], fields[-1]))

@@ -4,6 +4,7 @@ crystallography images, treated as a graph problem.
 **Author:**   Oliver Zeldin <zeldin@stanford.edu>
 """
 from __future__ import division
+from functools import reduce
 
 __author__ = 'zeldin'
 

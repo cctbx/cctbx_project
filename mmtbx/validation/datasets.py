@@ -62,7 +62,7 @@ for key in locals().keys():
   cmd = "generate_%s = generate_data_items(%s)" % (key[:-5],
                                                    key,
                                                  )
-  exec cmd
+  exec(cmd)
   if key=="top8000_data": data_lookups[key]="Top 8000"
   elif key=="rna11_data": data_lookups[key]="RNA 11"
   elif key=="hiq54_data": data_lookups[key]="HiQ54"

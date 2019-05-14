@@ -329,7 +329,7 @@ def custom(names, miller_arrays, xray_structure, params, out):
   #first make variables from the names please
   tmp_names = patch_miller_arrays_as_names(names)
   for instruction in tmp_names:
-    exec instruction
+    exec(instruction)
   result = None
   # now we have to evaulate the code
   print("Trying to evaluate the code as shown below", file=out)
@@ -337,7 +337,7 @@ def custom(names, miller_arrays, xray_structure, params, out):
   print(params.code, file=out)
   print("------------------------------------------", file=out)
   user_code = compile( params.code, '<string>', 'exec' )
-  exec user_code
+  exec(user_code)
 
   return result
 
@@ -359,7 +359,7 @@ def manipulate_miller(names, miller_arrays, xray_structure, params, out=None):
   #these two lines allow me quickly lift the appropriate set of
   #parameters from the file scope without a lengthy set of if statements
   patch = compile("function_arguments = params.%s"%(params.task),'<string>','exec' )
-  exec patch
+  exec(patch)
   result = function_pointer[ params.task ]( names,
                                             miller_arrays,
                                             xray_structure,

@@ -72,7 +72,7 @@ def run(args):
 
   rank = 0
   size = 1
-  max_events = sys.maxint
+  max_events = sys.maxsize
 
   for run in ds.runs():
     print("starting run", run.run())
