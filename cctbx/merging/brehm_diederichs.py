@@ -95,7 +95,7 @@ class algorithm2:
     rij = []
     wij = []
     slices = {}
-    for coset in ['h,k,l']+alternates.keys():
+    for coset in ['h,k,l']+list(alternates.keys()):
       slices[coset] = {}
       twin_data = alternates.get(coset, self.data) # i.e., for 'h,k,l' the twin data is self.data
       for itr in xrange(NN):
@@ -195,14 +195,16 @@ class algorithm2:
 
     return group_args(reindexing_sets={
       "h,k,l":set(grouped_lattice_ids.select(selection)),
-      alternates.keys()[0]:set(grouped_lattice_ids.select(~selection))},
+      # FIXME: order of .keys() changes depending on py2/3 , might break if len(key) > 1
+      list(alternates.keys())[0]:set(grouped_lattice_ids.select(~selection))},
                       rij=rij,
                       wij=wij,
                       coord_x=coord_x,
                       coord_y=coord_y)
 
+    # FIXME: verify len( keys) > 1 or else keys()[0] might break py2/3 compat
     return {"h,k,l":set(grouped_lattice_ids.select(selection)),
-            alternates.keys()[0]:set(grouped_lattice_ids.select(~selection))}
+            list(alternates.keys())[0]:set(grouped_lattice_ids.select(~selection))}
     # Values in the return sets are indexes into the self.data data array (or the self.lattice_id array)
     # corresponding to the start of data for a particular lattice.  Need a different function call
     # to actually get the lattice ids.
@@ -230,7 +232,8 @@ class algorithm2:
       return None
 
   def report(self,millerlookups):
-     result = millerlookups.fromkeys(millerlookups.keys())
+     # TODO: verify what millerlookups is - is it a dict ?
+     result = millerlookups.fromkeys(list(millerlookups.keys()))
      for key in result:
        result[key]=[]
        for item in millerlookups[key]:
@@ -355,6 +358,7 @@ class minimize_divide(lbfgs_with_curvatures_mix_in):
 
 def reassemble(patchwork,verbose=False):
   resorted = [patchwork[0]]
+  # TODO what is resorted[0] ? Is it a dictionary, if not fix the code
   refkeys = resorted[0].keys()
   for ip in xrange(1,len(patchwork)):
     reference = resorted[-1]
