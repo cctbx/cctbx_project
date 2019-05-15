@@ -178,7 +178,7 @@ from cctbx.array_family import flex
 from libtbx.utils import Sorry, to_str
 from libtbx import group_args
 import libtbx
-import sys
+import sys, zmq, threading,  time
 
 
 
@@ -239,7 +239,29 @@ class HKLViewFrame () :
     self.viewer = view_3d.hklview_3d( **kwds )
     self.master_phil = libtbx.phil.parse( philstr )
     self.params = self.master_phil.fetch().extract()
-    self.old_phil = self.master_phil
+
+    self.useSocket=False
+    if kwds.has_key('useSocket'):
+      self.useSocket = kwds['useSocket']
+      self.context = zmq.Context()
+      self.socket = self.context.socket(zmq.PAIR)
+      self.socket.connect("tcp://127.0.0.1:7895")
+      self.STOP = False
+      self.msgqueuethrd = threading.Thread(target = self.zmq_listen )
+      self.msgqueuethrd.daemon = True
+      self.msgqueuethrd.start()
+
+
+  def zmq_listen(self):
+    while not self.STOP:
+      philstr = self.socket.recv()
+      philstr = str(philstr)
+      self.mprint("Received\n" + philstr)
+      self.ExecutePhilString(philstr)
+      time.sleep(1)
+    del self.socket
+
+
 
 
   def update_settings(self, new_phil=None):
@@ -247,11 +269,14 @@ class HKLViewFrame () :
       new_phil = self.master_phil.format(python_object = self.params)
     working_phil = self.master_phil.fetch(source = new_phil)
     diff_phil = self.master_phil.fetch_diff(source = working_phil)
-    diff = diff_phil.extract()
+    diff = diff_phil.extract().NGL_HKLviewer
     self.mprint("diff phil:\n" + diff_phil.as_str() )
     self.master_phil = working_phil
-    self.params = working_phil.extract()
+    self.params = working_phil.extract().NGL_HKLviewer
     phl = self.params
+
+    if hasattr(diff, "filename"):
+      self.load_reflections_file(phl.filename)
 
     if hasattr(diff, "column") or hasattr(diff, "fomcolumn"):
       self.set_column(phl.column, phl.fomcolumn )
@@ -271,7 +296,7 @@ class HKLViewFrame () :
 
     msg = self.viewer.update_settings()
     self.mprint( msg)
-
+    self.SendInfo()
     if (self.miller_array is None) :
       self.mprint( "No miller array has been selected")
       return False
@@ -430,7 +455,7 @@ class HKLViewFrame () :
     self.update_settings()
 
 
-  def LoadReflectionsFile (self, file_name, set_array=True, data_only=False):
+  def load_reflections_file(self, file_name, set_array=True, data_only=False):
     file_name = to_str(file_name)
     if (file_name != ""):
       from iotbx.reflection_file_reader import any_reflection_file
@@ -472,6 +497,11 @@ class HKLViewFrame () :
         if (set_array) :
           self.set_miller_array(valid_arrays[0])
         #return valid_arrays[0]
+
+
+  def LoadReflectionsFile(self, filename):
+    self.params.filename = filename
+    self.update_settings()
 
 
   def set_camera_type(self, camtype):
@@ -614,7 +644,7 @@ class HKLViewFrame () :
     self.update_settings()
 
 
-  def PhilStringToSettings(self, philstr):
+  def ExecutePhilString(self, philstr):
     user_phil = libtbx.phil.parse(philstr)
     new_phil = self.master_phil.fetch(source = user_phil)
     self.update_settings( new_phil)
@@ -664,8 +694,23 @@ class HKLViewFrame () :
     return self.viewer.binstrs
 
 
+  def SendInfo(self):
+    mydict = { "miller_arrays": self.array_info,
+               "matching_arrays": self.viewer.matchingarrayinfo,
+               "bin_info": self.viewer.binstrs,
+               "html_url": self.viewer.url,
+               "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices]
+            }
+    if self.useSocket:
+      self.socket.send( str(mydict).encode("utf-8") )
+
+
+
 
 philstr = """
+NGL_HKLviewer {
+  filename = None
+    .type = path
   column = None
     .type = int
   fomcolumn = None
@@ -682,5 +727,11 @@ philstr = """
   viewer {
     %s
   }
+}
 
 """ %display.philstr
+
+
+
+if __name__ == '__main__':
+  myHKLview = HKLViewFrame()

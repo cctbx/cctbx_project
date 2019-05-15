@@ -277,6 +277,8 @@ class hklview_3d:
 
   #--- user input and settings
   def update_settings (self) :
+    if (self.miller_array is None):
+      return
     self.construct_reciprocal_space(merge=self.merge)
     self.DrawNGLJavaScript()
     msg = "Rendered %d reflections\n" % self.scene.points.size()
