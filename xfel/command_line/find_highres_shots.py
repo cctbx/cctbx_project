@@ -9,6 +9,7 @@ from dials.util.options import OptionParser
 from libtbx.phil import parse
 from libtbx import easy_pickle
 from scitbx.array_family import flex
+import six
 
 help_message = """
 Script to find high resolution shots from XFEL data
@@ -122,7 +123,7 @@ class Script(object):
           final_data[filepath] = data, resolution
 
           worst_resolution = 0
-          for key, entry in final_data.iteritems():
+          for key, entry in six.iteritems(final_data):
             data, resolution = entry
             if resolution > worst_resolution:
               worst_resolution = resolution

@@ -39,6 +39,7 @@ from scitbx.array_family import flex
 
 from scitbx import lbfgs
 from six.moves import range
+import six
 
 
 class optimise_rectangle(object):
@@ -326,8 +327,8 @@ def _find_long_short(quadrants,
   l_N = 0
   s_N = 0
 
-  for (q, sensors) in quadrants.iteritems():
-    for (s, vertices) in sensors.iteritems():
+  for (q, sensors) in six.iteritems(quadrants):
+    for (s, vertices) in six.iteritems(sensors):
       if len(vertices) != 4:
         raise RuntimeError("Sensor in quadrant does not have four vertices")
       l = (vertices[1] - vertices[0]).length()
@@ -369,8 +370,8 @@ def _find_long_short(quadrants,
   # Compute all the side lengths from all the sensors in all quadrants
   # using every pair of successive vertices.
   d = []
-  for (q, sensors) in quadrants.iteritems():
-    for (s, vertices) in sensors.iteritems():
+  for (q, sensors) in six.iteritems(quadrants):
+    for (s, vertices) in six.iteritems(sensors):
       if len(vertices) != 4:
         raise RuntimeError("Sensor in quadrant does not have four vertices")
       for i in range(len(vertices)):
@@ -417,8 +418,8 @@ def _find_aspect_ratio(quadrants, r_int=(-float('inf'), +float('inf'))):
   r_sum = r_ssq = 0
   r_N = 0
 
-  for (q, sensors) in quadrants.iteritems():
-    for (s, vertices) in sensors.iteritems():
+  for (q, sensors) in six.iteritems(quadrants):
+    for (s, vertices) in six.iteritems(sensors):
       if len(vertices) != 4:
         raise RuntimeError("Sensor in quadrant does not have four vertices")
       s = (vertices[2] - vertices[1]).length() + (vertices[0] - vertices[3]).length()
@@ -515,7 +516,7 @@ def _order_sensors(sensors):
     6: deque(sensors_y[3][0]), 7: deque(sensors_y[2][0])}
 
   # Reshuffle vertices in sensors by cyclic permutation.
-  for (i, v) in sensors_dict.iteritems():
+  for (i, v) in six.iteritems(sensors_dict):
     assert len(v) >= 3 # XXX
     d1 = v[1] - v[0]
     d2 = v[2] - v[1]
@@ -1043,8 +1044,8 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 
       (s, x, y, z) = [int(i) for i in line.split()[0:4]]
       p = matrix.col((x, y, z))
-      if q in quadrants.keys():
-        if s in quadrants[q].keys():
+      if q in quadrants:
+        if s in quadrants[q]:
           raise RuntimeError("Multiple definitions for sensor")
         quadrants[q][s] = p
       else:
@@ -1073,9 +1074,9 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
     ax = fig.add_subplot(111, aspect='equal')
     cents = []
 
-    for q_id, quadrant in quadrants.iteritems():
+    for q_id, quadrant in six.iteritems(quadrants):
       s = []
-      for s_id, sensor_pt in quadrant.iteritems():
+      for s_id, sensor_pt in six.iteritems(quadrant):
         s.append(sensor_pt)
         if len(s) == 4:
           ax.add_patch(Polygon([p[0:2] for p in s], closed=True, color='green', fill=False, hatch='/'))
@@ -1093,11 +1094,10 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
   s_diff = []
   l_len = []
   s_len = []
-  for (q, s) in quadrants.iteritems():
+  for (q, s) in six.iteritems(quadrants):
     # Sort the sensor vertices and ensure every sensor has four
     # vertices.
-    s_sorted = copy.deepcopy(s.keys())
-    s_sorted.sort()
+    s_sorted = sorted(s.keys())
     if len(s_sorted) % 4 != 0:
       raise RuntimeError(
         "Sensor in quadrant does not have integer number of sensors")
@@ -1196,10 +1196,10 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
   # For each sensor in each quadrant, determine least-squares fit
   # rectangle with sides (l_mu, s_mu) to the four vertices.
   quadrants_lsq = {}
-  for (q, sensors) in quadrants.iteritems():
+  for (q, sensors) in six.iteritems(quadrants):
     print("Q: %1d" % q)
     quadrants_lsq[q] = {}
-    for (s, vertices) in sensors.iteritems():
+    for (s, vertices) in six.iteritems(sensors):
 
       #if q != 0 or s != 3:
       #  continue
@@ -1251,35 +1251,35 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
     #
     # There is no global origin for the CSPAD:s at CXI, because all
     # four quadrants are measured independently.
-    for (q, sensors) in quadrants_lsq.iteritems():
+    for (q, sensors) in six.iteritems(quadrants_lsq):
       quadrants_trans[q] = {}
 
       if q == 0:
         # Q0:
         #   x -> -slow
         #   y -> -fast
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in six.iteritems(sensors):
           quadrants_trans[q][s] = [matrix.col((-v[0], -v[1]))
                                    for v in quadrants_lsq[q][s]]
       elif q == 1:
         # Q1:
         #   x -> +fast
         #   y -> -slow
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in six.iteritems(sensors):
           quadrants_trans[q][s] = [matrix.col((-v[1], +v[0]))
                                    for v in quadrants_lsq[q][s]]
       elif q == 2:
         # Q2:
         #   x -> +slow
         #   y -> +fast
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in six.iteritems(sensors):
           quadrants_trans[q][s] = [matrix.col((+v[0], +v[1]))
                                    for v in quadrants_lsq[q][s]]
       elif q == 3:
         # Q3:
         #   x -> -fast
         #   y -> +slow
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in six.iteritems(sensors):
           quadrants_trans[q][s] = [matrix.col((+v[1], -v[0]))
                                    for v in quadrants_lsq[q][s]]
       else:
@@ -1298,15 +1298,15 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
     # four quadrants.
     o = matrix.col((0, 0, 0))
     N = 0
-    for (q, sensors) in quadrants_lsq.iteritems():
+    for (q, sensors) in six.iteritems(quadrants_lsq):
       for v in sensors[1]:
         o += v
         N += 1
     o /= N
 
-    for (q, sensors) in quadrants_lsq.iteritems():
+    for (q, sensors) in six.iteritems(quadrants_lsq):
       quadrants_trans[q] = {}
-      for (s, vertices) in sensors.iteritems():
+      for (s, vertices) in six.iteritems(sensors):
         quadrants_trans[q][s] = [matrix.col((-v[1] - (-o[1]), +v[0] - (+o[0])))
                                  for v in quadrants_lsq[q][s]]
   else:
@@ -1337,7 +1337,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
   sign_hack_s = (1, 1)
   sign_hack_l = sign_hack_s
 
-  for (q, sensors) in quadrants_trans.iteritems():
+  for (q, sensors) in six.iteritems(quadrants_trans):
     corrections[q] = {}
 
     # Figure out quadrant offset from old-style data.  Get bottom ASIC
@@ -1359,7 +1359,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
       elif q == 3:
         offset = (c[0] - 3, c[3] + 3)
 
-    for (s, vertices) in sensors.iteritems():
+    for (s, vertices) in six.iteritems(sensors):
       corrections[q][s] = {}
 
       # Compute differences against old-style metrology.
@@ -1613,8 +1613,8 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 
   # Build list and output differences to old-style metrology.
   corrections_list = flex.int(4 * 8 * 2 * 2)
-  for (q, sensors) in corrections.iteritems():
-    for (s, correction) in sensors.iteritems():
+  for (q, sensors) in six.iteritems(corrections):
+    for (s, correction) in six.iteritems(sensors):
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 0 * 2 + 0] = correction[0][0]
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 0 * 2 + 1] = correction[0][1]
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 1 * 2 + 0] = correction[1][0]

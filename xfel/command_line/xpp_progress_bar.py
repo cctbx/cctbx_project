@@ -15,7 +15,6 @@ Currently it features:
 
 '''
 from __future__ import absolute_import, division, print_function
-from six.moves import range
 import os
 import wx
 import numpy as np
@@ -209,7 +208,7 @@ class BarsFrame(wx.Frame):
         self.mult = [stats[key]['multiplicity'] for key in stats.keys()]
         plot_max = max(max(self.mult), max(self.mult_highest)) + 1
         pos = np.arange(len(self.mult))+0.5 # the bar centers on the y-axis
-        labels = [stats.keys()[i] for i in range(len(stats.keys()))]
+        labels = list(stats.keys())
         n = len(labels)
         # clear the axes and redraw the plot anew
         #

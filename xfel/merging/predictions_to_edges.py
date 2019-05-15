@@ -62,7 +62,7 @@ def extend_predictions(pdata, int_pickle_path, image_info, dmin=1.5, dump=False,
   ybeam = pdata['ybeam']
   wavelength = pdata['wavelength']
 
-  if 'effective_tiling' in pdata.keys():
+  if 'effective_tiling' in pdata:
     tm_int = pdata['effective_tiling']
   else:
     tiling = image_info.tiling_from_image(detector_phil=detector_phil)

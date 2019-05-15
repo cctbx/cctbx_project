@@ -4,6 +4,7 @@ import glob
 from scitbx.array_family import flex # import dependency
 
 from libtbx import easy_pickle
+import six
 
 class histogram_finalise(object):
 
@@ -59,7 +60,7 @@ class finalise_one_run(object):
       except EOFError:
         print("EOFError: skipping %s:" %path)
         continue
-      if len(d["histogram"].keys()) == 0: continue
+      if len(d["histogram"]) == 0: continue
       if self.histogram is None:
         self.histogram = d["histogram"]
       else:
@@ -71,6 +72,6 @@ class finalise_one_run(object):
     #assert self.nmemb > 0
 
 def update_histograms(hist_dict1, hist_dict2):
-  for key, value in hist_dict1.iteritems():
+  for key, value in six.iteritems(hist_dict1):
     value.update(hist_dict2[key])
   return hist_dict1

@@ -20,6 +20,7 @@ import time
 from libtbx import easy_pickle
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana.parse_calib import Section
+import six
 
 __version__ = "$Revision$"
 
@@ -576,7 +577,7 @@ def hdf5pack(hdf5_file,
 
   grp_event = hdf5_file.create_group(d['TIMESTAMP'])
   grp_detector = grp_event.create_group(address)
-  for (key, value) in d.iteritems():
+  for (key, value) in six.iteritems(d):
     if key == 'ACTIVE_AREAS':
       grp_detector.create_dataset(key, data=value.as_numpy_array())
     elif key == 'DATA':
@@ -1000,7 +1001,7 @@ def env_sifoil(env):
           "XRT:DIA:MMS:11.RBV": 10240 }
 
   si_tot = 0
-  for pvname, si_len in dia.iteritems():
+  for pvname, si_len in six.iteritems(dia):
     pv = env.epicsStore().value(pvname)
 
     # XXX Why is this an EpicsPvTime object?  The absorption

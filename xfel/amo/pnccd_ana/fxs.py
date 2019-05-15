@@ -1091,7 +1091,7 @@ class fluctuation_scattering(object):
       f         = h5py.File(filename,'r')
 
       # Ascert that time-stamp exist in file
-      if time in f.keys():
+      if time in f:
          self.image  = f[time][self.detector_address]['HistData'].value
       else:
         self.image   = None

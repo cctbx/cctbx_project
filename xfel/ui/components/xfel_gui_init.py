@@ -1636,7 +1636,7 @@ class JobsTab(BaseTab):
     if e.jobs is not None:
       self.all_jobs = e.jobs
       if str(self.filter).lower() == 'all jobs':
-        selected_trials = e.jobs.keys()
+        selected_trials = e.jobs.keys() # iterator OK in Py3
       else:
         selected_trials = [int(self.filter.split()[-1])]
 

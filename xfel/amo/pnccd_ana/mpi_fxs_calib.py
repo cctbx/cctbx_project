@@ -183,7 +183,7 @@ def compute_calib(argv=None) :
               if i.endswith(".h5"):
                  f  = h5py.File(i,'r')
                  filestamps.append(i[-7:-4])
-                 timestamps.append(f.keys())
+                 timestamps.append(list(f.keys()))
                  continue
               else:
                  continue

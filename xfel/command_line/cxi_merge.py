@@ -27,6 +27,7 @@ import time
 import sys
 import glob
 from scitbx import matrix
+import six
 op = os.path
 
 from xfel.merging.database.merging_database import mysql_master_phil
@@ -630,7 +631,7 @@ def load_result (file_name,
     obj['mapped_predictions'][0] = obj['mapped_predictions'][0].select(accepted)
     obj['observations'][0] = obj['observations'][0].select(accepted)
     obj['cos_two_polar_angle'] = obj["cos_two_polar_angle"].select(accepted)
-  if not 'indices_to_edge' in obj.keys():
+  if not 'indices_to_edge' in obj:
     if get_predictions_to_edge:
       from xfel.merging.predictions_to_edges import extend_predictions
       extend_predictions(obj, file_name, image_info, dmin=1.5, dump=False)
@@ -823,7 +824,7 @@ class scaling_manager (intensity_data) :
                + self.n_low_corr + self.n_low_signal \
                + self.n_wrong_bravais + self.n_wrong_cell \
                + self.n_low_resolution \
-               + sum([val for val in self.failure_modes.itervalues()])
+               + sum([val for val in six.itervalues(self.failure_modes)])
     assert checksum == len(file_names)
 
     high_res_count = (self.d_min_values <= self.params.d_min).count(True)
@@ -942,7 +943,7 @@ class scaling_manager (intensity_data) :
       self.summed_N      += data.summed_N
       self.summed_weight += data.summed_weight
       self.summed_wt_I   += data.summed_wt_I
-      for index, isigi in data.ISIGI.iteritems() :
+      for index, isigi in six.iteritems(data.ISIGI) :
         if (index in self.ISIGI):
           self.ISIGI[index] += isigi
         else:
@@ -977,7 +978,7 @@ class scaling_manager (intensity_data) :
     for key in data.failure_modes.keys():
       self.failure_modes[key] = self.failure_modes.get(key,0) + data.failure_modes[key]
 
-    for index, isigi in data.ISIGI.iteritems() :
+    for index, isigi in six.iteritems(data.ISIGI) :
       if (index in self.ISIGI):
         self.ISIGI[index] += isigi
       else:

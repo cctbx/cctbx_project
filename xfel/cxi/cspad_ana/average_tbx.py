@@ -130,7 +130,7 @@ class average_mixin(common_mode.common_mode_correction):
     # Assuming an average run length of ten minutes, five minutes past
     # the start of a run is a good base time.
     self._lock.acquire()
-    if 'time_base' not in self._metadata.keys():
+    if 'time_base' not in self._metadata:
       self._metadata['time_base'] = (cspad_tbx.evt_time(evt)[0] + 5 * 60, 500)
     self._lock.release()
 
@@ -260,7 +260,7 @@ class average_mixin(common_mode.common_mode_correction):
       # contribute a partial sum.
       if env.subprocess() >= 0:
         self._lock.acquire()
-        if 'peers' in self._metadata.keys():
+        if 'peers' in self._metadata:
           self._metadata['peers'] |= (1 << env.subprocess())
         else:
           self._metadata['peers'] = (1 << env.subprocess())

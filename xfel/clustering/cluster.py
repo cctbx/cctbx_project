@@ -110,7 +110,7 @@ class Cluster:
     for i, member in enumerate(self.members):
       unit_cells[i, :] = member.uc # supposed to be the Niggli setting cell parameters tuple
       # Calculate point group composition
-      if member.pg in self.pg_composition.keys():
+      if member.pg in self.pg_composition:
         self.pg_composition[member.pg] += 1
       else:
         self.pg_composition[member.pg] = 1
@@ -958,7 +958,7 @@ class Cluster:
               space_group_info=self.members[0].miller_array.space_group_info())
     # Find mean_Iobs
     mil_dict = self.merge_dict(use_fullies=use_fullies)
-    single_millers = mil_dict.values()
+    single_millers = list(mil_dict.values())
     indices = [md.index for md in single_millers]
     iobs, sig_iobs = zip(*[md.weighted_mean_and_std() for md in single_millers])
     all_obs = miller.array(miller_set=self.members[0] \

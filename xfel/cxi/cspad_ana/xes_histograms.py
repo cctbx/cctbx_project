@@ -73,7 +73,7 @@ def run(args):
     output_dirname = os.path.join(os.path.dirname(args[0]), "finalise")
     print(output_dirname)
   hist_d = easy_pickle.load(args[0])
-  if len(hist_d.keys())==2:
+  if len(hist_d)==2:
     hist_d = hist_d['histogram']
   pixel_histograms = view_pixel_histograms.pixel_histograms(
     hist_d, estimated_gain=estimated_gain)

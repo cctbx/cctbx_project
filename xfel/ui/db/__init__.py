@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
+import six
 
 try:
   import MySQLdb
@@ -52,7 +53,7 @@ class db_proxy(object):
       query = "INSERT INTO `%s` " % self.table_name
       keys = []
       vals = []
-      for key, value in kwargs.iteritems():
+      for key, value in six.iteritems(kwargs):
         assert key in app.columns_dict[table_name]
         keys.append(key)
         self._db_dict[key] = value

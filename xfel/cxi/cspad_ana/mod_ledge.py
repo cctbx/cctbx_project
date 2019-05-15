@@ -1099,7 +1099,7 @@ class mod_ledge(common_mode.common_mode_correction):
       # columns?
       if not hasattr(self, '_csv'):
         from csv import DictWriter
-        self._csv = DictWriter(self._stream_table, csv_dict.keys())
+        self._csv = DictWriter(self._stream_table, list(csv_dict.keys()))
         self._csv.writerow({key: key for key in csv_dict.keys()})
       self._csv.writerow(csv_dict)
 

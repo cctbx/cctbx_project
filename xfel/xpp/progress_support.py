@@ -113,7 +113,7 @@ class progress_manager(manager):
     have_sa_params = ( type(result.get("sa_parameters")[0]) == type(dict()) )
 
     observations_original_index_indices = observations_original_index.indices()
-    print(result.keys())
+    print(list(result.keys()))
     kwargs = {'wavelength': wavelength,
               'beam_x': result['xbeam'],
               'beam_y': result['ybeam'],
@@ -211,12 +211,12 @@ class progress_manager(manager):
       #
       # See also merging_database_sqlite3._insert()
       query = ("INSERT INTO `%s_observations` (" % self.db_experiment_tag) \
-              + ", ".join(kwargs.keys()) + ") values (" \
-              + ", ".join(["%s"] * len(kwargs.keys())) + ")"
+              + ", ".join(kwargs) + ") values (" \
+              + ", ".join(["%s"] * len(kwargs)) + ")"
       try:
-        parameters = zip(*kwargs.values())
+        parameters = zip(*list(kwargs.values()))
       except TypeError:
-        parameters = [kwargs.values()]
+        parameters = [list(kwargs.values())]
       cursor.executemany(query, parameters)
       #print "done execute many"
       #print cursor._last_executed

@@ -3,6 +3,7 @@ import sys, os
 from scitbx.matrix import col
 from libtbx.phil import parse
 from libtbx.utils import Sorry
+import six
 
 help_str = """Converts a CrystFEL file to DIALS json format."""
 
@@ -118,7 +119,7 @@ def read_geom(geom_file):
       return
 
     center = col((0.0, 0.0, 0.0))
-    for key, child in node.iteritems():
+    for key, child in six.iteritems(node):
       if isinstance(child, panel_group):
         if child.center is None:
           setup_centers(child)
@@ -133,7 +134,7 @@ def read_geom(geom_file):
     if not isinstance(node, panel_group):
       return
 
-    for key, child in node.iteritems():
+    for key, child in six.iteritems(node):
       if isinstance(child, panel_group):
         child.local_origin = child.center - node.center
         setup_local_frames(child)
@@ -166,7 +167,7 @@ def run(args):
   def plot_node(cummulative, node, name):
     if isinstance(node, panel_group):
       plt.arrow(cummulative[0],cummulative[1],node.local_origin[0],node.local_origin[1])
-      for childname, child in node.iteritems():
+      for childname, child in six.iteritems(node):
         plot_node(cummulative+node.local_origin, child, childname)
     else:
       plt.arrow(cummulative[0],cummulative[1],node['local_origin'][0],node['local_origin'][1])

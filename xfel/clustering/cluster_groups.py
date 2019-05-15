@@ -42,7 +42,7 @@ def unit_cell_info(sub_clusters):
       print("                       Unit cell:", group['best_subsym'].unit_cell())
       uc_params_conv = group['best_subsym'].unit_cell().parameters()
 
-      sorted_pg_comp = sorted(cluster.pg_composition.items(),
+      sorted_pg_comp = sorted(list(cluster.pg_composition.items()),
                               key=lambda x: -1 * x[1])
       pg_strings = ["{} in {}".format(pg[1], pg[0])
                     for pg in sorted_pg_comp]
@@ -74,7 +74,7 @@ def unit_cell_info(sub_clusters):
     else:
       singletons.append("".join([("{:<14} {:<11.2f} {:<11.2f} {:<11.2f}"
                                   "{:<12.1f} {:<12.1f} {:<12.1f}").format(
-        cluster.pg_composition.keys()[0],
+        list(cluster.pg_composition.keys())[0],
         cluster.members[0].uc[0], cluster.members[0].uc[1],
         cluster.members[0].uc[2], cluster.members[0].uc[3],
         cluster.members[0].uc[4], cluster.members[0].uc[5]),

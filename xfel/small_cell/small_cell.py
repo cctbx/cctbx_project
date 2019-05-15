@@ -804,7 +804,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
     matched = {}
     for spot in max_clique_spots:
       key = spot.hkl.ohkl.elems
-      if not key in matched.keys():
+      if not key in matched:
         matched[key] = []
       matched[key].append(spot)
 

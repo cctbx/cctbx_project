@@ -277,7 +277,7 @@ def run(args):
       mn_x,
       mn_y ))
     sum_sq += mn_x*mn_x + mn_y*mn_y
-  displacement = math.sqrt(sum_sq / len(C.frame_delx.keys()))
+  displacement = math.sqrt(sum_sq / len(C.frame_delx))
   print("rms displacement of frames %7.2f"%displacement)
   C.same_sensor_table()
   return None

@@ -11,6 +11,7 @@ from scitbx import matrix
 from scitbx.math.tests.tst_weighted_correlation import simple_weighted_correlation
 from cctbx.crystal_orientation import crystal_orientation, basis_type
 from six.moves import cStringIO as StringIO
+import six
 
 class postrefinement(worker):
 
@@ -210,7 +211,7 @@ class postrefinement(worker):
     self.logger.log("Reflections rejected by post-refinement: %d"%reflections_rejected_by_postrefinement)
 
     all_reasons = []
-    for reason, count in experiments_rejected_by_reason.iteritems():
+    for reason, count in six.iteritems(experiments_rejected_by_reason):
       self.logger.log("Experiments rejected due to %s: %d"%(reason,count))
       all_reasons.append(reason)
 
@@ -236,7 +237,7 @@ class postrefinement(worker):
     total_rejected_reflections = self.mpi_helper.sum(rejected_reflections)
 
     if self.mpi_helper.rank == 0:
-      for reason, count in total_experiments_rejected_by_reason.iteritems():
+      for reason, count in six.iteritems(total_experiments_rejected_by_reason):
         self.logger.main_log("Total experiments rejected due to %s: %d"%(reason,count))
       self.logger.main_log("Total experiments accepted: %d"%total_accepted_experiment_count)
       self.logger.main_log("Total reflections rejected due to post-refinement: %d"%total_rejected_reflections)

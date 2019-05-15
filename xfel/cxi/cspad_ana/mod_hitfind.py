@@ -557,12 +557,12 @@ cell_a,cell_b,cell_c,cell_alpha,cell_beta,cell_gamma,resolution,tags) VALUES "%(
         kwargs['frames_id'] = [frame_id] * len(kwargs['frames_id'])
 
         query = ("INSERT INTO `%s_observations` (" % self.m_db_experiment_tag) \
-                + ", ".join(kwargs.keys()) + ") values (" \
-                + ", ".join(["%s"] * len(kwargs.keys())) + ")"
+                + ", ".join(kwargs) + ") values (" \
+                + ", ".join(["%s"] * len(kwargs)) + ")"
         try:
-          parameters = zip(*kwargs.values())
+          parameters = zip(*list(kwargs.values()))
         except TypeError:
-          parameters = [kwargs.values()]
+          parameters = [list(kwargs.values())]
         cursor.executemany(query, parameters)
 
       dbobj.commit()
