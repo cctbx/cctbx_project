@@ -14,6 +14,7 @@ import time
 import types
 
 import six
+from six.moves import range
 try:
   import threading
 except ImportError:

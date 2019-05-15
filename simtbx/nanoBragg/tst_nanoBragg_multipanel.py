@@ -11,6 +11,7 @@ from scitbx.matrix import sqr
 from dxtbx.model.beam import BeamFactory
 from dxtbx.model.crystal import CrystalFactory
 from dxtbx.model.detector import DetectorFactory, Detector, Panel
+from six.moves import range
 
 
 # dxtbx beam model description

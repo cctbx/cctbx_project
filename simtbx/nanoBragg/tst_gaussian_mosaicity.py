@@ -5,6 +5,7 @@ from simtbx.nanoBragg import nanoBragg
 import libtbx.load_env # possibly implicit
 import math
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 class plotter:
   def __init__(self, tophat, normal):

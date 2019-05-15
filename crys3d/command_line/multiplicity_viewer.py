@@ -11,6 +11,7 @@ import libtbx.load_env
 from cctbx import crystal
 import wx
 import sys
+from six.moves import range
 
 
 master_phil = iotbx.phil.parse("""

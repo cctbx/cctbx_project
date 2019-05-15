@@ -11,6 +11,7 @@ from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 import libtbx.load_env # possibly implicit
 from cctbx import crystal
 from cctbx import miller
+from six.moves import range
 assert miller
 
 pdb_lines = """HEADER TEST

@@ -5,6 +5,7 @@ from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import re
 import six
+from six.moves import range
 
 single_quote = re.compile(r"'")
 

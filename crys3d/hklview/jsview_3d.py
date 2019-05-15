@@ -12,6 +12,7 @@ from time import sleep
 import os.path, time
 import libtbx
 import webbrowser, tempfile
+from six.moves import range
 
 
 

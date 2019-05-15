@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 # $Id$
 
 import wx
+from six.moves import range
 
 
 class RingSettingsFrame(wx.MiniFrame):

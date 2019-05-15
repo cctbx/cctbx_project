@@ -6,6 +6,7 @@ from libtbx.scheduling import result
 
 import time
 from collections import deque
+from six.moves import range
 
 class Identifier(object):
   """

@@ -7,6 +7,7 @@ from scitbx import matrix
 from rstbx.diffraction import rotation_angles, reflection_prediction
 from rstbx.bpcx import sensor
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 # This script (provided by Graeme Winter) will take the quartz structure and
 # simulate a rotation around the 0 0 1 reflection and  1 0 1 reflection.

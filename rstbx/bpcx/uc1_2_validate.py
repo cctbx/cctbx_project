@@ -12,6 +12,7 @@ import random
 from cctbx.array_family import flex
 from annlib_ext import AnnAdaptor as ann_adaptor
 from scitbx import matrix
+from six.moves import range
 
 def meansd(values):
 

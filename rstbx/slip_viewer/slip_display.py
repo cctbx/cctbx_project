@@ -31,6 +31,7 @@ import wx
 
 from . import pyslip
 from . import tile_generation
+from six.moves import range
 pyslip._Tiles = tile_generation._Tiles
 
 ######

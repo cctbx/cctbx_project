@@ -6,6 +6,7 @@ import libtbx.load_env
 import platform
 import time
 import sys, os
+from six.moves import range
 op = os.path
 
 __this_script__ = "cctbx_project/fable/test/sf_times.py"
@@ -238,7 +239,7 @@ def build_run(
     utimes.append(utime)
     print("sample utime: %.2f" % utime)
     sys.stdout.flush()
-  for _ in xrange(8):
+  for _ in range(8):
     run_once()
   return min(utimes)
 

@@ -6,6 +6,7 @@ from scitbx.math.euler_angles import xyz_angles
 from scitbx.math import r3_rotation_axis_and_angle_as_matrix
 
 from rstbx.cftbx.coordinate_frame_converter import coordinate_frame_converter
+from six.moves import range
 
 # ersatz_misset -
 #

@@ -9,6 +9,7 @@ import time
 import os
 import stat
 import tempfile
+from six.moves import range
 
 def exercise_misc():
   utils.host_and_user().show(prefix="### ")

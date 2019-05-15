@@ -3,6 +3,7 @@ import math
 import random
 from scitbx import matrix
 from cctbx import sgtbx
+from six.moves import range
 
 class coordinate_frame_information:
     '''A bucket class to store coordinate frame information.'''

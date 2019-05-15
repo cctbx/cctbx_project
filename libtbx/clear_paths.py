@@ -5,6 +5,7 @@ import random
 import stat
 import os
 import os.path as op
+from six.moves import range
 
 def make_paths_writable_if_possible(paths):
   os_stat = os.stat

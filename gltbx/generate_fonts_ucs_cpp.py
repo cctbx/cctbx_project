@@ -3,6 +3,7 @@ import libtbx.load_env
 from libtbx.str_utils import show_string
 import os
 import sys
+from six.moves import range
 op = os.path
 
 class font_info(object):

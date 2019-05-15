@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 from scitbx import matrix
 from rstbx.bpcx import sensor
+from six.moves import range
 
 class detector:
     '''An abstract class definition for X-ray detectors which are assumed to

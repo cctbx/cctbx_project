@@ -15,6 +15,7 @@ import libtbx.load_env
 import libtbx.pkg_utils
 from libtbx.pkg_utils import pkg_resources
 from libtbx.pkg_utils import packaging
+from six.moves import range
 
 
 BOLD = "\033[1m"

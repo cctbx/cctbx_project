@@ -5,6 +5,7 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import miller
 import sys
+from six.moves import range
 
 def run(args):
   assert len(args) == 1
@@ -22,7 +23,7 @@ def run(args):
   miller_indices = flex.miller_index()
   data = flex.double()
   sigmas = flex.double()
-  for i_line in xrange(3+n_symops,len(lines)):
+  for i_line in range(3+n_symops,len(lines)):
     fields = lines[i_line].split()
     assert len(fields) == 5
     miller_indices.append([int(value) for value in fields[:3]])

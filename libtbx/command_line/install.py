@@ -7,6 +7,7 @@ import os
 import shutil
 import sys
 from optparse import SUPPRESS_HELP, OptionParser
+from six.moves import range
 
 try:
   import procrunner

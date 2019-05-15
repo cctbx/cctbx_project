@@ -1,9 +1,10 @@
 from __future__ import absolute_import, division, print_function
 import os.path
+from six.moves import range
 
 def encode(data):
   edata = ""
-  for i in xrange(len(data)):
+  for i in range(len(data)):
     edata += "%.2x" % ord(data[i])
   return edata
 
@@ -42,7 +43,7 @@ class img_data:
                  "8":  8, "9":  9, "a": 10, "b": 11,
                  "c": 12, "d": 13, "e": 14, "f": 15}
     data = ""
-    for i in xrange(0, len(edata), 2):
+    for i in range(0, len(edata), 2):
       data += chr(hex_chars[edata[i]] * 16 + hex_chars[edata[i+1]])
     return data
 
