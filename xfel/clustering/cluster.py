@@ -13,6 +13,7 @@ from cctbx.array_family import flex
 import os
 import math
 import logging
+from six.moves import range
 logger = logging.getLogger(__name__)
 from xfel.clustering.singleframe import SingleFrame, SingleDialsFrame, SingleDialsFrameFromFiles
 from xfel.clustering.singleframe import SingleDialsFrameFromJson

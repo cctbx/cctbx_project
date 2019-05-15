@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import math
 import time
 import os
+from six.moves import range
 op = os.path
 
 def build_clash_detector(n_sites, bond_list, threshold):
@@ -80,7 +81,7 @@ def run(args):
     time_start = time.time()
     n_conf = 10000
     n_clash_conf = 0
-    for i_conf in xrange(n_conf):
+    for i_conf in range(n_conf):
       q = q_fixed.deep_copy()
       q.extend(mt.random_double(size=q_size_moving)*two_pi)
       tardy_model.unpack_q(q_packed=q)

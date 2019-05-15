@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
+from six.moves import range
 
 simple = crystal.coordination_sequences_simple
 simple_sym = crystal.coordination_sequences_simple_sym
@@ -36,7 +37,7 @@ def simple_and_slow(pair_asu_table, max_shell=10):
       i_seq=i_seq_pivot,
       rt_mx=sgtbx.rt_mx())]
     terms = [1]
-    for i_shell_minus_1 in xrange(max_shell):
+    for i_shell_minus_1 in range(max_shell):
       nodes_prev = nodes_middle
       nodes_middle = nodes_next
       nodes_next = []

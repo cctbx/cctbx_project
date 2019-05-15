@@ -6,6 +6,7 @@ from cctbx import sgtbx
 from cctbx.sgtbx import harker
 from cctbx.web import io_utils
 from cctbx.web import cgi_utils
+from six.moves import range
 
 def interpret_form_data(form):
   inp = cgi_utils.inp_from_form(form,
@@ -245,7 +246,7 @@ def run(server_info, inp, status):
   print("<th>Site symmetry<br>point group type")
   print("<th>Representative special position operator")
   print("</tr>")
-  for i_position in xrange(wyckoff_table.size()):
+  for i_position in range(wyckoff_table.size()):
     position = wyckoff_table.position(i_position)
     print("<tr>")
     print("<td>%s<td>%d<td>%s<td><tt>%s</tt>" % (

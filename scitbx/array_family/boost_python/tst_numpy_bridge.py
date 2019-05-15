@@ -1,13 +1,14 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
+from six.moves import range
 
 def exercise_basic(flex_type, verbose):
   if (flex_type is flex.bool):
     z = False
   else:
     z = 0
-  for n in xrange(10):
+  for n in range(10):
     fa = flex_type([z]*n)
     na = fa.as_numpy_array()
     assert na is not None

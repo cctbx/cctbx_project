@@ -18,6 +18,7 @@ from cctbx.uctbx import unit_cell
 from prime.postrefine.mod_leastsqr import good_unit_cell
 from cctbx import statistics
 from prime.postrefine.mod_input import read_frame, read_pickles
+from six.moves import range
 
 def calc_wilson(observations_full, n_residues):
   """

@@ -7,6 +7,7 @@ import scitbx.math.curve_fitting
 import scitbx.random
 from scitbx.smoothing import savitzky_golay_filter, savitzky_golay_coefficients
 from scitbx.smoothing import convolve
+from six.moves import range
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)

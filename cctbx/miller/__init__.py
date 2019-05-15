@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import cctbx.sgtbx
 
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("cctbx_miller_ext")
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_miller_ext import *
@@ -334,7 +335,7 @@ class binned_data(object):
 
 def make_lookup_dict(indices): # XXX push to C++
   result = {}
-  for i in xrange(len(indices)):
+  for i in range(len(indices)):
     result[indices[i]] = i
   return result
 
@@ -1228,7 +1229,7 @@ class set(crystal.symmetry):
     else:
       result = flex.size_t()
       n_times = int(n/n_partitions)+1
-      for ii in xrange(n_times):
+      for ii in range(n_times):
         tmp = flex.random_double( n_partitions )
         tmp = flex.sort_permutation( tmp )
         result.extend( tmp )
@@ -1718,7 +1719,7 @@ class set(crystal.symmetry):
     else:
       limits.append(max(0, d_star_sq[0] * (1-d_tolerance)))
     m = d_star_sq.size()-1
-    for i_bin in xrange(1, n_bins):
+    for i_bin in range(1, n_bins):
       i = iround(i_bin * reflections_per_bin)
       limits.append(d_star_sq[i] * (1-d_tolerance))
       if (i == m): break
@@ -4094,7 +4095,7 @@ class array(set):
     else:
       assert other is None
     i_mid = None
-    for i in xrange(fsc_curve.fsc.size()):
+    for i in range(fsc_curve.fsc.size()):
       if(fsc_curve.fsc[i]<fsc_cutoff):
         i_mid = i
         break
@@ -4836,7 +4837,7 @@ class array(set):
       if(mi[0]==0 and mi[1]==0): l.append((d, mi[2], data_over_sigma))
     print("a*                      b*                    c*")
     print("d         h   F/sigma   d        k  F/sigma   d        l  F/sigma")
-    for i in xrange( max(len(h),max(len(k),len(l))) ):
+    for i in range( max(len(h),max(len(k),len(l))) ):
       blanc = " "*21
       try: ast = "%7.3f %4d %8.3f"%h[i]
       except Exception: ast = blanc

@@ -20,6 +20,7 @@ from libtbx import easy_pickle
 import exceptions
 import os
 import sys
+from six.moves import range
 
 class FormatError(exceptions.Exception): pass
 
@@ -35,7 +36,7 @@ class reader(object):
     if (len(line) < 63 or line[60] != ' '):
       raise FormatError(line_error)
     try:
-      uc_params = [float(line[i * 10 : (i + 1) * 10]) for i in xrange(6)]
+      uc_params = [float(line[i * 10 : (i + 1) * 10]) for i in range(6)]
     except KeyboardInterrupt: raise
     except Exception:
       raise FormatError(line_error)
@@ -69,7 +70,7 @@ class reader(object):
         flds.append(line[used:next_used].strip())
         used = next_used
       try:
-        h = [int(flds[i]) for i in xrange(3)]
+        h = [int(flds[i]) for i in range(3)]
       except KeyboardInterrupt: raise
       except Exception:
         raise FormatError(line_error)

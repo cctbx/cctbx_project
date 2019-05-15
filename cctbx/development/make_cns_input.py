@@ -6,6 +6,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from libtbx import adopt_init_args
 import sys
+from six.moves import range
 
 def tst_run_requiring_cns(args, call_back):
   import libtbx.path
@@ -55,14 +56,14 @@ def coordinates(scatterers, xyz_only=False):
     gaussian = eltbx.xray_scattering.it1992(scatterer.scattering_type).fetch()
     fp = scatterer.fp
     fdp = scatterer.fdp
-    for i in xrange(3):
+    for i in range(3):
       a("do (%s=%.12g) (resid=%d)" % ("xyz"[i], x[i], resid))
     if (not xyz_only):
       a("do (q=%.12g) (resid=%d)" % (q, resid))
       a("do (b=%.12g) (resid=%d)" % (b, resid))
       a("xray")
       a("  scatter (chemical=%s)" % scatterer.label.replace(" ","")[-4:])
-      for i in xrange(4):
+      for i in range(4):
         a("    %.6g %.6g" %
           (gaussian.array_of_a()[i], gaussian.array_of_b()[i]))
       a("    %.6g" % (gaussian.c(),))

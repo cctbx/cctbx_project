@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import scitbx.math
 from scitbx.array_family import flex
 import math
+from six.moves import range
 
 def test_resample(seed=0):
   obs_ori=flex.double(range(20))

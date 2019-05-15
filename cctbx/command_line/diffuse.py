@@ -9,6 +9,7 @@ from cctbx.array_family import flex
 from cctbx import miller
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
+from six.moves import range
 
 msg="""
 Description

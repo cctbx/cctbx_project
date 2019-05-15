@@ -16,6 +16,7 @@ import scitbx.matrix as mat
 from cStringIO import StringIO
 
 from smtbx.ab_initio import charge_flipping
+from six.moves import range
 
 def randomly_exercise(flipping_type,
                       space_group_info, elements,
@@ -209,7 +210,7 @@ def exercise(flags, space_group_info):
     print("asu content: C%i O%i N%i" % (n_C, n_O, n_N))
     print("on %s's with %s" % (flags.on, flags.algo))
   flipping_type = eval("charge_flipping.%s_iterator" % flags.algo)
-  for i in xrange(int(flags.repeats)):
+  for i in range(int(flags.repeats)):
     randomly_exercise(
       flipping_type=flipping_type,
       space_group_info=space_group_info,

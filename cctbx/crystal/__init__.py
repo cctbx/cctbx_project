@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 # -*- coding: utf-8 -*-
 from cctbx.array_family import flex
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("cctbx_crystal_ext")
 from cctbx_crystal_ext import *
 from cctbx.crystal.find_best_cell import find_best_cell
@@ -1316,7 +1317,7 @@ class _():
     if (skip_j_seq_less_than_i_seq):
       back_interactions = None
     else:
-      back_interactions = [set() for _ in xrange(self.size())]
+      back_interactions = [set() for _ in range(self.size())]
       for i_seq,pair_sym_dict in enumerate(self):
         for j_seq,sym_ops in pair_sym_dict.items():
           if (j_seq != i_seq):
@@ -1537,9 +1538,9 @@ class incremental_clustering(_clustering_mix_in):
       if (scores is not None):
         scores = scores.select(selection)
     n_sites = sites_frac.size()
-    assignments = flex.size_t(xrange(n_sites))
+    assignments = flex.size_t(range(n_sites))
     n_clusters = n_sites
-    index_groups = [[i_seq] for i_seq in xrange(n_sites)]
+    index_groups = [[i_seq] for i_seq in range(n_sites)]
     symmetry_ops = [special_position_settings.space_group()(0)] * n_sites
     get_distance = unit_cell.distance
     for i_distance_cutoff,distance_cutoff in enumerate(distance_cutoffs):
@@ -1640,9 +1641,9 @@ class distance_based_clustering(_clustering_mix_in):
       assert site_symmetry_table.n_special_positions() == 0
       sites_frac = sites_frac.select(selection)
     n_sites = sites_frac.size()
-    assignments = flex.size_t(xrange(n_sites))
+    assignments = flex.size_t(range(n_sites))
     n_clusters = n_sites
-    index_groups = [[i_seq] for i_seq in xrange(n_sites)]
+    index_groups = [[i_seq] for i_seq in range(n_sites)]
     symmetry_ops = [special_position_settings.space_group()(0)] * n_sites
     asu_mappings = special_position_settings.asu_mappings(
       buffer_thickness=distance_cutoff,
@@ -1713,7 +1714,7 @@ def cluster_erosion(sites_cart, box_size, fraction_to_be_retained):
   box_coordinates = (sites_cart - box_origin) * (1./box_size)
   box_grid = flex.grid(n_boxes)
   box_counts = flex.size_t(box_grid.size_1d(), 0)
-  box_members = [flex.size_t() for i in xrange(box_counts.size())]
+  box_members = [flex.size_t() for i in range(box_counts.size())]
   for i_seq,x in enumerate(box_coordinates):
     box_index_3d = [max(0, min(int(i), n)) for i,n in zip(x, n_boxes)]
     box_index_1d = box_grid(box_index_3d)

@@ -4,6 +4,7 @@ import copy,math
 from scitbx.array_family import flex
 from cctbx.xray import ext
 from libtbx.utils import Sorry
+from six.moves import range
 
 # alternative implementations of direct summation using parallel architecture
 # example usage is given in cctbx/regression/tst_direct_scaling
@@ -56,7 +57,7 @@ class pprocess:
     d_star_sq = 1.
     uniqueff = self.registry.unique_form_factors_at_d_star_sq(d_star_sq)
     uniqueix = self.registry.unique_indices(self.scatterers)
-    for x in xrange(len(self.scatterers)):
+    for x in range(len(self.scatterers)):
       print(self.scatterers[x])
       print(self.scatterers[x].scattering_type)
       print(uniqueff[uniqueix[x]])
@@ -65,7 +66,7 @@ class pprocess:
       parameters = self.registry.gaussian(self.scatterers[x].scattering_type).parameters()
       x_sq = d_star_sq / 4.;
       unique_form_factor_at_x_sq = copy.copy(constant_term)
-      for x in xrange(0,len(parameters),2):
+      for x in range(0,len(parameters),2):
         unique_form_factor_at_x_sq += parameters[x] * math.exp(-parameters[x+1]*x_sq)
       print(unique_form_factor_at_x_sq)
 
@@ -108,10 +109,10 @@ class pprocess:
 
     # Unique type labels for the scatterers
     uniqueix = self.registry.unique_indices(self.scatterers)
-    for s in xrange(self.scatterers.number_of_types):
+    for s in range(self.scatterers.number_of_types):
       self.scatterers.unsorted_counts.append( uniqueix.count(s) )
       self.scatterers.sorted_ranges.append([0,0])
-    for s in xrange(self.scatterers.number_of_types):
+    for s in range(self.scatterers.number_of_types):
       self.scatterers.sorted_ranges[self.scatterers.increasing_order[s]][1]=\
         self.scatterers.sorted_ranges[self.scatterers.increasing_order[s]][0]+\
         self.scatterers.unsorted_counts[s]
@@ -344,7 +345,7 @@ direct_summation_simple) with algorithm set to "simple" or "pycuda"
 
       intermediate_real = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy_t)
       intermediate_imag = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy_t)
-      for x in xrange(self.scatterers.number_of_types):
+      for x in range(self.scatterers.number_of_types):
         fhkl_real = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy_t)
         fhkl_imag = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy_t)
 

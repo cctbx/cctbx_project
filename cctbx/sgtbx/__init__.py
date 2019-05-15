@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx import uctbx
 
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("cctbx_sgtbx_ext")
 from cctbx_sgtbx_ext import *
 
@@ -44,11 +45,11 @@ class _():
   def smx(self, with_inversion=False):
     if with_inversion: n = 2*self.n_smx()
     else: n = self.n_smx()
-    for i_smx in xrange(n):
+    for i_smx in range(n):
       yield self(i_smx)
 
   def ltr(self):
-    for i in xrange(self.n_ltr()):
+    for i in range(self.n_ltr()):
       yield self(i,0,0).t()
 
   def info(self):
@@ -250,7 +251,7 @@ class space_group_info(object):
         delta = other_ti.origin_shift().minus(
              self_ti.origin_shift()).mod_positive()
         delta_num = delta.num()
-        for i in xrange(3):
+        for i in range(3):
           if origin_shift[i] == 0:
             origin_shift[i] = 24//delta.den()*delta_num[i]
         if origin_shift.elems.count(0) == 0: break
@@ -364,7 +365,7 @@ class space_group_info(object):
       cb_op=self.change_of_basis_op_to_reference_setting().inverse())
     f = (volume / unit_cell.volume())**(1/3.)
     params = list(unit_cell.parameters())
-    for i in xrange(3): params[i] *= f
+    for i in range(3): params[i] *= f
     return uctbx.unit_cell(params)
 
   def any_compatible_crystal_symmetry(self, volume=None, asu_volume=None):
@@ -402,7 +403,7 @@ class space_group_info(object):
     return "%i%s" %(idx+1, sep) + "%i%i%i" %(klm)
 
 def reference_space_group_infos():
-  for number in xrange(1,230+1):
+  for number in range(1,230+1):
     yield space_group_info(number=number)
 
 @boost.python.inject_into(tr_vec)
@@ -589,7 +590,7 @@ def special_op_simplifier(special_op):
     return special_op_simplified(terms=terms)
   if (n_done == 0):
     m, v = [], []
-    for i in xrange(3):
+    for i in range(3):
       m.append([r[i+0], r[i+3]])
       v.append(r[i+6])
     from scitbx.matrix import row_echelon
@@ -602,10 +603,10 @@ def special_op_simplifier(special_op):
         terms[2] = special_op_simplified_term(
           [0,1], sol, t[2] - sol[0]*t[0] - sol[1]*t[1])
         return special_op_simplified(terms=terms)
-  for i_row in xrange(3):
+  for i_row in range(3):
     if (terms[i_row] is not None): continue
     terms[i_row] = special_op_simplified_term([i_row], [r1], r0)
-    for j_row in xrange(i_row+1,3):
+    for j_row in range(i_row+1,3):
       if (terms[j_row] is not None): continue
       m = matrix.linearly_dependent_pair_scaling_factor(
         vector_1=rows[i_row], vector_2=rows[j_row])
@@ -755,7 +756,7 @@ class _():
     while 1:
       run_away_counter += 1
       assert run_away_counter < 1000
-      site = position.special_op() * [random.random() for i in xrange(3)]
+      site = position.special_op() * [random.random() for i in range(3)]
       if (unit_shift_range is not None):
         site = [x + random.randrange(*unit_shift_range) for x in site]
       site_symmetry = special_position_settings.site_symmetry(site)

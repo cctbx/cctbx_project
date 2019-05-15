@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from past.builtins import range
+from six.moves import range
 
 '''
 Author      : Lyubimov, A.Y.
@@ -876,7 +877,7 @@ class KnobCtrl(CtrlBase):
 
     self.knob_ctr = kc.KnobCtrl(self, -1, size=knob_size)
     if tags:
-      self.knob_ctr.SetTags(range(tags_start, tags_end, tags_step))
+      self.knob_ctr.SetTags(list(range(tags_start, tags_end, tags_step)))
     self.knob_ctr.SetAngularRange(values_start, values_end)
     self.knob_ctr.SetValue(value)
     self.knob_ctr.SetBoundingColour(wx.BLACK)

@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import scitbx.simplex
+from six.moves import range
 
 class test_function(object):
   def __init__(self,n):
@@ -14,7 +15,7 @@ class test_function(object):
                                   evaluator = self,
                                   tolerance=1e-10)
     self.x = self.optimizer.get_solution()
-    for ii in xrange(self.n):
+    for ii in range(self.n):
       assert approx_equal(self.x[ii],ii+1,1e-5)
 
   def target(self, vector):
@@ -49,7 +50,7 @@ class test_rosenbrock_function(object):
 
 def run():
   flex.set_random_seed(0)
-  for ii in xrange(10):
+  for ii in range(10):
     test_rosenbrock_function(1)
     test_function(1)
     test_function(2)

@@ -11,6 +11,7 @@ import iotbx.builders
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.math_utils import are_equivalent
 import cStringIO
+from six.moves import range
 
 def exercise_lexing():
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))

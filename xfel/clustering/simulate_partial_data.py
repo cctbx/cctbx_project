@@ -17,6 +17,7 @@ from dxtbx.model import DetectorFactory
 import random
 from six.moves import cPickle as pickle
 import logging
+from six.moves import range
 
 eps = 0.001  # Tolerance for assertions
 p_threshold = 0.1  # Partiality threshold for inclusion

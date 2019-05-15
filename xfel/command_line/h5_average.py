@@ -8,6 +8,7 @@ import iotbx.phil
 import libtbx.load_env
 from dials.util.options import OptionParser
 import sys, os
+from six.moves import range
 
 phil_scope = iotbx.phil.parse("""
   average = True
@@ -46,7 +47,7 @@ class Processh5(object):
   def process(self, func):
     # process and write everything to a new avg (or other) file
     writefile, writefile_name, arr = self.prepare_writefile_and_array(func)
-    for ii in xrange(self.length-1):
+    for ii in range(self.length-1):
       arr[ii][:][:] = np.asarray(self.readfile.values()[ii+1].values()[0].value)
     func_lookup = {
       "avg":np.mean,

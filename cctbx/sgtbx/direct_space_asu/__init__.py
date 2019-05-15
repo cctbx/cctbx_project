@@ -4,6 +4,7 @@ from cctbx.sgtbx.direct_space_asu import cut_plane
 from cctbx.sgtbx.direct_space_asu.short_cuts import r1
 from scitbx import matrix
 import sys
+from six.moves import range
 
 class direct_space_asu(object):
 
@@ -76,9 +77,9 @@ class direct_space_asu(object):
     result = set()
     cuts = self.cuts
     n_cuts = len(cuts)
-    for i0 in xrange(0,n_cuts-2):
-      for i1 in xrange(i0+1,n_cuts-1):
-        for i2 in xrange(i1+1,n_cuts):
+    for i0 in range(0,n_cuts-2):
+      for i1 in range(i0+1,n_cuts-1):
+        for i2 in range(i1+1,n_cuts):
           m = matrix.rec(cuts[i0].n+cuts[i1].n+cuts[i2].n,(3,3))
           d = m.determinant()
           if (d != 0):
@@ -96,7 +97,7 @@ class direct_space_asu(object):
       return None
     result = list(shape_vertices[0])
     for vertex in shape_vertices[1:]:
-      for i in xrange(3):
+      for i in range(3):
         result[i] = min_or_max(result[i], vertex[i])
     return result
 

@@ -16,6 +16,7 @@ import time
 import os
 import operator
 import math
+from six.moves import range
 
 master_phil = libtbx.phil.parse("""
   trial_id = None

@@ -11,6 +11,7 @@
 # Graeme Winter, Diamond Light Source, 2012/OCT/16
 
 from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 class bucket:
   pass

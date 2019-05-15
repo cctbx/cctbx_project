@@ -19,6 +19,7 @@ import libtbx.utils
 import libtbx.introspection
 import random
 import sys, math
+from six.moves import range
 
 if (1):
   random.seed(0)
@@ -382,7 +383,7 @@ def u_iso(structure_ideal, d_min, f_obs, tan_u_iso, verbose=0):
         assert approx_equal(
           sfd_star,
           adptbx.grad_u_cart_as_u_star(structure_ideal.unit_cell(), sfd_cart))
-        for ij in xrange(6):
+        for ij in range(6):
           direct_summ = sfd_d_target_d_u_cart[i_scatterer][ij]
           if (top_gradient is None): top_gradient = direct_summ
           fast_gradie = map0_d_target_d_u_cart[i_scatterer][ij]
@@ -434,7 +435,7 @@ def u_iso(structure_ideal, d_min, f_obs, tan_u_iso, verbose=0):
         assert approx_equal(
           sfd_star,
           adptbx.grad_u_cart_as_u_star(structure_ideal.unit_cell(), sfd_cart))
-        for ij in xrange(6):
+        for ij in range(6):
           direct_summ = sfd_d_target_d_u_cart[i_scatterer][ij]
           fast_gradie = map0_d_target_d_u_cart[i_scatterer][ij]
           gradients_2.append([direct_summ, fast_gradie])
@@ -538,7 +539,7 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
         assert approx_equal(
           sfd_star,
           adptbx.grad_u_cart_as_u_star(structure_ideal.unit_cell(), sfd_cart))
-        for ij in xrange(6):
+        for ij in range(6):
           direct_summ = sfd_d_target_d_u_cart[i_scatterer][ij]
           if (top_gradient is None): top_gradient = direct_summ
           fast_gradie = map0_d_target_d_u_cart[i_scatterer][ij]
@@ -590,7 +591,7 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
         assert approx_equal(
           sfd_star,
           adptbx.grad_u_cart_as_u_star(structure_ideal.unit_cell(), sfd_cart))
-        for ij in xrange(6):
+        for ij in range(6):
           direct_summ = sfd_d_target_d_u_cart[i_scatterer][ij]
           fast_gradie = map0_d_target_d_u_cart[i_scatterer][ij]
           gradients_2.append([direct_summ, fast_gradie])

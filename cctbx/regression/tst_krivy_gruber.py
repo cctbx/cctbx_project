@@ -12,6 +12,7 @@ from libtbx.test_utils import Exception_expected, approx_equal
 import math
 import random
 import sys
+from six.moves import range
 
 class check_is_niggli_cell(reduction_base.gruber_parameterization):
 
@@ -370,13 +371,13 @@ def exercise_gruber_types(n_trials_per_type, dump=0, verbose=0):
   type_conditions = gruber_1973_table_1.get_type_conditions()
   random_unimodular = random_unimodular_integer_matrix_generator()
   have_errors = False
-  for k in xrange(1,29):
+  for k in range(1,29):
     set = mk2_sets[k]
     tc = type_conditions[k]
     if (0 or verbose):
       print(" ", tc.ck_types, tc.defks)
     n_errors = 0
-    for i_trial in xrange(n_trials_per_type):
+    for i_trial in range(n_trials_per_type):
       gruber_matrix = random_gruber_matrix(tc)
       type_cell = ucgmx(gruber_matrix)
       if (0 or verbose):

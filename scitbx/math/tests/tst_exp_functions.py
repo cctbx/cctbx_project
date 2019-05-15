@@ -5,6 +5,7 @@ from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import format_cpu_times
 import time
 import sys
+from six.moves import range
 
 def exercise_with_random_arguments(n_arguments, n_iterations):
   mt = flex.mersenne_twister(seed=0)
@@ -12,14 +13,14 @@ def exercise_with_random_arguments(n_arguments, n_iterations):
   f = d.as_float()
   print("showing wall clock times!")
   t0 = time.time()
-  for i_iteration in xrange(n_iterations):
+  for i_iteration in range(n_iterations):
     jef = scitbx.math.jacks_expf(array_of_float=f)
   print("jacks_expf(): %.2f s" % (time.time()-t0))
-  for i_iteration in xrange(n_iterations):
+  for i_iteration in range(n_iterations):
     sef = flex.exp(f)
   print("std::exp(float): %.2f s" % (time.time()-t0))
   t0 = time.time()
-  for i_iteration in xrange(n_iterations):
+  for i_iteration in range(n_iterations):
     sed = flex.exp(d)
   print("std::exp(double): %.2f s" % (time.time()-t0))
   assert sed.all_gt(0)

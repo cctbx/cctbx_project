@@ -7,6 +7,7 @@ Description : read indexing_ambiguity pickle and overwrite oldpath with new path
 from __future__ import absolute_import, division, print_function
 import sys
 from six.moves import cPickle as pickle
+from six.moves import range
 
 def read_input(args):
   data = ''

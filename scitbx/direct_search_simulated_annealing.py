@@ -4,6 +4,7 @@ from scitbx.stdlib import math, random
 from libtbx.utils import Sorry
 from copy import deepcopy
 from scitbx import simplex
+from six.moves import range
 
 class dssa(object):
   """

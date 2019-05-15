@@ -4,6 +4,7 @@ from prime.index_ambiguity.mod_lbfgs import lbfgs_handler
 from cctbx.array_family import flex
 import numpy as np
 import random, ntpath, os
+from six.moves import range
 
 class isoform_cluster_handler(object):
   """

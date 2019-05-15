@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.math import fit_quadratic_function as fqf
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 def test_fit():
   x1_obs=[]

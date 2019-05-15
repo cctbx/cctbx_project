@@ -11,6 +11,7 @@ from scitbx import lbfgs
 from scitbx.array_family import flex
 
 import libtbx.load_env
+from six.moves import range
 
 dim=2
 start = flex.double( [4,4] )

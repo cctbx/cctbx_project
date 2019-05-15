@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import string
 from itertools import product
+from six.moves import range
 
 def __permutations(iterable, r=None): # XXX This may go to libtbx or scitbx
   pool = tuple(iterable)

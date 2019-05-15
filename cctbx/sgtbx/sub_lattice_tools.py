@@ -12,6 +12,7 @@ from libtbx.utils import format_cpu_times
 from boost import rational
 from libtbx.math_utils import ifloor
 from cStringIO import StringIO
+from six.moves import range
 
 def divisor(n, pairs=False):
   """ find all divisors """
@@ -19,7 +20,7 @@ def divisor(n, pairs=False):
   d_n = float(n)
   w_n = int( math.floor( math.sqrt(n) ) )
   result = []
-  for trial_div in xrange(1, w_n+1):
+  for trial_div in range(1, w_n+1):
     if d_n%trial_div == 0:
       a = trial_div
       b = i_n//trial_div
@@ -168,7 +169,7 @@ def generate_matrix( order ):
 def generate_matrix_up_to_order( end_order,start_order=1 ):
   cum = 0
   all_matrices = []
-  for n in xrange(int(start_order),int(end_order)+1):
+  for n in range(int(start_order),int(end_order)+1):
     all_matrices += generate_matrix( n )
   return all_matrices
 

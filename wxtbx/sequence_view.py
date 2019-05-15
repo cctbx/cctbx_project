@@ -13,6 +13,7 @@ from __future__ import absolute_import, division, print_function
 import wx
 import wx.lib.scrolledpanel
 import math, sys, os
+from six.moves import range
 
 WXTBX_SEQ_SELECT_NONE = 1
 WXTBX_SEQ_SELECT_SINGLE = 2

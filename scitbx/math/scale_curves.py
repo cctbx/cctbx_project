@@ -3,6 +3,7 @@ from scitbx import differential_evolution as de
 from scitbx.array_family import flex
 import sys
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 class curve_interpolator(object):
   def __init__(self, start, stop, n_points=100):
@@ -114,7 +115,7 @@ class linear_scaler(object):
     """ ii: datset number ; result[ii]=associated scale_factor index """
     result = []
     count = 0
-    for ii in xrange(self.n_sets):
+    for ii in range(self.n_sets):
       if ii != self.ref:
         result.append( count )
         count += 1
@@ -139,7 +140,7 @@ class linear_scaler(object):
   def get_scales_offsets(self,vector):
     scales = []
     offsets = []
-    for scale in xrange(self.n_sets):
+    for scale in range(self.n_sets):
       tmp_scale = 1.0
       tmp_offset = 0.0
       if scale != self.ref:
@@ -155,7 +156,7 @@ class linear_scaler(object):
     scales, offsets = self.get_scales_offsets(vector)
     dr = self.get_mean(scales,offsets)
     result = 0
-    for jj in xrange(self.n_sets):
+    for jj in range(self.n_sets):
       dj =  scales[jj]*(self.means[jj]+offsets[jj])
       vj =  self.vars[jj]*scales[jj]*scales[jj]
       t  =  flex.pow((dj-dr),2)/( 1e-13 + vj )
@@ -189,7 +190,7 @@ def scale_it_pairwise(m,v,ref_id=0,factor=10,show_progress=False,add=True):
   n = len(m)
   scales = []
   ofsets = []
-  for ii in xrange(n):
+  for ii in range(n):
     if ii != ref_id:
       ms = [ m[ref_id],m[ii] ]
       vs = [ m[ref_id],m[ii] ]

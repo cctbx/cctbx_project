@@ -6,6 +6,7 @@ from scitbx.stdlib import math, random
 from scitbx.array_family import flex
 from scitbx import differential_evolution as de
 from scitbx.math import euler_angles as euler
+from six.moves import range
 
 def kearsley_rotation(reference_sites, other_sites):
   """
@@ -39,10 +40,10 @@ only.
   a3 = list(matrix.col(vecs[:3]).cross(matrix.col(vecs[3:6])))
   a = matrix.sqr(list(vecs[:6])+a3)
   b = list(a * sts)
-  for i in xrange(3):
+  for i in range(3):
     d = math.sqrt(math.fabs(vals[i]))
     if (d > 0):
-      for j in xrange(3):
+      for j in range(3):
         b[i*3+j] /= d
   b3 = list(matrix.col(b[:3]).cross(matrix.col(b[3:6])))
   b = matrix.sqr(b[:6]+b3)

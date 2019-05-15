@@ -6,6 +6,7 @@ import iotbx.pdb
 import math
 import sys
 import six
+from six.moves import range
 
 class nonbonded_overlaps_results(object):
   """ Container for non-bonded overlaps results """

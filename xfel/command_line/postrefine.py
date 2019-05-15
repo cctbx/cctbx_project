@@ -6,6 +6,7 @@ import numpy as np
 from cctbx.array_family import flex
 from datetime import datetime, time
 import logging
+from six.moves import range
 
 FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
 logging.basicConfig(level=logging.WARNING, format=FORMAT)

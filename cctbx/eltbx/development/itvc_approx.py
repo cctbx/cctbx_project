@@ -6,6 +6,7 @@ import cctbx.eltbx.gaussian_fit
 from cctbx.array_family import flex
 from libtbx.option_parser import OptionParser
 import sys, os
+from six.moves import range
 
 def run(file_name, table_of_gaussians, cutoff,
         low_resolution_only=False,
@@ -31,7 +32,7 @@ def run(file_name, table_of_gaussians, cutoff,
     sel = stols > 2
     stols = stols.select(sel)
     assert stols.size() == 6
-  range_62 = flex.size_t(xrange(62))
+  range_62 = flex.size_t(range(62))
   labels = flex.std_string()
   errors = []
   correlations = flex.double()

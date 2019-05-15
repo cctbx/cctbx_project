@@ -5,14 +5,15 @@ from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 import sys
+from six.moves import range
 
 def derivs_fd(a, order, eps=1.e-6):
   result = flex.vec3_double()
   sites0 = a.sites
   sites = [list(site) for site in sites0]
-  for i_site in xrange(3):
+  for i_site in range(3):
     ds = []
-    for i_dim in xrange(3):
+    for i_dim in range(3):
       samples = []
       for signed_eps in [eps, -eps]:
         sites[i_site][i_dim] = sites0[i_site][i_dim] + signed_eps
@@ -59,12 +60,12 @@ def write_plots(method, rot_scale=2, rot_step=1, c_truncate_at=-2e4):
   for angle_ideal in [180, 120]:
     def init_plots():
       result = []
-      for j in xrange(3):
+      for j in range(3):
         result.append([])
       return result
     g_plots = init_plots()
     c_plots = init_plots()
-    for rot_deg_sc in xrange(90*rot_scale, 270*rot_scale+rot_step, rot_step):
+    for rot_deg_sc in range(90*rot_scale, 270*rot_scale+rot_step, rot_step):
       rot_deg = rot_deg_sc / rot_scale
       r = axis.axis_and_angle_as_r3_rotation_matrix(angle=rot_deg, deg=True)
       a = angle(
@@ -76,9 +77,9 @@ def write_plots(method, rot_scale=2, rot_step=1, c_truncate_at=-2e4):
       else:
         gc = derivs_fd(a=a, order=1)
         gc.extend(derivs_fd(a=a, order=2))
-      for j in xrange(3):
+      for j in range(3):
         g_plots[j].append((rot_deg, gc[2][j]))
-      for j in xrange(3):
+      for j in range(3):
         c_plots[j].append((rot_deg, gc[5][j]))
     def write(deriv, plots):
       file_name = "angle_%d_%s_%s.xy" % (angle_ideal, deriv, method)
@@ -87,7 +88,7 @@ def write_plots(method, rot_scale=2, rot_step=1, c_truncate_at=-2e4):
       print("@with g0", file=f)
       print('@ title "%s ideal=%d method=%s"' % (
         deriv, angle_ideal, method), file=f)
-      for j in xrange(3):
+      for j in range(3):
         print('@ s%d legend "%s"' % (j, "xyz"[j]), file=f)
       for plot in plots:
         for x,y in plot:
@@ -107,7 +108,7 @@ def run(args):
   #
   mt = flex.mersenne_twister(seed=0)
   #
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     l0 = mt.random_double() + 0.5
     l1 = mt.random_double() + 0.5
     l2 = mt.random_double() + 0.5

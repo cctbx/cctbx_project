@@ -9,6 +9,7 @@ from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.utils import null_out, show_times_at_exit
 import sys
+from six.moves import range
 
 def shift_gently(sites, mersenne_twister, angle=5):
   axis = mersenne_twister.random_double_point_on_sphere()
@@ -63,7 +64,7 @@ def simulation_zigzag(NB=5):
   vr = matrix.col((0,1,0))
   v = vu
   pivot = matrix.col((0,0,0))
-  for ib in xrange(1,NB):
+  for ib in range(1,NB):
     body = revolute_body(
       labels=[str(ib)],
       sites=[pivot + v*0.5],

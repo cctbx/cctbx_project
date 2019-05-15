@@ -7,6 +7,7 @@ from cctbx import adptbx
 from scitbx.array_family import flex
 import math
 import sys
+from six.moves import range
 
 class scatterer(object):
 
@@ -106,7 +107,7 @@ class structure(crystal.special_position_settings):
     self.apply_symmetry(i)
 
   def add_scatterers(self, scatterers):
-    for i in xrange(len(scatterers)):
+    for i in range(len(scatterers)):
       self.add_scatterer(scatterers[i])
 
   def structure_factors(self, d_min):
@@ -124,7 +125,7 @@ class structure(crystal.special_position_settings):
         sum_exp_j_two_pi_hx = 0j
         for i_symop,x in enumerate(equiv_sites.coordinates()):
           sum_hx = 0
-          for i in xrange(3):
+          for i in range(3):
             sum_hx += h[i] * x[i]
           phase = 2 * math.pi * sum_hx
           exp_j_two_pi_hx = complex(math.cos(phase), math.sin(phase))

@@ -5,6 +5,7 @@ from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
 from cmath import cos, sin, pi
+from six.moves import range
 
 
 def miller_export_as_shelx_fcf(self, f_calc, file_object=None):
@@ -68,7 +69,7 @@ def list_6_as_miller_arrays(file_name):
             if not li: break
             space_group.expand_smx(li[1:-1])
         else:
-          for i in xrange(6): next(fcf)
+          for i in range(6): next(fcf)
           for li in fcf:
             items = li.split()
             if not items: break

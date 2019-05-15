@@ -12,6 +12,7 @@ import re
 import os
 import sys
 import six
+from six.moves import range
 
 DEBUG = False
 

@@ -7,6 +7,7 @@ import scitbx.math.gaussian
 from libtbx.str_utils import line_feeder
 from libtbx.option_parser import OptionParser
 from libtbx import adopt_init_args
+from six.moves import range
 
 class table(object):
 
@@ -19,7 +20,7 @@ class table(object):
     xk = self.x
     selection = flex.bool(xk.size(), False)
     i_kissel = 0
-    for i_itvc in xrange(xi.size()):
+    for i_itvc in range(xi.size()):
       while (xk[i_kissel] < xi[i_itvc]):
         i_kissel += 1
       if (xk[i_kissel] == xi[i_itvc]):

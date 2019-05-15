@@ -12,6 +12,7 @@ from copy import deepcopy
 from libtbx.utils import null_out
 import libtbx.callbacks # import dependency
 from libtbx import group_args
+from six.moves import range
 
 master_phil = iotbx.phil.parse("""
 
@@ -2818,7 +2819,7 @@ def find_symmetry_center(map_data,crystal_symmetry=None,out=sys.stdout):
   for ai in [0,1,2]:
     centroid_wx[ai]=0.
     centroid_w[ai]=0.
-    for i in xrange(0,all[ai]):
+    for i in range(0,all[ai]):
       if ai==0:
         start_tuple=tuple((i,0,0))
         end_tuple=tuple((i,all[1],all[2]))
@@ -2877,7 +2878,7 @@ def select_remaining_ncs_ops( map_data=None,
     improving=False
     working_best_ops_to_keep=deepcopy(best_ops_to_keep)
     working_score=None
-    for ncs_id in xrange(ncs_copies):
+    for ncs_id in range(ncs_copies):
       if ncs_id in best_ops_to_keep:continue
       ops_to_keep=deepcopy(best_ops_to_keep)
       ops_to_keep.append(ncs_id)
@@ -3181,10 +3182,10 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
   print("Starting center: (%7.3f, %7.3f, %7.3f)" %(tuple(best_center)), file=out)
   from libtbx.utils import null_out
   scale=5.
-  for itry in xrange(6):
+  for itry in range(6):
     scale=scale/5.
-    for i in xrange(-4,5):
-     for j in xrange(-4,5):
+    for i in range(-4,5):
+     for j in range(-4,5):
       local_center=matrix.col(symmetry_center)+matrix.col((scale*i,scale*j,0.,))
       ncs_list=get_ncs_list(params=params,symmetry=symmetry,
        symmetry_center=local_center,
@@ -3246,7 +3247,7 @@ def get_cc_among_value_lists(all_value_lists):
   cc_avg=0.
   cc_low=None
   cc_n=0.
-  for j in xrange(1,len(all_value_lists)):
+  for j in range(1,len(all_value_lists)):
       b=all_value_lists[j]
       cc=flex.linear_correlation(a,b).coefficient()
       cc_avg+=cc
@@ -3280,7 +3281,7 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
         #  operator that maps each point on to all others the best, then save
   #  that list of values
 
-  identify_ncs_id_list=list(xrange(ncs_group.n_ncs_oper()))+[None]
+  identify_ncs_id_list=list(range(ncs_group.n_ncs_oper()))+[None]
 
   all_value_lists=[]
 
@@ -3333,12 +3334,12 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
   values_by_site_dict={} # all_value_lists[j][i] -> values_by_site_dict[i][j]
   # there are sites_orth.size() values of j
   # there are len(ncs_group_centers)==len(all_value_lists[0]) values of i
-  for i in xrange(len(all_value_lists[0])):
+  for i in range(len(all_value_lists[0])):
     values_by_site_dict[i]=flex.double() # value_list[0][1]
-    for j in xrange(sites_orth.size()):
+    for j in range(sites_orth.size()):
       values_by_site_dict[i].append(all_value_lists[j][i])
   new_all_values_lists=[]
-  for i in xrange(len(all_value_lists[0])):
+  for i in range(len(all_value_lists[0])):
     new_all_values_lists.append(values_by_site_dict[i])
   score,cc=get_cc_among_value_lists(new_all_values_lists)
   return score,cc
@@ -3358,7 +3359,7 @@ def get_points_in_map(map_data,n=None,
   nu,nv,nw=map_data.all()
   xyz_fract=crystal_symmetry.unit_cell().fractionalize(
        tuple((17.4,27.40128571,27.32985714,)))
-  for i in xrange(int(max_tries_ratio*n)): # max tries
+  for i in range(int(max_tries_ratio*n)): # max tries
     ix=random.randint(0,nu-1)
     iy=random.randint(0,nv-1)
     iz=random.randint(0,nw-1)
@@ -3367,7 +3368,7 @@ def get_points_in_map(map_data,n=None,
     if value > minimum_value and value <map_max:
       if random_xyz:
          offset=[]
-         for i in xrange(3):
+         for i in range(3):
            offset.append((random.random()-0.5)*2.*random_xyz)
          offset=crystal_symmetry.unit_cell().fractionalize(matrix.col(offset))
          new_xyz_fract=[]
@@ -3507,7 +3508,7 @@ def find_helical_symmetry(params=None,
 
   n_rotations=int(0.5+360/delta_rot)
   rotations=[]
-  for k in xrange(1,n_rotations):
+  for k in range(1,n_rotations):
     helical_rot_deg=k*delta_rot
     if helical_rot_deg > 180: helical_rot_deg=helical_rot_deg-360
     rotations.append(helical_rot_deg)
@@ -3607,7 +3608,7 @@ def find_helical_symmetry(params=None,
   print("\nTrying fraction of rot/trans", file=out)
   for iter in [0,1]:
     if not best_helical_rot_deg: continue
-    for ifract in xrange(2,11):
+    for ifract in range(2,11):
       if iter==0:  # try fractional
         test_helical_rot_deg=best_helical_rot_deg/ifract
         test_helical_trans_z_angstrom=best_helical_trans_z_angstrom/ifract
@@ -3828,7 +3829,7 @@ def try_helical_params(
     if params.control.verbose:
       print("\nOptimizing by varying number of operators", file=out)
       print("Starting score: %.2f" %(working_ncs_score), file=out)
-    for k in xrange(optimize):
+    for k in range(optimize):
      local_params.reconstruction_symmetry.max_helical_ops_to_check=min(k+1,
       params.reconstruction_symmetry.max_helical_ops_to_check)
      best_score=None # start over for each number of operators
@@ -3959,7 +3960,7 @@ def get_helical_trans_z_angstrom(params=None,
   dis_min=params.crystal_info.resolution/4
   for value,d in sort_list:
     likely_z_translations_local=[]
-    for i in xrange(1,max_first_peak+1):
+    for i in range(1,max_first_peak+1):
       z=d/i
       if z > max_z: continue
       if z < dis_min: continue # no way
@@ -4214,7 +4215,7 @@ def estimate_expand_size(
     abc = crystal_symmetry.unit_cell().parameters()[:3]
     N_ = map_data.all()
     nn=0.
-    for i in xrange(3):
+    for i in range(3):
       delta=abc[i]/N_[i]
       nn+=expand_target/delta
     nn=max(1,int(0.5+nn/3.))
@@ -4266,7 +4267,7 @@ def get_ncs_closest_sites(
   best_id=None
   best_rms=None
   best_sites=closest_sites.deep_copy()
-  for ncs_id in xrange(box_ncs_object.max_operators()):
+  for ncs_id in range(box_ncs_object.max_operators()):
     if ncs_id in used_ncs_id_list: continue
 
     test_sites=closest_sites.deep_copy()
@@ -4309,7 +4310,7 @@ def get_closest_sites(
   ncs_copies=box_ncs_object.max_operators()
   closest_sites=high_points
   from scitbx.matrix import col
-  for id in xrange(sites_cart.size()):
+  for id in range(sites_cart.size()):
     local_sites_cart=sites_cart[id:id+1]
     local_sites_cart.extend(get_ncs_sites_cart(sites_cart=local_sites_cart,
        ncs_obj=box_ncs_object,unit_cell=box_crystal_symmetry.unit_cell(),
@@ -4456,7 +4457,7 @@ def get_bounds_for_au_box(params,
 
     sites_orig=closest_sites.deep_copy()
     used_ncs_id_list=[box_ncs_object.ncs_groups()[0].identity_op_id()]
-    for i in xrange(params.segmentation.n_au_box-1):
+    for i in range(params.segmentation.n_au_box-1):
       closest_sites,used_ncs_id_list=get_ncs_closest_sites(
         used_ncs_id_list=used_ncs_id_list,
         closest_sites=closest_sites,
@@ -4835,7 +4836,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
 
     # magnify original unit cell too..
     cell=list(tracking_data.full_crystal_symmetry.unit_cell().parameters())
-    for i in xrange(3):
+    for i in range(3):
       cell[i]=cell[i]*params.map_modification.magnification
     tracking_data.set_full_crystal_symmetry(
         crystal.symmetry(tuple(cell),ccp4_map.space_group_number))
@@ -5530,7 +5531,7 @@ def choose_threshold(b_vs_region=None,map_data=None,
   unique_expected_regions=None
   for n_range_low,n_range_high in n_range_low_high_list:
     last_score=None
-    for nn in xrange(n_range_low,n_range_high+1):
+    for nn in range(n_range_low,n_range_high+1):
       if nn in used_ranges: continue
       used_ranges.append(nn)
       if density_threshold is not None:
@@ -5600,7 +5601,7 @@ def get_co(map_data=None,threshold=None,wrapping=None):
   co=maptbx.connectivity(map_data=map_data,threshold=threshold,
          wrapping=wrapping)
   regions=co.regions()
-  rr=range(0,co.regions().size())
+  rr=list(range(0,co.regions().size()))
 
   regions_0=regions[0]
   rr_0=rr[0]
@@ -5652,7 +5653,7 @@ def get_connectivity(b_vs_region=None,
   best_score=None
   best_ok=None
   best_unique_expected_regions=None
-  for ii in xrange(3):
+  for ii in range(3):
     threshold,unique_expected_regions,score,ok=choose_threshold(
      density_threshold=density_threshold,
      starting_density_threshold=starting_density_threshold,
@@ -5895,7 +5896,7 @@ def get_edited_mask(sorted_by_volume=None,
   first=True
   edited_volume_list=[]
   original_id_from_id={}
-  for i in xrange(1,max_regions_to_consider+1):
+  for i in range(1,max_regions_to_consider+1):
     v,id=sorted_by_volume[i]
     original_id_from_id[i]=id
     edited_volume_list.append(v)
@@ -5948,8 +5949,8 @@ def run_get_duplicates_and_ncs(
   # check that we have region_centroid for all values
   complete=True
   missing=[]
-  for i in xrange(1,max_regions_to_consider+1):
-    if not i in region_centroid_dict:
+  for i in range(1,max_regions_to_consider+1):
+    if not i in region_centroid_dict.keys():
       if (regions_left is None) or (i in regions_left):
          complete=False
          missing.append(i)
@@ -6039,7 +6040,7 @@ def get_duplicates_and_ncs(
     for id in region_scattered_points_dict.keys():
       for xyz_cart in region_scattered_points_dict[id]:
         n=0
-        for i0 in xrange(len(ncs_group.translations_orth())):
+        for i0 in range(len(ncs_group.translations_orth())):
           if i0==identity_op: continue
           r=ncs_group.rota_matrices_inv()[i0] # inverse maps pos 0 on to pos i
           t=ncs_group.translations_orth_inv()[i0]
@@ -6093,7 +6094,7 @@ def get_region_scattered_points_dict(
   sampling_rates.append(0)
   id_list.append(0)
 
-  for i in xrange(len(edited_volume_list)):
+  for i in range(len(edited_volume_list)):
     id=i+1
     v=edited_volume_list[i]
 
@@ -6157,7 +6158,7 @@ def remove_bad_regions(params=None,
   new_sorted_by_volume=[]
   region_list=[]
   region_volume_dict={}
-  for i in xrange(len(edited_volume_list)):
+  for i in range(len(edited_volume_list)):
     id=i+1
     v=edited_volume_list[i]
     new_sorted_by_volume.append([v,id])
@@ -6248,7 +6249,7 @@ def group_ncs_equivalents(params,
     total_grid_points=0
     missing_ncs_copies=[]
     present_ncs_copies=[]
-    for ncs_copy in xrange(tracking_data.input_ncs_info.number_of_operators):
+    for ncs_copy in range(tracking_data.input_ncs_info.number_of_operators):
         # goes 0 to ncs_copies-1 (including extra ones if present)
       local_equiv_group=equiv_group.get(ncs_copy,[])
       if local_equiv_group:
@@ -6492,15 +6493,15 @@ def get_average_center(regions,
   average_center=deepcopy(center_list[0])
   if len(center_list)>1:
     for r in center_list[1:]:
-      for i in xrange(3):
+      for i in range(3):
         average_center[i]+=r[i]
-    for i in xrange(3):
+    for i in range(3):
       average_center[i]/=len(center_list)
   return average_center
 
 def get_dist(r,s):
   dd=0.
-  for i in xrange(3):
+  for i in range(3):
     dd+=(r[i]-s[i])**2
   return dd**0.5
 
@@ -6522,11 +6523,11 @@ def get_scattered_points_list(other_regions,
 def get_inter_region_dist_dict(ncs_group_obj=None,
     selected_regions=None,target_scattered_points=None):
   dd={}
-  for i in xrange(len(selected_regions)):
+  for i in range(len(selected_regions)):
     id=selected_regions[i]
     if not id in dd: dd[id]={}
     test_centers=ncs_group_obj.region_scattered_points_dict[id]
-    for j in xrange(i+1,len(selected_regions)):
+    for j in range(i+1,len(selected_regions)):
       id1=selected_regions[j]
       test_centers1=ncs_group_obj.region_scattered_points_dict[id1]
       dist=get_closest_dist(test_centers,test_centers1)
@@ -7145,7 +7146,7 @@ def create_remaining_mask_and_map(params,
 
 def get_lower(lower_bounds,lower):
   new_lower=[]
-  for i in xrange(3):
+  for i in range(3):
     if lower_bounds[i] is None:
       new_lower.append(lower[i])
     elif lower[i] is None:
@@ -7156,7 +7157,7 @@ def get_lower(lower_bounds,lower):
 
 def get_upper(upper_bounds,upper):
   new_upper=[]
-  for i in xrange(3):
+  for i in range(3):
     if upper_bounds[i] is None:
       new_upper.append(upper[i])
     elif upper[i] is None:
@@ -7207,7 +7208,7 @@ def adjust_bounds(params,
      box_buffer=0
   else:
      box_buffer=params.output_files.box_buffer
-  for i in xrange(3):
+  for i in range(3):
     if lower_bounds[i] is None: lower_bounds[i]=0
     if upper_bounds[i] is None: upper_bounds[i]=0
     lower_bounds[i]-=box_buffer
@@ -7710,7 +7711,7 @@ def iterate_search(params,
 
 def bounds_overlap(lower=None,upper=None,
           other_lower=None,other_upper=None,tol=1):
-   for i in xrange(3):
+   for i in range(3):
      if       upper[i]+tol<other_lower[i]: return False
      if other_upper[i]+tol<lower[i]:       return False
    return True
@@ -7775,7 +7776,7 @@ def get_touching_dist(centers,default=100.,min_dist=8.):
   mean_dist=0.
   mean_dist_n=0.
   nskip=max(1,len(centers)//10) # try to get 10
-  for i in xrange(0,len(centers),nskip):
+  for i in range(0,len(centers),nskip):
      if i==0:
        target=centers[1:]
      elif i==len(centers)-1:
@@ -8020,7 +8021,7 @@ def find_threshold_in_map(target_points=None,
   low=map_min
   high=map_max
 
-  for iter in xrange(iter_max):
+  for iter in range(iter_max):
     s = (map_1d >cutoff)
     n_cutoff=s.count(True)
     if n_cutoff == target_points:
@@ -8052,7 +8053,7 @@ def get_ncs_sites_cart(sites_cart=None,ncs_id=None,
   identity_op=ncs_group.identity_op_id()
   ncs_sites_cart=flex.vec3_double()
   for xyz_cart in sites_cart:
-    for i0 in xrange(len(ncs_group.translations_orth())):
+    for i0 in range(len(ncs_group.translations_orth())):
       if i0==identity_op: continue
       if ncs_id is not None and i0!=ncs_id: continue
       r=ncs_group.rota_matrices_inv()[i0] # inverse maps pos 0 on to pos i
@@ -8088,7 +8089,7 @@ def get_ncs_mask(map_data=None,unit_cell=None,ncs_object=None,
   ncs_points_last=working_ncs_mask.count(True)
 
   max_tries=10000
-  for ii in xrange(max_tries): # just a big number; should take just a few
+  for ii in range(max_tries): # just a big number; should take just a few
 
     # Find all points in au (sample every_nth_point in grid)
 
@@ -9341,7 +9342,7 @@ def split_boxes(lower=None,upper=None,target_size=None,target_n_overlap=None,
       new_target_size=int(0.9+n/n_box)
       offset=int(0.9+(n-new_target_size)/max(1,n_box-1))
     box_list=[]
-    for i in xrange(n_box):
+    for i in range(n_box):
       start_pos=max(l,l+i*offset)
       end_pos=min(u,start_pos+new_target_size)
       if fix_target_size_and_overlap:
@@ -9410,7 +9411,7 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,
     i_start=max(1,int(0.5+i_step/2))
     from scitbx.matrix import col
     ma=map.all()
-    for i in xrange(i_start,i_end,i_step):
+    for i in range(i_start,i_end,i_step):
       lower_cart=col(xyz_list[i])
       lower_frac=si.crystal_symmetry.unit_cell().fractionalize(lower_cart)
       lower=[
@@ -9445,7 +9446,7 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,
   #  Make ncs-related centers
   print("NCS ops:",ncs_obj.max_operators(), file=out)
   centers_cart_ncs_list=[]
-  for i in xrange(centers_cart.size()):
+  for i in range(centers_cart.size()):
     centers_cart_ncs_list.append(get_ncs_copies(
        centers_cart[i],ncs_object=ncs_obj,only_inside_box=True,
        unit_cell=si.crystal_symmetry.unit_cell()) )
@@ -9467,7 +9468,7 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,
       "Written to: \n%s \n%s\n"%(
       sharpening_centers_file,ncs_sharpening_centers_file), file=out)
 
-  for i in xrange(centers_cart.size()):
+  for i in range(centers_cart.size()):
     print("Center: %s (%7.2f,%7.2f,%7.2f)  Bounds: %s :: %s " %(
         i,centers_cart[i][0],centers_cart[i][1],centers_cart[i][2],
           str(lower_bounds_list[i]),str(upper_bounds_list[i])), file=out)
@@ -9491,7 +9492,7 @@ def mean_dist_to_nearest_neighbor(all_cart):
     return None
   sum_dist=0.
   sum_n=0.
-  for i in xrange(all_cart.size()):
+  for i in range(all_cart.size()):
     xyz=all_cart[i:i+1]
     others=all_cart[:i]
     others.extend(all_cart[i+1:])
@@ -10018,7 +10019,7 @@ def optimize_b_blur_or_d_cut_or_b_iso(
   local_best_score=best_score
   improving=True
   working_best_si=deepcopy(local_best_si)
-  for cycle in xrange(n_cycle_optimize):
+  for cycle in range(n_cycle_optimize):
     if not improving: break
     print("Optimization cycle %s" %(cycle), file=out)
     print("Current best score=%7.3f b_iso=%5.1f  b_blur_hires=%5.1f d_cut=%5.1f" %(
@@ -10030,7 +10031,7 @@ def optimize_b_blur_or_d_cut_or_b_iso(
            "Kurtosis  SA-ratio   Regions   d_cut   b_blur_hires", file=out)
     local_best_working_si=deepcopy(working_best_si)
     improving=False
-    for jj in xrange(-n_range,n_range+1):
+    for jj in range(-n_range,n_range+1):
         if optimization_target=='b_blur_hires': # ZZ try optimizing b_blur_hires
           test_b_blur_hires=max(0.,working_best_si.b_blur_hires+jj*delta_b_blur_hires)
           test_d_cut=working_best_si.get_d_cut()
@@ -10247,7 +10248,7 @@ def run_auto_sharpen(
      and (not si.is_half_map_sharpening()) and (
       not si.is_target_b_iso_to_d_cut()) and (
       si.sharpening_target=='adjusted_sa'):
-   for iii in xrange(1):  # just so we can break
+   for iii in range(1):  # just so we can break
 
     local_si=deepcopy(si).update_with_box_sharpening_info(
       box_sharpening_info_obj=box_sharpening_info_obj)
@@ -10529,7 +10530,7 @@ def run_auto_sharpen(
       if return_bsi: assert local_si.nproc==1
 
       results_list=[]
-      for i in xrange(b_n):
+      for i in range(b_n):
         # ============================================
         local_si=deepcopy(si).update_with_box_sharpening_info(
           box_sharpening_info_obj=box_sharpening_info_obj)
@@ -10689,7 +10690,7 @@ def run_auto_sharpen(
 
       ##########################################
       optimize_b_iso=True
-      for cycle in xrange(n_cycles):
+      for cycle in range(n_cycles):
         if optimize_b_blur_hires:
           local_best_si,local_best_map_and_b=optimize_b_blur_or_d_cut_or_b_iso(
            #optimization_target='k_sharpen',
@@ -11151,7 +11152,7 @@ def run(args,
     raise Sorry("Need solvent fraction or molecular mass or sequence file")
 
   # Now usual method, using our new map...should duplicate best result above
-  for itry in xrange(2):
+  for itry in range(2):
     # get connectivity  (conn=connectivity_object.result)
     b_vs_region=b_vs_region_info()
     si=sharpening_info(tracking_data=tracking_data)

@@ -9,6 +9,7 @@ from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
 import random
+from six.moves import range
 
 random.seed(0)
 
@@ -29,10 +30,10 @@ def sample(two_folds, fudge_factor, deltas, perturbations):
     assert group.order_z() == 2
     sym = sgtbx.space_group_info(group=group).any_compatible_crystal_symmetry(
       volume=1000)
-    for i_trial in xrange(30):
+    for i_trial in range(30):
       while True:
         uc_fudge = list(sym.unit_cell().parameters())
-        for i in xrange(6): uc_fudge[i] *= 1+(random.random()*2-1)*fudge_factor
+        for i in range(6): uc_fudge[i] *= 1+(random.random()*2-1)*fudge_factor
         try: uc_fudge = uctbx.unit_cell(uc_fudge)
         except ValueError: pass
         else: break

@@ -9,6 +9,7 @@ from cctbx.array_family import flex
 import scitbx.lbfgs
 import math
 from cctbx.maptbx.segment_and_split_map import map_and_b_object
+from six.moves import range
 
 def write_mtz(ma=None,phases=None,file_name=None):
   mtz_dataset=ma.as_mtz_dataset(column_root_label="FWT")
@@ -265,7 +266,7 @@ def fit_cc(cc_list=None,sthol_list=None,
 
   best_scale=None
   best_rms=None
-  for i in xrange(n_tries):
+  for i in range(n_tries):
     scale=scale_min+(scale_max-scale_min)*i/n_tries
     fit=cc_fit(sthol_list=sthol_list,scale=scale,value_zero=cc_list[0],
        scale_using_last=scale_using_last)
@@ -947,7 +948,7 @@ class refinery:
   def gradients(self,b):
 
     result = flex.double()
-    for i in xrange(len(list(b))):
+    for i in range(len(list(b))):
       rs = []
       for signed_eps in [self.eps, -self.eps]:
         params_eps = deepcopy(b)

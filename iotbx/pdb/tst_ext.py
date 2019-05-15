@@ -9,6 +9,7 @@ from libtbx.utils import Sorry, \
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
+from six.moves import range
 try:
   import cPickle as pickle
 except ImportError:
@@ -77,11 +78,11 @@ def exercise_base_256_ordinal():
     assert o("-"+s) == -o(s)
   #
   def o_cmp(a, b): return cmp(o(a), o(b))
-  char4s = ["%4s" % i for i in xrange(-999,9999+1)]
+  char4s = ["%4s" % i for i in range(-999,9999+1)]
   assert sorted(char4s, o_cmp) == char4s
   m = pdb.hy36decode(width=4, s="zzzz")
   e = pdb.hy36encode
-  char4s = [e(width=4, value=i) for i in xrange(-999,m+1,51)]
+  char4s = [e(width=4, value=i) for i in range(-999,m+1,51)]
   assert sorted(char4s, o_cmp) == char4s
 
 def exercise_columns_73_76_evaluator(pdb_file_names):
@@ -328,7 +329,7 @@ END
 """
 
 def exercise_pdb_input():
-  for i_trial in xrange(3):
+  for i_trial in range(3):
     pdb_inp = pdb.pdb_input(
       source_info=None,
       lines=flex.split_lines(""))

@@ -3,6 +3,7 @@ from scitbx.graph.tardy_tree import cluster_manager, find_paths, construct
 from scitbx.graph.utils import construct_edge_sets
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, show_diff
+from six.moves import range
 try:
   import cPickle as pickle
 except ImportError:
@@ -19,18 +20,18 @@ def exercise_cluster_manager():
   assert cm.cluster_indices == []
   assert cm.clusters == []
   cm = cluster_manager(n_vertices=5)
-  for p in xrange(2):
+  for p in range(2):
     assert cm.cluster_indices == [0,1,2,3,4]
     assert cm.clusters == [[0],[1],[2],[3],[4]]
     cm.connect_vertices(i=0, j=0, optimize=True)
-  for p in xrange(2):
+  for p in range(2):
     cm.connect_vertices(i=1, j=3, optimize=True)
     assert cm.cluster_indices == [0,1,2,1,4]
     assert cm.clusters == [[0],[1,3],[2],[],[4]]
-  for p in xrange(2):
+  for p in range(2):
     cm.connect_vertices(i=0, j=3, optimize=True)
     assert cm.cluster_indices == [1,1,2,1,4]
-    for q in xrange(2):
+    for q in range(2):
       assert cm.clusters == [[],[1,3,0],[2],[],[4]]
       cm.refresh_indices()
   cm.connect_vertices(i=2, j=4, optimize=True)
@@ -546,7 +547,7 @@ def exercise_test_cases(out):
     assert_same("leb2:", cm.loop_edge_bendings, tc_leb2)
     #
     fp = find_paths(edge_sets=tt.edge_sets)
-    for iv in xrange(len(tt.edge_sets)):
+    for iv in range(len(tt.edge_sets)):
       fp.search_from(iv=iv)
     #
     print(file=out)
@@ -692,7 +693,7 @@ END
     assert tt.external_clusters_connect_count == expected_count
   for external_clusters,expected_clusters,expected_count in expected:
     if (external_clusters is None): external_clusters = []
-    for i_trial in xrange(n_trials):
+    for i_trial in range(n_trials):
       tt = construct(
         n_vertices=9,
         edge_list=random_permutation(edge_list),
@@ -771,9 +772,9 @@ def exercise_fixed_vertices(n_trials=10):
     cl = cm.clusters
     ti = cm.tree_ids()
     assert ti[0] != ti[-1]
-    for lfvl0 in xrange(1,len(cl[0])+1):
-      for lfvl1 in xrange(1,len(cl[-1])+1):
-        for i_trial in xrange(n_trials):
+    for lfvl0 in range(1,len(cl[0])+1):
+      for lfvl1 in range(1,len(cl[-1])+1):
+        for i_trial in range(n_trials):
           fvl0 = random_permutation(cl[0])[:lfvl0]
           fvl1 = random_permutation(cl[-1])[:lfvl1]
           ttf = construct(
@@ -933,7 +934,7 @@ def exercise_pickle():
   else: raise Exception_expected
   ts = StringIO()
   tt.show_summary(vertex_labels=None, out=ts)
-  for protocol in xrange(pickle.HIGHEST_PROTOCOL):
+  for protocol in range(pickle.HIGHEST_PROTOCOL):
     s = pickle.dumps(tt, protocol)
     l = pickle.loads(s)
     ls = StringIO()

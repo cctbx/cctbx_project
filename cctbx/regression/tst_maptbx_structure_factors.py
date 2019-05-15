@@ -8,6 +8,7 @@ from cctbx.array_family import flex
 from scitbx import fftpack
 from libtbx.test_utils import approx_equal
 import sys
+from six.moves import range
 
 def exercise_crystal_gridding():
   crystal_symmetry = crystal.symmetry(
@@ -268,9 +269,9 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     y_source = flex.real(under_sampled_real_map)
   x = flex.double()
   n = x_source.focus()
-  for i in xrange(0, n[0], under_sampling):
-    for j in xrange(0, n[1], under_sampling):
-      for k in xrange(0, n[2], under_sampling):
+  for i in range(0, n[0], under_sampling):
+    for j in range(0, n[1], under_sampling):
+      for k in range(0, n[2], under_sampling):
         x.append(x_source[(i,j,k)])
   y = maptbx.copy(y_source, flex.grid(y_source.focus())).as_1d()
   if (0 or verbose):

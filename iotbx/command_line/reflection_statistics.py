@@ -14,6 +14,7 @@ from cctbx.array_family import flex
 from libtbx.utils import Sorry
 from itertools import count
 import sys
+from six.moves import range
 
 def show_average_of_binned_data(binned_data_list):
   l = len(binned_data_list[0].binner.bin_legend(0))
@@ -161,7 +162,7 @@ class array_cache(object):
       space_group=patterson_map.space_group(),
       original_site=(0,0,0))
     print("      Fractional coordinates     Height  Distance from origin")
-    for i_peak in xrange(peak_list.size()):
+    for i_peak in range(peak_list.size()):
       height = peak_list.heights()[i_peak]
       if (height < max_height * min_relative_peak_height
           and i_peak > show_at_least): break

@@ -8,6 +8,7 @@ from cStringIO import StringIO
 from UserDict import DictMixin
 
 from cctbx.array_family import flex
+from six.moves import range
 
 
 class cif(DictMixin):
@@ -734,11 +735,11 @@ def LCSubstr_set(S, T):
   http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Longest_common_substring#Python"""
 
   m = len(S); n = len(T)
-  L = [[0] * (n+1) for i in xrange(m+1)]
+  L = [[0] * (n+1) for i in range(m+1)]
   LCS = set()
   longest = 0
-  for i in xrange(m):
-    for j in xrange(n):
+  for i in range(m):
+    for j in range(n):
       if S[i] == T[j]:
         v = L[i][j] + 1
         L[i+1][j+1] = v

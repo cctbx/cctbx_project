@@ -6,6 +6,7 @@ from gltbx import wx_viewer
 from libtbx.option_parser import libtbx_option_parser
 import wx
 import sys
+from six.moves import range
 
 class viewer(wx_viewer.show_points_and_lines_mixin):
 
@@ -141,7 +142,7 @@ scitbx.python wx_tardy.py [options] model_index
     tardy_model = tst_tardy.get_test_model_by_index(
       i=self.model_index, fixed_vertex_lists=self.fixed_vertex_lists)
     if (self.i_seq_labels):
-      tardy_model.labels = [str(i) for i in xrange(len(tardy_model.labels))]
+      tardy_model.labels = [str(i) for i in range(len(tardy_model.labels))]
     self.view_objects.set_points_and_lines(
       tardy_model=tardy_model,
       velocity_scaling=self.velocity_scaling,

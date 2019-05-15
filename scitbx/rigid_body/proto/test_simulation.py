@@ -8,6 +8,7 @@ import scitbx.lbfgs
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 class simulation(object):
 
@@ -95,7 +96,7 @@ class simulation(object):
       gs = []
       J_orig = B.J
       q_orig = list(J_orig.get_q())
-      for iq in xrange(J_orig.q_size):
+      for iq in range(J_orig.q_size):
         fs = []
         for signed_eps in [eps, -eps]:
           q_eps = list(q_orig)

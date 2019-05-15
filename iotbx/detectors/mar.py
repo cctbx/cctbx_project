@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import re,struct
 from iotbx.detectors.detectorbase import DetectorImageBase
+from six.moves import range
 
 class MARImage(DetectorImageBase):
   def __init__(self,filename):

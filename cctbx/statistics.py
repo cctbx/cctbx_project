@@ -7,6 +7,7 @@ from libtbx.utils import plural_s
 import math
 
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("cctbx_statistics_ext")
 from cctbx_statistics_ext import *
 

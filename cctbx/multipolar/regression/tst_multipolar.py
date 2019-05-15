@@ -5,6 +5,7 @@ import libtbx
 #import libtbx.load_env
 #from libtbx.test_utils import approx_equal
 from cctbx import multipolar
+from six.moves import range
 
 pdbs = [
   """\

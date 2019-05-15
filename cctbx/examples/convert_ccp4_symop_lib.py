@@ -10,6 +10,7 @@ from __future__ import absolute_import, division, print_function
 
 from cctbx import sgtbx
 import sys
+from six.moves import range
 
 def run():
   while 1:
@@ -20,7 +21,7 @@ def run():
     nsym = int(flds[1]) # read nsym
     print(nspgrp, nsym, flds[2]) # print it all
     group = sgtbx.space_group() # now interpret the symops
-    for i in xrange(nsym):
+    for i in range(nsym):
       line = sys.stdin.readline()[:-1] # get the i'th symop
       # print line
       group.expand_smx(sgtbx.rt_mx(line)) # and interpret

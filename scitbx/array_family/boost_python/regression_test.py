@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 import libtbx.load_env
 import sys
+from six.moves import range
 
 def extend_sys_path():
   sys.path.insert(0,
@@ -11,8 +12,8 @@ def exercise_std_vector_conversions(verbose=0):
   if (verbose): print('Checking std::vector conversions')
   assert rt.std_vector((8,9,10)) == 27
   assert rt.std_vector([7,9,10]) == 26
-  assert rt.std_vector(iter(xrange(3))) == 3
-  assert rt.std_vector(iter(xrange(10,13))) == 33
+  assert rt.std_vector(iter(range(3))) == 3
+  assert rt.std_vector(iter(range(10,13))) == 33
   assert rt.std_vector((8,9,10,11)) == 38
   try: rt.std_vector((0,1,"c"))
   except TypeError: pass
@@ -23,8 +24,8 @@ def exercise_std_list_conversions(verbose=0):
   if (verbose): print('Checking std::list conversions')
   assert rt.std_list((8,9,10)) == 27
   assert rt.std_list([7,9,10]) == 26
-  assert rt.std_list(iter(xrange(3))) == 3
-  assert rt.std_list(iter(xrange(10,13))) == 33
+  assert rt.std_list(iter(range(3))) == 3
+  assert rt.std_list(iter(range(10,13))) == 33
   assert rt.std_list((8,9,10,11)) == 38
   try: rt.std_list((0,1,"c"))
   except TypeError: pass
@@ -35,8 +36,8 @@ def exercise_boost_array_conversions(verbose=0):
   if (verbose): print('Checking boost:array conversions')
   assert rt.boost_array((8,9,10)) == 27
   assert rt.boost_array([7,9,10]) == 26
-  assert rt.boost_array(xrange(3)) == 3
-  assert rt.boost_array(xrange(10,13)) == 33
+  assert rt.boost_array(range(3)) == 3
+  assert rt.boost_array(range(10,13)) == 33
   assert rt.boost_array((8,9,10,11)) == 38
   try: rt.boost_array((8,9,10,11,12))
   except TypeError: pass
@@ -50,8 +51,8 @@ def exercise_small_conversions(verbose=0):
   if (verbose): print('Checking af::small conversions')
   assert rt.small((8,9,10)) == 27
   assert rt.small([7,9,10]) == 26
-  assert rt.small(iter(xrange(3))) == 3
-  assert rt.small(iter(xrange(10,14))) == 46
+  assert rt.small(iter(range(3))) == 3
+  assert rt.small(iter(range(10,14))) == 46
   assert rt.small((8,9,10,11)) == 38
   try: rt.small((0,1,"c"))
   except TypeError: pass

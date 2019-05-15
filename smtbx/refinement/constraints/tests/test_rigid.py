@@ -9,6 +9,7 @@ from scitbx import sparse
 from scitbx.matrix import col
 from smtbx.refinement import constraints
 from smtbx.refinement.constraints import rigid
+from six.moves import range
 
 def test_rigid_site_proxy(n=5):
   uc = uctbx.unit_cell((1, 2, 3))
@@ -198,7 +199,7 @@ def test_rotatable_rotation(rr):
                   0, 0, 1))
   R = rx_m*ry_m*rz_m #comulative rotation matrix
   shift = col(rr.sites[0])-col(mat.row(col(rr.sites[0])-rr.center)*R)
-  for i in xrange(1,4):
+  for i in range(1,4):
     calc_site = col(mat.row(col(rr.sites[i])-rr.center)*R) + shift
     assert rr.uc.distance(calc_site, col(sc[i].site)) == pytest.approx(0, abs=1e-14)
 

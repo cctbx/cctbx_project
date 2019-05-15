@@ -15,6 +15,7 @@ from smtbx.refinement import least_squares
 from smtbx.refinement import constraints
 import smtbx.utils
 from smtbx.refinement.constraints.tests import tst_constrained_structure
+from six.moves import range
 
 
 class lbfgs(object):

@@ -12,6 +12,7 @@ from collections import Counter
 from .mod_merge_data import merge_data_handler
 from .mod_mx import mx_handler
 from .mod_leastsqr import good_unit_cell
+from six.moves import range
 
 class intensities_scaler(object):
   """
@@ -549,7 +550,7 @@ class intensities_scaler(object):
       n_rows = 3
       n_cols = int(math.ceil(len(params)/n_rows))
       num_bins = 10
-      for i in xrange(len(params)-1):
+      for i in range(len(params)-1):
         tmp_params = params_array[:,i].astype(np.float)
         plt.subplot(n_rows,n_cols,i+1)
         plt.hist(tmp_params, num_bins, normed=0, facecolor='green', alpha=0.5)
@@ -626,4 +627,3 @@ class intensities_scaler(object):
            I_all_sort, sigI_all_sort, G_all_sort, B_all_sort, \
            p_all_sort, rs_all_sort, wavelength_all_sort, sin_all_sort, SE_all_sort, uc_mean, \
            wavelength_mean, pickle_filename_all_sort, ""
-

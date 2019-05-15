@@ -8,6 +8,7 @@ from libtbx.utils import Sorry
 import sys, math, time
 from scitbx import regular_grid_on_unit_sphere
 import six
+from six.moves import range
 
 def one_d_image_along_axis(n, step, uc_length):
   rho  = flex.double()
@@ -24,13 +25,13 @@ def one_d_image_along_axis(n, step, uc_length):
 
 def second_derivatives(rho, delta):
   rho_2nd = flex.double()
-  for i in xrange(rho.size()):
+  for i in range(rho.size()):
     if(i>=1 and i<rho.size()-1): tau = (rho[i+1]+rho[i-1]-2*rho[i])/delta**2
     elif(i==0):                  tau = (rho[i+1]+rho[i+1]-2*rho[i])/delta**2
     else:                        tau = (rho[i+0]+rho[i-1]-2*rho[i])/delta**2
     rho_2nd.append(tau)
   result = flex.double()
-  for i in xrange(rho_2nd.size()):
+  for i in range(rho_2nd.size()):
     rho_ave = 0
     span = [-2,-1,0,1,2]
     #span = [-5,-4,-3,-2,-1,0,1,2, 3,4,5]
@@ -45,7 +46,7 @@ def second_derivatives(rho, delta):
 
 def compute_d_eff(r, rho_2nd):
   v0 = rho_2nd[0]
-  for i in xrange(rho_2nd.size()):
+  for i in range(rho_2nd.size()):
     if(v0*rho_2nd[i]<0):
       return r[i]*2.5 # formulas (9)-(10)
   return None

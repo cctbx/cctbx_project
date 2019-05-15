@@ -5,6 +5,7 @@ from libtbx.test_utils import approx_equal, show_diff
 from scitbx import matrix
 import math
 from cStringIO import StringIO
+from six.moves import range
 
 def quartz():
   return xray.structure(

@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 import matplotlib.pyplot as plt
 import sys
 import numpy as np
+from six.moves import range
 
 if len(sys.argv)==1:
   print('Use prime.viewstats to view convergence of post-refined parameters.')
@@ -96,7 +97,7 @@ print('delta (prog.):', test_delta_1)
 print('delta diff.:', test_delta_1 - test_delta_1_calc)
 print('sum of delta diff.', np.sum(np.absolute(test_delta_1 - test_delta_1_calc)))
 
-x_range = range(1, len(delta_dict_list)+1)
+x_range = list(range(1, len(delta_dict_list)+1))
 x_label = []
 for i in range(1, len(delta_dict_list)+1):
   x_label.append(str(i))

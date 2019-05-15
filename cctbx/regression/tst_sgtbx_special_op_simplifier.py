@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 test_cases = """\
 P 1
@@ -175,7 +176,7 @@ def test_case_generator():
   from cctbx.sgtbx import space_group_info
   lines = test_cases.splitlines()
   assert len(lines) % 4 == 0
-  for i in xrange(0, len(lines), 4):
+  for i in range(0, len(lines), 4):
     assert len(lines[i+3]) == 0
     expr = lines[i+2]
     j = expr.find(" NO_FVAR")
@@ -219,7 +220,7 @@ def exercise():
       expr_shifted_site_exact = ss.special_op() * expr_shifted_site
       assert approx_equal(expr_shifted_site, expr_shifted_site_exact)
     check(site)
-    for i_trial in xrange(3):
+    for i_trial in range(3):
       shifted_site = ss.special_op() * (
         matrix.col(site) + matrix.col(mt.random_double_point_on_sphere()))
       check(shifted_site)

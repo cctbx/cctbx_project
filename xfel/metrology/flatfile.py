@@ -38,6 +38,7 @@ from scitbx.array_family import flex
 #from xfel.cxi.cspad_ana.parse_calib import calib2sections
 
 from scitbx import lbfgs
+from six.moves import range
 
 
 class optimise_rectangle(object):

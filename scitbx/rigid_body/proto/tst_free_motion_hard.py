@@ -13,9 +13,10 @@ from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out, show_times_at_exit
 import sys
+from six.moves import range
 
 def exercise_euler_params_qE_as_euler_angles_xyz_qE(mersenne_twister):
-  for i_trial in xrange(30):
+  for i_trial in range(30):
     qE = matrix.col(mersenne_twister.random_double(size=4)).normalize()
     qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
     J = joint_lib.six_dof(type="euler_params", qE=qE, qr=qr)
@@ -27,7 +28,7 @@ def exercise_euler_params_qE_as_euler_angles_xyz_qE(mersenne_twister):
     assert approx_equal(Jep.r, J.r)
 
 def exercise_T_as_X(mersenne_twister):
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     T1 = matrix.rt((
       mersenne_twister.random_double_r3_rotation_matrix(),
       mersenne_twister.random_double(size=3)-0.5))
@@ -119,7 +120,7 @@ class simulation_mixin(object):
   def d_pot_d_q_via_finite_differences(O, eps=1.e-6):
     result = []
     for q in [O.J.qE, O.J.qr]:
-      for i in xrange(len(q)):
+      for i in range(len(q)):
         fs = []
         for signed_eps in [eps, -eps]:
           q_eps = list(q)
@@ -181,7 +182,7 @@ def run_simulation(
   sites_moved = [sim.sites_moved()]
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
-  for i_step in xrange(n_dynamics_steps):
+  for i_step in range(n_dynamics_steps):
     sim.dynamics_step(delta_t=delta_t)
     sites_moved.append(sim.sites_moved())
     e_pots.append(sim.e_pot)
@@ -262,7 +263,7 @@ def exercise_simulation(
   sim_labels = None
   relative_ranges_accu = None
   rms_max_list_accu = None
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     sim_labels_new, e_tots_list, \
     relative_ranges, rms_max_list = run_simulations(
       out=out,
@@ -274,13 +275,13 @@ def exercise_simulation(
     else:
       assert sim_labels == sim_labels_new
     if (relative_ranges_accu is None):
-      relative_ranges_accu=[flex.double() for i in xrange(len(relative_ranges))]
+      relative_ranges_accu=[flex.double() for i in range(len(relative_ranges))]
     else:
       assert len(relative_ranges) == len(relative_ranges_accu)
     for r,a in zip(relative_ranges, relative_ranges_accu):
       a.append(r)
     if (rms_max_list_accu is None):
-      rms_max_list_accu = [flex.double() for i in xrange(len(rms_max_list))]
+      rms_max_list_accu = [flex.double() for i in range(len(rms_max_list))]
     else:
       assert len(rms_max_list) == len(rms_max_list_accu)
     for r,a in zip(rms_max_list, rms_max_list_accu):

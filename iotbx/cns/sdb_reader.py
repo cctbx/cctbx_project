@@ -12,6 +12,7 @@ from libtbx import adopt_init_args
 from libtbx import easy_pickle
 import re
 import os
+from six.moves import range
 
 class sdb_site(object):
 
@@ -106,7 +107,7 @@ class raw_parameters(object):
     assert len(self.q) == len(self.action)
     assert len(self.g) == len(self.action)
     sites = []
-    for i in xrange(len(self.x)):
+    for i in range(len(self.x)):
       sites.append(sdb_site(
         self.action[i], self.segid[i], self.type[i],
         self.x[i], self.y[i], self.z[i],

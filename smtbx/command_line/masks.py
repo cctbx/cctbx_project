@@ -11,6 +11,7 @@ from iotbx.option_parser import option_parser
 
 from cStringIO import StringIO
 import os
+from six.moves import range
 
 def exercise_masks(xs, fo_sq,
                    solvent_radius,

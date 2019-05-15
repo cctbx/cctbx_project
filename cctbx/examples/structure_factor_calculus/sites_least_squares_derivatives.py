@@ -6,6 +6,7 @@ from libtbx.test_utils import approx_equal
 import cmath
 from cStringIO import StringIO
 import sys
+from six.moves import range
 
 flex.set_random_seed(0)
 
@@ -81,7 +82,7 @@ def d_exp_i_hx_d_sites_finite(sites, ops, hkl, obs, eps=1.e-8):
   sites_eps = list(sites)
   for js,site in enumerate(sites):
     site_eps = list(site)
-    for jp in xrange(3):
+    for jp in range(3):
       vs = []
       for signed_eps in [eps, -eps]:
         site_eps[jp] = site[jp] + signed_eps
@@ -98,7 +99,7 @@ def d2_exp_i_hx_d_sites_finite(sites, ops, hkl, obs, eps=1.e-8):
   sites_eps = list(sites)
   for js,site in enumerate(sites):
     site_eps = list(site)
-    for jp in xrange(3):
+    for jp in range(3):
       vs = []
       for signed_eps in [eps, -eps]:
         site_eps[jp] = site[jp] + signed_eps
@@ -120,13 +121,13 @@ def exercise(args):
     out = StringIO()
   else:
     out = sys.stdout
-  for i_trial in xrange(10):
-    for n_sites in xrange(2,5+1):
+  for i_trial in range(10):
+    for n_sites in range(2,5+1):
       ops = []
-      for i in xrange(3):
+      for i in range(3):
         ops.append(matrix.sqr(flex.random_double(size=9, factor=2)-1))
       sites = []
-      for i in xrange(n_sites):
+      for i in range(n_sites):
         sites.append(matrix.col(flex.random_double(size=3, factor=4)-2))
       hkl = matrix.row(flex.random_double(size=3, factor=4)-2)
       sf = exp_i_hx(sites=sites, ops=ops, hkl=hkl)

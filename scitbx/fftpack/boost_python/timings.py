@@ -6,6 +6,7 @@ import libtbx.utils
 from libtbx.utils import time_log
 import random
 import sys
+from six.moves import range
 
 def one_series(num_threads, n_iterations, quick=False):
   if (num_threads > 0):
@@ -26,13 +27,13 @@ def one_series(num_threads, n_iterations, quick=False):
   t_fft = time_log(label="fft", use_wall_clock=use_wall_clock)
   print(t_map.legend)
   sys.stdout.flush()
-  for i_iteration in xrange(n_iterations):
+  for i_iteration in range(n_iterations):
     t_map.start()
     map = fftpack.zeros_parallel_double(flex_grid=flex.grid(rfft.m_real()))
     print(t_map.log())
     sys.stdout.flush()
     t_fill.start()
-    for i in xrange(0, map.size(), 97):
+    for i in range(0, map.size(), 97):
       map[i] = random.random()
     print(t_fill.log())
     sys.stdout.flush()
@@ -64,7 +65,7 @@ def run(args, num_threads=0, n_iterations=3):
     one_series(
       num_threads=num_threads, n_iterations=n_iterations, quick=quick)
   else:
-    for num_threads in xrange(1, default_num_threads+1):
+    for num_threads in range(1, default_num_threads+1):
       one_series(
         num_threads=num_threads, n_iterations=n_iterations, quick=quick)
       print()

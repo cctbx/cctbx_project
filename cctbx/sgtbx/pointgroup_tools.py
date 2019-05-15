@@ -11,6 +11,7 @@ from scitbx import matrix
 from scitbx.python_utils import graph_tools
 from libtbx.utils import Sorry
 import sys
+from six.moves import range
 
 
 def reference_setting_choices(space_group):
@@ -498,7 +499,7 @@ class find_compatible_space_groups(object):
 
   def get_space_groups_compatible_with_likely_point_group(self):
     # loop over all standard sg's
-    for space_group_number in xrange(1,231):
+    for space_group_number in range(1,231):
       trial_group = sgtbx.space_group_info(space_group_number).group()
 
       if trial_group.build_derived_group(False,False) \

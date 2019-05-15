@@ -5,6 +5,7 @@ import wx.lib.mixins.listctrl
 import wx
 from libtbx.utils import Sorry
 import sys
+from six.moves import range
 
 class SitesList(wx.ListCtrl,
                   wx.lib.mixins.listctrl.CheckListCtrlMixin):

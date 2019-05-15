@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx.eltbx import xray_scattering
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal
+from six.moves import range
 try:
   import cPickle as pickle
 except ImportError:
@@ -138,7 +139,7 @@ def exercise_n_gaussian():
     assert e.max_stol() > 0
     assert e.d_min() > 0
     assert e.max_relative_error() > 0
-  for i_entry in xrange(xray_scattering.n_gaussian_table_size()):
+  for i_entry in range(xray_scattering.n_gaussian_table_size()):
     for n_terms in [6,5,4,3,2,1]:
       e = xray_scattering.n_gaussian_table_entry(i_entry, n_terms)
       assert e.gaussian().n_terms() == n_terms
@@ -263,7 +264,7 @@ def ensure_common_symbols():
   lbl_wk.sort()
   assert lbl_wk == lbl_it
   lbl_ng = []
-  for i_entry in xrange(xray_scattering.n_gaussian_table_size()):
+  for i_entry in range(xray_scattering.n_gaussian_table_size()):
     lbl_ng.append(xray_scattering.n_gaussian_table_entry(i_entry, 6).label())
   lbl_ng.sort()
   assert lbl_ng == lbl_it

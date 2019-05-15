@@ -8,6 +8,7 @@ from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.math_utils import ifloor
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 def rho_stats(
       xray_structure,
@@ -83,7 +84,7 @@ def rho_stats(
     nxh = nx//2
     x = []
     y = []
-    for ix in xrange(-nxh,nxh+1):
+    for ix in range(-nxh,nxh+1):
       x.append(a*ix/nx)
       y.append(rho[(ix%nx,0,0)])
     densities_along_x.append((x,y))

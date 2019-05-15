@@ -3,6 +3,7 @@ from scitbx.array_family import flex
 from scitbx.math import correlation
 from scitbx.stdlib import math
 from scitbx import fftpack, simplex
+from six.moves import range
 
 def get_mean_sigma( nlm_array ):
   coef = nlm_array.coefs()

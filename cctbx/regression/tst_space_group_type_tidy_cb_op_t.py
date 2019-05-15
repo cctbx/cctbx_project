@@ -3,6 +3,7 @@ from cctbx import sgtbx
 import scitbx.math
 from libtbx.utils import format_cpu_times
 import sys
+from six.moves import range
 
 special = {
   9: 8, 15: 8, 17: 4, 19: 12, 20: 4, 24: 12, 43: 4, 67: 4, 68: 4, 70: 18,

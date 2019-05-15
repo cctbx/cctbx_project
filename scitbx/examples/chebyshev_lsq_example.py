@@ -3,6 +3,7 @@ from scitbx.array_family import flex
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
 from cStringIO import StringIO
+from six.moves import range
 
 
 
@@ -107,7 +108,7 @@ def another_example(np=41,nt=5):
   assert flex.max( flex.abs(fit_nw.coefs-fit_w.coefs) ) > 0
 
 def runge_phenomenon(self,n=41,nt=35,print_it=False):
-  x_e = 2.0*(flex.double( xrange(n) )/float(n-1)-0.5)
+  x_e = 2.0*(flex.double( range(n) )/float(n-1)-0.5)
   y_e = 1/(1+x_e*x_e*25)
   fit_e = chebyshev_lsq_fit.chebyshev_lsq_fit(nt,
                                               x_e,
@@ -127,7 +128,7 @@ def runge_phenomenon(self,n=41,nt=35,print_it=False):
     nt, fit_c.low_limit, fit_c.high_limit, fit_c.coefs)
 
 
-  x_plot = 2.0*(flex.double( xrange(3*n) )/float(3*n-1)-0.5)
+  x_plot = 2.0*(flex.double( range(3*n) )/float(3*n-1)-0.5)
   y_plot_e = fit_e.f( x_plot )
   y_plot_c = fit_c.f( x_plot )
   y_id =  1/(1+x_plot*x_plot*25)

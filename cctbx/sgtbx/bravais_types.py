@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import range
 acentric = (
 "P 1",
 "P 1 2 1",
@@ -86,7 +87,7 @@ def tst_bravais_types(verbose):
   crystal_systems_tally = {}
   for key in crystal_systems_reference: crystal_systems_tally[key]=0
 
-  for space_group_number in xrange(1,231):
+  for space_group_number in range(1,231):
     space_group_info = sgtbx.space_group_info(number=space_group_number)
     GC = bravais_lattice(number=space_group_number)
     GC_1 = bravais_lattice(group=space_group_info.group())

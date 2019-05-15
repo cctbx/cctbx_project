@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import range
 def range_parser( txt ):
   splitter = " "
   if "," in txt:
@@ -20,7 +21,7 @@ def range_to_list(range_):
     if len(item)==1:
       result.append( item[0] )
     if len(item)==2:
-      for ii in xrange(item[0],item[1]+1):
+      for ii in range(item[0],item[1]+1):
         result.append( ii )
   return result
 

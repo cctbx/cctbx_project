@@ -4,6 +4,7 @@ from xfel.cxi.cspad_ana import cspad_tbx
 from libtbx import easy_pickle
 from libtbx import easy_mp
 from xfel.command_line.cxi_image2pickle import crop_image_pickle
+from six.moves import range
 
 # Jiffy script to dump SACLA data processed by Cheetah into image pickles.  Usage:
 # libtbx.python dump_sacla_data.py <path to h5 file> <destination directory for pickles>.

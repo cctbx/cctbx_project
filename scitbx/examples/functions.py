@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import math as m
+from six.moves import range
 
 def Function(name):
     ''' Easy way to get a function constructor

@@ -10,6 +10,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import random
 import sys
+from six.moves import range
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
@@ -119,8 +120,8 @@ def exercise(space_group_info, anomalous_flag, verbose):
             print("   ", ri.type(), ri.sense(), ri.ev())
       raise RuntimeError("max(repetitions) > 1")
   #
-  for i in xrange(len(coset_decompositions)):
-    for j in xrange(len(coset_decompositions)):
+  for i in range(len(coset_decompositions)):
+    for j in range(len(coset_decompositions)):
       exercise_double_coset_decomposition(
         crystal_symmetry_ri,
         lattice_group,

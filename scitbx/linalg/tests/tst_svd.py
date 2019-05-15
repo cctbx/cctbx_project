@@ -3,6 +3,7 @@ import math
 import scitbx.math
 import scitbx.linalg.svd
 from scitbx.linalg import matrix_equality_ratio, matrix_normality_ratio
+from six.moves import range
 try: import tntbx
 except ImportError: tntbx = None
 import libtbx.utils
@@ -15,7 +16,7 @@ import scitbx.linalg as linalg
 from scitbx.array_family import flex
 
 def exercise_svd_basic(klass):
-  a = flex.double(xrange(1,19))
+  a = flex.double(range(1,19))
   sigma = [ 45.8945322027251, 1.6407053035305987, 0 ]
   a.resize(flex.grid(6,3))
   svd = klass(
@@ -59,7 +60,7 @@ def exercise_svd_basic(klass):
   assert matrix_normality_ratio(svd.u) < 10
   assert matrix_normality_ratio(svd.v) < 10
 
-  a = flex.double(xrange(1,13))
+  a = flex.double(range(1,13))
   sigma = [25.436835633480246818, 1.7226122475210637387, 0]
   a.reshape(flex.grid(3,4))
   svd = klass(
@@ -109,7 +110,7 @@ class test_case(object):
         if not self.full_coverage and random.random() < 0.9: continue
         m = int(k*n)
         gen = scitbx.linalg.random_normal_matrix_generator(m, n)
-        for p in xrange(self.n_matrices_per_dimension):
+        for p in range(self.n_matrices_per_dimension):
           sigma = self.sigma(m,n)
           yield sigma, gen.matrix_with_singular_values(sigma)
 
@@ -207,12 +208,12 @@ def exercise_densely_distributed_singular_values(show_progress, full_coverage, k
   tol = 10*scitbx.math.double_numeric_limits.epsilon
   gen = scitbx.linalg.random_normal_matrix_generator(m, n)
   sigmas = []
-  sigmas.append( flex.double([ 10**(-i/n) for i in xrange(n) ]) )
+  sigmas.append( flex.double([ 10**(-i/n) for i in range(n) ]) )
   sigmas.append( sigmas[0].select(flex.random_permutation(n))   )
   sigmas.append( sigmas[0].reversed()                           )
   print("Densely distributed singular values:", end=' ')
   n_tests = 0
-  for i in xrange(n_runs):
+  for i in range(n_runs):
     if not full_coverage and random.random() < 0.8: continue
     n_tests += 1
     for i_case, sigma in enumerate(sigmas):
@@ -228,7 +229,7 @@ def exercise_singular_matrix(klass):
   n = 20
   m = 3*n
   tol = 10*scitbx.math.double_numeric_limits.epsilon
-  rows = [ flex.random_double(m) for i in xrange(n-2) ]
+  rows = [ flex.random_double(m) for i in range(n-2) ]
   rows.append(rows[n//2] + rows[n//3])
   rows.append(rows[n//4] - rows[n//5])
   random.shuffle(rows)

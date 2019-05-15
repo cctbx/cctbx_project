@@ -8,6 +8,7 @@ import warnings
 import sys, os
 
 import boost.python
+from six.moves import range
 scalepack_ext = boost.python.import_ext("iotbx_scalepack_ext")
 
 # scalepack manual, edition 5, page 132
@@ -113,13 +114,13 @@ class reader(object):
     assert n_sym_ops_from_file > 0
     self.space_group_symbol = line[6:].strip()
     self.space_group_from_ops = sgtbx.space_group()
-    for i in xrange(n_sym_ops_from_file):
+    for i in range(n_sym_ops_from_file):
       line = f.readline().rstrip()
       assert len(line) == 27
-      r = sgtbx.rot_mx([int(line[j*3:(j+1)*3]) for j in xrange(9)], 1)
+      r = sgtbx.rot_mx([int(line[j*3:(j+1)*3]) for j in range(9)], 1)
       line = f.readline().rstrip()
       assert len(line) == 9
-      t = sgtbx.tr_vec([int(line[j*3:(j+1)*3]) for j in xrange(3)], 12)
+      t = sgtbx.tr_vec([int(line[j*3:(j+1)*3]) for j in range(3)], 12)
       self.space_group_from_ops.expand_smx(sgtbx.rt_mx(r, t))
     f.close()
     if (header_only):

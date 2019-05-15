@@ -7,6 +7,7 @@ import numpy as np
 import json
 from .SingleFrame import SingleFrame
 import logging
+from six.moves import range
 
 
 class Clu_BELIEVE_THIS_WHOLE_DIRECTORY_IS_DEAD_CODE_20171120_ster:

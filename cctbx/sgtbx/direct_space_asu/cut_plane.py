@@ -3,6 +3,7 @@ from libtbx import slots_getstate_setstate
 from scitbx import matrix
 from boost import rational
 import string
+from six.moves import range
 
 class cut_expr_ops(slots_getstate_setstate):
 
@@ -217,7 +218,7 @@ class cut(cut_expr_ops):
 
   def evaluate(self, point):
     result = self.c
-    for i in xrange(3):
+    for i in range(3):
       result += self.n[i] * point[i]
     return result
 
@@ -255,7 +256,7 @@ class cut(cut_expr_ops):
 
   def get_point_in_plane(self):
     result = [0,0,0]
-    for i in xrange(3):
+    for i in range(3):
       if (self.n[i] != 0):
         result[i] = -rational.int(self.c) / self.n[i]
         return result

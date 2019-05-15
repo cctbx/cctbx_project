@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 class reader:
   """A class to read the INTEGRATE.HKL file used in XDS"""

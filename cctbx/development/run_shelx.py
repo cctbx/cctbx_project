@@ -11,6 +11,7 @@ import libtbx.path
 from libtbx import easy_run
 from cStringIO import StringIO
 import sys, os
+from six.moves import range
 
 def calculate_cell_content(xray_structure):
   result = dicts.with_default_value(0)
@@ -146,7 +147,7 @@ def check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose):
         xray_structure.unit_cell(), xray_structure.scatterers()[i].u_star)
       mismatch = 0
       s = ""
-      for i in xrange(6):
+      for i in range(6):
         u_shelx = int(u[i*7:(i+1)*7])
         u_adptbx = int(round(u_cart[i] * 1.e+4,))
         s += "%7d" % u_adptbx

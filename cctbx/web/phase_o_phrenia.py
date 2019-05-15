@@ -6,6 +6,7 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 from cctbx.web import io_utils
 from cctbx.web import cgi_utils
+from six.moves import range
 
 def interpret_form_data(form):
   inp = cgi_utils.inp_from_form(form,
@@ -111,14 +112,14 @@ def run(server_info, inp, status):
       print("Plot of relative peak heights:")
       print()
       plot = flex.bool(flex.grid(plot_nx, plot_ny))
-      for i in xrange(plot_nx):
+      for i in range(plot_nx):
         height = reduced_peaks[i].height
         h = int(round(height * plot_ny))
         h = max(0, min(plot_ny, h))
-        for j in xrange(h): plot[(i,j)] = True
-      for j in xrange(plot_ny-1,-1,-1):
+        for j in range(h): plot[(i,j)] = True
+      for j in range(plot_ny-1,-1,-1):
         line = ""
-        for i in xrange(plot_nx):
+        for i in range(plot_nx):
           if (plot[(i,j)]): line += "*"
           else:                  line += " "
         print("    |" + line.rstrip())

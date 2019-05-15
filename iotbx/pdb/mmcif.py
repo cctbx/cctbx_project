@@ -13,6 +13,7 @@ from iotbx.pdb.remark_3_interpretation import \
 import iotbx.cif
 from iotbx.cif.builders import crystal_symmetry_builder
 import iotbx.mtrix_biomt
+from six.moves import range
 
 class pdb_hierarchy_builder(crystal_symmetry_builder):
 
@@ -92,7 +93,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     current_residue_id = None
     current_ins_code = None
 
-    for i_atom in xrange(atom_labels.size()):
+    for i_atom in range(atom_labels.size()):
       # model(s)
       last_model_id = current_model_id
       current_model_id = model_ids[i_atom]

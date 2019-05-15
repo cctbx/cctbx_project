@@ -8,6 +8,7 @@ from cctbx.sgtbx.direct_space_asu import proto as new_asu
 from cctbx.crystal import direct_space_asu_float_asu
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
+from six.moves import range
 
 # For usage type:
 #   cctbx.python tst_asu.py -h
@@ -39,7 +40,7 @@ def loop_grid(asu, n, mn, mx, asu2=None):
     grid += tuple([g])
   mna = list(mn)
   mxa = list(mx)
-  for i in xrange(3):
+  for i in range(3):
     mna[i] -= 5*step[i]
     mna[i] *= grid[i]
     mna[i] = mna[i].numerator()//mna[i].denominator()-1
@@ -202,7 +203,7 @@ def run():
   if (opts.space_group is None) & (len(groups)==0):
     groups.extend(SpaceGroups)
   elif opts.space_group == "all" :
-    for isg in xrange(1,231):
+    for isg in range(1,231):
       groups.append(str(isg))
   elif opts.space_group == "all530":
     it = cctbx.sgtbx.space_group_symbol_iterator()

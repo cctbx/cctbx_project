@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_asymmetric_map_ext import *
 from cctbx.array_family import flex
@@ -72,7 +73,7 @@ def run_group(symbol):
   assert mean_rel_dif < 1.e-6
 
 def run():
-  for i in xrange(1,231):
+  for i in range(1,231):
     run_group(i);
 
 if (__name__ == "__main__"):

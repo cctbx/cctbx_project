@@ -5,6 +5,7 @@ from iotbx import file_reader
 from libtbx.utils import Sorry
 import os
 import six
+from six.moves import range
 
 def space_group_as_str(space_group):
   from cctbx import sgtbx

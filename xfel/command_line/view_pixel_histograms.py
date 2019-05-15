@@ -11,6 +11,7 @@ from scitbx.array_family import flex
 from scitbx.math import curve_fitting
 
 from xfel.cxi.cspad_ana import cspad_tbx
+from six.moves import range
 
 def run(args):
   assert len(args) > 0

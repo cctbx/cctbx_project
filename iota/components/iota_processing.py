@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 '''
 Author      : Lyubimov, A.Y.
@@ -428,7 +429,7 @@ class IOTAImageProcessor(Processor):
       beam = img_object.experiments.unique_beams()[0]
 
       s1 = flex.vec3_double()
-      for i in xrange(len(observed)):
+      for i in range(len(observed)):
         s1.append(detector[observed['panel'][i]].get_pixel_lab_coord(
           observed['xyzobs.px.value'][i][0:2]))
       two_theta = s1.angle(beam.get_s0())
