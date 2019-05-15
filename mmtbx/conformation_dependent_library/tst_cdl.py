@@ -901,7 +901,7 @@ def test_average(hierarchy,
     )
                              ):
     if threes.registry.n:
-      assert threes.registry.n.keys() == filenames[filename][3]
+      assert list(threes.registry.n.keys()) == filenames[filename][3]
 
 def get_managers(filename, testing=False, verbose=False):
   mon_lib_srv = monomer_library.server.server()

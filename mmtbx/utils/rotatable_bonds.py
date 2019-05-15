@@ -33,15 +33,15 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
     rotamer_info = rotamer_info)
   #
   external_edge_list = []
-  secial_cases = {
+  special_cases = {
     "ASP": [(["OD1"],["HD1","1HD","DD1","1DD"]),
             (["OD2"],["HD2","2HD","DD2","2DD"])],
     "GLU": [(["OE1"],["HE1","1HE","DE1","1DE"]),
             (["OE2"],["HE2","2HE","DE2","2DE"])]
   }
-  if(residue.resname.strip().upper() in secial_cases.keys()):
+  if residue.resname.strip().upper() in special_cases:
     edge = []
-    bonded_atom_names = secial_cases[residue.resname.strip().upper()]
+    bonded_atom_names = special_cases[residue.resname.strip().upper()]
     for ban in bonded_atom_names:
       for ia1,atom1 in enumerate(residue_atoms):
         if(atom1.name.strip().upper() in ban[0]):

@@ -81,7 +81,7 @@ class Job(object):
 
     stream = download.openurl(
       url = self.SERVERURL,
-      data = urllib.urlencode( data_for.items() ),
+      data = urllib.urlencode( list(data_for.items()) ),
       )
     self.job_folder = parse_submission_page( stream = stream )
     stream.close()

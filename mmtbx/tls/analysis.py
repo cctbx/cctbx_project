@@ -333,7 +333,7 @@ class run(object):
            t13, t23, t33])
         show_matrix(x=T_lambda, title="T_lambda eq.(29)", log=self.log)
         es = eigensystem.real_symmetric(T_lambda.as_sym_mat3())
-        vals = es.values()
+        vals = es.values() # TODO: am I a dict values method ?
         assert vals[0]>=vals[1]>=vals[2]
         tau_max = vals[0]
         #

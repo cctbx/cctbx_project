@@ -312,8 +312,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
       print(averages)
       print(averages.n)
     if not averages.n: return
-    keys = averages.n.keys()
-    for key in keys:
+    for key in averages.n.keys():
       if len(key)==2:
         bond=self.bond_params_table.lookup(*key)
         bond.distance_ideal = averages[key]/averages.n[key]

@@ -122,9 +122,10 @@ def exercise():
           dist_esd_dict = {}
           for plane_atom in plane.plane_atoms:
             dist_esd_dict[str(plane_atom.dist_esd)] = 0
-          if (len(dist_esd_dict) != 1 or dist_esd_dict.keys()[0] != "0.02"):
+          # FIXME: might break compat for py2/3 because indexing a values call
+          if (len(dist_esd_dict) != 1 or list(dist_esd_dict.keys())[0] != "0.02"):
             print(comp_comp_id.chem_comp.id, plane.plane_id, end=' ')
-            print(dist_esd_dict.keys())
+            print(list(dist_esd_dict.keys()))
   if (False or default_switch):
     standard_amino_acids = [
       "GLY", "VAL", "ALA", "LEU", "ILE", "PRO", "MET", "PHE", "TRP", "SER",

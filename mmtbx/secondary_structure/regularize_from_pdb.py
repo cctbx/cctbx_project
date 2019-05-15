@@ -485,7 +485,7 @@ class segment_library:
       assert self.index_length==segment.standard_length
       index_list=self.get_index_list(segment=segment)
       for index in index_list:
-        if not index in index_dict.keys():
+        if not index in index_dict:
           index_dict[index]=[]
         index_dict[index].append(segment)
     self.index_dict=index_dict
@@ -1133,7 +1133,7 @@ class connected_group:
 
   def find_residue_range(self,trim_dict=None):
     # find longest segment that is not trimmed
-    keys=trim_dict.keys()
+    keys=list(trim_dict.keys())
     keys.sort()
     res_start=None
     res_end=None
@@ -1416,9 +1416,9 @@ class connected_group:
         h2=s2.segment.hierarchy,resno2=first_resno_s2)
 
     # save it so we don't calculate twice...
-    if not s1.segment in self.connection_rms_dict.keys():
+    if not s1.segment in self.connection_rms_dict:
       self.connection_rms_dict[s1.segment]={}
-    if not s2.segment in self.connection_rms_dict[s1.segment].keys():
+    if not s2.segment in self.connection_rms_dict[s1.segment]:
       self.connection_rms_dict[s1.segment][s2.segment]={}
     self.connection_rms_dict[s1.segment][s2.segment][last_resno_s1]=rms
 
@@ -1880,7 +1880,7 @@ class replace_with_segments_from_pdb:
     # mark all residues covered by a better segment and keep remaining good ones
     for i in xrange(len(connected_groups)):
       cg=connected_groups[i]
-      keys=cg_dict[cg].keys()
+      keys=list(cg_dict[cg].keys())
       keys.sort()
       ok=cg.trim_residues(trim_dict=cg_dict[cg])
       if ok:
@@ -1888,7 +1888,7 @@ class replace_with_segments_from_pdb:
         for j in xrange(i+1,len(connected_groups)):
           cg_j=connected_groups[j]
           for k in xrange(cg.get_left_connection(),cg.get_right_connection()+1):
-            if k in cg_dict[cg_j].keys():
+            if k in cg_dict[cg_j]:
               cg_dict[cg_j][k]=True
 
 
@@ -2199,10 +2199,10 @@ class replace_with_segments_from_pdb:
       for lc,rc in connection_pairs:
           cg=connected_group(segment=rs,start_resno=lc,end_resno=rc)
           connected_groups.append(cg)
-          if not lc in possible_right_connection_dict.keys():
+          if not lc in possible_right_connection_dict:
             possible_right_connection_dict[lc]=[]
           possible_right_connection_dict[lc].append(cg)
-          if not rc in possible_left_connection_dict.keys():
+          if not rc in possible_left_connection_dict:
             possible_left_connection_dict[rc]=[]
           possible_left_connection_dict[rc].append(cg)
     # here possible_right_connection_dict[rc] is a list of connected_groups that

@@ -97,7 +97,7 @@ def check_comp(file_name):
     print("  number of planes:", len(plane_atom_counts))
     if (len(plane_atom_counts) != 0):
       show_sorted_by_counts(
-        label_count_pairs=plane_atom_counts.items(),
+        label_count_pairs=list(plane_atom_counts.items()),
         prefix="    ")
       assert min(plane_atom_counts.values()) >= 3
     #

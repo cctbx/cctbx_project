@@ -462,7 +462,7 @@ class comp_comp_id(slots_getstate_setstate):
       atom_dict=atom_dict, bond_list=self.bond_list)
 
   def test_for_water(self, atom_dict):
-    atom_list = atom_dict.keys()
+    atom_list = list(atom_dict.keys())
     atom_list.sort()
     if (atom_list == ["H1", "H2", "O"]):
       return "water"

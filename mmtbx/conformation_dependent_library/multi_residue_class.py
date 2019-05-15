@@ -15,7 +15,7 @@ class RestraintsRegistry(dict):
 
   def __repr__(self):
     outl = "RestraintsRegistry"
-    outl += "\n  %s(%d)" % (self.keys(), len(self))
+    outl += "\n  %s(%d)" % (list(self.keys()), len(self))
     outl += "\n  %s" % self.n
     return outl
 

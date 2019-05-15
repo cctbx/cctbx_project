@@ -1601,7 +1601,8 @@ class symmetry_issues(scaling.xtriage_analysis):
     tmp_buffer=StringIO()
     # please find all missing sym ops
     start = str(sgtbx.space_group_info(group=self.pg_low_prim_set))
-    tmp_key = self.explore_sg.pg_graph.graph.edge_objects[ start ].keys()[0]
+    # FIXME, ordering keys/values changes depending on py2/3
+    tmp_key = list(self.explore_sg.pg_graph.graph.edge_objects[ start ].keys())[0]
     tmp_edge = self.explore_sg.pg_graph.graph.edge_objects[ start ][tmp_key]
     for symop in tmp_edge.return_used():
       # get the r value please for this symop
@@ -1651,8 +1652,8 @@ class symmetry_issues(scaling.xtriage_analysis):
     r_out = flex.double()
     tot_r_in  = [0,0]
     tot_r_out = [0,0]
-    tmp_keys = self.ops_and_r_pairs.keys()
-    tmp_values = self.ops_and_r_pairs.values()
+    tmp_keys = list(self.ops_and_r_pairs.keys())
+    tmp_values = list(self.ops_and_r_pairs.values())
     tmp = self.ops_and_r_pairs.copy()
     for op in coset_ops:
       if op in tmp_keys:  #tmp.has_key( op ):

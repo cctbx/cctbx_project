@@ -22,7 +22,7 @@ def run(args):
       for atom_id in [bond.atom_id_1, bond.atom_id_2]:
         if (atom_id in hydrogens):
           bond_counts[atom_id] += 1
-    if (bond_counts.values() != [1] * len(bond_counts)):
+    if (list(bond_counts.values()) != [1] * len(bond_counts)):
       print("bad bond counts:", bond_counts)
       raise AssertionError
     angle_counts = dict(hydrogens)
@@ -54,7 +54,7 @@ def run(args):
           tor_counts[atom_id] += 1
     #print tor_counts
     assert max(tor_counts.values()) <= 1
-    print("no tor:", tor_counts.values().count(0))
+    print("no tor:", list(tor_counts.values()).count(0))
     chir_counts = dict(hydrogens)
     for chir in comp_comp_id.chir_list:
       for atom_id in [chir.atom_id_centre,

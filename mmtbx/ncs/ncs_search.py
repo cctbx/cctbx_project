@@ -10,6 +10,7 @@ from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list,
     NCS_restraint_group, NCS_copy
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flippable_sidechains
+import six
 
 __author__ = 'Youval, massively rewritten by Oleg'
 
@@ -63,13 +64,13 @@ def shortcut_1(
 
   # new convenience structure: {<n_atoms>:[ch_id, ch_id, ch_id]}
   n_atom_chain_id_dict = {}
-  for k,v in chains_info.iteritems():
+  for k,v in six.iteritems(chains_info):
     if v.chains_atom_number not in n_atom_chain_id_dict:
       n_atom_chain_id_dict[v.chains_atom_number] = [k]
     else:
       n_atom_chain_id_dict[v.chains_atom_number].append(k)
   print("n_atom_chain_id_dict", n_atom_chain_id_dict, file=log)
-  for k,v in n_atom_chain_id_dict.iteritems():
+  for k,v in six.iteritems(n_atom_chain_id_dict):
     if len(v) == 1:
       print("No shortcut, there is a chain with unique number of atoms:", v, file=log)
       return empty_result
@@ -77,7 +78,7 @@ def shortcut_1(
   # populate result. If at some point we are not satisfied with any measure,
   # we will return empty result.
   result = class_ncs_restraints_group_list()
-  for n_atoms, chains_list in n_atom_chain_id_dict.iteritems():
+  for n_atoms, chains_list in six.iteritems(n_atom_chain_id_dict):
     # this should make one ncs group
     master_chain_id = chains_list[0]
     master_iselection = flatten_list_of_list(
@@ -331,10 +332,11 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
     # will be always possible though
     # also, we should try to determine the smallest selection for the master
     # chain straight away
-    all_pairs = prel_gr_dict.values()
+    all_pairs = list(prel_gr_dict.values())
     left = set(all_pairs[0])
     # print "left", left
     # print "all_pairs", all_pairs
+    # FIXME indexing dict.values order changes with py2/3
     for i in all_pairs[1:]:
       left = left & set(i)
     # should be 1 (a lot of chains) or 2 (if there only 2 chains)
@@ -359,7 +361,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
     # selecting smallest master key - for no reason actually
     key_with_smallest_selection = None
     len_of_smallest_selection = 1e100
-    for ch, key in prel_gr_dict.iteritems():
+    for ch, key in six.iteritems(prel_gr_dict):
       # print "ch, master, key:", ch, master, key
       if master in key:
         master_sel, master_res, master_rmsd = get_info_from_match_dict(
@@ -377,7 +379,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
     # Let's do intersection of all master selection to determine
     # the minimum selection suitable to all copies.
     min_master_selection = None
-    for ch, key in prel_gr_dict.iteritems():
+    for ch, key in six.iteritems(prel_gr_dict):
       if master in key:
         master_sel, master_res, master_rmsd = get_info_from_match_dict(
                 match_dict, key, master)
@@ -446,7 +448,7 @@ def get_copy_master_selections_from_match_dict(
   # in prel_gr_dict we want to find value with both master and ch_copy
   # return copy_sel, copy_res, m_sel
   key = None
-  for v in prel_gr_dict.itervalues():
+  for v in six.itervalues(prel_gr_dict):
     if v == (master, ch_copy) or v == (ch_copy, master):
       key = v
       break

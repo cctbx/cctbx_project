@@ -362,10 +362,10 @@ def run(prefix = "tst_model_get_vdw_radii"):
     restraint_objects = i.cif_objects,
     process_input     = True,
     log               = null_out())
-  derived_keays = model.get_vdw_radii().keys()
+  derived_keys = model.get_vdw_radii()
   # compare with answer
   for atom_name in pdb_inp.atoms().extract_name():
-    assert atom_name.strip() in derived_keays
+    assert atom_name.strip() in derived_keys
 
 if (__name__ == "__main__"):
   run()

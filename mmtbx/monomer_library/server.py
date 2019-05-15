@@ -8,6 +8,7 @@ from libtbx.utils import Sorry, format_exception, windows_device_names
 import libtbx.load_env
 import libtbx.path
 import os
+import six
 
 class MonomerLibraryServerError(RuntimeError): pass
 
@@ -132,7 +133,7 @@ def convert_list_block(
       for row in list_item_block.iterrows():
         obj_inner = cif_type_inner(**dict(row))
         tabulated_items[obj_inner.id] = obj_inner
-  for key, cif_data in cif_object.iteritems():
+  for key, cif_data in six.iteritems(cif_object):
     if (key.startswith(data_prefix)):
       item_id = key[len(data_prefix):]
       if (data_prefix + item_id == list_name): continue
@@ -143,7 +144,7 @@ def convert_list_block(
       for loop_block,lst_name in outer_mappings:
         rows = cif_data.get('_'+loop_block)
         if (rows is None):
-          d = dict((k, v) for k, v in cif_data.iteritems()
+          d = dict((k, v) for k, v in six.iteritems(cif_data)
                    if k.startswith("_"+loop_block))
           if len(d) > 0:
             lst = getattr(obj_outer, lst_name)
@@ -260,7 +261,7 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
           if count==len(k): return True
           return False
 
-        geostd_loop_keys = geostd_block.keys()
+        geostd_loop_keys = list(geostd_block.keys())
         if not geostd_loop_keys: continue
         done = []
         for geostd_loop_key in geostd_loop_keys:
@@ -294,10 +295,10 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
             for i, row2 in enumerate(mon_lib_loop.iterrows()):
               if _row_match(row1, row2, geostd_loop_key):
                 mon_lib_loop.delete_row(i)
-                mon_lib_loop.add_row(row1.values())
+                mon_lib_loop.add_row(list(row1.values()))
       elif not replace_block:
         # add to loops row-wise
-        geostd_loop_keys = geostd_block.keys()
+        geostd_loop_keys = list(geostd_block.keys())
         if not geostd_loop_keys: continue
         done = []
         for geostd_loop_key in geostd_loop_keys:
@@ -328,7 +329,7 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
                   row[key],
                   ))
               print()
-            mon_lib_loop.add_row(row.values())
+            mon_lib_loop.add_row(list(row.values()))
       else:
         # add block
         if verbose:

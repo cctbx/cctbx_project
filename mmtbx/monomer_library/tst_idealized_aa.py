@@ -9,9 +9,9 @@ import time
 
 def exercise_00():
   d = iaa.residue_dict()
-  assert len(d.keys()) == 48
+  assert len(d) == 48
   for aac in iotbx.pdb.amino_acid_codes.one_letter_given_three_letter:
-    assert aac.lower() in d.keys()
+    assert aac.lower() in d
   #
   mon_lib_srv = monomer_library.server.server()
   ener_lib    = monomer_library.server.ener_lib()

@@ -371,9 +371,9 @@ def sort_models_and_sequences(models,sequences):
   for m,s in zip(models,sequences):
     if not m or not m.hierarchy: continue
     chain_type=str(m.info.get('chain_type'))
-    if not chain_type in sort_dict.keys(): sort_dict[chain_type]=[]
+    if not chain_type in sort_dict: sort_dict[chain_type]=[]
     sort_dict[chain_type].append([m,s])
-  keys=sort_dict.keys()
+  keys=list(sort_dict.keys())
   if len(keys)<2:
     return models,sequences # do nothing if only one chain type
 
@@ -905,7 +905,7 @@ class model_info: # mostly just a holder
     self.find_other=find_other
 
   def show_summary(self,out=sys.stdout):
-    keys=self.info.keys()
+    keys=list(self.info.keys())
     keys.sort()
     print("\nModel %d" %(self.id), file=out)
     for key in keys:
@@ -1557,7 +1557,7 @@ class find_segment: # class to look for a type of segment
     # create segment object (helix,strand) for each segment
     # If longer than the standard length, make a series of shorter segments
 
-    keys=segment_dict.keys()
+    keys=list(segment_dict.keys())
     keys.sort()
     # Specify which residues are in each segment
     #    (self.last_residue_offset past start)
@@ -1754,10 +1754,10 @@ class find_segment: # class to look for a type of segment
     # merge any segments that can be combined
     found=True
     n_cycles=0
-    while found and n_cycles <=len(segment_dict.keys()):
+    while found and n_cycles <=len(segment_dict):
       found=False
       n_cycles+=1
-      keys=segment_dict.keys()
+      keys=list(segment_dict.keys())
       keys.sort()  # sorted on start
       for i1,i2 in zip(keys[:-1],keys[1:]):
         if found: break
@@ -1780,7 +1780,7 @@ class find_segment: # class to look for a type of segment
     while still_changing and n_cycles < max_cycles:
       still_changing=False
       new_segment_dict={}
-      keys=segment_dict.keys()
+      keys=list(segment_dict.keys())
       keys.sort()
       for i in keys:
         average_direction=get_average_direction(
@@ -1806,10 +1806,10 @@ class find_segment: # class to look for a type of segment
   def trim_short_linkages(self,params=None,segment_dict=None,sites=None):
     found=True
     n_cycles=0
-    while found and n_cycles <=len(segment_dict.keys()):
+    while found and n_cycles <=len(segment_dict):
       found=False
       n_cycles+=1
-      keys=segment_dict.keys()
+      keys=list(segment_dict.keys())
       keys.sort()  # sorted on start
       for i1,i2 in zip(keys[:-1],keys[1:]):
         if found: break
@@ -1855,7 +1855,7 @@ class find_segment: # class to look for a type of segment
 
   def get_optimal_lengths(self,segment_dict=None,norms=None):
 
-    keys=segment_dict.keys()
+    keys=list(segment_dict.keys())
     keys.sort()
 
     # get average distance i to i+3/i+4 for this segment (to see if it is
@@ -2450,12 +2450,11 @@ class find_other_structure(find_segment):
 
   def get_optimal_lengths(self,segment_dict=None,norms=None):
     # always zero
-    keys=segment_dict.keys()
     optimal_delta_length_dict={}
     norm_dict={}
-    for i in keys:
-      optimal_delta_length_dict[i]=0
-      norm_dict[i]=None
+    for key in segment_dict:
+      optimal_delta_length_dict[key]=0
+      norm_dict[key]=None
     return optimal_delta_length_dict,norm_dict
 
   def add_start_end_to_segment_dict(self,
@@ -3769,10 +3768,10 @@ class find_secondary_structure: # class to look for secondary structure
           last_ca_2=current_strand_as_segment.length()-1
 
           if not prev_strand_id in \
-              self.user_helix_strand_segments.pair_dict.keys():
+              self.user_helix_strand_segments.pair_dict:
             self.user_helix_strand_segments.pair_dict[prev_strand_id]=[]
           if not current_strand_id in \
-              self.user_helix_strand_segments.pair_dict.keys():
+              self.user_helix_strand_segments.pair_dict:
             self.user_helix_strand_segments.pair_dict[current_strand_id]=[]
 
           # identify residues i_index,j_index that are next to each other

@@ -1120,7 +1120,7 @@ class process_pdb_file_srv(object):
       file_name = libtbx.path.canonical_path(file_name=file_name)
       index_dict[file_name] = len(all)
       all.append((file_name,cif_object))
-    unique_indices = index_dict.values()
+    unique_indices = list(index_dict.values())
     unique_indices.sort()
     unique = flex.select(sequence=all, permutation=unique_indices)
     if(self.cif_parameters is not None): del self.cif_parameters.file_name[:]

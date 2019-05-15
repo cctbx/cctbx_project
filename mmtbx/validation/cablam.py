@@ -821,7 +821,7 @@ class cablamalyze(validation):
         records = []
         record_start = None
         helix_in_progress = False
-        result_ids = conf.results.keys()
+        result_ids = list(conf.results.keys())
         result_ids.sort()
         for result_id in result_ids:
           result = conf.results[result_id]
@@ -914,7 +914,7 @@ class cablamalyze(validation):
     #should work without any arguments
     #populates self.results
     self.results = []
-    chains = self.all_results.keys()
+    chains = list(self.all_results.keys())
     chains.sort()
     for chain_id in chains:
       chain = self.all_results[chain_id]
@@ -927,7 +927,7 @@ class cablamalyze(validation):
           #set self.results id
         continue #go to next chain
       #else, combine results into single list
-      result_ids = conf.results.keys()
+      result_ids = list(conf.results.keys())
       result_ids.sort()
       #for result_id in conf.results:
       for result_id in result_ids:
@@ -1240,7 +1240,7 @@ class cablamalyze(validation):
     helix_records = []
     strand_records = []
 
-    chain_list = self.all_results.keys()
+    chain_list = list(self.all_results.keys())
     chain_list.sort()
     for chain_id in chain_list:
       chain = self.all_results[chain_id]

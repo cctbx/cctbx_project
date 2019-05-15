@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import six
 
 version = "CDL v1.2"
 
@@ -10462,7 +10463,8 @@ class custom_cdl_dict(dict):
     self.version=None
 
 O = custom_cdl_dict()
-for k,v in zip(cdl_database.keys(), cdl_database.values()): O[k]=v
+for k,v in six.iteritems(cdl_database):
+  O[k]=v
 cdl_database=O
 cdl_database.version=version
 

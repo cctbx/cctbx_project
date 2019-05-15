@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate
 from libtbx.str_utils import format_value
 import sys
+import six
 
 class entity(slots_getstate_setstate):
   """
@@ -23,7 +24,7 @@ class entity(slots_getstate_setstate):
   def __init__(self, **kwds):
     for name in self.__slots__:
       setattr(self, name, None)
-    for name, value in kwds.iteritems():
+    for name, value in six.iteritems(kwds):
       assert (name in self.__slots__), name
       setattr(self, name, value)
 
@@ -264,7 +265,7 @@ class atom_base(slots_getstate_setstate):
       del kwds['pdb_atom']
     for name in self.__slots__:
       setattr(self, name, None)
-    for name, value in kwds.iteritems():
+    for name, value in six.iteritems(kwds):
       assert (name in self.__slots__), name
       setattr(self, name, value)
 

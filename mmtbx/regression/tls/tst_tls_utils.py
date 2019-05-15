@@ -463,6 +463,7 @@ def tst_TLSMatrices_uijs():
     assert approx_equal(uij_ref_np.flatten(), uij_test_np.flatten(), 0.0)
 
     # Calculate average eigenvalue of output uijs
+    # TODO: verify that real_symmetric returns non-dict, I assume its an eigensystem-y instance
     eigs = [real_symmetric(u).values() for u in uij_test]
     orig_mean_eig = numpy.mean(eigs)
 
@@ -476,6 +477,7 @@ def tst_TLSMatrices_uijs():
       uij_norm = b.uijs(coords, origin)
       uij_norm_np = numpy.array(uij_norm)
       # Check average eigenvalue
+      # TODO: see above todo
       eigs = [real_symmetric(u).values() for u in uij_norm]
       mean_eig_norm = numpy.mean(eigs)
       assert approx_equal(mean_eig_norm, target, LAST_DP_TOL)
@@ -1180,7 +1182,8 @@ def tst_TLSMatricesAndAmplitudes_uijs():
 
         # Average uij eigenvalue from Matrices object should now be target
         uijs = [new_a.matrices.uijs(coords[i], origns[i]) for i in xrange(length)]
-        eigenvalues = [[real_symmetric(u).values() for u in uijs[i]] for i in xrange(length)]
+        # TODO: see above todo
+        eigenvalues = [[list(real_symmetric(u).values()) for u in uijs[i]] for i in xrange(length)]
         mean_eig = numpy.mean(eigenvalues)
         assert approx_equal(mean_eig, target, LAST_DP_TOL)
 

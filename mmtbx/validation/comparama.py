@@ -8,6 +8,7 @@ from mmtbx.validation.ramalyze import ramalyze, find_region_max_value
 import math
 import numpy as np
 from collections import Counter
+import six
 
 master_phil_str = '''
 comparama {
@@ -178,7 +179,7 @@ class rcompare(object):
         markeredgecolor="black",
         dpi=300,
         markerfacecolor="white")
-    for pos, plot in self.plots.iteritems():
+    for pos, plot in six.iteritems(self.plots):
       # prepare data
       arrows_info = []
       if self.params.allowed_outlier is not None:
