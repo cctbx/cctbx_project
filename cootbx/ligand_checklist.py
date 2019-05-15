@@ -5,6 +5,7 @@ import os
 import sys
 
 from libtbx.utils import to_str
+from six.moves import range
 
 t_wait = 250
 

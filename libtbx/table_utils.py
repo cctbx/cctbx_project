@@ -7,6 +7,7 @@ from __future__ import absolute_import, division, print_function
 ## slightly modifed functionality.
 ##
 from builtins import range
+from six.moves import range
 try: # Python 3
     from itertools import zip_longest
 except ImportError: # Python 2

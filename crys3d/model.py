@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 # TODO: clean up handling of changes in atom count
 
@@ -257,7 +258,7 @@ class model_data (object) :
     else :
       from scitbx.array_family import flex
       self.atom_colors = flex.vec3_double(
-        [ self.base_color for i in xrange(0, self.atoms.size()) ]
+        [ self.base_color for i in range(0, self.atoms.size()) ]
       )
       self._color_cache["mono"] = self.atom_colors
 

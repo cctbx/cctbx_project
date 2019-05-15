@@ -16,6 +16,7 @@ from gltbx.glu import *
 import math
 import sys
 import atexit
+from six.moves import range
 
 
 def v3distsq(a,b):

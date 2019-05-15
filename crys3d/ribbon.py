@@ -6,6 +6,7 @@ from scitbx.array_family import flex
 import scitbx.matrix
 import time
 import sys
+from six.moves import range
 
 class cartoon (object) :
   def __init__ (self, pdb_hierarchy, sec_str, selection_cache=None) :

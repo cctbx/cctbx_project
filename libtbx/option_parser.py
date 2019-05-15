@@ -6,6 +6,7 @@ import copy
 import sys
 
 from optparse import *
+from six.moves import range
 
 def check_bool(option, opt, value):
   v = value.strip().lower()

@@ -8,6 +8,7 @@ from scitbx.math import minimum_covering_sphere
 from scitbx.array_family import flex
 from math import log
 import wx
+from six.moves import range
 
 def glbox(xyz1, xyz2):
   x1 = min(xyz1[0], xyz2[0])

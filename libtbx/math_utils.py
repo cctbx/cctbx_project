@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from builtins import object, range
 import math
+from six.moves import range
 
 def round2(x, d=0):
   '''

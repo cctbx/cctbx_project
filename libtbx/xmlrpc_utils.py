@@ -67,6 +67,7 @@ import string
 import random
 import os
 import sys
+from six.moves import range
 
 # http://stackoverflow.com/questions/372365/set-timeout-for-xmlrpclib-serverproxy
 class TimeoutTransport(xmlrpclib.Transport):

@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import boost.python
 from boost.python import streambuf, ostream
+from six.moves import range
 ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
 import StringIO
 import cStringIO

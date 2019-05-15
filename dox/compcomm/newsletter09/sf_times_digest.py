@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import sys, os
+from six.moves import range
 op = os.path
 
 nodes_32bit = set("""\
@@ -36,13 +37,13 @@ class table_entry(object):
 
   def __init__(O, lines):
     assert len(lines) == 16
-    for i_line in xrange(5):
+    for i_line in range(5):
       line = lines[i_line]
       slot = O.__slots__[i_line]
       assert line.startswith(slot+": ")
       setattr(O, slot, line[len(slot)+2:])
     O.compiler_versions = []
-    for i_line in xrange(5, 10):
+    for i_line in range(5, 10):
       line = lines[i_line]
       assert line.startswith("compiler: ")
       O.compiler_versions.append(line[10:])
@@ -55,7 +56,7 @@ class table_entry(object):
     O.n_scatt = int(flds[3])
     O.n_refl = int(flds[5])
     O.all_utimes = []
-    for i_line in xrange(11, 16):
+    for i_line in range(11, 16):
       line = lines[i_line]
       flds = line.split()
       assert len(flds) == 8
@@ -116,7 +117,7 @@ def process_time_tables():
   result = []
   lines = open(time_tables_path).read().splitlines()
   assert len(lines) == 22 * 17
-  for i_line in xrange(0, len(lines), 17):
+  for i_line in range(0, len(lines), 17):
     assert lines[i_line] == ""
     result.append(table_entry(lines=lines[i_line+1:i_line+17]))
   return result

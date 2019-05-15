@@ -4,6 +4,7 @@ import locale
 import shutil
 import os
 import sys
+from six.moves import range
 op = os.path
 
 def norm_join(*args):

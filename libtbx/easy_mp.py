@@ -7,6 +7,7 @@ from six.moves import cStringIO as StringIO
 import traceback
 import os
 import sys
+from six.moves import range
 
 _have_maxtasksperchild = (sys.version_info[:2] >= (2,7))
 

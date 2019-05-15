@@ -5,6 +5,7 @@ from libtbx.math_utils import ifloor, iceil
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
 import math
+from six.moves import range
 
 pi_over_180 = math.pi / 180
 

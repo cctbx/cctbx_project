@@ -9,6 +9,7 @@ from libtbx.thread_utils import process_with_callbacks
 from libtbx.utils import Sorry, Abort
 import time
 import sys
+from six.moves import range
 
 ########################################################################
 # THREADING ONLY

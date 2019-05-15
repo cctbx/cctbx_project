@@ -14,6 +14,7 @@ from __future__ import absolute_import, division, print_function
 
 #from __future__ import absolute_import, division, print_function
 import sys, os, re
+from six.moves import range
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the

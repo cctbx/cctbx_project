@@ -6,6 +6,7 @@ import random
 import string
 import threading
 import time
+from six.moves import range
 
 class state_object():
   ''' A simple thread-safe object keeping an internal state. '''

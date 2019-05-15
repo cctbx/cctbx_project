@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from cma_es import cma_es
+from six.moves import range
 
 class cma_es_driver(object):
   """
@@ -22,7 +23,7 @@ class cma_es_driver(object):
       pop_size = p.accessor().all()[0]
       # update objective function
       v = flex.double(pop_size)
-      for i in xrange(pop_size):
+      for i in range(pop_size):
         vector = p[(i*N):(i*N + N)]
         v[i] = self.evaluator( vector )
       self.optimizer.update_distribution(v)

@@ -23,6 +23,7 @@ import stat
 import time
 import os
 import sys
+from six.moves import range
 
 process_master_phil = libtbx.phil.parse("""
 run_file = None

@@ -12,6 +12,7 @@ from cctbx.eltbx import covalent_radii
 from scitbx import matrix as mat
 import itertools
 import six
+from six.moves import range
 
 
 def display(**kwds):
@@ -180,7 +181,7 @@ class xray_structure_viewer(qttbx.widget):
     self.principal_ellipses_tex.unbind()
 
     self.bond_material.execute()
-    for i in xrange(0, len(self.bonds), 2):
+    for i in range(0, len(self.bonds), 2):
       start, end = self.bonds[i], self.bonds[i+1]
       self.cylindre_proto.draw(start, end, base_radius=0.05)
 

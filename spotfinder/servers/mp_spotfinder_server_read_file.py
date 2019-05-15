@@ -4,6 +4,7 @@ import cgi, sys
 from multiprocessing import Process, current_process
 
 from urlparse import urlparse
+from six.moves import range
 #backward compatibility with Python 2.5
 try: from urlparse import parse_qs
 except Exception: from cgi import parse_qs

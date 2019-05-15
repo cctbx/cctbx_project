@@ -6,13 +6,14 @@ from scitbx.array_family import flex
 import libtbx.utils
 import time
 import sys
+from six.moves import range
 
 try: from cctbx import maptbx
 except ImportError: maptbx = None
 
 def exercise_complex_to_complex():
   print("complex_to_complex")
-  for n in xrange(1,256+1):
+  for n in range(1,256+1):
     dp = (flex.random_double(size=n)*2-1) * flex.polar(
       1, flex.random_double(size=n)*2-1)
     dw = dp.deep_copy()
@@ -30,20 +31,20 @@ def exercise_complex_to_complex():
       1, flex.random_double(size=n)*2-1)
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
     overhead = time.time()-t0
     print("    overhead: %.2f seconds" % overhead)
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
       fftw3tbx.complex_to_complex_in_place(data=d, exp_sign=-1)
       fftw3tbx.complex_to_complex_in_place(data=d, exp_sign=+1)
     print("    fftw:     %.2f seconds" % (time.time()-t0-overhead))
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
       fftpack.complex_to_complex(n).forward(d)
       fftpack.complex_to_complex(n).backward(d)
@@ -61,13 +62,13 @@ def exercise_complex_to_complex_3d():
     d0.reshape(flex.grid(n_complex))
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
     overhead = time.time()-t0
     print("    overhead: %.2f seconds" % overhead)
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
       fftw3tbx.complex_to_complex_3d_in_place(data=d, exp_sign=-1)
       fftw3tbx.complex_to_complex_3d_in_place(data=d, exp_sign=+1)
@@ -75,7 +76,7 @@ def exercise_complex_to_complex_3d():
     rw = d / np
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
       fftpack.complex_to_complex_3d(n_complex).forward(d)
       fftpack.complex_to_complex_3d(n_complex).backward(d)
@@ -87,7 +88,7 @@ def exercise_complex_to_complex_3d():
 
 def exercise_real_to_complex():
   print("real_to_complex")
-  for n in xrange(1,256+1):
+  for n in range(1,256+1):
     fft = fftpack.real_to_complex(n)
     dp = flex.random_double(size=n)*2-1
     dp.resize(flex.grid(fft.m_real()).set_focus(n))
@@ -106,20 +107,20 @@ def exercise_real_to_complex():
     d0.resize(flex.grid(fft.m_real()).set_focus(n))
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
     overhead = time.time()-t0
     print("    overhead: %.2f seconds" % overhead)
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
       c = fftw3tbx.real_to_complex_in_place(data=d)
       fftw3tbx.complex_to_real_in_place(data=c, n=n)
     print("    fftw:     %.2f seconds" % (time.time()-t0-overhead))
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
       c = fftpack.real_to_complex(n).forward(d)
       fftpack.real_to_complex(n).backward(c)
@@ -141,13 +142,13 @@ def exercise_real_to_complex_3d():
     d0.reshape(flex.grid(m_real).set_focus(n_real))
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
     overhead = time.time()-t0
     print("    overhead: %.2f seconds" % overhead)
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
       c = fftw3tbx.real_to_complex_3d_in_place(data=d)
       assert c.all() == fft.n_complex()
@@ -163,7 +164,7 @@ def exercise_real_to_complex_3d():
       rw = d / np
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
       c = fftpack.real_to_complex_3d(n_real).forward(d)
       assert c.all() == fft.n_complex()
