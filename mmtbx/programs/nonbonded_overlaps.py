@@ -104,7 +104,6 @@ Example:
 
     # add H atoms with reduce
     # TODO: This should be replaced with readyset in the future
-
     if not self.params.skip_hydrogen_test:
       pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
           file_name      = pdb_fn,

@@ -1,13 +1,11 @@
 from __future__ import division
-import mmtbx.monomer_library.pdb_interpretation as pdb_inter
 from cctbx.geometry_restraints.nonbonded_overlaps import compute
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 import mmtbx.validation.clashscore as mvc
 from cctbx.array_family import flex
-import mmtbx.monomer_library.server
-from mmtbx import monomer_library
+#import mmtbx.monomer_library.server
+#from mmtbx import monomer_library
 from libtbx.utils import null_out
-from cStringIO import StringIO
 from libtbx.utils import Sorry
 from libtbx import easy_run
 from cctbx import xray
@@ -16,12 +14,12 @@ import mmtbx.model
 import iotbx.pdb
 import unittest
 import os
-import iotbx.phil
 
 '''
 Test non-bonded overlaps
 
 @author Youval Dar (LBL 2013)
+@modified Dorothee (2019)
 '''
 
 # Raw data for the test cases
@@ -29,10 +27,6 @@ Test non-bonded overlaps
 chem_data = libtbx.env.find_in_repositories(
   relative_path="chem_data/geostd",
   test=os.path.isdir)
-
-if chem_data is not None:
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
 
 raw_records0 = """\
 CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
@@ -584,51 +578,39 @@ class test_nonbonded_overlaps(unittest.TestCase):
     '''
     Test that 1-5 overlaps are not being counted
     '''
-    nb = compute
-    # process pdb data
-    params = iotbx.phil.parse(
-    monomer_library.pdb_interpretation.grand_master_phil_str,
-    process_includes=True).extract()
+    params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     params.pdb_interpretation.allow_polymer_cross_special_position=True
-    params = params.pdb_interpretation
-    pdb_processed_file = pdb_inter.process(
-      file_name=None,
-      params=params,
-      raw_records=raw_records0.splitlines(),
-      substitute_non_crystallographic_unit_cell_if_necessary=True,
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      log= StringIO())
-    # get geometry restraints object
-    grm = pdb_processed_file.geometry_restraints_manager(
-      assume_hydrogens_all_missing=False)
-    xrs = pdb_processed_file.xray_structure()
-    params = get_nb_overlaps_param(
-        xrs=xrs,grm=grm,
-        use_site_labels=True)
-    sites_cart,site_labels,hd_sel,full_connectivity_table = params
+    pdb_inp = iotbx.pdb.input(lines=raw_records0.split("\n"), source_info=None)
+    model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      pdb_interpretation_params = params,
+      build_grm   = True,
+      log         = null_out())
+    hd_sel = model.get_hd_selection()
+    grm = model.get_restraints_manager().geometry
+    full_connectivity_table = grm.shell_sym_tables[0].full_simple_connectivity()
 
     outstring = '1-5 Interaction test error. {}'
     # check that direction of function calling does not matter
-    tst = nb.is_1_5_interaction(21, 33,hd_sel,full_connectivity_table)
+    tst = compute.is_1_5_interaction(21, 33,hd_sel,full_connectivity_table)
     msg = outstring.format('Test results depend on atoms order')
     self.assertTrue(tst,msg=msg)
-    tst = nb.is_1_5_interaction(33, 21,hd_sel,full_connectivity_table)
+    tst = compute.is_1_5_interaction(33, 21,hd_sel,full_connectivity_table)
     self.assertTrue(tst,msg=msg)
     # check 1-4 interaction
-    tst = nb.is_1_5_interaction(33, 20,hd_sel,full_connectivity_table)
+    tst = compute.is_1_5_interaction(33, 20,hd_sel,full_connectivity_table)
     msg = outstring.format('Test fails on 1-4 interaction')
     self.assertFalse(tst,msg=msg)
     # check 1-6 interaction
-    tst = nb.is_1_5_interaction(33, 38,hd_sel,full_connectivity_table)
+    tst = compute.is_1_5_interaction(33, 38,hd_sel,full_connectivity_table)
     msg = outstring.format('Test fails on 1-6 interaction')
     self.assertFalse(tst,msg=msg)
     # test 1-5 interaction of atoms other then hydrogen
-    tst = nb.is_1_5_interaction(38, 25,hd_sel,full_connectivity_table)
+    tst = compute.is_1_5_interaction(38, 25,hd_sel,full_connectivity_table)
     msg = outstring.format('Test fails on 1-5 non hydrogen interaction')
     self.assertFalse(tst,msg=msg)
     # test 1-5 interaction of two hydrogens
-    tst = nb.is_1_5_interaction(33, 31,hd_sel,full_connectivity_table)
+    tst = compute.is_1_5_interaction(33, 31,hd_sel,full_connectivity_table)
     msg = outstring.format('Test fails on 1-5 two hydrogen interaction')
     self.assertFalse(tst,msg=msg)
 
@@ -803,32 +785,38 @@ class test_nonbonded_overlaps(unittest.TestCase):
 
   def test_compute(self):
     """ Test that there are no error when computing cctbx overlaps """
-    pdb_processed_file = pdb_inter.run(
-      args=[self.file_name],
-      assume_hydrogens_all_missing=False,
-      substitute_non_crystallographic_unit_cell_if_necessary=True,
-      log=null_out())
-    grm = pdb_processed_file.geometry_restraints_manager()
-    # grm = pdb_processed_file._geometry_restraints_manager
-    xrs = pdb_processed_file.xray_structure()
-    sites_cart = xrs.sites_cart()
+
+    params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    params.pdb_interpretation.allow_polymer_cross_special_position=True
+    pdb_inp = iotbx.pdb.input(lines=raw_records1.split("\n"), source_info=None)
+    model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      pdb_interpretation_params = params,
+      build_grm   = True,
+      log         = null_out())
+
+    hd_sel = model.get_hd_selection()
+    xrs = model.get_xray_structure()
+    sites_cart = model.get_sites_cart()
+    grm = model.get_restraints_manager().geometry
     site_labels = xrs.scatterers().extract_labels()
-    pair_proxies=grm.pair_proxies(sites_cart=sites_cart,site_labels=site_labels)
+    pair_proxies=grm.pair_proxies(
+      sites_cart  = sites_cart,
+      site_labels = site_labels)
     proxies_info_nonbonded = pair_proxies.nonbonded_proxies.get_sorted(
-        by_value="delta",
-        sites_cart=sites_cart,
-        site_labels=site_labels)
-    hd_sel = xrs.hd_selection()
+        by_value    = "delta",
+        sites_cart  = sites_cart,
+        site_labels = site_labels)
     nonbonded_list = proxies_info_nonbonded[0]
     fsc0=grm.shell_sym_tables[0].full_simple_connectivity()
     fsc2=grm.shell_sym_tables[2].full_simple_connectivity()
 
     result = compute(
-      nonbonded_list=nonbonded_list,
-      hd_sel=hd_sel,
-      full_connectivity_table=fsc0,
-      connectivity_table_2=fsc2,
-      sites_cart=sites_cart)
+      nonbonded_list          = nonbonded_list,
+      hd_sel                  = hd_sel,
+      full_connectivity_table = fsc0,
+      connectivity_table_2    = fsc2,
+      sites_cart              = sites_cart)
     self.assertEqual(result.n_atoms,139)
 
   def test_info(self):
@@ -855,14 +843,6 @@ class test_nonbonded_overlaps(unittest.TestCase):
     macro_mol_overlaps = result.nb_overlaps_macro_molecule
     self.assertTrue(sym_overlaps < all_overlaps)
     self.assertTrue(macro_mol_overlaps > 0)
-
-# DL: below is not necessary because site_labels is not a parameter anymore
-#    # Run without site labels
-#    result = nbo.info(
-#      model = model,
-#      macro_molecule_selection=macro_mol_sel).result
-#    self.assertTrue(bool(result.nb_overlaps_proxies_macro_molecule))
-#    self.assertTrue(bool(result.nb_overlaps_proxies_due_to_sym_op))
 
 # DL 5/14/2019: I had to adapt these numbers.
 # In the original, process_overlaps_count did create grm with assume_hydrogens_all_missing=False
@@ -899,7 +879,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     self.assertEqual(r_overlaps_macro_mol,overlaps_macro_mol)
 
 
-  def test_aborting_pdb_with_multiple_modeles(self):
+  def test_aborting_pdb_with_multiple_models(self):
     pdb_inp = iotbx.pdb.input(source_info=None, lines=two_models_pdb_str)
     ph = pdb_inp.construct_hierarchy()
     crystal_symmetry=pdb_inp.crystal_symmetry()
@@ -933,7 +913,6 @@ class test_nonbonded_overlaps(unittest.TestCase):
     fn_eff = fn_with_h.replace('_with_h.pdb','_with_h.eff')
     self.file_to_delete.append(fn_eff)
     open(fn_with_h,'w').write(pdb_with_h)
-    # set input parameters for pdb_interpretation
 
     params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     pdb_inp = iotbx.pdb.input(file_name=fn_with_h, source_info=None)
@@ -1078,7 +1057,6 @@ def process_raw_records(
   elif raw_record_number == 6: records = raw_records6.splitlines()
   else: print ('Wrong raw_records number')
 
-  #log = StringIO()
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.allow_polymer_cross_special_position=True
   params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
@@ -1096,28 +1074,6 @@ def process_raw_records(
 
   return result
 
-def get_nb_overlaps_param(xrs,grm,use_site_labels=True):
-  '''
-  Process input parameters for nb_overlaps
-
-  Arguments:
-  xrs: xray_structure object
-  grm: geometry restraints manager object
-
-  Returns:
-  sites_cart,site_labels,hd_sel,full_connectivity_table
-  '''
-  hd_sel = xrs.hd_selection()
-  sites_cart = xrs.sites_cart()
-  if use_site_labels:
-    site_labels = xrs.scatterers().extract_labels()
-  else:
-    site_labels = None
-
-  table_bonds = grm.shell_sym_tables[0]
-  full_connectivity_table = table_bonds.full_simple_connectivity()
-  return sites_cart,site_labels,hd_sel,full_connectivity_table
-
 def get_macro_mol_sel(model):
   proxies = model.all_chain_proxies
   cache = proxies.pdb_hierarchy.atom_selection_cache()
@@ -1134,7 +1090,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_file_with_unknown_pair_type']
+  tests = ['test_compute']
   suite = unittest.TestSuite(map(test_nonbonded_overlaps, tests))
   return suite
 
