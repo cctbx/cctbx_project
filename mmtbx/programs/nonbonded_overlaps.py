@@ -10,16 +10,6 @@ import mmtbx.model
 import iotbx.pdb
 
 master_phil_str = """
-  model_file_name = None
-    .type = path
-    .optional = False
-    .help = '''Input model file name'''
-
-  restraints_files = None
-    .type = path
-    .optional = True
-    .help = '''Optional Crystallographic Information File (CIF)'''
-
   verbose = True
     .type = bool
 
@@ -60,8 +50,6 @@ phenix.nonbonded_overlaps file.pdb [params.eff] [options ...]
 
 Options:
 
-  model_file_name           input model file
-  restraints_files          input CIF file for additional restraints information
   keep_hydrogens=True       keep input hydrogen files (otherwise regenerate)
   skip_hydrogen_test=False  Ignore hydrogen considerations,
                             check NBO on model file as-is
@@ -92,18 +80,14 @@ Example:
       raise_sorry = True,
       expected_n  = 1,
       exact_count = True)
-    if (self.params.model_file_name is None):
-      self.params.model_file_name = self.data_manager.get_default_model_name()
-    if (self.params.restraints_files is None):
-      self.params.restraints_files = self.data_manager.get_restraint_names()
 
   # ---------------------------------------------------------------------------
 
   def run(self):
-
-    print('Using model file:', self.params.model_file_name, file=self.logger)
-    if self.params.restraints_files:
-      print('Using restraints files', self.params.restraints_files,
+    pdb_fn = self.data_manager.get_default_model_name()
+    print('Using model file:', pdb_fn, file=self.logger)
+    if self.data_manager.has_restraints():
+      print('Using restraints files', self.data_manager.get_restraint_names(),
         file=self.logger)
 
     model = self.data_manager.get_model()
@@ -120,7 +104,7 @@ Example:
 
     # add H atoms with reduce
     # TODO: This should be replaced with readyset in the future
-    pdb_fn = self.params.model_file_name
+
     if not self.params.skip_hydrogen_test:
       pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
           file_name      = pdb_fn,
