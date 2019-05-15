@@ -5,6 +5,7 @@ import sys,time
 from libtbx.utils import Usage
 
 from xfel.command_line.cxi_merge import scaling_manager as scaling_manager_base
+import six
 class scaling_manager_mpi(scaling_manager_base):
 
   def mpi_initialize (self, file_names) :
@@ -44,7 +45,7 @@ class scaling_manager_mpi(scaling_manager_base):
                + self.n_low_corr + self.n_low_signal \
                + self.n_wrong_bravais + self.n_wrong_cell \
                + self.n_low_resolution \
-               + sum([val for val in self.failure_modes.itervalues()])
+               + sum([val for val in six.itervalues(self.failure_modes)])
     assert checksum == len(self.integration_pickle_names)
 
     high_res_count = (self.d_min_values <= self.params.d_min).count(True)

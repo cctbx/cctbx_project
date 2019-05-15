@@ -6,6 +6,7 @@ import numpy as np
 from .read_geom import read_geom
 from libtbx.phil import parse
 from libtbx.utils import Sorry
+import six
 
 phil_scope = parse("""
   cxi_file = None
@@ -66,7 +67,7 @@ class agipd_cxigeom2nexus(object):
 
   def create_vector(self,handle, name, value, **attributes):
     handle.create_dataset(name, (1,), data = [value], dtype='f')
-    for key,attribute in attributes.iteritems():
+    for key,attribute in six.iteritems(attributes):
       handle[name].attrs[key] = attribute
 
   def create_nexus_master_file(self):
@@ -126,8 +127,8 @@ class agipd_cxigeom2nexus(object):
     #     (+y)
 
     panels = []
-    for q, quad in self.hierarchy.iteritems():
-      for m, module in quad.iteritems():
+    for q, quad in six.iteritems(self.hierarchy):
+      for m, module in six.iteritems(quad):
         panels.extend([module[key] for key in module])
     fast = max([int(panel['max_fs']) for panel in panels])+1
     slow = max([int(panel['max_ss']) for panel in panels])+1

@@ -24,7 +24,7 @@ class Clu_BELIEVE_THIS_WHOLE_DIRECTORY_IS_DEAD_CODE_20171120_ster:
     for i, member in enumerate(self.members):
       unit_cells[i, :] = member.uc
       # Calculate point group composition
-      if member.pg in self.pg_composition.keys():
+      if member.pg in self.pg_composition:
         self.pg_composition[member.pg] += 1
       else:
         self.pg_composition[member.pg] = 1
@@ -193,7 +193,7 @@ class Clu_BELIEVE_THIS_WHOLE_DIRECTORY_IS_DEAD_CODE_20171120_ster:
     for cluster in sub_clusters:
       if len(cluster.members) != 1:
 
-        sorted_pg_comp = sorted(cluster.pg_composition.items(), key=lambda x: -1 * x[1])
+        sorted_pg_comp = sorted(list(cluster.pg_composition.items()), key=lambda x: -1 * x[1])
         pg_strings = ["{} in {}".format(pg[1], pg[0])
                       for pg in sorted_pg_comp]
         point_group_string = ", ".join(pg_strings) + "."
@@ -212,7 +212,7 @@ class Clu_BELIEVE_THIS_WHOLE_DIRECTORY_IS_DEAD_CODE_20171120_ster:
       else:
         singletons.append("".join([("{:<14} {:<11.1f} {:<11.1f} {:<11.1f}"
                                     "{:<12.1f} {:<12.1f} {:<12.1f}").format(
-          cluster.pg_composition.keys()[0],
+          list(cluster.pg_composition.keys())[0],
           cluster.members[0].uc[0], cluster.members[0].uc[1],
           cluster.members[0].uc[2], cluster.members[0].uc[3],
           cluster.members[0].uc[4], cluster.members[0].uc[5]),

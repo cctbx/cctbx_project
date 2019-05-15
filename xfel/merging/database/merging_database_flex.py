@@ -31,7 +31,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore, X):
 
     elif table == 'observation':
       rows_observation = X["rows"].get_obj()[0]
-      new_rows_observation = rows_observation+len(data[data.keys()[0]])
+      new_rows_observation = rows_observation+len(data[list(data.keys())[0]]) # XXX FIXME
       X["intensity_proxy"].get_obj()[rows_observation:new_rows_observation]=data["i"]
       X["sigma_proxy"].get_obj()[rows_observation:new_rows_observation]=data["sigi"]
       X["miller_proxy"].get_obj()[rows_observation:new_rows_observation]=data["hkl_id_0_base"]

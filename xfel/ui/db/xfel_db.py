@@ -14,6 +14,7 @@ from xfel.ui.db.experiment import Cell, Bin, Isoform, Event
 
 from xfel.ui.db import get_db_connection
 from six.moves import range
+import six
 
 try:
   from MySQLdb import OperationalError
@@ -491,7 +492,7 @@ class xfel_db_application(db_application):
       _id = d.pop("id")
       d["%s_id"%name] = _id
       results.append(cls(self, **d)) # instantiate the main class
-      for sub_d_n, sub_d in sub_ds.iteritems():
+      for sub_d_n, sub_d in six.iteritems(sub_ds):
         _id = sub_d[1].pop("id")
         sub_d[1]["%s_id"%sub_d_n] = _id
         setattr(results[-1], sub_d_n, sub_d[0](self, **sub_d[1])) # instantiate the sub items

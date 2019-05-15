@@ -80,16 +80,16 @@ class manager:
     """
 
     sql = ("INSERT INTO %s (" % table) \
-          + ", ".join(kwargs.keys()) + ") VALUES (" \
-          + ", ".join(["?"] * len(kwargs.keys())) + ")"
+          + ", ".join(kwargs) + ") VALUES (" \
+          + ", ".join(["?"] * len(kwargs)) + ")"
 
     # If there are more than one rows to insert, "unpack" the keyword
     # argument iterables and zip them up.  This effectively rearranges
     # a list of columns into a list of rows.
     try:
-      parameters = zip(*kwargs.values())
+      parameters = zip(*list(kwargs.values())) # FIXME
     except TypeError:
-      parameters = [kwargs.values()]
+      parameters = [list(kwargs.values())]
 
     return (sql, parameters)
 

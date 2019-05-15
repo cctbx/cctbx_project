@@ -8,6 +8,7 @@ import os, sys, random
 from iotbx.phil import parse
 from libtbx import easy_run
 from libtbx.utils import Sorry
+import six
 
 phil_scope = parse("""
   method = *hierarchical expanding
@@ -404,7 +405,7 @@ def refine_expanding(params, merged_scope, combine_phil):
   steps[6] = steps[5] + [8, 9]
   steps[7] = steps[6] + [10, 11]
 
-  for s, panels in steps.iteritems():
+  for s, panels in six.iteritems(steps):
     rest = []
     for p in panels:
       rest.append(p+16)

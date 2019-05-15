@@ -200,7 +200,7 @@ class manager (manager_base):
                   'unique_file_name': 24}
     for key in kwargs.keys():
       order.append(order_dict[key])
-    parameters = [kwargs.values()]
+    parameters = [list(kwargs.values())]
 
     # Pick up the index of the row just added.  The file name is
     # assumed to to serve as a unique key.
@@ -231,7 +231,7 @@ class manager (manager_base):
                   'original_l': 9}
     for key in kwargs.keys():
       order.append(order_dict[key])
-    parameters = zip(*kwargs.values())
+    parameters = zip(*list(kwargs.values())) # FIXME
     self._db_commands_queue.put(('observation', order, parameters, None))
 
 

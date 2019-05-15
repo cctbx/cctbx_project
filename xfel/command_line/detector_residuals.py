@@ -1065,7 +1065,8 @@ class ResidualsPlotter(object):
         for k in pg_bc_dists:
           vdict[pg_bc_dists[k]] = k
         sorted_keys = [vdict[v] for v in sorted_values if vdict[v] in rmsds]
-        x = [sorted_values[i] for i in range(len(sorted_values)) if pg_bc_dists.keys()[i] in rmsds]
+        pg_bc_dists_keylist = list(pg_bc_dists.keys())
+        x = [sorted_values[i] for i in range(len(sorted_values)) if pg_bc_dists_keylist[i] in rmsds]
 
         self.plot_multi_data(x,
                              [[pg_refls_count_d[k] for k in sorted_keys],

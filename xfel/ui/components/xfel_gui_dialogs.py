@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
+import six
 
 '''
 Author      : Lyubimov, A.Y.
@@ -1141,7 +1142,7 @@ class MultiRunTagDialog(BaseDialog):
       if r.run in run_numbers_selected:
         self.selected[r.run] = [r]
     for b in self.parent.all_tag_buttons:
-      if b.run.run in self.selected.keys():
+      if b.run.run in self.selected:
         self.selected[b.run.run].append(b)
 
   def onSortDefault(self, e):
@@ -1719,7 +1720,7 @@ class RunBlockDialog(BaseDialog):
                    two_theta_low=self.two_thetas.two_theta_low.GetValue(),
                    two_theta_high=self.two_thetas.two_theta_high.GetValue(),
                    comment=self.comment.ctr.GetValue())
-    for key, value in rg_dict.iteritems():
+    for key, value in six.iteritems(rg_dict):
       if str(value) == 'None' or str(value) == '':
         rg_dict[key] = None
       elif type(value) == bool:

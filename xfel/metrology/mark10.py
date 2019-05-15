@@ -643,7 +643,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
       if param_no<C.n_refined_frames:
         print("%7.2f %7.2f"%(C.frame_translations.x[2*param_no],C.frame_translations.x[1+2*param_no]))
       else:  print("N/A")
-    displacement = math.sqrt(sum_sq / len(C.frame_delx.keys()))
+    displacement = math.sqrt(sum_sq / len(C.frame_delx))
     print("rms displacement of frames %7.2f"%displacement)
 
     C.detector_origin_analysis()
@@ -667,8 +667,8 @@ class fit_translation4(mark5_iteration,fit_translation2):
         C.FRAMES["distance"][param_no]), end=' ')
 
       print("rotz_deg=%6.2f"%( (180./math.pi)*C.frame_rotz.x[param_no] ))
-    print("rms radial displacement %7.2f"%(math.sqrt(sum_sq_r/len(C.frame_del_radial.keys()))))
-    print("rms azimut displacement %7.2f"%(math.sqrt(sum_sq_a/len(C.frame_del_radial.keys()))))
+    print("rms radial displacement %7.2f"%(math.sqrt(sum_sq_r/len(C.frame_del_radial))))
+    print("rms azimut displacement %7.2f"%(math.sqrt(sum_sq_a/len(C.frame_del_radial))))
     C.same_sensor_table()
 
     print("Cycle A translations & rotations")

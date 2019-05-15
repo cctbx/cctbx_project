@@ -16,6 +16,7 @@ from xfel.util.mp import mp_phil_str as multiprocessing_str
 from xfel.util.mp import get_submit_command_chooser
 
 import os, math
+import six
 
 multiprocessing_override_str = '''
 mp {
@@ -284,27 +285,27 @@ def allocate_chunks(results_dir,
       continue
     rungroups = set(map(lambda n: n.split("_")[1], trgs))
     for rg in rungroups:
-      if rg not in rgs.keys():
+      if rg not in rgs:
         rgs[rg] = [run]
       else:
         rgs[rg].append(run)
   batch_chunk_nums_sizes = {}
   batch_contents = {}
   if respect_rungroup_barriers:
-    batchable = {rg:{rg:runs} for rg, runs in rgs.iteritems()}
+    batchable = {rg:{rg:runs} for rg, runs in six.iteritems(rgs)}
   else:
     batchable = {"all":rgs}
   # for either grouping, iterate over the top level keys in batchable and
   # distribute the events within those "batches" in stripes or chunks
   extension = None
-  for batch, rungroups in batchable.iteritems():
+  for batch, rungroups in six.iteritems(batchable):
     rg_by_run = {}
-    for rungroup, runs in rungroups.iteritems():
+    for rungroup, runs in six.iteritems(rungroups):
       for run in runs:
         rg_by_run[run] = rungroup
     n_img = 0
     batch_contents[batch] = []
-    for run, rg in rg_by_run.iteritems():
+    for run, rg in six.iteritems(rg_by_run):
       try:
         trg = trial + "_" + rg
         contents = sorted(os.listdir(os.path.join(results_dir, run, trg, "out")))
@@ -329,7 +330,7 @@ def allocate_chunks(results_dir,
     raise Sorry("no DIALS integration results found.")
   refl_ending += extension
   batch_chunks = {}
-  for batch, num_size_tuple in batch_chunk_nums_sizes.iteritems():
+  for batch, num_size_tuple in six.iteritems(batch_chunk_nums_sizes):
     num, size = num_size_tuple
     batch_chunks[batch] = []
     contents = batch_contents[batch]
@@ -481,7 +482,7 @@ class Script(object):
         os.mkdir(d)
     self.cwd = os.getcwd()
     tag = "stripe" if self.params.striping.stripe else "chunk"
-    for batch, ch_list in batch_chunks.iteritems():
+    for batch, ch_list in six.iteritems(batch_chunks):
       for idx in range(len(ch_list)):
         chunk = ch_list[idx]
 
