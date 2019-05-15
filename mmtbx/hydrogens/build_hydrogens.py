@@ -300,7 +300,7 @@ def run(file_name):
                               file)
     bond_list = monomer_mapping.monomer.bond_list
     angle_list = monomer_mapping.monomer.angle_list
-    missing_h = monomer_mapping.missing_hydrogen_atoms.keys()
+    missing_h = list(monomer_mapping.missing_hydrogen_atoms.keys())
     residue_name = monomer_mapping.monomer.chem_comp.three_letter_code
     print()
     print("Residue name: ", end=' ')
@@ -360,8 +360,8 @@ def run(file_name):
          "HZ3":{"TRP":["CZ3","CH2","CE3"]},
          "HE" :{"ARG":["NE","CZ","CD"]}
                  }
-        if(h in ring_h.keys()):
-          if(residue_name in ring_h[h].keys()):
+        if h in ring_h.keys():
+          if residue_name in ring_h[h].keys():
             targets = ring_h[h][residue_name]
             print("Building:", h, " ...")
             site_0 = None
@@ -466,7 +466,7 @@ def run(file_name):
        "HG" :[["CG","CB","CD1","CD2"],],
        "HB" :[["CB","CG2","CA","CG1"],["CB","CG2","CA","OG1"]]
                   }
-      if(h in cb_like_h.keys()):
+      if h in cb_like_h.keys():
         if(h in missing_h):
           targets_ = cb_like_h[h]
           for targets in targets_:
@@ -561,7 +561,7 @@ def run(file_name):
        "HZ3" :[["NZ","CE","HZ1","HZ2"],]
                    }
       hhh_residues = ["ALA","LEU","ILE","VAL","THR","LYS"]
-      if(h in hhh_like_h.keys() and residue_name in hhh_residues and h in missing_h):
+      if h in hhh_like_h.keys() and residue_name in hhh_residues and h in missing_h:
         targets = hhh_like_h[h]
         for target in targets:
           site_0 = None
@@ -595,7 +595,7 @@ def run(file_name):
        "HH"  :[["OH","CZ","CE1","HH",1],]
                    }
       residue_names = ["ARG","SER","TYR","CYS"]
-      if(h in arg_like_h.keys() and residue_name in residue_names):
+      if h in arg_like_h.keys() and residue_name in residue_names:
         targets = arg_like_h[h]
         for target in targets:
           site_0 = None
@@ -696,7 +696,8 @@ def write_atoms(monomer_mapping,
       print(atom.format_atom_record(), file=file_object)
       atom.serial = orig
   else:
-    atom = monomer_mapping.expected_atoms.values()[0]
+    # FIXME ordering of values changes for py2/3, this could break if more than 1 value present
+    atom = list(monomer_mapping.expected_atoms.values())[0]
     atom_number += 1
     orig = atom.serial, atom.name, atom.xyz, atom.occ, atom.b
     atom.serial = "%5d" % atom_number

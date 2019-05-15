@@ -628,7 +628,7 @@ class reference_model(object):
       log = sys.stdout
     print("--------------------------------------------------------", file=log)
     print("Reference Model Matching Summary:", file=log)
-    keys = self.residue_match_hash.keys()
+    keys = list(self.residue_match_hash.keys())
     def get_key_chain_num(res):
       return res[4:]
     keys.sort(key=get_key_chain_num)

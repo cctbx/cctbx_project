@@ -204,7 +204,7 @@ class Model(object):
 
   def atoms(self):
 
-    return self.atom_for.values()
+    return list(self.atom_for.values())
 
 
   def elements(self):

@@ -1350,7 +1350,7 @@ class monomer_mapping(slots_getstate_setstate):
     if (    len(self.unexpected_atoms) == 0
         and len(self.missing_non_hydrogen_atoms) > 0):
       if (self.monomer.is_peptide()):
-        atom_ids = self.expected_atoms.keys()
+        atom_ids = list(self.expected_atoms.keys())
         atom_ids.sort()
         atom_ids = " ".join(atom_ids)
         if (atom_ids == "CA"): return "c_alpha_only"
@@ -1527,13 +1527,14 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       classification = None
     else:
       classification = self.monomer.classification
+    # TODO: verify all these .values calls are dict method otherwise remove the list()
     return monomer_mapping_summary(
       conf_altloc=self.conf_altloc,
       residue_name=self.residue_name,
-      expected_atoms=self.expected_atoms.values(),
-      unexpected_atoms=self.unexpected_atoms.values(),
-      duplicate_atoms=flat_list(self.duplicate_atoms.values()),
-      ignored_atoms=self.ignored_atoms.values(),
+      expected_atoms=list(self.expected_atoms.values()),
+      unexpected_atoms=list(self.unexpected_atoms.values()),
+      duplicate_atoms=flat_list(list(self.duplicate_atoms.values())),
+      ignored_atoms=list(self.ignored_atoms.values()),
       classification=classification,
       incomplete_info=self.incomplete_info,
       is_terminus=self.is_terminus,

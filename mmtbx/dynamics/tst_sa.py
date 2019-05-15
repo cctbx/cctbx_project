@@ -126,7 +126,7 @@ def get_processed_pdb_object(rama_potential, log,
     log                      = log)
 
 def get_geometry_restraints_manager(processed_pdb_file, xray_structure):
-  sctr_keys=xray_structure.scattering_type_registry().type_count_dict().keys()
+  sctr_keys=xray_structure.scattering_type_registry().type_count_dict()
   has_hd = "H" in sctr_keys or "D" in sctr_keys
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,

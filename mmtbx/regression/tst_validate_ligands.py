@@ -375,6 +375,7 @@ def tst_get_occupancies(vl_manager):
   id_tuple_answer = [('', 'A', '   2'), ('', 'A', '   3'), ('', 'A', '   4'), ('', 'A', '   5')]
   ligand_dict_length_answer = [2, 1, 1, 1]
   occupancy_answer = []
+  # TODO six zip me
   for id_tuple, id_tuple_answer, length_answer in zip(vl_manager.keys(), id_tuple_answer, ligand_dict_length_answer):
     ligand_dict = vl_manager[id_tuple]
     assert (id_tuple == id_tuple_answer)

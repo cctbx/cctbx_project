@@ -248,12 +248,12 @@ def secondary_structure_from_sequence(pdb_str,
   pht = pdb_hierarchy_template
   assert [sequence, pht].count(None) == 1
   if pht is not None:
-    lk = len(pht.altloc_indices().keys())
+    lk = len(pht.altloc_indices())
     if lk ==0:
       raise Sorry(
           "Hierarchy template in secondary_structure_from_sequence is empty")
     else:
-      if len(pht.altloc_indices().keys()) != 1:
+      if len(pht.altloc_indices()) != 1:
         raise Sorry("Alternative conformations are not supported")
   number_of_residues = len(sequence) if sequence!=None else \
     len(pht.models()[0].chains()[0].conformers()[0].residues())
@@ -297,7 +297,7 @@ def secondary_structure_from_sequence(pdb_str,
   return new_pdb_h
 
 def get_helix(helix_class, rotamer_manager, sequence=None, pdb_hierarchy_template=None):
-  if helix_class not in helix_class_to_pdb_str.keys():
+  if helix_class not in helix_class_to_pdb_str:
     raise Sorry("Unsupported helix type.")
   return secondary_structure_from_sequence(
     pdb_str=helix_class_to_pdb_str[helix_class],

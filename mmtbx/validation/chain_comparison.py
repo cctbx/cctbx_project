@@ -650,7 +650,7 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
   sequences_matching_unique_dict={}
   for seq in sequences:
     unique_seq=unique_sequence_dict[seq]
-    if not unique_seq in sequences_matching_unique_dict.keys():
+    if not unique_seq in sequences_matching_unique_dict:
       sequences_matching_unique_dict[unique_seq]=[]
     sequences_matching_unique_dict[unique_seq].append(seq)
 

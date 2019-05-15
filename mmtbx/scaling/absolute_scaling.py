@@ -665,7 +665,7 @@ class ml_aniso_absolute_scaling(scaling.xtriage_analysis):
                                           self.u_star)
       #get eigenvalues of B-cart
       eigen = eigensystem.real_symmetric( self.b_cart )
-      self.eigen_values = eigen.values()
+      self.eigen_values = eigen.values()  # TODO verify that Im not a dictionary values method
       self.eigen_vectors = eigen.vectors()
 
       self.work_array  = work_array # i need this for further analyses

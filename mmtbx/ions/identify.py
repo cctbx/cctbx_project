@@ -311,8 +311,7 @@ class manager(object):
     self.u_iso_all = xray_structure.extract_u_iso_or_u_equiv()
     # Extract some information about the structure, including B-factor
     # statistics for non-HD atoms and waters
-    sctr_keys = xray_structure.scattering_type_registry().type_count_dict()\
-      .keys()
+    sctr_keys = xray_structure.scattering_type_registry().type_count_dict()
     self.hd_present = ("H" in sctr_keys) or ("D" in sctr_keys)
     sel_cache = pdb_hierarchy.atom_selection_cache()
     self.carbon_sel = sel_cache.selection("element C").iselection()

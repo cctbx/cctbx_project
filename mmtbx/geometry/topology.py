@@ -33,14 +33,14 @@ class Molecule(object):
 
   @property
   def descriptor_for(self):
-
+    # TODO: six.moves.zip this file
     return dict( zip( self.atom_for.values(), self.atom_for.keys() ) )
 
 
   @property
   def atoms(self):
 
-    return self.atom_for.values()
+    return list(self.atom_for.values())
 
 
   def add(self, atom, xyz):
@@ -89,13 +89,13 @@ class Compound(object):
   @property
   def atoms(self):
 
-    return self.descriptor_for.keys()
+    return list(self.descriptor_for.keys())
 
 
   @property
   def descriptors(self):
 
-    return self.descriptor_for.values()
+    return list(self.descriptor_for.values())
 
 
   @property

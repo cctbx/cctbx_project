@@ -6,6 +6,7 @@ from mmtbx import utils
 import scitbx.math
 from cctbx import adptbx
 from cctbx import geometry_restraints
+import six
 
 class manager(object):
   def __init__(self,
@@ -552,7 +553,7 @@ class manager(object):
     # Calculate RMSDs for ensemble model
     # Bond
     mean_bond_delta = flex.double()
-    for proxy, info in ensemble_bond_deltas.iteritems():
+    for proxy, info in six.iteritems(ensemble_bond_deltas):
       assert info[1] == ensemble_size
       mean_delta = info[0] / info[1]
       mean_bond_delta.append(mean_delta)
@@ -561,7 +562,7 @@ class manager(object):
 
     # Angle
     mean_angle_delta = flex.double()
-    for proxy, info in ensemble_angle_deltas.iteritems():
+    for proxy, info in six.iteritems(ensemble_angle_deltas):
       assert info[1] == ensemble_size
       mean_delta = info[0] / info[1]
       mean_angle_delta.append(mean_delta)
@@ -570,7 +571,7 @@ class manager(object):
 
     # Chirality
     mean_chirality_delta = flex.double()
-    for proxy, info in ensemble_chirality_deltas.iteritems():
+    for proxy, info in six.iteritems(ensemble_chirality_deltas):
       assert info[1] == ensemble_size
       mean_delta = info[0] / info[1]
       mean_chirality_delta.append(mean_delta)
@@ -579,7 +580,7 @@ class manager(object):
 
     # Planarity
     mean_planarity_delta = flex.double()
-    for proxy, info in ensemble_planarity_deltas.iteritems():
+    for proxy, info in six.iteritems(ensemble_planarity_deltas):
       assert info[1] == ensemble_size
       mean_delta = info[0] / info[1]
       mean_planarity_delta.append(mean_delta)
@@ -588,7 +589,7 @@ class manager(object):
 
     # Dihedral
     mean_dihedral_delta = flex.double()
-    for proxy, info in ensemble_dihedral_deltas.iteritems():
+    for proxy, info in six.iteritems(ensemble_dihedral_deltas):
       assert info[1] == ensemble_size
       mean_delta = info[0] / info[1]
       mean_dihedral_delta.append(mean_delta)

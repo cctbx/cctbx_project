@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 from mmtbx import polygon, model_vs_data
 from math import pi, cos, sin, radians, degrees, floor
+import six
 
 stat_names = dict(zip(polygon.keys_to_show, polygon.key_captions))
 stat_formats = { "r_work" : "%.4f",
@@ -63,7 +64,7 @@ class renderer(object):
     self.n_pdb = 0
     max = - sys.maxsize
     self.slot_avg = None
-    for stat_key, histogram in histograms.iteritems():
+    for stat_key, histogram in six.iteritems(histograms):
       n_pdb = 0
       for slot in histogram.slots():
         n_pdb += slot
@@ -78,7 +79,7 @@ class renderer(object):
     i = 0
     n_stats = len(histograms)
     interval = 2.0 * pi / float(n_stats)
-    for stat_key, histogram in histograms.iteritems():
+    for stat_key, histogram in six.iteritems(histograms):
       angle = initial_angle + ((i - 0.5) * interval)
       layout = histogram_layout(stat_key, histogram, angle,
         histogram_length, center, center_offset)

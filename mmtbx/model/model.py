@@ -54,6 +54,7 @@ from mmtbx.validation.sequence import master_phil as sequence_master_phil
 from mmtbx.validation.sequence import validation as sequence_validation
 
 import boost.python
+import six
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.rotamer.rotamer_eval import RotamerEval
@@ -837,7 +838,7 @@ class manager(object):
     mon_lib_srv = self.get_mon_lib_srv()
     ph = self.get_hierarchy()
     if skip_residues is None:
-      skip_residues = one_letter_given_three_letter.keys() + ['HOH']
+      skip_residues = list(one_letter_given_three_letter.keys()) + ['HOH']
     done = []
     chem_comps = []
     for ag in ph.atom_groups():
@@ -865,7 +866,7 @@ class manager(object):
           # plane atom - add plane
           plane_ids = []
           comp_id = loop.get('_chem_comp_plane_atom.comp_id')[0]
-          for k, item in loop.iteritems():
+          for k, item in six.iteritems(loop):
             if k=='_chem_comp_plane_atom.plane_id':
               for plane_id in item:
                 if plane_id not in plane_ids: plane_ids.append(plane_id)
@@ -973,7 +974,8 @@ class manager(object):
     # preserve original loops if available
     if keep_original_loops:
       if hasattr(self._model_input, 'cif_model'):
-        original_cif_model = self._model_input.cif_model.values()[0]
+        # FIXME: ordering of dict values changes depending on py2/3 this could break
+        original_cif_model = list(self._model_input.cif_model.values())[0]
         for key in original_cif_model.loop_keys():
           if key not in cif_block.loop_keys():
             loop = original_cif_model.get_loop(key)
@@ -1078,7 +1080,7 @@ class manager(object):
     return self._has_hd
 
   def _update_has_hd(self):
-    sctr_keys = self.get_xray_structure().scattering_type_registry().type_count_dict().keys()
+    sctr_keys = self.get_xray_structure().scattering_type_registry().type_count_dict()
     self._has_hd = "H" in sctr_keys or "D" in sctr_keys
     if not self._has_hd:
       self.unset_riding_h_manager()
@@ -1383,8 +1385,8 @@ class manager(object):
     e = self.get_ener_lib()
     e_lib_atom_keys = e.lib_atom.keys()
     result = {}
-    for k0,v0 in zip(m.comp_comp_id_dict.keys(), m.comp_comp_id_dict.values()):
-      for k1,v1 in zip(v0.atom_dict().keys(), v0.atom_dict().values()):
+    for k0,v0 in six.iteritems( m.comp_comp_id_dict):
+      for k1,v1 in six.iteritems(v0.atom_dict()):
         if(v1.type_energy in e_lib_atom_keys):
           vdw_radius = e.lib_atom[v1.type_energy].vdw_radius
           if(vdw_radius is None):
@@ -1802,8 +1804,9 @@ class manager(object):
     for bp in self.restraints_manager.geometry.bond_params_table:
       for i, k in enumerate(bp.keys()):
         if(k in h_i_seqs):
-          self.original_xh_lengths.append(bp.values()[i].distance_ideal)
-          bp.values()[i].distance_ideal = value
+          # FIXME, if bp is a dictionary this will prpobably break py2/3 funcionality
+          self.original_xh_lengths.append(list(bp.values())[i].distance_ideal)
+          list(bp.values())[i].distance_ideal = value
 
   def restore_xh_bonds(self):
     if(self.restraints_manager is None): return
@@ -1818,7 +1821,8 @@ class manager(object):
     for bp in self.restraints_manager.geometry.bond_params_table:
       for i, k in enumerate(bp.keys()):
         if(k in h_i_seqs):
-          bp.values()[i].distance_ideal = self.original_xh_lengths[counter]
+          # FIXME: python2/3 breakage if bp is a dict
+          list(bp.values())[i].distance_ideal = self.original_xh_lengths[counter]
           counter += 1
     self.original_xh_lengths = None
     self.idealize_h_minimization(show=False)
@@ -3192,7 +3196,7 @@ class manager(object):
     for rt in roots:
       result.transfer_chains_from_other(other=rt)
     #validation
-    vals = chain_ids_match_dict.values()
+    vals = list(chain_ids_match_dict.values())
     for v in vals:
       assert len(vals[0]) == len(v), chain_ids_match_dict
     result.reset_i_seq_if_necessary()

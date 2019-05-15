@@ -172,7 +172,7 @@ class real_space(validation):
     self.protein = list()
     self.other = list()
     self.water = list()
-    aa_codes = one_letter_given_three_letter.keys()
+    aa_codes = one_letter_given_three_letter
 
     # redo real_space_corelation.simple to use map objects instead of filenames
     self.overall_rsc = None
@@ -264,7 +264,7 @@ class real_space(validation):
         # print outliers, however.
         if (result_.residue.resname != 'HOH'): # water is handled by waters.py
           self.everything.append(result)
-          if (result_.residue.resname in aa_codes):
+          if result_.residue.resname in one_letter_given_three_letter:
             self.protein.append(result)
           else:
             self.other.append(result)

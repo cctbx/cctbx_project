@@ -41,7 +41,7 @@ from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 import libtbx
 import mmtbx.bulk_solvent
-
+import six
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
 time_bulk_solvent_and_scale         = 0.0
@@ -710,7 +710,8 @@ class manager(manager_mixin):
     result.k_h = self.k_h
     result.b_h = self.b_h
     if(in_place): # XXX USE THIS INSTEAD OF ABOVE
-      for k, v in zip(self.__dict__.keys(), self.__dict__.values()):
+      # TODO: six.moves.zip this file
+      for k, v in zip(six.iteritems(self.__dict__)):
         try: self.__dict__[k] = result.__dict__[k]
         except KeyError:
           raise RuntimeError("Corrupt refinement: ad hoc key", k)

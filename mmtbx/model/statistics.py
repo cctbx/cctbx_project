@@ -16,6 +16,7 @@ from mmtbx.validation.utils import molprobity_score
 from mmtbx.validation import omegalyze
 from mmtbx.validation import cablam
 from cctbx import adptbx
+import six
 
 class geometry(object):
   def __init__(self,
@@ -481,7 +482,7 @@ class adp(object):
       print(prefix, "  Water:   ", format_str(r.water), file=log)
     if(r.other is not None):
       print(prefix, "  Other:   ", format_str(r.other), file=log)
-    for k,v in zip(r.chains.keys(), r.chains.values()):
+    for k,v in six.iteritems( r.chains):
       print(prefix, "  Chain %2s:"%k, format_str(v), file=log)
     def show_hist(h):
       print(prefix, "      Values      Number of atoms", file=log)

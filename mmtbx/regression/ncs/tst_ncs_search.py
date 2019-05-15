@@ -86,7 +86,8 @@ class TestSimpleAlignment(unittest.TestCase):
       ph=no_water_h,
       chain_similarity_threshold=0.7)
 
-    chain_a_id, chain_b_id = match_dict.keys()[0]
+    # FIXME indexing keys breaks py2/3 compatibility, this could be broken if more than 1 key
+    chain_a_id, chain_b_id = list(match_dict.keys())[0]
     sel_a,sel_b,r1,r2,_,_,_ = match_dict[chain_a_id, chain_b_id]
     #
     self.assertEqual(chain_a_id,'A')

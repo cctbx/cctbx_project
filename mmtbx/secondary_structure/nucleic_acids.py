@@ -7,6 +7,7 @@ from iotbx.pdb import get_one_letter_rna_dna_name
 from libtbx.utils import Sorry
 from cctbx import geometry_restraints
 import iotbx.phil
+import six
 
 origin_ids = geometry_restraints.linking_class.linking_class()
 
@@ -158,7 +159,7 @@ def make_phil_stacking_pair_record(residue1, residue2, params=None,
     actual_params = master_phil.format(params)
     w_phil = master_phil.fetch_diff(actual_params).extract()
     if hasattr(w_phil, 'stacking_pair'):
-      for k, v in w_phil.stacking_pair[0].__dict__.iteritems():
+      for k, v in six.iteritems(w_phil.stacking_pair[0].__dict__):
         if not k.startswith('_'):
           res += "%s%s = %s\n" % ("  "*(nesting_depth+1), k, str(v))
   res += "%s}\n" % ("  "*nesting_depth)
@@ -179,7 +180,7 @@ def make_phil_base_pair_record(residue1, residue2, params=None,
     actual_params = master_phil.format(params)
     w_phil = master_phil.fetch_diff(actual_params).extract()
     if hasattr(w_phil, 'base_pair'):
-      for k, v in w_phil.base_pair[0].__dict__.iteritems():
+      for k, v in six.iteritems(w_phil.base_pair[0].__dict__):
         if not k.startswith('_'):
           res += "%s%s = %s\n" % ("  "*(nesting_depth+1), k, str(v))
   res += "%s}\n" % ("  "*nesting_depth)
@@ -257,7 +258,7 @@ def get_h_bonds_for_basepair(a1, a2, distance_cutoff=100, log=sys.stdout, verbos
   best_possible_link_list = []
   best_score = 100.
   best_class_number = None
-  for class_number, data in bondlength_defaults.basepairs_lengths.iteritems():
+  for class_number, data in six.iteritems(bondlength_defaults.basepairs_lengths):
     d1 = 0
     if (r1n, r2n) == data[0]:
       for l in data[1:]:
@@ -477,15 +478,15 @@ def get_plane_i_seqs_from_residues(r1, r2, grm,mon_lib_srv, plane_cache):
   if len(r1_i_seqs) == 1:
     if len(r2_i_seqs) == 1:
       if (('' in r1_i_seqs or '' in r2_i_seqs)
-          or (r1_i_seqs.keys()[0] == r2_i_seqs.keys()[0])):
-        result.append((r1_i_seqs[r1_i_seqs.keys()[0]],
-                       r2_i_seqs[r2_i_seqs.keys()[0]]))
+          or (list(r1_i_seqs.keys())[0] == list(r2_i_seqs.keys())[0])):  # FIXME: indexing keys breaks compat py2/3 if more than 1 key
+        result.append((r1_i_seqs[list(r1_i_seqs.keys())[0]],
+                       r2_i_seqs[list(r2_i_seqs.keys())[0]]))
     else:
       if ('' in r1_i_seqs):
-        for k,v in r2_i_seqs.iteritems():
+        for k,v in six.iteritems(r2_i_seqs):
           result.append((r1_i_seqs[''], v))
   else:
-    for k, v in r1_i_seqs.iteritems():
+    for k, v in six.iteritems(r1_i_seqs):
       if k in r2_i_seqs:
         result.append((v, r2_i_seqs[k]))
   # check whether sets of iseqs are different

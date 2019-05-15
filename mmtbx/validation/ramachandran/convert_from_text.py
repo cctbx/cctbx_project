@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 import os
+import six
 
 
 output_fname = "rama8000_tables.h"
@@ -95,7 +96,7 @@ def run():
   # reading. Not much error-handling, because if we have a error, we should fix
   # it here and not produce corrupted .h file
 
-  for key, fname in file_names.iteritems():
+  for key, fname in six.iteritems(file_names):
     print("converting file", os.path.join(path_to_files, fname))
     inp_f = open(os.path.join(path_to_files, fname), 'r')
     read_file_and_fill_arr(inp_f, dict_with_all_values[key])

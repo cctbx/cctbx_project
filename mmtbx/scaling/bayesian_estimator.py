@@ -757,7 +757,7 @@ class estimator_group:
         resolution_cutoff=resolution_cutoff)
     self.estimator_dict[key]=estimator
     self.keys.append(key)
-    if not resolution_cutoff in self.combinations.keys():
+    if not resolution_cutoff in self.combinations:
       self.combinations[resolution_cutoff]=[]
     self.combinations[resolution_cutoff].append(combination)
 
@@ -828,7 +828,7 @@ class estimator_group:
          self.add_estimator(estimator,resolution_cutoff=resolution_cutoff,
            combination=combination)
     for resolution_cutoff in self.resolution_cutoffs: # make sure there is an estimator
-      if not resolution_cutoff in self.combinations.keys():
+      if not resolution_cutoff in self.combinations:
         self.delete_resolution_cutoff(resolution_cutoff)
 
   def get_record_list(self,

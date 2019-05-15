@@ -10,7 +10,7 @@ import numpy as np
 from qrefine.super_cell import expand
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
-
+import six
 import boost.python
 ext = boost.python.import_ext("mmtbx_pair_interaction_ext")
 
@@ -155,7 +155,7 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
   elements = atoms.extract_element()
   eldict = dict(enumerate(set(elements)))
   tmp = {}
-  for k, v in zip(eldict.keys(), eldict.values()):
+  for k, v in six.iteritems( eldict):
     tmp[v.strip()] = k
   eldict = tmp
   element_flags = flex.int()

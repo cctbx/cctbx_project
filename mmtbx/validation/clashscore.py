@@ -13,6 +13,7 @@ import iotbx.pdb
 import os
 import re
 import sys
+import six
 
 class clash(atoms):
   __clash_attr__ = [
@@ -158,7 +159,8 @@ class clashscore(validation):
     if self.clashscore is None:
       raise Sorry("PROBE output is empty. Model is not compatible with PROBE.")
     elif (len(self.clash_dict) == 1):
-      k = self.clash_dict.keys()[0]
+      #FIXME indexing keys can break py2/3 compat if more than 1 key
+      k = list(self.clash_dict.keys())[0]
       #catches case where file has 1 model, but also has model/endmdl cards
       print(prefix + "clashscore = %.2f" % self.clash_dict[k], file=out)
       if self.clash_dict_b_cutoff[k] is not None and self.b_factor_cutoff is not None:
@@ -364,7 +366,7 @@ class probe_clashscore_manager(object):
 
   def filter_dicts(self, new_clash_hash, new_hbond_hash):
     temp = []
-    for k,v in new_clash_hash.iteritems():
+    for k,v in six.iteritems(new_clash_hash):
       if k not in new_hbond_hash:
         temp.append(v.as_clash_obj(self.use_segids))
     return temp

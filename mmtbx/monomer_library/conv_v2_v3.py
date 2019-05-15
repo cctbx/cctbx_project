@@ -2,10 +2,10 @@ from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from libtbx.str_utils import split_keeping_spaces
 import sys
+import six
 
 trans_dict = {}
-for k,v in iotbx.pdb.rna_dna_atom_names_reference_to_mon_lib_translation_dict \
-             .items():
+for k,v in six.iteritems(iotbx.pdb.rna_dna_atom_names_reference_to_mon_lib_translation_dict):
   trans_dict[k.strip()] = v
 trans_dict["H2'"] = "H2*"
 

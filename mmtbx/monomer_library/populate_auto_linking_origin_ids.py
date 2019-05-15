@@ -24,7 +24,7 @@ def main():
   print(dir(list_cif))
   print(dir(list_cif.cif))
   cif = list_cif.cif
-  print(cif.blocks.keys())
+  print(list(cif.blocks.keys()))
   j=0
   tmp = []
   for i, block in enumerate(cif.blocks):

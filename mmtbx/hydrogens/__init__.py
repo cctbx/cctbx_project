@@ -8,6 +8,7 @@ import mmtbx.model
 from libtbx.utils import null_out
 
 import boost.python
+import six
 ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
 
 def mon_lib_query(residue, mon_lib_srv):
@@ -113,9 +114,8 @@ def add(model,
            not ag.resname.strip().upper() in aa_codes): continue
         actual = [a.name.strip().upper() for a in ag.atoms()]
         mlq = mon_lib_query(residue=ag.resname, mon_lib_srv=mon_lib_srv)
-        expected_all = mlq.atom_dict().keys()
         expected_h   = []
-        for k, v in mlq.atom_dict().iteritems():
+        for k, v in six.iteritems(mlq.atom_dict()):
           if(v.type_symbol=="H"): expected_h.append(k)
         missing_h = list(set(expected_h).difference(set(actual)))
         if 0: print(ag.resname, missing_h)

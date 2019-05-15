@@ -90,7 +90,7 @@ def flip_base(atom_group, angle=180):
     base_name = base_name.replace("r")
   elif (base_name.startswith("D") and len(base_name) == 2):
     base_name = base_name[1]
-  assert base_name in base_rotation_axes.keys(), base_name
+  assert base_name in base_rotation_axes, base_name
   for atom in atom_group.atoms():
     atom_name = atom.name.strip()
     if (atom_name == base_rotation_axes[base_name][0]):

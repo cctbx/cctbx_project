@@ -16,6 +16,7 @@ from collections import defaultdict
 import argparse
 import os
 import sys
+import six
 
 # from matplotlib import rcParams
 # rcParams['figure.autolayout'] = True
@@ -41,19 +42,19 @@ class RingerDict(object):
         self.add_residue(residue)
 
   def add_residue(self, residue):
-    if residue.chain_id not in self.dict.keys():
+    if residue.chain_id not in self.dict:
       self.dict[residue.chain_id] = {}
-    if 1 in residue._angles.keys():
+    if 1 in residue._angles:  # TODO: verify this is a dict
       self.dict[residue.chain_id][residue.resid] = residue._angles[1]
 
   def get_peak(self, chain_id, residue_id):
-    if (chain_id in self.dict.keys() and residue_id in self.dict[chain_id].keys()):
+    if chain_id in self.dict and residue_id in self.dict[chain_id]:
       return self.dict[chain_id][residue_id]
     else:
       return None
 
   def get_chains(self):
-    return self.dict.keys()
+    return list(self.dict.keys())
 
   def get_residues(self, chain_id):
     return sorted(self.dict[chain_id].keys())
@@ -73,7 +74,7 @@ def identify_regions(results,
       extension=10,
       out=sys.stdout):
   import numpy as np
-  for chain, chain_out in results.iteritems():
+  for chain, chain_out in six.iteritems(results):
     outliers = []
     print("For Chain %s:" % chain, file=out)
     for k in chain_out:

@@ -234,7 +234,7 @@ def run(only_resname=None):
           continue
       if number_of_chis.get(resname, None)>3:
         print(resname_d)
-        keys = rdl_database.rdl_database[resname][rotamer].keys()
+        keys = list(rdl_database.rdl_database[resname][rotamer].keys())
         keys.sort(_order_dihedral_keys)
         print(keys)
         starting_chis = []

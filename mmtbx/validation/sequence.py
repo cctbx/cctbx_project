@@ -730,7 +730,7 @@ class validation(object):
         hetero[entity_id].append('no')
 
     # build loops
-    ids = sequence_to_entity_id.values()
+    ids = list(sequence_to_entity_id.values())
     ids.sort()
     align_id = 1
     for entity_id in ids:

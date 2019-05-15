@@ -90,7 +90,8 @@ def process_raw_results(ringer_result, out=sys.stdout):
   averages=[]
   maxima=[]
   for residue in ringer_result :
-    if chi in residue._angles.keys() and residue.resname in Residue_codes:
+    # TODO verify residue._angles is a dict
+    if chi in residue._angles and residue.resname in Residue_codes:
       waves.append(residue)
       maxima.append(max(residue._angles[chi].densities))
       averages.append(np.average(residue._angles[chi].densities))
