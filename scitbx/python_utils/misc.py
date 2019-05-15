@@ -12,11 +12,11 @@ class sorted_store(object):
     raise RuntimeError("Programming error: derived class must override keys()")
 
   def __init__(self, *args, **kw):
-    assert len(args) + len(kw) == len(self.keys())
-    for key,value in zip(self.keys()[:len(args)], args):
+    assert len(args) + len(kw) == len(list(self.keys()))
+    for key,value in zip(list(self.keys())[:len(args)], args):
       setattr(self, key, value)
     for key,value in kw.items():
-      assert key in self.keys()
+      assert key in list(self.keys())
       assert getattr(self, key, None) is None
       setattr(self, key, value)
 

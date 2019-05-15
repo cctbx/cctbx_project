@@ -19,7 +19,7 @@ class model(object):
     from iotbx.reflection_file_reader import any_reflection_file
     xs_dict = xray.structure.from_cif(file_path=model)
     assert len(xs_dict) == 1, "CIF should contain only one xray structure"
-    xs = xs_dict.values()[0]
+    xs = list(xs_dict.values())[0]
     mas = any_reflection_file(reflections).as_miller_arrays(crystal_symmetry=xs)
     fo_sq = None
     for ma in mas:

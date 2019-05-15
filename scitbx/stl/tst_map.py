@@ -68,21 +68,21 @@ def exercise_stl_string_double():
   assert m.keys() == ["a", "b", "c"]
   assert [k for k in m] == ["a", "b", "c"]
   assert m.values() == [1, 2, 3]
-  assert m.items() == zip(["a", "b", "c"], [1, 2, 3])
+  assert m.items() == list(zip(["a", "b", "c"], [1, 2, 3]))
   d = dict(m.items())
   assert len(d) == 3
   ld = list(d)
   ld.sort()
   assert ld == list(m)
   m.update(map.stl_string_double({"x": -1, "y": -2}))
-  assert m.items() == zip(["a", "b", "c", "x", "y"], [1, 2, 3, -1, -2])
+  assert m.items() == list(zip(["a", "b", "c", "x", "y"], [1, 2, 3, -1, -2]))
   m.update({"r": 9, "s": 8})
-  assert m.items() == zip(["a","b","c","r","s","x","y"], [1,2,3,9,8,-1,-2])
+  assert m.items() == list(zip(["a","b","c","r","s","x","y"], [1,2,3,9,8,-1,-2]))
   assert m.popitem() == ("a", 1)
   assert m.popitem() == ("b", 2)
   d = pickle.dumps(m)
   l = pickle.loads(d)
-  assert l.items() == zip(["c","r","s","x","y"], [3,9,8,-1,-2])
+  assert l.items() == list(zip(["c","r","s","x","y"], [3,9,8,-1,-2]))
 
 def exercise_stl_string_stl_map_stl_string_double():
   mm = map.stl_string_stl_map_stl_string_double()

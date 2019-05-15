@@ -163,7 +163,7 @@ def as_csv(spotfinder_results, out=None):
     out = sys.stdout
   columns = as_columns(spotfinder_results)
   from iotbx import csv_utils
-  csv_utils.writer(out, columns.values(), field_names=columns.keys())
+  csv_utils.writer(out, list(columns.values()), field_names=list(columns.keys()))
 
 
 def run(args, command_name="distl.sweep_strength"):

@@ -104,7 +104,7 @@ def run_signal_strength_core(params,E):
          #  print "failure, file %s"%self.filename
          if params.pdf_output.markup_inliers:
            self.R.show_ellipse(
-           image_number=self.R.spotfinder.images.keys()[0],
+           image_number=list(self.R.spotfinder.images.keys())[0],
            tags = ['goodspots','spots_non-ice','hi_pass_resolution_spots',
                     'spots_unimodal'],
            detail=True)

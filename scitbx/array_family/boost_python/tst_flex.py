@@ -382,12 +382,12 @@ def exercise_std_string():
   assert list(a.strip().lower()) == ["abc","def","ghi","jkl", "1 23"]
   #
   a = fss()
-  assert a.i_seqs_by_value().keys() == []
+  assert len(a.i_seqs_by_value()) == 0
   ibv = fss([""]).i_seqs_by_value()
-  assert ibv.keys() == [""]
+  assert list(ibv.keys()) == [""]
   assert list(ibv[""]) == [0]
   ibv = fss(["", ""]).i_seqs_by_value()
-  assert ibv.keys() == [""]
+  assert list(ibv.keys()) == [""]
   assert list(ibv[""]) == [0,1]
   ibv = fss(["", "a"]).i_seqs_by_value()
   assert sorted(ibv.keys()) == ["", "a"]
@@ -756,13 +756,13 @@ def exercise_numpy_slicing_compatibility():
         start = random.randint(0,dim[i]-1)
         stop = random.randint(start+1,dim[i])
         slices.append(slice(start,stop))
-      assert approx_equal(flex.double(a_numpy[slices].flatten()), a[slices])
+      assert approx_equal(flex.double(a_numpy[tuple(slices)].flatten()), a[slices])
       slices = []
       for i in range(n_dim):
         start = random.randint(-dim[i],-2)
         stop = random.randint(start+1,-1)
         slices.append(slice(start,stop))
-      assert approx_equal(flex.double(a_numpy[slices].flatten()), a[slices])
+      assert approx_equal(flex.double(a_numpy[tuple(slices)].flatten()), a[slices])
 
 def exercise_push_back_etc():
   a = flex.double(3)
@@ -1364,14 +1364,14 @@ def exercise_functions():
                       keep_ends=keep_ends,
                       count_lines_first=count_lines_first)) \
             == multi_line_string.splitlines(keep_ends)
-  #
-  a = flex.int(range(-2,2) + range(2,4) + range(1,3))
+  # 2to3 migration comment: must use list(range); do not wrap items() in list, a.counts() is not dict
+  a = flex.int(list(range(-2,2)) + list(range(2,4)) + list(range(1,3)))
   assert a.counts().items() == [(-2,1),(-1,1),(0,1),(1,2),(2,2),(3,1)]
   assert a.counts(max_keys=6).items() == a.counts().items()
-  a = flex.long(range(-2,2) + range(-1,3) + range(1,3))
+  a = flex.long(list(range(-2,2)) + list(range(-1,3)) + list(range(1,3)))
   assert a.counts().items() == [(-2,1),(-1,2),(0,2),(1,3),(2,2)]
   assert a.counts(max_keys=5).items() == a.counts().items()
-  a = flex.size_t(range(1,2) + range(1,3) + range(1,4))
+  a = flex.size_t(list(range(1,2)) + list(range(1,3)) + list(range(1,4)))
   assert a.counts().items() == [(1, 3), (2, 2), (3, 1)]
   assert a.counts(max_keys=3).items() == a.counts().items()
   try: a.counts(max_keys=2)

@@ -53,7 +53,7 @@ def run_one(path, display):
     del graph[G.key]
     G.prune(graph)
 
-  assert len(graph.keys())==0
+  assert len(graph)==0
 
 if __name__ == "__main__":
   for arg in sys.argv[1:]:

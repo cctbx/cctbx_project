@@ -151,11 +151,12 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=1,
   print("Midway:",y_midway," x-midway:",x_midway,\
     score_breakpoint(value_dict=value_dict,x_midway=x_midway,y_midway=y_midway,min_x=min_x,max_x=max_x), file=out)
 
-  keys=value_dict.keys()
-  keys.sort()
+  # XXX removing during 2to3 migration, no clear function?
+  # keys=list(value_dict.keys())
+  # keys.sort()
 
   # make a little grid search for refine x_midway, y_midway to minimize distance to either of the two lines
-  delta_x=0.1*(max_x-min_x)/len(value_dict.keys())
+  delta_x=0.1*(max_x-min_x)/len(value_dict)
   delta_y=0.1*score_breakpoint(
     value_dict=value_dict,x_midway=x_midway,y_midway=y_midway,min_x=min_x,max_x=max_x)
   nx=41
@@ -179,7 +180,7 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=1,
     print("\n Best fit: x_midway: %7.2f  y_midway: %7.2f " %(
         x_midway,y_midway), file=out)
 
-  keys=value_dict.keys()
+  keys=list(value_dict.keys())
   keys.sort()
   print("\n   X       Y-obs     Y-fit    Delta", file=out)
 

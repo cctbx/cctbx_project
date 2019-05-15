@@ -35,8 +35,8 @@ def run(args, verbose=False):
       raise Sorry("%s not a readable file"%params.distl.image)
 
     Org = signal_strength.run_signal_strength(params)
-    assert len(Org.S.images.keys())==1 # there is only one image
-    key = Org.S.images.keys()[0]
+    assert len(list(Org.S.images.keys()))==1 # there is only one image
+    key = list(Org.S.images.keys())[0]
 
     # List of spots between specified high- and low-resolution limits
     if Org.S.images[key].has_extended_key('lo_pass_resolution_spots'):
