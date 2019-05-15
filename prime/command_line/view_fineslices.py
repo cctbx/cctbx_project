@@ -12,6 +12,7 @@ from dials.array_family import flex
 import matplotlib.pyplot as plt
 import numpy as np
 from prime.postrefine.mod_input import read_frame, read_pickles
+from six.moves import range
 
 def read_input(args):
   data = []

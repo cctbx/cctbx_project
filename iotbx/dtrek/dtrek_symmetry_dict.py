@@ -9,6 +9,7 @@ from libtbx.str_utils import line_feeder
 from cctbx import sgtbx
 import sys
 import pprint
+from six.moves import range
 
 class dtrek_symmetry_entry(object):
 
@@ -28,7 +29,7 @@ class dtrek_symmetry_entry(object):
     space_group.expand_conventional_centring_type(symbol[0])
     t_den = space_group.t_den()
     matrices = []
-    for i in xrange(abs(m)):
+    for i in range(abs(m)):
       l = next(lf)
       assert not lf.eof
       flds = l.split()
@@ -60,10 +61,10 @@ class dtrek_symmetry_entry(object):
         if (space_group.order_z() != order_z):
           print("  misfit:", s)
       space_group = sgtbx.space_group_info(symbol=number).group()
-      for i_smx in xrange(space_group.n_smx()):
+      for i_smx in range(space_group.n_smx()):
         OK = False
-        for i_inv in xrange(space_group.f_inv()):
-          for i_ltr in xrange(space_group.n_ltr()):
+        for i_inv in range(space_group.f_inv()):
+          for i_ltr in range(space_group.n_ltr()):
             sg = space_group(i_ltr, i_inv, i_smx).mod_positive()
             for sm in matrices:
               sm = sm.mod_positive()

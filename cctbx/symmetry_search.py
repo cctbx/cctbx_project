@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("cctbx_symmetry_search_ext")
 from cctbx_symmetry_search_ext import ls_with_scale_and_bias
 
@@ -260,7 +261,7 @@ class structure_factor_symmetry(object):
 
 class possible_symmetry(object):
 
-  accepted, unsure, rejected = xrange(3) # possible values of self.status
+  accepted, unsure, rejected = range(3) # possible values of self.status
 
   def __init__(self, r, d, symmetry_agreement, status):
     assert r.den() == 1
@@ -297,7 +298,7 @@ class possible_symmetry(object):
     self.one_minus_r = one_minus_r
 
   def set_components_of_global_origin(self, origin):
-    for i in xrange(3):
+    for i in range(3):
       if origin[i] == 0 and self.raw_origin[i] != 0:
         origin[i] = self.raw_origin[i]
 

@@ -15,6 +15,7 @@ from libtbx.option_parser import option_parser
 from scitbx.array_family import flex
 from libtbx.utils import Usage
 from xfel.cftbx.detector.cspad_cbf_tbx import cbf_file_to_basis_dict, write_cspad_cbf
+from six.moves import range
 
 def run(args):
   command_line = (option_parser()

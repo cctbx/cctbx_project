@@ -3,6 +3,7 @@ import random
 import os
 import time
 from scitbx.array_family import flex
+from six.moves import range
 
 def seed(a=None):
   if (a is None):
@@ -32,7 +33,7 @@ def random_selection(n_candidates, n_keep):
   return selection
 
 def _random_selection_core(selection, target_set_size, flag):
-   set = range(len(selection))
+   set = list(range(len(selection)))
    while (len(set) > target_set_size):
      i = random.randrange(len(set))
      selection[set[i]] = flag
@@ -72,8 +73,8 @@ if (__name__ == "__main__"):
     assert random_selection(4, 3).count(True) == 3
   for weights in ([5,5], [4,3,2,1]):
     r = weighted_choice(weights)
-    hist = [0 for i in xrange(len(weights))]
-    for i in xrange(10000):
+    hist = [0 for i in range(len(weights))]
+    for i in range(10000):
       hist[next(r)] += 1
     hist = [int(round(s/1000.)) for s in hist]
     assert hist == weights, (hist, weights)

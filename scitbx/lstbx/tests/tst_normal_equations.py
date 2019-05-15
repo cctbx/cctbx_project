@@ -6,6 +6,7 @@ from scitbx.lstbx import normal_eqns, normal_eqns_solving
 from libtbx.test_utils import approx_equal, Exception_expected
 
 from scitbx.lstbx.tests import test_problems
+from six.moves import range
 
 def exercise_linear_normal_equations():
   py_eqs = [ ( 1, (-1,  0,  0),  1),
@@ -27,7 +28,7 @@ def exercise_linear_normal_equations():
   for i, (b_, a_, w_) in enumerate(py_eqs):
     b.append(b_)
     w.append(w_)
-    for j in xrange(3):
+    for j in range(3):
       if a_[j]: a[i, j] = a_[j]
   eqs_1.add_equations(right_hand_side=b, design_matrix=a, weights=w)
 

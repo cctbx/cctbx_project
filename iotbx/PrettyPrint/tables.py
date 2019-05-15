@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import range
 def binTable(binners, labels):
   pass
   size = binners[0].size()
@@ -6,7 +7,7 @@ def binTable(binners, labels):
   length = len(labels)
 
   print("             ", end=' ')
-  for x in xrange(length):
+  for x in range(length):
    if len(labels)>=x+1 and labels[x] is not None:
      print("%12s"%labels[x], end=' ')
    else:
@@ -14,7 +15,7 @@ def binTable(binners, labels):
   print()
 
   binlimits=binners[0].getbinlimits()
-  for x in xrange(size):
+  for x in range(size):
     if x == 0:
       print("       %6.2f"%binlimits[0], end=' ')
     else:

@@ -7,6 +7,7 @@ from __future__ import absolute_import, division, print_function
 #   http://cctbx.sourceforge.net/iotbx_cif
 #
 import os
+from six.moves import range
 
 
 def run(args):

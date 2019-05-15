@@ -9,6 +9,7 @@ import logging, os
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
 from scitbx.array_family import flex
+from six.moves import range
 
 class mod_mar(object):
   def __init__(self, address, directory, beam_x = None, beam_y = None, template = None):

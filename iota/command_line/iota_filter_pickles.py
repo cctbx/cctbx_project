@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 import h5py
 import os, shutil, argparse, glob, ntpath
 import numpy as np
+from six.moves import range
 
 try:  # for Py3 compatibility
     import itertools.izip as zip

@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import libtbx.load_env
+from six.moves import range
 if (libtbx.env.has_module("ccp4io")):
   from iotbx import mtz
 else:
@@ -14,7 +15,7 @@ from cStringIO import StringIO
 import sys, os
 
 def exercise_read_corrupt():
-  for i_trial in xrange(5):
+  for i_trial in range(5):
     f = open("tmp_iotbx_mtz_ext.mtz", "wb")
     if (i_trial > 0):
       f.write("\0"*(40*i_trial))
@@ -576,7 +577,7 @@ def exercise_modifiers(verbose=0):
   assert mtz_object.title() == "exercise"
   assert list(mtz_object.history()) == ["h1", "h2"]
   for stage in [0,1]:
-    for i_crystal in xrange(3):
+    for i_crystal in range(3):
       if (stage == 0):
         if (i_crystal % 2 == 0):
           crystal = mtz_object.add_crystal(
@@ -636,7 +637,7 @@ Crystal 3:
     [11,20,20,90,90,120])
   for stage in [0,1]:
     for i_crystal,crystal in enumerate(mtz_object.crystals()):
-      for i_dataset in xrange(5-i_crystal):
+      for i_dataset in range(5-i_crystal):
         if (stage == 0):
           new_name = "dataset_%d" % i_dataset
           assert not crystal.has_dataset(name=new_name)
@@ -757,7 +758,7 @@ Crystal 3:
     i_seq_iter = count()
     for i_crystal,crystal in enumerate(mtz_object.crystals()):
       for i_dataset,dataset in enumerate(crystal.datasets()):
-        for i_column in xrange((i_crystal+i_dataset) % 3 + 1):
+        for i_column in range((i_crystal+i_dataset) % 3 + 1):
           i_seq = next(i_seq_iter)
           col_label = "column_%d"%i_seq
           col_type = "FB?"[(i_crystal-i_dataset+i_column) % 3]
@@ -1091,7 +1092,7 @@ Crystal 2:
     selection_valid=flex.bool([False]*4))
   v = c.extract_values(not_a_number_substitute=-1)
   assert approx_equal(v, [-1]*4)
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     s = flex.random_bool(size=4, threshold=0.5)
     v = flex.float(list(flex.random_double(size=4)*10-5))
     c.set_values(values=v, selection_valid=s)
@@ -1104,7 +1105,7 @@ Crystal 2:
   #
   values_in = count()
   values_out = count()
-  for i_batch in xrange(10):
+  for i_batch in range(10):
     batch = mtz_object.add_batch()
     assert batch.num() == i_batch+1
     assert batch.set_num(value=next(values_in)) is batch
@@ -1124,7 +1125,7 @@ Crystal 2:
     assert batch.iortyp() == next(values_out)
     assert list(batch.lbcell()) == [0, 0, 0, 0, 0, 0]
     assert batch.set_lbcell(flex.int(range(3,9))) is batch
-    assert list(batch.lbcell()) == range(3,9)
+    assert list(batch.lbcell()) == list(range(3,9))
     assert batch.misflg() == 0
     assert batch.set_misflg(value=next(values_in)) is batch
     assert batch.misflg() == next(values_out)
@@ -1160,19 +1161,19 @@ Crystal 2:
     assert batch.nbsetid() == next(values_out)
     assert list(batch.cell()) == [0]*6
     assert batch.set_cell(flex.float(range(18,24))) is batch
-    assert list(batch.cell()) == range(18,24)
+    assert list(batch.cell()) == list(range(18,24))
     assert list(batch.umat()) == [0]*9
     assert batch.set_umat(flex.float(range(16,25))) is batch
-    assert list(batch.umat()) == range(16,25)
+    assert list(batch.umat()) == list(range(16,25))
     assert list(batch.phixyz()) == [0]*6
     assert batch.set_phixyz(flex.float(range(28,34))) is batch
-    assert list(batch.phixyz()) == range(28,34)
+    assert list(batch.phixyz()) == list(range(28,34))
     assert list(batch.crydat()) == [0]*12
     assert batch.set_crydat(flex.float(range(26,38))) is batch
-    assert list(batch.crydat()) == range(26,38)
+    assert list(batch.crydat()) == list(range(26,38))
     assert list(batch.datum()) == [0]*3
     assert batch.set_datum(flex.float(range(26,29))) is batch
-    assert list(batch.datum()) == range(26,29)
+    assert list(batch.datum()) == list(range(26,29))
     assert batch.phistt() == 0
     assert batch.set_phistt(value=next(values_in)) is batch
     assert batch.phistt() == next(values_out)
@@ -1181,7 +1182,7 @@ Crystal 2:
     assert batch.phiend() == next(values_out)
     assert list(batch.scanax()) == [0]*3
     assert batch.set_scanax(flex.float(range(62,65))) is batch
-    assert list(batch.scanax()) == range(62,65)
+    assert list(batch.scanax()) == list(range(62,65))
     assert batch.time1() == 0
     assert batch.set_time1(value=next(values_in)) is batch
     assert batch.time1() == next(values_out)
@@ -1205,19 +1206,19 @@ Crystal 2:
     assert batch.phirange() == next(values_out)
     assert list(batch.e1()) == [0]*3
     assert batch.set_e1(flex.float(range(71,74))) is batch
-    assert list(batch.e1()) == range(71,74)
+    assert list(batch.e1()) == list(range(71,74))
     assert list(batch.e2()) == [0]*3
     assert batch.set_e2(flex.float(range(72,75))) is batch
-    assert list(batch.e2()) == range(72,75)
+    assert list(batch.e2()) == list(range(72,75))
     assert list(batch.e3()) == [0]*3
     assert batch.set_e3(flex.float(range(73,76))) is batch
-    assert list(batch.e3()) == range(73,76)
+    assert list(batch.e3()) == list(range(73,76))
     assert list(batch.source()) == [0]*3
     assert batch.set_source(flex.float(range(74,77))) is batch
-    assert list(batch.source()) == range(74,77)
+    assert list(batch.source()) == list(range(74,77))
     assert list(batch.so()) == [0]*3
     assert batch.set_so(flex.float(range(75,78))) is batch
-    assert list(batch.so()) == range(75,78)
+    assert list(batch.so()) == list(range(75,78))
     assert batch.alambd() == 0
     assert batch.set_alambd(value=next(values_in)) is batch
     assert batch.alambd() == next(values_out)
@@ -1235,13 +1236,13 @@ Crystal 2:
     assert batch.divvd() == next(values_out)
     assert list(batch.dx()) == [0]*2
     assert batch.set_dx(flex.float(range(84,86))) is batch
-    assert list(batch.dx()) == range(84,86)
+    assert list(batch.dx()) == list(range(84,86))
     assert list(batch.theta()) == [0]*2
     assert batch.set_theta(flex.float(range(85,87))) is batch
-    assert list(batch.theta()) == range(85,87)
+    assert list(batch.theta()) == list(range(85,87))
     assert list(batch.detlm()) == [0]*8
     assert batch.set_detlm(flex.float(range(86,94))) is batch
-    assert list(batch.detlm()) == range(86,94)
+    assert list(batch.detlm()) == list(range(86,94))
     if (not verbose): out = StringIO()
     batch.show(out=out)
     if (not verbose and i_batch == 3):
@@ -1302,7 +1303,7 @@ min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.
   restored.batches()[3].show(out=out)
   if (not verbose):
     assert out.getvalue() == batch_3_show.getvalue()
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     perm = flex.random_permutation(size=10)
     for batch,new_num in zip(mtz_object.batches(), perm):
       batch.set_num(value=new_num+1)

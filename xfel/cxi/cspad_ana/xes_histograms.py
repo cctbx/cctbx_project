@@ -11,6 +11,7 @@ import scitbx.math
 from xfel.command_line import view_pixel_histograms # XXX
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import xes_finalise
+from six.moves import range
 
 
 master_phil_str = """

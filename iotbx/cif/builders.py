@@ -6,6 +6,7 @@ from iotbx.cif import model
 from libtbx.utils import Sorry
 from libtbx.containers import OrderedDict, OrderedSet
 import warnings
+from six.moves import range
 
 class CifBuilderError(Sorry):
   __module__ = Exception.__module__

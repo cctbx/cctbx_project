@@ -12,9 +12,10 @@ from libtbx import dict_with_default_0
 from cStringIO import StringIO
 import math
 import sys, os
+from six.moves import range
 
 def exercise_icosahedron(max_level=2, verbose=0):
-  for level in xrange(0,max_level+1):
+  for level in range(0,max_level+1):
     if (0 or verbose):
       print("level:", level)
     icosahedron = scitbx.math.icosahedron(level=level)
@@ -234,7 +235,7 @@ def exercise(
   if (0 or verbose):
     print("distance_cutoff:", distance_cutoff)
   asu_mappings = structure.asu_mappings(buffer_thickness=distance_cutoff)
-  for i_pass in xrange(2):
+  for i_pass in range(2):
     if (i_pass == 0):
       bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
       bond_asu_table.add_all_pairs(
@@ -435,10 +436,10 @@ def py_pair_asu_table_angle_pair_asu_table(self):
       for i_group,j_sym_group in enumerate(j_sym_groups):
         for j_sym in j_sym_group:
           pair_list.append((j_seq,j_sym))
-    for i_jj1 in xrange(0,len(pair_list)-1):
+    for i_jj1 in range(0,len(pair_list)-1):
       jj1 = pair_list[i_jj1]
       rt_mx_jj1_inv = asu_mappings.get_rt_mx(*jj1).inverse()
-      for i_jj2 in xrange(i_jj1+1,len(pair_list)):
+      for i_jj2 in range(i_jj1+1,len(pair_list)):
         jj2 = pair_list[i_jj2]
         result.add_pair(
           i_seq=jj1[0],

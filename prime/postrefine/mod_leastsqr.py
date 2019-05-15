@@ -27,6 +27,7 @@ from cctbx.crystal_orientation import crystal_orientation
 from .mod_lbfgs import lbfgs_handler
 from .mod_lbfgs_partiality import lbfgs_partiality_handler
 from .mod_partiality import partiality_handler
+from six.moves import range
 
 def coefficient_of_determination(y, y_model):
   mean_y = flex.mean(y)

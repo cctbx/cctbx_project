@@ -9,6 +9,7 @@ import smtbx.development
 
 import random
 import math
+from six.moves import range
 
 def exercise_optimise_shelxl_weights():
   def calc_goof(fo2, fc, w, k, n_params):

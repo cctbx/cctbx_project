@@ -9,6 +9,7 @@ import libtbx.load_env
 from libtbx import Auto
 from cStringIO import StringIO
 import math
+from six.moves import range
 try:
   import cPickle as pickle
 except ImportError:
@@ -516,7 +517,7 @@ def exercise_atom_group():
   assert ag.atoms().size() == 2
   assert (ag.get_atom("ca").name == "ca")
   assert [atom.name for atom in ag.atoms()] == ["ca", "n"]
-  for i in xrange(3):
+  for i in range(3):
     ag.append_atom(pdb.hierarchy.atom())
   assert ag.atoms_size() == 5
   assert ag.atoms().size() == 5
@@ -653,7 +654,7 @@ def exercise_residue_group():
   c1.pre_allocate_residue_groups(number_of_additional_residue_groups=2)
   assert c1.residue_groups_size() == 0
   assert len(c1.residue_groups()) == 0
-  for i in xrange(2):
+  for i in range(2):
     c1.append_residue_group(residue_group=pdb.hierarchy.residue_group())
   assert c1.residue_groups_size() == 2
   assert len(c1.residue_groups()) == 2
@@ -773,7 +774,7 @@ def exercise_chain():
   c.pre_allocate_residue_groups(number_of_additional_residue_groups=2)
   assert c.residue_groups_size() == 0
   assert len(c.residue_groups()) == 0
-  for i in xrange(2):
+  for i in range(2):
     c.append_residue_group(residue_group=pdb.hierarchy.residue_group())
   assert c.residue_groups_size() == 2
   assert len(c.residue_groups()) == 2
@@ -1033,7 +1034,7 @@ def exercise_model():
   assert len(chains) == 2
   assert chains[0].memory_id() == ch_a.memory_id()
   assert chains[1].memory_id() == ch_b.memory_id()
-  for i in xrange(3):
+  for i in range(3):
     m.append_chain(pdb.hierarchy.chain())
   assert m.chains_size() == 5
   assert len(m.chains()) == 5
@@ -1129,7 +1130,7 @@ def exercise_root():
   assert len(models) == 2
   assert models[0].memory_id() == m_a.memory_id()
   assert models[1].memory_id() == m_b.memory_id()
-  for i in xrange(3):
+  for i in range(3):
     r.append_model(model=pdb.hierarchy.model())
   assert r.models_size() == 5
   assert len(r.models()) == 5
@@ -3215,7 +3216,7 @@ HETATM 9367  O  XHOH B2052
   assert chain.residue_groups_size() == 3
   indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
   assert indices.size() == 0
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     pdb_inp = pdb.input(
       source_info=None,
       lines=lines.select(flex.random_permutation(size=lines.size())))
@@ -3403,7 +3404,7 @@ ATOM         N2
 ATOM         N3 B
 ATOM         N3
 """)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     pdb_inp = pdb.input(source_info=None, lines=lines)
     residue_group = pdb_inp.construct_hierarchy(
       residue_group_post_processing=False).only_residue_group()
@@ -4578,7 +4579,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   assert atoms.extract_element(strip=False).all_eq(atoms.extract_element())
   assert list(atoms.extract_element(strip=True)) ==["N","C","C","","X","CA",""]
   atoms.reset_i_seq()
-  assert list(atoms.extract_i_seq()) == range(7)
+  assert list(atoms.extract_i_seq()) == list(range(7))
   assert list(
     pdb.hierarchy.af_shared_atom([atoms[3], atoms[6]]).extract_i_seq()) == \
       [3, 6]
@@ -4642,7 +4643,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   assert approx_equal(atoms.extract_fdp(), new_fdp)
   #
   h = pdb_inp.construct_hierarchy(set_atom_i_seq=False, sort_atoms=False)
-  for i in xrange(2):
+  for i in range(2):
     s = h.as_pdb_string()
     d = hashlib.md5(s).hexdigest()
     if (pdb.hierarchy.atom.has_siguij()):
@@ -5500,7 +5501,7 @@ ENDMDL
   a_all.reset_i_seq()
   sentinel = a_all.reset_tmp(first_value=1, increment=0)
   for copy_atoms in [False, True]:
-    for i_trial in xrange(n_trials):
+    for i_trial in range(n_trials):
       sel = flex.random_bool(size=16, threshold=0.5)
       a_sel = a_all.select(sel)
       h_sel = h_all.select(sel, copy_atoms=copy_atoms)
@@ -5535,7 +5536,7 @@ ATOM      8  C
 ATOM      9  CD B
 ATOM     10  O
 """)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     pdb_inp = pdb.input(
       source_info=None,
       lines=lines.select(flex.random_permutation(size=lines.size())))
@@ -5606,7 +5607,7 @@ ATOM     12  O   ASN A   3      -1.872   0.119   3.648  1.00 10.42           O
     rsc = residue.standalone_copy()
     assert not show_diff(rsc.root().as_pdb_string(), eps)
     for rp in [residue, rsc]:
-      for i_pass in xrange(2):
+      for i_pass in range(2):
         s = pickle.dumps(rp, 1)
         l = pickle.loads(s)
         assert not show_diff(l.root().as_pdb_string(), eps)
@@ -6162,11 +6163,11 @@ END
 """).construct_hierarchy()
   atoms = pdb_hierarchy.atoms()
   for first in [0,3]:
-    for i in xrange(3):
+    for i in range(3):
       assert atoms[first].is_in_same_conformer_as(atoms[first+i])
     assert not atoms[first+1].is_in_same_conformer_as(atoms[first+2])
-  for i in xrange(3):
-    for j in xrange(3,6):
+  for i in range(3):
+    for j in range(3,6):
       assert not atoms[i].is_in_same_conformer_as(atoms[j])
 
 def get_phenix_regression_pdb_file_names():

@@ -13,6 +13,7 @@ from libtbx.test_utils import approx_equal
 import time
 import math
 import sys
+from six.moves import range
 
 def hexagonal_sampling_cell(point_distance):
   return uctbx.unit_cell((
@@ -72,7 +73,7 @@ def hcp_fill_box(cb_op_original_to_sampling, float_asu, continuous_shift_flags,
     vertices_cart=float_asu_buffer.shape_vertices(cartesian=True))
   box_lower = []
   box_upper = []
-  for i in xrange(3):
+  for i in range(3):
     if (continuous_shift_flags[i]):
       box_lower.append(0)
       box_upper.append(0)

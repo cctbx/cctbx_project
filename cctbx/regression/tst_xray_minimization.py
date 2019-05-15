@@ -4,6 +4,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 import sys, random
+from six.moves import range
 
 def shift_u_iso(structure, shift):
   for sc in structure.scatterers():
@@ -14,7 +15,7 @@ def shift_u_aniso(structure, shift):
   for sc in structure.scatterers():
     if(sc.flags.use_u_aniso() and sc.flags.grad_u_aniso()):
       u_star = list(sc.u_star)
-      for i in xrange(6):
+      for i in range(6):
         u_star[i] += (shift * random.random())
       sc.u_star = u_star
 
@@ -90,7 +91,7 @@ def exercise(target_functor, data_type, space_group_info, anomalous_flag,
     print("structure_shake:")
     structure_shake.show_summary().show_scatterers()
     print()
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     try:
       minimizer = xray.minimization.lbfgs(
         target_functor=target_functor(y_obs),

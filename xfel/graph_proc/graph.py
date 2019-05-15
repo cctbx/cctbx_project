@@ -5,6 +5,7 @@ crystallography images, treated as a graph problem.
 """
 from __future__ import absolute_import, division, print_function
 from functools import reduce
+from six.moves import range
 
 __author__ = 'zeldin'
 
@@ -432,4 +433,3 @@ class Graph(Cluster):
                              len(new_labels)))
 
       current_labels = new_labels
-

@@ -9,6 +9,7 @@ from __future__ import absolute_import, division, print_function
 
 from iotbx import reflection_file_reader
 import sys
+from six.moves import range
 
 def read_input(args):
   hkla = None

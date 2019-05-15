@@ -10,6 +10,7 @@ from libtbx.test_utils import approx_equal
 import random
 from cStringIO import StringIO
 import sys
+from six.moves import range
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -19,13 +20,13 @@ def d_target_d_params_finite(f_obs, xray_structure, eps=1.e-8):
   scatterers = xray_structure.scatterers()
   xray_structure_eps = xray_structure.deep_copy_scatterers()
   scatterers_eps = xray_structure_eps.scatterers()
-  for i_scatterer in xrange(len(scatterers)):
+  for i_scatterer in range(len(scatterers)):
     if (not scatterers[i_scatterer].flags.use_u_aniso()):
       np = 7
     else:
       np = 12
     dx = []
-    for ix in xrange(np):
+    for ix in range(np):
       ts = []
       for signed_eps in [eps, -eps]:
         si_eps = scatterer_as_list(scatterers[i_scatterer])
@@ -47,13 +48,13 @@ def d2_target_d_params_finite(f_obs, xray_structure, eps=1.e-8):
   scatterers = xray_structure.scatterers()
   xray_structure_eps = xray_structure.deep_copy_scatterers()
   scatterers_eps = xray_structure_eps.scatterers()
-  for i_scatterer in xrange(len(scatterers)):
+  for i_scatterer in range(len(scatterers)):
     if (not scatterers[i_scatterer].flags.use_u_aniso()):
       np = 7
     else:
       np = 12
     dx = []
-    for ix in xrange(np):
+    for ix in range(np):
       gs = []
       for signed_eps in [eps, -eps]:
         si_eps = scatterer_as_list(scatterers[i_scatterer])
@@ -94,8 +95,8 @@ def exercise(
     out = StringIO()
   else:
     out = sys.stdout
-  for n_scatterers in xrange(3,3+1):
-    for i_trial in xrange(1):
+  for n_scatterers in range(3,3+1):
+    for i_trial in range(1):
       xray_structure = random_structure.xray_structure(
         space_group_info=space_group_info,
         elements=["const"]*n_scatterers,

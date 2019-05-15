@@ -12,6 +12,7 @@ import math, os, sys
 from cStringIO import StringIO
 import cctbx.xray
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 def finite_difference_gradients(restraint_type,
                                 proxy,
@@ -39,10 +40,10 @@ def finite_difference_gradients(restraint_type,
   result_iso = [0] * len(u_cart)
   if sites_cart is not None:
     assert len(sites_cart) == len(u_cart)
-  for i in xrange(len(u_cart)):
+  for i in range(len(u_cart)):
     if u_iso is None:
       result_aniso_i = []
-      for j in xrange(6):
+      for j in range(6):
         h = [0,0,0,0,0,0]
         h[j] = eps
         h = matrix.sym(sym_mat3=h)
@@ -58,7 +59,7 @@ def finite_difference_gradients(restraint_type,
     else:
       if use_u_aniso[i]:
         result_aniso_i = []
-        for j in xrange(6):
+        for j in range(6):
           h = [0,0,0,0,0,0]
           h[j] = eps
           h = matrix.sym(sym_mat3=h)
@@ -643,7 +644,7 @@ def rigu_finite_diff(R, U):
   #we operate on quadratic values
   epsilon = 2*math.sqrt(scitbx.math.double_numeric_limits.epsilon)
   rv = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
-  for idx in xrange(0,6):
+  for idx in range(0,6):
     step = [0]*6
     step[idx] = epsilon
     U1 = rigu_func(R, U + matrix.sym(sym_mat3=step))
@@ -701,10 +702,10 @@ END
     assert approx_equal(dU[5], rr.delta_23())
     # check the raw gradients against the reference implementation
     for x,y in zip(rr.reference_gradients(R1), rr.raw_gradients()):
-      for idx in xrange(0, 6):
+      for idx in range(0, 6):
         assert approx_equal(x[idx], y[idx])
     for x,y in zip(rigu_finite_diff(R1, U1), rr.raw_gradients()):
-      for idx in xrange(0, 6):
+      for idx in range(0, 6):
         assert approx_equal(x[idx], y[idx])
 
 def exercise():

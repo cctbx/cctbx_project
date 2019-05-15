@@ -13,6 +13,7 @@ from __future__ import absolute_import, division, print_function
 #   - additional styles?
 
 import wx
+from six.moves import range
 
 SEGBTN_ROUNDED_CORNERS = 1
 SEGBTN_VERTICAL = 2

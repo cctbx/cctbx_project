@@ -17,6 +17,7 @@ from libtbx import easy_pickle, easy_run
 import wx
 import os.path
 import sys
+from six.moves import range
 
 TEXT_WIDTH = 800
 

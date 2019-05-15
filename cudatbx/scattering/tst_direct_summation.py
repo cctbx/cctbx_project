@@ -78,7 +78,7 @@ def test_saxs():
   blsf = flex.double(len(xyz),0.0)
   sr = x.scattering_type_registry()
   st = x.scattering_types()
-  q = flex.double(list(range(101)))/200.0
+  q = flex.double(range(101))/200.0
 
   t_w = flex.double(len(t_x),1.0)
 

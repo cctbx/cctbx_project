@@ -7,6 +7,7 @@ from scitbx import matrix
 from libtbx.test_utils import \
   approx_equal, is_above_limit, is_below_limit, Exception_expected
 from libtbx.utils import format_cpu_times
+from six.moves import range
 try:
   import cPickle as pickle
 except ImportError:
@@ -32,7 +33,7 @@ def exercise_joint_lib_six_dof_aja_simplified():
   assert len(tm.bodies) == 1
   assert tm.q_packed_size == 7
   mt = flex.mersenne_twister(seed=0)
-  for i_trial in xrange(3):
+  for i_trial in range(3):
     q = mt.random_double(size=tm.q_packed_size)*2-1
     tm.unpack_q(q_packed=q)
     sm = tm.sites_moved()
@@ -204,7 +205,7 @@ def compare_essence_and_fast_tardy_models(
     tau_rand_array.append(matrix.col(
       mt.random_double(size=body.joint.degrees_of_freedom)*2-1))
   f_ext_rand_array = []
-  for ib in xrange(len(etm.bodies)):
+  for ib in range(len(etm.bodies)):
     f_ext_rand_array.append(matrix.col(
       mt.random_double(size=6)*2-1))
   grav_accn_rand = matrix.col(mt.random_double(size=6)*2-1)
@@ -460,7 +461,7 @@ def exercise_pickle():
     result.unpack_q(etm.pack_q())
     result.unpack_qd(etm.pack_qd())
     return result
-  for protocol in xrange(pickle.HIGHEST_PROTOCOL):
+  for protocol in range(pickle.HIGHEST_PROTOCOL):
     ftm1 = etm_as_ftm_with_q_qd()
     s = pickle.dumps(etm_as_ftm_with_q_qd(), protocol)
     ftm2 = pickle.loads(s)

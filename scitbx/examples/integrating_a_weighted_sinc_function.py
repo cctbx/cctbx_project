@@ -3,6 +3,7 @@ from scitbx.array_family import flex
 from scitbx.math import chebyshev_polynome
 import scitbx.math
 import math
+from six.moves import range
 
 
 class function(object):

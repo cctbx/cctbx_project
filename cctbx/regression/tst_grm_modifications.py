@@ -10,6 +10,7 @@ from cctbx import geometry_restraints
 from libtbx.test_utils import show_diff
 from libtbx.utils import null_out
 import iotbx
+from six.moves import range
 
 raw_records1 = """\
 CRYST1   60.800   60.800   97.000  90.00  90.00 120.00 P 32 2 1      6

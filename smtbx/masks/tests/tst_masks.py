@@ -11,6 +11,7 @@ from smtbx import masks
 from smtbx.refinement import constraints
 import smtbx.utils
 import cStringIO
+from six.moves import range
 
 def exercise_masks():
   mt = flex.mersenne_twister(seed=0)

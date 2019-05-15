@@ -5,10 +5,11 @@ from __future__ import absolute_import, division, print_function
 # usage: python make_settings.py > settings.py
 
 from cctbx import sgtbx
+from six.moves import range
 
 def run():
   settings = [0]
-  for i in xrange(1, 231): settings.append({})
+  for i in range(1, 231): settings.append({})
 
   list_cb_op = []
   for xyz in ("x,y,z", "z,x,y", "y,z,x"):
@@ -28,7 +29,7 @@ def run():
 
   n_non_redundant = 0
   print("settings = (")
-  for i in xrange(1, 231):
+  for i in range(1, 231):
     print("#", i)
     symbols = list(settings[i].keys())
     symbols.sort()

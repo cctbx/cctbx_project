@@ -11,6 +11,7 @@ from libtbx import easy_pickle
 from scitbx.array_family import flex
 from scitbx.matrix import col, rec, sqr
 from xfel.cftbx.detector.generic_detector import GenericDetector
+from six.moves import range
 
 class CSPadDetector(GenericDetector):
   def __init__(self, filename):

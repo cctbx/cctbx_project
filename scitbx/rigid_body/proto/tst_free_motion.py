@@ -7,6 +7,7 @@ from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times, null_out
 import sys
+from six.moves import range
 
 def exercise_reference_impl_quick():
   sites_cart = fmri.create_triangle_with_center_of_mass_at_origin()
@@ -23,7 +24,7 @@ def exercise_reference_impl_quick():
       [0.64030878777041611,
        0.012310594130384761, 0.02835, 0.04066059413038476,
        0.68096938190080092])
-    for i in xrange(100):
+    for i in range(100):
       sim.dynamics_step(delta_t=0.01, use_classical_accel=use_classical_accel)
     expected = [
       [0.028505221929112364,
@@ -44,7 +45,7 @@ def exercise_reference_impl_long(n_dynamics_steps, out):
     print(i_step, [sim.e_pot, sim.e_kin_ang, sim.e_kin_lin, sim.e_kin, sim.e_tot], file=out)
     out.flush()
   n_show = max(1, n_dynamics_steps // 10)
-  for i_step in xrange(n_dynamics_steps):
+  for i_step in range(n_dynamics_steps):
     sim.dynamics_step(delta_t=0.001)
     e_tots.append(sim.e_tot)
     if (i_step % n_show == 0):
@@ -100,7 +101,7 @@ def exercise_featherstone_FDab(out):
     assert approx_equal(qdd[0].elems[:3], sim.wd_F1)
     assert approx_equal(qdd[0].elems[3:], sim.as_F1)
   sim = fmri.simulation()
-  for i_step in xrange(100):
+  for i_step in range(100):
     check()
     sim.dynamics_step(delta_t=0.1) # large time step to sample
   check()                          # diverse configurations

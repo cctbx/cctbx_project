@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex
 
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("iotbx_mtz_ext")
 from iotbx_mtz_ext import *
 import iotbx_mtz_ext as ext
@@ -688,7 +689,7 @@ class _():
       elif (remaining_types[:4] == "FQDQ"):
         labels = all_column_labels[i_column:i_column+4]
         def next_isym_column_label():
-          for j in xrange(i_column+4, len(all_column_types)):
+          for j in range(i_column+4, len(all_column_types)):
             if (all_column_types[j] == "Y"):
               vv = all_columns[j].extract_valid_values()
               if (vv.size() != 0 and vv.all_ge(0) and vv.all_le(2)):
@@ -963,7 +964,7 @@ class _():
           type=column_types[0]).set_reals(
             miller_indices=miller_array.indices(),
             data=miller_array.data().slice(0))
-        for i in xrange(1,4):
+        for i in range(1,4):
           self.add_column(
             label=label_decorator.hendrickson_lattman(column_root_label, i),
             type=column_types[i]).set_reals(
@@ -1064,7 +1065,7 @@ class _():
               type=column_types[0]).set_reals(
                 miller_indices=indices,
                 data=data.slice(0))
-            for i in xrange(1,4):
+            for i in range(1,4):
               self.add_column(
                 label=label_decorator.hendrickson_lattman(
                   column_root_label, i, anomalous_sign),

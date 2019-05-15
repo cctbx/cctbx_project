@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 import iotbx.pdb
 from libtbx.utils import Sorry
+from six.moves import range
 
 class container(object):
 

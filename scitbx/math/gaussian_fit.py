@@ -11,6 +11,7 @@ from libtbx import easy_pickle
 import time
 import math
 import sys
+from six.moves import range
 
 minimize_multi_histogram = {"None": 0}
 
@@ -179,7 +180,7 @@ def minimize_multi_lbfgs(start_fit,
   best_min = None
   for target_power in target_powers:
     min_gaussian_fit = start_fit
-    for i in xrange(n_repeats_minimization):
+    for i in range(n_repeats_minimization):
       if (shift_sqrt_b_mod_n > 0):
         shift_sqrt_b_this_time = (i % shift_sqrt_b_mod_n == 0)
       else:
@@ -221,7 +222,7 @@ def minimize_multi_lbfgsb(start_fit,
   for target_power in target_powers:
     for apply_lower_bounds_on_b in [False, True]:
       min_gaussian_fit = start_fit
-      for i in xrange(n_repeats_minimization):
+      for i in range(n_repeats_minimization):
         if (shift_sqrt_b_mod_n > 0):
           shift_sqrt_b_this_time = (i % shift_sqrt_b_mod_n == 0)
         else:
@@ -496,9 +497,9 @@ def find_max_x_multi(null_fit,
   i_x_step = max(1, ifloor((i_x_end-i_x_begin) / (factor_x_step*n_terms)))
   if (n_terms == 1): n_start_fractions = 2
   best_min = None
-  for i_x in xrange(i_x_begin, i_x_end, i_x_step):
-    for i_split in xrange(-1, existing_gaussian.n_terms()):
-      for i_start_fraction in xrange(0,n_start_fractions):
+  for i_x in range(i_x_begin, i_x_end, i_x_step):
+    for i_split in range(-1, existing_gaussian.n_terms()):
+      for i_start_fraction in range(0,n_start_fractions):
         gaussian_fit = make_start_gaussian(
           null_fit=null_fit,
           existing_gaussian=existing_gaussian,
@@ -524,7 +525,7 @@ def make_golay_based_start_gaussian(null_fit, code):
   b_starts = [1,4,16,32]
   a = flex.double()
   b = flex.double()
-  for i_term in xrange(6):
+  for i_term in range(6):
     i_bits = i_term * 2
     bits_a = code[i_bits], code[i_bits+12]
     bits_b = code[i_bits+1], code[i_bits+12+1]
@@ -611,11 +612,11 @@ def decremental_fit(existing_gaussian, params):
   good_min = None
   last_a = list(existing_gaussian.array_of_a())
   last_b = list(existing_gaussian.array_of_b())
-  for i_del in xrange(existing_gaussian.n_terms()):
+  for i_del in range(existing_gaussian.n_terms()):
     a_del = last_a[i_del]
     sel_a = last_a[:i_del] + last_a[i_del+1:]
     sel_b = last_b[:i_del] + last_b[i_del+1:]
-    for i_add in xrange(n_terms):
+    for i_add in range(n_terms):
       a = sel_a[:]
       a[i_add] += a_del
       start_fit = scitbx.math.gaussian.fit(

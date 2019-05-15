@@ -16,6 +16,7 @@ from libtbx.test_utils import approx_equal, is_below_limit, show_diff
 from itertools import count
 from cStringIO import StringIO
 import sys
+from six.moves import range
 
 def exercise(verbose=0):
   distance_ideal = 1.8
@@ -351,7 +352,7 @@ def exercise(verbose=0):
   for wilson_b in [None, 10, 100]:
     finite_difference_gradients = flex.double()
     eps = 1.e-6
-    for i_scatterer in xrange(xray_structure.scatterers().size()):
+    for i_scatterer in range(xray_structure.scatterers().size()):
       rs = []
       for signed_eps in [eps, -eps]:
         xray_structure_eps = xray_structure.deep_copy_scatterers()

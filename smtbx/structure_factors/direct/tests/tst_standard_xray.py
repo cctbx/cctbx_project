@@ -14,6 +14,7 @@ import random
 from itertools import islice, izip
 from scitbx import matrix
 from scitbx.math import median_statistics
+from six.moves import range
 
 
 class test_case(object):
@@ -217,7 +218,7 @@ def exercise_trigonometric_ff():
   cs = sgi.any_compatible_crystal_symmetry(volume=1000)
   miller_set = miller.build_set(cs, anomalous_flag=False, d_min=1)
   miller_set = miller_set.select(flex.random_double(miller_set.size()) < 0.2)
-  for i in xrange(5):
+  for i in range(5):
     sites = flex.random_double(9)
     x1, x2, x3 = (matrix.col(sites[:3]),
                   matrix.col(sites[3:6]),

@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 import matplotlib.pyplot as plt
 import sys
 from six.moves import cPickle as pickle
+from six.moves import range
 
 if len(sys.argv)==1:
   print('Use prime.plotstats to view different stats along post-refinement cycles.')
@@ -20,7 +21,7 @@ total_completeness = stat_pickle['total_completeness']
 total_rmerge = stat_pickle['total_rmerge']
 total_n_obs = stat_pickle['total_n_obs']
 total_cc12 = stat_pickle['total_cc12']
-x = range(len(total_cc12))
+x = list(range(len(total_cc12)))
 #plot
 plt.subplot(1,2,1, title='CC1/2')
 plt.plot(x, total_cc12, linewidth=2.0)

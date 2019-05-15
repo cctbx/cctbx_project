@@ -14,6 +14,7 @@ import random
 import locale
 import math
 import os
+from six.moves import range
 
 JOB_START_ID = wx.NewId()
 LOG_UPDATE_ID = wx.NewId()

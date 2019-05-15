@@ -5,6 +5,7 @@ from cctbx import miller
 from cctbx import maptbx
 from libtbx.utils import Sorry
 import sys
+from six.moves import range
 
 def Hn(m):
   m_ = m
@@ -251,7 +252,7 @@ class run(object):
         def max_change_so_far(x):
           result = flex.double()
           if(self.cc_to_answer.size()):
-            for i in xrange(self.cc_to_answer.size()):
+            for i in range(self.cc_to_answer.size()):
               if(i>0):
                 result.append(self.cc_to_answer[i]-self.cc_to_answer[i-1])
           return flex.max(result)

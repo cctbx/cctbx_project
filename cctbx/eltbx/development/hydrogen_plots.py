@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.eltbx import xray_scattering
 import sys
+from six.moves import range
 
 # ITC 2006 Table 6.1.1.2. Spherical bonded hydrogen-atom scattering
 # factors from Stewart, Davidson & Simpson (1965)
@@ -81,7 +82,7 @@ def run(args):
   print("&")
   n_samples = 1000
   for g in [sds_it, sds_wk, sds_ng, iso_it, iso_wk, iso_ng]:
-    for i_stol in xrange(n_samples+1):
+    for i_stol in range(n_samples+1):
       stol = 6 * i_stol / n_samples
       print(stol, g.at_stol(stol))
     print("&")

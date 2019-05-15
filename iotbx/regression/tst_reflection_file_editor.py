@@ -11,6 +11,7 @@ from libtbx.utils import Sorry, null_out
 import warnings
 import os.path
 import sys
+from six.moves import range
 
 # this will run without phenix_regression
 def exercise_basic(verbose=False):

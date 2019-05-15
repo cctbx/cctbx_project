@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx.stdlib import math
+from six.moves import range
 
 """
 This is a python implementation of the

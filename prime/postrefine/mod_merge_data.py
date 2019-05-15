@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from cctbx import miller
 import math
+from six.moves import range
 
 class merge_data_handler(object):
   """keep arrays of unmerged data"""
@@ -151,7 +152,7 @@ class merge_data_handler(object):
       self.miller_array_merge = self.miller_array_merge.select(selections)
 
   def reduce_by_miller_index(self, miller_indices):
-    sequences = range(self.get_size())
+    sequences = list(range(self.get_size()))
     matches = miller.match_multi_indices(
                   miller_indices_unique=miller_indices,
                   miller_indices=self.miller_indices_merge)

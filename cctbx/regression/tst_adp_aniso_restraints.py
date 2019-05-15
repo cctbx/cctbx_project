@@ -4,6 +4,7 @@ from cStringIO import StringIO
 import cctbx.adp_restraints
 from libtbx.test_utils import approx_equal
 import libtbx.load_env
+from six.moves import range
 
 phe_pdb = """\
 remark CRYST1   25.000   35.000   45.000  80.00 70.00 100.00 P 1           1
@@ -41,7 +42,7 @@ def fd(xray_structure, restraints_manager, eps=1.e-2):
         #print "scatterer :", i_seq, fl.use_u_iso(), fl.grad_u_iso(), \
         #                     fl.use_u_aniso(), fl.grad_u_aniso()
         if(fl.use_u_aniso()):
-           for i_ind in xrange(6):
+           for i_ind in range(6):
                xrs1 = xray_structure.deep_copy_scatterers()
                xrs2 = xray_structure.deep_copy_scatterers()
                sc1  = xrs1.scatterers()

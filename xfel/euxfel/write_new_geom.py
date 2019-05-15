@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from dxtbx.datablock import DataBlockFactory, DataBlockDumper
 import sys
+from six.moves import range
 
 fin = sys.argv[1]
 px_size = 0.05 # in mm

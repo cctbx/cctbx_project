@@ -13,6 +13,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out, show_times_at_exit
 import math
 import sys
+from six.moves import range
 
 class random_revolute(object):
 
@@ -23,7 +24,7 @@ class random_revolute(object):
       return (mersenne_twister.random_double()*2-1)*math.pi
     #
     O.sites = [random_vector()]
-    for i_trial in xrange(100): # guard against unlikely singularity
+    for i_trial in range(100): # guard against unlikely singularity
       O.A = joint_lib.revolute_alignment(
         pivot=random_vector(),
         normal=random_vector().normalize())
@@ -67,7 +68,7 @@ class revolute_simulation(object):
   def __init__(O, mersenne_twister, NB, config):
     O.bodies = []
     if (config == "random"):
-      for ib in xrange(NB):
+      for ib in range(NB):
         B = random_revolute(mersenne_twister=mersenne_twister)
         B.parent = -1+ib
         O.bodies.append(B)
@@ -179,7 +180,7 @@ class revolute_simulation(object):
 def FDab_X0(model, q, qd):
   Xup = [None] * model.NB
   X0 = [None] * model.NB
-  for i in xrange(model.NB):
+  for i in range(model.NB):
     XJ, S = featherstone.jcalc( model.pitch[i], q[i] )
     Xup[i] = XJ * model.Xtree[i]
     if model.parent[i] == -1:
@@ -224,7 +225,7 @@ def exercise_sim(out, n_dynamics_steps, delta_t, sim):
   sim.check_d_pot_d_q()
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
-  for i_step in xrange(n_dynamics_steps):
+  for i_step in range(n_dynamics_steps):
     sim.dynamics_step(delta_t=delta_t)
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin)
@@ -273,7 +274,7 @@ def exercise_revolute_sim(
 def exercise_revolute(out, n_trials, n_dynamics_steps, delta_t=0.001, NB=3):
   mersenne_twister = flex.mersenne_twister(seed=0)
   relative_ranges = flex.double()
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     relative_ranges.append(exercise_revolute_sim(
       out=out,
       mersenne_twister=mersenne_twister,

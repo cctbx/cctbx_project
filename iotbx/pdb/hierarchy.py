@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
 
@@ -1707,7 +1708,7 @@ class _():
     def process_range(i_begin, i_end):
       isolated_var_occ = []
       groups = {}
-      for i_rg in xrange(i_begin, i_end):
+      for i_rg in range(i_begin, i_end):
         done[i_rg] = True
         rg = residue_groups[i_rg]
         for ag in residue_groups[i_rg].atom_groups():
@@ -1737,7 +1738,7 @@ class _():
       # use always_group_adjacent
       do_this_step = True
       nc = None
-      for i_rg in xrange(i_begin, i_end):
+      for i_rg in range(i_begin, i_end):
         rg = residue_groups[i_rg]
         n_conf = len(residue_groups[i_rg].conformers())
         if(nc is None): nc = n_conf
@@ -1750,7 +1751,7 @@ class _():
       else:
         if(do_this_step):
           process_range(i_begin, i_end)
-    for i_rg in xrange(n_rg):
+    for i_rg in range(n_rg):
       if (done[i_rg]): continue
       process_range(i_rg, i_rg+1)
     def groups_cmp(a, b):

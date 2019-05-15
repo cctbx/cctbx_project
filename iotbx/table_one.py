@@ -12,6 +12,7 @@ from libtbx import slots_getstate_setstate
 from libtbx.utils import Sorry
 from libtbx import str_utils
 import re
+from six.moves import range
 
 angstrom = u"\u00C5".encode("utf-8", "strict").strip()
 

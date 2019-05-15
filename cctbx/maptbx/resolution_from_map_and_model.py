@@ -3,6 +3,7 @@ from cctbx.array_family import flex
 from cctbx import maptbx
 from libtbx import group_args
 from cctbx import miller
+from six.moves import range
 
 class run_loop(object):
   def __init__(self, fc, f_obs, b_iso, d_mins, d_spacings, ss):

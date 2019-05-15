@@ -27,6 +27,7 @@ from scitbx.lstbx import normal_eqns_solving
 from scitbx.math import curve_fitting
 
 from xfel.cxi.cspad_ana.xes_histograms import master_phil_str
+from six.moves import range
 
 master_phil_str = master_phil_str + """
 xes {

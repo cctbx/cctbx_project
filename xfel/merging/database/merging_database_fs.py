@@ -5,6 +5,7 @@
 from __future__ import absolute_import, division, print_function
 
 from cctbx.array_family import flex
+from six.moves import range
 
 
 # XXX Use proper field separators (e.g. ASCII 31), see

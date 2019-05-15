@@ -7,6 +7,7 @@ from xfel.cxi.display_spots import run_one_index
 from libtbx.utils import Usage, Sorry
 import libtbx.option_parser
 import sys,os
+from six.moves import range
 
 if (__name__ == "__main__"):
   command_line = (libtbx.option_parser.option_parser(

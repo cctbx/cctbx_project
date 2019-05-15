@@ -5,6 +5,7 @@ from libtbx.test_utils import approx_equal
 import math
 from cStringIO import StringIO
 import sys
+from six.moves import range
 
 flex.set_random_seed(0)
 
@@ -55,7 +56,7 @@ def d_cos_alpha_d_sites_finite(sites, ops, hkl, eps=1.e-8):
   sites_eps = list(sites)
   for js,site in enumerate(sites):
     site_eps = list(site)
-    for jp in xrange(3):
+    for jp in range(3):
       vs = []
       for signed_eps in [eps, -eps]:
         site_eps[jp] = site[jp] + signed_eps
@@ -71,7 +72,7 @@ def d2_cos_alpha_d_sites_finite(sites, ops, hkl, eps=1.e-8):
   sites_eps = list(sites)
   for js,site in enumerate(sites):
     site_eps = list(site)
-    for jp in xrange(3):
+    for jp in range(3):
       vs = []
       for signed_eps in [eps, -eps]:
         site_eps[jp] = site[jp] + signed_eps
@@ -88,12 +89,12 @@ def exercise(args):
     out = StringIO()
   else:
     out = sys.stdout
-  for i_trial in xrange(100):
+  for i_trial in range(100):
     ops = []
-    for i in xrange(3):
+    for i in range(3):
       ops.append(matrix.sqr(flex.random_double(size=9, factor=4)-2))
     sites = []
-    for i in xrange(2):
+    for i in range(2):
       sites.append(matrix.col(flex.random_double(size=3, factor=4)-2))
     hkl = matrix.row(flex.random_double(size=3, factor=4)-2)
     ca = cos_alpha(sites=sites, ops=ops, hkl=hkl)

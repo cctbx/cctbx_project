@@ -5,6 +5,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.math_utils import iceil
 from itertools import count
 import sys
+from six.moves import range
 
 class random_inputs(object):
 
@@ -78,7 +79,7 @@ class random_inputs(object):
 def exercise_random(n_trials=10, n_refl=30):
   mt = flex.mersenne_twister(seed=0)
   for target_type in ["ls", "cc"]:
-    for i_trial in xrange(n_trials):
+    for i_trial in range(n_trials):
       for obs_type in ["F", "I"]:
         ri = random_inputs(
           mt=mt, n_refl=n_refl, target_type=target_type, obs_type=obs_type)

@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from wxtbx.phil_controls.numbers import NumbersCtrlBase, NumbersValidator
 import wx
+from six.moves import range
 
 class FloatsCtrl(NumbersCtrlBase):
   def CheckType(self, value):

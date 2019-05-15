@@ -7,6 +7,7 @@ From first principles; inelegant theoretically, but compact and practical.
 See also: International Tables for Crystallography, Volume A, section 3.
 """
 from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 def run(args):
   assert args in [[], ["python"], ["c++"]]
@@ -64,7 +65,7 @@ If you have to edit this table, please send email to: cctbx@cci.lbl.gov
         print("  #", line)
       ci = cluster_manager.cluster_indices
       cl = cluster_manager.clusters
-      for sgno in xrange(231):
+      for sgno in range(231):
         cluster = list(cl[ci[sgno]])
         cluster.remove(sgno)
         if (len(cluster) == 0): s = "None"
@@ -85,7 +86,7 @@ namespace cctbx { namespace sgtbx { namespace sys_abs_equiv {
       cl = cluster_manager.clusters
       for line in note:
         print("  //", line)
-      for sgno in xrange(231):
+      for sgno in range(231):
         cluster = list(cl[ci[sgno]])
         cluster.remove(sgno)
         if (len(cluster) == 0):

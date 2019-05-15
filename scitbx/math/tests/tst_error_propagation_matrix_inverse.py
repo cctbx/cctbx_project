@@ -12,6 +12,7 @@ from scitbx import matrix
 from scitbx.array_family import flex
 import random
 from scitbx.math.lefebvre import matrix_inverse_error_propagation
+from six.moves import range
 
 """Implementation of the propagation of errors formula for matrix inversion
 given in Lefebvre et al. (1999) http://arxiv.org/abs/hep-ex/9909031. As in

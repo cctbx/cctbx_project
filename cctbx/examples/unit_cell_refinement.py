@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import range
 two_theta_and_index_list = """\
   8.81   0  1  1
  12.23   0  0  2
@@ -56,7 +57,7 @@ def residual(
 def gradients(
       two_thetas_obs, miller_indices, wavelength, unit_cell, eps=1.e-6):
   result = flex.double()
-  for i in xrange(6):
+  for i in range(6):
     rs = []
     for signed_eps in [eps, -eps]:
       params_eps = list(unit_cell.parameters())

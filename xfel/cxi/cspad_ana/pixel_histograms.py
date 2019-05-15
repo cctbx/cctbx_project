@@ -7,6 +7,7 @@ from scitbx.array_family import flex
 import scitbx.math
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import common_mode
+from six.moves import range
 
 class pixel_histograms(common_mode.common_mode_correction):
 

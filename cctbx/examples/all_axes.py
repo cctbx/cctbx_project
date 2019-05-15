@@ -13,6 +13,7 @@ from __future__ import absolute_import, division, print_function
 
 from cctbx import sgtbx
 import sys
+from six.moves import range
 
 def str_ev(ev):
   return "[%d,%d,%d]" % ev
@@ -50,9 +51,9 @@ def list_all_axes(space_group_symbol=None, space_group_info=None):
     r = s.r()
     t = s.t()
     shift = [0,0,0]
-    for shift[0] in xrange(-shift_range,shift_range+1):
-      for shift[1] in xrange(-shift_range,shift_range+1):
-        for shift[2] in xrange(-shift_range,shift_range+1):
+    for shift[0] in range(-shift_range,shift_range+1):
+      for shift[1] in range(-shift_range,shift_range+1):
+        for shift[2] in range(-shift_range,shift_range+1):
           ts = t.plus(sgtbx.tr_vec(shift, 1)).new_denominator(t.den())
           ss = sgtbx.rt_mx(r, ts)
           axes_dict[rt_mx_analysis(ss)] = 0
@@ -64,7 +65,7 @@ def list_all_axes(space_group_symbol=None, space_group_info=None):
 
 def run():
   if (len(sys.argv) == 1):
-    for i in xrange(230):
+    for i in range(230):
       list_all_axes(i + 1)
   else:
     for symbol in sys.argv[1:]:

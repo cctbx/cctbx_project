@@ -21,6 +21,7 @@ from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
 
 from collections import deque
+from six.moves import range
 
 
 def _summed_area_table(f, m, n):

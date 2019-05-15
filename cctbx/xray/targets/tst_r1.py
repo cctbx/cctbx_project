@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx.xray.targets import r1
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 def exercise(mt, n_refl, log):
   f_obs = mt.random_double(size=n_refl)
@@ -14,7 +15,7 @@ def exercise(mt, n_refl, log):
     eps = 1e-6
     g_fin = flex.double()
     c_fin = flex.double()
-    for ih in xrange(f_calc_abs.size()):
+    for ih in range(f_calc_abs.size()):
       fs = []
       gs = []
       c_orig = f_calc_abs[ih]
@@ -36,7 +37,7 @@ def exercise(mt, n_refl, log):
     eps = 1e-6
     g_fin = flex.complex_double()
     c_fin = flex.vec3_double()
-    for ih in xrange(f_calc.size()):
+    for ih in range(f_calc.size()):
       c_orig = f_calc[ih]
       g_fin_ab = []
       c_fin_ab = []
@@ -90,7 +91,7 @@ def run(args):
     import sys
     log = sys.stdout
   mt = flex.mersenne_twister(seed=0)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     exercise(mt, n_refl, log)
   print("OK")
 

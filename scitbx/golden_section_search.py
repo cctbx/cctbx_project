@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import sys
+from six.moves import range
 
 def print_progress_dots(out,ii,n_monitor=10,width=80,offset=5, is_final=False):
   if ii-1 == 0:

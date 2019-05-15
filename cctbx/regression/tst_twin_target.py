@@ -12,6 +12,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import random
 import math
+from six.moves import range
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -77,7 +78,7 @@ def tst_ls_on_i():
     new_data =  sfs.data()
     h=0.0001
 
-    for N_test in xrange(sfs.data().size() ):
+    for N_test in range(sfs.data().size() ):
       ori = complex( sfs.data()[N_test] )
       #print "----------------"
       #print alpha
@@ -193,7 +194,7 @@ def tst_ls_on_f():
     new_data =  sfs.data()
     h=0.0001
     checked=0
-    for N_test in xrange(sfs.data().size() ):
+    for N_test in range(sfs.data().size() ):
       ori = complex( sfs.data()[N_test] )
       #print "----------------"
       #print alpha
@@ -398,8 +399,8 @@ def plot_function(twin_lik, range=7):
   s12= -is12/det
   s1= math.sqrt( abs(s11)*2.0 )
   s2= math.sqrt( abs(s22)*2.0 )
-  for ii in xrange(-25,26):
-    for jj in xrange(-25,26):
+  for ii in range(-25,26):
+    for jj in range(-25,26):
       x=range*ii/25.0 + fm1
       y=range*jj/25.0 + fm2
       print(x,y, twin_lik.log_p(x,y)-twin_lik.log_p(fm1,fm2))

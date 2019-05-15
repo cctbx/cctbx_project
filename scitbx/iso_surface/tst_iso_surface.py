@@ -8,6 +8,7 @@ from scitbx import matrix
 import sys
 import time
 import six
+from six.moves import range
 
 
 class triangulation_test_case(object):
@@ -93,7 +94,7 @@ class triangulation_test_case(object):
         else: e = (b,a)
         edges[e] = edges.setdefault(e,0) + 1
     assert len(vertices) == len(s.vertices)
-    missing = [ i for i in xrange(len(s.vertices)) if i not in vertices ]
+    missing = [ i for i in range(len(s.vertices)) if i not in vertices ]
     assert not missing, missing
     d = abs(matrix.col(self.grid_cell))
     bad_edge_multiplicities = []
@@ -112,7 +113,7 @@ class triangulation_test_case(object):
 
     # consistency check on the normals
     assert len(s.normals) == len(s.vertices)
-    for i,v,n in zip(xrange(len(s.vertices)), s.vertices, s.normals):
+    for i,v,n in zip(range(len(s.vertices)), s.vertices, s.normals):
       v, n = matrix.col(v), matrix.col(n)
       abs_n = abs(n)
       if abs_n == 0:

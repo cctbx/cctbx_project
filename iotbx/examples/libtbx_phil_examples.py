@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 if (__name__ == "__main__"):
 
@@ -457,5 +458,5 @@ if (__name__ == "__main__"):
     }
     """)
 
-  for attributes_level in xrange(4):
+  for attributes_level in range(4):
     master_phil.show(attributes_level=attributes_level)

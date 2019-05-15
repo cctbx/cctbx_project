@@ -1,11 +1,12 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
+from six.moves import range
 
 def demo():
   # toy array
   a = flex.double([10,11,12])
   # one way of looping over the array
-  for i in xrange(a.size()):
+  for i in range(a.size()):
     print(a[i])
   print()
   # a better way of looping over the array
@@ -17,7 +18,7 @@ def demo():
     print(i, ai)
   print()
   # modify the elements one-by-one
-  for i in xrange(a.size()):
+  for i in range(a.size()):
     a[i] *= 10
   for ai in a:
     print(ai)

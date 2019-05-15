@@ -12,6 +12,7 @@ from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
+from six.moves import range
 op = os.path
 import iotbx.mtrix_biomt
 
@@ -653,7 +654,7 @@ def dump_pdb(file_name, sites_cart, crystal_symmetry=None):
   f.close()
 
 def write_icosahedron():
-  for level in xrange(3):
+  for level in range(3):
     icosahedron = scitbx.math.icosahedron(level=level)
     scale = 1.5/icosahedron.next_neighbors_distance()
     dump_pdb(

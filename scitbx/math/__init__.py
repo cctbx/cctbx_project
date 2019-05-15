@@ -10,6 +10,7 @@ import scitbx.math.gaussian # implicit import
 from scitbx import matrix
 from scitbx.array_family import flex
 from boost import rational # implicit import
+from six.moves import range
 
 gaussian_fit_1d_analytical.__doc__ = """
 Fits a gaussian function to a list of points.
@@ -198,7 +199,7 @@ class minimum_covering_sphere_nd(object):
       return
     n_dim = len(points[0].elems)
     w = 1./len(points)
-    weights = matrix.row([w for i in xrange(len(points))])
+    weights = matrix.row([w for i in range(len(points))])
     while 1:
       x = matrix.col([0]*n_dim)
       for w,t in zip(weights.elems,points):
@@ -379,7 +380,7 @@ def equally_spaced_points_on_vector(start, end, n=None, step=None):
     n = int(vec_length/step)-1
   dr = r*(1/float(n+1))
   points = flex.vec3_double()
-  for i in xrange(n+1):
+  for i in range(n+1):
     points.extend(dr * i + start)
   points.append(end)
   return points
@@ -421,7 +422,7 @@ class sin_cos_table(object):
     self.step = 2*math.pi/self.n
     self.sin_table = flex.double()
     self.cos_table = flex.double()
-    for i in xrange(self.n):
+    for i in range(self.n):
       self.sin_table.append(math.sin(i*self.step))
       self.cos_table.append(math.cos(i*self.step))
 

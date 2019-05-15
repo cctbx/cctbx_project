@@ -6,6 +6,7 @@ from __future__ import absolute_import, division, print_function
 from wx.lib.embeddedimage import PyEmbeddedImage
 import wx
 import sys
+from six.moves import range
 
 # from Crystal Icons (http://www.everaldo.com/crystal/)
 button_ok = PyEmbeddedImage(

@@ -4,6 +4,7 @@ from cctbx import crystal
 from cctbx import miller
 from cctbx import uctbx
 from cctbx import miller
+from six.moves import range
 
 
 class miller_lookup_utils_tester(object):

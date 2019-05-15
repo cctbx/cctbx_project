@@ -8,6 +8,7 @@ import math
 
 from cctbx.array_family import flex
 from scitbx.lbfgs.tst_curvatures import lbfgs_with_curvatures_mix_in
+from six.moves import range
 
 
 class find_scale(lbfgs_with_curvatures_mix_in):

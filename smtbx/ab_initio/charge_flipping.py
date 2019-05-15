@@ -53,6 +53,7 @@ import scitbx.math
 import itertools
 import sys
 import math
+from six.moves import range
 
 class _array_extension(oop.injector, miller.array):
 
@@ -465,7 +466,7 @@ class solving_iterator(object):
     while True:
       self.f_calc_solutions = []
       sigmas = flex.double()
-      for i in xrange(self.max_delta_guessing_iterations):
+      for i in range(self.max_delta_guessing_iterations):
         sigma = self.flipping_iterator.rho_map.sigma()
         sigmas.append(sigma)
         self.flipping_iterator.delta = self.delta_over_sigma * sigma
@@ -520,7 +521,7 @@ class solving_iterator(object):
         # before polishing improves map quality.
         self.flipping_iterator.denormalise(self.normalisations)
         skewness = flex.double()
-        for i in xrange(self.extra_iterations_on_f_after_phase_transition):
+        for i in range(self.extra_iterations_on_f_after_phase_transition):
           next(self.flipping_iterator)
           skewness.append(self.flipping_iterator.rho_map.skewness())
           if i < 3: continue
@@ -532,7 +533,7 @@ class solving_iterator(object):
       low_density_elimination.start(f_obs=self.flipping_iterator.f_obs,
                                     phases=self.flipping_iterator.f_calc,
                                     f_000=0)
-      for i in xrange(self.polishing_iterations):
+      for i in range(self.polishing_iterations):
         next(low_density_elimination)
       yield self.evaluating
 

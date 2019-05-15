@@ -13,6 +13,7 @@ from xfel.ui.db.stats import Stats
 from xfel.ui.db.experiment import Cell, Bin, Isoform, Event
 
 from xfel.ui.db import get_db_connection
+from six.moves import range
 
 try:
   from MySQLdb import OperationalError
@@ -164,7 +165,7 @@ class initialize(initialize_base):
             query = 'UPDATE `%s_rungroup` set open = 1 where id = %d'%(self.params.experiment_tag, rungroup_id)
             cursor.execute(query)
           # Add all thr runs to the rungroup
-          for run in xrange(startrun, endrun+1):
+          for run in range(startrun, endrun+1):
             query = 'SELECT id FROM `%s_run` run WHERE run.run = %d'%(self.params.experiment_tag, run)
             cursor.execute(query)
             rows = cursor.fetchall(); assert len(rows) <= 1

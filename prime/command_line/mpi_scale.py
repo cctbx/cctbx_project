@@ -10,6 +10,7 @@ from prime.postrefine.mod_util import intensities_scaler
 from prime.postrefine.mod_merge_data import merge_data_handler
 from cctbx.array_family import flex
 import time, math
+from six.moves import range
 
 # setup mpi
 comm = MPI.COMM_WORLD

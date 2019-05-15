@@ -10,6 +10,7 @@
 
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
+from six.moves import range
 
 def matrix_inverse_error_propagation(mat, cov_mat):
   """Implement analytical formula of Lefebvre et al. (1999)

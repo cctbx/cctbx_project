@@ -5,6 +5,7 @@ from scitbx.math import chebyshev_lsq
 from scitbx.math import chebyshev_polynome # implicit import
 from scitbx.math import chebyshev_base # implicit import
 import math
+from six.moves import range
 
 
 def chebyshev_nodes(n,

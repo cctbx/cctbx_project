@@ -12,6 +12,7 @@ from scitbx.array_family import shared
 from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal, show_diff
 from cStringIO import StringIO
+from six.moves import range
 try:
   import cPickle as pickle
 except ImportError:
@@ -1307,7 +1308,7 @@ def exercise_minimization_apply_shifts():
   shifts = flex.double(2, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
     uc, scatterers, shifts).shifted_scatterers
-  for i in xrange(2):
+  for i in range(2):
     assert approx_equal(shifted_scatterers[i].occupancy, -9)
   f = xray.ext.gradient_flags(
     False, False, False, False, True, False, False, False)
@@ -1325,7 +1326,7 @@ def exercise_minimization_apply_shifts():
     uc, scatterers, shifts).shifted_scatterers
   assert approx_equal(shifted_scatterers[0].fp, -11)
   assert shifted_scatterers[1].fp == -10
-  for i in xrange(2):
+  for i in range(2):
     assert shifted_scatterers[i].fdp == scatterers[i].fdp
   f = xray.ext.gradient_flags(
     False, False, False, False, False, True, False, False)
@@ -1376,7 +1377,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(6))
+  xray_gradients = flex.double(range(6))
   geometry_restraints_site_gradients = flex.vec3_double([(1,-2,3),(-4,-5,6)])
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
@@ -1396,7 +1397,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(19))
+  xray_gradients = flex.double(range(19))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1415,7 +1416,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(13))
+  xray_gradients = flex.double(range(13))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1434,7 +1435,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(16))
+  xray_gradients = flex.double(range(16))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1477,7 +1478,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(19))
+  xray_gradients = flex.double(range(19))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1496,7 +1497,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(13))
+  xray_gradients = flex.double(range(13))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1515,7 +1516,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(11))
+  xray_gradients = flex.double(range(11))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1564,7 +1565,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(6))
+  xray_gradients = flex.double(range(6))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1584,7 +1585,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(12))
+  xray_gradients = flex.double(range(12))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,

@@ -8,6 +8,7 @@ from scitbx.array_family import flex
 from scitbx.stdlib import math
 import time, sys
 from fractions import Fraction
+from six.moves import range
 
 def read_data(filename):
   file=open(filename, 'r')

@@ -10,6 +10,7 @@ from libtbx.option_parser import OptionParser
 from libtbx import adopt_init_args
 from libtbx import easy_pickle
 import os
+from six.moves import range
 
 class labeled_fit(object):
 
@@ -40,7 +41,7 @@ def expected_labels(kissel_dir):
     for wk in xray_scattering.wk1995_iterator():
       result.append(wk.label())
   else:
-    for atomic_number in xrange(1,100):
+    for atomic_number in range(1,100):
       result.append(tiny_pse.table(atomic_number).symbol())
   return result
 

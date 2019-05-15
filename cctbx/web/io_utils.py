@@ -8,6 +8,7 @@ import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx import adptbx
 from cctbx.web import cgi_utils
+from six.moves import range
 
 def show_input_symbol(sgsymbol, convention, label="Input"):
   if (sgsymbol != ""):
@@ -33,7 +34,7 @@ def interpret_coordinate_line(line, skip_columns):
   flds = line.split()
   if (len(flds) < skip_columns + 3): raise FormatError(line)
   coordinates = [0,0,0]
-  for i in xrange(3):
+  for i in range(3):
     try: coordinates[i] = float(flds[skip_columns + i])
     except Exception: raise cgi_utils.FormatError
   return " ".join(flds[:skip_columns]), coordinates
@@ -54,7 +55,7 @@ def read_scatterer(flds, default_b_iso=3.0):
       scatterer.scattering_type = eltbx.xray_scattering.get_standard_label(
         label=flds[0], exact=False)
     site = flds[offs : offs + 3]
-    for i in xrange(3):
+    for i in range(3):
       site[i] = float(site[i])
     scatterer.site = site
     scatterer.occupancy = 1.

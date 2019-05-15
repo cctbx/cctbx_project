@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 import random
 import math
 from scitbx.array_family import flex
+from six.moves import range
 
 
 ## This function generates approximately

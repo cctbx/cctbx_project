@@ -13,6 +13,7 @@ import sys, math, StringIO
 import iotbx.pdb
 
 import boost.python
+from six.moves import range
 boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import reindexing_array
 
@@ -304,7 +305,7 @@ class manager(Base_geometry):
       new_site_symmetry_table = self.site_symmetry_table.deep_copy()
       new_site_symmetry_table.reserve(new_site_symmetry_table.indices().size()
                                     + n_additional_sites)
-      for i_seq in xrange(n_additional_sites):
+      for i_seq in range(n_additional_sites):
         new_site_symmetry_table.process(site_symmetry_table.get(i_seq))
       site_symmetry_table = new_site_symmetry_table
     bond_params_table = None

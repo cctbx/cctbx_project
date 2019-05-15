@@ -11,6 +11,7 @@ from libtbx import Auto
 from cStringIO import StringIO
 import traceback
 import sys, os
+from six.moves import range
 op = os.path
 
 def get_master_phil(
@@ -149,7 +150,7 @@ def run_smtbx_ls(mode, cod_id, i_obs, f_obs, xray_structure, params):
     weighting_scheme=smtbx.refinement.least_squares.unit_weighting())
   ls = rm.least_squares()
   if (mode == "simple"):
-    for i_cycle in xrange(params.ls_simple_iterations):
+    for i_cycle in range(params.ls_simple_iterations):
       ls.build_up()
       try:
         ls.solve_and_step_forward()

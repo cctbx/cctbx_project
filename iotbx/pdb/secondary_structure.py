@@ -55,6 +55,7 @@ from iotbx.pdb.hybrid_36 import hy36encode, hy36decode
 import iotbx.cif.model
 import copy
 from libtbx.utils import null_out
+from six.moves import range
 
 
 def lists_have_comment_element(a,b):
@@ -930,7 +931,7 @@ class annotation(structure_base):
     new_sheets = []
     new_h_serial = 0
     new_sheet_id = 0
-    for n_copy in xrange(n_copies):
+    for n_copy in range(n_copies):
       for helix in self.helices:
         new_helix = copy.deepcopy(helix)
         new_helix.erase_hbond_list()

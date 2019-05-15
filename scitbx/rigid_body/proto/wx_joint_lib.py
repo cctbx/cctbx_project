@@ -5,6 +5,7 @@ from scitbx.array_family import flex
 from gltbx import wx_viewer
 import wx
 import sys
+from six.moves import range
 
 class viewer(wx_viewer.show_points_and_lines_mixin):
 
@@ -34,7 +35,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       self.line_colors[line] = color
     self.labels = []
     p,n,s = 0,1,2
-    for ib in xrange(NB):
+    for ib in range(NB):
       self.labels.extend(["p%d"%ib, "n%d"%ib, "s%d"%ib])
       add_line(p, n, (1,0,0))
       add_line(p, s, (0,1,0))

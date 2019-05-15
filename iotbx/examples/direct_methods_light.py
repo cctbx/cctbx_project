@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import range
 #
 # Required input files:
 #   http://journals.iucr.org/c/issues/2001/05/00/vj1132/vj1132Isup2.hkl
@@ -57,7 +58,7 @@ def run():
   input_phases = large_e_values \
     .random_phases_compatible_with_phase_restrictions()
   tangent_formula_phases = input_phases.data()
-  for i in xrange(10):
+  for i in range(10):
     tangent_formula_phases = triplets.apply_tangent_formula(
       amplitudes=large_e_values.data(),
       phases_rad=tangent_formula_phases,

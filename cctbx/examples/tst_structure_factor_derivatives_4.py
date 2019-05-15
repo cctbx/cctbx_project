@@ -13,6 +13,7 @@ import random
 from itertools import count
 from cStringIO import StringIO
 import sys, os
+from six.moves import range
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -59,11 +60,11 @@ def d_target_d_params_finite(d_order, f_obs, xray_structure, eps=1.e-8):
       site_constraints = site_symmetry_ops.site_constraints()
       ips = list(site_constraints.independent_indices)
       if (not scatterer.flags.use_u_aniso()):
-        ips.extend(range(3,7))
+        ips.extend(list(range(3,7)))
       else:
         adp_constraints = site_symmetry_ops.adp_constraints()
         ips.extend([i+3 for i in adp_constraints.independent_indices])
-        ips.extend(range(9,12))
+        ips.extend(list(range(9,12)))
     dx = []
     for ip in ips:
       vs = []
@@ -227,7 +228,7 @@ def run_call_back(flags,
   else:
     use_u_aniso_flags = [False, True]
   if (not flags.tag):
-    for n_scatterers in xrange(2,3+1):
+    for n_scatterers in range(2,3+1):
       for use_u_aniso in use_u_aniso_flags:
         xray_structure = random_structure.xray_structure(
           space_group_info=space_group_info,

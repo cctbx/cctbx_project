@@ -7,6 +7,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.str_utils import show_string
 
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
 from cctbx_geometry_restraints_ext import *
 
@@ -119,7 +120,7 @@ class bond_simple_proxy_registry(proxy_registry_base):
 
   def initialize_table(self):
     proxy_registry_base.initialize_table(self)
-    self.table = [{} for i in xrange(self.n_seq)]
+    self.table = [{} for i in range(self.n_seq)]
 
   def is_proxy_set(self, i_seqs):
     if (i_seqs[1] not in self.table[i_seqs[0]]):

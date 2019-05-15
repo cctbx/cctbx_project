@@ -4,6 +4,7 @@ from cctbx import sgtbx
 from libtbx.utils import format_cpu_times
 import libtbx
 import sys, os
+from six.moves import range
 op = os.path
 
 try:
@@ -12,7 +13,7 @@ except ImportError:
   ccp4io_adaptbx = None
 
 def exercise_230():
-  for space_group_number in xrange(1,231):
+  for space_group_number in range(1,231):
     space_group_info = sgtbx.space_group_info(
       number=space_group_number,
       table_id="A1983")
@@ -87,7 +88,7 @@ def exercise_mmdb_cryst1_interpretation(sgi_hall, pdb_str):
     print()
   else:
     sg = sgtbx.space_group()
-    for i in xrange(mgr.GetNumberOfSymOps()):
+    for i in range(mgr.GetNumberOfSymOps()):
       s = mgr.GetSymOp(Nop=i)
       sg.expand_smx(s)
     sgi = sgtbx.space_group_info(group=sg)
@@ -106,7 +107,7 @@ def exercise_syminfo_lib_pdb_cryst1_recycling():
   #
   import iotbx.pdb.cryst1_interpretation
   n_need_more_special = 0
-  for number in xrange(1,230+1):
+  for number in range(1,230+1):
     for hall,ccp4_symbol in \
           extract_from_symmetry_lib._syminfo_lib_cache[number]:
       sgi_hall = sgtbx.space_group_info(symbol="Hall: "+hall)

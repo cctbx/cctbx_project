@@ -11,6 +11,7 @@ from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 import sys, os
 from mmtbx.monomer_library import pdb_interpretation
+from six.moves import range
 
 # ============================================================
 # Edit notes: show_interactions function is obsolete and removed from GRM

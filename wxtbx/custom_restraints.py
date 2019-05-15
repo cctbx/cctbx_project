@@ -14,6 +14,7 @@ from wx.lib.agw import flatnotebook
 import wx
 from libtbx import str_utils
 import sys
+from six.moves import range
 
 ATOM_SELECTION_BUTTONS = 1
 

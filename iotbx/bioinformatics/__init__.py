@@ -7,6 +7,7 @@ import operator
 import os.path
 import sys
 from functools import reduce
+from six.moves import range
 
 # Wrap lines that are longer than 'width'
 def wrap(text, width):
@@ -2064,7 +2065,7 @@ def random_sequence(n_residues=None,residue_basket=None):
   import random
   s=""
   nn=len(residue_basket)-1
-  for i in xrange(n_residues):
+  for i in range(n_residues):
     id=random.randint(0,nn)
     s+=residue_basket[id]
   return s

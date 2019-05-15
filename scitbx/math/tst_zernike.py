@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx import math
 from scitbx.array_family import flex
 from scitbx.array_family import shared
+from six.moves import range
 
 def tst_nlm():
   nlm_array = math.nlm_array(10)

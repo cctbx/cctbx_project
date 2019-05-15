@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx.rigid_body.essence import tst_tardy
 from scitbx.array_family import flex
 import sys
+from six.moves import range
 
 def run(args):
   if (len(args) == 0):
@@ -20,7 +21,7 @@ def run(args):
   def show_e_tot():
     print("e_tot: %.6g" % (e_pots[-1]+e_kins[-1]))
     sys.stdout.flush()
-  for i_step in xrange(n_dynamics_steps):
+  for i_step in range(n_dynamics_steps):
     tardy_model.dynamics_step(delta_t=delta_t)
     e_pots.append(tardy_model.e_pot())
     e_kins.append(tardy_model.e_kin())

@@ -9,6 +9,7 @@ import libtbx.load_env
 from cStringIO import StringIO
 import math
 import sys, os
+from six.moves import range
 
 flex.set_random_seed(0)
 
@@ -38,7 +39,7 @@ class cos_alpha:
 def df_d_site_finite(h, site_constraints, independent_params, eps=1.e-8):
   result = flex.double()
   independent_params_eps = list(independent_params)
-  for ip in xrange(len(independent_params)):
+  for ip in range(len(independent_params)):
     vs = []
     for signed_eps in [eps, -eps]:
       independent_params_eps[ip] = independent_params[ip] + signed_eps
@@ -54,7 +55,7 @@ def df_d_site_finite(h, site_constraints, independent_params, eps=1.e-8):
 def d2f_d_site_finite(h, site_constraints, independent_params, eps=1.e-8):
   result = flex.double()
   independent_params_eps = list(independent_params)
-  for ip in xrange(len(independent_params)):
+  for ip in range(len(independent_params)):
     vs = []
     for signed_eps in [eps, -eps]:
       independent_params_eps[ip] = independent_params[ip] + signed_eps
@@ -90,7 +91,7 @@ def exercise(structure, out):
     all_params = site_constraints.all_params(
       independent_params=independent_params)
     assert approx_equal(all_params, site)
-    for i_trial in xrange(10):
+    for i_trial in range(10):
       shifted_params = flex.double(independent_params) \
                      + (flex.random_double(size=nip)-0.5)
       shifted_site = site_constraints.all_params(

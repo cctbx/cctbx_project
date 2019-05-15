@@ -9,6 +9,7 @@ from libtbx import Auto, group_args
 from itertools import count
 from math import pi, atan2
 import sys
+from six.moves import range
 
 def delta_estimation_minus_cos(limit, grad, curv):
   return limit/pi * atan2(pi/limit*grad, curv)
@@ -198,7 +199,7 @@ class refinement(object):
     if (p.ix is not None):
       O.plot_samples_ix(stage, p.ix)
     elif (p.ix_auto == "all"):
-      for ix in xrange(O.x.size()):
+      for ix in range(O.x.size()):
         O.plot_samples_ix(stage, ix)
     elif (p.ix_auto == "random"):
       assert p.ix_random.samples_each_scattering_type is not None
@@ -269,7 +270,7 @@ class refinement(object):
     if (x_type == "u"):
       assert p.u_min < p.u_max
       assert p.u_steps > 0
-      for i_step in xrange(p.u_steps+1):
+      for i_step in range(p.u_steps+1):
         u = p.u_min + i_step / p.u_steps * (p.u_max - p.u_min)
         sc.u_iso = u
         y = ys_append()
@@ -293,7 +294,7 @@ class refinement(object):
       dist = xs.unit_cell().distance(sc.site, site_inp)
       assert dist != 0
       x_scale = p.x_radius / dist
-      for i_step in xrange(-p.x_steps//2, p.x_steps//2+1):
+      for i_step in range(-p.x_steps//2, p.x_steps//2+1):
         x = i_step / p.x_steps * 2 * x_scale
         indep[ss_ip] = i_inp + x
         sc.site = ss_constr.all_params(independent_params=indep)
@@ -401,7 +402,7 @@ class refinement(object):
 
   def lbfgs_emulation(O, memory_range=5):
     assert len(O.xfgc_infos) == 1
-    for O.i_step in xrange(O.params.iteration_limit):
+    for O.i_step in range(O.params.iteration_limit):
       if (O.i_step == 0):
         dests = -O.grads
         stp = 1 / O.grads.norm()
@@ -433,7 +434,7 @@ class refinement(object):
       O.termination_remark = " (iteration limit reached)"
 
   def developmental_algorithms(O):
-    for O.i_step in xrange(O.params.iteration_limit):
+    for O.i_step in range(O.params.iteration_limit):
       O.compute_step()
       s = "%4d: %s" % (O.i_step+1, O.format_rms_info())
       if (O.aq_sel_size is not None):
@@ -471,10 +472,10 @@ class refinement(object):
         l = site_symmetry.site_constraints().independent_params(
           all_params=site_limits)
       O.x.extend(flex.double(p))
-      O.x_info.extend([(i_sc,"xyz"[i]) for i in xrange(len(p))])
+      O.x_info.extend([(i_sc,"xyz"[i]) for i in range(len(p))])
       O.dynamic_shift_limits.extend(
         [dynamic_shift_limit_site(width=width) for width in l])
-      for i in xrange(len(p)):
+      for i in range(len(p)):
         O.gact_indices.append(i_all)
         i_all += 1
       #
@@ -676,7 +677,7 @@ class refinement(object):
 
   def build_bfgs_memory(O, active_infos):
     result = []
-    for iinfo in xrange(len(active_infos)-1):
+    for iinfo in range(len(active_infos)-1):
       k = active_infos[iinfo]
       l = active_infos[iinfo+1]
       m = bfgs.memory_element(s=l.x-k.x, y=l.grads-k.grads)
@@ -693,7 +694,7 @@ class refinement(object):
     aq_sel = flex.size_t()
     aq_sel_size_start = 0
     iinfo_active = []
-    for iinfo in xrange(len(O.xfgc_infos)-1,-1,-1):
+    for iinfo in range(len(O.xfgc_infos)-1,-1,-1):
       info = O.xfgc_infos[iinfo]
       if (info.is_iterate):
         if (aq_sel_size_start == 0):

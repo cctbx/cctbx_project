@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from math import pi, sin, cos, asin, sqrt
+from six.moves import range
 try:
   import cPickle as pickle
 except ImportError:
@@ -101,7 +102,7 @@ def exercise_basic():
   assert approx_equal(u.longest_vector_sq(), 3)
   assert approx_equal(u.shortest_vector_sq(), 1)
   p = (2,3,4,80,100,110)
-  for i in xrange(7):
+  for i in range(7):
     u = uctbx.unit_cell(p[:i])
     assert u.parameters() == p[:i] + d[i:]
     v = uctbx.unit_cell(p[:i])
@@ -145,9 +146,9 @@ def exercise_basic():
     u.d_volume_d_params(),
     (11.020033123326023, 7.3466887488840156, 5.5100165616630115,
      0.051324088220620838, -0.051324088220620769, -0.13367230402431379))
-  for alpha in xrange(70,121,10):
-    for beta in xrange(70,121,10):
-      for gamma in xrange(70,121,10):
+  for alpha in range(70,121,10):
+    for beta in range(70,121,10):
+      for gamma in range(70,121,10):
         u = uctbx.unit_cell([7,11,13,alpha, beta, gamma])
         v = uctbx.unit_cell(
           orthogonalization_matrix=u.orthogonalization_matrix())
@@ -156,9 +157,9 @@ def exercise_basic():
 def exercise_unit_cell_angles_are_feasible():
   n = 0
   n15 = 0
-  for a in xrange(0,180+10,10):
-    for b in xrange(0,180+10,10):
-      for g in xrange(0,180+10,10):
+  for a in range(0,180+10,10):
+    for b in range(0,180+10,10):
+      for g in range(0,180+10,10):
         f = uctbx.unit_cell_angles_are_feasible(values_deg=(a,b,g))
         if (f):
           n += 1
@@ -557,9 +558,9 @@ class exercise_is_degenerate(object):
     rnd = random.random
     while 1:
       lengths = [rnd(), rnd(), rnd()]
-      for alpha in xrange(10,180,10):
-        for beta in xrange(10,180,10):
-          for gamma in xrange(10,180,10):
+      for alpha in range(10,180,10):
+        for beta in range(10,180,10):
+          for gamma in range(10,180,10):
             try:
               u = uctbx.unit_cell((2,3,5,alpha,beta,gamma))
             except Exception:
@@ -702,7 +703,7 @@ def exercise_non_crystallographic_unit_cell_with_the_sites_in_its_center():
 def exercise_tensor_rank_2_orth_and_frac_linear_maps():
   from cctbx import adptbx, sgtbx
   p1 = sgtbx.space_group_info('P1')
-  for i in xrange(100):
+  for i in range(100):
     uc = p1.any_compatible_unit_cell(27)
     u_star = matrix.col.random(n=6, a=0, b=1)
     u_iso_ref = adptbx.u_star_as_u_iso(uc, u_star)
