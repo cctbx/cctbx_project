@@ -107,4 +107,4 @@ if __name__=='__main__':
 
   for key in Spotfinder.pd['osc_start'].keys():
     pretty_image_stats(Spotfinder,key)
-  notes(Spotfinder,Spotfinder.pd['osc_start'].keys()[0])
+  notes(Spotfinder,list(Spotfinder.pd['osc_start'].keys())[0])

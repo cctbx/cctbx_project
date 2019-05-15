@@ -57,7 +57,7 @@ class VertexIndexedGraph(object):
   def edges(self):
 
     result = set()
-    result.update( *self._edges_from.values() )
+    result.update( *list(self._edges_from.values()) )
     return result
 
 

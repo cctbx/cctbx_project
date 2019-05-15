@@ -190,7 +190,7 @@ def run(args):
     if ext == ".cif":
       xs_dict = xray.structure.from_cif(file_path=file_path)
       assert len(xs_dict) == 1, "CIF should contain only one xray structure"
-      xs = xs_dict.values()[0]
+      xs = list(xs_dict.values())[0]
       xs.show_summary().show_scatterers()
       print()
       constraints_list = None

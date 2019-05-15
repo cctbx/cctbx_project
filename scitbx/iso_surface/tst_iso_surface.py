@@ -7,6 +7,7 @@ from math import sin
 from scitbx import matrix
 import sys
 import time
+import six
 
 
 class triangulation_test_case(object):
@@ -96,7 +97,7 @@ class triangulation_test_case(object):
     assert not missing, missing
     d = abs(matrix.col(self.grid_cell))
     bad_edge_multiplicities = []
-    for e,p in edges.iteritems():
+    for e,p in six.iteritems(edges):
       v0, v1 = s.vertices[e[0]], s.vertices[e[1]]
       # conservative bound: edges shall be inscribed on voxel faces
       # this is just to catch vertex indexing errors resulting in edges

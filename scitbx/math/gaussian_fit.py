@@ -315,8 +315,8 @@ class minimize_damped_newton(immoptibox_mixin):
 
 def show_minimize_multi_histogram(f=None, reset=True):
   global minimize_multi_histogram
-  minimizer_types = minimize_multi_histogram.keys()
-  counts = flex.double(minimize_multi_histogram.values())
+  minimizer_types = list(minimize_multi_histogram.keys())
+  counts = flex.double(list(minimize_multi_histogram.values()))
   perm = flex.sort_permutation(data=counts, reverse=True)
   minimizer_types = flex.select(minimizer_types, perm)
   counts = counts.select(perm)
