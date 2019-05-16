@@ -284,6 +284,21 @@ def is_atom_group_pair_linked(atom_group1,
     return mon_lib_srv.link_link_id_dict[simple_key], True, simple_key
   return None, None, None
 
+def is_atom_metal_coordinated(lookup,
+                              atom1,
+                              atom2,
+                              ):
+  assert 'metal' in lookup
+  if 'metal'==lookup:
+    metal=atom1
+    other=atom2
+  else:
+    metal=atom2
+    other=atom1
+  # print metal.quote(), other.quote()
+  if other.element.strip()=='C': return False
+  return True
+
 def is_atom_pair_linked(atom1,
                         atom2,
                         distance=None,
@@ -396,7 +411,7 @@ def is_atom_pair_linked(atom1,
     if not linking_setup.skip_if_non_linking(lookup, atom1, atom2):
       return False
     else:
-      return link_metals
+      return is_atom_metal_coordinated(lookup, atom1, atom2)
   #
   # amino acids
   #
