@@ -12,6 +12,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.math_utils import ifloor, iceil
 import mmtbx.f_model
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+from six.moves import range
 
 class run(mmtbx.f_model.manager):
   """
@@ -48,12 +49,12 @@ class run(mmtbx.f_model.manager):
     self.reset_all_scales()
     self.show(prefix = "re-set all scales", log = log)
     if(remove_outliers and not self.twinned()):
-      for iii in xrange(5):
+      for iii in range(5):
         self.remove_outliers(use_model = False, log = None) # XXX
       self.show(prefix = "remove outliers", log = log)
     result = None
     if(self.twinned()):
-      for cycle in xrange(2):
+      for cycle in range(2):
         if(log is not None): print("cycle %d:"%cycle, file=log)
         self.update_twin_fraction()
         self.show(prefix = "update twin fraction", log = log)
@@ -69,7 +70,7 @@ class run(mmtbx.f_model.manager):
     #XXX if(remove_outliers and not self.twinned()):
     #XXX   self.remove_outliers(use_model = True, log = None) # XXX
     if(remove_outliers and not self.twinned()):
-      for iii in xrange(5):
+      for iii in range(5):
         self.remove_outliers(use_model = True, log = None) # XXX
       self.show(prefix = "remove outliers", log = log)
     return result

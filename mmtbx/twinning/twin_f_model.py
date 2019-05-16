@@ -30,6 +30,7 @@ import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import libtbx.path
 import mmtbx.refinement.targets
 import mmtbx.f_model.f_model_info
+from six.moves import range
 
 master_params =  iotbx.phil.parse("""
   twin_law = None
@@ -1398,7 +1399,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     print(" R-values and target values for various twin fractions are listed.", file=self.out)
     print(file=self.out)
     current_twin_fraction = twin_fraction_object(self.twin_fraction_object.twin_fraction)
-    trail_twin_fractions = list( flex.double( range(n+1) )/(2.0*n) )
+    trail_twin_fractions = flex.double( range(n+1) )/(2.0*n)
     rows = []
     for tf in trail_twin_fractions:
       tmp_twin_fraction = twin_fraction_object( tf )

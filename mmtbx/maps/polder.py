@@ -10,6 +10,7 @@ from cctbx.array_family import flex
 from libtbx import group_args
 from libtbx.utils import Sorry
 from libtbx.math_utils import ifloor, iceil
+from six.moves import range
 
 
 master_params_str = """

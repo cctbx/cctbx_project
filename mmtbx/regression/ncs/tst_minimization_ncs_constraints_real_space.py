@@ -10,6 +10,7 @@ import mmtbx.utils
 import iotbx.pdb
 import mmtbx.ncs
 import math
+from six.moves import range
 
 
 pdb_str_answer = """\
@@ -130,8 +131,8 @@ def run(prefix="tst", d_min=1.0):
   nrgl = transforms_obj.get_ncs_restraints_group_list()
   nrgl.update_rot_tran(x=x)
   ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
-  refine_selection = flex.size_t(xrange(transforms_obj.truncated_hierarchy.atoms_size()))
-  for i in xrange(5):
+  refine_selection = flex.size_t(range(transforms_obj.truncated_hierarchy.atoms_size()))
+  for i in range(5):
     data_weight = 1
     tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
       target_function_and_grads_real_space(

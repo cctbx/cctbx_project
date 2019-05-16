@@ -4,6 +4,7 @@ from iotbx.pdb import amino_acid_codes as aac
 from scitbx.math import dihedral_angle
 import six
 from mmtbx.ligands.ready_set_basics import construct_xyz
+from six.moves import range
 
 get_class = iotbx.pdb.common_residue_names_get_class
 

@@ -19,6 +19,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry
 from libtbx import table_utils
 import math
+from six.moves import range
 
 
 class i_sigi_completeness_stats(scaling.xtriage_analysis):
@@ -76,7 +77,7 @@ class i_sigi_completeness_stats(scaling.xtriage_analysis):
       graph_columns=[list(range(1,8))],
       x_is_inverse_d_min=True,
       first_two_columns_are_resolution=True)
-    for ii in xrange(1,len(self.resolution_bins)-1):
+    for ii in range(1,len(self.resolution_bins)-1):
       a = self.resolution_bins[ii-1]
       b = self.resolution_bins[ii]
       row = [ a, b ]
@@ -89,7 +90,7 @@ class i_sigi_completeness_stats(scaling.xtriage_analysis):
     self.resolution_cut = 4.0
     comp_data = cut_completeness(isigi_cut)
     reso=4.0
-    for ii in xrange(1,len(self.resolution_bins)-1):
+    for ii in range(1,len(self.resolution_bins)-1):
       a = self.resolution_bins[ii-1]
       b = self.resolution_bins[ii]
       if b < resolution_at_least:

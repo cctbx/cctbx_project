@@ -11,6 +11,7 @@ import math
 import sys
 import iotbx.phil
 from libtbx import group_args
+from six.moves import range
 
 sigmaa_estimator_params = iotbx.phil.parse("""\
   kernel_width_free_reflections = 100
@@ -152,7 +153,7 @@ class sigmaa_estimator(object):
     self.max_h = flex.max( d_star_cubed_overall )
     self.h_array = None
     if (kernel_in_bin_centers):
-      self.h_array = flex.double( xrange(1,n_sampling_points*2,2) )*(
+      self.h_array = flex.double( range(1,n_sampling_points*2,2) )*(
         self.max_h-self.min_h)/(n_sampling_points*2)+self.min_h
     else:
       self.min_h *= 0.99

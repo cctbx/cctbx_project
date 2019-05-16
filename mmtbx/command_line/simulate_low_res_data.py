@@ -10,6 +10,7 @@ import random
 import math
 import os
 import sys
+from six.moves import range
 
 master_phil = iotbx.phil.parse("""
 simulate_data {
@@ -573,7 +574,7 @@ def add_random_error(f_obs, error_percent):
   data = f_obs.data()
   fr = F.data() * error_percent / 100.
   ri = flex.double()
-  for trial in xrange(data.size()):
+  for trial in range(data.size()):
     r = random.randint(0,1)
     if(r == 0): r = -1
     ri.append(r)

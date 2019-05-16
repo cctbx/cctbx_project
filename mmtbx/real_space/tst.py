@@ -13,6 +13,7 @@ from libtbx.test_utils import approx_equal
 from cctbx import sgtbx
 from libtbx.utils import format_cpu_times
 import mmtbx.f_model
+from six.moves import range
 
 def xray_structure_of_one_atom(site_cart,
                                buffer_layer,
@@ -252,7 +253,7 @@ def run():
                  b            = 3.0,
                  site_cart    = flex.vec3_double([site]),
                  buffer_layer = 3.)
-  for volume_per_atom in range(100,550,100)*10:
+  for volume_per_atom in list(range(100,550,100))*10:
       exercise_2(grid_step    = 0.08,
                  radius       = 1.0,
                  shell        = 0.0,
@@ -269,7 +270,7 @@ def run():
                  d_min        = 0.08,
                  site_cart    = flex.vec3_double([site]),
                  buffer_layer = 3.)
-  for volume_per_atom in range(100,550,100)*5:
+  for volume_per_atom in list(range(100,550,100))*5:
       exercise_4(grid_step    = 0.1,
                  radius       = 0.9,
                  shell        = 0.0,

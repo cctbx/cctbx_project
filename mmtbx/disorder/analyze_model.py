@@ -7,6 +7,7 @@ from libtbx.str_utils import format_value as fv
 from libtbx import Auto, slots_getstate_setstate
 import math
 import sys
+from six.moves import range
 
 # XXX in order to make this run in parallel over many PDB IDs, I need to cheat
 # slightly and substitute pickle-able objects for the original classes in

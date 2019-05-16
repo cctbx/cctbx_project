@@ -4,6 +4,7 @@ import sys
 from mmtbx import bulk_solvent
 from cctbx import adptbx
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 from cctbx import sgtbx
 from mmtbx.bulk_solvent import kbu_refinery
@@ -20,7 +21,7 @@ from libtbx.test_utils import approx_equal
 
 def moving_average(x):
   x_ = x_ = [x[0]] + list(x) + [x[len(x)-1]]
-  for cycle in xrange(5):
+  for cycle in range(5):
     result = x_[:]
     selection = flex.bool(len(result), False)
     for i, s in enumerate(selection):
@@ -28,7 +29,7 @@ def moving_average(x):
         if((result[i-1]<result[i] and result[i+1]<result[i]) or
            (result[i-1]>result[i] and result[i+1]>result[i])):
           selection[i]=True
-    for i in xrange(len(result)):
+    for i in range(len(result)):
       if(i!=0 and i!=len(result)-1 and selection[i]):
         result[i] = (x_[i-1]+x_[i]+x_[i+1])/3.
     x_ = result[:]
@@ -151,7 +152,7 @@ class run(object):
         flex.min(ss),
         flex.max(ss),
         flex.mean(ss)])
-    for cycle in xrange(number_of_cycles):
+    for cycle in range(number_of_cycles):
       r_start = self.r_factor(use_scale=True)
       r_start0 = r_start
       use_scale_r=False

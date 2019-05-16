@@ -10,6 +10,7 @@ from iotbx import reflection_file_reader
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import crystal
+from six.moves import range
 
 class mtz_handler(object):
   '''

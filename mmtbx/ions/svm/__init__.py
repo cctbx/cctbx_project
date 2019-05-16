@@ -32,6 +32,7 @@ from mmtbx.ions.environment import N_SUPPORTED_ENVIRONMENTS
 from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES
 import mmtbx.ions.identify
 from mmtbx.ions.svm import utils
+from six.moves import range
 
 try : # XXX required third-party dependencies
   import numpy as np

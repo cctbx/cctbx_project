@@ -7,6 +7,7 @@ from mmtbx import find_peaks
 from cctbx import xray
 import random
 from mmtbx.dynamics.constants import boltzmann_constant_akma
+from six.moves import range
 
 master_params_str = """\
   tolerance = 1.0
@@ -196,7 +197,7 @@ class manager(object):
                                         distance_cutoff = 10.0)
       existing_sf = self.existing_solvent_xrs.sites_frac()
       cntr = 0
-      for x in xrange(existing_sf.size()):
+      for x in range(existing_sf.size()):
         if existing_sf[x] != closest_distances.sites_frac[x]:
            cntr+=1
            if self.velocities is not None:
@@ -320,7 +321,7 @@ class manager(object):
     mass_oxygen = 16.0
     sigma = (kt / mass_oxygen)**0.5
     random_random()
-    for x in xrange(self.new_solvent_atom_velocities.size()):
+    for x in range(self.new_solvent_atom_velocities.size()):
       self.new_solvent_atom_velocities[x] = [random_gauss(0, sigma) for i in (1,2,3)]
 
   def compare_peaks_with_positions(self):

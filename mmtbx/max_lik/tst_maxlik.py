@@ -13,6 +13,7 @@ from cctbx.development import random_structure
 from cctbx.eltbx.xray_scattering import wk1995
 import random
 import math
+from six.moves import range
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
@@ -26,7 +27,7 @@ def test_1():
   symmetry = crystal.symmetry(unit_cell=(15.67, 25.37, 35.68, 90, 90, 90),
                               space_group_symbol="P 21 21 21")
   structure = xray.structure(crystal_symmetry=symmetry)
-  for k in xrange(1000):
+  for k in range(1000):
     scatterer = xray.scatterer(
                  site = ((1.+k*abs(math.sin(k)))/1000.0,
                          (1.+k*abs(math.cos(k)))/1000.0,
@@ -61,7 +62,7 @@ def test_1():
 # define test set reflections
   flags=flex.bool(f_calc_partial.indices().size(), False)
   k=0
-  for i in xrange(f_calc_partial.indices().size()):
+  for i in range(f_calc_partial.indices().size()):
     k=k+1
     if (k !=10):
       flags[i]=False
@@ -212,7 +213,7 @@ def test_2():
     # define test set reflections
       flags=flex.bool(f_calc_partial.indices().size(), False)
       k=0
-      for i in xrange(f_calc_partial.indices().size()):
+      for i in range(f_calc_partial.indices().size()):
         k=k+1
         if (k !=10):
           flags[i]=False
@@ -413,7 +414,7 @@ def test_4():
    # define test set reflections
    flags=flex.int(beta.size(), 0)
    k=0
-   for i in xrange(flags.size()):
+   for i in range(flags.size()):
      k=k+1
      if (k !=10):
        flags[i]=0

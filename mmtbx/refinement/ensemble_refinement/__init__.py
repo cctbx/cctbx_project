@@ -32,6 +32,7 @@ import math
 import time
 import os
 import sys
+from six.moves import range
 
 # these supersede the defaults in included scopes
 customization_params = iotbx.phil.parse("""
@@ -387,10 +388,9 @@ class run_ensemble_refinement(object):
     # Store block
     self.block_store_cycle_cntr = 0
     self.block_store_cycle = \
-        range(self.acquisition_block_macro_cycles + self.equilibrium_macro_cycles,
+        list(range(self.acquisition_block_macro_cycles + self.equilibrium_macro_cycles,
               self.acquisition_block_macro_cycles + self.total_macro_cycles,
-              self.acquisition_block_macro_cycles
-              )
+              self.acquisition_block_macro_cycles))
     # Store pdb
     self.pdb_store_cycle = max(int(self.acquisition_block_macro_cycles \
                          / self.params.pdb_stored_per_block), 1)
@@ -1005,7 +1005,7 @@ class run_ensemble_refinement(object):
                                            out  = self.log)
 
     else:
-      for fit_cycle in xrange(self.params.max_ptls_cycles):
+      for fit_cycle in range(self.params.max_ptls_cycles):
         fit_tlsos = mmtbx.tls.tools.generate_tlsos(
           selections     = tls_selection_no_sol_hd_exclusions,
           xray_structure = model_copy.get_xray_structure(),
@@ -1083,7 +1083,7 @@ class run_ensemble_refinement(object):
           if include_flag and not hd_selection[i_seq]:
             include_i_seq.append(i_seq)
         tls_selection_no_sol_hd_exclusions = []
-        for group in xrange(len(tls_selection_no_sol_hd)):
+        for group in range(len(tls_selection_no_sol_hd)):
           new_group = flex.size_t()
           for x in tls_selection_no_sol_hd[group]:
             if x in include_i_seq:
@@ -1263,7 +1263,7 @@ class run_ensemble_refinement(object):
     self.fmodel_total.set_scale_switch = 0
     print('  {0:>17} {1:>8} {2:>8}'\
       .format('Block range','Rwork','Rfree','k1'), file=self.log)
-    for x in xrange(len(self.fmodel_total_block_list)):
+    for x in range(len(self.fmodel_total_block_list)):
       x2 = x+1
       y = len(self.fmodel_total_block_list)
       while y > x:
@@ -1323,7 +1323,7 @@ class run_ensemble_refinement(object):
     self.er_data.xray_structures_diff_map =[]
     self.er_data.pdb_hierarchys  = []
     self.er_data.ke_pdb          = []
-    for x in xrange(len(self.fmodel_total_block_list)):
+    for x in range(len(self.fmodel_total_block_list)):
       if x >= best_r_work_block[0] and x < best_r_work_block[1]:
         print("Block | Number of models in block : ", x+1, " | ", len(self.fmodel_total_block_list[x][2]), file=self.log)
         self.er_data.xray_structures.extend(self.fmodel_total_block_list[x][2])

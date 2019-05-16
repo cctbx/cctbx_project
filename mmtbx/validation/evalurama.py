@@ -6,6 +6,7 @@ from libtbx.utils import null_out
 from mmtbx.rotamer import ramachandran_eval
 import numpy as np
 from libtbx import easy_mp
+from six.moves import range
 
 
 master_phil_str = """\

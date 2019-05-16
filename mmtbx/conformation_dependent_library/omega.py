@@ -10,6 +10,7 @@ from mmtbx.conformation_dependent_library.multi_residue_class import \
 from mmtbx.conformation_dependent_library.omega_database import omega_database
 
 from mmtbx.conformation_dependent_library.cdl_utils import get_res_type_group
+from six.moves import range
 
 columns = [
   "",

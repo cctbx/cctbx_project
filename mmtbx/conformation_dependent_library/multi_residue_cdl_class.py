@@ -10,6 +10,7 @@ from mmtbx.conformation_dependent_library.cdl_utils import \
 from mmtbx.conformation_dependent_library.cdl_setup import columns
 
 from cctbx.geometry_restraints.linking_class import linking_class
+from six.moves import range
 origin_ids = linking_class()
 
 class ThreeProteinResiduesWithCDL(ThreeProteinResidues):

@@ -5,6 +5,7 @@ import time
 from cctbx.array_family import flex
 from scitbx.math import superpose
 from mmtbx.conformation_dependent_library import mcl_sf4_coordination
+from six.moves import range
 
 def get_pdb_hierarchy_from_restraints(code):
   from mmtbx.monomer_library import server

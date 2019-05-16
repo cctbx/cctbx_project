@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import Exception_expected
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_run
+from six.moves import range
 
 def exercise_main():
   from mmtbx.refinement import select_best_starting_model

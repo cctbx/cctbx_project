@@ -9,6 +9,7 @@ import mmtbx.secondary_structure
 from mmtbx import bulk_solvent
 from libtbx.test_utils import approx_equal
 from mmtbx import masks
+from six.moves import range
 
 class real_space_group_adp_refinery_via_reciprocal_space(object):
   def __init__(self,

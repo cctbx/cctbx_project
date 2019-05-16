@@ -10,6 +10,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate
 import math
 import sys
+from six.moves import range
 
 def get_calphas(pdb_hierarchy):
   n_models = pdb_hierarchy.models_size()

@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import mmtbx.refinement.real_space.individual_sites
 import random
+from six.moves import range
 
 class run(object):
   def __init__(
@@ -50,12 +51,12 @@ of individual sites.
     if(len(result)>0):
       if len(result) <= n_ranges:
         # just try them all, no need to randomize
-        random_chunks = range(len(result))
+        random_chunks = list(range(len(result)))
       else:
         while len(random_chunks) <= n_ranges:
           # Put only unique choices until got enough lenght.
           # Could be slightly slow when len(random_chunks) slightly > n_ranges
-          rc = random.choice(xrange(len(result)))
+          rc = random.choice(range(len(result)))
           if rc not in random_chunks:
             random_chunks.append(rc)
     self.msg_strings.append("random chunks:"%random_chunks)

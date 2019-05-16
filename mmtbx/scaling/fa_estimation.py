@@ -7,6 +7,7 @@ import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling, relative_scaling
 from mmtbx.scaling import pair_analyses
 import sys
+from six.moves import range
 
 
 class combined_scaling(object):

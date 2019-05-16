@@ -10,6 +10,7 @@ from scitbx.minimizers import newton_more_thuente_1994
 from scitbx import matrix
 import math
 import sys
+from six.moves import range
 
 # 2009-04-15, cctbx svn rev. 8940:
 #   there are no unit tests for this module, but is is used by these commands:

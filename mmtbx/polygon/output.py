@@ -2,7 +2,9 @@ from __future__ import absolute_import, division, print_function
 import sys
 from mmtbx import polygon, model_vs_data
 from math import pi, cos, sin, radians, degrees, floor
+
 import six
+from six.moves import range
 
 stat_names = dict(zip(polygon.keys_to_show, polygon.key_captions))
 stat_formats = { "r_work" : "%.4f",

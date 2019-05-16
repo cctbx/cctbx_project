@@ -4,6 +4,7 @@ from libtbx import group_args
 from libtbx.utils import user_plus_sys_time
 from mmtbx.refinement.real_space import individual_sites
 import mmtbx
+from six.moves import range
 
 pdb_str_answer = """\
 CRYST1   23.136   23.980   28.180  90.00  90.00  90.00 P 1
@@ -538,7 +539,7 @@ def exercise():
   assert flex.mean(d)>0.7
   #
   xrs_refined = xrs_poor
-  for i in xrange(3):
+  for i in range(3):
     ero = individual_sites.easy(
       map_data                    = map_data,
       xray_structure              = xrs_refined,

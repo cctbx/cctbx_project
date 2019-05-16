@@ -16,6 +16,7 @@ import iotbx
 import math
 import iotbx.pdb.remark_3_interpretation
 from scitbx.linalg import eigensystem
+from six.moves import range
 
 def combine_tls_and_u_local(xray_structure, tls_selections, tls_groups):
   assert len(tls_selections) == len(tls_groups)
@@ -502,7 +503,7 @@ class tls_xray_target_minimizer(object):
     T_min = []
     L_min = []
     S_min = []
-    for j in xrange(self.n_groups):
+    for j in range(self.n_groups):
       if (self.refine_T):
         self.T_min[j] = tuple(self.x)[i:i+self.dim_T]
         i += self.dim_T
@@ -895,9 +896,9 @@ def finite_differences_grads_of_xray_target_wrt_tls(target_functor,
                                                     delta=0.00001):
   fmodel = target_functor.manager
   derivative_T = []
-  for j in xrange(len(T)):
+  for j in range(len(T)):
     dT = []
-    for i in xrange(6):
+    for i in range(6):
       target_values = []
       for d_sign in (-1, 1):
         T_ = []
@@ -926,9 +927,9 @@ def finite_differences_grads_of_xray_target_wrt_tls(target_functor,
     derivative_T.append(dT)
 
   derivative_L = []
-  for j in xrange(len(L)):
+  for j in range(len(L)):
     dL = []
-    for i in xrange(6):
+    for i in range(6):
       target_values = []
       for d_sign in (-1, 1):
         L_ = []
@@ -957,9 +958,9 @@ def finite_differences_grads_of_xray_target_wrt_tls(target_functor,
     derivative_L.append(dL)
 
   derivative_S = []
-  for j in xrange(len(L)):
+  for j in range(len(L)):
     dS = []
-    for i in xrange(9):
+    for i in range(9):
       target_values = []
       for d_sign in (-1, 1):
         S_ = []
@@ -1008,13 +1009,13 @@ def u_cart_from_ensemble(models):
     xyz_all.append(m.atoms().extract_xyz())
   n_atoms = xyz_all[0].size()
   xyz_atoms_all = []
-  for i in xrange(n_atoms):
+  for i in range(n_atoms):
     xyz_atoms = flex.vec3_double()
     for xyzs in xyz_all:
       xyz_atoms.append(xyzs[i])
     xyz_atoms_all.append(xyz_atoms)
   result = flex.sym_mat3_double()
-  for i in xrange(n_atoms):
+  for i in range(n_atoms):
     result.append(u_cart_from_xyz(sites_cart=xyz_atoms_all[i]))
   return result
 
@@ -1126,7 +1127,7 @@ class u_tls_vs_u_ens(object):
     xyz_atoms_all = all_vs_all(xyz_all = xyz_all)
     ###
     self.u_cart_ens = flex.sym_mat3_double()
-    for i in xrange(n_atoms):
+    for i in range(n_atoms):
       self.u_cart_ens.append(u_cart_from_xyz(sites_cart=xyz_atoms_all[i]))
     u1 = self.u_cart_tls.as_double()
     u2 = self.u_cart_ens.as_double()
@@ -1162,7 +1163,7 @@ class u_tls_vs_u_ens(object):
       uD = R.transpose()*u*R
       result = R*(uD+eps)*R.transpose()
       tmp = R*uD*R.transpose()
-      for i in xrange(6):
+      for i in range(6):
         assert approx_equal(tmp[i], u[i])
       return R*(uD+eps)*R.transpose()
 
@@ -1170,12 +1171,12 @@ class u_tls_vs_u_ens(object):
     self.CC=0
     n1,n2,d1,d2=0,0,0,0
     for u1, u2 in zip(self.u_cart_tls, self.u_cart_ens):
-      for i in xrange(6):
+      for i in range(6):
         n1 += abs(u1[i]-u2[i])
         d1 += (abs(u1[i])+abs(u2[i]))
       u1 = add_const(u=u1)
       u2 = add_const(u=u2)
-      for i in xrange(6):
+      for i in range(6):
         n2 += abs(u1[i]-u2[i])
         d2 += (abs(u1[i])+abs(u2[i]))
       iu1 = u1.inverse()
@@ -1192,11 +1193,11 @@ class u_tls_vs_u_ens(object):
     self.r = self.R1
     #
     ###
-    for i in xrange(n_atoms):
+    for i in range(n_atoms):
       ut=["%8.5f"%u for u in self.u_cart_tls[i]]
       ue=["%8.5f"%u for u in self.u_cart_ens[i]]
       if(assert_similarity):
-        for j in xrange(6):
+        for j in range(6):
           assert approx_equal(abs(float(ut[j])), abs(float(ue[j])), 1.e-3)
     #
     if(write_pdb_files):

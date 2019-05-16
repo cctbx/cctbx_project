@@ -55,6 +55,8 @@ from mmtbx.validation.sequence import validation as sequence_validation
 
 import boost.python
 import six
+from six.moves import range
+
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.rotamer.rotamer_eval import RotamerEval

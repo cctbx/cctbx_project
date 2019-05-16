@@ -25,6 +25,7 @@ from cctbx import eltbx
 
 import scitbx.math
 from libtbx.utils import null_out
+from six.moves import range
 
 def setup_test(pdb_answer, pdb_poor, i_pdb, d_min, resolution_factor,
                pdb_for_map = None):
@@ -810,7 +811,7 @@ class score(object):
     sz = len(vals)
     if(sz>3):
       deltas = []
-      for i in xrange(sz):
+      for i in range(sz):
         if(i+1<sz and i>1):
           e1=abs(vals[i])
           e2=abs(vals[i+1])

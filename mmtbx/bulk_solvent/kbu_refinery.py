@@ -6,6 +6,7 @@ from scitbx import lbfgs as scitbx_lbfgs
 from libtbx import adopt_init_args
 import random
 from mmtbx import bulk_solvent
+from six.moves import range
 
 def lbfgs_run(target_evaluator,
               min_iterations=0,
@@ -287,7 +288,7 @@ class tgc(object):
 
   def minimize_u(self, n_cycles=5):
     #print "minimize_u, r:", self.kbu.r_factor()
-    for it in xrange(n_cycles):
+    for it in range(n_cycles):
       start_r = self.kbu.r_factor()
       save_b_cart = self.kbu.b_cart()
       self.set_refine_u()

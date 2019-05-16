@@ -3,11 +3,12 @@ import math
 import scitbx.math
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 def halton_x(n=100):
   halton_object = scitbx.math.halton(1)
   x = flex.double()
-  for ii in xrange(n):
+  for ii in range(n):
     x.append( halton_object.nth_given_base(3,ii) )
   return x
 
@@ -116,7 +117,7 @@ def log_p(z,sigz,centric_flag,n=40,lim=5.0):
 
 def test():
   sigz = 0.000050
-  for ii in xrange(600):
+  for ii in range(600):
     z = ii/50.0 +0.3
     pac = log_p(z=z,sigz=sigz,centric_flag=False,n=20)
     pcc = log_p(z=z,sigz=sigz,centric_flag=True,n=20)

@@ -6,6 +6,7 @@ from gltbx import wx_viewer
 from libtbx.option_parser import libtbx_option_parser
 import wx
 import sys
+from six.moves import range
 
 class viewer(wx_viewer.show_points_and_lines_mixin):
 
@@ -25,7 +26,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       need_m = (app.pdb_hierarchy.models_size() != 1)
       for mdl in app.pdb_hierarchy.models():
         if (need_m): m = mdl.id.strip() + ":"
-        for i in xrange(mdl.atoms_size()):
+        for i in range(mdl.atoms_size()):
           O.labels.append(m+str(i))
       assert len(O.labels) == O.points.size()
     else:

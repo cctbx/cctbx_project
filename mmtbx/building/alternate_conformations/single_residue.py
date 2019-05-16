@@ -22,6 +22,7 @@ from libtbx import easy_mp
 from cStringIO import StringIO
 import time
 import sys
+from six.moves import range
 
 build_params_str = """
   expected_occupancy = None

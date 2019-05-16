@@ -4,6 +4,7 @@ from libtbx import phil
 import libtbx.phil.command_line
 import iotbx.pdb
 from libtbx.utils import Sorry
+from six.moves import range
 
 master_phil_string = """
 

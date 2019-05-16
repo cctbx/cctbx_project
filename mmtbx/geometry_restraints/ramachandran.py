@@ -9,6 +9,7 @@ import boost.python
 from scitbx.array_family import flex
 from mmtbx.validation import ramalyze
 from mmtbx.conformation_dependent_library import generate_protein_threes
+from six.moves import range
 
 ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
 from mmtbx_ramachandran_restraints_ext import lookup_table, \

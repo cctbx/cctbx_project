@@ -14,6 +14,7 @@ import random
 import math
 import sys
 import iotbx.phil
+from six.moves import range
 
 def random_velocities(
       masses,

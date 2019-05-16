@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx import group_args, adopt_init_args
 import sys
 import mmtbx.refinement.real_space
+from six.moves import range
 
 #-----------------------------------------------------------------------
 # MODEL UTILITIES
@@ -649,7 +650,7 @@ class box_build_refine_base(object):
       chirality          = chirality,
       planarity          = planarity)
     site_labels = self.box.xray_structure_box.scatterers().extract_labels()
-    for i in xrange(number_of_macro_cycles):
+    for i in range(number_of_macro_cycles):
       sites_cart = self.box.xray_structure_box.sites_cart()
       exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
         ignore_line_search_failed_step_at_lower_bound = True)

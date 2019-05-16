@@ -7,6 +7,7 @@ from scitbx import lbfgs
 from libtbx.str_utils import format_value, make_sub_header
 from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
+from six.moves import range
 
 class manager(object):
   def __init__(self, fmodels,
@@ -66,7 +67,7 @@ class manager(object):
           par_initial.append(val)
         constrained_groups_selections.append(ss)
       minimized = None
-      for macro_cycle in xrange(number_of_macro_cycles):
+      for macro_cycle in range(number_of_macro_cycles):
         if(minimized is not None): par_initial = minimized.par_min
         minimized = minimizer(
           fmodels                       = fmodels,

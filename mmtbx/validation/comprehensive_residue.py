@@ -4,6 +4,7 @@ from mmtbx.validation import ramalyze
 from mmtbx.validation import rotalyze
 import boost.python
 import sys
+from six.moves import range
 
 ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
 

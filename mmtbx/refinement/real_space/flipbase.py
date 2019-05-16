@@ -6,6 +6,7 @@ from iotbx import file_reader
 from mmtbx.refinement.real_space import individual_sites
 import mmtbx
 import libtbx.phil.command_line
+from six.moves import range
 
 master_phil = libtbx.phil.parse("""
 flip_base {

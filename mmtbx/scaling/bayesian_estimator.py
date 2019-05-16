@@ -61,6 +61,7 @@ from scitbx import matrix
 from cctbx.array_family import flex
 from copy import deepcopy
 from libtbx.utils import Sorry,null_out
+from six.moves import range
 
 pi=2.*math.atan2(1.,0.)
 
@@ -234,10 +235,10 @@ class bayesian_estimator:
   def smooth_list(self,bin_value_list,bin,local_window,is_matrix=False):
     # smooth each entry in value_list[bin] with local window.
     new_entry_list=[]
-    for i in xrange(len(bin_value_list[bin])): # one entry at a time
+    for i in range(len(bin_value_list[bin])): # one entry at a time
       sum=0.
       sumn=0.
-      for local_bin in xrange(max(0,bin-local_window),
+      for local_bin in range(max(0,bin-local_window),
         min(bin+local_window+1,len(bin_value_list))): # XXX necessary?
         sumn+=1.
         if is_matrix:
@@ -265,7 +266,7 @@ class bayesian_estimator:
     if records is None or len(records)<2: return None,None
 
     list_of_vectors=[]
-    for i in xrange(len(records[0])-1):
+    for i in range(len(records[0])-1):
      list_of_vectors.append(flex.double())
     for record in records:
       values=record[1:]  # skip the y-value at the start
@@ -330,14 +331,14 @@ class bayesian_estimator:
     assert self.full_range > 0.
     self.delta_range=self.full_range/self.n_bin
     print("Delta range: ",self.delta_range, file=self.out)
-    self.bins=xrange(self.n_bin)
+    self.bins=range(self.n_bin)
 
     # 2014-11-13 also get range for x-values
     n=len(self.record_list[0])-1
     self.record_list_range_low=n*[None]
     self.record_list_range_high=n*[None]
     for record in self.record_list:
-      for i in xrange(n):
+      for i in range(n):
         ii=i+1
         if self.record_list_range_low[i] is None or \
              record[ii]<self.record_list_range_low[i]:
@@ -346,7 +347,7 @@ class bayesian_estimator:
              record[ii]>self.record_list_range_high[i]:
              self.record_list_range_high[i]=record[ii]
     print("Range for predictor variables:", file=self.out)
-    for i in xrange(n):
+    for i in range(n):
       print("%d:  %7.2f - %7.2f " %(
           i,self.record_list_range_low[i],self.record_list_range_high[i]), file=self.out)
 
@@ -441,7 +442,7 @@ class bayesian_estimator:
     perfect_data=flex.double()
     data_record_list=[]
     record_list=[]
-    for i in xrange(n):
+    for i in range(n):
       u=float(i)*1000./float(n)
       record=[]
       pp=u/100.
@@ -536,7 +537,7 @@ class bayesian_estimator:
    # create some training data. First value=target, rest are predictor variables
    record_list=[]
    random.seed(iseed)
-   for i in xrange(1000):
+   for i in range(1000):
     y=float(i)/100.
     x1=y+random.gauss(1.,.5)
     x2=y+random.gauss(-2.,.8)
@@ -553,7 +554,7 @@ class bayesian_estimator:
    # (just predictor variables, save target y for comparison)
    obs_record_list=[]
    target_y_list=[]  # just for comparison
-   for i in xrange(200):
+   for i in range(200):
     y=float(i)/20.
     x1=y+random.gauss(1.,.5)
     x2=y+random.gauss(-2.,.8)
@@ -651,7 +652,7 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
         spl=spl[len(skip_columns):]
       xx=[]
       info=spl[:n_info]
-      for i in xrange(1,n_info):
+      for i in range(1,n_info):
         info[i]=float(info[i])
       for x in spl[n_info:]:
         if x.lower() in ["-1","-1.000","None","none"]:
@@ -818,7 +819,7 @@ class estimator_group:
           "the number \nof predictor variables in data records(%d)" %(
             n_predictors))
 
-      combinations=self.get_combinations(list(xrange(n_predictors)))
+      combinations=self.get_combinations(list(range(n_predictors)))
       for combination in combinations:
        estimator=self.get_estimator(
           record_list=local_record_list,columns=combination)
@@ -927,7 +928,7 @@ class estimator_group:
 
     column_chooser=[]
     n=max(columns)
-    for x in xrange(n+1):
+    for x in range(n+1):
       if x in columns:
         column_chooser.append(True)
       else:
@@ -964,7 +965,7 @@ class estimator_group:
     elif len(all_together)==1: return [all_together]
     else:  # return all sub_combinations
       combinations=[all_together]
-      for n in xrange(len(all_together)):
+      for n in range(len(all_together)):
         for x in self.get_combinations(all_together[:n]+all_together[n+1:]):
           if not x in combinations:
             combinations.append(x)
@@ -992,7 +993,7 @@ class estimator_group:
     # figure out which data are present and select the appropriate estimator
     columns=[]
     values=[]
-    for x,n in zip(value_list,xrange(len(value_list))):
+    for x,n in zip(value_list,range(len(value_list))):
       if x is not None:
         columns.append(n)
         values.append(x)
@@ -1411,7 +1412,7 @@ def run_jacknife(args=None,no_jump=True,
   from cctbx.array_family import flex
   target_list=flex.double()
   result_list=flex.double()
-  for i in xrange(len(record_list)):
+  for i in range(len(record_list)):
     if n_jump*(i//n_jump)!=i: continue
     target,value=jacknife(record_list,i,skip_covariance=skip_covariance,
         out=out)

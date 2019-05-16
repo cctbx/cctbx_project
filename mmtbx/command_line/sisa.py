@@ -9,6 +9,7 @@ from cctbx.array_family import flex
 from libtbx.easy_mp import pool_map
 import math
 import sys,os
+from six.moves import range
 
 def read_input(args):
   from mmtbx.sisa.optimize.mod_input import process_input

@@ -5,6 +5,7 @@ import mmtbx.model
 from cctbx.array_family import flex
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 #-----------------------------------------------------------------------------
 # Finite difference test for modified gradients of riding H
@@ -48,7 +49,7 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
   ey = [0,eps,0]
   ez = [0,0,eps]
   g_fd = flex.vec3_double()
-  for i_site in xrange(sites_cart.size()):
+  for i_site in range(sites_cart.size()):
     g_fd_i = []
     for e in [ex,ey,ez]:
       ts = []
@@ -56,7 +57,7 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
         sites_cart_ = sites_cart.deep_copy()
         xray_structure_ = xray_structure.deep_copy_scatterers()
         sites_cart_[i_site] = [
-          sites_cart_[i_site][j]+e[j]*sign for j in xrange(3)]
+          sites_cart_[i_site][j]+e[j]*sign for j in range(3)]
         xray_structure_.set_sites_cart(sites_cart_)
         # after shift, recalculate H position
         riding_h_manager.idealize(

@@ -3,6 +3,7 @@ import scitbx.array_family.flex
 from scitbx.array_family import flex
 
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_alignment_ext")
 
 """
@@ -148,17 +149,17 @@ class align(ext.align):
 
     elif self.style=="local":
       (best,ii,jj) = (self.M[0,0],0,0)
-      for i in xrange(self.m+1):
-        for j in xrange(self.n+1):
+      for i in range(self.m+1):
+        for j in range(self.n+1):
           if self.M[i,j]>best: (best,ii,jj) = (self.M[i,j],i,j)
       return (ii,jj)
 
     else: # NO_END_GAPS, search edges of matrix
       (best,ii,jj) = (self.M[0,0],0,0)
-      for i in xrange(self.m+1):
+      for i in range(self.m+1):
         j = self.n
         if self.M[i,j]>best: (best,ii,jj) = (self.M[i,j],i,j)
-      for j in xrange(self.n+1):
+      for j in range(self.n+1):
         i = self.m
         if self.M[i,j]>best: (best,ii,jj) = (self.M[i,j],i,j)
       return (ii,jj)
@@ -183,14 +184,14 @@ class align(ext.align):
         elif E[i,j]==0: mcap('m'); i -= 1; j -= 1
       while i>0: mcap('d'); i -= 1
       while j>0: mcap('i'); j -= 1
-      F,G = range(len(self.seq_a)), range(len(self.seq_b))
+      F,G = list(range(len(self.seq_a))), list(range(len(self.seq_b)))
     else:
       (p,q) = (i,j)
       while M[i,j]>0:
         if E[i,j]==-1: mcap('i'); j -= 1
         elif E[i,j]==1: mcap('d'); i -= 1
         elif E[i,j]==0: mcap('m'); i -= 1; j -= 1
-      F,G = range(i,p+1),range(j,q+1) # sub-sequences
+      F,G = list(range(i,p+1)),list(range(j,q+1)) # sub-sequences
     match_codes.reverse()
     match_codes = "".join(match_codes)
 
@@ -302,8 +303,8 @@ class alignment(object):
     bot_str = (bottom_name+" "*8)[0:8]
     ruler = ""
     count=0
-    for ii in xrange(n_block):
-      for jj in xrange(block_size):
+    for ii in range(n_block):
+      for jj in range(block_size):
         count += 1
         ruler += "%s"%( count%10 )
       ruler+="     "
@@ -324,7 +325,7 @@ class alignment(object):
 
       # top
       print(top_str+"     ", end=' ', file=out)
-      for ii in xrange(n_block):
+      for ii in range(n_block):
         start=offset+ii*block_size
         stop=offset+(ii+1)*block_size
         if stop > n:
@@ -336,7 +337,7 @@ class alignment(object):
 
       #middle
       print("             ", end=' ', file=out)
-      for ii in xrange(n_block):
+      for ii in range(n_block):
         start=offset+ii*block_size
         stop=offset+(ii+1)*block_size
         if stop > n:
@@ -349,7 +350,7 @@ class alignment(object):
 
       # bottom
       print(bot_str+"     ", end=' ', file=out)
-      for ii in xrange(n_block):
+      for ii in range(n_block):
         start=offset+ii*block_size
         stop=offset+(ii+1)*block_size
         if stop > n:

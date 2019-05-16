@@ -17,6 +17,7 @@ from libtbx import adopt_init_args, Auto
 from libtbx.utils import Sorry
 from libtbx import easy_mp
 import sys
+from six.moves import range
 
 ringer_phil_str = """
 sampling_angle = 5
@@ -284,7 +285,7 @@ class iterate_over_residues(object):
       results_ = easy_mp.pool_map(
         processes=params.nproc,
         fixed_func=self.__sample_density,
-        args=range(len(self.residue_groups)))
+        args=list(range(len(self.residue_groups))))
       # now flatten it out
       self.results = []
       for result_list in results_ : self.results.extend(result_list)

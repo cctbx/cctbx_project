@@ -16,6 +16,7 @@ from libtbx.str_utils import format_value
 from libtbx import table_utils
 import math
 import sys
+from six.moves import range
 
 class gamma_protein(object):
   __slots__ = [

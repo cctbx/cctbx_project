@@ -18,6 +18,7 @@ import libtbx.phil
 import os.path
 import time
 import sys
+from six.moves import range
 
 structure_params_str = """
   structure
@@ -412,7 +413,7 @@ class table_one(iotbx.table_one.table):
     self.output_files = []
     make_header("Running data analysis and validation", out=out)
     results = easy_mp.parallel_map(
-      iterable=range(len(self.params.structure)),
+      iterable=list(range(len(self.params.structure))),
       func=self.run_single_structure,
       processes=params.multiprocessing.nproc,
       method=params.multiprocessing.technology,

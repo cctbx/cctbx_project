@@ -10,6 +10,7 @@ from scitbx.math import dihedral_angle
 # from scitbx.matrix import _dihedral_angle # python implementation, but on flex arrays
 
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 
@@ -263,7 +264,7 @@ def find_nearest_non_outlier_region(phi_psi_pair, r, rama_key):
   def spiral(N, M):
       x,y = 0,0
       dx, dy = 0, -1
-      for dumb in xrange(N*M):
+      for dumb in range(N*M):
           if abs(x) == abs(y) and [dx,dy] != [1,0] or x>0 and y == 1-x:
               dx, dy = -dy, dx            # corner, change direction
           if abs(x)>N/2 or abs(y)>M/2:    # non-square

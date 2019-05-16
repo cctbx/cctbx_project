@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 from cctbx import miller
 
@@ -52,7 +53,7 @@ class init(object): # XXX PVA: Why Fobs, HL and r_free_flags are not here?
     # assemble f_bulk
     f_bulk_data = flex.complex_double(f_calc.data().size(), 0)
     assert len(self.k_masks) == len(self.f_masks)
-    for i in xrange(len(self.k_masks)):
+    for i in range(len(self.k_masks)):
       f_bulk_data += self.k_masks[i]*self.f_masks[i].data()
     #
     self.data = ext.data(

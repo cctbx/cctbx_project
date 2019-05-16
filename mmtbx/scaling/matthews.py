@@ -6,6 +6,7 @@ from __future__ import absolute_import, division, print_function
 from mmtbx import scaling
 import math
 import sys
+from six.moves import range
 
 log_p_solc = None
 def get_log_p_solc():

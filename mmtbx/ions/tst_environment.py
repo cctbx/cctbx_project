@@ -14,6 +14,7 @@ import libtbx.load_env
 from collections import OrderedDict, Counter
 import os
 import sys
+from six.moves import range
 
 
 def exercise():
@@ -196,7 +197,7 @@ def exercise():
     assert len(metals) == len(expected_environments)
 
     for index, metal, expected_environment in \
-      zip(xrange(len(metals)), metals, expected_environments):
+      zip(range(len(metals)), metals, expected_environments):
       env = ChemicalEnvironment(
         metal,
         manager.find_nearby_atoms(metal, filter_by_two_fofc = False),

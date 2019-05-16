@@ -13,6 +13,7 @@ import mmtbx.tls.tools
 from mmtbx.tls.decompose import decompose_tls_matrices
 from libtbx.utils import multi_out
 from libtbx import adopt_init_args
+from six.moves import range
 
 def print_step(s, log):
   n = 79-len(s)
@@ -64,7 +65,7 @@ def truncate(m, eps=1.e-8):
     if(not type(m) is matrix.sqr):
       raise Sorry("truncate: arg must be matrix.sqr")
     x = [m[0],m[1],m[2], m[3],m[4],m[5], m[6],m[7],m[8]]
-    for i in xrange(len(x)):
+    for i in range(len(x)):
       if(x[i]<0 and abs(x[i])<eps): x[i]=0
     return matrix.sqr(
       [x[0], x[1], x[2],
@@ -581,7 +582,7 @@ class run(object):
   def eigen_system_default_handler(self, m, suffix):
     ###
     def zero(x, e):
-      for i in xrange(len(x)):
+      for i in range(len(x)):
         if(abs(x[i])<e): x[i]=0
       return x
     ###

@@ -9,6 +9,7 @@ import libtbx.load_env
 import libtbx.test_utils
 
 import mmtbx.superpose as superpose
+from six.moves import range
 
 if (1):
   # Fix random seed to avoid rare failures
@@ -109,7 +110,7 @@ class SuperposeTest(unittest.TestCase):
     # OK!
     def test_alignment_used_2(self, filename='fab_a_cut.pdb', test='test_alignment_used_2', tolerance=0.003):
       filename = get_filename(filename)
-      for attempt in xrange(1):
+      for attempt in range(1):
         filename_shifted = '%s.%s.shifted.pdb'%(test, attempt)
         gap_selection = "chain A and (resid %s:%s or resid %s:%s or resid %s:%s)"%(tuple(
           random_pair(0, 15)+

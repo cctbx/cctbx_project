@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import mmtbx.bulk_solvent
 from scitbx.array_family import flex
 import math, time
+from six.moves import range
 
 def run(nref, k, b, k_start, b_start):
   data = flex.double()

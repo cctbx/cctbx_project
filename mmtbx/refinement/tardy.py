@@ -13,6 +13,7 @@ from libtbx.utils import Sorry
 from libtbx.str_utils import format_value, show_string
 from libtbx import group_args
 import os
+from six.moves import range
 op = os.path
 
 master_phil_str = """\
@@ -342,7 +343,7 @@ def action(
     den_update_interval = (50 *params.number_of_cooling_steps /
         (params.start_temperature_kelvin - params.final_temperature_kelvin))
     den_update_interval = int(round(den_update_interval))
-  for i_cool_step in xrange(params.number_of_cooling_steps+1):
+  for i_cool_step in range(params.number_of_cooling_steps+1):
     if (params.number_of_cooling_steps == 0):
       if (   params.start_temperature_kelvin
           != params.final_temperature_kelvin):
@@ -372,7 +373,7 @@ def action(
     if (   n_time_steps == 0
         or params.number_of_time_steps > 1):
       show_column_headings = reset_e_kin("new target")
-    for i_time_step in xrange(params.number_of_time_steps):
+    for i_time_step in range(params.number_of_time_steps):
       assert params.temperature_cap_factor > 1.0
       assert params.excessive_temperature_factor > params.temperature_cap_factor
       if (tardy_model.e_kin() > e_kin_target * params.temperature_cap_factor):

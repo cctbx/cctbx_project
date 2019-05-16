@@ -12,6 +12,7 @@ from libtbx import str_utils
 from libtbx import easy_mp
 import os
 import sys
+from six.moves import range
 
 def summary(pdb_file=None, pdb_hierarchy=None):
   header_info = None

@@ -6,6 +6,7 @@ from libtbx.utils import Sorry, null_out
 from libtbx import table_utils
 import math
 import sys,os
+from six.moves import range
 
 def get_vol_per_residue(chain_type='PROTEIN'):
   if chain_type=='PROTEIN':
@@ -47,7 +48,7 @@ def get_sigf(nrefl,nsites,natoms,z,fpp,target_s_ano=15.,ntries=1000,
   closest_dist2=None
   start_value=1
   if include_zero: start_value=0
-  for i in xrange(start_value,ntries):
+  for i in range(start_value,ntries):
     sigf=i*1./float(ntries)
     if max_i_over_sigma and get_i_over_sigma_from_sigf(sigf)>max_i_over_sigma:
       continue
@@ -159,7 +160,7 @@ def estimate_fpp_weak(nrefl,nsites,natoms,z,fpp,sigf,
 
   target=sano/2.
   best_scale=1.0
-  for i in xrange(1,101):
+  for i in range(1,101):
     scale=float(i)*0.01
     ss=get_sano(nrefl,nsites,natoms,z,fpp*scale,sigf,
       fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
@@ -535,13 +536,13 @@ class interpolator:
     for key in self.keys:
       value_list.append(self.target_dict[key])
     new_values=deepcopy(value_list)
-    for i in xrange(i_middle+1,n):
+    for i in range(i_middle+1,n):
       prev_value=new_values[i-1]
       remainder=value_list[i:]
       value=value_list[i]
       mean_remainder=self.get_mean(remainder)
       new_values[i]=max(prev_value,min(mean_remainder,value))
-    for i in xrange(i_middle-1,-1,-1):
+    for i in range(i_middle-1,-1,-1):
       prev_value=new_values[i+1]
       remainder=value_list[:i+1]
       value=value_list[i]
@@ -556,9 +557,9 @@ class interpolator:
     # adjust delta mean to zero in each region
     offset_low=self.get_mean(delta_list[:i_middle])
     offset_high=self.get_mean(delta_list[i_middle+1:])
-    for i in xrange(i_middle+1,n):
+    for i in range(i_middle+1,n):
       new_values[i]=new_values[i]-offset_high
-    for i in xrange(i_middle-1,-1,-1):
+    for i in range(i_middle-1,-1,-1):
       new_values[i]=new_values[i]-offset_low
     for key,value in zip(self.keys,new_values):
       self.target_dict[key]=value

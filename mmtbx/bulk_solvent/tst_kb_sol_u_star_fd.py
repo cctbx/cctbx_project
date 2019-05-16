@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_asymmetric_map_ext import *
 from cctbx.array_family import flex
@@ -33,7 +34,7 @@ def get_f_masks(xrs, miller_array):
   n = mask_data.all()
   mask_data1 = flex.double(flex.grid(n), 0)
   mask_data2 = flex.double(flex.grid(n), 0)
-  I,J,K = xrange(n[0]), xrange(n[1]), xrange(n[2])
+  I,J,K = range(n[0]), range(n[1]), range(n[2])
   for i in I:
     for j in J:
       for k in K:

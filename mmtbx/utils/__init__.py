@@ -56,6 +56,7 @@ from iotbx.file_reader import any_file
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 
 import boost.python
+from six.moves import range
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
 from mmtbx_utils_ext import *
 
@@ -664,7 +665,7 @@ class determine_data_and_flags(object):
         " found in the input PDB file.")
     if (len(from_file) == 1 and current not in from_file):
       log = self.log
-      for i in xrange(2): print("*"*79, file=log)
+      for i in range(2): print("*"*79, file=log)
       if (ignore_pdb_hexdigest):
         print(file=log)
         print(" ".join(["WARNING"]*9), file=log)
@@ -711,7 +712,7 @@ become meaningful only after many cycles of refinement.
 If the original R-free flags are unrecoverable, the values for R-free
 will become meaningful only after many cycles of refinement.
 """, file=log)
-      for i in xrange(2): print("*"*79, file=log)
+      for i in range(2): print("*"*79, file=log)
       print(file=log)
       if (not ignore_pdb_hexdigest):
         if ("PHENIX_GUI_ENVIRONMENT" in os.environ):
@@ -1352,7 +1353,7 @@ class xray_structures_from_processed_pdb_file(object):
          self.xray_structures.append(self.xray_structure_all.select(sel))
     else:
       self.model_selections.append(
-        flex.size_t(xrange(self.xray_structure_all.scatterers().size())) )
+        flex.size_t(range(self.xray_structure_all.scatterers().size())) )
       self.xray_structures.append(self.xray_structure_all)
 # END_MARKED_FOR_DELETION_OLEG
 
@@ -1907,7 +1908,7 @@ class guess_observation_type(object):
   def get_r_factor(self, f_obs, f_calc, scattering_table, xray_structure,
         twin_switch_tolerance, skip_twin_detection):
     r_free_flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
-    for trial in xrange(3):
+    for trial in range(3):
       result = outlier_rejection.outlier_manager(
         miller_obs   = f_obs,
         r_free_flags = r_free_flags,
@@ -2033,7 +2034,7 @@ class fmodel_from_xray_structure(object):
             data = f_model.data()
             fr = f_model.data()*params.add_random_error_to_amplitudes_percent/100.
             ri = flex.double()
-            for trial in xrange(data.size()):
+            for trial in range(data.size()):
               r = random.randint(0,1)
               if(r == 0): r = -1
               ri.append(r)
@@ -2443,7 +2444,7 @@ class extract_box_around_model_and_map(object):
       self.pdb_outside_box_msg=""
       frac_min = [0.,0.,0.]
       frac_max = [1.,1.,1.]
-      for kk in xrange(3):
+      for kk in range(3):
         frac_min[kk]=max(0.,frac_min[kk])
         frac_max[kk]=min(1.-1./map_data.all()[kk], frac_max[kk])
     elif(density_select):
@@ -2452,7 +2453,7 @@ class extract_box_around_model_and_map(object):
         get_half_height_width=get_half_height_width)
       frac_max = list(flex.double(frac_max)+cushion)
       frac_min = list(flex.double(frac_min)-cushion)
-      for kk in xrange(3):
+      for kk in range(3):
         frac_min[kk]=max(0.,frac_min[kk])
         frac_max[kk]=min(1.-1./map_data.all()[kk], frac_max[kk])
     else:
@@ -2473,12 +2474,12 @@ class extract_box_around_model_and_map(object):
         self.gridding_last=[max(gf,min(n,g)) for gf,n,g in zip(self.gridding_first,na,self.gridding_last)]
     self.map_box = self.cut_and_copy_map(map_data=self.map_data)
     secondary_shift_frac = [
-      -self.map_box.origin()[i]/self.map_data.all()[i] for i in xrange(3)]
+      -self.map_box.origin()[i]/self.map_data.all()[i] for i in range(3)]
     secondary_shift_cart = cs.unit_cell().orthogonalize(secondary_shift_frac)
     if(self.shift_cart is None):
       self.shift_cart = secondary_shift_cart
     else:
-      self.shift_cart = [self.shift_cart[i]+secondary_shift_cart[i] for i in xrange(3)]
+      self.shift_cart = [self.shift_cart[i]+secondary_shift_cart[i] for i in range(3)]
     self.map_box.reshape(flex.grid(self.map_box.all()))
     # shrink unit cell to match the box
     p = cs.unit_cell().parameters()
@@ -2614,7 +2615,7 @@ class extract_box_around_model_and_map(object):
     all=list(map_data.all())
     # Get max value vs x,y,z
     value_list=flex.double()
-    for i in xrange(0,all[0]):
+    for i in range(0,all[0]):
       new_map_data = maptbx.copy(map_data,
          tuple((i,0,0)),
          tuple((i,all[1],all[2]))
@@ -2627,7 +2628,7 @@ class extract_box_around_model_and_map(object):
       get_half_height_width=get_half_height_width)
 
     value_list=flex.double()
-    for j in xrange(0,all[1]):
+    for j in range(0,all[1]):
       new_map_data = maptbx.copy(map_data,
          tuple((0,j,0)),
          tuple((all[0],j,all[2]))
@@ -2637,7 +2638,7 @@ class extract_box_around_model_and_map(object):
       get_half_height_width=get_half_height_width)
 
     value_list=flex.double()
-    for k in xrange(0,all[2]):
+    for k in range(0,all[2]):
       new_map_data = maptbx.copy(map_data,
          tuple((0,0,k)),
          tuple((all[0],all[1],k))
@@ -2730,12 +2731,12 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     else:
       i_off=0
     i_low=None
-    for i in xrange(i_off,n_tot-i_off):
+    for i in range(i_off,n_tot-i_off):
       if value_list[i]>cutoff:
         i_low=max(i_off,i-1)
         break
     i_high=None
-    for i in xrange(i_off,n_tot-i_off):
+    for i in range(i_off,n_tot-i_off):
       ii=n_tot-1-i
       if value_list[ii]>cutoff:
         i_high=min(n_tot-1-i_off,ii+1)

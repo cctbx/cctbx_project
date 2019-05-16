@@ -9,6 +9,7 @@ import iotbx.ccp4_map
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
 import os, sys
+from six.moves import range
 
 master_phil = phil.parse("""
 include scope libtbx.phil.interface.tracking_params
@@ -373,7 +374,7 @@ def validate_params(params):
       raise Sorry('The gridding of the two maps is not compatible.')
   else:
   # check if MTZ files have complex arrays and labels
-    for i in xrange(len(maps)):
+    for i in range(len(maps)):
       if (maps[i].file_type == 'hkl'):
         labels = get_mtz_labels(maps[i])
         if (len(labels) == 0):

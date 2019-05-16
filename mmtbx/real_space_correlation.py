@@ -17,6 +17,7 @@ from cctbx.sgtbx import space_group_info
 from cStringIO import StringIO
 import os
 import sys
+from six.moves import range
 
 core_params_str = """\
 atom_radius = None
@@ -872,8 +873,8 @@ def extract_map_stats_for_single_atoms(xray_structure, pdb_atoms, fmodel,
   # use maps
   if ( (fmodel is None) and (fc_map is not None) and
        (two_fofc_map is not None) ):
-    fofc = [ 0.0 for i in xrange(len(pdb_atoms)) ]
-    anom = [ None for i in xrange(len(pdb_atoms)) ]
+    fofc = [ 0.0 for i in range(len(pdb_atoms)) ]
+    anom = [ None for i in range(len(pdb_atoms)) ]
     two_fofc, two_fofc_sel = collect_map_values(
       two_fofc_map, get_selections=True)
     f_model_val, f_model_sel = collect_map_values(

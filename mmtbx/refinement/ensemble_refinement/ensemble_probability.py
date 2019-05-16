@@ -14,6 +14,7 @@ from cctbx import adptbx
 from iotbx import pdb
 from libtbx.utils import Sorry, multi_out
 from cStringIO import StringIO
+from six.moves import range
 
 master_phil = iotbx.phil.parse("""\
 ensemble_probability {
@@ -559,7 +560,7 @@ class ensemble_probability(object):
             #XXX Debug
             if False:
               print('\nDebug')
-              for x in xrange(len(cutoff_selections)):
+              for x in range(len(cutoff_selections)):
                 print(cutoff_selections[x], nll_occ[x], cutoff_nll_occ[x])
               print(percentile)
               print(percentile_prob_cutoff)

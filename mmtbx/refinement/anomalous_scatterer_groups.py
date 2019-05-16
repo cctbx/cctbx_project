@@ -6,6 +6,7 @@ from libtbx.test_utils import approx_equal
 from libtbx import adopt_init_args
 import time
 import sys
+from six.moves import range
 
 class minimizer(object):
 
@@ -31,7 +32,7 @@ class minimizer(object):
           iselection=group.iselection)
     self.target_functor = fmodel.target_functor()
     self.target_functor.prepare_for_minimization()
-    for self.i_cycle in xrange(number_of_minimizer_cycles):
+    for self.i_cycle in range(number_of_minimizer_cycles):
       self.lbfgs = lbfgs.run(
         target_evaluator=self,
         termination_params=lbfgs.termination_parameters(
@@ -88,7 +89,7 @@ class minimizer(object):
       g_fin = []
       eps = 1.e-5
       x = self.x
-      for i in xrange(x.size()):
+      for i in range(x.size()):
         fs = []
         xi0 = x[i]
         for signed_eps in [eps,-eps]:

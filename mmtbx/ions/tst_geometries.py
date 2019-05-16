@@ -9,6 +9,7 @@ import libtbx.load_env
 from collections import OrderedDict
 import os
 import sys
+from six.moves import range
 
 def exercise():
   if not libtbx.env.has_module("phenix_regression"):
@@ -113,7 +114,7 @@ def exercise():
     assert len(metals) == len(geometries)
 
     for index, metal, expected_geometry in \
-      zip(xrange(len(metals)), metals, geometries):
+      zip(range(len(metals)), metals, geometries):
       contacts = manager.find_nearby_atoms(metal, filter_by_two_fofc = False)
       found = find_coordination_geometry(contacts, minimizer_method = True)
       geometry_names = [i[0] for i in found]

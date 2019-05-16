@@ -10,7 +10,9 @@ from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list,
     NCS_restraint_group, NCS_copy
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flippable_sidechains
+
 import six
+from six.moves import range
 
 __author__ = 'Youval, massively rewritten by Oleg'
 
@@ -630,7 +632,7 @@ def remove_far_atoms(list_a, list_b,
   sel_a = flex.size_t([])
   sel_b = flex.size_t([])
   current_pos = 0
-  for i in xrange(len(res_list_a)):
+  for i in range(len(res_list_a)):
     # find the matching atoms form each residue (work on small sections)
     res_len = list_a[i].size()
     res_ref_sites = ref_sites[current_pos:current_pos+res_len]
@@ -691,7 +693,7 @@ def search_ncs_relations(ph=None,
   n_chains = len(sorted_ch)
   chains_in_copies = set()
   match_dict = {}
-  for i in xrange(n_chains-1):
+  for i in range(n_chains-1):
     m_ch_id = sorted_ch[i]
 
     if m_ch_id in chains_in_copies:
@@ -702,7 +704,7 @@ def search_ncs_relations(ph=None,
     if master_n_res == 0:
       continue
     # get residue lists for master
-    for j in xrange(i+1,n_chains):
+    for j in range(i+1,n_chains):
       c_ch_id = sorted_ch[j]
       copy_n_res = len(chains_info[c_ch_id].res_names)
       frac_d = min(copy_n_res,master_n_res)/max(copy_n_res,master_n_res)
@@ -751,7 +753,7 @@ def mmtbx_res_alignment(seq_a, seq_b,
   a = len(seq_a)
   b = len(seq_b)
   if (a == 0) or (b == 0): return [], [], 0
-  if seq_a == seq_b: return range(a), range(a), 1.0
+  if seq_a == seq_b: return list(range(a)), list(range(a)), 1.0
   norm_seq_a = seq_a
   norm_seq_b = seq_b
   if not atomnames:

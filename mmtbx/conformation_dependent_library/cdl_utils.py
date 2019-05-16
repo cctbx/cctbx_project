@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx.math import dihedral_angle
 from mmtbx.conformation_dependent_library.cdl_setup import \
   before_pro_groups, not_before_pro_groups
+from six.moves import range
 
 def distance2(a,b):
   d2 = 0

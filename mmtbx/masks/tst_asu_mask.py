@@ -16,6 +16,7 @@ from libtbx.test_utils import approx_equal, is_below_limit
 from libtbx.utils import format_cpu_times
 from cctbx.development import debug_utils
 import mmtbx.masks
+from six.moves import range
 
 cout = StringIO.StringIO()
 
@@ -29,7 +30,7 @@ def random_compatible_unit_cell(self, volume=None, asu_volume=None):
     volume = asu_volume * self.group().order_z()
   sg_number = self.type().number()
   rnd = []
-  for i in xrange(6):
+  for i in range(6):
     rnd.append( random.random() )
     if( i<3 ):
       rnd[i] *= 4.0
@@ -57,7 +58,7 @@ def random_compatible_unit_cell(self, volume=None, asu_volume=None):
     cb_op=self.change_of_basis_op_to_reference_setting().inverse())
   f = (volume / unit_cell.volume())**(1/3.)
   params = list(unit_cell.parameters())
-  for i in xrange(3): params[i] *= f
+  for i in range(3): params[i] *= f
   return uctbx.unit_cell(params)
 
 # overriding 'any cell' with 'random cell'
@@ -79,7 +80,7 @@ def compare_fc(obs, other, tolerance = 1.0E-9):
   max_rel_dif = 0.0
   max_dif = 0.0
   max_mx = 0.0
-  for i in xrange(data.size()):
+  for i in range(data.size()):
     dif = abs(data[i]-data0[i])
     mx = max( abs(data[i]),abs(data0[i]) )
     if mx > tolerance*1.0E-2:
@@ -116,7 +117,7 @@ Elements = ("N", "C", "O", "H", "Ca", "C", "B", "Li", "Ru", "N", "H", "H",
 def make_atoms(n_atoms):
   assert n_atoms>0
   atoms = []
-  for i in xrange(n_atoms):
+  for i in range(n_atoms):
     if i < len(Elements):
       atoms.append( Elements[i] )
     else:
@@ -129,7 +130,7 @@ def build_struc(spgr_symbol, n, atom_volume):
   symmetry = crystal.symmetry(unit_cell=cell,
                               space_group_symbol=spgr_symbol)
   structure = xray.structure(crystal_symmetry=symmetry)
-  for i in xrange(n):
+  for i in range(n):
     if i < len(Elements):
       element = Elements[i]
     else:
@@ -358,9 +359,9 @@ def standard_tests(groups, options):
   solvent_radius = options.solvent_radius
   shrink_radius = options.shrink_radius
   for sg in groups:
-    for islv in xrange(3):
+    for islv in range(3):
       slv_rad = solvent_radius*islv
-      for ishr in xrange(3):
+      for ishr in range(3):
         shr_rad = shrink_radius*0.5*ishr
         struc = build_struc(sg, options.n_atoms,  options.atom_volume)
         options.solvent_radius = slv_rad
@@ -380,7 +381,7 @@ def random_tests(groups, opts):
     print("       HM= ", group.type().universal_hermann_mauguin_symbol(), \
         "  LOOKUP= ", group.type().lookup_symbol(), "  HALL= ", \
         group.type().hall_symbol())
-    for i in xrange(opts.random):
+    for i in range(opts.random):
       if i==0 :
         slv_rad = 1.1
         shr_rad = 0.9
@@ -509,7 +510,7 @@ def run():
   if (opts.space_group is None) & (len(groups)==0):
     groups.extend(SpaceGroups)
   elif opts.space_group == "all" :
-    for isg in xrange(1,231):
+    for isg in range(1,231):
       groups.append(str(isg))
   elif opts.space_group == "all530":
     it = cctbx.sgtbx.space_group_symbol_iterator()

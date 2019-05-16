@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import math
 
 from scitbx import matrix
+from six.moves import range
 
 def construct_xyz(ba, bv,
                   aa, av,

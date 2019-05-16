@@ -11,6 +11,7 @@ import iotbx.cif.model
 from iotbx.pdb import modified_aa_names, modified_rna_dna_names
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter, \
     three_letter_l_given_three_letter_d, three_letter_given_one_letter
+from six.moves import range
 
 master_phil = libtbx.phil.parse("""
   similarity_matrix =  blosum50  dayhoff *identity

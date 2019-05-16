@@ -9,6 +9,7 @@ from scitbx.matrix import col
 from copy import deepcopy
 from libtbx import adopt_init_args
 from cctbx.maptbx import resolution_from_map_and_model
+from six.moves import range
 
 # merge_models.py
 # crossover models and pick best parts of each
@@ -221,7 +222,7 @@ class model_object:
     # biggest difference can be found and focus on that
 
     difference_list=[]
-    for i1 in xrange(self.size):
+    for i1 in range(self.size):
       source_self=self.source_list[i1]
       source_other=other.source_list[i1]
       difference_list.append( [
@@ -245,7 +246,7 @@ class model_object:
       #Now figure out where we can cross over on either side of i
       allowed_left_crossovers=[]
       allowed_right_crossovers=[]
-      for ib in xrange(self.size):
+      for ib in range(self.size):
         if not self.is_allowed_crossover(i,other): continue
         if ib <i: allowed_left_crossovers.append(ib)
         if ib >i: allowed_right_crossovers.append(ib)
@@ -268,7 +269,7 @@ class model_object:
         if float(i2-i1+1)/self.size > self.maximum_fraction: continue
         # test replacing self with i1 to i2 of other
         test_model=self.customized_copy()
-        for i in xrange(i1,i2+1):
+        for i in range(i1,i2+1):
           test_model.source_list[i]=other.source_list[i]
         test_model.reset_score()
         if best_i_score is None or \
@@ -287,7 +288,7 @@ class model_object:
         if float(i2-i1+1)/self.size > self.maximum_fraction: continue
         # test replacing self with i1 to i2 of other
         test_model=self.customized_copy()
-        for i in xrange(i1,i2+1):
+        for i in range(i1,i2+1):
           test_model.source_list[i]=other.source_list[i]
         test_model.reset_score()
         if best_i_score is None or \
@@ -315,7 +316,7 @@ class model_object:
     #  self.minimum_length
     last_id=None
     n=0
-    for i in xrange(self.size):
+    for i in range(self.size):
       if last_id is None: last_id=self.source_list[i]
       if self.source_list[i]==last_id:
         n+=1
@@ -331,7 +332,7 @@ class model_object:
 
     # sum up CC values at each residue
     score=0.
-    for i in xrange(self.size):
+    for i in range(self.size):
       score+=self.cc_dict[self.source_list[i]][i]
     self.score=score
     return score
@@ -402,7 +403,7 @@ def get_crossover_dict(
               chain1.id,model1.id,xyz1.size(),chain2.id,model2.id,xyz2.size()), file=out)
             assert xyz1.size()==xyz2.size()
 
-          for i in xrange(xyz1.size()):
+          for i in range(xyz1.size()):
             x1=col(xyz1[i])
             x2=col(xyz2[i])
             dd=(x1-x2).norm_sq()
@@ -423,10 +424,10 @@ def get_crossover_dict(
   if minimum_matching_atoms > 2:
     offset_n=minimum_matching_atoms//2
     offset_range=[]
-    for n in xrange(-offset_n,offset_n+1):
+    for n in range(-offset_n,offset_n+1):
       if n != 0: offset_range.append(n)
     delete_dict={}
-    for i in xrange(n_residues):
+    for i in range(n_residues):
       if not i in crossover_dict: continue
       for id1 in crossover_dict[i]:
         for id2 in crossover_dict[i][id1]:
@@ -438,7 +439,7 @@ def get_crossover_dict(
               if not id1 in delete_dict[i]: delete_dict[i][id1]=[]
               if not id2 in delete_dict[i][id1]:delete_dict[i][id1].append(id2)
 
-    for i in xrange(n_residues):
+    for i in range(n_residues):
       if not i in crossover_dict: continue
       for id1 in crossover_dict[i]:
         new_list=[]
@@ -533,7 +534,7 @@ def smooth_cc_values(cc_dict=None,
   for id in cc_dict.keys():
     cc_list=cc_dict[id]
     smoothed_cc_list=flex.double()
-    for i in xrange(cc_list.size()):
+    for i in range(cc_list.size()):
       r=cc_list[max(0,i-delta):min(cc_list.size(),i+delta+1)]
       smoothed_cc_list.append(r.min_max_mean().mean)
     smoothed_cc_dict[id]=smoothed_cc_list
@@ -544,7 +545,7 @@ def smooth_cc_values(cc_dict=None,
       for key in keys:
         print("ID:  %s " %(key), file=out)
         print("Position   Unsmoothed  Smoothed", file=out)
-        for i in xrange(cc_dict[key].size()):
+        for i in range(cc_dict[key].size()):
          print("  %d     %7.2f     %7.2f" %(
            i,cc_dict[key][i],smoothed_cc_dict[key][i]), file=out)
 
@@ -821,7 +822,7 @@ def run(
     residue_list.sort()
     assert len(best_model.source_list)==len(residue_list)
 
-    for i in xrange(len(residue_list)):
+    for i in range(len(residue_list)):
       atom_selection=get_atom_selection(model_id=best_model.source_list[i],
         resseq_sel=residue_list[i])
       asc=ph.atom_selection_cache()

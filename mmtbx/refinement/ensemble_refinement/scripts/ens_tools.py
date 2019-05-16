@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 
 import math, sys
 from pymol import cmd, stored
+from six.moves import range
 
 class LogWriter:
       def __init__(self, stdout, filename):
@@ -81,7 +82,7 @@ ARGUMENTS
                      selection2 = pk2)
 
         # get individual values
-        for n in xrange(number_models):
+        for n in range(number_models):
             measurements.append( cmd.get_distance(pk1, pk2, n+1) )
         assert len(measurements) == number_models
 
@@ -96,7 +97,7 @@ ARGUMENTS
                   selection3 = pk3)
 
         # get individual values
-        for n in xrange(number_models):
+        for n in range(number_models):
             measurements.append( cmd.get_angle(atom1 = pk1,
                                                atom2 = pk2,
                                                atom3 = pk3,
@@ -115,7 +116,7 @@ ARGUMENTS
                   selection4 = pk4)
 
         # get individual values
-        for n in xrange(number_models):
+        for n in range(number_models):
             measurements.append( cmd.get_dihedral(atom1 = pk1,
                                                   atom2 = pk2,
                                                   atom3 = pk3,
@@ -174,7 +175,7 @@ ARGUMENTS
       ens_coords = cmd.get_model(ens_selection,state=i+1).get_coord_list()
       ref_coords = cmd.get_model(ref_selection,state=1).get_coord_list()
       atom_sqr_dev = []
-      for atom in xrange(len(ref_coords)):
+      for atom in range(len(ref_coords)):
         x = ref_coords[atom]
         y = ens_coords[atom]
         atom_sqr_dev.append(distance(x,y)**2)

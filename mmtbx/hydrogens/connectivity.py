@@ -5,6 +5,7 @@ from libtbx.utils import Sorry
 from libtbx import group_args
 from scitbx.array_family import flex
 from scitbx.math import dihedral_angle
+from six.moves import range
 
 class neighbors(object):
   def __init__(self,

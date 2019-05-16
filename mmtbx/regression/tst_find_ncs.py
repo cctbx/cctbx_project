@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from cStringIO import StringIO
 from mmtbx.ncs import ncs
 import sys
+from six.moves import range
 
 def remove_blank(text):
   return text.replace("\n"," ").replace(".0 "," ").replace(". "," ").replace(" ","")
@@ -1350,7 +1351,7 @@ def tst_06():
   ncs_group=ncs_obj.ncs_groups()[0]
   ncs_sites_cart=flex.vec3_double()
   for xyz_cart in sites_cart:
-      for i0 in xrange(len(ncs_group.translations_orth())):
+      for i0 in range(len(ncs_group.translations_orth())):
         r=ncs_group.rota_matrices_inv()[i0] # inverse maps pos 0 on to pos i
         t=ncs_group.translations_orth_inv()[i0]
         new_xyz_cart=r * matrix.col(xyz_cart) + t

@@ -8,6 +8,7 @@ from libtbx.utils import format_cpu_times, null_out
 from libtbx.test_utils import approx_equal, show_diff
 import iotbx.pdb
 from mmtbx.refinement import geometry_minimization
+from six.moves import range
 
 pdb_str_00="""
 CRYST1  107.161  107.161   93.144  90.00  90.00 120.00 H 3           9

@@ -4,6 +4,7 @@ import libtbx.load_env
 import iotbx.pdb
 import time
 from libtbx.utils import null_out
+from six.moves import range
 
 pdb_str_1 = """
 CRYST1   79.110   79.110   37.465  90.00  90.00  90.00 P 43 21 2
@@ -174,7 +175,7 @@ def exercise_from_sites_cart():
   crystal_symmetry=crystal.symmetry(
       unit_cell=(20,20,20,90,90,90),
       space_group_symbol="P 1")
-  for i in xrange(10):
+  for i in range(10):
     sites_cart.append(col((i,i,i)))
   model=mmtbx.model.manager.from_sites_cart(sites_cart=sites_cart,
       crystal_symmetry=crystal_symmetry)

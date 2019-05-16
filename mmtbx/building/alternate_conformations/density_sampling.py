@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import libtbx.phil
 import time
 import sys
+from six.moves import range
 
 sidechain_density_params = """
   min_2fofc = 0.8

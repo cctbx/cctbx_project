@@ -7,6 +7,7 @@ from scitbx import matrix
 from mmtbx.tls import analysis
 import math
 from scitbx.array_family import flex
+from six.moves import range
 
 pdb_str= """
 REMARK   3
@@ -245,7 +246,7 @@ def exercise_00(pdb_str, formula):
   log.close()
   #
   rs = flex.double()
-  for trial in xrange(10):
+  for trial in range(10):
     o = tools.u_tls_vs_u_ens(pdb_str=pdb_str,
       dx       = r.dx,
       dy       = r.dy,

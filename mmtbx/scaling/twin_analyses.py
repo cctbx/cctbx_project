@@ -20,6 +20,7 @@ from libtbx import table_utils
 from cStringIO import StringIO
 import math
 import sys
+from six.moves import range
 
 # some cutoffs that may need to be adjusted
 TWIN_FRAC_SIGNIFICANT = 0.05
@@ -567,7 +568,7 @@ class detect_pseudo_translations(scaling.xtriage_analysis):
       start_num=0
       if trial_den > 2:
         start_num = 1
-      for trial_num in xrange(start_num,trial_den):
+      for trial_num in range(start_num,trial_den):
         tmp = (sign, trial_num, trial_den)
         tmp_frac = trial_num/trial_den
         delta = abs(tmp_frac - tmp_fraction )
@@ -1115,7 +1116,7 @@ class ml_murray_rust_with_ncs(object):
       tmp = -math.log(self.twin_cap/start_alpha-1.0)
       self.x = flex.double([tmp])
 
-    for ii in xrange(n_bins):
+    for ii in range(n_bins):
       self.x.append( -1.0 - ii/20.0 )
     self._show_info(out=out)
     term_parameters = scitbx.lbfgs.termination_parameters(max_iterations=1000)
@@ -1125,7 +1126,7 @@ class ml_murray_rust_with_ncs(object):
     self.log_likelihood = self.f
     self.twin_fraction = self.twin_cap/(1+math.exp(-(self.x[0])))
     table = []
-    for ii in xrange(self.x.size()-1):
+    for ii in range(self.x.size()-1):
       d_ncs = self.x[ii+1]
       d_ncs = self.d_cap/( 1.0+math.exp(-d_ncs) )
       low = self.binner.bin_d_range(ii+1)[0]
@@ -1253,7 +1254,7 @@ class ml_murray_rust(scaling.xtriage_analysis):
     self.twin_law = twin_law
     self.twin_fraction = []
     self.nll = []
-    for ii in xrange(1,23):
+    for ii in range(1,23):
       t=ii/46.0
       self.twin_fraction.append( t )
       self.nll.append( - ml_murray_rust_object.fast_log_p_given_t( t )  )
@@ -1356,7 +1357,7 @@ class correlation_analyses(scaling.xtriage_analysis):
       cc = weighted_cc( x,y,w_tot )
       return(cc)
     if (obs.data().size() > 0):
-      for ii in xrange(50):
+      for ii in range(50):
         alpha=ii/100.0
         self.alpha.append( alpha )
         cc = twin_the_data_and_compute_cc(alpha)
@@ -1663,7 +1664,7 @@ class symmetry_issues(scaling.xtriage_analysis):
         # now we have to pop these guys from the array
         tmp_tmp_keys = []
         tmp_tmp_values = []
-        for ii in xrange( len(tmp_keys) ):
+        for ii in range( len(tmp_keys) ):
           if ii != iii:
             tmp_tmp_keys.append( tmp_keys[ii] )
             tmp_tmp_values.append( tmp_values[ii] )

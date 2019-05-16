@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.tls import tools
 import time
+from six.moves import range
 
 pdb_str_1 = """
 CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P1
@@ -34,9 +35,9 @@ def exercise_00():
     print(pdb_str)
     for d in [[0.05,0.06,0.07], ]:
       dx,dy,dz = d
-      for x in xrange(3):
-        for y in xrange(3):
-          for z in xrange(3):
+      for x in range(3):
+        for y in range(3):
+          for z in range(3):
             if(x!=y and x!=z and y!=z):
               xs_ = xs[:]
               ys_ = ys[:]

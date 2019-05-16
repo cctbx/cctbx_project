@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import os, sys
 from mmtbx.conformation_dependent_library import cdl_database
 from mmtbx.conformation_dependent_library import cdl_setup
+from six.moves import range
 
 errors = {'Pro_nonxpro': [
   (-90, 60),

@@ -18,6 +18,7 @@ import mmtbx.f_model
 import iotbx.phil
 import mmtbx.masks
 from libtbx.utils import Sorry
+from six.moves import range
 
 if(1):
   random.seed(0)
@@ -342,7 +343,7 @@ def loop_1(params, root, xray_structure, pdb_hierarchy, restraints_manager):
   size = int(math.ceil(params.f_obs.f_calc.atomic_model.ensemble_size/len(xh)))
   for xh_ in xh:
     x_, h_ = xh_
-    for mc in xrange(size):
+    for mc in range(size):
       loop_2(
         params         = params,
         xray_structure = x_,

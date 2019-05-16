@@ -17,7 +17,7 @@ import os
 import time
 import sys
 import six
-
+from six.moves import range
 
 
 master_phil = libtbx.phil.parse("""
@@ -35,8 +35,8 @@ def consequtive_permutations(iterable, r=None):
   n = len(pool)
   r = n if r is None else r
   if r > n: return
-  indices = range(n)
-  cycles = range(n, n-r, -1)
+  indices = list(range(n))
+  cycles = list(range(n, n-r, -1))
   yield tuple(pool[i] for i in indices[:r])
   while n:
     for i in reversed(range(r)):
@@ -62,10 +62,9 @@ def consequtive_permutations(iterable, r=None):
       return
 
 def all_permutations(N):
-  unique_set = list(xrange(N))
+  unique_set = list(range(N))
   array = [[i] for i in unique_set]
-  gss = list(range(2,N))
-  gss.reverse()
+  gss = reversed(range(2,N))
   def is_all(x, us):
     tmp = []
     for i in x:
@@ -81,7 +80,7 @@ def all_permutations(N):
   result = [array[:]]
   for gs in gss:
     #print "group by:",gs
-    for start_index in xrange(N):
+    for start_index in range(N):
       tmp = []
       tmp_ = []
       for i,a in enumerate(array):
@@ -323,7 +322,7 @@ def get_model_partitioning(residues,
   elif(len_new_sels==1):
     perms = [[[0]]]
   elif(len_new_sels<10):
-    perms = all_permutations(len(list(xrange(len_new_sels))))
+    perms = all_permutations(len(range(len_new_sels)))
   else: raise RuntimeError("Too many permutations.")
   return sels, perms
 
@@ -439,7 +438,6 @@ def tls_refinery(sites_cart, selection, u_cart=None, u_iso=None,
       return minimized
 
 def chunks(size, n_groups):
-  rp = list(xrange(size))
   chunk_size = size//n_groups
   nc = chunk_size
   counter = 0
@@ -496,7 +494,7 @@ def chunks(size, n_groups):
 def tls_refinery_random_groups(sites_cart, n_groups, u_cart=None, u_iso=None, n_runs=50):
   assert [u_cart, u_iso].count(None)==1
   t = 0
-  for tr in xrange(n_runs):
+  for tr in range(n_runs):
     while True:
       selections = chunks(size=sites_cart.size(), n_groups=n_groups)
       #print [(min(s),max(s)) for s in selections]

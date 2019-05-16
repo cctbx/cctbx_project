@@ -13,6 +13,7 @@ from cStringIO import StringIO
 import random
 #from mmtbx import utils
 import sys, os
+from six.moves import range
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
@@ -28,8 +29,8 @@ def exercise_basic(verbose):
   #
   masses = flex.random_double(size=10) * 4 + 1
   temps = flex.double()
-  for i_pass in xrange(100):
-    for i in xrange(100):
+  for i_pass in range(100):
+    for i in range(100):
       velocities = cartesian_dynamics.random_velocities(
         masses=masses, target_temperature=300)
       kt = mmtbx.dynamics.kinetic_energy_and_temperature(velocities, masses)

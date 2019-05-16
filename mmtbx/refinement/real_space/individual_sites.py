@@ -9,6 +9,7 @@ from cctbx import crystal
 import mmtbx.refinement.minimization_ncs_constraints
 import mmtbx.model
 from cctbx.maptbx import minimization
+from six.moves import range
 
 class easy(object):
   """
@@ -364,7 +365,7 @@ class box_refinement_manager(object):
         rms_angles_limit = rms_angles_limit)
       self.weight_optimal = real_space_result.weight_final
       sites_cart_box_refined = real_space_result.sites_cart_result
-      shift_back = [-box.shift_cart[i] for i in xrange(3)]
+      shift_back = [-box.shift_cart[i] for i in range(3)]
       sites_cart_box_refined_shifted_back = \
         sites_cart_box_refined + shift_back # Sure + not - ?
       sites_cart_refined = sites_cart_box_refined_shifted_back.select(sel)

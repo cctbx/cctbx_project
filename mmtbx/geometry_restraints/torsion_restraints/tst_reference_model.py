@@ -12,6 +12,7 @@ from libtbx.test_utils import show_diff
 import libtbx.load_env
 import cStringIO
 import sys, os, time
+from six.moves import range
 
 model_raw_records = """\
 CRYST1   41.566   72.307   92.870 108.51  93.02  90.06 P 1           4

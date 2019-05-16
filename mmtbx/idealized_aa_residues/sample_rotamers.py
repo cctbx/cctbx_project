@@ -9,6 +9,7 @@ from scitbx.matrix import rotate_point_around_axis
 import sys
 from libtbx import easy_pickle
 import libtbx.load_env
+from six.moves import range
 
 mon_lib_srv = monomer_library.server.server()
 rotamer_eval = RotamerEval()

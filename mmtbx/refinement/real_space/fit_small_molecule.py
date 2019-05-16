@@ -6,6 +6,7 @@ from cctbx import maptbx
 from libtbx import adopt_init_args
 import scitbx.rigid_body
 import sys
+from six.moves import range
 
 def apply_rigid_body_shift(sites_cart, cm, x,y,z, the, psi, phi):
   rot_matrix = scitbx.rigid_body.rb_mat_zyz(
@@ -168,7 +169,7 @@ def macro_cycle(
           weight             = flex.mean_default(weights, 1.0))
         weights.append(w)
         if(expload):
-          for i in xrange(n_expload):
+          for i in range(n_expload):
             xray_structure_ = xray_structure.deep_copy_scatterers()
             xray_structure_.shake_sites_in_place(mean_distance=1.0)
             run_refine(

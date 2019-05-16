@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from mmtbx.validation.ramalyze import ramalyze
 from libtbx.program_template import ProgramTemplate
+from six.moves import range
 try:
   from phenix.program_template import ProgramTemplate
 except ImportError:

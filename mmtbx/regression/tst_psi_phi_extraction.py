@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 import iotbx.pdb
 from mmtbx.conformation_dependent_library import generate_protein_threes
+from six.moves import range
 
 rec_1_residue = """\
 CRYST1   41.566   72.307   92.870 108.51  93.02  90.06 P 1           4

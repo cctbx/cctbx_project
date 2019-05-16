@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.conformation_dependent_library.cdl_database import cdl_database
+from six.moves import range
 
 step = 10
 

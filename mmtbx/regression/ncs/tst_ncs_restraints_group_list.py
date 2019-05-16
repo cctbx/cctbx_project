@@ -8,6 +8,7 @@ from iotbx.ncs import ncs_group_master_phil
 import iotbx.phil
 from time import time
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 
 test_pdb_str = '''\

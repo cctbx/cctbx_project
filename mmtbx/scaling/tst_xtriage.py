@@ -17,6 +17,7 @@ from cStringIO import StringIO
 import warnings
 import os.path
 import sys
+from six.moves import range
 
 # synthetic data
 def exercise_1():

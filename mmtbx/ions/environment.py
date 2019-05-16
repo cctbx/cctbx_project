@@ -12,6 +12,7 @@ from scitbx.matrix import col
 from libtbx.utils import Sorry
 from libtbx import slots_getstate_setstate
 from collections import Counter
+from six.moves import range
 
 # Enums for the chemical environments supported by this module
 N_SUPPORTED_ENVIRONMENTS = 14

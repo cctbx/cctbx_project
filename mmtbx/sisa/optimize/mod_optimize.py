@@ -8,6 +8,7 @@ import numpy as np
 import math, random
 from cctbx.array_family import flex
 from datetime import datetime
+from six.moves import range
 
 class sisa_optimizer(object):
   '''
@@ -269,7 +270,7 @@ class sisa_optimizer(object):
       n_idv_pick=int(round(0.05*iparams.ga_params.pop_size))
       mpe_idv_pick=[0]*n_idv_pick
       mapcc_idv_pick=[0]*n_idv_pick
-      id_idv_pick=random.sample(xrange(iparams.ga_params.pop_size), n_idv_pick)
+      id_idv_pick=random.sample(range(iparams.ga_params.pop_size), n_idv_pick)
       for i in range(n_idv_pick):
         i_idv_pick = id_idv_pick[i]
         mpe_to_others = [0] * iparams.ga_params.pop_size

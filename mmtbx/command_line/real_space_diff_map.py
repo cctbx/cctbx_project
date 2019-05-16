@@ -11,6 +11,7 @@ from cctbx import miller
 from cctbx import uctbx
 from cctbx import crystal
 from libtbx import adopt_init_args
+from six.moves import range
 
 legend = """phenix.real_space_diff_map:
   Given PDB file and a map file calculate difference map:
@@ -117,7 +118,7 @@ def scale_two_real_maps_in_fourier_space(m1, m2, cs, d_min, vector_map):
   if(vector_map):
     f2 = f2.phase_transfer(phase_source=f1)
   ss = 1./flex.pow2(f1.d_spacings().data()) / 4.
-  bs = flex.double([i for i in xrange(0,100)])
+  bs = flex.double([i for i in range(0,100)])
   mc = mmtbx.bulk_solvent.complex_f_minus_f_kb_scaled(
     f1.data(),f2.data(),bs,ss)
   crystal_gridding = maptbx.crystal_gridding(

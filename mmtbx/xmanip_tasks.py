@@ -6,6 +6,7 @@ import iotbx.phil
 from iotbx.pdb import xray_structure
 from mmtbx.scaling import fa_estimation, pair_analyses, relative_scaling
 import sys
+from six.moves import range
 
 master_params = iotbx.phil.parse("""
       task = *get_dano get_diso lsq_scale sfcalc custom None
@@ -128,7 +129,7 @@ master_params = iotbx.phil.parse("""
 
 def patch_miller_arrays_as_names( names ):
   result = []
-  for name, number in zip(names, range(len(names)) ):
+  for name, number in zip(names, range(len(names))):
     tmp_result = "%s =  miller_arrays[ %i ].deep_copy()"%(name,number)
     result.append( compile( tmp_result, '<string>', 'exec' )  )
 

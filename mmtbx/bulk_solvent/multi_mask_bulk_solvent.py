@@ -5,6 +5,7 @@ from cctbx import maptbx
 import mmtbx.masks
 import mmtbx.bulk_solvent
 import boost.python
+from six.moves import range
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from mmtbx import map_tools
 import cctbx.miller
@@ -144,7 +145,7 @@ def helper_3(
       f_masks,
       log):
   #f_masks = fmodel.f_masks() #+ f_masks[0:]
-  for i in xrange(len(f_masks)):
+  for i in range(len(f_masks)):
     f_masks[i] = f_masks[i].common_set(fmodel.f_obs())
   one = flex.double(fmodel.ss.size(), 1.)
   method_1 = \
