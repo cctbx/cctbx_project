@@ -14,6 +14,7 @@ import mmtbx.ncs.ncs
 import mmtbx.model
 from libtbx.test_utils import approx_equal
 from six.moves import range
+from six.moves import map
 
 __author__ = 'Youval'
 
@@ -492,7 +493,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   tests = ['test_finding_partial_ncs']
-  suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
+  suite = unittest.TestSuite(list(map(TestNcsGroupPreprocessing,tests)))
   return suite
 
 if __name__=='__main__':

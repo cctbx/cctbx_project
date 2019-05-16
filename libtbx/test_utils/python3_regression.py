@@ -53,7 +53,7 @@ def find_new_python3_incompatible_code(module_under_test):
   if not result['exitcode']: # No compilation errors
     return False
 
-  errors = map(lambda x: x.replace(module_path + os.path.sep, '').strip(), result['stdout'].split('***'))
+  errors = [x.replace(module_path + os.path.sep, '').strip() for x in result['stdout'].split('***')]
   errors = filter(lambda x: "'" in x, errors)
   broken_files = { error.split("'")[1]: error for error in errors }
 

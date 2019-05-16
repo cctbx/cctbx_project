@@ -5,6 +5,7 @@ from xfel.util.reflection_length import ReflectionsRadialLengthsFromFiles
 from dials.array_family import flex
 import os
 from six.moves import zip
+from six.moves import map
 
 def get_spot_length_stats(outdir, ref_stats=None):
   def join(filename):

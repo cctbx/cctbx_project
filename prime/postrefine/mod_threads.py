@@ -11,6 +11,7 @@ import wx
 from threading import Thread
 
 from libtbx import easy_run
+from six.moves import map
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point

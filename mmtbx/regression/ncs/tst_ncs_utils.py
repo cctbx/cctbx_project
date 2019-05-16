@@ -8,6 +8,7 @@ import iotbx.ncs as ncs
 import iotbx.pdb
 import unittest
 import math
+from six.moves import map
 
 __author__ = 'Youval'
 
@@ -219,7 +220,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   tests = ['test_transform_update']
-  suite = unittest.TestSuite(map(Test_ncs_utils,tests))
+  suite = unittest.TestSuite(list(map(Test_ncs_utils,tests)))
   return suite
 
 if __name__=='__main__':

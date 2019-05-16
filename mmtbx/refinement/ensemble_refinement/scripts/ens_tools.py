@@ -6,6 +6,7 @@ import math, sys
 from pymol import cmd, stored
 from six.moves import zip
 from six.moves import range
+from six.moves import map
 
 class LogWriter:
       def __init__(self, stdout, filename):
@@ -235,13 +236,13 @@ EXAMPLE
     # get models, mean coords
     for i in range(number_models):
       models.append(cmd.get_model(selection,state=i+1))
-      coords_for_mean = map( lambda x: [x[0]*r_number_models,x[1]*r_number_models,x[2]*r_number_models],models[i].get_coord_list())
+      coords_for_mean = [[x[0]*r_number_models,x[1]*r_number_models,x[2]*r_number_models] for x in models[i].get_coord_list()]
       if mean_coords == None:
         mean_coords = coords_for_mean
       else:
         n = []
         for mean, for_mean in zip(mean_coords, coords_for_mean):
-          mean = map(sum, zip(mean,for_mean))
+          mean = list(map(sum, zip(mean,for_mean)))
           n.append(mean)
         mean_coords = n
 
@@ -251,21 +252,21 @@ EXAMPLE
       coord_array = models[i].get_coord_list()
       for i_seq, xyz in enumerate(coord_array):
         rmsf_coord[i_seq] += distance(xyz, mean_coords[i_seq])**2
-    rmsf_coord = map(lambda x: (x / number_models)**0.5, rmsf_coord)
+    rmsf_coord = [(x / number_models)**0.5 for x in rmsf_coord]
 
     # Generate new model object with average xyz coord
     if mean_structure:
       mean_structure_name = 'mean_xyz_'+selection
       cmd.create(mean_structure_name, selection, 1)
-      stored.xyz = map(lambda v:[v[0],v[1],v[2]],mean_coords)
+      stored.xyz = [[v[0],v[1],v[2]] for v in mean_coords]
       cmd.alter_state(1, mean_structure_name,'(x,y,z) = stored.xyz.pop(0)')
 
     # convert to B factor (A^2)
-    rmsf_as_b_coord = map(lambda x: x**2 * ((8.0 * math.pi**2) / 3.0), rmsf_coord)
+    rmsf_as_b_coord = [x**2 * ((8.0 * math.pi**2) / 3.0) for x in rmsf_coord]
 
     # get atomic b factor info
     atom_b = [at.b for at in models[0].atom]
-    b_atom_plus_b_rsmf = map(sum,zip(atom_b,rmsf_as_b_coord))
+    b_atom_plus_b_rsmf = list(map(sum,zip(atom_b,rmsf_as_b_coord)))
 
     # Colour by rmsf
     if rmsf_spectrum:

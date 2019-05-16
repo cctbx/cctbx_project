@@ -10,6 +10,7 @@ import sys, os
 from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dials.algorithms.integration.stills_significance_filter import SignificanceFilter, phil_scope as sf_scope
+from six.moves import map
 
 """
 Script to analyze the results of dials.stills_process and plot statisitics over time using the xfel gui.
@@ -67,7 +68,7 @@ def run(args):
   def get_paths(dirname):
     absolute = lambda name: os.path.join(dirname, name)
     names = os.listdir(dirname)
-    return map(absolute, names)
+    return list(map(absolute, names))
 
   files_dict = {dirname:get_paths(dirname) for dirname in input_dirs}
   if params.run_tags_from_filenames:

@@ -13,6 +13,7 @@ from scitbx.array_family import flex
 import random
 from scitbx.math.lefebvre import matrix_inverse_error_propagation
 from six.moves import range
+from six.moves import map
 
 """Implementation of the propagation of errors formula for matrix inversion
 given in Lefebvre et al. (1999) http://arxiv.org/abs/hep-ex/9909031. As in
@@ -34,10 +35,10 @@ def create_Bmat():
 
   from dxtbx.model import Crystal
 
-  vecs = map(random_vector_close_to,
+  vecs = list(map(random_vector_close_to,
              [(20, 0, 0),
               (0, 20, 0),
-              (0, 0, 20)])
+              (0, 0, 20)]))
 
   return matrix.sqr(Crystal(*vecs, space_group_symbol = "P 1").get_B())
 

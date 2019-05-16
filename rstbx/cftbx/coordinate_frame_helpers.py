@@ -5,6 +5,7 @@ from scitbx import matrix
 from cctbx import sgtbx
 from six.moves import range
 from six.moves import zip
+from six.moves import map
 
 class coordinate_frame_information:
     '''A bucket class to store coordinate frame information.'''
@@ -264,25 +265,25 @@ def import_xds_integrate_hkl(integrate_hkl_file):
 
     for record in header:
         if record.startswith('!ROTATION_AXIS='):
-            axis = map(float, record.split()[-3:])
+            axis = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!INCIDENT_BEAM_DIRECTION='):
-            beam = map(float, record.split()[-3:])
+            beam = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!DIRECTION_OF_DETECTOR_X-AXIS='):
-            x = map(float, record.split()[-3:])
+            x = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!DIRECTION_OF_DETECTOR_Y-AXIS='):
-            y = map(float, record.split()[-3:])
+            y = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!UNIT_CELL_A-AXIS='):
-            a = map(float, record.split()[-3:])
+            a = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!UNIT_CELL_B-AXIS='):
-            b = map(float, record.split()[-3:])
+            b = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!UNIT_CELL_C-AXIS='):
-            c = map(float, record.split()[-3:])
+            c = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!X-RAY_WAVELENGTH='):
             wavelength = float(record.split()[-1])
@@ -377,25 +378,25 @@ def import_xds_ascii_hkl(xds_ascii_hkl_file):
 
     for record in header:
         if record.startswith('!ROTATION_AXIS='):
-            axis = map(float, record.split()[-3:])
+            axis = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!INCIDENT_BEAM_DIRECTION='):
-            beam = map(float, record.split()[-3:])
+            beam = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!DIRECTION_OF_DETECTOR_X-AXIS='):
-            x = map(float, record.split()[-3:])
+            x = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!DIRECTION_OF_DETECTOR_Y-AXIS='):
-            y = map(float, record.split()[-3:])
+            y = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!UNIT_CELL_A-AXIS='):
-            a = map(float, record.split()[-3:])
+            a = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!UNIT_CELL_B-AXIS='):
-            b = map(float, record.split()[-3:])
+            b = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!UNIT_CELL_C-AXIS='):
-            c = map(float, record.split()[-3:])
+            c = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!X-RAY_WAVELENGTH='):
             wavelength = float(record.split()[-1])

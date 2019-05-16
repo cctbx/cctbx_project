@@ -7,6 +7,7 @@ from scitbx.math import r3_rotation_axis_and_angle_as_matrix
 
 from rstbx.cftbx.coordinate_frame_converter import coordinate_frame_converter
 from six.moves import range
+from six.moves import map
 
 # ersatz_misset -
 #
@@ -26,13 +27,13 @@ def ersatz_misset(integrate_lp):
 
     for record in open(integrate_lp):
         if 'COORDINATES OF UNIT CELL A-AXIS' in record:
-            a = map(float, record.split()[-3:])
+            a = list(map(float, record.split()[-3:]))
             a_s.append(matrix.col(a))
         elif 'COORDINATES OF UNIT CELL B-AXIS' in record:
-            b = map(float, record.split()[-3:])
+            b = list(map(float, record.split()[-3:]))
             b_s.append(matrix.col(b))
         elif 'COORDINATES OF UNIT CELL C-AXIS' in record:
-            c = map(float, record.split()[-3:])
+            c = list(map(float, record.split()[-3:]))
             c_s.append(matrix.col(c))
 
     assert(len(a_s) == len(b_s) == len(c_s))
@@ -48,7 +49,7 @@ def ersatz_misset(integrate_lp):
 def parse_xds_xparm_scan_info(xparm_file):
     '''Read an XDS XPARM file, get the scan information.'''
 
-    values = map(float, open(xparm_file).read().split())
+    values = list(map(float, open(xparm_file).read().split()))
 
     assert(len(values) == 42)
 
@@ -91,7 +92,7 @@ def ersatz_misset_predict(xparm_xds, spot_xds):
     rz_s = {}
 
     for record in open(spot_xds):
-        values = map(float, record.split())
+        values = list(map(float, record.split()))
         if len(values) != 7:
             continue
         hkl = tuple(map(nint, values[-3:]))

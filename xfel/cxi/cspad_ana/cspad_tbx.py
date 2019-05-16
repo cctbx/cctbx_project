@@ -22,6 +22,7 @@ from scitbx.array_family import flex
 from xfel.cxi.cspad_ana.parse_calib import Section
 import six
 from six.moves import zip
+from six.moves import map
 
 __version__ = "$Revision$"
 
@@ -408,7 +409,7 @@ def CsPadElement(data3d, qn, config):
   """
 
   # If any sections are missing, insert zeros.
-  mask = map(config.sections, range(4))
+  mask = list(map(config.sections, range(4)))
   if (len(data3d) < 8):
     zsec = numpy.zeros((185, 388), dtype = data3d.dtype)
     for i in range(8) :

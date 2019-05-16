@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from past.builtins import range
 from six.moves import range
 from six.moves import zip
+from six.moves import map
 
 '''
 Author      : Lyubimov, A.Y.

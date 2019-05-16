@@ -9,6 +9,7 @@ from libtbx import adopt_init_args
 import platform
 import shutil
 from six.moves import zip
+from six.moves import map
 try:
   import cPickle as pickle
 except ImportError:
@@ -1724,7 +1725,7 @@ selfx:
 
     base_bin_dispatchers = set(os.listdir(bin_directory))
     existing_dispatchers = filter(lambda f: f.startswith('libtbx.'), self.bin_path.listdir())
-    existing_dispatchers = set(map(lambda f: f[7:], existing_dispatchers))
+    existing_dispatchers = set([f[7:] for f in existing_dispatchers])
     entry_point_candidates = base_bin_dispatchers - existing_dispatchers
 
     entry_points = pkg_resources.iter_entry_points('console_scripts')

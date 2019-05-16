@@ -12,6 +12,7 @@
 
 from __future__ import absolute_import, division, print_function
 from six.moves import range
+from six.moves import map
 
 class bucket:
   pass
@@ -88,7 +89,7 @@ def read_geometry_xparm_xds(filename):
   assert(len(xparm_values) == 42)
 
   # understand
-  xparm_values = map(float, xparm_values)
+  xparm_values = list(map(float, xparm_values))
   oscillation['frame0'] = int(xparm_values[0])
   oscillation['phi0'] = xparm_values[1]
   oscillation['dphi'] = xparm_values[2]
@@ -147,25 +148,26 @@ def read_geometry_integrate_hkl(filename):
     elif tokens[0] == 'OSCILLATION_RANGE=':
       oscillation['dphi'] = float(tokens[1])
     elif tokens[0] == 'INCIDENT_BEAM_DIRECTION=':
-      beam['direction'] = matrix.col(map(float, tokens[-3:]))
+      # TODO verify if matrix.col accepts iterator in both py2/3
+      beam['direction'] = matrix.col(list(map(float, tokens[-3:])))
       beam['wavelength'] = 1.0 / beam['direction'].length()
     elif tokens[0] == 'ROTATION_AXIS=':
-      oscillation['axis'] = matrix.col(map(float, tokens[-3:]))
+      oscillation['axis'] = matrix.col(list(map(float, tokens[-3:])))
     elif tokens[0] == 'DIRECTION_OF_DETECTOR_X-AXIS=':
-      detector['fast'] = matrix.col(map(float, tokens[-3:]))
+      detector['fast'] = matrix.col(list(map(float, tokens[-3:])))
     elif tokens[0] == 'DIRECTION_OF_DETECTOR_Y-AXIS=':
-      detector['slow'] = matrix.col(map(float, tokens[-3:]))
+      detector['slow'] = matrix.col(list(map(float, tokens[-3:])))
     elif tokens[0] == 'ORGX=':
       orgx, orgy = float(tokens[1]), float(tokens[3])
       detector['_org'] = orgx, orgy
     elif tokens[0] == 'DETECTOR_DISTANCE=':
       detector['distance'] = float(tokens[1])
     elif tokens[0] == 'UNIT_CELL_A-AXIS=':
-      ub['a'] = matrix.col(map(float, tokens[-3:]))
+      ub['a'] = matrix.col(list(map(float, tokens[-3:])))
     elif tokens[0] == 'UNIT_CELL_B-AXIS=':
-      ub['b'] = matrix.col(map(float, tokens[-3:]))
+      ub['b'] = matrix.col(list(map(float, tokens[-3:])))
     elif tokens[0] == 'UNIT_CELL_C-AXIS=':
-      ub['c'] = matrix.col(map(float, tokens[-3:]))
+      ub['c'] = matrix.col(list(map(float, tokens[-3:])))
 
   # postprocess results
   orgx, orgy = detector['_org']

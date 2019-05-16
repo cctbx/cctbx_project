@@ -5,6 +5,7 @@ from dials.array_family import flex
 from matplotlib import pyplot as plt
 from xfel.ui.components.timeit import duration
 import time
+from six.moves import map
 
 # get_hitrate_stats takes a tuple (run, trial, rungroup, d_min)
 # and returns a tuple of flex arrays as follows:
@@ -69,7 +70,7 @@ def get_string_from_timestamp(ts, long_form=False):
 def get_strings_from_timestamps(timestamps, long_form=False):
   import os
   get_strings = lambda ts: get_string_from_timestamp(ts, long_form=long_form)
-  names = map(get_strings, timestamps)
+  names = list(map(get_strings, timestamps))
   return names
 
 def get_paths_from_timestamps(timestamps,
