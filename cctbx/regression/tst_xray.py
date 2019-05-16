@@ -1302,7 +1302,6 @@ def exercise_parameter_map():
 
 
 def exercise_xray_structure_as_py_code():
-  import itertools
   xs = xray.structure(
     crystal_symmetry=crystal.symmetry((2, 2, 3, 90, 90, 80), "hall: P 2z"),
     scatterers=flex.xray_scatterer((
@@ -1339,7 +1338,7 @@ V      u=0.200000)]))""")
     xs1.crystal_symmetry(),
     relative_length_tolerance=0,
     absolute_angle_tolerance=0)
-  for sc, sc1 in itertools.izip(xs.scatterers(), xs1.scatterers()):
+  for sc, sc1 in zip(xs.scatterers(), xs1.scatterers()):
     assert sc.flags.bits == sc1.flags.bits
     assert sc.site  == sc1.site
     if sc.flags.use_u_iso():
