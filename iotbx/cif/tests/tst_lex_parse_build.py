@@ -28,7 +28,7 @@ def exercise_miller_arrays_as_cif_block():
   for key in ('_refln_F_squared_meas', '_refln_F_squared_sigma',
               '_refln_F_calc', '_refln_phase_calc',
               '_refln_A_calc', '_refln_A_calc'):
-    assert key in mas_as_cif_block.cif_block.keys(), key
+    assert (key in mas_as_cif_block.cif_block.keys()), key
   #
   mas_as_cif_block = cif.miller_arrays_as_cif_block(
     ma1, array_type='meas', format="mmcif")
@@ -49,7 +49,7 @@ def exercise_miller_arrays_as_cif_block():
     column_name='_diffrn_refln_intensity_u')
   for key in ('_diffrn_refln_intensity_net', '_diffrn_refln_intensity_sigma',
               '_diffrn_refln_intensity_u'):
-    assert key in mas_as_cif_block.cif_block.keys()
+    assert key in list(mas_as_cif_block.cif_block.keys())
   #
   try: reader(input_string=cif_global)
   except CifParserError as e: pass
@@ -98,7 +98,7 @@ _d                                4
   ma_builder = cif.builders.miller_array_builder(
     cif_model['r3adrAsf'],
     base_array_info=miller.array_info(crystal_symmetry_from_file=cs))
-  miller_arrays = ma_builder.arrays().values()
+  miller_arrays = list(ma_builder.arrays().values())
   assert len(miller_arrays) == 4
   mas_as_cif_block = cif.miller_arrays_as_cif_block(
       miller_arrays[0].map_to_asu(),
@@ -185,9 +185,9 @@ data_2
 _b 2
 """
   cm = cif.reader(input_string=cif_str_1).model()
-  assert cm.keys() == ['1']
+  assert list(cm.keys()) == ['1']
   cif.reader(input_string=cif_str_2, cif_object=cm).model()
-  assert cm.keys() == ['1', '2']
+  assert list(cm.keys()) == ['1', '2']
   try: cm = cif.reader(input_string=cif_invalid_loop).model()
   except CifParserError: pass
   else: raise Exception_expected
@@ -608,7 +608,7 @@ def exercise_mmcif_structure_factors():
   abcd = []
   for key in ('_refln.pdbx_HL_A_iso', '_refln.pdbx_HL_B_iso',
               '_refln.pdbx_HL_C_iso', '_refln.pdbx_HL_D_iso'):
-    assert key in mas_as_cif_block.cif_block.keys()
+    assert key in list(mas_as_cif_block.cif_block.keys())
     abcd.append(flex.double(mas_as_cif_block.cif_block[key]))
   hl_coeffs_from_cif_block = flex.hendrickson_lattman(*abcd)
   assert approx_equal(hl_coeffs.data(), hl_coeffs_from_cif_block)

@@ -7,6 +7,7 @@ from libtbx.utils import Sorry
 from libtbx.containers import OrderedDict, OrderedSet
 import warnings
 from six.moves import range
+import six
 
 class CifBuilderError(Sorry):
   __module__ = Exception.__module__
@@ -330,7 +331,7 @@ class miller_array_builder(crystal_symmetry_builder):
       wavelength_ids = [None]
       crystal_ids = [None]
       scale_groups = [None]
-      for key, value in refln_loop.iteritems():
+      for key, value in six.iteritems(refln_loop):
         # need to get these arrays first
         if (key.endswith('wavelength_id') or
             key.endswith('crystal_id') or
@@ -340,19 +341,19 @@ class miller_array_builder(crystal_symmetry_builder):
             continue
           counts = data.counts()
           if key.endswith('wavelength_id'):
-            wavelength_ids = counts.keys()
+            wavelength_ids = list(counts.keys())
           if len(counts) == 1: continue
           array = miller.array(
             miller.set(self.crystal_symmetry, self.indices).auto_anomalous(), data)
           if key.endswith('wavelength_id'):
             self.wavelength_id_array = array
-            wavelength_ids = counts.keys()
+            wavelength_ids = list(counts.keys())
           elif key.endswith('crystal_id'):
             self.crystal_id_array = array
-            crystal_ids = counts.keys()
+            crystal_ids = list(counts.keys())
           elif key.endswith('scale_group_code'):
             self.scale_group_array = array
-            scale_groups = counts.keys()
+            scale_groups = list(counts.keys())
       for label, value in sorted(refln_loop.items()):
         for w_id in wavelength_ids:
           for crys_id in crystal_ids:
@@ -521,7 +522,7 @@ class miller_array_builder(crystal_symmetry_builder):
                 info = array.info()
                 array.set_info(info.customized_copy(wavelength=wavelength))
               self._arrays.setdefault(key, array)
-    for key, array in self._arrays.copy().iteritems():
+    for key, array in six.iteritems(self._arrays.copy()):
       if (   key.endswith('_minus') or '_minus_' in key
           or key.endswith('_plus') or '_plus_' in key):
         if '_minus' in key:
