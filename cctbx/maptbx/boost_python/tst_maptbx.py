@@ -1206,7 +1206,7 @@ def exercise_map_accumulator(n1=2, n2=2, n3=2):
     (200.70, 140.54, 211.58, 212.27, 212.71, 213.86, 0.0, 211.27, 201.98, 208.10),
     0.1)
   # good to plot frequency distribution
-  #for i in xrange(Rs[0].size()):
+  #for i in range(Rs[0].size()):
   #  print " ".join(["%10.7f"%r[i] for r in Rs])
 
 def exercise_cc_peak():

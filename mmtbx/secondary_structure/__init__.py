@@ -20,7 +20,6 @@ from itertools import groupby
 from operator import itemgetter
 import iotbx.phil
 from six.moves import range
-from six.moves import map
 
 def contiguous_ss_selections(pdb_hierarchy):
   """

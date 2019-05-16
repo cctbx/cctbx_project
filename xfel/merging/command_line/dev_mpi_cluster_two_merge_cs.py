@@ -215,7 +215,7 @@ class Script(base_Script):
       # server process
       print("RANK 0 AWATING DATA")
       reports=[]
-      for r in xrange(size-1):
+      for r in range(size-1):
         print("RANK 0 FETCHING  DATASET %d"%r)
 
         #Tag to ensure no other mpi message received but those from scaler_worker

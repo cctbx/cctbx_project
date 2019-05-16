@@ -88,7 +88,7 @@ def expand_to_p1(xrs):
   for sc in xrsp1.scatterers():
     site = sc.site
     x,y,z = site
-    for t in xrange(3):
+    for t in range(3):
       if x < 0: x = x + 1.
       if x > 1: x = x - 1.
       #
@@ -245,9 +245,9 @@ def get_map_values_and_grid_sites_frac(
   print("n_real:", nx,ny,nz, map_data.size())
   grid_sites_frac = flex.vec3_double()
   map_values = flex.double()
-  for ix in xrange(nx):
-    for iy in xrange(ny):
-      for iz in xrange(nz):
+  for ix in range(nx):
+    for iy in range(ny):
+      for iz in range(nz):
         mv = map_data[(ix,iy,iz)]
         if 1: #if(mv != 0):
           xf,yf,zf = ix/float(nx), iy/float(ny), iz/float(nz)
