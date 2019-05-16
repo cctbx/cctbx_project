@@ -174,7 +174,7 @@ class ordered_solvent_distribution(object):
   #  #ss = 1./flex.pow2(self._f.d_spacings().data())
   #  data = self._fc.data() + self._f.data() * n_lost_w
   #  #data = self._fc.data().deep_copy()
-  #  #for i in xrange(len(ss)):
+  #  #for i in range(len(ss)):
   #  #  data[i] = self._fc.data()[i] + self._f.data()[i] * n_lost_w * form_factor("O", ss[i]) * \
   #  #          math.exp(-25.0/4.0*ss[i])
   #  fc_plus_f = miller.array(miller_set = self._fc,

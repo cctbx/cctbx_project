@@ -125,7 +125,7 @@ def p_matrix_from(a_sites, b_sites, weights):
 # Various vector operations
 def component_arrays(vec3_array):
 
-   x, y, z  = zip( *vec3_array )
+  x, y, z  = zip( *vec3_array )
   return ( flex.double( x ), flex.double( y ), flex.double( z ) )
 
 
@@ -809,4 +809,3 @@ class RobustResistantWeightScheme(object):
     return "Robust-resistant weighting scheme (critical value: %s)" % (
       self.critical_value_square,
       )
-

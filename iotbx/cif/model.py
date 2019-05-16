@@ -663,7 +663,6 @@ class loop(DictMixin):
     keys = self.keys()
     s_values = list(self.values())
     range_len_self = range(len(self))
-    # range is 1% faster than xrange in this particular place.
     # tuple (s_values...) is slightly faster than list
     for j in range(self.size()):
       yield OrderedDict(zip(keys, (s_values[i][j] for i in range_len_self)))

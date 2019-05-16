@@ -150,7 +150,7 @@ class ta_alpha_beta_calc(object):
 #    self.max_h = flex.max( d_star_cubed_overall )
 #    self.h_array = None
 #    if (kernel_in_bin_centers):
-#      self.h_array = flex.double( xrange(1,n_sampling_points*2,2) )*(
+#      self.h_array = flex.double( range(1,n_sampling_points*2,2) )*(
 #        self.max_h-self.min_h)/(n_sampling_points*2)+self.min_h
 #    else:
 #      self.min_h *= 0.99

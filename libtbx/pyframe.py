@@ -16,7 +16,7 @@ def named(name):
       from libtbx import pyframe
 
       def f(i):
-        for j in xrange(i):
+        for j in range(i):
           g(j)
 
       def g(j):

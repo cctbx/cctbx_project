@@ -61,7 +61,7 @@ if (__name__ == "__main__"):
   print(random_subset(range(5), 5))
   print(random_subset(range(5), 2))
   print(random_subset(range(5), 3))
-  for i in xrange(10):
+  for i in range(10):
     assert random_selection(0, 0).size() == 0
     assert random_selection(5, 0).size() == 5
     assert random_selection(3, 0).count(True) == 0
