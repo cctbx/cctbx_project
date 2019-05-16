@@ -2478,6 +2478,5 @@ class meaningful_site_cart_differences(object):
     return flex.max_absolute(self.delta.as_double())
 
   def show(self):
-    import itertools
-    for lbl, diff in itertools.izip(self.labels, self.delta):
+    for lbl, diff in six.moves.zip(self.labels, self.delta):
       print("%6s: (%.6f, %.6f, %.6f)" % ((lbl,) + diff))
