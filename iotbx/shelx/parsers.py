@@ -2,7 +2,7 @@
 
 from __future__ import absolute_import, division, print_function
 
-import itertools
+from six.moves import zip_longest
 from boost import rational
 
 from cctbx import uctbx
@@ -87,7 +87,7 @@ class instruction_parser(parser):
                                      'f': 1/3 }
         weighting_scheme = dict([
           (key, (arg is not None and arg) or default_weighting_scheme[key])
-          for key, arg in itertools.izip_longest('abcdef', args) ])
+          for key, arg in zip_longest('abcdef', args) ])
         self.instructions['wght'] = weighting_scheme
         self.builder.make_shelx_weighting_scheme(**weighting_scheme)
       elif cmd == 'HKLF':

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import itertools
+from six.moves import zip
 
 from six.moves import cStringIO as StringIO
 
@@ -91,7 +91,7 @@ def test_with_disorder():
       pivot_letter = 'A' if s < 'D' else 'B'
       expected_reparametrisation_for["H%i%s" % (i,s)] = (
         core.terminal_tetrahedral_xh3_sites, "C%i%s" % (i,pivot_letter))
-  for sc, params in itertools.izip(
+  for sc, params in zip(
     ls.reparametrisation.structure.scatterers(),
     ls.reparametrisation.asu_scatterer_parameters):
     if sc.scattering_type != 'H':
