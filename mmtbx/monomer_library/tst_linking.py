@@ -2476,12 +2476,13 @@ def run(only_i=None):
     #break
     if pdb.endswith(".cif"): continue
     if pdb.endswith(".params"): continue
+    if pdb.endswith(".phil"): continue
     if pdb in longer_tests: continue
     if pdb.find("CD_GHE")>-1: continue
     if pdb.find("partial")>-1: continue
     #if pdb.find('SO4')==-1: continue
     if pdb in ['linking_test_exclusion_SO4.pdb']: continue
-    print 'pdb',pdb
+    print 'pdb '*10,pdb
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):
