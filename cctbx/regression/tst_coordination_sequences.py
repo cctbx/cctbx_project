@@ -102,7 +102,7 @@ def exercise_shell_asu_tables(structure, verbose):
     assert asu_table == shell_asu_table
     shell_sym_from_asu_table = shell_asu_table.extract_pair_sym_table() \
       .tidy(site_symmetry_table=site_symmetry_table)
-    from cStringIO import StringIO
+    from six.moves import cStringIO as StringIO
     sio_sym = StringIO()
     shell_sym_table.show(f=sio_sym)
     sio_asu = StringIO()

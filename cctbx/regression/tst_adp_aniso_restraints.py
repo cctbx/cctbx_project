@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import cctbx.adp_restraints
 from libtbx.test_utils import approx_equal
 import libtbx.load_env

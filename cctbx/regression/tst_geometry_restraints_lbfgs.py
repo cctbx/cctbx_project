@@ -14,7 +14,7 @@ import scitbx.lbfgs
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, is_below_limit, show_diff
 from itertools import count
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 from six.moves import range
 from six.moves import zip

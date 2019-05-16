@@ -52,7 +52,7 @@ def run(args):
     [4, 5, 3, 1, 0, 2],
     [5, 3, 4, 2, 1, 0]]
   from libtbx.test_utils import show_diff
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   sio = StringIO()
   assert ra.show_summary(out=sio, prefix=": ") is ra
   assert not show_diff(sio.getvalue(), """\

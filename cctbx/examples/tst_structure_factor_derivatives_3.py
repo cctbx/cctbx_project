@@ -8,7 +8,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from libtbx.test_utils import approx_equal
 import random
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 from six.moves import range
 from six.moves import zip

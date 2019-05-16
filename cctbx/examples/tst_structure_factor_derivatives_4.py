@@ -11,7 +11,7 @@ from libtbx.test_utils import approx_equal
 import libtbx.load_env
 import random
 from itertools import count
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 from six.moves import range
 from six.moves import zip

@@ -4,7 +4,7 @@ from cctbx.array_family import flex
 from libtbx import phil
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import Exception_expected, show_diff
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def exercise_atom():
   a = geometry_restraints.motif_atom(name="a")

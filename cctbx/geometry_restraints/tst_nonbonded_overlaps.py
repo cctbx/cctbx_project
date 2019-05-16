@@ -15,11 +15,7 @@ import mmtbx.model
 import iotbx.pdb
 import unittest
 import os
-<<<<<<< HEAD
-=======
-import iotbx.phil
 from six.moves import map
->>>>>>> map (builtin) fixes to cctbx project
 
 '''
 Test non-bonded overlaps

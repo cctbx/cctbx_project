@@ -5,7 +5,7 @@ from cctbx.geometry_restraints.distance_least_squares \
 import cctbx.geometry_restraints.manager
 from cctbx import crystal
 from cctbx.array_family import flex
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import libtbx.utils
 from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
