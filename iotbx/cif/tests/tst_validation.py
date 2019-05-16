@@ -42,8 +42,8 @@ def exercise_validation():
   cd.err.reset()
   s = StringIO()
   cm_valid.validate(cd, out=s)
-  assert len(cd.err.errors.keys()) == 0
-  assert len(cd.err.warnings.keys()) == 0
+  assert len(list(cd.err.errors.keys())) == 0
+  assert len(list(cd.err.warnings.keys())) == 0
   cd2 = validation.smart_load_dictionary(name="cif_mm.dic")
   cm_invalid_2 = cif.reader(input_string=cif_invalid_2).model()
   s = StringIO()
