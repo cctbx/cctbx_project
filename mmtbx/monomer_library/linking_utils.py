@@ -411,7 +411,9 @@ def is_atom_pair_linked(atom1,
     if not linking_setup.skip_if_non_linking(lookup, atom1, atom2):
       return False
     else:
-      return is_atom_metal_coordinated(lookup, atom1, atom2)
+      if link_metals:
+        return is_atom_metal_coordinated(lookup, atom1, atom2)
+      return link_metals
   #
   # amino acids
   #
