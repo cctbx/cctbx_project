@@ -9,7 +9,7 @@ from libtbx.utils import format_cpu_times
 from six.moves import range
 from six.moves import map
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 import random

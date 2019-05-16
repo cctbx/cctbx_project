@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from math import pi
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 from cctbx import uctbx, sgtbx

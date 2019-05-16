@@ -5,7 +5,7 @@ from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from six.moves import range
 from six.moves import zip
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 

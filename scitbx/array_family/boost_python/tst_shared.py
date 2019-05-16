@@ -4,7 +4,7 @@ from libtbx.test_utils import approx_equal
 from six.moves import range
 from six.moves import zip
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 

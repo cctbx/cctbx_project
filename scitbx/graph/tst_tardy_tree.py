@@ -5,7 +5,7 @@ from scitbx import matrix
 from libtbx.test_utils import Exception_expected, show_diff
 from six.moves import range
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 from StringIO import StringIO

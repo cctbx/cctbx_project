@@ -4,7 +4,7 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from six.moves import range
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 

@@ -10,7 +10,7 @@ from iotbx.file_reader import any_file, sort_by_file_type, group_files
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
-import cPickle
+from six.moves import cPickle as pickle
 from six.moves import zip
 
 if (libtbx.env.has_module("ccp4io")):
@@ -261,7 +261,7 @@ refinement {
 def exercise_pickle():
   f = open("tmp1.pkl", "wb")
   e = OSError(2001, "Hello, world!", "tmp1.phil")
-  cPickle.dump(e, f)
+  pickle.dump(e, f)
   f.close()
   pkl = any_file("tmp1.pkl")
   assert pkl.file_type == "pkl"

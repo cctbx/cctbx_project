@@ -3,7 +3,7 @@ from scitbx.array_family import flex
 from libtbx.test_utils import show_diff
 from cStringIO import StringIO
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 import sys

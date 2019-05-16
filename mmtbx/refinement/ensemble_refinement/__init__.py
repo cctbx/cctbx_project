@@ -25,7 +25,7 @@ from libtbx import runtime_utils
 from libtbx import easy_mp
 import libtbx.load_env
 from cStringIO import StringIO
-import cPickle
+from six.moves import cPickle as pickle
 import random
 import gzip
 import math
@@ -268,7 +268,7 @@ class er_pickle(object):
   def __init__(self,
                pickle_object,
                pickle_filename):
-    cPickle.dump(pickle_object, gzip.open(pickle_filename, 'wb'))
+    pickle.dump(pickle_object, gzip.open(pickle_filename, 'wb'))
 
 class ensemble_refinement_data(object):
   def __init__(self, f_calc_running                      = None,
@@ -1256,7 +1256,7 @@ class run_ensemble_refinement(object):
     # Load all temp files
     self.fmodel_total_block_list = []
     for filename in self.block_temp_file_list:
-      block_info = cPickle.load(gzip.open(filename,'rb'))
+      block_info = pickle.load(gzip.open(filename,'rb'))
       self.fmodel_total_block_list.append(block_info)
       os.remove(filename)
 

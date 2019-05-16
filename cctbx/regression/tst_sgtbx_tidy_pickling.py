@@ -4,7 +4,7 @@ from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 
