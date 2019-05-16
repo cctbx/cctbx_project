@@ -9,7 +9,7 @@ import scitbx
 from scitbx import matrix
 import libtbx.load_env
 import math, os, sys
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import cctbx.xray
 from libtbx.test_utils import approx_equal
 from six.moves import range

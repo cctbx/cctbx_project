@@ -10,7 +10,7 @@ from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import hashlib
 from libtbx import adopt_init_args
 from itertools import count
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 from six.moves import range
 from six.moves import zip

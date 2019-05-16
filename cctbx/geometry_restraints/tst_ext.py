@@ -8,7 +8,7 @@ from cctbx.crystal import direct_space_asu
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, not_approx_equal, eps_eq, show_diff
 from libtbx.utils import null_out
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import math
 import sys
 from six.moves import range

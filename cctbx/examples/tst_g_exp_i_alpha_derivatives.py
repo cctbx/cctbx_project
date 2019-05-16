@@ -6,7 +6,7 @@ from libtbx.test_utils import approx_equal
 import random
 import math
 import copy
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 from six.moves import range
 from six.moves import zip

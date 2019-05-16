@@ -15,7 +15,6 @@ from cctbx_geometry_restraints_ext import *
 import scitbx.stl.map
 import math
 import sys
-import StringIO
 import six
 
 nonbonded_radius_table = scitbx.stl.map.stl_string_double
@@ -1899,7 +1898,7 @@ def _show_sorted_impl(O,
   n_sinusoidal = 0
   if (max_items is not None and max_items <= 0): return
   item_label_blank = " " * len(item_label)
-  outl = StringIO.StringIO()
+  outl = six.StringIO()
   for (labels, restraint) in sorted_table :
     if (proxy_type is dihedral) and (origin_id==0 or origin_id is None):
       if restraint.periodicity<=0: n_harmonic+=1

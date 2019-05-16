@@ -6,7 +6,7 @@ from cctbx import adptbx
 from cctbx.array_family import flex
 from libtbx.str_utils import show_string
 import boost.python
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 class scatterer(ext.scatterer):

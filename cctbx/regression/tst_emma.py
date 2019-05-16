@@ -9,7 +9,7 @@ from cctbx.development import debug_utils
 import iotbx.pdb
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, show_diff
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import random
 import sys
 from six.moves import range
