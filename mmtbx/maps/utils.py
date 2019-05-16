@@ -9,6 +9,7 @@ from libtbx import adopt_init_args
 import libtbx.phil
 import os
 import sys
+from six.moves import zip
 
 #-----------------------------------------------------------------------
 # MAP COEFFICIENT MANIPULATION

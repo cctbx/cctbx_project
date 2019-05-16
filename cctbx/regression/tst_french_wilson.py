@@ -3,6 +3,7 @@ from cctbx import french_wilson
 from cctbx.development import random_structure
 from scitbx.array_family import flex
 import boost.python
+from six.moves import zip
 fw_ext = boost.python.import_ext("cctbx_french_wilson_ext")
 from libtbx.utils import null_out, Sorry
 from libtbx.test_utils import Exception_expected

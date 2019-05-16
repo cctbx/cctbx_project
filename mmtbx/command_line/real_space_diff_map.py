@@ -11,6 +11,7 @@ from cctbx import miller
 from cctbx import uctbx
 from cctbx import crystal
 from libtbx import adopt_init_args
+from six.moves import zip
 from six.moves import range
 
 legend = """phenix.real_space_diff_map:

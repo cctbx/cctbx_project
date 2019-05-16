@@ -10,6 +10,7 @@ from itertools import count
 import math
 import sys, os
 from six.moves import range
+from six.moves import zip
 
 class Sorry_No_array_of_the_required_type(Sorry):
   __orig_module__ = __module__

@@ -12,6 +12,7 @@ from scitbx import matrix
 import random
 import sys
 from six.moves import range
+from six.moves import zip
 
 def run_fast_terms(structure_fixed, structure_p1,
                    f_obs, f_calc_fixed, f_calc_p1,

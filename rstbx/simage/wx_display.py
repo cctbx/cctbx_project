@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import wx
 import sys
+from six.moves import zip
 
 class detector_surface(wx.Window):
 

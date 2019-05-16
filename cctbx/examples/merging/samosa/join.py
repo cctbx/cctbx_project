@@ -15,6 +15,7 @@ import time
 import sys
 from scitbx import matrix
 import six
+from six.moves import zip
 op = os.path
 
 from xfel.command_line.cxi_merge import master_phil

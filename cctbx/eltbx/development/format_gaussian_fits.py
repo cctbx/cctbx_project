@@ -11,6 +11,7 @@ from libtbx import adopt_init_args
 from libtbx import easy_pickle
 import os
 from six.moves import range
+from six.moves import zip
 
 class labeled_fit(object):
 

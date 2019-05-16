@@ -9,6 +9,7 @@ from cctbx.crystal import direct_space_asu_float_asu
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 from six.moves import range
+from six.moves import zip
 
 # For usage type:
 #   cctbx.python tst_asu.py -h

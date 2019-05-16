@@ -12,6 +12,7 @@ from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flippable_sidechains
 
 import six
+from six.moves import zip
 from six.moves import range
 
 __author__ = 'Youval, massively rewritten by Oleg'

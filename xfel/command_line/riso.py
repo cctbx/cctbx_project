@@ -12,6 +12,7 @@ from cctbx.array_family import flex
 from libtbx.str_utils import format_value
 from xfel.cxi.cxi_cc import r1_factor, scale_factor
 from cctbx.crystal import symmetry
+from six.moves import zip
 
 phil_scope = iotbx.phil.parse("""
 input {

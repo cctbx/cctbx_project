@@ -3,6 +3,7 @@ from cctbx.eltbx.gaussian_fit import international_tables_stols
 from cctbx.array_family import flex
 from libtbx.str_utils import line_feeder
 from libtbx import adopt_init_args
+from six.moves import zip
 
 class table6111_entry(object):
 

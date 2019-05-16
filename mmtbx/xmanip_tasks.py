@@ -6,6 +6,7 @@ import iotbx.phil
 from iotbx.pdb import xray_structure
 from mmtbx.scaling import fa_estimation, pair_analyses, relative_scaling
 import sys
+from six.moves import zip
 from six.moves import range
 
 master_params = iotbx.phil.parse("""

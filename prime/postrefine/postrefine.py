@@ -13,6 +13,7 @@ from .mod_mx import mx_handler
 import math, os
 from .mod_input import read_frame
 from six.moves import range
+from six.moves import zip
 
 class postref_handler(object):
   """

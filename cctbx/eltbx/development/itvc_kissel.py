@@ -6,6 +6,7 @@ from cctbx.array_family import flex
 from libtbx.option_parser import OptionParser
 import cStringIO as StringIO
 import sys, os
+from six.moves import zip
 
 def run(args, cutoff, high_resolution_only,
         plots_dir="itvc_kissel_plots", verbose=0):

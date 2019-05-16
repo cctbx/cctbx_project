@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx import slots_getstate_setstate
 from six.moves import range
+from six.moves import zip
 
 class reader(slots_getstate_setstate):
 

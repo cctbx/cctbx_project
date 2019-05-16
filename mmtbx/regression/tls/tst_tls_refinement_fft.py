@@ -11,6 +11,7 @@ import libtbx.load_env
 import random
 import sys, os
 import iotbx.pdb
+from six.moves import zip
 
 def exercise_2(eps = 1.e-6):
 ###> Get started from PDB

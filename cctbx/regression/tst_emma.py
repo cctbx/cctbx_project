@@ -13,6 +13,7 @@ from cStringIO import StringIO
 import random
 import sys
 from six.moves import range
+from six.moves import zip
 
 target_p1="""
 CRYST1  144.039  144.039  178.924  90.00  90.00  90.00 P 1

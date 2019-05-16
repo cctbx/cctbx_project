@@ -6,6 +6,7 @@ import sys
 
 from libtbx.utils import to_str
 from six.moves import range
+from six.moves import zip
 
 t_wait = 250
 
@@ -37,7 +38,7 @@ def start_coot_and_wait(
     pdb_in.assert_file_type("pdb")
     coords = pdb_in.file_object.atoms().extract_xyz()
     ligand_xyzs.append(coords.mean())
-  ligand_info = zip(ligand_files, ligand_ccs, ligand_xyzs)
+  ligand_info = list(zip(ligand_files, ligand_ccs, ligand_xyzs))
   f = open("edit_in_coot.py", "w")
   f.write(open(base_script).read())
   f.write("\n")

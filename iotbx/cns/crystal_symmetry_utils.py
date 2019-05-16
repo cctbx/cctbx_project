@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from iotbx.cns.space_group_symbols import cns_format
 from cctbx import crystal
 from six.moves import range
+from six.moves import zip
 
 uc_param_names = "a b c alpha beta gamma".split()
 

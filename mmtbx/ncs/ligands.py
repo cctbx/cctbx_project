@@ -20,6 +20,7 @@ from libtbx import adopt_init_args, group_args
 import copy
 from math import sqrt
 import sys
+from six.moves import zip
 
 debug = True
 

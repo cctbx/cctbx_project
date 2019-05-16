@@ -14,6 +14,7 @@ import warnings
 import os
 import sys
 import time
+from six.moves import zip
 
 def exercise():
   fns = [generate_calcium_inputs, generate_zinc_inputs]

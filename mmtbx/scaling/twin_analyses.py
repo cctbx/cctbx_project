@@ -20,6 +20,7 @@ from libtbx import table_utils
 from cStringIO import StringIO
 import math
 import sys
+from six.moves import zip
 from six.moves import range
 
 # some cutoffs that may need to be adjusted

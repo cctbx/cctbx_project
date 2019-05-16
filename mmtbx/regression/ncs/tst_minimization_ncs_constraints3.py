@@ -5,6 +5,7 @@ import mmtbx.ncs.ncs_utils as nu
 import iotbx.ncs as ncs
 import iotbx.pdb
 import unittest
+from six.moves import zip
 
 __author__ = 'Youval'
 

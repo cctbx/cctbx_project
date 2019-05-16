@@ -7,6 +7,7 @@ import libtbx.load_env
 from cStringIO import StringIO
 import sys
 from iotbx import mrcfile
+from six.moves import zip
 
 
 def add_list(list_a,list_b):

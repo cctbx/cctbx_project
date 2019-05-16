@@ -18,6 +18,7 @@ import libtbx.phil
 import os.path
 import time
 import sys
+from six.moves import zip
 from six.moves import range
 
 structure_params_str = """

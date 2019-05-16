@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
 from mmtbx.pair_interaction import pair_interaction
+from six.moves import zip
 
 pdb_str = """
 REMARK PDB code: 1yjp, renumbered

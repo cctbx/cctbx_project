@@ -3,6 +3,7 @@ import time
 import mmtbx.model
 import iotbx.pdb
 from libtbx.utils import null_out
+from six.moves import zip
 
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of hydrogen atoms for nucleic acids

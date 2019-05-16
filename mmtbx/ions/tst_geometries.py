@@ -9,6 +9,7 @@ import libtbx.load_env
 from collections import OrderedDict
 import os
 import sys
+from six.moves import zip
 from six.moves import range
 
 def exercise():

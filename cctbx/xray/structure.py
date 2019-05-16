@@ -26,6 +26,7 @@ from libtbx.utils import format_float_with_standard_uncertainty \
      as format_float_with_su
 from cctbx import covariance
 from six.moves import range
+from six.moves import zip
 
 class scattering_type_registry_params(object):
   def __init__(self,

@@ -9,6 +9,7 @@ import sys
 import time
 import six
 from six.moves import range
+from six.moves import zip
 
 
 class triangulation_test_case(object):

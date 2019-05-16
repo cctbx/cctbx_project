@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx.examples import g_exp_i_alpha_derivatives
 from scitbx import matrix
 import math
+from six.moves import zip
 
 class parameters:
 

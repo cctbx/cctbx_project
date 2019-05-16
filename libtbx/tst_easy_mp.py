@@ -6,6 +6,7 @@ from libtbx import Auto
 from six.moves import cStringIO as StringIO
 import sys
 from six.moves import range
+from six.moves import zip
 
 def exercise_func_wrapper_sub_directories():
   from libtbx.easy_mp import func_wrapper_sub_directories as f

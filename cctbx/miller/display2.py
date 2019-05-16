@@ -10,6 +10,7 @@ import libtbx.phil
 from libtbx import object_oriented_patterns as oop
 from math import sqrt
 import math
+from six.moves import zip
 
 
 

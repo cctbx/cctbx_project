@@ -5,6 +5,7 @@ from cctbx import maptbx
 import mmtbx.masks
 import mmtbx.bulk_solvent
 import boost.python
+from six.moves import zip
 from six.moves import range
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from mmtbx import map_tools

@@ -5,6 +5,7 @@ from cctbx.array_family import flex
 import scitbx.lbfgs
 import math
 from libtbx.test_utils import approx_equal
+from six.moves import zip
 
 
 class detwin(object):

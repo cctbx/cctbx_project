@@ -5,6 +5,7 @@ from iotbx import crystal_symmetry_from_any
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, Usage, plural_s, detect_binary_file
 import sys, os
+from six.moves import zip
 
 def run(args):
   if (len(args) != 2):

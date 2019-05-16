@@ -6,6 +6,7 @@ import scitbx.math.gaussian
 from cctbx.array_family import flex
 from libtbx.option_parser import OptionParser
 from libtbx import easy_pickle
+from six.moves import zip
 
 def pick_nicest_fit(fit_0, fit_1):
   if (fit_0.max_error < fit_1.max_error): return fit_0

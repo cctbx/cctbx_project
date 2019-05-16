@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from libtbx import adopt_init_args
 from cctbx.array_family import flex
+from six.moves import zip
 from six.moves import range
 
 def miller_array_symmetry_safety_check(miller_array,

@@ -8,6 +8,7 @@ from scitbx.array_family import flex
 from scitbx.math import curve_fitting
 import scitbx.lbfgs
 from six.moves import range
+from six.moves import zip
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)

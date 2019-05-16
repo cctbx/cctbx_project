@@ -28,6 +28,7 @@ import sys
 import glob
 from scitbx import matrix
 import six
+from six.moves import zip
 op = os.path
 
 from xfel.merging.database.merging_database import mysql_master_phil
@@ -396,7 +397,7 @@ def get_observations (work_params):
   print("Step 1.  Get a list of all files")
   if work_params.a_list is not None:
     permissible_file_names = [a.strip() for a in open(work_params.a_list,"r").readlines()]
-    permissible_file_hash = dict( zip(permissible_file_names, [None]*len(permissible_file_names)) )
+    permissible_file_hash = dict( zip(permissible_file_names, [None]*len(permissible_file_names)))
     n_sorry = 0
   file_names = []
   if work_params.targlob:

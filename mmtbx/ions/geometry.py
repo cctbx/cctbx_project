@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx.matrix import col
 from collections import OrderedDict, Iterable
 from math import sqrt
+from six.moves import zip
 
 
 def _bond_angles(vectors):

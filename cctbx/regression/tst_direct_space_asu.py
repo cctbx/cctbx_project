@@ -16,6 +16,7 @@ import random
 import copy
 import sys
 from six.moves import range
+from six.moves import zip
 
 def exercise_reference_table():
   for space_group_number in range(1,230+1):

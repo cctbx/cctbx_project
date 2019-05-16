@@ -10,6 +10,7 @@ from xfel.merging.algorithms.error_model.error_modeler_base import error_modeler
 from xfel.merging.algorithms.error_model.sdfac_refine_lbfgs import finite_difference
 
 from libtbx import group_args
+from six.moves import zip
 
 """
 Classes to support propagating erros after postrefinement in cxi.merge

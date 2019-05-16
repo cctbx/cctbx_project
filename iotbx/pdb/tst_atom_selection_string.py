@@ -6,6 +6,7 @@ from scitbx.array_family import flex
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
 from six.moves import range
+from six.moves import zip
 
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1

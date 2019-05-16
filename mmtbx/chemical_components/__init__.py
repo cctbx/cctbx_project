@@ -5,6 +5,7 @@ from libtbx.utils import Sorry
 import libtbx.load_env
 import os
 import sys
+from six.moves import zip
 
 loaded_cifs = {}
 

@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from libtbx.test_utils import approx_equal
 import sys
+from six.moves import zip
 
 class atom(object):
   def __init__(O, xyz):

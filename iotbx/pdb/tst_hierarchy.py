@@ -10,6 +10,7 @@ from libtbx import Auto
 from cStringIO import StringIO
 import math
 from six.moves import range
+from six.moves import zip
 try:
   import cPickle as pickle
 except ImportError:

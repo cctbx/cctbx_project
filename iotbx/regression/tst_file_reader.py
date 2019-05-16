@@ -11,6 +11,7 @@ from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
 import cPickle
+from six.moves import zip
 
 if (libtbx.env.has_module("ccp4io")):
   from iotbx import mtz

@@ -6,6 +6,7 @@ from cctbx.array_family import flex
 from cmath import exp, pi
 from scitbx.matrix import row, col
 from libtbx.test_utils import approx_equal
+from six.moves import zip
 
 def exercise():
   ma = miller.array(

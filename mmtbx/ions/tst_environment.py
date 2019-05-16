@@ -14,6 +14,7 @@ import libtbx.load_env
 from collections import OrderedDict, Counter
 import os
 import sys
+from six.moves import zip
 from six.moves import range
 
 

@@ -7,6 +7,7 @@ from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import os
 import sys
+from six.moves import zip
 
 # XXX this is more complex than ideal, in order to support long and
 # potentially problematic "sequence names", which in some applications will
@@ -372,7 +373,7 @@ def get_muscle_alignment_ordered(sequences, out = None):
       elif (len(error) > 0):
         raise Sorry(error)
 
-  lookup = dict( zip( alignment.names, alignment.alignments ) )
+  lookup = dict( zip( alignment.names, alignment.alignments ))
   assert all( n in lookup for n in name_for.values() )
 
   return bioinformatics.clustal_alignment(

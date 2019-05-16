@@ -7,6 +7,7 @@ import mmtbx.ncs.ncs_utils as nu
 import scitbx.rigid_body
 from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal
+from six.moves import zip
 
 class NCS_copy():
   def __init__(self,copy_iselection, rot, tran, str_selection=None, rmsd=999):

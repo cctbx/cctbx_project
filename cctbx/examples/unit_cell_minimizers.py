@@ -9,6 +9,7 @@ import libtbx.utils
 import platform
 import sys
 from six.moves import range
+from six.moves import zip
 
 def residual(
       two_thetas_obs, miller_indices, wavelength, unit_cell):

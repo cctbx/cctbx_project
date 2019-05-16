@@ -10,6 +10,7 @@ import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
 from cStringIO import StringIO
 import os.path
+from six.moves import zip
 
 def exercise_rotalyze():
   regression_pdb = libtbx.env.find_in_repositories(

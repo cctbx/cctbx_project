@@ -8,6 +8,7 @@ from libtbx.str_utils import line_feeder
 from libtbx.option_parser import OptionParser
 from libtbx import adopt_init_args
 from six.moves import range
+from six.moves import zip
 
 class table(object):
 

@@ -8,6 +8,7 @@ from scitbx.array_family import flex
 
 from scitbx import smoothing
 from xfel.command_line import smooth_spectrum
+from six.moves import zip
 
 master_phil_str = """\
 x_offsets = None

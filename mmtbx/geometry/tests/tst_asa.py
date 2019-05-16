@@ -8,6 +8,7 @@ import libtbx.load_env
 
 import os.path
 import unittest
+from six.moves import zip
 from six.moves import range
 
 SOLVENT_RADIUS = 1.4

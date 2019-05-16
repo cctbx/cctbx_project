@@ -12,6 +12,7 @@ from prime.postrefine import postref_handler
 from cctbx.array_family import flex
 import time, math
 from six.moves import range
+from six.moves import zip
 
 # setup mpi
 comm = MPI.COMM_WORLD

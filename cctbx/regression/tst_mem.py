@@ -3,6 +3,7 @@ from scitbx.array_family import flex
 import iotbx.pdb
 import cctbx.maptbx.mem as mem
 from cctbx import miller
+from six.moves import zip
 
 def map_1d(xrs, map_data, n_steps=300, step_size=0.01):
   atom_center = xrs.scatterers()[0].site

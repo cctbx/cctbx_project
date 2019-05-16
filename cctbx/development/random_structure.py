@@ -9,6 +9,7 @@ from cctbx.array_family import flex
 from libtbx import adopt_init_args
 import random
 from six.moves import range
+from six.moves import zip
 
 def random_modify_adp_and_adp_flags(scatterers,
                                     random_u_iso_scale = 0.3,

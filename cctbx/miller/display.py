@@ -7,6 +7,7 @@ from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import object_oriented_patterns as oop
 from math import sqrt
+from six.moves import zip
 
 def generate_systematic_absences (array,
                                   expand_to_p1=False,

@@ -8,6 +8,7 @@ import scitbx.math
 from libtbx.test_utils import approx_equal
 import math
 import sys
+from six.moves import zip
 
 def check_weight_without_occupancy(structure):
   order_z = structure.space_group().order_z()

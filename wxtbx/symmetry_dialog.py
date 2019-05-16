@@ -5,6 +5,7 @@ from wxtbx.utils import add_ok_cancel_buttons
 import wxtbx.icons
 from libtbx.utils import Sorry, Abort
 import wx
+from six.moves import zip
 
 class SymmetryDialog(wx.Dialog):
   def __init__(self, *args, **kwds):

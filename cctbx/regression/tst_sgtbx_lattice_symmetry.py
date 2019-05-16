@@ -9,6 +9,7 @@ from libtbx.utils import format_cpu_times
 from cStringIO import StringIO
 import sys
 from six.moves import range
+from six.moves import zip
 
 def exercise_quick():
   for space_group_symbol in ("P-1",

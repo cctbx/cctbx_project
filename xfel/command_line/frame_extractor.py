@@ -14,6 +14,7 @@ from cctbx.crystal_orientation import crystal_orientation
 import iotbx.phil
 import cctbx, os, glob
 from libtbx import easy_pickle
+from six.moves import zip
 
 phil_scope = iotbx.phil.parse("""
   input {

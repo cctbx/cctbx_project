@@ -9,6 +9,7 @@ from libtbx.test_utils import approx_equal, not_approx_equal
 import random
 import sys
 from six.moves import range
+from six.moves import zip
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)

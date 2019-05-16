@@ -5,6 +5,7 @@ from cctbx.array_family import flex
 from libtbx.utils import Sorry
 import StringIO
 from libtbx import easy_run
+from six.moves import zip
 from six.moves import range
 
 master_phil_str = """
@@ -239,7 +240,7 @@ class afitt_object:
         bond_dict={'single':1, 'double':2, 'triple':3, 'aromatic':4, 'coval':1,
                  'deloc':4}
         bond_type = [bond_dict[i] for i in cif_object['_chem_comp_bond.type']]
-        bonds = zip(bond_atom_1, bond_atom_2, bond_type)
+        bonds = list(zip(bond_atom_1, bond_atom_2, bond_type))
         for b in bonds:
           if b[0] in model_atom_ids and b[1] in model_atom_ids:
             cov_obj.bonds.append((model_atom_ids.index(b[0]), model_atom_ids.index(b[1]), b[2]))
@@ -323,7 +324,7 @@ class afitt_object:
                  'deloc':4}
       bond_type = \
         [bond_dict[i] for i in cif_object[comp_rname]['_chem_comp_bond.type']]
-      self.bonds.append( zip(bond_atom_1, bond_atom_2, bond_type) )
+      self.bonds.append( list(zip(bond_atom_1, bond_atom_2, bond_type)) )
       self.charge.append( sum(self.partial_charges[-1]) )
       self.nbonds.append ( len(self.bonds[-1]) )
       res_ids = self.get_res_ids(pdb_hierarchy, res)

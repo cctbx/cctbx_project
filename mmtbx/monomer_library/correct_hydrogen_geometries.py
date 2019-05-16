@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import zip
 
 def get_bad_hydrogen_i_seqs(hierarchy,
                             restraints_manager=None,

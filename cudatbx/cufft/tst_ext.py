@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
+from six.moves import zip
 
 def exercise_real_to_complex_3d(benchmark=True):
   sizes_1 = [((32,32,32), 16, 0.0000001),

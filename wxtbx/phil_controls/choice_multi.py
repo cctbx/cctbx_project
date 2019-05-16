@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from wxtbx import phil_controls
 import wx
 import six
+from six.moves import zip
 
 class MultiChoiceCtrl(wx.Panel, phil_controls.PhilCtrl):
   """

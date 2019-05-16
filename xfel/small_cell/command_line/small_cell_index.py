@@ -10,6 +10,7 @@ from xfel.small_cell.small_cell import small_cell_index
 import libtbx.load_env
 import libtbx.option_parser
 import sys,os
+from six.moves import zip
 
 small_cell_phil_str = """
 small_cell {

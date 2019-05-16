@@ -8,6 +8,7 @@ from libtbx.test_utils import Exception_expected, approx_equal
 import math
 import random
 from six.moves import range
+from six.moves import zip
 
 def check_eigenvalue(adp, x):
   r = -adp[0] - adp[1] - adp[2]

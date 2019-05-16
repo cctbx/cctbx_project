@@ -9,6 +9,7 @@ from iotbx.phil import parse
 from libtbx import easy_run
 from libtbx.utils import Sorry
 import six
+from six.moves import zip
 
 phil_scope = parse("""
   method = *hierarchical expanding

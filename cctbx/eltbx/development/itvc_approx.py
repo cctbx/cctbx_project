@@ -7,6 +7,7 @@ from cctbx.array_family import flex
 from libtbx.option_parser import OptionParser
 import sys, os
 from six.moves import range
+from six.moves import zip
 
 def run(file_name, table_of_gaussians, cutoff,
         low_resolution_only=False,

@@ -6,6 +6,7 @@ import scitbx.math.gaussian_fit
 import hashlib
 import time
 import sys
+from six.moves import zip
 
 def write_module_info(f, module_object):
   file_name = module_object.__file__

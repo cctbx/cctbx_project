@@ -18,6 +18,7 @@ import mmtbx.model
 from libtbx.utils import null_out
 import sys
 import os
+from six.moves import zip
 from six.moves import range
 
 def exercise_basic():

@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import boost.python
 from six.moves import range
+from six.moves import zip
 ext = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
 

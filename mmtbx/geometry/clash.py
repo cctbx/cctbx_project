@@ -5,6 +5,7 @@ import mmtbx.geometry.shared_types # import dependency
 
 import boost.python
 from functools import reduce
+from six.moves import zip
 ext = boost.python.import_ext( "mmtbx_geometry_clash_ext" )
 from mmtbx_geometry_clash_ext import *
 
@@ -256,7 +257,7 @@ class Case(object):
   def voxelizer(self):
 
     vertices = self.symmetry.space_group_info().direct_space_asu().shape_vertices()
-    ( xs, ys, zs ) = zip( *vertices )
+    xs, ys, zs = zip( *vertices )
 
     centre = (
       ( min( xs ) + max( xs ) ) / 2.0,

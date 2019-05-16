@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import libtbx
+from six.moves import zip
 
 class assistant(libtbx.slots_getstate_setstate):
 

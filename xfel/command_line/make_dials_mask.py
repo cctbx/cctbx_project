@@ -15,6 +15,7 @@ from dxtbx.format.Registry import Registry
 from scitbx.array_family import flex
 import sys
 from libtbx import easy_pickle
+from six.moves import zip
 
 def run(argv=None):
   import libtbx.option_parser

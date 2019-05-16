@@ -18,6 +18,7 @@ from libtbx import Auto
 from cStringIO import StringIO
 import warnings
 from six.moves import range
+from six.moves import zip
 try:
   import cPickle as pickle
 except ImportError:
@@ -278,7 +279,7 @@ def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
         assert accu.reflection_counts.size() == accu.free_fractions.size()
         if (verbose):
           print("r_free_flags_accumulation:", \
-            zip(accu.reflection_counts, accu.free_fractions))
+            list(zip(accu.reflection_counts, accu.free_fractions)))
       if (not anomalous_flag):
         if (i_trial < 5):
           assert flags.indices().size() == 145

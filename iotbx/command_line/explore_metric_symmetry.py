@@ -13,6 +13,7 @@ import libtbx.path
 from cStringIO import StringIO
 
 import sys
+from six.moves import zip
 
 def do_pointgroup_tricks(input_uc,
                          input_ls,

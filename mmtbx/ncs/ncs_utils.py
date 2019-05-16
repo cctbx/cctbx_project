@@ -8,6 +8,7 @@ import math
 import mmtbx.monomer_library.server
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flip_residue
+from six.moves import zip
 from six.moves import range
 
 

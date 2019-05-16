@@ -12,6 +12,7 @@ from cctbx import crystal
 import wx
 import sys
 from six.moves import range
+from six.moves import zip
 
 
 master_phil = iotbx.phil.parse("""

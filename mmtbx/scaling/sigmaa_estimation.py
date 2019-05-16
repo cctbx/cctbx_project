@@ -11,6 +11,7 @@ import math
 import sys
 import iotbx.phil
 from libtbx import group_args
+from six.moves import zip
 from six.moves import range
 
 sigmaa_estimator_params = iotbx.phil.parse("""\

@@ -15,6 +15,7 @@ from libtbx import adopt_init_args, group_args
 from iotbx.pdb.hybrid_36 import hy36encode
 import os
 import sys
+from six.moves import zip
 
 def get_master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs

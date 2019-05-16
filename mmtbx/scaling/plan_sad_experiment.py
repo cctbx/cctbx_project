@@ -6,6 +6,7 @@ from libtbx.utils import Sorry, null_out
 from libtbx import table_utils
 import math
 import sys,os
+from six.moves import zip
 from six.moves import range
 
 def get_vol_per_residue(chain_type='PROTEIN'):

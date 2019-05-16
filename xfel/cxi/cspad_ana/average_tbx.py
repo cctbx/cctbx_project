@@ -14,6 +14,7 @@ import scitbx.math
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
+from six.moves import zip
 
 class average_mixin(common_mode.common_mode_correction):
   def __init__(self,

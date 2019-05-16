@@ -10,6 +10,7 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 import random
 from six.moves import range
+from six.moves import zip
 
 random.seed(0)
 

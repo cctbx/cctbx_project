@@ -13,6 +13,7 @@ from itertools import count
 from cStringIO import StringIO
 import sys
 from six.moves import range
+from six.moves import zip
 try:
   import cPickle as pickle
 except ImportError:

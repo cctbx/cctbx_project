@@ -11,6 +11,7 @@ from scitbx import matrix
 from scitbx.array_family import flex
 from boost import rational # implicit import
 from six.moves import range
+from six.moves import zip
 
 gaussian_fit_1d_analytical.__doc__ = """
 Fits a gaussian function to a list of points.

@@ -19,6 +19,7 @@ from libtbx.phil import parse
 from libtbx.utils import Sorry
 from xfel.command_line.cspad_detector_congruence import get_center
 import libtbx.load_env
+from six.moves import zip
 
 help_message = '''
 

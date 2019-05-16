@@ -3,6 +3,7 @@ from scitbx import math
 from scitbx.array_family import flex
 from scitbx.array_family import shared
 from six.moves import range
+from six.moves import zip
 
 def tst_nlm():
   nlm_array = math.nlm_array(10)

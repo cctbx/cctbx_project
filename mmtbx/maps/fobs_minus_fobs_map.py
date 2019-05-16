@@ -21,6 +21,7 @@ from cStringIO import StringIO
 import os
 import sys
 import mmtbx.model
+from six.moves import zip
 
 fo_minus_fo_master_params_str = """\
 f_obs_1_file_name = None

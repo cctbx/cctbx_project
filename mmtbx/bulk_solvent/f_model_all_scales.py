@@ -12,7 +12,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.math_utils import ifloor, iceil
 import mmtbx.f_model
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
-from six.moves import range
+from six.moves import zip, range
 
 class run(mmtbx.f_model.manager):
   """

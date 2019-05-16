@@ -6,6 +6,7 @@ from scitbx.array_family import flex
 from rstbx.outlier_spots.fit_distribution import fit_cdf
 from rstbx.indexing_api import rayleigh_cpp
 from rstbx_ext import * # gets us SpotClass
+from six.moves import zip
 
 def format_data(x_data=None,y_data=None):
   """

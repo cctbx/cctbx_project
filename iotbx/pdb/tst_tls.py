@@ -5,6 +5,7 @@ from cStringIO import StringIO
 import libtbx.load_env
 from libtbx.test_utils import approx_equal, show_diff
 import iotbx.pdb
+from six.moves import zip
 
 
 def exercise_mmcif_tls():

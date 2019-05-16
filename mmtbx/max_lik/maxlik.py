@@ -9,6 +9,7 @@ from cctbx.array_family import flex
 from cctbx import miller
 from libtbx import adopt_init_args
 import iotbx.phil
+from six.moves import zip
 from six.moves import range
 
 alpha_beta_params = iotbx.phil.parse("""\

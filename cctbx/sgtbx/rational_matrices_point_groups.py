@@ -4,6 +4,7 @@ from cctbx.sgtbx import sub_lattice_tools
 from scitbx import matrix
 from boost import rational
 from libtbx.math_utils import ifloor
+from six.moves import zip
 
 def as_hkl( op ):
   def row_as_hkl( row, txt=['h','k','l']):

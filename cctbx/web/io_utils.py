@@ -9,6 +9,7 @@ from cctbx import eltbx
 from cctbx import adptbx
 from cctbx.web import cgi_utils
 from six.moves import range
+from six.moves import zip
 
 def show_input_symbol(sgsymbol, convention, label="Input"):
   if (sgsymbol != ""):

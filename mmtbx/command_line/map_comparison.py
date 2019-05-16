@@ -9,6 +9,7 @@ import iotbx.ccp4_map
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
 import os, sys
+from six.moves import zip
 from six.moves import range
 
 master_phil = phil.parse("""

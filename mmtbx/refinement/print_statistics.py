@@ -14,6 +14,7 @@ import cctbx.xray.structure_factors.global_counters
 from libtbx import easy_pickle
 from itertools import count
 from libtbx import group_args
+from six.moves import zip
 
 enable_show_process_info = getenv_bool(
   "MMTBX_PRINT_STATISTICS_ENABLE_SHOW_PROCESS_INFO")

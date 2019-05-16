@@ -8,6 +8,7 @@ import iotbx.phil
 from scitbx.array_family import flex
 from scitbx import smoothing
 from six.moves import range
+from six.moves import zip
 
 def pyplot_label_axes(xlabel="Pixel column", ylabel="Intensity", fontsize=20):
   from matplotlib import pyplot

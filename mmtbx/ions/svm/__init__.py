@@ -32,6 +32,7 @@ from mmtbx.ions.environment import N_SUPPORTED_ENVIRONMENTS
 from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES
 import mmtbx.ions.identify
 from mmtbx.ions.svm import utils
+from six.moves import zip
 from six.moves import range
 
 try : # XXX required third-party dependencies
@@ -478,7 +479,7 @@ def predict_ion(chem_env, scatter_env, elements=None, svm_name=None):
   probs = prob_estimates[:nr_class]
   labels = [ALLOWED_IONS[i] for i in classifier.get_labels()]
 
-  lst = zip(labels, probs)
+  lst = list(zip(labels, probs))
   lst.sort(key=lambda x: -x[-1])
 
   if elements is not None:
@@ -496,7 +497,7 @@ def predict_ion(chem_env, scatter_env, elements=None, svm_name=None):
     # Re-normalize the probabilities
     total = sum(probs)
     probs = [i / total for i in probs]
-    lst = zip(classes, probs)
+    lst = list(zip(classes, probs))
 
   return lst
 

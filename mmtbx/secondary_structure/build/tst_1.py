@@ -3,6 +3,7 @@ from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
+from six.moves import zip
 
 
 t_pdb_str = """\

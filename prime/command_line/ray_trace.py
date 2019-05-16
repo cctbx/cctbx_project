@@ -19,6 +19,7 @@ from prime.postrefine.mod_mx import mx_handler
 from prime.postrefine.mod_leastsqr import good_unit_cell
 from prime.postrefine.mod_input import read_frame, read_pickles
 from six.moves import range
+from six.moves import zip
 
 def read_input(args):
   if len(args) == 0:

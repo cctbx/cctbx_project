@@ -18,6 +18,7 @@ from time import time
 import scitbx.math
 import mmtbx.idealized_aa_residues.rotamer_manager
 import mmtbx.refinement.real_space.fit_residues
+from six.moves import zip
 from six.moves import range
 
 alpha_helix_str = """

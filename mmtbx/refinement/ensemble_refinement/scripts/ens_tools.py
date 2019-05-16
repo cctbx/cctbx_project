@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 
 import math, sys
 from pymol import cmd, stored
+from six.moves import zip
 from six.moves import range
 
 class LogWriter:

@@ -4,6 +4,7 @@ from functools import cmp_to_key
 from six.moves import cStringIO
 
 import sys
+from six.moves import zip
 
 def format_none(format, null_value=0, replace_with="None"):
   assert isinstance(replace_with, str)

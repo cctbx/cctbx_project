@@ -8,6 +8,7 @@ import random
 from mmtbx.geometry_restraints import reference
 from mmtbx.model import manager
 from libtbx.utils import null_out
+from six.moves import zip
 
 
 if(1):

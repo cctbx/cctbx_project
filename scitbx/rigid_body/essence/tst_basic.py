@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.rigid_body.essence import featherstone, body_lib, joint_lib, spatial_lib
+from six.moves import zip
 
 matrix = featherstone.matrix
 if (featherstone.scitbx is not None):

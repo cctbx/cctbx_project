@@ -5,6 +5,7 @@ from libtbx import adopt_init_args
 import mmtbx.ncs.ncs_utils as nu
 from cctbx import xray
 import scitbx.lbfgs
+from six.moves import zip
 
 def grads_asu_to_one_ncs(
       ncs_restraints_group_list,

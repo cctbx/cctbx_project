@@ -9,6 +9,7 @@ from scitbx.stdlib import math
 import time, sys
 from fractions import Fraction
 from six.moves import range
+from six.moves import zip
 
 def read_data(filename):
   file=open(filename, 'r')

@@ -4,6 +4,7 @@ from cctbx import crystal
 from cctbx import uctbx
 from cctbx import sgtbx
 from libtbx.test_utils import approx_equal
+from six.moves import zip
 
 def tst_find_best_cell():
   uc_array=[ uctbx.unit_cell( '40, 50, 60, 90, 90, 90' ),

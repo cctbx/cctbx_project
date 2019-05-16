@@ -3,6 +3,7 @@ from six.moves import range
 import math
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
+from six.moves import zip
 
 # alternate implementation of spotfinder; use the idea of identifying
 # bright pixels on the inner 32 asics. (intensities > 2.0 * 90th percentile)

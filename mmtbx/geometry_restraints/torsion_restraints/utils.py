@@ -5,6 +5,7 @@ from iotbx.pdb import input
 from cctbx.array_family import flex
 import math
 import sys
+from six.moves import zip
 
 def process_reference_files(
       reference_file_list,

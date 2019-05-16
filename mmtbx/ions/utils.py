@@ -12,6 +12,7 @@ from libtbx.utils import null_out, xfrange
 from mmtbx.ions import server
 from scitbx.array_family import flex
 from scitbx.math import gaussian_fit_1d_analytical
+from six.moves import zip
 from six.moves import range
 
 def anonymize_ions(pdb_hierarchy, log=sys.stdout):

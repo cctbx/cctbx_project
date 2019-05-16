@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 
 import boost.python
+from six.moves import zip
 ext = boost.python.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 

@@ -7,6 +7,7 @@ from libtbx.utils import if_none
 from libtbx import slots_getstate_setstate
 import copy
 import sys
+from six.moves import zip
 from six.moves import range
 
 peptide_comp_groups = ("L-peptide", "D-peptide")

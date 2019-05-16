@@ -15,6 +15,7 @@ from xfel.ui.db.experiment import Cell, Bin, Isoform, Event
 from xfel.ui.db import get_db_connection
 from six.moves import range
 import six
+from six.moves import zip
 
 try:
   from MySQLdb import OperationalError

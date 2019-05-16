@@ -12,6 +12,7 @@ from cctbx import adptbx
 import mmtbx.model
 import iotbx.pdb
 from cStringIO import StringIO
+from six.moves import zip
 
 class xray_structure_plus(object):
   def __init__(self, file_name):

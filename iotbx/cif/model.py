@@ -9,6 +9,7 @@ from UserDict import DictMixin
 
 from cctbx.array_family import flex
 from six.moves import range
+from six.moves import zip
 import six
 
 

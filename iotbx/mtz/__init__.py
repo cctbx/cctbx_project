@@ -3,6 +3,7 @@ import cctbx.array_family.flex
 
 import boost.python
 from six.moves import range
+from six.moves import zip
 ext = boost.python.import_ext("iotbx_mtz_ext")
 from iotbx_mtz_ext import *
 import iotbx_mtz_ext as ext

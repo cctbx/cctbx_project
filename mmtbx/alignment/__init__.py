@@ -3,6 +3,7 @@ import scitbx.array_family.flex
 from scitbx.array_family import flex
 
 import boost.python
+from six.moves import zip
 from six.moves import range
 ext = boost.python.import_ext("mmtbx_alignment_ext")
 

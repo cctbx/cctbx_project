@@ -18,6 +18,7 @@ from libtbx.introspection import method_debug_log
 from libtbx import adopt_init_args
 import wx
 import six
+from six.moves import zip
 
 debug = method_debug_log()
 

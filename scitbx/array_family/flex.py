@@ -8,6 +8,7 @@ import boost.optional # import dependency
 import boost.std_pair # import dependency
 import boost.python
 from six.moves import range
+from six.moves import zip
 boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import *
 import scitbx_array_family_flex_ext as ext

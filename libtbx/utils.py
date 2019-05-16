@@ -20,6 +20,7 @@ from libtbx.queuing_system_utils import pbs_utils, sge_utils
 from libtbx.math_utils import round2
 from libtbx.str_utils import show_string
 from six.moves import range
+from six.moves import zip
 
 try: import gzip
 except ImportError: gzip = None

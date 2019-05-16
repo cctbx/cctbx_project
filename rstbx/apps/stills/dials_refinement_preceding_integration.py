@@ -5,6 +5,7 @@ from rstbx.apps import simple_integration
 from scitbx import matrix
 import math,copy
 from dials.array_family import flex
+from six.moves import zip
 
 class integrate_one_frame(IntegrationMetaProcedure):
   def __init__(self, triclinic):

@@ -56,6 +56,7 @@ from iotbx.file_reader import any_file
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 
 import boost.python
+from six.moves import zip
 from six.moves import range
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
 from mmtbx_utils_ext import *

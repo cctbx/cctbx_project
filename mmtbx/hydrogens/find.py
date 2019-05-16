@@ -9,7 +9,7 @@ from mmtbx.refinement import print_statistics
 import mmtbx.utils
 from cctbx import sgtbx
 import cctbx
-from six.moves import range
+from six.moves import zip,range
 
 master_params_part1 = iotbx.phil.parse("""\
 map_type = mFobs-DFmodel

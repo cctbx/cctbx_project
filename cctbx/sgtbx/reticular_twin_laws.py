@@ -9,6 +9,7 @@ from cctbx.sgtbx import sub_lattice_tools as slt
 from scitbx import matrix
 import math, sys
 import scitbx.math
+from six.moves import zip
 
 class symmetry_safe_sublattice_xs(object):
   def __init__(self,xsin,start_order=1,stop_order=5,max_delta=5.0):

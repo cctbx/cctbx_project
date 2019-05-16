@@ -8,6 +8,7 @@ from xfel.amo.pnccd_ana                 import pnccd_tbx
 from xfel.amo.pnccd_ana                 import pnccd_hit
 from xfel.amo.pnccd_ana                 import fxs
 import matplotlib.pyplot as plt
+from six.moves import zip
 
 plt.ion()
 ########################################
@@ -36,7 +37,7 @@ def h5gen(run,timestamps = None, first = None, last = None):
 
     times     = timestamps
     nevents   = len(times)
-    mytimes,myevents  = zip(*[(times[i],i) for i in range(nevents) if (i+nom)%denom == 0])
+    mytimes,myevents  = list(zip(*[(times[i],i) for i in range(nevents) if (i+nom)%denom == 0]))
 
     for j in range(len(mytimes)):
          yield myevents[j],mytimes[j]
@@ -68,7 +69,7 @@ def idxgen(run,timestamps = None, first = None, last = None):
 
     times     = timestamps[first:last]
     nevents   = len(times)
-    mytimes,myevents  = zip(*[(times[i],i) for i in range(nevents) if (i+nom)%denom == 0])
+    mytimes,myevents  = list(zip(*[(times[i],i) for i in range(nevents) if (i+nom)%denom == 0]))
 
     for j in range(len(mytimes)):
          yield myevents[j],run.event(mytimes[j])

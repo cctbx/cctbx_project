@@ -6,6 +6,7 @@ import iotbx.phil
 from mmtbx.hydrogens import connectivity
 from libtbx.utils import null_out
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
+from six.moves import zip
 
 
 def exercise1():

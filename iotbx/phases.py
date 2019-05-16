@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import math
+from six.moves import zip
 
 def miller_array_as_phases_phs(self,
       out,

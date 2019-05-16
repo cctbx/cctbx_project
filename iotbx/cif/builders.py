@@ -8,6 +8,7 @@ from libtbx.containers import OrderedDict, OrderedSet
 import warnings
 from six.moves import range
 import six
+from six.moves import zip
 
 class CifBuilderError(Sorry):
   __module__ = Exception.__module__

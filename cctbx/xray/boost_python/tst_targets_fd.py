@@ -6,6 +6,7 @@ from libtbx.math_utils import iceil
 from itertools import count
 import sys
 from six.moves import range
+from six.moves import zip
 
 class random_inputs(object):
 

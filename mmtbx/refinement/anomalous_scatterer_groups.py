@@ -6,6 +6,7 @@ from libtbx.test_utils import approx_equal
 from libtbx import adopt_init_args
 import time
 import sys
+from six.moves import zip
 from six.moves import range
 
 class minimizer(object):

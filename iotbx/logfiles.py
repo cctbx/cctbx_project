@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 import cStringIO
 import sys, os, re
+from six.moves import zip
 
 def check_bin_format(bin):
   try :

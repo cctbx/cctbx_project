@@ -6,6 +6,7 @@ from cctbx.uctbx.reduction_base import iteration_limit_exceeded as KGerror
 from rstbx.dps_core.cell_assessment import unit_cell_too_small,SmallUnitCellVolume
 from rstbx.dps_core import directional_show
 from rstbx_ext import Direction
+from six.moves import zip
 
 diagnostic = False
 

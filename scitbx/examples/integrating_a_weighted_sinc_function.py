@@ -4,6 +4,7 @@ from scitbx.math import chebyshev_polynome
 import scitbx.math
 import math
 from six.moves import range
+from six.moves import zip
 
 
 class function(object):

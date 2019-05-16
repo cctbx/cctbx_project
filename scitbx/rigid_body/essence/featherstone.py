@@ -16,6 +16,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx.rigid_body.essence.spatial_lib import \
   matrix, cb_as_spatial_transform, crm, crf, kinetic_energy
 from six.moves import range
+from six.moves import zip
 
 try:
   import scitbx

@@ -12,6 +12,7 @@ import cctbx.sgtbx.bravais_types
 from cctbx.development import random_structure
 import libtbx.load_env
 from cctbx import adptbx
+from six.moves import zip
 from six.moves import range
 
 if (1): # fixed random seed to avoid rare failures

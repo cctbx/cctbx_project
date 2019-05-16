@@ -4,6 +4,7 @@ from cctbx.array_family import flex
 import scitbx.graph.tardy_tree
 from scitbx import matrix
 from libtbx.math_utils import nested_loop
+from six.moves import zip
 
 def expand_model_or_conformer_indices(
       indices,

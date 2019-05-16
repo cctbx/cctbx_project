@@ -11,6 +11,7 @@ import libtbx.load_env
 import math
 import weakref
 from six.moves import range
+from six.moves import zip
 try:
   import cPickle as pickle
 except ImportError:

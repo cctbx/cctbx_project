@@ -4,6 +4,7 @@ import sys, os, string
 from libtbx.utils import Sorry
 from libtbx.utils import null_out
 import scitbx.rigid_body
+from six.moves import zip
 from six.moves import range
  # hierarchy:  there can be any number of ncs groups.
  #   each group has a set of NCS operators and centers and may apply

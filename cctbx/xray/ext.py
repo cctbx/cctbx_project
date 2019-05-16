@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import boost.python
+from six.moves import zip
 ext = boost.python.import_ext("cctbx_xray_ext")
 from cctbx_xray_ext import *
 

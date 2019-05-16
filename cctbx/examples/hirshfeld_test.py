@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from cctbx import crystal, adp_restraints, xray
+from six.moves import zip
 
 def run(structure_file_path):
   xs = xray.structure.from_shelx(filename=structure_file_path,

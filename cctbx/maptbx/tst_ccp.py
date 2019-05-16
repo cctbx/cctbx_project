@@ -3,6 +3,7 @@ from cctbx import miller
 from libtbx.test_utils import approx_equal
 from cctbx import maptbx
 from libtbx.math_utils import ifloor, iceil
+from six.moves import zip
 
 pdb_str = """\
 REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "model.pdb"

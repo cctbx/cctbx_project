@@ -21,6 +21,7 @@ from libtbx import easy_pickle
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana.parse_calib import Section
 import six
+from six.moves import zip
 
 __version__ = "$Revision$"
 

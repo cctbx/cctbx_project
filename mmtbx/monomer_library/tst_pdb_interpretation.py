@@ -12,6 +12,7 @@ from cStringIO import StringIO
 import os
 import sys
 from cctbx.array_family import flex
+from six.moves import zip
 
 def exercise_handle_case_insensitive(mon_lib_srv, ener_lib):
   def check(a, r, e):

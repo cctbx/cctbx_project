@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx.test_utils import open_tmp_file, Exception_expected
+from six.moves import zip
 
 def exercise():
   exercise_writer()

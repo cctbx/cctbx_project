@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx import math
+from six.moves import zip
 
 def makexyz():
   xyz=flex.vec3_double()

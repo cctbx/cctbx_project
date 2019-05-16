@@ -55,6 +55,7 @@ from mmtbx.validation.sequence import validation as sequence_validation
 
 import boost.python
 import six
+from six.moves import zip
 from six.moves import range
 
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")

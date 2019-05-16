@@ -8,6 +8,7 @@ import operator
 import math
 from functools import reduce
 from six.moves import range
+from six.moves import zip
 
 # Exceptions
 class MultipleSuperpositionError(Exception):
@@ -124,7 +125,7 @@ def p_matrix_from(a_sites, b_sites, weights):
 # Various vector operations
 def component_arrays(vec3_array):
 
-  ( x, y, z ) = zip( *vec3_array )
+   x, y, z  = zip( *vec3_array )
   return ( flex.double( x ), flex.double( y ), flex.double( z ) )
 
 

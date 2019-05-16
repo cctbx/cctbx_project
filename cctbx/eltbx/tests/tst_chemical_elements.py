@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx.eltbx import chemical_elements
 from scitbx import stl
 import scitbx.stl.set
+from six.moves import zip
 
 def exercise():
   lc = chemical_elements.proper_caps_list()

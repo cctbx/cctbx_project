@@ -3,6 +3,7 @@
 from __future__ import absolute_import, division, print_function
 import six
 from six.moves import range
+from six.moves import zip
 __author__ = 'Monarin Uervirojnangkoorn, monarin@gmail.com'
 
 from prime.isoform_cluster.mod_isoform_cluster import isoform_cluster_handler

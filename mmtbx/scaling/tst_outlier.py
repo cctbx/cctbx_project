@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from mmtbx import scaling
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from six.moves import zip
 from six.moves import range
 
 

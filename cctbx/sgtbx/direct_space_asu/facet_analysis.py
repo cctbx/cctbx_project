@@ -5,6 +5,7 @@ from scitbx import matrix
 import scitbx.math
 from boost import rational
 from six.moves import range
+from six.moves import zip
 
 def intersection(cuts):
   assert len(cuts) == 3
@@ -251,7 +252,7 @@ class edge_with_cut_points(object):
     return [edge_position(self.end_points, point) for point in self.cut_points]
 
   def sorted_cut_points(self):
-    packed = zip(self.cut_points, self.cut_point_positions())
+    packed = list(zip(self.cut_points, self.cut_point_positions()))
     packed.sort(packed_cut_point_sort_function)
     return [p[0] for p in packed]
 

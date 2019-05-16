@@ -11,6 +11,7 @@ from iotbx import reflection_file_utils
 
 from iotbx.cif_mtz_data_labels import phenix_to_cif_labels_dict,\
   ccp4_to_cif_labels_dict
+from six.moves import zip
 # Probably we can align with what PDB choose to use
 # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v40.dic/Categories/refln.html
 # comply with newer version:

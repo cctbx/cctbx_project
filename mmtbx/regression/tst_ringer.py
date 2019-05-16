@@ -4,6 +4,7 @@ from scitbx.array_family import flex
 from libtbx import easy_run
 import libtbx.load_env # import dependency
 import os
+from six.moves import zip
 
 pdb_str = """
 CRYST1   34.896   15.928   22.972  90.00  90.00  90.00 P 1

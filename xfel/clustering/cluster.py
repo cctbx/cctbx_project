@@ -14,6 +14,7 @@ import os
 import math
 import logging
 from six.moves import range
+from six.moves import zip
 logger = logging.getLogger(__name__)
 from xfel.clustering.singleframe import SingleFrame, SingleDialsFrame, SingleDialsFrameFromFiles
 from xfel.clustering.singleframe import SingleDialsFrameFromJson

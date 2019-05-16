@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import six
 from six.moves import range
+from six.moves import zip
 
 class pcr_parser(object):
 

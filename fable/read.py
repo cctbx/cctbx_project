@@ -10,6 +10,7 @@ from fable import intrinsics
 from fable import equivalence
 from fable import utils
 import sys
+from six.moves import zip
 
 class Error(Exception): pass
 

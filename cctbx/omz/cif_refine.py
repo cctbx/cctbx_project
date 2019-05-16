@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
+from six.moves import zip
 def report_fraction_of_negative_observations_if_any(id_code, obs):
   d = obs.data()
   n_neg = (d < 0).count(True)

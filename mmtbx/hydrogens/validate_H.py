@@ -6,6 +6,7 @@ from mmtbx.validation import restraints
 from mmtbx.validation.molprobity import mp_geo
 #from libtbx.utils import Sorry
 from mmtbx.rotamer import rotamer_eval
+from six.moves import zip
 
 protein = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
   "modified_rna_dna", "ccp4_mon_lib_rna_dna"]

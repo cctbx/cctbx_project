@@ -7,6 +7,7 @@ from cctbx.web import io_utils
 from cctbx.web import cgi_utils
 from itertools import count
 import sys
+from six.moves import zip
 
 def interpret_form_data(form):
   inp = cgi_utils.inp_from_form(form,

@@ -9,6 +9,7 @@ from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from six.moves import range
+from six.moves import zip
 
 class simulation(object):
 

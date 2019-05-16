@@ -14,6 +14,7 @@ import scitbx.math
 from scitbx import matrix
 import six
 from six.moves import range
+from six.moves import zip
 try:
   import wx
 except ImportError:

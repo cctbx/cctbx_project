@@ -13,6 +13,7 @@ from wxGUI2 import AdvancedWidgets, Base
 import wx
 import sys
 from six.moves import range
+from six.moves import zip
 
 class ensemble_validation_plot(plots.histogram):
   def show_plot(self,

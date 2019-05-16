@@ -42,7 +42,7 @@ from libtbx.test_utils import approx_equal
 import libtbx
 import mmtbx.bulk_solvent
 import six
-from six.moves import range
+from six.moves import zip, range
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -902,7 +902,7 @@ class manager(manager_mixin):
         r_solvs.append(tr2)
     r_solv = trial_range[:]
     r_shrink = trial_range[:]
-    trial_params = zip(r_solvs, r_shrinks)
+    trial_params = list(zip(r_solvs, r_shrinks))
     parallel = False
     mask_results = []
     if(nproc is Auto) or (nproc > 1):

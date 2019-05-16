@@ -36,6 +36,7 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 import sys
 from six.moves import range
+from six.moves import zip
 
 class gridding(object):
 

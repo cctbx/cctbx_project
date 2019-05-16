@@ -7,6 +7,7 @@ import numpy as np
 from xfel.amo.pnccd_ana                 import pnccd_tbx
 from xfel.amo.pnccd_ana                 import fxs
 import matplotlib.pyplot as plt
+from six.moves import zip
 
 plt.ion()
 ########################################

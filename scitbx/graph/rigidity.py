@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import random
 from six.moves import range
+from six.moves import zip
 
 def gcd(a, b):
   ri = a

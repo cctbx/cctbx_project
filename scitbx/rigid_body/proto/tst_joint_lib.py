@@ -14,6 +14,7 @@ from libtbx.utils import null_out, show_times_at_exit
 import math
 import sys
 from six.moves import range
+from six.moves import zip
 
 class random_revolute(object):
 

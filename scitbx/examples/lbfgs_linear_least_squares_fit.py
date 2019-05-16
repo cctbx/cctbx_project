@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import scitbx.lbfgs
 from scitbx.array_family import flex
 import math
+from six.moves import zip
 
 class linear_least_squares_fit(object):
 

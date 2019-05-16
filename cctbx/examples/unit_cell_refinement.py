@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
+from six.moves import zip
 two_theta_and_index_list = """\
   8.81   0  1  1
  12.23   0  0  2

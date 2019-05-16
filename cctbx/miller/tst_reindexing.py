@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import zip
 def run(args):
   assert len(args) == 0
   from cctbx import miller

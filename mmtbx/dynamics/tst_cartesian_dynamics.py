@@ -13,6 +13,7 @@ from cStringIO import StringIO
 import random
 #from mmtbx import utils
 import sys, os
+from six.moves import zip
 from six.moves import range
 
 if (1): # fixed random seed to avoid rare failures

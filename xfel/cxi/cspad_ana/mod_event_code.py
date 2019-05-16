@@ -10,6 +10,7 @@ import logging, os
 
 from xfel.cxi.cspad_ana import cspad_tbx
 import psana
+from six.moves import zip
 
 class mod_event_code(object):
   def __init__(

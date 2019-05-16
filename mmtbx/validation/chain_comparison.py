@@ -11,6 +11,7 @@ import sys,os
 from libtbx.utils import Sorry,null_out
 from scitbx.array_family import flex
 from copy import deepcopy
+from six.moves import zip
 from six.moves import range
 
 master_phil = iotbx.phil.parse("""

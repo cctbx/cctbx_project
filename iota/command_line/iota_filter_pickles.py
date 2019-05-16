@@ -5,6 +5,7 @@ import h5py
 import os, shutil, argparse, glob, ntpath
 import numpy as np
 from six.moves import range
+from six.moves import zip
 
 try:  # for Py3 compatibility
     import itertools.izip as zip

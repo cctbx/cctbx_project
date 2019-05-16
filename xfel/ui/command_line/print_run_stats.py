@@ -13,6 +13,7 @@ from xfel.ui.db.stats import HitrateStats
 import sys
 from xfel.ui.command_line.plot_run_stats import phil_scope
 from scitbx.array_family import flex
+from six.moves import zip
 
 def run(args):
   user_phil = []

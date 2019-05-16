@@ -10,6 +10,7 @@ import random
 import math
 import os
 import sys
+from six.moves import zip
 from six.moves import range
 
 master_phil = iotbx.phil.parse("""

@@ -4,6 +4,7 @@ from libtbx.test_utils import approx_equal
 import scitbx.math as sm
 import math
 from six.moves import range
+from six.moves import zip
 
 
 def twod_integrator( cub, n_points ):

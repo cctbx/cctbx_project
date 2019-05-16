@@ -11,6 +11,7 @@ import libtbx.load_env
 from cStringIO import StringIO
 import os
 from six.moves import range
+from six.moves import zip
 
 def exercise_map_gridding():
   try:

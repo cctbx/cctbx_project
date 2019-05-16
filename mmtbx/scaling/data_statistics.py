@@ -19,6 +19,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry
 from libtbx import table_utils
 import math
+from six.moves import zip
 from six.moves import range
 
 

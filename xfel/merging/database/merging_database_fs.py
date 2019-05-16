@@ -6,6 +6,7 @@ from __future__ import absolute_import, division, print_function
 
 from cctbx.array_family import flex
 from six.moves import range
+from six.moves import zip
 
 
 # XXX Use proper field separators (e.g. ASCII 31), see
@@ -231,7 +232,7 @@ class manager (manager_base):
                   'original_l': 9}
     for key in kwargs.keys():
       order.append(order_dict[key])
-    parameters = zip(*list(kwargs.values())) # FIXME
+    parameters = list(zip(*list(kwargs.values()))) # FIXME
     self._db_commands_queue.put(('observation', order, parameters, None))
 
 

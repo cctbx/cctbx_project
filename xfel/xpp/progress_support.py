@@ -6,6 +6,7 @@ from cctbx.miller import set as mset
 from scitbx import matrix
 
 from xfel.merging.database.merging_database import manager
+from six.moves import zip
 class progress_manager(manager):
   def __init__(self,params,db_experiment_tag,trial,rungroup_id,run):
     self.params = params
@@ -214,7 +215,7 @@ class progress_manager(manager):
               + ", ".join(kwargs) + ") values (" \
               + ", ".join(["%s"] * len(kwargs)) + ")"
       try:
-        parameters = zip(*list(kwargs.values()))
+        parameters = list(zip(*list(kwargs.values())))
       except TypeError:
         parameters = [list(kwargs.values())]
       cursor.executemany(query, parameters)

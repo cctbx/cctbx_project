@@ -8,6 +8,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 import os.path as op
 import random
+from six.moves import zip
 
 def exercise_twin_detwin():
   random.seed(12345)

@@ -3,6 +3,7 @@ import cctbx.sgtbx
 
 import boost.python
 from six.moves import range
+from six.moves import zip
 ext = boost.python.import_ext("cctbx_maptbx_ext")
 from cctbx_maptbx_ext import *
 

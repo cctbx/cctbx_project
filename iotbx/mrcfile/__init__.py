@@ -9,6 +9,7 @@ from scitbx.array_family.flex import grid
 from cctbx import maptbx
 import numpy as np
 from six.moves import range
+from six.moves import zip
 
 #  mrcfile
 

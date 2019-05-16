@@ -7,6 +7,7 @@ import math
 import sys
 import six
 from six.moves import range
+from six.moves import zip
 
 class nonbonded_overlaps_results(object):
   """ Container for non-bonded overlaps results """

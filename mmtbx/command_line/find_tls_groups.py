@@ -17,6 +17,8 @@ import os
 import time
 import sys
 import six
+from six.moves import zip
+
 from six.moves import range
 
 

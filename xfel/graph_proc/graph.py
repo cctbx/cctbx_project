@@ -6,6 +6,7 @@ crystallography images, treated as a graph problem.
 from __future__ import absolute_import, division, print_function
 from functools import reduce
 from six.moves import range
+from six.moves import zip
 
 __author__ = 'zeldin'
 

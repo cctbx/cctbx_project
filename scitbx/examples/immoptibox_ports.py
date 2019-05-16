@@ -16,6 +16,7 @@ import scitbx.minpack
 import scitbx.lbfgs
 import scitbx.lbfgsb
 from six.moves import range
+from six.moves import zip
 
 try:
   import knitro_adaptbx

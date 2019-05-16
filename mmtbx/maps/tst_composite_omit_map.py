@@ -4,6 +4,7 @@ from cctbx import miller
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
 import boost.python
+from six.moves import zip
 from six.moves import range
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from mmtbx.maps import composite_omit_map as cfom

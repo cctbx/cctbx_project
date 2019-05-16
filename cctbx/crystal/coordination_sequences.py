@@ -3,6 +3,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from six.moves import range
+from six.moves import zip
 
 simple = crystal.coordination_sequences_simple
 simple_sym = crystal.coordination_sequences_simple_sym

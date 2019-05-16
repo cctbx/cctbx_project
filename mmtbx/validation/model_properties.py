@@ -8,6 +8,7 @@ from mmtbx.validation import atom, residue, validation, dummy_validation
 from libtbx import slots_getstate_setstate
 from libtbx.test_utils import approx_equal
 import sys
+from six.moves import zip
 
 class model_statistics(slots_getstate_setstate):
   """

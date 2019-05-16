@@ -12,6 +12,7 @@ from prime.index_ambiguity.mod_kmeans import kmeans_handler
 from prime.postrefine.mod_mx import mx_handler
 import random
 from six.moves import range
+from six.moves import zip
 
 def solve_with_mtz_mproc(args):
   frame_no, pickle_filename, iparams, miller_array_ref = args

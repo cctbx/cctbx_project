@@ -3,6 +3,7 @@ from scitbx import matrix
 import math
 from scitbx.math import dihedral_angle
 from mmtbx_hydrogens_ext import *
+from six.moves import zip
 
 class manager(object):
   def __init__(self,

@@ -17,6 +17,7 @@ from xfel import correction_vector_store
 from libtbx.development.timers import Timer
 
 from xfel.merging.database.merging_database import mysql_master_phil
+from six.moves import zip
 master_phil="""
 bravais_setting_id = None
   .type = int
