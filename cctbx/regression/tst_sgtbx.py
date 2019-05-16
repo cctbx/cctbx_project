@@ -7,6 +7,7 @@ import scitbx.math
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 from six.moves import range
+from six.moves import map
 try:
   import cPickle as pickle
 except ImportError:
@@ -199,12 +200,12 @@ def exercise_generator_set():
 
   sgi = sgtbx.space_group_info('P21')
   sg_generator_set = sgtbx.any_generator_set(sgi.group())
-  assert (map(str, sg_generator_set.non_primitive_generators)
+  assert (list(map(str, sg_generator_set.non_primitive_generators))
           == ['-x,y+1/2,-z'])
 
   sgi = sgtbx.space_group_info('Pmmm')
   sg_generator_set = sgtbx.any_generator_set(sgi.group())
-  assert (map(str, sg_generator_set.non_primitive_generators)
+  assert (list(map(str, sg_generator_set.non_primitive_generators))
           == ['-x,-y,-z', 'x,-y,-z', '-x,y,-z'])
 
   for i in range(1, 231):

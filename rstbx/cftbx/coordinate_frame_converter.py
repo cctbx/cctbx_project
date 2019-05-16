@@ -11,6 +11,7 @@ from .coordinate_frame_helpers import is_xds_integrate_hkl, \
     import_xds_integrate_hkl
 from .coordinate_frame_helpers import is_xds_ascii_hkl, \
     import_xds_ascii_hkl
+from six.moves import map
 
 class coordinate_frame_converter:
     '''A class which is instantiated from a supported file (initially an
@@ -267,7 +268,7 @@ if __name__ == '__main__':
     print('Maximum resolution: %.2f' % cfc.derive_detector_highest_resolution())
 
     mosflm_matrix = matrix.sqr(
-        map(float, open(sys.argv[2]).read().split()[:9]))
+        list(map(float, open(sys.argv[2]).read().split()[:9])))
 
     u, b = cfc.get_u_b(convention = cfc.MOSFLM)
 

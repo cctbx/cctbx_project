@@ -28,6 +28,7 @@ import traceback
 import urllib2
 import urlparse
 import zipfile
+from six.moves import map
 
 try:
   import argparse
@@ -1058,12 +1059,12 @@ class Builder(object):
 
     # Add 'hot' sources
     if hot:
-      map(self.add_module, self.get_hot())
+      list(map(self.add_module, self.get_hot()))
 
     # Add svn sources.
     self.revert=revert
     if update:
-      map(self.add_module, self.get_codebases())
+      list(map(self.add_module, self.get_codebases()))
 
     # always remove .pyc files
     self.remove_pyc()

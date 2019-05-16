@@ -4,6 +4,7 @@ import iotbx.pdb
 from libtbx.utils import Sorry
 from six.moves import range
 from six.moves import zip
+from six.moves import map
 
 class container(object):
 
@@ -92,7 +93,7 @@ def process_BIOMT_records(lines, eps=1e-4):
     # collecting the data from the remarks. Checking that we are collecting only data
     # and not part of the remarks header by verifying that the 3rd component contains "BIOMT"
     # and that the length of that component is 6
-    biomt_data = [map(float,x.split()[3:]) for x in source_info if (
+    biomt_data = [list(map(float,x.split()[3:])) for x in source_info if (
       x.split()[2].find('BIOMT') > -1) and (len(x.split()[2]) == 6)]
     # test that there is no missing data
     if len(biomt_data)%3 != 0:

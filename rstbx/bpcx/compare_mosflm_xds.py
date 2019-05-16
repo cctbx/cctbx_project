@@ -33,6 +33,7 @@ from cctbx.sgtbx import space_group, space_group_symbols
 from cctbx.miller import map_to_asu
 from six.moves import range
 from six.moves import zip
+from six.moves import map
 
 def meansd(values):
     assert(len(values) > 3)
@@ -127,9 +128,9 @@ def read_xds_integrate(xds_integrate_file):
         if '!' in record[:1]:
             continue
         values = record.split()
-        hkls.append(map(int, values[:3]))
+        hkls.append(list(map(int, values[:3])))
         xyzs.append((float(values[5]), float(values[6]), float(values[7])))
-        isigmas.append(map(float, values[3:5]))
+        isigmas.append(list(map(float, values[3:5])))
 
     map_to_asu(sg.type(), False, hkls)
 

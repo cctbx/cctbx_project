@@ -17,6 +17,7 @@ import scitbx.math.superpose
 
 from libtbx.utils import Sorry
 from six.moves import zip
+from six.moves import map
 
 # Ideas:
 #   preset options: Ca, backbone, all atom

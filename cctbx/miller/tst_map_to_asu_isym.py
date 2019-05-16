@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 from six.moves import range
 
 def intify(a):
-    return tuple(map(int, map(round, a)))
+    return tuple([int(round(val)) for val in a])
 
 def reference_map(sg, mi):
   from cctbx import sgtbx

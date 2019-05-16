@@ -16,6 +16,7 @@ import sys
 from pprint import pprint
 from six.moves import cPickle as pickle
 from types import ModuleType
+from six.moves import map
 
 def _read_obj(obj, prev=None):
   if prev is None:

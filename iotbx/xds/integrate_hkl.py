@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
+from six.moves import map
 
 class reader:
   """A class to read the INTEGRATE.HKL file used in XDS"""
@@ -169,7 +170,7 @@ class reader:
     """
     # Split the tokens
     tokens = line.split()
-    tokens = map(int, tokens[0:3]) + map(float, tokens[3:])
+    tokens = list(map(int, tokens[0:3])) + list(map(float, tokens[3:]))
 
     # Get the reflection information and append to the lists
     self.hkl.append(tuple(tokens[0:3]))

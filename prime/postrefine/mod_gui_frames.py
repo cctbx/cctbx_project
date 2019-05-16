@@ -30,6 +30,7 @@ import prime.postrefine.mod_threads as thr
 from prime.postrefine.mod_input import master_phil
 from prime.postrefine.mod_plotter import Plotter, PlotWindow
 from six.moves import range
+from six.moves import map
 
 ginp = util.InputFinder()
 

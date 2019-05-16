@@ -283,7 +283,7 @@ def allocate_chunks(results_dir,
             if (trg[:6] == trial + "_rg") and rg_condition(trg[-5:])]
     if not trgs:
       continue
-    rungroups = set(map(lambda n: n.split("_")[1], trgs))
+    rungroups = set([n.split("_")[1] for n in trgs])
     for rg in rungroups:
       if rg not in rgs:
         rgs[rg] = [run]

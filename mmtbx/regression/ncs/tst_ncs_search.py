@@ -6,6 +6,7 @@ import iotbx.ncs as ncs
 import iotbx.pdb
 import unittest
 from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
+from six.moves import map
 
 __author__ = 'Youval'
 
@@ -1351,7 +1352,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   tests = ['test_correct_transform_selection']
-  suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
+  suite = unittest.TestSuite(list(map(TestSimpleAlignment,tests)))
   return suite
 
 if __name__=='__main__':
