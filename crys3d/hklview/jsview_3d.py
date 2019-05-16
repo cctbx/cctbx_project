@@ -48,9 +48,9 @@ class ArrayInfo:
       ( millarr.index_span().min(), millarr.index_span().max())
     dmin = millarr.d_max_min()[1]
     dmax = millarr.d_max_min()[0]
-    self.infostr = "%s (%s), %s %s, %s, d_min_max: %s, %s" % \
-      (self.labels, self.desc, millarr.indices().size(), self.span,
-       self.minmaxstr, roundoff(dmin), roundoff(dmax) )
+    self.infotpl = (self.labels, self.desc, millarr.indices().size(), self.span,
+     self.minmaxstr, roundoff(dmin), roundoff(dmax) )
+    self.infostr = "%s (%s), %s %s, %s, d_min_max: %s, %s" % self.infotpl
 
 
 class hklview_3d:

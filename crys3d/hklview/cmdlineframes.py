@@ -227,7 +227,8 @@ class HKLViewFrame () :
     self.miller_array = None
     self.valid_arrays = []
     self.spacegroup_choices = []
-    self.array_info = []
+    self.array_infostrs = []
+    self.array_infotpls = []
     self.merge_answer = [None]
     self.dmin = -1
     self.settings = display.settings()
@@ -239,6 +240,7 @@ class HKLViewFrame () :
     self.viewer = view_3d.hklview_3d( **kwds )
     self.master_phil = libtbx.phil.parse( philstr )
     self.params = self.master_phil.fetch().extract()
+    self.infostr = ""
 
     self.useSocket=False
     if kwds.has_key('useSocket'):
@@ -256,8 +258,10 @@ class HKLViewFrame () :
     while not self.STOP:
       philstr = self.socket.recv()
       philstr = str(philstr)
-      self.mprint("Received\n" + philstr)
-      self.ExecutePhilString(philstr)
+      self.mprint("Received phil:\n" + philstr)
+      new_phil = self.GetNewPhilString(philstr)
+      self.update_settings(new_phil)
+      print "in zmq listen"
       time.sleep(1)
     del self.socket
 
@@ -267,13 +271,16 @@ class HKLViewFrame () :
   def update_settings(self, new_phil=None):
     if not new_phil:
       new_phil = self.master_phil.format(python_object = self.params)
+    print "in update_settings"
     working_phil = self.master_phil.fetch(source = new_phil)
     diff_phil = self.master_phil.fetch_diff(source = working_phil)
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     diff = diff_phil.extract().NGL_HKLviewer
     self.mprint("diff phil:\n" + diff_phil.as_str() )
+
     self.master_phil = working_phil
-    self.params = working_phil.extract().NGL_HKLviewer
-    phl = self.params
+    self.params = working_phil.extract()
+    phl = self.params.NGL_HKLviewer
 
     if hasattr(diff, "filename"):
       self.load_reflections_file(phl.filename)
@@ -291,8 +298,8 @@ class HKLViewFrame () :
       self.set_camera_type(phl.cameratype)
 
     if hasattr(diff, "viewer"):
-      self.viewer.settings = self.params.viewer
-      self.settings = self.params.viewer
+      self.viewer.settings = phl.viewer
+      self.settings = phl.viewer
 
     msg = self.viewer.update_settings()
     self.mprint( msg)
@@ -340,32 +347,39 @@ class HKLViewFrame () :
     if (array.unit_cell() is None) or (array.space_group() is None) :
       raise Sorry("No space group info is present in data")
     details = []
-    merge = None
+    #self.merge_answer[0] = None
+    self.infostr = ""
     if (not array.is_unique_set_under_symmetry() and not self.merge_answer[0]) :
-      self.merge_answer[0] = Inputarg("The data in the selected array are not symmetry-"+
-        "unique, which usually means they are unmerged (but could also be due "+
-        "to different indexing conventions).  Do you want to merge equivalent "+
-        "observations (preserving anomalous data if present), or view the "+
-        "array unmodified?  (Note that if you do not merge the array, the "+
-        "options to expand to P1 or generate Friedel pairs will be be disabled"+
-        ", and the 2D view will only show indices present in the file, rather "+
-        "than a full pseudo-precession view.). yes/no?\n")
-      if (self.merge_answer[0].lower()[0] == "y") :
-        merge = True
-        #array = array.merge_equivalents().array().set_info(info)
-        details.append("merged")
-        #self.update_settings_for_merged(True)
-      else :
-        merge = False
-        details.append("unmerged data")
-        #self.update_settings_for_unmerged()
-        self.settings.expand_to_p1 = False
-        self.settings.expand_anomalous = False
-    #else :
-      #self.update_settings_for_merged()
-    #if array.is_complex_array() :
-    #  array = array.amplitudes().set_info(info)
-    #  details.append("as amplitudes")
+      shouldmergestr = "The data in the selected array are not symmetry-" + \
+        "unique, which usually means they are unmerged (but could also be due "+ \
+        "to different indexing conventions).  Do you want to merge equivalent "+ \
+        "observations (preserving anomalous data if present), or view the "+ \
+        "array unmodified?  (Note that if you do not merge the array, the "+ \
+        "options to expand to P1 or generate Friedel pairs will be be disabled"+ \
+        ", and the 2D view will only show indices present in the file, rather "+ \
+        "than a full pseudo-precession view.). yes/no?\n"
+      if self.useSocket:
+        self.infostr = shouldmergestr
+        self.SendInfo()
+        while 1:
+          philstr = self.socket.recv()
+          philstr = str(philstr)
+          self.mprint("process_miller_array, Received phil:\n" + philstr)
+          new_phil = self.GetNewPhilString(philstr)
+          #working_phil = self.master_phil.fetch(source = new_phil)
+          params = new_phil.extract().NGL_HKLviewer
+          if hasattr(params, "mergedata"):
+            self.merge_answer[0] = params.mergedata
+            break
+          time.sleep(1)
+      else:
+        self.merge_answer[0] = Inputarg(shouldmergestr).lower()[0] == "y"
+        if self.merge_answer[0]:
+          details.append("merged")
+        else :
+          details.append("unmerged data")
+          self.settings.expand_to_p1 = False
+          self.settings.expand_anomalous = False
     array = self.detect_Rfree(array)
     sg = "%s" % array.space_group_info()
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % array.unit_cell().parameters()
@@ -375,7 +389,7 @@ class HKLViewFrame () :
     array_info = group_args(
       labels=labels,
       details_str=details_str,
-      merge=merge,
+      merge=self.merge_answer[0],
       sg=sg,
       uc=uc)
     return array, array_info
@@ -451,7 +465,7 @@ class HKLViewFrame () :
 
 
   def SetSpaceGroupChoice(self, n):
-    self.params.spacegroupchoice = n
+    self.params.NGL_HKLviewer.spacegroupchoice = n
     self.update_settings()
 
 
@@ -465,7 +479,7 @@ class HKLViewFrame () :
       self.viewer.iradiicol = 0
       display.reset_settings()
       self.settings = display.settings()
-      self.viewer.settings = self.params.viewer
+      self.viewer.settings = self.params.NGL_HKLviewer.viewer
       self.viewer.mapcoef_fom_dict = {}
       try :
         hkl_file = any_reflection_file(file_name)
@@ -475,7 +489,8 @@ class HKLViewFrame () :
         )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)
       #arrays = f.file_server.miller_arrays
       valid_arrays = []
-      self.array_info = []
+      self.array_infostrs = []
+      self.array_infotpls = []
       for array in arrays :
         #if array.is_hendrickson_lattman_array() :
         #  continue
@@ -485,10 +500,11 @@ class HKLViewFrame () :
           self.mprint('Ignoring miller array \"%s\" of %s' \
             %(array.info().label_string(), type(array.data()[0]) ) )
           continue
-        self.array_info.append( ArrayInfo(array).infostr )
+        self.array_infostrs.append( ArrayInfo(array).infostr )
+        self.array_infotpls.append( ArrayInfo(array).infotpl )
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
-      for i,e in enumerate(self.array_info):
+      for i,e in enumerate(self.array_infostrs):
         self.mprint("%d, %s" %(i, e))
       if (len(valid_arrays) == 0) :
         msg = "No arrays of the supported types in this file."
@@ -500,54 +516,55 @@ class HKLViewFrame () :
 
 
   def LoadReflectionsFile(self, filename):
-    self.params.filename = filename
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    self.params.NGL_HKLviewer.filename = filename
     self.update_settings()
 
 
   def set_camera_type(self, camtype):
-    self.viewer.cameratype = self.params.cameratype
+    self.viewer.cameratype = self.params.NGL_HKLviewer.cameratype
     self.viewer.DrawNGLJavaScript()
 
 
   def SetCameraType(self, camtype):
-    self.params.cameratype = camtype
+    self.params.NGL_HKLviewer.cameratype = camtype
     self.update_settings()
 
 
   def ExpandToP1(self, val):
-    self.params.viewer.expand_to_p1 = val
+    self.params.NGL_HKLviewer.viewer.expand_to_p1 = val
     self.update_settings()
 
 
   def ExpandAnomalous(self, val):
-    self.params.viewer.expand_anomalous = val
+    self.params.NGL_HKLviewer.viewer.expand_anomalous = val
     self.update_settings()
 
 
   def ShowOnlyMissing(self, val):
-    self.params.viewer.show_only_missing = val
+    self.params.NGL_HKLviewer.viewer.show_only_missing = val
     self.update_settings()
 
 
   def ShowMissing(self, val):
-    self.params.viewer.show_missing = val
+    self.params.NGL_HKLviewer.viewer.show_missing = val
     self.update_settings()
 
 
   def ShowDataOverSigma(self, val):
-    self.params.viewer.show_data_over_sigma = val
+    self.params.NGL_HKLviewer.viewer.show_data_over_sigma = val
     self.update_settings()
 
 
   def ShowSystematicAbsences(self, val):
-    self.params.viewer.show_systematic_absences = val
+    self.params.NGL_HKLviewer.viewer.show_systematic_absences = val
     self.update_settings()
 
 
   def ShowSlice(self, val, axis="h", index=0):
-    self.params.viewer.slice_mode = val
-    self.params.viewer.slice_axis = axis.lower()
-    self.params.viewer.slice_index = index
+    self.params.NGL_HKLviewer.viewer.slice_mode = val
+    self.params.NGL_HKLviewer.viewer.slice_axis = axis.lower()
+    self.params.NGL_HKLviewer.viewer.slice_index = index
     self.update_settings()
 
 
@@ -561,8 +578,8 @@ class HKLViewFrame () :
 
 
   def SetColumnBinThresholds(self, binvals, binarray="Resolution"):
-    self.params.columnbinthresholds = binvals
-    self.params.binarray = binarray
+    self.params.NGL_HKLviewer.columnbinthresholds = binvals
+    self.params.NGL_HKLviewer.binarray = binarray
     self.update_settings()
 
 
@@ -593,22 +610,22 @@ class HKLViewFrame () :
 
 
   def SetColumn(self, column):
-    self.params.column = column
+    self.params.NGL_HKLviewer.column = column
     self.update_settings()
 
 
   def SetFomColumn(self, fomcolumn):
-    self.params.fomcolumn = fomcolumn
+    self.params.NGL_HKLviewer.fomcolumn = fomcolumn
     self.update_settings()
 
 
   def SetColourColumn(self, colourcol):
-    self.params.viewer.icolourcol = colourcol
+    self.params.NGL_HKLviewer.viewer.icolourcol = colourcol
     self.update_settings()
 
 
   def SetRadiusColumn(self, radiuscol):
-    self.params.viewer.iradiicol = radiuscol
+    self.params.NGL_HKLviewer.viewer.iradiicol = radiuscol
     self.update_settings()
 
 
@@ -619,35 +636,35 @@ class HKLViewFrame () :
     If nth_power_scale < 0.0 an automatic power will be computed ensuring the smallest radius
     is 0.1 the maximum radius
     """
-    self.params.viewer.scale = scale
-    self.params.viewer.nth_power_scale_radii = nth_power_scale
+    self.params.NGL_HKLviewer.viewer.scale = scale
+    self.params.NGL_HKLviewer.viewer.nth_power_scale_radii = nth_power_scale
     self.update_settings()
 
 
   def SetRadiiToSigmas(self, val):
-    self.params.viewer.sigma_radius = val
+    self.params.NGL_HKLviewer.viewer.sigma_radius = val
     self.update_settings()
 
 
   def SetColoursToSigmas(self, val):
-    self.params.viewer.sigma_color = val
+    self.params.NGL_HKLviewer.viewer.sigma_color = val
     self.update_settings()
 
 
   def SetSqrtScaleColours(self, val):
-    self.params.viewer.sqrt_scale_colors = val
+    self.params.NGL_HKLviewer.viewer.sqrt_scale_colors = val
     self.update_settings()
 
 
   def SetColoursToPhases(self, val):
-    self.params.viewer.phase_color = val
+    self.params.NGL_HKLviewer.viewer.phase_color = val
     self.update_settings()
 
 
-  def ExecutePhilString(self, philstr):
+  def GetNewPhilString(self, philstr):
     user_phil = libtbx.phil.parse(philstr)
     new_phil = self.master_phil.fetch(source = user_phil)
-    self.update_settings( new_phil)
+    return new_phil
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
@@ -670,11 +687,11 @@ class HKLViewFrame () :
     return self.viewer.NGLscriptstr
 
 
-  def GetArrayInfo(self):
+  def GetArrayInfotpls(self):
     """
     return array of strings with information on each miller array
     """
-    return self.array_info
+    return self.array_infotpls
 
 
   def GetMatchingArrayInfo(self):
@@ -695,7 +712,8 @@ class HKLViewFrame () :
 
 
   def SendInfo(self):
-    mydict = { "miller_arrays": self.array_info,
+    mydict = { "info": self.infostr,
+               "miller_arrays": self.array_infotpls,
                "matching_arrays": self.viewer.matchingarrayinfo,
                "bin_info": self.viewer.binstrs,
                "html_url": self.viewer.url,
@@ -703,7 +721,6 @@ class HKLViewFrame () :
             }
     if self.useSocket:
       self.socket.send( str(mydict).encode("utf-8") )
-
 
 
 
@@ -715,6 +732,8 @@ NGL_HKLviewer {
     .type = int
   fomcolumn = None
     .type = int
+  mergedata = None
+    .type = bool
   spacegroupchoice = None
     .type = int
   columnbinthresholds = None
