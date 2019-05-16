@@ -27,7 +27,7 @@ from __future__ import absolute_import, division, print_function
 # around the automatic behavior
 
 from libtbx.utils import Sorry, to_str
-import cPickle
+from six.moves import cPickle as pickle
 import os
 import re
 import sys
@@ -443,7 +443,7 @@ class any_file_input(object):
     self._file_object = map_object
 
   def _try_as_pkl(self):
-    pkl_object = cPickle.load(open(self.file_name, "rb"))
+    pkl_object = pickle.load(open(self.file_name, "rb"))
     self._file_type = "pkl"
     self._file_object = pkl_object
 
