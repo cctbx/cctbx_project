@@ -860,6 +860,7 @@ class manager(object):
       chem_comp_loops.append(cc.as_cif_loop())
     for key, block in restraints.items():
       for loop in block.iterloops():
+        if loop is None: continue
         if '_chem_comp_plane_atom.comp_id' in loop.keys():
           # plane atom - add plane
           plane_ids = []
