@@ -7,7 +7,6 @@
 #   Class to read all the data from a XDS.INP file
 #
 from __future__ import absolute_import, division, print_function
-from six.moves import map
 
 class reader:
   """A class to read the XDS.INP file used in XDS"""
@@ -132,17 +131,17 @@ class reader:
         else:
           self.corrections = parameter[1]
       elif name == 'DIRECTION_OF_DETECTOR_X-AXIS=':
-        self.direction_of_detector_x_axis = list(map(float, parameter[-3:]))
+        self.direction_of_detector_x_axis = [float(_p) for _p in parameter[-3:]]
       elif name == 'DIRECTION_OF_DETECTOR_Y-AXIS=':
-        self.direction_of_detector_y_axis = list(map(float, parameter[-3:]))
+        self.direction_of_detector_y_axis = [float(_p) for _p in parameter[-3:]]
       elif name == 'TRUSTED_REGION=':
-        self.trusted_region = list(map(float, parameter[-2:]))
+        self.trusted_region = [float(_p) for _p in parameter[-2:]]
       elif name == 'SENSOR_THICKNESS=':
         self.sensor_thickness = float(parameter[1])
       elif name == 'SILICON=':
         self.silicon = float(parameter[1])
       elif name == 'UNTRUSTED_RECTANGLE=':
-        self.untrusted_rectangle.append(list(map(int, parameter[-4:])))
+        self.untrusted_rectangle.append( [int(_p) for _p in parameter[-4:]])
       elif name == 'MAXIMUM_NUMBER_OF_PROCESSORS=':
         self.maximum_number_of_processor = int(parameter[1])
       elif name == 'NX=':
@@ -158,17 +157,17 @@ class reader:
       elif name == 'ORGY=':
         self.orgy = float(parameter[1])
       elif name == 'ROTATION_AXIS=':
-        self.rotation_axis = list(map(float, parameter[-3:]))
+        self.rotation_axis = [float(_p) for _p in parameter[-3:]]
       elif name == 'DETECTOR_DISTANCE=':
         self.detector_distance = float(parameter[1])
       elif name == 'X-RAY_WAVELENGTH=':
         self.xray_wavelength = float(parameter[1])
       elif name == 'INCIDENT_BEAM_DIRECTION=':
-        self.incident_beam_direction = list(map(float, parameter[-3:]))
+        self.incident_beam_direction = [float(_p) for _p in parameter[-3:]]
       elif name == 'FRACTION_OF_POLARIZATION=':
         self.fraction_of_polarization = float(parameter[-1])
       elif name == 'POLARIZATION_PLANE_NORMAL=':
-        self.polarization_plane_normal = list(map(float, parameter[-3:]))
+        self.polarization_plane_normal = [float(_p) for _p in parameter[-3:]]
       elif name == 'FRIEDEL\'S_LAW=':
         self.friedels_law = bool(parameter[-1])
       elif name == 'NAME_TEMPLATE_OF_DATA_FRAMES=':
@@ -180,22 +179,22 @@ class reader:
       elif name == 'OSCILLATION_RANGE=':
         self.oscillation_range = float(parameter[1])
       elif name == 'INCLUDE_RESOLUTION_RANGE=':
-        self.include_resolution_range = list(map(float, parameter[-2:]))
+        self.include_resolution_range = [float(_p) for _p in  parameter[-2:]]
       elif name == 'UNIT_CELL_CONSTANTS=':
-        self.unit_cell_constants = list(map(float, parameter[-6:]))
+        self.unit_cell_constants = [float(_p) for _p in  parameter[-6:]]
       elif name == 'SPACE_GROUP_NUMBER=':
         self.space_group_number = int(parameter[-1])
       elif name == 'MAX_FAC_Rmeas=':
         self.max_fac_rmeas = float(parameter[-1])
       elif name == 'DATA_RANGE=':
-        self.data_range = list(map(int, parameter[-2:]))
+        self.data_range = [int(_p) for _p in parameter[-2:]]
       elif name == 'SEGMENT=':
         self.num_segments += 1
-        self.segment.append(list(map(int, parameter[-4:])))
+        self.segment.append( [int(_p) for _p in parameter[-4:]])
       elif name == 'DIRECTION_OF_SEGMENT_X-AXIS=':
-        self.direction_of_segment_x_axis.append(list(map(float, parameter[-3:])))
+        self.direction_of_segment_x_axis.append([float(_p) for _p in parameter[-3:]])
       elif name == 'DIRECTION_OF_SEGMENT_Y-AXIS=':
-        self.direction_of_segment_y_axis.append(list(map(float, parameter[-3:])))
+        self.direction_of_segment_y_axis.append([float(_p) for _p in parameter[-3:]])
       elif name == 'SEGMENT_DISTANCE=':
         self.segment_distance.append(float(parameter[-1]))
       elif name == 'SEGMENT_ORGX=':

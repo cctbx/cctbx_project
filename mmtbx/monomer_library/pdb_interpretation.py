@@ -28,9 +28,7 @@ import time
 import math
 
 from cctbx.geometry_restraints.linking_class import linking_class
-from six.moves import zip
-from six.moves import range
-from six.moves import map
+from six.moves import zip, range
 origin_ids = linking_class()
 
 # see iotbx/pdb/common_residue_names.h; additionally here only: U I S
@@ -2059,7 +2057,7 @@ class add_dihedral_proxies(object):
             if len(tor.alt_value_angle) == 0:
               alt_value_angle = None
             else:
-              alt_value_angle = list(map(float,tor.alt_value_angle.split(",")))
+              alt_value_angle = [float(t) for t in tor.alt_value_angle.split(",")]
           except Exception:
             alt_value_angle = None
           proxy = geometry_restraints.dihedral_proxy(
@@ -5020,8 +5018,7 @@ class build_all_chain_proxies(linking_mixins):
             if (disulfide_torsion.alt_value_angle is not None and
                 disulfide_torsion.alt_value_angle != ''):
               try:
-                alt_value_angle = list(map(float,
-                                      disulfide_torsion.alt_value_angle.split(",")))
+                alt_value_angle = [float(_d) for _d in disulfide_torsion.alt_value_angle.split(",")]
               except ValueError as AttributeError:
                 raise Sorry("Wrong format of alt_value_angle in SS bond in cif file")
             i_seqs = []

@@ -40,7 +40,7 @@ def contiguous_ss_selections(pdb_hierarchy):
   ss_all.extend(ssm.base_pair_selection().iselection())
   chain_selections = []
   for k, g in groupby(enumerate(ss_all), lambda i_x: i_x[0]-i_x[1]):
-    chain_selections.append(flex.size_t(list(map(itemgetter(1), g))))
+    chain_selections.append(flex.size_t([itemgetter(1) for _ in g]))
   #
   if(ss_all.size()>0):
     ss_all_as_one_array_bool = flex.bool(n_atoms, ss_all)
@@ -52,7 +52,7 @@ def contiguous_ss_selections(pdb_hierarchy):
     if(not ss_all_as_one_array_bool[atom.i_seq]):
       iseqs.append(atom.i_seq)
   for k, g in groupby(enumerate(iseqs), lambda i_x1: i_x1[0]-i_x1[1]):
-    isels = list(map(itemgetter(1), g))
+    isels = [itemgetter(1) for _ in  g]
     chain_selections.append(flex.size_t(isels))
   # DEBUG
   C1 = flex.size_t()

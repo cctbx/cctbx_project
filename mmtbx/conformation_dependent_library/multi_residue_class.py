@@ -9,7 +9,6 @@ from mmtbx.conformation_dependent_library.cdl_utils import \
   get_ca_dihedrals
 from mmtbx.conformation_dependent_library.LinkedResidues import LinkedResidues
 from six.moves import range
-from six.moves import map
 
 class RestraintsRegistry(dict):
   def __init__(self):
@@ -98,7 +97,7 @@ class ProteinResidues(LinkedResidues):
     omegas = self.get_omega_values()
     def _is_cis_trans_twisted(angle):
       return self._define_omega_a_la_duke_using_limit(angle, limit=limit)
-    return list(map(_is_cis_trans_twisted, omegas))
+    return [_is_cis_trans_twisted(o) for o in omegas]
 
   def are_linked(self,
                  return_value=False,

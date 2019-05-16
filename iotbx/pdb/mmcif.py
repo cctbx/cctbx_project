@@ -13,10 +13,7 @@ from iotbx.pdb.remark_3_interpretation import \
 import iotbx.cif
 from iotbx.cif.builders import crystal_symmetry_builder
 import iotbx.mtrix_biomt
-from six.moves import range
-from six.moves import zip
-from six.moves import map
-# TODO: verify scitbx sqr and col accept iterator in both py2/3 and if so remove the lists below around maps
+from six.moves import range, zip
 class pdb_hierarchy_builder(crystal_symmetry_builder):
 
   # The recommended translation for ATOM records can be found at:
@@ -611,10 +608,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
 
         r = [(self.cif_block.get('_pdbx_struct_oper_list.matrix[%s][%s]' %(x,y))[i])
           for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
-        t_rots.append(matrix.sqr(list(map(float,r))))
+        t_rots.append(matrix.sqr([float(r_elem) for r_elem in r] ))
         t = [(self.cif_block.get('_pdbx_struct_oper_list.vector[%s]' %x)[i])
           for x in '123']
-        t_trans.append(matrix.col(list(map(float,t))))
+        t_trans.append(matrix.col([float(t_elem) for t_elem in t] ))
 
     # filter everything for X0 and P here:
     # Why??? Nobody promised that id would be integer, it is a 'single word':
@@ -686,14 +683,14 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         else:
           r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y)))
             for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
-        rots.append(matrix.sqr(list(map(float,r))))
+        rots.append(matrix.sqr([float(r_elem) for r_elem in r]) )
         if len(ncs_oper) > 1:
           t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x)[i])
             for x in '123']
         else:
           t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x))
             for x in '123']
-        trans.append(matrix.col(list(map(float,t))))
+        trans.append(matrix.col([float(t_elem) for t_elem in t]))
     # sort records by serial number
     serial_number.sort()
     items_order = [i for (_,i) in serial_number]

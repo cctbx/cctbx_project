@@ -313,7 +313,7 @@ class PRIMEAdvancedOptions(PRIMEBaseBackendDialog):
 
     self.sg.spacegroup.SetValue(str(self.pparams.target_space_group))
     if str(self.pparams.target_unit_cell).lower() != 'none':
-      uc = ' '.join(list(map(str, self.pparams.target_unit_cell.parameters())))
+      uc = ' '.join(map(str, self.pparams.target_unit_cell.parameters()))
       self.uc.unit_cell.SetValue(uc)
     else:
       self.uc.unit_cell.SetValue(str(self.pparams.target_unit_cell))
