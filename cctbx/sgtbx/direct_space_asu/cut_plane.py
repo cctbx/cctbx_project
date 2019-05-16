@@ -4,6 +4,7 @@ from scitbx import matrix
 from boost import rational
 import string
 from six.moves import range
+from six.moves import zip
 
 class cut_expr_ops(slots_getstate_setstate):
 

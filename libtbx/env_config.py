@@ -8,6 +8,7 @@ from libtbx.utils import detect_binary_file
 from libtbx import adopt_init_args
 import platform
 import shutil
+from six.moves import zip
 try:
   import cPickle as pickle
 except ImportError:

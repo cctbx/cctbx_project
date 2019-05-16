@@ -27,6 +27,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
 from libtbx.phil import parse
 import math
+from six.moves import zip
 
 help_message = '''
 

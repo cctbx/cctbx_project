@@ -13,6 +13,7 @@ from libtbx.test_utils import approx_equal
 from cctbx import sgtbx
 from libtbx.utils import format_cpu_times
 import mmtbx.f_model
+from six.moves import zip
 from six.moves import range
 
 def xray_structure_of_one_atom(site_cart,

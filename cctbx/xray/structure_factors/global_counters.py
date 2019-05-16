@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import sys
+from six.moves import zip
 
 items = [
   "from_scatterers_direct",

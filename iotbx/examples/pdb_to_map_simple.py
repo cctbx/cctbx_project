@@ -6,6 +6,7 @@ import iotbx.xplor.map
 from libtbx.math_utils import ifloor, iceil
 import libtbx.option_parser
 import sys
+from six.moves import zip
 
 def run(args):
   if (len(args) == 0): args = ["--help"]

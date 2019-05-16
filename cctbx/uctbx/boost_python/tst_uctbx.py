@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from math import pi, sin, cos, asin, sqrt
 from six.moves import range
+from six.moves import zip
 try:
   import cPickle as pickle
 except ImportError:

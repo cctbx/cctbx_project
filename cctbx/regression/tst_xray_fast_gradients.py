@@ -20,6 +20,7 @@ import libtbx.introspection
 import random
 import sys, math
 from six.moves import range
+from six.moves import zip
 
 if (1):
   random.seed(0)

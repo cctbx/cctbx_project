@@ -9,6 +9,7 @@ from cctbx.development import debug_utils
 from cctbx.development import random_structure
 import sys
 from six.moves import range
+from six.moves import zip
 
 def exercise_sys_absent_intensity_distribution():
   xs = crystal.symmetry((3,4,5), "F222")

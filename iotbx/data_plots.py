@@ -12,6 +12,7 @@ import os.path
 import math
 import re
 from six.moves import range
+from six.moves import zip
 
 class plot_data(object):
   def __init__(self,

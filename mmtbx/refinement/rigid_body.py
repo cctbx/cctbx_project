@@ -12,6 +12,7 @@ from libtbx.utils import null_out
 from libtbx.utils import user_plus_sys_time
 from libtbx.math_utils import iround
 import scitbx.rigid_body
+from six.moves import zip
 from six.moves import range
 
 time_rigid_body_total = 0.0

@@ -20,6 +20,7 @@ from libtbx.str_utils import make_sub_header
 from mmtbx import real_space_correlation
 #from mmtbx import map_tools
 from elbow.command_line.ready_set import model_interface as ready_set_model_interface
+from six.moves import zip
 
 
 master_params_str = """
@@ -524,4 +525,3 @@ class ligand_result(object):
         clashes_dict   = clashes._clashes_dict)
 
     return self._overlaps
-

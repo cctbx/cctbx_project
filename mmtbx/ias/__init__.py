@@ -11,6 +11,7 @@ import iotbx.phil
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry
+from six.moves import zip
 from six.moves import range
 
 ias_master_params = iotbx.phil.parse("""\

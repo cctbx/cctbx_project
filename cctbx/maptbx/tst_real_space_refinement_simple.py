@@ -9,6 +9,7 @@ from scitbx import matrix
 from libtbx.utils import null_out, format_cpu_times
 import random
 import sys
+from six.moves import zip
 
 def exercise_lbfgs(test_case, use_geo, out, d_min=2):
   sites_cart, geo_manager = cctbx.geometry_restraints.manager.\

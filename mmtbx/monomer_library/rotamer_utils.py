@@ -7,6 +7,7 @@ from libtbx.str_utils import show_string
 from libtbx.utils import sequence_index_dict
 from libtbx.utils import Sorry
 import math
+from six.moves import zip
 
 rotamer_info_master_phil_str = """\
 tor_ids = None

@@ -25,6 +25,7 @@ from cctbx import eltbx
 
 import scitbx.math
 from libtbx.utils import null_out
+from six.moves import zip
 from six.moves import range
 
 def setup_test(pdb_answer, pdb_poor, i_pdb, d_min, resolution_factor,

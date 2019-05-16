@@ -16,6 +16,7 @@ from scitbx.math import superpose, matrix
 from scitbx.array_family import flex
 from copy import deepcopy
 from iotbx.pdb import secondary_structure
+from six.moves import zip
 from six.moves import range
 
 master_phil = iotbx.phil.parse("""

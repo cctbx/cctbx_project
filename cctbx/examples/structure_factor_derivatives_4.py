@@ -4,6 +4,7 @@ from scitbx import matrix
 from scitbx.array_family import flex
 import cmath
 import math
+from six.moves import zip
 
 mtps = -2 * math.pi**2
 

@@ -13,6 +13,7 @@ from __future__ import absolute_import, division, print_function
 
 import boost.python
 from six.moves import range
+from six.moves import zip
 import six
 ext = boost.python.import_ext("iotbx_cif_ext")
 

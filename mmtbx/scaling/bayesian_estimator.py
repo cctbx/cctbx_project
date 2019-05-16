@@ -61,6 +61,7 @@ from scitbx import matrix
 from cctbx.array_family import flex
 from copy import deepcopy
 from libtbx.utils import Sorry,null_out
+from six.moves import zip
 from six.moves import range
 
 pi=2.*math.atan2(1.,0.)

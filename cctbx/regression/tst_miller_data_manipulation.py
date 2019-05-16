@@ -9,6 +9,7 @@ from libtbx.utils import Sorry
 import random
 import math
 import sys
+from six.moves import zip
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)

@@ -3,6 +3,7 @@ from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
 import boost.python
 from six.moves import range
+from six.moves import zip
 ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_asymmetric_map_ext import *
 from cctbx.array_family import flex

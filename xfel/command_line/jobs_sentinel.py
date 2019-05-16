@@ -13,6 +13,7 @@ import iotbx.phil
 import libtbx.load_env
 from libtbx.utils import Usage, Sorry
 import sys, os, time
+from six.moves import zip
 
 master_phil = """
   experiment = None

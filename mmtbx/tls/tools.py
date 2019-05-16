@@ -16,6 +16,7 @@ import iotbx
 import math
 import iotbx.pdb.remark_3_interpretation
 from scitbx.linalg import eigensystem
+from six.moves import zip
 from six.moves import range
 
 def combine_tls_and_u_local(xray_structure, tls_selections, tls_groups):

@@ -6,6 +6,7 @@ import sys
 import iotbx.pdb
 from libtbx.utils import Sorry
 import mmtbx.utils
+from six.moves import zip
 
 legend = """phenix.model_model_distances:
   Given two PDB files output distances per atom, residue, chain, model and overall.

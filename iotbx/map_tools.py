@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx.math_utils import ifloor, iceil
 from libtbx import adopt_init_args
 import os
+from six.moves import zip
 
 MAP_TYPE_F_OBS = 1
 MAP_TYPE_DIFF = 2

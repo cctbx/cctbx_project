@@ -5,6 +5,7 @@ from scitbx import matrix
 from scitbx.array_family import flex
 import cmath
 import math
+from six.moves import zip
 
 def scatterer_as_list(self):
   if (self.flags.use_u_iso_only()):

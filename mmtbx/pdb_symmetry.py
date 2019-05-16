@@ -12,6 +12,7 @@ from libtbx import group_args
 from math import sqrt
 import os
 import sys
+from six.moves import zip
 
 def parse_database(file_name):
   from cctbx import crystal

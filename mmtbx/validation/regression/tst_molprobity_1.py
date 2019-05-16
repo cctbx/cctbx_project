@@ -6,6 +6,7 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 from cStringIO import StringIO
+from six.moves import zip
 
 # test for corner cases (synthetic data okay)
 def exercise_synthetic():

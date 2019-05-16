@@ -13,6 +13,7 @@ from cStringIO import StringIO
 import math
 import sys, os
 from six.moves import range
+from six.moves import zip
 
 def exercise_icosahedron(max_level=2, verbose=0):
   for level in range(0,max_level+1):

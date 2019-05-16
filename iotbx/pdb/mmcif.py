@@ -14,6 +14,7 @@ import iotbx.cif
 from iotbx.cif.builders import crystal_symmetry_builder
 import iotbx.mtrix_biomt
 from six.moves import range
+from six.moves import zip
 
 class pdb_hierarchy_builder(crystal_symmetry_builder):
 

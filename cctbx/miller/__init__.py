@@ -4,6 +4,7 @@ import cctbx.sgtbx
 
 import boost.python
 from six.moves import range
+from six.moves import zip
 ext = boost.python.import_ext("cctbx_miller_ext")
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_miller_ext import *

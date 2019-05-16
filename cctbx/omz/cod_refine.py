@@ -12,6 +12,7 @@ from cStringIO import StringIO
 import traceback
 import sys, os
 from six.moves import range
+from six.moves import zip
 op = os.path
 
 def get_master_phil(

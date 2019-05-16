@@ -11,6 +11,7 @@ import libtbx.phil
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, Usage
 import sys, os
+from six.moves import zip
 
 master_params = libtbx.phil.parse("""\
 r_free_flags_accumulation {

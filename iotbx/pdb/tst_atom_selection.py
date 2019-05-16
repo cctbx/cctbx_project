@@ -3,6 +3,7 @@ from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
 from six.moves import range
+from six.moves import zip
 
 def exercise_selection():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\

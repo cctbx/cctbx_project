@@ -5,6 +5,7 @@ from cctbx.array_family import flex
 import scitbx.restraints
 import math
 import sys
+from six.moves import zip
 
 class energies(scitbx.restraints.energies):
 

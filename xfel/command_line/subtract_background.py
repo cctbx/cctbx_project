@@ -6,6 +6,7 @@ from libtbx.option_parser import option_parser
 from scitbx.array_family import flex
 from scitbx import smoothing
 from xfel.command_line import smooth_spectrum
+from six.moves import zip
 
 
 def run(args):

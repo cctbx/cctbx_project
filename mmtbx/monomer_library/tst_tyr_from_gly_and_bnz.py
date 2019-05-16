@@ -8,6 +8,7 @@ from libtbx.test_utils import show_diff
 from itertools import count
 from cStringIO import StringIO
 import sys
+from six.moves import zip
 
 pdb_records_gly_bnz = """\
 CRYST1   56.470   56.470   80.520  90.00  90.00  90.00 P 43 21 2     8

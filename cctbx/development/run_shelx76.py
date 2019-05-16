@@ -10,6 +10,7 @@ import libtbx.path
 from libtbx import easy_run
 from cStringIO import StringIO
 import sys
+from six.moves import zip
 
 def sfac_unit(lapp, xray_structure):
   reg = xray_structure.scattering_type_registry()

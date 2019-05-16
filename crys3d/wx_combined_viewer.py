@@ -16,6 +16,7 @@ import wx
 import os
 import sys
 import six
+from six.moves import zip
 
 viewer_phil = iotbx.phil.parse("""
   include scope crys3d.wx_selection_editor.viewer_phil

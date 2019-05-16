@@ -3,6 +3,7 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import scitbx.simplex
 from six.moves import range
+from six.moves import zip
 
 class test_function(object):
   def __init__(self,n):

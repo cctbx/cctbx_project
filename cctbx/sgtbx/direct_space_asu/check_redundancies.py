@@ -9,6 +9,7 @@ from libtbx import easy_run
 from boost import rational
 import sys, os
 from six.moves import range
+from six.moves import zip
 
 class colored_grid_point(object):
 

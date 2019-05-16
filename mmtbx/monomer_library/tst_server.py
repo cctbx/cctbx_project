@@ -6,6 +6,7 @@ from scitbx.python_utils import dicts
 from libtbx import easy_pickle
 import random
 import sys, os
+from six.moves import zip
 
 def check_chem_comp(chem_comp_from_list_file, comp_comp_id):
   if (comp_comp_id is None):

@@ -10,6 +10,7 @@ from iotbx.option_parser import option_parser
 from cctbx import euclidean_model_matching as emma
 import sys, os
 import cctbx.xray
+from six.moves import zip
 
 class MultipleEntriesError(RuntimeError): pass
 

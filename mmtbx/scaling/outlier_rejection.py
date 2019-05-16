@@ -12,6 +12,7 @@ from libtbx.utils import null_out
 import sys
 import math
 from libtbx.str_utils import StringIO
+from six.moves import zip
 
 class outlier_manager(object):
   def __init__(self,

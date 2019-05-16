@@ -8,6 +8,7 @@ from scitbx.linalg import eigensystem
 import math
 import scitbx.math
 from scitbx import matrix
+from six.moves import zip
 
 legend = """phenix.angle:
   Given PDB file and two atom selections that allow to define two lines compute

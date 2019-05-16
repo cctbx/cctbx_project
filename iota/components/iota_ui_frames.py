@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import multiprocessing
 from past.builtins import range
 from six.moves import range
+from six.moves import zip
 
 '''
 Author      : Lyubimov, A.Y.
@@ -1087,7 +1088,7 @@ class ProcessingTab(wx.Panel):
 
         # Update arrays
         if (idx and filenames and spt and res):
-          self.processed.extend(zip(idx, filenames, spt, res))
+          self.processed.extend(list(zip(idx, filenames, spt, res)))
           res_median = np.median(self.res_y)
           nsref_median = np.median(self.nsref_y)
         else:

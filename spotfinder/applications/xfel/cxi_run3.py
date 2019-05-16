@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from six.moves import range
 from scitbx.array_family import flex
 from scitbx import matrix
+from six.moves import zip
 """Standalone program gives tile translations for the CXI pad detector;
      based on lysozyme test powder arcs.
    Fixed coordinates for the detector center (850,850) are simply based on CXI output

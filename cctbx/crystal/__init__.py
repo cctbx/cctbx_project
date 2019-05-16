@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import boost.python
 from six.moves import range
+from six.moves import zip
 ext = boost.python.import_ext("cctbx_crystal_ext")
 from cctbx_crystal_ext import *
 from cctbx.crystal.find_best_cell import find_best_cell

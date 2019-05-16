@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import easy_pickle
 import sys, os
+from six.moves import zip
 op = os.path
 
 def run(args):

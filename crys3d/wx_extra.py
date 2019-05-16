@@ -3,6 +3,7 @@ import wx
 
 import libtbx.object_oriented_patterns as oop
 from six.moves import range
+from six.moves import zip
 
 class copy_init_args(object):
   def __init__(self, args, exclude=()):

@@ -6,6 +6,7 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from cmath import cos, sin, pi
 from six.moves import range
+from six.moves import zip
 
 
 def miller_export_as_shelx_fcf(self, f_calc, file_object=None):

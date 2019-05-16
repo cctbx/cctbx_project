@@ -14,6 +14,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out, show_times_at_exit
 import sys
 from six.moves import range
+from six.moves import zip
 
 def exercise_euler_params_qE_as_euler_angles_xyz_qE(mersenne_twister):
   for i_trial in range(30):

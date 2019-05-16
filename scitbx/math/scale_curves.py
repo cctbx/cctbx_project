@@ -4,6 +4,7 @@ from scitbx.array_family import flex
 import sys
 from libtbx.test_utils import approx_equal
 from six.moves import range
+from six.moves import zip
 
 class curve_interpolator(object):
   def __init__(self, start, stop, n_points=100):

@@ -17,6 +17,7 @@ from itertools import count
 from cStringIO import StringIO
 import sys
 from six.moves import range
+from six.moves import zip
 
 def exercise(verbose=0):
   distance_ideal = 1.8

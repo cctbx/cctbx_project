@@ -14,6 +14,7 @@ import sys
 import random
 import math
 from six.moves import range
+from six.moves import zip
 
 def flex_types():
   return (flex.float, flex.double)

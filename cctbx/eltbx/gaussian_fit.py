@@ -6,6 +6,7 @@ from scitbx.math.gaussian_fit import find_max_x_multi
 from scitbx.math.gaussian_fit import show_minimize_multi_histogram
 from libtbx import adopt_init_args
 import sys, os
+from six.moves import zip
 
 # d = 1/(2*stol)
 # stol = 1/(2*d)

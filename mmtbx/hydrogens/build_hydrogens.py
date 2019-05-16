@@ -8,6 +8,7 @@ import scitbx.lbfgs
 import libtbx.load_env
 import math
 import sys, os
+from six.moves import zip
 
 
 def add_ring_h(site_0,site_1,site_2,d0,alpha,beta):

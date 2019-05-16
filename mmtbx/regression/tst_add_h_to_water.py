@@ -7,6 +7,7 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import format_cpu_times
 from cStringIO import StringIO
+from six.moves import zip
 
 input_model = """\
 CRYST1   15.000   15.000   15.000  80.00  70.00 100.00 P 1

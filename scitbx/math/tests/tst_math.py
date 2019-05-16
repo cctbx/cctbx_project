@@ -35,6 +35,7 @@ import math
 import time
 import sys
 from six.moves import range
+from six.moves import zip
 
 if (libtbx.env.has_module("tntbx")):
   import tntbx

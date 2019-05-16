@@ -3,6 +3,7 @@ from scitbx.array_family import flex
 from scitbx.python_utils import random_transform
 import sys
 from six.moves import range
+from six.moves import zip
 
 
 class cross_entropy_optimizer(object):

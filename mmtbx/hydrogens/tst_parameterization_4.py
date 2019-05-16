@@ -7,6 +7,7 @@ import scitbx.lbfgs
 import cctbx.geometry_restraints
 from mmtbx.hydrogens import riding
 from libtbx.utils import null_out
+from six.moves import zip
 
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of hydrogen atoms for all H geometries

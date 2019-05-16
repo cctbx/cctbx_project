@@ -6,6 +6,7 @@ from scitbx.array_family import flex
 from scitbx import matrix
 import math
 from six.moves import range
+from six.moves import zip
 
 def construct_bodies(
       sites,

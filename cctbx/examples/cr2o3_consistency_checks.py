@@ -3,6 +3,7 @@ from cctbx import xray
 from cctbx import crystal
 import cctbx.crystal.coordination_sequences
 from cctbx.array_family import flex
+from six.moves import zip
 
 def demo():
   """

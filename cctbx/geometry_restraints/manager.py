@@ -14,6 +14,7 @@ import iotbx.pdb
 
 import boost.python
 from six.moves import range
+from six.moves import zip
 boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import reindexing_array
 

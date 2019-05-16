@@ -6,6 +6,7 @@ from scitbx.array_family import flex
 import math
 
 from xfel.cxi.postrefinement_legacy_rs import unpack_base
+from six.moves import zip
 class sdfac_propagate_parameterization(unpack_base):
   def __getattr__(YY,item):
     if item=="SDFAC" : return YY.reference[0]

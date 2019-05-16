@@ -4,6 +4,7 @@ from cctbx.examples import g_exp_i_alpha_derivatives
 from scitbx import matrix
 from scitbx.array_family import flex
 import math
+from six.moves import zip
 
 def scatterer_as_list(self):
   return list(self.site) + [self.u_iso, self.occupancy, self.fp, self.fdp]

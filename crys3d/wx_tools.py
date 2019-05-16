@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import wx
+from six.moves import zip
 
 draw_modes = [
   ("trace", "Backbone trace"),

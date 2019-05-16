@@ -84,6 +84,7 @@ Ralf W. Grosse-Kunstleve, Feb 2007.
 """
 from __future__ import absolute_import, division, print_function
 from six.moves import range
+from six.moves import zip
 
 digits_upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 digits_lower = digits_upper.lower()

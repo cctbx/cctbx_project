@@ -8,6 +8,7 @@ from libtbx import adopt_init_args, Auto, slots_getstate_setstate
 from libtbx.utils import null_out
 import string
 import sys
+from six.moves import zip
 
 master_params_str = """
 window_radius = 2

@@ -10,6 +10,7 @@ import sys, math
 
 import boost.python
 from six.moves import range
+from six.moves import zip
 ext = boost.python.import_ext("cctbx_emma_ext")
 
 def sgtbx_rt_mx_as_matrix_rt(s):

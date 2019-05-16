@@ -7,6 +7,7 @@ from libtbx import str_utils
 import json
 import os.path
 import sys
+from six.moves import zip
 
 def extract_ligand_residue(hierarchy, ligand_code):
   copies = []

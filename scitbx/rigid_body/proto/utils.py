@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx.rigid_body.proto import featherstone
 from scitbx import matrix
 from six.moves import range
+from six.moves import zip
 
 def center_of_mass_from_sites(sites):
   assert len(sites) != 0

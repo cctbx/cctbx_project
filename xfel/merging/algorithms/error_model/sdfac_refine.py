@@ -7,6 +7,7 @@ from xfel.merging.algorithms.error_model.error_modeler_base import error_modeler
 from xfel.merging.algorithms.error_model import setup_isigi_stats
 
 from xfel.cxi.postrefinement_legacy_rs import unpack_base
+from six.moves import zip
 class sdfac_parameterization(unpack_base):
   def __getattr__(YY,item):
     if item=="SDFAC" : return YY.reference[0]

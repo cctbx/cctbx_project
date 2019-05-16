@@ -3,6 +3,7 @@ from cctbx.xray.targets import r1
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from six.moves import range
+from six.moves import zip
 
 def exercise(mt, n_refl, log):
   f_obs = mt.random_double(size=n_refl)

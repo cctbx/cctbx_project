@@ -8,6 +8,7 @@ import math
 import sys
 from cctbx import adptbx
 from six.moves import range
+from six.moves import zip
 
 def finite_differences_site(cartesian_flag, target_ftor, structure,
                             delta=0.00001):

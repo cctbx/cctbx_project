@@ -7,6 +7,7 @@
 XXX
 """
 from __future__ import absolute_import, division, print_function
+from six.moves import zip
 
 __version__ = "$Revision$"
 
@@ -560,7 +561,7 @@ cell_a,cell_b,cell_c,cell_alpha,cell_beta,cell_gamma,resolution,tags) VALUES "%(
                 + ", ".join(kwargs) + ") values (" \
                 + ", ".join(["%s"] * len(kwargs)) + ")"
         try:
-          parameters = zip(*list(kwargs.values()))
+          parameters = list(zip(*list(kwargs.values())))
         except TypeError:
           parameters = [list(kwargs.values())]
         cursor.executemany(query, parameters)

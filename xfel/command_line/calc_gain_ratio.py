@@ -9,6 +9,7 @@ from libtbx import phil
 from libtbx.utils import Sorry
 import psana
 from scitbx.array_family import flex
+from six.moves import zip
 
 help_message = """
 Program to compute the gain ratio for the CSPAD detector in mixed gain mode. For each pair of adjacent pixels, if one is in high gain mode and the other in low gain mode, then the ratio between them is computed. These ratios are averaged for each panel and the average over the whole detector is reported.

@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate, \
     slots_getstate_setstate_default_initializer
 import sys
+from six.moves import zip
 
 class conformer(slots_getstate_setstate):
   __slots__ = ["atom_groups", "label", "selection"]

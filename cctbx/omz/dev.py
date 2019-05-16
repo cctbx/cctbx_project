@@ -10,6 +10,7 @@ from itertools import count
 from math import pi, atan2
 import sys
 from six.moves import range
+from six.moves import zip
 
 def delta_estimation_minus_cos(limit, grad, curv):
   return limit/pi * atan2(pi/limit*grad, curv)

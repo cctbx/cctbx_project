@@ -6,6 +6,7 @@ import mmtbx.model
 import iotbx.pdb
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
+from six.moves import zip
 
 pdb_str_1 = """
 CRYST1   26.971   23.398   30.626  90.00  90.00  90.00 P 1

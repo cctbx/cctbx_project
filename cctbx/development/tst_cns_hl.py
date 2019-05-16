@@ -9,6 +9,7 @@ from libtbx.complex_math import abs_arg
 from libtbx.test_utils import approx_equal
 from libtbx import easy_run
 import sys, os
+from six.moves import zip
 
 def verify(sg_fcalc, sg_hl, sg_cns, p1_cns):
   sg_phase_integrals = miller.array(

@@ -21,6 +21,7 @@ import exceptions
 import os
 import sys
 from six.moves import range
+from six.moves import zip
 
 class FormatError(exceptions.Exception): pass
 

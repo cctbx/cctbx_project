@@ -14,6 +14,7 @@ from itertools import count
 from cStringIO import StringIO
 import sys, os
 from six.moves import range
+from six.moves import zip
 
 random.seed(0)
 flex.set_random_seed(0)

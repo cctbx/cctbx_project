@@ -13,6 +13,7 @@ from cStringIO import StringIO
 import cctbx.xray
 from libtbx.test_utils import approx_equal
 from six.moves import range
+from six.moves import zip
 
 def finite_difference_gradients(restraint_type,
                                 proxy,

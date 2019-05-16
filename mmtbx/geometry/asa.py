@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import mmtbx.geometry.shared_types # import dependency
 
 import boost.python
+from six.moves import zip
 ext = boost.python.import_ext( "mmtbx_geometry_asa_ext" )
 from mmtbx_geometry_asa_ext import *
 
@@ -58,7 +59,7 @@ def get_optimal_indexer_for(descriptions):
 def get_voxelizer_for(descriptions, step = 7):
 
   lows = [ d.data.low for d in descriptions ]
-  ( low_xs, low_ys, low_zs ) = zip( *lows )
+  low_xs, low_ys, low_zs  = zip( *lows )
   low = ( min( low_xs ), min( low_ys ), min( low_zs ) )
 
   return mmtbx.geometry.shared_types.voxelizer(

@@ -6,6 +6,7 @@ import libtbx.phil
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import sys
+from six.moves import zip
 
 master_phil = libtbx.phil.parse("""
 b_plot

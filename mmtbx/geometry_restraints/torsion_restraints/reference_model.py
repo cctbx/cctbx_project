@@ -15,6 +15,7 @@ from mmtbx.geometry_restraints.torsion_restraints import utils
 import sys
 import time
 import iotbx
+from six.moves import zip
 from six.moves import range
 
 TOP_OUT_FLAG = True

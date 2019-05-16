@@ -10,6 +10,7 @@ from libtbx.utils import Sorry
 from labelit.dptbx.profile_support import show_profile
 from rstbx.apps.slip_helpers import slip_callbacks
 from rstbx.dials_core.integration_core import integration_core
+from six.moves import zip
 
 class IntegrationMetaProcedure(integration_core,slip_callbacks):
 

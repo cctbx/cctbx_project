@@ -9,6 +9,7 @@ import random
 import re
 import sys, os
 from six.moves import range
+from six.moves import zip
 
 def exercise(lbfgs_impl, n=100, m=5, iprint=[1, 0]):
   assert n % 2 == 0

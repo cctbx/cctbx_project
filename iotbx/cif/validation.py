@@ -9,6 +9,7 @@ import shutil
 import re
 import sys
 from urllib2 import urlopen
+from six.moves import zip
 import six
 
 

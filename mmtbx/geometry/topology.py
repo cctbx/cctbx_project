@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from boost_adaptbx import graph
 
 import math
+from six.moves import zip
 
 class Atom(object):
   """
@@ -34,7 +35,7 @@ class Molecule(object):
   @property
   def descriptor_for(self):
     # TODO: six.moves.zip this file
-    return dict( zip( self.atom_for.values(), self.atom_for.keys() ) )
+    return dict( zip( self.atom_for.values(), self.atom_for.keys() ))
 
 
   @property
@@ -83,7 +84,7 @@ class Compound(object):
   @property
   def atom_for(self):
 
-    return dict( zip( self.descriptor_for.values(), self.descriptor_for.keys() ) )
+    return dict( zip( self.descriptor_for.values(), self.descriptor_for.keys() ))
 
 
   @property

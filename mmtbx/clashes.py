@@ -3,6 +3,7 @@ import mmtbx.monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 import sys
 from cctbx.geometry_restraints.linking_class import linking_class
+from six.moves import zip
 origin_ids = linking_class()
 from libtbx import adopt_init_args
 import mmtbx.model

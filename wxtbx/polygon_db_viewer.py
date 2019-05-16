@@ -5,6 +5,7 @@ from mmtbx import polygon
 from libtbx.utils import Sorry
 from libtbx import group_args
 import wx
+from six.moves import zip
 
 STD_FLAGS = wx.ALL|wx.ALIGN_CENTER_VERTICAL
 

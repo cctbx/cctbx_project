@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
 from mmtbx.pair_interaction import pair_interaction
+from six.moves import zip
 
 pdb_str = """
 REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "./data_files/2lvr.pdb"

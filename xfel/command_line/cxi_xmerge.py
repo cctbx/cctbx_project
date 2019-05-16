@@ -23,6 +23,7 @@ from xfel.command_line.cxi_merge import scaling_result
 from xfel.command_line.cxi_merge import consistent_set_and_model
 from xfel import column_parser
 from cctbx import miller
+from six.moves import zip
 
 #-----------------------------------------------------------------------
 class xscaling_manager (scaling_manager) :

@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from cStringIO import StringIO
 from mmtbx.ncs import ncs
 import sys
+from six.moves import zip
 from six.moves import range
 
 def remove_blank(text):

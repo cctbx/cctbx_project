@@ -13,6 +13,7 @@ from mmtbx.building.loop_closure.utils import get_phi_psi_atoms, get_rama_score,
 from libtbx import group_args
 
 import boost.python
+from six.moves import zip
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.validation import ramalyze

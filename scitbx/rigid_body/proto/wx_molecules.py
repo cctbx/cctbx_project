@@ -6,6 +6,7 @@ from gltbx import wx_viewer
 from libtbx.utils import Usage
 import wx
 import sys
+from six.moves import zip
 
 class viewer(wx_viewer.show_points_and_lines_mixin):
 

@@ -12,6 +12,7 @@ import libtbx.load_env
 from libtbx import easy_run
 from libtbx import adopt_init_args
 import sys, os
+from six.moves import zip
 from six.moves import range
 
 def mask_grid(xrs, buffer, map_data, n_real):

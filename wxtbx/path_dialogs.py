@@ -6,6 +6,7 @@ import wx
 from libtbx.utils import Abort, Sorry, to_unicode
 import libtbx.path
 import os.path
+from six.moves import zip
 
 class manager(object):
   """

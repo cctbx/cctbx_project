@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from scitbx import matrix
+from six.moves import zip
 
 def potential_energy(sites, wells, A, J, AJA_tree=None):
   result = 0

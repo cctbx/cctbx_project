@@ -15,6 +15,7 @@ from libtbx.utils import Sorry
 from itertools import count
 import sys
 from six.moves import range
+from six.moves import zip
 
 def show_average_of_binned_data(binned_data_list):
   l = len(binned_data_list[0].binner.bin_legend(0))

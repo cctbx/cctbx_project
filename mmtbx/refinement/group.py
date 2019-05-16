@@ -10,6 +10,7 @@ from cctbx import xray
 from libtbx.utils import user_plus_sys_time
 from cctbx import crystal
 import random
+from six.moves import zip
 from six.moves import range
 
 time_group_py  = 0.0

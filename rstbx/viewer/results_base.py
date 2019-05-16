@@ -4,6 +4,7 @@ from libtbx import easy_pickle
 from libtbx.utils import Sorry
 import re
 import os
+from six.moves import zip
 
 class result(object):
   def __init__(self, dir_name):

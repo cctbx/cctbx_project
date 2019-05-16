@@ -25,6 +25,7 @@ from rstbx.diffraction import full_sphere_indices
 from cctbx.sgtbx import space_group, space_group_symbols
 from cctbx.uctbx import unit_cell
 from rstbx.bpcx.detector_model.instrument_specifics import detector_factory_from_cfc
+from six.moves import zip
 
 def Py_generate_indices(unit_cell_constants, resolution_limit):
     '''Generate all possible reflection indices out to a given resolution

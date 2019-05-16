@@ -3,6 +3,7 @@ from scitbx import matrix
 import iotbx.pdb
 from libtbx.utils import Sorry
 from six.moves import range
+from six.moves import zip
 
 class container(object):
 

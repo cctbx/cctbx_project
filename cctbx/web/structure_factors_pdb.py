@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx import complex_math
 from cctbx.web import io_utils
 from cctbx.web import cgi_utils
+from six.moves import zip
 
 def interpret_form_data(form):
   inp = cgi_utils.inp_from_form(form,

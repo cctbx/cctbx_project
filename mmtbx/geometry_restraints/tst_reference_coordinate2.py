@@ -10,6 +10,7 @@ from mmtbx.rotamer.rotamer_eval import RotamerEval
 from cctbx import miller
 from cctbx import maptbx
 import mmtbx.model
+from six.moves import zip
 
 if(1):
   random.seed(0)

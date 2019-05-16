@@ -10,6 +10,7 @@ from libtbx.test_utils import \
      approx_equal, show_diff, Exception_expected, open_tmp_file
 from cStringIO import StringIO
 import sys
+from six.moves import zip
 
 
 def exercise_miller_arrays_as_cif_block():

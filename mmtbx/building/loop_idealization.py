@@ -27,6 +27,7 @@ from iotbx.pdb.hybrid_36 import hy36encode, hy36decode
 
 
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
+from six.moves import zip
 from six.moves import range
 
 loop_idealization_master_phil_str = """

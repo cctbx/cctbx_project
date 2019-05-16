@@ -9,6 +9,7 @@ import pycbf, os
 from scitbx import matrix
 from scitbx.array_family import flex
 import six
+from six.moves import zip
 
 # need to define these here since it not defined in SLAC's metrology definitions
 asic_dimension = (194,185)

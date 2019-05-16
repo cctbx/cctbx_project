@@ -9,6 +9,7 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from scitbx import matrix as mat
 import math
+from six.moves import zip
 
 class widget_with_fp_exception_trapping_off_mixin(object):
 

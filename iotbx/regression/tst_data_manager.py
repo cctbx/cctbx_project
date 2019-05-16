@@ -10,6 +10,7 @@ import mmtbx.model
 from cctbx import crystal
 from libtbx.utils import Sorry
 from iotbx.data_manager import DataManager
+from six.moves import zip
 
 # -----------------------------------------------------------------------------
 def test_data_manager():

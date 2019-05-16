@@ -13,6 +13,7 @@ from boost import rational
 from libtbx.math_utils import ifloor
 from cStringIO import StringIO
 from six.moves import range
+from six.moves import zip
 
 def divisor(n, pairs=False):
   """ find all divisors """

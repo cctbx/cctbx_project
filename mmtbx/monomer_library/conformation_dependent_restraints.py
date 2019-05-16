@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from cctbx import geometry_restraints
 import libtbx.load_env
+from six.moves import zip
 
 if (not libtbx.env.has_module("conformation_dependent_geometry")):
   conformation_dependent_geometry = None

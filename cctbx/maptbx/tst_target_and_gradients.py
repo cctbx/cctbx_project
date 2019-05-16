@@ -8,6 +8,7 @@ from libtbx.test_utils import approx_equal
 import random
 from cctbx.development import random_structure
 from cctbx import sgtbx
+from six.moves import zip
 
 if (1):
   random.seed(0)

@@ -8,6 +8,7 @@ from scitbx.array_family import flex
 
 import boost.python
 import sys
+from six.moves import zip
 
 @boost.python.inject_into(sum)
 class _():

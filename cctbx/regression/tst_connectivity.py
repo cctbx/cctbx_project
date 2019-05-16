@@ -5,6 +5,7 @@ import iotbx.pdb
 from cctbx import maptbx
 from cctbx import miller
 from six.moves import range
+from six.moves import zip
 
 def getvs(cmap, threshold, wrap=True):
   co = maptbx.connectivity(map_data=cmap, threshold=threshold, wrapping=wrap)

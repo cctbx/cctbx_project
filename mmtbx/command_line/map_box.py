@@ -12,6 +12,7 @@ from iotbx import reflection_file_utils
 from iotbx.file_reader import any_file
 from cctbx import maptbx
 from scitbx.matrix import col
+from six.moves import zip
 
 master_phil = libtbx.phil.parse("""
   include scope libtbx.phil.interface.tracking_params

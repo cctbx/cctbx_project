@@ -14,6 +14,7 @@ import libtbx.option_parser
 from scitbx.array_family import flex
 import sys, os
 from libtbx.utils import Sorry
+from six.moves import zip
 
 def average(argv=None):
   if argv == None:

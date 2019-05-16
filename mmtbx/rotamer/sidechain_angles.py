@@ -7,6 +7,7 @@ import iotbx.pdb
 from cctbx.array_family import flex
 import mmtbx.rotamer
 import sys, os
+from six.moves import zip
 from six.moves import range
 
 def find_source_dir(optional=False):

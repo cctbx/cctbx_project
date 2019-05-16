@@ -24,6 +24,7 @@ import numpy as np
 from libtbx.phil import parse
 import libtbx.load_env
 import math
+from six.moves import zip
 
 help_message = '''
 

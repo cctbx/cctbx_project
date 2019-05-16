@@ -8,6 +8,7 @@ import logging
 from cctbx.array_family import flex
 from six.moves import cPickle as pickle
 from .api import InputFrame
+from six.moves import zip
 logger = logging.getLogger('sf')
 
 class SingleFrame(InputFrame):

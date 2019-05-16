@@ -7,6 +7,7 @@ import math
 from cStringIO import StringIO
 import sys
 from six.moves import range
+from six.moves import zip
 
 random.seed(0)
 

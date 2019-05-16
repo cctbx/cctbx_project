@@ -17,6 +17,7 @@ import mmtbx.refinement.minimization
 import scitbx.lbfgs
 from mmtbx import maps
 import mmtbx.masks
+from six.moves import zip
 from six.moves import range
 
 

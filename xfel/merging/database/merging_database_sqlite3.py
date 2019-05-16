@@ -5,6 +5,7 @@
 from __future__ import absolute_import, division, print_function
 
 from cctbx.array_family import flex
+from six.moves import zip
 
 
 def _execute(db_commands_queue, db_results_queue, db, semaphore):
@@ -87,7 +88,7 @@ class manager:
     # argument iterables and zip them up.  This effectively rearranges
     # a list of columns into a list of rows.
     try:
-      parameters = zip(*list(kwargs.values())) # FIXME
+      parameters = list(zip(*list(kwargs.values()))) # FIXME
     except TypeError:
       parameters = [list(kwargs.values())]
 

@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import zip
 class unique_list(object):
 
   __slots__ = ["value_list", "value_set"]
@@ -36,4 +37,4 @@ class keyed_lists(object):
     return O.lists[i]
 
   def items(O):
-    return zip(O.keys, O.lists)
+    return list(zip(O.keys, O.lists))

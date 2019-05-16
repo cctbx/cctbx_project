@@ -13,6 +13,7 @@ import sys
 from iotbx.pdb.utils import all_chain_ids
 from time import time
 from StringIO import StringIO
+from six.moves import zip
 
 ncs_search_options = """\
 ncs_search

@@ -13,6 +13,7 @@ import os
 import sys
 import six
 from six.moves import range
+from six.moves import zip
 
 DEBUG = False
 

@@ -3,6 +3,7 @@ import scitbx.matrix
 
 import operator
 import math
+from six.moves import zip
 
 __doc__ = """
 Chirikjian, G. Stochastic models, information theory, and Lie groups.

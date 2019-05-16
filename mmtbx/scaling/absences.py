@@ -7,6 +7,7 @@ from cctbx import miller
 from cctbx import sgtbx
 from libtbx import table_utils
 import math
+from six.moves import zip
 
 # name     hkl selector  condition
 absence_and_conditions = {

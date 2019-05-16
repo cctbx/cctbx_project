@@ -11,6 +11,7 @@ import random
 import sys
 from cctbx import xray
 from mmtbx import masks
+from six.moves import zip
 from six.moves import range
 
 random.seed(0)

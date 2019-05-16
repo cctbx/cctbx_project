@@ -4,6 +4,7 @@ import boost.rational
 import time
 import sys, os
 from six.moves import range
+from six.moves import zip
 
 def compare_with_boost_rational_gcd(label):
   other_gcd = getattr(scitbx.math, label, None)

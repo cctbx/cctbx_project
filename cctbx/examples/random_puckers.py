@@ -16,6 +16,7 @@ import libtbx.load_env
 import math
 import sys
 from six.moves import range
+from six.moves import zip
 
 def pentagon_sites_cart(start_vector=(0,1.5,0), normal=(0,0,1)):
   result = flex.vec3_double([(0,0,0)])

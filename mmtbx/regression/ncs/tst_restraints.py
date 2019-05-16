@@ -4,6 +4,7 @@ import mmtbx.ncs.cartesian_restraints
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import format_cpu_times
+from six.moves import zip
 from six.moves import range
 
 def exercise_pair_registry_basic():
@@ -12,8 +13,8 @@ def exercise_pair_registry_basic():
   assert registry.number_of_additional_isolated_sites == 0
   selection_pairs = registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == []
-  assert zip(*selection_pairs[1]) == []
+  assert list(zip(*selection_pairs[0])) == []
+  assert list(zip(*selection_pairs[1])) == []
   registry = ncs.cartesian_restraints.pair_registry(30, 3)
   assert registry.enter(i_seq=0, j_seq=20, j_ncs=1) == (0, 0)
   assert registry.enter(i_seq=0, j_seq=20, j_ncs=1) == (0, 1)
@@ -27,49 +28,49 @@ def exercise_pair_registry_basic():
   assert registry.enter(i_seq=0, j_seq=10, j_ncs=2) == (0, 1)
   selection_pairs = registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(0, 20), (21, 1)]
-  assert zip(*selection_pairs[1]) == [(0, 10)]
+  assert list(zip(*selection_pairs[0])) == [(0, 20), (21, 1)]
+  assert list(zip(*selection_pairs[1])) == [(0, 10)]
   selection = flex.bool(30, False)
   sel_registry = registry.proxy_select(iselection=selection.iselection())
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == []
-  assert zip(*selection_pairs[1]) == []
+  assert list(zip(*selection_pairs[0])) == []
+  assert list(zip(*selection_pairs[1])) == []
   selection = flex.bool(30, True)
   sel_registry = registry
   for i in range(10):
     sel_registry = sel_registry.proxy_select(iselection=selection.iselection())
     selection_pairs = sel_registry.selection_pairs()
     assert len(selection_pairs) == 2
-    assert zip(*selection_pairs[0]) == [(0, 20), (21, 1)]
-    assert zip(*selection_pairs[1]) == [(0, 10)]
+    assert list(zip(*selection_pairs[0])) == [(0, 20), (21, 1)]
+    assert list(zip(*selection_pairs[1])) == [(0, 10)]
   selection[0] = False
   sel_registry = registry.proxy_select(iselection=selection.iselection())
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(20, 0)]
-  assert zip(*selection_pairs[1]) == []
+  assert list(zip(*selection_pairs[0])) == [(20, 0)]
+  assert list(zip(*selection_pairs[1])) == []
   selection[0] = True
   selection[1] = False
   sel_registry = registry.proxy_select(iselection=selection.iselection())
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(0, 19)]
-  assert zip(*selection_pairs[1]) == [(0, 9)]
+  assert list(zip(*selection_pairs[0])) == [(0, 19)]
+  assert list(zip(*selection_pairs[1])) == [(0, 9)]
   selection[1] = True
   selection[2] = False
   selection[4] = False
   sel_registry = registry.proxy_select(iselection=selection.iselection())
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(0, 18), (19, 1)]
-  assert zip(*selection_pairs[1]) == [(0, 8)]
+  assert list(zip(*selection_pairs[0])) == [(0, 18), (19, 1)]
+  assert list(zip(*selection_pairs[1])) == [(0, 8)]
   sel_registry = sel_registry.proxy_select(
     iselection=flex.size_t([0,1,8,18,19,23,27]))
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(0, 3), (4, 1)]
-  assert zip(*selection_pairs[1]) == [(0, 2)]
+  assert list(zip(*selection_pairs[0])) == [(0, 3), (4, 1)]
+  assert list(zip(*selection_pairs[1])) == [(0, 2)]
   assert sel_registry.enter(i_seq=0, j_seq=3, j_ncs=1) == (0, 1)
   assert sel_registry.enter(i_seq=0, j_seq=2, j_ncs=1) == (1, 2)
   assert sel_registry.enter(i_seq=3, j_seq=0, j_ncs=1) == (2, 1)
@@ -77,14 +78,14 @@ def exercise_pair_registry_basic():
   assert sel_registry.enter(i_seq=6, j_seq=5, j_ncs=1) == (0, 0)
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(0, 3), (4, 1), (6, 5)]
-  assert zip(*selection_pairs[1]) == [(0, 2)]
+  assert list(zip(*selection_pairs[0])) == [(0, 3), (4, 1), (6, 5)]
+  assert list(zip(*selection_pairs[1])) == [(0, 2)]
   sel_registry = sel_registry.proxy_select(
     iselection=flex.size_t([0,2,4,1]))
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(2, 3)]
-  assert zip(*selection_pairs[1]) == [(0, 1)]
+  assert list(zip(*selection_pairs[0])) == [(2, 3)]
+  assert list(zip(*selection_pairs[1])) == [(0, 1)]
   registry.register_additional_isolated_sites(number=10)
   assert registry.number_of_additional_isolated_sites == 10
   registry.register_additional_isolated_sites(number=3)
@@ -101,8 +102,8 @@ def exercise_pair_registry_basic():
   assert sel_registry.number_of_additional_isolated_sites == 3
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(0, 18), (19, 1)]
-  assert zip(*selection_pairs[1]) == [(0, 8)]
+  assert list(zip(*selection_pairs[0])) == [(0, 18), (19, 1)]
+  assert list(zip(*selection_pairs[1])) == [(0, 8)]
   #
   iselection = flex.size_t([
     # random permutation with omissions first 30
@@ -114,8 +115,8 @@ def exercise_pair_registry_basic():
   assert sel_registry.number_of_additional_isolated_sites == 9
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(17, 4)]
-  assert zip(*selection_pairs[1]) == [(17, 1)]
+  assert list(zip(*selection_pairs[0])) == [(17, 4)]
+  assert list(zip(*selection_pairs[1])) == [(17, 1)]
   #
   iselection = flex.size_t([0,1,30])
   sel_registry = registry.proxy_select(iselection=iselection)
@@ -195,7 +196,7 @@ def exercise_pair_registry_adp_iso():
       assert registry.enter(i_seq=0, j_seq=j_seq, j_ncs=j_seq) == (0, 0)
     selection_pairs = registry.selection_pairs()
     for j in range(1,n_seq):
-      assert zip(*selection_pairs[j-1]) == [(0,j)]
+      assert list(zip(*selection_pairs[j-1])) == [(0,j)]
     weight = 2.134
     average_power = 0.589
     u_isos = mersenne_twister.random_double(size=n_seq) + 1.e-3

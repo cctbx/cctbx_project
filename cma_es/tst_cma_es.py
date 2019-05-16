@@ -3,6 +3,7 @@ from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 from cma_es import cma_es
 from six.moves import range
+from six.moves import zip
 
 # =============================================================================
 center = flex.double([8.0,-13.0,0.5])

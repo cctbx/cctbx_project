@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from mmtbx.tls import tools
 import math
 import time
+from six.moves import zip
 
 pdb_str_1 = """
 CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P1

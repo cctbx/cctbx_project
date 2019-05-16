@@ -4,6 +4,7 @@ from scitbx import matrix
 import math
 import sys
 from six.moves import range
+from six.moves import zip
 
 angle_scale = math.pi / 2
 

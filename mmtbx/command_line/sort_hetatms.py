@@ -10,6 +10,7 @@ from libtbx import runtime_utils
 import libtbx.phil
 import os
 import sys
+from six.moves import zip
 
 sorting_params_str = """
 preserve_chain_id = False

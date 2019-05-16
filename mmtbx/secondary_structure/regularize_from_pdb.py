@@ -17,6 +17,7 @@ from mmtbx.secondary_structure.find_ss_from_ca import \
    get_first_resno,get_last_resno,get_sequence,get_chain_id,get_atom_list,\
    apply_atom_selection,model_info,split_model,merge_hierarchies_from_models, \
    get_pdb_hierarchy
+from six.moves import zip
 from six.moves import range
 
 master_phil = iotbx.phil.parse("""

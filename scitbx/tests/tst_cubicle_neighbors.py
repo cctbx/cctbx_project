@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import zip
 def exercise_cubicles_max_memory():
   import scitbx.cubicle_neighbors as cn
   assert cn.cubicles_max_memory_allocation_get() != 0
@@ -47,14 +48,14 @@ def run(args):
   mt = flex.mersenne_twister(seed=0)
   for nm in [3,5,8]:
     for no in [1,7,9]:
-      main_sites_cart = flex.vec3_double(zip(
+      main_sites_cart = flex.vec3_double(list(zip(
         mt.random_double(size=nm)*2-1,
         mt.random_double(size=nm)*2-1,
-        mt.random_double(size=nm)*2-1))
-      other_sites_cart = flex.vec3_double(zip(
+        mt.random_double(size=nm)*2-1)))
+      other_sites_cart = flex.vec3_double(list(zip(
         mt.random_double(size=no)*2-1,
         mt.random_double(size=no)*2-1,
-        mt.random_double(size=no)*2-1))
+        mt.random_double(size=no)*2-1)))
       for distance_cutoff in [0.5, 1]:
         distance_cutoff_sq = distance_cutoff**2
         cn = cubicle_neighbors(main_sites_cart=main_sites_cart, cubicle_edge=1)

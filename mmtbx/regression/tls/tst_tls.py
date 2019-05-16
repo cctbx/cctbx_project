@@ -8,6 +8,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
 import os
+from six.moves import zip
 
 def uaniso_from_tls_and_back():
   mon_lib_srv = monomer_library.server.server()

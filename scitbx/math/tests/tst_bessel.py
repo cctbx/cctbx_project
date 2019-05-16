@@ -5,6 +5,7 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import sys
 from six.moves import range
+from six.moves import zip
 
 def exercise_interfaces():
   assert approx_equal(scitbx.math.spherical_bessel(1, 2), 0.43539777498)

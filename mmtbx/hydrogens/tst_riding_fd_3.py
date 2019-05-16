@@ -5,6 +5,7 @@ import mmtbx.model
 from cctbx.array_family import flex
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
+from six.moves import zip
 from six.moves import range
 
 def exercise(pdb_str, eps):

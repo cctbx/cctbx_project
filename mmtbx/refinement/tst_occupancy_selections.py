@@ -12,6 +12,7 @@ import libtbx.load_env
 from cStringIO import StringIO
 import os
 import sys
+from six.moves import zip
 
 def extract_serials(atoms, occ_groups):
   r = []

@@ -5,6 +5,7 @@ from cctbx.array_family import flex
 import scitbx.math
 import math
 import sys
+from six.moves import zip
 
 def exercise_Compute_phifom_from_abcd_interface(args):
   miller_arrays = reflection_file_converter.run(

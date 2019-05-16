@@ -30,6 +30,7 @@ import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import libtbx.path
 import mmtbx.refinement.targets
 import mmtbx.f_model.f_model_info
+from six.moves import zip
 from six.moves import range
 
 master_params =  iotbx.phil.parse("""

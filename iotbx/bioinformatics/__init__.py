@@ -8,6 +8,7 @@ import os.path
 import sys
 from functools import reduce
 from six.moves import range
+from six.moves import zip
 
 # Wrap lines that are longer than 'width'
 def wrap(text, width):
@@ -1548,7 +1549,7 @@ class hhsearch_parser(hhpred_parser):
 
   def merge_and_process_block_hits(self, matches):
 
-    data = zip( *matches )
+    data = list(zip( *matches ))
     assert len( data ) == 8
 
     sequences = [ data[1], data[5] ]
@@ -1584,13 +1585,13 @@ class hhsearch_parser(hhpred_parser):
 
   def hits(self):
 
-    data = zip(
+    data = list(zip(
       self.pdbs,
       self.chains,
       self.annotations,
       self.query_alignments,
       self.hit_alignments,
-      )
+      ))
 
     for ( pdb, chain, annotation, query, hit ) in data:
       alignment = clustal_alignment(
@@ -1692,7 +1693,7 @@ class hhalign_parser(hhpred_parser):
 
   def merge_and_process_block_hits(self, matches):
 
-    data = zip( *matches )
+    data = list(zip( *matches ))
     assert len( data ) == 21
 
     sequences = [

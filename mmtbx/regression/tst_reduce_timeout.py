@@ -3,6 +3,7 @@ from mmtbx.utils import run_reduce_with_timeout
 from time import time
 from mmtbx.regression import model_1yjp
 import sys
+from six.moves import zip
 
 def exercise(prefix="tst_reduce_timeout_1"):
   fn = "%s.pdb" % prefix

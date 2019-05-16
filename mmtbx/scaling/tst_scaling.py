@@ -18,6 +18,7 @@ import math
 import time
 from libtbx.str_utils import StringIO
 from libtbx.utils import format_cpu_times
+from six.moves import zip
 from six.moves import range
 
 random.seed(0)

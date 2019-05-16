@@ -3,6 +3,7 @@ from iotbx import bioinformatics
 
 import unittest
 import sys
+from six.moves import zip
 
 residue_basket="ACCDDDEEEE"
 sequence1 = "VVKMDGRKHRLILPEAKVQDSGEFECRTEGVSAFFGVTVQDPSGPS"

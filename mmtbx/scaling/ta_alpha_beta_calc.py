@@ -10,6 +10,7 @@ from libtbx.math_utils import iround
 import math
 import sys
 import iotbx.phil
+from six.moves import zip
 
 sigmaa_estimator_params = iotbx.phil.parse("""\
   kernel_width_free_reflections = 100

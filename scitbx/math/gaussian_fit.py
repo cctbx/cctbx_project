@@ -12,6 +12,7 @@ import time
 import math
 import sys
 from six.moves import range
+from six.moves import zip
 
 minimize_multi_histogram = {"None": 0}
 

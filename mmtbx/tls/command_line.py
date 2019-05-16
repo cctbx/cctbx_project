@@ -12,6 +12,7 @@ from libtbx.utils import Sorry
 import mmtbx.tls.tools
 import mmtbx.model
 import iotbx.pdb
+from six.moves import zip
 
 
 master_params = iotbx.phil.parse("""\

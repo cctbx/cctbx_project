@@ -9,6 +9,7 @@ import string
 import os
 import sys
 from six.moves import range
+from six.moves import zip
 
 master_phil = libtbx.phil.parse("""
 add_conformations

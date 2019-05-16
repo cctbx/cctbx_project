@@ -56,6 +56,7 @@ import iotbx.cif.model
 import copy
 from libtbx.utils import null_out
 from six.moves import range
+from six.moves import zip
 
 
 def lists_have_comment_element(a,b):

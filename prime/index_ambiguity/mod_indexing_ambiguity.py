@@ -8,6 +8,7 @@ import random
 from cctbx.array_family import flex
 from prime.postrefine.mod_input import read_frame
 from six.moves import range
+from six.moves import zip
 
 class indamb_handler(object):
   """

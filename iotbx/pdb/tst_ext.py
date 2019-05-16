@@ -10,6 +10,7 @@ from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
 from six.moves import range
+from six.moves import zip
 try:
   import cPickle as pickle
 except ImportError:

@@ -4,6 +4,7 @@ from libtbx.test_utils import approx_equal
 import iotbx.pdb
 from cctbx import maptbx
 from  cctbx import maptbx
+from six.moves import zip
 
 raw_records = """\
 CRYST1   26.880   33.600   31.920  90.00  90.00  90.00 P 1

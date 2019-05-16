@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from cStringIO import StringIO
 import os.path
+from six.moves import zip
 
 def exercise_model_only():
   from mmtbx.building import extend_sidechains

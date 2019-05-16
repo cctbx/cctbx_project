@@ -13,6 +13,7 @@ from libtbx.utils import format_cpu_times
 import random
 import math
 from six.moves import range
+from six.moves import zip
 
 random.seed(0)
 flex.set_random_seed(0)

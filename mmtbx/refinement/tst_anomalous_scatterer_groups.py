@@ -8,6 +8,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import random
 import sys
+from six.moves import zip
 
 if (1):
   random.seed(0)

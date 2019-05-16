@@ -16,6 +16,7 @@ import sys, os
 # Boost 1.56 changes normal distribution, but keep old tests for testing
 # older versions of Boost
 import libtbx.load_env
+from six.moves import zip
 boost_version = libtbx.env.boost_version
 
 def exercise_flex_grid():

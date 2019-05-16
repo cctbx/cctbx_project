@@ -8,6 +8,7 @@ import mmtbx.monomer_library.server
 from mmtbx.validation import rotalyze
 import iotbx.phil
 from libtbx import adopt_init_args
+from six.moves import zip
 
 torsion_search_params_str = """\
 torsion_search

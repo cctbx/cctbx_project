@@ -10,6 +10,7 @@ import scitbx.lbfgs
 import math
 from cctbx.maptbx.segment_and_split_map import map_and_b_object
 from six.moves import range
+from six.moves import zip
 
 def write_mtz(ma=None,phases=None,file_name=None):
   mtz_dataset=ma.as_mtz_dataset(column_root_label="FWT")

@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from cctbx import uctbx
 from scitbx import matrix
+from six.moves import zip
 
 class gruber_parameterization(object):
 

@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from six.moves import range
 from xfel.ui.db import db_proxy
 from scitbx.array_family import flex
+from six.moves import zip
 
 class Event(db_proxy):
   def __init__(self, app, event_id = None, **kwargs):

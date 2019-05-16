@@ -4,6 +4,7 @@ from cctbx.array_family import flex
 import math
 from scitbx.matrix import col,sqr
 from scitbx.lstbx import normal_eqns
+from six.moves import zip
 
 class refinement_base(object):
 

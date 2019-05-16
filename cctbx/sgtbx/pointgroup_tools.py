@@ -12,6 +12,7 @@ from scitbx.python_utils import graph_tools
 from libtbx.utils import Sorry
 import sys
 from six.moves import range
+from six.moves import zip
 
 
 def reference_setting_choices(space_group):

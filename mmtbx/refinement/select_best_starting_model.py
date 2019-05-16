@@ -14,6 +14,7 @@ from libtbx import easy_mp
 import libtbx.phil
 import os.path
 import sys
+from six.moves import zip
 
 master_phil = libtbx.phil.parse("""
 d_min = None
@@ -202,7 +203,7 @@ class select_model(object):
       print("Calculating R-factors - will use %s processors." % nproc, file=log)
       evaluations = easy_mp.parallel_map(
         func=self.evaluate_model,
-        iterable=zip(xray_structures, pdb_hierarchies),
+        iterable=list(zip(xray_structures, pdb_hierarchies)),
         processes=nproc)
       passed = []
       for k, result in enumerate(evaluations):

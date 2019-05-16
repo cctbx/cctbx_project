@@ -28,6 +28,7 @@ import time
 import math
 
 from cctbx.geometry_restraints.linking_class import linking_class
+from six.moves import zip
 from six.moves import range
 origin_ids = linking_class()
 

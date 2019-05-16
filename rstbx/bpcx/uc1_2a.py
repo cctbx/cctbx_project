@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import zip
 #!/usr/bin/env cctbx.python
 #
 # Use case 1.2A - going back to the use case for predictions and making sure that

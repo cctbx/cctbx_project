@@ -18,6 +18,7 @@ from scitbx import matrix
 from xfel.metrology.legacy_scale import mark5_iteration,vector_collection
 from xfel.metrology.legacy_scale import bandpass_gaussian
 from rstbx.symmetry.constraints import AGconvert
+from six.moves import zip
 #XXX remove the xfel/metrology/legacy_scale wrapping for AGconvert; not needed
 
 class fit_translation4(mark5_iteration,fit_translation2):

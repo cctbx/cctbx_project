@@ -3,6 +3,7 @@ import cctbx.array_family.flex # import dependency
 import scitbx.array_family.shared # import dependency
 
 import boost.python
+from six.moves import zip
 ext = boost.python.import_ext("cctbx_uctbx_ext")
 from cctbx_uctbx_ext import *
 

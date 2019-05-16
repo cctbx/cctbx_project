@@ -5,6 +5,7 @@ import cctbx.crystal.coordination_sequences
 from iotbx.option_parser import iotbx_option_parser
 import libtbx.load_env
 import sys, os
+from six.moves import zip
 
 def exercise_simple(structure, distance_cutoff, max_shell, verbose):
   asu_mappings = structure.asu_mappings(

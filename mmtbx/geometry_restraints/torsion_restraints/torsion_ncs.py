@@ -12,6 +12,7 @@ from libtbx.utils import Sorry
 from mmtbx.geometry_restraints.torsion_restraints import utils, rotamer_search
 from libtbx import Auto
 from libtbx.str_utils import line_breaker
+from six.moves import zip
 
 # Refactoring notes 11 May 2015
 # Torsion NCS restraints should use the same procedure to find NCS groups

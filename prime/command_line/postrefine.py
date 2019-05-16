@@ -17,6 +17,7 @@ import numpy as np
 from datetime import datetime, time
 from libtbx.utils import Usage
 from six.moves import range
+from six.moves import zip
 
 def determine_mean_I_mproc(args):
   from prime.postrefine import postref_handler

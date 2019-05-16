@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx.eltbx import xray_scattering
 import sys
 from six.moves import range
+from six.moves import zip
 
 # ITC 2006 Table 6.1.1.2. Spherical bonded hydrogen-atom scattering
 # factors from Stewart, Davidson & Simpson (1965)

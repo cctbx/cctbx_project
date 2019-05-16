@@ -8,6 +8,7 @@ from scitbx.math import matrix
 import libtbx.phil
 from libtbx.utils import Sorry
 import sys, os
+from six.moves import zip
 
 master_params = libtbx.phil.parse("""\
 super {

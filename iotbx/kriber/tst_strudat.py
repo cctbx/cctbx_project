@@ -9,6 +9,7 @@ from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
+from six.moves import zip
 
 def exercise_basic():
   test_file = StringIO("""

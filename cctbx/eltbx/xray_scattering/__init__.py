@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import scitbx.math.gaussian # base class for gaussian
 
 import boost.python
+from six.moves import zip
 ext = boost.python.import_ext("cctbx_eltbx_xray_scattering_ext")
 from cctbx_eltbx_xray_scattering_ext import *
 

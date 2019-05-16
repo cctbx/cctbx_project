@@ -8,6 +8,7 @@ from scitbx.array_family import flex
 import scitbx.matrix
 from xfel.cxi.cspad_ana import cspad_tbx
 from math import sin, atan
+from six.moves import zip
 
 def cspad_unbound_pixel_mask():
   # Every 10th pixel along the diagonal from the top left hand corner are not
