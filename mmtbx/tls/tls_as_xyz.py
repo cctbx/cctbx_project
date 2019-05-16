@@ -10,6 +10,7 @@ from cctbx import adptbx
 import sys
 from mmtbx.tls import analysis
 from mmtbx.tls import tools
+from six.moves import range
 
 random.seed(2679941) ###
 
@@ -73,7 +74,7 @@ def run(pdb_file_name,
     pdb_hierarchy_from_ens = pdb_hierarchy_sel.deep_copy()
     u_from_ens = tools.u_cart_from_ensemble(
       models = ensemble_generator_obj.states.root.models())
-    for i in xrange(xrs.sites_cart().size()):
+    for i in range(xrs.sites_cart().size()):
       print("atom %d:"%i)
       print("  Ucart(from TLS):", ["%8.5f"%u for u in u_from_tls[i]])
       print("  Ucart(from ens):", ["%8.5f"%u for u in u_from_ens[i]])
@@ -115,7 +116,7 @@ class ensemble_generator(object):
     print(file=log)
     print("Generating ensemble of %d models:"%n_models, file=log)
     self.sites_cart_ens = []
-    for trial in xrange(n_models):
+    for trial in range(n_models):
       print("model #%d"%trial, file=log)
       dx0,dy0,dz0 = step_i__get_dxdydz(r=r, log = log)
       d_r_M_V  = formula_49(r=r, log = log)

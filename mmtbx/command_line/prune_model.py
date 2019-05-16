@@ -7,6 +7,7 @@ from libtbx.utils import multi_out
 from libtbx import group_args
 import os
 import sys
+from six.moves import range
 
 model_prune_master_phil = """
   resolution_factor = 1/4.

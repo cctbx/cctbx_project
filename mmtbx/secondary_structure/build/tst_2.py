@@ -4,6 +4,7 @@ import iotbx.pdb
 from iotbx.pdb import secondary_structure as ioss
 from scitbx.array_family import flex
 import mmtbx.model
+from six.moves import range
 
 tst_00_start_lines = """\
 ATOM      1  N   SER A   2      35.297  13.646  38.741  1.00 25.20           N

@@ -6,6 +6,7 @@ from libtbx.utils import Sorry
 from mmtbx import scaling
 import math
 from iotbx import data_plots
+from six.moves import range
 
 
 def plotit(fobs,

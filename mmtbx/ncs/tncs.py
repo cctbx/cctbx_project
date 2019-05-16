@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex # import dependency
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_ncs_ext")
 from scitbx.array_family import flex
 from cctbx import sgtbx
@@ -444,7 +445,7 @@ class compute_eps_factor(object):
       # Target and gradients evaluator
       pot = potential(f_obs = f_obs, ncs_pairs = self.ncs_pairs,
         reflections_per_bin = reflections_per_bin)
-      for it in xrange(2):
+      for it in range(2):
         # refine eps fac
         rho_mn = flex.double()
         for ncs_pair in self.ncs_pairs:

@@ -9,6 +9,7 @@ from cctbx import miller
 from scitbx.array_family import flex
 from mmtbx.maps.polder import master_params_str
 import mmtbx.maps.polder
+from six.moves import range
 
 pdb_str = """\
 CRYST1   28.992   28.409   27.440  90.00  90.00  90.00 P 1

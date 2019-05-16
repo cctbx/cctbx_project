@@ -42,6 +42,8 @@ from libtbx.test_utils import approx_equal
 import libtbx
 import mmtbx.bulk_solvent
 import six
+from six.moves import range
+
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
 time_bulk_solvent_and_scale         = 0.0

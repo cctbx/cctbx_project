@@ -13,6 +13,7 @@ import mmtbx.maps
 from mmtbx.ncs import ncs
 from scitbx.math import nearest_phase, phase_error
 import os, sys
+from six.moves import range
 
 master_params_including_IO_str = """\
 density_modification {
@@ -290,14 +291,14 @@ map_coefficients {
       fig = pyplot.figure()
       ax = fig.add_subplot(1,1,1)
       ax.set_title("correlation coefficient")
-      ax.plot(range(1, dm.i_cycle+2), data)
+      ax.plot(list(range(1, dm.i_cycle+2)), data)
       pdf.savefig(fig)
       #
       data = dm.mean_phase_errors
       fig = pyplot.figure()
       ax = fig.add_subplot(1,1,1)
       ax.set_title("Mean effective phase errors")
-      ax.plot(range(1, dm.i_cycle+2), data)
+      ax.plot(list(range(1, dm.i_cycle+2)), data)
       pdf.savefig(fig)
 
     for plot in plots_to_make:
@@ -305,7 +306,7 @@ map_coefficients {
       fig = pyplot.figure()
       ax = fig.add_subplot(1,1,1)
       ax.set_title(plot.replace("_", " "))
-      ax.plot(range(1, dm.i_cycle+2), data)
+      ax.plot(list(range(1, dm.i_cycle+2)), data)
       pdf.savefig(fig)
 
     data = [stats.get_cycle_stats(i).rms_solvent_density/
@@ -314,7 +315,7 @@ map_coefficients {
     fig = pyplot.figure()
     ax = fig.add_subplot(1,1,1)
     ax.set_title("RMS solvent/protein density ratio")
-    ax.plot(range(1, dm.i_cycle+2), data)
+    ax.plot(list(range(1, dm.i_cycle+2)), data)
     pdf.savefig(fig)
 
     pdf.close()

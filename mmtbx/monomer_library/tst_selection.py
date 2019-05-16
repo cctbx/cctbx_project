@@ -3,6 +3,7 @@ from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.monomer_library.server
 import sys
+from six.moves import range
 
 test_pdb_file = """\
 CRYST1  201.710   68.060   86.350  90.00  90.00  90.00 P 21 21 2     8
@@ -155,10 +156,10 @@ def exercise_atom_selections():
     file_name="tmp_selection.pdb",
     log=log)
   isel = processed_pdb.all_chain_proxies.iselection
-  assert list(isel("peptide")) == range(52) + range(114,122)
-  assert list(isel("rna")) == range(52,95)
-  assert list(isel("dna")) == range(95,114)
-  assert list(isel("nucleotide")) == range(52,114)
+  assert list(isel("peptide")) == list(range(52)) + list(range(114,122))
+  assert list(isel("rna")) == list(range(52,95))
+  assert list(isel("dna")) == list(range(95,114))
+  assert list(isel("nucleotide")) == list(range(52,114))
   assert list(isel("water")) == [124,125]
   assert list(isel("peptide backbone")) \
       == list(isel("peptide and (name ca or name c or name o or name n)"))

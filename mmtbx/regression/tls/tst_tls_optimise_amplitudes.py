@@ -6,6 +6,7 @@ from mmtbx.tls.optimise_amplitudes import MultiGroupMultiDatasetUijAmplitudeFunc
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from pytest import raises
+from six.moves import range
 
 rran = numpy.random.random
 iran = numpy.random.choice
@@ -51,7 +52,7 @@ def get_optimisation_test_set(n_grp, n_dst, n_atm, residual_amplitude=1.0):
 
   # Create residual total and add to target
   residual_uijs = real_residual_amps.reshape((n_atm,1)) * residual_values_numpy
-  for i_dst in xrange(n_dst):
+  for i_dst in range(n_dst):
     target_uijs[i_dst] = residual_uijs
 
   # Generate a random set of amplitudes
@@ -61,9 +62,9 @@ def get_optimisation_test_set(n_grp, n_dst, n_atm, residual_amplitude=1.0):
   base_uijs = []
   base_sels = []
   # Mapping of elements to datasets
-  dataset_hash = flex.size_t(range(n_dst) * n_grp)
+  dataset_hash = flex.size_t(list(range(n_dst)) * n_grp)
 
-  for i_grp in xrange(n_grp):
+  for i_grp in range(n_grp):
     # Number of atoms in this group -- at least 2
     if n_grp == 1:
       n_atm_this = n_atm
@@ -73,7 +74,7 @@ def get_optimisation_test_set(n_grp, n_dst, n_atm, residual_amplitude=1.0):
     i_sel = iran(n_atm, size=n_atm_this, replace=False)
     # Generate some uijs for this
     tls_m = TLSMatrices(TLS_MATRICES[i_grp])
-    for i_dst in xrange(n_dst):
+    for i_dst in range(n_dst):
       x_ = 50.0*(-0.5+rran(n_atm_this*3).reshape((n_atm_this,3)))
       x_ = flex.vec3_double(x_)
       # Generate the base elements
@@ -118,7 +119,7 @@ def calculate_expected_f_and_g(
   target_weights_numpy = numpy.array(target_weights).reshape((n_dst,n_atm))
   residual_uijs_numpy = numpy.array(current_amplitudes_residual).reshape((n_atm,1)) * numpy.array(residual_base)
 
-  for i_dst in xrange(n_dst):
+  for i_dst in range(n_dst):
     b_sel = [i_b for i_b, i_d in enumerate(dataset_hash) if i_d==i_dst]
     total_uij = numpy.zeros((n_atm, 6))
     # Add up contirbutions from different components
@@ -148,7 +149,7 @@ def calculate_expected_f_and_g(
         gradients[i_b] += numpy.sum(-2.0 * w * ud * ug)
 
     if residual_mask[i_dst]:
-      for i_atm in xrange(n_atm):
+      for i_atm in range(n_atm):
         ur = residual_base[i_atm]
         ud = delta_uijs[i_atm]
         w = target_weights_numpy[i_dst, i_atm]

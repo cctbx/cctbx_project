@@ -4,6 +4,7 @@ from cctbx import miller
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
 import boost.python
+from six.moves import range
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from mmtbx.maps import composite_omit_map as cfom
 from cctbx import maptbx
@@ -157,7 +158,7 @@ class omit_general_obsolete(object):
       else: ss,ee = s,e
       # omit wide box from f_model map, repeat n_debias_cycles times
       f_model_map_data_asu_ = f_model_map_data_asu.deep_copy()
-      for i in xrange(n_debias_cycles):
+      for i in range(n_debias_cycles):
         f_model_omit, f_model_map_data_asu_ = self.omit_box(s=ss, e=ee,
           md_asu=f_model_map_data_asu_)
       # get fmodel for omit map calculation

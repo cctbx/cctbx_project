@@ -16,7 +16,9 @@ from collections import defaultdict
 import argparse
 import os
 import sys
+
 import six
+from six.moves import range
 
 # from matplotlib import rcParams
 # rcParams['figure.autolayout'] = True
@@ -62,7 +64,7 @@ class RingerDict(object):
 def ranges(p):
     q = sorted(p)
     i = 0
-    for j in xrange(1,len(q)):
+    for j in range(1,len(q)):
         if q[j] > 1+q[j-1]:
             yield (q[i],q[j-1])
             i = j

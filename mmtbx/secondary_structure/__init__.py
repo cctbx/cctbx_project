@@ -19,6 +19,7 @@ from libtbx.utils import null_out
 from itertools import groupby
 from operator import itemgetter
 import iotbx.phil
+from six.moves import range
 
 def contiguous_ss_selections(pdb_hierarchy):
   """
@@ -58,7 +59,7 @@ def contiguous_ss_selections(pdb_hierarchy):
     C1.extend(s)
   s = flex.sort_permutation(C1)
   C1 = C1.select(s)
-  C2 = flex.size_t(xrange(n_atoms))
+  C2 = flex.size_t(range(n_atoms))
   assert approx_equal(C1, C2)
   assert C1.size()==C2.size()
   #

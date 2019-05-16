@@ -14,6 +14,7 @@ from mmtbx import map_tools
 from cctbx import miller
 from libtbx import Auto
 import mmtbx.maps.composite_omit_map
+from six.moves import range
 
 class run(object):
 
@@ -171,7 +172,7 @@ class run(object):
     map_accumulator = maptbx.map_accumulator(
       n_real = self.crystal_gridding.n_real(), smearing_b=1, max_peak_scale=100,
       smearing_span=5, use_max_map=self.use_max_map)
-    for i in xrange(self.n_outer_loop):
+    for i in range(self.n_outer_loop):
       m = inner_loop(
         fmodel           = self.fmodel,
         wam              = wam,
@@ -319,7 +320,7 @@ def inner_loop(fmodel, wam, missing, crystal_gridding, n, progress_counter,
                use_max_map):
   mac = maptbx.map_accumulator(n_real = crystal_gridding.n_real(),
     smearing_b=1, max_peak_scale=100, smearing_span=5, use_max_map=use_max_map)
-  for j in xrange(n):
+  for j in range(n):
     mc_w = wam.random_weight_averaged_map_coefficients(
       missing       = missing,
       random_scale  = random.choice([0,1,2,3,4,5]),

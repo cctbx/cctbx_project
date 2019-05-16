@@ -10,6 +10,7 @@ import libtbx.load_env
 import warnings
 import os.path
 from iotbx.cli_parser import run_program
+from six.moves import range
 
 def exercise_emringer_residue_scan():
   pdb_file = libtbx.env.find_in_repositories(

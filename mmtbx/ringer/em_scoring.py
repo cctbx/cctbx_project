@@ -19,6 +19,7 @@ from collections import OrderedDict
 import math
 import os
 import sys
+from six.moves import range
 
 # Residue_codes = ["PHE","TYR","TRP"]
 Residue_codes = ["ARG","ASN","ASP","CYS","GLU","GLN","HIS",

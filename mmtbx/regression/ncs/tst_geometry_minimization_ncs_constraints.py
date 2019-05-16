@@ -7,6 +7,7 @@ import iotbx.ncs
 import iotbx.pdb
 import sys
 from libtbx import easy_run
+from six.moves import range
 
 pdb_string1 = """\
 CRYST1   18.415   14.419   12.493  90.00  90.00  90.00 P 1
@@ -59,7 +60,7 @@ def tst_1(prefix="gm_ncs_constr_tst1"):
   ncs_obj.show(format='phil')
   grm = model.get_restraints_manager()
   tmp_xrs = model.get_xray_structure().deep_copy_scatterers()
-  refine_selection = flex.size_t(xrange(model.get_number_of_atoms()))
+  refine_selection = flex.size_t(range(model.get_number_of_atoms()))
 
   # print "refining sites"
   cycle = 0

@@ -14,6 +14,7 @@ from libtbx import easy_mp
 import libtbx.phil
 import os
 import sys
+from six.moves import range
 
 master_phil = libtbx.phil.parse("""
 min_identity = 0.95

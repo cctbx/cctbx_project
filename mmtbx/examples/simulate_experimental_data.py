@@ -14,6 +14,7 @@ from mmtbx.scaling import absolute_scaling
 from mmtbx import f_model
 from cStringIO import StringIO
 import sys, os
+from six.moves import range
 
 
 class error_swap(object):
@@ -106,13 +107,13 @@ class error_swap(object):
     bin_size = int(bin_size) + 1
     ebin = flex.int()
     count=0
-    for ii in xrange( sorted_obs.size() ):
+    for ii in range( sorted_obs.size() ):
       if ii%bin_size==0:
         count+=1
       ebin.append( count-1 )
 
     # the bins have been setup, now we can reorder stuff
-    for ibin in xrange(self.n_e_bins):
+    for ibin in range(self.n_e_bins):
       this_bin_selection = flex.bool( ebin == ibin )
       tmp_n = (this_bin_selection).count(True)
       permute = flex.sort_permutation( flex.random_double( tmp_n ) )

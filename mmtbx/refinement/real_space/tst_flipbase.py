@@ -6,6 +6,7 @@ from mmtbx.refinement.real_space import individual_sites, flipbase
 import mmtbx
 import iotbx
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 pdb_str_answer = """\
 CRYST1   23.136   23.980   28.180  90.00  90.00  90.00 P 1

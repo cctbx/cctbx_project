@@ -10,6 +10,7 @@ import mmtbx.scaling
 from scitbx.python_utils import robust_statistics
 import sys, math
 import scitbx.lbfgs
+from six.moves import range
 
 
 

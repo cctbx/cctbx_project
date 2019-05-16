@@ -7,6 +7,7 @@ from cctbx import xray
 import scitbx.lbfgs
 from libtbx import adopt_init_args
 import cctbx
+from six.moves import range
 
 pdb_str = """
 CRYST1   12.000   11.000   13.000  80.00  70.00 100.00 P 1
@@ -151,7 +152,7 @@ def run():
   # refinement loop
   print("start r_factor: %6.4f" % fmodel.r_work())
   total_call_count = 0
-  for macro_cycle in xrange(10):
+  for macro_cycle in range(10):
     minimized = minimizer(fmodel = fmodel)
     total_call_count += minimized.call_count
     print("  macro_cycle %3d (adp)   r_factor: %6.4f  call_count=%d" % \

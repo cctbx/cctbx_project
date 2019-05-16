@@ -14,6 +14,7 @@ import mmtbx.utils
 from cctbx import miller
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 output_params_str = """
   output_residue_name = HOH
@@ -216,7 +217,7 @@ class manager(object):
       if(not self.filter_only and self.params.correct_drifted_waters):
         self.correct_drifted_waters(map_cutoff =
           self.params.secondary_map_and_map_cc_filter.poor_map_value_threshold)
-      for i in xrange(self.params.n_cycles):
+      for i in range(self.params.n_cycles):
         self.refine_adp()
         self.refine_occupancies()
     self.show(message = "Before filtering:")

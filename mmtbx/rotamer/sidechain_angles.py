@@ -7,6 +7,7 @@ import iotbx.pdb
 from cctbx.array_family import flex
 import mmtbx.rotamer
 import sys, os
+from six.moves import range
 
 def find_source_dir(optional=False):
   result = libtbx.env.find_in_repositories(os.path.join("mmtbx", "rotamer"))

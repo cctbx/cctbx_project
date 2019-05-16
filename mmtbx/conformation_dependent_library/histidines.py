@@ -3,6 +3,7 @@ import sys
 import time
 
 from mmtbx.conformation_dependent_library.hpdl_database import get_hpdl_database
+from six.moves import range
 
 def get_histidine_protonation(ag):
   lookup = {"HD1" : 0, # ND1

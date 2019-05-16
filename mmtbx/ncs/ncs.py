@@ -4,6 +4,7 @@ import sys, os, string
 from libtbx.utils import Sorry
 from libtbx.utils import null_out
 import scitbx.rigid_body
+from six.moves import range
  # hierarchy:  there can be any number of ncs groups.
  #   each group has a set of NCS operators and centers and may apply
  #      to a part of the structure.
@@ -56,9 +57,9 @@ def remove_single_quotes(text):
 def is_identity(r,t,tol=1.e-2):
   identity_r=[1,0,0,0,1,0,0,0,1]
   identity_t=[0,0,0]
-  for i in xrange(9):
+  for i in range(9):
     if abs(r[i]-identity_r[i])>tol: return False
-  for i in xrange(3):
+  for i in range(3):
     if abs(t[i]-identity_t[i])>tol: return False
   return True
 
@@ -68,9 +69,9 @@ def is_same_transform(r1,t1,r2,t2,
    rel_tol_t=default_rel_tol_t):
 
     # require everything to be very similar
-    for i in xrange(9):
+    for i in range(9):
       if abs(r1[i]-r2[i])>tol_r: return False
-    for i in xrange(3):
+    for i in range(3):
       dd=abs(t1[i]-t2[i])
       dd2=0.5*(abs(t1[i])+abs(t2[i]))
       if dd>abs_tol_t and dd>rel_tol_t*dd2: # definitely does not match
@@ -191,11 +192,11 @@ def get_helical_symmetry(helical_rot_deg=None,
   rots.append(matrix.sqr((1,0,0,0,1,0,0,0,1),))
   trans.append(matrix.col((0,0,0,)))
 
-  for i in xrange(n):
+  for i in range(n):
     rots=[rot*rots[0]]+rots[:]
     trans=[trans[0]-trans_along_z]+trans[:]
 
-  for i in xrange(n):
+  for i in range(n):
     rots.append(rot_inv*rots[-1])
     trans.append(trans[-1]+trans_along_z)
 
@@ -242,7 +243,7 @@ def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None,ncs_name=None):
   rots.append(matrix.sqr((1,0,0,0,1,0,0,0,1),))
   trans.append(matrix.col((0,0,0,)))
 
-  for i in xrange(n-1):
+  for i in range(n-1):
     rots.append(oper_inv*rots[-1])
     trans.append(matrix.col((0,0,0,)))
 
@@ -364,10 +365,10 @@ def generate_ncs_ops(symmetry=None,
            text_is_ncs_spec=True,ncs_name='T (c)'))
 
   if sym_type=='C' or all:
-    for i in xrange(i_start,i_end+1):
+    for i in range(i_start,i_end+1):
       ncs_list.append(get_c_symmetry(n=i,ncs_name='C%d ' %(i)))
   if sym_type=='D' or all:
-    for i in xrange(i_start,i_end+1):
+    for i in range(i_start,i_end+1):
       if two_fold_along_x is None or two_fold_along_x==True:
         ncs_list.append(get_d_symmetry(n=i,two_fold_along_x=True,
         ncs_name='D%d (a)' %(i)))
@@ -2406,7 +2407,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     new_residue_range_list=[]
     new_group=[]
 
-    for i in xrange(self._n_ncs_oper):
+    for i in range(self._n_ncs_oper):
       if i in ops_to_keep:
         new._n_ncs_oper+=1
         new._rota_matrices.append(self.rota_matrices()[i])
@@ -2628,7 +2629,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
      count+=1
      text+='new_operator\n'
      if center is not None:
-       for j in xrange(3):
+       for j in range(3):
          text+="\nrota_matrix "+" %8.4f  %8.4f  %8.4f" %tuple(
           ncs_rota_matr.elems[j*3:j*3+3])
        text+="\ntran_orth  "+" %8.4f  %8.4f  %8.4f" %tuple(trans_orth)
@@ -2689,7 +2690,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       i+=1
       if i==1 and skip_identity_if_first and \
         is_identity(ncs_rota_matr,trans_orth): continue
-      for j in xrange(3):
+      for j in range(3):
        text+="\nrota_matrix "+" %8.4f  %8.4f  %8.4f" %tuple(
           ncs_rota_matr[j*3:j*3+3])
       text+="\ntran_orth  "+" %8.4f  %8.4f  %8.4f" %tuple(trans_orth)
@@ -2860,7 +2861,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     # are left
    ops_to_keep=[self.identity_op_id()]
    n_ops=len(self.rota_matrices_inv())
-   for test_op in xrange(n_ops):
+   for test_op in range(n_ops):
      if test_op in ops_to_keep: continue
      test_ops_to_keep=ops_to_keep+[test_op]
      new_group=self.deep_copy(
@@ -2921,7 +2922,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     n=len(self.rota_matrices_inv())
     z_translations=[]
     sort_z_translations=[]
-    for i1 in xrange(n): # figure out if translation is along z
+    for i1 in range(n): # figure out if translation is along z
       z_translations.append(self.translations_orth_inv()[i1][2])
       sort_z_translations.append([self.translations_orth_inv()[i1][2],i1])
     from copy import deepcopy
@@ -2954,7 +2955,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     # Reorder the operators:
     self._rota_matrices=len(rota_matrices_sav)*[None]
     self._translations_orth=len(rota_matrices_sav)*[None]
-    for i1,i2 in zip(sorted_indices,xrange(n)):
+    for i1,i2 in zip(sorted_indices,range(n)):
       self._rota_matrices[i2]=rota_matrices_sav[i1]
       self._translations_orth[i2]=translations_orth_sav[i1]
     self.delete_inv() # remove the inv matrices/rotations so they regenerate
@@ -3013,7 +3014,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self.helix_oper_forwards=None
     self.helix_oper_reverse=None
     self.helix_oper_identity=None
-    for i1 in xrange(n): # figure out offset made by this self.helix_operator
+    for i1 in range(n): # figure out offset made by this self.helix_operator
       offset,n_missing=self.oper_adds_offset(i1,tol_r=tol_r,
           abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t)
       offset_list.append(offset)
@@ -3033,14 +3034,14 @@ class ncs_group:  # one group of NCS operators and center and where it applies
         is_helical=False
 
     if is_helical:
-      for i1 in xrange(n):
+      for i1 in range(n):
         if n_missing_list[i1] != abs(i1-ii):
           is_helical=False
           break
     if is_helical:
       offset_list.sort()
       start_value=offset_list[0]
-      expected_list=list(xrange(start_value,start_value+n))
+      expected_list=list(range(start_value,start_value+n))
       if offset_list != expected_list:
         is_helical=False
     # restore
@@ -3255,13 +3256,13 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     t1=self.translations_orth_inv()[i1]
     offset_list=[]
     missing_list=[]
-    for i in xrange(n): # apply i1+i and see what k we get (k-i should be const)
+    for i in range(n): # apply i1+i and see what k we get (k-i should be const)
       r=self.rota_matrices_inv()[i]
       t=self.translations_orth_inv()[i]
       new_r = r1 * r
       new_t = (r1 * t) + t1
       match_offset=None
-      for j in xrange(n):
+      for j in range(n):
         r2=self.rota_matrices_inv()[j]
         t2=self.translations_orth_inv()[j]
         if is_same_transform(new_r,new_t,r2,t2,

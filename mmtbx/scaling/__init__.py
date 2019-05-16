@@ -13,6 +13,7 @@ from cStringIO import StringIO
 import sys
 
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_scaling_ext")
 from mmtbx_scaling_ext import *
 

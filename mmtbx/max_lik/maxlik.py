@@ -9,6 +9,7 @@ from cctbx.array_family import flex
 from cctbx import miller
 from libtbx import adopt_init_args
 import iotbx.phil
+from six.moves import range
 
 alpha_beta_params = iotbx.phil.parse("""\
   free_reflections_per_bin = 140
@@ -151,7 +152,7 @@ class alpha_beta_calc(object):
     b_wk=table.array_of_b()
     c_wk=table.c()
     result_wk=c_wk
-    for i in xrange(5):
+    for i in range(5):
        result_wk += a_wk[i]*math.exp(-b_wk[i]*ss/4.0)
     return result_wk
 
@@ -420,7 +421,7 @@ def sigma_miss(miller_array, n_atoms_absent, bf_atoms_absent, absent_atom_type):
     b_wk=table.array_of_b()
     c_wk=table.c()
     result_wk=c_wk
-    for i in xrange(5):
+    for i in range(5):
       result_wk += a_wk[i]*math.exp(-b_wk[i]*ssi/4.0)
     return result_wk
   ss = 1./flex.pow2(miller_array.d_spacings().data())

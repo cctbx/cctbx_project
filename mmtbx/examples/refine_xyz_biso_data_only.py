@@ -7,6 +7,7 @@ from libtbx import group_args
 from cctbx import xray
 import scitbx.lbfgs
 from cctbx import adptbx
+from six.moves import range
 
 pdb_str = """
 CRYST1    5.827    9.541    6.239  90.00  90.00  90.00 P 1
@@ -139,7 +140,7 @@ def run(refine_xyz=True, refine_adp=False):
     target_name                  = "ls_wunit_kunit")
   # refinement loop
   print("start r_factor: %6.4f" % fmodel.r_work())
-  for macro_cycle in xrange(100):
+  for macro_cycle in range(100):
     # refine coordinates
     if(refine_xyz):
       minimized = minimizer(fmodel = fmodel, sites = True)

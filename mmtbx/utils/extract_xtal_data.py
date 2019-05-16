@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from libtbx import adopt_init_args
 from cctbx.array_family import flex
+from six.moves import range
 
 def miller_array_symmetry_safety_check(miller_array,
                                        data_description,
@@ -547,7 +548,7 @@ class run(object):
         " found in the input PDB file.")
     if (len(from_file) == 1 and current not in from_file):
       log = self.log
-      for i in xrange(2): print("*"*79, file=log)
+      for i in range(2): print("*"*79, file=log)
       if (ignore_pdb_hexdigest):
         print(file=log)
         print(" ".join(["WARNING"]*9), file=log)
@@ -594,7 +595,7 @@ become meaningful only after many cycles of refinement.
 If the original R-free flags are unrecoverable, the values for R-free
 will become meaningful only after many cycles of refinement.
 """, file=log)
-      for i in xrange(2): print("*"*79, file=log)
+      for i in range(2): print("*"*79, file=log)
       print(file=log)
       if (not ignore_pdb_hexdigest):
         if ("PHENIX_GUI_ENVIRONMENT" in os.environ):

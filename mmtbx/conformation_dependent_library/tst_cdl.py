@@ -15,6 +15,7 @@ from cStringIO import StringIO
 from mmtbx import conformation_dependent_library as cdl
 from mmtbx.conformation_dependent_library import cdl_utils, cdl_setup
 from mmtbx.conformation_dependent_library.cdl_database import cdl_database
+from six.moves import range
 
 filenames = {
   "cdl_test_1.pdb" : [

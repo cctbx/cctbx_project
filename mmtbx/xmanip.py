@@ -13,6 +13,7 @@ from scitbx.math import matrix
 from libtbx.utils import Sorry, multi_out
 from cStringIO import StringIO
 import sys, os
+from six.moves import range
 
 
 class quick_rt_mx(object):

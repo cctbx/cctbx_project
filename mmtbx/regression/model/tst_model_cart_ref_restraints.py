@@ -4,6 +4,7 @@ import libtbx.load_env
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import approx_equal
 import iotbx.pdb
+from six.moves import range
 
 # 1yjp
 pdb_str = """\

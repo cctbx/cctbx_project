@@ -7,6 +7,7 @@ from cctbx import adptbx
 from mmtbx import masks
 import sys
 import boost.python
+from six.moves import range
 cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
 from libtbx import group_args
 

@@ -24,6 +24,7 @@ from iotbx import map_and_model
 import time
 import os
 import sys
+from six.moves import range
 
 master_phil = libtbx.phil.parse("""
 model = None

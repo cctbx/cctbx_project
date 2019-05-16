@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx import adopt_init_args
 from libtbx.str_utils import format_value, round_2_for_cif, round_4_for_cif
 import sys, re, string
+from six.moves import range
 
 def _scale_helper(num, den, selection=None, num_num=False):
   from cctbx.array_family import flex
@@ -575,7 +576,7 @@ def export_bins_table_data(bins, title="Statistics by resolution bin"):
     for stat_attr_name in table_stats :
       bin_stats.append(getattr(bin, stat_attr_name))
     data_rows.append(bin_stats)
-  data = [[row[i] for row in data_rows] for i in xrange(len(data_rows[0]))]
+  data = [[row[i] for row in data_rows] for i in range(len(data_rows[0]))]
   t = data_plots.table_data(
     title=title,
     column_labels=labels,

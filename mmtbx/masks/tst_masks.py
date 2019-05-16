@@ -16,6 +16,7 @@ import sys
 #from mmtbx_masks_ext import *
 from cctbx.masks import around_atoms
 import mmtbx.masks
+from six.moves import range
 
 def structure_init(site,sg,cell):
   symmetry = crystal.symmetry(unit_cell=cell,
@@ -134,7 +135,7 @@ def exercise_2():
   structure = xray.structure(crystal_symmetry=symmetry)
   atmrad = flex.double()
   xyzf = flex.vec3_double()
-  for k in xrange(100):
+  for k in range(100):
     scatterer = xray.scatterer(
       site = ((1.+k*abs(math.sin(k)))/1000.0,
               (1.+k*abs(math.cos(k)))/1000.0,

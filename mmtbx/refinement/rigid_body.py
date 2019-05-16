@@ -12,6 +12,7 @@ from libtbx.utils import null_out
 from libtbx.utils import user_plus_sys_time
 from libtbx.math_utils import iround
 import scitbx.rigid_body
+from six.moves import range
 
 time_rigid_body_total = 0.0
 
@@ -318,7 +319,7 @@ class manager(object):
            n_rigid_body_minimizer_cycles = 1
         else:
            n_rigid_body_minimizer_cycles = min(int(res),4)
-        for i_macro_cycle in xrange(n_rigid_body_minimizer_cycles):
+        for i_macro_cycle in range(n_rigid_body_minimizer_cycles):
             if(bss is not None and params.bulk_solvent_and_scale):
                if(fmodel_copy.f_obs().d_min() > 3.0):
                   bss.anisotropic_scaling=False
@@ -348,7 +349,7 @@ class manager(object):
               lbfgs_maxfev = params.lbfgs_line_search_max_function_evaluations)
             rotation_matrices = []
             translation_vectors = []
-            for i in xrange(len(selections)):
+            for i in range(len(selections)):
                 self.total_rotation[i] += flex.double(minimized.r_min[i])
                 self.total_translation[i] += flex.double(minimized.t_min[i])
                 rot_obj = scitbx.rigid_body.euler(
@@ -492,7 +493,7 @@ class rigid_body_minimizer(object):
     self.dim_t = 3
     self.r_min = copy.deepcopy(self.r_initial)
     self.t_min = copy.deepcopy(self.t_initial)
-    for i in xrange(len(self.r_min)):
+    for i in range(len(self.r_min)):
         self.r_min[i] = tuple(self.r_min[i])
         self.t_min[i] = tuple(self.t_min[i])
     self.x = self.pack(self.r_min, self.t_min)
@@ -519,7 +520,7 @@ class rigid_body_minimizer(object):
 
   def unpack_x(self):
     i = 0
-    for j in xrange(self.n_groups):
+    for j in range(self.n_groups):
         if(self.refine_r):
            self.r_min[j] = tuple(self.x)[i:i+self.dim_r]
            i += self.dim_r
@@ -533,7 +534,7 @@ class rigid_body_minimizer(object):
     rotation_matrices   = []
     translation_vectors = []
     rot_objs = []
-    for i in xrange(self.n_groups):
+    for i in range(self.n_groups):
         rot_obj = scitbx.rigid_body.euler(
           phi        = self.r_min[i][0],
           psi        = self.r_min[i][1],

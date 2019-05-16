@@ -10,6 +10,7 @@ from cctbx import xray
 from libtbx.utils import user_plus_sys_time
 from cctbx import crystal
 import random
+from six.moves import range
 
 time_group_py  = 0.0
 
@@ -59,7 +60,7 @@ class sphere_similarity_restraints(object):
         pmean = flex.mean(params)
         n_par = params.size()
         params = flex.double()
-        for i in xrange(n_par):
+        for i in range(n_par):
           params.append(pmean + 0.1 * pmean * random.choice([-1,0,1]))
     return crystal.adp_iso_local_sphere_restraints_energies(
       pair_sym_table           = self.pair_sym_table,
@@ -155,7 +156,7 @@ class manager(object):
     sc_start = fmodel.xray_structure.scatterers().deep_copy()
     minimized = None
     self.tested = 0
-    for macro_cycle in xrange(1,number_of_macro_cycles+1,1):
+    for macro_cycle in range(1,number_of_macro_cycles+1,1):
       if(minimized is not None): par_initial = minimized.par_min
       minimized = group_minimizer(
         fmodel                      = fmodel_copy,

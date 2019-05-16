@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from six.moves import range
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 12/1/2014

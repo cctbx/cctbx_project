@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 
 from iotbx import pdb
+from six.moves import range
 
 pdb_lines = '''
 ATOM  18755  N   LYS N  56      48.225  62.706 -53.862  1.00 69.77           N

@@ -11,6 +11,7 @@ import libtbx
 import libtbx.load_env
 import math, sys
 from cStringIO import StringIO
+from six.moves import range
 
 if libtbx.env.has_module(name="solve_resolve"):
   from solve_resolve.resolve_python.ncs_average import ncs_average \

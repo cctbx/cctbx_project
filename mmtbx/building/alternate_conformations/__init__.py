@@ -7,6 +7,7 @@ from libtbx import group_args, adopt_init_args, Auto, slots_getstate_setstate,\
 import libtbx.phil
 from math import sqrt
 import sys
+from six.moves import range
 
 #-----------------------------------------------------------------------
 # MODEL UTILITIES

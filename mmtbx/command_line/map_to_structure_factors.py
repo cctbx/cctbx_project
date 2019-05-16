@@ -9,6 +9,7 @@ import sys
 from libtbx.utils import Sorry
 from cctbx import maptbx
 from cctbx import miller
+from six.moves import range
 
 master_params_str = """
 output_file_name = map_to_structure_factors.mtz

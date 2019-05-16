@@ -9,6 +9,7 @@ import scitbx.iso_surface
 from scitbx.math import minimum_covering_sphere, sphere_3d
 import wx
 import sys
+from six.moves import range
 
 class draw_map(object):
 
@@ -193,7 +194,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
 
   def OnUpdate(O, event):
     sites_moved = event.data
-    for i in xrange(len(sites_moved)):
+    for i in range(len(sites_moved)):
       O.points[i] = sites_moved[i]
     O.labels_display_list = None
     O.lines_display_list = None

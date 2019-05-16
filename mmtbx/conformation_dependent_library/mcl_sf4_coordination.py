@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 
 from cctbx import geometry_restraints
+from six.moves import range
 
 origin_ids = geometry_restraints.linking_class.linking_class()
 

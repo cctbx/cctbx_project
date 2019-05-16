@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from mmtbx.conformation_dependent_library.LinkedResidues import LinkedResidues
 from mmtbx.conformation_dependent_library.cdl_utils import \
   get_c_ca_n
+from six.moves import range
 
 def calc_pseudorotation(t0,t1,t2,t3,t4):
   import math

@@ -11,6 +11,7 @@ import sys,os
 from libtbx.utils import Sorry,null_out
 from scitbx.array_family import flex
 from copy import deepcopy
+from six.moves import range
 
 master_phil = iotbx.phil.parse("""
 
@@ -1323,7 +1324,7 @@ def run(args=None,
   else:
     working_crystal_symmetry=None
   used_j_list=[]
-  for i in xrange(chain_xyz_fract.size()):
+  for i in range(chain_xyz_fract.size()):
     best_j=None
     best_dd=None
     distance=None

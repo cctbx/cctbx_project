@@ -10,6 +10,7 @@ from cctbx import maptbx
 from mmtbx.bulk_solvent import kbu_refinery
 import time
 from mmtbx import bulk_solvent
+from six.moves import range
 
 pdb_str = """
 CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P1
@@ -147,7 +148,7 @@ def run(d_min  = 2.0,
   n = mask_data.all()
   mask_data1 = flex.double(flex.grid(n), 0)
   mask_data2 = flex.double(flex.grid(n), 0)
-  I,J,K = xrange(n[0]), xrange(n[1]), xrange(n[2])
+  I,J,K = range(n[0]), range(n[1]), range(n[2])
   for i in I:
     for j in J:
       for k in K:

@@ -14,12 +14,13 @@ import iotbx.pdb
 from scitbx import matrix
 import mmtbx.command_line.fmodel
 import scitbx.rigid_body
+from six.moves import range
 
 random.seed(0)
 flex.set_random_seed(0)
 
 def test_matrices_zyz():
-  for i in xrange(10000):
+  for i in range(10000):
     aa,bb,cc = random.randrange(-361,361),\
                random.randrange(-361,361),\
                random.randrange(-361,361)
@@ -139,7 +140,7 @@ def test_5(fmodel, convention):
   size = fmodel.xray_structure.scatterers().size()
   sel1 = flex.bool()
   sel2 = flex.bool()
-  for i in xrange(size):
+  for i in range(size):
     if(i<500):
        sel1.append(True)
        sel2.append(False)

@@ -3,6 +3,7 @@ import sys
 
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
+from six.moves import range
 
 def generate_atom_groups(pdb_hierarchy,
                          resnames=None,

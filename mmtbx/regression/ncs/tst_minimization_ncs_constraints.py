@@ -16,6 +16,7 @@ import sys
 import os
 import iotbx.ncs
 from cctbx import adptbx
+from six.moves import range
 
 __author__ = 'Youval'
 
@@ -154,7 +155,7 @@ class ncs_minimization_test(object):
     r_start = self.fmodel.r_work()
     assert r_start > 0.1, r_start
     print("start r_factor: %6.4f" % r_start)
-    for macro_cycle in xrange(self.n_macro_cycle):
+    for macro_cycle in range(self.n_macro_cycle):
       data_weight = None
       if(self.use_geometry_restraints):
         self.transformations=False

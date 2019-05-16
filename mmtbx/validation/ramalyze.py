@@ -13,6 +13,7 @@ from mmtbx.validation.rotalyze import get_center
 import mmtbx.rotamer
 from mmtbx.rotamer import ramachandran_eval
 from mmtbx.validation.fav_lists import fav_tables
+from six.moves import range
 
 # XXX Use these constants internally, never strings!
 RAMA_GENERAL = 0

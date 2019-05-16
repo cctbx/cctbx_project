@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import StringIO
 from libtbx import easy_run
+from six.moves import range
 pdbs = ["""
 ATOM   3239  N   ASN A 411       8.430  37.928 107.306  1.00 14.13           N
 ATOM   3240  CA  ASN A 411       9.390  38.201 106.233  1.00 15.21           C

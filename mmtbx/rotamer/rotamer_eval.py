@@ -11,6 +11,7 @@ from cctbx.array_family import flex
 import weakref
 import sys, os
 import iotbx.pdb
+from six.moves import range
 
 def find_rotarama_data_dir(optional=False):
   result = libtbx.env.find_in_repositories(

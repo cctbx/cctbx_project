@@ -12,6 +12,7 @@ import sys
 from mmtbx import map_tools
 from cctbx import miller
 from cctbx import maptbx
+from six.moves import range
 
 map_coeff_params_base_str = """\
   map_coefficients

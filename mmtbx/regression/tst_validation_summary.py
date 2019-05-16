@@ -5,6 +5,7 @@ from libtbx import easy_pickle
 import libtbx.load_env
 from cStringIO import StringIO
 import os
+from six.moves import range
 
 def exercise():
   for module in ["reduce", "probe", "phenix_regression"] :

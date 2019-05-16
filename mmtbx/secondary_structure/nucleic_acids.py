@@ -7,7 +7,9 @@ from iotbx.pdb import get_one_letter_rna_dna_name
 from libtbx.utils import Sorry
 from cctbx import geometry_restraints
 import iotbx.phil
+
 import six
+from six.moves import range
 
 origin_ids = geometry_restraints.linking_class.linking_class()
 

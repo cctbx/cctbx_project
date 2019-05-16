@@ -10,6 +10,7 @@ from libtbx.utils import sequence_index_dict, format_cpu_times
 import libtbx.load_env
 import string
 import sys, os
+from six.moves import range
 op = os.path
 
 protein_pdb_files = libtbx.env.find_in_repositories(

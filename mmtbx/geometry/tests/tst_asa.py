@@ -8,6 +8,7 @@ import libtbx.load_env
 
 import os.path
 import unittest
+from six.moves import range
 
 SOLVENT_RADIUS = 1.4
 
@@ -480,7 +481,7 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
       )
     myvalues = self.ACCESSIBLES[:12] + self.ACCESSIBLES[13:]
 
-    for ( index, count, radius ) in zip( range( len( myatoms ) ), myvalues, myradii ):
+    for ( index, count, radius ) in zip( range( len( myatoms )), myvalues, myradii ):
       self.assertEqual( calc.accessible_surface_points( index = index ), count )
       self.assertAlmostEqual(
         calc.accessible_surface_area( index = index ),
@@ -515,7 +516,7 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
       )
     myvalues = self.ACCESSIBLES[:12] + self.ACCESSIBLES[13:]
 
-    for ( index, count, radius ) in zip( range( len( myatoms ) ), myvalues, myradii ):
+    for ( index, count, radius ) in zip( range( len( myatoms )), myvalues, myradii ):
       self.assertEqual( calc.accessible_surface_points( index = index ), count )
       self.assertAlmostEqual(
         calc.accessible_surface_area( index = index ),

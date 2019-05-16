@@ -10,6 +10,7 @@ from cctbx import geometry_restraints
 import scitbx.lbfgs
 from mmtbx.building.merge_models import run as merge_models
 import sys
+from six.moves import range
 
 if (0): # fixed random seed to avoid rare failures
   random.seed(1)
@@ -45,7 +46,7 @@ class run_sa(object):
         ignore_line_search_failed_maxfev              = True)
     # pre-compute random seeds
     random_seeds = []
-    for it in xrange(self.number_of_trials):
+    for it in range(self.number_of_trials):
       random_seeds.append(random.randint(0,10000000))
     # run SA
     self.results = []

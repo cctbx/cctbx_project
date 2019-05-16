@@ -1,7 +1,9 @@
 from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 import os
+
 import six
+from six.moves import range
 
 
 output_fname = "rama8000_tables.h"

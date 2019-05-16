@@ -6,6 +6,7 @@ from cctbx import geometry_restraints
 from cctbx.geometry_restraints import linking_class
 from cctbx.array_family import flex
 import sys
+from six.moves import range
 
 origin_ids = linking_class.linking_class()
 

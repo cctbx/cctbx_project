@@ -18,6 +18,7 @@ from time import time
 import scitbx.math
 import mmtbx.idealized_aa_residues.rotamer_manager
 import mmtbx.refinement.real_space.fit_residues
+from six.moves import range
 
 alpha_helix_str = """
 ATOM      1  N   GLY A   1      -5.606  -2.251 -12.878  1.00  0.00           N

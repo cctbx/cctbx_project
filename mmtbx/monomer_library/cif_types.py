@@ -7,6 +7,7 @@ from libtbx.utils import if_none
 from libtbx import slots_getstate_setstate
 import copy
 import sys
+from six.moves import range
 
 peptide_comp_groups = ("L-peptide", "D-peptide")
 dna_rna_comp_groups = ("DNA", "RNA")
@@ -299,7 +300,7 @@ class comp_comp_id(slots_getstate_setstate):
     return None
 
   def i_atom_by_id(self, atom_id):
-    for i_atom in xrange(len(self.atom_list)):
+    for i_atom in range(len(self.atom_list)):
       if (self.atom_list[i_atom].atom_id == atom_id):
         return i_atom
       if (atom_id.find("'")>-1):

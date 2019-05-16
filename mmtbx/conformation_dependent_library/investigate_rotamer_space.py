@@ -4,6 +4,7 @@ import copy
 
 from mmtbx.rotamer import rotamer_eval
 from mmtbx.conformation_dependent_library import rdl_database
+from six.moves import range
 
 number_of_chis = {
   'ARG' : 4,

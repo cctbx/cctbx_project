@@ -17,6 +17,7 @@ import mmtbx.refinement.minimization
 import scitbx.lbfgs
 from mmtbx import maps
 import mmtbx.masks
+from six.moves import range
 
 
 master_params_str = """\
@@ -446,7 +447,7 @@ def refine_da(fmodel, selection, params, da_sel_refinable):
   assert nrm >= params.stop_reset_occupancies_at_macro_cycle
   assert nrm >= params.stop_reset_adp_at_macro_cycle
   assert nrm >= params.start_filtering_at_macro_cycle
-  for macro_cycle in xrange(nrm):
+  for macro_cycle in range(nrm):
     if("occupancies" in params.refine):
       fmodels, selection, da_sel_refinable = refine_occupancies(
         fmodels     = fmodels,

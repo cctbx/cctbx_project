@@ -28,6 +28,7 @@ import time
 import math
 
 from cctbx.geometry_restraints.linking_class import linking_class
+from six.moves import range
 origin_ids = linking_class()
 
 # see iotbx/pdb/common_residue_names.h; additionally here only: U I S
@@ -753,8 +754,8 @@ class special_position_dict():
 def involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs):
   if (broken_bond_i_seq_pairs is None): return False
   i_seqs = sorted(i_seqs)
-  for i in xrange(len(i_seqs)-1):
-    for j in xrange(i+1,len(i_seqs)):
+  for i in range(len(i_seqs)-1):
+    for j in range(i+1,len(i_seqs)):
       if ((i_seqs[i],i_seqs[j]) in broken_bond_i_seq_pairs):
         return True
   return False
@@ -2362,7 +2363,7 @@ def ener_lib_as_nonbonded_params(
 
 def is_same_model_as_before(model_type_indices, i_model, models):
   m_i = models[i_model]
-  for j_model in xrange(0, i_model):
+  for j_model in range(0, i_model):
     if (model_type_indices[j_model] != j_model): continue
     if (m_i.is_identical_hierarchy(other=models[j_model])):
       model_type_indices[i_model] = j_model

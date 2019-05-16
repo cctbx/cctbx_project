@@ -5,6 +5,7 @@ import mmtbx.polygon
 import libtbx, os, re
 from libtbx.utils import Sorry
 from libtbx import easy_pickle
+from six.moves import range
 
 keys_to_show = ["r_work", "r_free",
   "pdb_header_r_work", "pdb_header_r_free",

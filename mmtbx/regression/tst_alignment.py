@@ -10,12 +10,13 @@ from libtbx.test_utils import approx_equal
 import operator
 import unittest
 from functools import reduce
+from six.moves import range
 
 def exercise_align_mask():
   B="GCGAGATAAAGGGACCCATAAA" +"TGTCG"+ "TAGCATCGGGCTAATAGATAAGACACA"
   A=                          "TGTCG"+  "AGCATCGGGCTAATAGATAAGACACA"
   scores=[]
-  for i in xrange(len(A)):
+  for i in range(len(A)):
     masking_a=len(A)*[10]
     masking_a[i]=1
     obj = align(A,B,masking_a=masking_a)

@@ -3,6 +3,7 @@ from cctbx.array_family import flex
 from scitbx.math import euler_angles_as_matrix
 from scitbx.math import superpose
 import sys
+from six.moves import range
 
 class find_domain(object):
   """This class tries to find pseudo invariant domain given a set of sites.
@@ -80,7 +81,7 @@ the best course of action."""
   def find_similar_matches( self, target, matches, used, overlap_thres ):
     tmp_a =  flex.double(  self.set_a.size() , 0.0 ).set_selected( target[0], 1.0 )
     result = flex.size_t()
-    for ii in xrange(len(matches) ):
+    for ii in range(len(matches) ):
       if not used[ii]:
         match = matches[ii][0]
         tmp_b = flex.double( self.set_a.size(), 0.0 ).set_selected( match, 1.0 )
@@ -100,7 +101,7 @@ the best course of action."""
 
   def zipper(self,initial_rms, level):
     matches = []
-    for jj in xrange( 1,self.n-1 ):
+    for jj in range( 1,self.n-1 ):
       ii = jj - 1
       kk = jj + 1
       #make triplets of sequence related sites
@@ -173,7 +174,7 @@ def exercise_core(n=10, verbose=0):
   from libtbx.test_utils import approx_equal
   import random
   # make two random sets of sites please
-  c = euler_angles_as_matrix([random.uniform(0,360) for i in xrange(3)])
+  c = euler_angles_as_matrix([random.uniform(0,360) for i in range(3)])
   set_1 = flex.vec3_double(flex.random_double(n*3)*10-2)
   set_2 = flex.vec3_double(flex.random_double(n*3)*10-2)
   set_3 = tuple(c)*set_2

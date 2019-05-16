@@ -6,6 +6,7 @@ import itertools
 from libtbx.utils import null_out
 
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 

@@ -12,6 +12,7 @@ import time
 import math
 import iotbx.phil
 from cctbx import maptbx
+from six.moves import range
 
 def random_velocities(
       masses,

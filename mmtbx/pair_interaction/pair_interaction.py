@@ -12,6 +12,7 @@ from libtbx import easy_pickle
 from libtbx.utils import Sorry
 import six
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_pair_interaction_ext")
 
 dat_path = libtbx.env.find_in_repositories("qrefine")

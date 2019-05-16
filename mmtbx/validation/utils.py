@@ -7,6 +7,7 @@ from collections import defaultdict
 import os.path
 import math
 import sys
+from six.moves import range
 
 def export_ramachandran_distribution(n_dim_table, scale_factor=0.25):
   """

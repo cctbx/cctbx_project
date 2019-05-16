@@ -31,6 +31,7 @@ from math import sqrt
 import cStringIO
 import time
 import sys
+from six.moves import range
 
 ion_identification_phil_str = """
 require_valence = False

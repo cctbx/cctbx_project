@@ -18,6 +18,7 @@ import math
 import time
 from libtbx.str_utils import StringIO
 from libtbx.utils import format_cpu_times
+from six.moves import range
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -29,7 +30,7 @@ import scitbx.math as sm
 def test_luts():
   qerf = mmtbx.scaling.very_quick_erf(0.001)
   qeio = mmtbx.scaling.quick_ei0(5000)
-  for i in xrange(-1000,1000):
+  for i in range(-1000,1000):
     x=i/100.0
     assert approx_equal( qerf.erf(x), sm.erf(x), eps=1e-5 )
     if (x>=0):
@@ -1015,8 +1016,8 @@ def test_ml_murray_rust():
     (1,0,0,0,1,0,0,0,1),
     6 )
 
-  for ii in xrange(5,30):
-    for jj in xrange(5,30):
+  for ii in range(5,30):
+    for jj in range(5,30):
        p1 = ml_mr_object.p_raw(ii/3.0, jj/3.0, 0.25)
        p2 = ml_mr_object.num_int(ii/3.0, 1e-13, jj/3.0, 1e-13, -5, 5,0.25, 20)
        assert approx_equal( p1, p2, eps=0.01)

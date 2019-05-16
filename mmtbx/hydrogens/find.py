@@ -9,6 +9,7 @@ from mmtbx.refinement import print_statistics
 import mmtbx.utils
 from cctbx import sgtbx
 import cctbx
+from six.moves import range
 
 master_params_part1 = iotbx.phil.parse("""\
 map_type = mFobs-DFmodel
@@ -453,16 +454,16 @@ def match_dod(unit_cell, xyz_h, min_od=0.5, max_od=1.35, min_dod_angle=85.,
   n=len(xyz_h)
   besta=360.
   r = None
-  for i in xrange(n):
+  for i in range(n):
     x1h=xyz_h[i]
     x1 = x1h[1]
-    for j in xrange(i+1,n):
+    for j in range(i+1,n):
       x2h=xyz_h[j]
       x2 = x2h[1]
       d1 = unit_cell.distance(x1, x2)
       if d1<min_od:
         continue
-      for k in xrange(j+1,n):
+      for k in range(j+1,n):
         x3h=xyz_h[k]
         x3 = x3h[1]
         d2 = unit_cell.distance(x2, x3)
@@ -481,7 +482,7 @@ def match_dod(unit_cell, xyz_h, min_od=0.5, max_od=1.35, min_dod_angle=85.,
             da.append(360.)
           else:
             da.append(abs(av - 105.0))
-        ibest = min(xrange(len(da)), key=da.__getitem__)
+        ibest = min(range(len(da)), key=da.__getitem__)
         if da[ibest] < besta and da[ibest]<90.:
           r = a[ibest]
           besta = da[ibest]
@@ -491,10 +492,10 @@ def match_od(unit_cell, xyz_h, min_od=0.5, max_od=1.35):
   n=len(xyz_h)
   besta=1.e10
   r = None
-  for i in xrange(n):
+  for i in range(n):
     x1h=xyz_h[i]
     x1 = x1h[1]
-    for j in xrange(i+1,n):
+    for j in range(i+1,n):
       x2h=xyz_h[j]
       x2 = x2h[1]
       d1 = unit_cell.distance(x1, x2)
@@ -739,7 +740,7 @@ def select_one_water(water_residue_group, n_atoms):
     i = atom.i_seq
     ws.append(i)
   result = flex.bool()
-  for j in xrange(0,n_atoms):
+  for j in range(0,n_atoms):
     if j in ws:
       result.append(True)
     else:

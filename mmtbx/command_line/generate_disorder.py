@@ -8,6 +8,7 @@ import os.path
 import random
 import time
 import sys
+from six.moves import range
 
 def get_master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs

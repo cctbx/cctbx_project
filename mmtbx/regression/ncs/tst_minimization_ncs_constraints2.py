@@ -8,6 +8,7 @@ import iotbx.pdb
 import time
 from iotbx.ncs import ncs_group_master_phil
 import iotbx.phil
+from six.moves import range
 
 pdb_answer_0 = """\
 CRYST1   18.415   14.419   12.493  90.00  90.00  90.00 P 1
@@ -294,7 +295,7 @@ def macro_cycle(
       refine_selection,
       actions):
   assert [fmodel, map_data].count(None) == 1
-  for cycle in xrange(100):
+  for cycle in range(100):
     #for action in actions:
     #  refine_sites, refine_transformations = action
     data_weight = 1
@@ -376,7 +377,7 @@ def run():
   Real- and reciprocal-space refinement.
   THIS TEST NOW DOES NOT EXERCISE REFINEMENT OF NCS OPERATORS !!!
   """
-  refine_selection = flex.size_t(xrange(3,31))
+  refine_selection = flex.size_t(range(3,31))
   for real_space in [True, False]:
     print("real_space:", real_space)
     if(real_space):

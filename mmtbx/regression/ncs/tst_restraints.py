@@ -4,6 +4,7 @@ import mmtbx.ncs.cartesian_restraints
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import format_cpu_times
+from six.moves import range
 
 def exercise_pair_registry_basic():
   registry = ncs.cartesian_restraints.pair_registry(30, 3)
@@ -36,7 +37,7 @@ def exercise_pair_registry_basic():
   assert zip(*selection_pairs[1]) == []
   selection = flex.bool(30, True)
   sel_registry = registry
-  for i in xrange(10):
+  for i in range(10):
     sel_registry = sel_registry.proxy_select(iselection=selection.iselection())
     selection_pairs = sel_registry.selection_pairs()
     assert len(selection_pairs) == 2
@@ -162,7 +163,7 @@ def adp_iso_finite_difference_gradients(
       u_isos,
       eps=1.e-6):
   result = flex.double()
-  for i_u_iso in xrange(u_isos.size()):
+  for i_u_iso in range(u_isos.size()):
     rs = []
     for signed_eps in [eps, -eps]:
       u_isos_eps = u_isos.deep_copy()
@@ -177,8 +178,8 @@ def exercise_adp_iso_analytical():
   mersenne_twister = flex.mersenne_twister(seed=0)
   for weight in [1.234, 2.134]:
     for average_power in [0.345, 0.589]:
-      for size in xrange(2,20):
-        for i in xrange(10):
+      for size in range(2,20):
+        for i in range(10):
           u_isos = mersenne_twister.random_double(size=size) + 1.e-3
           a = adp_iso_analytical_gradients(
             weight=weight, average_power=average_power, u_isos=u_isos)
@@ -188,12 +189,12 @@ def exercise_adp_iso_analytical():
 
 def exercise_pair_registry_adp_iso():
   mersenne_twister = flex.mersenne_twister(seed=0)
-  for n_seq in xrange(2,20):
+  for n_seq in range(2,20):
     registry = ncs.cartesian_restraints.pair_registry(n_seq=n_seq, n_ncs=n_seq)
-    for j_seq in xrange(1,n_seq):
+    for j_seq in range(1,n_seq):
       assert registry.enter(i_seq=0, j_seq=j_seq, j_ncs=j_seq) == (0, 0)
     selection_pairs = registry.selection_pairs()
-    for j in xrange(1,n_seq):
+    for j in range(1,n_seq):
       assert zip(*selection_pairs[j-1]) == [(0,j)]
     weight = 2.134
     average_power = 0.589

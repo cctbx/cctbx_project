@@ -17,6 +17,7 @@ from mmtbx.conformation_dependent_library.multi_residue_cdl_class import \
 
 from mmtbx.conformation_dependent_library.multi_base_class import \
   TwoNucleicResidues
+from six.moves import range
 
 chararcters_36 = letters[:26]+digits
 

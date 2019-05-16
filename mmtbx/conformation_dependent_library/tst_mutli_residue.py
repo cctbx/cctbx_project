@@ -3,6 +3,7 @@ from iotbx import pdb
 from test_rdl import get_geometry_restraints_manager
 
 from mmtbx.regression import model_1yjp
+from six.moves import range
 
 answers = {'omegas' : [ 171.5156431406436,
                        -176.23617714135813,

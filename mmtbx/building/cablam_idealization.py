@@ -17,6 +17,7 @@ from mmtbx.refinement.geometry_minimization import run2
 from mmtbx.building.loop_closure.utils import list_rama_outliers_h
 from mmtbx.secondary_structure import manager as ss_manager_class
 import six
+from six.moves import range
 
 
 master_phil_str = '''

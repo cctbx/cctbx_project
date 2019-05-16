@@ -17,6 +17,7 @@ from mmtbx.secondary_structure.find_ss_from_ca import \
    get_first_resno,get_last_resno,get_sequence,get_chain_id,get_atom_list,\
    apply_atom_selection,model_info,split_model,merge_hierarchies_from_models, \
    get_pdb_hierarchy
+from six.moves import range
 
 master_phil = iotbx.phil.parse("""
 
@@ -528,7 +529,7 @@ class segment_library:
     if original_order==target_order:
       return xyz  # already was ok
 
-    recover_target_order=list(xrange(len(target_order)))
+    recover_target_order=range(len(target_order))
     recover_sort_list=[]
     for target,recover in zip(target_order,recover_target_order):
       recover_sort_list.append([target,recover])
@@ -575,8 +576,8 @@ class segment_library:
     model_resseq_list=[]
     other_resseq_list=[]
     for i,j in zip(
-       xrange(first_res_in_model_segment,last_res_in_model_segment+1),
-       xrange(start_res,end_res+1)):
+       range(first_res_in_model_segment,last_res_in_model_segment+1),
+       range(start_res,end_res+1)):
       atom_selection=\
          "resid %s through %s and (name n or name c or name ca or name o)" %(
           resseq_encode(i),resseq_encode(i))
@@ -669,7 +670,7 @@ class segment_library:
       if extra_residues<0:
         continue # skip if too short
       if start_position is None or start_position>extra_residues:
-         range_to_use=xrange(extra_residues+1)
+         range_to_use=range(extra_residues+1)
       else:  # just use start_position
          range_to_use=[start_position]
       all_too_short=False
@@ -1050,7 +1051,7 @@ class connected_group:
     best_resno=None
     best_rms=None
 
-    for resno in xrange(start_resno,end_resno+1):
+    for resno in range(start_resno,end_resno+1):
       self_cgs=self.get_cgs_containing_resno(resno)
       other_cgs=other.get_cgs_containing_resno(resno)
       rms=self.get_connection_rms(
@@ -1873,22 +1874,22 @@ class replace_with_segments_from_pdb:
     cg_dict={}
     for cg in connected_groups:
       cg_dict[cg]={}
-      for i in xrange(cg.get_left_connection(),cg.get_right_connection()+1):
+      for i in range(cg.get_left_connection(),cg.get_right_connection()+1):
         cg_dict[cg][i]=None  # present
 
     new_groups=[]
     # mark all residues covered by a better segment and keep remaining good ones
-    for i in xrange(len(connected_groups)):
+    for i in range(len(connected_groups)):
       cg=connected_groups[i]
       keys=list(cg_dict[cg].keys())
       keys.sort()
       ok=cg.trim_residues(trim_dict=cg_dict[cg])
       if ok:
         new_groups.append(cg)
-        for j in xrange(i+1,len(connected_groups)):
+        for j in range(i+1,len(connected_groups)):
           cg_j=connected_groups[j]
-          for k in xrange(cg.get_left_connection(),cg.get_right_connection()+1):
-            if k in cg_dict[cg_j]:
+          for k in range(cg.get_left_connection(),cg.get_right_connection()+1):
+            if k in cg_dict[cg_j].keys():
               cg_dict[cg_j][k]=True
 
 
@@ -1896,8 +1897,8 @@ class replace_with_segments_from_pdb:
 
   def remove_overlapping_groups(self,connected_groups,contained_only=False):
      removed_list=[None]*len(connected_groups)
-     for i in xrange(len(connected_groups)):
-       for j in xrange(i+1,len(connected_groups)):
+     for i in range(len(connected_groups)):
+       for j in range(i+1,len(connected_groups)):
          if removed_list[j]:
             continue # already removed
          if contained_only:
@@ -1932,8 +1933,8 @@ class replace_with_segments_from_pdb:
       if start_of_right_connections<=start_of_left_connections:
         start_of_right_connections=start_of_left_connections+1
 
-      for i in xrange(start_of_left_connections,end_of_left_connections+1):
-        for j in xrange(start_of_right_connections,end_of_right_connections+1):
+      for i in range(start_of_left_connections,end_of_left_connections+1):
+        for j in range(start_of_right_connections,end_of_right_connections+1):
           if i>=j: continue
           connection_pairs.append([i,j])
 
@@ -2112,7 +2113,7 @@ class replace_with_segments_from_pdb:
         best_cg=None
         best_rms=None
         segment_list=[]
-        for i in xrange(i_start,i_end+1):
+        for i in range(i_start,i_end+1):
           atom_selection=\
            "resid %s through %s and (name n or name c or name ca or name o)" %(
             resseq_encode(i),resseq_encode(i+2*target_overlap-1))

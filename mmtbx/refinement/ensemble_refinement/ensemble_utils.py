@@ -6,7 +6,9 @@ from mmtbx import utils
 import scitbx.math
 from cctbx import adptbx
 from cctbx import geometry_restraints
+
 import six
+from six.moves import range
 
 class manager(object):
   def __init__(self,
@@ -148,7 +150,7 @@ class manager(object):
     bin_list = []
     bin_range_list = []
     val = array_min
-    for x in xrange(number_of_bins):
+    for x in range(number_of_bins):
       bin_list.append(val)
       bin_range_list.append([val, val+bin_range])
       val += bin_range
@@ -188,9 +190,9 @@ class manager(object):
     if verbose:
       print("\nBivariate histogram "+name+" MC: "+str(self.ensemble_obj.macro_cycle), file=self.ensemble_obj.log)
     assert len(value_array) == len(bin_array)
-    binned_array = [[]*1 for i in xrange(len(bin_list))]
+    binned_array = [[]*1 for i in range(len(bin_list))]
     assert len(bin_list) == len(binned_array)
-    for x in xrange(len(bin_array)):
+    for x in range(len(bin_array)):
       for bin_int, bin_value in enumerate(bin_list):
         flag = False
         if bin_array[x] < bin_value:
@@ -270,7 +272,7 @@ class manager(object):
   #                             b_sol   = self.ensemble_obj.fmodel_total.b_sol(),
   #                             b_cart  = self.ensemble_obj.fmodel_total.b_cart() )
 
-        for x in xrange(total_number_xrs):
+        for x in range(total_number_xrs):
           if x%int(div_int) == 0:
             #Apply back trace of Biso here...
             self.fmodel_ens.update_xray_structure(
@@ -323,7 +325,7 @@ class manager(object):
       copy_ed_data_xray_structures = []
       copy_pdb_hierarchys = []
       copy_ed_data_ke_pdb = []
-      for x in xrange(len(self.ensemble_obj.er_data.xray_structures)):
+      for x in range(len(self.ensemble_obj.er_data.xray_structures)):
         if x%int(final_div) == 0:
           copy_ed_data_xray_structures.append(self.ensemble_obj.er_data.xray_structures[x])
           copy_pdb_hierarchys.append(self.ensemble_obj.er_data.pdb_hierarchys[x])
@@ -375,7 +377,7 @@ class manager(object):
     if ignore_hd:
       hd_selection = xray_structure.hd_selection()
       assert hd_selection.size() == selection.size()
-      for n in xrange(hd_selection.size()):
+      for n in range(hd_selection.size()):
         if hd_selection[n] or selection[n]:
           selection[n] = True
     restraints_manager = restraints_manager.select(selection = ~selection)
@@ -395,7 +397,7 @@ class manager(object):
       if ignore_hd:
         hd_selection = structure.hd_selection()
         assert hd_selection.size() == selection.size()
-        for n in xrange(hd_selection.size()):
+        for n in range(hd_selection.size()):
           if hd_selection[n] or selection[n]:
             selection[n] = True
       sites_cart = sites_cart.select(~selection)

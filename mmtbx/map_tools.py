@@ -14,6 +14,7 @@ import mmtbx
 import libtbx
 import random
 import boost.python
+from six.moves import range
 mmtbx_f_model_ext = boost.python.import_ext("mmtbx_f_model_ext")
 import mmtbx.masks
 
@@ -25,7 +26,7 @@ def shelx_weight(
     sc = weight_parameter
   else:
     sc = flex.double()
-    for sc_ in xrange(f_obs.data().size()):
+    for sc_ in range(f_obs.data().size()):
       sc.append(random.choice([1,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2]))
   f_m = abs(f_model).data()
   f_o = abs(f_obs).data()

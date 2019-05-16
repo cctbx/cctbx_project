@@ -5,6 +5,7 @@ from cctbx.array_family import flex
 from libtbx.utils import Sorry
 import StringIO
 from libtbx import easy_run
+from six.moves import range
 
 master_phil_str = """
   use_afitt = False

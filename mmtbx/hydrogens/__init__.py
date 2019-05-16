@@ -9,6 +9,8 @@ from libtbx.utils import null_out
 
 import boost.python
 import six
+from six.moves import range
+
 ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
 
 def mon_lib_query(residue, mon_lib_srv):
@@ -314,7 +316,7 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
               iselection = atoms.extract_i_seq()
               sites_cart = atoms.extract_xyz()
               masses     = [1]*sites_cart.size()
-              labels     = range(sites_cart.size())
+              labels     = list(range(sites_cart.size()))
               grm_i = restraints_manager.select(iselection)
               bps, asu = grm_i.geometry.get_all_bond_proxies(
                 sites_cart = sites_cart)

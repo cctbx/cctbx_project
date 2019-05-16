@@ -11,6 +11,7 @@ import random
 import sys
 from cctbx import xray
 from mmtbx import masks
+from six.moves import range
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -20,11 +21,11 @@ def finite_differences_site(target_functor, eps=1.e-5):
   structure = fmodel.xray_structure
   unit_cell = structure.unit_cell()
   gs = flex.double()
-  for i_scatterer in xrange(structure.scatterers().size()):
+  for i_scatterer in range(structure.scatterers().size()):
     sc = structure.scatterers()[i_scatterer]
     site_orig = sc.site
     d_target_d_site = []
-    for ix in xrange(3):
+    for ix in range(3):
       ts = []
       for signed_eps in [eps, -eps]:
         site_cart = list(unit_cell.orthogonalize(site_orig))

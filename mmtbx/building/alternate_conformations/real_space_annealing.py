@@ -10,6 +10,7 @@ import random
 import time
 import os
 import sys
+from six.moves import range
 
 master_params_str = """
 n_trials = 4

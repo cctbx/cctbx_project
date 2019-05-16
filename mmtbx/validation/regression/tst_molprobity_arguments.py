@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
+from six.moves import range
 
 pdb_str = '''
 CRYST1   35.050   40.500   42.370  90.00  90.00  90.00 P 21 21 21

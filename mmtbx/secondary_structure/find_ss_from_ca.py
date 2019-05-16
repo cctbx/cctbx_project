@@ -16,6 +16,7 @@ from scitbx.math import superpose, matrix
 from scitbx.array_family import flex
 from copy import deepcopy
 from iotbx.pdb import secondary_structure
+from six.moves import range
 
 master_phil = iotbx.phil.parse("""
 
@@ -484,7 +485,7 @@ def get_average_direction(diffs=None, i=None,j=None):
       j=len(diffs)-1
     average_direction=col(diffs[i])
     nn=1.
-    for j in xrange(i+1,j):
+    for j in range(i+1,j):
       nn+=1.
       average_direction+=col(diffs[j])
     average_direction/=nn
@@ -1102,7 +1103,7 @@ class segment:  # object for holding a helix or a strand or other
     if not diffs: return 0.
     average_direction=get_average_direction(diffs=diffs)
     cosines=flex.double()
-    for j in xrange(len(diffs)):
+    for j in range(len(diffs)):
       dot=col(diffs[j]).dot(average_direction)
       cosines.append(dot)
     mean_dot=cosines.min_max_mean().mean
@@ -1110,7 +1111,7 @@ class segment:  # object for holding a helix or a strand or other
     # now get mean cross product and dot with average_direction...
     diffs_single=self.get_diffs_single()
     cosines=flex.double()
-    for j in xrange(len(diffs_single)):
+    for j in range(len(diffs_single)):
       dot=col(diffs_single[j]).dot(average_direction)
       cosines.append(dot)
     self.mean_dot_single=cosines.min_max_mean().mean
@@ -1173,7 +1174,7 @@ class segment:  # object for holding a helix or a strand or other
       dd=max(1,sub_segment_length//2)
       start=0
       end=len(self.sites)-sub_segment_length
-      for i in xrange(start,end+dd,dd):
+      for i in range(start,end+dd,dd):
         ii=min(i,end)
         h=self.segment_class(params=self.params,
           sites=self.sites[ii:ii+sub_segment_length])
@@ -1589,7 +1590,7 @@ class find_segment: # class to look for a type of segment
       if (not self.cut_up_segments) or overall_length<=self.standard_length:
         start_end_list.append([overall_start_res,overall_end_res])
       else:
-        for start_res_use in xrange(
+        for start_res_use in range(
            overall_start_res,
            overall_start_res+overall_length-self.standard_length+1):
           start_end_list.append(
@@ -1617,7 +1618,7 @@ class find_segment: # class to look for a type of segment
     used_residues=[]
     if hasattr(self,'segment_dict'):
       for i in self.segment_start_end_dict.keys():
-        for j in xrange(
+        for j in range(
              i+end_buffer,self.segment_start_end_dict[i]+1-end_buffer):
           # Note this segment_start_end_dict lists exact residues used,
           #  not starting points as in segment_dict
@@ -1709,13 +1710,13 @@ class find_segment: # class to look for a type of segment
       segment_dict[0]=n-1
       return diffs,norms,segment_dict
 
-    for i in xrange(n):
+    for i in range(n):
       if i in used_residues or abs(norms[i]-target)>tol: continue
       if i in self.previously_used_residues: continue
       # i is start of segment
       segment_dict[i]=i  # lists end of segment
       used_residues.append(i)
-      for j in xrange(i+1,n):
+      for j in range(i+1,n):
         if abs(norms[j]-target)>tol: break
         if target_i_ip3 is not None and tol_i_ip3 is not None and \
            j<len(norms_3) and abs(norms_3[j]-target_i_ip3)>tol_i_ip3: break
@@ -1786,7 +1787,7 @@ class find_segment: # class to look for a type of segment
         average_direction=get_average_direction(
           diffs=diffs,i=i,j=segment_dict[i])
         segment_start=None
-        for j in xrange(i,segment_dict[i]+1):
+        for j in range(i,segment_dict[i]+1):
           dot=col(diffs[j]).dot(average_direction)
           if dot >= dot_min:
             if segment_start is None:
@@ -1973,7 +1974,7 @@ class find_helix(find_segment):
     number_of_good_h_bonds=0
     number_of_poor_h_bonds=0
 
-    for i in xrange(segment.length()-next_i):
+    for i in range(segment.length()-next_i):
 
       cur_residue=get_indexed_residue(
         segment.hierarchy,index=i)
@@ -2282,7 +2283,7 @@ class find_beta_strand(find_segment):
     first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index=\
            first_last_1_and_2
 
-    for i in xrange(previous_segment.length()):
+    for i in range(previous_segment.length()):
       if i_index is None or j_index is None: continue
       if not self.is_even(i-i_index): continue
 
@@ -2490,7 +2491,7 @@ class find_other_structure(find_segment):
     n_buf=params.buffer_residues
     used_residues=n*[False]
     used_residues=[]
-    for i in xrange(n+1):
+    for i in range(n+1):
       if i in self.previously_used_residues:
         used_residues.append(True)
       else:
@@ -2499,7 +2500,7 @@ class find_other_structure(find_segment):
     segment_dict={}
     segment_start=None
     segment_end=None
-    for i,used in zip(xrange(n),used_residues):
+    for i,used in zip(range(n),used_residues):
       if not used: # use it
         segment_end=i
         if segment_start is None:
@@ -2590,7 +2591,7 @@ class helix_strand_segments:
     # any pairs remaining? Create specialized "sheet" for each one
     existing_pairs_in_sheets=self.get_existing_pairs_in_sheets()
     missing_pairs=[]
-    for i in xrange(len(self.all_strands)):
+    for i in range(len(self.all_strands)):
       for j in self.pair_dict.get(i,[]):
         if not [i,j] in existing_pairs_in_sheets and \
            not [i,j] in missing_pairs and not [j,i] in missing_pairs:
@@ -2647,7 +2648,7 @@ class helix_strand_segments:
     return strand_list
 
   def get_unused_strand(self,n=None,used_strands=None,pairs=None):
-    for i in xrange(n):
+    for i in range(n):
       if i in used_strands: continue
       if pairs is None or len(self.pair_dict.get(i,[]))==pairs:
         return i
@@ -2656,10 +2657,10 @@ class helix_strand_segments:
   def get_strand_pairs(self,tol=None,min_sheet_length=None):
     self.info_dict={}
     self.pair_dict={}
-    for i in xrange(len(self.all_strands)):
+    for i in range(len(self.all_strands)):
       self.pair_dict[i]=[]
-    for i in xrange(len(self.all_strands)):
-      for j in xrange(i+1,len(self.all_strands)):
+    for i in range(len(self.all_strands)):
+      for j in range(i+1,len(self.all_strands)):
         self.ca1=None
         self.ca2=None
         if self.ca_pair_is_close(self.all_strands[i],self.all_strands[j],
@@ -2810,7 +2811,7 @@ class helix_strand_segments:
     n_dot=0.
     sum_dot=0.
     last_offset_index=len(strand_i.get_sites())-i_index-2
-    for i in xrange(last_offset_index//2+1):
+    for i in range(last_offset_index//2+1):
       offset=2*i
       delta=col(strand_i.get_sites()[i_index+1+offset])- \
             col(strand_i.get_sites()[i_index+offset])
@@ -2909,7 +2910,7 @@ class helix_strand_segments:
     if dd<=tol**2: # plausible at least
       start_offset=max(-center1,-center2)
       end_offset=min(len(sites1)-(center1+1),len(sites2)-(center2+1))
-      for offset in xrange(start_offset,end_offset+1):
+      for offset in range(start_offset,end_offset+1):
         i1=center1+offset
         i2=center2+offset
         dd=(col(sites1[i1])-col(sites2[i2])).norm_sq()
@@ -2935,8 +2936,8 @@ class helix_strand_segments:
     sites2=s2.get_sites()
     while jump > 0:
       # see if it is even close
-      for i in xrange(jump//2,len(sites1),jump):
-        for j in xrange(jump//2,len(sites2),jump):
+      for i in range(jump//2,len(sites1),jump):
+        for j in range(jump//2,len(sites2),jump):
           dd=(col(sites1[i])-col(sites2[j])).norm_sq()
           if best_dist_sq is None or dd < best_dist_sq:
             best_dist_sq=dd
@@ -3941,7 +3942,7 @@ class find_secondary_structure: # class to look for secondary structure
             continue
 
         # mark used residues
-        for i in xrange(first_pos+new_start,first_pos+new_end+1):
+        for i in range(first_pos+new_start,first_pos+new_end+1):
           is_used_list[i]=True
 
         #save it
@@ -3953,7 +3954,7 @@ class find_secondary_structure: # class to look for secondary structure
     # goes from first available to end of available (not necessarily optimal)
     new_start=None
     new_end=None
-    for i in xrange(len(already_used)):
+    for i in range(len(already_used)):
       if already_used[i]:
         if new_end is not None:
           return new_start,new_end

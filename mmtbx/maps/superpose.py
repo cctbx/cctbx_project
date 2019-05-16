@@ -12,6 +12,7 @@ import libtbx.load_env
 from libtbx import easy_run
 from libtbx import adopt_init_args
 import sys, os
+from six.moves import range
 
 def mask_grid(xrs, buffer, map_data, n_real):
   # XXX move to C++
@@ -21,8 +22,8 @@ def mask_grid(xrs, buffer, map_data, n_real):
   gridding_last=[iceil(f*n) for f,n in zip(frac_max,n_real)]
   new_map = flex.double(flex.grid(n_real),0)
   for i in range(gridding_first[0], gridding_last[0]):
-    for j in xrange(gridding_first[1], gridding_last[1]):
-      for k in xrange(gridding_first[2], gridding_last[2]):
+    for j in range(gridding_first[1], gridding_last[1]):
+      for k in range(gridding_first[2], gridding_last[2]):
         if(i> 0 and i<n_real[0] and
            j> 0 and j<n_real[1] and
            k> 0 and k<n_real[2]):

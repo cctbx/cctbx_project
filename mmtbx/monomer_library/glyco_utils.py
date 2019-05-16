@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from string import digits
 from cctbx import geometry_restraints
 from libtbx.utils import Sorry
+from six.moves import range
 
 beta_1_4 = """
 data_link_BETA1-4

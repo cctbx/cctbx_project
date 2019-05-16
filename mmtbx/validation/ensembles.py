@@ -9,6 +9,7 @@ from libtbx.utils import null_out
 from libtbx import easy_mp
 from libtbx import Auto
 import sys
+from six.moves import range
 
 class ensemble_validation(object):
   def __init__(self,
