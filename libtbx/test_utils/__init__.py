@@ -808,9 +808,8 @@ ERROR: is_above_limit(value=None, limit=-3, eps=1)
 ERROR: is_above_limit(value=None, limit=3, eps=1)
 """)
   #
-  import pickle
-  from six.moves import cPickle
-  for p in [pickle, cPickle]:
+  from six.moves import cPickle as pickle
+  for p in [pickle]:
     d = pickle_detector()
     assert d.unpickled_counter is None
     assert d.counter == 0

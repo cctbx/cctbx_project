@@ -3,7 +3,7 @@ from math import pi, sin, cos, asin, sqrt
 from six.moves import range
 from six.moves import zip
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 from cctbx.array_family import flex

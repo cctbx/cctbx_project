@@ -2,7 +2,8 @@ from __future__ import absolute_import, division, print_function
 path_random_picks_pickle = (
   "/net/anaconda/scratch1/rwgk/pdbtools/minidb/random_picks.pickle")
 
-import sys, os, time, cPickle
+import sys, os, time
+from six.moves import cPickle as pickle
 
 def get_primes(n):
   n = abs(n)
@@ -41,7 +42,7 @@ def memory(grid, sizeof_FloatType = 8):
 
 def run_one(memlimit, package, iter, type_and_dir):
   f = open(path_random_picks_pickle, "r")
-  Records = cPickle.load(f)
+  Records = pickle.load(f)
   f.close()
   for idCode, data in Records.items():
     depDate, ucparams, resolution = data

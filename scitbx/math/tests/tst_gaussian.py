@@ -6,7 +6,7 @@ from libtbx.test_utils import approx_equal, eps_eq
 from libtbx.utils import format_cpu_times
 from six.moves import range
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 from cStringIO import StringIO

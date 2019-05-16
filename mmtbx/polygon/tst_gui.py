@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import mmtbx.polygon.output
-import cPickle
+from six.moves import cPickle as pickle
 import six
 
 class test_renderer(mmtbx.polygon.output.renderer):
@@ -27,7 +27,7 @@ def exercise():
     "clashscore" : 20.0
   }
   data = mmtbx.polygon.output.get_basic_histogram_data(d_min=2.5)
-  s = cPickle.dumps(data)
+  s = pickle.dumps(data)
   histograms = mmtbx.polygon.output.convert_histogram_data(data)
   assert (len(histograms) == 6)
   for stat_key, histogram in six.iteritems(histograms):

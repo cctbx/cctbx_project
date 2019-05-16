@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx.stl import map
 from six.moves import zip
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 

@@ -114,7 +114,6 @@ def prepare_observations_for_scaling(work_params,obs,reference_intensities=None,
 
 if __name__=="__main__":
 
-  from six.moves import cPickle as pickle
   ordered_intensities = pickle.load(open("intensities.pickle","rb"))
   frames = pickle.load(open("frames.pickle","rb"))
   case = 1000
