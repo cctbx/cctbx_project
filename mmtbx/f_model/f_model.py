@@ -711,7 +711,7 @@ class manager(manager_mixin):
     result.b_h = self.b_h
     if(in_place): # XXX USE THIS INSTEAD OF ABOVE
       # TODO: six.moves.zip this file
-      for k, v in zip(six.iteritems(self.__dict__)):
+      for k, v in six.iteritems(self.__dict__):
         try: self.__dict__[k] = result.__dict__[k]
         except KeyError:
           raise RuntimeError("Corrupt refinement: ad hoc key", k)
