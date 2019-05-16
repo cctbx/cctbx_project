@@ -19,6 +19,11 @@ from scitbx.random import get_random_seed, set_random_seed
 from libtbx.str_utils import format_value
 
 if six.PY3:
+  @boost.python.inject_into(nested_loop)
+  def __next__(obj):
+    return obj.next()
+
+if six.PY3:
   from collections.abc import Iterable, Sequence
 else:
   from collections import Iterable, Sequence
