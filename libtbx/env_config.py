@@ -8,12 +8,9 @@ from libtbx.utils import detect_binary_file
 from libtbx import adopt_init_args
 import platform
 import shutil
-from six.moves import zip
-from six.moves import map
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import zip, map
+from six.moves import cPickle as pickle
+
 import os
 import re
 import site

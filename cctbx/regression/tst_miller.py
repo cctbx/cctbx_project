@@ -19,10 +19,7 @@ from cStringIO import StringIO
 import warnings
 from six.moves import range
 from six.moves import zip
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import cPickle as pickle
 import random
 import math
 import sys

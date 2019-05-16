@@ -1,6 +1,6 @@
 
 from __future__ import absolute_import, division, print_function
-import cPickle
+from six.moves import cPickle as pickle
 from six.moves import range
 try :
   import gobject
@@ -202,6 +202,6 @@ def show_probe_dots(show_dots, overlaps_only):
 
 def load_pkl(file_name):
   pkl = open(file_name, "rb")
-  data = cPickle.load(pkl)
+  data = pickle.load(pkl)
   pkl.close()
   return data
