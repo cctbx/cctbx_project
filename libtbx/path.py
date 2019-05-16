@@ -1,11 +1,9 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
 import locale
 import shutil
 import os
 import sys
-from six.moves import range
-from six.moves import zip
+from six.moves import range, zip
 op = os.path
 
 def norm_join(*args):

@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-from builtins import range
 from six.moves import range
 if (__name__ == "__main__"):
   for x in range(30):

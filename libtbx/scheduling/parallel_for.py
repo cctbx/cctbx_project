@@ -1,9 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-from builtins import object, range
+from builtins import object
 from collections import deque
-from six.moves import range
-from six.moves import zip
+from six.moves import range, zip
 
 class single_pooler(object):
   """

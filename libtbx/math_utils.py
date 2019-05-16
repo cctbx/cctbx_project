@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from builtins import object, range
+from builtins import object
 import math
 from six.moves import range
 
