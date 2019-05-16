@@ -1110,7 +1110,7 @@ class _():
         d.setdefault(chid, []).extend(rns)
     result = []
     ott = amino_acid_codes.one_letter_given_three_letter
-    for k, vs in zip(d.keys(), d.values()):
+    for k, vs in zip(d.keys(), d.values()): # FIXME use iteritems?
       result.append(">chain %s"%k)
       result.append("".join([ott.get(v,"?") for v in vs]))
     return "\n".join(result)

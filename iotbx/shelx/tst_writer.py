@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import itertools
+from six.moves import zip
 import cStringIO
 from libtbx.test_utils import approx_equal, Exception_expected
 from scitbx.random import variate, bernoulli_distribution
@@ -18,7 +18,7 @@ def exercise(flags, space_group_info):
     use_u_aniso=True)
   xs.apply_symmetry_sites()
   xs.apply_symmetry_u_stars()
-  for isotropic, sc in itertools.izip(variate(bernoulli_distribution(0.4)),
+  for isotropic, sc in zip(variate(bernoulli_distribution(0.4)),
                                       xs.scatterers()):
     sc.flags.set_grad_site(True)
     if isotropic:
@@ -58,7 +58,7 @@ def exercise(flags, space_group_info):
     absolute_angle_tolerance=1e-3)
   uc = xs.unit_cell()
   uc1 = xs1.unit_cell()
-  for sc, sc1 in itertools.izip(xs.scatterers(), xs1.scatterers()):
+  for sc, sc1 in zip(xs.scatterers(), xs1.scatterers()):
     assert sc.label.upper() == sc1.label.upper()
     assert sc.scattering_type == sc1.scattering_type
     assert sc.flags.bits == sc1.flags.bits

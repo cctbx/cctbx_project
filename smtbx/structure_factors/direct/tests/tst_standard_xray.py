@@ -11,7 +11,8 @@ from libtbx.test_utils import approx_equal
 from scitbx.math import approx_equal_relatively
 import libtbx.utils
 import random
-from itertools import islice, izip
+from itertools import islice
+from six.moves import zip
 from scitbx import matrix
 from scitbx.math import median_statistics
 from six.moves import range
@@ -81,7 +82,7 @@ class consistency_test_cases(test_case):
       eta = eta_norm * direction
 
       i = 0
-      for sc_forward, sc in izip(xs_forward.scatterers(), xs.scatterers()):
+      for sc_forward, sc in zip(xs_forward.scatterers(), xs.scatterers()):
         eta_site = matrix.col(eta[i:i+3])
         eta_iso = eta[i+3]
         eta_aniso = matrix.col(eta[i+4:i+10])

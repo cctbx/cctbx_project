@@ -26,7 +26,8 @@ from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, Keep, plural_s
 from libtbx import group_args, Auto
 import libtbx.table_utils
-from itertools import count, izip
+from itertools import count
+from six.moves import zip
 import warnings
 import random
 import math
@@ -2022,10 +2023,10 @@ class array(set):
 
   def __iter__(self):
     if self.sigmas() is not None:
-      for item in izip(self.indices(), self.data(), self.sigmas()):
+      for item in zip(self.indices(), self.data(), self.sigmas()):
         yield item
     else:
-      for item in izip(self.indices(), self.data()):
+      for item in zip(self.indices(), self.data()):
         yield item
 
   def info(self):
