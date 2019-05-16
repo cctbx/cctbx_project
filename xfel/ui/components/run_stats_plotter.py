@@ -70,7 +70,7 @@ def get_string_from_timestamp(ts, long_form=False):
 def get_strings_from_timestamps(timestamps, long_form=False):
   import os
   get_strings = lambda ts: get_string_from_timestamp(ts, long_form=long_form)
-  names = list(map(get_strings, timestamps))
+  names = [get_strings(ts) for ts in  timestamps]
   return names
 
 def get_paths_from_timestamps(timestamps,

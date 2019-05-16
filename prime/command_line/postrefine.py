@@ -18,7 +18,6 @@ from datetime import datetime, time
 from libtbx.utils import Usage
 from six.moves import range
 from six.moves import zip
-from six.moves import map
 
 def determine_mean_I_mproc(args):
   from prime.postrefine import postref_handler
@@ -93,7 +92,7 @@ def merge_frames(pres_set, iparams, avg_mode='average', mtz_out_prefix='mean_sca
         if data:
           if not data[0] in rejections:
             rejections[data[0]] = flex.miller_index()
-          rejections[data[0]].append(tuple(map(int, data[1:4])))
+          rejections[data[0]].append(tuple([int(_d) for _d in data[1:4]]))
 
       if len(rejections) > 0:
         if not iparams.rejections:

@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import libtbx.load_env
-from mmtbx.rotamer.n_dim_table import NDimTable
 from libtbx import easy_pickle
 from libtbx import dlite
 from libtbx.utils import Sorry
@@ -12,7 +11,6 @@ import weakref
 import sys, os
 import iotbx.pdb
 from six.moves import range
-from six.moves import map
 
 def find_rotarama_data_dir(optional=False):
   result = libtbx.env.find_in_repositories(
@@ -404,7 +402,7 @@ class NamedRot:
   def __init__(self, aa, rotamer_name, bounds):
     self.aa_name = aa
     self.rotamer_name = rotamer_name
-    self.bounds = list(map(int, bounds.split(", ")))
+    self.bounds = [int(b) for b in bounds.split(", ")]
 
   def __str__(self):
     return str(self.rotamer_name) + "=" + str(self.bounds)

@@ -1,6 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb_interpretation
 from __future__ import absolute_import, division, print_function
-import sys
 from iotbx.file_reader import any_file
 
 def get_master_phil():

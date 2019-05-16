@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from six.moves import range
+from six.moves import range, zip
 #!/usr/bin/env cctbx.python
 #
 # Biostruct-X Data Reduction Use Case 1.2:
@@ -25,8 +25,6 @@ from rstbx.diffraction import full_sphere_indices
 from cctbx.sgtbx import space_group, space_group_symbols
 from cctbx.uctbx import unit_cell
 from rstbx.bpcx.detector_model.instrument_specifics import detector_factory_from_cfc
-from six.moves import zip
-from six.moves import map
 
 def Py_generate_indices(unit_cell_constants, resolution_limit):
     '''Generate all possible reflection indices out to a given resolution
@@ -69,7 +67,7 @@ def Py_remove_absent_indices(indices, space_group_number):
 def parse_xds_xparm_scan_info(xparm_file):
     '''Read an XDS XPARM file, get the scan information.'''
 
-    values = list(map(float, open(xparm_file).read().split()))
+    values = [float(x) for x in open(xparm_file).read().split()]
 
     assert(len(values) == 42)
 

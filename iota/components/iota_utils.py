@@ -1,8 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from past.builtins import range
-from six.moves import range
-from six.moves import zip
-from six.moves import map
+from six.moves import range, zip
 
 '''
 Author      : Lyubimov, A.Y.
@@ -547,7 +545,7 @@ class InputFinder():
         input_type = '{} {}'.format(consensus_type, suffix)
 
         # sort input by filename and ensure type is str and not unicode
-        input_list = list(map(str, sorted(input_list, key=lambda i: i)))
+        input_list = [str(il) for il in sorted(input_list, key=lambda i:i)]
 
     return input_list, input_type
 

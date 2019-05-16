@@ -6,7 +6,6 @@ import math, sys
 from pymol import cmd, stored
 from six.moves import zip
 from six.moves import range
-from six.moves import map
 
 class LogWriter:
       def __init__(self, stdout, filename):
@@ -242,7 +241,7 @@ EXAMPLE
       else:
         n = []
         for mean, for_mean in zip(mean_coords, coords_for_mean):
-          mean = list(map(sum, zip(mean,for_mean)))
+          mean = [sum(_x) for _x in zip(mean,for_mean)]
           n.append(mean)
         mean_coords = n
 
@@ -266,7 +265,7 @@ EXAMPLE
 
     # get atomic b factor info
     atom_b = [at.b for at in models[0].atom]
-    b_atom_plus_b_rsmf = list(map(sum,zip(atom_b,rmsf_as_b_coord)))
+    b_atom_plus_b_rsmf = [sum(_x) for _x in zip(atom_b,rmsf_as_b_coord)]
 
     # Colour by rmsf
     if rmsf_spectrum:

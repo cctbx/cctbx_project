@@ -6,9 +6,7 @@ import iotbx.pdb
 import math
 import sys
 import six
-from six.moves import range
-from six.moves import zip
-from six.moves import map
+from six.moves import range, zip
 
 class nonbonded_overlaps_results(object):
   """ Container for non-bonded overlaps results """
@@ -320,8 +318,8 @@ class compute(object):
           for j in range(i+1,n_overlaps):
             vec_i = overlap_atoms_dict[key][i][1]
             vec_j = overlap_atoms_dict[key][j][1]
-            u = list(map(float,vec_i.split(',')))
-            v = list(map(float,vec_j.split(',')))
+            u = [float(_v) for _v in vec_i.split(',')]
+            v = [float(_v) for _v in vec_j.split(',')]
             cos_angle = 0
             # test inline only if the two atoms, overlapping with the
             # common atom, are connected

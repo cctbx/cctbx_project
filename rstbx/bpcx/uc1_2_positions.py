@@ -14,7 +14,6 @@ from cctbx.array_family import flex
 from annlib_ext import AnnAdaptor as ann_adaptor
 from scitbx import matrix
 from six.moves import range
-from six.moves import map
 
 def meansd(values):
 
@@ -80,9 +79,9 @@ def read_integrate_hkl(integrate_hkl):
         if '!' in record[:1]:
             continue
         values = record.split()
-        hkl = list(map(int, values[:3]))
-        xyz = list(map(float, values[5:8]))
-        isigma = list(map(float, values[3:5]))
+        hkl = [int(h) for h in values[:3]]
+        xyz = [float(x) for x in  values[5:8]]
+        isigma = [float(x) for x in values[3:5]]
 
         observations.append((hkl, xyz, isigma))
 
@@ -93,8 +92,8 @@ def read_uc1_2(uc1_2):
 
     for record in open(uc1_2):
         values = record.split()
-        hkl = list(map(int, values[:3]))
-        xyz = list(map(float, values[3:]))
+        hkl = [int(h) for h in values[:3]]
+        xyz = [float(x) for x in values[3:]]
 
         predictions.append((hkl, xyz))
 
