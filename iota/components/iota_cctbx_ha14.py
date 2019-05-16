@@ -1,7 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from past.builtins import range
-from six.moves import range
-from six.moves import zip
+from six.moves import range, zip
 
 '''
 Author      : Lyubimov, A.Y.
@@ -15,11 +13,6 @@ Description : Runs cctbx.xfel integration module either in grid-search or final
 import os
 import numpy as np
 import math
-
-try:  # for Py3 compatibility
-    import itertools.izip as zip
-except ImportError:
-    pass
 
 import dxtbx
 from scitbx.array_family import flex

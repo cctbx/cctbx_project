@@ -1,7 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from past.builtins import range
-from six.moves import range
-from six.moves import zip
+from six.moves import range, zip
 
 '''
 Author      : Lyubimov, A.Y.
@@ -13,11 +11,6 @@ Description : IOTA image-tracking GUI module
 import os
 import wx
 import argparse
-
-try:  # for Py3 compatibility
-    import itertools.izip as zip
-except ImportError:
-    pass
 
 from wxtbx import bitmaps
 import wx.lib.agw.ultimatelistctrl as ulc

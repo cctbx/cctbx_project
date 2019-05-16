@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
 from libtbx import phil
 import libtbx.phil
 from libtbx.utils import Sorry

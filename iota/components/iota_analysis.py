@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
-from past.builtins import range
-from six.moves import range
-from six.moves import zip
+from six.moves import range, zip
 
 '''
 Author      : Lyubimov, A.Y.
@@ -22,11 +20,6 @@ import os
 import numpy as np
 from collections import Counter
 import math
-
-try:  # for Py3 compatibility
-  import itertools.izip as zip
-except ImportError:
-  pass
 
 from libtbx import easy_pickle as ep
 from cctbx import crystal, uctbx, statistics

@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from past.builtins import range
 from six.moves import range, zip
 
 '''
@@ -20,10 +19,6 @@ from libtbx import easy_pickle as ep, easy_run
 
 # for Py3 compatibility
 from io import BytesIO
-try:
-    import itertools.izip as zip
-except ImportError:
-    pass
 
 # For testing
 import time
