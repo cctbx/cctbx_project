@@ -56,6 +56,7 @@ namespace scitbx { namespace random { namespace boost_python {
         .def("__call__", generate_one_or_many, arg("size")=opt_size_t())
         .def("next", generate_one)
         .def("__iter__", identity, return_self<>())
+        .def("__next__", generate_one)
         ;
       def("variate", make, return_value_policy<manage_new_object>(),
           (arg("engine"), arg("distribution")));
