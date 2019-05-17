@@ -12,7 +12,7 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from itertools import count
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 
 def exercise_read_corrupt():

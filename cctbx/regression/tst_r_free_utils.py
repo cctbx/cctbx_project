@@ -8,7 +8,7 @@ from cctbx import uctbx
 from scitbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import Sorry
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from itertools import count
 import random
 

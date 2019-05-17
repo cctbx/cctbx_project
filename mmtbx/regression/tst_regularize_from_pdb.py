@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from libtbx.utils import null_out
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from mmtbx.secondary_structure.regularize_from_pdb import \
    replace_with_segments_from_pdb
 

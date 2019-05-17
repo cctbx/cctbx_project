@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx.test_utils import show_diff
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 try:
   from six.moves import cPickle as pickle
 except ImportError:

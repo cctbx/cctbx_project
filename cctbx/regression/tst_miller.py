@@ -15,7 +15,7 @@ from libtbx.test_utils import \
   approx_equal, not_approx_equal, show_diff, Exception_expected
 from libtbx.utils import Sorry, Keep, null_out
 from libtbx import Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import warnings
 from six.moves import range
 from six.moves import zip

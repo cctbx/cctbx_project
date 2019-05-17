@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import mmtbx.msa
 import iotbx.pdb
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def exercise():
   if (not libtbx.env.has_module(name="muscle")):

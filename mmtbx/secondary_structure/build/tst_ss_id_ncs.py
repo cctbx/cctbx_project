@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
 import mmtbx.model
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from scitbx.math import superpose
 from libtbx.test_utils import approx_equal
 

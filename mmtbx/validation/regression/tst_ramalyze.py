@@ -4,7 +4,7 @@ from iotbx import pdb
 from libtbx.test_utils import show_diff
 import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os.path
 from mmtbx.validation import ramalyze
 import time

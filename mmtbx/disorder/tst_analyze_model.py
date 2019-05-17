@@ -6,7 +6,7 @@ import iotbx.pdb.hierarchy
 from libtbx.utils import null_out
 import libtbx.load_env
 import mmtbx.model
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def analyze_fragment(pdb_str):
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_str)

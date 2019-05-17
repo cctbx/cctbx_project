@@ -6,7 +6,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from libtbx.test_utils import show_diff
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import math
 import sys
 

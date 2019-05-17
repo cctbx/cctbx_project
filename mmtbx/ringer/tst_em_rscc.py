@@ -6,7 +6,7 @@ from cctbx import crystal
 def exercise():
   import mmtbx.regression
   from iotbx import file_reader
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   pdb_file = "tmp_em_rscc.pdb"
   map_file = "tmp_em_rscc.map"
   f = open(pdb_file, "w")

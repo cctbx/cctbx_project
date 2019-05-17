@@ -5,7 +5,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import show_diff
 from iotbx.cif import geometry
 from scitbx import matrix
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def exercise_cif_from_cctbx():
   quartz = xray.structure(

@@ -8,7 +8,7 @@ from iotbx import crystal_symmetry_from_any
 from iotbx.reflection_file_reader import any_reflection_file
 from libtbx.test_utils import \
      approx_equal, show_diff, Exception_expected, open_tmp_file
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 from six.moves import zip
 

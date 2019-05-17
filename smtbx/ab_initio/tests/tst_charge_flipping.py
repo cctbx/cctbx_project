@@ -13,7 +13,7 @@ from cctbx import euclidean_model_matching as emma
 from libtbx import group_args
 
 import scitbx.matrix as mat
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 from smtbx.ab_initio import charge_flipping
 from six.moves import range

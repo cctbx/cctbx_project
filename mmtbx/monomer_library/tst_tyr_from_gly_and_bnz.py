@@ -6,7 +6,7 @@ from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import show_diff
 from itertools import count
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 from six.moves import zip
 

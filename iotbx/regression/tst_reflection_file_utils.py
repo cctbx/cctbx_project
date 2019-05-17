@@ -13,7 +13,7 @@ from cctbx import crystal
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
 from libtbx.utils import Sorry, null_out
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 
 def exercise_get_amplitudes_and_get_phases_deg():

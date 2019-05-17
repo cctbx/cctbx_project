@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import scitbx.math
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 class test_function_5_1:

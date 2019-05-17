@@ -6,7 +6,7 @@ from cctbx import miller
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import format_cpu_times
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from six.moves import zip
 
 input_model = """\

@@ -7,7 +7,7 @@ from libtbx.easy_pickle import loads, dumps, dump
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os.path as op
 
 # test on protein - we need real model/data for this

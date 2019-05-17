@@ -1,6 +1,6 @@
 
 from __future__ import absolute_import, division, print_function
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 
 def exercise():

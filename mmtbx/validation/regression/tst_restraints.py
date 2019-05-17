@@ -2,7 +2,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import null_out
 from libtbx import easy_pickle
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def run_validation(pdb_file, ignore_hd=True):
   from mmtbx.validation import restraints

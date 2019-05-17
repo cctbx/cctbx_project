@@ -9,7 +9,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import random
 #from mmtbx import utils
 import sys, os

@@ -13,7 +13,7 @@ import boost.python
 from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from libtbx import group_args
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import mmtbx.model
 from libtbx.utils import null_out
 import sys

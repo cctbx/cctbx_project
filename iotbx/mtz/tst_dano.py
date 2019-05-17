@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 def assert_equal_data_and_sigmas(array_1, array_2):

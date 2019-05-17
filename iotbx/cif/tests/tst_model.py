@@ -3,7 +3,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
 from libtbx.utils import Sorry
 from libtbx.containers import OrderedDict
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import copy
 
 import iotbx.cif
