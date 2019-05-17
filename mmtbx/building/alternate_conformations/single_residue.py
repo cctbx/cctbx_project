@@ -19,7 +19,7 @@ from libtbx import adopt_init_args, Auto, slots_getstate_setstate
 from libtbx.str_utils import make_header, make_sub_header, format_value
 from libtbx.utils import null_out
 from libtbx import easy_mp
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import time
 import sys
 from six.moves import zip

@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx.web import cgi_utils
 import pydoc
 import cgi
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 def interpret_form_data(form):

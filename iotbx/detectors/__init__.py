@@ -7,8 +7,7 @@ ext = boost.python.import_ext("iotbx_detectors_ext")
 from iotbx_detectors_ext import *
 from iotbx_detectors_bruker_ext import Bruker_base # import dependency
 
-import exceptions
-class ImageException(exceptions.Exception):
+class ImageException(Exception):
   pass
 
 from iotbx.detectors.adsc import ADSCImage

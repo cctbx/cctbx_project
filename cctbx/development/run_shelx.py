@@ -9,7 +9,7 @@ from iotbx.shelx.write_ins import LATT_SYMM
 from scitbx.python_utils import dicts
 import libtbx.path
 from libtbx import easy_run
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 from six.moves import range
 

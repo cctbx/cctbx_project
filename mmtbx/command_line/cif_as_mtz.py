@@ -265,7 +265,7 @@ def extract(file_name,
           force=True)
       except AssertionError as e:
         str_e = str(e)
-        from cStringIO import StringIO
+        from six.moves import cStringIO as StringIO
         s = StringIO()
         if "Space group is incompatible with unit cell parameters." in str_e:
           other_symmetry.show_summary(f=s)

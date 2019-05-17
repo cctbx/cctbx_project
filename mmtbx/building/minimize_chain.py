@@ -218,7 +218,7 @@ def get_pdb_inp(
     cryst1_line=iotbx.pdb.format_cryst1_record(
          crystal_symmetry=crystal_symmetry)
     if not pdb_inp.crystal_symmetry(): # get it
-      from cStringIO import StringIO
+      from six.moves import cStringIO as StringIO
       f=StringIO()
       print(cryst1_line, file=f)
       print(pdb_string, file=f)

@@ -200,7 +200,7 @@ def process_input(argv=None):
     exit()
 
   #capture input read out by phil
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   class Capturing(list):
     def __enter__(self):
       self._stdout = sys.stdout

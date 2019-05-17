@@ -10,7 +10,7 @@ from libtbx.utils import user_plus_sys_time, Sorry
 from libtbx import runtime_utils
 import os
 import sys
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.hydrogens import riding
 import mmtbx.model

@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 import glob, os, sys
 import urllib2
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 from iotbx import cif
 from iotbx.cif import validation

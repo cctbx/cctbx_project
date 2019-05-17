@@ -15,7 +15,7 @@ phenix_dev.ion_identification.nader_ml
 from __future__ import absolute_import, division, print_function
 
 from collections import Iterable
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from ctypes import c_double
 import errno
 import os

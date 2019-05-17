@@ -8,7 +8,7 @@ from libtbx.utils import Sorry, multi_out, null_out
 from libtbx import Auto, easy_pickle, group_args
 import libtbx.load_env
 from scitbx.array_family import flex
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 from cctbx import crystal
 from cctbx import xray

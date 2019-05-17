@@ -11,7 +11,7 @@ from mmtbx.secondary_structure.build import side_chain_placement, \
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 from cctbx import maptbx
 from scitbx.array_family import flex
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from mmtbx.conformation_dependent_library import generate_protein_threes
 import math
 from libtbx import easy_pickle, Auto

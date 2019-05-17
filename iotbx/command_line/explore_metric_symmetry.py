@@ -10,7 +10,7 @@ from libtbx import easy_run
 from libtbx.utils import Sorry, multi_out
 from libtbx.str_utils import show_string
 import libtbx.path
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 import sys
 from six.moves import zip

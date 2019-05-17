@@ -38,7 +38,7 @@ def run(args):
   print("rms difference start vs. best fit: %.3f" % \
     sites_fit.rms_difference(sites_0))
   #
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   out = StringIO()
   fit_dists_sq = (sites_fit - sites_0).dot()
   from scitbx.array_family import flex

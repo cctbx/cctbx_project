@@ -7,7 +7,7 @@ import iotbx.phil
 from iotbx import crystal_symmetry_from_any
 from iotbx.pdb import xray_structure
 from iotbx import pdb
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from mmtbx import f_model
 import sys, os
 

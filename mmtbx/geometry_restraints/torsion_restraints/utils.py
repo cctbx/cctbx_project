@@ -58,7 +58,7 @@ def get_reference_dihedral_proxies(
 def get_complete_dihedral_proxies_2(
     model,
     log=None):
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   from cctbx.geometry_restraints import dihedral_proxy_registry
   from mmtbx.conformation_dependent_library import generate_protein_threes
   if log is None:

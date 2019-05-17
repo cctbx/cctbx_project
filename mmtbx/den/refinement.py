@@ -6,7 +6,7 @@ from libtbx import easy_mp, Auto
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import adp_refinement
 from cctbx.array_family import flex
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, random
 from mmtbx.refinement import geometry_minimization
 

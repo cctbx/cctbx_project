@@ -8,7 +8,7 @@ from libtbx import easy_pickle
 from libtbx.utils import date_and_time, user_plus_sys_time
 import libtbx.load_env
 from libtbx import Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import traceback
 import sys, os
 from six.moves import range

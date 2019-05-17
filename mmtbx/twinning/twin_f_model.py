@@ -21,7 +21,7 @@ from mmtbx import max_lik
 import mmtbx.f_model
 from libtbx import table_utils
 from libtbx.utils import Sorry, user_plus_sys_time
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os, math
 import mmtbx.f_model
 from libtbx.str_utils import format_value

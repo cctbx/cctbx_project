@@ -2,7 +2,7 @@
 
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, Usage
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 import sys
 

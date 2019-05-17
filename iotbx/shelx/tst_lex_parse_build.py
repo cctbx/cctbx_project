@@ -10,12 +10,12 @@ from iotbx.shelx import tokens
 import iotbx.builders
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.math_utils import are_equivalent
-import cStringIO
+from six.moves import cStringIO as StringIO
 from six.moves import range
 from six.moves import zip
 
 def exercise_lexing():
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))
+  stream = shelx.command_stream(file=StringIO(ins_mundane_tiny))
   i = iter(stream)
   try:
     cmd, line = next(i)
@@ -97,7 +97,7 @@ def exercise_lexing():
     raise AssertionError
 
 def exercise_lexing_bis():
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_equal_sign_in_rem))
+  stream = shelx.command_stream(file=StringIO(ins_equal_sign_in_rem))
   i = iter(stream)
   try:
     cmd, line = next(i)
@@ -111,7 +111,7 @@ def exercise_lexing_bis():
     raise AssertionError
 
 def exercise_crystal_symmetry_parsing():
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))
+  stream = shelx.command_stream(file=StringIO(ins_mundane_tiny))
   builder = iotbx.builders.crystal_symmetry_builder()
   stream = shelx.crystal_symmetry_parser(stream, builder)
   stream = shelx.wavelength_parser(stream.filtered_commands(), builder)
@@ -123,11 +123,11 @@ def exercise_crystal_symmetry_parsing():
     relative_length_tolerance=1e-15,
     absolute_angle_tolerance=1e-15)
   cs = crystal_symmetry_from_ins.extract_from(
-    file=cStringIO.StringIO(ins_mundane_tiny))
+    file=StringIO(ins_mundane_tiny))
   assert cs.is_similar_symmetry(builder.crystal_symmetry)
   assert approx_equal(builder.wavelength_in_angstrom, 0.71073, eps=5e-6)
 
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_P1))
+  stream = shelx.command_stream(file=StringIO(ins_P1))
   l = shelx.crystal_symmetry_parser(
     stream,
     builder=iotbx.builders.crystal_symmetry_builder())
@@ -139,7 +139,7 @@ def exercise_crystal_symmetry_parsing():
     relative_length_tolerance=1e-15,
     absolute_angle_tolerance=1e-15)
   cs = crystal_symmetry_from_ins.extract_from(
-    file=cStringIO.StringIO(ins_P1))
+    file=StringIO(ins_P1))
   assert cs.is_similar_symmetry(l.builder.crystal_symmetry)
 
 def exercise_instruction_parsing():
@@ -154,7 +154,7 @@ def exercise_instruction_parsing():
   except AttributeError:
     pass
   for builder in alternatives:
-    stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
+    stream = shelx.command_stream(file=StringIO(ins_aspirin))
     l = shelx.instruction_parser(stream, builder)
     l.parse()
     ins = l.instructions
@@ -185,7 +185,7 @@ def exercise_instruction_parsing():
   if len(alternatives) != 2: return
   builder = alternatives[-1]
 
-  ins = cStringIO.StringIO(
+  ins = StringIO(
     "HKLF 4 1  "
     "0.0000  0.0000  0.3330  1.0000  0.0000  0.0000  0.0000  1.0000 -0.3330")
   stream = shelx.command_stream(file=ins)
@@ -193,7 +193,7 @@ def exercise_instruction_parsing():
   stream.parse()
   assert builder.data_change_of_basis_op.as_xyz() == "y+3*z,x,y"
 
-  ins = cStringIO.StringIO("HKLF 4 1 -1 2 0 -1 0 0 0 -1 1")
+  ins = StringIO("HKLF 4 1 -1 2 0 -1 0 0 0 -1 1")
   stream = shelx.command_stream(file=ins)
   stream = shelx.instruction_parser(stream, builder)
   stream.parse()
@@ -211,7 +211,7 @@ def exercise_xray_structure_parsing():
 def exercise_atom_with_peaks():
   builder = iotbx.builders.crystal_structure_builder(set_grad_flags=True)
   stream = shelx.command_stream(
-    file=cStringIO.StringIO(ins_with_atom_peak_heights))
+    file=StringIO(ins_with_atom_peak_heights))
   stream = shelx.crystal_symmetry_parser(stream, builder)
   stream = shelx.atom_parser(stream.filtered_commands(), builder=builder,
                              strictly_shelxl=False)
@@ -233,7 +233,7 @@ def exercise_atom_with_peaks():
 def exercise_q_peaks():
   builder = iotbx.builders.crystal_structure_builder(set_grad_flags=True)
   stream = shelx.command_stream(
-    file=cStringIO.StringIO(ins_with_q_peaks))
+    file=StringIO(ins_with_q_peaks))
   stream = shelx.crystal_symmetry_parser(stream, builder)
   stream = shelx.atom_parser(stream.filtered_commands(), builder=builder,
                              strictly_shelxl=False)
@@ -262,7 +262,7 @@ def exercise_q_peaks():
 
 def exercise_special_positions():
   structure = xray.structure.from_shelx(
-    file=cStringIO.StringIO(ins_special_positions))
+    file=StringIO(ins_special_positions))
   occupancies = [ sc.occupancy for sc in structure.scatterers() ]
   multiplicities = [ sc.multiplicity() for sc in structure.scatterers() ]
   assert multiplicities == [ 2, 2, 2, 2, 6 ]
@@ -271,7 +271,7 @@ def exercise_special_positions():
 def exercise_aspirin():
   for set_grad_flags in (False, True):
     structure = xray.structure.from_shelx(
-      file=cStringIO.StringIO(ins_aspirin),
+      file=StringIO(ins_aspirin),
       set_grad_flags=set_grad_flags)
     isinstance(structure, xray.structure)
     assert structure.crystal_symmetry().is_similar_symmetry(
@@ -329,7 +329,7 @@ def exercise_disordered():
   for set_grad_flags in (False, True):
     builder = iotbx.builders.crystal_structure_builder(
       set_grad_flags=set_grad_flags)
-    stream = shelx.command_stream(file=cStringIO.StringIO(ins_disordered))
+    stream = shelx.command_stream(file=StringIO(ins_disordered))
     cs_parser = shelx.crystal_symmetry_parser(stream, builder)
     xs_parser = shelx.atom_parser(cs_parser.filtered_commands(), builder)
     xs_parser.parse()
@@ -366,7 +366,7 @@ def exercise_invalid():
   for set_grad_flags in (False, True):
     try:
       structure = xray.structure.from_shelx(
-        file=cStringIO.StringIO(ins_invalid_scatt),
+        file=StringIO(ins_invalid_scatt),
         set_grad_flags=set_grad_flags)
       raise Exception_expected
     except RuntimeError as e:
@@ -374,7 +374,7 @@ def exercise_invalid():
 
     try:
       structure = xray.structure.from_shelx(
-        file=cStringIO.StringIO(ins_invalid_scatt_1),
+        file=StringIO(ins_invalid_scatt_1),
         set_grad_flags=set_grad_flags)
       raise Exception_expected
     except RuntimeError as e:
@@ -383,14 +383,14 @@ def exercise_invalid():
 
     try:
       structure = xray.structure.from_shelx(
-        file=cStringIO.StringIO(ins_missing_sfac),
+        file=StringIO(ins_missing_sfac),
         set_grad_flags=set_grad_flags)
       raise Exception_expected
     except RuntimeError as e:
       assert e.args[0].startswith('ShelX:')
 
   structure = xray.structure.from_shelx(
-    file=cStringIO.StringIO(ins_disordered_with_part_sof))
+    file=StringIO(ins_disordered_with_part_sof))
   occ = 0.89064
   for sc in structure.scatterers():
     if sc.label in ('CL2', 'C28', 'H28A', 'H28B'):
@@ -401,7 +401,7 @@ def exercise_invalid():
 def exercise_afix_parsing():
   import smtbx.refinement.constraints.geometrical.hydrogens as _
   builder = iotbx.builders.constrained_crystal_structure_builder()
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
+  stream = shelx.command_stream(file=StringIO(ins_aspirin))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
   l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
   l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
@@ -438,7 +438,7 @@ def exercise_afix_parsing():
 def exercise_u_iso_proportional_to_u_eq_parsing():
   import smtbx.refinement.constraints.adp as _
   builder = iotbx.builders.constrained_crystal_structure_builder()
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
+  stream = shelx.command_stream(file=StringIO(ins_aspirin))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
   l_xs = shelx.atom_parser(l_cs.filtered_commands(), builder)
   l_xs.parse()
@@ -487,7 +487,7 @@ def exercise_restraint_parsing():
   import smtbx.refinement.restraints
   def parse_restraints(ins_name):
     builder = iotbx.builders.restrained_crystal_structure_builder()
-    stream = shelx.command_stream(file=cStringIO.StringIO(ins_name))
+    stream = shelx.command_stream(file=StringIO(ins_name))
     l_cs = shelx.crystal_symmetry_parser(stream, builder)
     l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
     l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
@@ -864,7 +864,7 @@ def exercise_residues():
 def parse_restraints(ins_name):
   import smtbx.refinement.restraints
   builder = iotbx.builders.restrained_crystal_structure_builder()
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_name))
+  stream = shelx.command_stream(file=StringIO(ins_name))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
   l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
   l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
@@ -885,7 +885,7 @@ def exercise_constrained_occupancies():
   from smtbx.refinement.constraints.occupancy import \
     occupancy_pair_affine_constraint
   builder = iotbx.builders.constrained_crystal_structure_builder()
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_thpp))
+  stream = shelx.command_stream(file=StringIO(ins_thpp))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
   l_xs = shelx.atom_parser(l_cs.filtered_commands(), builder)
   l_xs.parse()

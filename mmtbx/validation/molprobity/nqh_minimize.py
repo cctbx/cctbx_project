@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from mmtbx.command_line import geometry_minimization
 from libtbx.utils import Usage
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def parse_user_mods(filename):
   flipped_residues = []

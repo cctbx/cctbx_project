@@ -5,7 +5,10 @@ import sys
 import string
 import copy
 from six.moves import cStringIO as StringIO
-from UserDict import DictMixin
+try:
+  from UserDict import DictMixin
+except:
+  from collections import MutableMapping as DictMixin
 from cctbx.array_family import flex
 from six.moves import range
 from six.moves import zip

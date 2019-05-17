@@ -11,7 +11,7 @@ from cctbx import adptbx
 from cctbx.array_family import flex
 from scitbx.math import matrix
 from libtbx.utils import Sorry, multi_out
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 from six.moves import zip
 from six.moves import range
