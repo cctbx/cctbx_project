@@ -7,7 +7,6 @@ Tools for handling plottable data, usually similar to CCP4's loggraph format
 from __future__ import absolute_import, division, print_function
 from libtbx import adopt_init_args
 from libtbx.utils import Sorry
-import string
 import os.path
 import math
 import re
@@ -64,7 +63,7 @@ def plot_data_loggraph(plot_data,output):
   ## replace spaces for loggraph with underscores
   tmp_legend = plot_data.x_label
   spaces = 0
-  spaces = string.find(tmp_legend,' ')
+  spaces = tmp_legend.find(' ')
   if spaces>0:
     tmp_legend = tmp_legend.replace(' ','_')
   label_string = '%s'%(tmp_legend)
@@ -73,7 +72,7 @@ def plot_data_loggraph(plot_data,output):
     ## loggraph does not like spaces in the legend names
     ## lets replace them with underscores
     spaces = 0
-    spaces = string.find(tmp_legend,' ')
+    spaces = tmp_legend.find(' ')
     if spaces>0:
       tmp_legend = tmp_legend.replace(' ','_')
     label_string += '   %s'%( tmp_legend )
