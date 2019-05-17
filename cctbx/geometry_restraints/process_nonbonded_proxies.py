@@ -58,13 +58,18 @@ def check_if_1_5_interaction(
 def cos_vec(u,v,w):
   """(tuple,tuple) -> float
 
-  Calculate the cosine used to evaluate whether the atoms
-  colliding are inline or not
+  Calculate the cosine to evaluate whether clashing atoms are inline
+  A1 clashes with A2 and A3. Find out if A2 and A3 are inline.
+  A1 ~~~ A2
+  A1 ~~~ A3
 
-  Args:
-    u,v: lists containing x1,y1,z1,x2,y2,z2 coordinates
+  Parameters:
+  u: vector of clashing atom (A2 or A3, order does not matter)
+  v: vector of clashing atom (A2 or A3, order does not matter)
+  w: vector of common clashing atom (A1)
+
   Returns:
-    cos_angle: the cosine of the angle between center of the common atom
+    float (cos_angle): the cosine of the angle between center of the common atom
       and the mid point between the other two atoms.
   """
   u = matrix.col(u)
@@ -210,76 +215,87 @@ class manager():
       nonbonded_list = proxies_info_nonbonded[0]
     else:
       nonbonded_list = []
-
-    fsc0=grm.shell_sym_tables[0].full_simple_connectivity()
-    fsc2=grm.shell_sym_tables[2].full_simple_connectivity()
-
-    if not nonbonded_list:
       # create 'empty' instance of results class
       self._clashes = clashes(clashes_dict = dict())
       self._hbonds = hbonds(hbonds_dict = dict())
       return
 
+    fsc0=grm.shell_sym_tables[0].full_simple_connectivity()
+    fsc2=grm.shell_sym_tables[2].full_simple_connectivity()
+
     self._clashes_dict = dict()
     self._hbonds_dict  = dict()
 
-    # loop, do stuff and fill in the dicts:
+    # loop over nonbonded proxies do stuff and fill in the dicts:
     # self._clashes_dict[(iseq, jseq)] = (relevant info)
     # self._hbonds_dict[(iseq, jseq)] = (relevant info)
-
     for item in nonbonded_list:
       i_seq          = item[1]
       j_seq          = item[2]
       model_distance = item[3]
       vdw_sum        = item[4]
-      symop_str      = item[5]
+      symop_str      = item[5] # TODO probably not necessary
       symop          = item[6]
 
       # check for overlap
       delta = model_distance - vdw_sum
       if (delta < -0.40):
-        # Check of 1-5 interaction
-        is_1_5_interaction = check_if_1_5_interaction(
-                 i_seq = i_seq,
-                 j_seq = j_seq,
-                 hd_sel = hd_sel,
-                 full_connectivity_table = fsc0)
-        if not is_1_5_interaction:
-          if i_seq > j_seq:
-            i_seq, j_seq = j_seq, i_seq
-          iseq_tuple = (i_seq, j_seq)
-          # for atoms that overlap more than once, check for inline overlaps
-          for i in iseq_tuple:
-            multiples = [item for item in self._clashes_dict.keys() if i in item] # is this slow?
-            if multiples:
-              for multiple in multiples:
-                multiple_atoms = [x for x in list(multiple + iseq_tuple) if i != x]
-#                multiple_clashes = list(
-#                  set(iseq_tuple + clash_tuple) - (set(iseq_tuple) & set(clash_tuple)))
-                # ignore overlaps that are cause by symmetry operation -->
-                # TODO: not sure why these should be ignored
-                if (len(multiple_atoms) == 2):
-                  multiple_1 = multiple_atoms[0]
-                  multiple_2 = multiple_atoms[1]
-                  # test inline only if the two atoms that overlap with the
-                  # common atom are connected
-                  if multiple_1 in fsc0[multiple_2]:
-                    atom_1_xyz = sites_cart[multiple_1]
-                    atom_2_xyz = sites_cart[multiple_2]
-                    atom_i_xyz = sites_cart[i]
-                    cos_angle = cos_vec(atom_1_xyz, atom_2_xyz, atom_i_xyz)
-                    # atoms are inline if cosine of the angle between vectors > 0.707 (45 degrees)
-                    # TODO where does that number come from?
-                    if abs(cos_angle) > 0.707 and (atom_1_xyz != atom_2_xyz):
-                      if self._clashes_dict[multiple][0] > model_distance:
-                        del self._clashes_dict[multiple]
-                      else:
-                        continue
+        is_clash = self._is_clash(
+                    i_seq = i_seq,
+                    j_seq = j_seq,
+                    hd_sel = hd_sel,
+                    fsc0 = fsc0,
+                    sites_cart = sites_cart)
+        if is_clash:
           self._clashes_dict[(i_seq, j_seq)] = [model_distance, vdw_sum, symop_str, symop]
 
+    self._clashes = clashes(clashes_dict = clashes_dict)
     #print(self._clashes_dict.keys())
 
-
+  def _is_clash(self, i_seq, j_seq, hd_sel, fsc0, sites_cart):
+    # Check if there is 1-5 interaction
+    is_clash = False
+    is_1_5_interaction = check_if_1_5_interaction(
+             i_seq = i_seq,
+             j_seq = j_seq,
+             hd_sel = hd_sel,
+             full_connectivity_table = fsc0)
+    if not is_1_5_interaction:
+      if i_seq > j_seq:
+        i_seq, j_seq = j_seq, i_seq
+      iseq_tuple = (i_seq, j_seq)
+      # Check if either of the atoms is already involved in another clash
+      for i in iseq_tuple:
+        multiples = [item for item in self._clashes_dict.keys() if i in item] # is this slow?
+        # for atoms that overlap more than once, check for inline overlaps
+        if multiples:
+          for multiple in multiples:
+            multiple_atoms = [x for x in list(multiple + iseq_tuple) if i != x]
+            # other way:
+            # multiple_atoms = list(set(iseq_tuple + multiple) - (set(iseq_tuple) & set(multiple)))
+            # ignore overlaps that are cause by symmetry operation -->
+            # TODO: not sure why these should be ignored
+            if (len(multiple_atoms) == 2): # should be always 2, per definitionem, probably assert?
+              multiple_1 = multiple_atoms[0]
+              multiple_2 = multiple_atoms[1]
+            # test inline only if the two atoms that overlap with the common atom are connected
+              if multiple_1 in fsc0[multiple_2]:
+                atom_1_xyz = sites_cart[multiple_1]
+                atom_2_xyz = sites_cart[multiple_2]
+                atom_i_xyz = sites_cart[i]
+                cos_angle = cos_vec(atom_1_xyz, atom_2_xyz, atom_i_xyz)
+                # atoms are inline if cosine of the angle between vectors > 0.707 (45 degrees)
+                # TODO where does that number come from?
+                if abs(cos_angle) > 0.707 and (atom_1_xyz != atom_2_xyz):
+                  if self._clashes_dict[multiple][0] > model_distance:
+                    del self._clashes_dict[multiple]
+                    is_clash = True
+                  else:
+                    continue
+        else:
+          is_clash = True
+    #
+    return is_clash
 
     # create class:
     # self._clashes = clashes(clashes_dict = clashes_dict)
