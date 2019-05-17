@@ -4,11 +4,8 @@ from scitbx.graph.utils import construct_edge_sets
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, show_diff
 from six.moves import range
-try:
-  from six.moves import cPickle as pickle
-except ImportError:
-  import pickle
-from StringIO import StringIO
+from six.moves import cPickle as pickle
+from six.moves import cStringIO as StringIO
 import sys
 
 def random_permutation(s):

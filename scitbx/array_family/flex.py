@@ -19,11 +19,6 @@ from scitbx.random import get_random_seed, set_random_seed
 from libtbx.str_utils import format_value
 
 if six.PY3:
-  @boost.python.inject_into(nested_loop)
-  def __next__(obj):
-    return obj.next()
-
-if six.PY3:
   from collections.abc import Iterable, Sequence
 else:
   from collections import Iterable, Sequence
@@ -377,7 +372,7 @@ def show_count_stats(
       prefix=""):
   assert counts.size() != 0
   if (out is None): out = sys.stdout
-  from __builtin__ import int, max
+  from builtins import int, max
   counts_sorted = sorted(counts, reverse=True)
   threshold = max(1, int(counts_sorted[0] / group_size) * group_size)
   n = counts_sorted.size()
@@ -521,7 +516,7 @@ class smart_selection(object):
 
 def __show_sizes(f):
   typename_n_size = f()
-  from __builtin__ import max
+  from builtins import max
   l = max([ len(typename) for typename, size in typename_n_size ])
   fmt = "%%%is : %%i" % l
   for typename, size in typename_n_size:
@@ -553,7 +548,7 @@ def exercise_triple(flex_triple, flex_order=None, as_double=False):
     assert tuple(a) == tuple(b)
 
 def compare_derivatives(more_reliable, less_reliable, eps=1e-6):
-  from __builtin__ import max
+  from builtins import max
   scale = max(1, ext.max(ext.abs(more_reliable)))
   if (not (more_reliable/scale).all_approx_equal( # fast
              other=less_reliable/scale, tolerance=eps)):

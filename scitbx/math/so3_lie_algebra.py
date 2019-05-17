@@ -3,6 +3,7 @@ import scitbx.matrix
 
 import operator
 import math
+from functools import reduce
 from six.moves import zip
 
 __doc__ = """
