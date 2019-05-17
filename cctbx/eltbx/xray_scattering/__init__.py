@@ -25,6 +25,9 @@ def get_element_and_charge_symbols(scattering_type, exact=True):
     return sl[:-2], sl[-2:]
   return sl, ""
 
+boost.python.inject(ext.it1992_iterator, boost.python.py3_make_iterator)
+boost.python.inject(ext.wk1995_iterator, boost.python.py3_make_iterator)
+
 @boost.python.inject_into(ext.gaussian)
 class _():
 
