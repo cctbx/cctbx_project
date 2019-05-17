@@ -22,9 +22,9 @@ from collections import Counter
 import math
 
 try:  # for Py3 compatibility
-    import itertools.izip as zip
+  import itertools.izip as zip
 except ImportError:
-    pass
+  pass
 
 from libtbx import easy_pickle as ep
 from cctbx import crystal, uctbx, statistics
@@ -36,12 +36,15 @@ import iota.components.iota_utils as util
 from prime.postrefine.mod_mx import mx_handler
 from prime.postrefine import mod_input
 
+
 def isprop(v):
   """ Test if attribute is a property """
   return isinstance(v, property)
 
+
 class AnalysisResult(object):
   pass
+
 
 class Plotter(object):
 
@@ -55,7 +58,7 @@ class Plotter(object):
     self.hi_file = os.path.join(self.info.viz_base, 'res_histogram.pdf')
     self.xy_file = os.path.join(self.info.viz_base, 'beamXY.pdf')
 
-    self.font = {'fontfamily':'sans-serif', 'fontsize':12}
+    self.font = {'fontfamily': 'sans-serif', 'fontsize': 12}
 
   def plot_spotfinding_heatmap(self, write_files=False):
 
@@ -71,7 +74,7 @@ class Plotter(object):
 
     hm_data = np.zeros((ch, ca))
     for i in ic.items():
-      hm_data[i[0][0]-min(hlist), i[0][1]-min(alist)] = i[1]
+      hm_data[i[0][0] - min(hlist), i[0][1] - min(alist)] = i[1]
 
     rows = range(min(hlist), max(hlist) + 1)
     cols = range(min(alist), max(alist) + 1)
@@ -82,8 +85,8 @@ class Plotter(object):
     fig.canvas.draw()
     heatmap = plt.pcolor(hm_data, cmap='Reds')
 
-    ax.set_yticks(np.arange(len(rows))+.5, minor=False)
-    ax.set_xticks(np.arange(len(cols))+.5, minor=False)
+    ax.set_yticks(np.arange(len(rows)) + .5, minor=False)
+    ax.set_xticks(np.arange(len(cols)) + .5, minor=False)
     ax.set_yticklabels(row_labels, minor=False)
     ax.set_xticklabels(col_labels, minor=False)
     ax.set_xlabel('Spot area')
@@ -94,11 +97,11 @@ class Plotter(object):
 
     # Annotate
     for y in range(hm_data.shape[0]):
-        for x in range(hm_data.shape[1]):
-            plt.text(x + 0.5, y + 0.5, '%3d' % hm_data[y, x],
-                     horizontalalignment='center',
-                     verticalalignment='center',
-                     )
+      for x in range(hm_data.shape[1]):
+        plt.text(x + 0.5, y + 0.5, '%3d' % hm_data[y, x],
+                 horizontalalignment='center',
+                 verticalalignment='center',
+                 )
 
     if write_files:
       fig.savefig(self.hm_file, format='pdf', bbox_inches=0)
@@ -114,9 +117,10 @@ class Plotter(object):
     for i in [j.final for j in self.final_objects]:
       try:
         info.append([i, i['beamX'], i['beamY'], i['wavelength'], i['distance'],
-                    (i['a'], i['b'], i['c'], i['alpha'], i['beta'], i['gamma'])])
+                     (i['a'], i['b'], i['c'], i['alpha'], i['beta'],
+                      i['gamma'])])
       except IOError as e:
-        print ('IOTA ANALYSIS ERROR: BEAMXY failed! ', e)
+        print('IOTA ANALYSIS ERROR: BEAMXY failed! ', e)
         pass
 
     # Calculate beam center coordinates and distances
@@ -126,7 +130,7 @@ class Plotter(object):
                  for i in info]
     beam_dist_std = np.std(beam_dist)
     img_list = [[i[0], i[1], i[2], i[3], i[4], i[5], j] for i, j in zip(info,
-                                                                beam_dist)]
+                                                                        beam_dist)]
 
     # Separate out outliers
     outliers = [i for i in img_list if i[3] > 2 * beam_dist_std]
@@ -222,7 +226,6 @@ class Plotter(object):
     else:
       ax1.set_title('Beam XY Coordinates')
 
-
     if not threeD:
       # Plot histogram of distances to each beam center from median
       ax2 = fig.add_subplot(gsp[1, :])
@@ -240,7 +243,6 @@ class Plotter(object):
 
     if return_values:
       return np.median(beamX), np.median(beamY), pixel_size
-
 
   def plot_res_histogram(self, write_files=False):
 
@@ -271,7 +273,6 @@ class Plotter(object):
     lr.set_xlabel(reslim, fontsize=15)
     lr.set_ylabel('No. of frames', fontsize=15)
 
-
     if write_files:
       fig.savefig(self.hi_file, format='pdf', bbox_inches=0)
     else:
@@ -286,6 +287,10 @@ class Analyzer(object):
     self.info = info
     self.params = params
     self.gui_mode = gui_mode
+
+    # Attributes for LivePRIME override
+    self.best_pg = None
+    self.best_uc = None
 
   def get_results(self, finished_objects=None):
     if not finished_objects:
@@ -372,7 +377,8 @@ class Analyzer(object):
             # Append observations to combined miller array
             obs = obs.expand_to_p1()
             if all_obs:
-              all_obs = all_obs.concatenate(obs, assert_is_similar_symmetry=False)
+              all_obs = all_obs.concatenate(obs,
+                                            assert_is_similar_symmetry=False)
             else:
               all_obs = obs
 
@@ -397,13 +403,13 @@ class Analyzer(object):
       # Calculate dataset stats
       for k in self.info.stats:
         stat_list = zip(*self.info.stats[k]['lst'])[2]
-        stats = dict(lst  = self.info.stats[k]['lst'],
-                     median = np.median(stat_list),
-                     mean   = np.mean(stat_list),
-                     std    = np.std(stat_list),
-                     max    = np.max(stat_list),
-                     min    = np.min(stat_list),
-                     cons   = Counter(stat_list).most_common(1)[0][0])
+        stats = dict(lst=self.info.stats[k]['lst'],
+                     median=np.median(stat_list),
+                     mean=np.mean(stat_list),
+                     std=np.std(stat_list),
+                     max=np.max(stat_list),
+                     min=np.min(stat_list),
+                     cons=Counter(stat_list).most_common(1)[0][0])
         self.info.stats[k].update(stats)
       return True
     else:
@@ -418,10 +424,10 @@ class Analyzer(object):
       final_table = ["\n\n{:-^80}\n".format('ANALYSIS OF RESULTS')]
 
     if not self.info.categories['integrated']:
-        final_table.append('NO IMAGES INTEGRATED!')
+      final_table.append('NO IMAGES INTEGRATED!')
     else:
       label_lens = [len(v['label']) for k, v in self.info.stats.items()]
-      max_label = int(5 * round(float(np.max(label_lens))/5)) + 5
+      max_label = int(5 * round(float(np.max(label_lens)) / 5)) + 5
       for k, v in self.info.stats.items():
         if k in ('lres', 'res', 'beamX', 'beamY'):
           continue
@@ -467,7 +473,7 @@ class Analyzer(object):
                                    v['mean'], v['std'], l=max_label))
 
     for item in final_table:
-        util.main_log(self.info.logfile, item, False)
+      util.main_log(self.info.logfile, item, False)
     self.info.update(final_table=final_table)
 
   def unit_cell_analysis(self):
@@ -488,10 +494,12 @@ class Analyzer(object):
       point_group = self.info.cluster_iterable[0][6]
       util.main_log(self.info.logfile,
                     "\n\n{:-^80}\n".format(' UNIT CELL ANALYSIS '), True)
-      uc_line = "{:<6} {:^4}:  {:<6.2f}, {:<6.2f}, {:<6.2f}, {:<6.2f}, "\
+      uc_line = "{:<6} {:^4}:  {:<6.2f}, {:<6.2f}, {:<6.2f}, {:<6.2f}, " \
                 "{:<6.2f}, {:<6.2f}".format('(1)', point_group,
-                      unit_cell[0], unit_cell[1], unit_cell[2],
-                      unit_cell[3], unit_cell[4], unit_cell[5])
+                                            unit_cell[0], unit_cell[1],
+                                            unit_cell[2],
+                                            unit_cell[3], unit_cell[4],
+                                            unit_cell[5])
       util.main_log(self.info.logfile, uc_line, True)
 
       self.info.best_pg = str(point_group)
@@ -504,6 +512,7 @@ class Analyzer(object):
       if self.params.analysis.run_clustering:
         # run hierarchical clustering analysis
         from xfel.clustering.cluster import Cluster
+
         counter = 0
         self.info.clusters = []
 
@@ -514,6 +523,7 @@ class Analyzer(object):
         pickles = []
         if self.params.analysis.cluster_n_images > 0:
           import random
+
           for i in range(len(self.params.analysis.cluster_n_images)):
             random_number = random.randrange(0, len(final_pickles))
             if final_pickles[random_number] in pickles:
@@ -530,7 +540,7 @@ class Analyzer(object):
         clusters, _ = ucs.ab_cluster(threshold=threshold,
                                      log=False, write_file_lists=False,
                                      schnell=False, doplot=False)
-        uc_table.append("\n\n{:-^80}\n"\
+        uc_table.append("\n\n{:-^80}\n" \
                         "".format(' UNIT CELL ANALYSIS '))
 
         # extract clustering info and add to summary output list
@@ -542,7 +552,7 @@ class Analyzer(object):
 
         for cluster in clusters:
           sorted_pg_comp = sorted(cluster.pg_composition.items(),
-                                    key=lambda x: -1 * x[1])
+                                  key=lambda x: -1 * x[1])
           pg_nums = [pg[1] for pg in sorted_pg_comp]
           cons_pg = sorted_pg_comp[np.argmax(pg_nums)]
 
@@ -581,10 +591,10 @@ class Analyzer(object):
                         "{:<6.2f} {:<6.2f} {:<6.2f} " \
                         "".format(best_uc[0], best_uc[1], best_uc[2],
                                   best_uc[3], best_uc[4], best_uc[5])
-          cluster_info = {'number':len(cluster.members),
+          cluster_info = {'number': len(cluster.members),
                           'pg': best_sg,
-                          'uc':uc_no_stdev,
-                          'filename':mark_output}
+                          'uc': uc_no_stdev,
+                          'filename': mark_output}
           self.info.clusters.append(cluster_info)
 
           # format and record output
@@ -608,7 +618,7 @@ class Analyzer(object):
           # uc_info = [len(cluster.members), cons_pg[0], cluster.medians,
           #            output_file, uc_line, lattices]
           uc_info = [len(cluster.members), best_sg, best_uc, output_file,
-                         uc_no_stdev, lattices]
+                     uc_no_stdev, lattices]
           uc_summary.append(uc_info)
 
       else:
@@ -621,7 +631,8 @@ class Analyzer(object):
         cons_pg = Counter(uc_sg).most_common(1)[0][0]
         all_pgs = Counter(uc_sg).most_common()
         unit_cell = (np.median(uc_a), np.median(uc_b), np.median(uc_c),
-                     np.median(uc_alpha), np.median(uc_beta), np.median(uc_gamma))
+                     np.median(uc_alpha), np.median(uc_beta),
+                     np.median(uc_gamma))
 
         # Populate clustering info for GUI display
         uc_init = uctbx.unit_cell(unit_cell)
@@ -684,7 +695,6 @@ class Analyzer(object):
       if self.gui_mode:
         return self.info.clusters
 
-
   def print_summary(self, write_files=True):
     """ Prints summary and appends to general log file. Also outputs some of it
         on stdout. Also writes out output list files.
@@ -721,7 +731,6 @@ class Analyzer(object):
       util.main_log(self.info.logfile, "{}".format(item), False)
     self.info.update(summary=summary)
 
-
   def make_prime_input(self, filename='prime.phil', run_zero=False):
     """ Imports default PRIME input parameters, modifies correct entries and
         prints out a starting PHIL file to be used with PRIME
@@ -732,13 +741,19 @@ class Analyzer(object):
     hres = self.info.stats['res']
     lres = self.info.stats['lres']
 
-    try:
-      sg = self.info.best_pg.replace(" ", "")
-    except AttributeError as e:
-      print ('PRIME INPUT ERROR, SPACE GROUP: ', e)
-      sg = 'P1'
+    # If symmetry / unit cell were not overridden from GUI, set from INFO
+    if not self.best_pg:
+      try:
+        self.best_pg = self.info.best_pg.replace(" ", '')
+      except AttributeError as e:
+        print('PRIME INPUT ERROR, SPACE GROUP: ', e)
+        self.best_pg = 'P1'
 
-    sym = crystal.symmetry(space_group_symbol=sg)
+    if not self.best_uc:
+      self.best_uc = self.info.best_uc
+
+    # Determine crystal system from crystal symmetry
+    sym = crystal.symmetry(space_group_symbol=self.best_pg)
     crystal_system = str(sym.space_group().crystal_system())
 
     # Determine number of images for indexing ambiguity resolution
@@ -747,19 +762,20 @@ class Analyzer(object):
       idx_ambiguity_sample = 300
       idx_ambiguity_selected = 100
     else:
-      idx_ambiguity_sample = int(round(len(self.info.categories['integrated']) / 2))
+      idx_ambiguity_sample = int(
+        round(len(self.info.categories['integrated']) / 2))
       idx_ambiguity_selected = int(round(idx_ambiguity_sample / 3))
 
-    prime_params = mod_input.master_phil.extract()
-
+    # Set run number to 000 if running LivePRIME
     if run_zero:
       run_no = '000'
     else:
       run_no = '001'
 
     # Populate pertinent data parameters
+    prime_params = mod_input.master_phil.extract()
     prime_params.run_no = os.path.join(os.path.dirname(self.prime_data_path),
-                                         'prime/{}'.format(run_no))
+                                       'prime/{}'.format(run_no))
     prime_params.data = [self.prime_data_path]
     prime_params.title = 'Auto-generated by IOTA v{} on {}' \
                          ''.format(iota_version, now)
@@ -777,8 +793,8 @@ class Analyzer(object):
     prime_params.postref.allparams.d_max = lres['max']
     prime_params.merge.d_min = hres['mean']
     prime_params.merge.d_max = lres['max']
-    prime_params.target_unit_cell = uctbx.unit_cell(self.info.best_uc)
-    prime_params.target_space_group = sg
+    prime_params.target_unit_cell = uctbx.unit_cell(self.best_uc)
+    prime_params.target_space_group = self.best_pg
     prime_params.target_crystal_system = crystal_system
     prime_params.pixel_size_mm = pixel_size
     prime_params.n_residues = 500

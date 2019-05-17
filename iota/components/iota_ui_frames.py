@@ -27,7 +27,6 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.patches as mpatches
 from mpl_toolkits.mplot3d import Axes3D
-assert Axes3D
 
 from wxtbx import bitmaps
 from libtbx import easy_run, easy_pickle as ep
@@ -48,6 +47,7 @@ import iota.components.iota_threads as thr
 import iota.components.iota_ui_dialogs as d
 import iota.components.iota_utils as ut
 
+assert Axes3D
 f = ut.WxFlags()
 
 # Platform-specific stuff
@@ -66,7 +66,7 @@ elif wx.Platform == '__WXMAC__':
   LABEL_SIZE = 14
   CAPTION_SIZE = 12
   python = "Python"
-elif (wx.Platform == '__WXMSW__'):
+elif wx.Platform == '__WXMSW__':
   plot_font_size = 9
   norm_font_size = 9
   button_font_size = 11
@@ -74,7 +74,9 @@ elif (wx.Platform == '__WXMSW__'):
   CAPTION_SIZE = 9
   python = "Python"  # TODO: make sure it's right!
 
+
 # ------------------------------ Input Window -------------------------------- #
+
 
 class InputWindow(IOTABasePanel):
   """ Input window - data input, description of project """
@@ -113,7 +115,6 @@ class InputWindow(IOTABasePanel):
     self.Bind(wx.EVT_BUTTON, self.onImportOptions, self.opt_btn_import)
     self.Bind(wx.EVT_BUTTON, self.onProcessOptions, self.opt_btn_process)
     self.Bind(wx.EVT_BUTTON, self.onAnalysisOptions, self.opt_btn_analysis)
-
 
   def onMagButton(self, e):
     dirview = d.DirView(self, title='Current Folder')
@@ -1072,14 +1073,20 @@ class ProcessingTab(wx.Panel):
       self.nsref_axes.set_ylim(ymin=0, ymax=nsref_ymax)
       self.nsref_axes.draw_artist(self.nsref_chart)
 
+      self.int_canvas.draw()
+      # self.int_canvas.flush_events()
+
   def draw_b_factors(self):
     self.wp_axes.clear()
     self.wp_axes.set_xlabel('B-factor')
     self.wp_axes.set_ylabel('Count')
     self.wp_axes.set_title('Wilson B-factor Histogram')
     if self.info.b_factors:
-      self.wp_axes.hist(self.info.b_factors, 50, normed=False,
+      self.wp_axes.hist(self.info.b_factors, 50, density=False,
                         facecolor='#4575b4', histtype='stepfilled')
+
+    self.wp_canvas.draw()
+    # self.wp_canvas.flush_events()
 
   def draw_measured_indices(self):
     # Draw a h0, k0, or l0 slice of merged data so far
@@ -1090,12 +1097,12 @@ class ProcessingTab(wx.Panel):
       pass
 
     try:
-      slice = self.info.get_hkl_slice(sg=self.user_sg, axis=self.hkl_view_axis)
+      hkl_slice = self.info.get_hkl_slice(sg=self.user_sg, axis=self.hkl_view_axis)
     except AttributeError:
       return
 
     try:
-      hkl, freq = zip(*slice)
+      hkl, freq = zip(*hkl_slice)
     except ValueError:
       hkl = [(0, 0, 0)]
       freq = 1
@@ -1155,6 +1162,10 @@ class ProcessingTab(wx.Panel):
                                                  norm=norm,
                                                  orientation='vertical',
                                                  aspect=40)
+
+    self.hkl_canvas.draw()
+    # self.hkl_canvas.flush_events()
+
   def onImageView(self, e):
     filepath = self.info_txt.GetValue()
     viewer = self.gparams.gui.image_viewer
@@ -1218,12 +1229,14 @@ class ProcessingTab(wx.Panel):
           self.res_pick.set_data(idx, res)
         else:
           search = True
-    self.Layout()
+    # self.Layout()
+    self.int_canvas.draw()
 
   def on_pick(self, event):
     self.bracket.set_visible(False)
     self.nsref_pick.set_visible(True)
     self.res_pick.set_visible(True)
+    self.proc_canvas.draw()
 
     idx = int(round(event.mouseevent.xdata))
     entry = [i for i in self.processed if i[0] == idx]
@@ -1239,14 +1252,16 @@ class ProcessingTab(wx.Panel):
       self.nsref_pick.set_data(img_idx, spt)
       self.res_pick.set_data(img_idx, res)
       self.toggle_pick(enabled=True, img=img)
-    self.Layout()
+    # self.Layout()
+    self.int_canvas.draw()
+
 
   def on_bar_pick(self, event):
     self.nsref_pick.set_visible(False)
     self.res_pick.set_visible(False)
     self.show_image_group(e=event.mouseevent)
     self.draw_summary()
-    self.Layout()
+    self.int_canvas.draw()
 
   def show_image_group(self, e):
     self.pick['picked'] = True
@@ -1328,7 +1343,7 @@ class LiveAnalysisTab(d.ScrolledPanel):
     uc_sizer = wx.StaticBoxSizer(uc_box, wx.VERTICAL)
     self.uc_panel.SetSizer(uc_sizer)
     self.uc_figure = Figure(figsize=(1, 2.5))
-    self.uc_figure.patch.set_visible(False)  # create transparent background
+    # self.uc_figure.patch.set_visible(False)  # create transparent background
 
     uc_gsub = gridspec.GridSpec(2, 3, wspace=0, hspace=0)
     self.a_axes = self.uc_figure.add_subplot(uc_gsub[0])
@@ -1356,8 +1371,8 @@ class LiveAnalysisTab(d.ScrolledPanel):
     self.gamma_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
     self.gamma_axes.set_yticklabels(list(''*5), visible=False)
 
-    self.uc_figure.set_tight_layout(True)
     self.uc_canvas = FigureCanvas(self.uc_panel, -1, self.uc_figure)
+    self.uc_figure.set_tight_layout(True)
     uc_sizer.Add(self.uc_canvas, 1, flag=wx.EXPAND)
 
     # UC Clustering Result
@@ -1463,8 +1478,7 @@ class LiveAnalysisTab(d.ScrolledPanel):
     # if set_ylim:
     #   axes.set_ylim(bottom.min(), 1.05 * top.max())
 
-    axes.hist(a, 50, normed=False, facecolor='#4575b4',
-                     histtype='stepfilled')
+    axes.hist(a, 50, density=False, facecolor='#4575b4', histtype='stepfilled')
     axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
 
@@ -1507,6 +1521,8 @@ class LiveAnalysisTab(d.ScrolledPanel):
 
       self.calculate_uc_histogram(gamma, self.gamma_axes, xticks_loc='bottom')
       self.gamma_axes.set_yticklabels(list(''*5), visible=False)
+
+      self.uc_canvas.draw()
 
     except ValueError as e:
       print ('UC HISTOGRAM ERROR: ', e)
@@ -1881,6 +1897,8 @@ class ProcWindow(IOTABaseFrame):
     self.chart_tab = LiveAnalysisTab(self.proc_nb)
     self.proc_nb.AddPage(self.log_tab, 'Log')
     self.proc_nb.AddPage(self.proc_tab, 'Processing')
+    self.proc_nb.AddPage(self.chart_tab, 'Analysis')
+    self.proc_nb.RemovePage(2)
     self.proc_nb.SetSelection(1)
     self.proc_sizer = wx.BoxSizer(wx.VERTICAL)
     self.proc_sizer.Add(self.proc_nb, 1, flag=wx.EXPAND | wx.ALL, border=3)
@@ -1937,22 +1955,31 @@ class ProcWindow(IOTABaseFrame):
 
   def onAnalysis(self, e):
     if self.toolbar.GetToolState(self.tb_btn_analysis.GetId()):
-      self.chart_timer.Start(15000)
+
+      # Start timer only if the proc timer is running
+      if self.proc_timer.IsRunning():
+        self.chart_timer.Start(15000)
+
+      # Insert Analysis page
       if wx.__version__[0] == '4':
         self.proc_nb.InsertPage(page_idx=2, page=self.chart_tab,
                                 caption='Analysis', select=True)
       else:
         self.proc_nb.InsertPage(n=2, page=self.chart_tab,
                                 text='Analysis')
-        if self.proc_nb.GetSelection() != 2:
-          self.proc_nb.SetSelection(2)
+      self.proc_nb.SetSelection(2)
       self.plot_live_analysis(force_plot=True)
     else:
+
+      # Stop chart timer
       if self.chart_timer.IsRunning():
         self.chart_timer.Stop()
-      if self.proc_nb.GetSelection() == 2:
-        self.proc_nb.SetSelection(1)
+
+      # Remove Analysis tab (DeletePage deletes the contents, RemovePage
+      # removes the actual tab! At least it's so in MacOS Mojave)
+      self.proc_nb.DeletePage(2)
       self.proc_nb.RemovePage(2)
+
 
   def onMonitor(self, e):
     if self.toolbar.GetToolState(self.tb_btn_monitor.GetId()):
@@ -2130,15 +2157,14 @@ class ProcWindow(IOTABaseFrame):
     self.running_prime = True
     pg = ut.makenone(self.chart_tab.pg_uc.pg.GetValue())
     uc = ut.makenone(self.chart_tab.pg_uc.uc.GetValue())
-
     self.prime_thread = thr.PRIMEThread(self, self.info, self.gparams, pg, uc)
     self.prime_thread.start()
 
   def onFinishedPRIME(self, e):
     self.prime_info = e.GetValue()
     self.running_prime = False
-
     if self.running_manual_analysis:
+      self.info.prime_info = self.prime_info
       self.plot_live_analysis(force_plot=True)
       self.running_manual_analysis = False
     self.chart_tab.btn_run_analysis.Enable()

@@ -1,5 +1,8 @@
-IOTA v1.3.006 - added reference geometry
+IOTA v1.3.007 - plotting bugfixes
 
-Added the option to include a reference geometry path to apply the results of
-ensemble refinement of detector geometry to processing (per Brewster, et al.
-Acta Crystallogr D Struct Biol. 2018 Sep 1;74(Pt 9):877-894)
+- Fixed a bug where the output charts were not redrawing in MatPlotLib 2.2.3
+- Fixed unit cell histogram plot to size properly and remove the black
+background
+- Fixed bug where analysis tab contents showed up squinched into the upper left
+corner of the processing notebook
+- Fixed merging output bug (now outputs results of a manual run)
