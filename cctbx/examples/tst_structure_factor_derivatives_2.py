@@ -8,7 +8,7 @@ from cctbx.examples.exp_i_alpha_derivatives import least_squares
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import random
-from six.move import cStringIO as StringIO
+from six.moves import cStringIO as StringIO
 import sys
 from six.moves import range
 from six.moves import zip
