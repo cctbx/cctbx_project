@@ -8,7 +8,7 @@ from cctbx.crystal.find_best_cell import alternative_find_best_cell as fbc
 from cctbx import miller
 from cctbx.sgtbx import pointgroup_tools as pt
 from libtbx.test_utils import approx_equal
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from six.moves import range
 
 def tst_pgtools():

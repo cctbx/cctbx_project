@@ -3,7 +3,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import format_cpu_times
 from mmtbx.refinement import refinement_flags
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 expected_result_all = \
   """Refinement flags and selection counts:

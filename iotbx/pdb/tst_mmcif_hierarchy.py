@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 from libtbx.test_utils import approx_equal
 from libtbx.test_utils import Exception_expected

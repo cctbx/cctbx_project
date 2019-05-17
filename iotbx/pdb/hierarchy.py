@@ -9,7 +9,7 @@ from cctbx.array_family import flex
 from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
 from libtbx import Auto, dict_with_default_0
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from iotbx.pdb import hy36encode, hy36decode
 import iotbx.cif.model
 from cctbx import crystal

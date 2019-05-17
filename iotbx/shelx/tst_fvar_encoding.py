@@ -18,7 +18,7 @@ def exercise():
   #
   from iotbx.shelx import fvar_encoding
   xsm = fvar_encoding.move_sites_if_necessary_for_shelx_fvar_encoding(xs)
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   sio = StringIO()
   xsm.show_scatterers(f=sio)
   from libtbx.test_utils import show_diff

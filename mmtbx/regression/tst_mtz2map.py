@@ -2,7 +2,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import Exception_expected
 from libtbx.utils import null_out, Sorry
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os.path
 
 def exercise():

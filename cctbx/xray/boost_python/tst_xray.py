@@ -11,7 +11,7 @@ from cctbx.array_family import flex
 from scitbx.array_family import shared
 from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal, show_diff
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from six.moves import range
 from six.moves import zip
 from six.moves import cPickle as pickle

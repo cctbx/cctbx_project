@@ -7,7 +7,7 @@ from libtbx.easy_pickle import loads, dumps
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 
 # This actually tests expected output - the remaining tests guard against

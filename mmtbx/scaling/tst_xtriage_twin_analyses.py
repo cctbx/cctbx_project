@@ -8,7 +8,7 @@ import iotbx.pdb.hierarchy
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import null_out
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 def exercise_twin_detection(verbose=False):

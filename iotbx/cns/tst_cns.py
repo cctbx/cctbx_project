@@ -11,7 +11,7 @@ from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import re
 import sys
 

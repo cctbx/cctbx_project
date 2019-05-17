@@ -6,7 +6,7 @@ import libtbx.load_env
 from libtbx.test_utils import Exception_expected
 
 from urllib2 import URLError
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 cif_core_dic_url = "ftp://ftp.iucr.org/pub/cif_core.dic"

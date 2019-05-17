@@ -5,7 +5,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import Sorry
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 import sys
 

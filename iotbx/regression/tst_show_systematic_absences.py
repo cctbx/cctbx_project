@@ -6,7 +6,7 @@ from cctbx import sgtbx
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
 from libtbx.test_utils import Exception_expected
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import random
 
 def exercise():

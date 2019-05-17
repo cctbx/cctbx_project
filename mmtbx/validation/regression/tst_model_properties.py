@@ -7,7 +7,7 @@ import iotbx.pdb.hierarchy
 from libtbx.test_utils import show_diff, approx_equal
 from libtbx.easy_pickle import loads, dumps
 from libtbx.utils import null_out
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def exercise_1():
   pdb_raw = """\

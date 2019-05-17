@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 from iotbx import file_reader
 from libtbx import easy_run
 from libtbx.utils import null_out
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os.path as op
 import os
 

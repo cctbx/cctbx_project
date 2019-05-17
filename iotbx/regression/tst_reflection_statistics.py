@@ -11,7 +11,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.sgtbx import subgroups
 from cctbx.development import debug_utils
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 def generate_mtz_files(space_group_info, anomalous_flag):

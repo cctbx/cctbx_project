@@ -8,7 +8,7 @@ try:
   from six.moves import cPickle as pickle
 except ImportError:
   import pickle
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from libtbx.test_utils import show_diff
 import iotbx.pdb
 from libtbx.utils import null_out # import dependency

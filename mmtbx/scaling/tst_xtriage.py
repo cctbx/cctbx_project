@@ -13,7 +13,7 @@ from libtbx.development import show_pickle_sizes
 from libtbx.easy_pickle import dumps, loads
 from libtbx.utils import null_out, Sorry
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import warnings
 import os.path
 import sys

@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os.path
 
 def exercise_cbetadev():

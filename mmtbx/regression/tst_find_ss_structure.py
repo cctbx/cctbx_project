@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from libtbx.utils import null_out
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from mmtbx.secondary_structure.find_ss_from_ca import find_secondary_structure
 from libtbx import test_utils
 

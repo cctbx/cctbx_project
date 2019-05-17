@@ -4,9 +4,8 @@ from libtbx.utils import Sorry
 import sys
 import string
 import copy
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from UserDict import DictMixin
-
 from cctbx.array_family import flex
 from six.moves import range
 from six.moves import zip

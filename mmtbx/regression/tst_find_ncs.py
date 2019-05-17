@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from mmtbx.ncs import ncs
 import sys
 from six.moves import zip
@@ -1399,7 +1399,7 @@ def tst_07():
     print(ncs_obj.get_ncs_name(),ncs_obj.max_operators())
     assert ncs_obj.is_helical_along_z() or ncs_obj.is_point_group_symmetry()
     #print ncs_obj.is_helical_along_z() or ncs_obj.is_point_group_symmetry()
-    from cStringIO import StringIO
+    from six.moves import cStringIO as StringIO
     f=StringIO()
     ncs_obj.display_all(log=f)
     text=f.getvalue()

@@ -13,7 +13,7 @@ from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_run
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import random
 import os.path
 

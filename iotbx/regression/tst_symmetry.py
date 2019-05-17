@@ -4,7 +4,7 @@ import iotbx.symmetry
 from cctbx import sgtbx, uctbx
 from libtbx.test_utils import Exception_expected
 from libtbx.utils import Sorry
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def exercise():
   m = iotbx.symmetry.manager(prefer_pdb_space_group=True)

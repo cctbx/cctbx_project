@@ -7,7 +7,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 from six.moves import zip
 

@@ -8,7 +8,7 @@ from libtbx.test_utils import show_diff, Exception_expected
 from libtbx.utils import Sorry
 import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os.path
 from six.moves import zip
 

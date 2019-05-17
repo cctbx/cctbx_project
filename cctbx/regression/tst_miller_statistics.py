@@ -6,7 +6,7 @@ from cctbx import crystal
 from cctbx import xray
 import libtbx.load_env
 from libtbx.test_utils import approx_equal
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os.path
 
 def exercise():

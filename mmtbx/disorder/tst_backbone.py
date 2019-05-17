@@ -2,7 +2,7 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.disorder import backbone
 import iotbx.pdb.hierarchy
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 pdb_raw = """
 CRYST1   21.937    6.000   23.477  90.00 107.08  90.00 P 1 21 1      2

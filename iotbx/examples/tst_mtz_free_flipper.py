@@ -8,7 +8,7 @@ else:
   iotbx_mtz = None
 from libtbx.test_utils import show_diff
 from libtbx.utils import format_cpu_times
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 
 def exercise():

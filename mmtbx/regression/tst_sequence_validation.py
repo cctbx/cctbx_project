@@ -20,7 +20,7 @@ def exercise():
   from iotbx import file_reader
   import libtbx.load_env # import dependency
   from libtbx.test_utils import Exception_expected, contains_lines, approx_equal
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   pdb_in = iotbx.pdb.input(source_info=None, lines="""\
 ATOM      2  CA  ARG A  10      -6.299  36.344   7.806  1.00 55.20           C
 ATOM     25  CA  TYR A  11      -3.391  33.962   7.211  1.00 40.56           C

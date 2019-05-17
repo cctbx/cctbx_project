@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import server
 from libtbx.test_utils import show_diff
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 tmp_cif = """\

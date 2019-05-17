@@ -7,7 +7,7 @@ import hashlib
 from libtbx.utils import Sorry, format_cpu_times
 import libtbx.load_env
 from libtbx import Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import math
 from six.moves import range
 from six.moves import zip

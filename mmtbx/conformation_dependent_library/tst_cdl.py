@@ -8,7 +8,7 @@ import mmtbx.monomer_library.server
 from cctbx.array_family import flex
 import mmtbx.model
 import mmtbx.monomer_library.pdb_interpretation
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 #from mmtbx import utils
 #from libtbx.utils import format_cpu_times
 

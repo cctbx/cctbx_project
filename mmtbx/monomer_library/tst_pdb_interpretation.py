@@ -8,7 +8,7 @@ from libtbx.test_utils import Exception_expected, block_show_diff, approx_equal
 import libtbx.load_env
 import iotbx.phil
 from libtbx import Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 import sys
 from cctbx.array_family import flex
