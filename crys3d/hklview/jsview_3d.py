@@ -448,6 +448,7 @@ class hklview_3d:
           return ibin
         if d > binval and d <= self.workingbinvals[ibin+1]:
           return ibin
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       raise Sorry("Should never get here")
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -848,8 +849,12 @@ mysocket.onmessage = function (e) {
 
 
   def OnConnectWebsocketClient(self, client, server):
+    #if not self.websockclient:
     self.websockclient = client
-    self.mprint( "New client:" + str( self.websockclient ) )
+    self.mprint( "Browser connected:" + str( self.websockclient ) )
+    #else:
+    #  self.mprint( "Unexpected browser connection was rejected" )
+
 
 
   def OnWebsocketClientMessage(self, client, server, message):
@@ -866,7 +871,7 @@ mysocket.onmessage = function (e) {
       self.isnewfile = False
 
 
-  def EmptyMsgQueue(self):
+  def WebBrowserMsgQueue(self):
     while True:
         sleep(1)
         if hasattr(self, "pendingmessage") and self.pendingmessage:
@@ -876,12 +881,14 @@ mysocket.onmessage = function (e) {
 
   def StartWebsocket(self):
     self.server = WebsocketServer(7894, host='127.0.0.1')
+    if not self.server:
+      raise Sorry("Could not connect socket to web browser")
     self.server.set_fn_new_client(self.OnConnectWebsocketClient)
     self.server.set_fn_message_received(self.OnWebsocketClientMessage)
     self.wst = threading.Thread(target=self.server.run_forever)
     self.wst.daemon = True
     self.wst.start()
-    self.msgqueuethrd = threading.Thread(target = self.EmptyMsgQueue )
+    self.msgqueuethrd = threading.Thread(target = self.WebBrowserMsgQueue )
     self.msgqueuethrd.daemon = True
     self.msgqueuethrd.start()
 

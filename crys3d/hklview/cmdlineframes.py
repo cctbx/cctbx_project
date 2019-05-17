@@ -238,7 +238,7 @@ class HKLViewFrame () :
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
     self.viewer = view_3d.hklview_3d( **kwds )
-    self.master_phil = libtbx.phil.parse( philstr )
+    self.master_phil = libtbx.phil.parse( masterphilstr )
     self.params = self.master_phil.fetch().extract()
     self.infostr = ""
 
@@ -249,6 +249,7 @@ class HKLViewFrame () :
       self.socket = self.context.socket(zmq.PAIR)
       self.socket.connect("tcp://127.0.0.1:7895")
       self.STOP = False
+      print "starting socketthread"
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen )
       self.msgqueuethrd.daemon = True
       self.msgqueuethrd.start()
@@ -258,10 +259,10 @@ class HKLViewFrame () :
     while not self.STOP:
       philstr = self.socket.recv()
       philstr = str(philstr)
-      self.mprint("Received phil:\n" + philstr)
+      self.mprint("Received phil string:\n" + philstr)
       new_phil = self.GetNewPhilString(philstr)
       self.update_settings(new_phil)
-      print "in zmq listen"
+      #print "in zmq listen"
       time.sleep(1)
     del self.socket
 
@@ -272,8 +273,14 @@ class HKLViewFrame () :
     if not new_phil:
       new_phil = self.master_phil.format(python_object = self.params)
     print "in update_settings"
+    diff = None
+#    try:
     working_phil = self.master_phil.fetch(source = new_phil)
     diff_phil = self.master_phil.fetch_diff(source = working_phil)
+    if len(diff_phil.all_definitions()) < 1:
+      self.mprint( "Nothing's changed")
+      return False
+
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     diff = diff_phil.extract().NGL_HKLviewer
     self.mprint("diff phil:\n" + diff_phil.as_str() )
@@ -285,14 +292,13 @@ class HKLViewFrame () :
     if hasattr(diff, "filename"):
       self.load_reflections_file(phl.filename)
 
-    if hasattr(diff, "column") or hasattr(diff, "fomcolumn"):
-      self.set_column(phl.column, phl.fomcolumn )
+    if hasattr(diff, "column") or hasattr(diff, "fomcolumn") \
+     or hasattr(diff, "mergedata") or hasattr(diff, "columnbinthresholds"):
+      if self.set_column(phl.column, phl.fomcolumn):
+        self.set_column_bin_thresholds(phl.columnbinthresholds, phl.binarray)
 
     if hasattr(diff, "spacegroupchoice"):
       self.set_spacegroup_choice(phl.spacegroupchoice)
-
-    if hasattr(diff, "columnbinthresholds"):
-      self.set_column_bin_thresholds(phl.columnbinthresholds, phl.binarray)
 
     if hasattr(diff, "cameratype"):
       self.set_camera_type(phl.cameratype)
@@ -300,6 +306,9 @@ class HKLViewFrame () :
     if hasattr(diff, "viewer"):
       self.viewer.settings = phl.viewer
       self.settings = phl.viewer
+    #except Exception, e :
+    #  print to_str(e)
+    #  sys.exit(-42)
 
     msg = self.viewer.update_settings()
     self.mprint( msg)
@@ -349,7 +358,7 @@ class HKLViewFrame () :
     details = []
     #self.merge_answer[0] = None
     self.infostr = ""
-    if (not array.is_unique_set_under_symmetry() and not self.merge_answer[0]) :
+    if (not array.is_unique_set_under_symmetry() and self.params.NGL_HKLviewer.mergedata is None):
       shouldmergestr = "The data in the selected array are not symmetry-" + \
         "unique, which usually means they are unmerged (but could also be due "+ \
         "to different indexing conventions).  Do you want to merge equivalent "+ \
@@ -368,13 +377,13 @@ class HKLViewFrame () :
           new_phil = self.GetNewPhilString(philstr)
           #working_phil = self.master_phil.fetch(source = new_phil)
           params = new_phil.extract().NGL_HKLviewer
-          if hasattr(params, "mergedata"):
-            self.merge_answer[0] = params.mergedata
+          if hasattr(params, "mergedata"): # awaiting user to tick a checkbox on the gui
+            self.params.NGL_HKLviewer.mergedata = params.mergedata
             break
           time.sleep(1)
       else:
-        self.merge_answer[0] = Inputarg(shouldmergestr).lower()[0] == "y"
-        if self.merge_answer[0]:
+        self.params.NGL_HKLviewer.mergedata = Inputarg(shouldmergestr).lower()[0] == "y"
+        if self.params.NGL_HKLviewer.mergedata:
           details.append("merged")
         else :
           details.append("unmerged data")
@@ -389,7 +398,7 @@ class HKLViewFrame () :
     array_info = group_args(
       labels=labels,
       details_str=details_str,
-      merge=self.merge_answer[0],
+      merge=self.params.NGL_HKLviewer.mergedata,
       sg=sg,
       uc=uc)
     return array, array_info
@@ -397,7 +406,7 @@ class HKLViewFrame () :
 
   def process_all_miller_arrays(self, array):
     procarrays = []
-    if not self.merge_answer[0]:
+    if self.params.NGL_HKLviewer.mergedata == False:
       self.settings.expand_to_p1 = False
       self.settings.expand_anomalous = False
     for arr in self.valid_arrays:
@@ -589,7 +598,8 @@ class HKLViewFrame () :
 
   def set_column(self, column, fomcolumn=None) :
     self.viewer.binvals = []
-    #self.viewer.iarray = column
+    if column is None:
+      return False
     self.viewer.icolourcol = column
     self.viewer.iradiicol = column
     if self.valid_arrays[column].is_complex_array():
@@ -607,6 +617,7 @@ class HKLViewFrame () :
     #self.viewer.DrawNGLJavaScript()
     #self.update_settings()
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    return True
 
 
   def SetColumn(self, column):
@@ -618,6 +629,10 @@ class HKLViewFrame () :
     self.params.NGL_HKLviewer.fomcolumn = fomcolumn
     self.update_settings()
 
+
+  def SetMergeData(self, val):
+    self.params.NGL_HKLviewer.mergedata = val
+    self.update_settings()
 
   def SetColourColumn(self, colourcol):
     self.params.NGL_HKLviewer.viewer.icolourcol = colourcol
@@ -724,7 +739,7 @@ class HKLViewFrame () :
 
 
 
-philstr = """
+masterphilstr = """
 NGL_HKLviewer {
   filename = None
     .type = path
