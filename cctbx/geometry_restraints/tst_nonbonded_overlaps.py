@@ -479,6 +479,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     self.file_to_delete.append(self.file_name2)
     self.reduce_present = libtbx.env.has_module(name="reduce")
 
+  # OK transferred
   def test_inline_angle(self):
     '''
     Test cos_vec(u,v)
@@ -574,6 +575,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       msg=outstring.format('Total clashscore',85.11,nb_overlaps_total)
       self.assertAlmostEqual(grm.normalized_nbo_all, 85.11, delta=0.1,msg=msg)
 
+  # OK transferred
   def test_1_5_overlaps(self):
     '''
     Test that 1-5 overlaps are not being counted

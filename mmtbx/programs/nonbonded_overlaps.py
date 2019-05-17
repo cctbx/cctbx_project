@@ -4,6 +4,7 @@ try:
 except ImportError:
   from libtbx.program_template import ProgramTemplate
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
+import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 import mmtbx.validation.clashscore as mvc
 from libtbx.utils import null_out
 import mmtbx.model
@@ -149,4 +150,7 @@ Example:
         log=self.logger,
         nbo_type=self.params.show_overlap_type,
         normalized_nbo=self.params.show_normalized_nbo)
+
+    #processed_nbps = pnp.manager(model = model)
+    #clashes = processed_nbps.get_clashes()
 
