@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import sys
 from iotbx.pdb import secondary_structure as ss
-from six.moves import cStringIO as  StringIO
 from libtbx.utils import Sorry, format_cpu_times
 from libtbx import test_utils
 
@@ -26,7 +25,6 @@ SHEET    3   3 3 THR A 193  LEU A 201  1
 """
 
 def exercise_01():
-  restr_groups = StringIO()
   try:
     annot = ss.annotation.from_records(records=ann_1.split('\n'))
   except Sorry as e:

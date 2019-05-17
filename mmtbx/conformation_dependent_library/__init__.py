@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 import sys
 import copy
-from string import letters, digits
+from string import digits
+from string import ascii_letters as letters
 
 import iotbx.pdb
 
