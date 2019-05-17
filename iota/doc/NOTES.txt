@@ -1,8 +1,6 @@
-IOTA v1.3.007 - plotting bugfixes
+IOTA v1.3.007 - more plotting bugfixes
 
-- Fixed a bug where the output charts were not redrawing in MatPlotLib 2.2.3
-- Fixed unit cell histogram plot to size properly and remove the black
-background
-- Fixed bug where analysis tab contents showed up squinched into the upper left
-corner of the processing notebook
-- Fixed merging output bug (now outputs results of a manual run)
+- Caught a "mean of empty slice" warning (for cosmetic reasons)
+- Moved tight_layout calls to avoid a MatPlotLib UserWarning
+- Plotting now refreshes appropriately both automatically and on mouse events in
+ wxPython3

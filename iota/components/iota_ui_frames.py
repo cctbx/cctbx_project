@@ -13,6 +13,7 @@ Description : IOTA GUI Windows / frames
 import os
 import numpy as np
 import time
+import warnings
 
 import wx
 from wx.lib.agw import ultimatelistctrl as ulc
@@ -146,6 +147,7 @@ class InputWindow(IOTABasePanel):
     dlg.Destroy()
     e.Skip()
 
+
 class MainWindow(IOTABaseFrame):
   """ Frame housing the entire app; all windows open from this one """
 
@@ -212,7 +214,8 @@ class MainWindow(IOTABaseFrame):
 
     # Instantiate input windows
     self.input_window = InputWindow(self)
-    self.main_sizer.Add(self.input_window, 1, flag=wx.ALL|wx.EXPAND, border=10)
+    self.main_sizer.Add(self.input_window, 1, flag=wx.ALL | wx.EXPAND,
+                        border=10)
     self.main_sizer.Add((-1, 20))
     self.update_input_window(input_dict=input_dict, messages=msg)
 
@@ -246,6 +249,7 @@ class MainWindow(IOTABaseFrame):
 
   def onTest(self, e):
     pass
+
   #   from libtbx.phil import find_scope
   #   scopes = [find_scope(self.iota_phil, 'description'),
   #             find_scope(self.iota_phil, 'output'),
@@ -258,7 +262,7 @@ class MainWindow(IOTABaseFrame):
   #   test.Destroy()
 
   def onItemInserted(self, e):
-    print (self.input_window.input.all_data_images)
+    print(self.input_window.input.all_data_images)
 
   def onReset(self, e):
     self.reset_settings()
@@ -379,7 +383,8 @@ class MainWindow(IOTABaseFrame):
 
     # Get list of inputs from input window
     idxs = self.input_window.input.ctr.GetItemCount()
-    inputs = [self.input_window.input.ctr.GetItemData(i).path for i in range(idxs)]
+    inputs = [self.input_window.input.ctr.GetItemData(i).path for i in
+              range(idxs)]
 
     # Set all main window params (including inputs)
     self.gparams = self.iota_phil.extract()
@@ -393,10 +398,10 @@ class MainWindow(IOTABaseFrame):
     ok_init, self.info, msg = init.initialize_new_run(phil=self.iota_phil,
                                                       target_phil=self.target_phil)
 
-
   def OnAboutBox(self, e):
     """ About dialog """
     from wx import adv
+
     info = adv.AboutDialogInfo()
     info.SetName('IOTA')
     info.SetVersion(iota_version)
@@ -454,7 +459,8 @@ class MainWindow(IOTABaseFrame):
       # Re-open processing window with results of the run
       if recovery_mode == 0:
         title = 'Image Processing Run {}'.format(selected[2])
-        self.proc_window = ProcWindow(self, -1, title=title, phil=self.iota_phil)
+        self.proc_window = ProcWindow(self, -1, title=title,
+                                      phil=self.iota_phil)
         self.proc_window.recover(int_path=info.int_base,
                                  status=selected[0],
                                  params=self.gparams,
@@ -588,7 +594,7 @@ class MainWindow(IOTABaseFrame):
       if len(input_dict['imagepaths']) >= 10:
         n_input = len([i for i in os.listdir(self.gparams.output)
                        if i.startswith('input_')])
-        input_fn = "input_{:04d}.lst".format(n_input+1)
+        input_fn = "input_{:04d}.lst".format(n_input + 1)
         input_list_file = os.path.join(self.gparams.output, input_fn)
         with open(input_list_file, 'w') as lf:
           for f in input_dict['imagefiles']:
@@ -597,7 +603,6 @@ class MainWindow(IOTABaseFrame):
       else:
         for path in input_dict['imagepaths']:
           self.input_window.input.add_item(path)
-
 
   def onQuit(self, e):
 
@@ -610,7 +615,6 @@ class MainWindow(IOTABaseFrame):
         info = self.proc_window.info
         info.status = 'aborted'
         info.export_json()
-
 
         # Check if proc_thread exists
         if hasattr(self.proc_window, 'proc_thread'):
@@ -627,6 +631,7 @@ class MainWindow(IOTABaseFrame):
               continue
 
         import shutil
+
         try:
           shutil.rmtree(self.proc_window.info.tmp_base)
         except Exception:
@@ -636,6 +641,7 @@ class MainWindow(IOTABaseFrame):
       pass
 
     self.Close()
+
 
 # ----------------------------  Processing Window ---------------------------  #
 
@@ -648,8 +654,11 @@ class LogTab(wx.Panel):
                                       style=rt.RE_MULTILINE |
                                             rt.RE_READONLY |
                                             wx.TE_DONTWRAP)
-    self.log_window.SetFont(wx.Font(9, wx.FONTFAMILY_TELETYPE, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, False))
-    self.log_sizer.Add(self.log_window, proportion=1, flag= wx.EXPAND | wx.ALL, border=10)
+    self.log_window.SetFont(
+      wx.Font(9, wx.FONTFAMILY_TELETYPE, wx.FONTSTYLE_NORMAL,
+              wx.FONTWEIGHT_BOLD, False))
+    self.log_sizer.Add(self.log_window, proportion=1, flag=wx.EXPAND | wx.ALL,
+                       border=10)
 
     buttons = {'forward': (-1, 'Forward'),
                'reverse': (-1, 'Reverse')}
@@ -747,7 +756,7 @@ class ProcessingTab(wx.Panel):
 
     self.hkl_view_axis = 'l'
     self.user_sg = 'P1'
-    self.pick = {'image':None, 'index':0, 'axis':None, 'picked':False}
+    self.pick = {'image': None, 'index': 0, 'axis': None, 'picked': False}
     self.proc_fnames = None
 
     self.processed = []
@@ -755,6 +764,8 @@ class ProcessingTab(wx.Panel):
     self.nsref_y = []
     self.res_x = []
     self.res_y = []
+
+    self.dblclick = False
 
     self.main_fig_sizer = wx.GridBagSizer(0, 0)
 
@@ -798,7 +809,7 @@ class ProcessingTab(wx.Panel):
 
     # Charts
     self.int_figure = Figure(figsize=(1, 2.5))
-    self.int_figure.patch.set_visible(False)    # create transparent background
+    self.int_figure.patch.set_visible(False)  # create transparent background
     int_gsp = gridspec.GridSpec(2, 1, wspace=0, hspace=0)
 
     # Resolution / No. strong reflections chart
@@ -808,15 +819,17 @@ class ProcessingTab(wx.Panel):
 
     self.nsref_axes = self.int_figure.add_subplot(int_gsp[1])
     self.nsref_axes.set_xlabel('Frame')
-    self.nsref_axes.set_ylabel('Reflections (I/{0}(I) > {1})'
-                               ''.format(r'$\sigma$', self.gparams.image_import.strong_sigma))
+    self.nsref_axes.set_ylabel('No. Spots')
+    # self.nsref_axes.set_ylabel('Spots (I/{0}(I)>{1})'
+    #                            ''.format(r'$\sigma$',
+    #                                      self.gparams.image_import.strong_sigma))
 
     # Initialize blank charts, medians, and picks
     self.res_chart = self.res_axes.plot([], [], 'o', c='#0571b0', zorder=1,
                                         mec='black', picker=5)[0]
     self.res_med = self.res_axes.axhline(0, zorder=0, c='#0571b0', ls=':')
     self.res_pick, = self.res_axes.plot(0, 0, 'o', zorder=2, ms=12, alpha=0.5,
-                                        mec='black',c='yellow', visible=False)
+                                        mec='black', c='yellow', visible=False)
     self.nsref_chart = self.nsref_axes.plot([], [], 'o', c='#ca0020', zorder=1,
                                             mec='black', picker=5)[0]
     self.nsref_med = self.nsref_axes.axhline(0, zorder=0, c='#ca0020', ls=':')
@@ -831,10 +844,11 @@ class ProcessingTab(wx.Panel):
     self.btn_left.Show()
     self.btn_viewer.Show()
 
-    self.int_figure.set_tight_layout(True)
     self.int_canvas = FigureCanvas(self.int_panel, -1, self.int_figure)
     int_sizer.Add(self.int_canvas, 1, flag=wx.EXPAND)
     self.int_canvas.draw()
+    self.int_figure.set_tight_layout(True)
+
 
     # Wilson (<I> vs. res) plot
     self.wp_panel = wx.Panel(self)
@@ -856,14 +870,14 @@ class ProcessingTab(wx.Panel):
     self.hkl_panel.SetSizer(hkl_sizer)
 
     self.hkl_figure = Figure(figsize=(0.3, 0.3))
-    self.hkl_figure.patch.set_visible(False)    # create transparent background
+    self.hkl_figure.patch.set_visible(False)  # create transparent background
 
     self.hkl_axes = self.hkl_figure.add_subplot(111, frameon=False)
     self.hkl_axes.set_xticks([])
     self.hkl_axes.set_yticks([])
 
     self.hkl_canvas = FigureCanvas(self.hkl_panel, -1, self.hkl_figure)
-    hkl_sizer.Add(self.hkl_canvas, 1,flag=wx.EXPAND)
+    hkl_sizer.Add(self.hkl_canvas, 1, flag=wx.EXPAND)
 
     self.hkl_sg = ct.OptionCtrl(self.hkl_panel, items=[('sg', 'P1')],
                                 checkbox=True, checkbox_label='Space Group: ',
@@ -888,9 +902,9 @@ class ProcessingTab(wx.Panel):
     self.bracket = mpatches.Rectangle((0, 0), 1, 1, fc='white',
                                       ec='black', lw=2, visible=False)
 
-    self.proc_figure.set_tight_layout(True)
     self.proc_canvas = FigureCanvas(self.proc_panel, -1, self.proc_figure)
     self.proc_canvas.draw()
+    self.proc_figure.set_tight_layout(True)
     proc_sizer.Add(self.proc_canvas, flag=wx.EXPAND | wx.BOTTOM, border=10)
 
     self.main_fig_sizer.Add(self.int_panel, pos=(0, 0), span=(2, 6),
@@ -914,18 +928,36 @@ class ProcessingTab(wx.Panel):
 
     cid = self.int_canvas.mpl_connect('pick_event', self.on_pick)
     sid = self.proc_canvas.mpl_connect('pick_event', self.on_bar_pick)
-    xid = self.int_canvas.mpl_connect('button_press_event', self.on_button_press)
+    xid = self.int_canvas.mpl_connect('button_press_event',
+                                      self.on_button_press)
     xid = self.hkl_canvas.mpl_connect('button_press_event', self.on_hkl_press)
-    xid = self.proc_canvas.mpl_connect('button_press_event', self.on_button_press)
+    xid = self.proc_canvas.mpl_connect('button_press_event',
+                                       self.on_button_press)
     xid = self.proc_canvas.mpl_connect('button_release_event',
                                        self.on_button_release)
 
     self.SetSizer(self.main_fig_sizer)
 
+  def _update_canvas(self, canvas, draw_idle=True):
+    """ Update a canvas (passed as arg)
+    :param canvas: A canvas to be updated via draw_idle
+    """
+    # Draw_idle is useful for regular updating of the chart; straight-up draw
+    # without flush_events() will have to be used when buttons are clicked to
+    # avoid recursive calling of wxYield
+    if draw_idle:
+      canvas.draw_idle()
+      try:
+        canvas.flush_events()
+      except (NotImplementedError, AssertionError):
+        pass
+    else:
+      canvas.draw()
+    self.Refresh()
+
   def onSGTextEnter(self, e):
     self.user_sg = str(self.hkl_sg.sg.GetValue())
     self.draw_measured_indices()
-    self.Layout()
 
   def onSGCheckbox(self, e):
     if e.IsChecked():
@@ -938,7 +970,6 @@ class ProcessingTab(wx.Panel):
     else:
       self.user_sg = 'P1'
     self.draw_measured_indices()
-    self.Layout()
 
   def draw_summary(self):
 
@@ -961,7 +992,7 @@ class ProcessingTab(wx.Panel):
           patches.append(None)
 
       self.sum_axes.clear()
-      self.sum_axes.axis([0, 1.01*n_img, -0.5, 0.75])
+      self.sum_axes.axis([0, 1.01 * n_img, -0.5, 0.75])
       self.sum_axes.axis('off')
 
       for i in range(len(nonzero)):
@@ -1001,19 +1032,17 @@ class ProcessingTab(wx.Panel):
         self.bracket.set_bounds(px, py, pw, ph)
         self.sum_axes.add_patch(self.bracket)
 
-      self.proc_canvas.draw()
-      self.Layout()
+      self._update_canvas(canvas=self.proc_canvas)
+
     except ValueError as e:
       print('SUMMARY PLOT ERROR: ', e)
       return
-
 
   def draw_plots(self):
 
     self.draw_integration_plots()
     self.draw_b_factors()
     self.draw_measured_indices()
-    self.Layout()
 
   def draw_integration_plots(self):
 
@@ -1028,8 +1057,10 @@ class ProcessingTab(wx.Panel):
         # Strong reflections
         if self.info.stats['strong']['lst']:
           idx, filenames, spt = zip(*self.info.stats['strong']['lst'])
-          self.nsref_x = np.append(self.nsref_x, np.array(idx).astype(np.double))
-          self.nsref_y = np.append(self.nsref_y, np.array(spt).astype(np.double))
+          self.nsref_x = np.append(self.nsref_x,
+                                   np.array(idx).astype(np.double))
+          self.nsref_y = np.append(self.nsref_y,
+                                   np.array(spt).astype(np.double))
 
         # Resolution
         if self.info.stats['res']['lst']:
@@ -1045,7 +1076,7 @@ class ProcessingTab(wx.Panel):
         else:
           return
     except ValueError as e:
-      print ('IOTA PLOTTING (PROC) ERROR: ', e)
+      print('IOTA PLOTTING (PROC) ERROR: ', e)
     else:
       # Resolution per frame
       res_m = np.isfinite(self.res_y)
@@ -1073,8 +1104,7 @@ class ProcessingTab(wx.Panel):
       self.nsref_axes.set_ylim(ymin=0, ymax=nsref_ymax)
       self.nsref_axes.draw_artist(self.nsref_chart)
 
-      self.int_canvas.draw()
-      # self.int_canvas.flush_events()
+      self._update_canvas(canvas=self.int_canvas)
 
   def draw_b_factors(self):
     self.wp_axes.clear()
@@ -1085,8 +1115,7 @@ class ProcessingTab(wx.Panel):
       self.wp_axes.hist(self.info.b_factors, 50, density=False,
                         facecolor='#4575b4', histtype='stepfilled')
 
-    self.wp_canvas.draw()
-    # self.wp_canvas.flush_events()
+    self._update_canvas(canvas=self.wp_canvas)
 
   def draw_measured_indices(self):
     # Draw a h0, k0, or l0 slice of merged data so far
@@ -1097,7 +1126,8 @@ class ProcessingTab(wx.Panel):
       pass
 
     try:
-      hkl_slice = self.info.get_hkl_slice(sg=self.user_sg, axis=self.hkl_view_axis)
+      hkl_slice = self.info.get_hkl_slice(sg=self.user_sg,
+                                          axis=self.hkl_view_axis)
     except AttributeError:
       return
 
@@ -1149,12 +1179,20 @@ class ProcessingTab(wx.Panel):
     try:
       xmax = abs(max(x, key=abs))
       ymax = abs(max(y, key=abs))
+
+      # Zero values will result in a matplotlib UserWarning; set to an
+      # arbitrarily small number to avoid this
+      if xmax == 0:
+        xmax += 0.00001
+      if ymax == 0:
+        ymax += 0.00001
+
       self.hkl_axes.set_xlim(xmin=-xmax, xmax=xmax)
       self.hkl_axes.set_ylim(ymin=-ymax, ymax=ymax)
     except ValueError:
       pass
 
-    vmax = 2 if np.max(freq) <=2 else np.max(freq)
+    vmax = 2 if np.max(freq) <= 2 else np.max(freq)
     norm = colors.Normalize(vmin=1, vmax=vmax)
     self.hkl_colorbar = self.hkl_figure.colorbar(hkl_scatter,
                                                  ax=self.hkl_axes,
@@ -1163,8 +1201,7 @@ class ProcessingTab(wx.Panel):
                                                  orientation='vertical',
                                                  aspect=40)
 
-    self.hkl_canvas.draw()
-    # self.hkl_canvas.flush_events()
+    self._update_canvas(canvas=self.hkl_canvas)
 
   def onImageView(self, e):
     filepath = self.info_txt.GetValue()
@@ -1229,14 +1266,14 @@ class ProcessingTab(wx.Panel):
           self.res_pick.set_data(idx, res)
         else:
           search = True
-    # self.Layout()
-    self.int_canvas.draw()
+
+    self._update_canvas(canvas=self.int_canvas, draw_idle=False)
 
   def on_pick(self, event):
     self.bracket.set_visible(False)
     self.nsref_pick.set_visible(True)
     self.res_pick.set_visible(True)
-    self.proc_canvas.draw()
+    self._update_canvas(canvas=self.proc_canvas, draw_idle=False)
 
     idx = int(round(event.mouseevent.xdata))
     entry = [i for i in self.processed if i[0] == idx]
@@ -1252,16 +1289,15 @@ class ProcessingTab(wx.Panel):
       self.nsref_pick.set_data(img_idx, spt)
       self.res_pick.set_data(img_idx, res)
       self.toggle_pick(enabled=True, img=img)
-    # self.Layout()
-    self.int_canvas.draw()
 
+    self._update_canvas(canvas=self.int_canvas, draw_idle=False)
 
   def on_bar_pick(self, event):
-    self.nsref_pick.set_visible(False)
-    self.res_pick.set_visible(False)
+    # self.nsref_pick.set_visible(False)
+    # self.res_pick.set_visible(False)
+    # self._update_canvas(canvas=self.int_canvas, draw_idle=False)
+
     self.show_image_group(e=event.mouseevent)
-    self.draw_summary()
-    self.int_canvas.draw()
 
   def show_image_group(self, e):
     self.pick['picked'] = True
@@ -1269,6 +1305,7 @@ class ProcessingTab(wx.Panel):
       self.pick['axis'] = 'summary'
       self.pick['index'] = e.xdata
       self.bracket.set_visible(True)
+      self.draw_summary()
     self.toggle_pick(enabled=False)
 
   def toggle_pick(self, enabled=False, img=''):
@@ -1285,7 +1322,8 @@ class ProcessingTab(wx.Panel):
       self.btn_right.Disable()
       self.btn_viewer.Disable()
 
-    self.Layout()
+    self._update_canvas(canvas=self.int_canvas, draw_idle=False)
+    self.Refresh()
 
   def on_hkl_press(self, event):
     if event.inaxes == self.hkl_axes:
@@ -1296,14 +1334,14 @@ class ProcessingTab(wx.Panel):
       elif self.hkl_view_axis == 'l':
         self.hkl_view_axis = 'h'
       self.draw_measured_indices()
-    self.Layout()
+    self.Refresh()
 
   def on_button_press(self, event):
     if event.button != 1:
       self.pick['picked'] = False
       if event.inaxes == self.sum_axes:
         self.bracket.set_visible(False)
-        self.draw_summary()
+        self._update_canvas(canvas=self.proc_canvas, draw_idle=False)
       elif event.inaxes in (self.nsref_axes, self.res_axes):
         self.nsref_pick.set_visible(False)
         self.res_pick.set_visible(False)
@@ -1311,17 +1349,22 @@ class ProcessingTab(wx.Panel):
         self.btn_left.Disable()
         self.btn_right.Disable()
         self.btn_viewer.Disable()
+        self._update_canvas(canvas=self.int_canvas, draw_idle=False)
 
     if event.dblclick:
       self.dblclick = True
     else:
       self.dblclick = False
-    self.Layout()
+
+    self.Refresh()
 
   def on_button_release(self, event):
     if event.button == 1 and self.dblclick:
-      self.show_image_group(e=event)
+      self.dblclick = False
+      if not self.bracket.get_visible():
+        self.show_image_group(e=event)
       self.view_proc_images()
+
 
 class LiveAnalysisTab(d.ScrolledPanel):
   def __init__(self, parent, gparams=None):
@@ -1352,11 +1395,11 @@ class LiveAnalysisTab(d.ScrolledPanel):
     self.b_axes = self.uc_figure.add_subplot(uc_gsub[1], sharey=self.a_axes)
     self.b_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.b_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    self.b_axes.set_yticklabels(list(''*5), visible=False)
+    self.b_axes.set_yticklabels(list('' * 5), visible=False)
     self.c_axes = self.uc_figure.add_subplot(uc_gsub[2], sharey=self.a_axes)
     self.c_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.c_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    self.c_axes.set_yticklabels(list(''*5), visible=False)
+    self.c_axes.set_yticklabels(list('' * 5), visible=False)
     self.alpha_axes = self.uc_figure.add_subplot(uc_gsub[3])
     self.alpha_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.alpha_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
@@ -1364,12 +1407,12 @@ class LiveAnalysisTab(d.ScrolledPanel):
                                                 sharey=self.alpha_axes)
     self.beta_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.beta_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    self.beta_axes.set_yticklabels(list(''*5), visible=False)
+    self.beta_axes.set_yticklabels(list('' * 5), visible=False)
     self.gamma_axes = self.uc_figure.add_subplot(uc_gsub[5],
                                                  sharey=self.alpha_axes)
     self.gamma_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.gamma_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    self.gamma_axes.set_yticklabels(list(''*5), visible=False)
+    self.gamma_axes.set_yticklabels(list('' * 5), visible=False)
 
     self.uc_canvas = FigureCanvas(self.uc_panel, -1, self.uc_figure)
     self.uc_figure.set_tight_layout(True)
@@ -1461,7 +1504,7 @@ class LiveAnalysisTab(d.ScrolledPanel):
                               label_style='bold')
       self.tb1_box_sizer.Add(self.tb1, 1, flag=wx.EXPAND | wx.ALL, border=10)
     except Exception as e:
-      print ('PRIME PLOTTER ERROR: ', e)
+      print('PRIME PLOTTER ERROR: ', e)
 
   def calculate_uc_histogram(self, a, axes, xticks_loc='top', set_ylim=False):
     # n, bins = np.histogram(a, 50)
@@ -1487,7 +1530,6 @@ class LiveAnalysisTab(d.ScrolledPanel):
     elif xticks_loc == 'bottom':
       axes.xaxis.tick_bottom()
 
-
   def draw_uc_histograms(self):
     try:
       # Unit cell histograms
@@ -1505,10 +1547,10 @@ class LiveAnalysisTab(d.ScrolledPanel):
       self.a_axes.set_ylabel(edge_ylabel)
 
       self.calculate_uc_histogram(b, self.b_axes)
-      self.b_axes.set_yticklabels(list(''*5), visible=False)
+      self.b_axes.set_yticklabels(list('' * 5), visible=False)
 
       self.calculate_uc_histogram(c, self.c_axes)
-      self.c_axes.set_yticklabels(list(''*5), visible=False)
+      self.c_axes.set_yticklabels(list('' * 5), visible=False)
 
       self.calculate_uc_histogram(alpha, self.alpha_axes,
                                   xticks_loc='bottom', set_ylim=True)
@@ -1517,15 +1559,15 @@ class LiveAnalysisTab(d.ScrolledPanel):
       self.alpha_axes.set_ylabel(ang_ylabel)
 
       self.calculate_uc_histogram(beta, self.beta_axes, xticks_loc='bottom')
-      self.beta_axes.set_yticklabels(list(''*5), visible=False)
+      self.beta_axes.set_yticklabels(list('' * 5), visible=False)
 
       self.calculate_uc_histogram(gamma, self.gamma_axes, xticks_loc='bottom')
-      self.gamma_axes.set_yticklabels(list(''*5), visible=False)
+      self.gamma_axes.set_yticklabels(list('' * 5), visible=False)
 
       self.uc_canvas.draw()
 
     except ValueError as e:
-      print ('UC HISTOGRAM ERROR: ', e)
+      print('UC HISTOGRAM ERROR: ', e)
 
 
 class SummaryTab(d.ScrolledPanel):
@@ -1538,8 +1580,10 @@ class SummaryTab(d.ScrolledPanel):
 
     summary_sizer = wx.BoxSizer(wx.VERTICAL)
 
-    sfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
-    bfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
+    sfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
+                    wx.FONTWEIGHT_NORMAL)
+    bfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
+                    wx.FONTWEIGHT_BOLD)
     self.SetFont(bfont)
 
     # Run information
@@ -1571,7 +1615,7 @@ class SummaryTab(d.ScrolledPanel):
     # Button & binding for heatmap display
     heatmap_bmp = bitmaps.fetch_custom_icon_bitmap('heatmap24')
     self.int_heatmap = ct.GradButton(self,
-                                     bmp = heatmap_bmp,
+                                     bmp=heatmap_bmp,
                                      label='  Spotfinding Heatmap',
                                      size=(250, -1))
     self.int_box_grid.Add(self.int_heatmap, pos=(0, 1), flag=wx.ALIGN_RIGHT)
@@ -1597,7 +1641,8 @@ class SummaryTab(d.ScrolledPanel):
                                          scale=(24, 24))
     self.dat_reshist = ct.GradButton(self,
                                      bmp=hist_bmp,
-                                     label='  Resolution Histogram', size=(250, -1))
+                                     label='  Resolution Histogram',
+                                     size=(250, -1))
     beamXY_bmp = bitmaps.fetch_custom_icon_bitmap('scatter_plot_24')
     self.dat_beamxy = ct.GradButton(self,
                                     bmp=beamXY_bmp,
@@ -1648,8 +1693,8 @@ class SummaryTab(d.ScrolledPanel):
     cluster_bmp = bitmaps.fetch_custom_icon_bitmap('distance_difference',
                                                    scale=(24, 24))
     self.smr_runcluster = ct.GradButton(self,
-                                      bmp=cluster_bmp,
-                                      label='  Run CLUSTER', size=(250, -1))
+                                        bmp=cluster_bmp,
+                                        label='  Run CLUSTER', size=(250, -1))
 
     self.smr_box_grid.Add(self.smr_runcluster, pos=(0, 1), flag=wx.ALIGN_RIGHT)
     self.smr_box_grid.Add(self.smr_runprime, pos=(1, 1), flag=wx.ALIGN_RIGHT)
@@ -1666,6 +1711,7 @@ class SummaryTab(d.ScrolledPanel):
 
   def onPRIME(self, e):
     from prime.postrefine.mod_gui_init import PRIMEWindow
+
     self.prime_window = PRIMEWindow(None, -1, title='PRIME',
                                     prefix=self.gparams.advanced.prime_prefix)
     self.prime_window.load_script(out_dir=self.info.int_base)
@@ -1676,10 +1722,12 @@ class SummaryTab(d.ScrolledPanel):
   def onCLUSTER(self, e):
     cluster_dlg = d.ClusterDialog(self)
     cluster_dlg.write_files.SetValue(self.gparams.analysis.cluster_write_files)
-    cluster_dlg.cluster_threshold.ctr.SetValue(self.gparams.analysis.cluster_threshold)
+    cluster_dlg.cluster_threshold.ctr.SetValue(
+      self.gparams.analysis.cluster_threshold)
     cluster_dlg.cluster_limit.ctr.SetValue(self.gparams.analysis.cluster_limit)
     if self.gparams.analysis.cluster_n_images > 0:
-      cluster_dlg.cluster_n_images.ctr.SetValue(self.gparams.analysis.cluster_n_images)
+      cluster_dlg.cluster_n_images.ctr.SetValue(
+        self.gparams.analysis.cluster_n_images)
 
     if (cluster_dlg.ShowModal() == wx.ID_OK):
       self.cluster_panel.Show()
@@ -1689,7 +1737,8 @@ class SummaryTab(d.ScrolledPanel):
       self.gparams.analysis.cluster_threshold = cluster_dlg.cluster_threshold.ctr.GetValue()
       self.gparams.analysis.cluster_limit = cluster_dlg.cluster_limit.ctr.GetValue()
       if cluster_dlg.cluster_n_images.toggle.GetValue():
-        self.gparams.analysis.cluster_n_images = int(cluster_dlg.cluster_n_images.ctr.GetValue())
+        self.gparams.analysis.cluster_n_images = int(
+          cluster_dlg.cluster_n_images.ctr.GetValue())
       else:
         self.gparams.analysis.cluster_n_images = 0
 
@@ -1700,7 +1749,7 @@ class SummaryTab(d.ScrolledPanel):
 
   def report_clustering_results(self, clusters):
     self.cluster_info.ctr.DeleteAllItems()
-    clusters = sorted(clusters, key=lambda i:i['number'], reverse=True)
+    clusters = sorted(clusters, key=lambda i: i['number'], reverse=True)
     for c in clusters:
       i = clusters.index(c)
       idx = self.cluster_info.ctr.InsertStringItem(i, str(c['number']))
@@ -1872,7 +1921,8 @@ class ProcWindow(IOTABaseFrame):
                                         shortHelp='Monitor Mode')
     self.tb_btn_analysis = self.add_tool(label='Analysis',
                                          kind=wx.ITEM_CHECK,
-                                         bitmap=('mimetypes', 'spreadsheet', 32),
+                                         bitmap=(
+                                         'mimetypes', 'spreadsheet', 32),
                                          shortHelp='Toggle Runtime Analysis Tab')
     self.set_tool_state(self.tb_btn_resume, False)
     self.realize_toolbar()
@@ -1907,7 +1957,7 @@ class ProcWindow(IOTABaseFrame):
     self.main_sizer.Add(self.status_panel, flag=wx.EXPAND | wx.ALL, border=3)
     self.main_sizer.Add(self.proc_panel, 1, flag=wx.EXPAND | wx.ALL, border=3)
 
-    #Processing status bar
+    # Processing status bar
     self.sb = self.CreateStatusBar()
     self.sb.SetFieldsCount(2)
     self.sb.SetStatusWidths([-1, -2])
@@ -1980,7 +2030,6 @@ class ProcWindow(IOTABaseFrame):
       self.proc_nb.DeletePage(2)
       self.proc_nb.RemovePage(2)
 
-
   def onMonitor(self, e):
     if self.toolbar.GetToolState(self.tb_btn_monitor.GetId()):
       self.monitor_mode = True
@@ -2013,7 +2062,7 @@ class ProcWindow(IOTABaseFrame):
     if os.path.isfile(self.tmp_abort_file):
       os.remove(self.tmp_abort_file)
     if os.path.isfile(self.tmp_aborted_file):
-        os.remove(self.tmp_aborted_file)
+      os.remove(self.tmp_aborted_file)
     self.abort_initiated = False
     self.run_aborted = False
 
@@ -2047,7 +2096,8 @@ class ProcWindow(IOTABaseFrame):
     font.SetWeight(wx.FONTWEIGHT_NORMAL)
     self.status_txt.SetFont(font)
     self.status_txt.SetForegroundColour('black')
-    self.status_txt.SetLabel('Resuming run #{} ...'.format(self.info.run_number))
+    self.status_txt.SetLabel(
+      'Resuming run #{} ...'.format(self.info.run_number))
 
     # Run processing, etc.
     self.proc_timer.Start(3000)
@@ -2172,7 +2222,7 @@ class ProcWindow(IOTABaseFrame):
   def adjust_timer(self, new_interval):
     self.proc_timer.Stop()
     self.proc_timer.Start(new_interval)
-    print ("IOTA: TIMER SET TO {} SECONDS".format(new_interval/1000))
+    print("IOTA: TIMER SET TO {} SECONDS".format(new_interval / 1000))
 
   def onProcTimer(self, e):
 
@@ -2182,8 +2232,11 @@ class ProcWindow(IOTABaseFrame):
       self.info = ProcInfo.from_json(self.info.info_file)
       return
 
-    sw_means = np.mean(self.plotter_time) + np.mean(self.obj_reader_time)
-    timer_adjustment = np.ceil(sw_means*5/1000)*1000
+    # Catch mean of empty slice warning (for cosmetic reasons)
+    with warnings.catch_warnings():
+      warnings.simplefilter("ignore", category=RuntimeWarning)
+      sw_means = np.mean(self.plotter_time) + np.mean(self.obj_reader_time)
+    timer_adjustment = np.ceil(sw_means * 5 / 1000) * 1000
     if not (
             np.isnan(timer_adjustment) or
             timer_adjustment == self.proc_timer.GetInterval()
@@ -2209,7 +2262,7 @@ class ProcWindow(IOTABaseFrame):
 
       if self.run_aborted:
         self.status_txt.SetLabel('ABORTED BY USER!')
-        print ("IOTA: RUN ABORTED!")
+        print("IOTA: RUN ABORTED!")
         self.finish_process()
     else:
       self.run_aborted = False
@@ -2219,14 +2272,15 @@ class ProcWindow(IOTABaseFrame):
         self.monitor_filesystem()
       else:
         prcd = len(self.info.categories['total'][0]) - \
-                    len(self.info.categories['not_processed'][0])
+               len(self.info.categories['not_processed'][0])
         intd = len(self.info.categories['integrated'][0])
         update = '- {} processed ({} integrated)'.format(prcd, intd)
         self.status_txt.SetLabel('Processing {} images {}'
                                  ''.format(self.info.n_input_images, update))
 
         # Instantiate and start processing thread
-        if not (hasattr(self, 'object_reader') and self.object_reader.is_alive()):
+        if not (hasattr(self,
+                        'object_reader') and self.object_reader.is_alive()):
           self.obj_sw = wx.StopWatch()
           self.object_reader = thr.ObjectReaderThread(self, info=self.info)
           self.object_reader.name = 'IOTAObjectReader'
@@ -2281,7 +2335,8 @@ class ProcWindow(IOTABaseFrame):
   def get_images_from_filesystem(self):
     img_finder = thr.ImageFinderThread(self,
                                        input=self.gparams.input,
-                                       input_list=self.info.categories['total'][0])
+                                       input_list=self.info.categories['total'][
+                                         0])
     img_finder.start()
 
   def onFinishedProcess(self, e):
@@ -2303,7 +2358,6 @@ class ProcWindow(IOTABaseFrame):
 
     if not self.recovery:
       self.obj_reader_time.append(self.obj_sw.Time())
-
 
   def finish_process(self):
     # Stop timer
@@ -2337,6 +2391,7 @@ class ProcWindow(IOTABaseFrame):
       end_color = 'blue'
       if successfully_processed > 0:
         from iota.components.iota_analysis import Analyzer
+
         analyzer = Analyzer(info=self.info, params=self.gparams, gui_mode=True)
         self.info = analyzer.run_all(get_results=False)
         end_msg = 'DONE'
@@ -2345,9 +2400,9 @@ class ProcWindow(IOTABaseFrame):
 
     # Final analysis and display summary
     if (
-      not self.run_aborted                            and
-      len(self.info.categories['integrated'][0]) > 0  and
-      len(self.info.categories['not_processed'][0]) == 0
+            not self.run_aborted and
+            len(self.info.categories['integrated'][0]) > 0 and
+            len(self.info.categories['not_processed'][0]) == 0
     ):
       self.set_tool_state(tool=self.tb_btn_resume, enable=False)
       self.summary_tab = SummaryTab(self.proc_nb, self.info, self.gparams)
@@ -2356,6 +2411,7 @@ class ProcWindow(IOTABaseFrame):
       self.summary_tab.update()
 
       import shutil
+
       try:
         shutil.rmtree(self.info.tmp_base)
       except Exception:
