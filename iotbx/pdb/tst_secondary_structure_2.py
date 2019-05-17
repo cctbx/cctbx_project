@@ -3,7 +3,7 @@ from libtbx import test_utils
 import sys
 from iotbx.pdb.tst_secondary_structure import pdb_1ywf_sample_strings, \
     get_annotation
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 
 def tst_parsing_phil_single_helix():

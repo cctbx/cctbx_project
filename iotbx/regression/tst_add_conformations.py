@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import contains_lines, Exception_expected
 from libtbx.utils import Sorry
 import libtbx.load_env
-import cStringIO
+from six.moves import cStringIO as StringIO
 import os
 
 def exercise():
@@ -14,10 +14,10 @@ def exercise():
     print("phenix_regression not available, skipping test.")
     return
   from iotbx.command_line.pdb_add_conformations import run
-  out = cStringIO.StringIO()
+  out = StringIO()
   run([pdb_file], out=out)
   assert contains_lines(out.getvalue(), "Modified model: 4254 atoms")
-  out = cStringIO.StringIO()
+  out = StringIO()
   run([pdb_file, "atom_selection=\"chain A and not resname HOH\""], out=out)
   assert contains_lines(out.getvalue(), "Modified model: 3990 atoms")
   run([pdb_file, "new_occ=0.4", "atom_selection=\"resseq 1:275\""], out=out)
@@ -26,7 +26,7 @@ def exercise():
   atoms = pdb_in.input.atoms()
   occ = atoms.extract_occ()
   assert (occ.count(0.6) == occ.count(0.4) == 1858)
-  out = cStringIO.StringIO()
+  out = StringIO()
   run([pdb_file, "n_confs=3", "new_occ=0.25"], out=out)
   pdb_in = file_reader.any_file("1ywf_split.pdb", force_type="pdb").file_object
   assert contains_lines(out.getvalue(), """\

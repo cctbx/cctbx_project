@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Abort
 from libtbx import group_args
-import cStringIO
+from six.moves import cStringIO as StringIO
 import re
 import operator
 import os.path
@@ -940,7 +940,7 @@ def merge_sequence_files(file_names, output_file, sequences=(),
   assert (len(file_names) > 0) or (len(sequences) > 0)
   if (len(file_names)==1) and (len(sequences)==0) and (not force_new_file):
     return file_names[0]
-  seq_out = cStringIO.StringIO()
+  seq_out =StringIO()
   for seq_file in file_names :
     objects, non_compliant = any_sequence_format(seq_file)
     if (objects is None):
