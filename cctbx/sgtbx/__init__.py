@@ -26,6 +26,8 @@ from boost import rational
 import random
 import sys
 
+boost.python.inject(ext.space_group_symbol_iterator, boost.python.py3_make_iterator)
+
 def vec3_rat_from_str(s):
   flds = s.split(",")
   assert len(flds) == 3

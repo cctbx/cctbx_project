@@ -276,3 +276,7 @@ def process_docstring_options(env_var="BOOST_ADAPTBX_DOCSTRING_OPTIONS"):
       + '    %s="show_user_defined=True,show_signatures=False"' % env_var)
 
 docstring_options = process_docstring_options()
+
+class py3_make_iterator:
+  def __next__(obj):
+    return obj.next()

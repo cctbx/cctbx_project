@@ -1742,3 +1742,6 @@ def unit_crystal_symmetry():
   uc=uctbx.unit_cell((1,1,1,90,90,90))
   from cctbx import crystal
   return crystal.symmetry(unit_cell=uc,space_group_info=sg)
+
+boost.python.inject(ext.neighbors_simple_pair_generator, boost.python.py3_make_iterator)
+boost.python.inject_into(ext.neighbors_fast_pair_generator, boost.python.py3_make_iterator)
