@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 from scitbx.math import superpose
 from scitbx.array_family import flex
 from scitbx import matrix

@@ -4,7 +4,7 @@ from mmtbx.conformation_dependent_library import generate_protein_threes
 from scitbx.matrix import rotate_point_around_axis
 from mmtbx.validation import ramalyze
 import math
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from mmtbx.validation.ramalyze import res_types
 from scitbx.math import dihedral_angle
 # from scitbx.matrix import _dihedral_angle # python implementation, but on flex arrays

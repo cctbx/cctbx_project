@@ -20,7 +20,7 @@ from libtbx.str_utils import make_header, make_sub_header
 from libtbx.utils import Sorry, Usage, multi_out, null_out
 from libtbx import Auto
 from scitbx.array_family import flex
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 cmdline_input_phil_base_str = """

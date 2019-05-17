@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from iotbx.cns import space_group_symbols
 from cctbx import adptbx
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def write_header(s, file=None, description=None, comment=None,
                     space_group_info=None, n_rows=None):

@@ -13,7 +13,7 @@ from libtbx import group_args
 from cctbx import adptbx
 from iotbx import pdb
 from libtbx.utils import Sorry, multi_out
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from six.moves import range
 
 master_phil = iotbx.phil.parse("""\

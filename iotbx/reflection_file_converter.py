@@ -9,7 +9,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, date_and_time, plural_s
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import random
 import os
 

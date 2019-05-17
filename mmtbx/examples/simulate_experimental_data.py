@@ -12,7 +12,7 @@ from iotbx import pdb
 import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling
 from mmtbx import f_model
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 from six.moves import range
 

@@ -4,7 +4,7 @@ import os
 from mmtbx.validation import restraints
 from mmtbx.monomer_library import server, pdb_interpretation
 import iotbx.phil
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def get_master_phil():
   return iotbx.phil.parse(

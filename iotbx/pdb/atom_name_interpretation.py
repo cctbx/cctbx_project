@@ -51,11 +51,11 @@ class interpreter(object):
     for expected_pattern in expected_patterns:
       alt = alternative_hydrogen_pattern(expected_pattern)
       if (alt is not None): synonym_patterns[alt] = expected_pattern
-    for synonym_pattern,expected_pattern in synonym_patterns.items():
+    for synonym_pattern,expected_pattern in list(synonym_patterns.items()):
       alt = alternative_hydrogen_pattern(synonym_pattern)
       if (alt is not None): synonym_patterns[alt] = expected_pattern
     synonyms = {}
-    for synonym_pattern,expected_pattern in synonym_patterns.items():
+    for synonym_pattern,expected_pattern in list(synonym_patterns.items()):
       for h in ["H", "D"]:
         name = synonym_pattern.replace("h", h)
         if (name in synonyms):

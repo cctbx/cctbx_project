@@ -3,7 +3,7 @@ from libtbx import easy_pickle
 from libtbx.utils import get_svn_revision, get_build_tag, plural_s
 from operator import itemgetter
 import glob, os, sys
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 class analyse(object):
 

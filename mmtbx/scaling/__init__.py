@@ -9,7 +9,7 @@ from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex # import dependency
 from libtbx.str_utils import make_sub_header, make_header, make_big_header
 from libtbx import slots_getstate_setstate
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 import boost.python

@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb.hierarchy
 from cctbx import adptbx
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def as_pdb_file(self,
       remark,

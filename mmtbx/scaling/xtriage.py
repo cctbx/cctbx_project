@@ -25,7 +25,7 @@ from libtbx.str_utils import StringIO, wordwrap
 from libtbx.utils import null_out
 from libtbx import runtime_utils
 import libtbx.callbacks # import dependency
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 import sys
 

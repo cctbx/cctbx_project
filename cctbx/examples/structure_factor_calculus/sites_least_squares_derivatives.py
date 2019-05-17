@@ -4,7 +4,7 @@ from scitbx import matrix
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import cmath
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 from six.moves import range
 from six.moves import zip

@@ -24,7 +24,7 @@ from libtbx.math_utils import iround
 from libtbx.utils import user_plus_sys_time, date_and_time, Sorry
 from libtbx.str_utils import format_value, show_string
 import libtbx.path
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import iotbx.phil
 from mmtbx.scaling import outlier_rejection
 from mmtbx.scaling import absolute_scaling

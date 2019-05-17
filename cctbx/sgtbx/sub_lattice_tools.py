@@ -11,7 +11,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 from boost import rational
 from libtbx.math_utils import ifloor
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from six.moves import range
 from six.moves import zip
 

@@ -9,7 +9,7 @@ from smtbx import masks
 from libtbx.utils import time_log
 from iotbx.option_parser import option_parser
 
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 from six.moves import range
 

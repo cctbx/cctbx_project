@@ -23,7 +23,7 @@ import iotbx.phil
 from iotbx import reflection_file_utils
 from iotbx.pdb import xray_structure
 from iotbx import pdb
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from cctbx import adptbx
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server

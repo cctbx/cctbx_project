@@ -3,7 +3,7 @@ from scitbx.array_family import flex
 from scitbx.math import superpose
 from libtbx.utils import Sorry
 import sys
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import iotbx.pdb
 from iotbx.pdb.hierarchy import new_hierarchy_from_chain
 from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list, \

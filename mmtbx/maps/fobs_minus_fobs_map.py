@@ -17,7 +17,7 @@ from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
 from libtbx import runtime_utils
 import libtbx.callbacks # import dependency
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 import sys
 import mmtbx.model

@@ -14,7 +14,7 @@ import mmtbx.scaling
 from mmtbx.scaling import twin_analyses
 from mmtbx import f_model
 from mmtbx.twinning import twin_f_model
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 
 master_params = iotbx.phil.parse("""\

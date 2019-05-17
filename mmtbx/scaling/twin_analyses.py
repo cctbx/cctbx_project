@@ -17,7 +17,7 @@ from libtbx import slots_getstate_setstate, Auto
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry, null_out
 from libtbx import table_utils
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import math
 import sys
 from six.moves import zip

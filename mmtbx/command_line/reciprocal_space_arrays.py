@@ -10,7 +10,7 @@ import iotbx.phil
 import iotbx.pdb
 from libtbx import runtime_utils
 from libtbx.utils import Sorry
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 
 legend = """\

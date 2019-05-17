@@ -17,13 +17,12 @@ from cctbx import miller
 from cctbx.array_family import flex
 from libtbx.math_utils import iround
 from libtbx import easy_pickle
-import exceptions
 import os
 import sys
 from six.moves import range
 from six.moves import zip
 
-class FormatError(exceptions.Exception): pass
+class FormatError(Exception): pass
 
 class reader(object):
 

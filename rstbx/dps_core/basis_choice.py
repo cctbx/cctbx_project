@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
-import exceptions,math
+import math
 from scitbx import matrix
 from cctbx.uctbx.reduction_base import iteration_limit_exceeded as KGerror
 from rstbx.dps_core.cell_assessment import unit_cell_too_small,SmallUnitCellVolume
@@ -55,7 +55,7 @@ class AbsenceHandler:
     unit_cell_too_small(corrected.unit_cell(),cutoff=25.)
     return corrected
 
-class FewSpots(exceptions.Exception): pass
+class FewSpots(Exception): pass
 
 class SolutionTracker:
   def __init__(self):
@@ -190,7 +190,7 @@ class SelectBasisMetaprocedure:
       self.evaluate_combo(best_combo)
       return
 
-    raise exceptions.Exception("AutoIndexing Failed to Select Basis")
+    raise Exception("AutoIndexing Failed to Select Basis")
 
   def evaluate_combo(self,best_combo,verbose=False):
     #print "best combo",best_combo

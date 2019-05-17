@@ -18,7 +18,7 @@ from libtbx import smart_open
 from libtbx.str_utils import show_string
 from libtbx.utils import plural_s, hashlib_md5, date_and_time, Sorry
 from libtbx import Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 import calendar
 import six

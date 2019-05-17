@@ -249,7 +249,7 @@ class matthews_rupp(scaling.xtriage_analysis):
 def exercise():
   from cctbx import crystal
   from libtbx.test_utils import approx_equal
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   symm = crystal.symmetry(
     unit_cell=(77.3,107.6,84.4,90,94.2,90),
     space_group_symbol="P21")

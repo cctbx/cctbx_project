@@ -9,7 +9,7 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx.math import matrix
 from libtbx.utils import Sorry, multi_out
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 
 master_params = iotbx.phil.parse("""\

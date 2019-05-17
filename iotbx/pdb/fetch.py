@@ -28,7 +28,7 @@ from libtbx import smart_open
 from libtbx import Auto
 import libtbx.utils
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import urllib2
 import re
 import os

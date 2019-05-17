@@ -4,7 +4,7 @@ import mmtbx.f_model
 from mmtbx import utils
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import iotbx.phil
 from iotbx import crystal_symmetry_from_any
 from cctbx import adptbx

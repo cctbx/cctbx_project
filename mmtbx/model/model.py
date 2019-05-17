@@ -68,7 +68,7 @@ from mmtbx.geometry_restraints import ramachandran
 ext2 = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
 
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from copy import deepcopy
 import sys
 import math

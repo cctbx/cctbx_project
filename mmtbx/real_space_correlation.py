@@ -14,7 +14,7 @@ from libtbx import group_args
 from mmtbx.command_line.map_comparison import get_mtz_labels, get_d_min,\
   get_crystal_symmetry
 from cctbx.sgtbx import space_group_info
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 import sys
 from six.moves import range
