@@ -9,7 +9,8 @@ from libtbx import introspection
 from libtbx import adopt_init_args
 from libtbx import dict_with_default_0
 from libtbx.utils import Sorry
-import sys, math, StringIO
+import sys, math
+from six import StringIO
 import iotbx.pdb
 
 import boost.python
@@ -85,7 +86,7 @@ class manager(Base_geometry):
         plain_pairs_radius=None,
         max_reasonable_bond_distance=None,
         min_cubicle_edge=5,
-        log=StringIO.StringIO()):
+        log=StringIO()):
     super(manager, self).__init__()
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
@@ -110,7 +111,7 @@ class manager(Base_geometry):
   #   return state
 
   # def __setstate__(self, state):
-  #   state[ "log" ] = StringIO.StringIO( state[ "log" ] )
+  #   state[ "log" ] = StringIO( state[ "log" ] )
   #   self.__dict__.update( state )
 
   def reset_internals(self):
@@ -1634,7 +1635,7 @@ class manager(Base_geometry):
         origin_id=origin_ids.get_origin_id(key)
         if origin_id==default_origin_id: continue
         label=origin_ids.get_geo_file_header(key)
-        tempbuffer = StringIO.StringIO()
+        tempbuffer = StringIO()
         pair_proxies.bond_proxies.show_sorted(
             by_value="residual",
             sites_cart=sites_cart,
@@ -1691,7 +1692,7 @@ class manager(Base_geometry):
           label=origin_ids.get_geo_file_header(key, internals=internals)
           if label is None: continue
           if i_label: label = '%s %s' % (label, i_label)
-          tempbuffer = StringIO.StringIO()
+          tempbuffer = StringIO()
           proxies.show_sorted(
               by_value="residual",
               sites_cart=sites_cart,

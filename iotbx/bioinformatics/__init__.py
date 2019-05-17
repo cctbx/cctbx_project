@@ -940,7 +940,7 @@ def merge_sequence_files(file_names, output_file, sequences=(),
   assert (len(file_names) > 0) or (len(sequences) > 0)
   if (len(file_names)==1) and (len(sequences)==0) and (not force_new_file):
     return file_names[0]
-  seq_out =StringIO()
+  seq_out = StringIO()
   for seq_file in file_names :
     objects, non_compliant = any_sequence_format(seq_file)
     if (objects is None):
