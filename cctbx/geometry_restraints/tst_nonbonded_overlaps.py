@@ -616,6 +616,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     msg = outstring.format('Test fails on 1-5 two hydrogen interaction')
     self.assertFalse(tst,msg=msg)
 
+  # OK transferred
   def test_overlap_atoms(self):
     '''
     Test that overlapping atoms are being counted

@@ -1,9 +1,10 @@
 from __future__ import division, print_function
 import time
 import mmtbx.model
+import iotbx.pdb
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
-import iotbx.pdb
+
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 
 
@@ -22,6 +23,41 @@ def obtain_model(raw_records):
     build_grm   = True,
     log         = null_out())
   return model
+
+#-------------------------------------------------------------------------------
+
+def get_clashes_result(raw_records):
+  '''
+  Helper function to get clashes results from raw records
+  '''
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.allow_polymer_cross_special_position=True
+  params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+  pdb_inp = iotbx.pdb.input(lines=raw_records.split("\n"), source_info=None)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    pdb_interpretation_params = params,
+    build_grm   = True,
+    log         = null_out())
+  pnps = pnp.manager(model = model)
+  clashes = pnps.get_clashes()
+  return clashes
+
+#-------------------------------------------------------------------------------
+
+def test_overlap_atoms():
+  '''
+  Test that overlapping atoms are being counted
+  '''
+  clashes = get_clashes_result(raw_records=raw_records_5)
+  msg = 'Overlapping atoms are not counted properly.'
+  results = clashes.get_results()
+  print(results.n_clashes)
+  print(results.clashscore)
+
+#    grm = process_raw_records(raw_record_number=5)
+#    self.assertEqual(grm.nb_overlaps_all, 6,msg)
+#    self.assertEqual(grm.normalized_nbo_all, 1500,msg)
 
 #-------------------------------------------------------------------------------
 
@@ -75,7 +111,7 @@ def test_1_5_overlaps():
 
 #-------------------------------------------------------------------------------
 
-raw_records_0 = """\
+raw_records_0 = """
 CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
 ATOM   1271  N   ILE A  83      31.347   4.310 -43.960  1.00  9.97           N
 ATOM   1272  CA  ILE A  83      32.076   3.503 -44.918  1.00 19.49           C
@@ -131,9 +167,17 @@ ATOM   1321 HG22 THR A  85      33.420   1.251 -50.402  1.00 14.50           H
 ATOM   1322 HG23 THR A  85      32.116   1.932 -49.835  1.00 14.50           H
 """
 
+raw_records_5 = """
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+ATOM      1  N   LYS     1       5.000   5.000   5.000  1.00 20.00           N
+ATOM      1  N   LYS     2       6.000   5.000   5.000  1.00 20.00           N
+ATOM      1  N   LYS     3       5.000   5.500   5.500  1.00 20.00           N
+ATOM      1  N   LYS     4       5.000   5.500   5.500  1.00 20.00           N
+"""
 
 if (__name__ == "__main__"):
   t0 = time.time()
   test_1_5_overlaps()
   test_inline_angle()
+  test_overlap_atoms()
   print("OK. Time: %8.3f"%(time.time()-t0))

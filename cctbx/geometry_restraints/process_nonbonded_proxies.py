@@ -5,6 +5,7 @@ from __future__ import division
 #import iotbx.pdb
 #import math
 #import sys
+from libtbx import group_args
 from scitbx import matrix
 
 
@@ -92,7 +93,7 @@ class clashes(object):
   """
   Class for clashes
   """
-  def __init__(self, clashes_dict):
+  def __init__(self, clashes_dict, model):
     """
     clashes_dict  {(iseq, jseq):(distance, sum_vdw_radii)}
     iseq          atom i
@@ -100,7 +101,8 @@ class clashes(object):
     distance      distance between atom i and atom j
     sum_vdw_radii sum of vdW radii
     """
-    self.clashes_dict = clashes_dict
+    self._clashes_dict = clashes_dict
+    self.model = model
 
   def show(self):
     pass
@@ -110,6 +112,15 @@ class clashes(object):
 
   def sort_clashes(self):
     pass
+
+  def get_results(self):
+    n_clashes = len(self._clashes_dict)
+    n_atoms = self.model.size()
+    clashscore = n_clashes * 1000 / n_atoms
+    #print(dir(self.model))
+    return group_args(
+      n_clashes = n_clashes,
+      clashscore = clashscore)
 
 
 
@@ -145,7 +156,6 @@ class manager():
   def __init__(self,
                model):
     self.model = model
-    #
 
     #
     self._clashes = None
@@ -158,8 +168,9 @@ class manager():
     """
     Accessor for clashes object
     """
-    if not self._clashes:
+    if self._clashes is None:
       self._process_nonbonded_proxies(find_clashes = True)
+      return self._clashes
     else:
       return self._clashes
 
@@ -249,12 +260,20 @@ class manager():
         if is_clash:
           self._clashes_dict[(i_seq, j_seq)] = [model_distance, vdw_sum, symop_str, symop]
 
-    self._clashes = clashes(clashes_dict = clashes_dict)
-    #print(self._clashes_dict.keys())
+    self._clashes = clashes(
+                      clashes_dict = self._clashes_dict,
+                      model        = self.model)
+    print(self._clashes)
+    print(self._clashes_dict.keys())
 
-  def _is_clash(self, i_seq, j_seq, hd_sel, fsc0, sites_cart):
-    # Check if there is 1-5 interaction
+  def _is_clash(self,
+                i_seq,
+                j_seq,
+                hd_sel,
+                fsc0,
+                sites_cart):
     is_clash = False
+    # Check if there is 1-5 interaction
     is_1_5_interaction = check_if_1_5_interaction(
              i_seq = i_seq,
              j_seq = j_seq,
@@ -292,6 +311,8 @@ class manager():
                     is_clash = True
                   else:
                     continue
+              else:
+                is_clash = True
         else:
           is_clash = True
     #
