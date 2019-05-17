@@ -10,7 +10,7 @@ from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, null_out
 from libtbx import group_args, Auto
 from math import sqrt
-import cStringIO
+from six.moves import cStringIO as StringIO
 import sys
 import six
 
@@ -754,7 +754,7 @@ class dataset_statistics(object):
     from libtbx.test_utils import approx_equal
     synchrotron = wl = "NULL"
     if (wavelength is not None):
-      out = cStringIO.StringIO()
+      out = StringIO()
       # XXX somewhat risky...
       if (not approx_equal(wavelength, 1.5418, eps=0.01, out=out) and
           not approx_equal(wavelength, 0.7107, eps=0.01, out=out)):

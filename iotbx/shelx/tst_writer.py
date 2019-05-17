@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import zip
-import cStringIO
+from six.moves import cStringIO as StringIO
 from libtbx.test_utils import approx_equal, Exception_expected
 from scitbx.random import variate, bernoulli_distribution
 from cctbx.development import random_structure
@@ -50,7 +50,7 @@ def exercise(flags, space_group_info):
     if (not_origin_centric):
       raise Exception_expected
 
-  ins = cStringIO.StringIO("".join(ins))
+  ins = StringIO("".join(ins))
   xs1 = xs.from_shelx(file=ins)
   xs.crystal_symmetry().is_similar_symmetry(
     xs1.crystal_symmetry(),

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
-from StringIO import StringIO
+from six.moves import StringIO as StringIO
 
 pdb_str = """\
 ATOM      1  C5'   U     5      97.750 -47.885 -63.217  1.00 83.53      A16S C

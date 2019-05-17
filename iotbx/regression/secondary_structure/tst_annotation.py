@@ -4,7 +4,7 @@ from iotbx.pdb.secondary_structure import annotation, pdb_helix, pdb_strand
 import iotbx
 import iotbx.cif
 from libtbx.test_utils import show_diff
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 import libtbx.load_env
 import os
 from six.moves import range
