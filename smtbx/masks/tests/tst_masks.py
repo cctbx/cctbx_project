@@ -10,13 +10,13 @@ import libtbx.utils
 from smtbx import masks
 from smtbx.refinement import constraints
 import smtbx.utils
-import cStringIO
+from six.moves import cStringIO as StringIO
 from six.moves import range
 
 def exercise_masks():
   mt = flex.mersenne_twister(seed=0)
   xs_ref = structure.from_shelx(
-    file=cStringIO.StringIO(YAKRUY_ins))
+    file=StringIO(YAKRUY_ins))
   mi = xs_ref.crystal_symmetry().build_miller_set(
     d_min=0.5, anomalous_flag=False)
   fo = mi.structure_factors_from_scatterers(
@@ -41,7 +41,7 @@ def exercise_masks():
   assert mask.f_model() is None
   assert mask.modified_intensities() is None
   assert mask.f_000 is None
-  s = cStringIO.StringIO()
+  s = StringIO()
   mask.show_summary(log=s)
   assert not show_diff(s.getvalue(), """\
 use_set_completion: False
@@ -92,7 +92,7 @@ gridding: (30,45,54)
     assert modified_fo.r1_factor(mask.f_calc.common_set(modified_fo), k) < 0.006
     assert fo.common_set(fo2).r1_factor(f_model.common_set(fo2), k) < 0.006
 
-  s = cStringIO.StringIO()
+  s = StringIO()
   mask.show_summary(log=s)
   assert not show_diff(s.getvalue(), """\
 use_set_completion: True
