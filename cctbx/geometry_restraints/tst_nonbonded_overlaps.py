@@ -491,6 +491,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     msg = 'The difference is: {}'.format(result - expected)
     self.assertAlmostEqual(result,expected, delta=0.001, msg =msg)
 
+  # OK transferred
   def test_vdw_dist(self):
     '''
     Test that overlaps are identified properly

@@ -144,14 +144,54 @@ class clashes(object):
     pass
 
 
+  def _obtain_symmetry_clashes(self):
+    self._symmetry_clashes_dict = dict()
+    for iseq_tuple, record in self._clashes_dict.iteritems():
+      if record[3] is not None:
+        self._symmetry_clashes_dict[iseq_tuple] = record
+
+  def _obtain_macro_mol_clashes(self):
+    self._macro_mol_clashes_dict = dict()
+    proxies = self.model.all_chain_proxies
+    cache = proxies.pdb_hierarchy.atom_selection_cache()
+    macro_mol_sel = proxies.selection(
+      cache  = cache,
+      string = 'protein or dna or rna')
+    for iseq_tuple, record in self._clashes_dict.iteritems():
+      if macro_mol_sel[iseq_tuple[0]] and macro_mol_sel[iseq_tuple[1]] and record[3] is None:
+        self._macro_mol_clashes_dict[iseq_tuple] = record
+
+
   def get_results(self):
+    # overall
     n_clashes = len(self._clashes_dict)
     n_atoms = self.model.size()
     clashscore = n_clashes * 1000 / n_atoms
-    #print(dir(self.model))
+    # due to symmetry
+    self._obtain_symmetry_clashes()
+    if self._symmetry_clashes_dict:
+      n_clashes_sym = len(self._symmetry_clashes_dict)
+      # Does this number actually make sense?
+      clashscore_sym = n_clashes_sym * 1000 / n_atoms
+    else:
+      # None or 0?
+      n_clashes_sym = 0
+      clashscore_sym = 0
+    self._obtain_macro_mol_clashes()
+    if self._macro_mol_clashes_dict:
+      n_clashes_macro_mol = len(self._macro_mol_clashes_dict)
+      clashscore_macro_mol = n_clashes_macro_mol * 1000 / n_atoms
+    else:
+      n_clashes_macro_mol = 0
+      clashscore_macro_mol = 0
+
     return group_args(
-      n_clashes = n_clashes,
-      clashscore = clashscore)
+             n_clashes      = n_clashes,
+             clashscore     = clashscore,
+             n_clashes_sym  = n_clashes_sym,
+             clashscore_sym = clashscore_sym,
+             n_clashes_macro_mol  = n_clashes_macro_mol,
+             clashscore_macro_mol = clashscore_macro_mol)
 
 
 class hbonds(object):
