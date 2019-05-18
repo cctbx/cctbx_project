@@ -151,6 +151,7 @@ Example:
         nbo_type=self.params.show_overlap_type,
         normalized_nbo=self.params.show_normalized_nbo)
 
-    #processed_nbps = pnp.manager(model = model)
-    #clashes = processed_nbps.get_clashes()
+    processed_nbps = pnp.manager(model = model)
+    clashes = processed_nbps.get_clashes()
+    clashes.show()
 

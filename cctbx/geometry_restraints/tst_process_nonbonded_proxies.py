@@ -8,7 +8,6 @@ from libtbx.test_utils import approx_equal
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 
 
-#-------------------------------------------------------------------------------
 
 def obtain_model(raw_records):
   '''
@@ -24,7 +23,6 @@ def obtain_model(raw_records):
     log         = null_out())
   return model
 
-#-------------------------------------------------------------------------------
 
 def get_clashes_result(raw_records):
   '''
@@ -43,23 +41,30 @@ def get_clashes_result(raw_records):
   clashes = pnps.get_clashes()
   return clashes
 
-#-------------------------------------------------------------------------------
 
 def test_overlap_atoms():
   '''
   Test that overlapping atoms are being counted
   '''
   clashes = get_clashes_result(raw_records=raw_records_5)
-  msg = 'Overlapping atoms are not counted properly.'
   results = clashes.get_results()
-  print(results.n_clashes)
-  print(results.clashscore)
+  assert(results.n_clashes == 6), 'Overlapping atoms are not counted properly.'
+  assert(results.clashscore == 1500), 'Clashscore is wrong'
 
-#    grm = process_raw_records(raw_record_number=5)
-#    self.assertEqual(grm.nb_overlaps_all, 6,msg)
-#    self.assertEqual(grm.normalized_nbo_all, 1500,msg)
 
-#-------------------------------------------------------------------------------
+def test_inline_overlaps():
+  '''
+  Test non-bonded overlaps of C with H-C.
+  Check when valid overlaps and when it's considered to be inline
+
+  - test when all are in the same residue
+  - test when C and H-C are in different residues
+  '''
+  clashes = get_clashes_result(raw_records=raw_records_2)
+  results = clashes.get_results()
+  assert(results.n_clashes == 4), 'Total nonbonded overlaps are incorrect.'
+  assert approx_equal(results.clashscore, 85.11, eps=0.1), 'Wrong clashscore.'
+
 
 def test_inline_angle():
   '''
@@ -73,8 +78,6 @@ def test_inline_angle():
   msg = 'The difference is: {}'.format(result - expected)
   assert approx_equal(result, expected, eps=0.001), msg
 
-
-#-------------------------------------------------------------------------------
 
 def test_1_5_overlaps():
   '''
@@ -109,7 +112,6 @@ def test_1_5_overlaps():
   msg = 'Test fails on 1-5 two hydrogen interaction'
   assert(not tst), msg
 
-#-------------------------------------------------------------------------------
 
 raw_records_0 = """
 CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
@@ -167,6 +169,57 @@ ATOM   1321 HG22 THR A  85      33.420   1.251 -50.402  1.00 14.50           H
 ATOM   1322 HG23 THR A  85      32.116   1.932 -49.835  1.00 14.50           H
 """
 
+raw_records_2 = '''
+CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
+HETATM 1819  N   NPH A 117      24.064  15.944 -50.623  1.00 25.06           N
+HETATM 1820  CA  NPH A 117      23.709  15.340 -49.343  1.00 22.94           C
+HETATM 1821  CB  NPH A 117      23.852  16.378 -48.246  1.00 21.44           C
+HETATM 1822  SG  NPH A 117      25.475  17.086 -47.972  1.00 31.29           S
+HETATM 1823  CD  NPH A 117      25.692  16.986 -46.192  0.50 33.70           C
+HETATM 1824  CE  NPH A 117      27.165  17.168 -45.953  0.50 39.92           C
+HETATM 1825  OZ  NPH A 117      28.009  16.024 -45.939  0.50 43.26           O
+HETATM 1826  NZ  NPH A 117      27.605  18.385 -45.782  0.50 43.87           N
+HETATM 1827  C6  NPH A 117      29.024  18.691 -45.569  0.50 51.14           C
+HETATM 1828  C5  NPH A 117      29.994  17.685 -45.544  0.50 51.26           C
+HETATM 1829  C6A NPH A 117      29.389  20.020 -45.395  0.50 52.54           C
+HETATM 1830  C4A NPH A 117      31.331  18.008 -45.352  0.50 52.42           C
+HETATM 1831  C10 NPH A 117      30.737  20.360 -45.197  0.50 54.23           C
+HETATM 1832  C7  NPH A 117      28.395  21.007 -45.421  0.50 53.28           C
+HETATM 1833  C4  NPH A 117      32.281  16.990 -45.335  0.50 53.40           C
+HETATM 1834  C1A NPH A 117      31.716  19.345 -45.179  0.50 55.19           C
+HETATM 1835  N10 NPH A 117      31.086  21.703 -45.022  0.50 53.87           N
+HETATM 1836  C8  NPH A 117      28.743  22.346 -45.244  0.50 54.83           C
+HETATM 1837  C3  NPH A 117      33.633  17.275 -45.153  0.50 53.96           C
+HETATM 1838  N1  NPH A 117      33.073  19.639 -44.994  0.50 57.78           N
+HETATM 1839  C9  NPH A 117      30.083  22.687 -45.044  0.50 55.29           C
+HETATM 1840  C2  NPH A 117      34.026  18.600 -44.985  0.50 55.79           C
+HETATM 1841  C   NPH A 117      22.255  14.882 -49.378  1.00 23.82           C
+HETATM 1842  O   NPH A 117      21.352  15.699 -49.556  1.00 24.62           O
+HETATM 1843  HZ  NPH A 117      26.937  19.121 -45.822  0.50 43.87           H
+HETATM 1844  HD3 NPH A 117      25.155  17.813 -45.667  0.50 33.70           H
+HETATM 1845  HD2 NPH A 117      25.379  15.997 -45.777  0.50 33.70           H
+HETATM 1846  HC2 NPH A 117      35.098  18.798 -44.844  0.50 55.79           H
+HETATM 1847  HB3 NPH A 117      23.169  17.226 -48.474  1.00 21.44           H
+HETATM 1848  HB2 NPH A 117      23.509  15.908 -47.314  1.00 21.44           H
+HETATM 1849  H9  NPH A 117      30.307  23.739 -44.881  0.50 55.29           H
+HETATM 1850  H8  NPH A 117      27.980  23.134 -45.250  0.50 54.83           H
+HETATM 1851  H7  NPH A 117      27.331  20.774 -45.562  0.50 53.28           H
+HETATM 1852  H5  NPH A 117      29.817  16.614 -45.676  0.50 51.26           H
+HETATM 1853  H4  NPH A 117      31.902  15.983 -45.457  0.50 53.40           H
+HETATM 1854  H3  NPH A 117      34.390  16.480 -45.141  0.50 53.96           H
+ATOM   1947  N   SER B 124      20.843  16.929 -50.266  1.00 25.77           N
+ATOM   1948  CA  SER B 124      21.084  18.355 -50.408  1.00 25.34           C
+ATOM   1949  C   SER B 124      22.267  18.540 -51.353  1.00 23.45           C
+ATOM   1950  O   SER B 124      23.277  17.846 -51.239  1.00 26.73           O
+ATOM   1951  CB  SER B 124      21.398  18.973 -49.044  1.00 24.00           C
+ATOM   1952  OG  SER B 124      21.849  20.306 -49.179  1.00 27.42           O
+ATOM   1953  H   SER B 124      21.437  16.527 -49.790  1.00 25.77           H
+ATOM   1954  HA  SER B 124      20.306  18.795 -50.781  1.00 25.34           H
+ATOM   1955  HB2 SER B 124      20.592  18.968 -48.505  1.00 24.00           H
+ATOM   1956  HB3 SER B 124      22.084  18.454 -48.612  1.00 24.00           H
+ATOM   1957  HG  SER B 124      21.258  20.773 -49.552  1.00 27.42           H
+'''
+
 raw_records_5 = """
 CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
 ATOM      1  N   LYS     1       5.000   5.000   5.000  1.00 20.00           N
@@ -175,9 +228,11 @@ ATOM      1  N   LYS     3       5.000   5.500   5.500  1.00 20.00           N
 ATOM      1  N   LYS     4       5.000   5.500   5.500  1.00 20.00           N
 """
 
+
 if (__name__ == "__main__"):
   t0 = time.time()
   test_1_5_overlaps()
   test_inline_angle()
+  test_inline_overlaps()
   test_overlap_atoms()
   print("OK. Time: %8.3f"%(time.time()-t0))

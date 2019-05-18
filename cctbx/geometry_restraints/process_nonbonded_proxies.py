@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 #from libtbx.utils import Sorry
 #from scitbx.array_family import flex
 #from libtbx import easy_run
@@ -7,6 +7,8 @@ from __future__ import division
 #import sys
 from libtbx import group_args
 from scitbx import matrix
+from libtbx.str_utils import make_sub_header
+import sys
 
 
 def check_if_1_5_interaction(
@@ -27,7 +29,7 @@ def check_if_1_5_interaction(
   Returns:
     bool: True/False if there is 1-5 hydrogen and heavy atom interaction
   """
-  # check if we have hydrogen - heavy atom interaction
+  # check if there is hydrogen - heavy atom interaction
   xor = lambda a,b: (a or b) and not (a and b)
   if xor(hd_sel[i_seq],hd_sel[j_seq]):
     # starting with hydrogen will make process shorter
@@ -44,7 +46,7 @@ def check_if_1_5_interaction(
         connections = connections.union(set(full_connectivity_table[key]))
       # Remove the connection that were already used
       new_connections = connections - used_connections
-      # Add the new connection to the used once
+      # Add the new connection to the used ones
       used_connections = used_connections.union(connections)
       # Add the new atoms with their distance from key
       for new_atom in new_connections:
@@ -55,10 +57,8 @@ def check_if_1_5_interaction(
     return False
 
 
-
-def cos_vec(u,v,w):
-  """(tuple,tuple) -> float
-
+def cos_vec(u, v, w):
+  """
   Calculate the cosine to evaluate whether clashing atoms are inline
   A1 clashes with A2 and A3. Find out if A2 and A3 are inline.
   A1 ~~~ A2
@@ -87,31 +87,62 @@ def cos_vec(u,v,w):
   return cos_angle
 
 
-
-
 class clashes(object):
   """
   Class for clashes
   """
   def __init__(self, clashes_dict, model):
-    """
+    '''
     clashes_dict  {(iseq, jseq):(distance, sum_vdw_radii)}
     iseq          atom i
     jseq          atom j
     distance      distance between atom i and atom j
     sum_vdw_radii sum of vdW radii
-    """
+    '''
     self._clashes_dict = clashes_dict
     self.model = model
 
+
+# TODO: what's the log?
   def show(self):
-    pass
+    '''
+    Print all clashes in a table.
+    '''
+    # TODO : make sure self._clashes_dict is not empty
+    make_sub_header(' Nonbonded overlaps', out=sys.stdout)
+    # General information
+    results = self.get_results()
+    result_str = '{:<18} : {:5.2f}'
+    print(result_str.format(' Number of clashes', results.n_clashes))
+    print(result_str.format(' Clashscore', results.clashscore) + '\n')
+    # print table with all overlaps
+    labels =  ["Overlapping residues info","model distance","overlap",
+               "symmetry"]
+    lbl_str = '{:^33}|{:^16}|{:^11}|{:^10}'
+    table_str = '{:>16}|{:>16}|{:^16.2f}|{:^11.2}|{:^10}|'
+    print(lbl_str.format(*labels))
+    print('-'*74)
+    atoms = self.model.get_atoms()
+    for iseq_tuple, record in self._clashes_dict.iteritems():
+      i_seq, j_seq = iseq_tuple
+      delta = record[1] - record[0]
+      if record[3] is not None:
+        symop = record[3]
+      else: symop = ''
+      i_id_str = atoms[i_seq].id_str().replace('pdb=','').replace('"','')
+      j_id_str = atoms[j_seq].id_str().replace('pdb=','').replace('"','')
+      line = [i_id_str, j_id_str,round(record[0], 2),round(delta, 2), symop]
+      print(table_str.format(*line))
+    print('-'*74)
+
 
   def is_clashing(self, iseq):
     pass
 
+
   def sort_clashes(self):
     pass
+
 
   def get_results(self):
     n_clashes = len(self._clashes_dict)
@@ -123,13 +154,12 @@ class clashes(object):
       clashscore = clashscore)
 
 
-
 class hbonds(object):
-  """
+  '''
   Class for hbonds
-  """
+  '''
   def __init__(self, hbonds_dict):
-    """
+    '''
     hbonds_dict = {(iseq, jseq, kseq):(H_A_distance, X_A_distance, X_H_A_angle)}
     hydrogen bond: X-H...A
     iseq          atom X (donor heavy atom)
@@ -138,7 +168,7 @@ class hbonds(object):
     H_A_distance
     X_A_distance
     X_H_A_angle
-    """
+    '''
     self.hbonds_dict = hbonds_dict
 
   def show(self):
@@ -161,13 +191,13 @@ class manager():
     self._clashes = None
     self._hbonds  = None
 
-    # in manager or do we enfore that input model has H?
+    # add H in manager or do we enfore that input model has H?
     # self._add_H_atoms() ????
 
   def get_clashes(self):
-    """
+    '''
     Accessor for clashes object
-    """
+    '''
     if self._clashes is None:
       self._process_nonbonded_proxies(find_clashes = True)
       return self._clashes
@@ -175,9 +205,9 @@ class manager():
       return self._clashes
 
   def get_hbonds(self):
-    """
+    '''
     Accessor for hbonds object
-    """
+    '''
     if not self._hbonds:
       self._process_nonbonded_proxies(find_hbonds = True)
     else:
@@ -191,23 +221,25 @@ class manager():
     # necessary?
     pass
 
+
   def show(self):
-    """
+    '''
     Print information
-    """
+    '''
     if self.has_clashes():
       self._clashes.show()
     if self.has_hbonds():
       self._hbonds.show()
 
+
   def _process_nonbonded_proxies(self,
                                  find_clashes = True,
                                  find_hbonds = False):
-    """
+    '''
     Here is where the calculations are done
     Either all is done at once (clashes, hbonds, other?)
     or it will be modular (use find_clashes and find_hbodns parameters)
-    """
+    '''
     grm = self.model.get_restraints_manager().geometry
     xrs = self.model.get_xray_structure()
     sites_cart = self.model.get_sites_cart()
@@ -228,14 +260,15 @@ class manager():
       nonbonded_list = []
       # create 'empty' instance of results class
       self._clashes = clashes(clashes_dict = dict())
-      self._hbonds = hbonds(hbonds_dict = dict())
+      self._hbonds  = hbonds(hbonds_dict = dict())
       return
 
-    fsc0=grm.shell_sym_tables[0].full_simple_connectivity()
-    fsc2=grm.shell_sym_tables[2].full_simple_connectivity()
+    fsc0 = grm.shell_sym_tables[0].full_simple_connectivity()
+    fsc2 = grm.shell_sym_tables[2].full_simple_connectivity()
 
     self._clashes_dict = dict()
     self._hbonds_dict  = dict()
+    self._mult_clash_dict = dict()
 
     # loop over nonbonded proxies do stuff and fill in the dicts:
     # self._clashes_dict[(iseq, jseq)] = (relevant info)
@@ -248,7 +281,7 @@ class manager():
       symop_str      = item[5] # TODO probably not necessary
       symop          = item[6]
 
-      # check for overlap
+      # Find all clashes
       delta = model_distance - vdw_sum
       if (delta < -0.40):
         is_clash = self._is_clash(
@@ -256,24 +289,38 @@ class manager():
                     j_seq = j_seq,
                     hd_sel = hd_sel,
                     fsc0 = fsc0,
-                    sites_cart = sites_cart)
+                    model_distance = model_distance)
         if is_clash:
           self._clashes_dict[(i_seq, j_seq)] = [model_distance, vdw_sum, symop_str, symop]
 
+    # Remove clashes involving common atoms (cannot be done in first loop!)
+    self._process_clashes(sites_cart = sites_cart, fsc0 = fsc0)
+    # Create clashes class
     self._clashes = clashes(
                       clashes_dict = self._clashes_dict,
                       model        = self.model)
-    print(self._clashes)
-    print(self._clashes_dict.keys())
+
 
   def _is_clash(self,
                 i_seq,
                 j_seq,
                 hd_sel,
                 fsc0,
-                sites_cart):
+                model_distance):
+    '''
+    Determine if a nonbonded proxy is a clash.
+
+    Parameters:
+      i_seq (int): atom i_seq
+      j_seq (int): atom i_seq
+      hd_sel (bool array)        hd_sel[i] returns True of False if atom i is H or not
+      fsc0 (dict of lists of int): dictionary with a list of all atoms connected to an atom
+      model_distance (float): distance between atom i and atom j
+
+    Returns:
+      bool (is_clash): if a nonbonded proxy is a clash
+    '''
     is_clash = False
-    # Check if there is 1-5 interaction
     is_1_5_interaction = check_if_1_5_interaction(
              i_seq = i_seq,
              j_seq = j_seq,
@@ -282,43 +329,46 @@ class manager():
     if not is_1_5_interaction:
       if i_seq > j_seq:
         i_seq, j_seq = j_seq, i_seq
-      iseq_tuple = (i_seq, j_seq)
-      # Check if either of the atoms is already involved in another clash
-      for i in iseq_tuple:
-        multiples = [item for item in self._clashes_dict.keys() if i in item] # is this slow?
-        # for atoms that overlap more than once, check for inline overlaps
-        if multiples:
-          for multiple in multiples:
-            multiple_atoms = [x for x in list(multiple + iseq_tuple) if i != x]
-            # other way:
-            # multiple_atoms = list(set(iseq_tuple + multiple) - (set(iseq_tuple) & set(multiple)))
-            # ignore overlaps that are cause by symmetry operation -->
-            # TODO: not sure why these should be ignored
-            if (len(multiple_atoms) == 2): # should be always 2, per definitionem, probably assert?
-              multiple_1 = multiple_atoms[0]
-              multiple_2 = multiple_atoms[1]
-            # test inline only if the two atoms that overlap with the common atom are connected
-              if multiple_1 in fsc0[multiple_2]:
-                atom_1_xyz = sites_cart[multiple_1]
-                atom_2_xyz = sites_cart[multiple_2]
-                atom_i_xyz = sites_cart[i]
-                cos_angle = cos_vec(atom_1_xyz, atom_2_xyz, atom_i_xyz)
-                # atoms are inline if cosine of the angle between vectors > 0.707 (45 degrees)
-                # TODO where does that number come from?
-                if abs(cos_angle) > 0.707 and (atom_1_xyz != atom_2_xyz):
-                  if self._clashes_dict[multiple][0] > model_distance:
-                    del self._clashes_dict[multiple]
-                    is_clash = True
-                  else:
-                    continue
-              else:
-                is_clash = True
-        else:
-          is_clash = True
-    #
+      # Check to prevent that ymmetry clashes are counted twice
+      if (i_seq, j_seq) not in self._clashes_dict.keys():
+        is_clash = True
+        if (i_seq not in self._mult_clash_dict): self._mult_clash_dict[i_seq] = list()
+        if (j_seq not in self._mult_clash_dict): self._mult_clash_dict[j_seq] = list()
+        self._mult_clash_dict[i_seq].append(j_seq)
+        self._mult_clash_dict[j_seq].append(i_seq)
+
     return is_clash
 
-    # create class:
-    # self._clashes = clashes(clashes_dict = clashes_dict)
-    # self._hbonds = hbonds(hbonds_dict = hbonds_dict)
 
+  def _process_clashes(self, sites_cart, fsc0):
+    clashes_to_be_removed = list()
+    for i_seq, j_seq_list in self._mult_clash_dict.iteritems():
+      n_multiples = len(j_seq_list)
+      if n_multiples <= 1: continue
+      for i in range(n_multiples-1):
+        for j in range(i+1, n_multiples):
+          multiple_1 = j_seq_list[i]
+          multiple_2 = j_seq_list[j]
+        # test inline only if the two atoms that overlap with the common atom are connected
+          if multiple_1 in fsc0[multiple_2]:
+            atom_1_xyz = sites_cart[multiple_1]
+            atom_2_xyz = sites_cart[multiple_2]
+            atom_i_xyz = sites_cart[i_seq]
+            cos_angle = cos_vec(atom_1_xyz, atom_2_xyz, atom_i_xyz)
+
+            if abs(cos_angle) > 0.707 and (atom_1_xyz != atom_2_xyz):
+              tuple1 = [i_seq, multiple_1]
+              tuple2 = [i_seq, multiple_2]
+              tuple1.sort()
+              tuple2.sort()
+              tuple1 = tuple(tuple1)
+              tuple2 = tuple(tuple2)
+              if tuple1 in self._clashes_dict.keys() and tuple2 in self._clashes_dict.keys():
+                if self._clashes_dict[tuple1][0] < self._clashes_dict[tuple2][0]:
+                  clashes_to_be_removed.append(tuple2)
+                else:
+                  clashes_to_be_removed.append(tuple1)
+    for clash_tuple in clashes_to_be_removed:
+      if clash_tuple in self._clashes_dict.keys():
+        del self._clashes_dict[clash_tuple]
+#

@@ -556,6 +556,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
                              cctbx_list_all)
       self.assertEqual(cctbx_list_all, expected, msg=msg)
 
+  # OK transferred
   def test_inline_overlaps(self):
     '''
     Test non-bonded overlaps of C with H-C.
