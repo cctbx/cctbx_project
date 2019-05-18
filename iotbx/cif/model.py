@@ -5,17 +5,14 @@ import sys
 import string
 import copy
 from six.moves import cStringIO as StringIO
-try:
-  from UserDict import DictMixin
-except:
-  from collections import MutableMapping as DictMixin
+from collections import MutableMapping
 from cctbx.array_family import flex
 from six.moves import range
 from six.moves import zip
 import six
 
 
-class cif(DictMixin):
+class cif(MutableMapping):
   def __init__(self, blocks=None):
     self._errors = None
     if blocks is not None:
@@ -23,6 +20,13 @@ class cif(DictMixin):
     else:
       self.blocks = OrderedDict()
     self.keys_lower = dict([(key.lower(), key) for key in self.blocks.keys()])
+
+  def __len__(self):
+    return len(self.keys())
+
+  def __iter__(self):
+    for k in self.keys():
+      yield k
 
   def __setitem__(self, key, value):
     assert isinstance(value, block)
@@ -107,12 +111,19 @@ class cif(DictMixin):
       for b in self.blocks.values():
         b.sort(recursive=recursive, reverse=reverse)
 
-class block_base(DictMixin): # XXX not sure if DictMixin will work as expected under Py3
+class block_base(MutableMapping):
   def __init__(self):
     self._items = {}
     self.loops = {}
     self._set = OrderedSet()
     self.keys_lower = {}
+
+  def __len__(self):
+    return len(self.keys())
+
+  def __iter__(self):
+    for k in self.keys():
+      yield k
 
   def __setitem__(self, key, value):
     if not re.match(tag_re, key):
@@ -466,7 +477,7 @@ class block(block_base):
     new.saves = self.saves.copy()
     return new
 
-class loop(DictMixin):
+class loop(MutableMapping):
   def __init__(self, header=None, data=None):
     self._columns = OrderedDict()
     self.keys_lower = {}
@@ -485,6 +496,13 @@ class loop(DictMixin):
       self.add_columns(data)
       self.keys_lower = dict(
         [(key.lower(), key) for key in self._columns.keys()])
+
+  def __len__(self):
+    return len(self.keys())
+
+  def __iter__(self):
+    for k in self.keys():
+      yield k
 
   def __setitem__(self, key, value):
     if not re.match(tag_re, key):
