@@ -92,7 +92,8 @@ class _():
       for qq in range(pp+1,len(bases)-1):
         for rr in range(qq+1, len(bases)):
           comb.append((bases[pp],bases[qq],bases[rr]))
-    comb.sort(combocmp)
+    from functools import cmp_to_key
+    comb.sort(key = cmp_to_key(combocmp))
     return comb
 
   def niggli(self, cutoff = 25.):

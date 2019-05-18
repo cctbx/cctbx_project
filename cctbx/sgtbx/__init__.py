@@ -823,7 +823,8 @@ class symmetry_equivalent_pair_interactions(libtbx.slots_getstate_setstate):
     rs = rt_mx_ji.multiply(sso_j)
     return rs in O.registry
 
-def compare_cb_op_as_hkl(a, b):
+def compare_cb_op_as_hkl(a, b): # FIXME Py2-style compare, wrap in functools.cmp_to_key
   if (len(a) < len(b)): return -1
   if (len(a) > len(b)): return  1
+  from past.builtins import cmp
   return cmp(a, b)

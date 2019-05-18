@@ -533,10 +533,11 @@ def exercise_change_of_basis_between_arbitrary_space_groups():
             == h1.as_reference_setting().group())
 
 def exercise_compare_cb_op_as_hkl():
+  from functools import cmp_to_key
   l = ["k,h,l", "h,k,l"]
-  l.sort(sgtbx.compare_cb_op_as_hkl)
+  l.sort(key=cmp_to_key(sgtbx.compare_cb_op_as_hkl))
   assert l == ["h,k,l", "k,h,l"]
-  l.sort(sgtbx.compare_cb_op_as_hkl)
+  l.sort(key=cmp_to_key(sgtbx.compare_cb_op_as_hkl))
   assert l == ["h,k,l", "k,h,l"]
 
 def run(args):

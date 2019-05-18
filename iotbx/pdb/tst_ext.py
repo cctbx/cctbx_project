@@ -78,13 +78,15 @@ def exercise_base_256_ordinal():
     assert o(s) == po(s)
     assert o("-"+s) == -o(s)
   #
+  from past.builtins import cmp
+  from functools import cmp_to_key
   def o_cmp(a, b): return cmp(o(a), o(b))
   char4s = ["%4s" % i for i in range(-999,9999+1)]
-  assert sorted(char4s, o_cmp) == char4s
+  assert sorted(char4s, key = cmp_to_key(o_cmp)) == char4s
   m = pdb.hy36decode(width=4, s="zzzz")
   e = pdb.hy36encode
   char4s = [e(width=4, value=i) for i in range(-999,m+1,51)]
-  assert sorted(char4s, o_cmp) == char4s
+  assert sorted(char4s, key = cmp_to_key(o_cmp)) == char4s
 
 def exercise_columns_73_76_evaluator(pdb_file_names):
   if (pdb_file_names is None):
