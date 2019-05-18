@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from exceptions import Exception
 
 class SpotfinderError(Exception):
   def __init__(self,message,processdict=None):

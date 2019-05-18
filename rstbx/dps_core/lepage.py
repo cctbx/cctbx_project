@@ -121,4 +121,5 @@ class iotbx_converter(metric_subgroups,list):
     subgroup['constraints']=echelon_constraints(subgroup['reduced_group'])
     self.append(MetricSubgroup().import_iotbx_style(subgroup))
   if (sort):
-    self.sort(bestcmp)
+    from functools import cmp_to_key
+    self.sort(key=cmp_to_key(bestcmp))
