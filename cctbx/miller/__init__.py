@@ -27,7 +27,6 @@ from libtbx.utils import Sorry, Keep, plural_s
 from libtbx import group_args, Auto
 import libtbx.table_utils
 from itertools import count
-from six.moves import zip
 import warnings
 import random
 import math
@@ -1700,7 +1699,10 @@ class set(crystal.symmetry):
     assert d_max >= 0
     assert d_min >= 0
     assert isinstance(reflections_per_bin, int) or isinstance(n_bins, int)
-    assert reflections_per_bin > 0 or n_bins > 0
+    if reflections_per_bin is not None:
+      assert reflections_per_bin > 0
+    if n_bins is not None:
+      assert n_bins > 0
     assert d_tolerance > 0
     assert d_tolerance < 0.5
     d_star_sq = self.d_star_sq().data()
