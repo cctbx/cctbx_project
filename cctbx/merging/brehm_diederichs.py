@@ -363,7 +363,7 @@ def reassemble(patchwork,verbose=False):
   refkeys = resorted[0].keys()
   for ip in range(1,len(patchwork)):
     reference = resorted[-1]
-    refkeys = reference.keys()
+    refkeys = list(reference.keys())
     test = patchwork[ip]
     newdict = {}
     for testkey in test.keys():
