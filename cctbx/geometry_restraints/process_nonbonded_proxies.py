@@ -150,15 +150,14 @@ class clashes(object):
       if record[3] is not None:
         self._symmetry_clashes_dict[iseq_tuple] = record
 
+
   def _obtain_macro_mol_clashes(self):
     self._macro_mol_clashes_dict = dict()
-    proxies = self.model.all_chain_proxies
-    cache = proxies.pdb_hierarchy.atom_selection_cache()
-    macro_mol_sel = proxies.selection(
-      cache  = cache,
-      string = 'protein or dna or rna')
+    #proxies = self.model.all_chain_proxies
+    macro_mol_sel = self.model.selection(string = 'protein')
     for iseq_tuple, record in self._clashes_dict.iteritems():
-      if macro_mol_sel[iseq_tuple[0]] and macro_mol_sel[iseq_tuple[1]] and record[3] is None:
+      if (macro_mol_sel[iseq_tuple[0]] and macro_mol_sel[iseq_tuple[1]]
+          and record[3] is None):
         self._macro_mol_clashes_dict[iseq_tuple] = record
 
 

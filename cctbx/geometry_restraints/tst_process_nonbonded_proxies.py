@@ -4,9 +4,9 @@ import mmtbx.model
 import iotbx.pdb
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
-
+from cctbx.array_family import flex
+from cctbx import xray
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
-
 
 
 def obtain_model(raw_records):
@@ -24,7 +24,7 @@ def obtain_model(raw_records):
   return model
 
 
-def get_clashes_result(raw_records):
+def get_clashes_result(raw_records, sel=None):
   '''
   Helper function to get clashes results from raw records
   '''
@@ -37,6 +37,9 @@ def get_clashes_result(raw_records):
     pdb_interpretation_params = params,
     build_grm   = True,
     log         = null_out())
+  if sel is not None:
+    model = model.select(sel)
+
   pnps = pnp.manager(model = model)
   clashes = pnps.get_clashes()
   return clashes
@@ -96,6 +99,56 @@ def test_vdw_dist():
   assert approx_equal(results.clashscore_sym, 0, eps=0.1)
   assert(results.n_clashes_macro_mol == 4)
   assert approx_equal(results.clashscore_macro_mol, 28.77, eps=0.1)
+
+
+def test_atom_selection():
+  '''
+  Test clashes when atom is removed
+  '''
+  clashes = get_clashes_result(raw_records=raw_records_3)
+  results = clashes.get_results()
+  assert(results.n_clashes == 3)
+  assert approx_equal(results.clashscore, 1000, eps=0.1)
+
+  sel = flex.bool([True, True, False])
+  clashes = get_clashes_result(raw_records=raw_records_3, sel = sel)
+  results = clashes.get_results()
+  assert(results.n_clashes == 1)
+  assert approx_equal(results.clashscore, 500, eps=0.1)
+
+
+def test_addition_scatterers():
+  '''
+  Test overlaps when adding and moving scatterers
+  Test water scatterers with and without labels
+  '''
+  clashes = get_clashes_result(raw_records=raw_records_3)
+  results = clashes.get_results()
+  assert(results.n_clashes == 3)
+  assert approx_equal(results.clashscore, 1000, eps=0.1)
+
+  # Add water scatterers
+  model = clashes.model
+  xrs = model.get_xray_structure()
+  new_scatterers = flex.xray_scatterer(
+    xrs.scatterers().size(),
+    xray.scatterer(occupancy = 1, b = 10, scattering_type = "O"))
+  new_sites_frac = xrs.unit_cell().fractionalize(xrs.sites_cart()+[0.5,0,0])
+  new_scatterers.set_sites(new_sites_frac)
+  new_xrs = xray.structure(
+    special_position_settings = xrs,
+    scatterers                = new_scatterers)
+  model.add_solvent(
+    solvent_xray_structure = new_xrs,
+    refine_occupancies     = False,
+    refine_adp             = "isotropic")
+
+  pnps = pnp.manager(model = model)
+  clashes = pnps.get_clashes()
+  results = clashes.get_results()
+
+  assert(results.n_clashes == 15)
+  assert approx_equal(results.clashscore, 2500, eps=5)
 
 
 def test_inline_angle():
@@ -201,7 +254,7 @@ ATOM   1321 HG22 THR A  85      33.420   1.251 -50.402  1.00 14.50           H
 ATOM   1322 HG23 THR A  85      32.116   1.932 -49.835  1.00 14.50           H
 """
 
-raw_records_1 = """\
+raw_records_1 = """
 CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
 HETATM 1819  N   NPH A 117      23.870  15.268 -50.490  1.00 25.06           N
 HETATM 1820  CA  NPH A 117      23.515  14.664 -49.210  1.00 22.94           C
@@ -395,6 +448,13 @@ ATOM   1956  HB3 SER B 124      22.084  18.454 -48.612  1.00 24.00           H
 ATOM   1957  HG  SER B 124      21.258  20.773 -49.552  1.00 27.42           H
 '''
 
+raw_records_3="""
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+ATOM      1  N   LYS     1       5.000   5.000   5.000  1.00 20.00           N
+ATOM      1  N   LYS     2       6.000   5.000   5.000  1.00 20.00           N
+ATOM      1  N   LYS     4       5.000   5.500   5.500  1.00 20.00           N
+"""
+
 raw_records_5 = """
 CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
 ATOM      1  N   LYS     1       5.000   5.000   5.000  1.00 20.00           N
@@ -411,4 +471,6 @@ if (__name__ == "__main__"):
   test_inline_overlaps()
   test_overlap_atoms()
   test_vdw_dist()
+  test_atom_selection()
+  test_addition_scatterers()
   print("OK. Time: %8.3f"%(time.time()-t0))

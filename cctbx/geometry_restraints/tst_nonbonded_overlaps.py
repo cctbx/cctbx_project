@@ -628,6 +628,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     self.assertEqual(grm.nb_overlaps_all, 6,msg)
     self.assertEqual(grm.normalized_nbo_all, 1500,msg)
 
+  # OK transferred
   def test_atom_selection(self):
     '''
     Test that working correctly when atom is removed
@@ -668,6 +669,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     msg = outstring.format('Selection related overlaps', expected, result)
     self.assertEqual(result, expected, msg=msg)
 
+  # OK transferred
   def test_labels_and_addition_scatterers(self):
     '''
     Test overlaps when adding and moving scatterers
@@ -756,6 +758,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
 #    msg = outstring.format('Selection related overlaps', expected, result)
 #    self.assertEqual(result, expected, msg=msg)
 
+  # TODO
   def test_unknown_pair_type(self):
     '''Make sure unknown pair types are not processed'''
     self.assertRaises(Sorry,process_raw_records,raw_record_number=6)
