@@ -427,7 +427,8 @@ class structure(crystal.special_position_settings):
         b_mean = adptbx.u_as_b(flex.mean(u_isos))
         b_max = int(b_mean + spread)
         b_min = int(max(0.0, b_mean - spread))
-    assert b_min <= b_max, [b_min,b_max,spread,b_mean]
+    if b_min is not None and b_max is not None:
+      assert b_min <= b_max, [b_min,b_max,spread,b_mean]
     if(selection is not None):
       assert selection.size() == self._scatterers.size()
     else:
