@@ -1122,13 +1122,13 @@ Number of scattering types: 4
     xs1.scattering_type_registry(custom_dict = custom_gaussians)
     xs.concatenate_inplace(other = xs1)
     xs.scattering_type_registry().show()
-  except Exception as e: pass
-  assert str(e) == "Cannot concatenate: conflicting scatterers"
+  except Exception as e:
+    assert str(e) == "Cannot concatenate: conflicting scatterers"
   sys.stdout = out
   #
-  assert [(r.scattering_type, r.count, "%.1f" % r.occupancy_sum)
-    for r in xs.scattering_types_counts_and_occupancy_sums()] \
-      == [('C', 1, "1.0"), ('X1', 1, "0.5"), ('Z1', 1, "1.5"), ('O', 1, "1.0")]
+  assert set([(r.scattering_type, r.count, "%.1f" % r.occupancy_sum)
+    for r in xs.scattering_types_counts_and_occupancy_sums()])\
+      == set([('C', 1, "1.0"), ('X1', 1, "0.5"), ('Z1', 1, "1.5"), ('O', 1, "1.0")])
 
 def exercise_min_u_cart_eigenvalue():
   cs = crystal.symmetry((1, 1, 1, 90, 90, 90), "P 1")

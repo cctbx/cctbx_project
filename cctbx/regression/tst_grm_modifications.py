@@ -4,7 +4,7 @@ import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from cctbx.array_family import flex
 import mmtbx.model
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 #import libtbx.load_env
 from cctbx import geometry_restraints
 from libtbx.test_utils import show_diff
