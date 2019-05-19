@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 # symbol is given, all 530 entries in the internal table are listed.
 
 from cctbx import sgtbx
-import urllib
+from six.moves import urllib
 from cctbx.web import cgi_utils
 
 def interpret_form_data(form):
@@ -36,7 +36,7 @@ def run(server_info, inp, status):
       print("<td>(%d)<td>%s" % (
         symbols.number(), symbols.schoenflies()))
       query = "target_module=explore_symmetry&sgsymbol=" \
-            + urllib.quote_plus(symbols.universal_hermann_mauguin())
+            + urllib.parse.quote_plus(symbols.universal_hermann_mauguin())
       print(("<td><a href=\"%s\">%s</a>") % (
         server_info.script(query),
         symbols.universal_hermann_mauguin()))

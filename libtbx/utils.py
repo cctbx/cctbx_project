@@ -2083,24 +2083,24 @@ libtbx_urllib_proxy = None
 
 def install_urllib_http_proxy(server, port=80, user=None, password=None):
   global libtbx_urllib_proxy
-  import urllib2
+  from six.moves import urllib
   if (user is None):
-    proxy = urllib2.ProxyHandler({'http': '%s:%d' % (server, port) })
-    opener = urllib2.build_opener(proxy)
+    proxy = urllib.request.ProxyHandler({'http': '%s:%d' % (server, port) })
+    opener = urllib.request.build_opener(proxy)
   else :
-    proxy = urllib2.ProxyHandler({
+    proxy = urllib.request.ProxyHandler({
       'http': 'http://%s:%s@%s:%s' % (user, password, server, port),
     })
-    auth = urllib2.HTTPBasicAuthHandler()
-    opener = urllib2.build_opener(proxy, auth, urllib2.HTTPHandler)
+    auth = urllib.request.HTTPBasicAuthHandler()
+    opener = urllib.request.build_opener(proxy, auth, urllib.request.HTTPHandler)
   libtbx_urllib_proxy = proxy
-  urllib2.install_opener(opener)
-  print("Installed urllib2 proxy at %s:%d" % (server, port))
+  urllib.request.install_opener(opener)
+  print("Installed urllib proxy at %s:%d" % (server, port))
   return proxy
 
 def urlopen(*args, **kwds):
   """
-  Substitute for urllib2.urlopen, with automatic HTTP proxy configuration
+  Substitute for urllib.request.urlopen, with automatic HTTP proxy configuration
   if specific environment variables are defined.
   """
   if ("CCTBX_HTTP_PROXY" in os.environ) and (libtbx_urllib_proxy is None):
@@ -2117,8 +2117,8 @@ def urlopen(*args, **kwds):
       port=port,
       user=user,
       password=password)
-  import urllib2
-  return urllib2.urlopen(*args, **kwds)
+  from six.moves import urllib
+  return urllib.request.urlopen(*args, **kwds)
 
 def retrieve_unless_exists(url, filename, digests=None):
   """ Download the file at the given url to the given local filename,
@@ -2136,14 +2136,14 @@ def retrieve_unless_exists(url, filename, digests=None):
   """
   import urlparse
   from os import path
-  import urllib
+  from six.moves import urllib
   if digests is None:
     digests = urlparse.urljoin(url, 'digests.txt')
-  digest_of = dict(tuple(li.split()) for li in urllib.urlopen(digests))
+  digest_of = dict(tuple(li.split()) for li in urllib.request.urlopen(digests))
   src_name = os.path.basename(urlparse.urlparse(url).path)
   if (not os.path.isfile(filename)
       or md5_hexdigest(filename) != digest_of[src_name]):
-    urllib.urlretrieve(url, filename)
+    urllib.request.urlretrieve(url, filename)
     return "Downloaded"
   else:
     return "Cached"
@@ -2266,16 +2266,16 @@ class download_target(object):
     if (progress_meter is None):
       progress_meter = download_progress(log=log)
     from libtbx import easy_run
-    import urllib2
+    from six.moves import urllib
     file_name = self.file_name # return value
     if (not self.use_curl):
       if (not None in [self.user, self.password]):
-        passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         passman.add_password(None, self.base_url, self.user, self.password)
-        authhandler = urllib2.HTTPBasicAuthHandler(passman)
-        opener = urllib2.build_opener(authhandler)
-        urllib2.install_opener(opener)
-      req = urllib2.urlopen(self.url)
+        authhandler = urllib.request.HTTPBasicAuthHandler(passman)
+        opener = urllib.request.build_opener(authhandler)
+        urllib.request.install_opener(opener)
+      req = urllib.request.urlopen(self.url)
       info = req.info()
       n_kb_total = int(info['Content-length']) / 1024
       progress_meter.set_total_size(n_kb_total)

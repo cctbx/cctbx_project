@@ -132,7 +132,8 @@ multiple_cell_list = (
 ("H 63/m c m", ("-H 6c 2", "-H 6c 2", "-H 6c 2")),
 )
 
-import cgi, urllib
+import cgi
+from six.moves import urllib
 
 def escape(s):
   return cgi.escape(s, 1)
@@ -142,7 +143,7 @@ def LinkExploreSymmetry(Hall):
     "<a href=\"%s?target_module=%s&convention=Hall;sgsymbol=%s\">%s</a>" % (
      URL_cctbx_web,
      URL_target_module,
-     urllib.quote_plus(Hall),
+     urllib.parse.quote_plus(Hall),
      Hall)
 
 def run():

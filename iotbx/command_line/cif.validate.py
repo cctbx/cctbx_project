@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME iotbx.cif.validate
 
 import glob, os, sys
-import urllib2
+from six.moves import urllib
 from six.moves import cStringIO as StringIO
 
 from iotbx import cif
@@ -60,8 +60,8 @@ def run(args, out=sys.stdout):
     cm.validate(cif_dic, show_warnings=show_warnings)
   else:
     try:
-      file_object = urllib2.urlopen(filepath)
-    except urllib2.URLError as e:
+      file_object = urllib.request.urlopen(filepath)
+    except urllib.error.URLError as e:
       pass
     else:
       cm = cif.reader(file_object=file_object, strict=strict).model()

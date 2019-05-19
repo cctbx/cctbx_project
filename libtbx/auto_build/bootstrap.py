@@ -25,7 +25,8 @@ import tempfile
 import textwrap
 import time
 import traceback
-import urllib2
+import urllib2 # FIXME Python 2/3 compatible line is as follows:
+#from six.moves import urllib
 import urlparse
 import zipfile
 from six.moves import map
@@ -253,14 +254,17 @@ class Toolbox(object):
         else:
           # Handle target environment that doesn't support HTTPS verification
           ssl._create_default_https_context = _create_unverified_https_context
-      url_request = urllib2.Request(url)
+      url_request = urllib2.Request(url) # FIXME Python 2/3 compatible line is as follows:
+      #url_request = urllib.request.Request(url)
       if etag:
         url_request.add_header("If-None-Match", etag)
       if localcopy:
         # Shorten timeout to 7 seconds if a copy of the file is already present
-        socket = urllib2.urlopen(url_request, None, 7)
+        socket = urllib2.urlopen(url_request, None, 7) # FIXME Python 2/3 compatible line is:
+        #socket = urllib.request.urlopen(url_request, None, 7)
       else:
-        socket = urllib2.urlopen(url_request)
+        socket = urllib2.urlopen(url_request) # FIXME Python 2/3 compatible line is as follows:
+        #socket = urllib.request.urlopen(url_request)
     except SSLError as e:
       # This could be a timeout
       if localcopy:
@@ -270,8 +274,10 @@ class Toolbox(object):
         return -2
       # otherwise pass on the error message
       raise
-    except (pysocket.timeout, urllib2.HTTPError) as e:
-      if isinstance(e, urllib2.HTTPError) and etag and e.code == 304:
+    except (pysocket.timeout, urllib2.HTTPError) as e:               # FIXME Python2/3 below:
+    #except (pysocket.timeout, urllib.error.HTTPError) as e:
+      if isinstance(e, urllib2.HTTPError) and etag and e.code == 304:# FIXME Python2/3 below:
+      #if isinstance(e, urllib.error.HTTPError) and etag and e.code == 304:
         # When using ETag. a 304 error means everything is fine
         log.write("local copy is current (etag)\n")
         return -2
@@ -282,7 +288,8 @@ class Toolbox(object):
         return -2
       # otherwise pass on the error message
       raise
-    except urllib2.URLError as e:
+    except urllib2.URLError as e: # FIXME Python 2/3 compatible line is as follows:
+    #except urllib.error.URLError as e:
       if localcopy:
         # Download failed for some reason, but a valid local copy of
         # the file exists, so use that one instead.

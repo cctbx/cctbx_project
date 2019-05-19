@@ -24,19 +24,19 @@ imgfile = "./F4_0_00008.mccd.gz"
 
 # get stuff from the web if we have to
 if not os.path.isfile(mtzfile):
-  import urllib
+  from six.moves import urllib
   url = "http://bl831.als.lbl.gov/~jamesh/simtbx/"+mtzfile
-  urllib.urlretrieve(url, mtzfile)
+  urllib.request.urlretrieve(url, mtzfile)
 
 if not os.path.isfile(stolfile):
-  import urllib
+  from six.moves import urllib
   url = "http://bl831.als.lbl.gov/~jamesh/simtbx/bg.stol"
-  urllib.urlretrieve(url, stolfile)
+  urllib.request.urlretrieve(url, stolfile)
 
 if not os.path.isfile(imgfile):
-  import urllib
+  from six.moves import urllib
   url = "http://bl831.als.lbl.gov/~jamesh/simtbx/"+imgfile
-  urllib.urlretrieve(url, imgfile)
+  urllib.request.urlretrieve(url, imgfile)
 
 # make sure we got everything we need
 assert os.path.isfile(mtzfile)

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import glob, os, sys
-import urllib2
+from six.moves import urllib
 
 from libtbx.utils import time_log
 import libtbx.load_env
@@ -78,8 +78,8 @@ def run(args, out=sys.stdout):
              build_xray_structure=build_xray_structure)
   else:
     try:
-      file_object = urllib2.urlopen(filepath)
-    except urllib2.URLError as e:
+      file_object = urllib.request.urlopen(filepath)
+    except urllib.error.URLError as e:
       pass
     else:
       cm = reader(file_object=file_object).model()

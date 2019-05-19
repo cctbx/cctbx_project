@@ -6,15 +6,10 @@ from iotbx.detectors import ImageException
 from scitbx.array_family import flex
 
 def pilatus_slice_from_http_url(url):
-  #backward compatibility with Python 2.5
-  try: from urlparse import parse_qs
-  except Exception: from cgi import parse_qs
-
-  from urlparse import urlparse
-  parsed = urlparse(url)
+  from six.moves import urllib
+  parsed = urllib.parse.urlparse(url)
   assert parsed.scheme in ["http","https"]
-  from urllib2 import urlopen
-  Response = urlopen(url)
+  Response = urllib.request.urlopen(url)
   info = Response.info()
   #print info
   P = PilatusSlice()
@@ -37,17 +32,13 @@ def pilatus_slice_from_http_url(url):
   return P
 
 def pilatus_slice_from_file_url(url):
-  #backward compatibility with Python 2.5
-  try: from urlparse import parse_qs
-  except Exception: from cgi import parse_qs
-
-  from urlparse import urlparse
-  parsed = urlparse(url)
+  from six.moves import urllib
+  parsed = urllib.parse.urlparse(url)
   assert parsed.scheme == "file"
   file = parsed.path.split("?")[0]
   if file == parsed.path:
     return PilatusImage(file)
-  qs = parse_qs(parsed.path.split("?")[1])
+  qs = urllib.parse.parse_qs(parsed.path.split("?")[1])
   sliceindex = int(qs["slice"][0])
   object = PilatusImage(file)
   object.readHeader()
