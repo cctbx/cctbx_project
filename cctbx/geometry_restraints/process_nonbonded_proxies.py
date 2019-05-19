@@ -85,10 +85,10 @@ def unknown_pairs_present(model):
   """
   Test if PDB file contains unknown type pairs
 
-  Args:
+  Parameters:
     model (obj): model object
 
-  Return:
+  Returns:
     (bool): True if PDB file contains unknown type pairs
   """
   grm = model.get_restraints_manager()
@@ -115,9 +115,9 @@ class clashes(object):
 
 
   def show(self, log=null_out()):
-    '''
+    """
     Print all clashes in a table.
-    '''
+    """
     # TODO : make sure self._clashes_dict is not empty
     make_sub_header(' Nonbonded overlaps', out=log)
     # General information
@@ -155,6 +155,9 @@ class clashes(object):
 
 
   def _obtain_symmetry_clashes(self):
+    """
+    Get clashes due to symmetry
+    """
     self._symmetry_clashes_dict = dict()
     n_clashes_sym = 0
     clashscore_sym = 0
@@ -170,6 +173,9 @@ class clashes(object):
 
 
   def _obtain_macro_mol_clashes(self):
+    """
+    Get clashes involving macro-mol atoms only
+    """
     self._macro_mol_clashes_dict = dict()
     n_clashes_macro_mol = 0
     clashscore_macro_mol = 0
@@ -185,6 +191,9 @@ class clashes(object):
 
 
   def get_results(self):
+    '''
+    Accessor for results
+    '''
     # overall
     n_clashes = len(self._clashes_dict)
     n_atoms = self.model.size()
@@ -221,6 +230,9 @@ class hbonds(object):
     self.hbonds_dict = hbonds_dict
 
   def show(self):
+    """
+    Print all hbonds in a table.
+    """
     pass
 
   def forms_hbond(self, iseq):
@@ -244,9 +256,9 @@ class manager():
     # self._add_H_atoms() ????
 
   def get_clashes(self):
-    '''
+    """
     Accessor for clashes object
-    '''
+    """
     if self._clashes is None:
       self._process_nonbonded_proxies(find_clashes = True)
       return self._clashes
@@ -254,9 +266,9 @@ class manager():
       return self._clashes
 
   def get_hbonds(self):
-    '''
+    """
     Accessor for hbonds object
-    '''
+    """
     if not self._hbonds:
       self._process_nonbonded_proxies(find_hbonds = True)
     else:
@@ -272,9 +284,9 @@ class manager():
 
 
   def show(self):
-    '''
+    """
     Print information
-    '''
+    """
     if self.has_clashes():
       self._clashes.show()
     if self.has_hbonds():
@@ -284,11 +296,9 @@ class manager():
   def _process_nonbonded_proxies(self,
                                  find_clashes = True,
                                  find_hbonds = False):
-    '''
-    Here is where the calculations are done
-    Either all is done at once (clashes, hbonds, other?)
-    or it will be modular (use find_clashes and find_hbodns parameters)
-    '''
+    """
+    Process nonbonded_proxies to find bonds, interactions and clashes.
+    """
     grm = self.model.get_restraints_manager().geometry
     xrs = self.model.get_xray_structure()
     sites_cart = self.model.get_sites_cart()
@@ -320,8 +330,6 @@ class manager():
     self._mult_clash_dict = dict()
 
     # loop over nonbonded proxies do stuff and fill in the dicts:
-    # self._clashes_dict[(iseq, jseq)] = (relevant info)
-    # self._hbonds_dict[(iseq, jseq)] = (relevant info)
     for item in nonbonded_list:
       i_seq          = item[1]
       j_seq          = item[2]
@@ -356,7 +364,7 @@ class manager():
                 hd_sel,
                 fsc0,
                 model_distance):
-    '''
+    """
     Determine if a nonbonded proxy is a clash.
 
     Parameters:
@@ -368,7 +376,7 @@ class manager():
 
     Returns:
       bool (is_clash): if a nonbonded proxy is a clash
-    '''
+    """
     is_clash = False
     is_1_5_interaction = check_if_1_5_interaction(
              i_seq = i_seq,
@@ -390,6 +398,14 @@ class manager():
 
 
   def _process_clashes(self, sites_cart, fsc0):
+    """
+    Process clases found when looping through nonbonded_proxies.
+
+    This step is necessary to filter out clashes with common atoms.
+    X-H ~~~ Y might produce two clases, one between X and Y, the other
+    between H and Y. This step filters the raw results and keeps the shorter
+    of the two clashes (if an angular cutoff is above a limit)
+    """
     clashes_to_be_removed = list()
     for i_seq, j_seq_list in self._mult_clash_dict.iteritems():
       n_multiples = len(j_seq_list)
@@ -404,7 +420,7 @@ class manager():
             atom_2_xyz = sites_cart[multiple_2]
             atom_i_xyz = sites_cart[i_seq]
             cos_angle = cos_vec(atom_1_xyz, atom_2_xyz, atom_i_xyz)
-
+            # check if atoms are inline
             if abs(cos_angle) > 0.707 and (atom_1_xyz != atom_2_xyz):
               tuple1 = [i_seq, multiple_1]
               tuple2 = [i_seq, multiple_2]
