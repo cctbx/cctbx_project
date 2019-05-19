@@ -257,9 +257,9 @@ class urlopener(object):
 
   def __call__(self, url, data = None):
 
-    import urllib2
+    from six.moves import urllib
 
-    request = urllib2.Request(
+    request = urllib.request.Request(
       url = url,
       data = data,
       headers = {
@@ -268,9 +268,9 @@ class urlopener(object):
       )
 
     try:
-      stream = urllib2.urlopen( request )
+      stream = urllib.request.urlopen( request )
 
-    except urllib2.HTTPError as e:
+    except urllib.error.HTTPError as e:
       raise http_error_to_exception( error = e )
 
     used = stream.info().get( "Content-Encoding" )

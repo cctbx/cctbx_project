@@ -43,8 +43,8 @@ def do_main(filepath, host, port):
 
 def do_main_apache(filepath, host, port):
   absfile = os.path.abspath(filepath)
-  import urllib2
-  Response = urllib2.urlopen(
+  from six.moves import urllib
+  Response = urllib.request.urlopen(
    "http://%s:%d/spotfinder/distl.signal_strength?filename=%s"%(
    host,port,absfile))
   print(Response.read())

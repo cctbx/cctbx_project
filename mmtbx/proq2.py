@@ -69,7 +69,7 @@ class Job(object):
   def __init__(self, pdbstr, name):
 
     from iotbx.pdb import download
-    import urllib
+    from six.moves import urllib
 
     data_for = {
       "pdb": pdbstr,
@@ -81,7 +81,7 @@ class Job(object):
 
     stream = download.openurl(
       url = self.SERVERURL,
-      data = urllib.urlencode( list(data_for.items()) ),
+      data = urllib.parse.urlencode( list(data_for.items()) ),
       )
     self.job_folder = parse_submission_page( stream = stream )
     stream.close()

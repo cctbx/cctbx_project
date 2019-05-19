@@ -13,16 +13,16 @@ class phil_validation:
 
 class file_table:
   def __init__(self,param,query,enforce80=False,enforce81=False):
-    import urllib2
-    auth_handler = urllib2.HTTPBasicAuthHandler()
+    from six.moves import urllib
+    auth_handler = urllib.request.HTTPBasicAuthHandler()
     auth_handler.add_password(realm="Webservices Auth",
                           uri="https://pswww.slac.stanford.edu",
                           user=param.web.user,
                           passwd=param.web.password)
-    opener = urllib2.build_opener(auth_handler)
+    opener = urllib.request.build_opener(auth_handler)
     # ...and install it globally so it can be used with urlopen.
-    urllib2.install_opener(opener)
-    R = urllib2.urlopen(query)
+    urllib.request.install_opener(opener)
+    R = urllib.request.urlopen(query)
     if R.getcode() != 200:
       print("Status",R.getcode())
     import xml.etree.ElementTree

@@ -95,11 +95,11 @@ class ServerProxy(object):
     # establish a "logical" server connection
 
     # get the url
-    import urllib
-    type, uri = urllib.splittype(uri)
+    from six.moves import urllib
+    type, uri = urllib.parse.splittype(uri)
     if type not in ("http", "https"):
       raise IOError("unsupported XML-RPC protocol")
-    self.__host, self.__handler = urllib.splithost(uri)
+    self.__host, self.__handler = urllib.parse.splithost(uri)
     if not self.__handler:
       self.__handler = "/RPC2"
 

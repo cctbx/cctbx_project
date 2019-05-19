@@ -8,7 +8,7 @@ from cctbx.sgtbx.direct_space_asu import facet_analysis
 from cctbx import sgtbx
 from scitbx import matrix
 from libtbx.option_parser import OptionParser
-import urllib
+from six.moves import urllib
 import math
 import os
 from six.moves import range
@@ -296,7 +296,7 @@ def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
     title = "ASU " + str(space_group_info)
     header = 'Space group: <a href="%s">%s</a> (No. %d)' % (
       explore_symmetry_url % http_server_name
-        + urllib.quote_plus(str(space_group_info)),
+        + urllib.parse.quote_plus(str(space_group_info)),
       str(space_group_info),
       group_type_number)
     sub_header = None
@@ -308,7 +308,7 @@ def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
     header = 'Plane group: %s (No. %d)' % (pg_symbol, -group_type_number)
     sub_header = 'Corresponding space group: <a href="%s">%s</a> (No. %d)' % (
       explore_symmetry_url % http_server_name
-        + urllib.quote_plus(str(space_group_info)),
+        + urllib.parse.quote_plus(str(space_group_info)),
       str(space_group_info),
       space_group_info.type().number())
   f = open(html_file_name, "w")

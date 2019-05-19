@@ -4,7 +4,7 @@ from libtbx.utils import Sorry
 from libtbx import slots_getstate_setstate_default_initializer
 import libtbx.utils
 import cStringIO
-import urllib
+from six.moves import urllib
 import time
 import os
 
@@ -131,7 +131,7 @@ def get_ebi_pdb_wublast(sequence, email, file_name=None, blast_type="blastp",
   """
   assert (email is not None)
   url = "http://www.ebi.ac.uk/Tools/services/rest/wublast/run/"
-  params = urllib.urlencode({
+  params = urllib.parse.urlencode({
     'sequence': sequence,
     'program' : program,
     'email'   : email,

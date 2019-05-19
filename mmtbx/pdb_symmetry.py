@@ -105,12 +105,12 @@ def symmetry_search(
   return scores
 
 def download_crystal_db():
-  import urllib2
+  from six.moves import urllib
   host = "ftp.wwpdb.org"
   file = "pub/pdb/derived_data/index/crystal.idx"
   url = "ftp://%s/%s" % (host, file)
   print("Retrieving %s" % url)
-  data = urllib2.urlopen(url)
+  data = urllib.request.urlopen(url)
   dest_dir = libtbx.env.find_in_repositories(
     relative_path="chem_data/pdb",
     test=os.path.isdir)

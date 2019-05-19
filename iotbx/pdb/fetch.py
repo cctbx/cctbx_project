@@ -29,7 +29,7 @@ from libtbx import Auto
 import libtbx.utils
 import libtbx.load_env
 from six.moves import cStringIO as StringIO
-import urllib2
+from six.moves.urllib.error import HTTPError
 import re
 import os
 
@@ -165,7 +165,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       url = "https://www.rcsb.org/pdb/download/downloadFastaFiles.do?structureIdList=%s&compressionType=uncompressed" % id
     try :
       data = libtbx.utils.urlopen(url)
-    except urllib2.HTTPError as e :
+    except HTTPError as e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download sequence for %s." % id)
       else :
@@ -175,7 +175,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       url = url_base + sf_prefix + id + sf_ext
     try :
       data = libtbx.utils.urlopen(url)
-    except urllib2.HTTPError as e :
+    except HTTPError as e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download structure factors for %s." % id)
       else :
@@ -188,7 +188,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
         url = url_base + id + "." + format
     try :
       data = libtbx.utils.urlopen(url)
-    except urllib2.HTTPError as e :
+    except HTTPError as e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download model for %s." % id)
       else :
@@ -263,7 +263,7 @@ def get_chemical_components_cif(code, return_none_if_already_present=False):
     url = "http://www.rcsb.org/pdb/files/ligand/%s.cif" % code
     try :
       data = libtbx.utils.urlopen(url)
-    except urllib2.HTTPError as e :
+    except HTTPError as e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download sequence for %s." % id)
       else :

@@ -298,7 +298,7 @@ def exercise_dir_utils():
   assert utils.allow_delete_directory(target_dir)
 
 def exercise_retrieve_unless_exists():
-  import urllib
+  from six.moves import urllib
   filehandle, filename = tempfile.mkstemp(prefix='kings_of_france')
   # we will need to pass filename to functions which will open it
   # on Windows this causes a permission exception
@@ -319,7 +319,7 @@ def exercise_retrieve_unless_exists():
   targetname = os.path.join(d, 'target')
   try: os.remove(targetname)
   except Exception: pass
-  url = 'file:' + urllib.pathname2url(filename)
+  url = 'file:' + urllib.request.pathname2url(filename)
   assert (utils.retrieve_unless_exists(url=url, filename=targetname) ==
           "Downloaded")
   with open(filename) as source, open(targetname) as target:
