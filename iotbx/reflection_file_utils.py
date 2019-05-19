@@ -9,6 +9,7 @@ import libtbx.phil
 from itertools import count
 import math
 import sys, os
+from functools import cmp_to_key
 from six.moves import range
 from six.moves import zip
 
@@ -397,7 +398,9 @@ def sort_arrays_by_score(miller_arrays, array_scores, minimum_score):
   for array in miller_arrays :
     scored_arrays.append( (array, array_scores[i]) )
     i += 1
-  scored_arrays.sort(lambda x, y: y[1] - x[1])
+  def cmp_fn(x,y):
+    return y[1] - x[1]
+  scored_arrays.sort(key=cmp_to_key(cmp_fn))
   valid_arrays = []
   for (array, score) in scored_arrays :
     if score >= minimum_score :

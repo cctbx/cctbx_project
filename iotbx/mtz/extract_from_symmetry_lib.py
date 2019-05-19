@@ -84,7 +84,7 @@ def search_symop_lib_for_ccp4_symbol(space_group_info, file_iter):
 def collect_symops(file_iter, order_z):
   result = sgtbx.space_group()
   for i in range(order_z):
-    line = file_iter.next().strip()
+    line = next(file_iter).strip()
     result.expand_smx(sgtbx.rt_mx(line))
   return result
 

@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from iotbx.pdb.mmcif import cif_input
 import inspect
+import six
 
 t_pdb_str = """\
 ATOM      1  N   ALA     2       1.643  -2.366  -1.408  1.00
@@ -52,8 +53,11 @@ def exercise():
   was added to one of the class and not added to another one.
   """
   pdb_member_functions = get_pdb_inp_functions()
+  predicate = inspect.ismethod
+  if six.PY3:
+    predicate = inspect.isfunction
   cif_member_functions = [
-      x[0] for x in inspect.getmembers(cif_input, predicate=inspect.ismethod) \
+      x[0] for x in inspect.getmembers(cif_input, predicate=predicate) \
       if not x[0].startswith('_')]
   extra_in_pdb = find_out_extras(pdb_member_functions, cif_member_functions)
   extra_in_cif = find_out_extras(cif_member_functions, pdb_member_functions)

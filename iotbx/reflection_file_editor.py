@@ -546,7 +546,7 @@ class process_arrays(object):
       if (default_label is not None):
         output_labels = None
       else :
-        default_label = 2 * string.uppercase[i]
+        default_label = 2 * string.ascii_uppercase[i]
       column_types = None
       import iotbx.mtz
       default_types = iotbx.mtz.default_column_types(output_array)
@@ -702,7 +702,7 @@ class process_arrays(object):
             test_flag_value=True)
         default_label = root_label
         if (default_label is None):
-          default_label = "A" + string.uppercase[i+1]
+          default_label = "A" + string.ascii_uppercase[i+1]
         self.add_array_to_mtz_dataset(
           output_array=output_array,
           default_label=default_label,

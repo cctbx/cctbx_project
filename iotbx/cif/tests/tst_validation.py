@@ -5,7 +5,7 @@ from iotbx.cif.validation import smart_load_dictionary
 import libtbx.load_env
 from libtbx.test_utils import Exception_expected
 
-from urllib2 import URLError
+from six.moves.urllib.error import URLError
 from six.moves import cStringIO as StringIO
 import sys
 

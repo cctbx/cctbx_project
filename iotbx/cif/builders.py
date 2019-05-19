@@ -6,6 +6,7 @@ from iotbx.cif import model
 from libtbx.utils import Sorry
 from libtbx.containers import OrderedDict, OrderedSet
 import warnings
+from six import string_types
 from six.moves import range
 import six
 from six.moves import zip
@@ -115,15 +116,15 @@ class crystal_symmetry_builder(builder_base):
     sym_op_ids = self.get_cif_item('_space_group_symop_id')
     space_group = None
     if sym_ops is not None:
-      if isinstance(sym_ops, basestring):
+      if isinstance(sym_ops, string_types):
         sym_ops = flex.std_string([sym_ops])
       if sym_op_ids is not None:
-        if isinstance(sym_op_ids, basestring):
+        if isinstance(sym_op_ids, string_types):
           sym_op_ids = flex.std_string([sym_op_ids])
         assert len(sym_op_ids) == len(sym_ops)
       self.sym_ops = {}
       space_group = sgtbx.space_group()
-      if isinstance(sym_ops, basestring): sym_ops = [sym_ops]
+      if isinstance(sym_ops, string_types): sym_ops = [sym_ops]
       for i, op in enumerate(sym_ops):
         try:
           s = sgtbx.rt_mx(op)
@@ -216,10 +217,11 @@ class crystal_structure_builder(crystal_symmetry_builder):
   def __init__(self, cif_block):
     # XXX To do: interpret _atom_site_refinement_flags
     crystal_symmetry_builder.__init__(self, cif_block, strict=True)
-    atom_sites_frac = [as_double_or_none_if_all_question_marks(
-      _, column_name='_atom_site_fract_%s' %axis)
-                       for _ in [cif_block.get('_atom_site_fract_%s' %axis)
-                                 for axis in ('x','y','z')]]
+    atom_sites_frac = [
+      as_double_or_none_if_all_question_marks(
+        _, column_name='_atom_site_fract_%s' %axis)
+      for _, axis in [(cif_block.get('_atom_site_fract_%s' %axis), axis)
+                      for axis in ('x','y','z')]]
     if atom_sites_frac.count(None) == 3:
       atom_sites_cart = [as_double_or_none_if_all_question_marks(
         _, column_name='_atom_site_Cartn_%s' %axis)

@@ -9,6 +9,7 @@ from collections import MutableMapping
 from cctbx.array_family import flex
 from six.moves import range
 from six.moves import zip
+from six import string_types
 import six
 
 
@@ -133,7 +134,7 @@ class block_base(MutableMapping):
       self.keys_lower[key.lower()] = key
       for k in value.keys():
         self.keys_lower[k.lower()] = k
-    elif isinstance(value, basestring):
+    elif isinstance(value, string_types):
       v = str(value)
       if not (re.match(any_print_char_re, v) or
               re.match(quoted_string_re, v) or
@@ -541,7 +542,7 @@ class loop(MutableMapping):
     return repr(OrderedDict(six.iteritems(self)))
 
   def name(self):
-    return common_substring(self.keys()).rstrip('_').rstrip('.')
+    return common_substring(list(self.keys())).rstrip('_').rstrip('.')
 
   def size(self):
     size = 0

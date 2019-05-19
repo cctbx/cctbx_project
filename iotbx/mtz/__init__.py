@@ -1211,13 +1211,14 @@ def cutoff_data(file_name, d_min_cut):
   mtz_in = object(file_name=file_name)
   cut_arrays = []
   labels = ["H","K","L"]
+  uppercase = ['']
   for miller_array in mtz_in.as_miller_arrays():
     cut_arrays.append(miller_array.resolution_filter(d_min=d_min_cut))
     labels.extend(miller_array.info().labels)
   mtz_dataset = cut_arrays[0].as_mtz_dataset(column_root_label="A")
   for k, other_array in enumerate(cut_arrays[1:], start=1):
     mtz_dataset.add_miller_array(other_array,
-      column_root_label=string.uppercase[k])
+      column_root_label=string.ascii_uppercase[k])
   mtz_obj = mtz_dataset.mtz_object()
   assert (len(list(mtz_obj.columns())) == len(labels))
   for k, column in enumerate(mtz_obj.columns()):

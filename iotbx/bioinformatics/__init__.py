@@ -561,7 +561,7 @@ class clustal_alignment(alignment):
         for line in wrap( middle_line, aln_width ) ]
       )
 
-    def fmt_num():
+    def fmt_num(num):
       if num: return " " + str( num ).rjust( number_width )
       return ""
     return (
@@ -569,7 +569,7 @@ class clustal_alignment(alignment):
       + "\n\n".join(
         [
           "\n".join(
-            [ "%s %s%s" % ( cap, ali, fmt_num() )
+            [ "%s %s%s" % ( cap, ali, fmt_num(num) )
               for ( cap, ali, num ) in zipped_infos ]
             )
           for zipped_infos in zip( *aln_infos )
@@ -2070,4 +2070,3 @@ def random_sequence(n_residues=None,residue_basket=None):
     id=random.randint(0,nn)
     s+=residue_basket[id]
   return s
-

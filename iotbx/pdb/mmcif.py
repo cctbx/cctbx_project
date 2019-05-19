@@ -13,7 +13,9 @@ from iotbx.pdb.remark_3_interpretation import \
 import iotbx.cif
 from iotbx.cif.builders import crystal_symmetry_builder
 import iotbx.mtrix_biomt
+from six import string_types
 from six.moves import range, zip
+
 class pdb_hierarchy_builder(crystal_symmetry_builder):
 
   # The recommended translation for ATOM records can be found at:
@@ -206,7 +208,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     data = cif_block.get(name)
     if data is None:
       return data
-    if isinstance(data, basestring):
+    if isinstance(data, string_types):
       data = flex.std_string([data])
     return data
 
@@ -250,7 +252,7 @@ class extract_tls_from_cif_block(object):
              for i, j in ('11', '12', '13', '21', '22', '23', '31', '32', '33')]
     origin_xyzs = [cif_block.get('_pdbx_refine_tls.origin_%s' %x) for x in 'xyz']
 
-    if isinstance(tls_ids, basestring):
+    if isinstance(tls_ids, string_types):
       # in case the TLS items are not in a loop
       tls_ids = [tls_ids]
       T_ijs = [[T_ij] for T_ij in T_ijs]
@@ -276,7 +278,7 @@ class extract_tls_from_cif_block(object):
 
     assert tls_group_ids is not None
 
-    if isinstance(tls_group_ids, basestring):
+    if isinstance(tls_group_ids, string_types):
       # in case the TLS group items are not in a loop
       refine_tls_ids = flex.std_string([refine_tls_ids])
       beg_chain_ids = [beg_chain_ids]
@@ -404,7 +406,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       self.cif_model = cif_object
     if len(self.cif_model) == 0:
       raise Sorry("mmCIF file must contain at least one data block")
-    self.cif_block = self.cif_model.values()[0]
+    self.cif_block = list(self.cif_model.values())[0]
     self._source_info = "file %s" %file_name
     self.hierarchy = None
     self.builder = None
@@ -503,7 +505,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     #rev_num = cif_block.get('_database_PDB_rev.num')
     #if rev_num is not None:
     #  date_original = cif_block.get('_database_PDB_rev.date_original')
-    #  if isinstance(rev_num, basestring):
+    #  if isinstance(rev_num, string_types):
     #    return date_original
     #  else:
     #    i = flex.first_index(rev_num, '1')
@@ -526,7 +528,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def get_program_name(self):
     software_name = self.cif_block.get('_software.name')
     software_classification = self.cif_block.get('_software.classification')
-    if (isinstance(software_classification, basestring) and
+    if (isinstance(software_classification, string_types) and
         software_classification == 'refinement'):
       return software_name
     if software_classification is not None:

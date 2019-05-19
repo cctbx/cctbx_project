@@ -66,8 +66,10 @@ def exercise_cif_model():
   block1.add_loop(loop2)
   block1.add_loop(loop3)
   block.update(block1)
-  assert list(block._items.keys()) == ['_another_tag', '_tag2', '_tag', '_tag1']
-  assert list(block._items.values()) == ['3.142', '1.2', '2', "'a string'"]
+  for key in block._items.keys():
+    assert key in ['_another_tag', '_tag2', '_tag', '_tag1']
+  for value in block._items.values():
+    assert value in ['3.142', '1.2', '2', "'a string'"]
   assert list(block.loops.keys()) == ['_loop', '_loop2']
   assert list(block.keys()) == ['_tag', '_tag1', '_another_tag', '_loop_a',
                           '_loop_b','_tag2', '_loop2_a', '_loop2_b']

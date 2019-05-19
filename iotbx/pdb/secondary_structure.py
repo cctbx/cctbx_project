@@ -2071,7 +2071,9 @@ class pdb_strand(structure_base):
       end_icode,
       sense):
     adopt_init_args(self, locals())
-    assert (sheet_id > 0) and (strand_id > 0)
+    # Python 3 prevents comparisons between str and int
+    # assert (sheet_id > 0) and (strand_id > 0)
+    assert (sheet_id is not None) and (strand_id is not None)
     if sense not in [-1, 0, 1]:
       raise Sorry("Bad sense in SHEET record: '%s'" % sense)
     self.start_chain_id = self.parse_chain_id(start_chain_id)

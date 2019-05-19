@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import cStringIO as StringIO
+import six
 import sys
 
 def assert_equal_data_and_sigmas(array_1, array_2):
@@ -144,6 +145,22 @@ mtz_obj_reco.as_miller_arrays result:
 (-1, -2, -3) 5.5 0.223606796247
 
 """
+    expected3 = """\
+Resulting mtz from .as_mtz_dataset():
+Column data:
+-------------------------------------------------------------------------------
+                       R            SIGR           DANOR        SIGDANOR
+                   ISYMR
+
+ 1  2  3               4        0.158114              -3        0.316228
+                       0
+-------------------------------------------------------------------------------
+
+mtz_obj_reco.as_miller_arrays result:
+(1, 2, 3) 2.5 0.2236067962469402
+(-1, -2, -3) 5.5 0.2236067962469402
+
+"""
   elif (missing == "+"):
     expected = """\
 Resulting mtz from .as_mtz_dataset():
@@ -158,6 +175,21 @@ Column data:
 
 mtz_obj_reco.as_miller_arrays result:
 (-1, -2, -3) 5.5 0.300000011921
+
+"""
+    expected3 = """\
+Resulting mtz from .as_mtz_dataset():
+Column data:
+-------------------------------------------------------------------------------
+                       R            SIGR           DANOR        SIGDANOR
+                   ISYMR
+
+ 1  2  3             5.5             0.3            None            None
+                       2
+-------------------------------------------------------------------------------
+
+mtz_obj_reco.as_miller_arrays result:
+(-1, -2, -3) 5.5 0.30000001192092896
 
 """
   elif (missing == "-"):
@@ -176,10 +208,29 @@ mtz_obj_reco.as_miller_arrays result:
 (1, 2, 3) 2.5 0.10000000149
 
 """
+    expected3 = """\
+Resulting mtz from .as_mtz_dataset():
+Column data:
+-------------------------------------------------------------------------------
+                       R            SIGR           DANOR        SIGDANOR
+                   ISYMR
+
+ 1  2  3             2.5             0.1            None            None
+                       1
+-------------------------------------------------------------------------------
+
+mtz_obj_reco.as_miller_arrays result:
+(1, 2, 3) 2.5 0.10000000149011612
+
+"""
   else:
     raise RuntimeError("Unreachable.")
   from libtbx.test_utils import show_diff
-  assert not show_diff(sio.getvalue(), expected)
+  # Python 3 is displaying more decimal places
+  if six.PY3:
+    assert not show_diff(sio.getvalue(), expected3)
+  else:
+    assert not show_diff(sio.getvalue(), expected)
 
 def run(args):
   verbose = False
