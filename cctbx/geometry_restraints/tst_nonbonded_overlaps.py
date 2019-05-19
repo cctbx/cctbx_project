@@ -758,11 +758,12 @@ class test_nonbonded_overlaps(unittest.TestCase):
 #    msg = outstring.format('Selection related overlaps', expected, result)
 #    self.assertEqual(result, expected, msg=msg)
 
-  # TODO
+  # OK transferred
   def test_unknown_pair_type(self):
     '''Make sure unknown pair types are not processed'''
     self.assertRaises(Sorry,process_raw_records,raw_record_number=6)
 
+  # OK transferred
   def test_print(self):
     """ test proper overlaps printout """
     overlaps_count_info = process_overlaps_count(self.file_name2)
@@ -776,6 +777,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     self.assertTrue(results[6].startswith('--------'))
     self.assertTrue('1' in results[7])
 
+  # OK transferred
   def test_running_from_command_line(self):
     """
     make sure mmtbx.nonbonded_overlaps can run without errors when showing
@@ -791,6 +793,8 @@ class test_nonbonded_overlaps(unittest.TestCase):
 
     self.assertFalse(bool(r.stderr_lines))
 
+  # compute was replaced and total number of clases was already tested in test_vdw_dist
+  # --> no need to refactor
   def test_compute(self):
     """ Test that there are no error when computing cctbx overlaps """
 
@@ -827,6 +831,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       sites_cart              = sites_cart)
     self.assertEqual(result.n_atoms,139)
 
+  # n_clashes tested in test_show, this one here does not test numbers anyway
   def test_info(self):
     """ Test that there are no error when collecting non-bonded overlaps info"""
     params = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -858,6 +863,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
 # This effects the vdW radii for nonbonded interactions
 # Using model class, assume_hydrogens_all_missing=True, which yields dfferent
 # vdw radii and therefore 2 more clashes
+  # OK transferred, merged with test_show
   def test_overlaps(self):
     overlaps_count_info,n_atoms,n_atoms_macro_mol = process_overlaps_count(
       self.file_name2,return_n_atoms=True)
@@ -886,7 +892,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     self.assertEqual(r_overlaps_sym,overlaps_sym)
     self.assertEqual(r_overlaps_macro_mol,overlaps_macro_mol)
 
-
+  # this does nto belong to nbos
   def test_aborting_pdb_with_multiple_models(self):
     pdb_inp = iotbx.pdb.input(source_info=None, lines=two_models_pdb_str)
     ph = pdb_inp.construct_hierarchy()
@@ -949,6 +955,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
         file_name=fn_pdb,
         cif_file_name=fn_cif)
 
+  # not necessary
   def test_cryst1_records_maintained(self):
     """ make sure CRYST1 records are not changed when adding H"""
     if self.reduce_present:

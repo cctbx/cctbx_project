@@ -1,14 +1,8 @@
 from __future__ import division, print_function
-#from libtbx.utils import Sorry
-#from scitbx.array_family import flex
-#from libtbx import easy_run
-#import iotbx.pdb
-#import math
-#import sys
 from libtbx import group_args
 from scitbx import matrix
 from libtbx.str_utils import make_sub_header
-import sys
+from libtbx.utils import null_out
 
 
 def check_if_1_5_interaction(
@@ -87,6 +81,23 @@ def cos_vec(u, v, w):
   return cos_angle
 
 
+def unknown_pairs_present(model):
+  """
+  Test if PDB file contains unknown type pairs
+
+  Args:
+    model (obj): model object
+
+  Return:
+    (bool): True if PDB file contains unknown type pairs
+  """
+  grm = model.get_restraints_manager()
+  sites_cart = model.get_sites_cart()
+  site_labels = model.get_xray_structure.scatterers().extract_labels()
+  pp= grm.pair_proxies(sites_cart=sites_cart,site_labels=site_labels)
+  return (pp.nonbonded_proxies.n_unknown_nonbonded_type_pairs != 0)
+
+
 class clashes(object):
   """
   Class for clashes
@@ -103,25 +114,24 @@ class clashes(object):
     self.model = model
 
 
-# TODO: what's the log?
-  def show(self):
+  def show(self, log=null_out()):
     '''
     Print all clashes in a table.
     '''
     # TODO : make sure self._clashes_dict is not empty
-    make_sub_header(' Nonbonded overlaps', out=sys.stdout)
+    make_sub_header(' Nonbonded overlaps', out=log)
     # General information
     results = self.get_results()
     result_str = '{:<18} : {:5.2f}'
-    print(result_str.format(' Number of clashes', results.n_clashes))
-    print(result_str.format(' Clashscore', results.clashscore) + '\n')
+    print(result_str.format(' Number of clashes', results.n_clashes), file=log)
+    print(result_str.format(' Clashscore', results.clashscore) + '\n', file=log)
     # print table with all overlaps
     labels =  ["Overlapping residues info","model distance","overlap",
                "symmetry"]
-    lbl_str = '{:^33}|{:^16}|{:^11}|{:^10}'
-    table_str = '{:>16}|{:>16}|{:^16.2f}|{:^11.2}|{:^10}|'
-    print(lbl_str.format(*labels))
-    print('-'*74)
+    lbl_str = '{:^33}|{:^16}|{:^11}|{:^15}'
+    table_str = '{:>16}|{:>16}|{:^16.2f}|{:^11.2}|{:^15}|'
+    print(lbl_str.format(*labels), file=log)
+    print('-'*78, file=log)
     atoms = self.model.get_atoms()
     for iseq_tuple, record in self._clashes_dict.iteritems():
       i_seq, j_seq = iseq_tuple
@@ -132,8 +142,8 @@ class clashes(object):
       i_id_str = atoms[i_seq].id_str().replace('pdb=','').replace('"','')
       j_id_str = atoms[j_seq].id_str().replace('pdb=','').replace('"','')
       line = [i_id_str, j_id_str,round(record[0], 2),round(delta, 2), symop]
-      print(table_str.format(*line))
-    print('-'*74)
+      print(table_str.format(*line), file=log)
+    print('-'*78, file=log)
 
 
   def is_clashing(self, iseq):
@@ -146,19 +156,32 @@ class clashes(object):
 
   def _obtain_symmetry_clashes(self):
     self._symmetry_clashes_dict = dict()
+    n_clashes_sym = 0
+    clashscore_sym = 0
     for iseq_tuple, record in self._clashes_dict.iteritems():
       if record[3] is not None:
         self._symmetry_clashes_dict[iseq_tuple] = record
+    if self._symmetry_clashes_dict:
+      n_clashes_sym = len(self._symmetry_clashes_dict)
+      # Does this number actually make sense?
+      n_atoms = self.model.size()
+      clashscore_sym = n_clashes_sym * 1000 / n_atoms
+    return n_clashes_sym, clashscore_sym
 
 
   def _obtain_macro_mol_clashes(self):
     self._macro_mol_clashes_dict = dict()
-    #proxies = self.model.all_chain_proxies
+    n_clashes_macro_mol = 0
+    clashscore_macro_mol = 0
     macro_mol_sel = self.model.selection(string = 'protein')
     for iseq_tuple, record in self._clashes_dict.iteritems():
       if (macro_mol_sel[iseq_tuple[0]] and macro_mol_sel[iseq_tuple[1]]
           and record[3] is None):
         self._macro_mol_clashes_dict[iseq_tuple] = record
+    if self._macro_mol_clashes_dict:
+      n_clashes_macro_mol = len(self._macro_mol_clashes_dict)
+      clashscore_macro_mol = n_clashes_macro_mol * 1000 / self.model.select(macro_mol_sel).size()
+    return n_clashes_macro_mol, clashscore_macro_mol
 
 
   def get_results(self):
@@ -167,22 +190,9 @@ class clashes(object):
     n_atoms = self.model.size()
     clashscore = n_clashes * 1000 / n_atoms
     # due to symmetry
-    self._obtain_symmetry_clashes()
-    if self._symmetry_clashes_dict:
-      n_clashes_sym = len(self._symmetry_clashes_dict)
-      # Does this number actually make sense?
-      clashscore_sym = n_clashes_sym * 1000 / n_atoms
-    else:
-      # None or 0?
-      n_clashes_sym = 0
-      clashscore_sym = 0
-    self._obtain_macro_mol_clashes()
-    if self._macro_mol_clashes_dict:
-      n_clashes_macro_mol = len(self._macro_mol_clashes_dict)
-      clashscore_macro_mol = n_clashes_macro_mol * 1000 / n_atoms
-    else:
-      n_clashes_macro_mol = 0
-      clashscore_macro_mol = 0
+    n_clashes_sym, clashscore_sym = self._obtain_symmetry_clashes()
+    # macromolecule ('protein')
+    n_clashes_macro_mol, clashscore_macro_mol = self._obtain_macro_mol_clashes()
 
     return group_args(
              n_clashes      = n_clashes,
