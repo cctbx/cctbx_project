@@ -11,6 +11,7 @@ from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx import covariance, geometry
 from libtbx.containers import OrderedDict
+from libtbx.forward_compatibility import object
 from scitbx.array_family import shared
 from scitbx import stl
 import scitbx.stl.set
@@ -847,7 +848,7 @@ class calculate_distances(object):
   def __iter__(self):
     return next(self)
 
-  def next(self):
+  def __next__(self):
 
     class distance(object):
       def __init__(self,
@@ -1019,7 +1020,7 @@ class calculate_angles(object):
   def __iter__(self):
     return next(self)
 
-  def next(self):
+  def __next__(self):
 
     class angle(object):
       def __init__(self,

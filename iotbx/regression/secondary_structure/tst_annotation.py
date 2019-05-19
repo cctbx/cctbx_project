@@ -439,7 +439,7 @@ SHEET    2 AB1 3 VAL B 171  VAL B 174 -1  O  ILE B 172   N  MET B 128
 SHEET    3 AB1 3 PHE B 163  ILE B 165 -1  N  THR B 164   O  SER B 173"""
 
   cif_model = iotbx.cif.reader(input_string=test_str_1).model()
-  cif_block = cif_model.values()[0]
+  cif_block = list(cif_model.values())[0]
   ann = annotation.from_cif_block(cif_block)
   assert ann.get_n_helices() == 4
   resnames = [x.start_resname for x in ann.helices]
@@ -454,7 +454,7 @@ SHEET    3 AB1 3 PHE B 163  ILE B 165 -1  N  THR B 164   O  SER B 173"""
 def tst_from_cif_block_2():
   cif_str = "data_1UCS\n" + cif_4_helices + cif_one_sheet
   cif_model = iotbx.cif.reader(input_string=cif_str).model()
-  cif_block = cif_model.values()[0]
+  cif_block = list(cif_model.values())[0]
   ann = annotation.from_cif_block(cif_block)
   assert ann.get_n_helices() == 4
   resnames = [x.start_resname for x in ann.helices]
@@ -470,7 +470,7 @@ def tst_from_cif_block_3():
   cif_str = "data_1UCS" + cif_one_helix
 
   cif_model = iotbx.cif.reader(input_string=cif_str).model()
-  cif_block = cif_model.values()[0]
+  cif_block = list(cif_model.values())[0]
   ann = annotation.from_cif_block(cif_block)
   assert ann.get_n_helices() == 1
   resnames = [x.start_resname for x in ann.helices]
@@ -484,7 +484,7 @@ def tst_from_cif_block_4():
   "Only one sheet"
   cif_str = "data_1UCS" + cif_one_sheet
   cif_model = iotbx.cif.reader(input_string=cif_str).model()
-  cif_block = cif_model.values()[0]
+  cif_block = list(cif_model.values())[0]
   ann = annotation.from_cif_block(cif_block)
   assert ann.get_n_helices() == 0, ann.get_n_helices()
   assert ann.get_n_sheets() == 1
@@ -542,7 +542,7 @@ HELIX    3   3 PRO A    1  LEU A    5  1                                   4"""
       STRN1  STRN_P        PRO  A    1  LEU  A    5
   """
   cif_model = iotbx.cif.reader(input_string=minimal_helix).model()
-  cif_block = cif_model.values()[0]
+  cif_block = list(cif_model.values())[0]
   ann = annotation.from_cif_block(cif_block)
   assert not show_diff(ann.as_pdb_str(), pdb_answer_minimal_helix)
 
@@ -637,7 +637,7 @@ loop_
 """]
 
   cif_model = iotbx.cif.reader(input_string=cif_minimal_sheet).model()
-  cif_block = cif_model.values()[0]
+  cif_block = list(cif_model.values())[0]
   ann = annotation.from_cif_block(cif_block)
   # print ann.as_pdb_str()
   assert not show_diff(ann.as_pdb_str(), pdb_answer_minimal_sheet)

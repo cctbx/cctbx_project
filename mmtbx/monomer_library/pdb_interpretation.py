@@ -1515,7 +1515,7 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       result += ', conformer "%s"' % self.conf_altloc
     return result
 
-  def is_unusual(self):
+  def _is_unusual(self):
     m = self.monomer
     if (m is None): return True
     if (m.is_peptide()): return False
@@ -1539,7 +1539,7 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       classification=classification,
       incomplete_info=self.incomplete_info,
       is_terminus=self.is_terminus,
-      is_unusual=self.is_unusual())
+      is_unusual=self._is_unusual())
 
   def add_bond_proxies(self,
                        bond_simple_proxy_registry,
@@ -2642,7 +2642,7 @@ class build_chain_proxies(object):
                 += link_resolution.counters.unresolved_non_hydrogen
 
       if (mm.monomer is not None):
-        if (mm.is_unusual()):
+        if (mm._is_unusual()):
           unusual_residues[mm.residue_name] += 1
         if (    mm.is_terminus == True
             and i_residue > 0

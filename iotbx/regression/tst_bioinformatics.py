@@ -1883,9 +1883,12 @@ def exercise_random_sequences():
   random.seed(71231)
   seq=bioinformatics.random_sequence(n_residues=100,
      residue_basket=residue_basket)
-  print(seq)
-  assert seq=="EEEEDCDCCEEECDEADEEEADEEECAEDEDECEEEEEAECCEDEDCAEEEDCDDECDDDEEEDCEEEACEDEADCCEEDCCADECDCDCEAAEEADACE"
-
+  # random number generator is not consistent between Python 2 and 3
+  #assert seq=="EEEEDCDCCEEECDEADEEEADEEECAEDEDECEEEEEAECCEDEDCAEEEDCDDECDDDEEEDCEEEACEDEADCCEEDCCADECDCDCEAAEEADACE"
+  assert len(seq) == 100
+  assert seq.count('E') > seq.count('D')
+  assert seq.count('D') > seq.count('C')
+  assert seq.count('C') > seq.count('A')
 
 def exercise_merge_sequences():
   print("Testing merge_sequences ...", end=' ')

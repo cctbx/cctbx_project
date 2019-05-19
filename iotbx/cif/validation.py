@@ -8,7 +8,8 @@ import os
 import shutil
 import re
 import sys
-from urllib2 import urlopen
+from six import string_types
+from six.moves.urllib.request import urlopen
 from six.moves import zip
 import six
 
@@ -163,7 +164,7 @@ class dictionary(model.cif):
         children = save.get('_item_linked.child_name')
         parents = save.get('_item_linked.parent_name')
         if parents is not None and children is not None:
-          if not isinstance(parents, basestring):
+          if not isinstance(parents, string_types):
             for child, parent in zip(children, parents):
               self.child_parent_relations.setdefault(child, parent)
     self.err = ErrorHandler()
@@ -203,7 +204,7 @@ class dictionary(model.cif):
       else:
         for k, v in six.iteritems(self):
           if k == 'on_this_dictionary': continue
-          elif isinstance(v['_name'], basestring):
+          elif isinstance(v['_name'], string_types):
             if v['_name'] == key:
               self.look_up_table.setdefault(key, key_)
               return k
@@ -265,14 +266,14 @@ class dictionary(model.cif):
   def validate_dependent(self, key, block, definition):
     dependents = definition.dependent
     if dependents is None: return
-    elif isinstance(dependents, basestring):
+    elif isinstance(dependents, string_types):
       dependents = [dependents]
     for dependent in dependents:
       if dependent not in block:
         self.report_error(2301, dependent=dependent, key=key)
 
   def validate_enumeration(self, key, value, definition):
-    if isinstance(value, basestring):
+    if isinstance(value, string_types):
       values = [value]
     else:
       values = value
@@ -318,8 +319,8 @@ class dictionary(model.cif):
     related_items = definition.related
     related_functions = definition.related_function
     if related_items is not None and related_functions is not None:
-      if (isinstance(related_items, basestring) and
-          isinstance(related_functions, basestring)):
+      if (isinstance(related_items, string_types) and
+          isinstance(related_functions, string_types)):
         related_items = [related_items]
         related_functions = [related_functions]
       for related_item, related_function in zip(related_items, related_functions):
@@ -351,13 +352,13 @@ class dictionary(model.cif):
         self.report_error(2501, key=key) # not allowed in list
       definition_category = definition.category
       if (definition_category is not None and
-          not isinstance(definition_category, basestring)):
+          not isinstance(definition_category, string_types)):
         definition_name = definition.name
         i = flex.first_index(definition_name, key)
         definition_category = definition_category[i]
       if list_category is None:
         list_category = definition_category
-      elif (isinstance(list_category, basestring)
+      elif (isinstance(list_category, string_types)
             and definition_category is not None
             and list_category != definition_category):
         print(list_category, list(definition_category))
@@ -365,27 +366,27 @@ class dictionary(model.cif):
       mandatory = definition.mandatory == 'yes'
       references = definition.get('_list_reference')
       if references is not None:
-        if isinstance(references, basestring):
+        if isinstance(references, string_types):
           references = [references]
         for reference in references:
           ref_data = self.get_definition(reference)
           ref_names = ref_data['_name']
-          if isinstance(ref_names, basestring):
+          if isinstance(ref_names, string_types):
             ref_names = [ref_names]
           for name in ref_names:
             if name not in loop:
               self.report_error(2505, key=key, reference=name) # missing _list_reference
       elif (self.DDL_version == 2
-            and isinstance(definition.category, basestring)):
+            and isinstance(definition.category, string_types)):
         category_def = self.get_definition(definition.category)
         if category_def.category_key is not None:
           category_keys = category_def.category_key
-          if isinstance(category_keys, basestring):
+          if isinstance(category_keys, string_types):
             category_keys = [category_keys]
           for cat_key in category_keys:
             cat_key_def = self.get_definition(cat_key)
           if (cat_key_def.mandatory == 'yes'
-              and isinstance(cat_key_def.mandatory, basestring)
+              and isinstance(cat_key_def.mandatory, string_types)
               and cat_key_def.name not in block):
             self.report_error(
               2203, key=cat_key_def.name, category=definition.category)

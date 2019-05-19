@@ -36,7 +36,7 @@ data_manager_type['hkl'] = 'miller_array'   # map hkl to parent, miller_array
 # e.g. iotbx/data_manager/model.py
 supported_datatypes = os.listdir(os.path.dirname(__file__))
 re_search = re.compile('.py$')
-supported_datatypes = filter(re_search.search, supported_datatypes)
+supported_datatypes = list(filter(re_search.search, supported_datatypes))
 supported_datatypes.remove('__init__.py')
 supported_datatypes.sort()
 for i in range(len(supported_datatypes)):
@@ -381,10 +381,9 @@ overwrite = False
                 raise_sorry=False):
     self._set_datatype(datatype)
     actual_n = len(self._get_names(datatype))
-    v = cmp(actual_n, expected_n)
     if (exact_count):
       # exact count required
-      if (v != 0):
+      if (actual_n != expected_n):
         if (raise_sorry):
           raise Sorry('%i %s(s) found. Expected exactly %i.' %
                       (actual_n, datatype, expected_n))
@@ -394,10 +393,10 @@ overwrite = False
         return True
     else:
       if (raise_sorry):
-        if (v < 0):
+        if (actual_n < expected_n):
           raise Sorry('%i %s(s) found. Expected at least %i.' %
                       (actual_n, datatype, expected_n))
-      return (v >= 0)
+      return (actual_n >= expected_n)
 
   def _process_file(self, datatype, filename):
     if (filename not in self._get_names(datatype)):

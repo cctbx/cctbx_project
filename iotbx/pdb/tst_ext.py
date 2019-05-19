@@ -8,6 +8,8 @@ from libtbx.utils import Sorry, \
   user_plus_sys_time, format_cpu_times
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
+from past.builtins import cmp
+from functools import cmp_to_key
 from six.moves import cStringIO as StringIO
 from six.moves import range
 from six.moves import zip

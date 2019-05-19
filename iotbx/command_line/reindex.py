@@ -67,7 +67,7 @@ Change-of-basis operator: h,k,l or x,y,z or
   for i, array in enumerate(new_arrays[1:]):
     mtz_out.add_miller_array(
       miller_array=array,
-      column_root_label="%s" % string.uppercase[i+1])
+      column_root_label="%s" % string.ascii_uppercase[i+1])
   mtz_obj = mtz_out.mtz_object()
   for i, column in enumerate(mtz_obj.columns()):
     column.set_label(labels[i])

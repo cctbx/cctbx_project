@@ -6,6 +6,9 @@ import sys
 from six.moves import range, zip
 op = os.path
 
+if sys.hexversion >= 0x03000000:
+  unicode = str
+
 def norm_join(*args):
   return op.normpath(op.join(*args))
 
@@ -127,7 +130,7 @@ def move_old_create_new_directory(path, serial_sep="_", serial_fmt="%03d"):
   os.makedirs(path)
 
 def canonical_path(file_name, effective_current_working_directory=None):
-  if not isinstance(file_name, (str, unicode)):
+  if not isinstance(file_name, (bytes, unicode)):
     file_name = abs(file_name)
   if (not op.isabs(file_name)):
     if (effective_current_working_directory is None):
@@ -292,7 +295,7 @@ class path_mixin(object):
     return (self.dirname(), self.basename())
 
   def samefile(self, other):
-    if isinstance(other, str) or isinstance(other, unicode):
+    if isinstance(other, (bytes, unicode)):
       return op.samefile(abs(self), other)
     else:
       return op.samefile(abs(self), abs(other))

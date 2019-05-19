@@ -11,7 +11,7 @@ import libtbx.phil
 from libtbx.utils import Sorry
 from libtbx import Auto
 from copy import deepcopy
-import cStringIO
+from six.moves import cStringIO as StringIO
 import random
 import os
 import time
@@ -862,7 +862,7 @@ def find_tls(params,
   #  print chain_and_permutation
   #print
   print("TLS atom selections for phenix.refine:", file=out)
-  groups_out = cStringIO.StringIO()
+  groups_out = StringIO()
   selection_strings = []
   print("refinement.refine.adp {", file=groups_out)
   for r in chains_and_atom_selection_strings:
