@@ -399,7 +399,7 @@ class cns_reflection_file(object):
       print(prefix + "group: " + str(g), file=f)
 
   def optimize(self):
-    rsos = self.reciprocal_space_objects.values()
+    rsos = list(self.reciprocal_space_objects.values())
     for i in range(len(rsos)-1):
       h_i = rsos[i].indices
       for j in range(i+1, len(rsos)):

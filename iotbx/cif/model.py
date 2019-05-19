@@ -740,6 +740,7 @@ def common_substring(seq):
   #
   #   http://www.iucr.org/resources/cif/spec/ancillary/reserved-prefixes
 
+  seq = list(seq) # indexable list for Py3 compatibility
   if len(seq) == 1: return seq[0]
   substr = seq[0]
   for s in seq:
