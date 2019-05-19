@@ -218,11 +218,12 @@ BEAM_CENTER_Y=%(BEAM_CENTER_Y).2f;
 CCD_IMAGE_SATURATION=65535;
 DETECTOR_SN=%(DETECTOR_SN)d;
 }\f"""%self.parameters
-    F = open(fileout,"wb")
-    F.write(info)
-    len_null=1024-len(info)
-    F.write('\0'*len_null)
-    F.close()
+    with open(fileout, "w") as F:
+      F.write(info)
+      len_null=1024-len(info)
+    with open(fileout, "ab") as F:
+      F.write(b'\0'*len_null)
+
     from iotbx.detectors import WriteADSC
     if mod_data==None: mod_data=self.linearintdata
     if not mod_data.all_ge(0):

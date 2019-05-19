@@ -44,7 +44,8 @@ class subgroup_comparator:
     return S.getvalue()
 
   def get_string_as_list(self,any_subgroup_string):
-    S = StringIO(any_subgroup_string)
+    from io import BytesIO
+    S = BytesIO(any_subgroup_string.encode("ascii"))
     subgroups = pickle.load( S )
     return subgroups
 
