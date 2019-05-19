@@ -778,6 +778,9 @@ class peak_cluster_analysis(object):
     else:
       return self.next_site_cluster_analysis()
 
+  def __next__(self):
+    return self.next()
+
   def all(self,max_clusters=None):
     if (self._effective_resolution is not None):
       return self.all_with_effective_resolution(max_clusters=max_clusters)
