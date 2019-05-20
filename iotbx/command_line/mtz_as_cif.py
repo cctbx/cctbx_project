@@ -134,7 +134,7 @@ def run(args, params=None, out=sys.stdout):
 
       elif cif_blocks[key] is not None:
         cif_model[prefix+"_"+key] = cif_blocks[key].cif_block
-    with open(output_file, "wb") as f:
+    with open(output_file, "w") as f:
       print("Writing data and map coefficients to CIF file:\n  %s" % \
         (f.name), file=out)
       print(cif_model, file=f)

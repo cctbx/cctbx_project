@@ -133,7 +133,7 @@ def writer(file_name, title_lines, unit_cell, gridding,
   assert gridding.is_compatible_flex_grid(
     flex_grid=data.accessor(),
     is_p1_cell=is_p1_cell)
-  f = open(file_name, "wb")
+  f = open(file_name, "w")
   f.write("\n")
   f.write("%8d !NTITLE\n" % len(title_lines))
   for line in title_lines:

@@ -247,5 +247,5 @@ class writer(object):
       print("".join([" %7.2f"*3] + [" %8.5f"]*6) %tuple(self.orientation[i]), file=out)
 
   def write_file(self, filename):
-    with open(filename, 'wb') as f:
+    with open(filename, 'w') as f:
       self.show(out=f)

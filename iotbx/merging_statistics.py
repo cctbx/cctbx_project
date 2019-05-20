@@ -687,7 +687,7 @@ class dataset_statistics(object):
     import json
     json_str = json.dumps(self.as_dict(), indent=indent)
     if file_name is not None:
-      with open(file_name, 'wb') as f:
+      with open(file_name, 'w') as f:
         print(json_str, file=f)
     return json_str
 
