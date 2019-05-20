@@ -112,46 +112,82 @@ class clashes(object):
     '''
     self._clashes_dict = clashes_dict
     self.model = model
+    #
+    self.sort_clashes()
 
 
   def show(self, log=null_out()):
     """
     Print all clashes in a table.
     """
-    # TODO : make sure self._clashes_dict is not empty
     make_sub_header(' Nonbonded overlaps', out=log)
-    # General information
-    results = self.get_results()
-    result_str = '{:<18} : {:5.2f}'
-    print(result_str.format(' Number of clashes', results.n_clashes), file=log)
-    print(result_str.format(' Clashscore', results.clashscore) + '\n', file=log)
-    # print table with all overlaps
-    labels =  ["Overlapping residues info","model distance","overlap",
-               "symmetry"]
-    lbl_str = '{:^33}|{:^16}|{:^11}|{:^15}'
-    table_str = '{:>16}|{:>16}|{:^16.2f}|{:^11.2}|{:^15}|'
-    print(lbl_str.format(*labels), file=log)
-    print('-'*78, file=log)
-    atoms = self.model.get_atoms()
-    for iseq_tuple, record in self._clashes_dict.iteritems():
-      i_seq, j_seq = iseq_tuple
-      delta = record[1] - record[0]
-      if record[3] is not None:
-        symop = record[3]
-      else: symop = ''
-      i_id_str = atoms[i_seq].id_str().replace('pdb=','').replace('"','')
-      j_id_str = atoms[j_seq].id_str().replace('pdb=','').replace('"','')
-      line = [i_id_str, j_id_str,round(record[0], 2),round(delta, 2), symop]
-      print(table_str.format(*line), file=log)
-    print('-'*78, file=log)
+    if self._clashes_dict:
+      # General information
+      results = self.get_results()
+      result_str = '{:<18} : {:5.2f}'
+      print(result_str.format(' Number of clashes', results.n_clashes), file=log)
+      print(result_str.format(' Clashscore', results.clashscore) + '\n', file=log)
+      # print table with all overlaps
+      labels =  ["Overlapping residues info","model distance","overlap",
+                 "symmetry"]
+      lbl_str = '{:^33}|{:^16}|{:^11}|{:^15}'
+      table_str = '{:>16}|{:>16}|{:^16.2f}|{:^11.2}|{:^15}|'
+      print(lbl_str.format(*labels), file=log)
+      print('-'*78, file=log)
+      atoms = self.model.get_atoms()
+      for iseq_tuple, record in self._clashes_dict.iteritems():
+        i_seq, j_seq = iseq_tuple
+        overlap = record[2]
+        if record[4] is not None:
+          symop = record[4]
+        else: symop = ''
+        i_id_str = atoms[i_seq].id_str().replace('pdb=','').replace('"','')
+        j_id_str = atoms[j_seq].id_str().replace('pdb=','').replace('"','')
+        line = [i_id_str, j_id_str,round(record[0], 2),round(overlap, 2), symop]
+        print(table_str.format(*line), file=log)
+      print('-'*78, file=log)
+    else:
+      print('No clashes found', file=log)
 
 
   def is_clashing(self, iseq):
-    pass
+    """
+    Test if a particular atom is involved in a clash.
+
+    Parameters:
+      iseq (int): atom i_seq number
+
+    Returns:
+      (bool): True if the atom is involved in a clash
+    """
+    is_clashing = False
+    if self._clashes_dict:
+      i_seqs, j_seqs = zip(*self._clashes_dict)
+      if iseq in i_seqs or iseq in j_seqs:
+        is_clashing = True
+    return is_clashing
 
 
-  def sort_clashes(self):
-    pass
+  def sort_clashes(self,
+                   sort_vdW            = False,
+                   sort_model_distance = False,
+                   sort_overlap        = False,
+                   sort_symmetry       = False):
+    """
+    Sort clashes according to vdW distance, model distance, overlap or symmetry
+    """
+    from collections import OrderedDict
+    options = [sort_vdW, sort_model_distance, sort_overlap, sort_symmetry]
+    if (options.count(True) == 0):
+      sort_overlap = True
+    elif (options.count(True) > 1):
+      raise Sorry('Can only sort by one value.')
+    if sort_model_distance: key = 0
+    if sort_vdW: key = 1
+    if sort_overlap: key = 2
+    if sort_symmetry: key = 4
+    self._clashes_dict = OrderedDict(
+      sorted(self._clashes_dict.items(), key=lambda x: x[1][key]))
 
 
   def _obtain_symmetry_clashes(self):
@@ -162,11 +198,11 @@ class clashes(object):
     n_clashes_sym = 0
     clashscore_sym = 0
     for iseq_tuple, record in self._clashes_dict.iteritems():
-      if record[3] is not None:
+      if record[4] is not None:
         self._symmetry_clashes_dict[iseq_tuple] = record
     if self._symmetry_clashes_dict:
       n_clashes_sym = len(self._symmetry_clashes_dict)
-      # Does this number actually make sense?
+      # Does clashscore_sym actually make sense?
       n_atoms = self.model.size()
       clashscore_sym = n_clashes_sym * 1000 / n_atoms
     return n_clashes_sym, clashscore_sym
@@ -182,7 +218,7 @@ class clashes(object):
     macro_mol_sel = self.model.selection(string = 'protein')
     for iseq_tuple, record in self._clashes_dict.iteritems():
       if (macro_mol_sel[iseq_tuple[0]] and macro_mol_sel[iseq_tuple[1]]
-          and record[3] is None):
+          and record[4] is None):
         self._macro_mol_clashes_dict[iseq_tuple] = record
     if self._macro_mol_clashes_dict:
       n_clashes_macro_mol = len(self._macro_mol_clashes_dict)
@@ -191,9 +227,9 @@ class clashes(object):
 
 
   def get_results(self):
-    '''
+    """
     Accessor for results
-    '''
+    """
     # overall
     n_clashes = len(self._clashes_dict)
     n_atoms = self.model.size()
@@ -247,13 +283,13 @@ class manager():
   def __init__(self,
                model):
     self.model = model
-
     #
     self._clashes = None
     self._hbonds  = None
 
     # add H in manager or do we enfore that input model has H?
     # self._add_H_atoms() ????
+
 
   def get_clashes(self):
     """
@@ -265,6 +301,7 @@ class manager():
     else:
       return self._clashes
 
+
   def get_hbonds(self):
     """
     Accessor for hbonds object
@@ -274,13 +311,22 @@ class manager():
     else:
       return self._hbonds
 
+
   def has_hbonds(self):
     # necessary?
     pass
 
+
   def has_clashes(self):
-    # necessary?
-    pass
+    """
+    True/False if any clashes were found.
+    """
+    has_clashes = False
+    if not self._clashes:
+      self._process_nonbonded_proxies(find_clashes = True)
+      if self._clashes_dict:
+        has_clashes = True
+    return has_clashes
 
 
   def show(self):
@@ -348,7 +394,8 @@ class manager():
                     fsc0 = fsc0,
                     model_distance = model_distance)
         if is_clash:
-          self._clashes_dict[(i_seq, j_seq)] = [model_distance, vdw_sum, symop_str, symop]
+          self._clashes_dict[(i_seq, j_seq)] = \
+            [model_distance, vdw_sum, abs(delta), symop_str, symop]
 
     # Remove clashes involving common atoms (cannot be done in first loop!)
     self._process_clashes(sites_cart = sites_cart, fsc0 = fsc0)
@@ -402,7 +449,7 @@ class manager():
     Process clases found when looping through nonbonded_proxies.
 
     This step is necessary to filter out clashes with common atoms.
-    X-H ~~~ Y might produce two clases, one between X and Y, the other
+    X-H ~~~ Y might produce two clashes, one between X and Y, the other
     between H and Y. This step filters the raw results and keeps the shorter
     of the two clashes (if an angular cutoff is above a limit)
     """

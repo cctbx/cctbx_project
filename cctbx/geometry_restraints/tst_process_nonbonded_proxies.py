@@ -79,6 +79,27 @@ def test_inline_overlaps():
   assert approx_equal(results.clashscore, 85.11, eps=0.1), 'Wrong clashscore.'
 
 
+def test_manager_and_clashes_functions():
+  '''
+  Test some functions of the manager and the clashes class
+  '''
+  model = obtain_model(raw_records=raw_records_7)
+  pnps = pnp.manager(model = model)
+  assert(pnps.has_clashes())
+  clashes = pnps.get_clashes()
+  # sorted by overlap (default)
+  assert(clashes._clashes_dict.items()[11][0] == ((38, 39)))
+  # sorted by symmetry
+  clashes.sort_clashes(sort_symmetry=True)
+  assert(clashes._clashes_dict.items()[11][0] == (27, 27))
+
+  assert(clashes.is_clashing(iseq=27))
+  assert(clashes.is_clashing(iseq=44))
+  assert(clashes.is_clashing(iseq=13))
+  assert(clashes.is_clashing(iseq=38))
+  assert(clashes.is_clashing(iseq=3))
+
+
 def test_vdw_dist():
   '''
   Test that overlaps are identified properly
@@ -716,4 +737,5 @@ if (__name__ == "__main__"):
   test_running_from_command_line()
   test_file_with_unknown_pair_type()
   test_small_cell()
+  test_manager_and_clashes_functions()
   print("OK. Time: %8.3f"%(time.time()-t0))
