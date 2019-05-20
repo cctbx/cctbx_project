@@ -17,7 +17,7 @@ import sys, os
 
 def exercise_read_corrupt():
   for i_trial in range(5):
-    f = open("tmp_iotbx_mtz_ext.mtz", "wb")
+    f = open("tmp_iotbx_mtz_ext.mtz", "w")
     if (i_trial > 0):
       f.write("\0"*(40*i_trial))
     f.close()
