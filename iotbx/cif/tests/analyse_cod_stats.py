@@ -78,15 +78,15 @@ class analyse(object):
       print("SKIPPED: ", s, file=out)
 
   def as_html(self):
-    with open("parsing_errors", "wb") as out:
+    with open("parsing_errors", "w") as out:
       self.show_parsing_errors(out=out)
-    with open("exceptions", "wb") as out:
+    with open("exceptions", "w") as out:
       self.show_exceptions(out=out)
-    with open("skipping", "wb") as out:
+    with open("skipping", "w") as out:
       self.show_skipping(out=out)
     s = StringIO()
     self.show_summary(out=s)
-    with open("summary.html", "wb") as out:
+    with open("summary.html", "w") as out:
       print(html % s.getvalue(), file=out)
 
 html = """\

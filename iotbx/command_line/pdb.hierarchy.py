@@ -91,7 +91,7 @@ def run(args, command_name="phenix.pdb.hierarchy"):
       if (not co.no_cryst):
         s = pdb_objs.input.crystallographic_section()
         if (s.size() != 0):
-          print("\n".join(s), file=open(co.write_pdb_file, "wb"))
+          print("\n".join(s), file=open(co.write_pdb_file, "w"))
           open_append = True
       pdb_objs.hierarchy.write_pdb_file(
         file_name=co.write_pdb_file,

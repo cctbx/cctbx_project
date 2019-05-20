@@ -54,7 +54,7 @@ class writer(object):
   def write_file(self, filename=None):
     '''Write the spot file.'''
 
-    with open(filename, 'wb') as f:
+    with open(filename, 'w') as f:
       for i in range(len(self.centroids)):
         print(" %.2f"*3 %self.centroids[i], end=' ', file=f)
         print("%.2f" %self.intensities[i], end=' ', file=f)

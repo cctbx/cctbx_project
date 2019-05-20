@@ -16,7 +16,7 @@ def exercise_spots_xds():
  1053.50 1227.71 2.87 221. -6 -4 1
 """
 
-  f = open_tmp_file(suffix="SPOTS.XDS", mode="wb")
+  f = open_tmp_file(suffix="SPOTS.XDS", mode="w")
   f.write(txt)
   f.close()
 

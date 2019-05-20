@@ -4999,7 +4999,7 @@ TER
   assert h1.is_similar_hierarchy(other=h2)
   assert h2.is_similar_hierarchy(other=h1)
   #
-  open("tmp_tst_hierarchy.pdb", "wb").write("""\
+  open("tmp_tst_hierarchy.pdb", "w").write("""\
 CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
 ATOM      0  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
 ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
