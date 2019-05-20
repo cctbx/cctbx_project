@@ -28,7 +28,7 @@ from libtbx import easy_mp
 import libtbx.load_env
 import libtbx.phil
 from math import sqrt
-import cStringIO
+from six.moves import cStringIO as StringIO
 import time
 import sys
 from six.moves import zip

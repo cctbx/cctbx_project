@@ -91,7 +91,7 @@ def smart_split_cif_line(line):
     start = line.find(delimiter)
     finish = line.find(delimiter, start+1)
     items = line.split(delimiter)
-    items = filter(None, items)
+    items = list(filter(None, items))
     if not items: break
     item=items[0]
     tmp.append(item)

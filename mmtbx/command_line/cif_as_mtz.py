@@ -112,7 +112,7 @@ def run(args, command_name = "phenix.cif_as_mtz", out=sys.stdout,
   if(not os.path.isfile(file_name)):
     raise Sorry("File is not found: %s"%file_name)
   output_r_free_label = command_line.options.output_r_free_label
-  if ((not output_r_free_label[0] in string.uppercase) or
+  if ((not output_r_free_label[0] in string.ascii_uppercase) or
       (re.search("[^a-zA-Z0-9_\-]", output_r_free_label))):
     raise Sorry(("%s is not a suitable column label.  MTZ format requires "+
       "an uppercase letter as the first character, and only alphanumeric "+

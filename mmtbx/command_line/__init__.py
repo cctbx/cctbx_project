@@ -20,6 +20,7 @@ from libtbx.str_utils import make_header, make_sub_header
 from libtbx.utils import Sorry, Usage, multi_out, null_out
 from libtbx import Auto
 from scitbx.array_family import flex
+from six import string_types
 from six.moves import cStringIO as StringIO
 import sys
 
@@ -287,7 +288,7 @@ class load_model_and_data(object):
     from iotbx import crystal_symmetry_from_any
     import iotbx.phil
     if generate_input_phil :
-      assert isinstance(master_phil, basestring)
+      assert isinstance(master_phil, string_types)
       master_phil = generate_master_phil_with_inputs(phil_string=master_phil)
     if isinstance(master_phil, str):
       master_phil = iotbx.phil.parse(master_phil)
@@ -684,9 +685,8 @@ def load_and_validate_unmerged_data(f_obs, file_name, data_labels,
   return unmerged_i_obs
 
 def show_symmetry_error(file1, file2, symm1, symm2):
-  import cStringIO
-  symm_out1 = cStringIO.StringIO()
-  symm_out2 = cStringIO.StringIO()
+  symm_out1 = StringIO()
+  symm_out2 = StringIO()
   symm1.show_summary(f=symm_out1, prefix="  ")
   symm2.show_summary(f=symm_out2, prefix="  ")
   raise Sorry("Incompatible symmetry definitions:\n%s:\n%s\n%s\n%s" %

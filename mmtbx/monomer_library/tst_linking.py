@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import os
 from libtbx import easy_run
+from libtbx.utils import to_bytes
 from six.moves import range
 
 pdbs = {"linking_test_CYS_CYS_alt_loc.pdb" : """
@@ -2376,7 +2377,7 @@ def run_and_test(cmd, pdb, i, skip_links=False):
     raise RuntimeError("Missing expected log output")
   print("OK")
   # test .geo
-  f=file(pdb.replace(".pdb", "_minimized.geo"), "rb")
+  f=open(pdb.replace(".pdb", "_minimized.geo"), "rb")
   lines = f.read()
   f.close()
   bonds = 0
@@ -2413,7 +2414,7 @@ def run_and_test(cmd, pdb, i, skip_links=False):
   #  return
   number_of_links=0
   fname = pdb.replace(".pdb", "_minimized.pdb")
-  f=file(fname, "rb")
+  f=open(fname, "rb")
   lines = f.readlines()
   f.close()
   for line in lines:
@@ -2452,7 +2453,7 @@ def run(only_i=None):
   if only_i is not None and only_i==1:
     cifs = ""
     for pdb in pdbs:
-      f=file(pdb, "wb")
+      f=open(pdb, "wb")
       f.write(pdbs[pdb])
       f.close()
       if pdb.endswith(".phil"): cifs += " %s" % pdb
@@ -2468,8 +2469,8 @@ def run(only_i=None):
   #
   cifs = ""
   for pdb in pdbs:
-    f=file(pdb, "wb")
-    f.write(pdbs[pdb])
+    f=open(pdb, "wb")
+    f.write(to_bytes(pdbs[pdb], codec='utf8'))
     f.close()
     if pdb.endswith(".cif"): cifs += " %s" % pdb
   j=0

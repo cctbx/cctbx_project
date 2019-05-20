@@ -16,7 +16,7 @@ import scitbx.array_family.shared # import dependency
 import scitbx.stl.set
 from libtbx import smart_open
 from libtbx.str_utils import show_string
-from libtbx.utils import plural_s, hashlib_md5, date_and_time, Sorry
+from libtbx.utils import plural_s, hashlib_md5, date_and_time, to_bytes, Sorry
 from libtbx import Auto
 from six.moves import cStringIO as StringIO
 import sys
@@ -573,7 +573,7 @@ class combine_unique_pdb_files(object):
           for s in smart_open.for_reading(
             file_name=file_name).read().splitlines()]
         m = hashlib_md5()
-        m.update("\n".join(r))
+        m.update(to_bytes("\n".join(r), codec='utf8'))
         m = m.hexdigest()
         l = self.md5_registry.get(m)
         if (l is not None):

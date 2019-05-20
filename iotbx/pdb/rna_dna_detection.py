@@ -193,7 +193,7 @@ class residue_analysis(slots_getstate_setstate):
         O.h_atoms[key] = O.atom_dict[key]
         del O.atom_dict[key]
     O.c1p_outbound_candidates = {}
-    for key in O.atom_dict.keys():
+    for key in list(O.atom_dict.keys()):
       if (key.find("'") >= 0):
         if key == "N2'":
           O.deoxy_ribo_atom_dict[key] = atom

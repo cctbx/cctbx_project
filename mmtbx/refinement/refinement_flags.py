@@ -274,7 +274,7 @@ class manager(object):
         assert size_all is not None
         self.adp_individual_iso = flex.bool(size_all, False)
       # inflate existing iso flags if present
-      elif (self.adp_individual_iso.size() < size_all):
+      elif (size_all and self.adp_individual_iso.size() < size_all):
         n_new = size_all - self.adp_individual_iso.size()
         self.adp_individual_iso.extend(flex.bool(n_new, False))
       self.adp_individual_iso.extend(adp_individual_iso)
@@ -284,7 +284,7 @@ class manager(object):
         assert size_all is not None
         self.adp_individual_aniso = flex.bool(size_all, False)
       # inflate existing aniso flags if present
-      elif (self.adp_individual_aniso.size() < size_all):
+      elif (size_all and self.adp_individual_aniso.size() < size_all):
         n_new = size_all - self.adp_individual_aniso.size()
         self.adp_individual_aniso.extend(flex.bool(n_new, False))
       self.adp_individual_aniso.extend(adp_individual_aniso)
