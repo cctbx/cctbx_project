@@ -20,7 +20,8 @@ class UnitCellCtrl(ValidatedTextCtrl):
       uc = self.FormatValue(uc)
     elif (uc is None):
       uc = ""
-    assert isinstance(uc, basestring)
+    from six import string_types
+    assert isinstance(uc, string_types)
     wx.TextCtrl.SetValue(self, uc)
 
   def SetValue(self, value):

@@ -60,7 +60,8 @@ class absolute_path(object):
     return self._path
 
 def plainlify(thing):
-  if isinstance(thing, (unicode, str, basestring, int, float, long, complex)):
+  import six
+  if isinstance(thing,six.string_types) or isinstance(thing, (unicode, str, int, float, long, complex)):
     return thing
   if thing in (None, True, False):
     return thing

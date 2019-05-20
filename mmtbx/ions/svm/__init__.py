@@ -523,7 +523,8 @@ def _flatten_list(lst):
     """
 
     for item in lst:
-      if isinstance(item, Iterable) and not isinstance(item, basestring):
+      from six import string_types
+      if isinstance(item, Iterable) and not isinstance(item, string_bytes):
         for sub in _flatten(item):
           yield sub
       else:

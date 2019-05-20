@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx.utils import Sorry
 import os
-
+import six
 
 def get_image_filename(int_name, prefix="idx-"):
   f = os.path.basename(int_name)
@@ -24,7 +24,7 @@ def limited_walk(path, max_depth=4):
   return nodes
 
 def find_image_in_dirs(dirs, image_name=None, int_name=None, prefix="idx-", max_depth=4, sorry_on_fail=False):
-  assert not isinstance(dirs, basestring)
+  assert not isinstance(dirs, six.string_types)
   if image_name is None:
     if int_name is None:
       raise Sorry("either image name or integration pickle name must be specified")
@@ -39,7 +39,7 @@ def find_image_in_dirs(dirs, image_name=None, int_name=None, prefix="idx-", max_
   return None
 
 def find_many_images_in_dirs(images, dirs, max_depth=4):
-  assert not isinstance(dirs, basestring)
+  assert not isinstance(dirs, six.string_types)
   image_paths = []
   for d in dirs:
     paths = limited_walk(d, max_depth=max_depth)
@@ -50,7 +50,7 @@ def find_many_images_in_dirs(images, dirs, max_depth=4):
   return image_paths
 
 def find_all_images_in_dirs(dirs, image_prefix="idx-", max_depth=4):
-  assert not isinstance(dirs, basestring)
+  assert not isinstance(dirs, six.string_types)
   image_paths = []
   for d in dirs:
     paths = limited_walk(d, max_depth=max_depth)
@@ -61,7 +61,7 @@ def find_all_images_in_dirs(dirs, image_prefix="idx-", max_depth=4):
   return image_paths
 
 def find_all_matching_images_in_dirs(int_pickles, dirs, prefix="idx-", max_depth=4):
-  assert not isinstance(dirs, basestring)
+  assert not isinstance(dirs, six.string_types)
   image_names = [get_image_filename(int_name, prefix=prefix) for int_name in int_pickles]
   image_paths = []
   for d in dirs:

@@ -288,6 +288,7 @@ class load_model_and_data(object):
     from iotbx import crystal_symmetry_from_any
     import iotbx.phil
     if generate_input_phil :
+      from six import string_types
       assert isinstance(master_phil, string_types)
       master_phil = generate_master_phil_with_inputs(phil_string=master_phil)
     if isinstance(master_phil, str):
