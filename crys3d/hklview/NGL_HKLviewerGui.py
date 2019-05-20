@@ -1,3 +1,5 @@
+from __future__ import division
+
 #-------------------------------------------------------------------------------
 # Name:        module1
 # Purpose:
@@ -9,14 +11,14 @@
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from PyQt5.QtCore import QDateTime, Qt, QTimer
-from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtWidgets import ( QApplication, QCheckBox, QComboBox,
         QDial, QDialog, QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
-        QVBoxLayout, QWidget)
+        QVBoxLayout, QWidget )
 
-import sys, zmq, subprocess, os, os.path, time, threading
+import sys, zmq, subprocess, time, threading
 
 class NGL_HKLViewer(QDialog):
   def __init__(self, parent=None):
@@ -180,7 +182,7 @@ class NGL_HKLViewer(QDialog):
               self.FOMComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
                                              for e in self.miller_arrays ] )
 
-        except:
+        except Exception:
           pass
 
 
@@ -366,7 +368,7 @@ class NGL_HKLViewer(QDialog):
     self.socket = self.context.socket(zmq.PAIR)
     self.socket.bind("tcp://127.0.0.1:7895")
     try: msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
-    except: pass
+    except Exception: pass
 
     cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, verbose=False)"\n'
     #self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdout=sys.stdout, stderr=sys.stderr)
