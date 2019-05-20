@@ -240,6 +240,7 @@ class HKLViewFrame () :
     self.viewer = view_3d.hklview_3d( **kwds )
     self.master_phil = libtbx.phil.parse( masterphilstr )
     self.params = self.master_phil.fetch().extract()
+    self.NewFileLoaded = False
     self.infostr = ""
 
     self.useSocket=False
@@ -313,6 +314,8 @@ class HKLViewFrame () :
     msg = self.viewer.update_settings()
     self.mprint( msg)
     self.SendInfo()
+    self.NewFileLoaded = False
+
     if (self.miller_array is None) :
       self.mprint( "No miller array has been selected")
       return False
@@ -493,7 +496,8 @@ class HKLViewFrame () :
       try :
         hkl_file = any_reflection_file(file_name)
       except Exception, e :
-        raise Sorry(to_str(e))
+        self.NewFileLoaded=False
+        self.msprint(to_str(e))
       arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
         )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)
       #arrays = f.file_server.miller_arrays
@@ -509,19 +513,20 @@ class HKLViewFrame () :
           self.mprint('Ignoring miller array \"%s\" of %s' \
             %(array.info().label_string(), type(array.data()[0]) ) )
           continue
-        self.array_infostrs.append( ArrayInfo(array).infostr )
-        self.array_infotpls.append( ArrayInfo(array).infotpl )
+        self.array_infostrs.append( ArrayInfo(array, self.mprint).infostr )
+        self.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
       for i,e in enumerate(self.array_infostrs):
         self.mprint("%d, %s" %(i, e))
-      if (len(valid_arrays) == 0) :
+      self.NewFileLoaded = True
+      if (len(valid_arrays) == 0):
         msg = "No arrays of the supported types in this file."
-        raise Sorry(msg)
-      elif (len(valid_arrays) == 1) :
+        self.mprint(msg)
+        self.NewFileLoaded=False
+      elif (len(valid_arrays) == 1):
         if (set_array) :
           self.set_miller_array(valid_arrays[0])
-        #return valid_arrays[0]
 
 
   def LoadReflectionsFile(self, filename):
@@ -649,7 +654,7 @@ class HKLViewFrame () :
     Scale radii. Decrease the contrast between large and small radii with nth_root_scale < 1.0
     If nth_power_scale=0.0 then all radii will have the same size regardless of data values.
     If nth_power_scale < 0.0 an automatic power will be computed ensuring the smallest radius
-    is 0.1 the maximum radius
+    is 0.1 times the maximum radius
     """
     self.params.NGL_HKLviewer.viewer.scale = scale
     self.params.NGL_HKLviewer.viewer.nth_power_scale_radii = nth_power_scale
@@ -732,8 +737,10 @@ class HKLViewFrame () :
                "matching_arrays": self.viewer.matchingarrayinfo,
                "bin_info": self.viewer.binstrs,
                "html_url": self.viewer.url,
-               "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices]
+               "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
+               "NewFileLoaded": self.NewFileLoaded
             }
+    #print str(mydict)
     if self.useSocket:
       self.socket.send( str(mydict).encode("utf-8") )
 

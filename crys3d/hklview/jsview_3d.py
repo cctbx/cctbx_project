@@ -8,7 +8,7 @@ from cctbx.miller import display2 as display
 from cctbx.array_family import flex
 from scitbx import graphics_utils
 from cctbx import miller
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, to_str
 from websocket_server import WebsocketServer
 import threading, math, sys
 from time import sleep
@@ -21,7 +21,7 @@ import webbrowser, tempfile
 
 
 class ArrayInfo:
-  def __init__(self, millarr):
+  def __init__(self, millarr, mprint=sys.stdout.write):
     from iotbx.gui_tools.reflections import get_array_description
     data = millarr.data()
     if (isinstance(data, flex.int)):
@@ -41,16 +41,24 @@ class ArrayInfo:
     else:
       self.minmaxstr = "MinMaxValues:[%s; %s]" %(roundoff(self.mindata), roundoff(self.maxdata))
     self.labels = self.desc = ""
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if millarr.info():
       self.labels = millarr.info().label_string()
       self.desc = get_array_description(millarr)
-    self.span = "HKLs: %s to %s" % \
-      ( millarr.index_span().min(), millarr.index_span().max())
-    dmin = millarr.d_max_min()[1]
-    dmax = millarr.d_max_min()[0]
+    self.span = "HKLs: ? to ?"
+    dmin = 0.0
+    dmax = 0.0
+    try:
+      self.span = "HKLs: %s to %s" % \
+        ( millarr.index_span().min(), millarr.index_span().max())
+      dmin = millarr.d_max_min()[1]
+      dmax = millarr.d_max_min()[0]
+    except Exception, e:
+      mprint(to_str(e))
+    issymunique = millarr.is_unique_set_under_symmetry()
     self.infotpl = (self.labels, self.desc, millarr.indices().size(), self.span,
-     self.minmaxstr, roundoff(dmin), roundoff(dmax) )
-    self.infostr = "%s (%s), %s %s, %s, d_min_max: %s, %s" % self.infotpl
+     self.minmaxstr, roundoff(dmin), roundoff(dmax), issymunique )
+    self.infostr = "%s (%s), %s %s, %s, d_min_max: %s, %s, Symmetry unique: %d" % self.infotpl
 
 
 class hklview_3d:
@@ -268,7 +276,7 @@ class hklview_3d:
       self.otherscenes.append( otherscene)
 
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      infostr = ArrayInfo(otherscene.work_array).infostr
+      infostr = ArrayInfo(otherscene.work_array, self.mprint).infostr
       #infostr = ArrayInfo(match_valarray).infostr
       self.mprint("%d, %s" %(i, infostr) )
       self.matchingarrayinfo.append(infostr)
