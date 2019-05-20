@@ -36,6 +36,7 @@ Number of blocks: 1
 
 tst_list = (
   tst_run,
+  "$D/excercise_compression.py"
   )
 
 def run():
