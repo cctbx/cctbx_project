@@ -21,6 +21,7 @@ from libtbx.str_utils import show_string
 from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s
 from libtbx.utils import format_exception
 from libtbx import Auto, group_args, slots_getstate_setstate
+from past.builtins import cmp
 from six.moves import cStringIO as StringIO
 import string
 import sys, os
@@ -1677,20 +1678,31 @@ class link_match(object):
       or self.len_comp_id_match_2 > 0
       or self.len_group_match_2 > 0)
 
-  def __cmp__(self, other):
+  def __lt__(self, other):
     if (self.n_unresolved_bonds < other.n_unresolved_bonds): return -1
-    if (self.n_unresolved_bonds > other.n_unresolved_bonds): return  1
     if (self.n_unresolved_angles < other.n_unresolved_angles): return -1
-    if (self.n_unresolved_angles > other.n_unresolved_angles): return  1
     if (self.len_comp_id_match_1 > other.len_comp_id_match_1): return -1
-    if (self.len_comp_id_match_1 < other.len_comp_id_match_1): return  1
     if (self.len_comp_id_match_2 > other.len_comp_id_match_2): return -1
-    if (self.len_comp_id_match_2 < other.len_comp_id_match_2): return  1
     if (self.len_group_match_1 > other.len_group_match_1): return -1
-    if (self.len_group_match_1 < other.len_group_match_1): return  1
     if (self.len_group_match_2 > other.len_group_match_2): return -1
+    return 0
+
+  def __gt__(self, other):
+    if (self.n_unresolved_bonds > other.n_unresolved_bonds): return  1
+    if (self.n_unresolved_angles > other.n_unresolved_angles): return  1
+    if (self.len_comp_id_match_1 < other.len_comp_id_match_1): return  1
+    if (self.len_comp_id_match_2 < other.len_comp_id_match_2): return  1
+    if (self.len_group_match_1 < other.len_group_match_1): return  1
     if (self.len_group_match_2 < other.len_group_match_2): return  1
     return 0
+
+  def __eq__(self, other):
+    if __lt__(other) == 0 and __gt__(other) == 0:
+      return 1
+    return 0
+
+  def __cmp__(self, other):
+    return self.__lt__(other) - self.__gt__(other)
 
 def get_lib_link_peptide(mon_lib_srv, m_i, m_j, include_peptide_plane=False):
   link_id = "TRANS"
@@ -2754,7 +2766,7 @@ class build_chain_proxies(object):
     if (is_unique_model and log is not None):
       print("        Number of residues, atoms: %d, %d" % (
         conformer.residues_size(),
-        n_expected_atoms + flex.sum(flex.long(unexpected_atoms.values()))), file=log)
+        n_expected_atoms + flex.sum(flex.long(list(unexpected_atoms.values())))), file=log)
       if (len(unknown_residues) > 0):
         print("          Unknown residues:", unknown_residues, file=log)
       if (len(ad_hoc_single_atom_residues) > 0):

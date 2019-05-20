@@ -3504,11 +3504,11 @@ class ncs:
 
     for line in lines:
       if not line : continue
-      spl=string.split(line)
+      spl=line.split()
       if len(spl)<1: continue
-      key=string.lower(spl[0])
+      key=spl[0].lower()
       if key=='transformations' and len(spl)>1 and \
-         string.lower(spl[1])=='formatted':  # start all over!
+         spl[1].lower()=='formatted':  # start all over!
          self._ncs_groups=[]
          self.init_ncs_group()
       elif key=='new_ncs_group': # start new group
@@ -3566,19 +3566,19 @@ class ncs:
 
 
   def get_res_range_after_key(self,line):
-    spl=string.split(string.replace(line,':',' '))
+    spl = line.replace(':', ' ').split()
     if  len(spl)<3:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
     start,end=None,None
     try:
-      start=string.atoi(spl[1])
-      end=string.atoi(spl[2])
+      start=int(spl[1])
+      end=int(spl[2])
     except Exception:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
     return [start,end]
 
   def get_1_char_after_key(self,line):
-    spl=string.split(line)
+    spl=line.split()
     if  len(spl)<2:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
     char=None
@@ -3589,24 +3589,24 @@ class ncs:
     return char
 
   def get_1_value_after_key(self,line):
-    spl=string.split(line)
+    spl=line.split()
     if  len(spl)<2:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
     cc=None
     try:
-      cc=string.atof(spl[1])
+      cc=float(spl[1])
     except Exception:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
     return cc
 
   def get_3_values_after_key(self,line):
-    spl=string.split(line)
+    spl=line.split()
     if  len(spl)<4:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
     set=[]
     try:
       for item in spl[1:4]:
-        set.append(string.atof(item))
+        set.append(float(item))
     except Exception:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
     return set

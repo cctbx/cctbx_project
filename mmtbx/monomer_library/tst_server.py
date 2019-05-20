@@ -59,8 +59,8 @@ def exercise():
         if (has_commas):
           monomers_with_commas[comp_comp_id.chem_comp.id] = has_primes
     print(monomers_with_commas)
-    atom_ids = flex.std_string(atom_id_counts.keys())
-    counts = flex.size_t(atom_id_counts.values())
+    atom_ids = flex.std_string(list(atom_id_counts.keys()))
+    counts = flex.size_t(list(atom_id_counts.values()))
     perm = flex.sort_permutation(data=counts, reverse=True)
     atom_ids = atom_ids.select(perm)
     counts = counts.select(perm)

@@ -3,6 +3,7 @@ import scitbx.array_family.flex
 from scitbx.array_family import flex
 
 import boost.python
+from six import string_types
 from six.moves import zip
 from six.moves import range
 ext = boost.python.import_ext("mmtbx_alignment_ext")
@@ -88,7 +89,7 @@ class align(ext.align):
     elif (isinstance(similarity_function, str)):
       raise RuntimeError(
         'Unknown similarity_function: "%s"' % similarity_function)
-    if isinstance(seq_a, basestring):
+    if isinstance(seq_a, string_types):
       seq_a = seq_a.upper()
       seq_b = seq_b.upper()
     else:
@@ -223,7 +224,7 @@ class align(ext.align):
         v += 1
         ib.append(i)
         sb.append(self.seq_b[i])
-    if isinstance(self.seq_a, basestring):
+    if isinstance(self.seq_a, string_types):
       sa = "".join(sa)
       sb = "".join(sb)
     return alignment(
