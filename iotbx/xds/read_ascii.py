@@ -12,8 +12,7 @@ class reader(object):
 
   def __init__(self, file_handle, header_only=False, allow_unmerged=True):
     "http://www.mpimf-heidelberg.mpg.de/~kabsch/xds/"
-    f = iter(file_handle)
-    flds = f.next().split()
+    flds = file_handle.readline().split()
     assert flds[0] == "!FORMAT=XDS_ASCII"
     assert (allow_unmerged) or (flds[1] == "MERGE=TRUE")
     self.unmerged_data = (flds[1] == "MERGE=FALSE")
@@ -31,7 +30,7 @@ class reader(object):
     self.sigma_iobs_column = None
     self.zd_column = None
     self.wavelength = None
-    for line in f:
+    for line in file_handle:
       if (line.startswith("!SPACE_GROUP_NUMBER=")):
         self.space_group_number = int(get_rhs(line))
         assert 1 <= self.space_group_number <= 230
@@ -73,7 +72,7 @@ class reader(object):
       self.zd = None
       if (self.zd_column is not None):
         self.zd = flex.double()
-      for line in f:
+      for line in file_handle:
         if (line.startswith("!END_OF_DATA")):
           break
         data = line.split()
