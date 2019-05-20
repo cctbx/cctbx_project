@@ -987,7 +987,7 @@ class estimator_group:
     # choose which resolution cutoff to use
     rc=self.resolution_cutoffs[-1] # take highest-res  no matching resolution
     for resolution_cutoff in self.resolution_cutoffs:
-      if resolution >= resolution_cutoff:
+      if resolution and resolution >= resolution_cutoff:
         rc=resolution_cutoff
         break
 
