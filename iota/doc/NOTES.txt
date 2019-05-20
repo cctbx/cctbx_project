@@ -4,3 +4,4 @@ IOTA v1.3.007 - more plotting bugfixes
 - Moved tight_layout calls to avoid a MatPlotLib UserWarning
 - Plotting now refreshes appropriately both automatically and on mouse events in
  wxPython3
+- Added entries for description and output folder on Summary tab

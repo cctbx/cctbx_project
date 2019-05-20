@@ -1764,6 +1764,14 @@ class SummaryTab(d.ScrolledPanel):
 
   def update(self):
 
+    # Add title and directory information
+    description = self.info.description if hasattr(self.info, 'description') \
+      else self.gparams.description
+    self.title_txt.SetLabel(description)
+    int_base = self.info.int_base if hasattr(self.info, 'int_base') else \
+      self.gparams.output
+    self.folder_txt.SetLabel(int_base)
+
     # Add grid search stats if exist
     if hasattr(self.info, 'gs_stats'):
       gs_stats = self.info.gs_stats

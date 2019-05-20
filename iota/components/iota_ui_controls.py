@@ -1515,6 +1515,8 @@ class TableCtrl(CtrlBase):
       # Add data to table
       c_index = rlabels.index(l)
       for item in contents[c_index]:
+        if item is None:
+          item = ''
         cell = wx.StaticText(self, label=item)
         cell.SetFont(self.cfont)
         self.sizer.Add(cell)
@@ -1548,11 +1550,8 @@ class WidgetFactory(object):
     wtype = object.type.phil_type
     wstyle = object.style
 
-    print ('DEBUG: ', label, wstyle, wtype)
-
     if wtype == 'path':  # Two styles only: single line w/ Browse, or input list
       if wstyle == 'input_list':
-        print ("DEBUG: MAKING FILELISTCTRL FOR ", label, wtype)
         widget = FileListCtrl(parent=parent)
       else:
         widget = InputCtrl(parent=parent, label=label, buttons=True)
