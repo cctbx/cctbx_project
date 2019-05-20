@@ -61,8 +61,8 @@
         self.data_attr.replace_with(0); \
         return; \
       } \
-      if (PyBytes_Check(ptr)) { \
-        self.data_attr.replace_with(PyBytes_AS_STRING(ptr)); \
+      if (PyUnicode_Check(ptr)) { \
+        self.data_attr.replace_with(PyUnicode_AsUTF8(ptr)); \
         return; \
       } \
       if (PyLong_Check(ptr)) { \
