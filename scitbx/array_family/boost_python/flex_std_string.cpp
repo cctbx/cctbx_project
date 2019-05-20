@@ -23,10 +23,14 @@ namespace {
     bool count_lines_first=true)
   {
     PyObject* str_ptr = multi_line_string.ptr();
+#ifdef IS_PY3K
+    Py_ssize_t* size_ptr = 0;
+    const char* unicode_ptr = PyUnicode_AsUTF8AndSize(str_ptr, size_ptr);
+#endif
     return misc::split_lines(
 #ifdef IS_PY3K
-      PyBytes_AS_STRING(str_ptr),
-      PyBytes_GET_SIZE(str_ptr),
+      unicode_ptr,
+      *size_ptr,
 #else
       PyString_AS_STRING(str_ptr),
       PyString_GET_SIZE(str_ptr),
