@@ -500,7 +500,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
 
   def deposition_date(self):
     # date format: yyyy-mm-dd
-    cif_block = self.cif_model.values()[0]
+    cif_block = list(self.cif_model.values())[0]
     return cif_block.get("_pdbx_database_status.recvd_initial_deposition_date")
     #rev_num = cif_block.get('_database_PDB_rev.num')
     #if rev_num is not None:

@@ -174,9 +174,9 @@ def run(args=(), params=None, out=sys.stdout):
 
 def increment_altloc(altloc):
   if altloc.isupper():
-    letters = string.uppercase
+    letters = string.ascii_uppercase
   elif altloc.islower():
-    letters = string.lowercase
+    letters = string.ascii_lowercase
   elif altloc.isdigit():
     letters = string.digits
   else :
