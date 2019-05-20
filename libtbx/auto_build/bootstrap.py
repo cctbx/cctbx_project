@@ -492,7 +492,8 @@ class Toolbox(object):
       if ('cctbx_project.git' in parameters[0]):
         print('\n' + '=' * 80 + '\nCCTBX moved to git on November 22, 2016.\n\nTo update cctbx_project to the last available subversion revision please run "svn update" while in the cctbx_project directory.\n' + '*'*80 + '\n')
       return
-
+    #from six import string_types # FIXME Python 2/3 compatible lines
+    #if isinstance(parameters, string_types):
     if isinstance(parameters, basestring):
       parameters = [ parameters ]
     git_parameters = []

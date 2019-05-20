@@ -258,7 +258,8 @@ class download_file_basic(object):
     return result
 
   def OnComplete(self, event):
-    if isinstance(event.data, basestring):
+    from six import string_types
+    if isinstance(event.data, string_types):
       wx.MessageBox(message="File downloaded to %s" % event.data)
     else :
       wx.MessageBox(message="Error downloading file: %s" % event.data[1],

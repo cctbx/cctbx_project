@@ -190,7 +190,8 @@ def libtbx_collector():
           del os.environ['LIBTBX_SKIP_PYTEST']
 
         for test in run_tests.tst_list:
-          if isinstance(test, basestring):
+          from six import string_types 
+          if isinstance(test, string_types):
             testfile = test
             testparams = []
             testname = 'main'

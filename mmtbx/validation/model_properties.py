@@ -37,7 +37,8 @@ class model_statistics(slots_getstate_setstate):
       ligand_selection=None):
     for name in self.__slots__ :
       setattr(self, name, None)
-    if isinstance(ligand_selection, basestring):
+    from six import string_types
+    if isinstance(ligand_selection, string_types):
       if (all_chain_proxies is not None):
         ligand_selection = all_chain_proxies.selection(ligand_selection)
       else :

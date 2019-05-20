@@ -396,7 +396,8 @@ def edge_label(source, target):
     elif isinstance(source, dict):
         for k, v in source.items():
             if v is target:
-                if isinstance(k, basestring) and k:
+                from six import string_types
+                if isinstance(k, string_types) and k:
                     return ' [label="%s",weight=2]' % quote(k)
                 else:
                     return ' [label="%s"]' % quote(safe_repr(k))
