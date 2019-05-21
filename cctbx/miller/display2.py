@@ -3,7 +3,7 @@
 #  - cached scenes
 
 from __future__ import division
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, to_str
 from cctbx import miller
 from cctbx.array_family import flex
 import libtbx.phil
@@ -94,7 +94,7 @@ class scene(object):
     self.miller_array = miller_array
     self.renderscale = 100.0
     self.foms_workarray = foms_array
-
+    self.SceneCreated = False
     self.settings = settings
     self.merge_equivalents = merge
     from cctbx import crystal
@@ -108,9 +108,13 @@ class scene(object):
       if foms_array:
         assert ( self.miller_array.size() == foms_array.size() )
         self.foms_workarray, dummy = self.process_input_array(foms_array)
+        if not self.foms_workarray:
+          return
         self.foms = self.foms_workarray.data()
         self.fomlabel = foms_array.info().label_string()
     self.work_array, self.multiplicities = self.process_input_array(self.miller_array)
+    if not self.work_array:
+      return
     array = self.work_array
     uc = array.unit_cell()
     self.unit_cell = uc
@@ -171,118 +175,123 @@ class scene(object):
       self.foms = flex.double(n_points, float('nan'))
     self.dres = uc.d(self.indices )
     self.clear_labels()
+    self.SceneCreated = True
 
 
   def process_input_array(self, arr):
     array = arr.deep_copy()
+    work_array = arr
     multiplicities = None
-    if self.merge_equivalents :
-      if self.settings.show_anomalous_pairs:
-        merge = array.merge_equivalents()
-        multiplicities = merge.redundancies()
-        asu, matches = multiplicities.match_bijvoet_mates()
-        mult_plus, mult_minus = multiplicities.hemispheres_acentrics()
-        anom_mult = flex.int(
-          min(p, m) for (p, m) in zip(mult_plus.data(), mult_minus.data()))
-        #flex.min_max_mean_double(anom_mult.as_double()).show()
-        anomalous_multiplicities = miller.array(
-          miller.set(asu.crystal_symmetry(),
-                     mult_plus.indices(),
-                     anomalous_flag=False), anom_mult)
-        anomalous_multiplicities = anomalous_multiplicities.select(
-          anomalous_multiplicities.data() > 0)
+    try:
+      if self.merge_equivalents :
+        if self.settings.show_anomalous_pairs:
+          merge = array.merge_equivalents()
+          multiplicities = merge.redundancies()
+          asu, matches = multiplicities.match_bijvoet_mates()
+          mult_plus, mult_minus = multiplicities.hemispheres_acentrics()
+          anom_mult = flex.int(
+            min(p, m) for (p, m) in zip(mult_plus.data(), mult_minus.data()))
+          #flex.min_max_mean_double(anom_mult.as_double()).show()
+          anomalous_multiplicities = miller.array(
+            miller.set(asu.crystal_symmetry(),
+                       mult_plus.indices(),
+                       anomalous_flag=False), anom_mult)
+          anomalous_multiplicities = anomalous_multiplicities.select(
+            anomalous_multiplicities.data() > 0)
 
-        array = anomalous_multiplicities
-        multiplicities = anomalous_multiplicities
-
-      else:
-        merge = array.merge_equivalents()
-        array = merge.array()
-        multiplicities = merge.redundancies()
-    settings = self.settings
-    data = array.data()
-    self.missing_set = oop.null()
-    #if (array.is_xray_intensity_array()):
-    #  data.set_selected(data < 0, flex.double(data.size(), 0.))
-    if (array.is_unique_set_under_symmetry()) and (settings.map_to_asu):
-      array = array.map_to_asu()
-      if (multiplicities is not None):
-        multiplicities = multiplicities.map_to_asu()
-    if (settings.d_min is not None):
-      array = array.resolution_filter(d_min=settings.d_min)
-      if (multiplicities is not None):
-        multiplicities = multiplicities.resolution_filter(
-          d_min=settings.d_min)
-    self.filtered_array = array.deep_copy()
-    if (settings.expand_anomalous):
-      array = array.generate_bijvoet_mates()
-      original_symmetry = array.crystal_symmetry()
-
-      if (multiplicities is not None):
-        multiplicities = multiplicities.generate_bijvoet_mates()
-    if (self.settings.show_missing):
-      self.missing_set = array.complete_set().lone_set(array)
-      if self.settings.show_anomalous_pairs:
-        self.missing_set = self.missing_set.select(
-          self.missing_set.centric_flags().data(), negate=True)
-    if (settings.expand_to_p1):
-      original_symmetry = array.crystal_symmetry()
-      array = array.expand_to_p1().customized_copy(
-        crystal_symmetry=original_symmetry)
-      #array = array.niggli_cell().expand_to_p1()
-      #self.missing_set = self.missing_set.niggli_cell().expand_to_p1()
-      self.missing_set = self.missing_set.expand_to_p1().customized_copy(
-        crystal_symmetry=original_symmetry)
-      if (multiplicities is not None):
-        multiplicities = multiplicities.expand_to_p1().customized_copy(
-            crystal_symmetry=original_symmetry)
-    data = array.data()
-    self.r_free_mode = False
-    self.phases = flex.double(data.size(), float('nan'))
-    self.radians = flex.double(data.size(), float('nan'))
-    self.ampl = flex.double(data.size(), float('nan'))
-    self.sigmas = None
-    if isinstance(data, flex.bool):
-      self.r_free_mode = True
-      data_as_float = flex.double(data.size(), 0.0)
-      data_as_float.set_selected(data==True, flex.double(data.size(), 1.0))
-      data = data_as_float
-      self.data = data.deep_copy()
-    else :
-      if isinstance(data, flex.double):
-        self.data = data.deep_copy()
-      elif isinstance(data, flex.complex_double):
-        self.data = data.deep_copy()
-        self.ampl = flex.abs(data)
-        self.phases = flex.arg(data) * 180.0/math.pi
-        # purge nan values from array to avoid crash in fmod_positive()
-        b = flex.bool([bool(math.isnan(e)) for e in self.phases])
-        # replace the nan values with an arbitrary float value
-        self.phases = self.phases.set_selected(b, 42.4242)
-        # Cast negative degrees to equivalent positive degrees
-        self.phases = flex.fmod_positive(self.phases, 360.0)
-        self.radians = flex.arg(data)
-        # replace the nan values with an arbitrary float value
-        self.radians = self.radians.set_selected(b, 0.424242)
-      elif hasattr(array.data(), "as_double"):
-        self.data = array.data().as_double()
-      else:
-        raise RuntimeError("Unexpected data type: %r" % data)
-      if (settings.show_data_over_sigma):
-        if (array.sigmas() is None):
-          raise Sorry("sigmas not defined.")
-        sigmas = array.sigmas()
-        non_zero_sel = sigmas != 0
-        array = array.select(non_zero_sel)
-        array = array.customized_copy(data=array.data()/array.sigmas())
-        self.data = array.data()
+          array = anomalous_multiplicities
+          multiplicities = anomalous_multiplicities
+        else:
+          merge = array.merge_equivalents()
+          array = merge.array()
+          multiplicities = merge.redundancies()
+      settings = self.settings
+      data = array.data()
+      self.missing_set = oop.null()
+      #if (array.is_xray_intensity_array()):
+      #  data.set_selected(data < 0, flex.double(data.size(), 0.))
+      if (array.is_unique_set_under_symmetry()) and (settings.map_to_asu):
+        array = array.map_to_asu()
         if (multiplicities is not None):
-          multiplicities = multiplicities.select(non_zero_sel)
-      if array.sigmas() is not None:
-        self.sigmas = array.sigmas()
-      else:
-        self.sigmas = None
-    work_array = array
+          multiplicities = multiplicities.map_to_asu()
+      if (settings.d_min is not None):
+        array = array.resolution_filter(d_min=settings.d_min)
+        if (multiplicities is not None):
+          multiplicities = multiplicities.resolution_filter(
+            d_min=settings.d_min)
+      self.filtered_array = array.deep_copy()
+      if (settings.expand_anomalous):
+        array = array.generate_bijvoet_mates()
+        original_symmetry = array.crystal_symmetry()
+
+        if (multiplicities is not None):
+          multiplicities = multiplicities.generate_bijvoet_mates()
+      if (self.settings.show_missing):
+        self.missing_set = array.complete_set().lone_set(array)
+        if self.settings.show_anomalous_pairs:
+          self.missing_set = self.missing_set.select(
+            self.missing_set.centric_flags().data(), negate=True)
+      if (settings.expand_to_p1):
+        original_symmetry = array.crystal_symmetry()
+        array = array.expand_to_p1().customized_copy(
+          crystal_symmetry=original_symmetry)
+        #array = array.niggli_cell().expand_to_p1()
+        #self.missing_set = self.missing_set.niggli_cell().expand_to_p1()
+        self.missing_set = self.missing_set.expand_to_p1().customized_copy(
+          crystal_symmetry=original_symmetry)
+        if (multiplicities is not None):
+          multiplicities = multiplicities.expand_to_p1().customized_copy(
+              crystal_symmetry=original_symmetry)
+      data = array.data()
+      self.r_free_mode = False
+      self.phases = flex.double(data.size(), float('nan'))
+      self.radians = flex.double(data.size(), float('nan'))
+      self.ampl = flex.double(data.size(), float('nan'))
+      self.sigmas = None
+      if isinstance(data, flex.bool):
+        self.r_free_mode = True
+        data_as_float = flex.double(data.size(), 0.0)
+        data_as_float.set_selected(data==True, flex.double(data.size(), 1.0))
+        data = data_as_float
+        self.data = data.deep_copy()
+      else :
+        if isinstance(data, flex.double):
+          self.data = data.deep_copy()
+        elif isinstance(data, flex.complex_double):
+          self.data = data.deep_copy()
+          self.ampl = flex.abs(data)
+          self.phases = flex.arg(data) * 180.0/math.pi
+          # purge nan values from array to avoid crash in fmod_positive()
+          b = flex.bool([bool(math.isnan(e)) for e in self.phases])
+          # replace the nan values with an arbitrary float value
+          self.phases = self.phases.set_selected(b, 42.4242)
+          # Cast negative degrees to equivalent positive degrees
+          self.phases = flex.fmod_positive(self.phases, 360.0)
+          self.radians = flex.arg(data)
+          # replace the nan values with an arbitrary float value
+          self.radians = self.radians.set_selected(b, 0.424242)
+        elif hasattr(array.data(), "as_double"):
+          self.data = array.data().as_double()
+        else:
+          raise RuntimeError("Unexpected data type: %r" % data)
+        if (settings.show_data_over_sigma):
+          if (array.sigmas() is None):
+            raise Sorry("sigmas not defined.")
+          sigmas = array.sigmas()
+          non_zero_sel = sigmas != 0
+          array = array.select(non_zero_sel)
+          array = array.customized_copy(data=array.data()/array.sigmas())
+          self.data = array.data()
+          if (multiplicities is not None):
+            multiplicities = multiplicities.select(non_zero_sel)
+        if array.sigmas() is not None:
+          self.sigmas = array.sigmas()
+        else:
+          self.sigmas = None
+      work_array = array
+    except Exception, e:
+      print to_str(e)
+      return None, None
     work_array.set_info(arr.info() )
     multiplicities = multiplicities
     return work_array, multiplicities

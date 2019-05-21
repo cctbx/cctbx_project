@@ -273,9 +273,13 @@ class HKLViewFrame () :
   def update_settings(self, new_phil=None):
     if not new_phil:
       new_phil = self.master_phil.format(python_object = self.params)
-    print "in update_settings"
+    else:
+      current_phil = self.master_phil.format(python_object = self.params)
+      working_phil = self.master_phil.fetch(sources = [new_phil, current_phil] )
+    #print "in update_settings"
     diff = None
 #    try:
+
     working_phil = self.master_phil.fetch(source = new_phil)
     diff_phil = self.master_phil.fetch_diff(source = working_phil)
     if len(diff_phil.all_definitions()) < 1:
@@ -295,6 +299,7 @@ class HKLViewFrame () :
 
     if hasattr(diff, "column") or hasattr(diff, "fomcolumn") \
      or hasattr(diff, "mergedata") or hasattr(diff, "columnbinthresholds"):
+      print "mergedata in updatesettings: " , self.params.NGL_HKLviewer.mergedata
       if self.set_column(phl.column, phl.fomcolumn):
         self.set_column_bin_thresholds(phl.columnbinthresholds, phl.binarray)
 
@@ -313,6 +318,7 @@ class HKLViewFrame () :
 
     msg = self.viewer.update_settings()
     self.mprint( msg)
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.SendInfo()
     self.NewFileLoaded = False
 
@@ -361,6 +367,7 @@ class HKLViewFrame () :
     details = []
     #self.merge_answer[0] = None
     self.infostr = ""
+    self.mprint("mergedata: " + str(self.params.NGL_HKLviewer.mergedata) )
     if (not array.is_unique_set_under_symmetry() and self.params.NGL_HKLviewer.mergedata is None):
       shouldmergestr = "The data in the selected array are not symmetry-" + \
         "unique, which usually means they are unmerged (but could also be due "+ \
@@ -486,6 +493,7 @@ class HKLViewFrame () :
     if (file_name != ""):
       from iotbx.reflection_file_reader import any_reflection_file
       self.viewer.isnewfile = True
+      self.params.NGL_HKLviewer.mergedata = None
       self.viewer.iarray = 0
       self.viewer.icolourcol = 0
       self.viewer.iradiicol = 0
@@ -737,6 +745,7 @@ class HKLViewFrame () :
                "matching_arrays": self.viewer.matchingarrayinfo,
                "bin_info": self.viewer.binstrs,
                "html_url": self.viewer.url,
+               "mergedata": self.params.NGL_HKLviewer.mergedata,
                "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
                "NewFileLoaded": self.NewFileLoaded
             }

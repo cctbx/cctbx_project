@@ -233,6 +233,9 @@ class hklview_3d:
 
       otherscene = display.scene(miller_array=match_valarray,  merge=merge,
         settings=self.settings, foms_array=foms)
+      if not otherscene.SceneCreated:
+        self.mprint("The " + match_valarray.info().label_string() + " array was not processed")
+        continue
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       # cast any NAN values to -1 of the colours and radii arrays before writing javascript
       nplst = np.array( list( otherscene.data ) )

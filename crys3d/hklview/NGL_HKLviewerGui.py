@@ -43,13 +43,19 @@ class NGL_HKLViewer(QDialog):
 
     self.FOMComboBox = QComboBox()
     self.FOMComboBox.activated.connect(self.FOMComboSelchange)
-    #self.FOMComboBox.setEnabled(False)
 
     self.FOMLabel = QLabel()
-    self.FOMLabel.setText("Optional Figure of Merits")
+    self.FOMLabel.setText("Use Figure of Merits")
+
+    self.SpaceGroupComboBox = QComboBox()
+    self.SpaceGroupComboBox.activated.connect(self.SpacegroupSelchange)
+
+    self.SpacegroupLabel = QLabel()
+    self.SpacegroupLabel.setText("Compatible Space Subgroups")
 
     self.mergecheckbox = QCheckBox()
     self.mergecheckbox.setText("Merge data")
+    self.mergecheckbox.setTristate (True)
     self.mergecheckbox.clicked.connect(self.MergeData)
 
     self.expandP1checkbox = QCheckBox()
@@ -162,6 +168,7 @@ class NGL_HKLViewer(QDialog):
             self.bin_info = ngl_hkl_infodict["bin_info"]
             self.html_url = ngl_hkl_infodict["html_url"]
             self.spacegroups = ngl_hkl_infodict["spacegroups"]
+            self.mergedata = ngl_hkl_infodict["mergedata"]
             self.infostr = ngl_hkl_infodict["info"]
             self.NewFileLoaded = ngl_hkl_infodict["NewFileLoaded"]
             self.fileisvalid = True
@@ -174,24 +181,37 @@ class NGL_HKLViewer(QDialog):
             #  self.textInfo.setPlainText("")
             #  self.mergecheckbox.setEnabled(False)
             if self.NewFileLoaded:
-              #print("\nin update Clearinr items")
+              print("\nin update")
+              if self.mergedata == True : val = 2
+              if self.mergedata == None : val = 1
+              if self.mergedata == False : val = 0
+              self.mergecheckbox.setCheckState(val )
+
               self.MillerComboBox.clear()
               self.MillerComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
                                                for e in self.miller_arrays ] )
               self.FOMComboBox.clear()
               self.FOMComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
                                              for e in self.miller_arrays ] )
+              self.SpaceGroupComboBox.clear()
+              self.SpaceGroupComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
+                                             for e in self.spacegroups ] )
 
-        except Exception:
+
+              print(self.spacegroups)
+        except Exception as e:
+          #print( str(e) )
           pass
 
 
 
 
   def MergeData(self):
-    if self.mergecheckbox.isChecked():
+    if self.mergecheckbox.checkState()== 2:
       self.NGL_HKL_command('NGL_HKLviewer.mergedata = True')
-    else:
+    if self.mergecheckbox.checkState()== 1:
+      self.NGL_HKL_command('NGL_HKLviewer.mergedata = None')
+    if self.mergecheckbox.checkState()== 0:
       self.NGL_HKL_command('NGL_HKLviewer.mergedata = False')
 
 
@@ -254,14 +274,14 @@ class NGL_HKLViewer(QDialog):
     self.topLeftGroupBox = QGroupBox("Group 1")
 
     layout = QGridLayout()
-    layout.addWidget(self.MillerComboBox, 1, 1, 1, 1)
-    layout.addWidget(self.MillerLabel,    1, 0, 1, 1)
-    layout.addWidget(self.FOMComboBox,    2, 1, 1, 1)
-    layout.addWidget(self.FOMLabel,       2, 0, 1, 1)
-
-
-    layout.addWidget(self.mergecheckbox, 3, 0, 1, 2)
-    layout.addWidget(self.expandP1checkbox, 4, 0, 1, 2)
+    layout.addWidget(self.MillerComboBox,        1, 1, 1, 1)
+    layout.addWidget(self.MillerLabel,           1, 0, 1, 1)
+    layout.addWidget(self.FOMComboBox,           2, 1, 1, 1)
+    layout.addWidget(self.FOMLabel,              2, 0, 1, 1)
+    layout.addWidget(self.SpaceGroupComboBox,    3, 1, 1, 1)
+    layout.addWidget(self.SpacegroupLabel,       3, 0, 1, 1)
+    layout.addWidget(self.mergecheckbox,         4, 0, 1, 2)
+    layout.addWidget(self.expandP1checkbox,      5, 0, 1, 2)
 
     #layout.addStretch(1)
     self.topLeftGroupBox.setLayout(layout)
@@ -345,9 +365,16 @@ class NGL_HKLViewer(QDialog):
     else:
       self.FOMComboBox.setEnabled(False)
 
+    self.SpaceGroupComboBox.clear()
+    self.SpaceGroupComboBox.addItems( self.spacegroups )
+
 
   def FOMComboSelchange(self,i):
     self.NGL_HKL_command("NGL_HKLviewer.fomcolumn = %d" %i)
+
+
+  def SpacegroupSelchange(self,i):
+    self.NGL_HKL_command("NGL_HKLviewer.spacegroupchoice = %d" %i)
 
 
   def createRadiiScaleGroupBox(self):
