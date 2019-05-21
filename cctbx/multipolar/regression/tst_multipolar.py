@@ -90,7 +90,7 @@ def exercise(file_name=None):
   #                test=os.path.isfile)
   if file_name is None:
     pdb_file = "tst_multipoloar.pdb"
-    f=open(pdb_file, "wb")
+    f=open(pdb_file, "w")
     f.write(pdbs[0])
     f.close()
 

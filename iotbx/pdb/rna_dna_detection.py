@@ -158,7 +158,7 @@ class residue_analysis(slots_getstate_setstate):
       O.deoxy_ribo_atom_dict[key] = atom
       del O.atom_dict[key]
     O.p_atom = None
-    for key in O.atom_dict.keys():
+    for key in list(O.atom_dict.keys()):
       if (key.startswith("P")):
         if (key == "P"):
           O.p_atom = O.atom_dict[key]

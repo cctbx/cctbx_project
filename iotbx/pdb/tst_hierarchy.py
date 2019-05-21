@@ -6216,8 +6216,8 @@ ANISOU    6  O   HOH     1      788    626    677   -344    621   -232       O
     assert s1.scattering_type == s2.scattering_type
   xrs_new3 = xrs.concatenate(other = xrs_new1)
   try: hierarchy.adopt_xray_structure(xray_structure = xrs_new3)
-  except RuntimeError as e: pass
-  assert str(e) == "Incompatible size of hierarchy and scatterers array."
+  except RuntimeError as e:
+    assert str(e) == "Incompatible size of hierarchy and scatterers array."
   xrs_new4 = xrs.deep_copy_scatterers()
   xrs_new4.set_inelastic_form_factors(photon=1.4, table="sasaki")
   for atom in hierarchy.atoms():

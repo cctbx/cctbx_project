@@ -278,8 +278,10 @@ save_bob
   b2['_d'] = 4
   b3 = b1.difference(b2)
   b4 = b2.difference(b1)
-  assert list(b3.items()) == [('_b', '2'), ('_a', '2')]
-  assert list(b4.items()) == [('_d', '4'), ('_a', '1')]
+  for item in b3.items():
+    assert item in [('_b', '2'), ('_a', '2')]
+  for item in b4.items():
+    assert item in [('_d', '4'), ('_a', '1')]
   l = model.loop(data=dict(_loop_d=(1,2),_loop_e=(3,4),_loop_f=(5,6)))
   assert l == l
   assert l == l.deepcopy()
