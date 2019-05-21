@@ -225,10 +225,7 @@ class align(ext.align):
         v += 1
         ib.append(i)
         sb.append(self.seq_b[i])
-<<<<<<< HEAD
-=======
     from six import string_types
->>>>>>> 2to3, change all instances of basestring to six.string_types
     if isinstance(self.seq_a, string_types):
       sa = "".join(sa)
       sb = "".join(sb)
