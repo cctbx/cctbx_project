@@ -6,7 +6,7 @@ from six.moves import range
 from six.moves import zip
 ext = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
-
+import six
 from cctbx.array_family import flex
 from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
@@ -367,7 +367,7 @@ class _():
   def __getstate__(self):
     version = 2
     pdb_string = StringIO()
-    self._as_pdb_string_cstringio(
+    py3out = self._as_pdb_string_cstringio(  # NOTE py3out will be None in py2
       cstringio=pdb_string,
       append_end=True,
       interleaved_conf=0,
@@ -376,6 +376,9 @@ class _():
       sigatm=True,
       anisou=True,
       siguij=True)
+    print( py3out)
+    if six.PY3:
+      pdb_string.write(py3out)
     return (version, pickle_import_trigger(), self.info, pdb_string.getvalue())
 
   def __setstate__(self, state):
@@ -637,7 +640,7 @@ class _():
         crystal_symmetry=crystal_symmetry,
         cryst1_z=cryst1_z,
         write_scale_records=write_scale_records), file=cstringio)
-    self._as_pdb_string_cstringio(
+    py3out = self._as_pdb_string_cstringio(
       cstringio=cstringio,
       append_end=append_end,
       interleaved_conf=interleaved_conf,
@@ -647,6 +650,8 @@ class _():
       anisou=anisou,
       siguij=siguij,
       output_break_records=output_break_records)
+    if six.PY3:
+      cstringio.write(py3out)
     if (return_cstringio):
       return cstringio
     return cstringio.getvalue()
