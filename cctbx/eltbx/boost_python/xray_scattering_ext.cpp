@@ -23,7 +23,7 @@ namespace {
   boost::python::object
   standard_labels_list()
   {
-    static boost::python::object result = scitbx::boost_python::array_as_list(
+    boost::python::object result = scitbx::boost_python::array_as_list(
       standard_labels, sizeof(standard_labels) / sizeof(char*) - 1);
     return result;
   }
