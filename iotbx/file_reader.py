@@ -156,7 +156,8 @@ def sort_by_file_type(file_names, sort_order=None):
       return 1
     else :
       return 0
-  file_names.sort(_sort)
+  from functools import cmp_to_key
+  file_names.sort(key = cmp_to_key(_sort))
   return file_names
 
 def any_file(file_name,
