@@ -8,6 +8,8 @@ from scitbx.python_utils import command_line
 from libtbx import easy_run
 from boost import rational
 import sys, os
+from past.builtins import cmp
+from functools import cmp_to_key
 from six.moves import range
 from six.moves import zip
 
@@ -239,7 +241,7 @@ def compare_redundancies(a, b):
 
 def sort_redundancies(redundancies):
   redundancies = list(redundancies.items())
-  redundancies.sort(compare_redundancies)
+  redundancies.sort(key=cmp_to_key(compare_redundancies))
   return redundancies
 
 def str_ev(ev):

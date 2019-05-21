@@ -8,8 +8,8 @@ def run():
       drawing from the spacegroup settings specified in phenix_regression
   """
   namespace = {}
-  execfile(os.path.join(libtbx.env.find_in_repositories("phenix_regression"),
-                        "settings.py"),
+  exec(open(os.path.join(libtbx.env.find_in_repositories("phenix_regression"),
+                         "settings.py")).read(),
            namespace)
   for setting in namespace['settings']:
     sgi = sgtbx.space_group_info(setting)

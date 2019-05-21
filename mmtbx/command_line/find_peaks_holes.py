@@ -15,6 +15,8 @@ from libtbx import adopt_init_args, group_args
 from iotbx.pdb.hybrid_36 import hy36encode
 import os
 import sys
+from functools import cmp_to_key
+from past.builtins import cmp
 from six.moves import zip
 
 def get_master_phil():
@@ -84,11 +86,12 @@ class peaks_holes_container(object):
     if (self.anom_peaks is not None):
       self.anom_peaks.sort(reverse=True)
     if (self.water_peaks is not None):
-      self.water_peaks = sorted(self.water_peaks,
-        lambda x,y: cmp(y.peak_height, x.peak_height))
+      cmp_fn = lambda x,y: cmp(y.peak_height, x.peak_height)
+      self.water_peaks = sorted(self.water_peaks, key=cmp_to_key(cmp_fn))
     if (self.water_anom_peaks is not None):
+      cmp_fn = lambda x,y: cmp(y.peak_height, x.peak_height)
       self.water_anom_peaks = sorted(self.water_anom_peaks,
-        lambda x,y: cmp(y.peak_height, x.peak_height))
+                                     key=cmp_to_key(cmp_fn))
     self.pdb_file = None
     self.map_file = None
 

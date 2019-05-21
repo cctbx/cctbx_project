@@ -13,9 +13,11 @@ from __future__ import absolute_import, division, print_function
 import libtbx.phil
 from libtbx.utils import null_out
 from libtbx import group_args, adopt_init_args
-import cStringIO
+from six.moves import cStringIO as StringIO
 import time
 import sys
+from functools import cmp_to_key
+from past.builtins import cmp
 
 master_phil = libtbx.phil.parse("""
 file_name = None
@@ -213,7 +215,7 @@ class ladder(object):
     start_i_res = min(j_res_start, next_ladder_i_start)
     end_i_res = max(j_res_end, next_ladder_i_end)
     if (start_i_res > end_i_res):
-      out = cStringIO.StringIO()
+      out = StringIO()
       self.show(out=out)
       raise RuntimeError("start_i_res(%d) > end_i_res(%d):\n%s" %
         (start_i_res, end_i_res, out.getvalue()))
@@ -296,7 +298,7 @@ class ladder(object):
             curr_i_res = start_hbond.j_res
             prev_i_res = start_hbond.i_res
     if (start_hbond is None):
-      out = cStringIO.StringIO()
+      out = StringIO()
       self.show(out=out)
       raise RuntimeError("Can't find start of H-bonding:\n%s" % out.getvalue())
     #start_hbond.show(prefix="START: ")
@@ -580,7 +582,8 @@ class dssp(object):
     t2 = time.time()
     if (self.params.verbosity >= 1):
       print("Time to find bridges: %.3fs" % (t2-t1), file=self.log)
-    bridges.sort(lambda a,b: cmp(a.i_res, b.i_res))
+    cmp_fn = lambda a,b: cmp(a.i_res, b.i_res)
+    bridges.sort(key=cmp_to_key(cmp_fn))
     if (self.params.verbosity >= 2):
       for B in bridges :
         B.show(out=self.log)

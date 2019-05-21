@@ -772,14 +772,13 @@ class peak_cluster_analysis(object):
     self._heights = flex.double()
     self._fixed_site_indices = flex.size_t()
 
-  def next(self):
+  def __next__(self):
     if (self._effective_resolution is not None):
       return self.next_with_effective_resolution()
     else:
       return self.next_site_cluster_analysis()
 
-  def __next__(self):
-    return self.next()
+  next = __next__
 
   def all(self,max_clusters=None):
     if (self._effective_resolution is not None):

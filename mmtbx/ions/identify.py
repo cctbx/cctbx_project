@@ -31,6 +31,8 @@ from math import sqrt
 from six.moves import cStringIO as StringIO
 import time
 import sys
+from functools import cmp_to_key
+from past.builtins import cmp
 from six.moves import zip
 from six.moves import range
 
@@ -1297,7 +1299,8 @@ class manager(object):
           map_stats = self.map_stats(water_i_seq)
           ions.append((water_i_seq, [final_choice], map_stats.two_fofc))
 
-    return sorted(ions, lambda a, b: cmp(b[2], a[2]))
+    cmp_fn = lambda a, b: cmp(b[2], a[2])
+    return sorted(ions, key=cmp_to_key(cmp_fn))
 
   def validate_ion(self, i_seq, out = sys.stdout, debug = True):
     """

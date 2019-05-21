@@ -3,6 +3,8 @@ from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate, \
     slots_getstate_setstate_default_initializer
 import sys
+from functools import cmp_to_key
+from past.builtins import cmp
 from six.moves import zip
 
 class conformer(slots_getstate_setstate):
@@ -67,7 +69,8 @@ def get_sorted_clashes(
         id_str_j=site_labels[proxy.j_seq], #pdb_atoms[proxy.j_seq].id_str(),
         overlap=overlap)
       clashes.append(clash)
-  clashes.sort(lambda a,b: cmp(b.overlap, a.overlap))
+  cmp_fn = lambda a,b: cmp(b.overlap, a.overlap)
+  clashes.sort(key=cmp_to_key(cmp_fn))
   return clashes
 
 def show_altloc_clashes(
