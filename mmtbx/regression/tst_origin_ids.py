@@ -46,7 +46,7 @@ def check_geo(geo_lines):
   rc = {}
   for line in geo_lines.splitlines():
     tmp = line.split(':')
-    tmp = filter(None, tmp)
+    tmp = list(filter(None, tmp))
     if len(tmp)!= 2: continue
     rc[tmp[0]]=int(tmp[1])
   return rc

@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 # Tom Burnley
 
 import sys, re, pickle
+from six.moves import input
 
 def remove_HOH(start_pdb, noHOH_pdb):
 
@@ -253,7 +254,7 @@ def main():
 #    print "9. Convert phx_gro to phx"
 #    print "10. Convert phx to phx_gro"
 #    print "11. Add extra conformation"
-    option = str(raw_input("Input option number : "))
+    option = str(input("Input option number : "))
 
     if option == str("1") or option == str("3"):
       start_pdb = sys.argv[1]
@@ -261,7 +262,7 @@ def main():
 
       number_models = find_number_model(open_pdb)
 
-      target_number = raw_input("Number models for output (default 25) : ")
+      target_number = input("Number models for output (default 25) : ")
       try:
         target_number = int(target_number)
         div = int(number_models / target_number)
@@ -319,7 +320,7 @@ def main():
     if option == str("6"):
       start_pdb = sys.argv[1]
       open_pdb = open(start_pdb,"r")
-      last_model = raw_input("Parse x model)...     ")
+      last_model = input("Parse x model)...     ")
       fin_pdb = str(last_model + "_" + start_pdb)
       num_pdb = open(fin_pdb, 'w')
       find_header(open_pdb, num_pdb)
@@ -331,13 +332,13 @@ def main():
       if len(sys.argv) > 2:
         second_pdb = sys.argv[2]
       else:
-        second_pdb = raw_input("Second pdb import infomation from..... : ")
+        second_pdb = input("Second pdb import infomation from..... : ")
       open_second_pdb = open(second_pdb,"r")
-      get_col = raw_input("Import 'b' or 'q' column from second pdb  : ")
+      get_col = input("Import 'b' or 'q' column from second pdb  : ")
       if get_col != 'q':
         get_col = 'b'
       print("Importing col : ", get_col)
-      replace_col = raw_input("Replace 'b' or 'q' column from first pdb  : ")
+      replace_col = input("Replace 'b' or 'q' column from first pdb  : ")
       if replace_col != 'q':
         replace_col = 'b'
       new_pdb_name = start_pdb + "_swap_" + replace_col + "_with_" + get_col + ".pdb"

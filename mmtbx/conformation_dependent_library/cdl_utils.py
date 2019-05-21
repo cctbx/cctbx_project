@@ -86,8 +86,8 @@ def get_phi_psi_atoms(residue1, residue2, residue3, verbose=False):
     backbone_i_plus_1[2],
     ]
   atoms = [phi_atoms, psi_atoms]
-  if len(filter(None, atoms[0]))!=4: return None
-  if len(filter(None, atoms[1]))!=4: return None
+  if len(list(filter(None, atoms[0])))!=4: return None
+  if len(list(filter(None, atoms[1])))!=4: return None
   if verbose:
     print(atoms)
     for group in atoms:

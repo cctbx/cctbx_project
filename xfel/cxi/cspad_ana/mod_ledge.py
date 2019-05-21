@@ -348,7 +348,7 @@ class mod_ledge(common_mode.common_mode_correction):
                     samples
     """
 
-    filtered_data = filter(function, iterable)
+    filtered_data = list(filter(function, iterable))
     if len(filtered_data) == 0:
       return (0, 0, 0, 0)
 
@@ -770,8 +770,7 @@ class mod_ledge(common_mode.common_mode_correction):
       rr_mean = rr_observed = rr_stddev = 0
       if dt > 0:
         rr_observed = (len(self._timestamp) - 1) / dt
-        rr = filter(
-          lambda x: not math.isnan(x) and x > 0, self._repetition_rate)
+        rr = [x for x in self._repetition_rate if not math.isnan(x) and x > 0]
         if len(rr) > 1:
           rr_stats = flex.mean_and_variance(flex.double(rr))
           rr_mean = rr_stats.mean()
@@ -815,15 +814,11 @@ class mod_ledge(common_mode.common_mode_correction):
       # Get the normalisation factor by summing up I0 for all hits.
       # Invalid and non-positive values of I0 are treated as zeroes.
       # XXX Make this kind of summing a function of its own.
-      I0 = sum(filter(lambda x: not math.isnan(x) and x > 0,
-                      self._I0.select(self._hit)))
-      I0_all = sum(filter(lambda x: not math.isnan(x) and x > 0,
-                          self._I0))
+      I0 = sum([x for x in self._I0.select(self._hit) if not math.isnan(x) and x > 0])
+      I0_all = sum([x for x in self._I0 if not math.isnan(x) and x > 0])
 
-      fee_before_all = sum(filter(lambda x: not math.isnan(x) and x > 0,
-                                  self._fee_before))
-      fee_after_all = sum(filter(lambda x: not math.isnan(x) and x > 0,
-                                 self._fee_after))
+      fee_before_all = sum([x for x in self._fee_before if not math.isnan(x) and x > 0])
+      fee_after_all = sum([x for x in self._fee_after if not math.isnan(x) and x > 0])
 
       # Register the template to the image and locate the regions of
       # interest based on the registration parameters.  XXX Should
@@ -1048,18 +1043,14 @@ class mod_ledge(common_mode.common_mode_correction):
           """
 
       acq_apd_sum = sum(
-        filter(lambda x: not math.isnan(x) and x > 0,
-               self._acq_apd_integral.select(self._hit)))
+        [x for x in self._acq_apd_integral.select(self._hit) if not math.isnan(x) and x > 0])
       acq_opto_diode_sum = sum(
-        filter(lambda x: not math.isnan(x) and x > 0,
-               self._acq_opto_diode_integral.select(self._hit)))
+        [x for x in self._acq_opto_diode_integral.select(self._hit) if not math.isnan(x) and x > 0])
 
       acq_apd_sum_all = sum(
-        filter(lambda x: not math.isnan(x) and x > 0,
-               self._acq_apd_integral))
+        [x for x in self._acq_apd_integral if not math.isnan(x) and x > 0])
       acq_opto_diode_sum_all = sum(
-        filter(lambda x: not math.isnan(x) and x > 0,
-               self._acq_opto_diode_integral))
+        [x for x in self._acq_opto_diode_integral if not math.isnan(x) and x > 0])
 
       # Append the data point to the stream: shots, hits, energy, and
       # I.  XXX OrderedDict requires Python 2.7, could fall back on

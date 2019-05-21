@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+from six import string_types
 from wxtbx import phil_controls
 import wx
 
@@ -12,8 +13,7 @@ class ArrayLabelCtrl(wx.Choice, phil_controls.PhilCtrl):
   def SetLabel(self, label):
     print(label)
     print(type(label))
-    assert (isinstance(label, str) or isinstance(label, unicode) or
-            (label is None))
+    assert (isinstance(label, string_types) or (label is None))
     if (label is None):
       self.SetSelection(0)
     else :

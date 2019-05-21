@@ -15,6 +15,7 @@ phenix_dev.ion_identification.nader_ml
 from __future__ import absolute_import, division, print_function
 
 from collections import Iterable
+from six import string_types
 from six.moves import cStringIO as StringIO
 from ctypes import c_double
 import errno
@@ -523,7 +524,6 @@ def _flatten_list(lst):
     """
 
     for item in lst:
-      from six import string_types
       if isinstance(item, Iterable) and not isinstance(item, string_types):
         for sub in _flatten(item):
           yield sub
@@ -639,7 +639,7 @@ class manager(mmtbx.ions.identify.manager):
     auto_candidates = candidates is Auto
     if auto_candidates:
       candidates = mmtbx.ions.DEFAULT_IONS
-    elif isinstance(candidates, str) or isinstance(candidates, unicode):
+    elif isinstance(candidates, strinig_types):
       candidates = candidates.replace(",", " ").split()
     candidates = [i.strip().upper() for i in candidates]
     if (candidates == ['X']) : # XXX hack for testing - X is "dummy" element

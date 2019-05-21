@@ -409,13 +409,13 @@ class ASUContent(object):
 
   def clashing_with(self, sphere, tolerance):
 
-    return filter(
+    return list(filter(
       range = self.indexer.close_to( object = sphere ),
       predicate = overlap_interaction_predicate(
         object = sphere,
         tolerance = tolerance,
         ),
-      )
+      ))
 
 
   def descriptor_for(self, sphere):

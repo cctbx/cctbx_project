@@ -1,7 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.get_citation
 
 from __future__ import absolute_import, division, print_function
-from libtbx.utils import Sorry, Usage
+from libtbx.utils import to_unicode, Sorry, Usage
 from xml.dom.minidom import parseString
 import sys
 
@@ -59,7 +59,7 @@ the article XML from NCBI, and print a bibliography entry.
     retmode="text")
   def get_node_data(xml_node, node_name):
     child_nodes = xml_node.getElementsByTagName(node_name)
-    return unicode(child_nodes[0].childNodes[0].data)
+    return to_unicode(child_nodes[0].childNodes[0].data)
   xmlrec = parseString(data.read())
   articles = xmlrec.getElementsByTagName("PubmedArticle")
   assert (len(articles) == 1)

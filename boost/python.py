@@ -186,8 +186,10 @@ class gcc_version(object):
       self.major, self.minor, self.patchlevel = tuple(
         [ int(x) for x in m.groups() ])
 
-  def __nonzero__(self):
+  def __bool__(self):
     return self.major is not None
+
+  __nonzero__ = __bool__
 
   def __str__(self):
     if self:

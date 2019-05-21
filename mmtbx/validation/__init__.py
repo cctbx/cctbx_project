@@ -523,8 +523,10 @@ class dummy_validation(object):
   def __getattr__(self, name):
     return None
 
-  def __nonzero__(self):
+  def __bool__(self):
     return False
+
+  __nonzero__ = __bool__
 
 molprobity_cmdline_phil_str = """
   model = None

@@ -182,7 +182,7 @@ class residue_analysis(slots_getstate_setstate):
     if (O.o2p_atom is not None):
       del O.atom_dict["O2'"]
     O.h_atoms = {}
-    for key in O.atom_dict.keys():
+    for key in list(O.atom_dict.keys()):
       if (len(key) == 0):
         O.problems.append("blank_name")
         continue

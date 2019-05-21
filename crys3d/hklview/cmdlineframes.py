@@ -181,6 +181,7 @@ import libtbx
 import traceback
 import sys, zmq, threading,  time
 
+from six.moves import input
 
 
 argn = 1
@@ -195,7 +196,7 @@ def Inputarg(varname):
     argn = argn + 1
     print(varname + " " + myvar)
   else:
-    myvar = raw_input(varname)
+    myvar = input(varname)
   return myvar
 
 
