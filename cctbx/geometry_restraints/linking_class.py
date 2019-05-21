@@ -55,7 +55,8 @@ Look for a key in the list below
       if internals is None: return True
       if ptr in self.data[k1].internals: return True
       return False
-    keys.sort(_sort_on_values)
+    from functools import cmp_to_key
+    keys.sort(key = cmp_to_key(_sort_on_values))
     keys = filter(_filter_on_internals, keys)
     return keys
 
