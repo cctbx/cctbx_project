@@ -1910,7 +1910,7 @@ class pdb_helix(structure_base):
     if prefix_scope != "" and not prefix_scope.endswith("."):
       prefix_scope += "."
     serial_and_id = ""
-    if self.serial is not None and self.serial > 0:
+    if self.serial is not None and int(self.serial) > 0:
       serial_and_id += "\n  serial_number = %s" % self.serial
     if self.helix_id is not None:
       serial_and_id += "\n  helix_identifier = %s" % self.helix_id
