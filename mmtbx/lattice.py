@@ -10,6 +10,8 @@ crystallography. Proc Natl Acad Sci U S A. 2011 Sep 27;108(39):16247-52.
 
 from __future__ import absolute_import, division, print_function
 import sys
+from past.builtins import cmp
+from functools import cmp_to_key
 
 def find_crystal_contacts(xray_structure,
                            pdb_atoms, # atom_with_labels, not atom!
@@ -87,7 +89,8 @@ def extract_closest_contacting_residues(residue_contacts,
     if (len(contacts) == 0):
       reduced_contacts.append((residue_key, None, None, None))
     else :
-      contacts.sort(lambda x,y: cmp(x[2], y[2]))
+      cmp_fn = lambda x,y: cmp(x[2], y[2])
+      contacts.sort(key=cmp_to_key(cmp))
       (j_seq, sym_op, distance) = contacts[0]
       atom_rec = pdb_atoms[j_seq].fetch_labels()
       contact_key = (atom_rec.chain_id, atom_rec.resname, atom_rec.resid(),

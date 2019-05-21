@@ -10,6 +10,8 @@ from libtbx import runtime_utils
 import libtbx.phil
 import os
 import sys
+from functools import cmp_to_key
+from past.builtins import cmp
 from six.moves import zip
 
 sorting_params_str = """
@@ -308,7 +310,8 @@ def sort_hetatms(
         chain.remove_residue_group(rg)
     if (len(waters_and_b_iso) > 0):
       if (params.sort_waters_by != "none"):
-        waters_and_b_iso.sort(lambda x,y: cmp(x[1], y[1]))
+        cmp_fn = lambda x,y: cmp(x[1], y[1])
+        waters_and_b_iso.sort(key=cmp_to_key(cmp_fn))
       for water, b_iso in waters_and_b_iso :
         chain.append_residue_group(water)
   if (params.renumber):

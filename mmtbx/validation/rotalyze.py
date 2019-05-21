@@ -5,6 +5,7 @@ from mmtbx.validation import graphics
 from iotbx import data_plots
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
+from past.builtins import cmp
 import os, sys
 
 OUTLIER_THRESHOLD = 0.003
@@ -79,7 +80,8 @@ class rotamer_ensemble(residue):
     for rot_id in set(self.rotamer_name):
       n_rotamer = self.rotamer_name.count(rot_id)
       rotamers.append((rot_id, n_rotamer))
-    return sorted(rotamers, lambda a,b: cmp(b[1], a[1]))
+    cmp_fn = lambda a,b: cmp(b[1], a[1])
+    return sorted(rotamers, key=cmp_to_key(cmp_fn))
 
   def as_string(self):
     rotamers = self.rotamer_frequencies()

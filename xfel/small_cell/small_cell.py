@@ -1,4 +1,6 @@
 from __future__ import absolute_import, division, print_function
+from functools import cmp_to_key
+from past.builtins import cmp
 from six.moves import range
 from six.moves import zip
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
@@ -655,8 +657,9 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
       degrees.append(len(hkl1.connections))
 
     # sort the mapping based on degeneracy. this should speed clique finding.
-    mapping = sorted(mapping, cmp = lambda x, y: cmp(len(sub_clique[x[0]].hkls[x[1]].connections),
-                                                     len(sub_clique[y[0]].hkls[y[1]].connections)))
+    cmp_fn = lambda x, y: cmp(len(sub_clique[x[0]].hkls[x[1]].connections),
+                              len(sub_clique[y[0]].hkls[y[1]].connections))
+    mapping = sorted(mapping, key=cmp_to_key(cmp_fn))
     degrees = flex.size_t(sorted(degrees))
 
 

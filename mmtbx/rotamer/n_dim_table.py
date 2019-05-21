@@ -26,7 +26,7 @@ class NDimTable:
         '''Loads rotamer or Ramachandran data from a text file, returning a new object.
 
         Can pass in either a file handle or a file name'''
-        if isinstance(infile, (str,)):
+        if isinstance(infile, str):
             infile = file(infile, 'r')
         ndt = NDimTable()
         ndt.ourName = re.search(r': +"(.+)"$', infile.readline()).group(1)

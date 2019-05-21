@@ -3,6 +3,8 @@ from __future__ import absolute_import, division, print_function
 import libtbx.phil
 import time
 import sys
+from past.builtins import cmp
+from functools import cmp_to_key
 from six.moves import range
 
 sidechain_density_params = """
@@ -127,7 +129,8 @@ def screen_residue(
       if (good_maps) : #and (conf_trans.rmsd > params.rmsd_min):
         translations.append(conf_trans)
     if (len(translations) > 0):
-      translations.sort(lambda a,b: cmp(b.mean_fofc, a.mean_fofc))
+      cmp_fn = lambda a,b: cmp(b.mean_fofc, a.mean_fofc)
+      translations.sort(key=cmp_to_key(cmp_fn))
       good_confs.append(translations[0])
   if (n_confs > 1) and (len(good_confs) != 0):
     for conf in good_confs :

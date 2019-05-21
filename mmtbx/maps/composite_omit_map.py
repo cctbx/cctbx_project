@@ -12,6 +12,8 @@ from cctbx import maptbx
 import cctbx.miller
 from scitbx.array_family import flex
 import boost.python
+from functools import cmp_to_key
+from past.builtins import cmp
 from six.moves import zip
 from six.moves import range
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
@@ -402,7 +404,8 @@ def create_omit_regions(xray_structure,
     groups.append(group)
   if (optimize_binning):
     # http://en.wikipedia.org/wiki/Bin_packing_problem
-    groups = sorted(groups, lambda a,b: cmp(b.n_atoms, a.n_atoms))
+    cmp_fn = lambda a,b: cmp(b.n_atoms, a.n_atoms)
+    groups = sorted(groups, key=cmp_to_key(cmp_fn))
     while True :
       n_combined = 0
       i_group = 0

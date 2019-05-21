@@ -8,6 +8,8 @@ from libtbx import adopt_init_args, Auto, slots_getstate_setstate
 from libtbx.utils import null_out
 import string
 import sys
+from functools import cmp_to_key
+from past.builtins import cmp
 from six.moves import zip
 
 master_params_str = """
@@ -499,7 +501,8 @@ class ensemble_group(object):
           raise RuntimeError("No matching atoms found for %s" %
             atom_group.id_str())
         # XXX sort by maximum deviation, or rmsd?
-        all_trials.sort(lambda a,b: cmp(b.max_dev, a.max_dev))
+        cmp_fn = lambda a,b: cmp(b.max_dev, a.max_dev)
+        all_trials.sort(key=cmp_to_key(cmp_fn))
         k = 0
         while (n_confs < n_max) and (k < len(all_trials)):
           trial = all_trials[k]
@@ -540,7 +543,7 @@ def assemble_fragments(
         for k, atom_group in enumerate(atom_groups):
           for atom in atom_group.atoms():
             atom.occ = (1.0 - primary_occupancy) / len(atom_groups)
-          atom_group.altloc = string.uppercase[k+1]
+          atom_group.altloc = string.ascii_uppercase[k+1]
           residue_group.append_atom_group(atom_group)
         n_placed += 1
         break

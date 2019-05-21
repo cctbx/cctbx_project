@@ -10,6 +10,8 @@ import random
 import time
 import os
 import sys
+from functools import cmp_to_key
+from past.builtins import cmp
 from six.moves import range
 
 master_params_str = """
@@ -197,7 +199,8 @@ class refine_into_difference_density(object):
               hierarchy.
     """
     if (log is None) : log = null_out()
-    trials = sorted(self.get_trials(), lambda a,b: cmp(b.cc, a.cc))
+    cmp_fn = lambda a,b: cmp(b.cc, a.cc)
+    trials = sorted(self.get_trials(), key=cmp_to_key(cmp_fn))
     filtered = []
     for k, trial in enumerate(trials):
       hierarchy = self.pdb_hierarchy.deep_copy()

@@ -14,6 +14,8 @@ from libtbx import easy_mp
 import libtbx.phil
 import os.path
 import sys
+from functools import cmp_to_key
+from past.builtins import cmp
 from six.moves import zip
 
 master_phil = libtbx.phil.parse("""
@@ -211,7 +213,8 @@ class select_model(object):
           if (result.r_free <= params.max_r_free):
             passed.append((k, result))
       if (len(passed) > 0):
-        passed.sort(lambda a,b: cmp(a[1].r_free, b[1].r_free))
+        cmp_fn = lambda a,b: cmp(a[1].r_free, b[1].r_free)
+        passed.sort(key=cmp_to_key(cmp_fn))
         i_result, result = passed[0]
         self.evaluations = passed
         self.best_xray_structure = result.xray_structure
