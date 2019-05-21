@@ -439,4 +439,4 @@ def category_sort_function(key):
     return category_order.index(key_category)
   except ValueError as e:
     # any categories we don't know about will end up at the end of the file
-    return key_category
+    return len(category_order)
