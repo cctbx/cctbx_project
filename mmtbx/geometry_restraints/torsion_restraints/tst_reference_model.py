@@ -10,7 +10,7 @@ import iotbx.phil
 import iotbx.pdb
 from libtbx.test_utils import show_diff
 import libtbx.load_env
-import cStringIO
+from six.moves import cStringIO as StringIO
 import sys, os, time
 from six.moves import range
 
