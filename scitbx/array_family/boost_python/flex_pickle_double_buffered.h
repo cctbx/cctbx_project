@@ -28,7 +28,7 @@ namespace scitbx { namespace af { namespace boost_python {
       for(std::size_t i=0;i<a.size();i++) accu << a[i];
 #ifdef IS_PY3K
       return boost::python::make_tuple(a.accessor(),
-        boost::python::handle<>(PyBytes_FromString(accu.buffer.c_str())));
+        boost::python::handle<>(PyBytes_FromStringAndSize(accu.buffer.c_str(), accu.buffer.size())));
 #else
       return boost::python::make_tuple(a.accessor(), accu.buffer);
 #endif
