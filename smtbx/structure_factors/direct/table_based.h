@@ -267,11 +267,11 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       std::vector<size_t> r_map;
       r_map.resize(space_group.n_smx());
       for (std::size_t i = 0; i < space_group.n_smx(); i++) {
-        sgtbx::rot_mx const& r = space_group.smx(i).r();
+        sgtbx::rot_mx const& r = data_.rot_mxs()[i];
         bool found = false;
         for (size_t mi = 0; mi < space_group.n_smx(); mi++) {
-          if (r == data_.rot_mxs()[mi]) {
-            r_map[mi] = i;
+          if (r == space_group.smx(mi).r()) {
+            r_map[i] = mi;
             found = true;
             break;
           }

@@ -89,6 +89,7 @@ def generate_isc_table_file(file_name,
       out.write(" %s" %sc.label)
     out.write("\nAD accounted: true")
     out.write("\nSymm:")
+    out.write("\nData:")
     for idx in indices:
       d_star_sq = xs.unit_cell().d_star_sq(idx)
       isc.at_d_star_sq(d_star_sq)
