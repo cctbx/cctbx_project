@@ -5,6 +5,7 @@ import math
 from scitbx.matrix import col,sqr
 from scitbx.lstbx import normal_eqns
 from six.moves import zip
+from six import unichr as chr
 
 class refinement_base(object):
 
@@ -505,7 +506,7 @@ class refinement(refinement_base):
       from matplotlib import pyplot as plt
       plt.figure()
       CS = plt.contour([i*0.02 for i in OO.grid],[i*0.02 for i in OO.grid], excursi.as_numpy_array())
-      plt.clabel(CS, inline=1, fontsize=10, fmt="%6.3f"+unichr(176))
+      plt.clabel(CS, inline=1, fontsize=10, fmt="%6.3f"+chr(176))
       plt.plot([minimum[1]*180./math.pi],[minimum[0]*180./math.pi], "r+")
       plt.title("Rms rotational excursion to reflection condition, degrees")
       plt.axes().set_aspect("equal")

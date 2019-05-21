@@ -927,7 +927,7 @@ class annotation(structure_base):
       if n_copy == 0 and old_chain_id in chain_ids_dict:
         return old_chain_id
       return chain_ids_dict[old_chain_id][n_copy-1]
-    n_copies = len(chain_ids_dict.values()[0]) + 1
+    n_copies = len(list(chain_ids_dict.values())[0]) + 1
     new_helices = []
     new_sheets = []
     new_h_serial = 0

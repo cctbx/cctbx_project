@@ -12,9 +12,9 @@ def get_test_space_group_symbols(flag_AllSpaceGroups,
                                  flag_UnusualSettings):
   if (flag_UnusualSettings):
     namespace = {}
-    execfile(os.path.join(
+    exec(open(os.path.join(
       libtbx.env.find_in_repositories(
-        "phenix_regression"), "settings.py"), namespace)
+        "phenix_regression"), "settings.py")).read(), namespace)
     return namespace["settings"]
   if (flag_AllSettings):
     return [symbols.universal_hermann_mauguin()

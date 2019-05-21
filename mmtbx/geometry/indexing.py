@@ -140,10 +140,10 @@ class structure_indexer(object):
 
     for atom in obj.atoms():
       centre = atom.xyz
-      yield filter(
+      yield list(filter(
         range = self.indexer.close_to( centre = centre ),
         predicate = predgen( predicates = predicates, centre = centre ),
-        )
+        ))
 
 
   def interaction_counts_with(self, obj, predicates = []):

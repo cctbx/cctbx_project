@@ -660,7 +660,7 @@ def get_non_afitt_selection(restraints_manager,
     general_selection[i_seq] = False
   if verbose:
     print(restraints_manager.afitt_object)
-    print("\nNumber of atoms in selection : %d" % len(filter(None, general_selection)))
+    print("\nNumber of atoms in selection : %d" % len(list(filter(None, general_selection))))
     print(list(general_selection))
   return general_selection
 
@@ -684,7 +684,7 @@ def get_afitt_selection(restraints_manager,
   rc = general_selection&hd_selection
   if verbose:
     print(restraints_manager.afitt_object)
-    print("\nNumber of atoms in selection : %d" % len(filter(None, general_selection)))
+    print("\nNumber of atoms in selection : %d" % len(list(filter(None, general_selection))))
   return rc
 
 def write_pdb_header(params, out=sys.stdout, remark="REMARK   3  "):

@@ -57,13 +57,13 @@ class rotarama_plot_mixin(object):
     self.plot.set_title(title)
     if points is not None:
       if xyz is not None: assert (len(xyz) == len(points))
-      out = list(itertools.ifilter(lambda x: x[3], points))
+      out = list(filter(lambda x: x[3], points))
       out_columns = list(zip(*out))
       # ^^^^ is doing e.g. this:
       # >>> l = [(1,2), (3,4), (8,9)]
       # >>> zip(*l)
       # [(1, 3, 8), (2, 4, 9)]
-      non_out = list(itertools.ifilterfalse(lambda x: x[3], points))
+      non_out = list(itertools.filterfalse(lambda x: x[3], points))
       non_out_columns = list(zip(*non_out))
       if len(out) > 0:
         self.plot.plot(tuple(out_columns[0]), tuple(out_columns[1]), point_style,

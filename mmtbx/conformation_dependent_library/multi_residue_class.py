@@ -85,7 +85,7 @@ class ProteinResidues(LinkedResidues):
     assert omegas
     def _is_cis(angle):
       return self._define_omega_a_la_duke_using_limit(angle, limit=limit)=='cis'
-    if filter(_is_cis, omegas): return True
+    if list(filter(_is_cis, omegas)): return True
     return False
     #if self._define_omega_a_la_duke_using_limit(omega, limit=limit)=='cis':
     #  cis_peptide_bond = True

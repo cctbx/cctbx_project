@@ -5,6 +5,7 @@ import iotbx.phil
 from libtbx.utils import Usage, Sorry
 import sys, os
 import libtbx.load_env
+from six.moves import input
 
 master_phil = """
   experiment = None
@@ -34,14 +35,14 @@ def get_bool_from_user(prompt, default=True):
     prompt += " y/n [n] "
 
   while True:
-    response = raw_input(prompt).lower()
+    response = input(prompt).lower()
     if response in yes:
       return True
     if response in no:
       return False
 
 def get_optional_input(prompt):
-  response = raw_input(prompt)
+  response = input(prompt)
   if response == "":
     return "NULL"
   else:
@@ -58,13 +59,13 @@ class initialize(object):
 
   def __call__(self):
     if self.params.experiment is None:
-      self.params.experiment = raw_input("Administrate which experiment? ")
+      self.params.experiment = input("Administrate which experiment? ")
 
     if self.params.experiment_tag is None:
       if get_bool_from_user("Use experiment name as experiment tag?"):
         self.params.experiment_tag = self.params.experiment
       else:
-        self.params.experiment_tag = raw_input("Input an experiment tag: ")
+        self.params.experiment_tag = input("Input an experiment tag: ")
 
     assert self.params.experiment is not None and self.params.experiment_tag is not None and len(self.params.experiment_tag) > 0
 
@@ -101,7 +102,7 @@ class initialize(object):
       return False
 
   def drop_tables(self):
-    if self.interactive and raw_input("Are you sure? Type drop: ").lower() != "drop":
+    if self.interactive and input("Are you sure? Type drop: ").lower() != "drop":
       return
 
     print("Dropping tables...")
@@ -171,10 +172,10 @@ class option_chooser(object):
       print("h : get help on a selection")
       print("q : exit this menu")
 
-      i = raw_input("Selection: ").lower()
+      i = input("Selection: ").lower()
       print("############################")
       if i == 'h':
-        i = raw_input("Help on which item? ")
+        i = input("Help on which item? ")
         if i in self.options:
           print(self.options[i].help_string)
         else:
@@ -227,13 +228,13 @@ class runs_menu(option_chooser):
       if get_bool_from_user("%s All runs? "%prompt):
         return ""
       else:
-        start = raw_input("%s Starting with run: "%prompt)
-        end = raw_input("%s Ending with run: "%prompt)
+        start = input("%s Starting with run: "%prompt)
+        end = input("%s Ending with run: "%prompt)
         return "WHERE %s_runs.run >= %s and %s_runs.run <= %s"%(
           self.params.experiment_tag, start, self.params.experiment_tag, end)
 
     def __call__(self):
-      choice = raw_input("Add or remove tag? [a/r]: ").lower()
+      choice = input("Add or remove tag? [a/r]: ").lower()
       if choice == 'a':
         prompt = "Add tag."
       elif choice == 'r':
@@ -241,7 +242,7 @@ class runs_menu(option_chooser):
       else:
         print("Choice not recognized")
         return
-      tag = raw_input("Enter tag: ")
+      tag = input("Enter tag: ")
       cursor = self.dbobj.cursor()
 
       cmd = "SELECT * from %s_runs %s"%(self.params.experiment_tag, self.get_runs_from_user(prompt))
@@ -303,10 +304,10 @@ class trials_menu(option_chooser):
     help_string = "Add a trial for use with this experiment tag"
 
     def __call__(self):
-      trial = raw_input("Trial number: ")
+      trial = input("Trial number: ")
       active = get_bool_from_user("Make trial active? ")
-      target = raw_input("Path to target phil file: ")
-      comment = raw_input("Add a comment: ")
+      target = input("Path to target phil file: ")
+      comment = input("Add a comment: ")
 
       cmd = "INSERT INTO %s_trials (trial,active,target_phil_path,comment) VALUES (%s,%s,'%s','%s')"%(self.params.experiment_tag, trial, active, target, comment)
       cursor = self.dbobj.cursor()
@@ -319,9 +320,9 @@ class trials_menu(option_chooser):
     help_string = "Activate/inactivate a trial or change its comment"
 
     def __call__(self):
-      trial = raw_input("Trial number: ")
+      trial = input("Trial number: ")
       active = get_bool_from_user("Make trial active? ")
-      comment = raw_input("New comment: ")
+      comment = input("New comment: ")
 
       cmd = "UPDATE %s_trials SET active=%s, comment='%s' WHERE trial=%s"%(self.params.experiment_tag, active, comment, trial)
       cursor = self.dbobj.cursor()
@@ -367,8 +368,8 @@ class link_trials_to_rungroup_menu(option_chooser):
     help_string = "Link a trial to a rungroup for processing"
 
     def __call__(self):
-      trial = raw_input("Trial: ")
-      rungroup_id = raw_input("Run group id: ")
+      trial = input("Trial: ")
+      rungroup_id = input("Run group id: ")
       active = get_bool_from_user("Make link active? ")
 
       cmd = "SELECT trial_id from %s_trials where %s_trials.trial = %s"%(self.params.experiment_tag, self.params.experiment_tag, trial)
@@ -400,7 +401,7 @@ class link_trials_to_rungroup_menu(option_chooser):
     help_string = "Activate or inactivate trial/rungroup links"
 
     def __call__(self):
-      link_id = raw_input("Trial/rungroup link to change: ")
+      link_id = input("Trial/rungroup link to change: ")
       active = get_bool_from_user("Make link active? ")
 
       cmd = "UPDATE %s_trial_rungroups SET active=%s WHERE trial_rungroup_id=%s"%(self.params.experiment_tag, active, link_id)
@@ -446,9 +447,9 @@ class rungroups_menu(option_chooser):
     help_string = "Add a run group defining a set of runs with the same parameters"
 
     def __call__(self):
-      startrun = raw_input("Start run: ")
+      startrun = input("Start run: ")
       endrun = get_optional_input("End run (leave blank if the last run in this group hasn't been collected yet): ")
-      detz_parameter = raw_input("Detz parameter (CXI: detz_offset, XPP: distance): ")
+      detz_parameter = input("Detz parameter (CXI: detz_offset, XPP: distance): ")
       beamx = get_optional_input("Beam center x (leave blank to not override): ")
       beamy = get_optional_input("Beam center y (leave blank to not override): ")
       pixelmask = get_optional_input("Path to untrusted pixel mask (if available): ")
@@ -457,7 +458,7 @@ class rungroups_menu(option_chooser):
       gainmap = get_optional_input("Path to gain map image (if available): ")
       binning = get_optional_input("Binning (if applicable): ")
       #usecase = get_optional_input("Use case (list available cases here):")
-      comment = raw_input("Add a comment: ")
+      comment = input("Add a comment: ")
 
       cmd = "INSERT INTO %s_rungroups (startrun,endrun,detz_parameter,beamx,beamy,untrusted_pixel_mask_path,dark_avg_path,dark_stddev_path,gain_map_path,binning,comment) VALUES (%s,%s,%s,%s,%s,'%s','%s','%s','%s',%s,'%s')"%(self.params.experiment_tag, startrun, endrun, detz_parameter, beamx, beamy, pixelmask, darkavg, darkstddev, gainmap, binning, comment)
       cursor = self.dbobj.cursor()
@@ -470,10 +471,10 @@ class rungroups_menu(option_chooser):
     help_string = "Change run group start and end values and comments"
 
     def __call__(self):
-      rungroup = raw_input("Run group number: ")
-      startrun = raw_input("New start run: ")
+      rungroup = input("Run group number: ")
+      startrun = input("New start run: ")
       endrun = get_optional_input("New end run (leave blank if the last run in this group hasn't been collected yet): ")
-      comment = raw_input("New comment: ")
+      comment = input("New comment: ")
 
       cmd = "UPDATE %s_rungroups SET startrun=%s, endrun=%s, comment='%s' WHERE rungroup_id=%s"%(self.params.experiment_tag, startrun, endrun, comment, rungroup)
       cursor = self.dbobj.cursor()

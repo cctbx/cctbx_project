@@ -127,7 +127,7 @@ def loop_over_residues_residue(hierarchy,
                                exclude_residue=None,
                                verbose=False,
                                ):
-  assert len(filter(None, [only_residue, exclude_residue]))==1
+  assert len(list(filter(None, [only_residue, exclude_residue])))==1
   for model in hierarchy.models():
     if verbose: print('model: "%s"' % model.id)
     for chain in model.chains():

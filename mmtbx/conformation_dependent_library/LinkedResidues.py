@@ -37,7 +37,7 @@ class LinkedResidues(list):
 
   def is_pure_main_conf(self):
     tmp = [rg.is_pure_main_conf for rg in self]
-    return len(filter(None, tmp))==self.length
+    return len(list(filter(None, tmp)))==self.length
 
   def are_linked(self, *args, **kwds): assert 0
 
@@ -68,6 +68,6 @@ class LinkedResidues(list):
     rc=[]
     for one in self:
       rc.append(self[0].parent().altloc)
-    rc = filter(None,rc)
+    rc = list(filter(None,rc))
     assert rc
     return rc[0]

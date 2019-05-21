@@ -19,6 +19,7 @@ from libtbx.math_utils import round2
 from libtbx.str_utils import show_string
 from six.moves import range
 from six.moves import zip
+from six.moves import input
 
 try: import gzip
 except ImportError: gzip = None
@@ -1621,7 +1622,7 @@ class input_with_prompt(object):
     except Exception: self.previous_tracebacklimit = None
     if (tracebacklimit is not None):
       sys.tracebacklimit = tracebacklimit
-    self.input = raw_input(prompt)
+    self.input = input(prompt)
 
   def __del__(self):
     if (self.previous_tracebacklimit is None):

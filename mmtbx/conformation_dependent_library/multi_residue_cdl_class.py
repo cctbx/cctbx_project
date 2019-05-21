@@ -41,7 +41,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
     else: del omegas[1]
     def _is_cis(angle):
       return self._define_omega_a_la_duke_using_limit(angle, limit=limit)=='cis'
-    if filter(_is_cis, omegas): return True
+    if list(filter(_is_cis, omegas)): return True
     return False
 
   def get_omega_value(self,
