@@ -1679,12 +1679,12 @@ class link_match(object):
       or self.len_group_match_2 > 0)
 
   def __lt__(self, other):
-    if (self.n_unresolved_bonds < other.n_unresolved_bonds): return -1
-    if (self.n_unresolved_angles < other.n_unresolved_angles): return -1
-    if (self.len_comp_id_match_1 > other.len_comp_id_match_1): return -1
-    if (self.len_comp_id_match_2 > other.len_comp_id_match_2): return -1
-    if (self.len_group_match_1 > other.len_group_match_1): return -1
-    if (self.len_group_match_2 > other.len_group_match_2): return -1
+    if (self.n_unresolved_bonds < other.n_unresolved_bonds): return 1
+    if (self.n_unresolved_angles < other.n_unresolved_angles): return 1
+    if (self.len_comp_id_match_1 > other.len_comp_id_match_1): return 1
+    if (self.len_comp_id_match_2 > other.len_comp_id_match_2): return 1
+    if (self.len_group_match_1 > other.len_group_match_1): return 1
+    if (self.len_group_match_2 > other.len_group_match_2): return 1
     return 0
 
   def __gt__(self, other):
