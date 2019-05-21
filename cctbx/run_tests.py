@@ -47,6 +47,7 @@ tst_list = (
   "$D/geometry_restraints/tst_ext.py",
   "$D/geometry_restraints/tst_proxy_registry.py",
   "$D/geometry_restraints/tst_nonbonded_overlaps.py",
+  "$D/geometry_restraints/tst_process_nonbonded_proxies.py",
   "$D/geometry_restraints/tst_angle_derivs.py",
   "$D/geometry_restraints/tst_motif.py",
   "$D/adp_restraints/tst_ext.py",

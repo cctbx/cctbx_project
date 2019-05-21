@@ -386,6 +386,7 @@ class manager():
 
       # Find all clashes
       delta = model_distance - vdw_sum
+
       if (delta < -0.40):
         is_clash = self._is_clash(
                     i_seq = i_seq,
@@ -431,15 +432,15 @@ class manager():
              hd_sel = hd_sel,
              full_connectivity_table = fsc0)
     if not is_1_5_interaction:
-      if i_seq > j_seq:
-        i_seq, j_seq = j_seq, i_seq
-      # Check to prevent that ymmetry clashes are counted twice
-      if (i_seq, j_seq) not in self._clashes_dict.keys():
-        is_clash = True
-        if (i_seq not in self._mult_clash_dict): self._mult_clash_dict[i_seq] = list()
-        if (j_seq not in self._mult_clash_dict): self._mult_clash_dict[j_seq] = list()
-        self._mult_clash_dict[i_seq].append(j_seq)
-        self._mult_clash_dict[j_seq].append(i_seq)
+      #if i_seq > j_seq:
+      #  i_seq, j_seq = j_seq, i_seq
+      # Check to prevent that symmetry clashes are counted twice
+      #if (i_seq, j_seq) not in self._clashes_dict.keys():
+      is_clash = True
+      if (i_seq not in self._mult_clash_dict): self._mult_clash_dict[i_seq] = list()
+      if (j_seq not in self._mult_clash_dict): self._mult_clash_dict[j_seq] = list()
+      self._mult_clash_dict[i_seq].append(j_seq)
+      self._mult_clash_dict[j_seq].append(i_seq)
 
     return is_clash
 
