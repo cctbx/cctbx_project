@@ -1411,9 +1411,9 @@ def exercise_coordination_sequences_shell_asu_tables():
   structure.show_distances(pair_asu_table=s1_asu_table, out=s)
   print(file=s)
   s = s.getvalue().replace("-0.0000", " 0.0000")
-  if (hashlib.md5(s).hexdigest() != "f5c02727352d26dc36762de0834199fd"):
+  if (hashlib.md5(s.encode("ascii")).hexdigest() != "f5c02727352d26dc36762de0834199fd"):
     sys.stderr.write(s)
-    print("New hexdigest:", hashlib.md5(s).hexdigest())
+    print("New hexdigest:", hashlib.md5(s.encode("ascii")).hexdigest())
     raise AssertionError("Unexpected show_distances() output.")
 
 def exercise_ext_symmetry():
