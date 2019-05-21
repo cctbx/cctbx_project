@@ -2,6 +2,7 @@
 
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/str.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/tuple.hpp>
@@ -277,8 +278,11 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(root, model, models)
 
-#ifndef IS_PY3K
+#ifdef IS_PY3K
+    static PyObject *
+#else
     static void
+#endif
     as_pdb_string_cstringio(
       w_t const& self,
       boost::python::object cstringio,
@@ -296,7 +300,12 @@ namespace {
         self.atoms_reset_serial(
           interleaved_conf, *atoms_reset_serial_first_value);
       }
+#ifdef IS_PY3K
+      std::stringstream ss;
+      write_utils::sstream_write write(&ss);
+#else
       write_utils::cstringio_write write(cstringio.ptr());
+#endif
       models_as_pdb_string(
         write,
         self.models(),
@@ -307,8 +316,10 @@ namespace {
         anisou,
         siguij,
         output_break_records);
-    }
+#ifdef IS_PY3K
+    return PyUnicode_FromStringAndSize( ss.str().c_str(), ss.str().size());
 #endif
+    }
 
     static void
     get_overall_counts(
@@ -438,7 +449,6 @@ namespace {
           arg("first_value")=1))
         .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
           arg("other")))
-#ifndef IS_PY3K
         .def("_as_pdb_string_cstringio", as_pdb_string_cstringio, (
           arg("self"),
           arg("cstringio"),
@@ -450,7 +460,6 @@ namespace {
           arg("anisou"),
           arg("siguij"),
           arg("output_break_records")=true))
-#endif
         .def("_write_pdb_file", &w_t::write_pdb_file, (
           arg("file_name"),
           arg("open_append"),
