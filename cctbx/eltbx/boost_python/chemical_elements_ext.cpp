@@ -13,7 +13,7 @@ namespace {
   boost::python::object
   proper_caps_list()
   {
-    static boost::python::object result = scitbx::boost_python::array_as_list(
+    boost::python::object result = scitbx::boost_python::array_as_list(
       proper_caps, sizeof(proper_caps) / sizeof(char*) - 1);
     return result;
   }
@@ -21,7 +21,7 @@ namespace {
   boost::python::object
   proper_upper_list()
   {
-    static boost::python::object result = scitbx::boost_python::array_as_list(
+    boost::python::object result = scitbx::boost_python::array_as_list(
       proper_upper, sizeof(proper_upper) / sizeof(char*) - 1);
     return result;
   }
