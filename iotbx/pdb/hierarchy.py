@@ -376,7 +376,6 @@ class _():
       sigatm=True,
       anisou=True,
       siguij=True)
-    print( py3out)
     if six.PY3:
       pdb_string.write(py3out)
     return (version, pickle_import_trigger(), self.info, pdb_string.getvalue())

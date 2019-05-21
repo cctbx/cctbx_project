@@ -903,13 +903,16 @@ class pdb_input_mixin(object):
         crystal_symmetry=crystal_symmetry,
         cryst1_z=cryst1_z,
         write_scale_records=write_scale_records), file=cstringio)
-    self._as_pdb_string_cstringio(
+
+    py3out = self._as_pdb_string_cstringio(
       cstringio=cstringio,
       append_end=append_end,
       atom_hetatm=atom_hetatm,
       sigatm=sigatm,
       anisou=anisou,
       siguij=siguij)
+    if six.PY3:
+      cstringio.write( py3out)
     if (return_cstringio):
       return cstringio
     return cstringio.getvalue()
@@ -1083,13 +1086,16 @@ class _():
     for section in input_sections[:-2]:
       lines.extend(getattr(self, section)())
     pdb_string = StringIO()
-    self._as_pdb_string_cstringio(
+
+    py3out = self._as_pdb_string_cstringio(  # NOTE py3out is None in python 2
       cstringio=pdb_string,
       append_end=False,
       atom_hetatm=True,
       sigatm=True,
       anisou=True,
       siguij=True)
+    if six.PY3:
+      pdb_string.write(py3out)
     lines.extend(flex.split_lines(pdb_string.getvalue()))
     for section in input_sections[-2:]:
       lines.extend(getattr(self, section)())
