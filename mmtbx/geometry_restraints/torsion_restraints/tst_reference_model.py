@@ -93,7 +93,7 @@ ATOM   5497  CB  ALA C 271      17.151  68.239  29.297  1.00  8.10           C
 
 
 def exercise_reference_model(args, mon_lib_srv, ener_lib):
-  log = cStringIO.StringIO()
+  log = StringIO()
   work_params = reference_model_params.extract()
   work_params.reference_model.enabled = True
   work_params.reference_model.fix_outliers = False
@@ -164,10 +164,10 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     assert rdp.limit == work_params.reference_model.limit
 
   r1 = rotalyze(pdb_hierarchy=pdb_h, outliers_only=False)
-  out1 = cStringIO.StringIO()
+  out1 = StringIO()
   r1.show_old_output(out=out1)
   r2 = rotalyze(pdb_hierarchy=ref_pdb_hierarchy, outliers_only=False)
-  out2 = cStringIO.StringIO()
+  out2 = StringIO()
   r2.show_old_output(out=out2)
 
   assert not show_diff(out1.getvalue(), """\
@@ -187,7 +187,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     quiet=True)
   pdb_h.adopt_xray_structure(xray_structure)
   r2 = rotalyze(pdb_hierarchy=pdb_h, outliers_only=False)
-  out3 = cStringIO.StringIO()
+  out3 = StringIO()
   r2.show_old_output(out=out3)
   assert not show_diff(out3.getvalue(), """\
  C 236  ASN:1.00:39.1:203.2:43.6:::Favored:t0
@@ -584,7 +584,7 @@ TER
   ref_file = open("ref.pdb", 'w')
   ref_file.write(pdb_str_ref_minimized)
   ref_file.close()
-  log = cStringIO.StringIO()
+  log = StringIO()
   # log = sys.stdout
   # orig_file = open("start.pdb", "w")
   # orig_file.write(pdb_str_original)
@@ -744,7 +744,7 @@ TER
   os.remove("ref_0.pdb")
 
   # reference on self and make sure it is chains A<->A, B<->B etc
-  log = cStringIO.StringIO()
+  log = StringIO()
   def_pars = reference_model_params
   all_pars = def_pars.fetch().extract()
   all_pars.reference_model.enabled = True
@@ -942,7 +942,7 @@ TER
   ref_file = open("ref.pdb", 'w')
   ref_file.write(pdb_str_ref)
   ref_file.close()
-  log = cStringIO.StringIO()
+  log = StringIO()
   # log = sys.stdout
 
   def_pars = reference_model_params
@@ -1021,7 +1021,7 @@ ATOM     20  OG  SER G 334      -5.954  69.950  50.396  1.00170.98           O
   ref_file = open("ref.pdb", 'w')
   ref_file.write(pdb_str_ref)
   ref_file.close()
-  log = cStringIO.StringIO()
+  log = StringIO()
   # log = sys.stdout
   # orig_file = open("start.pdb", "w")
   # orig_file.write(pdb_str_original)
@@ -1240,7 +1240,7 @@ TER     490       DG B  24
   ref_file = open("ref.pdb", 'w')
   ref_file.write(pdb_str_original)
   ref_file.close()
-  log = cStringIO.StringIO()
+  log = StringIO()
   # log = sys.stdout
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
@@ -1519,7 +1519,7 @@ END
   # pdb_h.atoms().reset_i_seq()
   # ref_h.atoms().reset_i_seq()
 
-  log = cStringIO.StringIO()
+  log = StringIO()
   # log = sys.stdout
   def_pars = reference_model_params
   all_pars = def_pars.fetch().extract()
