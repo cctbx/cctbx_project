@@ -302,8 +302,8 @@ class scene(object):
         else:
           self.sigmas = None
       work_array = array
-    except Exception, e:
-      print to_str(e)
+    except Exception as e:
+      print(to_str(e))
       return None, None
     work_array.set_info(arr.info() )
     multiplicities = multiplicities
@@ -399,7 +399,7 @@ class scene(object):
     self.colors = colors
     if isinstance(data, flex.complex_double):
       self.foms = foms_for_colours
-    #print min_dist, min_radius, max_radius, flex.min(data_for_radii), flex.max(data_for_radii), scale
+    #print(min_dist, min_radius, max_radius, flex.min(data_for_radii), flex.max(data_for_radii), scale)
 
 
   def isUsingFOMs(self):
