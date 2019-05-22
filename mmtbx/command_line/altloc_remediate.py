@@ -507,7 +507,7 @@ def run(rargs):
   print("#phil __ON__")
   working_phil.format(python_object=working_params).show()
   print("#phil __OFF__\n")
-  f=file("%s.eff" % preamble, "wb")
+  f=open("%s.eff" % preamble, "w")
   f.write(working_phil.format(python_object=working_params).as_str())
   f.close()
 
@@ -531,7 +531,7 @@ def run(rargs):
   correct_occupancies(hierarchy)
 
   print("  Writing output to %s" % output.file_name)
-  f=file(output.file_name, "wb")
+  f=open(output.file_name, "w")
   f.write(hierarchy.as_pdb_string(
     crystal_symmetry=pdb_inp.crystal_symmetry()),
           )

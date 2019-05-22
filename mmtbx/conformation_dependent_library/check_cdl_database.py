@@ -133,7 +133,7 @@ def xmgace_data(data):
         outl += "&\n"
       print(outl)
       df = "%s_%02d.dat" % (res_group_type, i)
-      f=file(df, "wb")
+      f=open(df, "w")
       f.write(outl)
       f.close()
       cmd  = 'xmgrace -geometry 1100x900 -param z.par %s' % df

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import cif_types
-import cStringIO as StringIO
+from six.moves import cStringIO as StringIO
 
 def exercise():
   chem_comp = cif_types.chem_comp(
@@ -30,7 +30,7 @@ def exercise():
    type="double",
    value_dist="3",
    value_dist_esd="4"))
-  s = StringIO.StringIO()
+  s = StringIO()
   comp_comp_id.show(s)
   assert s.getvalue() == """\
 loop_
@@ -69,7 +69,7 @@ IB IC double 3.0 4.0 .
   c = comp_comp_id.apply_mod(mod_mod_id)
   assert len(c.atom_list) == 4
   assert len(c.bond_list) == 2
-  s = StringIO.StringIO()
+  s = StringIO()
   c.show(s)
   assert s.getvalue().splitlines()[8] == "ID TD TD 5.0"
   mod_mod_id.atom_list[0] = cif_types.chem_mod_atom(
@@ -82,7 +82,7 @@ IB IC double 3.0 4.0 .
   c = comp_comp_id.apply_mod(mod_mod_id)
   assert len(c.atom_list) == 3
   assert len(c.bond_list) == 2
-  s = StringIO.StringIO()
+  s = StringIO()
   c.show(s)
   assert s.getvalue().splitlines()[5] == "ID TD ED 5.0"
   mod_mod_id.atom_list[0] = cif_types.chem_mod_atom(
@@ -95,7 +95,7 @@ IB IC double 3.0 4.0 .
   c = comp_comp_id.apply_mod(mod_mod_id)
   assert len(c.atom_list) == 3
   assert len(c.bond_list) == 2
-  s = StringIO.StringIO()
+  s = StringIO()
   c.show(s)
   assert s.getvalue().splitlines()[5] == "IA TD ED 5.0"
   mod_mod_id.atom_list[0] = cif_types.chem_mod_atom(
@@ -119,7 +119,7 @@ IB IC double 3.0 4.0 .
   c = comp_comp_id.apply_mod(mod_mod_id)
   assert len(c.atom_list) == 3
   assert len(c.bond_list) == 3
-  s = StringIO.StringIO()
+  s = StringIO()
   c.show(s)
   assert s.getvalue().splitlines()[-2] == "IA IB triple 5.0 6.0 ."
   mod_mod_id.bond_list[0] = cif_types.chem_mod_bond(
@@ -130,7 +130,7 @@ IB IC double 3.0 4.0 .
     new_value_dist=7,
     new_value_dist_esd=8)
   c = comp_comp_id.apply_mod(mod_mod_id)
-  s = StringIO.StringIO()
+  s = StringIO()
   c.show(s)
   assert s.getvalue().splitlines()[-3] == "IA IC quadruple 7.0 8.0 ."
   print("OK")

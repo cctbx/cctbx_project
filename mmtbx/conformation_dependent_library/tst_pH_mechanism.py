@@ -52,7 +52,7 @@ HETATM 2480 DN22 GNP A 201       0.995   1.532 -19.446  1.00 21.01           D
 '''
 
 def run():
-  f = file('tst_pH_gnp.pdb', 'wb')
+  f = open('tst_pH_gnp.pdb', 'w')
   f.write(gnp)
   f.close()
   cmd = 'phenix.geometry_minimization tst_pH_gnp.pdb'

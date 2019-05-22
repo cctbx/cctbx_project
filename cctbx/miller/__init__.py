@@ -1675,7 +1675,8 @@ class set(crystal.symmetry):
                                   d_star_sq_step=None):
     assert auto_binning or ( d_min is not None )
     assert auto_binning or ( d_max is not None )
-    assert d_star_sq_step > 0 or (d_star_sq_step is None)
+    if d_star_sq_step:
+      assert d_star_sq_step > 0 or (d_star_sq_step is None)
     if auto_binning:
       d_spacings = self.d_spacings().data()
       d_max=flex.min(d_spacings)

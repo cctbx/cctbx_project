@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import sys
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 from six.moves import range
 
 pdbs = [
@@ -511,7 +511,7 @@ def assert_lines(s1, s2):
       assert 0
 
 def run():
-  f=file("ALA_different.cif", "wb")
+  f=open("ALA_different.cif", "w")
   f.write(ala_cif)
   f.close()
   for i, (input_str, output_str) in enumerate(pdbs):
@@ -523,10 +523,10 @@ def run():
     print(output_str)
     print('-'*80)
     for j in range(2):
-      f=file("%s.pdb" % preamble, "wb")
+      f=open("%s.pdb" % preamble, "w")
       f.write(input_str)
       f.close()
-      f=file("%s_%02d.params" % (preamble, j), "wb")
+      f=open("%s_%02d.params" % (preamble, j), "w")
       f.write(params[i][j])
       f.close()
       cmd = "phenix.pdb_interpretation %s %s" % ("%s.pdb" % preamble,
@@ -563,13 +563,13 @@ def run():
     print('-'*80)
     print(output_str)
     print('-'*80)
-    f=file("%s.pdb" % preamble, "wb")
+    f=open("%s.pdb" % preamble, "w")
     f.write(input_str)
     f.close()
     cmd = "mmtbx.altloc_remediate %s" % "%s.pdb" % preamble
     print(cmd)
     easy_run.call(cmd)
-    f=file("%s_correct.pdb" % preamble, "rb")
+    f=open("%s_correct.pdb" % preamble, "rb")
     lines = f.read()
     f.close()
     print(lines)

@@ -10,7 +10,7 @@ from six.moves import range
 class LogWriter:
       def __init__(self, stdout, filename):
           self.stdout = stdout
-          self.logfile = file(filename, 'a')
+          self.logfile = open(filename, 'a')
 
       def write(self, text):
           self.stdout.write(text)

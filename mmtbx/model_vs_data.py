@@ -8,10 +8,9 @@ from libtbx.str_utils import format_value
 import iotbx
 from mmtbx import utils
 from iotbx import pdb
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import mmtbx.model
 import iotbx.phil
-from cStringIO import StringIO
 import mmtbx.f_model
 
 if(1):

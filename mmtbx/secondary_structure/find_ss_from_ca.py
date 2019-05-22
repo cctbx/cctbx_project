@@ -18,6 +18,7 @@ from copy import deepcopy
 from iotbx.pdb import secondary_structure
 from six.moves import zip
 from six.moves import range
+from six.moves import cStringIO as StringIO
 
 master_phil = iotbx.phil.parse("""
 
@@ -1254,7 +1255,6 @@ class segment:  # object for holding a helix or a strand or other
     asc=hierarchy.atom_selection_cache()
     sel = asc.selection(string = atom_selection)
     assert sele.overall_counts().n_residues  # should not be None
-    from cStringIO import StringIO
     f=StringIO()
     for atom in sele.atoms_with_labels():
       new_xyz=lsq_fit_obj.r * matrix.col(atom.xyz) + lsq_fit_obj.t
@@ -1727,7 +1727,7 @@ class find_segment: # class to look for a type of segment
         segment_dict[i]=j
         used_residues.append(j)
     # skip if only as long as a single span (requires 2 to be sure)
-    for i in segment_dict.keys():
+    for i in list(segment_dict.keys()):
       segment_length=segment_dict[i]+1+self.last_residue_offset-i
       if segment_length<minimum_length:
         del segment_dict[i]
@@ -1918,7 +1918,6 @@ class find_helix(find_segment):
     k=last_id
     for s in segment_list:
       if not s.hierarchy: continue
-      from cStringIO import StringIO
       f=StringIO()
       all_h_bonds,n_good,n_poor=self.list_h_bonds(
           segment=s,helix_type=helix_type,
@@ -2118,7 +2117,6 @@ class find_beta_strand(find_segment):
     for sheet in sheet_list:
       good_in_sheet=0
       poor_in_sheet=0
-      from cStringIO import StringIO
       f=StringIO()
 
       sheet_id+=1
@@ -2976,7 +2974,6 @@ class helix_strand_segments:
     # If not, set allow_ca_only_model=True
     allow_ca_only_model=(not have_n_or_o(models))
 
-    from cStringIO import StringIO
     f=StringIO()
     print("\nList of H-bonds expected from helices and from strand pairings", file=f)
     print("Distances > %3.1f A indicated by **" %(max_h_bond_length), file=f)
@@ -3047,7 +3044,6 @@ class helix_strand_segments:
     return number_of_good_h_bonds,number_of_poor_h_bonds
 
   def save_pdb_records_as_string(self):
-    from cStringIO import StringIO
     all_pdb_records=StringIO()
     self.all_selection_records=[]
     for helix in self.pdb_alpha_helix_list:

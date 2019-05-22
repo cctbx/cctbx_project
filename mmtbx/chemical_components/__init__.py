@@ -172,7 +172,7 @@ def generate_chemical_components_codes(sort_reverse_by_smiles=False):
 def get_header(code):
   filename=get_cif_filename(code)
   if not filename: return ""
-  f=file(filename)
+  f=open(filename)
   lines=f.readlines()
   f.close()
   outl=""

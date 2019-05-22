@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import sys
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 from libtbx import easy_run
 import iotbx.pdb
 
@@ -276,7 +276,7 @@ def run():
   for code, lines in pdbs.items():
     #if code!='VAL': continue
     print(('-%s- ' % code)*10)
-    f=file("tst_symmetric_flips_%s.pdb" % code, "wb").write(lines)
+    f=open("tst_symmetric_flips_%s.pdb" % code, "w").write(lines)
     cmd = "phenix.pdb_interpretation tst_symmetric_flips_%s.pdb" % code
     print(cmd)
     ero = easy_run.fully_buffered(command=cmd)

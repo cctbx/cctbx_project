@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import StringIO
+from six.moves import cStringIO as StringIO
 from libtbx import easy_run
 from six.moves import range
 pdbs = ["""
@@ -88,20 +88,20 @@ geo_specs = ["""dihedral pdb=" CA  ASN A 411 "
 def cis_trans_specification():
   for i, pdb in enumerate(pdbs):
     preamble = "bad_cis_peptide_%02d" % i
-    f=file("%s.pdb" % preamble, "wb")
+    f=open("%s.pdb" % preamble, "w")
     f.write(pdb)
     f.close()
     for param, results in params.items():
-      f=file("%s.params" % preamble, "wb")
+      f=open("%s.params" % preamble, "w")
       f.write(param)
       f.close()
       cmd = "phenix.geometry_minimization %(preamble)s.pdb %(preamble)s.params" % locals()
       print(cmd)
       ero = easy_run.fully_buffered(command=cmd)
-      out = StringIO.StringIO()
+      out = StringIO()
       ero.show_stdout(out=out)
 
-      lines = file("%(preamble)s_minimized.geo" % locals(), "rb").read()
+      lines = open("%(preamble)s_minimized.geo" % locals(), "rb").read()
       geo_spec=geo_specs[i]
       print(geo_spec % results[0])
       if lines.find(geo_spec % results[0])==1:
@@ -116,10 +116,10 @@ def trans_only_specification():
       cmd = "phenix.geometry_minimization %(preamble)s_minimized.pdb %(arg)s" % locals()
       print(cmd)
       ero = easy_run.fully_buffered(command=cmd)
-      out = StringIO.StringIO()
+      out = StringIO()
       ero.show_stdout(out=out)
 
-      lines = file("%(preamble)s_minimized_minimized.geo" % locals(), "rb").read()
+      lines = open("%(preamble)s_minimized_minimized.geo" % locals(), "rb").read()
       geo_spec=geo_specs[i]
       print(geo_spec % results[0])
       if lines.find(geo_spec % results[0])==1:

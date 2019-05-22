@@ -8,7 +8,7 @@ import mmtbx.model
 import iotbx.phil
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
-import cStringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 
 master_phil_str = """
@@ -85,7 +85,7 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
   assert work_params.format in ["phenix", "phenix_refine", "phenix_bonds",
       "pymol", "refmac", "kinemage", "pdb", 'csv']
   if work_params.quiet :
-    out = cStringIO.StringIO()
+    out = StringIO()
 
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_files)
   pdb_structure = iotbx.pdb.input(source_info=None,
@@ -148,7 +148,7 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
   #     geometry)
   # hb_b, hb_a = nucleic_acids.get_basepair_hbond_proxies(pdb_hierarchy,
   #     m.params.secondary_structure.nucleic_acid.base_pair)
-  result_out = cStringIO.StringIO()
+  result_out = StringIO()
   # prefix_scope="refinement.pdb_interpretation"
   # prefix_scope=""
   prefix_scope=""

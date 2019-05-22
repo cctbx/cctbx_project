@@ -55,7 +55,7 @@ results = {'4udx_sf4.pdb' : [[655, 9675, 12002, 8287],
 
 def run():
   fn = '4udx_sf4.pdb'
-  f=file(fn, 'wb')
+  f=open(fn, 'w')
   f.write(pdbs[fn])
   f.close()
   for i, superpose in enumerate(['None', 'all']):
@@ -106,7 +106,7 @@ def run():
           )
 
   fn = '4udx_sf4_cys.pdb'
-  f=file(fn, 'wb')
+  f=open(fn, 'w')
   f.write(pdbs[fn])
   f.close()
   # lines = '''
@@ -137,4 +137,3 @@ def run():
 if __name__=="__main__":
   rc = run()#sys.argv[1])
   assert rc==0
-

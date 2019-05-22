@@ -27,7 +27,7 @@ class NDimTable:
 
         Can pass in either a file handle or a file name'''
         if isinstance(infile, str):
-            infile = file(infile, 'r')
+            infile = open(infile, 'r')
         ndt = NDimTable()
         ndt.ourName = re.search(r': +"(.+)"$', infile.readline()).group(1)
         ndt.nDim = int(re.search(r': +(\d+)$', infile.readline()).group(1))

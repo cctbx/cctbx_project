@@ -10,6 +10,7 @@ from copy import deepcopy
 from libtbx import adopt_init_args
 from cctbx.maptbx import resolution_from_map_and_model
 from six.moves import range
+from six.moves import cStringIO as StringIO
 
 # merge_models.py
 # crossover models and pick best parts of each
@@ -273,7 +274,7 @@ class model_object:
           test_model.source_list[i]=other.source_list[i]
         test_model.reset_score()
         if best_i_score is None or \
-           test_model.get_score()>best_i_score:
+           (test_model.get_score() and test_model.get_score()>best_i_score):
           best_i_score=test_model.get_score()
           best_i=i1
       i1=best_i
@@ -292,12 +293,13 @@ class model_object:
           test_model.source_list[i]=other.source_list[i]
         test_model.reset_score()
         if best_i_score is None or \
-           test_model.get_score()>best_i_score:
+           (test_model.get_score() and test_model.get_score()>best_i_score):
           best_i_score=test_model.get_score()
           best_i=i2
 
           #  save if best overall
-          if test_model.get_score()>best_score+self.minimum_improvement:
+          if test_model.get_score() and \
+             test_model.get_score()>best_score+self.minimum_improvement:
             best_score=test_model.get_score()
             best_model=test_model
       if best_model.get_score()>original_score+self.minimum_improvement:
@@ -491,7 +493,6 @@ def get_cc_dict(hierarchy=None,crystal_symmetry=None,
   # select the model and chain we are interested in
   for model in hierarchy.models():
 
-    from cStringIO import StringIO
     f=StringIO()
     atom_selection=get_atom_selection(model_id=model.id)
     asc=hierarchy.atom_selection_cache()
@@ -693,11 +694,9 @@ def run(
   # NOTE: All models of each chain must match exactly
 
   # Save composite model, chain by chain
-  from cStringIO import StringIO
   composite_model_stream=StringIO()
 
   for chain_id_and_resseq in chain_id_and_resseq_list:
-    from cStringIO import StringIO
     f=StringIO()
     chain_id,[start_resno,end_resno]=chain_id_and_resseq
     atom_selection=get_atom_selection(chain_id=chain_id,

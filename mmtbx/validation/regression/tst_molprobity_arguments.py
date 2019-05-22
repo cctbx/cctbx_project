@@ -34,7 +34,7 @@ def get_clashscore(lines):
 
 def run():
   print('test')
-  f=file('tst_mol_args.pdb', 'wb')
+  f=open('tst_mol_args.pdb', 'w')
   f.write(pdb_str)
   f.close()
   results = {}

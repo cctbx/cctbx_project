@@ -4,7 +4,7 @@ from mmtbx.secondary_structure import manager
 import iotbx.pdb
 import iotbx.phil
 from libtbx.utils import Sorry, safe_div
-import cStringIO
+from six.moves import cStringIO as StringIO
 import sys
 from libtbx import easy_mp
 import mmtbx
@@ -60,7 +60,7 @@ class gather_ss_stats(object):
     ss_params.secondary_structure.protein.helix=[]
     ss_params.secondary_structure.protein.sheet=[]
     ss_params.secondary_structure.nucleic_acid.enabled=False
-    ss_m_log = cStringIO.StringIO()
+    ss_m_log = StringIO()
 
     ss_manager = mmtbx.secondary_structure.manager(
         pdb_hierarchy=self.pdb_h,
@@ -144,7 +144,7 @@ class validate(object):
       self.params = validate.get_default_params().ss_validation
     self.log = log
     self.results = None
-    ss_log = cStringIO.StringIO()
+    ss_log = StringIO()
     try:
       ss_annot = self.model.get_ss_annotation(log=ss_log)
     except Sorry as e:

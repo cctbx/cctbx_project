@@ -128,7 +128,7 @@ def run(filename=None):
   for pdb, lines in pdbs.items():
     print(pdb)
     filename="hpdl_%s.pdb" % pdb
-    f=file(filename, "wb")
+    f=open(filename, "w")
     f.write(lines)
     f.close()
     cmd = "phenix.pdb_interpretation %s write_geo=1 hpdl=%s" % (filename, True)

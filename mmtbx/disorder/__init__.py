@@ -70,7 +70,7 @@ def set_ensemble_b_factors_to_xyz_displacement(pdb_hierarchy,
       rmsf = xyz.rms_difference(mean_array)
       dev_by_atom[atom_key] = rmsf
   # NOTE it seems flex.double handles list generators, not sure about funky python3 dict.values() though
-  all_dev = flex.double(dev_by_atom.values())
+  all_dev = flex.double(list(dev_by_atom.values()))
   if (method == "mcs"):
     print("Distribution of sphere radii:", file=log)
   else :

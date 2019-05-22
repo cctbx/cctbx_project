@@ -8,6 +8,7 @@ from mmtbx.monomer_library import linking_utils
 from mmtbx.monomer_library import glyco_utils
 from mmtbx.monomer_library import bondlength_defaults
 from libtbx.utils import Sorry
+from functools import cmp_to_key
 from six.moves import range
 
 origin_ids = geometry_restraints.linking_class.linking_class()
@@ -1046,7 +1047,7 @@ Residue classes
       print("  Links applied", file=log)
       for key in sorted(links):
         print("    %s" % key, file=log)
-        links[key].sort(_sort_on_id)
+        links[key].sort(key=cmp_to_key(_sort_on_id))
         for ag1, ag2, i_seq, j_seq in links[key]:
           self.pdb_link_records["LINK"].append([self.pdb_atoms[i_seq],
                                                 self.pdb_atoms[j_seq],
