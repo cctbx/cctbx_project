@@ -243,7 +243,6 @@ END
 filenames = ['test_1.pdb', 'test_2.pdb']
 pdb_strings = [pdb_str_1, pdb_str_2]
 
-# ---------------------------------------------------------------------------
 
 def write_model_files(filenames, pdb_strings):
   for filename, pdb_str in zip(filenames, pdb_strings):
@@ -251,9 +250,11 @@ def write_model_files(filenames, pdb_strings):
     f.write(pdb_str)
     f.close()
 
-# ---------------------------------------------------------------------------
 
 def tst_get_adps(vl_manager):
+  '''
+  Test getting ADPs of ligands and surrounding atoms
+  '''
   n_iso_answer = (0,0,0,0,0)
   n_aniso_answer = (9,9,5,5,6)
   #print(vl_manager)
@@ -304,17 +305,11 @@ def tst_get_adps(vl_manager):
         assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
           [58.7,114.9,96.9], eps=0.1)
 
-# ---------------------------------------------------------------------------
-
-#def tst_get_nbos(vl_manager):
-#  for id_tuple, ligand_dict in vl_manager.items():
-#    for altloc, lr in ligand_dict.items():
-#      nbo = lr.get_nonbonded_overlaps()
-
-# ---------------------------------------------------------------------------
 
 def run_test1():
-  """Test if iselection for ligand PG5 (chain A resseq 201) is correct."""
+  '''
+  Test if iselection for ligand PG5 (chain A resseq 201) is correct.
+  '''
   pdb_inp = iotbx.pdb.input(lines=pdb_str_1.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
 
@@ -334,45 +329,30 @@ def run_test1():
   vl_manager.run()
 
   tst_get_ligands(vl_manager = vl_manager)
-  tst_get_nbos(vl_manager = vl_manager)
+  tst_get_overlaps(vl_manager = vl_manager)
 
-# ---------------------------------------------------------------------------
 
 def tst_get_ligands(vl_manager):
+  '''
+  Test finding ligand
+  '''
   assert (len(vl_manager) == 1)
-
   # test iselection
   for id_tuple, ligand_dict in vl_manager.items():
     assert (id_tuple == ('', 'A', ' 201'))
     lr = ligand_dict['']
     assert (list(lr.isel) == [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95])
 
-# ---------------------------------------------------------------------------
 
-def tst_get_nbos(vl_manager):
-  # test nonbonded overlaps
+def tst_get_overlaps(vl_manager):
+  '''
+  Test nonbonded overlaps
+  '''
   for id_tuple, ligand_dict in vl_manager.items():
     for altloc, lr in ligand_dict.items():
-      nbo = lr.get_nonbonded_overlaps()
-      nbo_proxies = nbo.result.nb_overlaps_proxies_all
-      #print(nbo_proxies)
-      assert(len(nbo_proxies) == 3)
-      d = list(nbo_proxies[0])
-      rec_list = [x.replace('pdb=','') for x in d[0]]
-      rec_list = [x.replace('"','') for x in rec_list]
-      #assert(rec_list[0] == ' CE  MET A 107 ')
-      #assert(rec_list[1] == ' C8  PG5 A 201 ')
-      #assert(approx_equal(d[3], 2.95, eps=0.05))
-      #assert(approx_equal(d[4], 3.4, eps=0.05))
-#      for data, results in zip(nbo_proxies):
-#        print(data)
-#        d = list(data)
-#        rec_list = [x.replace('pdb=','') for x in d[0]]
-#        rec_list = [x.replace('"','') for x in rec_list]
-#        assert(rec_list[0] == ' CE  MET A 107 ')
-#        assert(rec_list[1] == ' C8  PG5 A 201 ')
-#        assert(approx_equal(data[3], 2.95, eps=0.05))
-#        assert(approx_equal(data[4], 3.4, eps=0.05))
+      clashes_result = lr.get_overlaps()
+      assert(clashes_result.n_clashes == 3)
+      assert approx_equal(clashes_result.clashscore, 51.7, eps=1.0)
 # anaconda
 #(['pdb=" HE3 MET A 107 "', 'pdb=" H81 PG5 A 201 "'], 17, 54, 2.0370952358689647, 2.44, '', None),
 #(['pdb=" CE  MET A 107 "', 'pdb=" C8  PG5 A 201 "'], 15, 34, 2.946989989803154, 3.4, '', None),
@@ -382,11 +362,14 @@ def tst_get_nbos(vl_manager):
 #(['pdb=" CE  MET A 107 "', 'pdb=" C8  PG5 A 201 "'], 16, 35, 2.946989989803154, 3.4, '', None),
 #(['pdb=" HE3 MET A 107 "', 'pdb=" H83 PG5 A 201 "'], 18, 57, 2.026073542594147, 2.44, '', None),
 #(['pdb=" CE  MET A 107 "', 'pdb=" H81 PG5 A 201 "'], 16, 55, 2.4973179613337146, 2.92, '', None)
+#
+# Readyset gives different names to H atoms.
 
-
-# ---------------------------------------------------------------------------
 
 def tst_get_occupancies(vl_manager):
+  '''
+  Test occupancy determination
+  '''
   assert (len(vl_manager) == 4)
   id_tuple_answer = [('', 'A', '   2'), ('', 'A', '   3'), ('', 'A', '   4'), ('', 'A', '   5')]
   ligand_dict_length_answer = [2, 1, 1, 1]
@@ -409,23 +392,19 @@ def tst_get_occupancies(vl_manager):
       if (id_str.strip() == 'A GOL    5'):
         assert(occs.occ_mean == 0.67)
 
-# ---------------------------------------------------------------------------
 
 def run_test2():
-  """Test
+  '''
+  Test
   - occupancy determination for ligands
   - adp determination for ligands and neighbors
   Tests are combined to decrease computing time (restraints manager is slow).
-  """
-
+  '''
   pdb_inp = iotbx.pdb.input(lines=pdb_str_2.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
-
   params = iotbx.phil.parse(
     input_string=master_params_str, process_includes=True).extract()
-
   fn = filenames[1]
-
   vl_manager = validate_ligands.manager(
     model = model,
     model_fn = fn,
@@ -435,15 +414,14 @@ def run_test2():
   vl_manager.run()
 
   tst_get_occupancies(vl_manager = vl_manager)
-
   tst_get_adps(vl_manager = vl_manager)
 
-# ---------------------------------------------------------------------------
 
 def run():
   write_model_files(filenames = filenames, pdb_strings = pdb_strings)
   run_test1()
   run_test2()
+
 
 if (__name__ == "__main__"):
   t0 = time.time()

@@ -9,6 +9,7 @@ import mmtbx.validation.clashscore as mvc
 from libtbx.utils import null_out
 import mmtbx.model
 import iotbx.pdb
+#import time
 
 master_phil_str = """
   verbose = True
@@ -141,9 +142,12 @@ Example:
       cache  = cache,
       string = 'protein or dna or rna')
 
+    #t0 = time.time()
     nb_overlaps = nbo.info(
       model = model,
       macro_molecule_selection=macro_mol_sel)
+    #t1 = time.time()
+
 
     if self.params.verbose:
       nb_overlaps.show(
@@ -151,7 +155,12 @@ Example:
         nbo_type=self.params.show_overlap_type,
         normalized_nbo=self.params.show_normalized_nbo)
 
+    #t2 = time.time()
     processed_nbps = pnp.manager(model = model)
     clashes = processed_nbps.get_clashes()
+    #t3 = time.time()
     clashes.show()
+
+    #print("OLD time: %8.3f"%(t1-t0))
+    #print("NEW time: %8.3f"%(t3-t2))
 
