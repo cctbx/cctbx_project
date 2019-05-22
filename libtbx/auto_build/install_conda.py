@@ -661,7 +661,7 @@ Example usage:
     help="""Install the default environment for a builder. The choices are the
       same as the ones for bootstrap.py. The default builder is "cctbx." """)
   parser.add_argument(
-    '--python', default=None, type=str, nargs='?', const='27',
+    '--python', default='27', type=str, nargs='?', const='27',
     choices=['27', '36'],
     help="""When set, a specific Python version of the environment will be used.
     This only affects environments selected with the --builder flag.""")
