@@ -95,11 +95,11 @@ def run(args):
     out = sys.stdout
   else:
     if do_bonds_and_angles:
-      out = file(out_file, 'w')
+      out = open(out_file, 'w')
     elif do_kinemage:
-      out = file(out_file, 'a')
+      out = open(out_file, 'a')
     elif do_rna_backbone:
-      out = file(out_file, 'w')
+      out = open(out_file, 'w')
   restraints_loading_flags = {}
   restraints_loading_flags["use_neutron_distances"]=False
   from mmtbx.validation import utils

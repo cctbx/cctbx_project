@@ -181,7 +181,7 @@ def loop_on_residue_rotamer(resname,
                             starting_chis=None,
                            ):
   i=0
-  f=file("%s_%s.pdb" % (resname.lower(), rid), "wb")
+  f=open("%s_%s.pdb" % (resname.lower(), rid), "w")
   f.write('CRYST1  360.000  360.000  360.000  90.00  90.00  90.00 P 1           1 ')
   points = []
   n=number_of_chis.get(resname.upper(), None)

@@ -4,7 +4,7 @@ import libtbx.load_env
 import sys
 from mmtbx.monomer_library import server
 from mmtbx.monomer_library import pdb_interpretation
-import StringIO
+from six.moves import cStringIO as StringIO
 from libtbx.utils import format_cpu_times
 
 protein_pdb_str = """
@@ -775,7 +775,7 @@ if __name__ == "__main__":
     mon_lib_srv = server.server()
     ener_lib = server.ener_lib()
     # log = sys.stdout
-    log = StringIO.StringIO()
+    log = StringIO()
     exercise_protein(mon_lib_srv, ener_lib, log)
     exercise_rna(mon_lib_srv, ener_lib, log)
     exercise_both(mon_lib_srv, ener_lib, log)

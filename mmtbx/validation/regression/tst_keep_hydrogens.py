@@ -51,10 +51,10 @@ ATOM      0  HH  TYR A  59      23.201   5.331   8.734  1.00  8.82           H  
 
 import sys
 from libtbx import easy_run
-import StringIO
+from six.moves import cStringIO as StringIO
 
 def run():
-  f=file("tst_keep_hydrogens.pdb", "wb")
+  f=open("tst_keep_hydrogens.pdb", "w")
   f.write(pdb)
   f.close()
   #for keep in range(2):
@@ -67,7 +67,7 @@ def run():
       cmd = "%s tst_keep_hydrogens.pdb keep_hydrogens=%s" % (prog, keep)
       print(cmd)
       er = easy_run.fully_buffered(command=cmd)
-      std = StringIO.StringIO()
+      std = StringIO()
       er.show_stdout(out=std)
       cs=None
       for line in std.getvalue().splitlines():

@@ -99,7 +99,7 @@ def run_and_test(cmd, pdb, i):
     raise RuntimeError("Missing expected log output")
   print("OK")
   # test .geo
-  f=file(pdb.replace(".pdb", "_minimized.geo"), "rb")
+  f=open(pdb.replace(".pdb", "_minimized.geo"), "rb")
   lines = f.readlines()
   f.close()
   for line in lines:
@@ -122,7 +122,7 @@ def run_and_test(cmd, pdb, i):
              ]:
     return
   number_of_links=0
-  f=file(pdb.replace(".pdb", "_minimized.pdb"), "rb")
+  f=open(pdb.replace(".pdb", "_minimized.pdb"), "rb")
   lines = f.readlines()
   f.close()
   for line in lines:
@@ -173,7 +173,7 @@ def run(only_i=None):
   except TypeError: only_i=None
   cifs = ""
   for pdb in pdbs:
-    f=file(pdb, "wb")
+    f=open(pdb, "w")
     f.write(pdbs[pdb])
     f.close()
     if pdb.endswith(".cif"): cifs += " %s" % pdb

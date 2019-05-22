@@ -902,7 +902,8 @@ def test_average(hierarchy,
     )
                              ):
     if threes.registry.n:
-      assert list(threes.registry.n.keys()) == filenames[filename][3]
+      for key in threes.registry.n.keys():
+        assert key in filenames[filename][3]
 
 def get_managers(filename, testing=False, verbose=False):
   mon_lib_srv = monomer_library.server.server()
@@ -955,7 +956,7 @@ def run_apply(filename, testing=False, verbose=False):
     lines = StringIO()
     restraints_manager.geometry.show_sorted(sites_cart=sites_cart,
                                                   f=lines)
-    f=file("%s_pre.geo" % os.path.basename(filename)[:-4], "wb")
+    f=open("%s_pre.geo" % os.path.basename(filename)[:-4], "w")
     f.write(lines.getvalue())
     f.close()
 
@@ -980,7 +981,7 @@ def run_apply(filename, testing=False, verbose=False):
     lines = StringIO()
     restraints_manager.geometry.show_sorted(sites_cart=sites_cart,
                                                   f=lines)
-    f=file("%s_post.geo" % os.path.basename(filename)[:-4], "wb")
+    f=open("%s_post.geo" % os.path.basename(filename)[:-4], "w")
     f.write(lines.getvalue())
     f.close()
 
@@ -1201,19 +1202,19 @@ def run(filename=None):
     for i, key in enumerate(sorted(cdl_database)):
       output = "n_ca_c_m_%s.dat" % key
       print(i+1,key,output)
-      f=file(output, "wb")
+      f=open(output, "w")
       f.write(convert_dict_to_gnuplot(keys_number=i, dales_format=True))
       f.close()
       cmd = "gnuplot %s" % output
       os.system(cmd)
     assert 0
-    f=file("n_ca_c_e.dat", "wb")
+    f=open("n_ca_c_e.dat", "w")
     f.write(convert_dict_to_gnuplot(column_number=7))
     f.close()
-    f=file("n_ca_c_m.csv", "wb")
+    f=open("n_ca_c_m.csv", "w")
     f.write(convert_dict_to_excel())
     f.close()
-    f=file("n_ca_c_m.cse", "wb")
+    f=open("n_ca_c_m.cse", "w")
     f.write(convert_dict_to_scilab())
     f.close()
     assert 0
@@ -1227,7 +1228,7 @@ def run(filename=None):
     print('Running tests')
     for filename in output_filenames:
       print(filename)
-      f=file(filename, "wb")
+      f=open(filename, "w")
       f.write(output_filenames[filename])
       f.close()
     for filename in filenames:

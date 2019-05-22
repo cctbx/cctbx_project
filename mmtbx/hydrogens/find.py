@@ -515,7 +515,7 @@ def len_peaks(set_of_peaks):
 
 def print_scats(xray_structure, fn):
   import cctbx
-  ftmp = file(fn, "w")
+  ftmp = open(fn, "w")
   print(" scats ", file=ftmp)
   itmp=0
   for scat in xray_structure.scatterers():

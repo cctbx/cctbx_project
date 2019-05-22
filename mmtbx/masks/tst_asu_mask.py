@@ -4,7 +4,7 @@ import iotbx.pdb
 import iotbx.pdb.remark_2_interpretation
 from scitbx.array_family import flex
 import iotbx
-import StringIO
+from six.moves import cStringIO as StringIO
 from mmtbx import masks
 import cctbx
 from cctbx import miller
@@ -18,7 +18,7 @@ from cctbx.development import debug_utils
 import mmtbx.masks
 from six.moves import range
 
-cout = StringIO.StringIO()
+cout = StringIO()
 
 # modified cctbx.sgtbx.space_group_info.any_compatible_unit_cell
 # from cctbx/sgtbx/__init__.py

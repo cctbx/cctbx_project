@@ -41,7 +41,7 @@ ATOM     93  O   GLY A  14      39.013  57.869  34.331  1.00 79.41           O
 """
 
 def run():
-  f=file('cdl_esd.pdb', 'wb')
+  f=open('cdl_esd.pdb', 'w')
   f.write(pdb)
   f.close()
   cmd = 'phenix.pdb_interpretation cdl_esd.pdb'

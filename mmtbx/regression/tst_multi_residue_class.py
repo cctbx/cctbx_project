@@ -66,7 +66,7 @@ ATOM  18811  OG  SER N  62      61.494  62.508 -51.606  1.00 61.00           O
 
 def run():
   filename = 'tst_multi.pdb'
-  f=file(filename, 'wb')
+  f=open(filename, 'w')
   f.write(pdb_lines)
   f.close()
   pdb_inp = pdb.input(filename)

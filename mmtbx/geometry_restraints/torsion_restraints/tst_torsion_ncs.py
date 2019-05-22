@@ -5,7 +5,7 @@ from cctbx.array_family import flex
 from mmtbx.monomer_library import pdb_interpretation
 from cctbx import adp_restraints # import dependency
 from mmtbx.geometry_restraints.torsion_restraints import torsion_ncs, utils
-import cStringIO
+from six.moves import cStringIO as StringIO
 import mmtbx
 import mmtbx.model
 
@@ -123,7 +123,7 @@ def exercise_1(mon_lib_srv, ener_lib):
   f = open("1.pdb", "w")
   f.write(pdb_str_1)
   f.close()
-  log = cStringIO.StringIO()
+  log = StringIO()
   dihedral_proxies = utils.get_complete_dihedral_proxies(
                        raw_records=pdb_str_1)
   assert len(dihedral_proxies) == 54, \

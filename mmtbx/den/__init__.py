@@ -475,7 +475,7 @@ class den_restraints(object):
 
   def output_kinemage(self, sites_cart):
     from mmtbx.kinemage import validation
-    f = file("den_restraints.kin", "w")
+    f = open("den_restraints.kin", "w")
     vec_header = "@kinemage\n"
     vec_header += "@vectorlist {DEN} color= magenta master= {DEN}\n"
     f.write(vec_header)

@@ -921,7 +921,7 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
   kin_out += make_probe_dots(hierarchy=hierarchy, keep_hydrogens=keep_hydrogens)
   kin_out += get_footer()
 
-  outfile = file(f, 'w')
+  outfile = open(f, 'w')
   for line in kin_out:
     outfile.write(line)
   outfile.close()

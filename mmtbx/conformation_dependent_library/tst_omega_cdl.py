@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import os, sys
 import time
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 from mmtbx import conformation_dependent_library as cdl
 from mmtbx.conformation_dependent_library import cdl_utils
@@ -183,7 +183,7 @@ def run_apply(filename, testing=False, verbose=False):
     lines = StringIO()
     restraints_manager.geometry.show_sorted(sites_cart=sites_cart,
                                                   f=lines)
-    f=file("%s_pre.geo" % os.path.basename(filename)[:-4], "wb")
+    f=open("%s_pre.geo" % os.path.basename(filename)[:-4], "w")
     f.write(lines.getvalue())
     f.close()
 
@@ -208,7 +208,7 @@ def run_apply(filename, testing=False, verbose=False):
     lines = StringIO()
     restraints_manager.geometry.show_sorted(sites_cart=sites_cart,
                                                   f=lines)
-    f=file("%s_post.geo" % os.path.basename(filename)[:-4], "wb")
+    f=open("%s_post.geo" % os.path.basename(filename)[:-4], "w")
     f.write(lines.getvalue())
     f.close()
 
@@ -222,7 +222,7 @@ def run(filename=None):
     print('Running tests')
     for filename in sorted(output_filenames):
       print(filename)
-      f=file(filename, "wb")
+      f=open(filename, "w")
       f.write(output_filenames[filename])
       f.close()
     for i, filename in enumerate(sorted(filenames)):

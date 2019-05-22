@@ -180,7 +180,7 @@ def exercise_server_rotamer_iterator(mon_lib_srv, pdb_hierarchy, verbose):
         pdb_atoms_work.reset_serial(first_value=atom_serial_first_value)
         atom_serial_first_value += pdb_atoms_work.size()
         nl = ''.join(['%i' % i for i in range(10)])
-        chain_id = (string.uppercase + string.lowercase + nl)[i_rotamer]
+        chain_id = (string.ascii_uppercase + string.ascii_lowercase + nl)[i_rotamer]
         pdb_hierarchy_work.only_chain().id = chain_id
         remark_strings.append(
           "REMARK %s %s = chain %s" % (resname, rotamer.id, chain_id))

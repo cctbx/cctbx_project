@@ -330,10 +330,10 @@ def exercise_extend_sidechains(pdb_str_bad, pdb_str_good, i, Sorry_msg, add_h):
       pdb_hierarchy = pdb_h,
       mon_lib_srv   = mon_lib_srv,
       add_hydrogens = add_h)
-  except Exception as e: pass
-  if(Sorry_msg is not None):
-    assert str(e).find(Sorry_msg)>-1
-    return
+  except Exception as e:
+    if(Sorry_msg is not None):
+      assert str(e).find(Sorry_msg)>-1
+      return
   #
   pdb_h.write_pdb_file(file_name="m_completed_%d.pdb"%i)
   pdb_h_result = pdb_h.deep_copy()

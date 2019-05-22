@@ -35,6 +35,7 @@ from functools import cmp_to_key
 from past.builtins import cmp
 from six.moves import zip
 from six.moves import range
+from six import string_types
 
 ion_identification_phil_str = """
 require_valence = False
@@ -995,7 +996,7 @@ class manager(object):
     auto_candidates = candidates is Auto
     if auto_candidates:
       candidates = mmtbx.ions.DEFAULT_IONS
-    elif isinstance(candidates, str) or isinstance(candidates, unicode):
+    elif isinstance(candidates, string_types):
       candidates = candidates.replace(",", " ").split()
     candidates = [i.strip().upper() for i in candidates]
     if (candidates == ['X']) : # XXX hack for testing - X is "dummy" element

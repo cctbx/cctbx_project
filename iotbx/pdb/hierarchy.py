@@ -1474,7 +1474,7 @@ class _():
             atom1 = ag.get_atom(pair[0])
             atom2 = ag.get_atom(pair[1])
             if atom1 is None and atom2 is None: continue
-            if len(filter(None, [atom1, atom2])) == 1:
+            if len(list(filter(None, [atom1, atom2]))) == 1:
               flips_stored=[]
               info += ' not complete - not flipped'
               break

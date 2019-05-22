@@ -7,7 +7,7 @@ from six.moves import cStringIO as StringIO
 
 def parse_user_mods(filename):
   flipped_residues = []
-  f = file(filename, 'rb')
+  f = open(filename, 'rb')
   for line in f.readlines():
     if line.startswith("USER  MOD"):
       if "FLIP" in line:
@@ -17,8 +17,8 @@ def parse_user_mods(filename):
   return flipped_residues
 
 def finalize_coords(filename, outfile, updated_coords):
-  f = file(filename, 'rb')
-  out_f = file(outfile, 'w')
+  f = open(filename, 'rb')
+  out_f = open(outfile, 'w')
   for line in f.readlines():
     if line.startswith("ATOM  "):
       key = line[12:26]
@@ -89,7 +89,7 @@ def run(args):
   sigma = "pdb_interpretation.reference_coordinate_restraints.sigma=0.05"
   directory = "directory="+temp_dir
   params = os.path.join(temp_dir, "nqh.params")
-  p = file(params, 'w')
+  p = open(params, 'w')
   print(selection, file=p)
   print(restrain, file=p)
   print(sigma, file=p)
@@ -99,8 +99,8 @@ def run(args):
   print("pdb_interpretation.clash_guard.nonbonded_distance_threshold=None", file=p)
   p.close()
   temp_pdb = os.path.join(temp_dir, "nqh_flips.pdb")
-  out = file(temp_pdb, 'w')
-  f = file(filename, 'rb')
+  out = open(temp_pdb, 'w')
+  f = open(filename, 'rb')
   for line in f.readlines():
     if line.startswith("ATOM  "):
       id_str = line[16:26]
@@ -116,7 +116,7 @@ def run(args):
   min_args.append(params)
 
   log_file = os.path.join(temp_dir, "nqh.log")
-  log = file(log_file, 'w')
+  log = open(log_file, 'w')
 
   o = geometry_minimization.run(min_args, log=log)
 
@@ -124,7 +124,7 @@ def run(args):
   ind = max(0,basename.rfind("."))
   ofn = \
     basename+"_minimized.pdb" if ind==0 else basename[:ind]+"_minimized.pdb"
-  min_file = file(os.path.join(temp_dir, ofn), 'rb')
+  min_file = open(os.path.join(temp_dir, ofn), 'rb')
   for line in min_file.readlines():
     if line.startswith("ATOM  "):
       id_str = line[16:26]

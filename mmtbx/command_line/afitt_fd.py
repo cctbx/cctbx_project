@@ -125,10 +125,10 @@ def run(pdb_file, cif_file, ligand_names,atom,scale,verbose):
 if (__name__ == "__main__"):
   import sys
   if len(sys.argv)==1:
-    f=file("afitt_fd.pdb", "wb")
+    f=open("afitt_fd.pdb", "w")
     f.write(pdb_lines)
     f.close()
-    f=file("afitt_fd.cif", "wb")
+    f=open("afitt_fd.cif", "w")
     f.write(cif_lines)
     f.close()
     run("afitt_fd.pdb", 'afitt_fd.cif', ["LEP"], 7, 1, True)
@@ -150,4 +150,3 @@ if (__name__ == "__main__"):
     ligand_names=args.ligand_names.split(',')
     run(args.pdb_file, args.cif_file, ligand_names, int(args.atom),
       args.scale, args.verbose)
-

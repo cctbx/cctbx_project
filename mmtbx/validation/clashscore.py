@@ -13,6 +13,7 @@ import iotbx.pdb
 import os
 import re
 import sys
+from past.builtins import cmp
 import six
 
 class clash(atoms):

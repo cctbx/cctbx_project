@@ -287,7 +287,7 @@ def run(rargs):
   #preamble = output_scope.file_name.split(".")[0]
   #print "    Writing effective parameters to %s.eff\n" % preamble
   working_phil.format(python_object=working_params).show()
-  #f=file("%s.eff" % preamble, "wb")
+  #f=open("%s.eff" % preamble, "wb")
   #f.write(working_phil.format(python_object=working_params).as_str())
   #f.close()
 

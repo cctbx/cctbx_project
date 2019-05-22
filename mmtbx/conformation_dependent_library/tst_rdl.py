@@ -131,10 +131,10 @@ def run(filename):
   #
   if filename=="3sgs.pdb":
     from libtbx import easy_run
-    f=file("mse.pdb", "wb")
+    f=open("mse.pdb", "w")
     f.write(pdbs["mse.pdb"])
     f.close()
-    f=file("met.pdb", "wb")
+    f=open("met.pdb", "w")
     f.write(pdbs["met.pdb"])
     f.close()
     cmd="phenix.pdb_interpretation rdl=True write_geo=1 mse.pdb"
@@ -158,7 +158,7 @@ def run(filename):
 
   mmtbx_dir = libtbx.env.dist_path("mmtbx")
   props = os.path.join(mmtbx_dir,"rotamer","rotamer_names.props")
-  f=file(props, "rb")
+  f=open(props, "r")
   props = f.readlines()
   f.close()
   for prop in props:
@@ -172,7 +172,7 @@ def run(filename):
 
 if __name__=="__main__":
   if len(sys.argv)==1:
-    f=file("3sgs.pdb", "wb")
+    f=open("3sgs.pdb", "w")
     f.write(pdbs["3sgs"])
     f.close()
     run("3sgs.pdb")

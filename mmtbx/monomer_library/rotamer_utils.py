@@ -316,7 +316,7 @@ class rotamer_iterator(object):
   def __iter__(O):
     return O
 
-  def next(O):
+  def __next__(O):
     rotamer = next(O.__iterates)
     if O.rotamer_info.fine_sampling == False:
       while(rotamer.frequency_annotation == "for more uniform sampling"):
@@ -329,3 +329,5 @@ class rotamer_iterator(object):
           angle - O.angle_start_by_tor_id[tor_id])
     O.tardy_model.unpack_q(q_packed=q_packed_work)
     return rotamer, O.tardy_model.sites_moved()
+
+  next = __next__

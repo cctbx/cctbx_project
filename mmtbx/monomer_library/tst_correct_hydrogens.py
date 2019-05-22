@@ -35,11 +35,11 @@ HETATM   32  O   ALA A   3      -1.633  -0.418  -4.488  1.00 20.00      A    O
 HETATM   33  OXT ALA A   3      -0.293   1.123  -3.725  1.00 20.00      A    O-1
 """
 
-import StringIO
+from six.moves import cStringIO as StringIO
 from libtbx import easy_run
 
 def run():
-  f=file("tst_correct_hydrogens.pdb", "wb")
+  f=open("tst_correct_hydrogens.pdb", "w")
   f.write(pdb)
   f.close()
   cmd = "phenix.geometry_minimization tst_correct_hydrogens.pdb"
@@ -48,7 +48,7 @@ def run():
   cmd = "phenix.geometry_minimization tst_correct_hydrogens_minimized.pdb"
   print(cmd)
   ero = easy_run.fully_buffered(command=cmd)
-  std = StringIO.StringIO()
+  std = StringIO()
   ero.show_stdout(out=std)
   chiral_energy = None
   for line in std.getvalue().splitlines():

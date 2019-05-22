@@ -100,7 +100,7 @@ if __name__=="__main__":
   print
 '''
       print(outl)
-      f=file("%s.py" % output, "wb")
+      f=open("%s.py" % output, "w")
       f.write(outl)
       f.close()
 
