@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from __future__ import absolute_import, division, print_function
 
 import os
@@ -1223,22 +1224,72 @@ def enable_cuda_if_possible():
     for line in cuda_version:
       if ('release' in line):
         break
+    
     major = None
-    cuda_version = line.split(',')
-    if (len(cuda_version) >= 2):
-      flds = cuda_version[1].split()
-      if (len(flds) >= 2):
-        fld = flds[1].split('.')[0]
-        try: major = int(fld)
-        except ValueError: pass
+    import re
+    cuda_version = re.findall('release [0-9]+\.*[0-9]+', line)
+    if cuda_version:
+      try:
+        assert( len(cuda_version)==1)
+        cuda_version = cuda_version[0].split("release")[1].strip()
+        cuda_version = float(cuda_version)
+        major = int(cuda_version)
+      except (AssertionError, ValueError, IndexError):
+        pass
     if ( (major is None) or (major < 4) ):
       raise RuntimeError(
         'CUDA Toolkit 4.0 and higher is required.'
         ' Current CUDA version: %s' % line)
     env_etc.enable_cuda = True
 
-    env_base['NVCC'] = 'nvcc'
+    # generate compute flags based on version 
+    # these are flags for base version
+    if cuda_version >=6 and cuda_version <= 7.5:
+        arch_flags = ['--generate-code=arch=compute_30,code=sm_30',
+                        '--generate-code=arch=compute_32,code=sm_32',
+                        '--generate-code=arch=compute_35,code=sm_35',
+                        '--generate-code=arch=compute_50,code=sm_50']
 
+    elif cuda_version == 8:
+        arch_flags = ['--generate-code=arch=compute_30,code=sm_30',
+                        '--generate-code=arch=compute_32,code=sm_32',
+                        '--generate-code=arch=compute_35,code=sm_35',
+                        '--generate-code=arch=compute_50,code=sm_50',
+                        '--generate-code=arch=compute_52,code=sm_52',
+                        '--generate-code=arch=compute_53,code=sm_53',
+                        '--generate-code=arch=compute_60,code=sm_60',
+                        '--generate-code=arch=compute_61,code=sm_61',
+                        '--generate-code=arch=compute_62,code=sm_62']
+
+    elif cuda_version >= 9 and cuda_version <= 9.2:
+        arch_flags = ['--generate-code=arch=compute_30,code=sm_30',
+                        '--generate-code=arch=compute_32,code=sm_32',
+                        '--generate-code=arch=compute_35,code=sm_35',
+                        '--generate-code=arch=compute_50,code=sm_50',
+                        '--generate-code=arch=compute_52,code=sm_52',
+                        '--generate-code=arch=compute_53,code=sm_53',
+                        '--generate-code=arch=compute_60,code=sm_60',
+                        '--generate-code=arch=compute_61,code=sm_61',
+                        '--generate-code=arch=compute_62,code=sm_62',
+                        '--generate-code=arch=compute_70,code=sm_70',
+                        '--generate-code=arch=compute_72,code=sm_72']
+
+
+    elif cuda_version >= 10 and cuda_version <= 10.1:
+        arch_flags = ['--generate-code=arch=compute_30,code=sm_30',
+                        '--generate-code=arch=compute_32,code=sm_32',
+                        '--generate-code=arch=compute_35,code=sm_35',
+                        '--generate-code=arch=compute_50,code=sm_50',
+                        '--generate-code=arch=compute_52,code=sm_52',
+                        '--generate-code=arch=compute_53,code=sm_53',
+                        '--generate-code=arch=compute_60,code=sm_60',
+                        '--generate-code=arch=compute_61,code=sm_61',
+                        '--generate-code=arch=compute_62,code=sm_62',
+                        '--generate-code=arch=compute_70,code=sm_70',
+                        '--generate-code=arch=compute_72,code=sm_72',
+                        '--generate-code=arch=compute_75,code=sm_75']
+
+    env_base['NVCC'] = 'nvcc'
     linker_flags = env_base['SHLINKFLAGS']
     for flag in linker_flags:
       if (flag.find(' ') >= 0):
@@ -1255,7 +1306,8 @@ def enable_cuda_if_possible():
           'Not implemented: wrapping of compiler flags with'
           ' embedded spaces: %s' % flag)
     cc_flags = ' '.join(cc_flags)
-    env_base['NVCCFLAGS'] = ['-arch=compute_70','-use_fast_math','--shared',
+    env_base['NVCCFLAGS'] = arch_flags + \
+                             ['-use_fast_math','--shared',
                              '--compiler-options',cc_flags]
 
     shared_object_builder =\

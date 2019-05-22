@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include "nanotypes.h"
 #include "cuda_struct.h"
-
+#include "cuda_compatibility.h"
 #include "time_logger.h"
 
 static void CheckCudaErrorAux(const char *, unsigned, const char *, cudaError_t);
