@@ -553,14 +553,16 @@ def exercise_misc():
     rgb_scales_high=(0,0,0),
     saturation=2)
   if six.PY3:
-    ord = lambda x: x
-  assert [ord(c) for c in s] \
+    ord_ = lambda x: x
+  else:
+    ord_ = ord
+  assert [ord_(c) for c in s] \
       == [128, 128, 128, 0, 0, 0, 255, 255, 255, 0, 0, 0, 255, 255, 255]
   s = a.as_rgb_scale_string(
     rgb_scales_low=(1,1,1),
     rgb_scales_high=(1,0,0),
     saturation=2)
-  assert [ord(c) for c in s] \
+  assert [ord_(c) for c in s] \
       == [255, 128, 128, 255, 0, 0, 255, 255, 255, 255, 0, 0, 255, 255, 255]
   #
   a = flex.double([1,2,3,-4,5,6])
