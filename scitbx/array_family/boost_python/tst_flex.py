@@ -1848,6 +1848,17 @@ def exercise_flex_vec3_double():
   for aa, tt1 in zip(a, t1):
     tt2 = matrix.col(aa).angle(b)
     assert(abs(tt1-tt2) < eps)
+  # checks for __eq__ and __ne__ for flex.vec3_double to (a) vec3_double and (b) flex.vec3_double
+  a = flex.vec3_double([(1,2,5), (-2,3,4), (3,4,3)])
+  b = flex.vec3_double([(1,2,5), (-2,3,4), (3,4,3)])
+  c = flex.vec3_double([(1,2,6), (-2,3,5), (3,4,1)])
+  d = (-2.0, 3.0, 4.0)
+  assert list(a==d).count(True)==1
+  assert a==b
+  assert (a==c)==False
+  assert list(a!=d).count(True)==2
+  assert a!=c
+  assert (a!=b)==False
 
 
 

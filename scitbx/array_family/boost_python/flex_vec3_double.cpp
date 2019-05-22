@@ -186,7 +186,7 @@ namespace {
 
   // Checks which elements in flex vec3_double is equal
   // to a vec3_double and returns a flex.bool
-  af::shared<bool> is_equal_to_vec3_double(
+  af::shared<bool> equal_all_single(
       af::const_ref < vec3 <double> > const& self,
       vec3 <double> other) {
     af::shared<bool> result(self.size());
@@ -195,6 +195,48 @@ namespace {
       result[i] = a;
     }
     return result;
+  }
+
+  // Checks if all elements of a flex.vec3_double are equal 
+  // to all elements of another flex.vec3_double. Returns a bool
+  bool equal_all_all(
+      af::const_ref < vec3 <double> > const& self,
+      af::const_ref < vec3 <double> > const& other) {
+    SCITBX_ASSERT(self.size() == other.size());
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      if (self[i] != other[i]){
+        return false;
+        }
+    }
+    return true;
+  }
+
+  // Checks which elements in flex vec3_double is not equal
+  // to a vec3_double and returns a flex.bool
+  af::shared<bool> not_equal_all_single(
+      af::const_ref < vec3 <double> > const& self,
+      vec3 <double> other) {
+    af::shared<bool> result(self.size());
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      bool a = self[i] != other;
+      result[i] = a;
+    }
+    return result;
+  }
+
+  // Checks if all elements of a flex.vec3_double are equal 
+  // to all elements of another flex.vec3_double. Returns a bool
+  // Basically even with a single inequality, false is returned
+  bool not_equal_all_all(
+      af::const_ref < vec3 <double> > const& self,
+      af::const_ref < vec3 <double> > const& other) {
+    SCITBX_ASSERT(self.size() == other.size());
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      if (self[i] != other[i]){
+        return true;
+        }
+    }
+    return false;
   }
 
   flex_double
@@ -612,11 +654,6 @@ namespace boost_python {
           bool)) &angle, (
             arg("other"),
             arg("deg") = false))
-      .def("is_equal_to_vec3_double",
-        (af::shared<bool>(*)(
-          af::const_ref< vec3<double> > const&,
-          vec3<double>)) &is_equal_to_vec3_double, (
-            arg("other")))
       .def("as_double", as_double)
       .def("add_selected",
         (object(*)(
@@ -645,6 +682,18 @@ namespace boost_python {
       .def("__truediv__", div_a_as)
       .def("__mul__", mul_a_mat3)
       .def("__rmul__", rmul_a_mat3)
+      .def("__eq__",
+        (af::shared<bool>(*)(
+          af::const_ref< vec3<double> > const&,
+          vec3<double>)) &equal_all_single, (
+            arg("other")))
+      .def("__eq__",&equal_all_all)
+      .def("__ne__",
+        (af::shared<bool>(*)(
+          af::const_ref< vec3<double> > const&,
+          vec3<double>)) &not_equal_all_single, (
+            arg("other")))
+      .def("__ne__",&not_equal_all_all)
       .def("round", round)
       .def("iround", iround)
       .def("dot", dot_a_s)
