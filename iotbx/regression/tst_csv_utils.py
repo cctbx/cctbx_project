@@ -17,9 +17,10 @@ def exercise_writer():
   csv_utils.writer(f, (x,y), field_names=field_names)
   f.close()
   f = open(f.name, 'r')
-  content = f.readlines()
-  text = ['x,y\r\n']
-  text += ['%s,%s\r\n' %(row[0],row[1]) for row in zip(x,y)]
+  content = [l.strip() for l in f.readlines()]
+
+  text = ['x,y']
+  text += ['%s,%s' %(row[0],row[1]) for row in zip(x,y)]
   assert content == text
   f.close()
 
@@ -29,8 +30,8 @@ def exercise_writer():
   csv_utils.writer(f, (x,y), delimiter=';')
   f.close()
   f = open(f.name, 'r')
-  content = f.readlines()
-  text = ['%s;%s\r\n' %(row[0],row[1]) for row in zip(x,y)]
+  content = [l.strip() for l in f.readlines()]
+  text = ['%s;%s' %(row[0],row[1]) for row in zip(x,y)]
   assert content == text
 
   x = flex.int(x)
@@ -39,9 +40,9 @@ def exercise_writer():
   csv_utils.writer(f, (x,y), field_names=field_names)
   f.close()
   f = open(f.name, 'r')
-  content = f.readlines()
-  text = ['x,y\r\n']
-  text += ['%s,%s\r\n' %(row[0],row[1]) for row in zip(x,y)]
+  content = [l.strip() for l in f.readlines()]
+  text = ['x,y']
+  text += ['%s,%s' %(row[0],row[1]) for row in zip(x,y)]
   assert content == text
   f.close()
 
