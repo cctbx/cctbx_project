@@ -1,9 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import os
-import sys
-import time
-from cStringIO import StringIO
+import time, os, sys
 
 import mmtbx.model
 import iotbx.pdb
@@ -14,6 +11,7 @@ from libtbx.test_utils import approx_equal
 from cctbx.array_family import flex
 from cctbx import xray
 from libtbx.utils import Sorry
+from six.moves import cStringIO as StringIO
 import mmtbx.validation.clashscore as mvc
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 

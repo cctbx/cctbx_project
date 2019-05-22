@@ -107,7 +107,9 @@ def smart_split_cif_line(line):
 
 def run(filename):
   if not os.path.exists(filename): return None
-  lines = open(filename).read().splitlines()
+  lines = []
+  with open(filename) as f:
+    lines = f.read().splitlines()
   merge = True
   while merge:
     merge = []

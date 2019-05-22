@@ -7,6 +7,7 @@ from libtbx.utils import null_out
 import scitbx.matrix
 from cctbx import sgtbx
 from libtbx.test_utils import approx_equal
+import six
 
 
 def check_if_1_5_interaction(
@@ -142,7 +143,7 @@ class clashes(object):
       print('\n' + lbl_str.format(*labels), file=log)
       print('-'*78, file=log)
       atoms = self.model.get_atoms()
-      for iseq_tuple, record in self._clashes_dict.iteritems():
+      for iseq_tuple, record in six.iteritems(self._clashes_dict):
         i_seq, j_seq = iseq_tuple
         overlap = record[2]
         if record[4] is not None:
@@ -204,7 +205,7 @@ class clashes(object):
     self._symmetry_clashes_dict = dict()
     n_clashes_sym = 0
     clashscore_sym = 0
-    for iseq_tuple, record in self._clashes_dict.iteritems():
+    for iseq_tuple, record in six.iteritems(self._clashes_dict):
       if record[4] is not None:
         self._symmetry_clashes_dict[iseq_tuple] = record
     if self._symmetry_clashes_dict:
@@ -223,7 +224,7 @@ class clashes(object):
     n_clashes_macro_mol = 0
     clashscore_macro_mol = 0
     macro_mol_sel = self.model.selection(string = 'protein')
-    for iseq_tuple, record in self._clashes_dict.iteritems():
+    for iseq_tuple, record in six.iteritems(self._clashes_dict):
       if (macro_mol_sel[iseq_tuple[0]] and macro_mol_sel[iseq_tuple[1]]
           and record[4] is None):
         self._macro_mol_clashes_dict[iseq_tuple] = record
@@ -643,7 +644,7 @@ class manager():
     of the two clashes (if an angular cutoff is above a limit)
     """
     clashes_to_be_removed = list()
-    for i_seq, j_seq_list in self._mult_clash_dict.iteritems():
+    for i_seq, j_seq_list in six.iteritems(self._mult_clash_dict):
       n_multiples = len(j_seq_list)
       if n_multiples <= 1: continue
       for i in range(n_multiples-1):
