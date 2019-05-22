@@ -16,7 +16,6 @@ import sys
 import time
 import zipfile
 from optparse import OptionParser
-from six.moves import zip
 
 if __name__ == '__main__' and __package__ is None:
   # Cannot use relative imports when run from bootstrap, so add this

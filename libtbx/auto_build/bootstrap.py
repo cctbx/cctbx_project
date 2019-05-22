@@ -25,11 +25,14 @@ import tempfile
 import textwrap
 import time
 import traceback
-import urllib2 # FIXME Python 2/3 compatible line is as follows:
-#from six.moves import urllib
-import urlparse
+try: # Python 3
+    from urllib.parse import urlparse
+    from urllib.request import urlopen, Request
+    from urllib.error import HTTPError, URLError
+except ImportError: # Python 2
+    from urlparse import urlparse
+    from urllib2 import urlopen, Request, HTTPError, URLError
 import zipfile
-from six.moves import map
 
 try:
   import argparse
@@ -254,17 +257,14 @@ class Toolbox(object):
         else:
           # Handle target environment that doesn't support HTTPS verification
           ssl._create_default_https_context = _create_unverified_https_context
-      url_request = urllib2.Request(url) # FIXME Python 2/3 compatible line is as follows:
-      #url_request = urllib.request.Request(url)
+      url_request = Request(url)
       if etag:
         url_request.add_header("If-None-Match", etag)
       if localcopy:
         # Shorten timeout to 7 seconds if a copy of the file is already present
-        socket = urllib2.urlopen(url_request, None, 7) # FIXME Python 2/3 compatible line is:
-        #socket = urllib.request.urlopen(url_request, None, 7)
+        socket = urlopen(url_request, None, 7)
       else:
-        socket = urllib2.urlopen(url_request) # FIXME Python 2/3 compatible line is as follows:
-        #socket = urllib.request.urlopen(url_request)
+        socket = urlopen(url_request)
     except SSLError as e:
       # This could be a timeout
       if localcopy:
@@ -274,10 +274,8 @@ class Toolbox(object):
         return -2
       # otherwise pass on the error message
       raise
-    except (pysocket.timeout, urllib2.HTTPError) as e:               # FIXME Python2/3 below:
-    #except (pysocket.timeout, urllib.error.HTTPError) as e:
-      if isinstance(e, urllib2.HTTPError) and etag and e.code == 304:# FIXME Python2/3 below:
-      #if isinstance(e, urllib.error.HTTPError) and etag and e.code == 304:
+    except (pysocket.timeout, HTTPError) as e:
+      if isinstance(e, HTTPError) and etag and e.code == 304:
         # When using ETag. a 304 error means everything is fine
         log.write("local copy is current (etag)\n")
         return -2
@@ -288,8 +286,7 @@ class Toolbox(object):
         return -2
       # otherwise pass on the error message
       raise
-    except urllib2.URLError as e: # FIXME Python 2/3 compatible line is as follows:
-    #except urllib.error.URLError as e:
+    except URLError as e:
       if localcopy:
         # Download failed for some reason, but a valid local copy of
         # the file exists, so use that one instead.
@@ -305,7 +302,7 @@ class Toolbox(object):
 
     if (socket is not None):
       try:
-        file_size = int(socket.info().getheader('Content-Length'))
+        file_size = int(socket.info().get('Content-Length'))
       except Exception:
         file_size = 0
 
@@ -384,9 +381,9 @@ class Toolbox(object):
         atime = st[ST_ATIME] # current access time
         os.utime(file,(atime,remote_mtime))
 
-      if cache and socket.info().getheader('ETag'):
+      if cache and socket.info().get('ETag'):
         # If the server sent an ETAG, then keep it alongside the file
-        open(tagfile, 'w').write(socket.info().getheader('ETag'))
+        open(tagfile, 'w').write(socket.info().get('ETag'))
 
     return received
 
@@ -492,9 +489,7 @@ class Toolbox(object):
       if ('cctbx_project.git' in parameters[0]):
         print('\n' + '=' * 80 + '\nCCTBX moved to git on November 22, 2016.\n\nTo update cctbx_project to the last available subversion revision please run "svn update" while in the cctbx_project directory.\n' + '*'*80 + '\n')
       return
-    #from six import string_types # FIXME Python 2/3 compatible lines
-    #if isinstance(parameters, string_types):
-    if isinstance(parameters, basestring):
+    if isinstance(parameters, str):
       parameters = [ parameters ]
     git_parameters = []
     for source_candidate in parameters:
@@ -537,7 +532,7 @@ class Toolbox(object):
         ).run()
         return returncode
       filename = "%s-%s" % (module,
-                            urlparse.urlparse(source_candidate)[2].split('/')[-1])
+                            urlparse(source_candidate)[2].split('/')[-1])
       filename = os.path.join(destpath, filename)
       if verbose:
         print("===== Downloading %s: " % source_candidate, end=' ')
@@ -1348,7 +1343,7 @@ class Builder(object):
     self.add_step(_download())
 
   def _add_curl(self, module, url):
-    filename = urlparse.urlparse(url)[2].split('/')[-1]
+    filename = urlparse(url)[2].split('/')[-1]
     self._add_download(url, os.path.join('modules', filename))
     self.add_step(self.shell(
       name="extracting files from %s" %filename,
