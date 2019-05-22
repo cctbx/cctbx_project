@@ -197,18 +197,18 @@ namespace {
     return result;
   }
 
-  // Checks if all elements of a flex.vec3_double are equal 
-  // to all elements of another flex.vec3_double. Returns a bool
-  bool equal_all_all(
+  // Element-wise comparison between two flex.vec3_double of same size
+  // to assess which elements are equal. Returns a flex.bool
+  af::shared<bool> equal_all_all(
       af::const_ref < vec3 <double> > const& self,
       af::const_ref < vec3 <double> > const& other) {
     SCITBX_ASSERT(self.size() == other.size());
+    af::shared<bool> result(self.size());
     for (std::size_t i = 0; i < self.size(); ++i) {
-      if (self[i] != other[i]){
-        return false;
-        }
+      bool a = self[i] == other[i];
+      result[i] = a;
     }
-    return true;
+    return result;
   }
 
   // Checks which elements in flex vec3_double is not equal
@@ -224,19 +224,18 @@ namespace {
     return result;
   }
 
-  // Checks if all elements of a flex.vec3_double are equal 
-  // to all elements of another flex.vec3_double. Returns a bool
-  // Basically even with a single inequality, false is returned
-  bool not_equal_all_all(
+  // Element-wise comparison between two flex.vec3_double of same size
+  // to assess which elements are not equal. Returns a flex.bool
+  af::shared<bool> not_equal_all_all(
       af::const_ref < vec3 <double> > const& self,
       af::const_ref < vec3 <double> > const& other) {
     SCITBX_ASSERT(self.size() == other.size());
+    af::shared<bool> result(self.size());
     for (std::size_t i = 0; i < self.size(); ++i) {
-      if (self[i] != other[i]){
-        return true;
-        }
+      bool a = self[i] != other[i];
+      result[i] = a;
     }
-    return false;
+    return result;
   }
 
   flex_double
@@ -687,13 +686,21 @@ namespace boost_python {
           af::const_ref< vec3<double> > const&,
           vec3<double>)) &equal_all_single, (
             arg("other")))
-      .def("__eq__",&equal_all_all)
+      .def("__eq__",
+        (af::shared<bool>(*)(
+          af::const_ref< vec3<double> > const&,
+          af::const_ref< vec3<double> > const& )) &equal_all_all, (
+            arg("other")))
       .def("__ne__",
         (af::shared<bool>(*)(
           af::const_ref< vec3<double> > const&,
           vec3<double>)) &not_equal_all_single, (
             arg("other")))
-      .def("__ne__",&not_equal_all_all)
+      .def("__ne__",
+        (af::shared<bool>(*)(
+          af::const_ref< vec3<double> > const&,
+          af::const_ref< vec3<double> > const& )) &not_equal_all_all, (
+            arg("other")))
       .def("round", round)
       .def("iround", iround)
       .def("dot", dot_a_s)
