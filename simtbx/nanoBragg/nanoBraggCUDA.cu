@@ -1,7 +1,7 @@
 /*
  ============================================================================
  Name        : nanoBraggCUDA.cu
- Author      : 
+ Author      :
  Version     :
  Copyright   : Your copyright notice
  Description : CUDA compute reciprocals
@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "nanotypes.h"
+#include "cuda_compatibility.h"
 
 static void CheckCudaErrorAux(const char *, unsigned, const char *, cudaError_t);
 #define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
