@@ -779,7 +779,7 @@ def exercise_input_pickling():
       "\n".join(getattr(l, section)()),
       "\n".join(getattr(pdb_inp, section)()))
   s = "\n".join(l.__getinitargs__()[1])
-  d = hashlib.md5(s).hexdigest()
+  d = hashlib.md5(s.encode("ascii")).hexdigest()
   if (pdb.hierarchy.atom.has_siguij()):
     assert d == "bf987c40cc8672e2f2324d91d6de3e2b"
   else:
