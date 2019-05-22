@@ -708,6 +708,7 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
                                                 incident[2] = -__ldg(&source_Y[source]);
                                                 incident[3] = -__ldg(&source_Z[source]);
                                                 CUDAREAL lambda = __ldg(&source_lambda[source]);
+                                                CUDAREAL lambdaFrac = __ldg(&source_I[source]);
 
                                                 /* construct the incident beam unit vector while recovering source distance */
                                                 // TODO[Giles]: Optimization! We can unitize the source vectors before passing them in.
@@ -1003,7 +1004,7 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
                                                                 /* now we have the structure factor for this pixel */
 
                                                                 /* convert amplitudes into intensity (photons per steradian) */
-                                                                I += F_cell * F_cell * F_latt * F_latt * capture_fraction * omega_pixel;
+                                                                I += F_cell * F_cell * F_latt * F_latt * capture_fraction * omega_pixel * lambdaFrac;
                                                                 omega_sub_reduction += omega_pixel;
                                                         }
                                                         /* end of mosaic loop */
