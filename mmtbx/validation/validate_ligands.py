@@ -7,7 +7,7 @@ import mmtbx.model
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 from cctbx import adptbx
 from iotbx import phil
-#from cctbx.array_family import flex
+from cctbx.array_family import flex
 from libtbx import group_args
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
