@@ -8,7 +8,7 @@
 #define IS_PY3K
 
 void destroy_pyobject(PyObject* obj_ptr) {
-  free(obj_ptr);
+  free(PyCapsule_GetPointer(obj_ptr, NULL));
 }
 
 #endif
