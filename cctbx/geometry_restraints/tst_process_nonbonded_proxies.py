@@ -1,5 +1,10 @@
-from __future__ import division, print_function
-import time, os
+from __future__ import absolute_import, division, print_function
+
+import os
+import sys
+import time
+from cStringIO import StringIO
+
 import mmtbx.model
 import iotbx.pdb
 from libtbx import easy_run
@@ -8,7 +13,6 @@ from libtbx.test_utils import approx_equal
 from cctbx.array_family import flex
 from cctbx import xray
 from libtbx.utils import Sorry
-from cStringIO import StringIO
 import mmtbx.validation.clashscore as mvc
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 
@@ -724,6 +728,9 @@ END
 """
 
 if (__name__ == "__main__"):
+  if not os.getenv("MMTBX_CCP4_MONOMER_LIB") and not os.getenv("CLIBD_MONCLIBD"):
+    print("Test skipped, need monomer library")
+    sys.exit()
   t0 = time.time()
   test_1_5_overlaps()
   test_inline_angle()
