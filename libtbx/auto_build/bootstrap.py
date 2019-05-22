@@ -1634,6 +1634,9 @@ sure you have a valid conda environment in
         # check for existing miniconda3 installation
         if not os.path.isdir('miniconda3'):
           flags.append('--install_conda')
+        # check if --python3 is set
+        if self.python3:
+          flags.append('--python=36')
         command = [
           'python',
           self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build',
