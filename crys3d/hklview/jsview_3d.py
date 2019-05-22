@@ -35,11 +35,11 @@ class ArrayInfo:
       data = millarr.sigmas()
       self.maxsigmas =max( data )
       self.minsigmas =min( data )
-      self.minmaxstr = "MinMaxValues:[%s; %s], MinMaxSigmaValues:[%s; %s]" \
+      self.minmaxstr = "MinMax:[%s; %s], MinMaxSigs:[%s; %s]" \
         %(roundoff(self.mindata), roundoff(self.maxdata), \
             roundoff(self.minsigmas), roundoff(self.maxsigmas))
     else:
-      self.minmaxstr = "MinMaxValues:[%s; %s]" %(roundoff(self.mindata), roundoff(self.maxdata))
+      self.minmaxstr = "MinMax:[%s; %s]" %(roundoff(self.mindata), roundoff(self.maxdata))
     self.labels = self.desc = ""
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if millarr.info():
@@ -58,7 +58,7 @@ class ArrayInfo:
     issymunique = millarr.is_unique_set_under_symmetry()
     self.infotpl = (self.labels, self.desc, millarr.indices().size(), self.span,
      self.minmaxstr, roundoff(dmin), roundoff(dmax), issymunique )
-    self.infostr = "%s (%s), %s %s, %s, d_min_max: %s, %s, Symmetry unique: %d" % self.infotpl
+    self.infostr = "%s (%s), %s %s, %s, d_minmax: %s, %s, SymUnique: %d" % self.infotpl
 
 
 class hklview_3d:
@@ -85,6 +85,9 @@ class hklview_3d:
     self.matchingarrayinfo = []
     self.binstrs = []
     self.mapcoef_fom_dict = {}
+    self.verbose = True
+    if kwds.has_key('verbose'):
+      self.verbose = kwds['verbose']
     self.mprint = sys.stdout.write
     if kwds.has_key('mprint'):
       self.mprint = kwds['mprint']
@@ -142,11 +145,11 @@ class hklview_3d:
 
 
   def set_miller_array(self, miller_array, merge=None, details="", proc_arrays=[]) :
-    if (miller_array is None):
-      return
     self.miller_array = miller_array
     self.proc_arrays = proc_arrays
     self.merge = merge
+    if (miller_array is None):
+      return
     self.d_min = miller_array.d_min()
     array_info = miller_array.info()
     self.binvals = [ 1.0/miller_array.d_max_min()[0], 1.0/miller_array.d_max_min()[1]  ]
@@ -736,15 +739,14 @@ var hklscene = function () {
     fomlp = lp + wp
     fomwp = wp3
     fomtop2 = fomtop - 13
-    // print the FOM label
-    addDivBox("%s", fomtop, fomlp, fomwp, 20);
-
-    // print the 3 numbers
+    // print the 1 number
     addDivBox("1", fomtop2, fomlp, fomwp, 20)
-
+    // print the 0.5 number
     leftp = fomlp + 0.48 * gl * colourgradvalarray.length
     addDivBox("0.5", fomtop2, leftp, fomwp, 20)
-
+    // print the FOM label
+    addDivBox("%s", fomtop, leftp, fomwp, 20);
+    // print the 0 number
     leftp = fomlp + 0.96 * gl * colourgradvalarray.length
     addDivBox("0", fomtop2, leftp, fomwp, 20)
   }
@@ -862,7 +864,7 @@ mysocket.onmessage = function (e) {
   def OnConnectWebsocketClient(self, client, server):
     #if not self.websockclient:
     self.websockclient = client
-    self.mprint( "Browser connected:" + str( self.websockclient ) )
+    self.mprint( "Browser connected:" + str( self.websockclient ), self.verbose )
     #else:
     #  self.mprint( "Unexpected browser connection was rejected" )
 
@@ -941,7 +943,7 @@ mysocket.onmessage = function (e) {
     with open(self.hklfname, "w") as f:
       f.write( htmlstr )
     self.url = "file://" + os.path.abspath( self.hklfname )
-    self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname )
+    self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, self.verbose )
     if self.UseOSBrowser:
       webbrowser.open(self.url, new=1)
     self.isnewfile = False

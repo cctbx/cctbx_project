@@ -238,11 +238,9 @@ class HKLViewFrame () :
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
     self.viewer = view_3d.hklview_3d( **kwds )
-    self.master_phil = libtbx.phil.parse( masterphilstr )
-    self.params = self.master_phil.fetch().extract()
+    self.ResetPhilandViewer()
     self.NewFileLoaded = False
     self.infostr = ""
-
     self.useSocket=False
     if kwds.has_key('useSocket'):
       self.useSocket = kwds['useSocket']
@@ -261,45 +259,64 @@ class HKLViewFrame () :
       philstr = self.socket.recv()
       philstr = str(philstr)
       self.mprint("Received phil string:\n" + philstr)
-      new_phil = self.GetNewPhilString(philstr)
+      new_phil = libtbx.phil.parse(philstr)
       self.update_settings(new_phil)
       #print "in zmq listen"
       time.sleep(1)
     del self.socket
 
 
+  def ResetPhilandViewer(self, extraphil=None):
+    self.master_phil = libtbx.phil.parse( masterphilstr )
+    self.currentphil = self.master_phil
+    if extraphil:
+      self.currentphil = self.currentphil.fetch(source = extraphil)
+    self.params = self.currentphil.fetch().extract()
+    self.viewer.miller_array = None
+    self.viewer.proc_arrays = []
+
+
+  def GetNewCurrentPhilFromString(self, philstr, oldcurrentphil):
+    user_phil = libtbx.phil.parse(philstr)
+    newcurrentphil = oldcurrentphil.fetch(source = user_phil)
+    diffphil = oldcurrentphil.fetch_diff(source = user_phil)
+    return newcurrentphil, diffphil
+
+
+  def GetNewCurrentPhilFromPython(self, pyphilobj, oldcurrentphil):
+    newcurrentphil = oldcurrentphil.fetch(source = pyphilobj)
+    diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
+    return newcurrentphil, diffphil
+
+
+  def SetCurrentPhilAsPython(self, pyphil):
+    newphil = master_phil.format(python_object= pyphil)
+    currphil = master_phil.fetch(source = newphil)
 
 
   def update_settings(self, new_phil=None):
     if not new_phil:
       new_phil = self.master_phil.format(python_object = self.params)
-    else:
-      current_phil = self.master_phil.format(python_object = self.params)
-      working_phil = self.master_phil.fetch(sources = [new_phil, current_phil] )
-    #print "in update_settings"
-    diff = None
-#    try:
 
-    working_phil = self.master_phil.fetch(source = new_phil)
-    diff_phil = self.master_phil.fetch_diff(source = working_phil)
+    self.currentphil, diff_phil = self.GetNewCurrentPhilFromPython(new_phil, self.currentphil)
+    diff = None
     if len(diff_phil.all_definitions()) < 1:
       self.mprint( "Nothing's changed")
       return False
 
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     diff = diff_phil.extract().NGL_HKLviewer
     self.mprint("diff phil:\n" + diff_phil.as_str() )
 
-    self.master_phil = working_phil
-    self.params = working_phil.extract()
+    self.params = self.currentphil.extract()
     phl = self.params.NGL_HKLviewer
 
     if hasattr(diff, "filename"):
+      self.ResetPhilandViewer(diff_phil)
       self.load_reflections_file(phl.filename)
 
     if hasattr(diff, "column") or hasattr(diff, "fomcolumn") \
      or hasattr(diff, "mergedata") or hasattr(diff, "columnbinthresholds"):
-      print "mergedata in updatesettings: " , self.params.NGL_HKLviewer.mergedata
+      #print "mergedata in updatesettings: " , self.params.NGL_HKLviewer.mergedata
       if self.set_column(phl.column, phl.fomcolumn):
         self.set_column_bin_thresholds(phl.columnbinthresholds, phl.binarray)
 
@@ -312,9 +329,6 @@ class HKLViewFrame () :
     if hasattr(diff, "viewer"):
       self.viewer.settings = phl.viewer
       self.settings = phl.viewer
-    #except Exception, e :
-    #  print to_str(e)
-    #  sys.exit(-42)
 
     msg = self.viewer.update_settings()
     self.mprint( msg)
@@ -384,7 +398,7 @@ class HKLViewFrame () :
           philstr = self.socket.recv()
           philstr = str(philstr)
           self.mprint("process_miller_array, Received phil:\n" + philstr)
-          new_phil = self.GetNewPhilString(philstr)
+          new_phil = libtbx.phil.parse(philstr)
           #working_phil = self.master_phil.fetch(source = new_phil)
           params = new_phil.extract().NGL_HKLviewer
           if hasattr(params, "mergedata"): # awaiting user to tick a checkbox on the gui
@@ -443,7 +457,7 @@ class HKLViewFrame () :
     #   details=array_info.details_str, valid_arrays=self.valid_arrays)
 
 
-  def update_space_group_choices (self) :
+  def update_space_group_choices(self) :
     from cctbx.sgtbx.subgroups import subgroups
     from cctbx import sgtbx
     sg_info = self.miller_array.space_group_info()
@@ -493,7 +507,7 @@ class HKLViewFrame () :
     if (file_name != ""):
       from iotbx.reflection_file_reader import any_reflection_file
       self.viewer.isnewfile = True
-      self.params.NGL_HKLviewer.mergedata = None
+      #self.params.NGL_HKLviewer.mergedata = None
       self.viewer.iarray = 0
       self.viewer.icolourcol = 0
       self.viewer.iradiicol = 0
@@ -616,11 +630,13 @@ class HKLViewFrame () :
     self.viewer.icolourcol = column
     self.viewer.iradiicol = column
     if self.valid_arrays[column].is_complex_array():
-      if fomcolumn:
+      if fomcolumn and self.valid_arrays[fomcolumn].is_real_array():
         self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()] = fomcolumn
+        self.mprint("Using array %d as FOM values for array %d" %(fomcolumn, column))
       else:
         if self.viewer.mapcoef_fom_dict.get(self.valid_arrays[column].info().label_string()):
           del self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()]
+        self.mprint("No valid FOM array provided.")
     self.set_miller_array(self.valid_arrays[column])
     if (self.miller_array is None) :
       raise Sorry("No data loaded!")
@@ -688,12 +704,6 @@ class HKLViewFrame () :
     self.params.NGL_HKLviewer.viewer.phase_color = val
     self.update_settings()
 
-
-  def GetNewPhilString(self, philstr):
-    user_phil = libtbx.phil.parse(philstr)
-    new_phil = self.master_phil.fetch(source = user_phil)
-    return new_phil
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
   def GetSpaceGroupChoices(self):
