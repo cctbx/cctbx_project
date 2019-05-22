@@ -48,7 +48,7 @@ class ArrayInfo:
       self.span = ( millarr.index_span().min(), millarr.index_span().max())
       dmin = millarr.d_max_min()[1]
       dmax = millarr.d_max_min()[0]
-    except Exception, e:
+    except Exception as e:
       mprint(to_str(e))
     issymunique = millarr.is_unique_set_under_symmetry()
     self.infotpl = (self.labels, self.desc, millarr.indices().size(), self.span,
