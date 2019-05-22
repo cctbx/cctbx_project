@@ -5,10 +5,11 @@ from scitbx import matrix
 from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal, show_diff
 import libtbx.math_utils
-from io import BytesIO
+from six.moves import cStringIO as StringIO
 from past.builtins import cmp
 from six.moves import range
 from six.moves import cPickle as pickle
+import six
 import math
 import random
 import time
@@ -551,6 +552,8 @@ def exercise_misc():
     rgb_scales_low=(1,1,1),
     rgb_scales_high=(0,0,0),
     saturation=2)
+  if six.PY3:
+    ord = lambda x: x
   assert [ord(c) for c in s] \
       == [128, 128, 128, 0, 0, 0, 255, 255, 255, 0, 0, 0, 255, 255, 255]
   s = a.as_rgb_scale_string(
@@ -1393,7 +1396,7 @@ def exercise_functions():
     assert values.format_min(format=format) == "None"
     assert values.format_max(format=format) == "None"
     assert values.format_mean(format=format) == "None"
-    s = BytesIO()
+    s = StringIO()
     stats.show(out=s, prefix="values ", format=format)
     assert not show_diff(s.getvalue(), """\
 values n: 0
@@ -1401,7 +1404,7 @@ values min:  None
 values max:  None
 values mean: None
 """)
-  s = BytesIO()
+  s = StringIO()
   stats.show(out=s, format="%6.2f")
   assert not show_diff(s.getvalue(), """\
 n: 0
@@ -1420,7 +1423,7 @@ mean:   None
     assert values.format_min(format=format) == "-7"+p0
     assert values.format_max(format=format) == "14"+p0
     assert values.format_mean(format=format) == "2"+p0
-    s = BytesIO()
+    s = StringIO()
     stats.show(out=s, format=format)
     assert not show_diff(s.getvalue(), """\
 n: 6
@@ -1428,7 +1431,7 @@ min:  -7%s
 max:  14%s
 mean: 2%s
 """ % (p0,p0,p0))
-  s = BytesIO()
+  s = StringIO()
   stats.show(out=s, format="%6.2f")
   assert not show_diff(s.getvalue(), """\
 n: 6
@@ -2074,7 +2077,7 @@ def exercise_histogram():
 *15.2 - 19: 7"""
   hy = flex.histogram(
     data=y, data_min=2, data_max=10, n_slots=4, relative_tolerance=1.e-4)
-  s = BytesIO()
+  s = StringIO()
   hy.show(f=s, prefix="&")
   assert s.getvalue() == """\
 &2 - 4: 2
@@ -2087,7 +2090,7 @@ def exercise_histogram():
   assert approx_equal(centers, [3,5,7,9])
   p = pickle.dumps(hy)
   l = pickle.loads(p)
-  t = BytesIO()
+  t = StringIO()
   l.show(f=t, prefix="&")
   assert not show_diff(t.getvalue(), s.getvalue())
   assert l.n_out_of_slot_range() == 17
@@ -2144,7 +2147,7 @@ def exercise_weighted_histogram():
   hy = flex.weighted_histogram(other=h, data=y, relative_tolerance=1)
   assert tuple(hy.slots()) == (7,4,4,4,7)
   assert hy.n_out_of_slot_range() == 0
-  s = BytesIO()
+  s = StringIO()
   hy.show(f=s, prefix="*")
   assert s.getvalue() == """\
 *0 - 3.8: 7
@@ -2155,7 +2158,7 @@ def exercise_weighted_histogram():
 """
   hy = flex.weighted_histogram(
     data=y, data_min=2, data_max=10, n_slots=4, relative_tolerance=1.e-4)
-  s = BytesIO()
+  s = StringIO()
   hy.show(f=s, prefix="&")
   assert s.getvalue() == """\
 &2 - 4: 2
@@ -2168,14 +2171,14 @@ def exercise_weighted_histogram():
   assert approx_equal(centers, [3,5,7,9])
   p = pickle.dumps(hy)
   l = pickle.loads(p)
-  t = BytesIO()
+  t = StringIO()
   l.show(f=t, prefix="&")
   assert not show_diff(t.getvalue(), s.getvalue())
   assert l.n_out_of_slot_range() == 17
 
 def exercise_show_count_stats():
   def check(counts, prefix="", group_size=10, expected=None):
-    sio = BytesIO()
+    sio = StringIO()
     flex.show_count_stats(
       counts=flex.size_t(counts),
       group_size=group_size,
@@ -2279,7 +2282,7 @@ def exercise_linear_regression():
   assert approx_equal(r.slope(), 0)
   r = flex.linear_regression(y, y)
   assert not r.is_well_defined()
-  s = BytesIO()
+  s = StringIO()
   r.show_summary(f=s, prefix="/:")
   assert s.getvalue() == """\
 /:is_well_defined: %s
@@ -2331,7 +2334,7 @@ def exercise_linear_correlation():
   assert c.is_well_defined()
   c = flex.linear_correlation(flex.double(), flex.double())
   assert not c.is_well_defined()
-  s = BytesIO()
+  s = StringIO()
   c.show_summary(f=s)
   assert s.getvalue() == """\
 is_well_defined: %s
