@@ -76,6 +76,21 @@ class unit_cell_statistics(worker):
       edges = [flex.double(total_edge0), flex.double(total_edge1), flex.double(total_edge2)]
       _show_each(edges)
 
+      '''
+      # for LD91 test
+      from matplotlib import pyplot as plt
+      left = 77
+      bottom = 34
+      width = 85 - 77
+      height = 44 - 34
+      rect = [left, bottom, width, height]
+
+      plt.xlim(77,85)
+      plt.ylim(34,44)
+      plt.plot(total_edge0, total_edge2, ".")
+      plt.show()
+      '''
+
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker
   exercise_worker(unit_cell_statistics)

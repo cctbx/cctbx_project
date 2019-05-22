@@ -69,7 +69,22 @@ class Script(object):
     import importlib
 
     workers = []
-    for step in ['input', 'model', 'modify', 'edit', 'filter', 'scale', 'postrefine', 'statistics experiment', 'group', 'errors', 'statistics intensity', 'merge']:
+    for step in ['input',
+                 'model',
+                 'modify',
+                 'edit',
+                 'statistics unit_cell',
+                 'filter',
+                 'statistics unit_cell',
+                 'scale',
+                 'postrefine',
+                 'statistics experiment',
+                 'group',
+                 'errors',
+                 'statistics intensity',
+                 'merge',
+                 'statistics intensity_histogram',
+                 'output']:
 
       step_factory_name = step
       step_additional_info = None

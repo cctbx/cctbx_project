@@ -16,8 +16,22 @@ class mpi_helper(object):
   def finalize(self):
     self.MPI.Finalize()
 
+  def extend_flex(self, data, flex_type):
+    '''Build an extended flex array out of multiple flex arrays.'''
+    extended = None
+
+    all_data = self.comm.gather(data, 0)
+
+    if self.rank == 0:
+      if len(all_data) > 0:
+        extended = all_data[0]
+        for i in range(1, self.size):
+          extended.extend(all_data[i])
+
+    return extended
+
   def cumulative_flex(self, data, flex_type):
-    '''Build a cumulative flex array out of flex arrays from individual ranks'''
+    '''Build a cumulative sum flex array out of multiple flex arrays. All arays must be the same size.'''
     if self.rank == 0: # only rank 0 will actually get the cumulative array
       cumulative = flex_type(data.size(), 0)
     else:

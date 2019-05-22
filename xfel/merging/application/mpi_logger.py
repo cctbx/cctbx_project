@@ -1,4 +1,5 @@
 from __future__ import division
+import os
 
 class mpi_logger(object):
   """A class to facilitate each rank writing to its own log file and (optionally) to a special log file for timing"""
@@ -14,7 +15,7 @@ class mpi_logger(object):
       self.rank_log_file_path = None
       self.timing_file_path = None
 
-    self.log_buffer = self.main_log_buffer = '' # the buffer is needed to store the output while the file path isn't known yet
+    self.log_buffer = self.main_log_buffer = '' # a buffer for handling a run-time case, when the file path isn't known yet, so we need to store the output somewhere
 
     self.timing_table = dict()
 
@@ -25,11 +26,11 @@ class mpi_logger(object):
     else:
       title = 'merge'
 
-    self.main_log_file_path = params.output.output_dir + '/' + title + ".log"
-    self.rank_log_file_path = params.output.output_dir + '/rank_%06d_%06d.out'%(self.mpi_helper.size, self.mpi_helper.rank)
+    self.main_log_file_path = os.path.join(params.output.output_dir, title + ".log")
+    self.rank_log_file_path = os.path.join(params.output.output_dir, 'rank_%06d_%06d.out'%(self.mpi_helper.size, self.mpi_helper.rank))
 
     if params.output.do_timing:
-      self.timing_file_path = params.output.output_dir + '/timing_%06d_%06d.out'%(self.mpi_helper.size, self.mpi_helper.rank)
+      self.timing_file_path = os.path.join(params.output.output_dir, 'timing_%06d_%06d.out'%(self.mpi_helper.size, self.mpi_helper.rank))
     else:
       self.timing_file_path = None
 

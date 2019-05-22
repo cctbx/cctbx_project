@@ -30,7 +30,7 @@ class file_load_calculator(object):
 
     global debug_log_path
     if debug_file_load_calculator:
-      debug_log_path = self.params.output.output_dir + '/calculate_file_load.out'
+      debug_log_path = os.path.join(self.params.output.output_dir, 'calculate_file_load.out')
 
   def calculate_file_load(self, available_rank_count=0):
     '''Calculate a load and build a dictionary {rank:file_list} for the input number of ranks'''

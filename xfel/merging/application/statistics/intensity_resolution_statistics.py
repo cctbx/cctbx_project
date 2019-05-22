@@ -7,6 +7,7 @@ from libtbx import adopt_init_args
 from libtbx.str_utils import format_value
 from libtbx import table_utils
 from xfel.merging.application.reflection_table_utils import reflection_table_utils
+from six.moves import cStringIO as StringIO
 
 class intensity_table_bin(object):
   '''Storage class for parameters of a resolution bin used by the hkl intensity statistics table'''
@@ -115,6 +116,11 @@ class intensity_resolution_statistics(worker):
     return 'Intensity resolution statistics'
 
   def run(self, experiments, reflections):
+    reflections_before_stats_count = reflections.size()
+    total_reflections_before_stats_count = self.mpi_helper.sum(reflections_before_stats_count)
+    if self.mpi_helper.rank == 0:
+      self.logger.main_log("Total reflections before doing intensity statistics: %d"%(total_reflections_before_stats_count))
+
     self.logger.log_step_time("INTENSITY_STATISTICS")
 
     title = "\n                     Intensity Statistics (all accepted experiments)\n"
@@ -142,7 +148,6 @@ class intensity_resolution_statistics(worker):
     return experiments, reflections
 
   def run_detail(self, reflections):
-
     # Get pre-created resolution binning objects from the parameters
     self.resolution_binner = self.params.statistics.resolution_binner
     self.hkl_resolution_bins = self.params.statistics.hkl_resolution_bins
@@ -189,11 +194,39 @@ class intensity_resolution_statistics(worker):
 
   def calculate_intensity_statistics(self, reflections):
     '''Calculate statistics for hkl intensities distributed over resolution bins'''
+
+    used_reflections = flex.reflection_table()
+
+    zero_intensity_count_all = 0
+    zero_intensity_count_resolution_limited = 0
+
+    positive_intensity_count_all = 0
+    positive_intensity_count_resolution_limited = 0
+
+    negative_intensity_count_all = 0
+    negative_intensity_count_resolution_limited = 0
+
+    # How many bins do we have?
+    n_bins = self.resolution_binner.n_bins_all() # (self.params.statistics.n_bins + 2), 2 - to account for the hkls outside of the binner resolution range
+
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections):
       assert refls.size() > 0
+
+      zero_intensity_count_all += ((refls['intensity.sum.value'] == 0.0).count(True))
+      positive_intensity_count_all += ((refls['intensity.sum.value'] > 0.0).count(True))
+      negative_intensity_count_all += ((refls['intensity.sum.value'] < 0.0).count(True))
+
       hkl = refls[0]['miller_index_asymmetric']
       if hkl in self.hkl_resolution_bins:
+
         i_bin = self.hkl_resolution_bins[hkl]
+
+        if i_bin > 0 and i_bin < n_bins - 1:
+          used_reflections.extend(refls)
+          zero_intensity_count_resolution_limited += ((refls['intensity.sum.value'] == 0.0).count(True))
+          positive_intensity_count_resolution_limited += ((refls['intensity.sum.value'] > 0.0).count(True))
+          negative_intensity_count_resolution_limited += ((refls['intensity.sum.value'] < 0.0).count(True))
+
         multiplicity = refls.size()
         self.n_sum[i_bin] += 1
         self.m_sum[i_bin] += multiplicity
@@ -204,6 +237,33 @@ class intensity_resolution_statistics(worker):
           self.I_sum[i_bin]     += flex.sum(weighted_intensity_array) / flex.sum(weights_array)
           self.Isig_sum[i_bin]  += flex.sum(weighted_intensity_array) / math.sqrt(flex.sum(weights_array))
           #self.Isig_sum[i_bin]  += self.I_sum[i_bin] / math.sqrt(refls[0]['intensity.sum.variance'])
+
+    self.logger.log_step_time("INTENSITY_HISTOGRAM")
+    # Accumulate intensities, which were used in the above statistics table, from all ranks
+    all_used_intensities = self.mpi_helper.extend_flex(used_reflections['intensity.sum.value'], flex.double)
+
+    total_zero_intensity_count_all = self.mpi_helper.sum(zero_intensity_count_all)
+    total_zero_intensity_count_resolution_limited = self.mpi_helper.sum(zero_intensity_count_resolution_limited)
+
+    total_positive_intensity_count_all = self.mpi_helper.sum(positive_intensity_count_all)
+    total_positive_intensity_count_resolution_limited = self.mpi_helper.sum(positive_intensity_count_resolution_limited)
+
+    total_negative_intensity_count_all = self.mpi_helper.sum(negative_intensity_count_all)
+    total_negative_intensity_count_resolution_limited = self.mpi_helper.sum(negative_intensity_count_resolution_limited)
+
+    # Build a histogram of all intensities
+    if self.mpi_helper.rank == 0:
+
+      self.logger.main_log("Total reflections (I == 0.0): \t\t%d"%(total_zero_intensity_count_all))
+      self.logger.main_log("Total reflections (I > 0.0): \t\t%d"%(total_positive_intensity_count_all))
+      self.logger.main_log("Total reflections (I < 0.0): \t\t%d\n"%(total_negative_intensity_count_all))
+
+      self.logger.main_log("Resolution-limited reflections (I == 0.0): \t\t%d"%(total_zero_intensity_count_resolution_limited))
+      self.logger.main_log("Resolution-limited reflections (I > 0.0): \t\t%d"%(total_positive_intensity_count_resolution_limited))
+      self.logger.main_log("Resolution-limited reflections (I < 0.0): \t\t%d\n"%(total_negative_intensity_count_resolution_limited))
+
+      self.histogram(all_used_intensities)
+    self.logger.log_step_time("INTENSITY_HISTOGRAM", True)
 
   def build_intensity_table(self,
                             n_sum,
@@ -258,6 +318,21 @@ class intensity_resolution_statistics(worker):
         cumulative_pred   += redundancy_to_edge
       '''
     return Intensity_Table
+
+  def histogram(self, data):
+    from matplotlib import pyplot as plt
+    nslots = 100
+    histogram = flex.histogram(
+                               data=data,
+                               n_slots=nslots)
+    out = StringIO()
+    histogram.show(f=out, prefix="    ", format_cutoffs="%6.2f")
+    self.logger.main_log(out.getvalue() + '\n' + "Total: %d"%data.size() + '\n')
+
+    if False:
+      fig = plt.figure()
+      plt.bar(histogram.slot_centers(), histogram.slots(), align="center", width=histogram.slot_width())
+      plt.show()
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker

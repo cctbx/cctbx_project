@@ -104,7 +104,7 @@ class Script(Script_Base):
   def run(self):
 
     debug_file_load_calculator = True
-    log_path = self.params.output.output_dir + '/calculate_load.out'
+    log_path = os.path(self.params.output.output_dir, 'calculate_load.out')
 
     # read and parse phil
     self.initialize()

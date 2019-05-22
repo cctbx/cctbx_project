@@ -231,10 +231,15 @@ class postrefinement(worker):
 
     total_accepted_experiment_count = comm.reduce(len(new_experiments), MPI.SUM, 0)
 
+    # how many reflections have we rejected due to post-refinement?
+    rejected_reflections = len(reflections) - len(new_reflections);
+    total_rejected_reflections = self.mpi_helper.sum(rejected_reflections)
+
     if self.mpi_helper.rank == 0:
       for reason, count in total_experiments_rejected_by_reason.iteritems():
         self.logger.main_log("Total experiments rejected due to %s: %d"%(reason,count))
       self.logger.main_log("Total experiments accepted: %d"%total_accepted_experiment_count)
+      self.logger.main_log("Total reflections rejected due to post-refinement: %d"%total_rejected_reflections)
 
     self.logger.log_step_time("POSTREFINEMENT", True)
 
