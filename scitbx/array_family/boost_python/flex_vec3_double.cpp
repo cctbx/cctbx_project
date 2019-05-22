@@ -184,6 +184,18 @@ namespace {
     return result;
   }
 
+  // Checks which elements in flex vec3_double is equal
+  // to a vec3_double and returns a flex.bool
+  af::shared<bool> is_equal_to_vec3_double(
+      af::const_ref < vec3 <double> > const& self,
+      vec3 <double> other) {
+    af::shared<bool> result(self.size());
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      bool a = self[i] == other;
+      result[i] = a;
+    }
+    return result;
+  }
 
   flex_double
   as_double(flex<vec3<double> >::type const& a)
@@ -600,6 +612,11 @@ namespace boost_python {
           bool)) &angle, (
             arg("other"),
             arg("deg") = false))
+      .def("is_equal_to_vec3_double",
+        (af::shared<bool>(*)(
+          af::const_ref< vec3<double> > const&,
+          vec3<double>)) &is_equal_to_vec3_double, (
+            arg("other")))
       .def("as_double", as_double)
       .def("add_selected",
         (object(*)(
