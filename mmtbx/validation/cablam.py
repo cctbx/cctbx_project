@@ -2,11 +2,9 @@ from __future__ import division
 # (jEdit options) :folding=explicit:collapseFolds=1:
 from mmtbx.validation import residue, validation, atom
 from cctbx import geometry_restraints
-from iotbx import pdb, file_reader
 from mmtbx.rotamer.n_dim_table import NDimTable #handles contours
 from libtbx import easy_pickle #NDimTables are stored as pickle files
 import libtbx.load_env
-import libtbx.phil.command_line
 import os, sys
 
 #{{{ global constants
@@ -36,75 +34,6 @@ THREETEN_CUTOFF = 0.001
 #  structure elements
 #These values were set heuristically through inspection of known secondary
 #  structure in low-resolution models
-#-------------------------------------------------------------------------------
-#}}}
-
-#{{{ phil
-#-------------------------------------------------------------------------------
-#commandline parameters
-master_phil = libtbx.phil.parse("""
-cablam {
-  pdb_infile = None
-    .type = path
-    .help = '''input PDB file'''
-  output = *text kin full_kin points_kin records records_and_pdb oneline
-    .type = choice
-    .help = '''choose output type:
-    =text for default colon-separated residue-by-residue validation
-    =kin for outlier markup in kinemage format
-    =full_kin for outlier markup appended to structure - opens in KiNG
-    =points_kin for pointcloud in cablam space
-    =records for PDB-style HELIX/SHEET records
-    =records_and_pdb for PDB-style HELIX/SHEET records attached to a PDB file
-    =oneline for a one-line structure summary
-    '''
-  outliers_only = False
-    .type = bool
-    .help = '''compress certain outputs to show only outliers'''
-  help = False
-    .type = bool
-    .help = '''help and data interpretation messages'''
-}
-""",process_includes=True)
-#-------------------------------------------------------------------------------
-#}}}
-
-#{{{ usage
-#-------------------------------------------------------------------------------
-def usage():
-  #prints help text
-  prog = os.getenv('LIBTBX_DISPATCHER_NAME')
-  sys.stderr.write("""
-%(prog)s file.pdb [options ...]
-
-Options:
-
-  pdb_infile=filename   path to input PDB file
-                          structure coordinates file readable by Phenix.
-                          Supports .pdb, .ent, .cif, etc.
-
-  output=(choose one)   text : default output.  Prints machine-readable
-                          columnated and colon-separated validation text to
-                          screen.
-                        kin : prints kinemage markup for validation to screen
-                        full_kin : prints kinemage markup and struture kinamge
-                          to screen
-                        points_kin : prints point cloud of residues in cablam
-                          space in kinemage format
-                        records : prints pdb-style HELIX and SHEET records to
-                          screen, based on CaBLAM's identification of secondary
-                          structure
-                        records_and_pdb : prints pdb-style HELIX and SHEET
-                          records to screen, followed by PDB file formatted
-                          coordinates for the input structure
-                        oneline : prints single-line summary of CaBLAM
-                          validation statistics
-
-  outliers_only=False   compresses certain outputs (text) to show only outlier
-                          residues
-
-  help=False            prints this usage text, plus an interpretation guide
-""" % locals())
 #-------------------------------------------------------------------------------
 #}}}
 
@@ -1153,15 +1082,15 @@ class cablamalyze(validation):
 
   #{{{ as_oneline
   #-----------------------------------------------------------------------------
-  def as_oneline(self):
+  def as_oneline(self,pdbid='pdbid'):
     #prints a one-line summary of cablam statistics for a structure
     #for oneline purposes, alternates are collapsed: each residue contributes up
     #  to 1 to each outlier count, regarless of how many outlier alternates it
     #  may contain
     if self.count_residues() == 0:
-      self.out.write('pdbid:0:0:0:0\n')
+      self.out.write(pdbid+':0:0:0:0\n')
     else:
-      self.out.write('pdbid:%i:%.1f:%.1f:%.2f\n' %(self.count_residues(), self.percent_outliers(), self.percent_disfavored(), self.percent_ca_outliers()) )
+      self.out.write('%s:%i:%.1f:%.1f:%.2f\n' %(pdbid,self.count_residues(), self.percent_outliers(), self.percent_disfavored(), self.percent_ca_outliers()) )
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1443,77 +1372,3 @@ class cablamalyze(validation):
   #}}}
 #-------------------------------------------------------------------------------
 #}}}
-
-#{{{ run
-#-------------------------------------------------------------------------------
-def run(args):
-  #{{{ phil parsing
-  #-----------------------------------------------------------------------------
-  interpreter = libtbx.phil.command_line.argument_interpreter(master_phil=master_phil)
-  sources = []
-  for arg in args:
-    if os.path.isfile(arg): #Handles loose filenames
-      input_file = file_reader.any_file(arg)
-      if (input_file.file_type == "pdb"):
-        sources.append(interpreter.process(arg="pdb_infile=\"%s\"" % arg))
-      elif (input_file.file_type == "phil"):
-        sources.append(input_file.file_object)
-    else: #Handles arguments with xxx=yyy formatting
-      arg_phil = interpreter.process(arg=arg)
-      sources.append(arg_phil)
-  work_phil = master_phil.fetch(sources=sources)
-  work_params = work_phil.extract()
-  params = work_params.cablam
-  #-----------------------------------------------------------------------------
-  #}}}
-
-  if params.help:
-    usage()
-    interpretation()
-    sys.exit()
-
-  if not params.pdb_infile:
-    sys.stderr.write(
-      '\nMissing input data, please provide .pdb file\n')
-    usage()
-    sys.exit()
-
-  if not os.path.isfile(params.pdb_infile):
-    sys.stderr.write(params.pdb_infile + " is not a file or could not be found")
-    sys.exit()
-  else:
-    pdb_infile = params.pdb_infile
-
-  pdb_in = file_reader.any_file(pdb_infile)
-  if pdb_in.file_type != "pdb":
-    sys.stderr.write(pdb_infile +" not id'd as readable file\n")
-    sys.exit()
-  pdbid = os.path.splitext(os.path.basename(pdb_infile))[0]
-  pdb_io = pdb.input(pdb_infile)
-  input_hierarchy = pdb_io.construct_hierarchy()
-  cablam = cablamalyze(
-    pdb_hierarchy=input_hierarchy,
-    outliers_only=False,
-    out=sys.stdout,
-    quiet=False)
-
-  #output = *text kin full_kin points_kin records records_and_pdb oneline
-  if params.output=='oneline':
-    cablam.as_oneline()
-  elif params.output=='kin':
-    cablam.as_kinemage()
-  elif params.output=='full_kin':
-    cablam.as_full_kinemage(pdbid=pdbid)
-  elif params.output=='points_kin':
-    cablam.as_pointcloud_kinemage()
-  elif params.output=='records':
-    cablam.as_records()
-  elif params.output=='records_and_pdb':
-    cablam.as_records_and_pdb()
-  else: #default text output
-    cablam.as_text(outliers_only=params.outliers_only)
-#-------------------------------------------------------------------------------
-#}}}
-
-if __name__ == "__main__":
-  run(sys.argv[1:])
