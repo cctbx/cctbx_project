@@ -123,12 +123,6 @@ class intensity_resolution_statistics(worker):
 
     self.logger.log_step_time("INTENSITY_STATISTICS")
 
-    title = "\n                     Intensity Statistics (all accepted experiments)\n"
-    self.logger.log(title, rank_prepend=False)
-    if self.mpi_helper.rank == 0:
-      self.logger.main_log(title)
-    self.run_detail(reflections)
-
     title = "\n                     Intensity Statistics (odd accepted experiments)\n"
     self.logger.log(title, rank_prepend=False)
     if self.mpi_helper.rank == 0:
@@ -142,6 +136,12 @@ class intensity_resolution_statistics(worker):
       self.logger.main_log(title)
     reflections_even = reflection_table_utils.select_even_experiment_reflections(reflections)
     self.run_detail(reflections_even)
+
+    title = "\n                     Intensity Statistics (all accepted experiments)\n"
+    self.logger.log(title, rank_prepend=False)
+    if self.mpi_helper.rank == 0:
+      self.logger.main_log(title)
+    self.run_detail(reflections)
 
     self.logger.log_step_time("INTENSITY_STATISTICS", True)
 
