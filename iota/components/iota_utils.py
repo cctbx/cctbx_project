@@ -762,8 +762,8 @@ class RadAverageCalculator(object):
         summed_mask = mask
         summed_data = data
       else:
-        summed_data = [ sd + d for sd, d in zip(summed_data, data) ]
-        summed_mask = [ sm & m for sm, m in zip(summed_mask, mask) ]
+        summed_data = [ sd + d for sd, d in list(zip(summed_data, data)) ]
+        summed_mask = [ sm & m for sm, m in list(zip(summed_mask, mask)) ]
 
     if num_bins is None:
       num_bins = int(sum(sum(p.get_image_size()) for p in detector) / 50)
@@ -778,7 +778,7 @@ class RadAverageCalculator(object):
 
     # Compute the radial average
     radial_average = RadialAverage(beam, detector, vmin, vmax, num_bins)
-    for d, m in zip(summed_data, summed_mask):
+    for d, m in list(zip(summed_data, summed_mask)):
       radial_average.add(d.as_double() / (scan_range[1] - scan_range[0]), m)
     mean = radial_average.mean()
     reso = radial_average.inv_d2()

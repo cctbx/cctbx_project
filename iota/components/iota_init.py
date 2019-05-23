@@ -293,7 +293,8 @@ def generate_stat_containers(info, params):
     stats={},
     pixel_size=None,
     status='processing',
-    init_proc=True
+    init_proc=True,
+    have_results=False
   )
 
   # Grid search stats dictionary (HA14 - deprecated)

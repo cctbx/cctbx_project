@@ -356,7 +356,7 @@ class TrackChart(wx.Panel):
     self.ydata = nref_y
     self.idata = nref_i
 
-    nref_xy = zip(nref_x, nref_y)
+    nref_xy = list(zip(nref_x, nref_y))
     all_acc = [i[0] for i in nref_xy if i[1] >= min_bragg]
     all_rej = [i[0] for i in nref_xy if i[1] < min_bragg]
 
