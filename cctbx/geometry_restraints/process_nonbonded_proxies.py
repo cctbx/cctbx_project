@@ -116,7 +116,7 @@ class clashes(object):
     self.sort_clashes()
 
 
-  def show(self, log=null_out()):
+  def show(self, log=null_out(), show_clashscore=True):
     """
     Print all clashes in a table.
     """
@@ -124,11 +124,13 @@ class clashes(object):
     if self._clashes_dict:
       # General information
       results = self.get_results()
-      result_str = '{:<18} : {:5.2f}'
+      result_str = '{:<18} : {:5d}'
       print(result_str.format(' Number of clashes', results.n_clashes), file=log)
-      print(result_str.format(' Clashscore', results.clashscore) + '\n', file=log)
+      result_str = '{:<18} : {:5.2f}'
+      if show_clashscore:
+        print(result_str.format(' Clashscore', results.clashscore), file=log)
       # print table with all overlaps
-      labels =  ["Overlapping residues info","model distance","overlap",
+      labels =  ['\n' + "Overlapping residues info","model distance","overlap",
                  "symmetry"]
       lbl_str = '{:^33}|{:^16}|{:^11}|{:^15}'
       table_str = '{:>16}|{:>16}|{:^16.2f}|{:^11.2}|{:^15}|'
@@ -344,6 +346,7 @@ class manager():
                                  find_hbonds = False):
     """
     Process nonbonded_proxies to find bonds, interactions and clashes.
+    Clashes code refactored from Youval Dar's code for nonbonded_overlaps (LBNL 2013)
     """
     grm = self.model.get_restraints_manager().geometry
     xrs = self.model.get_xray_structure()
@@ -426,6 +429,7 @@ class manager():
       bool (is_clash): if a nonbonded proxy is a clash
     """
     is_clash = False
+    # Exclude 1-5 interaction of H atom and heavy atom
     is_1_5_interaction = check_if_1_5_interaction(
              i_seq = i_seq,
              j_seq = j_seq,
@@ -447,7 +451,7 @@ class manager():
 
   def _process_clashes(self, sites_cart, fsc0):
     """
-    Process clases found when looping through nonbonded_proxies.
+    Process clashes from previous loop through nonbonded_proxies.
 
     This step is necessary to filter out clashes with common atoms.
     X-H ~~~ Y might produce two clashes, one between X and Y, the other

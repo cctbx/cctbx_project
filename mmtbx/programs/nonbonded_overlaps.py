@@ -27,20 +27,6 @@ master_phil_str = """
   nuclear = False
     .type = bool
     .help = '''Use nuclear hydrogen positions'''
-
-  show_overlap_type = *all sym macro selection
-  .type = choice(multi=False)
-  .help = '''When using cctbx method, this parameter allows selecting to show
-  all clashes 'all', clashes dues to symmetry operation 'sym' or clashes in
-  the macro molecule 'macro'.'''
-
-  show_normalized_nbo = False
-    .type = bool
-    .help = When True, will show non-bonded overlaps per 1000 atoms
-
-  show_non_binary_overlap_values = True
-    .type = bool
-    .help = use a function
 """
 
 # =============================================================================
@@ -57,9 +43,6 @@ Options:
                             check NBO on model file as-is
   nuclear=False             use nuclear x-H distances and vdW radii
   verbose=True              verbose text output
-  show_overlap_type=all     what type of overlaps to show (all, sym or macro)
-  show_normalized_nbo=False Show non-bonded overlaps per 1000 atoms
-
 
 Example:
 
@@ -152,14 +135,14 @@ Example:
     if self.params.verbose:
       nb_overlaps.show(
         log=self.logger,
-        nbo_type=self.params.show_overlap_type,
-        normalized_nbo=self.params.show_normalized_nbo)
+        nbo_type='all',
+        normalized_nbo=True)
 
     #t2 = time.time()
     processed_nbps = pnp.manager(model = model)
     clashes = processed_nbps.get_clashes()
     #t3 = time.time()
-    clashes.show()
+    clashes.show(log=self.logger)
 
     #print("OLD time: %8.3f"%(t1-t0))
     #print("NEW time: %8.3f"%(t3-t2))

@@ -351,8 +351,9 @@ def tst_get_overlaps(vl_manager):
   for id_tuple, ligand_dict in vl_manager.items():
     for altloc, lr in ligand_dict.items():
       clashes_result = lr.get_overlaps()
-      assert(clashes_result.n_clashes == 3)
-      assert approx_equal(clashes_result.clashscore, 51.7, eps=1.0)
+      print(clashes_result.clashscore)
+      assert(clashes_result.n_clashes == 5)
+      assert approx_equal(clashes_result.clashscore, 31.6, eps=1.0)
 # anaconda
 #(['pdb=" HE3 MET A 107 "', 'pdb=" H81 PG5 A 201 "'], 17, 54, 2.0370952358689647, 2.44, '', None),
 #(['pdb=" CE  MET A 107 "', 'pdb=" C8  PG5 A 201 "'], 15, 34, 2.946989989803154, 3.4, '', None),

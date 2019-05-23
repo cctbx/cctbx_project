@@ -8,10 +8,6 @@ if __name__ == '__main__':
   run_program(program_class=nonbonded_overlaps.Program)
 
 
-
-
-
-
 #from __future__ import division
 #import mmtbx.monomer_library.pdb_interpretation as pdb_inter
 #import cctbx.geometry_restraints.nonbonded_overlaps as nbo

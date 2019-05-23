@@ -1,9 +1,11 @@
 from __future__ import division, print_function
 
 import time, os
+from cStringIO import StringIO
 import iotbx.pdb
 import mmtbx.model
 #import cctbx.geometry_restraints.nonbonded_overlaps as nbo
+import libtbx.load_env
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 from cctbx import adptbx
 from iotbx import phil
@@ -12,20 +14,23 @@ from libtbx import group_args
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
 from libtbx import easy_run
-from cStringIO import StringIO
 #from cctbx import miller
 from mmtbx import monomer_library
 from mmtbx import real_space_correlation
 #from mmtbx import map_tools
+from elbow.command_line.ready_set import model_interface as ready_set_model_interface
 
 
 master_params_str = """
 validate_ligands {
+
 place_hydrogens = True
   .type = bool
   .help = Add H atoms with ready_set.
+
 nproc = 1
   .type = int
+
 }
 """
 
@@ -125,9 +130,8 @@ class manager(dict):
 
 
   def run(self):
-    args = []
     self.get_readyset_model_with_grm()
-
+    args = []
     def _generate_ligand_isel():
       #done = []
       ph = self.model.get_hierarchy()
@@ -153,53 +157,31 @@ class manager(dict):
 
 
   def get_readyset_model_with_grm(self):
-    # TODO: user should have possibility to use existing H atoms,
-    # in this case, how to run readyset (because if might be still necessary to get
-    # ligand cif file)
+    '''
+    Run ready set by default (to get ligand cif and/or add H atoms)
+    TODO: Once it it refactored, make running it optional
+          Complicated case is when cif is input for one ligand, but missing
+          for another ligand
+    '''
     self.readyset_model = None
-    fn_pdb, fn_cif = self.run_ready_set(file_name = self.model_fn)
-    if fn_cif is not None:
-      cif_object = monomer_library.server.read_cif(file_name=fn_cif)
-      cif_objects = [(fn_cif, cif_object)]
-    else:
-      cif_objects = []
-    if fn_pdb is not None:
-      pdb_inp = iotbx.pdb.input(file_name=fn_pdb)
-      self.readyset_model = mmtbx.model.manager(
-        model_input = pdb_inp,
-        restraint_objects = cif_objects,
-        build_grm   = True,
-        log         = null_out())
-
-
-  def run_ready_set(self, file_name):
-    print('\nRunning ready_set to get ligand cif_files...')
-    import libtbx.load_env
-    has_ready_set = libtbx.env.has_module(name="phenix")
-    if not has_ready_set:
-      raise_sorry('phenix.ready_set could not be detected on your system.')
+    #if not self.model.has_hd():
     if (self.params.place_hydrogens):
-      cmd = "phenix.ready_set {} --silent".format(file_name)
-      print('Placing H atoms...')
+      params=["add_h_to_water=False",
+               "optimise_final_geometry_of_hydrogens=False",
+               "--silent"]
     else:
-      cmd = "phenix.ready_set {} hydrogens=False --silent".format(file_name)
-      print('H atoms are NOT added to the model...')
-    print(cmd)
-    out = easy_run.fully_buffered(cmd)
-    if (out.return_code != 0):
-      msg_str = "ready_set crashed - dumping stderr:\n%s"
-      raise RuntimeError(msg_str % ( "\n".join(out.stderr_lines)))
-    fn_pdb = file_name.replace('.pdb','.updated.pdb')
-    fn_cif = file_name.replace('.pdb','.ligands.cif')
-    if (os.path.isfile(fn_cif)):
-      print('Ligand(s) cif file created: ', fn_cif)
-    else:
-      fn_cif = None
-    if (os.path.isfile(fn_pdb)):
-      print('Updated model file: ', fn_pdb)
-    else:
-      fn_pdb = None
-    return fn_pdb, fn_cif
+      params=["add_h_to_water=False",
+              "hydrogens=False",
+              "optimise_final_geometry_of_hydrogens=False",
+              "--silent"]
+    assert (libtbx.env.has_module(name="reduce"))
+    assert (libtbx.env.has_module(name="elbow"))
+    # runs reduce internally
+    self.readyset_model = ready_set_model_interface(
+        model  = self.model,
+        params = params)
+
+
 
 
   def get_ligands(self, ph):
@@ -448,7 +430,6 @@ class ligand_result(object):
       within_radius = 3.0 #TODO should this be a parameter?
       sel_within_str = '(within (%s, %s)) and (protein or water)' % (within_radius, self.sel_str)
       isel_within = self.model.iselection(sel_within_str)
-      #xrs_within = self.model.select(isel_within).get_xray_structure()
       xrs_within = self._xrs.select(isel_within)
       b_isos_within = xrs_within.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
       b_min_within, b_max_within, b_mean_within = b_isos_within.min_max_mean().as_tuple()
@@ -498,28 +479,40 @@ class ligand_result(object):
 
 
   def get_overlaps(self):
-    # TODO this function should use a model with H atoms!!
-    if self.readyset_model is None:
+    '''
+    Obtain overlaps involving ligands
+    '''
+    # A model with H atoms is necessary to process overlaps
+    if not self.readyset_model.has_hd():
       return None
-    if self._overlaps is None:
+    elif self._overlaps is None:
       # sel_within could be done in __init__?
       within_radius = 3.0
-      sel_within_str = '%s or (within (%s, %s)) and (protein or water)' \
+      # TODO clashes with other ligands?
+      sel_within_str = '%s or (residues_within (%s, %s)) and (protein or water)' \
         % (self.sel_str, within_radius, self.sel_str)
       sel_within = self.readyset_model.selection(sel_within_str)
-      sel_ligand_within = self.readyset_model.select(sel_within).selection(self.sel_str)
-      #xrs_within = self.readyset_model.select(sel_within).get_xray_structure()
-      #geometry = self.readyset_model.get_restraints_manager().select(sel_within).geometry
+      isel_ligand_within = self.readyset_model.select(sel_within).iselection(self.sel_str)
       #sel = flex.bool([True]*len(sel_within))
-      #self._nb_overlaps = nbo.info(
-      #  macro_molecule_selection=~sel_ligand_within, #TODO should be only ligand, not sel_within?
-      #  model = self.readyset_model.select(sel_within))
+      model_within = self.readyset_model.select(sel_within)
 
-      processed_nbps = pnp.manager(model = self.readyset_model.select(sel_within))
+      processed_nbps = pnp.manager(model = model_within)
       clashes = processed_nbps.get_clashes()
+      clashes_dict   = clashes._clashes_dict
+
+      ligand_clashes_dict = dict()
+      for iseq_tuple, record in clashes_dict.iteritems():
+        if (iseq_tuple[0] in isel_ligand_within or
+            iseq_tuple[1] in isel_ligand_within):
+          ligand_clashes_dict[iseq_tuple] = record
+
+      ligand_clashes = pnp.clashes(
+                      clashes_dict = ligand_clashes_dict,
+                      model        = model_within)
+
       string_io = StringIO()
-      clashes.show(log=string_io)
-      results = clashes.get_results()
+      ligand_clashes.show(log=string_io, show_clashscore=False)
+      results = ligand_clashes.get_results()
 
       self._overlaps = group_args(
         n_clashes      = results.n_clashes,
