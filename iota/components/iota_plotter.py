@@ -93,8 +93,8 @@ class Plotter(IOTABasePanel):
   def plot_res_histogram(self):
 
     # Get resolution values
-    hres = zip(*self.info.stats['res']['lst'])[2]
-    lres = zip(*self.info.stats['lres']['lst'])[2]
+    hres = list(zip(*self.info.stats['res']['lst']))[2]
+    lres = list(zip(*self.info.stats['lres']['lst']))[2]
 
     # Plot figure
     gsp = gridspec.GridSpec(2, 1)
@@ -126,7 +126,7 @@ class Plotter(IOTABasePanel):
 
     ch = max(hlist) - min(hlist) + 1
     ca = max(alist) - min(alist) + 1
-    ints = zip(hlist, alist)
+    ints = list(zip(hlist, alist))
     ic = Counter(ints)
 
     hm_data = np.zeros((ch, ca))
@@ -168,15 +168,15 @@ class Plotter(IOTABasePanel):
     """
 
     # Calculate beam center coordinates and distances
-    beamX = zip(*self.info.stats['beamX']['lst'])[2]
-    beamY = zip(*self.info.stats['beamY']['lst'])[2]
-    beamZ = zip(*self.info.stats['distance']['lst'])[2]
-    beamXY = zip(beamX, beamY)
+    beamX = list(zip(*self.info.stats['beamX']['lst']))[2]
+    beamY = list(zip(*self.info.stats['beamY']['lst']))[2]
+    beamZ = list(zip(*self.info.stats['distance']['lst']))[2]
+    beamXY = list(zip(beamX, beamY))
 
     beam_dist = [math.hypot(i[0] - np.median(beamX), i[1] - np.median(beamY))
                  for i in beamXY]
     beam_dist_std = np.std(beam_dist)
-    beamXYdist = zip(beamX, beamY, beam_dist)
+    beamXYdist = list(zip(beamX, beamY, beam_dist))
 
     # Separate out outliers
     outliers = [i for i in beamXYdist if i[2] > 2 * beam_dist_std]

@@ -1072,7 +1072,7 @@ class ProcessingTab(wx.Panel):
 
         # Strong reflections
         if self.info.stats['strong']['lst']:
-          idx, filenames, spt = zip(*self.info.stats['strong']['lst'])
+          idx, filenames, spt = list(zip(*self.info.stats['strong']['lst']))
           self.nsref_x = np.append(self.nsref_x,
                                    np.array(idx).astype(np.double))
           self.nsref_y = np.append(self.nsref_y,
@@ -1080,7 +1080,7 @@ class ProcessingTab(wx.Panel):
 
         # Resolution
         if self.info.stats['res']['lst']:
-          idx, filenames, res = zip(*self.info.stats['res']['lst'])
+          idx, filenames, res = list(zip(*self.info.stats['res']['lst']))
           self.res_x = np.append(self.res_x, np.array(idx).astype(np.double))
           self.res_y = np.append(self.res_y, np.array(res).astype(np.double))
 
@@ -1153,14 +1153,14 @@ class ProcessingTab(wx.Panel):
       return
 
     try:
-      hkl, freq = zip(*hkl_slice)
+      hkl, freq = list(zip(*hkl_slice))
     except ValueError:
       hkl = [(0, 0, 0)]
       freq = 1
     except TypeError:
       return
 
-    h, k, l = zip(*hkl)
+    h, k, l = list(zip(*hkl))
 
     if self.hkl_view_axis == 'l':
       x = h
@@ -1569,7 +1569,7 @@ class LiveAnalysisTab(d.ScrolledPanel):
       self.beta_axes.clear()
       self.gamma_axes.clear()
 
-      a, b, c, alpha, beta, gamma, sg = zip(*self.info.cluster_iterable)
+      a, b, c, alpha, beta, gamma, sg = list(zip(*self.info.cluster_iterable))
 
       self.calculate_uc_histogram(a, self.a_axes, set_ylim=True)
       edge_ylabel = 'a, b, c ({})'.format(r'$\AA$')
