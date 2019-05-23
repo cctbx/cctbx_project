@@ -1,9 +1,10 @@
 from __future__ import division, print_function
 
-import time, os
+import time
+#import os
 from cStringIO import StringIO
 import iotbx.pdb
-import mmtbx.model
+#import mmtbx.model
 #import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 import libtbx.load_env
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
@@ -12,10 +13,10 @@ from iotbx import phil
 from cctbx.array_family import flex
 from libtbx import group_args
 from libtbx.str_utils import make_sub_header
-from libtbx.utils import null_out
-from libtbx import easy_run
+#from libtbx.utils import null_out
+#from libtbx import easy_run
 #from cctbx import miller
-from mmtbx import monomer_library
+#from mmtbx import monomer_library
 from mmtbx import real_space_correlation
 #from mmtbx import map_tools
 from elbow.command_line.ready_set import model_interface as ready_set_model_interface
