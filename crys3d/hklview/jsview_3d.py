@@ -30,35 +30,31 @@ class ArrayInfo:
       data = flex.abs(millarr.data())
     self.maxdata =max( data )
     self.mindata =min( data )
-    self.maxsigmas = self.minsigmas = display.nanval
+    self.maxsigmas = self.minsigmas = None
     if millarr.sigmas() is not None:
       data = millarr.sigmas()
       self.maxsigmas =max( data )
       self.minsigmas =min( data )
-      self.minmaxstr = "MinMax:[%s; %s], MinMaxSigs:[%s; %s]" \
-        %(roundoff(self.mindata), roundoff(self.maxdata), \
-            roundoff(self.minsigmas), roundoff(self.maxsigmas))
-    else:
-      self.minmaxstr = "MinMax:[%s; %s]" %(roundoff(self.mindata), roundoff(self.maxdata))
+    self.minmaxdata = (roundoff(self.mindata), roundoff(self.maxdata))
+    self.minmaxsigs = (roundoff(self.minsigmas), roundoff(self.maxsigmas))
     self.labels = self.desc = ""
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if millarr.info():
       self.labels = millarr.info().label_string()
       self.desc = get_array_description(millarr)
-    self.span = "HKLs: ? to ?"
+    self.span = ("?" , "?")
     dmin = 0.0
     dmax = 0.0
     try:
-      self.span = "HKLs: %s to %s" % \
-        ( millarr.index_span().min(), millarr.index_span().max())
+      self.span = ( millarr.index_span().min(), millarr.index_span().max())
       dmin = millarr.d_max_min()[1]
       dmax = millarr.d_max_min()[0]
     except Exception, e:
       mprint(to_str(e))
     issymunique = millarr.is_unique_set_under_symmetry()
     self.infotpl = (self.labels, self.desc, millarr.indices().size(), self.span,
-     self.minmaxstr, roundoff(dmin), roundoff(dmax), issymunique )
-    self.infostr = "%s (%s), %s %s, %s, d_minmax: %s, %s, SymUnique: %d" % self.infotpl
+     self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique )
+    self.infostr = "%s (%s), %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d" %self.infotpl
 
 
 class hklview_3d:

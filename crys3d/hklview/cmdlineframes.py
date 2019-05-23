@@ -178,6 +178,7 @@ from cctbx.array_family import flex
 from libtbx.utils import Sorry, to_str
 from libtbx import group_args
 import libtbx
+import traceback
 import sys, zmq, threading,  time
 
 
@@ -295,51 +296,55 @@ class HKLViewFrame () :
 
 
   def update_settings(self, new_phil=None):
-    if not new_phil:
-      new_phil = self.master_phil.format(python_object = self.params)
+    try:
+      if not new_phil:
+        new_phil = self.master_phil.format(python_object = self.params)
 
-    self.currentphil, diff_phil = self.GetNewCurrentPhilFromPython(new_phil, self.currentphil)
-    diff = None
-    if len(diff_phil.all_definitions()) < 1:
-      self.mprint( "Nothing's changed")
+      self.currentphil, diff_phil = self.GetNewCurrentPhilFromPython(new_phil, self.currentphil)
+      diff = None
+      if len(diff_phil.all_definitions()) < 1:
+        self.mprint( "Nothing's changed")
+        return False
+
+      diff = diff_phil.extract().NGL_HKLviewer
+      self.mprint("diff phil:\n" + diff_phil.as_str() )
+
+      self.params = self.currentphil.extract()
+      phl = self.params.NGL_HKLviewer
+
+      if hasattr(diff, "filename"):
+        self.ResetPhilandViewer(diff_phil)
+        self.load_reflections_file(phl.filename)
+
+      if hasattr(diff, "column") or hasattr(diff, "fomcolumn") \
+       or hasattr(diff, "mergedata") or hasattr(diff, "columnbinthresholds"):
+        #print "mergedata in updatesettings: " , self.params.NGL_HKLviewer.mergedata
+        if self.set_column(phl.column, phl.fomcolumn):
+          self.set_column_bin_thresholds(phl.columnbinthresholds, phl.binarray)
+
+      if hasattr(diff, "spacegroupchoice"):
+        self.set_spacegroup_choice(phl.spacegroupchoice)
+
+      if hasattr(diff, "cameratype"):
+        self.set_camera_type(phl.cameratype)
+
+      if hasattr(diff, "viewer"):
+        self.viewer.settings = phl.viewer
+        self.settings = phl.viewer
+
+      msg = self.viewer.update_settings()
+      self.mprint( msg)
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      self.SendInfo()
+      self.NewFileLoaded = False
+
+      if (self.miller_array is None) :
+        self.mprint( "No miller array has been selected")
+        return False
+      return True
+    except Exception, e:
+      self.mprint(to_str(e) + "\n" + traceback.format_exc())
       return False
-
-    diff = diff_phil.extract().NGL_HKLviewer
-    self.mprint("diff phil:\n" + diff_phil.as_str() )
-
-    self.params = self.currentphil.extract()
-    phl = self.params.NGL_HKLviewer
-
-    if hasattr(diff, "filename"):
-      self.ResetPhilandViewer(diff_phil)
-      self.load_reflections_file(phl.filename)
-
-    if hasattr(diff, "column") or hasattr(diff, "fomcolumn") \
-     or hasattr(diff, "mergedata") or hasattr(diff, "columnbinthresholds"):
-      #print "mergedata in updatesettings: " , self.params.NGL_HKLviewer.mergedata
-      if self.set_column(phl.column, phl.fomcolumn):
-        self.set_column_bin_thresholds(phl.columnbinthresholds, phl.binarray)
-
-    if hasattr(diff, "spacegroupchoice"):
-      self.set_spacegroup_choice(phl.spacegroupchoice)
-
-    if hasattr(diff, "cameratype"):
-      self.set_camera_type(phl.cameratype)
-
-    if hasattr(diff, "viewer"):
-      self.viewer.settings = phl.viewer
-      self.settings = phl.viewer
-
-    msg = self.viewer.update_settings()
-    self.mprint( msg)
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    self.SendInfo()
-    self.NewFileLoaded = False
-
-    if (self.miller_array is None) :
-      self.mprint( "No miller array has been selected")
-      return False
-    return True
 
 
   def mprint(self, m, verbose=True):

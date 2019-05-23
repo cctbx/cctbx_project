@@ -15,7 +15,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import ( QApplication, QCheckBox, QComboBox,
         QDial, QDialog, QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
-        QSlider, QDoubleSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
+        QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
         QVBoxLayout, QWidget )
 
 import sys, zmq, subprocess, time, threading
@@ -51,7 +51,7 @@ class NGL_HKLViewer(QDialog):
     self.SpaceGroupComboBox.activated.connect(self.SpacegroupSelchange)
 
     self.SpacegroupLabel = QLabel()
-    self.SpacegroupLabel.setText("Compatible Space Subgroups")
+    self.SpacegroupLabel.setText("Space Subgroups")
 
     self.mergecheckbox = QCheckBox()
     self.mergecheckbox.setText("Merge data")
@@ -61,6 +61,40 @@ class NGL_HKLViewer(QDialog):
     self.expandP1checkbox = QCheckBox()
     self.expandP1checkbox.setText("Expand to P1")
     self.expandP1checkbox.clicked.connect(self.ExpandToP1)
+
+    self.expandAnomalouscheckbox = QCheckBox()
+    self.expandAnomalouscheckbox.setText("Show Friedel pairs")
+    self.expandAnomalouscheckbox.clicked.connect(self.ExpandAnomalous)
+
+    self.sysabsentcheckbox = QCheckBox()
+    self.sysabsentcheckbox.setText("Show Systematic Absences")
+    self.sysabsentcheckbox.clicked.connect(self.showSysAbsent)
+
+    self.missingcheckbox = QCheckBox()
+    self.missingcheckbox.setText("Show Missing")
+    self.missingcheckbox.clicked.connect(self.showMissing)
+
+    self.onlymissingcheckbox = QCheckBox()
+    self.onlymissingcheckbox.setText("Only Show Missing")
+    self.onlymissingcheckbox.clicked.connect(self.showOnlyMissing)
+
+    self.showslicecheckbox = QCheckBox()
+    self.showslicecheckbox.setText("Show Slice")
+    self.showslicecheckbox.clicked.connect(self.showSlice)
+
+    self.sliceindexspinBox = QDoubleSpinBox()
+    self.sliceindex = 0
+    self.sliceindexspinBox.setValue(self.sliceindex)
+    self.sliceindexspinBox.setDecimals(0)
+    self.sliceindexspinBox.setSingleStep(1)
+    self.sliceindexspinBox.setRange(0, 20)
+    self.sliceindexspinBox.valueChanged.connect(self.onSliceIndexChanged)
+
+    self.SliceLabelComboBox = QComboBox()
+    self.SliceLabelComboBox.activated.connect(self.onSliceComboSelchange)
+    self.sliceaxis = [ "h", "k", "l" ]
+    self.SliceLabelComboBox.addItems( self.sliceaxis )
+
 
     self.HKLnameedit = QLineEdit('')
     self.HKLnameedit.setReadOnly(True)
@@ -88,7 +122,7 @@ class NGL_HKLViewer(QDialog):
 
     self.radii_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
     self.radii_scale = 1.0
-    self.radii_scale_spinBox.setValue(1.0)
+    self.radii_scale_spinBox.setValue(self.radii_scale)
     self.radii_scale_spinBox.setDecimals(1)
     self.radii_scale_spinBox.setSingleStep(0.1)
     self.radii_scale_spinBox.setRange(0.2, 2.0)
@@ -103,21 +137,23 @@ class NGL_HKLViewer(QDialog):
     self.createBottomLeftTabWidget()
     self.createRadiiScaleGroupBox()
 
-    topLayout = QHBoxLayout()
-    topLayout.addWidget(self.openFileNameButton)
-    topLayout.addStretch(1)
+    #topLayout = QHBoxLayout()
+    #topLayout.addWidget(self.openFileNameButton)
+    #topLayout.addStretch(1)
 
     mainLayout = QGridLayout()
-    mainLayout.addLayout(topLayout, 0, 0, 1, 2)
-    mainLayout.addWidget(self.topLeftGroupBox, 1, 0)
-    mainLayout.addWidget(self.topRightGroupBox, 1, 1)
+    mainLayout.addWidget(self.openFileNameButton,  0, 0, 1, 1)
+    mainLayout.addWidget(self.HKLnameedit,         0, 1, 1, 1)
+
+    mainLayout.addWidget(self.topLeftGroupBox,     1, 0)
+    mainLayout.addWidget(self.topRightGroupBox,    1, 1)
     mainLayout.addWidget(self.bottomLeftTabWidget, 2, 0)
-    mainLayout.addWidget(self.RadiiScaleGroupBox, 2, 1)
-    mainLayout.addWidget(self.HKLnameedit, 3, 0, 1, 2)
-    mainLayout.setRowStretch(1, 1)
+    mainLayout.addWidget(self.RadiiScaleGroupBox,  2, 1)
+    mainLayout.setRowStretch(0, 0)
+    mainLayout.setRowStretch(1, 0)
     mainLayout.setRowStretch(2, 1)
     mainLayout.setColumnStretch(0, 1)
-    mainLayout.setColumnStretch(1, 1)
+    mainLayout.setColumnStretch(1, 0)
     self.setLayout(mainLayout)
 
     self.setWindowTitle("NGL-HKL-viewer")
@@ -181,7 +217,6 @@ class NGL_HKLViewer(QDialog):
             #  self.textInfo.setPlainText("")
             #  self.mergecheckbox.setEnabled(False)
             if self.NewFileLoaded:
-              print("\nin update")
               if self.mergedata == True : val = 2
               if self.mergedata == None : val = 1
               if self.mergedata == False : val = 0
@@ -194,11 +229,7 @@ class NGL_HKLViewer(QDialog):
               self.FOMComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
                                              for e in self.miller_arrays ] )
               self.SpaceGroupComboBox.clear()
-              self.SpaceGroupComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
-                                             for e in self.spacegroups ] )
-
-
-              print(self.spacegroups)
+              self.SpaceGroupComboBox.addItems( self.spacegroups )
         except Exception as e:
           #print( str(e) )
           pass
@@ -220,6 +251,53 @@ class NGL_HKLViewer(QDialog):
       self.NGL_HKL_command('NGL_HKLviewer.viewer.expand_to_p1 = True')
     else:
       self.NGL_HKL_command('NGL_HKLviewer.viewer.expand_to_p1 = False')
+
+
+  def ExpandAnomalous(self):
+    if self.expandAnomalouscheckbox.isChecked():
+      self.NGL_HKL_command('NGL_HKLviewer.viewer.expand_anomalous = True')
+    else:
+      self.NGL_HKL_command('NGL_HKLviewer.viewer.expand_anomalous = False')
+
+
+  def showSysAbsent(self):
+    if self.sysabsentcheckbox.isChecked():
+      self.NGL_HKL_command('NGL_HKLviewer.viewer.show_systematic_absences = True')
+    else:
+      self.NGL_HKL_command('NGL_HKLviewer.viewer.show_systematic_absences = False')
+
+
+  def showMissing(self):
+    if self.missingcheckbox.isChecked():
+      self.NGL_HKL_command('NGL_HKLviewer.viewer.show_missing = True')
+    else:
+      self.NGL_HKL_command('NGL_HKLviewer.viewer.show_missing = False')
+
+
+  def showOnlyMissing(self):
+    if self.onlymissingcheckbox.isChecked():
+      self.NGL_HKL_command('NGL_HKLviewer.viewer.show_only_missing = True')
+    else:
+      self.NGL_HKL_command('NGL_HKLviewer.viewer.show_only_missing = False')
+
+
+  def showSlice(self):
+    if self.showslicecheckbox.isChecked():
+      self.NGL_HKL_command('NGL_HKLviewer.viewer.slice_mode = True')
+    else:
+      self.NGL_HKL_command('NGL_HKLviewer.viewer.slice_mode = False')
+
+
+  def onSliceComboSelchange(self,i):
+    rmin = self.miller_arrays[self.MillerComboBox.currentIndex()][3][0][i]
+    rmax = self.miller_arrays[self.MillerComboBox.currentIndex()][3][1][i]
+    self.sliceindexspinBox.setRange(rmin, rmax)
+    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
+
+
+  def onSliceIndexChanged(self, val):
+    self.sliceindex = val
+    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_index = %d" %self.sliceindex)
 
 
   def onRadiiScaleChanged(self, val):
@@ -274,15 +352,22 @@ class NGL_HKLViewer(QDialog):
     self.topLeftGroupBox = QGroupBox("Group 1")
 
     layout = QGridLayout()
-    layout.addWidget(self.MillerComboBox,        1, 1, 1, 1)
-    layout.addWidget(self.MillerLabel,           1, 0, 1, 1)
-    layout.addWidget(self.FOMComboBox,           2, 1, 1, 1)
-    layout.addWidget(self.FOMLabel,              2, 0, 1, 1)
-    layout.addWidget(self.SpaceGroupComboBox,    3, 1, 1, 1)
-    layout.addWidget(self.SpacegroupLabel,       3, 0, 1, 1)
-    layout.addWidget(self.mergecheckbox,         4, 0, 1, 2)
-    layout.addWidget(self.expandP1checkbox,      5, 0, 1, 2)
+    layout.addWidget(self.MillerComboBox,            1, 1, 1, 1)
+    layout.addWidget(self.MillerLabel,               1, 0, 1, 1)
+    layout.addWidget(self.FOMComboBox,               2, 1, 1, 1)
+    layout.addWidget(self.FOMLabel,                  2, 0, 1, 1)
+    layout.addWidget(self.SpaceGroupComboBox,        3, 1, 1, 1)
+    layout.addWidget(self.SpacegroupLabel,           3, 0, 1, 1)
+    layout.addWidget(self.mergecheckbox,             4, 0, 1, 1)
+    layout.addWidget(self.expandP1checkbox,          4, 1, 1, 1)
+    layout.addWidget(self.expandAnomalouscheckbox,   5, 0, 1, 1)
+    layout.addWidget(self.sysabsentcheckbox,         5, 1, 1, 1)
+    layout.addWidget(self.missingcheckbox,           6, 0, 1, 1)
+    layout.addWidget(self.onlymissingcheckbox,       6, 1, 1, 1)
 
+    layout.addWidget(self.showslicecheckbox,         7, 0, 1, 1)
+    layout.addWidget(self.SliceLabelComboBox,        7, 1, 1, 1)
+    layout.addWidget(self.sliceindexspinBox,         7, 2, 1, 1)
     #layout.addStretch(1)
     self.topLeftGroupBox.setLayout(layout)
 
