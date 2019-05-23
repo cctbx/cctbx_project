@@ -2577,7 +2577,7 @@ be passed separately with quotes to avoid confusion (e.g
   parser.add_argument("--use-conda", "--use_conda", metavar="ENV_DIRECTORY",
                     dest="use_conda",
                     help="""Use conda for dependencies. The directory to an
-existing conda environment can be provided. The build will use that enviroment
+existing conda environment can be provided. The build will use that environment
 instead of creating a default one for the builder. Also, if a conda environment
 is currently active, $CONDA_PREFIX will be used if ENV_DIRECTORY is not
 provided. Specifying an environment or using $CONDA_PREFIX is for developers
