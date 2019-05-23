@@ -7,6 +7,7 @@ from cStringIO import StringIO
 
 import mmtbx.model
 import iotbx.pdb
+import libtbx.load_env
 from libtbx import easy_run
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
@@ -15,6 +16,11 @@ from cctbx import xray
 from libtbx.utils import Sorry
 import mmtbx.validation.clashscore as mvc
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
+
+
+chem_data = libtbx.env.find_in_repositories(
+  relative_path="chem_data/geostd",
+  test=os.path.isdir)
 
 
 def obtain_model(raw_records, stop_for_unknowns = True):
@@ -728,7 +734,7 @@ END
 """
 
 if (__name__ == "__main__"):
-  if not os.getenv("MMTBX_CCP4_MONOMER_LIB") and not os.getenv("CLIBD_MONCLIBD"):
+  if not os.getenv("MMTBX_CCP4_MONOMER_LIB") and not os.getenv("CLIBD_MONCLIBD") and chem_data is None:
     print("Test skipped, need monomer library")
     sys.exit()
   t0 = time.time()
