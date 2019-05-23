@@ -34,7 +34,7 @@ class error_modifier(worker):
         number_of_multiply_measured_hkls += 1
       new_reflections.extend(refls)
 
-    self.logger.log("Modified errors for (multiply-measured) %d symmetry-reduced hkl's out of %d symmetry-reduced hkl's"%(number_of_multiply_measured_hkls, number_of_hkls))
+    self.logger.log("Modified errors for (multiply-measured) %d symmetry-reduced HKLs out of %d symmetry-reduced HKLs"%(number_of_multiply_measured_hkls, number_of_hkls))
 
     return new_reflections
 

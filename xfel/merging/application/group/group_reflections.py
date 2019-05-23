@@ -17,10 +17,10 @@ except ImportError:
     pass
 
 class hkl_group(worker):
-  '''For each asu hkl, gather all of its measurements from all ranks at a single rank, while trying to evenly distribute asu hkl's over the ranks.'''
+  '''For each asu hkl, gather all of its measurements from all ranks at a single rank, while trying to evenly distribute asu HKLs over the ranks.'''
 
   def __repr__(self):
-    return "Group symmetry-reduced hkl's"
+    return "Group symmetry-reduced HKLs"
 
   def distribute_reflection_table(self):
     '''Create a reflection table for storing reflections distributed over hkl chunks'''
@@ -72,13 +72,13 @@ class hkl_group(worker):
       self.hkl_chunks.append(self.distribute_reflection_table())
 
   def distribute_reflections_over_hkl_chunks(self, reflections):
-    '''Distribute reflections, according to their hkl's, over pre-set hkl chunks'''
+    '''Distribute reflections, according to their HKLs, over pre-set HKL chunks'''
     total_reflection_count = reflections.size()
     total_distributed_reflection_count = 0
 
     if total_reflection_count > 0:
 
-      # set up two lists to be passed to the C++ extension: hkl's and chunk ids. It's basically a hash table to look up chunk ids by hkl's
+      # set up two lists to be passed to the C++ extension: HKLs and chunk ids. It's basically a hash table to look up chunk ids by HKLs
       hkl_list = flex.miller_index()
       chunk_id_list = flex.int()
 

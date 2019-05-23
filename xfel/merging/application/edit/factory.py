@@ -3,8 +3,8 @@ from xfel.merging.application.edit.reflection_table_editor import reflection_tab
 from xfel.merging.application.worker import factory as factory_base
 
 class factory(factory_base):
-  """ Factory class for editing reflection table. """
+  """Factory class for editing reflection table."""
   @staticmethod
   def from_parameters(params, additional_info=None):
-    """ Create a column with reduced hkl's; remove unnecessary columns """
+    """Create a column with reduced HKLs; remove unnecessary columns"""
     return [reflection_table_editor(params)]

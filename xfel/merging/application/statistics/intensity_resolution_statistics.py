@@ -156,14 +156,17 @@ class intensity_resolution_statistics(worker):
     n_bins = self.resolution_binner.n_bins_all() # (self.params.statistics.n_bins + 2), 2 - to account for the hkls outside of the binner resolution range
 
     # To enable MPI all-rank reduction, every rank must initialize statistics array(s), even if the rank doesn't have any reflections.
-    self.I_sum      = flex.double(n_bins, 0.0) # a sum of the weighted mean intensities from all asu hkl's
-    self.Isig_sum   = flex.double(n_bins, 0.0) # a sum of I/sigma from all asu hkl's
+    self.I_sum      = flex.double(n_bins, 0.0) # a sum of the weighted mean intensities from all asu HKLs
+    self.Isig_sum   = flex.double(n_bins, 0.0) # a sum of I/sigma from all asu HKLs
     self.n_sum      = flex.int(n_bins, 0) # number of theoretically prediced asu hkls
     self.m_sum      = flex.int(n_bins, 0) # number of observed asu hkls
     self.mm_sum     = flex.int(n_bins, 0) # number of observed asu hkls with multiplicity > 1
 
     # Calculate, format and output statistics for each rank
     if reflections.size() > 0:
+
+      self.logger.log("Calculating intensity statistics...")
+
       self.calculate_intensity_statistics(reflections)
 
       Intensity_Table = self.build_intensity_table(
@@ -195,7 +198,7 @@ class intensity_resolution_statistics(worker):
   def calculate_intensity_statistics(self, reflections):
     '''Calculate statistics for hkl intensities distributed over resolution bins'''
 
-    used_reflections = flex.reflection_table()
+    #used_reflections = flex.reflection_table()
 
     zero_intensity_count_all = 0
     zero_intensity_count_resolution_limited = 0
@@ -222,7 +225,7 @@ class intensity_resolution_statistics(worker):
         i_bin = self.hkl_resolution_bins[hkl]
 
         if i_bin > 0 and i_bin < n_bins - 1:
-          used_reflections.extend(refls)
+          #used_reflections.extend(refls)
           zero_intensity_count_resolution_limited += ((refls['intensity.sum.value'] == 0.0).count(True))
           positive_intensity_count_resolution_limited += ((refls['intensity.sum.value'] > 0.0).count(True))
           negative_intensity_count_resolution_limited += ((refls['intensity.sum.value'] < 0.0).count(True))
@@ -239,8 +242,9 @@ class intensity_resolution_statistics(worker):
           #self.Isig_sum[i_bin]  += self.I_sum[i_bin] / math.sqrt(refls[0]['intensity.sum.variance'])
 
     self.logger.log_step_time("INTENSITY_HISTOGRAM")
+
     # Accumulate intensities, which were used in the above statistics table, from all ranks
-    all_used_intensities = self.mpi_helper.extend_flex(used_reflections['intensity.sum.value'], flex.double)
+    #all_used_intensities = self.mpi_helper.extend_flex(used_reflections['intensity.sum.value'], flex.double)
 
     total_zero_intensity_count_all = self.mpi_helper.sum(zero_intensity_count_all)
     total_zero_intensity_count_resolution_limited = self.mpi_helper.sum(zero_intensity_count_resolution_limited)
@@ -262,7 +266,7 @@ class intensity_resolution_statistics(worker):
       self.logger.main_log("Resolution-limited reflections (I > 0.0): \t\t%d"%(total_positive_intensity_count_resolution_limited))
       self.logger.main_log("Resolution-limited reflections (I < 0.0): \t\t%d\n"%(total_negative_intensity_count_resolution_limited))
 
-      self.histogram(all_used_intensities)
+      #self.histogram(all_used_intensities)
     self.logger.log_step_time("INTENSITY_HISTOGRAM", True)
 
   def build_intensity_table(self,

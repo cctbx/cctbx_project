@@ -374,7 +374,7 @@ statistics {
   cciso {
     mtz_file = None
       .type = str
-     .help = for Riso/ CCiso, the reference structure factors, must have data type F
+      .help = for Riso/ CCiso, the reference structure factors, must have data type F
       .help = a fake file is written out to this file name if model is None
     mtz_column_F = fobs
       .type = str
@@ -395,16 +395,19 @@ statistics {
   }
   report_ML = True
     .type = bool
-    .help = Report statistics on per-frame attributes modeled by max-likelihood fit (expert only)
+    .help = Report statistics on per-frame attributes modeled by max-likelihood fit (expert only).
 }
 
 parallel {
   nproc = 1
-    .help = 1, use no parallel execution.
     .type = int
+    .help = Number of processors
+    .help = 1: use no parallel execution.
   a2a = 1
-    .help = Number of iterations to split MPI alltoall - used to address mpy4py memory errors, when hkl chunks are too large for the cpu.
     .type = int
+    .help = memory reduction factor for MPI alltoall (expert only)
+    .help = Use a2a > 1, when available hardware memory is insufficient for MPI alltoall
+    .help = The data is split into a2a parts and alltoall is performed in a2a iterations.
 }
 
 """ + mysql_master_phil

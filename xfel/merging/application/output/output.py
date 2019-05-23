@@ -8,7 +8,7 @@ import os
 
 class output(worker):
   """
-  Outputs merged mupltiple measurements of symmetry-reduced hkl's.
+  Outputs merged mupltiple measurements of symmetry-reduced HKLs.
   """
 
   def __repr__(self):

@@ -83,7 +83,6 @@ class Script(object):
                  'errors',
                  'statistics intensity',
                  'merge',
-                 'statistics intensity_histogram',
                  'output']:
 
       step_factory_name = step
