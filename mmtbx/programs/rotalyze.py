@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 from mmtbx.validation.rotalyze import rotalyze
@@ -51,7 +51,7 @@ Example:
     if self.params.wxplot :
       try :
         import wxtbx.app
-      except ImportError, e :
+      except ImportError as e :
         raise Sorry("wxPython not available.")
       else :
         app = wxtbx.app.CCTBXApp(0)
