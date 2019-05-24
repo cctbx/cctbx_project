@@ -4646,7 +4646,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   h = pdb_inp.construct_hierarchy(set_atom_i_seq=False, sort_atoms=False)
   for i in range(2):
     s = h.as_pdb_string()
-    d = hashlib.md5(s).hexdigest()
+    d = hashlib.md5(s.encode()).hexdigest()
     if (pdb.hierarchy.atom.has_siguij()):
       assert d == "c4089359af431bb2962d6a8e457dd86f", d
     else:
