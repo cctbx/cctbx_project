@@ -491,7 +491,7 @@ class manager():
     j_seq          = item[2]
     model_distance = item[3]
     vdw_sum        = item[4]
-    symop_str      = item[5] # TODO probably not necessary
+    symop_str      = item[5]
     symop          = item[6]
 
     atom1 = self.atoms[i_seq]
@@ -546,11 +546,11 @@ class manager():
       # TODO: h_a_y angle could be interesting, too
       if ((h_a_distance >= 1.2 or h_a_distance <= 2.2) and
          (x_a_distance  >= 2.2 or x_a_distance <= 3.2) and
-         (x_h_a_angle >= 90)):
+         (math.degrees(x_h_a_angle) >= 90)):
         is_hbond = True
 
         self._hbonds_dict[(atom_x.i_seq, atom_h.i_seq, atom_a.i_seq)] = \
-          [h_a_distance, vdw_sum, x_a_distance, math.degrees(h_a_x_angle), symop_str, symop]
+          [h_a_distance, x_a_distance, math.degrees(x_h_a_angle), symop_str, symop, vdw_sum]
         # TODO: if several atom_x, use the first one found
         # Can be made smarter in the future (show shortest or both)
         break
