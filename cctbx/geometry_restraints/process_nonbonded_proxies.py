@@ -1,11 +1,12 @@
 from __future__ import division, print_function
-#import math
+import math
 from libtbx import group_args
 from scitbx import matrix
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
 import scitbx.matrix
 from cctbx import sgtbx
+from libtbx.test_utils import approx_equal
 
 
 def check_if_1_5_interaction(
@@ -133,11 +134,11 @@ class clashes(object):
       if show_clashscore:
         print(result_str.format(' Clashscore', results.clashscore), file=log)
       # print table with all overlaps
-      labels =  ['\n' + "Overlapping residues info","model distance","overlap",
+      labels =  ["Overlapping residues info","model distance","overlap",
                  "symmetry"]
       lbl_str = '{:^33}|{:^16}|{:^11}|{:^15}'
       table_str = '{:>16}|{:>16}|{:^16.2f}|{:^11.2}|{:^15}|'
-      print(lbl_str.format(*labels), file=log)
+      print('\n' + lbl_str.format(*labels), file=log)
       print('-'*78, file=log)
       atoms = self.model.get_atoms()
       for iseq_tuple, record in self._clashes_dict.iteritems():
@@ -257,7 +258,7 @@ class hbonds(object):
   '''
   Class for hbonds
   '''
-  def __init__(self, hbonds_dict):
+  def __init__(self, hbonds_dict, model):
     '''
     hbonds_dict = {(iseq, jseq, kseq):(H_A_distance, X_A_distance, X_H_A_angle)}
     hydrogen bond: X-H...A
@@ -268,13 +269,53 @@ class hbonds(object):
     X_A_distance
     X_H_A_angle
     '''
-    self.hbonds_dict = hbonds_dict
+    self._hbonds_dict = hbonds_dict
+    self.model = model
 
-  def show(self):
+  def show(self, log=null_out()):
     """
     Print all hbonds in a table.
     """
-    pass
+
+    make_sub_header(' Hydrogen bonds', out=log)
+    if self._hbonds_dict:
+      # General information
+#      results = self.get_results()
+#      result_str = '{:<18} : {:5d}'
+#      print(result_str.format(' Number of clashes', results.n_clashes), file=log)
+#      result_str = '{:<18} : {:5.2f}'
+#      if show_clashscore:
+#        print(result_str.format(' Clashscore', results.clashscore), file=log)
+#      # print table with all overlaps
+      title1 = ['donor', 'acceptor', 'distance', 'angle']
+      title1_str = '{:^33}|{:^16}|{:^21}|{:^14}|'
+      print('\n' + title1_str.format(*title1), file=log)
+
+      title2 =  ['X', 'H', 'A','H...A','X...A',
+                 'X-H...A', 'symop']
+      title2_str = '{:^16}|{:^16}|{:^16}|{:^10}|{:^10}|{:^14}|{:^15}|'
+      print(title2_str.format(*title2), file=log)
+#      lbl_str = '{:^49}|{:^16}|{:^11}|{:^15}'
+#      table_str = '{:>16}|{:>16}|{:^16.2f}|{:^11.2}|{:^15}|'
+      table_str = '{:>16}|{:>16}|{:^16}|{:^10.2f}|{:^10.2f}|{:^14.2f}|{:^15}|'
+#      print(lbl_str.format(*labels), file=log)
+      print('-'*99, file=log)
+      atoms = self.model.get_atoms()
+      for iseq_tuple, record in self._hbonds_dict.iteritems():
+        iseq_x, iseq_h, iseq_a = iseq_tuple
+        if record[4] is not None:
+          symop = record[4]
+        else: symop = ''
+        x_id_str = atoms[iseq_x].id_str().replace('pdb=','').replace('"','')
+        h_id_str = atoms[iseq_h].id_str().replace('pdb=','').replace('"','')
+        a_id_str = atoms[iseq_a].id_str().replace('pdb=','').replace('"','')
+        line = [x_id_str, h_id_str, a_id_str, round(record[0], 2),
+          round(record[1], 2), round(record[2], 2), symop]
+        print(table_str.format(*line), file=log)
+      print('-'*99, file=log)
+    else:
+      print('No hbonds found', file=log)
+
 
   def forms_hbond(self, iseq):
     pass
@@ -318,8 +359,15 @@ class manager():
 
 
   def has_hbonds(self):
-    # necessary?
-    pass
+    """
+    True/False if any hbonds were found.
+    """
+    has_hbonds = False
+    if not self._hbonds:
+      self._process_nonbonded_proxies(find_clashes = True)
+      if self._hbonds_dict:
+        has_hbonds = True
+    return has_hbonds
 
 
   def has_clashes(self):
@@ -355,8 +403,8 @@ class manager():
     xrs = self.model.get_xray_structure()
     sites_cart  = self.model.get_sites_cart()
     site_labels = xrs.scatterers().extract_labels()
-    hd_sel      = self.model.get_hd_selection()
-    water_sel   = self.model.selection('water')
+    self.hd_sel      = self.model.get_hd_selection()
+    self.water_sel   = self.model.selection('water')
     unit_cell   = self.model.crystal_symmetry().unit_cell()
     self.atoms  = self.model.get_atoms()
 
@@ -393,18 +441,17 @@ class manager():
       symop_str      = item[5] # TODO probably not necessary
       symop          = item[6]
 
-      if (model_distance < 3 and [hd_sel[i_seq],hd_sel[j_seq]].count(True) == 1):
+      is_hbond, is_clash = False, False
+
+      if (model_distance < 3 and [self.hd_sel[i_seq],self.hd_sel[j_seq]].count(True) == 1):
         is_hbond = self._is_hbond(
-                    i_seq = i_seq,
-                    j_seq = j_seq,
-                    model_distance = model_distance,
+                    item  = item,
                     unit_cell = unit_cell,
-                    hd_sel = hd_sel,
-                    symop     = symop,
-                    symop_str = symop_str,
-                    water_sel = water_sel,
                     site_labels = site_labels,
                     fsc0 = fsc0)
+
+      # proxy cannot be clash and hbond at the same time (?)
+      if is_hbond: continue
 
       # Find all clashes
       delta = model_distance - vdw_sum
@@ -413,7 +460,6 @@ class manager():
         is_clash = self._is_clash(
                     i_seq = i_seq,
                     j_seq = j_seq,
-                    hd_sel = hd_sel,
                     fsc0 = fsc0,
                     model_distance = model_distance)
         if is_clash:
@@ -427,51 +473,62 @@ class manager():
                       clashes_dict = self._clashes_dict,
                       model        = self.model)
 
+    self._hbonds = hbonds(
+                     hbonds_dict = self._hbonds_dict,
+                     model        = self.model)
+
   def _is_hbond(self,
-                i_seq,
-                j_seq,
-                model_distance,
+                item,
                 unit_cell,
-                symop,
-                hd_sel,
-                symop_str,
-                water_sel,
                 site_labels,
                 fsc0):
     """
     Determine if a nonbonded proxy is a H bond
     """
     is_hbond = False
-    # TODO: Ignore water for now
-    if True in [water_sel[i_seq], water_sel[j_seq]]:
-      return is_hbond
-    # Ignore atoms within the same residue
-    if (self.atoms[i_seq].parent().parent().id_str() ==
-        self.atoms[j_seq].parent().parent().id_str()):
-      return is_hbond
-    #print(site_labels[i_seq], site_labels[j_seq])
+
+    i_seq          = item[1]
+    j_seq          = item[2]
+    model_distance = item[3]
+    vdw_sum        = item[4]
+    symop_str      = item[5] # TODO probably not necessary
+    symop          = item[6]
 
     atom1 = self.atoms[i_seq]
     atom2 = self.atoms[j_seq]
+
+    # TODO: Ignore water for now
+    if self.water_sel[i_seq] or self.water_sel[j_seq]:
+      return is_hbond
+    # Ignore atoms within the same residue
+    #if (atom1.is_in_same_conformer_as(atom2)):
+    if (self.atoms[i_seq].parent().parent().id_str() ==
+        self.atoms[j_seq].parent().parent().id_str()):
+      return is_hbond
 
     rg1, rg2, atom1, atom2 = self._residue_groups_rt_mx_ij(atom1 = atom1,
                                                            atom2 = atom2,
                                                            unit_cell = unit_cell,
                                                            symop_str = symop_str,
                                                            symop = symop)
-
-    if hd_sel[atom1.i_seq]:
+    # Assign donor H and acceptor A atoms
+    if self.hd_sel[atom1.i_seq]:
       atom_h, rg_h = atom1, rg1
       atom_a, rg_a = atom2, rg2
-    elif hd_sel[atom2.i_seq]:
+    elif self.hd_sel[atom2.i_seq]:
       atom_h, rg_h = atom2, rg2
       atom_a, rg_a = atom1, rg1
     else:
       raise Sorry('this should not happen')
+
+    # Filter acceptor atom element
+    # TODO: this could be done earlier? To save calling self._residue_groups_rt_mx_ij
+    element_a = atom_a.element.strip().upper()
+    if element_a not in ["O","N","S","F","CL"]: return is_hbond
+    # Find X atom of X-H group
     iseq_x_list = fsc0[atom_h.i_seq]
     # There can be several, if silly double conformation
     for iseq_x in iseq_x_list:
-      #print(site_labels[iseq_x])
       atom_x = self.atoms[iseq_x]
 
       xyz_h = matrix.col(atom_h.xyz)
@@ -479,10 +536,28 @@ class manager():
       xyz_x = matrix.col(atom_x.xyz)
 
       h_a_distance = (xyz_h - xyz_a).length()
+      # something went wrong if they are not equal
+      assert approx_equal(h_a_distance, model_distance, eps=0.1)
       x_a_distance = (xyz_x - xyz_a).length()
-      h_a_x_angle = (xyz_h - xyz_a).angle(xyz_h - xyz_x)
+      x_h_a_angle = (xyz_h - xyz_a).angle(xyz_h - xyz_x)
 
-      #print(h_a_distance, model_distance, x_a_distance, math.degrees(h_a_x_angle))
+      # Values from Steiner, Angew. Chem. Int. Ed. 2002, 41, 48-76, Table 2
+      # TODO: do we want to adapt to acceptor element?
+      # TODO: h_a_y angle could be interesting, too
+      if ((h_a_distance >= 1.2 or h_a_distance <= 2.2) and
+         (x_a_distance  >= 2.2 or x_a_distance <= 3.2) and
+         (x_h_a_angle >= 90)):
+        is_hbond = True
+
+        self._hbonds_dict[(atom_x.i_seq, atom_h.i_seq, atom_a.i_seq)] = \
+          [h_a_distance, vdw_sum, x_a_distance, math.degrees(h_a_x_angle), symop_str, symop]
+        # TODO: if several atom_x, use the first one found
+        # Can be made smarter in the future (show shortest or both)
+        break
+
+    return is_hbond
+
+    #print(h_a_distance, model_distance, x_a_distance, math.degrees(h_a_x_angle))
 
 
   def _residue_groups_rt_mx_ij(self, atom1, atom2, unit_cell, symop_str, symop):
@@ -512,7 +587,6 @@ class manager():
   def _is_clash(self,
                 i_seq,
                 j_seq,
-                hd_sel,
                 fsc0,
                 model_distance):
     """
@@ -521,7 +595,6 @@ class manager():
     Parameters:
       i_seq (int): atom i_seq
       j_seq (int): atom i_seq
-      hd_sel (bool array)        hd_sel[i] returns True of False if atom i is H or not
       fsc0 (dict of lists of int): dictionary with a list of all atoms connected to an atom
       model_distance (float): distance between atom i and atom j
 
@@ -533,7 +606,7 @@ class manager():
     is_1_5_interaction = check_if_1_5_interaction(
              i_seq = i_seq,
              j_seq = j_seq,
-             hd_sel = hd_sel,
+             hd_sel = self.hd_sel,
              full_connectivity_table = fsc0)
     if not is_1_5_interaction:
       #if i_seq > j_seq:

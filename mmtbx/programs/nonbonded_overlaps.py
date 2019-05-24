@@ -144,6 +144,9 @@ Example:
     #t3 = time.time()
     clashes.show(log=self.logger)
 
+    hbonds = processed_nbps.get_hbonds()
+    hbonds.show(log=self.logger)
+
     #print("OLD time: %8.3f"%(t1-t0))
     #print("NEW time: %8.3f"%(t3-t2))
 
