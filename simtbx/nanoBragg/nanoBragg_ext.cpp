@@ -1858,6 +1858,11 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
        "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, restricted options, plus OpenMP")
 
 #ifdef NANOBRAGG_HAVE_CUDA
+      .add_property("timelog",
+                     make_getter(&nanoBragg::timelog,rbv()),
+                     make_setter(&nanoBragg::timelog,dcp()),
+                     "whether to log the timing.")
+      
       /* actual run of the spot simulation, CUDA version */
       .def("add_nanoBragg_spots_cuda",&nanoBragg::add_nanoBragg_spots_cuda,
        "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, CUDA version")

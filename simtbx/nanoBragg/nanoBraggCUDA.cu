@@ -105,7 +105,7 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
                 float * max_I_y_reduction /*out*/, bool * rangemap);
 
 
-extern "C" void nanoBraggSpotsCUDA(int spixels, int fpixels, int roi_xmin, int roi_xmax, int roi_ymin, int roi_ymax, int oversample, int point_pixel,
+extern "C" void nanoBraggSpotsCUDA(int timelog, int spixels, int fpixels, int roi_xmin, int roi_xmax, int roi_ymin, int roi_ymax, int oversample, int point_pixel,
                 double pixel_size, double subpixel_size, int steps, double detector_thickstep, int detector_thicksteps, double detector_thick, double detector_mu,
                 double sdet_vector[4], double fdet_vector[4], double odet_vector[4], double pix0_vector[4], int curved_detector, double distance, double close_distance,
                 double beam_vector[4], double Xbeam, double Ybeam, double dmin, double phi0, double phistep, int phisteps, double spindle_vector[4], int sources,
@@ -117,6 +117,8 @@ extern "C" void nanoBraggSpotsCUDA(int spixels, int fpixels, int roi_xmin, int r
                 double * omega_sum/*out*/, int * sumn /*out*/, double * sum /*out*/, double * sumsqr /*out*/, double * max_I/*out*/, double * max_I_x/*out*/,
                 double * max_I_y /*out*/) {
 
+  if (timelog)
+    TimeLogger::m_verbose=true;
   TimeLogger myLogger(__FUNCTION__);
 
   int total_pixels = spixels * fpixels;
@@ -335,19 +337,21 @@ extern "C" void nanoBraggSpotsCUDA(int spixels, int fpixels, int roi_xmin, int r
 
 
   int smCount = deviceProps.multiProcessorCount;
-
-  std::cout << "deviceProps.multiProcessorCount: " << smCount << std::endl;
+  if (timelog)
+    std::cout << "deviceProps.multiProcessorCount: " << smCount << std::endl;
 
   //    CUDA_CHECK_RETURN(cudaFuncSetCacheConfig(nanoBraggSpotsCUDAKernel, cudaFuncCachePreferShared));
   //    CUDA_CHECK_RETURN(cudaFuncSetCacheConfig(nanoBraggSpotsCUDAKernel, cudaFuncCachePreferL1));
 
         dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
 
-  std::cout << "threadsPerBlock: (" << threadsPerBlock.x << "," << threadsPerBlock.y << "," << threadsPerBlock.z << ")" << std::endl;
+    if (timelog)
+        std::cout << "threadsPerBlock: (" << threadsPerBlock.x << "," << threadsPerBlock.y << "," << threadsPerBlock.z << ")" << std::endl;
 
   //  dim3 numBlocks((spixels - 1) / threadsPerBlock.x + 1, (fpixels - 1) / threadsPerBlock.y + 1);
         dim3 numBlocks(smCount * 8, 1);
-  std::cout << "numBlocks: (" << numBlocks.x << "," << numBlocks.y << "," << numBlocks.z << ")" << std::endl;
+  if (timelog)
+        std::cout << "numBlocks: (" << numBlocks.x << "," << numBlocks.y << "," << numBlocks.z << ")" << std::endl;
 
         //  initialize the device memory within a kernel.
         //      nanoBraggSpotsInitCUDAKernel<<<numBlocks, threadsPerBlock>>>(cu_spixels, cu_fpixels, cu_floatimage, cu_omega_reduction, cu_max_I_x_reduction, cu_max_I_y_reduction, cu_rangemap);
@@ -355,7 +359,8 @@ extern "C" void nanoBraggSpotsCUDA(int spixels, int fpixels, int roi_xmin, int r
         //  CUDA_CHECK_RETURN(cudaDeviceSynchronize());
 
   // Timing kernel call by cuda events
-  std::cout << "\nMaking a nanoBraggSpotsCUDAKernel call\n";
+  if (timelog)
+    std::cout << "\nMaking a nanoBraggSpotsCUDAKernel call\n";
   static float total_elapsed_ms;
   float elapsed_ms = 0.0f;
   cudaEvent_t start, stop;
@@ -363,9 +368,9 @@ extern "C" void nanoBraggSpotsCUDA(int spixels, int fpixels, int roi_xmin, int r
   CUDA_CHECK_RETURN(cudaEventCreate(&stop));
   CUDA_CHECK_RETURN(cudaEventRecord(start, 0));
 
-  std::cout << "CUDA call: number of blocks: (" << numBlocks.x << "," << numBlocks.y << "," << numBlocks.z << ")"
-            << "; Threads per block: (" << threadsPerBlock.x << "," << threadsPerBlock.y << "," << threadsPerBlock.z << ")\n";
-
+  if (timelog){
+    std::cout << "CUDA call: number of blocks: (" << numBlocks.x << "," << numBlocks.y << "," << numBlocks.z << ")"
+              << "; Threads per block: (" << threadsPerBlock.x << "," << threadsPerBlock.y << "," << threadsPerBlock.z << ")\n";}
         nanoBraggSpotsCUDAKernel<<<numBlocks, threadsPerBlock>>>(cu_spixels, cu_fpixels, cu_roi_xmin, cu_roi_xmax, cu_roi_ymin, cu_roi_ymax, cu_oversample,
                         cu_point_pixel, cu_pixel_size, cu_subpixel_size, cu_steps, cu_detector_thickstep, cu_detector_thicksteps, cu_detector_thick, cu_detector_mu,
                         cu_sdet_vector, cu_fdet_vector, cu_odet_vector, cu_pix0_vector, cu_curved_detector, cu_distance, cu_close_distance, cu_beam_vector,
@@ -376,14 +381,16 @@ extern "C" void nanoBraggSpotsCUDA(int spixels, int fpixels, int roi_xmin, int r
                         cu_nopolar, cu_polar_vector, cu_polarization, cu_fudge, cu_maskimage,
                         cu_floatimage /*out*/, cu_omega_reduction/*out*/, cu_max_I_x_reduction/*out*/, cu_max_I_y_reduction /*out*/, cu_rangemap /*out*/);
 
-  // Timing kernel call by cuda events
-  CUDA_CHECK_RETURN(cudaEventRecord(stop, 0));
-  CUDA_CHECK_RETURN(cudaEventSynchronize (stop) );
-  CUDA_CHECK_RETURN(cudaEventElapsedTime(&elapsed_ms, start, stop) );
-  CUDA_CHECK_RETURN(cudaEventDestroy(start));
-  CUDA_CHECK_RETURN(cudaEventDestroy(stop));
-  total_elapsed_ms += elapsed_ms;
-  std::cout << "The elapsed time in gpu was " << elapsed_ms << " ms; Cumulative: " << total_elapsed_ms << " ms\n";
+    // Timing kernel call by cuda events
+    CUDA_CHECK_RETURN(cudaEventRecord(stop, 0));
+    CUDA_CHECK_RETURN(cudaEventSynchronize (stop) );
+    CUDA_CHECK_RETURN(cudaEventElapsedTime(&elapsed_ms, start, stop) );
+    CUDA_CHECK_RETURN(cudaEventDestroy(start));
+    CUDA_CHECK_RETURN(cudaEventDestroy(stop));
+    total_elapsed_ms += elapsed_ms;
+  if (timelog){
+        std::cout << "The elapsed time in gpu was " << elapsed_ms << " ms; Cumulative: " << total_elapsed_ms << " ms\n";
+    }
 
   CUDA_CHECK_RETURN(cudaPeekAtLastError());
         CUDA_CHECK_RETURN(cudaDeviceSynchronize());

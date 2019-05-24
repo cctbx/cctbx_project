@@ -22,6 +22,10 @@
 #include <boost_adaptbx/python_streambuf.h>
 #include <omptbx/omp_or_stubs.h>
 
+#ifdef NANOBRAGG_HAVE_CUDA
+#include <simtbx/nanoBragg/cuda_struct.h>
+#endif
+
 using boost::math::erf;
 using boost::math::isnan;
 #define isnan(X) boost::math::isnan(X)
@@ -447,6 +451,11 @@ class nanoBragg {
     /* misseting angles, applied after any provided A and U matrices */
     double misset[4];
 
+    /* struct for CUDA pointers */
+#ifdef NANOBRAGG_HAVE_CUDA
+    bool timelog;
+
+#endif
     /* special options */
 //    bool calculate_noise; // = 1;
 //    bool write_pgm; // = 1;

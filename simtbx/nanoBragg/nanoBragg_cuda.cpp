@@ -1,10 +1,11 @@
+#include <simtbx/nanoBragg/cuda_struct.h>
 #include <simtbx/nanoBragg/nanoBragg.h>
 
 //Contributed by Billy Poon, LBNL.
 
 // function declaration from nanoBraggCUDA.cu
 extern "C"
-void nanoBraggSpotsCUDA(int spixels, int fpixels, int roi_xmin, int roi_xmax,
+void nanoBraggSpotsCUDA(int timelog, int spixels, int fpixels, int roi_xmin, int roi_xmax,
                         int roi_ymin, int roi_ymax, int oversample,
                         int point_pixel, double pixel_size, double subpixel_size,
                         int steps, double detector_thickstep,
@@ -58,7 +59,8 @@ nanoBragg::add_nanoBragg_spots_cuda()
   /* declare a float version of floatimage for output */
   float* float_floatimage = new float[raw_pixels.size()];
 #ifdef HAVE_NANOBRAGG_SPOTS_CUDA
-  nanoBraggSpotsCUDA(spixels, fpixels, roi_xmin, roi_xmax,
+
+  nanoBraggSpotsCUDA(timelog /*bool*/, spixels, fpixels, roi_xmin, roi_xmax,
                      roi_ymin, roi_ymax, oversample,
                      point_pixel /* bool */, pixel_size, subpixel_size,
                      steps, detector_thickstep,

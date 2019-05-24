@@ -9,6 +9,8 @@ class TimeLogger
 public:
     TimeLogger(const char* fn_name);
     ~TimeLogger();
+public:
+    static bool m_verbose;
 private:
     clock_t m_start;
     std::string m_fn_name;
