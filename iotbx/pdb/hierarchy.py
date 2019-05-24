@@ -1733,7 +1733,7 @@ class _():
               group.append(atom.tmp)
             if (len(group) != 0):
               groups.setdefault(altloc, []).extend(group)
-      groups = groups.values()
+      groups = list(groups.values())
       if (len(groups) != 0):
         for group in groups: group.sort()
         def group_cmp(a, b): return cmp(a[0], b[0])
