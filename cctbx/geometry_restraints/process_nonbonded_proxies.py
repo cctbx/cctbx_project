@@ -1,8 +1,11 @@
 from __future__ import division, print_function
+#import math
 from libtbx import group_args
 from scitbx import matrix
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
+import scitbx.matrix
+from cctbx import sgtbx
 
 
 def check_if_1_5_interaction(
@@ -350,9 +353,12 @@ class manager():
     """
     grm = self.model.get_restraints_manager().geometry
     xrs = self.model.get_xray_structure()
-    sites_cart = self.model.get_sites_cart()
+    sites_cart  = self.model.get_sites_cart()
     site_labels = xrs.scatterers().extract_labels()
-    hd_sel = self.model.get_hd_selection()
+    hd_sel      = self.model.get_hd_selection()
+    water_sel   = self.model.selection('water')
+    unit_cell   = self.model.crystal_symmetry().unit_cell()
+    self.atoms  = self.model.get_atoms()
 
     pair_proxies = grm.pair_proxies(
                         sites_cart  = sites_cart,
@@ -387,6 +393,19 @@ class manager():
       symop_str      = item[5] # TODO probably not necessary
       symop          = item[6]
 
+      if (model_distance < 3 and [hd_sel[i_seq],hd_sel[j_seq]].count(True) == 1):
+        is_hbond = self._is_hbond(
+                    i_seq = i_seq,
+                    j_seq = j_seq,
+                    model_distance = model_distance,
+                    unit_cell = unit_cell,
+                    hd_sel = hd_sel,
+                    symop     = symop,
+                    symop_str = symop_str,
+                    water_sel = water_sel,
+                    site_labels = site_labels,
+                    fsc0 = fsc0)
+
       # Find all clashes
       delta = model_distance - vdw_sum
 
@@ -407,6 +426,87 @@ class manager():
     self._clashes = clashes(
                       clashes_dict = self._clashes_dict,
                       model        = self.model)
+
+  def _is_hbond(self,
+                i_seq,
+                j_seq,
+                model_distance,
+                unit_cell,
+                symop,
+                hd_sel,
+                symop_str,
+                water_sel,
+                site_labels,
+                fsc0):
+    """
+    Determine if a nonbonded proxy is a H bond
+    """
+    is_hbond = False
+    # TODO: Ignore water for now
+    if True in [water_sel[i_seq], water_sel[j_seq]]:
+      return is_hbond
+    # Ignore atoms within the same residue
+    if (self.atoms[i_seq].parent().parent().id_str() ==
+        self.atoms[j_seq].parent().parent().id_str()):
+      return is_hbond
+    #print(site_labels[i_seq], site_labels[j_seq])
+
+    atom1 = self.atoms[i_seq]
+    atom2 = self.atoms[j_seq]
+
+    rg1, rg2, atom1, atom2 = self._residue_groups_rt_mx_ij(atom1 = atom1,
+                                                           atom2 = atom2,
+                                                           unit_cell = unit_cell,
+                                                           symop_str = symop_str,
+                                                           symop = symop)
+
+    if hd_sel[atom1.i_seq]:
+      atom_h, rg_h = atom1, rg1
+      atom_a, rg_a = atom2, rg2
+    elif hd_sel[atom2.i_seq]:
+      atom_h, rg_h = atom2, rg2
+      atom_a, rg_a = atom1, rg1
+    else:
+      raise Sorry('this should not happen')
+    iseq_x_list = fsc0[atom_h.i_seq]
+    # There can be several, if silly double conformation
+    for iseq_x in iseq_x_list:
+      #print(site_labels[iseq_x])
+      atom_x = self.atoms[iseq_x]
+
+      xyz_h = matrix.col(atom_h.xyz)
+      xyz_a = matrix.col(atom_a.xyz)
+      xyz_x = matrix.col(atom_x.xyz)
+
+      h_a_distance = (xyz_h - xyz_a).length()
+      x_a_distance = (xyz_x - xyz_a).length()
+      h_a_x_angle = (xyz_h - xyz_a).angle(xyz_h - xyz_x)
+
+      #print(h_a_distance, model_distance, x_a_distance, math.degrees(h_a_x_angle))
+
+
+  def _residue_groups_rt_mx_ij(self, atom1, atom2, unit_cell, symop_str, symop):
+    """
+    Get atoms object and residue group object for H and heavy atom
+    """
+    xyzs1 = atom1.parent().parent().atoms().extract_xyz()
+    xyzs2 = atom2.parent().parent().atoms().extract_xyz()
+    rg1 = atom1.parent().parent().detached_copy()
+    rg2 = atom2.parent().parent().detached_copy()
+    if symop_str:
+      rt_mx_ji = sgtbx.rt_mx(str(symop))
+      xyzs2 = unit_cell.fractionalize(xyzs2)
+      m3 = rt_mx_ji.r().as_double()
+      m3 = scitbx.matrix.sqr(m3)
+      t = rt_mx_ji.t().as_double()
+      t = scitbx.matrix.col((t[0],t[1],t[2]))
+      xyzs2 = unit_cell.orthogonalize(m3.elems*xyzs2+t)
+      rg2.atoms().set_xyz(xyzs2)
+      for atom in rg2.atoms():
+        if atom.name==atom2.name:
+          atom2=atom
+          break
+    return rg1, rg2, atom1, atom2
 
 
   def _is_clash(self,
