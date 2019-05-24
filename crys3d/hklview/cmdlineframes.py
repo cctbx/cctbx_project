@@ -386,7 +386,7 @@ class HKLViewFrame () :
     details = []
     #self.merge_answer[0] = None
     self.infostr = ""
-    self.mprint("mergedata: " + str(self.params.NGL_HKLviewer.mergedata) )
+    #self.mprint("mergedata: " + str(self.params.NGL_HKLviewer.mergedata) )
     if (not array.is_unique_set_under_symmetry() and self.params.NGL_HKLviewer.mergedata is None):
       shouldmergestr = "The data in the selected array are not symmetry-" + \
         "unique, which usually means they are unmerged (but could also be due "+ \

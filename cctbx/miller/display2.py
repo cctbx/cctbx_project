@@ -80,6 +80,8 @@ def ExtendAnyData(data, nsize):
     data.extend( flex.double(nsize, nanval) )
   if isinstance(data, flex.complex_double):
     data.extend( flex.complex_double(nsize, nanval) )
+  if isinstance(data, flex.vec3_double):
+    data.extend( flex.vec3_double(nsize, (1.,1.,1.)) )
   return data
 
 
@@ -90,7 +92,8 @@ class scene(object):
   easily extensible to any other graphics platform (e.g. a PNG embedded in
   a web page).
   """
-  def __init__(self, miller_array, settings, merge=None, foms_array=None):
+  def __init__(self, miller_array, settings, merge=None, foms_array=None,
+   fullprocessarray=True):
     self.miller_array = miller_array
     self.renderscale = 100.0
     self.foms_workarray = foms_array
@@ -102,6 +105,7 @@ class scene(object):
     self.multiplicities = None
     self.fomlabel = ""
     self.foms = flex.double(self.miller_array.size(), float('nan'))
+    self.fullprocessarray = fullprocessarray
     if self.miller_array.is_complex_array():
       # want to display map coefficient as circular colours but weighted with FOMS
       # process the foms miller array and store the foms data for later use when computing colours
@@ -149,15 +153,21 @@ class scene(object):
     else :
       self.indices = array.indices()
     self.points = uc.reciprocal_space_vector(self.indices) * self.renderscale
+    n_points = self.points.size()
+
+    if not fullprocessarray:
+      self.radii = flex.double()
+      self.radii = ExtendAnyData(self.radii, n_points)
+      self.colors = flex.vec3_double()
+      self.colors = ExtendAnyData(self.colors, n_points)
+
+
     self.missing_flags = flex.bool(self.radii.size(), False)
     self.sys_absent_flags = flex.bool(self.radii.size(), False)
     if (settings.show_missing):
       self.generate_missing_reflections()
     if (settings.show_systematic_absences) and (not settings.show_only_missing):
       self.generate_systematic_absences()
-    # XXX hack for process_pick_points
-    self.visible_points = flex.bool(self.points.size(), True)
-    n_points = self.points.size()
     assert (self.colors.size() == n_points)
     assert (self.indices.size() == n_points)
     assert (self.radii.size() == n_points)
@@ -302,6 +312,8 @@ class scene(object):
     from scitbx import graphics_utils
     settings = self.settings
     data_for_colors = data_for_radii = None
+    if not self.fullprocessarray:
+      return
     data = self.data #self.work_array.data()
     sigmas = self.sigmas
     if (isinstance(data, flex.double) and data.all_eq(0)):

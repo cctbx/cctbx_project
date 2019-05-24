@@ -15,8 +15,8 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import ( QApplication, QCheckBox, QComboBox,
         QDial, QDialog, QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
-        QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
-        QVBoxLayout, QWidget )
+        QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
+        QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
 import sys, zmq, subprocess, time, threading
 
@@ -95,10 +95,8 @@ class NGL_HKLViewer(QDialog):
     self.sliceaxis = [ "h", "k", "l" ]
     self.SliceLabelComboBox.addItems( self.sliceaxis )
 
-
     self.HKLnameedit = QLineEdit('')
     self.HKLnameedit.setReadOnly(True)
-
     self.textInfo = QTextEdit()
     self.textInfo.setReadOnly(True)
 
@@ -130,10 +128,15 @@ class NGL_HKLViewer(QDialog):
     self.radiiscaleLabel = QLabel()
     self.radiiscaleLabel.setText("Linear Scale Factor")
 
-
+    self.millertable = QTableWidget(0, 8)
+    labels = ["label", "type", "no. of HKLs", "span of HKLs",
+       "min max data", "min max sigmas", "d_min, d_max", "symmetry unique"]
+    self.millertable.setHorizontalHeaderLabels(labels)
+    # don't allow editing the miller array info
+    self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
 
     self.createTopLeftGroupBox()
-    self.createTopRightGroupBox()
+    #self.createTopRightGroupBox()
     self.createBottomLeftTabWidget()
     self.createRadiiScaleGroupBox()
 
@@ -143,17 +146,19 @@ class NGL_HKLViewer(QDialog):
 
     mainLayout = QGridLayout()
     mainLayout.addWidget(self.openFileNameButton,  0, 0, 1, 1)
-    mainLayout.addWidget(self.HKLnameedit,         0, 1, 1, 1)
+    mainLayout.addWidget(self.HKLnameedit,         1, 0, 1, 1)
 
-    mainLayout.addWidget(self.topLeftGroupBox,     1, 0)
-    mainLayout.addWidget(self.topRightGroupBox,    1, 1)
-    mainLayout.addWidget(self.bottomLeftTabWidget, 2, 0)
-    mainLayout.addWidget(self.RadiiScaleGroupBox,  2, 1)
+    mainLayout.addWidget(self.topLeftGroupBox,     2, 0)
+    #mainLayout.addWidget(self.topRightGroupBox,    1, 1)
+    mainLayout.addWidget(self.RadiiScaleGroupBox,  3, 0)
+    mainLayout.addWidget(self.bottomLeftTabWidget, 4, 0)
     mainLayout.setRowStretch(0, 0)
     mainLayout.setRowStretch(1, 0)
-    mainLayout.setRowStretch(2, 1)
-    mainLayout.setColumnStretch(0, 1)
-    mainLayout.setColumnStretch(1, 0)
+    mainLayout.setRowStretch(2, 0)
+    mainLayout.setRowStretch(3, 0)
+    mainLayout.setRowStretch(4, 1)
+    #mainLayout.setColumnStretch(0, 1)
+    #mainLayout.setColumnStretch(1, 0)
     self.setLayout(mainLayout)
 
     self.setWindowTitle("NGL-HKL-viewer")
@@ -230,6 +235,13 @@ class NGL_HKLViewer(QDialog):
                                              for e in self.miller_arrays ] )
               self.SpaceGroupComboBox.clear()
               self.SpaceGroupComboBox.addItems( self.spacegroups )
+
+              self.millertable.setRowCount(len(self.miller_arrays))
+              #self.millertable.setColumnCount(8)
+              for n,millarr in enumerate(self.miller_arrays):
+                for m,elm in enumerate(millarr):
+                  self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
+
         except Exception as e:
           #print( str(e) )
           pass
@@ -416,31 +428,24 @@ class NGL_HKLViewer(QDialog):
     self.bottomLeftTabWidget = QTabWidget()
     self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Preferred,
             QSizePolicy.Ignored)
-
     tab1 = QWidget()
-    tableWidget = QTableWidget(10, 10)
-
     tab1hbox = QHBoxLayout()
     tab1hbox.setContentsMargins(5, 5, 5, 5)
-    tab1hbox.addWidget(tableWidget)
+    tab1hbox.addWidget(self.millertable)
     tab1.setLayout(tab1hbox)
-
     tab2 = QWidget()
-
     self.textInfo.setPlainText("Twinkle, twinkle, little star,\n"
                           "How I wonder what you are.\n"
                           "Up above the world so high,\n"
                           "Like a diamond in the sky.\n"
                           "Twinkle, twinkle, little star,\n"
                           "How I wonder what you are!\n")
-
     tab2hbox = QHBoxLayout()
     tab2hbox.setContentsMargins(5, 5, 5, 5)
     tab2hbox.addWidget(self.textInfo)
     tab2.setLayout(tab2hbox)
-
+    self.bottomLeftTabWidget.addTab(tab1, "&Miller Arrays")
     self.bottomLeftTabWidget.addTab(tab2, "Information")
-    self.bottomLeftTabWidget.addTab(tab1, "&Table")
 
 
   def MillerComboSelchange(self,i):

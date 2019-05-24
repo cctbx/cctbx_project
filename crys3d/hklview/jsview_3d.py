@@ -154,7 +154,7 @@ class hklview_3d:
     self.mprint( "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
       % (array_info.label_string(), details, miller_array.indices().size(), \
           miller_array.space_group_info(), uc) )
-    self.construct_reciprocal_space(merge=merge)
+    #self.construct_reciprocal_space(merge=merge)
 
 
   def construct_reciprocal_space (self, merge=None) :
@@ -229,9 +229,12 @@ class hklview_3d:
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         if fomcolm:
           foms = match_valarrays[fomcolm]
-
-      otherscene = display.scene(miller_array=match_valarray,  merge=merge,
-        settings=self.settings, foms_array=foms)
+      if i==self.iradiicol or i==self.icolourcol:
+        bfullprocess = True
+      else:
+        bfullprocess = False
+      otherscene = display.scene(miller_array=match_valarray, merge=merge,
+        settings=self.settings, foms_array=foms, fullprocessarray=bfullprocess )
       if not otherscene.SceneCreated:
         self.mprint("The " + match_valarray.info().label_string() + " array was not processed")
         continue
