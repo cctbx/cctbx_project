@@ -8,7 +8,7 @@ Advanced users should use conda natively so that they have full control.
 
 This is called by bootstrap.py to set up a developer's conda
 environment. If no conda installation is found, one will be downloaded.
-It will be installed in the "miniconda3" directory at the same level as
+It will be installed in the "mc3" directory at the same level as
 "modules."
 
 The minimum version for conda is 4.4. This is when conda moved towards
@@ -172,8 +172,8 @@ class conda_manager(object):
       Required argument for specifying the root level directory for
       CCTBX builds. This is where the "modules" and "build" directories
       reside. If a new conda installation is required, it will be placed
-      here under the "miniconda3" directory. The conda environment for
-      building will also be placed in this directory
+      here under the "mc3" directory. The conda environment for building
+      will also be placed in this directory
     conda_base: str
       Required argument for specifying location of a conda installation.
       If this is None, miniconda will be installed unless conda_env is
@@ -287,7 +287,7 @@ value."""
 
     # install conda if necessary
     if (self.conda_base is None) and (self.conda_env is None):
-      install_dir = os.path.join(self.root_dir, 'miniconda3')
+      install_dir = os.path.join(self.root_dir, 'mc3')
       if os.path.isdir(install_dir):
         print('Using default conda installation', file=self.log)
         self.conda_base = install_dir
@@ -496,7 +496,7 @@ common compilers provided by conda. Please update your version with
         file=self.log)
 
     # run the installer
-    install_dir = os.path.join(prefix, 'miniconda3')
+    install_dir = os.path.join(prefix, 'mc3')
     if self.system == 'Windows':
       flags = '/InstallationType=JustMe /RegisterPython=0 /AddToPath=0 /S /D={install_dir}'.\
         format(install_dir=install_dir)

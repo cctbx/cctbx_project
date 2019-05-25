@@ -1632,7 +1632,7 @@ sure you have a valid conda environment in
       if self.use_conda == '' and conda_env is None:
         flags = ['--builder={builder}'.format(builder=self.category)]
         # check for existing miniconda3 installation
-        if not os.path.isdir('miniconda3'):
+        if not os.path.isdir('mc3'):
           flags.append('--install_conda')
         # check if --python3 is set
         if self.python3:
