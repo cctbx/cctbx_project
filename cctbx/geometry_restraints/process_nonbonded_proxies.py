@@ -451,7 +451,7 @@ class manager():
                     fsc0 = fsc0)
 
       # proxy cannot be clash and hbond at the same time (?)
-      if is_hbond: continue
+      #if is_hbond: continue
 
       # Find all clashes
       delta = model_distance - vdw_sum
