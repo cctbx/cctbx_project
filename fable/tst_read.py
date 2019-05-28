@@ -72,7 +72,7 @@ def exercise_valid(verbose):
   read_already = set()
   def get_fprocs(file_name):
     if (verbose):
-      print(("exercise_valid:", file_name))
+      print("exercise_valid:", file_name)
     read_already.add(file_name)
     return read.process(file_names=[op.join(t_dir, file_name)])
   #
@@ -110,7 +110,7 @@ def exercise_lenient(verbose):
   #
   def get(file_name):
     if (verbose):
-      print(("exercise_lenient:", file_name))
+      print("exercise_lenient:", file_name)
     return read.process(file_names=[op.join(t_dir, file_name)])
   #
   get("str_blank_str.f")
@@ -121,7 +121,7 @@ def exercise_syntax_error(verbose):
     module_name="fable", path="test/syntax_error", test=op.isdir)
   def fail(file_name):
     if (verbose):
-      print(("exercise_syntax_error:", file_name))
+      print("exercise_syntax_error:", file_name)
     read.process(file_names=[op.join(t_dir, file_name)])
   from fable.read import Error
   try:
@@ -584,7 +584,7 @@ def exercise_semantic_error(verbose):
   from fable import SemanticError
   def fail(file_name):
     if (verbose):
-      print(("exercise_semantic_error:", file_name))
+      print("exercise_semantic_error:", file_name)
     read.process(file_names=[op.join(t_dir, file_name)])
   try:
     fail("missing_include.f")
@@ -784,7 +784,7 @@ def exercise_unsupported(verbose):
     module_name="fable", path="test/unsupported", test=op.isdir)
   def fail(file_name):
     if (verbose):
-      print(("exercise_unsupported:", file_name))
+      print("exercise_unsupported:", file_name)
     read.process(file_names=[op.join(t_dir, file_name)])
   try:
     fail("hollerith_cont_lines.f")
@@ -814,7 +814,7 @@ def exercise_tokens_as_string(verbose):
   for file_name in sorted(os.listdir(t_dir)):
     if (not file_name.endswith(".f")): continue
     if (verbose):
-      print(("exercise_tokens_as_string:", file_name))
+      print("exercise_tokens_as_string:", file_name)
     all_fprocs = read.process(file_names=[op.join(t_dir, file_name)])
     for fproc in all_fprocs.all_in_input_order:
       for ei in fproc.executable:
