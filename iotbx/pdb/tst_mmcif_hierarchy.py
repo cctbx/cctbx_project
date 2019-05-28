@@ -9,8 +9,7 @@ import iotbx.cif
 from iotbx.pdb.mmcif import pdb_hierarchy_builder
 import mmtbx.model
 
-def exercise_pdb_hierachy_builder():
-  input_1ab1 = """\
+input_1ab1 = """\
 data_1AB1
 loop_
 _atom_site.group_PDB
@@ -60,6 +59,19 @@ HETATM 682 C C2   B EOH B 2 . 14.830 -0.303 13.058 0.40 15.17 66 EOH A C2   1
 HETATM 683 O O    A EOH B 2 . 15.378 1.984  12.104 0.60 12.07 66 EOH A O    1
 HETATM 684 O O    B EOH B 2 . 14.811 2.078  12.602 0.40 5.53  66 EOH A O    1
 """
+
+def exercise_cif_show():
+  cif_model = iotbx.cif.reader(input_string=input_1ab1).model()
+  builder = pdb_hierarchy_builder(cif_model["1AB1"])
+  hierarchy = builder.hierarchy
+  h_cif = hierarchy.as_cif_block()
+  builder = pdb_hierarchy_builder(h_cif) # this runs OK, why?
+  # output h_cif:
+  s = StringIO()
+  h_cif.show(out=s, align_columns=False)
+  builder = pdb_hierarchy_builder(h_cif) # Now it fails.
+
+def exercise_pdb_hierachy_builder():
   cif_model = iotbx.cif.reader(input_string=input_1ab1).model()
   builder = pdb_hierarchy_builder(cif_model["1AB1"])
   #assert builder.crystal_symmetry is None
@@ -69,8 +81,8 @@ HETATM 684 O O    B EOH B 2 . 14.811 2.078  12.602 0.40 5.53  66 EOH A O    1
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
-model id="" #chains=2
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
+model id="" #chains=1
+  chain id="A" #residue_groups=2
     resid="   2 " #atom_groups=3
       altloc="" resname="THR" #atoms=4
         " C  "
@@ -95,7 +107,6 @@ model id="" #chains=2
         "HG21"
         "HG22"
         "HG23"
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="  66 " #atom_groups=2
       altloc="A" resname="EOH" #atoms=3
         " C1 "
@@ -210,8 +221,8 @@ _atom_site_anisotrop.U[2][3]
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
-model id="" #chains=2
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
+model id="" #chains=1
+  chain id="A" #residue_groups=2
     resid=" 108 " #atom_groups=1
       altloc="" resname="SER" #atoms=6
         " N  "
@@ -220,7 +231,6 @@ model id="" #chains=2
         " O  "
         " CB "
         " OG "
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid=" 505 " #atom_groups=1
       altloc="" resname="MN" #atoms=1
         "MN  "
@@ -884,6 +894,7 @@ A CE  1
 
 
 def run():
+  exercise_cif_show()
   exercise_fp_fdp()
   exercise_pdb_hierarchy_sequence_as_cif_block()
   exercise_pdb_hierachy_builder()
