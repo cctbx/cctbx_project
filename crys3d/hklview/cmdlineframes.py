@@ -332,7 +332,7 @@ class HKLViewFrame () :
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
-      msg = self.viewer.update_settings()
+      msg = self.viewer.update_settings(diff)
       self.mprint( msg)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.SendInfo()
@@ -433,29 +433,31 @@ class HKLViewFrame () :
     return array, array_info
 
 
-  def process_all_miller_arrays(self, array):
+  def process_all_miller_arrays(self, col):
     procarrays = []
     if self.params.NGL_HKLviewer.mergedata == False:
       self.settings.expand_to_p1 = False
       self.settings.expand_anomalous = False
-    for arr in self.valid_arrays:
+    for c,arr in enumerate(self.valid_arrays):
       procarray, procarray_info = self.process_miller_array(arr,
                                             merge_answer=self.merge_answer)
       procarrays.append(procarray)
-      if arr==array:
+      if c==col:
         array_info = procarray_info
         self.miller_array = procarray
         self.update_space_group_choices()
     self.merge_answer = [None]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    self.viewer.set_miller_array(self.miller_array, merge=array_info.merge,
+    self.viewer.set_miller_array(col, merge=array_info.merge,
        details=array_info.details_str, proc_arrays=procarrays)
     return self.miller_array, array_info
 
 
-  def set_miller_array (self, array) :
-    if (array is None) : return
-    array, array_info = self.process_all_miller_arrays(array)
+  def set_miller_array(self, col) :
+    if col >= len(self.valid_arrays):
+      return
+    self.column= col
+    array, array_info = self.process_all_miller_arrays(col)
     self.miller_array = array
     #self.update_space_group_choices()
     #self.viewer.set_miller_array(array, merge=array_info.merge,
@@ -487,9 +489,7 @@ class HKLViewFrame () :
     symm = crystal.symmetry(
       space_group_info= self.current_spacegroup,
       unit_cell=self.miller_array.unit_cell())
-    array = self.miller_array.expand_to_p1().customized_copy(
-      crystal_symmetry=symm)
-    array = array.merge_equivalents().array().set_info(self.miller_array.info())
+
     othervalidarrays = []
     for validarray in self.valid_arrays:
       #print "Space group casting ", validarray.info().label_string()
@@ -498,7 +498,8 @@ class HKLViewFrame () :
       arr = self.detect_Rfree(arr)
       othervalidarrays.append( arr )
     self.mprint( "MERGING 2")
-    self.viewer.set_miller_array(array, proc_arrays=othervalidarrays)
+
+    self.viewer.set_miller_array(self.column, proc_arrays=othervalidarrays)
     self.viewer.DrawNGLJavaScript()
 
 
@@ -513,9 +514,10 @@ class HKLViewFrame () :
       from iotbx.reflection_file_reader import any_reflection_file
       self.viewer.isnewfile = True
       #self.params.NGL_HKLviewer.mergedata = None
-      self.viewer.iarray = 0
-      self.viewer.icolourcol = 0
-      self.viewer.iradiicol = 0
+      self.viewer.iarray = -1
+      self.viewer.icolourcol = -1
+      self.viewer.iradiicol = -1
+      self.viewer.match_valarrays = []
       display.reset_settings()
       self.settings = display.settings()
       self.viewer.settings = self.params.NGL_HKLviewer.viewer
@@ -553,7 +555,7 @@ class HKLViewFrame () :
         self.NewFileLoaded=False
       elif (len(valid_arrays) == 1):
         if (set_array) :
-          self.set_miller_array(valid_arrays[0])
+          self.set_miller_array(0)
 
 
   def LoadReflectionsFile(self, filename):
@@ -642,7 +644,8 @@ class HKLViewFrame () :
         if self.viewer.mapcoef_fom_dict.get(self.valid_arrays[column].info().label_string()):
           del self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()]
         self.mprint("No valid FOM array provided.")
-    self.set_miller_array(self.valid_arrays[column])
+    #self.set_miller_array(self.valid_arrays[column])
+    self.set_miller_array(column)
     if (self.miller_array is None) :
       raise Sorry("No data loaded!")
     self.mprint( "Miller array %s runs from hkls: %s to %s" \

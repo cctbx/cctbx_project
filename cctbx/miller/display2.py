@@ -47,8 +47,10 @@ def nth_power_scale(dataarray, nth_power):
   values to 0.1 of the largest values
   """
   absdat = flex.abs(dataarray)
-  maxdat = flex.max(absdat)
-  mindat = max(1e-10*maxdat, flex.min(absdat) )
+  absdat2 = flex.double([e for e in absdat if not math.isnan(e)])
+  maxdat = flex.max(absdat2)
+  mindat = max(1e-10*maxdat, flex.min(absdat2) )
+  #print "minmaxdat:", mindat, maxdat
   # only autoscale for sensible values of maxdat and mindat
   if nth_power < 0.0 and maxdat > mindat : # amounts to automatic scale
     nth_power = math.log(0.2)/(math.log(mindat) - math.log(maxdat))
@@ -160,7 +162,6 @@ class scene(object):
       self.radii = ExtendAnyData(self.radii, n_points)
       self.colors = flex.vec3_double()
       self.colors = ExtendAnyData(self.colors, n_points)
-
 
     self.missing_flags = flex.bool(self.radii.size(), False)
     self.sys_absent_flags = flex.bool(self.radii.size(), False)
