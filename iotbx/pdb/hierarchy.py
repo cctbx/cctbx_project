@@ -16,7 +16,7 @@ import collections
 import warnings
 import math
 import sys
-from iotbx.pdb.utils import all_chain_ids
+from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
 
 class pickle_import_trigger(object): pass
 
@@ -999,6 +999,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     label_seq_id = 0
     number_label_asym_id = 0
     chain_ids = all_chain_ids()
+    label_asym_ids = all_label_asym_ids()
     for model in self.models():
       model_id = model.id
       if model_id == '': model_id = '1'
@@ -1009,6 +1010,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         if auth_asym_id.strip() == '': auth_asym_id = '.'
         label_asym_id = chain_ids[number_label_asym_id]
         number_label_asym_id += 1
+        print('number_label_asym_id',number_label_asym_id)
         for residue_group in chain.residue_groups():
           seq_id = residue_group.resseq.strip()
           label_seq_id += 1
