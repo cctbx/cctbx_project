@@ -695,6 +695,7 @@ def add_terminal_hydrogens(hierarchy,
                            append_to_end_of_model=False,
                            verbose=False,
                            ):
+  assert 0
   additional_hydrogens = add_terminal_hydrogens_threes(
     hierarchy,
     geometry_restraints_manager,
