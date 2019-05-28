@@ -1,7 +1,4 @@
 
-# TODO:
-#  - cached scenes
-
 from __future__ import division
 from libtbx.math_utils import roundoff
 from cctbx.miller import display2 as display
@@ -14,7 +11,6 @@ import threading, math, sys
 from time import sleep
 import os.path, time
 import libtbx
-import numpy as np
 import webbrowser, tempfile
 
 
