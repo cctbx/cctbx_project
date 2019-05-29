@@ -345,13 +345,14 @@ output {
       The default output filename without a file extension
     '''
 
-    filename = self.params.output.prefix
-    if filename is None:
-      filename = 'cctbx_program'
-    if self.params.output.suffix is not None:
-      filename += '{suffix}'.format(suffix=self.params.output.suffix)
-    if self.params.output.serial is not None:
-      filename += '_{serial:03d}'.format(serial=self.params.output.serial)
+    filename = 'cctbx_program'
+    if hasattr(self.params, 'output'):
+      if getattr(self.params.output, 'prefix', None) is not None:
+        filename = self.params.output.prefix
+      if getattr(self.params.output, 'suffix', None) is not None:
+        filename += '{suffix}'.format(suffix=self.params.output.suffix)
+      if getattr(self.params.output, 'serial', None) is not None:
+        filename += '_{serial:03d}'.format(serial=self.params.output.serial)
 
     return filename
 
