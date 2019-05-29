@@ -808,21 +808,30 @@ class ProcessingTab(wx.Panel):
     self.Bind(wx.EVT_BUTTON, self.onArrow, self.btn_left)
 
     # Charts
-    self.int_figure = Figure(figsize=(1, 2.5))
-    self.int_figure.patch.set_visible(False)  # create transparent background
+    # For some reason MatPlotLib 2.2.3 on GTK 6 does not create transparent
+    # patches (tried set_visible(False), set_facecolor("none"), set_alpha(0),
+    # to no avail). Thus, for GTK only, setting facecolor to background
+    # color; otherwide to 'none'. This may change if other tests reveal the
+    # same problem in other systems.
+    if wx.Platform == '__WXGTK__':
+      bg_color = [i/255 for i in self.GetBackgroundColour()]
+    else:
+      bg_color = 'none'
+
+    # Integration plot
+    self.int_figure = Figure(figsize=(1, 2.5), facecolor=bg_color)
     int_gsp = gridspec.GridSpec(2, 1, wspace=0, hspace=0)
 
-    # Resolution / No. strong reflections chart
+    # Resolution / No. strong reflections plot
     self.res_axes = self.int_figure.add_subplot(int_gsp[0])
     self.res_axes.set_ylabel('Resolution ({})'.format(r'$\AA$'))
     self.res_axes.tick_params(labelbottom=False)
 
     self.nsref_axes = self.int_figure.add_subplot(int_gsp[1])
     self.nsref_axes.set_xlabel('Frame')
-    self.nsref_axes.set_ylabel('No. Spots')
-    # self.nsref_axes.set_ylabel('Spots (I/{0}(I)>{1})'
-    #                            ''.format(r'$\sigma$',
-    #                                      self.gparams.image_import.strong_sigma))
+    self.nsref_axes.set_ylabel('Spots (I/{0}(I)>{1})'
+                               ''.format(r'$\sigma$',
+                                         self.gparams.image_import.strong_sigma))
 
     # Initialize blank charts, medians, and picks
     self.res_chart = self.res_axes.plot([], [], 'o', c='#0571b0', zorder=1,
@@ -849,14 +858,12 @@ class ProcessingTab(wx.Panel):
     self.int_canvas.draw()
     self.int_figure.set_tight_layout(True)
 
-
     # Wilson (<I> vs. res) plot
     self.wp_panel = wx.Panel(self)
     wp_sizer = wx.BoxSizer(wx.VERTICAL)
     self.wp_panel.SetSizer(wp_sizer)
 
-    self.wp_figure = Figure(figsize=(0.3, 0.6))
-    self.wp_figure.patch.set_visible(False)
+    self.wp_figure = Figure(figsize=(0.3, 0.6), facecolor=bg_color)
     self.wp_axes = self.wp_figure.add_subplot(111)
     self.wp_axes.set_ylabel("<I>")
 
@@ -869,12 +876,11 @@ class ProcessingTab(wx.Panel):
     hkl_sizer = wx.BoxSizer(wx.VERTICAL)
     self.hkl_panel.SetSizer(hkl_sizer)
 
-    self.hkl_figure = Figure(figsize=(0.3, 0.3))
-    self.hkl_figure.patch.set_visible(False)  # create transparent background
-
-    self.hkl_axes = self.hkl_figure.add_subplot(111, frameon=False)
+    self.hkl_figure = Figure(figsize=(0.3, 0.3), facecolor=bg_color)
+    self.hkl_axes = self.hkl_figure.add_subplot(111)
     self.hkl_axes.set_xticks([])
     self.hkl_axes.set_yticks([])
+    self.hkl_axes.set_frame_on(False)
 
     self.hkl_canvas = FigureCanvas(self.hkl_panel, -1, self.hkl_figure)
     hkl_sizer.Add(self.hkl_canvas, 1, flag=wx.EXPAND)
@@ -894,8 +900,7 @@ class ProcessingTab(wx.Panel):
     proc_sizer = wx.BoxSizer(wx.VERTICAL)
     self.proc_panel.SetSizer(proc_sizer)
 
-    self.proc_figure = Figure(figsize=(0.5, 2.5))
-    self.proc_figure.patch.set_visible(False)
+    self.proc_figure = Figure(figsize=(0.5, 2.5), facecolor=bg_color)
     self.sum_axes = self.proc_figure.add_subplot(111)
     self.sum_axes.axis('off')
 
@@ -953,7 +958,8 @@ class ProcessingTab(wx.Panel):
         pass
     else:
       canvas.draw()
-    self.Refresh()
+    # self.Refresh()
+    canvas.Refresh()
 
   def onSGTextEnter(self, e):
     self.user_sg = str(self.hkl_sg.sg.GetValue())
@@ -1120,9 +1126,14 @@ class ProcessingTab(wx.Panel):
   def draw_measured_indices(self):
     # Draw a h0, k0, or l0 slice of merged data so far
     self.hkl_axes.clear()
+    self.hkl_axes.axhline(0, lw=0.5, c='black', ls='-')
+    self.hkl_axes.axvline(0, lw=0.5, c='black', ls='-')
+    self.hkl_axes.set_xticks([])
+    self.hkl_axes.set_yticks([])
+
     try:
       self.hkl_colorbar.remove()
-    except Exception:
+    except AttributeError:
       pass
 
     try:
@@ -1169,10 +1180,6 @@ class ProcessingTab(wx.Panel):
 
     hkl_scatter = self.hkl_axes.scatter(x, y, c=freq, cmap="jet",
                                         s=pt_size, edgecolor='none')
-    self.hkl_axes.axhline(0, lw=0.5, c='black', ls='-')
-    self.hkl_axes.axvline(0, lw=0.5, c='black', ls='-')
-    self.hkl_axes.set_xticks([])
-    self.hkl_axes.set_yticks([])
     self.hkl_axes.xaxis.set_label_coords(x=1, y=0.5)
     self.hkl_axes.yaxis.set_label_coords(x=0.5, y=1)
 
@@ -1380,13 +1387,22 @@ class LiveAnalysisTab(d.ScrolledPanel):
     mpl.rc('font', family='sans-serif', size=plot_font_size)
     mpl.rc('mathtext', default='regular')
 
+    # For some reason MatPlotLib 2.2.3 on GTK 6 does not create transparent
+    # patches (tried set_visible(False), set_facecolor("none"), set_alpha(0),
+    # to no avail). Thus, for GTK only, setting facecolor to background
+    # color; otherwide to 'none'. This may change if other tests reveal the
+    # same problem in other systems.
+    if wx.Platform == '__WXGTK__':
+      bg_color = [i/255 for i in self.GetBackgroundColour()]
+    else:
+      bg_color = 'none'
+
     # UC Histogram / cluster figure
     self.uc_panel = wx.Panel(self)
     uc_box = wx.StaticBox(self.uc_panel, label='Unit Cell Histograms')
     uc_sizer = wx.StaticBoxSizer(uc_box, wx.VERTICAL)
     self.uc_panel.SetSizer(uc_sizer)
-    self.uc_figure = Figure(figsize=(1, 2.5))
-    # self.uc_figure.patch.set_visible(False)  # create transparent background
+    self.uc_figure = Figure(figsize=(1, 2.5), facecolor=bg_color)
 
     uc_gsub = gridspec.GridSpec(2, 3, wspace=0, hspace=0)
     self.a_axes = self.uc_figure.add_subplot(uc_gsub[0])
@@ -1813,7 +1829,7 @@ class SummaryTab(d.ScrolledPanel):
     if hasattr(self.info, 'categories'):
       ckeys = ['total', 'have_diffraction', 'failed_triage',
                'failed_spotfinding', 'failed_indexing', 'failed_grid_search',
-               'failed_integration', 'integrated']
+               'failed_integration', 'failed_filter', 'integrated']
       rlabels = []
       contents = []
       for k in ckeys:

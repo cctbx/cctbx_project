@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division,  unicode_literals
 
 '''
 Author      : Lyubimov, A.Y.
@@ -15,9 +15,8 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib import gridspec, rc
 
-from libtbx import utils as u
-
 from iota.components.iota_ui_base import IOTABaseFrame, IOTABasePanel
+
 
 class PlotWindow(IOTABaseFrame):
   def __init__(self, parent, id, title, plot_panel=None):
@@ -60,6 +59,7 @@ class PlotWindow(IOTABaseFrame):
   def onQuit(self, e):
     self.Close()
 
+
 class Plotter(IOTABasePanel):
   ''' Class with function to plot various PRIME charts (includes Table 1) '''
 
@@ -78,13 +78,13 @@ class Plotter(IOTABasePanel):
   def table_one(self):
     ''' Constructs Table 1 for GUI or logging '''
 
-    A = u'\N{ANGSTROM SIGN}'
-    d = u'\N{DEGREE SIGN}'
-    a = u'\N{GREEK SMALL LETTER ALPHA}'
-    b = u'\N{GREEK SMALL LETTER BETA}'
-    g = u'\N{GREEK SMALL LETTER GAMMA}'
-    s = u'\N{GREEK SMALL LETTER SIGMA}'
-    h = u'\u00BD'
+    A = '\N{ANGSTROM SIGN}'
+    d = '\N{DEGREE SIGN}'
+    a = '\N{GREEK SMALL LETTER ALPHA}'
+    b = '\N{GREEK SMALL LETTER BETA}'
+    g = '\N{GREEK SMALL LETTER GAMMA}'
+    s = '\N{GREEK SMALL LETTER SIGMA}'
+    h = '\u00BD'
 
     uc_edges = '{:4.2f}, {:4.2f}, {:4.2f}'.format(self.info['mean_a'][-1],
                                                   self.info['mean_b'][-1],
@@ -97,18 +97,19 @@ class Plotter(IOTABasePanel):
     res_last_shell = '{:4.2f} - {:4.2f}' \
                      ''.format(self.info['binned_resolution'][-1][-2],
                                self.info['binned_resolution'][-1][-1])
-    t1_rlabels = [u.to_unicode(u'No. of accepted images'),
-                  u.to_unicode(u'No. of rejected images'),
-                  u.to_unicode(u'Space Group'),
-                  u.to_unicode(u'Cell dimensions'),
-                  u.to_unicode(u'  a, b, c ({})  '.format(A)),
-                  u.to_unicode(u'  {}, {}, {} ({})    '.format(a, b, g, d)),
-                  u.to_unicode(u'Resolution ({})  '.format(A)),
-                  u.to_unicode(u'Completeness (%)'),
-                  u.to_unicode(u'Multiplicity'),
-                  u.to_unicode(u'I / {}(I) '.format(s)),
-                  u.to_unicode(u'CC{} '.format(h)),
-                  u.to_unicode(u'R_merge')]
+    t1_rlabels = ['No. of accepted images',
+                  'No. of rejected images',
+                  'Space Group',
+                  'Cell dimensions',
+                  '  a, b, c ({})  '.format(A),
+                  '  {}, {}, {} ({})    '.format(a, b, g, d),
+                  'Resolution ({})  '.format(A),
+                  'Completeness (%)',
+                  'Multiplicity',
+                  'I / {}(I) '.format(s),
+                 'CC{} '.format(h),
+                  'R_merge']
+
 
     n_frames_bad = self.info['n_frames_bad_cc'][-1]      + \
                    self.info['n_frames_bad_G'][-1]       + \

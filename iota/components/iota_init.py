@@ -131,6 +131,7 @@ def initialize_new_run(phil, input_dict=None, target_phil=None):
                               run_number=run_no,
                               description=params.description,
                               status='initialized',
+                              have_results=False,
                               init_proc=False)
     info.export_json()
     return True, info, 'IOTA_XTERM_INIT: Initialization complete!'

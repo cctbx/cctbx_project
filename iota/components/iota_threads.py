@@ -151,7 +151,7 @@ class ObjectReader():
     finished_objects = info.get_finished_objects_from_file()
     if finished_objects:
       analyzer = Analyzer(info=info, gui_mode=True)
-      stats_OK = analyzer.get_results(finished_objects=finished_objects)
+      stats_OK = analyzer.run_get_results(finished_objects=finished_objects)
       if stats_OK:
         return analyzer.info
     return None
@@ -396,15 +396,12 @@ class PRIMEThread(Thread):
       cmd = 'prime.run {} {}'.format(prime_file, cmd_args)
 
       try:
-        easy_run.fully_buffered(cmd, join_stdout_stderr=True).show_stdout()
-        # self.job = CustomRun(command=cmd,
-        #                      join_stdout_stderr=True)
-        # self.job.run()
+        # easy_run.fully_buffered(cmd, join_stdout_stderr=True).show_stdout()
+        self.job = CustomRun(command=cmd,
+                             join_stdout_stderr=True)
+        self.job.run()
         prime_info = self.get_prime_stats()
       except Exception as e:
-        import traceback
-        traceback.print_exc()
-
         print ("LIVE PRIME ERROR: ", e)
         prime_info = None
 
