@@ -75,7 +75,7 @@ class hklview_3d:
     self.othermindata = []
     self.othermaxsigmas = []
     self.otherminsigmas = []
-    self.rebuildscene = True
+    self.sceneisdirty = True
     self.matchingarrayinfo = []
     self.match_valarrays = []
     self.binstrs = []
@@ -157,7 +157,7 @@ class hklview_3d:
     #self.construct_reciprocal_space(merge=merge)
 
 
-  def superset_all_miller_arrays(self):
+  def ExtendMillerArraysUnionHKLs(self):
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.match_valarrays = []
     # loop over all miller arrays to find the subsets of hkls common between currently selected
@@ -217,10 +217,10 @@ class hklview_3d:
 
 
   def construct_reciprocal_space(self, merge=None) :
-    if len(self.match_valarrays)==0:
-      self.superset_all_miller_arrays()
+    #if len(self.match_valarrays)==0:
+    #  self.ExtendMillerArraysUnionHKLs()
     self.miller_array = self.match_valarrays[self.iarray]
-    if not self.rebuildscene:
+    if not self.sceneisdirty:
       return
     self.otherscenes = []
     self.othermaxdata = []
@@ -234,8 +234,8 @@ class hklview_3d:
       fomcolm = self.mapcoef_fom_dict.get(self.miller_array.info().label_string())
       if fomcolm:
         foms_array = self.proc_arrays[fomcolm].deep_copy()
-    self.scene = display.scene(miller_array=self.miller_array, merge=merge,
-     settings=self.settings, foms_array=foms_array)
+    #self.scene = display.scene(miller_array=self.miller_array, merge=merge,
+    # settings=self.settings, foms_array=foms_array)
     # compute scenes for each of the miller arrays
     for i,match_valarray in enumerate(self.match_valarrays):
       foms = None
@@ -250,6 +250,7 @@ class hklview_3d:
         bfullprocess = False
       otherscene = display.scene(miller_array=match_valarray, merge=merge,
         settings=self.settings, foms_array=foms, fullprocessarray=True )
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       if not otherscene.SceneCreated:
         self.mprint("The " + match_valarray.info().label_string() + " array was not processed")
         continue
@@ -261,7 +262,7 @@ class hklview_3d:
       otherscene.radii = otherscene.radii.set_selected(b, 0.2)
       d = otherscene.data
       if (isinstance(d, flex.int)):
-        d = [e for e in self.scene.data if e!= display.inanval]
+        d = [e for e in self.otherscene.data if e!= display.inanval]
       if match_valarray.is_complex_array():
         d = otherscene.ampl
       maxdata = max( d )
@@ -282,14 +283,18 @@ class hklview_3d:
       self.mprint("%d, %s" %(i, infostr) )
       self.matchingarrayinfo.append(infostr)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    self.rebuildscene = False
+    self.sceneisdirty = False
 
 
   #--- user input and settings
   def update_settings(self, diffphil) :
-    if (self.miller_array is None):
-      return
+    if hasattr(diffphil, "filename"):
+      self.ExtendMillerArraysUnionHKLs()
+      self.sceneisdirty = True
+
     if hasattr(diffphil, "spacegroupchoice") or \
+      hasattr(diffphil, "mergedata") or \
+      hasattr(diffphil, "fomcolumn") or \
       hasattr(diffphil, "viewer") and ( hasattr(diffphil.viewer, "show_anomalous_pairs") \
       or hasattr(diffphil.viewer, "show_data_over_sigma") \
       or hasattr(diffphil.viewer, "show_missing") \
@@ -300,8 +305,13 @@ class hklview_3d:
       or hasattr(diffphil.viewer, "expand_anomalous") \
       or hasattr(diffphil.viewer, "expand_to_p1")
       ):
-        self.rebuildscene = True
+        self.sceneisdirty = True
+        print "isdirty"
     self.construct_reciprocal_space(merge=self.merge)
+    self.scene = self.otherscenes[self.iarray]
+    if (self.miller_array is None):
+      return
+
     self.DrawNGLJavaScript()
     msg = "Rendered %d reflections\n" % self.scene.points.size()
     return msg

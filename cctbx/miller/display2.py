@@ -101,7 +101,9 @@ class scene(object):
     self.foms_workarray = foms_array
     self.SceneCreated = False
     self.settings = settings
-    self.merge_equivalents = merge
+    self.merge_equivalents = False
+    if not self.miller_array.is_unique_set_under_symmetry():
+      self.merge_equivalents = merge
     from cctbx import crystal
     from cctbx.array_family import flex
     self.multiplicities = None
@@ -109,7 +111,7 @@ class scene(object):
     self.foms = flex.double(self.miller_array.size(), float('nan'))
     self.fullprocessarray = fullprocessarray
     if self.miller_array.is_complex_array():
-      # want to display map coefficient as circular colours but weighted with FOMS
+      # Colour map coefficient as a circular rainbow with saturation as a function of FOMs
       # process the foms miller array and store the foms data for later use when computing colours
       if foms_array:
         assert ( self.miller_array.size() == foms_array.size() )
@@ -334,7 +336,6 @@ class scene(object):
       self.colourlabel = self.miller_array.info().labels[1]
     else :
       data_for_colors = flex.abs(data.deep_copy())
-
     uc = self.work_array.unit_cell()
     min_dist = min(uc.reciprocal_space_vector((1,1,1)))
     min_radius = 0.5 * min_dist
@@ -342,7 +343,6 @@ class scene(object):
     if ((self.multiplicities is not None) and
         (settings.scale_radii_multiplicity)):
       data_for_radii = self.multiplicities.data().as_double()
-
       if (settings.sigma_radius) and sigmas is not None:
         data_for_radii = sigmas * self.multiplicities.as_double()
       assert data_for_radii.size() == data.size()
@@ -386,7 +386,8 @@ class scene(object):
     #if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
     #  data_for_radii = flex.sqrt(flex.abs(data_for_radii))
     if len(data_for_radii):
-      scale = max_radius/flex.max(data_for_radii)
+      dat2 = flex.double([e for e in data_for_radii if not math.isnan(e)])
+      scale = max_radius/flex.max(dat2)
       radii = data_for_radii * (self.settings.scale * scale)
       assert radii.size() == colors.size()
     else:

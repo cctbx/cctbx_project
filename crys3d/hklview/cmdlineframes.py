@@ -92,14 +92,14 @@ mi2 = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
 ma2 = miller.array(miller.set(xs, mi2),
                     flex.complex_double( [
                                 -1.0 + 0.0j,
-                                 -0.5 + 0.866025j,
-                                 0.0 + 1.0j,
-                                 0.5 + 0.866025j,
-                                 1.0 + 0.0j,
+                                 -1.5 + 2.598075j,
+                                 0.0 + 0.8j,
+                                 1.0 + 1.7320508j,
+                                 4.0 + 0.0j,
                                  0.5 - 0.866025j,
                                  0.0 - 1.0j,
-                                 -0.5 - 0.866025j,
-                                 -0.7071 + 0.7071j
+                                 -2.5 - 4.330127j,
+                                 -4.24264 + 4.24264j
                                  ] ) )
 
 ma2.set_info(miller.array_info(source="artificial file", labels=["MyMap", "PhiMyMap"]))
@@ -130,7 +130,7 @@ from crys3d.hklview import cmdlineframes
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", verbose=False)
 myHKLview.LoadReflectionsFile("mymtz.mtz")
 myHKLview.SetColumn(0)
-yes
+no
 myHKLview.SetRadiiScale(1, nth_power_scale=0.2)
 myHKLview.SetColumnBinThresholds([50, 20, 15, 12, 9])
 
@@ -372,7 +372,7 @@ class HKLViewFrame () :
     return array
 
 
-  def process_miller_array (self, array, merge_answer=[None]) :
+  def process_miller_array(self, array, merge_answer=[None]) :
     if (array is None) : return
     if (array.is_hendrickson_lattman_array()) :
       raise Sorry("Hendrickson-Lattman coefficients are not supported.")
@@ -524,12 +524,13 @@ class HKLViewFrame () :
       self.viewer.mapcoef_fom_dict = {}
       try :
         hkl_file = any_reflection_file(file_name)
+        arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
+          )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)
+        #arrays = f.file_server.miller_arrays
       except Exception, e :
         self.NewFileLoaded=False
-        self.msprint(to_str(e))
-      arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
-        )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)
-      #arrays = f.file_server.miller_arrays
+        self.mprint(to_str(e))
+        arrays = []
       valid_arrays = []
       self.array_infostrs = []
       self.array_infotpls = []
@@ -553,10 +554,9 @@ class HKLViewFrame () :
         msg = "No arrays of the supported types in this file."
         self.mprint(msg)
         self.NewFileLoaded=False
-      elif (len(valid_arrays) == 1):
+      elif (len(valid_arrays) >= 1):
         if (set_array) :
           self.set_miller_array(0)
-
 
   def LoadReflectionsFile(self, filename):
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )

@@ -67,8 +67,8 @@ namespace scitbx { namespace graphics_utils {
   scitbx::vec3<double>
     get_Phi_FOM_colour(double phi, double fom = 1.0)
   {
-    /* return circular rainbow colour indicating phase between [0;2pi] but greyed according to fom between [0;1]
-    inspired by python code:
+    /* return circular rainbow colour indicating phase between [0;2Pi] but greyed according to fom between [0;1]
+    inspired by https://en.wikipedia.org/wiki/HSL_and_HSV and python code:
      def HSV_vivid(h):
         h %= 1
         h *= 6
@@ -215,6 +215,7 @@ namespace scitbx { namespace graphics_utils {
     double vmin = properties[0];
     for (unsigned i_seq = 0; i_seq < properties.size(); i_seq++) {
       if ((! color_all) && (! selection[i_seq])) continue;
+      if (!boost::math::isfinite(properties[i_seq])) continue;
       if (properties[i_seq] > vmax) vmax = properties[i_seq];
       if (properties[i_seq] < vmin) vmin = properties[i_seq];
     }
@@ -252,6 +253,7 @@ namespace scitbx { namespace graphics_utils {
     double vmin = properties[0];
     for (unsigned i_seq = 0; i_seq < properties.size(); i_seq++) {
       if ((! shade_all) && (! selection[i_seq])) continue;
+      if ( !boost::math::isfinite(properties[i_seq]) ) continue;
       if (properties[i_seq] > vmax) vmax = properties[i_seq];
       if (properties[i_seq] < vmin) vmin = properties[i_seq];
     }

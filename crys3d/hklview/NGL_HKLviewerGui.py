@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import ( QApplication, QCheckBox, QComboBox,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
-import sys, zmq, subprocess, time, threading
+import sys, zmq, subprocess, time
 
 class NGL_HKLViewer(QDialog):
   def __init__(self, parent=None):
@@ -55,7 +55,7 @@ class NGL_HKLViewer(QDialog):
 
     self.mergecheckbox = QCheckBox()
     self.mergecheckbox.setText("Merge data")
-    self.mergecheckbox.setTristate (True)
+    #self.mergecheckbox.setTristate (True)
     self.mergecheckbox.clicked.connect(self.MergeData)
 
     self.expandP1checkbox = QCheckBox()
@@ -151,7 +151,7 @@ class NGL_HKLViewer(QDialog):
     mainLayout.addWidget(self.topLeftGroupBox,     2, 0)
     #mainLayout.addWidget(self.topRightGroupBox,    1, 1)
     mainLayout.addWidget(self.RadiiScaleGroupBox,  3, 0)
-    mainLayout.addWidget(self.bottomLeftTabWidget, 4, 0)
+    mainLayout.addWidget(self.bottomLeftGroupBox,  4, 0)
     mainLayout.setRowStretch(0, 0)
     mainLayout.setRowStretch(1, 0)
     mainLayout.setRowStretch(2, 0)
@@ -176,75 +176,75 @@ class NGL_HKLViewer(QDialog):
     self.fileisvalid = False
     self.NewFileLoaded = False
 
-    self.msgqueuethrd = threading.Thread(target = self.update )
-    self.msgqueuethrd.daemon = True
-    self.msgqueuethrd.start()
+    #self.msgqueuethrd = threading.Thread(target = self.update )
+    #self.msgqueuethrd.daemon = True
+    #self.msgqueuethrd.start()
 
     self.show()
 
 
   def update(self):
-    while 1:
-      time.sleep(1)
-      if self.cctbxproc:
-        if self.cctbxproc.stdout:
-          print(self.cctbxproc.stdout.read().decode("utf-8"))
-        if self.cctbxproc.stderr:
-          print(self.cctbxproc.stderr.read().decode("utf-8"))
-      if self.out:
-        print(self.out.decode("utf-8"))
-      if self.err:
-        print(self.err.decode("utf-8"))
-      #print("in update\n")
-      if self.context:
-        try:
-          msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
-          #msg = self.socket.recv()
-          self.info = eval(msg.decode())
+    #while 1:
+    #  time.sleep(1)
+    if self.cctbxproc:
+      if self.cctbxproc.stdout:
+        print(self.cctbxproc.stdout.read().decode("utf-8"))
+      if self.cctbxproc.stderr:
+        print(self.cctbxproc.stderr.read().decode("utf-8"))
+    if self.out:
+      print(self.out.decode("utf-8"))
+    if self.err:
+      print(self.err.decode("utf-8"))
+    #print("in update\n")
+    if self.context:
+      try:
+        msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
+        #msg = self.socket.recv()
+        self.info = eval(msg.decode())
 
-          ngl_hkl_infodict = self.info
-          if ngl_hkl_infodict:
-            self.miller_arrays = ngl_hkl_infodict["miller_arrays"]
-            self.matching_arrays = ngl_hkl_infodict["matching_arrays"]
-            self.bin_info = ngl_hkl_infodict["bin_info"]
-            self.html_url = ngl_hkl_infodict["html_url"]
-            self.spacegroups = ngl_hkl_infodict["spacegroups"]
-            self.mergedata = ngl_hkl_infodict["mergedata"]
-            self.infostr = ngl_hkl_infodict["info"]
-            self.NewFileLoaded = ngl_hkl_infodict["NewFileLoaded"]
-            self.fileisvalid = True
+        ngl_hkl_infodict = self.info
+        if ngl_hkl_infodict:
+          self.miller_arrays = ngl_hkl_infodict["miller_arrays"]
+          self.matching_arrays = ngl_hkl_infodict["matching_arrays"]
+          self.bin_info = ngl_hkl_infodict["bin_info"]
+          self.html_url = ngl_hkl_infodict["html_url"]
+          self.spacegroups = ngl_hkl_infodict["spacegroups"]
+          self.mergedata = ngl_hkl_infodict["mergedata"]
+          self.infostr = ngl_hkl_infodict["info"]
+          self.NewFileLoaded = ngl_hkl_infodict["NewFileLoaded"]
+          self.fileisvalid = True
 
-            if self.infostr:
-              print(self.infostr)
-              #self.textInfo.setPlainText(self.infostr)
-              #self.mergecheckbox.setEnabled(True)
-            #else:
-            #  self.textInfo.setPlainText("")
-            #  self.mergecheckbox.setEnabled(False)
-            if self.NewFileLoaded:
-              if self.mergedata == True : val = 2
-              if self.mergedata == None : val = 1
-              if self.mergedata == False : val = 0
-              self.mergecheckbox.setCheckState(val )
+          if self.infostr:
+            print(self.infostr)
+            self.textInfo.setPlainText(self.infostr)
+            #self.mergecheckbox.setEnabled(True)
+          else:
+            self.textInfo.setPlainText("")
+            #self.mergecheckbox.setEnabled(False)
+          if self.NewFileLoaded:
+            if self.mergedata == True : val = 2
+            if self.mergedata == None : val = 1
+            if self.mergedata == False : val = 0
+            self.mergecheckbox.setCheckState(val )
 
-              self.MillerComboBox.clear()
-              self.MillerComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
-                                               for e in self.miller_arrays ] )
-              self.FOMComboBox.clear()
-              self.FOMComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
+            self.MillerComboBox.clear()
+            self.MillerComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
                                              for e in self.miller_arrays ] )
-              self.SpaceGroupComboBox.clear()
-              self.SpaceGroupComboBox.addItems( self.spacegroups )
+            self.FOMComboBox.clear()
+            self.FOMComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
+                                           for e in self.miller_arrays ] )
+            self.SpaceGroupComboBox.clear()
+            self.SpaceGroupComboBox.addItems( self.spacegroups )
 
-              self.millertable.setRowCount(len(self.miller_arrays))
-              #self.millertable.setColumnCount(8)
-              for n,millarr in enumerate(self.miller_arrays):
-                for m,elm in enumerate(millarr):
-                  self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
+            self.millertable.setRowCount(len(self.miller_arrays))
+            #self.millertable.setColumnCount(8)
+            for n,millarr in enumerate(self.miller_arrays):
+              for m,elm in enumerate(millarr):
+                self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
 
-        except Exception as e:
-          #print( str(e) )
-          pass
+      except Exception as e:
+        #print( str(e) )
+        pass
 
 
 
@@ -355,8 +355,8 @@ class NGL_HKLViewer(QDialog):
       self.NGL_HKL_command('NGL_HKLviewer.filename = "%s"' %fileName )
       self.MillerComboBox.clear()
       self.FOMComboBox.clear()
-      while not self.fileisvalid:
-        time.sleep(1)
+      #while not self.fileisvalid:
+      #  time.sleep(1)
         #print("file not valid")
 
 
@@ -425,27 +425,32 @@ class NGL_HKLViewer(QDialog):
 
 
   def createBottomLeftTabWidget(self):
+    self.bottomLeftGroupBox = QGroupBox("Group 3")
+    layout = QGridLayout()
+
+    """
     self.bottomLeftTabWidget = QTabWidget()
-    self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Preferred,
-            QSizePolicy.Ignored)
+    self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Preferred,  QSizePolicy.Ignored)
     tab1 = QWidget()
     tab1hbox = QHBoxLayout()
     tab1hbox.setContentsMargins(5, 5, 5, 5)
     tab1hbox.addWidget(self.millertable)
     tab1.setLayout(tab1hbox)
     tab2 = QWidget()
-    self.textInfo.setPlainText("Twinkle, twinkle, little star,\n"
-                          "How I wonder what you are.\n"
-                          "Up above the world so high,\n"
-                          "Like a diamond in the sky.\n"
-                          "Twinkle, twinkle, little star,\n"
-                          "How I wonder what you are!\n")
+
     tab2hbox = QHBoxLayout()
     tab2hbox.setContentsMargins(5, 5, 5, 5)
     tab2hbox.addWidget(self.textInfo)
     tab2.setLayout(tab2hbox)
     self.bottomLeftTabWidget.addTab(tab1, "&Miller Arrays")
     self.bottomLeftTabWidget.addTab(tab2, "Information")
+    """
+
+    layout.addWidget(self.millertable,            0, 0, 1, 1)
+    layout.addWidget(self.textInfo,               1, 0, 1, 1)
+    layout.setRowStretch (0, 1)
+    layout.setRowStretch (1 ,0)
+    self.bottomLeftGroupBox.setLayout(layout)
 
 
   def MillerComboSelchange(self,i):
@@ -457,6 +462,11 @@ class NGL_HKLViewer(QDialog):
 
     self.SpaceGroupComboBox.clear()
     self.SpaceGroupComboBox.addItems( self.spacegroups )
+
+    if self.miller_arrays[ i ][7] == False:
+      self.mergecheckbox.setEnabled(True)
+    else:
+      self.mergecheckbox.setEnabled(False)
 
 
   def FOMComboSelchange(self,i):
@@ -519,10 +529,10 @@ if __name__ == '__main__':
   app = QApplication(sys.argv)
   guiobj = NGL_HKLViewer()
 
-  #timer = QTimer()
-  #timer.setInterval(0.1)
-  #timer.timeout.connect(guiobj.update)
-  #timer.start(500)
+  timer = QTimer()
+  timer.setInterval(0.1)
+  timer.timeout.connect(guiobj.update)
+  timer.start(500)
 
   if guiobj.cctbxproc:
     guiobj.cctbxproc.terminate()
