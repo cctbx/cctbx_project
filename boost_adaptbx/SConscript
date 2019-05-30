@@ -441,7 +441,7 @@ object/function_doc_signature.cpp
       # Put the boost repository prefix on these
       bpy_numpy_sources = [os.path.join(prefix, path) for path in bpy_numpy_sources]
 
-      if env_etc.static_bpl:
+      if env_etc.static_bpl or sys.platform == 'win32':
         env_npy.Append(SHCXXFLAGS=["-DBOOST_NUMPY_STATIC_LIB"])
         builder = env_npy.StaticLibrary
       else:
