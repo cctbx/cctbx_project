@@ -24,11 +24,13 @@ class ArrayInfo:
       data = [e for e in data if e!= display.inanval]
     if millarr.is_complex_array():
       data = flex.abs(millarr.data())
+    data = [e for e in data if not math.isnan(e)]
     self.maxdata =max( data )
     self.mindata =min( data )
     self.maxsigmas = self.minsigmas = None
     if millarr.sigmas() is not None:
       data = millarr.sigmas()
+      data = [e for e in data if not math.isnan(e)]
       self.maxsigmas =max( data )
       self.minsigmas =min( data )
     self.minmaxdata = (roundoff(self.mindata), roundoff(self.maxdata))
@@ -63,9 +65,9 @@ class hklview_3d:
     self.cameratype = "orthographic"
     self.url = ""
     self.binarray = "Resolution"
-    self.icolourcol = -1
-    self.iradiicol = -1
-    self.iarray = -1
+    self.icolourcol = None
+    self.iradiicol = None
+    self.iarray = None
     self.isnewfile = False
     self.binvals = []
     self.workingbinvals = []
@@ -75,7 +77,7 @@ class hklview_3d:
     self.othermindata = []
     self.othermaxsigmas = []
     self.otherminsigmas = []
-    self.sceneisdirty = True
+    self.sceneisdirty = False
     self.matchingarrayinfo = []
     self.match_valarrays = []
     self.binstrs = []
@@ -141,7 +143,8 @@ class hklview_3d:
 
   def set_miller_array(self, col, merge=None, details="", proc_arrays=[]):
     self.iarray = col
-    self.miller_array = proc_arrays[col]
+    if col:
+      self.miller_array = proc_arrays[col]
     self.proc_arrays = proc_arrays
     self.merge = merge
     if (self.miller_array is None):
@@ -216,7 +219,8 @@ class hklview_3d:
       self.match_valarrays.append( match_valarray )
 
 
-  def construct_reciprocal_space(self, merge=None) :
+  def construct_reciprocal_space(self, merge=None):
+    self.mprint("Constructing HKL scenes")
     #if len(self.match_valarrays)==0:
     #  self.ExtendMillerArraysUnionHKLs()
     self.miller_array = self.match_valarrays[self.iarray]
@@ -244,15 +248,18 @@ class hklview_3d:
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         if fomcolm:
           foms = self.match_valarrays[fomcolm]
-      if i==self.iradiicol or i==self.icolourcol:
+      #commonarray = match_valarray
+      commonarray = match_valarray.common_set(self.proc_arrays[self.iarray] )
+      commonarray.set_info(match_valarray.info() )
+      if i==self.iradiicol or i==self.icolourcol or i==self.iarray:
         bfullprocess = True
       else:
         bfullprocess = False
-      otherscene = display.scene(miller_array=match_valarray, merge=merge,
+      otherscene = display.scene(miller_array=commonarray, merge=merge,
         settings=self.settings, foms_array=foms, fullprocessarray=True )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       if not otherscene.SceneCreated:
-        self.mprint("The " + match_valarray.info().label_string() + " array was not processed")
+        self.mprint("The " + commonarray.info().label_string() + " array was not processed")
         continue
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       # cast any NAN values to 1 of the colours and radii to 0.2 before writing javascript
@@ -260,33 +267,19 @@ class hklview_3d:
       otherscene.colors = otherscene.colors.set_selected(b, (1.0, 1.0, 1.0))
       b = flex.bool([bool(math.isnan(e)) for e in otherscene.radii])
       otherscene.radii = otherscene.radii.set_selected(b, 0.2)
-      d = otherscene.data
-      if (isinstance(d, flex.int)):
-        d = [e for e in self.otherscene.data if e!= display.inanval]
-      if match_valarray.is_complex_array():
-        d = otherscene.ampl
-      maxdata = max( d )
-      mindata = min( d )
-      self.othermaxdata.append( maxdata )
-      self.othermindata.append( mindata )
-
-      maxsigmas = minsigmas = display.nanval
-      if otherscene.sigmas is not None:
-        d = otherscene.sigmas
-        maxsigmas = max( d )
-        minsigmas = min( d )
-
-      self.othermaxsigmas.append(maxsigmas)
-      self.otherminsigmas.append(minsigmas)
       self.otherscenes.append( otherscene)
-      infostr = ArrayInfo(otherscene.work_array, self.mprint).infostr
+      ainf = ArrayInfo(otherscene.work_array, self.mprint)
+      self.othermaxdata.append( ainf.maxdata )
+      self.othermindata.append( ainf.mindata )
+      self.othermaxsigmas.append(ainf.maxsigmas)
+      self.otherminsigmas.append(ainf.minsigmas)
+      infostr = ainf.infostr
       self.mprint("%d, %s" %(i, infostr) )
       self.matchingarrayinfo.append(infostr)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.sceneisdirty = False
 
 
-  #--- user input and settings
   def update_settings(self, diffphil) :
     if hasattr(diffphil, "filename"):
       self.ExtendMillerArraysUnionHKLs()
@@ -294,6 +287,7 @@ class hklview_3d:
 
     if hasattr(diffphil, "spacegroupchoice") or \
       hasattr(diffphil, "mergedata") or \
+      hasattr(diffphil, "column") or \
       hasattr(diffphil, "fomcolumn") or \
       hasattr(diffphil, "viewer") and ( hasattr(diffphil.viewer, "show_anomalous_pairs") \
       or hasattr(diffphil.viewer, "show_data_over_sigma") \
@@ -302,39 +296,19 @@ class hklview_3d:
       or hasattr(diffphil.viewer, "show_systematic_absences") \
       or hasattr(diffphil.viewer, "slice_axis") \
       or hasattr(diffphil.viewer, "slice_mode") \
+      or hasattr(diffphil.viewer, "scale") \
+      or hasattr(diffphil.viewer, "nth_power_scale_radii") \
       or hasattr(diffphil.viewer, "expand_anomalous") \
       or hasattr(diffphil.viewer, "expand_to_p1")
       ):
         self.sceneisdirty = True
-        print "isdirty"
     self.construct_reciprocal_space(merge=self.merge)
-    self.scene = self.otherscenes[self.iarray]
-    if (self.miller_array is None):
+    if self.miller_array is None or self.iarray < 0:
       return
-
+    self.scene = self.otherscenes[self.iarray]
     self.DrawNGLJavaScript()
     msg = "Rendered %d reflections\n" % self.scene.points.size()
     return msg
-
-
-  def process_pick_points (self) :
-    self.closest_point_i_seq = None
-    if (self.pick_points is not None) and (self.scene is not None) :
-      closest_point_i_seq = gltbx.viewer_utils.closest_visible_point(
-        points=self.scene.points,
-        atoms_visible=self.scene.visible_points,
-        point0=self.pick_points[0],
-        point1=self.pick_points[1])
-      if (closest_point_i_seq is not None) :
-        self.closest_point_i_seq = closest_point_i_seq
-    if (self.closest_point_i_seq is not None) :
-      self.scene.label_points.add(self.closest_point_i_seq)
-      self.GetParent().update_clicked(index=self.closest_point_i_seq)
-      #hkl, d_min, value = self.scene.get_reflection_info(
-      #  self.closest_point_i_seq)
-      #self.GetParent().update_clicked(hkl, d_min, value)
-    else :
-      self.GetParent().update_clicked(index=None)
 
 
   def UpdateBinValues(self, binvals = [] ):

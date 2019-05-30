@@ -158,19 +158,18 @@ class scene(object):
       self.indices = array.indices()
     self.points = uc.reciprocal_space_vector(self.indices) * self.renderscale
     n_points = self.points.size()
-
     if not fullprocessarray:
       self.radii = flex.double()
       self.radii = ExtendAnyData(self.radii, n_points)
       self.colors = flex.vec3_double()
       self.colors = ExtendAnyData(self.colors, n_points)
-
     self.missing_flags = flex.bool(self.radii.size(), False)
     self.sys_absent_flags = flex.bool(self.radii.size(), False)
     if (settings.show_missing):
       self.generate_missing_reflections()
     if (settings.show_systematic_absences) and (not settings.show_only_missing):
       self.generate_systematic_absences()
+    n_points = self.points.size()
     assert (self.colors.size() == n_points)
     assert (self.indices.size() == n_points)
     assert (self.radii.size() == n_points)

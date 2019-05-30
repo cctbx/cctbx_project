@@ -211,8 +211,8 @@ namespace scitbx { namespace graphics_utils {
     SCITBX_ASSERT(properties.size() > 0);
     SCITBX_ASSERT(gradient_type <= 2);
     af::shared <scitbx::vec3<double> > colors(properties.size());
-    double vmax = properties[0];
-    double vmin = properties[0];
+    double vmax = -9e99;
+    double vmin = 9e99;
     for (unsigned i_seq = 0; i_seq < properties.size(); i_seq++) {
       if ((! color_all) && (! selection[i_seq])) continue;
       if (!boost::math::isfinite(properties[i_seq])) continue;
@@ -249,8 +249,8 @@ namespace scitbx { namespace graphics_utils {
   {
     SCITBX_ASSERT(properties.size() > 0);
     af::shared <scitbx::vec3<double> > colors(properties.size());
-    double vmax = properties[0];
-    double vmin = properties[0];
+    double vmax = -9e99;
+    double vmin = 9e99;
     for (unsigned i_seq = 0; i_seq < properties.size(); i_seq++) {
       if ((! shade_all) && (! selection[i_seq])) continue;
       if ( !boost::math::isfinite(properties[i_seq]) ) continue;

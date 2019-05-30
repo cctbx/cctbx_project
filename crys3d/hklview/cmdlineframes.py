@@ -446,6 +446,8 @@ class HKLViewFrame () :
         array_info = procarray_info
         self.miller_array = procarray
         self.update_space_group_choices()
+    if col < 0:
+      array_info = procarray_info
     self.merge_answer = [None]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.viewer.set_miller_array(col, merge=array_info.merge,
@@ -453,7 +455,7 @@ class HKLViewFrame () :
     return self.miller_array, array_info
 
 
-  def set_miller_array(self, col) :
+  def set_miller_array(self, col=-1) :
     if col >= len(self.valid_arrays):
       return
     self.column= col
@@ -489,7 +491,6 @@ class HKLViewFrame () :
     symm = crystal.symmetry(
       space_group_info= self.current_spacegroup,
       unit_cell=self.miller_array.unit_cell())
-
     othervalidarrays = []
     for validarray in self.valid_arrays:
       #print "Space group casting ", validarray.info().label_string()
@@ -498,7 +499,6 @@ class HKLViewFrame () :
       arr = self.detect_Rfree(arr)
       othervalidarrays.append( arr )
     self.mprint( "MERGING 2")
-
     self.viewer.set_miller_array(self.column, proc_arrays=othervalidarrays)
     self.viewer.DrawNGLJavaScript()
 
@@ -555,8 +555,9 @@ class HKLViewFrame () :
         self.mprint(msg)
         self.NewFileLoaded=False
       elif (len(valid_arrays) >= 1):
-        if (set_array) :
-          self.set_miller_array(0)
+        if (set_array):
+          self.set_miller_array()
+
 
   def LoadReflectionsFile(self, filename):
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
