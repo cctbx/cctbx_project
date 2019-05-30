@@ -276,10 +276,13 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
         assert 0
     # adjust X-N-H angles to obtain planar
     nh_atoms = {}
+    error_atoms = []
     for atom in self[0].atoms():
+      error_atoms.append('%s\n' %atom.quote())
       if atom.name.strip() in ['C']:
         nh_atoms[atom.name.strip()] = atom
     for atom in self[1].atoms():
+      error_atoms.append('%s\n' %atom.quote())
       if atom.name.strip() in ['N', 'H', 'CA']:
         nh_atoms[atom.name.strip()] = atom
     if len(nh_atoms)==4:
@@ -294,8 +297,10 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
 
   This is unlikely.
 
-  However, to persist, set cdl=False.
-                    ''')
+  However, to proceed, set cdl=False.
+
+%s
+                    ''' % ''.join(error_atoms))
       total = CNCA.angle_ideal + CNH.angle_ideal + CANH.angle_ideal
       diff = (total-360)/2
       CNH.angle_ideal-=diff
