@@ -873,6 +873,25 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       siguij=siguij,
       )
 
+  def _label_asym_id_lookup(self, chain, residue_group, atom_group):
+    if not hasattr(self, 'label_asym_ids'):
+      self.number_label_asym_id = -1
+      self.label_asym_ids = all_label_asym_ids()
+      self._lai_lookup = {}
+    #
+    cmi = chain.memory_id()
+    if cmi not in self._lai_lookup:
+      if chain.is_protein() or chain.is_na():
+        self.number_label_asym_id+=1
+        self._lai_lookup[cmi] = self.label_asym_ids[self.number_label_asym_id]
+      elif atom_group.resname in ['HOH', 'DOD']:
+        self.number_label_asym_id+=1
+        self._lai_lookup[cmi] = self.label_asym_ids[self.number_label_asym_id]
+    #
+    if cmi in self._lai_lookup: return self._lai_lookup[cmi]
+    self.number_label_asym_id+=1
+    return self.label_asym_ids[self.number_label_asym_id]
+
   def as_cif_block(self,
       crystal_symmetry=None,
       coordinate_precision=5,
@@ -997,9 +1016,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     struct_asym_ids = []
     #
     label_seq_id = 0
-    number_label_asym_id = 0
     chain_ids = all_chain_ids()
-    label_asym_ids = all_label_asym_ids()
     for model in self.models():
       model_id = model.id
       if model_id == '': model_id = '1'
@@ -1008,15 +1025,15 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         if chain.atoms()[0].segid.strip() != '':
           auth_asym_id = chain.atoms()[0].segid.strip()
         if auth_asym_id.strip() == '': auth_asym_id = '.'
-        label_asym_id = chain_ids[number_label_asym_id]
-        number_label_asym_id += 1
-        print('number_label_asym_id',number_label_asym_id)
         for residue_group in chain.residue_groups():
           seq_id = residue_group.resseq.strip()
           label_seq_id += 1
           icode = residue_group.icode
           if icode == ' ': icode = '?'
           for atom_group in residue_group.atom_groups():
+            label_asym_id = self._label_asym_id_lookup(chain,
+                                                       residue_group,
+                                                       atom_group)
             alt_id = atom_group.altloc
             if alt_id == '': alt_id = '.'
             comp_id = atom_group.resname.strip()
