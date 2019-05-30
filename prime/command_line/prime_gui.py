@@ -19,7 +19,7 @@ class MainApp(wx.App):
   ''' App for the main GUI window  '''
   def OnInit(self):
     self.frame = PRIMEWindow(None, -1, title='PRIME')
-    self.frame.place_and_size(set_size=True, set_by='mouse')
+    self.frame.place_and_size(set_size=True, center=True, set_by='mouse')
     self.frame.Show(True)
     self.SetTopWindow(self.frame)
     return True

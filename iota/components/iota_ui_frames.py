@@ -54,11 +54,11 @@ f = ut.WxFlags()
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
 if wx.Platform == '__WXGTK__':
-  plot_font_size = 10
-  norm_font_size = 10
-  button_font_size = 12
-  LABEL_SIZE = 14
-  CAPTION_SIZE = 12
+  plot_font_size = 9
+  norm_font_size = 9
+  button_font_size = 10
+  LABEL_SIZE = 12
+  CAPTION_SIZE = 10
   python = 'python'
 elif wx.Platform == '__WXMAC__':
   plot_font_size = 9
@@ -655,8 +655,8 @@ class LogTab(wx.Panel):
                                             rt.RE_READONLY |
                                             wx.TE_DONTWRAP)
     self.log_window.SetFont(
-      wx.Font(9, wx.FONTFAMILY_TELETYPE, wx.FONTSTYLE_NORMAL,
-              wx.FONTWEIGHT_BOLD, False))
+      wx.Font(norm_font_size, wx.FONTFAMILY_TELETYPE, wx.FONTSTYLE_NORMAL,
+              wx.FONTWEIGHT_NORMAL, False))
     self.log_sizer.Add(self.log_window, proportion=1, flag=wx.EXPAND | wx.ALL,
                        border=10)
 
@@ -669,8 +669,15 @@ class LogTab(wx.Panel):
 
     self.Bind(wx.EVT_BUTTON, self.onSearchForward, self.find_string.btn_forward)
     self.Bind(wx.EVT_BUTTON, self.onSearchReverse, self.find_string.btn_reverse)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onEnter, self.find_string.txt_ctrl)
+
+  def onEnter(self, e):
+    self.search_forward()
 
   def onSearchForward(self, e):
+    self.search_forward()
+
+  def search_forward(self):
     if self.log_window.GetCaretPosition() == -1:
       self.log_window.SetCaretPosition(0)
     pos = self.log_window.GetCaretPosition()
@@ -707,6 +714,9 @@ class LogTab(wx.Panel):
       self.log_window.ShowPosition(found_pos)
 
   def onSearchReverse(self, e):
+    self.search_reverse()
+
+  def search_reverse(self):
     if self.log_window.GetCaretPosition() == -1:
       self.log_window.SetCaretPosition(0)
     pos = self.log_window.GetCaretPosition()
@@ -1440,6 +1450,9 @@ class LiveAnalysisTab(d.ScrolledPanel):
     cluster_box_sizer = wx.StaticBoxSizer(cluster_box, wx.VERTICAL)
     self.cluster_panel.SetSizer(cluster_box_sizer)
     self.cluster_list = ct.CustomListCtrl(self.cluster_panel, size=(-1, 100))
+    font = wx.Font(norm_font_size, wx.FONTFAMILY_TELETYPE,
+                              wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, False)
+    self.cluster_list.SetFont(font)
     self.cluster_list.ctr.InsertColumn(0, "#")
     self.cluster_list.ctr.InsertColumn(1, "Lattice")
     self.cluster_list.ctr.InsertColumn(2, "Unit Cell", width=200)
@@ -1731,7 +1744,8 @@ class SummaryTab(d.ScrolledPanel):
     self.prime_window = PRIMEWindow(None, -1, title='PRIME',
                                     prefix=self.gparams.advanced.prime_prefix)
     self.prime_window.load_script(out_dir=self.info.int_base)
-    self.prime_window.place_and_size(set_by='mouse', center=True)
+    self.prime_window.place_and_size(set_by='mouse', center=True, set_size=True)
+
     os.chdir(self.info.int_base)
     self.prime_window.Show(True)
 

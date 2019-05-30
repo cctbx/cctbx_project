@@ -14,7 +14,8 @@ from wxtbx import bitmaps
 
 from iotbx import phil as ip
 
-from iota.components.iota_ui_base import BaseDialog, BaseBackendDialog, BaseOptionsDialog
+from iota.components.iota_ui_base import BaseDialog, BaseBackendDialog, \
+  BaseOptionsDialog
 import iota.components.iota_ui_controls as ct
 from iota.components.iota_input import master_phil
 from iota.components.iota_utils import UnicodeCharacters, WxFlags, noneset
@@ -22,20 +23,26 @@ from iota.components.iota_utils import UnicodeCharacters, WxFlags, noneset
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
 if wx.Platform == '__WXGTK__':
-  norm_font_size = 10
-  button_font_size = 12
-  LABEL_SIZE = 14
-  CAPTION_SIZE = 12
+  plot_font_size = 9
+  norm_font_size = 9
+  button_font_size = 10
+  LABEL_SIZE = 12
+  CAPTION_SIZE = 10
+  python = 'python'
 elif wx.Platform == '__WXMAC__':
+  plot_font_size = 9
   norm_font_size = 12
   button_font_size = 14
   LABEL_SIZE = 14
   CAPTION_SIZE = 12
-elif (wx.Platform == '__WXMSW__'):
+  python = "Python"
+elif wx.Platform == '__WXMSW__':
+  plot_font_size = 9
   norm_font_size = 9
   button_font_size = 11
   LABEL_SIZE = 11
   CAPTION_SIZE = 9
+  python = "Python"  # TODO: make sure it's right!
 
 # Initialize unicode font and wx flags
 u = UnicodeCharacters()
@@ -2291,8 +2298,10 @@ class RecoveryDialog(BaseDialog):
                                         choice_label='Recover: ')
     self.main_sizer.Add(self.dlg_ctr, flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
-    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
+    # Bindings
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=-1)
+    self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.onItemActivated, id=-1)
 
   def insert_paths(self, pathlist):
     pathlist = sorted(pathlist, key=lambda i:i.lower())
@@ -2327,15 +2336,30 @@ class RecoveryDialog(BaseDialog):
       self.Fit()
 
   def onOK(self, e):
+    selected = False
     for i in range(self.pathlist.GetItemCount()):
       if self.pathlist.IsSelected(idx=i):
+        self.set_selection(idx=i)
+        selected = True
 
-        self.selected = [self.pathlist.GetItemText(i, col=2),
-                         self.pathlist.GetItemText(i, col=3),
-                         self.pathlist.GetItemText(i, col=1)]
-        self.recovery_mode = self.dlg_ctr.choice.GetSelection()
+    if selected:
+      self.EndModal(wx.ID_OK)
+    else:
+      self.EndModal(wx.ID_CANCEL)
+
     e.Skip()
 
+  def onItemActivated(self, e):
+    idx = e.GetIndex()
+    self.set_selection(idx=idx)
+    self.EndModal(wx.ID_OK)
+    e.Skip()
+
+  def set_selection(self, idx=0):
+    self.selected = [self.pathlist.GetItemText(idx, col=2),
+                     self.pathlist.GetItemText(idx, col=3),
+                     self.pathlist.GetItemText(idx, col=1)]
+    self.recovery_mode = self.dlg_ctr.choice.GetSelection()
 
 class DIALSSpfDialog(BaseDialog):
   def __init__(self, parent,

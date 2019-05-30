@@ -27,20 +27,26 @@ ginp = InputFinder()
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
 if wx.Platform == '__WXGTK__':
-  norm_font_size = 10
-  button_font_size = 12
-  LABEL_SIZE = 14
-  CAPTION_SIZE = 12
+  plot_font_size = 9
+  norm_font_size = 9
+  button_font_size = 10
+  LABEL_SIZE = 12
+  CAPTION_SIZE = 10
+  python = 'python'
 elif wx.Platform == '__WXMAC__':
+  plot_font_size = 9
   norm_font_size = 12
   button_font_size = 14
   LABEL_SIZE = 14
   CAPTION_SIZE = 12
-elif (wx.Platform == '__WXMSW__'):
+  python = "Python"
+elif wx.Platform == '__WXMSW__':
+  plot_font_size = 9
   norm_font_size = 9
   button_font_size = 11
   LABEL_SIZE = 11
   CAPTION_SIZE = 9
+  python = "Python"  # TODO: make sure it's right!
 
 # Metallicbutton globals (temporary!)
 GRADIENT_NORMAL = 0

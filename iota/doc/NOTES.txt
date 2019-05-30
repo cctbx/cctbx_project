@@ -1,10 +1,14 @@
-IOTA v1.3.008 - gui bugfixes
+PRIME GUI bugfixes
 
-1. prime.phil is now generated again
-2. fixed chart transparency on Linux systems
-3. added unicode_literals to mod_plotter.py (all literals within should be
-   unicode anyway, for wxPython3 and 4)
-4. "failed_filter" category is now included in final summary (GUI and log)
+1. Fixed canvas redraw for main chart tab
+2. Fixed PRIME window size when launching from IOTA summary tab
+
+IOTA GUI bugfixes and tweaks
+
+1. In log search: pressing ENTER searches in the forward direction
+2. Can now select run in recovery dialog by double-clicking or pressing ENTER
+3. Graceful handling of clicking OK without selecting a run to recover
+4. Reduced font size for GTK GUI elements
 
 ___________
 05.28.2019
