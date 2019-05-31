@@ -1,0 +1,93 @@
+# Script for building CCTBX
+
+jobs:
+- job: osx_64
+  pool:
+    vmImage: macOS-10.14
+  timeoutInMinutes: 360
+  dependsOn: syntax
+  strategy:
+    maxParallel: 3
+    matrix:
+      python2.7:
+        OS: osx-64
+        PYTHON_VERSION: py27
+      python3.6:
+        OS: osx-64
+        PYTHON_VERSION: py36
+
+  steps:
+  # - script: |
+  #     sudo xcode-select --switch /Applications/Xcode_9.4.1.app/Contents/Developer
+  #   displayName: Select Xcode version
+
+  - script: |
+      echo "Removing homebrew from Azure to avoid conflicts."
+      curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall > ~/uninstall_homebrew
+      chmod +x ~/uninstall_homebrew
+      ~/uninstall_homebrew -fq
+      rm ~/uninstall_homebrew
+    displayName: Remove homebrew
+
+  - script: |
+      echo "Installing Miniconda"
+      set -x -e
+      curl -o $(Build.StagingDirectory)/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
+      chmod +x $(Build.StagingDirectory)/miniconda.sh
+      $(Build.StagingDirectory)/miniconda.sh -b -p $(Build.StagingDirectory)/miniconda
+      export PATH=$(Build.StagingDirectory)/miniconda/bin:$PATH
+      echo "Setting up Conda environment"
+    displayName: 'Install miniconda'
+
+  - checkout: self
+    path: ./modules/cctbx_project
+
+  - script: |
+      git checkout py3
+      cd ../..
+      ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
+    displayName: Check out py3 branch / Link bootstrap.py
+
+  - script: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+
+  - script: |
+      conda create -y -n ${PYTHON_VERSION} --file ./libtbx/auto_build/conda_envs/cctbx_${PYTHON_VERSION}_${OS}.txt
+      conda install -y -c conda-forge -n ${PYTHON_VERSION} junit-xml
+    displayName: Create conda environment
+
+  - script: |
+      cd ../..
+      python bootstrap.py hot update --builder=cctbx
+    displayName: Download sources
+
+  - script: |
+      source activate ${PYTHON_VERSION}
+      cd ../..
+      python bootstrap.py build --builder=cctbx --use-conda --nproc=4
+      cd build
+      source setpaths.sh
+      libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx
+      make -j 4
+      make -j 4
+    displayName: Configure and Build
+
+  - script: |
+      source activate ${PYTHON_VERSION}
+      cd ../..
+      source ./build/setpaths.sh
+      mkdir tests
+      cd tests
+      libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es \
+        module=fable module=gltbx module=iotbx module=libtbx module=rstbx \
+        module=scitbx module=simtbx module=smtbx module=spotfinder \
+        module=annlib_adaptbx module=cbflib_adaptbx \
+        nproc=4
+    failOnStderr: false
+    continueOnError: true
+    displayName: Test
+
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '**/output.xml'
