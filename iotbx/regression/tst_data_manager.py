@@ -467,6 +467,19 @@ def test_miller_array_datatype():
 
   os.remove('test_phil')
 
+  # test writing file
+  arrays = dm.get_miller_arrays()
+  dataset = arrays[2].as_mtz_dataset(column_root_label='label1')
+  dataset.add_miller_array(miller_array=arrays[3], column_root_label='label2')
+  mtz_object = dataset.mtz_object()
+  dm.write_miller_array_file(mtz_object, filename='test.mtz', overwrite=True)
+  dm.process_miller_array_file('test.mtz')
+  new_labels = dm.get_miller_array_labels('test.mtz')
+  assert('label1,SIGlabel1' in new_labels)
+  assert('label2,SIGlabel2' in new_labels)
+
+  os.remove('test.mtz')
+
   # test file server
   fs1 = dm.get_reflection_file_server()
   fs2 = dm.get_reflection_file_server([data_mtz, data_mtz])
