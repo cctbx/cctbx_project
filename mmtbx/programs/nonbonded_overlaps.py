@@ -4,12 +4,12 @@ try:
 except ImportError:
   from libtbx.program_template import ProgramTemplate
 import libtbx.load_env
-import mmtbx.model
-import iotbx.pdb
+#import mmtbx.model
+#import iotbx.pdb
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
-import mmtbx.validation.clashscore as mvc
-from libtbx.utils import null_out
+#import mmtbx.validation.clashscore as mvc
+#from libtbx.utils import null_out
 from elbow.command_line.ready_set import model_interface as ready_set_model_interface
 
 #import time
