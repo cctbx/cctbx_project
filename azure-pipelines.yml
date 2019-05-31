@@ -1,0 +1,8 @@
+# Templates for linux, macOS, and Windows
+# Based on approach from conda-forge
+
+jobs:
+  - template: ./.azure-pipelines/azure-pipelines-syntax.yml
+  - template: ./.azure-pipelines/azure-pipelines-linux.yml
+  - template: ./.azure-pipelines/azure-pipelines-osx.yml
+  - template: ./.azure-pipelines/azure-pipelines-win.yml
