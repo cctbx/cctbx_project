@@ -5,6 +5,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <string>
 
 namespace cctbx { namespace miller { namespace boost_python {
 
@@ -35,22 +36,41 @@ namespace {
     }
   };
 
+  struct merge_equivalents_string_wrappers
+  {
+    typedef merge_equivalents_string<std::string, double> w_t;
+
+    static void
+      wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>("merge_equivalents_string", no_init)
+        .def(init<af::const_ref<index<> > const&,
+          af::const_ref<std::string > const&>())
+        .add_property("indices", make_getter(&w_t::indices, rbv()))
+        .add_property("data", make_getter(&w_t::data, rbv()))
+        .add_property("redundancies", make_getter(&w_t::redundancies, rbv()))
+        ;
+    }
+  };
+
   struct merge_equivalents_complex_wrappers
   {
     typedef merge_equivalents_generic<std::complex<double>, double> w_t;
 
     static void
-    wrap()
+      wrap()
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("merge_equivalents_complex", no_init)
         .def(init<af::const_ref<index<> > const&,
-                  af::const_ref<std::complex<double> > const&>())
+          af::const_ref<std::complex<double> > const&>())
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
         .add_property("redundancies", make_getter(&w_t::redundancies, rbv()))
-      ;
+        ;
     }
   };
 
@@ -193,6 +213,7 @@ namespace {
   {
     merge_equivalents_real_wrappers::wrap();
     merge_equivalents_complex_wrappers::wrap();
+    merge_equivalents_string_wrappers::wrap();
     merge_equivalents_hl_wrappers::wrap();
     merge_equivalents_exact_wrappers<bool>::wrap(
       "merge_equivalents_exact_bool");
