@@ -9,8 +9,7 @@ import iotbx.cif
 from iotbx.pdb.mmcif import pdb_hierarchy_builder
 import mmtbx.model
 
-def exercise_pdb_hierachy_builder():
-  input_1ab1 = """\
+input_1ab1 = """\
 data_1AB1
 loop_
 _atom_site.group_PDB
@@ -60,6 +59,21 @@ HETATM 682 C C2   B EOH B 2 . 14.830 -0.303 13.058 0.40 15.17 66 EOH A C2   1
 HETATM 683 O O    A EOH B 2 . 15.378 1.984  12.104 0.60 12.07 66 EOH A O    1
 HETATM 684 O O    B EOH B 2 . 14.811 2.078  12.602 0.40 5.53  66 EOH A O    1
 """
+
+def exercise_cif_show():
+  cif_model = iotbx.cif.reader(input_string=input_1ab1).model()
+  builder = pdb_hierarchy_builder(cif_model["1AB1"])
+  hierarchy = builder.hierarchy
+  h_cif = hierarchy.as_cif_block()
+  builder = pdb_hierarchy_builder(h_cif) # this runs OK, why?
+  # output h_cif:
+  s = StringIO()
+  h_cif.show(out=s)
+  print s.getvalue()
+  # assert 0, "Observe '' instead of . in place of _atom_site.pdbx_PDB_ins_code"
+  builder = pdb_hierarchy_builder(h_cif) # Now it fails.
+
+def exercise_pdb_hierachy_builder():
   cif_model = iotbx.cif.reader(input_string=input_1ab1).model()
   builder = pdb_hierarchy_builder(cif_model["1AB1"])
   #assert builder.crystal_symmetry is None
@@ -107,6 +121,8 @@ model id="" #chains=2
         " O  "
 """)
   cif_block = hierarchy.as_cif_block()
+  # import os, sys
+  # cif_block.show(out=sys.stdout)
   builder = pdb_hierarchy_builder(cif_block)
   hierarchy_recycled = builder.hierarchy
   s1 = StringIO()
@@ -884,6 +900,7 @@ A CE  1
 
 
 def run():
+  exercise_cif_show()
   exercise_fp_fdp()
   exercise_pdb_hierarchy_sequence_as_cif_block()
   exercise_pdb_hierachy_builder()
