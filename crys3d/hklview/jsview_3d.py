@@ -60,6 +60,7 @@ class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
     self.miller_array = None
+    self.tooltip_array = None
     self.d_min = None
     self.scene = None
     self.NGLscriptstr = ""
@@ -177,6 +178,7 @@ class hklview_3d:
       matchindices = miller.match_indices(superset_array.indices(), validarray.indices() )
       #print validarray.info().label_string()
       valarray = validarray.select( matchindices.pairs().column(1) )
+      #valarray.sort(by_value="packed_indices")
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       if valarray.anomalous_flag() and not superset_array.anomalous_flag():
         # valarray gets its anomalous_flag from validarray. But it cannot have more HKLs than self.miller_array
@@ -196,11 +198,14 @@ class hklview_3d:
       superset_array = match_valarray
       #print "supersetsize:", superset_array.size()
     # now extend each miller array to contain any missing indices from the superset miller array
+    self.tooltip_array = miller.array(miller.set(superset_array.crystal_symmetry(), superset_array.indices()),
+                          data=flex.std_string(superset_array.size(), "") )
     for i,validarray in enumerate(self.proc_arrays):
       # first match indices in currently selected miller array with indices in the other miller arrays
       matchindices = miller.match_indices(superset_array.indices(), validarray.indices() )
       #print validarray.info().label_string()
       valarray = validarray.select( matchindices.pairs().column(1) )
+      #valarray.sort(by_value="packed_indices")
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       if valarray.anomalous_flag() and not superset_array.anomalous_flag():
         # valarray gets its anomalous_flag from validarray. But it cannot have more HKLs than self.miller_array
@@ -218,6 +223,39 @@ class hklview_3d:
       match_valarray.sort(by_value="packed_indices")
       match_valarray.set_info(validarray.info() )
       self.match_valarrays.append( match_valarray )
+    hkls = self.tooltip_array.indices()
+    dres = self.tooltip_array.unit_cell().d(hkls)
+
+    for i,hkl in enumerate(hkls):
+      spbufttip = 'H,K,L: %s, %s, %s' %(hkl[0], hkl[1], hkl[2])
+      spbufttip += '\ndres: %s ' %str(roundoff(dres[i])  )
+      spbufttip += '\' + AA + \''
+      self.tooltip_array.data()[i] = spbufttip
+
+    self.mprint( "making tooltips")
+    for j,match_valarray in enumerate(self.match_valarrays):
+      ocolstr = match_valarray.info().label_string()
+      if isinstance(match_valarray.data(), flex.complex_double):
+        ampl = flex.abs(match_valarray.data())
+        phases = flex.arg(match_valarray.data()) * 180.0/math.pi
+        # purge nan values from array to avoid crash in fmod_positive()
+        b = flex.bool([bool(math.isnan(e)) for e in phases])
+        # replace the nan values with an arbitrary float value
+        phases = phases.set_selected(b, 42.4242)
+        # Cast negative degrees to equivalent positive degrees
+        phases = flex.fmod_positive(phases, 360.0)
+      sigmas = match_valarray.sigmas()
+      for i,datval in enumerate(match_valarray.data()):
+        od =""
+        if match_valarray.is_complex_array():
+          od = str(roundoff(ampl[i])) + ", " + str(roundoff(phases[i])  ) + \
+            "\' + DGR + \'"
+        elif sigmas is not None:
+          od = str(roundoff(datval) ) + ", " + str(roundoff(sigmas[i]))
+        else:
+          od = str(roundoff(datval) )
+        if not (math.isnan( abs(datval) ) or datval == display.inanval):
+          self.tooltip_array.data()[i] += "\n%s: %s" %(ocolstr, od)
 
 
   def construct_reciprocal_space(self, merge=None):
@@ -250,15 +288,18 @@ class hklview_3d:
         if fomcolm:
           foms = self.match_valarrays[fomcolm]
       #commonarray = match_valarray
+      if not match_valarray.anomalous_flag() and self.proc_arrays[self.iarray].anomalous_flag():
+        match_valarray = match_valarray.generate_bijvoet_mates()
+
       commonarray = match_valarray.common_set(self.proc_arrays[self.iarray] )
       commonarray.set_info(match_valarray.info() )
       if i==self.iradiicol or i==self.icolourcol or i==self.iarray:
         bfullprocess = True
       else:
         bfullprocess = False
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       otherscene = display.scene(miller_array=commonarray, merge=merge,
         settings=self.settings, foms_array=foms, fullprocessarray=True )
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       if not otherscene.SceneCreated:
         self.mprint("The " + commonarray.info().label_string() + " array was not processed")
         continue
@@ -297,6 +338,7 @@ class hklview_3d:
       or hasattr(diffphil.viewer, "show_systematic_absences") \
       or hasattr(diffphil.viewer, "slice_axis") \
       or hasattr(diffphil.viewer, "slice_mode") \
+      or hasattr(diffphil.viewer, "slice_index") \
       or hasattr(diffphil.viewer, "scale") \
       or hasattr(diffphil.viewer, "nth_power_scale_radii") \
       or hasattr(diffphil.viewer, "expand_anomalous") \
@@ -458,35 +500,22 @@ class hklview_3d:
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       raise Sorry("Should never get here")
 
+    mttip_array = self.tooltip_array
+    if self.merge:
+      mttip_array, mltpl, mrg = display.MergeData(self.tooltip_array, self.settings.show_anomalous_pairs)
+
+    matchindices = miller.match_indices(mttip_array.indices(), self.scene.indices )
+    current_tooltip_array = mttip_array.select( matchindices.pairs().column(0) )
+    current_tooltip_array.sort(by_value="packed_indices")
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
       ibin = data2bin( bindata[i] )
-      spbufttip = 'H,K,L: %s, %s, %s' %(hkls[i][0], hkls[i][1], hkls[i][2])
-      spbufttip += '\ndres: %s ' %str(roundoff(dres[i])  )
-      spbufttip += '\' + AA + \''
-      for j,otherscene in enumerate(self.otherscenes):
-        ocolstr = self.proc_arrays[j].info().label_string()
-        odata = otherscene.data
-        od =""
-        if self.proc_arrays[j].is_complex_array():
-          if not math.isnan(otherscene.foms[i]):
-            od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phases[i])  ) + \
-              "\' + DGR + \'" +  ", " + str(roundoff(otherscene.foms[i])  )
-          else:
-            od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phases[i])  ) + \
-              "\' + DGR + \'"
-        elif self.proc_arrays[j].sigmas() is not None:
-          od = str(roundoff(odata[i]) ) + ", " + str(roundoff(otherscene.sigmas[i]))
-        else:
-          od = str(roundoff(odata[i]) )
-        if not (math.isnan( abs(odata[i]) ) or odata[i] == display.inanval):
-          spbufttip += "\n%s: %s" %(ocolstr, od)
       positions[ibin].extend( roundoff(list(hklstars)) )
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )
-      spbufttips[ibin].append(spbufttip)
-
+      spbufttips[ibin].append(current_tooltip_array.data()[i] )
     spherebufferstr = """
   ttips = new Array(%d)
   positions = new Array(%d)
