@@ -110,14 +110,10 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
   validate_params(params)
   pdb_in = cmdline.get_file(params.model)
   pdb_in.check_file_type("pdb")
-
   pdb_inp = iotbx.pdb.input(file_name=params.model)
   model = mmtbx.model.manager(
     model_input      = pdb_inp)
   crystal_symmetry_model = model.crystal_symmetry()
-  if crystal_symmetry_model is not None:
-    crystal_symmetry_model.show_summary()
-
   hierarchy = model.get_hierarchy()
   map_coeffs = map_inp = None
   map_data, unit_cell = None, None
@@ -165,7 +161,6 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
     unit_cell = map_inp.grid_unit_cell()
 
   hierarchy.atoms().reset_i_seq()
-
   make_header("Iterating over residues", out=out)
   t1 = time.time()
   from mmtbx.ringer import iterate_over_residues
