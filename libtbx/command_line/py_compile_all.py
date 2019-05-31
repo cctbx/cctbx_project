@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import compileall
 import os
+import sys
 
 def run():
   # parser with subset of flags
@@ -27,8 +28,14 @@ def run():
   if (args.quiet < 0):
     args.quiet = 0
 
+  output = list()
   for dest in args.compile_dest:
-    compileall.compile_dir(dest, 100, force=args.force, quiet=args.quiet)
+    output.append(compileall.compile_dir(dest, 100, force=args.force,
+                                         quiet=args.quiet))
+
+  if False in output:
+    return 1
+  return 0
 
 if (__name__ == "__main__"):
-  run()
+  sys.exit(run())
