@@ -672,4 +672,14 @@ class manager():
     for clash_tuple in clashes_to_be_removed:
       if clash_tuple in self._clashes_dict.keys():
         del self._clashes_dict[clash_tuple]
+    double_tuples = list()
+    tuples = self._clashes_dict.keys()
+    # Now filter out doubly counted clashes (due to symmetry)
+    for clash_tuple in tuples:
+      i_seq, j_seq = clash_tuple[0], clash_tuple[1]
+      if (j_seq, i_seq) in tuples:
+        if i_seq > j_seq:
+          double_tuples.append(clash_tuple)
+    for clash_tuple in double_tuples:
+      del self._clashes_dict[clash_tuple]
 #
