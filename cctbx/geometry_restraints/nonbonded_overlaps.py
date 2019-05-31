@@ -508,13 +508,14 @@ class info(object):
       scores = [nb_overlaps.normalized_nbo_all,
               nb_overlaps.normalized_nbo_macro_molecule,
               nb_overlaps.normalized_nbo_sym]
-    else:
-      names = ['Total non-bonded overlaps',
-               'non-bonded overlaps macro molecule (Protein, RNA, DNA)',
-               'non-bonded overlaps due to symmetry']
-      scores = [nb_overlaps.nb_overlaps_all,
-                nb_overlaps.nb_overlaps_macro_molecule,
-                nb_overlaps.nb_overlaps_due_to_sym_op]
+      for name,score in zip(names,scores):
+        out_list.append(result_str.format(name,round(score,2)))
+    names = ['Total non-bonded overlaps',
+             'non-bonded overlaps macro molecule (Protein, RNA, DNA)',
+             'non-bonded overlaps due to symmetry']
+    scores = [nb_overlaps.nb_overlaps_all,
+              nb_overlaps.nb_overlaps_macro_molecule,
+              nb_overlaps.nb_overlaps_due_to_sym_op]
     for name,score in zip(names,scores):
       out_list.append(result_str.format(name,round(score,2)))
     if nbo_type == 'sym':

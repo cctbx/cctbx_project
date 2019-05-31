@@ -130,6 +130,7 @@ class clashes(object):
       results = self.get_results()
       result_str = '{:<18} : {:5d}'
       print(result_str.format(' Number of clashes', results.n_clashes), file=log)
+      print(result_str.format(' Number of clashes due to symmetry', results.n_clashes_sym), file=log)
       result_str = '{:<18} : {:5.2f}'
       if show_clashscore:
         print(result_str.format(' Clashscore', results.clashscore), file=log)
@@ -276,17 +277,13 @@ class hbonds(object):
     """
     Print all hbonds in a table.
     """
-
     make_sub_header(' Hydrogen bonds', out=log)
     if self._hbonds_dict:
       # General information
-#      results = self.get_results()
-#      result_str = '{:<18} : {:5d}'
-#      print(result_str.format(' Number of clashes', results.n_clashes), file=log)
-#      result_str = '{:<18} : {:5.2f}'
-#      if show_clashscore:
-#        print(result_str.format(' Clashscore', results.clashscore), file=log)
-#      # print table with all overlaps
+      results = self.get_results()
+      result_str = '{:<18} : {:5d}'
+      print(result_str.format(' Number of H bonds', results.n_hbonds), file=log)
+      # print table with all H-bonds
       title1 = ['donor', 'acceptor', 'distance', 'angle']
       title1_str = '{:^33}|{:^16}|{:^21}|{:^14}|'
       print('\n' + title1_str.format(*title1), file=log)
@@ -322,6 +319,19 @@ class hbonds(object):
 
   def sort_hbonds(self, sort_distances = True, sort_angles = False):
     pass
+
+  def get_results(self):
+    """
+    Accessor for results
+    """
+    # overall
+    n_hbonds = len(self._hbonds_dict)
+    # due to symmetry TODO
+#    n_hbonds_sym = self._obtain_symmetry_clashes()
+
+    return group_args(
+             n_hbonds      = n_hbonds,
+)
 
 
 class manager():
@@ -542,11 +552,12 @@ class manager():
       x_h_a_angle = (xyz_h - xyz_a).angle(xyz_h - xyz_x)
 
       # Values from Steiner, Angew. Chem. Int. Ed. 2002, 41, 48-76, Table 2
+      # Modification: minimum angle is 110, not 90
       # TODO: do we want to adapt to acceptor element?
       # TODO: h_a_y angle could be interesting, too
-      if ((h_a_distance >= 1.2 or h_a_distance <= 2.2) and
-         (x_a_distance  >= 2.2 or x_a_distance <= 3.2) and
-         (math.degrees(x_h_a_angle) >= 90)):
+      if ((h_a_distance >= 1.2 and h_a_distance <= 2.2) and
+         (x_a_distance  >= 2.2 and x_a_distance <= 3.2) and
+         (math.degrees(x_h_a_angle) >= 110)):
         is_hbond = True
 
         self._hbonds_dict[(atom_x.i_seq, atom_h.i_seq, atom_a.i_seq)] = \

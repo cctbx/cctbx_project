@@ -207,8 +207,8 @@ def test_show():
   string_io = StringIO()
   clashes.show(log=string_io)
   lines = string_io.getvalue().split('\n')
-  assert(lines[7].startswith('--------'))
-  assert(lines[20].startswith('--------'))
+  assert(lines[8].startswith('--------'))
+  assert(lines[21].startswith('--------'))
 
 
 def test_unknown_pair_type():
