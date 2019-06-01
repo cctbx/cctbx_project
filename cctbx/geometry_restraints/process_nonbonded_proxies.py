@@ -650,20 +650,24 @@ class manager():
         for j in range(i+1, n_multiples):
           multiple_1 = j_seq_list[i]
           multiple_2 = j_seq_list[j]
+          cos_angle = 0
         # test inline only if the two atoms that overlap with the common atom are connected
           if multiple_1 in fsc0[multiple_2]:
             atom_1_xyz = sites_cart[multiple_1]
             atom_2_xyz = sites_cart[multiple_2]
             atom_i_xyz = sites_cart[i_seq]
-            cos_angle = cos_vec(atom_1_xyz, atom_2_xyz, atom_i_xyz)
+            tuple1 = [i_seq, multiple_1]
+            tuple2 = [i_seq, multiple_2]
+            tuple1.sort()
+            tuple2.sort()
+            tuple1 = tuple(tuple1)
+            tuple2 = tuple(tuple2)
+            # Don't check for inline if symmetry overlap (needs correcty xyz!)
+            if not self._clashes_dict[tuple1][4]:
+              cos_angle = cos_vec(atom_1_xyz, atom_2_xyz, atom_i_xyz)
             # check if atoms are inline
             if abs(cos_angle) > 0.707 and (atom_1_xyz != atom_2_xyz):
-              tuple1 = [i_seq, multiple_1]
-              tuple2 = [i_seq, multiple_2]
-              tuple1.sort()
-              tuple2.sort()
-              tuple1 = tuple(tuple1)
-              tuple2 = tuple(tuple2)
+
               if tuple1 in self._clashes_dict.keys() and tuple2 in self._clashes_dict.keys():
                 if self._clashes_dict[tuple1][0] < self._clashes_dict[tuple2][0]:
                   clashes_to_be_removed.append(tuple2)
