@@ -1029,7 +1029,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
           seq_id = residue_group.resseq.strip()
           label_seq_id += 1
           icode = residue_group.icode
-          if icode == ' ' or icode == '': icode = '.'
+          if icode == ' ' or icode == '': icode = '?'
           for atom_group in residue_group.atom_groups():
             label_asym_id = self._label_asym_id_lookup(chain,
                                                        residue_group,
