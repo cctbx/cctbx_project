@@ -65,11 +65,15 @@ def exercise_cif_show():
   builder = pdb_hierarchy_builder(cif_model["1AB1"])
   hierarchy = builder.hierarchy
   h_cif = hierarchy.as_cif_block()
+  # print dir(h_cif)
+  # print list(h_cif.get("_atom_site.pdbx_PDB_ins_code"))
+  # print "here: '%s'  " % h_cif.get("_atom_site.pdbx_PDB_ins_code")[0]
   builder = pdb_hierarchy_builder(h_cif) # this runs OK, why?
   # output h_cif:
   s = StringIO()
-  h_cif.show(out=s)
-  print s.getvalue()
+  h_cif.show(out=s, align_columns=False)
+  # print s.getvalue()
+  # STOP()
   # assert 0, "Observe '' instead of . in place of _atom_site.pdbx_PDB_ins_code"
   builder = pdb_hierarchy_builder(h_cif) # Now it fails.
 
