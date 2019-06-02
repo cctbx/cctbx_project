@@ -4,7 +4,6 @@ import mmtbx.model
 import math, sys
 from libtbx import group_args
 from scitbx.array_family import flex
-from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 
 def get_pair_generator(crystal_symmetry, buffer_thickness, sites_cart):
