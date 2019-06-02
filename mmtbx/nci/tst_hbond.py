@@ -10,46 +10,6 @@ ATOM      1  N   GLY A   1      -5.606  -2.251 -12.878  1.00  0.00           N
 ATOM      2  CA  GLY A   1      -5.850  -1.194 -13.852  1.00  0.00           C
 ATOM      3  C   GLY A   1      -5.186  -1.524 -15.184  1.00  0.00           C
 ATOM      4  O   GLY A   1      -5.744  -1.260 -16.249  1.00  0.00           O
-ATOM      1  N   GLY A   2      -3.992  -2.102 -15.115  1.00  0.00           N
-ATOM      2  CA  GLY A   2      -3.261  -2.499 -16.313  1.00  0.00           C
-ATOM      3  C   GLY A   2      -3.961  -3.660 -17.011  1.00  0.00           C
-ATOM      4  O   GLY A   2      -4.016  -3.716 -18.240  1.00  0.00           O
-ATOM      1  N   GLY A   3      -4.492  -4.585 -16.219  1.00  0.00           N
-ATOM      2  CA  GLY A   3      -5.216  -5.731 -16.755  1.00  0.00           C
-ATOM      3  C   GLY A   3      -6.531  -5.289 -17.389  1.00  0.00           C
-ATOM      4  O   GLY A   3      -6.939  -5.814 -18.425  1.00  0.00           O
-ATOM      1  N   GLY A   4      -7.189  -4.323 -16.758  1.00  0.00           N
-ATOM      2  CA  GLY A   4      -8.442  -3.785 -17.273  1.00  0.00           C
-ATOM      3  C   GLY A   4      -8.205  -3.003 -18.561  1.00  0.00           C
-ATOM      4  O   GLY A   4      -9.007  -3.065 -19.492  1.00  0.00           O
-ATOM      1  N   GLY A   5      -7.099  -2.269 -18.604  1.00  0.00           N
-ATOM      2  CA  GLY A   5      -6.735  -1.498 -19.787  1.00  0.00           C
-ATOM      3  C   GLY A   5      -6.358  -2.423 -20.939  1.00  0.00           C
-ATOM      4  O   GLY A   5      -6.687  -2.157 -22.094  1.00  0.00           O
-ATOM      1  N   GLY A   6      -5.665  -3.509 -20.614  1.00  0.00           N
-ATOM      2  CA  GLY A   6      -5.268  -4.493 -21.614  1.00  0.00           C
-ATOM      3  C   GLY A   6      -6.485  -5.236 -22.153  1.00  0.00           C
-ATOM      4  O   GLY A   6      -6.565  -5.533 -23.345  1.00  0.00           O
-ATOM      1  N   GLY A   7      -7.430  -5.532 -21.267  1.00  0.00           N
-ATOM      2  CA  GLY A   7      -8.660  -6.212 -21.655  1.00  0.00           C
-ATOM      3  C   GLY A   7      -9.529  -5.303 -22.518  1.00  0.00           C
-ATOM      4  O   GLY A   7     -10.158  -5.756 -23.474  1.00  0.00           O
-ATOM      1  N   GLY A   8      -9.559  -4.021 -22.172  1.00  0.00           N
-ATOM      2  CA  GLY A   8     -10.324  -3.039 -22.930  1.00  0.00           C
-ATOM      3  C   GLY A   8      -9.706  -2.819 -24.306  1.00  0.00           C
-ATOM      4  O   GLY A   8     -10.416  -2.660 -25.299  1.00  0.00           O
-ATOM      1  N   GLY A   9      -8.378  -2.810 -24.356  1.00  0.00           N
-ATOM      2  CA  GLY A   9      -7.658  -2.641 -25.613  1.00  0.00           C
-ATOM      3  C   GLY A   9      -7.843  -3.861 -26.508  1.00  0.00           C
-ATOM      4  O   GLY A   9      -7.980  -3.734 -27.725  1.00  0.00           O
-TER
-"""
-
-pdb_str_01 = """
-ATOM      1  N   GLY A   1      -5.606  -2.251 -12.878  1.00  0.00           N
-ATOM      2  CA  GLY A   1      -5.850  -1.194 -13.852  1.00  0.00           C
-ATOM      3  C   GLY A   1      -5.186  -1.524 -15.184  1.00  0.00           C
-ATOM      4  O   GLY A   1      -5.744  -1.260 -16.249  1.00  0.00           O
 ATOM      0  H1  GLY A   1      -6.104  -2.109 -12.154  1.00  0.00           H   new
 ATOM      0  H2  GLY A   1      -5.819  -3.038 -13.234  1.00  0.00           H   new
 ATOM      0  H3  GLY A   1      -4.746  -2.252 -12.650  1.00  0.00           H   new
@@ -113,19 +73,18 @@ ATOM      0  HA2 GLY A   9      -7.978  -1.847 -26.070  1.00  0.00           H  
 ATOM      0  HA3 GLY A   9      -6.714  -2.505 -25.435  1.00  0.00           H   new
 """
 
-def core(pdb_str, suffix):
+def core(pdb_str):
   pdb_inp = iotbx.pdb.input(source_info = None, lines = pdb_str)
   model = mmtbx.model.manager(
     model_input   = pdb_inp,
     process_input = True,
     log           = null_out())
-  get_h_bonds = mmtbx.nci.hbond.get_hydrogen_bonds(model=model)
-  get_h_bonds.write_restrains_file(pdb_file_name="exercise_%s.eff"%suffix)
-  return get_h_bonds.get_hydrogen_bonds_pairs()
+  return mmtbx.nci.hbond.find(model=model)
 
 def exercise_00():
-  r1 = core(pdb_str=pdb_str_00, suffix=1)
-  r2 = core(pdb_str=pdb_str_01, suffix=2)
+  r = core(pdb_str=pdb_str_00)
+  r.show()
+  assert len(r.result) == 5
 
 if __name__ == '__main__':
   t0 = time.time()

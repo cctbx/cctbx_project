@@ -1,156 +1,158 @@
 from __future__ import division
+import iotbx.pdb
+import mmtbx.model
+import math, sys
 from libtbx import group_args
+from scitbx.array_family import flex
+from libtbx.utils import null_out
+from libtbx.test_utils import approx_equal
 
-def is_bonded(atom_1, atom_2, bps_dict):
-  i12 = [atom_1.i_seq, atom_2.i_seq]
-  i12.sort()
-  if(not tuple(i12) in bps_dict): return False
-  else: return True
+def get_pair_generator(crystal_symmetry, buffer_thickness, sites_cart):
+  sst = crystal_symmetry.special_position_settings().site_symmetry_table(
+    sites_cart = sites_cart)
+  from cctbx import crystal
+  conn_asu_mappings = crystal_symmetry.special_position_settings().\
+    asu_mappings(buffer_thickness = buffer_thickness)
+  conn_asu_mappings.process_sites_cart(
+    original_sites      = sites_cart,
+    site_symmetry_table = sst)
+  conn_pair_asu_table = crystal.pair_asu_table(asu_mappings = conn_asu_mappings)
+  conn_pair_asu_table.add_all_pairs(distance_cutoff = buffer_thickness)
+  pair_generator = crystal.neighbors_fast_pair_generator(
+    conn_asu_mappings, distance_cutoff = buffer_thickness)
+  return group_args(
+    pair_generator    = pair_generator,
+    conn_asu_mappings = conn_asu_mappings)
 
-class get_hydrogen_bonds(object):
-  def __init__(self,model):
-    self.model = model
-    self.results = self.get_hydrogen_bonds_pairs()
+def apply_symop_to_copy(atom, rt_mx_ji, fm, om):
+  atom = atom.detached_copy()
+  t1 = fm*flex.vec3_double([atom.xyz])
+  t2 = rt_mx_ji*t1[0]
+  t3 = om*flex.vec3_double([t2])
+  atom.set_xyz(t3[0])
+  return atom
 
-  def get_hydrogen_bonds_pairs(self, ideal_angel_YAD = 147.15,
-                    angle_AHD_cutoff = 120,eps_angle_AHD = 30,
-                    angle_HAY_min = 90,angle_HAY_max = 180,
-                    eps_angle_HAY = 10,ideal_dist_A_D = 2.90,
-                    sigma_for_angle= 5.0, sigma_for_bond = 0.1,
-                                           eps_dist_A_D= 0.5 ):
-      # Hydrogen bond  model : Y-A...H-D ;
-      geometry = self.model.get_restraints_manager()
-      bond_proxies_simple, asu = geometry.geometry.get_all_bond_proxies(
-                                  sites_cart=self.model.get_sites_cart())
-      bps_dict = {}
-      [bps_dict.setdefault(p.i_seqs, True) for p in bond_proxies_simple]
-      hierarchy = self.model.get_hierarchy()
-      atom_H = []
-      atom_A = []
-      atom_D = []
-      atom_Y = []
-      ress    = []
-      results = []
-      Accepter_H_pair = ["O","N","S","F","CL"]
-      for a in hierarchy.atoms():
-        e = a.element.strip().upper()
-        if a.element_is_hydrogen():
-          atom_H.append(a)
-        if e == "O":
-          if a.parent().resname == "HOH": continue
-          atom_A.append(a)
-        if e in Accepter_H_pair:
-          if a.parent().resname == "HOH": continue
-          atom_D.append(a)
-        if e == "C":
-          atom_Y.append(a)
+class find(object):
+  """
+     Y
+      \
+       A
+        .
+         .
+         H
+         |
+         D
+        / \
 
-      for a_A in atom_A:
-        res = None
-        diff_best = 1.e+9
-        for a_D in atom_D:
-          for a_H in atom_H:
-            resid_A = a_A.parent().parent().resid()
-            resid_D = a_D.parent().parent().resid()
-            diff_r_r = abs(int(resid_A) - int(resid_D) )
-            if diff_r_r < 2 :continue
-            if (not a_H.is_in_same_conformer_as(a_A)): continue
-            if (not is_bonded(a_H, a_D, bps_dict)): continue
-            if (is_bonded(a_H, a_A, bps_dict)): continue
-            if (a_A.parent().parent().resseq ==
-                a_D.parent().parent().resseq): continue
-            d_A_D = a_D.distance(a_A)
-            if (ideal_dist_A_D - eps_dist_A_D  <
-                  d_A_D  < ideal_dist_A_D + eps_dist_A_D ):
-              angle_AHD = a_H.angle(a_A, a_D, deg=True)
-              if (angle_AHD_cutoff - eps_angle_AHD < angle_AHD):
-                diff = abs( ideal_dist_A_D - d_A_D )
-                if (diff < diff_best):
-                    diff_best = diff
-                    res = group_args(
-                      a_H=a_H,
-                      a_A=a_A,
-                      a_D=a_D,
-                      d_A_D=d_A_D,
-                      angle_AHD=angle_AHD,
-                      sigma_for_bond=sigma_for_bond,
-                      sigma_for_angle=sigma_for_angle,
-                      ideal_angel_YAD=ideal_angel_YAD,
-                      ideal_dist_A_D=ideal_dist_A_D)
-                   # print sigma_for_angle, type(sigma_for_angle)
-        if (res in ress):continue
-        if (res is not None): ress.append(res)
-      for r in ress:
-        #print r.sigma_for_angle,type(r.sigma_for_angle)
-        a_H = r.a_H
-        a_A = r.a_A
-        a_D = r.a_D
-        d_A_D  = r.d_A_D
-        angle_AHD = r.angle_AHD
-        sigma_for_angle = r.sigma_for_angle
-        sigma_for_bond = r.sigma_for_bond
-        ideal_angel_YAD = r.ideal_angel_YAD
-        ideal_dist_A_D = r.ideal_dist_A_D
-        #print r.sigma_for_angle, type(r.sigma_for_angle)
-        result = None
-        for a_Y in atom_Y :
-          if (not is_bonded(a_A, a_Y, bps_dict)): continue
-          angle_YAD = a_A.angle(a_Y,a_D,deg=True)
-          angle_HAY = a_A.angle(a_H,a_Y,deg=True)
-          if (angle_HAY_min - eps_angle_HAY < angle_HAY <
-                            angle_HAY_max + eps_angle_HAY):
-            #print r.sigma_for_angle, type(r.sigma_for_angle)
-            result = group_args(
-              a_H=a_H,
-              a_A=a_A,
-              a_D=a_D,
-              a_Y=a_Y,
-              d_A_D=d_A_D,
-              angle_HAY=angle_HAY,
-              angle_AHD=angle_AHD,
-              angle_YAD=angle_YAD,
-              sigma_for_bond=sigma_for_bond,
-              sigma_for_angle=sigma_for_angle,
-              ideal_angel_YAD=ideal_angel_YAD,
-              ideal_dist_A_D=ideal_dist_A_D)
-          if (result in results):continue
-          if (result is not None): results.append(result)
+    A = O, N, S
+    D = O, N, S
+    90 <= a_YAH <= 180
+    a_DHA >= 120
+    1.4 <= d_HA <= 3.0
+    2.5 <= d_DA <= 3.5
+  """
+  def __init__(self,
+        model,
+        Hs           = ["H", "D"],
+        As           = ["O","N","S","F","CL"],
+        Ds           = ["O","N","S"],
+        d_HA_cutoff  = [1.4, 3.0], # original: [1.4, 2.4],
+        d_DA_cutoff  = [2.5, 3.5], # not used
+        a_DHA_cutoff = 120,        # should be greater than this
+        a_YAH_cutoff = [90, 180],  # should be within this interval, not used
+        protein_only = False):
+    self.result = []
+    self.atoms = model.get_hierarchy().atoms()
+    geometry = model.get_restraints_manager()
+    bond_proxies_simple, asu = geometry.geometry.get_all_bond_proxies(
+      sites_cart = model.get_sites_cart())
+    h_bonded_to = {}
+    for p in bond_proxies_simple:
+      i, j = p.i_seqs
+      ei, ej = self.atoms[p.i_seqs[0]].element, self.atoms[p.i_seqs[1]].element
+      if(ei in Hs): h_bonded_to[i] = self.atoms[j]
+      if(ej in Hs): h_bonded_to[j] = self.atoms[i]
+    #
+    sites_cart = model.get_sites_cart()
+    crystal_symmetry = model.crystal_symmetry()
+    fm = crystal_symmetry.unit_cell().fractionalization_matrix()
+    om = crystal_symmetry.unit_cell().orthogonalization_matrix()
+    pg = get_pair_generator(
+      crystal_symmetry = crystal_symmetry,
+      buffer_thickness = d_HA_cutoff[1],
+      sites_cart       = sites_cart)
+    get_class = iotbx.pdb.common_residue_names_get_class
+    for p in pg.pair_generator:
+      i, j = p.i_seq, p.j_seq
+      ei, ej = self.atoms[i].element, self.atoms[j].element
+      altloc_i = self.atoms[i].parent().altloc
+      altloc_j = self.atoms[j].parent().altloc
+      resseq_i = self.atoms[i].parent().parent().resseq
+      resseq_j = self.atoms[j].parent().parent().resseq
+      # pre-screen candidates begin
+      one_is_Hs = ei in Hs or ej in Hs
+      other_is_acceptor = ei in As or ej in As
+      d_HA = math.sqrt(p.dist_sq)
+      assert d_HA <= d_HA_cutoff[1]
+      is_candidate = one_is_Hs and other_is_acceptor and \
+        d_HA >= d_HA_cutoff[0] and \
+        altloc_i == altloc_j and resseq_i != resseq_j
+      if(protein_only):
+        for it in [i,j]:
+          resname = self.atoms[it].parent().resname
+          is_candidate &= get_class(name=resname) == "common_amino_acid"
+      if(not is_candidate): continue
+      if(ei in Hs and not h_bonded_to[i].element in As): continue
+      if(ej in Hs and not h_bonded_to[j].element in As): continue
+      # pre-screen candidates end
+      rt_mx_i = pg.conn_asu_mappings.get_rt_mx_i(p)
+      rt_mx_j = pg.conn_asu_mappings.get_rt_mx_j(p)
+      rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
+      #
+      if(ei in Hs):
+        H = self.atoms[i]
+        D = self.atoms[h_bonded_to[H.i_seq].i_seq]
+        A = self.atoms[j]
+        if(str(rt_mx_ji) != "x,y,z"):
+          A = apply_symop_to_copy(A, rt_mx_ji, fm, om)
+      if(ej in Hs):
+        H = self.atoms[j]
+        D = self.atoms[h_bonded_to[H.i_seq].i_seq]
+        A = self.atoms[i]
+        if(str(rt_mx_ji) != "x,y,z"):
+          H = apply_symop_to_copy(H, rt_mx_ji, fm, om)
+          D = apply_symop_to_copy(D, rt_mx_ji, fm, om)
+      assert H.distance(D) < 1.15
+      # filter by a_DHA
+      a_DHA = H.angle(A, D, deg=True)
+      if(a_DHA < a_DHA_cutoff): continue
+      #
+      assert approx_equal(d_HA, H.distance(A), 1.e-3)
+      self.result.append(group_args(
+        i       = i,
+        j       = j,
+        symop   = rt_mx_ji,
+        d_HA    = d_HA,
+        a_DHA   = a_DHA,
+        d_AD    = A.distance(D)
+      ))
 
-      # just keep the more possiable situation for N atom
+  def show(self, log = sys.stdout):
+    for r in self.result:
+      ids_i = self.atoms[r.i].id_str().replace("pdb=","")
+      ids_j = self.atoms[r.j].id_str().replace("pdb=","")
+      print >> log, "%4d %4d"%(r.i,r.j), ids_i, ids_j, "d_HA=%5.3f"%r.d_HA,\
+        "d_AD=%5.3f"%r.d_AD, "a_DHA=%7.3f"%r.a_DHA, "symop: %s"%str(r.symop)
 
-      for i, ri in enumerate(results):
-        for j, rj in enumerate(results):
-          if (j <= i): continue
-          a_A_i = ri.a_A
-          a_D_i = ri.a_D
-          a_A_j = rj.a_A
-          a_D_j = rj.a_D
-          if ri == rj:
-            results.remove(rj)
-          if a_D_i == a_D_j:
-            di = a_A_i.distance(a_D_i)
-            dj = a_A_j.distance(a_D_j)
-            if di < dj:
-              if rj in results:
-                results.remove(rj)
-            else:
-              if ri in results:
-                results.remove(ri)
-      return results
-
-
-  def write_restrains_file(self, pdb_file_name,
-                           for_phenix_refine=True,
-                           use_defaul_parameters=True):
-    str_1 = '''bond{
+  def as_restraints(self, file_name, distance_ideal=None, sigma_dist=0.1,
+       angle_ideal = None, sigma_angle=2):
+    base = """bond{
       atom_selection_1 = %s
       atom_selection_2 = %s
       symmetry_operation = None
       distance_ideal = %f
       sigma = %f
-      slack = None
-      limit = -0.1
-      top_out = False
+
     }
     angle {
       atom_selection_1 = %s
@@ -159,46 +161,11 @@ class get_hydrogen_bonds(object):
       angle_ideal = %f
       sigma = %f
     }
-    '''
-
-    str_2 = '''refinement{
+    """
+    top = """refinement{
   geometry_restraints.edits{
     %s
   }
 }
-    '''
-    i = 1
-    sub_fin_str = 'a'
-    for r in self.results:
-      a1_str = "chain %s and resseq %s and name %s" % (
-        r.a_A.chain().id,
-        r.a_A.parent().parent().resid(),
-        r.a_A.name)
-      a2_str = "chain %s and resseq %s and name %s" % (
-        r.a_D.chain().id,
-        r.a_D.parent().parent().resid(),
-        r.a_D.name)
-      a3_str = "chain %s and resseq %s and name %s" % (
-        r.a_Y.chain().id,
-        r.a_Y.parent().parent().resid(),
-        r.a_Y.name)
-      if (use_defaul_parameters):
-        d_ideal = r.ideal_dist_A_D
-      else:
-        d_ideal = r.d_A_D
-      i = i + 1
-      if (use_defaul_parameters):
-        angle_ideal = r.ideal_angel_YAD
-      else:angle_ideal = r.angle_YAD
-      sigma_angle = r.sigma_for_angle
-      sigma_bond = r.sigma_for_bond
-      bond_angle_str = str_1 % (a1_str, a2_str, d_ideal,
-                                sigma_bond,a1_str, a2_str,
-                                a3_str, angle_ideal,
-                                sigma_angle)
-      sub_fin_str = sub_fin_str + bond_angle_str
-    s_f_str = sub_fin_str[1:]
-    str_final = str_2 % (s_f_str)
-    file_name = pdb_file_name
-    with open(file_name,'w') as fileobject:
-      fileobject.write(str_final)
+    """
+    raise Sorry("Not Implemented.")
