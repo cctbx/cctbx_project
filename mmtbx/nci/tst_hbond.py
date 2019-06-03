@@ -110,13 +110,83 @@ TER
 END
 """
 
-def core(pdb_str):
+pdb_str_03 = """
+ATOM      1  N   GLY A   1      -5.423  -6.897  -8.991  1.00  0.00           N
+ATOM      2  CA  GLY A   1      -3.976  -6.554  -9.489  1.00  0.00           C
+ATOM      3  C   GLY A   1      -3.642  -5.220 -10.016  1.00  0.00           C
+ATOM      4  O   GLY A   1      -2.895  -4.472  -9.450  1.00  0.00           O
+ATOM      5  H1  GLY A   1      -6.043  -6.804  -9.631  1.00  0.00           H
+ATOM      6  H2  GLY A   1      -5.535  -7.752  -8.722  1.00  0.00           H
+ATOM      7  H3  GLY A   1      -5.708  -6.370  -8.334  1.00  0.00           H
+ATOM      8  HA2 GLY A   1      -3.306  -6.803  -8.861  1.00  0.00           H
+ATOM      9  HA3 GLY A   1      -3.777  -7.117 -10.209  1.00  0.00           H
+ATOM     10  N   GLY A   2      -4.208  -4.919 -11.204  1.00  0.00           N
+ATOM     11  CA  GLY A   2      -3.776  -3.707 -11.889  1.00  0.00           C
+ATOM     12  C   GLY A   2      -4.936  -2.864 -12.308  1.00  0.00           C
+ATOM     13  O   GLY A   2      -5.832  -2.544 -11.494  1.00  0.00           O
+ATOM     14  H   GLY A   2      -4.692  -5.484 -11.621  1.00  0.00           H
+ATOM     15  HA2 GLY A   2      -3.186  -3.174 -11.317  1.00  0.00           H
+ATOM     16  HA3 GLY A   2      -3.316  -3.955 -12.670  1.00  0.00           H
+ATOM     17  N   GLY A   3      -4.859  -2.354 -13.528  1.00  0.00           N
+ATOM     18  CA  GLY A   3      -5.899  -1.438 -13.954  1.00  0.00           C
+ATOM     19  C   GLY A   3      -6.867  -2.105 -14.900  1.00  0.00           C
+ATOM     20  O   GLY A   3      -7.641  -3.024 -14.476  1.00  0.00           O
+ATOM     21  H   GLY A   3      -4.224  -2.449 -14.045  1.00  0.00           H
+ATOM     22  HA2 GLY A   3      -6.449  -1.066 -13.206  1.00  0.00           H
+ATOM     23  HA3 GLY A   3      -5.590  -0.635 -14.420  1.00  0.00           H
+ATOM     24  N   GLY A   4      -6.766  -1.789 -16.194  1.00  0.00           N
+ATOM     25  CA  GLY A   4      -7.861  -2.087 -17.072  1.00  0.00           C
+ATOM     26  C   GLY A   4      -7.699  -1.579 -18.516  1.00  0.00           C
+ATOM     27  O   GLY A   4      -7.751  -0.367 -18.770  1.00  0.00           O
+ATOM     28  H   GLY A   4      -6.135  -1.331 -16.478  1.00  0.00           H
+ATOM     29  HA2 GLY A   4      -7.943  -3.006 -16.969  1.00  0.00           H
+ATOM     30  HA3 GLY A   4      -8.656  -1.754 -16.709  1.00  0.00           H
+ATOM     31  N   GLY A   5      -7.809  -2.518 -19.502  1.00  0.00           N
+ATOM     32  CA  GLY A   5      -7.740  -2.130 -20.882  1.00  0.00           C
+ATOM     33  C   GLY A   5      -6.478  -2.653 -21.539  1.00  0.00           C
+ATOM     34  O   GLY A   5      -5.802  -3.533 -20.997  1.00  0.00           O
+ATOM     35  H   GLY A   5      -7.838  -3.379 -19.455  1.00  0.00           H
+ATOM     36  HA2 GLY A   5      -8.468  -2.578 -21.312  1.00  0.00           H
+ATOM     37  HA3 GLY A   5      -7.866  -1.212 -20.932  1.00  0.00           H
+ATOM     38  N   GLY A   6      -6.117  -2.123 -22.731  1.00  0.00           N
+ATOM     39  CA  GLY A   6      -4.987  -2.658 -23.491  1.00  0.00           C
+ATOM     40  C   GLY A   6      -5.160  -2.640 -24.995  1.00  0.00           C
+ATOM     41  O   GLY A   6      -4.908  -1.653 -25.672  1.00  0.00           O
+ATOM     42  H   GLY A   6      -6.592  -1.532 -23.131  1.00  0.00           H
+ATOM     43  HA2 GLY A   6      -4.142  -2.201 -23.305  1.00  0.00           H
+ATOM     44  HA3 GLY A   6      -4.889  -3.560 -23.232  1.00  0.00           H
+ATOM     45  N   GLY A   7      -5.638  -3.711 -25.585  1.00  0.00           N
+ATOM     46  CA  GLY A   7      -5.960  -3.699 -27.015  1.00  0.00           C
+ATOM     47  C   GLY A   7      -7.032  -4.738 -27.283  1.00  0.00           C
+ATOM     48  O   GLY A   7      -7.311  -5.619 -26.444  1.00  0.00           O
+ATOM     49  H   GLY A   7      -5.810  -4.476 -25.186  1.00  0.00           H
+ATOM     50  HA2 GLY A   7      -6.227  -2.814 -27.234  1.00  0.00           H
+ATOM     51  HA3 GLY A   7      -5.157  -3.875 -27.536  1.00  0.00           H
+ATOM     52  N   GLY A   8      -7.771  -4.520 -28.396  1.00  0.00           N
+ATOM     53  CA  GLY A   8      -8.795  -5.411 -28.892  1.00  0.00           C
+ATOM     54  C   GLY A   8     -10.113  -5.074 -28.202  1.00  0.00           C
+ATOM     55  O   GLY A   8     -10.343  -3.940 -27.807  1.00  0.00           O
+ATOM     56  H   GLY A   8      -7.622  -3.806 -28.902  1.00  0.00           H
+ATOM     57  HA2 GLY A   8      -8.940  -5.392 -29.823  1.00  0.00           H
+ATOM     58  HA3 GLY A   8      -8.673  -6.343 -28.574  1.00  0.00           H
+ATOM     59  N   GLY A   9     -11.025  -6.011 -28.143  1.00  0.00           N
+ATOM     60  CA  GLY A   9     -12.304  -5.594 -27.670  1.00  0.00           C
+ATOM     61  C   GLY A   9     -13.026  -4.589 -28.491  1.00  0.00           C
+ATOM     62  O   GLY A   9     -13.941  -3.837 -28.020  1.00  0.00           O
+ATOM     63  H   GLY A   9     -10.890  -6.885 -28.344  1.00  0.00           H
+ATOM     64  HA2 GLY A   9     -12.901  -6.331 -27.544  1.00  0.00           H
+ATOM     65  HA3 GLY A   9     -12.107  -5.113 -26.821  1.00  0.00           H
+TER
+END
+"""
+
+def core(pdb_str, pair_proxies = None):
   pdb_inp = iotbx.pdb.input(source_info = None, lines = pdb_str)
   model = mmtbx.model.manager(
     model_input   = pdb_inp,
     process_input = True,
     log           = null_out())
-  return mmtbx.nci.hbond.find(model=model)
+  return mmtbx.nci.hbond.find(model=model, pair_proxies=pair_proxies)
 
 def exercise_00():
   r = core(pdb_str=pdb_str_00)
@@ -164,13 +234,19 @@ def exercise_02():
   assert str(r1.symop) == "x,y,z"
 
 def exercise_03():
-  r = core(pdb_str=pdb_str_03)
-  r.show()
-  r.as_pymol()
+  r1 = core(pdb_str=pdb_str_00)
+  assert len(r1.result) == 5
+  r2 = core(pdb_str=pdb_str_03, pair_proxies = r1.pair_proxies)
+  assert len(r2.result) == 5, len(r2.result)
+  r2.as_pymol()
+  for a,b in zip(r1.result, r2.result):
+    assert a.i == b.i
+    assert a.j == b.j
 
 if __name__ == '__main__':
   t0 = time.time()
   exercise_00()
   exercise_01()
   exercise_02()
+  exercise_03()
   print "OK. Time: %6.3f"%(time.time()-t0)

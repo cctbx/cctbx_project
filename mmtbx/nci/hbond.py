@@ -75,6 +75,8 @@ class find(object):
     self.model = model
     self.pair_proxies = pair_proxies
     self.external_proxies = False
+    if(self.pair_proxies is not None):
+      self.external_proxies = True
     atoms = self.model.get_hierarchy().atoms()
     geometry = self.model.get_restraints_manager()
     bond_proxies_simple, asu = geometry.geometry.get_all_bond_proxies(
@@ -100,34 +102,32 @@ class find(object):
     get_class = iotbx.pdb.common_residue_names_get_class
     # Find proxies if not provided!
     if(self.pair_proxies is None):
+      pp = []
       self.pair_proxies = []
-      for p in pg.pair_generator:
-        i, j = p.i_seq, p.j_seq
-        ei, ej = atoms[i].element, atoms[j].element
-        altloc_i = atoms[i].parent().altloc
-        altloc_j = atoms[j].parent().altloc
-        resseq_i = atoms[i].parent().parent().resseq
-        resseq_j = atoms[j].parent().parent().resseq
-        # pre-screen candidates begin
-        one_is_Hs = ei in Hs or ej in Hs
-        other_is_acceptor = ei in As or ej in As
-        is_candidate = one_is_Hs and other_is_acceptor and \
-          altloc_i == altloc_j and resseq_i != resseq_j
-        if(protein_only):
-          for it in [i,j]:
-            resname = atoms[it].parent().resname
-            is_candidate &= get_class(name=resname) == "common_amino_acid"
-        if(not is_candidate): continue
-        if(ei in Hs and not h_bonded_to[i].element in As): continue
-        if(ej in Hs and not h_bonded_to[j].element in As): continue
-        # pre-screen candidates end
-        self.pair_proxies.append(p)
+      pp = [p for p in pg.pair_generator]
     else:
-      self.external_proxies = True
-    #
-    for p in self.pair_proxies:
+      pp = self.pair_proxies
+
+    for p in pp:
       i, j = p.i_seq, p.j_seq
       ei, ej = atoms[i].element, atoms[j].element
+      altloc_i = atoms[i].parent().altloc
+      altloc_j = atoms[j].parent().altloc
+      resseq_i = atoms[i].parent().parent().resseq
+      resseq_j = atoms[j].parent().parent().resseq
+      # pre-screen candidates begin
+      one_is_Hs = ei in Hs or ej in Hs
+      other_is_acceptor = ei in As or ej in As
+      is_candidate = one_is_Hs and other_is_acceptor and \
+        altloc_i == altloc_j and resseq_i != resseq_j
+      if(protein_only):
+        for it in [i,j]:
+          resname = atoms[it].parent().resname
+          is_candidate &= get_class(name=resname) == "common_amino_acid"
+      if(not is_candidate): continue
+      if(ei in Hs and not h_bonded_to[i].element in As): continue
+      if(ej in Hs and not h_bonded_to[j].element in As): continue
+      # pre-screen candidates end
       # symop tp map onto symmetry related
       rt_mx_i = pg.conn_asu_mappings.get_rt_mx_i(p)
       rt_mx_j = pg.conn_asu_mappings.get_rt_mx_j(p)
@@ -164,12 +164,15 @@ class find(object):
 #      assert H.distance(D) < 1.15, [H.distance(D), H.name, D.name]
       # filter by a_DHA
       a_DHA = H.angle(A, D, deg=True)
-      if(a_DHA < a_DHA_cutoff): continue
+      if(not self.external_proxies):
+        if(a_DHA < a_DHA_cutoff): continue
       # filter by a_YAH
       a_YAH = None
       if(Y is not None):
         a_YAH = A.angle(Y, H, deg=True)
-        if not (a_YAH >= a_YAH_cutoff[0] and a_YAH <= a_YAH_cutoff[1]): continue
+        if(not self.external_proxies):
+          if(not (a_YAH >= a_YAH_cutoff[0] and a_YAH <= a_YAH_cutoff[1])):
+            continue
       #
       assert approx_equal(d_HA, H.distance(A), 1.e-3)
       self.result.append(group_args(
@@ -183,6 +186,8 @@ class find(object):
         a_YAH   = a_YAH,
         d_AD    = A.distance(D)
       ))
+      if(not self.external_proxies):
+        self.pair_proxies.append(p)
 
   def show(self, log = sys.stdout):
     for r in self.result:
