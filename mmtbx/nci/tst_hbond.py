@@ -4,6 +4,8 @@ import mmtbx.model
 from libtbx.utils import null_out
 import time
 import mmtbx.nci.hbond
+from scitbx.array_family import flex
+from libtbx.test_utils import approx_equal
 
 pdb_str_00 = """
 ATOM      1  N   GLY A   1      -5.606  -2.251 -12.878  1.00  0.00           N
@@ -73,6 +75,41 @@ ATOM      0  HA2 GLY A   9      -7.978  -1.847 -26.070  1.00  0.00           H  
 ATOM      0  HA3 GLY A   9      -6.714  -2.505 -25.435  1.00  0.00           H   new
 """
 
+pdb_str_01 = """
+CRYST1   44.527   44.527   62.306  90.00  90.00 120.00 P 3 2 1
+ATOM    484  CB  ASP A 729      24.227   3.198  28.416  1.00 40.30           C
+ATOM    485  CG  ASP A 729      23.109   3.028  27.407  1.00 47.94           C
+ATOM    486  OD1 ASP A 729      21.948   3.391  27.749  1.00 53.20           O
+ATOM    487  OD2 ASP A 729      23.414   2.492  26.298  1.00 59.90           O
+ATOM    658  CZ  ARG A 740      20.407  -3.170  38.924  1.00 70.50           C
+ATOM    660  NH2 ARG A 740      20.911  -2.860  37.739  1.00 64.32           N
+ATOM    672 HH21 ARG A 740      21.872  -2.629  37.580  1.00 64.32           H
+ATOM    673 HH22 ARG A 740      20.350  -2.943  36.924  1.00 64.32           H
+TER
+END
+"""
+
+pdb_str_02 = """
+CRYST1   54.464   54.312   58.062  90.00  90.00  90.00 P 1
+ATOM      8  NE  ARG A  96      37.134  48.090   7.933  1.00 51.90           N
+ATOM      9  CZ  ARG A  96      36.368  47.222   8.585  1.00 55.75           C
+ATOM     10  NH1 ARG A  96      35.225  46.792   8.057  1.00 55.83           N
+ATOM     11  NH2 ARG A  96      36.755  46.779   9.765  1.00 46.04           N
+ATOM     20  HE  ARG A  96      37.867  48.340   8.306  1.00 51.90           H
+ATOM     21 HH11 ARG A  96      34.974  47.076   7.285  1.00 55.82           H
+ATOM     22 HH12 ARG A  96      34.737  46.230   8.488  1.00 55.82           H
+ATOM     23 HH21 ARG A  96      37.496  47.052  10.105  1.00 46.04           H
+ATOM     24 HH22 ARG A  96      36.266  46.217  10.195  1.00 46.04           H
+ATOM     44  CB  ASP A 118      34.771  43.337  12.171  1.00 50.91           C
+ATOM     45  CG  ASP A 118      34.959  44.392  11.096  1.00 59.09           C
+ATOM     46  OD1 ASP A 118      34.559  44.164   9.925  1.00 60.01           O
+ATOM     47  OD2 ASP A 118      35.520  45.449  11.443  1.00 59.21           O
+ATOM     50  HB2 ASP A 118      34.866  43.750  13.043  1.00 50.91           H
+ATOM     51  HB3 ASP A 118      35.474  42.674  12.093  1.00 50.91           H
+TER
+END
+"""
+
 def core(pdb_str):
   pdb_inp = iotbx.pdb.input(source_info = None, lines = pdb_str)
   model = mmtbx.model.manager(
@@ -83,10 +120,52 @@ def core(pdb_str):
 
 def exercise_00():
   r = core(pdb_str=pdb_str_00)
-  r.show()
+  #r.show()
   assert len(r.result) == 5
+  d_HA = flex.double()
+  d_AD = flex.double()
+  a_DHA = flex.double()
+  for r in r.result:
+    d_HA .append(r.d_HA )
+    d_AD .append(r.d_AD )
+    a_DHA.append(r.a_DHA)
+  assert approx_equal(flex.mean(d_HA), 2.104, 1.e-2)
+  assert approx_equal(flex.mean(d_AD), 2.899, 1.e-2)
+  assert approx_equal(flex.mean(a_DHA), 153.2, 1.e-1)
+
+def exercise_01():
+  r = core(pdb_str=pdb_str_01)
+  #r.show()
+  assert len(r.result) == 2
+  r0 = r.result[0]
+  r1 = r.result[1]
+  for r_ in r.result:
+    assert approx_equal(r_.d_HA, 2.206, 1.e-2)
+    assert approx_equal(r_.d_AD, 3.065, 1.e-2)
+    assert approx_equal(r_.a_DHA, 142.98, 1.e-1)
+    assert str(r_.symop) == "x-y,-y,-z+1"
+  assert [r0.i, r0.j] == [3,6], [r0.i, r0.j]
+  assert [r1.i, r1.j] == [6,3], [r1.i, r1.j]
+
+def exercise_02():
+  r = core(pdb_str=pdb_str_02)
+  #r.show()
+  #r.as_pymol()
+  assert len(r.result) == 2
+  r0 = r.result[0]
+  r1 = r.result[1]
+  assert approx_equal(r0.d_HA, 2.523, 1.e-2)
+  assert approx_equal(r0.d_AD, 3.292, 1.e-2)
+  assert approx_equal(r0.a_DHA, 149.378, 1.e-1)
+  assert str(r0.symop) == "x,y,z"
+  assert approx_equal(r1.d_HA, 1.644, 1.e-2)
+  assert approx_equal(r1.d_AD, 2.472, 1.e-2)
+  assert approx_equal(r1.a_DHA, 160.475, 1.e-1)
+  assert str(r1.symop) == "x,y,z"
 
 if __name__ == '__main__':
   t0 = time.time()
   exercise_00()
+  exercise_01()
+  exercise_02()
   print "OK. Time: %6.3f"%(time.time()-t0)
