@@ -40,6 +40,14 @@ def make_atom_id(atom, index):
     resseq = atom.parent().parent().resseq,
     altloc = atom.parent().altloc)
 
+# XXX None at the moment
+master_phil_str = '''
+hbond {
+
+}
+'''
+
+
 class find(object):
   """
      Y
