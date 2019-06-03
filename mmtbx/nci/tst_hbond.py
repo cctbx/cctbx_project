@@ -180,6 +180,41 @@ TER
 END
 """
 
+pdb_str_04 = """
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1
+ATOM     86  N   TYR A   7       8.292   1.817   6.147  1.00 14.70           N
+ATOM     87  CA  TYR A   7       9.159   2.144   7.299  1.00 15.18           C
+ATOM     88  C   TYR A   7      10.603   2.331   6.885  1.00 15.91           C
+ATOM     89  O   TYR A   7      11.041   1.811   5.855  1.00 15.76           O
+ATOM     90  CB  TYR A   7       9.061   1.065   8.369  1.00 15.35           C
+ATOM     91  CG  TYR A   7       7.665   0.929   8.902  1.00 14.45           C
+ATOM     92  CD1 TYR A   7       6.771   0.021   8.327  1.00 15.68           C
+ATOM     93  CD2 TYR A   7       7.210   1.756   9.920  1.00 14.80           C
+ATOM     94  CE1 TYR A   7       5.480  -0.094   8.796  1.00 13.46           C
+ATOM     95  CE2 TYR A   7       5.904   1.649  10.416  1.00 14.33           C
+ATOM     96  CZ  TYR A   7       5.047   0.729   9.831  1.00 15.09           C
+ATOM     97  OH  TYR A   7       3.766   0.589  10.291  1.00 14.39           O
+ATOM     98  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
+ATOM     99  H   TYR A   7       8.109   0.980   6.070  1.00 14.70           H
+ATOM    100  HA  TYR A   7       8.852   2.975   7.692  1.00 15.18           H
+ATOM    101  HB2 TYR A   7       9.327   0.215   7.987  1.00 15.35           H
+ATOM    102  HB3 TYR A   7       9.645   1.296   9.108  1.00 15.35           H
+ATOM    103  HD1 TYR A   7       7.058  -0.530   7.635  1.00 15.68           H
+ATOM    104  HD2 TYR A   7       7.794   2.369  10.304  1.00 14.80           H
+ATOM    105  HE1 TYR A   7       4.899  -0.713   8.417  1.00 13.46           H
+ATOM    106  HE2 TYR A   7       5.612   2.197  11.109  1.00 14.33           H
+ATOM    107  HH  TYR A   7       3.618   1.146  10.902  1.00 14.39           H
+TER
+HETATM  108  O   HOH A   8      -6.471   5.227   7.124  1.00 22.62           O
+HETATM  109  O   HOH A   9      10.431   1.858   3.216  1.00 19.71           O
+HETATM  110  O   HOH A  10     -11.286   1.756  -1.468  1.00 17.08           O
+HETATM  111  O   HOH A  11      11.808   4.179   9.970  1.00 23.99           O
+HETATM  112  O   HOH A  12      13.605   1.327   9.198  1.00 26.17           O
+HETATM  113  O   HOH A  13      -2.749   3.429  10.024  1.00 39.15           O
+HETATM  114  O   HOH A  14      -1.500   0.682  10.967  1.00 43.49           O
+END
+"""
+
 def core(pdb_str, pair_proxies = None):
   pdb_inp = iotbx.pdb.input(source_info = None, lines = pdb_str)
   model = mmtbx.model.manager(
@@ -243,10 +278,17 @@ def exercise_03():
     assert a.i == b.i
     assert a.j == b.j
 
+def exercise_04():
+  """
+  Case when A is not bonded to anything (based on 1yjp).
+  """
+  r = core(pdb_str=pdb_str_04)
+
 if __name__ == '__main__':
   t0 = time.time()
   exercise_00()
   exercise_01()
   exercise_02()
   exercise_03()
+  exercise_04()
   print "OK. Time: %6.3f"%(time.time()-t0)

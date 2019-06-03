@@ -108,14 +108,14 @@ class find(object):
       buffer_thickness = d_HA_cutoff[1],
       sites_cart       = sites_cart)
     get_class = iotbx.pdb.common_residue_names_get_class
-    # Find proxies if not provided!
+    # find proxies if not provided
     if(self.pair_proxies is None):
       pp = []
       self.pair_proxies = []
       pp = [p for p in pg.pair_generator]
     else:
       pp = self.pair_proxies
-
+    # now loop over proxies
     for p in pp:
       i, j = p.i_seq, p.j_seq
       ei, ej = atoms[i].element, atoms[j].element
@@ -146,7 +146,7 @@ class find(object):
         H = atoms[i]
         D = atoms[h_bonded_to[H.i_seq].i_seq]
         A = atoms[j]
-        if(len(a_bonded_to[j])==1):
+        if(j in a_bonded_to and len(a_bonded_to[j])==1):
           Y = atoms[a_bonded_to[j][0].i_seq]
         atom_i = make_atom_id(atom = H, index = i)
         atom_j = make_atom_id(atom = A, index = j)
@@ -158,7 +158,7 @@ class find(object):
         H = atoms[j]
         D = atoms[h_bonded_to[H.i_seq].i_seq]
         A = atoms[i]
-        if(len(a_bonded_to[i])==1):
+        if(i in a_bonded_to and len(a_bonded_to[i])==1):
           Y = atoms[a_bonded_to[i][0].i_seq]
         atom_i = make_atom_id(atom = A, index = i)
         atom_j = make_atom_id(atom = H, index = j)
