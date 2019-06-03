@@ -65,16 +65,10 @@ def exercise_cif_show():
   builder = pdb_hierarchy_builder(cif_model["1AB1"])
   hierarchy = builder.hierarchy
   h_cif = hierarchy.as_cif_block()
-  # print dir(h_cif)
-  # print list(h_cif.get("_atom_site.pdbx_PDB_ins_code"))
-  # print "here: '%s'  " % h_cif.get("_atom_site.pdbx_PDB_ins_code")[0]
   builder = pdb_hierarchy_builder(h_cif) # this runs OK, why?
   # output h_cif:
   s = StringIO()
   h_cif.show(out=s, align_columns=False)
-  # print s.getvalue()
-  # STOP()
-  # assert 0, "Observe '' instead of . in place of _atom_site.pdbx_PDB_ins_code"
   builder = pdb_hierarchy_builder(h_cif) # Now it fails.
 
 def exercise_pdb_hierachy_builder():
@@ -87,8 +81,8 @@ def exercise_pdb_hierachy_builder():
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
-model id="" #chains=2
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
+model id="" #chains=1
+  chain id="A" #residue_groups=2
     resid="   2 " #atom_groups=3
       altloc="" resname="THR" #atoms=4
         " C  "
@@ -113,7 +107,6 @@ model id="" #chains=2
         "HG21"
         "HG22"
         "HG23"
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="  66 " #atom_groups=2
       altloc="A" resname="EOH" #atoms=3
         " C1 "
@@ -125,8 +118,6 @@ model id="" #chains=2
         " O  "
 """)
   cif_block = hierarchy.as_cif_block()
-  # import os, sys
-  # cif_block.show(out=sys.stdout)
   builder = pdb_hierarchy_builder(cif_block)
   hierarchy_recycled = builder.hierarchy
   s1 = StringIO()
@@ -230,8 +221,8 @@ _atom_site_anisotrop.U[2][3]
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
-model id="" #chains=2
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
+model id="" #chains=1
+  chain id="A" #residue_groups=2
     resid=" 108 " #atom_groups=1
       altloc="" resname="SER" #atoms=6
         " N  "
@@ -240,7 +231,6 @@ model id="" #chains=2
         " O  "
         " CB "
         " OG "
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid=" 505 " #atom_groups=1
       altloc="" resname="MN" #atoms=1
         "MN  "
