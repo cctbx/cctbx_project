@@ -409,38 +409,6 @@ model id="" #chains=2
   assert atoms[0].charge == "2+"
   assert atoms[1].charge == "1-"
   assert atoms[2].charge == "1-"
-  #
-  #
-  input_empty_chain_id = """\
-ATOM     12  CA  PHE A   1      11.393  12.163  11.077  1.00  2.00           C
-HETATM   25  O   HOH     1      16.077  12.587   8.964  1.00  2.00           O
-HETATM   26  O   HOH     2      15.549  14.936  10.417  1.00  2.00           O
-HETATM   27  O   HOH     3       8.695  12.035  12.673  1.00  2.00           O
-ATOM     24  CA  PHE A   2       8.393   9.163   8.077  1.00  2.00           C
-HETATM   28  O   HOH     4      13.077   9.587   5.964  1.00  2.00           O
-HETATM   29  O   HOH     5       5.695   9.035   9.673  1.00  2.00           O
-END
-
-"""
-  pdb_in = iotbx.pdb.input(lines=(input_empty_chain_id).splitlines(), source_info=None)
-  pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = pdb_hierarchy.as_cif_block()
-  assert list(cif_block['_atom_site.auth_asym_id']) == [
-    'A', '.', '.', '.', 'A', '.', '.']
-  cif_object = iotbx.cif.model.cif()
-  cif_object["test"] = cif_block
-  s = StringIO()
-  print >> s, cif_object
-  s.seek(0)
-  pdb_in2 = iotbx.pdb.input(lines=s.readlines(), source_info=None)
-  pdb_hierarchy2 = pdb_in2.construct_hierarchy()
-  s1 = StringIO()
-  s2 = StringIO()
-  pdb_hierarchy.show(out=s1)
-  pdb_hierarchy2.show(out=s2)
-  assert not show_diff(s1.getvalue(), s2.getvalue())
-
-
 
 def exercise_pdb_hierarchy_sequence_as_cif_block():
   pdb_atom_site_loop_header = """\
