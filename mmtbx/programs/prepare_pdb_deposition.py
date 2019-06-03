@@ -2,6 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
+from six.moves import cStringIO as StringIO
+
 from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
 
@@ -48,6 +50,10 @@ keep_original_loops = True
   .type = bool
   .help = Preserves mmCIF data from the input model file (if available) that \
     is not overwritten by other input
+align_columns = False
+  .type = bool
+  .help = When set to True, the columns are aligned. This will take longer \
+    because the column widths need to be deteremined before outputting.
 include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 include scope mmtbx.geometry_restraints.torsion_restraints.reference_model.reference_model_str
 include scope mmtbx.geometry_restraints.external.external_energy_params_str
@@ -77,10 +83,9 @@ output {
     self.data_manager.update_pdb_interpretation_for_model(
       self.data_manager.get_default_model_name(), self.params)
 
-    # get model and set up restraints manager
+    # get model
     model = self.data_manager.get_model()
     model.set_log(self.logger)
-    model.get_restraints_manager()
 
     # add sequences
     sequences = list()
@@ -97,8 +102,6 @@ output {
       custom_residues=self.params.custom_residues,
       similarity_matrix=self.params.mmtbx.validation.sequence.sequence_alignment.similarity_matrix,
       min_allowable_identity=self.params.mmtbx.validation.sequence.sequence_alignment.min_allowable_identity)
-    model._sequence_validation.show(out=self.logger)
-    print(file=self.logger)
 
     # When the input is already in mmCIF, just add sequence information
     found_cif_block = False
@@ -106,13 +109,22 @@ output {
       for cif_block in model._model_input.cif_model.values():
         if cif_block.has_key('_atom_site'):
           cif_block.update(model._sequence_validation.sequence_as_cif_block())
-          self.cif_model = str(model._model_input.cif_model)
+          out = StringIO()
+          model._model_input.cif_model.show(
+            out=out, align_columns=self.params.align_columns)
+          self.cif_model = out.getvalue()
           found_cif_block = True
           break
     # otherwise, generate mmCIF
     if not found_cif_block:
+      model.get_restraints_manager()
       self.cif_model = model.model_as_mmcif(
+        align_columns=self.params.align_columns,
         keep_original_loops=self.params.keep_original_loops)
+
+    # show sequence alignment
+    model._sequence_validation.show(out=self.logger)
+    print(file=self.logger)
 
     # write output file
     if self.params.output.prefix is None:
