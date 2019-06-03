@@ -100,8 +100,19 @@ output {
     model._sequence_validation.show(out=self.logger)
     print(file=self.logger)
 
-    self.cif_model = model.model_as_mmcif(
-      keep_original_loops=self.params.keep_original_loops)
+    # When the input is already in mmCIF, just add sequence information
+    found_cif_block = False
+    if hasattr(model._model_input, 'cif_model'):
+      for cif_block in model._model_input.cif_model.values():
+        if cif_block.has_key('_atom_site'):
+          cif_block.update(model._sequence_validation.sequence_as_cif_block())
+          self.cif_model = str(model._model_input.cif_model)
+          found_cif_block = True
+          break
+    # otherwise, generate mmCIF
+    if not found_cif_block:
+      self.cif_model = model.model_as_mmcif(
+        keep_original_loops=self.params.keep_original_loops)
 
     # write output file
     if self.params.output.prefix is None:

@@ -979,6 +979,11 @@ class manager(object):
             loop = original_cif_model.get_loop(key)
             if loop is not None:
               cif_block.add_loop(loop)
+        for key in original_cif_model.item_keys():
+          if key not in cif_block.item_keys():
+            item = original_cif_model.get_single_item(key)
+            if item is not None:
+              cif_block.add_data_item(key, item)
       cif_block.sort(key=category_sort_function)
 
     cif.show(out=out, align_columns=align_columns)
