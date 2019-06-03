@@ -107,7 +107,8 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       assert current_label_asym_id is not None
       last_auth_asym_id = current_auth_asym_id
       current_auth_asym_id = auth_asym_id[i_atom]
-      if current_auth_asym_id == ".": current_auth_asym_id = " "
+      assert current_auth_asym_id not in [".", "?", " "], "mmCIF file contains " + \
+        "record with empty auth_asym_id, which is wrong."
       assert current_label_asym_id is not None
       if (current_auth_asym_id != last_auth_asym_id
           or current_model_id != last_model_id):
