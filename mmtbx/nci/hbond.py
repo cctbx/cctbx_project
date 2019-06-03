@@ -68,9 +68,13 @@ class find(object):
         d_DA_cutoff  = [2.5, 3.5], # not used
         a_DHA_cutoff = 120,        # should be greater than this
         a_YAH_cutoff = [90, 180],  # should be within this interval
-        protein_only = False):
+        protein_only = False,
+        pair_proxies = None
+        ):
     self.result = []
     self.model = model
+    self.pair_proxies = pair_proxies
+    self.external_proxies = False
     atoms = self.model.get_hierarchy().atoms()
     geometry = self.model.get_restraints_manager()
     bond_proxies_simple, asu = geometry.geometry.get_all_bond_proxies(
@@ -94,29 +98,37 @@ class find(object):
       buffer_thickness = d_HA_cutoff[1],
       sites_cart       = sites_cart)
     get_class = iotbx.pdb.common_residue_names_get_class
-    for p in pg.pair_generator:
+    # Find proxies if not provided!
+    if(self.pair_proxies is None):
+      self.pair_proxies = []
+      for p in pg.pair_generator:
+        i, j = p.i_seq, p.j_seq
+        ei, ej = atoms[i].element, atoms[j].element
+        altloc_i = atoms[i].parent().altloc
+        altloc_j = atoms[j].parent().altloc
+        resseq_i = atoms[i].parent().parent().resseq
+        resseq_j = atoms[j].parent().parent().resseq
+        # pre-screen candidates begin
+        one_is_Hs = ei in Hs or ej in Hs
+        other_is_acceptor = ei in As or ej in As
+        is_candidate = one_is_Hs and other_is_acceptor and \
+          altloc_i == altloc_j and resseq_i != resseq_j
+        if(protein_only):
+          for it in [i,j]:
+            resname = atoms[it].parent().resname
+            is_candidate &= get_class(name=resname) == "common_amino_acid"
+        if(not is_candidate): continue
+        if(ei in Hs and not h_bonded_to[i].element in As): continue
+        if(ej in Hs and not h_bonded_to[j].element in As): continue
+        # pre-screen candidates end
+        self.pair_proxies.append(p)
+    else:
+      self.external_proxies = True
+    #
+    for p in self.pair_proxies:
       i, j = p.i_seq, p.j_seq
       ei, ej = atoms[i].element, atoms[j].element
-      altloc_i = atoms[i].parent().altloc
-      altloc_j = atoms[j].parent().altloc
-      resseq_i = atoms[i].parent().parent().resseq
-      resseq_j = atoms[j].parent().parent().resseq
-      # pre-screen candidates begin
-      one_is_Hs = ei in Hs or ej in Hs
-      other_is_acceptor = ei in As or ej in As
-      d_HA = math.sqrt(p.dist_sq)
-      assert d_HA <= d_HA_cutoff[1]
-      is_candidate = one_is_Hs and other_is_acceptor and \
-        d_HA >= d_HA_cutoff[0] and \
-        altloc_i == altloc_j and resseq_i != resseq_j
-      if(protein_only):
-        for it in [i,j]:
-          resname = atoms[it].parent().resname
-          is_candidate &= get_class(name=resname) == "common_amino_acid"
-      if(not is_candidate): continue
-      if(ei in Hs and not h_bonded_to[i].element in As): continue
-      if(ej in Hs and not h_bonded_to[j].element in As): continue
-      # pre-screen candidates end
+      # symop tp map onto symmetry related
       rt_mx_i = pg.conn_asu_mappings.get_rt_mx_i(p)
       rt_mx_j = pg.conn_asu_mappings.get_rt_mx_j(p)
       rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
@@ -145,11 +157,16 @@ class find(object):
         if(str(rt_mx_ji) != "x,y,z"):
           H = apply_symop_to_copy(H, rt_mx_ji, fm, om)
           D = apply_symop_to_copy(D, rt_mx_ji, fm, om)
-      assert H.distance(D) < 1.15
+      d_HA = A.distance(H)
+      if(not self.external_proxies):
+        assert d_HA <= d_HA_cutoff[1]
+        assert approx_equal(math.sqrt(p.dist_sq), d_HA, 1.e-3)
+#      assert H.distance(D) < 1.15, [H.distance(D), H.name, D.name]
       # filter by a_DHA
       a_DHA = H.angle(A, D, deg=True)
       if(a_DHA < a_DHA_cutoff): continue
       # filter by a_YAH
+      a_YAH = None
       if(Y is not None):
         a_YAH = A.angle(Y, H, deg=True)
         if not (a_YAH >= a_YAH_cutoff[0] and a_YAH <= a_YAH_cutoff[1]): continue
@@ -163,6 +180,7 @@ class find(object):
         symop   = rt_mx_ji,
         d_HA    = d_HA,
         a_DHA   = a_DHA,
+        a_YAH   = a_YAH,
         d_AD    = A.distance(D)
       ))
 

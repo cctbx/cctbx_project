@@ -163,6 +163,11 @@ def exercise_02():
   assert approx_equal(r1.a_DHA, 160.475, 1.e-1)
   assert str(r1.symop) == "x,y,z"
 
+def exercise_03():
+  r = core(pdb_str=pdb_str_03)
+  r.show()
+  r.as_pymol()
+
 if __name__ == '__main__':
   t0 = time.time()
   exercise_00()
