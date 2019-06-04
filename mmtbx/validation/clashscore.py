@@ -552,6 +552,15 @@ def decode_atom_string(atom_str, use_segids=False):
       altloc=atom_str[17],
       name=atom_str[13:17])
 
+def check_and_report_reduce_failure(fb_object, input_lines, output_fname):
+  if (fb_object.return_code != 0):
+    with open(output_fname, 'w') as f:
+      f.write(input_lines)
+    msg_str = "Reduce crashed with command '%s'.\nDumping stdin to file '%s'.\n" +\
+        "Return code: %d\nDumping stderr:\n%s"
+    raise Sorry(msg_str % (fb_object.command, output_fname, fb_object.return_code,
+                           "\n".join(fb_object.stderr_lines)))
+
 def check_and_add_hydrogen(
         pdb_hierarchy=None,
         file_name=None,
@@ -642,21 +651,17 @@ def check_and_add_hydrogen(
         parameters=trim,
         stdin_lines=stdin_lines)
     stdin_fname = "reduce_fail.pdb"
-    if (clean_out.return_code != 0):
-      with open(stdin_fname, 'w') as f:
-        f.write(stdin_lines)
-      msg_str = "Reduce crashed with command '%s'.\nDumping stdin to file '%s'.\n" +\
-          "Dumping stderr:\n%s"
-      raise Sorry(msg_str % (trim, stdin_fname, "\n".join(clean_out.stderr_lines)))
+    check_and_report_reduce_failure(
+        fb_object=clean_out,
+        input_lines=stdin_lines,
+        output_fname="reduce_fail.pdb")
     build_out = run_reduce_with_timeout(
         parameters=build,
         stdin_lines=clean_out.stdout_lines)
-    if (build_out.return_code != 0):
-      with open(stdin_fname, 'w') as f:
-        f.write("\n".join(clean_out.stdout_lines))
-      msg_str = "Reduce crashed with command '%s'.\nDumping stdin to file '%s'.\n" +\
-          "Dumping stderr:\n%s"
-      raise Sorry(msg_str % (build, stdin_fname, "\n".join(build_out.stderr_lines)))
+    check_and_report_reduce_failure(
+        fb_object=build_out,
+        input_lines=stdin_lines,
+        output_fname="reduce_fail.pdb")
     reduce_str = '\n'.join(build_out.stdout_lines)
     return reduce_str,True
   else:
@@ -727,9 +732,14 @@ class nqh_flips(validation):
   def __init__(self, pdb_hierarchy):
     re_flip = re.compile(":FLIP")
     validation.__init__(self)
+    in_lines = pdb_hierarchy.as_pdb_string()
     reduce_out = run_reduce_with_timeout(
         parameters="-BUILD -",
-        stdin_lines=pdb_hierarchy.as_pdb_string())
+        stdin_lines=in_lines)
+    check_and_report_reduce_failure(
+        fb_object=reduce_out,
+        input_lines=in_lines,
+        output_fname="reduce_fail.pdb")
     from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
