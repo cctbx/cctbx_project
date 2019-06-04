@@ -39,16 +39,14 @@ phenix.nonbonded_overlaps file.pdb [params.eff] [options ...]
 Options:
 
   keep_hydrogens=True       keep input hydrogen files (otherwise regenerate)
-  skip_hydrogen_test=False  Ignore hydrogen considerations,
-                            check NBO on model file as-is
+  add_hydrogen=True         Place H atoms with ready_set
   nuclear=False             use nuclear x-H distances and vdW radii
-  verbose=True              verbose text output
 
 Example:
 
 >>> mmtbx.nonbonded_overlaps xxxx.pdb keep_hydrogens=True
 
->>> mmtbx.nonbonded_overlaps xxxx.pdb verbose=false
+>>> mmtbx.nonbonded_overlaps xxxx.pdb add_hydrogen=False
 
 >>> mmtbx.nonbonded_overlaps xxxx.pdb yyyyy.cif
 '''
@@ -89,14 +87,18 @@ Example:
     # substitute_non_crystallographic_unit_cell_if_necessary --> not necessary
 
     # add H atoms with readyset
-    params=["add_h_to_water=False",
-            "optimise_final_geometry_of_hydrogens=False"]
-    assert (libtbx.env.has_module(name="reduce"))
-    assert (libtbx.env.has_module(name="elbow"))
-    readyset_model = ready_set_model_interface(
-          model  = model,
-          params = params,
-          keep_temp = self.params.keep_temp)
+
+    if self.params.add_hydrogen:
+      params=["add_h_to_water=False",
+              "optimise_final_geometry_of_hydrogens=False"]
+      assert (libtbx.env.has_module(name="reduce"))
+      assert (libtbx.env.has_module(name="elbow"))
+      readyset_model = ready_set_model_interface(
+            model  = model,
+            params = params,
+            keep_temp = self.params.keep_temp)
+    else:
+      readyset_model = model
 
     readyset_model.set_pdb_interpretation_params(pi_params)
     readyset_model.set_restraint_objects(restraint_objects)
