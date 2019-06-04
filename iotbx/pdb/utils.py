@@ -48,5 +48,5 @@ if __name__ == '__main__':
     rc = all_label_asym_ids(maximum_length=r)
     p*=26
     l+=p
-    print '%7d %7d %7d %5s %0.3fs' % (l,p,len(rc), rc[-1], time.time()-t0)
+    print('%7d %7d %7d %5s %0.3fs' % (l,p,len(rc), rc[-1], time.time()-t0))
     assert len(rc)==l
