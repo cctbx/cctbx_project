@@ -22,6 +22,7 @@ import os
 import platform
 import shutil
 import sys
+import warnings
 
 # Python 2/3 compatibility
 py2 = False
@@ -318,12 +319,13 @@ value."""
       for env in self.environments:
         consistency_check.append(env in conda_info['envs'])
       if False in consistency_check:
-        raise RuntimeWarning("""
+        message = """
 There is a mismatch between the conda settings in your home directory
 and what "conda info" is reporting. This is not a fatal error, but if
 an error is encountered, please check that your conda installation and
 environments exist and are working.
-""")
+"""
+        warnings.warn(message, RuntimeWarning)
       if conda_info['conda_version'] < '4.4':
         raise RuntimeError("""
 CCTBX programs require conda version 4.4 and greater to make use of the
