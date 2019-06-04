@@ -279,8 +279,7 @@ def benchmark_structure(pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0):
     r1=r1,
     r2=r2)
 
-def exercise_geo_output(mon_lib_srv, ener_lib):
-  pdb_str = """\
+pdb_str = """\
 CRYST1   18.879   16.714   25.616  90.00  90.00  90.00 P 1
 ATOM      1  N   ALA     1      13.515   7.809  20.095  1.00  0.00           N
 ATOM      2  CA  ALA     1      13.087   6.532  19.536  1.00  0.00           C
@@ -335,6 +334,8 @@ ATOM     50  CB  ALA    10       5.966  10.246   7.995  1.00  0.00           C
 TER
 END
 """
+
+def exercise_geo_output(mon_lib_srv, ener_lib):
   pdb_inp = iotbx.pdb.input(source_info="peptide",lines=flex.split_lines(pdb_str))
   hierarchy = pdb_inp.construct_hierarchy()
   atoms = hierarchy.atoms()
@@ -475,6 +476,77 @@ Ramachandran plot restraints (Emsley): 0
 Sorted by residual:
 
 """)
+
+def exercise_manager_selection(mon_lib_srv, ener_lib):
+  pdb_inp = iotbx.pdb.input(source_info="peptide",lines=flex.split_lines(pdb_str))
+  hierarchy = pdb_inp.construct_hierarchy()
+  atoms = hierarchy.atoms()
+  sites_cart = atoms.extract_xyz()
+  params = ramachandran.master_phil.fetch().extract()
+  params.rama_potential = "emsley"
+  rama_manager = ramachandran.ramachandran_manager(
+      hierarchy, params, StringIO())
+  out = StringIO()
+  s_out = StringIO()
+  rama_manager.show_sorted(
+      by_value="residual",
+      sites_cart=sites_cart,
+      site_labels=[a.id_str() for a in atoms],
+      f=out)
+  selected_m = rama_manager.proxy_select(
+      n_seq=hierarchy.atoms_size(),
+      iselection=flex.size_t(range(40)))
+  selected_m.show_sorted(
+      by_value="residual",
+      sites_cart=sites_cart,
+      site_labels=[a.id_str() for a in atoms],
+      f=s_out)
+  assert not show_diff(s_out.getvalue(), """\
+Ramachandran plot restraints (Oldfield): 0
+Sorted by residual:
+
+Ramachandran plot restraints (Emsley): 6
+Sorted by residual:
+phi-psi angles formed by             residual
+    pdb=" C   ALA     1 "            1.52e+01
+    pdb=" N   ALA     2 "
+    pdb=" CA  ALA     2 "
+    pdb=" C   ALA     2 "
+    pdb=" N   ALA     3 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     6 "            1.20e+01
+    pdb=" N   ALA     7 "
+    pdb=" CA  ALA     7 "
+    pdb=" C   ALA     7 "
+    pdb=" N   ALA     8 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     2 "            1.14e+01
+    pdb=" N   ALA     3 "
+    pdb=" CA  ALA     3 "
+    pdb=" C   ALA     3 "
+    pdb=" N   ALA     4 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     4 "            1.06e+01
+    pdb=" N   ALA     5 "
+    pdb=" CA  ALA     5 "
+    pdb=" C   ALA     5 "
+    pdb=" N   ALA     6 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     3 "            1.03e+01
+    pdb=" N   ALA     4 "
+    pdb=" CA  ALA     4 "
+    pdb=" C   ALA     4 "
+    pdb=" N   ALA     5 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     5 "            7.58e+00
+    pdb=" N   ALA     6 "
+    pdb=" CA  ALA     6 "
+    pdb=" C   ALA     6 "
+    pdb=" N   ALA     7 "
+
+""")
+
+
 
 def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   # Just check overall rama proxies
@@ -736,6 +808,7 @@ if __name__ == "__main__" :
         ("--verbose" in sys.argv) or ("-v" in sys.argv))
   t3 = time.time()
   exercise_geo_output(mon_lib_srv, ener_lib)
+  exercise_manager_selection(mon_lib_srv, ener_lib)
   t4 = time.time()
   exercise_ramachandran_selections(mon_lib_srv, ener_lib)
   t5 = time.time()

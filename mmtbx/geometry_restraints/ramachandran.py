@@ -99,7 +99,7 @@ class ramachandran_manager(object):
     self._oldfield_tables = None
     self._emsley_tables = None
     if proxies is not None:
-      self._oldfield_proxies, self._emsley_tables = proxies
+      self._oldfield_proxies, self._emsley_proxies = proxies
     if tables is not None:
       self._oldfield_tables, self._emsley_tables = tables
     self.initialize = initialize
