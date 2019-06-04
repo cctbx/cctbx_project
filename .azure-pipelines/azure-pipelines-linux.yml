@@ -44,10 +44,9 @@ jobs:
     path: ./modules/cctbx_project
 
   - script: |
-      git checkout py3
       cd ../..
       ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
-    displayName: Check out py3 branch / Link bootstrap.py
+    displayName: Link bootstrap.py
 
   # - script: echo "##vso[task.prependpath]$CONDA/bin"
   #   displayName: Add conda to PATH

@@ -48,10 +48,6 @@ jobs:
     path: .\modules\cctbx_project
 
   - script: |
-      git checkout py3
-    displayName: Check out py3 branch
-
-  - script: |
       cd ..\..
       copy modules\cctbx_project\libtbx\auto_build\bootstrap.py .
     displayName: Copy bootstrap.py
