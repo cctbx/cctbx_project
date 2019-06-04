@@ -107,7 +107,7 @@ output {
     found_cif_block = False
     if hasattr(model._model_input, 'cif_model'):
       for cif_block in model._model_input.cif_model.values():
-        if cif_block.has_key('_atom_site'):
+        if '_atom_site' in cif_block:
           cif_block.update(model._sequence_validation.sequence_as_cif_block())
           out = StringIO()
           model._model_input.cif_model.show(

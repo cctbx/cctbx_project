@@ -196,7 +196,7 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
     elif isinstance(tst, types.FunctionType): #adds ability to execute a function defined within run_tests.py
       cmd = "libtbx.python -c "
       base_module = os.path.basename(dist_dir)
-      cmd +="'from %s.run_tests import %s; %s()'"%(base_module,tst.__name__,tst.__name__)
+      cmd +='"from %s.run_tests import %s; %s()"'%(base_module,tst.__name__,tst.__name__)
       yield cmd
       continue
     elif (co is not None) and (co.verbose):

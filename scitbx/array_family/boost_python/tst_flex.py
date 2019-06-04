@@ -3430,7 +3430,7 @@ def pickle_large_arrays(max_exp, verbose):
           val = -2147483647
         elif (array_type == flex.long):
           val = -9223372036854775807
-          if (type(val) == type(1)):
+          if (sys.platform == 'win32'):
             val = -2147483647
         elif (array_type == flex.complex_double):
           val = complex(-1.234567809123456e+20, -1.234567809123456e+20)
