@@ -77,8 +77,7 @@ class find(object):
         a_DHA_cutoff = 120,        # should be greater than this
         a_YAH_cutoff = [90, 180],  # should be within this interval
         protein_only = False,
-        pair_proxies = None
-        ):
+        pair_proxies = None):
     self.result = []
     self.model = model
     self.pair_proxies = pair_proxies
@@ -118,6 +117,11 @@ class find(object):
     # now loop over proxies
     for p in pp:
       i, j = p.i_seq, p.j_seq
+      if(self.external_proxies): # making sure proxies point to same atoms
+        a_i = make_atom_id(atom = atoms[i], index = i).id_str
+        a_j = make_atom_id(atom = atoms[j], index = j).id_str
+        assert a_i == p.atom_i.id_str, [a_i, p.atom_i.id_str]
+        assert a_j == p.atom_j.id_str, [a_j, p.atom_j.id_str]
       ei, ej = atoms[i].element, atoms[j].element
       altloc_i = atoms[i].parent().altloc
       altloc_j = atoms[j].parent().altloc
@@ -137,32 +141,36 @@ class find(object):
       if(ej in Hs and not h_bonded_to[j].element in As): continue
       # pre-screen candidates end
       # symop tp map onto symmetry related
-      rt_mx_i = pg.conn_asu_mappings.get_rt_mx_i(p)
-      rt_mx_j = pg.conn_asu_mappings.get_rt_mx_j(p)
-      rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
+      rt_mx_ji = None
+      if(not self.external_proxies):
+        rt_mx_i = pg.conn_asu_mappings.get_rt_mx_i(p)
+        rt_mx_j = pg.conn_asu_mappings.get_rt_mx_j(p)
+        rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
+      else:
+        rt_mx_ji = p.rt_mx_ji
       #
-      Y = None
+      Y = []
       if(ei in Hs):
         H = atoms[i]
         D = atoms[h_bonded_to[H.i_seq].i_seq]
         A = atoms[j]
-        if(j in a_bonded_to and len(a_bonded_to[j])==1):
-          Y = atoms[a_bonded_to[j][0].i_seq]
+        if(j in a_bonded_to):
+          Y = [atoms[a.i_seq] for a in a_bonded_to[j]]
         atom_i = make_atom_id(atom = H, index = i)
         atom_j = make_atom_id(atom = A, index = j)
-        if(str(rt_mx_ji) != "x,y,z"):
+        if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
           A = apply_symop_to_copy(A, rt_mx_ji, fm, om)
-          if(Y is not None):
-            Y = apply_symop_to_copy(Y, rt_mx_ji, fm, om)
+          if(len(Y)>0):
+            Y = [apply_symop_to_copy(y, rt_mx_ji, fm, om) for y in Y]
       if(ej in Hs):
         H = atoms[j]
         D = atoms[h_bonded_to[H.i_seq].i_seq]
         A = atoms[i]
-        if(i in a_bonded_to and len(a_bonded_to[i])==1):
-          Y = atoms[a_bonded_to[i][0].i_seq]
+        if(i in a_bonded_to):
+          Y = [atoms[a.i_seq] for a in a_bonded_to[i]]
         atom_i = make_atom_id(atom = A, index = i)
         atom_j = make_atom_id(atom = H, index = j)
-        if(str(rt_mx_ji) != "x,y,z"):
+        if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
           H = apply_symop_to_copy(H, rt_mx_ji, fm, om)
           D = apply_symop_to_copy(D, rt_mx_ji, fm, om)
       d_HA = A.distance(H)
@@ -175,12 +183,18 @@ class find(object):
       if(not self.external_proxies):
         if(a_DHA < a_DHA_cutoff): continue
       # filter by a_YAH
-      a_YAH = None
-      if(Y is not None):
-        a_YAH = A.angle(Y, H, deg=True)
-        if(not self.external_proxies):
-          if(not (a_YAH >= a_YAH_cutoff[0] and a_YAH <= a_YAH_cutoff[1])):
-            continue
+      a_YAH = []
+      if(len(Y)>0):
+        for Y_ in Y:
+          a_YAH_ = A.angle(Y_, H, deg=True)
+          a_YAH.append(a_YAH_)
+      if(not self.external_proxies):
+        flags = []
+        for a_YAH_ in a_YAH:
+          flags.append(
+            not (a_YAH_ >= a_YAH_cutoff[0] and a_YAH_ <= a_YAH_cutoff[1]))
+        flags = list(set(flags))
+        if(len(flags)>1 or (len(flags)==1 and flags[0])): continue
       #
       assert approx_equal(d_HA, H.distance(A), 1.e-3)
       self.result.append(group_args(
@@ -195,15 +209,23 @@ class find(object):
         d_AD    = A.distance(D)
       ))
       if(not self.external_proxies):
-        self.pair_proxies.append(p)
+        proxy_custom = group_args(i_seq = i, j_seq = j, rt_mx_ji = rt_mx_ji,
+          atom_i = atom_i, atom_j = atom_j)
+        self.pair_proxies.append(proxy_custom)
 
   def show(self, log = sys.stdout):
     for r in self.result:
       ids_i = r.atom_i.id_str
       ids_j = r.atom_j.id_str
+<<<<<<< HEAD
       print("%4d %4d"%(r.i,r.j), "%s<>%s"%(ids_i, ids_j),
         "d_HA=%5.3f"%r.d_HA, "d_AD=%5.3f"%r.d_AD, "a_DHA=%7.3f"%r.a_DHA,
         "symop: %s"%str(r.symop), file=log)
+=======
+      print >> log, "%4d %4d"%(r.i,r.j), "%s<>%s"%(ids_i, ids_j), \
+        "d_HA=%5.3f"%r.d_HA, "d_AD=%5.3f"%r.d_AD, "a_DHA=%7.3f"%r.a_DHA, \
+        "symop: %s"%str(r.symop), " ".join(["a_YAH=%d"%i for i in r.a_YAH])
+>>>>>>> Bug fix in using theta_2 angle. More tests coming.
 
   def as_pymol(self, prefix="hbonds_pymol"):
     pdb_file_name = "%s.pdb"%prefix
