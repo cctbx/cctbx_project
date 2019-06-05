@@ -70,7 +70,6 @@ from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import crystal
 
-
 xs = crystal.symmetry(unit_cell=(50,50,40, 90,90,120), space_group_symbol="P3 1")
 mi = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
                         (1, 0, 2), (-1, 1, -2), (2, -2, -2),
@@ -79,7 +78,7 @@ mi = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
 
 ma = miller.array( miller.set(xs, mi) )
 
-ma1 = miller.array( miller.set(xs, mi), data=flex.double( [11.205, 6.353, 26.167, 14.94, 2.42, 24.921, 16.185, 11.798, 21.183, 4.98] ),
+ma1 = miller.array( miller.set(xs, mi), ) [11.205, 6.353, 26.167, 14.94, 2.42, 24.921, 16.185, 11.798, 21.183, 4.98] ),
                    sigmas=flex.double( [13.695, 6.353, 24.921, 6.225, 11.193, 26.167, 8.715, 4.538, 27.413, 21.165] )
                    ).set_observation_type( observation_types.intensity() )
 ma1.set_info(miller.array_info(source="artificial file", labels=["MyI", "SigMyI"]))
@@ -113,13 +112,21 @@ ma3 = miller.array(miller.set(xs, mi3), data=flex.double( [22.429, 28.635, 3.328
 ma3.set_info(miller.array_info(source="artificial file", labels=["Foo"]))
 
 mi4 = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2), (1, 0, 2), (-1, 1, -2),   (0, 0, 2) ] )
-ma4 = miller.array(miller.set(xs, mi4), data=flex.double( [19.937, 12.45, 11.496, 23.675, 4.98, 1.21, 28.659] ) )
-ma3.set_info(miller.array_info(source="artificial file", labels=["Bar"]))
+ma4 = miller.array(miller.set(xs, mi4), data=flex.std_string( ["foo", "bar", "wibble", "waffle", "mumble", "muffle","babble"] ) )
+ma4.set_info(miller.array_info(source="artificial file", labels=["Bar"]))
+
+mi5 = flex.miller_index([(1, -2, 3), (0, 0, -3), (1, 2, 3), (0, 1, 2),
+                         (1, 0, 2), (2, -2, -2), (-2, 1, 0), (0, 0, 2)]
+)
+ma5 = miller.array(miller.set(xs, mi5), data=flex.double( [12.429, 38.635, -3.328, 3.738, 4.9, -5.521, 10.738, 19.92] ) )
+ma5.set_info(miller.array_info(source="artificial file", labels=["BarFoo"]))
+
 
 mtz1 = ma1.as_mtz_dataset(column_root_label="I")
 mtz1.add_miller_array(ma2, column_root_label="MyMap")
 mtz1.add_miller_array(ma3, column_root_label="Oink")
 mtz1.add_miller_array(ma4, column_root_label="blip")
+mtz1.add_miller_array(ma5, column_root_label="bleep")
 mtz1.add_miller_array(mafom, column_root_label="FOM")
 mtz1.set_wavelength(1.2)
 mtz1.set_name("MyTestData")
@@ -557,6 +564,7 @@ class HKLViewFrame () :
       elif (len(valid_arrays) >= 1):
         if (set_array):
           self.set_miller_array()
+      return True
 
 
   def LoadReflectionsFile(self, filename):

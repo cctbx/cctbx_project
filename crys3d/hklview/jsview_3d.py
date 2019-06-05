@@ -3,13 +3,13 @@ from __future__ import division
 from libtbx.math_utils import roundoff
 from cctbx.miller import display2 as display
 from cctbx.array_family import flex
-from scitbx import graphics_utils
 from cctbx import miller
+from scitbx import graphics_utils
 from libtbx.utils import Sorry, to_str
 from websocket_server import WebsocketServer
 import threading, math, sys
 from time import sleep
-import os.path, time
+import os.path, time, copy
 import libtbx
 import webbrowser, tempfile
 
@@ -59,6 +59,9 @@ class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
     self.miller_array = None
+    self.superset_array = None
+    self.tooltipstrings = []
+    self.tooltipstringsdict = {}
     self.d_min = None
     self.scene = None
     self.NGLscriptstr = ""
@@ -77,6 +80,7 @@ class hklview_3d:
     self.othermindata = []
     self.othermaxsigmas = []
     self.otherminsigmas = []
+    self.workarrays = []
     self.sceneisdirty = False
     self.matchingarrayinfo = []
     self.match_valarrays = []
@@ -141,6 +145,51 @@ class hklview_3d:
       os.remove(self.hklfname)
 
 
+  def update_settings(self, diffphil) :
+    if hasattr(diffphil, "filename") \
+      or (hasattr(diffphil, "viewer")
+      #and ( hasattr(diffphil.viewer, "expand_anomalous") or hasattr(diffphil.viewer, "expand_to_p1") )
+      ):
+      self.ExtendMillerArraysUnionHKLs()
+      self.sceneisdirty = True
+
+    if hasattr(diffphil, "spacegroupchoice") or \
+      hasattr(diffphil, "mergedata") or \
+      hasattr(diffphil, "column") or \
+      hasattr(diffphil, "fomcolumn") or \
+      hasattr(diffphil, "viewer") and ( hasattr(diffphil.viewer, "show_anomalous_pairs") \
+      or hasattr(diffphil.viewer, "show_data_over_sigma") \
+      or hasattr(diffphil.viewer, "show_missing") \
+      or hasattr(diffphil.viewer, "show_only_missing") \
+      or hasattr(diffphil.viewer, "show_systematic_absences") \
+      or hasattr(diffphil.viewer, "slice_axis") \
+      or hasattr(diffphil.viewer, "slice_mode") \
+      or hasattr(diffphil.viewer, "slice_index") \
+      or hasattr(diffphil.viewer, "scale") \
+      or hasattr(diffphil.viewer, "nth_power_scale_radii") \
+      or hasattr(diffphil.viewer, "expand_anomalous") \
+      or hasattr(diffphil.viewer, "expand_to_p1")
+      ):
+        self.sceneisdirty = True
+
+    if hasattr(diffphil, "filename") or \
+      hasattr(diffphil, "mergedata") or \
+      hasattr(diffphil, "viewer") and ( hasattr(diffphil.viewer, "show_anomalous_pairs") \
+      or hasattr(diffphil.viewer, "expand_anomalous") \
+      or hasattr(diffphil.viewer, "expand_to_p1")
+      ):
+        self.sceneisdirty = True
+        if not self.ConstructReciprocalSpace(merge=self.merge) or \
+         self.miller_array is None or self.iarray < 0:
+          return
+    msg = ""
+    if self.iarray >=0:
+      self.scene = self.otherscenes[self.iarray]
+      self.DrawNGLJavaScript()
+      msg = "Rendered %d reflections\n" % self.scene.points.size()
+    return msg
+
+
   def set_miller_array(self, col, merge=None, details="", proc_arrays=[]):
     self.iarray = col
     if col:
@@ -157,61 +206,39 @@ class hklview_3d:
     self.mprint( "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
       % (array_info.label_string(), details, self.miller_array.indices().size(), \
           self.miller_array.space_group_info(), uc) )
-    #self.construct_reciprocal_space(merge=merge)
 
 
   def ExtendMillerArraysUnionHKLs(self):
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.match_valarrays = []
-    # loop over all miller arrays to find the subsets of hkls common between currently selected
-    # miler array and the other arrays. hkls found in the currently selected miller array but
-    # missing in the subsets are populated populated with NaN values
     # create miller indices being a superset of available indices in all arrays
     self.mprint("Gathering superset of miller indices")
-    superset_array = self.proc_arrays[0]
-    for i,validarray in enumerate(self.proc_arrays):
-      if i==0:
-        continue
-      # first match indices in currently selected miller array with indices in the other miller arrays
-      matchindices = miller.match_indices(superset_array.indices(), validarray.indices() )
-      #print validarray.info().label_string()
-      valarray = validarray.select( matchindices.pairs().column(1) )
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      if valarray.anomalous_flag() and not superset_array.anomalous_flag():
-        # valarray gets its anomalous_flag from validarray. But it cannot have more HKLs than self.miller_array
-        # so set its anomalous_flag to False if self.miller_array is not anomalous data
-        valarray._anomalous_flag = False
-      if not valarray.anomalous_flag() and superset_array.anomalous_flag():
-        # temporarily expand other arrays to anomalous if self.miller_array is anomalous
-        valarray = valarray.generate_bijvoet_mates()
-      missing = superset_array.lone_set( valarray )
-      # insert NAN values for reflections in self.miller_array not found in validarray
-      valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices())
-      match_valindices = miller.match_indices(superset_array.indices(), valarray.indices() )
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      match_valarray = valarray.select( match_valindices.pairs().column(1) )
-      match_valarray.sort(by_value="packed_indices")
-      #match_valarray.set_info(validarray.info() )
-      superset_array = match_valarray
-      #print "supersetsize:", superset_array.size()
+    #superset_array = self.proc_arrays[0]
+    millersets = []
+    for i,valarray in enumerate(self.proc_arrays):
+      millersets.append(valarray.set())
+    uos = miller.union_of_sets(millersets)
+    self.superset_array = miller.array( uos, data=flex.double(uos.size(), 0.0))
     # now extend each miller array to contain any missing indices from the superset miller array
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     for i,validarray in enumerate(self.proc_arrays):
       # first match indices in currently selected miller array with indices in the other miller arrays
-      matchindices = miller.match_indices(superset_array.indices(), validarray.indices() )
+      matchindices = miller.match_indices(self.superset_array.indices(), validarray.indices() )
       #print validarray.info().label_string()
       valarray = validarray.select( matchindices.pairs().column(1) )
+      #valarray.sort(by_value="packed_indices")
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      if valarray.anomalous_flag() and not superset_array.anomalous_flag():
+      if valarray.anomalous_flag() and not self.superset_array.anomalous_flag():
         # valarray gets its anomalous_flag from validarray. But it cannot have more HKLs than self.miller_array
         # so set its anomalous_flag to False if self.miller_array is not anomalous data
         valarray._anomalous_flag = False
-      if not valarray.anomalous_flag() and superset_array.anomalous_flag():
+      if not valarray.anomalous_flag() and self.superset_array.anomalous_flag():
         # temporarily expand other arrays to anomalous if self.miller_array is anomalous
         valarray = valarray.generate_bijvoet_mates()
-      missing = superset_array.lone_set( valarray )
+      missing = self.superset_array.lone_set( valarray )
       # insert NAN values for reflections in self.miller_array not found in validarray
       valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices())
-      match_valindices = miller.match_indices(superset_array.indices(), valarray.indices() )
+      match_valindices = miller.match_indices(self.superset_array.indices(), valarray.indices() )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       match_valarray = valarray.select( match_valindices.pairs().column(1) )
       match_valarray.sort(by_value="packed_indices")
@@ -219,11 +246,65 @@ class hklview_3d:
       self.match_valarrays.append( match_valarray )
 
 
-  def construct_reciprocal_space(self, merge=None):
+  def MakeToolTips(self):
+    self.mprint( "making tooltips")
+    """
+    self.tooltipstrings = []
+    hkls = self.otherscenes[self.iarray].indices
+    dres = self.otherscenes[self.iarray].dres
+    for i,hkl in enumerate(hkls):
+      spbufttip = 'H,K,L: %s, %s, %s' %(hkl[0], hkl[1], hkl[2])
+      spbufttip += '\ndres: %s ' %str(roundoff(dres[i])  )
+      spbufttip += '\' + AA + \''
+      self.tooltipstrings.append(spbufttip)
+    """
+    self.tooltipstringsdict = {}
+    """
+    hkls = self.superset_array.indices()
+    dres = self.superset_array.unit_cell().d(hkls)
+    for i,hkl in enumerate(hkls):
+      spbufttip = 'H,K,L: %s, %s, %s' %(hkl[0], hkl[1], hkl[2])
+      spbufttip += '\ndres: %s ' %str(roundoff(dres[i])  )
+      spbufttip += '\' + AA + \''
+      self.tooltipstringsdict[hkl] = spbufttip
+    """
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    for j,oscene in enumerate(self.otherscenes):
+      ocolstr = oscene.work_array.info().label_string()
+      if oscene.work_array.is_complex_array():
+        ampl = flex.abs(oscene.data)
+        phases = flex.arg(oscene.data) * 180.0/math.pi
+        # purge nan values from array to avoid crash in fmod_positive()
+        b = flex.bool([bool(math.isnan(e)) for e in phases])
+        # replace the nan values with an arbitrary float value
+        phases = phases.set_selected(b, 42.4242)
+        # Cast negative degrees to equivalent positive degrees
+        phases = flex.fmod_positive(phases, 360.0)
+      sigmas = oscene.sigmas
+      for i,datval in enumerate(oscene.data):
+        od =""
+        if oscene.work_array.is_complex_array():
+          od = str(roundoff(ampl[i])) + ", " + str(roundoff(phases[i])  ) + \
+            "\' + DGR + \'"
+        elif sigmas is not None:
+          od = str(roundoff(datval) ) + ", " + str(roundoff(sigmas[i]))
+        else:
+          od = str(roundoff(datval) )
+        if not (math.isnan( abs(datval) ) or datval == display.inanval):
+          #self.tooltipstrings[i] += "\n%s: %s" %(ocolstr, od)
+          hkl = oscene.indices[i]
+          if not self.tooltipstringsdict.has_key(hkl):
+            spbufttip = 'H,K,L: %s, %s, %s' %(hkl[0], hkl[1], hkl[2])
+            spbufttip += '\ndres: %s ' %str(roundoff(oscene.dres[i])  )
+            spbufttip += '\' + AA + \''
+            self.tooltipstringsdict[hkl] = spbufttip
+          self.tooltipstringsdict[hkl] += "\n%s: %s" %(ocolstr, od)
+
+
+  def ConstructReciprocalSpace(self, merge=None):
     self.mprint("Constructing HKL scenes")
-    #if len(self.match_valarrays)==0:
-    #  self.ExtendMillerArraysUnionHKLs()
-    self.miller_array = self.match_valarrays[self.iarray]
+    #self.miller_array = self.match_valarrays[self.iarray]
+    self.miller_array = self.proc_arrays[self.iarray]
     if not self.sceneisdirty:
       return
     self.otherscenes = []
@@ -232,6 +313,7 @@ class hklview_3d:
     self.othermaxsigmas = []
     self.otherminsigmas = []
     self.matchingarrayinfo = []
+    self.workarrays = []
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     foms_array = None
     if self.miller_array.is_complex_array():
@@ -241,26 +323,48 @@ class hklview_3d:
     #self.scene = display.scene(miller_array=self.miller_array, merge=merge,
     # settings=self.settings, foms_array=foms_array)
     # compute scenes for each of the miller arrays
-    for i,match_valarray in enumerate(self.match_valarrays):
+    #for i,match_valarray in enumerate(self.match_valarrays):
+    for i,match_valarray in enumerate(self.proc_arrays):
       foms = None
       if match_valarray.is_complex_array():
         fomcolm = self.mapcoef_fom_dict.get(match_valarray.info().label_string())
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         if fomcolm:
-          foms = self.match_valarrays[fomcolm]
+          #foms = self.match_valarrays[fomcolm]
+          foms = self.proc_arrays[fomcolm]
       #commonarray = match_valarray
-      commonarray = match_valarray.common_set(self.proc_arrays[self.iarray] )
-      commonarray.set_info(match_valarray.info() )
+      """
+      if not match_valarray.anomalous_flag() and self.proc_arrays[self.iarray].anomalous_flag():
+        match_valarray = match_valarray.generate_bijvoet_mates()
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      if match_valarray.anomalous_flag() and not self.proc_arrays[self.iarray].anomalous_flag():
+        m = miller.match_indices(match_valarray.indices(), self.proc_arrays[self.iarray].indices())
+        pairs = m.pairs()
+        commonarray = match_valarray.select(pairs.column(1))
+      else:
+        commonarray = match_valarray.common_set(self.proc_arrays[self.iarray] )
+      commonarray.set_info(self.proc_arrays[i].info() )
+      """
       if i==self.iradiicol or i==self.icolourcol or i==self.iarray:
         bfullprocess = True
       else:
         bfullprocess = False
-      otherscene = display.scene(miller_array=commonarray, merge=merge,
-        settings=self.settings, foms_array=foms, fullprocessarray=True )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      #otherscene = display.scene(miller_array=commonarray, merge=merge,
+      settings = self.settings
+      if (self.settings.expand_anomalous or self.settings.expand_to_p1) \
+          and not match_valarray.is_unique_set_under_symmetry() and not merge:
+        settings = copy.deepcopy(self.settings)
+        settings.expand_anomalous = False
+        settings.expand_to_p1 = False
+        self.mprint("The " + match_valarray.info().label_string() + \
+             " array is not symmetry unique and therefore won't be expanded")
+      otherscene = display.scene(miller_array=match_valarray, merge=merge,
+        settings=settings, foms_array=foms, fullprocessarray=True )
       if not otherscene.SceneCreated:
-        self.mprint("The " + commonarray.info().label_string() + " array was not processed")
-        continue
+        self.mprint("The " + match_valarray.info().label_string() + " array was not processed")
+        return False
+        #continue
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       # cast any NAN values to 1 of the colours and radii to 0.2 before writing javascript
       b = flex.bool([bool(math.isnan(e[0]) + math.isnan(e[1]) + math.isnan(e[2])) for e in otherscene.colors])
@@ -273,42 +377,14 @@ class hklview_3d:
       self.othermindata.append( ainf.mindata )
       self.othermaxsigmas.append(ainf.maxsigmas)
       self.otherminsigmas.append(ainf.minsigmas)
+      self.workarrays.append(otherscene.work_array.deep_copy())
       infostr = ainf.infostr
       self.mprint("%d, %s" %(i, infostr) )
       self.matchingarrayinfo.append(infostr)
+    self.MakeToolTips()
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.sceneisdirty = False
-
-
-  def update_settings(self, diffphil) :
-    if hasattr(diffphil, "filename"):
-      self.ExtendMillerArraysUnionHKLs()
-      self.sceneisdirty = True
-
-    if hasattr(diffphil, "spacegroupchoice") or \
-      hasattr(diffphil, "mergedata") or \
-      hasattr(diffphil, "column") or \
-      hasattr(diffphil, "fomcolumn") or \
-      hasattr(diffphil, "viewer") and ( hasattr(diffphil.viewer, "show_anomalous_pairs") \
-      or hasattr(diffphil.viewer, "show_data_over_sigma") \
-      or hasattr(diffphil.viewer, "show_missing") \
-      or hasattr(diffphil.viewer, "show_only_missing") \
-      or hasattr(diffphil.viewer, "show_systematic_absences") \
-      or hasattr(diffphil.viewer, "slice_axis") \
-      or hasattr(diffphil.viewer, "slice_mode") \
-      or hasattr(diffphil.viewer, "scale") \
-      or hasattr(diffphil.viewer, "nth_power_scale_radii") \
-      or hasattr(diffphil.viewer, "expand_anomalous") \
-      or hasattr(diffphil.viewer, "expand_to_p1")
-      ):
-        self.sceneisdirty = True
-    self.construct_reciprocal_space(merge=self.merge)
-    if self.miller_array is None or self.iarray < 0:
-      return
-    self.scene = self.otherscenes[self.iarray]
-    self.DrawNGLJavaScript()
-    msg = "Rendered %d reflections\n" % self.scene.points.size()
-    return msg
+    return True
 
 
   def UpdateBinValues(self, binvals = [] ):
@@ -319,6 +395,8 @@ class hklview_3d:
 
 
   def DrawNGLJavaScript(self):
+    if not self.scene:
+      return
     if self.miller_array is None :
       self.mprint( "A miller array must be selected for drawing" )
       return
@@ -457,34 +535,14 @@ class hklview_3d:
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       raise Sorry("Should never get here")
 
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
       ibin = data2bin( bindata[i] )
-      spbufttip = 'H,K,L: %s, %s, %s' %(hkls[i][0], hkls[i][1], hkls[i][2])
-      spbufttip += '\ndres: %s ' %str(roundoff(dres[i])  )
-      spbufttip += '\' + AA + \''
-      for j,otherscene in enumerate(self.otherscenes):
-        ocolstr = self.proc_arrays[j].info().label_string()
-        odata = otherscene.data
-        od =""
-        if self.proc_arrays[j].is_complex_array():
-          if not math.isnan(otherscene.foms[i]):
-            od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phases[i])  ) + \
-              "\' + DGR + \'" +  ", " + str(roundoff(otherscene.foms[i])  )
-          else:
-            od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phases[i])  ) + \
-              "\' + DGR + \'"
-        elif self.proc_arrays[j].sigmas() is not None:
-          od = str(roundoff(odata[i]) ) + ", " + str(roundoff(otherscene.sigmas[i]))
-        else:
-          od = str(roundoff(odata[i]) )
-        if not (math.isnan( abs(odata[i]) ) or odata[i] == display.inanval):
-          spbufttip += "\n%s: %s" %(ocolstr, od)
       positions[ibin].extend( roundoff(list(hklstars)) )
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )
-      spbufttips[ibin].append(spbufttip)
+      #spbufttips[ibin].append(self.tooltipstrings[i] )
+      spbufttips[ibin].append(self.tooltipstringsdict[hkls[i]])
 
     spherebufferstr = """
   ttips = new Array(%d)
