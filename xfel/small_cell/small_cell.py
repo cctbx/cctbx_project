@@ -436,7 +436,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
   reflections['azimuthal_size'] = azimuthal_sizes
   reflections['s0_proj'] = s0_projs
 
-  from dials.algorithms.indexing import index_reflections
+  from dials.algorithms.indexing.assign_indices import AssignIndicesGlobal
   reflections['imageset_id'] = reflections['id']
   reflections.centroid_px_to_mm(detector)
   reflections.map_centroids_to_reciprocal_space(detector, beam)
@@ -894,7 +894,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
       crystal = ori_to_crystal(ori, horiz_phil.small_cell.spacegroup)
       experiments = ExperimentListFactory.from_imageset_and_crystal(imageset, crystal)
       reflections['id'] = flex.int(len(reflections), -1)
-      index_reflections(reflections, experiments)#, tolerance=0.15)
+      AssignIndicesGlobal()(reflections, experiments)
       reflections['miller_index_asymmetric'] = copy.deepcopy(reflections['miller_index'])
       miller.map_to_asu(crystal.get_space_group().type(), True, reflections['miller_index_asymmetric'])
       ref_predictor = ExperimentsPredictorFactory.from_experiments(experiments, force_stills=experiments.all_stills())
