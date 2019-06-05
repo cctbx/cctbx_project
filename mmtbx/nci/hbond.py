@@ -217,9 +217,9 @@ class find(object):
     for r in self.result:
       ids_i = r.atom_i.id_str
       ids_j = r.atom_j.id_str
-      print("%4d %4d"%(r.i,r.j), "%s<>%s"%(ids_i, ids_j),
-        "d_HA=%5.3f"%r.d_HA, "d_AD=%5.3f"%r.d_AD, "a_DHA=%7.3f"%r.a_DHA,
-        "symop: %s"%str(r.symop), file=log)
+      print >> log, "%4d %4d"%(r.i,r.j), "%s<>%s"%(ids_i, ids_j), \
+        "d_HA=%5.3f"%r.d_HA, "d_AD=%5.3f"%r.d_AD, "a_DHA=%7.3f"%r.a_DHA, \
+        "symop: %s"%str(r.symop), " ".join(["a_YAH=%d"%i for i in r.a_YAH])
 
   def as_pymol(self, prefix="hbonds_pymol"):
     pdb_file_name = "%s.pdb"%prefix
