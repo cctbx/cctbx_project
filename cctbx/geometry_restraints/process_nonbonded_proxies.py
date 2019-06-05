@@ -614,6 +614,15 @@ class manager():
       bool (is_clash): if a nonbonded proxy is a clash
     """
     is_clash = False
+
+    # ignore overlaps of atoms with occupancy sum<1 and in different chains
+    # a couple of models has asym unit content with superposed chains
+#    atom_i = self.atoms[i_seq]
+#    atom_j = self.atoms[j_seq]
+#    if atom_i.occ + atom_j.occ <= 1.0:
+#      if atom_i.chain != atom_j.chain:
+#        return False
+
     # Exclude 1-5 interaction of H atom and heavy atom
     is_1_5_interaction = check_if_1_5_interaction(
              i_seq = i_seq,
