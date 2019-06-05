@@ -113,9 +113,8 @@ ma3 = miller.array(miller.set(xs, mi3), data=flex.double( [22.429, 28.635, 3.328
 ma3.set_info(miller.array_info(source="artificial file", labels=["Foo"]))
 
 mi4 = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2), (1, 0, 2), (-1, 1, -2),   (0, 0, 2) ] )
-ma4 = miller.array(miller.set(xs, mi4), data=flex.std_string( ["foo", "bar", "wibble", "waffle", "mumble", "muffle","babble"] ) )
+ma4 = miller.array(miller.set(xs, mi4), data=flex.double( [19.937, 12.45, 11.496, 23.675, 4.98, 1.21, 28.659] ) )
 ma3.set_info(miller.array_info(source="artificial file", labels=["Bar"]))
-
 
 mtz1 = ma1.as_mtz_dataset(column_root_label="I")
 mtz1.add_miller_array(ma2, column_root_label="MyMap")
@@ -558,7 +557,6 @@ class HKLViewFrame () :
       elif (len(valid_arrays) >= 1):
         if (set_array):
           self.set_miller_array()
-      return True
 
 
   def LoadReflectionsFile(self, filename):

@@ -5422,7 +5422,6 @@ class merge_equivalents(object):
     assert algorithm in ["gaussian", "shelx"]
     self._r_linear = None
     self._r_square = None
-    sigmas = None
     self._r_int = self._r_merge = self._r_meas = self._r_pim = None
     self._inconsistent_equivalents = None
     self.n_incompatible_flags = None
@@ -5454,7 +5453,7 @@ class merge_equivalents(object):
       del asu_array
       if hasattr(merge_ext, "n_incompatible_flags"):
         self.n_incompatible_flags = merge_ext.n_incompatible_flags
-    elif (isinstance(miller_array.data(), flex.double) ):
+    elif (isinstance(miller_array.data(), flex.double)):
       asu_set = set.map_to_asu(miller_array)
       perm = asu_set.sort_permutation(by_value="packed_indices")
       if (miller_array.sigmas() is not None):
@@ -5485,13 +5484,6 @@ class merge_equivalents(object):
       self._r_merge = merge_ext.r_merge
       self._r_meas = merge_ext.r_meas
       self._r_pim = merge_ext.r_pim
-    elif (isinstance(miller_array.data(), flex.std_string) ):
-      asu_array = miller_array.map_to_asu()
-      perm = asu_array.sort_permutation(by_value="packed_indices")
-      merge_ext = ext.merge_equivalents_string(
-        asu_array.indices().select(perm),
-        miller_array.data().select(perm))
-      del asu_array
     else:
       raise RuntimeError(
         "cctbx.miller.merge_equivalents: unsupported array type:\n"

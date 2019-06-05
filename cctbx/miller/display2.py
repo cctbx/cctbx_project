@@ -87,31 +87,6 @@ def ExtendAnyData(data, nsize):
   return data
 
 
-def MergeData(array, show_anomalous_pairs=False):
-  if show_anomalous_pairs:
-    merge = array.merge_equivalents()
-    multiplicities = merge.redundancies()
-    asu, matches = multiplicities.match_bijvoet_mates()
-    mult_plus, mult_minus = multiplicities.hemispheres_acentrics()
-    anom_mult = flex.int(
-      min(p, m) for (p, m) in zip(mult_plus.data(), mult_minus.data()))
-    #flex.min_max_mean_double(anom_mult.as_double()).show()
-    anomalous_multiplicities = miller.array(
-      miller.set(asu.crystal_symmetry(),
-                 mult_plus.indices(),
-                 anomalous_flag=False), anom_mult)
-    anomalous_multiplicities = anomalous_multiplicities.select(
-      anomalous_multiplicities.data() > 0)
-
-    array = anomalous_multiplicities
-    multiplicities = anomalous_multiplicities
-  else:
-    merge = array.merge_equivalents()
-    array = merge.array()
-    multiplicities = merge.redundancies()
-  return array, multiplicities, merge
-
-
 class scene(object):
   """
   Data for visualizing a Miller array graphically, either as a 3D view or
@@ -221,7 +196,6 @@ class scene(object):
     multiplicities = None
     try:
       if self.merge_equivalents :
-        """
         if self.settings.show_anomalous_pairs:
           merge = array.merge_equivalents()
           multiplicities = merge.redundancies()
@@ -243,8 +217,6 @@ class scene(object):
           merge = array.merge_equivalents()
           array = merge.array()
           multiplicities = merge.redundancies()
-        """
-        array, multiplicities, merge = MergeData(array, self.settings.show_anomalous_pairs)
       settings = self.settings
       data = array.data()
       self.missing_set = oop.null()
@@ -413,9 +385,8 @@ class scene(object):
     #if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
     #  data_for_radii = flex.sqrt(flex.abs(data_for_radii))
     if len(data_for_radii):
-      dat2 = flex.abs(flex.double([e for e in data_for_radii if not math.isnan(e)]))
-      # don't divide by 0 if dealing with selection of Rfree array where all values happen to be zero
-      scale = max_radius/(flex.max(dat2) + 1.0)
+      dat2 = flex.double([e for e in data_for_radii if not math.isnan(e)])
+      scale = max_radius/flex.max(dat2)
       radii = data_for_radii * (self.settings.scale * scale)
       assert radii.size() == colors.size()
     else:

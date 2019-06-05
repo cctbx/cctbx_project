@@ -98,34 +98,6 @@ namespace cctbx { namespace miller {
 
   } // namespace merge_equivalents
 
-  template <typename StringElementType, typename FloatType>
-  struct merge_equivalents_string : merge_equivalents_impl<StringElementType>
-  {
-    merge_equivalents_string() {}
-
-    merge_equivalents_string(
-      af::const_ref<index<> > const& unmerged_indices,
-      af::const_ref<StringElementType> const& unmerged_data)
-    {
-      merge_equivalents_impl<StringElementType>
-        ::loop_over_groups(*this, unmerged_indices, unmerged_data);
-    }
-
-    af::shared<index<> > indices;
-    af::shared<StringElementType> data;
-    af::shared<int> redundancies;
-
-    StringElementType
-      merge(
-        miller::index<> const& /*current_index*/,
-        const StringElementType* data_group, std::size_t n)
-    {
-      StringElementType result = data_group[0];
-      for (std::size_t i = 1; i < n; i++) result += "\n" + data_group[i];
-      return result;
-    }
-  };
-
   template <typename DataElementType, typename FloatType>
   struct merge_equivalents_generic : merge_equivalents_impl<DataElementType>
   {
@@ -144,12 +116,12 @@ namespace cctbx { namespace miller {
     af::shared<int> redundancies;
 
     DataElementType
-      merge(
-        miller::index<> const& /*current_index*/,
-        const DataElementType* data_group, std::size_t n)
+    merge(
+      miller::index<> const& /*current_index*/,
+      const DataElementType* data_group, std::size_t n)
     {
       DataElementType result = data_group[0];
-      for (std::size_t i = 1; i < n; i++) result += data_group[i];
+      for(std::size_t i=1;i<n;i++) result += data_group[i];
       return result / static_cast<FloatType>(n);
     }
   };
