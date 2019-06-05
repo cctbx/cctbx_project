@@ -170,6 +170,8 @@ class installer(object):
       help="Turn on debugging during compilation", default=False)
     parser.add_option("--python_static", default=False, action="store_true",
       help="Compile Python as static executable and library (Linux only)")
+    parser.add_option("--use-conda", default=False, action="store_true",
+      help="Install conda dependencies, if a conda environment is active, that environment is used. (source install only)")
     # Deprecated
     parser.add_option("--makedirs", default=False, action="store_true",
       help="Create installation path prefix if not already present")
@@ -331,13 +333,22 @@ class installer(object):
   #
   def install_from_source(self):
     log = self.out # open(os.path.join(self.tmp_dir, "source.log"), "w")
-    call([
+    cmd = [
       'python',
       os.path.join('modules', 'cctbx_project', 'libtbx', 'auto_build', 'bootstrap.py'),
-      '--builder', self.dest_dir_prefix,
       'base',
-      'build'
-    ], log=log)
+      'build',
+      '--builder', self.dest_dir_prefix,
+      '--nproc', str(self.options.nproc),
+    ]
+    if self.options.use_conda:
+      cmd.append('--use-conda')
+      self.base_dir = op.join(self.dest_dir, "conda_base")
+      if os.environ.get('CONDA_PREFIX') is not None:
+        self.base_dir = os.environ.get('CONDA_PREFIX')
+        if not os.path.isdir(self.base_dir):
+          raise InstallerError("$CONDA_PREFIX directory does not exist.")
+    call(cmd, log=log)
     self.product_specific_source_install(log=log)
     self.install_from_binary()
 
@@ -489,7 +500,7 @@ class installer(object):
       # Compile .py files
       print("Precompiling .py files...", file=self.out)
       os.chdir(self.modules_dir)
-      call(args="libtbx.py_compile_all", log=log)
+      call(args="libtbx.py_compile_all -i", log=log)
 
     # Copy README et al.
     for file_name in ["CHANGES", "LICENSE", "README", "README-DEV", "SOURCES"] :

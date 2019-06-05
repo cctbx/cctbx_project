@@ -10,6 +10,9 @@ def run():
   parser = argparse.ArgumentParser(description='Compiles .py files into .pyc.')
   parser.add_argument('-f', action='store_true', dest='force',
                       help='force rebuild even if timestamps are up to date')
+  parser.add_argument('-i', '--ignore-errors', action='store_true',
+                      dest='ignore_errors',
+                      help='ignore errors')
   parser.add_argument('-v', action='count', dest='quiet', default=0,
                       help=('default is no output, -v is error messages only, '
                             '-vv is all output'))
@@ -33,7 +36,7 @@ def run():
     output.append(compileall.compile_dir(dest, 100, force=args.force,
                                          quiet=args.quiet))
 
-  if False in output:
+  if False in output and not args.ignore_errors:
     return 1
   return 0
 
