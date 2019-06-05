@@ -1326,8 +1326,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
   def reindex_strong(self, experiments, strong):
     print("Reindexing strong reflections using refined experimental models and no outlier rejection...")
-    from dials.algorithms.indexing.stills_indexer import stills_indexer_known_orientation
-    indexer = stills_indexer_known_orientation(strong, experiments.imagesets(), self.params, experiments.crystals())
+    from dials.algorithms.indexing.stills_indexer import StillsIndexerKnownOrientation
+    indexer = StillsIndexerKnownOrientation(strong, experiments.imagesets(), self.params, experiments.crystals())
     indexed_reflections = indexer.reflections.select(indexer.indexed_reflections)
 
     print("Indexed %d strong reflections out of %d"%(len(indexed_reflections), len(strong)))
