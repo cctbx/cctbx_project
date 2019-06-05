@@ -201,27 +201,25 @@ class find(object):
     for r in self.result:
       ids_i = r.atom_i.id_str
       ids_j = r.atom_j.id_str
-      print >> log, "%4d %4d"%(r.i,r.j), "%s<>%s"%(ids_i, ids_j), \
-        "d_HA=%5.3f"%r.d_HA, "d_AD=%5.3f"%r.d_AD, "a_DHA=%7.3f"%r.a_DHA, \
-        "symop: %s"%str(r.symop)
+      print("%4d %4d"%(r.i,r.j), "%s<>%s"%(ids_i, ids_j),
+        "d_HA=%5.3f"%r.d_HA, "d_AD=%5.3f"%r.d_AD, "a_DHA=%7.3f"%r.a_DHA,
+        "symop: %s"%str(r.symop), file=log)
 
   def as_pymol(self, prefix="hbonds_pymol"):
     pdb_file_name = "%s.pdb"%prefix
-    of = open(pdb_file_name, "w")
-    print >> of, self.model.model_as_pdb()
-    of.close()
-    of = open("%s.pml"%prefix, "w")
-    print >> of, "load", "/".join([os.getcwd(), pdb_file_name])
-    for r in self.result:
-      if(str(r.symop) != "x,y,z"): continue
-      ai = r.atom_i
-      aj = r.atom_j
-      one = "chain %s and resi %s and name %s and alt '%s'"%(
-        ai.chain, ai.resseq, ai.name, ai.altloc)
-      two = "chain %s and resi %s and name %s and alt '%s'"%(
-        aj.chain, aj.resseq, aj.name, aj.altloc)
-      print >> of, "dist %s, %s"%(one, two)
-    of.close()
+    with open(pdb_file_name, "w") as of:
+      print(self.model.model_as_pdb(), file=of)
+    with open("%s.pml"%prefix, "w") as of:
+      print("load", "/".join([os.getcwd(), pdb_file_name]), file=of)
+      for r in self.result:
+        if(str(r.symop) != "x,y,z"): continue
+        ai = r.atom_i
+        aj = r.atom_j
+        one = "chain %s and resi %s and name %s and alt '%s'"%(
+          ai.chain, ai.resseq, ai.name, ai.altloc)
+        two = "chain %s and resi %s and name %s and alt '%s'"%(
+          aj.chain, aj.resseq, aj.name, aj.altloc)
+        print("dist %s, %s"%(one, two), file=of)
 
   def as_restraints(self, file_name, distance_ideal=None, sigma_dist=0.1,
        angle_ideal = None, sigma_angle=2):

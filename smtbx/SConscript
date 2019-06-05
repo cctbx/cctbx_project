@@ -3,17 +3,17 @@ Import("env_base", "env_etc")
 import sys
 
 if not libtbx.env.build_options.enable_boost_threads:
-  print >>sys.stderr, (
-    "Module smtbx requires Boost.Threads.\n"
-    "Please rerun libtbx/configure.py with --enable_boost_threads.\n"
-    "** Aborting build **")
+  print(
+    "Module smtbx requires Boost.Threads.\n" +
+    "Please rerun libtbx/configure.py with --enable_boost_threads.\n" +
+    "** Aborting build **", file=sys.stderr)
   Exit(1)
 
 if not env_etc.boost_thread_support:
-  print >>sys.stderr, (
-    "Module smtbx requires Boost.Threads which is not supported on this "
-    "Platform.\n"
-    "** Aborting build **")
+  print(
+    "Module smtbx requires Boost.Threads which is not supported on this " +
+    "Platform.\n" +
+    "** Aborting build **", file=sys.stderr)
   Exit(1)
 
 if libtbx.env.boost_version < 105600:
@@ -21,14 +21,14 @@ if libtbx.env.boost_version < 105600:
   d1 = v/100000
   v %= 100000
   d2 = v/100
-  print >>sys.stderr, ' '.join((
+  print(' '.join((
     "Module smtbx requires Boost version 1.56: ",
     "you have only version %i.%i. " % (d1,d2),
     "This cctbx build uses Boost installed at %s: "
     "please put a supported version there." %
     abs(libtbx.env.find_dist_path('boost')),
-  ))
-  print >>sys.stderr, "** Aborting build **"
+  )), file=sys.stderr)
+  print("** Aborting build **", file=sys.stderr)
   Exit(1)
 
 

@@ -323,7 +323,7 @@ xmanip {
         }
       }
       custom{
-        code = print >> out, "hello world"
+        code = print("hello world", file=out)
       }
     }
     manipulate_pdb{
