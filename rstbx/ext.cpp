@@ -31,6 +31,7 @@ class SimpleSamplerTool {
  public:
   double incr;  //initial directional spacing in radians
   flex_Direction angles;
+  flex_Direction finegrained_angles;
 
   SimpleSamplerTool(const double& characteristic_grid):
     // The maximum allowable characteristic grid should be about 0.029 radians,
@@ -73,6 +74,45 @@ class SimpleSamplerTool {
       }
     }
     return angles;
+  }
+
+  // Function to construct a more fine-grained hemisphere grid about certain psi/phi angles
+  // Supply sampling value and also the old sampling value with which the psi/phi angles may have been generated
+  // SST_filter_angles is the flex array of supplied psi/phi angles about which to do finegraining
+  flex_Direction construct_hemisphere_grid_finegrained(const double& sampling, const double& old_sampling, flex_Direction SST_filter_angles) {
+    SCITBX_ASSERT(sampling <= old_sampling);
+    finegrained_angles = flex_Direction(); // Stuff to be returned
+    int n_filters=SST_filter_angles.size();
+    int psi_index_range = int (0.5 + 2.0*old_sampling/sampling);
+    double adjusted_psi_incr = 2*old_sampling/psi_index_range;
+
+    for (int ii=0; ii<n_filters; ++ii) {
+      Direction dir = SST_filter_angles[ii];
+      double max_psi=dir.psi+old_sampling;
+      double min_psi=dir.psi-old_sampling;
+      double max_phi=dir.phi+old_sampling;
+      double min_phi=dir.phi-old_sampling;
+      for (int x=0; x <=psi_index_range; ++x) {
+        double psi=min_psi + x*adjusted_psi_incr;
+        if (psi > scitbx::constants::pi) {
+          double eps=1E-4; psi=scitbx::constants::pi-eps;
+        }
+        if (psi==0) {
+          double phi=0;
+          finegrained_angles.push_back(Direction(psi,phi));
+        }
+        else {
+          int phi_index_range = int (0.5 + 2.0*old_sampling/sampling) ;
+          double adjusted_phi_incr = 2*old_sampling/phi_index_range;
+          for (int y=0; y <= phi_index_range; ++y) {
+            double phi = min_phi + y*adjusted_phi_incr;
+            finegrained_angles.push_back(Direction(psi,phi));
+          }
+
+        }
+      }
+    }
+    return finegrained_angles;
   }
 };
 
@@ -270,7 +310,15 @@ namespace boost_python { namespace {
                            make_setter(&SimpleSamplerTool::incr, dcp()))
       .add_property("angles",make_getter(&SimpleSamplerTool::angles, rbv()),
                              make_setter(&SimpleSamplerTool::angles, dcp()))
+      .add_property("finegrained_angles",make_getter(&SimpleSamplerTool::finegrained_angles, rbv()),
+                             make_setter(&SimpleSamplerTool::finegrained_angles, dcp()))
       .def("construct_hemisphere_grid",&SimpleSamplerTool::construct_hemisphere_grid)
+      .def("construct_hemisphere_grid_finegrained",&SimpleSamplerTool::construct_hemisphere_grid_finegrained,
+                                                   "Function to construct a more fine-grained hemisphere grid about certain psi/phi angles\n"
+                                                   "@params sampling : grid value to construct finegrained grid with\n"
+                                                   "@params old_sampling : old grid value that was used for coarse-grained grid\n"
+                                                   "@params SST_filter_angles: flex array of supplied psi/phi angles (flex.Direction) about which to do finegraining\n"
+      )
    ;
 
     class_<ewald_sphere_base_model>("ewald_sphere_base_model",
