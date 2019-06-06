@@ -934,7 +934,8 @@ class manager(object):
     if self.restraints_manager_available():
       ias_selection = self.get_ias_selection()
       sites_cart = self.get_sites_cart()
-      atoms = self.get_atoms()
+      # using the output hierarchy because xyz not used in struct_conn loop
+      atoms = hierarchy_to_output.atoms()
       if ias_selection and ias_selection.count(True) > 0:
         sites_cart = sites_cart.select(~ias_selection)
         atoms = atoms.select(~ias_selection)

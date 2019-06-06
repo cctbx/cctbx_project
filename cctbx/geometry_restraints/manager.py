@@ -1753,22 +1753,56 @@ class manager(Base_geometry):
       yield bond
 
   def get_struct_conn_mmcif(self, atoms):
-    def _atom_info(atom):
-      return [atom.parent().resname,
-              atom.parent().parent().parent().id,
-              atom.parent().parent().resseq.strip(),
-              atom.name.strip(),
-             ]
+    from iotbx.pdb.utils import all_label_asym_ids
+    label_asym_ids = all_label_asym_ids()
+    def _atom_info(atom, use_label_asym_ids=False):
+      if use_label_asym_ids:
+        return [atom.parent().resname,
+                label_asym_ids[atom.tmp],
+                atom.parent().parent().resseq.strip(),
+                atom.name.strip(),
+               ]
+      else:
+        return [atom.parent().resname,
+                atom.parent().parent().parent().id,
+                atom.parent().parent().resseq.strip(),
+                atom.name.strip(),
+               ]
+    def _atom_info_grouped(bond):
+      row = []
+      if hasattr(bond, 'i_seqs'):
+        row += _atom_info(atoms[bond.i_seqs[0]])
+        row += _atom_info(atoms[bond.i_seqs[0]], use_label_asym_ids=True)
+        row.append('.')      # role
+        row += _atom_info(atoms[bond.i_seqs[1]])
+        row += _atom_info(atoms[bond.i_seqs[1]], use_label_asym_ids=True)
+      else:
+        row += _atom_info(atoms[bond.i_seq])
+        row += _atom_info(atoms[bond.i_seq], use_label_asym_ids=True)
+        row.append('.')      # role
+        row += _atom_info(atoms[bond.j_seq])
+        row += _atom_info(atoms[bond.j_seq], use_label_asym_ids=True)
+      row.append('.')      # role
+      #row.append('1_555') # symmetry!
+      return row
     from cctbx.geometry_restraints.auto_linking_types import origin_ids
     struct_conn_loop = iotbx.cif.model.loop(header=(
       '_struct_conn.id',
       '_struct_conn.conn_type_id',
+      '_struct_conn.ptnr1_auth_comp_id',
+      '_struct_conn.ptnr1_auth_asym_id',
+      '_struct_conn.ptnr1_auth_seq_id',
+      '_struct_conn.ptnr1_auth_atom_id',
       '_struct_conn.ptnr1_label_comp_id',
       '_struct_conn.ptnr1_label_asym_id',
       '_struct_conn.ptnr1_label_seq_id',
       '_struct_conn.ptnr1_label_atom_id',
       '_struct_conn.ptnr1_role',
       #'_struct_conn.ptnr1_symmetry',
+      '_struct_conn.ptnr2_auth_comp_id',
+      '_struct_conn.ptnr2_auth_asym_id',
+      '_struct_conn.ptnr2_auth_seq_id',
+      '_struct_conn.ptnr2_auth_atom_id',
       '_struct_conn.ptnr2_label_comp_id',
       '_struct_conn.ptnr2_label_asym_id',
       '_struct_conn.ptnr2_label_seq_id',
@@ -1784,14 +1818,7 @@ class manager(Base_geometry):
       if origin_id_info[0]=='SS BOND': row.append('disulf')
       elif origin_id_info[0]=='metal coordination': row.append('metalc')
       else: row.append('covale')
-      if hasattr(bond, 'i_seqs'): row += _atom_info(atoms[bond.i_seqs[0]])
-      else: row += _atom_info(atoms[bond.i_seq])
-      row.append('.')      # role
-      #row.append('1_555') # symmetry!
-      if hasattr(bond, 'i_seqs'): row += _atom_info(atoms[bond.i_seqs[1]])
-      else: row += _atom_info(atoms[bond.j_seq])
-      row.append('.')
-      #row.append('1_555')
+      row += _atom_info_grouped(bond)
       if len(origin_id_info)>2 and origin_id_info[2]:
         row.append(origin_id_info[2])
       elif origin_id_info[1]: row.append(origin_id_info[1])

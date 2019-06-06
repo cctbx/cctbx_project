@@ -892,14 +892,15 @@ class _():
     if cmi not in self._lai_lookup:
       if chain.is_protein() or chain.is_na():
         self.number_label_asym_id+=1
-        self._lai_lookup[cmi] = self.label_asym_ids[self.number_label_asym_id]
+        self._lai_lookup[cmi] = self.number_label_asym_id
       elif atom_group.resname in ['HOH', 'DOD']:
         self.number_label_asym_id+=1
-        self._lai_lookup[cmi] = self.label_asym_ids[self.number_label_asym_id]
+        self._lai_lookup[cmi] = self.number_label_asym_id
     #
-    if cmi in self._lai_lookup: return self._lai_lookup[cmi]
+    if cmi in self._lai_lookup:
+      return self._lai_lookup[cmi], self.label_asym_ids[self._lai_lookup[cmi]]
     self.number_label_asym_id+=1
-    return self.label_asym_ids[self.number_label_asym_id]
+    return self.number_label_asym_id, self.label_asym_ids[self.number_label_asym_id]
 
   def as_cif_block(self,
       crystal_symmetry=None,
@@ -1040,14 +1041,16 @@ class _():
           icode = residue_group.icode
           if icode == ' ' or icode == '': icode = '?'
           for atom_group in residue_group.atom_groups():
-            label_asym_id = self._label_asym_id_lookup(chain,
-                                                       residue_group,
-                                                       atom_group)
+            label_asym_i, label_asym_id = self._label_asym_id_lookup(
+              chain,
+              residue_group,
+              atom_group)
             alt_id = atom_group.altloc
             if alt_id == '': alt_id = '.'
             comp_id = atom_group.resname.strip()
             entity_id = '?' # XXX how do we determine this?
             for atom in atom_group.atoms():
+              atom.tmp = label_asym_i
               group_pdb = "ATOM"
               if atom.hetero: group_pdb = "HETATM"
               x, y, z = [coord_fmt_str %i for i in atom.xyz]
