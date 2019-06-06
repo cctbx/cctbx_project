@@ -172,6 +172,8 @@ myHKLview.ShowSlice(True, "l", 25)
 myHKLview.ShowMissing(True)
 
 
+myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Work\TNCS\4N3E\4n3e_final.mtz")
+
 
 """
 
@@ -237,6 +239,7 @@ class HKLViewFrame () :
     self.spacegroup_choices = []
     self.array_infostrs = []
     self.array_infotpls = []
+    self.procarrays = []
     self.merge_answer = [None]
     self.dmin = -1
     self.settings = display.settings()
@@ -323,24 +326,28 @@ class HKLViewFrame () :
         self.ResetPhilandViewer(diff_phil)
         self.load_reflections_file(phl.filename)
 
-      if hasattr(diff, "column") or hasattr(diff, "fomcolumn") \
-       or hasattr(diff, "mergedata") or hasattr(diff, "columnbinthresholds"):
-        #print "mergedata in updatesettings: " , self.params.NGL_HKLviewer.mergedata
-        if self.set_column(phl.column, phl.fomcolumn):
-          self.set_column_bin_thresholds(phl.columnbinthresholds, phl.binarray)
+      if hasattr(diff, "column") or hasattr(diff, "fom_column") \
+       or hasattr(diff, "merge_data") or hasattr(diff, "column_bin_thresholds"):
+        if self.set_column(phl.column, phl.fom_column):
+          self.set_column_bin_thresholds(phl.column_bin_thresholds, phl.bin_array)
 
-      if hasattr(diff, "spacegroupchoice"):
-        self.set_spacegroup_choice(phl.spacegroupchoice)
+      if hasattr(diff, "spacegroup_choice"):
+        self.set_spacegroup_choice(phl.spacegroup_choice)
 
-      if hasattr(diff, "cameratype"):
-        self.set_camera_type(phl.cameratype)
+      if hasattr(diff, "using_space_subgroup") and phl.using_space_subgroup==False:
+        self.set_default_spacegroup()
+
+      if hasattr(diff, "camera_type"):
+        self.set_camera_type(phl.camera_type)
 
       if hasattr(diff, "viewer"):
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
-      msg = self.viewer.update_settings(diff)
+      msg = self.viewer.update_settings(diff, phl)
       self.mprint( msg)
+      for i,e in enumerate(self.spacegroup_choices):
+        self.mprint("%d, %s" %(i,e.symbol_and_number()) )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.SendInfo()
       self.NewFileLoaded = False
@@ -391,10 +398,8 @@ class HKLViewFrame () :
     if (array.unit_cell() is None) or (array.space_group() is None) :
       raise Sorry("No space group info is present in data")
     details = []
-    #self.merge_answer[0] = None
     self.infostr = ""
-    #self.mprint("mergedata: " + str(self.params.NGL_HKLviewer.mergedata) )
-    if (not array.is_unique_set_under_symmetry() and self.params.NGL_HKLviewer.mergedata is None):
+    if (not array.is_unique_set_under_symmetry() and self.params.NGL_HKLviewer.merge_data is None):
       shouldmergestr = "The data in the selected array are not symmetry-" + \
         "unique, which usually means they are unmerged (but could also be due "+ \
         "to different indexing conventions).  Do you want to merge equivalent "+ \
@@ -413,13 +418,13 @@ class HKLViewFrame () :
           new_phil = libtbx.phil.parse(philstr)
           #working_phil = self.master_phil.fetch(source = new_phil)
           params = new_phil.extract().NGL_HKLviewer
-          if hasattr(params, "mergedata"): # awaiting user to tick a checkbox on the gui
-            self.params.NGL_HKLviewer.mergedata = params.mergedata
+          if hasattr(params, "merge_data"): # awaiting user to tick a checkbox on the gui
+            self.params.NGL_HKLviewer.mergedata = params.merge_data
             break
           time.sleep(1)
       else:
-        self.params.NGL_HKLviewer.mergedata = Inputarg(shouldmergestr).lower()[0] == "y"
-        if self.params.NGL_HKLviewer.mergedata:
+        self.params.NGL_HKLviewer.merge_data = Inputarg(shouldmergestr).lower()[0] == "y"
+        if self.params.NGL_HKLviewer.merge_data:
           details.append("merged")
         else :
           details.append("unmerged data")
@@ -434,21 +439,21 @@ class HKLViewFrame () :
     array_info = group_args(
       labels=labels,
       details_str=details_str,
-      merge=self.params.NGL_HKLviewer.mergedata,
+      merge=self.params.NGL_HKLviewer.merge_data,
       sg=sg,
       uc=uc)
     return array, array_info
 
 
   def process_all_miller_arrays(self, col):
-    procarrays = []
-    if self.params.NGL_HKLviewer.mergedata == False:
+    self.procarrays = []
+    if self.params.NGL_HKLviewer.merge_data == False:
       self.settings.expand_to_p1 = False
       self.settings.expand_anomalous = False
     for c,arr in enumerate(self.valid_arrays):
       procarray, procarray_info = self.process_miller_array(arr,
                                             merge_answer=self.merge_answer)
-      procarrays.append(procarray)
+      self.procarrays.append(procarray)
       if c==col:
         array_info = procarray_info
         self.miller_array = procarray
@@ -458,7 +463,7 @@ class HKLViewFrame () :
     self.merge_answer = [None]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.viewer.set_miller_array(col, merge=array_info.merge,
-       details=array_info.details_str, proc_arrays=procarrays)
+       details=array_info.details_str, proc_arrays=self.procarrays)
     return self.miller_array, array_info
 
 
@@ -507,12 +512,22 @@ class HKLViewFrame () :
       othervalidarrays.append( arr )
     self.mprint( "MERGING 2")
     self.viewer.set_miller_array(self.column, proc_arrays=othervalidarrays)
+    self.params.NGL_HKLviewer.using_space_subgroup = True
     self.viewer.DrawNGLJavaScript()
 
 
   def SetSpaceGroupChoice(self, n):
-    self.params.NGL_HKLviewer.spacegroupchoice = n
+    self.params.NGL_HKLviewer.spacegroup_choice = n
     self.update_settings()
+
+
+  def SetDefaultSpaceGroup(self):
+    self.params.NGL_HKLviewer.using_space_subgroup = False
+    self.update_settings()
+
+
+  def set_default_spacegroup(self):
+    self.viewer.set_miller_array(self.column, proc_arrays=self.valid_arrays)
 
 
   def load_reflections_file(self, file_name, set_array=True, data_only=False):
@@ -620,8 +635,8 @@ class HKLViewFrame () :
     self.update_settings()
 
 
-  def set_column_bin_thresholds(self, binvals=[], binarray="Resolution"):
-    self.viewer.binarray = binarray
+  def set_column_bin_thresholds(self, binvals=[], bin_array="Resolution"):
+    self.viewer.binarray = bin_array
     if binvals:
       if self.viewer.binarray=="Resolution":
         binvals = list( 1.0/flex.double(binvals) )
@@ -629,9 +644,9 @@ class HKLViewFrame () :
     self.viewer.UpdateBinValues( binvals )
 
 
-  def SetColumnBinThresholds(self, binvals, binarray="Resolution"):
-    self.params.NGL_HKLviewer.columnbinthresholds = binvals
-    self.params.NGL_HKLviewer.binarray = binarray
+  def SetColumnBinThresholds(self, binvals, bin_array="Resolution"):
+    self.params.NGL_HKLviewer.column_bin_thresholds = binvals
+    self.params.NGL_HKLviewer.bin_array = bin_array
     self.update_settings()
 
 
@@ -677,7 +692,7 @@ class HKLViewFrame () :
 
 
   def SetMergeData(self, val):
-    self.params.NGL_HKLviewer.mergedata = val
+    self.params.NGL_HKLviewer.merge_data = val
     self.update_settings()
 
   def SetColourColumn(self, colourcol):
@@ -772,7 +787,7 @@ class HKLViewFrame () :
                "matching_arrays": self.viewer.matchingarrayinfo,
                "bin_info": self.viewer.binstrs,
                "html_url": self.viewer.url,
-               "mergedata": self.params.NGL_HKLviewer.mergedata,
+               "merge_data": self.params.NGL_HKLviewer.merge_data,
                "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
                "NewFileLoaded": self.NewFileLoaded
             }
@@ -788,18 +803,20 @@ NGL_HKLviewer {
     .type = path
   column = None
     .type = int
-  fomcolumn = None
+  fom_column = None
     .type = int
-  mergedata = None
+  merge_data = False
     .type = bool
-  spacegroupchoice = None
+  spacegroup_choice = None
     .type = int
-  columnbinthresholds = None
+  using_space_subgroup = False
+    .type = bool
+  column_bin_thresholds = None
     .type = float
     .multiple = True
-  binarray = 'Resolution'
+  bin_array = 'Resolution'
     .type = str
-  cameratype = *'orthographic' 'perspective'
+  camera_type = *'orthographic' 'perspective'
     .type = choice
   viewer {
     %s

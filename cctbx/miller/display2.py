@@ -86,7 +86,7 @@ def ExtendAnyData(data, nsize):
     data.extend( flex.vec3_double(nsize, (1.,1.,1.)) )
   return data
 
-
+"""
 def MergeData(array, show_anomalous_pairs=False):
   if show_anomalous_pairs:
     merge = array.merge_equivalents()
@@ -111,7 +111,7 @@ def MergeData(array, show_anomalous_pairs=False):
     multiplicities = merge.redundancies()
   #array = array.map_to_asu()
   return array, multiplicities, merge
-
+"""
 
 class scene(object):
   """
@@ -222,7 +222,6 @@ class scene(object):
     multiplicities = None
     try:
       if self.merge_equivalents :
-        """
         if self.settings.show_anomalous_pairs:
           merge = array.merge_equivalents()
           multiplicities = merge.redundancies()
@@ -244,8 +243,7 @@ class scene(object):
           merge = array.merge_equivalents()
           array = merge.array()
           multiplicities = merge.redundancies()
-        """
-        array, multiplicities, merge = MergeData(array, self.settings.show_anomalous_pairs)
+        #array, multiplicities, merge = MergeData(array, self.settings.show_anomalous_pairs)
       settings = self.settings
       data = array.data()
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )

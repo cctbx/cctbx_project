@@ -75,12 +75,12 @@ class hklview_3d:
     self.binvals = []
     self.workingbinvals = []
     self.proc_arrays = []
-    self.otherscenes = []
+    self.HKLscenes = []
+    self.HKLscenesdict = {}
     self.othermaxdata = []
     self.othermindata = []
     self.othermaxsigmas = []
     self.otherminsigmas = []
-    self.workarrays = []
     self.sceneisdirty = False
     self.matchingarrayinfo = []
     self.match_valarrays = []
@@ -135,6 +135,9 @@ class hklview_3d:
       self.UseOSBrowser = kwds['UseOSBrowser']
     self.viewmtrxelms = None
     self.pendingmessage = None
+    self.HKLscenesKey = ( 0, False,
+                          self.settings.expand_anomalous, self.settings.expand_to_p1  )
+
 
 
 
@@ -145,7 +148,7 @@ class hklview_3d:
       os.remove(self.hklfname)
 
 
-  def update_settings(self, diffphil) :
+  def update_settings(self, diffphil, currentphil) :
     if hasattr(diffphil, "filename") \
       or (hasattr(diffphil, "viewer")
       #and ( hasattr(diffphil.viewer, "expand_anomalous") or hasattr(diffphil.viewer, "expand_to_p1") )
@@ -153,10 +156,7 @@ class hklview_3d:
       self.ExtendMillerArraysUnionHKLs()
       self.sceneisdirty = True
 
-    if hasattr(diffphil, "spacegroupchoice") or \
-      hasattr(diffphil, "mergedata") or \
-      hasattr(diffphil, "column") or \
-      hasattr(diffphil, "fomcolumn") or \
+    if hasattr(diffphil, "column") or hasattr(diffphil, "fom_column") or \
       hasattr(diffphil, "viewer") and ( hasattr(diffphil.viewer, "show_anomalous_pairs") \
       or hasattr(diffphil.viewer, "show_data_over_sigma") \
       or hasattr(diffphil.viewer, "show_missing") \
@@ -167,24 +167,23 @@ class hklview_3d:
       or hasattr(diffphil.viewer, "slice_index") \
       or hasattr(diffphil.viewer, "scale") \
       or hasattr(diffphil.viewer, "nth_power_scale_radii") \
-      or hasattr(diffphil.viewer, "expand_anomalous") \
-      or hasattr(diffphil.viewer, "expand_to_p1")
       ):
         self.sceneisdirty = True
 
     if hasattr(diffphil, "filename") or \
-      hasattr(diffphil, "mergedata") or \
+      hasattr(diffphil, "spacegroup_choice") or \
+      hasattr(diffphil, "merge_data") or \
       hasattr(diffphil, "viewer") and ( hasattr(diffphil.viewer, "show_anomalous_pairs") \
       or hasattr(diffphil.viewer, "expand_anomalous") \
       or hasattr(diffphil.viewer, "expand_to_p1")
       ):
         self.sceneisdirty = True
-        if not self.ConstructReciprocalSpace(merge=self.merge) or \
+        if not self.ConstructReciprocalSpace(currentphil, merge=self.merge,) or \
          self.miller_array is None or self.iarray < 0:
           return
     msg = ""
     if self.iarray >=0:
-      self.scene = self.otherscenes[self.iarray]
+      self.scene = self.HKLscenes[self.iarray]
       self.DrawNGLJavaScript()
       msg = "Rendered %d reflections\n" % self.scene.points.size()
     return msg
@@ -246,19 +245,8 @@ class hklview_3d:
       self.match_valarrays.append( match_valarray )
 
 
-  def MakeToolTips(self):
+  def MakeToolTips(self, HKLscenes):
     self.mprint( "making tooltips")
-    """
-    self.tooltipstrings = []
-    hkls = self.otherscenes[self.iarray].indices
-    dres = self.otherscenes[self.iarray].dres
-    for i,hkl in enumerate(hkls):
-      spbufttip = 'H,K,L: %s, %s, %s' %(hkl[0], hkl[1], hkl[2])
-      spbufttip += '\ndres: %s ' %str(roundoff(dres[i])  )
-      spbufttip += '\' + AA + \''
-      self.tooltipstrings.append(spbufttip)
-    """
-    self.tooltipstringsdict = {}
     """
     hkls = self.superset_array.indices()
     dres = self.superset_array.unit_cell().d(hkls)
@@ -268,22 +256,23 @@ class hklview_3d:
       spbufttip += '\' + AA + \''
       self.tooltipstringsdict[hkl] = spbufttip
     """
+    tooltipstringsdict = {}
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    for j,oscene in enumerate(self.otherscenes):
-      ocolstr = oscene.work_array.info().label_string()
-      if oscene.work_array.is_complex_array():
-        ampl = flex.abs(oscene.data)
-        phases = flex.arg(oscene.data) * 180.0/math.pi
+    for hklscene in HKLscenes:
+      ocolstr = hklscene.work_array.info().label_string()
+      if hklscene.work_array.is_complex_array():
+        ampl = flex.abs(hklscene.data)
+        phases = flex.arg(hklscene.data) * 180.0/math.pi
         # purge nan values from array to avoid crash in fmod_positive()
         b = flex.bool([bool(math.isnan(e)) for e in phases])
         # replace the nan values with an arbitrary float value
         phases = phases.set_selected(b, 42.4242)
         # Cast negative degrees to equivalent positive degrees
         phases = flex.fmod_positive(phases, 360.0)
-      sigmas = oscene.sigmas
-      for i,datval in enumerate(oscene.data):
+      sigmas = hklscene.sigmas
+      for i,datval in enumerate(hklscene.data):
         od =""
-        if oscene.work_array.is_complex_array():
+        if hklscene.work_array.is_complex_array():
           od = str(roundoff(ampl[i])) + ", " + str(roundoff(phases[i])  ) + \
             "\' + DGR + \'"
         elif sigmas is not None:
@@ -292,28 +281,44 @@ class hklview_3d:
           od = str(roundoff(datval) )
         if not (math.isnan( abs(datval) ) or datval == display.inanval):
           #self.tooltipstrings[i] += "\n%s: %s" %(ocolstr, od)
-          hkl = oscene.indices[i]
-          if not self.tooltipstringsdict.has_key(hkl):
+          hkl = hklscene.indices[i]
+          if not tooltipstringsdict.has_key(hkl):
             spbufttip = 'H,K,L: %s, %s, %s' %(hkl[0], hkl[1], hkl[2])
-            spbufttip += '\ndres: %s ' %str(roundoff(oscene.dres[i])  )
+            spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i])  )
             spbufttip += '\' + AA + \''
-            self.tooltipstringsdict[hkl] = spbufttip
-          self.tooltipstringsdict[hkl] += "\n%s: %s" %(ocolstr, od)
+            tooltipstringsdict[hkl] = spbufttip
+          tooltipstringsdict[hkl] += "\n%s: %s" %(ocolstr, od)
+    return tooltipstringsdict
 
 
-  def ConstructReciprocalSpace(self, merge=None):
+  def ConstructReciprocalSpace(self, currentphil, merge=None, ):
     self.mprint("Constructing HKL scenes")
     #self.miller_array = self.match_valarrays[self.iarray]
     self.miller_array = self.proc_arrays[self.iarray]
     if not self.sceneisdirty:
       return
-    self.otherscenes = []
-    self.othermaxdata = []
-    self.othermindata = []
-    self.othermaxsigmas = []
-    self.otherminsigmas = []
-    self.matchingarrayinfo = []
-    self.workarrays = []
+
+    self.HKLscenesKey = ( currentphil.spacegroup_choice, currentphil.merge_data,
+             self.settings.expand_anomalous, self.settings.expand_to_p1  )
+    if self.HKLscenesdict.has_key(self.HKLscenesKey):
+      (
+        self.HKLscenes,
+        self.tooltipstringsdict,
+        self.othermaxdata,
+        self.othermindata,
+        self.othermaxsigmas,
+        self.otherminsigmas,
+        self.matchingarrayinfo
+      ) =  self.HKLscenesdict[self.HKLscenesKey]
+      return True
+
+    HKLscenes = []
+    othermaxdata = []
+    othermindata = []
+    othermaxsigmas = []
+    otherminsigmas = []
+    matchingarrayinfo = []
+    tooltipstringsdict = {}
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     foms_array = None
     if self.miller_array.is_complex_array():
@@ -324,7 +329,8 @@ class hklview_3d:
     # settings=self.settings, foms_array=foms_array)
     # compute scenes for each of the miller arrays
     #for i,match_valarray in enumerate(self.match_valarrays):
-    for i,match_valarray in enumerate(self.proc_arrays):
+    i = 0
+    for match_valarray in self.proc_arrays:
       foms = None
       if match_valarray.is_complex_array():
         fomcolm = self.mapcoef_fom_dict.get(match_valarray.info().label_string())
@@ -332,25 +338,11 @@ class hklview_3d:
         if fomcolm:
           #foms = self.match_valarrays[fomcolm]
           foms = self.proc_arrays[fomcolm]
-      #commonarray = match_valarray
-      """
-      if not match_valarray.anomalous_flag() and self.proc_arrays[self.iarray].anomalous_flag():
-        match_valarray = match_valarray.generate_bijvoet_mates()
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      if match_valarray.anomalous_flag() and not self.proc_arrays[self.iarray].anomalous_flag():
-        m = miller.match_indices(match_valarray.indices(), self.proc_arrays[self.iarray].indices())
-        pairs = m.pairs()
-        commonarray = match_valarray.select(pairs.column(1))
-      else:
-        commonarray = match_valarray.common_set(self.proc_arrays[self.iarray] )
-      commonarray.set_info(self.proc_arrays[i].info() )
-      """
       if i==self.iradiicol or i==self.icolourcol or i==self.iarray:
         bfullprocess = True
       else:
         bfullprocess = False
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      #otherscene = display.scene(miller_array=commonarray, merge=merge,
       settings = self.settings
       if (self.settings.expand_anomalous or self.settings.expand_to_p1) \
           and not match_valarray.is_unique_set_under_symmetry() and not merge:
@@ -363,25 +355,46 @@ class hklview_3d:
         settings=settings, foms_array=foms, fullprocessarray=True )
       if not otherscene.SceneCreated:
         self.mprint("The " + match_valarray.info().label_string() + " array was not processed")
-        return False
-        #continue
+        #return False
+        continue
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       # cast any NAN values to 1 of the colours and radii to 0.2 before writing javascript
-      b = flex.bool([bool(math.isnan(e[0]) + math.isnan(e[1]) + math.isnan(e[2])) for e in otherscene.colors])
-      otherscene.colors = otherscene.colors.set_selected(b, (1.0, 1.0, 1.0))
-      b = flex.bool([bool(math.isnan(e)) for e in otherscene.radii])
-      otherscene.radii = otherscene.radii.set_selected(b, 0.2)
-      self.otherscenes.append( otherscene)
-      ainf = ArrayInfo(otherscene.work_array, self.mprint)
-      self.othermaxdata.append( ainf.maxdata )
-      self.othermindata.append( ainf.mindata )
-      self.othermaxsigmas.append(ainf.maxsigmas)
-      self.otherminsigmas.append(ainf.minsigmas)
-      self.workarrays.append(otherscene.work_array.deep_copy())
-      infostr = ainf.infostr
-      self.mprint("%d, %s" %(i, infostr) )
-      self.matchingarrayinfo.append(infostr)
-    self.MakeToolTips()
+      if otherscene.SceneCreated:
+        b = flex.bool([bool(math.isnan(e[0]) + math.isnan(e[1]) + math.isnan(e[2])) for e in otherscene.colors])
+        otherscene.colors = otherscene.colors.set_selected(b, (1.0, 1.0, 1.0))
+        b = flex.bool([bool(math.isnan(e)) for e in otherscene.radii])
+        otherscene.radii = otherscene.radii.set_selected(b, 0.2)
+        HKLscenes.append( otherscene)
+        ainf = ArrayInfo(otherscene.work_array, self.mprint)
+        othermaxdata.append( ainf.maxdata )
+        othermindata.append( ainf.mindata )
+        othermaxsigmas.append(ainf.maxsigmas)
+        otherminsigmas.append(ainf.minsigmas)
+        infostr = ainf.infostr
+        self.mprint("%d, %s" %(i, infostr) )
+        matchingarrayinfo.append(infostr)
+        i +=1
+    tooltipstringsdict = self.MakeToolTips(HKLscenes)
+
+    self.HKLscenesdict[self.HKLscenesKey] = (
+                HKLscenes,
+                tooltipstringsdict,
+                othermaxdata,
+                othermindata,
+                othermaxsigmas,
+                otherminsigmas,
+                matchingarrayinfo
+                )
+    (
+      self.HKLscenes,
+      self.tooltipstringsdict,
+      self.othermaxdata,
+      self.othermindata,
+      self.othermaxsigmas,
+      self.otherminsigmas,
+      self.matchingarrayinfo
+    ) =  self.HKLscenesdict[self.HKLscenesKey]
+
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.sceneisdirty = False
     return True
@@ -451,7 +464,7 @@ class hklview_3d:
     for j,sc in enumerate(range(ln)):
       val += incr
       colourscalararray.append( val )
-    if self.otherscenes[self.icolourcol].miller_array.is_complex_array():
+    if self.HKLscenes[self.icolourcol].miller_array.is_complex_array():
       # When displaying phases from map coefficients together with fom values
       # compute colour map chart as a function of fom and phase values (x,y axis)
       incr = 360.0/ln
@@ -463,7 +476,7 @@ class hklview_3d:
         colourscalararray.append( val )
 
       fomarrays = []
-      if self.otherscenes[self.icolourcol].isUsingFOMs():
+      if self.HKLscenes[self.icolourcol].isUsingFOMs():
         fomln = 50
         fom = 1.0
         fomdecr = 1.0/(fomln-1.0)
@@ -486,15 +499,15 @@ class hklview_3d:
         color_all=False,
         gradient_type= self.settings.color_scheme) * 255.0)
 
-    colors = self.otherscenes[self.icolourcol].colors
-    radii = self.otherscenes[self.iradiicol].radii
+    colors = self.HKLscenes[self.icolourcol].colors
+    radii = self.HKLscenes[self.iradiicol].radii
     points = self.scene.points
     hkls = self.scene.indices
     dres = self.scene.dres
     colstr = self.scene.miller_array.info().label_string()
     data = self.scene.data
-    colourlabel = self.otherscenes[self.icolourcol].colourlabel
-    fomlabel = self.otherscenes[self.icolourcol].fomlabel
+    colourlabel = self.HKLscenes[self.icolourcol].colourlabel
+    fomlabel = self.HKLscenes[self.icolourcol].fomlabel
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (colors.size() == radii.size() == nrefls)
     colours = []
@@ -511,9 +524,9 @@ class hklview_3d:
       if self.workingbinvals[0] < 0.0:
          self.workingbinvals.append(0.0)
          self.workingbinvals.sort()
-      bindata = self.otherscenes[ibinarray].data
-      if self.otherscenes[ibinarray].work_array.is_complex_array():
-        bindata = self.otherscenes[ibinarray].ampl
+      bindata = self.HKLscenes[ibinarray].data
+      if self.HKLscenes[ibinarray].work_array.is_complex_array():
+        bindata = self.HKLscenes[ibinarray].ampl
     else:
       self.workingbinvals = self.binvals
       colstr = "dres"

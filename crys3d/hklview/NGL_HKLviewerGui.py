@@ -209,7 +209,7 @@ class NGL_HKLViewer(QDialog):
           self.bin_info = ngl_hkl_infodict["bin_info"]
           self.html_url = ngl_hkl_infodict["html_url"]
           self.spacegroups = ngl_hkl_infodict["spacegroups"]
-          self.mergedata = ngl_hkl_infodict["mergedata"]
+          self.mergedata = ngl_hkl_infodict["merge_data"]
           self.infostr = ngl_hkl_infodict["info"]
           self.NewFileLoaded = ngl_hkl_infodict["NewFileLoaded"]
           self.fileisvalid = True
