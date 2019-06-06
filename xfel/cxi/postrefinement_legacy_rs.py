@@ -138,6 +138,7 @@ class legacy_rs(object):
 
   def result_for_cxi_merge(self, file_name):
     scaler = self.refinery.scaler_callable(self.parameterization_class(self.MINI.x))
+    #from IPython import embed; embed(); exit()
     if self.params.postrefinement.algorithm=="rs":
       fat_selection = (self.refinery.lorentz_callable(self.parameterization_class(self.MINI.x)) > 0.2)
     else:
@@ -146,10 +147,10 @@ class legacy_rs(object):
 
     #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
     # in samosa, handle this at a higher level, but handle it somehow.
-    if fat_count < 3:
-      raise ValueError("< 3 near-fulls after refinement")
-    print("On total %5d the fat selection is %5d"%(
-      len(self.observations_pair1_selected.indices()), fat_count), file=self.out)
+    if fat_count < 0:
+      raise ValueError("< 0 near-fulls after refinement")
+    print >> self.out, "On total %5d the fat selection is %5d"%(
+      len(self.observations_pair1_selected.indices()), fat_count)
     observations_original_index = \
       self.observations_original_index_pair1_selected.select(fat_selection)
 
