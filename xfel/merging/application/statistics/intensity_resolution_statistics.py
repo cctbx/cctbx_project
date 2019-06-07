@@ -8,6 +8,8 @@ from libtbx.str_utils import format_value
 from libtbx import table_utils
 from xfel.merging.application.reflection_table_utils import reflection_table_utils
 from six.moves import cStringIO as StringIO
+from cctbx.crystal import symmetry
+from cctbx import miller
 
 class intensity_table_bin(object):
   '''Storage class for parameters of a resolution bin used by the hkl intensity statistics table'''
@@ -109,6 +111,23 @@ class intensity_table(object):
 
     return table_utils.format(table_data, has_header = 2, justify ='center', delim = " ")
 
+class cross_correlation_resolution_bin(object):
+  '''Storage class for parameters of a cross-correlation resolution bin'''
+  def __init__(self,
+               i_bin=None,
+               theor_asu_count=0,
+               observed_matching_asu_count=0,
+               cross_correlation=None):
+    adopt_init_args(self, locals())
+
+class cross_correlation_table(object):
+  '''Represents a table of cross-correlations for resolution bins'''
+  def __init__(self):
+    self.table = []
+    self.cumulative_observed_matching_asu_count = 0
+    self.cumulative_theor_asu_count = 0
+    self.cumulative_cross_correlation = 0.0
+
 class intensity_resolution_statistics(worker):
   '''Calculates hkl intensity statistics for resolution bins'''
 
@@ -143,9 +162,135 @@ class intensity_resolution_statistics(worker):
       self.logger.main_log(title)
     self.run_detail(reflections)
 
+    title = "\n                     CC 1/2, CC ISO\n"
+    self.logger.log(title, rank_prepend=False)
+    self.calculate_cc_int(reflections_odd, reflections_even)
+    self.calculate_cc_iso(reflections)
+
+    if self.mpi_helper.rank == 0:
+      for entry in [(self.Total_CC_OneHalf_Table, "\n                     CC 1/2\n"),
+                    (self.Total_CC_Iso_Table,     "\n                     CC ISO\n")]:
+        Table = entry[0]
+        Title = entry[1]
+        if Table is not None:
+          self.logger.main_log(Title)
+          for row in Table.table:
+            self.logger.main_log("%d/%d\t\t%f"%(row.observed_matching_asu_count, row.theor_asu_count, row.cross_correlation))
+          self.logger.main_log("--------------------------------------------------------")
+          self.logger.main_log("%d/%d\t\t%f\n"%(Table.cumulative_observed_matching_asu_count,
+                                                     Table.cumulative_theor_asu_count,
+                                                     Table.cumulative_cross_correlation))
+
     self.logger.log_step_time("INTENSITY_STATISTICS", True)
 
     return experiments, reflections
+
+  def calculate_cc_iso(self, reflections):
+    if self.params.statistics.cciso.mtz_file == None:
+      self.Total_CC_Iso_Table = None
+      return
+
+    reflections_merged = reflection_table_utils.merge_reflections(reflections)
+
+    # Create target symmetry
+    if self.params.merging.set_average_unit_cell:
+      assert 'average_unit_cell' in (self.params.statistics).__dict__
+      unit_cell = self.params.statistics.__phil_get__('average_unit_cell')
+    else:
+      unit_cell = self.params.scaling.unit_cell
+    target_symm = symmetry(unit_cell=unit_cell, space_group_info = self.params.scaling.space_group)
+
+    # Build miller array for experimental data
+    miller_indices = miller.set(target_symm, reflections_merged['miller_index'], True)
+    exp_intensities = miller.array(miller_indices,
+                                   reflections_merged['intensity'],
+                                   flex.double(reflections_merged.size(), 1.0))
+
+    self.Total_CC_Iso_Table = self.calculate_cross_correlation(self.params.scaling.i_model, exp_intensities)
+
+  def calculate_cc_int(self, odd_reflections, even_reflections):
+    odd_reflections_merged = reflection_table_utils.merge_reflections(odd_reflections)
+    even_reflections_merged = reflection_table_utils.merge_reflections(even_reflections)
+
+    # Create target symmetry
+    if self.params.merging.set_average_unit_cell:
+      assert 'average_unit_cell' in (self.params.statistics).__dict__
+      unit_cell = self.params.statistics.__phil_get__('average_unit_cell')
+    else:
+      unit_cell = self.params.scaling.unit_cell
+    target_symm = symmetry(unit_cell=unit_cell, space_group_info = self.params.scaling.space_group)
+
+    # Build miller arrays
+    miller_indices_odd = miller.set(target_symm, odd_reflections_merged['miller_index'], True)
+    intensities_odd = miller.array(miller_indices_odd,
+                                   odd_reflections_merged['intensity'],
+                                   flex.double(odd_reflections_merged.size(), 1.0))
+
+    miller_indices_even = miller.set(target_symm, even_reflections_merged['miller_index'], True)
+    intensities_even = miller.array(miller_indices_even, even_reflections_merged['intensity'],
+                                    flex.double(even_reflections_merged.size(), 1.0))
+
+    # Calculate crosss-correlation
+    self.Total_CC_OneHalf_Table = self.calculate_cross_correlation(intensities_odd, intensities_even)
+
+  def calculate_cross_correlation(self, miller_array_1, miller_array_2):
+    # Get pre-created resolution binning objects from the parameters
+    self.resolution_binner = self.params.statistics.resolution_binner
+    self.hkl_resolution_bins = self.params.statistics.hkl_resolution_bins
+
+    # How many bins do we have?
+    n_bins = self.resolution_binner.n_bins_all() # (self.params.statistics.n_bins + 2), 2 - to account for the hkls outside of the binner resolution range
+
+    # To enable MPI all-rank reduction, every rank must initialize statistics array(s), even if the rank doesn't have any reflections.
+    self.cc_N         = flex.int(n_bins, 0)
+    self.cc_sum_xx    = flex.double(n_bins, 0.0)
+    self.cc_sum_xy    = flex.double(n_bins, 0.0)
+    self.cc_sum_yy    = flex.double(n_bins, 0.0)
+    self.cc_sum_x     = flex.double(n_bins, 0.0)
+    self.cc_sum_y     = flex.double(n_bins, 0.0)
+
+    # Find matching indices in the two data sets
+    matching_indices = miller.match_multi_indices(miller_indices_unique = miller_array_1.indices(),
+                                                  miller_indices = miller_array_2.indices())
+
+    # Perform binned summations for all components of the cross-correlation formula
+    for pair in matching_indices.pairs():
+
+      hkl = miller_array_1.indices()[pair[0]]
+      assert hkl == miller_array_2.indices()[pair[1]]
+
+      if hkl in self.hkl_resolution_bins:
+        i_bin = self.hkl_resolution_bins[hkl]
+
+        I_x = miller_array_1.data()[pair[0]]
+        I_y = miller_array_2.data()[pair[1]]
+
+        self.cc_N[i_bin]        += 1
+        self.cc_sum_xx[i_bin]   += I_x**2
+        self.cc_sum_yy[i_bin]   += I_y**2
+        self.cc_sum_xy[i_bin]   += I_x * I_y
+        self.cc_sum_x[i_bin]    += I_x
+        self.cc_sum_y[i_bin]    += I_y
+
+    # Accumulate binned counts (cc_N) and sums (cc_sum) from all ranks
+    all_ranks_cc_N          = self.mpi_helper.cumulative_flex(self.cc_N,      flex.int)
+    all_ranks_cc_sum_xx     = self.mpi_helper.cumulative_flex(self.cc_sum_xx, flex.double)
+    all_ranks_cc_sum_yy     = self.mpi_helper.cumulative_flex(self.cc_sum_yy, flex.double)
+    all_ranks_cc_sum_xy     = self.mpi_helper.cumulative_flex(self.cc_sum_xy, flex.double)
+    all_ranks_cc_sum_x      = self.mpi_helper.cumulative_flex(self.cc_sum_x,  flex.double)
+    all_ranks_cc_sum_y      = self.mpi_helper.cumulative_flex(self.cc_sum_y,  flex.double)
+
+    # Reduce all binned counts (cc_N) and sums (cc_sum) from all ranks
+    if self.mpi_helper.rank == 0:
+      return self.build_cross_correlation_table(
+                                                all_ranks_cc_N,
+                                                all_ranks_cc_sum_xx,
+                                                all_ranks_cc_sum_yy,
+                                                all_ranks_cc_sum_xy,
+                                                all_ranks_cc_sum_x,
+                                                all_ranks_cc_sum_y)
+    else:
+      return None
 
   def run_detail(self, reflections):
     # Get pre-created resolution binning objects from the parameters
@@ -337,6 +482,81 @@ class intensity_resolution_statistics(worker):
       fig = plt.figure()
       plt.bar(histogram.slot_centers(), histogram.slots(), align="center", width=histogram.slot_width())
       plt.show()
+
+  def build_cross_correlation_table(self,
+                                    count_array,
+                                    sum_xx_array,
+                                    sum_yy_array,
+                                    sum_xy_array,
+                                    sum_x_array,
+                                    sum_y_array):
+
+    Cross_Correlation_Table = cross_correlation_table()
+
+    cumulative_observed_matching_asu_count = 0
+    cumulative_theor_asu_count = 0
+    cumulative_sum_xx  = 0.0
+    cumulative_sum_yy  = 0.0
+    cumulative_sum_xy  = 0.0
+    cumulative_sum_x   = 0.0
+    cumulative_sum_y   = 0.0
+
+    for i_bin in self.resolution_binner.range_used():
+      count   = count_array[i_bin]
+      sum_xx  = sum_xx_array[i_bin]
+      sum_yy  = sum_yy_array[i_bin]
+      sum_xy  = sum_xy_array[i_bin]
+      sum_x   = sum_x_array[i_bin]
+      sum_y   = sum_y_array[i_bin]
+
+      cross_correlation = self.cross_correlation_formula(count,
+                                                         sum_xx,
+                                                         sum_yy,
+                                                         sum_xy,
+                                                         sum_x,
+                                                         sum_y);
+
+      Cross_Correlation_Table.table.append(
+                    cross_correlation_resolution_bin(
+                            i_bin = i_bin,
+                            theor_asu_count = self.resolution_binner.counts()[i_bin],
+                            observed_matching_asu_count = count,
+                            cross_correlation = cross_correlation))
+
+      cumulative_observed_matching_asu_count += count
+      cumulative_theor_asu_count += self.resolution_binner.counts()[i_bin]
+      cumulative_sum_xx  += sum_xx
+      cumulative_sum_yy  += sum_yy
+      cumulative_sum_xy  += sum_xy
+      cumulative_sum_x   += sum_x
+      cumulative_sum_y   += sum_y
+
+    Cross_Correlation_Table.cumulative_observed_matching_asu_count = cumulative_observed_matching_asu_count
+    Cross_Correlation_Table.cumulative_theor_asu_count = cumulative_theor_asu_count
+    Cross_Correlation_Table.cumulative_cross_correlation = self.cross_correlation_formula(cumulative_observed_matching_asu_count,
+                                                                                          cumulative_sum_xx,
+                                                                                          cumulative_sum_yy,
+                                                                                          cumulative_sum_xy,
+                                                                                          cumulative_sum_x,
+                                                                                          cumulative_sum_y)
+    return Cross_Correlation_Table
+
+
+  def cross_correlation_formula(self,
+                                count,
+                                sum_xx,
+                                sum_yy,
+                                sum_xy,
+                                sum_x,
+                                sum_y):
+
+    numerator = (count * sum_xy - sum_x * sum_y)
+    denominator = (math.sqrt(count * sum_xx - sum_x**2) * math.sqrt(count * sum_yy - sum_y**2))
+    cross_correlation = 0.0
+    if denominator != 0.0:
+      cross_correlation = numerator / denominator
+
+    return cross_correlation
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker

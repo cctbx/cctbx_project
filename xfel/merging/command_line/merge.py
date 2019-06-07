@@ -70,28 +70,34 @@ class Script(object):
 
     workers = []
     for step in ['input',
-                 'model',
-                 'modify',
-                 'edit',
-                 'statistics unit_cell',
+                 'model scaling', # the full miller set is based on the target unit cell
+                 'modify', # polarization correction, etc.
+                 'edit',  # remove unnecessary columns from reflection table
                  'filter',
-                 'statistics unit_cell',
+                 'errors pre_merge', # e.g. ha14
                  'scale',
                  'postrefine',
-                 'statistics experiment',
-                 'group',
-                 'errors',
+                 'statistics unit_cell', # if required, saves the average unit cell to the phil parameters
+                 'statistics beam', # saves the average wavelength to the phil parameters
+                 'model statistics', # if required, the full miller set is based on the average unit cell
+                 'statistics experiment_resolution',
+                 'group', # MPI-alltoall: this must be done before any analysis or merging that requires all measurements of an HKL
+                 'errors post_merge', # e.g. errors_from_sample_residuals
                  'statistics intensity',
-                 'merge',
-                 'output']:
+                 'merge', # merge HKL intensities, MPI-gather all HKLs at rank 0, output "odd", "even" and "all" HKLs as mtz files
+                 'statistics intensity cxi', # follows the merge step and uses cxi_cc code ported from cxi-xmerge
+                 ]:
 
       step_factory_name = step
-      step_additional_info = None
-      if ' ' in step:
-        step_factory_name = step[0:step.find(' ')]        # e.g. 'statistics'
-        step_additional_info = step[step.find(' ') + 1:]  # e.g. 'experiment'
+      step_additional_info = []
 
-      factory = importlib.import_module('xfel.merging.application.'+ step_factory_name +'.factory')
+      step_info = step.split(' ')
+      assert len(step_info) > 0
+      if len(step_info) > 1:
+        step_factory_name = step_info[0]
+        step_additional_info = step_info[1:]
+
+      factory = importlib.import_module('xfel.merging.application.' + step_factory_name + '.factory')
       workers.extend(factory.factory.from_parameters(self.params, step_additional_info))
 
     # Perform phil validation up front

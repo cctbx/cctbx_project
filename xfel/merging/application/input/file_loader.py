@@ -120,10 +120,14 @@ class simple_file_loader(worker):
     else:
       starting_expts_count = len(all_experiments)
       starting_refls_count = len(all_reflections)
+    self.logger.log("Initial number of experiments: %d; Initial number of reflections: %d"%(starting_expts_count, starting_refls_count))
 
     # Generate and send a list of file paths to each worker
     if self.mpi_helper.rank == 0:
       file_list = self.get_list()
+
+      self.logger.log("received a file list of %d items"%(len(file_list)))
+
       self.params.input.path = None # the input is already parsed
 
       from xfel.merging.application.input.file_load_calculator import file_load_calculator
