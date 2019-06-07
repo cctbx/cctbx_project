@@ -635,7 +635,7 @@ HETATM  910  O   HOH A 156     -10.293  62.567  35.648  1.00 19.43           O
   model.set_sequences([sequence_3tpy])
   cif_block = model.get_hierarchy().as_cif_block()
   assert list(cif_block["_atom_site.label_seq_id"]) == [
-    '1', '2', '3', '4', '5', '6', '7', '8', '9', '9', '9', '10', '11', '12']
+    '1', '2', '3', '4', '5', '6', '.', '.', '.', '.', '.', '.', '.', '.']
   #
   input_3tgr = """\
 ATOM   2449  CA  GLY A 459     -17.536  10.137  41.979  1.00181.52           C
