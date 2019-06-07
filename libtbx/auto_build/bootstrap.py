@@ -917,7 +917,7 @@ class dials_regression_module(SourceModule):
 
 class msgpack_module(SourceModule):
   module = 'msgpack'
-  anonymous = ['curl', "https://gitcdn.link/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz"]
+  anonymous = ['curl', "https://gitcdn.xyz/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz"]
 
 class xfel_regression_module(SourceModule):
   module = 'xfel_regression'
