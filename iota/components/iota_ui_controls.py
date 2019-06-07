@@ -14,7 +14,6 @@ import wx.richtext
 import wx.lib.agw.floatspin as fs
 import wx.lib.agw.ultimatelistctrl as ulc
 import wx.lib.agw.knobctrl as kc
-import wx.lib.fancytext as ft
 
 from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin, ColumnSorterMixin
 from wxtbx import metallicbutton as mb
