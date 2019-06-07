@@ -464,6 +464,7 @@ class HKLViewFrame () :
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.viewer.set_miller_array(col, merge=array_info.merge,
        details=array_info.details_str, proc_arrays=self.procarrays)
+    self.viewer.identify_suitable_fomsarrays()
     return self.miller_array, array_info
 
 
@@ -654,16 +655,16 @@ class HKLViewFrame () :
     self.viewer.SetOpacity(bin, alpha)
 
 
-  def set_column(self, column, fomcolumn=None) :
+  def set_column(self, column, fom_column=None) :
     self.viewer.binvals = []
     if column is None:
       return False
     self.viewer.icolourcol = column
     self.viewer.iradiicol = column
     if self.valid_arrays[column].is_complex_array():
-      if fomcolumn and self.valid_arrays[fomcolumn].is_real_array():
-        self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()] = fomcolumn
-        self.mprint("Using array %d as FOM values for array %d" %(fomcolumn, column))
+      if fom_column and self.valid_arrays[fom_column].is_real_array():
+        self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()] = fom_column
+        self.mprint("Using array %d as FOM values for array %d" %(fom_column, column))
       else:
         if self.viewer.mapcoef_fom_dict.get(self.valid_arrays[column].info().label_string()):
           del self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()]
@@ -686,8 +687,8 @@ class HKLViewFrame () :
     self.update_settings()
 
 
-  def SetFomColumn(self, fomcolumn):
-    self.params.NGL_HKLviewer.fomcolumn = fomcolumn
+  def SetFomColumn(self, fom_column):
+    self.params.NGL_HKLviewer.fom_column = fom_column
     self.update_settings()
 
 
