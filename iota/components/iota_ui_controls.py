@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 11/29/2018
+Last Changed: 06/07/2019
 Description : IOTA GUI controls
 '''
 
@@ -14,6 +14,8 @@ import wx.richtext
 import wx.lib.agw.floatspin as fs
 import wx.lib.agw.ultimatelistctrl as ulc
 import wx.lib.agw.knobctrl as kc
+import wx.lib.fancytext as ft
+
 from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin, ColumnSorterMixin
 from wxtbx import metallicbutton as mb
 from wxtbx import bitmaps
@@ -219,11 +221,10 @@ class DataTypeChoice(wx.Panel):
 class InputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin):
   """ Customized UltimateListCtrl with auto-width mixin"""
 
-  def __init__(self, parent, ID, n_cols=3, pos=wx.DefaultPosition,
-               size=wx.DefaultSize, style=0):
-    ulc.UltimateListCtrl.__init__(self, parent, ID, pos,
-                                  size=size,
-                                  agwStyle=style)
+  def __init__(self, parent, ID, pos=wx.DefaultPosition, style=0,
+               *args, **kwargs):
+    ulc.UltimateListCtrl.__init__(self, parent, ID, pos, agwStyle=style,
+                                  *args, **kwargs)
     ListCtrlAutoWidthMixin.__init__(self)
 
 
@@ -353,42 +354,40 @@ class CtrlBase(wx.Panel):
   def __init__(self,
                parent,
                label_style='normal',
+               label_font_size=norm_font_size,
                content_style='normal',
+               content_font_size=norm_font_size,
                size=wx.DefaultSize):
 
     wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=size)
 
+    # TODO: streamline this
     # Set control attributes
     self.expert_level = 0
+    self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                        wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
+    self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                         wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
 
     # Set font attributes for label
-    if label_style == 'normal':
-      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
-                          wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
-    elif label_style == 'bold':
-      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
-                          wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
-    elif label_style == 'italic':
-      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
-                          wx.FONTSTYLE_ITALIC,
-                          wx.FONTWEIGHT_NORMAL)
-    elif label_style == 'italic_bold':
-      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
-                          wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD)
+    if 'bold' in label_style:
+      self.font.SetWeight(wx.FONTWEIGHT_BOLD)
+    if 'italic' in label_style:
+      self.font.SetStyle(wx.FONTSTYLE_ITALIC)
+    if 'teletype' in label_style:
+      self.font.SetFamily(wx.FONTFAMILY_TELETYPE)
 
     # Set font attributes for content
-    if content_style == 'normal':
-      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
-                           wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
-    elif content_style == 'bold':
-      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
-                           wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
-    elif content_style == 'italic':
-      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
-                           wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_NORMAL)
-    elif content_style == 'italic_bold':
-      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
-                           wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD)
+    if 'bold' in content_style:
+      self.cfont.SetWeight(wx.FONTWEIGHT_BOLD)
+    if 'italic' in content_style:
+      self.cfont.SetStyle(wx.FONTSTYLE_ITALIC)
+    if 'teletype' in content_style:
+      self.cfont.SetFamily(wx.FONTFAMILY_TELETYPE)
+
+    self.font.SetPointSize(label_font_size)
+    self.cfont.SetPointSize(content_font_size)
+
 
 class DialogButtonsCtrl(CtrlBase):
   """ Customizable "bottom of window" set of buttons for dialogs """
@@ -913,16 +912,15 @@ class KnobCtrl(CtrlBase):
 
 
 class CustomListCtrl(CtrlBase):
-  def __init__(self, parent, size=wx.DefaultSize, content_style='normal'):
-    CtrlBase.__init__(self, parent=parent, content_style=content_style,
-                      size=size)
+  def __init__(self, parent, *args, **kwargs):
+    CtrlBase.__init__(self, parent=parent, *args, **kwargs)
 
     self.sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.sizer)
 
     # Input List control
     self.control_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.ctr = InputListCtrl(self, ID=wx.ID_ANY, size=size,
+    self.ctr = InputListCtrl(self, ID=wx.ID_ANY,
                              style=ulc.ULC_REPORT |
                                    ulc.ULC_HRULES |
                                    ulc.ULC_VRULES |
@@ -932,6 +930,8 @@ class CustomListCtrl(CtrlBase):
                                    ulc.ULC_FOOTER)
     self.control_sizer.Add(self.ctr, -1, flag=wx.EXPAND)
     self.sizer.Add(self.control_sizer, 1, flag=wx.EXPAND)
+
+    self.ctr.SetFont(self.cfont)
 
 
 class CustomImageListCtrl(CtrlBase):
@@ -1383,7 +1383,6 @@ class ViewerWarning(wx.Dialog):
       self.no_images = self.opt_custom.GetValue()
     self.EndModal(wx.ID_OK)
 
-
 class PHILBox(CtrlBase):
   def __init__(self, parent,
                btn_clear_size=(120, -1),
@@ -1408,14 +1407,13 @@ class PHILBox(CtrlBase):
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.main_sizer)
-
     self.ctrl_sizer = wx.GridBagSizer(5, 5)
 
     self.ctr = wx.richtext.RichTextCtrl(self,
                                         size=ctr_size,
                                         style=wx.VSCROLL,
                                         value=ctr_value)
-    span_counter = 1
+
     if btn_pos in ('left', 'right'):
       self.btn_sizer = wx.BoxSizer(wx.VERTICAL)
       b_flag = wx.BOTTOM
@@ -1430,6 +1428,7 @@ class PHILBox(CtrlBase):
                                   label=btn_import_label,
                                   size=btn_import_size)
       self.btn_sizer.Add(self.btn_import, flag=b_flag, border=5)
+
     if btn_export:
       self.btn_export = wx.Button(self,
                                   label=btn_export_label,
@@ -1528,6 +1527,90 @@ class TableCtrl(CtrlBase):
         self.sizer.Add(cell)
 
     self.SetSizer(self.sizer)
+
+
+class RichTextTableCtrl(CtrlBase):
+  """ Generic panel will place a table w/ x and y labels
+      Data must be a list of lists for multi-column tables """
+
+  def __init__(self, parent,
+               clabels=None,
+               rlabels=None,
+               contents=None,
+               label_style='normal',
+               content_style='teletype bold'):
+
+    CtrlBase.__init__(self, parent=parent, label_style=label_style,
+                      content_style=content_style)
+
+    # Generate column widths
+    if clabels:
+      col_w = [len(l)+3 for l in clabels]
+    else:
+      col_w = [len(i)+3 for i in contents[0]]
+    for row in contents:
+      for item in row:
+        idx = row.index(item)
+        item_width = len(item) + 3
+        col_w[idx] = item_width if item_width > col_w[idx] else col_w[idx]
+
+    # Generate row label width
+    row_w = 0
+    for rlabel in rlabels:
+      rlabel_width = len(rlabel) + 3
+      row_w = rlabel_width if rlabel_width > row_w else row_w
+
+    # Generate table
+    if clabels:
+      table_txt = ' ' * row_w
+      for l in clabels:
+        idx = clabels.index(l)
+        spacer = ' ' * (col_w[idx] - len(l))
+        label = l + spacer
+        table_txt += label
+      table_txt += '\n'
+    else:
+      table_txt = ''
+
+    lines = []
+    for l in rlabels:
+      # Set row label
+      spacer = ' ' * (row_w - len(l))
+      line = l + spacer
+
+      # Add data to table
+      c_index = rlabels.index(l)
+      row_contents = contents[c_index]
+      for item in row_contents:
+        i_idx = row_contents.index(item)
+        spacer = ' ' * (col_w[i_idx] - len(item))
+        if item is None:
+          line += spacer
+        else:
+          line += item + spacer
+
+      lines.append(line)
+
+    table_txt += '\n'.join(lines)
+
+    # Generate RichTextCtrl
+    self.ctr = wx.richtext.RichTextCtrl(self, style=wx.NO_BORDER |
+                                                    wx.TE_DONTWRAP |
+                                                    wx.richtext.RE_READONLY)
+    self.ctr.BeginLineSpacing(lineSpacing=15)
+    self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_TELETYPE,
+                         wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, False)
+
+    self.ctr.BeginFont(self.cfont)
+    self.ctr.SetValue(value=table_txt)
+    self.ctr.SetBackgroundColour(self.GetBackgroundColour())
+
+    # Create sizer and add control to it
+    self.sizer = wx.BoxSizer()
+    self.sizer.Add(self.ctr, 1, flag=wx.EXPAND)
+    self.SetSizer(self.sizer)
+
+    self.Layout()
 
 class WidgetFactory(object):
   ''' Class that will automatically make widgets for automated dialog making '''

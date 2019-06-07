@@ -5,7 +5,7 @@ from six.moves import range, zip
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 01/30/2019
+Last Changed: 06/07/2019
 Description : IOTA Plotter module. Exists to provide custom MatPlotLib plots
               that are dynamic, fast-updating, interactive, and keep up with
               local wxPython upgrades.
@@ -24,15 +24,16 @@ from matplotlib import cm, colors
 from mpl_toolkits.mplot3d import Axes3D
 
 # workaround to avoid unused import warning
-assert Axes3D
 assert cm
 assert colors
+
+from libtbx.utils import to_unicode, Sorry
 
 from iota.components.iota_ui_base import IOTABaseFrame, IOTABasePanel
 
 class PlotWindow(IOTABaseFrame):
-  def __init__(self, parent, id, title, plot_panel=None):
-    IOTABaseFrame.__init__(self, parent, id, title, size=(500, 500))
+  def __init__(self, parent, id, title, plot_panel=None, *args, **kwargs):
+    IOTABaseFrame.__init__(self, parent, id, title, *args, **kwargs)
 
     self.initialize_toolbar()
     self.tb_btn_quit = self.add_tool(label='Quit',
@@ -48,12 +49,9 @@ class PlotWindow(IOTABaseFrame):
 
     self.plot_panel = plot_panel
 
-  def plot(self):
+  def add_plot_to_window(self):
     if self.plot_panel:
       self.main_sizer.Add(self.plot_panel, 1, flag=wx.EXPAND)
-      self.SetSize(self.plot_panel.canvas.GetSize())
-      self.plot_panel.canvas.draw()
-      self.Layout()
 
   def onSave(self, e):
     save_dlg = wx.FileDialog(self,
@@ -74,21 +72,101 @@ class PlotWindow(IOTABaseFrame):
 class Plotter(IOTABasePanel):
   ''' Generic Plotter (will plot anything given specific data) '''
 
-  def __init__(self, parent,
-               params=None,
-               info=None,
-               *args, **kwargs):
+  def __init__(self, parent, params=None, info=None, *args, **kwargs):
     IOTABasePanel.__init__(self, parent=parent, *args, **kwargs)
     self.info = info
     self.params = params
-    # if viz_dir:
-
     self.font = {'fontfamily':'sans-serif', 'fontsize':12}
 
-  def initialize_figure(self, figsize=(9, 9)):
+    # For resizing. The idea is to allow the figures to resize only when the
+    # screen is idle; if anything, it'll make window resizing smoother
+    self._resize_flag = False
+    self.Bind(wx.EVT_IDLE, self.onIdle)
+    self.Bind(wx.EVT_SIZE, self.onSize)
+
+  def onSize(self, e):
+    self._resize_flag = True
+
+  def onIdle(self, e):
+    if self._resize_flag:
+      self._resize_flag = False
+      self.set_size()
+
+  def set_size(self):
+    self.set_size_to_panel()
+
+  def set_size_to_panel(self):
+    size_in_pixels = tuple(self.GetSize())
+    self.SetSize(size_in_pixels)
+    self.canvas.SetSize(size_in_pixels)
+    size_in_inches = [float(x) / self.figure.get_dpi() for x in size_in_pixels]
+    self.figure.set_size_inches(size_in_inches)
+
+  def set_size_to_canvas(self):
+    size_in_pixels = tuple(self.canvas.GetSize())
+    self.SetSize(size_in_pixels)
+    self.canvas.SetSize(size_in_pixels)
+    size_in_inches = [float(x) / self.figure.get_dpi() for x in size_in_pixels]
+    self.figure.set_size_inches(size_in_inches)
+
+  def initialize_figure(self, figsize=(9, 9), transparent=True):
     self.figure = Figure(figsize=figsize)
     self.canvas = FigureCanvas(self, -1, self.figure)
     self.main_sizer.Add(self.canvas, 1, flag=wx.EXPAND)
+
+    if transparent:
+      if wx.Platform == '__WXMAC__':
+        self.figure.patch.set_visible(False)
+      else:
+        bg_color = [i / 255 for i in self.GetBackgroundColour()]
+        self.figure.set_facecolor(color=bg_color)
+
+  def draw(self, size_to_canvas=False, tight_layout=True):
+    if size_to_canvas:
+      self.set_size_to_canvas()
+    else:
+      self.set_size_to_panel()
+
+    if tight_layout:
+      self.figure.tight_layout()
+
+    self.canvas.draw()
+    self.canvas.Refresh()
+
+  def plot_table_text(self, data):
+    data = [[to_unicode(i) for i in j] for j in data]
+    stripes = zip(*data)
+    col_ws = [max([len(i) for i in strp])for strp in stripes]
+    set_ws = [5 if i <= 3 else i + 2 for i in col_ws]
+
+    lines = []
+    for item in data:
+      for i in item:
+        idx = item.index(i)
+        width = set_ws[idx]
+        item[idx] = i.ljust(width, u' ')
+      line = u''.join(item)
+      lines.append(line)
+    table_txt = u'\n'.join(lines)
+    return table_txt
+
+  def plot_table(self, data):
+
+    # allow straight text to be passed on
+    if type(data) in (list, tuple):
+      table_text = self.plot_table_text(data=data)
+    elif type(data) in (str, unicode):
+      table_text = data
+    else:
+      table_text = None
+
+    if not table_text:
+      raise Sorry('IOTA PLOTTER ERROR: Cannot make table! NoneType object '
+                  'passed instead of string, unicode, list, or tuple')
+
+    self.table = self.figure.text(0, 0.99, table_text,
+                                  family='monospace', va='top')
+    self.draw()
 
   def plot_res_histogram(self):
 
@@ -116,8 +194,7 @@ class Plotter(IOTABasePanel):
     lr.set_xlabel(reslim, fontsize=15)
     lr.set_ylabel('No. of frames', fontsize=15)
 
-    self.figure.set_tight_layout(tight=True)
-
+    self.draw(tight_layout=False)
 
   def plot_spotfinding_heatmap(self):
 
@@ -159,7 +236,7 @@ class Plotter(IOTABasePanel):
                      verticalalignment='center',
                      )
 
-    self.figure.set_tight_layout(True)
+    self.draw(tight_layout=False)
 
   def plot_beam_xy(self, write_files=False, return_values=False, threeD=False):
     """ Plot beam center coordinates and a histogram of distances from the median
@@ -266,4 +343,4 @@ class Plotter(IOTABasePanel):
       ax2.set_xlabel('Distance from median (mm)', fontsize=15)
       ax2.set_ylabel('No. of images', fontsize=15)
 
-    self.figure.set_tight_layout(True)
+    self.draw(tight_layout=False)

@@ -1,12 +1,10 @@
-from __future__ import absolute_import, division, print_function
-
-import multiprocessing
-from six.moves import range, zip
+from __future__ import division, print_function, absolute_import
+from past.builtins import range
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 02/15/2019
+Last Changed: 06/07/2019
 Description : IOTA GUI Windows / frames
 '''
 
@@ -14,6 +12,7 @@ import os
 import numpy as np
 import time
 import warnings
+import multiprocessing
 
 import wx
 from wx.lib.agw import ultimatelistctrl as ulc
@@ -158,25 +157,6 @@ class MainWindow(IOTABaseFrame):
     self.target_phil = None
     self.gparams = self.iota_phil.extract()
 
-    # Menu bar
-    menubar = wx.MenuBar()
-
-    # Status bar
-    self.sb = self.CreateStatusBar()
-
-    # Help menu item with the about dialog
-    m_help = wx.Menu()
-    m_file = wx.Menu()
-    self.mb_load_script = m_file.Append(wx.ID_OPEN, '&Load Script...')
-    self.mb_save_script = m_file.Append(wx.ID_SAVE, '&Save Script...')
-    m_file.AppendSeparator()
-    self.mb_reset = m_file.Append(wx.ID_ANY, '&Reset Settings')
-    self.mb_about = m_help.Append(wx.ID_ANY, '&About')
-    menubar.Append(m_file, '&File')
-    menubar.Append(m_help, '&Help')
-
-    self.SetMenuBar(menubar)
-
     # Toolbar
     self.initialize_toolbar()
     self.tb_btn_quit = self.add_tool(label='Quit',
@@ -228,12 +208,6 @@ class MainWindow(IOTABaseFrame):
     self.Bind(wx.EVT_TOOL, self.onOutputScript, self.tb_btn_save)
     self.Bind(wx.EVT_TOOL, self.onReset, self.tb_btn_reset)
     self.Bind(wx.EVT_TOOL, self.onTest, self.tb_dlg_test)
-
-    # Menubar button bindings
-    self.Bind(wx.EVT_MENU, self.OnAboutBox, self.mb_about)
-    self.Bind(wx.EVT_MENU, self.onOutputScript, self.mb_save_script)
-    self.Bind(wx.EVT_MENU, self.onLoadScript, self.mb_load_script)
-    self.Bind(wx.EVT_MENU, self.onReset, self.mb_reset)
 
     # Bindings to Input Window
     self.Bind(wx.EVT_BUTTON, self.onImportOptions,
@@ -1072,7 +1046,7 @@ class ProcessingTab(wx.Panel):
 
         # Strong reflections
         if self.info.stats['strong']['lst']:
-          idx, filenames, spt = list(zip(*self.info.stats['strong']['lst']))
+          idx, filenames, spt = zip(*self.info.stats['strong']['lst'])
           self.nsref_x = np.append(self.nsref_x,
                                    np.array(idx).astype(np.double))
           self.nsref_y = np.append(self.nsref_y,
@@ -1080,13 +1054,13 @@ class ProcessingTab(wx.Panel):
 
         # Resolution
         if self.info.stats['res']['lst']:
-          idx, filenames, res = list(zip(*self.info.stats['res']['lst']))
+          idx, filenames, res = zip(*self.info.stats['res']['lst'])
           self.res_x = np.append(self.res_x, np.array(idx).astype(np.double))
           self.res_y = np.append(self.res_y, np.array(res).astype(np.double))
 
         # Update arrays
         if (idx and filenames and spt and res):
-          self.processed.extend(list(zip(idx, filenames, spt, res)))
+          self.processed.extend(zip(idx, filenames, spt, res))
           res_median = np.median(self.res_y)
           nsref_median = np.median(self.nsref_y)
         else:
@@ -1153,14 +1127,14 @@ class ProcessingTab(wx.Panel):
       return
 
     try:
-      hkl, freq = list(zip(*hkl_slice))
+      hkl, freq = zip(*hkl_slice)
     except ValueError:
       hkl = [(0, 0, 0)]
       freq = 1
     except TypeError:
       return
 
-    h, k, l = list(zip(*hkl))
+    h, k, l = zip(*hkl)
 
     if self.hkl_view_axis == 'l':
       x = h
@@ -1388,7 +1362,6 @@ class LiveAnalysisTab(d.ScrolledPanel):
     self.parent = parent
     self.info = None
     self.gparams = gparams
-    self.tb1 = None
 
     d.ScrolledPanel.__init__(self, parent)
     self.main_fig_sizer = wx.GridBagSizer(0, 0)
@@ -1449,7 +1422,8 @@ class LiveAnalysisTab(d.ScrolledPanel):
     cluster_box = wx.StaticBox(self.cluster_panel, label='Unit Cell Clustering')
     cluster_box_sizer = wx.StaticBoxSizer(cluster_box, wx.VERTICAL)
     self.cluster_panel.SetSizer(cluster_box_sizer)
-    self.cluster_list = ct.CustomListCtrl(self.cluster_panel, size=(-1, 100))
+    self.cluster_list = ct.CustomListCtrl(self.cluster_panel, size=(-1, 100),
+                                          content_font_size=norm_font_size)
     font = wx.Font(norm_font_size, wx.FONTFAMILY_TELETYPE,
                               wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, False)
     self.cluster_list.SetFont(font)
@@ -1461,14 +1435,16 @@ class LiveAnalysisTab(d.ScrolledPanel):
 
     # PRIME result
     self.tb1_panel = wx.Panel(self)
-    tb1_box = wx.StaticBox(self.tb1_panel, label='PRIME Merging Statistics ('
-                                                 'no postref)')
-    self.tb1_box_sizer = wx.StaticBoxSizer(tb1_box, wx.VERTICAL)
-    self.tb1_panel.SetSizer(self.tb1_box_sizer)
+    tb1_box = wx.StaticBox(self.tb1_panel, label='LivePRIME Results')
+    tb1_sizer = wx.StaticBoxSizer(tb1_box, wx.VERTICAL)
+    self.tb1_panel.SetSizer(tb1_sizer)
+    self.tb1_plot = ppl.Plotter(self.tb1_panel, params=None, info=None)
+    self.tb1_plot.initialize_figure(figsize=(0.1, 0.1))
+    tb1_sizer.Add(self.tb1_plot, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Analysis Options
     self.opt_panel = wx.Panel(self)
-    self.opt_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.opt_sizer = wx.GridBagSizer(0, 0)
     self.opt_panel.SetSizer(self.opt_sizer)
     self.pg_uc = ct.OptionCtrl(self.opt_panel,
                                items=[('pg', ''), ('uc', '')],
@@ -1477,18 +1453,21 @@ class LiveAnalysisTab(d.ScrolledPanel):
                                expand_cols=(1),
                                label_size=wx.DefaultSize,
                                ctrl_size=wx.DefaultSize)
-    self.opt_sizer.Add(self.pg_uc, flag=wx.EXPAND | wx.ALL, border=5)
-
     self.btn_run_analysis = wx.Button(self.opt_panel, label='Run Analysis')
-    self.opt_sizer.Add(self.btn_run_analysis, wx.TOP, border=10)
+    self.opt_sizer.Add(self.pg_uc, pos=(0, 0), span=(2, 1),
+                       flag=wx.EXPAND | wx.ALL, border=5)
+    self.opt_sizer.Add(self.btn_run_analysis, pos=(0, 1), span=(1, 1),
+                       flag=wx.ALL, border=5)
+    self.opt_sizer.AddGrowableCol(0)
 
     self.main_fig_sizer.Add(self.uc_panel, pos=(0, 0), span=(2, 4),
                             flag=wx.EXPAND)
-    self.main_fig_sizer.Add(self.cluster_panel, pos=(2, 0), span=(2, 3),
+    self.main_fig_sizer.Add(self.cluster_panel, pos=(2, 0), span=(3, 2),
                             flag=wx.EXPAND)
-    self.main_fig_sizer.Add(self.tb1_panel, pos=(2, 3), span=(1, 1),
+    self.main_fig_sizer.Add(self.tb1_panel, pos=(2, 2), span=(2, 2),
                             flag=wx.EXPAND)
-    self.main_fig_sizer.Add(self.opt_panel, pos=(3, 3), flag=wx.EXPAND)
+    self.main_fig_sizer.Add(self.opt_panel, pos=(4, 2), span=(1, 2),
+                            flag=wx.EXPAND)
 
     self.main_fig_sizer.AddGrowableCol(0)
     self.main_fig_sizer.AddGrowableCol(1)
@@ -1509,7 +1488,7 @@ class LiveAnalysisTab(d.ScrolledPanel):
         self.report_prime_results()
 
       self.SetupScrolling()
-      self.Layout()
+      self.Refresh()
 
   def report_clustering_results(self):
     self.cluster_list.ctr.DeleteAllItems()
@@ -1519,21 +1498,26 @@ class LiveAnalysisTab(d.ScrolledPanel):
       self.cluster_list.ctr.SetStringItem(idx, 1, str(c['pg']))
       self.cluster_list.ctr.SetStringItem(idx, 2, str(c['uc']))
 
+    self.cluster_list.ctr.SetColumnWidth(0, width=-1)
+    self.cluster_list.ctr.SetColumnWidth(1, width=-1)
+    self.cluster_list.ctr.SetColumnWidth(2, width=-1)
+
+
   def report_prime_results(self):
-    # Remove previous data if exists
-    if self.tb1 is not None:
-      self.tb1.Destroy()
 
     try:
-      self.plot = ppl.Plotter(self.tb1_panel, info=self.info.prime_info)
-      self.tb1_labels, self.tb1_data = self.plot.table_one()
-      self.tb1 = ct.TableCtrl(self.tb1_panel,
-                              rlabels=self.tb1_labels,
-                              contents=self.tb1_data,
-                              label_style='bold')
-      self.tb1_box_sizer.Add(self.tb1, 1, flag=wx.EXPAND | wx.ALL, border=10)
+      self.tb1_plot.table.remove()
+    except Exception:
+      pass
+
+    try:
+      self.tb1_plot.info = self.info.prime_info
+      self.tb1_plot.table_one_figure()
     except Exception as e:
+      import traceback
+      traceback.print_exc()
       print('PRIME PLOTTER ERROR: ', e)
+
 
   def calculate_uc_histogram(self, a, axes, xticks_loc='top', set_ylim=False):
     # n, bins = np.histogram(a, 50)
@@ -1569,7 +1553,7 @@ class LiveAnalysisTab(d.ScrolledPanel):
       self.beta_axes.clear()
       self.gamma_axes.clear()
 
-      a, b, c, alpha, beta, gamma, sg = list(zip(*self.info.cluster_iterable))
+      a, b, c, alpha, beta, gamma, sg = zip(*self.info.cluster_iterable)
 
       self.calculate_uc_histogram(a, self.a_axes, set_ylim=True)
       edge_ylabel = 'a, b, c ({})'.format(r'$\AA$')
@@ -1594,6 +1578,7 @@ class LiveAnalysisTab(d.ScrolledPanel):
       self.gamma_axes.set_yticklabels(list('' * 5), visible=False)
 
       self.uc_canvas.draw()
+      self.uc_canvas.Refresh()
 
     except ValueError as e:
       print('UC HISTOGRAM ERROR: ', e)
@@ -1685,7 +1670,6 @@ class SummaryTab(d.ScrolledPanel):
     self.Bind(wx.EVT_BUTTON, self.onPlotBeamXY, self.dat_beamxy)
     self.Bind(wx.EVT_BUTTON, self.onPlotBeam3D, self.dat_beam3D)
     self.Bind(wx.EVT_BUTTON, self.onPlotResHist, self.dat_reshist)
-    self.dat_box_grid.AddGrowableCol(0)
 
     # Insert into sizers
     dat_box_sizer.Add(self.dat_box_grid, 1, flag=wx.ALL | wx.EXPAND, border=10)
@@ -1729,7 +1713,6 @@ class SummaryTab(d.ScrolledPanel):
     self.smr_box_grid.Add(self.smr_runprime, pos=(1, 1), flag=wx.ALIGN_RIGHT)
     self.Bind(wx.EVT_BUTTON, self.onPRIME, self.smr_runprime)
     self.Bind(wx.EVT_BUTTON, self.onCLUSTER, self.smr_runcluster)
-    self.smr_box_grid.AddGrowableCol(0)
 
     smr_box_sizer.Add(self.smr_box_grid, 1, flag=wx.ALL | wx.EXPAND, border=10)
     summary_sizer.Add(smr_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
@@ -1739,12 +1722,12 @@ class SummaryTab(d.ScrolledPanel):
     self.SetupScrolling()
 
   def onPRIME(self, e):
-    from prime.postrefine.mod_gui_init import PRIMEWindow
+    from prime.postrefine.mod_gui_frames import PRIMEWindow
 
     self.prime_window = PRIMEWindow(None, -1, title='PRIME',
                                     prefix=self.gparams.advanced.prime_prefix)
     self.prime_window.load_script(out_dir=self.info.int_base)
-    self.prime_window.place_and_size(set_by='mouse', center=True, set_size=True)
+    self.prime_window.place_and_size(set_by='mouse', center=True)
 
     os.chdir(self.info.int_base)
     self.prime_window.Show(True)
@@ -1832,12 +1815,18 @@ class SummaryTab(d.ScrolledPanel):
 
       beamxy = 'X = {:.2f}, Y = {:.2f}'.format(self.info.stats['beamX']['mean'],
                                                self.info.stats['beamY']['mean'])
-      rlabels = ['Bravais lattice: ', 'Unit cell: ', 'Resolution: ',
-                 'Beam XY (mm): ']
-      contents = [[self.info.best_pg], [uc], [res], [beamxy]]
+      data = zip(
+        ['Bravais lattice: ', 'Unit cell: ','Resolution: ', 'Beam XY (''mm): '],
+        [self.info.best_pg, uc, res, beamxy]
+      )
 
-      stat_table = ct.TableCtrl(self, rlabels=rlabels, contents=contents)
-      self.dat_box_grid.Add(stat_table, span=(4, 1), pos=(0, 0), flag=wx.EXPAND)
+      # Make dataset stat plot
+      stat_plot = Plotter(self, info=self.info)
+      stat_plot.initialize_figure(figsize=(0.1, 0.1))
+      self.dat_box_grid.Add(stat_plot, span=(4, 1), pos=(0, 0), flag=wx.EXPAND)
+      stat_plot.plot_table(data=data)
+      self.dat_box_grid.AddGrowableCol(0)
+      self.dat_box_grid.AddGrowableRow(3)
 
     # Add processing summary
     if hasattr(self.info, 'categories'):
@@ -1848,16 +1837,24 @@ class SummaryTab(d.ScrolledPanel):
       contents = []
       for k in ckeys:
         if self.info.categories[k][0]:
-          contents.append([str(len(self.info.categories[k][0]))])
+          contents.append(str(len(self.info.categories[k][0])))
           rlabels.append(self.info.categories[k][1])
-      cat_table = ct.TableCtrl(self, rlabels=rlabels, contents=contents)
+      proc_data = zip(rlabels, contents)
 
-      self.smr_box_grid.Add(cat_table, span=(len(rlabels), 1),
-                            pos=(0, 0), flag=wx.EXPAND)
+      # Make plot
+      proc_plot = Plotter(self, info=self.info)
+      proc_plot.initialize_figure(figsize=(0.1, 0.1))
+      self.smr_box_grid.Add(proc_plot, span=(4, 1), pos=(0, 0), flag=wx.EXPAND)
+      proc_plot.plot_table(data=proc_data)
+      self.smr_box_grid.AddGrowableCol(0)
+      self.smr_box_grid.AddGrowableRow(0)
 
     # Add clustering info
     if self.info.clusters:
       self.report_clustering_results(clusters=self.info.clusters)
+
+    self.SetupScrolling()
+    self.Layout()
 
   def initialize_standalone_plot(self, figsize=(8, 8)):
     self.plot_window = PlotWindow(self, -1, title='IOTA Plot')
@@ -1865,33 +1862,35 @@ class SummaryTab(d.ScrolledPanel):
     self.plot_window.plot_panel = self.plot
     self.plot.initialize_figure(figsize=figsize)
 
+  def show_plot(self):
+    self.plot_window.add_plot_to_window()
+    self.plot_window.place_and_size(set_by='parent', set_size=True,
+                                    position=(25, 25))
+    self.plot_window.Show()
+
   def onPlotHeatmap(self, e):
     if self.info.final_objects is not None:
       self.initialize_standalone_plot()
       self.plot.plot_spotfinding_heatmap()
-      self.plot_window.plot()
-      self.plot_window.Show()
+      self.show_plot()
 
   def onPlotBeamXY(self, e):
     if self.info.final_objects is not None:
       self.initialize_standalone_plot()
       self.plot.plot_beam_xy()
-      self.plot_window.plot()
-      self.plot_window.Show()
+      self.show_plot()
 
   def onPlotBeam3D(self, e):
     if self.info.final_objects is not None:
       self.initialize_standalone_plot()
       self.plot.plot_beam_xy(threeD=True)
-      self.plot_window.plot()
-      self.plot_window.Show()
+      self.show_plot()
 
   def onPlotResHist(self, e):
     if self.info.final_objects is not None:
       self.initialize_standalone_plot()
       self.plot.plot_res_histogram()
-      self.plot_window.plot()
-      self.plot_window.Show()
+      self.show_plot()
 
 
 class ProcWindow(IOTABaseFrame):
@@ -1996,7 +1995,6 @@ class ProcWindow(IOTABaseFrame):
     self.main_sizer.Add(self.proc_panel, 1, flag=wx.EXPAND | wx.ALL, border=3)
 
     # Processing status bar
-    self.sb = self.CreateStatusBar()
     self.sb.SetFieldsCount(2)
     self.sb.SetStatusWidths([-1, -2])
 
@@ -2057,16 +2055,25 @@ class ProcWindow(IOTABaseFrame):
                                 text='Analysis')
       self.proc_nb.SetSelection(2)
       self.plot_live_analysis(force_plot=True)
+      self.chart_tab.Show()   # Need to show when re-opening page (see below)
     else:
 
       # Stop chart timer
       if self.chart_timer.IsRunning():
         self.chart_timer.Stop()
 
-      # Remove Analysis tab (DeletePage deletes the contents, RemovePage
-      # removes the actual tab! At least it's so in MacOS Mojave)
-      self.proc_nb.DeletePage(2)
+      # Move selection to different page
+      if self.proc_nb.GetSelection() == 2:
+        self.proc_nb.SetSelection(1)
+
+      # Remove Analysis tab; since removal of the tab doesn't hide the
+      # contents, have to do that first. Cannot use .DeletePage() because I
+      # then will have to re-create the entire chart_tab.
+      self.chart_tab.Hide()
       self.proc_nb.RemovePage(2)
+
+    self.proc_nb.Refresh()
+
 
   def onMonitor(self, e):
     if self.toolbar.GetToolState(self.tb_btn_monitor.GetId()):

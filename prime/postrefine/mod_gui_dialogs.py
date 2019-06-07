@@ -1,11 +1,10 @@
-from __future__ import absolute_import, division, print_function
-from six.moves import range
-from six.moves import map
+from __future__ import division, print_function, absolute_import
+from past.builtins import range
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 10/21/2018
+Last Changed: 06/07/2019
 Description : PRIME GUI dialogs module
 '''
 
@@ -313,7 +312,7 @@ class PRIMEAdvancedOptions(PRIMEBaseBackendDialog):
 
     self.sg.spacegroup.SetValue(str(self.pparams.target_space_group))
     if str(self.pparams.target_unit_cell).lower() != 'none':
-      uc = ' '.join(map(str, self.pparams.target_unit_cell.parameters()))
+      uc = ' '.join(list(map(str, self.pparams.target_unit_cell.parameters())))
       self.uc.unit_cell.SetValue(uc)
     else:
       self.uc.unit_cell.SetValue(str(self.pparams.target_unit_cell))

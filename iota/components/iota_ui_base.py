@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 11/15/2018
-Last Changed: 01/30/2019
+Last Changed: 06/07/2019
 Description : IOTA GUI base classes (with backwards compatibility for
               wxPython 3)
 '''
@@ -59,6 +59,44 @@ class IOTABaseFrame(wx.Frame):
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.main_sizer)
+
+    # Status bar
+    self.sb = self.CreateStatusBar()
+    self.sb.SetFieldsCount(3)
+    self.sb.SetStatusWidths([320, 200, -2])
+
+    # Menu bar
+    menubar = wx.MenuBar()
+
+    m_help = wx.Menu()
+    m_file = wx.Menu()
+    self.mb_load_script = m_file.Append(wx.ID_OPEN, '&Load Script...')
+    self.mb_save_script = m_file.Append(wx.ID_SAVE, '&Save Script...')
+    m_file.AppendSeparator()
+    self.mb_reset = m_file.Append(wx.ID_ANY, '&Reset Settings')
+    self.mb_about = m_help.Append(wx.ID_ANY, '&About')
+    menubar.Append(m_file, '&File')
+    menubar.Append(m_help, '&Help')
+
+    self.SetMenuBar(menubar)
+
+    # Menubar button bindings
+    self.Bind(wx.EVT_MENU, self.OnAboutBox, self.mb_about)
+    self.Bind(wx.EVT_MENU, self.onOutputScript, self.mb_save_script)
+    self.Bind(wx.EVT_MENU, self.onLoadScript, self.mb_load_script)
+    self.Bind(wx.EVT_MENU, self.onReset, self.mb_reset)
+
+  def OnAboutBox(self, e):
+    e.Skip()
+
+  def onOutputScript(self, e):
+    e.Skip()
+
+  def onLoadScript(self, e):
+    e.Skip()
+
+  def onReset(self, e):
+    e.Skip()
 
   def initialize_toolbar(self):
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS | wx.TB_TEXT)
@@ -116,14 +154,9 @@ class IOTABaseFrame(wx.Frame):
     if toggle is not None:
       self.toolbar.ToggleTool(id, toggle)
 
-
-  def place_and_size(self, set_size=False, set_by=None, center=False):
+  def place_and_size(self, set_size=None, set_by=None, center=False,
+                     position=None):
     """ Place and size the frame"""
-
-    # Determine effective minimum size
-    if set_size:
-      self.SetMinSize(self.GetEffectiveMinSize())
-
     # Find mouse position
     if set_by == 'mouse':
       self.SetPosition(wx.GetMousePosition())
@@ -132,9 +165,39 @@ class IOTABaseFrame(wx.Frame):
     else:
       self.SetPosition((0, 0))
 
+    # Determine effective minimum size
+    if set_size is True:
+      self.SetSize(self.GetEffectiveMinSize())
+    elif type(set_size).__name__ in ('list', 'tuple'):
+      assert len(set_size) == 2
+      self.SetSize(wx.Size(set_size[0], set_size[1]))
+    elif type(set_size).__name__ == 'Size':
+      self.SetSize(set_size)
+    elif type(set_size).__name__ == 'str':
+      disp_geom = self.get_display()
+      if set_size.lower() == 'figure':
+        # Initial figure should be square, with side = 2/3 of display height
+        win_w = win_h = disp_geom[3] * 2/3
+      else:
+        # Default is 1/2 of display height, 1/3 of display width
+        win_w = disp_geom[2] / 3
+        win_h = disp_geom[3] / 2
+      self.SetSize(wx.Size(win_w, win_h))
+
     # Center on display
-    if center:
-      self.Center()
+    if position:
+      disp_geom = self.get_display()
+      x = disp_geom[0] + position[0]
+      y = disp_geom[1] + position[1]
+      self.SetPosition((x, y))
+    else:
+      if center:
+        self.Center()
+
+  def get_display(self):
+    disp_idx = wx.Display.GetFromWindow(self.parent)
+    disp_geom = wx.Display(disp_idx).GetClientArea()
+    return disp_geom
 
   def set_relative_position(self):
     """ Determines screen position w/ respect to parent window; will also
@@ -146,8 +209,7 @@ class IOTABaseFrame(wx.Frame):
     py = my + 50
 
     # Calculate if proc window is going out of bounds, and adjust
-    disp_idx = wx.Display.GetFromWindow(self.parent)
-    disp_geom = wx.Display(disp_idx).GetClientArea()
+    disp_geom = self.get_display()
     dxmin = disp_geom[0]
     dxmax = disp_geom[0] + disp_geom[2]
     dymin = disp_geom[1]
@@ -163,11 +225,15 @@ class IOTABaseFrame(wx.Frame):
 
 
 class IOTABasePanel(wx.Panel):
-  def __init__(self, parent, *args, **kwargs):
-    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=(800, 500),
+  def __init__(self, parent, box=None, *args, **kwargs):
+    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY,
                       *args, **kwargs)
-
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+    if box:
+      assert type(box) == str
+      panel_box = wx.StaticBox(self, label=box)
+      self.main_sizer = wx.StaticBoxSizer(panel_box, wx.VERTICAL)
+    else:
+      self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.main_sizer)
 
 class BaseDialog(wx.Dialog):

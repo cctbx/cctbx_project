@@ -1,14 +1,25 @@
-PRIME GUI bugfixes
+IOTA v1.3.009 - plotter updates
 
-1. Fixed canvas redraw for main chart tab
-2. Fixed PRIME window size when launching from IOTA summary tab
+IOTA Plotter
 
-IOTA GUI bugfixes and tweaks
+    1. Added a generic table figure, which takes table data in a list-of-lists
+       format and creates a table as a MatPlotLib figure
+       - This is to display text with special characters on all platforms
+       - Only unicode works for sure; LaTeX has not been tested or debugged
 
-1. In log search: pressing ENTER searches in the forward direction
-2. Can now select run in recovery dialog by double-clicking or pressing ENTER
-3. Graceful handling of clicking OK without selecting a run to recover
-4. Reduced font size for GTK GUI elements
+    2. Streamlined Plotter panel to be more generic
+    3. Added more customization to plot draw and layout methods
+    4. Added more sizing and position customization to the base IOTA frame
+
+PRIME Plotter
+
+    1. Subclassed from IOTA plotter, and streamlined
+    2. Separate outputs of Table 1 as text and Table 1 as MatPlotLib figure
+
+Known issues
+
+    1. PRIME doesn't launch in a wxPython4 environment
+    2. PRIME doesn't exit cleanly on Mac OS X (okay in Linux)
 
 ___________
-05.28.2019
+05.30.2019

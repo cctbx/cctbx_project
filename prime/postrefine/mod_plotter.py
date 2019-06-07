@@ -1,9 +1,10 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import division, unicode_literals, print_function,\
+  absolute_import
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/25/2016
-Last Changed: 01/30/2019
+Last Changed: 06/07/2019
 Description : PRIME Result Plotter module
 '''
 
@@ -11,11 +12,10 @@ import wx
 import os
 import numpy as np
 
-from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-from matplotlib.figure import Figure
 from matplotlib import gridspec, rc
 
-from iota.components.iota_ui_base import IOTABaseFrame, IOTABasePanel
+from iota.components.iota_ui_base import IOTABaseFrame
+from iota.components.iota_plotter import Plotter as IOTAPlotter
 
 
 class PlotWindow(IOTABaseFrame):
@@ -60,31 +60,48 @@ class PlotWindow(IOTABaseFrame):
     self.Close()
 
 
-class Plotter(IOTABasePanel):
+class Plotter(IOTAPlotter):
   ''' Class with function to plot various PRIME charts (includes Table 1) '''
 
   def __init__(self, parent, info, output_dir=None, anomalous_flag=False,
                *args, **kwargs):
-    IOTABasePanel.__init__(self, parent=parent, *args, **kwargs)
+    super(Plotter, self).__init__(parent=parent, info=info, *args, **kwargs)
     self.target_anomalous_flag = anomalous_flag
-    self.info = info
     self.output_dir = output_dir
 
-  def initialize_figure(self, figsize=(8, 8)):
-    self.figure = Figure(figsize=figsize)
-    self.canvas = FigureCanvas(self, -1, self.figure)
-    self.main_sizer.Add(self.canvas, 1, flag=wx.EXPAND)
-
-  def table_one(self):
+  def table_one(self, as_tex=False):
     ''' Constructs Table 1 for GUI or logging '''
 
-    A = '\N{ANGSTROM SIGN}'
-    d = '\N{DEGREE SIGN}'
-    a = '\N{GREEK SMALL LETTER ALPHA}'
-    b = '\N{GREEK SMALL LETTER BETA}'
-    g = '\N{GREEK SMALL LETTER GAMMA}'
-    s = '\N{GREEK SMALL LETTER SIGMA}'
-    h = '\u00BD'
+    if as_tex:
+      A = r'$\AA$'
+      d = r'$\circ$'
+      a = r'$\alpha$'
+      b = r'$\beta$'
+      g = r'$\gamma$'
+      s = r'$\sigma$'
+      h = r'$\frac{1}{2}$'
+      rm = r'$\_merge$'
+    else:
+      A = '\N{ANGSTROM SIGN}'
+      d = '\N{DEGREE SIGN}'
+      a = '\N{GREEK SMALL LETTER ALPHA}'
+      b = '\N{GREEK SMALL LETTER BETA}'
+      g = '\N{GREEK SMALL LETTER GAMMA}'
+      s = '\N{GREEK SMALL LETTER SIGMA}'
+      h = '\u00BD'
+      rm = '_merge'
+    t1_rlabels = ['No. of accepted images',
+                  'No. of rejected images',
+                  'Space Group',
+                  'Cell dimensions',
+                  '  a, b, c ({})  '.format(A),
+                  '  {}, {}, {} ({})    '.format(a, b, g, d),
+                  'Resolution ({})  '.format(A),
+                  'Completeness (%)',
+                  'Multiplicity',
+                  'I / {}(I) '.format(s),
+                  'CC{} '.format(h),
+                  'R{}'.format(rm)]
 
     uc_edges = '{:4.2f}, {:4.2f}, {:4.2f}'.format(self.info['mean_a'][-1],
                                                   self.info['mean_b'][-1],
@@ -97,19 +114,6 @@ class Plotter(IOTABasePanel):
     res_last_shell = '{:4.2f} - {:4.2f}' \
                      ''.format(self.info['binned_resolution'][-1][-2],
                                self.info['binned_resolution'][-1][-1])
-    t1_rlabels = ['No. of accepted images',
-                  'No. of rejected images',
-                  'Space Group',
-                  'Cell dimensions',
-                  '  a, b, c ({})  '.format(A),
-                  '  {}, {}, {} ({})    '.format(a, b, g, d),
-                  'Resolution ({})  '.format(A),
-                  'Completeness (%)',
-                  'Multiplicity',
-                  'I / {}(I) '.format(s),
-                 'CC{} '.format(h),
-                  'R_merge']
-
 
     n_frames_bad = self.info['n_frames_bad_cc'][-1]      + \
                    self.info['n_frames_bad_G'][-1]       + \
@@ -137,6 +141,22 @@ class Plotter(IOTABasePanel):
 
     return t1_rlabels, t1_data
 
+  def flatten_table_one_data(self, as_tex=False):
+    rlabels, tb1_data = self.table_one(as_tex=as_tex)
+
+    # Flatten data list of lists (works this once, since each sub-list
+    # contains a single item)
+    tb1_data = zip(*tb1_data)[0]
+    data = zip(rlabels, tb1_data)
+    return data
+
+  def table_one_text(self):
+    data = self.flatten_table_one_data()
+    return self.plot_table_text(data=data)
+
+  def table_one_figure(self):
+    data = self.flatten_table_one_data()
+    self.plot_table(data=data)
 
   def stat_charts(self):
     ''' Displays charts of CC1/2, Completeness, Multiplicity and I / sig(I)
@@ -224,3 +244,4 @@ class Plotter(IOTABasePanel):
                           fontsize=9, fancybox=True)
 
     self.figure.set_tight_layout(True)
+    self.draw()
