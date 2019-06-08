@@ -36,6 +36,8 @@ def make_atom_id(atom, index):
     id_str = atom.id_str().replace("pdb=",""),
     index  = index,
     name   = atom.name,
+    b      = atom.b,
+    occ    = atom.occ,
     chain  = atom.parent().parent().parent().id,
     resseq = atom.parent().parent().resseq,
     altloc = atom.parent().altloc)
