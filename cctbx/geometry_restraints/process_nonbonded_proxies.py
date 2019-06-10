@@ -578,6 +578,7 @@ class manager():
     """
     xyzs1 = atom1.parent().parent().atoms().extract_xyz()
     xyzs2 = atom2.parent().parent().atoms().extract_xyz()
+
     rg1 = atom1.parent().parent().detached_copy()
     rg2 = atom2.parent().parent().detached_copy()
     if symop_str:
@@ -590,7 +591,8 @@ class manager():
       xyzs2 = unit_cell.orthogonalize(m3.elems*xyzs2+t)
       rg2.atoms().set_xyz(xyzs2)
       for atom in rg2.atoms():
-        if atom.name==atom2.name:
+        #if atom.name==atom2.name:
+        if atom.name==atom2.name and atom.parent().altloc == atom2.parent().altloc:
           atom2=atom
           break
     return rg1, rg2, atom1, atom2
