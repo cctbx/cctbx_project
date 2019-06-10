@@ -4,15 +4,11 @@ try:
 except ImportError:
   from libtbx.program_template import ProgramTemplate
 import libtbx.load_env
-#import mmtbx.model
-#import iotbx.pdb
+#import time
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
-#import mmtbx.validation.clashscore as mvc
-#from libtbx.utils import null_out
 from elbow.command_line.ready_set import model_interface as ready_set_model_interface
 
-#import time
 
 master_phil_str = """
 
@@ -87,7 +83,6 @@ Example:
     # substitute_non_crystallographic_unit_cell_if_necessary --> not necessary
 
     # add H atoms with readyset
-
     if self.params.add_hydrogen:
       params=["add_h_to_water=False",
               "optimise_final_geometry_of_hydrogens=False"]
@@ -134,4 +129,3 @@ Example:
 
     #print("OLD time: %8.3f"%(t1-t0))
     #print("NEW time: %8.3f"%(t3-t2))
-
