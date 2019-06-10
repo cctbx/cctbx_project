@@ -11,7 +11,7 @@ from libtbx.program_template import ProgramTemplate
 class Program(ProgramTemplate):
 
   description = '''
-Program for preparing model and data files for depostion into the Proten
+Program for preparing model and data files for depostion into the Protein
 Data Bank.
 
 Minimum required data:
@@ -61,6 +61,16 @@ output {
   suffix = '.deposit'
     .type = str
     .help = Suffix string added to automatically generated output filenames
+}
+
+# PHIL parameters for current GUI
+include scope libtbx.phil.interface.tracking_params
+gui
+  .help = "GUI-specific parameter required for output directory"
+{
+  output_dir = None
+  .type = path
+  .style = output_dir
 }
 '''
   # ---------------------------------------------------------------------------
@@ -126,10 +136,10 @@ output {
     model._sequence_validation.show(out=self.logger)
     print(file=self.logger)
 
-    # write output file
+    # write output file to current directory
     if self.params.output.prefix is None:
-      self.params.output.prefix = os.path.splitext(
-        self.data_manager.get_default_model_name())[0]
+      self.params.output.prefix = os.path.split(os.path.splitext(
+        self.data_manager.get_default_model_name())[0])[1]
     self.data_manager.set_default_output_filename(
       self.get_default_output_filename())
     self.output_file = self.data_manager.get_default_output_model_filename()
