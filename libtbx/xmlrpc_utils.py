@@ -95,16 +95,18 @@ class ServerProxy(object):
     # establish a "logical" server connection
 
     # get the url
-    from six.moves import urllib
-    type, uri = urllib.parse.splittype(uri)
-    if type not in ("http", "https"):
+    from six.moves.urllib.parse import urlparse
+    parsed_url = urlparse(uri)
+    scheme = parsed_url.scheme
+    self.__host = parsed_url.netloc
+    self.__handler = parsed_url.path
+    if scheme not in ("http", "https"):
       raise IOError("unsupported XML-RPC protocol")
-    self.__host, self.__handler = urllib.parse.splithost(uri)
     if not self.__handler:
       self.__handler = "/RPC2"
 
     if transport is None:
-      if type == "https":
+      if scheme == "https":
         transport = xmlrpclib.SafeTransport(use_datetime=use_datetime)
       else:
         transport = TimeoutTransport(timeout=timeout,
