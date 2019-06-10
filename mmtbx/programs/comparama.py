@@ -3,6 +3,8 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx.program_template import ProgramTemplate
 
+from scitbx.array_family import flex
+
 from mmtbx.validation import comparama
 from mmtbx.validation.ramalyze import res_type_labels
 
@@ -126,6 +128,16 @@ Usage examples:
     if self.params.output.counts:
       for k, v in six.iteritems(nr.counts):
         print("%-20s: %d" % (k,v), file=self.logger)
+
+    # Pavel's numbers
+    s1, s2 = self.rama_comp.get_results_as_vec3()
+    pnumber = flex.mean(flex.sqrt((s1-s2).dot()))
+    # compare these with log output:
+    #  A   2  ASN 25.13, (-60.6:141.2), (-78.7:158.6), Favored, Score: 0.5693 -> 0.2831
+    #                      phi1  psi1     phi2  psi2
+    # print (list(s1))
+    # print (list(s2))
+    print ("Pavel's test number: %.4f" % pnumber)
 
     name1 = os.path.basename(self.data_manager.get_model_names()[0]).split('.')[0]
     name2 = os.path.basename(self.data_manager.get_model_names()[1]).split('.')[0]

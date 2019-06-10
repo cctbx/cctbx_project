@@ -8,6 +8,7 @@ from mmtbx.validation.ramalyze import ramalyze, find_region_max_value
 import math
 import numpy as np
 from collections import Counter
+from scitbx.array_family import flex
 import six
 from six.moves import zip
 
@@ -144,6 +145,15 @@ class rcompare(object):
 
   def get_results(self):
     return self.results
+
+  def get_results_as_vec3(self):
+    r1 = flex.vec3_double()
+    r2 = flex.vec3_double()
+    assert len(self.results) > 0
+    for r in self.results:
+      r1.append((r[2], r[3], 0))
+      r2.append((r[4], r[5], 0))
+    return r1, r2
 
   def get_ramalyze_objects(self):
     return self.rama1, self.rama2
