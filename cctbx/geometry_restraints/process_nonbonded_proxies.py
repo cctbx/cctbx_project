@@ -416,7 +416,10 @@ class manager():
     site_labels = xrs.scatterers().extract_labels()
     self.hd_sel      = self.model.get_hd_selection()
     self.water_sel   = self.model.selection('water')
-    unit_cell   = self.model.crystal_symmetry().unit_cell()
+    if self.model.crystal_symmetry() is not None:
+      unit_cell   = self.model.crystal_symmetry().unit_cell()
+    else:
+      unit_cell = None
     self.atoms  = self.model.get_atoms()
 
     pair_proxies = grm.pair_proxies(
@@ -581,7 +584,7 @@ class manager():
 
     rg1 = atom1.parent().parent().detached_copy()
     rg2 = atom2.parent().parent().detached_copy()
-    if symop_str:
+    if symop_str and unit_cell:
       rt_mx_ji = sgtbx.rt_mx(str(symop))
       xyzs2 = unit_cell.fractionalize(xyzs2)
       m3 = rt_mx_ji.r().as_double()
