@@ -263,7 +263,7 @@ class Script(object):
 
           # stitch together the header, data and metadata into the final dxtbx format object
           if params.format.cbf.mode == "cspad":
-            image = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, params.input.address)
+            image = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, params.input.address, round_to_int=False)
           elif params.format.cbf.mode == "rayonix":
             image = rayonix_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, params.input.address)
           path = os.path.join(params.output.output_dir, "shot-" + s + ".cbf")

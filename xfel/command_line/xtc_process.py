@@ -1050,7 +1050,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       if self.params.format.file_format == 'cbf':
         # stitch together the header, data and metadata into the final dxtbx format object
         if self.params.format.cbf.mode == "cspad":
-          dxtbx_img = cspad_cbf_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
+          dxtbx_img = cspad_cbf_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address, round_to_int=False)
         elif self.params.format.cbf.mode == "rayonix":
           dxtbx_img = rayonix_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
 
