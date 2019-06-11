@@ -207,14 +207,14 @@ overwrite = False
     self._default_output_filename = 'cctbx_program'
     self._overwrite = False
 
-    # load information from phil
-    if (phil is not None):
-      self.load_phil_scope(phil)
-
     # logger (currently used for models)
     self.logger = logger
     if (self.logger is None):
       self.logger = multi_out()
+
+    # load information from phil
+    if (phil is not None):
+      self.load_phil_scope(phil)
 
   # ---------------------------------------------------------------------------
   def export_phil_scope(self):
