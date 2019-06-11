@@ -58,7 +58,7 @@ class initialize(initialize_base):
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
-      column_names = zip(*columns)[0]
+      column_names = list(zip(*columns))[0]
       if 'two_theta_low' not in column_names and 'two_theta_high' not in column_names:
         query = """
           ALTER TABLE %s_event
@@ -76,7 +76,7 @@ class initialize(initialize_base):
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
-      column_names = zip(*columns)[0]
+      column_names = list(zip(*columns))[0]
       if 'submission_id' not in column_names:
         query = """
           ALTER TABLE %s_job
@@ -89,7 +89,7 @@ class initialize(initialize_base):
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
-      column_names = zip(*columns)[0]
+      column_names = list(zip(*columns))[0]
       for needed_column, column_format in zip(['format', 'two_theta_low', 'two_theta_high'],
                                               ["VARCHAR(45) NOT NULL DEFAULT 'pickle'",
                                                "DOUBLE NULL", "DOUBLE NULL"]):
@@ -105,7 +105,7 @@ class initialize(initialize_base):
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
-      column_names = zip(*columns)[0]
+      column_names = list(zip(*columns))[0]
       if 'd_min' not in column_names:
         query = """
           ALTER TABLE `%s_trial`
@@ -116,7 +116,7 @@ class initialize(initialize_base):
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
-      column_names = zip(*columns)[0]
+      column_names = list(zip(*columns))[0]
       if 'trial_id' not in column_names:
         query = """
           ALTER TABLE `%s_cell`
@@ -163,7 +163,7 @@ class initialize(initialize_base):
             # This run is 'open', so get the last run available and update the open bit for the rungroup
             query = 'SELECT run FROM `%s_run`'%self.params.experiment_tag
             cursor.execute(query)
-            endrun = max(zip(*cursor.fetchall())[0])
+            endrun = max(list(zip(*cursor.fetchall()))[0])
             query = 'UPDATE `%s_rungroup` set open = 1 where id = %d'%(self.params.experiment_tag, rungroup_id)
             cursor.execute(query)
           # Add all thr runs to the rungroup
