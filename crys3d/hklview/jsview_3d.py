@@ -11,6 +11,7 @@ import threading, math, sys
 from time import sleep
 import os.path, time, copy
 import libtbx
+from libtbx import easy_mp
 import webbrowser, tempfile
 
 
@@ -57,6 +58,62 @@ class ArrayInfo:
     self.infostr = "%s (%s), %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d" %self.infotpl
 
 
+
+
+def MakeHKLscene( proc_array, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
+  scenemaxdata =[]
+  scenemindata =[]
+  scenemaxsigmas = []
+  sceneminsigmas = []
+  scenearrayinfos = []
+  hklscenes = []
+  fomsarrays = [None]
+
+  if proc_array.is_complex_array():
+    fomsarrays.extend( mapcoef_fom_dict.get(proc_array.info().label_string()) )
+
+  #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+  settings = setts
+  if (settings.expand_anomalous or settings.expand_to_p1) \
+      and not proc_array.is_unique_set_under_symmetry() and not merge:
+    #settings = copy.deepcopy(settings)
+    settings.expand_anomalous = False
+    settings.expand_to_p1 = False
+    mprint("The " + proc_array.info().label_string() + \
+         " array is not symmetry unique and therefore won't be expanded")
+  for fomsarray in fomsarrays:
+    hklscene = display.scene(miller_array=proc_array, merge=merge,
+      settings=settings, foms_array=fomsarray, fullprocessarray=True )
+    if not hklscene.SceneCreated:
+      mprint("The " + proc_array.info().label_string() + " array was not processed")
+      #return False
+      continue
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    # cast any NAN values to 1 of the colours and radii to 0.2 before writing javascript
+    if hklscene.SceneCreated:
+      hklscenes.append( hklscene)
+      b = flex.bool([bool(math.isnan(e[0]) + math.isnan(e[1]) + math.isnan(e[2])) for e in hklscene.colors])
+      hklscene.colors = hklscene.colors.set_selected(b, (1.0, 1.0, 1.0))
+      b = flex.bool([bool(math.isnan(e)) for e in hklscene.radii])
+      hklscene.radii = hklscene.radii.set_selected(b, 0.2)
+      fomslabel = None
+      if fomsarray:
+        fomslabel = fomsarray.info().label_string()
+      ainf = ArrayInfo(hklscene.work_array, fomlabel=fomslabel)
+      infostr = ainf.infostr
+      scenemaxdata.append( ainf.maxdata )
+      scenemindata.append( ainf.mindata )
+      scenemaxsigmas.append(ainf.maxsigmas)
+      sceneminsigmas.append(ainf.minsigmas)
+      scenearrayinfos.append(infostr)
+      #self.mprint("%d, %s" %(i, infostr) )
+      #i +=1
+  return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
+
+
+
+
+
 class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
@@ -74,6 +131,7 @@ class hklview_3d:
     self.iradiicol = None
     self.iarray = None
     self.isnewfile = False
+    self.colstraliases = ""
     self.binvals = []
     self.workingbinvals = []
     self.proc_arrays = []
@@ -97,6 +155,7 @@ class hklview_3d:
     self.nbin = 0
     self.websockclient = None
     self.lastmsg = ""
+    self.msgqueuethrd = None
     self.StartWebsocket()
     tempdir = tempfile.gettempdir()
     self.hklfname = os.path.join(tempdir, "hkl.htm" )
@@ -155,7 +214,8 @@ class hklview_3d:
       or hasattr(diffphil, "column") \
       or hasattr(diffphil, "fom_column") \
       or hasattr(diffphil, "viewer") \
-      and ( hasattr(diffphil.viewer, "show_data_over_sigma") \
+      and ( \
+       hasattr(diffphil.viewer, "show_data_over_sigma") \
       or hasattr(diffphil.viewer, "show_missing") \
       or hasattr(diffphil.viewer, "show_only_missing") \
       or hasattr(diffphil.viewer, "show_systematic_absences") \
@@ -210,11 +270,20 @@ class hklview_3d:
       spbufttip += '\' + AA + \''
       self.tooltipstringsdict[hkl] = spbufttip
     """
+    j = 0
+    self.colstraliases = "\n  var hk = \'H,K,L: \'"
+    for hklscene in HKLscenes: # reduce javascript file size with variables for common strings
+      if hklscene.isUsingFOMs():
+        continue # already have tooltips for the scene without the associated fom
+      self.colstraliases += "\n  var st%d = '\\n%s: '" %(j, hklscene.work_array.info().label_string() )
+      j += 1
+    self.colstraliases += "\n"
     tooltipstringsdict = {}
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    j = 0
     for hklscene in HKLscenes:
       if hklscene.isUsingFOMs():
-        continue # already have tooltips for the column without the fom
+        continue # already have tooltips for the scene without the associated fom
       ocolstr = hklscene.work_array.info().label_string()
       if hklscene.work_array.is_complex_array():
         ampl = flex.abs(hklscene.data)
@@ -229,21 +298,21 @@ class hklview_3d:
       for i,datval in enumerate(hklscene.data):
         od =""
         if hklscene.work_array.is_complex_array():
-          od = str(roundoff(ampl[i])) + ", " + str(roundoff(phases[i])  ) + \
-            "\' + DGR + \'"
+          od = str(roundoff(ampl[i], 2)) + ", " + str(roundoff(phases[i], 1)) + \
+            "\'+DGR+\'"
         elif sigmas is not None:
-          od = str(roundoff(datval) ) + ", " + str(roundoff(sigmas[i]))
+          od = str(roundoff(datval, 2)) + ", " + str(roundoff(sigmas[i], 2))
         else:
-          od = str(roundoff(datval) )
+          od = str(roundoff(datval, 2))
         if not (math.isnan( abs(datval) ) or datval == display.inanval):
-          #self.tooltipstrings[i] += "\n%s: %s" %(ocolstr, od)
           hkl = hklscene.indices[i]
           if not tooltipstringsdict.has_key(hkl):
-            spbufttip = 'H,K,L: %s, %s, %s' %(hkl[0], hkl[1], hkl[2])
-            spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i])  )
-            spbufttip += '\' + AA + \''
+            spbufttip = '\'+hk+\'%s, %s, %s' %(hkl[0], hkl[1], hkl[2])
+            spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i], 2) )
+            spbufttip += '\'+AA+\''
             tooltipstringsdict[hkl] = spbufttip
-          tooltipstringsdict[hkl] += "\n%s: %s" %(ocolstr, od)
+          tooltipstringsdict[hkl] += '\'+st%d+\'%s' %(j, od)
+      j +=1
     return tooltipstringsdict
 
 
@@ -294,54 +363,47 @@ class hklview_3d:
     #for i,match_valarray in enumerate(self.match_valarrays):
     i = 0
 
-    for proc_array in self.proc_arrays:
-      fomsarrays = [None]
-      if proc_array.is_complex_array():
-        fomsarrays.extend( self.mapcoef_fom_dict.get(proc_array.info().label_string()) )
+    # arguments tuple for multi_core_run
+    argstuples = [ (e.deep_copy(), copy.deepcopy(self.settings), self.mapcoef_fom_dict, merge, self.mprint) \
+                     for e in self.proc_arrays]
 
-      if i==self.iradiicol or i==self.icolourcol or i==self.iarray:
-        bfullprocess = True
-      else:
-        bfullprocess = False
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      settings = self.settings
-      if (self.settings.expand_anomalous or self.settings.expand_to_p1) \
-          and not proc_array.is_unique_set_under_symmetry() and not merge:
-        settings = copy.deepcopy(self.settings)
-        settings.expand_anomalous = False
-        settings.expand_to_p1 = False
-        self.mprint("The " + proc_array.info().label_string() + \
-             " array is not symmetry unique and therefore won't be expanded")
-      for fomsarray in fomsarrays:
-        otherscene = display.scene(miller_array=proc_array, merge=merge,
-          settings=settings, foms_array=fomsarray, fullprocessarray=True )
-        if not otherscene.SceneCreated:
-          self.mprint("The " + proc_array.info().label_string() + " array was not processed")
-          #return False
-          continue
-        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-        # cast any NAN values to 1 of the colours and radii to 0.2 before writing javascript
-        if otherscene.SceneCreated:
-          b = flex.bool([bool(math.isnan(e[0]) + math.isnan(e[1]) + math.isnan(e[2])) for e in otherscene.colors])
-          otherscene.colors = otherscene.colors.set_selected(b, (1.0, 1.0, 1.0))
-          b = flex.bool([bool(math.isnan(e)) for e in otherscene.radii])
-          otherscene.radii = otherscene.radii.set_selected(b, 0.2)
-          HKLscenes.append( otherscene)
-          fomslabel = None
-          if fomsarray:
-            fomslabel = fomsarray.info().label_string()
-          ainf = ArrayInfo(otherscene.work_array, self.mprint, fomslabel)
-          othermaxdata.append( ainf.maxdata )
-          othermindata.append( ainf.mindata )
-          othermaxsigmas.append(ainf.maxsigmas)
-          otherminsigmas.append(ainf.minsigmas)
-          infostr = ainf.infostr
-          self.mprint("%d, %s" %(i, infostr) )
-          matchingarrayinfo.append(infostr)
-          i +=1
+    """
+    for (i, (args, res, errstr)) in enumerate( easy_mp.multi_core_run( MakeHKLscene, argstuples, 8)):
+      if errstr:
+        self.mprint(errstr)
+      (hkl_scenes, scenemaxdata,
+        scenemindata, scenemaxsigmas,
+        sceneminsigmas, scenearrayinfos
+      ) = res
+      othermaxdata.extend(scenemaxdata)
+      othermindata.extend(scenemindata)
+      othermaxsigmas.extend(scenemaxsigmas)
+      otherminsigmas.extend(sceneminsigmas)
+      matchingarrayinfo.extend(scenearrayinfos)
+      HKLscenes.extend(hkl_scenes)
+      for inf in scenearrayinfos:
+        self.mprint("%d, %s" %(i, inf) )
+        i += 1
+
+    """
+    for j,proc_array in enumerate(self.proc_arrays):
+      (hklscenes, scenemaxdata,
+        scenemindata, scenemaxsigmas,
+         sceneminsigmas, scenearrayinfos
+         ) = MakeHKLscene(argstuples[j][0], argstuples[j][1], argstuples[j][2], argstuples[j][3] , argstuples[j][4] )
+         #) = MakeHKLscene(proc_array, copy.deepcopy(self.settings), self.mapcoef_fom_dict, merge)
+
+      othermaxdata.extend(scenemaxdata)
+      othermindata.extend(scenemindata)
+      othermaxsigmas.extend(scenemaxsigmas)
+      otherminsigmas.extend(sceneminsigmas)
+      matchingarrayinfo.extend(scenearrayinfos)
+      HKLscenes.extend(hklscenes)
+      #for inf in scenearrayinfos:
+      #  self.mprint("%d, %s" %(i, inf) )
+      #  i += 1
 
     tooltipstringsdict = self.MakeToolTips(HKLscenes)
-
     self.HKLscenesdict[self.HKLscenesKey] = (
                 HKLscenes,
                 tooltipstringsdict,
@@ -363,6 +425,9 @@ class hklview_3d:
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.sceneisdirty = False
+    for j,inf in enumerate(matchingarrayinfo):
+      self.mprint("%d, %s" %(j, inf) )
+
     return True
 
 
@@ -535,7 +600,7 @@ class hklview_3d:
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
       ibin = data2bin( bindata[i] )
-      positions[ibin].extend( roundoff(list(hklstars)) )
+      positions[ibin].extend( roundoff(list(hklstars), 2) )
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )
       #spbufttips[ibin].append(self.tooltipstrings[i] )
@@ -548,7 +613,7 @@ class hklview_3d:
   radii = new Array(%d)
   spherebufs = new Array(%d)
     """ %(self.nbin, self.nbin, self.nbin, self.nbin, self.nbin)
-
+    spherebufferstr += self.colstraliases
     negativeradiistr = ""
     cntbin = 0
     self.binstrs = []
@@ -565,6 +630,8 @@ class hklview_3d:
                 colstr, bin1, bin2)
         self.binstrs.append(mstr)
         self.mprint(mstr, verbose=True)
+        uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
+        uncrustttips = uncrustttips.replace("\'\'+", "")
         spherebufferstr += """
   // %s
   ttips[%d] = %s
@@ -577,10 +644,13 @@ class hklview_3d:
     radius: radii[%d],
     picking: ttips[%d],
   })
+  //}, { disableImpostor: true // to enable changing sphereDetail
+  //, sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
   //}, { disableImpostor: true }) // if true allows wireframe spheres but does not allow resizing spheres
 
   shape.addBuffer(spherebufs[%d])
-      """ %(mstr, cntbin, str(spbufttips[ibin]).replace('\"', '\''), \
+      """ %(mstr, cntbin, uncrustttips, \
+      #""" %(mstr, cntbin, str(spbufttips[ibin]).replace('\"', '\''), \
          cntbin, str(positions[ibin]), cntbin, str(colours[ibin]), \
          cntbin, str(radii2[ibin]), cntbin, cntbin, cntbin, cntbin, cntbin, cntbin )
 
@@ -639,7 +709,8 @@ class hklview_3d:
       for j,val in enumerate(self.colourgradientvalues):
         vstr = ""
         alpha = 1.0
-        gradval = "rgba(%s, %s, %s, %s)" %(val[1][0], val[1][1], val[1][2], alpha)
+        rgb = roundoff(val[1], 1)
+        gradval = "rgba(%s, %s, %s, %s)" %(rgb[0], rgb[1], rgb[2], alpha)
         if j%10 == 0 or j==len(self.colourgradientvalues)-1 :
           vstr = str( roundoff(val[0], 2) )
         colourgradstr.append([vstr , gradval])
@@ -932,11 +1003,18 @@ mysocket.onmessage = function (e) {
 
 
   def WebBrowserMsgQueue(self):
-    while True:
-        sleep(1)
+    try:
+      while True:
+        sleep(0.5)
         if hasattr(self, "pendingmessage") and self.pendingmessage:
           self.SendWebSockMsg(self.pendingmessage)
           self.pendingmessage = None
+# if the html content is huge the browser will be unresponsive until it has finished
+# reading the html content. This may crash this thread. So try restarting this thread until
+# browser is ready
+    except Exception, e:
+      self.mprint( str(e) + ", Restarting WebBrowserMsgQueue", self.verbose)
+      self.WebBrowserMsgQueue()
 
 
   def StartWebsocket(self):

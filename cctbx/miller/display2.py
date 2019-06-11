@@ -7,9 +7,9 @@ from libtbx.utils import Sorry, to_str
 from cctbx import miller
 from cctbx.array_family import flex
 import libtbx.phil
-from libtbx import object_oriented_patterns as oop
+from libtbx import object_oriented_patterns as oop # causes crash in easy_mp.multi_core_run
 from math import sqrt
-import math
+import math, traceback
 
 
 
@@ -109,6 +109,7 @@ class scene(object):
     self.multiplicities = None
     self.fomlabel = ""
     self.foms = flex.double(self.miller_array.size(), float('nan'))
+    self._is_using_foms = False
     self.fullprocessarray = fullprocessarray
     if self.miller_array.is_complex_array():
       # Colour map coefficient as a circular rainbow with saturation as a function of FOMs
@@ -120,6 +121,7 @@ class scene(object):
           return
         self.foms = self.foms_workarray.data()
         self.fomlabel = foms_array.info().label_string()
+        self._is_using_foms = True
     self.work_array, self.multiplicities = self.process_input_array(self.miller_array)
     if not self.work_array:
       return
@@ -221,13 +223,14 @@ class scene(object):
       settings = self.settings
       data = array.data()
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      self.missing_set = oop.null()
+      self.missing_set = oop.null() # fix oop causes crash in easy_mp.multi_core_run
       #if (array.is_xray_intensity_array()):
       #  data.set_selected(data < 0, flex.double(data.size(), 0.))
       if (array.is_unique_set_under_symmetry()) and (settings.map_to_asu):
         array = array.map_to_asu()
         if (multiplicities is not None):
           multiplicities = multiplicities.map_to_asu()
+
       if (settings.d_min is not None):
         array = array.resolution_filter(d_min=settings.d_min)
         if (multiplicities is not None):
@@ -308,7 +311,8 @@ class scene(object):
           self.sigmas = None
       work_array = array
     except Exception, e:
-      print to_str(e)
+      print to_str(e) + "".join(traceback.format_stack(limit=10))
+      raise e
       return None, None
     work_array.set_info(arr.info() )
     multiplicities = multiplicities
@@ -409,7 +413,8 @@ class scene(object):
 
 
   def isUsingFOMs(self):
-    return len([e for e in self.foms if math.isnan(e)]) != self.foms.size()
+    #return len([e for e in self.foms if math.isnan(e)]) != self.foms.size()
+    return self._is_using_foms
 
 
   def ExtendData(self, nextent):
