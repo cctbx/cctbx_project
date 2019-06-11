@@ -19,7 +19,7 @@ pixel_size = 0.10992
 from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value, cspad_min_trusted_value
 
 def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, common_mode=None, apply_gain_mask=True,
-                             gain_mask_value=None, per_pixel_gain=False, gain_mask=None):
+                             gain_mask_value=None, per_pixel_gain=False, gain_mask=None, additional_gain_factor=None):
   """
   Given a psana Detector object, apply corrections as appropriate and return the data from the event
   @param psana_det psana Detector object
@@ -32,7 +32,9 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
   @param apply_gain_mask Whether to apply the common mode gain mask correction
   @param gain_mask_value Multiplier to apply to the pixels, according to the gain mask
   @param per_pixel_gain If available, use the per pixel gain deployed to the calibration folder
-  @param, gain_mask, gain mask showing which pixels to apply gain mask value
+  @param gain_mask gain mask showing which pixels to apply gain mask value
+  @param additional_gain_factor Additional gain factor. Pixels counts are divided by this number after all other
+  corrections.
   @return Numpy array corrected as specified.
   """
   # order is pedestals, then common mode, then gain mask, then per pixel gain
@@ -73,6 +75,8 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
     data[gain_mask] = data[gain_mask]*gain_mask_value
   if per_pixel_gain: # TODO: test this
     data *= psana_det.gain(run)
+  if additional_gain_factor is not None:
+    data /= additional_gain_factor
   return data
 
 from dxtbx.format.FormatCBFMultiTile import cbf_wrapper as dxtbx_cbf_wrapper

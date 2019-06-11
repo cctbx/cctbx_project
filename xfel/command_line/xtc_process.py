@@ -215,6 +215,9 @@ xtc_phil_str = '''
         per_pixel_gain = False
           .type = bool
           .help = If True, use a per pixel gain from the run's calib folder, if available
+        additional_gain_factor = None
+          .type = float
+          .help = If set, pixels counts are divided by this number after all other corrections.
         common_mode {
           algorithm = default custom
             .type = choice
@@ -1002,8 +1005,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
                                                     common_mode=self.common_mode,
                                                     apply_gain_mask=self.params.format.cbf.cspad.gain_mask_value is not None,
                                                     gain_mask_value=self.params.format.cbf.cspad.gain_mask_value,
-                                                    per_pixel_gain=self.params.format.cbf.cspad.per_pixel_gain)
-
+                                                    per_pixel_gain=self.params.format.cbf.cspad.per_pixel_gain,
+                                                    additional_gain_factor=self.params.format.cbf.cspad.additional_gain_factor)
       elif self.params.format.cbf.mode == "rayonix":
         data = rayonix_tbx.get_data_from_psana_event(evt, self.params.input.address)
       if data is None:
