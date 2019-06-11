@@ -335,6 +335,24 @@ class registration_atoms:
     return None
 
 
+def get_amide_isel(asc, ss_element_string_selection):
+  # There are cases where SS element can be only in B conformation
+  # and split in A/B conformations
+  sele_str_main_conf = "(%s) and (name N) and (altloc 'A' or altloc ' ')" % ss_element_string_selection
+  sele_str_all = "(%s) and (name N)" % ss_element_string_selection
+  amide_isel_main_conf = asc.iselection(sele_str_main_conf)
+  amide_isel_all = asc.iselection(sele_str_all)
+  if len(amide_isel_main_conf) > 0:
+    return amide_isel_main_conf
+  if len(amide_isel_all) > 0:
+    return amide_isel_all
+  error_msg = "Error in helix definition.\n"
+  error_msg += "String '%s' selected 0 atoms.\n" % sele_str_main_conf
+  error_msg += "String '%s' selected 0 atoms.\n" % sele_str_all
+  error_msg += "Most likely the definition of SS element does not match model.\n"
+  raise Sorry(error_msg)
+
+
 class structure_base(object):
 
   def as_pdb_str(self):
@@ -1814,18 +1832,9 @@ class pdb_helix(structure_base):
     if helix_params.selection is None :
       print("Empty helix at serial %d." % (serial), file=log)
       # continue
-    # No evidence that this is really necessary
-    # sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
-    sele_str = ("(%s) and (name N)" %
-                helix_params.selection)
     if helix_params.serial_number is not None:
       serial = helix_params.serial_number
-    amide_isel = cache.iselection(sele_str)
-    if amide_isel is None or len(amide_isel) == 0:
-      error_msg = "Error in helix definition.\n"
-      error_msg += "String '%s' selected 0 atoms.\n" % sele_str
-      error_msg += "Most likely the definition of helix does not match model.\n"
-      raise Sorry(error_msg)
+    amide_isel = get_amide_isel(cache, helix_params.selection)
     start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
     end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
     hbonds = []
@@ -2488,15 +2497,7 @@ class pdb_sheet(structure_base):
     if sheet_params.sheet_id is not None:
       sheet_id =  "%3s" % sheet_params.sheet_id[:3]
     n_strands = len(sheet_params.strand) + 1
-    # sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
-    sele_str = ("(%s) and (name N)" %
-                    sheet_params.first_strand)
-    amide_isel = cache.iselection(sele_str)
-    if amide_isel is None or len(amide_isel) == 0:
-      error_msg = "Error in sheet definition.\n"
-      error_msg += "String '%s' selected 0 atoms.\n" % sele_str
-      error_msg += "Most likely the definition of sheet does not match model.\n"
-      raise Sorry(error_msg)
+    amide_isel = get_amide_isel(cache, sheet_params.first_strand)
     start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
     end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
     first_strand = pdb_strand(
@@ -2514,15 +2515,7 @@ class pdb_sheet(structure_base):
     strands = [first_strand]
     registrations = [None]
     for i, strand_param in enumerate(sheet_params.strand):
-      # sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
-      sele_str = ("(%s) and (name N)" %
-                      strand_param.selection)
-      amide_isel = cache.iselection(sele_str)
-      if amide_isel is None or len(amide_isel) == 0:
-        error_msg = "Error in sheet definition.\n"
-        error_msg += "String '%s' selected 0 atoms.\n" % sele_str
-        error_msg += "Most likely the definition of sheet does not match model.\n"
-        raise Sorry(error_msg)
+      amide_isel = get_amide_isel(cache, strand_param.selection)
       start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
       end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
       sense = cls.sense_to_int(strand_param.sense)
