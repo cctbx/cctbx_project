@@ -289,7 +289,7 @@ postrefinement {
 }
 
 merging {
-  minimum_multiplicity = None
+  minimum_multiplicity = 2
     .type = int(value_min=2)
     .help = If defined, merged structure factors not produced for the Miller indices below this threshold.
   error {

@@ -49,7 +49,7 @@ class reflection_table_utils(object):
     return table
 
   @staticmethod
-  def merge_reflections(reflections):
+  def merge_reflections(reflections, min_multiplicity):
     merged_reflections = reflection_table_utils.merged_reflection_table()
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections):
       assert refls.size() > 0
@@ -57,15 +57,18 @@ class reflection_table_utils(object):
       hkl = refls[0]['miller_index_asymmetric']
       assert not (hkl in merged_reflections['miller_index']) # i.e. assert that the input reflection table came in sorted
 
-      weighted_intensity_array = refls['intensity.sum.value'] / refls['intensity.sum.variance']
-      weights_array = flex.double(refls.size(), 1.0) / refls['intensity.sum.variance']
+      refls = refls.select(refls['intensity.sum.variance'] > 0.0)
 
-      weighted_mean_intensity = flex.sum(weighted_intensity_array) / flex.sum(weights_array)
-      standard_error_of_weighted_mean_intensity = 1.0/math.sqrt(flex.sum(weights_array))
+      if refls.size() >= min_multiplicity:
+        weighted_intensity_array = refls['intensity.sum.value'] / refls['intensity.sum.variance']
+        weights_array = flex.double(refls.size(), 1.0) / refls['intensity.sum.variance']
 
-      merged_reflections.append(
-                                {'miller_index' : hkl,
-                                'intensity' : weighted_mean_intensity,
-                                'sigma' : standard_error_of_weighted_mean_intensity,
-                                'multiplicity' : refls.size()})
+        weighted_mean_intensity = flex.sum(weighted_intensity_array) / flex.sum(weights_array)
+        standard_error_of_weighted_mean_intensity = 1.0/math.sqrt(flex.sum(weights_array))
+
+        merged_reflections.append(
+                                  {'miller_index' : hkl,
+                                  'intensity' : weighted_mean_intensity,
+                                  'sigma' : standard_error_of_weighted_mean_intensity,
+                                  'multiplicity' : refls.size()})
     return merged_reflections

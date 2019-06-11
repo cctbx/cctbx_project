@@ -72,8 +72,8 @@ class Script(object):
     for step in ['input',
                  'model scaling', # the full miller set is based on the target unit cell
                  'modify', # polarization correction, etc.
-                 'edit',  # remove unnecessary columns from reflection table
-                 'filter',
+                 'edit',   # add asu HKL column, remove unnecessary columns from reflection table
+                 'filter', # unit cell, I/Sigma
                  'errors pre_merge', # e.g. ha14
                  'scale',
                  'postrefine',

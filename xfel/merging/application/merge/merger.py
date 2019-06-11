@@ -29,16 +29,16 @@ class merger(worker):
 
     # select, merge and output odd reflections
     odd_reflections = reflection_table_utils.select_odd_experiment_reflections(reflections)
-    odd_reflections_merged = reflection_table_utils.merge_reflections(odd_reflections)
+    odd_reflections_merged = reflection_table_utils.merge_reflections(odd_reflections, self.params.merging.minimum_multiplicity)
     self.gather_and_output_reflections(odd_reflections_merged, 'odd')
 
     # select, merge and output even reflections
     even_reflections = reflection_table_utils.select_even_experiment_reflections(reflections)
-    even_reflections_merged = reflection_table_utils.merge_reflections(even_reflections)
+    even_reflections_merged = reflection_table_utils.merge_reflections(even_reflections, self.params.merging.minimum_multiplicity)
     self.gather_and_output_reflections(even_reflections_merged, 'even')
 
     # merge and output all reflections
-    all_reflections_merged = reflection_table_utils.merge_reflections(reflections)
+    all_reflections_merged = reflection_table_utils.merge_reflections(reflections, self.params.merging.minimum_multiplicity)
     self.gather_and_output_reflections(all_reflections_merged, 'all')
 
     return None, reflections

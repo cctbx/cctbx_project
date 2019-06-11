@@ -135,6 +135,9 @@ class intensity_resolution_statistics(worker):
     return 'Intensity resolution statistics'
 
   def run(self, experiments, reflections):
+    self.last_bin_incomplete = False
+    self.suggested_resolution_scalar = -1.0
+
     reflections_before_stats_count = reflections.size()
     total_reflections_before_stats_count = self.mpi_helper.sum(reflections_before_stats_count)
     if self.mpi_helper.rank == 0:
@@ -160,7 +163,7 @@ class intensity_resolution_statistics(worker):
     self.logger.log(title, rank_prepend=False)
     if self.mpi_helper.rank == 0:
       self.logger.main_log(title)
-    self.run_detail(reflections)
+    self.run_detail(reflections, check_last_bin_complete=True)
 
     title = "\n                     CC 1/2, CC ISO\n"
     self.logger.log(title, rank_prepend=False)
@@ -190,7 +193,7 @@ class intensity_resolution_statistics(worker):
       self.Total_CC_Iso_Table = None
       return
 
-    reflections_merged = reflection_table_utils.merge_reflections(reflections)
+    reflections_merged = reflection_table_utils.merge_reflections(reflections, self.params.merging.minimum_multiplicity)
 
     # Create target symmetry
     if self.params.merging.set_average_unit_cell:
@@ -209,8 +212,8 @@ class intensity_resolution_statistics(worker):
     self.Total_CC_Iso_Table = self.calculate_cross_correlation(self.params.scaling.i_model, exp_intensities)
 
   def calculate_cc_int(self, odd_reflections, even_reflections):
-    odd_reflections_merged = reflection_table_utils.merge_reflections(odd_reflections)
-    even_reflections_merged = reflection_table_utils.merge_reflections(even_reflections)
+    odd_reflections_merged = reflection_table_utils.merge_reflections(odd_reflections, self.params.merging.minimum_multiplicity)
+    even_reflections_merged = reflection_table_utils.merge_reflections(even_reflections, self.params.merging.minimum_multiplicity)
 
     # Create target symmetry
     if self.params.merging.set_average_unit_cell:
@@ -292,7 +295,7 @@ class intensity_resolution_statistics(worker):
     else:
       return None
 
-  def run_detail(self, reflections):
+  def run_detail(self, reflections, check_last_bin_complete=False):
     # Get pre-created resolution binning objects from the parameters
     self.resolution_binner = self.params.statistics.resolution_binner
     self.hkl_resolution_bins = self.params.statistics.hkl_resolution_bins
@@ -319,7 +322,8 @@ class intensity_resolution_statistics(worker):
                                                   Isig_sum = self.Isig_sum,
                                                   n_sum = self.n_sum,
                                                   m_sum = self.m_sum,
-                                                  mm_sum = self.mm_sum)
+                                                  mm_sum = self.mm_sum,
+                                                  check_last_bin_complete = check_last_bin_complete)
 
       self.logger.log(Intensity_Table.get_table_text(), rank_prepend=False)
 
@@ -337,14 +341,16 @@ class intensity_resolution_statistics(worker):
                                                   Isig_sum  = all_ranks_Isig_sum,
                                                   n_sum     = all_ranks_n_sum,
                                                   m_sum     = all_ranks_m_sum,
-                                                  mm_sum    = all_ranks_mm_sum)
+                                                  mm_sum    = all_ranks_mm_sum,
+                                                  check_last_bin_complete = check_last_bin_complete)
       self.logger.main_log(Intensity_Table.get_table_text())
+      if self.last_bin_incomplete:
+        self.logger.main_log("Warning: the last resolution shell is incomplete. If your data was integrated to that resolution,\nconsider using scaling.resolution_scalar=%f or lower."%self.suggested_resolution_scalar)
 
   def calculate_intensity_statistics(self, reflections):
     '''Calculate statistics for hkl intensities distributed over resolution bins'''
 
     #used_reflections = flex.reflection_table()
-
     zero_intensity_count_all = 0
     zero_intensity_count_resolution_limited = 0
 
@@ -375,16 +381,18 @@ class intensity_resolution_statistics(worker):
           positive_intensity_count_resolution_limited += ((refls['intensity.sum.value'] > 0.0).count(True))
           negative_intensity_count_resolution_limited += ((refls['intensity.sum.value'] < 0.0).count(True))
 
-        multiplicity = refls.size()
-        self.n_sum[i_bin] += 1
-        self.m_sum[i_bin] += multiplicity
-        if multiplicity > 1:
-          self.mm_sum[i_bin] += 1
-          weighted_intensity_array = refls['intensity.sum.value'] / refls['intensity.sum.variance']
-          weights_array = flex.double(refls.size(), 1.0) / refls['intensity.sum.variance']
-          self.I_sum[i_bin]     += flex.sum(weighted_intensity_array) / flex.sum(weights_array)
-          self.Isig_sum[i_bin]  += flex.sum(weighted_intensity_array) / math.sqrt(flex.sum(weights_array))
-          #self.Isig_sum[i_bin]  += self.I_sum[i_bin] / math.sqrt(refls[0]['intensity.sum.variance'])
+          refls = refls.select(refls['intensity.sum.variance'] > 0.0)
+
+          multiplicity = refls.size()
+
+          if multiplicity >= self.params.merging.minimum_multiplicity:
+            self.n_sum[i_bin] += 1
+            self.m_sum[i_bin] += multiplicity
+            self.mm_sum[i_bin] += 1
+            weighted_intensity_array = refls['intensity.sum.value'] / refls['intensity.sum.variance']
+            weights_array = flex.double(refls.size(), 1.0) / refls['intensity.sum.variance']
+            self.I_sum[i_bin]     += flex.sum(weighted_intensity_array) / flex.sum(weights_array)
+            self.Isig_sum[i_bin]  += flex.sum(weighted_intensity_array) / math.sqrt(flex.sum(weights_array))
 
     self.logger.log_step_time("INTENSITY_HISTOGRAM")
 
@@ -419,7 +427,8 @@ class intensity_resolution_statistics(worker):
                             m_sum,
                             mm_sum,
                             I_sum,
-                            Isig_sum):
+                            Isig_sum,
+                            check_last_bin_complete=False):
     '''Produce a table with hkl intensity statistics for resolution bins'''
     Intensity_Table = intensity_table()
 
@@ -459,6 +468,15 @@ class intensity_resolution_statistics(worker):
       Intensity_Table.cumulative_multiply_observed_asu_count          += multiply_observed_asu_count
       Intensity_Table.cumulative_I                                    += intensity_sum
       Intensity_Table.cumulative_Isigma                               += intensity_to_sigma_sum
+
+    '''
+    if check_last_bin_complete:
+      last_bin = max(self.resolution_binner.range_used()) - 1
+      last_bin_completeness = Intensity_Table.table[last_bin].completeness
+      if last_bin_completeness > 0.0 and last_bin_completeness < 1.0:
+        self.last_bin_incomplete = True
+        self.suggested_resolution_scalar = self.params.scaling.resolution_scalar * (last_bin_completeness**(1./3.))
+    '''
 
       '''
       # TODO

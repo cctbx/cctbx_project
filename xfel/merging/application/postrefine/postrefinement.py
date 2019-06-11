@@ -52,7 +52,7 @@ class postrefinement(worker):
       exp_reflections = reflections.select(reflections['exp_id'] == experiment.identifier)
 
       # Build a miller array for the experiment reflections with original miller indexes
-      exp_miller_indices_original = miller.set(target_symm, exp_reflections['miller_index'], True)
+      exp_miller_indices_original = miller.set(target_symm, exp_reflections['miller_index'], not self.params.merging.merge_anomalous)
       observations_original_index = miller.array(exp_miller_indices_original,
                                                  exp_reflections['intensity.sum.value'],
                                                  flex.double(flex.sqrt(exp_reflections['intensity.sum.variance'])))
