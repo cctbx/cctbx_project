@@ -31,7 +31,9 @@ class manager(object):
       parameterization_manager = parameterization.manager(
         h_connectivity         = h_connectivity,
         sites_cart             = self.pdb_hierarchy.atoms().extract_xyz(),
-        use_ideal_bonds_angles = use_ideal_bonds_angles)
+        use_ideal_bonds_angles = use_ideal_bonds_angles,
+        site_labels         = [atom.id_str().replace('pdb=','').replace('"','')
+                                  for atom in pdb_hierarchy.atoms()])
       self.h_parameterization = parameterization_manager.h_parameterization
       self.parameterization_cpp = self.get_parameterization_cpp(
         h_parameterization = self.h_parameterization)

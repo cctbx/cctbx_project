@@ -3,16 +3,19 @@ from scitbx import matrix
 import math
 from scitbx.math import dihedral_angle
 from mmtbx_hydrogens_ext import *
+from libtbx.utils import Sorry
 from six.moves import zip
 
 class manager(object):
   def __init__(self,
       h_connectivity,
       sites_cart,
-      use_ideal_bonds_angles):
+      use_ideal_bonds_angles,
+      site_labels):
     self.h_connectivity = h_connectivity
     self.sites_cart = sites_cart
     self.use_ideal_bonds_angles = use_ideal_bonds_angles
+    self.site_labels = site_labels
     self.determine_parameterization()
 
 # for every H atom, determine the type of geometry
@@ -317,8 +320,10 @@ class manager(object):
       # if H is out of plane, but not in tetrahedral geometry
         root = 1-c1*c1-c2*c2-c0*c0+2*c0*c1*c2
         if(root < 0):
-          raise RuntimeError(
-            "Expression in square root < 0 in get_h_parameterization.")
+          raise Sorry(
+'''Please double check atom %s, bound to %s.
+The input geometry is most likely wrong.
+Fix it or delete the H atom.''' %(self.site_labels[ih], self.site_labels[i_a0]))
         denom = math.sin(alpha0)
         if(denom==0):
           raise RuntimeError(
