@@ -22,6 +22,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     af::shared<cctbx::miller::index<> > miller_indices_;
     bool use_ad;
     af::shared<sgtbx::rot_mx> rot_mxs_;
+    bool expanded;
   public:
     af::shared<std::vector<complex_type> > const &data() const {
       return data_;
@@ -37,6 +38,10 @@ namespace smtbx { namespace structure_factors { namespace table_based {
 
     bool use_AD() const {
       return use_ad;
+    }
+
+    bool is_expanded() const {
+      return expanded;
     }
   };
 
@@ -85,27 +90,32 @@ namespace smtbx { namespace structure_factors { namespace table_based {
               sc_indices[sci] = fsci->second;
             }
           }
-          else if (boost::iequals(toks[0], "AD accounted")) {
+          else if (boost::iequals(toks[0], "AD")) {
             boost::trim(toks[1]);
             parent_t::use_ad = boost::iequals(toks[1], "false");
           }
           else if (boost::iequals(toks[0], "Symm")) {
             boost::trim(toks[1]);
-            vector<std::string> symms_toks;
-            boost::split(symms_toks, toks[1], boost::is_any_of(";"));
-            for (size_t sti = 0; sti < symms_toks.size(); sti++) {
-              boost::trim(symms_toks[sti]);
-              if (symms_toks[sti].empty()) {
-                break;
+            if (boost::iequals(toks[1], "expanded")) {
+              parent_t::expanded = true;
+            }
+            else {
+              vector<std::string> symms_toks;
+              boost::split(symms_toks, toks[1], boost::is_any_of(";"));
+              for (size_t sti = 0; sti < symms_toks.size(); sti++) {
+                boost::trim(symms_toks[sti]);
+                if (symms_toks[sti].empty()) {
+                  break;
+                }
+                vector<std::string> symm_toks;
+                boost::split(symm_toks, symms_toks[sti], boost::is_any_of(" "));
+                SMTBX_ASSERT(symm_toks.size() == 9);
+                sgtbx::rot_mx rmx;
+                for (size_t mei = 0; mei < 9; mei++) {
+                  rmx[mei] = boost::lexical_cast<int>(symm_toks[mei]);
+                }
+                parent_t::rot_mxs_.push_back(rmx);
               }
-              vector<std::string> symm_toks;
-              boost::split(symm_toks, symms_toks[sti], boost::is_any_of(" "));
-              SMTBX_ASSERT(symm_toks.size() == 9);
-              sgtbx::rot_mx rmx;
-              for (size_t mei = 0; mei < 9; mei++) {
-                rmx[mei] = boost::lexical_cast<int>(symm_toks[mei]);
-              }
-              parent_t::rot_mxs_.push_back(rmx);
             }
           }
           else if (boost::iequals(toks[0], "data")) {
@@ -340,6 +350,94 @@ namespace smtbx { namespace structure_factors { namespace table_based {
   };
 
   template <typename FloatType>
+  class lookup_based_anisotropic
+    : public direct::one_scatterer_one_h::scatterer_contribution<FloatType>
+  {
+    typedef direct::one_scatterer_one_h::scatterer_contribution<FloatType>
+      base_type;
+  public:
+    typedef FloatType float_type;
+    typedef std::complex<float_type> complex_type;
+  private:
+    typedef std::map<cctbx::miller::index<>, std::size_t,
+      cctbx::miller::fast_less_than<> > lookup_t;
+    lookup_t mi_lookup;
+    sgtbx::space_group const &space_group;
+    af::shared<std::vector<complex_type> > data;
+    mutable std::vector<complex_type> tmp;
+  public:
+    // Copy constructor
+    lookup_based_anisotropic(const lookup_based_anisotropic &lbsc)
+      :
+      mi_lookup(lbsc.mi_lookup),
+      space_group(lbsc.space_group),
+      data(lbsc.data),
+      tmp(lbsc.tmp.size())
+    {}
+
+    lookup_based_anisotropic(
+      af::shared< xray::scatterer<float_type> > const &scatterers,
+      table_reader<FloatType> const &data_,
+      sgtbx::space_group const &space_group)
+      :
+      space_group(space_group),
+      data(data_.miller_indices().size()),
+      tmp(space_group.n_smx())
+    {
+      SMTBX_ASSERT(data_.rot_mxs().size() <= 1);
+      SMTBX_ASSERT(data_.is_expanded());
+      for (size_t i = 0; i < data.size(); i++) {
+        mi_lookup[data_.miller_indices()[i]] = i;
+        data[i].resize(scatterers.size());
+        for (size_t j = 0; j < scatterers.size(); j++) {
+          complex_type v = data_.data()[i][j];
+          if (data_.use_AD()) {
+            xray::scatterer<> const &sc = scatterers[j];
+            if (sc.flags.use_fp_fdp()) {
+              v = complex_type(v.real() + sc.fp, v.imag() + sc.fdp);
+            }
+          }
+          data[i][j] = v;
+        }
+      }
+    }
+
+    virtual complex_type get(std::size_t scatterer_idx,
+      miller::index<> const &h) const
+    {
+      SMTBX_NOT_IMPLEMENTED();
+      throw 1;
+    }
+
+    virtual std::vector<complex_type> const &get_full(std::size_t scatterer_idx,
+      miller::index<> const &h_) const
+    {
+      for (std::size_t i = 0; i < space_group.n_smx(); i++) {
+        miller::index<> h = h_ * space_group.smx(i).r();
+        lookup_t::const_iterator l = mi_lookup.find(h);
+        SMTBX_ASSERT(l != mi_lookup.end());
+        tmp[i] = data[l->second][scatterer_idx];
+      }
+      return tmp;
+    }
+
+    virtual base_type &at_d_star_sq(
+      float_type d_star_sq)
+    {
+      return *this;
+    }
+
+    virtual bool is_spherical() const {
+      return false;
+    }
+
+    virtual base_type *raw_fork() const {
+      return new lookup_based_anisotropic(*this);
+    }
+  };
+
+
+  template <typename FloatType>
   struct builder {
     static direct::one_scatterer_one_h::scatterer_contribution<FloatType> *
       build(
@@ -350,11 +448,19 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     {
       table_reader<FloatType> data(scatterers, file_name);
       if (data.rot_mxs().size() <= 1) {
-        return new table_based_isotropic<FloatType>(
-          scatterers,
-          data,
-          space_group,
-          anomalous_flag);
+        if (data.is_expanded()) {
+          return new lookup_based_anisotropic<FloatType>(
+            scatterers,
+            data,
+            space_group);
+        }
+        else {
+          return new table_based_isotropic<FloatType>(
+            scatterers,
+            data,
+            space_group,
+            anomalous_flag);
+        }
       }
       return new table_based_anisotropic<FloatType>(
         scatterers,
