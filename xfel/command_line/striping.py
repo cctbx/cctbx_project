@@ -265,7 +265,7 @@ def allocate_chunks(results_dir,
                     stripe=False,
                     max_size=1000,
                     integrated=False):
-  refl_ending = "_integrated.pickle" if integrated else "_indexed.pickle"
+  refl_ending = "_integrated" if integrated else "_indexed"
   expt_ending = "_refined_experiments.json"
   trial = "%03d" % trial_no
   print("processing trial %s" % trial)
