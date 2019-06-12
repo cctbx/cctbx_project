@@ -248,8 +248,6 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     typedef FloatType float_type;
     typedef std::complex<float_type> complex_type;
   private:
-    af::ref_owning_shared< xray::scatterer<float_type> > scatterers;
-    af::shared<cctbx::miller::index<> > lookup_indices;
     miller::lookup_utils::lookup_tensor<float_type> mi_lookup;
     // hkl x scatterer x hkl*r contribution
     af::shared <af::shared<std::vector<complex_type> > > data;
@@ -257,8 +255,6 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     // Copy constructor
     table_based_anisotropic(const table_based_anisotropic &tbsc)
       :
-      scatterers(tbsc.scatterers),
-      lookup_indices(tbsc.lookup_indices),
       mi_lookup(tbsc.mi_lookup),
       data(tbsc.data)
     {}
@@ -268,8 +264,6 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       table_reader<FloatType> const &data_,
       sgtbx::space_group const &space_group,
       bool anomalous_flag)
-      :
-      scatterers(scatterers)
     {
       SMTBX_ASSERT(data_.rot_mxs().size() == space_group.n_smx());
       SMTBX_ASSERT((data_.data().size() % space_group.n_smx()) == 0);
@@ -289,12 +283,11 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         SMTBX_ASSERT(found);
       }
       data.resize(data_.data().size() / space_group.n_smx());
-      lookup_indices.resize(data.size());
+      af::shared<cctbx::miller::index<> > lookup_indices(data.size());
       for (size_t hi = 0; hi < data.size(); hi++) {
         af::shared<std::vector<complex_type> > row(scatterers.size());
         for (size_t sci = 0; sci < scatterers.size(); sci++) {
-          std::vector<complex_type> h_row;
-          h_row.resize(space_group.n_smx());
+          std::vector<complex_type> h_row(space_group.n_smx());
           for (size_t mi = 0; mi < space_group.n_smx(); mi++) {
             const size_t r_off = data.size() * mi;
             complex_type v = data_.data()[r_off + hi][sci];
@@ -304,6 +297,9 @@ namespace smtbx { namespace structure_factors { namespace table_based {
                 v = complex_type(v.real() + sc.fp, v.imag() + sc.fdp);
               }
             }
+            miller::index<> h =
+              data_.miller_indices()[hi] * space_group.smx(r_map[mi]).r();
+            SMTBX_ASSERT(h == data_.miller_indices()[r_off + hi]);
             h_row[r_map[mi]] = v;
           }
           row[sci] = h_row;
