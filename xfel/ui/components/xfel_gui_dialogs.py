@@ -1339,6 +1339,7 @@ class RunBlockDialog(BaseDialog):
     self.all_blocks = []
     self.db = db
     self.use_ids = db.params.facility.name != 'lcls'
+    self.is_lcls = db.params.facility.name == 'lcls'
 
     all_runs = db.get_all_runs()
     if self.use_ids:
@@ -1410,10 +1411,11 @@ class RunBlockDialog(BaseDialog):
 
     # Run block start / end points (choice widgets)
 
-    self.config_panel = wx.Panel(self)
-    config_box = wx.StaticBox(self.config_panel, label='Configuration')
-    self.config_sizer = wx.StaticBoxSizer(config_box)
-    self.config_panel.SetSizer(self.config_sizer)
+    if self.is_lcls:
+      self.config_panel = wx.Panel(self)
+      config_box = wx.StaticBox(self.config_panel, label='Configuration')
+      self.config_sizer = wx.StaticBoxSizer(config_box)
+      self.config_panel.SetSizer(self.config_sizer)
 
     self.phil_panel = wx.Panel(self)
     phil_box = wx.StaticBox(self.phil_panel, label='Extra phil parameters')
@@ -1426,16 +1428,17 @@ class RunBlockDialog(BaseDialog):
     self.runblock_sizer = wx.BoxSizer(wx.VERTICAL)
     self.runblock_panel.SetSizer(self.runblock_sizer)
 
-    # Configuration text ctrl (user can put in anything they want)
-    self.config = gctr.PHILBox(self.config_panel,
-                               btn_import=True,
-                               btn_import_label='Import Config',
-                               btn_export=False,
-                               btn_default=True,
-                               btn_default_label='Default Config',
-                               ctr_size=(-1, 100),
-                               ctr_value=str(block.config_str))
-    self.config_sizer.Add(self.config, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    if self.is_lcls:
+      # Configuration text ctrl (user can put in anything they want)
+      self.config = gctr.PHILBox(self.config_panel,
+                                 btn_import=True,
+                                 btn_import_label='Import Config',
+                                 btn_export=False,
+                                 btn_default=True,
+                                 btn_default_label='Default Config',
+                                 ctr_size=(-1, 100),
+                                 ctr_value=str(block.config_str))
+      self.config_sizer.Add(self.config, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Extra phil
     self.phil = gctr.PHILBox(self.phil_panel,
@@ -1449,20 +1452,21 @@ class RunBlockDialog(BaseDialog):
     self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Image format choice
-    if self.parent.trial.app.params.dispatcher == "cxi.xtc_process":
-      image_choices = ['pickle']
-    else:
-      image_choices = ['cbf','pickle']
-    self.img_format = gctr.ChoiceCtrl(self.runblock_panel,
-                                      label='Image Format:',
-                                      label_size=(100, -1),
-                                      ctrl_size=(150, -1),
-                                      choices=image_choices)
-    try:
-      self.img_format.ctr.SetSelection(image_choices.index(block.format))
-    except Exception:
-      pass #in case of selecting an unavailable default
-    self.runblock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
+    if self.is_lcls:
+      if self.parent.trial.app.params.dispatcher == "cxi.xtc_process":
+        image_choices = ['pickle']
+      else:
+        image_choices = ['cbf','pickle']
+      self.img_format = gctr.ChoiceCtrl(self.runblock_panel,
+                                        label='Image Format:',
+                                        label_size=(100, -1),
+                                        ctrl_size=(150, -1),
+                                        choices=image_choices)
+      try:
+        self.img_format.ctr.SetSelection(image_choices.index(block.format))
+      except Exception:
+        pass #in case of selecting an unavailable default
+      self.runblock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
 
     self.start_stop_sizer = wx.FlexGridSizer(1, 3, 60, 20)
 
@@ -1492,13 +1496,14 @@ class RunBlockDialog(BaseDialog):
                                    (self.end_type)])
     self.runblock_sizer.Add(self.start_stop_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
-    # Detector address
-    self.address = gctr.TextButtonCtrl(self.runblock_panel,
-                                       label='Detector Address:',
-                                       label_style='bold',
-                                       label_size=(100, -1),
-                                       value=block.detector_address)
-    self.runblock_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
+    if self.is_lcls:
+      # Detector address
+      self.address = gctr.TextButtonCtrl(self.runblock_panel,
+                                         label='Detector Address:',
+                                         label_style='bold',
+                                         label_size=(100, -1),
+                                         value=block.detector_address)
+      self.runblock_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
 
 
     # Beam XYZ (X, Y - pickle only)
@@ -1513,12 +1518,19 @@ class RunBlockDialog(BaseDialog):
     self.runblock_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Binning, energy, gain mask level
-    self.bin_nrg_gain = gctr.OptionCtrl(self.runblock_panel,
-                                        ctrl_size=(80, -1),
-                                        items=[('binning', block.binning),
-                                               ('energy', block.energy),
-                                               ('gain_mask_level', block.gain_mask_level)])
-    self.runblock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
+    if self.is_lcls:
+      self.bin_nrg_gain = gctr.OptionCtrl(self.runblock_panel,
+                                          ctrl_size=(80, -1),
+                                          items=[('binning', block.binning),
+                                                 ('energy', block.energy),
+                                                 ('gain_mask_level', block.gain_mask_level)])
+      self.runblock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
+    else:
+      self.energy = gctr.TextButtonCtrl(self.runblock_panel,
+                                        label='Energy override',
+                                        label_size=(150, -1))
+      self.energy.ctr.SetValue(str(block.energy))
+      self.runblock_sizer.Add(self.energy, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Two theta values for droplet hit finding
     self.two_thetas = gctr.OptionCtrl(self.runblock_panel,
@@ -1532,51 +1544,52 @@ class RunBlockDialog(BaseDialog):
     self.untrusted_path = gctr.TextButtonCtrl(self.runblock_panel,
                                               label='Untrusted Pixel Mask:',
                                               label_style='normal',
-                                              label_size=(100, -1),
+                                              label_size=(180, -1),
                                               big_button=True,
                                               value=str(block.untrusted_pixel_mask_path))
     self.runblock_sizer.Add(self.untrusted_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
-    # Calibration folder
-    self.calib_dir = gctr.TextButtonCtrl(self.runblock_panel,
-                                         label='Calibration:',
-                                         label_style='normal',
-                                         label_size=(100, -1),
-                                         big_button=True,
-                                         value=str(block.calib_dir))
-    self.runblock_sizer.Add(self.calib_dir, flag=wx.EXPAND | wx.ALL,
-                            border=10)
+    if self.is_lcls:
+      # Calibration folder
+      self.calib_dir = gctr.TextButtonCtrl(self.runblock_panel,
+                                           label='Calibration:',
+                                           label_style='normal',
+                                           label_size=(100, -1),
+                                           big_button=True,
+                                           value=str(block.calib_dir))
+      self.runblock_sizer.Add(self.calib_dir, flag=wx.EXPAND | wx.ALL,
+                              border=10)
 
-    # Dark average path (pickle only)
-    self.dark_avg_path = gctr.TextButtonCtrl(self.runblock_panel,
-                                             label='Dark Average:',
-                                             label_style='normal',
-                                             label_size=(100, -1),
-                                             big_button=True,
-                                             value=str(block.dark_avg_path))
-    self.runblock_sizer.Add(self.dark_avg_path, flag=wx.EXPAND | wx.ALL,
-                            border=10)
+      # Dark average path (pickle only)
+      self.dark_avg_path = gctr.TextButtonCtrl(self.runblock_panel,
+                                               label='Dark Average:',
+                                               label_style='normal',
+                                               label_size=(100, -1),
+                                               big_button=True,
+                                               value=str(block.dark_avg_path))
+      self.runblock_sizer.Add(self.dark_avg_path, flag=wx.EXPAND | wx.ALL,
+                              border=10)
 
-    # Dark stddev path (pickle only)
-    self.dark_stddev_path = gctr.TextButtonCtrl(self.runblock_panel,
-                                                label='Dark StdDev:',
-                                                label_style='normal',
-                                                label_size=(100, -1),
-                                                big_button=True,
-                                                value=str(block.dark_stddev_path))
-    self.runblock_sizer.Add(self.dark_stddev_path, flag=wx.EXPAND | wx.ALL,
-                            border=10)
+      # Dark stddev path (pickle only)
+      self.dark_stddev_path = gctr.TextButtonCtrl(self.runblock_panel,
+                                                  label='Dark StdDev:',
+                                                  label_style='normal',
+                                                  label_size=(100, -1),
+                                                  big_button=True,
+                                                  value=str(block.dark_stddev_path))
+      self.runblock_sizer.Add(self.dark_stddev_path, flag=wx.EXPAND | wx.ALL,
+                              border=10)
 
-    # Dark map path (pickle only)
-    self.gain_map_path = gctr.TextButtonCtrl(self.runblock_panel,
-                                             label='Gain Map:',
-                                             label_style='normal',
-                                             label_size=(100, -1),
-                                             big_button=True,
-                                             value=str(block.gain_map_path))
-    self.runblock_sizer.Add(self.gain_map_path, flag=wx.EXPAND | wx.ALL,
-                            border=10)
+      # Dark map path (pickle only)
+      self.gain_map_path = gctr.TextButtonCtrl(self.runblock_panel,
+                                               label='Gain Map:',
+                                               label_style='normal',
+                                               label_size=(100, -1),
+                                               big_button=True,
+                                               value=str(block.gain_map_path))
+      self.runblock_sizer.Add(self.gain_map_path, flag=wx.EXPAND | wx.ALL,
+                              border=10)
 
     # Comment
     self.comment = gctr.TextButtonCtrl(self.runblock_panel,
@@ -1588,7 +1601,8 @@ class RunBlockDialog(BaseDialog):
                             border=10)
 
     self.main_sizer.Add(self.phil_panel, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.config_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    if self.is_lcls:
+      self.main_sizer.Add(self.config_panel, flag=wx.EXPAND | wx.ALL, border=10)
     self.runblock_box_sizer.Add(self.runblock_panel)
     self.main_sizer.Add(self.runblock_box_sizer, flag=wx.EXPAND | wx.ALL,
                         border=10)
@@ -1601,26 +1615,27 @@ class RunBlockDialog(BaseDialog):
 
     self.Bind(wx.EVT_RADIOBUTTON, self.onAutoEnd, self.end_type.auto)
     self.Bind(wx.EVT_RADIOBUTTON, self.onSpecifyEnd, self.end_type.specify)
-    self.Bind(wx.EVT_BUTTON, self.onDarkAvgBrowse,
-              id=self.dark_avg_path.btn_big.GetId())
-    self.Bind(wx.EVT_BUTTON, self.onImportConfig, self.config.btn_import)
-    self.Bind(wx.EVT_BUTTON, self.onDefaultConfig, self.config.btn_default)
     self.Bind(wx.EVT_BUTTON, self.onImportPhil, self.phil.btn_import)
-    self.Bind(wx.EVT_BUTTON, self.onDarkMapBrowse,
-              id=self.gain_map_path.btn_big.GetId())
-    self.Bind(wx.EVT_BUTTON, self.onDarkStdBrowse,
-              id=self.dark_stddev_path.btn_big.GetId())
-    self.Bind(wx.EVT_BUTTON, self.onCalibDirBrowse,
-              id=self.calib_dir.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onUntrustedBrowse,
               id=self.untrusted_path.btn_big.GetId())
-    self.Bind(wx.EVT_CHOICE, self.onImageFormat, id=self.img_format.ctr.GetId())
+    if self.is_lcls:
+      self.Bind(wx.EVT_BUTTON, self.onDarkAvgBrowse,
+                id=self.dark_avg_path.btn_big.GetId())
+      self.Bind(wx.EVT_BUTTON, self.onImportConfig, self.config.btn_import)
+      self.Bind(wx.EVT_BUTTON, self.onDefaultConfig, self.config.btn_default)
+      self.Bind(wx.EVT_BUTTON, self.onDarkMapBrowse,
+                id=self.gain_map_path.btn_big.GetId())
+      self.Bind(wx.EVT_BUTTON, self.onDarkStdBrowse,
+                id=self.dark_stddev_path.btn_big.GetId())
+      self.Bind(wx.EVT_BUTTON, self.onCalibDirBrowse,
+                id=self.calib_dir.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
 
     self.fill_in_fields()
     self.configure_controls()
     self.Layout()
+    self.runblock_panel.SetupScrolling()
     self.SetTitle('Run Block Settings')
 
   def onAutoEnd(self, e):
@@ -1688,24 +1703,29 @@ class RunBlockDialog(BaseDialog):
 
     rg_dict = dict(active=True,
                    open=rg_open,
-                   format=self.img_format.ctr.GetStringSelection(),
-                   config_str=self.config.ctr.GetValue(),
                    extra_phil_str=self.phil.ctr.GetValue(),
-                   detector_address=self.address.ctr.GetValue(),
                    detz_parameter=self.beam_xyz.DetZ.GetValue(),
                    beamx=self.beam_xyz.X.GetValue(),
                    beamy=self.beam_xyz.Y.GetValue(),
-                   binning=self.bin_nrg_gain.binning.GetValue(),
-                   energy=self.bin_nrg_gain.energy.GetValue(),
                    untrusted_pixel_mask_path=self.untrusted_path.ctr.GetValue(),
-                   dark_avg_path=self.dark_avg_path.ctr.GetValue(),
-                   dark_stddev_path=self.dark_stddev_path.ctr.GetValue(),
-                   gain_map_path=self.gain_map_path.ctr.GetValue(),
-                   gain_mask_level=self.bin_nrg_gain.gain_mask_level.GetValue(),
-                   calib_dir=self.calib_dir.ctr.GetValue(),
                    two_theta_low=self.two_thetas.two_theta_low.GetValue(),
                    two_theta_high=self.two_thetas.two_theta_high.GetValue(),
                    comment=self.comment.ctr.GetValue())
+
+    if self.is_lcls:
+      rg_dict['format']=self.img_format.ctr.GetStringSelection(),
+      rg_dict['energy']=self.bin_nrg_gain.energy.GetValue(),
+      rg_dict['dark_avg_path']=self.dark_avg_path.ctr.GetValue()
+      rg_dict['dark_stddev_path']=self.dark_stddev_path.ctr.GetValue()
+      rg_dict['gain_map_path']=self.gain_map_path.ctr.GetValue()
+      rg_dict['gain_mask_level']=self.bin_nrg_gain.gain_mask_level.GetValue()
+      rg_dict['calib_dir']=self.calib_dir.ctr.GetValue()
+      rg_dict['binning']=self.bin_nrg_gain.binning.GetValue()
+      rg_dict['detector_address']=self.address.ctr.GetValue()
+      rg_dict['config_str']=self.config.ctr.GetValue()
+    else:
+      rg_dict['energy']=self.energy.ctr.GetValue()
+
     for key, value in six.iteritems(rg_dict):
       if str(value) == 'None' or str(value) == '':
         rg_dict[key] = None
@@ -1769,32 +1789,7 @@ class RunBlockDialog(BaseDialog):
       self.calib_dir.ctr.SetValue(str(last.calib_dir))
       self.comment.ctr.SetValue(str(last.comment))
 
-  def onImageFormat(self, e):
-    sel= self.img_format.ctr.GetString(self.img_format.ctr.GetSelection())
-    if 'cbf' in sel:
-      #self.beam_xyz.X.Disable()
-      #self.beam_xyz.Y.Disable()
-      #self.bin_nrg_gain.binning.Disable()
-      #self.two_thetas.two_theta_low.Disable()
-      #self.two_thetas.two_theta_high.Disable()
-      #self.dark_avg_path.Hide()
-      #self.dark_stddev_path.Hide()
-      #self.gain_map_path.Hide()
-      self.runblock_panel.SetupScrolling()
-    elif 'pickle' in sel:
-      #self.beam_xyz.X.Enable()
-      #self.beam_xyz.Y.Enable()
-      #self.bin_nrg_gain.binning.Enable()
-      #self.two_thetas.two_theta_low.Enable()
-      #self.two_thetas.two_theta_high.Enable()
-      #self.dark_avg_path.Show()
-      #self.dark_stddev_path.Show()
-      #self.gain_map_path.Show()
-      self.runblock_panel.Layout()
-      self.runblock_panel.SetupScrolling()
-
   def configure_controls(self):
-    self.onImageFormat(None)
     if self.last_run is None:
       self.runblocks_end.Disable()
       self.end_type.auto.SetValue(1)
