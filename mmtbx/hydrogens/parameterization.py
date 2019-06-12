@@ -292,8 +292,9 @@ class manager(object):
     sumang = alpha0 + alpha1 + alpha2
     denom = (1.0-c0**2)
     if(denom==0):
-      raise RuntimeError(
-        "Denominator zero: (1-c0*c0) in get_h_parameterization.")
+      self.broadcast_problem(ih = ih, i_a0 = i_a0)
+      #raise RuntimeError(
+      #  "Denominator zero: (1-c0*c0) in get_h_parameterization.")
     a = (c1-c0*c2)/(1-c0*c0)
     b = (c2-c0*c1)/(1-c0*c0)
     root = None
@@ -320,14 +321,12 @@ class manager(object):
       # if H is out of plane, but not in tetrahedral geometry
         root = 1-c1*c1-c2*c2-c0*c0+2*c0*c1*c2
         if(root < 0):
-          raise Sorry(
-'''Please double check atom %s, bound to %s.
-The input geometry is most likely wrong.
-Fix it or delete the H atom.''' %(self.site_labels[ih], self.site_labels[i_a0]))
+          self.broadcast_problem(ih = ih, i_a0 = i_a0,
+            msg='(Square root of zero in get_coefficients: H out of plane)')
         denom = math.sin(alpha0)
         if(denom==0):
-          raise RuntimeError(
-            "Denominator zero: sin(alpha0)in get_h_parameterization.")
+          self.broadcast_problem(ih = ih, i_a0 = i_a0,
+            msg='(Denominator zero in get_coefficients: H out of plane)')
         cz = (math.sqrt(1-c1*c1-c2*c2-c0*c0+2*c0*c1*c2))/math.sin(alpha0)
         h = cz
         #test if vector v points to same 'side' as uh0
@@ -388,8 +387,9 @@ Fix it or delete the H atom.''' %(self.site_labels[ih], self.site_labels[i_a0]))
       w12, 1,    c2,
       w13, w23,  c3 ])
     if(matrix_d.determinant()==0):
-      raise RuntimeError(
-        "Denominator zero: matrix_d in get_h_parameterization.")
+      self.broadcast_problem(ih = ih, i_a0 = i_a0)
+      #raise RuntimeError(
+      #  "Denominator zero: matrix_d in get_h_parameterization.")
     a = matrix_x.determinant()/matrix_d.determinant()
     b = matrix_y.determinant()/matrix_d.determinant()
     c = matrix_z.determinant()/matrix_d.determinant()
@@ -404,3 +404,11 @@ Fix it or delete the H atom.''' %(self.site_labels[ih], self.site_labels[i_a0]))
       return i_h1, i_h2
     else:
       return i_h2, i_h1
+
+  def broadcast_problem(self, ih, i_a0, msg=None,):
+    default_msg = '''Please double check atom %s, bound to %s
+as well as nearest neighbors. The input geometry is most likely wrong.
+Solution: Fix the geometry or delete the H atom.'''
+    #if msg is not None:
+    #  default_msg = default_msg + '\n' + msg
+    raise Sorry(default_msg % (self.site_labels[ih], self.site_labels[i_a0]))
