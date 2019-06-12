@@ -595,8 +595,9 @@ class AdvancedSettingsDialog(BaseDialog):
                                        label='Environment setup script:',
                                        label_style='bold',
                                        label_size=(200, -1),
-                                       value=self.params.mp.env_script[0] \
-                                             if len(params.mp.env_script) > 0 else '')
+                                       value=params.mp.env_script[0] \
+                                             if len(params.mp.env_script) > 0 and \
+                                             params.mp.env_script[0] is not None else '')
       self.mp_sizer.Add(self.env_script, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
