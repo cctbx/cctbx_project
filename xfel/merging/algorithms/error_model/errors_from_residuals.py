@@ -18,10 +18,13 @@ class errors_from_residuals(error_modeler_base):
       if hkl not in self.scaler.ISIGI: continue
 
       n = len(self.scaler.ISIGI[hkl])
-      if n > 1:
-        variance = flex.mean_and_variance(flex.double([self.scaler.ISIGI[hkl][i][0] for i in range(n)])).unweighted_sample_variance()
+      if n <= 1: continue
+      x = flex.double([self.scaler.ISIGI[hkl][i][0] for i in range(n)])
+      if self.scaler.params.raw_data.error_models.errors_from_sample_residuals.biased:
+        m = flex.mean(x)
+        variance = flex.sum((x-m)**2)/n
       else:
-        continue
+        variance = flex.mean_and_variance(x).unweighted_sample_variance() # flex.sum((x-m)**2)/(n-1)
 
       for i in range(n):
         Intensity = self.scaler.ISIGI[hkl][i][0] # scaled intensity

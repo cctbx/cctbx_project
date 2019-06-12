@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 from six.moves import range
 
 import iotbx.phil
-from cctbx.array_family import flex
+from dials.array_family import flex
 from cctbx import uctbx
 from iotbx import mtz
 from libtbx.utils import Usage, multi_out
@@ -353,6 +353,10 @@ def run(args):
 
       error_modeler(scaler).adjust_errors()
 
+    if work_params.raw_data.reduced_chi_squared_correction:
+      from xfel.merging.algorithms.error_model.reduced_chi_squared import reduced_chi_squared
+      reduced_chi_squared(scaler).compute()
+
     miller_set_avg = miller_set.customized_copy(
       unit_cell=work_params.target_unit_cell)
 
@@ -455,6 +459,13 @@ def run(args):
   from xfel.cxi.cxi_cc import run_cc
   for key in reindexing_ops.keys():
     run_cc(work_params,reindexing_op=key,output=out)
+
+  if isinstance(scaler.ISIGI, dict):
+    from xfel.merging import isigi_dict_to_reflection_table
+    refls = isigi_dict_to_reflection_table(scaler.miller_set.indices(), scaler.ISIGI)
+  else:
+    refls = scaler.ISIGI
+  easy_pickle.dump("%s.refl"%work_params.output.prefix, refls)
 
   return result
 

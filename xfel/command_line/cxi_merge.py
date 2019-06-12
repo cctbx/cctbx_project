@@ -169,10 +169,20 @@ raw_data {
   errors_from_sample_residuals = False
     .type = bool
     .help = Use sample residuals as error estimates. Not compatible with sdfac_auto or sdfac_refine.
+  reduced_chi_squared_correction = False
+    .type = bool
+    .help = Multiply the merged error by the reduced chi-squared to correct for under-estimation \
+            of experimental errors. Applied after other error models.
   propagate_errors = False
     .type = bool
     .help = Propagate errors from estimated parameters
   error_models {
+    errors_from_sample_residuals {
+      biased = False
+        .type = bool
+        .help = Used biased variance instead of unbiased variance when computing the sample \
+                variance. Difference of N (biased) vs. N-1 (unbiased) in the denominator
+    }
     sdfac_refine {
       random_seed = None
         .help = Random seed. May be int or None. Only used for the simplex minimizer
@@ -856,6 +866,10 @@ class scaling_manager (intensity_data) :
 
       error_modeler(self).adjust_errors()
 
+    if self.params.raw_data.reduced_chi_squared_correction:
+      from xfel.merging.algorithms.error_model.reduced_chi_squared import reduced_chi_squared
+      reduced_chi_squared(self).compute()
+
   def _scale_all_parallel (self, file_names, db_mgr) :
     import multiprocessing
     import libtbx.introspection
@@ -1068,9 +1082,13 @@ class scaling_manager (intensity_data) :
        if (multiplicity_flag[i]):
         Iobs_all[i] = self.summed_wt_I[i] / self.summed_weight[i]
         if hasattr(self, 'summed_weight_uncorrected'):
-          SigI_all[i] = math.sqrt(1. / self.summed_weight_uncorrected[i])
+          summed_weight = self.summed_weight_uncorrected[i]
         else:
-          SigI_all[i] = math.sqrt(1. / self.summed_weight[i])
+          summed_weight = self.summed_weight[i]
+        if self.params.raw_data.reduced_chi_squared_correction:
+          SigI_all[i] = math.sqrt(self.reduced_chi_squared[i] / summed_weight)
+        else:
+          SigI_all[i] = math.sqrt(1. / summed_weight)
     if (self.params.set_average_unit_cell) :
       # XXX since XFEL crystallography runs at room temperature, it may not
       # be appropriate to use the cell dimensions from a cryo structure.
