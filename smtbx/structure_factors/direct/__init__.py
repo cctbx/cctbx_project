@@ -24,7 +24,7 @@ class constructed_with_xray_structure(object):
         xs.scatterers(),
         table_file_name,
         xs.space_group(),
-        xs.space_group().is_origin_centric())
+        not xs.space_group().is_origin_centric())
 
     args = (xs.unit_cell(),
             xs.space_group(),
