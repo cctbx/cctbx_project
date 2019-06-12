@@ -478,12 +478,12 @@ class intensity_resolution_statistics(worker):
         self.suggested_resolution_scalar = self.params.scaling.resolution_scalar * (last_bin_completeness**(1./3.))
     '''
 
-      '''
-      # TODO
-      if redundancy_to_edge is not None:
-        cumulative_n_pred += flex.sum(sel_redundancy_pred)
-        cumulative_pred   += redundancy_to_edge
-      '''
+    '''
+    # TODO
+    if redundancy_to_edge is not None:
+      cumulative_n_pred += flex.sum(sel_redundancy_pred)
+      cumulative_pred   += redundancy_to_edge
+    '''
     return Intensity_Table
 
   def histogram(self, data):
