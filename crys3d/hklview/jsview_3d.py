@@ -68,7 +68,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
   scenearrayinfos = []
   hklscenes = []
   fomsarrays_idx = [(None, [])]
-
+  #mprint("in MakeHKLscene", verbose=True)
   #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
   if proc_array.is_complex_array():
     fomsarrays_idx.extend( mapcoef_fom_dict.get(proc_array.info().label_string()) )
@@ -277,14 +277,12 @@ class hklview_3d:
     return msg
 
 
-  def set_miller_array(self, col, merge=None, details="", proc_arrays=[]):
+  def set_miller_array(self, col, merge=None, details=""):
     #(self.iarray, self.fomcol) = self.get_col_fomcol( idx )
     self.iarray = col
     if self.iarray >= 0:
       self.miller_array = self.HKLscenes[self.iarray].miller_array
-      #self.miller_array = proc_arrays[self.iarray]
       self.scene = self.HKLscenes[self.iarray]
-    self.proc_arrays = proc_arrays
     self.merge = merge
     if (self.miller_array is None):
       return
@@ -302,7 +300,7 @@ class hklview_3d:
   def MakeToolTips(self, HKLscenes):
     self.mprint( "making tooltips")
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    self.colstraliases = "\n  var hk = \'H,K,L: \'"
+    allcolstraliases = "\n  var hk = \'H,K,L: \'"
     alltooltipstringsdict = {}
     tooltipstringsdict = {}
     for j,hklscene in enumerate(HKLscenes):
@@ -323,6 +321,12 @@ class hklview_3d:
         phases = flex.fmod_positive(phases, 360.0)
       sigmas = hklscene.sigmas
       for i,datval in enumerate(hklscene.data):
+        hkl = hklscene.indices[i]
+        if not tooltipstringsdict.has_key(hkl):
+          spbufttip = '\'+hk+\'%s, %s, %s' %(hkl[0], hkl[1], hkl[2])
+          spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i], 2) )
+          spbufttip += '\'+AA+\'' # javascript alias for angstrom
+          tooltipstringsdict[hkl] = spbufttip
         od =""
         if hklscene.work_array.is_complex_array():
           od = str(roundoff(ampl[i], 2)) + ", " + str(roundoff(phases[i], 1)) + \
@@ -332,19 +336,13 @@ class hklview_3d:
         else:
           od = str(roundoff(datval, 2))
         if not (math.isnan( abs(datval) ) or datval == display.inanval):
-          hkl = hklscene.indices[i]
-          if not tooltipstringsdict.has_key(hkl):
-            spbufttip = '\'+hk+\'%s, %s, %s' %(hkl[0], hkl[1], hkl[2])
-            spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i], 2) )
-            spbufttip += '\'+AA+\'' # javascript alias for angstrom
-            tooltipstringsdict[hkl] = spbufttip
           # st1, st2,... are javascript aliases for miller array labelstrings as declared in self.colstraliases
           tooltipstringsdict[hkl] += '\'+st%d+\'%s' %(j, od)
       #"""
       alltooltipstringsdict.update( tooltipstringsdict )
-      self.colstraliases += colstraliases
-    self.colstraliases += "\n"
-    return alltooltipstringsdict
+      allcolstraliases += colstraliases
+    allcolstraliases += "\n"
+    return alltooltipstringsdict, allcolstraliases
 
 
   def get_col_fomcol(self, idx):
@@ -358,6 +356,7 @@ class hklview_3d:
     #self.miller_array = self.match_valarrays[self.iarray]
     #self.miller_array = self.proc_arrays[self.iarray]
     if not self.sceneisdirty:
+      self.mprint("Scene is clean", verbose=True)
       return
 
     self.HKLscenesKey = (currentphil.filename,
@@ -384,6 +383,7 @@ class hklview_3d:
         self.otherminsigmas,
         self.hkl_scenes_info
       ) =  self.HKLscenesdict[self.HKLscenesKey]
+      self.mprint("Scene key is already present", verbose=True)
       return True
 
     HKLscenes = []
@@ -401,6 +401,7 @@ class hklview_3d:
     i = 0
 
     # arguments tuple for multi_core_run
+    assert(self.proc_arrays)
     argstuples = [ (e.deep_copy(), idx, copy.deepcopy(self.settings), self.mapcoef_fom_dict, merge, self.mprint) \
                      for (idx,e) in enumerate(self.proc_arrays)]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -440,7 +441,7 @@ class hklview_3d:
       #  self.mprint("%d, %s" %(i, inf) )
       #  i += 1
 
-    tooltipstringsdict = self.MakeToolTips(HKLscenes)
+    tooltipstringsdict, self.colstraliases = self.MakeToolTips(HKLscenes)
     self.HKLscenesdict[self.HKLscenesKey] = (
                 HKLscenes,
                 tooltipstringsdict,
@@ -459,11 +460,10 @@ class hklview_3d:
       self.otherminsigmas,
       self.hkl_scenes_info
     ) =  self.HKLscenesdict[self.HKLscenesKey]
-
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.sceneisdirty = False
     for j,inf in enumerate(hkl_scenes_info):
-      self.mprint("%d, %s" %(j, inf) )
+      self.mprint("%d, %s" %(j, inf[0]) )
 
     return True
 
@@ -495,7 +495,7 @@ class hklview_3d:
     if not self.scene:
       return
     if self.miller_array is None :
-      self.mprint( "A miller array must be selected for drawing" )
+      self.mprint( "A miller array must be selected for rendering the reflections" )
       return
     self.mprint("Composing NGL JavaScript...")
     h_axis = self.scene.axes[0]

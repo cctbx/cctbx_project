@@ -232,7 +232,7 @@ class settings_window () :
     self.update_reflection_info(None, None, None)
 
 
-class HKLViewFrame () :
+class HKLViewFrame() :
   def __init__ (self, *args, **kwds) :
     self.miller_array = None
     self.valid_arrays = []
@@ -476,10 +476,11 @@ class HKLViewFrame () :
       return
     self.column= col
     array_info = self.process_all_miller_arrays(col)
-    self.update_space_group_choices()
     self.viewer.set_miller_array(col, merge=array_info.merge,
-       details=array_info.details_str, proc_arrays=self.procarrays)
+       details=array_info.details_str)
+    self.viewer.proc_arrays=self.procarrays
     self.viewer.identify_suitable_fomsarrays()
+    self.update_space_group_choices()
 
 
   def update_space_group_choices(self) :
@@ -517,7 +518,8 @@ class HKLViewFrame () :
       arr = self.detect_Rfree(arr)
       othervalidarrays.append( arr )
     self.mprint( "MERGING 2")
-    self.viewer.set_miller_array(self.column, proc_arrays=othervalidarrays)
+    self.viewer.set_miller_array(self.column)
+    self.viewer.proc_arrays = othervalidarrays
     self.params.NGL_HKLviewer.using_space_subgroup = True
     self.viewer.DrawNGLJavaScript()
 
@@ -533,7 +535,8 @@ class HKLViewFrame () :
 
 
   def set_default_spacegroup(self):
-    self.viewer.set_miller_array(self.column, proc_arrays=self.valid_arrays)
+    self.viewer.set_miller_array(self.column)
+    self.viewer.proc_arrays = self.valid_arrays
 
 
   def load_reflections_file(self, file_name, set_array=True, data_only=False):
@@ -546,6 +549,7 @@ class HKLViewFrame () :
       self.viewer.icolourcol = -1
       self.viewer.iradiicol = -1
       self.viewer.match_valarrays = []
+      self.viewer.proc_arrays = []
       display.reset_settings()
       self.settings = display.settings()
       self.viewer.settings = self.params.NGL_HKLviewer.viewer
