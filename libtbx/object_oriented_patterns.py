@@ -106,7 +106,7 @@ class null(object):
   def __getattr__(self, a): return self
   def __setattr__(self, a, v): return self
   def __delattr__(self, a): return self
-
+  def __getnewargs__(self):  return () # allow for pickling during multiprocessing
   def __call__(self, *args, **kwds): return self
 
   def __getitem__(self, i): return self

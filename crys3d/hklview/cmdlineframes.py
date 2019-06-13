@@ -285,6 +285,7 @@ class HKLViewFrame () :
     self.params = self.currentphil.fetch().extract()
     self.viewer.miller_array = None
     self.viewer.proc_arrays = []
+    self.viewer.HKLscenesdict = {}
 
 
   def GetNewCurrentPhilFromString(self, philstr, oldcurrentphil):
@@ -446,6 +447,7 @@ class HKLViewFrame () :
 
 
   def process_all_miller_arrays(self, col):
+    print "in process_all_miller_arrays"
     self.procarrays = []
     if self.params.NGL_HKLviewer.merge_data == False:
       self.settings.expand_to_p1 = False
@@ -462,24 +464,27 @@ class HKLViewFrame () :
       array_info = procarray_info
     self.merge_answer = [None]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    self.viewer.set_miller_array(col, merge=array_info.merge,
-       details=array_info.details_str, proc_arrays=self.procarrays)
-    self.viewer.identify_suitable_fomsarrays()
-    return self.miller_array, array_info
+    #self.viewer.set_miller_array(col, merge=array_info.merge,
+    #   details=array_info.details_str, proc_arrays=self.procarrays)
+    #self.viewer.identify_suitable_fomsarrays()
+    return array_info
 
 
   def set_miller_array(self, col=-1) :
-    if col >= len(self.valid_arrays):
+    #if col >= len(self.valid_arrays):
+    if col >= len(self.viewer.hkl_scenes_info ):
       return
     self.column= col
-    array, array_info = self.process_all_miller_arrays(col)
-    self.miller_array = array
-    #self.update_space_group_choices()
-    #self.viewer.set_miller_array(array, merge=array_info.merge,
-    #   details=array_info.details_str, valid_arrays=self.valid_arrays)
+    array_info = self.process_all_miller_arrays(col)
+    self.update_space_group_choices()
+    self.viewer.set_miller_array(col, merge=array_info.merge,
+       details=array_info.details_str, proc_arrays=self.procarrays)
+    self.viewer.identify_suitable_fomsarrays()
 
 
   def update_space_group_choices(self) :
+    if (self.miller_array is None) :
+      return
     from cctbx.sgtbx.subgroups import subgroups
     from cctbx import sgtbx
     sg_info = self.miller_array.space_group_info()
@@ -661,6 +666,7 @@ class HKLViewFrame () :
       return False
     self.viewer.icolourcol = column
     self.viewer.iradiicol = column
+    """
     if self.valid_arrays[column].is_complex_array():
       if fom_column and self.valid_arrays[fom_column].is_real_array():
         self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()] = fom_column
@@ -669,9 +675,12 @@ class HKLViewFrame () :
         if self.viewer.mapcoef_fom_dict.get(self.valid_arrays[column].info().label_string()):
           del self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()]
         self.mprint("No valid FOM array provided.")
+    """
     #self.set_miller_array(self.valid_arrays[column])
-    self.set_miller_array(column)
-    if (self.miller_array is None) :
+    #self.set_miller_array(column)
+    self.viewer.set_miller_array(column)
+    self.miller_array = self.viewer.HKLscenes[column].miller_array
+    if (self.miller_array is None):
       raise Sorry("No data loaded!")
     self.mprint( "Miller array %s runs from hkls: %s to %s" \
      %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
@@ -765,13 +774,13 @@ class HKLViewFrame () :
     return self.array_infotpls
 
 
-  def GetMatchingArrayInfo(self):
+  def GetHklScenesInfo(self):
     """
     return array of strings with information on each processed miller array
     which may have been expanded with anomalous reflections or truncated to non-anomalous reflections
     as to match the currently selected miller array
     """
-    return self.viewer.matchingarrayinfo
+    return self.viewer.hkl_scenes_info
 
 
   def GetBinInfo(self):
@@ -785,7 +794,7 @@ class HKLViewFrame () :
   def SendInfo(self):
     mydict = { "info": self.infostr,
                "miller_arrays": self.array_infotpls,
-               "matching_arrays": self.viewer.matchingarrayinfo,
+               "hklscenes_arrays": self.viewer.hkl_scenes_info,
                "bin_info": self.viewer.binstrs,
                "html_url": self.viewer.url,
                "merge_data": self.params.NGL_HKLviewer.merge_data,

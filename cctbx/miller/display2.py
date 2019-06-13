@@ -223,7 +223,7 @@ class scene(object):
       settings = self.settings
       data = array.data()
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      self.missing_set = oop.null() # fix oop causes crash in easy_mp.multi_core_run
+      self.missing_set = oop.null()
       #if (array.is_xray_intensity_array()):
       #  data.set_selected(data < 0, flex.double(data.size(), 0.))
       if (array.is_unique_set_under_symmetry()) and (settings.map_to_asu):

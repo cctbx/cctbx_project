@@ -60,19 +60,19 @@ class ArrayInfo:
 
 
 
-def MakeHKLscene( proc_array, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
+def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
   scenemaxdata =[]
   scenemindata =[]
   scenemaxsigmas = []
   sceneminsigmas = []
   scenearrayinfos = []
   hklscenes = []
-  fomsarrays = [None]
-
-  if proc_array.is_complex_array():
-    fomsarrays.extend( mapcoef_fom_dict.get(proc_array.info().label_string()) )
+  fomsarrays_idx = [(None, [])]
 
   #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+  if proc_array.is_complex_array():
+    fomsarrays_idx.extend( mapcoef_fom_dict.get(proc_array.info().label_string()) )
+
   settings = setts
   if (settings.expand_anomalous or settings.expand_to_p1) \
       and not proc_array.is_unique_set_under_symmetry() and not merge:
@@ -81,7 +81,7 @@ def MakeHKLscene( proc_array, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.
     settings.expand_to_p1 = False
     mprint("The " + proc_array.info().label_string() + \
          " array is not symmetry unique and therefore won't be expanded")
-  for fomsarray in fomsarrays:
+  for (fomsarray, fidx) in fomsarrays_idx:
     hklscene = display.scene(miller_array=proc_array, merge=merge,
       settings=settings, foms_array=fomsarray, fullprocessarray=True )
     if not hklscene.SceneCreated:
@@ -105,13 +105,48 @@ def MakeHKLscene( proc_array, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.
       scenemindata.append( ainf.mindata )
       scenemaxsigmas.append(ainf.maxsigmas)
       sceneminsigmas.append(ainf.minsigmas)
-      scenearrayinfos.append(infostr)
+      scenearrayinfos.append((infostr, pidx, fidx))
       #self.mprint("%d, %s" %(i, infostr) )
       #i +=1
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
 
 
-
+def MakeTtips(hklscene, j):
+  tooltipstringsdict = {}
+  colstraliases = ""
+  if hklscene.isUsingFOMs():
+    return tooltipstringsdict, colstraliases # already have tooltips for the scene without the associated fom
+  colstraliases += "\n  var st%d = '\\n%s: '" %(j, hklscene.work_array.info().label_string() )
+  ocolstr = hklscene.work_array.info().label_string()
+  if hklscene.work_array.is_complex_array():
+    ampl = flex.abs(hklscene.data)
+    phases = flex.arg(hklscene.data) * 180.0/math.pi
+    # purge nan values from array to avoid crash in fmod_positive()
+    b = flex.bool([bool(math.isnan(e)) for e in phases])
+    # replace the nan values with an arbitrary float value
+    phases = phases.set_selected(b, 42.4242)
+    # Cast negative degrees to equivalent positive degrees
+    phases = flex.fmod_positive(phases, 360.0)
+  sigmas = hklscene.sigmas
+  for i,datval in enumerate(hklscene.data):
+    od =""
+    if hklscene.work_array.is_complex_array():
+      od = str(roundoff(ampl[i], 2)) + ", " + str(roundoff(phases[i], 1)) + \
+        "\'+DGR+\'"
+    elif sigmas is not None:
+      od = str(roundoff(datval, 2)) + ", " + str(roundoff(sigmas[i], 2))
+    else:
+      od = str(roundoff(datval, 2))
+    if not (math.isnan( abs(datval) ) or datval == display.inanval):
+      hkl = hklscene.indices[i]
+      if not tooltipstringsdict.has_key(hkl):
+        spbufttip = '\'+hk+\'%s, %s, %s' %(hkl[0], hkl[1], hkl[2])
+        spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i], 2) )
+        spbufttip += '\'+AA+\'' # javascript alias for angstrom
+        tooltipstringsdict[hkl] = spbufttip
+      # st1, st2,... are javascript aliases for miller array labelstrings as declared in colstraliases
+      tooltipstringsdict[hkl] += '\'+st%d+\'%s' %(j, od)
+  return tooltipstringsdict, colstraliases
 
 
 class hklview_3d:
@@ -123,12 +158,14 @@ class hklview_3d:
     self.tooltipstringsdict = {}
     self.d_min = None
     self.scene = None
+    self.merge = False
     self.NGLscriptstr = ""
     self.cameratype = "orthographic"
     self.url = ""
     self.binarray = "Resolution"
     self.icolourcol = None
     self.iradiicol = None
+    self.fomcol = None
     self.iarray = None
     self.isnewfile = False
     self.colstraliases = ""
@@ -142,7 +179,7 @@ class hklview_3d:
     self.othermaxsigmas = []
     self.otherminsigmas = []
     self.sceneisdirty = False
-    self.matchingarrayinfo = []
+    self.hkl_scenes_info = []
     self.match_valarrays = []
     self.binstrs = []
     self.mapcoef_fom_dict = {}
@@ -211,8 +248,7 @@ class hklview_3d:
     if hasattr(diffphil, "filename") \
       or hasattr(diffphil, "spacegroup_choice") \
       or hasattr(diffphil, "merge_data") \
-      or hasattr(diffphil, "column") \
-      or hasattr(diffphil, "fom_column") \
+      or hasattr(diffphil, "column")  \
       or hasattr(diffphil, "viewer") \
       and ( \
        hasattr(diffphil.viewer, "show_data_over_sigma") \
@@ -242,13 +278,17 @@ class hklview_3d:
 
 
   def set_miller_array(self, col, merge=None, details="", proc_arrays=[]):
+    #(self.iarray, self.fomcol) = self.get_col_fomcol( idx )
     self.iarray = col
-    if col:
-      self.miller_array = proc_arrays[col]
+    if self.iarray >= 0:
+      self.miller_array = self.HKLscenes[self.iarray].miller_array
+      #self.miller_array = proc_arrays[self.iarray]
+      self.scene = self.HKLscenes[self.iarray]
     self.proc_arrays = proc_arrays
     self.merge = merge
     if (self.miller_array is None):
       return
+    self.identify_suitable_fomsarrays()
     self.d_min = self.miller_array.d_min()
     array_info = self.miller_array.info()
     self.binvals = [ 1.0/self.miller_array.d_max_min()[0], 1.0/self.miller_array.d_max_min()[1]  ]
@@ -261,29 +301,16 @@ class hklview_3d:
 
   def MakeToolTips(self, HKLscenes):
     self.mprint( "making tooltips")
-    """
-    hkls = self.superset_array.indices()
-    dres = self.superset_array.unit_cell().d(hkls)
-    for i,hkl in enumerate(hkls):
-      spbufttip = 'H,K,L: %s, %s, %s' %(hkl[0], hkl[1], hkl[2])
-      spbufttip += '\ndres: %s ' %str(roundoff(dres[i])  )
-      spbufttip += '\' + AA + \''
-      self.tooltipstringsdict[hkl] = spbufttip
-    """
-    j = 0
-    self.colstraliases = "\n  var hk = \'H,K,L: \'"
-    for hklscene in HKLscenes: # reduce javascript file size with variables for common strings
-      if hklscene.isUsingFOMs():
-        continue # already have tooltips for the scene without the associated fom
-      self.colstraliases += "\n  var st%d = '\\n%s: '" %(j, hklscene.work_array.info().label_string() )
-      j += 1
-    self.colstraliases += "\n"
-    tooltipstringsdict = {}
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    j = 0
-    for hklscene in HKLscenes:
+    self.colstraliases = "\n  var hk = \'H,K,L: \'"
+    alltooltipstringsdict = {}
+    tooltipstringsdict = {}
+    for j,hklscene in enumerate(HKLscenes):
+      #tooltipstringsdict, colstraliases = MakeTtips(hklscene, j)
+      #"""
       if hklscene.isUsingFOMs():
         continue # already have tooltips for the scene without the associated fom
+      colstraliases = "\n  var st%d = '\\n%s: '" %(j, hklscene.work_array.info().label_string() )
       ocolstr = hklscene.work_array.info().label_string()
       if hklscene.work_array.is_complex_array():
         ampl = flex.abs(hklscene.data)
@@ -309,17 +336,27 @@ class hklview_3d:
           if not tooltipstringsdict.has_key(hkl):
             spbufttip = '\'+hk+\'%s, %s, %s' %(hkl[0], hkl[1], hkl[2])
             spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i], 2) )
-            spbufttip += '\'+AA+\''
+            spbufttip += '\'+AA+\'' # javascript alias for angstrom
             tooltipstringsdict[hkl] = spbufttip
+          # st1, st2,... are javascript aliases for miller array labelstrings as declared in self.colstraliases
           tooltipstringsdict[hkl] += '\'+st%d+\'%s' %(j, od)
-      j +=1
-    return tooltipstringsdict
+      #"""
+      alltooltipstringsdict.update( tooltipstringsdict )
+      self.colstraliases += colstraliases
+    self.colstraliases += "\n"
+    return alltooltipstringsdict
+
+
+  def get_col_fomcol(self, idx):
+    if len(self.hkl_scenes_info) == 0:
+      return -1, -1
+    return self.hkl_scenes_info[idx][6], self.hkl_scenes_info[idx][7]
 
 
   def ConstructReciprocalSpace(self, currentphil, merge=None, ):
     self.mprint("Constructing HKL scenes")
     #self.miller_array = self.match_valarrays[self.iarray]
-    self.miller_array = self.proc_arrays[self.iarray]
+    #self.miller_array = self.proc_arrays[self.iarray]
     if not self.sceneisdirty:
       return
 
@@ -345,7 +382,7 @@ class hklview_3d:
         self.othermindata,
         self.othermaxsigmas,
         self.otherminsigmas,
-        self.matchingarrayinfo
+        self.hkl_scenes_info
       ) =  self.HKLscenesdict[self.HKLscenesKey]
       return True
 
@@ -354,7 +391,7 @@ class hklview_3d:
     othermindata = []
     othermaxsigmas = []
     otherminsigmas = []
-    matchingarrayinfo = []
+    hkl_scenes_info = []
     tooltipstringsdict = {}
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     #self.scene = display.scene(miller_array=self.miller_array, merge=merge,
@@ -364,9 +401,9 @@ class hklview_3d:
     i = 0
 
     # arguments tuple for multi_core_run
-    argstuples = [ (e.deep_copy(), copy.deepcopy(self.settings), self.mapcoef_fom_dict, merge, self.mprint) \
-                     for e in self.proc_arrays]
-
+    argstuples = [ (e.deep_copy(), idx, copy.deepcopy(self.settings), self.mapcoef_fom_dict, merge, self.mprint) \
+                     for (idx,e) in enumerate(self.proc_arrays)]
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     """
     for (i, (args, res, errstr)) in enumerate( easy_mp.multi_core_run( MakeHKLscene, argstuples, 8)):
       if errstr:
@@ -379,7 +416,7 @@ class hklview_3d:
       othermindata.extend(scenemindata)
       othermaxsigmas.extend(scenemaxsigmas)
       otherminsigmas.extend(sceneminsigmas)
-      matchingarrayinfo.extend(scenearrayinfos)
+      hkl_scenes_info.extend(scenearrayinfos)
       HKLscenes.extend(hkl_scenes)
       for inf in scenearrayinfos:
         self.mprint("%d, %s" %(i, inf) )
@@ -390,14 +427,14 @@ class hklview_3d:
       (hklscenes, scenemaxdata,
         scenemindata, scenemaxsigmas,
          sceneminsigmas, scenearrayinfos
-         ) = MakeHKLscene(argstuples[j][0], argstuples[j][1], argstuples[j][2], argstuples[j][3] , argstuples[j][4] )
+         ) = MakeHKLscene(argstuples[j][0], argstuples[j][1], argstuples[j][2], argstuples[j][3], argstuples[j][4], argstuples[j][5] )
          #) = MakeHKLscene(proc_array, copy.deepcopy(self.settings), self.mapcoef_fom_dict, merge)
 
       othermaxdata.extend(scenemaxdata)
       othermindata.extend(scenemindata)
       othermaxsigmas.extend(scenemaxsigmas)
       otherminsigmas.extend(sceneminsigmas)
-      matchingarrayinfo.extend(scenearrayinfos)
+      hkl_scenes_info.extend(scenearrayinfos)
       HKLscenes.extend(hklscenes)
       #for inf in scenearrayinfos:
       #  self.mprint("%d, %s" %(i, inf) )
@@ -411,7 +448,7 @@ class hklview_3d:
                 othermindata,
                 othermaxsigmas,
                 otherminsigmas,
-                matchingarrayinfo
+                hkl_scenes_info
                 )
     (
       self.HKLscenes,
@@ -420,12 +457,12 @@ class hklview_3d:
       self.othermindata,
       self.othermaxsigmas,
       self.otherminsigmas,
-      self.matchingarrayinfo
+      self.hkl_scenes_info
     ) =  self.HKLscenesdict[self.HKLscenesKey]
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.sceneisdirty = False
-    for j,inf in enumerate(matchingarrayinfo):
+    for j,inf in enumerate(hkl_scenes_info):
       self.mprint("%d, %s" %(j, inf) )
 
     return True
@@ -435,18 +472,16 @@ class hklview_3d:
     self.mprint("Matching complex arrays to suitable FOM arrays")
     self.mapcoef_fom_dict = {}
     for proc_array in self.proc_arrays:
-      if not proc_array.is_complex_array():
-        continue
-      foms_arrays = []
-      for foms_array in self.proc_arrays:
-        if proc_array.size() != foms_array.size():
+      fom_arrays_idx = []
+      for i,foms_array in enumerate(self.proc_arrays):
+        if not proc_array.is_complex_array() or not foms_array.is_real_array():
           continue
-        if not foms_array.is_real_array():
+        if proc_array.size() != foms_array.size():
           continue
         if  min(foms_array.data()) < 0.0 or max(foms_array.data()) > 1.0:
           continue
-        foms_arrays.append( foms_array )
-      self.mapcoef_fom_dict[proc_array.info().label_string()] = foms_arrays
+        fom_arrays_idx.append( (foms_array, i) )
+      self.mapcoef_fom_dict[proc_array.info().label_string()] = fom_arrays_idx
 
 
   def UpdateBinValues(self, binvals = [] ):
