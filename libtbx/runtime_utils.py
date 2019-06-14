@@ -313,16 +313,22 @@ class detached_process_client(detached_base):
     elif os.path.exists(self.abort_file):
       self.callback_abort()
     elif os.path.exists(self.result_file):
-      try :
-        time.sleep(1)
-        result = easy_pickle.load(self.result_file)
-      except EOFError :
-        print("EOFError trying to load result file '%s'" %(self.result_file))
-      else :
-        time.sleep(1)
-        self.check_stdout()
-        self.check_status()
-        self.callback_final(result)
+      max_retries = 5
+      for retry in range(max_retries):
+        try:
+          result = easy_pickle.load(self.result_file)
+        except Exception:
+          print("Error trying to load result file '%s' on attempt %d." %
+            (self.result_file, retry+1))
+        else:
+          time.sleep(1)
+          self.check_stdout()
+          self.check_status()
+          self.callback_final(result)
+          break
+        time.sleep(retry+1)
+      if retry == max_retries-1:
+        print("There was an error with loading '%s'." % self.result_file)
     else :
       self.finished = False
       return
