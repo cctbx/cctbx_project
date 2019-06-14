@@ -7,6 +7,7 @@ from libtbx.utils import null_out
 import scitbx.matrix
 from cctbx import sgtbx
 from libtbx.test_utils import approx_equal
+from collections import OrderedDict
 import six
 
 
@@ -184,7 +185,6 @@ class clashes(object):
     """
     Sort clashes according to vdW distance, model distance, overlap or symmetry
     """
-    from collections import OrderedDict
     options = [sort_vdW, sort_model_distance, sort_overlap, sort_symmetry]
     if (options.count(True) == 0):
       sort_overlap = True
@@ -354,9 +354,7 @@ class manager():
     """
     if self._clashes is None:
       self._process_nonbonded_proxies(find_clashes = True)
-      return self._clashes
-    else:
-      return self._clashes
+    return self._clashes
 
 
   def get_hbonds(self):
@@ -365,14 +363,16 @@ class manager():
     """
     if not self._hbonds:
       self._process_nonbonded_proxies(find_hbonds = True)
-    else:
-      return self._hbonds
+    return self._hbonds
 
 
   def has_hbonds(self):
     """
     True/False if any hbonds were found.
     """
+    # hbonds = self.get_hbonds()
+    # return hbonds.get_n_bonds() > 0
+
     has_hbonds = False
     if not self._hbonds:
       self._process_nonbonded_proxies(find_clashes = True)
