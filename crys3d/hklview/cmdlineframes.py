@@ -234,7 +234,6 @@ class settings_window () :
 
 class HKLViewFrame() :
   def __init__ (self, *args, **kwds) :
-    self.miller_array = None
     self.valid_arrays = []
     self.spacegroup_choices = []
     self.array_infostrs = []
@@ -327,9 +326,11 @@ class HKLViewFrame() :
         self.ResetPhilandViewer(diff_phil)
         self.load_reflections_file(phl.filename)
 
-      if hasattr(diff, "column") or hasattr(diff, "fom_column") \
+      #if hasattr(diff, "column") or hasattr(diff, "fom_column") \
+      if hasattr(diff, "column") \
        or hasattr(diff, "merge_data") or hasattr(diff, "column_bin_thresholds"):
-        if self.set_column(phl.column, phl.fom_column):
+        #if self.set_column(phl.column, phl.fom_column):
+        if self.set_column(phl.column):
           self.set_column_bin_thresholds(phl.column_bin_thresholds, phl.bin_array)
 
       if hasattr(diff, "spacegroup_choice"):
@@ -353,7 +354,7 @@ class HKLViewFrame() :
       self.SendInfo()
       self.NewFileLoaded = False
 
-      if (self.miller_array is None) :
+      if (self.viewer.miller_array is None) :
         self.mprint( "No miller array has been selected")
         return False
       return True
@@ -458,8 +459,7 @@ class HKLViewFrame() :
       self.procarrays.append(procarray)
       if c==col:
         array_info = procarray_info
-        self.miller_array = procarray
-        self.update_space_group_choices()
+        self.viewer.miller_array = procarray
     if col < 0:
       array_info = procarray_info
     self.merge_answer = [None]
@@ -471,10 +471,10 @@ class HKLViewFrame() :
 
 
   def set_miller_array(self, col=-1) :
+    print "in set_miller_array"
     #if col >= len(self.valid_arrays):
     if col >= len(self.viewer.hkl_scenes_info ):
       return
-    self.column= col
     array_info = self.process_all_miller_arrays(col)
     self.viewer.set_miller_array(col, merge=array_info.merge,
        details=array_info.details_str)
@@ -484,17 +484,18 @@ class HKLViewFrame() :
 
 
   def update_space_group_choices(self) :
-    if (self.miller_array is None) :
+    if self.viewer.miller_array is None or \
+      self.params.NGL_HKLviewer.using_space_subgroup:
       return
     from cctbx.sgtbx.subgroups import subgroups
     from cctbx import sgtbx
-    sg_info = self.miller_array.space_group_info()
+    sg_info = self.viewer.miller_array.space_group_info()
     subgrs = subgroups(sg_info).groups_parent_setting()
     self.spacegroup_choices = []
     for i,subgroup in enumerate(subgrs) :
       subgroup_info = sgtbx.space_group_info(group=subgroup)
       self.spacegroup_choices.append(subgroup_info)
-      self.mprint("%d, %s" %(i, subgroup_info.symbol_and_number()) )
+      #self.mprint("%d, %s" %(i, subgroup_info.symbol_and_number()) )
     if (sg_info in self.spacegroup_choices) :
       self.current_spacegroup = self.spacegroup_choices.index(sg_info)
     else :
@@ -503,13 +504,13 @@ class HKLViewFrame() :
 
 
   def set_spacegroup_choice(self, n) :
-    if (self.miller_array is None) :
+    if (self.viewer.miller_array is None) :
       raise Sorry("No data loaded!")
     self.current_spacegroup = self.spacegroup_choices[n]
     from cctbx import crystal
     symm = crystal.symmetry(
       space_group_info= self.current_spacegroup,
-      unit_cell=self.miller_array.unit_cell())
+      unit_cell=self.viewer.miller_array.unit_cell())
     othervalidarrays = []
     for validarray in self.valid_arrays:
       #print "Space group casting ", validarray.info().label_string()
@@ -518,10 +519,11 @@ class HKLViewFrame() :
       arr = self.detect_Rfree(arr)
       othervalidarrays.append( arr )
     self.mprint( "MERGING 2")
-    self.viewer.set_miller_array(self.column)
     self.viewer.proc_arrays = othervalidarrays
     self.params.NGL_HKLviewer.using_space_subgroup = True
-    self.viewer.DrawNGLJavaScript()
+    #self.viewer.identify_suitable_fomsarrays()
+    self.viewer.set_miller_array()
+    #self.viewer.DrawNGLJavaScript()
 
 
   def SetSpaceGroupChoice(self, n):
@@ -535,8 +537,10 @@ class HKLViewFrame() :
 
 
   def set_default_spacegroup(self):
-    self.viewer.set_miller_array(self.column)
-    self.viewer.proc_arrays = self.valid_arrays
+    self.viewer.proc_arrays = self.procarrays
+    self.viewer.set_miller_array()
+    self.viewer.identify_suitable_fomsarrays()
+
 
 
   def load_reflections_file(self, file_name, set_array=True, data_only=False):
@@ -550,6 +554,7 @@ class HKLViewFrame() :
       self.viewer.iradiicol = -1
       self.viewer.match_valarrays = []
       self.viewer.proc_arrays = []
+      self.spacegroup_choices = []
       display.reset_settings()
       self.settings = display.settings()
       self.viewer.settings = self.params.NGL_HKLviewer.viewer
@@ -664,7 +669,8 @@ class HKLViewFrame() :
     self.viewer.SetOpacity(bin, alpha)
 
 
-  def set_column(self, column, fom_column=None) :
+  #def set_column(self, column, fom_column=None) :
+  def set_column(self, column) :
     self.viewer.binvals = []
     if column is None:
       return False
@@ -683,12 +689,13 @@ class HKLViewFrame() :
     #self.set_miller_array(self.valid_arrays[column])
     #self.set_miller_array(column)
     self.viewer.set_miller_array(column)
-    self.miller_array = self.viewer.HKLscenes[column].miller_array
-    if (self.miller_array is None):
+    self.viewer.miller_array = self.viewer.HKLscenes[column].miller_array
+    if (self.viewer.miller_array is None):
       raise Sorry("No data loaded!")
     self.mprint( "Miller array %s runs from hkls: %s to %s" \
-     %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
-        self.miller_array.index_span().max() ) )
+     %(self.viewer.miller_array.info().label_string(), self.viewer.miller_array.index_span().min(),
+        self.viewer.miller_array.index_span().max() ) )
+    self.update_space_group_choices()
     #self.viewer.DrawNGLJavaScript()
     #self.update_settings()
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -697,11 +704,6 @@ class HKLViewFrame() :
 
   def SetColumn(self, column):
     self.params.NGL_HKLviewer.column = column
-    self.update_settings()
-
-
-  def SetFomColumn(self, fom_column):
-    self.params.NGL_HKLviewer.fom_column = fom_column
     self.update_settings()
 
 
@@ -756,7 +758,7 @@ class HKLViewFrame() :
     """
     return array of strings with available subgroups of the space group
     """
-    if (self.miller_array is None) :
+    if (self.viewer.miller_array is None) :
       self.mprint( "No miller array has been selected")
     if self.spacegroup_choices:
       return [e.symbol_and_number() for e in self.spacegroup_choices]
@@ -816,8 +818,6 @@ NGL_HKLviewer {
   filename = None
     .type = path
   column = None
-    .type = int
-  fom_column = None
     .type = int
   merge_data = False
     .type = bool

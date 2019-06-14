@@ -153,7 +153,6 @@ class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
     self.miller_array = None
-    self.superset_array = None
     self.tooltipstrings = []
     self.tooltipstringsdict = {}
     self.d_min = None
@@ -165,7 +164,6 @@ class hklview_3d:
     self.binarray = "Resolution"
     self.icolourcol = None
     self.iradiicol = None
-    self.fomcol = None
     self.iarray = None
     self.isnewfile = False
     self.colstraliases = ""
@@ -174,10 +172,10 @@ class hklview_3d:
     self.proc_arrays = []
     self.HKLscenes = []
     self.HKLscenesdict = {}
-    self.othermaxdata = []
-    self.othermindata = []
-    self.othermaxsigmas = []
-    self.otherminsigmas = []
+    self.HKLscenesMaxdata = []
+    self.HKLscenesMindata = []
+    self.HKLscenesMaxsigmas = []
+    self.HKLscenesMinsigmas = []
     self.sceneisdirty = False
     self.hkl_scenes_info = []
     self.match_valarrays = []
@@ -249,6 +247,8 @@ class hklview_3d:
       or hasattr(diffphil, "spacegroup_choice") \
       or hasattr(diffphil, "merge_data") \
       or hasattr(diffphil, "column")  \
+      or hasattr(diffphil, "spacegroup_choice") \
+      or hasattr(diffphil, "using_space_subgroup") \
       or hasattr(diffphil, "viewer") \
       and ( \
        hasattr(diffphil.viewer, "show_data_over_sigma") \
@@ -265,7 +265,7 @@ class hklview_3d:
       or hasattr(diffphil.viewer, "show_anomalous_pairs") \
       ):
         self.sceneisdirty = True
-        if not self.ConstructReciprocalSpace(currentphil, merge=self.merge,) or \
+        if not self.ConstructReciprocalSpace(currentphil, merge=self.merge) or \
          self.miller_array is None or self.iarray < 0:
           return
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -277,9 +277,9 @@ class hklview_3d:
     return msg
 
 
-  def set_miller_array(self, col, merge=None, details=""):
-    #(self.iarray, self.fomcol) = self.get_col_fomcol( idx )
-    self.iarray = col
+  def set_miller_array(self, col=None, merge=None, details=""):
+    if col is not None:
+      self.iarray = col
     if self.iarray >= 0:
       self.miller_array = self.HKLscenes[self.iarray].miller_array
       self.scene = self.HKLscenes[self.iarray]
@@ -351,7 +351,7 @@ class hklview_3d:
     return self.hkl_scenes_info[idx][6], self.hkl_scenes_info[idx][7]
 
 
-  def ConstructReciprocalSpace(self, currentphil, merge=None, ):
+  def ConstructReciprocalSpace(self, currentphil, merge=None):
     self.mprint("Constructing HKL scenes")
     #self.miller_array = self.match_valarrays[self.iarray]
     #self.miller_array = self.proc_arrays[self.iarray]
@@ -361,6 +361,7 @@ class hklview_3d:
 
     self.HKLscenesKey = (currentphil.filename,
                          currentphil.spacegroup_choice,
+                         currentphil.using_space_subgroup,
                          currentphil.merge_data,
                          self.settings.expand_anomalous,
                          self.settings.expand_to_p1,
@@ -377,20 +378,20 @@ class hklview_3d:
       (
         self.HKLscenes,
         self.tooltipstringsdict,
-        self.othermaxdata,
-        self.othermindata,
-        self.othermaxsigmas,
-        self.otherminsigmas,
+        self.HKLscenesMaxdata,
+        self.HKLscenesMindata,
+        self.HKLscenesMaxsigmas,
+        self.HKLscenesMinsigmas,
         self.hkl_scenes_info
       ) =  self.HKLscenesdict[self.HKLscenesKey]
       self.mprint("Scene key is already present", verbose=True)
       return True
 
     HKLscenes = []
-    othermaxdata = []
-    othermindata = []
-    othermaxsigmas = []
-    otherminsigmas = []
+    HKLscenesMaxdata = []
+    HKLscenesMindata = []
+    HKLscenesMaxsigmas = []
+    HKLscenesMinsigmas = []
     hkl_scenes_info = []
     tooltipstringsdict = {}
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -413,10 +414,10 @@ class hklview_3d:
         scenemindata, scenemaxsigmas,
         sceneminsigmas, scenearrayinfos
       ) = res
-      othermaxdata.extend(scenemaxdata)
-      othermindata.extend(scenemindata)
-      othermaxsigmas.extend(scenemaxsigmas)
-      otherminsigmas.extend(sceneminsigmas)
+      HKLscenesMaxdata.extend(scenemaxdata)
+      HKLscenesMindata.extend(scenemindata)
+      HKLscenesMaxsigmas.extend(scenemaxsigmas)
+      HKLscenesMinsigmas.extend(sceneminsigmas)
       hkl_scenes_info.extend(scenearrayinfos)
       HKLscenes.extend(hkl_scenes)
       for inf in scenearrayinfos:
@@ -431,10 +432,10 @@ class hklview_3d:
          ) = MakeHKLscene(argstuples[j][0], argstuples[j][1], argstuples[j][2], argstuples[j][3], argstuples[j][4], argstuples[j][5] )
          #) = MakeHKLscene(proc_array, copy.deepcopy(self.settings), self.mapcoef_fom_dict, merge)
 
-      othermaxdata.extend(scenemaxdata)
-      othermindata.extend(scenemindata)
-      othermaxsigmas.extend(scenemaxsigmas)
-      otherminsigmas.extend(sceneminsigmas)
+      HKLscenesMaxdata.extend(scenemaxdata)
+      HKLscenesMindata.extend(scenemindata)
+      HKLscenesMaxsigmas.extend(scenemaxsigmas)
+      HKLscenesMinsigmas.extend(sceneminsigmas)
       hkl_scenes_info.extend(scenearrayinfos)
       HKLscenes.extend(hklscenes)
       #for inf in scenearrayinfos:
@@ -445,19 +446,19 @@ class hklview_3d:
     self.HKLscenesdict[self.HKLscenesKey] = (
                 HKLscenes,
                 tooltipstringsdict,
-                othermaxdata,
-                othermindata,
-                othermaxsigmas,
-                otherminsigmas,
+                HKLscenesMaxdata,
+                HKLscenesMindata,
+                HKLscenesMaxsigmas,
+                HKLscenesMinsigmas,
                 hkl_scenes_info
                 )
     (
       self.HKLscenes,
       self.tooltipstringsdict,
-      self.othermaxdata,
-      self.othermindata,
-      self.othermaxsigmas,
-      self.otherminsigmas,
+      self.HKLscenesMaxdata,
+      self.HKLscenesMindata,
+      self.HKLscenesMaxsigmas,
+      self.HKLscenesMinsigmas,
       self.hkl_scenes_info
     ) =  self.HKLscenesdict[self.HKLscenesKey]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -533,11 +534,11 @@ class hklview_3d:
           Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
 
     # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
-    mincolourscalar = self.othermindata[self.icolourcol]
-    maxcolourscalar = self.othermaxdata[self.icolourcol]
+    mincolourscalar = self.HKLscenesMindata[self.icolourcol]
+    maxcolourscalar = self.HKLscenesMaxdata[self.icolourcol]
     if self.settings.sigma_color:
-      mincolourscalar = self.otherminsigmas[self.icolourcol]
-      maxcolourscalar = self.othermaxsigmas[self.icolourcol]
+      mincolourscalar = self.HKLscenesMinsigmas[self.icolourcol]
+      maxcolourscalar = self.HKLscenesMaxsigmas[self.icolourcol]
     span = maxcolourscalar - mincolourscalar
     ln = 60
     incr = span/ln
@@ -602,7 +603,7 @@ class hklview_3d:
     self.workingbinvals = []
     if not self.binarray=="Resolution":
       ibinarray= int(self.binarray)
-      self.workingbinvals = [ self.othermindata[ibinarray] - 0.1 , self.othermaxdata[ibinarray] + 0.1 ]
+      self.workingbinvals = [ self.HKLscenesMindata[ibinarray] - 0.1 , self.HKLscenesMaxdata[ibinarray] + 0.1 ]
       self.workingbinvals.extend( self.binvals )
       self.workingbinvals.sort()
       if self.workingbinvals[0] < 0.0:
@@ -898,7 +899,7 @@ var hklscene = function () {
     leftp = fomlp + 0.48 * gl * colourgradvalarray.length
     addDivBox("0.5", fomtop2, leftp, fomwp, 20)
     // print the FOM label
-    addDivBox("%s", fomtop, leftp, fomwp, 20);
+    addDivBox("%s", fomtop, fomlp, fomwp, 20);
     // print the 0 number
     leftp = fomlp + 0.96 * gl * colourgradvalarray.length
     addDivBox("0", fomtop2, leftp, fomwp, 20)
