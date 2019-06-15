@@ -240,7 +240,6 @@ HETATM   65  O   HOH A   9      11.300 -16.164 -16.305  0.98  5.35           O
 ANISOU   65  O   HOH A   9      793    561    680     46    -95    -87       O
 END
 '''
-
 filenames = ['test_1.pdb', 'test_2.pdb']
 pdb_strings = [pdb_str_1, pdb_str_2]
 
@@ -313,20 +312,18 @@ def run_test1():
   '''
   pdb_inp = iotbx.pdb.input(lines=pdb_str_1.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
+  model.set_log(null_out())
 
   params = iotbx.phil.parse(
     input_string=master_params_str, process_includes=True).extract()
   # do not place H atoms for this test
   #params.validate_ligands.place_hydrogens = False
 
-  fn = filenames[0]
-
   vl_manager = validate_ligands.manager(
     model = model,
-    model_fn = fn,
     fmodel = None,
     params = params.validate_ligands,
-    log   = null_out)
+    log   = null_out())
   vl_manager.run()
 
   tst_get_ligands(vl_manager = vl_manager)
@@ -352,7 +349,6 @@ def tst_get_overlaps(vl_manager):
   for id_tuple, ligand_dict in vl_manager.items():
     for altloc, lr in ligand_dict.items():
       clashes_result = lr.get_overlaps()
-      print(clashes_result.clashscore)
       assert(clashes_result.n_clashes == 5)
       assert approx_equal(clashes_result.clashscore, 31.6, eps=1.0)
 # anaconda
@@ -405,12 +401,11 @@ def run_test2():
   '''
   pdb_inp = iotbx.pdb.input(lines=pdb_str_2.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
+  model.set_log(null_out())
   params = iotbx.phil.parse(
     input_string=master_params_str, process_includes=True).extract()
-  fn = filenames[1]
   vl_manager = validate_ligands.manager(
     model = model,
-    model_fn = fn,
     fmodel = None,
     params = params.validate_ligands,
     log   = null_out)
