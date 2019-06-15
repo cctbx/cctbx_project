@@ -177,6 +177,13 @@ class clashes(object):
     return is_clashing
 
 
+  def get_n_clashes(self):
+    """
+    Number of clashes
+    """
+    return len(self._clashes_dict)
+
+
   def sort_clashes(self, by_value='overlap'):
     """
     Sort clashes according to vdW distance, model distance, overlap or symmetry
@@ -237,7 +244,7 @@ class clashes(object):
     Accessor for results
     """
     # overall
-    n_clashes = len(self._clashes_dict)
+    n_clashes = self.get_n_clashes()
     n_atoms = self.model.size()
     clashscore = n_clashes * 1000 / n_atoms
     # due to symmetry
@@ -313,6 +320,9 @@ class hbonds(object):
       print('No hbonds found', file=log)
 
 
+  def get_n_hbonds(self):
+    return len(self._hbonds_dict)
+
   def forms_hbond(self, iseq):
     pass
 
@@ -324,7 +334,7 @@ class hbonds(object):
     Accessor for results
     """
     # overall
-    n_hbonds = len(self._hbonds_dict)
+    n_hbonds = self.get_n_hbonds()
     # due to symmetry TODO
 #    n_hbonds_sym = self._obtain_symmetry_clashes()
 
@@ -368,27 +378,17 @@ class manager():
     """
     True/False if any hbonds were found.
     """
-    # hbonds = self.get_hbonds()
-    # return hbonds.get_n_bonds() > 0
-
-    has_hbonds = False
-    if not self._hbonds:
-      self._process_nonbonded_proxies(find_clashes = True)
-      if self._hbonds_dict:
-        has_hbonds = True
-    return has_hbonds
+    hbonds = self.get_hbonds()
+    return hbonds.get_n_bonds() > 0
 
 
   def has_clashes(self):
     """
     True/False if any clashes were found.
     """
-    has_clashes = False
-    if not self._clashes:
-      self._process_nonbonded_proxies(find_clashes = True)
-      if self._clashes_dict:
-        has_clashes = True
-    return has_clashes
+    clashes = self.get_clashes()
+    return clashes.get_n_clashes > 0
+
 
 
   def show(self):
