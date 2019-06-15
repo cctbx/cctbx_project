@@ -159,6 +159,24 @@ class clashes(object):
       print('No clashes found', file=log)
 
 
+  def add_clash(self, iseq_tuple, info_list):
+    """
+    Add a clash to the dictionary
+
+    Parameters:
+      iseq_tuple (tuple): tuple of integers
+      info (list): list of: [model_distance, vdw_sum, abs(delta), symop_str, symop]
+    """
+    self._clashes_dict[iseq_tuple] = info_list
+
+
+  def remove_clash(self, iseq_tuple):
+    """
+    """
+    pass
+
+
+
   def is_clashing(self, iseq):
     """
     Test if a particular atom is involved in a clash.
@@ -403,7 +421,7 @@ class manager():
 
   def _process_nonbonded_proxies(self,
                                  find_clashes = True,
-                                 find_hbonds = False):
+                                 find_hbonds  = True):
     """
     Process nonbonded_proxies to find bonds, interactions and clashes.
     Clashes code refactored from Youval Dar's code for nonbonded_overlaps (LBNL 2013)
@@ -444,7 +462,7 @@ class manager():
     self._hbonds_dict  = dict()
     self._mult_clash_dict = dict()
 
-    # loop over nonbonded proxies do stuff and fill in the dicts:
+    # loop over nonbonded proxies, analyze and fill in the dicts:
     for item in nonbonded_list:
       i_seq          = item[1]
       j_seq          = item[2]
@@ -453,30 +471,32 @@ class manager():
       symop_str      = item[5] # TODO probably not necessary
       symop          = item[6]
 
+      # TODO is this needed?
       is_hbond, is_clash = False, False
 
-      if (model_distance < 3 and [self.hd_sel[i_seq],self.hd_sel[j_seq]].count(True) == 1):
-        is_hbond = self._is_hbond(
-                    item  = item,
-                    unit_cell = unit_cell,
-                    site_labels = site_labels,
-                    fsc0 = fsc0)
+      if find_hbonds:
+        if (model_distance < 3 and [self.hd_sel[i_seq],self.hd_sel[j_seq]].count(True) == 1):
+          is_hbond = self._is_hbond(
+                      item  = item,
+                      unit_cell = unit_cell,
+                      site_labels = site_labels,
+                      fsc0 = fsc0)
 
       # proxy cannot be clash and hbond at the same time (?)
       #if is_hbond: continue
 
-      # Find all clashes
-      delta = model_distance - vdw_sum
-
-      if (delta < -0.40):
-        is_clash = self._is_clash(
-                    i_seq = i_seq,
-                    j_seq = j_seq,
-                    fsc0 = fsc0,
-                    model_distance = model_distance)
-        if is_clash:
-          self._clashes_dict[(i_seq, j_seq)] = \
-            [model_distance, vdw_sum, abs(delta), symop_str, symop]
+      # Find clashes
+      if find_clashes:
+        delta = model_distance - vdw_sum
+        if (delta < -0.40):
+          is_clash = self._is_clash(
+                      i_seq = i_seq,
+                      j_seq = j_seq,
+                      fsc0 = fsc0,
+                      model_distance = model_distance)
+          if is_clash:
+            self._clashes_dict[(i_seq, j_seq)] = \
+              [model_distance, vdw_sum, abs(delta), symop_str, symop]
 
     # Remove clashes involving common atoms (cannot be done in first loop!)
     self._process_clashes(sites_cart = sites_cart, fsc0 = fsc0)
