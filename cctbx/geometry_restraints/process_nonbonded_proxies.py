@@ -177,23 +177,21 @@ class clashes(object):
     return is_clashing
 
 
-  def sort_clashes(self,
-                   sort_vdW            = False,
-                   sort_model_distance = False,
-                   sort_overlap        = False,
-                   sort_symmetry       = False):
+  def sort_clashes(self, by_value='overlap'):
     """
     Sort clashes according to vdW distance, model distance, overlap or symmetry
+
+    Parameters:
+      by_value (str): vdw_distance, model_distance, overlap or symmetry
     """
-    options = [sort_vdW, sort_model_distance, sort_overlap, sort_symmetry]
-    if (options.count(True) == 0):
-      sort_overlap = True
-    elif (options.count(True) > 1):
-      raise Sorry('Can only sort by one value.')
-    if sort_model_distance: key = 0
-    if sort_vdW: key = 1
-    if sort_overlap: key = 2
-    if sort_symmetry: key = 4
+    options = ['vdw_distance', 'model_distance', 'overlap', 'symmetry']
+    if (by_value not in options):
+      raise Sorry('Can not sort by this value. Possible options: \n\
+                  vdw_distance, model_distance, overlap, symmetry')
+    if by_value == 'model_distance': key = 0
+    if by_value == 'vdw_distance': key = 1
+    if by_value == 'overlap': key = 2
+    if by_value == 'symmetry': key = 4
     self._clashes_dict = OrderedDict(
       sorted(self._clashes_dict.items(), key=lambda x: x[1][key]))
 

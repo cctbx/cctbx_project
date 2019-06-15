@@ -98,7 +98,7 @@ def test_manager_and_clashes_functions():
   # sorted by overlap (default)
   assert(clashes._clashes_dict.items()[11][0] == ((38, 39)))
   # sorted by symmetry
-  clashes.sort_clashes(sort_symmetry=True)
+  clashes.sort_clashes(by_value='symmetry')
   assert(clashes._clashes_dict.items()[11][0] == (27, 27))
 
   assert(clashes.is_clashing(iseq=27))
