@@ -159,25 +159,46 @@ class clashes(object):
       print('No clashes found', file=log)
 
 
-  def add_clash(self, iseq_tuple, info_list):
+  def add_clash(self, clash_tuple, clash_info):
     """
     Add a clash to the dictionary
 
     Parameters:
-      iseq_tuple (tuple): tuple of integers
-      info (list): list of: [model_distance, vdw_sum, abs(delta), symop_str, symop]
+      clash_tuple (tuple): tuple of 2 i_seqs
+      clash_info (list): list of: [model_distance, vdw_sum, abs(delta), symop_str, symop]
     """
-    self._clashes_dict[iseq_tuple] = info_list
+    self._clashes_dict[clash_tuple] = clash_info
 
 
-  def remove_clash(self, iseq_tuple):
+  def remove_clash(self, clash_tuple):
     """
+    Remove a clash from the dictionary
+
+    Parameters:
+      clash_tuple(tuple): tuple of 2 i_seqs
     """
-    pass
+    if clash_tuple in self._clashes_dict:
+      del self._clashes_dict[clash_tuple]
 
 
+  def iseq_tuple_is_sym_clash(self, clash_tuple):
+    """
+    Test if clash tuple is involved in symmetry clash
+    """
+    return self._clashes_dict[clash_tuple][4]
 
-  def is_clashing(self, iseq):
+
+  def iseq_tuple_is_clashing(self, clash_tuple):
+    """
+    Test if two iseqs are involved in a clash
+    """
+    are_clashing = False
+    if clash_tuple in self._clashes_dict:
+      are_clashing = True
+    return are_clashing
+
+
+  def iseq_is_clashing(self, iseq):
     """
     Test if a particular atom is involved in a clash.
 
@@ -193,6 +214,13 @@ class clashes(object):
       if iseq in i_seqs or iseq in j_seqs:
         is_clashing = True
     return is_clashing
+
+
+  def get_model_distance(self, clash_tuple):
+    """
+    Return the model distance of a clash
+    """
+    return self._clashes_dict[clash_tuple][0]
 
 
   def get_n_clashes(self):
@@ -344,7 +372,7 @@ class hbonds(object):
   def forms_hbond(self, iseq):
     pass
 
-  def sort_hbonds(self, sort_distances = True, sort_angles = False):
+  def sort_hbonds(self, by_value='HA_distance'):
     pass
 
   def get_results(self):
@@ -458,7 +486,11 @@ class manager():
     fsc0 = grm.shell_sym_tables[0].full_simple_connectivity()
     fsc2 = grm.shell_sym_tables[2].full_simple_connectivity()
 
-    self._clashes_dict = dict()
+    #self._clashes_dict = dict()
+    # Create clashes class
+    self._clashes = clashes(
+                      clashes_dict = dict(),
+                      model        = self.model)
     self._hbonds_dict  = dict()
     self._mult_clash_dict = dict()
 
@@ -483,7 +515,6 @@ class manager():
                       fsc0 = fsc0)
 
       # proxy cannot be clash and hbond at the same time (?)
-      #if is_hbond: continue
 
       # Find clashes
       if find_clashes:
@@ -495,15 +526,23 @@ class manager():
                       fsc0 = fsc0,
                       model_distance = model_distance)
           if is_clash:
-            self._clashes_dict[(i_seq, j_seq)] = \
-              [model_distance, vdw_sum, abs(delta), symop_str, symop]
+            clash_tuple = [i_seq, j_seq]
+            clash_tuple.sort()
+            clash_tuple = tuple(clash_tuple)
+            clash_info = [model_distance, vdw_sum, abs(delta), symop_str, symop]
+            self._clashes.add_clash(clash_tuple = clash_tuple,
+                                    clash_info  = clash_info)
+            #self._clashes_dict[(i_seq, j_seq)] = \
+            #  [model_distance, vdw_sum, abs(delta), symop_str, symop]
 
     # Remove clashes involving common atoms (cannot be done in first loop!)
-    self._process_clashes(sites_cart = sites_cart, fsc0 = fsc0)
+    self._process_clashes(sites_cart = sites_cart,
+                          fsc0       = fsc0)
+    self._clashes.sort_clashes(by_value='overlap')
     # Create clashes class
-    self._clashes = clashes(
-                      clashes_dict = self._clashes_dict,
-                      model        = self.model)
+    #self._clashes = clashes(
+    #                  clashes_dict = self._clashes_dict,
+    #                  model        = self.model)
 
     self._hbonds = hbonds(
                      hbonds_dict = self._hbonds_dict,
@@ -696,27 +735,33 @@ class manager():
             tuple1 = tuple(tuple1)
             tuple2 = tuple(tuple2)
             # Don't check for inline if symmetry overlap (needs correcty xyz!)
-            if not self._clashes_dict[tuple1][4]:
+            if not self._clashes.iseq_tuple_is_sym_clash(tuple1):
+            #if not self._clashes_dict[tuple1][4]:
               cos_angle = cos_vec(atom_1_xyz, atom_2_xyz, atom_i_xyz)
             # check if atoms are inline
             if abs(cos_angle) > 0.707 and (atom_1_xyz != atom_2_xyz):
-
-              if tuple1 in self._clashes_dict.keys() and tuple2 in self._clashes_dict.keys():
-                if self._clashes_dict[tuple1][0] < self._clashes_dict[tuple2][0]:
+              if (self._clashes.iseq_tuple_is_clashing(tuple1) and
+                  self._clashes.iseq_tuple_is_clashing(tuple2)):
+              #if tuple1 in self._clashes_dict and tuple2 in self._clashes_dict:
+                if (self._clashes.get_model_distance(tuple1) <
+                   self._clashes.get_model_distance(tuple2)):
+                #if self._clashes_dict[tuple1][0] < self._clashes_dict[tuple2][0]:
                   clashes_to_be_removed.append(tuple2)
                 else:
                   clashes_to_be_removed.append(tuple1)
     for clash_tuple in clashes_to_be_removed:
-      if clash_tuple in self._clashes_dict.keys():
-        del self._clashes_dict[clash_tuple]
-    double_tuples = list()
-    tuples = self._clashes_dict.keys()
-    # Now filter out doubly counted clashes (due to symmetry)
-    for clash_tuple in tuples:
-      i_seq, j_seq = clash_tuple[0], clash_tuple[1]
-      if (j_seq, i_seq) in tuples:
-        if i_seq > j_seq:
-          double_tuples.append(clash_tuple)
-    for clash_tuple in double_tuples:
-      del self._clashes_dict[clash_tuple]
+      if self._clashes.iseq_tuple_is_clashing(clash_tuple):
+      #if clash_tuple in self._clashes_dict:
+        #del self._clashes_dict[clash_tuple]
+        self._clashes.remove_clash(clash_tuple)
+#    double_tuples = list()
+#    tuples = self._clashes_dict.keys()
+#    # Now filter out doubly counted clashes (due to symmetry)
+#    for clash_tuple in tuples:
+#      i_seq, j_seq = clash_tuple[0], clash_tuple[1]
+#      if (j_seq, i_seq) in tuples:
+#        if i_seq > j_seq:
+#          double_tuples.append(clash_tuple)
+#    for clash_tuple in double_tuples:
+#      del self._clashes_dict[clash_tuple]
 #

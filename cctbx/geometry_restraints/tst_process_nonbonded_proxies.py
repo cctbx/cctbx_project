@@ -96,16 +96,17 @@ def test_manager_and_clashes_functions():
   assert(pnps.has_clashes())
   clashes = pnps.get_clashes()
   # sorted by overlap (default)
+  clashes.sort_clashes(by_value='overlap')
   assert(clashes._clashes_dict.items()[11][0] == ((38, 39)))
   # sorted by symmetry
   clashes.sort_clashes(by_value='symmetry')
   assert(clashes._clashes_dict.items()[11][0] == (27, 27))
 
-  assert(clashes.is_clashing(iseq=27))
-  assert(clashes.is_clashing(iseq=44))
-  assert(clashes.is_clashing(iseq=13))
-  assert(clashes.is_clashing(iseq=38))
-  assert(clashes.is_clashing(iseq=3))
+  assert(clashes.iseq_is_clashing(iseq=27))
+  assert(clashes.iseq_is_clashing(iseq=44))
+  assert(clashes.iseq_is_clashing(iseq=13))
+  assert(clashes.iseq_is_clashing(iseq=38))
+  assert(clashes.iseq_is_clashing(iseq=3))
 
 
 def test_vdw_dist():
