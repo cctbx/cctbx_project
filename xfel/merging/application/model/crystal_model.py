@@ -6,6 +6,7 @@ from iotbx import file_reader
 import libtbx.phil.command_line
 from cctbx import miller
 from cctbx.crystal import symmetry
+from six.moves import cStringIO as StringIO
 
 class crystal_model(worker):
 
@@ -29,8 +30,24 @@ class crystal_model(worker):
     i_model = None
     if self.purpose == "scaling":
       model_file_path = str(self.params.scaling.model)
+      if model_file_path is not None:
+        self.logger.log("Scaling model: " + model_file_path)
+        if self.mpi_helper.rank == 0:
+          self.logger.main_log("Scaling model: " + model_file_path)
+      else:
+        self.logger.log("No scaling model has been provided")
+        if self.mpi_helper.rank == 0:
+          self.logger.main_log("No scaling model has been provided")
     elif self.purpose == "statistics":
       model_file_path = str(self.params.statistics.cciso.mtz_file)
+      if model_file_path is not None:
+        self.logger.log("Reference for statistics: " + model_file_path)
+        if self.mpi_helper.rank == 0:
+          self.logger.main_log("Reference for statistics: " + model_file_path)
+      else:
+        self.logger.log("No reference for statistics has been provided")
+        if self.mpi_helper.rank == 0:
+          self.logger.main_log("No reference for statistics has been provided")
 
     if model_file_path is not None:
       if model_file_path.endswith(".mtz"):
@@ -53,26 +70,6 @@ class crystal_model(worker):
     else:
       self.params.scaling.__setattr__('miller_set', miller_set)
 
-    # log some summary
-    if self.mpi_helper.rank == 0:
-      if self.purpose == "scaling":
-        if i_model is not None:
-          self.logger.main_log("Scaling model: " + self.params.scaling.model)
-        else:
-          self.logger.main_log("No scaling model has been provided")
-        self.logger.main_log("Space group: " + str(self.params.scaling.space_group))
-        self.logger.main_log("Unit cell: " + str(self.params.scaling.unit_cell))
-      elif self.purpose == "statistics":
-        if i_model is not None:
-          self.logger.main_log("Reference for statistics: " + str(self.params.statistics.cciso.mtz_file))
-        else:
-          self.logger.main_log("No reference for statistics has been provided")
-        self.logger.main_log("Space group: " + str(self.params.scaling.space_group))
-        if self.params.merging.set_average_unit_cell:
-          self.logger.main_log("Using average unit cell: " + str(self.params.statistics.__phil_get__('average_unit_cell')))
-        else:
-          self.logger.main_log("Using target unit cell: " + str(self.params.scaling.unit_cell))
-
     self.logger.log_step_time("CREATE_CRYSTAL_MODEL", True)
 
     return experiments, reflections
@@ -90,8 +87,11 @@ class crystal_model(worker):
       self.params.scaling.space_group = xray_structure.crystal_symmetry().space_group().info()
       self.params.scaling.unit_cell = xray_structure.crystal_symmetry().unit_cell()
 
+    out = StringIO()
+    xray_structure.show_summary(f=out)
+    self.logger.log(out.getvalue())
     if self.mpi_helper.rank == 0:
-      xray_structure.show_summary()
+      self.logger.main_log(out.getvalue())
 
     # prepare phil parameters to generate model intensities
     phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
@@ -172,15 +172,23 @@ class crystal_model(worker):
     raise Exception("mtz did not contain expected label Iobs or Imean")
 
   def consistent_set_and_model(self, i_model=None):
-
     # which unit cell are we using?
     if self.purpose == "scaling":
       unit_cell = self.params.scaling.unit_cell
+      self.logger.log("Using target unit cell: " + str(unit_cell))
+      if self.mpi_helper.rank == 0:
+        self.logger.main_log("Using target unit cell: " + str(unit_cell))
     elif self.purpose == "statistics":
       if self.params.merging.set_average_unit_cell:
         unit_cell = self.params.statistics.__phil_get__('average_unit_cell')
+        self.logger.log("Using average unit cell: " + str(unit_cell))
+        if self.mpi_helper.rank == 0:
+          self.logger.main_log("Using average unit cell: " + str(unit_cell))
       else:
         unit_cell = self.params.scaling.unit_cell
+        self.logger.log("Using target unit cell: " + str(unit_cell))
+        if self.mpi_helper.rank == 0:
+          self.logger.main_log("Using target unit cell: " + str(unit_cell))
 
     # create symmetry for the full miller set
     symm = symmetry(unit_cell=unit_cell, space_group_info = self.params.scaling.space_group)

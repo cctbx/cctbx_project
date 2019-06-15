@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.merge
-
+import sys
 from xfel.merging.application.mpi_helper import mpi_helper
 from xfel.merging.application.mpi_logger import mpi_logger
+from six.moves import cStringIO as StringIO
 
 class Script(object):
   '''A class for running the script.'''
@@ -35,7 +36,15 @@ class Script(object):
         epilog=help_message)
 
       # Parse the command line. quick_parse is required for MPI compatibility
-      params, options = self.parser.parse_args(show_diff_phil=True,quick_parse=True)
+      try:
+        bkp = sys.stdout
+        sys.stdout = out = StringIO()
+        params, options = self.parser.parse_args(show_diff_phil=True,quick_parse=True)
+        self.mpi_logger.log(out.getvalue())
+        if self.mpi_helper.rank == 0:
+          self.mpi_logger.main_log(out.getvalue())
+      finally:
+        sys.stdout = bkp
 
       # prepare for transmitting input parameters to all ranks
       self.mpi_logger.log("Broadcasting input parameters...")
@@ -57,6 +66,14 @@ class Script(object):
     self.mpi_logger.log_step_time("BROADCAST_INPUT_PARAMS", True)
 
   def run(self):
+
+    import datetime
+    time_now = datetime.datetime.now()
+
+    self.mpi_logger.log(str(time_now))
+    if self.mpi_helper.rank == 0:
+      self.mpi_logger.main_log(str(time_now))
+
 
     self.mpi_logger.log_step_time("TOTAL")
 

@@ -4,6 +4,7 @@ from xfel.merging.application.reflection_table_utils import reflection_table_uti
 from cctbx.crystal import symmetry
 from cctbx import miller
 import os
+from six.moves import cStringIO as StringIO
 
 try:
   import resource
@@ -57,7 +58,7 @@ class merger(worker):
       self.logger.log("Concatenating merged %s HKLs at rank 0..."%selection_name)
       for table in all_merged_reflection_tables:
         final_merged_reflection_table.extend(table)
-      self.logger.main_log("Total merged %s HKLs: %d"%(selection_name, final_merged_reflection_table.size()))
+      self.logger.main_log("Total (not limited by resolution) merged %s HKLs: %d"%(selection_name, final_merged_reflection_table.size()))
       self.logger.log_step_time("MERGE", True)
 
       # output as mtz
@@ -81,6 +82,11 @@ class merger(worker):
     assert 'average_wavelength' in (self.params.statistics).__dict__
     wavelength = self.params.statistics.__phil_get__('average_wavelength')
 
+    if self.params.merging.d_max is None:
+      self.logger.main_log("Output merged HKLs limited by %f A resolution"%(self.params.merging.d_min))
+    else:
+      self.logger.main_log("Output merged HKLs limited by (%f - %f) A resolution range"%(self.params.merging.d_max, self.params.merging.d_min))
+
     all_obs = miller.array(
       miller_set=miller.set(final_symm, reflections['miller_index'], not self.params.merging.merge_anomalous),
       data=reflections['intensity'],
@@ -99,12 +105,11 @@ class merger(worker):
       column_root_label="IMEAN")
     mtz_obj = mtz_out.mtz_object()
     mtz_obj.write(mtz_file)
-    self.logger.main_log("  Anomalous and mean data:\n    %s" % \
-      os.path.abspath(mtz_file))
-    self.logger.main_log("")
-    self.logger.main_log("Final data:")
-    #all_obs.show_summary(self.log, prefix="  ") # don't have a buffer object for this logger
-    all_obs.show_summary(prefix="  ")
+    self.logger.main_log("Output anomalous and mean data:\n    %s" %os.path.abspath(mtz_file))
+    self.logger.main_log("Output data summary:")
+    out = StringIO()
+    all_obs.show_summary(prefix="  ", f=out)
+    self.logger.main_log(out.getvalue())
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker

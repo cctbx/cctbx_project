@@ -163,7 +163,7 @@ class intensity_resolution_statistics(worker):
     self.logger.log(title, rank_prepend=False)
     if self.mpi_helper.rank == 0:
       self.logger.main_log(title)
-    self.run_detail(reflections, check_last_bin_complete=True)
+    self.run_detail(reflections)
 
     title = "\n                     CC 1/2, CC ISO\n"
     self.logger.log(title, rank_prepend=False)
@@ -295,7 +295,7 @@ class intensity_resolution_statistics(worker):
     else:
       return None
 
-  def run_detail(self, reflections, check_last_bin_complete=False):
+  def run_detail(self, reflections):
     # Get pre-created resolution binning objects from the parameters
     self.resolution_binner = self.params.statistics.resolution_binner
     self.hkl_resolution_bins = self.params.statistics.hkl_resolution_bins
@@ -322,8 +322,7 @@ class intensity_resolution_statistics(worker):
                                                   Isig_sum = self.Isig_sum,
                                                   n_sum = self.n_sum,
                                                   m_sum = self.m_sum,
-                                                  mm_sum = self.mm_sum,
-                                                  check_last_bin_complete = check_last_bin_complete)
+                                                  mm_sum = self.mm_sum)
 
       self.logger.log(Intensity_Table.get_table_text(), rank_prepend=False)
 
@@ -341,8 +340,7 @@ class intensity_resolution_statistics(worker):
                                                   Isig_sum  = all_ranks_Isig_sum,
                                                   n_sum     = all_ranks_n_sum,
                                                   m_sum     = all_ranks_m_sum,
-                                                  mm_sum    = all_ranks_mm_sum,
-                                                  check_last_bin_complete = check_last_bin_complete)
+                                                  mm_sum    = all_ranks_mm_sum)
       self.logger.main_log(Intensity_Table.get_table_text())
       if self.last_bin_incomplete:
         self.logger.main_log("Warning: the last resolution shell is incomplete. If your data was integrated to that resolution,\nconsider using scaling.resolution_scalar=%f or lower."%self.suggested_resolution_scalar)
@@ -427,8 +425,7 @@ class intensity_resolution_statistics(worker):
                             m_sum,
                             mm_sum,
                             I_sum,
-                            Isig_sum,
-                            check_last_bin_complete=False):
+                            Isig_sum):
     '''Produce a table with hkl intensity statistics for resolution bins'''
     Intensity_Table = intensity_table()
 
@@ -468,15 +465,6 @@ class intensity_resolution_statistics(worker):
       Intensity_Table.cumulative_multiply_observed_asu_count          += multiply_observed_asu_count
       Intensity_Table.cumulative_I                                    += intensity_sum
       Intensity_Table.cumulative_Isigma                               += intensity_to_sigma_sum
-
-    '''
-    if check_last_bin_complete:
-      last_bin = max(self.resolution_binner.range_used()) - 1
-      last_bin_completeness = Intensity_Table.table[last_bin].completeness
-      if last_bin_completeness > 0.0 and last_bin_completeness < 1.0:
-        self.last_bin_incomplete = True
-        self.suggested_resolution_scalar = self.params.scaling.resolution_scalar * (last_bin_completeness**(1./3.))
-    '''
 
     '''
     # TODO
