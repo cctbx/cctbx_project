@@ -42,6 +42,24 @@ def make_atom_id(atom, index):
     resseq = atom.parent().parent().resseq,
     altloc = atom.parent().altloc)
 
+# XXX This is a copy-paste from somewhere.
+# XXX Make it property of flex.double
+def get_skew(data):
+  if(data.size()<50): return None
+  mean=data.min_max_mean().mean
+  sd=data.standard_deviation_of_the_sample()
+  x=data-mean
+  return (x**3).min_max_mean().mean/sd**3
+
+# XXX This is a copy-paste from somewhere.
+# XXX Make it property of flex.double
+def get_kurtosis(data):
+  if(data.size()<50): return None
+  mean=data.min_max_mean().mean
+  sd=data.standard_deviation_of_the_sample()
+  x=data-mean
+  return (x**4).min_max_mean().mean/sd**4
+
 # XXX None at the moment
 master_phil_str = '''
 hbond {
@@ -215,10 +233,25 @@ class find(object):
           atom_i = atom_i, atom_j = atom_j)
         self.pair_proxies.append(proxy_custom)
 
-  def show(self, log = sys.stdout):
+  def get_theta_2_skew_and_kurtosis(self, filter_by_occ_and_b=False):
+    data = flex.double()
+    for r in self.result:
+      if(filter_by_occ_and_b):
+        if(r.atom_i.b>30): continue
+        if(r.atom_j.b>30): continue
+        if(r.atom_i.occ<0.5): continue
+        if(r.atom_j.occ<0.5): continue
+      data.append(r.a_DHA)
+    return group_args(
+      skew     = get_skew(data),
+      kurtosis = get_kurtosis(data))
+
+  def show(self, log = sys.stdout, sym_only=False):
     for r in self.result:
       ids_i = r.atom_i.id_str
       ids_j = r.atom_j.id_str
+      if(sym_only):
+        if(str(r.symop)=="x,y,z"): continue
       print("%4d %4d"%(r.i,r.j), "%s<>%s"%(ids_i, ids_j), \
         "d_HA=%5.3f"%r.d_HA, "d_AD=%5.3f"%r.d_AD, "a_DHA=%7.3f"%r.a_DHA, \
         "symop: %s"%str(r.symop), " ".join(["a_YAH=%d"%i for i in r.a_YAH]),
