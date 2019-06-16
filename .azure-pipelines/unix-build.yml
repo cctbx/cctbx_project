@@ -1,0 +1,59 @@
+# Script for building CCTBX on linux and macOS
+#
+# Variables:
+#   PYTHON_VERSION: py27, py36
+#   OS: linux-64, osx-64
+
+steps:
+
+- checkout: self
+  path: ./modules/cctbx_project
+
+- script: |
+    cd ../..
+    ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
+  displayName: Link bootstrap.py
+
+- script: |
+    source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
+    conda create -y -n $(PYTHON_VERSION) --file ./libtbx/auto_build/conda_envs/cctbx_$(PYTHON_VERSION)_$(OS).txt
+    conda install -y -c conda-forge -n $(PYTHON_VERSION) junit-xml
+  displayName: Create conda environment
+
+- script: |
+    cd ../..
+    python bootstrap.py hot update --builder=cctbx
+  displayName: Download sources
+
+- script: |
+    source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
+    conda activate $(PYTHON_VERSION)
+    cd ../..
+    python bootstrap.py build --builder=cctbx --use-conda --nproc=4
+    cd build
+    source setpaths.sh
+    libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx
+    make -j 4
+    make -j 4
+  displayName: Configure and Build
+
+- script: |
+    source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
+    conda activate $(PYTHON_VERSION)
+    cd ../..
+    source ./build/setpaths.sh
+    mkdir tests
+    cd tests
+    libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es \
+      module=fable module=gltbx module=iotbx module=libtbx module=rstbx \
+      module=scitbx module=simtbx module=smtbx module=spotfinder \
+      module=annlib_adaptbx module=cbflib_adaptbx \
+      nproc=4
+  failOnStderr: false
+  continueOnError: true
+  displayName: Test
+
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/output.xml'

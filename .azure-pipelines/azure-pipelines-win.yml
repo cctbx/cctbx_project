@@ -1,4 +1,6 @@
 # Script for building CCTBX
+# Windows image description
+# https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/win/Vs2017-Server2016-Readme.md
 
 jobs:
 - job: win_64
