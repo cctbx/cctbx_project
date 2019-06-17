@@ -385,8 +385,7 @@ class hbonds(object):
 #    n_hbonds_sym = self._obtain_symmetry_clashes()
 
     return group_args(
-             n_hbonds      = n_hbonds,
-)
+             n_hbonds = n_hbonds)
 
 
 class manager():
@@ -433,8 +432,7 @@ class manager():
     True/False if any clashes were found.
     """
     clashes = self.get_clashes()
-    return clashes.get_n_clashes > 0
-
+    return clashes.get_n_clashes() > 0
 
 
   def show(self):
@@ -736,7 +734,6 @@ class manager():
             tuple2 = tuple(tuple2)
             # Don't check for inline if symmetry overlap (needs correcty xyz!)
             if not self._clashes.iseq_tuple_is_sym_clash(tuple1):
-            #if not self._clashes_dict[tuple1][4]:
               cos_angle = cos_vec(atom_1_xyz, atom_2_xyz, atom_i_xyz)
             # check if atoms are inline
             if abs(cos_angle) > 0.707 and (atom_1_xyz != atom_2_xyz):
@@ -745,14 +742,11 @@ class manager():
               #if tuple1 in self._clashes_dict and tuple2 in self._clashes_dict:
                 if (self._clashes.get_model_distance(tuple1) <
                    self._clashes.get_model_distance(tuple2)):
-                #if self._clashes_dict[tuple1][0] < self._clashes_dict[tuple2][0]:
                   clashes_to_be_removed.append(tuple2)
                 else:
                   clashes_to_be_removed.append(tuple1)
     for clash_tuple in clashes_to_be_removed:
       if self._clashes.iseq_tuple_is_clashing(clash_tuple):
-      #if clash_tuple in self._clashes_dict:
-        #del self._clashes_dict[clash_tuple]
         self._clashes.remove_clash(clash_tuple)
 #    double_tuples = list()
 #    tuples = self._clashes_dict.keys()
