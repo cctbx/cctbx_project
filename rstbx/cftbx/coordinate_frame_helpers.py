@@ -1,6 +1,9 @@
 from __future__ import absolute_import, division, print_function
+
+import io
 import math
 import random
+
 from scitbx import matrix
 from cctbx import sgtbx
 from six.moves import range, zip
@@ -207,27 +210,22 @@ def is_xds_xparm(putative_xds_xparm_file):
 def is_xds_integrate_hkl(putative_integrate_hkl_file):
     '''See if this looks like an XDS INTEGRATE.HKL file.'''
 
-    first_record = open(putative_integrate_hkl_file).readline()
-
-    if '!OUTPUT_FILE=INTEGRATE.HKL' in first_record:
-        return True
-
-    return False
+    with io.open(putative_integrate_hkl_file, encoding="ascii") as fh:
+      try:
+        first_record = fh.readline()
+        return '!OUTPUT_FILE=INTEGRATE.HKL' in first_record
+      except UnicodeDecodeError:
+        return False
 
 def is_xds_ascii_hkl(putative_xds_ascii_hkl_file):
     '''See if this looks like an XDS INTEGRATE.HKL file.'''
 
-    lines = []
-    with open(putative_xds_ascii_hkl_file) as f:
-      lines.append(f.readline())
-      lines.append(f.readline())
-      if lines[1] == "":
-          return False
-
-      if '!OUTPUT_FILE=XDS_ASCII.HKL' in lines[1]:
-          return True
-
-    return False
+    with io.open(putative_xds_ascii_hkl_file, encoding="ascii") as f:
+      try:
+        f.readline()
+        return "!OUTPUT_FILE=XDS_ASCII.HKL" in f.readline()
+      except UnicodeDecodeError:
+        return False
 
 def is_recognized_file(filename):
     ''' Check if the file is recognized.'''
@@ -240,7 +238,7 @@ def is_recognized_file(filename):
     elif is_xds_inp(filename):
         return True
 
-    # Not recognices
+    # Not recognized
     return False
 
 def import_xds_integrate_hkl(integrate_hkl_file):
