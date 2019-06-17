@@ -70,6 +70,16 @@ class restraint(atoms):
 
   def kinemage_key(self):
     atom0 = self.atoms_info[0]
+    # bonds are assigned to the following residue
+    if len(self.atoms_info)==2:
+      atom0 = self.atoms_info[1]
+    # angles are assigned to the central atom's residue
+    elif len(self.atoms_info)==3:
+      atom0 = self.atoms_info[1]
+    # dihedrals are assigned to the following residue - this applies to
+    # omega dihedral but planes are not a problem
+    elif len(self.atoms_info)==4:
+      atom0 = self.atoms_info[2]
     atom_names = [ a.name.strip().lower() for a in self.atoms_info ]
     kin_key = "%1s%3s%2s%4s%1s %s" % (self.get_altloc(),
       atom0.resname.lower(), atom0.chain_id, atom0.resseq, atom0.icode,
