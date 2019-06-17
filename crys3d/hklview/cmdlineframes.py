@@ -342,6 +342,12 @@ class HKLViewFrame() :
       if hasattr(diff, "camera_type"):
         self.set_camera_type(phl.camera_type)
 
+      if hasattr(diff, "shape_primitive"):
+        self.set_shape_primitive(phl.shape_primitive)
+
+      if hasattr(diff, "using_tooltips"):
+        self.viewer.usingtooltips = phl.using_tooltips
+
       if hasattr(diff, "viewer"):
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
@@ -487,15 +493,16 @@ class HKLViewFrame() :
     if self.viewer.miller_array is None or \
       self.params.NGL_HKLviewer.using_space_subgroup:
       return
+    current_miller_array_idx = self.viewer.hkl_scenes_info[self.viewer.iarray][1]
+    matching_valid_array = self.valid_arrays[ current_miller_array_idx ]
     from cctbx.sgtbx.subgroups import subgroups
     from cctbx import sgtbx
-    sg_info = self.viewer.miller_array.space_group_info()
+    sg_info = matching_valid_array.space_group_info()
     subgrs = subgroups(sg_info).groups_parent_setting()
     self.spacegroup_choices = []
     for i,subgroup in enumerate(subgrs) :
       subgroup_info = sgtbx.space_group_info(group=subgroup)
       self.spacegroup_choices.append(subgroup_info)
-      #self.mprint("%d, %s" %(i, subgroup_info.symbol_and_number()) )
     if (sg_info in self.spacegroup_choices) :
       self.current_spacegroup = self.spacegroup_choices.index(sg_info)
     else :
@@ -513,6 +520,7 @@ class HKLViewFrame() :
       unit_cell=self.viewer.miller_array.unit_cell())
     othervalidarrays = []
     for validarray in self.valid_arrays:
+      # TODO: check if array is unmerged i.e. not symmetry unique
       #print "Space group casting ", validarray.info().label_string()
       arr = validarray.expand_to_p1().customized_copy(crystal_symmetry=symm)
       arr = arr.merge_equivalents().array().set_info(validarray.info())
@@ -753,6 +761,25 @@ class HKLViewFrame() :
     self.update_settings()
 
 
+  def SetShapePrimitive(self, val):
+    self.params.NGL_HKLviewer.shape_primitive = val
+    self.update_settings()
+
+
+  def set_shape_primitive(self, val):
+    if val == "points":
+      self.viewer.sizemoniker = "pointSize"
+      self.viewer.primitivetype = "PointBuffer"
+    else:
+      self.viewer.sizemoniker = "radius"
+      self.viewer.primitivetype = "sphereBuffer"
+    #self.viewer.DrawNGLJavaScript()
+
+
+  def ShowTooltips(self, val):
+    self.params.NGL_HKLviewer.using_tooltips  = val
+    self.update_settings()
+
 
   def GetSpaceGroupChoices(self):
     """
@@ -832,6 +859,10 @@ NGL_HKLviewer {
     .type = str
   camera_type = *'orthographic' 'perspective'
     .type = choice
+  shape_primitive = *'spheres' 'points'
+    .type = choice
+  using_tooltips = True
+    .type = bool
   viewer {
     %s
   }

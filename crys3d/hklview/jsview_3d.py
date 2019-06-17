@@ -160,6 +160,9 @@ class hklview_3d:
     self.merge = False
     self.NGLscriptstr = ""
     self.cameratype = "orthographic"
+    self.primitivetype = "SphereBuffer"
+    self.sizemoniker = "radius"
+    self.usingtooltips = True
     self.url = ""
     self.binarray = "Resolution"
     self.icolourcol = None
@@ -298,50 +301,51 @@ class hklview_3d:
 
 
   def MakeToolTips(self, HKLscenes):
-    self.mprint( "making tooltips")
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     allcolstraliases = "\n  var hk = \'H,K,L: \'"
     alltooltipstringsdict = {}
-    tooltipstringsdict = {}
-    for j,hklscene in enumerate(HKLscenes):
-      #tooltipstringsdict, colstraliases = MakeTtips(hklscene, j)
-      #"""
-      if hklscene.isUsingFOMs():
-        continue # already have tooltips for the scene without the associated fom
-      colstraliases = "\n  var st%d = '\\n%s: '" %(j, hklscene.work_array.info().label_string() )
-      ocolstr = hklscene.work_array.info().label_string()
-      if hklscene.work_array.is_complex_array():
-        ampl = flex.abs(hklscene.data)
-        phases = flex.arg(hklscene.data) * 180.0/math.pi
-        # purge nan values from array to avoid crash in fmod_positive()
-        b = flex.bool([bool(math.isnan(e)) for e in phases])
-        # replace the nan values with an arbitrary float value
-        phases = phases.set_selected(b, 42.4242)
-        # Cast negative degrees to equivalent positive degrees
-        phases = flex.fmod_positive(phases, 360.0)
-      sigmas = hklscene.sigmas
-      for i,datval in enumerate(hklscene.data):
-        hkl = hklscene.indices[i]
-        if not tooltipstringsdict.has_key(hkl):
-          spbufttip = '\'+hk+\'%s, %s, %s' %(hkl[0], hkl[1], hkl[2])
-          spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i], 2) )
-          spbufttip += '\'+AA+\'' # javascript alias for angstrom
-          tooltipstringsdict[hkl] = spbufttip
-        od =""
+    if self.usingtooltips:
+      self.mprint( "making tooltips")
+      tooltipstringsdict = {}
+      for j,hklscene in enumerate(HKLscenes):
+        #tooltipstringsdict, colstraliases = MakeTtips(hklscene, j)
+        #"""
+        if hklscene.isUsingFOMs():
+          continue # already have tooltips for the scene without the associated fom
+        colstraliases = "\n  var st%d = '\\n%s: '" %(j, hklscene.work_array.info().label_string() )
+        ocolstr = hklscene.work_array.info().label_string()
         if hklscene.work_array.is_complex_array():
-          od = str(roundoff(ampl[i], 2)) + ", " + str(roundoff(phases[i], 1)) + \
-            "\'+DGR+\'"
-        elif sigmas is not None:
-          od = str(roundoff(datval, 2)) + ", " + str(roundoff(sigmas[i], 2))
-        else:
-          od = str(roundoff(datval, 2))
-        if not (math.isnan( abs(datval) ) or datval == display.inanval):
-          # st1, st2,... are javascript aliases for miller array labelstrings as declared in self.colstraliases
-          tooltipstringsdict[hkl] += '\'+st%d+\'%s' %(j, od)
-      #"""
-      alltooltipstringsdict.update( tooltipstringsdict )
-      allcolstraliases += colstraliases
-    allcolstraliases += "\n"
+          ampl = flex.abs(hklscene.data)
+          phases = flex.arg(hklscene.data) * 180.0/math.pi
+          # purge nan values from array to avoid crash in fmod_positive()
+          b = flex.bool([bool(math.isnan(e)) for e in phases])
+          # replace the nan values with an arbitrary float value
+          phases = phases.set_selected(b, 42.4242)
+          # Cast negative degrees to equivalent positive degrees
+          phases = flex.fmod_positive(phases, 360.0)
+        sigmas = hklscene.sigmas
+        for i,datval in enumerate(hklscene.data):
+          hkl = hklscene.indices[i]
+          if not tooltipstringsdict.has_key(hkl):
+            spbufttip = '\'+hk+\'%s, %s, %s' %(hkl[0], hkl[1], hkl[2])
+            spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i], 2) )
+            spbufttip += '\'+AA+\'' # javascript alias for angstrom
+            tooltipstringsdict[hkl] = spbufttip
+          od =""
+          if hklscene.work_array.is_complex_array():
+            od = str(roundoff(ampl[i], 2)) + ", " + str(roundoff(phases[i], 1)) + \
+              "\'+DGR+\'"
+          elif sigmas is not None:
+            od = str(roundoff(datval, 2)) + ", " + str(roundoff(sigmas[i], 2))
+          else:
+            od = str(roundoff(datval, 2))
+          if not (math.isnan( abs(datval) ) or datval == display.inanval):
+            # st1, st2,... are javascript aliases for miller array labelstrings as declared in self.colstraliases
+            tooltipstringsdict[hkl] += '\'+st%d+\'%s' %(j, od)
+        #"""
+        alltooltipstringsdict.update( tooltipstringsdict )
+        allcolstraliases += colstraliases
+      allcolstraliases += "\n"
     return alltooltipstringsdict, allcolstraliases
 
 
@@ -640,15 +644,16 @@ class hklview_3d:
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )
       #spbufttips[ibin].append(self.tooltipstrings[i] )
-      spbufttips[ibin].append(self.tooltipstringsdict[hkls[i]])
-
-    spherebufferstr = """
-  ttips = new Array(%d)
+      spherebufferstr = ""
+      if self.usingtooltips:
+        spbufttips[ibin].append(self.tooltipstringsdict[hkls[i]])
+        spherebufferstr = "  ttips = new Array(%d)" %self.nbin
+    spherebufferstr += """
   positions = new Array(%d)
   colours = new Array(%d)
-  radii = new Array(%d)
-  spherebufs = new Array(%d)
-    """ %(self.nbin, self.nbin, self.nbin, self.nbin, self.nbin)
+  sizes = new Array(%d)
+  shapebufs = new Array(%d)
+    """ %(self.nbin, self.nbin, self.nbin, self.nbin)
     spherebufferstr += self.colstraliases
     negativeradiistr = ""
     cntbin = 0
@@ -666,35 +671,40 @@ class hklview_3d:
                 colstr, bin1, bin2)
         self.binstrs.append(mstr)
         self.mprint(mstr, verbose=True)
-        uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
-        uncrustttips = uncrustttips.replace("\'\'+", "")
+
+        spherebufferstr += "// %s\n" %mstr
+        if self.usingtooltips:
+          uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
+          uncrustttips = uncrustttips.replace("\'\'+", "")
+          spherebufferstr += "ttips[%d] = %s" %(cntbin, uncrustttips)
         spherebufferstr += """
-  // %s
-  ttips[%d] = %s
   positions[%d] = new Float32Array( %s )
   colours[%d] = new Float32Array( %s )
-  radii[%d] = new Float32Array( %s )
-  spherebufs[%d] = new NGL.SphereBuffer({
+  sizes[%d] = new Float32Array( %s )
+  shapebufs[%d] = new NGL.%s({
     position: positions[%d],
     color: colours[%d],
-    radius: radii[%d],
-    picking: ttips[%d],
+    %s: sizes[%d],
+      """ %(cntbin, str(positions[ibin]), cntbin, str(colours[ibin]), \
+         cntbin, str(radii2[ibin]), cntbin, self.primitivetype, cntbin, \
+         cntbin, self.sizemoniker, cntbin)
+        if self.usingtooltips:
+          spherebufferstr += "picking: ttips[%d]," %cntbin
+        spherebufferstr += """
   })
   //}, { disableImpostor: true // to enable changing sphereDetail
   //, sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
   //}, { disableImpostor: true }) // if true allows wireframe spheres but does not allow resizing spheres
 
-  shape.addBuffer(spherebufs[%d])
-      """ %(mstr, cntbin, uncrustttips, \
-      #""" %(mstr, cntbin, str(spbufttips[ibin]).replace('\"', '\''), \
-         cntbin, str(positions[ibin]), cntbin, str(colours[ibin]), \
-         cntbin, str(radii2[ibin]), cntbin, cntbin, cntbin, cntbin, cntbin, cntbin )
+  shape.addBuffer(shapebufs[%d])
+      """ %cntbin
 
         if self.workingbinvals[ibin] < 0.0:
-          negativeradiistr += "spherebufs[%d].setParameters({metalness: 1})\n" %cntbin
+          negativeradiistr += "shapebufs[%d].setParameters({metalness: 1})\n" %cntbin
         cntbin += 1
 
-    spherebufferstr += """
+    if self.usingtooltips:
+      spherebufferstr += """
 // create tooltip element and add to the viewer canvas
   tooltip = document.createElement("div");
   Object.assign(tooltip.style, {
@@ -724,6 +734,9 @@ class hklview_3d:
     }
   });
 
+    """
+
+    spherebufferstr += """
   stage.signals.clicked.add(function (pickingProxy) {
   if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  )){
     var innerText = pickingProxy.picker[pickingProxy.pid];
@@ -756,7 +769,7 @@ class hklview_3d:
     #negativeradiistr = ""
     #for ibin in range(self.nbin):
     #  if self.workingbinvals[ibin] < 0.0:
-    #    negativeradiistr += "spherebufs[%d].setParameters({metalness: 1})\n" %ibin
+    #    negativeradiistr += "shapebufs[%d].setParameters({metalness: 1})\n" %ibin
 
 
 
@@ -945,7 +958,7 @@ mysocket.onmessage = function (e) {
     if (val[0] === "alpha") {
       ibin = parseInt(val[1])
       alpha = parseFloat(val[2])
-      spherebufs[ibin].setParameters({opacity: alpha})
+      shapebufs[ibin].setParameters({opacity: alpha})
       stage.viewer.requestRender()
     }
 
@@ -955,7 +968,7 @@ mysocket.onmessage = function (e) {
       colours[ibin][3*si] = parseFloat(val[3])
       colours[ibin][3*si+1] = parseFloat(val[4])
       colours[ibin][3*si+2] = parseFloat(val[5])
-      spherebufs[ibin].setAttributes({ color: colours[ibin] })
+      shapebufs[ibin].setAttributes({ color: colours[ibin] })
       stage.viewer.requestRender()
     }
 
@@ -988,11 +1001,11 @@ mysocket.onmessage = function (e) {
     if (val[0] === "Testing") {
       // test something new
       mysocket.send( 'Testing something new ' + pagename );
-      var newradii = radii[0].map(function(element) {
+      var newradii = sizes[0].map(function(element) {
         return element*1.5;
       });
 
-      spherebufs[0].setAttributes({
+      shapebufs[0].setAttributes({
           radius: newradii
         })
       stage.viewer.requestRender()
