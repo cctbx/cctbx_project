@@ -1528,7 +1528,7 @@ class manager(object):
       "n_gaussian", "wk1995", "it1992", "electron", "neutron"]
     if(not (scattering_table in known_scattering_tables)):
       raise Sorry("Unknown scattering_table: %s\n%s"%
-        (show_string(scattering_table),
+        (str_utils.show_string(scattering_table),
         "Possible choices are: %s"%" ".join(known_scattering_tables)))
     if(scattering_table in ["n_gaussian", "wk1995", "it1992", "electron"]):
       self._xray_structure.scattering_type_registry(
