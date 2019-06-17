@@ -30,19 +30,16 @@ input {
     node_memory {
       architecture = "Cori KNL"
         .type = str
-        .help = Node architecture is used to determine the node memory limit, number of available ranks per node, and pickle file size-to-memory coefficient
+        .help = node architecture name. Currently not used.
       limit = 90.0
         .type = float
-        .help = node memory limit, GB
+        .help = node memory limit, GB. On Cori KNL each node has 96 GB of memory, but we use 6 GB as a cushion, so the default value is 90 GB.
       pickle_to_memory = 3.5
         .type = float
         .help = an empirical coefficient to convert pickle file size to anticipated run-time process memory required to load a file of that size
       ranks_per_node = 68
         .type = int
         .help = number of ranks available per node
-      scale = 1.0
-        .type = float
-        .help = Decrease the node memory limit by this factor in order to utilize more nodes
     }
   }
 }
