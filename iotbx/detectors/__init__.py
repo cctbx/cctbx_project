@@ -69,8 +69,8 @@ def ImageFactory(filename,optional_index=None):
   if os.path.isfile(filename):
     if not os.access(filename, os.R_OK):
       raise Sorry("No read access to file %s" % filename)
-    from dxtbx.format.Registry import Registry
-    format_instance = Registry.find(filename)
+    import dxtbx.format.Registry
+    format_instance = dxtbx.format.Registry.get_format_class_for_file(filename)
     instance = format_instance(filename)
     if optional_index is not None:
       return instance.get_detectorbase(optional_index)
