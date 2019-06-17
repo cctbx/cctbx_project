@@ -134,6 +134,10 @@ master_phil = iotbx.phil.parse("""
               in which case all segments in the query model that have \
               a percentage match (within max_dist of atom in target) \
               in this range will be written out to match_pdb_file.
+    remove_alt_conf = True
+      .type = bool
+      .help = Remove alternate conformers before analysis. This is normally \
+               required to align correctly.
   }
   control {
       verbose = False
@@ -1191,6 +1195,10 @@ def run(args=None,
   chain_hierarchy=apply_atom_selection(atom_selection,chain_hierarchy)
   target_hierarchy=apply_atom_selection(atom_selection,target_hierarchy)
 
+  # remove alt conformations if necessary
+  if params.comparison.remove_alt_conf:
+    chain_hierarchy.remove_alt_confs(always_keep_one_conformer=True)
+    target_hierarchy.remove_alt_confs(always_keep_one_conformer=True)
 
   total_target=target_hierarchy.overall_counts().n_residues
   total_chain=chain_hierarchy.overall_counts().n_residues
