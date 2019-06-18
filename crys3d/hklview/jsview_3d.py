@@ -675,7 +675,7 @@ class hklview_3d:
         if self.usingtooltips:
           uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
           uncrustttips = uncrustttips.replace("\'\'+", "")
-          spherebufferstr += "ttips[%d] = %s" %(cntbin, uncrustttips)
+          spherebufferstr += "  ttips[%d] = %s" %(cntbin, uncrustttips)
         spherebufferstr += """
   positions[%d] = new Float32Array( %s )
   colours[%d] = new Float32Array( %s )
@@ -1008,6 +1008,43 @@ mysocket.onmessage = function (e) {
       shapebufs[0].setAttributes({
           radius: newradii
         })
+
+      shapeComp.removeRepresentation(repr);
+
+      var nsize = positions[0].length/3
+      positions[1] = new Float32Array( nsize*3)
+      var M = new NGL.Matrix4();
+      var r = new NGL.Vector3();
+
+      M.makeRotationZ( 1.57 )
+      for (var i=0; i<nsize; i++)
+      {
+        idx= i*3
+        r.x = positions[0][idx]
+        r.y = positions[0][idx+1]
+        r.z = positions[0][idx+2]
+
+        //r.applyMatrix4(M)
+        r.negate() // inversion for anomalous pair
+
+        positions[1][idx] = r.x
+        positions[1][idx+1] = r.y
+        positions[1][idx+2] = r.z
+
+        //positions[1][idx]   = positions[0][idx] + 4.0
+        //positions[1][idx+1] = positions[0][idx+1]
+        //positions[1][idx+2] = positions[0][idx+2]
+      }
+
+      shapebufs[1] = new NGL.SphereBuffer({
+        position: positions[1],
+        color: colours[0],
+        radius: radii[0],
+      })
+
+      shape.addBuffer(shapebufs[1])
+      repr = shapeComp.addRepresentation('buffer');
+
       stage.viewer.requestRender()
     }
 
@@ -1125,6 +1162,18 @@ mysocket.onmessage = function (e) {
 
   def TestNewFunction(self):
     self.SendWebSockMsg( u"Testing, NGL\n" )
+    sg = self.miller_array.space_group()
+    symops = sg.all_ops()
+
+    message = u"Testing, NGL\n"
+
+    for symop in symops:
+      rot = symop.r()
+      tp_rot = rot.transpose().as_double()
+      msg += str(tp_rot) + "\n"
+    self.SendWebSockMsg(msg)
+
+
 
 
 
