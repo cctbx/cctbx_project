@@ -205,47 +205,26 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int timelog, int spixels, int f
     TimeLogger myLogger("Before kernel call -- cudaMalloc");
 
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_FhklParams, sizeof(*cu_FhklParams)));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_sdet_vector, sizeof(*cu_sdet_vector) * vector_length));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_fdet_vector, sizeof(*cu_fdet_vector) * vector_length));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_odet_vector, sizeof(*cu_odet_vector) * vector_length));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_pix0_vector, sizeof(*cu_pix0_vector) * vector_length));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_beam_vector, sizeof(*cu_beam_vector) * vector_length));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_spindle_vector, sizeof(*cu_spindle_vector) * vector_length));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_a0, sizeof(*cu_a0) * vector_length));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_b0, sizeof(*cu_b0) * vector_length));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_c0, sizeof(*cu_c0) * vector_length));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_polar_vector, sizeof(*cu_polar_vector) * vector_length));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_source_X, sizeof(*cu_source_X) * sources));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_source_Y, sizeof(*cu_source_Y) * sources));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_source_Z, sizeof(*cu_source_Z) * sources));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_source_I, sizeof(*cu_source_I) * sources));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_source_lambda, sizeof(*cu_source_lambda) * sources));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_mosaic_umats, sizeof(*cu_mosaic_umats) * mosaic_domains * 9));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_floatimage, sizeof(*cu_floatimage) * total_pixels));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_omega_reduction, sizeof(*cu_omega_reduction) * total_pixels));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_max_I_x_reduction, sizeof(*cu_max_I_x_reduction) * total_pixels));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_max_I_y_reduction, sizeof(*cu_max_I_y_reduction) * total_pixels));
-
     CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_rangemap, sizeof(*cu_rangemap) * total_pixels));
 
     if( maskimage != NULL )
@@ -323,6 +302,7 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int timelog, int spixels, int f
      }
     }
     CUDA_CHECK_RETURN(cudaMemcpy(cu_Fhkl, FhklLinear, sizeof(*cu_Fhkl) * hklsize, cudaMemcpyHostToDevice));
+    free(FhklLinear);
         }
 
         //int deviceId = 0;
@@ -410,8 +390,8 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int timelog, int spixels, int f
 
   {
     TimeLogger myLogger("After kernel call -- cudaFree");
-
-    CUDA_CHECK_RETURN(cudaFree(cu_sdet_vector));
+    
+          CUDA_CHECK_RETURN(cudaFree(cu_sdet_vector));
           CUDA_CHECK_RETURN(cudaFree(cu_fdet_vector));
           CUDA_CHECK_RETURN(cudaFree(cu_odet_vector));
           CUDA_CHECK_RETURN(cudaFree(cu_pix0_vector));
@@ -434,8 +414,9 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int timelog, int spixels, int f
           CUDA_CHECK_RETURN(cudaFree(cu_max_I_y_reduction));
           CUDA_CHECK_RETURN(cudaFree(cu_maskimage));
           CUDA_CHECK_RETURN(cudaFree(cu_rangemap));
+          CUDA_CHECK_RETURN(cudaFree(cu_Fhkl)); 
   }
-
+        
         *max_I = 0;
         *max_I_x = 0;
         *max_I_y = 0;
@@ -466,6 +447,7 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int timelog, int spixels, int f
           free(omega_reduction);
           free(max_I_x_reduction);
           free(max_I_y_reduction);
+          //free(FhklLinear);
   }
 }
 
