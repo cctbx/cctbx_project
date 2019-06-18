@@ -161,7 +161,6 @@ class hklview_3d:
     self.NGLscriptstr = ""
     self.cameratype = "orthographic"
     self.primitivetype = "SphereBuffer"
-    self.sizemoniker = "radius"
     self.usingtooltips = True
     self.url = ""
     self.binarray = "Resolution"
@@ -651,7 +650,7 @@ class hklview_3d:
     spherebufferstr += """
   positions = new Array(%d)
   colours = new Array(%d)
-  sizes = new Array(%d)
+  radii = new Array(%d)
   shapebufs = new Array(%d)
     """ %(self.nbin, self.nbin, self.nbin, self.nbin)
     spherebufferstr += self.colstraliases
@@ -680,24 +679,25 @@ class hklview_3d:
         spherebufferstr += """
   positions[%d] = new Float32Array( %s )
   colours[%d] = new Float32Array( %s )
-  sizes[%d] = new Float32Array( %s )
+  radii[%d] = new Float32Array( %s )
   shapebufs[%d] = new NGL.%s({
     position: positions[%d],
-    color: colours[%d],
-    %s: sizes[%d],
-      """ %(cntbin, str(positions[ibin]), cntbin, str(colours[ibin]), \
+    color: colours[%d], """ %(cntbin, str(positions[ibin]), cntbin, str(colours[ibin]), \
          cntbin, str(radii2[ibin]), cntbin, self.primitivetype, cntbin, \
-         cntbin, self.sizemoniker, cntbin)
+         cntbin)
+        if self.primitivetype == "SphereBuffer":
+          spherebufferstr += "\n    radius: radii[%d]," %cntbin
         if self.usingtooltips:
-          spherebufferstr += "picking: ttips[%d]," %cntbin
-        spherebufferstr += """
-  })
+          spherebufferstr += "\n    picking: ttips[%d]," %cntbin
+        if self.primitivetype == "PointBuffer":
+          spherebufferstr += "\n  }, {pointSize: %1.2f})\n" %self.settings.scale
+        else:
+          spherebufferstr += """\n  })
   //}, { disableImpostor: true // to enable changing sphereDetail
   //, sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
   //}, { disableImpostor: true }) // if true allows wireframe spheres but does not allow resizing spheres
-
-  shape.addBuffer(shapebufs[%d])
-      """ %cntbin
+      """
+        spherebufferstr += "  shape.addBuffer(shapebufs[%d])" %cntbin
 
         if self.workingbinvals[ibin] < 0.0:
           negativeradiistr += "shapebufs[%d].setParameters({metalness: 1})\n" %cntbin
@@ -1001,7 +1001,7 @@ mysocket.onmessage = function (e) {
     if (val[0] === "Testing") {
       // test something new
       mysocket.send( 'Testing something new ' + pagename );
-      var newradii = sizes[0].map(function(element) {
+      var newradii = radii[0].map(function(element) {
         return element*1.5;
       });
 

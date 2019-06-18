@@ -768,10 +768,8 @@ class HKLViewFrame() :
 
   def set_shape_primitive(self, val):
     if val == "points":
-      self.viewer.sizemoniker = "pointSize"
       self.viewer.primitivetype = "PointBuffer"
     else:
-      self.viewer.sizemoniker = "radius"
       self.viewer.primitivetype = "sphereBuffer"
     #self.viewer.DrawNGLJavaScript()
 
