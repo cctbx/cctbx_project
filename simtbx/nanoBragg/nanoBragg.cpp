@@ -270,6 +270,7 @@ nanoBragg::init_defaults()
     printout = 0;
     printout_spixel=printout_fpixel=-1;
     verbose = 1;
+    device_Id = 0;
 
     /* default x-ray beam properties */
 //    double beam_vector[4] = {0,1,0,0};  this->beam_vector = beam_vector;
