@@ -44,7 +44,13 @@ class rotarama_plot_mixin(object):
     else :
       assert (len(extent) == 4)
     if show_filling:
-      self.plot.imshow(stats, origin="lower", cmap=cm, extent=extent)
+      im = self.plot.imshow(stats, origin="lower", cmap=cm, extent=extent)
+      # This code will draw bar with actual numbers that are represented by
+      # color (sloppily over the axis values)
+      # from mpl_toolkits.axes_grid1 import make_axes_locatable
+      # divider = make_axes_locatable(self.plot)
+      # cax = divider.append_axes('bottom', size='5%', pad=0.05)
+      # self.figure.colorbar(im, cax=cax, orientation='horizontal')
     if (contours is not None):
       self.plot.contour(stats, contours,
         origin="lower",
