@@ -190,10 +190,6 @@ class hklview_3d:
     if kwds.has_key('mprint'):
       self.mprint = kwds['mprint']
     self.nbin = 0
-    self.websockclient = None
-    self.lastmsg = ""
-    self.msgqueuethrd = None
-    self.StartWebsocket()
     tempdir = tempfile.gettempdir()
     self.hklfname = os.path.join(tempdir, "hkl.htm" )
     if os.path.isfile(self.hklfname):
@@ -232,9 +228,15 @@ class hklview_3d:
     if kwds.has_key('UseOSBrowser'):
       self.UseOSBrowser = kwds['UseOSBrowser']
     self.viewmtrxelms = None
-    self.pendingmessage = None
     self.HKLscenesKey = ( 0, False,
                           self.settings.expand_anomalous, self.settings.expand_to_p1  )
+    self.pendingmessage = None
+    self.pendingmessagetype = None
+    self.websockclient = None
+    self.lastmsg = ""
+    self.msgdelim = ":\n"
+    self.msgqueuethrd = None
+    self.StartWebsocket()
 
 
   def __exit__(self, exc_type, exc_value, traceback):
@@ -649,6 +651,7 @@ class hklview_3d:
         spherebufferstr = "  ttips = new Array(%d)" %self.nbin
     spherebufferstr += """
   positions = new Array(%d)
+  br_positions = [ ]
   colours = new Array(%d)
   radii = new Array(%d)
   shapebufs = new Array(%d)
@@ -947,40 +950,45 @@ document.addEventListener('DOMContentLoaded', function() { hklscene() }, false )
 
 
 mysocket.onmessage = function (e) {
-  //alert('Server: ' + e.data);
+  //alert('received:\\n' + e.data);
   var c
   var alpha
   var si
   mysocket.send('got ' + e.data ); // tell server what it sent us
   try {
-    val = e.data.split(",")
+    var datval = e.data.split(":\\n");
+    //alert('received2:\\n' + datval);
+    var msgtype = datval[0];
+    //alert('received3:\\n' + msgtype);
+    var val = datval[1].split(",");
 
-    if (val[0] === "alpha") {
-      ibin = parseInt(val[1])
-      alpha = parseFloat(val[2])
+    if (msgtype === "alpha") {
+      ibin = parseInt(val[0])
+      alpha = parseFloat(val[1])
       shapebufs[ibin].setParameters({opacity: alpha})
       stage.viewer.requestRender()
     }
 
-    if (val[0] === "colour") {
-      ibin = parseInt(val[1])
-      si =  parseInt(val[2])
-      colours[ibin][3*si] = parseFloat(val[3])
-      colours[ibin][3*si+1] = parseFloat(val[4])
-      colours[ibin][3*si+2] = parseFloat(val[5])
+    if (msgtype === "colour") {
+      ibin = parseInt(val[0])
+      si =  parseInt(val[1])
+      colours[ibin][3*si] = parseFloat(val[2])
+      colours[ibin][3*si+1] = parseFloat(val[3])
+      colours[ibin][3*si+2] = parseFloat(val[4])
       shapebufs[ibin].setAttributes({ color: colours[ibin] })
       stage.viewer.requestRender()
     }
 
-    if (val[0] === "Redraw") {
+    if (msgtype === "Redraw") {
       stage.viewer.requestRender()
     }
 
-    if (val[0] === "ReOrient") {
+    if (msgtype === "ReOrient") {
       mysocket.send( 'Reorienting ' + pagename );
       sm = new Float32Array(16);
+      //alert('ReOrienting: ' + val)
       for (j=0; j<16; j++)
-        sm[j] = parseFloat(val[j + 2]) // first 2 are "ReOrient", "NGL\\n"
+        sm[j] = parseFloat(val[j])
 
       var m = new NGL.Matrix4();
       m.fromArray(sm);
@@ -988,17 +996,18 @@ mysocket.onmessage = function (e) {
       stage.viewer.requestRender();
     }
 
-    if (val[0] === "Reload") {
+    if (msgtype === "Reload") {
     // refresh browser with the javascript file
       cvorient = stage.viewerControls.getOrientation().elements
       msg = String(cvorient)
-      mysocket.send('Current vieworientation:\\n, ' + msg );
+      mysocket.send('Current vieworientation:\\n' + msg );
 
       mysocket.send( 'Refreshing ' + pagename );
       window.location.reload(true);
     }
 
-    if (val[0] === "Testing") {
+
+    if (msgtype === "Testing") {
       // test something new
       mysocket.send( 'Testing something new ' + pagename );
       var newradii = radii[0].map(function(element) {
@@ -1009,9 +1018,60 @@ mysocket.onmessage = function (e) {
           radius: newradii
         })
 
+      var nsize = positions[0].length/3
+
       shapeComp.removeRepresentation(repr);
 
-      var nsize = positions[0].length/3
+
+      alert('rotations:\\n' + val)
+      strs = datval[1].split("\\n");
+
+      nrots = strs.length
+      bins = %d
+      alert('nrots: ' + nrots)
+      for (var i; i< bins; i++)
+      {
+        br_positions.push( new Array(nrots) )
+      }
+
+      for (var h=0; h<bins; h++)
+      {
+
+        for (var g=0; g < nrots; g++ )
+        {
+          if (strs[g] < 1 )
+            continue
+          var elmstrs = strs[g].split(",");
+
+          var Rotmat = new NGL.Matrix3();
+          sm = new Float32Array(9);
+          for (j=0; j<9; j++)
+            sm[j] = parseFloat(elmstrs[j])
+          Rotmat.fromArray(sm);
+          //alert('rot' + g + ': ' + elmstrs)
+
+          var r = new NGL.Vector3();
+          br_positions[h][g].push( new Float32Array( nsize*3) )
+
+          for (var i=0; i<nsize; i++)
+          {
+            idx= i*3
+            r.x = positions[0][idx]
+            r.y = positions[0][idx+1]
+            r.z = positions[0][idx+2]
+            r.applyMatrix3(Rotmat)
+            br_positions[h][g][idx] = r.x
+            br_positions[h][g][idx+1] = r.y
+            br_positions[h][g][idx+2] = r.z
+          }
+
+        }
+
+      }
+
+
+
+
       positions[1] = new Float32Array( nsize*3)
       var M = new NGL.Matrix4();
       var r = new NGL.Vector3();
@@ -1058,7 +1118,7 @@ mysocket.onmessage = function (e) {
 
 
     """ % (self.__module__, self.__module__, self.cameratype, arrowstr, spherebufferstr, \
-            negativeradiistr, colourgradstrs, colourlabel, fomlabel)
+            negativeradiistr, colourgradstrs, colourlabel, fomlabel, self.nbin)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
@@ -1080,21 +1140,24 @@ mysocket.onmessage = function (e) {
     self.lastmsg = message
     if "Current vieworientation:" in message:
       # The NGL.Matrix4 with the orientation is a list of floats.
-      self.viewmtrxelms = message[ message.find("\n") : ]
+      self.viewmtrxelms = message[ message.find("\n") + 1: ]
       sleep(0.2)
       self.mprint( "Reorienting client after refresh:" + str( self.websockclient ) )
       if not self.isnewfile:
-        self.pendingmessage = u"ReOrient, NGL" + self.viewmtrxelms
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+        self.pendingmessagetype = "ReOrient"
+        self.pendingmessage = self.viewmtrxelms
       self.isnewfile = False
 
 
   def WebBrowserMsgQueue(self):
     try:
       while True:
-        sleep(0.5)
-        if hasattr(self, "pendingmessage") and self.pendingmessage:
-          self.SendWebSockMsg(self.pendingmessage)
+        sleep(1)
+        if self.pendingmessagetype:
+          self.SendWebSockMsg(self.pendingmessagetype, self.pendingmessage)
           self.pendingmessage = None
+          self.pendingmessagetype = None
 # if the html content is huge the browser will be unresponsive until it has finished
 # reading the html content. This may crash this thread. So try restarting this thread until
 # browser is ready
@@ -1117,15 +1180,17 @@ mysocket.onmessage = function (e) {
     self.msgqueuethrd.start()
 
 
-  def SendWebSockMsg(self, msg):
+  def SendWebSockMsg(self, msgtype, msg=""):
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     #print "self.server.clients: ", self.server.clients
     #print "self.websockclient: ",
+    message = u""
+    message = msgtype + self.msgdelim + msg
     if self.websockclient:
       while "Refreshing" in self.lastmsg:
         sleep(0.5)
         self.lastmsg = ""
-      self.server.send_message(self.websockclient, msg )
+      self.server.send_message(self.websockclient, message )
     else:
       self.OpenBrowser()
 
@@ -1139,12 +1204,12 @@ mysocket.onmessage = function (e) {
 
 
   def RedrawNGL(self):
-    self.SendWebSockMsg( u"Redraw, NGL\n" )
+    self.SendWebSockMsg("Redraw")
 
 
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
-    self.mprint("Rendering NGL JavaScript...")
-    self.SendWebSockMsg( u"Reload, NGL\n" )
+    self.mprint("Rendering JavaScript...")
+    self.SendWebSockMsg("Reload")
 
 
   def OpenBrowser(self):
@@ -1161,17 +1226,21 @@ mysocket.onmessage = function (e) {
 
 
   def TestNewFunction(self):
-    self.SendWebSockMsg( u"Testing, NGL\n" )
+    #self.SendWebSockMsg( u"Testing:\n" )
     sg = self.miller_array.space_group()
     symops = sg.all_ops()
+    unique_rot_ops = symops[0:sg.order_p()]
 
-    message = u"Testing, NGL\n"
-
-    for symop in symops:
+    msg = ""
+    for symop in unique_rot_ops:
       rot = symop.r()
       tp_rot = rot.transpose().as_double()
-      msg += str(tp_rot) + "\n"
-    self.SendWebSockMsg(msg)
+
+      str_rot = str(tp_rot)
+      str_rot = str_rot.replace("(", "")
+      str_rot = str_rot.replace(")", "")
+      msg += str_rot + "\n"
+    self.SendWebSockMsg("Testing", msg)
 
 
 
