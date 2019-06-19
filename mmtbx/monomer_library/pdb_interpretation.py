@@ -5751,7 +5751,8 @@ class process(object):
 
   def clash_guard(self,
                   hard_minimum_nonbonded_distance=0.001,
-                  nonbonded_distance_threshold=0.5):
+                  nonbonded_distance_threshold=0.5,
+                  new_sites_cart=None):
     params = self.all_chain_proxies.params.clash_guard
     if nonbonded_distance_threshold != 0.5:
       # WHY is this here???
@@ -5763,6 +5764,9 @@ class process(object):
     geo = self._geometry_restraints_manager
     if geo is None:
       return None
+    # This is done for phenix.refine when run with shaking coordinates
+    if new_sites_cart is not None:
+      geo.pair_proxies(sites_cart=new_sites_cart)
     n_below_threshold = (
       geo.nonbonded_model_distances() < params.nonbonded_distance_threshold) \
         .count(True)

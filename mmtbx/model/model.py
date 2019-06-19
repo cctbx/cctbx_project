@@ -1108,7 +1108,8 @@ class manager(object):
     self._processed_pdb_file = None
 
   def raise_clash_guard(self):
-    err_msg = self._processed_pdb_file.clash_guard()
+    # This is done for phenix.refine when run with shaking coordinates
+    err_msg = self._processed_pdb_file.clash_guard(new_sites_cart=self.get_sites_cart())
     if err_msg is not None:
       raise Sorry(err_msg)
 
