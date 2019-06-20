@@ -45,7 +45,7 @@ input {
 }
 
 filter
-  .help = The FILTER section defines criteria to accept or reject whole experiments
+  .help = The filter section defines criteria to accept or reject whole experiments
   .help = or to modify the entire experiment by a reindexing operator
   .help = refer to the select section for filtering of individual reflections
   {
@@ -143,7 +143,8 @@ modify
 }
 
 select
-  .help = The SELECT section accepts or rejects specified reflections
+  .help = The select section accepts or rejects specified reflections
+  .help = refer to the filter section for filtering of whole experimens
   {
   algorithm = panel cspad_sensor significance_filter
     .type = choice

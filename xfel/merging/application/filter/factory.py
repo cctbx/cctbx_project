@@ -8,4 +8,9 @@ class factory(factory_base):
   @staticmethod
   def from_parameters(params, additional_info=None):
     """ """
-    return [experiment_filter(params), reflection_filter(params)]
+    workers = []
+    if params.filter.algorithm != None:
+      workers.append(experiment_filter(params))
+    if params.select.algorithm != None:
+      workers.append(reflection_filter(params))
+    return workers

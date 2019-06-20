@@ -24,15 +24,17 @@ class error_modifier_sr(worker):
     new_reflections = flex.reflection_table()
     number_of_hkls = 0
     number_of_multiply_measured_hkls = 0
-    for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
-      number_of_hkls += 1
-      number_of_measurements = len(refls)
-      assert number_of_measurements > 0
-      if number_of_measurements > 1:
-        stats = flex.mean_and_variance(refls['intensity.sum.value'])
-        refls['intensity.sum.variance'] = flex.double(number_of_measurements, stats.unweighted_sample_variance())
-        number_of_multiply_measured_hkls += 1
-      new_reflections.extend(refls)
+
+    if reflections.size() > 0:
+      for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
+        number_of_hkls += 1
+        number_of_measurements = len(refls)
+        assert number_of_measurements > 0
+        if number_of_measurements > 1:
+          stats = flex.mean_and_variance(refls['intensity.sum.value'])
+          refls['intensity.sum.variance'] = flex.double(number_of_measurements, stats.unweighted_sample_variance())
+          number_of_multiply_measured_hkls += 1
+        new_reflections.extend(refls)
 
     self.logger.log("Modified errors for (multiply-measured) %d symmetry-reduced HKLs out of %d symmetry-reduced HKLs"%(number_of_multiply_measured_hkls, number_of_hkls))
 

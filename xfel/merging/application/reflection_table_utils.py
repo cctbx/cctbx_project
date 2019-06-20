@@ -51,6 +51,10 @@ class reflection_table_utils(object):
   @staticmethod
   def merge_reflections(reflections, min_multiplicity):
     merged_reflections = reflection_table_utils.merged_reflection_table()
+
+    if reflections.size() == 0:
+      return merged_reflections
+
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections):
       assert refls.size() > 0
 

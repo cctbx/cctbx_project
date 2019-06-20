@@ -80,13 +80,14 @@ class experiment_resolution_statistics(worker):
       experiments_per_resolution_bins[i_bin] = set()
 
     # Accumulate experiment ids in the resolution bins where those experiments contributed reflections
-    for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections):
-      assert refls.size() > 0
-      hkl = refls[0]['miller_index_asymmetric']
-      if hkl in self.hkl_resolution_bins:
-        i_bin = self.hkl_resolution_bins[hkl]
-        for refl in refls:
-          experiments_per_resolution_bins[i_bin].add(refl['exp_id'])
+    if reflections.size() > 0:
+      for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections):
+        assert refls.size() > 0
+        hkl = refls[0]['miller_index_asymmetric']
+        if hkl in self.hkl_resolution_bins:
+          i_bin = self.hkl_resolution_bins[hkl]
+          for refl in refls:
+            experiments_per_resolution_bins[i_bin].add(refl['exp_id'])
 
     # For each bin, reduce the sets of unique experiment ids to their count
     for i_bin in range(self.resolution_binner.n_bins_all()):

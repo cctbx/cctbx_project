@@ -360,37 +360,37 @@ class intensity_resolution_statistics(worker):
 
     # How many bins do we have?
     n_bins = self.resolution_binner.n_bins_all() # (self.params.statistics.n_bins + 2), 2 - to account for the hkls outside of the binner resolution range
+    if reflections.size() > 0:
+      for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections):
+        assert refls.size() > 0
 
-    for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections):
-      assert refls.size() > 0
+        zero_intensity_count_all += ((refls['intensity.sum.value'] == 0.0).count(True))
+        positive_intensity_count_all += ((refls['intensity.sum.value'] > 0.0).count(True))
+        negative_intensity_count_all += ((refls['intensity.sum.value'] < 0.0).count(True))
 
-      zero_intensity_count_all += ((refls['intensity.sum.value'] == 0.0).count(True))
-      positive_intensity_count_all += ((refls['intensity.sum.value'] > 0.0).count(True))
-      negative_intensity_count_all += ((refls['intensity.sum.value'] < 0.0).count(True))
+        hkl = refls[0]['miller_index_asymmetric']
+        if hkl in self.hkl_resolution_bins:
 
-      hkl = refls[0]['miller_index_asymmetric']
-      if hkl in self.hkl_resolution_bins:
+          i_bin = self.hkl_resolution_bins[hkl]
 
-        i_bin = self.hkl_resolution_bins[hkl]
+          if i_bin > 0 and i_bin < n_bins - 1:
+            #used_reflections.extend(refls)
+            zero_intensity_count_resolution_limited += ((refls['intensity.sum.value'] == 0.0).count(True))
+            positive_intensity_count_resolution_limited += ((refls['intensity.sum.value'] > 0.0).count(True))
+            negative_intensity_count_resolution_limited += ((refls['intensity.sum.value'] < 0.0).count(True))
 
-        if i_bin > 0 and i_bin < n_bins - 1:
-          #used_reflections.extend(refls)
-          zero_intensity_count_resolution_limited += ((refls['intensity.sum.value'] == 0.0).count(True))
-          positive_intensity_count_resolution_limited += ((refls['intensity.sum.value'] > 0.0).count(True))
-          negative_intensity_count_resolution_limited += ((refls['intensity.sum.value'] < 0.0).count(True))
+            refls = refls.select(refls['intensity.sum.variance'] > 0.0)
 
-          refls = refls.select(refls['intensity.sum.variance'] > 0.0)
+            multiplicity = refls.size()
 
-          multiplicity = refls.size()
-
-          if multiplicity >= self.params.merging.minimum_multiplicity:
-            self.n_sum[i_bin] += 1
-            self.m_sum[i_bin] += multiplicity
-            self.mm_sum[i_bin] += 1
-            weighted_intensity_array = refls['intensity.sum.value'] / refls['intensity.sum.variance']
-            weights_array = flex.double(refls.size(), 1.0) / refls['intensity.sum.variance']
-            self.I_sum[i_bin]     += flex.sum(weighted_intensity_array) / flex.sum(weights_array)
-            self.Isig_sum[i_bin]  += flex.sum(weighted_intensity_array) / math.sqrt(flex.sum(weights_array))
+            if multiplicity >= self.params.merging.minimum_multiplicity:
+              self.n_sum[i_bin] += 1
+              self.m_sum[i_bin] += multiplicity
+              self.mm_sum[i_bin] += 1
+              weighted_intensity_array = refls['intensity.sum.value'] / refls['intensity.sum.variance']
+              weights_array = flex.double(refls.size(), 1.0) / refls['intensity.sum.variance']
+              self.I_sum[i_bin]     += flex.sum(weighted_intensity_array) / flex.sum(weights_array)
+              self.Isig_sum[i_bin]  += flex.sum(weighted_intensity_array) / math.sqrt(flex.sum(weights_array))
 
     self.logger.log_step_time("INTENSITY_HISTOGRAM")
 
