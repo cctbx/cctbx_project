@@ -5,6 +5,7 @@ from cctbx.miller import display2 as display
 from cctbx.array_family import flex
 from cctbx import miller
 from scitbx import graphics_utils
+from scitbx import matrix
 from libtbx.utils import Sorry, to_str
 from websocket_server import WebsocketServer
 import threading, math, sys
@@ -13,7 +14,6 @@ import os.path, time, copy
 import libtbx
 from libtbx import easy_mp
 import webbrowser, tempfile
-
 
 
 
@@ -651,11 +651,14 @@ class hklview_3d:
         spherebufferstr = "  ttips = new Array(%d)" %self.nbin
     spherebufferstr += """
   positions = new Array(%d)
-  br_positions = [ ]
-  colours = new Array(%d)
-  radii = new Array(%d)
-  shapebufs = new Array(%d)
-    """ %(self.nbin, self.nbin, self.nbin, self.nbin)
+  br_positions = []
+  br_colours = []
+  br_radii = []
+  colours = []; // new Array(%d)
+  radii = []; // new Array(%d)
+  shapebufs = [];
+  br_shapebufs = [];
+    """ %(self.nbin, self.nbin, self.nbin)
     spherebufferstr += self.colstraliases
     negativeradiistr = ""
     cntbin = 0
@@ -680,13 +683,14 @@ class hklview_3d:
           uncrustttips = uncrustttips.replace("\'\'+", "")
           spherebufferstr += "  ttips[%d] = %s" %(cntbin, uncrustttips)
         spherebufferstr += """
-  positions[%d] = new Float32Array( %s )
-  colours[%d] = new Float32Array( %s )
-  radii[%d] = new Float32Array( %s )
-  shapebufs[%d] = new NGL.%s({
+  positions[%d] = new Float32Array( %s );
+  colours.push( new Float32Array( %s ) );
+  radii.push( new Float32Array( %s ) );
+
+  shapebufs.push( new NGL.%s({
     position: positions[%d],
-    color: colours[%d], """ %(cntbin, str(positions[ibin]), cntbin, str(colours[ibin]), \
-         cntbin, str(radii2[ibin]), cntbin, self.primitivetype, cntbin, \
+    color: colours[%d], """ %(cntbin, str(positions[ibin]), str(colours[ibin]), \
+         str(radii2[ibin]), self.primitivetype, cntbin, \
          cntbin)
         if self.primitivetype == "SphereBuffer":
           spherebufferstr += "\n    radius: radii[%d]," %cntbin
@@ -699,7 +703,8 @@ class hklview_3d:
   //}, { disableImpostor: true // to enable changing sphereDetail
   //, sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
   //}, { disableImpostor: true }) // if true allows wireframe spheres but does not allow resizing spheres
-      """
+  );
+  """
         spherebufferstr += "  shape.addBuffer(shapebufs[%d])" %cntbin
 
         if self.workingbinvals[ibin] < 0.0:
@@ -708,6 +713,7 @@ class hklview_3d:
 
     if self.usingtooltips:
       spherebufferstr += """
+
 // create tooltip element and add to the viewer canvas
   tooltip = document.createElement("div");
   Object.assign(tooltip.style, {
@@ -955,7 +961,7 @@ mysocket.onmessage = function (e) {
   var alpha
   var si
   mysocket.send('got ' + e.data ); // tell server what it sent us
-  try {
+//  try {
     var datval = e.data.split(":\\n");
     //alert('received2:\\n' + datval);
     var msgtype = datval[0];
@@ -1010,13 +1016,20 @@ mysocket.onmessage = function (e) {
     if (msgtype === "Testing") {
       // test something new
       mysocket.send( 'Testing something new ' + pagename );
+      /*
       var newradii = radii[0].map(function(element) {
         return element*1.5;
       });
-
       shapebufs[0].setAttributes({
           radius: newradii
-        })
+      })
+      */
+
+      if (br_positions.length > 0)
+      {
+        mysocket.send('Data is already expanded' );
+        return;
+      }
 
       var nsize = positions[0].length/3
 
@@ -1027,54 +1040,91 @@ mysocket.onmessage = function (e) {
       strs = datval[1].split("\\n");
 
       nrots = strs.length
-      bins = %d
-      alert('nrots: ' + nrots)
-      for (var i; i< bins; i++)
+      bins = %d -1;
+      //alert('nrots: ' + nrots)
+      var Rotmat = new NGL.Matrix3();
+      var sm = new Float32Array(9);
+      var r = new NGL.Vector3();
+
+      var csize = nsize*3;
+
+      var anoexp = false;
+
+      if (anoexp)
       {
-        br_positions.push( new Array(nrots) )
+        csize = nsize*6;
       }
+
 
       for (var h=0; h<bins; h++)
       {
+        br_positions.push( [] )
+        br_shapebufs.push( [] )
+        br_colours.push( [] )
+        br_radii.push( [] )
+
+        br_colours[h] = colours[h];
+        br_radii[h] = radii[h]
+        if (anoexp)
+        {
+          br_colours[h].concat(colours[h]);
+          br_radii[h].concat(radii[h]);
+        }
+
 
         for (var g=0; g < nrots; g++ )
         {
           if (strs[g] < 1 )
             continue
+          br_positions[h].push( [] )
+          br_shapebufs[h].push( [] )
           var elmstrs = strs[g].split(",");
 
-          var Rotmat = new NGL.Matrix3();
-          sm = new Float32Array(9);
           for (j=0; j<9; j++)
             sm[j] = parseFloat(elmstrs[j])
           Rotmat.fromArray(sm);
           //alert('rot' + g + ': ' + elmstrs)
 
-          var r = new NGL.Vector3();
-          br_positions[h][g].push( new Float32Array( nsize*3) )
+          br_positions[h][g] = new Float32Array( csize );
 
           for (var i=0; i<nsize; i++)
           {
-            idx= i*3
-            r.x = positions[0][idx]
-            r.y = positions[0][idx+1]
-            r.z = positions[0][idx+2]
+            idx= i*3;
+            r.x = positions[0][idx];
+            r.y = positions[0][idx+1];
+            r.z = positions[0][idx+2];
+
             r.applyMatrix3(Rotmat)
+
             br_positions[h][g][idx] = r.x
-            br_positions[h][g][idx+1] = r.y
-            br_positions[h][g][idx+2] = r.z
+            br_positions[h][g][idx + 1] = r.y
+            br_positions[h][g][idx + 2] = r.z
+
+            if (anoexp)
+            {
+              r.negate(); // inversion for anomalous pair
+              br_positions[h][g][nsize + idx] = r.x
+              br_positions[h][g][nsize + idx + 1] = r.y
+              br_positions[h][g][nsize + idx + 2] = r.z
+            }
+
           }
 
-        }
+          br_shapebufs[h][g] = new NGL.SphereBuffer({
+              position: br_positions[h][g],
+              color: br_colours[h],
+              radius: br_radii[h],
+            });
 
+          shape.addBuffer(br_shapebufs[h][g]);
+
+        }
       }
 
 
-
-
+/*
       positions[1] = new Float32Array( nsize*3)
       var M = new NGL.Matrix4();
-      var r = new NGL.Vector3();
 
       M.makeRotationZ( 1.57 )
       for (var i=0; i<nsize; i++)
@@ -1096,25 +1146,25 @@ mysocket.onmessage = function (e) {
         //positions[1][idx+2] = positions[0][idx+2]
       }
 
-      shapebufs[1] = new NGL.SphereBuffer({
-        position: positions[1],
-        color: colours[0],
-        radius: radii[0],
-      })
+      shapebufs.push( NGL.SphereBuffer({
+          position: positions[1],
+          color: colours[0],
+          radius: radii[0],
+        })
+      );
 
       shape.addBuffer(shapebufs[1])
+*/
+
       repr = shapeComp.addRepresentation('buffer');
 
       stage.viewer.requestRender()
     }
 
-  }
-  catch(err) {
-    mysocket.send('error: ' + err );
-  }
+//  }  catch(err) {
+//    mysocket.send('error: ' + err );
+//  }
 };
-
-
 
 
     """ % (self.__module__, self.__module__, self.cameratype, arrowstr, spherebufferstr, \
@@ -1229,14 +1279,17 @@ mysocket.onmessage = function (e) {
     #self.SendWebSockMsg( u"Testing:\n" )
     sg = self.miller_array.space_group()
     symops = sg.all_ops()
-    unique_rot_ops = symops[0:sg.order_p()]
+    uc = self.miller_array.unit_cell()
+    OrtMx = matrix.sqr( uc.orthogonalization_matrix())
+    InvMx = OrtMx.inverse()
 
     msg = ""
+    unique_rot_ops = symops[ 0 : sg.order_p() ]
     for symop in unique_rot_ops:
-      rot = symop.r()
-      tp_rot = rot.transpose().as_double()
+      RotMx = matrix.sqr( symop.r().as_double())
 
-      str_rot = str(tp_rot)
+      ortrot = (OrtMx * RotMx * InvMx).as_mat3()
+      str_rot = str(ortrot)
       str_rot = str_rot.replace("(", "")
       str_rot = str_rot.replace(")", "")
       msg += str_rot + "\n"
