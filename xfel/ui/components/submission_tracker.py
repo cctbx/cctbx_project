@@ -60,6 +60,8 @@ class QueueInterrogator(object):
         return "DONE"
       statuses = [p.status() for p in [process] + process.children(recursive=True)]
       if 'running' in statuses: return "RUN"
+      # zombie jobs can be left because the GUI process that forked them is still running
+      if len(statuses) == 1 and statuses[0] == 'zombie': return "DONE"
       return ", ".join(statuses)
     status = "\n".join(result.stdout_lines)
     error = "\n".join(result.stderr_lines)
