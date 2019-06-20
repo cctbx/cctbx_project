@@ -1,7 +1,7 @@
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/12/2017
-Last Changed: 01/29/2018
+Last Changed: 06/20/2019
 Description : SIMTBX (nanoBragg) GUI Windows / frames
 '''
 from __future__ import absolute_import, division, print_function
@@ -18,7 +18,7 @@ from matplotlib.figure import Figure
 from iotbx import phil as ip
 from simtbx.nanoBragg import nanoBragg_gui_dialogs as dlg
 from simtbx.nanoBragg import nanoBragg_threads as thr
-from iota.components import iota_ui_controls as ct
+from iota.components.gui import controls as ct
 from iota.components.iota_utils import InputFinder, WxFlags, noneset
 from six.moves import range
 

@@ -4,61 +4,15 @@ from __future__ import division, unicode_literals, print_function,\
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/25/2016
-Last Changed: 06/07/2019
+Last Changed: 06/20/2019
 Description : PRIME Result Plotter module
 '''
 
-import wx
-import os
 import numpy as np
 
 from matplotlib import gridspec, rc
 
-from iota.components.iota_ui_base import IOTABaseFrame
-from iota.components.iota_plotter import Plotter as IOTAPlotter
-
-
-class PlotWindow(IOTABaseFrame):
-  def __init__(self, parent, id, title, plot_panel=None):
-    IOTABaseFrame.__init__(self, parent, id, title)
-
-    self.initialize_toolbar()
-    self.tb_btn_quit = self.add_tool(label='Quit',
-                                     bitmap=('actions', 'exit'),
-                                     shortHelp='Quit')
-    self.tb_btn_save = self.add_tool(label='Save',
-                                     bitmap=('actions', 'save_all'),
-                                     shortHelp='Save image in various formats')
-    self.realize_toolbar()
-
-    self.Bind(wx.EVT_TOOL, self.onSave, self.tb_btn_save)
-    self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
-
-    self.plot_panel = plot_panel
-
-  def plot(self):
-    if self.plot_panel:
-      self.main_sizer.Add(self.plot_panel, 1, flag=wx.EXPAND)
-      self.SetSize(self.plot_panel.canvas.GetSize())
-      self.plot_panel.canvas.draw()
-      self.Layout()
-
-  def onSave(self, e):
-    save_dlg = wx.FileDialog(self,
-                             message="Save Image",
-                             defaultDir=os.curdir,
-                             defaultFile="*",
-                             wildcard="*",
-                             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
-                             )
-    if save_dlg.ShowModal() == wx.ID_OK:
-      script_filepath = save_dlg.GetPath()
-      self.plot_panel.figure.savefig(script_filepath, format='pdf',
-                                     bbox_inches=0)
-
-  def onQuit(self, e):
-    self.Close()
-
+from iota.components.gui.plotter import Plotter as IOTAPlotter
 
 class Plotter(IOTAPlotter):
   ''' Class with function to plot various PRIME charts (includes Table 1) '''
@@ -243,5 +197,5 @@ class Plotter(IOTAPlotter):
     ax_i_sigi.legend([start, end], labels, loc='lower left',
                           fontsize=9, fancybox=True)
 
-    self.figure.set_tight_layout(True)
-    self.draw()
+    # self.figure.set_tight_layout(True)
+    self.draw(tight_layout=False)

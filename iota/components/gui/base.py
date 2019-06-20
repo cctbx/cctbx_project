@@ -4,12 +4,15 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 11/15/2018
-Last Changed: 06/07/2019
+Last Changed: 06/20/2019
 Description : IOTA GUI base classes (with backwards compatibility for
               wxPython 3)
 '''
 
 import os
+import threading
+import time
+
 import wx
 from wx.lib.buttons import GenToggleButton
 from wx.lib.scrolledpanel import ScrolledPanel
@@ -17,7 +20,7 @@ from wx.lib.scrolledpanel import ScrolledPanel
 from wxtbx import bitmaps
 from iotbx.phil import parse
 
-import iota.components.iota_ui_controls as ct
+import iota.components.gui.controls as ct
 from iota.components.iota_utils import norm_font_size
 
 wx4 = wx.__version__[0] == '4'
@@ -53,9 +56,10 @@ class IOTAFrameError(Exception):
 class IOTABaseFrame(wx.Frame):
   """ New frame that will show processing info """
 
-  def __init__(self, parent, id, title, *args, **kwargs):
+  def __init__(self, parent, id, title, kill_threads=True, *args, **kwargs):
     wx.Frame.__init__(self, parent, id, title, *args, **kwargs)
     self.parent = parent
+    self.kill_threads_on_exit = kill_threads
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.main_sizer)
@@ -86,6 +90,9 @@ class IOTABaseFrame(wx.Frame):
     self.Bind(wx.EVT_MENU, self.onLoadScript, self.mb_load_script)
     self.Bind(wx.EVT_MENU, self.onReset, self.mb_reset)
 
+    # Event bindings
+    self.Bind(wx.EVT_CLOSE, self.onClose)
+
   def OnAboutBox(self, e):
     e.Skip()
 
@@ -97,6 +104,44 @@ class IOTABaseFrame(wx.Frame):
 
   def onReset(self, e):
     e.Skip()
+
+  def onClose(self, e):
+    """ wx.EVT_CLOSE event handler. For subclass-specific stuff, override the
+        self._clean_up() function """
+
+    self._clean_up()
+
+    # Check if any child windows are present and close them gracefully
+    for child in self.GetChildren():
+      child_name = str(child.__class__.__name__).lower()
+      window_or_frame = 'window' in child_name or 'frame' in child_name
+      if window_or_frame:
+        child.Close()
+
+    self.DestroyChildren()
+
+    # TODO: Kill procedure for queueing (the thread killing will only work
+    #  for local threads)
+
+    # Check for live threads and kill them (except MainThread), if active
+    if self.kill_threads_on_exit:
+      for thr in threading.enumerate():
+        if thr.name != "MainThread" and thr.is_alive():
+          if hasattr(thr, 'abort'):
+            thr.abort()
+          else:
+            thr.join()
+
+      # Wait for all threads to stop
+      while len(threading.enumerate()) > 1:
+        time.sleep(0.1)
+
+    e.Skip()
+
+  def _clean_up(self):
+    """ Clean-up procedure pre-exit. Override if there are any
+        subclass-specific steps to be taken """
+    pass
 
   def initialize_toolbar(self):
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS | wx.TB_TEXT)

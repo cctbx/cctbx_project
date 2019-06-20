@@ -4,7 +4,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 01/28/2019
+Last Changed: 06/20/2019
 Description : IOTA command-line module.
 '''
 
@@ -164,4 +164,10 @@ if __name__ == "__main__":
 
     proc = Process.for_new_run(paramfile=info.paramfile, run_no=info.run_number,
                                out_type=args.out_type)
-  proc.run()
+
+  # Try block necessary to catch situations where user closes IOTA before the
+  # run starts, which returns an IOError
+  try:
+    proc.run()
+  except IOError:
+    pass

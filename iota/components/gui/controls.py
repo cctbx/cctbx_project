@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 06/07/2019
+Last Changed: 06/20/2019
 Description : IOTA GUI controls
 '''
 

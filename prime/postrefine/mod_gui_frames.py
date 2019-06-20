@@ -4,33 +4,35 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 06/07/2019
+Last Changed: 06/20/2019
 Description : PRIME GUI frames module
 '''
 
 import os
-import wx
+import numpy as np
 import multiprocessing
+
+import wx
 from wxtbx import bitmaps
 
 from iotbx import phil as ip
 from libtbx import easy_run, easy_pickle as ep
-import numpy as np
 
+import matplotlib as mpl
 import matplotlib.gridspec as gridspec
-from matplotlib import pyplot as plt
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 import iota.components.iota_utils as util
-import iota.components.iota_ui_controls as ct
-from iota.components.iota_ui_base import IOTABasePanel, IOTABaseFrame
+import iota.components.gui.controls as ct
+from iota.components.gui.base import IOTABasePanel, IOTABaseFrame
+from iota.components.gui.plotter import PlotWindow
 
 from prime import prime_license, prime_description
 import prime.postrefine.mod_gui_dialogs as dlg
 import prime.postrefine.mod_threads as thr
 from prime.postrefine.mod_input import master_phil
-from prime.postrefine.mod_plotter import Plotter, PlotWindow
+from prime.postrefine.mod_plotter import Plotter
 
 user = os.getlogin()
 ginp = util.InputFinder()
@@ -64,12 +66,145 @@ elif (wx.Platform == '__WXMSW__'):
 
 # -------------------------------  Main Window ------------------------------  #
 
+class PRIMEInputWindow(IOTABasePanel):
+  ''' Main PRIME Window panel '''
+
+  def __init__(self, parent, phil=None):
+    IOTABasePanel.__init__(self, parent=parent)
+
+    self.regenerate_params(phil)
+
+    # Title box
+    self.project_title = ct.InputCtrl(self, label='Project Title: ',
+                                      label_size=(140, -1))
+    # Output file box
+    self.out_box = ct.InputCtrl(self, label='Project folder: ',
+                                label_size=(140, -1),
+                                label_style='bold',
+                                value=os.path.abspath(os.curdir),
+                                buttons=True)
+    # Input file box
+    self.inp_box = FileListCtrl(self)
+
+    # Options
+    opt_box = wx.FlexGridSizer(2, 3, 10, 10)
+    self.opt_chk_useref = wx.CheckBox(self, label='Use reference in refinement')
+    self.opt_chk_useref.Disable()
+    self.opt_spc_nres = ct.SpinCtrl(self,
+                                    label='No. of Residues: ',
+                                    label_size=(160, -1),
+                                    ctrl_size=(100, -1),
+                                    ctrl_value=500,
+                                    ctrl_min=10,
+                                    ctrl_max=100000)
+    procs = multiprocessing.cpu_count()
+    self.opt_spc_nproc = ct.SpinCtrl(self,
+                                     label='No. of Processors: ',
+                                     label_size=(160, -1),
+                                     ctrl_max=procs,
+                                     ctrl_min=1,
+                                     ctrl_value=str(int(procs / 2)))
+    self.opt_btn = wx.Button(self, label='Advanced Options...')
+    opt_box.AddMany([(self.opt_chk_useref), (0, 0),
+                     (self.opt_spc_nres),
+                     (self.opt_btn), (0, 0),
+                     (self.opt_spc_nproc)])
+    opt_box.AddGrowableCol(1)
+
+    # Add to sizers
+    self.main_sizer.Add(self.project_title, flag=f.expand, border=10)
+    self.main_sizer.Add(self.out_box, flag=f.expand, border=10)
+    self.main_sizer.Add(self.inp_box, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND)
+    self.main_sizer.Add(opt_box, flag=wx.ALL | wx.EXPAND, border=10)
+
+    # Button bindings
+    self.out_box.btn_browse.Bind(wx.EVT_BUTTON, self.onOutputBrowse)
+    self.opt_btn.Bind(wx.EVT_BUTTON, self.onAdvancedOptions)
+
+  def onInputBrowse(self, e):
+    """ On clincking the Browse button: show the DirDialog and populate 'Input'
+        box w/ selection """
+    inp_dlg = wx.DirDialog(self, "Choose the input directory:",
+                       style=wx.DD_DEFAULT_STYLE)
+    if inp_dlg.ShowModal() == wx.ID_OK:
+      self.inp_box.ctr.SetValue(inp_dlg.GetPath())
+    inp_dlg.Destroy()
+    self.update_settings()
+    e.Skip()
+
+  def update_settings(self):
+    idxs = self.inp_box.ctr.GetItemCount()
+    items = [self.inp_box.ctr.GetItemData(i) for i in range(idxs)]
+    inputs = []
+    reference = None
+    sequence = None
+
+    for i in items:
+      inp_type = i.type.type.GetString(i.type_selection)
+      if inp_type in ('processed pickle list',
+                      'processed pickle folder',
+                      'processed pickle'):
+        inputs.append(i.path)
+      elif inp_type == 'reference MTZ':
+        reference = i.path
+      elif inp_type == 'sequence':
+        sequence = i.path
+
+    self.pparams.data = inputs
+
+    if reference is not None:
+      self.pparams.hklisoin = reference
+      if self.opt_chk_useref.GetValue():
+        self.pparams.hklrefin = reference
+
+    self.out_dir = self.out_box.ctr.GetValue()
+    self.pparams.run_no = util.set_base_dir(out_dir=self.out_dir)  # Need to change
+    self.pparams.title = self.project_title.ctr.GetValue()
+    self.pparams.n_residues = self.opt_spc_nres.ctr.GetValue()
+    self.pparams.n_processors = self.opt_spc_nproc.ctr.GetValue()
+
+    update_phil = master_phil.format(python_object=self.pparams)
+    self.regenerate_params(update_phil)
+
+  def onOutputBrowse(self, e):
+    """ On clicking the Browse button: show the DirDialog and populate 'Output'
+        box w/ selection """
+    save_dlg = wx.DirDialog(self, "Choose the output directory:",
+                       style=wx.DD_DEFAULT_STYLE)
+    if save_dlg.ShowModal() == wx.ID_OK:
+      self.out_box.ctr.SetValue(save_dlg.GetPath())
+    save_dlg.Destroy()
+    self.update_settings()
+    e.Skip()
+
+  def onAdvancedOptions(self, e):
+    e.Skip()
+
+  def regenerate_params(self, phil=None):
+    if phil is not None:
+      self.prime_phil = master_phil.fetch(source=phil)
+    else:
+      self.prime_phil = master_phil
+
+    # Generate Python object and text of parameters
+    self.generate_phil_string(self.prime_phil)
+    self.pparams = self.prime_phil.extract()
+
+  def generate_phil_string(self, current_phil):
+    with util.Capturing() as txt_output:
+      current_phil.show()
+    self.phil_string = ''
+    for one_output in txt_output:
+      self.phil_string += one_output + '\n'
+
+
 class PRIMEWindow(IOTABaseFrame):
 
-  def __init__(self, parent, title, id=-1, prefix='prime'):
-    IOTABaseFrame.__init__(self, parent=parent, title=title, id=id,
-                           size=(800, 500))
+  def __init__(self, parent, id, title, prefix='prime'):
+    IOTABaseFrame.__init__(self, parent, id, title, size=(800, 500))
 
+    self.parent = parent
     self.prime_filename = '{}.phil'.format(prefix)
     self.prime_phil = master_phil
 
@@ -100,6 +235,7 @@ class PRIMEWindow(IOTABaseFrame):
     self.tb_btn_run = self.add_tool(label='Run',
                                     bitmap=('actions', 'run'),
                                     shortHelp='Run PRIME')
+
     # These buttons will be disabled until input path is provided
     self.set_tool_state(self.tb_btn_run, enable=False)
     self.realize_toolbar()
@@ -318,7 +454,7 @@ class PRIMEWindow(IOTABaseFrame):
                              defaultDir=os.curdir,
                              defaultFile="*.phil",
                              wildcard="*.phil",
-                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
                              )
     if load_dlg.ShowModal() == wx.ID_OK:
       script = load_dlg.GetPaths()[0]
@@ -411,138 +547,6 @@ class PRIMEWindow(IOTABaseFrame):
 
     self.Close()
 
-class PRIMEInputWindow(IOTABasePanel):
-  ''' Main PRIME Window panel '''
-
-  def __init__(self, parent, phil=None):
-    IOTABasePanel.__init__(self, parent=parent)
-
-    self.regenerate_params(phil)
-
-    # Title box
-    self.project_title = ct.InputCtrl(self, label='Project Title: ',
-                                      label_size=(140, -1))
-    # Output file box
-    self.out_box = ct.InputCtrl(self, label='Project folder: ',
-                                label_size=(140, -1),
-                                label_style='bold',
-                                value=os.path.abspath(os.curdir),
-                                buttons=True)
-    # Input file box
-    self.inp_box = FileListCtrl(self)
-
-    # Options
-    opt_box = wx.FlexGridSizer(2, 3, 10, 10)
-    self.opt_chk_useref = wx.CheckBox(self, label='Use reference in refinement')
-    self.opt_chk_useref.Disable()
-    self.opt_spc_nres = ct.SpinCtrl(self,
-                                    label='No. of Residues: ',
-                                    label_size=(160, -1),
-                                    ctrl_size=(100, -1),
-                                    ctrl_value=500,
-                                    ctrl_min=10,
-                                    ctrl_max=100000)
-    procs = multiprocessing.cpu_count()
-    self.opt_spc_nproc = ct.SpinCtrl(self,
-                                     label='No. of Processors: ',
-                                     label_size=(160, -1),
-                                     ctrl_max=procs,
-                                     ctrl_min=1,
-                                     ctrl_value=str(int(procs / 2)))
-    self.opt_btn = wx.Button(self, label='Advanced Options...')
-    opt_box.AddMany([(self.opt_chk_useref), (0, 0),
-                     (self.opt_spc_nres),
-                     (self.opt_btn), (0, 0),
-                     (self.opt_spc_nproc)])
-    opt_box.AddGrowableCol(1)
-
-    # Add to sizers
-    self.main_sizer.Add(self.project_title, flag=f.expand, border=10)
-    self.main_sizer.Add(self.out_box, flag=f.expand, border=10)
-    self.main_sizer.Add(self.inp_box, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND)
-    self.main_sizer.Add(opt_box, flag=wx.ALL | wx.EXPAND, border=10)
-
-    # Button bindings
-    self.out_box.btn_browse.Bind(wx.EVT_BUTTON, self.onOutputBrowse)
-    self.opt_btn.Bind(wx.EVT_BUTTON, self.onAdvancedOptions)
-
-  def onInputBrowse(self, e):
-    """ On clincking the Browse button: show the DirDialog and populate 'Input'
-        box w/ selection """
-    inp_dlg = wx.DirDialog(self, "Choose the input directory:",
-                       style=wx.DD_DEFAULT_STYLE)
-    if inp_dlg.ShowModal() == wx.ID_OK:
-      self.inp_box.ctr.SetValue(inp_dlg.GetPath())
-    inp_dlg.Destroy()
-    self.update_settings()
-    e.Skip()
-
-  def update_settings(self):
-    idxs = self.inp_box.ctr.GetItemCount()
-    items = [self.inp_box.ctr.GetItemData(i) for i in range(idxs)]
-    inputs = []
-    reference = None
-    sequence = None
-
-    for i in items:
-      inp_type = i.type.type.GetString(i.type_selection)
-      if inp_type in ('processed pickle list',
-                      'processed pickle folder',
-                      'processed pickle'):
-        inputs.append(i.path)
-      elif inp_type == 'reference MTZ':
-        reference = i.path
-      elif inp_type == 'sequence':
-        sequence = i.path
-
-    self.pparams.data = inputs
-
-    if reference is not None:
-      self.pparams.hklisoin = reference
-      if self.opt_chk_useref.GetValue():
-        self.pparams.hklrefin = reference
-
-    self.out_dir = self.out_box.ctr.GetValue()
-    self.pparams.run_no = util.set_base_dir(out_dir=self.out_dir)  # Need to change
-    self.pparams.title = self.project_title.ctr.GetValue()
-    self.pparams.n_residues = self.opt_spc_nres.ctr.GetValue()
-    self.pparams.n_processors = self.opt_spc_nproc.ctr.GetValue()
-
-    update_phil = master_phil.format(python_object=self.pparams)
-    self.regenerate_params(update_phil)
-
-  def onOutputBrowse(self, e):
-    """ On clicking the Browse button: show the DirDialog and populate 'Output'
-        box w/ selection """
-    save_dlg = wx.DirDialog(self, "Choose the output directory:",
-                       style=wx.DD_DEFAULT_STYLE)
-    if save_dlg.ShowModal() == wx.ID_OK:
-      self.out_box.ctr.SetValue(save_dlg.GetPath())
-    save_dlg.Destroy()
-    self.update_settings()
-    e.Skip()
-
-  def onAdvancedOptions(self, e):
-    e.Skip()
-
-  def regenerate_params(self, phil=None):
-    if phil is not None:
-      self.prime_phil = master_phil.fetch(source=phil)
-    else:
-      self.prime_phil = master_phil
-
-    # Generate Python object and text of parameters
-    self.generate_phil_string(self.prime_phil)
-    self.pparams = self.prime_phil.extract()
-
-  def generate_phil_string(self, current_phil):
-    with util.Capturing() as txt_output:
-      current_phil.show()
-    self.phil_string = ''
-    for one_output in txt_output:
-      self.phil_string += one_output + '\n'
-
 # ----------------------------  Processing Window ---------------------------  #
 
 class LogTab(wx.Panel):
@@ -571,8 +575,8 @@ class RuntimeTab(wx.Panel):
     else:
       bg_color = 'none'
 
-    plt.rc('font', family='sans-serif', size=10)
-    plt.rc('mathtext', default='regular')
+    mpl.rc('font', family='sans-serif', size=10)
+    mpl.rc('mathtext', default='regular')
 
     # Create figure
     self.prime_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -626,11 +630,13 @@ class RuntimeTab(wx.Panel):
       self.bcc_axes.set_ylabel(r'$CC_{1/2}$ anom (%)')
     else:
       self.bcc_axes.set_ylabel(r'$CC_{1/2}$ (%)')
-    plt.setp(self.bcc_axes.get_xticklabels(), visible=False)
+    # plt.setp(self.bcc_axes.get_xticklabels(), visible=False)
+    self.bcc_axes.set_xticklabels([])
     self.bcomp_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.bcomp_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
     self.bcomp_axes.set_ylabel("Comp (%)")
-    plt.setp(self.bcomp_axes.get_xticklabels(), visible=False)
+    # plt.setp(self.bcomp_axes.get_xticklabels(), visible=False)
+    self.bcomp_axes.set_xticklabels([])
     self.bmult_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.bmult_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
     self.bmult_axes.set_xlabel("Resolution ($\AA$)")
@@ -808,14 +814,23 @@ class SummaryTab(wx.Panel):
     self.tb1_box_grid.AddGrowableCol(0)
     self.tb1_box_grid.AddGrowableRow(1)
 
-  def onPlotStats(self, e):
-    self.plot_window = PlotWindow(None, -1, title='PRIME Statistics')
+  def initialize_standalone_plot(self, figsize=(8, 8)):
+    self.plot_window = PlotWindow(self, -1, title='PRIME Statistics')
     self.plot = Plotter(self.plot_window, info=self.info,
                         anomalous_flag=self.pparams.target_anomalous_flag)
-    self.plot.initialize_figure(figsize=(9, 9))
+    self.plot_window.plot_panel = self.plot
+    self.plot.initialize_figure(figsize=figsize)
+
+  def show_plot(self):
+    self.plot_window.add_plot_to_window()
+    self.plot_window.place_and_size(set_by='parent', set_size=True,
+                                    position=(25, 25))
+    self.plot_window.Show()
+
+  def onPlotStats(self, e):
+    self.initialize_standalone_plot()
     self.plot.stat_charts()
-    self.plot_window.plot()
-    self.plot_window.Show(True)
+    self.show_plot()
 
   def onWriteTableOne(self, e):
     ''' Write Table 1 to a file '''
@@ -831,10 +846,7 @@ class SummaryTab(wx.Panel):
       with open(save_dlg.GetPath(), 'a') as tb1_file:
         tb1_text = self.tb1_table.table_one_text()
         tb1_file.write(tb1_text)
-       # for i in range(len(self.tb1_data)):
-       #    line = u'{:<25} {:<40}\n'.format(self.tb1_labels[i],
-       #                                     self.tb1_data[i][0])
-       #    tb1_file.write(to_str(line))
+
 
 class PRIMERunWindow(IOTABaseFrame):
   ''' New frame that will show processing info '''
@@ -893,7 +905,6 @@ class PRIMERunWindow(IOTABaseFrame):
     self.main_sizer.Add(self.prime_panel, 1, flag=wx.EXPAND | wx.ALL, border=3)
 
     #Processing status bar
-    self.sb = self.CreateStatusBar()
     self.sb.SetFieldsCount(2)
     self.sb.SetStatusWidths([-1, -2])
 

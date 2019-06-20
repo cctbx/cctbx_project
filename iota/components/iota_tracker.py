@@ -24,11 +24,11 @@ from matplotlib.widgets import SpanSelector
 from iotbx import phil as ip
 
 from iota import iota_version
-from iota.components.iota_ui_dialogs import DIALSSpfDialog
+from iota.components.gui.dialogs import DIALSSpfDialog
 from iota.components.iota_utils import InputFinder
 from iota.components.iota_processing import phil_scope
 import iota.components.iota_threads as thr
-import iota.components.iota_ui_controls as ct
+import iota.components.gui.controls as ct
 import iota.components.iota_utils as util
 
 import time

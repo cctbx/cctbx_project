@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 06/07/2019
+Last Changed: 06/20/2019
 Description : PRIME GUI Threading module
 '''
 
@@ -11,7 +11,7 @@ import os
 import wx
 from threading import Thread
 
-from libtbx import easy_run
+from iota.components.iota_threads import CustomRun
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -61,6 +61,7 @@ class PRIMEThread(Thread):
                command=None,
                cmd_args=None,
                signal_finished=False,
+               debug=False,
                verbose=False):
     Thread.__init__(self)
     self.parent = parent
@@ -70,6 +71,8 @@ class PRIMEThread(Thread):
     self.cmd_args = cmd_args
     self.signal_finished = signal_finished
     self.verbose = verbose
+    self.debug = debug
+    self.job = None
 
   def run(self):
     if os.path.isfile(self.out_file):
@@ -84,12 +87,28 @@ class PRIMEThread(Thread):
     else:
       cmd = self.command
 
-    if self.verbose:
-      print (cmd)
-      easy_run.fully_buffered(cmd, join_stdout_stderr=True).show_stdout()
+    if self.debug:
+      from libtbx import easy_run
+      if self.verbose:
+        print (cmd)
+        easy_run.fully_buffered(cmd, join_stdout_stderr=True).show_stdout()
+      else:
+        easy_run.fully_buffered(cmd, join_stdout_stderr=True)
     else:
-      easy_run.fully_buffered(cmd, join_stdout_stderr=True)
+      try:
+        self.job = CustomRun(command=cmd, join_stdout_stderr=True)
+        self.job.run()
+      except Exception as e:
+        print ("PRIME ERROR: ", e)
 
     if self.signal_finished:
       evt = AllDone(tp_EVT_ALLDONE, -1)
       wx.PostEvent(self.parent, evt)
+
+  def abort(self):
+    # TODO: put in an LSF kill command
+    if self.job:
+      try:
+        self.job.kill_thread()
+      except Exception as e:
+        print ('PRIME THREAD ERROR: Cannot terminate thread! {}'.format(e))

@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 01/30/2019
+Last Changed: 06/20/2019
 Description : IOTA GUI Dialogs
 '''
 
@@ -15,9 +15,9 @@ from wxtbx import bitmaps
 
 from iotbx import phil as ip
 
-from iota.components.iota_ui_base import BaseDialog, BaseBackendDialog, \
+from iota.components.gui.base import BaseDialog, BaseBackendDialog, \
   BaseOptionsDialog
-import iota.components.iota_ui_controls as ct
+import iota.components.gui.controls as ct
 from iota.components.iota_input import master_phil
 from iota.components.iota_utils import UnicodeCharacters, WxFlags, noneset
 
@@ -81,7 +81,7 @@ class IOTAPreferences(BaseDialog):
 
     # Import current PHIL and set params to current values
     if phil is None:
-      from iota.components.iota_ui_base import gui_phil
+      from iota.components.gui.base import gui_phil
       phil = master_phil.adopt(gui_phil)
 
     self.params = phil.extract()

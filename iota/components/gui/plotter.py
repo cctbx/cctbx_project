@@ -29,11 +29,12 @@ assert colors
 
 from libtbx.utils import to_unicode, Sorry
 
-from iota.components.iota_ui_base import IOTABaseFrame, IOTABasePanel
+from iota.components.gui.base import IOTABaseFrame, IOTABasePanel
 
 class PlotWindow(IOTABaseFrame):
   def __init__(self, parent, id, title, plot_panel=None, *args, **kwargs):
-    IOTABaseFrame.__init__(self, parent, id, title, *args, **kwargs)
+    IOTABaseFrame.__init__(self, parent, id, title, kill_threads=False,
+                           *args, **kwargs)
 
     self.initialize_toolbar()
     self.tb_btn_quit = self.add_tool(label='Quit',

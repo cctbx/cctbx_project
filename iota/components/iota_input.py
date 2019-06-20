@@ -200,7 +200,7 @@ def get_input_phil(paramfile=None, phil_args=None, ha14=False, gui=False):
   if gui:
     from libtbx.phil import find_scope
     if not find_scope(working_phil, 'gui'):
-      from iota.components.iota_ui_base import gui_phil
+      from iota.components.gui.base import gui_phil
       working_phil.adopt_scope(gui_phil)
 
   # Parse in-line params into phil
@@ -629,7 +629,7 @@ class PHILFixer():
     from libtbx.phil import find_scope
     gui_phil = find_scope(phil, 'gui')
     if gui_phil:
-      from iota.components.iota_ui_base import gui_phil
+      from iota.components.gui.base import gui_phil
       new_phil.adopt_scope(gui_phil)
 
     return new_phil

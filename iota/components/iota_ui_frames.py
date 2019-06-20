@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 06/07/2019
+Last Changed: 06/20/2019
 Description : IOTA GUI Windows / frames
 '''
 
@@ -38,13 +38,13 @@ import prime.postrefine.mod_plotter as ppl
 from iota import iota_version, gui_description, gui_license
 from iota.components import iota_init as init
 from iota.components.iota_base import ProcInfo
-from iota.components.iota_ui_base import IOTABaseFrame, IOTABasePanel
+from iota.components.gui.base import IOTABaseFrame, IOTABasePanel
 from iota.components.iota_analysis import Analyzer
-from iota.components.iota_plotter import Plotter, PlotWindow
+from iota.components.gui.plotter import Plotter, PlotWindow
 import iota.components.iota_input as inp
-import iota.components.iota_ui_controls as ct
+import iota.components.gui.controls as ct
 import iota.components.iota_threads as thr
-import iota.components.iota_ui_dialogs as d
+import iota.components.gui.dialogs as d
 import iota.components.iota_utils as ut
 
 assert Axes3D
@@ -579,43 +579,7 @@ class MainWindow(IOTABaseFrame):
           self.input_window.input.add_item(path)
 
   def onQuit(self, e):
-
-    # Need a try block in case the C++ portion of the proc window doesn't exist
-    try:
-      # Check if processing window has been launched
-      if hasattr(self, "proc_window"):
-
-        # Export info object with "aborted" status
-        info = self.proc_window.info
-        info.status = 'aborted'
-        info.export_json()
-
-        # Check if proc_thread exists
-        if hasattr(self.proc_window, 'proc_thread'):
-
-          # Check if proc_thread is running
-          if self.proc_window.proc_thread.is_alive():
-            tmp_aborted_file = os.path.join(self.proc_window.tmp_aborted_file)
-            with open(tmp_aborted_file, 'w') as tf:
-              tf.write('')
-            self.proc_window.proc_thread.abort()
-
-            # Close window only when thread is dead
-            while self.proc_window.proc_thread.is_alive():
-              continue
-
-        import shutil
-
-        try:
-          shutil.rmtree(self.proc_window.info.tmp_base)
-        except Exception:
-          pass
-        print('JOB TERMINATED!')
-    except Exception:
-      pass
-
     self.Close()
-
 
 # ----------------------------  Processing Window ---------------------------  #
 
@@ -927,6 +891,10 @@ class ProcessingTab(wx.Panel):
 
     self.SetSizer(self.main_fig_sizer)
 
+  def _print_threads(self):
+    import threading
+    print ("proc threads: ", threading.enumerate())
+
   def _update_canvas(self, canvas, draw_idle=True):
     """ Update a canvas (passed as arg)
     :param canvas: A canvas to be updated via draw_idle
@@ -943,7 +911,11 @@ class ProcessingTab(wx.Panel):
     else:
       canvas.draw()
     # self.Refresh()
-    canvas.Refresh()
+    try:
+      canvas.Refresh()
+    except Exception as e:
+      print (e.__name__)
+      pass
 
   def onSGTextEnter(self, e):
     self.user_sg = str(self.hkl_sg.sg.GetValue())
@@ -1724,7 +1696,7 @@ class SummaryTab(d.ScrolledPanel):
   def onPRIME(self, e):
     from prime.postrefine.mod_gui_frames import PRIMEWindow
 
-    self.prime_window = PRIMEWindow(None, -1, title='PRIME',
+    self.prime_window = PRIMEWindow(parent=None, id=-1, title='PRIME',
                                     prefix=self.gparams.advanced.prime_prefix)
     self.prime_window.load_script(out_dir=self.info.int_base)
     self.prime_window.place_and_size(set_by='mouse', center=True)
@@ -2476,3 +2448,27 @@ class ProcWindow(IOTABaseFrame):
     self.display_log()
     self.plot_integration(force_plot=True)
     self.plot_live_analysis(force_plot=True)
+
+  def _clean_up(self):
+    """ Pre-exit clean-up, will be run whenever the red close-window button
+        is pushed; called by self.onClose(). In this case, makes sure that
+        the run is cleanly aborted if it's still live. """
+
+    if hasattr(self, 'proc_thread') and self.proc_thread.is_alive():
+
+      # Set "aborted" status and save the INFO object
+      self.info.status = 'aborted'
+      self.info.export_json()
+
+      # Write a dummy file to mark the run as aborted for recovery dialog
+      with open(self.tmp_aborted_file, 'w') as tf:
+        tf.write('')
+
+      # Remove temp directory
+      import shutil
+      try:
+        shutil.rmtree(self.info.tmp_base)
+      except Exception:
+        pass
+
+      print('IOTA: RUN #{} ABORTED!'.format(self.info.run_number))
