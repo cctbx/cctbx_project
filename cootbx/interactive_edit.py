@@ -5,9 +5,51 @@ import time
 import os
 import sys
 
-from libtbx.utils import to_str
-
 t_wait = 250 # in milliseconds
+
+#-----------------------------------------------------------------------
+# This file is run with Coot's python, so no access to CCTBX modules
+if sys.hexversion >= 0x03000000:
+  unicode = str
+
+def to_bytes(text, codec=None, errors='replace'):
+  '''
+  Function for handling text when it is passed to cctbx functions that expect
+  bytestrings
+
+  Changes text string type (unicode in Python 2, str in Python 3) to
+  bytestring type (str or bytes in Python 2, bytes in Python 3)
+
+  The input is returned unmodified if it is already a bytestring
+  Will convert other types (e.g. int, float) to bytestring
+  None is returned as None, not as 'None'
+
+  For Linux/OS X, the default filesystem encoding is utf8.
+  For Windows, the default filesystem encoding is mbcs
+  This is important for handling files with basic Python functions.
+  With the wrong encoding, the filesystem will not recognize the file path
+  import sys; sys.getfilesystemencoding()
+  '''
+
+  if (codec is None):
+    codec = 'utf8'
+    if (sys.platform == 'win32'):
+      codec = 'mbcs'
+
+  if (isinstance(text, bytes)):
+    return text
+  elif (isinstance(text, unicode)):
+    new_text = text
+    try:
+      new_text = text.encode(codec, errors)
+    except UnicodeEncodeError: # in case errors='strict'
+      raise Sorry('Unable to encode text with %s' % codec)
+    finally:
+      return new_text
+  elif (text is not None):
+    return bytes(text)
+  else:
+    return None
 
 #-----------------------------------------------------------------------
 # Phenix side
@@ -112,7 +154,7 @@ class manager(object):
     toolbar.insert(maps_button, -1)
     maps_button.connect("clicked", self.OnNewMaps)
     maps_button.show()
-    self._imol = read_pdb(to_str(pdb_file))
+    self._imol = read_pdb(to_bytes(pdb_file))
     set_molecule_bonds_colour_map_rotation(self._imol, 30)
     self._map_mols = []
     self.load_maps(map_file)
@@ -132,9 +174,9 @@ class manager(object):
         close_molecule(imol)
     else :
       set_colour_map_rotation_for_map(10)
-    print("Loading %s" % to_str(map_file))
+    print("Loading %s" % to_bytes(map_file))
     self._map_mols = []
-    map_imol = auto_read_make_and_draw_maps(to_str(map_file))
+    map_imol = auto_read_make_and_draw_maps(to_bytes(map_file))
     if (isinstance(map_imol, int)):
       # XXX this may be dangerous, but auto_read_make_and_draw_maps only returns
       # the last imol
