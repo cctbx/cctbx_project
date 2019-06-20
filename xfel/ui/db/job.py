@@ -188,8 +188,12 @@ class _job(object):
            self.run.id == other.run_id
 
 def submit_all_jobs(app):
-  runs = app.get_all_runs()
   submitted_jobs = app.get_all_jobs()
+  if app.params.mp.method == 'local': # only run one job at a time
+    for job in submitted_jobs:
+      if job.status == 'RUN': return
+
+  runs = app.get_all_runs()
   trials = app.get_all_trials(only_active = True)
 
   needed_jobs = []
@@ -199,7 +203,6 @@ def submit_all_jobs(app):
       for run in rungroup.runs:
         needed_jobs.append(_job(trial, rungroup, run))
 
-  all_jobs = [j for j in submitted_jobs] # shallow copy
   for job in needed_jobs:
     if job in submitted_jobs:
       continue
@@ -210,13 +213,15 @@ def submit_all_jobs(app):
                        rungroup_id = job.rungroup.id,
                        run_id = job.run.id,
                        status = "SUBMITTED")
-    all_jobs.append(j)
     try:
       j.submission_id = submit_job(app, job)
     except Exception as e:
       print("Couldn't submit job:", str(e))
       j.status = "SUBMIT_FAIL"
       raise
+
+    if app.params.mp.method == 'local': # only run one job at a time
+      return
 
 def submit_job(app, job):
   import os, libtbx.load_env
@@ -261,7 +266,6 @@ def submit_job(app, job):
     trial_params = phil_scope.fetch(parse(phil_str)).extract()
 
     image_format = job.rungroup.format
-    assert image_format in ['cbf', 'pickle']
     if image_format == 'cbf':
       if "rayonix" in job.rungroup.detector_address.lower():
         mode = "rayonix"
@@ -312,8 +316,8 @@ def submit_job(app, job):
     calib_dir                 = job.rungroup.calib_dir,
     nproc                     = app.params.mp.nproc,
     nproc_per_node            = app.params.mp.nproc_per_node,
-    queue                     = app.params.mp.queue,
-    env_script                = app.params.mp.env_script[0] if len(app.params.mp.env_script) > 0 else None,
+    queue                     = app.params.mp.queue or None,
+    env_script                = app.params.mp.env_script[0] if len(app.params.mp.env_script) > 0 and len(app.params.mp.env_script[0]) > 0 else None,
     method                    = app.params.mp.method,
     target                    = target_phil_path,
     host                      = app.params.db.host,

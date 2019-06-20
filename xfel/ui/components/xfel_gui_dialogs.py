@@ -525,7 +525,7 @@ class AdvancedSettingsDialog(BaseDialog):
     mp_box = wx.StaticBox(self, label='Multiprocessing Options')
     self.mp_sizer = wx.StaticBoxSizer(mp_box, wx.VERTICAL)
 
-    choices = ['python', 'lsf', 'mpi', 'sge', 'pbs', 'custom']
+    choices = ['local', 'lsf', 'mpi', 'sge', 'pbs', 'custom']
     self.mp_option = gctr.ChoiceCtrl(self,
                                      label='Multiprocessing:',
                                      label_size=(200, -1),

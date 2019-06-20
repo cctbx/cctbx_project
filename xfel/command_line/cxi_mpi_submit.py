@@ -387,6 +387,14 @@ class Script(object):
       print("Dry run: job not submitted. Trial directory created here:", trialdir)
       print("Execute this command to submit the job:")
       print(submit_command)
+    elif params.mp.method == 'local':
+      submission_id = os.fork()
+      if submission_id > 0:
+        return submission_id
+      else:
+        stdout = os.open(os.path.join(stdoutdir, 'log.out'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stdout, 1)
+        stderr = os.open(os.path.join(stdoutdir, 'log.err'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stderr, 2)
+        os.execv(command.split()[0], command.split())
     else:
       try:
         result = easy_run.fully_buffered(command=submit_command)

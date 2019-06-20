@@ -2867,7 +2867,7 @@ class MergeTab(BaseTab):
     with open(prime_file, 'w') as pf:
       pf.write(txt_out)
 
-    if params.mp.method == 'python':
+    if params.mp.method == 'local':
       command=None
     else:
       job_name = 'prime_t{}'.format(self.trial_no)

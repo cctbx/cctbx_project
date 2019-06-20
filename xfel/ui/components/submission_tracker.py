@@ -9,16 +9,27 @@ class JobStopper(object):
       self.command = "bkill %s"
     elif self.queueing_system == 'pbs':
       self.command = "qdel %s"
+    elif self.queueing_system == 'local':
+      pass
     else:
       raise NotImplementedError("job stopper not implemented for %s queueing system" \
       % self.queueing_system)
 
   def stop_job(self, submission_id):
-    result = easy_run.fully_buffered(command=self.command%submission_id)
-    status = "\n".join(result.stdout_lines)
-    error = "\n".join(result.stderr_lines)
-    print(status)
-    print(error)
+    if self.queueing_system == 'local':
+      import psutil
+      try:
+        process = psutil.Process(int(submission_id))
+      except psutil.NoSuchProcess:
+        return
+      for child in process.children(recursive=True): child.kill()
+      process.kill()
+    else:
+      result = easy_run.fully_buffered(command=self.command%submission_id)
+      status = "\n".join(result.stdout_lines)
+      error = "\n".join(result.stderr_lines)
+      print(status)
+      print(error)
 
 class QueueInterrogator(object):
   """A queue monitor that returns the status of a given queued job, or ERR if the job cannot
@@ -29,6 +40,8 @@ class QueueInterrogator(object):
       self.command = "bjobs %s | grep %s | awk '{ print $3 }'"
     elif self.queueing_system == 'pbs':
       self.command = "qstat -H %s | tail -n 1 | awk '{ print $10 }'"
+    elif self.queueing_system == 'local':
+      pass
     else:
       raise NotImplementedError(
       "queue interrogator not implemented for %s queueing system"%self.queueing_system)
@@ -39,6 +52,15 @@ class QueueInterrogator(object):
         (submission_id, submission_id))
     elif self.queueing_system == 'pbs':
       result = easy_run.fully_buffered(command=self.command%submission_id)
+    elif self.queueing_system == 'local':
+      import psutil
+      try:
+        process = psutil.Process(int(submission_id))
+      except psutil.NoSuchProcess:
+        return "DONE"
+      statuses = [p.status() for p in [process] + process.children(recursive=True)]
+      if 'running' in statuses: return "RUN"
+      return ", ".join(statuses)
     status = "\n".join(result.stdout_lines)
     error = "\n".join(result.stderr_lines)
     if error != "" and not "Warning: job being submitted without an AFS token." in error:
@@ -54,7 +76,7 @@ class LogReader(object):
   log file termination, and returns an error message if the log file cannot be found or read."""
   def __init__(self, queueing_system):
     self.queueing_system = queueing_system
-    if self.queueing_system in ["mpi", "lsf", "pbs"]:
+    if self.queueing_system in ["mpi", "lsf", "pbs", "local"]:
       self.command = "tail -17 %s | head -1"
     else:
       raise NotImplementedError(
@@ -110,6 +132,12 @@ class PBSSubmissionTracker(SubmissionTracker):
     else:
       print("Found an unknown status", status)
 
+class LocalSubmissionTracker(SubmissionTracker):
+  def track(self, submission_id, log_path):
+    if submission_id is None:
+      return "UNKWN"
+    return self.interrogator.query(submission_id)
+
 class TrackerFactory(object):
   @staticmethod
   def from_params(params):
@@ -117,3 +145,5 @@ class TrackerFactory(object):
       return LSFSubmissionTracker(params)
     elif params.mp.method == 'pbs':
       return PBSSubmissionTracker(params)
+    elif params.mp.method == 'local':
+      return LocalSubmissionTracker(params)

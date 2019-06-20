@@ -8,7 +8,7 @@ import os
 
 mp_phil_str = '''
   mp {
-    method = *lsf sge pbs shifter custom
+    method = local *lsf sge pbs shifter custom
       .type = choice
       .help = Computing environment
     use_mpi = True
@@ -182,6 +182,15 @@ class get_submit_command(object):
     if self.params.encapsulate_submit_script:
       self.encapsulate_submit()
     return self.generate_submit_command()
+
+class get_local_submit_command(get_submit_command):
+
+  def customize_for_method(self):
+    if self.params.nproc > 1:
+      self.command += " mp.nproc=%d" % self.params.nproc
+
+  def generate_submit_command(self):
+    return self.submit_path
 
 class get_lsf_submit_command(get_submit_command):
 
@@ -528,7 +537,9 @@ class get_custom_submit_command(get_submit_command):
 
 def get_submit_command_chooser(command, submit_path, stdoutdir, params,
                                log_name="log.out", err_name="log.err", job_name=None):
-  if params.method == "lsf":
+  if params.method == "local":
+    choice = get_local_submit_command
+  elif params.method == "lsf":
     choice = get_lsf_submit_command
   elif params.method == "sge":
     choice = get_sge_submit_command
