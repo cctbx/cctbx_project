@@ -917,7 +917,11 @@ class dials_regression_module(SourceModule):
 
 class msgpack_module(SourceModule):
   module = 'msgpack'
-  anonymous = ['curl', "https://gitcdn.xyz/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz"]
+  anonymous = ['curl', [
+    "https://gitcdn.xyz/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz",
+    "https://gitcdn.link/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz",
+    "https://github.com/dials/dependencies/raw/dials-1.13/msgpack-3.1.1.tar.gz",
+  ]]
 
 class xfel_regression_module(SourceModule):
   module = 'xfel_regression'
@@ -1336,14 +1340,29 @@ class Builder(object):
     ))
 
   def _add_download(self, url, to_file):
+    if not isinstance(url, list):
+      url = [url]
     class _download(object):
       def run(self):
-        print("===== Downloading %s: " % url, end=' ')
-        Toolbox().download_to_file(url, to_file)
+        for _url in url:
+          for retry in (3,3,0):
+            print("===== Downloading %s: " % _url, end=' ')
+            try:
+              Toolbox().download_to_file(_url, to_file)
+              return
+            except Exception as e:
+              print("Download failed with", e)
+              if retry:
+                print("Retrying in %d seconds" % retry)
+                time.sleep(retry)
+        raise RuntimeError("Could not download " + to_file)
     self.add_step(_download())
 
   def _add_curl(self, module, url):
-    filename = urlparse(url)[2].split('/')[-1]
+    if isinstance(url, list):
+      filename = urlparse(url[0])[2].split('/')[-1]
+    else:
+      filename = urlparse(url)[2].split('/')[-1]
     self._add_download(url, os.path.join('modules', filename))
     self.add_step(self.shell(
       name="extracting files from %s" %filename,
