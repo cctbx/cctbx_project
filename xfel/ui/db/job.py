@@ -191,7 +191,7 @@ def submit_all_jobs(app):
   submitted_jobs = app.get_all_jobs()
   if app.params.mp.method == 'local': # only run one job at a time
     for job in submitted_jobs:
-      if job.status == 'RUN': return
+      if job.status in ['RUN', 'UNKWN', 'SUBMITTED']: return
 
   runs = app.get_all_runs()
   trials = app.get_all_trials(only_active = True)

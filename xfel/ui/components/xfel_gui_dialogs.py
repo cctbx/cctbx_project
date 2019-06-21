@@ -96,7 +96,7 @@ class SettingsDialog(BaseDialog):
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(600, -1),
+                        size=(700, -1),
                         *args, **kwargs)
 
     self.params = params
@@ -536,6 +536,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.mp_option.ctr.SetSelection(choices.index(params.mp.method))
     except ValueError:
       pass
+    self.Bind(wx.EVT_CHOICE, self.onMultiprocessingChoice, self.mp_option.ctr)
 
     if params.facility.name == 'lcls':
       # Queue
@@ -623,7 +624,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                     label_style='bold',
                                     ctrl_size=(-1, -1),
                                     choices=self.back_ends)
-    self.Bind(wx.EVT_CHOICE, self.onBackendChoice)
+    self.Bind(wx.EVT_CHOICE, self.onBackendChoice, self.back_end.ctr)
     self.dispatchers_sizer.Add(self.back_end, flag=wx.ALIGN_LEFT)
 
     self.custom_dispatcher = gctr.TextCtrl(self,
@@ -655,6 +656,23 @@ class AdvancedSettingsDialog(BaseDialog):
     self.SetTitle('Advanced Settings')
 
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+    self.updateMultiprocessing()
+
+  def onMultiprocessingChoice(self, e):
+    self.updateMultiprocessing()
+
+  def updateMultiprocessing(self):
+    if self.mp_option.ctr.GetStringSelection() == 'local':
+      self.queue.Hide()
+      self.nproc_per_node.Hide()
+      self.env_script.Hide()
+    else:
+      self.queue.Show()
+      self.nproc_per_node.Show()
+      self.env_script.Show()
+    self.Layout()
+    self.Fit()
 
   def onQueueChoice(self, e):
     queue = self.queue.ctr.GetString(self.queue.ctr.GetSelection())
