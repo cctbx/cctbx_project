@@ -8,10 +8,12 @@ class reflection_table_utils(object):
   @staticmethod
   def get_next_hkl_reflection_table(reflections):
     '''Generate asu hkl slices from an asu hkl-sorted reflection table'''
+    if reflections.size() == 0:
+      yield reflections
+
     i_begin = 0
     hkl_ref = reflections[0].get('miller_index_asymmetric')
-
-    for i in range(len(reflections)):
+    for i in range(reflections.size()):
       hkl = reflections[i].get('miller_index_asymmetric')
       if hkl == hkl_ref:
         continue
@@ -50,15 +52,14 @@ class reflection_table_utils(object):
 
   @staticmethod
   def merge_reflections(reflections, min_multiplicity):
+    '''Merge intensities of multiply-measured symmetry-reduced HKLs'''
     merged_reflections = reflection_table_utils.merged_reflection_table()
-
-    if reflections.size() == 0:
-      return merged_reflections
-
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections):
-      assert refls.size() > 0
+      if refls.size() == 0:
+        break # unless the input "reflections" list is empty, generated "refls" lists cannot be empty
 
       hkl = refls[0]['miller_index_asymmetric']
+      #TODO Based on profiling (Aaron), this assert takes too much time
       assert not (hkl in merged_reflections['miller_index']) # i.e. assert that the input reflection table came in sorted
 
       refls = refls.select(refls['intensity.sum.variance'] > 0.0)
