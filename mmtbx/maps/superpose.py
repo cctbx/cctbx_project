@@ -43,7 +43,12 @@ def generate_p1_box(pdb_hierarchy, buffer=10.0):
   return symm
 
 class common_frame_of_reference(object):
-  def __init__(self, all_sites_cart, lsq_fits, buffer=10.0, log=sys.stdout):
+  def __init__(self,
+               all_sites_cart,
+               lsq_fits,
+               buffer=10.0,
+               move_to_frame_of_reference=True,
+               log=sys.stdout):
     fitted_sites = []
     original_sites = []
     minima = flex.vec3_double()
@@ -56,7 +61,10 @@ class common_frame_of_reference(object):
         old_sites = lsq_fit.r.inverse().elems * (sites_cart - lsq_fit.t.elems)
         original_sites.append(old_sites)
     xyz_min = minima.min()
-    dxyz = (buffer - xyz_min[0], buffer - xyz_min[1], buffer - xyz_min[2])
+    if move_to_frame_of_reference:
+      dxyz = (buffer - xyz_min[0], buffer - xyz_min[1], buffer - xyz_min[2])
+    else:
+      dxyz = (0,0,0)
     self.shifted_sites = []
     self.transformation_matrices = []
     for i, sites_cart in enumerate(fitted_sites):
