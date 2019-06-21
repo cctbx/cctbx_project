@@ -961,21 +961,23 @@ mysocket.onmessage = function (e) {
   var alpha
   var si
   mysocket.send('got ' + e.data ); // tell server what it sent us
-//  try {
+  try {
     var datval = e.data.split(":\\n");
     //alert('received2:\\n' + datval);
     var msgtype = datval[0];
     //alert('received3:\\n' + msgtype);
     var val = datval[1].split(",");
 
-    if (msgtype === "alpha") {
+    if (msgtype === "alpha")
+    {
       ibin = parseInt(val[0])
       alpha = parseFloat(val[1])
       shapebufs[ibin].setParameters({opacity: alpha})
       stage.viewer.requestRender()
     }
 
-    if (msgtype === "colour") {
+    if (msgtype === "colour")
+    {
       ibin = parseInt(val[0])
       si =  parseInt(val[1])
       colours[ibin][3*si] = parseFloat(val[2])
@@ -985,11 +987,13 @@ mysocket.onmessage = function (e) {
       stage.viewer.requestRender()
     }
 
-    if (msgtype === "Redraw") {
+    if (msgtype === "Redraw")
+    {
       stage.viewer.requestRender()
     }
 
-    if (msgtype === "ReOrient") {
+    if (msgtype === "ReOrient")
+    {
       mysocket.send( 'Reorienting ' + pagename );
       sm = new Float32Array(16);
       //alert('ReOrienting: ' + val)
@@ -1002,7 +1006,8 @@ mysocket.onmessage = function (e) {
       stage.viewer.requestRender();
     }
 
-    if (msgtype === "Reload") {
+    if (msgtype === "Reload")
+    {
     // refresh browser with the javascript file
       cvorient = stage.viewerControls.getOrientation().elements
       msg = String(cvorient)
@@ -1013,49 +1018,40 @@ mysocket.onmessage = function (e) {
     }
 
 
-    if (msgtype === "Testing") {
+    if (msgtype.includes("Expand") !== -1  )
+    {
       // test something new
-      mysocket.send( 'Testing something new ' + pagename );
-      /*
-      var newradii = radii[0].map(function(element) {
-        return element*1.5;
-      });
-      shapebufs[0].setAttributes({
-          radius: newradii
-      })
-      */
+      mysocket.send( 'Expanding data...' );
 
       if (br_positions.length > 0)
       {
-        mysocket.send('Data is already expanded' );
+        mysocket.send('Data has already been expanded' );
         return;
       }
 
-      var nsize = positions[0].length/3
+      var nsize = positions[0].length/3;
 
       shapeComp.removeRepresentation(repr);
 
-
-      alert('rotations:\\n' + val)
+      //alert('rotations:\\n' + val)
       strs = datval[1].split("\\n");
 
-      nrots = strs.length
+      nrots = strs.length;
       bins = %d -1;
-      //alert('nrots: ' + nrots)
+
       var Rotmat = new NGL.Matrix3();
       var sm = new Float32Array(9);
       var r = new NGL.Vector3();
 
       var csize = nsize*3;
       var nsize3 = nsize*3;
+      var anoexp = false;
 
-      var anoexp = true;
-
-      if (anoexp)
+      if (msgtype.includes("Friedel") !== -1  )
       {
+        anoexp = true;
         csize = nsize*6;
       }
-
 
       for (var h=0; h<bins; h++)
       {
@@ -1137,46 +1133,41 @@ mysocket.onmessage = function (e) {
         }
       }
 
+      repr = shapeComp.addRepresentation('buffer');
 
-/*
-      positions[1] = new Float32Array( nsize*3)
-      var M = new NGL.Matrix4();
+      stage.viewer.requestRender()
+    }
 
-      M.makeRotationZ( 1.57 )
-      for (var i=0; i<nsize; i++)
-      {
-        idx= i*3
-        r.x = positions[0][idx]
-        r.y = positions[0][idx+1]
-        r.z = positions[0][idx+2]
 
-        //r.applyMatrix4(M)
-        r.negate() // inversion for anomalous pair
 
-        positions[1][idx] = r.x
-        positions[1][idx+1] = r.y
-        positions[1][idx+2] = r.z
 
-      }
 
-      shapebufs.push( NGL.SphereBuffer({
-          position: positions[1],
-          color: colours[0],
-          radius: radii[0],
-        })
-      );
 
-      shape.addBuffer(shapebufs[1])
-*/
+    if (msgtype === "Testing") {
+      // test something new
+      mysocket.send( 'Testing something new ' + pagename );
+
+      var newradii = radii[0].map(function(element) {
+        return element*1.5;
+      });
+      shapebufs[0].setAttributes({
+          radius: newradii
+      })
 
       repr = shapeComp.addRepresentation('buffer');
 
       stage.viewer.requestRender()
     }
 
-//  }  catch(err) {
-//    mysocket.send('error: ' + err );
-//  }
+
+
+
+
+
+
+  }  catch(err) {
+    mysocket.send('error: ' + err );
+  }
 };
 
 
@@ -1288,16 +1279,21 @@ mysocket.onmessage = function (e) {
     self.isnewfile = False
 
 
-  def TestNewFunction(self):
-    #self.SendWebSockMsg( u"Testing:\n" )
+  def ExpandInBrowser(self, P1=True, friedel_mate=True):
     sg = self.miller_array.space_group()
     symops = sg.all_ops()
     uc = self.miller_array.unit_cell()
     OrtMx = matrix.sqr( uc.orthogonalization_matrix())
     InvMx = OrtMx.inverse()
 
+    msgtype = "Expand"
     msg = ""
-    unique_rot_ops = symops[ 0 : sg.order_p() ]
+    unique_rot_ops = []
+    if P1:
+      unique_rot_ops = symops[ 0 : sg.order_p() ]
+    if friedel_mate:
+      msgtype += "Friedel"
+
     for symop in unique_rot_ops:
       RotMx = matrix.sqr( symop.r().as_double())
 
@@ -1306,7 +1302,12 @@ mysocket.onmessage = function (e) {
       str_rot = str_rot.replace("(", "")
       str_rot = str_rot.replace(")", "")
       msg += str_rot + "\n"
-    self.SendWebSockMsg("Testing", msg)
+
+    self.SendWebSockMsg(msgtype, msg)
+
+
+  def TestNewFunction(self):
+    self.SendWebSockMsg("Testing")
 
 
 
