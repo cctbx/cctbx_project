@@ -1,3 +1,4 @@
+from __future__ import print_function
 import libtbx.load_env
 Import("env_base", "env_etc")
 import sys
