@@ -154,15 +154,22 @@ class crystal_model(worker):
     elif self.purpose == "statistics":
       mtz_column_F = str(self.params.statistics.cciso.mtz_column_F)
 
-    from iotbx import mtz
-    data_SR = mtz.object(model_file_path)
+    if self.mpi_helper.rank == 0:
+      from iotbx import mtz
+      data_SR = mtz.object(model_file_path)
+      arrays = data_SR.as_miller_arrays()
 
-    if self.purpose == "scaling":
-      # save space group and unit cell as scaling targets
-      self.params.scaling.space_group = data_SR.space_group().info()
-      self.params.scaling.unit_cell   = data_SR.crystals()[0].unit_cell()
+      if self.purpose == "scaling":
+        # save space group and unit cell as scaling targets
+        self.params.scaling.space_group = data_SR.space_group().info()
+        self.params.scaling.unit_cell   = data_SR.crystals()[0].unit_cell()
+      params = self.params
+    else:
+      arrays = params = None
 
-    for array in data_SR.as_miller_arrays():
+    arrays, params = self.mpi_helper.comm.bcast((arrays, params), root=0)
+
+    for array in arrays:
       this_label = array.info().label_string().lower()
       if True not in [this_label.find(tag)>=0 for tag in ["iobs","imean", mtz_column_F]]:
         continue

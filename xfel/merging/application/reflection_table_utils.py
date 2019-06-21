@@ -59,8 +59,8 @@ class reflection_table_utils(object):
         break # unless the input "reflections" list is empty, generated "refls" lists cannot be empty
 
       hkl = refls[0]['miller_index_asymmetric']
-      #TODO Based on profiling (Aaron), this assert takes too much time
-      assert not (hkl in merged_reflections['miller_index']) # i.e. assert that the input reflection table came in sorted
+      # This assert is timeconsuming when using a small number of cores
+      #assert not (hkl in merged_reflections['miller_index']) # i.e. assert that the input reflection table came in sorted
 
       refls = refls.select(refls['intensity.sum.variance'] > 0.0)
 

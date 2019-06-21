@@ -318,12 +318,11 @@ class refinery_base(group_args):
     """Refinery class takes reference and observations, and implements target
     functions and derivatives for a particular model paradigm."""
     def get_Rh_array(self, values):
-      Rh = flex.double()
       eff_Astar = self.get_eff_Astar(values)
-      for mill in self.MILLER:
-        x = eff_Astar * matrix.col(mill)
-        Svec = x + self.BEAM
-        Rh.append(Svec.length() - (1./self.WAVE))
+      h = self.MILLER.as_vec3_double()
+      x = flex.mat3_double(len(self.MILLER), eff_Astar) * h
+      Svec = x + self.BEAM
+      Rh = Svec.norms() - (1./self.WAVE)
       return Rh
 
     def get_s1_array(self, values):
