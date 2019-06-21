@@ -648,17 +648,7 @@ class hklview_3d:
       spherebufferstr = ""
       if self.usingtooltips:
         spbufttips[ibin].append(self.tooltipstringsdict[hkls[i]])
-        spherebufferstr = "  ttips = new Array(%d)" %self.nbin
-    spherebufferstr += """
-  positions = new Array(%d)
-  br_positions = []
-  br_colours = []
-  br_radii = []
-  colours = []; // new Array(%d)
-  radii = []; // new Array(%d)
-  shapebufs = [];
-  br_shapebufs = [];
-    """ %(self.nbin, self.nbin, self.nbin)
+
     spherebufferstr += self.colstraliases
     negativeradiistr = ""
     cntbin = 0
@@ -681,15 +671,15 @@ class hklview_3d:
         if self.usingtooltips:
           uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
           uncrustttips = uncrustttips.replace("\'\'+", "")
-          spherebufferstr += "  ttips[%d] = %s" %(cntbin, uncrustttips)
+          spherebufferstr += "  ttips.push( %s );" %uncrustttips
         spherebufferstr += """
-  positions[%d] = new Float32Array( %s );
+  positions.push( new Float32Array( %s ) );
   colours.push( new Float32Array( %s ) );
   radii.push( new Float32Array( %s ) );
 
   shapebufs.push( new NGL.%s({
     position: positions[%d],
-    color: colours[%d], """ %(cntbin, str(positions[ibin]), str(colours[ibin]), \
+    color: colours[%d], """ %(str(positions[ibin]), str(colours[ibin]), \
          str(radii2[ibin]), self.primitivetype, cntbin, \
          cntbin)
         if self.primitivetype == "SphereBuffer":
@@ -817,6 +807,16 @@ var shapeComp;
 var repr;
 var AA = String.fromCharCode(197); // short for angstrom
 var DGR = String.fromCharCode(176); // short for degree symbol
+var ttips = [];
+var positions = [];
+var br_positions = [];
+var br_colours = [];
+var br_radii = [];
+var colours = [];
+var radii = [];
+var shapebufs = [];
+var br_shapebufs = [];
+
 
 function createElement (name, properties, style) {
 // utility function used in for loop over colourgradvalarray
@@ -1047,8 +1047,9 @@ mysocket.onmessage = function (e) {
       var r = new NGL.Vector3();
 
       var csize = nsize*3;
+      var nsize3 = nsize*3;
 
-      var anoexp = false;
+      var anoexp = true;
 
       if (anoexp)
       {
@@ -1067,8 +1068,23 @@ mysocket.onmessage = function (e) {
         br_radii[h] = radii[h]
         if (anoexp)
         {
-          br_colours[h].concat(colours[h]);
-          br_radii[h].concat(radii[h]);
+          var colarr = [];
+          var cl = colours[h].length;
+          for (var i=0; i<cl; i++)
+          {
+            colarr[i] = colours[h][i];
+            colarr[i+cl] = colours[h][i];
+          }
+          br_colours[h] = new Float32Array(colarr);
+
+          var radiiarr = [];
+          var rl = radii[h].length;
+          for (var i=0; i<rl; i++)
+          {
+            radiiarr[i] = radii[h][i];
+            radiiarr[i+rl] = radii[h][i];
+          }
+          br_radii[h] = new Float32Array(radiiarr);
         }
 
 
@@ -1090,9 +1106,9 @@ mysocket.onmessage = function (e) {
           for (var i=0; i<nsize; i++)
           {
             idx= i*3;
-            r.x = positions[0][idx];
-            r.y = positions[0][idx+1];
-            r.z = positions[0][idx+2];
+            r.x = positions[h][idx];
+            r.y = positions[h][idx+1];
+            r.z = positions[h][idx+2];
 
             r.applyMatrix3(Rotmat)
 
@@ -1103,9 +1119,9 @@ mysocket.onmessage = function (e) {
             if (anoexp)
             {
               r.negate(); // inversion for anomalous pair
-              br_positions[h][g][nsize + idx] = r.x
-              br_positions[h][g][nsize + idx + 1] = r.y
-              br_positions[h][g][nsize + idx + 2] = r.z
+              br_positions[h][g][nsize3 + idx] = r.x
+              br_positions[h][g][nsize3 + idx + 1] = r.y
+              br_positions[h][g][nsize3 + idx + 2] = r.z
             }
 
           }
@@ -1141,9 +1157,6 @@ mysocket.onmessage = function (e) {
         positions[1][idx+1] = r.y
         positions[1][idx+2] = r.z
 
-        //positions[1][idx]   = positions[0][idx] + 4.0
-        //positions[1][idx+1] = positions[0][idx+1]
-        //positions[1][idx+2] = positions[0][idx+2]
       }
 
       shapebufs.push( NGL.SphereBuffer({
