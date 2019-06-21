@@ -8,6 +8,11 @@ Redesign script for merging xfel data
 
 from xfel.merging.database.merging_database import mysql_master_phil
 master_phil="""
+dispatch {
+  step_list = None
+    .type = strings
+    .help = List of steps to use. None means use the full set of steps to merge.
+}
 input {
   path = None
     .type = str
@@ -357,6 +362,9 @@ output {
   log_level = 0
     .type = int
     .help = how much information to log. TODO: define it.
+  save_experiments_and_reflections = False
+    .type = bool
+    .help = If True, dump the final set of experiments and reflections from the last worker
 }
 
 statistics {

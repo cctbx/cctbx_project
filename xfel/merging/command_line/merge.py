@@ -5,6 +5,26 @@ from xfel.merging.application.mpi_helper import mpi_helper
 from xfel.merging.application.mpi_logger import mpi_logger
 from six.moves import cStringIO as StringIO
 
+default_steps = [
+  'input',
+  'model scaling', # the full miller set is based on the target unit cell
+  'modify', # polarization correction, etc.
+  'edit',   # add asu HKL column, remove unnecessary columns from reflection table
+  'filter', # unit cell, I/Sigma
+  'errors pre_merge', # e.g. ha14
+  'scale',
+  'postrefine',
+  'statistics unit_cell', # if required, saves the average unit cell to the phil parameters
+  'statistics beam', # saves the average wavelength to the phil parameters
+  'model statistics', # if required, the full miller set is based on the average unit cell
+  'statistics experiment_resolution',
+  'group', # MPI-alltoall: this must be done before any analysis or merging that requires all measurements of an HKL
+  'errors post_merge', # e.g. errors_from_sample_residuals
+  'statistics intensity',
+  'merge', # merge HKL intensities, MPI-gather all HKLs at rank 0, output "odd", "even" and "all" HKLs as mtz files
+  'statistics intensity cxi', # follows the merge step and uses cxi_cc code ported from cxi-xmerge
+]
+
 class Script(object):
   '''A class for running the script.'''
 
@@ -86,25 +106,8 @@ class Script(object):
     import importlib
 
     workers = []
-    for step in ['input',
-                 'model scaling', # the full miller set is based on the target unit cell
-                 'modify', # polarization correction, etc.
-                 'edit',   # add asu HKL column, remove unnecessary columns from reflection table
-                 'filter', # unit cell, I/Sigma
-                 'errors pre_merge', # e.g. ha14
-                 'scale',
-                 'postrefine',
-                 'statistics unit_cell', # if required, saves the average unit cell to the phil parameters
-                 'statistics beam', # saves the average wavelength to the phil parameters
-                 'model statistics', # if required, the full miller set is based on the average unit cell
-                 'statistics experiment_resolution',
-                 'group', # MPI-alltoall: this must be done before any analysis or merging that requires all measurements of an HKL
-                 'errors post_merge', # e.g. errors_from_sample_residuals
-                 'statistics intensity',
-                 'merge', # merge HKL intensities, MPI-gather all HKLs at rank 0, output "odd", "even" and "all" HKLs as mtz files
-                 'statistics intensity cxi', # follows the merge step and uses cxi_cc code ported from cxi-xmerge
-                 ]:
-
+    steps = default_steps if self.params.dispatch.step_list is None else self.params.dispatch.step_list
+    for step in steps:
       step_factory_name = step
       step_additional_info = []
 
@@ -141,6 +144,21 @@ class Script(object):
 
       # Execute worker
       experiments, reflections = worker.run(experiments, reflections)
+
+    if self.params.output.save_experiments_and_reflections:
+      from dxtbx.model.experiment_list import ExperimentListDumper
+      import os
+      if 'id' not in reflections:
+        from dials.array_family import flex
+        id_ = flex.int(len(reflections), -1)
+        for expt_number, expt in enumerate(experiments):
+          sel = reflections['exp_id'] == expt.identifier
+          id_.set_selected(sel, expt_number)
+        reflections['id'] = id_
+
+      reflections.as_pickle(os.path.join(self.params.output.output_dir, self.params.output.prefix + "_%06d.pickle"%self.mpi_helper.rank))
+      dump = ExperimentListDumper(experiments)
+      dump.as_file(os.path.join(self.params.output.output_dir, self.params.output.prefix + "_%06d.json"%self.mpi_helper.rank))
 
     self.mpi_logger.log_step_time("TOTAL", True)
 

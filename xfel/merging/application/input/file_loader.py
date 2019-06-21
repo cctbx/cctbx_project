@@ -123,7 +123,8 @@ class simple_file_loader(worker):
       reflections = flex.reflection_table.from_file(reflections_filename)
 
       for experiment_id, experiment in enumerate(experiments):
-        experiment.identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
+        if experiment.identifier is None or len(experiment.identifier) == 0:
+          experiment.identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
         all_experiments.append(experiment)
 
         refls = reflections.select(reflections['id'] == experiment_id)
