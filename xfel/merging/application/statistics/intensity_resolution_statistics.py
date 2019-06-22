@@ -319,7 +319,8 @@ class intensity_resolution_statistics(worker):
                                                 n_sum = self.n_sum,
                                                 m_sum = self.m_sum,
                                                 mm_sum = self.mm_sum)
-    self.logger.log(Intensity_Table.get_table_text(), rank_prepend=False)
+    if self.params.output.log_level == 0:
+      self.logger.log(Intensity_Table.get_table_text(), rank_prepend=False)
 
     # Accumulate statistics from all ranks
     all_ranks_I_sum       = self.mpi_helper.cumulative_flex(self.I_sum, flex.double)

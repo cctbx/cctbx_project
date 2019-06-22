@@ -75,23 +75,26 @@ class crystal_model(worker):
     return experiments, reflections
 
   def create_model_from_pdb(self, model_file_path):
-    from iotbx import file_reader
 
-    pdb_in = file_reader.any_file(model_file_path, force_type="pdb")
-    pdb_in.assert_file_type("pdb")
+    if self.mpi_helper.rank == 0:
+      from iotbx import file_reader
+      pdb_in = file_reader.any_file(model_file_path, force_type="pdb")
+      pdb_in.assert_file_type("pdb")
+      xray_structure = pdb_in.file_object.xray_structure_simple()
+      out = StringIO()
+      xray_structure.show_summary(f=out)
+      self.logger.main_log(out.getvalue())
+      space_group = xray_structure.crystal_symmetry().space_group().info()
+      unit_cell = xray_structure.crystal_symmetry().unit_cell()
+    else:
+      xray_structure = space_group = unit_cell = None
 
-    xray_structure = pdb_in.file_object.xray_structure_simple()
+    xray_structure, space_group, unit_cell = self.mpi_helper.comm.bcast((xray_structure, space_group, unit_cell), root=0)
 
     if self.purpose == "scaling":
       # save space group and unit cell as scaling targets
-      self.params.scaling.space_group = xray_structure.crystal_symmetry().space_group().info()
-      self.params.scaling.unit_cell = xray_structure.crystal_symmetry().unit_cell()
-
-    out = StringIO()
-    xray_structure.show_summary(f=out)
-    self.logger.log(out.getvalue())
-    if self.mpi_helper.rank == 0:
-      self.logger.main_log(out.getvalue())
+      self.params.scaling.space_group = space_group
+      self.params.scaling.unit_cell = unit_cell
 
     # prepare phil parameters to generate model intensities
     phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
@@ -149,25 +152,26 @@ class crystal_model(worker):
 
   def create_model_from_mtz(self, model_file_path):
 
-    if self.purpose == "scaling":
-      mtz_column_F = str(self.params.scaling.mtz.mtz_column_F)
-    elif self.purpose == "statistics":
-      mtz_column_F = str(self.params.statistics.cciso.mtz_column_F)
-
     if self.mpi_helper.rank == 0:
       from iotbx import mtz
       data_SR = mtz.object(model_file_path)
       arrays = data_SR.as_miller_arrays()
-
-      if self.purpose == "scaling":
-        # save space group and unit cell as scaling targets
-        self.params.scaling.space_group = data_SR.space_group().info()
-        self.params.scaling.unit_cell   = data_SR.crystals()[0].unit_cell()
-      params = self.params
+      space_group = data_SR.space_group().info()
+      unit_cell   = data_SR.crystals()[0].unit_cell()
     else:
-      arrays = params = None
+      arrays = space_group = unit_cell = None
 
-    arrays, params = self.mpi_helper.comm.bcast((arrays, params), root=0)
+    arrays, space_group, unit_cell = self.mpi_helper.comm.bcast((arrays, space_group, unit_cell), root=0)
+
+    # save space group and unit cell as scaling targets
+    if self.purpose == "scaling":
+      self.params.scaling.space_group = space_group
+      self.params.scaling.unit_cell   = unit_cell
+
+    if self.purpose == "scaling":
+      mtz_column_F = str(self.params.scaling.mtz.mtz_column_F)
+    elif self.purpose == "statistics":
+      mtz_column_F = str(self.params.statistics.cciso.mtz_column_F)
 
     for array in arrays:
       this_label = array.info().label_string().lower()
