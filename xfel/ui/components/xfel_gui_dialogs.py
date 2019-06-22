@@ -1524,16 +1524,16 @@ class RunBlockDialog(BaseDialog):
       self.runblock_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
 
 
-    # Beam XYZ (X, Y - pickle only)
-    self.beam_xyz = gctr.OptionCtrl(self.runblock_panel,
-                                    label='Beam:',
-                                    label_style='bold',
-                                    label_size=(100, -1),
-                                    ctrl_size=(60, -1),
-                                    items=[('X', block.beamx),
-                                           ('Y', block.beamy),
-                                           ('DetZ', block.detz_parameter)])
-    self.runblock_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
+      # Beam XYZ (X, Y - pickle only)
+      self.beam_xyz = gctr.OptionCtrl(self.runblock_panel,
+                                      label='Beam:',
+                                      label_style='bold',
+                                      label_size=(100, -1),
+                                      ctrl_size=(60, -1),
+                                      items=[('X', block.beamx),
+                                             ('Y', block.beamy),
+                                             ('DetZ', block.detz_parameter)])
+      self.runblock_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Binning, energy, gain mask level
     if self.is_lcls:
@@ -1722,17 +1722,17 @@ class RunBlockDialog(BaseDialog):
     rg_dict = dict(active=True,
                    open=rg_open,
                    extra_phil_str=self.phil.ctr.GetValue(),
-                   detz_parameter=self.beam_xyz.DetZ.GetValue(),
-                   beamx=self.beam_xyz.X.GetValue(),
-                   beamy=self.beam_xyz.Y.GetValue(),
                    untrusted_pixel_mask_path=self.untrusted_path.ctr.GetValue(),
                    two_theta_low=self.two_thetas.two_theta_low.GetValue(),
                    two_theta_high=self.two_thetas.two_theta_high.GetValue(),
                    comment=self.comment.ctr.GetValue())
 
     if self.is_lcls:
-      rg_dict['format']=self.img_format.ctr.GetStringSelection(),
-      rg_dict['energy']=self.bin_nrg_gain.energy.GetValue(),
+      rg_dict['detz_parameter']=self.beam_xyz.DetZ.GetValue()
+      rg_dict['beamx']=self.beam_xyz.X.GetValue()
+      rg_dict['beamy']=self.beam_xyz.Y.GetValue()
+      rg_dict['format']=self.img_format.ctr.GetStringSelection()
+      rg_dict['energy']=self.bin_nrg_gain.energy.GetValue()
       rg_dict['dark_avg_path']=self.dark_avg_path.ctr.GetValue()
       rg_dict['dark_stddev_path']=self.dark_stddev_path.ctr.GetValue()
       rg_dict['gain_map_path']=self.gain_map_path.ctr.GetValue()
@@ -1792,9 +1792,10 @@ class RunBlockDialog(BaseDialog):
       self.config.ctr.SetValue(str(last.config_str))
       self.phil.ctr.SetValue(str(last.extra_phil_str))
       self.address.ctr.SetValue(str(last.detector_address))
-      self.beam_xyz.DetZ.SetValue(str(last.detz_parameter))
-      self.beam_xyz.X.SetValue(str(last.beamx))
-      self.beam_xyz.Y.SetValue(str(last.beamy))
+      if self.is_lcls:
+        self.beam_xyz.DetZ.SetValue(str(last.detz_parameter))
+        self.beam_xyz.X.SetValue(str(last.beamx))
+        self.beam_xyz.Y.SetValue(str(last.beamy))
       self.bin_nrg_gain.binning.SetValue(str(last.binning))
       self.bin_nrg_gain.energy.SetValue(str(last.energy))
       self.bin_nrg_gain.gain_mask_level.SetValue(str(last.gain_mask_level))

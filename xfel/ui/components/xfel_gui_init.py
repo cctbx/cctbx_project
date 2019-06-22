@@ -463,8 +463,11 @@ class RunStatsSentinel(Thread):
         rg_id = rungroup_ids[idx]
         t_id = trial_ids[idx]
         for job in jobs:
+          found_it = False
           if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
             self.run_statuses.append(job.status)
+            found_it = True; break
+        if not found_it: self.run_statuses.append('UNKWN')
     self.reorder()
     t2 = time.time()
 
