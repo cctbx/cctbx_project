@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 06/20/2019
+Last Changed: 07/17/2019
 Description : PRIME GUI frames module
 '''
 
@@ -615,6 +615,8 @@ class RuntimeTab(wx.Panel):
     self.cc_axes.set_xlabel('Cycle')
     self.cc_axes.set_ylabel(r'$CC_{1/2}$ (%)')
     self.cc_axes.ticklabel_format(axis='y', style='plain')
+    self.cc_axes.set_xticks([tick for tick in self.cc_axes.get_xticks()
+                             if tick % 1 == 0])
 
     self.comp_axes.set_title('Completeness / Multiplicity', fontsize=12)
     self.comp_axes.set_xlabel('Cycle')
@@ -622,6 +624,8 @@ class RuntimeTab(wx.Panel):
     self.mult_axes.set_ylabel('# of Observations')
     self.comp_axes.ticklabel_format(axis='y', style='plain')
     self.mult_axes.ticklabel_format(axis='y', style='plain')
+    self.comp_axes.set_xticks([tick for tick in self.comp_axes.get_xticks()
+                               if tick % 1 == 0])
 
     self.bcc_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.bcc_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
@@ -1161,7 +1165,8 @@ class FileListCtrl(ct.CustomListCtrl):
     self.button_sizer.Add(self.btn_add_file)
     self.button_sizer.Add(self.btn_add_dir, flag=wx.LEFT, border=10)
 
-    self.sizer.Add(self.button_sizer, flag=wx.TOP | wx.BOTTOM, border=10)
+    self.sizer.Add(self.button_sizer, pos=(1, 0),
+                   flag=wx.TOP | wx.BOTTOM, border=10)
 
     # Event bindings
     self.Bind(wx.EVT_BUTTON, self.onAddFile, self.btn_add_file)
@@ -1336,7 +1341,7 @@ class FileListCtrl(ct.CustomListCtrl):
       #   wx.MessageBox('Unknown file type', 'Warning',
       #                 wx.OK | wx.ICON_EXCLAMATION)
     elif os.path.isdir(path):
-      inputs, _ = ginp.get_input(path, filter=False)
+      inputs, _ = ginp.get_input(path, filter_results=False)
       file_list = '\n'.join(inputs)
       filelistview = dlg.TextFileView(self, title=path, contents=file_list)
       filelistview.ShowModal()

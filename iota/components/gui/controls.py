@@ -1,24 +1,26 @@
 from __future__ import absolute_import, division, print_function
-from six.moves import range
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 06/20/2019
+Last Changed: 07/17/2019
 Description : IOTA GUI controls
 '''
 
 import os
+from glob import glob
+
 import wx
 import wx.richtext
 import wx.lib.agw.floatspin as fs
 import wx.lib.agw.ultimatelistctrl as ulc
 import wx.lib.agw.knobctrl as kc
-
 from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin, ColumnSorterMixin
+import wx.lib.buttons as btn
+
 from wxtbx import metallicbutton as mb
 from wxtbx import bitmaps
-import wx.lib.buttons as btn
+from libtbx.utils import Sorry
 
 from iota.components.iota_utils import noneset, InputFinder
 from iota.components.iota_threads import ImageViewerThread
@@ -58,6 +60,25 @@ MB_STYLE_DEFAULT = 1
 MB_STYLE_BOLD_LABEL = 2
 MB_STYLE_DROPARROW = 4
 
+# --------------------------- Master Widget Classes -------------------------- #
+
+class IOTACtrl(object):
+  ''' Mixin to add IOTA-specific functions to IOTA controls '''
+
+  def bind_event(self, event_type, event_handler):
+    ''' General function to bind an event to parent frame; absent that,
+        to parent object; absent that, to current object
+    :param event_type: e.g. wx.EVT_BUTTON
+    :param event_handler: handler function for bound event
+    '''
+
+    try:
+      self.parent.get_frame().Bind(event_type, event_handler, self)
+    except Exception:
+      try:
+        self.parent.Bind(event_type, event_handler, self)
+      except Exception:
+        self.Bind(event_type, event_handler, self)
 
 # --------------------------------- Widgets ---------------------------------- #
 
@@ -70,16 +91,24 @@ def StandardBitmap(img_name, size=None):
   bmp = img.ConvertToBitmap()
   return bmp
 
-class GradButton(mb.MetallicButton):
+class GradButton(mb.MetallicButton, IOTACtrl):
   """ Customized MetallicButton """
 
-  def __init__(self, parent, label='', bmp=None, size=wx.DefaultSize,
+  def __init__(self,
+               parent,
+               label='',
+               bmp=None,
+               size=wx.DefaultSize,
                style=mb.MB_STYLE_BOLD_LABEL,
                handler_function=None,
-               user_data=None, start_color=(218, 218, 218),
-               gradient_percent=15, highlight_color=(250, 250, 250),
-               label_size=LABEL_SIZE, caption_size=CAPTION_SIZE,
-               button_margin=4, disable_after_click=0):
+               user_data=None,
+               start_color=(225, 225, 225),
+               gradient_percent=-10,
+               highlight_color=(250, 250, 250),
+               label_size=LABEL_SIZE,
+               caption_size=CAPTION_SIZE,
+               button_margin=4,
+               disable_after_click=0):
     if isinstance(bmp, str):
       bmp = StandardBitmap(bmp)
       bmp_size = bmp.GetSize()
@@ -100,55 +129,100 @@ class GradButton(mb.MetallicButton):
                                button_margin=button_margin,
                                disable_after_click=disable_after_click
                                )
+
+    self.user_data = user_data
     if handler_function is not None:
       self.bind_event(wx.EVT_BUTTON, handler_function)
 
-  # def OnLeftDown(self, evt):
-  #   """Sets the pressed state and depending on the click position will
-  #   show the popup menu if one has been set.
-  #   """
-  #   if not self.IsEnabled() :
-  #     return
-  #   if wx.__version__[0] == '4':
-  #     pos = evt.GetPosition()
-  #     self.SetState(GRADIENT_PRESSED)
-  #     size = self.GetSize()
-  #   else:
-  #     pos = evt.GetPositionTuple()
-  #     self.SetState(GRADIENT_PRESSED)
-  #     size = self.GetSizeTuple()
-  #   if pos[0] >= size[0] - 16:
-  #     if self._menu is not None:
-  #       self.ShowMenu()
-  #   self.SetFocus()
-  #
-  # def OnLeftUp(self, evt):
-  #   """Post a button event if the control was previously in a
-  #   pressed state.
-  #   @param evt: wx.MouseEvent
-  #   """
-  #   if not self.IsEnabled() :
-  #     return
-  #   if self._state['cur'] == GRADIENT_PRESSED:
-  #     if wx.__version__[0] == '4':
-  #       pos = evt.GetPosition()
-  #       size = self.GetSize()
-  #     else:
-  #       pos = evt.GetPositionTuple()
-  #       size = self.GetSizeTuple()
-  #     if self._disable_after_click > 0 :
-  #       self.Enable(False)
-  #     self.__PostEvent()
-  #   self.SetState(GRADIENT_HIGHLIGHT)
-  #   if self._disable_after_click > 0 :
-  #     wx.CallLater(self._disable_after_click, lambda : self.Enable(True))
-  #
-  # def __PostEvent(self):
-  #   """Post a button event to parent of this control"""
-  #   bevt = wx.CommandEvent(wx.wxEVT_COMMAND_BUTTON_CLICKED, self.GetId())
-  #   bevt.SetEventObject(self)
-  #   bevt.SetString(self.GetLabel())
-  #   wx.PostEvent(self.GetParent(), bevt)
+
+class AddDeleteButtonBox(wx.Panel):
+  """ A box with Add and Delete bitmap buttons; when Delete button is
+      pressed, several delete options show up; an optional Undo button can be
+      added """
+  def __init__(self, parent, reset_button=False):
+    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
+
+    self.btn_sizer = wx.FlexGridSizer(1, 4, 0, 5)
+    self.SetSizer(self.btn_sizer)
+
+    bmp_add = bitmaps.fetch_icon_bitmap('actions', 'edit_add', size=16)
+    bmp_del = bitmaps.fetch_icon_bitmap('actions', 'editdelete', size=16)
+    bmp_rst = bitmaps.fetch_icon_bitmap('actions', 'recur', size=16)
+
+    # Main buttons
+    self.btn_add = GradButton(self, bmp=bmp_add, button_margin=2, size=(24, 24))
+    self.btn_del = GradButton(self, bmp=bmp_del, button_margin=2, size=(24, 24))
+    self.btn_rst = GradButton(self, bmp=bmp_rst, button_margin=2, size=(24, 24))
+    self.btn_sizer.AddMany([self.btn_add,
+                            self.btn_del,
+                            self.btn_rst])
+    if not reset_button:
+      self.btn_rst.Hide()
+
+    # Delete option buttons
+    self.del_btn_sizer = wx.FlexGridSizer(1, 3, 0, 5)
+    self.btn_del_lst = GradButton(self, label='Delete Last', label_size=10,
+                                  style=mb.MB_STYLE_DEFAULT)
+    self.btn_del_sel = GradButton(self, label='Delete Selected', label_size=10,
+                                  style=mb.MB_STYLE_DEFAULT)
+    self.btn_del_not = GradButton(self, label='Cancel', label_size=10,
+                                  style=mb.MB_STYLE_DEFAULT)
+    self.del_btn_sizer.AddMany([self.btn_del_sel,
+                               self.btn_del_lst,
+                               self.btn_del_not])
+    self.btn_sizer.Add(self.del_btn_sizer, flag=wx.LEFT, border=10)
+    self.Layout()
+
+    self.btn_sizer.Hide(self.del_btn_sizer)
+
+    # Bindings
+    # Main Buttons
+    self.Bind(wx.EVT_BUTTON, self.onDelete, self.btn_del)
+    self.Bind(wx.EVT_BUTTON, self.onAdd, self.btn_add)
+    self.Bind(wx.EVT_BUTTON, self.onReset, self.btn_rst)
+
+    # Delete Buttons
+    self.Bind(wx.EVT_BUTTON, self.onDeleteSelected, self.btn_del_sel)
+    self.Bind(wx.EVT_BUTTON, self.onDeleteLast, self.btn_del_lst)
+    self.Bind(wx.EVT_BUTTON, self.onCancelDelete, self.btn_del_not)
+
+  def onDelete(self, e):
+    self._show_delete_options()
+    e.Skip()
+
+  def onAdd(self, e):
+    e.Skip()
+
+  def onReset(self, e):
+    e.Skip()
+
+  def onDeleteSelected(self, e):
+    self._hide_delete_options()
+    e.Skip()
+
+  def onDeleteLast(self, e):
+    self._hide_delete_options()
+    e.Skip()
+
+  def onCancelDelete(self, e):
+    self._hide_delete_options()
+    e.Skip()
+
+  def _show_delete_options(self):
+    self.btn_del.Disable()
+    self.btn_add.Disable()
+    self.btn_rst.Disable()
+    self.btn_sizer.Show(self.del_btn_sizer)
+    self.Layout()
+
+  def _hide_delete_options(self):
+    self.btn_del.Enable()
+    self.btn_add.Enable()
+    self.btn_rst.Enable()
+    self.btn_sizer.Hide(self.del_btn_sizer)
+    self.Layout()
+
+
 
 class MiniButtonBox(wx.Panel):
   """ A box with three mini buttons for IOTA panel """
@@ -175,6 +249,7 @@ class MiniButtonBox(wx.Panel):
     self.SetBackgroundColour('white')
     self.Fit()
 
+
 class MiniButtonBoxInput(wx.Panel):
   """ A box with three mini buttons for Input file panel """
 
@@ -185,19 +260,16 @@ class MiniButtonBoxInput(wx.Panel):
     self.btn_box = wx.BoxSizer(wx.HORIZONTAL)
 
     viewmag_bmp = bitmaps.fetch_icon_bitmap('actions', 'viewmag', size=16)
-    # self.btn_mag = btn.GenBitmapButton(self, bitmap=viewmag_bmp)
-    self.btn_mag =GradButton(self, bmp=viewmag_bmp, size=(31, 30),
-                             gradient_percent=0)
+    self.btn_mag = GradButton(self, bmp=viewmag_bmp, size=(24, 24),
+                              button_margin=2, gradient_percent=-15)
 
     del_bmp = bitmaps.fetch_icon_bitmap('actions', 'editdelete', size=16)
-    # self.btn_delete = btn.GenBitmapButton(self, bitmap=del_bmp)
-    self.btn_delete = GradButton(self, bmp=del_bmp, size=(31, 30),
-                                 gradient_percent=0)
+    self.btn_delete = GradButton(self, bmp=del_bmp, size=(24, 24),
+                                 button_margin=2, gradient_percent=-15)
 
     info_bmp = bitmaps.fetch_icon_bitmap('actions', 'info', size=16)
-    # self.btn_info = btn.GenBitmapButton(self, bitmap=info_bmp)
-    self.btn_info = GradButton(self, bmp=info_bmp, size=(31, 30),
-                               gradient_percent=0)
+    self.btn_info = GradButton(self, bmp=info_bmp, size=(24, 24),
+                               button_margin=2, gradient_percent=-15)
 
     self.btn_box.Add(self.btn_mag)
     self.btn_box.Add(self.btn_delete, flag=wx.LEFT, border=5)
@@ -214,6 +286,33 @@ class DataTypeChoice(wx.Panel):
     self.type = wx.Choice(self, -1, choices=choices)
     self.Fit()
 
+
+class IOTAButton(wx.Button, IOTACtrl):
+  _id = -1
+  ''' Master class for all basic IOTA buttons '''
+
+  def __init__(self, parent, label=wx.EmptyString, handler_function=None):
+    ''' Constructor
+    :param label: button label
+    :param handler_function: handler function for the button press event
+    '''
+    wx.Button.__init__(self, parent, label=label, id=self._id)
+
+    self.window = getattr(parent, 'window', None)
+    if not self.window:
+      self.window = self.GetTopLevelParent()
+    self.parent = parent
+
+    if handler_function:
+      self.bind_event(wx.EVT_BUTTON, handler_function)
+
+
+class OKButton(IOTAButton):
+  _id = wx.ID_OK
+
+
+class CancelButton(IOTAButton):
+  _id = wx.ID_CANCEL
 
 # ---------------------------------- Inputs ---------------------------------- #
 
@@ -360,6 +459,8 @@ class CtrlBase(wx.Panel):
 
     wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=size)
 
+    self.window = self.GetTopLevelParent()
+
     # TODO: streamline this
     # Set control attributes
     self.expert_level = 0
@@ -410,9 +511,14 @@ class DialogButtonsCtrl(CtrlBase):
       buttons = [('Yes', wx.ID_YES), ('No', wx.ID_NO)]
     elif preset == 'CLOSE':
       buttons = [('Close', wx.ID_CLOSE)]
-    if preset == 'PROC_DIALOG':
+    elif preset == 'PROC_DIALOG':
       buttons = [('OK', wx.ID_OK), ('Cancel', wx.ID_CANCEL)]
       choices = ['Basic', 'Advanced', 'Developer']
+      choice_label = 'Expert Level: '
+      choice_size = (150, -1)
+    elif preset == 'PHIL_DIALOG':
+      buttons = [('OK', wx.ID_OK), ('Cancel', wx.ID_CANCEL)]
+      choices = ['Basic', 'Intermediate', 'Advanced', 'Developer']
       choice_label = 'Expert Level: '
       choice_size = (150, -1)
 
@@ -438,6 +544,7 @@ class DialogButtonsCtrl(CtrlBase):
 
     main_sizer.AddGrowableCol(0)
     self.SetSizer(main_sizer)
+
 
 class TextCtrlWithButtons(CtrlBase):
   """ Text control with multiple buttons """
@@ -514,6 +621,7 @@ class InputCtrl(CtrlBase):
   def reset_default(self):
     self.ctr.SetValue(self.value)
 
+
 class ChoiceCtrl(CtrlBase):
   """ Generic panel will place a choice control w/ label and a text control (
   optional) which will activate when a 'custom' setting is selected """
@@ -521,6 +629,7 @@ class ChoiceCtrl(CtrlBase):
   def __init__(self, parent,
                choices,
                custom_choices=None,
+               captions=None,
                label='',
                label_size=(200, -1),
                label_style='normal',
@@ -548,9 +657,9 @@ class ChoiceCtrl(CtrlBase):
     if all(isinstance(i, tuple) for i in self.choices):
       items = [i[0] for i in choices]
       self.ctr = wx.Choice(self, size=ctrl_size, choices=items)
-      for choice in self.choices:
-        item_idx = self.ctr.FindString(choice[0])
-        self.ctr.SetClientData(item_idx, choice[1])
+      for c in self.choices:
+        item_idx = self.ctr.FindString(c[0])
+        self.ctr.SetClientData(item_idx, c[1])
     else:
       self.ctr = wx.Choice(self, size=ctrl_size, choices=self.choices)
 
@@ -723,7 +832,6 @@ class OptionCtrl(CtrlBase):
         sub_label = key
       else:
         sub_label = sub_labels[self.items.index((key, value))].decode('utf-8')
-
 
       if len(self.items) > 1:
         opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)
@@ -914,22 +1022,20 @@ class CustomListCtrl(CtrlBase):
   def __init__(self, parent, *args, **kwargs):
     CtrlBase.__init__(self, parent=parent, *args, **kwargs)
 
-    self.sizer = wx.BoxSizer(wx.VERTICAL)
+    self.sizer = wx.GridBagSizer(0, 0) #wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.sizer)
 
     # Input List control
-    self.control_sizer = wx.BoxSizer(wx.VERTICAL)
     self.ctr = InputListCtrl(self, ID=wx.ID_ANY,
                              style=ulc.ULC_REPORT |
                                    ulc.ULC_HRULES |
                                    ulc.ULC_VRULES |
                                    ulc.ULC_SINGLE_SEL |
                                    ulc.ULC_HAS_VARIABLE_ROW_HEIGHT |
-                                   ulc.ULC_NO_HIGHLIGHT |
-                                   ulc.ULC_FOOTER)
-    self.control_sizer.Add(self.ctr, -1, flag=wx.EXPAND)
-    self.sizer.Add(self.control_sizer, 1, flag=wx.EXPAND)
-
+                                   ulc.ULC_NO_HIGHLIGHT)
+    self.sizer.Add(self.ctr, pos=(0, 0), flag=wx.EXPAND)
+    self.sizer.AddGrowableRow(0)
+    self.sizer.AddGrowableCol(0)
     self.ctr.SetFont(self.cfont)
 
 
@@ -971,11 +1077,11 @@ class VirtualImageListCtrl(CtrlBase):
 class FileListCtrl(CustomListCtrl):
   """ File list window for the input tab """
 
-  def __init__(self, parent, size=(-1, 300)):
+  def __init__(self, parent, size=(-1, 200)):
     CustomListCtrl.__init__(self, parent=parent, size=size)
 
     self.parent = parent
-    self.main_window = parent.GetParent()
+    self.window = parent.window
 
     # Initialize dictionaries for imported data types
     self.all_data_images = {}
@@ -991,30 +1097,81 @@ class FileListCtrl(CustomListCtrl):
     self.ctr.setResizeColumn(2)
 
     # Add file / folder buttons
-    # self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.button_sizer = wx.FlexGridSizer(1, 6, 0, 10)
-    self.btn_add_file = wx.Button(self, label='Add File...')
-    self.btn_add_dir = wx.Button(self, label='Add Folder...')
-    # self.txt_total_images = wx.StaticText(self, label='')
-    self.button_sizer.Add(self.btn_add_file)
-    self.button_sizer.Add(self.btn_add_dir)
-    self.button_sizer.Add((0, 0))
-    # self.button_sizer.Add(self.txt_total_images)
-    self.button_sizer.AddGrowableCol(2)
+    self.button_sizer = wx.FlexGridSizer(1, 5, 0, 5)
+    bmp_add = bitmaps.fetch_icon_bitmap('actions', 'edit_add', size=16)
+    bmp_browse = bitmaps.fetch_icon_bitmap('actions', 'open', scale=(16, 16))
+    self.inp_path = TextCtrlWithButtons(self, ctrl_label='Input path: ')
+    self.btn_add_path = GradButton(self, bmp=bmp_add, label=' Add Path',
+                                   label_size=norm_font_size)
+    self.btn_add_path.Disable()
+    self.btn_browse = GradButton(self, bmp=bmp_browse, label=' Browse...',
+                                 label_size=norm_font_size)
+    self.txt_total_images = wx.StaticText(self, label='0 total images')
+    self.button_sizer.Add(self.inp_path, flag=wx.EXPAND)
+    self.button_sizer.Add(self.btn_add_path)
+    self.button_sizer.Add(self.btn_browse)
+    self.button_sizer.Add((20, 0))
+    self.button_sizer.Add(self.txt_total_images, flag=wx.ALIGN_RIGHT)
+    self.button_sizer.AddGrowableCol(0)
+    # self.button_sizer.AddGrowableCol(3)
 
-    self.sizer.Add(self.button_sizer, flag=wx.EXPAND | wx.TOP | wx.BOTTOM,
-                   border=10)
+    self.sizer.Add(self.button_sizer, pos=(1, 0), border=10,
+                   flag=wx.EXPAND | wx.TOP | wx.BOTTOM)
 
     # Event bindings
-    self.Bind(wx.EVT_BUTTON, self.onAddFile, self.btn_add_file)
-    self.Bind(wx.EVT_BUTTON, self.onAddFolder, self.btn_add_dir)
+    self.Bind(wx.EVT_BUTTON, self.onAddPath, self.btn_add_path)
+    self.Bind(wx.EVT_BUTTON, self.onBrowse, self.btn_browse)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onPath, self.inp_path.txt_ctrl)
+    self.Bind(wx.EVT_TEXT, self.onPathTyped, self.inp_path.txt_ctrl)
 
-  def onAddFile(self, e):
+  def onPath(self, e):
+    self.add_path()
+    self.inp_path.txt_ctrl.SetValue('')
+    self.btn_add_path.Disable()
+
+  def onPathTyped(self, e):
+    txt = self.inp_path.txt_ctrl.GetValue()
+    if txt and not txt.isspace():
+      self.btn_add_path.Enable()
+    else:
+      self.btn_add_path.Disable()
+
+  def onAddPath(self, e):
+    self.add_path()
+    self.btn_add_path.Disable()
+
+  def add_path(self):
+    path = self.inp_path.txt_ctrl.GetValue()
+    self.inp_path.txt_ctrl.SetValue(os.path.abspath(path))
+
+    # Unpack wildcards:
+    paths = glob(pathname=path)
+
+    # Add paths to input control
+    for p in paths:
+      if os.path.exists(p):
+        self.add_item(os.path.abspath(p))
+
+  def onBrowse(self, e):
+    command_list = [('Browse folders...',
+                     lambda evt: self.open_folder_dialog()),
+                    ('Browse files...',
+                     lambda evt: self.open_file_dialog())]
+    browse_menu = Menu(self)
+    browse_menu.add_commands(command_list)
+    self.PopupMenu(browse_menu)
+    browse_menu.Destroy()
+
+  def open_file_dialog(self):
+    wx.SystemOptions.SetOption("osx.openfiledialog.always-show-types", "1")
+    wildcard = "Image Files (*.cbf; *.mccd; *.img)|*.cbf;*.mccd;*.img|" \
+               "Image List Files (*.lst; *.txt)|*.lst;*.txt|" \
+               "All Files (*.*)|*.*|"
     file_dlg = wx.FileDialog(self,
                              message="Load File",
                              defaultDir=os.curdir,
-                             defaultFile="*",
-                             wildcard="*",
+                             defaultFile="*.cbf;*.mccd;*.img",
+                             wildcard=wildcard,
                              style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST |
                                    wx.FD_MULTIPLE)
     if file_dlg.ShowModal() == wx.ID_OK:
@@ -1022,15 +1179,14 @@ class FileListCtrl(CustomListCtrl):
       for item in files:
         self.add_item(item)
     file_dlg.Destroy()
-    e.Skip()
 
-  def onAddFolder(self, e):
+  def open_folder_dialog(self):
     dlg = wx.DirDialog(self, "Load Folder:",
                        style=wx.DD_DEFAULT_STYLE)
     if dlg.ShowModal() == wx.ID_OK:
-      self.add_item(dlg.GetPath())
+      path = dlg.GetPath()
+      self.add_item(path)
     dlg.Destroy()
-    e.Skip()
 
   def set_type_choices(self, path):
     # Determine what type of input this is and present user with choices
@@ -1038,7 +1194,6 @@ class FileListCtrl(CustomListCtrl):
     type_choices = ['[  SELECT INPUT TYPE  ]']
     preferred_selection = 0
     inputs, input_type = ginp.get_input(path)
-
     if os.path.isdir(path):
       type_choices.extend(['raw image folder', 'image pickle folder'])
       if input_type in type_choices:
@@ -1058,10 +1213,10 @@ class FileListCtrl(CustomListCtrl):
     # Generate item
     inputs, inp_choices, inp_sel = self.set_type_choices(path)
     type_choice = DataTypeChoice(self.ctr,
-                                    choices=inp_choices)
+                                 choices=inp_choices)
     item = InputListItem(path=path,
-                            type=type_choice,
-                            buttons=MiniButtonBoxInput(self.ctr))
+                         type=type_choice,
+                         buttons=MiniButtonBoxInput(self.ctr))
 
     self.Bind(wx.EVT_CHOICE, self.onTypeChoice, item.type.type)
     self.Bind(wx.EVT_BUTTON, self.onMagButton, item.buttons.btn_mag)
@@ -1082,14 +1237,16 @@ class FileListCtrl(CustomListCtrl):
                                              'raw image file',
                                              'raw image list',
                                              'image pickle list']:
-      self.main_window.set_tool_state(self.main_window.tb_btn_run, True)
+      # self.window.set_tool_state(self.window.tb_btn_run, True)
+      self.window.btn_run.Enable()
       self.all_data_images[item.path] = inputs
 
       # Calculate # of images and display w/ item
       self.ctr.SetStringItem(idx, 0, str(len(inputs)))
 
       if "image" in item.type.type.GetString(inp_sel):
-        view_bmp = bitmaps.fetch_custom_icon_bitmap('image_viewer16')
+        view_bmp = bitmaps.fetch_custom_icon_bitmap('hklview_2d',
+                                                    scale=(16, 16))
         item.buttons.btn_mag.SetBitmapLabel(view_bmp)
     else:
       warn_bmp = bitmaps.fetch_icon_bitmap('actions', 'status_unknown',
@@ -1121,7 +1278,7 @@ class FileListCtrl(CustomListCtrl):
       if self.image_count > 0:
         self.update_total_image_count()
 
-    self.main_window.Layout()
+    self.window.Layout()
 
   def onTypeChoice(self, e):
     type = e.GetEventObject().GetParent()
@@ -1134,10 +1291,9 @@ class FileListCtrl(CustomListCtrl):
     for idx in range(self.ctr.GetItemCount()):
       if self.ctr.GetItemData(idx).type_selection != 0:
         data_items += 1
-    self.main_window.set_tool_state(self.main_window.tb_btn_run,
-                                    (data_items > 0))
+    self.window.set_tool_state(self.window.tb_btn_run,
+                               (data_items > 0))
     e.Skip()
-
 
   def onMagButton(self, e):
     idx = e.GetEventObject().GetParent().index
@@ -1168,7 +1324,7 @@ class FileListCtrl(CustomListCtrl):
   def view_images(self, img_list, img_type=None):
     """ Launches image viewer (depending on backend) """
     # self.parent.input_phil.show()
-    viewer = self.main_window.gparams.gui.image_viewer
+    viewer = self.window.gparams.gui.image_viewer
     if viewer == 'cxi.view' and 'pickle' not in img_type:
         wx.MessageBox('cxi.view only accepts image pickles', 'Warning',
                       wx.OK | wx.ICON_EXCLAMATION)
@@ -1206,7 +1362,6 @@ class FileListCtrl(CustomListCtrl):
                                  img_type=img_type)
       viewer.start()
 
-
   def onDelButton(self, e):
     item = e.GetEventObject().GetParent()
     self.delete_button(item.index)
@@ -1214,6 +1369,7 @@ class FileListCtrl(CustomListCtrl):
   def delete_all(self):
     for idx in range(self.ctr.GetItemCount()):
       self.delete_button(index=0)
+    self.window.btn_run.Disable()
 
   def delete_button(self, index):
     try:
@@ -1235,6 +1391,9 @@ class FileListCtrl(CustomListCtrl):
       type_choice.type.SetSelection(type_selection)
       self.ctr.SetItemData(i, item_data)
 
+    if self.ctr.GetItemCount() == 0:
+      self.window.btn_run.Disable()
+
   def onInfoButton(self, e):
     """ Info / alert / error button (will change depending on circumstance) """
     idx = e.GetEventObject().GetParent().index
@@ -1249,17 +1408,16 @@ class FileListCtrl(CustomListCtrl):
                     wx.ICON_INFORMATION)
 
   def update_total_image_count(self):
-    # pass
-    # self.txt_total_images.SetLabel("{} total images".format(self.image_count))
-    col1 = self.ctr.GetColumn(1)
-    col1.SetFooterText("{} total images".format(self.image_count))
-
-    font = self.ctr.GetFont()
-    font.SetPointSize(18)
-    font.SetWeight(wx.FONTWEIGHT_BOLD)
-    col1.SetFooterFont(font)
-
-    self.ctr.SetColumn(1, col1)
+    self.txt_total_images.SetLabel("{} total images".format(self.image_count))
+    # col1 = self.ctr.GetColumn(1)
+    # col1.SetFooterText("{} total images".format(self.image_count))
+    #
+    # font = self.ctr.GetFont()
+    # font.SetPointSize(18)
+    # font.SetWeight(wx.FONTWEIGHT_BOLD)
+    # col1.SetFooterFont(font)
+    #
+    # self.ctr.SetColumn(1, col1)
 
 class TextFileView(wx.Dialog):
   def __init__(self, parent,
@@ -1525,8 +1683,6 @@ class TableCtrl(CtrlBase):
         cell.SetFont(self.cfont)
         self.sizer.Add(cell)
 
-    self.SetSizer(self.sizer)
-
 
 class RichTextTableCtrl(CtrlBase):
   """ Generic panel will place a table w/ x and y labels
@@ -1611,46 +1767,34 @@ class RichTextTableCtrl(CtrlBase):
 
     self.Layout()
 
-class WidgetFactory(object):
-  ''' Class that will automatically make widgets for automated dialog making '''
-  w_args = [
-    'text',
-    'path',
-    'choice',
-    'checkbox',
-    'input_list'
-  ]
 
-  w_kwargs = [
-    'grid',
-    'browse_btn',
-    'mag_btn',
-    'onChange',
-    'onUpdate',
-    'onToggle',
-  ]
+class Menu(wx.Menu):
+  """ Customizable context menu for IOTA GUI (based on the base Menu class
+      for Phenix GUI) """
 
-  def __init__(self):
-    pass
+  def __init__(self, frame, *args, **kwargs):
+    """ Constructor
+    :param frame: parent window
+    """
+    wx.Menu.__init__(self, *args, **kwargs)
+    self.frame = frame
 
-  @staticmethod
-  def make_widget(parent, object, label):
-    wtype = object.type.phil_type
-    wstyle = object.style
+  def add_commands(self, command_list=None):
+    if not command_list:
+      raise Sorry('Cannot initialize context menu: no commands found!')
+    for (label, function) in command_list:
+      self.add_command(label, function)
 
-    if wtype == 'path':  # Two styles only: single line w/ Browse, or input list
-      if wstyle == 'input_list':
-        widget = FileListCtrl(parent=parent)
-      else:
-        widget = InputCtrl(parent=parent, label=label, buttons=True)
-    elif wtype in ('str', 'unit_cell', 'space_group'):
-      widget = InputCtrl(parent=parent, label=label, buttons=False)
-    elif wtype == 'choice':
-      widget = ChoiceCtrl(parent=parent, choices=['blah', 'bleh', 'pfui'],
-                          label=label)
-    elif wtype in ('int', 'float'):
-      widget = SpinCtrl(parent=parent, label=label)
-    elif wtype == 'bool':
-      widget = wx.CheckBox(parent=parent, label=label)
+  def add_command(self, label, function):
+    if label is None:
+      self.AppendSeparator()
+    else:
+      menu_item = self.Append(wx.ID_ANY, label)
+      if function is not None:
+        self.frame.Bind(wx.EVT_MENU, function, menu_item)
 
-    return widget
+  def get_event_item_label (self, event):
+    item = self.FindItemById(event.GetId())
+    return item.GetText()
+
+# ---end

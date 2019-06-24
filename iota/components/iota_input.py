@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/30/2019
+Last Changed: 07/17/2019
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected. PHILFixer can be used to ensure
               backwards compatibility with older param sets.
@@ -32,80 +32,149 @@ output = $PWD
   .multiple = False
   .help = Base output directory
   .alias = Project Folder
+  .style = path:folder permissions:read
+data_selection
+{
+  image_triage
+  .help = Discard images that lack minimum number of Bragg spots
+  .style = grid:auto has_scope_switch
+  {
+    flag_on = True
+      .type = bool
+      .help = Perform a round of spotfinding to see if image has diffraction
+      .alias = Perform image triage
+      .style = scope_switch
+    minimum_Bragg_peaks = 10
+      .type = int
+      .help = Minimum number of Bragg peaks to establish diffraction
+      .alias = Min. number of Bragg Peaks
+    strong_sigma = 5.0
+      .type = float
+      .help = Sigma level to define a strong reflection
+      .alias = Strong reflection sigma
+  }
+  image_range
+  .help = Use a range of images, e.g. 5 - 1000
+  .expert_level = 0
+  .style = grid:auto has_scope_switch
+  {
+    flag_on = False
+      .type = bool
+      .style = scope_switch
+    range = None
+      .type = str
+      .alias = Image range
+      .help = Can input multiple ranges, e.g. "5, 60-100, 200-1500"
+  }
+  random_sample
+  .help = Use a randomized subset of images (or -r <number> option)
+  .expert_level = 0
+  .style = grid:auto has_scope_switch
+  {
+    flag_on = False
+      .type = bool
+      .style = scope_switch
+    number = 0
+      .type = int
+      .alias = Random subset
+      .help = Number of images in random sample
+  }
+}
 image_import
   .help = Parameters for image importing (& triage)
   .alias = Import Options
 {
-  image_triage = True
-    .type = bool
-    .help = Perform a round of spotfinding to see if image has diffraction
-  minimum_Bragg_peaks = 10
-    .type = int
-    .help = Minimum number of Bragg peaks to establish diffraction
-  strong_sigma = 5.0
-    .type = float
-    .help = Sigma level to define a strong reflection
   mask = None
     .type = path
     .help = Mask for ignored pixels
-  estimate_gain = False
-    .type = bool
-    .help = Estimates detector gain (helps improve spotfinding)
+    .style = path:file permissions:read
+    .alias = Beamstop Mask
   beamstop = 0
     .type = float
     .help = Beamstop shadow threshold, zero to skip
+    .alias = Shadow threshold
+    .expert_level = 1
   distance = 0
     .type = float
     .help = Alternate crystal-to-detector distance (set to zero to leave the same)
+    .alias = Detector distance
+    .expert_level = 1
   beam_center
     .help = Alternate beam center coordinates (in PIXELS)
     .help = Set to zero to leave the same
+    .alias = Beam Center (pixels)
+    .style = grid:2x1
+    .expert_level = 1
   {
     x = 0
       .type = int
+      .alias = X
+      .expert_level = 1
     y = 0
       .type = int
+      .alias = Y
+      .expert_level = 1
   }
+  estimate_gain = False
+  .type = bool
+  .help = Estimates detector gain (helps improve spotfinding)
+  .alias = Estimate detector gain
+  .expert_level = 1
 }
 analysis
   .help = "Analysis / visualization options."
   .alias = Analysis Options
 {
-  run_clustering = False
-    .type = bool
-    .help = Set to True to turn on hierarchical clustering of unit cells
-  cluster_threshold = 5000
-    .type = int
-    .help = threshold value for unit cell clustering
-  cluster_n_images = None
-    .type = int
-    .help = How many images to cluster? (Useful for huge datasets.)
-  cluster_limit = 5
-    .type = int
-    .help = "Major clusters" are defined as clusters with over n members
-  cluster_write_files = True
-    .type = bool
-    .help = Set to True to write lists of images belonging to major clusters
+  clustering
+    .help = Hierarchical clustering of integration results
+    .alias = Clustering
+    .style = grid:auto has_scope_switch
+  {
+    flag_on = False
+      .type = bool
+      .help = Set to True to turn on hierarchical clustering of unit cells
+      .style = scope_switch
+    threshold = 5000
+      .type = int
+      .help = threshold value for unit cell clustering
+      .alias = Threshold
+    n_images = None
+      .type = int
+      .help = How many images to cluster? (Useful for huge datasets.)
+      .alias = No. images
+    limit = 5
+      .type = int
+      .help = "Major clusters" are defined as clusters with over n members
+      .alias = Max. clusters
+    write_files = True
+      .type = bool
+      .help = Set to True to write lists of images belonging to major clusters
+      .alias = Write files
+  }
   viz = None *no_visualization integration cv_vectors
     .type = choice
     .help = Set to "integration" to visualize spotfinding and integration results.
     .help = Set to "cv_vectors" to visualize accuracy of CV vectors
+    .alias = Visualization
   charts = False
     .type = bool
     .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
+    .alias = Output integration charts
   summary_graphs = False
     .type = bool
     .help = If True: spot-finding heatmap, res. histogram and beamXY graph
+    .alias = Output summary charts
 }
 advanced
   .help = "Advanced, debugging and experimental options."
   .alias = Advanced
 {
-  processing_backend = *cctbx.xfel ha14
+  processing_backend = *cctbx_xfel ha14
     .type = choice
     .help = Choose image processing backend software
     .expert_level = 1
     .alias = Processing Backend
+    .optional = False
   prime_prefix = prime
     .type = str
     .help = Prefix for the PRIME script filename
@@ -116,28 +185,6 @@ advanced
     .help = If None, temp output goes to <output>/integration/###/tmp/
     .alias = Temp Folder
     .expert_level = 1
-  image_range
-    .help = Use a range of images, e.g. 5 - 1000
-    .expert_level = 0
-    .alias = Image Range
-  {
-    flag_on = False
-      .type = bool
-    range = None
-      .type = str
-      .help = Can input multiple ranges, e.g. "5, 60-100, 200-1500"
-  }
-  random_sample
-    .help = Use a randomized subset of images (or -r <number> option)
-    .expert_level = 0
-    .alias = Random Sample
-  {
-    flag_on = False
-      .type = bool
-    number = 0
-      .type = int
-      .help = Number of images in random sample
-  }
   reference_geometry = None
     .type = path
     .help = Detector geometry from ensemble refinement
@@ -148,7 +195,7 @@ mp
   .help = Multiprocessing options
   .alias = Multiprocessing
 {
-  n_processors = 0
+  n_processors = 1
     .type = int
     .help = No. of processing units
     .alias = No. Processors
@@ -156,6 +203,7 @@ mp
     .type = choice
     .help = Multiprocessing method
     .alias = Method
+    .optional = False
   queue = None
     .type = str
     .help = Multiprocessing queue
@@ -234,12 +282,12 @@ def process_ui_input(args, phil_args, paramfile, mode='auto'):
 
   # Check for -r option and set random subset parameter
   if args.random > 0:
-    params.advanced.random_sample.flag_on = True
-    params.advanced.random_sample.number = args.random[0]
+    params.data_selection.random_sample.flag_on = True
+    params.data_selection.random_sample.number = args.random[0]
 
   if args.range:
-    params.advanced.image_range.flag_on = True
-    params.advanced.image_range.range = args.range
+    params.data_selection.image_range.flag_on = True
+    params.data_selection.image_range.range = args.range
 
   if args.watch > 0:
     params.gui.monitor_mode = True
@@ -296,12 +344,12 @@ def process_input(args, phil_args, paramfile=None, gui=False,
 
   # Check for -r option and set random subset parameter
   if args.random > 0:
-    params.advanced.random_sample.flag_on = True
-    params.advanced.random_sample.number = args.random[0]
+    params.data_selection.random_sample.flag_on = True
+    params.data_selection.random_sample.number = args.random[0]
 
   if args.range:
-    params.advanced.image_range.flag_on = True
-    params.advanced.image_range.range = args.range
+    params.data_selection.image_range.flag_on = True
+    params.data_selection.image_range.range = args.range
 
   # Set temporary folder path
   if args.tmp is not None:
@@ -401,7 +449,7 @@ def write_defaults(current_path=None, txt_out=None, method='cctbx_xfel',
     distl_permit_binning=False
     beam_search_scope=0.5
     '''
-  elif method.lower() in ('dials', 'cctbx.xfel'):
+  elif method.lower() in ('dials', 'cctbx.xfel', 'cctbx_xfel'):
     default_target = '''
     verbosity=10
     spotfinder
@@ -516,7 +564,13 @@ class PHILFixer():
       ('advanced.monitor_mode', 'gui.monitor_mode'),
       ('cctbx_xfel.filter.target_pointgroup', 'cctbx_xfel.filter.pointgroup'),
       ('cctbx_xfel.filter.target_unit_cell', 'cctbx_xfel.filter.unit_cell'),
-      ('cctbx_xfel.filter.target_uc_tolerance', 'cctbx_xfel.filter.uc_tolerance')
+      ('cctbx_xfel.filter.target_uc_tolerance',
+       'cctbx_xfel.filter.uc_tolerance'),
+      ('analysis.run_clustering', 'analysis.clustering.flag_on'),
+      ('analysis.cluster_threshold', 'analysis.clustering.threshold'),
+      ('analysis.cluster_n_images', 'analysis.clustering.n_images'),
+      ('analysis.cluster_limit', 'analysis.clustering.limit'),
+      ('analysis.cluster_write_files', 'analysis.clustering.write_files')
     ]
 
     self.word_diffs = [

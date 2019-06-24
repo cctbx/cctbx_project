@@ -198,7 +198,7 @@ class Triage(object):
     start_spa = self.params.cctbx_xfel.grid_search.area_median
 
     # Determine triage success
-    if N_Bragg_spots >= self.params.image_import.minimum_Bragg_peaks:
+    if N_Bragg_spots >= self.params.data_selection.image_triage.minimum_Bragg_peaks:
       log_info.append('ACCEPTED! Selected starting point:')
       log_info.append('{:<{w}}: S = {:<2}, H = {:<2}, A = {:<2}, Bragg = {:<6.0f}'\
                       ''.format(img_filename, start_sih, start_sph, start_spa,
@@ -1160,7 +1160,7 @@ class ImageImporter(ImageImporterBase):
 
     # Triage image and generate grid search parameters
     if self.img_object.experiments:
-      if self.params.image_import.image_triage:
+      if self.params.data_selection.image_triage.flag_on:
         hmed, amed = self.image_triage()
       else:
         hmed = self.params.cctbx_xfel.grid_search.height_median

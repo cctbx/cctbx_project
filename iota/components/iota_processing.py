@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 03/25/2019
+Last Changed: 07/17/2019
 Description : Runs spotfinding, indexing, refinement and integration using
               subclassed DIALS Stills Processor module. Selector class
               applies filters based on unit cell, space group, etc.
@@ -33,11 +33,12 @@ cctbx_xfel
   .alias = Processing Options
 {
   target = None
-    .type = str
+    .type = path
     .multiple = False
     .help = Target (.phil) file with integration parameters for DIALS
-    .alias = Target File
+    .alias = Processing script
     .expert_level = 0
+    .style = path:file
   target_space_group = None
     .type = space_group
     .help = Target space (or point) group (if known)
@@ -48,19 +49,22 @@ cctbx_xfel
     .help = Target unit cell parameters (if known)
     .alias = Target Unit Cell
     .expert_level = 0
-  use_fft3d = True
+  use_fft3d = False
     .type = bool
     .help = Set to True to use FFT3D in indexing
     .alias = Use FFT3D in indexing
     .expert_level = 2
   significance_filter
     .help = Set to True and add value to determine resolution based on I/sigI
-    .alias = Significance Filter
+    .alias = I/sig(I) cutoff
     .expert_level = 1
+    .style = grid:auto
   {
     flag_on = True
       .type = bool
       .help = Set to true to activate significance filter
+      .alias = Significance filter
+      .style = scope_switch
     sigma = 1.0
       .type = float
       .help = Sigma level to determine resolution cutoff
@@ -69,7 +73,7 @@ cctbx_xfel
     .type = bool
     .help = Will determine sg and reindex if no target space group supplied
     .alias = Determine space group and reindex
-    .expert_level = 1
+    .expert_level = 0
   auto_threshold = False
     .type = bool
     .help = Set to True to estimate global threshold for each image
@@ -78,19 +82,23 @@ cctbx_xfel
   filter
       .help = Throw out results that do not fit user-defined parameters
       .alias = Filters
-      .expert_level = 2
+      .expert_level = 0
+      .style = grid:auto
     {
       flag_on = False
         .type = bool
-        .help = Set to True to activate prefilter
-      crystal_system = None
-        .type = str
-        .help = Target crystal system, e.g. "Tetragonal"
+        .help = Set to True to activate filters
+        .alias = Use filters
+        .style = scope_switch
+      crystal_system = None Triclinic Monoclinic Orthorhombic Tetragonal Trigonal Hexagonal Cubic
+        .type = choice
+        .help = Predicted crystal system for processed data
         .alias = Crystal System
       pointgroup = None
-        .type = str
-        .help = Target point group, e.g. "P422"
+        .type = space_group
+        .help = Target Bravais lattice, e.g. "P422"
         .alias = Bravais Lattice
+        .expert_level = 1
       unit_cell = None
         .type = unit_cell
         .help = In format of "a, b, c, alpha, beta, gamma", e.g. 79.4, 79.4, 38.1, 90.0, 90.0, 90.0
@@ -99,14 +107,16 @@ cctbx_xfel
         .type = float
         .help = Maximum allowed unit cell deviation from target
         .alias = Unit cell tolerance
+        .expert_level = 1
       min_reflections = None
         .type = int
         .help = Minimum integrated reflections per image
-        .alias = Reflections
+        .alias = Min. no. reflections
+        .expert_level = 1
       min_resolution = None
         .type = float
         .help = Minimum resolution for accepted images
-        .alias = Resolution
+        .alias = Resolution cutoff
     }
 }
 '''
@@ -411,8 +421,9 @@ class IOTAImageProcessor(Processor):
         return self.error_handler(e, 'spotfinding', img_object, output)
       else:
         if (
-                self.iparams.image_import.image_triage and
-                len(observed) >= self.iparams.image_import.minimum_Bragg_peaks
+                self.iparams.data_selection.image_triage and
+                len(observed) >=
+                self.iparams.data_selection.image_triage.minimum_Bragg_peaks
         ):
           msg = " FOUND {} SPOTS - IMAGE ACCEPTED!".format(len(observed))
           print("{:-^100}\n\n".format(msg))
@@ -528,7 +539,7 @@ class IOTAImageProcessor(Processor):
     sigmas = obs.sigmas()
     I_over_sigI = Is / sigmas
     strong_spots = len([i for i in I_over_sigI if
-                        i >= self.iparams.image_import.strong_sigma])
+                        i >= self.iparams.data_selection.image_triage.strong_sigma])
 
     # Mosaicity parameters
     mosaicity = round((self.frame.get('ML_half_mosaicity_deg', [0])[0]), 6)

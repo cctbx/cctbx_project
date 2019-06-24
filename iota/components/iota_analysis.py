@@ -5,7 +5,7 @@ from six.moves import range, zip
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 02/15/2019
+Last Changed: 07/17/2019
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -504,22 +504,22 @@ class Analyzer(object):
       uc_table = []
       uc_summary = []
 
-      if self.params.analysis.run_clustering:
+      if self.params.analysis.clustering.flag_on:
         # run hierarchical clustering analysis
         from xfel.clustering.cluster import Cluster
 
         counter = 0
         self.info.clusters = []
 
-        threshold = self.params.analysis.cluster_threshold
-        cluster_limit = self.params.analysis.cluster_limit
+        threshold = self.params.analysis.clustering.threshold
+        cluster_limit = self.params.analysis.clustering.limit
         final_pickles = self.info.categories['integrated'][0]
 
         pickles = []
-        if self.params.analysis.cluster_n_images > 0:
+        if self.params.analysis.clustering.n_images > 0:
           import random
 
-          for i in range(len(self.params.analysis.cluster_n_images)):
+          for i in range(len(self.params.analysis.clustering.n_images)):
             random_number = random.randrange(0, len(final_pickles))
             if final_pickles[random_number] in pickles:
               while final_pickles[random_number] in pickles:
@@ -556,7 +556,7 @@ class Analyzer(object):
 
             # Write to file
             cluster_filenames = [j.path for j in cluster.members]
-            if self.params.analysis.cluster_write_files:
+            if self.params.analysis.clustering.write_files:
               output_file = os.path.join(self.info.int_base,
                                          "uc_cluster_{}.lst".format(counter))
               for fn in cluster_filenames:
@@ -824,7 +824,13 @@ class Analyzer(object):
 
     if self.info.have_results:
       self.print_results()
-      self.unit_cell_analysis()
+
+      try:  # Using try block because it can fail silently
+        self.unit_cell_analysis()
+      except Exception as e:
+        error = 'IOTA CLUSTERING ERROR: ' + e
+        self.info.errors.append(error)
+
       self.print_summary()
       self.make_prime_input()
 

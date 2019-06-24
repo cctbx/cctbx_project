@@ -31,10 +31,10 @@ from libtbx.utils import to_unicode, Sorry
 
 from iota.components.gui.base import IOTABaseFrame, IOTABasePanel
 
+
 class PlotWindow(IOTABaseFrame):
   def __init__(self, parent, id, title, plot_panel=None, *args, **kwargs):
-    IOTABaseFrame.__init__(self, parent, id, title, kill_threads=False,
-                           *args, **kwargs)
+    IOTABaseFrame.__init__(self, parent, id, title, *args, **kwargs)
 
     self.initialize_toolbar()
     self.tb_btn_quit = self.add_tool(label='Quit',
@@ -137,7 +137,7 @@ class Plotter(IOTABasePanel):
   def plot_table_text(self, data):
     data = [[to_unicode(i) for i in j] for j in data]
     stripes = zip(*data)
-    col_ws = [max([len(i) for i in strp])for strp in stripes]
+    col_ws = [max([len(i) if i else 0 for i in strp]) for strp in stripes]
     set_ws = [5 if i <= 3 else i + 2 for i in col_ws]
 
     lines = []
@@ -145,7 +145,7 @@ class Plotter(IOTABasePanel):
       for i in item:
         idx = item.index(i)
         width = set_ws[idx]
-        item[idx] = i.ljust(width, u' ')
+        item[idx] = i.ljust(width, u' ') if i else ''
       line = u''.join(item)
       lines.append(line)
     table_txt = u'\n'.join(lines)

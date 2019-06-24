@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 03/06/2019
+Last Changed: 07/17/2019
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -198,7 +198,7 @@ class ImageFinderThread(Thread):
     # Poll filesystem and determine which files are new (if any)
 
     ext_file_list = ginp.make_input_list(self.input,
-                                         filter=True,
+                                         filter_results=True,
                                          filter_type='image',
                                          min_back=self.min_back,
                                          last=self.last_file)
@@ -919,7 +919,7 @@ class InterceptorThread(Thread):
 
   def find_new_images(self, min_back=None, last_file=None):
     found_files = ginp.make_input_list([self.data_folder],
-                                       filter=True,
+                                       filter_results=True,
                                        filter_type='image',
                                        last=last_file,
                                        min_back=min_back)
@@ -976,12 +976,15 @@ class ClusterWorkThread():
   def run(self, iterable):
 
     # with Capturing() as junk_output:
+    errors = []
     try:
       ucs = Cluster.from_iterable(iterable=iterable)
       clusters, _ = ucs.ab_cluster(5000, log=False, write_file_lists=False,
                                    schnell=True, doplot=False)
-    except Exception:
+    except Exception as e:
+      print ('IOTA ERROR (CLUSTERING): ', e)
       clusters = []
+      errors.append(e)
 
     info = []
     if clusters:
@@ -1002,7 +1005,8 @@ class ClusterWorkThread():
                         'uc': uc_no_stdev}
         info.append(cluster_info)
 
-    return info
+    return info, errors
+
 
 class ClusterThread(Thread):
   """ Basic spotfinder (with defaults) that could be used to rapidly analyze
@@ -1019,11 +1023,11 @@ class ClusterThread(Thread):
     self.clustering.abort = True
 
   def run(self):
-    clusters = self.clustering.run(iterable=self.iterable)
+    clusters, errors = self.clustering.run(iterable=self.iterable)
 
     if clusters:
       clusters = sorted(clusters, key=lambda i: i['number'], reverse=True)
-    evt = SpotFinderOneDone(tp_EVT_CLUSTERDONE, -1, info=clusters)
+    evt = SpotFinderOneDone(tp_EVT_CLUSTERDONE, -1, info=[clusters, errors])
     wx.PostEvent(self.parent, evt)
 
 

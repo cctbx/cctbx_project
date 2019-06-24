@@ -308,9 +308,9 @@ class FileListCtrl(ct.CustomListCtrl):
     # Add file / folder buttons
     self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.btn_add_file = wx.Button(self, label='Add File...')
-    #self.btn_add_dir = wx.Button(self, label='Add Folder...')
+    #self.btn_browse = wx.Button(self, label='Add Folder...')
     self.button_sizer.Add(self.btn_add_file)
-    #self.button_sizer.Add(self.btn_add_dir, flag=wx.LEFT, border=10)
+    #self.proc_sizer.Add(self.btn_browse, flag=wx.LEFT, border=10)
 
     self.sizer.Add(self.button_sizer, flag=wx.TOP | wx.BOTTOM, border=10)
 
@@ -343,7 +343,7 @@ class FileListCtrl(ct.CustomListCtrl):
                     'background',
                     'raw image file']
     preferred_selection = 0
-    inputs, input_type = ginp.get_input(path, filter=False)
+    inputs, input_type = ginp.get_input(path, filter_results=False)
 
     if input_type == 'data (MTZ)':
       input_type = 'structure factors'

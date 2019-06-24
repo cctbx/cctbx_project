@@ -4,7 +4,7 @@ from __future__ import division, unicode_literals, print_function,\
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/25/2016
-Last Changed: 06/20/2019
+Last Changed: 07/17/2019
 Description : PRIME Result Plotter module
 '''
 
@@ -117,6 +117,7 @@ class Plotter(IOTAPlotter):
         per resolution bin after the final cycle of post-refinement '''
 
     gsp = gridspec.GridSpec(2, 2)
+    gsp.update(wspace=0.1, hspace=0.1)
 
     self.figure.set_alpha(0)
     rc('font', family='sans-serif', size=12)

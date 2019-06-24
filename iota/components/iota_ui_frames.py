@@ -1,10 +1,11 @@
 from __future__ import division, print_function, absolute_import
 from past.builtins import range
+from six.moves import range
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 06/20/2019
+Last Changed: 07/17/2019
 Description : IOTA GUI Windows / frames
 '''
 
@@ -15,7 +16,6 @@ import warnings
 import multiprocessing
 
 import wx
-from wx.lib.agw import ultimatelistctrl as ulc
 import wx.lib.buttons as btn
 from wx import richtext as rt
 from wx.aui import AuiNotebook
@@ -30,7 +30,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from wxtbx import bitmaps
 from libtbx import easy_run, easy_pickle as ep
-from libtbx.utils import to_unicode
+from libtbx.utils import to_unicode, Sorry
 
 from prime.postrefine.mod_mx import mx_handler
 import prime.postrefine.mod_plotter as ppl
@@ -38,14 +38,18 @@ import prime.postrefine.mod_plotter as ppl
 from iota import iota_version, gui_description, gui_license
 from iota.components import iota_init as init
 from iota.components.iota_base import ProcInfo
-from iota.components.gui.base import IOTABaseFrame, IOTABasePanel
+from iota.components.gui.base import IOTABaseFrame, IOTABasePanel, \
+  IOTABaseScrolledPanel
 from iota.components.iota_analysis import Analyzer
 from iota.components.gui.plotter import Plotter, PlotWindow
+from iota.components.gui import make_phil_index
 import iota.components.iota_input as inp
 import iota.components.gui.controls as ct
 import iota.components.iota_threads as thr
 import iota.components.gui.dialogs as d
 import iota.components.iota_utils as ut
+
+import iota.components.gui.phil_controls as pct
 
 assert Axes3D
 f = ut.WxFlags()
@@ -56,6 +60,7 @@ if wx.Platform == '__WXGTK__':
   plot_font_size = 9
   norm_font_size = 9
   button_font_size = 10
+  big_button_font_size = 12
   LABEL_SIZE = 12
   CAPTION_SIZE = 10
   python = 'python'
@@ -63,6 +68,7 @@ elif wx.Platform == '__WXMAC__':
   plot_font_size = 9
   norm_font_size = 12
   button_font_size = 14
+  big_button_font_size = 16
   LABEL_SIZE = 14
   CAPTION_SIZE = 12
   python = "Python"
@@ -70,6 +76,7 @@ elif wx.Platform == '__WXMSW__':
   plot_font_size = 9
   norm_font_size = 9
   button_font_size = 11
+  big_button_font_size = 15
   LABEL_SIZE = 11
   CAPTION_SIZE = 9
   python = "Python"  # TODO: make sure it's right!
@@ -77,74 +84,10 @@ elif wx.Platform == '__WXMSW__':
 
 # ------------------------------ Input Window -------------------------------- #
 
-
-class InputWindow(IOTABasePanel):
-  """ Input window - data input, description of project """
-
-  def __init__(self, parent):
-    IOTABasePanel.__init__(self, parent=parent)
-
-    self.project_folder = ct.InputCtrl(self, label='Project Folder: ',
-                                       label_size=(150, -1),
-                                       label_style='bold',
-                                       value=os.path.abspath(os.curdir),
-                                       buttons=True)
-
-    self.project_title = ct.InputCtrl(self, label='Description',
-                                      label_size=(150, -1))
-
-    # List control to add / manage input items
-    self.input = ct.FileListCtrl(self)
-
-    # Insert option buttons into input window sizer
-    self.opt_btn_import = wx.Button(self.input, label='Import options...')
-    self.opt_btn_process = wx.Button(self.input, label='Processing options...')
-    self.opt_btn_analysis = wx.Button(self.input, label='Analysis options...')
-    self.input.button_sizer.Add(self.opt_btn_import)
-    self.input.button_sizer.Add(self.opt_btn_process)
-    self.input.button_sizer.Add(self.opt_btn_analysis)
-
-    # Put everything into main sizer
-    self.main_sizer.Add(self.project_title, flag=f.expand, border=10)
-    self.main_sizer.Add(self.project_folder, flag=f.expand, border=10)
-    self.main_sizer.Add(self.input, 1, flag=wx.EXPAND | wx.ALL, border=10)
-
-    # Button bindings
-    self.project_folder.btn_browse.Bind(wx.EVT_BUTTON, self.onOutputBrowse)
-    self.project_folder.btn_mag.Bind(wx.EVT_BUTTON, self.onMagButton)
-    self.Bind(wx.EVT_BUTTON, self.onImportOptions, self.opt_btn_import)
-    self.Bind(wx.EVT_BUTTON, self.onProcessOptions, self.opt_btn_process)
-    self.Bind(wx.EVT_BUTTON, self.onAnalysisOptions, self.opt_btn_analysis)
-
-  def onMagButton(self, e):
-    dirview = d.DirView(self, title='Current Folder')
-    if dirview.ShowModal() == wx.ID_OK:
-      dirview.Destroy()
-
-  def onImportOptions(self, e):
-    e.Skip()
-
-  def onProcessOptions(self, e):
-    e.Skip()
-
-  def onAnalysisOptions(self, e):
-    e.Skip()
-
-  def onInfo(self, e):
-    """ On clicking the info button """
-    info_txt = '''Input diffraction images here. IOTA accepts either raw images (mccd, cbf, img, etc.) or image pickles. Input can be either a folder with images, or a text file with a list of images.'''
-    info = wx.MessageDialog(None, info_txt, 'Info', wx.OK)
-    info.ShowModal()
-
-  def onOutputBrowse(self, e):
-    """ On clicking the Browse button: show the DirDialog and populate 'Output'
-        box w/ selection """
-    dlg = wx.DirDialog(self, "Choose the output directory:",
-                       style=wx.DD_DEFAULT_STYLE)
-    if dlg.ShowModal() == wx.ID_OK:
-      self.project_folder.ctr.SetValue(dlg.GetPath())
-    dlg.Destroy()
-    e.Skip()
+class InputWindow(pct.PHILDialogPanel):
+  """ This window will enable all input handling """
+  def __init__(self, parent, scope, *args, **kwargs):
+    super(InputWindow, self).__init__(parent, scope, *args, **kwargs)
 
 
 class MainWindow(IOTABaseFrame):
@@ -155,7 +98,6 @@ class MainWindow(IOTABaseFrame):
     self.parent = parent
     self.iota_phil = phil
     self.target_phil = None
-    self.gparams = self.iota_phil.extract()
 
     # Toolbar
     self.initialize_toolbar()
@@ -179,198 +121,213 @@ class MainWindow(IOTABaseFrame):
     self.tb_btn_analysis = self.add_tool(label='Recover',
                                          bitmap=('actions', 'list'),
                                          shortHelp='Recover')
-    self.tb_btn_run = self.add_tool(label='Run',
-                                    bitmap=('actions', 'run'),
-                                    shortHelp='Run')
     self.add_toolbar_separator(stretch=True)
     self.tb_dlg_test = self.add_tool(label='Test',
                                      bitmap=('actions', 'utilities'),
                                      shortHelp='Test Dialog')
     self.toolbar.RemoveTool(self.tb_dlg_test.GetId())
+    self.Bind(wx.EVT_TOOL, self.onTest, self.tb_dlg_test)
 
     # These buttons will be disabled until input path is provided
-    self.set_tool_state(self.tb_btn_run, False)
+    # self.set_tool_state(self.tb_btn_run, False)
     self.realize_toolbar()
-
-    # Instantiate input windows
-    self.input_window = InputWindow(self)
-    self.main_sizer.Add(self.input_window, 1, flag=wx.ALL | wx.EXPAND,
-                        border=10)
-    self.main_sizer.Add((-1, 20))
-    self.update_input_window(input_dict=input_dict, messages=msg)
 
     # Toolbar button bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
     self.Bind(wx.EVT_TOOL, self.onPreferences, self.tb_btn_prefs)
-    self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
     self.Bind(wx.EVT_TOOL, self.onRecovery, self.tb_btn_analysis)
     self.Bind(wx.EVT_TOOL, self.onLoadScript, self.tb_btn_load)
     self.Bind(wx.EVT_TOOL, self.onOutputScript, self.tb_btn_save)
     self.Bind(wx.EVT_TOOL, self.onReset, self.tb_btn_reset)
-    self.Bind(wx.EVT_TOOL, self.onTest, self.tb_dlg_test)
 
-    # Bindings to Input Window
-    self.Bind(wx.EVT_BUTTON, self.onImportOptions,
-              self.input_window.opt_btn_import)
-    self.Bind(wx.EVT_BUTTON, self.onProcessOptions,
-              self.input_window.opt_btn_process)
-    self.Bind(wx.EVT_BUTTON, self.onAnalysisOptions,
-              self.input_window.opt_btn_analysis)
+    # Add panels (make separate FlexGridSizer to make sure the sizing works)
+    self.panel_sizer = wx.FlexGridSizer(2, 1, 0, 0)
+    self.panel_sizer.AddGrowableRow(0)
+    self.panel_sizer.AddGrowableCol(0)
 
-    # File list control bindings
-    self.Bind(ulc.EVT_LIST_INSERT_ITEM, self.onItemInserted,
-              self.input_window.input)
+    # Instantiate PHIL indices
+    self.initialize_IOTA_index()
+    self.update_IOTA_index(phil=self.iota_phil,
+                           input_dict=input_dict,
+                           messages=msg)
+    self.initialize_backend_index()
+    self.update_backend_index(phil=self.target_phil)
+
+    # Instantiate input window
+    main_window_scopes = ['description', 'output', 'input']
+    input_scope = self.iota_index.get_scopes(include=main_window_scopes)
+    self.input_window = InputWindow(self, size=(600, -1),
+                                    scope=input_scope,
+                                    phil_index=self.iota_index)
+
+    # Front options panel
+    self.bottom_sizer = wx.GridBagSizer(5, 5)
+    line = wx.StaticLine(self, style=wx.LI_HORIZONTAL, size=(-1, -1))
+    self.bottom_sizer.Add(line, pos=(0, 0), span=(1, 3),
+                          flag=wx.EXPAND| wx.TOP | wx.BOTTOM, border=5)
+    opt_scope = self.iota_index.get_scopes(include=['data_selection'])
+    self.option_panel = pct.PHILDialogPanel(self, scope=opt_scope,
+                                            phil_index=self.iota_index)
+    self.bottom_sizer.Add(self.option_panel, pos=(1, 0), span=(2, 1),
+                          flag=wx.EXPAND)
+    line = wx.StaticLine(self, style=wx.LI_VERTICAL, size=(-1, -1))
+    self.bottom_sizer.Add(line, pos=(1, 1), span=(2, 1),
+                          flag=wx.EXPAND| wx.RIGHT | wx.LEFT, border=15)
+    self.bottom_sizer.AddGrowableCol(0)
+    self.bottom_sizer.AddGrowableRow(0)
+
+    # Front options
+    btn_box = wx.StaticBox(self, label='')
+    btn_sizer = wx.StaticBoxSizer(btn_box, wx.VERTICAL)
+    self.opt_btn_iota = wx.Button(self, label='IOTA Settings...')
+    self.opt_btn_proc = wx.Button(self, label='Processor Options...')
+    btn_sizer.Add(self.opt_btn_iota, flag=wx.EXPAND| wx.ALL, border=5)
+    btn_sizer.Add(self.opt_btn_proc, flag=wx.EXPAND| wx.ALL, border=5)
+    self.bottom_sizer.Add(btn_sizer, pos=(1, 2), flag=wx.EXPAND)
+
+    run_bmp = bitmaps.fetch_icon_bitmap('actions', 'run')
+    self.btn_run = ct.GradButton(self,
+                                 size=(140, 40),
+                                 start_color=(161,217,155),
+                                 highlight_color=(199,233,192),
+                                 gradient_percent=-25,
+                                 bmp=run_bmp,
+                                 label='   RUN IOTA',
+                                 label_size=big_button_font_size)
+    self.bottom_sizer.Add(self.btn_run, pos=(2, 2),
+                          flag=wx.SHAPED | wx.ALIGN_BOTTOM)
+    self.btn_run.Disable()
+
+    # Option button bindings
+    self.Bind(wx.EVT_BUTTON, self.onIOTAOptions, self.opt_btn_iota)
+    self.Bind(wx.EVT_BUTTON, self.onProcOptions, self.opt_btn_proc)
+    self.Bind(wx.EVT_BUTTON, self.onRun, self.btn_run)
+
+    # Add panels to sizers and lay out the window
+    self.panel_sizer.Add(self.input_window, 1, flag=wx.EXPAND)
+    self.panel_sizer.Add(self.bottom_sizer, flag=wx.EXPAND )
+    self.main_sizer.Add(self.panel_sizer, 1, flag=wx.EXPAND | wx.ALL, border=15)
+    self.Fit()
+    self.Layout()
 
   def onTest(self, e):
-    pass
+    self.test_index = getattr(self, 'test_index', None)
+    if not self.test_index:
+      self.test_index = make_phil_index(master_phil=pct.get_test_phil(),
+                                  working_phil=pct.get_test_phil(),
+                                  fetch_new=True)
 
-  #   from libtbx.phil import find_scope
-  #   scopes = [find_scope(self.iota_phil, 'description'),
-  #             find_scope(self.iota_phil, 'output'),
-  #             find_scope(self.iota_phil, 'input')]
-  #   test = d.TestDialog(self,
-  #                         scope=scopes,
-  #                         title='Test Options')
-  #   if test.ShowModal() == wx.ID_OK:
-  #     print ('debug: OK!!')
-  #   test.Destroy()
+    scope_names = ['string_definition',
+                   'multi_string',
+                   'child_scope_alpha',
+                   'child_scope_beta']
+    test_scope = self.test_index.get_scopes(include=scope_names)
+    test_dlg = pct.PHILDialog(self, scope=test_scope,
+                              phil_index=self.test_index, name='test')
 
-  def onItemInserted(self, e):
-    print(self.input_window.input.all_data_images)
+    if test_dlg.ShowModal() == wx.ID_OK:
+      print ('DEBUG: TEST RESULTS: ')
+      self.test_index.working_phil.show()
+    test_dlg.Destroy()
 
   def onReset(self, e):
     self.reset_settings()
 
+  def open_options_dialog(self, phil_index, include=None, name=None,
+                          with_sections=False):
+    if not name:
+      if isinstance(include, list):
+        name = include[0]
+      else:
+        name = include
+      if not name or name.isspace():
+        name = 'options'
+
+    phil_scope = phil_index.get_scopes(include=include)
+    phil_dlg = pct.PHILDialog(self,
+                              scope=phil_scope,
+                              phil_index=phil_index,
+                              name=name,
+                              with_sections=with_sections)
+
+    if phil_dlg.ShowModal() == wx.ID_OK:
+      OK = True
+    else:
+      OK = False
+
+    phil_dlg.Destroy()
+    return OK
+
   def onPreferences(self, e):
-    """ Opens dialog for IOTA preferences
-    :param e: event object for self.tb_btn_prefs
-    :return: modifies self.iota_phil with updated parameters
-    """
-    prefs = d.IOTAPreferences(self, phil=self.iota_phil)
-    prefs.set_choices()
+    self.open_options_dialog(phil_index=self.iota_index,
+                             include=['mp', 'gui'],
+                             name='IOTA Preferences')
 
-    if prefs.ShowModal() == wx.ID_OK:
-      full_phil = self.iota_phil.fetch(source=prefs.prefs_phil)
-      fixer = inp.PHILFixer()  # Backend switching requires the PHIL fixer
-      self.iota_phil = fixer.run(old_phil=full_phil)
-    prefs.Destroy()
+  def onIOTAOptions(self, e):
+    iota_scopes = ['image_import', 'cctbx_xfel', 'analysis', 'advanced']
+    opt_OK = self.open_options_dialog(phil_index=self.iota_index,
+                                      include=iota_scopes)
+    if opt_OK:
+      self.gparams = self.iota_index.get_python_object(make_copy=True)
+      if self.gparams.cctbx_xfel.target is not None:
+        try:
+          with open(self.gparams.cctbx_xfel.target, 'r') as pf:
+            self.target_phil = pf.read()
+        except Exception:
+          self.target_phil = None
+        else:
+          try:
+            self.bknd_index.update_phil(phil_string=self.target_phil)
+          except Exception as e:
+            raise Sorry('IOTA PHIL ERROR: ', e)
 
-    self.input_window.input_phil = self.iota_phil
-    self.gparams = self.iota_phil.extract()
-    self.input_window.gparams = self.gparams
-
-  def onImportOptions(self, e):
-    """ Opens dialog for image import options
-    :param e: event object for self.input_window.opt_btn_import
-    :return: modifies self.iota_phil with updated parameters
-    """
-    if self.gparams.advanced.processing_backend == 'cctbx.xfel':
-      imp_dialog = d.ImportWindow(self,
-                                  phil=self.iota_phil,
-                                  title='Import Options',
-                                  style=wx.DEFAULT_DIALOG_STYLE |
-                                        wx.STAY_ON_TOP)
-      imp_dialog.Fit()
-    elif self.gparams.advanced.processing_backend == 'ha14':
-      imp_dialog = d.HA14ImportWindow(self,
-                                      phil=self.iota_phil,
-                                      title='Import Options',
-                                      style=wx.DEFAULT_DIALOG_STYLE |
-                                            wx.STAY_ON_TOP)
-      imp_dialog.Fit()
-    else:
-      imp_dialog = None
-
-    if (imp_dialog and imp_dialog.ShowModal() == wx.ID_OK):
-      self.iota_phil = self.iota_phil.fetch(source=imp_dialog.import_phil)
-    imp_dialog.Destroy()
-
-  def onProcessOptions(self, e):
-    """ Opens dialog for image processing options, either for cctbx or DIALS
-    depending on user selection.
-    :param e: event object for self.input_window.opt_btn_process
-    :return: modifies self.iota_phil with updated parameters
-    """
-
-    # For current cctbx.xfel options
-    if self.gparams.advanced.processing_backend == 'cctbx.xfel':
-      int_dialog = d.BackendOptions(self,
-                                    phil=self.iota_phil,
-                                    target=self.target_phil,
-                                    title='cctbx.xfel Options',
-                                    style=wx.DEFAULT_DIALOG_STYLE |
-                                          wx.STAY_ON_TOP | wx.RESIZE_BORDER)
-      int_dialog.SetMinSize((600, -1))
-      int_dialog.Fit()
-
-    # For deprecated cctbx.xfel HA14 options
-    elif self.gparams.advanced.processing_backend == 'ha14':
-      int_dialog = d.HA14BackendOptions(self,
-                                        phil=self.iota_phil,
-                                        target=self.target_phil,
-                                        title='cctbx.xfel HA14 Options',
-                                        style=wx.DEFAULT_DIALOG_STYLE |
-                                              wx.STAY_ON_TOP | wx.RESIZE_BORDER)
-      int_dialog.SetMinSize((600, -1))
-      int_dialog.Fit()
-    else:
-      int_dialog = None
-
-    # Get values and set parameters
-    if (int_dialog and int_dialog.ShowModal() == wx.ID_OK):
-      self.iota_phil = self.iota_phil.fetch(source=int_dialog.proc_phil)
-      self.target_phil = int_dialog.target_phil
-      int_dialog.Destroy()
-
-  def onAnalysisOptions(self, e):
-    """ Opens dialog for integrated dataset analysis options
-    :param e: event object for self.input_window.opt_btn_analysis
-    :return: modifies self.iota_phil with updated parameters
-    """
-
-    if self.gparams.advanced.processing_backend == 'cctbx.xfel':
-      an_dialog = d.AnalysisWindow(self,
-                                   phil=self.iota_phil,
-                                   title='Dataset Analysis Options',
-                                   style=wx.DEFAULT_DIALOG_STYLE |
-                                         wx.STAY_ON_TOP | wx.RESIZE_BORDER)
-    elif self.gparams.advanced.processing_backend == 'ha14':
-      an_dialog = d.HA14AnalysisWindow(self,
-                                       phil=self.iota_phil,
-                                       title='Dataset Analysis Options',
-                                       style=wx.DEFAULT_DIALOG_STYLE |
-                                             wx.STAY_ON_TOP | wx.RESIZE_BORDER)
-    else:
-      an_dialog = None
-
-    if an_dialog:
-      an_dialog.SetMinSize((600, -1))
-      an_dialog.Fit()
-
-      # Get values and set parameters
-      if (an_dialog.ShowModal() == wx.ID_OK):
-        self.iota_phil = self.iota_phil.fetch(source=an_dialog.viz_phil)
-      an_dialog.Destroy()
+  def onProcOptions(self, e):
+    command_list = [
+      ('Spotfinding...',
+       lambda evt: self.open_options_dialog(
+         phil_index=self.bknd_index, include=['spotfinder'])),
+      ('Indexing...',
+       lambda evt: self.open_options_dialog(
+         phil_index=self.bknd_index, include=['indexing'])),
+      ('Refinement...',
+       lambda evt: self.open_options_dialog(
+         phil_index=self.bknd_index, include=['refinement'])),
+      ('Integration...',
+       lambda evt: self.open_options_dialog(
+         phil_index=self.bknd_index, include=['integration'])),
+      ('Advanced...',
+       lambda evt: self.open_options_dialog(
+         phil_index=self.bknd_index,
+         include=['geometry', 'profile', 'prediction',
+                  'significance_filter']))
+    ]
+    browse_menu = ct.Menu(self)
+    browse_menu.add_commands(command_list)
+    self.PopupMenu(browse_menu)
+    browse_menu.Destroy()
 
   def init_settings(self):
     ''' Consolidate settings from the main window and initiate run '''
 
-    # Get list of inputs from input window
-    idxs = self.input_window.input.ctr.GetItemCount()
-    inputs = [self.input_window.input.ctr.GetItemData(i).path for i in
-              range(idxs)]
+    input_phil_string = self.input_window.GetPHIL(expand=True)
+    sel_phil_string = self.option_panel.GetPHIL(expand=True)
+    phil_string = input_phil_string + '\n' + sel_phil_string
 
-    # Set all main window params (including inputs)
-    self.gparams = self.iota_phil.extract()
-    self.gparams.input = inputs
-    self.gparams.description = ut.noneset(
-      self.input_window.project_title.ctr.GetValue())
-    self.gparams.output = self.input_window.project_folder.ctr.GetValue()
+    self.iota_index.update_phil(phil_string=phil_string)
+    self.gparams = self.iota_index.get_python_object(make_copy=True)
+    self.iota_phil = self.iota_index.working_phil
 
-    # Format main IOTA PHIL
-    self.iota_phil = self.iota_phil.format(python_object=self.gparams)
-    ok_init, self.info, msg = init.initialize_new_run(phil=self.iota_phil,
-                                                      target_phil=self.target_phil)
+    ok_init, self.info, msg = init.initialize_new_run(
+      phil=self.iota_phil,
+      target_phil=self.target_phil
+    )
+    if not ok_init and msg:
+      msg_string = 'IOTA Reported the following error(s):{}\n\n' \
+                   ''.format(msg)
+      wx.MessageBox(caption='IOTA Errors!',
+                    message=msg_string, style=wx.OK | wx.ICON_ERROR)
+
+    return ok_init
 
   def OnAboutBox(self, e):
     """ About dialog """
@@ -443,13 +400,17 @@ class MainWindow(IOTABaseFrame):
         self.proc_window.Show(True)
 
   def onRun(self, e):
+    # Start full run timer
+    self.start_time = time.time()
+
     # Run full processing
-    self.init_settings()
-    self.proc_window = ProcWindow(self, -1, title='', phil=self.iota_phil)
-    self.proc_window.info = self.info
-    self.proc_window.start_processing()
-    self.proc_window.place_and_size(set_by='parent')
-    self.proc_window.Show(True)
+    if self.init_settings():
+      title = 'Image Processing Run {}'.format(self.info.run_number)
+      self.proc_window = ProcWindow(self, -1, title=title, phil=self.iota_phil)
+      self.proc_window.info = self.info
+      self.proc_window.start_processing()
+      self.proc_window.place_and_size(set_by='parent')
+      self.proc_window.Show(True)
 
   def onOutputScript(self, e):
 
@@ -487,7 +448,7 @@ class MainWindow(IOTABaseFrame):
     if load_dlg.ShowModal() == wx.ID_OK:
       self.load_script(load_dlg.GetPaths()[0])
 
-  def load_script(self, filepath, reset=True, update_input_window=True):
+  def load_script(self, filepath):
     '''Clears settings and loads new settings from IOTA param file
 
     :param filepath: path to IOTA parameter file
@@ -495,16 +456,17 @@ class MainWindow(IOTABaseFrame):
     :return: None
     '''
 
-    if reset:
-      self.reset_settings()
+    self.reset_settings()
 
     self.iota_phil, _ = inp.get_input_phil(paramfile=filepath, gui=True)
-    self.prefs_phil = self.iota_phil
-    self.gparams = self.iota_phil.extract()
+    self.update_IOTA_index(phil=self.iota_phil)
+
+    if self.gparams.mp.n_processors == 0:
+      self.gparams.mp.n_processors = multiprocessing.cpu_count() * 0.75
+      self.iota_index.update_from_python(python_object=self.gparams)
 
     # Pass on target PHIL (if found) to input window
     target = self.gparams.cctbx_xfel.target
-
     if target:
       try:
         with open(target, 'r') as pf:
@@ -513,59 +475,66 @@ class MainWindow(IOTABaseFrame):
         self.target_phil = None
     else:
       self.target_phil = None
+    self.update_backend_index(phil=self.target_phil)
 
-    # Update input window with loaded parameters
-    if update_input_window:
-      self.update_input_window()
+    self.input_window.redraw_panel()
+    self.option_panel.redraw_panel()
 
   def reset_settings(self):
     """ Clear all controls in input window """
 
-    # Reset inputs
-    self.input_window.input.delete_all()
+    # Reset index PHILs to defaults
+    self.reset_IOTA_index()
+    self.reset_backend_index()
 
-    # Reset IOTA PHIL to defaults
-    self.iota_phil, _ = inp.get_input_phil(gui=True)
-    self.gparams = self.iota_phil.extract()
+    self.gparams.mp.n_processors = int(multiprocessing.cpu_count() * 0.75)
+    self.iota_index.update_from_python(python_object=self.gparams)
 
-    # Reset target phil to blank
-    self.target_phil = None
+    # Redraw PHIL panel
+    main_window_scopes = ['description', 'output', 'input']
+    scope = self.iota_index.get_scopes(include=main_window_scopes)
+    self.input_window.redraw_panel(reset=True)
 
-    # Reset input window with default values
-    self.gparams.description = ''
-    self.gparams.output = os.path.abspath(os.curdir)
-    self.gparams.mp.n_processors = multiprocessing.cpu_count() / 2
-    self.update_input_window()
+    mp_scope = self.iota_index.get_scopes(include=['data_selection'])
+    self.option_panel.redraw_panel(reset=True)
+    self.gparams = self.iota_index.working_phil.extract()
 
-  def update_input_window(self, input_dict=None, messages=None):
-    """ Update input window with parameters in PHIL """
+  def initialize_IOTA_index(self):
+    iota_master_phil, _ = inp.get_input_phil(gui=True)
+    self.iota_index = make_phil_index(master_phil=iota_master_phil)
+    self.gparams = self.iota_index.get_python_object(make_copy=True)
 
-    # Report any errors, warnings, or other messages
-    if messages:
-      msg_string = 'IOTA Reported the following error(s):{}\n\n' \
-                   ''.format('\n'.join(messages))
-      wx.MessageBox(caption='IOTA Errors!',
-                    message=msg_string, style=wx.OK | wx.ICON_ERROR)
+  def initialize_backend_index(self):
+    from dials.command_line.stills_process import phil_scope
+    self.bknd_index = make_phil_index(master_phil=phil_scope)
+    method = self.gparams.advanced.processing_backend
+    target_phil, _ = inp.write_defaults(method=method,
+                                        write_target_file=False,
+                                        write_param_file=False)
+    self.bknd_index.update_phil(phil_string=target_phil.as_str())
 
-    # Description
-    if self.gparams.description is not None:
-      self.input_window.project_title.ctr.SetValue(self.gparams.description)
-    else:
-      self.input_window.project_title.ctr.SetValue('')
+  def reset_IOTA_index(self):
+    self.iota_index.reset_phil(reindex=True)
 
-    # Output folder
-    if self.gparams.output is not None:
-      self.input_window.project_folder.ctr.SetValue(self.gparams.output)
-    else:
-      self.input_window.project_folder.ctr.SetValue(os.path.abspath(os.curdir))
+  def reset_backend_index(self):
+    self.bknd_index.reset_phil(reindex=True)
 
-    # Inputs
-    for inp_path in self.gparams.input:
-      if inp_path is not None:
-        self.input_window.input.add_item(inp_path)
+  def update_IOTA_index(self, phil=None, input_dict=None, messages=None):
+    """ Update IOTA PHIL with params passed on via command line args
+    :param phil: A PHIL object or string
+    :param input_dict: Dictionary with input paths
+    :param messages: Error message list
+    """
 
+    # Read input OR update from window params
     if input_dict:
-      if len(input_dict['imagepaths']) >= 10:
+      if messages:
+        msg_string = 'IOTA Reported the following error(s):{}\n\n' \
+                     ''.format('\n'.join(messages))
+        wx.MessageBox(caption='IOTA Errors!',
+                      message=msg_string, style=wx.OK | wx.ICON_ERROR)
+
+      if len(input_dict['imagepaths']) > 10:
         n_input = len([i for i in os.listdir(self.gparams.output)
                        if i.startswith('input_')])
         input_fn = "input_{:04d}.lst".format(n_input + 1)
@@ -573,14 +542,79 @@ class MainWindow(IOTABaseFrame):
         with open(input_list_file, 'w') as lf:
           for f in input_dict['imagefiles']:
             lf.write('{}\n'.format(f))
-        self.input_window.input.add_item(input_list_file)
+        self.gparams.input = input_list_file
       else:
         for path in input_dict['imagepaths']:
-          self.input_window.input.add_item(path)
+          self.gparams.input.append(path)
+      self.iota_index.update_from_python(python_object=self.gparams)
+
+    # update from existing PHIL
+    if phil:
+      if not isinstance(phil, str):
+        try:
+          phil = phil.as_str()
+        except Exception as e:
+          raise Sorry('IOTA GUI ERROR: Cannot read PHIL object! ', e)
+      self.iota_index.update_phil(phil_string=phil)
+
+    # update n_processors
+    self.gparams = self.iota_index.get_python_object(make_copy=True)
+    if self.gparams.mp.n_processors <= 1:
+      self.gparams.mp.n_processors = int(multiprocessing.cpu_count() * 0.75)
+      self.iota_index.update_from_python(python_object=self.gparams)
+
+  def update_backend_index(self, phil=None):
+    if phil:
+      if not isinstance(phil, str):
+        try:
+          phil = phil.as_str()
+        except Exception as e:
+          raise Sorry('IOTA GUI ERROR: Cannot read PHIL object! ', e)
+      self.bknd_index.update_phil(phil_string=phil)
 
   def onQuit(self, e):
+    # Need a try block in case the C++ portion of the proc window doesn't exist
+    try:
+      # Check if processing window has been launched
+      if hasattr(self, "proc_window"):
+
+        # Export info object with "aborted" status
+        info = self.proc_window.info
+        info.status = 'aborted'
+        info.export_json()
+
+        # Check if proc_thread exists
+        if hasattr(self.proc_window, 'proc_thread'):
+
+          # Check if proc_thread is running
+          if self.proc_window.proc_thread.is_alive():
+            tmp_aborted_file = os.path.join(self.proc_window.tmp_aborted_file)
+            with open(tmp_aborted_file, 'w') as tf:
+              tf.write('')
+            self.proc_window.proc_thread.abort()
+
+            # Close window only when thread is dead
+            while self.proc_window.proc_thread.is_alive():
+              continue
+
+        import shutil
+
+        try:
+          shutil.rmtree(self.proc_window.info.tmp_base)
+        except Exception:
+          pass
+        print('JOB TERMINATED!')
+    except Exception:
+      pass
+
+    print ('Closing IOTA...')
+
     self.Close()
 
+  def onClose(self, e):
+
+    self.DestroyChildren()
+    e.Skip()
 # ----------------------------  Processing Window ---------------------------  #
 
 class LogTab(wx.Panel):
@@ -694,9 +728,9 @@ class LogTab(wx.Panel):
 
 
 # class ProcessingTab(d.ScrolledPanel):
-class ProcessingTab(wx.Panel):
-  def __init__(self, parent, gparams):
-    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
+class ProcessingTab(IOTABasePanel):
+  def __init__(self, parent, gparams, *args, **kwargs):
+    super(ProcessingTab, self).__init__(parent, *args, **kwargs)
     self.gparams = gparams
     self.info = None
     self.proc_stats = None
@@ -777,9 +811,10 @@ class ProcessingTab(wx.Panel):
 
     self.nsref_axes = self.int_figure.add_subplot(int_gsp[1])
     self.nsref_axes.set_xlabel('Frame')
-    self.nsref_axes.set_ylabel('Spots (I/{0}(I)>{1})'
-                               ''.format(r'$\sigma$',
-                                         self.gparams.image_import.strong_sigma))
+    self.nsref_axes.set_ylabel(
+      'Spots (I/{0}(I)>{1})'
+      ''.format(r'$\sigma$',
+                self.gparams.data_selection.image_triage.strong_sigma))
 
     # Initialize blank charts, medians, and picks
     self.res_chart = self.res_axes.plot([], [], 'o', c='#0571b0', zorder=1,
@@ -891,10 +926,6 @@ class ProcessingTab(wx.Panel):
 
     self.SetSizer(self.main_fig_sizer)
 
-  def _print_threads(self):
-    import threading
-    print ("proc threads: ", threading.enumerate())
-
   def _update_canvas(self, canvas, draw_idle=True):
     """ Update a canvas (passed as arg)
     :param canvas: A canvas to be updated via draw_idle
@@ -910,15 +941,22 @@ class ProcessingTab(wx.Panel):
         pass
     else:
       canvas.draw()
-    # self.Refresh()
-    try:
-      canvas.Refresh()
-    except Exception as e:
-      print (e.__name__)
-      pass
+    canvas.Refresh()
 
   def onSGTextEnter(self, e):
-    self.user_sg = str(self.hkl_sg.sg.GetValue())
+    user_sg = str(self.hkl_sg.sg.GetValue())
+
+    # Attempt to create a space group object; if symbol or number are
+    # invalid, this will fail
+    from cctbx import crystal
+    if user_sg:
+      try:
+        sym = crystal.symmetry(space_group_symbol=str(user_sg))
+      except RuntimeError:
+        pass
+      else:
+        self.user_sg = str(sym.space_group_info())
+    self.hkl_sg.sg.SetValue(self.user_sg)
     self.draw_measured_indices()
 
   def onSGCheckbox(self, e):
@@ -926,8 +964,6 @@ class ProcessingTab(wx.Panel):
       if self.gparams.cctbx_xfel.target_space_group:
         self.hkl_sg.sg.SetValue(
           str(self.gparams.cctbx_xfel.target_space_group))
-      # else:
-      #   self.hkl_sg.sg.SetValue('P1')
       self.user_sg = str(self.hkl_sg.sg.GetValue())
     else:
       self.user_sg = 'P1'
@@ -948,7 +984,7 @@ class ProcessingTab(wx.Panel):
         name = self.info.categories[key][1]
         color = self.info.categories[key][3]
         n_in_cat = len(self.info.categories[key][0])
-        if color and n_in_cat > 0:
+        if color is not None and n_in_cat > 0:
           nonzero.append([name, color, n_in_cat])
           names.append(name)
           patches.append(None)
@@ -971,14 +1007,17 @@ class ProcessingTab(wx.Panel):
         bl = patch.get_xy()
         patches[i] = ((bl[0], bl[0] + patch.get_width()),
                       (bl[1], bl[1] + patch.get_height()))
+
         x = 0.5 * patch.get_width() + bl[0]
         y = 0.5 * patch.get_height() + bl[1]
         self.sum_axes.text(x, y, "{}%".format(percent),
                            ha='center', va='center')
-      self.sum_axes.legend(names, ncol=len(nonzero),
+      self.sum_axes.legend(names,
+                           ncol=len(nonzero),
                            bbox_to_anchor=(0, -1, 1, 1),
-                           loc='upper center', fontsize=9,
-                           frameon=False, handlelength=1)
+                           loc='upper center', fontsize=8,
+                           frameon=False, handlelength=1,
+                           mode='expand')
 
       if self.bracket.get_visible():
         idx = self.pick['index']
@@ -1091,11 +1130,14 @@ class ProcessingTab(wx.Panel):
       self.hkl_colorbar.remove()
     except AttributeError:
       pass
+    except KeyError:
+      pass
 
     try:
       hkl_slice = self.info.get_hkl_slice(sg=self.user_sg,
                                           axis=self.hkl_view_axis)
-    except AttributeError:
+    except AttributeError as e:
+      print ('IOTA HKL PLOT ERROR: ', e)
       return
 
     try:
@@ -1107,7 +1149,6 @@ class ProcessingTab(wx.Panel):
       return
 
     h, k, l = zip(*hkl)
-
     if self.hkl_view_axis == 'l':
       x = h
       y = k
@@ -1329,13 +1370,13 @@ class ProcessingTab(wx.Panel):
       self.view_proc_images()
 
 
-class LiveAnalysisTab(d.ScrolledPanel):
-  def __init__(self, parent, gparams=None):
+class LiveAnalysisTab(IOTABaseScrolledPanel):
+  def __init__(self, parent, gparams=None, *args, **kwargs):
     self.parent = parent
     self.info = None
     self.gparams = gparams
 
-    d.ScrolledPanel.__init__(self, parent)
+    super(LiveAnalysisTab, self).__init__(parent, *args, **kwargs)
     self.main_fig_sizer = wx.GridBagSizer(0, 0)
 
     # Set regular font
@@ -1556,9 +1597,9 @@ class LiveAnalysisTab(d.ScrolledPanel):
       print('UC HISTOGRAM ERROR: ', e)
 
 
-class SummaryTab(d.ScrolledPanel):
-  def __init__(self, parent, info, gparams):
-    d.ScrolledPanel.__init__(self, parent)
+class SummaryTab(IOTABaseScrolledPanel):
+  def __init__(self, parent, info, gparams, *args, **kwargs):
+    super(SummaryTab, self).__init__(parent, *args, **kwargs)
 
     self.parent = parent
     self.info = info
@@ -1662,7 +1703,7 @@ class SummaryTab(d.ScrolledPanel):
     summary_sizer.Add(self.cluster_panel, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Hide if not done
-    if not self.gparams.analysis.run_clustering:
+    if not self.gparams.analysis.clustering.flag_on:
       self.cluster_panel.Hide()
 
     # Summary
@@ -1696,7 +1737,7 @@ class SummaryTab(d.ScrolledPanel):
   def onPRIME(self, e):
     from prime.postrefine.mod_gui_frames import PRIMEWindow
 
-    self.prime_window = PRIMEWindow(parent=None, id=-1, title='PRIME',
+    self.prime_window = PRIMEWindow(None, -1, title='PRIME',
                                     prefix=self.gparams.advanced.prime_prefix)
     self.prime_window.load_script(out_dir=self.info.int_base)
     self.prime_window.place_and_size(set_by='mouse', center=True)
@@ -1706,26 +1747,31 @@ class SummaryTab(d.ScrolledPanel):
 
   def onCLUSTER(self, e):
     cluster_dlg = d.ClusterDialog(self)
-    cluster_dlg.write_files.SetValue(self.gparams.analysis.cluster_write_files)
+    cluster_dlg.write_files.SetValue(
+      self.gparams.analysis.clustering.write_files)
     cluster_dlg.cluster_threshold.ctr.SetValue(
-      self.gparams.analysis.cluster_threshold)
-    cluster_dlg.cluster_limit.ctr.SetValue(self.gparams.analysis.cluster_limit)
-    if self.gparams.analysis.cluster_n_images > 0:
+      self.gparams.analysis.clustering.threshold)
+    cluster_dlg.cluster_limit.ctr.SetValue(
+      self.gparams.analysis.clustering.limit)
+    if self.gparams.analysis.clustering.n_images > 0:
       cluster_dlg.cluster_n_images.ctr.SetValue(
-        self.gparams.analysis.cluster_n_images)
+        self.gparams.analysis.clustering.n_images)
 
     if (cluster_dlg.ShowModal() == wx.ID_OK):
       self.cluster_panel.Show()
       self.Layout()
-      self.gparams.analysis.run_clustering = True
-      self.gparams.analysis.cluster_write_files = cluster_dlg.write_files.GetValue()
-      self.gparams.analysis.cluster_threshold = cluster_dlg.cluster_threshold.ctr.GetValue()
-      self.gparams.analysis.cluster_limit = cluster_dlg.cluster_limit.ctr.GetValue()
+      self.gparams.analysis.clustering.flag_on = True
+      self.gparams.analysis.clustering.write_files = \
+        cluster_dlg.write_files.GetValue()
+      self.gparams.analysis.clustering.threshold = \
+        cluster_dlg.cluster_threshold.ctr.GetValue()
+      self.gparams.analysis.clustering.limit = \
+        cluster_dlg.cluster_limit.ctr.GetValue()
       if cluster_dlg.cluster_n_images.toggle.GetValue():
-        self.gparams.analysis.cluster_n_images = int(
+        self.gparams.analysis.clustering.n_images = int(
           cluster_dlg.cluster_n_images.ctr.GetValue())
       else:
-        self.gparams.analysis.cluster_n_images = 0
+        self.gparams.analysis.clustering.n_images = 0
 
       analysis = Analyzer(info=self.info, params=self.gparams, gui_mode=True)
       clusters = analysis.unit_cell_analysis()
@@ -1740,10 +1786,8 @@ class SummaryTab(d.ScrolledPanel):
       idx = self.cluster_info.ctr.InsertStringItem(i, str(c['number']))
       self.cluster_info.ctr.SetStringItem(idx, 1, str(c['pg']))
       self.cluster_info.ctr.SetStringItem(idx, 2, str(c['uc']))
-
       if 'filename' in c and c['filename'] not in ('*', None):
         self.cluster_info.ctr.SetStringItem(idx, 3, c['filename'])
-
     self.Refresh()
     self.SetupScrolling()
 
@@ -1757,20 +1801,20 @@ class SummaryTab(d.ScrolledPanel):
       self.gparams.output
     self.folder_txt.SetLabel(int_base)
 
-    # Add grid search stats if exist
-    if hasattr(self.info, 'gs_stats'):
-      gs_stats = self.info.gs_stats
-      rkeys = ['s', 'h', 'a']
-      clabels = ['min', 'max', 'avg', 'std']
-      rlabels = [gs_stats[k]['label'] for k in rkeys]
-      contents = [[gs_stats[k]['min'], gs_stats[k]['max'], gs_stats[k]['mean'],
-                   gs_stats[k]['std']] for k in rkeys]
-      gs_table = ct.TableCtrl(self,
-                              clabels=clabels,
-                              rlabels=rlabels,
-                              contents=contents)
-      self.int_box_grid.Add(gs_table, span=(len(rlabels), 1),
-                            pos=(0, 0), flag=wx.EXPAND)
+    # # Add grid search stats if exist
+    # if hasattr(self.info, 'gs_stats'):
+    #   gs_stats = self.info.gs_stats
+    #   rkeys = ['s', 'h', 'a']
+    #   clabels = ['min', 'max', 'avg', 'std']
+    #   rlabels = [gs_stats[k]['label'] for k in rkeys]
+    #   contents = [[gs_stats[k]['min'], gs_stats[k]['max'], gs_stats[k]['mean'],
+    #                gs_stats[k]['std']] for k in rkeys]
+    #   gs_table = ct.TableCtrl(self,
+    #                           clabels=clabels,
+    #                           rlabels=rlabels,
+    #                           contents=contents)
+    #   self.int_box_grid.Add(gs_table, span=(len(rlabels), 1),
+    #                         pos=(0, 0), flag=wx.EXPAND)
 
     # Add dataset information
     if hasattr(self.info, 'stats'):
@@ -1825,8 +1869,8 @@ class SummaryTab(d.ScrolledPanel):
     if self.info.clusters:
       self.report_clustering_results(clusters=self.info.clusters)
 
-    self.SetupScrolling()
     self.Layout()
+    self.SetupScrolling()
 
   def initialize_standalone_plot(self, figsize=(8, 8)):
     self.plot_window = PlotWindow(self, -1, title='IOTA Plot')
@@ -2204,12 +2248,19 @@ class ProcWindow(IOTABaseFrame):
     self.cluster_thread.start()
 
   def onFinishedCluster(self, e):
-    self.info.clusters = e.GetValue()
+    self.info.clusters, errors = e.GetValue()
     self.running_cluster = False
 
     if self.info.clusters:
       self.info.best_pg = self.info.clusters[0]['pg']
       self.info.best_uc = self.info.clusters[0]['uc']
+
+    if errors:
+      for err in errors:
+        print ('IOTA ERROR (CLUSTERING): ', err)
+      self.info.errors.extend(errors)
+
+    print ('debug: errors = ', errors)
 
     # Output cluster results
     ep.dump(self.info.cluster_info_file, obj=self.clusters)
@@ -2449,26 +2500,15 @@ class ProcWindow(IOTABaseFrame):
     self.plot_integration(force_plot=True)
     self.plot_live_analysis(force_plot=True)
 
-  def _clean_up(self):
-    """ Pre-exit clean-up, will be run whenever the red close-window button
-        is pushed; called by self.onClose(). In this case, makes sure that
-        the run is cleanly aborted if it's still live. """
+    # Report run time
+    start_time = getattr(self.parent, 'start_time', None)
+    if start_time:
+      import datetime
+      runtime = datetime.timedelta(seconds=int(time.time() - start_time))
 
-    if hasattr(self, 'proc_thread') and self.proc_thread.is_alive():
+      hours, minutes, seconds = str(runtime).split(':')
 
-      # Set "aborted" status and save the INFO object
-      self.info.status = 'aborted'
-      self.info.export_json()
+      print ("IOTA: Total run time: {} hours, {} minutes, {} seconds"
+             "".format(hours, minutes, seconds))
 
-      # Write a dummy file to mark the run as aborted for recovery dialog
-      with open(self.tmp_aborted_file, 'w') as tf:
-        tf.write('')
-
-      # Remove temp directory
-      import shutil
-      try:
-        shutil.rmtree(self.info.tmp_base)
-      except Exception:
-        pass
-
-      print('IOTA: RUN #{} ABORTED!'.format(self.info.run_number))
+# -- end

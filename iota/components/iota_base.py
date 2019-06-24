@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/18/2018
-Last Changed: 03/06/2019
+Last Changed: 07/17/2019
 Description : IOTA base classes
 '''
 
@@ -484,16 +484,18 @@ class ProcInfo(object):
         inputs = None
 
       if inputs:
-        input_list = util.ginp.make_input_list(inputs, filter=True,
-                                                 filter_type='image')
+        input_list = util.ginp.make_input_list(inputs, filter_results=True,
+                                               filter_type='image')
 
     if prm and input_list:
-      if prm.advanced.image_range.flag_on:
-        input_list = self._select_image_range(input_list,
-                                              prm.advanced.image_range.range)
-      if prm.advanced.random_sample.flag_on:
-        input_list = self._select_random_subset(input_list,
-                                              prm.advanced.random_sample.number)
+      if prm.data_selection.image_range.flag_on:
+        input_list = self._select_image_range(
+          input_list,
+          prm.data_selection.image_range.range)
+      if prm.data_selection.random_sample.flag_on:
+        input_list = self._select_random_subset(
+          input_list,
+          prm.data_selection.random_sample.number)
 
     return [str(i) for i in input_list]
 

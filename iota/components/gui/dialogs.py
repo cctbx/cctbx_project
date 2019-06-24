@@ -3,8 +3,8 @@ from six.moves import range
 
 '''
 Author      : Lyubimov, A.Y.
-Created     : 01/17/2017
-Last Changed: 06/20/2019
+Created     : 04/02/2019
+Last Changed: 07/17/2019
 Description : IOTA GUI Dialogs
 '''
 
@@ -15,8 +15,7 @@ from wxtbx import bitmaps
 
 from iotbx import phil as ip
 
-from iota.components.gui.base import BaseDialog, BaseBackendDialog, \
-  BaseOptionsDialog
+from iota.components.gui.base import IOTABaseDialog, BaseBackendDialog, BaseOptionsDialog
 import iota.components.gui.controls as ct
 from iota.components.iota_input import master_phil
 from iota.components.iota_utils import UnicodeCharacters, WxFlags, noneset
@@ -57,10 +56,12 @@ class TestDialog(BaseOptionsDialog):
 
   def __init__(self, parent, scope, *args, **kwargs):
     self.parent = parent
-    BaseOptionsDialog.__init__(self, parent, input=scope, *args, **kwargs)
+    BaseOptionsDialog.__init__(self, parent, input=scope, size=(400, 600), *args, **kwargs)
+
+    self.Layout()
 
 
-class IOTAPreferences(BaseDialog):
+class IOTAPreferences(IOTABaseDialog):
   """ Class for dialog that houses IOTA interface preferences, e.g.:
         - multiprocessing / queue settings
         - monitor mode settings
@@ -73,11 +74,11 @@ class IOTAPreferences(BaseDialog):
     dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
     self.parent = parent
 
-    BaseDialog.__init__(self, parent, style=dlg_style,
-                        label_style=label_style,
-                        content_style=content_style,
-                        size=(600, 800),
-                        *args, **kwargs)
+    IOTABaseDialog.__init__(self, parent, style=dlg_style,
+                            label_style=label_style,
+                            content_style=content_style,
+                            size=(600, 800),
+                            *args, **kwargs)
 
     # Import current PHIL and set params to current values
     if phil is None:
@@ -253,10 +254,10 @@ class IOTAPreferences(BaseDialog):
     self.monitor_mode = self.params.gui.monitor_mode
     self.mm_timeout = self.params.gui.monitor_mode_timeout
     self.mm_timeout_len = self.params.gui.monitor_mode_timeout_length
-    self.random_subset = self.params.advanced.random_sample.flag_on
-    self.random_subset_number = self.params.advanced.random_sample.number
-    self.image_range = self.params.advanced.image_range.flag_on
-    self.image_range_string = self.params.advanced.image_range.range
+    self.random_subset = self.params.data_selection.random_sample.flag_on
+    self.random_subset_number = self.params.data_selection.random_sample.number
+    self.image_range = self.params.data_selection.image_range.flag_on
+    self.image_range_string = self.params.data_selection.image_range.range
     self.submit_command = self.params.mp.submit_command
     self.kill_command = self.params.mp.kill_command
 
@@ -570,7 +571,7 @@ For multiprocessing on the same CPU on which IOTA is running, no special kill co
     e.Skip()
 
 
-class ImportWindow(BaseDialog):
+class ImportWindow(IOTABaseDialog):
   # Import window - image import, modification and triage
 
   def __init__(self, parent, phil,
@@ -578,11 +579,11 @@ class ImportWindow(BaseDialog):
                content_style='normal',
                *args, **kwargs):
 
-    BaseDialog.__init__(self, parent,
-                        label_style=label_style,
-                        content_style=content_style,
-                        size=(600, 500),
-                        *args, **kwargs)
+    IOTABaseDialog.__init__(self, parent,
+                            label_style=label_style,
+                            content_style=content_style,
+                            size=(600, 500),
+                            *args, **kwargs)
 
     self.params = phil.extract()
     self.import_phil = None
@@ -703,15 +704,15 @@ class ImportWindow(BaseDialog):
     self.mod_beamXY.Y.SetValue(str(self.params.image_import.beam_center.y))
 
     # Image modification
-    self.img_triage.SetValue(self.params.image_import.image_triage)
-    bragg_peaks = str(self.params.image_import.minimum_Bragg_peaks)
+    self.img_triage.SetValue(self.params.data_selection.image_triage)
+    bragg_peaks = str(self.params.data_selection.image_triage.minimum_Bragg_peaks)
     self.min_bragg_peaks.ctr.SetValue(int(bragg_peaks))
     if self.img_triage.GetValue():
       self.min_bragg_peaks.Enable()
     else:
       self.min_bragg_peaks.Disable()
 
-    self.strong_sigma.ctr.SetValue(int(self.params.image_import.strong_sigma))
+    self.strong_sigma.ctr.SetValue(int(self.params.data_selection.image_triage.strong_sigma))
     self.estimate_gain.SetValue(self.params.image_import.estimate_gain)
 
   def onOK(self, e):
@@ -743,7 +744,7 @@ class ImportWindow(BaseDialog):
     e.Skip()
 
 
-class HA14ImportWindow(BaseDialog):
+class HA14ImportWindow(IOTABaseDialog):
   # Import window - image import, modification and triage
 
   def __init__(self, parent, phil,
@@ -751,11 +752,11 @@ class HA14ImportWindow(BaseDialog):
                content_style='normal',
                *args, **kwargs):
 
-    BaseDialog.__init__(self, parent,
-                        label_style=label_style,
-                        content_style=content_style,
-                        size=(600, 500),
-                        *args, **kwargs)
+    IOTABaseDialog.__init__(self, parent,
+                            label_style=label_style,
+                            content_style=content_style,
+                            size=(600, 500),
+                            *args, **kwargs)
 
     self.params = phil.extract()
     self.import_phil = None
@@ -921,8 +922,8 @@ class HA14ImportWindow(BaseDialog):
     self.mod_beamXY.Y.SetValue(str(self.params.image_import.beam_center.y))
 
     # Image modification
-    self.img_triage.SetValue(self.params.image_import.image_triage)
-    bragg_peaks = str(self.params.image_import.minimum_Bragg_peaks)
+    self.img_triage.SetValue(self.params.data_selection.image_triage.flag_on)
+    bragg_peaks = str(self.params.data_selection.image_triage.minimum_Bragg_peaks)
     self.min_bragg_peaks.ctr.SetValue(int(bragg_peaks))
     if self.img_triage.GetValue():
       self.min_bragg_peaks.Enable()
@@ -1884,7 +1885,7 @@ class BackendOptions(BaseBackendDialog):
     self.proc_phil = ip.parse(dials_phil_text)
     e.Skip()
 
-class AnalysisWindow(BaseDialog):
+class AnalysisWindow(IOTABaseDialog):
   # Import window - image import, modification and triage
 
   def __init__(self, parent, phil,
@@ -1892,10 +1893,10 @@ class AnalysisWindow(BaseDialog):
                content_style='normal',
                *args, **kwargs):
 
-    BaseDialog.__init__(self, parent,
-                        label_style=label_style,
-                        content_style=content_style,
-                        *args, **kwargs)
+    IOTABaseDialog.__init__(self, parent,
+                            label_style=label_style,
+                            content_style=content_style,
+                            *args, **kwargs)
 
     self.params = phil.extract()
     self.viz_phil = None
@@ -2107,20 +2108,17 @@ class WatchModeTimeOut(wx.Dialog):
     e.Skip()
 
 
-class DirView(BaseDialog):
+class DirView(IOTABaseDialog):
   def __init__(self, parent,
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
-
-
     dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
-
-    BaseDialog.__init__(self, parent, style=dlg_style,
-                        label_style=label_style,
-                        content_style=content_style,
-                        size=(600, 500),
-                        *args, **kwargs)
+    IOTABaseDialog.__init__(self, parent, style=dlg_style,
+                            label_style=label_style,
+                            content_style=content_style,
+                            size=(600, 500),
+                            *args, **kwargs)
 
     self.dir_ctrl = wx.GenericDirCtrl(self, id=wx.ID_ANY,
                                       dir=os.path.abspath(os.curdir))
@@ -2131,7 +2129,7 @@ class DirView(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=10)
 
 
-class TextFileView(BaseDialog):
+class TextFileView(IOTABaseDialog):
   def __init__(self, parent,
                label_style='bold',
                content_style='normal',
@@ -2140,11 +2138,11 @@ class TextFileView(BaseDialog):
 
     dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
 
-    BaseDialog.__init__(self, parent, style=dlg_style,
-                        label_style=label_style,
-                        content_style=content_style,
-                        size=(600, 500),
-                        *args, **kwargs)
+    IOTABaseDialog.__init__(self, parent, style=dlg_style,
+                            label_style=label_style,
+                            content_style=content_style,
+                            size=(600, 500),
+                            *args, **kwargs)
 
     self.txt_panel = ScrolledPanel(self)
     self.txt_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -2162,7 +2160,7 @@ class TextFileView(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=10)
 
 
-class ViewerWarning(BaseDialog):
+class ViewerWarning(IOTABaseDialog):
   def __init__(self, parent,
                img_list_length = None,
                label_style='bold',
@@ -2170,12 +2168,12 @@ class ViewerWarning(BaseDialog):
                *args, **kwargs):
 
     dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
-    BaseDialog.__init__(self, parent, style=dlg_style,
-                        label_style=label_style,
-                        content_style=content_style,
-                        size=(400, 400),
-                        title='Select from {} images'.format(img_list_length),
-                        *args, **kwargs)
+    IOTABaseDialog.__init__(self, parent, style=dlg_style,
+                            label_style=label_style,
+                            content_style=content_style,
+                            size=(400, 400),
+                            title='Select from {} images'.format(img_list_length),
+                            *args, **kwargs)
 
     self.img_list_length = img_list_length
     self.no_images = 0
@@ -2256,7 +2254,7 @@ class ViewerWarning(BaseDialog):
     self.EndModal(wx.ID_OK)
 
 
-class RecoveryDialog(BaseDialog):
+class RecoveryDialog(IOTABaseDialog):
 
   def __init__(self,
                parent,
@@ -2265,12 +2263,11 @@ class RecoveryDialog(BaseDialog):
                *args, **kwargs):
 
     dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
-    BaseDialog.__init__(self, parent, style=dlg_style,
-                        label_style=label_style,
-                        content_style=content_style,
-                        title='Recover Previous Run',
-                        *args, **kwargs)
-
+    IOTABaseDialog.__init__(self, parent, style=dlg_style,
+                            label_style=label_style,
+                            content_style=content_style,
+                            title='Recover Previous Run',
+                            *args, **kwargs)
 
     self.pathlist = wx.ListCtrl(self, style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
     self.selected = None
@@ -2304,6 +2301,8 @@ class RecoveryDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onOK, id=-1)
     self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.onItemActivated, id=-1)
 
+    self.place_and_size(set_by='parent', set_size='dialog')
+
   def insert_paths(self, pathlist):
     pathlist = sorted(pathlist, key=lambda i:i.lower())
     for i in range(len(pathlist)):
@@ -2334,7 +2333,7 @@ class RecoveryDialog(BaseDialog):
       self.pathlist.SetColumnWidth(2, width=-1)
       self.pathlist.SetColumnWidth(3, width=-1)
 
-      self.Fit()
+    self.Fit()
 
   def onOK(self, e):
     selected = False
@@ -2362,17 +2361,17 @@ class RecoveryDialog(BaseDialog):
                      self.pathlist.GetItemText(idx, col=1)]
     self.recovery_mode = self.dlg_ctr.choice.GetSelection()
 
-class DIALSSpfDialog(BaseDialog):
+class DIALSSpfDialog(IOTABaseDialog):
   def __init__(self, parent,
                phil,
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
 
-    BaseDialog.__init__(self, parent,
-                        label_style=label_style,
-                        content_style=content_style,
-                        *args, **kwargs)
+    IOTABaseDialog.__init__(self, parent,
+                            label_style=label_style,
+                            content_style=content_style,
+                            *args, **kwargs)
 
     self.params = phil.extract()
     self.spf_phil = None
@@ -2524,16 +2523,16 @@ class DIALSSpfDialog(BaseDialog):
     e.Skip()
 
 
-class ClusterDialog(BaseDialog):
+class ClusterDialog(IOTABaseDialog):
   def __init__(self, parent,
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
 
-    BaseDialog.__init__(self, parent,
-                        label_style=label_style,
-                        content_style=content_style,
-                        *args, **kwargs)
+    IOTABaseDialog.__init__(self, parent,
+                            label_style=label_style,
+                            content_style=content_style,
+                            *args, **kwargs)
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.main_sizer)
