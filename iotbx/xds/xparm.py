@@ -129,7 +129,7 @@ class reader(object):
     self.beam_vector       = tuple(map(float, tokens[1][1:4]))
 
     # Detector stuff
-    self.num_segments      = None
+    self.num_segments      = 0
     self.detector_size     = tuple(map(int, tokens[2][0:2]))
     self.pixel_size        = tuple(map(float, tokens[2][2:4]))
     self.detector_distance = float(tokens[3][0])
