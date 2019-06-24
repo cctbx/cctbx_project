@@ -295,10 +295,13 @@ class Toolbox(object):
       # if url fails to open, try using curl
       # temporary fix for old OpenSSL in system Python on macOS
       # https://github.com/cctbx/cctbx_project/issues/33
-      command = ['/usr/bin/curl', '--http1.0', '-Lo', file, '--retry', '5', url]
+      command = ['/usr/bin/curl', '--http1.0', '-fLo', file, '--retry', '5', url]
       subprocess.call(command, shell=False)
       socket = None     # prevent later socket code from being run
-      received = 1      # satisfy (filesize > 0) checks later on
+      try:
+        received = os.path.getsize(file)
+      except OSError:
+        raise RuntimeError("Download failed")
 
     if (socket is not None):
       try:
