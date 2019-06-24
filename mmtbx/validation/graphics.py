@@ -31,7 +31,7 @@ class rotarama_plot_mixin(object):
                  markerfacecolor="white",
                  markeredgecolor="black",
                  show_filling=True,
-                 markersize=10,
+                 markersize=5,
                  point_style='bo'):
     # points = [(x,y,label, isoutlier(bool)), (), ...]
     import matplotlib.cm
