@@ -68,6 +68,8 @@ class mpi_logger(object):
   def log_step_time(self, step, step_finished=False):
     '''Log elapsed time for an execution step'''
 
+    step = step.replace(' ', '_') # for easier log file post-processing
+
     if not step_finished: # a step has started - cache its start time and return
       if not step in self.timing_table:
         self.timing_table[step] = dict({'single_step':dict({'start':self.mpi_helper.time(), 'elapsed':0.0}),

@@ -102,6 +102,7 @@ class Script(object):
     self.mpi_logger.log_step_time("PARSE_INPUT_PARAMS", True)
 
     # Create the workers using the factories
+    self.mpi_logger.log_step_time("CREATE_WORKERS")
     from xfel.merging import application
     import importlib
 
@@ -123,13 +124,14 @@ class Script(object):
     # Perform phil validation up front
     for worker in workers:
       worker.validate()
+    self.mpi_logger.log_step_time("CREATE_WORKERS", True)
 
     # Do the work
     experiments = reflections = None
     step = 0
     while(workers):
       worker = workers.pop(0)
-
+      self.mpi_logger.log_step_time("STEP_" + worker.__repr__())
       # Log worker name, i.e. execution step name
       step += 1
       if step > 1:
@@ -144,6 +146,7 @@ class Script(object):
 
       # Execute worker
       experiments, reflections = worker.run(experiments, reflections)
+      self.mpi_logger.log_step_time("STEP_" + worker.__repr__(), True)
 
     if self.params.output.save_experiments_and_reflections:
       from dxtbx.model.experiment_list import ExperimentListDumper

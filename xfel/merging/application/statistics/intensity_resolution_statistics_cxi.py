@@ -537,6 +537,12 @@ class intensity_resolution_statistics_cxi(worker):
     else:
       sgi = self.params.scaling.space_group
 
+    unit_cell = uniform[1].unit_cell()
+    unit_cell_formatted = "(%.6f, %.6f, %.6f, %.3f, %.3f, %.3f)"\
+                      %(unit_cell.parameters()[0], unit_cell.parameters()[1], unit_cell.parameters()[2], \
+                        unit_cell.parameters()[3], unit_cell.parameters()[4], unit_cell.parameters()[5])
+    self.logger.main_log("\nUnit cell: %s\n"%unit_cell_formatted)
+
     for x in [0,1,2,3]:
       if not have_iso_ref and x == 0:
         continue
@@ -546,18 +552,16 @@ class intensity_resolution_statistics_cxi(worker):
                        3:"Semi-dataset 2"}[x])
 
       uniform[x] = uniform[x].customized_copy(
-        crystal_symmetry = symmetry(unit_cell=uniform[1].unit_cell(),
-                                            space_group_info=sgi),
-        ).resolution_filter(d_min=uniform[1].d_min(), d_max = self.params.merging.d_max,
-        ).complete_array(d_min=uniform[1].d_min(), d_max = self.params.merging.d_max).map_to_asu()
+        crystal_symmetry = symmetry(unit_cell=uniform[1].unit_cell(), space_group_info=sgi),
+        ).resolution_filter(d_min = d_max_min[1], d_max = self.params.merging.d_max,
+        ).complete_array(d_min = d_max_min[1], d_max = self.params.merging.d_max).map_to_asu()
 
     self.logger.main_log("%6d indices: An asymmetric unit in the resolution interval %.2f - %.2f Angstrom"%(
-       uniform[1].size(),d_max_min[0],uniform[1].d_min()))
+       uniform[1].size(), d_max_min[0], d_max_min[1]))
 
     if have_iso_ref:
       uniform[0] = uniform[0].common_set(uniform[1])
       assert len(uniform[0].indices()) == len(uniform[1].indices())
-
 
     uniform[2] = uniform[2].common_set(uniform[1])
     uniform[3] = uniform[3].common_set(uniform[1])

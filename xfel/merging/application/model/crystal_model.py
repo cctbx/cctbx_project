@@ -192,9 +192,12 @@ class crystal_model(worker):
     elif self.purpose == "statistics":
       if self.params.merging.set_average_unit_cell:
         unit_cell = self.params.statistics.__phil_get__('average_unit_cell')
-        self.logger.log("Using average unit cell: " + str(unit_cell))
+        unit_cell_formatted = "(%.6f, %.6f, %.6f, %.3f, %.3f, %.3f)"\
+                          %(unit_cell.parameters()[0], unit_cell.parameters()[1], unit_cell.parameters()[2], \
+                            unit_cell.parameters()[3], unit_cell.parameters()[4], unit_cell.parameters()[5])
+        self.logger.log("Using average unit cell: " + unit_cell_formatted)
         if self.mpi_helper.rank == 0:
-          self.logger.main_log("Using average unit cell: " + str(unit_cell))
+          self.logger.main_log("Using average unit cell: " + unit_cell_formatted)
       else:
         unit_cell = self.params.scaling.unit_cell
         self.logger.log("Using target unit cell: " + str(unit_cell))
