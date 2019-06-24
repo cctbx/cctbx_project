@@ -205,7 +205,7 @@ class fetch_packages(object):
                 pkg_url=None,
                 output_file=None,
                 return_file_and_status=False,
-                download_url=None, # If given this is the URL used for downloading, otherwise construct using pgk_url and pkg_name
+                download_url=None, # If given this is the URL used for downloading, otherwise construct using pkg_url and pkg_name
                 ):
     if (pkg_url is None):
       pkg_url = BASE_CCI_PKG_URL
@@ -236,20 +236,39 @@ class fetch_packages(object):
       else :
         raise RuntimeError(("Package '%s' not found on local filesystems.  ") %
           pkg_name)
-    full_url = download_url or "%s/%s" % (pkg_url, pkg_name)
-    if not download_url:
-      self.log.write("    downloading from %s : " % pkg_url)
 
-    size = self.toolbox.download_to_file(full_url, output_file, log=self.log)
-    if (size == -2):
-      print("    using ./%s (cached)" % pkg_name, file=self.log)
-      if return_file_and_status:
-        return op.join(self.dest_dir, output_file), size
-      return op.join(self.dest_dir, output_file)
-    assert size > 0, "File %s has size %d" % (pkg_name, size)
-    if return_file_and_status:
-      return op.join(self.dest_dir, output_file), size
-    return op.join(self.dest_dir, output_file)
+    # Generate list of possible URL candidates
+    if download_url:
+      if isinstance(download_url, list):
+        urls = download_url
+      else:
+        urls = [download_url]
+    else:
+      if isinstance(pkg_url, list):
+        urls = ["%s/%s" % (p, pkg_name) for p in pkg_url]
+      else:
+        urls = ["%s/%s" % (pkg_url, pkg_name)]
+
+    for url_attempt in urls:
+      self.log.write("    downloading from %s : " % url_attempt)
+      for retry in (3,3,0):
+        try:
+          size = self.toolbox.download_to_file(url_attempt, output_file, log=self.log)
+          if (size == -2):
+            print("    using ./%s (cached)" % pkg_name, file=self.log)
+            if return_file_and_status:
+              return op.join(self.dest_dir, output_file), size
+            return op.join(self.dest_dir, output_file)
+          assert size > 0, "File %s has size %d" % (pkg_name, size)
+          if return_file_and_status:
+            return op.join(self.dest_dir, output_file), size
+          return op.join(self.dest_dir, output_file)
+        except Exception as e:
+          self.log.write("    download failed with %s" % str(e))
+          if retry:
+            self.log.write("    retrying in %d seconds" % retry)
+            time.sleep(retry)
+    raise RuntimeError("Could not download " + pkg_name)
 
 def fetch_all_dependencies(dest_dir,
     log,
