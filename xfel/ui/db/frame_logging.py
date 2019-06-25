@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from dials.command_line.stills_process import Processor
+from xfel.ui.db.dxtbx_db import log_frame, dxtbx_xfel_db_application
 
 class DialsProcessorWithLogging(Processor):
   '''Overrides for steps of dials processing of stills with XFEL GUI database logging.'''
@@ -9,16 +10,16 @@ class DialsProcessorWithLogging(Processor):
     super(DialsProcessorWithLogging, self).__init__(params, composite_tag, rank)
     self.tt_low = None
     self.tt_high = None
+    self.db_app = dxtbx_xfel_db_application(params)
 
   def log_frame(self, experiments, reflections, run, n_strong, timestamp = None,
                 two_theta_low = None, two_theta_high = None, db_event = None):
     # update an existing db_event if db_event is not None
     if self.params.experiment_tag is None:
       return
-    from xfel.ui.db.dxtbx_db import log_frame
     db_event = log_frame(experiments, reflections, self.params, run, n_strong, timestamp = timestamp,
                          two_theta_low = two_theta_low, two_theta_high = two_theta_high,
-                         db_event = db_event)
+                         db_event = db_event, app = self.db_app)
     return db_event
 
   def get_run_and_timestamp(self, obj):

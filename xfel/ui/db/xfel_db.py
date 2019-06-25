@@ -210,6 +210,7 @@ class initialize(initialize_base):
 class db_application(object):
   def __init__(self, params):
     self.params = params
+    self.dbobj = None
 
   def execute_query(self, query, commit = False):
     if self.params.db.verbose:
@@ -222,6 +223,10 @@ class db_application(object):
     sleep_time = 0.1
     while retry_count < retry_max:
       try:
+        if self.dbobj is None or not commit:
+          self.dbobj = dbobj = get_db_connection(self.params)
+        else:
+          dbobj = self.dbobj
         dbobj = get_db_connection(self.params)
         cursor = dbobj.cursor()
         cursor.execute(query)

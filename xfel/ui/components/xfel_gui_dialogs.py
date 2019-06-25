@@ -96,7 +96,7 @@ class SettingsDialog(BaseDialog):
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(700, -1),
+                        size=(600, -1),
                         *args, **kwargs)
 
     self.params = params
@@ -1789,23 +1789,23 @@ class RunBlockDialog(BaseDialog):
     ''' If previous rungroups exist in trial, fill in fields in nascent block '''
     if len(self.all_blocks) > 0:
       last = self.all_blocks[-1]
-      self.config.ctr.SetValue(str(last.config_str))
       self.phil.ctr.SetValue(str(last.extra_phil_str))
-      self.address.ctr.SetValue(str(last.detector_address))
       if self.is_lcls:
+        self.address.ctr.SetValue(str(last.detector_address))
+        self.config.ctr.SetValue(str(last.config_str))
         self.beam_xyz.DetZ.SetValue(str(last.detz_parameter))
         self.beam_xyz.X.SetValue(str(last.beamx))
         self.beam_xyz.Y.SetValue(str(last.beamy))
-      self.bin_nrg_gain.binning.SetValue(str(last.binning))
-      self.bin_nrg_gain.energy.SetValue(str(last.energy))
-      self.bin_nrg_gain.gain_mask_level.SetValue(str(last.gain_mask_level))
+        self.bin_nrg_gain.binning.SetValue(str(last.binning))
+        self.bin_nrg_gain.energy.SetValue(str(last.energy))
+        self.bin_nrg_gain.gain_mask_level.SetValue(str(last.gain_mask_level))
+        self.dark_avg_path.ctr.SetValue(str(last.dark_avg_path))
+        self.dark_stddev_path.ctr.SetValue(str(last.dark_stddev_path))
+        self.gain_map_path.ctr.SetValue(str(last.gain_map_path))
+        self.calib_dir.ctr.SetValue(str(last.calib_dir))
       self.two_thetas.two_theta_low.SetValue(str(last.two_theta_low))
       self.two_thetas.two_theta_high.SetValue(str(last.two_theta_high))
       self.untrusted_path.ctr.SetValue(str(last.untrusted_pixel_mask_path))
-      self.dark_avg_path.ctr.SetValue(str(last.dark_avg_path))
-      self.dark_stddev_path.ctr.SetValue(str(last.dark_stddev_path))
-      self.gain_map_path.ctr.SetValue(str(last.gain_map_path))
-      self.calib_dir.ctr.SetValue(str(last.calib_dir))
       self.comment.ctr.SetValue(str(last.comment))
 
   def configure_controls(self):
