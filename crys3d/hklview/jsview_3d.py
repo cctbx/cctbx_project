@@ -303,7 +303,7 @@ class hklview_3d:
 
   def MakeToolTips(self, HKLscenes):
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    allcolstraliases = "\n  var hk = \'H,K,L: \'"
+    allcolstraliases = "var hk = \'H,K,L: \';"
     alltooltipstringsdict = {}
     if self.usingtooltips:
       self.mprint( "making tooltips")
@@ -313,7 +313,7 @@ class hklview_3d:
         #"""
         if hklscene.isUsingFOMs():
           continue # already have tooltips for the scene without the associated fom
-        colstraliases = "\n  var st%d = '\\n%s: '" %(j, hklscene.work_array.info().label_string() )
+        colstraliases = "\n  var st%d = '\\n%s: ';" %(j, hklscene.work_array.info().label_string() )
         ocolstr = hklscene.work_array.info().label_string()
         if hklscene.work_array.is_complex_array():
           ampl = flex.abs(hklscene.data)
@@ -347,6 +347,7 @@ class hklview_3d:
         alltooltipstringsdict.update( tooltipstringsdict )
         allcolstraliases += colstraliases
       allcolstraliases += "\n"
+
     return alltooltipstringsdict, allcolstraliases
 
 
@@ -522,18 +523,18 @@ class hklview_3d:
     fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
 
     arrowstr = """
-    // xyz arrows
-    shape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origo');
-    //blue-x
-    shape.addArrow( %s, %s , [ 0, 0, 1 ], 0.1);
-    //green-y
-    shape.addArrow( %s, %s , [ 0, 1, 0 ], 0.1);
-    //red-z
-    shape.addArrow( %s, %s , [ 1, 0, 0 ], 0.1);
+  // xyz arrows
+  shape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origo');
+  //blue-x
+  shape.addArrow( %s, %s , [ 0, 0, 1 ], 0.1);
+  //green-y
+  shape.addArrow( %s, %s , [ 0, 1, 0 ], 0.1);
+  //red-z
+  shape.addArrow( %s, %s , [ 1, 0, 0 ], 0.1);
 
-    shape.addText( %s, [ 0, 0, 1 ], %s, 'h');
-    shape.addText( %s, [ 0, 1, 0 ], %s, 'k');
-    shape.addText( %s, [ 1, 0, 0 ], %s, 'l');
+  shape.addText( %s, [ 0, 0, 1 ], %s, 'h');
+  shape.addText( %s, [ 0, 1, 0 ], %s, 'k');
+  shape.addText( %s, [ 1, 0, 0 ], %s, 'l');
     """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, fontsize,
           Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
@@ -672,6 +673,8 @@ class hklview_3d:
           uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
           uncrustttips = uncrustttips.replace("\'\'+", "")
           spherebufferstr += "  ttips.push( %s );" %uncrustttips
+        else:
+          spherebufferstr += "  ttips.push( [ ] );"
         spherebufferstr += """
   positions.push( new Float32Array( %s ) );
   colours.push( new Float32Array( %s ) );
@@ -684,8 +687,7 @@ class hklview_3d:
          cntbin)
         if self.primitivetype == "SphereBuffer":
           spherebufferstr += "\n    radius: radii[%d]," %cntbin
-        if self.usingtooltips:
-          spherebufferstr += "\n    picking: ttips[%d]," %cntbin
+        spherebufferstr += "\n    picking: ttips[%d]," %cntbin
         if self.primitivetype == "PointBuffer":
           spherebufferstr += "\n  }, {pointSize: %1.2f})\n" %self.settings.scale
         else:
@@ -695,56 +697,70 @@ class hklview_3d:
   //}, { disableImpostor: true }) // if true allows wireframe spheres but does not allow resizing spheres
   );
   """
-        spherebufferstr += "  shape.addBuffer(shapebufs[%d])" %cntbin
+        spherebufferstr += "shape.addBuffer(shapebufs[%d])" %cntbin
 
         if self.workingbinvals[ibin] < 0.0:
           negativeradiistr += "shapebufs[%d].setParameters({metalness: 1})\n" %cntbin
         cntbin += 1
 
-    if self.usingtooltips:
-      spherebufferstr += """
-
+    spherebufferstr += """
 // create tooltip element and add to the viewer canvas
-  tooltip = document.createElement("div");
-  Object.assign(tooltip.style, {
-    display: "none",
-    position: "absolute",
-    zIndex: 10,
-    pointerEvents: "none",
-    backgroundColor: "rgba(255, 255, 255, 0.75)",
-    color: "black",
-    padding: "0.1em",
-    fontFamily: "sans-serif"
-  });
-
   stage.viewer.container.appendChild(tooltip);
   // listen to `hovered` signal to move tooltip around and change its text
-  stage.signals.hovered.add(function (pickingProxy) {
-    if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  )){
-      var sphere = pickingProxy.sphere;
-      var cp = pickingProxy.canvasPosition;
-      tooltip.innerText = pickingProxy.picker[pickingProxy.pid];
-      tooltip.style.bottom = cp.y + 7 + "px";
-      tooltip.style.left = cp.x + 8 + "px";
-      tooltip.style.fontSize = "smaller";
-      tooltip.style.display = "block";
-    }else{
-      tooltip.style.display = "none";
+  stage.signals.hovered.add(
+    function (pickingProxy)
+    {
+      if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  ))
+      {
+        var cp = pickingProxy.canvasPosition;
+    """
+    if self.usingtooltips:
+      spherebufferstr += """
+        tooltip.innerText = pickingProxy.picker[pickingProxy.pid];
+    """
+    else:
+      spherebufferstr += """
+        mysocket.send( 'tooltip_id: ' + pickingProxy.pid);
+        tooltip.innerText = current_ttip;
+    """
+    spherebufferstr += """
+        tooltip.style.bottom = cp.y + 7 + "px";
+        tooltip.style.left = cp.x + 8 + "px";
+        tooltip.style.fontSize = "smaller";
+        tooltip.style.display = "block";
+      }
+      else
+      {
+        tooltip.style.display = "none";
+      }
     }
-  });
+  );
 
     """
 
     spherebufferstr += """
-  stage.signals.clicked.add(function (pickingProxy) {
-  if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  )){
-    var innerText = pickingProxy.picker[pickingProxy.pid];
-    mysocket.send( innerText);
-  }
-  });
+  stage.signals.clicked.add(
+    function (pickingProxy)
+    {
+      if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  ))
+      {
+    """
+    if self.usingtooltips:
+      spherebufferstr += """
+        var innerText = pickingProxy.picker[pickingProxy.pid];
+    """
+    else:
+      spherebufferstr += """
+        var innerText = pickingProxy.pid;
+    """
+    spherebufferstr += """
+        mysocket.send( innerText);
+      }
+    }
+  );
 
     """
-    colourgradstrs = "colourgradvalarray = new Array(%s)\n" %fomln
+    colourgradstrs = "colourgradvalarray = new Array(%s);\n" %fomln
     # if displaying phases from map coefficients together with fom values then
     for g,colourgradarray in enumerate(colourgradarrays):
       self.colourgradientvalues = []
@@ -763,7 +779,7 @@ class hklview_3d:
           vstr = str( roundoff(val[0], 2) )
         colourgradstr.append([vstr , gradval])
 
-      colourgradstrs += "  colourgradvalarray[%s] = %s\n" %(g, str(colourgradstr) )
+      colourgradstrs += "  colourgradvalarray[%s] = %s;\n" %(g, str(colourgradstr) )
 
     #negativeradiistr = ""
     #for ibin in range(self.nbin):
@@ -780,23 +796,29 @@ class hklview_3d:
 var pagename = location.pathname.substring(1);
 var mysocket = new WebSocket('ws://127.0.0.1:7894/');
 
-mysocket.onopen = function (e) {
+mysocket.onopen = function(e)
+{
   mysocket.send('%s now connected via websocket to ' + pagename + '\\n');
 };
 
-mysocket.onclose = function (e) {
+mysocket.onclose = function(e)
+{
   mysocket.send('%s now disconnecting from websocket ' + pagename + '\\n');
 };
 
 // Log errors to debugger of your browser
-mysocket.onerror = function (error) {
+mysocket.onerror = function(error)
+{
   console.log('WebSocket Error ' + error);
 };
 
 
-window.addEventListener( 'resize', function( event ){
-    stage.handleResize();
-}, false );
+window.addEventListener( 'resize',
+  function( event ){
+      stage.handleResize();
+  },
+  false
+);
 
 
 
@@ -808,6 +830,7 @@ var repr;
 var AA = String.fromCharCode(197); // short for angstrom
 var DGR = String.fromCharCode(176); // short for degree symbol
 var ttips = [];
+var current_ttip = "";
 var positions = [];
 var br_positions = [];
 var br_colours = [];
@@ -818,34 +841,40 @@ var shapebufs = [];
 var br_shapebufs = [];
 
 
-function createElement (name, properties, style) {
+function createElement(name, properties, style)
+{
 // utility function used in for loop over colourgradvalarray
-  var el = document.createElement(name)
-  Object.assign(el, properties)
-  Object.assign(el.style, style)
-  Object.assign(el.style, {
+  var el = document.createElement(name);
+  Object.assign(el, properties);
+  Object.assign(el.style, style);
+  Object.assign(el.style,
+  {
       display: "block",
       position: "absolute",
       color: "black",
       fontFamily: "sans-serif",
       fontSize: "smaller",
-    }
-  )
-  return el
+  }
+  );
+  return el;
 }
 
 
-function addElement (el) {
+function addElement(el)
+{
 // utility function used in for loop over colourgradvalarray
-  Object.assign(el.style, {
+  Object.assign(el.style,
+  {
     position: "absolute",
     zIndex: 10
-  })
-  stage.viewer.container.appendChild(el)
+  }
+  );
+  stage.viewer.container.appendChild(el);
 }
 
 
-function addDivBox(txt, t, l, w, h, bgcolour='rgba(255.0, 255.0, 255.0, 0.0)') {
+function addDivBox(txt, t, l, w, h, bgcolour='rgba(255.0, 255.0, 255.0, 0.0)')
+{
   divbox = createElement("div",
   {
     innerText: txt
@@ -859,24 +888,35 @@ function addDivBox(txt, t, l, w, h, bgcolour='rgba(255.0, 255.0, 255.0, 0.0)') {
     height: h.toString() + "px",
   }
   );
-  addElement(divbox)
+  addElement(divbox);
 }
 
+// define tooltip element
+var tooltip = document.createElement("div");
+Object.assign(tooltip.style, {
+  display: "none",
+  position: "absolute",
+  zIndex: 10,
+  pointerEvents: "none",
+  backgroundColor: "rgba(255, 255, 255, 0.75)",
+  color: "black",
+  padding: "0.1em",
+  fontFamily: "sans-serif"
+});
 
-var hklscene = function () {
+var hklscene = function()
+{
   shape = new NGL.Shape('shape');
   stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false,
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
-
   %s
 
   %s
-
   shapeComp = stage.addComponentFromObject(shape);
   repr = shapeComp.addRepresentation('buffer');
   shapeComp.autoView();
-  repr.update()
+  repr.update();
 
   // if some radii are negative draw them with wireframe
   %s
@@ -884,23 +924,24 @@ var hklscene = function () {
   //colourgradvalarrays
   %s
 
-  var ih = 3;
-  var topr = 35
-  var topr2 = 10
-  var lp = 10
-  var wp = 40
-  var lp2 = lp + wp
-  var gl = 3
-  var wp2 = gl
-  var fomlabelheight = 25
-  if (colourgradvalarray.length === 1) {
-    wp2 = 15
-    fomlabelheight = 0
+  var ih = 3,
+  topr = 35,
+  topr2 = 10,
+  lp = 10,
+  wp = 40,
+  lp2 = lp + wp,
+  gl = 3,
+  wp2 = gl,
+  fomlabelheight = 25;
+  if (colourgradvalarray.length === 1)
+  {
+    wp2 = 15;
+    fomlabelheight = 0;
   }
 
-  var wp3 = wp + colourgradvalarray.length * wp2 + 2
+  var wp3 = wp + colourgradvalarray.length * wp2 + 2;
 
-  totalheight = ih*colourgradvalarray[0].length + 35 + fomlabelheight
+  totalheight = ih*colourgradvalarray[0].length + 35 + fomlabelheight;
   // make a white box on top of which boxes with transparent background are placed
   // containing the colour values at regular intervals as well as label legend of
   // the displayed miller array
@@ -909,43 +950,46 @@ var hklscene = function () {
   // print label of the miller array used for colouring
   addDivBox("%s", topr2, lp, wp, 20);
 
-  if (colourgradvalarray.length > 1) {
+  if (colourgradvalarray.length > 1)
+  {
     // print FOM label, 1, 0.5 and 0.0 values below colour chart
-    fomtop = topr2 + totalheight - 18
-    fomlp = lp + wp
-    fomwp = wp3
-    fomtop2 = fomtop - 13
+    fomtop = topr2 + totalheight - 18;
+    fomlp = lp + wp;
+    fomwp = wp3;
+    fomtop2 = fomtop - 13;
     // print the 1 number
-    addDivBox("1", fomtop2, fomlp, fomwp, 20)
+    addDivBox("1", fomtop2, fomlp, fomwp, 20);
     // print the 0.5 number
-    leftp = fomlp + 0.48 * gl * colourgradvalarray.length
-    addDivBox("0.5", fomtop2, leftp, fomwp, 20)
+    leftp = fomlp + 0.48 * gl * colourgradvalarray.length;
+    addDivBox("0.5", fomtop2, leftp, fomwp, 20);
     // print the FOM label
     addDivBox("%s", fomtop, fomlp, fomwp, 20);
     // print the 0 number
-    leftp = fomlp + 0.96 * gl * colourgradvalarray.length
-    addDivBox("0", fomtop2, leftp, fomwp, 20)
+    leftp = fomlp + 0.96 * gl * colourgradvalarray.length;
+    addDivBox("0", fomtop2, leftp, fomwp, 20);
   }
 
-  for (j = 0; j < colourgradvalarray[0].length; j++) {
+  for (j = 0; j < colourgradvalarray[0].length; j++)
+  {
     rgbcol = colourgradvalarray[0][j][1];
-    val = colourgradvalarray[0][j][0]
-    topv = j*ih + topr
-    toptxt = topv - 5
+    val = colourgradvalarray[0][j][0];
+    topv = j*ih + topr;
+    toptxt = topv - 5;
     // print value of miller array if present in colourgradvalarray[0][j][0]
     addDivBox(val, toptxt, lp, wp, ih);
   }
 
   // draw the colour gradient
-  for (g = 0; g < colourgradvalarray.length; g++) {
-    leftp = g*gl + lp + wp
-
+  for (g = 0; g < colourgradvalarray.length; g++)
+  {
+    leftp = g*gl + lp + wp;
     // if FOM values are supplied draw colour gradients with decreasing
     // saturation values as stored in the colourgradvalarray[g] arrays
-    for (j = 0; j < colourgradvalarray[g].length; j++) {
+    for (j = 0; j < colourgradvalarray[g].length; j++)
+    {
       rgbcol = colourgradvalarray[g][j][1];
-      val = colourgradvalarray[g][j][0]
-      topv = j*ih + topr
+      val = colourgradvalarray[g][j][0];
+      topv = j*ih + topr;
       addDivBox("", topv, leftp, wp2, ih, rgbcol);
     }
   }
@@ -955,13 +999,15 @@ var hklscene = function () {
 document.addEventListener('DOMContentLoaded', function() { hklscene() }, false );
 
 
-mysocket.onmessage = function (e) {
+mysocket.onmessage = function (e)
+{
   //alert('received:\\n' + e.data);
-  var c
-  var alpha
-  var si
+  var c,
+  alpha,
+  si;
   mysocket.send('got ' + e.data ); // tell server what it sent us
-  try {
+  //try
+  //{
     var datval = e.data.split(":\\n");
     //alert('received2:\\n' + datval);
     var msgtype = datval[0];
@@ -970,26 +1016,32 @@ mysocket.onmessage = function (e) {
 
     if (msgtype === "alpha")
     {
-      ibin = parseInt(val[0])
-      alpha = parseFloat(val[1])
-      shapebufs[ibin].setParameters({opacity: alpha})
-      stage.viewer.requestRender()
+      ibin = parseInt(val[0]);
+      alpha = parseFloat(val[1]);
+      shapebufs[ibin].setParameters({opacity: alpha});
+      stage.viewer.requestRender();
     }
 
     if (msgtype === "colour")
     {
-      ibin = parseInt(val[0])
-      si =  parseInt(val[1])
-      colours[ibin][3*si] = parseFloat(val[2])
-      colours[ibin][3*si+1] = parseFloat(val[3])
-      colours[ibin][3*si+2] = parseFloat(val[4])
-      shapebufs[ibin].setAttributes({ color: colours[ibin] })
-      stage.viewer.requestRender()
+      ibin = parseInt(val[0]);
+      si =  parseInt(val[1]);
+      colours[ibin][3*si] = parseFloat(val[2]);
+      colours[ibin][3*si+1] = parseFloat(val[3]);
+      colours[ibin][3*si+2] = parseFloat(val[4]);
+      shapebufs[ibin].setAttributes({ color: colours[ibin] });
+      stage.viewer.requestRender();
+    }
+
+    if (msgtype === "ShowTooltip")
+    {
+      current_ttip = eval( val);
+      //current_ttip = val;
     }
 
     if (msgtype === "Redraw")
     {
-      stage.viewer.requestRender()
+      stage.viewer.requestRender();
     }
 
     if (msgtype === "ReOrient")
@@ -998,7 +1050,7 @@ mysocket.onmessage = function (e) {
       sm = new Float32Array(16);
       //alert('ReOrienting: ' + val)
       for (j=0; j<16; j++)
-        sm[j] = parseFloat(val[j])
+        sm[j] = parseFloat(val[j]);
 
       var m = new NGL.Matrix4();
       m.fromArray(sm);
@@ -1009,8 +1061,8 @@ mysocket.onmessage = function (e) {
     if (msgtype === "Reload")
     {
     // refresh browser with the javascript file
-      cvorient = stage.viewerControls.getOrientation().elements
-      msg = String(cvorient)
+      cvorient = stage.viewerControls.getOrientation().elements;
+      msg = String(cvorient);
       mysocket.send('Current vieworientation:\\n' + msg );
 
       mysocket.send( 'Refreshing ' + pagename );
@@ -1018,7 +1070,7 @@ mysocket.onmessage = function (e) {
     }
 
 
-    if (msgtype.includes("Expand") !== -1  )
+    if (msgtype.includes("Expand") )
     {
       // test something new
       mysocket.send( 'Expanding data...' );
@@ -1033,7 +1085,7 @@ mysocket.onmessage = function (e) {
 
       shapeComp.removeRepresentation(repr);
 
-      //alert('rotations:\\n' + val)
+      //alert('rotations:\\n' + val);
       strs = datval[1].split("\\n");
 
       nrots = strs.length;
@@ -1047,7 +1099,7 @@ mysocket.onmessage = function (e) {
       var nsize3 = nsize*3;
       var anoexp = false;
 
-      if (msgtype.includes("Friedel") !== -1  )
+      if (msgtype.includes("Friedel") )
       {
         anoexp = true;
         csize = nsize*6;
@@ -1055,13 +1107,13 @@ mysocket.onmessage = function (e) {
 
       for (var h=0; h<bins; h++)
       {
-        br_positions.push( [] )
-        br_shapebufs.push( [] )
-        br_colours.push( [] )
-        br_radii.push( [] )
+        br_positions.push( [] );
+        br_shapebufs.push( [] );
+        br_colours.push( [] );
+        br_radii.push( [] );
 
         br_colours[h] = colours[h];
-        br_radii[h] = radii[h]
+        br_radii[h] = radii[h];
         if (anoexp)
         {
           var colarr = [];
@@ -1087,15 +1139,15 @@ mysocket.onmessage = function (e) {
         for (var g=0; g < nrots; g++ )
         {
           if (strs[g] < 1 )
-            continue
-          br_positions[h].push( [] )
-          br_shapebufs[h].push( [] )
+            continue;
+          br_positions[h].push( [] );
+          br_shapebufs[h].push( [] );
           var elmstrs = strs[g].split(",");
 
           for (j=0; j<9; j++)
-            sm[j] = parseFloat(elmstrs[j])
+            sm[j] = parseFloat(elmstrs[j]);
           Rotmat.fromArray(sm);
-          //alert('rot' + g + ': ' + elmstrs)
+          //alert('rot' + g + ': ' + elmstrs);
 
           br_positions[h][g] = new Float32Array( csize );
 
@@ -1108,16 +1160,16 @@ mysocket.onmessage = function (e) {
 
             r.applyMatrix3(Rotmat)
 
-            br_positions[h][g][idx] = r.x
-            br_positions[h][g][idx + 1] = r.y
-            br_positions[h][g][idx + 2] = r.z
+            br_positions[h][g][idx] = r.x;
+            br_positions[h][g][idx + 1] = r.y;
+            br_positions[h][g][idx + 2] = r.z;
 
             if (anoexp)
             {
               r.negate(); // inversion for anomalous pair
-              br_positions[h][g][nsize3 + idx] = r.x
-              br_positions[h][g][nsize3 + idx + 1] = r.y
-              br_positions[h][g][nsize3 + idx + 2] = r.z
+              br_positions[h][g][nsize3 + idx] = r.x;
+              br_positions[h][g][nsize3 + idx + 1] = r.y;
+              br_positions[h][g][nsize3 + idx + 2] = r.z;
             }
 
           }
@@ -1135,15 +1187,12 @@ mysocket.onmessage = function (e) {
 
       repr = shapeComp.addRepresentation('buffer');
 
-      stage.viewer.requestRender()
+      stage.viewer.requestRender();
     }
 
 
-
-
-
-
-    if (msgtype === "Testing") {
+    if (msgtype === "Testing")
+    {
       // test something new
       mysocket.send( 'Testing something new ' + pagename );
 
@@ -1155,19 +1204,17 @@ mysocket.onmessage = function (e) {
       })
 
       repr = shapeComp.addRepresentation('buffer');
-
-      stage.viewer.requestRender()
+      stage.viewer.requestRender();
     }
 
 
-
-
-
-
-
-  }  catch(err) {
+  /*
+  }
+  catch(err)
+  {
     mysocket.send('error: ' + err );
   }
+  */
 };
 
 
@@ -1202,6 +1249,13 @@ mysocket.onmessage = function (e) {
         self.pendingmessagetype = "ReOrient"
         self.pendingmessage = self.viewmtrxelms
       self.isnewfile = False
+    if "tooltip_id:" in message:
+      id = int( message.split("tooltip_id:")[1] )
+      hkls = self.scene.indices
+      ttip = self.tooltipstringsdict[hkls[id]]
+      self.mprint("sending: " + str(ttip))
+      self.SendWebSockMsg("ShowTooltip", ttip)
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
   def WebBrowserMsgQueue(self):
