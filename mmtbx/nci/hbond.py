@@ -233,18 +233,22 @@ class find(object):
           atom_i = atom_i, atom_j = atom_j)
         self.pair_proxies.append(proxy_custom)
 
-  def get_theta_2_skew_and_kurtosis(self, filter_by_occ_and_b=False):
-    data = flex.double()
+  def get_theta_2_skew_and_kurtosis(self):
+    data_all = flex.double()
+    data_fil = flex.double()
     for r in self.result:
-      if(filter_by_occ_and_b):
-        if(r.atom_i.b>30): continue
-        if(r.atom_j.b>30): continue
-        if(r.atom_i.occ<0.5): continue
-        if(r.atom_j.occ<0.5): continue
-      data.append(r.a_DHA)
+      data_all.append(r.a_DHA)
+      if(r.atom_i.b>30): continue
+      if(r.atom_j.b>30): continue
+      if(r.atom_i.occ<0.9): continue
+      if(r.atom_j.occ<0.9): continue
+      data_fil.append(r.a_DHA)
+    print (data_all.size(), data_fil.size())
     return group_args(
-      skew     = get_skew(data),
-      kurtosis = get_kurtosis(data))
+      skew_all          = get_skew(data_all),
+      kurtosis_all      = get_kurtosis(data_all),
+      skew_filtered     = get_skew(data_fil),
+      kurtosis_filtered = get_kurtosis(data_fil))
 
   def show(self, log = sys.stdout, sym_only=False):
     for r in self.result:
