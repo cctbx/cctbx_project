@@ -185,7 +185,7 @@ def align_reference_frame(primary_axis, primary_target,
       axis_r = secondary_target.cross(Rprimary * secondary_axis)
       axis_s = primary_target
 
-      if (axis_r.angle(primary_target) > 0.5 * math.pi):
+      if (axis_r.angle(primary_target, value_if_undefined=0) > 0.5 * math.pi):
         angle_s = orthogonal_component(axis_s, secondary_target).angle(
           orthogonal_component(axis_s, Rprimary * secondary_axis))
       else:
