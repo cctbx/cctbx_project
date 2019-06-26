@@ -8,7 +8,7 @@ from scitbx import graphics_utils
 from scitbx import matrix
 from libtbx.utils import Sorry, to_str
 from websocket_server import WebsocketServer
-import threading, math, sys
+import threading, math, sys, cmath
 from time import sleep
 import os.path, time, copy
 import libtbx
@@ -349,6 +349,38 @@ class hklview_3d:
       allcolstraliases += "\n"
 
     return alltooltipstringsdict, allcolstraliases
+
+
+  def GetTooltip(self, hkl):
+    spbufttip = '\'H,K,L: %s, %s, %s' %(hkl[0], hkl[1], hkl[2])
+    # resolution and angstrom character
+    spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
+      %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
+    for hklscene in self.HKLscenes:
+      if hklscene.isUsingFOMs():
+        continue # already have tooltips for the scene without the associated fom
+      datval = hklscene.work_array.data_at_first_index(hkl)
+      if datval and (not (math.isnan( abs(datval) ) or datval == display.inanval)):
+        if hklscene.work_array.is_complex_array():
+          ampl = abs(datval)
+          phase = cmath.phase(datval) * 180.0/math.pi
+          # purge nan values from array to avoid crash in fmod_positive()
+          # and replace the nan values with an arbitrary float value
+          if math.isnan(phase):
+            phase = 42.4242
+          # Cast negative degrees to equivalent positive degrees
+          phase = phase % 360.0
+        spbufttip +="\\n" + hklscene.work_array.info().label_string() + ': '
+        if hklscene.work_array.is_complex_array():
+          spbufttip += str(roundoff(ampl, 2)) + ", " + str(roundoff(phase, 1)) + \
+            "\'+ String.fromCharCode(176) +\'" # degree character
+        elif hklscene.work_array.sigmas() is not None:
+          sigma = hklscene.work_array.sigma_at_first_index(hkl)
+          spbufttip += str(roundoff(datval, 2)) + ", " + str(roundoff(sigma, 2))
+        else:
+          spbufttip += str(roundoff(datval, 2))
+    spbufttip += '\''
+    return spbufttip
 
 
   def get_col_fomcol(self, idx):
@@ -733,6 +765,7 @@ class hklview_3d:
       {
         tooltip.style.display = "none";
       }
+      current_ttip = "";
     }
   );
 
@@ -835,6 +868,7 @@ var positions = [];
 var br_positions = [];
 var br_colours = [];
 var br_radii = [];
+var br_ttips = [];
 var colours = [];
 var radii = [];
 var shapebufs = [];
@@ -1035,7 +1069,7 @@ mysocket.onmessage = function (e)
 
     if (msgtype === "ShowTooltip")
     {
-      current_ttip = eval( val);
+      current_ttip = eval( String(val));
       //current_ttip = val;
     }
 
@@ -1111,6 +1145,7 @@ mysocket.onmessage = function (e)
         br_shapebufs.push( [] );
         br_colours.push( [] );
         br_radii.push( [] );
+        br_ttips.push( [] );
 
         br_colours[h] = colours[h];
         br_radii[h] = radii[h];
@@ -1142,6 +1177,7 @@ mysocket.onmessage = function (e)
             continue;
           br_positions[h].push( [] );
           br_shapebufs[h].push( [] );
+          br_ttips[h].push( [] );
           var elmstrs = strs[g].split(",");
 
           for (j=0; j<9; j++)
@@ -1150,6 +1186,7 @@ mysocket.onmessage = function (e)
           //alert('rot' + g + ': ' + elmstrs);
 
           br_positions[h][g] = new Float32Array( csize );
+          br_ttips[h][g] = new Array( nsize );
 
           for (var i=0; i<nsize; i++)
           {
@@ -1178,6 +1215,7 @@ mysocket.onmessage = function (e)
               position: br_positions[h][g],
               color: br_colours[h],
               radius: br_radii[h],
+              picking: br_ttips[h],
             });
 
           shape.addBuffer(br_shapebufs[h][g]);
@@ -1252,8 +1290,9 @@ mysocket.onmessage = function (e)
     if "tooltip_id:" in message:
       id = int( message.split("tooltip_id:")[1] )
       hkls = self.scene.indices
-      ttip = self.tooltipstringsdict[hkls[id]]
-      self.mprint("sending: " + str(ttip))
+      #ttip = self.tooltipstringsdict[hkls[id]]
+      ttip = self.GetTooltip(hkls[id])
+      self.mprint("tooltip for : " + str(hkls[id]))
       self.SendWebSockMsg("ShowTooltip", ttip)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
