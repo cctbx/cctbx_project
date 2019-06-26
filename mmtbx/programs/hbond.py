@@ -30,11 +30,7 @@ Usage example:
     self.results = mmtbx.nci.hbond.find(model = model)
     self.results.show(log = self.logger)
     print("-"*79, file=self.logger)
-    sk = self.results.get_theta_2_skew_and_kurtosis()
-    if(sk.skew_all is not None):
-      print("all: skew: %7.3f kurtosis: %7.3f"%(sk.skew_all, sk.kurtosis_all), file=self.logger)
-    if(sk.skew_filtered is not None):
-      print("filtered: skew: %7.3f kurtosis: %7.3f"%(sk.skew_filtered, sk.kurtosis_filtered), file=self.logger)
+    self.results.show_summary(log = self.logger)
     self.results.as_pymol()
 
   # ---------------------------------------------------------------------------

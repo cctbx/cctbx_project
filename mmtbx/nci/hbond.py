@@ -42,23 +42,15 @@ def make_atom_id(atom, index):
     resseq = atom.parent().parent().resseq,
     altloc = atom.parent().altloc)
 
-# XXX This is a copy-paste from somewhere.
-# XXX Make it property of flex.double
-def get_skew(data):
+def get_stats(data):
   if(data.size()<50): return None
   mean=data.min_max_mean().mean
   sd=data.standard_deviation_of_the_sample()
   x=data-mean
-  return (x**3).min_max_mean().mean/sd**3
+  skew=(x**3).min_max_mean().mean/sd**3
+  kurtosis=(x**4).min_max_mean().mean/sd**4
+  return group_args(mean=mean, sd=sd, skew=skew, kurtosis=kurtosis)
 
-# XXX This is a copy-paste from somewhere.
-# XXX Make it property of flex.double
-def get_kurtosis(data):
-  if(data.size()<50): return None
-  mean=data.min_max_mean().mean
-  sd=data.standard_deviation_of_the_sample()
-  x=data-mean
-  return (x**4).min_max_mean().mean/sd**4
 
 # XXX None at the moment
 master_phil_str = '''
@@ -233,22 +225,65 @@ class find(object):
           atom_i = atom_i, atom_j = atom_j)
         self.pair_proxies.append(proxy_custom)
 
-  def get_theta_2_skew_and_kurtosis(self):
-    data_all = flex.double()
-    data_fil = flex.double()
+  def get_counts(self):
+    data_theta_1_all = flex.double()
+    data_theta_1_fil = flex.double()
+    data_theta_2_all = flex.double()
+    data_theta_2_fil = flex.double()
+    data_d_HA_all = flex.double()
+    data_d_HA_fil = flex.double()
+    n_sym = 0
     for r in self.result:
-      data_all.append(r.a_DHA)
-      if(r.atom_i.b>30): continue
-      if(r.atom_j.b>30): continue
+      if(str(r.symop) != "x,y,z"):
+        n_sym += 1
+      data_theta_1_all.append(r.a_DHA)
+      data_theta_2_all.extend(flex.double(r.a_YAH))
+      data_d_HA_all.append(r.d_HA)
+      if(r.atom_i.b>30):    continue
+      if(r.atom_j.b>30):    continue
       if(r.atom_i.occ<0.9): continue
       if(r.atom_j.occ<0.9): continue
-      data_fil.append(r.a_DHA)
-    print (data_all.size(), data_fil.size())
+      data_theta_1_fil.append(r.a_DHA)
+      data_theta_2_fil.extend(flex.double(r.a_YAH))
+      data_d_HA_fil.append(r.d_HA)
+    theta_1 = group_args(
+      overall  = get_stats(data_theta_1_all),
+      filtered = get_stats(data_theta_1_fil))
+    theta_2 = group_args(
+      overall  = get_stats(data_theta_2_all),
+      filtered = get_stats(data_theta_2_fil))
+    d_HA = group_args(
+      overall  = get_stats(data_d_HA_all),
+      filtered = get_stats(data_d_HA_fil))
+    bpr=float(len(self.result))/\
+      len(list(self.model.get_hierarchy().residue_groups()))
     return group_args(
-      skew_all          = get_skew(data_all),
-      kurtosis_all      = get_kurtosis(data_all),
-      skew_filtered     = get_skew(data_fil),
-      kurtosis_filtered = get_kurtosis(data_fil))
+      theta_1 = theta_1,
+      theta_2 = theta_2,
+      d_HA    = d_HA,
+      n       = len(self.result),
+      n_sym   = n_sym,
+      bpr     = bpr)
+
+  def show_summary(self, log = sys.stdout):
+    def printit(o,f):
+      fmt="%7.3f %7.3f %7.3f %7.3f"
+      print("  overall : "+fmt%(o.mean, o.sd, o.skew, o.kurtosis), file=log)
+      print("  filtered: "+fmt%(f.mean, f.sd, f.skew, f.kurtosis), file=log)
+    c = self.get_counts()
+    print("Total:       %d"%c.n,     file=log)
+    print("Symmetry:    %d"%c.n_sym, file=log)
+    print("Per residue: %7.4f"%c.bpr,   file=log)
+    print("               Mean      SD    Skew   Kurtosis",   file=log)
+    print("theta_1:",   file=log)
+    o, f = c.theta_1.overall, c.theta_1.filtered
+    printit(o,f)
+    print("theta_2:",   file=log)
+    o, f = c.theta_2.overall, c.theta_2.filtered
+    printit(o,f)
+    print("d_HA:",   file=log)
+    o, f = c.d_HA.overall, c.d_HA.filtered
+    printit(o,f)
 
   def show(self, log = sys.stdout, sym_only=False):
     for r in self.result:
