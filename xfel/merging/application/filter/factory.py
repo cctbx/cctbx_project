@@ -6,11 +6,11 @@ from xfel.merging.application.worker import factory as factory_base
 class factory(factory_base):
   """ Factory class for filtering experiments. """
   @staticmethod
-  def from_parameters(params, additional_info=None):
+  def from_parameters(params, additional_info=None, mpi_helper=None, mpi_logger=None):
     """ """
     workers = []
     if params.filter.algorithm != None:
-      workers.append(experiment_filter(params))
+      workers.append(experiment_filter(params, mpi_helper, mpi_logger))
     if params.select.algorithm != None:
-      workers.append(reflection_filter(params))
+      workers.append(reflection_filter(params, mpi_helper, mpi_logger))
     return workers

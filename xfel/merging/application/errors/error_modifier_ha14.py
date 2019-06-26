@@ -5,6 +5,9 @@ from xfel.merging.application.worker import worker
 
 class error_modifier_ha14(worker):
 
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(error_modifier_ha14, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+
   def __repr__(self):
     return 'Adjust intensity errors -- ha14 method'
 

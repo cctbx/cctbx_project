@@ -4,9 +4,11 @@ import os
 class mpi_logger(object):
   """A class to facilitate each rank writing to its own log file and (optionally) to a special log file for timing"""
 
-  def __init__(self, params=None):
-    from xfel.merging.application.mpi_helper import mpi_helper
-    self.mpi_helper = mpi_helper()
+  def __init__(self, params=None, mpi_helper=None):
+    self.mpi_helper = mpi_helper
+    if self.mpi_helper == None:
+      from xfel.merging.application.mpi_helper import mpi_helper
+      self.mpi_helper = mpi_helper()
 
     if params:
       self.set_log_file_paths(params)

@@ -3,6 +3,9 @@ from xfel.merging.application.worker import worker
 
 class resolution_binner(worker):
 
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(resolution_binner, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+
   def __repr__(self):
     return 'Set up resolution bins'
 

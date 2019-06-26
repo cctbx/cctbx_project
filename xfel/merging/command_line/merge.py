@@ -94,7 +94,6 @@ class Script(object):
     if self.mpi_helper.rank == 0:
       self.mpi_logger.main_log(str(time_now))
 
-
     self.mpi_logger.log_step_time("TOTAL")
 
     self.mpi_logger.log_step_time("PARSE_INPUT_PARAMS")
@@ -119,7 +118,7 @@ class Script(object):
         step_additional_info = step_info[1:]
 
       factory = importlib.import_module('xfel.merging.application.' + step_factory_name + '.factory')
-      workers.extend(factory.factory.from_parameters(self.params, step_additional_info))
+      workers.extend(factory.factory.from_parameters(self.params, step_additional_info, mpi_helper=self.mpi_helper, mpi_logger=self.mpi_logger))
 
     # Perform phil validation up front
     for worker in workers:

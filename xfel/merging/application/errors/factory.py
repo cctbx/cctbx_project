@@ -6,13 +6,13 @@ from xfel.merging.application.worker import factory as factory_base
 class factory(factory_base):
   '''Factory class for modifying errors of measured intensities'''
   @staticmethod
-  def from_parameters(params, additional_info=[]):
+  def from_parameters(params, additional_info=[], mpi_helper=None, mpi_logger=None):
     assert len(additional_info) > 0
     assert additional_info[0] in ["pre_merge", "post_merge"]
     if additional_info[0] == "pre_merge":
       if params.merging.error.model == "ha14":
-        return [error_modifier_ha14(params)]
+        return [error_modifier_ha14(params, mpi_helper, mpi_logger)]
     elif additional_info[0] == "post_merge":
       if params.merging.error.model == "errors_from_sample_residuals":
-        return [error_modifier_sr(params)]
+        return [error_modifier_sr(params, mpi_helper, mpi_logger)]
     return []

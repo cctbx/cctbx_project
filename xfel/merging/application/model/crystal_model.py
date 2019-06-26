@@ -13,8 +13,8 @@ class crystal_model(worker):
   def __repr__(self):
     return 'Build crystal model'
 
-  def __init__(self, params, purpose):
-    super(crystal_model, self).__init__(params=params)
+  def __init__(self, params, purpose, mpi_helper=None, mpi_logger=None):
+    super(crystal_model, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
     self.purpose = purpose
 
   def run(self, experiments, reflections):

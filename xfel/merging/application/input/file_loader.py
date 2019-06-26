@@ -67,6 +67,9 @@ from xfel.merging.application.input.data_counter import data_counter
 class simple_file_loader(worker):
   '''A class for running the script.'''
 
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(simple_file_loader, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+
   def __repr__(self):
     return 'Read experiments and data'
 

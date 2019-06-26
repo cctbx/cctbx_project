@@ -5,6 +5,10 @@ class reflection_table_editor(worker):
   """
   Add and/or remove columns in the reflection table
   """
+
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(reflection_table_editor, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+
   def __repr__(self):
     return 'Add/remove columns in reflection table'
 

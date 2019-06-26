@@ -7,6 +7,9 @@ from cctbx.crystal import symmetry
 class experiment_filter(worker):
   '''Reject experiments based on various criteria'''
 
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(experiment_filter, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+
   def __repr__(self):
     return 'Filter experiments'
 

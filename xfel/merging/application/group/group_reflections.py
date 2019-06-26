@@ -19,6 +19,9 @@ except ImportError:
 class hkl_group(worker):
   '''For each asu hkl, gather all of its measurements from all ranks at a single rank, while trying to evenly distribute asu HKLs over the ranks.'''
 
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(hkl_group, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+
   def __repr__(self):
     return "Group symmetry-reduced HKLs"
 

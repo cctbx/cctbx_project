@@ -13,6 +13,9 @@ from iotbx import mtz
 class intensity_resolution_statistics_cxi(worker):
   '''Calculates hkl intensity statistics for resolution bins using adapted cxi-xmerge code'''
 
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(intensity_resolution_statistics_cxi, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+
   def __repr__(self):
     return 'Intensity resolution statistics (cxi-xmerge method)'
 

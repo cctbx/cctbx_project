@@ -5,6 +5,9 @@ from xfel.merging.application.reflection_table_utils import reflection_table_uti
 
 class error_modifier_sr(worker):
 
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(error_modifier_sr, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+
   def __repr__(self):
     return 'Adjust intensity errors -- sample residuals method'
 

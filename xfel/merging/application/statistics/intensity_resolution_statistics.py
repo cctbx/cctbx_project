@@ -131,6 +131,9 @@ class cross_correlation_table(object):
 class intensity_resolution_statistics(worker):
   '''Calculates hkl intensity statistics for resolution bins'''
 
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(intensity_resolution_statistics, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+
   def __repr__(self):
     return 'Intensity resolution statistics'
 

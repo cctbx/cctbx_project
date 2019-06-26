@@ -5,9 +5,9 @@ from xfel.merging.application.worker import factory as factory_base
 class factory(factory_base):
   """ Factory class for post-refining experiments. """
   @staticmethod
-  def from_parameters(params, additional_info=None):
+  def from_parameters(params, additional_info=None, mpi_helper=None, mpi_logger=None):
     """ """
-    return [postrefinement(params)]
+    return [postrefinement(params, mpi_helper, mpi_logger)]
 
     '''
     if params.postrefinement.enable:

@@ -23,6 +23,9 @@ class merger(worker):
   """
   Merges multiple measurements of symmetry-reduced HKLs.
   """
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(merger, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+
   def __repr__(self):
     return "Merge multiple measurements of symmetry-reduced HKLs"
 
