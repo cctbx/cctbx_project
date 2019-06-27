@@ -540,11 +540,17 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     r1 = _float_or_None(self.cif_block.get('_reflns.d_resolution_high'))
     r2 = _float_or_None(self.cif_block.get('_reflns.resolution'))
     r3 = _float_or_None(self.cif_block.get('_em_3d_reconstruction.resolution'))
-    for r in [r1,r2,r3]:
+    r4 = _float_or_None(self.cif_block.get('_refine.ls_d_res_high'))
+    for r in [r1,r2,r3,r4]:
       if(r is not None): result.append(r)
     result = list(set(result))
     if(len(result)  ==0): result = None
     elif(len(result)==1): result = result[0]
+    elif(len(result)>1):
+      if(r4 is None):
+        result = r1
+      else:
+        result = min(result)
     return result
 
   def extract_tls_params(self, hierarchy):
