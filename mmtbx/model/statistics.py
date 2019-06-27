@@ -243,8 +243,12 @@ class geometry(object):
       self.cached_result.ramachandran.ramalyze = None
       self.cached_result.clash.clashes         = None
       self.cached_result.rotamer.rotalyze      = None
-      self.cached_result.rotamer.omegalyze     = None
       self.cached_result.cablam.gui_table      = None
+      self.cached_result.omega.omegalyze       = None
+      self.cached_result.c_beta.cbetadev       = None
+      self.cached_result.angle.outliers        = None
+      self.cached_result.bond.outliers         = None
+      self.cached_result.dihedral.outliers     = None
     return self.cached_result
 
   def show_short(self):
