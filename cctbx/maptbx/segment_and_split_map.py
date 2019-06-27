@@ -2211,11 +2211,12 @@ class sharpening_info:
 
     elif self.sharpening_method=="model_sharpening":
       print("Resolution-dependent model sharpening", file=out)
-      print("Scale vs resolution:", file=out)
-      for d_min,sc in zip(
-        self.d_min_list,
-        self.target_scale_factors):
-        print("Dmin: %7.2f  Scale: %9.6f" %(d_min,sc), file=out)
+      if self.d_min_list and self.target_scale_factors:
+        print("Scale vs resolution:", file=out)
+        for d_min,sc in zip(
+          self.d_min_list,
+          self.target_scale_factors):
+          print("Dmin: %7.2f  Scale: %9.6f" %(d_min,sc), file=out)
 
     elif self.sharpening_method=="half_map_sharpening":
       print("Resolution-dependent half-map sharpening", file=out)
@@ -2651,9 +2652,11 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
       d_min_use=None
     from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
     if crystal_symmetry.space_group().type().number() in [0,1]:
-      args=['d_min=None','box=True','keep_origin=False']
+      args=['d_min=None','box=True','keep_origin=False',
+         'scale_max=%s' %scale_max]
     else: # cannot use box for other space groups
-      args=['d_min=%s'%(d_min_use),'box=False','keep_origin=False']
+      args=['d_min=%s'%(d_min_use),'box=False','keep_origin=False',
+         'scale_max=%s' %scale_max]
     map_coeffs=map_to_sf(args=args,
          space_group_number=crystal_symmetry.space_group().type().number(),
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
@@ -2787,7 +2790,7 @@ def apply_sharpening(map_coeffs=None,
     return mb
 
 def get_map_from_map_coeffs(map_coeffs=None,crystal_symmetry=None,
-     n_real=None):
+     n_real=None,apply_sigma_scaling=True):
     from cctbx import maptbx
     from cctbx.maptbx import crystal_gridding
     if map_coeffs.crystal_symmetry().space_group_info()!= \
@@ -2806,7 +2809,10 @@ def get_map_from_map_coeffs(map_coeffs=None,crystal_symmetry=None,
     fft_map = map_coeffs.fft_map( resolution_factor = 0.25,
        crystal_gridding=cg,
        symmetry_flags=maptbx.use_space_group_symmetry)
-    fft_map.apply_sigma_scaling()
+    if apply_sigma_scaling:
+      fft_map.apply_sigma_scaling()
+    else:
+      fft_map.apply_volume_scaling()
     map_data=fft_map.real_map_unpadded()
     return map_data
 
@@ -4044,6 +4050,7 @@ def get_params_from_args(args):
 def get_mask_around_molecule(map_data=None,
         wang_radius=None,
         buffer_radius=None,
+        return_masked_fraction=False,
         crystal_symmetry=None, out=sys.stdout):
   # use iterated solvent fraction tool to identify mask around molecule
   try:
@@ -4084,7 +4091,10 @@ def get_mask_around_molecule(map_data=None,
   mask.set_selected(~s,0)
   masked_fraction=mask.count(1)/mask.size()
   print("Masked fraction after buffering:  %7.2f" %(masked_fraction), file=out)
-  return mask.as_double(),solvent_fraction
+  if return_masked_fraction:
+    return mask.as_double(),1-masked_fraction
+  else: # usual return solvent fraction estimate
+    return mask.as_double(),solvent_fraction  # This is solvent fraction est.
 
 def get_mean_in_and_out(sel=None,
     map_data=None,
@@ -5203,6 +5213,7 @@ def get_and_apply_soft_mask_to_maps(
     crystal_symmetry=crystal_symmetry,
     wang_radius=wang_radius,
     buffer_radius=buffer_radius,
+    return_masked_fraction=True,
     out=out)
   if mask_data:
     map_data,smoothed_mask_data=apply_soft_mask(map_data=map_data,
