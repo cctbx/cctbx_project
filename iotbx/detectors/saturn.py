@@ -14,16 +14,15 @@ class SaturnImage(ADSCImage):
 
   def getTupleofType(self,inputstr,typefunc):
     parsed = inputstr.split(' ')
-    while '' in parsed:
-      parsed.remove('')
-    return [typefunc(I) for I in parsed]
+    return [typefunc(I) for I in parsed if I != '']
 
   def readHeader(self,maxlength=6144):
     if not self.parameters:
-      rawdata = open(self.filename,"rb").read(maxlength)
-      headeropen = rawdata.index("{")
-      headerclose= rawdata.index("}")
-      self.header = rawdata[headeropen+1:headerclose-headeropen]
+      with open(self.filename,"rb") as fh:
+        rawdata = fh.read(maxlength)
+      headeropen = rawdata.index(b"{")
+      headerclose = rawdata.index(b"}")
+      self.header = rawdata[headeropen+1:headerclose-headeropen].decode("latin-1")
 
       self.parameters={}
       for tag,search,datatype in [
@@ -58,8 +57,7 @@ class SaturnImage(ADSCImage):
           ('DATE','DTREK_DATE_TIME',str),
           ('ROTATION',r'\nROTATION',FLOAT),
           ]:
-          pattern = re.compile(search+'='+r'(.*);')
-          matches = pattern.findall(self.header)
+          matches = re.findall(search+'='+r'(.*);', self.header)
           if len(matches)>0:
             if type(datatype) == type((0,1)):
               self.parameters[tag] = self.getTupleofType(
@@ -85,9 +83,9 @@ class SaturnImage(ADSCImage):
 
   def read(self):
     from iotbx.detectors import ReadRAXIS
-    F = open(self.filename,'rb')
-    F.seek(self.dataoffset())
-    chardata = F.read(self.size1 * self.size2 * self.integerdepth() )
+    with open(self.filename,'rb') as fh:
+      fh.seek(self.dataoffset())
+      chardata = fh.read(self.size1 * self.size2 * self.integerdepth() )
     self.bin_safe_set_data( ReadRAXIS(chardata,self.dataoffset(),
          self.size1*self.bin,self.size2*self.bin,
          self.endian_swap_required())

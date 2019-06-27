@@ -7,16 +7,16 @@
 #   Class to read all the data from a (G)XPARM.XDS file
 #
 from __future__ import absolute_import, division, print_function
+
+import io
 import sys
+
 from libtbx import adopt_init_args
 from six.moves import range
 from six.moves import map
 
 class reader(object):
   """A class to read the XPARM.XDS/GXPARM.XDS file used in XDS"""
-
-  def __init__(self):
-    pass
 
   @staticmethod
   def find_version(filename):
@@ -36,7 +36,7 @@ class reader(object):
     """
 
     # Check file contains 11 lines and 42 tokens
-    with open(filename, 'r') as file_handle:
+    with io.open(filename, 'r', encoding="ascii") as file_handle:
       tokens = []
       version = 1
       count = 0
@@ -81,7 +81,10 @@ class reader(object):
       True/False the file is a (G)XPARM.XDS file
 
     """
-    return reader.find_version(filename) != None
+    try:
+      return reader.find_version(filename) is not None
+    except UnicodeDecodeError:
+      return False
 
   def read_file(self, filename, check_filename = True):
     """Read the XPARM.XDS/GXPARAM.XDS file.
@@ -96,10 +99,11 @@ class reader(object):
 
     # Check version and read file
     version = reader.find_version(filename)
-    if version != None:
-      tokens = [l.split() for l in open(filename, 'r').readlines()]
-    else:
-      raise IOError("{0} is not a (G)XPARM.XDS file".format(filename))
+    if version is None:
+      raise IOError("{} is not a (G)XPARM.XDS file".format(filename))
+
+    with io.open(filename, 'r', encoding="ascii") as fh:
+      tokens = [l.split() for l in fh.readlines()]
 
     # Parse the tokens
     if version == 1:
@@ -125,7 +129,7 @@ class reader(object):
     self.beam_vector       = tuple(map(float, tokens[1][1:4]))
 
     # Detector stuff
-    self.num_segments      = None
+    self.num_segments      = 0
     self.detector_size     = tuple(map(int, tokens[2][0:2]))
     self.pixel_size        = tuple(map(float, tokens[2][2:4]))
     self.detector_distance = float(tokens[3][0])

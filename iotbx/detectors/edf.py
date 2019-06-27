@@ -20,14 +20,14 @@ class EDFImage:
    self.obj.seek(0)
 
    while True:
-       newchr = self.obj.read(1)
+       newchr = self.obj.read(1).decode("latin-1")
        assert ord(newchr)!=0
        if ptr==1:  assert ord(self.header[0])==0x7b
        self.header.append(newchr)
        if newchr == "}": break
        ptr += 1
 
-   assert self.obj.read(1) == "\n"
+   assert self.obj.read(1).decode("latin-1") == "\n"
    self.headersize = 1 + len(self.header)
    assert self.headersize%512==0
 
