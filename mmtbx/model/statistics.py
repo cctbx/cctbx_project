@@ -240,15 +240,15 @@ class geometry(object):
          cablam           = self.cablam(), # hopefully stable
          omega            = self.omega())
     if(slim):
-      self.cached_result.ramachandran.ramalyze = None
-      self.cached_result.clash.clashes         = None
-      self.cached_result.rotamer.rotalyze      = None
-      self.cached_result.cablam.gui_table      = None
-      self.cached_result.omega.omegalyze       = None
-      self.cached_result.c_beta.cbetadev       = None
-      self.cached_result.angle.outliers        = None
-      self.cached_result.bond.outliers         = None
-      self.cached_result.dihedral.outliers     = None
+      delattr(self.cached_result.ramachandran, "ramalyze")
+      delattr(self.cached_result.clash,        "clashes")
+      delattr(self.cached_result.rotamer,      "rotalyze")
+      delattr(self.cached_result.cablam,       "gui_table")
+      delattr(self.cached_result.omega,        "omegalyze")
+      delattr(self.cached_result.c_beta,       "cbetadev")
+      delattr(self.cached_result.angle,        "outliers")
+      delattr(self.cached_result.bond,         "outliers")
+      delattr(self.cached_result.dihedral,     "outliers")
     return self.cached_result
 
   def show_short(self):
