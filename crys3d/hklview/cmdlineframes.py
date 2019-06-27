@@ -283,6 +283,8 @@ class HKLViewFrame() :
       self.currentphil = self.currentphil.fetch(source = extraphil)
     self.params = self.currentphil.fetch().extract()
     self.viewer.miller_array = None
+    self.viewer.symops = []
+    self.viewer.sg = None
     self.viewer.proc_arrays = []
     self.viewer.HKLscenesdict = {}
 

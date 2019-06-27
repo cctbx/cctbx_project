@@ -153,6 +153,8 @@ class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
     self.miller_array = None
+    self.symops = []
+    self.sg = None
     self.tooltipstrings = []
     self.tooltipstringsdict = {}
     self.d_min = None
@@ -293,6 +295,9 @@ class hklview_3d:
     self.identify_suitable_fomsarrays()
     self.d_min = self.miller_array.d_min()
     array_info = self.miller_array.info()
+    self.sg = self.miller_array.space_group()
+    self.symops = self.sg.all_ops()
+
     self.binvals = [ 1.0/self.miller_array.d_max_min()[0], 1.0/self.miller_array.d_max_min()[1]  ]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % self.miller_array.unit_cell().parameters()
@@ -351,8 +356,16 @@ class hklview_3d:
     return alltooltipstringsdict, allcolstraliases
 
 
-  def GetTooltip(self, hkl):
-    spbufttip = '\'H,K,L: %s, %s, %s' %(hkl[0], hkl[1], hkl[2])
+  def GetTooltip(self, hkl, rotmx=None, anomalous=False):
+    hklvec = flex.vec3_double( [(hkl[0], hkl[1], hkl[2])])
+    Rhkl = hklvec[0]
+    if rotmx:
+      Rhkl = hklvec[0] * rotmx
+    rothkl = Rhkl
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    if anomalous:
+      rothkl =  (-Rhkl[0], -Rhkl[1], -Rhkl[2])
+    spbufttip = '\'H,K,L: %d, %d, %d' %(rothkl[0], rothkl[1], rothkl[2])
     # resolution and angstrom character
     spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
       %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
@@ -752,7 +765,13 @@ class hklview_3d:
     """
     else:
       spherebufferstr += """
-        mysocket.send( 'tooltip_id: ' + pickingProxy.pid);
+        symcp = -1;
+        if (pickingProxy.picker.length > 0)
+        { // get stored id number of symmetry operator applied to this hkl
+          symcp = pickingProxy.picker;
+        }
+        // tell python the id of the hkl and id number of the symmetry operator
+        mysocket.send( 'tooltip_id: [' + String([pickingProxy.pid, symcp]) + ']' );
         tooltip.innerText = current_ttip;
     """
     spherebufferstr += """
@@ -1177,7 +1196,7 @@ mysocket.onmessage = function (e)
             continue;
           br_positions[h].push( [] );
           br_shapebufs[h].push( [] );
-          br_ttips[h].push( [] );
+          br_ttips[h].push( [g] );
           var elmstrs = strs[g].split(",");
 
           for (j=0; j<9; j++)
@@ -1186,7 +1205,7 @@ mysocket.onmessage = function (e)
           //alert('rot' + g + ': ' + elmstrs);
 
           br_positions[h][g] = new Float32Array( csize );
-          br_ttips[h][g] = new Array( nsize );
+          //br_ttips[h][g] = "foobar";
 
           for (var i=0; i<nsize; i++)
           {
@@ -1215,7 +1234,8 @@ mysocket.onmessage = function (e)
               position: br_positions[h][g],
               color: br_colours[h],
               radius: br_radii[h],
-              picking: br_ttips[h],
+              // g works as the id number of applied symmetry operator when creating tooltip for an hkl
+              picking: br_ttips[h][g],
             });
 
           shape.addBuffer(br_shapebufs[h][g]);
@@ -1275,7 +1295,7 @@ mysocket.onmessage = function (e)
 
   def OnWebsocketClientMessage(self, client, server, message):
     if message != "":
-      self.mprint( message, verbose=False)
+      self.mprint( message, self.verbose)
     self.lastmsg = message
     if "Current vieworientation:" in message:
       # The NGL.Matrix4 with the orientation is a list of floats.
@@ -1288,11 +1308,26 @@ mysocket.onmessage = function (e)
         self.pendingmessage = self.viewmtrxelms
       self.isnewfile = False
     if "tooltip_id:" in message:
-      id = int( message.split("tooltip_id:")[1] )
+      self.mprint(message)
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      # TODO: fix bug in data2bin()
+      id = 1 + int( eval(message.split("tooltip_id:")[1] )[0] )
+      symcp = int( eval(message.split("tooltip_id:")[1] )[1] )
+      rotmx = None
+      if symcp >= 0:
+        rotmx = self.symops[symcp].r()
+
       hkls = self.scene.indices
       #ttip = self.tooltipstringsdict[hkls[id]]
-      ttip = self.GetTooltip(hkls[id])
-      self.mprint("tooltip for : " + str(hkls[id]))
+      if id < len(hkls):
+        ttip = self.GetTooltip(hkls[id], rotmx)
+        self.mprint("tooltip for : " + str(hkls[id]))
+      else:
+        # if id > len(hkls) then these hkls are added as the friedel mates during the
+        # "if (anoexp)" condition in the javascript code
+        id = id % len(hkls)
+        ttip = "id: %d" %id
+        ttip = self.GetTooltip(hkls[id], rotmx, anomalous=True)
       self.SendWebSockMsg("ShowTooltip", ttip)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
@@ -1373,8 +1408,6 @@ mysocket.onmessage = function (e)
 
 
   def ExpandInBrowser(self, P1=True, friedel_mate=True):
-    sg = self.miller_array.space_group()
-    symops = sg.all_ops()
     uc = self.miller_array.unit_cell()
     OrtMx = matrix.sqr( uc.orthogonalization_matrix())
     InvMx = OrtMx.inverse()
@@ -1383,7 +1416,7 @@ mysocket.onmessage = function (e)
     msg = ""
     unique_rot_ops = []
     if P1:
-      unique_rot_ops = symops[ 0 : sg.order_p() ]
+      unique_rot_ops = self.symops[ 0 : self.sg.order_p() ]
     if friedel_mate:
       msgtype += "Friedel"
 
