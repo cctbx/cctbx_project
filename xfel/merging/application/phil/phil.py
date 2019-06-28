@@ -19,12 +19,12 @@ input {
     .multiple = True
     .help = paths are validated as a glob, directory or file.
     .help = however, validation is delayed until data are assigned to parallel ranks.
-    .help = integrated_experiments (.json) and reflection tables (.pickle) must both be
+    .help = integrated experiments (.expt) and reflection tables (.refl) must both be
     .help = present as matching files.  Only one need be explicitly specified.
-  reflections_suffix = _integrated.pickle
+  reflections_suffix = _integrated.refl
     .type = str
     .help = Find file names with this suffix for reflections
-  experiments_suffix = _integrated_experiments.json
+  experiments_suffix = _integrated.expt
     .type = str
     .help = Find file names with this suffix for experiments
   parallel_file_load {
