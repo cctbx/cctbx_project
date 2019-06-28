@@ -290,22 +290,22 @@ xtc_phil_str = '''
     logging_dir = None
       .type = str
       .help = Directory output log files will be placed
-    experiments_filename = %s_experiments.json
+    experiments_filename = %s.expt
       .type = str
       .help = The filename for output experiment list
-    strong_filename = %s_strong.pickle
+    strong_filename = %s_strong.refl
       .type = str
       .help = The filename for strong reflections from spot finder output.
-    indexed_filename = %s_indexed.pickle
+    indexed_filename = %s_indexed.refl
       .type = str
       .help = The filename for indexed reflections.
-    refined_experiments_filename = %s_refined_experiments.json
+    refined_experiments_filename = %s_refined.expt
       .type = str
       .help = The filename for saving refined experimental models
-    integrated_filename = %s_integrated.pickle
+    integrated_filename = %s_integrated.refl
       .type = str
       .help = The filename for final experimental modls
-    integrated_experiments_filename = %s_integrated_experiments.json
+    integrated_experiments_filename = %s_integrated.expt
       .type = str
       .help = The filename for final integrated reflections.
     profile_filename = None
@@ -314,7 +314,7 @@ xtc_phil_str = '''
     integration_pickle = int-%d-%s.pickle
       .type = str
       .help = Filename for cctbx.xfel-style integration pickle files
-    reindexedstrong_filename = %s_reindexedstrong.pickle
+    reindexedstrong_filename = %s_reindexedstrong.refl
       .type = str
       .help = The file name for re-indexed strong reflections
     tmp_output_dir = "(NONE)"
@@ -878,14 +878,14 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         experiment_jsons = []
         indexed_tables = []
         for filename in os.listdir(params.output.output_dir):
-          if not filename.endswith("_indexed.pickle"):
+          if not filename.endswith("_indexed.refl"):
             continue
-          experiment_jsons.append(os.path.join(params.output.output_dir, filename.split("_indexed.pickle")[0] + "_refined_experiments.json"))
+          experiment_jsons.append(os.path.join(params.output.output_dir, filename.split("_indexed.refl")[0] + "_refined.expt"))
           indexed_tables.append(os.path.join(params.output.output_dir, filename))
           if params.format.file_format == "cbf":
-            images.append(os.path.join(params.output.output_dir, filename.split("_indexed.pickle")[0] + ".cbf"))
+            images.append(os.path.join(params.output.output_dir, filename.split("_indexed.refl")[0] + ".cbf"))
           elif params.format.file_format == "pickle":
-            images.append(os.path.join(params.output.output_dir, filename.split("_indexed.pickle")[0] + ".pickle"))
+            images.append(os.path.join(params.output.output_dir, filename.split("_indexed.refl")[0] + ".pickle"))
 
         if len(images) < params.joint_reintegration.minimum_results:
           pass # print and return
@@ -900,8 +900,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
           f.write("}\n")
         f.close()
 
-        combined_experiments_file = os.path.join(reint_dir, "combined_experiments.json")
-        combined_reflections_file = os.path.join(reint_dir, "combined_reflections.pickle")
+        combined_experiments_file = os.path.join(reint_dir, "combined.expt")
+        combined_reflections_file = os.path.join(reint_dir, "combined.refl")
         command = "dials.combine_experiments reference_from_experiment.average_detector=True %s output.reflections=%s output.experiments=%s"% \
           (combo_input, combined_reflections_file, combined_experiments_file)
         print(command)
@@ -925,20 +925,20 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         from dxtbx.model.experiment_list import ExperimentListDumper
         from dxtbx.model import ExperimentList
         dump = ExperimentListDumper(experiments)
-        dump.as_json(os.path.join(reint_dir, "refined_experiments.json"))
-        reflections.as_pickle(os.path.join(reint_dir, "refined_reflections.pickle"))
+        dump.as_json(os.path.join(reint_dir, "refined.expt"))
+        reflections.as_pickle(os.path.join(reint_dir, "refined.refl"))
 
         for expt_id, (expt, img_file) in enumerate(zip(experiments, images)):
           try:
             refls = reflections.select(reflections['id'] == expt_id)
             refls['id'] = flex.int(len(refls), 0)
             base_name = os.path.splitext(os.path.basename(img_file))[0]
-            self.params.output.integrated_filename = os.path.join(reint_dir, base_name + "_integrated.pickle")
+            self.params.output.integrated_filename = os.path.join(reint_dir, base_name + "_integrated.refl")
 
             expts = ExperimentList([expt])
             self.integrate(expts, refls)
             dump = ExperimentListDumper(expts)
-            dump.as_json(os.path.join(reint_dir, base_name + "_refined_experiments.json"))
+            dump.as_json(os.path.join(reint_dir, base_name + "_refined.expt"))
           except Exception as e:
             print("Couldn't reintegrate", img_file, str(e))
     print("Rank %d signing off"%rank)
