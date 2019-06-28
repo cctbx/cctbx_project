@@ -64,9 +64,9 @@ combine_experiments {
     }
   keep_integrated = False
     .type = bool
-    .help = "Combine refined_experiments.json and integrated.pickle files."
-    .help = "If False, ignore integrated.pickle files in favor of"
-    .help = "indexed.pickle files in preparation for reintegrating."
+    .help = "Combine refined.expt and integrated.refl files."
+    .help = "If False, ignore integrated.refl files in favor of"
+    .help = "indexed.refl files in preparation for reintegrating."
   include scope dials.command_line.combine_experiments.phil_scope
 }
 '''
@@ -74,8 +74,8 @@ combine_experiments {
 combining_override_str = '''
 combine_experiments {
   output {
-    experiments_filename = FILENAME_combined_experiments.json
-    reflections_filename = FILENAME_combined_reflections.pickle
+    experiments_filename = FILENAME_combined.expt
+    reflections_filename = FILENAME_combined.refl
     delete_shoeboxes = False
   }
   reference_from_experiment {
@@ -107,8 +107,8 @@ refinement {
 refinement_override_str = '''
 refinement {
   output {
-    experiments = FILENAME_refined_experiments_CLUSTER.json
-    reflections = FILENAME_refined_reflections_CLUSTER.pickle
+    experiments = FILENAME_refined_CLUSTER.expt
+    reflections = FILENAME_refined_CLUSTER.refl
     include_unused_reflections = False
     log = FILENAME_refine_CLUSTER.log
     debug_log = FILENAME_refine_CLUSTER.debug.log
@@ -135,8 +135,8 @@ refinement {
     }
   }
   input {
-    experiments = FILENAME_combined_experiments_CLUSTER.json
-    reflections = FILENAME_combined_reflections_CLUSTER.pickle
+    experiments = FILENAME_combined_CLUSTER.expt
+    reflections = FILENAME_combined_CLUSTER.refl
   }
 }
 '''
@@ -154,12 +154,12 @@ recompute_mosaicity {
 recompute_mosaicity_override_str = '''
 recompute_mosaicity {
   input {
-    experiments = FILENAME_refined_experiments_CLUSTER.json
-    reflections = FILENAME_refined_reflections_CLUSTER.pickle
+    experiments = FILENAME_refined_CLUSTER.expt
+    reflections = FILENAME_refined_CLUSTER.refl
   }
   output {
-    experiments = FILENAME_refined_experiments_CLUSTER.json
-    reflections = FILENAME_refined_reflections_CLUSTER.pickle
+    experiments = FILENAME_refined_CLUSTER.expt
+    reflections = FILENAME_refined_CLUSTER.refl
   }
 }
 '''
@@ -180,8 +180,8 @@ reintegration {
 reintegration_override_str = '''
 reintegration{
   output {
-    experiments = FILENAME_reintegrated_experiments_CLUSTER.json
-    reflections = FILENAME_reintegrated_reflections_CLUSTER.pickle
+    experiments = FILENAME_reintegrated_CLUSTER.expt
+    reflections = FILENAME_reintegrated_CLUSTER.refl
     log = FILENAME_reintegrate_CLUSTER.log
     debug_log = FILENAME_reintegrate_CLUSTER.debug.log
   }
@@ -210,8 +210,8 @@ reintegration{
     }
   }
   input {
-    experiments = FILENAME_refined_experiments_CLUSTER.json
-    reflections = FILENAME_refined_reflections_CLUSTER.pickle
+    experiments = FILENAME_refined_CLUSTER.expt
+    reflections = FILENAME_refined_CLUSTER.refl
   }
 }
 '''
@@ -227,11 +227,11 @@ postprocessing {
 postprocessing_override_str = """
 postprocessing {
   input {
-    experiments = FILENAME_reintegrated_experiments_CLUSTER.json
-    reflections = FILENAME_reintegrated_reflections_CLUSTER.pickle
+    experiments = FILENAME_reintegrated_CLUSTER.expt
+    reflections = FILENAME_reintegrated_CLUSTER.refl
   }
   output {
-    filename = FILENAME_CLUSTER_ITER_extracted.pickle
+    filename = FILENAME_CLUSTER_ITER_extracted.refl
     dirname = %s
   }
 }
@@ -266,7 +266,7 @@ def allocate_chunks(results_dir,
                     max_size=1000,
                     integrated=False):
   refl_ending = "_integrated" if integrated else "_indexed"
-  expt_ending = "_refined_experiments.json"
+  expt_ending = "_refined.expt"
   trial = "%03d" % trial_no
   print("processing trial %s" % trial)
   if rgs_selected:
@@ -318,7 +318,12 @@ def allocate_chunks(results_dir,
       expts = [c for c in contents if c.endswith(expt_ending)]
       n_img += len(expts)
       if extension is None:
-        extension = ".mpack" if any(c.endswith(".mpack") for c in contents) else ".pickle"
+        if any(c.endswith(".mpack") for c in contents):
+          extension = ".mpack"
+        elif any(c.endswith(".refl") for c in contents):
+          extension = ".refl"
+        else:
+         extension = ".pickle"
     if n_img == 0:
       print("no images found for %s" % batch)
       del batch_contents[batch]
@@ -380,8 +385,8 @@ def script_to_expand_over_clusters(clustered_json_name,
   """
   Write a bash script to find results of a clustering step and produce customized
   phils and commands to run with each of them. For example, run the command
-  dials.refine ...cluster8.json ...cluster8.pickle ...cluster8.phil followed by
-  dials.refine ...cluster9.json ...cluster9.pickle ...cluster9.phil.
+  dials.refine ...cluster8.expt ...cluster8.refl ...cluster8.phil followed by
+  dials.refine ...cluster9.expt ...cluster9.refl ...cluster9.phil.
   clustered_json_name, clustered_refl_name and phil_template_name must each
   contain an asterisk, and substitution in phil_template itself will occur at
   each instance of CLUSTER.
