@@ -40,7 +40,7 @@ if (__name__ == "__main__"):
                           help="String to append to the front of output integration pickles")
                   .option(None, "--extension", "-e",
                           type="string",
-                          default=".pickle",
+                          default=".refl",
                           dest="extension",
                           help="File extension use to filter input files if a directory is given as input")
                   ).process(args=sys.argv[1:])
