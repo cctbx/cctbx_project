@@ -10,7 +10,7 @@ from xfel.command_line.frame_extractor import ConstructFrame
 
 def find_json(pickle, pickle_ext=None, json_ext=None):
   """find the matching json file for a given dials-format non-image pickle file"""
-  name = os.path.basename(pickle).split(".pickle")[0]
+  name = os.path.basename(pickle).split(".refl")[0]
   dirname = os.path.dirname(pickle)
   if pickle_ext is not None:
     if pickle_ext == "":
@@ -24,11 +24,11 @@ def find_json(pickle, pickle_ext=None, json_ext=None):
   else:
     base = name
   if json_ext is not None:
-    json = os.path.join(dirname, base + json_ext + ".json")
-  elif os.path.exists(os.path.join(dirname, base + "_refined_experiments.json")):
-    json = os.path.join(dirname, base + "_refined_experiments.json")
-  elif os.path.exists(os.path.join(dirname, base + "_experiments.json")):
-    json = os.path.join(dirname, base + "_experiments.json")
+    json = os.path.join(dirname, base + json_ext + ".expt")
+  elif os.path.exists(os.path.join(dirname, base + "_refined.expt")):
+    json = os.path.join(dirname, base + "_refined.expt")
+  elif os.path.exists(os.path.join(dirname, base + "_indexed.expt")):
+    json = os.path.join(dirname, base + "_indexed.expt")
   else:
     json = None
   return json
