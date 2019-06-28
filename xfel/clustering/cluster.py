@@ -144,9 +144,9 @@ class Cluster:
         for (dirpath, dirnames, filenames) in os.walk(arg):
           for filename in filenames:
             path = os.path.join(dirpath, filename)
-            if path.endswith("integrated.pickle"):
+            if path.endswith(("integrated.pickle", "integrated.refl")):
               dials_refls.append(path)
-            elif path.endswith("experiments.json"):
+            elif path.endswith(("experiments.json", "indexed.expt")):
               dials_expts.append(path)
 
     else:
@@ -157,8 +157,8 @@ class Cluster:
         for (dirpath, dirnames, filenames) in os.walk(arg):
           for filename in filenames:
             path = os.path.join(dirpath, filename)
-            if path.endswith(".pickle"):
-              print(path, "ends with .pickle")
+            if path.endswith((".pickle", ".refl")):
+              print(path, "ends with .pickle or .refl")
               pickles.append(path)
 
     return Cluster.from_files(pickle_list=pickles, dials_refls=dials_refls,
@@ -301,9 +301,9 @@ class Cluster:
       expts = []
       refls = []
       for path in raw:
-        if path.endswith(".pickle"):
+        if path.endswith((".pickle", ".refl")):
           refls.append(path)
-        elif path.endswith(".json"):
+        elif path.endswith((".json", ".expt")):
           expts.append(path)
       return (refls, expts)
 
