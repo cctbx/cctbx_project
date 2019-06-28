@@ -21,7 +21,7 @@ For each plot, the median value per two theta bin is plotted.  The shaded area c
 N reflections per two theta bin is also plotted.
 
 Example:
-cctbx.xfel.plot_reflection_stats integrated1.json integrated1.pickle integrated2.json integrated2.pickle
+cctbx.xfel.plot_reflection_stats integrated1.expt integrated1.refl integrated2.expt integrated2.refl
 """
 
 phil_str = """

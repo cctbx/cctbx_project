@@ -20,10 +20,10 @@ phil_scope = iotbx.phil.parse("""
   input {
     experiments = None
       .type = path
-      .help = path to an experiments.json file
+      .help = path to an experiments.expt file
     reflections = None
       .type = path
-      .help = path to a reflection table (integrated.pickle) file
+      .help = path to a reflection table (integrated.refl) file
   }
   output {
     filename = None
@@ -222,10 +222,10 @@ class ConstructFrame(object):
 
 class ConstructFrameFromFiles(ConstructFrame):
   def __init__(self, refl_name, json_name, outname=None):
-    # load the integration.pickle file (reflection table) into memory and
-    # load the experiments.json file (json) into memory, piecewise.
-    # check_format=False because we don't wont to load any imagesets in the
-    # experiement list
+    # load the integration.refl file (reflection table) into memory and
+    # load the experiments.expt file (json) into memory, piecewise.
+    # check_format=False because we don't want to load any imagesets in the
+    # experiment list
     importer = Importer([refl_name, json_name], read_experiments=True, read_reflections=True, check_format=False)
     if importer.unhandled:
       print("unable to process:", importer.unhandled)

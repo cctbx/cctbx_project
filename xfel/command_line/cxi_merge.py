@@ -582,7 +582,7 @@ def load_result (file_name,
 
   else:
     #Check for pixel size (at this point we are assuming we have square pixels, all experiments described in one
-    #refined_experiments.json file use the same detector, and all panels on the detector have the same pixel size)
+    #refined.expt file use the same detector, and all panels on the detector have the same pixel size)
     if params.pixel_size is not None:
       pixel_size = params.pixel_size
     elif "pixel_size" in obj:
