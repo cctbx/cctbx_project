@@ -191,7 +191,7 @@ class construct_reflection_table_and_experiment_list(object):
     else:
       loc = path_name
     name = os.path.basename(self.pickle).split(".pickle")[0]
-    expt_name = int_pickle_to_filename(name, "idx-", "_experiments.json")
+    expt_name = int_pickle_to_filename(name, "idx-", ".expt")
     experiments = os.path.join(loc, expt_name)
     dumper = experiment_list.ExperimentListDumper(self.experiment_list)
     dumper.as_json(experiments)
@@ -286,8 +286,8 @@ class construct_reflection_table_and_experiment_list(object):
       loc = os.path.dirname(self.pickle)
     else:
       loc = path_name
-    name = os.path.basename(self.pickle).split(".pickle")[0]
-    refl_name = int_pickle_to_filename(name, "idx-", "_integrated.pickle")
+    name = os.path.basename(self.pickle).split(".refl")[0]
+    refl_name = int_pickle_to_filename(name, "idx-", "_integrated.refl")
     reflections = os.path.join(loc, refl_name)
     self.reflections.as_pickle(reflections)
 
@@ -327,4 +327,4 @@ if __name__ == "__main__":
       result.reflections_to_pickle(params.refl_location)
     else:
       print("Skipping unreadable pickle file at", pickle_path)
-  print('Generated experiments.json and integrated.pickle files.')
+  print('Generated experiments.expt and integrated.refl files.')

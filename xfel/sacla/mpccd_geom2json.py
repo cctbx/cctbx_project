@@ -89,7 +89,7 @@ def run(args):
   experiment = Experiment(detector = detector, beam = beam)
   experiments.append(experiment)
   dump = ExperimentListDumper(experiments)
-  dump.as_json("geometry.json")
+  dump.as_json("geometry.expt")
 
 if __name__ == "__main__":
   run(sys.argv[1:])

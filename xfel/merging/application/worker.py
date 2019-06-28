@@ -65,4 +65,4 @@ def exercise_worker(worker_class):
 
   prefix = worker_class.__name__
   reflections.as_msgpack_file(prefix + ".mpack")
-  ExperimentListDumper(experiments).as_file(prefix + ".json")
+  ExperimentListDumper(experiments).as_file(prefix + ".expt")
