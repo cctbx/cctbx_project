@@ -33,7 +33,7 @@ between two detectors.
 
 Example:
 
-  %s experiment1.json experiment2.json reflections1.pickle reflections2.pickle
+  %s experiment1.expt experiment2.expt reflections1.refl reflections2.refl
 ''' % libtbx.env.dispatcher_name
 
 # Create the phil parameters
@@ -229,7 +229,7 @@ class Script(object):
     import libtbx.load_env
 
     # Create the option parser
-    usage = "usage: %s experiment1.json experiment2.json reflections1.pickle reflections2.pickle" % libtbx.env.dispatcher_name
+    usage = "usage: %s experiment1.expt experiment2.expt reflections1.refl reflections2.refl" % libtbx.env.dispatcher_name
     self.parser = OptionParser(
       usage=usage,
       sort_options=True,

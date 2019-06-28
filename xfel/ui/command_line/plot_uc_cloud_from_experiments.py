@@ -7,11 +7,11 @@ from six.moves import range
 from libtbx.phil import parse
 
 help_message = """
-Plot a cloud of unit cell dimensions from stills. Provide either a combined_experiments.json
-file or a specify individual .json files on the command line. To generate an overlay of
+Plot a cloud of unit cell dimensions from stills. Provide either a combined.expt
+file or a specify individual .expt files on the command line. To generate an overlay of
 multiple plots (similar to grouping by run tag in the XFEL GUI), provide multiple
-combined_experiments.json files named as ${tag}_combined_experiments*.json and set
-extract_tags to True in the phil scope.
+combined.expt files named as ${tag}_combined_*.expt and set extract_tags to True in
+the phil scope.
 """
 
 phil_str = """
@@ -23,7 +23,7 @@ phil_str = """
     .help = Lower and upper bounds for the ranges to display for each of the a, b and c axes
   extract_tags = False
     .type = bool
-    .help = Extract tags from the names of multiple combined_experiments.json filenames and use
+    .help = Extract tags from the names of multiple combined.expt filenames and use
     .help = these tags to label multiple groups of experiments.
   combine_all_input = False
     .type = bool
