@@ -60,8 +60,8 @@ class Script(object):
     if params.tag is None:
       raise Usage(self.parser.usage)
 
-    level_json = "%s_%d_refined_experiments_level%d.json"
-    level_pickle = "%s_%d_refined_reflections_level%d.pickle"
+    level_json = "%s_%d_refined_level%d.expt"
+    level_pickle = "%s_%d_refined_level%d.refl"
 
     command = "cspad.detector_congruence %s %s %s %s hierarchy_level=%d show_plots=False"
 
