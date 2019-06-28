@@ -5,7 +5,9 @@ import os
 #for integration pickles:
 allowable_basename_endings = ["_00000.pickle",
                               ".pickle",
+                              ".refl",
                               "_refined_experiments.json",
+                              "_refined.expt",
                               "_experiments.json"
                              ]
 def is_odd_numbered(file_name, use_hash = False):
