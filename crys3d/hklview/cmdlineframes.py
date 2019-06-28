@@ -299,6 +299,18 @@ class HKLViewFrame() :
   def GetNewCurrentPhilFromPython(self, pyphilobj, oldcurrentphil):
     newcurrentphil = oldcurrentphil.fetch(source = pyphilobj)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
+
+    oldcolbintrshld = oldcurrentphil.extract().NGL_HKLviewer.column_bin_thresholds
+    newcolbintrshld = pyphilobj.extract().NGL_HKLviewer.column_bin_thresholds
+    # fetch_diff doesn't seem able to correclty spot changes
+    # in the multiple scope phil object "NGL_HKLviewer.column_bin_thresholds"
+    # Must do it manually
+    if oldcolbintrshld != newcolbintrshld:
+      params = newcurrentphil.extract()
+      params.NGL_HKLviewer.column_bin_thresholds = newcolbintrshld
+      newcurrentphil = self.master_phil.format(python_object = params)
+      diffphil = self.master_phil.fetch_diff(source = newcurrentphil)
+
     return newcurrentphil, diffphil
 
 
@@ -311,7 +323,7 @@ class HKLViewFrame() :
     try:
       if not new_phil:
         new_phil = self.master_phil.format(python_object = self.params)
-
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.currentphil, diff_phil = self.GetNewCurrentPhilFromPython(new_phil, self.currentphil)
       diff = None
       if len(diff_phil.all_definitions()) < 1:
@@ -319,7 +331,7 @@ class HKLViewFrame() :
         return False
 
       diff = diff_phil.extract().NGL_HKLviewer
-      self.mprint("diff phil:\n" + diff_phil.as_str() )
+      self.mprint("diff phil:\n" + diff_phil.as_str(), True )
 
       self.params = self.currentphil.extract()
       phl = self.params.NGL_HKLviewer
@@ -347,31 +359,31 @@ class HKLViewFrame() :
       if hasattr(diff, "shape_primitive"):
         self.set_shape_primitive(phl.shape_primitive)
 
-      if hasattr(diff, "using_tooltips"):
-        self.viewer.usingtooltips = phl.using_tooltips
+      if hasattr(diff, "tooltips_in_script"):
+        self.viewer.script_has_tooltips = phl.tooltips_in_script
 
       if hasattr(diff, "viewer"):
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
       msg = self.viewer.update_settings(diff, phl)
-      self.mprint( msg)
+      self.mprint( msg, True)
       for i,e in enumerate(self.spacegroup_choices):
-        self.mprint("%d, %s" %(i,e.symbol_and_number()) )
+        self.mprint("%d, %s" %(i,e.symbol_and_number()) , True)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.SendInfo()
       self.NewFileLoaded = False
 
       if (self.viewer.miller_array is None) :
-        self.mprint( "No miller array has been selected")
+        self.mprint( "No miller array has been selected", True)
         return False
       return True
     except Exception, e:
-      self.mprint(to_str(e) + "\n" + traceback.format_exc())
+      self.mprint(to_str(e) + "\n" + traceback.format_exc(), True)
       return False
 
 
-  def mprint(self, m, verbose=True):
+  def mprint(self, m, verbose=False):
     if self.verbose or verbose:
       print m
 
@@ -424,7 +436,7 @@ class HKLViewFrame() :
         while 1:
           philstr = self.socket.recv()
           philstr = str(philstr)
-          self.mprint("process_miller_array, Received phil:\n" + philstr)
+          self.mprint("process_miller_array, Received phil:\n" + philstr, True)
           new_phil = libtbx.phil.parse(philstr)
           #working_phil = self.master_phil.fetch(source = new_phil)
           params = new_phil.extract().NGL_HKLviewer
@@ -456,7 +468,7 @@ class HKLViewFrame() :
 
 
   def process_all_miller_arrays(self, col):
-    print "in process_all_miller_arrays"
+    #print "in process_all_miller_arrays"
     self.procarrays = []
     if self.params.NGL_HKLviewer.merge_data == False:
       self.settings.expand_to_p1 = False
@@ -479,7 +491,7 @@ class HKLViewFrame() :
 
 
   def set_miller_array(self, col=-1) :
-    print "in set_miller_array"
+    #print "in set_miller_array"
     #if col >= len(self.valid_arrays):
     if col >= len(self.viewer.hkl_scenes_info ):
       return
@@ -576,7 +588,7 @@ class HKLViewFrame() :
         #arrays = f.file_server.miller_arrays
       except Exception, e :
         self.NewFileLoaded=False
-        self.mprint(to_str(e))
+        self.mprint(to_str(e), True)
         arrays = []
       valid_arrays = []
       self.array_infostrs = []
@@ -588,18 +600,18 @@ class HKLViewFrame() :
         if (not array.is_real_array()) and (not array.is_complex_array()) \
          and (not array.is_integer_array()) and (not array.is_bool_array()) :
           self.mprint('Ignoring miller array \"%s\" of %s' \
-            %(array.info().label_string(), type(array.data()[0]) ) )
+            %(array.info().label_string(), type(array.data()[0]) ), True )
           continue
         self.array_infostrs.append( ArrayInfo(array, self.mprint).infostr )
         self.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
       for i,e in enumerate(self.array_infostrs):
-        self.mprint("%d, %s" %(i, e))
+        self.mprint("%d, %s" %(i, e), True)
       self.NewFileLoaded = True
       if (len(valid_arrays) == 0):
         msg = "No arrays of the supported types in this file."
-        self.mprint(msg)
+        self.mprint(msg, True)
         self.NewFileLoaded=False
       elif (len(valid_arrays) >= 1):
         if (set_array):
@@ -704,7 +716,7 @@ class HKLViewFrame() :
       raise Sorry("No data loaded!")
     self.mprint( "Miller array %s runs from hkls: %s to %s" \
      %(self.viewer.miller_array.info().label_string(), self.viewer.miller_array.index_span().min(),
-        self.viewer.miller_array.index_span().max() ) )
+        self.viewer.miller_array.index_span().max() ), True )
     self.update_space_group_choices()
     #self.viewer.DrawNGLJavaScript()
     #self.update_settings()
@@ -777,7 +789,7 @@ class HKLViewFrame() :
 
 
   def ShowTooltips(self, val):
-    self.params.NGL_HKLviewer.using_tooltips  = val
+    self.params.NGL_HKLviewer.tooltips_in_script  = val
     self.update_settings()
 
 
@@ -786,7 +798,7 @@ class HKLViewFrame() :
     return array of strings with available subgroups of the space group
     """
     if (self.viewer.miller_array is None) :
-      self.mprint( "No miller array has been selected")
+      self.mprint( "No miller array has been selected", True)
     if self.spacegroup_choices:
       return [e.symbol_and_number() for e in self.spacegroup_choices]
     return []
@@ -861,7 +873,7 @@ NGL_HKLviewer {
     .type = choice
   shape_primitive = *'spheres' 'points'
     .type = choice
-  using_tooltips = True
+  tooltips_in_script = False
     .type = bool
   viewer {
     %s

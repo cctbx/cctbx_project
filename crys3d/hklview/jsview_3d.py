@@ -163,7 +163,7 @@ class hklview_3d:
     self.NGLscriptstr = ""
     self.cameratype = "orthographic"
     self.primitivetype = "SphereBuffer"
-    self.usingtooltips = True
+    self.script_has_tooltips = False
     self.url = ""
     self.binarray = "Resolution"
     self.icolourcol = None
@@ -310,7 +310,8 @@ class hklview_3d:
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     allcolstraliases = "var hk = \'H,K,L: \';"
     alltooltipstringsdict = {}
-    if self.usingtooltips:
+    if self.script_has_tooltips:
+      # large data sets will make javascript file very large with risk of crashing browser
       self.mprint( "making tooltips")
       tooltipstringsdict = {}
       for j,hklscene in enumerate(HKLscenes):
@@ -356,7 +357,7 @@ class hklview_3d:
     return alltooltipstringsdict, allcolstraliases
 
 
-  def GetTooltip(self, hkl, rotmx=None, anomalous=False):
+  def GetTooltipOnTheFly(self, hkl, rotmx=None, anomalous=False):
     hklvec = flex.vec3_double( [(hkl[0], hkl[1], hkl[2])])
     Rhkl = hklvec[0]
     if rotmx:
@@ -539,8 +540,9 @@ class hklview_3d:
   def UpdateBinValues(self, binvals = [] ):
     if binvals:
       self.binvals = binvals
-    else:
-      self.binvals = [ 1.0/self.miller_array.d_max_min()[0], 1.0/self.miller_array.d_max_min()[1] ]
+    else: # ensure default resolution interval includes all data by avoiding rounding errors
+      self.binvals = [ 1.0/(self.miller_array.d_max_min()[0]*1.001),
+                       1.0/(self.miller_array.d_max_min()[1]*0.999) ]
 
 
   def DrawNGLJavaScript(self):
@@ -658,8 +660,8 @@ class hklview_3d:
       self.workingbinvals.extend( self.binvals )
       self.workingbinvals.sort()
       if self.workingbinvals[0] < 0.0:
-         self.workingbinvals.append(0.0)
-         self.workingbinvals.sort()
+        self.workingbinvals.append(0.0)
+        self.workingbinvals.sort()
       bindata = self.HKLscenes[ibinarray].data
       if self.HKLscenes[ibinarray].work_array.is_complex_array():
         bindata = self.HKLscenes[ibinarray].ampl
@@ -692,7 +694,7 @@ class hklview_3d:
       radii2[ibin].append( roundoff(radii[i], 2) )
       #spbufttips[ibin].append(self.tooltipstrings[i] )
       spherebufferstr = ""
-      if self.usingtooltips:
+      if self.script_has_tooltips:
         spbufttips[ibin].append(self.tooltipstringsdict[hkls[i]])
 
     spherebufferstr += self.colstraliases
@@ -714,7 +716,7 @@ class hklview_3d:
         self.mprint(mstr, verbose=True)
 
         spherebufferstr += "// %s\n" %mstr
-        if self.usingtooltips:
+        if self.script_has_tooltips:
           uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
           uncrustttips = uncrustttips.replace("\'\'+", "")
           spherebufferstr += "  ttips.push( %s );" %uncrustttips
@@ -759,7 +761,7 @@ class hklview_3d:
       {
         var cp = pickingProxy.canvasPosition;
     """
-    if self.usingtooltips:
+    if self.script_has_tooltips:
       spherebufferstr += """
         tooltip.innerText = pickingProxy.picker[pickingProxy.pid];
     """
@@ -797,7 +799,7 @@ class hklview_3d:
       if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  ))
       {
     """
-    if self.usingtooltips:
+    if self.script_has_tooltips:
       spherebufferstr += """
         var innerText = pickingProxy.picker[pickingProxy.pid];
     """
@@ -892,6 +894,7 @@ var colours = [];
 var radii = [];
 var shapebufs = [];
 var br_shapebufs = [];
+var nrots = 0;
 
 
 function createElement(name, properties, style)
@@ -1059,8 +1062,8 @@ mysocket.onmessage = function (e)
   alpha,
   si;
   mysocket.send('got ' + e.data ); // tell server what it sent us
-  //try
-  //{
+  try
+  {
     var datval = e.data.split(":\\n");
     //alert('received2:\\n' + datval);
     var msgtype = datval[0];
@@ -1072,6 +1075,9 @@ mysocket.onmessage = function (e)
       ibin = parseInt(val[0]);
       alpha = parseFloat(val[1]);
       shapebufs[ibin].setParameters({opacity: alpha});
+      for (var g=0; g < nrots; g++ )
+        br_shapebufs[ibin][g].setParameters({opacity: alpha});
+
       stage.viewer.requestRender();
     }
 
@@ -1083,6 +1089,15 @@ mysocket.onmessage = function (e)
       colours[ibin][3*si+1] = parseFloat(val[3]);
       colours[ibin][3*si+2] = parseFloat(val[4]);
       shapebufs[ibin].setAttributes({ color: colours[ibin] });
+
+      for (var g=0; g < nrots; g++ )
+      {
+        br_colours[ibin][3*si] = parseFloat(val[2]);
+        br_colours[ibin][3*si+1] = parseFloat(val[3]);
+        br_colours[ibin][3*si+2] = parseFloat(val[4]);
+        br_shapebufs[ibin][g].setAttributes({ color: br_colours[ibin] });
+      }
+
       stage.viewer.requestRender();
     }
 
@@ -1205,7 +1220,6 @@ mysocket.onmessage = function (e)
           //alert('rot' + g + ': ' + elmstrs);
 
           br_positions[h][g] = new Float32Array( csize );
-          //br_ttips[h][g] = "foobar";
 
           for (var i=0; i<nsize; i++)
           {
@@ -1266,13 +1280,11 @@ mysocket.onmessage = function (e)
     }
 
 
-  /*
   }
   catch(err)
   {
-    mysocket.send('error: ' + err );
+    mysocket.send('error: ' + err.stack );
   }
-  */
 };
 
 
@@ -1287,7 +1299,7 @@ mysocket.onmessage = function (e)
   def OnConnectWebsocketClient(self, client, server):
     #if not self.websockclient:
     self.websockclient = client
-    self.mprint( "Browser connected:" + str( self.websockclient ), self.verbose )
+    self.mprint( "Browser connected:" + str( self.websockclient ) )
     #else:
     #  self.mprint( "Unexpected browser connection was rejected" )
 
@@ -1295,7 +1307,7 @@ mysocket.onmessage = function (e)
 
   def OnWebsocketClientMessage(self, client, server, message):
     if message != "":
-      self.mprint( message, self.verbose)
+      self.mprint( message)
     self.lastmsg = message
     if "Current vieworientation:" in message:
       # The NGL.Matrix4 with the orientation is a list of floats.
@@ -1308,10 +1320,9 @@ mysocket.onmessage = function (e)
         self.pendingmessage = self.viewmtrxelms
       self.isnewfile = False
     if "tooltip_id:" in message:
-      self.mprint(message)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       # TODO: fix bug in data2bin()
-      id = 1 + int( eval(message.split("tooltip_id:")[1] )[0] )
+      id = int( eval(message.split("tooltip_id:")[1] )[0] )
       symcp = int( eval(message.split("tooltip_id:")[1] )[1] )
       rotmx = None
       if symcp >= 0:
@@ -1320,14 +1331,14 @@ mysocket.onmessage = function (e)
       hkls = self.scene.indices
       #ttip = self.tooltipstringsdict[hkls[id]]
       if id < len(hkls):
-        ttip = self.GetTooltip(hkls[id], rotmx)
+        ttip = self.GetTooltipOnTheFly(hkls[id], rotmx)
         self.mprint("tooltip for : " + str(hkls[id]))
       else:
         # if id > len(hkls) then these hkls are added as the friedel mates during the
         # "if (anoexp)" condition in the javascript code
         id = id % len(hkls)
         ttip = "id: %d" %id
-        ttip = self.GetTooltip(hkls[id], rotmx, anomalous=True)
+        ttip = self.GetTooltipOnTheFly(hkls[id], rotmx, anomalous=True)
       self.SendWebSockMsg("ShowTooltip", ttip)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
@@ -1344,7 +1355,7 @@ mysocket.onmessage = function (e)
 # reading the html content. This may crash this thread. So try restarting this thread until
 # browser is ready
     except Exception, e:
-      self.mprint( str(e) + ", Restarting WebBrowserMsgQueue", self.verbose)
+      self.mprint( str(e) + ", Restarting WebBrowserMsgQueue")
       self.WebBrowserMsgQueue()
 
 
@@ -1379,10 +1390,10 @@ mysocket.onmessage = function (e)
 
   def SetOpacity(self, bin, alpha):
     if bin > self.nbin:
-      self.mprint( "There are only %d bins of data present" %self.nbin )
+      self.mprint( "There are only %d bins of data present" %self.nbin, True )
       return
-    msg = u"alpha, %d, %f" %(bin, alpha)
-    self.SendWebSockMsg(msg)
+    msg = "%d, %f" %(bin, alpha)
+    self.SendWebSockMsg("alpha", msg)
 
 
   def RedrawNGL(self):
@@ -1390,7 +1401,7 @@ mysocket.onmessage = function (e)
 
 
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
-    self.mprint("Rendering JavaScript...")
+    self.mprint("Rendering JavaScript...", True)
     self.SendWebSockMsg("Reload")
 
 
@@ -1401,7 +1412,7 @@ mysocket.onmessage = function (e)
     with open(self.hklfname, "w") as f:
       f.write( htmlstr )
     self.url = "file://" + os.path.abspath( self.hklfname )
-    self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, self.verbose )
+    self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname)
     if self.UseOSBrowser:
       webbrowser.open(self.url, new=1)
     self.isnewfile = False
