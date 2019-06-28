@@ -1,16 +1,11 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8; -*-
-#
-# $Id$
 
 from iotbx.detectors.detectorbase import DetectorImageBase, tile_manager_base
 from scitbx.array_family          import flex
+import six
 from six.moves import cPickle as pickle
-
-#INT   = (int,)
-#FLOAT = (float,)
-#STR   = (str,)
 
 class NpyImage(DetectorImageBase):
   def __init__(self, filename, source_data = None):
@@ -18,21 +13,18 @@ class NpyImage(DetectorImageBase):
     self.vendortype = "npy_raw"
     self.source_data = source_data
 
-#  def getTupleofType(self,inputstr,typefunc):
-#    parsed = inputstr.split(' ')
-#    while '' in parsed:
-#      parsed.remove('')
-#    return [typefunc(I) for I in parsed]
-
   def readHeader(self, horizons_phil):
     version_control = horizons_phil.distl.detector_format_version
 
     if self.source_data == None:
-      stream      = open(self.filename, "rb")
-      cspad_data  = pickle.load(stream)
-      stream.close()
+      with open(self.filename, "rb") as fh:
+        if six.PY3:
+          cspad_data = pickle.load(fh, encoding="bytes")
+          cspad_data = {key.decode("ascii"): value for key, value in cspad_data.items()}
+        else:
+          cspad_data = pickle.load(fh)
     else:
-      cspad_data  = self.source_data
+      cspad_data = self.source_data
 
     # XXX assert that cspad_data['image'].ndim is 2?
 
