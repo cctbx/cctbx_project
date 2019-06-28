@@ -153,9 +153,9 @@ class Script(object):
           id_.set_selected(sel, expt_number)
         reflections['id'] = id_
 
-      reflections.as_pickle(os.path.join(self.params.output.output_dir, self.params.output.prefix + "_%06d.pickle"%self.mpi_helper.rank))
+      reflections.as_pickle(os.path.join(self.params.output.output_dir, self.params.output.prefix + "_%06d.refl"%self.mpi_helper.rank))
       dump = ExperimentListDumper(experiments)
-      dump.as_file(os.path.join(self.params.output.output_dir, self.params.output.prefix + "_%06d.json"%self.mpi_helper.rank))
+      dump.as_file(os.path.join(self.params.output.output_dir, self.params.output.prefix + "_%06d.expt"%self.mpi_helper.rank))
 
     self.mpi_logger.log_step_time("TOTAL", True)
 

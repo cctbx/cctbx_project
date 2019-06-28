@@ -347,7 +347,7 @@ def small_cell_index(path, horiz_phil):
     sel.append(test.count(True) == 0)
   reflections = reflections.select(sel)
 
-  reflections_dump(reflections, "spotfinder.pickle")
+  reflections_dump(reflections, "spotfinder.refl")
   print("saved %d"%len(reflections))
 
   max_clique_len, experiments, refls = small_cell_index_detail(experiments, reflections, horiz_phil)
@@ -1084,7 +1084,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
         experiments = ExperimentListFactory.from_imageset_and_crystal(imageset, crystal)
         if write_output:
           dump = ExperimentListDumper(experiments)
-          dump.as_json(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated_experiments.json")
+          dump.as_json(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated.expt")
 
         refls = flex.reflection_table()
         refls['id'] = flex.int(len(indexed_hkls), 0)
@@ -1104,7 +1104,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
 
         refls.set_flags(flex.bool(len(refls), True), refls.flags.indexed)
         if write_output:
-          refls.as_pickle(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated.pickle")
+          refls.as_pickle(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated.refl")
 
         print("cctbx.small_cell: integrated %d spots."%len(results), end=' ')
         integrated_count = len(results)
