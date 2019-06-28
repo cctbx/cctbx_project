@@ -2291,7 +2291,7 @@ class RunStatsTab(SpotfinderTab):
       params, ts_list = self.strong_indexed_image_timestamps[idx]
       ext = '.' + params['format']
       image_paths = self.strong_indexed_image_paths[idx][:self.n_dump]
-      indexed_paths = [path.split(ext)[0]+'_indexed.pickle' for path in image_paths]
+      indexed_paths = [path.split(ext)[0]+'_indexed.refl' for path in image_paths]
       if all([os.path.exists(p) for p in (image_paths + indexed_paths)]):
         command = str('dials.image_viewer ' + ' '.join(image_paths) + \
           ' ' + ' '.join(indexed_paths))
