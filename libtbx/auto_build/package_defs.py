@@ -51,7 +51,11 @@ def get_pypi_package_information(package, version=None, information_only=False):
     package[field] = pkginfo['info'][field]
   return package
 
-DEPENDENCIES_BASE = "https://gitcdn.xyz/repo/dials/dependencies/master/"
+DEPENDENCIES_BASE = [
+  "https://gitcdn.link/repo/dials/dependencies/master",
+  "https://github.com/dials/dependencies/raw/master",
+  "https://gitcdn.xyz/repo/dials/dependencies/master",
+]
 OPENSSL_PKG = "openssl-1.0.2r.tar.gz"    # OpenSSL
 PYTHON3_PKG = "Python-3.7.2.tgz"
 PYTHON_PKG = "Python-2.7.16.tgz"
