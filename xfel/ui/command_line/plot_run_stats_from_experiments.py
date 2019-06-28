@@ -105,7 +105,7 @@ def run(args):
       filename = os.path.basename(path)
       extension = os.path.splitext(filename)[1]
       split_fn = filename.split('_')
-      if extension not in ['.pickle', '.mpack'] or len(split_fn) <= 0 or not split_fn[-1].startswith('strong'):
+      if extension not in ['.refl', '.pickle', '.mpack'] or len(split_fn) <= 0 or not split_fn[-1].startswith('strong'):
         continue
       base = os.path.join(root, "_".join(split_fn[:-1]))
       print(filename)
@@ -124,7 +124,11 @@ def run(args):
       two_theta_high.append(0)
 
       # Read indexing results if possible
-      experiments_name = base + "_integrated_experiments.json"
+      experiments_name = base + "_integrated"
+      if extension == ".refl":
+        experiments_name += ".expt"
+      else:
+        experiments_name += "_experiments.json"
       indexed_name = base + "_integrated%s"%extension
       if not os.path.exists(experiments_name) or not os.path.exists(indexed_name):
         print("Frame didn't index")
