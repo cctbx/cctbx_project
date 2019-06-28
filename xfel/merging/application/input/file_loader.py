@@ -38,8 +38,11 @@ def create_experiment_identifier(experiment, experiment_file_path, experiment_id
 #for integration pickles:
 allowable_basename_endings = ["_00000.pickle",
                               ".pickle",
+                              ".refl",
                               "_refined_experiments.json",
-                              "_experiments.json"
+                              "_refined.expt",
+                              "_experiments.json",
+                              "_indexed.expt"
                              ]
 def is_odd_numbered(file_name, use_hash = False):
   if use_hash:
