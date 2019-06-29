@@ -1218,6 +1218,7 @@ def map_peak_3d_as_2d(
           center=center_cart)
         xf,yf,zf = unit_cell.fractionalize([xc,yc,zc])
         rho.append(map_data.eight_point_interpolation([xf,yf,zf]))
+        #rho.append(map_data.tricubic_interpolation([xf,yf,zf]))
     rho_1d.append(flex.mean(rho))
   return dist, rho_1d
 
@@ -1355,17 +1356,17 @@ Fourier image of specified resolution, etc.
 
   def __init__(self, scattering_type, scattering_table="wk1995"):
     adopt_init_args(self, locals())
-    self.xray_structure = self.get_xray_structure()
-    self.scr = self.xray_structure.scattering_type_registry()
+    self.scr = self.get_xray_structure(box=1, b=0).scattering_type_registry()
     self.uff = self.scr.unique_form_factors_at_d_star_sq
 
-  def get_xray_structure(self):
-    cs = crystal.symmetry((10, 10, 10, 90, 90, 90), "P 1")
+  def get_xray_structure(self, box, b):
+    cs = crystal.symmetry((box, box, box, 90, 90, 90), "P 1")
     sp = crystal.special_position_settings(cs)
     from cctbx import xray
     sc = xray.scatterer(
       scattering_type = self.scattering_type,
-      site            = (0, 0, 0))
+      site            = (0, 0, 0),
+      u               = adptbx.b_as_u(b))
     scatterers = flex.xray_scatterer([sc])
     xrs = xray.structure(sp, scatterers)
     xrs.scattering_type_registry(table = self.scattering_table)
@@ -1443,6 +1444,51 @@ Fourier image of specified resolution, etc.
       first_inflection_point = first_inflection_point,
       radius                 = first_inflection_point*2,
       second_derivatives     = second_derivatives)
+
+  def image_from_miller_indices(self, miller_indices, b_iso, uc,
+                                radius_max, radius_step):
+    p2 = flex.double()
+    tmp = flex.double()
+    for mi in miller_indices:
+      p2.append(self.form_factor(ss=uc.d_star_sq(mi)/4, b_iso=b_iso))
+      tmp.append( 2*math.pi*mi[2] )
+    mv  = flex.double()
+    rad = flex.double()
+    z=0.0
+    while z < radius_max:
+      result = 0
+      for mi, p2i, tmpi in zip(miller_indices, p2, tmp):
+        result += p2i*math.cos(tmpi*z)
+      rad.append(z)
+      mv.append(result*2)
+      z+=radius_step
+    return group_args(radii=rad, image_values=mv/uc.volume())
+
+  def image_from_3d(self, box, b, step, unit_cell, space_group_info,
+                          miller_array):
+    from cctbx import miller
+    xrs = self.get_xray_structure(box=box, b=b)
+    fc = miller_array.structure_factors_from_scatterers(
+      xray_structure = xrs, algorithm = "direct").f_calc()
+    cg = crystal_gridding(
+      unit_cell         = unit_cell,
+      space_group_info  = space_group_info,
+      step              = step,
+      symmetry_flags    = use_space_group_symmetry)
+    fft_map = miller.fft_map(
+      crystal_gridding     = cg,
+      fourier_coefficients = fc)
+    fft_map.apply_volume_scaling()
+    map_data = fft_map.real_map_unpadded()
+    mv = flex.double()
+    radii = flex.double()
+    r = 0
+    while r < box:
+      mv_ = map_data.eight_point_interpolation([r/box,0,0])
+      mv.append(mv_)
+      radii.append(r)
+      r+=step
+    return group_args(radii=radii, image_values=mv)
 
 def sharpen2(map, xray_structure, resolution, file_name_prefix):
   from cctbx import miller
