@@ -96,28 +96,24 @@ class Raxis(object):
       seek+=item[1]
 
   def data(self):
-    self.F.seek(self.head['record_length'])
-
     Dim0 = self.head['nFast'] #number of fast pixels
     ToRead = self.head['record_length']
     ReadLines = self.head['number_records']
 
+    self.F.seek(ToRead)
+    raw_data = self.F.read(ToRead * ReadLines)
+
+    # For a normal image, there should be no padding per line
     # Each line might be padded, so figure this out
-
     BytesPerLine = Dim0 * 2;
-    Pad          = ToRead - BytesPerLine;
+    if BytesPerLine < ToRead:
+      # Remove all padding bytes
+      raw_data = b"".join(
+        raw_data[record * ToRead : record * ToRead + BytesPerLine]
+        for record in range(ReadLines)
+      )
 
-    if 0>=Pad :
-       #For a normal image, there should be no padding per line
-       #No padding, use single fast read
-
-       ToRead = ToRead * ReadLines
-       self.CharTemp = self.F.read(ToRead)
-    else:
-       ToRead = ToRead * ReadLines
-       temporary = self.F.read(ToRead)
-       from iotbx.detectors import unpad_raxis
-       self.CharTemp = unpad_raxis(temporary,self.head['record_length'],Pad)
+    self.CharTemp = raw_data
 
   def dump(self):
     ptr = 0
