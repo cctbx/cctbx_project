@@ -1,9 +1,7 @@
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.merge
-import sys
 from xfel.merging.application.mpi_helper import mpi_helper
 from xfel.merging.application.mpi_logger import mpi_logger
-from six.moves import cStringIO as StringIO
 
 default_steps = [
   'input',
@@ -56,23 +54,20 @@ class Script(object):
         epilog=help_message)
 
       # Parse the command line. quick_parse is required for MPI compatibility
-      try:
-        bkp = sys.stdout
-        sys.stdout = out = StringIO()
-        params, options = self.parser.parse_args(show_diff_phil=True,quick_parse=True)
-        self.mpi_logger.log(out.getvalue())
-        if self.mpi_helper.rank == 0:
-          self.mpi_logger.main_log(out.getvalue())
-      finally:
-        sys.stdout = bkp
+      params, options = self.parser.parse_args(show_diff_phil=True,quick_parse=True)
+
+      # Log the modified phil parameters
+      diff_phil_str = self.parser.diff_phil.as_str()
+      if diff_phil_str is not "":
+        self.mpi_logger.main_log("The following parameters have been modified:\n%s"%diff_phil_str)
 
       # prepare for transmitting input parameters to all ranks
-      self.mpi_logger.log("Broadcasting input parameters...")
       transmitted = dict(params = params, options = options)
     else:
       transmitted = None
 
     # broadcast parameters and options to all ranks
+    self.mpi_logger.log("Broadcasting input parameters...")
     self.mpi_logger.log_step_time("BROADCAST_INPUT_PARAMS")
 
     transmitted = self.mpi_helper.comm.bcast(transmitted, root = 0)
