@@ -60,6 +60,9 @@ myHKLview.ShowSlice(True, "h", 20)
 
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Phenix\dev-2814-working\modules\phenix_examples\beta-blip\beta_blip_P3221.mtz")
 myHKLview.SetColumn(0)
+myHKLview.SetColumnBinThresholds([3, 3.2, 3.4, 3.8, 4.5, 6, 9, 30])
+for a in range(6):
+  myHKLview.SetOpacity(a, 0.0)
 
 
 
@@ -140,6 +143,10 @@ myHKLview.SetColumn(0)
 no
 myHKLview.SetRadiiScale(1, nth_power_scale=0.2)
 myHKLview.SetColumnBinThresholds([50, 20, 15, 12, 9])
+myHKLview.SetOpacity(0, 0.0)
+myHKLview.SetOpacity(1, 0.0)
+myHKLview.SetOpacity(2, 0.0)
+
 
 myHKLview.ExpandToP1(True)
 myHKLview.ExpandAnomalous(True)

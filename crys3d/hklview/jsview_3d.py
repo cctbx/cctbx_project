@@ -308,7 +308,7 @@ class hklview_3d:
 
   def MakeToolTips(self, HKLscenes):
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    allcolstraliases = "var hk = \'H,K,L: \';"
+    allcolstraliases = "var hk = \'H,K,L: \';\n"
     alltooltipstringsdict = {}
     if self.script_has_tooltips:
       # large data sets will make javascript file very large with risk of crashing browser
@@ -567,7 +567,8 @@ class hklview_3d:
     Lstararrowend = roundoff( [l_axis[0]*100, l_axis[1]*100, l_axis[2]*100] )
     Lstararrowtxt  = roundoff( [l_axis[0]*102, l_axis[1]*102, l_axis[2]*102] )
     # make arrow font size roughly proportional to radius of highest resolution shell
-    fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
+    #fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
+    fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0)))
 
     arrowstr = """
   // xyz arrows
@@ -710,12 +711,12 @@ class hklview_3d:
         if colstr=="dres":
           bin1= 1.0/self.workingbinvals[ibin]
           bin2= 1.0/self.workingbinvals[ibin+1]
-        mstr= "bin:%d, %d reflections with %s in ]%2.2f; %2.2f]" %(cntbin, nreflsinbin, \
+        mstr= "\n// bin[%d] has %d reflections with %s in ]%2.2f; %2.2f]" %(cntbin, nreflsinbin, \
                 colstr, bin1, bin2)
         self.binstrs.append(mstr)
         self.mprint(mstr, verbose=True)
 
-        spherebufferstr += "// %s\n" %mstr
+        spherebufferstr += "%s\n" %mstr
         if self.script_has_tooltips:
           uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
           uncrustttips = uncrustttips.replace("\'\'+", "")
@@ -744,10 +745,10 @@ class hklview_3d:
   //}, { disableImpostor: true }) // if true allows wireframe spheres but does not allow resizing spheres
   );
   """
-        spherebufferstr += "shape.addBuffer(shapebufs[%d])" %cntbin
+        spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n" %cntbin
 
         if self.workingbinvals[ibin] < 0.0:
-          negativeradiistr += "shapebufs[%d].setParameters({metalness: 1})\n" %cntbin
+          negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
         cntbin += 1
 
     spherebufferstr += """
@@ -1149,69 +1150,66 @@ mysocket.onmessage = function (e)
         return;
       }
 
-      var nsize = positions[0].length/3;
-
       shapeComp.removeRepresentation(repr);
 
       //alert('rotations:\\n' + val);
       strs = datval[1].split("\\n");
-
-      nrots = strs.length;
-      bins = %d -1;
-
+      nbins = %d;
       var Rotmat = new NGL.Matrix3();
       var sm = new Float32Array(9);
       var r = new NGL.Vector3();
 
-      var csize = nsize*3;
-      var nsize3 = nsize*3;
-      var anoexp = false;
-
-      if (msgtype.includes("Friedel") )
+      for (var bin=0; bin<nbins; bin++)
       {
-        anoexp = true;
-        csize = nsize*6;
-      }
+        var nsize = positions[bin].length/3;
+        var csize = nsize*3;
+        var nsize3 = nsize*3;
+        var anoexp = false;
 
-      for (var h=0; h<bins; h++)
-      {
+        if (msgtype.includes("Friedel") )
+        {
+          anoexp = true;
+          csize = nsize*6;
+        }
         br_positions.push( [] );
         br_shapebufs.push( [] );
         br_colours.push( [] );
         br_radii.push( [] );
         br_ttips.push( [] );
 
-        br_colours[h] = colours[h];
-        br_radii[h] = radii[h];
+        br_colours[bin] = colours[bin];
+        br_radii[bin] = radii[bin];
         if (anoexp)
         {
           var colarr = [];
-          var cl = colours[h].length;
+          var cl = colours[bin].length;
           for (var i=0; i<cl; i++)
           {
-            colarr[i] = colours[h][i];
-            colarr[i+cl] = colours[h][i];
+            colarr[i] = colours[bin][i];
+            colarr[i+cl] = colours[bin][i];
           }
-          br_colours[h] = new Float32Array(colarr);
+          br_colours[bin] = new Float32Array(colarr);
 
           var radiiarr = [];
-          var rl = radii[h].length;
+          var rl = radii[bin].length;
           for (var i=0; i<rl; i++)
           {
-            radiiarr[i] = radii[h][i];
-            radiiarr[i+rl] = radii[h][i];
+            radiiarr[i] = radii[bin][i];
+            radiiarr[i+rl] = radii[bin][i];
           }
-          br_radii[h] = new Float32Array(radiiarr);
+          br_radii[bin] = new Float32Array(radiiarr);
         }
 
-
-        for (var g=0; g < nrots; g++ )
+        nrots = 0;
+        for (var g=0; g < strs.length; g++ )
         {
           if (strs[g] < 1 )
             continue;
-          br_positions[h].push( [] );
-          br_shapebufs[h].push( [] );
-          br_ttips[h].push( [g] );
+          nrots++;
+
+          br_positions[bin].push( [] );
+          br_shapebufs[bin].push( [] );
+          br_ttips[bin].push( [g] );
           var elmstrs = strs[g].split(",");
 
           for (j=0; j<9; j++)
@@ -1219,40 +1217,40 @@ mysocket.onmessage = function (e)
           Rotmat.fromArray(sm);
           //alert('rot' + g + ': ' + elmstrs);
 
-          br_positions[h][g] = new Float32Array( csize );
+          br_positions[bin][g] = new Float32Array( csize );
 
           for (var i=0; i<nsize; i++)
           {
             idx= i*3;
-            r.x = positions[h][idx];
-            r.y = positions[h][idx+1];
-            r.z = positions[h][idx+2];
+            r.x = positions[bin][idx];
+            r.y = positions[bin][idx+1];
+            r.z = positions[bin][idx+2];
 
             r.applyMatrix3(Rotmat)
 
-            br_positions[h][g][idx] = r.x;
-            br_positions[h][g][idx + 1] = r.y;
-            br_positions[h][g][idx + 2] = r.z;
+            br_positions[bin][g][idx] = r.x;
+            br_positions[bin][g][idx + 1] = r.y;
+            br_positions[bin][g][idx + 2] = r.z;
 
             if (anoexp)
             {
               r.negate(); // inversion for anomalous pair
-              br_positions[h][g][nsize3 + idx] = r.x;
-              br_positions[h][g][nsize3 + idx + 1] = r.y;
-              br_positions[h][g][nsize3 + idx + 2] = r.z;
+              br_positions[bin][g][nsize3 + idx] = r.x;
+              br_positions[bin][g][nsize3 + idx + 1] = r.y;
+              br_positions[bin][g][nsize3 + idx + 2] = r.z;
             }
 
           }
 
-          br_shapebufs[h][g] = new NGL.SphereBuffer({
-              position: br_positions[h][g],
-              color: br_colours[h],
-              radius: br_radii[h],
-              // g works as the id number of applied symmetry operator when creating tooltip for an hkl
-              picking: br_ttips[h][g],
+          br_shapebufs[bin][g] = new NGL.SphereBuffer({
+              position: br_positions[bin][g],
+              color: br_colours[bin],
+              radius: br_radii[bin],
+              // g works as the id number of the rotation of applied symmetry operator when creating tooltip for an hkl
+              picking: br_ttips[bin][g],
             });
 
-          shape.addBuffer(br_shapebufs[h][g]);
+          shape.addBuffer(br_shapebufs[bin][g]);
 
         }
       }
@@ -1267,16 +1265,16 @@ mysocket.onmessage = function (e)
     {
       // test something new
       mysocket.send( 'Testing something new ' + pagename );
-
+      /*
       var newradii = radii[0].map(function(element) {
         return element*1.5;
       });
       shapebufs[0].setAttributes({
           radius: newradii
       })
-
       repr = shapeComp.addRepresentation('buffer');
       stage.viewer.requestRender();
+      */
     }
 
 
@@ -1284,12 +1282,30 @@ mysocket.onmessage = function (e)
   catch(err)
   {
     mysocket.send('error: ' + err.stack );
+    /*
+    msg = "";
+    for(var n=0; n<Object.getOwnPropertyNames(self).length; n++)
+    {
+      someKey = Object.getOwnPropertyNames(self)[n];
+      // We check if this key exists in the obj
+      var thisval = self[someKey];
+      if (Object(thisval) !== thisval) // only interested in primitive values, not objects
+      {
+        //varname = Object.keys({thisval:0} )[0]
+        msg = msg.concat( someKey + ': ' + String(self[someKey]) + '\n');
+
+      }
+    }
+    mysocket.send('Variable values: ' + msg );
+    */
   }
+
+
 };
 
 
     """ % (self.__module__, self.__module__, self.cameratype, arrowstr, spherebufferstr, \
-            negativeradiistr, colourgradstrs, colourlabel, fomlabel, self.nbin)
+            negativeradiistr, colourgradstrs, colourlabel, fomlabel, self.nbin - 1)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
@@ -1306,8 +1322,11 @@ mysocket.onmessage = function (e)
 
 
   def OnWebsocketClientMessage(self, client, server, message):
+    verb = self.verbose
     if message != "":
-      self.mprint( message)
+      if "Error:" in message:
+        verb = True
+      self.mprint( message, verb)
     self.lastmsg = message
     if "Current vieworientation:" in message:
       # The NGL.Matrix4 with the orientation is a list of floats.
