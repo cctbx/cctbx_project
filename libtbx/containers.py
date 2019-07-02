@@ -99,8 +99,10 @@ class deque_template(object):
       self._set_proxy.add(item)
     return self
 
-  def __nonzero__(self):
+  def __bool__(self):
     return bool(self._list_proxy)
+
+  __nonzero__ = __bool__
 
   def __contains__(self, item):
     return item in self._set_proxy

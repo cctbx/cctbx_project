@@ -1,4 +1,4 @@
-from __future__ import division, absolute_import
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
@@ -76,15 +76,15 @@ class lbfgs(object):
 
   def callback_after_step(self, minimizer):
     if(self.verbose > 0):
-      print "refinement.minimization step: f,iter,nfun:",
-      print self.f,minimizer.iter(),minimizer.nfun()
+      print("refinement.minimization step: f,iter,nfun:", end=' ')
+      print(self.f,minimizer.iter(),minimizer.nfun())
 
   def compute_functional_and_gradients(self):
     self.apply_shifts()
     self.compute_target(compute_gradients = True)
     if(self.verbose > 1):
-      print "xray.minimization line search: f,rms(g):",
-      print self.f, math.sqrt(flex.mean_sq(self.g))
+      print("xray.minimization line search: f,rms(g):", end=' ')
+      print(self.f, math.sqrt(flex.mean_sq(self.g)))
     return self.f, self.g
 
 pdb_str = """

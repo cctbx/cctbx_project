@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.math
 import boost.rational
 from scitbx.math import line_given_points
@@ -28,12 +28,14 @@ from scitbx import matrix
 from libtbx.utils import user_plus_sys_time
 from libtbx.test_utils import Exception_expected, approx_equal, eps_eq
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from itertools import count
 import random
 import math
 import time
 import sys
+from six.moves import range
+from six.moves import zip
 
 if (libtbx.env.has_module("tntbx")):
   import tntbx
@@ -124,7 +126,7 @@ def exercise_dihedral_angle():
   d = dihe(sites=[(1,0,0), (0,0,0), (0,1,0), (0,1,-1)])
   assert approx_equal(d, 90)
   mt = flex.mersenne_twister(seed=0)
-  for ad in xrange(-179, 180):
+  for ad in range(-179, 180):
     ar = math.radians(ad)
     c, s = math.cos(ar), math.sin(ar)
     f = 2 - mt.random_double()
@@ -255,7 +257,10 @@ def exercise_erf():
   erf_verify(erfcx, 2.377124393213978E+307, 2.373412115741015E-308)
   erf_verify(erfcx, -23.9658621423763, 5.540070644707187E+249)
   erf_verify(erfcx, -26.6287357137515, 1.790000000000000E+308)
-  assert erf_verify.max_delta < erf_verify.tolerance
+  # In Python 3.6, the differences for -3.5, -4.0, and -4.5 are
+  # ~3.5e-10, ~1.5e-8, and 4.1e-6. The default tolerance is 1.0e-10
+  assert (erf_verify.max_delta < erf_verify.tolerance or
+          erf_verify.max_delta < 1.0e-5)
 
 def exercise_exponential_integral_e1z():
   assert approx_equal(exponential_integral_e1z(0.5), 0.559773595)
@@ -280,13 +285,13 @@ def exercise_gamma_incomplete():
   assert approx_equal(gamma_incomplete(20.0,15.5),0.154492096867129)
   assert approx_equal(gamma_incomplete(20.0,21.0),0.615737227735658)
   try: gamma_incomplete(a=20.0, x=15.5, max_iterations=5)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "scitbx Error: gamma::incomplete_series(" \
       "a=20, x=15.5, max_iterations=5) failed to converge"
   else: raise Exception_expected
   try: gamma_incomplete(a=20.0, x=25.5, max_iterations=5)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "scitbx Error: gamma::incomplete_continued_fraction(" \
       "a=20, x=25.5, max_iterations=5) failed to converge"
@@ -313,13 +318,13 @@ def exercise_gamma_complete():
   assert "%.8g" % gamma_complete(171.624-1.e-6) == "1.7942025e+308"
   #
   try: gamma_complete(171.624)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) \
         == "scitbx Error: gamma::complete_minimax(171.624): domain error"
   else: raise Exception_expected
   assert "%.8g" % gamma_complete(141.691-1.e-6) == "4.1104518e+242"
   try: gamma_complete(141.691, minimax=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) \
         == "scitbx Error: gamma::complete_lanczos(141.691): domain error"
   else: raise Exception_expected
@@ -499,28 +504,28 @@ def exercise_lambertw():
   check_lambertw(1+1.e-5)
   check_lambertw(3-1.e-5)
   check_lambertw(3+1.e-5)
-  for i in xrange(100):
+  for i in range(100):
     check_lambertw(x=i/10.-0.35)
-  for i in xrange(20):
+  for i in range(20):
     check_lambertw(x=2.**i)
     check_lambertw(x=5.**i)
     check_lambertw(x=10.**i)
   try: lambertw(x=-math.exp(-1)-1.e-4)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "lambertw(x) domain error: x < -exp(-1)"
   else: raise Exception_expected
   try: lambertw(x=1, max_iterations=1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "lambertw error: iteration did not converge"
   else: raise Exception_expected
 
 def matrix_mul(a, ar, ac, b, br, bc):
   assert br == ac
   result = []
-  for i in xrange(ar):
-    for k in xrange(bc):
+  for i in range(ar):
+    for k in range(bc):
       s = 0
-      for j in xrange(ac):
+      for j in range(ac):
         s += a[i * ac + j] * b[j * bc + k]
       result.append(s)
   return result
@@ -529,11 +534,11 @@ def exercise_golay():
   weights = [0]*25
   gg = golay_24_12_generator()
   while not gg.at_end():
-    weights[list(gg.next()).count(1)] += 1
+    weights[list(next(gg)).count(1)] += 1
   assert weights == [1,0,0,0,0,0,0,0,759,0,0,0,2576,0,0,0,759,0,0,0,0,0,0,0,1]
   try:
-    gg.next()
-  except StopIteration, e:
+    next(gg)
+  except StopIteration as e:
     assert str(e) == "golay_24_12_generator is exhausted."
   else:
     raise Exception_expected
@@ -560,7 +565,7 @@ def exercise_inertia_tensor():
 
 def exercise_principal_axes_of_inertia():
   rnd = random.random
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     if (i_trial == 0):
       points = flex.vec3_double()
     elif (i_trial == 1):
@@ -580,7 +585,7 @@ def exercise_principal_axes_of_inertia():
       pai.change_of_basis_mx_to_principal(), [1,0,0,0,1,0,0,0,1])
     assert pai.distance_to_inertia_ellipsoid_surface(
       unit_direction=(1,0,0)) == 0
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     if (i_trial == 0):
       center_of_mass = [0,0,0]
     else:
@@ -603,7 +608,7 @@ def exercise_principal_axes_of_inertia():
       unit_direction=(1,0,0)), 36)
     assert pai.distance_to_inertia_ellipsoid_surface(
       unit_direction=(0,0,0)) == 0
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     # test for the case of non-degenerate eigenvalues
     # check that the inertia tensor and eigenvectors
     # transform correctly under rotation
@@ -649,7 +654,7 @@ def exercise_principal_axes_of_inertia():
       except AssertionError:
         # we don't know the direction of the eigenvector
         assert approx_equal(- R_t * vec, expected_vectors[i], eps=eps)
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     if (i_trial == 0):
       center_of_mass = [0,0,0]
     else:
@@ -670,7 +675,7 @@ def exercise_principal_axes_of_inertia():
       assert approx_equal(matrix.sqr(cp).determinant(), 1)
       paip = principal_axes_of_inertia(points=cp*points)
       assert approx_equal(paip.inertia_tensor(), [234,180,90,0,0,0])
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     if (i_trial == 0):
       center_of_mass = [0,0,0]
     else:
@@ -679,7 +684,7 @@ def exercise_principal_axes_of_inertia():
       rot = matrix.sqr([1,0,0,0,1,0,0,0,1])
     else:
       rot = euler_angles_as_matrix(
-        angles=[random.uniform(0,360) for i in xrange(3)],
+        angles=[random.uniform(0,360) for i in range(3)],
         deg=True)
     points = flex.vec3_double()
     for point in [
@@ -721,7 +726,7 @@ def exercise_principal_axes_of_inertia():
 
 def exercise_principal_axes_of_inertia_2d():
   rnd = random.random
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     if (i_trial == 0):
       points = flex.vec2_double()
     elif (i_trial == 1):
@@ -739,7 +744,7 @@ def exercise_principal_axes_of_inertia_2d():
     assert approx_equal(es.vectors(), [1,0,0,1])
     assert pai.distance_to_inertia_ellipsoid_surface(
       unit_direction=(1,0)) == 0
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     if (i_trial == 0):
       center_of_mass = [0,0]
     else:
@@ -758,7 +763,7 @@ def exercise_principal_axes_of_inertia_2d():
       unit_direction=(1,0)), 6)
     assert pai.distance_to_inertia_ellipsoid_surface(
       unit_direction=(0,0)) == 0
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     if (i_trial == 0):
       center_of_mass = [0,0]
     else:
@@ -774,7 +779,7 @@ def exercise_principal_axes_of_inertia_2d():
     assert approx_equal(es.values(), [24,6])
     if (i_trial == 0):
       assert approx_equal(es.vectors(), [1,0,0,1])
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     if (i_trial == 0):
       center_of_mass = [0,0]
     else:
@@ -833,7 +838,7 @@ def explore_inertia_tensor_properties(n_trials=10):
   es = pai.eigensystem()
   #
   mt = flex.mersenne_twister(seed=0)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     rot_axis = matrix.col(mt.random_double_point_on_sphere())
     rot_angle = 10 + mt.random_double() * 77
     rot_matrix = scitbx.math.r3_rotation_axis_and_angle_as_matrix(
@@ -852,7 +857,7 @@ def explore_inertia_tensor_properties(n_trials=10):
       (c * e * c.transpose()).as_sym_mat3(),
       pai.inertia_tensor())
     #
-    for j_trial in xrange(n_trials):
+    for j_trial in range(n_trials):
       v = matrix.col(mt.random_double_point_on_sphere())
       rot_v = matrix.sqr(rot_matrix) * v
       #
@@ -935,12 +940,12 @@ def exercise_row_echelon():
     row_echelon_form=m, independent_flags=indep) == 1
   assert tuple(indep) == (False,False,False)
   #
-  for n_cols in xrange(1,5):
-    for n_rows in xrange(5):
-      for i_trial in xrange(10):
+  for n_cols in range(1,5):
+    for n_rows in range(5):
+      for i_trial in range(10):
         m = flex.int()
-        for i in xrange(n_rows):
-          coeffs = flex.int([random.randrange(-5,5) for j in xrange(n_cols)])
+        for i in range(n_rows):
+          coeffs = flex.int([random.randrange(-5,5) for j in range(n_cols)])
           m.extend(coeffs)
         m.reshape(flex.grid(n_rows,n_cols))
         rank = scitbx.math.row_echelon_form(m)
@@ -950,7 +955,7 @@ def exercise_row_echelon():
         scitbx.math.row_echelon_back_substitution_int(
           row_echelon_form=m, independent_flags=indep)
         mm = matrix.rec(m, m.focus())
-        s = matrix.col([random.random() for j in xrange(n_cols)])
+        s = matrix.col([random.random() for j in range(n_cols)])
         sol = flex.double(n_cols, 0)
         sol.set_selected(indep, flex.double(s).select(indep))
         assert scitbx.math.row_echelon_back_substitution_float(
@@ -972,8 +977,8 @@ def exercise_row_echelon_full_pivoting():
     [ 2,  1, -1,  3,  4,  2]])
   m_inp = matrix.rec(m, m.all())
   v = [0]*6
-  for j in xrange(6):
-    for i in xrange(3):
+  for j in range(6):
+    for i in range(3):
       v[j] += m[i,j]
   e = refp(a_work=m)
   assert list(e.col_perm) == [5, 1, 4, 3, 2, 0]
@@ -998,7 +1003,7 @@ def exercise_row_echelon_full_pivoting():
     [ 2,  1,  7, 10,  9, 15]])
   m_inp = matrix.rec(m, m.all())
   v = [0]*6
-  for j in xrange(6):
+  for j in range(6):
     m[2,j] =   m[1,j] + 2*m[0,j]
     v[j]   = 2*m[1,j] +   m[0,j]
   e = refp(a_work=m, min_abs_pivot=1e-15)
@@ -1013,12 +1018,12 @@ def exercise_row_echelon_full_pivoting():
   assert approx_equal(m_inp * matrix.col(s), [0,0,-2])
   #
   try: refp(a_work=flex.double())
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "a_work matrix must be two-dimensional."
   else: raise Exception_expected
   for v in [0,1,-1]:
-    for nr in xrange(5):
-      for nc in xrange(5):
+    for nr in range(5):
+      for nc in range(5):
         a = flex.double(flex.grid(nr, nc), v)
         e = refp(a_work=a)
         assert e.rank == min(abs(v), nr, nc)
@@ -1030,9 +1035,9 @@ def exercise_row_echelon_full_pivoting():
         assert e.nullity == nc - e.rank
   #
   mt = flex.mersenne_twister(seed=0)
-  for i_trial in xrange(10):
-    for nr in xrange(1,5):
-      for nc in xrange(1,5):
+  for i_trial in range(10):
+    for nr in range(1,5):
+      for nc in range(1,5):
         a = mt.random_double(size=nr*nc)*2-1
         a.reshape(flex.grid(nr, nc))
         x = mt.random_double(size=nc)*2-1
@@ -1082,7 +1087,7 @@ def exercise_row_echelon_full_pivoting():
         ((3,0,0,0,-2,0,0,0,0), 2),
         ((0,0,3,0,0,0,0,0,0), 1),
         ((0,0,0,1e-15,0,0,0,0,0), 0)]:
-    for i_trial in xrange(10):
+    for i_trial in range(10):
       r = matrix.sqr(mt.random_double_r3_rotation_matrix())
       a = flex.double(r * matrix.sqr(singular_a) * r.transpose())
       a.reshape(flex.grid(3,3))
@@ -1133,7 +1138,7 @@ def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
       absolute_epsilon=absolute_min_abs_pivot)
     return es.generalized_inverse_as_packed_u().matrix_packed_u_as_symmetric()
   mt = flex.mersenne_twister(seed=0)
-  for bits in xrange(8):
+  for bits in range(8):
     d = [1.23, 2.34, 0.58]
     x = [-0.19, -0.44, 0.83]
     if (bits    % 2): d[0] = x[0] = 0
@@ -1144,7 +1149,7 @@ def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
     b = a * x
     xs = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=a, b=b)
     assert approx_equal(xs, x)
-    for i_trial in xrange(10):
+    for i_trial in range(10):
       if (i_trial == 0):
         r = matrix.identity(n=3)
       else:
@@ -1186,7 +1191,7 @@ def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
   assert x is None
   #
   def compare(a, n_trials):
-    for i_trial in xrange(n_trials):
+    for i_trial in range(n_trials):
       if (i_trial == 0):
         ar = a
       else:
@@ -1199,11 +1204,11 @@ def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
           tntbx.generalized_inverse(ar.as_flex_double_matrix()))
         mismatch = (ari-arit).norm_sq() / max(1, max([abs(e) for e in ari]))
         if (mismatch > 1e-10):
-          print ar.elems
-          print ari.elems
-          print arit.elems
-          raise AssertionError, mismatch
-  for i_trial in xrange(10):
+          print(ar.elems)
+          print(ari.elems)
+          print(arit.elems)
+          raise AssertionError(mismatch)
+  for i_trial in range(10):
     x,y,z = flex.random_double(size=3)*2-1
     a = matrix.sqr([
       x,y,x,
@@ -1279,7 +1284,7 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
   eps_loose = eps*10
   for i,j,k in flex.nested_loop((1,1,1),(2,3,2),False):
     for shift in [(0,0,0),(2,3,4),(-3,-5,2)]:
-      for poly_index in xrange(1,2):
+      for poly_index in range(1,2):
         if (poly_index == 0):
           # cube
           points = flex.vec3_double(
@@ -1326,7 +1331,7 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
         if (poly_index == 0):
           assert mcs.n_iterations() <= 1
         r = random.random
-        for i_addl in xrange(3):
+        for i_addl in range(3):
           points.append(
             (matrix.col(expected_center)
              + matrix.col([r(),r(),r()]).normalize()*expected_radius).elems)
@@ -1363,7 +1368,7 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
       assert approx_equal(mcs.radius(), expected_radius, eps=eps)
       assert mcs.n_iterations() <= 1
       r = random.random
-      for i_addl in xrange(3):
+      for i_addl in range(3):
         points.append(
           matrix.col(expected_center)
           + matrix.col([r(),r()]).normalize()*expected_radius)
@@ -1373,7 +1378,7 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
 
 def exercise_icosahedron():
   ico = icosahedron(level=0)
-  for level in xrange(6):
+  for level in range(6):
     ico = icosahedron(level=level)
     assert ico.level == level
     if (level == 0):
@@ -1458,7 +1463,7 @@ def exercise_basic_statistics():
   f = StringIO()
   s.show(f=f)
   assert len(f.getvalue().splitlines()) == 14
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     x = flex.random_double(size=2+int(random.random()*10))
     s = scitbx.math.basic_statistics(values=x)
     assert s.n == x.size()
@@ -1497,25 +1502,25 @@ def exercise_median():
   assert stats.median == 1
   assert stats.median_absolute_deviation == 0
 
-  for i in xrange(5):
+  for i in range(5):
     stats = median_statistics(flex.double((5, 1)))
     assert stats.median == 3
     assert stats.median_absolute_deviation == 2
 
-  for i in xrange(5):
+  for i in range(5):
     stats = median_statistics(flex.double((5, 1, 2)))
     assert stats.median == 2
     assert stats.median_absolute_deviation == 1
 
   data = flex.double((1, 1, 2, 2, 4, 6, 9))
-  for i in xrange(10):
+  for i in range(10):
     data_ = data.select(flex.random_permutation(len(data)))
     stats = median_statistics(data_)
     assert stats.median == 2
     assert stats.median_absolute_deviation == 1
 
   data = flex.double((1, 1, 2, 4, 6, 9))
-  for i in xrange(10):
+  for i in range(10):
     data_ = data.select(flex.random_permutation(len(data)))
     stats = median_statistics(data_)
     assert stats.median == 3
@@ -1528,34 +1533,34 @@ def exercise_slatec_dlngam():
     else:
       assert approx_equal((a-b)/(abs(a+b)), 0, eps=1.e-10)
   try: slatec_dlngam(x=0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)=="slatec: dgamma: x is 0 (nerr=4, level=2)"
   else: raise Exception_expected
   try: slatec_dlngam(x=-1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)=="slatec: dgamma: x is a negative integer (nerr=4, level=2)"
   else: raise Exception_expected
-  for i in xrange(1,10000):
+  for i in range(1,10000):
     x = i/100.
     cmp(slatec_dgamma(x=x), gamma_complete(x))
   try: slatec_dlngam(x=0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)=="slatec: dgamma: x is 0 (nerr=4, level=2)"
   else: raise Exception_expected
   try: slatec_dlngam(-1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)=="slatec: dgamma: x is a negative integer (nerr=4, level=2)"
   else: raise Exception_expected
   assert approx_equal(slatec_dlngam(-1+1.e-8), 18.4206807543)
   assert approx_equal(slatec_dlngam(-1-1.e-8), 18.4206807458)
   assert eps_eq(slatec_dlngam( 2.53273727e+305),  1.77853307723e+308)
   try: slatec_dlngam(-2.53273727e+305)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)=="slatec: dlngam: x is a negative integer (nerr=3, level=2)"
   else: raise Exception_expected
   for x in [2.53273728e+305, -2.53273728e+305]:
     try: slatec_dlngam(x=x)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == \
         "slatec: dlngam: abs(x) so big dlngam overflows (nerr=2, level=2)"
     else: raise Exception_expected
@@ -1666,8 +1671,8 @@ def exercise_slatec_dlngam():
     cmp(y, slatec_dlngam(x=x))
   cmath_lgamma = getattr(scitbx.math, "cmath_lgamma", None)
   if (cmath_lgamma is not None):
-    print "Testing compatibility of cmath_lgamma and slatec_dlngam...",
-    for i in xrange(-1000,1000):
+    print("Testing compatibility of cmath_lgamma and slatec_dlngam...", end=' ')
+    for i in range(-1000,1000):
       if (i <= 0 and i % 10 == 0): continue
       x = i/10.
       assert approx_equal(slatec_dlngam(x), cmath_lgamma(x), eps=1.e-10)
@@ -1677,7 +1682,7 @@ def exercise_slatec_dlngam():
     x = v
     while True:
       try: s = slatec_dlngam(x)
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert str(e) == \
           "slatec: dlngam: abs(x) so big dlngam overflows (nerr=2, level=2)"
         break
@@ -1685,7 +1690,7 @@ def exercise_slatec_dlngam():
         m = cmath_lgamma(x)
         cmp(s, m)
       try: s = slatec_dlngam(-x)
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert str(e) in [
           "slatec: dlngam: x is a negative integer (nerr=3, level=2)",
           "slatec: dgamma: x is a negative integer (nerr=4, level=2)"]
@@ -1694,12 +1699,12 @@ def exercise_slatec_dlngam():
           m = cmath_lgamma(-x)
           cmp(s, m)
       x *= v
-    print "OK"
+    print("OK")
 
 def exercise_slatec_dbinom():
   f = scitbx.math.slatec_dlnrel
   try: f(-1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "slatec: dlnrel: x is le -1 (nerr=2, level=2)"
   else: raise Exception_expected
@@ -1712,7 +1717,7 @@ def exercise_slatec_dbinom():
   assert eps_eq(f(0.4), 0.336472236621)
   f = scitbx.math.slatec_dbinom
   try: f(n=0, m=1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "slatec: dbinom: n lt m (nerr=2, level=2)"
   else: raise Exception_expected
   expected = [
@@ -1720,8 +1725,8 @@ def exercise_slatec_dbinom():
     1, 7, 21, 35, 35, 21, 7, 1, 8, 28, 56, 70, 56, 28, 8, 1, 9, 36, 84,
     126, 126, 84, 36, 9, 1, 10, 45, 120, 210, 252, 210, 120, 45, 10, 1]
   i = 0
-  for n in xrange(1,11):
-    for m in xrange(1,n+1):
+  for n in range(1,11):
+    for m in range(1,n+1):
       assert approx_equal(f(n=n, m=m), expected[i])
       i += 1
   assert eps_eq(f(100, 10), 1.73103095E+13)
@@ -1746,7 +1751,7 @@ def exercise_slatec_dbinom():
     assert eps_eq(f(*nm), e)
   assert eps_eq(f(n=2**32-1,m=2**5), 6.83193552992e+272)
   try: f(n=2**32-1,m=2**6)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "slatec: dbinom: result overflows" \
       " because n and/or m too big (nerr=3, level=2)"
@@ -1760,7 +1765,7 @@ def exercise_unimodular_generator(forever):
   assert not g.at_end()
   n = 0
   while (not g.at_end()):
-    assert matrix.rec(g.next(), (3,3)).determinant() == 1
+    assert matrix.rec(next(g), (3,3)).determinant() == 1
     n += 1
   assert n == 3480
   assert ug(range=0).count() == 0
@@ -1771,8 +1776,8 @@ def exercise_unimodular_generator(forever):
   for range in count():
     timer = user_plus_sys_time()
     n = ug(range=range).count()
-    print "unimodular range %d: count=%d, time=%.2f s" % (
-      range, n, timer.elapsed())
+    print("unimodular range %d: count=%d, time=%.2f s" % (
+      range, n, timer.elapsed()))
     if (range == 4 and not forever):
       break
 
@@ -1788,7 +1793,7 @@ def exercise_least_squares_plane():
   d = p.distance_to_origin
   assert approx_equal(abs(n), 1)
   dist0 = distance(n,d)
-  for i in xrange(5000):
+  for i in range(5000):
     d1 = d + random.uniform(-0.1, 0.1)
     n1 = matrix.rec(flex.random_double_r3_rotation_matrix(), (3,3))*n
     dist = distance(n1, d1)
@@ -1822,18 +1827,18 @@ def exercise_continued_fraction():
 
 def exercise_numeric_limits():
   l = scitbx.math.double_numeric_limits
-  print "Floating point type 'double':"
-  print "\tradix: ", l.radix
-  print "\tmantissa digits (base 2):", l.digits
-  print "\tmantissa digits (base 10):", l.digits10
-  print "\tmin exponent (base 2):", l.min_exponent
-  print "\tmin exponent (base 10):", l.min_exponent10
-  print "\tmax exponent (base 2):", l.max_exponent
-  print "\tmax exponent (base 10):", l.max_exponent10
-  print "\tmin:", l.min
-  print "\tmax:", l.max
-  print "\tepsilon:", l.epsilon
-  print "\tsafe min:", l.safe_min
+  print("Floating point type 'double':")
+  print("\tradix: ", l.radix)
+  print("\tmantissa digits (base 2):", l.digits)
+  print("\tmantissa digits (base 10):", l.digits10)
+  print("\tmin exponent (base 2):", l.min_exponent)
+  print("\tmin exponent (base 10):", l.min_exponent10)
+  print("\tmax exponent (base 2):", l.max_exponent)
+  print("\tmax exponent (base 10):", l.max_exponent10)
+  print("\tmin:", l.min)
+  print("\tmax:", l.max)
+  print("\tepsilon:", l.epsilon)
+  print("\tsafe min:", l.safe_min)
 
 def exercise_distributions():
   # normal distribution
@@ -1856,8 +1861,8 @@ def exercise_distributions():
   # student's t distribution
   try:
     stu = distributions.students_t_distribution(10)
-  except RuntimeError, e:
-    print "Skipping exercise students_t_distribution:", e
+  except RuntimeError as e:
+    print("Skipping exercise students_t_distribution:", e)
   else:
     assert stu.degrees_of_freedom() == 10
     assert stu.mean() == 0
@@ -1965,14 +1970,14 @@ def exercise_parabolic_cylinder_d():
     scale2 = random.choice([0, 1.e-6, 1.e-3, 0.1, 1, 1.e+3, 1.e+6])
     va_ = va_*scale1
     x_  = x_*scale2
-    print "Dv(%.6g,%.6g)=%.6g"%(va_, x_, parabolic_cylinder_d(va_, x_))
+    print("Dv(%.6g,%.6g)=%.6g"%(va_, x_, parabolic_cylinder_d(va_, x_)))
 
 def exercise_fast_approx_math(n=1000):
   # SIN, COS tables
   def run(func, func_table):
     step = 2*math.pi/n;
     table = flex.double()
-    for i in xrange(n):
+    for i in range(n):
       table.append(func(i*step));
     for interpolate in [True, False]:
       r1 = flex.double()
@@ -1984,7 +1989,7 @@ def exercise_fast_approx_math(n=1000):
           interpolate=interpolate)
         r1.append(v1)
         r2.append(v2)
-      print (r1-r2).min_max_mean().as_tuple(), interpolate
+      print((r1-r2).min_max_mean().as_tuple(), interpolate)
   run(func=math.cos, func_table=scitbx.math.cos_table)
   run(func=math.sin, func_table=scitbx.math.sin_table)
   # SQRT
@@ -2002,7 +2007,7 @@ def exercise_fast_approx_math(n=1000):
     diff.append(v1-v2)
     #if(abs(v1-v2)>1.):
     #  print a, v1, v2
-  print diff.min_max_mean().as_tuple()
+  print(diff.min_max_mean().as_tuple())
 
 def exercise_simpson():
   def f(x): return math.sqrt(9-x*x)
@@ -2055,7 +2060,7 @@ def run():
   while 1:
     exercise_minimum_covering_sphere()
     if (not forever): break
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

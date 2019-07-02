@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 pdb = """HETATM    1  N   ALA A   1      -0.424   1.960   3.877  1.00 20.00      A    N+1
 HETATM    2  H   ALA A   1       0.452   1.694   3.861  1.00 20.00      A    H
@@ -35,29 +35,29 @@ HETATM   32  O   ALA A   3      -1.633  -0.418  -4.488  1.00 20.00      A    O
 HETATM   33  OXT ALA A   3      -0.293   1.123  -3.725  1.00 20.00      A    O-1
 """
 
-import StringIO
+from six.moves import cStringIO as StringIO
 from libtbx import easy_run
 
 def run():
-  f=file("tst_correct_hydrogens.pdb", "wb")
+  f=open("tst_correct_hydrogens.pdb", "w")
   f.write(pdb)
   f.close()
   cmd = "phenix.geometry_minimization tst_correct_hydrogens.pdb"
-  print cmd
+  print(cmd)
   ero = easy_run.fully_buffered(command=cmd)
   cmd = "phenix.geometry_minimization tst_correct_hydrogens_minimized.pdb"
-  print cmd
+  print(cmd)
   ero = easy_run.fully_buffered(command=cmd)
-  std = StringIO.StringIO()
+  std = StringIO()
   ero.show_stdout(out=std)
   chiral_energy = None
   for line in std.getvalue().splitlines():
     if line.find("chirality_residual_sum")>-1:
       chiral_energy = line
   chiral_energy = chiral_energy.split()[-1]
-  print 'chiral energy',chiral_energy
+  print('chiral energy',chiral_energy)
   assert float(chiral_energy)<0.03, 'chiral energy %0.2f greater than 0.03' % float(chiral_energy)
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   run()

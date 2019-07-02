@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import sys
 import scitbx.graph.tardy_tree
@@ -14,14 +14,14 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
     for plane_atom in plane.plane_atoms:
       plane_atom_names.append(plane_atom.atom_id)
     plane_atom_i_seqs = []
-    if 0: print plane_atom_names
+    if 0: print(plane_atom_names)
     for i_atom, atom in enumerate(residue.atoms()):
       if(atom.name.strip() in plane_atom_names):
         plane_atom_i_seqs.append(i_atom)
     if(len(plane_atom_i_seqs)>0):
       external_clusters.append(plane_atom_i_seqs)
   #
-  if 0: print "external_clusters1:",external_clusters
+  if 0: print("external_clusters1:",external_clusters)
   residue_atoms = residue.atoms()
   atom_names = residue_atoms.extract_name()
   matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
@@ -33,15 +33,15 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
     rotamer_info = rotamer_info)
   #
   external_edge_list = []
-  secial_cases = {
+  special_cases = {
     "ASP": [(["OD1"],["HD1","1HD","DD1","1DD"]),
             (["OD2"],["HD2","2HD","DD2","2DD"])],
     "GLU": [(["OE1"],["HE1","1HE","DE1","1DE"]),
             (["OE2"],["HE2","2HE","DE2","2DE"])]
   }
-  if(residue.resname.strip().upper() in secial_cases.keys()):
+  if residue.resname.strip().upper() in special_cases:
     edge = []
-    bonded_atom_names = secial_cases[residue.resname.strip().upper()]
+    bonded_atom_names = special_cases[residue.resname.strip().upper()]
     for ban in bonded_atom_names:
       for ia1,atom1 in enumerate(residue_atoms):
         if(atom1.name.strip().upper() in ban[0]):
@@ -69,17 +69,17 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
   if(tardy_model is None):
     mes = "TARDY: cannot create tardy model for: %s (corrupted residue). Skipping it."
     if (hasattr(residue, "id_str")):
-      print >> log, mes%residue.id_str(suppress_segid=1)[-12:]
+      print(mes%residue.id_str(suppress_segid=1)[-12:], file=log)
     else :
-      print >> log, mes%format_atom_group_id_str(residue)
+      print(mes%format_atom_group_id_str(residue), file=log)
     return None
   joint_dofs = tardy_model.degrees_of_freedom_each_joint()
   if(joint_dofs[0] != 0 or not joint_dofs[1:].all_eq(1)):
     mes = "TARDY error: unexpected degrees of freedom for %s. Skipping it."
     if (hasattr(residue, "id_str")):
-      print >> log, mes%residue.id_str(suppress_segid=1)[-12:]
+      print(mes%residue.id_str(suppress_segid=1)[-12:], file=log)
     else :
-      print >> log, mes%format_atom_group_id_str(residue)
+      print(mes%format_atom_group_id_str(residue), file=log)
     return None
   return tardy_model
 
@@ -90,7 +90,7 @@ def axes_and_atoms_aa_specific(
       tardy_model=None,
       log=None):
   get_class = iotbx.pdb.common_residue_names_get_class
-  if 0: print residue.id_str(suppress_segid=1)[-12:]
+  if 0: print(residue.id_str(suppress_segid=1)[-12:])
   if(tardy_model is None):
     if(not (get_class(residue.resname) == "common_amino_acid")): return None
     tardy_model = tardy_model_one_residue(residue = residue,
@@ -109,9 +109,9 @@ def axes_and_atoms_aa_specific(
     else:
       return None
   if 0:
-    print "clusters:", clusters
-    print "    axes:", axes
-    print
+    print("clusters:", clusters)
+    print("    axes:", axes)
+    print()
   #
   ic = 0
   axes_and_atoms_to_rotate = []
@@ -129,9 +129,9 @@ def axes_and_atoms_aa_specific(
       ic += 1
     else:
       if(not n_branches <= 2):
-        print >> log, residue.id_str()
-        print >> log, "  Cannot extract axes_and_atoms_to_rotate:"
-        print >> log, "    n_branches <= 2, n_branches:", n_branches
+        print(residue.id_str(), file=log)
+        print("  Cannot extract axes_and_atoms_to_rotate:", file=log)
+        print("    n_branches <= 2, n_branches:", n_branches, file=log)
         return []
       # branch 1
       icb = ic+1
@@ -153,8 +153,8 @@ def axes_and_atoms_aa_specific(
       ic += 1
   #
   if 0:
-    print axes_and_atoms_to_rotate
-    print
+    print(axes_and_atoms_to_rotate)
+    print()
   if(remove_clusters_with_all_h):
     tmp = []
     residue_atoms = residue.atoms()

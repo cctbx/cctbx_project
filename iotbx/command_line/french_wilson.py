@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.french_wilson
 
 import libtbx.phil
@@ -96,7 +96,7 @@ def run(args, out=sys.stdout):
       test_flag_value = None,
       disable_suitability_test = False,
       parameter_scope = "french_wilson.r_free_flags")
-  except Sorry, e :
+  except Sorry as e :
     r_free_flags = None
   if (i_obs is None):
     raise Sorry("Couldn't find intensities!")
@@ -106,11 +106,11 @@ def run(args, out=sys.stdout):
     if (info is not None):
       wavelength = info.wavelength
       if (wavelength is not None):
-        print >> out, "Using wavelength=%g from input file" % wavelength
+        print("Using wavelength=%g from input file" % wavelength, file=out)
   sigma_iobs_rejection_criterion = work_params.french_wilson.\
     sigma_iobs_rejection_criterion
   if (not i_obs.is_unique_set_under_symmetry()):
-    print >> out, "Merging symmetry-equivalent reflections"
+    print("Merging symmetry-equivalent reflections", file=out)
     i_obs = i_obs.merge_equivalents().array()
   f_obs = french_wilson.french_wilson_scale(miller_array=i_obs,
     params=params,
@@ -135,7 +135,7 @@ def run(args, out=sys.stdout):
       column_root_label = "R-free-flags")
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = output_file)
-  print >> out, "Wrote %s" % output_file
+  print("Wrote %s" % output_file, file=out)
   return output_file
 
 class launcher(runtime_utils.target_with_save_result):

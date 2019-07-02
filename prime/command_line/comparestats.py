@@ -1,16 +1,16 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.comparestats
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 6/25/2016
 Description : Given list of log files, compare completeness, n_obs, rmerge, and cc12.
 '''
+from __future__ import absolute_import, division, print_function
 import matplotlib.pyplot as plt
 import sys
 
 if len(sys.argv)==1:
-  print 'Use prime.comparestats to compare stats from different log files.'
-  print 'Usage: prime.comparestats log1.txt log2.txt log3.txt c=cycle_no n=n_bins'
+  print('Use prime.comparestats to compare stats from different log files.')
+  print('Usage: prime.comparestats log1.txt log2.txt log3.txt c=cycle_no n=n_bins')
   exit()
 log_files = []
 cycle_no = 0

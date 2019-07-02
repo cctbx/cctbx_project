@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from mmtbx.building import loop_idealization
 import mmtbx.model
@@ -218,9 +218,9 @@ END
 
 def exercise():
   exercise_ligand_after_chain()
-  print "OK"
+  print("OK")
   exercise_nonstd_residue()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

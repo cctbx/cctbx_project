@@ -1,11 +1,11 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
 from libtbx import easy_mp
 import os
 import random
 import string
 import threading
 import time
+from six.moves import range
 
 class state_object():
   ''' A simple thread-safe object keeping an internal state. '''

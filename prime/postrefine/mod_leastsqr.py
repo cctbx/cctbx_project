@@ -18,7 +18,7 @@ The class implements Leveberg-Marquardt algorithms to scale the refined paramete
 using the lamda updates. The unit-cell parameters are refined with restraints based
 on the 7 crystal systems (6 conditions).
 '''
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math
 from cctbx.array_family import flex
 from scitbx.matrix import sqr
@@ -27,6 +27,7 @@ from cctbx.crystal_orientation import crystal_orientation
 from .mod_lbfgs import lbfgs_handler
 from .mod_lbfgs_partiality import lbfgs_partiality_handler
 from .mod_partiality import partiality_handler
+from six.moves import range
 
 def coefficient_of_determination(y, y_model):
   mean_y = flex.mean(y)

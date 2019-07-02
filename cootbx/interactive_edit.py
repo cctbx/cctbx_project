@@ -1,13 +1,55 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import shutil
 import time
 import os
 import sys
 
-from libtbx.utils import to_str
-
 t_wait = 250 # in milliseconds
+
+#-----------------------------------------------------------------------
+# This file is run with Coot's python, so no access to CCTBX modules
+if sys.hexversion >= 0x03000000:
+  unicode = str
+
+def to_bytes(text, codec=None, errors='replace'):
+  '''
+  Function for handling text when it is passed to cctbx functions that expect
+  bytestrings
+
+  Changes text string type (unicode in Python 2, str in Python 3) to
+  bytestring type (str or bytes in Python 2, bytes in Python 3)
+
+  The input is returned unmodified if it is already a bytestring
+  Will convert other types (e.g. int, float) to bytestring
+  None is returned as None, not as 'None'
+
+  For Linux/OS X, the default filesystem encoding is utf8.
+  For Windows, the default filesystem encoding is mbcs
+  This is important for handling files with basic Python functions.
+  With the wrong encoding, the filesystem will not recognize the file path
+  import sys; sys.getfilesystemencoding()
+  '''
+
+  if (codec is None):
+    codec = 'utf8'
+    if (sys.platform == 'win32'):
+      codec = 'mbcs'
+
+  if (isinstance(text, bytes)):
+    return text
+  elif (isinstance(text, unicode)):
+    new_text = text
+    try:
+      new_text = text.encode(codec, errors)
+    except UnicodeEncodeError: # in case errors='strict'
+      raise Sorry('Unable to encode text with %s' % codec)
+    finally:
+      return new_text
+  elif (text is not None):
+    return bytes(text)
+  else:
+    return None
 
 #-----------------------------------------------------------------------
 # Phenix side
@@ -45,15 +87,15 @@ def start_coot_and_wait(
   make_header("Interactive editing in Coot", log)
   easy_run.call("\"%s\" --no-state-script --script edit_in_coot.py &" %
     coot_cmd)
-  print >> log, "  Waiting for coot_out_tmp.pdb to appear at %s" % \
-    str(time.asctime())
+  print("  Waiting for coot_out_tmp.pdb to appear at %s" % \
+    str(time.asctime()), file=log)
   base_dir = os.path.dirname(pdb_file)
   tmp_file = os.path.join(base_dir, "coot_out_tmp.pdb")
   edit_file = os.path.join(base_dir, "coot_tmp_edits.pdb")
   maps_file = os.path.join(base_dir, ".NEW_MAPS")
   while (True):
     if (os.path.isfile(tmp_file)):
-      print >> log, "  Coot editing complete at %s" % str(time.asctime())
+      print("  Coot editing complete at %s" % str(time.asctime()), file=log)
       break
     elif (os.path.isfile(maps_file)):
       t1 = time.time()
@@ -65,7 +107,7 @@ def start_coot_and_wait(
         fill=True,
         out=log)
       t2 = time.time()
-      print >> log, "Calculated new map coefficients in %.1fs" % (t2-t1)
+      print("Calculated new map coefficients in %.1fs" % (t2-t1), file=log)
       os.remove(maps_file)
     else :
       time.sleep(t_wait/1000.)
@@ -112,7 +154,7 @@ class manager(object):
     toolbar.insert(maps_button, -1)
     maps_button.connect("clicked", self.OnNewMaps)
     maps_button.show()
-    self._imol = read_pdb(to_str(pdb_file))
+    self._imol = read_pdb(to_bytes(pdb_file))
     set_molecule_bonds_colour_map_rotation(self._imol, 30)
     self._map_mols = []
     self.load_maps(map_file)
@@ -132,9 +174,9 @@ class manager(object):
         close_molecule(imol)
     else :
       set_colour_map_rotation_for_map(10)
-    print "Loading %s" % to_str(map_file)
+    print("Loading %s" % to_bytes(map_file))
     self._map_mols = []
-    map_imol = auto_read_make_and_draw_maps(to_str(map_file))
+    map_imol = auto_read_make_and_draw_maps(to_bytes(map_file))
     if (isinstance(map_imol, int)):
       # XXX this may be dangerous, but auto_read_make_and_draw_maps only returns
       # the last imol
@@ -185,7 +227,7 @@ class manager(object):
       "when complete.")
     response = dialog.run()
     if (response == gtk.RESPONSE_OK):
-      print "WRITING .NEW_MAPS"
+      print("WRITING .NEW_MAPS")
       open(os.path.join(dir_name, ".NEW_MAPS"), "w").write("1")
       gobject.timeout_add(t_wait, self.OnWaitForMaps)
     dialog.destroy()

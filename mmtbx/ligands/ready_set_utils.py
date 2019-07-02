@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx
 from iotbx.pdb import amino_acid_codes as aac
 from scitbx.math import dihedral_angle
-
+import six
 from mmtbx.ligands.ready_set_basics import construct_xyz
+from six.moves import range
 
 get_class = iotbx.pdb.common_residue_names_get_class
 
@@ -25,17 +26,16 @@ def generate_atom_group_atom_names(rg, names):
     for atom in ag.atoms():
       atom_altlocs.setdefault(atom.parent().altloc, [])
       atom_altlocs[atom.parent().altloc].append(atom)
-  keys = atom_altlocs.keys()
-  if len(keys)>1 and '' in keys:
-    for key in keys:
+  if len(atom_altlocs)>1 and '' in atom_altlocs:
+    for key in atom_altlocs:
       if key=='': continue
       for atom in atom_altlocs['']:
         atom_altlocs[key].append(atom)
     del atom_altlocs['']
-  for key, item in atom_altlocs.items():
+  for key, value in six.iteritems(atom_altlocs):
     atoms=[]
     for name in names:
-      for atom in item:
+      for atom in value:
         if atom.name.strip()==name.strip():
           atoms.append(atom)
           break
@@ -385,7 +385,7 @@ def add_c_terminal_oxygens_to_residue_group(residue_group,
 def _hierarchy_into_slots(hierarchy,
                           verbose=False,
                           ):
-  if verbose: print '_hierarchy_into_slots'
+  if verbose: print('_hierarchy_into_slots')
   slots=[]
   #start=18
   assert len(hierarchy.models())==1
@@ -474,7 +474,7 @@ def add_terminal_hydrogens(hierarchy,
       if rc: additional_hydrogens.append(rc)
     else:
       pass
-  print additional_hydrogens
+  print(additional_hydrogens)
 
 # def junk():
 #   from mmtbx.conformation_dependent_library import generate_protein_threes

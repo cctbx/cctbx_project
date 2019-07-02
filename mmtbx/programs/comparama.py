@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 from libtbx.program_template import ProgramTemplate
+
+from scitbx.array_family import flex
 
 from mmtbx.validation import comparama
 from mmtbx.validation.ramalyze import res_type_labels
@@ -9,6 +11,7 @@ from mmtbx.validation.ramalyze import res_type_labels
 from matplotlib.backends.backend_pdf import PdfPages
 
 import os
+import six
 
 # =============================================================================
 
@@ -90,7 +93,6 @@ Usage examples:
     if len(results) == 0:
       print("No ramachandran residues found!")
       return
-    res_columns = zip(*results)
     if self.params.output.individual_residues:
       for r in results:
         self.show_single_result(r)
@@ -124,14 +126,24 @@ Usage examples:
         (nr.rev_scaled_sum_1/nr.n_res, nr.rev_scaled_sum_2/nr.n_res, nr.n_res), file=self.logger)
 
     if self.params.output.counts:
-      for k, v in nr.counts.iteritems():
+      for k, v in six.iteritems(nr.counts):
         print("%-20s: %d" % (k,v), file=self.logger)
+
+    # Pavel's numbers
+    s1, s2 = self.rama_comp.get_results_as_vec3()
+    pnumber = flex.mean(flex.sqrt((s1-s2).dot()))
+    # compare these with log output:
+    #  A   2  ASN 25.13, (-60.6:141.2), (-78.7:158.6), Favored, Score: 0.5693 -> 0.2831
+    #                      phi1  psi1     phi2  psi2
+    # print (list(s1))
+    # print (list(s2))
+    print ("Pavel's test number: %.4f" % pnumber)
 
     name1 = os.path.basename(self.data_manager.get_model_names()[0]).split('.')[0]
     name2 = os.path.basename(self.data_manager.get_model_names()[1]).split('.')[0]
     base_fname = "%s--%s" % (name1, name2)
     if self.params.output.plots:
-      for pos, plot in self.rama_comp.get_plots(wrap_arrows=self.params.output.wrap_arrows).iteritems():
+      for pos, plot in six.iteritems(self.rama_comp.get_plots(wrap_arrows=self.params.output.wrap_arrows)):
         file_label = res_type_labels[pos].replace("/", "_")
         plot_file_name = "%s_%s_%s_plot.png" % (
             base_fname, self.params.output.prefix, file_label)
@@ -141,7 +153,7 @@ Usage examples:
     if self.params.output.pdf:
       pdf_fname = "%s_%s.pdf" % (base_fname, self.params.output.prefix)
       pdfp = PdfPages(pdf_fname)
-      for pos, plot in self.rama_comp.get_plots(wrap_arrows=self.params.output.wrap_arrows).iteritems():
+      for pos, plot in six.iteritems(self.rama_comp.get_plots(wrap_arrows=self.params.output.wrap_arrows)):
         pdfp.savefig(plot.figure)
       print("saving: '%s'" % pdf_fname)
       pdfp.close()

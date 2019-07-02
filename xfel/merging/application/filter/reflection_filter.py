@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from xfel.merging.application.worker import worker
 from dials.array_family import flex
@@ -10,6 +10,9 @@ from six.moves import cStringIO as StringIO
 
 class reflection_filter(worker):
   '''Reject individual reflections based on various criteria'''
+
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(reflection_filter, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
 
   def __repr__(self):
     return 'Filter reflections'

@@ -1,6 +1,7 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from scitbx.math import dmatrix
 from scitbx.stdlib import math
+from six.moves import range
 
 def tst_dmatrix():
   # expected values are the d_jmn at beta=1.0 and j=2, m=-2, -2<=n<=2
@@ -31,4 +32,4 @@ def tst_dmatrix():
 
 if __name__ == "__main__":
   tst_dmatrix()
-  print "OK"
+  print("OK")

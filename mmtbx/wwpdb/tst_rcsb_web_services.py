@@ -1,7 +1,7 @@
 
 # XXX depends on internet connectivity, so not run as part of standard tests
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 def exercise():
   from mmtbx.wwpdb import rcsb_web_services
@@ -14,7 +14,7 @@ def exercise():
   assert (len(report) == len(atp_binding)) and (len(report[0]) == 2)
   ligand_info = rcsb_web_services.get_ligand_info_for_structures(['1mru'])
   assert (len(ligand_info) == 4)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

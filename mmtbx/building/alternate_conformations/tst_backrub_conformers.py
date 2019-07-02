@@ -1,7 +1,7 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.phil
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 master_params = """
 set_partial_occupancy = None
@@ -90,7 +90,7 @@ def exercise():
           conf.show_summary(out=out)
           confs.append(conf)
       if (i_res == 1):
-        print len(confs)
+        print(len(confs))
   new_hierarchy = iotbx.pdb.hierarchy.root()
   for i_model, conf in enumerate(models):
     conf.id = str(i_model + 1)
@@ -214,4 +214,4 @@ END
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

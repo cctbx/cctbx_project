@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_mp
 from libtbx import easy_pickle
 from libtbx.utils import Sorry, null_out
@@ -8,10 +8,10 @@ import os
 def exercise():
   import libtbx.utils
   if (libtbx.utils.detect_multiprocessing_problem() is not None):
-    print "multiprocessing not available, skipping this test"
+    print("multiprocessing not available, skipping this test")
     return
   if (os.name == "nt"):
-    print "easy_mp fixed_func not supported under Windows, skipping this test"
+    print("easy_mp fixed_func not supported under Windows, skipping this test")
     return
   from mmtbx.validation.sequence import validation, get_sequence_n_copies, \
     get_sequence_n_copies_from_files
@@ -20,7 +20,7 @@ def exercise():
   from iotbx import file_reader
   import libtbx.load_env # import dependency
   from libtbx.test_utils import Exception_expected, contains_lines, approx_equal
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   pdb_in = iotbx.pdb.input(source_info=None, lines="""\
 ATOM      2  CA  ARG A  10      -6.299  36.344   7.806  1.00 55.20           C
 ATOM     25  CA  TYR A  11      -3.391  33.962   7.211  1.00 40.56           C
@@ -525,7 +525,7 @@ END
 
   # all tests below here have additional dependencies
   if (not libtbx.env.has_module("ksdssp")):
-    print "Skipping advanced tests (require ksdssp module)"
+    print("Skipping advanced tests (require ksdssp module)")
     return
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1ywf.pdb",
@@ -581,7 +581,7 @@ END
         sequences=[seq] * 3,
         copies_from_xtriage=2,
         out=null_out())
-    except Sorry, s :
+    except Sorry as s :
       assert ("round number" in str(s))
     else :
       raise Exception_expected
@@ -598,7 +598,7 @@ END
         sequences=[seq] * 4,
         copies_from_xtriage=1,
         out=null_out())
-    except Sorry, s :
+    except Sorry as s :
       assert ("less than" in str(s))
     else :
       raise Exception_expected
@@ -618,7 +618,7 @@ END
         sequences=[seq] * 2,
         copies_from_xtriage=2,
         out=null_out())
-    except Sorry, s :
+    except Sorry as s :
       assert ("round number" in str(s))
     else :
       raise Exception_expected
@@ -652,4 +652,4 @@ END
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

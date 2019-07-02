@@ -1,8 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.array_family.flex
 from scitbx.array_family import flex
 
 import boost.python
+from six import string_types
+from six.moves import zip
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_alignment_ext")
 
 """
@@ -86,7 +89,8 @@ class align(ext.align):
     elif (isinstance(similarity_function, str)):
       raise RuntimeError(
         'Unknown similarity_function: "%s"' % similarity_function)
-    if isinstance(seq_a, basestring):
+    from six import string_types
+    if isinstance(seq_a, string_types):
       seq_a = seq_a.upper()
       seq_b = seq_b.upper()
     else:
@@ -120,15 +124,15 @@ class align(ext.align):
   def show_matrix(self, data, label=None, out=None):
     if (out is None): out = sys.stdout
     if (label is not None):
-      print >> out, label
-    for a in '  '+self.seq_b: print >> out, "%5c" % a,
-    print >> out
+      print(label, file=out)
+    for a in '  '+self.seq_b: print("%5c" % a, end=' ', file=out)
+    print(file=out)
     seq = ' '+self.seq_a
     for i in range(self.m):
-      print >> out, "%5c" % seq[i],
+      print("%5c" % seq[i], end=' ', file=out)
       for j in range(self.n):
-        print >> out, "%5.1f" % data[i,j],
-      print >> out
+        print("%5.1f" % data[i,j], end=' ', file=out)
+      print(file=out)
 
   def show_matrices(self, out=None):
     for label, data in [("D", self.D),
@@ -148,17 +152,17 @@ class align(ext.align):
 
     elif self.style=="local":
       (best,ii,jj) = (self.M[0,0],0,0)
-      for i in xrange(self.m+1):
-        for j in xrange(self.n+1):
+      for i in range(self.m+1):
+        for j in range(self.n+1):
           if self.M[i,j]>best: (best,ii,jj) = (self.M[i,j],i,j)
       return (ii,jj)
 
     else: # NO_END_GAPS, search edges of matrix
       (best,ii,jj) = (self.M[0,0],0,0)
-      for i in xrange(self.m+1):
+      for i in range(self.m+1):
         j = self.n
         if self.M[i,j]>best: (best,ii,jj) = (self.M[i,j],i,j)
-      for j in xrange(self.n+1):
+      for j in range(self.n+1):
         i = self.m
         if self.M[i,j]>best: (best,ii,jj) = (self.M[i,j],i,j)
       return (ii,jj)
@@ -183,14 +187,14 @@ class align(ext.align):
         elif E[i,j]==0: mcap('m'); i -= 1; j -= 1
       while i>0: mcap('d'); i -= 1
       while j>0: mcap('i'); j -= 1
-      F,G = range(len(self.seq_a)), range(len(self.seq_b))
+      F,G = list(range(len(self.seq_a))), list(range(len(self.seq_b)))
     else:
       (p,q) = (i,j)
       while M[i,j]>0:
         if E[i,j]==-1: mcap('i'); j -= 1
         elif E[i,j]==1: mcap('d'); i -= 1
         elif E[i,j]==0: mcap('m'); i -= 1; j -= 1
-      F,G = range(i,p+1),range(j,q+1) # sub-sequences
+      F,G = list(range(i,p+1)),list(range(j,q+1)) # sub-sequences
     match_codes.reverse()
     match_codes = "".join(match_codes)
 
@@ -221,7 +225,8 @@ class align(ext.align):
         v += 1
         ib.append(i)
         sb.append(self.seq_b[i])
-    if isinstance(self.seq_a, basestring):
+    from six import string_types
+    if isinstance(self.seq_a, string_types):
       sa = "".join(sa)
       sb = "".join(sb)
     return alignment(
@@ -302,18 +307,18 @@ class alignment(object):
     bot_str = (bottom_name+" "*8)[0:8]
     ruler = ""
     count=0
-    for ii in xrange(n_block):
-      for jj in xrange(block_size):
+    for ii in range(n_block):
+      for jj in range(block_size):
         count += 1
         ruler += "%s"%( count%10 )
       ruler+="     "
-    print >> out
-    print >> out
+    print(file=out)
+    print(file=out)
     if comment is not None:
-      print >> out, comment
+      print(comment, file=out)
     if (show_ruler):
-      print >> out, "              "+ruler
-      print >> out
+      print("              "+ruler, file=out)
+      print(file=out)
 
     done=False
     n=len(self.a)
@@ -323,42 +328,42 @@ class alignment(object):
       offset=count*block_size*n_block
 
       # top
-      print >> out, top_str+"     ",
-      for ii in xrange(n_block):
+      print(top_str+"     ", end=' ', file=out)
+      for ii in range(n_block):
         start=offset+ii*block_size
         stop=offset+(ii+1)*block_size
         if stop > n:
           stop = n
         if start < n:
           tmp=self.a[start:stop]
-          print >> out, tmp, "   ",
-      print >> out
+          print(tmp, "   ", end=' ', file=out)
+      print(file=out)
 
       #middle
-      print >> out, "             ",
-      for ii in xrange(n_block):
+      print("             ", end=' ', file=out)
+      for ii in range(n_block):
         start=offset+ii*block_size
         stop=offset+(ii+1)*block_size
         if stop > n:
           stop = n
         if start < n:
           tmp=matches[start:stop]
-          print >> out, tmp, "   ",
+          print(tmp, "   ", end=' ', file=out)
       count += 1
-      print >> out
+      print(file=out)
 
       # bottom
-      print >> out, bot_str+"     ",
-      for ii in xrange(n_block):
+      print(bot_str+"     ", end=' ', file=out)
+      for ii in range(n_block):
         start=offset+ii*block_size
         stop=offset+(ii+1)*block_size
         if stop > n:
           stop = n
         if start < n:
           tmp=self.b[start:stop]
-          print >> out, tmp, "   ",
-      print >> out
-      print >> out
+          print(tmp, "   ", end=' ', file=out)
+      print(file=out)
+      print(file=out)
       if count*block_size*n_block>n:
         done=True
 

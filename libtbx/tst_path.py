@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
+from six.moves import range
 def exercise_posix_relpath(f, enable_abspath_if_through_root):
   # based on .test_relpath() in Python-2.7.2/Lib/test/test_posixpath.py
   import os

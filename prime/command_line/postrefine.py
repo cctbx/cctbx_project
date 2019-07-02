@@ -1,10 +1,10 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.postrefine
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 7/13/2014
 Description : Main commandline for prime.
 '''
+from __future__ import absolute_import, division, print_function
 
 from libtbx.easy_mp import parallel_map
 from cctbx.array_family import flex
@@ -16,6 +16,8 @@ import os, sys, math
 import numpy as np
 from datetime import datetime, time
 from libtbx.utils import Usage
+from six.moves import range
+from six.moves import zip
 
 def determine_mean_I_mproc(args):
   from prime.postrefine import postref_handler
@@ -90,7 +92,7 @@ def merge_frames(pres_set, iparams, avg_mode='average', mtz_out_prefix='mean_sca
         if data:
           if not data[0] in rejections:
             rejections[data[0]] = flex.miller_index()
-          rejections[data[0]].append(tuple(map(int, data[1:4])))
+          rejections[data[0]].append(tuple([int(_d) for _d in data[1:4]]))
 
       if len(rejections) > 0:
         if not iparams.rejections:
@@ -100,8 +102,8 @@ def merge_frames(pres_set, iparams, avg_mode='average', mtz_out_prefix='mean_sca
       #merge all good indices
       mdh, txt_merge_mean_table = intscal.write_output(mdh,
           iparams, iparams.run_no+'/'+mtz_out_prefix, avg_mode)
-      print txt_merge_mean_table
-      print prep_output[-1]
+      print(txt_merge_mean_table)
+      print(prep_output[-1])
       txt_out = txt_merge_mean_table + prep_output[-1]
   return mdh, txt_out
 
@@ -110,7 +112,7 @@ def postrefine_frames(i_iter, frames, frame_files, iparams, pres_set, miller_arr
   miller_array_ref = miller_array_ref.generate_bijvoet_mates()
   txt_merge_postref = 'Post-refinement cycle '+str(i_iter+1)+' ('+avg_mode+')\n'
   txt_merge_postref += ' * R and CC show percent change.\n'
-  print txt_merge_postref
+  print(txt_merge_postref)
   frame_args = [(frame_no, frame_file, iparams, miller_array_ref, pres_in, avg_mode) for frame_no, frame_file, pres_in in zip(frames, frame_files, pres_set)]
   postrefine_by_frame_result = parallel_map(
       iterable=frame_args,
@@ -142,14 +144,14 @@ def run(argv):
   logging.basicConfig(format='%(asctime)s\t%(levelname)s\t%(message)s', level=logging.DEBUG)
   #0.1 determine indexing ambiguity and setup iparams
   txt_indexing_ambiguity = "Determine if there is an indexing ambiguity on the dataset"
-  print txt_indexing_ambiguity
+  print(txt_indexing_ambiguity)
   idah = indexing_ambiguity_handler()
   sol_pickle, iparams = idah.run(argv)
   if sol_pickle is None:
-    print "No ambiguity."
+    print("No ambiguity.")
     txt_indexing_ambiguity += "\nNo ambiguity."
   else:
-    print "Ambiguity is solved. Solution file was saved to result folder."
+    print("Ambiguity is solved. Solution file was saved to result folder.")
     txt_indexing_ambiguity += "Ambiguity is solved. Solution file was saved to result folder."
     iparams.indexing_ambiguity.index_basis_in = sol_pickle
   #0.2 setup parameters
@@ -161,7 +163,7 @@ def run(argv):
   frames = range(len(frame_files))
   #1. prepare reference miller array
   txt_merge_mean = 'Generating a reference set (will not be used if hklrefin is set)'
-  print txt_merge_mean
+  print(txt_merge_mean)
   #Always generate the mean-intensity scaled set.
   scaled_pres_set = scale_frames(frames, frame_files, iparams)
   mdh, _txt_merge_mean = merge_frames(scaled_pres_set, iparams)
@@ -180,7 +182,7 @@ def run(argv):
   txt_merge_postref = ''
   postref_pres_set = [None]*len(frames)
   avg_mode = 'weighted'
-  for i_iter in xrange(iparams.n_postref_cycle):
+  for i_iter in range(iparams.n_postref_cycle):
     if i_iter == (iparams.n_postref_cycle-1): avg_mode = 'final'
     postref_good_pres_set, postref_pres_set, _txt_merge_postref = postrefine_frames(i_iter, frames, frame_files, iparams, postref_pres_set, miller_array_ref, avg_mode)
     if postref_good_pres_set:
@@ -195,7 +197,7 @@ def run(argv):
   time_global_spent=time_global_end-time_global_start
   txt_out_time_spent = 'Total calculation time: '+'{0:.2f}'.format(time_global_spent.seconds)+ \
       ' seconds\nFinished: '+time_global_end.strftime("%A %d. %B %Y %H:%M:%S")+'\n'
-  print txt_out_time_spent
+  print(txt_out_time_spent)
   txt_out = txt_indexing_ambiguity + txt_merge_mean + txt_merge_postref + txt_out_time_spent
   with open(os.path.join(iparams.run_no,'log.txt'), 'a') as f:
     f.write(txt_out)

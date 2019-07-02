@@ -5,7 +5,7 @@ signal-to-noise ratio, completeness, ice rings and other suspicious
 outliers, anomalous measurability, and Wilson plot.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.scaling import absolute_scaling
 from mmtbx import scaling
 from iotbx import data_plots
@@ -19,6 +19,8 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry
 from libtbx import table_utils
 import math
+from six.moves import zip
+from six.moves import range
 
 
 class i_sigi_completeness_stats(scaling.xtriage_analysis):
@@ -76,7 +78,7 @@ class i_sigi_completeness_stats(scaling.xtriage_analysis):
       graph_columns=[list(range(1,8))],
       x_is_inverse_d_min=True,
       first_two_columns_are_resolution=True)
-    for ii in xrange(1,len(self.resolution_bins)-1):
+    for ii in range(1,len(self.resolution_bins)-1):
       a = self.resolution_bins[ii-1]
       b = self.resolution_bins[ii]
       row = [ a, b ]
@@ -89,7 +91,7 @@ class i_sigi_completeness_stats(scaling.xtriage_analysis):
     self.resolution_cut = 4.0
     comp_data = cut_completeness(isigi_cut)
     reso=4.0
-    for ii in xrange(1,len(self.resolution_bins)-1):
+    for ii in range(1,len(self.resolution_bins)-1):
       a = self.resolution_bins[ii-1]
       b = self.resolution_bins[ii]
       if b < resolution_at_least:

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # Storage methods
 def no_storage(stream):
@@ -115,7 +115,7 @@ class coupled_stream(object):
 
   def next(self):
 
-    return self.primary.next()
+    return next(self.primary)
 
 
   def __iter__(self):
@@ -257,9 +257,9 @@ class urlopener(object):
 
   def __call__(self, url, data = None):
 
-    import urllib2
+    from six.moves import urllib
 
-    request = urllib2.Request(
+    request = urllib.request.Request(
       url = url,
       data = data,
       headers = {
@@ -268,16 +268,16 @@ class urlopener(object):
       )
 
     try:
-      stream = urllib2.urlopen( request )
+      stream = urllib.request.urlopen( request )
 
-    except urllib2.HTTPError, e:
+    except urllib.error.HTTPError as e:
       raise http_error_to_exception( error = e )
 
     used = stream.info().get( "Content-Encoding" )
     encoding = self.encoding_for.get( used, self.identity )
 
     if not encoding.accept( header = used ):
-      raise UnexpectedResponse, "Unknown encoding: %s" % used
+      raise UnexpectedResponse("Unknown encoding: %s" % used)
 
     return encoding.process( stream = stream )
 

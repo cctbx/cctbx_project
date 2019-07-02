@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 from wxtbx import phil_controls
 from libtbx.utils import Sorry
@@ -106,7 +106,7 @@ if (__name__ == "__main__"):
   def OnOkay(evt):
     symop = sym_ctrl.GetPhilValue()
     symop2 = sym_ctrl_2.GetPhilValue()
-    print symop, symop2
+    print(symop, symop2)
   def OnPhilCtrl(evt):
     symop3 = sym_ctrl_2.GetValue()
     symop3.show_geometrical_elements()

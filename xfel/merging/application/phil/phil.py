@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 from iotbx.phil import parse
 
@@ -8,6 +8,11 @@ Redesign script for merging xfel data
 
 from xfel.merging.database.merging_database import mysql_master_phil
 master_phil="""
+dispatch {
+  step_list = None
+    .type = strings
+    .help = List of steps to use. None means use the full set of steps to merge.
+}
 input {
   path = None
     .type = str
@@ -30,25 +35,22 @@ input {
     node_memory {
       architecture = "Cori KNL"
         .type = str
-        .help = Node architecture is used to determine the node memory limit, number of available ranks per node, and pickle file size-to-memory coefficient
+        .help = node architecture name. Currently not used.
       limit = 90.0
         .type = float
-        .help = node memory limit, GB
+        .help = node memory limit, GB. On Cori KNL each node has 96 GB of memory, but we use 6 GB as a cushion, so the default value is 90 GB.
       pickle_to_memory = 3.5
         .type = float
         .help = an empirical coefficient to convert pickle file size to anticipated run-time process memory required to load a file of that size
       ranks_per_node = 68
         .type = int
         .help = number of ranks available per node
-      scale = 1.0
-        .type = float
-        .help = Decrease the node memory limit by this factor in order to utilize more nodes
     }
   }
 }
 
 filter
-  .help = The FILTER section defines criteria to accept or reject whole experiments
+  .help = The filter section defines criteria to accept or reject whole experiments
   .help = or to modify the entire experiment by a reindexing operator
   .help = refer to the select section for filtering of individual reflections
   {
@@ -146,7 +148,8 @@ modify
 }
 
 select
-  .help = The SELECT section accepts or rejects specified reflections
+  .help = The select section accepts or rejects specified reflections
+  .help = refer to the filter section for filtering of whole experimens
   {
   algorithm = panel cspad_sensor significance_filter
     .type = choice
@@ -289,7 +292,7 @@ postrefinement {
 }
 
 merging {
-  minimum_multiplicity = None
+  minimum_multiplicity = 2
     .type = int(value_min=2)
     .help = If defined, merged structure factors not produced for the Miller indices below this threshold.
   error {
@@ -359,6 +362,9 @@ output {
   log_level = 0
     .type = int
     .help = how much information to log. TODO: define it.
+  save_experiments_and_reflections = False
+    .type = bool
+    .help = If True, dump the final set of experiments and reflections from the last worker
 }
 
 statistics {

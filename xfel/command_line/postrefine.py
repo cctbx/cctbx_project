@@ -1,11 +1,12 @@
 # LIBTBX_SET_DISPATCHER_NAME cxi.postrefine
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os, sys
 from libtbx.easy_mp import pool_map
 import numpy as np
 from cctbx.array_family import flex
 from datetime import datetime, time
 import logging
+from six.moves import range
 
 FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
 logging.basicConfig(level=logging.WARNING, format=FORMAT)
@@ -42,7 +43,7 @@ def read_input(args):
         frame_files.append(pair[0])
 
   if file_name_input == '':
-    print "Please provide input-parameters file (usage: input=yourinput.inp)"
+    print("Please provide input-parameters file (usage: input=yourinput.inp)")
     exit()
 
   from xfel.cxi.postrefine import postref_handler
@@ -55,8 +56,8 @@ def read_input(args):
 
   #check if pickle_dir is given in input file instead of from cmd arguments.
   if len(frame_files)==0:
-    print 'Path to pickle files is missing, please specify it at command line.'
-    print 'Usage: cxi.postrefine input=myinp.inp /path/to/pickles/*'
+    print('Path to pickle files is missing, please specify it at command line.')
+    print('Usage: cxi.postrefine input=myinp.inp /path/to/pickles/*')
     exit()
 
   return iph, frame_files
@@ -117,7 +118,7 @@ if (__name__ == "__main__"):
         f.close()
         exit()
     else:
-      print "No frames merged as a reference set - exit without post-refinement"
+      print("No frames merged as a reference set - exit without post-refinement")
       exit()
   else:
     miller_array_ref = iph.miller_array_iso
@@ -128,7 +129,7 @@ if (__name__ == "__main__"):
   txt_merge_postref = ''
   for i in range(n_iters):
     txt_merge_postref += 'Start post-refinement cycle '+str(i+1)+'\n'
-    print txt_merge_postref
+    print(txt_merge_postref)
     def postrefine_by_frame_mproc_wrapper(arg):
       return postrefine_by_frame_mproc(arg, frame_files, iph, miller_array_ref)
 
@@ -148,14 +149,14 @@ if (__name__ == "__main__"):
       miller_array_ref = miller_array_merge_postref.generate_bijvoet_mates()
       txt_merge_postref += txt_merge_out
     else:
-      print "No frames merged as a reference set - exit without post-refinement"
+      print("No frames merged as a reference set - exit without post-refinement")
       exit()
 
   #collect caculating time
   time_global_end=datetime.now()
   time_global_spent=time_global_end-time_global_start
   txt_out_time_spent = 'Total calculation time: '+'{0:.2f}'.format(time_global_spent.seconds)+' seconds\n'
-  print txt_out_time_spent
+  print(txt_out_time_spent)
 
   txt_out = iph.txt_out + txt_merge_mean + txt_merge_postref + txt_out_time_spent
   f = open(iph.run_no+'/log.txt', 'w')

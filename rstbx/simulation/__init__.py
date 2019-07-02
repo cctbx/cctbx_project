@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import boost.python
 ext = boost.python.import_ext("rstbx_simulation_ext")
 from rstbx_simulation_ext import *
@@ -10,7 +10,7 @@ import math
 class xfel1(ext.xfel1):
 
   def show(self):
-    print "In XFEL1 simulation"
+    print("In XFEL1 simulation")
 
   def __init__(self,detector=None,camera=None,structure=None,simulation=None):
     ext.xfel1.__init__(self)
@@ -50,7 +50,7 @@ class xfel1(ext.xfel1):
                  bandpass_full_width = self.sim.bandpass,
                  wavelength_m = self.camera.lambda0,
                  limiting_resolution_Ang = self.structure.limiting_resolution)
-    print "Selected %d reflections close to the Ewald sphere in this orientation"%len(self.selected)
+    print("Selected %d reflections close to the Ewald sphere in this orientation"%len(self.selected))
 
     self.detector.raw.fill(0.0)
     self.image = self.raw_diffraction(selection = self.selected,

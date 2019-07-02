@@ -1,10 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import mmtbx.f_model
 from cctbx import maptbx
 import mmtbx.masks
 import mmtbx.bulk_solvent
 import boost.python
+from six.moves import zip
+from six.moves import range
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from mmtbx import map_tools
 import cctbx.miller
@@ -144,7 +146,7 @@ def helper_3(
       f_masks,
       log):
   #f_masks = fmodel.f_masks() #+ f_masks[0:]
-  for i in xrange(len(f_masks)):
+  for i in range(len(f_masks)):
     f_masks[i] = f_masks[i].common_set(fmodel.f_obs())
   one = flex.double(fmodel.ss.size(), 1.)
   method_1 = \
@@ -303,7 +305,7 @@ class multi_mask_bulk_solvent(object):
     conn.reshape(mask_data_asu.accessor()) #XXX still need it?
     f_masks = []
     all_zero_found = False
-    if(log is not None): print >> log, "Number of regions:", len(region_indices)
+    if(log is not None): print("Number of regions:", len(region_indices), file=log)
     mi,ma,me,diff_map_asu = None,None,None,None
     for ii, i in enumerate(region_indices):
       s = conn==i
@@ -341,7 +343,7 @@ class multi_mask_bulk_solvent(object):
       #  print "region: %5d fraction: %8.4f"%(ii, region_volumes[ii]), len(region_volumes), "%7.3f %7.3f %7.3f"%(mi,ma,me)
 
       if(log is not None):
-        print >> log, "region: %5d fraction: %8.4f"%(ii, region_volumes[ii])
+        print("region: %5d fraction: %8.4f"%(ii, region_volumes[ii]), file=log)
         log.flush()
       f_mask_i = fmodel.f_obs().structure_factors_from_asu_map(
         asu_map_data = mask_data_asu_i, n_real = n_real)

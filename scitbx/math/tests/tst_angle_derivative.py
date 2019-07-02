@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.math import angle_derivative_wrt_vectors
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
 from random import random
+from six.moves import range
 
 def finite_difference_approx(u, v):
 
@@ -42,7 +43,7 @@ def exercise():
     assert approx_equal(dtheta_du, fd_dtheta_du)
     assert approx_equal(dtheta_dv, fd_dtheta_dv)
   except AssertionError:
-    print "problem at angle", u.angle(v)
+    print("problem at angle", u.angle(v))
 
   return
 
@@ -50,4 +51,4 @@ def exercise():
 if (__name__ == "__main__"):
 
   for i in range(10): exercise()
-  print "OK"
+  print("OK")

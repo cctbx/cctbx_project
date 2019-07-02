@@ -1,0 +1,15 @@
+# Script for installing miniconda
+#
+# Variables:
+#   CONDA: Linux, MacOSX
+
+steps:
+
+- script: |
+    echo "Installing Miniconda"
+    set -x -e
+    curl -o $(Build.StagingDirectory)/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-latest-$(CONDA)-x86_64.sh
+    bash $(Build.StagingDirectory)/miniconda.sh -b -u -p $(Build.StagingDirectory)/miniconda
+    export PATH=$(Build.StagingDirectory)/miniconda/bin:$PATH
+    echo "Setting up Conda environment"
+  displayName: Install miniconda

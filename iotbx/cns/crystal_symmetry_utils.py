@@ -1,6 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.cns.space_group_symbols import cns_format
 from cctbx import crystal
+from six.moves import range
+from six.moves import zip
 
 uc_param_names = "a b c alpha beta gamma".split()
 
@@ -13,7 +15,7 @@ re_uc_sg = r'a=\s*(\S+)\s*b=\s*(\S+)\s*c=\s*(\S+)' \
 
 def crystal_symmetry_from_re_match(m, i_sg=1, i_uc=2):
   assert m is not None
-  try: unit_cell = [float(m.group(i+i_uc)) for i in xrange(6)]
+  try: unit_cell = [float(m.group(i+i_uc)) for i in range(6)]
   except ValueError: return None
   try:
     return crystal.symmetry(

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import time
 from mmtbx.building.minimize_chain import run,ccp4_map
@@ -538,7 +538,7 @@ TER
 """
 
 def tst_01():
-  print "\nTesting merge_model\n"
+  print("\nTesting merge_model\n")
   prefix='tst_01'
   # Full good answer model
   pdb_file_name_answer_full = "%s_answer_full.pdb"%prefix
@@ -578,7 +578,7 @@ def tst_01():
   xrs=pdb_inp.xray_structure_simple()
   hierarchy.write_pdb_file(file_name="%s_refined.pdb"%prefix)
   rmsd=xrs.sites_cart().rms_difference(xrs_answer_full.sites_cart())
-  print "RMSD from TARGET allowing any CROSSOVERS: %8.2f " %(rmsd)
+  print("RMSD from TARGET allowing any CROSSOVERS: %8.2f " %(rmsd))
   return rmsd
 
 
@@ -626,29 +626,29 @@ def tst_02(args,prefix=None):
   multiple_model_hierarchy.write_pdb_file(
       file_name="%s_refined_all_states.pdb"%prefix)
   rmsd=xrs_refined.sites_cart().rms_difference(xrs_answer_full.sites_cart())
-  print "RMSD from TARGET for FULL-model refinement: %8.2f " %(rmsd)
+  print("RMSD from TARGET for FULL-model refinement: %8.2f " %(rmsd))
   return rmsd
 
 if (__name__ == "__main__"):
   t0=time.time()
-  print "\nRunning merge_models alone"
+  print("\nRunning merge_models alone")
   rmsd=tst_01()
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")
 
   args=["number_of_build_cycles=2","number_of_macro_cycles=1","number_of_trials=2","random_seed=77141"]
   t0=time.time()
-  print "Running standard minimize_chain"
+  print("Running standard minimize_chain")
   extra_args=['merge_models=False','pdb_out=std.pdb']
   rmsd=tst_02(args+extra_args,prefix='tst_02')
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
-  print "RMSD %7.2f "%rmsd
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")
+  print("RMSD %7.2f "%rmsd)
 
   t0=time.time()
-  print "\nRunning standard minimize_chain plus merge_models"
+  print("\nRunning standard minimize_chain plus merge_models")
   extra_args=['merge_models=True','pdb_out=merged.pdb']
   rmsd=tst_02(args+extra_args,prefix='tst_03')
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
-  print "RMSD %7.2f "%rmsd
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")
+  print("RMSD %7.2f "%rmsd)

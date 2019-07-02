@@ -1,13 +1,15 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import boost.python
+from functools import reduce
+from six.moves import range
 ext = boost.python.import_ext( "scitbx_suffixtree_shared_ext" )
 from scitbx_suffixtree_shared_ext import *
 
 def dump(root, word):
 
   for ( index, edge ) in enumerate( root.preorder_iteration() ):
-    print "%s: %s" % ( index, label( edge = edge, word = tree.word ) )
+    print("%s: %s" % ( index, label( edge = edge, word = tree.word ) ))
 
 
 def label(edge, word, separator = ""):
@@ -38,7 +40,7 @@ def tree_print(tree, stream = None):
 
   depth_for = calculate_edge_depth( root = tree.root )
   it = iter( tree.root.preorder_iteration() )
-  it.next()
+  next(it)
   stream.write( edge_print( tree.root ) )
   stream.write( "\n" )
 
@@ -55,7 +57,7 @@ def calculate_edge_depth(root):
 
   depth_for = { root: 0 }
   it = iter( root.preorder_iteration() )
-  it.next() # discard root
+  next(it) # discard root
 
   for edge in it:
     depth_for[ edge ] = depth_for[ edge.parent ] + edge.stop - edge.start

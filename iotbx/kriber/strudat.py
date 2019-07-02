@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import xray
 from cctbx import crystal
 from cctbx import sgtbx
@@ -67,7 +67,7 @@ class read_entry(object):
     self._unit_cell = uctbx.infer_unit_cell_from_symmetry(
       self.unit_cell_parameters, self.space_group())
     if (self._unit_cell is None):
-      raise RuntimeError, "Cannot interpret unit cell parameters."
+      raise RuntimeError("Cannot interpret unit cell parameters.")
     return self._unit_cell
 
   def crystal_symmetry(self):
@@ -77,16 +77,16 @@ class read_entry(object):
 
   def show(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "Tag:", self.tag
-    print >> f, "Title:", self.title
-    print >> f, "Reference:", self.reference
+    print("Tag:", self.tag, file=f)
+    print("Title:", self.title, file=f)
+    print("Reference:", self.reference, file=f)
     self.crystal_symmetry().show_summary(f=f)
     for atm in self.atoms:
-      print >> f, "%-8s" % atm.label,
-      print "%8.5f %8.5f %8.5f" % atm.site,
+      print("%-8s" % atm.label, end=' ', file=f)
+      print("%8.5f %8.5f %8.5f" % atm.site, end=' ')
       if (atm.connectivity != None):
-        print "%2d" % atm.connectivity,
-      print
+        print("%2d" % atm.connectivity, end=' ')
+      print()
 
   def connectivities(self, all_or_nothing=False):
     result = [atom.connectivity for atom in self.atoms]
@@ -124,7 +124,7 @@ class read_all_entries(object):
     if (f is None): f = sys.stdout
     for entry in self.entries:
       entry.show(f=f)
-      print >> f
+      print(file=f)
 
   def __call__(self):
     return self.entries

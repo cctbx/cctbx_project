@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys, os
 op = os.path
 
@@ -91,35 +91,35 @@ def eval_logs(file_names, out=None):
   perm = flex.sort_permutation(gaps)
   gaps = gaps.select(perm)
   n_missing = n_refinements_initialized - gaps.size()
-  print >> out, "Number of results: %d (%d missing)" % (gaps.size(), n_missing)
+  print("Number of results: %d (%d missing)" % (gaps.size(), n_missing), file=out)
   assert n_missing >= 0
-  print >> out, "Stale, Unfinished, Exceptions, Tracebacks, Abort:", \
-    n_stale, n_unfinished, n_exception, n_traceback, n_abort
+  print("Stale, Unfinished, Exceptions, Tracebacks, Abort:", \
+    n_stale, n_unfinished, n_exception, n_traceback, n_abort, file=out)
   if (n_exception + n_abort < n_missing):
-    print "WARNING: more missing results than expected."
+    print("WARNING: more missing results than expected.")
   if (len(seconds) != 0):
     if (min_secs_epoch is not None and max_secs_epoch is not None):
       g = max_secs_epoch - min_secs_epoch
     else:
       g = None
-    print >> out, "min, max, global seconds: %.2f %.2f %s" % (
-      min(seconds), max(seconds), format_value("%.2f", g))
-  print >> out
+    print("min, max, global seconds: %.2f %.2f %s" % (
+      min(seconds), max(seconds), format_value("%.2f", g)), file=out)
+  print(file=out)
   def stats(f):
     n = f.count(True)
     return "%6d = %5.2f %%" % (n, 100 * n / max(1,n_refinements_initialized))
-  print >> out, "gaps below -0.05:", stats(gaps < -0.05)
-  print >> out, "gaps below -0.01:", stats(gaps < -0.01)
-  print >> out, "gaps below  0.01:", stats(gaps <  0.01)
-  print >> out, "gaps above  0.01:", stats(gaps >  0.01)
-  print >> out, "gaps above  0.05:", stats(gaps >  0.05)
-  print >> out
-  print >> out, "Histogram of gaps:"
+  print("gaps below -0.05:", stats(gaps < -0.05), file=out)
+  print("gaps below -0.01:", stats(gaps < -0.01), file=out)
+  print("gaps below  0.01:", stats(gaps <  0.01), file=out)
+  print("gaps above  0.01:", stats(gaps >  0.01), file=out)
+  print("gaps above  0.05:", stats(gaps >  0.05), file=out)
+  print(file=out)
+  print("Histogram of gaps:", file=out)
   flex.histogram(gaps, n_slots=10).show(f=out)
-  print >> out
+  print(file=out)
   infos = infos.select(perm)
   for info in infos:
-    print >> out, info
+    print(info, file=out)
   return (len(file_names), n_unfinished, min_secs_epoch, max_secs_epoch)
 
 def run(args):
@@ -156,18 +156,18 @@ def run(args):
             file_names.append(path)
       if (len(file_names) != 0):
         outfn = op.join(dir_name, "stats")
-        print outfn, len(file_names)
+        print(outfn, len(file_names))
         sys.stdout.flush()
         track_times(eval_logs(file_names, out=open(outfn, "w")))
   if (min_max_secs_epoch.count(None) == 0):
-    print "global seconds: %.2f" % (
-      min_max_secs_epoch[1] - min_max_secs_epoch[0])
-  print "Number of files:", n_files_accu[0]
+    print("global seconds: %.2f" % (
+      min_max_secs_epoch[1] - min_max_secs_epoch[0]))
+  print("Number of files:", n_files_accu[0])
   n = n_unfinished_accu[0]
   if (n == 0):
-    print "unfinished:", n
+    print("unfinished:", n)
   else:
-    print "UNFINISHED:", n
+    print("UNFINISHED:", n)
   sys.stdout.flush()
 
 if (__name__ == "__main__"):

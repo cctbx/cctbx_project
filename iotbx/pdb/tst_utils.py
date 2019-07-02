@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb.utils
 
 def exercise_all_chain_ids():
@@ -8,7 +8,7 @@ def exercise_all_chain_ids():
 
 def run():
   exercise_all_chain_ids()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

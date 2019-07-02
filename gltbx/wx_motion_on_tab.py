@@ -3,7 +3,7 @@ Example:
   - use results from a function with callback (motion() in this example)
   - return from callback only after an event in the GUI (Tab-key)
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from gltbx import wx_viewer
 from libtbx.thread_utils import thread_with_callback_and_wait
@@ -14,6 +14,7 @@ from scitbx.array_family import flex
 from scitbx import matrix
 import wx
 import sys
+from six.moves import range
 
 class viewer(wx_viewer.show_points_and_lines_mixin):
 
@@ -48,7 +49,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     wx.PostEvent(self, wx_viewer.ViewerUpdateEvent(points))
 
   def OnUpdate(self, event):
-    for i in xrange(len(event.data)):
+    for i in range(len(event.data)):
       self.points[i] = event.data[i]
     self.labels_display_list = None
     self.lines_display_list = None
@@ -84,12 +85,12 @@ def motion(n_steps=20, callback=None):
   i_step = 0
   while (callback is not None or i_step != n_steps):
     if (callback is None):
-      print [point.elems for point in points]
+      print([point.elems for point in points])
     else:
       status = callback(points)
       if status == False :
         break
-    for i in xrange(len(points)):
+    for i in range(len(points)):
       points[i] += shift
     i_step += 1
     if (i_step % 10 == 0):

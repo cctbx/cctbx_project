@@ -16,6 +16,7 @@ import sys
 from pprint import pprint
 from six.moves import cPickle as pickle
 from types import ModuleType
+from six.moves import map
 
 def _read_obj(obj, prev=None):
   if prev is None:
@@ -59,7 +60,8 @@ class absolute_path(object):
     return self._path
 
 def plainlify(thing):
-  if isinstance(thing, (unicode, str, basestring, int, float, long, complex)):
+  import six
+  if isinstance(thing,six.string_types) or isinstance(thing, (unicode, str, int, float, long, complex)):
     return thing
   if thing in (None, True, False):
     return thing

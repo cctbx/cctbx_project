@@ -1,11 +1,13 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.scaling
 from iotbx.bioinformatics import any_sequence_format
 from libtbx.utils import Sorry, null_out
 from libtbx import table_utils
 import math
 import sys,os
+from six.moves import zip
+from six.moves import range
 
 def get_vol_per_residue(chain_type='PROTEIN'):
   if chain_type=='PROTEIN':
@@ -47,7 +49,7 @@ def get_sigf(nrefl,nsites,natoms,z,fpp,target_s_ano=15.,ntries=1000,
   closest_dist2=None
   start_value=1
   if include_zero: start_value=0
-  for i in xrange(start_value,ntries):
+  for i in range(start_value,ntries):
     sigf=i*1./float(ntries)
     if max_i_over_sigma and get_i_over_sigma_from_sigf(sigf)>max_i_over_sigma:
       continue
@@ -159,7 +161,7 @@ def estimate_fpp_weak(nrefl,nsites,natoms,z,fpp,sigf,
 
   target=sano/2.
   best_scale=1.0
-  for i in xrange(1,101):
+  for i in range(1,101):
     scale=float(i)*0.01
     ss=get_sano(nrefl,nsites,natoms,z,fpp*scale,sigf,
       fa2=fa2,fb2=fb2,disorder_parameter=disorder_parameter,
@@ -307,7 +309,7 @@ def get_number_of_sites(atom_type=None,n_met=0,n_cys=0,
     # guess number of sites:
     number_of_sites_lowres=None
     if atom_type is None:
-      print >>out, "No heavy atom type set, so no sites estimated"
+      print("No heavy atom type set, so no sites estimated", file=out)
       number_of_sites=None
     elif atom_type.lower() in ['se']:
       number_of_sites=max(1,ncs_copies*n_met)
@@ -319,8 +321,8 @@ def get_number_of_sites(atom_type=None,n_met=0,n_cys=0,
     else: # general ha  1 per 100 up to 2 per chain
       number_of_sites=ncs_copies*max(1,min(2,1+int(float(n_aa)/100.)))
     if number_of_sites:
-      print >>out,"\nBest guess of number of %s sites: %d" %(
-        atom_type.upper(),number_of_sites)
+      print("\nBest guess of number of %s sites: %d" %(
+        atom_type.upper(),number_of_sites), file=out)
     if number_of_sites_lowres is None: number_of_sites_lowres=number_of_sites
     return number_of_sites,number_of_sites_lowres
 
@@ -535,13 +537,13 @@ class interpolator:
     for key in self.keys:
       value_list.append(self.target_dict[key])
     new_values=deepcopy(value_list)
-    for i in xrange(i_middle+1,n):
+    for i in range(i_middle+1,n):
       prev_value=new_values[i-1]
       remainder=value_list[i:]
       value=value_list[i]
       mean_remainder=self.get_mean(remainder)
       new_values[i]=max(prev_value,min(mean_remainder,value))
-    for i in xrange(i_middle-1,-1,-1):
+    for i in range(i_middle-1,-1,-1):
       prev_value=new_values[i+1]
       remainder=value_list[:i+1]
       value=value_list[i]
@@ -556,9 +558,9 @@ class interpolator:
     # adjust delta mean to zero in each region
     offset_low=self.get_mean(delta_list[:i_middle])
     offset_high=self.get_mean(delta_list[i_middle+1:])
-    for i in xrange(i_middle+1,n):
+    for i in range(i_middle+1,n):
       new_values[i]=new_values[i]-offset_high
-    for i in xrange(i_middle-1,-1,-1):
+    for i in range(i_middle-1,-1,-1):
       new_values[i]=new_values[i]-offset_low
     for key,value in zip(self.keys,new_values):
       self.target_dict[key]=value
@@ -602,7 +604,7 @@ class interpolator:
 def get_interpolator(estimator_type='solved',predictor_variable='PredSignal',
        require_monotonic_increase=None,out=sys.stdout):
   local_file_name,no_resolution=get_local_file_name(estimator_type)
-  print >>out,"\nSetting up interpolator for %s" %(estimator_type)
+  print("\nSetting up interpolator for %s" %(estimator_type), file=out)
   import libtbx.load_env
   file_name=libtbx.env.find_in_repositories(
     relative_path=os.path.join("mmtbx","scaling",local_file_name),
@@ -632,7 +634,7 @@ def get_estimators(estimator_type='signal',
 
   import libtbx.load_env
 
-  print >>out,"\nSetting up estimator for %s" %(estimator_type)
+  print("\nSetting up estimator for %s" %(estimator_type), file=out)
   file_name=libtbx.env.find_in_repositories(
     relative_path=os.path.join("mmtbx","scaling",local_file_name),
       test=os.path.isfile)
@@ -666,7 +668,7 @@ def get_b_aniso_mean(i_obs):
         n_residues = 200,
         n_bases = 0)
   try: b_cart=aniso_scale_and_b.b_cart
-  except AttributeError, e:
+  except AttributeError as e:
         raise Sorry("\nCannot correct the column %s for anisotropy\n"%(
           best_label))
   b_aniso_mean=0.
@@ -1018,7 +1020,7 @@ class estimate_necessary_i_sigi(mmtbx.scaling.xtriage_analysis):
 
   def show_summary(self):
     if self.is_solvable():
-      print """
+      print("""
 I/sigI: %7.1f
 Dmin:      %5.2f
 cc_half:   %5.2f - %5.2f
@@ -1037,7 +1039,7 @@ FOM:      %3.2f
  self.representative_s_ano(),
  int(0.5+self.representative_solved()),
  self.representative_fom(),
- )
+ ))
 
   def is_solvable(self):
     return (self.representative_values is not None)

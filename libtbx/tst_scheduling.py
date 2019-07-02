@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import unittest
 import time
+from six.moves import range
 
 def normal_function(arg, wait):
 

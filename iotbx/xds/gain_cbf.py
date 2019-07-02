@@ -6,9 +6,10 @@
 #
 #   Class to read the GAIN.CBF files used in XDS
 #
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
-import xds_cbf
+from iotbx.xds import xds_cbf
+from six.moves import range
 
 class reader(xds_cbf.reader):
   """A class to read the GAIN.CBF files used in XDS"""
@@ -26,8 +27,8 @@ class reader(xds_cbf.reader):
     nx = int(ceil(dim[1] / sampled_gain.shape[1]))
 
     # Resize the gain image
-    i1 = numpy.array([range(dim[1])] * dim[0], dtype=numpy.int32)
-    j1 = numpy.array([range(dim[0])] * dim[1], dtype=numpy.int32).transpose()
+    i1 = numpy.array([list(range(dim[1]))] * dim[0], dtype=numpy.int32)
+    j1 = numpy.array([list(range(dim[0]))] * dim[1], dtype=numpy.int32).transpose()
     i2 = numpy.divide(i1, nx)
     j2 = numpy.divide(j1, ny)
     gain = numpy.zeros(dim, dtype=numpy.float64)

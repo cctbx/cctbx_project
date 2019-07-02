@@ -1,15 +1,17 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from scitbx.matrix import rotate_point_around_axis
 from mmtbx.validation import ramalyze
 import math
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from mmtbx.validation.ramalyze import res_types
 from scitbx.math import dihedral_angle
 # from scitbx.matrix import _dihedral_angle # python implementation, but on flex arrays
 
 import boost.python
+from six.moves import zip
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 
@@ -34,16 +36,16 @@ def get_phi_psi_atoms(hierarchy, omega=False):
 
 def list_omega_outliers(hierarchy, log):
   pso_atoms = get_phi_psi_atoms(hierarchy, omega=True)
-  print >> log, "Omega outliers:"
+  print("Omega outliers:", file=log)
   for psatoms, rama_key, omega in pso_atoms:
     if omega is not None and abs(abs(omega)-180) > 30:
-      print >> log, "  ", psatoms[0][0].id_str(), omega
+      print("  ", psatoms[0][0].id_str(), omega, file=log)
 
 def list_omega(hierarchy, log):
   pso_atoms = get_phi_psi_atoms(hierarchy, omega=True)
-  print >> log, "Omega angles:"
+  print("Omega angles:", file=log)
   for psatoms, rama_key, omega in pso_atoms:
-    print >> log, "  ", psatoms[0][0].id_str(), omega
+    print("  ", psatoms[0][0].id_str(), omega, file=log)
 
 def n_bad_omegas(hierarchy):
   result = 0
@@ -205,12 +207,12 @@ def print_rama_stats(phi_psi_atoms, r):
   for phi_psi_pair, rama_key in phi_psi_atoms:
     for i, atoms in enumerate(phi_psi_pair):
       for a in atoms:
-        print >> result, a.id_str()
+        print(a.id_str(), file=result)
     rama_score = get_rama_score(phi_psi_pair, r, rama_key)
-    print >> result, "rama score:", get_pair_angles(phi_psi_pair), rama_score,
-    print >> result, rama_score_evaluate(rama_key, rama_score), rama_key
-    print >> result, "="*20
-  print >> result, "*"*80
+    print("rama score:", get_pair_angles(phi_psi_pair), rama_score, end=' ', file=result)
+    print(rama_score_evaluate(rama_key, rama_score), rama_key, file=result)
+    print("="*20, file=result)
+  print("*"*80, file=result)
   r = result.getvalue()
   return r
 
@@ -263,7 +265,7 @@ def find_nearest_non_outlier_region(phi_psi_pair, r, rama_key):
   def spiral(N, M):
       x,y = 0,0
       dx, dy = 0, -1
-      for dumb in xrange(N*M):
+      for dumb in range(N*M):
           if abs(x) == abs(y) and [dx,dy] != [1,0] or x>0 and y == 1-x:
               dx, dy = -dy, dx            # corner, change direction
           if abs(x)>N/2 or abs(y)>M/2:    # non-square

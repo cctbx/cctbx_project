@@ -1,6 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.reciprocal_space_arrays
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.utils
 import mmtbx.f_model
 import mmtbx.model
@@ -10,7 +10,7 @@ import iotbx.phil
 import iotbx.pdb
 from libtbx import runtime_utils
 from libtbx.utils import Sorry
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 
 legend = """\
@@ -109,10 +109,10 @@ include scope libtbx.phil.interface.tracking_params
 """
 
 def defaults(log):
-  print >> log, "Default params::\n"
+  print("Default params::\n", file=log)
   parsed = iotbx.phil.parse(master_params_str, process_includes=True)
   parsed.show(prefix="  ", out=log)
-  print >> log
+  print(file=log)
   return parsed
 
 def extract_experimental_phases(experimental_phases, f_obs):
@@ -128,7 +128,7 @@ def extract_experimental_phases(experimental_phases, f_obs):
 
 def run(args, log = sys.stdout):
   if(len(args)==0):
-    print >> log, legend
+    print(legend, file=log)
     defaults(log=log)
     return
   #
@@ -175,10 +175,10 @@ def run(args, log = sys.stdout):
     keep_going             = True,
     log                    = StringIO())
   f_obs = determine_data_and_flags_result.f_obs
-  print "Input data:"
-  print "  Iobs or Fobs:", f_obs.info().labels
+  print("Input data:")
+  print("  Iobs or Fobs:", f_obs.info().labels)
   r_free_flags = determine_data_and_flags_result.r_free_flags
-  print "  Free-R flags:", r_free_flags.info().labels
+  print("  Free-R flags:", r_free_flags.info().labels)
   #
   parameters = mmtbx.utils.experimental_phases_params.extract()
   parameters.labels = params.hendrickson_lattman_coefficients_label
@@ -191,7 +191,7 @@ def run(args, log = sys.stdout):
     symmetry_safety_check  = True,
     ignore_all_zeros       = True)
   if(experimental_phases_result is not None):
-    print "  HL coefficients:", experimental_phases_result.info().labels
+    print("  HL coefficients:", experimental_phases_result.info().labels)
   experimental_phases = extract_experimental_phases(
     experimental_phases = experimental_phases_result, f_obs = f_obs)
   #
@@ -211,8 +211,8 @@ def run(args, log = sys.stdout):
   if (not xray_structure.unit_cell().is_similar_to(f_obs.unit_cell())):
     raise Sorry("The unit cells in the model and reflections files are not "+
       "isomorphous.")
-  print "Input model:"
-  print "  number of atoms:", xray_structure.scatterers().size()
+  print("Input model:")
+  print("  number of atoms:", xray_structure.scatterers().size())
   fmodel = mmtbx.f_model.manager(
     xray_structure = xray_structure,
     r_free_flags   = r_free_flags,
@@ -222,10 +222,10 @@ def run(args, log = sys.stdout):
     update_f_part1 = True,
     remove_outliers = params.remove_f_obs_outliers,
     bulk_solvent_and_scaling = params.bulk_solvent_and_scaling)
-  print "Overall statistics:"
+  print("Overall statistics:")
   fmodel.info().show_all()
   #
-  print "Output data:"
+  print("Output data:")
   if(params.output_file_name is not None):
     output_file_name = params.output_file_name
   else:
@@ -237,13 +237,13 @@ def run(args, log = sys.stdout):
       hkl_file_prefix = hkl_file_bn[:hkl_file_bn.index(".")]
     except ValueError: hkl_file_prefix = hkl_file_bn
     output_file_name = "%s_%s.mtz"%(pdb_file_prefix, hkl_file_prefix)
-  print "  file name:", output_file_name
-  print "  to see the contnt of %s:"%output_file_name
-  print "    phenix.mtz.dump %s"%output_file_name
+  print("  file name:", output_file_name)
+  print("  to see the contnt of %s:"%output_file_name)
+  print("    phenix.mtz.dump %s"%output_file_name)
   out = open(output_file_name,"w")
   fmodel.export(out = out)
   out.close()
-  print "All done."
+  print("All done.")
   return output_file_name
 
 def validate_params(params):

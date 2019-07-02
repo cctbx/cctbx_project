@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME dev.cxi.mpi_merge_refltable
@@ -20,4 +20,4 @@ if (__name__ == "__main__"):
   result = script.run(comm=comm,timing=False)
   if rank == 0:
     script.show_plot(result)
-  print "DONE"
+  print("DONE")

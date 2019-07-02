@@ -12,7 +12,7 @@
 #
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_statistics
 #
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from libtbx.phil import parse
 import libtbx.load_env
@@ -78,10 +78,10 @@ class Script(object):
                    level_pickle%(params.tag, 2, i),
                    i)
 
-      print "*"*80
-      print "Showing statistics for detector at level %d (%s)"%(i, help_strs[i])
-      print "*"*80
-      print c
+      print("*"*80)
+      print("Showing statistics for detector at level %d (%s)"%(i, help_strs[i]))
+      print("*"*80)
+      print(c)
       result = easy_run.fully_buffered(c).raise_if_errors()
       result.show_stdout()
 

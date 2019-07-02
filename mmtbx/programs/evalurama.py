@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 from libtbx.program_template import ProgramTemplate
 
 from mmtbx.validation import evalurama
 from mmtbx.validation import ramalyze
 from collections import OrderedDict
+import six
 
 # =============================================================================
 
@@ -48,7 +49,7 @@ Usage examples:
     print("", file=self.logger)
     print("Grand total results:", file=self.logger)
     print("Rama type     Peak coordinates              CC   Number of residues", file=self.logger)
-    for k, v in res_sorted.iteritems():
+    for k, v in six.iteritems(res_sorted):
       if v is not None:
         print("%10s %-30s %.3f %5d" % (ramalyze.res_type_labels[k[0]],k[1], v[0], v[1]), file=self.logger)
 

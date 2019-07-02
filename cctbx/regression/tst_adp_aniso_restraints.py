@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import cctbx.adp_restraints
 from libtbx.test_utils import approx_equal
 import libtbx.load_env
+from six.moves import range
 
 phe_pdb = """\
 remark CRYST1   25.000   35.000   45.000  80.00 70.00 100.00 P 1           1
@@ -41,7 +42,7 @@ def fd(xray_structure, restraints_manager, eps=1.e-2):
         #print "scatterer :", i_seq, fl.use_u_iso(), fl.grad_u_iso(), \
         #                     fl.use_u_aniso(), fl.grad_u_aniso()
         if(fl.use_u_aniso()):
-           for i_ind in xrange(6):
+           for i_ind in range(6):
                xrs1 = xray_structure.deep_copy_scatterers()
                xrs2 = xray_structure.deep_copy_scatterers()
                sc1  = xrs1.scatterers()
@@ -95,10 +96,10 @@ def fd(xray_structure, restraints_manager, eps=1.e-2):
 
 def exercise():
   if (not libtbx.env.has_module("mmtbx")):
-    print "Skipping exercise(): mmtbx module not available"
+    print("Skipping exercise(): mmtbx module not available")
     return
   if (libtbx.env.find_in_repositories(relative_path="chem_data") is None):
-    print "Skipping exercise(): chem_data directory not available"
+    print("Skipping exercise(): chem_data directory not available")
     return
   from mmtbx.monomer_library import pdb_interpretation
   file_name = "phe_tst_adp_aniso_restraints.pdb"
@@ -127,7 +128,7 @@ def exercise():
 def run(args):
   assert len(args) == 0
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

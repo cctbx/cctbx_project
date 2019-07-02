@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import libtbx.phil
 from libtbx.utils import Sorry
@@ -53,7 +53,7 @@ def run(args=(), params=None, out=None):
   if (len(seq_objects) == 0):
     raise Sorry("Empty sequence file!")
   elif (len(seq_objects) > 1):
-    print >> out, "WARNING: multiple sequences provided; searching only the 1st"
+    print("WARNING: multiple sequences provided; searching only the 1st", file=out)
   sequence = seq_objects[0].sequence
   if (len(sequence) == 0):
     raise Sorry("No data in sequence file.")
@@ -65,14 +65,14 @@ def run(args=(), params=None, out=None):
     file_name=params.output_file,
     blast_type=params.blast_type,
     expect=params.expect)
-  print >> out, "Wrote results to %s" % params.output_file
+  print("Wrote results to %s" % params.output_file, file=out)
   results = summarize_blast_output(blast_out)
   if (len(args) != 0) : # command-line mode
-    print >> out, ""
-    print >> out, "%d matching structures" % len(results)
-    print >> out, ""
-    print >> out, "ID    Chain     evalue  length  %ident    %pos  #structures"
-    print >> out, "-" * 59
+    print("", file=out)
+    print("%d matching structures" % len(results), file=out)
+    print("", file=out)
+    print("ID    Chain     evalue  length  %ident    %pos  #structures", file=out)
+    print("-" * 59, file=out)
     for result in results :
       result.show(out)
   if (len(results) > 0):

@@ -1,14 +1,15 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.linalg
 import scitbx.linalg.eigensystem
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from scitbx.linalg import matrix_normality_ratio
+from six.moves import range
 
 def exercise_random_normal_matrix():
   for m, n in [ (3,5), (4,5), (5,5), (5,4), (5,3) ]:
     gen = scitbx.linalg.random_normal_matrix_generator(m, n)
-    for i in xrange(10):
+    for i in range(10):
       assert matrix_normality_ratio(gen.normal_matrix()) < 10
 
   sigma = flex.double((1, 2, 3))
@@ -35,7 +36,7 @@ def exercise_householder():
 def run():
   exercise_householder()
   exercise_random_normal_matrix()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

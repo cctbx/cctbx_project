@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.tls import analysis
 import os
 import libtbx.load_env
@@ -120,9 +120,9 @@ def run():
       assert approx_equal(r.result.w_M_lz, r2.result.w_M_lz, 1e-4)
 
       of.close()
-      print fn, "OK"
-    except Exception, e:
-      print fn, str(e)
+      print(fn, "OK")
+    except Exception as e:
+      print(fn, str(e))
 
 
 if (__name__ == "__main__"):

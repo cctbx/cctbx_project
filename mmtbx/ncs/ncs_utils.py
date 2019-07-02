@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx import matrix
 import scitbx.rigid_body
@@ -8,6 +8,8 @@ import math
 import mmtbx.monomer_library.server
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flip_residue
+from six.moves import zip
+from six.moves import range
 
 
 __author__ = 'Youval, massively rewritten by Oleg'
@@ -108,7 +110,7 @@ def shake_transformations(x,
     new_x (flex.double): The shaken x
   """
   new_x = flex.double([])
-  for i in xrange(0,len(x),6):
+  for i in range(0,len(x),6):
     new_x.append(random.gauss(x[i+0],shake_angles_sigma))
     new_x.append(random.gauss(x[i+1],shake_angles_sigma))
     new_x.append(random.gauss(x[i+2],shake_angles_sigma))

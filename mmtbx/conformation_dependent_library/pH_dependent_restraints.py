@@ -2,7 +2,7 @@
 Module to automatically attempt to load "low" pH range restraints from
 restraints library - useful for various protonation states
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import time
 
 from mmtbx.monomer_library import server
@@ -135,21 +135,21 @@ def adjust_geometry_proxies_registeries(hierarchy,
         i_seqs.reverse()
         done.append(tuple(i_seqs))
   if resnames:
-    print >> log, "\n  Adjusted restraints in %d residue(s) for low pH in %0.1fs" % (
+    print("\n  Adjusted restraints in %d residue(s) for low pH in %0.1fs" % (
       len(resnames),
       time.time()-t0,
-      )
-    print >> log, "    Residues changed"
+      ), file=log)
+    print("    Residues changed", file=log)
     for resname in resnames:
-      print >> log, "      %s" % resname
-    print >> log, "    Changed %d bond restraint(s),  added %d bond restraint(s)" % (
+      print("      %s" % resname, file=log)
+    print("    Changed %d bond restraint(s),  added %d bond restraint(s)" % (
       bond_counters[0],
       bond_counters[1],
-      )
-    print >> log, "    Changed %d angle restraint(s), added %d angle restraint(s)\n" % (
+      ), file=log)
+    print("    Changed %d angle restraint(s), added %d angle restraint(s)\n" % (
       angle_counters[0],
       angle_counters[1],
-      )
+      ), file=log)
   #else:
   #  print >> log, "  Time to perform restraint checks: %0.1f" % (time.time()-t0)
   return atoms_added

@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.stl import map
+from six.moves import zip
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 
@@ -25,14 +26,14 @@ def exercise_stl_string_double():
   assert m.size() == 0
   assert len(m) == 0
   assert not "a" in m
-  assert not m.has_key("a")
+  assert "a" not in m
   assert m.get("a", -1) == -1
   assert m.size() == 0
   assert m.setdefault("a", -2) == -2
   assert m.size() == 1
   assert len(m) == 1
   assert "a" in m
-  assert m.has_key("a")
+  assert "a" in m
   assert m["a"] == -2
   assert m.setdefault("a", -3) == -2
   assert m.size() == 1
@@ -68,21 +69,21 @@ def exercise_stl_string_double():
   assert m.keys() == ["a", "b", "c"]
   assert [k for k in m] == ["a", "b", "c"]
   assert m.values() == [1, 2, 3]
-  assert m.items() == zip(["a", "b", "c"], [1, 2, 3])
+  assert m.items() == list(zip(["a", "b", "c"], [1, 2, 3]))
   d = dict(m.items())
   assert len(d) == 3
   ld = list(d)
   ld.sort()
   assert ld == list(m)
   m.update(map.stl_string_double({"x": -1, "y": -2}))
-  assert m.items() == zip(["a", "b", "c", "x", "y"], [1, 2, 3, -1, -2])
+  assert m.items() == list(zip(["a", "b", "c", "x", "y"], [1, 2, 3, -1, -2]))
   m.update({"r": 9, "s": 8})
-  assert m.items() == zip(["a","b","c","r","s","x","y"], [1,2,3,9,8,-1,-2])
+  assert m.items() == list(zip(["a","b","c","r","s","x","y"], [1,2,3,9,8,-1,-2]))
   assert m.popitem() == ("a", 1)
   assert m.popitem() == ("b", 2)
   d = pickle.dumps(m)
   l = pickle.loads(d)
-  assert l.items() == zip(["c","r","s","x","y"], [3,9,8,-1,-2])
+  assert l.items() == list(zip(["c","r","s","x","y"], [3,9,8,-1,-2]))
 
 def exercise_stl_string_stl_map_stl_string_double():
   mm = map.stl_string_stl_map_stl_string_double()
@@ -144,7 +145,7 @@ def exercise():
   exercise_stl_string_stl_map_stl_string_double()
   exercise_stl_string_stl_vector_unsigned()
   exercise_int_stl_vector_unsigned()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 from scitbx.python_utils import random_transform as rt
@@ -60,7 +60,7 @@ def run():
   exercise_wilson_amplitude_variate()
   exercise_wilson_intensity_variate()
   exercise_pseudo_normalized_abs_delta_i()
-  print 'OK'
+  print('OK')
 
 if (__name__ == "__main__"):
   run()

@@ -1,13 +1,13 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import mmtbx.msa
 import iotbx.pdb
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def exercise():
   if (not libtbx.env.has_module(name="muscle")):
-    print "Skipping MUSCLE tests: muscle module not available."
+    print("Skipping MUSCLE tests: muscle module not available.")
     return
   fasta_sequences = """\
 >1MRU_A
@@ -108,7 +108,7 @@ END
   (aln_file, alignment) = mmtbx.msa.run(params=params, out=StringIO())
   # XXX not checking the full alignment because it is host-dependent
   assert ("tmp4            AV-NNQ--QNF" in alignment)
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__" :
   exercise()

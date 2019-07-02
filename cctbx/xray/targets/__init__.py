@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 class shelxl_wght_ls(object):
 
   def __init__(O, f_obs, i_obs, i_sig, i_calc=None, f_calc=None, wa=0.1, wb=0):

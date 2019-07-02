@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.math as sm
 import math
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
+from six.moves import range
 
 """
 This routine tests the halton sequence that can be used for
@@ -25,7 +26,7 @@ for more information on quasi random sequences.
 def test_halton_sequence_1(n_points, high_limit=1.0):
   h_gen = sm.halton(1)
   result = 0.0
-  for ii in xrange(n_points):
+  for ii in range(n_points):
     x = h_gen.nth_given_base(5, ii)*high_limit
     y = h_gen.nth_given_base(7, ii)*high_limit
     result += math.exp( float(-x - y) )
@@ -40,7 +41,7 @@ def test_halton_sequence_2(n_points, high_limit=5.0):
   norm = math.pi*2.0
   h_gen = sm.halton(1)
   result = 0.0
-  for ii in xrange(n_points):
+  for ii in range(n_points):
     x = (1.0-2.0*h_gen.nth_given_base(5, ii))*high_limit
     y = (1.0-2.0*h_gen.nth_given_base(7, ii))*high_limit
     result += math.exp( -(x*x+y*y)*0.5 )/norm
@@ -50,17 +51,17 @@ def test_halton_sequence_2(n_points, high_limit=5.0):
 def test_cube():
   square = sm.square_halton_sampling(0.1, 0.8,  10.0, 80.0)
   start_values= (0.1, 10.0)
-  assert approx_equal( start_values, square.next(), eps=1e-4 )
-  for ii in xrange(24):
-    square.next()
+  assert approx_equal( start_values, next(square), eps=1e-4 )
+  for ii in range(24):
+    next(square)
   assert square.state()==25
   square.set_state(0)
-  assert approx_equal( start_values, square.next(), eps=1e-4 )
+  assert approx_equal( start_values, next(square), eps=1e-4 )
 
 def tst_five_d_cube():
   hcube = sm.halton(5)
   result = flex.double( [0,0,0,0,0] )
-  for ii in xrange(5000):
+  for ii in range(5000):
     vec = flex.double(hcube.nth_all(ii))
     result += vec
   result = result/5000.0
@@ -75,4 +76,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  print "OK"
+  print("OK")

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import mmtbx.f_model
 from scitbx.array_family import flex
@@ -7,6 +7,7 @@ from cctbx import xray
 import scitbx.lbfgs
 from libtbx import adopt_init_args
 import cctbx
+from six.moves import range
 
 pdb_str = """
 CRYST1   12.000   11.000   13.000  80.00  70.00 100.00 P 1
@@ -149,14 +150,14 @@ def run():
     sf_and_grads_accuracy_params = params,
     target_name                  = "ls_wunit_kunit")
   # refinement loop
-  print "start r_factor: %6.4f" % fmodel.r_work()
+  print("start r_factor: %6.4f" % fmodel.r_work())
   total_call_count = 0
-  for macro_cycle in xrange(10):
+  for macro_cycle in range(10):
     minimized = minimizer(fmodel = fmodel)
     total_call_count += minimized.call_count
-    print "  macro_cycle %3d (adp)   r_factor: %6.4f  call_count=%d" % \
-    (macro_cycle, fmodel.r_work(), minimized.call_count)
-  print 'total_call_count =', total_call_count
+    print("  macro_cycle %3d (adp)   r_factor: %6.4f  call_count=%d" % \
+    (macro_cycle, fmodel.r_work(), minimized.call_count))
+  print('total_call_count =', total_call_count)
   if(1):
     inp.pdb_hierarchy.adopt_xray_structure(fmodel.xray_structure)
     inp.pdb_hierarchy.write_pdb_file(file_name="refined.pdb")

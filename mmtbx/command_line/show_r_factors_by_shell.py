@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, Usage
 from libtbx import slots_getstate_setstate
 import re
@@ -28,8 +28,8 @@ class r_factor_shell(object):
     self.r_free = r_free
 
   def show(self, out, prefix="  "):
-    print >> out, "%s%6.3f - %6.3f  %6.4f  %6.4f" % (prefix, self.d_max,
-      self.d_min, self.r_work, self.r_free)
+    print("%s%6.3f - %6.3f  %6.4f  %6.4f" % (prefix, self.d_max,
+      self.d_min, self.r_work, self.r_free), file=out)
 
 class r_factor_shells(slots_getstate_setstate):
   __slots__ = ["shells", "overall"]
@@ -67,12 +67,12 @@ class r_factor_shells(slots_getstate_setstate):
       r_free = f_obs_free.r1_factor(f_calc_free))
 
   def show(self, out=sys.stdout, prefix="  "):
-    print >> out, ""
+    print("", file=out)
     for shell in self.shells :
       shell.show(out=out, prefix=prefix)
-    print >> out, ""
+    print("", file=out)
     self.overall.show(out=out, prefix=prefix)
-    print >> out, ""
+    print("", file=out)
 
 def run(args, out=sys.stdout):
   if (len(args) == 0) or ("--help" in args):

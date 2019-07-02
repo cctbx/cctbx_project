@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os, sys
 from libtbx import phil
 import libtbx.phil.command_line
 import iotbx.pdb
 from libtbx.utils import Sorry
+from six.moves import range
 
 master_phil_string = """
 
@@ -50,9 +51,9 @@ altloc_remediate
 
 master_params = master_phil_string # need for auto documentation
 if False:
-  print '-'*80
-  print master_phil_string
-  print '-'*80
+  print('-'*80)
+  print(master_phil_string)
+  print('-'*80)
 master_phil = phil.parse(master_phil_string)
 
 mainchain = set(["CA", "C", "N", "O"])
@@ -127,9 +128,9 @@ def all_mainchain_alt_loc(hierarchy):
           move_blank_to_alt_locs = True
         break
     if 0:
-      print 'move_blank_to_alt_locs',move_blank_to_alt_locs
-      print 'move_CO_to_alt_locs   ',move_CO_to_alt_locs
-      print 'move_NH_to_alt_locs   ',move_NH_to_alt_locs
+      print('move_blank_to_alt_locs',move_blank_to_alt_locs)
+      print('move_CO_to_alt_locs   ',move_CO_to_alt_locs)
+      print('move_NH_to_alt_locs   ',move_NH_to_alt_locs)
     moving_atoms = []
     moving_group = None
     if move_blank_to_alt_locs:
@@ -191,9 +192,9 @@ def get_alt_loc_type(residue_group, verbose=False):
     return "all"
   if altloc_list.intersection(mainchain)==mainchain:
     if altloc_list.difference(mainchain):
-      print "mainchain only",mainchain
-      print 'intersection',altloc_list.intersection(mainchain)
-      print 'difference',altloc_list.difference(mainchain)
+      print("mainchain only",mainchain)
+      print('intersection',altloc_list.intersection(mainchain))
+      print('difference',altloc_list.difference(mainchain))
     else:
       assert 0
   elif altloc_list.intersection(partial1)==partial1:
@@ -207,14 +208,14 @@ def get_alt_loc_type(residue_group, verbose=False):
 def get_alt_locs(hierarchy, verbose=False):
   altlocs = {}
   for model in hierarchy.models():
-    if verbose: print 'model: "%s"' % model.id
+    if verbose: print('model: "%s"' % model.id)
     for chain in model.chains():
-      if verbose: print 'chain: "%s"' % chain.id
+      if verbose: print('chain: "%s"' % chain.id)
       altlocs.setdefault(chain.id, {})
       three = []
       for residue_group in chain.residue_groups():
-        if verbose: print '  residue_group: resseq="%s" icode="%s"' % (
-          residue_group.resseq, residue_group.icode)
+        if verbose: print('  residue_group: resseq="%s" icode="%s"' % (
+          residue_group.resseq, residue_group.icode))
         if len(residue_group.atom_groups())>1:
           altlocs[chain.id].setdefault((residue_group.resseq, residue_group.icode),
                                        len(residue_group.atom_groups()),
@@ -224,13 +225,13 @@ def get_alt_locs(hierarchy, verbose=False):
 def generate_threes(hierarchy, verbose=False):
   altlocs = get_alt_locs(hierarchy)
   for model in hierarchy.models():
-    if verbose: print 'model: "%s"' % model.id
+    if verbose: print('model: "%s"' % model.id)
     for chain in model.chains():
-      if verbose: print 'chain: "%s"' % chain.id
+      if verbose: print('chain: "%s"' % chain.id)
       three = []
       for residue_group in hierarchy.residue_groups():
-        if verbose: print '  residue_group: resseq="%s" icode="%s"' % (
-          residue_group.resseq, residue_group.icode)
+        if verbose: print('  residue_group: resseq="%s" icode="%s"' % (
+          residue_group.resseq, residue_group.icode))
         if chain.id != residue_group.parent().id: break
         three.append(residue_group)
         if len(three)>3: del three[0]
@@ -290,12 +291,12 @@ def get_altloc_data(hierarchy):
   return rc
 
 def print_residue_group(residue_group):
-  print 'residue_group', residue_group.resseq
+  print('residue_group', residue_group.resseq)
   atom_names = []
   for atom_group in residue_group.atom_groups():
-    print '  altloc "%s"' % atom_group.altloc
+    print('  altloc "%s"' % atom_group.altloc)
     for i, atom in enumerate(atom_group.atoms()):
-      print "    %2d %s" % (i, atom.format_atom_record())
+      print("    %2d %s" % (i, atom.format_atom_record()))
       if atom.name.strip() not in atom_names: atom_names.append(atom.name.strip())
   #print 'atoms',len(atom_names)
   #print 'end'
@@ -339,7 +340,7 @@ def spread_to_c_alpha(residue_group,
   if pre_peptide:
     atoms = partial1
   if not _check_atom_groups_ok(residue_group, atoms):
-    print 'not spreading to'
+    print('not spreading to')
     assert 0
     return
   if len(residue_group.atom_groups())!=1:
@@ -355,7 +356,7 @@ def spread_to_c_alpha(residue_group,
     ag.resname = resname
     residue_group.append_atom_group(ag)
   if verbose:
-    print 'duplicating',atoms
+    print('duplicating',atoms)
   for atom_group in residue_group.atom_groups():
     for atom in atom_group.atoms():
       if atom.name.strip() in atoms:
@@ -368,7 +369,7 @@ def spread_to_c_alpha(residue_group,
       if atom_group.altloc==sa: break
     else: assert 0
     for new_atom in spread_atoms[sa]:
-      if verbose: print 'adding to "%s" <- %s' % (sa, atom.quote())
+      if verbose: print('adding to "%s" <- %s' % (sa, atom.quote()))
       atom_group.append_atom(new_atom)
 
 def spread_to_residue(residue_group):
@@ -502,11 +503,11 @@ def run(rargs):
     output.file_name = os.path.join(d, output.file_name)
   #
   preamble = output.file_name.split(".")[0]
-  print "\n  Writing effective parameters to %s.eff\n" % preamble
-  print "#phil __ON__"
+  print("\n  Writing effective parameters to %s.eff\n" % preamble)
+  print("#phil __ON__")
   working_phil.format(python_object=working_params).show()
-  print "#phil __OFF__\n"
-  f=file("%s.eff" % preamble, "wb")
+  print("#phil __OFF__\n")
+  f=open("%s.eff" % preamble, "w")
   f.write(working_phil.format(python_object=working_params).as_str())
   f.close()
 
@@ -529,8 +530,8 @@ def run(rargs):
 
   correct_occupancies(hierarchy)
 
-  print "  Writing output to %s" % output.file_name
-  f=file(output.file_name, "wb")
+  print("  Writing output to %s" % output.file_name)
+  f=open(output.file_name, "w")
   f.write(hierarchy.as_pdb_string(
     crystal_symmetry=pdb_inp.crystal_symmetry()),
           )

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
@@ -41,7 +41,8 @@ class direct_space_asu(sgtbx.direct_space_asu.direct_space_asu):
       thickness=thickness,
       relative_thickness=relative_thickness)
 
-class _(boost.python.injector, float_asu):
+@boost.python.inject_into(float_asu)
+class _():
 
   def add_buffer(self, thickness=None, relative_thickness=None):
     assert [thickness, relative_thickness].count(None) > 0
@@ -51,7 +52,8 @@ class _(boost.python.injector, float_asu):
       thickness = self.unit_cell().volume()**(1/3.)*relative_thickness
     return self._add_buffer(thickness)
 
-class _(boost.python.injector, asu_mappings):
+@boost.python.inject_into(asu_mappings)
+class _():
 
   def get_rt_mx_ji(self, pair):
     return self.get_rt_mx_i(pair).inverse().multiply(self.get_rt_mx_j(pair))

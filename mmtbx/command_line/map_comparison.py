@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_comparison
 
 from cctbx import crystal
@@ -9,6 +9,8 @@ import iotbx.ccp4_map
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
 import os, sys
+from six.moves import zip
+from six.moves import range
 
 master_phil = phil.parse("""
 include scope libtbx.phil.interface.tracking_params
@@ -57,11 +59,11 @@ options
 master_params = master_phil
 
 def show_overall_statistics(out=sys.stdout, s=None, header=None):
-  print >> out, header
-  print >> out, "  min/max/mean: %6.4f %6.4f %6.4f"%(s.min(), s.max(), s.mean())
-  print >> out, "  kurtosis    : %6.4f" % s.kurtosis()
-  print >> out, "  skewness    : %6.4f" % s.skewness()
-  print >> out, "  sigma       : %6.4f" % s.sigma()
+  print(header, file=out)
+  print("  min/max/mean: %6.4f %6.4f %6.4f"%(s.min(), s.max(), s.mean()), file=out)
+  print("  kurtosis    : %6.4f" % s.kurtosis(), file=out)
+  print("  skewness    : %6.4f" % s.skewness(), file=out)
+  print("  sigma       : %6.4f" % s.sigma(), file=out)
 
 def create_statistics_dict(out=sys.stdout, s=None):
   statistics_dict = dict()
@@ -74,23 +76,22 @@ def create_statistics_dict(out=sys.stdout, s=None):
   return statistics_dict
 
 def show_citation(out=sys.stdout):
-  print >> out, "-"*79
+  print("-"*79, file=out)
   msg = """Map comparison and statistics. For details see:
   Acta Cryst. (2014). D70, 2593-2606
   Metrics for comparison of crystallographic maps
   A. Urzhumtsev, P. V. Afonine, V. Y. Lunin, T. C. Terwilliger and P. D. Adams"""
-  print >> out, msg
-  print >> out, "-"*79
+  print(msg, file=out)
+  print("-"*79, file=out)
 
 # =============================================================================
 def run(args, out=sys.stdout, validated=False):
   show_citation(out=out)
   if (len(args) == 0):
     master_phil.show(out=out)
-    print >> out,\
-      '\nUsage: phenix.map_comparison <CCP4> <CCP4>\n',\
+    print('\nUsage: phenix.map_comparison <CCP4> <CCP4>\n',\
       '       phenix.map_comparison <CCP4> <MTZ> mtz_label_1=<label>\n',\
-      '       phenix.map_comparison <MTZ 1> mtz_label_1=<label 1> <MTZ 2> mtz_label_2=<label 2>\n'
+      '       phenix.map_comparison <MTZ 1> mtz_label_1=<label 1> <MTZ 2> mtz_label_2=<label 2>\n', file=out)
     sys.exit()
 
   # process arguments
@@ -134,7 +135,7 @@ def run(args, out=sys.stdout, validated=False):
           elif (params.input.mtz_2 is None):
             params.input.mtz_2 = map_file
       else:
-        print >> out, 'WARNING: only the first two files are used'
+        print('WARNING: only the first two files are used', file=out)
         break
 
   # validate arguments (GUI sets validated to true, no need to run again)
@@ -222,7 +223,7 @@ def run(args, out=sys.stdout, validated=False):
   show_overall_statistics(out=out, s=s2, header="Map 2 (%s):"%map_names[1])
   cc_input_maps = flex.linear_correlation(x = m1.as_1d(),
                                           y = m2.as_1d()).coefficient()
-  print >> out, "CC, input maps: %6.4f" % cc_input_maps
+  print("CC, input maps: %6.4f" % cc_input_maps, file=out)
 
   # compute CCpeak
   cc_peaks = list()
@@ -230,37 +231,37 @@ def run(args, out=sys.stdout, validated=False):
   m2_he = maptbx.volume_scale(map = m2,  n_bins = 10000).map_data()
   cc_quantile = flex.linear_correlation(x = m1_he.as_1d(),
                                         y = m2_he.as_1d()).coefficient()
-  print >> out, "CC, quantile rank-scaled (histogram equalized) maps: %6.4f" % \
-    cc_quantile
-  print >> out, "Peak correlation:"
-  print >> out, "  cutoff  CCpeak"
+  print("CC, quantile rank-scaled (histogram equalized) maps: %6.4f" % \
+    cc_quantile, file=out)
+  print("Peak correlation:", file=out)
+  print("  cutoff  CCpeak", file=out)
   cutoffs = [i/100.  for i in range(1,90)]+ [i/1000 for i in range(900,1000)]
   for cutoff in cutoffs:
     cc_peak = maptbx.cc_peak(map_1=m1_he, map_2=m2_he, cutoff=cutoff)
-    print >> out, "  %3.2f   %7.4f" % (cutoff, cc_peak)
+    print("  %3.2f   %7.4f" % (cutoff, cc_peak), file=out)
     cc_peaks.append((cutoff, cc_peak))
 
   # compute discrepancy function (D-function)
   discrepancies = list()
   cutoffs = flex.double(cutoffs)
   df = maptbx.discrepancy_function(map_1=m1_he, map_2=m2_he, cutoffs=cutoffs)
-  print >> out, "Discrepancy function:"
-  print >> out, "  cutoff  D"
+  print("Discrepancy function:", file=out)
+  print("  cutoff  D", file=out)
   for c, d in zip(cutoffs, df):
-    print >> out, "  %3.2f   %7.4f" % (c,d)
+    print("  %3.2f   %7.4f" % (c,d), file=out)
     discrepancies.append((c, d))
 
   # compute and output histograms
   h1 = maptbx.histogram(map=m1, n_bins=10000)
   h2 = maptbx.histogram(map=m2, n_bins=10000)
-  print >> out, "Map histograms:"
-  print >> out, "Map 1 (%s)     Map 2 (%s)"%\
-    (params.input.map_1,params.input.map_2)
-  print >> out, "(map_value,cdf,frequency) <> (map_value,cdf,frequency)"
+  print("Map histograms:", file=out)
+  print("Map 1 (%s)     Map 2 (%s)"%\
+    (params.input.map_1,params.input.map_2), file=out)
+  print("(map_value,cdf,frequency) <> (map_value,cdf,frequency)", file=out)
   for a1,c1,v1, a2,c2,v2 in zip(h1.arguments(), h1.c_values(), h1.values(),
                                 h2.arguments(), h2.c_values(), h2.values()):
-    print >> out, "(%9.5f %9.5f %9.5f) <> (%9.5f %9.5f %9.5f)"%\
-      (a1,c1,v1, a2,c2,v2)
+    print("(%9.5f %9.5f %9.5f) <> (%9.5f %9.5f %9.5f)"%\
+      (a1,c1,v1, a2,c2,v2), file=out)
 
   # store results
   s1_dict = create_statistics_dict(s=s1)
@@ -278,6 +279,7 @@ def run(args, out=sys.stdout, validated=False):
   results['cc_quantile'] = cc_quantile
   results['cc_peaks'] = cc_peaks
   results['discrepancies'] = discrepancies
+  # TODO, verify h1,h2 are not dicts, e.g. .values is py2/3 compat. I assume it is here
   results['map_histograms'] = ( (h1.arguments(), h1.c_values(), h1.values()),
                                 (h2.arguments(), h2.c_values(), h2.values()) )
 
@@ -373,7 +375,7 @@ def validate_params(params):
       raise Sorry('The gridding of the two maps is not compatible.')
   else:
   # check if MTZ files have complex arrays and labels
-    for i in xrange(len(maps)):
+    for i in range(len(maps)):
       if (maps[i].file_type == 'hkl'):
         labels = get_mtz_labels(maps[i])
         if (len(labels) == 0):

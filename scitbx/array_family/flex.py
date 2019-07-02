@@ -7,6 +7,8 @@ import sys
 import boost.optional # import dependency
 import boost.std_pair # import dependency
 import boost.python
+from six.moves import range
+from six.moves import zip
 boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import *
 import scitbx_array_family_flex_ext as ext
@@ -39,7 +41,8 @@ def bool_md5(self):
   return hashlib.md5(self.__getstate__()[1])
 bool.md5 = bool_md5
 
-class _(boost.python.injector, grid):
+@boost.python.inject_into(grid)
+class _():
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
@@ -68,7 +71,7 @@ def rows(a):
   assert a.is_0_based()
   assert not a.is_padded()
   nr,nc = a.focus()
-  for ir in xrange(nr):
+  for ir in range(nr):
     yield a[ir*nc:(ir+1)*nc]
 
 def upper_bidiagonal(d, f):
@@ -132,7 +135,7 @@ def to_list(array):
   """Workaround for C++ exception handling bugs
      (list(array) involves C++ exceptions)"""
   result = []
-  for i in xrange(array.size()):
+  for i in range(array.size()):
     result.append(array[i])
   return result
 
@@ -160,7 +163,8 @@ def _format_mean(values, format):
   return format_value(
     format=format, value=mean_default(values=values, default=None))
 
-class _(boost.python.injector, ext.min_max_mean_double):
+@boost.python.inject_into(ext.min_max_mean_double)
+class _():
 
   def show(self, out=None, prefix="", format="%.6g", show_n=True):
     if out is None: out = sys.stdout
@@ -228,7 +232,8 @@ def condense_as_ranges(integer_array):
   store_range()
   return result
 
-class _(boost.python.injector, mersenne_twister):
+@boost.python.inject_into(mersenne_twister)
+class _():
 
   def random_selection(self, population_size, sample_size):
     assert population_size >= 0
@@ -267,12 +272,12 @@ class py_object(object):
     assert [value, values, value_factory].count(None) >= 2
     self._accessor = accessor
     if (value_factory is not None):
-      self._data = [value_factory() for i in xrange(accessor.size_1d())]
+      self._data = [value_factory() for i in range(accessor.size_1d())]
     elif (values is not None):
       assert len(values) == accessor.size_1d()
       self._data = values[:]
     else:
-      self._data = [value for i in xrange(accessor.size_1d())]
+      self._data = [value for i in range(accessor.size_1d())]
 
   def accessor(self):
     return self._accessor
@@ -286,7 +291,8 @@ class py_object(object):
   def __setitem__(self, index, value):
     self._data[self._accessor(index)] = value
 
-class _(boost.python.injector, ext.linear_regression_core):
+@boost.python.inject_into(ext.linear_regression_core)
+class _():
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
@@ -294,7 +300,8 @@ class _(boost.python.injector, ext.linear_regression_core):
     print(prefix+"y_intercept:", self.y_intercept(), file=f)
     print(prefix+"slope:", self.slope(), file=f)
 
-class _(boost.python.injector, ext.double):
+@boost.python.inject_into(ext.double)
+class _():
 
   def matrix_inversion(self):
     result = self.deep_copy()
@@ -304,7 +311,8 @@ class _(boost.python.injector, ext.double):
   def as_scitbx_matrix(self):
     return as_scitbx_matrix(self)
 
-class _(boost.python.injector, ext.linear_correlation):
+@boost.python.inject_into(ext.linear_correlation)
+class _():
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
@@ -323,7 +331,8 @@ class histogram_slot_info(object):
   def center(self):
     return (self.high_cutoff + self.low_cutoff) / 2
 
-class _(boost.python.injector, ext.histogram):
+@boost.python.inject_into(ext.histogram)
+class _():
 
   def __getinitargs__(self):
     return (
@@ -363,7 +372,7 @@ def show_count_stats(
       prefix=""):
   assert counts.size() != 0
   if (out is None): out = sys.stdout
-  from __builtin__ import int, max
+  from builtins import int, max
   counts_sorted = sorted(counts, reverse=True)
   threshold = max(1, int(counts_sorted[0] / group_size) * group_size)
   n = counts_sorted.size()
@@ -393,7 +402,8 @@ class weighted_histogram_slot_info(object):
   def center(self):
     return (self.high_cutoff + self.low_cutoff) / 2
 
-class _(boost.python.injector, ext.weighted_histogram):
+@boost.python.inject_into(ext.weighted_histogram)
+class _():
 
   def __getinitargs__(self):
     return (
@@ -417,7 +427,7 @@ class _(boost.python.injector, ext.weighted_histogram):
       print(fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n), file=f)
 
 def permutation_generator(size):
-  result = size_t(xrange(size))
+  result = size_t(range(size))
   yield result
   while (result.next_permutation()): yield result
 
@@ -506,7 +516,7 @@ class smart_selection(object):
 
 def __show_sizes(f):
   typename_n_size = f()
-  from __builtin__ import max
+  from builtins import max
   l = max([ len(typename) for typename, size in typename_n_size ])
   fmt = "%%%is : %%i" % l
   for typename, size in typename_n_size:
@@ -538,7 +548,7 @@ def exercise_triple(flex_triple, flex_order=None, as_double=False):
     assert tuple(a) == tuple(b)
 
 def compare_derivatives(more_reliable, less_reliable, eps=1e-6):
-  from __builtin__ import max
+  from builtins import max
   scale = max(1, ext.max(ext.abs(more_reliable)))
   if (not (more_reliable/scale).all_approx_equal( # fast
              other=less_reliable/scale, tolerance=eps)):

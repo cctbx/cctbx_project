@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx
 from libtbx import easy_run
 import iotbx.pdb
@@ -537,13 +537,13 @@ def exercise_000(file_name="tst_mtrix_biomt_cmdl_000.pdb"):
   """
 
   of = open(file_name,"w")
-  print >> of, pdb_str_0
+  print(pdb_str_0, file=of)
   of.close()
   # template when pdb_as_cif will handle BIOMT records as well...
   # easy_run.call("phenix.pdb_as_cif %s"%file_name)
   # for file_type in ['pdb', 'cif']:
   for file_type in ['pdb']:
-    print "file_type:", file_type
+    print("file_type:", file_type)
     easy_run.call("phenix.pdb.biomt_reconstruction %s.%s" % (file_name[:-4], file_type))
     pdb_inp = iotbx.pdb.input(
       file_name="%s_BIOMT_expanded.%s" % (file_name[:-4], file_type))
@@ -573,7 +573,7 @@ def exercise_001(file_name="tst_mtrix_biomt_cmdl_001.pdb"):
   Make sure SS gets populated by MTRIX
   """
   of = open(file_name,"w")
-  print >> of, pdb_str_2b
+  print(pdb_str_2b, file=of)
   of.close()
   easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
   pdb_inp = iotbx.pdb.input(
@@ -603,7 +603,7 @@ def exercise_002(file_name="tst_mtrix_biomt_cmdl_002.pdb"):
   Make sure SS is fine when expanding without MTRIX
   """
   of = open(file_name,"w")
-  print >> of, pdb_str_0
+  print(pdb_str_0, file=of)
   of.close()
   easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
   pdb_inp = iotbx.pdb.input(
@@ -632,7 +632,7 @@ def exercise_003(file_name="tst_mtrix_biomt_cmdl_003.pdb"):
   Make sure SS is fine when expanding without BIOMT
   """
   of = open(file_name,"w")
-  print >> of, pdb_str_2b
+  print(pdb_str_2b, file=of)
   of.close()
   easy_run.call("phenix.pdb.biomt_reconstruction %s"%file_name)
   pdb_inp = iotbx.pdb.input(
@@ -661,7 +661,7 @@ def exercise_01(file_name="tst_mtrix_biomt_cmdl_01.pdb"):
   Use MTRIX.
   """
   of = open(file_name,"w")
-  print >> of, pdb_str_1
+  print(pdb_str_1, file=of)
   of.close()
   easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
   pdb_inp1 = iotbx.pdb.input(
@@ -682,7 +682,7 @@ def exercise_02(file_name="tst_mtrix_biomt_cmdl_02.pdb"):
   Make sure it's not going to make up CRYST1.
   """
   of = open(file_name,"w")
-  print >> of, pdb_str_2
+  print(pdb_str_2, file=of)
   of.close()
   easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
   pdb_inp1 = iotbx.pdb.input(
@@ -699,7 +699,7 @@ def exercise_03(file_name="tst_mtrix_biomt_cmdl_03.cif"):
   Handle mmCIF.
   """
   of = open(file_name,"w")
-  print >> of, pdb_str_3
+  print(pdb_str_3, file=of)
   of.close()
   easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
   pdb_inp1 = iotbx.pdb.input(
@@ -727,4 +727,4 @@ if(__name__=='__main__'):
     exercise_02()
     exercise_03()
   else:
-    print "Skipping tests: phenix not found"
+    print("Skipping tests: phenix not found")

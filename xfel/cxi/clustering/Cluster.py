@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 import math
 from cctbx.uctbx.determine_unit_cell import NCDist
@@ -7,6 +7,7 @@ import numpy as np
 import json
 from .SingleFrame import SingleFrame
 import logging
+from six.moves import range
 
 
 class Clu_BELIEVE_THIS_WHOLE_DIRECTORY_IS_DEAD_CODE_20171120_ster:
@@ -23,7 +24,7 @@ class Clu_BELIEVE_THIS_WHOLE_DIRECTORY_IS_DEAD_CODE_20171120_ster:
     for i, member in enumerate(self.members):
       unit_cells[i, :] = member.uc
       # Calculate point group composition
-      if member.pg in self.pg_composition.keys():
+      if member.pg in self.pg_composition:
         self.pg_composition[member.pg] += 1
       else:
         self.pg_composition[member.pg] = 1
@@ -135,10 +136,10 @@ class Clu_BELIEVE_THIS_WHOLE_DIRECTORY_IS_DEAD_CODE_20171120_ster:
   def ab_cluster(self, threshold=10000, method='distance', linkage_method='single', log=False, plot=False):
     """ Do basic hierarchical clustering using the Andrews-Berstein distance
     on the Niggli cells """
-    print "Hierarchical clustering of unit cells:"
+    print("Hierarchical clustering of unit cells:")
     import scipy.spatial.distance as dist
 
-    print "Using Andrews-Bernstein Distance from Andrews & Bernstein J Appl Cryst 47:346 (2014)."
+    print("Using Andrews-Bernstein Distance from Andrews & Bernstein J Appl Cryst 47:346 (2014).")
 
     def make_g6(uc):
       """ Take a reduced Niggli Cell, and turn it into the G6 representation """
@@ -192,7 +193,7 @@ class Clu_BELIEVE_THIS_WHOLE_DIRECTORY_IS_DEAD_CODE_20171120_ster:
     for cluster in sub_clusters:
       if len(cluster.members) != 1:
 
-        sorted_pg_comp = sorted(cluster.pg_composition.items(), key=lambda x: -1 * x[1])
+        sorted_pg_comp = sorted(list(cluster.pg_composition.items()), key=lambda x: -1 * x[1])
         pg_strings = ["{} in {}".format(pg[1], pg[0])
                       for pg in sorted_pg_comp]
         point_group_string = ", ".join(pg_strings) + "."
@@ -211,7 +212,7 @@ class Clu_BELIEVE_THIS_WHOLE_DIRECTORY_IS_DEAD_CODE_20171120_ster:
       else:
         singletons.append("".join([("{:<14} {:<11.1f} {:<11.1f} {:<11.1f}"
                                     "{:<12.1f} {:<12.1f} {:<12.1f}").format(
-          cluster.pg_composition.keys()[0],
+          list(cluster.pg_composition.keys())[0],
           cluster.members[0].uc[0], cluster.members[0].uc[1],
           cluster.members[0].uc[2], cluster.members[0].uc[3],
           cluster.members[0].uc[4], cluster.members[0].uc[5]),
@@ -223,7 +224,7 @@ class Clu_BELIEVE_THIS_WHOLE_DIRECTORY_IS_DEAD_CODE_20171120_ster:
       "a", "b", "c",
       "alpha", "beta", "gamma")
     out_str += "".join(singletons)
-    print out_str
+    print(out_str)
 
     if plot:
       import matplotlib.pyplot as plt

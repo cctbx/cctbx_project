@@ -3,7 +3,7 @@
 Main program driver for Xtriage.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.scaling import data_statistics
 from mmtbx.scaling import relative_wilson
 from mmtbx.scaling import pair_analyses
@@ -25,7 +25,9 @@ from libtbx.str_utils import StringIO, wordwrap
 from libtbx.utils import null_out
 from libtbx import runtime_utils
 import libtbx.callbacks # import dependency
-from cStringIO import StringIO
+from functools import cmp_to_key
+from past.builtins import cmp
+from six.moves import cStringIO as StringIO
 import os
 import sys
 
@@ -286,17 +288,17 @@ def print_banner(appl, out=None):
     b = max(0, len(hashes) - len(s) - 4)
     l = int(b // 2)
     r = b - l
-    print >> out, "##%s%s%s##" % (" "*l, s, " "*r)
-  print >> out, hashes
+    print("##%s%s%s##" % (" "*l, s, " "*r), file=out)
+  print(hashes, file=out)
   print_centered(appl)
   print_centered("")
   print_centered("P.H. Zwart, R.W. Grosse-Kunstleve & P.D. Adams")
   print_centered("")
-  print >> out, hashes
+  print(hashes, file=out)
 
 
 def print_help(appl):
-  print """
+  print("""
 --------------------------------------------------------------------------------
 Usage: %(appl)s file_name=myfile.sca <options>
 
@@ -405,7 +407,7 @@ Example usage:
 
 --------------------------------------------------------------------------------
 
-""" % vars()
+""" % vars())
 
 class merging_statistics(mmtbx.scaling.xtriage_analysis,
                           iotbx.merging_statistics.dataset_statistics):
@@ -671,14 +673,13 @@ class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
           n_bins=params.scaling.input.parameters.merging.n_bins,
           log=text_out)
         self.merging_stats.show(out=text_out)
-        print >> text_out, ""
-        print >> text_out, "References:"
-        print >> text_out, iotbx.merging_statistics.citations_str
-        print >> text_out, ""
-      except Exception, e :
-        print >> text_out, \
-          "WARNING: calculation of merging statistics failed"
-        print >> text_out, "  error: %s" % str(e)
+        print("", file=text_out)
+        print("References:", file=text_out)
+        print(iotbx.merging_statistics.citations_str, file=text_out)
+        print("", file=text_out)
+      except Exception as e :
+        print("WARNING: calculation of merging statistics failed", file=text_out)
+        print("  error: %s" % str(e), file=text_out)
 
     self.plan_sad_experiment_stats= None
     if ((unmerged_obs is not None) and
@@ -692,10 +693,9 @@ class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
           sites=params.scaling.input.asu_contents.n_sites,
           skip_scaling=True,
           out=null_out()).analysis
-      except Exception, e :
-        print >> text_out, \
-          "WARNING: calculation of anomalous statistics failed"
-        print >> text_out, "  error: %s\n" % str(e)
+      except Exception as e :
+        print("WARNING: calculation of anomalous statistics failed", file=text_out)
+        print("  error: %s\n" % str(e), file=text_out)
     ###
     make_big_header("Basic statistics", out=text_out)
     n_copies_solc = 1.0
@@ -704,10 +704,10 @@ class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
         params.scaling.input.asu_contents.n_bases is not None):
       nres_known = True
       if (params.scaling.input.asu_contents.sequence_file is not None):
-        print >> text_out, "  warning: ignoring sequence file"
+        print("  warning: ignoring sequence file", file=text_out)
     elif (params.scaling.input.asu_contents.sequence_file is not None):
-      print >> text_out, "  determining composition from sequence file %s" % \
-        params.scaling.input.asu_contents.sequence_file
+      print("  determining composition from sequence file %s" % \
+        params.scaling.input.asu_contents.sequence_file, file=text_out)
       seq_comp = iotbx.bioinformatics.composition_from_sequence_file(
         file_name=params.scaling.input.asu_contents.sequence_file,
         log=text_out)
@@ -727,8 +727,8 @@ class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
     n_copies_solc = matthews_results.n_copies
     if params.scaling.input.asu_contents.n_copies_per_asu is not None:
       n_copies_solc = params.scaling.input.asu_contents.n_copies_per_asu
-      print >> text_out,"Number of copies per asymmetric unit provided"
-      print >> text_out," Will use user specified value of ", n_copies_solc
+      print("Number of copies per asymmetric unit provided", file=text_out)
+      print(" Will use user specified value of ", n_copies_solc, file=text_out)
     else:
       params.scaling.input.asu_contents.n_copies_per_asu = n_copies_solc
 
@@ -769,15 +769,14 @@ class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
         self.relative_wilson = relative_wilson.relative_wilson(
           miller_obs=miller_obs,
           miller_calc=miller_calc).summary()
-      except Sorry, e :
-        print >> text_out, \
-          "*** Error calculating relative Wilson plot - skipping."
-        print >> text_out, str(e)
-        print >> text_out, ""
-      except Exception, e :
-        print "RELATIVE WILSON ERROR"
+      except Sorry as e :
+        print("*** Error calculating relative Wilson plot - skipping.", file=text_out)
+        print(str(e), file=text_out)
+        print("", file=text_out)
+      except Exception as e :
+        print("RELATIVE WILSON ERROR")
         raise
-        print >> text_out, ""
+        print("", file=text_out)
       else : # FIXME
         pass # self.relative_wilson.show(out=text_out)
     text_out.flush()
@@ -791,7 +790,7 @@ class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
       miller_obs = new_miller.deep_copy()
       normalised_array = self.wilson_scaling.normalised_miller.deep_copy()
 
-    print >> text_out, ""
+    print("", file=text_out)
     #Do the twinning analyses
     ## resolution check
     if (flex.min(miller_obs.d_spacings().data())
@@ -832,9 +831,9 @@ class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
       text_out.flush()
     else :
       assert miller_obs.space_group().is_centric()
-      print >> text_out, ""
-      print >> text_out, "Centric space group - skipping twin analyses."
-      print >> text_out, ""
+      print("", file=text_out)
+      print("Centric space group - skipping twin analyses.", file=text_out)
+      print("", file=text_out)
 
     if miller_ref is not None:
       self.reference_analyses = pair_analyses.reindexing(
@@ -1006,7 +1005,8 @@ class summary(mmtbx.scaling.xtriage_analysis):
   def __init__(self, issues, sort=True):
     self._issues = issues
     if (sort):
-      self._issues.sort(lambda a,b: cmp(b[0], a[0]))
+      cmp_fn = lambda a,b: cmp(b[0], a[0])
+      self._issues.sort(key=cmp_to_key(cmp_fn))
 
   @property
   def n_problems(self):
@@ -1104,10 +1104,10 @@ def run(args, command_name="phenix.xtriage", return_result=False,
   ## Check for number of residues
 
   if params.scaling.input.asu_contents.n_residues is None:
-    print >> log, "##-------------------------------------------##"
-    print >> log, "## WARNING:                                  ##"
-    print >> log, "## Number of residues unspecified            ##"
-    print >> log, "##-------------------------------------------##"
+    print("##-------------------------------------------##", file=log)
+    print("## WARNING:                                  ##", file=log)
+    print("## Number of residues unspecified            ##", file=log)
+    print("##-------------------------------------------##", file=log)
 
   if params.scaling.input.xray_data.file_name is None:
     raise Sorry("No reflection file defined")
@@ -1122,9 +1122,9 @@ def run(args, command_name="phenix.xtriage", return_result=False,
     space_group = params.scaling.input.xray_data.space_group
     unit_cell = params.scaling.input.xray_data.unit_cell
   if (None in [crystal_symmetry, space_group, unit_cell]):
-    print >> log, "Cell and/or symmetry not specified in reflection file"
+    print("Cell and/or symmetry not specified in reflection file", file=log)
     if (reference_params.structure.file_name is not None):
-      print >> out, "Using reference PDB file"
+      print("Using reference PDB file", file=out)
       crystal_symmetry = crystal_symmetry_from_any.extract_from(
         file_name=reference_params.structure.file_name)
     if (crystal_symmetry is None and
@@ -1161,12 +1161,12 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 
   new_params = master_params.format(python_object=params)
   if (params.scaling.input.parameters.reporting.verbose>0):
-    print >> log
-    print >> log
-    print >> log, "Effective parameters: "
-    print >> log, "#phil __ON__"
+    print(file=log)
+    print(file=log)
+    print("Effective parameters: ", file=log)
+    print("#phil __ON__", file=log)
     new_params.show(out=log,expert_level=params.scaling.input.expert_level)
-    print >> log, "#phil __END__"
+    print("#phil __END__", file=log)
   crystal_symmetry = crystal.symmetry(
     unit_cell = params.scaling.input.xray_data.unit_cell,
     space_group_symbol = str(params.scaling.input.xray_data.space_group) )
@@ -1208,10 +1208,10 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       if (array.info().labels == info.labels):
         if (array.is_unmerged_intensity_array()):
           unmerged_array = array
-          print >> log, ""
-          print >> log, "Also reading unmerged data as %s" % \
-            array.info().label_string()
-          print >> log, ""
+          print("", file=log)
+          print("Also reading unmerged data as %s" % \
+            array.info().label_string(), file=log)
+          print("", file=log)
           break
 
   if not miller_array.is_real_array():
@@ -1266,8 +1266,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         data = flex.abs( f_calc_miller.data() ) ).set_observation_type(
           f_calc_miller)
     if (f_calc_miller.is_xray_intensity_array()):
-      print >> log, "Converting %s to amplitudes" % \
-        (params.scaling.input.xray_data.calc_labels)
+      print("Converting %s to amplitudes" % \
+        (params.scaling.input.xray_data.calc_labels), file=log)
       f_calc_miller = f_calc_miller.f_sq_as_f()
     f_calc_miller = f_calc_miller.eliminate_sys_absent(integral_only=True,
       log=log)
@@ -1318,7 +1318,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       reference_symmetry = crystal_symmetry_from_any.extract_from(
         file_name=params.scaling.input.xray_data.reference.data.file_name)
     if reference_symmetry is None:
-      print >> log, "No reference unit cell and space group could be deduced"
+      print("No reference unit cell and space group could be deduced", file=log)
       raise Sorry(
         "Please provide unit cell and space group for reference data")
     xray_data_server =  reflection_file_utils.reflection_file_server(
@@ -1348,10 +1348,10 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
   raw_data = miller_array.deep_copy()
   xtriage_results = None
   assert miller_array.is_real_array()
-  print >> log
-  print >> log
-  print >> log, "Symmetry, cell and reflection file content summary"
-  print >> log
+  print(file=log)
+  print(file=log)
+  print("Symmetry, cell and reflection file content summary", file=log)
+  print(file=log)
   miller_array.set_info(info=info)
   miller_array.show_comprehensive_summary(f=log)
 

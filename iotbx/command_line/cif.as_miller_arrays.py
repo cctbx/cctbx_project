@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.cif
 from libtbx import easy_pickle, smart_open
 from libtbx.str_utils import show_string
@@ -12,14 +12,14 @@ def run(args):
       miller_arrays = iotbx.cif.reader(file_object=file_object).as_miller_arrays()
     except KeyboardInterrupt:
       raise
-    except Exception, e:
-      print "Error extracting miller arrays from file: %s:" % (
-        show_string(f))
-      print " ", str(e)
+    except Exception as e:
+      print("Error extracting miller arrays from file: %s:" % (
+        show_string(f)))
+      print(" ", str(e))
       continue
     for miller_array in miller_arrays:
       miller_array.show_comprehensive_summary()
-      print
+      print()
     r, _ = op.splitext(op.basename(f))
     easy_pickle.dump(file_name=r+'_miller_arrays.pickle', obj=miller_arrays)
 

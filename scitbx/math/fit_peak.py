@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math
 from scitbx import matrix,lbfgs
 from scitbx.array_family import flex
+from six.moves import range
 
 class fit_peak(object):
   """
@@ -47,7 +48,7 @@ class fit_peak(object):
       # construct vector and matrix for initial guess
       b_elements = []
       A_elements = []
-      for i in xrange(self.n):
+      for i in range(self.n):
         b_elements.append(height_list[i])
         A_elements.append(xyz_list[i][0]*xyz_list[i][0])
         A_elements.append(xyz_list[i][1]*xyz_list[i][1])
@@ -70,7 +71,7 @@ class fit_peak(object):
       # construct vector and matrix for initial guess
       b_elements = []
       A_elements = []
-      for i in xrange(self.n):
+      for i in range(self.n):
         b_elements.append(height_list[i])
         A_elements.append(xyz_list[i][0]*xyz_list[i][0])
         A_elements.append(xyz_list[i][1]*xyz_list[i][1])
@@ -86,7 +87,7 @@ class fit_peak(object):
       b = matrix.col(b_elements)
 
     else:
-      print "fit_peak error: shape not valid"
+      print("fit_peak error: shape not valid")
       exit()
 
     # get initial guess (solve Ax = b)
@@ -120,12 +121,12 @@ class fit_peak(object):
   def compute_functional_and_gradients(self):
     answer = self.fit(parameters=self.x)
     f = 0.0
-    g = [0.0 for i in xrange(self.n)]
-    for i in xrange(len(self.height_list)):
+    g = [0.0 for i in range(self.n)]
+    for i in range(len(self.height_list)):
       f_i = answer.get_height(r=self.xyz_list[i]) - self.height_list[i]
       g_i = answer.get_gradient(r=self.xyz_list[i])
       f = f + f_i*f_i
-      for j in xrange(self.n):
+      for j in range(self.n):
         g[j] = g[j] + 2.0*f_i*g_i[j]
     return f,flex.double(g)
 
@@ -180,7 +181,7 @@ class parabola(object):
 
   def get_height(self,r=None):
     if (self.p is None):
-      print "parabaola error: parameters not initialized"
+      print("parabaola error: parameters not initialized")
     else:
       return self.p[0]*r[0]*r[0] + self.p[1]*r[1]*r[1] + self.p[2]*r[2]*r[2] +\
              self.p[3]*r[0] + self.p[4]*r[1] + self.p[5]*r[2] + self.p[6]
@@ -229,7 +230,7 @@ class quadratic(object):
 
   def get_height(self,r=None):
     if (self.p is None):
-      print "quadratic error: parameters not initialized"
+      print("quadratic error: parameters not initialized")
     else:
       return self.p[0]*r[0]*r[0] + self.p[1]*r[1]*r[1] + self.p[2]*r[2]*r[2] +\
              self.p[3]*r[0]      + self.p[4]*r[1]      + self.p[5]*r[2]      +\
@@ -283,7 +284,7 @@ class gaussian(object):
 
   def get_height(self,r=None):
     if (self.p is None):
-      print "gaussian error: parameters not initialized"
+      print("gaussian error: parameters not initialized")
     else:
       return self.p[0]*r[0]*r[0] + self.p[1]*r[1]*r[1] + self.p[2]*r[2]*r[2] +\
              self.p[3]*r[0]      + self.p[4]*r[1]      + self.p[5]*r[2]      +\
@@ -328,8 +329,8 @@ class pick_map_neighbors(object):
 
     n_neighbors = 27
     extents = map_in.all()
-    self.height_list = [0.0 for i in xrange(n_neighbors)]
-    self.xyz_list = [(0,0,0) for i in xrange(n_neighbors)]
+    self.height_list = [0.0 for i in range(n_neighbors)]
+    self.xyz_list = [(0,0,0) for i in range(n_neighbors)]
 
     u0 = site[0]
     up = site[0] + 1
@@ -407,7 +408,7 @@ class pick_map_neighbors(object):
     self.xyz_list[26] = (um,vm,wm)
 
     # fractionalize coordinates
-    for i in xrange(n_neighbors):
+    for i in range(n_neighbors):
       self.xyz_list[i] = (float(self.xyz_list[i][0])/extents[0],
                           float(self.xyz_list[i][1])/extents[1],
                           float(self.xyz_list[i][2])/extents[2])
@@ -424,4 +425,4 @@ class pick_map_neighbors(object):
 # =============================================================================
 if(__name__ == "__main__"):
   p = parabola(parameters=(-1,-1,-1,2,2,2,24))
-  print p.vertex
+  print(p.vertex)

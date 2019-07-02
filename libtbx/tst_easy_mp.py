@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
 from libtbx import unpicklable
 from libtbx.test_utils import Exception_expected
 from libtbx import Auto
 from six.moves import cStringIO as StringIO
 import sys
+from six.moves import range, zip
 
 def exercise_func_wrapper_sub_directories():
   from libtbx.easy_mp import func_wrapper_sub_directories as f

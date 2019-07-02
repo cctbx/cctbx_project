@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import struct,os
 from iotbx.detectors.detectorbase import DetectorImageBase
 from iotbx.detectors import ReadDIP

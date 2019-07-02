@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 from spotfinder.servers.multipart_encoder import post_multipart
 
@@ -16,7 +16,7 @@ def get_spotfinder_url(filename,host,port):
   Response = post_multipart(host=testurl, selector=selector,
     fields = query_object, files = [])
 
-  print Response.getresponse().read()
+  print(Response.getresponse().read())
   Response.close()
 
 def kill_server(host,port):
@@ -43,11 +43,11 @@ def do_main(filepath, host, port):
 
 def do_main_apache(filepath, host, port):
   absfile = os.path.abspath(filepath)
-  import urllib2
-  Response = urllib2.urlopen(
+  from six.moves import urllib
+  Response = urllib.request.urlopen(
    "http://%s:%d/spotfinder/distl.signal_strength?filename=%s"%(
    host,port,absfile))
-  print Response.read()
+  print(Response.read())
   Response.close()
 
 
@@ -58,12 +58,12 @@ if __name__=="__main__":
     filepath, host, port = sys.argv[1:4]
     port = int(port)
   except Exception:
-    print """
+    print("""
 Usage:
 libtbx.python thin_client.py <filepath> <host> <port>
 Three mandatory arguments:
   filepath: absolute or relative path name of the ADSC test image to be analyzed
   host: usually "localhost";
   port: port number of image analyzer http service
-"""
+""")
   do_main(filepath, host, port)

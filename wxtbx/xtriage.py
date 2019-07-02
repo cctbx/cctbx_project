@@ -3,7 +3,7 @@
 Classes for displaying Xtriage results using wxPython (and matplotlib).
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from wxtbx import metallicbutton
 import wxtbx.misc_dialogs
 import wxtbx.path_dialogs
@@ -17,6 +17,7 @@ from libtbx import easy_pickle, easy_run
 import wx
 import os.path
 import sys
+from six.moves import range
 
 TEXT_WIDTH = 800
 

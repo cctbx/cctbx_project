@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from cctbx import sgtbx
 import cctbx.sgtbx.bravais_types
@@ -6,8 +6,10 @@ from cctbx.array_family import flex
 import scitbx.math
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
+from six.moves import range
+from six.moves import map
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 import random
@@ -91,7 +93,7 @@ def exercise_space_group_info():
   for space_group_symbol, addl_smx, uhm in [
         ("P 21 21 21", "x+1/2,y+1/2,z", "C 2 2 21 (a-1/4,b,c)"),
         ("C 1 2 1", "x,y+1/2,z", "P 1 2 1 (2*a,2*b,c)")]:
-    for f in xrange(1,12+1):
+    for f in range(1,12+1):
       sg_t_den = sgtbx.sg_t_den * f
       cb_r_den = sgtbx.cb_r_den * f
       cb_t_den = sgtbx.cb_t_den * f
@@ -155,8 +157,8 @@ def exercise_space_group_info():
 
 def test_enantiomorphic_pairs():
   pairs = []
-  done = [False for i in xrange(231)]
-  for i in xrange(1, 231):
+  done = [False for i in range(231)]
+  for i in range(1, 231):
     a = sgtbx.space_group_info(i)
     b = a.change_hand()
     assert a.type().is_enantiomorphic() == b.type().is_enantiomorphic()
@@ -177,7 +179,7 @@ def test_enantiomorphic_pairs():
                    (212, 213)]
 
 def exercise_ss_continuous_shifts_are_principal():
-  for i in xrange(1, 231):
+  for i in range(1, 231):
     sgi = sgtbx.space_group_info(number=i)
     ss = sgi.structure_seminvariants()
     assert ss.continuous_shifts_are_principal()
@@ -198,22 +200,22 @@ def exercise_generator_set():
 
   sgi = sgtbx.space_group_info('P21')
   sg_generator_set = sgtbx.any_generator_set(sgi.group())
-  assert (map(str, sg_generator_set.non_primitive_generators)
+  assert (list(map(str, sg_generator_set.non_primitive_generators))
           == ['-x,y+1/2,-z'])
 
   sgi = sgtbx.space_group_info('Pmmm')
   sg_generator_set = sgtbx.any_generator_set(sgi.group())
-  assert (map(str, sg_generator_set.non_primitive_generators)
+  assert (list(map(str, sg_generator_set.non_primitive_generators))
           == ['-x,-y,-z', 'x,-y,-z', '-x,y,-z'])
 
-  for i in xrange(1, 231):
+  for i in range(1, 231):
     sgi = sgtbx.space_group_info(number=i)
     sg = sgi.group()
     sg_gen = sgtbx.any_generator_set(sg)
     if sg.z2p_op().is_identity_op():
       assert sg_gen.non_primitive_generators == sg_gen.primitive_generators
 
-  for i in xrange(1, 231):
+  for i in range(1, 231):
     sgi = sgtbx.space_group_info(number=i)
     sg = sgi.group()
     sg_gen = sgtbx.any_generator_set(sg)
@@ -255,7 +257,7 @@ def exercise_allowed_origin_shift():
   sgi = sgtbx.space_group_info("R -3 c :H")
   assert sgi.is_allowed_origin_shift((1/3, 2/3, 1+1/6), tolerance=1e-15)
 
-  for i in xrange(1,231):
+  for i in range(1,231):
     sgi = sgtbx.space_group_info(number=i)
     for t in sgi.group().ltr():
       assert sgi.is_allowed_origin_shift(t.as_double(), tolerance=1e-15)
@@ -296,7 +298,7 @@ def exercise_monoclinic_cell_choices_core(space_group_number, verbose):
         s = sgtbx.space_group_symbols(str(refcb))
         q = s.qualifier()
         hm = str(refcb)
-        if (0 or verbose): print hm, q, cb_all.c()
+        if (0 or verbose): print(hm, q, cb_all.c())
         if (i_fl == 0):
           assert q[0] == "bca"[i_rt]
           if (len(q) == 2): assert q[1] == "123"[i_cs]
@@ -310,17 +312,17 @@ def exercise_monoclinic_cell_choices_core(space_group_number, verbose):
         done.setdefault(hm, 0)
         done[hm] += 1
   assert len(done) in [3, 9, 18]
-  assert done.values() == [18/len(done)]*len(done)
-  if (0 or verbose): print
+  assert list(done.values()) == [18/len(done)]*len(done)
+  if (0 or verbose): print()
   return done
 
 def exercise_monoclinic_cell_choices(verbose=0):
   done = {}
-  for space_group_number in xrange(3,16):
+  for space_group_number in range(3,16):
     done.update(exercise_monoclinic_cell_choices_core(
       space_group_number=space_group_number, verbose=verbose))
   assert len(done) == 105
-  assert done.values().count(0) == 0
+  assert list(done.values()).count(0) == 0
   n = 0
   for s in sgtbx.space_group_symbol_iterator():
     if (s.number() < 3): continue
@@ -328,7 +330,7 @@ def exercise_monoclinic_cell_choices(verbose=0):
     done[s.universal_hermann_mauguin()] = 0
     n += 1
   assert n == 105
-  assert done.values().count(0) == 105
+  assert list(done.values()).count(0) == 105
 
 def exercise_orthorhombic_hm_qualifier_as_cb_symbol():
   cb_symbols = {
@@ -510,11 +512,11 @@ def exercise_change_of_basis_between_arbitrary_space_groups():
   cb_op = g.change_of_basis_op_to(h)
   assert cb_op.c() == z2p_op.c(), (cb_op.as_xyz(), z2p_op.as_xyz())
 
-  for i in xrange(1, 231):
+  for i in range(1, 231):
     s = sgtbx.space_group_symbols(space_group_number=i)
     g = sgtbx.space_group_info(group=sgtbx.space_group(s, t_den=24))
 
-    o = tuple([ randint(0, 23) for j in xrange(3) ])
+    o = tuple([ randint(0, 23) for j in range(3) ])
     cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx(sgtbx.tr_vec(o, 24)))
     h = g.change_basis(cb_op)
     cb_op_1 = g.change_of_basis_op_to(h)
@@ -531,10 +533,11 @@ def exercise_change_of_basis_between_arbitrary_space_groups():
             == h1.as_reference_setting().group())
 
 def exercise_compare_cb_op_as_hkl():
+  from functools import cmp_to_key
   l = ["k,h,l", "h,k,l"]
-  l.sort(sgtbx.compare_cb_op_as_hkl)
+  l.sort(key=cmp_to_key(sgtbx.compare_cb_op_as_hkl))
   assert l == ["h,k,l", "k,h,l"]
-  l.sort(sgtbx.compare_cb_op_as_hkl)
+  l.sort(key=cmp_to_key(sgtbx.compare_cb_op_as_hkl))
   assert l == ["h,k,l", "k,h,l"]
 
 def run(args):
@@ -551,7 +554,7 @@ def run(args):
   exercise_space_group_contains()
   exercise_inversion_centring()
   exercise_compare_cb_op_as_hkl()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

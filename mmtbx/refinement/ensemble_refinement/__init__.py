@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.solvent.ensemble_ordered_solvent as ensemble_ordered_solvent
 from mmtbx.refinement.ensemble_refinement import ensemble_utils
 from mmtbx.dynamics import ensemble_cd
@@ -24,14 +24,15 @@ from libtbx.str_utils import format_value, make_header
 from libtbx import runtime_utils
 from libtbx import easy_mp
 import libtbx.load_env
-from cStringIO import StringIO
-import cPickle
+from six.moves import cStringIO as StringIO
+from six.moves import cPickle as pickle
 import random
 import gzip
 import math
 import time
 import os
 import sys
+from six.moves import range
 
 # these supersede the defaults in included scopes
 customization_params = iotbx.phil.parse("""
@@ -267,7 +268,7 @@ class er_pickle(object):
   def __init__(self,
                pickle_object,
                pickle_filename):
-    cPickle.dump(pickle_object, gzip.open(pickle_filename, 'wb'))
+    pickle.dump(pickle_object, gzip.open(pickle_filename, 'wb'))
 
 class ensemble_refinement_data(object):
   def __init__(self, f_calc_running                      = None,
@@ -344,53 +345,52 @@ class run_ensemble_refinement(object):
     else :
       self.bsp.target = self.params.target_name
     if self.params.tx == None:
-      print >> log, "\nAutomatically set Tx (parameter not defined)"
-      print >> log, "Tx          :  2(1/dmin)**2"
+      print("\nAutomatically set Tx (parameter not defined)", file=log)
+      print("Tx          :  2(1/dmin)**2", file=log)
       self.params.tx = round(2.0 * ((1.0/self.fmodel.f_obs().d_min())**2),1)
-      print >> log, 'Dmin        : ', self.fmodel.f_obs().d_min()
-      print >> log, 'Set Tx      : ', self.params.tx
+      print('Dmin        : ', self.fmodel.f_obs().d_min(), file=log)
+      print('Set Tx      : ', self.params.tx, file=log)
     self.n_mc_per_tx = self.params.tx / (self.cdp.time_step * self.cdp.number_of_steps)
 
     # Set simulation length
     make_header("Simulation length:", out = self.log)
-    print >> log, "Number of time steps per macro cycle    : ", self.cdp.number_of_steps
-    print >> log, "Tx                                      : ", self.params.tx
-    print >> log, "Number macro cycles per Tx period       : ", self.n_mc_per_tx
+    print("Number of time steps per macro cycle    : ", self.cdp.number_of_steps, file=log)
+    print("Tx                                      : ", self.params.tx, file=log)
+    print("Number macro cycles per Tx period       : ", self.n_mc_per_tx, file=log)
     self.equilibrium_macro_cycles = int(self.n_mc_per_tx * self.params.equilibrium_n_tx)
     self.acquisition_block_macro_cycles = int(self.n_mc_per_tx * self.params.acquisition_block_n_tx)
     self.total_macro_cycles = int(self.equilibrium_macro_cycles \
                             + (self.acquisition_block_macro_cycles * self.params.number_of_acquisition_periods))
     #
-    print >> log, "\nEquilibration"
-    print >> log, "    Number Tx periods    : ", self.params.equilibrium_n_tx
-    print >> log, "    Number macro cycles  : ", self.equilibrium_macro_cycles
-    print >> log, "    Time (ps)            : ", self.equilibrium_macro_cycles \
-                                                  * self.cdp.number_of_steps * self.cdp.time_step
+    print("\nEquilibration", file=log)
+    print("    Number Tx periods    : ", self.params.equilibrium_n_tx, file=log)
+    print("    Number macro cycles  : ", self.equilibrium_macro_cycles, file=log)
+    print("    Time (ps)            : ", self.equilibrium_macro_cycles \
+                                                  * self.cdp.number_of_steps * self.cdp.time_step, file=log)
     #
-    print >> log, "\nAcquisition block"
-    print >> log, "    Number Tx periods    : ",  self.params.acquisition_block_n_tx
-    print >> log, "    Number macro cycles  : ",  self.acquisition_block_macro_cycles
-    print >> log, "    Time (ps)            : ",  self.acquisition_block_macro_cycles \
+    print("\nAcquisition block", file=log)
+    print("    Number Tx periods    : ",  self.params.acquisition_block_n_tx, file=log)
+    print("    Number macro cycles  : ",  self.acquisition_block_macro_cycles, file=log)
+    print("    Time (ps)            : ",  self.acquisition_block_macro_cycles \
                                                   * self.cdp.number_of_steps\
-                                                  * self.cdp.time_step
+                                                  * self.cdp.time_step, file=log)
     #
-    print >> log, "\nSimulation total"
-    print >> log, "    Number Tx periods    : ", self.params.equilibrium_n_tx\
+    print("\nSimulation total", file=log)
+    print("    Number Tx periods    : ", self.params.equilibrium_n_tx\
                                                 + (self.params.number_of_acquisition_periods\
-                                                   * self.params.acquisition_block_n_tx)
-    print >> log, "    Number macro cycles  : ", self.total_macro_cycles
+                                                   * self.params.acquisition_block_n_tx), file=log)
+    print("    Number macro cycles  : ", self.total_macro_cycles, file=log)
     self.total_time = self.total_macro_cycles\
                         * self.cdp.number_of_steps\
                         * self.cdp.time_step
-    print >> log, "    Time (ps)            : ", self.total_time
-    print >> log, "    Total = Equilibration + nAcquisition"
+    print("    Time (ps)            : ", self.total_time, file=log)
+    print("    Total = Equilibration + nAcquisition", file=log)
     # Store block
     self.block_store_cycle_cntr = 0
     self.block_store_cycle = \
-        range(self.acquisition_block_macro_cycles + self.equilibrium_macro_cycles,
+        list(range(self.acquisition_block_macro_cycles + self.equilibrium_macro_cycles,
               self.acquisition_block_macro_cycles + self.total_macro_cycles,
-              self.acquisition_block_macro_cycles
-              )
+              self.acquisition_block_macro_cycles))
     # Store pdb
     self.pdb_store_cycle = max(int(self.acquisition_block_macro_cycles \
                          / self.params.pdb_stored_per_block), 1)
@@ -439,8 +439,8 @@ class run_ensemble_refinement(object):
         self.scale_n1_current   = self.scale_n1_reference
         self.n_calc_reference = self.fmodel_running.n_calc.deep_copy()
         self.n_mc_per_ncalc_update = max(1, int(self.n_mc_per_tx / 10) )
-        print >> self.log, "Number macro cycles per tx     : {0:5.0f}".format(self.n_mc_per_tx)
-        print >> self.log, "Number macro cycles per update : {0:5.0f}".format(self.n_mc_per_ncalc_update)
+        print("Number macro cycles per tx     : {0:5.0f}".format(self.n_mc_per_tx), file=self.log)
+        print("Number macro cycles per update : {0:5.0f}".format(self.n_mc_per_ncalc_update), file=self.log)
         #
         self.fixed_k1_from_start = self.fmodel_running.scale_k1()
         self.target_k1 = self.fmodel_running.scale_k1()
@@ -448,8 +448,8 @@ class run_ensemble_refinement(object):
       else:
         make_header("Calculate and fix scale of Ncalc", out = self.log)
         self.fmodel_running.n_obs_n_calc(update_nobs_ncalc = True)
-        print >> self.log, "Fix Ncalc scale          : True"
-        print >> self.log, "Sum current Ncalc        : {0:5.3f}".format(sum(self.fmodel_running.n_calc))
+        print("Fix Ncalc scale          : True", file=self.log)
+        print("Sum current Ncalc        : {0:5.3f}".format(sum(self.fmodel_running.n_calc)), file=self.log)
 
     #Set ADP model
     self.tls_manager = er_tls_manager()
@@ -486,10 +486,10 @@ class run_ensemble_refinement(object):
       self.time = self.cdp.time_step * self.cdp.number_of_steps * self.macro_cycle
       #XXX Debug
       if False and self.macro_cycle % 10==0:
-        print >> self.log, "Sys temp  : ", self.er_data.system_temp
-        print >> self.log, "Xray grad : ", self.er_data.xray_grad_rms
-        print >> self.log, "Geo grad  : ", self.er_data.geo_grad_rms
-        print >> self.log, "Wx        : ", self.wxray
+        print("Sys temp  : ", self.er_data.system_temp, file=self.log)
+        print("Xray grad : ", self.er_data.xray_grad_rms, file=self.log)
+        print("Geo grad  : ", self.er_data.geo_grad_rms, file=self.log)
+        print("Wx        : ", self.wxray, file=self.log)
 
       if self.fmodel_running.target_name in ['ml', 'mlhl'] :
         if self.macro_cycle < self.equilibrium_macro_cycles:
@@ -665,23 +665,22 @@ class run_ensemble_refinement(object):
 
       #Current structural deviation vs starting structure and previous macro-cycle structure
       if xrs_previous.distances(other = self.model.get_xray_structure()).min_max_mean().mean > 1.0:
-        print >> self.log, "\n\nWARNING:"
-        print >> self.log, "Macro cycle too long, max atomic deviation w.r.t. previous cycle"
-        print >> self.log, "greater than 1.0A"
-        print >> self.log, "Reduce params.cartesian_dynamics.number_of_steps"
-        print >> self.log, "Max deviation : {0:1.3f}"\
-          .format(xrs_previous.distances(other = self.model.get_xray_structure()).min_max_mean().mean)
+        print("\n\nWARNING:", file=self.log)
+        print("Macro cycle too long, max atomic deviation w.r.t. previous cycle", file=self.log)
+        print("greater than 1.0A", file=self.log)
+        print("Reduce params.cartesian_dynamics.number_of_steps", file=self.log)
+        print("Max deviation : {0:1.3f}"\
+          .format(xrs_previous.distances(other = self.model.get_xray_structure()).min_max_mean().mean), file=self.log)
 
       if self.fmodel_running.r_work() > 0.75:
         raise Sorry("Simulation aborted, running Rfree > 75%")
 
       #Print run time stats
       if self.macro_cycle == 1 or self.macro_cycle%50 == 0:
-        print >> self.log, "\n________________________________________________________________________________"
-        print >> self.log, "    MC        Time     |  Current  |  Rolling  |   Total   | Temp |  Grad Wxray "
-        print >> self.log, "          (ps)     (%) |   Rw   Rf |   Rw   Rf |   Rw   Rf |  (K) |   X/G       "
-      print >> self.log, \
-          "~{0:5d} {1:7.2f} {2:7.2f} | {3:4.1f} {4:4.1f} | {5:4.1f} {6:4.1f} | {7:4.1f} {8:4.1f} | {9:4.0f} | {10:5.2f} {11:5.2f}"\
+        print("\n________________________________________________________________________________", file=self.log)
+        print("    MC        Time     |  Current  |  Rolling  |   Total   | Temp |  Grad Wxray ", file=self.log)
+        print("          (ps)     (%) |   Rw   Rf |   Rw   Rf |   Rw   Rf |  (K) |   X/G       ", file=self.log)
+      print("~{0:5d} {1:7.2f} {2:7.2f} | {3:4.1f} {4:4.1f} | {5:4.1f} {6:4.1f} | {7:4.1f} {8:4.1f} | {9:4.0f} | {10:5.2f} {11:5.2f}"\
           .format(self.macro_cycle,
                   self.time,
                   100 * self.time / self.total_time,
@@ -693,7 +692,7 @@ class run_ensemble_refinement(object):
                   100*self.fmodel_total.r_free(),
                   self.er_data.non_solvent_temp,
                   self.er_data.xray_grad_rms / self.er_data.geo_grad_rms,
-                  self.wxray)
+                  self.wxray), file=self.log)
 
       if self.params.verbose > 0:
         if self.macro_cycle == 1\
@@ -739,16 +738,16 @@ class run_ensemble_refinement(object):
       remove_outliers=False,
       params = self.bsp)
     self.print_fmodels_scale_and_solvent_stats()
-    print >> self.log, "FINAL Rwork = %6.4f Rfree = %6.4f Rf/Rw = %6.4f"\
+    print("FINAL Rwork = %6.4f Rfree = %6.4f Rf/Rw = %6.4f"\
         %(self.fmodel_total.r_work(),
           self.fmodel_total.r_free(),
           self.fmodel_total.r_free() / self.fmodel_total.r_work()
-          )
-    print >> self.log, "Final Twork = %6.4f Tfree = %6.4f Tf/Tw = %6.4f"\
+          ), file=self.log)
+    print("Final Twork = %6.4f Tfree = %6.4f Tf/Tw = %6.4f"\
         %(self.fmodel_total.target_w(),
           self.fmodel_total.target_t(),
           self.fmodel_total.target_t() / self.fmodel_total.target_w()
-          )
+          ), file=self.log)
     info = self.fmodel_total.info(free_reflections_per_bin = 100,
                                   max_number_of_bins       = 999
                                   )
@@ -803,22 +802,22 @@ class run_ensemble_refinement(object):
         model = self.model,
         selection_strings = self.params.harmonic_restraints.selections)
     pdb_atoms = self.pdb_hierarchy.atoms()
-    print >> self.log, "\nAdd atomic harmonic restraints:"
+    print("\nAdd atomic harmonic restraints:", file=self.log)
     restraint_info = []
     for i_seq in hr_selections[0]:
       atom_info = pdb_atoms[i_seq].fetch_labels()
-      print >> self.log, '    {0} {1} {2} {3} {4}     '.format(
+      print('    {0} {1} {2} {3} {4}     '.format(
                                    atom_info.name,
                                    atom_info.i_seq+1,
                                    atom_info.resseq,
                                    atom_info.resname,
                                    atom_info.chain_id,
-                                   )
+                                   ), file=self.log)
       restraint_info.append((i_seq, pdb_atoms[i_seq].xyz))
     self.er_data.er_harmonic_restraints_info = restraint_info
     self.er_data.er_harmonic_restraints_weight = self.params.harmonic_restraints.weight
     self.er_data.er_harmonic_restraints_slack  = self.params.harmonic_restraints.slack
-    print >> self.log, "\n|"+"-"*77+"|\n"
+    print("\n|"+"-"*77+"|\n", file=self.log)
 
   def setup_bulk_solvent_and_scale(self):
     make_header("Setup bulk solvent and scale", out = self.log)
@@ -863,30 +862,30 @@ class run_ensemble_refinement(object):
       self.scale_n1_current = self.scale_helper(target    = ecalc_norm_factor,
                                                 reference = eobs_norm_factor
                                                 )
-      print >> self.log, "Kn current               : {0:5.3f}".format(self.scale_n1_current)
+      print("Kn current               : {0:5.3f}".format(self.scale_n1_current), file=self.log)
       ecalc_k = sum(self.fmodel_running.n_calc) / sum(ecalc_norm_factor)
       ecalc_k_alt = flex.sum(self.fmodel_running.n_calc * ecalc_norm_factor) / flex.sum(flex.pow2(ecalc_norm_factor) )
-      print >> self.log, "Sum current Ncalc        : {0:5.3f}".format(sum(self.fmodel_running.n_calc) )
-      print >> self.log, "Sum updated Ncalc        : {0:5.3f}".format(sum(ecalc_norm_factor) )
-      print >> self.log, "Rescaling factor         : {0:5.3f}".format(ecalc_k)
-      print >> self.log, "Rescaling factor alt     : {0:5.3f}".format(ecalc_k_alt)
+      print("Sum current Ncalc        : {0:5.3f}".format(sum(self.fmodel_running.n_calc) ), file=self.log)
+      print("Sum updated Ncalc        : {0:5.3f}".format(sum(ecalc_norm_factor) ), file=self.log)
+      print("Rescaling factor         : {0:5.3f}".format(ecalc_k), file=self.log)
+      print("Rescaling factor alt     : {0:5.3f}".format(ecalc_k_alt), file=self.log)
       ecalc_norm_factor = ecalc_k * ecalc_norm_factor
       self.fmodel_running.n_calc = ecalc_norm_factor
-    print >> self.log, "|"+"-"*77+"|\n"
+    print("|"+"-"*77+"|\n", file=self.log)
 
   def update_sigmaa(self):
     make_header("Update sigmaa", out = self.log)
     if self.params.verbose > 0:
-      print >> self.log, "Previous best Rfree      : ", self.best_r_free
-      print >> self.log, "Current       Rfree      : ", self.fmodel_running.r_free()
+      print("Previous best Rfree      : ", self.best_r_free, file=self.log)
+      print("Current       Rfree      : ", self.fmodel_running.r_free(), file=self.log)
       self.print_ml_stats()
-      print >> self.log, "  Update sigmaa"
+      print("  Update sigmaa", file=self.log)
     self.sigmaa_array = self.fmodel_running.sigmaa().sigmaa().data()
     self.fmodel_running.set_sigmaa = self.sigmaa_array
     if self.params.verbose > 0:
       self.print_ml_stats()
     self.best_r_free = self.fmodel_running.r_free()
-    print >> self.log, "|"+"-"*77+"|\n"
+    print("|"+"-"*77+"|\n", file=self.log)
 
   def setup_tls_selections(self, tls_group_selection_strings):
     make_header("Generating TLS selections from input parameters (not including solvent)", out = self.log)
@@ -894,7 +893,7 @@ class run_ensemble_refinement(object):
     model_no_solvent = model_no_solvent.remove_solvent()
 
     if len(tls_group_selection_strings) < 1:
-      print >> self.log, '\nNo TLS groups supplied - automatic setup'
+      print('\nNo TLS groups supplied - automatic setup', file=self.log)
       # Get chain information
       chains_info = []
       for chain in model_no_solvent.get_hierarchy().chains():
@@ -907,26 +906,26 @@ class run_ensemble_refinement(object):
       chains_size = flex.int(zip(*chains_info)[1])
       chains_size_ok = flex.bool(chains_size > 63)
       if sum(chains_size) < 63:
-        print >> self.log, '\nStructure contains less than 63 atoms (non H/D, non solvent)'
-        print >> self.log, '\nUnable to perform TLS fitting, will use isotropic B-factor model'
+        print('\nStructure contains less than 63 atoms (non H/D, non solvent)', file=self.log)
+        print('\nUnable to perform TLS fitting, will use isotropic B-factor model', file=self.log)
       elif chains_size_ok.count(False) == 0:
-        print >> self.log, '\nTLS selections:'
-        print >> self.log, 'Chain, number atoms (non H/D)'
+        print('\nTLS selections:', file=self.log)
+        print('Chain, number atoms (non H/D)', file=self.log)
         for chain in chains_info:
           tls_group_selection_strings.append('chain ' + chain[0])
-          print >> self.log, chain[0], chain[1]
+          print(chain[0], chain[1], file=self.log)
       else:
-        print >> self.log, '\nFollowing chains contain less than 63 atoms (non H/D):'
+        print('\nFollowing chains contain less than 63 atoms (non H/D):', file=self.log)
         tls_group_selection_strings.append('chain ')
         for chain in chains_info:
           tls_group_selection_strings[0] += (chain[0] + ' or chain ')
           if chain[1] < 63:
-            print >> self.log, chain[0], chain[1]
-        print >> self.log, 'Combining all chains to single TLS group'
-        print >> self.log, 'WARNING: this may not be the optimum tls groupings to use'
-        print >> self.log, 'TLS selections:'
+            print(chain[0], chain[1], file=self.log)
+        print('Combining all chains to single TLS group', file=self.log)
+        print('WARNING: this may not be the optimum tls groupings to use', file=self.log)
+        print('TLS selections:', file=self.log)
         tls_group_selection_strings[0] = tls_group_selection_strings[0][0:-10]
-        print >> self.log, tls_group_selection_strings[0]
+        print(tls_group_selection_strings[0], file=self.log)
     #
     tls_no_sol_selections =  mmtbx.utils.get_atom_selections(
         model = model_no_solvent,
@@ -960,7 +959,7 @@ class run_ensemble_refinement(object):
     make_header("Fit TLS from reference model", out = self.log)
     model_copy = input_model.deep_copy()
     model_copy = model_copy.remove_solvent()
-    print >> self.log, 'Reference model :'
+    print('Reference model :', file=self.log)
     model_copy.show_adp_statistics(padded = True, out = self.log)
     start_xrs = model_copy.get_xray_structure().deep_copy_scatterers()
     start_xrs.convert_to_isotropic()
@@ -976,16 +975,16 @@ class run_ensemble_refinement(object):
         self.params.isotropic_b_factor_model = True
       elif self.ptls * group.size() < 63:
         self.ptls = 64.0 / group.size()
-        print >> self.log, '\nAutomatically increasing pTLS to : {0:5.3f}'.format(self.ptls)
+        print('\nAutomatically increasing pTLS to : {0:5.3f}'.format(self.ptls), file=self.log)
     if self.params.isotropic_b_factor_model:
-      print >> self.log, '\nModel contains less than 63 non-solvent, non-H/D atoms'
-      print >> self.log, 'Insufficient to fit TLS model, using isotropic model'
+      print('\nModel contains less than 63 non-solvent, non-H/D atoms', file=self.log)
+      print('Insufficient to fit TLS model, using isotropic model', file=self.log)
       iso_b  = self.fmodel_running.wilson_b() * self.params.pwilson
       episq = 8.0*(math.pi**2)
-      print >> self.log, 'Isotropic translation (B) : {0:5.3f}'.format(iso_b)
-      print >> self.log, '  = Wilson b-factor * pwilson'
+      print('Isotropic translation (B) : {0:5.3f}'.format(iso_b), file=self.log)
+      print('  = Wilson b-factor * pwilson', file=self.log)
       iso_u = iso_b / episq
-      print >> self.log, 'Isotropic translation (U) : {0:5.3f}'.format(iso_u)
+      print('Isotropic translation (U) : {0:5.3f}'.format(iso_u), file=self.log)
       fit_tlsos = []
       for tls_group in self.tls_manager.tls_operators:
         tls_t_new = (iso_u,
@@ -1006,12 +1005,12 @@ class run_ensemble_refinement(object):
                                            out  = self.log)
 
     else:
-      for fit_cycle in xrange(self.params.max_ptls_cycles):
+      for fit_cycle in range(self.params.max_ptls_cycles):
         fit_tlsos = mmtbx.tls.tools.generate_tlsos(
           selections     = tls_selection_no_sol_hd_exclusions,
           xray_structure = model_copy.get_xray_structure(),
           value          = 0.0)
-        print >> self.log, '\nFitting cycle : ', fit_cycle+1
+        print('\nFitting cycle : ', fit_cycle+1, file=self.log)
         for rt,rl,rs in [[1,0,1],[1,1,1],[0,1,1],
                          [1,0,0],[0,1,0],[0,0,1],[1,1,1],
                          [0,0,1]]*10:
@@ -1042,11 +1041,11 @@ class run_ensemble_refinement(object):
           pdb_atoms = pdb_hierarchy().atoms()
           not_h_selection = pdb_hierarchy().atom_selection_cache().selection('not element H')
           ca_selection = pdb_hierarchy().atom_selection_cache().selection('name ca')
-          print >> self.log, '\nCA atoms (Name/res number/res name/chain/atom number/ref biso/fit biso:'
+          print('\nCA atoms (Name/res number/res name/chain/atom number/ref biso/fit biso:', file=self.log)
           for i_seq, ca in enumerate(ca_selection):
             if ca:
               atom_info = pdb_atoms[i_seq].fetch_labels()
-              print >> self.log, atom_info.name, atom_info.resseq, atom_info.resname, atom_info.chain_id, " | ", i_seq, start_biso[i_seq], fitted_biso[i_seq]
+              print(atom_info.name, atom_info.resseq, atom_info.resname, atom_info.chain_id, " | ", i_seq, start_biso[i_seq], fitted_biso[i_seq], file=self.log)
 
         delta_ref_fit = start_biso - fitted_biso
         hd_selection = model_copy.get_hd_selection()
@@ -1056,17 +1055,17 @@ class run_ensemble_refinement(object):
         fitted_biso_no_hd = fitted_biso.select(~hd_selection)
 
         if verbose:
-          print >> self.log, 'pTLS                                    : ', self.ptls
+          print('pTLS                                    : ', self.ptls, file=self.log)
 
         sorted_delta_ref_fit_no_h = sorted(delta_ref_fit_no_h)
         percentile_cutoff = sorted_delta_ref_fit_no_h[int(len(sorted_delta_ref_fit_no_h) * self.ptls)-1]
         if verbose:
-          print >> self.log, 'Cutoff (<)                              : ', percentile_cutoff
+          print('Cutoff (<)                              : ', percentile_cutoff, file=self.log)
 
-        print >> self.log, 'Number of atoms (non HD)                : ', delta_ref_fit_no_h.size()
+        print('Number of atoms (non HD)                : ', delta_ref_fit_no_h.size(), file=self.log)
         delta_ref_fit_no_h_include = flex.bool(delta_ref_fit_no_h < percentile_cutoff)
-        print >> self.log, 'Number of atoms (non HD) used in fit    : ', delta_ref_fit_no_h_include.count(True)
-        print >> self.log, 'Percentage (non HD) used in fit         : {0:5.3f}'.format(delta_ref_fit_no_h_include.count(True) / delta_ref_fit_no_h.size())
+        print('Number of atoms (non HD) used in fit    : ', delta_ref_fit_no_h_include.count(True), file=self.log)
+        print('Percentage (non HD) used in fit         : {0:5.3f}'.format(delta_ref_fit_no_h_include.count(True) / delta_ref_fit_no_h.size()), file=self.log)
 
         # Convergence test
         if fitted_biso_no_hd.min_max_mean().mean == pre_fitted_mean:
@@ -1084,7 +1083,7 @@ class run_ensemble_refinement(object):
           if include_flag and not hd_selection[i_seq]:
             include_i_seq.append(i_seq)
         tls_selection_no_sol_hd_exclusions = []
-        for group in xrange(len(tls_selection_no_sol_hd)):
+        for group in range(len(tls_selection_no_sol_hd)):
           new_group = flex.size_t()
           for x in tls_selection_no_sol_hd[group]:
             if x in include_i_seq:
@@ -1092,10 +1091,10 @@ class run_ensemble_refinement(object):
           if len(new_group) < 63:
             raise Sorry("Number atoms in TLS too small; increase size of group or reduce cut-off")
           if verbose:
-            print >> self.log, 'TLS group ', group+1, ' number atoms ', len(new_group)
+            print('TLS group ', group+1, ' number atoms ', len(new_group), file=self.log)
           tls_selection_no_sol_hd_exclusions.append(new_group)
 
-    print >> self.log, '\nFinal non-solvent b-factor model'
+    print('\nFinal non-solvent b-factor model', file=self.log)
     model_copy.get_xray_structure().convert_to_anisotropic()
 
     us_tls = mmtbx.tls.tools.u_cart_from_tls(
@@ -1216,13 +1215,13 @@ class run_ensemble_refinement(object):
   def save_multiple_fmodel(self):
     make_header("Saving fmodel block", out = self.log)
     #Stores fcalc, fmask, xray structure, pdb hierarchys
-    print >> self.log, '{0:<23}: {1:>8} {2:>8} {3:>8} {4:>8}'.format('','MC','Block','Rwork','Rfree')
-    print >> self.log, "{0:<23}: {1:8d} {2:8d} {3:8.3f} {4:8.3f}".format(
+    print('{0:<23}: {1:>8} {2:>8} {3:>8} {4:>8}'.format('','MC','Block','Rwork','Rfree'), file=self.log)
+    print("{0:<23}: {1:8d} {2:8d} {3:8.3f} {4:8.3f}".format(
         'Fmodel block info',
         self.macro_cycle,
         self.block_store_cycle_cntr+1,
         100 * self.fmodel_total.r_work(),
-        100 * self.fmodel_total.r_free() )
+        100 * self.fmodel_total.r_free() ), file=self.log)
     fcalc_block  = self.er_data.f_calc_data_total / self.er_data.total_SF_cntr
     fmask_block  = self.er_data.f_mask_total / self.er_data.total_SF_cntr_mask
     xrs_block    = self.er_data.xray_structures
@@ -1257,14 +1256,14 @@ class run_ensemble_refinement(object):
     # Load all temp files
     self.fmodel_total_block_list = []
     for filename in self.block_temp_file_list:
-      block_info = cPickle.load(gzip.open(filename,'rb'))
+      block_info = pickle.load(gzip.open(filename,'rb'))
       self.fmodel_total_block_list.append(block_info)
       os.remove(filename)
 
     self.fmodel_total.set_scale_switch = 0
-    print >> self.log, '  {0:>17} {1:>8} {2:>8}'\
-      .format('Block range','Rwork','Rfree','k1')
-    for x in xrange(len(self.fmodel_total_block_list)):
+    print('  {0:>17} {1:>8} {2:>8}'\
+      .format('Block range','Rwork','Rfree','k1'), file=self.log)
+    for x in range(len(self.fmodel_total_block_list)):
       x2 = x+1
       y = len(self.fmodel_total_block_list)
       while y > x:
@@ -1283,13 +1282,13 @@ class run_ensemble_refinement(object):
           params = self.bsp,
           remove_outliers=False,
           log = self.log)
-        print >> self.log, "  {0:8d} {1:8d} {2:8.3f} {3:8.3f}"\
+        print("  {0:8d} {1:8d} {2:8.3f} {3:8.3f}"\
           .format(x+1,
                   y,
                   self.fmodel_total.r_work(),
                   self.fmodel_total.r_free(),
                   self.fmodel_total.scale_k1()
-                  )
+                  ), file=self.log)
         if best_r_work == None:
           best_r_work = self.fmodel_total.r_work()
           best_r_work_block = [x,y]
@@ -1310,76 +1309,76 @@ class run_ensemble_refinement(object):
           remove_outliers=False,
           log    = self.log)
 
-    print >> self.log, "\nOptimium block :"
-    print >> self.log, "  {0:8d} {1:8d} {2:8.3f} {3:8.3f} {4:8.3f} {5:8.3f}"\
+    print("\nOptimium block :", file=self.log)
+    print("  {0:8d} {1:8d} {2:8.3f} {3:8.3f} {4:8.3f} {5:8.3f}"\
       .format(best_r_work_block[0]+1,
               best_r_work_block[1],
               self.fmodel_total.r_work(),
               self.fmodel_total.r_free(),
               self.fmodel_total.scale_k1(),
               self.fmodel_total.fmodel_kbu().k_sols()[0],
-              self.fmodel_total.fmodel_kbu().b_sols()[0])
+              self.fmodel_total.fmodel_kbu().b_sols()[0]), file=self.log)
     #Update self.er_data.xray_structures and self.er_data.pdb_hierarchys to correspond to optimum fmodel_total
     self.er_data.xray_structures = []
     self.er_data.xray_structures_diff_map =[]
     self.er_data.pdb_hierarchys  = []
     self.er_data.ke_pdb          = []
-    for x in xrange(len(self.fmodel_total_block_list)):
+    for x in range(len(self.fmodel_total_block_list)):
       if x >= best_r_work_block[0] and x < best_r_work_block[1]:
-        print  >> self.log, "Block | Number of models in block : ", x+1, " | ", len(self.fmodel_total_block_list[x][2])
+        print("Block | Number of models in block : ", x+1, " | ", len(self.fmodel_total_block_list[x][2]), file=self.log)
         self.er_data.xray_structures.extend(self.fmodel_total_block_list[x][2])
         self.er_data.xray_structures_diff_map.extend(self.fmodel_total_block_list[x][3])
         self.er_data.pdb_hierarchys.extend(self.fmodel_total_block_list[x][4])
         self.er_data.ke_pdb.extend(self.fmodel_total_block_list[x][5])
     assert len(self.er_data.xray_structures) == len(self.er_data.pdb_hierarchys)
     assert len(self.er_data.xray_structures) == len(self.er_data.ke_pdb)
-    print >> self.log, "Number of models for PBD          : ", len(self.er_data.xray_structures)
-    print >> self.log, "|"+"-"*77+"|\n"
+    print("Number of models for PBD          : ", len(self.er_data.xray_structures), file=self.log)
+    print("|"+"-"*77+"|\n", file=self.log)
 
   def print_fmodels_scale_and_solvent_stats(self):
     make_header("Fmodel statistics | macrocycle: "+str(self.macro_cycle),
       out = self.log)
-    print >> self.log, '{0:<23}: {1:>8} {2:>8} {3:>8} {4:>8}'.format('','MC',
-      'k1','Bsol','ksol')
+    print('{0:<23}: {1:>8} {2:>8} {3:>8} {4:>8}'.format('','MC',
+      'k1','Bsol','ksol'), file=self.log)
     if self.fmodel_current is not None:
-      print >> self.log, "{0:<23}: {1:8d} {2:8.3f} {3:8.3f} {4:8.3f}"\
+      print("{0:<23}: {1:8d} {2:8.3f} {3:8.3f} {4:8.3f}"\
         .format('Fmodel current',
                 self.macro_cycle,
                 self.fmodel_current.scale_k1(),
                 self.fmodel_current.fmodel_kbu().b_sols()[0],
                 self.fmodel_current.fmodel_kbu().k_sols()[0],
-                )
+                ), file=self.log)
     if self.fmodel_running is not None:
-      print >> self.log, "{0:<23}: {1:8d} {2:8.3f} {3:8.3f} {4:8.3f}"\
+      print("{0:<23}: {1:8d} {2:8.3f} {3:8.3f} {4:8.3f}"\
         .format('Fmodel running',
                 self.macro_cycle,
                 self.fmodel_running.scale_k1(),
                 self.fmodel_running.fmodel_kbu().b_sols()[0],
-                self.fmodel_running.fmodel_kbu().k_sols()[0] )
+                self.fmodel_running.fmodel_kbu().k_sols()[0] ), file=self.log)
     if self.fmodel_total is not None:
-      print >> self.log, "{0:<23}: {1:8d} {2:8.3f} {3:8.3f} {4:8.3f}"\
+      print("{0:<23}: {1:8d} {2:8.3f} {3:8.3f} {4:8.3f}"\
         .format('Fmodel_Total',
                 self.macro_cycle,
                 self.fmodel_total.scale_k1(),
                 self.fmodel_total.fmodel_kbu().b_sols()[0],
-                self.fmodel_total.fmodel_kbu().k_sols()[0] )
+                self.fmodel_total.fmodel_kbu().k_sols()[0] ), file=self.log)
     if self.fmodel_current is not None:
-      print >> self.log, "Fmodel current bcart   : {0:14.2f} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.2f}".format(*self.fmodel_current.fmodel_kbu().b_cart())
+      print("Fmodel current bcart   : {0:14.2f} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.2f}".format(*self.fmodel_current.fmodel_kbu().b_cart()), file=self.log)
     if self.fmodel_running is not None:
-      print >> self.log, "Fmodel running bcart   : {0:14.2f} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.2f}".format(*self.fmodel_running.fmodel_kbu().b_cart())
+      print("Fmodel running bcart   : {0:14.2f} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.2f}".format(*self.fmodel_running.fmodel_kbu().b_cart()), file=self.log)
     if self.fmodel_total  is not None:
-      print >> self.log, "Fmodel total bcart     : {0:14.2f} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.2f}".format(*self.fmodel_total.fmodel_kbu().b_cart())
-    print >> self.log, "|"+"-"*77+"|\n"
+      print("Fmodel total bcart     : {0:14.2f} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.2f}".format(*self.fmodel_total.fmodel_kbu().b_cart()), file=self.log)
+    print("|"+"-"*77+"|\n", file=self.log)
 
   def write_diff_map_ensemble(self, out):
     crystal_symmetry = self.er_data.xray_structures_diff_map[0].crystal_symmetry()
-    print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
-    print >> out, pdb.format_scale_records(unit_cell = crystal_symmetry.unit_cell())
+    print(pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry), file=out)
+    print(pdb.format_scale_records(unit_cell = crystal_symmetry.unit_cell()), file=out)
     for n,xrs in enumerate(self.er_data.xray_structures_diff_map):
-      print >> out, "MODEL %8d"%(n+1)
-      print >> out, xrs.as_pdb_file()
-      print >> out, "ENDMDL"
-    print >> out, "END"
+      print("MODEL %8d"%(n+1), file=out)
+      print(xrs.as_pdb_file(), file=out)
+      print("ENDMDL", file=out)
+    print("END", file=out)
 
   def update_single_hierarchy(self, i_model):
     xrs = self.er_data.xray_structures[i_model]
@@ -1422,8 +1421,8 @@ class run_ensemble_refinement(object):
   def write_ensemble_pdb(self, out):
     crystal_symmetry = self.er_data.xray_structures[0].crystal_symmetry()
     pr = "REMARK   3"
-    print >> out, pr
-    print >> out,  "REMARK   3 TIME-AVERAGED ENSEMBLE REFINEMENT."
+    print(pr, file=out)
+    print("REMARK   3 TIME-AVERAGED ENSEMBLE REFINEMENT.", file=out)
     from phenix import phenix_info # FIXME ???
     ver, tag = phenix_info.version_and_release_tag(f = out)
     if(ver is None):
@@ -1432,7 +1431,7 @@ class run_ensemble_refinement(object):
       if(tag is not None):
         ver = ver+"_"+tag
       prog = "   PROGRAM     : PHENIX (phenix.ensemble_refinement: %s)"%ver
-    print >> out,pr+prog
+    print(pr+prog, file=out)
     authors = phenix_info.phenix_developers_last
     l = pr+"   AUTHORS     :"
     j = 0
@@ -1441,14 +1440,14 @@ class run_ensemble_refinement(object):
     while (j != len(authors)):
       a = len(authors[j]) + 1
       if (n+a > 79):
-        print >> out,l, ",".join(authors[i:j]) + ","
+        print(l, ",".join(authors[i:j]) + ",", file=out)
         l = pr+"               :"
         i = j
         n = len(l) + 1
       n += a
       j += 1
     if (i != j):
-      print >> out,l, ",".join(authors[i:j])
+      print(l, ",".join(authors[i:j]), file=out)
     fmodel_info = self.fmodel_total.info()
     fmodel_info.show_remark_3(out = out)
 #    model_stats = mmtbx.model_statistics.model(model     = self.model,
@@ -1465,9 +1464,9 @@ class run_ensemble_refinement(object):
         verbose                  = False,
         out                      = self.log,
         return_pdb_string        = True)
-    print >> out, self.final_geometry_pdb_string
-    print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
-    print >> out, pdb.format_scale_records(unit_cell = crystal_symmetry.unit_cell())
+    print(self.final_geometry_pdb_string, file=out)
+    print(pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry), file=out)
+    print(pdb.format_scale_records(unit_cell = crystal_symmetry.unit_cell()), file=out)
     atoms_reset_serial = True
     #
     cntr = 0
@@ -1475,7 +1474,7 @@ class run_ensemble_refinement(object):
     assert len(self.er_data.pdb_hierarchys) == len(self.er_data.xray_structures)
     for i_model, xrs in enumerate(self.er_data.xray_structures):
       cntr += 1
-      print >> out, "MODEL %8d"%cntr
+      print("MODEL %8d"%cntr, file=out)
       i_model_pdb_hierarchy = self.update_single_hierarchy(i_model)
       if (atoms_reset_serial):
         atoms_reset_serial_first_value = 1
@@ -1485,8 +1484,8 @@ class run_ensemble_refinement(object):
         append_end=False,
         atoms_reset_serial_first_value=atoms_reset_serial_first_value))
       #
-      print >> out, "ENDMDL"
-    print >> out, "END"
+      print("ENDMDL", file=out)
+    print("END", file=out)
 
   def print_ml_stats(self):
     if self.fmodel_running.set_sigmaa is not None:
@@ -1500,15 +1499,15 @@ class run_ensemble_refinement(object):
       self.run_time_stats_dict.update({'Ecalc(fixed)':self.fmodel_running.n_calc})
 
     make_header("ML statistics", out = self.log)
-    print >> self.log, '  {0:<23}: {1:>12} {2:>12} {3:>12}'.format('','min','max','mean')
+    print('  {0:<23}: {1:>12} {2:>12} {3:>12}'.format('','min','max','mean'), file=self.log)
     for key in sorted(self.run_time_stats_dict.keys()):
       info = self.run_time_stats_dict[key].min_max_mean()
-      print >> self.log, '  {0:<23}: {1:12.3f} {2:12.3f} {3:12.3f}'.format(
+      print('  {0:<23}: {1:12.3f} {2:12.3f} {3:12.3f}'.format(
         key,
         info.min,
         info.max,
-        info.mean)
-    print >> self.log, "|"+"-"*77+"|\n"
+        info.mean), file=self.log)
+    print("|"+"-"*77+"|\n", file=self.log)
 
 ################################################################################
 
@@ -1516,7 +1515,7 @@ def show_data(fmodel, n_outl, test_flag_value, f_obs_labels, log):
   info = fmodel.info()
   flags_pc = \
    fmodel.r_free_flags().data().count(True)*1./fmodel.r_free_flags().data().size()
-  print >> log, "Data statistics"
+  print("Data statistics", file=log)
   try: f_obs_labels = f_obs_labels[:f_obs_labels.index(",")]
   except ValueError: pass
   result = " \n    ".join([
@@ -1540,7 +1539,7 @@ def show_data(fmodel, n_outl, test_flag_value, f_obs_labels, log):
     "number_of_Fobs_outliers             : " + format_value("%-8d",  n_outl),
     "anomalous_flag                      : " + \
       format_value("%-6s",  fmodel.f_obs().anomalous_flag())])
-  print >> log, "   ", result
+  print("   ", result, file=log)
 
 def show_model_vs_data(fmodel, log):
   d_max, d_min = fmodel.f_obs().d_max_min()
@@ -1551,7 +1550,7 @@ def show_model_vs_data(fmodel, log):
   k_sol = format_value("%-5.2f",fmodel.fmodel_kbu().k_sols()[0])
   b_sol = format_value("%-7.2f",fmodel.fmodel_kbu().b_sols()[0])
   b_cart = " ".join([("%8.2f"%v).strip() for v in fmodel.fmodel_kbu().b_cart()])
-  print >> log, "Model vs data statistics"
+  print("Model vs data statistics", file=log)
   result = " \n    ".join([
     "r_work(re-computed)                 : " + \
       format_value("%-6.4f",fmodel.r_work()),
@@ -1560,7 +1559,7 @@ def show_model_vs_data(fmodel, log):
       format_value("%-6.4f",fmodel.scale_k1()),
     "bulk_solvent_(k_sol,b_sol)          : %s%s" % (k_sol, b_sol),
     "overall_anisotropic_scale_(b_cart)  : " + format_value("%-s",b_cart)])
-  print >> log, "   ", result
+  print("   ", result, file=log)
 
 def write_mtz_file(fmodel_total, raw_data, raw_flags, prefix, params):
   assert (fmodel_total is not None)
@@ -1640,8 +1639,8 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   params = working_phil.extract()
   if (params.extra_restraints_file is not None):
     # XXX this is a revolting hack...
-    print >> out, "Processing custom geometry restraints in file:"
-    print >> out, "  %s" % params.extra_restraints_file
+    print("Processing custom geometry restraints in file:", file=out)
+    print("  %s" % params.extra_restraints_file, file=out)
     restraints_phil = iotbx.phil.parse(file_name=params.extra_restraints_file)
     cleanup_phil = iotbx.phil.parse("extra_restraints_file=None")
     working_phil = master_params.fetch(
@@ -1681,11 +1680,11 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   make_header("Ensemble refinement parameters", out = log)
   working_phil.show(out = log)
   make_header("Model and data statistics", out = log)
-  print >> log, "Data file                               : %s" % \
-    format_value("%5s", os.path.basename(params.input.xray_data.file_name))
-  print >> log, "Model file                              : %s \n" % \
-    (format_value("%5s",os.path.basename(inputs.pdb_file_names[0])))
-  print >> log, "\nTLS MUST BE IN ATOM RECORDS OF INPUT PDB\n"
+  print("Data file                               : %s" % \
+    format_value("%5s", os.path.basename(params.input.xray_data.file_name)), file=log)
+  print("Model file                              : %s \n" % \
+    (format_value("%5s",os.path.basename(inputs.pdb_file_names[0]))), file=log)
+  print("\nTLS MUST BE IN ATOM RECORDS OF INPUT PDB\n", file=log)
   f_obs = inputs.f_obs
   number_of_reflections = f_obs.indices().size()
 
@@ -1693,7 +1692,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   raw_flags = inputs.raw_flags
   raw_data = inputs.raw_data
 
-  print >> log, "\nPDB file name : ", inputs.pdb_file_names[0]
+  print("\nPDB file name : ", inputs.pdb_file_names[0], file=log)
 
   # Process PDB file
   cif_objects = inputs.cif_objects
@@ -1722,9 +1721,9 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
 
   if n_removed_atoms > 0:
     pdb_file_removed_alt_confs = pdb_file[0:-4]+'_removed_alt_confs.pdb'
-    print >> log, "\nRemoving alternative conformations"
-    print >> log, "All occupancies reset to 1.0"
-    print >> log, "New PDB : ", pdb_file_removed_alt_confs, "\n"
+    print("\nRemoving alternative conformations", file=log)
+    print("All occupancies reset to 1.0", file=log)
+    print("New PDB : ", pdb_file_removed_alt_confs, "\n", file=log)
     pdb_str = model.model_as_pdb()
     f = open(pdb_file_removed_alt_confs, 'w')
     f.write(pdb_str)
@@ -1762,13 +1761,13 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     site_labels=site_labels,
     f=open(er_params.output_file_prefix+'.geo','w') )
 
-  print >> log, "Unit cell                               :", f_obs.unit_cell()
-  print >> log, "Space group                             :", \
-    f_obs.crystal_symmetry().space_group_info().symbol_and_number()
-  print >> log, "Number of symmetry operators            :", \
-    f_obs.crystal_symmetry().space_group_info().type().group().order_z()
-  print >> log, "Unit cell volume                        : %-15.4f" % \
-    f_obs.unit_cell().volume()
+  print("Unit cell                               :", f_obs.unit_cell(), file=log)
+  print("Space group                             :", \
+    f_obs.crystal_symmetry().space_group_info().symbol_and_number(), file=log)
+  print("Number of symmetry operators            :", \
+    f_obs.crystal_symmetry().space_group_info().type().group().order_z(), file=log)
+  print("Unit cell volume                        : %-15.4f" % \
+    f_obs.unit_cell().volume(), file=log)
   f_obs_labels = f_obs.info().label_string()
 
   if (command_line.options.dry_run):
@@ -1792,7 +1791,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     log                        = log)
   hl_coeffs = inputs.hl_coeffs
   if (hl_coeffs is not None) and (params.input.use_experimental_phases):
-    print >> log, "Using MLHL target with experimental phases"
+    print("Using MLHL target with experimental phases", file=log)
     er_params.target_name = "mlhl"
     hl_coeffs = hl_coeffs.common_set(other=fmodel.f_obs())
   else :

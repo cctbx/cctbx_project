@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # (jEdit options) :folding=explicit:collapseFolds=1:
 #
 #cablam_fingerprints
@@ -141,7 +141,8 @@ def check_protein(protein, motif_name_list):
   debug = False
   found_motifs = {}
   motif_list = fetch_fingerprints(motif_name_list)
-  reslist = protein.keys()
+  # TODO: is protein a dict, if so put a hint comment
+  reslist = list(protein.keys())
   reslist.sort()
   for motif in motif_list:
     found_motifs[motif.motif_name] = []
@@ -153,7 +154,7 @@ def check_protein(protein, motif_name_list):
       failed = check_for_motif(motif,residue,candidate)#returns either False or debug info
       if failed:
         candidate = None
-        if debug==True: print failed
+        if debug==True: print(failed)
         continue
       else:
         #print candidate.needed_length, candidate.residues, len(candidate.residues)
@@ -301,6 +302,7 @@ def fail_required_bond_check(check_bond, active_residue, candidate):
 def fail_forbidden_bond_check(check_bond, active_residue):
   if not check_bond.banned:
     return 0
+  # TODO: is active residie.prob a dict ? if so put a hint comment
   if check_bond.src_atom not in active_residue.probe.keys():
     return 0
   src_atom = check_bond.src_atom
@@ -356,9 +358,9 @@ def make_pickle(motif):
 Problem locating cablam fingerprints dir""")
   os.chdir(fingerprints_dir)
   filename = motif.motif_name + ".pickle"
-  print "Converting", motif.motif_name, "to pickle file . . ."
+  print("Converting", motif.motif_name, "to pickle file . . .")
   easy_pickle.dump(file_name=filename,obj=motif)
-  print ". . . Done"
+  print(". . . Done")
   os.chdir(pwd)
 #-------------------------------------------------------------------------------
 #}}}

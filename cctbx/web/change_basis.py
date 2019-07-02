@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 def number_from_string(s):
   flds = s.split("/")
   if (len(flds) == 2):
@@ -29,9 +30,9 @@ def rt_from_string(string, default_r_identity=False, r_den=12**2, t_den=12**3):
   try:
     cb_op = sgtbx.change_of_basis_op(
       symbol=s, stop_chars="", r_den=r_den, t_den=t_den)
-  except ValueError, e:
+  except ValueError as e:
     pass
-  except RuntimeError, e :
+  except RuntimeError as e :
     pass
   else:
     return cb_op.c_inv().as_rational()
@@ -84,13 +85,13 @@ def fmt_nums(nums):
   return tuple(result)
 
 def display_r(r):
-  for ir in xrange(3):
-    print "  (%9s %9s %9s)" % fmt_nums((r(ir,0), r(ir,1), r(ir,2)))
+  for ir in range(3):
+    print("  (%9s %9s %9s)" % fmt_nums((r(ir,0), r(ir,1), r(ir,2))))
 
 def display_rt(rt):
   r, t = rt.r, rt.t.elems
-  for ir in xrange(3):
-    print "  (%9s %9s %9s | %9s)" % fmt_nums((r(ir,0), r(ir,1), r(ir,2), t[ir]))
+  for ir in range(3):
+    print("  (%9s %9s %9s | %9s)" % fmt_nums((r(ir,0), r(ir,1), r(ir,2), t[ir])))
 
 def interpret_form_data(form):
   from cctbx.web import cgi_utils
@@ -103,7 +104,7 @@ def interpret_form_data(form):
   return inp
 
 def run(server_info, inp, status):
-  print "<pre>"
+  print("<pre>")
   from scitbx import matrix
   p = p_from_string(string=inp.cb_expr)
   assert inp.p_or_q in ["P", "Q"]
@@ -112,60 +113,60 @@ def run(server_info, inp, status):
   assert inp.p_transpose in ["off", "on"]
   if (inp.p_transpose == "on"):
     p = matrix.rt((p.r.transpose(), p.t))
-  print "P:"
+  print("P:")
   display_rt(p)
-  print
+  print()
   q = p.inverse()
-  print "Q:"
+  print("Q:")
   display_rt(q)
-  print
+  print()
   if (len(inp.obj_expr.strip()) != 0):
     if (inp.obj_type in ["xyz", "hkl"]):
       triple = xyz_from_string(string=inp.obj_expr)
       if (inp.obj_type == "xyz"):
-        print "Transformation law: (Q,q) xyz"
-        print
-        print "  xyz:", triple
-        print
-        print "  xyz':", (
-          q.r * matrix.col(triple) + q.t).elems
-        print
+        print("Transformation law: (Q,q) xyz")
+        print()
+        print("  xyz:", triple)
+        print()
+        print("  xyz':", (
+          q.r * matrix.col(triple) + q.t).elems)
+        print()
       else:
-        print "Transformation law: hkl P"
-        print
-        print "  hkl:", triple
-        print
-        print "  hkl':", (matrix.row(triple) * p.r).elems
-        print
+        print("Transformation law: hkl P")
+        print()
+        print("  hkl:", triple)
+        print()
+        print("  hkl':", (matrix.row(triple) * p.r).elems)
+        print()
     elif (inp.obj_type == "unit_cell"):
       from cctbx import uctbx
       uc = uctbx.unit_cell(inp.obj_expr)
-      print "Transformation law: Pt G P"
-      print
-      print "unit cell:", uc
-      print
+      print("Transformation law: Pt G P")
+      print()
+      print("unit cell:", uc)
+      print()
       g = matrix.sym(sym_mat3=uc.metrical_matrix())
-      print "metrical matrix:"
+      print("metrical matrix:")
       display_r(g)
-      print
+      print()
       gp = p.r.transpose() * g * p.r
-      print "metrical matrix':"
+      print("metrical matrix':")
       display_r(gp)
-      print
+      print()
       ucp = uctbx.unit_cell(metrical_matrix=gp.as_sym_mat3())
-      print "unit cell':", ucp
-      print
+      print("unit cell':", ucp)
+      print()
     elif (inp.obj_type == "Ww"):
       w = w_from_string(string=inp.obj_expr)
-      print "Transformation law: (Q,q) (W,w) (P,p)"
-      print
-      print "(W, w):"
+      print("Transformation law: (Q,q) (W,w) (P,p)")
+      print()
+      print("(W, w):")
       display_rt(w)
-      print
+      print()
       wp = q * w * p
-      print "(W, w)':"
+      print("(W, w)':")
       display_rt(wp)
-      print
+      print()
     else:
       raise RuntimeError("Unknown obj_type: %s" % inp.obj_type)
-  print "</pre>"
+  print("</pre>")

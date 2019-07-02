@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import iotbx.cif
 import sys, email.parser, copy, hashlib, base64
@@ -55,7 +55,7 @@ class cif_binary_section:
     return self.data
 
   def show(self):
-    print self.header_dic
+    print(self.header_dic)
 
 def get_binary_sections(raw):
   return_sections = []
@@ -203,4 +203,4 @@ if (__name__ == "__main__"):
   for file_name in args:
     #print file_name
     run(file_name)
-  print "OK"
+  print("OK")

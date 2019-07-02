@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from cctbx import adptbx
 from mmtbx import bulk_solvent
@@ -12,6 +12,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.math_utils import ifloor, iceil
 import mmtbx.f_model
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+from six.moves import zip, range
 
 class run(mmtbx.f_model.manager):
   """
@@ -48,13 +49,13 @@ class run(mmtbx.f_model.manager):
     self.reset_all_scales()
     self.show(prefix = "re-set all scales", log = log)
     if(remove_outliers and not self.twinned()):
-      for iii in xrange(5):
+      for iii in range(5):
         self.remove_outliers(use_model = False, log = None) # XXX
       self.show(prefix = "remove outliers", log = log)
     result = None
     if(self.twinned()):
-      for cycle in xrange(2):
-        if(log is not None): print >> log, "cycle %d:"%cycle
+      for cycle in range(2):
+        if(log is not None): print("cycle %d:"%cycle, file=log)
         self.update_twin_fraction()
         self.show(prefix = "update twin fraction", log = log)
         result = self.update_solvent_and_scale_twin(log = log,
@@ -69,7 +70,7 @@ class run(mmtbx.f_model.manager):
     #XXX if(remove_outliers and not self.twinned()):
     #XXX   self.remove_outliers(use_model = True, log = None) # XXX
     if(remove_outliers and not self.twinned()):
-      for iii in xrange(5):
+      for iii in range(5):
         self.remove_outliers(use_model = True, log = None) # XXX
       self.show(prefix = "remove outliers", log = log)
     return result
@@ -99,9 +100,9 @@ class run(mmtbx.f_model.manager):
     m = "%24s: r(all,work,free)=%6.4f %6.4f %6.4f n_refl.: %d"%(prefix, r,
       self.r_work(), self.r_free(), self.f_obs().data().size())
     if(not self.twinned()):
-      print >> log, m
+      print(m, file=log)
     else:
-      print >> log, m+" twin_fraction=%4.2f"%self.twin_fraction
+      print(m+" twin_fraction=%4.2f"%self.twin_fraction, file=log)
 
   def need_to_refine_hd_scattering_contribution(self):
     if(self.xray_structure is None): return False

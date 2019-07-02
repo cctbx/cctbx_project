@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
@@ -7,10 +7,12 @@ import hashlib
 from libtbx.utils import Sorry, format_cpu_times
 import libtbx.load_env
 from libtbx import Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import math
+from six.moves import range
+from six.moves import zip
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 import random
@@ -22,7 +24,7 @@ def exercise_atom():
   a.name = "abcd"
   assert a.name == "abcd"
   try: a.name = "xyzhkl"
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "string is too long for target variable " \
       "(maximum length is 4 characters, 6 given)."
   else: raise Exception_expected
@@ -127,7 +129,7 @@ def exercise_atom():
   assert approx_equal(a.fdp, 0.4)
   assert a.tmp == 0
   try: a.set_name(new_name="12345")
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "string is too long for target variable " \
       "(maximum length is 4 characters, 5 given)."
   else: raise Exception_expected
@@ -309,24 +311,24 @@ def exercise_atom():
   a.serial = 100000
   assert a.serial == "A0000"
   try: a.set_serial(new_serial="ABCDEF")
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "string is too long for target variable " \
       "(maximum length is 5 characters, 6 given)."
   else: raise Exception_expected
   try: a.set_serial(new_serial=-10000)
-  except ValueError, e:
+  except ValueError as e:
     assert str(e) == "value is less than -9999"
   else: raise Exception_expected
   try: a.set_serial(new_serial=87440032)
-  except ValueError, e:
+  except ValueError as e:
     assert str(e) == "value is greater than 87440031"
   else: raise Exception_expected
   try: a.set_serial(new_serial=sys)
-  except TypeError, e:
+  except TypeError as e:
     assert str(e) == "value must be a Python str or int."
   else: raise Exception_expected
   try: a.serial = sys
-  except TypeError, e:
+  except TypeError as e:
     assert str(e) == "value must be a Python str or int."
   else: raise Exception_expected
   #
@@ -378,7 +380,7 @@ def exercise_atom():
   #
   sentinel = atoms.reset_tmp()
   try: atoms.reset_tmp()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "Another associated atom_tmp_sentinel instance still exists."
   else: raise Exception_expected
@@ -404,7 +406,7 @@ def exercise_atom():
   assert sorted([atom.name for atom in d.values()]) == ["NA  ", "x   "]
   try:
     atoms.build_dict(strip_names=True, upper_names=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), '''\
 Duplicate keys in build_dict(strip_names=true, upper_names=true,\
  convert_stars_to_primes=false):
@@ -492,7 +494,7 @@ def exercise_atom_group():
   assert ag.parent() is None
   try:
     ag.parent(optional=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "atom_group has no parent residue_group")
   else: raise Exception_expected
   #
@@ -516,7 +518,7 @@ def exercise_atom_group():
   assert ag.atoms().size() == 2
   assert (ag.get_atom("ca").name == "ca")
   assert [atom.name for atom in ag.atoms()] == ["ca", "n"]
-  for i in xrange(3):
+  for i in range(3):
     ag.append_atom(pdb.hierarchy.atom())
   assert ag.atoms_size() == 5
   assert ag.atoms().size() == 5
@@ -544,7 +546,7 @@ def exercise_atom_group():
   a = pdb.hierarchy.atom().set_name(new_name="y")
   assert ag.find_atom_index(atom=a) == -1
   try: ag.find_atom_index(atom=a, must_be_present=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "atom not in atom_group."
   else: raise Exception_expected
   ag.insert_atom(i=4, atom=a)
@@ -561,7 +563,7 @@ def exercise_atom_group():
   else: raise Exception_expected
   #
   try: pdb.hierarchy.atom_group(altloc="ab")
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "string is too long for target variable " \
       "(maximum length is 1 character, 2 given)."
   else: raise Exception_expected
@@ -578,7 +580,7 @@ def exercise_atom_group():
   assert atom.parent() is None
   try:
     atom.parent(optional=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "atom has no parent atom_group")
   else: raise Exception_expected
 
@@ -639,7 +641,7 @@ def exercise_residue_group():
   assert rg.parent() is None
   try:
     rg.parent(optional=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "residue_group has no parent chain")
   else: raise Exception_expected
   #
@@ -653,7 +655,7 @@ def exercise_residue_group():
   c1.pre_allocate_residue_groups(number_of_additional_residue_groups=2)
   assert c1.residue_groups_size() == 0
   assert len(c1.residue_groups()) == 0
-  for i in xrange(2):
+  for i in range(2):
     c1.append_residue_group(residue_group=pdb.hierarchy.residue_group())
   assert c1.residue_groups_size() == 2
   assert len(c1.residue_groups()) == 2
@@ -675,7 +677,7 @@ def exercise_residue_group():
   assert ag.parent() is None
   assert rg.find_atom_group_index(atom_group=ag) == -1
   try: rg.find_atom_group_index(atom_group=ag, must_be_present=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "atom_group not in residue_group."
   else: raise Exception_expected
   #
@@ -684,7 +686,7 @@ def exercise_residue_group():
   a = pdb.hierarchy.atom()
   ag1.append_atom(atom=a)
   try: ag2.append_atom(atom=a)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "atom has another parent atom_group already."
   else: raise Exception_expected
   #
@@ -722,7 +724,7 @@ def exercise_residue_group():
   rg = pdb.hierarchy.residue_group()
   rg.resseq = "x"
   try: rg.resseq_as_int()
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert not show_diff(str(e), 'invalid residue sequence number: "x"')
   else: raise Exception_expected
   #
@@ -763,7 +765,7 @@ def exercise_chain():
   assert c.parent() is None
   try:
     c.parent(optional=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "chain has no parent model")
   else: raise Exception_expected
   #
@@ -773,7 +775,7 @@ def exercise_chain():
   c.pre_allocate_residue_groups(number_of_additional_residue_groups=2)
   assert c.residue_groups_size() == 0
   assert len(c.residue_groups()) == 0
-  for i in xrange(2):
+  for i in range(2):
     c.append_residue_group(residue_group=pdb.hierarchy.residue_group())
   assert c.residue_groups_size() == 2
   assert len(c.residue_groups()) == 2
@@ -820,7 +822,7 @@ def exercise_chain():
   assert rg.parent() is None
   assert c.find_residue_group_index(residue_group=rg) == -1
   try: c.find_residue_group_index(residue_group=rg, must_be_present=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "residue_group not in chain."
   else: raise Exception_expected
   #
@@ -829,7 +831,7 @@ def exercise_chain():
   ag = pdb.hierarchy.atom_group()
   rg1.append_atom_group(atom_group=ag)
   try: rg2.append_atom_group(atom_group=ag)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "atom_group has another parent residue_group already."
   else: raise Exception_expected
   #
@@ -1033,7 +1035,7 @@ def exercise_model():
   assert len(chains) == 2
   assert chains[0].memory_id() == ch_a.memory_id()
   assert chains[1].memory_id() == ch_b.memory_id()
-  for i in xrange(3):
+  for i in range(3):
     m.append_chain(pdb.hierarchy.chain())
   assert m.chains_size() == 5
   assert len(m.chains()) == 5
@@ -1075,7 +1077,7 @@ def exercise_model():
   assert c.parent() is None
   assert m.find_chain_index(chain=c) == -1
   try: m.find_chain_index(chain=c, must_be_present=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "chain not in model."
   else: raise Exception_expected
   #
@@ -1084,7 +1086,7 @@ def exercise_model():
   c = pdb.hierarchy.chain()
   m1.append_chain(chain=c)
   try: m2.append_chain(chain=c)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "chain has another parent model already."
   else: raise Exception_expected
 
@@ -1102,7 +1104,7 @@ def exercise_root():
   assert m.parent() is None
   try:
     m.parent(optional=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "model has no parent root")
   else: raise Exception_expected
   #
@@ -1129,7 +1131,7 @@ def exercise_root():
   assert len(models) == 2
   assert models[0].memory_id() == m_a.memory_id()
   assert models[1].memory_id() == m_b.memory_id()
-  for i in xrange(3):
+  for i in range(3):
     r.append_model(model=pdb.hierarchy.model())
   assert r.models_size() == 5
   assert len(r.models()) == 5
@@ -1169,7 +1171,7 @@ def exercise_root():
   assert m.parent() is None
   assert r.find_model_index(model=m) == -1
   try: r.find_model_index(model=m, must_be_present=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "model not in root."
   else: raise Exception_expected
   #
@@ -1178,7 +1180,7 @@ def exercise_root():
   m = pdb.hierarchy.model()
   r1.append_model(model=m)
   try: r2.append_model(model=m)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "model has another parent root already."
   else: raise Exception_expected
 
@@ -1261,7 +1263,7 @@ def exercise_atom_id_str():
   assert rd.id_str(suppress_segid=1) == 'model="12345678" pdbres="GLYCh1234J"'
   assert rd.id_str(suppress_segid=-1) == 'model="12345678" pdbres="GLYCh1234J"'
   try: rd.id_str()
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), '''\
 residue.id_str(suppress_segid=false): segid is not unique:
   model="12345678" pdbres="GLYCh1234J" segid="1234"''')
@@ -1418,7 +1420,7 @@ B1234 NaMexuvw%2spqrst  -10000 -10000 -10000 -10000 -10000 -10000  \
 ATOM        NaMe              1000000.-100000.100000.09999.099999.""")
   atom.xyz = (0,1.e7,0)
   try: atom.format_atom_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom Y coordinate value does not fit into F8.3 format:
   "ATOM        NaMe           "
   value: 10000000.000""")
@@ -1426,7 +1428,7 @@ atom Y coordinate value does not fit into F8.3 format:
   atom.xyz = (0,0,0)
   atom.occ = 100000
   try: atom.format_atom_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom occupancy factor does not fit into F6.2 format:
   "ATOM        NaMe           "
   occupancy factor: 100000.00""")
@@ -1434,7 +1436,7 @@ atom occupancy factor does not fit into F6.2 format:
   atom.occ = 0
   atom.b = 200000
   try: atom.format_atom_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom B-factor does not fit into F6.2 format:
   "ATOM        NaMe           "
   B-factor: 200000.00""")
@@ -1447,7 +1449,7 @@ atom B-factor does not fit into F6.2 format:
 SIGATM      NaMe              1000000.-100000.100000.099999.9999.0""")
   atom.sigxyz = (0,0,2.e7)
   try: atom.format_sigatm_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom sigma Z coordinate value does not fit into F8.3 format:
   "SIGATM      NaMe           "
   value: 20000000.000""")
@@ -1455,7 +1457,7 @@ atom sigma Z coordinate value does not fit into F8.3 format:
   atom.sigxyz = (0,0,0)
   atom.sigocc = 200000
   try: atom.format_sigatm_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom sigma occupancy factor does not fit into F6.2 format:
   "SIGATM      NaMe           "
   sigma occupancy factor: 200000.00""")
@@ -1463,7 +1465,7 @@ atom sigma occupancy factor does not fit into F6.2 format:
   atom.sigocc = 0
   atom.sigb = 300000
   try: atom.format_sigatm_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom sigma B-factor does not fit into F6.2 format:
   "SIGATM      NaMe           "
   sigma B-factor: 300000.00""")
@@ -1471,7 +1473,7 @@ atom sigma B-factor does not fit into F6.2 format:
   #
   atom.uij = (0,1000,0,0,0,0)
   try: atom.format_anisou_record()
-  except RuntimeError, e: assert not show_diff(str(e), """\
+  except RuntimeError as e: assert not show_diff(str(e), """\
 atom U22 value * 10000 does not fit into F7.0 format:
   "ANISOU      NaMe           "
   value * 10000: 10000000""")
@@ -1480,7 +1482,7 @@ atom U22 value * 10000 does not fit into F7.0 format:
   atom.siguij = (0,0,0,0,3333,0)
   if (pdb.hierarchy.atom.has_siguij()):
     try: atom.format_siguij_record()
-    except RuntimeError, e: assert not show_diff(str(e), """\
+    except RuntimeError as e: assert not show_diff(str(e), """\
 atom sigma U13 value * 10000 does not fit into F7.0 format:
   "SIGUIJ      NaMe           "
   value * 10000: 33330000""")
@@ -2004,7 +2006,7 @@ ATOM      1  CB  LYS   109
 BREAK
 ATOM      2  CG  LYS   109
 """)).construct_hierarchy()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "Misplaced BREAK record (input line 3).")
   else: raise Exception_expected
   try: pdb.input(
@@ -2018,7 +2020,7 @@ ATOM      3  CA  LYS   110
 BREAK
 ATOM      4  CB  LYS   110
 """)).construct_hierarchy()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "Misplaced BREAK record (file abc, line 6).")
   else: raise Exception_expected
   #
@@ -2289,7 +2291,7 @@ ATOM     73  HD2 LEU B 441
   oc.raise_improper_alt_conf_if_necessary()
   oc.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
   try: oc.raise_duplicate_atom_labels_if_necessary(max_show=1)
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), '''\
 number of groups of duplicate atom labels: 2
   total number of affected atoms:          6
@@ -2361,7 +2363,7 @@ ATOM     72  HD1 LEU   441
       oc.raise_duplicate_atom_labels_if_necessary()
     else:
       try: oc.raise_duplicate_atom_labels_if_necessary()
-      except Sorry, e:
+      except Sorry as e:
         assert not show_diff(str(e), '''\
 number of groups of duplicate atom labels: 1
   total number of affected atoms:          2
@@ -2691,7 +2693,7 @@ ATOM         N2  R02     2
   assert len(oc.warnings()) == 0
   oc.raise_duplicate_atom_labels_if_necessary()
   try: oc.raise_improper_alt_conf_if_necessary()
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), '''\
 residue with proper altloc
   "ATOM         N2  R02     2 .*.        "
@@ -2702,7 +2704,7 @@ residue with improper altloc
   "ATOM         N1 BR01     1 .*.        "''')
   else: raise Exception_expected
   try: oc.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), '''\
 chains with mix of proper and improper alt. conf.: 1
   residue with proper altloc
@@ -2826,7 +2828,7 @@ ATOM         CA AGLY     2
   try: oc \
    .raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary(
       max_show=1)
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), """\
 residue groups with multiple resnames using same altloc: 2
   residue group:
@@ -3017,7 +3019,7 @@ ATOM      5      R01 B
   for chain in hierarchy.chains():
     for residue in chain.residues():
       for atom in residue.atoms():
-        print >> sio, atom.quote()
+        print(atom.quote(), file=sio)
   assert not show_diff(sio.getvalue(), """\
 "ATOM      1      R01 A     .*.        "
 "ATOM      2      R01 A     .*.        "
@@ -3071,7 +3073,7 @@ def exercise_merge_atom_groups():
       residue_groups[0].merge_atom_groups(
         primary=secondary_atom_group,
         secondary=primary_atom_group)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert not show_diff(str(e), """\
 "primary" atom_group has a different or no parent\
  (this residue_group must be the parent).""")
@@ -3080,7 +3082,7 @@ def exercise_merge_atom_groups():
       residue_groups[0].merge_atom_groups(
         primary=primary_atom_group,
         secondary=primary_atom_group)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert not show_diff(str(e), """\
 "primary" and "secondary" atom_groups are identical.""")
     else: raise Exception_expected
@@ -3088,7 +3090,7 @@ def exercise_merge_atom_groups():
       residue_groups[0].merge_atom_groups(
         primary=primary_atom_group,
         secondary=residue_groups[2].atom_groups()[i_ag])
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e).find("secondary.data->altloc == primary.data->altloc") > 0
     else: raise Exception_expected
     assert primary_atom_group.atoms_size() == 4
@@ -3100,7 +3102,7 @@ def exercise_merge_atom_groups():
     assert secondary_atom_group.atoms_size() == 0
     sio = StringIO()
     for atom in primary_atom_group.atoms():
-      print >> sio, atom.format_atom_record()
+      print(atom.format_atom_record(), file=sio)
     assert not show_diff(sio.getvalue(), ["""\
 ATOM   1716  N  ALEU   190      28.628   4.549  20.230  0.70  3.78           N
 ATOM   1717  CA ALEU   190      27.606   5.007  19.274  0.70  3.71           C
@@ -3129,7 +3131,7 @@ def exercise_merge_residue_groups():
     chain.merge_residue_groups(
       primary=residue_groups[0],
       secondary=residue_groups[1])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("secondary.data->resseq == primary.data->resseq") > 0
   else: raise Exception_expected
   assert residue_groups[0].atom_groups_size() == 2
@@ -3146,7 +3148,7 @@ def exercise_merge_residue_groups():
   sio = StringIO()
   for atom_group in residue_groups[0].atom_groups():
     for atom in atom_group.atoms():
-      print >> sio, atom.format_atom_record()
+      print(atom.format_atom_record(), file=sio)
   assert not show_diff(sio.getvalue(), """\
 ATOM   1716  N  ALEU   190      28.628   4.549  20.230  0.70  3.78           N
 ATOM   1717  CA ALEU   190      27.606   5.007  19.274  0.70  3.71           C
@@ -3172,7 +3174,7 @@ ATOM   9723  O  CLEU   190      25.693   5.796  20.563  0.70  3.68           O
       chain.merge_residue_groups(
         primary=residue_groups[i_rg],
         secondary=residue_groups[j_rg])
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert not show_diff(str(e), """\
 "%s" residue_group has a different or no parent\
  (this chain must be the parent).""" % s)
@@ -3215,7 +3217,7 @@ HETATM 9367  O  XHOH B2052
   assert chain.residue_groups_size() == 3
   indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
   assert indices.size() == 0
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     pdb_inp = pdb.input(
       source_info=None,
       lines=lines.select(flex.random_permutation(size=lines.size())))
@@ -3403,7 +3405,7 @@ ATOM         N2
 ATOM         N3 B
 ATOM         N3
 """)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     pdb_inp = pdb.input(source_info=None, lines=lines)
     residue_group = pdb_inp.construct_hierarchy(
       residue_group_post_processing=False).only_residue_group()
@@ -3875,17 +3877,17 @@ ATOM      4  O  BHOH B   1                                                   O
 def conformers_as_str(conformers):
   s = StringIO()
   for cf in conformers:
-    print >> s, "conformer:", show_string(cf.altloc)
+    print("conformer:", show_string(cf.altloc), file=s)
     for rd in cf.residues():
       assert rd.resseq_as_int() == pdb.hy36decode(width=4, s=rd.resseq)
-      print >> s, "  residue:", \
+      print("  residue:", \
         show_string(rd.resname), \
         show_string(rd.resseq), \
         show_string(rd.icode), \
         int(rd.link_to_previous), \
-        int(rd.is_pure_main_conf)
+        int(rd.is_pure_main_conf), file=s)
       for atom in rd.atoms():
-        print >> s, "    atom:", show_string(atom.name)
+        print("    atom:", show_string(atom.name), file=s)
   return s.getvalue()
 
 def exercise_conformers():
@@ -3912,7 +3914,7 @@ def exercise_conformers():
         assert cf.residues_size() == 1
         try:
           cf.parent(optional=False)
-        except RuntimeError, e:
+        except RuntimeError as e:
           assert not show_diff(str(e), "conformer has no parent chain")
         else: raise Exception_expected
       #
@@ -4396,7 +4398,7 @@ ATOM      2  CA  MET A   1
   assert residue.find_atom_by(name=" CA ").name == " CA "
   try:
     residue.parent(optional=False)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), "residue has no parent conformer")
   else: raise Exception_expected
 
@@ -4578,7 +4580,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   assert atoms.extract_element(strip=False).all_eq(atoms.extract_element())
   assert list(atoms.extract_element(strip=True)) ==["N","C","C","","X","CA",""]
   atoms.reset_i_seq()
-  assert list(atoms.extract_i_seq()) == range(7)
+  assert list(atoms.extract_i_seq()) == list(range(7))
   assert list(
     pdb.hierarchy.af_shared_atom([atoms[3], atoms[6]]).extract_i_seq()) == \
       [3, 6]
@@ -4587,7 +4589,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   assert list(atoms.extract_tmp_as_size_t()) == [3,4,5,6,7,8,9]
   atoms[3].tmp = -1
   try: atoms.extract_tmp_as_size_t()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "atom.tmp less than zero: cannot convert to unsigned value.")
   else: raise Exception_expected
@@ -4642,9 +4644,9 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   assert approx_equal(atoms.extract_fdp(), new_fdp)
   #
   h = pdb_inp.construct_hierarchy(set_atom_i_seq=False, sort_atoms=False)
-  for i in xrange(2):
+  for i in range(2):
     s = h.as_pdb_string()
-    d = hashlib.md5(s).hexdigest()
+    d = hashlib.md5(s.encode()).hexdigest()
     if (pdb.hierarchy.atom.has_siguij()):
       assert d == "c4089359af431bb2962d6a8e457dd86f", d
     else:
@@ -4900,12 +4902,12 @@ ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
   # with current PDB policy on TER. If pdb_inp is absolutely needed to
   # comply too, welcome to figure out how to modify
   # iotbx/pdb/construct_hierarchy.cpp: input_atoms_with_labels_generator::run
-  print >> open("tmp_tst_hierarchy.pdb", "w"), rem
+  print(rem, file=open("tmp_tst_hierarchy.pdb", "w"))
   pdb_inp.write_pdb_file(
     file_name="tmp_tst_hierarchy.pdb", open_append=True, append_end=True)
   assert not show_diff(
     open("tmp_tst_hierarchy.pdb").read(), rem+"\n"+pdb_string+"TER\nEND\n")
-  print >> open("tmp_tst_hierarchy.pdb", "w"), rem
+  print(rem, file=open("tmp_tst_hierarchy.pdb", "w"))
   hierarchy.write_pdb_file(
     file_name="tmp_tst_hierarchy.pdb", open_append=True, append_end=True)
   assert not show_diff(
@@ -4929,7 +4931,7 @@ CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           7
 """ + pdb_string)
 
   # XXX see comment on L 4898
-  print >> open("tmp_tst_hierarchy.pdb", "w"), rem
+  print(rem, file=open("tmp_tst_hierarchy.pdb", "w"))
   pdb_inp.write_pdb_file(
     file_name="tmp_tst_hierarchy.pdb",
     cryst1_z="",
@@ -4938,7 +4940,7 @@ CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           7
   assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), rem + """
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
 """ + pdb_string+"TER\n")
-  print >> open("tmp_tst_hierarchy.pdb", "w"), rem
+  print(rem, file=open("tmp_tst_hierarchy.pdb", "w"))
   hierarchy.write_pdb_file(
     file_name="tmp_tst_hierarchy.pdb",
     cryst1_z="",
@@ -4997,7 +4999,7 @@ TER
   assert h1.is_similar_hierarchy(other=h2)
   assert h2.is_similar_hierarchy(other=h1)
   #
-  open("tmp_tst_hierarchy.pdb", "wb").write("""\
+  open("tmp_tst_hierarchy.pdb", "w").write("""\
 CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
 ATOM      0  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
 ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
@@ -5039,7 +5041,7 @@ END
 """)
   #
   if (pdb_file_names is None):
-    print "Skipping exercise_as_pdb_string(): input files not available"
+    print("Skipping exercise_as_pdb_string(): input files not available")
     return
   prev_file_name = None
   for file_name in pdb_file_names:
@@ -5065,9 +5067,9 @@ END
         c = os.path.basename(     file_name)
         if (    p[:3] != c[:3]
             and (len(p) < 15 or len(c) < 15 or p[-12:] != c[-12:])):
-          print "WARNING: similar hierarchies:"
-          print " ", show_string(prev_file_name)
-          print " ", show_string(file_name)
+          print("WARNING: similar hierarchies:")
+          print(" ", show_string(prev_file_name))
+          print(" ", show_string(file_name))
     prev_file_name = file_name
     prev_pdb_str = pdb_str_1
     prev_hierarchy = hierarchy_1
@@ -5076,10 +5078,10 @@ END
     for obj in [pdb_inp_2, hierarchy_2]:
       sio = StringIO()
       for awl in obj.atoms_with_labels():
-        print >> sio, awl.format_atom_record_group(), \
+        print(awl.format_atom_record_group(), \
           int(awl.is_first_in_chain), \
           int(awl.is_first_after_break), \
-          awl.model_id
+          awl.model_id, file=sio)
       awls.append(sio.getvalue())
     assert not show_diff(*awls), file_name
 
@@ -5181,13 +5183,13 @@ ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00""")
   a = pdb.hierarchy.atom()
   a.serial = "   1A"
   try: a.serial_as_int()
-  except (RuntimeError, ValueError), e:
+  except (RuntimeError, ValueError) as e:
     assert not show_diff(str(e), 'invalid atom serial number: "   1A"')
   else: raise Exception_expected
   #
   awl.serial = "   1A"
   try: awl.serial_as_int()
-  except (RuntimeError, ValueError), e:
+  except (RuntimeError, ValueError) as e:
     assert not show_diff(str(e), """\
 invalid atom serial number:
   ATOM     1A NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00
@@ -5196,7 +5198,7 @@ invalid atom serial number:
   #
   awl.resseq = " 18A"
   try: awl.resseq_as_int()
-  except (RuntimeError, ValueError), e:
+  except (RuntimeError, ValueError) as e:
     assert not show_diff(str(e), """\
 invalid residue sequence number:
   ATOM     1A NaMelrNmCh 18AI      0.000   0.000   0.000  0.00  0.00
@@ -5208,7 +5210,7 @@ ATOM                    1B
 """)).construct_hierarchy(sort_atoms=False)
   for r in [h.only_residue_group(), h.only_residue()]:
     try: r.resseq_as_int()
-    except (RuntimeError, ValueError), e:
+    except (RuntimeError, ValueError) as e:
       assert not show_diff(str(e), """\
 invalid residue sequence number:
   ATOM                    1B       0.000   0.000   0.000  0.00  0.00
@@ -5220,7 +5222,7 @@ invalid residue sequence number:
   ch.residue_groups()[0].append_atom_group(pdb.hierarchy.atom_group())
   for r in[ch.only_residue_group(), ch.only_conformer().only_residue()]:
     try: r.resseq_as_int()
-    except (RuntimeError, ValueError), e:
+    except (RuntimeError, ValueError) as e:
       assert not show_diff(str(e), 'invalid residue sequence number: "  1C"')
     else: raise Exception_expected
   #
@@ -5249,13 +5251,13 @@ ENDMDL
         assert awlc.parent() is None
         try:
           awlc.parent(optional=False)
-        except RuntimeError, e:
+        except RuntimeError as e:
           assert not show_diff(str(e), "atom has no parent atom_group")
         else: raise Exception_expected
-        print >> sio, getattr(awl, fmt)(), \
+        print(getattr(awl, fmt)(), \
           int(awl.is_first_in_chain), \
           int(awl.is_first_after_break), \
-          awl.model_id
+          awl.model_id, file=sio)
       assert not show_diff(sio.getvalue(), """\
 ATOM      1  C   MET A   1       0.000   0.000   0.000  0.00  0.00 1 0    0
 ATOM      2  CA AMET A   1       0.000   0.000   0.000  0.00  0.00 0 0    0
@@ -5435,19 +5437,19 @@ ATOM     18
 ENDMDL
 """)).construct_hierarchy(sort_atoms=False)
   try: h_all.select(atom_selection=flex.bool())
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "atom_selection array too short."
   else: raise Exception_expected
   try: h_all.select(atom_selection=flex.bool(17, False))
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "atom_selection array too large."
   else: raise Exception_expected
   try: h_all.select(atom_selection=flex.size_t([1,0]))
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "atom_selection indices not in strictly ascending order."
   else: raise Exception_expected
   try: h_all.select(atom_selection=flex.size_t([16]))
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) \
         == "atom_selection indices greater than or equal to number of atoms."
   else: raise Exception_expected
@@ -5457,11 +5459,11 @@ ENDMDL
     assert h_sel.models_size() == 0
     assert h_sel.select(atom_selection=atom_selections[1]).models_size() == 0
   try: h_sel.select(atom_selection=flex.bool(1, False))
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) == "atom_selection array too large."
   else: raise Exception_expected
   try: h_sel.select(atom_selection=flex.size_t([0]))
-  except (ValueError, RuntimeError), e:
+  except (ValueError, RuntimeError) as e:
     assert str(e) \
         == "atom_selection indices greater than or equal to number of atoms."
   else: raise Exception_expected
@@ -5500,7 +5502,7 @@ ENDMDL
   a_all.reset_i_seq()
   sentinel = a_all.reset_tmp(first_value=1, increment=0)
   for copy_atoms in [False, True]:
-    for i_trial in xrange(n_trials):
+    for i_trial in range(n_trials):
       sel = flex.random_bool(size=16, threshold=0.5)
       a_sel = a_all.select(sel)
       h_sel = h_all.select(sel, copy_atoms=copy_atoms)
@@ -5535,7 +5537,7 @@ ATOM      8  C
 ATOM      9  CD B
 ATOM     10  O
 """)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     pdb_inp = pdb.input(
       source_info=None,
       lines=lines.select(flex.random_permutation(size=lines.size())))
@@ -5606,7 +5608,7 @@ ATOM     12  O   ASN A   3      -1.872   0.119   3.648  1.00 10.42           O
     rsc = residue.standalone_copy()
     assert not show_diff(rsc.root().as_pdb_string(), eps)
     for rp in [residue, rsc]:
-      for i_pass in xrange(2):
+      for i_pass in range(2):
         s = pickle.dumps(rp, 1)
         l = pickle.loads(s)
         assert not show_diff(l.root().as_pdb_string(), eps)
@@ -6162,11 +6164,11 @@ END
 """).construct_hierarchy()
   atoms = pdb_hierarchy.atoms()
   for first in [0,3]:
-    for i in xrange(3):
+    for i in range(3):
       assert atoms[first].is_in_same_conformer_as(atoms[first+i])
     assert not atoms[first+1].is_in_same_conformer_as(atoms[first+2])
-  for i in xrange(3):
-    for j in xrange(3,6):
+  for i in range(3):
+    for j in range(3,6):
       assert not atoms[i].is_in_same_conformer_as(atoms[j])
 
 def get_phenix_regression_pdb_file_names():
@@ -6214,8 +6216,8 @@ ANISOU    6  O   HOH     1      788    626    677   -344    621   -232       O
     assert s1.scattering_type == s2.scattering_type
   xrs_new3 = xrs.concatenate(other = xrs_new1)
   try: hierarchy.adopt_xray_structure(xray_structure = xrs_new3)
-  except RuntimeError, e: pass
-  assert str(e) == "Incompatible size of hierarchy and scatterers array."
+  except RuntimeError as e:
+    assert str(e) == "Incompatible size of hierarchy and scatterers array."
   xrs_new4 = xrs.deep_copy_scatterers()
   xrs_new4.set_inelastic_form_factors(photon=1.4, table="sasaki")
   for atom in hierarchy.atoms():
@@ -6237,7 +6239,7 @@ ANISOU    6  O   HOH     1      788    626    677   -344    621   -232       O
     for chain in model.chains():
       if chain.id == "A": chain.id = "C"
   try: hierarchy.adopt_xray_structure(xray_structure=xrs)
-  except Exception, e: pass
+  except Exception as e: pass
   else: raise Exception_expected
   hierarchy.adopt_xray_structure(
     xray_structure=xrs, assert_identical_id_str=False)
@@ -6309,7 +6311,7 @@ ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
     current_group=current_group,
     new_group=new_group)
   hierarchy1.write_pdb_file(file_name="moved.pdb")
-  print hierarchy1.as_pdb_string()
+  print(hierarchy1.as_pdb_string())
   assert not show_diff(hierarchy1.as_pdb_string(), """\
 ATOM     39  N   TYR A   6       5.514   2.664   4.856  1.00 11.99           N
 ATOM     40  CA  TYR A   6       6.831   2.310   4.318  1.00 12.30           C
@@ -6534,7 +6536,7 @@ ATOM  10851  OXT ILE A1445      50.752  78.273  41.078  1.00189.50      A
 ATOM  27953  ZN  ZN  A1506    9999.9999999.9999999.999  1.00166.17      A
 ATOM  27954  ZN  ZN  A1508    9999.9999999.9999999.999  1.00166.17      A
 """))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find(
       "IOTBX_ASSERT(! (xyz[0]>9999 && xyz[1]>9999 && xyz[2]>9999)) failure.") >0
   else: raise Exception_expected
@@ -6574,27 +6576,27 @@ ATOM   1929  CG2CTHR M   8      26.350  43.915  -0.725  0.50 36.69           C
 """))
 
   h = pdb_inp.construct_hierarchy()
-  print "*"*50
+  print("*"*50)
   for conf in h.only_chain().conformers():
-    print "conf altloc '%s'" % conf.altloc
+    print("conf altloc '%s'" % conf.altloc)
     for res in conf.residues():
-      print "residue:", res.id_str(), "is_pure_main_conf:", res.is_pure_main_conf
+      print("residue:", res.id_str(), "is_pure_main_conf:", res.is_pure_main_conf)
       for atom in res.atoms():
-        print "  ", atom.id_str()
-  print "*"*50
-  print "*"*50
+        print("  ", atom.id_str())
+  print("*"*50)
+  print("*"*50)
   for rg in h.only_chain().residue_groups():
-    print "rg ", rg.resseq, rg.have_conformers()
+    print("rg ", rg.resseq, rg.have_conformers())
     for ag in rg.atom_groups():
-      print "ag:", ag.resname, ag.altloc
+      print("ag:", ag.resname, ag.altloc)
       for atom in ag.atoms():
-        print "  ", atom.id_str()
+        print("  ", atom.id_str())
   # assert not h.only_chain().conformers()[2].residues()[0].is_pure_main_conf
   # assert not h.only_chain().conformers()[2].residues()[1].is_pure_main_conf
   r0_pmc = h.only_chain().conformers()[2].residues()[0].is_pure_main_conf
   r1_pmc = h.only_chain().conformers()[2].residues()[1].is_pure_main_conf
-  print "Residue 0 is", r0_pmc
-  print "Residue 1 is", r1_pmc
+  print("Residue 0 is", r0_pmc)
+  print("Residue 1 is", r1_pmc)
 
 def exercise_selection_and_deep_copy():
   """
@@ -6605,7 +6607,7 @@ def exercise_selection_and_deep_copy():
   """
   def show_atoms(h):
     for a in h.atoms():
-      print a.id_str()
+      print(a.id_str())
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM      0  N   ASP A   1      49.347 -62.804  60.380  1.00 34.60           N
 ATOM      1  CA  ASP A   1      47.975 -63.194  59.946  1.00 33.86           C
@@ -6632,26 +6634,26 @@ ATOM     15  O   MET A   4      40.633 -70.625  61.911  1.00 23.73           O
   h1 = h1.deep_copy()
   assert h1.atoms()[0].parent() is not None
 
-  print "example 2"
+  print("example 2")
   h2 = pdb_h.deep_copy()
   sel = h2.atom_selection_cache().selection("resid 3")
   h2 = h2.select(sel)
   # assert h2.atoms()[0].parent() is not None # FAILURE
   show_atoms(h2) # in this printout information about residue and chain is missing
-  print "==============="
+  print("===============")
 
   # example 3 - same as 2, but using separate variable for asc to make it work
-  print "example 3"
+  print("example 3")
   h2 = pdb_h.deep_copy()
   asc = h2.atom_selection_cache()
   sel = asc.selection("resid 3")
   h2 = h2.select(sel)
   assert h2.atoms()[0].parent() is not None # WORKING!!!
   show_atoms(h2)
-  print "==============="
+  print("===============")
 
   # example 4 - same as 2, but using variable for hierarchy to make it work
-  print "example 4"
+  print("example 4")
   h2 = pdb_h.deep_copy()
   sel = h2.atom_selection_cache().selection("resid 3")
   h3 = h2.select(sel)
@@ -6990,14 +6992,14 @@ ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.10 36.05           N
 def exercise(args):
   comprehensive = "--comprehensive" in args
   forever = "--forever" in args
-  print "iotbx.pdb.hierarchy.atom.sizeof_data():", \
-    pdb.hierarchy.atom.sizeof_data()
+  print("iotbx.pdb.hierarchy.atom.sizeof_data():", \
+    pdb.hierarchy.atom.sizeof_data())
   offsets = pdb.hierarchy.atom.data_offsets()
   if (comprehensive):
-    print "iotbx.pdb.hierarchy.atom.data_offsets():"
+    print("iotbx.pdb.hierarchy.atom.data_offsets():")
     prev = 0
     for key,value in sorted(offsets.items()):
-      print "  %+3d %3d %s" % (key-prev, key, value)
+      print("  %+3d %3d %s" % (key-prev, key, value))
       prev = key
   phenix_regression_pdb_file_names = get_phenix_regression_pdb_file_names()
   while True:
@@ -7057,7 +7059,7 @@ def exercise(args):
     exercise_is_ca_only()
     exercise_occupancy_counts()
     if (not forever): break
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

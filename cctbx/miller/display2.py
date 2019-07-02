@@ -2,7 +2,7 @@
 # TODO:
 #  - cached scenes
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, to_str
 from cctbx import miller
 from cctbx.array_family import flex
@@ -10,6 +10,8 @@ import libtbx.phil
 from libtbx import object_oriented_patterns as oop # causes crash in easy_mp.multi_core_run
 from math import sqrt
 import math, traceback
+import math
+from six.moves import zip
 
 
 
@@ -85,6 +87,31 @@ def ExtendAnyData(data, nsize):
   if isinstance(data, flex.vec3_double):
     data.extend( flex.vec3_double(nsize, (1.,1.,1.)) )
   return data
+
+
+def MergeData(array, show_anomalous_pairs=False):
+  if show_anomalous_pairs:
+    merge = array.merge_equivalents()
+    multiplicities = merge.redundancies()
+    asu, matches = multiplicities.match_bijvoet_mates()
+    mult_plus, mult_minus = multiplicities.hemispheres_acentrics()
+    anom_mult = flex.int(
+      min(p, m) for (p, m) in zip(mult_plus.data(), mult_minus.data()))
+    #flex.min_max_mean_double(anom_mult.as_double()).show()
+    anomalous_multiplicities = miller.array(
+      miller.set(asu.crystal_symmetry(),
+                 mult_plus.indices(),
+                 anomalous_flag=False), anom_mult)
+    anomalous_multiplicities = anomalous_multiplicities.select(
+      anomalous_multiplicities.data() > 0)
+
+    array = anomalous_multiplicities
+    multiplicities = anomalous_multiplicities
+  else:
+    merge = array.merge_equivalents()
+    array = merge.array()
+    multiplicities = merge.redundancies()
+  return array, multiplicities, merge
 
 
 class scene(object):
@@ -198,6 +225,7 @@ class scene(object):
     multiplicities = None
     try:
       if self.merge_equivalents :
+        """
         if self.settings.show_anomalous_pairs:
           merge = array.merge_equivalents()
           multiplicities = merge.redundancies()
@@ -219,7 +247,8 @@ class scene(object):
           merge = array.merge_equivalents()
           array = merge.array()
           multiplicities = merge.redundancies()
-        #array, multiplicities, merge = MergeData(array, self.settings.show_anomalous_pairs)
+        """
+        array, multiplicities, merge = MergeData(array, self.settings.show_anomalous_pairs)
       settings = self.settings
       data = array.data()
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -310,8 +339,8 @@ class scene(object):
         else:
           self.sigmas = None
       work_array = array
-    except Exception, e:
-      print to_str(e) + "".join(traceback.format_stack(limit=10))
+    except Exception as e:
+      print(to_str(e) + "".join(traceback.format_stack(limit=10)))
       raise e
       return None, None
     work_array.set_info(arr.info() )
@@ -409,7 +438,7 @@ class scene(object):
     self.colors = colors
     if isinstance(data, flex.complex_double):
       self.foms = foms_for_colours
-    #print min_dist, min_radius, max_radius, flex.min(data_for_radii), flex.max(data_for_radii), scale
+    #print(min_dist, min_radius, max_radius, flex.min(data_for_radii), flex.max(data_for_radii), scale)
 
 
   def isUsingFOMs(self):
@@ -490,7 +519,7 @@ class scene(object):
       absence_array = absence_array.select(slice_selection)
     absence_flags = absence_array.data()
     if (absence_flags.count(True) == 0):
-      print "No systematic absences found!"
+      print("No systematic absences found!")
     else :
       new_indices = flex.miller_index()
       for i_seq in absence_flags.iselection():

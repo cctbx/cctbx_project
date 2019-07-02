@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import approx_equal, show_diff
 from cctbx.array_family import flex
 from cctbx import adptbx
@@ -9,9 +9,11 @@ import scitbx
 from scitbx import matrix
 import libtbx.load_env
 import math, os, sys
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import cctbx.xray
 from libtbx.test_utils import approx_equal
+from six.moves import range
+from six.moves import zip
 
 def finite_difference_gradients(restraint_type,
                                 proxy,
@@ -39,10 +41,10 @@ def finite_difference_gradients(restraint_type,
   result_iso = [0] * len(u_cart)
   if sites_cart is not None:
     assert len(sites_cart) == len(u_cart)
-  for i in xrange(len(u_cart)):
+  for i in range(len(u_cart)):
     if u_iso is None:
       result_aniso_i = []
-      for j in xrange(6):
+      for j in range(6):
         h = [0,0,0,0,0,0]
         h[j] = eps
         h = matrix.sym(sym_mat3=h)
@@ -58,7 +60,7 @@ def finite_difference_gradients(restraint_type,
     else:
       if use_u_aniso[i]:
         result_aniso_i = []
-        for j in xrange(6):
+        for j in range(6):
           h = [0,0,0,0,0,0]
           h[j] = eps
           h = matrix.sym(sym_mat3=h)
@@ -149,7 +151,7 @@ def exercise_rigid_bond_test():
   ins_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/enk_11i.res", test=os.path.isfile)
   if (ins_file is None):
-    print "Skipping exercise_rigid_bond_test(): input file not available"
+    print("Skipping exercise_rigid_bond_test(): input file not available")
     return
   ins_xray_structure = cctbx.xray.structure.from_shelx(file=open(ins_file))
   sites_frac = ins_xray_structure.sites_frac()
@@ -168,8 +170,8 @@ def exercise_rigid_bond_test():
                                            ustar_2,
                                            ins_xray_structure.unit_cell())
         if(0):
-          print "%4s %4s %7.4f %7.4f %7.4f" % \
-                (scat_1.label,scat_2.label,p.delta_z(),p.z_12(),p.z_21())
+          print("%4s %4s %7.4f %7.4f %7.4f" % \
+                (scat_1.label,scat_2.label,p.delta_z(),p.z_12(),p.z_21()))
         r = result[j]
         assert r[0] == scat_1.label
         assert r[1] == scat_2.label
@@ -419,7 +421,7 @@ def exercise_proxy_show():
     # This appears to be a windows-specific bug with string formatting
     # for python versions prior to 2.6, where the exponent is printed
     # with 3 digits rather than 2.
-    print "Skipping exercise_proxy_show()"
+    print("Skipping exercise_proxy_show()")
     return
   sites_cart = flex.vec3_double((
     (-3.1739,10.8317,7.5653),(-2.5419,9.7567,6.6306),
@@ -643,7 +645,7 @@ def rigu_finite_diff(R, U):
   #we operate on quadratic values
   epsilon = 2*math.sqrt(scitbx.math.double_numeric_limits.epsilon)
   rv = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
-  for idx in xrange(0,6):
+  for idx in range(0,6):
     step = [0]*6
     step[idx] = epsilon
     U1 = rigu_func(R, U + matrix.sym(sym_mat3=step))
@@ -701,10 +703,10 @@ END
     assert approx_equal(dU[5], rr.delta_23())
     # check the raw gradients against the reference implementation
     for x,y in zip(rr.reference_gradients(R1), rr.raw_gradients()):
-      for idx in xrange(0, 6):
+      for idx in range(0, 6):
         assert approx_equal(x[idx], y[idx])
     for x,y in zip(rigu_finite_diff(R1, U1), rr.raw_gradients()):
-      for idx in xrange(0, 6):
+      for idx in range(0, 6):
         assert approx_equal(x[idx], y[idx])
 
 def exercise():
@@ -714,7 +716,7 @@ def exercise():
   exercise_rigid_bond()
   exercise_rigid_bond_test()
   exercise_rigu()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

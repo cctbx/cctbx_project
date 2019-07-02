@@ -105,7 +105,7 @@ def show_most_common_types(limit=10, f=None):
     Note that classes with the same name but defined in different modules
     will be lumped together.
     """
-    stats = sorted(typestats().items(), key=operator.itemgetter(1),
+    stats = sorted(list(typestats().items()), key=operator.itemgetter(1),
                    reverse=True)
     if limit:
         stats = stats[:limit]
@@ -366,10 +366,10 @@ def short_repr(obj):
                         types.BuiltinFunctionType)):
         return obj.__name__
     if isinstance(obj, types.MethodType):
-        if obj.im_self is not None:
-            return obj.im_func.__name__ + ' (bound)'
+        if obj.__self__ is not None:
+            return obj.__func__.__name__ + ' (bound)'
         else:
-            return obj.im_func.__name__
+            return obj.__func__.__name__
     if isinstance(obj, (tuple, list, dict, set)):
         return '%d items' % len(obj)
     if isinstance(obj, weakref.ref):
@@ -396,7 +396,8 @@ def edge_label(source, target):
     elif isinstance(source, dict):
         for k, v in source.items():
             if v is target:
-                if isinstance(k, basestring) and k:
+                from six import string_types
+                if isinstance(k, string_types) and k:
                     return ' [label="%s",weight=2]' % quote(k)
                 else:
                     return ' [label="%s"]' % quote(safe_repr(k))

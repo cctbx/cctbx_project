@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # This code is based on:
 #   http://lists.wxwidgets.org/archive/wxPython-users/msg11078.html
@@ -13,6 +12,9 @@ import gltbx.images
 from scitbx.array_family import flex
 import scitbx.math
 from scitbx import matrix
+import six
+from six.moves import range
+from six.moves import zip
 try:
   import wx
 except ImportError:
@@ -794,7 +796,7 @@ class show_points_and_lines_mixin(wxGLWindow):
       gray = 0.3
       glColor3f(gray,gray,gray)
       glBegin(GL_POLYGON)
-      for i in xrange(360):
+      for i in range(360):
         a = i * math.pi / 180
         rs = r * math.sin(a)
         rc = r * math.cos(a)
@@ -946,7 +948,7 @@ class OpenGLSettingsToolbox(wx.MiniFrame):
     self.Bind(wx.EVT_CLOSE, self.OnClose)
 
   def OnUpdate(self, event=None):
-    for setting_name, widget in self.widgets.iteritems():
+    for setting_name, widget in six.iteritems(self.widgets):
       new_value = float(widget.GetValue()) / 100.0
       setattr(self.parent, setting_name, new_value)
     self.parent.flag_show_fog = self.fog_box.GetValue()

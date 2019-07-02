@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from libtbx.mpi4py import MPI
 from dials.array_family import flex
@@ -16,35 +16,41 @@ class mpi_helper(object):
   def finalize(self):
     self.MPI.Finalize()
 
-  def extend_flex(self, data, flex_type):
-    '''Build an extended flex array out of multiple flex arrays.'''
-    extended = None
-
-    all_data = self.comm.gather(data, 0)
-
-    if self.rank == 0:
-      if len(all_data) > 0:
-        extended = all_data[0]
-        for i in range(1, self.size):
-          extended.extend(all_data[i])
-
-    return extended
-
-  def cumulative_flex(self, data, flex_type):
+  def cumulative_flex(self, flex_array, flex_type):
     '''Build a cumulative sum flex array out of multiple flex arrays. All arays must be the same size.'''
-    if self.rank == 0: # only rank 0 will actually get the cumulative array
-      cumulative = flex_type(data.size(), 0)
+    # Example: (a1,a2,a3) + (b1, b2, b3) = (a1+b1, a2+b2, a3+b3)
+    if self.rank == 0:
+      cumulative = flex_type(flex_array.size(), 0)
     else:
       cumulative = None
 
-    all_data = self.comm.gather(data, 0)
+    list_of_all_flex_arrays = self.comm.gather(flex_array, 0)
 
     if self.rank == 0:
-      for i in range(data.size()):
-        for j in range(self.size):
-          cumulative[i] += all_data[j][i]
+      for i in range(len(list_of_all_flex_arrays)):
+        flex_array = list_of_all_flex_arrays[i]
+        if flex_array is not None:
+          cumulative += flex_array
 
     return cumulative
 
-  def sum(self, data):
-    return self.comm.reduce(data, self.MPI.SUM, 0)
+  def aggregate_flex(self, flex_array, flex_type):
+    '''Build an aggregate flex array out of multiple flex arrays'''
+    # Example: (a1,a2,a3) + (b1, b2, b3) = (a1, a2, a3, b1, b2, b3)
+    if self.rank == 0:
+      aggregate = flex_type()
+    else:
+      aggregate = None
+
+    list_of_all_flex_arrays = self.comm.gather(flex_array, 0)
+
+    if self.rank == 0:
+      for i in range(len(list_of_all_flex_arrays)):
+        flex_array = list_of_all_flex_arrays[i]
+        if flex_array is not None:
+          aggregate.extend(flex_array)
+
+    return aggregate
+
+  def sum(self, data, root=0):
+    return self.comm.reduce(data, self.MPI.SUM, root=root)

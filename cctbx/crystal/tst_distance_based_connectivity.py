@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 def run(args):
   assert len(args) == 0
   from cctbx.crystal.distance_based_connectivity import \
@@ -51,7 +51,7 @@ def run(args):
   assert bonds.size() == sites_cart.size()
   assert list(bonds[0]) == [1, 14, 15, 16]
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

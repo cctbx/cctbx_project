@@ -12,7 +12,7 @@
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.filter_experiments_by_rmsd
 #
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from dials.array_family import flex
 from scitbx.matrix import col
@@ -94,7 +94,7 @@ class Script(object):
 
     assert len(reflections) == 1
     reflections = reflections[0]
-    print "Found", len(reflections), "reflections", "and", len(experiments), "experiments"
+    print("Found", len(reflections), "reflections", "and", len(experiments), "experiments")
 
     filtered_reflections = flex.reflection_table()
     filtered_experiments = ExperimentList()
@@ -117,7 +117,7 @@ class Script(object):
           refls['id'] = flex.int(len(refls), len(skipped_experiments)-1)
           skipped_reflections.extend(refls)
 
-      print "RMSD filtering %d experiments using detector %d, out of %d"%(len(culled_experiments), params.detector, len(experiments))
+      print("RMSD filtering %d experiments using detector %d, out of %d"%(len(culled_experiments), params.detector, len(experiments)))
       reflections = culled_reflections
       experiments = culled_experiments
 
@@ -140,7 +140,7 @@ class Script(object):
       data.append(rmsd)
     data *= 1000
     subset = data.select(counts > 0)
-    print len(subset), "experiments with > 0 reflections"
+    print(len(subset), "experiments with > 0 reflections")
 
     if params.show_plots:
       h = flex.histogram(subset, n_slots=40)
@@ -156,7 +156,7 @@ class Script(object):
 
     outliers = counts == 0
     min_x, q1_x, med_x, q3_x, max_x = five_number_summary(subset)
-    print "Five number summary of RMSDs (microns): min %.1f, q1 %.1f, med %.1f, q3 %.1f, max %.1f"%(min_x, q1_x, med_x, q3_x, max_x)
+    print("Five number summary of RMSDs (microns): min %.1f, q1 %.1f, med %.1f, q3 %.1f, max %.1f"%(min_x, q1_x, med_x, q3_x, max_x))
     iqr_x = q3_x - q1_x
     cut_x = params.iqr_multiplier * iqr_x
     outliers.set_selected(data > q3_x + cut_x, True)
@@ -172,11 +172,11 @@ class Script(object):
 
     zeroes = counts == 0
     n_zero = len(counts.select(zeroes))
-    print "Removed %d bad experiments and %d experiments with zero reflections, out of %d (%%%.1f)"%(
+    print("Removed %d bad experiments and %d experiments with zero reflections, out of %d (%%%.1f)"%(
       len(experiments)-len(filtered_experiments)-n_zero,
       n_zero,
       len(experiments),
-      100*((len(experiments)-len(filtered_experiments))/len(experiments)))
+      100*((len(experiments)-len(filtered_experiments))/len(experiments))))
 
     if params.detector is not None:
       crystals = filtered_experiments.crystals()
@@ -192,9 +192,9 @@ class Script(object):
       sel = (delta_psi <= params.delta_psi_filter) & (delta_psi >= -params.delta_psi_filter)
       l = len(filtered_reflections)
       filtered_reflections = filtered_reflections.select(sel)
-      print "Filtering by delta psi, removing %d out of %d reflections"%(l - len(filtered_reflections), l)
+      print("Filtering by delta psi, removing %d out of %d reflections"%(l - len(filtered_reflections), l))
 
-    print "Final experiment count", len(filtered_experiments)
+    print("Final experiment count", len(filtered_experiments))
 
     from dxtbx.model.experiment_list import ExperimentListDumper
     dump = ExperimentListDumper(filtered_experiments)

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.graph.utils as graph_utils
 from scitbx import matrix
 from libtbx.utils import Sorry
@@ -48,28 +48,28 @@ class pdb_extract(object):
       return tt
     cm = tt.cluster_manager
     if (O.clusters is None):
-      print "tag:", O.tag
+      print("tag:", O.tag)
     if (O.clusters is None):
-      print "clusters:", cm.clusters
+      print("clusters:", cm.clusters)
     else:
       assert cm.clusters == O.clusters
     if (O.hinge_edges is None):
-      print "hinge_edges:", cm.hinge_edges
+      print("hinge_edges:", cm.hinge_edges)
     else:
       assert cm.hinge_edges == O.hinge_edges
     if (O.loop_edges is None):
-      print "loop_edges:", cm.loop_edges
+      print("loop_edges:", cm.loop_edges)
     else:
       assert cm.loop_edges == O.loop_edges
     if (O.loop_edge_bendings is None):
-      print "loop_edge_bendings:", cm.loop_edge_bendings
+      print("loop_edge_bendings:", cm.loop_edge_bendings)
     else:
       assert cm.loop_edge_bendings == O.loop_edge_bendings
     assert tt.find_cluster_loop_repeats == O.find_cluster_loop_repeats
     assert cm.merge_clusters_with_multiple_connections_passes \
         ==  O.merge_clusters_with_multiple_connections_passes
     if (O.clusters is None):
-      print
+      print()
     return tt
 
 test_cases = [
@@ -568,10 +568,10 @@ def select_test_cases(tags_or_indices):
       except ValueError: i = -1
       if (i < 0 or i >= len(test_cases)):
         msg = "No such test case: %s" % tag_or_index
-        print msg
-        print "List of available test cases:"
+        print(msg)
+        print("List of available test cases:")
         for i,test_case in enumerate(test_cases):
-          print "  %2d: %s" % (i, test_case.tag)
+          print("  %2d: %s" % (i, test_case.tag))
         raise Sorry(msg)
     result.append(test_cases[i])
   if (len(result) == 0):

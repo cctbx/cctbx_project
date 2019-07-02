@@ -1,6 +1,4 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 import math
 import os
 
@@ -17,6 +15,7 @@ from smtbx.refinement import least_squares
 from smtbx.refinement import constraints
 import smtbx.utils
 from smtbx.refinement.constraints.tests import tst_constrained_structure
+from six.moves import range
 
 
 class lbfgs(object):
@@ -192,7 +191,7 @@ def run(args):
     if ext == ".cif":
       xs_dict = xray.structure.from_cif(file_path=file_path)
       assert len(xs_dict) == 1, "CIF should contain only one xray structure"
-      xs = xs_dict.values()[0]
+      xs = list(xs_dict.values())[0]
       xs.show_summary().show_scatterers()
       print()
       constraints_list = None

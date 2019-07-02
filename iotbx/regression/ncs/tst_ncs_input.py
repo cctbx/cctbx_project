@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import approx_equal, show_diff
 import iotbx.ncs as ncs
 import iotbx.pdb
@@ -1288,7 +1288,7 @@ ncs_group {
       pdb_str_2]):
     of = open(pdb_file_name, "w")
     files_to_delete.append(pdb_file_name)
-    print >> of, pdb_str
+    print(pdb_str, file=of)
     of.close()
     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
     pdb_hierarchy = iotbx.pdb.input(file_name = pdb_file_name).\
@@ -1329,7 +1329,7 @@ ncs_group {
   for test_i, pdb_str in enumerate([pdb_str_1, pdb_str_2]):
     files_to_delete.append(pdb_file_name)
     of = open(pdb_file_name, "w")
-    print >> of, pdb_str
+    print(pdb_str, file=of)
     of.close()
     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
 
@@ -1448,7 +1448,7 @@ def exercise_10():
   nrgl = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
   nrgl.update_str_selections_if_needed(ph)
   str_sel = nrgl.get_array_of_str_selections()
-  print str_sel
+  print(str_sel)
   assert str_sel == [["chain 'A'", "chain 'B'", "chain 'C'", "chain 'D'",
       "chain 'E'", "chain 'F'", "chain 'G'", "chain 'H'", "chain 'I'"]]
 
@@ -1579,7 +1579,7 @@ def exercise_15():
   try:
     ncs_inp = ncs.input(hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str_12).construct_hierarchy())
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
-  except Exception, e:
+  except Exception as e:
     exc = e
   assert str(exc)=="Multi-model PDB (with MODEL-ENDMDL) is not supported."
 
@@ -1774,4 +1774,4 @@ if (__name__ == "__main__"):
   exercise_22()
   # exercise_23() # Not grouping chains anymore. Test is left to illustrate
   # failure of update_chain_ids_search_order in this example
-  print "OK"
+  print("OK")

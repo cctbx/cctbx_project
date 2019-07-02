@@ -1,6 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.load_env
-from mmtbx.rotamer.n_dim_table import NDimTable
 from libtbx import easy_pickle
 from libtbx import dlite
 from libtbx.utils import Sorry
@@ -11,6 +10,7 @@ from cctbx.array_family import flex
 import weakref
 import sys, os
 import iotbx.pdb
+from six.moves import range
 
 def find_rotarama_data_dir(optional=False):
   result = libtbx.env.find_in_repositories(
@@ -354,8 +354,8 @@ Can't seem to find mmtbx/rotamer/ directory.
     rotaList = []
     try:
       f = open(fileLoc)
-    except ImportError, e:
-      print fileLoc+" file not found"
+    except ImportError as e:
+      print(fileLoc+" file not found")
       sys.exit()
     for line in f:
       if (line.startswith("#") or line == "\n"): continue
@@ -402,7 +402,7 @@ class NamedRot:
   def __init__(self, aa, rotamer_name, bounds):
     self.aa_name = aa
     self.rotamer_name = rotamer_name
-    self.bounds = map(int, bounds.split(", "))
+    self.bounds = [int(b) for b in bounds.split(", ")]
 
   def __str__(self):
     return str(self.rotamer_name) + "=" + str(self.bounds)
@@ -417,7 +417,7 @@ class NamedRot:
 ########################################################################
 def exercise(args):
   if (find_rotarama_data_dir(optional=True) is None):
-    print "Skipping exercise(): rotarama_data directory not available"
+    print("Skipping exercise(): rotarama_data directory not available")
   else:
     from mmtbx.command_line import rebuild_rotarama_cache
     rebuild_rotarama_cache.run()
@@ -518,8 +518,8 @@ def exercise(args):
     ]:
       r_eval = 100*r.evaluate(aminoAcid, chiAngles)
       if (verbose):
-        print aminoAcid, "%4.1f %4.1f %4.1f" % (
-          r_eval, molpValue, r_eval-molpValue)
+        print(aminoAcid, "%4.1f %4.1f %4.1f" % (
+          r_eval, molpValue, r_eval-molpValue))
         #print '      ("%s",' % aminoAcid, chiAngles, ',', "%4.1f)," % r_eval
     # assert approx_equal(r_eval, molpValue, eps=0.9)
     #
@@ -532,7 +532,7 @@ def exercise(args):
     for aa,ndt_weakref in RotamerEval.aaTables.items():
       assert ndt_weakref() is None
     #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
     exercise(sys.argv[1:])

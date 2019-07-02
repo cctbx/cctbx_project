@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.sgtbx import subgroups
 from cctbx import sgtbx
+from six.moves import range
 
 class subgroup_stats(object):
 
@@ -30,8 +31,8 @@ def run():
                              "Fm-3m"):
     centric_info = sgtbx.space_group_info(space_group_symbol)
     non_centric = sgtbx.space_group()
-    for i_ltr in xrange(centric_info.group().n_ltr()):
-      for i_smx in xrange(centric_info.group().n_smx()):
+    for i_ltr in range(centric_info.group().n_ltr()):
+      for i_smx in range(centric_info.group().n_smx()):
         s = centric_info.group()(i_ltr,0,i_smx)
         non_centric.expand_smx(s)
     assert non_centric.f_inv() == 1
@@ -44,7 +45,7 @@ def run():
     assert centric_stats.n_chiral == non_centric_stats.n_chiral
     assert non_centric_stats.n_non_centric == len(non_centric_stats.subgroups)
     assert non_centric_stats.n_non_centric == non_centric_stats.n_chiral
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

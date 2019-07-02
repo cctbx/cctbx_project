@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.lbfgs
 import mmtbx.refinement.minimization_ncs_constraints
@@ -7,6 +7,7 @@ import sys
 import mmtbx.utils
 from scitbx.array_family import flex
 from mmtbx import monomer_library
+from six.moves import range
 
 class lbfgs(geometry_restraints.lbfgs.lbfgs):
 
@@ -142,8 +143,8 @@ class run2(object):
       ramachandran_restraints = True)
     self.update_cdl_restraints()
     self.show()
-    for i_macro_cycle in xrange(number_of_macro_cycles):
-      print >> self.log, "  macro-cycle:", i_macro_cycle
+    for i_macro_cycle in range(number_of_macro_cycles):
+      print("  macro-cycle:", i_macro_cycle, file=self.log)
       self.restraints_manager.geometry.update_ramachandran_restraints_phi_psi_targets(
         hierarchy=self.pdb_hierarchy)
       if(alternate_nonbonded_off_on and i_macro_cycle<=number_of_macro_cycles/2):
@@ -165,9 +166,9 @@ class run2(object):
       if (ncs_restraints_group_list is not None
           and len(ncs_restraints_group_list)) > 0:
         # do ncs minimization
-        print >> self.log, "Using NCS constraints."
+        print("Using NCS constraints.", file=self.log)
         xrs = self.pdb_hierarchy.extract_xray_structure().deep_copy_scatterers()
-        refine_selection = flex.size_t(xrange(xrs.scatterers().size()))
+        refine_selection = flex.size_t(range(xrs.scatterers().size()))
         tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
             target_function_and_grads_geometry_minimization(
                 xray_structure=xrs,
@@ -250,7 +251,7 @@ class run2(object):
       log=self.log,
       verbose=False,
       )
-    print >> self.log, "="*79
+    print("="*79, file=self.log)
     return rc
 
   def show(self):

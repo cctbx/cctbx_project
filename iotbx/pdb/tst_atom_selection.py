@@ -1,7 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
+from six.moves import range
+from six.moves import zip
 
 def exercise_selection():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -144,16 +146,16 @@ END
   assert list(isel(r"resseq 188")) == [64,65,66,67,68]
   assert list(isel(r"resseq 188")) == [64,65,66,67,68]
   assert list(isel(r"resseq 1:1")) == [0,1,2,3,4,5,70,71,74,75,78,81]
-  assert list(isel(r"resseq 2:2")) == range(6,17) + [72,73,77,79,80,82]
+  assert list(isel(r"resseq 2:2")) == list(range(6,17)) + [72,73,77,79,80,82]
   assert list(isel(r"resseq 5:5")) == [76,83]
-  assert list(isel(r"resseq 1:5")) == range(40)+range(70,84)
-  assert list(isel(r"resseq 2:3")) == range(6,24)+[72,73,77,79,80,82]
+  assert list(isel(r"resseq 1:5")) == list(range(40))+list(range(70,84))
+  assert list(isel(r"resseq 2:3")) == list(range(6,24))+[72,73,77,79,80,82]
   assert list(isel(r"resseq 188:188")) == [64,65,66,67,68]
   assert list(isel(r"resseq 200:200")) == [69]
   assert list(isel(r"resseq 188:200")) == [64,65,66,67,68,69]
   assert list(isel(r"resseq 9999:A002")) == [84,85]
   assert list(isel(r"resseq A002:A003")) == [85,86]
-  assert list(isel(r"resseq :")) == range(88)
+  assert list(isel(r"resseq :")) == list(range(88))
   assert list(isel(r"resseq :2 and name n*")) == [0,6,13,15,16]
   assert list(isel(r"resseq 2: and name cb")) == [10,21,28,36]
   assert list(isel(r"resseq 1:2 and name n*")) == [0,6,13,15,16]
@@ -168,12 +170,12 @@ END
   assert list(isel(r"resid '  1K '")) == [87]
   assert list(isel(r"resi '  1K'")) == []
   assert list(isel(r"resid 1:2")) \
-      == range(17) + [70,71,72,73,74,75,77,78,79,80,81,82]
-  expected = range(6,17) + [72,73,77,78,79,80,81,82]
+      == list(range(17)) + [70,71,72,73,74,75,77,78,79,80,81,82]
+  expected = list(range(6,17)) + [72,73,77,78,79,80,81,82]
   assert list(isel(r"resid 1K:2")) == expected
   assert list(isel(r"resid '   1K:2'")) == expected
   assert list(isel(r"resid '  1K:2'")) == expected
-  expected = range(6,40) + [72,73,76,77,78,79,80,81,82,83,87]
+  expected = list(range(6,40)) + [72,73,76,77,78,79,80,81,82,83,87]
   assert list(isel(r"resi '  1K:  1K '")) == expected
   #
   expected = [7,18,25,33]
@@ -200,7 +202,7 @@ END
   assert list(isel(r"element o")) == [65,66,67,68]
   assert list(isel(r"charge 4+")) == [64]
   assert list(isel(r"anisou")) == [1, 3]
-  assert list(isel(r"pepnames")) == range(40)
+  assert list(isel(r"pepnames")) == list(range(40))
   assert list(isel(r"single_atom_residue")) == [
     69, 76, 77, 78, 81, 82, 83, 84, 85, 86, 87]
   assert list(isel(r"hetero")) == list(isel(r"hetatm")) == [
@@ -209,20 +211,20 @@ END
   assert list(isel("within(3, resname PRO)")) == [7, 8, 9, 17, 18, 19, 20, 21,
     22, 23, 24, 25, 32, 33, 73, 77, 80]
   assert list(isel("residues_within(3, resname PRO)")) == \
-    range(6, 40) + [72, 73, 77, 79, 80]
+    list(range(6, 40)) + [72, 73, 77, 79, 80]
   #
   try: isel(r"resseq")
-  except pdb.atom_selection.AtomSelectionError, e:
+  except pdb.atom_selection.AtomSelectionError as e:
     assert str(e).find(
       "Missing argument for resseq.") >= 0
   else: raise Exception_expected
   try: isel(r"resseq 3:2")
-  except pdb.atom_selection.AtomSelectionError, e:
+  except pdb.atom_selection.AtomSelectionError as e:
     assert str(e).find(
       "range with first index > last index: resseq 3:2") >= 0
   else: raise Exception_expected
   try: isel(r"resid ' 1K :2'")
-  except pdb.atom_selection.AtomSelectionError, e:
+  except pdb.atom_selection.AtomSelectionError as e:
     assert str(e).find(
       "range with first index > last index: resid  1K :2") >= 0
   else: raise Exception_expected
@@ -237,7 +239,7 @@ END
             "altloc a optional",
             "optional optional altloc a"]:
     try: isel(string=s)
-    except pdb.atom_selection.AtomSelectionError, e:
+    except pdb.atom_selection.AtomSelectionError as e:
       assert str(e).endswith("""\
 Atom selection string leading to error:
   %s""" % s), str(e)
@@ -290,7 +292,7 @@ END
   isel = sel_cache.iselection
   assert list(isel("chain A")) == [0,1,2]
   assert list(isel("chain a")) == [3,4,5]
-  assert list(isel("name ca")) == range(6)
+  assert list(isel("name ca")) == list(range(6))
   assert list(isel("resname asn")) == [1,2,5]
   assert list(isel("resname ASN")) == [1,2,5]
   assert list(isel("resname Asn")) == [1,2,5]
@@ -338,7 +340,7 @@ ATOM     45  CA  CA      6      16.545  29.521  64.086  1.00 19.76
 
   try:
     isel("chain A or (peptyde and name ca)")
-  except pdb.atom_selection.AtomSelectionError, e:
+  except pdb.atom_selection.AtomSelectionError as e:
     assert not show_diff(str(e), """\
 RuntimeError: Atom selection syntax error at word "peptyde".
 Atom selection string leading to error:
@@ -373,7 +375,7 @@ END
   assert (sele.size() == 7)
   try :
     sele = sel_cache.iselection("resid 777 through chain A")
-  except pdb.atom_selection.AtomSelectionError, e :
+  except pdb.atom_selection.AtomSelectionError as e :
     pass
   else : raise Exception_expected
   hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -496,7 +498,7 @@ ATOM     45  CA  CA      8      16.545  29.521  64.086  1.00 19.76
 
 def run():
   exercise_selection()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

@@ -1,5 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.conformation_dependent_library.cdl_database import cdl_database
+from six.moves import range
 
 step = 10
 
@@ -48,7 +49,7 @@ def print_grid(grid, phi, psi):
     outl += "\n"
   outl += "-"*30
   outl += "\n"
-  print outl
+  print(outl)
 
 # XXX duplicates scitbx/math/interpolation.h
 def interpolate_at_point(p0, p1, p2, p3, t):

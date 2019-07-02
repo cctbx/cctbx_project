@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx import neutron
 from libtbx.test_utils import approx_equal, Exception_expected
 
@@ -21,7 +21,7 @@ def exercise_00():
   assert n == 189, n
   try:
     t = neutron.neutron_news_1992_table("XX")
-  except ValueError, e:
+  except ValueError as e:
     pass
   else:
     raise Exception_expected
@@ -43,7 +43,7 @@ def exercise_01():
 def run():
   exercise_00()
   exercise_01()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

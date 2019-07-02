@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.cablam
 # LIBTBX_SET_DISPATCHER_NAME molprobity.cablam
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
@@ -6,14 +6,15 @@ from __future__ import division, print_function
 import sys
 
 from iotbx.cli_parser import CCTBXParser
-from libtbx.utils import multi_out, show_total_time, null_out
+from libtbx.utils import multi_out, show_total_time
 from mmtbx.programs import cablam
 
 #=============================================================================
 def run(args):
 
   # create parser
-  logger = null_out()
+  logger = multi_out()
+  logger.register('stderr', sys.stderr)
   logger2 = multi_out()
   logger2.register('stdout', sys.stdout)
 

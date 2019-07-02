@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.omz import dev
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -26,8 +26,8 @@ def run_call_back(flags, space_group_info, params):
     structure_ideal=structure_ideal,
     structure_shake=structure_shake,
     params=params).r1_factor()
-  print "R1: %.4f" % r1
-  print
+  print("R1: %.4f" % r1)
+  print()
 
 def run(args):
   master_phil = dev.get_master_phil()
@@ -41,7 +41,7 @@ def run(args):
       remaining_args.append(arg)
   work_phil = master_phil.fetch(sources=phil_objects)
   work_phil.show()
-  print
+  print()
   params = work_phil.extract()
   debug_utils.parse_options_loop_space_groups(
     argv=remaining_args, call_back=run_call_back, params=params)

@@ -1,5 +1,5 @@
-from __future__ import division
-from cStringIO import StringIO
+from __future__ import absolute_import, division, print_function
+from six.moves import cStringIO as StringIO
 
 from libtbx.test_utils import approx_equal
 from libtbx.test_utils import Exception_expected
@@ -8,9 +8,9 @@ from libtbx.test_utils import show_diff
 import iotbx.cif
 from iotbx.pdb.mmcif import pdb_hierarchy_builder
 import mmtbx.model
+from six.moves import range
 
-def exercise_pdb_hierachy_builder():
-  input_1ab1 = """\
+input_1ab1 = """\
 data_1AB1
 loop_
 _atom_site.group_PDB
@@ -60,6 +60,19 @@ HETATM 682 C C2   B EOH B 2 . 14.830 -0.303 13.058 0.40 15.17 66 EOH A C2   1
 HETATM 683 O O    A EOH B 2 . 15.378 1.984  12.104 0.60 12.07 66 EOH A O    1
 HETATM 684 O O    B EOH B 2 . 14.811 2.078  12.602 0.40 5.53  66 EOH A O    1
 """
+
+def exercise_cif_show():
+  cif_model = iotbx.cif.reader(input_string=input_1ab1).model()
+  builder = pdb_hierarchy_builder(cif_model["1AB1"])
+  hierarchy = builder.hierarchy
+  h_cif = hierarchy.as_cif_block()
+  builder = pdb_hierarchy_builder(h_cif) # this runs OK, why?
+  # output h_cif:
+  s = StringIO()
+  h_cif.show(out=s, align_columns=False)
+  builder = pdb_hierarchy_builder(h_cif) # Now it fails.
+
+def exercise_pdb_hierachy_builder():
   cif_model = iotbx.cif.reader(input_string=input_1ab1).model()
   builder = pdb_hierarchy_builder(cif_model["1AB1"])
   #assert builder.crystal_symmetry is None
@@ -69,8 +82,8 @@ HETATM 684 O O    B EOH B 2 . 14.811 2.078  12.602 0.40 5.53  66 EOH A O    1
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
-model id="" #chains=2
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
+model id="" #chains=1
+  chain id="A" #residue_groups=2
     resid="   2 " #atom_groups=3
       altloc="" resname="THR" #atoms=4
         " C  "
@@ -95,7 +108,6 @@ model id="" #chains=2
         "HG21"
         "HG22"
         "HG23"
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="  66 " #atom_groups=2
       altloc="A" resname="EOH" #atoms=3
         " C1 "
@@ -133,7 +145,7 @@ ATOM   20  O . THR A 1 2 1.00 3.70
 """
   cif_model = iotbx.cif.reader(input_string=input_missing_mandatory_items).model()
   try: pdb_hierarchy_builder(cif_model["1AB1"])
-  except AssertionError, e: pass
+  except AssertionError as e: pass
   else:
     # TODO: raise a better error here
     raise Exception_expected
@@ -210,8 +222,8 @@ _atom_site_anisotrop.U[2][3]
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
-model id="" #chains=2
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
+model id="" #chains=1
+  chain id="A" #residue_groups=2
     resid=" 108 " #atom_groups=1
       altloc="" resname="SER" #atoms=6
         " N  "
@@ -220,7 +232,6 @@ model id="" #chains=2
         " O  "
         " CB "
         " OG "
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid=" 505 " #atom_groups=1
       altloc="" resname="MN" #atoms=1
         "MN  "
@@ -234,7 +245,7 @@ model id="" #chains=2
   hierarchy_recycled.show(out=s1)
   assert not show_diff(s.getvalue(), s1.getvalue())
   for hierarchy in (hierarchy, hierarchy_recycled):
-    residue_group = hierarchy.residue_groups().next()
+    residue_group = next(hierarchy.residue_groups())
     assert residue_group.resseq == ' 108'
     assert residue_group.resseq_as_int() == 108
     atoms = hierarchy.atoms()
@@ -399,38 +410,6 @@ model id="" #chains=2
   assert atoms[0].charge == "2+"
   assert atoms[1].charge == "1-"
   assert atoms[2].charge == "1-"
-  #
-  #
-  input_empty_chain_id = """\
-ATOM     12  CA  PHE A   1      11.393  12.163  11.077  1.00  2.00           C
-HETATM   25  O   HOH     1      16.077  12.587   8.964  1.00  2.00           O
-HETATM   26  O   HOH     2      15.549  14.936  10.417  1.00  2.00           O
-HETATM   27  O   HOH     3       8.695  12.035  12.673  1.00  2.00           O
-ATOM     24  CA  PHE A   2       8.393   9.163   8.077  1.00  2.00           C
-HETATM   28  O   HOH     4      13.077   9.587   5.964  1.00  2.00           O
-HETATM   29  O   HOH     5       5.695   9.035   9.673  1.00  2.00           O
-END
-
-"""
-  pdb_in = iotbx.pdb.input(lines=(input_empty_chain_id).splitlines(), source_info=None)
-  pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = pdb_hierarchy.as_cif_block()
-  assert list(cif_block['_atom_site.auth_asym_id']) == [
-    'A', '.', '.', '.', 'A', '.', '.']
-  cif_object = iotbx.cif.model.cif()
-  cif_object["test"] = cif_block
-  s = StringIO()
-  print >> s, cif_object
-  s.seek(0)
-  pdb_in2 = iotbx.pdb.input(lines=s.readlines(), source_info=None)
-  pdb_hierarchy2 = pdb_in2.construct_hierarchy()
-  s1 = StringIO()
-  s2 = StringIO()
-  pdb_hierarchy.show(out=s1)
-  pdb_hierarchy2.show(out=s2)
-  assert not show_diff(s1.getvalue(), s2.getvalue())
-
-
 
 def exercise_pdb_hierarchy_sequence_as_cif_block():
   pdb_atom_site_loop_header = """\
@@ -512,7 +491,7 @@ ATOM   2463 C CA  . LYS B 1 24  ? 22.588  1.723   -13.713 1.00 30.22  ? ? ? ? ? 
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence
   assert cif_block['_entity_poly.pdbx_strand_id'] == 'A,B'
-  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), range(1, 25))
+  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), list(range(1, 25)))
   assert cif_block['_entity_poly_seq.entity_id'].all_eq('1')
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     three_letter_given_one_letter.get(i) for i in sequence_4ehz.sequence]
@@ -538,7 +517,7 @@ ATOM   1473 C  CA  . SER A 1 185 ? -6.795  -21.356 10.148  1.00 91.03  ? ? ? ? ?
     ';NVS(PTR)ICSR\n;'
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == \
     ';' + sequence_3zdi.sequence + '\n;'
-  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), range(1, 9))
+  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), list(range(1, 9)))
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     'ASN', 'VAL', 'SER', 'PTR', 'ILE', 'CYS', 'SER', 'ARG']
   #
@@ -577,7 +556,7 @@ HETATM 2796 O O   . HOH G 3 .   ? 11.197  11.667 36.108  1.00 17.00 ? ? ? ? ? ? 
   cif_block = model._sequence_validation.sequence_as_cif_block()
   assert list(cif_block['_entity.id']) == ['1', '2']
   assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']),
-                     range(1, 11)+range(1, 10))
+                     list(range(1, 11))+list(range(1, 10)))
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     'DTH', 'DTY', 'DLY', 'DLE', 'DIL', 'DLE', 'DSG', 'GLY', 'DLY', 'DTH',
     'GLY', 'GLN', 'ASN', 'HIS', 'HIS', 'GLU', 'VAL', 'VAL', 'LYS']
@@ -656,7 +635,7 @@ HETATM  910  O   HOH A 156     -10.293  62.567  35.648  1.00 19.43           O
   model.set_sequences([sequence_3tpy])
   cif_block = model.get_hierarchy().as_cif_block()
   assert list(cif_block["_atom_site.label_seq_id"]) == [
-    '1', '2', '3', '4', '5', '6', '7', '8', '9', '9', '9', '10', '11', '12']
+    '1', '2', '3', '4', '5', '6', '.', '.', '.', '.', '.', '.', '.', '.']
   #
   input_3tgr = """\
 ATOM   2449  CA  GLY A 459     -17.536  10.137  41.979  1.00181.52           C
@@ -884,6 +863,7 @@ A CE  1
 
 
 def run():
+  exercise_cif_show()
   exercise_fp_fdp()
   exercise_pdb_hierarchy_sequence_as_cif_block()
   exercise_pdb_hierachy_builder()
@@ -893,4 +873,4 @@ def run():
 
 if __name__ == '__main__':
   run()
-  print "OK"
+  print("OK")

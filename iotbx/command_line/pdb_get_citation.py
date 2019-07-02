@@ -1,7 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.get_citation
 
-from __future__ import division
-from libtbx.utils import Sorry, Usage
+from __future__ import absolute_import, division, print_function
+from libtbx.utils import to_unicode, Sorry, Usage
 from xml.dom.minidom import parseString
 import sys
 
@@ -53,13 +53,13 @@ the article XML from NCBI, and print a bibliography entry.
     raise Sorry("Couldn't extract PMID from PDB header.")
   # This looks gross, but it's much safer than trying to do any more parsing
   # of unstructured text (even when using mmCIF)
-  print >> out, "PMID = %s" % pmid
+  print("PMID = %s" % pmid, file=out)
   Entrez.email = params.email
   data = Entrez.efetch(db="pubmed", id=str(pmid), rettype="xml",
     retmode="text")
   def get_node_data(xml_node, node_name):
     child_nodes = xml_node.getElementsByTagName(node_name)
-    return unicode(child_nodes[0].childNodes[0].data)
+    return to_unicode(child_nodes[0].childNodes[0].data)
   xmlrec = parseString(data.read())
   articles = xmlrec.getElementsByTagName("PubmedArticle")
   assert (len(articles) == 1)
@@ -81,9 +81,9 @@ the article XML from NCBI, and print a bibliography entry.
   volume = get_node_data(article, "Volume")
   pages = get_node_data(article, "MedlinePgn")
   # TODO other formats
-  print >> out, "%s (%s).  %s %s %s, %s." % \
+  print("%s (%s).  %s %s %s, %s." % \
     (people.encode('ascii', 'ignore'), year, title.encode('ascii', 'ignore'),
-     journal, volume, pages)
+     journal, volume, pages), file=out)
 
 def validate_params(params):
   if (params.pdb_id is None):

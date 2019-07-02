@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import rstbx.viewer.display
 import wx
 import os
@@ -104,7 +104,7 @@ class SBSettingsPanel(SettingsPanel):
     s.Add(self.center_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 
     # Distance control
-    print "DISTANCE",self.GetParent().GetParent().viewer._img
+    print("DISTANCE",self.GetParent().GetParent().viewer._img)
     box = wx.BoxSizer(wx.HORIZONTAL)
     from wxtbx.phil_controls.floatctrl import FloatCtrl
     from wxtbx.phil_controls import EVT_PHIL_CONTROL

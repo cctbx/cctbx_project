@@ -5,7 +5,7 @@ density around their ligand.  Handy for making figures, but prone to abuse,
 which is why it's not in the command_line directory.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 
 def flatten_map(map, xray_structure, selection):
@@ -85,7 +85,7 @@ atom selection to zero.  Used for generating figures in PyMOL.""")
         n_real=real_map.focus(),
         file_name=file_name,
         buffer=5)
-      print "wrote %s" % file_name
+      print("wrote %s" % file_name)
       if (label == "2FOFCWT"):
         two_fofc = file_name
       elif (label == "FOFCWT"):

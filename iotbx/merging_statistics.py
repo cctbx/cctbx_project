@@ -4,14 +4,15 @@ Routines for calculating common metrics of data quality based on merging of
 redundant observations.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import data_plots
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, null_out
 from libtbx import group_args, Auto
 from math import sqrt
-import cStringIO
+from six.moves import cStringIO as StringIO
 import sys
+import six
 
 citations_str = """\
   Diederichs K & Karplus PA (1997) Nature Structural Biology 4:269-275
@@ -428,28 +429,28 @@ class merging_stats(object):
     return table
 
   def show_summary(self, out=sys.stdout, prefix=""):
-    print >> out, prefix+"Resolution: %.2f - %.2f" % (self.d_max, self.d_min)
-    print >> out, prefix+"Observations: %d" % self.n_obs
-    print >> out, prefix+"Unique reflections: %d" % self.n_uniq
-    print >> out, prefix+"Redundancy: %.1f" % self.mean_redundancy
-    print >> out, prefix+"Completeness: %.2f%%" % (self.completeness*100)
-    print >> out, prefix+"Mean intensity: %.1f" % self.i_mean
-    print >> out, prefix+"Mean I/sigma(I): %.1f" % self.i_over_sigma_mean
+    print(prefix+"Resolution: %.2f - %.2f" % (self.d_max, self.d_min), file=out)
+    print(prefix+"Observations: %d" % self.n_obs, file=out)
+    print(prefix+"Unique reflections: %d" % self.n_uniq, file=out)
+    print(prefix+"Redundancy: %.1f" % self.mean_redundancy, file=out)
+    print(prefix+"Completeness: %.2f%%" % (self.completeness*100), file=out)
+    print(prefix+"Mean intensity: %.1f" % self.i_mean, file=out)
+    print(prefix+"Mean I/sigma(I): %.1f" % self.i_over_sigma_mean, file=out)
     # negative sigmas are rejected before merging
     if (self.n_neg_sigmas > 0):
-      print >> out, prefix+"SigI < 0 (rejected): %d observations" % \
-        self.n_neg_sigmas
+      print(prefix+"SigI < 0 (rejected): %d observations" % \
+        self.n_neg_sigmas, file=out)
     # excessively negative intensities can be rejected either before or after
     # merging, depending on convention used
     if (self.n_rejected_before_merge > 0):
-      print >> out, prefix+"I < -3*SigI (rejected): %d observations" % \
-        self.n_rejected_before_merge
+      print(prefix+"I < -3*SigI (rejected): %d observations" % \
+        self.n_rejected_before_merge, file=out)
     if (self.n_rejected_after_merge > 0):
-      print >> out, prefix+"I < -3*SigI (rejected): %d reflections" % \
-        self.n_rejected_after_merge
-    print >> out, prefix+"R-merge: %5.3f" % self.r_merge
-    print >> out, prefix+"R-meas:  %5.3f" % self.r_meas
-    print >> out, prefix+"R-pim:   %5.3f" % self.r_pim
+      print(prefix+"I < -3*SigI (rejected): %d reflections" % \
+        self.n_rejected_after_merge, file=out)
+    print(prefix+"R-merge: %5.3f" % self.r_merge, file=out)
+    print(prefix+"R-meas:  %5.3f" % self.r_meas, file=out)
+    print(prefix+"R-pim:   %5.3f" % self.r_pim, file=out)
 
 class dataset_statistics(object):
   """
@@ -642,41 +643,41 @@ class dataset_statistics(object):
 
   def show_loggraph(self, out=None):
     if (out is None) : out = sys.stdout
-    print >> out, ""
-    print >> out, self.table.format_loggraph()
-    print >> out, ""
+    print("", file=out)
+    print(self.table.format_loggraph(), file=out)
+    print("", file=out)
 
   def show(self, out=None, header=True):
     if (out is None) : out = sys.stdout
     if (header):
       make_sub_header("Merging statistics", out=out)
     self.overall.show_summary(out)
-    print >> out, ""
-    print >> out, "Redundancies%s:" % self.anom_extra
+    print("", file=out)
+    print("Redundancies%s:" % self.anom_extra, file=out)
     n_obs = sorted(self.overall.redundancies.keys())
     for x in n_obs :
-      print >> out, "  %d : %d" % (x, self.overall.redundancies[x])
-    print >> out, ""
-    print >> out, """\
+      print("  %d : %d" % (x, self.overall.redundancies[x]), file=out)
+    print("", file=out)
+    print("""\
   Statistics by resolution bin:
  d_max  d_min   #obs  #uniq   mult.  %%comp       <I>  <I/sI>    r_mrg   r_meas    r_pim   %scc1/2   cc_ano""" %(
-      ' ' if self.overall.cc_one_half_significance is not None else '')
+      ' ' if self.overall.cc_one_half_significance is not None else ''), file=out)
     for bin_stats in self.bins :
-      print >> out, bin_stats.format()
-    print >> out, self.overall.format()
+      print(bin_stats.format(), file=out)
+    print(self.overall.format(), file=out)
 
   def show_cc_star(self, out=None):
     make_sub_header("CC* and related statistics", out=out)
-    print >> out, """\
- d_max   d_min  n_uniq  compl. <I/sI>  cc_1/2    cc* cc_work cc_free r_work r_free"""
+    print("""\
+ d_max   d_min  n_uniq  compl. <I/sI>  cc_1/2    cc* cc_work cc_free r_work r_free""", file=out)
     for k, bin in enumerate(self.bins):
-      print >> out, bin.format_for_model_cc()
-    print >> out, self.overall.format_for_model_cc()
+      print(bin.format_for_model_cc(), file=out)
+    print(self.overall.format_for_model_cc(), file=out)
 
   def as_dict(self):
     d = {}
     for bin_stats in self.bins:
-      for k, v in bin_stats.as_dict().iteritems():
+      for k, v in six.iteritems(bin_stats.as_dict()):
         d.setdefault(k, [])
         d[k].append(v)
     d['overall'] = self.overall.as_dict()
@@ -686,8 +687,8 @@ class dataset_statistics(object):
     import json
     json_str = json.dumps(self.as_dict(), indent=indent)
     if file_name is not None:
-      with open(file_name, 'wb') as f:
-        print >> f, json_str
+      with open(file_name, 'w') as f:
+        print(json_str, file=f)
     return json_str
 
   def extract_outer_shell_stats(self):
@@ -729,7 +730,7 @@ class dataset_statistics(object):
       ('percent_possible_obs', 'completeness'),
     ])
 
-    for k, v in mmcif_to_name.iteritems():
+    for k, v in six.iteritems(mmcif_to_name):
       value = self.overall.__getattribute__(v)
       if 'percent' in v:
         value *= 100
@@ -743,7 +744,7 @@ class dataset_statistics(object):
       stats_d = bin_stats.as_dict()
       values = [bin_stats.__getattribute__(v) * 100
                 if 'percent' in k else bin_stats.__getattribute__(v)
-                for k, v in mmcif_to_name.iteritems()]
+                for k, v in six.iteritems(mmcif_to_name)]
       reflns_shell_loop.add_row([i+1] + values)
     cif_block.add_loop(reflns_shell_loop)
 
@@ -753,7 +754,7 @@ class dataset_statistics(object):
     from libtbx.test_utils import approx_equal
     synchrotron = wl = "NULL"
     if (wavelength is not None):
-      out = cStringIO.StringIO()
+      out = StringIO()
       # XXX somewhat risky...
       if (not approx_equal(wavelength, 1.5418, eps=0.01, out=out) and
           not approx_equal(wavelength, 0.7107, eps=0.01, out=out)):
@@ -818,37 +819,37 @@ class dataset_statistics(object):
     assert (self.overall.cc_work is not None)
     if (out is None) : out = sys.stdout
     outer_shell = self.bins[-1]
-    print >> out, prefix + "Merging statistics and CC*:"
-    print >> out, prefix + "  Resolution      : %.3f - %.3f (%.3f - %.3f)" % (
+    print(prefix + "Merging statistics and CC*:", file=out)
+    print(prefix + "  Resolution      : %.3f - %.3f (%.3f - %.3f)" % (
       self.overall.d_max, self.overall.d_min, outer_shell.d_max,
-      outer_shell.d_min)
-    print >> out, prefix + "  Mean(I/sigmaI)  : %6.3f (%.3f)" % (
-      self.overall.i_over_sigma_mean, outer_shell.i_over_sigma_mean)
-    print >> out, prefix + "  Redundancy      :  %4.2f  (%.2f)" % (
-      self.overall.mean_redundancy, outer_shell.mean_redundancy)
-    print >> out, prefix + "  R-merge         :  %5.3f (%.3f)" % (
-      self.overall.r_merge, outer_shell.r_merge)
-    print >> out, prefix + "  R-meas          :  %5.3f (%.3f)" % (
-      self.overall.r_meas, outer_shell.r_meas)
-    print >> out, prefix + "  R-pim           :  %5.3f (%.3f)" % (
-      self.overall.r_pim, outer_shell.r_pim)
-    print >> out, prefix + "  CC1/2           :  %5.3f (%.3f)" % (
-      self.overall.cc_one_half, outer_shell.cc_one_half)
-    print >> out, prefix + "  CC*             :  %5.3f (%.3f)" % (
-      self.overall.cc_star, outer_shell.cc_star)
-    print >> out, prefix + "  CC(work)        :  %6.4f (%.4f)" % (
-      self.overall.cc_work, outer_shell.cc_work)
+      outer_shell.d_min), file=out)
+    print(prefix + "  Mean(I/sigmaI)  : %6.3f (%.3f)" % (
+      self.overall.i_over_sigma_mean, outer_shell.i_over_sigma_mean), file=out)
+    print(prefix + "  Redundancy      :  %4.2f  (%.2f)" % (
+      self.overall.mean_redundancy, outer_shell.mean_redundancy), file=out)
+    print(prefix + "  R-merge         :  %5.3f (%.3f)" % (
+      self.overall.r_merge, outer_shell.r_merge), file=out)
+    print(prefix + "  R-meas          :  %5.3f (%.3f)" % (
+      self.overall.r_meas, outer_shell.r_meas), file=out)
+    print(prefix + "  R-pim           :  %5.3f (%.3f)" % (
+      self.overall.r_pim, outer_shell.r_pim), file=out)
+    print(prefix + "  CC1/2           :  %5.3f (%.3f)" % (
+      self.overall.cc_one_half, outer_shell.cc_one_half), file=out)
+    print(prefix + "  CC*             :  %5.3f (%.3f)" % (
+      self.overall.cc_star, outer_shell.cc_star), file=out)
+    print(prefix + "  CC(work)        :  %6.4f (%.4f)" % (
+      self.overall.cc_work, outer_shell.cc_work), file=out)
     if (self.overall.cc_free is not None):
-      print >> out, prefix + "  CC(free)        :  %6.4f (%.4f)" % (
-        self.overall.cc_free, outer_shell.cc_free)
+      print(prefix + "  CC(free)        :  %6.4f (%.4f)" % (
+        self.overall.cc_free, outer_shell.cc_free), file=out)
     else :
-      print >> out, prefix + "  CC(free)        :  not available"
+      print(prefix + "  CC(free)        :  not available", file=out)
 
   def estimate_d_min(self,
       min_i_over_sigma=0,
       min_cc_one_half=0,
-      max_r_merge=sys.maxint,
-      max_r_meas=sys.maxint,
+      max_r_merge=sys.maxsize,
+      max_r_meas=sys.maxsize,
       min_cc_anom=-1,
       min_completeness=0):
     """
@@ -888,15 +889,15 @@ class dataset_statistics(object):
       return last_bin.d_min
 
   def show_estimated_cutoffs(self, out=sys.stdout, prefix=""):
-    print >> out, ""
-    print >> out, ""
+    print("", file=out)
+    print("", file=out)
     def format_d_min(value):
       if (value is None):
         return "(use all data)" #% self.d_min_overall
       return "%7.3f" % value
     make_sub_header("Resolution cutoff estimates", out=out)
-    print >> out, prefix + "  resolution of all data          : %7.3f" % \
-      self.overall.d_min
+    print(prefix + "  resolution of all data          : %7.3f" % \
+      self.overall.d_min, file=out)
     cc_one_half_cut = self.estimate_d_min(min_cc_one_half=0.33)
     i_over_sigma_cut = self.estimate_d_min(min_i_over_sigma=2.0)
     r_merge_cut = self.estimate_d_min(max_r_merge=0.5)
@@ -904,33 +905,33 @@ class dataset_statistics(object):
     cc_anom_cut = self.estimate_d_min(min_cc_anom=0.3)
     completeness_cut_conservative = self.estimate_d_min(min_completeness=0.9)
     completeness_cut_permissive = self.estimate_d_min(min_completeness=0.5)
-    print >> out, prefix + "  based on CC(1/2) >= 0.33        : %s" % \
-      format_d_min(cc_one_half_cut)
-    print >> out, prefix + "  based on mean(I/sigma) >= 2.0   : %s" % \
-      format_d_min(i_over_sigma_cut)
-    print >> out, prefix + "  based on R-merge < 0.5          : %s" % \
-      format_d_min(r_merge_cut)
-    print >> out, prefix + "  based on R-meas < 0.5           : %s" % \
-      format_d_min(r_meas_cut)
-    print >> out, prefix + "  based on completeness >= 90%%    : %s" % \
-      format_d_min(completeness_cut_conservative)
-    print >> out, prefix + "  based on completeness >= 50%%    : %s" % \
-      format_d_min(completeness_cut_permissive)
-    print >> out, ""
-    print >> out, "NOTE: we recommend using all data out to the CC(1/2) limit"
-    print >> out, "for refinement."
+    print(prefix + "  based on CC(1/2) >= 0.33        : %s" % \
+      format_d_min(cc_one_half_cut), file=out)
+    print(prefix + "  based on mean(I/sigma) >= 2.0   : %s" % \
+      format_d_min(i_over_sigma_cut), file=out)
+    print(prefix + "  based on R-merge < 0.5          : %s" % \
+      format_d_min(r_merge_cut), file=out)
+    print(prefix + "  based on R-meas < 0.5           : %s" % \
+      format_d_min(r_meas_cut), file=out)
+    print(prefix + "  based on completeness >= 90%%    : %s" % \
+      format_d_min(completeness_cut_conservative), file=out)
+    print(prefix + "  based on completeness >= 50%%    : %s" % \
+      format_d_min(completeness_cut_permissive), file=out)
+    print("", file=out)
+    print("NOTE: we recommend using all data out to the CC(1/2) limit", file=out)
+    print("for refinement.", file=out)
 
 def select_data(file_name, data_labels, log=None,
     assume_shelx_observation_type_is=None, allow_amplitudes=None):
   if (log is None) : log = null_out()
   from iotbx import reflection_file_reader
   hkl_in = reflection_file_reader.any_reflection_file(file_name)
-  print >> log, "Format:", hkl_in.file_type()
+  print("Format:", hkl_in.file_type(), file=log)
   miller_arrays = hkl_in.as_miller_arrays(merge_equivalents=False,
     assume_shelx_observation_type_is=assume_shelx_observation_type_is)
   if ((hkl_in.file_type() == "shelx_hklf") and (not "=" in file_name)
        and assume_shelx_observation_type_is is None):
-    print >> log, "WARNING: SHELX file is assumed to contain intensities"
+    print("WARNING: SHELX file is assumed to contain intensities", file=log)
   i_obs = None
   all_i_obs = []
   for array in miller_arrays :

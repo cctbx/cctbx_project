@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 import libtbx.load_env
 import os
@@ -9,7 +9,7 @@ def exercise_simple():
     relative_path="phenix_regression/reflection_files/ha_patterson.mtz",
     test=os.path.isfile)
   if (mtz_file is None):
-    print "phenix_regression not available, skipping"
+    print("phenix_regression not available, skipping")
     return
   result = easy_run.fully_buffered("cctbx.patterson_map \"%s\"" % mtz_file
     ).raise_if_errors()
@@ -55,4 +55,4 @@ ATOM    100 CL   CL  B   1      12.000   5.000  10.000  1.00 10.00          CL
 if (__name__ == "__main__"):
   exercise_simple()
   exercise_isomorphous()
-  print "OK"
+  print("OK")

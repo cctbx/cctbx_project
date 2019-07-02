@@ -8,11 +8,13 @@ on an existing cluster, e.g. to plot the unit cell distributions.
 **Author:**   Oliver Zeldin <zeldin@stanford.edu>
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import os
 import math
 import logging
+from six.moves import range
+from six.moves import zip
 logger = logging.getLogger(__name__)
 from xfel.clustering.singleframe import SingleFrame, SingleDialsFrame, SingleDialsFrameFromFiles
 from xfel.clustering.singleframe import SingleDialsFrameFromJson
@@ -109,7 +111,7 @@ class Cluster:
     for i, member in enumerate(self.members):
       unit_cells[i, :] = member.uc # supposed to be the Niggli setting cell parameters tuple
       # Calculate point group composition
-      if member.pg in self.pg_composition.keys():
+      if member.pg in self.pg_composition:
         self.pg_composition[member.pg] += 1
       else:
         self.pg_composition[member.pg] = 1
@@ -156,7 +158,7 @@ class Cluster:
           for filename in filenames:
             path = os.path.join(dirpath, filename)
             if path.endswith(".pickle"):
-              print path, "ends with .pickle"
+              print(path, "ends with .pickle")
               pickles.append(path)
 
     return Cluster.from_files(pickle_list=pickles, dials_refls=dials_refls,
@@ -215,7 +217,7 @@ class Cluster:
 
     from xfel.clustering.singleframe import CellOnlyFrame
     stream = open(file_name,"r").readlines()
-    print "There are %d lines in the input file"%(len(stream))
+    print("There are %d lines in the input file"%(len(stream)))
     for j,item in enumerate(stream):
       tokens = item.strip().split()
       assert len(tokens) == 7, tokens
@@ -233,7 +235,7 @@ class Cluster:
           data.append(this_frame)
       else:
           logger.info('skipping item {}'.format(item))
-    print "%d lattices will be analyzed"%(len(data))
+    print("%d lattices will be analyzed"%(len(data)))
 
     return cls(data, _prefix, _message)
 
@@ -339,7 +341,7 @@ class Cluster:
     else:
       if raw_input is not None:
         pickle_list.extend(raw_input)
-      print "There are %d input files"%(len(pickle_list))
+      print("There are %d input files"%(len(pickle_list)))
       from xfel.command_line.print_pickle import generate_data_from_streams
       for data_dict in generate_data_from_streams(pickle_list):
         this_frame = SingleFrame(dicti=data_dict, **kwargs)
@@ -349,7 +351,7 @@ class Cluster:
             break
         else:
           logger.info('skipping file {}'.format(os.path.basename(path)))
-      print "%d lattices will be analyzed"%(len(data))
+      print("%d lattices will be analyzed"%(len(data)))
 
     return cls(data, _prefix, _message)
 
@@ -957,7 +959,7 @@ class Cluster:
               space_group_info=self.members[0].miller_array.space_group_info())
     # Find mean_Iobs
     mil_dict = self.merge_dict(use_fullies=use_fullies)
-    single_millers = mil_dict.values()
+    single_millers = list(mil_dict.values())
     indices = [md.index for md in single_millers]
     iobs, sig_iobs = zip(*[md.weighted_mean_and_std() for md in single_millers])
     all_obs = miller.array(miller_set=self.members[0] \
@@ -1000,7 +1002,7 @@ class Cluster:
     :param cluster: a cluster object.
     :param inputfile: a Prime .inp file.
     """
-    from api import refine_many
+    from .api import refine_many
     miller_fullies = refine_many(self.members, inputfile)
     for mil, sf in zip(miller_fullies, self.members):
       sf.miller_fullies = mil

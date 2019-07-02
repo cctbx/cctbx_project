@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from mmtbx.monomer_library.server import mon_lib_list_cif, geostd_list_cif
 from mmtbx.monomer_library.server import merge_and_overwrite_cifs
@@ -21,10 +21,10 @@ def main():
   list_cif = merge_and_overwrite_cifs(geostd_list_cif_obj,
                                       list_cif,
                                       )
-  print dir(list_cif)
-  print dir(list_cif.cif)
+  print(dir(list_cif))
+  print(dir(list_cif.cif))
   cif = list_cif.cif
-  print cif.blocks.keys()
+  print(list(cif.blocks.keys()))
   j=0
   tmp = []
   for i, block in enumerate(cif.blocks):
@@ -37,13 +37,13 @@ def main():
       #tmp[-1].append('')
       #tmp[-1].append([block]*6)
       #tmp[-1].append([0,1,2,3,4,5])
-    print i, j, block
+    print(i, j, block)
 
   outl = 'standard_cif_links = [\n'
   for block in sorted(tmp):
     outl += '  %s,\n' % block
   outl += ']\n'
-  print outl
+  print(outl)
 
 if __name__ == '__main__':
   main()

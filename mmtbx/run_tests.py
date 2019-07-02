@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import libtbx.load_env
 from libtbx import easy_run
@@ -330,6 +330,7 @@ general_tests = [
   "$D/geometry/tests/tst_sphere_surface_sampling.py",
   "$D/geometry/tests/tst_topology.py",
   #
+  "$D/nci/tst_hbond.py",
   "$D/wwpdb/tst_rcsb_web_services.py",
   "$D/wwpdb/tst_utils.py",
   "$D/monomer_library/tst_all_cif_files.py",
@@ -420,7 +421,7 @@ probe_tests = [
 if libtbx.env.has_module(name="probe"):
   tst_list = tuple(general_tests + probe_tests)
 else:
-  print "Skipping %d probe tests: probe not configured"%len(probe_tests)
+  print("Skipping %d probe tests: probe not configured"%len(probe_tests))
   tst_list = tuple(general_tests)
 
 def run():

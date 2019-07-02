@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 from iotbx.phil import parse
 from libtbx.utils import Sorry
@@ -64,9 +64,6 @@ facility {
 output_folder = ""
   .type = path
   .help = Processing results will go in this folder
-average_raw_data = False
-  .type = bool
-  .help = If True, don't use any psana corrections (dark, common mode, etc.)
 
 include scope xfel.command_line.cxi_mpi_submit.mp_phil_scope
 """

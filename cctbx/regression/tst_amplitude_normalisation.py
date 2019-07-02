@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx import miller
@@ -7,6 +7,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
 import math
+from six.moves import range
 
 class Empty(object):
   pass
@@ -34,7 +35,7 @@ def as_normalised_array(miller_array,
   normalised_f_obs = flex.double()
   space_group = miller_array.space_group()
   tau = space_group.n_ltr()
-  for i in xrange(0,miller_array.size()):
+  for i in range(0,miller_array.size()):
     s_sq = stol_sq.data()[i]
     f_sq = math.pow(miller_array.data()[i], 2)
     epsilon = epsilons.data()[i]
@@ -106,7 +107,7 @@ def exercise_normalised_amplitudes():
 
 def run():
   exercise_normalised_amplitudes()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

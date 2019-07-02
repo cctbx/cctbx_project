@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # TODO:
 #  - handle 2theta properly
@@ -186,7 +186,7 @@ class XrayView(wx.Panel):
           info = self._img.get_point_info(x, y)
         except IndexError as e :
           # FIXME this really shouldn't happen
-          print e
+          print(e)
         else :
           self.GetParent().update_statusbar(info)
 
@@ -247,8 +247,8 @@ class XrayView(wx.Panel):
           self._img.set_beam_center_from_screen_coords(x,y)
         # XXX should it pop up a message here?  maybe we need a built-in
         # console for printing extra info?
-        print "Changed beam center to %.2f, %.2f (was: %.2f, %.2f)" % \
-          (x_point, y_point, old_x, old_y)
+        print("Changed beam center to %.2f, %.2f (was: %.2f, %.2f)" % \
+          (x_point, y_point, old_x, old_y))
         self.flag_set_beam_center_mode = False
         self.GetParent().update_statusbar()
     wx.SetCursor(wx.StockCursor(wx.CURSOR_CROSS))

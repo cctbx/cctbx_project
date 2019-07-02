@@ -1,14 +1,42 @@
-PRIME GUI bugfixes
+IOTA v1.3.010 - UI bugfixes and updates
 
-1. Fixed canvas redraw for main chart tab
-2. Fixed PRIME window size when launching from IOTA summary tab
+IOTA and PRIME UI
 
-IOTA GUI bugfixes and tweaks
+    0. Created a 'gui' subfolder in 'components' and moved base, dialogs,
+       controls, and plotter modules there, renaming them into base.py,
+       dialogs.py, controls.py, and plotter.py
+    1. PRIME button in Summary Tab now launches PRIME successfully
+    2. PRIME can be launched successfully on MacOS, in both wxPython3 and 4, and
+       quitting does not leave Python running as before (turns out PyPlot is bad
+       for wxPython, never use PyPlot with wxPython!)
+    3. Graceful window closure via a wx.EVT_CLOSE event handler in IOTABaseFrame
+       base class, which
+            a. catches a "window close" event either via the Quit button, or
+               the X button on window border
+            b. calls a clean-up function that can be overridden in subclass and
+               contains window-specific clean-up code
+            c. checks for child windows and calls the window close event handler
+               for each one (with their attendant clean-up code)
+            d. finds and stops any and all running threads (this step is
+               performed from children all the way up to parents, so any errant
+               threads, or threads that somehow start after the child window is
+               closed, are still found and stopped)
+    4. Put a try block in iota.run to catch a situation where IOTA UI is closed
+       just as the thread is about to be launched, which throws an IOError
+    5. IOTABaseFrame now has a "kill_threads" kwarg, which determines whether
+       the frame will attempt to kill active threads on exit; it's not always
+       desirable for frames to do that
+    6. Changed to a custom easy_run subclass for PRIME, so that regular PRIME
+       threads can be aborted cleanly
 
-1. In log search: pressing ENTER searches in the forward direction
-2. Can now select run in recovery dialog by double-clicking or pressing ENTER
-3. Graceful handling of clicking OK without selecting a run to recover
-4. Reduced font size for GTK GUI elements
+PRIME Plotter
+
+    1. Now importing the PlotWindow class from IOTA Plotter (they're the same)
+    2. Fixed chart formatting problem
+
+KNOWN ISSUES:
+
+    1. Need a clean abort procedure for queueing.
 
 ___________
-05.28.2019
+06.20.2019

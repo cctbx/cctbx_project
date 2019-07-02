@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.development import random_structure
 from cctbx.development.space_group_option_parser \
      import space_group_option_parser
@@ -25,12 +25,12 @@ def exercise(space_group_info,
     n_N = 1
     elements = ["C"]*n_C + ["O"]*n_O + ["N"]*n_N
   if verbose:
-    print elements
+    print(elements)
 
   target_space_group_type = space_group_info.type()
   hall = sgtbx.space_group_symbols(
     target_space_group_type.lookup_symbol()).hall()
-  print hall
+  print(hall)
 
   if fixed_random_seed:
     random.seed(1)
@@ -51,8 +51,8 @@ def exercise(space_group_info,
     shifted_origin = flex.random_double(3)
   shifted_origin = mat.col(shifted_origin)
   if verbose:
-    print "new origin = (%.3f, %.3f, %.3f)" % shifted_origin.elems
-    print
+    print("new origin = (%.3f, %.3f, %.3f)" % shifted_origin.elems)
+    print()
   target_structure_in_p1 = target_structure\
                          .expand_to_p1().apply_shift(shifted_origin)
   target_f_in_p1 = miller.build_set(
@@ -66,7 +66,7 @@ def exercise(space_group_info,
   # Recover space group?
   sf_symm = symmetry_search.structure_factor_symmetry(target_f_in_p1)
   if verbose:
-    print sf_symm
+    print(sf_symm)
 
   solution_hall, target_hall = [
     sgi.as_reference_setting().type().hall_symbol()
@@ -122,8 +122,8 @@ def exercise(space_group_info,
     .change_of_basis_op_to_reference_setting())
 
   if verbose:
-    print
-    print "solution -> target: %s" % solution_to_target_cb_op.as_xyz()
+    print()
+    print("solution -> target: %s" % solution_to_target_cb_op.as_xyz())
   delta_o = (mat.col(sf_symm.cb_op_to_primitive(shifted_origin))
              - sf_symm.origin)
   delta = mat.col(solution_to_target_cb_op(delta_o))

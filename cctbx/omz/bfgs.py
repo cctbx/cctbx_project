@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 def h0_scaling(sk, yk):
   "Nocedal & Wright (1999) Eq. 8.20; same as Eq. 9.6"
@@ -52,7 +53,7 @@ def hg_two_loop_recursion(memory, hk0, gk):
   q = gk.deep_copy()
   m = len(memory)
   alpha = [None] * m
-  for i in xrange(m-1,-1,-1):
+  for i in range(m-1,-1,-1):
     s, y, rho = memory[i].get()
     alpha[i] = a = rho * s.dot(q)
     q = q - a * y
@@ -62,7 +63,7 @@ def hg_two_loop_recursion(memory, hk0, gk):
     r = hk0 * q
   else:
     raise ValueError("Improper hk0")
-  for i in xrange(m):
+  for i in range(m):
     s, y, rho = memory[i].get()
     beta = rho * y.dot(r)
     r = r + s * (alpha[i] - beta)

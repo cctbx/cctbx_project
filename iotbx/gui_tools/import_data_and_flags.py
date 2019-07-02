@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # XXX this should probably be moved to iotbx/command_line at some point (once
 # code for handling command-line arguments is added).  However, it is very
@@ -121,7 +121,7 @@ def run(args=(), params=None, out=None):
               "toolbar button \"Other tools\" and select \"Inspect R-free "+
               "flags\".)") % params.import_data.flags_file)
           else :
-            print >> out, "WARNING: ignoring thin shells"
+            print("WARNING: ignoring thin shells", file=out)
         if (n_missing <= 20) : # XXX hack
           from scitbx.array_family import flex
           missing_flags = missing_set.array(data=flex.bool(n_missing, False))
@@ -147,7 +147,7 @@ def run(args=(), params=None, out=None):
     base,ext = os.path.splitext(params.import_data.data_file)
     params.import_data.output_file = base + "_flags.mtz"
   mtz_obj.write(file_name=params.import_data.output_file)
-  print >> out, "Data and flags written to %s" % params.import_data.output_file
+  print("Data and flags written to %s" % params.import_data.output_file, file=out)
   return params.import_data.output_file
 
 def validate_params(params):

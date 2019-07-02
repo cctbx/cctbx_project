@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import math
 from scitbx.array_family import flex
@@ -78,8 +78,8 @@ class fwhm_2d_response:
         point_projections.append(point_projection)
         pxval = rawdata[(point.x,point.y)]
         if verbose:
-          print "point_projection",point_projection,
-          print "signal",pxval
+          print("point_projection",point_projection, end=' ')
+          print("signal",pxval)
         pixel_values.append(  pxval  )
       Lmin = flex.min(point_projections)
       Lmax = flex.max(point_projections)
@@ -129,7 +129,7 @@ if __name__=="__main__":
   for angle in range(0,360,5):
     f_angle = float(angle)
     projection_vec = starting_vec.rotate_2d(angle=f_angle,deg=True)
-    print f_angle,projection_vec.elems
+    print(f_angle,projection_vec.elems)
     xs, ys = project_2d_response_onto_line(projection_vec)
     from matplotlib import pyplot as plt
     plt.plot(xs,ys,"r.")

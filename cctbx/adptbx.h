@@ -583,9 +583,9 @@ namespace cctbx {
 
          sym_mat3_indices = [(0,0),(1,1),(2,2),(0,1),(0,2),(1,2)]
          i = 0
-         for ij1 in xrange(6):
+         for ij1 in range(6):
            i1,j1 = sym_mat3_indices[ij1]
-           for ij2 in xrange(ij1,6):
+           for ij2 in range(ij1,6):
              i2,j2 = sym_mat3_indices[ij2]
              print "result[%d] = h%dh%d * h%dh%d;" % (i,i1,j1,i2,j2)
              i += 1

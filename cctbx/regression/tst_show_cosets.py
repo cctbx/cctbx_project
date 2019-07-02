@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 expected_output_test1  = """Left cosets of :
   subgroup  H: P 3
   and group G: P 6 2 2
@@ -51,7 +51,7 @@ def test():
   test2 = tmp_out()
   show_cosets.run( "P2" , "P3", out=test2)
   assert test2.store == expected_output_test2
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   test()

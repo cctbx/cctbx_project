@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.uctbx.reduction_base import iteration_limit_exceeded
 from cctbx.uctbx.reduction_base import reduction_base
 from cctbx.uctbx.reduction_base import minimum_reduction_mixin
 from cctbx import uctbx
 from scitbx import matrix
+from six.moves import zip
 
 def entier(x):
   "greatest integer which is not greater than x"

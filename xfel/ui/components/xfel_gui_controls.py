@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+import six
 
 '''
 Author      : Lyubimov, A.Y.
@@ -502,7 +503,7 @@ class MultiChoiceCtrl(CtrlBase):
     self.txt.SetFont(self.font)
     choice_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
 
-    for key, choices in items.iteritems():
+    for key, choices in six.iteritems(items):
       if len(items) > 1:
         ch_label =wx.StaticText(self, id=wx.ID_ANY, label=key)
         choice_box.Add(ch_label, flag=wx.ALIGN_CENTER_VERTICAL)
@@ -580,7 +581,7 @@ class RadioCtrl(CtrlBase):
       self.txt.SetFont(self.font)
       radio_group.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
 
-    for key, value in items.iteritems():
+    for key, value in six.iteritems(items):
       button = wx.RadioButton(self, id=wx.ID_ANY, label=value)
       radio_group.Add(button)
       self.__setattr__(key, button)

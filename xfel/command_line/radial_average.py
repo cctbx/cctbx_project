@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cxi.radial_average
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
@@ -285,7 +285,7 @@ def show_tiles(the_tiles, img, phil, bc, handedness=0):
     h = y2-y1
     cx,cy = get_tile_center(the_tiles, tile)
 
-    print "tile %d, x1 %d, y1 %d, x2 %d, y2 %d, w %d, h %d, cx %s, cy %s"%(tile, x1, y1, x2, y2, w, h, cx, cy)
+    print("tile %d, x1 %d, y1 %d, x2 %d, y2 %d, w %d, h %d, cx %s, cy %s"%(tile, x1, y1, x2, y2, w, h, cx, cy))
 
     x = np.array([0]*(w*h))
     y = np.array([0]*(w*h))
@@ -295,7 +295,7 @@ def show_tiles(the_tiles, img, phil, bc, handedness=0):
       for i in range(w):
         t_id = get_tile_id(the_tiles,x1+i,y1+j)
         if tile != t_id:
-          print "bug! tile: %d, t_id %d, x %d, y %d"%(tile,t_id,x1+i,y1+j)
+          print("bug! tile: %d, t_id %d, x %d, y %d"%(tile,t_id,x1+i,y1+j))
           return
         xt, yt = apply_sub_pixel_metrology(tile,x1+i,y1+j,cx,cy,phil,handedness)
         x[(j*w)+i] = xt

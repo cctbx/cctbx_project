@@ -1,7 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx import scaling
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from six.moves import zip
+from six.moves import range
 
 
 def tst_outliers_compare_mode_mean():
@@ -11,7 +13,7 @@ def tst_outliers_compare_mode_mean():
   epsilon = flex.double( range(1000) )*0 +1.0
   centric = flex.bool( [False]*1000 )
 
-  for ii in xrange(50):
+  for ii in range(50):
     a = ii/50.0
     b = 1.0-a*a
     alpha = flex.double( [a]*1000 )
@@ -33,7 +35,7 @@ def tst_outliers_compare_mode_mean():
       if (a>0.9):
         assert approx_equal(mm,m,eps=1e-1)
 
-  for ii in xrange(1,50):
+  for ii in range(1,50):
     a = ii/50.0
     b = 1.0-a*a
     alpha = flex.double( [a]*1000 )
@@ -132,7 +134,7 @@ def run():
   tst_outliers_compare_mode_mean()
   tst_outliers_find_posterior_mode()
   tst_loglikelihoods()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

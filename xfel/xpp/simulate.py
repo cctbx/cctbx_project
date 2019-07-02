@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import time
 
@@ -13,18 +13,18 @@ class phil_validation:
 
 class file_table:
   def __init__(self,param,query,enforce80=False,enforce81=False):
-    import urllib2
-    auth_handler = urllib2.HTTPBasicAuthHandler()
+    from six.moves import urllib
+    auth_handler = urllib.request.HTTPBasicAuthHandler()
     auth_handler.add_password(realm="Webservices Auth",
                           uri="https://pswww.slac.stanford.edu",
                           user=param.web.user,
                           passwd=param.web.password)
-    opener = urllib2.build_opener(auth_handler)
+    opener = urllib.request.build_opener(auth_handler)
     # ...and install it globally so it can be used with urlopen.
-    urllib2.install_opener(opener)
-    R = urllib2.urlopen(query)
+    urllib.request.install_opener(opener)
+    R = urllib.request.urlopen(query)
     if R.getcode() != 200:
-      print "Status",R.getcode()
+      print("Status",R.getcode())
     import xml.etree.ElementTree
     X = xml.etree.ElementTree.XML(R.read())
     #from IPython import embed; embed()#help(X)
@@ -77,7 +77,7 @@ class application:
     # Now prepare for the simulation
     data_timespan = runs[-1]["time"] - runs[0]["time"]
     simulation_timespan = data_timespan / self.param.speedup.factor
-    print "Simulation duration %5.2f sec"%simulation_timespan
+    print("Simulation duration %5.2f sec"%simulation_timespan)
     import time
     begin = time.time()
     runptr = 0
@@ -85,7 +85,7 @@ class application:
       time.sleep(1)
       dataclock = runs[runptr]["time"] - runs[0]["time"]
       if dataclock < self.param.speedup.factor * ( time.time() - begin):
-        print "Run %d, time %s"%(runs[runptr]["run"],time.asctime(time.localtime(runs[runptr]["time"])))
+        print("Run %d, time %s"%(runs[runptr]["run"],time.asctime(time.localtime(runs[runptr]["time"]))))
         runptr+=1
 
   def get_query1(self):

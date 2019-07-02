@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import xray
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -96,12 +96,12 @@ def get_curvs_work(f_obs, weights, xray_structure, lim_eps):
     np += 4 # u_iso, occ, fp, fdp
     i_all += np
   assert i_all == c_all.size()
-  print "curv site below limit: %d of %d" % (
+  print("curv site below limit: %d of %d" % (
     cf_site.n_below_limit,
-    cf_site.n_below_limit + cf_site.n_above_limit)
-  print "curv u_iso below limit: %d of %d" % (
+    cf_site.n_below_limit + cf_site.n_above_limit))
+  print("curv u_iso below limit: %d of %d" % (
     cf_u_iso.n_below_limit,
-    cf_u_iso.n_below_limit + cf_u_iso.n_above_limit)
+    cf_u_iso.n_below_limit + cf_u_iso.n_above_limit))
   sys.stdout.flush()
   return result
 
@@ -202,7 +202,7 @@ class ls_refinement(object):
         large_shift_site=0.1,
         large_shift_u_iso_factor=0.5,
         min_large_shift_u_iso=b_as_u(1)):
-    print "adjust_stp", stp
+    print("adjust_stp", stp)
     assert csd.size() == O.x.size()
     max_stp = 100
     ix = 0
@@ -229,7 +229,7 @@ class ls_refinement(object):
         max_stp = min(max_stp, abs(lux/csd[ix]))
       ix += 1
     assert ix == O.x.size()
-    print "max_stp:", max_stp
+    print("max_stp:", max_stp)
     sys.stdout.flush()
     if (O.params.use_max_stp):
       return min(max_stp, stp)
@@ -243,8 +243,8 @@ class ls_refinement(object):
         xray_structure=O.xray_structure,
         algorithm="direct",
         cos_sin_table=False).f_calc()
-    except RuntimeError, e:
-      print "RuntimeError f_calc:", e
+    except RuntimeError as e:
+      print("RuntimeError f_calc:", e)
       sys.stdout.flush()
       raise RuntimeError("f_calc")
     ls = xray.targets_least_squares(
@@ -290,13 +290,13 @@ class ls_refinement(object):
       s = "step  fun    f        |g|"
       if (O.reference_structure is not None):
         s += "     cRMSD aRMSD uRMSD"
-      print s
+      print(s)
     s = "%4d %4d %9.2e %9.2e" % (
       O.number_of_lbfgs_iterations,
       O.number_of_function_evaluations,
       O.f_last, O.g_last.norm())
     s += O.format_rms_info()
-    print s+suffix
+    print(s+suffix)
     O.history.append(refinement_stats(
       iter=O.number_of_lbfgs_iterations,
       nfun=O.number_of_function_evaluations,
@@ -338,8 +338,8 @@ class ls_refinement(object):
   def show_rms_info(O):
     s = O.format_rms_info()
     if (len(s) != 0):
-       print " cRMSD aRMSD uRMSD"
-       print s
+       print(" cRMSD aRMSD uRMSD")
+       print(s)
        sys.stdout.flush()
 
   def run_lbfgs_raw(O):
@@ -389,7 +389,7 @@ class ls_refinement(object):
         iprint=iprint, eps=eps, xtol=xtol, w=w, iflag=iflag)
       if (iflag <= 0): break
     if (O.params.lbfgs_impl_switch == 1):
-      print "iter, nfun:", lbfgs_impl.iter(), lbfgs_impl.nfun()
+      print("iter, nfun:", lbfgs_impl.iter(), lbfgs_impl.nfun())
       assert O.number_of_function_evaluations == lbfgs_impl.nfun()
       O.number_of_lbfgs_iterations = lbfgs_impl.iter()
     O.callback_after_step_no_counting(suffix=" FINAL")
@@ -422,18 +422,18 @@ class ls_refinement(object):
         O.callback_after_step(minimizer=None)
 
 def run_refinement(structure_ideal, structure_shake, params, run_id):
-  print "Ideal structure:"
+  print("Ideal structure:")
   structure_ideal.show_summary().show_scatterers()
-  print
-  print "Modified structure:"
+  print()
+  print("Modified structure:")
   structure_shake.show_summary().show_scatterers()
-  print
-  print "rms difference:", \
-    structure_ideal.rms_difference(other=structure_shake)
-  print
-  print "structure_shake inter-atomic distances:"
+  print()
+  print("rms difference:", \
+    structure_ideal.rms_difference(other=structure_shake))
+  print()
+  print("structure_shake inter-atomic distances:")
   structure_shake.show_distances(distance_cutoff=4)
-  print
+  print()
   f_obs = abs(structure_ideal.structure_factors(
     anomalous_flag=False,
     d_min=1,
@@ -445,8 +445,8 @@ def run_refinement(structure_ideal, structure_shake, params, run_id):
       xray_structure=structure_shake,
       params=params,
       reference_structure=structure_ideal)
-  except RuntimeError, e:
-    print "RuntimeError run_id:", run_id
+  except RuntimeError as e:
+    print("RuntimeError run_id:", run_id)
     sys.stdout.flush()
     if (str(e) != "f_calc"):
       raise
@@ -469,11 +469,11 @@ def run_call_back(flags, space_group_info, params):
   run_id += str(space_group_info).replace(" ","").replace("/","_").lower()
   if (params.pickle_root_name is not None):
     pickle_file_name = run_id + "_ideal_shake.pickle"
-    print "writing file:", pickle_file_name
+    print("writing file:", pickle_file_name)
     easy_pickle.dump(
       file_name=pickle_file_name,
       obj=(structure_ideal, structure_shake))
-    print
+    print()
     sys.stdout.flush()
   #
   ls_result = run_refinement(
@@ -483,11 +483,11 @@ def run_call_back(flags, space_group_info, params):
     run_id=run_id)
   if (ls_result is not None and params.pickle_root_name is not None):
     pickle_file_name = run_id + "_ls_history.pickle"
-    print "writing file:", pickle_file_name
+    print("writing file:", pickle_file_name)
     easy_pickle.dump(
       file_name=pickle_file_name,
       obj=ls_result.history)
-    print
+    print()
     sys.stdout.flush()
 
 def run(args):
@@ -528,7 +528,7 @@ def run(args):
       remaining_args.append(arg)
   work_phil = master_phil.fetch(sources=phil_objects)
   work_phil.show()
-  print
+  print()
   params = work_phil.extract()
   if (params.unpickle is None):
     debug_utils.parse_options_loop_space_groups(

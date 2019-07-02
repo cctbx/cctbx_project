@@ -1,10 +1,15 @@
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
+from cctbx.crystal import symmetry
+from libtbx import Auto
 
 class experiment_filter(worker):
   '''Reject experiments based on various criteria'''
+
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(experiment_filter, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
 
   def __repr__(self):
     return 'Filter experiments'
@@ -19,9 +24,6 @@ class experiment_filter(worker):
     return is_ok
 
   def check_space_group(self, experiment):
-
-    from cctbx.crystal import symmetry
-
     # build patterson group from the target space group
     target_unit_cell = self.params.filter.unit_cell.value.target_unit_cell
     target_space_group_info = self.params.filter.unit_cell.value.target_space_group
@@ -54,11 +56,21 @@ class experiment_filter(worker):
     return new_experiments, new_reflections
 
   def run(self, experiments, reflections):
+    if 'unit_cell' not in self.params.filter.algorithm: # so far only "unit_cell" algorithm is supported
+      return experiments, reflections
 
     self.logger.log_step_time("FILTER_EXPERIMENTS")
 
-    experiment_ids_to_remove = []
+    # If the filter unit cell and/or space group params are Auto, use the corresponding scaling targets.
+    if self.params.filter.unit_cell.value.target_unit_cell == Auto:
+      self.params.filter.unit_cell.value.target_unit_cell = self.params.scaling.unit_cell
+    if self.params.filter.unit_cell.value.target_space_group == Auto:
+      self.params.filter.unit_cell.value.target_space_group = self.params.scaling.space_group
 
+    self.logger.log("Using filter target unit cell: %s"%str(self.params.filter.unit_cell.value.target_unit_cell))
+    self.logger.log("Using filter target space group: %s"%str(self.params.filter.unit_cell.value.target_space_group))
+
+    experiment_ids_to_remove = []
     removed_for_unit_cell = 0
     removed_for_space_group = 0
     for experiment in experiments:

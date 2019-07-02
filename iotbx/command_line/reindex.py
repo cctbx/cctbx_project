@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.reindex
 
 import libtbx.phil
@@ -67,7 +67,7 @@ Change-of-basis operator: h,k,l or x,y,z or
   for i, array in enumerate(new_arrays[1:]):
     mtz_out.add_miller_array(
       miller_array=array,
-      column_root_label="%s" % string.uppercase[i+1])
+      column_root_label="%s" % string.ascii_uppercase[i+1])
   mtz_obj = mtz_out.mtz_object()
   for i, column in enumerate(mtz_obj.columns()):
     column.set_label(labels[i])
@@ -75,14 +75,14 @@ Change-of-basis operator: h,k,l or x,y,z or
     base,ext = os.path.splitext(params.reindex.hkl_file)
     params.reindex.output_file = base + "_reindex.mtz"
   mtz_obj.write(file_name=params.reindex.output_file)
-  print >> out, "Reindex reflections written to %s" % params.reindex.output_file
+  print("Reindex reflections written to %s" % params.reindex.output_file, file=out)
   return params.reindex.output_file
 
 def convert_operator(change_of_basis):
   from cctbx import sgtbx
   try :
     c_o_b = sgtbx.change_of_basis_op(change_of_basis)
-  except RuntimeError, e :
+  except RuntimeError as e :
     raise Sorry(str(e))
   else :
     return c_o_b

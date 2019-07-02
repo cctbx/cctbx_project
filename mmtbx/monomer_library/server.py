@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import cif_types
 import iotbx.cif
 from iotbx.pdb import residue_name_plus_atom_names_interpreter
@@ -8,6 +8,7 @@ from libtbx.utils import Sorry, format_exception, windows_device_names
 import libtbx.load_env
 import libtbx.path
 import os
+import six
 
 class MonomerLibraryServerError(RuntimeError): pass
 
@@ -77,7 +78,7 @@ def geostd_list_cif(path=None, strict=False):
       path=path,
       relative_path_components=["list", "geostd_list.cif"],
       strict=strict)
-  except MonomerLibraryServerError, e:
+  except MonomerLibraryServerError as e:
     return None
 
 def mon_lib_ener_lib_cif(path=None, strict=False):
@@ -105,7 +106,7 @@ class trivial_html_tag_filter(object):
 
   def next(self):
     while 1:
-      result = self.f.next()
+      result = next(self.f)
       if (result[0] != "<"):
         return result
 
@@ -132,7 +133,7 @@ def convert_list_block(
       for row in list_item_block.iterrows():
         obj_inner = cif_type_inner(**dict(row))
         tabulated_items[obj_inner.id] = obj_inner
-  for key, cif_data in cif_object.iteritems():
+  for key, cif_data in six.iteritems(cif_object):
     if (key.startswith(data_prefix)):
       item_id = key[len(data_prefix):]
       if (data_prefix + item_id == list_name): continue
@@ -143,7 +144,7 @@ def convert_list_block(
       for loop_block,lst_name in outer_mappings:
         rows = cif_data.get('_'+loop_block)
         if (rows is None):
-          d = dict((k, v) for k, v in cif_data.iteritems()
+          d = dict((k, v) for k, v in six.iteritems(cif_data)
                    if k.startswith("_"+loop_block))
           if len(d) > 0:
             lst = getattr(obj_outer, lst_name)
@@ -230,11 +231,11 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
       geostd_block = geostd_cif[geostd_block_key]
       mon_lib_block = mon_lib_cif.get(geostd_block_key)
       if verbose:
-        print '+'*80
-        print geostd_block_key
-        print '-'*80
-        print mon_lib_block
-        print '+'*80
+        print('+'*80)
+        print(geostd_block_key)
+        print('-'*80)
+        print(mon_lib_block)
+        print('+'*80)
       replace_block=False
       merge_block=False
       if geostd_block_key.endswith("_list"):
@@ -260,7 +261,7 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
           if count==len(k): return True
           return False
 
-        geostd_loop_keys = geostd_block.keys()
+        geostd_loop_keys = list(geostd_block.keys())
         if not geostd_loop_keys: continue
         done = []
         for geostd_loop_key in geostd_loop_keys:
@@ -271,7 +272,7 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
           geostd_loop = geostd_block.get(geostd_loop_key)
           mon_lib_loop = mon_lib_block.get(geostd_loop_key)
           if not mon_lib_loop: continue
-          if verbose: print '''
+          if verbose: print('''
 %s
   Merging rows to CIF
     block "%s"
@@ -282,22 +283,22 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
           geostd_block_key,
           geostd_loop_key,
           "-"*80,
-          )
+          ))
           for row1 in geostd_loop.iterrows():
             if verbose:
               for key in row1:
-                print "    %-20s : %s" % (
+                print("    %-20s : %s" % (
                   key.replace("%s." % geostd_loop_key, ""),
                   row1[key],
-                  )
-              print
+                  ))
+              print()
             for i, row2 in enumerate(mon_lib_loop.iterrows()):
               if _row_match(row1, row2, geostd_loop_key):
                 mon_lib_loop.delete_row(i)
-                mon_lib_loop.add_row(row1.values())
+                mon_lib_loop.add_row(list(row1.values()))
       elif not replace_block:
         # add to loops row-wise
-        geostd_loop_keys = geostd_block.keys()
+        geostd_loop_keys = list(geostd_block.keys())
         if not geostd_loop_keys: continue
         done = []
         for geostd_loop_key in geostd_loop_keys:
@@ -308,7 +309,7 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
           geostd_loop = geostd_block.get(geostd_loop_key)
           mon_lib_loop = mon_lib_block.get(geostd_loop_key)
           if not mon_lib_loop: continue
-          if verbose: print '''
+          if verbose: print('''
 %s
   Adding rows to CIF
     block "%s"
@@ -319,26 +320,26 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
           geostd_block_key,
           geostd_loop_key,
           "-"*80,
-          )
+          ))
           for row in geostd_loop.iterrows():
             if verbose:
               for key in row:
-                print "    %-20s : %s" % (
+                print("    %-20s : %s" % (
                   key.replace("%s." % geostd_loop_key, ""),
                   row[key],
-                  )
-              print
-            mon_lib_loop.add_row(row.values())
+                  ))
+              print()
+            mon_lib_loop.add_row(list(row.values()))
       else:
         # add block
         if verbose:
-          print '\n%s\n  Adding/replacing CIF block\n%s' % ("-"*80, "-"*80)
-          print geostd_block
+          print('\n%s\n  Adding/replacing CIF block\n%s' % ("-"*80, "-"*80))
+          print(geostd_block)
         mon_lib_cif[geostd_block_key] = geostd_block
       if verbose:
-        print '+'*80
-        print mon_lib_block
-        print '+'*80
+        print('+'*80)
+        print(mon_lib_block)
+        print('+'*80)
   return list_cif
 
 def print_filtered_cif(cif):
@@ -348,7 +349,7 @@ def print_filtered_cif(cif):
       #outl += "%s\n" % line
       continue
     outl += "%s\n" % line
-  print outl
+  print(outl)
   #assert 0
 
 class process_cif_mixin(object):
@@ -386,9 +387,9 @@ class process_cif_mixin(object):
 
 class id_dict(dict):
   def __setitem__(self, key, item):
-    print "DICT",key, item
+    print("DICT",key, item)
     if key in self:
-      print 'assert 0'
+      print('assert 0')
       assert 0
     dict.__setitem__(self, key, item)
 
@@ -543,11 +544,11 @@ class server(process_cif_mixin):
               cif_name = cif_name.lower()
               for node in os.listdir(dir_name):
                 if (node.lower() != cif_name): continue
-                print 'node',node
-                print 'i_pass'*10,i_pass
-                print dir_name
-                print os.listdir(dir_name)
-                print 'cif_name',cif_name
+                print('node',node)
+                print('i_pass'*10,i_pass)
+                print(dir_name)
+                print(os.listdir(dir_name))
+                print('cif_name',cif_name)
                 assert 0
                 return os.path.join(dir_name, node)
           # check PHENIX Mon Lib

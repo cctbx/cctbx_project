@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 def exercise_1():
   from rstbx.viewer import screen_params
@@ -29,4 +29,4 @@ def exercise_2():
 
 if (__name__ == "__main__"):
   exercise_1()
-  print "OK"
+  print("OK")

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME LM14.einsle
 import sys,os
@@ -54,8 +54,8 @@ class Model:
     selection = asc.selection("(element Zn or element Ca or element S or element Fe or element Yb)")
     #selection = asc.selection("element Zn or element Fe")
     #selection = asc.selection("chain A and resseq 201")
-    print "%d atoms selected out of total %d"%(
-    selection.count(True), selection.size())
+    print("%d atoms selected out of total %d"%(
+    selection.count(True), selection.size()))
     self.N_anom_scatterers = selection.count(True)
     xrs_ions    = self.xray_structure.select(selection)
     xrs_ions.show_scatterers()
@@ -152,7 +152,7 @@ Phil-out a few cases so we can get the pdb files out of the code
     slope,offset,corr,N = correlation(
       self = self.f_model_real.select(sel0),
       other = other.select(sel1))
-    print slope,offset,corr,N
+    print(slope,offset,corr,N)
     if plot:
       from matplotlib import pyplot as plt
       plt.plot([-1,4],[-1,4],"g-")
@@ -182,12 +182,12 @@ Phil-out a few cases so we can get the pdb files out of the code
       xray_structure = self.xray_structure)
     # Do anisotropic overall scaling, bulk-solvent modeling, outlier rejection
     #fmodel.update_all_scales()
-    print "r_work, r_free: %6.4f, %6.4f"%(fmodel.r_work(), fmodel.r_free())
+    print("r_work, r_free: %6.4f, %6.4f"%(fmodel.r_work(), fmodel.r_free()))
     # Print statistics in resolution bins
     f_model = fmodel.f_model_scaled_with_k1()
     bin_selections = fmodel.f_obs().log_binning()
     dsd = fmodel.f_obs().d_spacings().data()
-    print "Bin# Resolution    Nref Cmpl  Rw     CC"
+    print("Bin# Resolution    Nref Cmpl  Rw     CC")
     fmt="%2d: %6.3f-%-6.3f %5d %5.3f %6.4f %6.4f"
     for i_bin, sel in enumerate(bin_selections):
       d           = dsd.select(sel)
@@ -201,10 +201,10 @@ Phil-out a few cases so we can get the pdb files out of the code
       r_work      = fmodel_sel.r_work()
       cc          = flex.linear_correlation(x=f_obs_sel.data(),
                     y=f_model_sel).coefficient()
-      print fmt%(i_bin, d_max, d_min, n, cmpl, r_work, cc)
+      print(fmt%(i_bin, d_max, d_min, n, cmpl, r_work, cc))
     # Alternative binning
-    print
-    print "Bin# Resolution    Nref Cmpl  Rw     CC"
+    print()
+    print("Bin# Resolution    Nref Cmpl  Rw     CC")
     fmodel.f_obs().setup_binner(reflections_per_bin = 2500)
     f_model.use_binning_of(fmodel.f_obs())
     for i_bin in fmodel.f_obs().binner().range_used():
@@ -220,7 +220,7 @@ Phil-out a few cases so we can get the pdb files out of the code
       r_work      = fmodel_sel.r_work()
       cc          = flex.linear_correlation(x=f_obs_sel.data(),
                     y=f_model_sel).coefficient()
-      print fmt%(i_bin, d_max, d_min, n, cmpl, r_work, cc)
+      print(fmt%(i_bin, d_max, d_min, n, cmpl, r_work, cc))
 
 
 def get_obs(file_name,tag):
@@ -284,7 +284,7 @@ class FPP_optimizer:
 
     self.diffs = diffs.select(self.sel1)
 
-    print "SELECTED %d diffs out of %d"%(len(self.diffs.data()), len(diffs.data()))
+    print("SELECTED %d diffs out of %d"%(len(self.diffs.data()), len(diffs.data())))
 
     self.minimizer = scitbx.lbfgs.run(target_evaluator=self,
         termination_params=scitbx.lbfgs.termination_parameters(
@@ -300,7 +300,7 @@ class FPP_optimizer:
     residual = self.diffs.data() - dano_summation.select(self.sel0)
     if self.params.use_weights:  residual /= self.diffs.sigmas()
     F = 0.5 * flex.sum(residual * residual)
-    print("LBFGS stp",F)
+    print(("LBFGS stp",F))
 
     g = flex.double(self.n, 0.)
     for j,item in enumerate(Ddanocalc_Dp):
@@ -363,42 +363,42 @@ def show_scatterers(self,fpp,wave):
       sc.fdp = fpp[j]
       show_scatterer(sc, unit_cell=self.unit_cell())
       types_used[sc.scattering_type]=None
-    print "Tabular values for %7.1f eV (%8.5f Angstrom):"%(12398/wave,wave)
+    print("Tabular values for %7.1f eV (%8.5f Angstrom):"%(12398/wave,wave))
     from cctbx.eltbx import sasaki, henke
     for tag in types_used.keys():
       fpp_expected_sasaki = sasaki.table(tag).at_angstrom(
           wave).fdp()
       fpp_expected_henke = henke.table(tag).at_angstrom(
           wave).fdp()
-      print "           %-4s"%tag,
-      print "%6.3f" % (max(fpp_expected_sasaki,fpp_expected_henke))
+      print("           %-4s"%tag, end=' ')
+      print("%6.3f" % (max(fpp_expected_sasaki,fpp_expected_henke)))
 
 def show_scatterer(self, f=None, unit_cell=None):
 
   if (f is None): f = sys.stdout
   from cctbx import adptbx
-  print >> f, "%-4s" % self.label[5:15],
-  print >> f, "%-4s" % self.scattering_type,
+  print("%-4s" % self.label[5:15], end=' ', file=f)
+  print("%-4s" % self.scattering_type, end=' ', file=f)
   #print >> f, "%3d" % self.multiplicity(),
-  print >> f, "%6.3f" % (self.fdp),
-  print >> f, "(%7.4f %7.4f %7.4f)" % self.site,
-  print >> f, "%4.2f" % self.occupancy,
+  print("%6.3f" % (self.fdp), end=' ', file=f)
+  print("(%7.4f %7.4f %7.4f)" % self.site, end=' ', file=f)
+  print("%4.2f" % self.occupancy, end=' ', file=f)
   if self.flags.use_u_iso():
-    print >> f, "%6.4f" % self.u_iso,
+    print("%6.4f" % self.u_iso, end=' ', file=f)
   else:
-    print >> f, '[ - ]',
+    print('[ - ]', end=' ', file=f)
   if self.flags.use_u_aniso():
     assert unit_cell is not None
     u_cart = adptbx.u_star_as_u_cart(unit_cell, self.u_star)
-    print >> f, "%6.4f" % adptbx.u_cart_as_u_iso(u_cart)
-    print >> f, "     u_cart =", ("%6.3f " * 5 + "%6.3f") % u_cart,
+    print("%6.4f" % adptbx.u_cart_as_u_iso(u_cart), file=f)
+    print("     u_cart =", ("%6.3f " * 5 + "%6.3f") % u_cart, end=' ', file=f)
   else:
-    print >> f, '[ - ]',
+    print('[ - ]', end=' ', file=f)
   if False and (self.fp != 0 or self.fdp != 0):
-    print >> f, "\n     fp,fdp = %6.4f,%6.4f" % (
+    print("\n     fp,fdp = %6.4f,%6.4f" % (
       self.fp,
-      self.fdp),
-  print >> f
+      self.fdp), end=' ', file=f)
+  print(file=f)
 
 from libtbx.phil import parse
 phil_scope = parse("""
@@ -432,13 +432,13 @@ def get_params(args):
       try:
         user_phil.append(parse(file_name=arg))
       except Exception as e:
-        print str(e)
+        print(str(e))
         raise Sorry("Couldn't parse phil file %s"%arg)
     else:
       try:
         user_phil.append(parse(arg))
       except Exception as e:
-        print str(e)
+        print(str(e))
         raise Sorry("Couldn't parse argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
   return params
@@ -452,7 +452,7 @@ if __name__ == "__main__":
   if wave==None or wave==1.:  wave = params.wavelength_overrride
   if params.d_min == None:
     params.d_min = obs_ampl_merged.d_min()
-  print "DMIN = %7.2f"%params.d_min
+  print("DMIN = %7.2f"%params.d_min)
 
   #params.pdb = "/Users/nksauter/xtalwork/LM14/Yb-lysozyme/Refine_4/LM14_1colorYblyso_refine_4.pdb"
   algorithm = "direct"
@@ -470,14 +470,14 @@ if __name__ == "__main__":
   anomalous_diffs = scaled_obs_ampl.anomalous_differences()
 
   for x in range(5):
-    print anomalous_diffs.indices()[x], anomalous_diffs.data()[x],anomalous_diffs.sigmas()[x]
+    print(anomalous_diffs.indices()[x], anomalous_diffs.data()[x],anomalous_diffs.sigmas()[x])
 
   M.wavelength_independent_phases(params.group_sulfurs)
-  print M.N_anom_scatterers ,"anomalous_scatterers"
+  print(M.N_anom_scatterers ,"anomalous_scatterers")
   M.parts(flex.double(M.N_anom_scatterers))
   FPPO = FPP_optimizer(M, anomalous_diffs, params)
 
   show_scatterers(M.metals, FPPO.get_fpp(), wave)
-  print "C.C. = %7.2f%%"%(100. * FPPO.correlation())
+  print("C.C. = %7.2f%%"%(100. * FPPO.correlation()))
   if params.make_plot:
     FPPO.compute_functional_and_gradients(plot=True)

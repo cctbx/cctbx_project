@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # Lists of error messages thrown during CIF validation
 
 error_dicts = {}

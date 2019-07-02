@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
-import pair_interaction
+from mmtbx.pair_interaction import pair_interaction
+from six.moves import range
 
 pdb_str = """
 REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "./data_files/2lvr.pdb"

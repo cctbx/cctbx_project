@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math,copy
 from scitbx.array_family import flex
 class SALight:
@@ -18,7 +18,7 @@ class SALight:
       decreasing_increment = (self.counter/self.ktotal)*self.random_increment()
       #print self.format%tuple(decreasing_increment)
       self.x += decreasing_increment
-      print self.format%tuple(self.x)
+      print(self.format%tuple(self.x))
 
 if __name__=="__main__":
   SA = SALight()
@@ -38,7 +38,7 @@ if __name__=="__main__":
 
   SA.format = "Mosaicity %6.3f Wave mean %7.4f bandpass %7.4f Angles %8.5f %8.5f %8.5f"
   #print list(SA.random_increment())
-  print SA.format%tuple(SA.initial)
+  print(SA.format%tuple(SA.initial))
   SA.cycles()
-  print
-  print SA.format%tuple(SA.initial)
+  print()
+  print(SA.format%tuple(SA.initial))

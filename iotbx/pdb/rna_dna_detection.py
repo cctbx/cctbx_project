@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 from libtbx import slots_getstate_setstate
 
@@ -158,7 +158,7 @@ class residue_analysis(slots_getstate_setstate):
       O.deoxy_ribo_atom_dict[key] = atom
       del O.atom_dict[key]
     O.p_atom = None
-    for key in O.atom_dict.keys():
+    for key in list(O.atom_dict.keys()):
       if (key.startswith("P")):
         if (key == "P"):
           O.p_atom = O.atom_dict[key]
@@ -182,7 +182,7 @@ class residue_analysis(slots_getstate_setstate):
     if (O.o2p_atom is not None):
       del O.atom_dict["O2'"]
     O.h_atoms = {}
-    for key in O.atom_dict.keys():
+    for key in list(O.atom_dict.keys()):
       if (len(key) == 0):
         O.problems.append("blank_name")
         continue
@@ -193,7 +193,7 @@ class residue_analysis(slots_getstate_setstate):
         O.h_atoms[key] = O.atom_dict[key]
         del O.atom_dict[key]
     O.c1p_outbound_candidates = {}
-    for key in O.atom_dict.keys():
+    for key in list(O.atom_dict.keys()):
       if (key.find("'") >= 0):
         if key == "N2'":
           O.deoxy_ribo_atom_dict[key] = atom

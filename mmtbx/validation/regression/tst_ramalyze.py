@@ -1,10 +1,10 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 from libtbx.test_utils import show_diff
 import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os.path
 from mmtbx.validation import ramalyze
 import time
@@ -15,10 +15,10 @@ def exercise_ramalyze():
     relative_path="phenix_regression/pdb/jcm.pdb",
     test=os.path.isfile)
   if (regression_pdb is None):
-    print "Skipping exercise_ramalyze(): input pdb (jcm.pdb) not available"
+    print("Skipping exercise_ramalyze(): input pdb (jcm.pdb) not available")
     return
   if (find_rotarama_data_dir(optional=True) is None):
-    print "Skipping exercise_ramalyze(): rotarama_data directory not available"
+    print("Skipping exercise_ramalyze(): rotarama_data directory not available")
     return
   from iotbx import file_reader
   # Exercise 1
@@ -234,5 +234,5 @@ if (__name__ == "__main__"):
   exercise_ramalyze()
   exercise_favored_regions()
   exercise_constants()
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")

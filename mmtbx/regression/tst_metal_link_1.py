@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.model
 import iotbx.pdb
 import time
@@ -126,4 +126,4 @@ def run():
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  print "Time: %6.3f"%(time.time()-t0)
+  print("Time: %6.3f"%(time.time()-t0))

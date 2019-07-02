@@ -1,5 +1,5 @@
-from __future__ import division, print_function, absolute_import
-from past.builtins import range
+from __future__ import absolute_import, division, print_function
+from six.moves import range, zip
 
 '''
 Author      : Lyubimov, A.Y.
@@ -19,10 +19,6 @@ from libtbx import easy_pickle as ep, easy_run
 
 # for Py3 compatibility
 from io import BytesIO
-try:
-    import itertools.izip as zip
-except ImportError:
-    pass
 
 # For testing
 import time
@@ -544,7 +540,7 @@ class InputFinder():
         input_type = '{} {}'.format(consensus_type, suffix)
 
         # sort input by filename and ensure type is str and not unicode
-        input_list = list(map(str, sorted(input_list, key=lambda i: i)))
+        input_list = [str(il) for il in sorted(input_list, key=lambda i:i)]
 
     return input_list, input_type
 
@@ -728,7 +724,7 @@ class ObjectFinder(object):
           pickle = ep.load(pickle_path)
           object.final['observations'] = pickle['observations'][0]
       return object
-    except Exception, e:
+    except Exception as e:
       print ('OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e))
       return None
 
@@ -766,8 +762,8 @@ class RadAverageCalculator(object):
         summed_mask = mask
         summed_data = data
       else:
-        summed_data = [ sd + d for sd, d in zip(summed_data, data) ]
-        summed_mask = [ sm & m for sm, m in zip(summed_mask, mask) ]
+        summed_data = [ sd + d for sd, d in list(zip(summed_data, data)) ]
+        summed_mask = [ sm & m for sm, m in list(zip(summed_mask, mask)) ]
 
     if num_bins is None:
       num_bins = int(sum(sum(p.get_image_size()) for p in detector) / 50)
@@ -782,7 +778,7 @@ class RadAverageCalculator(object):
 
     # Compute the radial average
     radial_average = RadialAverage(beam, detector, vmin, vmax, num_bins)
-    for d, m in zip(summed_data, summed_mask):
+    for d, m in list(zip(summed_data, summed_mask)):
       radial_average.add(d.as_double() / (scan_range[1] - scan_range[0]), m)
     mean = radial_average.mean()
     reso = radial_average.inv_d2()

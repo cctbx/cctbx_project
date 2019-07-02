@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import french_wilson
 from cctbx.development import random_structure
 from scitbx.array_family import flex
 import boost.python
+from six.moves import zip
 fw_ext = boost.python.import_ext("cctbx_french_wilson_ext")
 from libtbx.utils import null_out, Sorry
 from libtbx.test_utils import Exception_expected
@@ -59,4 +60,4 @@ def exercise_01():
 if (__name__ == "__main__"):
   exercise_00()
   exercise_01()
-  print "OK"
+  print("OK")

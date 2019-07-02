@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 import iotbx.pdb
 from libtbx import easy_run
@@ -88,7 +88,7 @@ def run(prefix="tst_map_model_cc"):
     "resolution=1.5",
     "> %s.zlog"%prefix
   ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
   # check results
   fo = open("%s.zlog"%prefix,"r")
@@ -123,5 +123,5 @@ def run(prefix="tst_map_model_cc"):
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  print "Time: %6.3f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.3f"%(time.time()-t0))
+  print("OK")

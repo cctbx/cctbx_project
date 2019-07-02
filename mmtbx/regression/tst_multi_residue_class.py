@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 
 from iotbx import pdb
+from six.moves import range
 
 pdb_lines = '''
 ATOM  18755  N   LYS N  56      48.225  62.706 -53.862  1.00 69.77           N
@@ -65,7 +66,7 @@ ATOM  18811  OG  SER N  62      61.494  62.508 -51.606  1.00 61.00           O
 
 def run():
   filename = 'tst_multi.pdb'
-  f=file(filename, 'wb')
+  f=open(filename, 'w')
   f.write(pdb_lines)
   f.close()
   pdb_inp = pdb.input(filename)
@@ -96,23 +97,23 @@ def run():
                                         cdl_class=True,
                                         #verbose=verbose,
                                         )):
-    print i, threes
-    print '  omega   %5.1f' % threes.get_omega_value()
-    print "  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30))
-    print "  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30))
-    print "  rama    %s" % threes.get_ramalyze_key()
-    print '  conf    %s' % threes.is_pure_main_conf()
+    print(i, threes)
+    print('  omega   %5.1f' % threes.get_omega_value())
+    print("  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30)))
+    print("  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30)))
+    print("  rama    %s" % threes.get_ramalyze_key())
+    print('  conf    %s' % threes.is_pure_main_conf())
     assert threes.cis_group()==refine[i], '%s!=%s' % (threes.cis_group(), refine[i])
     assert threes.cis_group(limit=30)==omegalyze[i]
 
   for j in range(0,181,10):
     i+=1
-    print "  %3d %-5s %-8s %-5s" % (
+    print("  %3d %-5s %-8s %-5s" % (
       j,
       threes._define_omega_a_la_duke_using_limit(j)=='cis',
       threes._define_omega_a_la_duke_using_limit(j, limit=30),
       refine[i],
-    )
+    ))
     assert (threes._define_omega_a_la_duke_using_limit(j)=='cis')==refine[i]
 
 

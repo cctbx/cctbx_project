@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 def exercise():
   import libtbx.load_env
   import os
@@ -7,7 +7,7 @@ def exercise():
     relative_path="phenix_regression/poscar",
     test=op.isdir)
   if (inp_dir is None):
-    print "Skipping POSCAR tests: input files not available"
+    print("Skipping POSCAR tests: input files not available")
     return
   import iotbx.poscar
   for node in os.listdir(inp_dir):
@@ -22,7 +22,7 @@ def exercise():
 def run(args):
   assert len(args) == 0
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

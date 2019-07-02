@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
@@ -6,6 +6,7 @@ from gltbx import wx_viewer
 from libtbx.option_parser import libtbx_option_parser
 import wx
 import sys
+from six.moves import range
 
 class viewer(wx_viewer.show_points_and_lines_mixin):
 
@@ -25,7 +26,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       need_m = (app.pdb_hierarchy.models_size() != 1)
       for mdl in app.pdb_hierarchy.models():
         if (need_m): m = mdl.id.strip() + ":"
-        for i in xrange(mdl.atoms_size()):
+        for i in range(mdl.atoms_size()):
           O.labels.append(m+str(i))
       assert len(O.labels) == O.points.size()
     else:
@@ -100,19 +101,19 @@ class App(wx_viewer.App):
     O.pdb_inp = iotbx.pdb.input(file_name=file_name)
     O.pdb_hierarchy = O.pdb_inp.construct_hierarchy()
     O.pdb_atoms = O.pdb_hierarchy.atoms()
-    print file_name
-    print "  number of models:", O.pdb_hierarchy.models_size()
-    print "  number of atoms:", O.pdb_atoms.size()
+    print(file_name)
+    print("  number of models:", O.pdb_hierarchy.models_size())
+    print("  number of atoms:", O.pdb_atoms.size())
     if (O.co.model_id is not None):
       mid = O.co.model_id.strip()
       from libtbx.str_utils import show_string
-      print "Selecting model with id %s" % show_string(mid)
+      print("Selecting model with id %s" % show_string(mid))
       for mdl in O.pdb_hierarchy.models():
         if (mdl.id.strip() == mid):
           O.pdb_hierarchy = iotbx.pdb.hierarchy.root()
           O.pdb_hierarchy.append_model(mdl)
           O.pdb_atoms = O.pdb_hierarchy.atoms()
-          print "  number of atoms:", O.pdb_atoms.size()
+          print("  number of atoms:", O.pdb_atoms.size())
           break
       else:
         raise RuntimeError(

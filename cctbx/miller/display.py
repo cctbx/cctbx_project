@@ -2,11 +2,12 @@
 # TODO:
 #  - cached scenes
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import object_oriented_patterns as oop
 from math import sqrt
+from six.moves import zip
 
 def generate_systematic_absences (array,
                                   expand_to_p1=False,
@@ -309,7 +310,7 @@ class scene (object) :
       absence_array = absence_array.select(slice_selection)
     absence_flags = absence_array.data()
     if (absence_flags.count(True) == 0) :
-      print "No systematic absences found!"
+      print("No systematic absences found!")
     else :
       new_indices = flex.miller_index()
       for i_seq in absence_flags.iselection() :

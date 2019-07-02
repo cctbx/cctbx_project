@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from cctbx.array_family import flex
 from libtbx import easy_run
@@ -133,7 +133,7 @@ TER
 
 def exercise(prefix="tst_helix_sheet_recs_as_pdb_files"):
   of = open(prefix+".pdb", "w")
-  print >> of, pdb_str
+  print(pdb_str, file=of)
   of.close()
   xrs1 = iotbx.pdb.input(file_name=prefix+".pdb").xray_structure_simple()
   easy_run.call("phenix.helix_sheet_recs_as_pdb_files %s"%(prefix+".pdb"))

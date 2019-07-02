@@ -186,8 +186,10 @@ class gcc_version(object):
       self.major, self.minor, self.patchlevel = tuple(
         [ int(x) for x in m.groups() ])
 
-  def __nonzero__(self):
+  def __bool__(self):
     return self.major is not None
+
+  __nonzero__ = __bool__
 
   def __str__(self):
     if self:
@@ -219,6 +221,45 @@ class injector(object):
           setattr_from_dict(b.__dict__)
       return type.__init__(self, name, (), {})
 
+def inject(target_class, *mixin_classes):
+   '''Add entries from python class dictionaries to a boost extension class.
+
+      It is used as follows:
+
+            class _():
+              def method(...):
+                ...
+            boost.python.inject(extension_class, _)
+
+      instead of the previous mechanism of
+
+            class _(boost.python.injector, extension_class):
+              def method(...):
+                ...
+
+      which does not work in python 3.
+   '''
+   for m in mixin_classes:
+     for key, value in m.__dict__.items():
+       if key not in ("__init__",
+                      "__del__",
+                      "__module__",
+                      "__file__",
+                      "__dict__") and (key != '__doc__' or value):
+         setattr(target_class, key, value)
+
+import inspect
+def inject_into(target_class, *mixin_classes):
+  def _inject(c):
+    if inspect.isclass(c):
+      inject(target_class, c, *mixin_classes)
+    else:
+      setattr(target_class, c.__name__, c)
+      class empty_class:
+        pass
+      inject(target_class, empty_class, *mixin_classes)
+  return _inject
+
 def process_docstring_options(env_var="BOOST_ADAPTBX_DOCSTRING_OPTIONS"):
   from_env = os.environ.get(env_var)
   if (from_env is None): return None
@@ -237,3 +278,7 @@ def process_docstring_options(env_var="BOOST_ADAPTBX_DOCSTRING_OPTIONS"):
       + '    %s="show_user_defined=True,show_signatures=False"' % env_var)
 
 docstring_options = process_docstring_options()
+
+class py3_make_iterator:
+  def __next__(obj):
+    return obj.next()

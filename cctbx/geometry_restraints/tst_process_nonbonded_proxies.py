@@ -1,9 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import os
-import sys
-import time
-from cStringIO import StringIO
+import time, os, sys
 
 import mmtbx.model
 import iotbx.pdb
@@ -14,6 +11,7 @@ from libtbx.test_utils import approx_equal
 from cctbx.array_family import flex
 from cctbx import xray
 from libtbx.utils import Sorry
+from six.moves import cStringIO as StringIO
 import mmtbx.validation.clashscore as mvc
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 
@@ -98,16 +96,17 @@ def test_manager_and_clashes_functions():
   assert(pnps.has_clashes())
   clashes = pnps.get_clashes()
   # sorted by overlap (default)
+  clashes.sort_clashes(by_value='overlap')
   assert(clashes._clashes_dict.items()[11][0] == ((38, 39)))
   # sorted by symmetry
-  clashes.sort_clashes(sort_symmetry=True)
+  clashes.sort_clashes(by_value='symmetry')
   assert(clashes._clashes_dict.items()[11][0] == (27, 27))
 
-  assert(clashes.is_clashing(iseq=27))
-  assert(clashes.is_clashing(iseq=44))
-  assert(clashes.is_clashing(iseq=13))
-  assert(clashes.is_clashing(iseq=38))
-  assert(clashes.is_clashing(iseq=3))
+  assert(clashes.iseq_is_clashing(iseq=27))
+  assert(clashes.iseq_is_clashing(iseq=44))
+  assert(clashes.iseq_is_clashing(iseq=13))
+  assert(clashes.iseq_is_clashing(iseq=38))
+  assert(clashes.iseq_is_clashing(iseq=3))
 
 
 def test_vdw_dist():
@@ -207,8 +206,8 @@ def test_show():
   string_io = StringIO()
   clashes.show(log=string_io)
   lines = string_io.getvalue().split('\n')
-  assert(lines[7].startswith('--------'))
-  assert(lines[20].startswith('--------'))
+  assert(lines[8].startswith('--------'))
+  assert(lines[21].startswith('--------'))
 
 
 def test_unknown_pair_type():

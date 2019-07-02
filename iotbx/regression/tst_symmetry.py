@@ -1,10 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import iotbx.symmetry
 from cctbx import sgtbx, uctbx
 from libtbx.test_utils import Exception_expected
 from libtbx.utils import Sorry
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def exercise():
   m = iotbx.symmetry.manager(prefer_pdb_space_group=True)
@@ -66,4 +66,4 @@ data_rfree.hkl: None None
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

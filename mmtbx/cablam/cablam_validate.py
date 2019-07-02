@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # (jEdit options) :folding=explicit:collapseFolds=1:
 #
 #cablam_validate
@@ -417,7 +417,7 @@ def fetch_cis_trans_proline():
 #  get contour data for all residues.
 def find_peptide_outliers(resdata,expectations,cutoff=0.05):
   outliers = {}
-  reskeys = resdata.keys()
+  reskeys = list(resdata.keys())
   reskeys.sort()
   for resid in reskeys:
     residue = resdata[resid]
@@ -444,7 +444,7 @@ def find_peptide_outliers(resdata,expectations,cutoff=0.05):
 
 def find_ca_outliers(resdata,expectations,cutoff=0.005):
   outliers = {}
-  reskeys = resdata.keys()
+  reskeys = list(resdata.keys())
   reskeys.sort()
   for resid in reskeys:
     residue = resdata[resid]
@@ -468,7 +468,7 @@ def find_ca_outliers(resdata,expectations,cutoff=0.005):
 
 def find_all_residue_stats(resdata,peptide_expectations,ca_geom_expectations):
   residue_stats = {}
-  reskeys = resdata.keys()
+  reskeys = list(resdata.keys())
   reskeys.sort()
   for resid in reskeys:
     residue = resdata[resid]
@@ -591,7 +591,7 @@ def find_partial_sec_struc(resdata,ca_outliers={}):
       #further assessment
       continue
     residue = resdata[resid]
-    if resid in ca_outliers.keys():
+    if resid in list(ca_outliers.keys()):
       #if the residue is a ca outlier, it recieves no sec struc assignment
       #(residue.motif guess must be created for each residue, however)
       continue
@@ -627,7 +627,7 @@ def find_partial_sec_struc(resdata,ca_outliers={}):
 #{{{ find_whole_sec_struc function
 #-------------------------------------------------------------------------------
 def find_whole_sec_struc(resdata):
-  reskeys = resdata.keys()
+  reskeys = list(resdata.keys())
   reskeys.sort()
   motifs = []
   current_motif = None
@@ -706,7 +706,7 @@ def check_prolines(hierarchy,pdbid='pdbid'):
   resdata = setup(hierarchy,pdbid)
   #cablam_math.omegacalc(resdata)
   pro_contour = fetch_cis_trans_proline()
-  reskeys = resdata.keys()
+  reskeys = list(resdata.keys())
   reskeys.sort()
   for resid in reskeys:
     residue = resdata[resid]
@@ -718,21 +718,21 @@ def check_prolines(hierarchy,pdbid='pdbid'):
         translevel = pro_contour['trans'].valueAt(cablam_point)
         if (omega >= -30) and (omega <= 30): #modeled as cis
           if cislevel < cis_cutoff:
-            print "bad CIS at ", pdbid, residue.id_with_resname(), "value:%.3f" %cislevel
+            print("bad CIS at ", pdbid, residue.id_with_resname(), "value:%.3f" %cislevel)
             if translevel >= 0.1:#trans_cutoff:
-              print "  try TRANS. value:%.3f" %translevel
+              print("  try TRANS. value:%.3f" %translevel)
             else:
-              print "  no suggestion. trans value:%.3f" %translevel
+              print("  no suggestion. trans value:%.3f" %translevel)
         elif (omega >=150) or (omega <= -150): #modeled as trans
           if translevel < trans_cutoff:
-            print "bad TRANS at ", pdbid, residue.id_with_resname(), "value:%.3f" %translevel
+            print("bad TRANS at ", pdbid, residue.id_with_resname(), "value:%.3f" %translevel)
             if cislevel >= 0.1:#cis_cutoff:
-              print "  try CIS. value:%.3f" %cislevel
+              print("  try CIS. value:%.3f" %cislevel)
             else:
-              print "  no suggestion. cis value:%.3f" %cislevel
+              print("  no suggestion. cis value:%.3f" %cislevel)
         else: #modeled as twisted
-          print "TWISTED peptide at ", pdbid, residue.id_with_resname()
-          print "  TRANS score: %.3f" %translevel, " CIS score: %.3f" %cislevel
+          print("TWISTED peptide at ", pdbid, residue.id_with_resname())
+          print("  TRANS score: %.3f" %translevel, " CIS score: %.3f" %cislevel)
 #}}}
 
 #{{{ print_helix_sheet_records function
@@ -836,7 +836,7 @@ def give_kin(outliers, outlier_cutoff, color='purple', writeto=sys.stdout):
   writeto.write('\n@subgroup {cablam out '+str(outlier_cutoff)+'} dominant\n')
   writeto.write('@vectorlist {cablam outliers} color= '+color+' width= 4 master={cablam out '+str(outlier_cutoff)+'}')
   #writeto.write('@vectorlist')
-  reskeys = outliers.keys()
+  reskeys = list(outliers.keys())
   reskeys.sort()
   for resid in reskeys:
     outlier = outliers[resid]
@@ -869,7 +869,7 @@ def give_ca_kin(outliers, outlier_cutoff, writeto=sys.stdout):
   #this validation.
   writeto.write('\n@subgroup {ca out '+str(outlier_cutoff)+'} dominant\n')
   writeto.write('@vectorlist {ca outliers} color= red width= 4 master={ca geom outliers}')
-  reskeys = outliers.keys()
+  reskeys = list(outliers.keys())
   reskeys.sort()
   for resid in reskeys:
     outlier = outliers[resid]
@@ -900,7 +900,7 @@ def give_points(outliers, outlier_cutoff=0.05, writeto=sys.stdout):
   writeto.write('\n@kinemage\n')
   writeto.write('@group {cablam outliers} dominant\n')
   writeto.write('@dotlist {cablam outliers}')
-  reskeys = outliers.keys()
+  reskeys = list(outliers.keys())
   reskeys.sort()
   for resid in reskeys:
     outlier = outliers[resid]
@@ -917,7 +917,7 @@ def give_text(outliers, writeto=sys.stdout):
   #Intended for easy machine readability
   #writeto.write('\nresidue,contour_level,loose_alpha,regular_alpha,loose_beta,regular_beta,threeten')
   writeto.write('residue : outlier_type : contour_level : ca_contour_level : sec struc recommendation : alpha score : beta score : three-ten score')
-  reskeys = outliers.keys()
+  reskeys = list(outliers.keys())
   reskeys.sort()
   for resid in reskeys:
     outlier = outliers[resid]
@@ -958,8 +958,7 @@ def oneline(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01, ca_cutoff=0
   peptide_outlier_count = 0
   peptide_bad_outlier_count = 0
   ca_outlier_count = 0
-  reskeys = resdata.keys()
-  for resid in reskeys:
+  for resid in resdata.keys():  # TODO: if resdata is a dict, the keys call can be removed
     residue = resdata[resid]
     if 'CA_d_in' in residue.measures and 'CA_d_out' in residue.measures and 'CO_d_in' in residue.measures and 'CA_a' in residue.measures:
       #This check ensures that only calculable, protein residues are considered

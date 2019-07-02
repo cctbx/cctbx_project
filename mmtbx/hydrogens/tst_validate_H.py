@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 import os, time
 import mmtbx.model
 import iotbx.pdb
@@ -6,6 +6,7 @@ from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from libtbx.test_utils import approx_equal
 from mmtbx.hydrogens.validate_H import validate_H, validate_H_results
 from libtbx.utils import null_out
+from six.moves import zip
 #from validate_H_cl_app import master_params_str
 
 pdb_str = """

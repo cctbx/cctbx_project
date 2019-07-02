@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mod_python import apache
 from six.moves import StringIO
 
@@ -49,7 +49,7 @@ def run(args, verbose=False):
   if not os.path.isfile(params.distl.image):
     return str(Sorry("%s is not a readable file" % params.distl.image))
 
-  print "Image: %s"%params.distl.image
+  print("Image: %s"%params.distl.image)
 
   from spotfinder.applications import signal_strength
   try:

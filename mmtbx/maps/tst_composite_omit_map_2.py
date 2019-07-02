@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import iotbx.pdb
 import mmtbx.f_model
@@ -97,10 +97,10 @@ def run(args):
     isotropize   = False,
     fill_missing = False)
   #
-  print get_cc(mc1=mc, mc2=F,  xrs=xrs1), get_cc(mc1=mc, mc2=F,  xrs=xrs2)
-  print get_cc(mc1=mc, mc2=FB, xrs=xrs1), get_cc(mc1=mc, mc2=FB, xrs=xrs2)
-  print get_cc(mc1=mc, mc2=FC, xrs=xrs1), get_cc(mc1=mc, mc2=FC, xrs=xrs2)
-  print
+  print(get_cc(mc1=mc, mc2=F,  xrs=xrs1), get_cc(mc1=mc, mc2=F,  xrs=xrs2))
+  print(get_cc(mc1=mc, mc2=FB, xrs=xrs1), get_cc(mc1=mc, mc2=FB, xrs=xrs2))
+  print(get_cc(mc1=mc, mc2=FC, xrs=xrs1), get_cc(mc1=mc, mc2=FC, xrs=xrs2))
+  print()
   #
   crystal_gridding = fmodel.f_obs().crystal_gridding(
     d_min             = fmodel.f_obs().d_min(),
@@ -113,7 +113,7 @@ def run(args):
     fmodel               = fmodel.deep_copy(),
     box_size_as_fraction = 0.2)
   mco = oo.map_coefficients(filter_noise=False)
-  print get_cc(mc1=mco, mc2=F, xrs=xrs1), get_cc(mc1=mco, mc2=F, xrs=xrs2)
+  print(get_cc(mc1=mco, mc2=F, xrs=xrs1), get_cc(mc1=mco, mc2=F, xrs=xrs2))
   #
   mtz_dataset.add_miller_array(miller_array=mco, column_root_label="O")
   mtz_dataset.add_miller_array(miller_array=mc, column_root_label="mc")

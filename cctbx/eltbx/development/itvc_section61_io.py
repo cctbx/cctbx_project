@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx.gaussian_fit import international_tables_stols
 from cctbx.array_family import flex
 from libtbx.str_utils import line_feeder
 from libtbx import adopt_init_args
+from six.moves import zip
 
 class table6111_entry(object):
 
@@ -49,25 +50,25 @@ def read_table6111(file_name):
   tab = table6111(file_name)
   lf = line_feeder(open(file_name))
   while 1:
-    line = lf.next()
+    line = next(lf)
     if (lf.eof): break
     if (line.startswith("Element")):
       elements = line.split()[1:]
-      line = lf.next()
+      line = next(lf)
       assert line.lstrip().startswith("Z"), line
       atomic_numbers = [int(z) for z in line.split()[1:]]
       assert len(atomic_numbers) == len(elements), line
-      line = lf.next()
+      line = next(lf)
       assert line.startswith("Method"), line
       methods = line.split()[1:]
       assert len(methods) == len(elements), line
-      line = lf.next()
+      line = next(lf)
       assert line.find("sin") > 0, line
       stols = flex.double()
       value_rows = []
       sigma_rows = []
       while 1:
-        line = lf.next()
+        line = next(lf)
         assert not lf.eof
         if (len(line.strip()) == 0): continue
         raw_value_row = line.rstrip().split("\t")
@@ -82,7 +83,7 @@ def read_table6111(file_name):
             sigma_row.append(-1)
           else:
             try: value_row.append(float(value))
-            except ValueError, e: raise ValueError(line)
+            except ValueError as e: raise ValueError(line)
             assert value.count(".") == 1
             sigma = ""
             for c in value.strip():

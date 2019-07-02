@@ -3,7 +3,7 @@
 Various tools and controls for displaying tabular data.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import wxtbx.plots
 import wx
 import sys
@@ -31,7 +31,7 @@ class TableView(wx.ListCtrl):
       self.SetColumnWidth(i_lab, col_width)
     for row in rows[1:] :
       assert len(row) == len(labels), labels
-      idx = self.InsertStringItem(sys.maxint, row[0])
+      idx = self.InsertStringItem(sys.maxsize, row[0])
       for i, cell in enumerate(row[1:]):
         self.SetStringItem(idx, i+1, cell)
 

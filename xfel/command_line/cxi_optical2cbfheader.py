@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.optical2cbfheader
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -52,7 +52,7 @@ if (__name__ == "__main__") :
   assert params.plot is not None
   assert params.out is not None
 
-  print params.metrology_file, params.detector
+  print(params.metrology_file, params.detector)
 
   from xfel.cftbx.detector.cspad_cbf_tbx import pixel_size
 

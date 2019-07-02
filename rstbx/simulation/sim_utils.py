@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import math,random
 from libtbx.test_utils import approx_equal
@@ -36,4 +36,4 @@ if __name__=="__main__":
   for vector, angle in generate_random_rotation(50):
     V = matrix.col(vector)
     assert approx_equal(V.length(),1.0)
-  print "OK"
+  print("OK")

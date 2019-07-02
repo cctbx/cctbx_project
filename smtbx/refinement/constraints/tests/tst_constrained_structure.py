@@ -1,6 +1,5 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
+from operator import itemgetter
 from cctbx import crystal, xray
 from cctbx.array_family import flex
 from smtbx.refinement import constraints
@@ -11,7 +10,7 @@ from smtbx.refinement import least_squares
 from smtbx import development
 from scitbx.lstbx import normal_eqns_solving
 from scitbx import matrix
-import itertools
+from six.moves import zip
 
 class test_case(object):
 
@@ -23,7 +22,7 @@ class test_case(object):
 
   def check_reparametrisation_construction(self):
     warned_once = False
-    for sc, params in itertools.izip(
+    for sc, params in zip(
       self.reparametrisation.structure.scatterers(),
       self.reparametrisation.asu_scatterer_parameters
       ):
@@ -112,7 +111,7 @@ class test_case(object):
 
     if self.shall_refine_thermal_displacements:
       delta_u = []
-      for sc, sc0 in itertools.izip(xs.scatterers(), xs0.scatterers()):
+      for sc, sc0 in zip(xs.scatterers(), xs0.scatterers()):
         if not sc.flags.use_u_aniso() or not sc0.flags.use_u_aniso(): continue
         delta_u.extend(matrix.col(sc.u_star) - matrix.col(sc0.u_star))
       delta_u = flex.double(delta_u)
@@ -773,7 +772,7 @@ class symmetry_equivalent_test_case(test_case):
          bond_length, h_c_h_angle) = h2a.arguments()
         expected = sorted([ (core.independent_site_parameter, 'S1'),
                             (core.symmetry_equivalent_site_parameter, 'C2',
-                                '-x+1,y,-z+3/2') ])
+                                '-x+1,y,-z+3/2') ], key=itemgetter(1))
         actual = []
         for n in (pivot_neighbour_0, pivot_neighbour_1):
           if type(n) == core.independent_site_parameter:
@@ -782,7 +781,7 @@ class symmetry_equivalent_test_case(test_case):
             actual.append((type(n),
                            n.original.scatterers[0].label,
                            str(n.motion)))
-        actual.sort()
+        actual.sort(key=itemgetter(1))
         assert actual == expected
 
 def run():

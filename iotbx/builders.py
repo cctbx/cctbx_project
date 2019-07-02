@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import libtbx
 import scitbx.math
@@ -9,6 +9,7 @@ from cctbx import sgtbx
 from cctbx import adp_restraints, geometry_restraints
 
 import libtbx.load_env
+import six
 if (libtbx.env.has_module(name="smtbx")):
   from smtbx.refinement.restraints import adp_restraints as smtbx_adp_restraints
 else:
@@ -246,12 +247,12 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
   def restraints_manager(self):
     from smtbx.refinement.restraints import manager
     kwds = dict([ ("%s_proxies" % name, value)
-                  for name, value in self.proxies().iteritems() ])
+                  for name, value in six.iteritems(self.proxies()) ])
     return manager(**kwds)
 
   def proxies(self):
     return dict([
-      (proxy_type, proxies) for proxy_type, proxies in self._proxies.iteritems()
+      (proxy_type, proxies) for proxy_type, proxies in six.iteritems(self._proxies)
       if len(proxies) != 0])
 
 class reflection_data_source_builder(object):

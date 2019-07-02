@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.tls import tools
 import time
 import iotbx.pdb
@@ -7,6 +7,7 @@ from scitbx import matrix
 from mmtbx.tls import analysis
 import math
 from scitbx.array_family import flex
+from six.moves import range
 
 pdb_str_CA = """
 REMARK   3  TLS DETAILS.
@@ -371,7 +372,7 @@ def exercise_00(pdb_str, formula):
   log.close()
   #
   rs = flex.double()
-  for trial in xrange(10):
+  for trial in range(10):
     o = tools.u_tls_vs_u_ens(pdb_str=pdb_str,
       dx       = r.dx,
       dy       = r.dy,
@@ -400,10 +401,10 @@ def exercise_00(pdb_str, formula):
 if (__name__ == "__main__"):
   t0 = time.time()
   for formula in ["10","11"]:
-    print "formula:", formula
+    print("formula:", formula)
     for i, pdb_str in enumerate([pdb_str_CA, pdb_str_CACON]):
       r = exercise_00(pdb_str=pdb_str, formula=formula)
-      print "  ", i, r
+      print("  ", i, r)
       if(formula=="10"):
         if(i==0): assert r<0.04
         if(i==1): assert r>0.08

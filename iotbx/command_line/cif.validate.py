@@ -1,9 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME iotbx.cif.validate
 
 import glob, os, sys
-import urllib2
-from cStringIO import StringIO
+from six.moves import urllib
+from six.moves import cStringIO as StringIO
 
 from iotbx import cif
 from iotbx.cif import validation
@@ -60,15 +60,15 @@ def run(args, out=sys.stdout):
     cm.validate(cif_dic, show_warnings=show_warnings)
   else:
     try:
-      file_object = urllib2.urlopen(filepath)
-    except urllib2.URLError, e:
+      file_object = urllib.request.urlopen(filepath)
+    except urllib.error.URLError as e:
       pass
     else:
       cm = cif.reader(file_object=file_object, strict=strict).model()
       cm.validate(cif_dic, show_warnings=show_warnings)
   if show_timings:
     total_timer.stop()
-    print total_timer.report()
+    print(total_timer.report())
 
 def crawl(directory, file_ext, cif_dic, show_warnings, show_timings, strict):
   timer = time_log("parsing")
@@ -88,12 +88,12 @@ def crawl(directory, file_ext, cif_dic, show_warnings, show_timings, strict):
       cm.validate(cif_dic, show_warnings=show_warnings, out=s)
       validate_timer.stop()
       if s.getvalue():
-        print path
-        print s.getvalue()
+        print(path)
+        print(s.getvalue())
   if show_timings:
-    print timer.legend
-    print timer.report()
-    print validate_timer.report()
+    print(timer.legend)
+    print(timer.report())
+    print(validate_timer.report())
 
 if __name__ == '__main__':
   run(sys.argv[1:])

@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
 import re
 import time
 import sys, os
+from six.moves import range
 op = os.path
 
 def show_traceback(file):

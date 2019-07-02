@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from mmtbx.refinement.real_space import individual_sites
 from libtbx.test_utils import approx_equal
@@ -6,6 +6,7 @@ from cctbx import maptbx
 from libtbx import adopt_init_args
 import scitbx.rigid_body
 import sys
+from six.moves import range
 
 def apply_rigid_body_shift(sites_cart, cm, x,y,z, the, psi, phi):
   rot_matrix = scitbx.rigid_body.rb_mat_zyz(
@@ -21,7 +22,7 @@ class scorer(object):
       sites_frac = sites_frac)
     self.sites_frac_best = None
     if(log):
-      print >> log, "Target (start):", self.target
+      print("Target (start):", self.target, file=log)
 
   def update(self, sites_cart):
     sites_frac = self.unit_cell.fractionalize(sites_cart)
@@ -32,7 +33,7 @@ class scorer(object):
       self.target = t
       self.sites_frac_best = sites_frac.deep_copy()
       if(self.log):
-        print >> self.log, "Target:", self.target
+        print("Target:", self.target, file=self.log)
 
 def prepare_maps(fofc, two_fofc, fem, fofc_cutoff=2, two_fofc_cutoff=0.5,
                  fem_cutoff=0.5, connectivity_cutoff=0.5, local_average=True):
@@ -118,7 +119,7 @@ def run_refine(rsr_simple_refiner, xray_structure, scorer, log, weight):
     weight_best = refined.weight_final
   # except KeyboardInterrupt: raise
   except Exception:
-    if(log): print >> log, "A trial failed: keep going..."
+    if(log): print("A trial failed: keep going...", file=log)
   return weight_best
 
 def macro_cycle(
@@ -168,7 +169,7 @@ def macro_cycle(
           weight             = flex.mean_default(weights, 1.0))
         weights.append(w)
         if(expload):
-          for i in xrange(n_expload):
+          for i in range(n_expload):
             xray_structure_ = xray_structure.deep_copy_scatterers()
             xray_structure_.shake_sites_in_place(mean_distance=1.0)
             run_refine(
@@ -176,5 +177,5 @@ def macro_cycle(
               xray_structure     = xray_structure_,
               scorer             = sc,
               log                = log)
-  if(log): print >> log, "Final target:", sc.target
+  if(log): print("Final target:", sc.target, file=log)
   return xray_structure.replace_sites_frac(new_sites=sc.sites_frac_best)

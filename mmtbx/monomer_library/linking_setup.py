@@ -1,5 +1,5 @@
 # see iotbx/pdb/common_residue_names.h; additionally here only: U I
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 ad_hoc_single_metal_residue_element_types = """\
 ZN CA MG NA MN K FE CU CD HG NI CO SR CS PT BA TL PB SM AU RB YB LI
@@ -148,5 +148,5 @@ def skip_if_non_linking(lookup, atom1, atom2):
     assert 0
 
 if __name__=="__main__":
-  print skip_if_both
-  print skip_if_longer
+  print(skip_if_both)
+  print(skip_if_longer)

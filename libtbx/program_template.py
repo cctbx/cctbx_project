@@ -65,7 +65,8 @@ program {
 
   # text shown at the end of the command-line program
   epilog = '''
-For additional help, you can contact the developers at cctbx@cci.lbl.gov
+For additional help, you can contact the developers at cctbxbb@phenix-online.org
+or https://github.com/cctbx/cctbx_project
 
 '''
 
@@ -152,7 +153,10 @@ output {
     if self.data_manager is not None:
       self.data_manager.set_default_output_filename(
         self.get_default_output_filename())
-      self.data_manager.set_overwrite(self.params.output.overwrite)
+      try:
+        self.data_manager.set_overwrite(self.params.output.overwrite)
+      except AttributeError:
+        pass
 
   def header(self, text):
     print("-"*79, file=self.logger)

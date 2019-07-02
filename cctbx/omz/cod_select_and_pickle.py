@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import traceback
 import sys, os
 op = os.path
@@ -14,8 +14,8 @@ class cod_data(extract_from_cif_files):
     O.init_slots_with_none()
     O.cod_id = cod_id
     refl_file, model_file = hkl_cif_pair
-    print "refl_file:", refl_file
-    print "model_file:", model_file
+    print("refl_file:", refl_file)
+    print("model_file:", model_file)
     import iotbx.cif
     refl_cif = iotbx.cif.reader(file_path=refl_file)
     model_cif = iotbx.cif.reader(file_path=model_file)
@@ -23,22 +23,22 @@ class cod_data(extract_from_cif_files):
       for cif_block in cif_obj.model().values():
         value = cif_block.get("_cod_error_flag")
         if (value in ["errors", "retracted"]):
-          print "SKIPPING: _cod_error_flag %s: %s" % (value, cod_id)
+          print("SKIPPING: _cod_error_flag %s: %s" % (value, cod_id))
           return
         keys = set(cif_block.keys())
         if (len(set([
               "_space_group_symop_ssg_operation_algebraic",
               "_space_group_ssg_name"]).intersection(keys)) != 0):
-          print "SKIPPING: COD entry with super-space group:", cod_id
+          print("SKIPPING: COD entry with super-space group:", cod_id)
           return
         if (len(set([
               "_refln_index_m",
               "_refln_index_m_1"]).intersection(keys)) != 0):
-          print "SKIPPING: COD entry with _refln_index_m:", cod_id
+          print("SKIPPING: COD entry with _refln_index_m:", cod_id)
           return
         for key in keys:
           if (key.startswith("_pd_")):
-            print "SKIPPING: COD entry with powder data:", cod_id
+            print("SKIPPING: COD entry with powder data:", cod_id)
             return
     O.process(
       report_id=cod_id,
@@ -70,7 +70,7 @@ class cod_data(extract_from_cif_files):
       pair_sym_table=pst,
       orthogonalization_matrix=xs.unit_cell().orthogonalization_matrix(),
       sites_frac=xs.sites_frac())
-    print "Close contacts:", dists.size()
+    print("Close contacts:", dists.size())
     if (dists.size() != 0):
       pat.show_distances(sites_frac=xs.sites_frac())
       return True
@@ -84,12 +84,12 @@ class cod_data(extract_from_cif_files):
 
   def have_bad_sigmas(O):
     if (O.c_obs.sigmas() is None):
-      print "Missing sigmas:", O.cod_id
+      print("Missing sigmas:", O.cod_id)
       return True
     sel = (O.c_obs.data() == 0) & (O.c_obs.sigmas() == 0)
     result = not O.c_obs.select(~sel).sigmas().all_gt(0)
     if (result):
-      print "Zero or negative sigmas:", O.cod_id
+      print("Zero or negative sigmas:", O.cod_id)
     return result
 
   def f_obs_and_f_calc_agree_well(O, co):
@@ -141,9 +141,9 @@ class cod_data(extract_from_cif_files):
       return cc, r1
     cc_all, r1_all = cc_r1(f_obs, f_calc)
     cc_in, r1_in = cc_r1(f_obs.select(fan_in_sel), f_calc.select(fan_in_sel))
-    print "f_obs_f_calc %s" % O.cod_id, \
+    print("f_obs_f_calc %s" % O.cod_id, \
       "| cc_all %.4f | r1_all %.4f | out %.4f | cc_in %.4f | r1_in %.4f |" % (
-        cc_all, r1_all, fan_outlier_fraction, cc_in, r1_in)
+        cc_all, r1_all, fan_outlier_fraction, cc_in, r1_in))
     if (fan_outlier_fraction > co.max_fan_outlier_fraction):
       return False
     if (cc_all < co.min_f_obs_f_calc_correlation):
@@ -242,14 +242,13 @@ def run(args, command_name):
     try:
       cd = cod_data(cod_id=cod_id, hkl_cif_pair=pair)
     except KeyboardInterrupt:
-      print "CAUGHT EXCEPTION: KeyboardInterrupt"
+      print("CAUGHT EXCEPTION: KeyboardInterrupt")
       return
-    except Exception, e:
+    except Exception as e:
       sys.stdout.flush()
-      print >> sys.stderr, \
-        "CAUGHT EXCEPTION: %s: %s: %s" % (command_name, cod_id, str(e))
+      print("CAUGHT EXCEPTION: %s: %s: %s" % (command_name, cod_id, str(e)), file=sys.stderr)
       traceback.print_exc()
-      print >> sys.stderr
+      print(file=sys.stderr)
       sys.stderr.flush()
       n_caught += 1
     else:
@@ -257,13 +256,12 @@ def run(args, command_name):
         easy_pickle.dump(
           file_name="%s/%s.pickle" % (pickle_dir, cod_id),
           obj=(cd.c_obs, cd.xray_structure, cd.edge_list))
-        print >> open("%s/qi_%s" % (pickle_dir, cod_id), "w"), \
-          cd.quick_info()
+        print(cd.quick_info(), file=open("%s/qi_%s" % (pickle_dir, cod_id), "w"))
       else:
-        print "filtering out:", cod_id
-      print "done_with:", cod_id
-      print
-  print
-  print "Number of exceptions caught:", n_caught
+        print("filtering out:", cod_id)
+      print("done_with:", cod_id)
+      print()
+  print()
+  print("Number of exceptions caught:", n_caught)
   #
   show_times()

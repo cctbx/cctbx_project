@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import xray
 from mmtbx.refinement import print_statistics
 from mmtbx.dynamics import cartesian_dynamics
@@ -176,7 +176,7 @@ class run(object):
       self.show(curr_temp = self.curr_temp)
       self.curr_temp -= params.cool_rate
       if(cartesian_den_restraints):
-        print >> self.log, "update DEN eq distances at temp=%.1f" % self.curr_temp
+        print("update DEN eq distances at temp=%.1f" % self.curr_temp, file=self.log)
         den_manager.update_eq_distances(
           sites_cart=fmodel.xray_structure.sites_cart())
     # if(den_manager is not None):
@@ -190,11 +190,11 @@ class run(object):
       dist = flex.mean(flex.sqrt((self.sites_cart_start - sites_cart).dot()))
       if(self.fmodel is not None):
         fmt="  temp=%7.1f r_work=%6.4f r_free=%6.4f dist_moved=%6.2f angles=%6.2f bonds=%6.3f"
-        print >> self.log, fmt%(curr_temp, self.fmodel.r_work(),
-          self.fmodel.r_free(), dist, b, a)
+        print(fmt%(curr_temp, self.fmodel.r_work(),
+          self.fmodel.r_free(), dist, b, a), file=self.log)
       else:
         fmt="  temp=%7.1f dist_moved=%6.2f angles=%6.2f bonds=%6.3f"
-        print >> self.log, fmt%(curr_temp, dist, b, a)
+        print(fmt%(curr_temp, dist, b, a), file=self.log)
 
   def gradients_calculator(self):
     if(not self.real_space):

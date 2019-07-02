@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
+from six.moves import range
 
 class reader(object):
 
@@ -32,11 +33,11 @@ class reader(object):
     for raw_line in file_object:
       self.n_lines += 1
       try:
-        h = [int(raw_line[1+i*4:1+i*4+4]) for i in xrange(3)]
-        d = [float(raw_line[23+i*10:23+i*10+10]) for i in xrange(4)]
-      except Exception, e:
+        h = [int(raw_line[1+i*4:1+i*4+4]) for i in range(3)]
+        d = [float(raw_line[23+i*10:23+i*10+10]) for i in range(4)]
+      except Exception as e:
         raise RuntimeError("Line %d: %s" % (self.n_lines, str(e)))
-      for i in xrange(2):
+      for i in range(2):
         assert (d[2*i] < 0) == (d[2*i+1] < 0), \
           "Line %d: Inconsistent observation and sigma." % self.n_lines
       if (d[0] >= 0):

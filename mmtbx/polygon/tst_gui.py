@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import mmtbx.polygon.output
-import cPickle
+from six.moves import cPickle as pickle
+import six
 
 class test_renderer(mmtbx.polygon.output.renderer):
   def draw_box(self, out, points, color):
@@ -26,17 +27,17 @@ def exercise():
     "clashscore" : 20.0
   }
   data = mmtbx.polygon.output.get_basic_histogram_data(d_min=2.5)
-  s = cPickle.dumps(data)
+  s = pickle.dumps(data)
   histograms = mmtbx.polygon.output.convert_histogram_data(data)
   assert (len(histograms) == 6)
-  for stat_key, histogram in histograms.iteritems():
+  for stat_key, histogram in six.iteritems(histograms):
     bins = [ n for n in histogram.slots() ]
     #print "%-16s : %s" % (stat_key, " ".join([ "%5d" % n for n in bins ]))
   renderer = test_renderer(
     histogram_data=data,
     structure_stats=stats)
   renderer.draw(out=None)
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__" :
   exercise()

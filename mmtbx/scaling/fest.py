@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 from mmtbx.scaling import sad_scale, sir_scale, rip_scale, siras_scale
 from mmtbx.scaling import twmad_scale
@@ -11,10 +11,10 @@ def print_banner(command_name):
   n = len(hashes) - 10 - len(command_name)
   left = " " * (n//2)
   right = left + " " * (n%2)
-  print hashes
-  print "#### %s%s%s ####" % (left, command_name, right)
-  print subtitle
-  print hashes
+  print(hashes)
+  print("#### %s%s%s ####" % (left, command_name, right))
+  print(subtitle)
+  print(hashes)
 
 def run(args, command_name="phenix.fest"):
   print_banner(command_name=command_name)
@@ -42,19 +42,19 @@ def run(args, command_name="phenix.fest"):
                 "3WSAD",#14
                 "4WSAD" ]#15
   if len(args)==0:
-    print
-    print "usage: %s <EXPERIMENT TYPE> <FLAGS and/or PARAMETER FILE>" \
-      % command_name
-    print
+    print()
+    print("usage: %s <EXPERIMENT TYPE> <FLAGS and/or PARAMETER FILE>" \
+      % command_name)
+    print()
     raise Sorry("No instructions received")
 
   if args[0] in scenarios:
-    print "experiment: " , args[0]
+    print("experiment: " , args[0])
   else:
-    print "Unknown experiment type"
-    print " Choose from the following list:"
+    print("Unknown experiment type")
+    print(" Choose from the following list:")
     for method in scenarios:
-      print method
+      print(method)
 
     raise Sorry("Unmknown experimenttype")
 
@@ -78,10 +78,10 @@ def run(args, command_name="phenix.fest"):
     twmad_scale.run( args[1:] )
 
   else:
-    print
-    print "Sorry, no time. This method has not yet been implemented."
-    print "Currently, only SAD,SIR,RIP and 2WMAD are supported."
-    print
+    print()
+    print("Sorry, no time. This method has not yet been implemented.")
+    print("Currently, only SAD,SIR,RIP and 2WMAD are supported.")
+    print()
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

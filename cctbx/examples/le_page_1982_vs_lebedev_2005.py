@@ -3,12 +3,14 @@ Plot of Le Page 1982 deltas vs. Lebedev 2005 perturbations based on
 random sampling of distorted unit cells compatible with the 81 2-fold
 symmetry operations possible for reduced cells.
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
 import random
+from six.moves import range
+from six.moves import zip
 
 random.seed(0)
 
@@ -29,10 +31,10 @@ def sample(two_folds, fudge_factor, deltas, perturbations):
     assert group.order_z() == 2
     sym = sgtbx.space_group_info(group=group).any_compatible_crystal_symmetry(
       volume=1000)
-    for i_trial in xrange(30):
+    for i_trial in range(30):
       while True:
         uc_fudge = list(sym.unit_cell().parameters())
-        for i in xrange(6): uc_fudge[i] *= 1+(random.random()*2-1)*fudge_factor
+        for i in range(6): uc_fudge[i] *= 1+(random.random()*2-1)*fudge_factor
         try: uc_fudge = uctbx.unit_cell(uc_fudge)
         except ValueError: pass
         else: break
@@ -57,8 +59,8 @@ def run():
   perturbations = perturbations.select(perm)
   f = open("le_page_1982_vs_lebedev_2005_plot", "w")
   for x,y in zip(deltas, perturbations):
-    print >> f, x, y
-  print "OK"
+    print(x, y, file=f)
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

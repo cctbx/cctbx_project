@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import crystal_symmetry_from_any
 from cctbx import crystal
 from cctbx import sgtbx
@@ -122,7 +122,7 @@ class symmetry_callback(object):
       if (crystal_symmetry.space_group_info() is not None):
         self.space_group_info = crystal_symmetry.space_group_info()
     else:
-      raise RuntimeError, "Programming error."
+      raise RuntimeError("Programming error.")
 
   def get(self):
     return crystal.symmetry(

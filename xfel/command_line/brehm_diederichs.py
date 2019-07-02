@@ -1,7 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cxi.brehm_diederichs
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import iotbx.phil
 from cctbx.crystal import symmetry
@@ -31,9 +31,9 @@ def run(args):
   out.register("log", log, atexit_send_to=None)
   out.register("stdout", sys.stdout)
 
-  print >> out, "Target unit cell and space group:"
-  print >> out, "  ", work_params.target_unit_cell
-  print >> out, "  ", work_params.target_space_group
+  print("Target unit cell and space group:", file=out)
+  print("  ", work_params.target_unit_cell, file=out)
+  print("  ", work_params.target_space_group, file=out)
 
   miller_set = symmetry(
       unit_cell=work_params.target_unit_cell,
@@ -51,7 +51,7 @@ def run(args):
     params=work_params,
     log=out)
   scaler.read_all_mysql()
-  print "finished reading the database"
+  print("finished reading the database")
   sg = miller_set.space_group()
 
   hkl_asu = scaler.observations["hkl_id"]
@@ -64,7 +64,7 @@ def run(args):
 
   from cctbx.array_family import flex
 
-  print "# observations from the database",len(scaler.observations["hkl_id"])
+  print("# observations from the database",len(scaler.observations["hkl_id"]))
   hkl = flex.miller_index(flex.select(lookup,hkl_asu))
   from cctbx import miller
 
@@ -78,7 +78,7 @@ def run(args):
   L = (ARRAY, LATTICES) # tuple(data,lattice_id)
   from libtbx import easy_pickle
   presort_file = work_params.output.prefix+"_intensities_presort.pickle"
-  print "pickling these intensities to", presort_file
+  print("pickling these intensities to", presort_file)
   easy_pickle.dump(presort_file,L)
 
     ######  INPUTS #######
@@ -86,15 +86,15 @@ def run(args):
     #       lattice_id = flex double: assignment of each miller index to a lattice number
     ######################
   if work_params.nproc < 5:
-    print "Sorting the lattices with 1 processor"
+    print("Sorting the lattices with 1 processor")
     result = run(L, asymmetric=work_params.asymmetric, nproc=1, verbose=True,
                  show_plot=work_params.show_plot, save_plot=work_params.save_plot)
   else:
-    print "Sorting the lattices with %d processors"%work_params.nproc
+    print("Sorting the lattices with %d processors"%work_params.nproc)
     result = run_multiprocess(L, asymmetric=work_params.asymmetric, nproc=work_params.nproc, verbose=False,
                               show_plot=work_params.show_plot, save_plot=work_params.save_plot)
   for key in result.keys():
-    print key,len(result[key])
+    print(key,len(result[key]))
 
   # 2) pickle the postsort (reindexed) ARRAY, LATTICES XXX not done yet; not clear if needed
 

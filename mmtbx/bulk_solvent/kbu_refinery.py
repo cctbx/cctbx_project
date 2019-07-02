@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import mmtbx.f_model
 import mmtbx.f_model
@@ -6,6 +6,7 @@ from scitbx import lbfgs as scitbx_lbfgs
 from libtbx import adopt_init_args
 import random
 from mmtbx import bulk_solvent
+from six.moves import range
 
 def lbfgs_run(target_evaluator,
               min_iterations=0,
@@ -58,7 +59,7 @@ def lbfgs_run(target_evaluator,
       if (not have_request): break
       requests_f_and_g = minimizer.requests_f_and_g()
       requests_diag = minimizer.requests_diag()
-  except RuntimeError, e:
+  except RuntimeError as e:
     minimizer.error = str(e)
   minimizer.n_calls = icall
   return minimizer
@@ -287,7 +288,7 @@ class tgc(object):
 
   def minimize_u(self, n_cycles=5):
     #print "minimize_u, r:", self.kbu.r_factor()
-    for it in xrange(n_cycles):
+    for it in range(n_cycles):
       start_r = self.kbu.r_factor()
       save_b_cart = self.kbu.b_cart()
       self.set_refine_u()
@@ -344,9 +345,9 @@ class tgc(object):
         break
 
   def show_k_sols(self):
-    print "k_sols:", [round(k,3) for k in self.kbu.k_sols()], self.kbu.r_factor()
+    print("k_sols:", [round(k,3) for k in self.kbu.k_sols()], self.kbu.r_factor())
 
   def show_kbu(self):
-    print "k_sols:", [round(k,3) for k in self.kbu.k_sols()]
-    print "b_sols:", [round(b,3) for b in self.kbu.b_sols()]
-    print "b_cart:", [round(b,3) for b in self.kbu.b_cart()]
+    print("k_sols:", [round(k,3) for k in self.kbu.k_sols()])
+    print("b_sols:", [round(b,3) for b in self.kbu.b_sols()])
+    print("b_cart:", [round(b,3) for b in self.kbu.b_cart()])

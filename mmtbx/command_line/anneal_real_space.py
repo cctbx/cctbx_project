@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 import os.path
 import sys
@@ -70,7 +70,7 @@ of atoms.  For development purposes and experimentation only.
     map_file = file_base + "_%s.mtz" % params.target_map
     mtz = map_coeffs.as_mtz_dataset(column_root_label=params.target_map)
     mtz.mtz_object().write(map_file)
-    print >> out, "Wrote map coefficients to %s" % map_file
+    print("Wrote map coefficients to %s" % map_file, file=out)
   map = map_coeffs.fft_map(resolution_factor=params.resolution_factor
     ).apply_sigma_scaling().real_map_unpadded()
   sites_ref = pdb_hierarchy.atoms().extract_xyz().deep_copy()
@@ -90,12 +90,12 @@ of atoms.  For development purposes and experimentation only.
   pdb_hierarchy.atoms().set_xyz(sites_updated)
   rmsd = sites_updated.select(selection).rms_difference(
     sites_ref.select(selection))
-  print >> out, "RMSD (selected atoms) = %.3f" % rmsd
+  print("RMSD (selected atoms) = %.3f" % rmsd, file=out)
   f = open(params.output.file_name, "w")
   f.write(pdb_hierarchy.as_pdb_string(
     crystal_symmetry=fmodel.xray_structure))
   f.close()
-  print >> out, "Wrote annealed model to %s" % params.output.file_name
+  print("Wrote annealed model to %s" % params.output.file_name, file=out)
   return rmsd
 
 def validate_params(params):

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from scitbx.array_family import flex
 import math
@@ -60,7 +60,7 @@ class sdfac_refinery(object):
 
     if self.scaler.params.raw_data.error_models.sdfac_refine.plot_refinement_steps:
       all_sigmas_normalized = all_sigmas_normalized.select(all_sigmas_normalized != 0)
-      print self.modeler.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5), plot = True)
+      print(self.modeler.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5), plot = True))
     return f
 
   def functional(self, fvec):
@@ -185,9 +185,9 @@ class lbfgs_minimizer(object):
           values, x))
 
       for x in range(self.n):
-        print >> self.out, "p%d finite % 20.10f analytical % 20.10f"%(x, finite_g[x], self.g[x])
+        print("p%d finite % 20.10f analytical % 20.10f"%(x, finite_g[x], self.g[x]), file=self.out)
 
-    print >> self.out, "functional value % 20.3f"%functional,
+    print("functional value % 20.3f"%functional, end=' ', file=self.out)
     values.show(self.out)
     return self.f, self.g
 
@@ -212,9 +212,9 @@ class lbfgs_minimizer(object):
           values, x))
 
       for x in range(self.n):
-        print >> self.out, "p%d finite % 20.10f analytical % 20.10f"%(x, finite_g[x], self.g[x])
+        print("p%d finite % 20.10f analytical % 20.10f"%(x, finite_g[x], self.g[x]), file=self.out)
 
-    print >> self.out, "functional value % 20.3f"%functional,
+    print("functional value % 20.3f"%functional, end=' ', file=self.out)
     values.show(self.out)
     return self.f, self.g, diag
 
@@ -227,6 +227,6 @@ class lbfgs_minimizer(object):
 
   def __del__(self):
     values = self.parameterization(self.x)
-    print >> self.out, "FINALMODEL",
-    print >> self.out, "functional value % 20.3f"%self.f,
+    print("FINALMODEL", end=' ', file=self.out)
+    print("functional value % 20.3f"%self.f, end=' ', file=self.out)
     values.show(self.out)

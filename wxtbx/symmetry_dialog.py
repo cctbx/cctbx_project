@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from wxtbx.phil_controls import space_group, unit_cell
 from wxtbx.utils import add_ok_cancel_buttons
 import wxtbx.icons
 from libtbx.utils import Sorry, Abort
 import wx
+from six.moves import zip
 
 class SymmetryDialog(wx.Dialog):
   def __init__(self, *args, **kwds):
@@ -97,7 +98,7 @@ class SymmetryDialog(wx.Dialog):
         raise Sorry("This file does not contain valid symmetry information.")
 
   def OnOkay(self, event):
-    print 1
+    print(1)
     if (not self.Validate()):
       pass
     else :

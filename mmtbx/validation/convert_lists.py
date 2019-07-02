@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os, sys
 import csv
 
@@ -6,8 +6,8 @@ def run(filename,
         output,
         list_type="csv",
         ):
-  print 'filename',filename
-  print 'list_type',list_type
+  print('filename',filename)
+  print('list_type',list_type)
   if list_type=="csv":
     with open(filename, 'rb') as csvfile:
       data = {}
@@ -63,7 +63,7 @@ def run(filename,
             if i!=j: continue
             if type(item)!=type(""): continue
             try: row[j]=func(item)
-            except ValueError, e:
+            except ValueError as e:
               row[j]=float(item)
             if type(row[j])==type(""): row[j]=row[j].strip()
       #
@@ -99,8 +99,8 @@ if __name__=="__main__":
     print item
   print
 '''
-      print outl
-      f=file("%s.py" % output, "wb")
+      print(outl)
+      f=open("%s.py" % output, "w")
       f.write(outl)
       f.close()
 

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -16,6 +16,7 @@ from xfel.util.mp import mp_phil_str as multiprocessing_str
 from xfel.util.mp import get_submit_command_chooser
 
 import os, math
+import six
 
 multiprocessing_override_str = '''
 mp {
@@ -264,10 +265,10 @@ def allocate_chunks(results_dir,
                     stripe=False,
                     max_size=1000,
                     integrated=False):
-  refl_ending = "_integrated.pickle" if integrated else "_indexed.pickle"
+  refl_ending = "_integrated" if integrated else "_indexed"
   expt_ending = "_refined_experiments.json"
   trial = "%03d" % trial_no
-  print "processing trial %s" % trial
+  print("processing trial %s" % trial)
   if rgs_selected:
     rg_condition = lambda rg: rg in rgs_selected
   else:
@@ -282,34 +283,34 @@ def allocate_chunks(results_dir,
             if (trg[:6] == trial + "_rg") and rg_condition(trg[-5:])]
     if not trgs:
       continue
-    rungroups = set(map(lambda n: n.split("_")[1], trgs))
+    rungroups = set([n.split("_")[1] for n in trgs])
     for rg in rungroups:
-      if rg not in rgs.keys():
+      if rg not in rgs:
         rgs[rg] = [run]
       else:
         rgs[rg].append(run)
   batch_chunk_nums_sizes = {}
   batch_contents = {}
   if respect_rungroup_barriers:
-    batchable = {rg:{rg:runs} for rg, runs in rgs.iteritems()}
+    batchable = {rg:{rg:runs} for rg, runs in six.iteritems(rgs)}
   else:
     batchable = {"all":rgs}
   # for either grouping, iterate over the top level keys in batchable and
   # distribute the events within those "batches" in stripes or chunks
   extension = None
-  for batch, rungroups in batchable.iteritems():
+  for batch, rungroups in six.iteritems(batchable):
     rg_by_run = {}
-    for rungroup, runs in rungroups.iteritems():
+    for rungroup, runs in six.iteritems(rungroups):
       for run in runs:
         rg_by_run[run] = rungroup
     n_img = 0
     batch_contents[batch] = []
-    for run, rg in rg_by_run.iteritems():
+    for run, rg in six.iteritems(rg_by_run):
       try:
         trg = trial + "_" + rg
         contents = sorted(os.listdir(os.path.join(results_dir, run, trg, "out")))
       except OSError:
-        print "skipping run %s missing out directory" % run
+        print("skipping run %s missing out directory" % run)
         continue
       abs_contents = [os.path.join(results_dir, run, trg, "out", c)
                       for c in contents]
@@ -319,7 +320,7 @@ def allocate_chunks(results_dir,
       if extension is None:
         extension = ".mpack" if any(c.endswith(".mpack") for c in contents) else ".pickle"
     if n_img == 0:
-      print "no images found for %s" % batch
+      print("no images found for %s" % batch)
       del batch_contents[batch]
       continue
     n_chunks = int(math.ceil(n_img/max_size))
@@ -329,7 +330,7 @@ def allocate_chunks(results_dir,
     raise Sorry("no DIALS integration results found.")
   refl_ending += extension
   batch_chunks = {}
-  for batch, num_size_tuple in batch_chunk_nums_sizes.iteritems():
+  for batch, num_size_tuple in six.iteritems(batch_chunk_nums_sizes):
     num, size = num_size_tuple
     batch_chunks[batch] = []
     contents = batch_contents[batch]
@@ -341,15 +342,15 @@ def allocate_chunks(results_dir,
         expts_stripe = expts[i::num]
         refls_stripe = refls[i::num]
         batch_chunks[batch].append((expts_stripe, refls_stripe))
-      print "striped %d experiments in %s with %d experiments per stripe and %d stripes" % \
-        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch]))
+      print("striped %d experiments in %s with %d experiments per stripe and %d stripes" % \
+        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch])))
     else:
       for i in range(num):
         expts_chunk = expts[i*size:(i+1)*size]
         refls_chunk = refls[i*size:(i+1)*size]
         batch_chunks[batch].append((expts_chunk, refls_chunk))
-      print "chunked %d experiments in %s with %d experiments per chunk and %d chunks" % \
-        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch]))
+      print("chunked %d experiments in %s with %d experiments per chunk and %d chunks" % \
+        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch])))
   return batch_chunks
 
 def parse_retaining_scope(args, master_scope=master_scope):
@@ -462,9 +463,9 @@ class Script(object):
   def run(self):
     '''Execute the script.'''
     if self.params.striping.run:
-      print "processing runs " + ", ".join(["r%04d" % r for r in self.params.striping.run])
+      print("processing runs " + ", ".join(["r%04d" % r for r in self.params.striping.run]))
     if self.params.striping.rungroup:
-      print "processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.striping.rungroup])
+      print("processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.striping.rungroup]))
     batch_chunks = allocate_chunks(self.params.striping.results_dir,
                                    self.params.striping.trial,
                                    rgs_selected=["rg%03d" % rg for rg in self.params.striping.rungroup],
@@ -481,7 +482,7 @@ class Script(object):
         os.mkdir(d)
     self.cwd = os.getcwd()
     tag = "stripe" if self.params.striping.stripe else "chunk"
-    for batch, ch_list in batch_chunks.iteritems():
+    for batch, ch_list in six.iteritems(batch_chunks):
       for idx in range(len(ch_list)):
         chunk = ch_list[idx]
 
@@ -537,7 +538,7 @@ class Script(object):
           submit_path = os.path.join(self.cwd, self.intermediates, "combine_%s.sh" % self.filename)
           submit_command = get_submit_command_chooser(command, submit_path, self.intermediates, self.params.mp,
             log_name=(submit_path.split(".sh")[0] + ".out"))
-          print "executing command: %s" % submit_command
+          print("executing command: %s" % submit_command)
           try:
             easy_run.fully_buffered(submit_command).raise_if_errors().show_stdout()
           except Exception as e:
@@ -549,7 +550,7 @@ if __name__ == "__main__":
   from dials.util import halraiser
   import sys
   if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
-    print helpstring
+    print(helpstring)
     exit()
   if "-c" in sys.argv[1:]:
     expert_level = int(sys.argv[sys.argv.index("-e") + 1]) if "-e" in sys.argv[1:] else 0

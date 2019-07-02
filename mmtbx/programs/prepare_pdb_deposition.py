@@ -2,6 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
+from six.moves import cStringIO as StringIO
+
 from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
 
@@ -9,7 +11,7 @@ from libtbx.program_template import ProgramTemplate
 class Program(ProgramTemplate):
 
   description = '''
-Program for preparing model and data files for depostion into the Proten
+Program for preparing model and data files for depostion into the Protein
 Data Bank.
 
 Minimum required data:
@@ -48,6 +50,10 @@ keep_original_loops = True
   .type = bool
   .help = Preserves mmCIF data from the input model file (if available) that \
     is not overwritten by other input
+align_columns = False
+  .type = bool
+  .help = When set to True, the columns are aligned. This will take longer \
+    because the column widths need to be deteremined before outputting.
 include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 include scope mmtbx.geometry_restraints.torsion_restraints.reference_model.reference_model_str
 include scope mmtbx.geometry_restraints.external.external_energy_params_str
@@ -55,6 +61,16 @@ output {
   suffix = '.deposit'
     .type = str
     .help = Suffix string added to automatically generated output filenames
+}
+
+# PHIL parameters for current GUI
+include scope libtbx.phil.interface.tracking_params
+gui
+  .help = "GUI-specific parameter required for output directory"
+{
+  output_dir = None
+  .type = path
+  .style = output_dir
 }
 '''
   # ---------------------------------------------------------------------------
@@ -77,10 +93,9 @@ output {
     self.data_manager.update_pdb_interpretation_for_model(
       self.data_manager.get_default_model_name(), self.params)
 
-    # get model and set up restraints manager
+    # get model
     model = self.data_manager.get_model()
     model.set_log(self.logger)
-    model.get_restraints_manager()
 
     # add sequences
     sequences = list()
@@ -97,16 +112,34 @@ output {
       custom_residues=self.params.custom_residues,
       similarity_matrix=self.params.mmtbx.validation.sequence.sequence_alignment.similarity_matrix,
       min_allowable_identity=self.params.mmtbx.validation.sequence.sequence_alignment.min_allowable_identity)
+
+    # When the input is already in mmCIF, just add sequence information
+    found_cif_block = False
+    if hasattr(model._model_input, 'cif_model'):
+      for cif_block in model._model_input.cif_model.values():
+        if '_atom_site' in cif_block:
+          cif_block.update(model._sequence_validation.sequence_as_cif_block())
+          out = StringIO()
+          model._model_input.cif_model.show(
+            out=out, align_columns=self.params.align_columns)
+          self.cif_model = out.getvalue()
+          found_cif_block = True
+          break
+    # otherwise, generate mmCIF
+    if not found_cif_block:
+      model.get_restraints_manager()
+      self.cif_model = model.model_as_mmcif(
+        align_columns=self.params.align_columns,
+        keep_original_loops=self.params.keep_original_loops)
+
+    # show sequence alignment
     model._sequence_validation.show(out=self.logger)
     print(file=self.logger)
 
-    self.cif_model = model.model_as_mmcif(
-      keep_original_loops=self.params.keep_original_loops)
-
-    # write output file
+    # write output file to current directory
     if self.params.output.prefix is None:
-      self.params.output.prefix = os.path.splitext(
-        self.data_manager.get_default_model_name())[0]
+      self.params.output.prefix = os.path.split(os.path.splitext(
+        self.data_manager.get_default_model_name())[0])[1]
     self.data_manager.set_default_output_filename(
       self.get_default_output_filename())
     self.output_file = self.data_manager.get_default_output_model_filename()

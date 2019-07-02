@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.split_models
 
 from libtbx.utils import Sorry, Usage, null_out
@@ -86,17 +86,17 @@ def split_models(hierarchy,
     output_file = "%s_%s.pdb" % (output_base, model_id)
     f = open(output_file, "w")
     if (crystal_symmetry is not None):
-      print >> f, iotbx.pdb.format_cryst1_and_scale_records(
+      print(iotbx.pdb.format_cryst1_and_scale_records(
         crystal_symmetry=crystal_symmetry,
-        write_scale_records=True)
-    print >> f, "REMARK Model %d of %d" % (k, n_models)
+        write_scale_records=True), file=f)
+    print("REMARK Model %d of %d" % (k, n_models), file=f)
     if (original_file is not None):
-      print >> f, "REMARK Original file:"
-      print >> f, "REMARK   %s" % original_file
+      print("REMARK Original file:", file=f)
+      print("REMARK   %s" % original_file, file=f)
     f.write(new_hierarchy.as_pdb_string())
     f.close()
     file_names.append(output_file)
-    print >> log, "Wrote %s" % output_file
+    print("Wrote %s" % output_file, file=log)
   return file_names
 
 def validate_params(params):

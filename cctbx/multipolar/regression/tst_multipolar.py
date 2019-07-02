@@ -1,10 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import os, sys
 import libtbx
 #import libtbx.load_env
 #from libtbx.test_utils import approx_equal
 from cctbx import multipolar
+from six.moves import range
+from six.moves import zip
 
 pdbs = [
   """\
@@ -67,15 +69,15 @@ def should_return_atom_types():
   atom_types = multipolar.assign_atom_types( atom_number, coordinates )
   #print atom_types
   for atom_type in atom_types:
-    print atom_type
+    print(atom_type)
 
 def exercise(file_name=None):
   if (not libtbx.env.has_module(name="mmtbx")):
-    print "Skipping exercise():", \
-      "mmtbx.monomer_library.pdb_interpretation not available"
+    print("Skipping exercise():", \
+      "mmtbx.monomer_library.pdb_interpretation not available")
     return
   if (libtbx.env.find_in_repositories(relative_path="chem_data") is None):
-    print "Skipping exercise(): chem_data directory not available"
+    print("Skipping exercise(): chem_data directory not available")
     return
   from mmtbx import monomer_library
   import mmtbx.monomer_library.server
@@ -88,7 +90,7 @@ def exercise(file_name=None):
   #                test=os.path.isfile)
   if file_name is None:
     pdb_file = "tst_multipoloar.pdb"
-    f=file(pdb_file, "wb")
+    f=open(pdb_file, "w")
     f.write(pdbs[0])
     f.close()
 
@@ -129,8 +131,8 @@ def exercise(file_name=None):
                                        atom_symbols,
                                        atom_charges,
                                        atom_altlocs)):
-    print ' "%2d" "%2s" "%-2s" "%1s" %s' % (n, e, c, a, atoms[i].charge)
-  print
+    print(' "%2d" "%2s" "%-2s" "%1s" %s' % (n, e, c, a, atoms[i].charge))
+  print()
 
   bond_proxies_simple, asu = geometry.get_covalent_bond_proxies(sites_cart =
     xrs.sites_cart())
@@ -159,17 +161,17 @@ def exercise(file_name=None):
     #dist_model = math.sqrt((site_1[0]-site_2[0])**2+(site_1[1]-site_2[1])**2+(site_1[2]-site_2[2])**2)
     #bond_deltas.append(proxy.distance_ideal-dist_model)
   #print list(flex.abs(bond_deltas))
-  print 'Bond i_seqs j_seqs'
+  print('Bond i_seqs j_seqs')
   for i,j in zip(i_seqs, j_seqs):
-    print i,j
+    print(i,j)
 
 def run(filename=None):
   should_have_imported_proper_methods()
-  print "OK"
+  print("OK")
   should_return_atom_types()
-  print "OK"
+  print("OK")
   exercise(filename)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(*tuple(sys.argv[1:]))

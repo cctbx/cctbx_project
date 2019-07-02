@@ -5,6 +5,7 @@ from six.moves import cPickle as pickle
 import fcntl
 import tempfile
 import os
+from six.moves import range
 
 
 class instant(object):

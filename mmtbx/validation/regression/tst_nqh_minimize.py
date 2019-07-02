@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation.molprobity import nqh_minimize
 from iotbx import pdb
 from libtbx.utils import null_out
@@ -92,4 +92,4 @@ def exercise_nqh_minimize():
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_nqh_minimize()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

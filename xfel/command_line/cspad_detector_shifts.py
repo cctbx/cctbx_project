@@ -11,7 +11,7 @@
 #
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_shifts
 #
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from scitbx.array_family import flex
 from scitbx.matrix import col
@@ -19,6 +19,7 @@ from libtbx.phil import parse
 from libtbx.utils import Sorry
 from xfel.command_line.cspad_detector_congruence import get_center
 import libtbx.load_env
+from six.moves import zip
 
 help_message = '''
 
@@ -86,7 +87,7 @@ class Script(ParentScript):
       while root.is_group():
         root = root[0]
         params.max_hierarchy_level += 1
-      print "Found", params.max_hierarchy_level+1, "hierarchy levels"
+      print("Found", params.max_hierarchy_level+1, "hierarchy levels")
 
     reference_root = detectors[0].hierarchy()
     moving_root = detector.hierarchy()
@@ -265,14 +266,14 @@ class Script(ParentScript):
       table_data.append(ws_row)
 
       from libtbx import table_utils
-      print "Hierarchy level %d Detector shifts"%level
-      print table_utils.format(table_data,has_header=2,justify='center',delim=" ")
+      print("Hierarchy level %d Detector shifts"%level)
+      print(table_utils.format(table_data,has_header=2,justify='center',delim=" "))
 
-    print "Detector shifts summary"
-    print table_utils.format(summary_table_data,has_header=3,justify='center',delim=" ")
+    print("Detector shifts summary")
+    print(table_utils.format(summary_table_data,has_header=3,justify='center',delim=" "))
 
-    print
-    print """
+    print()
+    print("""
 For each hierarchy level, the average shifts in are computed among objects at that level, weighted by the number of reflections recorded on each object. For example, for a four quadrant detector, the average Z shift will be the average of the four quadrant Z values, each weighted by the number of reflections on that quadrant.
 
 -------------------
@@ -291,7 +292,7 @@ Z offsets: relative shifts in the local frame in the local Z direction.
 R, T Norm: angle between normal vectors in lab space, projected onto the radial or transverse plane.
 Local dNorm: local relative angle between normal vectors.
 Rot Z: rotation around detector normal in lab space
-"""
+""")
 
 if __name__ == '__main__':
   from dials.util import halraiser

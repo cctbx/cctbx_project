@@ -3,7 +3,10 @@ crystallography images, treated as a graph problem.
 
 **Author:**   Oliver Zeldin <zeldin@stanford.edu>
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from functools import reduce
+from six.moves import range
+from six.moves import zip
 
 __author__ = 'zeldin'
 
@@ -431,4 +434,3 @@ class Graph(Cluster):
                              len(new_labels)))
 
       current_labels = new_labels
-

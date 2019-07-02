@@ -1,8 +1,9 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate
 from libtbx.str_utils import format_value
 import sys
+import six
 
 class entity(slots_getstate_setstate):
   """
@@ -23,7 +24,7 @@ class entity(slots_getstate_setstate):
   def __init__(self, **kwds):
     for name in self.__slots__:
       setattr(self, name, None)
-    for name, value in kwds.iteritems():
+    for name, value in six.iteritems(kwds):
       assert (name in self.__slots__), name
       setattr(self, name, value)
 
@@ -264,7 +265,7 @@ class atom_base(slots_getstate_setstate):
       del kwds['pdb_atom']
     for name in self.__slots__:
       setattr(self, name, None)
-    for name, value in kwds.iteritems():
+    for name, value in six.iteritems(kwds):
       assert (name in self.__slots__), name
       setattr(self, name, value)
 
@@ -412,9 +413,9 @@ class validation(slots_getstate_setstate):
     """
     if (verbose):
       assert (self.output_header is not None)
-      print >> out, self.output_header
+      print(self.output_header, file=out)
     for result in self.results :
-      print >> out, result.format_old()
+      print(result.format_old(), file=out)
     if (verbose):
       self.show_summary(out)
 
@@ -424,9 +425,9 @@ class validation(slots_getstate_setstate):
   def show(self, out=sys.stdout, prefix="  ", outliers_only=True,
       verbose=True):
     if (len(self.results) > 0):
-      print >> out, prefix + self.get_result_class().header()
+      print(prefix + self.get_result_class().header(), file=out)
       for result in self.iter_results(outliers_only):
-        print >> out, prefix + str(result)
+        print(prefix + str(result), file=out)
     self.show_summary(out=out, prefix=prefix)
 
   def iter_results(self, outliers_only=True):
@@ -522,8 +523,10 @@ class dummy_validation(object):
   def __getattr__(self, name):
     return None
 
-  def __nonzero__(self):
+  def __bool__(self):
     return False
+
+  __nonzero__ = __bool__
 
 molprobity_cmdline_phil_str = """
   model = None

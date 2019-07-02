@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from mmtbx.geometry import topology
 
@@ -61,7 +61,7 @@ class TestMolecule(unittest.TestCase):
     self.assertTrue( a2 in m.descriptor_for )
     self.assertEqual( len( list( m.graph.vertices() ) ), 2 )
     self.assertEqual( len( list( m.graph.edges() ) ), 1 )
-    edge = m.graph.edges().next()
+    edge = next(m.graph.edges())
     self.assertAlmostEqual( m.graph.edge_weight( edge = edge ), 1.73205, 5 )
 
 

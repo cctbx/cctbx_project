@@ -1,11 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from xfel.ui.db.xfel_db import xfel_db_application
 from xfel.ui.db.experiment import Experiment, Event, Bin, Cell_Bin
 from scitbx.array_family import flex
 
 def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
-              two_theta_low = None, two_theta_high = None, db_event = None):
-  app = dxtbx_xfel_db_application(params)
+              two_theta_low = None, two_theta_high = None, db_event = None, app = None):
+  if app is None:
+    app = dxtbx_xfel_db_application(params)
   db_run = app.get_run(run_number=run)
   if params.input.trial is None:
     db_trial = app.get_trial(trial_id = params.input.trial_id)

@@ -1,5 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
+from six.moves import range
+from six.moves import zip
 
 def exercise_rna_dna_atom_names():
   for atom_name in [None, ""]:
@@ -84,7 +86,7 @@ def exercise_rna_dna_atom_names():
     assert info.reference_name is None
     assert info.compatible_residue_names() == "None"
   for a,r,f in iotbx.pdb.rna_dna_atom_name_aliases:
-    for i in xrange(len(a)):
+    for i in range(len(a)):
       info = iotbx.pdb.rna_dna_atom_names_info(atom_name=a[:i]+"X"+a[i+1:])
       assert info.reference_name is None
       assert info.compatible_residue_names() == "None"
@@ -272,7 +274,7 @@ def exercise():
     cns_names=cns_names_dna_rna_allatom_top, have_hydrogens=True)
   exercise_cns_names(
     cns_names=cns_names_dna_rna_top, have_hydrogens=False)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

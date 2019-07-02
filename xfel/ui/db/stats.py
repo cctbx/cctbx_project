@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from scitbx.array_family import flex
 
@@ -180,9 +180,8 @@ class HitrateStats(object):
         resolutions.append(d_min or 0)
         n_lattices.append(n_xtal or 0)
 
-    assert [len(timestamps), len(timestamps_s)].count(0) == 1
-    if len(timestamps_s) > 0:
-      timestamps = flex.double([i[0] for i in sorted(enumerate(timestamps_s), key=lambda x:x[1])])
+    # only get results that are strings or ints, not a mix of both
+    assert not (len(timestamps) > 0 and len(timestamps_s) > 0)
 
     # This left join query finds the events with no imageset, meaning they failed to index
     query = """SELECT event.timestamp, event.n_strong, event.two_theta_low, event.two_theta_high
@@ -193,7 +192,6 @@ class HitrateStats(object):
             """ % (tag, tag, self.trial.id, self.run.id, self.rungroup.id)
 
     cursor = self.app.execute_query(query)
-    timestamps_s = []
     for row in cursor.fetchall():
       ts, n_s, tt_low, tt_high = row
       try:
@@ -212,8 +210,7 @@ class HitrateStats(object):
       n_lattices.append(0)
 
     if len(timestamps_s) > 0:
-      n_so_far = len(timestamps)
-      timestamps.extend(flex.double([n_so_far+i[0] for i in sorted(enumerate(timestamps_s), key=lambda x:x[1])]))
+      timestamps = flex.double([i[0] for i in sorted(enumerate(timestamps_s), key=lambda x:x[1])])
 
     order = flex.sort_permutation(timestamps)
     timestamps = timestamps.select(order)

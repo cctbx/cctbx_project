@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 def site_constraints_special_op_simplified(O, fvars, site, p_tolerance):
   assert len(fvars) > 0
   new_fvars = []
@@ -23,7 +24,7 @@ def site_constraints_special_op_simplified(O, fvars, site, p_tolerance):
   def set_cv(i_term, value):
     assert coded_variables[i_term] is None
     coded_variables[i_term] = value
-  for i_var in xrange(3):
+  for i_var in range(3):
     i_terms = i_var_i_terms[i_var]
     if (len(i_terms) == 1):
       i_term = i_terms[0]

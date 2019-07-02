@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.sgtbx import space_group_info
@@ -9,6 +9,7 @@ from libtbx.utils import Sorry
 import random
 import math
 import sys
+from six.moves import zip
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
@@ -26,19 +27,19 @@ def exercise_ellipsoidal_truncation(space_group_info, n_sites=100, d_min=1.5):
     rsv = flex.double(f_obs.unit_cell().reciprocal_space_vector(mi))
     assert approx_equal(d, 1./math.sqrt(rsv.dot(rsv)))
   ##
-  print f_obs.unit_cell()
+  print(f_obs.unit_cell())
   f = flex.random_double(f_obs.data().size())*flex.mean(f_obs.data())/10
   #
   f_obs1 = f_obs.customized_copy(data = f_obs.data(), sigmas = f_obs.data()*f)
-  print "datat in:",f_obs1.data().size()
+  print("datat in:",f_obs1.data().size())
   r = f_obs1.ellipsoidal_truncation_by_sigma(sigma_cutoff=1)
-  print "data left:",r.data().size()
+  print("data left:",r.data().size())
   r.miller_indices_as_pdb_file(file_name="indices1.pdb", expand_to_p1=False)
   r.miller_indices_as_pdb_file(file_name="indices2.pdb", expand_to_p1=True)
   #
   f_obs.miller_indices_as_pdb_file(file_name="indices3.pdb", expand_to_p1=False)
   f_obs.miller_indices_as_pdb_file(file_name="indices4.pdb", expand_to_p1=True)
-  print "*"*25
+  print("*"*25)
 
 def exercise_translational_phase_shift(n_sites=100,d_min=1.5,
      resolution_factor = 0.3):
@@ -49,7 +50,7 @@ def exercise_translational_phase_shift(n_sites=100,d_min=1.5,
     volume_per_atom=50,
     min_distance=1.5)
   f_calc= xrs.structure_factors(d_min = d_min).f_calc()
-  print f_calc.unit_cell()
+  print(f_calc.unit_cell())
   from scitbx.matrix import col
   shift_frac=col((.23984120,.902341127,.51219021))
 
@@ -94,10 +95,10 @@ def exercise_translational_phase_shift(n_sites=100,d_min=1.5,
   map_data_from_shifted_xrs = map_data_from_shifted_xrs.select(sel)
 
   cc_map_data_from_shifted_xrs_shifted_map_data= flex.linear_correlation(x=map_data_from_shifted_xrs.as_1d(),  y=shifted_map_data.as_1d()).coefficient()
-  print "cc_map_data_from_shifted_xrs_shifted_map_data",\
-     cc_map_data_from_shifted_xrs_shifted_map_data
+  print("cc_map_data_from_shifted_xrs_shifted_map_data",\
+     cc_map_data_from_shifted_xrs_shifted_map_data)
   assert  cc_map_data_from_shifted_xrs_shifted_map_data > 0.99
-  print "*"*25
+  print("*"*25)
 
 def run_call_back(flags, space_group_info):
   exercise_ellipsoidal_truncation(space_group_info)
@@ -123,7 +124,7 @@ def exercise_twinning():
   assert not fc_twin_tmp.data().all_approx_equal(fc_tmp.data())
   try :
     fc_twin = fc.twin_data("k,h,l", 0.5)
-  except Sorry, s:
+  except Sorry as s:
     pass
   else :
     raise Exception_expected

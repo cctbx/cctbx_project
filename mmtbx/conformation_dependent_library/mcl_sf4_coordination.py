@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 
 from cctbx import geometry_restraints
+from six.moves import range
 
 origin_ids = geometry_restraints.linking_class.linking_class()
 
@@ -43,7 +44,7 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
     for resname in ['SF4', 'F3S']:
       if (ag1.resname==resname and ag2.resname==resname):
         if ag1.id_str()!=ag2.id_str():
-          print >> log, 'Two %(resname)s residues are close enough to coordinate! ODD!' % locals()
+          print('Two %(resname)s residues are close enough to coordinate! ODD!' % locals(), file=log)
       elif (ag1.resname==resname or ag2.resname==resname):
         sf4=a2
         sf4g=ag2
@@ -56,7 +57,7 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
           aag=ag2
         if aa.element.strip() in ['H', 'D']: continue
         if aa.element.strip() in ['CA', 'C', 'O', 'N']: continue
-        if verbose: print '%s-aa' % resname,sf4.quote(),aa.quote(),dist
+        if verbose: print('%s-aa' % resname,sf4.quote(),aa.quote(),dist)
         if sf4.element.lower()=="fe":
           if aag.id_str() not in done_aa:
             #coordination.append((i_seq, j_seq))
@@ -114,7 +115,7 @@ def get_all_proxies(coordination):
       get_angle_proxies_for_bond(coordination)
 
 def run(pdb_filename):
-  print "run",pdb_filename
+  print("run",pdb_filename)
   from mmtbx.command_line.geometry_minimization import \
     get_geometry_restraints_manager, master_params
   import mmtbx.monomer_library.pdb_interpretation
@@ -146,7 +147,7 @@ def run(pdb_filename):
     #verbose=True,
   )
   bproxies, aproxies = get_all_proxies(rc)
-  print len(bproxies),len(aproxies)
+  print(len(bproxies),len(aproxies))
   grm.geometry.add_new_bond_restraints_in_place(
     proxies=bproxies,
     sites_cart=pdb_hierarchy.atoms().extract_xyz(),

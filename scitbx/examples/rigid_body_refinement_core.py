@@ -1,8 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx import matrix
 import math
 import sys
+from six.moves import range
+from six.moves import zip
 
 angle_scale = math.pi / 2
 
@@ -114,7 +116,7 @@ def exercise(args):
 
   def ea_gradients_fd(rb, energy_cart_function, eps=1.e-6):
     result = []
-    for i in xrange(6):
+    for i in range(6):
       fs = []
       incr_position(rb=rb, i=i, delta=eps)
       fs.append(energy_cart_function(
@@ -130,21 +132,21 @@ def exercise(args):
   def show_gradients(rb):
     an = rb.ea_gradients(energy_cart_function=energy_cart)
     fd = ea_gradients_fd(rb=rb, energy_cart_function=energy_cart)
-    print "an ea:", an[:3]
-    print "fd ea:", fd[:3]
-    print "an lt:", an[3:]
-    print "fd lt:", fd[3:]
-    print
+    print("an ea:", an[:3])
+    print("fd ea:", fd[:3])
+    print("an lt:", an[3:])
+    print("fd lt:", fd[3:])
+    print()
 
   rb = rigid_body(sites=sites)
   mt = flex.mersenne_twister()
   n_trials = 4
-  for i in xrange(n_trials):
+  for i in range(n_trials):
     rb.ea = matrix.col(mt.random_double_point_on_sphere()) * i
     rb.lt = matrix.col(mt.random_double_point_on_sphere()) * i
     show_gradients(rb=rb)
 
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

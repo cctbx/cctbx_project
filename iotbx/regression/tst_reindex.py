@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import libtbx.load_env
 from libtbx.test_utils import approx_equal
@@ -10,7 +10,7 @@ def exercise():
     relative_path="phenix_regression/reflection_files/1yjp.mtz",
     test=os.path.isfile)
   if (hkl_file is None):
-    print "Skipping"
+    print("Skipping")
     return
   from iotbx.command_line import reindex
   from iotbx import file_reader
@@ -27,4 +27,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

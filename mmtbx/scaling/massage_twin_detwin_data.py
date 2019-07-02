@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.scaling import outlier_rejection
 from mmtbx.scaling import absolute_scaling
 import mmtbx.scaling
@@ -165,24 +165,24 @@ class massage_data(object):
 
     self.new_miller_array = self.no_aniso_array
     if self.params.outlier.action == "basic":
-      print >> self.out, "Non-outliers found by the basic wilson statistics"
-      print >> self.out, "protocol will be written out."
+      print("Non-outliers found by the basic wilson statistics", file=self.out)
+      print("protocol will be written out.", file=self.out)
       basic_array = outlier_manager.basic_wilson_outliers(
         p_basic_wilson = self.params.outlier.parameters.basic_wilson.level,
         return_data = True)
       self.new_miller_array = basic_array
 
     if self.params.outlier.action == "extreme":
-      print >> self.out, "Non-outliers found by the extreme value wilson statistics"
-      print >> self.out, "protocol will be written out."
+      print("Non-outliers found by the extreme value wilson statistics", file=self.out)
+      print("protocol will be written out.", file=self.out)
       extreme_array = outlier_manager.extreme_wilson_outliers(
       p_extreme_wilson = self.params.outlier.parameters.extreme_wilson.level,
       return_data = True)
       self.new_miller_array = extreme_array
 
     if self.params.outlier.action == "beamstop":
-      print >> self.out, "Outliers found for the beamstop shadow"
-      print >> self.out, "problems detection protocol will be written out."
+      print("Outliers found for the beamstop shadow", file=self.out)
+      print("problems detection protocol will be written out.", file=self.out)
       beamstop_array = outlier_manager.beamstop_shadow_outliers(
         level = self.params.outlier.parameters.beamstop.level,
         d_min = self.params.outlier.parameters.beamstop.d_min,
@@ -202,12 +202,12 @@ class massage_data(object):
         raise Sorry("Twin fraction not specified, not twinning data")
       elif not (0 <= alpha <= 0.5):
         raise Sorry("Twin fraction must be between 0 and 0.5.")
-      print >> self.out
-      print >> self.out, "Twinning given data"
-      print >> self.out, "-------------------"
-      print >> self.out
-      print >> self.out, "Artifically twinning the data with fraction %3.2f" %\
-        alpha
+      print(file=self.out)
+      print("Twinning given data", file=self.out)
+      print("-------------------", file=self.out)
+      print(file=self.out)
+      print("Artifically twinning the data with fraction %3.2f" %\
+        alpha, file=self.out)
 
       self.final_array = self.new_miller_array.twin_data(
         twin_law = self.params.symmetry.twinning_parameters.twin_law,
@@ -220,7 +220,7 @@ class massage_data(object):
         raise Sorry("Twin fraction not specified, not detwinning data")
       elif not (0 <= alpha <= 0.5):
         raise Sorry("Twin fraction must be between 0 and 0.5.")
-      print >> self.out, """
+      print("""
 
 Attempting to detwin data
 -------------------------
@@ -232,7 +232,7 @@ BE WARNED! DETWINNING OF DATA DOES NOT SOLVE YOUR TWINNING PROBLEM!
 PREFERABLY, REFINEMENT SHOULD BE CARRIED OUT AGAINST ORIGINAL DATA
 ONLY USING A TWIN SPECIFIC TARGET FUNCTION!
 
-""" % (twin_law, alpha)
+""" % (twin_law, alpha), file=self.out)
       self.final_array = self.new_miller_array.detwin_data(
         twin_law=twin_law,
         alpha=alpha).as_intensity_array()

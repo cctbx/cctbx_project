@@ -73,6 +73,7 @@ struct vector_wrapper
       using namespace boost::python;
       class_<wt>("element_iterator", no_init)
         .def("next", &wt::next)
+        .def("__next__", &wt::next)
         .def("__iter__", &wt::iter)
         ;
     }

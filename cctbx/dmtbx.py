@@ -1,11 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex # import dependency
 
 import boost.python
 ext = boost.python.import_ext("cctbx_dmtbx_ext")
 from cctbx_dmtbx_ext import *
 
-class _(boost.python.injector, weighted_triplet_phase_relation):
+@boost.python.inject_into(weighted_triplet_phase_relation)
+class _():
 
   def format(self, miller_indices, ih=None):
     l = [miller_indices[self.ik()],
@@ -26,7 +27,8 @@ def triplet_generator(miller_set,
     amplitudes, max_relations_per_reflection,
     sigma_2_only, discard_weights)
 
-class _(boost.python.injector, ext.triplet_generator):
+@boost.python.inject_into(ext.triplet_generator)
+class _():
 
   def apply_tangent_formula(self, amplitudes, phases_rad,
                                   selection_fixed=None,

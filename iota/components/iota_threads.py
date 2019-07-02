@@ -1,4 +1,4 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import absolute_import, division, print_function
 
 '''
 Author      : Lyubimov, A.Y.
@@ -908,7 +908,7 @@ class InterceptorThread(Thread):
             info_line = [float(i) for i in uc]
             info_line.append(item[3])
             input.append(info_line)
-          except ValueError, e:
+          except ValueError as e:
             print ('CLUSTER ERROR: ', e)
             pass
 

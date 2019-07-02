@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os.path
 
 def write_disable_nomenclature_errors(f):
@@ -31,8 +31,8 @@ def create_refinement_view_script(
     elif ("ANOMDIFF" in labels):
       have_anom_residual_map = True
   f = open(coot_script_name, "w")
-  print >> f, "import coot"
-  print >> f, "import os"
+  print("import coot", file=f)
+  print("import os", file=f)
   write_disable_nomenclature_errors(f)
   load_script = libtbx.env.find_in_repositories(
     relative_path="cctbx_project/cootbx/view_refinement.py",
@@ -58,11 +58,11 @@ def create_refinement_view_script(
     f.write("""peaks_file="%s",\n""" % peaks_file_name)
   f.write(")\n")
   if (bad_ligand_list is not None) and (len(bad_ligand_list) > 0):
-    print >> f, """draw_simple_zoom_list("""
-    print >> f, """  title="Residues in suspicious density","""
-    print >> f, """  items=%s)""" % str(bad_ligand_list)
+    print("""draw_simple_zoom_list(""", file=f)
+    print("""  title="Residues in suspicious density",""", file=f)
+    print("""  items=%s)""" % str(bad_ligand_list), file=f)
   if (placed_ligand_list is not None):
-    print >> f, """draw_simple_zoom_list("""
-    print >> f, """  title="Placed ligands","""
-    print >> f, """  items=%s)""" % str(placed_ligand_list)
+    print("""draw_simple_zoom_list(""", file=f)
+    print("""  title="Placed ligands",""", file=f)
+    print("""  items=%s)""" % str(placed_ligand_list), file=f)
   f.close()

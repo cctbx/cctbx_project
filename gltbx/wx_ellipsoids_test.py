@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import wx
 import gltbx.util
 from gltbx import wx_viewer
@@ -6,6 +6,7 @@ from gltbx import quadrics
 import unicodedata
 from gltbx.gl import *
 from gltbx.glu import *
+from six.moves import zip
 
 class MyGLWindow(wx_viewer.wxGLWindow):
 

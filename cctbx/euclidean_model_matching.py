@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
@@ -9,6 +9,8 @@ from libtbx import adopt_init_args
 import sys, math
 
 import boost.python
+from six.moves import range
+from six.moves import zip
 ext = boost.python.import_ext("cctbx_emma_ext")
 
 def sgtbx_rt_mx_as_matrix_rt(s):
@@ -97,14 +99,14 @@ class model(crystal.special_position_settings):
 
   def show(self, title, f=None):
     if (f is None): f = sys.stdout
-    print >> f, title
+    print(title, file=f)
     crystal.special_position_settings.show_summary(self, f)
     if (not self.cb_op().is_identity_op()):
-      print >> f, "Change of basis:"
-      print >> f, "  c:", self.cb_op().c()
-      print >> f, "  c_inv:", self.cb_op().c_inv()
-    for pos in self.positions(): print >> f, pos
-    print >> f
+      print("Change of basis:", file=f)
+      print("  c:", self.cb_op().c(), file=f)
+      print("  c_inv:", self.cb_op().c_inv(), file=f)
+    for pos in self.positions(): print(pos, file=f)
+    print(file=f)
 
   def as_xray_structure(self, scatterer=None):
     from cctbx import xray
@@ -209,7 +211,7 @@ class model(crystal.special_position_settings):
 
 def filter_shift(continuous_shift_flags, shift, selector=1):
   filtered_shift = [0,0,0]
-  for i in xrange(3):
+  for i in range(3):
     if (continuous_shift_flags[i] == selector):
       filtered_shift[i] = shift[i]
   return filtered_shift
@@ -237,16 +239,17 @@ class euclidean_match_symmetry(object):
 
   def show(self, title="", f=None):
     if (f is None): f = sys.stdout
-    print >> f, ("euclidean_match_symmetry: " + title).rstrip()
-    print >> f, self.rt_mx.type().lookup_symbol()
-    print >> f, self.continuous_shifts
+    print(("euclidean_match_symmetry: " + title).rstrip(), file=f)
+    print(self.rt_mx.type().lookup_symbol(), file=f)
+    print(self.continuous_shifts, file=f)
 
 def generate_singles(n, i):
-  singles = range(n)
+  singles = list(range(n))
   del singles[i]
   return singles
 
 def pair_sort_function(pair_a, pair_b):
+  from past.builtins import cmp
   return cmp(pair_a[0], pair_b[0])
 
 def inside_zero_one(c):
@@ -284,7 +287,8 @@ class match_refine(object):
     self.eliminate_weak_pairs()
     self.ref_eucl_rt = sgtbx_rt_mx_as_matrix_rt(self.eucl_symop) \
                      + self.adjusted_shift
-    self.pairs.sort(pair_sort_function)
+    from functools import cmp_to_key
+    self.pairs.sort(key=cmp_to_key(pair_sort_function)) # FIXME deprecate pair_sort_function()
     self.singles1.sort()
     self.singles2.sort()
     self.calculate_rms()
@@ -387,30 +391,30 @@ class match_refine(object):
 
   def show(self, f=None, truncate_singles=None, singles_per_line=5):
     if (f is None): f = sys.stdout
-    print >> f, "Match summary:"
-    print >> f, "  Operator:"
-    print >> f, "       rotation:", self.rt.r.mathematica_form(format="%.6g")
-    print >> f, "    translation:", \
-      self.rt.t.transpose().mathematica_form(format="%.6g")[1:-1]
-    print >> f, "  rms coordinate differences: %.2f" % (self.rms,)
-    print >> f, "  Pairs:", len(self.pairs)
+    print("Match summary:", file=f)
+    print("  Operator:", file=f)
+    print("       rotation:", self.rt.r.mathematica_form(format="%.6g"), file=f)
+    print("    translation:", \
+      self.rt.t.transpose().mathematica_form(format="%.6g")[1:-1], file=f)
+    print("  rms coordinate differences: %.2f" % (self.rms,), file=f)
+    print("  Pairs:", len(self.pairs), file=f)
     for pair in self.pairs:
-      print >> f, "   ", self.ref_model1[pair[0]].label,
-      print >> f, self.ref_model2[pair[1]].label,
-      print >> f, "%.3f" % (self.calculate_shortest_dist(pair),)
+      print("   ", self.ref_model1[pair[0]].label, end=' ', file=f)
+      print(self.ref_model2[pair[1]].label, end=' ', file=f)
+      print("%.3f" % (self.calculate_shortest_dist(pair),), file=f)
     for i_model,ref_model,singles in ((1,self.ref_model1,self.singles1),
                                       (2,self.ref_model2,self.singles2)):
-      print >> f, "  Singles model %s:" % i_model, len(singles),
+      print("  Singles model %s:" % i_model, len(singles), end=' ', file=f)
       i = 0
       for s in singles:
         if (i == truncate_singles): break
         if (i % singles_per_line == 0):
-          print >> f
-          print >> f, " ",
-        print >> f, " ", ref_model[s].label,
+          print(file=f)
+          print(" ", end=' ', file=f)
+        print(" ", ref_model[s].label, end=' ', file=f)
         i += 1
-      print >> f
-    print >> f
+      print(file=f)
+    print(file=f)
 
   def get_transformed_model2(self,output_pdb=None,
     scattering_type="SE",f=sys.stdout,
@@ -421,7 +425,7 @@ class match_refine(object):
       model2=self.ref_model2.as_xray_structure(xray_scatterer)
       from cctbx.array_family import flex
       new_coords=flex.vec3_double()
-      for i_model2 in xrange(self.ref_model2.size()):
+      for i_model2 in range(self.ref_model2.size()):
         c2 = matrix.col(self.eucl_symop * self.ref_model2[i_model2].site)
         c2 += self.adjusted_shift
         c2=inside_zero_one(c2)
@@ -447,14 +451,15 @@ class match_refine(object):
         xrs.set_b_iso(values = b_iso_values)
         pdb_string=xrs.as_pdb_file()
         ff=open(output_pdb,'w')
-        print >>ff, pdb_string
+        print(pdb_string, file=ff)
         ff.close()
-        print >>f,"\nWrote model 2 mapped to model 1 to file %s " %(output_pdb)
+        print("\nWrote model 2 mapped to model 1 to file %s " %(output_pdb), file=f)
 
       if return_superposed_model2:
         return model2.as_emma_model()
 
 def match_sort_function(match_a, match_b):
+  from past.builtins import cmp
   i = -cmp(len(match_a.pairs), len(match_b.pairs))
   if (i): return i
   return cmp(match_a.rms, match_b.rms)
@@ -466,20 +471,20 @@ def weed_refined_matches(space_group_number, refined_matches,
   best_rms = refined_matches[0].rms
   best_n_pairs = len(refined_matches[0].pairs)
   is_redundant = [0] * n_matches
-  for i in xrange(n_matches-1):
+  for i in range(n_matches-1):
     match_i = refined_matches[i]
     if (is_redundant[i]): continue
     if (match_i.rms < best_rms):
       best_rms = match_i.rms
       best_n_pairs = len(match_i.pairs)
-    for j in xrange(i+1, n_matches):
+    for j in range(i+1, n_matches):
       match_j = refined_matches[j]
       if (   match_i.pairs == match_j.pairs
           or (    rms_penalty_per_site
               and match_j.rms > best_rms * (1 - rms_penalty_per_site * (
                     best_n_pairs - len(match_j.pairs))))):
         is_redundant[j] = 1
-  for i in xrange(n_matches-1, -1, -1):
+  for i in range(n_matches-1, -1, -1):
     if (is_redundant[i]):
       del refined_matches[i]
   if (space_group_number == 1 and n_matches > 0):
@@ -521,8 +526,8 @@ def compute_refined_matches(ref_model1, ref_model2,
     ref_model2_sites)
   accumulated_match_refine_times = match_refine_times()
   refined_matches = []
-  for i_pivot1 in xrange(ref_model1.size()):
-    for i_pivot2 in xrange(ref_model2.size()):
+  for i_pivot1 in range(ref_model1.size()):
+    for i_pivot2 in range(ref_model2.size()):
       for eucl_symop in match_symmetry.rt_mx:
         c2 = eucl_symop * ref_model2[i_pivot2].site
         dist_info = sgtbx.min_sym_equiv_distance_info(
@@ -590,7 +595,8 @@ class delegating_model_matches(object):
       tolerance,
       models_are_diffraction_index_equivalent,
       shall_break)
-    self.refined_matches.sort(match_sort_function)
+    from functools import cmp_to_key
+    self.refined_matches.sort(key=cmp_to_key(match_sort_function))
     weed_refined_matches(model1.space_group_info().type().number(),
                          self.refined_matches, rms_penalty_per_site)
 

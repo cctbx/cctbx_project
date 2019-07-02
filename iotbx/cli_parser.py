@@ -1,4 +1,5 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 '''
 Standard command-line parser for CCTBX programs
@@ -230,14 +231,14 @@ class CCTBXParser(ParserBase):
     # --show-defaults=n sets it to n and it can only be {0, 1, 2, 3}
     self.add_argument(
       '--show-defaults', '--show_defaults',
-      nargs='?', const=0, type=int, choices=range(0,4),
+      nargs='?', const=0, type=int, choices=list(range(0,4)),
       help='show default parameters with expert level (default=0)')
 
     # --attributes-level by itself is set to 1
     # --attributes-level=n sets it to n and it can only be {1, 2, 3}
     self.add_argument(
       '--attributes-level', '--attributes_level',
-      nargs='?', const=1, type=int, choices=range(0,4),
+      nargs='?', const=1, type=int, choices=list(range(0,4)),
       help='show parameters with attributes (default=0)'
     )
 

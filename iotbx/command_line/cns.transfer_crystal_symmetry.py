@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import cns
 import iotbx.cns.space_group_symbols
 from iotbx import crystal_symmetry_from_any
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, Usage, plural_s, detect_binary_file
 import sys, os
+from six.moves import zip
 
 def run(args):
   if (len(args) != 2):
@@ -37,7 +38,7 @@ iotbx.cns.transfer_crystal_symmetry any_symmetry_source_file cns_input_file
   lines_out = []
   detect_binary = detect_binary_file(monitor_initial=100)
   try: cns_inp = open(target).read().splitlines()
-  except IOError, e:
+  except IOError as e:
     raise Sorry("Error reading file %s (%s)" % (show_string(target), str(e)))
   end_block_parameter_definition = False
   for line in cns_inp:
@@ -63,18 +64,18 @@ iotbx.cns.transfer_crystal_symmetry any_symmetry_source_file cns_input_file
             if (line_out != line): parameters_changed.append(p)
             break
         lines_out.append(line_out)
-  if (parameters_found.values().count(1) != 7):
+  if (list(parameters_found.values()).count(1) != 7):
     raise Sorry("Unexpected set of variable names in %s:\n  counts: %s" % (
       show_string(target), str(parameters_found)))
   elif (len(parameters_changed) == 0):
-    print "Info: no changes, %s was not modified." % show_string(target)
+    print("Info: no changes, %s was not modified." % show_string(target))
   else:
     string_out = "\n".join(lines_out)
-    print "Info: %d change%s" % plural_s(len(parameters_changed)), \
+    print("Info: %d change%s" % plural_s(len(parameters_changed)), \
       "(%s)," % ", ".join(parameters_changed), \
-      "writing modified file %s." % show_string(target)
-    try: print >> open(target, "w"), string_out
-    except IOError, e:
+      "writing modified file %s." % show_string(target))
+    try: print(string_out, file=open(target, "w"))
+    except IOError as e:
       raise Sorry("Error writing file %s (%s)" % (show_string(target), str(e)))
 
 if (__name__ == "__main__"):

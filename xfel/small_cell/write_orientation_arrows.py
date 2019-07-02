@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys, os
 from libtbx import easy_pickle
 from scitbx.matrix import sqr, col
@@ -18,11 +18,11 @@ f = open("arrows.p",'w')
 
 for dirname in sys.argv[1:]:
   for filename in os.listdir(dirname):
-    print "Reading", os.path.join(dirname, filename)
+    print("Reading", os.path.join(dirname, filename))
     try:
       data = easy_pickle.load(os.path.join(dirname, filename))
     except Exception as e:
-      print "Couldn't read", filename
+      print("Couldn't read", filename)
       continue
     ori = data['current_orientation'][0]
     A = sqr(ori.reciprocal_matrix())

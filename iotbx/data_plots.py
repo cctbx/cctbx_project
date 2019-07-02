@@ -4,13 +4,14 @@ Tools for handling plottable data, usually similar to CCP4's loggraph format
 (which may be parsed and output by this module).
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import adopt_init_args
 from libtbx.utils import Sorry
-import string
 import os.path
 import math
 import re
+from six.moves import range
+from six.moves import zip
 
 class plot_data(object):
   def __init__(self,
@@ -49,20 +50,20 @@ class plot_data(object):
 
 def plot_data_loggraph(plot_data,output):
   ## First we need to print the header information
-  print >> output
-  print >> output
-  print >> output, '$TABLE: %s:'%(plot_data.plot_title)
-  print >> output, '$GRAPHS'
-  print >> output, ':%s' %(plot_data.comments),
+  print(file=output)
+  print(file=output)
+  print('$TABLE: %s:'%(plot_data.plot_title), file=output)
+  print('$GRAPHS', file=output)
+  print(':%s' %(plot_data.comments), end=' ', file=output)
   index_string = ''
   for ii in range(len(plot_data.y_data)+1):
     index_string += '%d,'%(ii+1)
-  print >> output, ':%s:%s:'%(plot_data.domain_flag,index_string[:-1])
-  print >> output, '$$'
+  print(':%s:%s:'%(plot_data.domain_flag,index_string[:-1]), file=output)
+  print('$$', file=output)
   ## replace spaces for loggraph with underscores
   tmp_legend = plot_data.x_label
   spaces = 0
-  spaces = string.find(tmp_legend,' ')
+  spaces = tmp_legend.find(' ')
   if spaces>0:
     tmp_legend = tmp_legend.replace(' ','_')
   label_string = '%s'%(tmp_legend)
@@ -71,18 +72,18 @@ def plot_data_loggraph(plot_data,output):
     ## loggraph does not like spaces in the legend names
     ## lets replace them with underscores
     spaces = 0
-    spaces = string.find(tmp_legend,' ')
+    spaces = tmp_legend.find(' ')
     if spaces>0:
       tmp_legend = tmp_legend.replace(' ','_')
     label_string += '   %s'%( tmp_legend )
-  print >> output, '%s   $$ '%(label_string)
-  print >> output, '$$'
+  print('%s   $$ '%(label_string), file=output)
+  print('$$', file=output)
   for ii in range(len(plot_data.x_data)):
     data_string = '%f'%(plot_data.x_data[ii])
     for jj in range(len(plot_data.y_data)):
       data_string +='   %f'%(plot_data.y_data[jj][ii])
-    print >> output, '%s'%(data_string)
-  print >> output, '$$'
+    print('%s'%(data_string), file=output)
+  print('$$', file=output)
 
 #-----------------------------------------------------------------------
 # Nat's utilities for plottable data
@@ -213,7 +214,7 @@ class table_data(object):
     if self.column_labels[0] in ("1/d^2", "1/d**2", "1/resol^2"):
       self.x_is_inverse_d_min = True
 
-    self.data = [[] for x in xrange(data_width)]
+    self.data = [[] for x in range(data_width)]
 
     # Now load the data
     data = re.sub('\s+', ' ', data).split(' ')
@@ -310,7 +311,7 @@ class table_data(object):
     out += trailing_spaces.sub("", labels)
     nrows = len(data[0])
     f1 = "%s-%ds" % (r'%', column_width)
-    for j in xrange(nrows):
+    for j in range(nrows):
       row = [ col[j] for col in data ]
       frow = self._format_num_row(row, column_width, precision)
       frows = " ".join([ f1 % cv for cv in frow ])
@@ -336,11 +337,11 @@ class table_data(object):
     if (self.first_two_columns_are_resolution):
       column_labels = ["Res. range"] + column_labels[2:]
     formatted_rows = [ column_labels ]
-    for j in xrange(self.n_rows):
+    for j in range(self.n_rows):
       row = [ col[j] for col in data ]
       formatted_rows.append(self._format_num_row(row, precision=precision))
     column_widths = []
-    for j in xrange(len(column_labels)):
+    for j in range(len(column_labels)):
       column_widths.append(max([ len(r[j]) for r in formatted_rows ]))
     if (equal_widths):
       # if the first column is the resolution range, we allow that to be
@@ -365,7 +366,7 @@ class table_data(object):
     out += "|" + sep_line[1:-1] + "|"
     out += "| " + column_headers + " |"
     out += "|" + sep_line[1:-1] + "|"
-    for j in xrange(self.n_rows):
+    for j in range(self.n_rows):
       frow = []
       for cw, cv in zip(column_widths, formatted_rows[j+1]):
         f1 = "%s-%ds" % (r'%', cw)
@@ -407,7 +408,7 @@ class table_data(object):
     out += "%s $$\n" % "  ".join([ f2 % lab for lab in labels ])
     out += "$$\n"
     trailing_spaces = re.compile("\ *$")
-    for j in xrange(len(data[0])):
+    for j in range(len(data[0])):
       row = [ col[j] for col in data ]
       frow = self._format_num_row(row, column_width, precision)
       frow = [ f2 % cv for cv in frow ]
@@ -441,7 +442,7 @@ class table_data(object):
     if (self.first_two_columns_are_resolution):
       column_labels = ["Res. range"] + column_labels[2:]
     formatted_rows = [ column_labels ]
-    for j in xrange(self.n_rows):
+    for j in range(self.n_rows):
       row = [ col[j] for col in self.data ]
       formatted_rows.append(self._format_num_row(row, precision=precision))
     return formatted_rows
@@ -544,20 +545,20 @@ class graph_data(object):
     self.type = type
     if data_labels is None or len(data_labels) == 0 :
       self.x_label = "X"
-      self.y_labels = [ "Y" for i in xrange(1, len(data)) ]
+      self.y_labels = [ "Y" for i in range(1, len(data)) ]
     else :
       self.x_label = data_labels[0]
-      self.y_labels = [ data_labels[i] for i in xrange(1, len(data)) ]
+      self.y_labels = [ data_labels[i] for i in range(1, len(data)) ]
     self.x_axis_label = x_axis
     self.y_axis_label = y_axis
 
   def get_plots(self, fill_in_missing_y=None):
     plots = []
     data = self.data
-    for i in xrange(1, len(data)):
+    for i in range(1, len(data)):
       plot_x = []
       plot_y = []
-      for j in xrange(0, len(data[i])):
+      for j in range(0, len(data[i])):
         if data[0][j] is not None :
           if data[i][j] is not None :
             plot_x.append(data[0][j])
@@ -647,8 +648,8 @@ class simple_matplotlib_plot(object):
       import matplotlib
       import matplotlib.figure
       from matplotlib.backends.backend_agg import FigureCanvasAgg
-    except ImportError, e :
-      print e
+    except ImportError as e :
+      print(e)
       raise Sorry("Plotting requires that matplotlib be installed.")
     self.figure = matplotlib.figure.Figure(figure_size, 72, linewidth=0,
       facecolor=facecolor)

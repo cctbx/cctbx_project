@@ -30,6 +30,7 @@ namespace scitbx { namespace boost_python {
       using namespace boost::python;
       class_<w_t>(python_name)
         .def("next", next)
+        .def("__next__", next)
         .def("__iter__", pass_through)
       ;
     }

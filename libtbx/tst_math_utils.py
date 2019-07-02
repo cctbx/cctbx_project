@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 def exercise_integer():
   from libtbx.math_utils import iround, iceil, ifloor, nearest_integer

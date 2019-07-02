@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # -*- coding: utf-8 -*-
 #
 # cctbx documentation build configuration file, created by
@@ -12,8 +12,9 @@ from __future__ import division
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-#from __future__ import absolute_import
+#from __future__ import absolute_import, division, print_function
 import sys, os, re
+from six.moves import range
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the

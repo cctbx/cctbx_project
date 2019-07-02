@@ -1,10 +1,10 @@
 # LIBTBX_SET_DISPATCHER_NAME cctbx.isomorphous_difference_patterson
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, Usage, show_development_warning
 import libtbx.callbacks # import dependency
 import libtbx.phil
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 import sys
 
@@ -59,7 +59,7 @@ Full parameters:
     else :
       try :
         sources.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Unrecognized argument '%s'.")
   params = master_phil.fetch(sources=sources).extract()
   if (params.data_file_1 is not None):
@@ -95,23 +95,23 @@ Full parameters:
     expected_labels=params.labels_2,
     out=out)
   assert (not None in [obs_1, obs_2])
-  print >> out, ""
-  print >> out, "Data array #1 (will use symmetry from here):"
+  print("", file=out)
+  print("Data array #1 (will use symmetry from here):", file=out)
   obs_1.show_summary(f=out, prefix="  ")
-  print >> out, ""
-  print >> out, "Data array #2:"
+  print("", file=out)
+  print("Data array #2:", file=out)
   obs_2.show_summary(f=out, prefix="  ")
-  print >> out, ""
+  print("", file=out)
   obs_2 = obs_2.customized_copy(crystal_symmetry=obs_1)
   f_obs_1 = patterson_map.prepare_f_obs(obs_1, params).average_bijvoet_mates()
   f_obs_2 = patterson_map.prepare_f_obs(obs_2, params).average_bijvoet_mates()
   f_obs_1, f_obs_2 = f_obs_1.common_sets(other=f_obs_2)
   # XXX will this work as expected?
-  print >> out, "Scaling second dataset..."
+  print("Scaling second dataset...", file=out)
   f_obs_2 = f_obs_1.multiscale(other=f_obs_2)
   from scitbx.array_family import flex
-  print >> out, "  max(F1) = %.2f  max(F2) = %.2f" % (flex.max(f_obs_1.data()),
-    flex.max(f_obs_2.data()))
+  print("  max(F1) = %.2f  max(F2) = %.2f" % (flex.max(f_obs_1.data()),
+    flex.max(f_obs_2.data())), file=out)
   delta_f = f_obs_1.customized_copy(data=f_obs_1.data()-f_obs_2.data())
   if (params.relative_diff_limit is not None):
     f_obs_1_non_zero = f_obs_1.select(f_obs_1.data() > 0)
@@ -122,16 +122,16 @@ Full parameters:
       relative_diff.data() < params.relative_diff_limit)
     n_discarded = len(delta_f_non_zero.data()) - len(delta_f.data())
     if (n_discarded > 0):
-      print >> out, "Discarded %d reflections with excessive differences." % \
-        n_discarded
-  print >> out, "  max(delta_F) = %.2f" % flex.max(delta_f.data())
+      print("Discarded %d reflections with excessive differences." % \
+        n_discarded, file=out)
+  print("  max(delta_F) = %.2f" % flex.max(delta_f.data()), file=out)
   map = patterson_map.calculate_patterson_map(data=delta_f, params=params,
     normalize=False)
   if (params.map_file_name is None):
     params.map_file_name = "iso_diff.ccp4"
   map.as_ccp4_map(
     file_name=params.map_file_name)
-  print >> out, "Wrote %s" % params.map_file_name
+  print("Wrote %s" % params.map_file_name, file=out)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

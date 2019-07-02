@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 from labelit.command_line.imagefiles import ImageFiles
 
@@ -43,8 +43,8 @@ class spotfinder_proxy:
                        inputpd = self.pd)
       self.pd["indexing"] += self.specks.get_active_data()
     new_count = len(pd["indexing"])
-    print "Comparing old count %d new count %d, difference %d"%(old_count,new_count,new_count-old_count)
-    print self.specks
+    print("Comparing old count %d new count %d, difference %d"%(old_count,new_count,new_count-old_count))
+    print(self.specks)
     return self.pd
 
 class AutoIndexOrganizer:
@@ -56,14 +56,14 @@ class AutoIndexOrganizer:
     #self.horizons_phil.persist.show()
     assert 'argument_module' in kwargs
     self.setCommandInput(kwargs['argument_module'])
-    if self.verbose: print "Process frames in directory:",self.Files.filenames.FN[0].cwd
+    if self.verbose: print("Process frames in directory:",self.Files.filenames.FN[0].cwd)
 
     if 'delegate' in kwargs:
       self.setIndexingDelegate(kwargs['delegate'])
     self.exception_passthru = 0
     if 'exception_passthru' in kwargs:
       self.exception_passthru = kwargs['exception_passthru']
-    print '\n'.join(self.Files.filenames())
+    print('\n'.join(self.Files.filenames()))
 
   def setCommandInput(self,argument_module):
     self.Files = ImageFiles(argument_module,self.horizons_phil)
@@ -91,7 +91,7 @@ class AutoIndexOrganizer:
       from labelit.command_line.stats_distl import pretty_image_stats,notes
       pretty_image_stats(S,frame)
       notes(S,self.frames[0])
-    print
+    print()
     NEW.get_aitbx_inputs()
 
   def setIndexingDelegate(self,function):

@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.bioinformatics import pubmed
 import iotbx.phil
 import sys
@@ -28,9 +28,9 @@ internally in Phenix, or BibText (if bibtex=True or --bibtext specified).
   for pmid in params.pmid :
     article = pubmed.get_pubmed_xml(pmid)
     if (params.bibtex):
-      print >> out, article.as_bibtex_citation()
+      print(article.as_bibtex_citation(), file=out)
     else :
-      print >> out, article.as_phenix_citation()
+      print(article.as_phenix_citation(), file=out)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -1,9 +1,10 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx.stdlib import math, random
 from libtbx.utils import Sorry
 from copy import deepcopy
 from scitbx import simplex
+from six.moves import range
 
 class dssa(object):
   """

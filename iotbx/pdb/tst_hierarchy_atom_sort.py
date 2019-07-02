@@ -1,5 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
+from six.moves import zip
 
 
 def validate_result(h1, h2):
@@ -957,4 +958,4 @@ if (__name__ == "__main__"):
   exercise_9()
   exercise_10()
   exercise_11()
-  print "OK"
+  print("OK")

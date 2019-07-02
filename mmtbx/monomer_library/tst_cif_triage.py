@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import cif_triage
 import iotbx.pdb.amino_acid_codes
 import libtbx.load_env
@@ -15,7 +15,7 @@ def run(args):
     file_name = op.join(
       geostd_path, resname[0].lower(), "data_"+resname+".cif")
     assert cif_triage.check_comp(file_name=file_name) == 1
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

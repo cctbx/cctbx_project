@@ -1,5 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import adopt_init_args, Auto, group_args
+from six.moves import range
 
 class minimization_monitor(object):
   def __init__(self,
@@ -93,7 +94,7 @@ class minimization_monitor(object):
       result = False
     else:
       result = True
-      for i in xrange(1,4):
+      for i in range(1,4):
         if self.cycles_params[-i]["did_wo"]:
           result = False
     self.cycles_params.append({"did_wo": result})

@@ -1,9 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 import time
 import iotbx.pdb
 from cctbx import maptbx
 from cctbx import miller
+from six.moves import range
+from six.moves import zip
 
 def getvs(cmap, threshold, wrap=True):
   co = maptbx.connectivity(map_data=cmap, threshold=threshold, wrapping=wrap)
@@ -253,10 +255,10 @@ def exercise_max_values():
   assert m_vals == [0.0, 15.0, 25.0]
 
 def debug_printing(co):
-  print "volumes    :",  list(co.regions())
-  print "values     :",  list(co.maximum_values())
-  print "coordinates:",  list(co.maximum_coors())
-  print "============"
+  print("volumes    :",  list(co.regions()))
+  print("values     :",  list(co.maximum_values()))
+  print("coordinates:",  list(co.maximum_coors()))
+  print("============")
 
 
 def exercise_noise_elimination_two_cutoffs():
@@ -476,4 +478,4 @@ if __name__ == "__main__":
   exercise_noise_elimination_two_cutoffs() # example and comment
   exercise_get_blobs_boundaries()
   exercise_expand_mask()
-  print "OK time =%8.3f"%(time.time() - t0)
+  print("OK time =%8.3f"%(time.time() - t0))

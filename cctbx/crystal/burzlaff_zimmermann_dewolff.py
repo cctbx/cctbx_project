@@ -12,7 +12,7 @@ Tables is apparently uncorrected from the 1989 edition.
 
 Author: N.K. Sauter
 '''
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from cctbx import crystal
 from cctbx.uctbx import unit_cell
@@ -160,8 +160,8 @@ class MetricCriteria(object):
 
     if (False): # for debugging
       for key in self.penalties:
-        print key, self.metric_tests[key], [
-          "%4.2f%%"%(100.*x) for x in self.penalties[key]]
+        print(key, self.metric_tests[key], [
+          "%4.2f%%"%(100.*x) for x in self.penalties[key]])
 
   def apply_sign_correction(self,cell):
     # Function helps accomodate the tolerance.  Cell reduction may
@@ -192,7 +192,7 @@ class MetricCriteria(object):
       elif F0 and D>0: inversion = matrix.sqr((-1.,0.,0.,0.,-1.,0.,0.,0.,1.))
       elif D0 and E>0: inversion = matrix.sqr((1.,0.,0.,0.,-1.,0.,0.,0.,-1.))
       uc = unit_cell(orthogonalization_matrix=orth*inversion)
-      print "Adjusted cell:",uc
+      print("Adjusted cell:",uc)
       return uc
     return cell
 
@@ -277,17 +277,17 @@ class LatticeCharacter(object):
 
   def show_summary(self):
     for item in self.possible_characters:
-      print "%2d: %2s %14s, matrix"%(item['number'],item['bravais'],
-            item['system']),
-      print "%30s"%str(item['matrix']),
-      print "max_penalty=%4.2f%%"%(100.*item['penalty'])
+      print("%2d: %2s %14s, matrix"%(item['number'],item['bravais'],
+            item['system']), end=' ')
+      print("%30s"%str(item['matrix']), end=' ')
+      print("max_penalty=%4.2f%%"%(100.*item['penalty']))
 
   def show_summary_labelit_format(self):
     for item in self.possible_characters:
-      print "    %2d"%(item['number'],),
-      print "     %4.2f%%"%(100.*item['penalty'],),
-      print "               %14s %2s"%(item['system'],item['bravais'],),
-      print "%30s"%str(item['matrix'])
+      print("    %2d"%(item['number'],), end=' ')
+      print("     %4.2f%%"%(100.*item['penalty'],), end=' ')
+      print("               %14s %2s"%(item['system'],item['bravais'],), end=' ')
+      print("%30s"%str(item['matrix']))
 
   def best_bravais__(self):
     MC = MetricCriteria(self.unit_cell,self.int_tol)
@@ -326,15 +326,15 @@ def counterexamples():
 
     uc = unit_cell(example)
     assert uc.is_niggli_cell()
-    print "Input Niggli cell:",uc
-    print "BZW Table lookup:"
+    print("Input Niggli cell:",uc)
+    print("BZW Table lookup:")
     LatticeCharacter(uc,3.0).show_summary()
 
     input_symmetry = crystal.symmetry(
       unit_cell=uc,space_group_symbol="P 1")
     Groups = metric_subgroups(input_symmetry, 3.0)
     Groups.show()
-    print;print
+    print();print()
 
 def run():
   if len(sys.argv) < 2:
@@ -345,10 +345,10 @@ def run():
   params = [float(i) for i in sys.argv[1:7]]
   uc = unit_cell(params)
   niggli = uc.is_niggli_cell()
-  print "Input cell:",uc,['is not Niggli reduced','is Niggli reduced'][niggli]
+  print("Input cell:",uc,['is not Niggli reduced','is Niggli reduced'][niggli])
   if not niggli:
     uc = uc.niggli_cell()
-    print "Niggli cell:",uc
+    print("Niggli cell:",uc)
   # last argument is percent tolerance; default 3%
   tolerance = float(sys.argv[7])
   LatticeCharacter(uc,tolerance).show_summary()

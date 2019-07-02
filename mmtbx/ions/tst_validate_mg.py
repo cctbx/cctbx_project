@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 from libtbx import easy_run
 import time
@@ -21,7 +21,7 @@ def exercise():
   assert n_mg == 2 and n_bad == 0
   for ext in [".pdb", ".mtz", "_fmodel.eff"]:
     os.remove(base + ext)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

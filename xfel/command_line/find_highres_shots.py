@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.find_highres_shots
@@ -9,6 +9,7 @@ from dials.util.options import OptionParser
 from libtbx.phil import parse
 from libtbx import easy_pickle
 from scitbx.array_family import flex
+import six
 
 help_message = """
 Script to find high resolution shots from XFEL data
@@ -84,11 +85,11 @@ class Script(object):
         try:
           data = easy_pickle.load(filepath)
         except Exception as e:
-          print "Couldn't read", filepath
+          print("Couldn't read", filepath)
           continue
 
         if not 'observations' in data:
-          print "Not an integration pickle", filepath
+          print("Not an integration pickle", filepath)
           continue
 
         n_tested += 1
@@ -102,41 +103,41 @@ class Script(object):
         resolution = flex.min(d)
 
         if params.min_resolution is not None and resolution > min_resolution:
-          print "Rejecting", filepath, "because resolution", resolution, "is too low"
+          print("Rejecting", filepath, "because resolution", resolution, "is too low")
           continue
 
         if params.min_good_reflections is not None and strong_measurements < params.min_good_reflections:
-          print "Rejecting", filepath, "because number of measurements where I/sigmaI >=", params.min_IsigI, strong_measurements, "is too low"
+          print("Rejecting", filepath, "because number of measurements where I/sigmaI >=", params.min_IsigI, strong_measurements, "is too low")
           continue
 
         # Save the image if it's good enough
         if len(final_data) < params.max_images:
-          print "Accepting", filepath, "not yet reached maximum number good images"
+          print("Accepting", filepath, "not yet reached maximum number good images")
           final_data[filepath] = data, resolution
           if worst_resolution is None or resolution > worst_resolution:
             worst_resolution = resolution
             worst_image = filepath
         elif resolution < worst_resolution:
-          print "Accepting", filepath, "better than the worst image"
+          print("Accepting", filepath, "better than the worst image")
           final_data.pop(worst_image)
           final_data[filepath] = data, resolution
 
           worst_resolution = 0
-          for key, entry in final_data.iteritems():
+          for key, entry in six.iteritems(final_data):
             data, resolution = entry
             if resolution > worst_resolution:
               worst_resolution = resolution
               worst_image = key
         else:
-          print "Rejecting", filepath
+          print("Rejecting", filepath)
 
         if params.max_to_examine is not None and n_tested > params.max_to_examine: break
       if params.max_to_examine is not None and n_tested > params.max_to_examine: break
 
     # Results
-    print "Final best images and resolutions:"
+    print("Final best images and resolutions:")
     for key in final_data:
-      print key, final_data[key][1]
+      print(key, final_data[key][1])
 
     # Show a viewing command
     cmd = "cctbx.image_viewer "
@@ -155,8 +156,8 @@ class Script(object):
 
       cmd += (os.path.join(dirname, "idx-%s.pickle "%tss))
 
-    print "Use this command to display these images:"
-    print cmd.rstrip()
+    print("Use this command to display these images:")
+    print(cmd.rstrip())
 
 if __name__ == "__main__":
   from dials.util import halraiser

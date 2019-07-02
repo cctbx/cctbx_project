@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import time
 from mmtbx import monomer_library
 import mmtbx.refinement.real_space.fit_residue
@@ -9,6 +9,7 @@ from scitbx.matrix import rotate_point_around_axis
 import sys
 from libtbx import easy_pickle
 import libtbx.load_env
+from six.moves import range
 
 mon_lib_srv = monomer_library.server.server()
 rotamer_eval = RotamerEval()
@@ -121,8 +122,8 @@ def exercise(file_name):
     tt = time.time()-t0
     states.write(file_name="%s_all-coarse_step10.pdb"%file_name[:-4])
     break
-  print "file_name, n_clusters, n_good_angles, total:", file_name, \
-    len(clusters), len(good_angles), len(nested_loop), tt
+  print("file_name, n_clusters, n_good_angles, total:", file_name, \
+    len(clusters), len(good_angles), len(nested_loop), tt)
   easy_pickle.dump(
     file_name="%s-coarse_step10_favored.pickle"%file_name[:-4],
     obj=good_angles)

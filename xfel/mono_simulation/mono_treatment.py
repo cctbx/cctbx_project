@@ -1,9 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from cctbx.array_family import flex
 import math
 from scitbx.matrix import col,sqr
 from scitbx.lstbx import normal_eqns
+from six.moves import zip
+from six import unichr as chr
 
 class refinement_base(object):
 
@@ -97,7 +99,7 @@ class refinement(refinement_base):
         deltay = self.spots[pair["spot"]].ctr_mass_y() - self.predicted[pair["pred"]][1]/pxlsz
         sumsq += deltax*deltax + deltay*deltay
         nspot+=1
-      print "RMSD obs vs pred in pixels: %7.2f"%(math.sqrt(sumsq/nspot))
+      print("RMSD obs vs pred in pixels: %7.2f"%(math.sqrt(sumsq/nspot)))
 
       excursi = flex.double()
       rmsdpos = flex.double()
@@ -117,7 +119,7 @@ class refinement(refinement_base):
           OO.ucbp3.gaussian_fast_slow()
           mean_position = OO.ucbp3.mean_position
 
-          print mean_position
+          print(mean_position)
           sumsq = 0.
           nspot = 0
           for pair in self.indexed_pairs:
@@ -125,7 +127,7 @@ class refinement(refinement_base):
             deltay = mean_position[nspot][0] - self.predicted[pair["pred"]][1]/pxlsz
             sumsq += deltax*deltax + deltay*deltay
             nspot+=1
-          print "RMSD markmodel vs rossmanpred in pixels: %7.2f"%(math.sqrt(sumsq/nspot))
+          print("RMSD markmodel vs rossmanpred in pixels: %7.2f"%(math.sqrt(sumsq/nspot)))
 
           #from matplotlib import pyplot as plt
           #plt.plot([mpos[0] for mpos in mean_position],[mpos[1] for mpos in mean_position],"r+")
@@ -142,7 +144,7 @@ class refinement(refinement_base):
             nspot+=1
           rmsdposition = math.sqrt(sumsq/nspot)
           rmsdpos.append(rmsdposition)
-          print "RMSD obs vs markmodel in pixels: %8.4f"%(rmsdposition)
+          print("RMSD obs vs markmodel in pixels: %8.4f"%(rmsdposition))
 
           excursions = flex.double(
             [OO.ucbp3.simple_forward_calculation_spot_position(
@@ -152,8 +154,8 @@ class refinement(refinement_base):
 
           rmsdexc = math.sqrt(flex.mean(excursions*excursions))
           excursi.append(rmsdexc)
-          print "rotx %7.2f roty %7.2f degrees, RMSD excursion %7.3f degrees"%(
-          (0.02 * irotx),(0.02 * iroty), rmsdexc)
+          print("rotx %7.2f roty %7.2f degrees, RMSD excursion %7.3f degrees"%(
+          (0.02 * irotx),(0.02 * iroty), rmsdexc))
       return excursi,rmsdpos
 
   def per_frame_helper_factory(OO):
@@ -260,7 +262,7 @@ class refinement(refinement_base):
       helper.restart()
 
       if enable_rotational_target:
-        print "Trying least squares minimization of excursions",
+        print("Trying least squares minimization of excursions", end=' ')
         from scitbx.lstbx import normal_eqns_solving
         iterations = normal_eqns_solving.naive_iterations(
           non_linear_ls = helper,
@@ -268,12 +270,12 @@ class refinement(refinement_base):
 
       results =  helper.x
 
-      print "with %d reflections"%len(OO.parent.indexed_pairs),
-      print "result %6.2f degrees"%(results[1]*180./math.pi),
-      print "result %6.2f degrees"%(results[0]*180./math.pi)
+      print("with %d reflections"%len(OO.parent.indexed_pairs), end=' ')
+      print("result %6.2f degrees"%(results[1]*180./math.pi), end=' ')
+      print("result %6.2f degrees"%(results[0]*180./math.pi))
 
       if False: # Excursion histogram
-        print "The input mosaicity is %7.3f deg full width"%OO.parent.inputai.getMosaicity()
+        print("The input mosaicity is %7.3f deg full width"%OO.parent.inputai.getMosaicity())
         # final histogram
         if OO.pvr_fix:
           final = 360.* helper.fvec_callable_pvr(results)
@@ -300,7 +302,7 @@ class refinement(refinement_base):
       guard_stats = flex.max(final), flex.min(final)
       if False and REMOVETEST_KILLING_LEGITIMATE_EXCURSIONS (guard_stats[0] > 2.0 or guard_stats[1] < -2.0):
         raise Exception("Misindexing diagnosed by meaningless excursion angle (bandpass_gaussian model)");
-      print "The mean excursion is %7.3f degrees"%(flex.mean(final))
+      print("The mean excursion is %7.3f degrees"%(flex.mean(final)))
 
       two_thetas = helper.last_set_orientation.unit_cell().two_theta(OO.reserve_indices,OO.central_wavelength_ang,deg=True)
       dspacings = helper.last_set_orientation.unit_cell().d(OO.reserve_indices)
@@ -309,10 +311,10 @@ class refinement(refinement_base):
 
       #  First -- try to get a reasonable envelope for the observed excursions.
           ## minimum of three regions; maximum of 50 measurements in each bin
-      print "fitting parameters on %d spots"%len(excursion_rad)
+      print("fitting parameters on %d spots"%len(excursion_rad))
       n_bins = min(max(3, len(excursion_rad)//25),50)
       bin_sz = len(excursion_rad)//n_bins
-      print "nbins",n_bins,"bin_sz",bin_sz
+      print("nbins",n_bins,"bin_sz",bin_sz)
       order = flex.sort_permutation(two_thetas)
       two_thetas_env = flex.double()
       dspacings_env = flex.double()
@@ -333,17 +335,17 @@ class refinement(refinement_base):
       Vector       = col((sum_te_u, sum_te))
       solution     = Normal_Mat.inverse() * Vector
       s_ang = 1./(2*solution[0])
-      print "Best LSQ fit Scheerer domain size is %9.2f ang"%(
-        s_ang)
+      print("Best LSQ fit Scheerer domain size is %9.2f ang"%(
+        s_ang))
       tan_phi_rad = helper.last_set_orientation.unit_cell().d(OO.reserve_indices) / (2. * s_ang)
       tan_phi_deg = tan_phi_rad * 180./math.pi
       k_degrees = solution[1]* 180./math.pi
-      print "The LSQ full mosaicity is %8.5f deg; half-mosaicity %9.5f"%(2*k_degrees, k_degrees)
+      print("The LSQ full mosaicity is %8.5f deg; half-mosaicity %9.5f"%(2*k_degrees, k_degrees))
       tan_outer_deg = tan_phi_deg + k_degrees
 
       if OO.mosaic_refinement_target=="ML":
         from xfel.mono_simulation.max_like import minimizer
-        print "input", s_ang,2. * solution[1]*180/math.pi
+        print("input", s_ang,2. * solution[1]*180/math.pi)
         # coerce the estimates to be positive for max-likelihood
         lower_limit_domain_size = math.pow(
          helper.last_set_orientation.unit_cell().volume(),
@@ -352,7 +354,7 @@ class refinement(refinement_base):
         d_estimate = max(s_ang, lower_limit_domain_size)
         M = minimizer(d_i = dspacings, psi_i = excursion_rad, eta_rad = abs(2. * solution[1]),
                       Deff = d_estimate)
-        print "output",1./M.x[0], M.x[1]*180./math.pi
+        print("output",1./M.x[0], M.x[1]*180./math.pi)
         tan_phi_rad_ML = helper.last_set_orientation.unit_cell().d(OO.reserve_indices) / (2. / M.x[0])
         tan_phi_deg_ML = tan_phi_rad_ML * 180./math.pi
         # bugfix: Need factor of 0.5 because the plot shows half mosaicity (displacement from the center point defined as zero)
@@ -367,19 +369,19 @@ class refinement(refinement_base):
         compare with spot centroid measured position
         compare with locus of bodypixels
         """
-        print list(OO.reserve_indices)
-        print len(OO.reserve_indices), len(two_thetas)
+        print(list(OO.reserve_indices))
+        print(len(OO.reserve_indices), len(two_thetas))
         positions = [
               OO.ucbp3.simple_forward_calculation_spot_position(
               wavelength = OO.central_wavelength_ang,
               observation_no = obsno).position
               for obsno in range(len(OO.parent.indexed_pairs))]
-        print len(positions)
-        print positions # model-predicted positions
-        print len(OO.parent.spots)
-        print OO.parent.indexed_pairs
-        print OO.parent.spots
-        print len(OO.parent.spots)
+        print(len(positions))
+        print(positions) # model-predicted positions
+        print(len(OO.parent.spots))
+        print(OO.parent.indexed_pairs)
+        print(OO.parent.spots)
+        print(len(OO.parent.spots))
         meas_spots = [OO.parent.spots[pair["spot"]] for pair in OO.parent.indexed_pairs]
   #      for xspot in meas_spots:
   #        xspot.ctr_mass_x(),xspot.ctr_mass_y()
@@ -395,7 +397,7 @@ class refinement(refinement_base):
         diff_vecs_sq = diff_vecs.dot(diff_vecs)
         mean_diff_vec_sq = flex.mean(diff_vecs_sq)
         rmsd = math.sqrt(mean_diff_vec_sq)
-        print "mean obs-pred diff vec on %d spots is %6.2f pixels"%(len(positions),rmsd)
+        print("mean obs-pred diff vec on %d spots is %6.2f pixels"%(len(positions),rmsd))
 
         positions_to_fictitious = [
               OO.ucbp3.simple_forward_calculation_spot_position(
@@ -407,7 +409,7 @@ class refinement(refinement_base):
         for p,xspot in zip(positions_to_fictitious, meas_spots):
           diff_vecs.append((p[0]-xspot.ctr_mass_y(), p[1]-xspot.ctr_mass_x(), 0.0))
         rmsd = diff_vecs.rms_length()
-        print "mean obs-pred_to_fictitious diff vec on %d spots is %6.2f pixels"%(len(positions),rmsd)
+        print("mean obs-pred_to_fictitious diff vec on %d spots is %6.2f pixels"%(len(positions),rmsd))
 
         """
         actually, it might be better if the entire set of experimental observations
@@ -431,11 +433,11 @@ class refinement(refinement_base):
           plt.axes().set_aspect("equal")
           plt.show()
 
-      print "MEAN excursion",flex.mean(final),
+      print("MEAN excursion",flex.mean(final), end=' ')
       if OO.mosaic_refinement_target=="ML":
-        print "mosaicity deg FW=",M.x[1]*180./math.pi
+        print("mosaicity deg FW=",M.x[1]*180./math.pi)
       else:
-        print
+        print()
       if OO.parent.horizons_phil.integration.mosaic.enable_AD14F7B: # Excursion vs resolution fit
         AD1TF7B_MAX2T = 30.
         AD1TF7B_MAXDP = 1.
@@ -449,7 +451,7 @@ class refinement(refinement_base):
         #LR.show_summary()
         model_y = LR.slope()*two_thetas + LR.y_intercept()
         plt.plot(two_thetas, model_y, "k-")
-        print helper.last_set_orientation.unit_cell()
+        print(helper.last_set_orientation.unit_cell())
         #for sdp,tw in zip (dspacings,two_thetas):
           #print sdp,tw
         if OO.mosaic_refinement_target=="ML":
@@ -504,7 +506,7 @@ class refinement(refinement_base):
       from matplotlib import pyplot as plt
       plt.figure()
       CS = plt.contour([i*0.02 for i in OO.grid],[i*0.02 for i in OO.grid], excursi.as_numpy_array())
-      plt.clabel(CS, inline=1, fontsize=10, fmt="%6.3f"+unichr(176))
+      plt.clabel(CS, inline=1, fontsize=10, fmt="%6.3f"+chr(176))
       plt.plot([minimum[1]*180./math.pi],[minimum[0]*180./math.pi], "r+")
       plt.title("Rms rotational excursion to reflection condition, degrees")
       plt.axes().set_aspect("equal")
@@ -559,13 +561,13 @@ class refinement2(refinement_base):
             for obsno in range(len(OO.parent.indexed_pairs))])
 
           rmsdexc = math.sqrt(flex.mean(displacements*displacements))
-          print "rotz %7.3f degrees, RMSD displacement %7.3f pixels"%(
-          (rotz * 180./math.pi), rmsdexc)
+          print("rotz %7.3f degrees, RMSD displacement %7.3f pixels"%(
+          (rotz * 180./math.pi), rmsdexc))
           return list(displacements)
 
       helper = per_frame_helper()
 
-      print "Trying least squares minimization of displacements",
+      print("Trying least squares minimization of displacements", end=' ')
 
       results = leastsq(
         func = helper.fvec_callable,
@@ -574,8 +576,8 @@ class refinement2(refinement_base):
         Dfun = None, #estimate the Jacobian
         full_output = True)
 
-      print "with %d reflections"%len(OO.parent.indexed_pairs),
-      print "result %6.2f degrees"%(results[0][0]*180./math.pi)
+      print("with %d reflections"%len(OO.parent.indexed_pairs), end=' ')
+      print("result %6.2f degrees"%(results[0][0]*180./math.pi))
       return results[0], helper.last_set_orientation
 
 def pre_get_predictions(inputai,horizons_phil,raw_image,imageindex,spotfinder,limiting_resolution,domain_size_ang=0):
@@ -589,8 +591,8 @@ def pre_get_predictions(inputai,horizons_phil,raw_image,imageindex,spotfinder,li
 
     ###  XXX  pass this in as a parameter
     bandpass = 1.E-3 # better 1.E-4 than 1.E-3 for fake_psI
-    print "THE GET-PREDICTIONS DOMAIN SIZE is %8.3f"%domain_size_ang,
-    print "FW mosaicity %7.2f deg"%inputai.getMosaicity()
+    print("THE GET-PREDICTIONS DOMAIN SIZE is %8.3f"%domain_size_ang, end=' ')
+    print("FW mosaicity %7.2f deg"%inputai.getMosaicity())
     wrapbp3.set_variables( orientation = inputai.getOrientation(),
                          wave_HI = inputai.wavelength * (1.-(bandpass/2.)),
                          wave_LO = inputai.wavelength * (1.+(bandpass/2.)),
@@ -614,9 +616,9 @@ def post_outlier_rejection(parent,image_number,cb_op_to_primitive,horizons_phil,
       horizons_phil.integration.mosaic.enable_rotational_target_highsym)
     if verbose: R.show_plot(excursions,positions,minimum)
     parent.inputai.setOrientation(minimum[1])
-    print "RDISTANCE %8.3f X %8.3f Y %8.3f A %8.3f C %8.3f"%(parent.inputai.distance(),
+    print("RDISTANCE %8.3f X %8.3f Y %8.3f A %8.3f C %8.3f"%(parent.inputai.distance(),
       parent.inputai.xbeam(),parent.inputai.ybeam(),minimum[1].unit_cell().parameters()[0],
-      minimum[1].unit_cell().parameters()[2])
+      minimum[1].unit_cell().parameters()[2]))
 
     # now refine rotz, unit cell, distance, beamxy
     refine2 = False
@@ -630,9 +632,9 @@ def post_outlier_rejection(parent,image_number,cb_op_to_primitive,horizons_phil,
       minimum = R2.refine_all()
 
       parent.inputai.setOrientation(minimum[1])
-      print "R2DISTANCE %8.3f X %8.3f Y %8.3f A %8.3f C %8.3f"%(parent.inputai.distance(),
+      print("R2DISTANCE %8.3f X %8.3f Y %8.3f A %8.3f C %8.3f"%(parent.inputai.distance(),
         parent.inputai.xbeam(),parent.inputai.ybeam(),minimum[1].unit_cell().parameters()[0],
-        minimum[1].unit_cell().parameters()[2])
+        minimum[1].unit_cell().parameters()[2]))
 
     # last refine rotx and roty
     R = refinement(parent,mosaic_refinement_target=horizons_phil.integration.mosaic.refinement_target,
@@ -662,16 +664,16 @@ def post_outlier_rejection(parent,image_number,cb_op_to_primitive,horizons_phil,
 
   if horizons_phil.integration.mosaic.enable_simplex:
     MIN = apply_simplex_method()
-    print "MINIMUM=",list(MIN.x)
+    print("MINIMUM=",list(MIN.x))
     minimum = MIN.minimum
   else:
     minimum = core_optimization(reserve_wavelength)
 
   if verbose: R.show_plot(excursions,positions,minimum)
   parent.inputai.setOrientation(minimum[1])
-  print "R3DISTANCE %8.3f X %8.3f Y %8.3f A %8.3f C %8.3f"%(parent.inputai.distance(),
+  print("R3DISTANCE %8.3f X %8.3f Y %8.3f A %8.3f C %8.3f"%(parent.inputai.distance(),
     parent.inputai.xbeam(),parent.inputai.ybeam(),minimum[1].unit_cell().parameters()[0],
-    minimum[1].unit_cell().parameters()[2])
+    minimum[1].unit_cell().parameters()[2]))
 
 
   kwargs["user-reentrant"]=True

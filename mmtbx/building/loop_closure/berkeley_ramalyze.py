@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from mmtbx.building.loop_closure.utils import list_rama_outliers_h
 from mmtbx.rotamer import ramachandran_eval
@@ -10,8 +10,8 @@ def run(args, log=sys.stdout):
       construct_hierarchy()
   r = ramachandran_eval.RamachandranEval()
   outp = list_rama_outliers_h(pdb_h, r.rama_eval)
-  print outp
-  print "END"
+  print(outp)
+  print("END")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

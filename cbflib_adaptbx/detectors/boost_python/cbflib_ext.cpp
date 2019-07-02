@@ -8,6 +8,10 @@
 #include <cbflib_adaptbx/detectors/boost_python/cbf_binary_adaptor.h>
 #include <cbflib_adaptbx/detectors/boost_python/general_cbf_write.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 namespace iotbx{
 namespace detectors{
 
@@ -20,7 +24,11 @@ bool assert_equal(scitbx::af::flex_int read1, scitbx::af::flex_int read2){
   return true;
 }
 
+#ifdef IS_PY3K
+PyObject* compressed_string(cbf_binary_adaptor& ada){
+#else
 boost::python::str compressed_string(cbf_binary_adaptor& ada){
+#endif
   //later, reorganize cbf_binary_adaptor so some of this code is in the class proper.
   ada.common_file_access();
 
@@ -33,11 +41,16 @@ boost::python::str compressed_string(cbf_binary_adaptor& ada){
   std::size_t sz_buffer = compressed_buffer.size();
 
   wrap_dee.copy_raw_compressed_string_to_buffer(buffer_begin, sz_buffer);
+#ifdef IS_PY3K
+  return PyBytes_FromStringAndSize(buffer_begin, sz_buffer);
+#else
   return boost::python::str(buffer_begin,sz_buffer);
+#endif
 }
 
-scitbx::af::flex_int uncompress(const boost::python::str& packed,const int& slow, const int& fast){
+scitbx::af::flex_int uncompress(const boost::python::object& packed,const int& slow, const int& fast){
 
+    // PY2/3: packed cannot be boost::python::str in py3 as that's assumed to be unicode
     std::string strpacked = boost::python::extract<std::string>(packed);
     std::size_t sz_buffer = strpacked.size();
 
@@ -52,13 +65,14 @@ scitbx::af::flex_int uncompress(const boost::python::str& packed,const int& slow
 }
 
 long int
-uncompress_sum_positive(const boost::python::str & packed,
+uncompress_sum_positive(const boost::python::object & packed,
                         const int & slow,
                         const int & fast,
                         const int & start,
                         const int & size)
 {
 
+    // PY2/3: packed cannot be boost::python::str in py3 as that's assumed to be unicode
     std::string all = boost::python::extract<std::string>(packed);
     std::string strpacked = all.substr(start, size);
     std::size_t sz_buffer = strpacked.size();
@@ -83,14 +97,21 @@ uncompress_sum_positive(const boost::python::str & packed,
     return total;
 }
 
+#ifdef IS_PY3K
+PyObject* compress(const scitbx::af::flex_int z){
+#else
 boost::python::str compress(const scitbx::af::flex_int z){
-
+#endif
     const int* begin = z.begin();
     std::size_t sz = z.size();
 
     std::vector<char> packed = iotbx::detectors::buffer_compress(begin, sz);
 
+#ifdef IS_PY3K
+    return PyBytes_FromStringAndSize(&*packed.begin(),packed.size());
+#else
     return boost::python::str(&*packed.begin(),packed.size());
+#endif
 }
 
 void

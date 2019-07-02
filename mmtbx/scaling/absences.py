@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.scaling
 from cctbx.array_family import flex
 from cctbx import crystal
@@ -7,6 +7,7 @@ from cctbx import miller
 from cctbx import sgtbx
 from libtbx import table_utils
 import math
+from six.moves import zip
 
 # name     hkl selector  condition
 absence_and_conditions = {
@@ -324,7 +325,7 @@ class conditions_for_operator(object):
     t = self.trans.as_double()
     id_string = str(self.type)+" "+str(self.ev)+" "+str(self.trans)
     op_name = "Non absent"
-    if symbol_from_string.has_key( id_string ):
+    if id_string in symbol_from_string:
       op_name = symbol_from_string[ id_string ]
     return op_name
 
@@ -338,7 +339,7 @@ class absences(object):
   def check(self, abs_type, hkl, return_bool=False ):
     # check if it is there
     message = "The reflection with index %s is "%(str(hkl))
-    if self.lib.has_key( abs_type ):
+    if abs_type in self.lib:
       mask, condition = self.lib[ abs_type ]
       mc = self.check_mask( hkl, mask )
       cc = self.check_condition(hkl, condition )
@@ -699,7 +700,7 @@ class protein_space_group_choices(mmtbx.scaling.xtriage_analysis):
           if tmp.absence_type() in self.absences_table.op_name:
             ii = self.absences_table.op_name.index( tmp.absence_type() )
             if tmp.absence_type() not in to_be_checked:
-              if equivs.has_key( tmp.absence_type() ):
+              if tmp.absence_type() in equivs:
                 if equivs[ tmp.absence_type() ] not in to_be_checked:
                   to_be_checked.append( tmp.absence_type() )
                   tmp_score = self.absences_table.score[ ii ]
@@ -871,7 +872,7 @@ def test():
     print i, "   ", j
   """
 
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   test()

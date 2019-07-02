@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 import libtbx.load_env
 import os.path
@@ -47,7 +47,7 @@ def exercise_01(prefix="tst_mi_mtz_01"):
       "n_macro=1",
       "debug=True",
       ">%s.log" % prefix])
-  print cmd
+  print(cmd)
   assert not easy_run.call(cmd)
   res_log = open("%s.log" % prefix, "r")
   log_lines = res_log.readlines()
@@ -65,8 +65,8 @@ def exercise_01(prefix="tst_mi_mtz_01"):
 if (__name__ == "__main__"):
   t0 = time.time()
   if (not libtbx.env.has_module(name="probe")):
-    print "Skipping: probe not configured"
+    print("Skipping: probe not configured")
   else:
     exercise_01()
-  print "Time: %.2f" % (time.time() - t0)
-  print "OK"
+  print("Time: %.2f" % (time.time() - t0))
+  print("OK")

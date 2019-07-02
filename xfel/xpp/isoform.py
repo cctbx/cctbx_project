@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 class phil_validation:
   def __init__(self,param):
@@ -20,7 +20,7 @@ class application(manager):
     self.db.commit()
 
   def connection(self):
-    print
+    print()
     if self.params.db.password is None:
       import getpass
       password = getpass.getpass()
@@ -38,7 +38,7 @@ class application(manager):
 
       return db
     except Exception as e:
-      print e
+      print(e)
       raise RuntimeError("Couldn't connect to mysql database")
 
   def insert_isoform(self, **kwargs):
@@ -59,7 +59,7 @@ class application(manager):
 
     self.cursor.execute(sql, parameters[0])
     self._lastrowid = self.cursor.lastrowid
-    print "isoformID=",self._lastrowid
+    print("isoformID=",self._lastrowid)
 
   def insert_hkl(self):
     kwargs = {}
@@ -80,4 +80,4 @@ class application(manager):
       query.write("('%d','%d','%d','%d')"%(item[0],item[1],item[2],self._lastrowid))
     self.cursor.execute( query.getvalue() )
 
-    print "Inserted %d HKLs"%(len(indices))
+    print("Inserted %d HKLs"%(len(indices)))

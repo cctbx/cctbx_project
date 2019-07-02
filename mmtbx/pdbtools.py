@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from cctbx import crystal
 from mmtbx.refinement import rigid_body
@@ -336,7 +336,7 @@ class modify(object):
       sel = ~asc.selection(self.params.remove)
       self.pdb_hierarchy = self.pdb_hierarchy.select(sel)
       s2 = self.pdb_hierarchy.atoms_size()
-      print >> self.log, "Size before:", s1, "size after:", s2
+      print("Size before:", s1, "size after:", s2, file=self.log)
     if(self.params.keep is not None):
       asc = self.pdb_hierarchy.atom_selection_cache(
         special_position_settings=crystal.special_position_settings(
@@ -344,23 +344,23 @@ class modify(object):
       sel = asc.selection(self.params.keep)
       self.pdb_hierarchy = self.pdb_hierarchy.select(sel)
       s2 = self.pdb_hierarchy.atoms_size()
-      print >> self.log, "Size before:", s1, "size after:", s2
+      print("Size before:", s1, "size after:", s2, file=self.log)
 
   def _change_of_basis(self):
     if(self.params.change_of_basis is not None):
-      print >> self.log, "Applying change-of-basis operator '%s'" % \
-        self.params.change_of_basis
+      print("Applying change-of-basis operator '%s'" % \
+        self.params.change_of_basis, file=self.log)
       from cctbx import sgtbx
       cb_op = sgtbx.change_of_basis_op(self.params.change_of_basis)
       self.xray_structure = self.xray_structure.change_basis(cb_op)
       self.pdb_hierarchy.atoms().set_xyz(self.xray_structure.sites_cart())
-      print >> self.log, "New symmetry:"
+      print("New symmetry:", file=self.log)
       self.xray_structure.crystal_symmetry().show_summary(f=self.log, prefix="  ")
       self.crystal_symmetry = self.xray_structure.crystal_symmetry()
 
   def _move_waters(self):
     if(self.params.move_waters_last):
-      print >> self.log, "Moving waters to end of model"
+      print("Moving waters to end of model", file=self.log)
       if (len(self.pdb_hierarchy.models()) > 1):
         raise Sorry("Rearranging water molecules is not supported for "+
           "multi-MODEL structures.")
@@ -370,9 +370,9 @@ class modify(object):
       water_sel = sel_cache.selection("resname HOH or resname WAT") # BAD XXX
       n_waters = water_sel.count(True)
       if (n_waters == 0):
-        print >> self.log, "No waters found, skipping"
+        print("No waters found, skipping", file=self.log)
       else :
-        print >> self.log, "%d atoms will be moved." % n_waters
+        print("%d atoms will be moved." % n_waters, file=self.log)
         hierarchy_water = self.pdb_hierarchy.select(water_sel)
         hierarchy_non_water = self.pdb_hierarchy.select(~water_sel)
         for chain in hierarchy_water.only_model().chains():
@@ -381,24 +381,24 @@ class modify(object):
 
   def _remove_alt_confs(self):
     if(self.params.remove_alt_confs):
-      print >> self.log, "Remove altlocs"
+      print("Remove altlocs", file=self.log)
       always_keep_one_conformer = self.params.always_keep_one_conformer
       self.pdb_hierarchy.remove_alt_confs(
         always_keep_one_conformer = self.params.always_keep_one_conformer)
 
   def _truncate_to_poly_gly(self):
     if(self.params.truncate_to_polygly):
-      print >> self.log, "Truncate to poly-gly"
+      print("Truncate to poly-gly", file=self.log)
       self.pdb_hierarchy.truncate_to_poly_gly()
 
   def _truncate_to_poly_ala(self):
     if(self.params.truncate_to_polyala):
-      print >> self.log, "Truncate to poly-ala"
+      print("Truncate to poly-ala", file=self.log)
       self.pdb_hierarchy.truncate_to_poly_ala()
 
   def _set_atomic_charge(self):
     if(self.params.set_charge.charge_selection is not None):
-      print >> self.log, "Setting atomic charge"
+      print("Setting atomic charge", file=self.log)
       selection = self.params.set_charge.charge_selection
       charge    = self.params.set_charge.charge
       sel_cache = self.pdb_hierarchy.atom_selection_cache(
@@ -409,18 +409,18 @@ class modify(object):
 
   def _convert_met_to_semet(self):
     if(self.params.convert_met_to_semet):
-      print >> self.log, "Convert MET->MSE"
+      print("Convert MET->MSE", file=self.log)
       self.pdb_hierarchy.convert_met_to_semet()
 
   def _convert_semet_to_met(self):
     if(self.params.convert_semet_to_met):
-      print >> self.log, "Convert MSE->MET"
+      print("Convert MSE->MET", file=self.log)
       self.pdb_hierarchy.convert_semet_to_met()
 
   def _renumber_residues(self):
     if((self.params.increment_resseq) or
        (self.params.renumber_residues)):
-      print >> self.log, "Re-numbering residues"
+      print("Re-numbering residues", file=self.log)
       renumber_from  = self.params.increment_resseq
       atom_selection = self.params.selection
       pdb_hierarchy  = self.pdb_hierarchy
@@ -438,7 +438,7 @@ class modify(object):
             if (len(intersection) == 0):
               continue
             elif (len(intersection) != len(chain_i_seqs)):
-              print >> self.log, "Warning: chain '%s' is only partially selected (%d out of %d) - will not renumber." % (chain.id, len(intersection), len(chain_i_seqs))
+              print("Warning: chain '%s' is only partially selected (%d out of %d) - will not renumber." % (chain.id, len(intersection), len(chain_i_seqs)), file=self.log)
               continue
           if (renumber_from is None):
             counter = 1
@@ -454,16 +454,16 @@ class modify(object):
   def _rename_chain_id(self):
     if([self.params.rename_chain_id.old_id,
        self.params.rename_chain_id.new_id].count(None)==0):
-      print >> self.log, "Rename chain id"
-      print >> self.log, "old_id= '%s'"%self.params.rename_chain_id.old_id
-      print >> self.log, "new_id= '%s'"%self.params.rename_chain_id.new_id
+      print("Rename chain id", file=self.log)
+      print("old_id= '%s'"%self.params.rename_chain_id.old_id, file=self.log)
+      print("new_id= '%s'"%self.params.rename_chain_id.new_id, file=self.log)
       self.pdb_hierarchy.rename_chain_id(
         old_id = self.params.rename_chain_id.old_id,
         new_id = self.params.rename_chain_id.new_id)
 
   def _set_chemical_element_simple_if_necessary(self):
     if(self.params.set_chemical_element_simple_if_necessary):
-      print >> self.log, "Set chemical element"
+      print("Set chemical element", file=self.log)
       self.pdb_hierarchy.atoms().set_chemical_element_simple_if_necessary()
 
   def _remove_atoms(self):
@@ -479,8 +479,8 @@ class modify(object):
       self.xray_structure.replace_scatterers(result.scatterers())
 
   def _print_action(self, text, selection):
-    print >> self.log, "%s: selected atoms: %s" % (
-      text, selection.format_summary())
+    print("%s: selected atoms: %s" % (
+      text, selection.format_summary()), file=self.log)
 
   def _process_adp(self):
     for adp in self.params.adp:

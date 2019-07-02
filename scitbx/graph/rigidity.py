@@ -1,5 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import random
+from six.moves import range
+from six.moves import zip
 
 def gcd(a, b):
   ri = a
@@ -30,7 +32,7 @@ def integer_row_echelon_form(m):
   while (piv_c < n_cols):
     best_r = None
     min_v = 0
-    for i_row in xrange(piv_r, n_rows):
+    for i_row in range(piv_r, n_rows):
       v = abs(m[i_row][piv_c])
       if (v != 0 and (min_v == 0 or v < min_v)):
         min_v = v
@@ -39,15 +41,15 @@ def integer_row_echelon_form(m):
       if (best_r != piv_r):
         m[piv_r], m[best_r] = m[best_r], m[piv_r]
       fp = m[piv_r][piv_c]
-      for r in xrange(piv_r+1, n_rows):
+      for r in range(piv_r+1, n_rows):
         fr = m[r][piv_c]
         if (fr == 0): continue
         g = 0
-        for c in xrange(piv_c, n_cols):
+        for c in range(piv_c, n_cols):
           m[r][c] = m[r][c] * fp - m[piv_r][c] * fr
           g = gcd(m[r][c], g)
         if (g > 1):
-          for c in xrange(piv_c, n_cols):
+          for c in range(piv_c, n_cols):
             m[r][c] //= g
       piv_r += 1
     else:
@@ -68,7 +70,7 @@ def float_row_echelon_form(
     # search for best pivot
     best_r = None
     max_v = zero_pivot_tolerance
-    for i_row in xrange(piv_r, n_rows):
+    for i_row in range(piv_r, n_rows):
       v = abs(m[i_row][piv_c])
       if (v > max_v):
         max_v = v
@@ -79,10 +81,10 @@ def float_row_echelon_form(
       if (best_r != piv_r):
         m[piv_r], m[best_r] = m[best_r], m[piv_r]
       fp = m[piv_r][piv_c]
-      for r in xrange(piv_r+1, n_rows):
+      for r in range(piv_r+1, n_rows):
         fr = m[r][piv_c]
         if (fr == 0): continue
-        for c in xrange(piv_c, n_cols):
+        for c in range(piv_c, n_cols):
           m[r][c] -= m[piv_r][c] * fr / fp
       piv_r += 1
     else:
@@ -110,7 +112,7 @@ def float_row_echelon_form_is_redundant(
       return None
     return False
   piv_c = 0
-  for piv_r in xrange(n_cols-len(free_vars)):
+  for piv_r in range(n_cols-len(free_vars)):
     while (free_flags[piv_c]):
       az = approx_zero(c=piv_c)
       if (not az): return az
@@ -118,10 +120,10 @@ def float_row_echelon_form_is_redundant(
     fp = m[piv_r][piv_c]
     fr = addl_row[piv_c]
     if (fr != 0):
-      for c in xrange(piv_c, n_cols):
+      for c in range(piv_c, n_cols):
         addl_row[c] -= m[piv_r][c] * fr / fp
     piv_c += 1
-  for c in xrange(piv_c, n_cols):
+  for c in range(piv_c, n_cols):
     az = approx_zero(c=c)
     if (not az): return az
   return True
@@ -136,27 +138,27 @@ def float_row_echelon_form_back_substitution(m, free_vars, sol):
   piv_cols = []
   for c,f in enumerate(free_flags):
     if (not f): piv_cols.append(c)
-  for r in xrange(len(piv_cols)-1,-1,-1):
+  for r in range(len(piv_cols)-1,-1,-1):
     piv_c = piv_cols[r]
     s = 0
-    for c in xrange(piv_c+1, n_cols):
+    for c in range(piv_c+1, n_cols):
       s += m[r][c] * sol[c]
     sol[piv_c] = -s / m[r][piv_c]
 
 def create_fake_integer_vertices(n_dim, n_vertices):
   # Idea due to Neil Sloane
   assert n_vertices != 0
-  v0 = range(2,2+n_dim)
+  v0 = list(range(2,2+n_dim))
   result = [v0]
   while (len(result) != n_vertices):
     vertex = []
-    for i in xrange(n_dim):
+    for i in range(n_dim):
       vertex.append(v0[i] * result[-1][i])
     result.append(vertex)
   # Shuffle coordinates. Required to obtain correct result for
   # "K6,6 minus six parallel edges" (Figure 3.23 of J.E. Graver,
   # Counting on Frameworks, 2001).
-  for i in xrange(len(result)):
+  for i in range(len(result)):
     vertex = result[i]
     j = i % n_dim
     result[i] = vertex[j:] + vertex[:j]
@@ -167,7 +169,7 @@ def create_fake_float_vertices(n_dim, n_vertices, max_coordinate=1.e4):
   result = []
   while (len(result) != n_vertices):
     vertex = []
-    for i in xrange(n_dim):
+    for i in range(n_dim):
       vertex.append(random.random()*max_coordinate)
     result.append(vertex)
   return result
@@ -182,7 +184,7 @@ def construct_numeric_rigidity_matrix(n_dim, vertices, edge_list):
     dij = [vi-vj for vi,vj in zip(vertices[i], vertices[j])]
     def copy_to_row(c, sign):
       c *= n_dim
-      for d in xrange(n_dim):
+      for d in range(n_dim):
         row[c+d] = sign * dij[d]
     copy_to_row(c=i, sign= 1)
     copy_to_row(c=j, sign=-1)
@@ -304,9 +306,9 @@ def example():
   n_vertices = 8
   edge_list = double_banana_edge_list
   for method in ["integer", "float"]:
-    print "double banana 3D dof (method=%s):" % method, \
+    print("double banana 3D dof (method=%s):" % method, \
       determine_degrees_of_freedom(
-        n_dim=3, n_vertices=n_vertices, edge_list=edge_list, method=method)
+        n_dim=3, n_vertices=n_vertices, edge_list=edge_list, method=method))
 
 if (__name__ == "__main__"):
   example()

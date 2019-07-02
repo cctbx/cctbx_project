@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import miller
 from cctbx import maptbx
 import mmtbx.masks
@@ -60,7 +60,7 @@ class target_map(object):
 # COMPLETE REMOVAL.
 #
 #
-#from __future__ import division
+#from __future__ import absolute_import, division, print_function
 #import mmtbx.monomer_library.pdb_interpretation
 #import iotbx.mtz
 #import iotbx.phil, libtbx.phil
@@ -107,8 +107,8 @@ class target_map(object):
 #        selection=flex.bool(sites_cart_delta.size(),True))
 #      fs.append(rs_f)
 #    result.append((fs[0]-fs[1])/(2*delta))
-#  for i in xrange(4): get(i=i, delta=unit_quaternion_delta)
-#  for i in xrange(3): get(i=i+4, delta=translation_delta)
+#  for i in range(4): get(i=i, delta=unit_quaternion_delta)
+#  for i in range(3): get(i=i+4, delta=translation_delta)
 #  return result
 #
 #class residue_refine_constrained(object):
@@ -918,7 +918,7 @@ class target_map(object):
 #    rstw_list = [work_params.real_space_target_weight]
 #  else:
 #    rstw_list = [rstw_params.first_sample + i * rstw_params.sampling_step
-#      for i in xrange(rstw_params.number_of_samples)]
+#      for i in range(rstw_params.number_of_samples)]
 #  lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
 #    max_iterations=work_params.coordinate_refinement
 #      .lbfgs_max_iterations)
@@ -1022,7 +1022,7 @@ class target_map(object):
 #      number_of_fgm_cycles = 0
 #      rstw = best_info.rstw * fgm_params.first_weight_scale
 #      sites_cart_start = best_info.refined.sites_cart.deep_copy()
-#      for i_cycle in xrange(fgm_params.cycles_max):
+#      for i_cycle in range(fgm_params.cycles_max):
 #        fgm_refined = maptbx.real_space_refinement_simple.lbfgs(
 #          sites_cart=sites_cart_start,
 #          density_map=density_map,

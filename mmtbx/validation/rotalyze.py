@@ -1,10 +1,11 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import residue, validation
 from mmtbx.validation import graphics
 from iotbx import data_plots
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
+from past.builtins import cmp
 import os, sys
 
 OUTLIER_THRESHOLD = 0.003
@@ -79,7 +80,8 @@ class rotamer_ensemble(residue):
     for rot_id in set(self.rotamer_name):
       n_rotamer = self.rotamer_name.count(rot_id)
       rotamers.append((rot_id, n_rotamer))
-    return sorted(rotamers, lambda a,b: cmp(b[1], a[1]))
+    cmp_fn = lambda a,b: cmp(b[1], a[1])
+    return sorted(rotamers, key=cmp_to_key(cmp_fn))
 
   def as_string(self):
     rotamers = self.rotamer_frequencies()
@@ -154,8 +156,8 @@ class rotalyze(validation):
               if show_errors:
                 kwargs['incomplete'] = True
                 result = rotamer(**kwargs)
-                print >> out, '%s is missing some sidechain atoms' % \
-                  result.id_str()
+                print('%s is missing some sidechain atoms' % \
+                  result.id_str(), file=out)
                 self.results.append(result)
               continue
             if (chis is not None):
@@ -205,8 +207,8 @@ class rotalyze(validation):
       return "OUTLIER"
 
   def show_summary(self, out=sys.stdout, prefix=""):
-    print >> out, prefix + 'SUMMARY: %.2f%% outliers (Goal: %s)' % \
-      (self.out_percent, self.get_outliers_goal())
+    print(prefix + 'SUMMARY: %.2f%% outliers (Goal: %s)' % \
+      (self.out_percent, self.get_outliers_goal()), file=out)
 
   def get_outliers_goal(self):
 #   if self.data_version == '500' : return "< 1%"

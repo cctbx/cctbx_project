@@ -1,13 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.graph.tardy_tree import cluster_manager, find_paths, construct
 from scitbx.graph.utils import construct_edge_sets
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, show_diff
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
-from StringIO import StringIO
+from six.moves import range
+from six.moves import cPickle as pickle
+from six.moves import cStringIO as StringIO
 import sys
 
 def random_permutation(s):
@@ -19,18 +17,18 @@ def exercise_cluster_manager():
   assert cm.cluster_indices == []
   assert cm.clusters == []
   cm = cluster_manager(n_vertices=5)
-  for p in xrange(2):
+  for p in range(2):
     assert cm.cluster_indices == [0,1,2,3,4]
     assert cm.clusters == [[0],[1],[2],[3],[4]]
     cm.connect_vertices(i=0, j=0, optimize=True)
-  for p in xrange(2):
+  for p in range(2):
     cm.connect_vertices(i=1, j=3, optimize=True)
     assert cm.cluster_indices == [0,1,2,1,4]
     assert cm.clusters == [[0],[1,3],[2],[],[4]]
-  for p in xrange(2):
+  for p in range(2):
     cm.connect_vertices(i=0, j=3, optimize=True)
     assert cm.cluster_indices == [1,1,2,1,4]
-    for q in xrange(2):
+    for q in range(2):
       assert cm.clusters == [[],[1,3,0],[2],[],[4]]
       cm.refresh_indices()
   cm.connect_vertices(i=2, j=4, optimize=True)
@@ -506,25 +504,25 @@ test_cases = [
 
 def exercise_test_cases(out):
   for i_tc,tc in enumerate(test_cases):
-    print >> out, "test_case index:", i_tc
-    print >> out, tc.art
+    print("test_case index:", i_tc, file=out)
+    print(tc.art, file=out)
     tc_c1, tc_he1, tc_r1, tc_tid1, tc_le1, tc_leb1, \
     tc_c2, tc_he2, tc_le2, tc_leb2 = \
       tc.clusters1, tc.hinge_edges1, \
       tc.roots1, tc.tree_ids1, tc.loop_edges1, tc.loop_edge_bendings1, \
       tc.clusters1, tc.hinge_edges1, tc.loop_edges1, tc.loop_edge_bendings1
     def assert_same(label, have, expected):
-      print >> out, label, have
+      print(label, have, file=out)
       if (expected is not None):
         if (have != expected):
-          print >> out, "expected:", expected
+          print("expected:", expected, file=out)
         assert have == expected, "Note: --verbose for details"
     #
     tt = construct(n_vertices=tc.n_vertices, edge_list=tc.edge_list)
     cm = tt.cluster_manager
     assert_same("c1:", cm.clusters, tc_c1)
     cm.construct_spanning_trees(edge_sets=tt.edge_sets)
-    print >> out, "c1t:", cm.clusters
+    print("c1t:", cm.clusters, file=out)
     assert_same("he1:", cm.hinge_edges, tc_he1)
     assert_same("le1:", cm.loop_edges, tc_le1)
     r = cm.roots()
@@ -539,22 +537,22 @@ def exercise_test_cases(out):
     cm.merge_clusters_with_multiple_connections(edge_sets=tt.edge_sets)
     assert_same("c2:", cm.clusters, tc_c2)
     cm.construct_spanning_trees(edge_sets=tt.edge_sets)
-    print >> out, "c2t:", cm.clusters
+    print("c2t:", cm.clusters, file=out)
     assert_same("he2:", cm.hinge_edges, tc_he2)
     assert_same("le2:", cm.loop_edges, tc_le2)
     cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
     assert_same("leb2:", cm.loop_edge_bendings, tc_leb2)
     #
     fp = find_paths(edge_sets=tt.edge_sets)
-    for iv in xrange(len(tt.edge_sets)):
+    for iv in range(len(tt.edge_sets)):
       fp.search_from(iv=iv)
     #
-    print >> out
+    print(file=out)
 
 def exercise_pdb_test_cases(out):
   from scitbx.graph import test_cases_tardy_pdb
   for i_tc,tc in enumerate(test_cases_tardy_pdb.test_cases):
-    print >> out, "test_cases_tardy_pdb index:", i_tc
+    print("test_cases_tardy_pdb index:", i_tc, file=out)
     tc.tardy_tree_construct()
 
 def exercise_special_case_ZINC03847121():
@@ -692,7 +690,7 @@ END
     assert tt.external_clusters_connect_count == expected_count
   for external_clusters,expected_clusters,expected_count in expected:
     if (external_clusters is None): external_clusters = []
-    for i_trial in xrange(n_trials):
+    for i_trial in range(n_trials):
       tt = construct(
         n_vertices=9,
         edge_list=random_permutation(edge_list),
@@ -744,20 +742,20 @@ def exercise_fixed_vertices(n_trials=10):
     [11], [20]]
   try:
     tc.tardy_tree_construct(fixed_vertex_lists=[[0],[1]])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "connect_clusters(): fixed vertex lists in same connected tree."
   else: raise Exception_expected
   try:
     tc.tardy_tree_construct(fixed_vertex_lists=[[0],[10]])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "determine_weighted_order_for_construct_spanning_tree():" \
       " fixed vertex lists in same connected tree."
   else: raise Exception_expected
   try:
     tc.tardy_tree_construct(fixed_vertex_lists=[[0],[11]])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "construct_spanning_trees():" \
       " fixed vertex lists in same connected tree."
@@ -771,9 +769,9 @@ def exercise_fixed_vertices(n_trials=10):
     cl = cm.clusters
     ti = cm.tree_ids()
     assert ti[0] != ti[-1]
-    for lfvl0 in xrange(1,len(cl[0])+1):
-      for lfvl1 in xrange(1,len(cl[-1])+1):
-        for i_trial in xrange(n_trials):
+    for lfvl0 in range(1,len(cl[0])+1):
+      for lfvl1 in range(1,len(cl[-1])+1):
+        for i_trial in range(n_trials):
           fvl0 = random_permutation(cl[0])[:lfvl0]
           fvl1 = random_permutation(cl[-1])[:lfvl1]
           ttf = construct(
@@ -933,7 +931,7 @@ def exercise_pickle():
   else: raise Exception_expected
   ts = StringIO()
   tt.show_summary(vertex_labels=None, out=ts)
-  for protocol in xrange(pickle.HIGHEST_PROTOCOL):
+  for protocol in range(pickle.HIGHEST_PROTOCOL):
     s = pickle.dumps(tt, protocol)
     l = pickle.loads(s)
     ls = StringIO()
@@ -997,7 +995,7 @@ def run(args):
   exercise_pickle()
   exercise_rmsd_calculation()
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

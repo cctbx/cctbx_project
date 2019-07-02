@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.kriber import strudat
 from cctbx import crystal
 import cctbx.crystal.coordination_sequences
 from iotbx.option_parser import iotbx_option_parser
 import libtbx.load_env
 import sys, os
+from six.moves import zip
 
 def exercise_simple(structure, distance_cutoff, max_shell, verbose):
   asu_mappings = structure.asu_mappings(
@@ -27,21 +28,21 @@ def exercise_simple(structure, distance_cutoff, max_shell, verbose):
     site_symmetry_table=site_symmetry_table,
     max_shell=max_shell)
   if (verbose):
-    print "term_table_slow:"
+    print("term_table_slow:")
     cctbx.crystal.coordination_sequences.show_terms(
       structure=structure,
       term_table=term_table_slow)
-    print
-    print "term_table_simple_asu:"
+    print()
+    print("term_table_simple_asu:")
     cctbx.crystal.coordination_sequences.show_terms(
       structure=structure,
       term_table=term_table_simple_asu)
-    print
-    print "term_table_simple_sym:"
+    print()
+    print("term_table_simple_sym:")
     cctbx.crystal.coordination_sequences.show_terms(
       structure=structure,
       term_table=term_table_simple_sym)
-    print
+    print()
   for term_table_simple in [term_table_simple_asu, term_table_simple_sym]:
     for terms_slow,terms_simple in zip(term_table_slow, term_table_simple):
       assert terms_slow == list(terms_simple)
@@ -65,28 +66,28 @@ def exercise_shell_asu_tables(structure, verbose):
   have_redundancies = False
   for o_pst,t_pst in zip(shell_sym_tables_orig[1:], shell_sym_tables[1:]):
     for o_pair_sym_dict,t_pair_sym_dict in zip(o_pst, t_pst):
-      assert o_pair_sym_dict.keys() == t_pair_sym_dict.keys()
+      assert list(o_pair_sym_dict.keys()) == list(t_pair_sym_dict.keys())
       if (verbose and not have_redundancies):
         for j_seq,o_sym_ops in o_pair_sym_dict.items():
           t_sym_ops = t_pair_sym_dict[j_seq]
           if (len(t_sym_ops) != len(o_sym_ops)):
             have_redundancies = True
   if (have_redundancies):
-    print "crystal.coordination_sequences.shell_sym_tables redundancies:"
-    print "original:"
+    print("crystal.coordination_sequences.shell_sym_tables redundancies:")
+    print("original:")
     o_pst.show()
-    print
-    print "tidy:"
+    print()
+    print("tidy:")
     t_pst.show()
-    print
+    print()
   for shell_asu_table,shell_sym_table in zip(
         shell_asu_tables, shell_sym_tables):
     if (0 or verbose):
       pairs_1 = structure.show_distances(pair_asu_table=shell_asu_table) \
         .distances_info
-      print list(pairs_1.pair_counts)
+      print(list(pairs_1.pair_counts))
       assert pairs_1.pair_counts == shell_asu_table.pair_counts()
-      print
+      print()
     sym_table = shell_asu_table.extract_pair_sym_table(
       skip_j_seq_less_than_i_seq=False)
     asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
@@ -94,14 +95,14 @@ def exercise_shell_asu_tables(structure, verbose):
     if (0 or verbose):
       pairs_2 = structure.show_distances(pair_asu_table=asu_table) \
         .distances_info
-      print list(pairs_2.pair_counts)
+      print(list(pairs_2.pair_counts))
       assert pairs_2.pair_counts == asu_table.pair_counts()
-      print
+      print()
       assert pairs_1.pair_counts.all_eq(pairs_2.pair_counts)
     assert asu_table == shell_asu_table
     shell_sym_from_asu_table = shell_asu_table.extract_pair_sym_table() \
       .tidy(site_symmetry_table=site_symmetry_table)
-    from cStringIO import StringIO
+    from six.moves import cStringIO as StringIO
     sio_sym = StringIO()
     shell_sym_table.show(f=sio_sym)
     sio_asu = StringIO()
@@ -124,7 +125,7 @@ def exercise(args, distance_cutoff=3.5, max_shell=5):
     relative_path="phenix_regression/misc/strudat_zeolite_atlas",
     test=os.path.isfile)
   if (atlas_file is None):
-    print "Skipping exercise(): input file not available"
+    print("Skipping exercise(): input file not available")
     return
   all_entries = strudat.read_all_entries(open(atlas_file))
   for i,entry in enumerate(all_entries.entries):
@@ -135,14 +136,14 @@ def exercise(args, distance_cutoff=3.5, max_shell=5):
     elif (not (co.full or i % 20 == 0)):
       continue
     if (co.verbose):
-      print "strudat tag:", entry.tag
+      print("strudat tag:", entry.tag)
     exercise_simple(
       structure, distance_cutoff, max_shell, co.verbose)
     exercise_shell_asu_tables(structure, co.verbose)
 
 def run():
   exercise(sys.argv[1:])
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

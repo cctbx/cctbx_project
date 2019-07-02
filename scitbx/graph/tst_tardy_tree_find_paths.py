@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.graph.tardy_tree import find_paths, construct
 from scitbx.graph import rigidity
 from scitbx.graph import utils
 import sys
+from six.moves import range
 
 def exercise_minimal():
   edge_sets = utils.construct_edge_sets(n_vertices=1, edge_list=[])
@@ -12,18 +13,18 @@ def exercise_minimal():
     assert find_paths(edge_sets=edge_sets).search_from(iv=iv) == ({}, {})
 
 def exercise_simple_loops(loop_size_max=10):
-  for n_vertices in xrange(3, loop_size_max+1):
+  for n_vertices in range(3, loop_size_max+1):
     edge_list = [tuple(sorted((i,(i+1)%n_vertices)))
-      for i in xrange(n_vertices)]
+      for i in range(n_vertices)]
     edge_sets = utils.construct_edge_sets(
       n_vertices=n_vertices, edge_list=edge_list)
     loops, dendrites = find_paths(edge_sets=edge_sets).search_from(iv=0)
     if (n_vertices <= 7):
       assert len(loops) == 2
-      assert sorted(dendrites.keys()) == range(1,n_vertices)
+      assert sorted(dendrites.keys()) == list(range(1,n_vertices))
     else:
       assert len(loops) == 0
-      assert sorted(dendrites.keys()) == range(2,n_vertices-1)
+      assert sorted(dendrites.keys()) == list(range(2,n_vertices-1))
     if (n_vertices == 3):
       assert loops == {1: [[2]], 2: [[1]]}
       assert dendrites == {1: [set([2])], 2: [set([1])]}
@@ -41,14 +42,14 @@ def exercise_knot():
     ({2: [[3]], 3: [[2]]}, {2: [set([3])], 3: [set([2])]}),
     ({1: [[3]], 3: [[1]]}, {0: [set([1])], 1: [set([3])], 3: [set([1])]}),
     ({1: [[2]], 2: [[1]]}, {0: [set([1])], 1: [set([2])], 2: [set([1])]})]
-  for iv in xrange(4):
+  for iv in range(4):
     loop_dendrites = find_paths(edge_sets=edge_sets).search_from(iv=iv)
     assert loop_dendrites == expected_loops_dendrites[iv]
 
 def archs_grow_edge_list(edge_list, offs, size, av=0, bv=1):
   result = list(edge_list)
   i = av
-  for j in xrange(offs, offs+size):
+  for j in range(offs, offs+size):
     result.append((i,j))
     i = j
   result.append((bv,i))
@@ -65,10 +66,10 @@ def arch_dof(n_vertices, edge_list):
   return es, dofs[0]
 
 def exercise_fused_loops(arch_size_max=8):
-  for arch_size_1 in xrange(1, arch_size_max+1):
+  for arch_size_1 in range(1, arch_size_max+1):
     edge_list_1 = archs_grow_edge_list(
       [(0,1)], 2, arch_size_1)
-    for arch_size_2 in xrange(1, arch_size_max+1):
+    for arch_size_2 in range(1, arch_size_max+1):
       n_vertices = 2 + arch_size_1 + arch_size_2
       edge_list_12 = archs_grow_edge_list(
         edge_list_1, 2+arch_size_1, arch_size_2)
@@ -86,13 +87,13 @@ def exercise_fused_loops(arch_size_max=8):
       assert inferred_is_rigid == is_rigid
 
 def exercise_three_archs(arch_size_max=8):
-  for arch_size_1 in xrange(1, arch_size_max+1):
+  for arch_size_1 in range(1, arch_size_max+1):
     edge_list_1 = archs_grow_edge_list(
       [], 2, arch_size_1)
-    for arch_size_2 in xrange(1, arch_size_max+1):
+    for arch_size_2 in range(1, arch_size_max+1):
       edge_list_12 = archs_grow_edge_list(
         edge_list_1, 2+arch_size_1, arch_size_2)
-      for arch_size_3 in xrange(1, arch_size_max+1):
+      for arch_size_3 in range(1, arch_size_max+1):
         n_vertices = 2 + arch_size_1 + arch_size_2 + arch_size_3
         edge_list_123 = archs_grow_edge_list(
           edge_list_12, 2+arch_size_1+arch_size_2, arch_size_3)
@@ -121,7 +122,7 @@ def run(args):
   exercise_knot()
   exercise_fused_loops()
   exercise_three_archs()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

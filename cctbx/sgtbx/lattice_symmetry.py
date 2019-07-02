@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
 group = sgtbx.lattice_symmetry_group
 find_max_delta = sgtbx.lattice_symmetry_find_max_delta
@@ -95,7 +95,7 @@ class metric_subgroups:
         cb_op_corr = cb_op_inp_best.inverse()
         try:
           best_subsym_corr = best_subsym.change_basis(cb_op_corr)
-        except RuntimeError, e:
+        except RuntimeError as e:
           if (str(e).find("Unsuitable value for rational rotation matrix.") < 0):
             raise
         else:
@@ -116,33 +116,33 @@ class metric_subgroups:
       best_monoclinic_beta=self.best_monoclinic_beta)
 
   def show_input(self):
-    print
-    print "Input"
-    print "====="
-    print
+    print()
+    print("Input")
+    print("=====")
+    print()
     self.input_symmetry.show_summary()
-    print
-    print "Angular tolerance: %.3f degrees" % self.max_delta
-    print
-    print "Similar symmetries"
-    print "=================="
-    print
+    print()
+    print("Angular tolerance: %.3f degrees" % self.max_delta)
+    print()
+    print("Similar symmetries")
+    print("==================")
+    print()
 
   def show_groups(self):
     # Loop sub-groups in sorted order
     for item in self.result_groups:
       item['subsym'].space_group_info().show_summary(
         prefix="Symmetry in minimum-lengths cell: ")
-      print "      Input minimum-lengths cell:", self.minimum_symmetry.unit_cell()
-      print "           Symmetry-adapted cell:", item['subsym'].unit_cell()
+      print("      Input minimum-lengths cell:", self.minimum_symmetry.unit_cell())
+      print("           Symmetry-adapted cell:", item['subsym'].unit_cell())
       item['best_subsym'].space_group_info().show_summary(
         prefix="            Conventional setting: ")
-      print "                       Unit cell:", item['best_subsym'].unit_cell()
-      print "                 Change of basis:", item['cb_op_inp_best'].c()
-      print "                         Inverse:", item['cb_op_inp_best'].c_inv()
-      print "      Maximal angular difference: %.3f degrees" % (
-        item['max_angular_difference'])
-      print
+      print("                       Unit cell:", item['best_subsym'].unit_cell())
+      print("                 Change of basis:", item['cb_op_inp_best'].c())
+      print("                         Inverse:", item['cb_op_inp_best'].c_inv())
+      print("      Maximal angular difference: %.3f degrees" % (
+        item['max_angular_difference']))
+      print()
 
   def show(self):
     self.show_input()

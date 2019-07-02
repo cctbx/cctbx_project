@@ -1,0 +1,47 @@
+# Script for building CCTBX
+
+jobs:
+- job: syntax
+  pool:
+    vmImage: ubuntu-16.04
+  timeoutInMinutes: 360
+  strategy:
+    maxParallel: 10
+    matrix:
+      python2.7:
+        PYTHON_VERSION: 2.7
+      python3.6:
+        PYTHON_VERSION: 3.6
+
+  steps:
+
+  - checkout: self
+    path: ./modules/cctbx_project
+
+  - script: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+
+  - script: |
+      conda create -y -n py${PYTHON_VERSION} python=${PYTHON_VERSION} six future scons
+    displayName: Create conda environment
+
+  - script: |
+      source activate py${PYTHON_VERSION}
+      cd ../..
+      mkdir build
+      cd build
+      python ../modules/cctbx_project/libtbx/configure.py libtbx
+      make
+    displayName: Configure libtbx
+
+  - script: |
+      source activate py${PYTHON_VERSION}
+      source ../../build/setpaths.sh
+      libtbx.py_compile_all -v .
+    displayName: Check syntax
+
+  - script: |
+      source activate py${PYTHON_VERSION}
+      source ../../build/setpaths.sh
+      libtbx.find_clutter
+    displayName: Check for clutter

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import re
 from iotbx.detectors.detectorbase import DetectorImageBase
 
@@ -10,7 +10,7 @@ class ADSCImage(DetectorImageBase):
 
   def readHeader(self,maxlength=12288, external_keys=None): # usually 1024 is OK; require 12288 for ID19
     if not self.parameters:
-      MAGIC_NUMBER = '{\nHEADER_BYTES='
+      MAGIC_NUMBER = b'{\nHEADER_BYTES='
       stream = self.open_file(self.filename, 'rb')
 
       # Check the magic number and get the size of the header before
@@ -63,7 +63,7 @@ class ADSCImage(DetectorImageBase):
 
       for tag,search,datatype in library:
           pattern = re.compile(search+'='+r'(.*);')
-          matches = pattern.findall(self.header)
+          matches = pattern.findall(self.header.decode("ascii"))
           if len(matches)>0:
             if matches[-1] not in [None,"None","unknown"]:
               self.parameters[tag] = datatype(matches[-1])
@@ -90,9 +90,9 @@ if __name__=='__main__':
   i = sys.argv[1]
   a = ADSCImage(i)
   a.read()
-  print a.linearintdata
-  print a.linearintdata.size()
-  print a.linearintdata.accessor().grid()
+  print(a.linearintdata)
+  print(a.linearintdata.size())
+  print(a.linearintdata.accessor().grid())
   from labelit.detectors.jpeg import JPEGImage
   j = JPEGImage(a)
   j.calcimage()

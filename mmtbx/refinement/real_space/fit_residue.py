@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 import mmtbx.refinement.real_space
@@ -10,6 +10,7 @@ import mmtbx.idealized_aa_residues.rotamer_manager
 import iotbx.pdb
 
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_rotamer_fit_ext")
 
 def flatten(l):

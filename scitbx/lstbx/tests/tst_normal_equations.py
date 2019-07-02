@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 from scitbx.array_family import flex
 from scitbx import sparse
@@ -6,6 +6,7 @@ from scitbx.lstbx import normal_eqns, normal_eqns_solving
 from libtbx.test_utils import approx_equal, Exception_expected
 
 from scitbx.lstbx.tests import test_problems
+from six.moves import range
 
 def exercise_linear_normal_equations():
   py_eqs = [ ( 1, (-1,  0,  0),  1),
@@ -27,7 +28,7 @@ def exercise_linear_normal_equations():
   for i, (b_, a_, w_) in enumerate(py_eqs):
     b.append(b_)
     w.append(w_)
-    for j in xrange(3):
+    for j in range(3):
       if a_[j]: a[i, j] = a_[j]
   eqs_1.add_equations(right_hand_side=b, design_matrix=a, weights=w)
 
@@ -171,12 +172,12 @@ def exercise_levenberg_marquardt(non_linear_ls, plot=False):
     n_max_iterations=200)
   assert non_linear_ls.n_equations == non_linear_ls.n_data
   assert approx_equal(non_linear_ls.x, non_linear_ls.arg_min, eps=5e-4)
-  print "L-M: %i iterations" % iterations.n_iterations
+  print("L-M: %i iterations" % iterations.n_iterations)
   if plot:
     f = open('plot.nb', 'w')
-    print >>f, "g=%s;" % iterations.gradient_norm_history.mathematica_form()
-    print >>f, "\[Mu]=%s;" % iterations.mu_history.mathematica_form()
-    print >>f, "ListLogPlot[{g,\[Mu]},Joined->True]"
+    print("g=%s;" % iterations.gradient_norm_history.mathematica_form(), file=f)
+    print("\[Mu]=%s;" % iterations.mu_history.mathematica_form(), file=f)
+    print("ListLogPlot[{g,\[Mu]},Joined->True]", file=f)
     f.close()
 
 def run():
@@ -187,7 +188,7 @@ def run():
   exercise_linear_normal_equations()
   exercise_non_linear_ls_with_separable_scale_factor()
   exercise_non_linear_ls_with_separable_scale_factor_plus_penalty()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

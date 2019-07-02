@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 
 import boost.python
+from six.moves import zip
 ext = boost.python.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 
@@ -15,11 +16,12 @@ import scitbx.array_family.shared # import dependency
 import scitbx.stl.set
 from libtbx import smart_open
 from libtbx.str_utils import show_string
-from libtbx.utils import plural_s, hashlib_md5, date_and_time, Sorry
+from libtbx.utils import plural_s, hashlib_md5, date_and_time, to_bytes, Sorry
 from libtbx import Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 import calendar
+import six
 import os
 op = os.path
 
@@ -67,7 +69,7 @@ def is_pdb_mmcif_file(file_name):
     cif_block = cif_model.values()[0]
     if "_atom_site" in cif_block:
       return True
-  except Exception, e:
+  except Exception as e:
     return False
 
 def ent_path_local_mirror(pdb_id, environ_key="PDB_MIRROR_PDB"):
@@ -571,7 +573,7 @@ class combine_unique_pdb_files(object):
           for s in smart_open.for_reading(
             file_name=file_name).read().splitlines()]
         m = hashlib_md5()
-        m.update("\n".join(r))
+        m.update(to_bytes("\n".join(r), codec='utf8'))
         m = m.hexdigest()
         l = self.md5_registry.get(m)
         if (l is not None):
@@ -587,24 +589,24 @@ class combine_unique_pdb_files(object):
     for file_name in sorted(self.file_name_registry.keys()):
       n = self.file_name_registry[file_name]
       if (n != 1):
-        print >> out, prefix+"INFO: PDB file name appears %d times: %s" % (
-          n, show_string(file_name))
+        print(prefix+"INFO: PDB file name appears %d times: %s" % (
+          n, show_string(file_name)), file=out)
         n_ignored += (n-1)
     if (n_ignored != 0):
-      print >> out, prefix+"  %d repeated file name%s ignored." % \
-        plural_s(n=n_ignored)
+      print(prefix+"  %d repeated file name%s ignored." % \
+        plural_s(n=n_ignored), file=out)
     n_identical = 0
     for file_names in self.md5_registry.values():
       if (len(file_names) != 1):
-        print >> out, prefix+"INFO: PDB files with identical content:"
+        print(prefix+"INFO: PDB files with identical content:", file=out)
         for file_name in file_names:
-          print >> out, prefix+"  %s" % show_string(file_name)
+          print(prefix+"  %s" % show_string(file_name), file=out)
         n_identical += len(file_names)-1
     if (n_identical != 0):
-      print >> out, prefix+"%d file%s with repeated content ignored." % \
-        plural_s(n=n_identical)
+      print(prefix+"%d file%s with repeated content ignored." % \
+        plural_s(n=n_identical), file=out)
     if (n_ignored != 0 or n_identical != 0):
-      print >> out, prefix.rstrip()
+      print(prefix.rstrip(), file=out)
 
 class header_date(object):
 
@@ -680,7 +682,7 @@ class pdb_input_from_any(object):
           lines=lines,
           pdb_id=pdb_id,
           raise_sorry_if_format_error=raise_sorry_if_format_error)
-      except Exception, e:
+      except Exception as e:
         # store the first error encountered and re-raise later if can't
         # interpret as any file type
         if exc_info is None: exc_info = sys.exc_info()
@@ -710,7 +712,7 @@ class pdb_input_from_any(object):
         self.file_format = "cif"
       break
     if exc_info is not None:
-      raise exc_info[0], exc_info[1], exc_info[2]
+      six.reraise(exc_info[0], exc_info[1], exc_info[2])
     if content is None:
       raise Sorry("Could not interpret input as any file type.")
     self._file_content = content
@@ -732,7 +734,7 @@ def pdb_input(
       return ext.input(
         source_info="file " + str(file_name), # XXX unicode hack - dangerous
         lines=flex.split_lines(smart_open.for_reading(file_name).read()))
-    except ValueError, e :
+    except ValueError as e :
       if (raise_sorry_if_format_error):
         raise Sorry("Format error in %s:\n%s" % (str(file_name), str(e)))
       else :
@@ -744,7 +746,7 @@ def pdb_input(
     lines = flex.std_string(lines)
   try :
     return ext.input(source_info=source_info, lines=lines)
-  except ValueError, e :
+  except ValueError as e :
     if (raise_sorry_if_format_error):
       raise Sorry("Format error:\n%s" % str(e))
     else :
@@ -889,25 +891,28 @@ class pdb_input_mixin(object):
       return_cstringio = True
     if 0:
       if (link_records is Auto):
-        print >> cstringio, format_link_records(self.get_link_records())
+        print(format_link_records(self.get_link_records()), file=cstringio)
       elif (link_records is not None):
-        print >> cstringio, format_link_records(link_records)
+        print(format_link_records(link_records), file=cstringio)
     if (crystal_symmetry is Auto):
       crystal_symmetry = self.crystal_symmetry()
     if (cryst1_z is Auto):
       cryst1_z = self.extract_cryst1_z_columns()
     if (crystal_symmetry is not None or cryst1_z is not None):
-      print >> cstringio, format_cryst1_and_scale_records(
+      print(format_cryst1_and_scale_records(
         crystal_symmetry=crystal_symmetry,
         cryst1_z=cryst1_z,
-        write_scale_records=write_scale_records)
-    self._as_pdb_string_cstringio(
+        write_scale_records=write_scale_records), file=cstringio)
+
+    py3out = self._as_pdb_string_cstringio(
       cstringio=cstringio,
       append_end=append_end,
       atom_hetatm=atom_hetatm,
       sigatm=sigatm,
       anisou=anisou,
       siguij=siguij)
+    if six.PY3:
+      cstringio.write( py3out)
     if (return_cstringio):
       return cstringio
     return cstringio.getvalue()
@@ -928,12 +933,12 @@ class pdb_input_mixin(object):
     if (cryst1_z is Auto):
       cryst1_z = self.extract_cryst1_z_columns()
     if (crystal_symmetry is not None or cryst1_z is not None):
-      if (open_append): mode = "ab"
-      else:             mode = "wb"
-      print >> open(file_name, mode), format_cryst1_and_scale_records(
+      if (open_append): mode = "a"
+      else:             mode = "w"
+      print(format_cryst1_and_scale_records(
         crystal_symmetry=crystal_symmetry,
         cryst1_z=cryst1_z,
-        write_scale_records=write_scale_records)
+        write_scale_records=write_scale_records), file=open(file_name, mode))
       open_append = True
     self._write_pdb_file(
       file_name=file_name,
@@ -1056,17 +1061,20 @@ class pdb_input_mixin(object):
     special_position_settings = crystal_symmetry.special_position_settings(
       min_distance_sym_equiv=min_distance_sym_equiv)
     try :
-      while (loop.next()):
+      while (next(loop)):
         result.append(xray.structure(
           special_position_settings=special_position_settings,
           scatterers=loop.scatterers,
           non_unit_occupancy_implies_min_distance_sym_equiv_zero=
             non_unit_occupancy_implies_min_distance_sym_equiv_zero))
-    except ValueError, e :
+    except ValueError as e :
       raise Sorry(str(e))
     return result
 
-class _(boost.python.injector, ext.input, pdb_input_mixin):
+boost.python.inject(ext.input, pdb_input_mixin)
+@boost.python.inject_into(ext.input)
+class _():
+
   """
   This class parses PDB format, including non-ATOM records.  Atom objects will
   be created as part of the parsing, but the full PDB hierarchy object requires
@@ -1078,13 +1086,16 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     for section in input_sections[:-2]:
       lines.extend(getattr(self, section)())
     pdb_string = StringIO()
-    self._as_pdb_string_cstringio(
+
+    py3out = self._as_pdb_string_cstringio(  # NOTE py3out is None in python 2
       cstringio=pdb_string,
       append_end=False,
       atom_hetatm=True,
       sigatm=True,
       anisou=True,
       siguij=True)
+    if six.PY3:
+      pdb_string.write(py3out)
     lines.extend(flex.split_lines(pdb_string.getvalue()))
     for section in input_sections[-2:]:
       lines.extend(getattr(self, section)())
@@ -1105,7 +1116,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         d.setdefault(chid, []).extend(rns)
     result = []
     ott = amino_acid_codes.one_letter_given_three_letter
-    for k, vs in zip(d.keys(), d.values()):
+    for k, vs in zip(d.keys(), d.values()): # FIXME use iteritems?
       result.append(">chain %s"%k)
       result.append("".join([ott.get(v,"?") for v in vs]))
     return "\n".join(result)
@@ -1438,8 +1449,7 @@ class rewrite_normalized(object):
         keep_original_atom_serial=False):
     self.input = input(file_name=input_file_name)
     if (keep_original_crystallographic_section):
-      print >> open(output_file_name, "wb"), \
-        "\n".join(self.input.crystallographic_section())
+      print("\n".join(self.input.crystallographic_section()), file=open(output_file_name, "w"))
       crystal_symmetry = None
     else:
       crystal_symmetry = self.input.crystal_symmetry()
@@ -1917,5 +1927,5 @@ def show_file_summary(pdb_in, hierarchy=None, out=None):
   label_width = max([ len(l) for l,v in info ]) + 2
   format = "%%-%ds %%s" % label_width
   for label, value in info :
-    print >> out, format % (label + ":", str(value))
+    print(format % (label + ":", str(value)), file=out)
   return info

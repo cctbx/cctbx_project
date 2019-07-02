@@ -2,7 +2,7 @@
 #
 # $Id: common_mode.py 17569 2013-06-11 07:58:18Z phyy-nx $
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import numpy
 import math

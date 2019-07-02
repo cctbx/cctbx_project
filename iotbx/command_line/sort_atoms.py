@@ -1,6 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.sort_atoms
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Usage
 import sys
 import iotbx.pdb

@@ -10,7 +10,6 @@
 # well tested except to the extent it is used daily in the Phenix GUI
 
 from __future__ import absolute_import, division, print_function
-from builtins import range
 from six.moves import cStringIO as StringIO
 from libtbx.utils import Sorry, Abort, multi_out, host_and_user
 from libtbx import easy_pickle
@@ -23,6 +22,7 @@ import stat
 import time
 import os
 import sys
+from six.moves import range
 
 process_master_phil = libtbx.phil.parse("""
 run_file = None
@@ -55,10 +55,11 @@ class simple_target(object):
 class target_with_save_result(object):
   def __init__(self, args, file_name, output_dir=None, log_file=None,
       job_title=None):
-    assert isinstance(file_name, basestring)
+    from six import string_types
+    assert isinstance(file_name, string_types)
     assert (isinstance(args, list) or isinstance(args, tuple))
-    assert (output_dir is None) or isinstance(output_dir, basestring)
-    assert (log_file is None) or isinstance(log_file, basestring)
+    assert (output_dir is None) or isinstance(output_dir, string_types)
+    assert (log_file is None) or isinstance(log_file, string_types)
     adopt_init_args(self, locals())
     if (output_dir is None):
       self.output_dir = os.getcwd()
@@ -312,16 +313,22 @@ class detached_process_client(detached_base):
     elif os.path.exists(self.abort_file):
       self.callback_abort()
     elif os.path.exists(self.result_file):
-      try :
-        time.sleep(1)
-        result = easy_pickle.load(self.result_file)
-      except EOFError :
-        print("EOFError trying to load result file '%s'" %(self.result_file))
-      else :
-        time.sleep(1)
-        self.check_stdout()
-        self.check_status()
-        self.callback_final(result)
+      max_retries = 5
+      for retry in range(max_retries):
+        try:
+          result = easy_pickle.load(self.result_file)
+        except Exception:
+          print("Error trying to load result file '%s' on attempt %d." %
+            (self.result_file, retry+1))
+        else:
+          time.sleep(1)
+          self.check_stdout()
+          self.check_status()
+          self.callback_final(result)
+          break
+        time.sleep(retry+1)
+      if retry == max_retries-1:
+        print("There was an error with loading '%s'." % self.result_file)
     else :
       self.finished = False
       return

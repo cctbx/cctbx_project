@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -7,6 +7,7 @@ from cctbx.array_family import flex
 import sys
 
 import boost.python
+from six.moves import range
 dtrek_ext = boost.python.import_ext("iotbx_dtrek_ext")
 
 class reflnlist(object):
@@ -25,12 +26,12 @@ class reflnlist(object):
     self.NumStrings = line_1[2]
     self.NumInfoLines = line_1[3]
     self.InfoLines = []
-    for i in xrange(self.NumInfoLines):
+    for i in range(self.NumInfoLines):
       self.InfoLines.append(self.next_line().strip())
     self.column_info = []
     num_columns = self.NumInts + self.NumFloats + self.NumStrings
     self.column_names = []
-    for i in xrange(num_columns):
+    for i in range(num_columns):
       column_name = self.next_line().strip()
       assert len(column_name) > 1
       assert column_name[0] in "nfs"
@@ -51,7 +52,7 @@ class reflnlist(object):
       self.miller_indices = flex.miller_index()
       self.column_dict = {}
       column_list = [None, None, None]
-      for i in xrange(3, num_columns):
+      for i in range(3, num_columns):
         if (i < self.NumInts):
           column_list.append(flex.int())
         elif (i < self.NumInts + self.NumFloats):
@@ -68,15 +69,15 @@ class reflnlist(object):
         h = [int(v) for v in data_values[:3]]
         self.miller_indices.append(h)
         offset = 3
-        for i in xrange(offset, self.NumInts):
+        for i in range(offset, self.NumInts):
           v = int(data_values[i])
           column_list[i].append(v)
         offset = self.NumInts
-        for i in xrange(offset, offset+self.NumFloats):
+        for i in range(offset, offset+self.NumFloats):
           v = float(data_values[i])
           column_list[i].append(v)
         offset += self.NumFloats
-        for i in xrange(offset, num_columns):
+        for i in range(offset, num_columns):
           column_list[i].append(data_values[i])
     del self.file
     del self.line_no
@@ -111,8 +112,8 @@ class reflnlist(object):
   def show_summary(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
     self.crystal_symmetry().show_summary(f=out, prefix=prefix)
-    print >> out, prefix + "Column names:", " ".join(self.column_names[3:])
-    print >> out, prefix + "Number of reflections:", self.miller_indices.size()
+    print(prefix + "Column names:", " ".join(self.column_names[3:]), file=out)
+    print(prefix + "Number of reflections:", self.miller_indices.size(), file=out)
 
   def as_miller_arrays(self,
         crystal_symmetry=None,

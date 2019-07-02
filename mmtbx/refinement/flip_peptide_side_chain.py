@@ -1,7 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.matrix import rotate_point_around_axis
 from scitbx.math import dihedral_angle
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 # flippable_sidechains:
 #   key: flippable residue name

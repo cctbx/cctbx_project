@@ -8,7 +8,7 @@ Run this module with:
 phenix.python -m mmtbx.ions.svm.dump_sites [args]
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import os
 import sys
@@ -73,7 +73,7 @@ atomic properties.
   sites = dump_sites(manager)
 
   out_name = os.path.splitext(params.input.pdb.file_name[0])[0] + "_sites.pkl"
-  print >> out, "Dumping to", out_name
+  print("Dumping to", out_name, file=out)
   easy_pickle.dump(out_name, sites)
 
 def dump_sites(manager):

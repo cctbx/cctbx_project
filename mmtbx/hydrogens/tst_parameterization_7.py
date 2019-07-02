@@ -1,9 +1,10 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
 import iotbx.cif
 from libtbx.utils import null_out
+from six.moves import zip
 
 def prepare_inputs(pdb_str, cif_str):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)

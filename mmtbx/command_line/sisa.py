@@ -1,14 +1,15 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.sisa
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 12/1/2014
 Description : Commands linked to sisa libraries.
 '''
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from libtbx.easy_mp import pool_map
 import math
 import sys,os
+from six.moves import range
 
 def read_input(args):
   from mmtbx.sisa.optimize.mod_input import process_input
@@ -46,12 +47,12 @@ if __name__=="__main__":
   from mmtbx.sisa.optimize.mod_mtz import mtz_handler
   mtzh = mtz_handler()
   miller_arrays, fp_sort_index_stacks, txt_out_format = mtzh.format_miller_arrays(iparams)
-  print txt_out_format
+  print(txt_out_format)
   txt_out += txt_out_format
 
   for i in range(iparams.n_macro_cycles):
     txt_out += 'Macrocycle no. %4.0f\n'%(i+1)
-    print 'Macrocycle no. %4.0f\n'%(i+1)
+    print('Macrocycle no. %4.0f\n'%(i+1))
     for j in range(len(fp_sort_index_stacks)):
       #select the index group
       i_sel = fp_sort_index_stacks[j]
@@ -82,7 +83,7 @@ if __name__=="__main__":
             foms_sum = foms[:]
           else:
             foms_sum += foms[:]
-          print txt_out_optim
+          print(txt_out_optim)
           txt_out += txt_out_optim
 
       #calculate centroid of list_phis
@@ -97,7 +98,7 @@ if __name__=="__main__":
 
       txt_out_tmp = 'Averaged phis skew=%6.2f mapcc=%6.2f mpe=%6.2f'%( \
         skew_phis_averaged, mapcc_phis_averaged, mpe_phis_averaged*180/math.pi)
-      print txt_out_tmp
+      print(txt_out_tmp)
       txt_out += txt_out_tmp
 
 
@@ -115,12 +116,12 @@ if __name__=="__main__":
   f.write(txt_out)
   f.close()
 
-  print 'Sisa done.'
+  print('Sisa done.')
 
   if iparams.autodm:
-    print 'Proceed with automatic density modification...(your density-modified map will be AutoBuild_run_n_/overall_best_denmod_map_coeffs.mtz.'
+    print('Proceed with automatic density modification...(your density-modified map will be AutoBuild_run_n_/overall_best_denmod_map_coeffs.mtz.')
     cmd='phenix.autobuild data=' + file_name_out + ' seq_file=' + str(iparams.seq_file) + \
         ' maps_only=True n_cycle_build_max=1 n_cycle_rebuild_max=0' + \
         ' input_ha_file=' + str(iparams.ha_file) + ' model=' + str(iparams.model_file)
-    print 'Running: '+cmd
+    print('Running: '+cmd)
     os.system(cmd)

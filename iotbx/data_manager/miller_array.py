@@ -1,7 +1,9 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
+from six.moves import zip
 '''
 '''
 
+import os
 from copy import deepcopy
 
 import iotbx.phil
@@ -122,8 +124,36 @@ class MillerArrayDataManager(DataManagerBase):
       self._miller_array_types[filename][label] = self._default_miller_array_type
     self._miller_array_labels[filename] = labels
 
-  def write_miller_array_file(self, miller_arrays, filename=Auto, overwrite=Auto):
-    raise NotImplementedError
+  def write_miller_array_file(self, mtz_object, filename=Auto, overwrite=Auto):
+    '''
+    Write an MTZ file
+
+    :param mtz_object:        iotbx_mtz_ext.object
+    :param filename:          str for the output filename
+    :param overwrite:         bool for overwriting files
+
+    The mtz_object can be constructed from a cctbx.miller_array object to
+    make a iotbx_mtz_ext.dataset, which can then construct the mtz_object.
+    '''
+    # default options
+    if filename is Auto:
+      filename = self.get_default_output_filename() + '.mtz'
+    if overwrite is Auto:
+      overwrite = self._overwrite
+
+    # check overwrite
+    if os.path.isfile(filename) and (not overwrite):
+      raise Sorry('%s already exists and overwrite is set to %s.' %
+                  (filename, overwrite))
+
+    try:
+      mtz_object.write(file_name=filename)
+    except IOError as err:
+      raise Sorry('There was an error with writing %s.\n%s' %
+                  (filename, err))
+
+    self._output_files.append(filename)
+    self._output_types.append(MillerArrayDataManager.datatype)
 
   def get_reflection_file_server(self, filenames=None, labels=None,
                                  array_type=None,

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from libtbx.utils import Sorry, date_and_time, multi_out
 import iotbx.phil
@@ -23,9 +23,9 @@ def run(args):
   if len(args)==0:
     master_params.show(expert_level=0)
   elif ( "--help" in args ):
-    print "no help available as yet"
+    print("no help available as yet")
   elif ( "--h" in args ):
-    print "no help availableas yet"
+    print("no help availableas yet")
   elif ( "--show_defaults" in args ):
     master_params.show(expert_level=0)
   elif ( "--show_defaults_all" in args ):
@@ -39,11 +39,11 @@ def run(args):
     log.register(label="log_buffer", file_object=string_buffer)
 
     log_plots = StringIO()
-    print >> log,"#phil __OFF__"
-    print >> log
-    print >> log, date_and_time()
-    print >> log
-    print >> log
+    print("#phil __OFF__", file=log)
+    print(file=log)
+    print(date_and_time(), file=log)
+    print(file=log)
+    print(file=log)
 
     phil_objects = []
     argument_interpreter = master_params.command_line_argument_interpreter(
@@ -84,10 +84,10 @@ def run(args):
         except Exception : pass
 
       if not arg_is_processed:
-        print >> log, "##----------------------------------------------##"
-        print >> log, "## Unknown phil-file or phil-command:", arg
-        print >> log, "##----------------------------------------------##"
-        print >> log
+        print("##----------------------------------------------##", file=log)
+        print("## Unknown phil-file or phil-command:", arg, file=log)
+        print("##----------------------------------------------##", file=log)
+        print(file=log)
         raise Sorry("Unknown file format or phil command: %s" % arg)
 
 
@@ -101,19 +101,19 @@ def run(args):
     ## By default, the native cell and symmetry are used
     ## as reference
     crystal_symmetry_nat = None
-    print params.scaling.input.xray_data.native.file_name
+    print(params.scaling.input.xray_data.native.file_name)
     crystal_symmetry_nat = crystal_symmetry_from_any.extract_from(
       file_name=params.scaling.input.xray_data.native.file_name)
 
     if params.scaling.input.xray_data.space_group is None:
       params.scaling.input.xray_data.space_group =\
         crystal_symmetry_nat.space_group_info()
-      print >> log, "Using symmetry of native data"
+      print("Using symmetry of native data", file=log)
 
     if params.scaling.input.xray_data.unit_cell is None:
       params.scaling.input.xray_data.unit_cell =\
         crystal_symmetry_nat.unit_cell()
-      print >> log, "Using cell of native data"
+      print("Using cell of native data", file=log)
 
     ## Check if a unit cell is defined
     if params.scaling.input.xray_data.space_group is None:
@@ -130,11 +130,11 @@ def run(args):
 
     effective_params = master_params.fetch(sources=phil_objects)
     new_params = master_params.format(python_object=params)
-    print >> log, "Effective parameters"
-    print >> log, "#phil __ON__"
+    print("Effective parameters", file=log)
+    print("#phil __ON__", file=log)
     new_params.show(out=log,expert_level=effective_params.expert_level)
-    print >> log, "#phil __END__"
-    print >> log
+    print("#phil __END__", file=log)
+    print(file=log)
 
     ## define a xray data server
     xray_data_server =  reflection_file_utils.reflection_file_server(
@@ -204,11 +204,11 @@ def run(args):
       .set_observation_type( miller_array_derivative )
 
     ## Print info
-    print >> log
-    print >> log, "Native data"
-    print >> log, "==========="
+    print(file=log)
+    print("Native data", file=log)
+    print("===========", file=log)
     miller_array_native.show_comprehensive_summary(f=log)
-    print >> log
+    print(file=log)
     native_pre_scale = pre_scale.pre_scaler(
       miller_array_native,
       params.scaling.input.scaling_strategy.pre_scaler_protocol,
@@ -216,11 +216,11 @@ def run(args):
     miller_array_native =  native_pre_scale.x1.deep_copy()
     del native_pre_scale
 
-    print >> log
-    print >> log, "Derivative data (merged friedels)"
-    print >> log, "================================="
+    print(file=log)
+    print("Derivative data (merged friedels)", file=log)
+    print("=================================", file=log)
     miller_array_derivative.show_comprehensive_summary(f=log)
-    print >> log
+    print(file=log)
     derivative_pre_scale = pre_scale.pre_scaler(
       miller_array_derivative,
       params.scaling.input.scaling_strategy.pre_scaler_protocol,
@@ -229,11 +229,11 @@ def run(args):
     del derivative_pre_scale
 
 
-    print >> log
-    print >> log, "Anomalous data (non merged Friedels of derivative)"
-    print >> log, "=================================================="
+    print(file=log)
+    print("Anomalous data (non merged Friedels of derivative)", file=log)
+    print("==================================================", file=log)
     miller_array_derivative_anom.show_comprehensive_summary(f=log)
-    print >> log
+    print(file=log)
     derivative_anom_pre_scale = pre_scale.pre_scaler(
       miller_array_derivative_anom,
       params.scaling.input.scaling_strategy.pre_scaler_protocol,
@@ -241,10 +241,10 @@ def run(args):
     miller_array_derivative_anom =  derivative_anom_pre_scale.x1.deep_copy()
 
 
-    print >> log
-    print >> log, "Working on isomorphous differences"
-    print >> log, "=================================="
-    print >> log
+    print(file=log)
+    print("Working on isomorphous differences", file=log)
+    print("==================================", file=log)
+    print(file=log)
     iso_scaler = fa_estimation.combined_scaling(
       miller_array_native,
       miller_array_derivative,
@@ -258,10 +258,10 @@ def run(args):
       miller_array_native,
       miller_array_derivative )
 
-    print >> log
-    print >> log, "Working on anomalous differences"
-    print >> log, "================================"
-    print >> log
+    print(file=log)
+    print("Working on anomalous differences", file=log)
+    print("================================", file=log)
+    print(file=log)
 
     ano_scaler = fa_estimation.ano_scaling(
       miller_array_derivative_anom,
@@ -274,10 +274,10 @@ def run(args):
       positive_miller,
       negative_miller)
 
-    print >> log
-    print >> log, "Combining iso and ano data"
-    print >> log, "=========================="
-    print >> log
+    print(file=log)
+    print("Combining iso and ano data", file=log)
+    print("==========================", file=log)
+    print(file=log)
 
     fa = fa_estimation.naive_fa_estimation(
       delta_gen_ano.abs_delta_f,
@@ -285,10 +285,10 @@ def run(args):
       params.scaling.input.fa_estimation
     )
 
-    print >> log
-    print >> log, "writing mtz file"
-    print >> log, "----------------"
-    print >> log
+    print(file=log)
+    print("writing mtz file", file=log)
+    print("----------------", file=log)
+    print(file=log)
 
     ## Please write out the abs_delta_f array
     mtz_dataset = fa.fa.as_mtz_dataset(

@@ -1,10 +1,10 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 from mmtbx.validation import restraints
 from mmtbx.monomer_library import server, pdb_interpretation
 import iotbx.phil
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def get_master_phil():
   return iotbx.phil.parse(
@@ -95,11 +95,11 @@ def run(args):
     out = sys.stdout
   else:
     if do_bonds_and_angles:
-      out = file(out_file, 'w')
+      out = open(out_file, 'w')
     elif do_kinemage:
-      out = file(out_file, 'a')
+      out = open(out_file, 'a')
     elif do_rna_backbone:
-      out = file(out_file, 'w')
+      out = open(out_file, 'w')
   restraints_loading_flags = {}
   restraints_loading_flags["use_neutron_distances"]=False
   from mmtbx.validation import utils
@@ -145,8 +145,8 @@ def run(args):
     outliers = []
     #bonds
     #for result in rc.bonds.results:
-    for result in sorted(rc.bonds.results, key=lambda x: (x.atoms_info[0].resseq, get_altloc(atoms_info=x.atoms_info), get_atoms_str(atoms_info=x.atoms_info))):
-      atom_info = result.atoms_info[0]
+    for result in sorted(rc.bonds.results, key=lambda x: (x.atoms_info[1].resseq, get_altloc(atoms_info=x.atoms_info), get_atoms_str(atoms_info=x.atoms_info))):
+      atom_info = result.atoms_info[1]
       # label:chain:number:ins:alt:type:measure:value:sigmas:class
       atoms_str = get_atoms_str(atoms_info=result.atoms_info)
       altloc = get_altloc(atoms_info=result.atoms_info)
@@ -162,8 +162,8 @@ def run(args):
                         chain_types[atom_info.chain_id]] )
     #angles
     #for result in rc.angles.results:
-    for result in sorted(rc.angles.results, key=lambda x: (x.atoms_info[0].resseq, get_altloc(atoms_info=x.atoms_info), get_atoms_str(atoms_info=x.atoms_info))):
-      atom_info = result.atoms_info[0]
+    for result in sorted(rc.angles.results, key=lambda x: (x.atoms_info[1].resseq, get_altloc(atoms_info=x.atoms_info), get_atoms_str(atoms_info=x.atoms_info))):
+      atom_info = result.atoms_info[1]
       # label:chain:number:ins:alt:type:measure:value:sigmas:class
       atoms_str = get_atoms_str(atoms_info=result.atoms_info)
       altloc = get_altloc(atoms_info=result.atoms_info)
@@ -180,20 +180,20 @@ def run(args):
 
     if do_bonds_and_angles:
       for outlier in outliers:
-        print >> out, "%s:%2s:%s:%s:%s:%s:%s:%.3f:%.3f:%s" % (
+        print("%s:%2s:%s:%s:%s:%s:%s:%.3f:%.3f:%s" % (
           basename, outlier[0], outlier[1], outlier[2], outlier[3],
-          outlier[4], outlier[5], outlier[6], outlier[7], outlier[8])
+          outlier[4], outlier[5], outlier[6], outlier[7], outlier[8]), file=out)
     elif do_kinemage:
-      print >> out, rc.bonds.kinemage_header
+      print(rc.bonds.kinemage_header, file=out)
       for result in rc.bonds.results:
-        print >> out, result.as_kinemage()
-      print >> out, rc.angles.kinemage_header
+        print(result.as_kinemage(), file=out)
+      print(rc.angles.kinemage_header, file=out)
       for result in rc.angles.results:
-        print >> out, result.as_kinemage()
+        print(result.as_kinemage(), file=out)
     out.close()
   elif do_rna_backbone:
     from mmtbx.validation import utils
     rna_bb = utils.get_rna_backbone_dihedrals(processed_pdb_file)
-    print >> out, rna_bb
+    print(rna_bb, file=out)
     if out_file is not None:
       out.close()

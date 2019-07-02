@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 
 def exercise():
@@ -30,7 +30,7 @@ ANISOU    8  CD2 LEU A   4     3022   3432   2100    219   -528   -600       C
   assert ("""  pdb=" N   LEU A   4 " pdb=" CA  LEU A   4 "     24.957""" in
           result.stdout_lines)
   assert ("""    mean = 52.797""" in result.stdout_lines)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

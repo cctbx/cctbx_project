@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
 import scitbx.math
 from libtbx.utils import format_cpu_times
 import sys
+from six.moves import range
 
 special = {
   9: 8, 15: 8, 17: 4, 19: 12, 20: 4, 24: 12, 43: 4, 67: 4, 68: 4, 70: 18,
@@ -36,13 +37,13 @@ def run(args):
       if (c.r().is_unit_mx() and c.t().num() != (0,0,0)):
         n_special += 1
         cb_ref_sgi = sgi.change_basis(cb_op=cb_op_ref)
-        print "  cb_op=%s -> %s" % (
-          str(cb_op.c()), cb_ref_sgi.type().universal_hermann_mauguin_symbol())
+        print("  cb_op=%s -> %s" % (
+          str(cb_op.c()), cb_ref_sgi.type().universal_hermann_mauguin_symbol()))
         sys.stdout.flush()
         # verify that c.t() is not an allowed origin shift
         assert cb_ref_sgi.group() != sgi.group()
     assert special.get(space_group_number, 0) == n_special
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

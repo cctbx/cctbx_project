@@ -1,7 +1,10 @@
-from __future__ import division
-import glob, os
+from __future__ import absolute_import, division, print_function
+import os
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dials.array_family import flex
+from six.moves import range
+from xfel.merging.application.input.file_lister import file_lister
+from xfel.merging.application.input.file_load_calculator import file_load_calculator
 
 try:
   import resource
@@ -58,40 +61,14 @@ def is_odd_numbered(file_name, use_hash = False):
 #if __name__=="__main__":
 #  print is_odd_numbered("int_fake_19989.img")
 
-class file_lister(object):
-  """ Class for matching jsons to reflection table pickles """
-  def __init__(self, params):
-    self.params = params
-
-  def filepair_generator(self):
-    """ Used by rank 0, client/server to yield a list of json/reflection table pairs """
-    for pathstring in self.params.input.path:
-      for path in glob.glob(pathstring):
-        if os.path.isdir(path):
-          for filename in os.listdir(path):
-            if filename.endswith(self.params.input.reflections_suffix):
-              experiments_path = os.path.join(path, filename.split(self.params.input.reflections_suffix)[0] +
-                 self.params.input.experiments_suffix)
-              if not os.path.exists(experiments_path): continue
-              yield experiments_path, os.path.join(path, filename)
-        else:
-          dirname = os.path.dirname(path)
-          filename = os.path.basename(path)
-          if filename.endswith(self.params.input.reflections_suffix):
-            experiments_path = os.path.join(dirname, filename.split(self.params.input.reflections_suffix)[0] +
-               self.params.input.experiments_suffix)
-            if not os.path.exists(experiments_path): continue
-            yield experiments_path, path
-
-  def filename_lister(self):
-    """ Used by rank 0, striping """
-    return list(self.filepair_generator())
-
 from xfel.merging.application.worker import worker
 from xfel.merging.application.input.data_counter import data_counter
 
 class simple_file_loader(worker):
   '''A class for running the script.'''
+
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(simple_file_loader, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
 
   def __repr__(self):
     return 'Read experiments and data'
@@ -119,17 +96,17 @@ class simple_file_loader(worker):
     else:
       starting_expts_count = len(all_experiments)
       starting_refls_count = len(all_reflections)
+    self.logger.log("Initial number of experiments: %d; Initial number of reflections: %d"%(starting_expts_count, starting_refls_count))
 
     # Generate and send a list of file paths to each worker
     if self.mpi_helper.rank == 0:
       file_list = self.get_list()
+      self.logger.log("Built an input list of %d json/pickle file pairs"%(len(file_list)))
       self.params.input.path = None # the input is already parsed
-
-      from xfel.merging.application.input.file_load_calculator import file_load_calculator
-      load_calculator = file_load_calculator(self.params, file_list)
-      calculated_file_list = load_calculator.calculate_file_load(self.mpi_helper.size)
-      self.logger.log('Transmitting a list of %d lists of file pairs'%(len(calculated_file_list)))
-      transmitted = calculated_file_list
+      per_rank_file_list = file_load_calculator(self.params, file_list, self.logger).\
+                              calculate_file_load(available_rank_count = self.mpi_helper.size)
+      self.logger.log('Transmitting a list of %d lists of json/pickle file pairs'%(len(per_rank_file_list)))
+      transmitted = per_rank_file_list
     else:
       transmitted = None
 
@@ -139,7 +116,7 @@ class simple_file_loader(worker):
 
     new_file_list = transmitted[self.mpi_helper.rank]
 
-    self.logger.log("Received a list of %d file pairs"%len(new_file_list))
+    self.logger.log("Received a list of %d json/pickle file pairs"%len(new_file_list))
     self.logger.log_step_time("BROADCAST_FILE_LIST", True)
 
     # Load the data
@@ -149,7 +126,8 @@ class simple_file_loader(worker):
       reflections = flex.reflection_table.from_file(reflections_filename)
 
       for experiment_id, experiment in enumerate(experiments):
-        experiment.identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
+        if experiment.identifier is None or len(experiment.identifier) == 0:
+          experiment.identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
         all_experiments.append(experiment)
 
         refls = reflections.select(reflections['id'] == experiment_id)

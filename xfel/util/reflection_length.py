@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 
 from libtbx import easy_pickle
@@ -79,7 +79,7 @@ class ReflectionsRadialLengthsFromFiles(ReflectionsRadialLengths):
     importer = Importer(files, read_experiments=True,
       read_reflections=True, check_format=False)
     if importer.unhandled:
-      print "Unable to handle one or more files:", importer.unhandled
+      print("Unable to handle one or more files:", importer.unhandled)
       return
     reflections = flatten_reflections(importer.reflections)
     assert len(reflections) == 1, "Implemented only for one reflection table at a time presently"
@@ -96,4 +96,4 @@ if __name__ == "__main__":
   assert len(sys.argv) == 3
   strong_spot_lengths = ReflectionsRadialLengthsFromFiles(sys.argv[1:]).get_spot_lengths_px()
   easy_pickle.dump("spot_lengths_px.pickle", strong_spot_lengths)
-  print list(strong_spot_lengths)
+  print(list(strong_spot_lengths))

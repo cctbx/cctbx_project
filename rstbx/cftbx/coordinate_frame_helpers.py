@@ -1,8 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+
+import io
 import math
 import random
+
 from scitbx import matrix
 from cctbx import sgtbx
+from six.moves import range, zip
 
 class coordinate_frame_information:
     '''A bucket class to store coordinate frame information.'''
@@ -181,7 +185,7 @@ def align_reference_frame(primary_axis, primary_target,
       axis_r = secondary_target.cross(Rprimary * secondary_axis)
       axis_s = primary_target
 
-      if (axis_r.angle(primary_target) > 0.5 * math.pi):
+      if (axis_r.angle(primary_target, value_if_undefined=0) > 0.5 * math.pi):
         angle_s = orthogonal_component(axis_s, secondary_target).angle(
           orthogonal_component(axis_s, Rprimary * secondary_axis))
       else:
@@ -206,27 +210,22 @@ def is_xds_xparm(putative_xds_xparm_file):
 def is_xds_integrate_hkl(putative_integrate_hkl_file):
     '''See if this looks like an XDS INTEGRATE.HKL file.'''
 
-    first_record = open(putative_integrate_hkl_file).readline()
-
-    if '!OUTPUT_FILE=INTEGRATE.HKL' in first_record:
-        return True
-
-    return False
+    with io.open(putative_integrate_hkl_file, encoding="ascii") as fh:
+      try:
+        first_record = fh.readline()
+        return '!OUTPUT_FILE=INTEGRATE.HKL' in first_record
+      except UnicodeDecodeError:
+        return False
 
 def is_xds_ascii_hkl(putative_xds_ascii_hkl_file):
     '''See if this looks like an XDS INTEGRATE.HKL file.'''
 
-    lines = []
-    with open(putative_xds_ascii_hkl_file) as f:
-      lines.append(f.readline())
-      lines.append(f.readline())
-      if lines[1] == "":
-          return False
-
-      if '!OUTPUT_FILE=XDS_ASCII.HKL' in lines[1]:
-          return True
-
-    return False
+    with io.open(putative_xds_ascii_hkl_file, encoding="ascii") as f:
+      try:
+        f.readline()
+        return "!OUTPUT_FILE=XDS_ASCII.HKL" in f.readline()
+      except UnicodeDecodeError:
+        return False
 
 def is_recognized_file(filename):
     ''' Check if the file is recognized.'''
@@ -239,7 +238,7 @@ def is_recognized_file(filename):
     elif is_xds_inp(filename):
         return True
 
-    # Not recognices
+    # Not recognized
     return False
 
 def import_xds_integrate_hkl(integrate_hkl_file):
@@ -262,25 +261,25 @@ def import_xds_integrate_hkl(integrate_hkl_file):
 
     for record in header:
         if record.startswith('!ROTATION_AXIS='):
-            axis = map(float, record.split()[-3:])
+            axis = [float(r) for r in record.split()[-3:]]
             continue
         if record.startswith('!INCIDENT_BEAM_DIRECTION='):
-            beam = map(float, record.split()[-3:])
+            beam = [float(r) for r in record.split()[-3:]]
             continue
         if record.startswith('!DIRECTION_OF_DETECTOR_X-AXIS='):
-            x = map(float, record.split()[-3:])
+            x = [float(r) for r in record.split()[-3:]]
             continue
         if record.startswith('!DIRECTION_OF_DETECTOR_Y-AXIS='):
-            y = map(float, record.split()[-3:])
+            y = [float(r) for r in record.split()[-3:]]
             continue
         if record.startswith('!UNIT_CELL_A-AXIS='):
-            a = map(float, record.split()[-3:])
+            a = [float(r) for r in record.split()[-3:]]
             continue
         if record.startswith('!UNIT_CELL_B-AXIS='):
-            b = map(float, record.split()[-3:])
+            b = [float(r) for r in record.split()[-3:]]
             continue
         if record.startswith('!UNIT_CELL_C-AXIS='):
-            c = map(float, record.split()[-3:])
+            c = [float(r) for r in  record.split()[-3:]]
             continue
         if record.startswith('!X-RAY_WAVELENGTH='):
             wavelength = float(record.split()[-1])
@@ -375,25 +374,25 @@ def import_xds_ascii_hkl(xds_ascii_hkl_file):
 
     for record in header:
         if record.startswith('!ROTATION_AXIS='):
-            axis = map(float, record.split()[-3:])
+            axis = [float(r) for r in record.split()[-3:]]
             continue
         if record.startswith('!INCIDENT_BEAM_DIRECTION='):
-            beam = map(float, record.split()[-3:])
+            beam = [float(r) for r in record.split()[-3:]]
             continue
         if record.startswith('!DIRECTION_OF_DETECTOR_X-AXIS='):
-            x = map(float, record.split()[-3:])
+            x = [float(r) for r in record.split()[-3:]]
             continue
         if record.startswith('!DIRECTION_OF_DETECTOR_Y-AXIS='):
-            y = map(float, record.split()[-3:])
+            y = [float(r) for r in record.split()[-3:]]
             continue
         if record.startswith('!UNIT_CELL_A-AXIS='):
-            a = map(float, record.split()[-3:])
+            a = [float(r) for r in record.split()[-3:]]
             continue
         if record.startswith('!UNIT_CELL_B-AXIS='):
-            b = map(float, record.split()[-3:])
+            b = [float(r) for r in record.split()[-3:]]
             continue
         if record.startswith('!UNIT_CELL_C-AXIS='):
-            c = map(float, record.split()[-3:])
+            c = [float(r) for r in record.split()[-3:]]
             continue
         if record.startswith('!X-RAY_WAVELENGTH='):
             wavelength = float(record.split()[-1])
@@ -753,10 +752,10 @@ def test_align_reference_frame_dw():
 
     R = align_reference_frame(pa,pt,sa,st)
 
-    print R * pa
-    print pt
-    print R * sa
-    print st
+    print(R * pa)
+    print(pt)
+    print(R * sa)
+    print(st)
 
 def random_orthogonal_vectors():
     v1 = matrix.col((random.random(), random.random(),
@@ -802,7 +801,7 @@ def find_closest_matrix(moving, target):
 def work():
     import sys
     import_xds_integrate_hkl(sys.argv[1])
-    print 'OK'
+    print('OK')
 
 if __name__ == '__main__':
     work()

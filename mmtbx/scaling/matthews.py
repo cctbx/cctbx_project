@@ -2,10 +2,11 @@
 ## Peter Zwart Mai 10, 2005
 ## refactored by Gabor & Nat 20111104
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx import scaling
 import math
 import sys
+from six.moves import range
 
 log_p_solc = None
 def get_log_p_solc():
@@ -30,7 +31,7 @@ def p_solc_calc(sc):
   Calculate solvent fraction probability
   """
   if sc < 0 or 1.0 < sc:
-    raise ValueError, "solvent content out of range"
+    raise ValueError("solvent content out of range")
   log_p_solc = get_log_p_solc()
   return math.exp(log_p_solc.f(sc))
 
@@ -44,7 +45,7 @@ class density_calculator(object):
 
   def vm(self, weight):
     if weight <= 0:
-      raise ValueError, "Incorrect weight"
+      raise ValueError("Incorrect weight")
     return self.asu_volume / weight
 
   def macromolecule_fraction(self, weight, rho_spec):
@@ -75,7 +76,7 @@ class component(object):
 
 def number_table(components, density_calculator):
   if not components:
-    raise ValueError, "Empty component list"
+    raise ValueError("Empty component list")
   unit_mfrac = sum([
     density_calculator.macromolecule_fraction(
       weight = c.mw,
@@ -148,9 +149,9 @@ class p_vm_calculator(object):
     tmp = self.vm_prop.pop() ## The last item has a negative solvent content
     tot_p -= tmp[3]
     if (int(n_copies)==1):
-      print >> self.out, "Too many residues to fit in the ASU"
-      print >> self.out, "  resetting numer of residues in monomer to %5.0f" \
-            %(self.n_residues/10.0)
+      print("Too many residues to fit in the ASU", file=self.out)
+      print("  resetting numer of residues in monomer to %5.0f" \
+            %(self.n_residues/10.0), file=self.out)
       self.n_residues/=10.0
       self.n_bases/=10.0
       self.vm_prop_table()
@@ -248,7 +249,7 @@ class matthews_rupp(scaling.xtriage_analysis):
 def exercise():
   from cctbx import crystal
   from libtbx.test_utils import approx_equal
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   symm = crystal.symmetry(
     unit_cell=(77.3,107.6,84.4,90,94.2,90),
     space_group_symbol="P21")
@@ -264,4 +265,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

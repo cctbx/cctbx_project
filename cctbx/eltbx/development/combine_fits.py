@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.development.format_gaussian_fits import expected_labels
 from cctbx.eltbx.gaussian_fit import international_tables_stols
@@ -6,6 +6,7 @@ import scitbx.math.gaussian
 from cctbx.array_family import flex
 from libtbx.option_parser import OptionParser
 from libtbx import easy_pickle
+from six.moves import zip
 
 def pick_nicest_fit(fit_0, fit_1):
   if (fit_0.max_error < fit_1.max_error): return fit_0
@@ -76,7 +77,7 @@ def main():
         n_terms_dict[fit.n_terms()] = fit
       n_terms_dicts.append(n_terms_dict)
       all_n_terms.update(n_terms_dicts[-1])
-    all_n_terms = all_n_terms.keys()
+    all_n_terms = list(all_n_terms.keys())
     all_n_terms.sort()
     for n_terms in all_n_terms:
       fit_0 = n_terms_dicts[0].get(n_terms, None)
@@ -102,33 +103,33 @@ def main():
         status = "equal"
         n_equal += 1
         n_equal_list[n_terms] += 1
-      print "%-4s n_terms=%d %4.2f %4.2f %s" % (
-        label, n_terms, fit_0.stol, fit_1.stol, status)
+      print("%-4s n_terms=%d %4.2f %4.2f %s" % (
+        label, n_terms, fit_0.stol, fit_1.stol, status))
     best_fits[label] = best_group
-  print "n_less:", n_less
-  print "n_greater:", n_greater
-  print "n_equal:", n_equal
-  print "total:", n_less + n_greater + n_equal
+  print("n_less:", n_less)
+  print("n_greater:", n_greater)
+  print("n_equal:", n_equal)
+  print("total:", n_less + n_greater + n_equal)
   n_terms = -1
   for n_less,n_greater,n_equal in zip(n_less_list,n_greater_list,n_equal_list):
     n_terms += 1
     if (n_less == 0 and n_greater == 0 and n_equal == 0): continue
-    print "n_terms:", n_terms
-    print "  n_less:", n_less
-    print "  n_greater:", n_greater
-    print "  n_equal:", n_equal
-    print "  total:", n_less + n_greater + n_equal
-  print
+    print("n_terms:", n_terms)
+    print("  n_less:", n_less)
+    print("  n_greater:", n_greater)
+    print("  n_equal:", n_equal)
+    print("  total:", n_less + n_greater + n_equal)
+  print()
   for label in expected_labels(kissel_dir=None):
     if (best_fits[label] is None):
-      print "# Warning: Missing scattering_type:", label
-  print
-  print "Best fits:"
-  print
+      print("# Warning: Missing scattering_type:", label)
+  print()
+  print("Best fits:")
+  print()
   for label in expected_labels(kissel_dir=None):
     fit_group = best_fits[label]
     if (fit_group is None): continue
-    print "scattering_type:", label
+    print("scattering_type:", label)
     assert len(six_term_fits.all[label]) == 1
     assert six_term_fits.all[label][0].n_terms() == 6
     fit_group.append(six_term_fits.all[label][0])
@@ -144,10 +145,10 @@ def main():
         fit.show()
         prev_fit = fit
       else:
-        print "# skipped: %s, n_terms: %d, stol: %.2f, max_error: %.4f" % (
-          label, fit.n_terms(), fit.stol, fit.max_error)
+        print("# skipped: %s, n_terms: %d, stol: %.2f, max_error: %.4f" % (
+          label, fit.n_terms(), fit.stol, fit.max_error))
     best_fits[label] = trimmed_fit_group
-  print
+  print()
   easy_pickle.dump("best_fits.pickle", best_fits)
 
 if (__name__ == "__main__"):

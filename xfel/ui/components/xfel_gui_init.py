@@ -1,5 +1,5 @@
-from __future__ import division
-from six.moves import range
+from __future__ import absolute_import, division, print_function
+from six.moves import range, zip, map
 
 '''
 Author      : Lyubimov, A.Y.
@@ -121,7 +121,7 @@ class RunSentinel(Thread):
           if last_run is not None: last_run = last_run.id
           rungroup.sync_runs(first_run, last_run)
 
-        print "%d new runs" % len(unknown_run_runs)
+        print("%d new runs" % len(unknown_run_runs))
         self.post_refresh()
       time.sleep(10)
 
@@ -463,8 +463,11 @@ class RunStatsSentinel(Thread):
         rg_id = rungroup_ids[idx]
         t_id = trial_ids[idx]
         for job in jobs:
+          found_it = False
           if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
             self.run_statuses.append(job.status)
+            found_it = True; break
+        if not found_it: self.run_statuses.append('UNKWN')
     self.reorder()
     t2 = time.time()
 
@@ -658,9 +661,9 @@ class SpotfinderSentinel(Thread):
             try:
               self.spot_length_stats.append(get_spot_length_stats(run_outdir, ref_stats=sf_stats))
             except OSError:
-              print "Outdir %s no longer accessible." % run_outdir
+              print("Outdir %s no longer accessible." % run_outdir)
             except Exception as e:
-              print e
+              print(e)
               from dials.array_family import flex
               self.spot_length_stats.append((flex.double(), flex.double(), flex.double()))
 
@@ -711,7 +714,7 @@ class ImageDumpThread(Thread):
     self.command = command
 
   def run(self):
-    print self.command
+    print(self.command)
     easy_run.fully_buffered(command=self.command).show_stderr()
 
 # ----------------------------- Unit Cell Sentinel ----------------------------- #
@@ -819,12 +822,12 @@ class FramesSentinel(Thread):
     while self.active:
       trial = db.get_trial(trial_number=int(self.parent.trial_number.ctr.GetStringSelection()))
       runs = [db.get_run(run_number=int(r)) for r in self.parent.trial_runs.ctr.GetCheckedStrings()]
-      print "Total events in trial", trial.trial,
+      print("Total events in trial", trial.trial, end=' ')
       if len(runs) == 0:
         runs = None
       else:
-        print "runs", ", ".join(sorted([str(r.run) for r in runs])),
-      print ":", len(db.get_all_events(trial, runs))
+        print("runs", ", ".join(sorted([str(r.run) for r in runs])), end=' ')
+      print(":", len(db.get_all_events(trial, runs)))
       self.post_refresh()
       time.sleep(2)
 
@@ -880,11 +883,11 @@ class Clusterer():
                    i.endswith('pickle') and 'int-' in i]
         all_pickles = all_pickles + pickles
       except OSError as error:
-        print 'Folder not found!'
-        print error
+        print('Folder not found!')
+        print(error)
 
     if len(all_pickles) == 0:
-      print 'No images integrated (yet)'
+      print('No images integrated (yet)')
       return
 
     # If clustering button was pressed, do clustering
@@ -1620,7 +1623,7 @@ class JobsTab(BaseTab):
         if job.id in jobs_to_restart:
           job.delete()
           if job.status != "DELETED":
-            print "Couldn't restart job", job.id, "job is not deleted"
+            print("Couldn't restart job", job.id, "job is not deleted")
             continue
           job.remove_from_db()
 
@@ -1636,7 +1639,7 @@ class JobsTab(BaseTab):
     if e.jobs is not None:
       self.all_jobs = e.jobs
       if str(self.filter).lower() == 'all jobs':
-        selected_trials = e.jobs.keys()
+        selected_trials = e.jobs.keys() # iterator OK in Py3
       else:
         selected_trials = [int(self.filter.split()[-1])]
 
@@ -1704,7 +1707,7 @@ class JobsTab(BaseTab):
     self.job_list_sort_flag = self.job_list._colSortFlag
 
   def find_trials(self):
-    print "Found trials"
+    print("Found trials")
     if self.main.db is not None:
       choices = ['All jobs'] + \
                 ['trial {}'.format(i.trial) for i in self.main.db.get_all_trials()]
@@ -2179,7 +2182,7 @@ class RunStatsTab(SpotfinderTab):
       image_paths = '\n'.join(paths)
       self.strong_indexed_list.SetValue(image_paths)
     except TypeError:
-      print "Error getting list of best indexed images"
+      print("Error getting list of best indexed images")
       pass
 
   def print_should_have_indexed_paths(self):
@@ -2191,7 +2194,7 @@ class RunStatsTab(SpotfinderTab):
         image_paths = '\n'.join(paths)
         self.should_have_indexed_list.SetValue(image_paths)
       except TypeError:
-        print "Error getting list of images that should have indexed"
+        print("Error getting list of images that should have indexed")
         pass
 
   def onLastFiveRuns(self, e):
@@ -2719,7 +2722,7 @@ class MergeTab(BaseTab):
                    i.endswith('pickle') and 'int-' in i]
         self.all_pickles = self.all_pickles + pickles
       except OSError as error:
-        print 'Folder not found: {}'.format(path)
+        print('Folder not found: {}'.format(path))
         continue
 
     self.input_number.SetLabel('{} images in {} folders:'
@@ -2819,7 +2822,7 @@ class MergeTab(BaseTab):
       list_prefix = 'prime'
     self.pickle_path_file = os.path.join(self.working_dir,
                            '{}_trial_{}.lst'.format(list_prefix, self.trial_no))
-    print 'Saving list of pickles to ', self.pickle_path_file
+    print('Saving list of pickles to ', self.pickle_path_file)
 
     with open(self.pickle_path_file, 'w') as lfile:
       for pickle in self.all_pickles:
@@ -2867,7 +2870,7 @@ class MergeTab(BaseTab):
     with open(prime_file, 'w') as pf:
       pf.write(txt_out)
 
-    if params.mp.method == 'python':
+    if params.mp.method == 'local':
       command=None
     else:
       job_name = 'prime_t{}'.format(self.trial_no)
@@ -2890,8 +2893,8 @@ class MergeTab(BaseTab):
       self.prime_run_window.Show(True)
 
     elif e.GetId() == self.tb_btn_cmd.GetId():
-      print 'Submission command:'
-      print command
+      print('Submission command:')
+      print(command)
 
     # Try and write files to created folder
 

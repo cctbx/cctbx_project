@@ -1,12 +1,12 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.ringer import em_rscc
 from cctbx import crystal
 
 def exercise():
   import mmtbx.regression
   from iotbx import file_reader
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   pdb_file = "tmp_em_rscc.pdb"
   map_file = "tmp_em_rscc.map"
   f = open(pdb_file, "w")
@@ -27,7 +27,7 @@ def exercise():
   i,j,k = fft_map.n_real()
   s = i//2
   f = i//2-1
-  print i,j,k,s,f
+  print(i,j,k,s,f)
   fft_map.as_ccp4_map(
     file_name=map_file,
     gridding_first=(-s,-s,-s),
@@ -40,4 +40,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

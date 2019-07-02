@@ -20,8 +20,7 @@ try:
     npyflag = "/DSCITBX_HAVE_NUMPY_INCLUDE"
   env_npy.Append(SHCXXFLAGS=[ npyflag ])
 
-  if env_etc.boost_version >= 106400 or \
-      (env_etc.boost_version >= 106300 and sys.platform != 'win32'):
+  if env_etc.boost_version >= 106300:
     # Link the boost_numpy library into the extension
     env.Append(LIBS="boost_numpy")
 except ImportError:

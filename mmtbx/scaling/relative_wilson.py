@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.scaling import absolute_scaling
 import mmtbx.scaling
 from iotbx import data_plots
@@ -9,6 +9,8 @@ from scitbx.math import chebyshev_polynome
 from libtbx.utils import Sorry
 from libtbx import table_utils
 import sys,math
+from six.moves import zip
+from six.moves import range
 
 low_lim = 0.00142857142857
 high_lim = 0.914857142857

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.find_tls_groups
 
 from mmtbx.tls import tools
@@ -11,11 +11,15 @@ import libtbx.phil
 from libtbx.utils import Sorry
 from libtbx import Auto
 from copy import deepcopy
-import cStringIO
+from six.moves import cStringIO as StringIO
 import random
 import os
 import time
 import sys
+import six
+from six.moves import zip
+
+from six.moves import range
 
 
 master_phil = libtbx.phil.parse("""
@@ -33,8 +37,8 @@ def consequtive_permutations(iterable, r=None):
   n = len(pool)
   r = n if r is None else r
   if r > n: return
-  indices = range(n)
-  cycles = range(n, n-r, -1)
+  indices = list(range(n))
+  cycles = list(range(n, n-r, -1))
   yield tuple(pool[i] for i in indices[:r])
   while n:
     for i in reversed(range(r)):
@@ -60,10 +64,9 @@ def consequtive_permutations(iterable, r=None):
       return
 
 def all_permutations(N):
-  unique_set = list(xrange(N))
+  unique_set = list(range(N))
   array = [[i] for i in unique_set]
-  gss = list(range(2,N))
-  gss.reverse()
+  gss = reversed(range(2,N))
   def is_all(x, us):
     tmp = []
     for i in x:
@@ -79,7 +82,7 @@ def all_permutations(N):
   result = [array[:]]
   for gs in gss:
     #print "group by:",gs
-    for start_index in xrange(N):
+    for start_index in range(N):
       tmp = []
       tmp_ = []
       for i,a in enumerate(array):
@@ -256,13 +259,13 @@ def show_groups(sels, out=None):
   if (out is None):
     out = sys.stdout
   min_group_size = 1.e+6
-  if 0: print >> out, "          Residues  Resseq  Sec.Structure"
+  if 0: print("          Residues  Resseq  Sec.Structure", file=out)
   for i, s in enumerate(sels):
     is_ss_cntr=0
     for s_ in s:
       if(s_[1]): is_ss_cntr += 1
-    if 0: print >> out, "      #%d: %8d  %s-%s %9d"%(i, len(s), s[0][2].strip(),
-      s[len(s)-1][2].strip(), is_ss_cntr)
+    if 0: print("      #%d: %8d  %s-%s %9d"%(i, len(s), s[0][2].strip(),
+      s[len(s)-1][2].strip(), is_ss_cntr), file=out)
     if(len(s)<min_group_size): min_group_size = len(s)
   return min_group_size
 
@@ -282,22 +285,22 @@ def get_model_partitioning(residues,
   if (out is None):
     out = sys.stdout
   fragment_size = 5
-  print >> out, "  Grouping residues by secondary structure..."
+  print("  Grouping residues by secondary structure...", file=out)
   sels = group_residues(residues)
-  print >> out, "  Fragment size:", fragment_size
-  print >> out, "    Initial groups..."
+  print("  Fragment size:", fragment_size, file=out)
+  print("    Initial groups...", file=out)
   min_group_size = show_groups(sels=sels)
-  print >> out, "      n_groups=", len(sels)
+  print("      n_groups=", len(sels), file=out)
   ###
-  print >> out, "    Splitting groups is necesary..."
-  print >> out, "      n_groups=", len(sels)
+  print("    Splitting groups is necesary...", file=out)
+  print("      n_groups=", len(sels), file=out)
   sels = split_groups(sels = sels, fragment_size = fragment_size)
   show_groups(sels=sels)
   ###
   if(len(sels) > max_sels or min_group_size < fragment_size and len(sels)>1):
-    print >> out, "  Re-grouping to achieve maximum possible nuber of groups..."
+    print("  Re-grouping to achieve maximum possible nuber of groups...", file=out)
     sels = regroup_groups(sels, residues, fragment_size, max_sels)
-    print >> out, "    n_groups=", len(sels)
+    print("    n_groups=", len(sels), file=out)
     show_groups(sels=sels)
   len_new_sels = len(sels)
   if(len_new_sels==10):
@@ -321,7 +324,7 @@ def get_model_partitioning(residues,
   elif(len_new_sels==1):
     perms = [[[0]]]
   elif(len_new_sels<10):
-    perms = all_permutations(len(list(xrange(len_new_sels))))
+    perms = all_permutations(len(range(len_new_sels)))
   else: raise RuntimeError("Too many permutations.")
   return sels, perms
 
@@ -354,9 +357,9 @@ def chains_and_atoms(pdb_hierarchy, secondary_structure_selection,
             [result_, is_secondary_structure, rg.resid(), rg.unique_resnames()])
       if(len(result)>0):
         chains_and_residue_selections.append([chain.id, result])
-  print >> out, "Considering these chains:"
+  print("Considering these chains:", file=out)
   for ch in chains_and_residue_selections:
-    print >> out, "  chain '%s' (number of residues selected: %d)" % (ch[0], len(ch[1]))
+    print("  chain '%s' (number of residues selected: %d)" % (ch[0], len(ch[1])), file=out)
   return chains_and_residue_selections, new_secondary_structure_selection
 
 def tls_group_selections(groups, perm):
@@ -429,15 +432,14 @@ def tls_refinery(sites_cart, selection, u_cart=None, u_iso=None,
         sites          = sites_cart_,
         max_iterations = max_iterations)
       if(0): # DEBUG
-        print "Minimization:", xxx.f
-        print "T_min:", minimized.T_min
-        print "L_min:", minimized.L_min
-        print "S_min:", minimized.S_min
-        print
+        print("Minimization:", xxx.f)
+        print("T_min:", minimized.T_min)
+        print("L_min:", minimized.L_min)
+        print("S_min:", minimized.S_min)
+        print()
       return minimized
 
 def chunks(size, n_groups):
-  rp = list(xrange(size))
   chunk_size = size//n_groups
   nc = chunk_size
   counter = 0
@@ -494,7 +496,7 @@ def chunks(size, n_groups):
 def tls_refinery_random_groups(sites_cart, n_groups, u_cart=None, u_iso=None, n_runs=50):
   assert [u_cart, u_iso].count(None)==1
   t = 0
-  for tr in xrange(n_runs):
+  for tr in range(n_runs):
     while True:
       selections = chunks(size=sites_cart.size(), n_groups=n_groups)
       #print [(min(s),max(s)) for s in selections]
@@ -556,7 +558,7 @@ Usage:
   phenix.find_tls_groups model.pdb [nproc=...]
 """
   if(len(args) == 0):
-    print default_message
+    print(default_message)
     return
   cmdline_phil = []
   for arg in args :
@@ -576,7 +578,7 @@ Usage:
   params = working_phil.extract()
   pdb_file_name = params.pdb_file
   if (pdb_file_name is None) or (not iotbx.pdb.is_pdb_file(pdb_file_name)):
-    print "A model file is required."
+    print("A model file is required.")
     return
   if (params.nproc is None):
     params.nproc = 1
@@ -621,18 +623,18 @@ def external_tls(pdb_inp, pdb_hierarchy, sites_cart, u_iso, out=None):
   selection_strings = []
   if(len(pdb_inp_tls.tls_params)>0):
     for tp in pdb_inp_tls.tls_params:
-      print >> out, "  ", tp.selection_string
+      print("  ", tp.selection_string, file=out)
       selection_strings.append(tp.selection_string)
   else:
-    print >> out, "  ... none found."
+    print("  ... none found.", file=out)
   if(len(selection_strings)>0):
     total_target = total_score(
       pdb_hierarchy     = pdb_hierarchy,
       sites_cart        = sites_cart,
       u_iso             = u_iso,
       selection_strings = selection_strings)
-    print >> out
-    print >> out, "Total target for groups from PDB file header: %10.1f"%total_target
+    print(file=out)
+    print("Total target for groups from PDB file header: %10.1f"%total_target, file=out)
 
 def check_adp(u_iso, step=10, out=None):
   if (out is None):
@@ -679,11 +681,11 @@ def merge_groups_by_connectivity(pdb_hierarchy, xray_structure,
           distances = distances.select(distances > 0)
           p = cnt*100./xj.scatterers().size()
           if(p>=1):
-            print
+            print()
             if(selection_strings is not None):
-              print sj
-              print si
-            print i_seq,j_seq, p, flex.min_default(distances,0), flex.mean_default(distances,0)
+              print(sj)
+              print(si)
+            print(i_seq,j_seq, p, flex.min_default(distances,0), flex.mean_default(distances,0))
         else:
           distances = xj.closest_distances(xi.sites_frac(), distance_cutoff=6).smallest_distances
           cnt = ((distances > 0) & (distances < 3)).count(True)
@@ -691,14 +693,14 @@ def merge_groups_by_connectivity(pdb_hierarchy, xray_structure,
           distances = distances.select(distances > 0)
           p = cnt*100./xi.scatterers().size()
           if(p>=1):
-            print
+            print()
             if(selection_strings is not None):
-              print sj
-              print si
-            print i_seq,j_seq, p, flex.min_default(distances,0), flex.mean_default(distances,0)
+              print(sj)
+              print(si)
+            print(i_seq,j_seq, p, flex.min_default(distances,0), flex.mean_default(distances,0))
 
   #
-  print
+  print()
 
 def find_tls(params,
               pdb_inp,
@@ -774,11 +776,11 @@ def find_tls(params,
     #assert 0
     #
     if(len(perms)==1):
-      print >> out, "  Whole chain is considered as one TLS group."
+      print("  Whole chain is considered as one TLS group.", file=out)
       chains_and_atom_selection_strings.append([crs[0],
         permutations_as_atom_selection_string(groups, perms[0])])
     else:
-      print >> out, "  Fitting TLS matrices..."
+      print("  Fitting TLS matrices...", file=out)
       dic = {}
       target_best = 1.e+9
       if (params.nproc is Auto) or (params.nproc > 1):
@@ -800,7 +802,7 @@ def find_tls(params,
       else :
         for i_perm, perm in enumerate(perms):
           if i_perm%500==0:
-            print >> out, "    ...perm %d of %d"%(i_perm, len(perms))
+            print("    ...perm %d of %d"%(i_perm, len(perms)), file=out)
           selections = tls_group_selections(groups, perm)
           target = 0
           for selection in selections:
@@ -813,12 +815,12 @@ def find_tls(params,
           dic.setdefault(len(perm), []).append([target,perm])
         #print "    perm %d of %d: target=%8.3f (TLS groups: %s), permutation:"%(
         #  i_perm, len(perms),target,len(perm)),perm
-      print >> out, "    Best fits:"
-      print >> out, "      No. of         Targets"
-      print >> out, "      groups   best   rand.pick  diff.  score permutation"
+      print("    Best fits:", file=out)
+      print("      No. of         Targets", file=out)
+      print("      groups   best   rand.pick  diff.  score permutation", file=out)
       score_best = -1.e+9
       perm_choice = None
-      for k, v in zip(dic.keys(),dic.values()):
+      for k, v in six.iteritems(dic):
         t_best = v[0][0]
         perm_best = v[0][1]
         for v_ in v:
@@ -837,8 +839,8 @@ def find_tls(params,
           sites_cart = sites_cart.select(chain_selection),
           n_groups   = k)
         score = (r-t_best)/(r+t_best)*100.
-        print >> out, "         %3d %6.3f      %6.3f %6.2f %6.3f"%(
-          k,t_best, r, r-t_best, score), perm_best
+        print("         %3d %6.3f      %6.3f %6.2f %6.3f"%(
+          k,t_best, r, r-t_best, score), perm_best, file=out)
         if(score > score_best):
           score_best = score
           perm_choice = perm_best[:]
@@ -859,10 +861,10 @@ def find_tls(params,
   #for chain_and_permutation in chains_and_permutations:
   #  print chain_and_permutation
   #print
-  print >> out, "TLS atom selections for phenix.refine:"
-  groups_out = cStringIO.StringIO()
+  print("TLS atom selections for phenix.refine:", file=out)
+  groups_out = StringIO()
   selection_strings = []
-  print >> groups_out, "refinement.refine.adp {"
+  print("refinement.refine.adp {", file=groups_out)
   for r in chains_and_atom_selection_strings:
     prefix = "chain '%s'"%r[0]
     if(len(r[1])>0 and len(r[1:])>0):
@@ -871,14 +873,14 @@ def find_tls(params,
         for r__ in r_:
           if(len(r__)>0):
             group_selection = prefix+"(%s)"%r__
-            print >> groups_out, "  tls = \"%s\"" % group_selection
+            print("  tls = \"%s\"" % group_selection, file=groups_out)
             selection_strings.append("%s" % group_selection)
     else:
-      print >> groups_out, "  tls = \"%s\"" % prefix
+      print("  tls = \"%s\"" % prefix, file=groups_out)
       selection_strings.append("%s" % prefix)
-  print >> groups_out, "}"
-  print >> out, groups_out.getvalue()
-  print >> out
+  print("}", file=groups_out)
+  print(groups_out.getvalue(), file=out)
+  print(file=out)
   #XXX
   if 0:
     merge_groups_by_connectivity(
@@ -892,8 +894,8 @@ def find_tls(params,
       sites_cart        = sites_cart,
       u_iso             = u_iso,
       selection_strings = selection_strings)
-    print >> out, "Overall best total target for automatically found groups: %10.1f"%total_target
-    print >> out
+    print("Overall best total target for automatically found groups: %10.1f"%total_target, file=out)
+    print(file=out)
   if (return_as_list):
     return selection_strings
   else :
@@ -916,4 +918,4 @@ class _run_find_tls(object):
 if (__name__ == "__main__"):
   t0 = time.time()
   run(args=sys.argv[1:])
-  print "Time: %10.3f"%(time.time()-t0)
+  print("Time: %10.3f"%(time.time()-t0))

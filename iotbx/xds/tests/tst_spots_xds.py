@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from libtbx.test_utils import open_tmp_file
 from libtbx.test_utils import approx_equal
@@ -16,7 +16,7 @@ def exercise_spots_xds():
  1053.50 1227.71 2.87 221. -6 -4 1
 """
 
-  f = open_tmp_file(suffix="SPOTS.XDS", mode="wb")
+  f = open_tmp_file(suffix="SPOTS.XDS", mode="w")
   f.write(txt)
   f.close()
 
@@ -64,4 +64,4 @@ def run():
 
 if __name__ == '__main__':
   run()
-  print "OK"
+  print("OK")

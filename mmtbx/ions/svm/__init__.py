@@ -12,10 +12,11 @@ See Also
 phenix_dev.ion_identification.nader_ml
 """
 
-from __future__ import division, absolute_import
+from __future__ import absolute_import, division, print_function
 
 from collections import Iterable
-from cStringIO import StringIO
+from six import string_types
+from six.moves import cStringIO as StringIO
 from ctypes import c_double
 import errno
 import os
@@ -32,6 +33,8 @@ from mmtbx.ions.environment import N_SUPPORTED_ENVIRONMENTS
 from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES
 import mmtbx.ions.identify
 from mmtbx.ions.svm import utils
+from six.moves import zip
+from six.moves import range
 
 try : # XXX required third-party dependencies
   import numpy as np
@@ -477,7 +480,7 @@ def predict_ion(chem_env, scatter_env, elements=None, svm_name=None):
   probs = prob_estimates[:nr_class]
   labels = [ALLOWED_IONS[i] for i in classifier.get_labels()]
 
-  lst = zip(labels, probs)
+  lst = list(zip(labels, probs))
   lst.sort(key=lambda x: -x[-1])
 
   if elements is not None:
@@ -495,7 +498,7 @@ def predict_ion(chem_env, scatter_env, elements=None, svm_name=None):
     # Re-normalize the probabilities
     total = sum(probs)
     probs = [i / total for i in probs]
-    lst = zip(classes, probs)
+    lst = list(zip(classes, probs))
 
   return lst
 
@@ -521,7 +524,7 @@ def _flatten_list(lst):
     """
 
     for item in lst:
-      if isinstance(item, Iterable) and not isinstance(item, basestring):
+      if isinstance(item, Iterable) and not isinstance(item, string_types):
         for sub in _flatten(item):
           yield sub
       else:
@@ -580,13 +583,13 @@ class svm_prediction(slots_getstate_setstate_default_initializer):
     prefix : str, optional
     """
     for line in self.atom_info_str.splitlines():
-      print >> out, prefix+line.rstrip()
-    print >> out, prefix+"SVM scores:"
+      print(prefix+line.rstrip(), file=out)
+    print(prefix+"SVM scores:", file=out)
     scores = sorted(zip(self.atom_types, self.scores), key=lambda x: -x[1])
     for elem, score in scores:
-      print >> out, prefix+"  %4s : %.3f" % (elem, score)
+      print(prefix+"  %4s : %.3f" % (elem, score), file=out)
     if (self.final_choice is not None):
-      print >> out, prefix+"Final choice: %s" % self.final_choice
+      print(prefix+"Final choice: %s" % self.final_choice, file=out)
 
   def show_brief(self, out=sys.stdout, prefix=""):
     """
@@ -607,9 +610,9 @@ class svm_prediction(slots_getstate_setstate_default_initializer):
         if (atom_type == final_choice.element):
           best_score = "%5.3f" % score
           break
-    print >> out, prefix+"%s   %4s  %5s  %5.2f  %5.2f" % \
+    print(prefix+"%s   %4s  %5s  %5.2f  %5.2f" % \
       (self.pdb_id_str, final_choice.element, best_score,
-       self.map_stats.two_fofc, self.map_stats.fofc)
+       self.map_stats.two_fofc, self.map_stats.fofc), file=out)
 
 class manager(mmtbx.ions.identify.manager):
   def analyze_water(self, i_seq, debug=True, candidates=Auto,
@@ -636,7 +639,7 @@ class manager(mmtbx.ions.identify.manager):
     auto_candidates = candidates is Auto
     if auto_candidates:
       candidates = mmtbx.ions.DEFAULT_IONS
-    elif isinstance(candidates, str) or isinstance(candidates, unicode):
+    elif isinstance(candidates, strinig_types):
       candidates = candidates.replace(",", " ").split()
     candidates = [i.strip().upper() for i in candidates]
     if (candidates == ['X']) : # XXX hack for testing - X is "dummy" element
@@ -707,8 +710,8 @@ class manager(mmtbx.ions.identify.manager):
     list of svm_prediction
     """
     waters = self._extract_waters()
-    print >> out, "  %d waters to analyze" % len(waters)
-    print >> out, ""
+    print("  %d waters to analyze" % len(waters), file=out)
+    print("", file=out)
     if (len(waters) == 0) : return
     #nproc = easy_mp.get_processes(self.nproc)
     predictions = []
@@ -724,12 +727,12 @@ class manager(mmtbx.ions.identify.manager):
     for result in predictions :
       if (debug):
         result.show(out=out, prefix="  ")
-        print >> out, ""
+        print("", file=out)
       if (result.final_choice is not None):
         filtered.append(result)
     if (len(filtered) == 0):
-      print >> out, ""
-      print >> out, "  No waters could be classified as possible ions."
+      print("", file=out)
+      print("  No waters could be classified as possible ions.", file=out)
     else :
       make_sub_header("Predicted ions", out=out)
       for result in filtered :

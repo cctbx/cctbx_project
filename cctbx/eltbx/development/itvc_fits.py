@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.development import rez_rez_grant
 from cctbx.eltbx.development.create_n_gaussian_raw_cpp import identifier
@@ -21,8 +21,8 @@ def run(file_name, args, cutoff, params,
     args = args[1:]
   if (not six_term and not zig_zag):
     if (not os.path.isdir(plots_dir)):
-      print "No plots because target directory does not exist (mkdir %s)." % \
-        plots_dir
+      print("No plots because target directory does not exist (mkdir %s)." % \
+        plots_dir)
       plots_dir = None
     if (chunk_n > 1):
       assert plots_dir is not None
@@ -121,7 +121,7 @@ def run_and_time(*args, **kw):
   try:
     run(*args, **kw)
   finally:
-    print "CPU time: %.2f seconds" % timer.elapsed()
+    print("CPU time: %.2f seconds" % timer.elapsed())
 
 def main():
   parser = OptionParser(

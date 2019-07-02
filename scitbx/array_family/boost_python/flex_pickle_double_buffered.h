@@ -26,7 +26,12 @@ namespace scitbx { namespace af { namespace boost_python {
       DoubleBufferedToString accu;
       accu << a.size();
       for(std::size_t i=0;i<a.size();i++) accu << a[i];
+#ifdef IS_PY3K
+      return boost::python::make_tuple(a.accessor(),
+        boost::python::handle<>(PyBytes_FromStringAndSize(accu.buffer.c_str(), accu.buffer.size())));
+#else
       return boost::python::make_tuple(a.accessor(), accu.buffer);
+#endif
     }
 
     static

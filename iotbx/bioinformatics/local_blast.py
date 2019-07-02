@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 import os,sys,libtbx.load_env
 
@@ -44,9 +44,9 @@ def checkblast():
   if os.path.exists(phenix_blast):
     blastpath=phenix_blast
     blastexe=phenix_blast_exe
-    print '%s version is running...\n'%sysname
+    print('%s version is running...\n'%sysname)
   else:
-    print 'BLAST executable does not exist. please check your Phenix installation.'
+    print('BLAST executable does not exist. please check your Phenix installation.')
     sys.exit(0)
   return blastpath
 
@@ -65,7 +65,7 @@ class pdbaa(object):
     if self.workdir is None:
       self.workdir=curdir
     elif os.path.exists(self.workdir) is False:
-      print "Input working directory does not exist. Try to work in current directory instead."
+      print("Input working directory does not exist. Try to work in current directory instead.")
       self.workdir=curdir
     fasta_file='myprotein.fasta'
     fasta_path=os.path.join(self.workdir,fasta_file)

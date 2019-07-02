@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 import sys
@@ -10,6 +10,8 @@ from cctbx import xray
 from libtbx.utils import user_plus_sys_time
 from cctbx import crystal
 import random
+from six.moves import zip
+from six.moves import range
 
 time_group_py  = 0.0
 
@@ -17,8 +19,8 @@ def show_times(out = None):
   if(out is None): out = sys.stdout
   total = time_group_py
   if(total > 0.01):
-     print >> out, "Group ADP refinement:"
-     print >> out, "  time_group_py                          = %-7.2f" % time_group_py
+     print("Group ADP refinement:", file=out)
+     print("  time_group_py                          = %-7.2f" % time_group_py, file=out)
   return total
 
 class sphere_similarity_restraints(object):
@@ -59,7 +61,7 @@ class sphere_similarity_restraints(object):
         pmean = flex.mean(params)
         n_par = params.size()
         params = flex.double()
-        for i in xrange(n_par):
+        for i in range(n_par):
           params.append(pmean + 0.1 * pmean * random.choice([-1,0,1]))
     return crystal.adp_iso_local_sphere_restraints_energies(
       pair_sym_table           = self.pair_sym_table,
@@ -155,7 +157,7 @@ class manager(object):
     sc_start = fmodel.xray_structure.scatterers().deep_copy()
     minimized = None
     self.tested = 0
-    for macro_cycle in xrange(1,number_of_macro_cycles+1,1):
+    for macro_cycle in range(1,number_of_macro_cycles+1,1):
       if(minimized is not None): par_initial = minimized.par_min
       minimized = group_minimizer(
         fmodel                      = fmodel_copy,
@@ -233,7 +235,7 @@ class manager(object):
     part2 = "; iterations = "
     n = 77 - len(part1 + part2 + mc + it)
     part3 = ")"+"-"*n+"|"
-    print >> out, part1 + mc + part2 + it + part3
+    print(part1 + mc + part2 + it + part3, file=out)
     part1 = "| "
     if(weight is None):
       part4 = " restraints weight = "+str(weight)
@@ -244,8 +246,8 @@ class manager(object):
     tw = " target = "+str("%.6f"%tw)
     n = 78 - len(rw+rf+tw+part4)
     end = " "*n+"|"
-    print >> out, rw+rf+tw+part4+end
-    print >> out, "|" +"-"*77+"|"
+    print(rw+rf+tw+part4+end, file=out)
+    print("|" +"-"*77+"|", file=out)
 
 class group_minimizer(object):
   def __init__(

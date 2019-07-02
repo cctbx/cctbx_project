@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
 from cctbx.development import debug_utils
 import sys
@@ -22,7 +22,7 @@ def run_call_back(flags, space_group_info):
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

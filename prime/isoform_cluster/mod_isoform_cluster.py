@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from prime.postrefine import postref_handler
 from prime.index_ambiguity.mod_lbfgs import lbfgs_handler
 from cctbx.array_family import flex
 import numpy as np
 import random, ntpath, os
+from six.moves import range
 
 class isoform_cluster_handler(object):
   """

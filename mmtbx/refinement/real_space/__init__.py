@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import adopt_init_args, group_args
 from scitbx.array_family import flex
 from scitbx.matrix import rotate_point_around_axis
@@ -25,6 +25,8 @@ from cctbx import eltbx
 
 import scitbx.math
 from libtbx.utils import null_out
+from six.moves import zip
+from six.moves import range
 
 def setup_test(pdb_answer, pdb_poor, i_pdb, d_min, resolution_factor,
                pdb_for_map = None):
@@ -81,7 +83,7 @@ def check_sites_match(ph_answer, ph_refined, tol):
       s1.append(a1.xyz)
       s2.append(a2.xyz)
   dist = flex.max(flex.sqrt((s1 - s2).dot()))
-  print dist, tol
+  print(dist, tol)
   assert dist < tol,  [dist, tol]
 
 # End test utils
@@ -132,8 +134,8 @@ class rsr_model(object):
 
   def show(self, prefix="", log=None):
     if(log is None): log = sys.stdout
-    print >> log, "%smodel-to-map fit, CC_mask: %-6.4f"%(prefix, self.cc_mask)
-    print >> log, "%smoved from start:          %-6.4f"%(prefix, self.dist_from_start)
+    print("%smodel-to-map fit, CC_mask: %-6.4f"%(prefix, self.cc_mask), file=log)
+    print("%smoved from start:          %-6.4f"%(prefix, self.dist_from_start), file=log)
     gs = self.model.geometry_statistics()
     result = None
     if(gs is not None):
@@ -289,11 +291,11 @@ class cluster(object):
     if(self.atom_names is None): return
     cl = self
     an = self.atom_names
-    print cl.axis, ",".join([an[i].strip() for i in cl.axis]), \
+    print(cl.axis, ",".join([an[i].strip() for i in cl.axis]), \
         cl.atoms_to_rotate, \
         ",".join([an[i].strip() for i in cl.atoms_to_rotate]), "<>",\
         ",".join([an[i].strip() for i in cl.selection]), "<>",\
-        ",".join([an[i].strip() for i in cl.get_vector_flat()])
+        ",".join([an[i].strip() for i in cl.get_vector_flat()]))
 
 class aa_residue_axes_and_clusters(object):
   def __init__(self,
@@ -620,7 +622,7 @@ class structure_monitor(object):
           rmsd_a = self.rmsd_a,
           rmsd_b = self.rmsd_b))
     if mso is not None and self.five_cc is not None:
-      print >> log, fmt%(
+      print(fmt%(
         # prefix, self.map_cc_whole_unit_cell,
         # prefix, self.map_cc_around_atoms,
         prefix, self.five_cc.cc_mask,
@@ -645,7 +647,7 @@ class structure_monitor(object):
         prefix, format_value("%-5.2f", mso.cablam_disfavored),
         prefix, format_value("%-5.2f", mso.cablam_ca_outliers),
         prefix, format_value("%6.2f", mso.rotamer_outliers).strip(),
-        prefix, format_value("%-5.2f", mso.c_beta_dev_percent))
+        prefix, format_value("%-5.2f", mso.c_beta_dev_percent)), file=log)
 
   def show_residues(self, map_cc_all=0.8, map_cc_sidechain=0.8, log=None):
     self.assert_pdb_hierarchy_xray_structure_sync()
@@ -657,10 +659,10 @@ class structure_monitor(object):
       i4=r.map_cc_sidechain is not None and r.map_cc_sidechain<map_cc_sidechain
       if([i1,i2,i4].count(True)>0):
         if(header_printed):
-          print >> log, "Residue     CC        CC         CC   Rotamer"
-          print >> log, "     id    all  backbone  sidechain        id"
+          print("Residue     CC        CC         CC   Rotamer", file=log)
+          print("     id    all  backbone  sidechain        id", file=log)
           header_printed = False
-        print >> log, r.format_info_string()
+        print(r.format_info_string(), file=log)
 
   def update(self, xray_structure, accept_as_is=True):
     if(not accept_as_is):
@@ -810,7 +812,7 @@ class score(object):
     sz = len(vals)
     if(sz>3):
       deltas = []
-      for i in xrange(sz):
+      for i in range(sz):
         if(i+1<sz and i>1):
           e1=abs(vals[i])
           e2=abs(vals[i+1])
@@ -867,7 +869,7 @@ def torsion_search_nested(
       scorer,
       sites_cart):
   n_angles = len(clusters)
-  print n_angles
+  print(n_angles)
   if(n_angles == 3):
     r1 = [-3,-7,-9]
     r2 = [3,7,9]

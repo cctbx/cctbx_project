@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 import math
 from dials.array_family import flex
@@ -22,6 +22,9 @@ class scaling_result(object):
 
 class experiment_scaler(worker):
   '''Scales experiment reflection intensities to the reference, or model, intensities'''
+
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(experiment_scaler, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
 
   def __repr__(self):
     return 'Scaling; cross-correlation'

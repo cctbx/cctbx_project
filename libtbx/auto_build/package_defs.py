@@ -12,12 +12,15 @@ import os
 import os.path as op
 import platform
 import sys
-import urllib2
+try: # Python 3
+  from urllib.request import urlopen
+except ImportError: # Python 2
+  from urllib2 import urlopen
 
 try:
   from .bootstrap import Toolbox
   from .installer_utils import *
-except ValueError:
+except (ValueError, ImportError):
   # When run from bootstrap the auto_build directory will be in the path
   from bootstrap import Toolbox
   from installer_utils import *
@@ -28,7 +31,7 @@ def get_pypi_package_information(package, version=None, information_only=False):
   '''Retrieve information about a PyPi package.'''
   metadata = 'https://pypi.python.org/pypi/' + package + '/json'
   try:
-    pypidata = urllib2.urlopen(metadata).read()
+    pypidata = urlopen(metadata).read()
   except Exception: # TLS <1.2, ...
     if information_only:
       return {'name': '', 'version': '', 'summary': ''}
@@ -48,7 +51,11 @@ def get_pypi_package_information(package, version=None, information_only=False):
     package[field] = pkginfo['info'][field]
   return package
 
-DEPENDENCIES_BASE = "https://gitcdn.link/repo/dials/dependencies/master/"
+DEPENDENCIES_BASE = [
+  "https://gitcdn.link/repo/dials/dependencies/master",
+  "https://github.com/dials/dependencies/raw/master",
+  "https://gitcdn.xyz/repo/dials/dependencies/master",
+]
 OPENSSL_PKG = "openssl-1.0.2r.tar.gz"    # OpenSSL
 PYTHON3_PKG = "Python-3.7.2.tgz"
 PYTHON_PKG = "Python-2.7.16.tgz"
@@ -202,7 +209,7 @@ class fetch_packages(object):
                 pkg_url=None,
                 output_file=None,
                 return_file_and_status=False,
-                download_url=None, # If given this is the URL used for downloading, otherwise construct using pgk_url and pkg_name
+                download_url=None, # If given this is the URL used for downloading, otherwise construct using pkg_url and pkg_name
                 ):
     if (pkg_url is None):
       pkg_url = BASE_CCI_PKG_URL
@@ -233,20 +240,39 @@ class fetch_packages(object):
       else :
         raise RuntimeError(("Package '%s' not found on local filesystems.  ") %
           pkg_name)
-    full_url = download_url or "%s/%s" % (pkg_url, pkg_name)
-    if not download_url:
-      self.log.write("    downloading from %s : " % pkg_url)
 
-    size = self.toolbox.download_to_file(full_url, output_file, log=self.log)
-    if (size == -2):
-      print("    using ./%s (cached)" % pkg_name, file=self.log)
-      if return_file_and_status:
-        return op.join(self.dest_dir, output_file), size
-      return op.join(self.dest_dir, output_file)
-    assert size > 0, "File %s has size %d" % (pkg_name, size)
-    if return_file_and_status:
-      return op.join(self.dest_dir, output_file), size
-    return op.join(self.dest_dir, output_file)
+    # Generate list of possible URL candidates
+    if download_url:
+      if isinstance(download_url, list):
+        urls = download_url
+      else:
+        urls = [download_url]
+    else:
+      if isinstance(pkg_url, list):
+        urls = ["%s/%s" % (p, pkg_name) for p in pkg_url]
+      else:
+        urls = ["%s/%s" % (pkg_url, pkg_name)]
+
+    for url_attempt in urls:
+      self.log.write("    downloading from %s : " % url_attempt)
+      for retry in (3,3,0):
+        try:
+          size = self.toolbox.download_to_file(url_attempt, output_file, log=self.log)
+          if (size == -2):
+            print("    using ./%s (cached)" % pkg_name, file=self.log)
+            if return_file_and_status:
+              return op.join(self.dest_dir, output_file), size
+            return op.join(self.dest_dir, output_file)
+          assert size > 0, "File %s has size %d" % (pkg_name, size)
+          if return_file_and_status:
+            return op.join(self.dest_dir, output_file), size
+          return op.join(self.dest_dir, output_file)
+        except Exception as e:
+          self.log.write("    download failed with %s" % str(e))
+          if retry:
+            self.log.write("    retrying in %d seconds" % retry)
+            time.sleep(retry)
+    raise RuntimeError("Could not download " + pkg_name)
 
 def fetch_all_dependencies(dest_dir,
     log,

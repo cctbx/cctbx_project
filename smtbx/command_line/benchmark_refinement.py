@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import itertools
 from smtbx.development import random_xray_structure
 import smtbx.utils
@@ -6,6 +6,7 @@ from smtbx.refinement import constraints, least_squares
 from scitbx.array_family import flex
 import timeit
 import pprint
+from six.moves import range
 
 def run(sizes, d_mins):
   timing = {
@@ -18,14 +19,14 @@ def run(sizes, d_mins):
       'BLAS 3': []
     },
   }
-  print "%16s%11s%7s%9s%8s" % ('Algorithms', 'resolution', '#atoms',
-                               'building', 'solving')
+  print("%16s%11s%7s%9s%8s" % ('Algorithms', 'resolution', '#atoms',
+                               'building', 'solving'))
   for observations, model in test_structures(sizes, d_mins):
     for blas in ('BLAS 2', 'BLAS 3'):
       for may_parallelise in (False, True):
         concurrency = ('Serial', 'Parallel')[may_parallelise]
         result = benchmark(observations, model, may_parallelise, blas)
-        print "%9s%7s%11.2f%7i%9.3f%8.3f" % ((concurrency, blas) + result)
+        print("%9s%7s%11.2f%7i%9.3f%8.3f" % ((concurrency, blas) + result))
         timing[concurrency][blas].append(result)
   with open('smtbx_refinement.m', 'w') as f:
     pprint.pprint(timing, stream=f)
@@ -47,7 +48,7 @@ def benchmark(observations, model, may_parallelise, blas):
   n_trials = max(int(5e9/(0.5*m*n**2)), 1)
   building = 0
   solving = 0
-  for i in xrange(n_trials):
+  for i in range(n_trials):
     t0 = time()
     ls.build_up()
     t1 = time()
@@ -92,7 +93,7 @@ if __name__ == '__main__':
     start, stop = parsed[:2] if len(parsed) >= 2 else parsed*2
     step = parsed[2] if len(parsed) == 3 else 1
     if atype == int:
-      for i in xrange(start, stop, step):
+      for i in range(start, stop, step):
         yield i
       yield stop
     elif atype == float:

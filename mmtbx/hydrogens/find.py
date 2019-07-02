@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from mmtbx import find_peaks
 from mmtbx import utils
@@ -9,6 +9,7 @@ from mmtbx.refinement import print_statistics
 import mmtbx.utils
 from cctbx import sgtbx
 import cctbx
+from six.moves import zip,range
 
 master_params_part1 = iotbx.phil.parse("""\
 map_type = mFobs-DFmodel
@@ -131,7 +132,7 @@ def make_peak_dict(peaks, selection, obs_map, cutoff):
       continue
     i_seq = peaks.iseqs_of_closest_atoms[i]
     if(selection[i_seq]):
-      if result.has_key(i_seq):
+      if i_seq in result:
         result[i_seq].extend( [(h, s)] )
       else:
         result[i_seq] = [(h, s)]
@@ -259,7 +260,7 @@ def fit_water(water_and_peaks, xray_structure, params, log):
       scatterers[water_and_peaks.i_seq_o ].site = o
       scatterers[water_and_peaks.i_seq_h1].site = h1
       scatterers[water_and_peaks.i_seq_h2].site = h2
-  print >> log, "%6.3f"%d_best
+  print("%6.3f"%d_best, file=log)
 
 def run(fmodel, model, log, params = None):
   print_statistics.make_header("Fit water hydrogens into residual map",
@@ -278,7 +279,7 @@ def run(fmodel, model, log, params = None):
     pdb_atoms = model.pdb_atoms,
     xray_structure = model.get_xray_structure())
   print_statistics.make_sub_header("6D rigid body fit of HOH", out = log)
-  print >> log, "Fit quality:"
+  print("Fit quality:", file=log)
   for water_and_peaks in waters_and_peaks:
     fit_water(water_and_peaks = water_and_peaks,
               xray_structure  = model.get_xray_structure(),
@@ -327,7 +328,7 @@ def build_dod_and_od(model, fmodels, log=None, params=None):
   mmtbx.utils.assert_model_is_consistent(model)
   sol_sel = model.solvent_selection()
   hd_sel = sol_sel & model.get_hd_selection()
-  print>>log, "Final number of water hydrogens: ", hd_sel.count(True)
+  print("Final number of water hydrogens: ", hd_sel.count(True), file=log)
   return model, fmodels
 
 def remove_zero_occupancy(model, min_occupancy=0.05, max_b_iso=80.):
@@ -414,7 +415,7 @@ def distances_to_peaks(xray_structure, sites_frac, peak_heights,
     if use_selection is not None:
       height = peak_heights[i_seq_new_site_frac]
       if(use_selection[jn]):
-        if result.has_key(jn):
+        if jn in result:
           result[jn].extend( [(height, new_site_frac)] )
         else:
           result[jn] = [(height, new_site_frac)]
@@ -453,16 +454,16 @@ def match_dod(unit_cell, xyz_h, min_od=0.5, max_od=1.35, min_dod_angle=85.,
   n=len(xyz_h)
   besta=360.
   r = None
-  for i in xrange(n):
+  for i in range(n):
     x1h=xyz_h[i]
     x1 = x1h[1]
-    for j in xrange(i+1,n):
+    for j in range(i+1,n):
       x2h=xyz_h[j]
       x2 = x2h[1]
       d1 = unit_cell.distance(x1, x2)
       if d1<min_od:
         continue
-      for k in xrange(j+1,n):
+      for k in range(j+1,n):
         x3h=xyz_h[k]
         x3 = x3h[1]
         d2 = unit_cell.distance(x2, x3)
@@ -481,7 +482,7 @@ def match_dod(unit_cell, xyz_h, min_od=0.5, max_od=1.35, min_dod_angle=85.,
             da.append(360.)
           else:
             da.append(abs(av - 105.0))
-        ibest = min(xrange(len(da)), key=da.__getitem__)
+        ibest = min(range(len(da)), key=da.__getitem__)
         if da[ibest] < besta and da[ibest]<90.:
           r = a[ibest]
           besta = da[ibest]
@@ -491,10 +492,10 @@ def match_od(unit_cell, xyz_h, min_od=0.5, max_od=1.35):
   n=len(xyz_h)
   besta=1.e10
   r = None
-  for i in xrange(n):
+  for i in range(n):
     x1h=xyz_h[i]
     x1 = x1h[1]
-    for j in xrange(i+1,n):
+    for j in range(i+1,n):
       x2h=xyz_h[j]
       x2 = x2h[1]
       d1 = unit_cell.distance(x1, x2)
@@ -514,33 +515,33 @@ def len_peaks(set_of_peaks):
 
 def print_scats(xray_structure, fn):
   import cctbx
-  ftmp = file(fn, "w")
-  print>>ftmp, " scats "
+  ftmp = open(fn, "w")
+  print(" scats ", file=ftmp)
   itmp=0
   for scat in xray_structure.scatterers():
     itmp=itmp+1
-    print>>ftmp, itmp, ' ', scat.label.strip(), \
+    print(itmp, ' ', scat.label.strip(), \
       ' ', scat.scattering_type.strip(), ' ', \
       xray_structure.unit_cell().orthogonalize(scat.site), \
-      ' ', scat.occupancy, ' ', cctbx.adptbx.u_as_b(scat.u_iso)
+      ' ', scat.occupancy, ' ', cctbx.adptbx.u_as_b(scat.u_iso), file=ftmp)
   ftmp.close()
 
 def print_atom(out,atom):
-  print>>out, '     ', atom.format_atom_record()
-  print>>out, "        atom.xyz:  ", atom.xyz
-  print>>out, "        atom.occ:  ", atom.occ
-  print>>out, "        atom.b:    ", atom.b
-  print>>out, '        atom.segid: "%s"' % atom.segid
-  print>>out, "        atom.i_seq: ", atom.i_seq
-  print>>out, "        atom.name: ", atom.name
-  print>>out, "        atom.element: ", atom.element.strip()
+  print('     ', atom.format_atom_record(), file=out)
+  print("        atom.xyz:  ", atom.xyz, file=out)
+  print("        atom.occ:  ", atom.occ, file=out)
+  print("        atom.b:    ", atom.b, file=out)
+  print('        atom.segid: "%s"' % atom.segid, file=out)
+  print("        atom.i_seq: ", atom.i_seq, file=out)
+  print("        atom.name: ", atom.name, file=out)
+  print("        atom.element: ", atom.element.strip(), file=out)
 
 def print_scat(out, s):
-  print>>out, "scatterer  label : ", s.label.strip()
-  print>>out, "            site : ", s.site
-  print>>out, "         element : ", s.scattering_type.strip()
-  print>>out, "            biso : ", cctbx.adptbx.u_as_b(s.u_iso)
-  print>>out, "             occ : ", s.occupancy
+  print("scatterer  label : ", s.label.strip(), file=out)
+  print("            site : ", s.site, file=out)
+  print("         element : ", s.scattering_type.strip(), file=out)
+  print("            biso : ", cctbx.adptbx.u_as_b(s.u_iso), file=out)
+  print("             occ : ", s.occupancy, file=out)
 
 def atom_scat(atom,scat):
   import StringIO
@@ -624,13 +625,13 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
   params.map_next_to_model.min_model_peak_dist = keep_min
   sol_O = model.solvent_selection().set_selected(
     model.get_hd_selection(), False)
-  print >>log, "Number of solvent molecules: ", sol_O.count(True)
+  print("Number of solvent molecules: ", sol_O.count(True), file=log)
   sol_sel = model.solvent_selection()
   hd_sel = sol_sel & model.get_hd_selection()
-  print>>log, "Number of water hydrogens: ", hd_sel.count(True)
+  print("Number of water hydrogens: ", hd_sel.count(True), file=log)
   pks = distances_to_peaks(xs, peaks.sites, hs, max_od_dist, use_selection=sol_O)
   pkss = distances_to_peaks(xs, peaks.sites, hs, max_od_dist*1.7, use_selection=sol_O)
-  print>>log, "Peaks to consider: ", len(pks.keys()), " : ", len(pkss.keys())
+  print("Peaks to consider: ", len(pks.keys()), " : ", len(pkss.keys()), file=log)
   water_rgs = self.extract_water_residue_groups()
   water_rgs.reverse()
   element='D'
@@ -667,7 +668,7 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
     else:
       assert False
     o_i = o_atom.i_seq
-    if pks.has_key(o_i):
+    if o_i in pks:
       o_site = scatterers[o_i].site
       o_u = scatterers[o_i].u_iso_or_equiv(unit_cell)
       h_sites = pks[o_i]
@@ -679,7 +680,7 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
           h_swap = h1_site
         else:
           h_swap = hh[0]
-        assert pkss.has_key(o_i)
+        assert o_i in pkss
         h_sitess = pkss[o_i]
         hhs = choose_h_for_water(unit_cell, h_swap, h_sitess, h1_site=o_site,
             min_dod_angle=min_dod_angle, max_dod_angle=max_dod_angle)
@@ -713,7 +714,7 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
       sites_individual = True,
       s_occupancies    = False,
       adp_individual_iso=True)
-  print >> log, "Number of H added:", len(next_to_i_seqs)
+  print("Number of H added:", len(next_to_i_seqs), file=log)
   # print "DEBUG! ", dir(model.refinement_flags) #.size()
   # print "DEBUG! ", dir(model.refinement_flags.sites_individual) #.size()
   #print "DEBUG! ", model.refinement_flags.sites_individual.size()
@@ -739,7 +740,7 @@ def select_one_water(water_residue_group, n_atoms):
     i = atom.i_seq
     ws.append(i)
   result = flex.bool()
-  for j in xrange(0,n_atoms):
+  for j in range(0,n_atoms):
     if j in ws:
       result.append(True)
     else:
@@ -795,10 +796,10 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   params.map_next_to_model.min_model_peak_dist = keep_min
   sol_O = model.solvent_selection().set_selected(
     model.get_hd_selection(), False)
-  print >>log, "Number of solvent molecules: ", sol_O.count(True)
+  print("Number of solvent molecules: ", sol_O.count(True), file=log)
   sol_sel = model.solvent_selection()
   hd_sel = sol_sel & model.get_hd_selection()
-  print>>log, "Number of water hydrogens: ", hd_sel.count(True)
+  print("Number of water hydrogens: ", hd_sel.count(True), file=log)
   # pks = distances_to_peaks(xs, peaks.sites, hs, max_od_dist, use_selection=sol_O)
   obsmap = obs_map(fmodel, map_type=params.secondary_map_type)
   # filtered_peaks = map_peak_filter(peaks.sites, obsmap)
@@ -812,7 +813,7 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   npeaks=0
   for pk in pkss.values():
     npeaks = npeaks + len(pk)
-  print>>log, "Peaks to consider: ", npeaks
+  print("Peaks to consider: ", npeaks, file=log)
   water_rgs = model.extract_water_residue_groups()
   water_rgs.reverse()
   element='D'
@@ -834,7 +835,7 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
     else:
       assert False
     o_i = o_atom.i_seq
-    if pkss.has_key(o_i):
+    if o_i in pkss:
       o_site = scatterers[o_i].site
       site_symmetry = sgtbx.site_symmetry(xs.unit_cell(), xs.space_group(),
         o_site, 0.5, True)
@@ -917,7 +918,7 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
       sites_individual = True,
       s_occupancies    = False,
       adp_individual_iso=True)
-  print >> log, "Number of H added:", len(next_to_i_seqs)
+  print("Number of H added:", len(next_to_i_seqs), file=log)
   # print "DEBUG! ", dir(model.refinement_flags) #.size()
   # print "DEBUG! ", dir(model.refinement_flags.sites_individual) #.size()
   #print "DEBUG! ", model.refinement_flags.sites_individual.size()

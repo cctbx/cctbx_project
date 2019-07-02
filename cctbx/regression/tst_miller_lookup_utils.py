@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from cctbx import crystal
 from cctbx import miller
 from cctbx import uctbx
 from cctbx import miller
+from six.moves import range
 
 
 class miller_lookup_utils_tester(object):
@@ -456,7 +457,7 @@ class miller_lookup_utils_tester(object):
     self.tst_find_miller()
     self.tst_local_neighbourhood()
     self.tst_local_area()
-    print "OK"
+    print("OK")
 
 
 def run():

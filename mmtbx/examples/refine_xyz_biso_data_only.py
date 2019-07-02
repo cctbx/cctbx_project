@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import random
 import mmtbx.f_model
@@ -7,6 +7,7 @@ from libtbx import group_args
 from cctbx import xray
 import scitbx.lbfgs
 from cctbx import adptbx
+from six.moves import range
 
 pdb_str = """
 CRYST1    5.827    9.541    6.239  90.00  90.00  90.00 P 1
@@ -138,17 +139,17 @@ def run(refine_xyz=True, refine_adp=False):
     sf_and_grads_accuracy_params = params,
     target_name                  = "ls_wunit_kunit")
   # refinement loop
-  print "start r_factor: %6.4f" % fmodel.r_work()
-  for macro_cycle in xrange(100):
+  print("start r_factor: %6.4f" % fmodel.r_work())
+  for macro_cycle in range(100):
     # refine coordinates
     if(refine_xyz):
       minimized = minimizer(fmodel = fmodel, sites = True)
-      print "  macro_cycle %3d (sites) r_factor: %6.4f"%(macro_cycle,
-        fmodel.r_work())
+      print("  macro_cycle %3d (sites) r_factor: %6.4f"%(macro_cycle,
+        fmodel.r_work()))
     # refine ADPs
     if(refine_adp):
       minimized = minimizer(fmodel = fmodel, u_iso = True)
-      print "  macro_cycle %3d (adp)   r_factor: %6.4f"%(macro_cycle, fmodel.r_work())
+      print("  macro_cycle %3d (adp)   r_factor: %6.4f"%(macro_cycle, fmodel.r_work()))
   if(1):
     inp.pdb_hierarchy.adopt_xray_structure(fmodel.xray_structure)
     inp.pdb_hierarchy.write_pdb_file(file_name="refined.pdb")

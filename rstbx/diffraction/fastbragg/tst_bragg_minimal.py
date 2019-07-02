@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx.matrix import sqr
 from rstbx.diffraction.fastbragg import foo
@@ -327,7 +327,7 @@ def tst_all():
   # that the indexed cell is similar to the input cell.
 
   if (not libtbx.env.has_module("annlib")):
-    print "Skipping some tests: annlib not available."
+    print("Skipping some tests: annlib not available.")
     return
   # 1. Analysis of the image to identify the Bragg peak centers.
   #    This step uses an inefficient algorithm and implementation and
@@ -356,4 +356,4 @@ def tst_all():
 
 if __name__=="__main__":
   tst_all()
-  print "OK"
+  print("OK")

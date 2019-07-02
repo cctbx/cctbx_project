@@ -1,12 +1,12 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.command_line import show_systematic_absences
 from cctbx.development import random_structure
 from cctbx import sgtbx
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
 from libtbx.test_utils import Exception_expected
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import random
 
 def exercise():
@@ -49,4 +49,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

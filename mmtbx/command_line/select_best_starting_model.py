@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.phil
 import sys
 
@@ -78,10 +78,10 @@ rigid-body refinement on suitable models if requested.""")
     log=out)
   if result.success() and params.output.write_files :
     result.save_best_model(file_name=params.output.model_file_name)
-    print >> out, ""
-    print >> out, "Wrote best model to %s" % params.output.model_file_name
+    print("", file=out)
+    print("Wrote best model to %s" % params.output.model_file_name, file=out)
     result.save_updated_data(file_name=params.output.data_file_name)
-    print >> out, "Wrote updated data to %s" % params.output.data_file_name
+    print("Wrote updated data to %s" % params.output.data_file_name, file=out)
   return result
 
 def validate_params(params):

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 from cctbx import xray
 from smtbx.refinement import constraints, least_squares, restraints
 import smtbx.utils
@@ -20,7 +19,7 @@ class model(object):
     from iotbx.reflection_file_reader import any_reflection_file
     xs_dict = xray.structure.from_cif(file_path=model)
     assert len(xs_dict) == 1, "CIF should contain only one xray structure"
-    xs = xs_dict.values()[0]
+    xs = list(xs_dict.values())[0]
     mas = any_reflection_file(reflections).as_miller_arrays(crystal_symmetry=xs)
     fo_sq = None
     for ma in mas:

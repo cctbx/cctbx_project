@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys, math
 from cctbx import xray
 from cctbx import adptbx
@@ -11,6 +11,8 @@ import iotbx.phil
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry
+from six.moves import zip
+from six.moves import range
 
 ias_master_params = iotbx.phil.parse("""\
   b_iso_max = 100.0
@@ -95,12 +97,12 @@ class ias_counters(object):
 
   def show(self, out = None):
     if(out is None): out = sys.stdout
-    print >> out, "Number of IAS built:"
-    print >> out, "   total:             ", self.n_ias
-    print >> out, "   bond (X-X):        ", self.n_ias_b
-    print >> out, "   bond (X-H):        ", self.n_ias_bh
-    print >> out, "   ring centers:      ", self.n_ias_r
-    print >> out, "   lone pairs:        ", self.n_ias_l
+    print("Number of IAS built:", file=out)
+    print("   total:             ", self.n_ias, file=out)
+    print("   bond (X-X):        ", self.n_ias_b, file=out)
+    print("   bond (X-H):        ", self.n_ias_bh, file=out)
+    print("   ring centers:      ", self.n_ias_r, file=out)
+    print("   lone pairs:        ", self.n_ias_l, file=out)
     assert self.n_ias == self.n_ias_b+self.n_ias_r+self.n_ias_l+self.n_ias_bh
 
 class atom(object):
@@ -663,8 +665,7 @@ class manager(object):
      if(self.params is None): self.params = ias_master_params.extract()
      self.geometry.pair_proxies(xray_structure.sites_cart())
      bond_proxies_simple, asu = self.geometry.get_covalent_bond_proxies()
-     print >> self.log, \
-                  "Total number of covalent bonds = ", len(bond_proxies_simple)
+     print("Total number of covalent bonds = ", len(bond_proxies_simple), file=self.log)
      iass = extract_ias(xray_structure       = self.xray_structure,
                         bond_proxies_simple  = bond_proxies_simple,
                         pdb_atoms            = self.pdb_atoms,
@@ -680,13 +681,13 @@ class manager(object):
                  scaling   = self.params.peak_search_map.scaling)
      if(file_name is not None):
        self.all_bonds(iass = iass, file_name = file_name)
-     print >> self.log, "IAS considered: "
+     print("IAS considered: ", file=self.log)
      ias_counters(iass).show(out = self.log)
      set_status(iass, self.params)
-     print >> self.log, "IAS selected: "
+     print("IAS selected: ", file=self.log)
      ias_counters(iass).show(out = self.log)
      self.ias_xray_structure = self.iass_as_xray_structure(iass)
-     print >> log, "IAS scattering dictionary:"
+     print("IAS scattering dictionary:", file=log)
      self.ias_xray_structure.scattering_type_registry().show(out = self.log)
      if(1):
         self.write_pdb_file(out=self.log)
@@ -752,7 +753,7 @@ class manager(object):
       a.occ = sc.occupancy
       a.b = adptbx.u_as_b(sc.u_iso)
       a.element = sc.label[:2] # XXX
-      print >> out, a.format_atom_record_group()
+      print(a.format_atom_record_group(), file=out)
 
   def all_bonds(self, iass, file_name):
     sorted = []
@@ -785,14 +786,14 @@ class manager(object):
          s2 = ias.atom_2.site_cart
          dist = str("%.2f"%math.sqrt(
                    (s1[0]-s2[0])**2+(s1[1]-s2[1])**2+(s1[2]-s2[2])**2)).strip()
-         print >> fout, fmt1%(name1,i_seq1,b_iso1,name2,i_seq2,b_iso2, dist)
+         print(fmt1%(name1,i_seq1,b_iso1,name2,i_seq2,b_iso2, dist), file=fout)
          for d, e in zip(ias.bond_density.dist, ias.bond_density.data):
-           print >> fout, fmt2%(d, e)
+           print(fmt2%(d, e), file=fout)
          if(ias.bond_density.peak_dist is not None):
            for d, e in zip(ias.bond_density.peak_dist, ias.bond_density.peak_data):
-             print >> fout, "peak= %10.4f %10.4f"%(d, e)
-         print >> fout, "IAS: ", ias.bond_density.one_dim_point, ias.peak_value
-         print >> fout, "status= ", ias.status
+             print("peak= %10.4f %10.4f"%(d, e), file=fout)
+         print("IAS: ", ias.bond_density.one_dim_point, ias.peak_value, file=fout)
+         print("status= ", ias.status, file=fout)
 
 def add_lone_pairs_for_peptyde_o(site_c, site_o, site_ca, dist_co,
                                  R = 0.35,

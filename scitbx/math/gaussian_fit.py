@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.math.gaussian
 from scitbx.math import golay_24_12_generator
 from scitbx import lbfgs
@@ -11,6 +11,8 @@ from libtbx import easy_pickle
 import time
 import math
 import sys
+from six.moves import range
+from six.moves import zip
 
 minimize_multi_histogram = {"None": 0}
 
@@ -46,9 +48,9 @@ class minimize_mixin(object):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "n_terms:", self.final_gaussian_fit.n_terms(),
-    print >> f, "max_x: %.2f" % self.final_gaussian_fit.table_x()[-1],
-    print >> f, "max_error: %.4f" % self.max_error
+    print("n_terms:", self.final_gaussian_fit.n_terms(), end=' ', file=f)
+    print("max_x: %.2f" % self.final_gaussian_fit.table_x()[-1], end=' ', file=f)
+    print("max_error: %.4f" % self.max_error, file=f)
     f.flush()
     return self
 
@@ -58,7 +60,7 @@ class minimize_mixin(object):
     if (hasattr(self, "shift_sqrt_b_mod_n")):
       s += " shift_sqrt_b_mod_n:%d" % self.shift_sqrt_b_mod_n
       s += " i_repeat:%d" % self.i_repeat
-    print >> f, s
+    print(s, file=f)
     f.flush()
     return self
 
@@ -179,7 +181,7 @@ def minimize_multi_lbfgs(start_fit,
   best_min = None
   for target_power in target_powers:
     min_gaussian_fit = start_fit
-    for i in xrange(n_repeats_minimization):
+    for i in range(n_repeats_minimization):
       if (shift_sqrt_b_mod_n > 0):
         shift_sqrt_b_this_time = (i % shift_sqrt_b_mod_n == 0)
       else:
@@ -195,11 +197,11 @@ def minimize_multi_lbfgs(start_fit,
       except LargeNegativeB:
         minimized = None
         break
-      except RuntimeError, e:
+      except RuntimeError as e:
         if (str(e).find("lbfgs error: ") < 0): raise
-        print e
-        print "Aborting this minimization."
-        print
+        print(e)
+        print("Aborting this minimization.")
+        print()
         sys.stdout.flush()
         minimized = None
         break
@@ -221,7 +223,7 @@ def minimize_multi_lbfgsb(start_fit,
   for target_power in target_powers:
     for apply_lower_bounds_on_b in [False, True]:
       min_gaussian_fit = start_fit
-      for i in xrange(n_repeats_minimization):
+      for i in range(n_repeats_minimization):
         if (shift_sqrt_b_mod_n > 0):
           shift_sqrt_b_this_time = (i % shift_sqrt_b_mod_n == 0)
         else:
@@ -315,15 +317,15 @@ class minimize_damped_newton(immoptibox_mixin):
 
 def show_minimize_multi_histogram(f=None, reset=True):
   global minimize_multi_histogram
-  minimizer_types = minimize_multi_histogram.keys()
-  counts = flex.double(minimize_multi_histogram.values())
+  minimizer_types = list(minimize_multi_histogram.keys())
+  counts = flex.double(list(minimize_multi_histogram.values()))
   perm = flex.sort_permutation(data=counts, reverse=True)
   minimizer_types = flex.select(minimizer_types, perm)
   counts = counts.select(perm)
   n_total = flex.sum(counts)
   for m,c in zip(minimizer_types, counts):
-    print >> f, "%-39s  %5.3f %6d" % (m, c/max(1,n_total), c)
-  print >> f
+    print("%-39s  %5.3f %6d" % (m, c/max(1,n_total), c), file=f)
+  print(file=f)
   if (reset):
     minimize_multi_histogram = {"None": 0}
 
@@ -349,7 +351,7 @@ def minimize_multi(start_fit,
           shift_sqrt_b_mod_n=current_shift_sqrt_b_mod_n,
           b_min=b_min,
           n_repeats_minimization=n_repeats_minimization)
-      except RuntimeError, e:
+      except RuntimeError as e:
         if (str(e).find("SCITBX_ASSERT(b >= 0)") < 0):
           raise
       else: best_min_list.append(minimized)
@@ -496,9 +498,9 @@ def find_max_x_multi(null_fit,
   i_x_step = max(1, ifloor((i_x_end-i_x_begin) / (factor_x_step*n_terms)))
   if (n_terms == 1): n_start_fractions = 2
   best_min = None
-  for i_x in xrange(i_x_begin, i_x_end, i_x_step):
-    for i_split in xrange(-1, existing_gaussian.n_terms()):
-      for i_start_fraction in xrange(0,n_start_fractions):
+  for i_x in range(i_x_begin, i_x_end, i_x_step):
+    for i_split in range(-1, existing_gaussian.n_terms()):
+      for i_start_fraction in range(0,n_start_fractions):
         gaussian_fit = make_start_gaussian(
           null_fit=null_fit,
           existing_gaussian=existing_gaussian,
@@ -524,7 +526,7 @@ def make_golay_based_start_gaussian(null_fit, code):
   b_starts = [1,4,16,32]
   a = flex.double()
   b = flex.double()
-  for i_term in xrange(6):
+  for i_term in range(6):
     i_bits = i_term * 2
     bits_a = code[i_bits], code[i_bits+12]
     bits_b = code[i_bits+1], code[i_bits+12+1]
@@ -546,7 +548,7 @@ def fit_with_golay_starts(label,
     print_to = sys.stdout
   good_min = None
   if (print_to is not None):
-    print >> print_to, "label:", label
+    print("label:", label, file=print_to)
     print_to.flush()
   n_golay_codes_total = 2**12
   n_golay_codes_processed = 0
@@ -572,37 +574,37 @@ def fit_with_golay_starts(label,
           null_fit_more.table_sigmas(),
           good_min.final_gaussian_fit)
         if (print_to is not None):
-          print >> print_to, label, "max_error fitted=%.4f" % (
-            good_min.max_error),
+          print(label, "max_error fitted=%.4f" % (
+            good_min.max_error), end=' ', file=print_to)
           if (null_fit_more.table_x().size() > null_fit.table_x().size()):
-            print >> print_to, "more=%.4f" % (
-              flex.max(fit_more.significant_relative_errors())),
-          print >> print_to, "Golay code #%d (%.2f%% of all)" % (
+            print("more=%.4f" % (
+              flex.max(fit_more.significant_relative_errors())), end=' ', file=print_to)
+          print("Golay code #%d (%.2f%% of all)" % (
             good_min.n_golay_codes_processed,
-            100.*good_min.n_golay_codes_processed/n_golay_codes_total)
+            100.*good_min.n_golay_codes_processed/n_golay_codes_total), file=print_to)
           fit_more.show(f=print_to)
           fit_more.show_table(f=print_to)
-          print >> print_to
+          print(file=print_to)
         print_to.flush()
         if (good_min.max_error <= params.negligible_max_error):
           break
   if (print_to is not None):
-    print >> print_to, "Total number of Golay codes processed:", \
-      n_golay_codes_processed
-    print >> print_to
+    print("Total number of Golay codes processed:", \
+      n_golay_codes_processed, file=print_to)
+    print(file=print_to)
     if (good_min is None):
-      print >> print_to, "Final: %s: No successful minimization." % label
+      print("Final: %s: No successful minimization." % label, file=print_to)
     else:
-      print >> print_to, "Final:", label, "max_error fitted=%.4f" %(
-        good_min.max_error),
+      print("Final:", label, "max_error fitted=%.4f" %(
+        good_min.max_error), end=' ', file=print_to)
       if (null_fit_more.table_x().size() > null_fit.table_x().size()):
-        print >> print_to, "more=%.4f" % (
-          flex.max(fit_more.significant_relative_errors())),
-      print >> print_to, "Golay code #%d (%.2f%% of all)" % (
+        print("more=%.4f" % (
+          flex.max(fit_more.significant_relative_errors())), end=' ', file=print_to)
+      print("Golay code #%d (%.2f%% of all)" % (
         good_min.n_golay_codes_processed,
-        100.*good_min.n_golay_codes_processed/n_golay_codes_total)
+        100.*good_min.n_golay_codes_processed/n_golay_codes_total), file=print_to)
     good_min.show_minimization_parameters(f=print_to)
-    print >> print_to
+    print(file=print_to)
     show_minimize_multi_histogram(f=print_to)
   return good_min
 
@@ -611,11 +613,11 @@ def decremental_fit(existing_gaussian, params):
   good_min = None
   last_a = list(existing_gaussian.array_of_a())
   last_b = list(existing_gaussian.array_of_b())
-  for i_del in xrange(existing_gaussian.n_terms()):
+  for i_del in range(existing_gaussian.n_terms()):
     a_del = last_a[i_del]
     sel_a = last_a[:i_del] + last_a[i_del+1:]
     sel_b = last_b[:i_del] + last_b[i_del+1:]
-    for i_add in xrange(n_terms):
+    for i_add in range(n_terms):
       a = sel_a[:]
       a[i_add] += a_del
       start_fit = scitbx.math.gaussian.fit(

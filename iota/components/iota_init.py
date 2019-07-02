@@ -1,4 +1,4 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import absolute_import, division, print_function
 
 '''
 Author      : Lyubimov, A.Y.
@@ -183,7 +183,10 @@ def initialize_processing(paramfile, run_no):
                viz_base=os.path.join(int_base, 'visualization'),
                tmp_base=os.path.join(int_base, 'tmp'),
                input_base=input_base)
-  for bkey, bvalue in paths.items()[:-1]:
+  # FIXME: ordering of items in dictionaries changes depending on python version
+  for bkey, bvalue in paths.items():
+    if bkey == "input_base":  # I think this is what the original code wanted to do
+      continue
     if not os.path.isdir(bvalue):
       os.makedirs(bvalue)
   info.update(paths)
@@ -290,7 +293,8 @@ def generate_stat_containers(info, params):
     stats={},
     pixel_size=None,
     status='processing',
-    init_proc=True
+    init_proc=True,
+    have_results=False
   )
 
   # Grid search stats dictionary (HA14 - deprecated)

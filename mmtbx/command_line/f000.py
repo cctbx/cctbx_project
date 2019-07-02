@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.f000
 
 import sys
@@ -22,9 +22,9 @@ def master_params():
   return iotbx.phil.parse(master_params_str)
 
 def run(args, log=sys.stdout):
-  print >> log, "-"*79
-  print >> log, legend
-  print >> log, "-"*79
+  print("-"*79, file=log)
+  print(legend, file=log)
+  print("-"*79, file=log)
   inputs = mmtbx.utils.process_command_line_args(args = args,
     master_params = master_params())
   file_names = inputs.pdb_file_names
@@ -39,7 +39,7 @@ def run(args, log=sys.stdout):
   msg = """
 Estimate of F(0,0,0)=%s given mean bulk-solvent density %s and fraction %s
 """
-  print >> log, msg%(f_000_str, msd, sf_str)
+  print(msg%(f_000_str, msd, sf_str), file=log)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

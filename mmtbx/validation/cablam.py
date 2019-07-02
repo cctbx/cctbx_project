@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # (jEdit options) :folding=explicit:collapseFolds=1:
 from mmtbx.validation import residue, validation, atom
 from cctbx import geometry_restraints
@@ -600,7 +600,7 @@ class cablam_result(residue):
     if not (self.measures.mu_in and self.measures.mu_out and self.measures.nu):
       return
     point_name = "{"+self.mp_id()+"}"
-    print >> out, point_name, "%.2f %.2f %.2f" % (self.measures.mu_in, self.measures.mu_out, self.measures.nu)
+    print(point_name, "%.2f %.2f %.2f" % (self.measures.mu_in, self.measures.mu_out, self.measures.nu), file=out)
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -821,7 +821,7 @@ class cablamalyze(validation):
         records = []
         record_start = None
         helix_in_progress = False
-        result_ids = conf.results.keys()
+        result_ids = list(conf.results.keys())
         result_ids.sort()
         for result_id in result_ids:
           result = conf.results[result_id]
@@ -914,7 +914,7 @@ class cablamalyze(validation):
     #should work without any arguments
     #populates self.results
     self.results = []
-    chains = self.all_results.keys()
+    chains = list(self.all_results.keys())
     chains.sort()
     for chain_id in chains:
       chain = self.all_results[chain_id]
@@ -927,7 +927,7 @@ class cablamalyze(validation):
           #set self.results id
         continue #go to next chain
       #else, combine results into single list
-      result_ids = conf.results.keys()
+      result_ids = list(conf.results.keys())
       result_ids.sort()
       #for result_id in conf.results:
       for result_id in result_ids:
@@ -1219,8 +1219,8 @@ class cablamalyze(validation):
   #{{{ as_pointcloud_kinemage
   #-----------------------------------------------------------------------------
   def as_pointcloud_kinemage(self):#, out=self.out):
-    print >> self.out, "@group {cablam-space points} dominant"
-    print >> self.out, "@dotlist (cablam-space points)"
+    print("@group {cablam-space points} dominant", file=self.out)
+    print("@dotlist (cablam-space points)", file=self.out)
     for result in self.results:
       result.as_kinemage_point()
   #-----------------------------------------------------------------------------
@@ -1240,7 +1240,7 @@ class cablamalyze(validation):
     helix_records = []
     strand_records = []
 
-    chain_list = self.all_results.keys()
+    chain_list = list(self.all_results.keys())
     chain_list.sort()
     for chain_id in chain_list:
       chain = self.all_results[chain_id]

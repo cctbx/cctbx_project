@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import math
 from xfel.merging.application.worker import worker
@@ -11,8 +11,12 @@ from scitbx import matrix
 from scitbx.math.tests.tst_weighted_correlation import simple_weighted_correlation
 from cctbx.crystal_orientation import crystal_orientation, basis_type
 from six.moves import cStringIO as StringIO
+import six
 
 class postrefinement(worker):
+
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(postrefinement, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
 
   def __repr__(self):
     return 'Postrefinement'
@@ -51,7 +55,7 @@ class postrefinement(worker):
       exp_reflections = reflections.select(reflections['exp_id'] == experiment.identifier)
 
       # Build a miller array for the experiment reflections with original miller indexes
-      exp_miller_indices_original = miller.set(target_symm, exp_reflections['miller_index'], True)
+      exp_miller_indices_original = miller.set(target_symm, exp_reflections['miller_index'], not self.params.merging.merge_anomalous)
       observations_original_index = miller.array(exp_miller_indices_original,
                                                  exp_reflections['intensity.sum.value'],
                                                  flex.double(flex.sqrt(exp_reflections['intensity.sum.variance'])))
@@ -210,7 +214,7 @@ class postrefinement(worker):
     self.logger.log("Reflections rejected by post-refinement: %d"%reflections_rejected_by_postrefinement)
 
     all_reasons = []
-    for reason, count in experiments_rejected_by_reason.iteritems():
+    for reason, count in six.iteritems(experiments_rejected_by_reason):
       self.logger.log("Experiments rejected due to %s: %d"%(reason,count))
       all_reasons.append(reason)
 
@@ -236,7 +240,7 @@ class postrefinement(worker):
     total_rejected_reflections = self.mpi_helper.sum(rejected_reflections)
 
     if self.mpi_helper.rank == 0:
-      for reason, count in total_experiments_rejected_by_reason.iteritems():
+      for reason, count in six.iteritems(total_experiments_rejected_by_reason):
         self.logger.main_log("Total experiments rejected due to %s: %d"%(reason,count))
       self.logger.main_log("Total experiments accepted: %d"%total_accepted_experiment_count)
       self.logger.main_log("Total reflections rejected due to post-refinement: %d"%total_rejected_reflections)
@@ -317,12 +321,11 @@ class refinery_base(group_args):
     """Refinery class takes reference and observations, and implements target
     functions and derivatives for a particular model paradigm."""
     def get_Rh_array(self, values):
-      Rh = flex.double()
       eff_Astar = self.get_eff_Astar(values)
-      for mill in self.MILLER:
-        x = eff_Astar * matrix.col(mill)
-        Svec = x + self.BEAM
-        Rh.append(Svec.length() - (1./self.WAVE))
+      h = self.MILLER.as_vec3_double()
+      x = flex.mat3_double(len(self.MILLER), eff_Astar) * h
+      Svec = x + self.BEAM
+      Rh = Svec.norms() - (1./self.WAVE)
       return Rh
 
     def get_s1_array(self, values):

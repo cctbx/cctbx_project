@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from libtbx.utils import Sorry
 import os
@@ -39,12 +39,12 @@ class run_indexing(basic_task):
         frame2 = start + int((end-start) / 2)
       else :
         frame2 = end
-      print "Will index on images %d and %d..." % (start, frame2)
+      print("Will index on images %d and %d..." % (start, frame2))
       img2 = dataset.get_frame_path(frame2)
       self.args.append("indexing.data=\"%s\"" % img1)
       self.args.append("indexing.data=\"%s\"" % img2)
     self.args.append("indexing_pickle=integration")
-    print self.args
+    print(self.args)
 
   def run(self):
     from rstbx.command_line import index

@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 from libtbx import easy_run
 import time
@@ -18,14 +18,14 @@ def exercise():
     if ("Probable cation: MG+2" in line):
       n_mg += 1
   if n_mg != 2:
-    print "\n".join(result.stdout_lines)
+    print("\n".join(result.stdout_lines))
     raise RuntimeError("Expected 2 MG+2, found %d" % n_mg)
   os.remove(pdb_file)
   os.remove(mtz_file)
   # "zn_frag_hoh.pdb" => "zn_frag_fmodel.eff"
   os.remove(os.path.splitext(pdb_file)[0][:-4] + ".pdb")
   os.remove(os.path.splitext(pdb_file)[0][:-4] + "_fmodel.eff")
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   exercise()

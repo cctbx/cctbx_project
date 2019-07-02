@@ -25,8 +25,8 @@ namespace {
     PyObject* str_ptr = multi_line_string.ptr();
     return misc::split_lines(
 #ifdef IS_PY3K
-      PyBytes_AS_STRING(str_ptr),
-      PyBytes_GET_SIZE(str_ptr),
+      PyUnicode_AsUTF8(str_ptr),
+      PyUnicode_GetLength(str_ptr),
 #else
       PyString_AS_STRING(str_ptr),
       PyString_GET_SIZE(str_ptr),

@@ -1,5 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
+from six.moves import range
 
 def anomalous_reflection_intensity_primitive_cell(space_group):
   assert space_group.n_ltr() == 1
@@ -27,10 +28,10 @@ class subgroups(object):
     p_parent_group = p_parent_group_info.group()
     assert p_parent_group.order_p() == p_parent_group.order_z()
     p_parent_group.make_tidy()
-    for i_smx in xrange(p_parent_group.order_p()):
+    for i_smx in range(p_parent_group.order_p()):
       group_i = sgtbx.space_group()
       group_i.expand_smx(p_parent_group(i_smx))
-      for j_smx in xrange(i_smx,p_parent_group.order_p()):
+      for j_smx in range(i_smx,p_parent_group.order_p()):
         subgroup = sgtbx.space_group(group_i)
         subgroup.expand_smx(p_parent_group(j_smx))
         subgroup.make_tidy()
@@ -55,11 +56,11 @@ class subgroups(object):
 def show(parent_group_info):
   parent_group_info.show_summary()
   subgrs = subgroups(parent_group_info).groups_parent_setting()
-  print "number of subgroups:", len(subgrs)
+  print("number of subgroups:", len(subgrs))
   for subgroup in subgrs:
     subgroup_info = sgtbx.space_group_info(group=subgroup)
     subgroup_info.show_summary()
-  print
+  print()
 
 if (__name__ == "__main__"):
   raise RuntimeError("Please use the cctbx.subgroups command.")

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys, os
 from dxtbx.model.detector import Detector
 from scitbx import matrix
@@ -24,7 +24,7 @@ phil_scope = parse("""
 
 def run(args):
   if '-h' in args or '--help' in args or '-c' in args:
-    print help_str
+    print(help_str)
     phil_scope.show(attributes_level=2)
     return
 

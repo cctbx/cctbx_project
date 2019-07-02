@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import struct
 from scitbx.array_family import flex
@@ -20,14 +20,14 @@ class EDFImage:
    self.obj.seek(0)
 
    while True:
-       newchr = self.obj.read(1)
+       newchr = self.obj.read(1).decode("latin-1")
        assert ord(newchr)!=0
        if ptr==1:  assert ord(self.header[0])==0x7b
        self.header.append(newchr)
        if newchr == "}": break
        ptr += 1
 
-   assert self.obj.read(1) == "\n"
+   assert self.obj.read(1).decode("latin-1") == "\n"
    self.headersize = 1 + len(self.header)
    assert self.headersize%512==0
 
@@ -74,11 +74,11 @@ if __name__=="__main__":
  P = EDFImage(sys.argv[1])
  P.readHeader()
  P.read()
- print "".join(P.header)
- print P.parameters
+ print("".join(P.header))
+ print(P.parameters)
  count=0
  for ii in range( P.parameters["Dim_2"] ):
    for jj in range( P.parameters["Dim_1"] ):
-      print P.linearintdata[count]
+      print(P.linearintdata[count])
       count += 1
-   print
+   print()

@@ -1,10 +1,9 @@
 "Sun Grid Engine utilities"
 from __future__ import absolute_import, division, print_function
 
-from builtins import range
-
 import sys
 import os
+from six.moves import range
 
 def int_or_none(v):
   if (v is None or v == "undefined"): return None

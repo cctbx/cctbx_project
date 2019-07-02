@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from cctbx import xray
 from cctbx import crystal
@@ -8,6 +8,7 @@ from libtbx.test_utils import approx_equal
 import random
 from cctbx.development import random_structure
 from cctbx import sgtbx
+from six.moves import zip
 
 if (1):
   random.seed(0)

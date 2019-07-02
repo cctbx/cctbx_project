@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import clashscore
 from iotbx import pdb
 from libtbx.test_utils import approx_equal
@@ -53,7 +53,7 @@ END
 
 def exercise_clashscore_old():
   if (not libtbx.env.has_module(name="probe")):
-    print "Skipping exercise_clashscore(): probe not configured"
+    print("Skipping exercise_clashscore(): probe not configured")
     return
 
   pdb_io = pdb.input(source_info=None, lines=pdb_str_1)
@@ -102,7 +102,7 @@ def exercise_clashscore_old():
 
 def exercise_clashscore():
   if (not libtbx.env.has_module(name="probe")):
-    print "Skipping exercise_clashscore(): probe not configured"
+    print("Skipping exercise_clashscore(): probe not configured")
     return
 
   pdb_io = pdb.input(source_info=None, lines=pdb_str_1)
@@ -195,4 +195,4 @@ if (__name__ == "__main__"):
   exercise_clashscore_old()
   exercise_clashscore()
   #exercise_full_validation()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

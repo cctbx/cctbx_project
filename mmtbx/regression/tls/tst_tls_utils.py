@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import math
 import numpy
@@ -6,6 +6,8 @@ from mmtbx.tls.utils import *
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, not_approx_equal
 from pytest import raises
+from six.moves import zip
+from six.moves import range
 
 rran = numpy.random.random
 iran = numpy.random.choice
@@ -67,15 +69,15 @@ def tst_set_precision():
       assert precision == cl.get_precision()
     # Check is class method
     precision = 2
-    a = cl(range(21))
-    b = cl(range(21))
+    a = cl(list(range(21)))
+    b = cl(list(range(21)))
     a.set_precision(precision)
     assert b.get_precision() == precision
     # Set back to original
     cl.set_precision(initial)
     assert cl.get_precision() == initial
 
-  print 'OK'
+  print('OK')
 
 def tst_set_tolerance():
   for cl in [TLSMatrices, TLSAmplitudes]:
@@ -86,15 +88,15 @@ def tst_set_tolerance():
       assert tolerance == cl.get_tolerance()
     # Check is class method
     tolerance = 0.1
-    a = cl(range(21))
-    b = cl(range(21))
+    a = cl(list(range(21)))
+    b = cl(list(range(21)))
     a.set_tolerance(tolerance)
     assert b.get_tolerance() == tolerance
     # Set back to original
     cl.set_tolerance(initial)
     assert cl.get_tolerance() == initial
 
-  print 'OK'
+  print('OK')
 
 def tst_TLSMatrices():
   """Check classes operating as expected (copying where should be copying rather than referencing...)"""
@@ -165,7 +167,7 @@ def tst_TLSMatrices():
     assert approx_equal(a.get(), a_vals, MAT_RND_TOL)
     # Check copies - set
     a_copy = a.copy()
-    a_copy.set(range(21))
+    a_copy.set(list(range(21)))
     assert approx_equal(a.get(), a_vals, MAT_RND_TOL)
     # Check initialisation from other does not affect original
     a_copy = TLSMatrices(a)
@@ -226,7 +228,7 @@ def tst_TLSMatrices():
     a.set(a_vals, "TLS", include_szz=True)
     assert approx_equal(a.get(), a_vals, MAT_RND_TOL)
 
-  print 'OK'
+  print('OK')
 
 def tst_TLSMatrices_counts():
   """Test that number of non-zero parameters are identifed correctly, etc"""
@@ -313,7 +315,7 @@ def tst_TLSMatrices_counts():
       assert a.n_params(free=False, non_zero=False) == 21
       assert a.n_params(free=True, non_zero=False) == 20
 
-  print 'OK'
+  print('OK')
 
 def tst_TLSMatrices_fails():
   """Check that exceptions are raised where expected"""
@@ -327,7 +329,7 @@ def tst_TLSMatrices_fails():
     TLSMatrices.set_tolerance(0.0) # must be greater than 0.0
 
   # Check doesn't error with the correct length
-  a = TLSMatrices(T=range(6), L=range(6), S=range(9))
+  a = TLSMatrices(T=list(range(6)), L=list(range(6)), S=list(range(9)))
 
   # Check length of input matrices
   for tt,ll,ss in [
@@ -373,7 +375,7 @@ def tst_TLSMatrices_fails():
   # Check length of input array
   for i in [20,22]:
     with raises(Exception) as e:
-      a = TLSMatrices(range(i))
+      a = TLSMatrices(list(range(i)))
     assert "Input values must have length 21" == str(e.value)
 
   # Invalid letters in the selection strings
@@ -430,7 +432,7 @@ def tst_TLSMatrices_fails():
     a.normalise([(1,2,3)],(0,0,0),-1.0)
   assert msg == str(e.value)
 
-  print 'OK'
+  print('OK')
 
 def tst_TLSMatrices_uijs():
   """Check that uijs are generated from coordinates as expected"""
@@ -463,6 +465,7 @@ def tst_TLSMatrices_uijs():
     assert approx_equal(uij_ref_np.flatten(), uij_test_np.flatten(), 0.0)
 
     # Calculate average eigenvalue of output uijs
+    # TODO: verify that real_symmetric returns non-dict, I assume its an eigensystem-y instance
     eigs = [real_symmetric(u).values() for u in uij_test]
     orig_mean_eig = numpy.mean(eigs)
 
@@ -476,6 +479,7 @@ def tst_TLSMatrices_uijs():
       uij_norm = b.uijs(coords, origin)
       uij_norm_np = numpy.array(uij_norm)
       # Check average eigenvalue
+      # TODO: see above todo
       eigs = [real_symmetric(u).values() for u in uij_norm]
       mean_eig_norm = numpy.mean(eigs)
       assert approx_equal(mean_eig_norm, target, LAST_DP_TOL)
@@ -483,7 +487,7 @@ def tst_TLSMatrices_uijs():
       uij_comp_np = mult*uij_norm_np
       assert approx_equal(uij_comp_np.flatten(), uij_test_np.flatten(), LAST_DP_TOL)
 
-  print 'OK'
+  print('OK')
 
 def tst_TLSAmplitudes():
   """Exercise the TLSAmplitudes class"""
@@ -541,11 +545,11 @@ def tst_TLSAmplitudes():
     assert e.size() == length
 
     # Check get
-    assert approx_equal(a.values, a.get(range(a.size())), 0.0)
-    assert approx_equal(b.values, b.get(range(b.size())), 0.0)
-    assert approx_equal(c.values, c.get(range(c.size())), 0.0)
-    assert approx_equal(d.values, d.get(range(d.size())), 0.0)
-    assert approx_equal(e.values, e.get(range(e.size())), 0.0)
+    assert approx_equal(a.values, a.get(list(range(a.size()))), 0.0)
+    assert approx_equal(b.values, b.get(list(range(b.size()))), 0.0)
+    assert approx_equal(c.values, c.get(list(range(c.size()))), 0.0)
+    assert approx_equal(d.values, d.get(list(range(d.size()))), 0.0)
+    assert approx_equal(e.values, e.get(list(range(e.size()))), 0.0)
 
     # Check reset works
     e.reset()
@@ -645,7 +649,7 @@ def tst_TLSAmplitudes():
       assert a.any()
 
       # Set all values to original
-      a.set(a_vals.tolist(), range(a.size())) # set all values by selection, just to mix things up
+      a.set(a_vals.tolist(), list(range(a.size()))) # set all values by selection, just to mix things up
       assert approx_equal(a.values, a_vals, AMP_RND_TOL)
       assert a.n_params(non_zero=True) == a.size()
       assert a.n_params(non_zero=False) == a.size()
@@ -663,7 +667,7 @@ def tst_TLSAmplitudes():
       assert a.n_params(non_zero=False) == a.size()
 
       # Set all values to original
-      a.set(a_vals.tolist(), range(a.size())) # set all values by selection, just to mix things up
+      a.set(a_vals.tolist(), list(range(a.size()))) # set all values by selection, just to mix things up
       assert approx_equal(a.values, a_vals, AMP_RND_TOL)
       assert a.n_params(non_zero=True) == a.size()
       assert a.n_params(non_zero=False) == a.size()
@@ -689,12 +693,12 @@ def tst_TLSAmplitudes():
       assert a.n_params(non_zero=False) == a.size()
 
       # Reset for next loop, etc
-      a.set(a_vals.tolist(), range(a.size())) # set all values by selection, just to mix things up
+      a.set(a_vals.tolist(), list(range(a.size()))) # set all values by selection, just to mix things up
       assert approx_equal(a.values, a_vals, AMP_RND_TOL)
       assert a.n_params(non_zero=True) == a.size()
       assert a.n_params(non_zero=False) == a.size()
 
-  print 'OK'
+  print('OK')
 
 def tst_TLSAmplitudes_fails():
   """Check that exceptions are raised where expected"""
@@ -738,7 +742,7 @@ def tst_TLSAmplitudes_fails():
     a.get([a.size()])
   assert "Selection indices out of range of TLSAmplitudes" == str(e.value)
   with raises(Exception) as e:
-    a.get(range(a.size())+[0])
+    a.get(list(range(a.size()))+[0])
   assert "Selection indices cannot be longer than TLSAmplitudes" == str(e.value)
 
   # Valid, but odd, selections -- maybe change later
@@ -746,10 +750,10 @@ def tst_TLSAmplitudes_fails():
 
   # Invalid selections -- setting values
   with raises(Exception) as e:
-    a.set(range(a.size()-1))
+    a.set(list(range(a.size()-1)))
   assert "Input array must be the same length as TLSAmplitudes" == str(e.value)
   with raises(Exception) as e:
-    a.set(range(a.size()+1))
+    a.set(list(range(a.size()+1)))
   assert "Input array must be the same length as TLSAmplitudes" == str(e.value)
   # No selection
   with raises(Exception) as e:
@@ -782,7 +786,7 @@ def tst_TLSAmplitudes_fails():
     a.normalise(-1.0)
   assert msg == str(e.value)
 
-  print 'OK'
+  print('OK')
 
 def tst_TLSMatricesAndAmplitudes():
   """Exercise the TLSMatricesAndAmplitudes class"""
@@ -849,7 +853,7 @@ def tst_TLSMatricesAndAmplitudes():
       assert approx_equal(e.matrices.get("TLS"), a_mats, MAT_RND_TOL)
       assert approx_equal(e.amplitudes.values  , a_amps, AMP_RND_TOL)
 
-  print 'OK'
+  print('OK')
 
 def tst_TLSMatricesAndAmplitudes_counts():
   """Test that number of non-zero parameters are identifed correctly, etc"""
@@ -917,7 +921,7 @@ def tst_TLSMatricesAndAmplitudes_counts():
       assert approx_equal(a.amplitudes.values     , a_amps, AMP_RND_TOL)
       assert not a.is_null()
 
-  print 'OK'
+  print('OK')
 
 def tst_TLSMatricesAndAmplitudes_fails():
   """Check that exceptions are raised where expected"""
@@ -1077,7 +1081,7 @@ def tst_TLSMatricesAndAmplitudes_fails():
     ma.uijs(new_sites, new_origins, sel)
   assert "Selection indices out of range of TLSAmplitudes" == str(e.value)
 
-  print 'OK'
+  print('OK')
 
 def tst_TLSMatricesAndAmplitudes_valid():
   """Check that whole object is valid/invalid based on components"""
@@ -1107,7 +1111,7 @@ def tst_TLSMatricesAndAmplitudes_valid():
         assert a.expand()[i].is_valid(tol)
         assert a.is_valid(flex.size_t([i]), tol)
 
-  print 'OK'
+  print('OK')
 
 def tst_TLSMatricesAndAmplitudes_uijs():
   """Test uijs generated correctly"""
@@ -1179,8 +1183,9 @@ def tst_TLSMatricesAndAmplitudes_uijs():
         new_a.normalise_by_matrices(sites, origns, target)
 
         # Average uij eigenvalue from Matrices object should now be target
-        uijs = [new_a.matrices.uijs(coords[i], origns[i]) for i in xrange(length)]
-        eigenvalues = [[real_symmetric(u).values() for u in uijs[i]] for i in xrange(length)]
+        uijs = [new_a.matrices.uijs(coords[i], origns[i]) for i in range(length)]
+        # TODO: see above todo
+        eigenvalues = [[list(real_symmetric(u).values()) for u in uijs[i]] for i in range(length)]
         mean_eig = numpy.mean(eigenvalues)
         assert approx_equal(mean_eig, target, LAST_DP_TOL)
 
@@ -1194,7 +1199,7 @@ def tst_TLSMatricesAndAmplitudes_uijs():
         new_uijs_np = numpy.array(new_uijs)
         assert approx_equal(new_uijs_np.flatten(), all_uijs_np.flatten(), LAST_DP_TOL)
 
-  print 'OK'
+  print('OK')
 
 def tst_TLSMatricesAndAmplitudesList():
   """Exercise the TLSMatricesAndAmplitudesList class"""
@@ -1435,7 +1440,7 @@ def tst_TLSMatricesAndAmplitudesList():
     assert not mal_c[i].matrices.any()
     assert approx_equal(list(mal[i].amplitudes.values), list(mal_c[i].amplitudes.values))
 
-  print 'OK'
+  print('OK')
 
 def tst_TLSMatricesAndAmplitudesList_fails():
   """Check that exceptions are raised where expected"""
@@ -1536,7 +1541,7 @@ def tst_TLSMatricesAndAmplitudesList_fails():
     mal.uijs(new_sites, new_origins, sel)
   assert "Selection indices out of range of TLSAmplitudes" == str(e.value)
 
-  print 'OK'
+  print('OK')
 
 if __name__ == "__main__":
   tst_set_precision()

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 
 from psana import *
@@ -7,6 +7,7 @@ import numpy as np
 from xfel.amo.pnccd_ana                 import pnccd_tbx
 from xfel.amo.pnccd_ana                 import fxs
 import matplotlib.pyplot as plt
+from six.moves import zip
 
 plt.ion()
 ########################################
@@ -183,7 +184,7 @@ def compute_calib(argv=None) :
               if i.endswith(".h5"):
                  f  = h5py.File(i,'r')
                  filestamps.append(i[-7:-4])
-                 timestamps.append(f.keys())
+                 timestamps.append(list(f.keys()))
                  continue
               else:
                  continue
@@ -225,7 +226,7 @@ def compute_calib(argv=None) :
            exprun = dataset_name
 
        ds           = DataSource(dataset_name)
-       run          = ds.runs().next()
+       run          = next(ds.runs())
 
        # Select event generator
        if    (ftype=='smd') or (ftype == 'smd_ffb') or (ftype == 'xtc'):
@@ -286,7 +287,7 @@ def compute_calib(argv=None) :
         # MPI process. Here we set rank 0 to work as a listening server only.
         for j,evt in evtgen(run,timestamps = timestamps, first = first, last = last):
             #print '***',rank,j,evt.get(EventId).fiducials()
-            if j%10==0: print 'Rank',rank,'processing event',j
+            if j%10==0: print('Rank',rank,'processing event',j)
 
             if ftype == 'h5' :
                FXS.get_h5(filestamps[j],evt)
@@ -318,7 +319,7 @@ def compute_calib(argv=None) :
      # Single CPU
      for j,evt in evtgen(run,timestamps = timestamps, first = first, last = last):
          #print '***',rank,j,evt.get(EventId).fiducials()
-         if j%10==0: print 'Rank',rank,'processing event',j
+         if j%10==0: print('Rank',rank,'processing event',j)
 
 
          if ftype == 'h5' :
@@ -344,13 +345,13 @@ def compute_calib(argv=None) :
                FXS.store_index2(et, j)                                         # Store index
             FXS.cnt  += 1
 
-     print 'Rank',rank,'total events:   ', int(FXS.cnt),' * '
+     print('Rank',rank,'total events:   ', int(FXS.cnt),' * ')
 
 
 
   #sum the images across mpi cores
   if size > 1:
-    print "Synchronizing rank", rank
+    print("Synchronizing rank", rank)
 
   Tot         = np.zeros(FXS.cnt.shape)
   comm.Reduce(FXS.cnt,Tot)
@@ -394,7 +395,7 @@ def compute_calib(argv=None) :
   if rank==0:
 
     if size > 1:
-      print "Synchronized"
+      print("Synchronized")
 
     # Write out data
 

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx import xray_scattering
 from cctbx.eltbx import tiny_pse
 from cctbx.array_family import flex
@@ -7,6 +7,8 @@ import scitbx.math.gaussian
 from libtbx.str_utils import line_feeder
 from libtbx.option_parser import OptionParser
 from libtbx import adopt_init_args
+from six.moves import range
+from six.moves import zip
 
 class table(object):
 
@@ -19,7 +21,7 @@ class table(object):
     xk = self.x
     selection = flex.bool(xk.size(), False)
     i_kissel = 0
-    for i_itvc in xrange(xi.size()):
+    for i_itvc in range(xi.size()):
       while (xk[i_kissel] < xi[i_itvc]):
         i_kissel += 1
       if (xk[i_kissel] == xi[i_itvc]):
@@ -39,7 +41,7 @@ def read_table(file_name):
   sigmas = flex.double()
   lf = line_feeder(open(file_name))
   while 1:
-    line = lf.next()
+    line = next(lf)
     if (lf.eof): break
     if (line.startswith("   FORM: ATOMIC NUMBER=")):
       atomic_number = float(line.split("=")[1])
@@ -50,7 +52,7 @@ def read_table(file_name):
     elif (line.startswith("        X (1/A)")):
       assert atomic_number == number_of_electrons
       while 1:
-        line = lf.next()
+        line = next(lf)
         assert not lf.eof
         if (line == " *** END OF DATA ***"):
           lf.eof = True
@@ -86,12 +88,12 @@ def main():
     errors_abs = flex.abs(wky-tab_y)
     fit = scitbx.math.gaussian.fit(tab_x, tab_y, sigmas, wk)
     errors_rel = fit.significant_relative_errors(1.e-6)
-    print tab.element, tab.atomic_number,
-    print "max error < %.1fA-1 abs, rel: %7.4f %7.4f" % (
-      cutoff, flex.max(errors_abs), flex.max(errors_rel))
+    print(tab.element, tab.atomic_number, end=' ')
+    print("max error < %.1fA-1 abs, rel: %7.4f %7.4f" % (
+      cutoff, flex.max(errors_abs), flex.max(errors_rel)))
     for x,y,f,ea,er in zip(tab_x,tab_y,wky,errors_abs,errors_rel):
-      print "%7.4f %7.4f %7.4f %7.4f %7.4f" % (x, y, f, ea, er)
-    print
+      print("%7.4f %7.4f %7.4f %7.4f %7.4f" % (x, y, f, ea, er))
+    print()
 
 if (__name__ == "__main__"):
   main()

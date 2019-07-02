@@ -1,9 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import format_cpu_times
 from mmtbx.refinement import refinement_flags
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 expected_result_all = \
   """Refinement flags and selection counts:
@@ -123,9 +123,9 @@ def compare(rm, expected_result, deep_copy=False, selection=None, show=False):
   out = StringIO()
   rm.show(log = out)
   if(show):
-    print "-"*80
-    print out.getvalue()
-    print expected_result
+    print("-"*80)
+    print(out.getvalue())
+    print(expected_result)
   assert not show_diff(out.getvalue(), expected_result)
 
 def exercise_deepcopy_show_select():
@@ -497,7 +497,7 @@ def exercise():
   exercise_add_1c()
   exercise_add_2b()
   exercise_add_2c()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if(__name__ == "__main__"):
    exercise()

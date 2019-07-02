@@ -2,7 +2,7 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from crys3d.hklview.frames import *
 from wxtbx import icons
 import wxtbx.app
@@ -11,6 +11,8 @@ import libtbx.load_env
 from cctbx import crystal
 import wx
 import sys
+from six.moves import range
+from six.moves import zip
 
 
 master_phil = iotbx.phil.parse("""
@@ -105,7 +107,7 @@ class MultiplicityViewFrame(HKLViewFrame):
       from iotbx.gui_tools.reflections import get_array_description
       try :
         hkl_file = any_reflection_file(file_name)
-      except Exception, e :
+      except Exception as e :
         raise Sorry(str(e))
       arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
         )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)

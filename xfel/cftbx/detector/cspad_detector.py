@@ -2,7 +2,7 @@
 #
 # $Id$
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import math
 
@@ -11,6 +11,8 @@ from libtbx import easy_pickle
 from scitbx.array_family import flex
 from scitbx.matrix import col, rec, sqr
 from xfel.cftbx.detector.generic_detector import GenericDetector
+from six.moves import range
+import six
 
 class CSPadDetector(GenericDetector):
   def __init__(self, filename):
@@ -52,11 +54,11 @@ class CSPadDetector(GenericDetector):
       self._metrology_params)
 
     self._tiles = d["TILES"]
-    self._keylist = self._tiles.keys() #for later use by get_pixel_intensity()
+    self._keylist = list(self._tiles.keys()) #for later use by get_pixel_intensity()
 
     # Assert that all ASIC:s are the same size, and that there are
     # transformation matrices for each ASIC.
-    for (key, asic) in self._tiles.iteritems():
+    for (key, asic) in six.iteritems(self._tiles):
       if not hasattr(self, "_asic_focus"):
         self._asic_focus = asic.focus()
       else:
@@ -142,7 +144,7 @@ class CSPadDetector(GenericDetector):
     # simultaneously, it will be assigned to the ASIC defined first.
     # XXX Use a Z-buffer instead?
     nmemb = 0
-    for key, asic in self._tiles.iteritems():
+    for key, asic in six.iteritems(self._tiles):
       # Create my_flex_image and rawdata on the first iteration.
       if ("rawdata" not in locals()):
         rawdata = flex.double(flex.grid(self.size1, self.size2))
@@ -218,7 +220,7 @@ class CSPadDetector(GenericDetector):
     # XXX Should use per-ASIC pixel size from the phil object.
     dx, dy = fast * self._pixel_size[0], -slow * self._pixel_size[1]
 
-    for key, (Tf, Tb) in self._matrices.iteritems():
+    for key, (Tf, Tb) in six.iteritems(self._matrices):
       if (len(key) == 4 and key[1] == serial):
         Tb_new = sqr(
           [Tb(0, 0), Tb(0, 1), Tb(0, 2), Tb(0, 3) + dx,
@@ -386,7 +388,7 @@ class CSPadDetector(GenericDetector):
   def get_raw_data(self):
     # Not intended for production; simply a means to marshall all same-size tile
     # data together to report it out as a single array; used for testing dxtbx.
-    keys = self._tiles.keys()
+    keys = list(self._tiles.keys())
     keys.sort()
     raw = flex.double(flex.grid(len(keys)*self._tiles[keys[0]].focus()[0],
                                           self._tiles[keys[0]].focus()[1]))

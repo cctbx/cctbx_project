@@ -1,0 +1,94 @@
+# Script for building CCTBX
+# Windows image description
+# https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/win/Vs2017-Server2016-Readme.md
+
+jobs:
+- job: win_64
+  pool:
+    vmImage: vs2017-win2016
+  timeoutInMinutes: 360
+  dependsOn: syntax
+  strategy:
+    maxParallel: 3
+    matrix:
+      python2.7:
+        OS: win-64
+        PYTHON_VERSION: py27
+      # python3.6:
+      #   PYTHON_VERSION: py36
+
+  steps:
+  - script: |
+      choco install vcpython27 -fdv -y --debug
+    displayName: Install vcpython27.msi
+
+  - powershell: |
+      Set-PSDebug -Trace 1
+
+      $batchcontent = @"
+      ECHO ON
+      SET vcpython=C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0
+
+      DIR "%vcpython%"
+
+      CALL "%vcpython%\vcvarsall.bat" %*
+      "@
+
+      $batchDir = "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\VC"
+      $batchPath = "$batchDir" + "\vcvarsall.bat"
+      New-Item -Path $batchPath -ItemType "file" -Force
+
+      Set-Content -Value $batchcontent -Path $batchPath
+
+      Get-ChildItem -Path $batchDir
+
+      Get-ChildItem -Path ($batchDir + '\..')
+
+    displayName: Patch vs2008
+
+  - checkout: self
+    path: .\modules\cctbx_project
+
+  - script: |
+      cd ..\..
+      copy modules\cctbx_project\libtbx\auto_build\bootstrap.py .
+    displayName: Copy bootstrap.py
+
+  - script: |
+      cd ..\..
+      call %CONDA%\condabin\conda.bat create -y -n %PYTHON_VERSION%  --file .\modules\cctbx_project\libtbx\auto_build\conda_envs\cctbx_%PYTHON_VERSION%_%OS%.txt
+      call %CONDA%\condabin\conda.bat install -y -c conda-forge -n %PYTHON_VERSION% junit-xml
+    displayName: Create conda environment
+
+  - script: |
+      cd ..\..
+      python bootstrap.py hot update --builder=cctbx
+    displayName: Download sources
+
+  - script: |
+      cd ..\..
+      call "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat" amd64
+      call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
+      python bootstrap.py build --builder=cctbx --use-conda --nproc=4
+      call .\build\setpaths.bat
+      call libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx
+      cd build
+      call libtbx.scons -j 4
+      call libtbx.scons -j 4
+    displayName: Configure and Build
+
+  - script: |
+      cd ..\..
+      call "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat" amd64
+      call .\build\setpaths.bat
+      mkdir tests
+      cd tests
+      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=simtbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
+    failOnStderr: false
+    continueOnError: true
+    displayName: Test
+
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '**\output.xml'

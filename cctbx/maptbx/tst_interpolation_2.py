@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_asymmetric_map_ext import *
 from cctbx.array_family import flex
@@ -76,7 +77,7 @@ def run():
   err_lt2  = flex.double()
   err_lt12 = flex.double()
   err_qt1  = flex.double()
-  for i in xrange(1,231):
+  for i in range(1,231):
     run_group(i, err_l, err_q, err_t, err_lt1, err_lt2, err_lt12, err_qt1)
   assert approx_equal([flex.mean(err_l), flex.mean(err_q), flex.mean(err_t)],
     [0,0,0], 1.e-3)
@@ -88,5 +89,5 @@ def run():
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  print "Time: %6.2f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.2f"%(time.time()-t0))
+  print("OK")

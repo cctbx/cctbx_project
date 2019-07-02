@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys,os
 import iotbx.pdb
 from libtbx.utils import Sorry
@@ -9,6 +9,8 @@ from scitbx.matrix import col
 from copy import deepcopy
 from libtbx import adopt_init_args
 from cctbx.maptbx import resolution_from_map_and_model
+from six.moves import range
+from six.moves import cStringIO as StringIO
 
 # merge_models.py
 # crossover models and pick best parts of each
@@ -148,7 +150,7 @@ def get_params(args,out=sys.stdout):
     args=args,
     master_phil=master_phil)
   params = command_line.work.extract()
-  print >>out,"\nMerge_models: Take parts of multiple models to construct one model\n"
+  print("\nMerge_models: Take parts of multiple models to construct one model\n", file=out)
   master_phil.format(python_object=params).show(out=out)
   return params
 
@@ -175,9 +177,9 @@ class model_object:
     self.reset_score()
 
   def show_summary(self,out=sys.stdout):
-    print >>out,"\nModel with %d sites and score of %7.2f" %(
-     len(self.source_list),self.score)
-    print >>out," ".join(self.source_list).replace("  "," ")
+    print("\nModel with %d sites and score of %7.2f" %(
+     len(self.source_list),self.score), file=out)
+    print(" ".join(self.source_list).replace("  "," "), file=out)
 
   def is_allowed_crossover(self,i=None,other=None):
     # return True if a crossover at position i to model other is allowed
@@ -221,7 +223,7 @@ class model_object:
     # biggest difference can be found and focus on that
 
     difference_list=[]
-    for i1 in xrange(self.size):
+    for i1 in range(self.size):
       source_self=self.source_list[i1]
       source_other=other.source_list[i1]
       difference_list.append( [
@@ -245,7 +247,7 @@ class model_object:
       #Now figure out where we can cross over on either side of i
       allowed_left_crossovers=[]
       allowed_right_crossovers=[]
-      for ib in xrange(self.size):
+      for ib in range(self.size):
         if not self.is_allowed_crossover(i,other): continue
         if ib <i: allowed_left_crossovers.append(ib)
         if ib >i: allowed_right_crossovers.append(ib)
@@ -268,11 +270,11 @@ class model_object:
         if float(i2-i1+1)/self.size > self.maximum_fraction: continue
         # test replacing self with i1 to i2 of other
         test_model=self.customized_copy()
-        for i in xrange(i1,i2+1):
+        for i in range(i1,i2+1):
           test_model.source_list[i]=other.source_list[i]
         test_model.reset_score()
         if best_i_score is None or \
-           test_model.get_score()>best_i_score:
+           (test_model.get_score() and test_model.get_score()>best_i_score):
           best_i_score=test_model.get_score()
           best_i=i1
       i1=best_i
@@ -287,16 +289,17 @@ class model_object:
         if float(i2-i1+1)/self.size > self.maximum_fraction: continue
         # test replacing self with i1 to i2 of other
         test_model=self.customized_copy()
-        for i in xrange(i1,i2+1):
+        for i in range(i1,i2+1):
           test_model.source_list[i]=other.source_list[i]
         test_model.reset_score()
         if best_i_score is None or \
-           test_model.get_score()>best_i_score:
+           (test_model.get_score() and test_model.get_score()>best_i_score):
           best_i_score=test_model.get_score()
           best_i=i2
 
           #  save if best overall
-          if test_model.get_score()>best_score+self.minimum_improvement:
+          if test_model.get_score() and \
+             test_model.get_score()>best_score+self.minimum_improvement:
             best_score=test_model.get_score()
             best_model=test_model
       if best_model.get_score()>original_score+self.minimum_improvement:
@@ -315,7 +318,7 @@ class model_object:
     #  self.minimum_length
     last_id=None
     n=0
-    for i in xrange(self.size):
+    for i in range(self.size):
       if last_id is None: last_id=self.source_list[i]
       if self.source_list[i]==last_id:
         n+=1
@@ -331,7 +334,7 @@ class model_object:
 
     # sum up CC values at each residue
     score=0.
-    for i in xrange(self.size):
+    for i in range(self.size):
       score+=self.cc_dict[self.source_list[i]][i]
     self.score=score
     return score
@@ -376,7 +379,7 @@ def get_crossover_dict(
       verbose=None,
       out=sys.stdout):
   crossover_dict={}  # Allowed crossover for [position][id1][id2]
-  print >>out, "\nMaking a table of allowed crossovers"
+  print("\nMaking a table of allowed crossovers", file=out)
 
   # select out just the crossover atoms...
 
@@ -397,20 +400,20 @@ def get_crossover_dict(
         for chain2 in model2.chains():
           xyz2=chain2.atoms().extract_xyz()
           if xyz1.size()!=xyz2.size():
-            print >>out,"\nSize of chain " +\
+            print("\nSize of chain " +\
             "'%s' model '%s' (%d) is different than chain '%s' model '%s' (%d) " %(
-              chain1.id,model1.id,xyz1.size(),chain2.id,model2.id,xyz2.size())
+              chain1.id,model1.id,xyz1.size(),chain2.id,model2.id,xyz2.size()), file=out)
             assert xyz1.size()==xyz2.size()
 
-          for i in xrange(xyz1.size()):
+          for i in range(xyz1.size()):
             x1=col(xyz1[i])
             x2=col(xyz2[i])
             dd=(x1-x2).norm_sq()
             if dd<= dist_max_sq:  # can crossover here
-              if not i in crossover_dict.keys(): crossover_dict[i]={}
-              if not model1.id in crossover_dict[i].keys():
+              if not i in crossover_dict: crossover_dict[i]={}
+              if not model1.id in crossover_dict[i]:
                 crossover_dict[i][model1.id]=[]
-              if not model2.id in crossover_dict[i].keys():
+              if not model2.id in crossover_dict[i]:
                 crossover_dict[i][model2.id]=[]
               if not model2.id in crossover_dict[i][model1.id]:
                   crossover_dict[i][model1.id].append(model2.id)
@@ -423,24 +426,24 @@ def get_crossover_dict(
   if minimum_matching_atoms > 2:
     offset_n=minimum_matching_atoms//2
     offset_range=[]
-    for n in xrange(-offset_n,offset_n+1):
+    for n in range(-offset_n,offset_n+1):
       if n != 0: offset_range.append(n)
     delete_dict={}
-    for i in xrange(n_residues):
-      if not i in crossover_dict.keys(): continue
-      for id1 in crossover_dict[i].keys():
+    for i in range(n_residues):
+      if not i in crossover_dict: continue
+      for id1 in crossover_dict[i]:
         for id2 in crossover_dict[i][id1]:
           # check to see if i-1 and i+1 are both ok (if not off the ends)
           for offset in offset_range:
             i1=min(n_residues-1,max(0,i+offset))
             if not id2 in crossover_dict.get(i1,{}).get(id1,[]):
-              if not i in delete_dict.keys(): delete_dict[i]={}
-              if not id1 in delete_dict[i].keys(): delete_dict[i][id1]=[]
+              if not i in delete_dict: delete_dict[i]={}
+              if not id1 in delete_dict[i]: delete_dict[i][id1]=[]
               if not id2 in delete_dict[i][id1]:delete_dict[i][id1].append(id2)
 
-    for i in xrange(n_residues):
-      if not i in crossover_dict.keys(): continue
-      for id1 in crossover_dict[i].keys():
+    for i in range(n_residues):
+      if not i in crossover_dict: continue
+      for id1 in crossover_dict[i]:
         new_list=[]
         for id2 in crossover_dict[i][id1]:
           if not id2 in delete_dict.get(i,{}).get(id1,[]):
@@ -450,31 +453,31 @@ def get_crossover_dict(
   # Now add all ends to crossover (always ok)
 
   for pos in [0,n_residues-1]:
-    if not pos in crossover_dict.keys():
+    if not pos in crossover_dict:
       crossover_dict[pos]={}
     for id1 in used_model_ids:
       for id2 in used_model_ids:
         if id1==id2: continue
-        if not id1 in crossover_dict[pos].keys():
+        if not id1 in crossover_dict[pos]:
           crossover_dict[pos][id1]=[]
         if not id2 in crossover_dict[pos][id1]:
           crossover_dict[pos][id1].append(id2)
 
 
   if verbose:
-    i_list=crossover_dict.keys()
+    i_list=list(crossover_dict.keys())
     i_list.sort()
     for i in i_list:
-      print >>out,"\nAllowed crossovers at position %d" %(i)
-      id_list=crossover_dict[i].keys()
+      print("\nAllowed crossovers at position %d" %(i), file=out)
+      id_list=list(crossover_dict[i].keys())
       id_list.sort()
-      print "Crossover pairs:",
+      print("Crossover pairs:", end=' ')
       for id in id_list:
         second_id_list=crossover_dict[i][id]
         second_id_list.sort()
         for second_id in second_id_list:
-          print "%s-%s" %(id,second_id),
-      print
+          print("%s-%s" %(id,second_id), end=' ')
+      print()
 
   return crossover_dict
 
@@ -484,13 +487,12 @@ def get_cc_dict(hierarchy=None,crystal_symmetry=None,
   table=None,out=sys.stdout):
 
   cc_dict={}
-  print >>out, "\nMaking a table of residue CC values"
+  print("\nMaking a table of residue CC values", file=out)
   cryst1_line=iotbx.pdb.format_cryst1_record(crystal_symmetry=crystal_symmetry)
 
   # select the model and chain we are interested in
   for model in hierarchy.models():
 
-    from cStringIO import StringIO
     f=StringIO()
     atom_selection=get_atom_selection(model_id=model.id)
     asc=hierarchy.atom_selection_cache()
@@ -533,20 +535,20 @@ def smooth_cc_values(cc_dict=None,
   for id in cc_dict.keys():
     cc_list=cc_dict[id]
     smoothed_cc_list=flex.double()
-    for i in xrange(cc_list.size()):
+    for i in range(cc_list.size()):
       r=cc_list[max(0,i-delta):min(cc_list.size(),i+delta+1)]
       smoothed_cc_list.append(r.min_max_mean().mean)
     smoothed_cc_dict[id]=smoothed_cc_list
 
-  keys=smoothed_cc_dict.keys()
+  keys=list(smoothed_cc_dict.keys())
   keys.sort()
   if verbose:
       for key in keys:
-        print >>out,"ID:  %s " %(key)
-        print >>out,"Position   Unsmoothed  Smoothed"
-        for i in xrange(cc_dict[key].size()):
-         print >>out,"  %d     %7.2f     %7.2f" %(
-           i,cc_dict[key][i],smoothed_cc_dict[key][i])
+        print("ID:  %s " %(key), file=out)
+        print("Position   Unsmoothed  Smoothed", file=out)
+        for i in range(cc_dict[key].size()):
+         print("  %d     %7.2f     %7.2f" %(
+           i,cc_dict[key][i],smoothed_cc_dict[key][i]), file=out)
 
   return smoothed_cc_dict
 
@@ -640,7 +642,7 @@ def run(
         raise Sorry("Cannot read input PDB file '%s'" %(
           str(pdb_in_file)))
       else:
-        print >>out,"Taking models from %s" %(pdb_in_file)
+        print("Taking models from %s" %(pdb_in_file), file=out)
         pdb_string=open(pdb_in_file).read()
       pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
       if pdb_inp is None:
@@ -667,11 +669,11 @@ def run(
       map_data=map_data, xray_structure=xrs).d_min
   if(resolution is None):
     raise Sorry("Resolution is required")
-  print >>out,"\nResolution limit: %7.2f" %(resolution)
-  print >>out,"\nSummary of input models"
+  print("\nResolution limit: %7.2f" %(resolution), file=out)
+  print("\nSummary of input models", file=out)
   xrs.show_summary(f=out, prefix="  ")
 
-  print >>out, "\nReady with %d models and map" %(n_models)
+  print("\nReady with %d models and map" %(n_models), file=out)
   # Get CC by residue for each model and map
 
   chain_id_and_resseq_list=[] # Instead set up chain_id and resseq (range)
@@ -692,11 +694,9 @@ def run(
   # NOTE: All models of each chain must match exactly
 
   # Save composite model, chain by chain
-  from cStringIO import StringIO
   composite_model_stream=StringIO()
 
   for chain_id_and_resseq in chain_id_and_resseq_list:
-    from cStringIO import StringIO
     f=StringIO()
     chain_id,[start_resno,end_resno]=chain_id_and_resseq
     atom_selection=get_atom_selection(chain_id=chain_id,
@@ -707,8 +707,8 @@ def run(
     pdb_inp=sel_hierarchy.as_pdb_input(crystal_symmetry=crystal_symmetry)
     ph=pdb_inp.construct_hierarchy()
 
-    print >>out,"\nWorking on chain_id='%s' resseq %d:%d\n" %(
-       chain_id_and_resseq[0],chain_id_and_resseq[1][0],chain_id_and_resseq[1][1])
+    print("\nWorking on chain_id='%s' resseq %d:%d\n" %(
+       chain_id_and_resseq[0],chain_id_and_resseq[1][0],chain_id_and_resseq[1][1]), file=out)
 
     # get CC values for all residues
     cc_dict=get_cc_dict(hierarchy=ph,map_data=map_data,d_min=resolution,
@@ -721,8 +721,8 @@ def run(
        verbose=verbose,out=out)
 
     # figure out all the places where crossover can occur.
-
-    n_residues=cc_dict[cc_dict.keys()[0]].size()
+    # FIXME: order of keys changes in py2/3 vthis could be bad
+    n_residues=cc_dict[list(cc_dict.keys())[0]].size()
 
     crossover_dict=get_crossover_dict(
       n_residues=n_residues,
@@ -737,7 +737,7 @@ def run(
     # Each change from model a to model b between residues i and i+1 must have
     #  a crossover between a and b at either residue i or i+1
 
-    keys=cc_dict.keys()
+    keys=list(cc_dict.keys())
     keys.sort()
 
     sorted_working_model_list=[]
@@ -771,8 +771,8 @@ def run(
     cycle=0
     while found:
       cycle+=1
-      print >>out, "\nCYCLE %d current best is %7.3f\n" %(
-        cycle,best_model.get_score())
+      print("\nCYCLE %d current best is %7.3f\n" %(
+        cycle,best_model.get_score()), file=out)
       found=False
       sorted_working_model_list=[]
       new_best=best_model
@@ -784,7 +784,7 @@ def run(
           if not working_model==m:  others.append(m)
         new_working_model=working_model.optimize_with_others(others=others)
         if not new_working_model:
-          print
+          print()
           continue
         aa=[new_working_model.get_score(),new_working_model]
         if not aa in sorted_working_model_list:
@@ -801,11 +801,11 @@ def run(
         best_model=new_working_model
         found=True
         if verbose:
-          print >>out,"NEW BEST SCORE: %7.2f" %(best_model.get_score())
+          print("NEW BEST SCORE: %7.2f" %(best_model.get_score()), file=out)
           best_model.show_summary(out=out)
 
-    print >>out, "\nDONE... best is %7.3f\n" %(
-        best_model.get_score())
+    print("\nDONE... best is %7.3f\n" %(
+        best_model.get_score()), file=out)
 
     # Create composite of this chain
 
@@ -821,13 +821,13 @@ def run(
     residue_list.sort()
     assert len(best_model.source_list)==len(residue_list)
 
-    for i in xrange(len(residue_list)):
+    for i in range(len(residue_list)):
       atom_selection=get_atom_selection(model_id=best_model.source_list[i],
         resseq_sel=residue_list[i])
       asc=ph.atom_selection_cache()
       sel=asc.selection(string = atom_selection)
       sel_hierarchy=ph.select(sel)
-      print >>composite_model_stream,remove_ter(sel_hierarchy.as_pdb_string())
+      print(remove_ter(sel_hierarchy.as_pdb_string()), file=composite_model_stream)
 
   #  All done, make a new pdb_hierarchy
   pdb_string=composite_model_stream.getvalue()
@@ -836,8 +836,8 @@ def run(
 
   if pdb_out:
     f=open(pdb_out,'w')
-    print >>f,pdb_hierarchy.as_pdb_string(crystal_symmetry=crystal_symmetry)
-    print "Final model is in: %s\n" %(f.name)
+    print(pdb_hierarchy.as_pdb_string(crystal_symmetry=crystal_symmetry), file=f)
+    print("Final model is in: %s\n" %(f.name))
     f.close()
 
   return pdb_hierarchy

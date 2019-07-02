@@ -1,6 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME cctbx.patterson_map
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, Usage, show_development_warning
 import libtbx.phil
 import math
@@ -67,7 +67,7 @@ def calculate_patterson_map(data, params, normalize=False):
     d_min=params.high_resolution,
     sharpening=params.sharpening,
     origin_peak_removal=params.remove_origin_peak)
-  print "Map gridding: ",map.n_real()
+  print("Map gridding: ",map.n_real())
   if (params.scaling == "sigma"):
     map.apply_sigma_scaling()
   else :
@@ -86,7 +86,7 @@ def extract_data(file_name, hkl_in=None, expected_labels=None, out=sys.stdout):
   all_fs_anom = []
   all_is = []
   all_is_anom = []
-  print >> out, "Reading data from %s..." % hkl_in.file_name
+  print("Reading data from %s..." % hkl_in.file_name, file=out)
   for array in miller_arrays :
     labels = array.info().label_string()
     if (labels == expected_labels):
@@ -111,7 +111,7 @@ def extract_data(file_name, hkl_in=None, expected_labels=None, out=sys.stdout):
           "\n".join([ a.info().label_string() for a in choices ]))
       elif (len(choices) == 1):
         obs = choices[0]
-        print >> out, "Defaulting to data in %s" % obs.info().label_string()
+        print("Defaulting to data in %s" % obs.info().label_string(), file=out)
         break
   return obs
 
@@ -153,7 +153,7 @@ Full options:
   is_anom = False
   if (f_obs.anomalous_flag()):
     if (params.map_type in ["auto", "anom"]):
-      print >> out, "Output will be anomalous Patterson map"
+      print("Output will be anomalous Patterson map", file=out)
       is_anom = True
       final_array = f_obs.anomalous_differences()
       final_array = abs(final_array)
@@ -168,7 +168,7 @@ Full options:
     params.map_file_name = base + "_patt.ccp4"
   map.as_ccp4_map(
     file_name=params.map_file_name)
-  print >> out, "Wrote %s" % params.map_file_name
+  print("Wrote %s" % params.map_file_name, file=out)
 
 def validate_params(params):
   if (params.data is None):

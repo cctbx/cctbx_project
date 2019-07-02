@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 from libtbx.test_utils import approx_equal
 import time
@@ -794,12 +794,12 @@ def run(prefix, target, pdb_strs, eps=1.e-3):
   cntr = 0
   for pdb_str in pdb_strs:
     of = open("%s.pdb"%prefix, "w")
-    print >> of, pdb_str
+    print(pdb_str, file=of)
     of.close()
     cmd1='phenix.angle %s.pdb "chain X" "chain Y" '%(prefix)
     cmd2='phenix.angle %s.pdb "chain Y" "chain X" '%(prefix)
     for cmd in [cmd1,cmd2]:
-      print cmd
+      print(cmd)
       r = float(easy_run.go(cmd).stdout_lines[2].split()[2])
       assert approx_equal(r, target, eps)
       cntr += 1
@@ -811,5 +811,5 @@ if (__name__ == "__main__"):
   run(prefix="tst_angle_exercise_2", target=0.,  pdb_strs=[pdb_str_4, pdb_str_5, pdb_str_6, pdb_str_7])
   run(prefix="tst_angle_exercise_3", target=45., pdb_strs=[pdb_str_8, pdb_str_9])
   run(prefix="tst_angle_exercise_4", target=8.98, pdb_strs=[pdb_str_10], eps=0.1)
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")

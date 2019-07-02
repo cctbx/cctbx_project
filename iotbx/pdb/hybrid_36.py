@@ -82,7 +82,9 @@ See also:
 
 Ralf W. Grosse-Kunstleve, Feb 2007.
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
+from six.moves import zip
 
 digits_upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 digits_lower = digits_upper.lower()
@@ -148,7 +150,7 @@ def hy36decode(width, s):
 def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
   for digits,digits_values in [(digits_upper, digits_upper_values),
                                (digits_lower, digits_lower_values)]:
-    for value in xrange(1000):
+    for value in range(1000):
       s = encode_pure(digits=digits_upper, value=value)
       d = decode_pure(digits_values=digits_upper_values, s=s)
       assert d == value
@@ -266,7 +268,7 @@ def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
   for width in [4,5]:
     for value in [-(10**(width-1)), 10**width+2*26*36**(width-1)]:
       try: hy36enc(width=width, value=value)
-      except (ValueError, RuntimeError), e:
+      except (ValueError, RuntimeError) as e:
         assert str(e) == "value out of range."
       else: raise RuntimeError("Exception expected.")
   #
@@ -275,7 +277,7 @@ def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
       (5, ["", "     0", " abcd", "ABCD-", "a=bcd", "410b0", "410B0"])]:
     for s in ss:
       try: hy36dec(width, s=s)
-      except (ValueError, RuntimeError), e:
+      except (ValueError, RuntimeError) as e:
         assert str(e) == "invalid number literal."
       else: raise RuntimeError("Exception expected.")
   #
@@ -286,7 +288,7 @@ def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
       s = hy36enc(width=5, value=value)
       d = hy36dec(width=5, s=s)
     except Exception:
-      print "value:", value
+      print("value:", value)
       raise
     assert d == value
     value += random.randint(0, 10000)
@@ -295,13 +297,13 @@ def run():
   import sys
   def usage():
     c = sys.argv[0]
-    print "usage examples:"
-    print "  python %s info" % c
-    print "  python %s exercise" % c
-    print "  python %s hy36encode 4 10000" % c
-    print "  python %s hy36decode 4 zzzz" % c
-    print "  python %s hy36encode 5 100000" % c
-    print "  python %s hy36decode 5 zzzzz" % c
+    print("usage examples:")
+    print("  python %s info" % c)
+    print("  python %s exercise" % c)
+    print("  python %s hy36encode 4 10000" % c)
+    print("  python %s hy36decode 4 zzzz" % c)
+    print("  python %s hy36encode 5 100000" % c)
+    print("  python %s hy36decode 5 zzzzz" % c)
     sys.exit(1)
   if (len(sys.argv) < 2):
     usage()
@@ -311,7 +313,7 @@ def run():
     return
   if (task == "exercise"):
     exercise()
-    print "OK"
+    print("OK")
   else:
     if (   len(sys.argv) != 4
         or task not in ["hy36encode", "hy36decode"]):
@@ -321,10 +323,10 @@ def run():
     assert width > 0
     s = sys.argv[3]
     if (task == "hy36encode"):
-      print f(value=int(s), width=width)
+      print(f(value=int(s), width=width))
     else:
       s = " "*max(0, width-len(s)) + s
-      print f(s=s, width=width)
+      print(f(s=s, width=width))
 
 if (__name__ == "__main__"):
   run()

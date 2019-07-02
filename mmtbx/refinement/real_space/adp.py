@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.refinement.real_space.utils
 import mmtbx.refinement.utils
 from scitbx.array_family import flex
@@ -9,6 +9,7 @@ import mmtbx.secondary_structure
 from mmtbx import bulk_solvent
 from libtbx.test_utils import approx_equal
 from mmtbx import masks
+from six.moves import range
 
 class real_space_group_adp_refinery_via_reciprocal_space(object):
   def __init__(self,
@@ -109,6 +110,6 @@ class real_space_group_adp_refinery_via_reciprocal_space(object):
       for i, it in enumerate(stdout_and_results):
         so, b_isos_refined = it
         b_isos = b_isos.set_selected(self.chain_selections[i], b_isos_refined)
-        print >> self.log, so
+        print(so, file=self.log)
     self.xray_structure = self.xray_structure.set_b_iso(values = b_isos)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)

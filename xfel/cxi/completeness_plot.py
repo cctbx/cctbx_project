@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import os,math
 from cctbx.array_family import flex
@@ -9,8 +9,8 @@ op = os.path
 def get_observations(set,file_names,params):
   from libtbx import easy_pickle
 
-  print "Number of pickle files found:", len(file_names)
-  print
+  print("Number of pickle files found:", len(file_names))
+  print()
   returned=0
   from cctbx.sgtbx.bravais_types import bravais_lattice
   ref_bravais_type = bravais_lattice(set.space_group_info().type().number())
@@ -25,18 +25,18 @@ def get_observations(set,file_names,params):
     result_array = obj["observations"][0]
     #unit_cell, img_miller_indices = obj
 
-    print file_name,unit_cell, obj["observations"][0].space_group_info()
+    print(file_name,unit_cell, obj["observations"][0].space_group_info())
 
     if not bravais_lattice(
       obj["observations"][0].space_group_info().type().number()) == ref_bravais_type:
-      print "Skipping cell in different Bravais type"
+      print("Skipping cell in different Bravais type")
       continue
 
     if not unit_cell.is_similar_to(
       other=set.unit_cell(),
       relative_length_tolerance=0.1,
       absolute_angle_tolerance=2):
-      print "Skipping cell with outlier dimensions"
+      print("Skipping cell with outlier dimensions")
       continue
 
     obj["observations"][0].show_summary()
@@ -47,7 +47,7 @@ def get_observations(set,file_names,params):
     returned+=1
     yield ref_setting_obs,name
 
-  print "Only %d of %d obs arrays had the correct cell"%(returned,len(file_names))
+  print("Only %d of %d obs arrays had the correct cell"%(returned,len(file_names)))
 
 def plot_overall_completeness(completeness):
   completeness_range = range(-1,flex.max(completeness)+1)
@@ -71,12 +71,12 @@ plot = False
 cut_short_at = None
   .type = int
 """).show()
-  print
+  print()
   work_params = phil.work.extract()
   assert work_params.d_min is not None
 
-  print work_params.target_unit_cell
-  print work_params.target_space_group
+  print(work_params.target_unit_cell)
+  print(work_params.target_space_group)
 
   from cctbx import miller
   miller_set = symmetry(
@@ -118,9 +118,9 @@ cut_short_at = None
         if len(tokens)>6:
           try:
             if float(tokens[3]) < 2.6 and float(tokens[-1]) > 10:
-              print "Strong signal",filename,line
+              print("Strong signal",filename,line)
           except ValueError: pass
-    print
+    print()
 
     # Match up the observed intensities against the reference data
     # set, i_model, instead of the pre-generated miller set,
@@ -131,7 +131,7 @@ cut_short_at = None
 
     #for ih,hkl in enumerate(result.indices()):
     #  print hkl, result.data()[ih]
-    print
+    print()
 
     # Update the count for each matched reflection.
     completeness +=  (~matches.single_selection(0)).as_int()
@@ -193,10 +193,10 @@ def show_overall_observations(obs,redundancy,I,I_SIGI,out=None):
         mean_I_sigI  = flex.sum(sel_sig)/sel_measurements,
         )
       result.append(bin)
-  print >>out, "\n Bin  Resolution Range      Compl. <Redundancy>  #Measurements  <I>     <I/sig(I)>"
+  print("\n Bin  Resolution Range      Compl. <Redundancy>  #Measurements  <I>     <I/sig(I)>", file=out)
   for bin in result:
     fmt = " %s %s %s %s       %s      %s   %s"
-    print >>out,fmt%(
+    print(fmt%(
       format_value("%3d",   bin.i_bin),
       format_value("%-13s", bin.d_range),
       format_value("%13s",  bin.complete_tag),
@@ -204,7 +204,7 @@ def show_overall_observations(obs,redundancy,I,I_SIGI,out=None):
       format_value("%8d",   bin.measurements),
       format_value("%8.1f", bin.mean_I),
       format_value("%8.1f", bin.mean_I_sigI),
-    )
+    ), file=out)
 class resolution_bin(object):
   def __init__(self,
                i_bin         = None,

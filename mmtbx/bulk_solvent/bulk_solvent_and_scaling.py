@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx import bulk_solvent
 import iotbx.phil
 from cctbx.array_family import flex
@@ -6,6 +6,7 @@ from cctbx import adptbx
 from libtbx import group_args
 
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
 master_params = iotbx.phil.parse("""\
@@ -150,7 +151,7 @@ class bulk_solvent_and_scales(object):
         self.params.bulk_solvent = False
         self.params.k_sol_b_sol_grid_search = False
         self.params.minimization_k_sol_b_sol = False
-      macro_cycles = range(1, self.params.number_of_macro_cycles+1)
+      macro_cycles = list(range(1, self.params.number_of_macro_cycles+1))
       mask_ok = not self.fmodel_kbu.check_f_mask_all_zero()
       if(self.params.fix_k_sol is not None and mask_ok):
         assert self.params.bulk_solvent
@@ -209,11 +210,11 @@ class bulk_solvent_and_scales(object):
     if(sm is None): sm = self.b_cart()
     out = log
     if(sm is None):
-      print >> log, "  k_anisotropic=1"
+      print("  k_anisotropic=1", file=log)
       return
     if(len(sm)<=6):
-      print >> out, "      b_cart(11,22,33,12,13,23):",\
-        ",".join([str("%8.4f"%i).strip() for i in sm])
+      print("      b_cart(11,22,33,12,13,23):",\
+        ",".join([str("%8.4f"%i).strip() for i in sm]), file=out)
 
   def u_star(self):
     return self.fmodel_kbu.u_star()
@@ -324,7 +325,7 @@ class bulk_solvent_and_scales(object):
   def _b_cart_minimizer_helper(self, n_macro_cycles = 1):
     r_start = self.fmodel_kbu.r_factor()
     b_start = self.fmodel_kbu.b_cart()
-    for u_cycle in xrange(n_macro_cycles):
+    for u_cycle in range(n_macro_cycles):
       u_min = k_sol_b_sol_b_cart_minimizer(
         fmodel_kbu    = self.fmodel_kbu,
         params        = self.params,
@@ -353,7 +354,7 @@ class bulk_solvent_and_scales(object):
     assert len(ksol) >= 1
     ksol = [max(self.params.k_sol_min, min(self.params.k_sol_max, v))
       for v in ksol]
-    for i in xrange(len(bsol)):
+    for i in range(len(bsol)):
       if(bsol[i] > self.params.b_sol_max): bsol[i] = self.params.b_sol_max
       if(bsol[i] < self.params.b_sol_min): bsol[i] = self.params.b_sol_min
     self.fmodel_kbu.update(k_sols = ksol, b_sols = bsol)

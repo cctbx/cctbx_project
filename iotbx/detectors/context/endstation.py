@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math,time
 from iotbx.detectors.context.camera_convention import Cameras
 from iotbx.detectors.context.config_detector import ADSC910_at_BioCARS
@@ -74,11 +74,11 @@ def EndStation_from_ImageObject(imageobject,phil_params):
     "S/N E-32-0105" in imageobject.parameters["DETECTOR_SN"]:
      # vertical goniometer axis at Max-IV
      endstation.set_rotation_axis("ROTATION VERT ANTI")
-     print "MAX-IV Eiger 16M"
+     print("MAX-IV Eiger 16M")
 
   if imageobject.vendortype == "Bruker Proteus CCD":
      endstation.set_rotation_axis("ROTATION VERT ANTI")
-     print "BRUKER rotation", endstation.rot_axi
+     print("BRUKER rotation", endstation.rot_axi)
 
   if imageobject.vendortype == "RAXIS":
      endstation.set_rotation_axis("ROTATION VERT CLOCK")

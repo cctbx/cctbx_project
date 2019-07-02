@@ -12,7 +12,7 @@ and Cbeta deviation.  Proteins. 2003 Feb 15;50(3):437-50.
 http://www.ncbi.nlm.nih.gov/pubmed/12557186
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import residue, validation
 from scitbx.matrix import col, dihedral_angle, rotate_point_around_axis
 import sys
@@ -144,16 +144,16 @@ class cbetadev(validation):
 
   def show_old_output(self, out, verbose=False, prefix="pdb"):
     if (verbose):
-      print >> out, self.output_header
+      print(self.output_header, file=out)
     for result in self.results :
-      print >> out, prefix + " :" + result.format_old()
+      print(prefix + " :" + result.format_old(), file=out)
     if (verbose):
       self.show_summary(out)
 
   def show_summary(self, out, prefix=""):
-    print >> out, prefix + \
+    print(prefix + \
       'SUMMARY: %d C-beta deviations >= 0.25 Angstrom (Goal: 0)' % \
-      self.n_outliers
+      self.n_outliers, file=out)
 
   #functions for internal access of summary statistics
   def get_outlier_count(self):

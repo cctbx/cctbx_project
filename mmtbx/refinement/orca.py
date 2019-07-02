@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import cctbx.geometry_restraints
 from cctbx.array_family import flex
 import scitbx.graph.tardy_tree
 from scitbx import matrix
 from libtbx.math_utils import nested_loop
+from six.moves import zip
 
 def expand_model_or_conformer_indices(
       indices,
@@ -177,10 +178,10 @@ class expand(object):
         orca_dof += 5
       else:
         orca_dof += 6
-    print "sites_cart.size():", sites_cart.size()
-    print "O.sites_cart.size():", O.sites_cart.size()
-    print "original Cartesian dof:", sites_cart.size()*3
-    print "orca dof:", orca_dof
+    print("sites_cart.size():", sites_cart.size())
+    print("O.sites_cart.size():", O.sites_cart.size())
+    print("original Cartesian dof:", sites_cart.size()*3)
+    print("orca dof:", orca_dof)
     for i_seq,x_i_seqs in enumerate(O.related_x_i_seqs):
       O.masses /= len(x_i_seqs)
     # XXX find more direct way to get x_edge_list

@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 def level(space_group_info):
   """\
 Determine the level of confidence in a given space group symbol. Often
@@ -61,13 +62,13 @@ def _test():
   assert level(sgtbx.space_group_info("P 2")) == 0
   assert level(sgtbx.space_group_info("Hall: C 1")) == -1
   n = 0
-  for i in xrange(1,231):
+  for i in range(1,231):
     c = level(sgtbx.space_group_info(i))
     if (c is not None):
       assert c  in (0,1,2)
       n += 1
   assert n == 65
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   _test()

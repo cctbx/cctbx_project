@@ -4,7 +4,7 @@ Classes for display of MolProbity validation statistics for multi-model PDB
 files, used in GUI for phenix.ensemble_refinement.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
 from wxtbx import app, path_dialogs, plots
@@ -12,6 +12,8 @@ from mmtbx.command_line import validation_summary
 from wxGUI2 import AdvancedWidgets, Base
 import wx
 import sys
+from six.moves import range
+from six.moves import zip
 
 class ensemble_validation_plot(plots.histogram):
   def show_plot(self,
@@ -29,7 +31,7 @@ class ensemble_validation_plot(plots.histogram):
         y_label="Number of Models",
         title=title)
     else :
-      x = range(1, len(values) + 1)
+      x = list(range(1, len(values) + 1))
       self.figure.clear()
       p = self.figure.add_subplot(111)
       ax = p.plot(x, values, '-^', color=(0.0,0.5,1.0))
@@ -243,25 +245,25 @@ class ensemble_chi_panel(wx.Panel):
       id_str = chi_angles[0]['id_str']
       xyz = chi_angles[0]['xyz']
       id_str_map = dict()
-      all_angles = [ list() for i in xrange(n_groups) ]
-      for i in xrange(n_groups):           # loop over atom_groups
+      all_angles = [ list() for i in range(n_groups) ]
+      for i in range(n_groups):           # loop over atom_groups
         n_dihedrals = len(chi_angles[0]['chi_angles'][i])
-        angles = [ list() for j in xrange(n_dihedrals) ]
-        for j in xrange(n_models):
+        angles = [ list() for j in range(n_dihedrals) ]
+        for j in range(n_models):
           dihedrals = chi_angles[j]['chi_angles'][i]
-          for k in xrange(n_dihedrals):
+          for k in range(n_dihedrals):
             dihedral = dihedrals[k]
             if (dihedral is not None):
               angles[k].append(dihedral)
 
         # check if adding 360 to negative angles is helpful
         # avoids issues where angles are clustered only near 0 and 360
-        for j in xrange(len(angles)):
+        for j in range(len(angles)):
           if (len(angles[j]) > 0):
             stddev_a = flex.mean_and_variance(
               flex.double(angles[j])).unweighted_sample_variance()
             dihedrals_b = flex.double(angles[j])
-            for k in xrange(len(dihedrals_b)):
+            for k in range(len(dihedrals_b)):
               if (dihedrals_b[k] < 0.0):
                 dihedrals_b[k] += 360
             stddev_b = flex.mean_and_variance(
@@ -280,7 +282,7 @@ class ensemble_chi_panel(wx.Panel):
                           'xyz': xyz,
                           'values': all_angles }
       self.meets_threshold = [ False for i in
-                               xrange(len(self.chi_angles['id_str'])) ]
+                               range(len(self.chi_angles['id_str'])) ]
       self.UpdateTable()
       self.UpdatePlot()
 
@@ -301,10 +303,10 @@ class ensemble_chi_panel(wx.Panel):
       f = open(filename, 'w')
       id_str = self.chi_angles['id_str']
       dihedrals = self.chi_angles['values']
-      for i in xrange(5):
+      for i in range(5):
         f.write('Chi %i\n' % (i+1))
         f.write('Residue, Model 1, Model 2, ...\n')
-        for j in xrange(len(id_str)):
+        for j in range(len(id_str)):
           if (i < len(dihedrals[j])):
             f.write('%s, ' % id_str[j] +
                     ', '.join([str(d) for d in dihedrals[j][i]]) + '\n')
@@ -332,9 +334,9 @@ class ensemble_chi_panel(wx.Panel):
     # deviations of the mean (default threshold value)
     # set atom_group to be displayed if fraction is below threshold.
     # actual check is n_outliers/n_total > (1 - input_threshold)
-    for i in xrange(len(self.chi_angles['id_str'])): # loop over model
+    for i in range(len(self.chi_angles['id_str'])): # loop over model
       self.meets_threshold[i] = False
-      for j in xrange(len(self.chi_angles['values'][i])): # loop over group
+      for j in range(len(self.chi_angles['values'][i])): # loop over group
         dihedrals = flex.double(self.chi_angles['values'][i][j])
         if (len(dihedrals) > 0):
           mean_stddev = flex.mean_and_variance(dihedrals)
@@ -343,7 +345,7 @@ class ensemble_chi_panel(wx.Panel):
           n_outliers = 0
           chi_min = mean - 2.0*stddev
           chi_max = mean + 2.0*stddev
-          for k in xrange(len(dihedrals)):
+          for k in range(len(dihedrals)):
             if ( (dihedrals[k] < chi_min) or (dihedrals[k] > chi_max) ):
               n_outliers += 1
           is_outlier = (float(n_outliers)/len(dihedrals) > threshold)
@@ -353,13 +355,13 @@ class ensemble_chi_panel(wx.Panel):
 
     # refresh table
     table_data = list()
-    for i in xrange(len(self.meets_threshold)):
+    for i in range(len(self.meets_threshold)):
       if (self.meets_threshold[i]):
-        row = [ '---' for j in xrange(8) ]
+        row = [ '---' for j in range(8) ]
         row[0] = self.chi_angles['id_str'][i]
         row[6] = None                          # sel_str for model viewer
         row[7] = self.chi_angles['xyz'][i]     # xyz for model viewer
-        for j in xrange(len(self.chi_angles['values'][i])):
+        for j in range(len(self.chi_angles['values'][i])):
           chi = self.chi_angles['values'][i][j]
           if ( (None not in chi) and (len(chi) > 0) ):
             row[j+1] = flex.mean(flex.double(chi))

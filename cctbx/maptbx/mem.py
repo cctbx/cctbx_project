@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math
 from scitbx.array_family import flex
 from cctbx import miller
 from cctbx import maptbx
 from libtbx.utils import Sorry
 import sys
+from six.moves import range
 
 def Hn(m):
   m_ = m
@@ -48,9 +49,8 @@ def r_factor(x,y, use_scale):
   return flex.sum(flex.abs(x-sc*y))/flex.sum(x)
 
 def show_map_stat(m, prefix, out=sys.stdout):
-  print >> out, \
-    "%s (min/max/mean/sum, Hw, Hn): %9.6f %9.6f %9.6f %9.6f %9.6f %9.6f"%(
-    prefix, flex.min(m), flex.max(m), flex.mean(m), flex.sum(m), Hw(m), Hn(m))
+  print("%s (min/max/mean/sum, Hw, Hn): %9.6f %9.6f %9.6f %9.6f %9.6f %9.6f"%(
+    prefix, flex.min(m), flex.max(m), flex.mean(m), flex.sum(m), Hw(m), Hn(m)), file=out)
 
 class run(object):
   def __init__(self,
@@ -130,23 +130,21 @@ class run(object):
       self.f_calc = self.full_set.structure_factors_from_scatterers(
         xray_structure = self.xray_structure).f_calc()
     if(verbose):
-      print >> self.log, "Resolution factor: %-6.4f"%resolution_factor
-      print >> self.log, \
-        "  N, n1,n2,n3:",self.N,self.n_real[0],self.n_real[1],self.n_real[2]
-      print >> self.log, "Box: "
-      print >> self.log, "  resolution: %6.4f"%self.full_set.d_min()
-      print >> self.log, "  max. index |h|,|k|,|l|<nreal/2:", max_index
-      print >> self.log, "  n.refl.:", self.full_set.indices().size()
+      print("Resolution factor: %-6.4f"%resolution_factor, file=self.log)
+      print("  N, n1,n2,n3:",self.N,self.n_real[0],self.n_real[1],self.n_real[2], file=self.log)
+      print("Box: ", file=self.log)
+      print("  resolution: %6.4f"%self.full_set.d_min(), file=self.log)
+      print("  max. index |h|,|k|,|l|<nreal/2:", max_index, file=self.log)
+      print("  n.refl.:", self.full_set.indices().size(), file=self.log)
     # STEP 1
     if(self.f_000 is None): self.f_000=mean_density*self.f.unit_cell().volume()
     Cobs = 1
     Ca = 0.37
     self.Agd = Ca/self.N
     if(verbose):
-      print >> self.log, \
-        "Cobs, Ca, Agd, f_000:", Cobs, Ca, self.Agd, "%6.3f"%self.f_000
-      print >> self.log, "Cobs/(N*f_000): ",Cobs/(self.N*self.f_000)
-      print >> self.log, "memory factor (beta):", self.beta
+      print("Cobs, Ca, Agd, f_000:", Cobs, Ca, self.Agd, "%6.3f"%self.f_000, file=self.log)
+      print("Cobs/(N*f_000): ",Cobs/(self.N*self.f_000), file=self.log)
+      print("memory factor (beta):", self.beta, file=self.log)
     self.f = self.f.customized_copy(data=self.f.data()*Cobs/(self.N*self.f_000))
     fft_map = miller.fft_map(
       crystal_gridding     = self.crystal_gridding,
@@ -184,9 +182,8 @@ class run(object):
     for x in [0.5,1,1.5]:
       p1 = (o.map_1()>x).count(True)*1./o.map_1().size()
       p2 = (o.map_2()>x).count(True)*1./o.map_2().size()
-      print >> self.log, \
-        "Cumulative histograms match for two maps: %9.6f %9.6f" %(
-        p1,p2)
+      print("Cumulative histograms match for two maps: %9.6f %9.6f" %(
+        p1,p2), file=self.log)
     f1 = self.full_set.structure_factors_from_map(
       map            = o.map_1(),
       use_scale      = True,
@@ -221,8 +218,8 @@ class run(object):
 
   def show(self, verbose=True):
     if(self.verbose and not self.header_shown):
-      print >> self.log, "lam:", self.lam
-      print >> self.log, "  nit    TP       Hw        Q_X              Qtot         Agd    scFc       Hn     R    * tpgd       lam        cc"
+      print("lam:", self.lam, file=self.log)
+      print("  nit    TP       Hw        Q_X              Qtot         Agd    scFc       Hn     R    * tpgd       lam        cc", file=self.log)
       self.header_shown = True
     self.update_metrics()
     fs = " ".join(["%5d"%self.cntr, "%8.6f"%self.tp, "%9.6f"%self.h_w,\
@@ -231,7 +228,7 @@ class run(object):
          "*", "%8.6f"%self.Z, "%12.6f"%self.lam])
     if(self.cc is not None): cc = "%7.5f"%self.cc
     else: cc = self.cc
-    print >> self.log, fs, cc
+    print(fs, cc, file=self.log)
     return fs
 
   def is_converged(self, rho_trial):
@@ -255,7 +252,7 @@ class run(object):
         def max_change_so_far(x):
           result = flex.double()
           if(self.cc_to_answer.size()):
-            for i in xrange(self.cc_to_answer.size()):
+            for i in range(self.cc_to_answer.size()):
               if(i>0):
                 result.append(self.cc_to_answer[i]-self.cc_to_answer[i-1])
           return flex.max(result)

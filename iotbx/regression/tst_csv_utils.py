@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx.test_utils import open_tmp_file, Exception_expected
+from six.moves import zip
 
 def exercise():
   exercise_writer()
@@ -16,9 +17,10 @@ def exercise_writer():
   csv_utils.writer(f, (x,y), field_names=field_names)
   f.close()
   f = open(f.name, 'r')
-  content = f.readlines()
-  text = ['x,y\r\n']
-  text += ['%s,%s\r\n' %(row[0],row[1]) for row in zip(x,y)]
+  content = [l.strip() for l in f.readlines()]
+
+  text = ['x,y']
+  text += ['%s,%s' %(row[0],row[1]) for row in zip(x,y)]
   assert content == text
   f.close()
 
@@ -28,8 +30,8 @@ def exercise_writer():
   csv_utils.writer(f, (x,y), delimiter=';')
   f.close()
   f = open(f.name, 'r')
-  content = f.readlines()
-  text = ['%s;%s\r\n' %(row[0],row[1]) for row in zip(x,y)]
+  content = [l.strip() for l in f.readlines()]
+  text = ['%s;%s' %(row[0],row[1]) for row in zip(x,y)]
   assert content == text
 
   x = flex.int(x)
@@ -38,9 +40,9 @@ def exercise_writer():
   csv_utils.writer(f, (x,y), field_names=field_names)
   f.close()
   f = open(f.name, 'r')
-  content = f.readlines()
-  text = ['x,y\r\n']
-  text += ['%s,%s\r\n' %(row[0],row[1]) for row in zip(x,y)]
+  content = [l.strip() for l in f.readlines()]
+  text = ['x,y']
+  text += ['%s,%s' %(row[0],row[1]) for row in zip(x,y)]
   assert content == text
   f.close()
 
@@ -102,7 +104,7 @@ def exercise_reader():
 
 def run():
   exercise()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

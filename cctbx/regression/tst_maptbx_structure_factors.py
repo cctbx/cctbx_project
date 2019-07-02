@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import maptbx
 from cctbx import crystal
 from cctbx import sgtbx
@@ -8,6 +8,7 @@ from cctbx.array_family import flex
 from scitbx import fftpack
 from libtbx.test_utils import approx_equal
 import sys
+from six.moves import range
 
 def exercise_crystal_gridding():
   crystal_symmetry = crystal.symmetry(
@@ -258,8 +259,8 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
       maptbx.statistics(flex.real(under_sampled_real_map)).show_summary()
       maptbx.statistics(flex.imag(under_sampled_real_map)).show_summary()
   if (0 or verbose):
-    print real_map.all(), n_complex
-    print under_sampled_real_map.all(), n_complex_under_sampled
+    print(real_map.all(), n_complex)
+    print(under_sampled_real_map.all(), n_complex_under_sampled)
   if (not anomalous_flag):
     x_source = real_map
     y_source = under_sampled_real_map
@@ -268,14 +269,14 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     y_source = flex.real(under_sampled_real_map)
   x = flex.double()
   n = x_source.focus()
-  for i in xrange(0, n[0], under_sampling):
-    for j in xrange(0, n[1], under_sampling):
-      for k in xrange(0, n[2], under_sampling):
+  for i in range(0, n[0], under_sampling):
+    for j in range(0, n[1], under_sampling):
+      for k in range(0, n[2], under_sampling):
         x.append(x_source[(i,j,k)])
   y = maptbx.copy(y_source, flex.grid(y_source.focus())).as_1d()
   if (0 or verbose):
-    print "x:", tuple(x)
-    print "y:", tuple(y)
+    print("x:", tuple(x))
+    print("y:", tuple(y))
   assert flex.max(flex.abs(x-y)) \
       < (flex.max(flex.abs(x))+flex.max(flex.abs(y)))/2*1.e-6
   if (under_sampling == 1):

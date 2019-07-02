@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 from cctbx.array_family import flex
 from libtbx.containers import OrderedDict
@@ -13,6 +13,8 @@ from iotbx.pdb.remark_3_interpretation import \
 import iotbx.cif
 from iotbx.cif.builders import crystal_symmetry_builder
 import iotbx.mtrix_biomt
+from six import string_types
+from six.moves import range, zip
 
 class pdb_hierarchy_builder(crystal_symmetry_builder):
 
@@ -79,7 +81,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       if adps is not None:
         try:
           adps = [flex.double(adp) for adp in adps]
-        except ValueError, e:
+        except ValueError as e:
           raise CifBuilderError("Error interpreting ADPs: " + str(e))
         adps = flex.sym_mat3_double(*adps)
     py_adps = {}
@@ -92,7 +94,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     current_residue_id = None
     current_ins_code = None
 
-    for i_atom in xrange(atom_labels.size()):
+    for i_atom in range(atom_labels.size()):
       # model(s)
       last_model_id = current_model_id
       current_model_id = model_ids[i_atom]
@@ -107,9 +109,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       assert current_label_asym_id is not None
       last_auth_asym_id = current_auth_asym_id
       current_auth_asym_id = auth_asym_id[i_atom]
-      if current_auth_asym_id == ".": current_auth_asym_id = " "
+      assert current_auth_asym_id not in [".", "?", " "], "mmCIF file contains " + \
+        "record with empty auth_asym_id, which is wrong."
       assert current_label_asym_id is not None
-      if (current_label_asym_id != last_label_asym_id
+      if (current_auth_asym_id != last_auth_asym_id
           or current_model_id != last_model_id):
         chain = hierarchy.chain(id=current_auth_asym_id)
         model.append_chain(chain)
@@ -127,11 +130,11 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         if current_ins_code in ("?", ".", None): current_ins_code = " "
       if (current_residue_id != last_residue_id
           or current_ins_code != last_ins_code
-          or current_label_asym_id != last_label_asym_id
+          or current_auth_asym_id != last_auth_asym_id
           or current_model_id != last_model_id):
         try:
           resseq = hy36encode(width=4, value=int(current_residue_id))
-        except ValueError, e:
+        except ValueError as e:
           resseq = current_residue_id
           assert len(resseq)==4
         residue_group = hierarchy.residue_group(
@@ -205,7 +208,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     data = cif_block.get(name)
     if data is None:
       return data
-    if isinstance(data, basestring):
+    if isinstance(data, string_types):
       data = flex.std_string([data])
     return data
 
@@ -249,7 +252,7 @@ class extract_tls_from_cif_block(object):
              for i, j in ('11', '12', '13', '21', '22', '23', '31', '32', '33')]
     origin_xyzs = [cif_block.get('_pdbx_refine_tls.origin_%s' %x) for x in 'xyz']
 
-    if isinstance(tls_ids, basestring):
+    if isinstance(tls_ids, string_types):
       # in case the TLS items are not in a loop
       tls_ids = [tls_ids]
       T_ijs = [[T_ij] for T_ij in T_ijs]
@@ -275,7 +278,7 @@ class extract_tls_from_cif_block(object):
 
     assert tls_group_ids is not None
 
-    if isinstance(tls_group_ids, basestring):
+    if isinstance(tls_group_ids, string_types):
       # in case the TLS group items are not in a loop
       refine_tls_ids = flex.std_string([refine_tls_ids])
       beg_chain_ids = [beg_chain_ids]
@@ -403,7 +406,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       self.cif_model = cif_object
     if len(self.cif_model) == 0:
       raise Sorry("mmCIF file must contain at least one data block")
-    self.cif_block = self.cif_model.values()[0]
+    self.cif_block = list(self.cif_model.values())[0]
     self._source_info = "file %s" %file_name
     self.hierarchy = None
     self.builder = None
@@ -497,12 +500,12 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
 
   def deposition_date(self):
     # date format: yyyy-mm-dd
-    cif_block = self.cif_model.values()[0]
+    cif_block = list(self.cif_model.values())[0]
     return cif_block.get("_pdbx_database_status.recvd_initial_deposition_date")
     #rev_num = cif_block.get('_database_PDB_rev.num')
     #if rev_num is not None:
     #  date_original = cif_block.get('_database_PDB_rev.date_original')
-    #  if isinstance(rev_num, basestring):
+    #  if isinstance(rev_num, string_types):
     #    return date_original
     #  else:
     #    i = flex.first_index(rev_num, '1')
@@ -525,7 +528,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def get_program_name(self):
     software_name = self.cif_block.get('_software.name')
     software_classification = self.cif_block.get('_software.classification')
-    if (isinstance(software_classification, basestring) and
+    if (isinstance(software_classification, string_types) and
         software_classification == 'refinement'):
       return software_name
     if software_classification is not None:
@@ -537,11 +540,17 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     r1 = _float_or_None(self.cif_block.get('_reflns.d_resolution_high'))
     r2 = _float_or_None(self.cif_block.get('_reflns.resolution'))
     r3 = _float_or_None(self.cif_block.get('_em_3d_reconstruction.resolution'))
-    for r in [r1,r2,r3]:
+    r4 = _float_or_None(self.cif_block.get('_refine.ls_d_res_high'))
+    for r in [r1,r2,r3,r4]:
       if(r is not None): result.append(r)
     result = list(set(result))
     if(len(result)  ==0): result = None
     elif(len(result)==1): result = result[0]
+    elif(len(result)>1):
+      if(r4 is None):
+        result = r1
+      else:
+        result = min(result)
     return result
 
   def extract_tls_params(self, hierarchy):
@@ -607,10 +616,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
 
         r = [(self.cif_block.get('_pdbx_struct_oper_list.matrix[%s][%s]' %(x,y))[i])
           for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
-        t_rots.append(matrix.sqr(map(float,r)))
+        t_rots.append(matrix.sqr([float(r_elem) for r_elem in r] ))
         t = [(self.cif_block.get('_pdbx_struct_oper_list.vector[%s]' %x)[i])
           for x in '123']
-        t_trans.append(matrix.col(map(float,t)))
+        t_trans.append(matrix.col([float(t_elem) for t_elem in t] ))
 
     # filter everything for X0 and P here:
     # Why??? Nobody promised that id would be integer, it is a 'single word':
@@ -637,7 +646,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         if error_handle:
           raise Sorry('Rotation matrices are not proper! ')
         else:
-          print Sorry('Rotation matrices are not proper! ')
+          print(Sorry('Rotation matrices are not proper! '))
       ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
       result.add(
         r=r, t=t,
@@ -682,14 +691,14 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         else:
           r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y)))
             for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
-        rots.append(matrix.sqr(map(float,r)))
+        rots.append(matrix.sqr([float(r_elem) for r_elem in r]) )
         if len(ncs_oper) > 1:
           t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x)[i])
             for x in '123']
         else:
           t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x))
             for x in '123']
-        trans.append(matrix.col(map(float,t)))
+        trans.append(matrix.col([float(t_elem) for t_elem in t]))
     # sort records by serial number
     serial_number.sort()
     items_order = [i for (_,i) in serial_number]
@@ -704,7 +713,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         if error_handle:
           raise Sorry('Rotation matrices are not proper! ')
         else:
-          print Sorry('Rotation matrices are not proper! ')
+          print(Sorry('Rotation matrices are not proper! '))
       ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
       result.add(
         r=r, t=t,
@@ -765,7 +774,7 @@ class _cif_get_r_rfree_sigma_object(object):
 
   def show(self, log = None):
     if(log is None): log = sys.stdout
-    print >> log, self.formatted_string()
+    print(self.formatted_string(), file=log)
 
 
 def extract_f_model_core_constants(cif_block):

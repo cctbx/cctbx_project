@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 def exercise_rotate_point_around_axis():
   from scitbx.matrix import col, rotate_point_around_axis
   cb = col([7.767, 5.853, 7.671])
@@ -21,7 +22,7 @@ def exercise_rotate_point_around_axis():
 def run(args):
   assert len(args) == 0
   exercise_rotate_point_around_axis()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

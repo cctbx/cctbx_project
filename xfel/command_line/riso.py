@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.riso
@@ -12,6 +12,7 @@ from cctbx.array_family import flex
 from libtbx.str_utils import format_value
 from xfel.cxi.cxi_cc import r1_factor, scale_factor
 from cctbx.crystal import symmetry
+from six.moves import zip
 
 phil_scope = iotbx.phil.parse("""
 input {
@@ -87,8 +88,8 @@ def riso(data_1, data_2, params, show_tables=True):
   # set 1 intentionally repeated in case of low res missing reflections
   assert len(common_set_1.indices()) == len(common_set_2.indices())
   common = (common_set_1, common_set_2)
-  print "%6d indices in common in the range %.2f-%.2f Angstroms"%\
-    (common_set_1.size(),d_min, d_max)
+  print("%6d indices in common in the range %.2f-%.2f Angstroms"%\
+    (common_set_1.size(),d_min, d_max))
 
   # bin for comparison
   for array in common:
@@ -145,24 +146,23 @@ def riso(data_1, data_2, params, show_tables=True):
                                                   cumulative_counts_complete)),
                  format_value("%.1f%%", 100 * riso_all)]
     table_data.append(table_row)
-    print table_utils.format(
-      table_data, has_header=2, justify='center', delim=" ")
-    print "Riso is the R1 factor between the two datasets supplied."
+    print(table_utils.format(
+      table_data, has_header=2, justify='center', delim=" "))
+    print("Riso is the R1 factor between the two datasets supplied.")
 
   return riso_binned, riso_all
 
 def run(args):
   import os
   if ("--help" in args) or ("-h" in args) or (len(args) == 0):
-    print \
-    """cctbx.riso: a command line script for calculating an R1 factor
+    print("""cctbx.riso: a command line script for calculating an R1 factor
     between two datasets.
 
     Example usage:
 
     cctbx.riso data_1=5kaf-sf.mtz data_2=5kai-sf.mtz \\
     labels_1=Iobs labels_2=Iobs
-    """
+    """)
     return
   elif ("--config" in args) or ("-c" in args):
     iotbx.phil.parse(master_phil).show(attributes_level=2)

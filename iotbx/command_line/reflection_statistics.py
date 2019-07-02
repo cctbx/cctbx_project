@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.reflection_statistics
 
 from iotbx import reflection_file_reader
@@ -14,17 +14,19 @@ from cctbx.array_family import flex
 from libtbx.utils import Sorry
 from itertools import count
 import sys
+from six.moves import range
+from six.moves import zip
 
 def show_average_of_binned_data(binned_data_list):
   l = len(binned_data_list[0].binner.bin_legend(0))
-  print " "*(l-9), "average:",
+  print(" "*(l-9), "average:", end=' ')
   for binned_data in binned_data_list:
     data = flex.double()
     for d in binned_data.data[1:-1]:
       if (d is not None): data.append(d)
-    if (data.size() == 0): print " "*7,
-    else: print "%7.4f" % flex.mean(data),
-  print
+    if (data.size() == 0): print(" "*7, end=' ')
+    else: print("%7.4f" % flex.mean(data), end=' ')
+  print()
 
 class array_cache(object):
 
@@ -34,10 +36,10 @@ class array_cache(object):
     self.input = input.eliminate_sys_absent(integral_only=True, log=sys.stdout)
     self.lattice_symmetry_max_delta = lattice_symmetry_max_delta
     if (not self.input.is_unique_set_under_symmetry()):
-      print "Merging symmetry-equivalent reflections:"
+      print("Merging symmetry-equivalent reflections:")
       merged = self.input.merge_equivalents()
       merged.show_summary(prefix="  ")
-      print
+      print()
       self.input = merged.array()
       del merged
       if (input.info() is not None):
@@ -45,7 +47,7 @@ class array_cache(object):
       else:
         self.input.set_info(miller.array_info(merged=True))
     self.input.show_comprehensive_summary()
-    print
+    print()
     self.input.setup_binner(n_bins=n_bins)
     self.resolution_range = self.input.resolution_range()
     self.change_of_basis_op_to_minimum_cell \
@@ -78,12 +80,12 @@ class array_cache(object):
       assert_is_compatible_unit_cell=False)
 
   def show_completeness(self):
-    print "Completeness of %s:" % str(self.input.info())
+    print("Completeness of %s:" % str(self.input.info()))
     no_sys_abs = self.input.eliminate_sys_absent()
     no_sys_abs.use_binning_of(self.input)
     no_sys_abs.completeness(use_binning=True,
      as_non_anomalous_array=self.completeness_as_non_anomalous).show()
-    print
+    print()
 
   def idealized_input_unit_cell(self):
     return self.lattice_symmetry.unit_cell().change_basis(
@@ -101,26 +103,26 @@ class array_cache(object):
       omit_negative_determinants=True)
 
   def show_possible_twin_laws(self):
-    print "Space group of the intensities:", \
+    print("Space group of the intensities:", \
       self.intensity_symmetry.space_group_info() \
-        .as_reference_setting()
-    print "Space group of the metric:     ", \
+        .as_reference_setting())
+    print("Space group of the metric:     ", \
       self.lattice_symmetry.space_group_info() \
-        .as_reference_setting()
+        .as_reference_setting())
     d = "%.6g" % self.lattice_symmetry_max_delta
     if (d == "1"): d += " degree"
     else: d += " degrees"
-    print "  Tolerance used in the determination of the"
-    print "  lattice symmetry:", d
+    print("  Tolerance used in the determination of the")
+    print("  lattice symmetry:", d)
     twin_laws = self.possible_twin_laws()
     if (len(twin_laws) == 0):
-      print "Possible twin laws: None"
+      print("Possible twin laws: None")
     else:
       idealized_cell = self.idealized_input_unit_cell()
       s = str(idealized_cell)
       if (s != str(self.input.unit_cell())):
-        print "Idealized unit cell:", s
-      print "Possible twin laws:"
+        print("Idealized unit cell:", s)
+      print("Possible twin laws:")
       for s in twin_laws:
         hkl_str = s.r().as_hkl()
         cb_op = sgtbx.change_of_basis_op(hkl_str)
@@ -129,23 +131,23 @@ class array_cache(object):
         info = ""
         try:
           cb_sg = self.input.space_group_info().change_basis(cb_op=cb_op)
-        except RuntimeError, e:
+        except RuntimeError as e:
           if (str(e).find("Unsuitable value for rational") < 0): raise
           info = " # Info: this changes the setting of the input space group"
         else:
           if (cb_sg.group() != self.input.space_group()):
             info = " # Info: new setting: %s" % str(cb_sg)
-        print " ", hkl_str + info
-      print "  Note:"
-      print "    phenix.xtriage provides comprehensive twinning analysis"
-      print "    facilities for macromolecular structures."
-      print "    For more information enter: phenix.xtriage --help"
-    print
+        print(" ", hkl_str + info)
+      print("  Note:")
+      print("    phenix.xtriage provides comprehensive twinning analysis")
+      print("    facilities for macromolecular structures.")
+      print("    For more information enter: phenix.xtriage --help")
+    print()
 
   def show_patterson_peaks(self,
         min_relative_peak_height=0.1,
         show_at_least=3):
-    print "Patterson peaks for %s:" % str(self.input.info())
+    print("Patterson peaks for %s:" % str(self.input.info()))
     reciprocal_map = self.input
     if (reciprocal_map.anomalous_flag()):
       reciprocal_map = reciprocal_map.average_bijvoet_mates()
@@ -160,20 +162,20 @@ class array_cache(object):
       unit_cell=patterson_map.unit_cell(),
       space_group=patterson_map.space_group(),
       original_site=(0,0,0))
-    print "      Fractional coordinates     Height  Distance from origin"
-    for i_peak in xrange(peak_list.size()):
+    print("      Fractional coordinates     Height  Distance from origin")
+    for i_peak in range(peak_list.size()):
       height = peak_list.heights()[i_peak]
       if (height < max_height * min_relative_peak_height
           and i_peak > show_at_least): break
       site = peak_list.sites()[i_peak]
       dist_info = sgtbx.min_sym_equiv_distance_info(sym_equiv_origin, site)
-      print "  %8.4f %8.4f %8.4f" % (dist_info.sym_op()*site),
-      print "  %8.3f  %8.3f" % (height, dist_info.dist())
-    print
+      print("  %8.4f %8.4f %8.4f" % (dist_info.sym_op()*site), end=' ')
+      print("  %8.3f  %8.3f" % (height, dist_info.dist()))
+    print()
 
   def show_perfect_merohedral_twinning_test(self, n_bins=None):
     assert not self.input.space_group().is_centric()
-    print "Perfect merohedral twinning test for %s:"%str(self.input.info())
+    print("Perfect merohedral twinning test for %s:"%str(self.input.info()))
     acentric = self.input.select_acentric().as_intensity_array()
     acentric = acentric.array(
       data=acentric.data()/acentric.epsilons().data().as_double())
@@ -187,20 +189,20 @@ class array_cache(object):
     acentric.binner().counts_complete(include_centric=False)
     sm = acentric.second_moment_of_intensities(use_binning=True)
     wr = acentric.wilson_ratio(use_binning=True)
-    print acentric.second_moment_of_intensities.__doc__
-    print acentric.wilson_ratio.__doc__
-    print "See also: http://www.doe-mbi.ucla.edu/Services/Twinning/intro.html"
+    print(acentric.second_moment_of_intensities.__doc__)
+    print(acentric.wilson_ratio.__doc__)
+    print("See also: http://www.doe-mbi.ucla.edu/Services/Twinning/intro.html")
     for i_bin,s,w in zip(count(), sm.data, wr.data):
-      print sm.binner.bin_legend(i_bin),
+      print(sm.binner.bin_legend(i_bin), end=' ')
       for v in s, w:
-        if (v is None): print " "*7,
-        else: print "%7.4f" % v,
-      print
+        if (v is None): print(" "*7, end=' ')
+        else: print("%7.4f" % v, end=' ')
+      print()
     show_average_of_binned_data([sm, wr])
-    print
+    print()
 
   def show_second_moments_of_intensities(self, n_bins=None):
-    print "Second moments of intensities for %s:"%str(self.input.info())
+    print("Second moments of intensities for %s:"%str(self.input.info()))
     f = self.input.as_intensity_array()
     f = f.array(data=f.data()/f.epsilons().data().as_double())
     f.set_observation_type_xray_intensity()
@@ -210,22 +212,22 @@ class array_cache(object):
       f.setup_binner(auto_binning=True)
       if (f.binner().n_bins_used() > 30):
         f.setup_binner(n_bins=30)
-    print f.second_moment_of_intensities.__doc__.split()[0]
+    print(f.second_moment_of_intensities.__doc__.split()[0])
     sm = f.second_moment_of_intensities(use_binning=True)
     sm.show()
     show_average_of_binned_data([sm])
-    print
+    print()
 
   def show_measurability(self, cutoff=3):
     if (self.input.sigmas() is not None):
       work_array = self.input.select(self.input.sigmas() > 0)
       if (work_array.size() > 0):
-        print "Observed measurabilities of %s:" % str(self.input.info())
-        print self.input.measurability.__doc__.replace("cutoff", str(cutoff))
+        print("Observed measurabilities of %s:" % str(self.input.info()))
+        print(self.input.measurability.__doc__.replace("cutoff", str(cutoff)))
         work_array.use_binning_of(self.input)
         meas_obs = work_array.measurability(use_binning=True, cutoff=cutoff)
         meas_obs.show()
-      print
+      print()
 
   def unique_reindexing_operators(self,
         other,
@@ -319,21 +321,21 @@ def _process_miller_arrays(
       miller_array = abs(miller_array)
     if (miller_array.is_real_array()):
       if (miller_array.unit_cell() is None):
-        print
-        print "*" * 79
-        print "Unknown unit cell parameters:", miller_array.info()
-        print "Use --symmetry or --unit_cell to define unit cell:"
-        print "*" * 79
-        print
+        print()
+        print("*" * 79)
+        print("Unknown unit cell parameters:", miller_array.info())
+        print("Use --symmetry or --unit_cell to define unit cell:")
+        print("*" * 79)
+        print()
         command_line.parser.show_help()
         return -1
       if (miller_array.space_group_info() is None):
-        print
-        print "*" * 79
-        print "Unknown space group:", miller_array.info()
-        print "Use --symmetry or --space_group to define space group:"
-        print "*" * 79
-        print
+        print()
+        print("*" * 79)
+        print("Unknown space group:", miller_array.info())
+        print("Use --symmetry or --space_group to define space group:")
+        print("*" * 79)
+        print()
         command_line.parser.show_help()
         return -1
       if (   command_line.options.resolution is not None
@@ -350,10 +352,10 @@ def run(
       args,
       command_name="phenix.reflection_statistics",
       additional_miller_arrays=[]):
-  print "Command line arguments:",
-  for arg in args: print arg,
-  print
-  print
+  print("Command line arguments:", end=' ')
+  for arg in args: print(arg, end=' ')
+  print()
+  print()
   command_line = (option_parser(
     usage=command_name+" [options] reflection_file [...]",
     description="Example: %s data1.mtz data2.sca" % command_name)
@@ -416,11 +418,11 @@ def run(
           crystal_symmetry=command_line.symmetry,
           force_symmetry=not command_line.options.weak_symmetry,
           merge_equivalents=False)
-      except Sorry, KeyboardInterrupt: raise
+      except Sorry as KeyboardInterrupt: raise
       except Exception: pass
     if (miller_arrays is None):
-      print >> sys.stderr, "Warning: unknown file format:", file_name
-      print >> sys.stderr
+      print("Warning: unknown file format:", file_name, file=sys.stderr)
+      print(file=sys.stderr)
       sys.stderr.flush()
     else:
       n = _process_miller_arrays(
@@ -438,26 +440,26 @@ def run(
     n_f_sq_as_f += n
   if (n_f_sq_as_f > 0):
     if (n_f_sq_as_f == 1):
-      print "Note: Intensity array has been converted to an amplitude array."
+      print("Note: Intensity array has been converted to an amplitude array.")
     else:
-      print "Note: Intensity arrays have been converted to amplitude arrays."
-    print
+      print("Note: Intensity arrays have been converted to amplitude arrays.")
+    print()
   if (len(active_miller_arrays) > 2 and not command_line.options.quick):
-    print "Array indices (for quick searching):"
+    print("Array indices (for quick searching):")
     for i_0,input_0 in enumerate(active_miller_arrays):
-      print "  %2d:" % (i_0+1), input_0.info()
-    print
-    print "Useful search patterns are:"
-    print "    Summary i"
-    print "    CC Obs i j"
-    print "    CC Ano i j"
-    print "  i and j are the indices shown above."
-    print
+      print("  %2d:" % (i_0+1), input_0.info())
+    print()
+    print("Useful search patterns are:")
+    print("    Summary i")
+    print("    CC Obs i j")
+    print("    CC Ano i j")
+    print("  i and j are the indices shown above.")
+    print()
   n_bins = command_line.options.n_bins
   array_caches = []
   for i_0,input_0 in enumerate(active_miller_arrays):
-    print "Summary", i_0+1
-    print
+    print("Summary", i_0+1)
+    print()
     cache_0 = array_cache(
       input=input_0,
       n_bins=n_bins,
@@ -474,11 +476,11 @@ def run(
       cache_0.show_second_moments_of_intensities(
         n_bins=command_line.options.n_bins_second_moments)
     if (cache_0.input.anomalous_flag()):
-      print "Anomalous signal of %s:" % str(cache_0.input.info())
-      print cache_0.input.anomalous_signal.__doc__
+      print("Anomalous signal of %s:" % str(cache_0.input.info()))
+      print(cache_0.input.anomalous_signal.__doc__)
       anom_signal = cache_0.input.anomalous_signal(use_binning=True)
       anom_signal.show()
-      print
+      print()
       cache_0.show_measurability()
     for i_1,cache_1 in enumerate(array_caches):
       unique_reindexing_operators = cache_1.unique_reindexing_operators(
@@ -486,11 +488,11 @@ def run(
         relative_length_tolerance=0.05,
         absolute_angle_tolerance=5)
       if (len(unique_reindexing_operators) == 0):
-        print "Incompatible unit cells:"
-        print "  %2d:" % (i_1+1), cache_1.input.info()
-        print "  %2d:" % (i_0+1), cache_0.input.info()
-        print "No comparison."
-        print
+        print("Incompatible unit cells:")
+        print("  %2d:" % (i_1+1), cache_1.input.info())
+        print("  %2d:" % (i_0+1), cache_0.input.info())
+        print("No comparison.")
+        print()
       else:
         ccs = flex.double()
         for cb_op in unique_reindexing_operators:
@@ -513,12 +515,12 @@ def run(
               i_0+1, combined_cb_op.as_hkl())
           else:
             reindexing_note = ""
-          print "CC Obs %d %d %6.3f  %s" % (
-            i_1+1, i_0+1, cc, combined_cb_op.as_hkl())
-          print "Correlation of:"
-          print "  %2d:" % (i_1+1), cache_1.input.info()
-          print "  %2d:" % (i_0+1), cache_0.input.info()
-          print "Overall correlation: %6.3f%s" % (cc, reindexing_note)
+          print("CC Obs %d %d %6.3f  %s" % (
+            i_1+1, i_0+1, cc, combined_cb_op.as_hkl()))
+          print("Correlation of:")
+          print("  %2d:" % (i_1+1), cache_1.input.info())
+          print("  %2d:" % (i_0+1), cache_0.input.info())
+          print("Overall correlation: %6.3f%s" % (cc, reindexing_note))
           show_in_bins = False
           if (i_cb_op == 0 or (cc >= 0.3 and cc >= ccs[0]-0.2)):
             show_in_bins = True
@@ -531,7 +533,7 @@ def run(
               use_binning=True,
               assert_is_similar_symmetry=False)
             correlation.show()
-          print
+          print()
           if (    cache_0.anom_diffs is not None
               and cache_1.anom_diffs is not None):
             similar_anom_diffs_0 = cache_0.anom_diffs \
@@ -540,24 +542,24 @@ def run(
             correlation = cache_1.anom_diffs.correlation(
               other=similar_anom_diffs_0,
               assert_is_similar_symmetry=False)
-            print "CC Ano %d %d %6.3f  %s" % (
-              i_1+1, i_0+1, correlation.coefficient(), combined_cb_op.as_hkl())
-            print "Anomalous difference correlation of:"
-            print "  %2d:" % (i_1+1), cache_1.input.info()
-            print "  %2d:" % (i_0+1), cache_0.input.info()
-            print "Overall anomalous difference correlation: %6.3f%s" % (
-              correlation.coefficient(), reindexing_note)
+            print("CC Ano %d %d %6.3f  %s" % (
+              i_1+1, i_0+1, correlation.coefficient(), combined_cb_op.as_hkl()))
+            print("Anomalous difference correlation of:")
+            print("  %2d:" % (i_1+1), cache_1.input.info())
+            print("  %2d:" % (i_0+1), cache_0.input.info())
+            print("Overall anomalous difference correlation: %6.3f%s" % (
+              correlation.coefficient(), reindexing_note))
             if (show_in_bins):
               correlation = cache_1.anom_diffs.correlation(
                 other=similar_anom_diffs_0,
                 use_binning=True,
                 assert_is_similar_symmetry=False)
               correlation.show()
-            print
+            print()
     if (not command_line.options.quick):
       array_caches.append(cache_0)
-    print "=" * 79
-    print
+    print("=" * 79)
+    print()
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

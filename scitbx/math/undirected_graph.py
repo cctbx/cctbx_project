@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 class Graph(object):
   """
@@ -57,7 +57,7 @@ class VertexIndexedGraph(object):
   def edges(self):
 
     result = set()
-    result.update( *self._edges_from.values() )
+    result.update( *list(self._edges_from.values()) )
     return result
 
 

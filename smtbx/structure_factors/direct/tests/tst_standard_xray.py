@@ -1,6 +1,4 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 
 from cctbx.array_family import flex
 from cctbx import sgtbx, xray, crystal, miller, eltbx
@@ -13,9 +11,11 @@ from libtbx.test_utils import approx_equal
 from scitbx.math import approx_equal_relatively
 import libtbx.utils
 import random
-from itertools import islice, izip
+from itertools import islice
+from six.moves import zip
 from scitbx import matrix
 from scitbx.math import median_statistics
+from six.moves import range
 
 
 class test_case(object):
@@ -82,7 +82,7 @@ class consistency_test_cases(test_case):
       eta = eta_norm * direction
 
       i = 0
-      for sc_forward, sc in izip(xs_forward.scatterers(), xs.scatterers()):
+      for sc_forward, sc in zip(xs_forward.scatterers(), xs.scatterers()):
         eta_site = matrix.col(eta[i:i+3])
         eta_iso = eta[i+3]
         eta_aniso = matrix.col(eta[i+4:i+10])
@@ -219,7 +219,7 @@ def exercise_trigonometric_ff():
   cs = sgi.any_compatible_crystal_symmetry(volume=1000)
   miller_set = miller.build_set(cs, anomalous_flag=False, d_min=1)
   miller_set = miller_set.select(flex.random_double(miller_set.size()) < 0.2)
-  for i in xrange(5):
+  for i in range(5):
     sites = flex.random_double(9)
     x1, x2, x3 = (matrix.col(sites[:3]),
                   matrix.col(sites[3:6]),

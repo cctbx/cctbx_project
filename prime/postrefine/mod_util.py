@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.uctbx import unit_cell
 from cctbx import miller, crystal, statistics
 from cctbx.array_family import flex
@@ -12,6 +12,7 @@ from collections import Counter
 from .mod_merge_data import merge_data_handler
 from .mod_mx import mx_handler
 from .mod_leastsqr import good_unit_cell
+from six.moves import range
 
 class intensities_scaler(object):
   """
@@ -31,8 +32,8 @@ class intensities_scaler(object):
     fname = iparams.run_no+'/stats/pickle_'+str(os.getpid())+'.stat'
     if os.path.isfile(fname):
       pickle_stat = pickle.load(open(fname,"rb"))
-      for key in stat_dict.keys():
-        if key in pickle_stat.keys():
+      for key in stat_dict:
+        if key in pickle_stat:
           pickle_stat[key].append(stat_dict[key][0])
         else:
           pickle_stat[key] = stat_dict[key]
@@ -331,8 +332,8 @@ class intensities_scaler(object):
           try:
             i_filter = flex.abs((I_obs_bin - np.median(I_obs_bin))/np.std(I_obs_bin)) < 10
           except Exception as e:
-            print "Warning: outlier rejection by bins failed because of floating point."
-            print e
+            print("Warning: outlier rejection by bins failed because of floating point.")
+            print(e)
             i_filter = flex.bool([True]*len(I_obs_bin))
           good_sequences.extend(list(sequences_bin.select(i_filter)))
     mdh.reduce_by_selection(flex.size_t(good_sequences))
@@ -364,8 +365,8 @@ class intensities_scaler(object):
         B_merged = wp.wilson_b
       except Exception as e:
         B_merged = 0
-        print "Warning: b-factor calculation in mod_util failed. Reset b-factor to 0"
-        print e
+        print("Warning: b-factor calculation in mod_util failed. Reset b-factor to 0")
+        print(e)
       #report binning stats
       txt_out = '\n'
       txt_out += 'Isotropic B-factor:  %7.2f\n'%(B_merged)
@@ -511,7 +512,7 @@ class intensities_scaler(object):
       except Exception:
         expected_f_sq = flex.double([0]*n_bins_plot)
         mean_stol_sq = flex.double(range(n_bins_plot))
-        print "Warning: Wilson plot calculation in plot stats failed."
+        print("Warning: Wilson plot calculation in plot stats failed.")
       #setup list
       params_array = np.array([[pres.R_init, pres.R_final, pres.R_xy_init, pres.R_xy_final, \
           pres.G, pres.B, pres.rotx*180/math.pi, pres.roty*180/math.pi, \
@@ -543,13 +544,13 @@ class intensities_scaler(object):
       try:
         import matplotlib.pyplot as plt
       except Exception as e:
-        print "Warning: error importing matplotlib.pyplot"
-        print e
+        print("Warning: error importing matplotlib.pyplot")
+        print(e)
         return
       n_rows = 3
       n_cols = int(math.ceil(len(params)/n_rows))
       num_bins = 10
-      for i in xrange(len(params)-1):
+      for i in range(len(params)-1):
         tmp_params = params_array[:,i].astype(np.float)
         plt.subplot(n_rows,n_cols,i+1)
         plt.hist(tmp_params, num_bins, normed=0, facecolor='green', alpha=0.5)
@@ -626,4 +627,3 @@ class intensities_scaler(object):
            I_all_sort, sigI_all_sort, G_all_sort, B_all_sort, \
            p_all_sort, rs_all_sort, wavelength_all_sort, sin_all_sort, SE_all_sort, uc_mean, \
            wavelength_mean, pickle_filename_all_sort, ""
-

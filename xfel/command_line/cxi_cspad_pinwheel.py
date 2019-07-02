@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.cspad_pinwheel
 #
 # Removes all but the central sensors from a CSPAD CBF
@@ -8,6 +8,7 @@ import dxtbx, sys, os
 import libtbx.option_parser
 from xfel.cftbx.detector.cspad_cbf_tbx import cbf_file_to_basis_dict, write_cspad_cbf
 from libtbx.utils import Usage
+from six.moves import range
 
 def run(argv=None):
   if argv is None:

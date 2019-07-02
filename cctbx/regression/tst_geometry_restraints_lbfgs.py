@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb.tst_pdb import dump_pdb
 from iotbx.pymol import pml_stick, pml_write
 from cctbx import geometry_restraints
@@ -14,8 +14,10 @@ import scitbx.lbfgs
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, is_below_limit, show_diff
 from itertools import count
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
+from six.moves import range
+from six.moves import zip
 
 def exercise(verbose=0):
   distance_ideal = 1.8
@@ -97,9 +99,9 @@ def exercise(verbose=0):
         proxies=angle_proxies)
       if (0 or verbose):
         for proxy,delta in zip(bond_proxies.simple, bond_deltas):
-          print "bond:", proxy.i_seqs, delta
+          print("bond:", proxy.i_seqs, delta)
         for proxy,delta in zip(angle_proxies, angle_deltas):
-          print "angle:", proxy.i_seqs, delta
+          print("angle:", proxy.i_seqs, delta)
       assert is_below_limit(
         value=flex.max(flex.abs(bond_deltas)), limit=0, eps=1.e-6)
       assert is_below_limit(
@@ -156,18 +158,18 @@ def exercise(verbose=0):
     nonbonded_types=atom_energy_types,
     nonbonded_distance_cutoff_plus_buffer=nonbonded_cutoff)
   if (0 or verbose):
-    print "pair_proxies.bond_proxies.n_total():", \
-           pair_proxies.bond_proxies.n_total(),
-    print "simple:", pair_proxies.bond_proxies.simple.size(),
-    print "sym:", pair_proxies.bond_proxies.asu.size()
-    print "pair_proxies.nonbonded_proxies.n_total():", \
-           pair_proxies.nonbonded_proxies.n_total(),
-    print "simple:", pair_proxies.nonbonded_proxies.simple.size(),
-    print "sym:", pair_proxies.nonbonded_proxies.asu.size()
-    print "min_distance_nonbonded: %.2f" % flex.min(
+    print("pair_proxies.bond_proxies.n_total():", \
+           pair_proxies.bond_proxies.n_total(), end=' ')
+    print("simple:", pair_proxies.bond_proxies.simple.size(), end=' ')
+    print("sym:", pair_proxies.bond_proxies.asu.size())
+    print("pair_proxies.nonbonded_proxies.n_total():", \
+           pair_proxies.nonbonded_proxies.n_total(), end=' ')
+    print("simple:", pair_proxies.nonbonded_proxies.simple.size(), end=' ')
+    print("sym:", pair_proxies.nonbonded_proxies.asu.size())
+    print("min_distance_nonbonded: %.2f" % flex.min(
       geometry_restraints.nonbonded_deltas(
         sites_cart=sites_cart,
-        sorted_asu_proxies=pair_proxies.nonbonded_proxies))
+        sorted_asu_proxies=pair_proxies.nonbonded_proxies)))
   s = StringIO()
   pair_proxies.bond_proxies.show_histogram_of_model_distances(
     sites_cart=sites_cart,
@@ -291,8 +293,8 @@ def exercise(verbose=0):
           max_iterations=1000))
       if (0 or verbose):
         minimized.final_target_result.show()
-        print "number of function evaluations:", minimized.minimizer.nfun()
-        print "n_updates_pair_proxies:", manager.n_updates_pair_proxies
+        print("number of function evaluations:", minimized.minimizer.nfun())
+        print("n_updates_pair_proxies:", manager.n_updates_pair_proxies)
       if (not use_crystal_symmetry):
         assert minimized.final_target_result.bond_residual_sum < 1.e-3
         assert minimized.final_target_result.nonbonded_residual_sum < 0.1
@@ -301,8 +303,8 @@ def exercise(verbose=0):
         assert minimized.final_target_result.nonbonded_residual_sum < 0.1
       assert minimized.final_target_result.angle_residual_sum < 1.e-3
       if (0 or verbose):
-        pdb_file_name = "minimized_%d.pdb" % i_pdb.next()
-        print "Writing file:", pdb_file_name
+        pdb_file_name = "minimized_%d.pdb" % next(i_pdb)
+        print("Writing file:", pdb_file_name)
         dump_pdb(file_name=pdb_file_name, sites_cart=sites_cart)
       if (manager.site_symmetry_table is None):
         additional_site_symmetry_table = None
@@ -351,7 +353,7 @@ def exercise(verbose=0):
   for wilson_b in [None, 10, 100]:
     finite_difference_gradients = flex.double()
     eps = 1.e-6
-    for i_scatterer in xrange(xray_structure.scatterers().size()):
+    for i_scatterer in range(xray_structure.scatterers().size()):
       rs = []
       for signed_eps in [eps, -eps]:
         xray_structure_eps = xray_structure.deep_copy_scatterers()
@@ -388,7 +390,7 @@ def exercise(verbose=0):
       normalization=False,
       collect=False)
     assert approx_equal(adp_energies.gradients, finite_difference_gradients)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(verbose=("--verbose" in sys.argv[1:]))

@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb import common_residue_names_get_class
 from libtbx import group_args
 from libtbx.str_utils import make_sub_header
@@ -6,6 +6,7 @@ from mmtbx.validation import restraints
 from mmtbx.validation.molprobity import mp_geo
 #from libtbx.utils import Sorry
 from mmtbx.rotamer import rotamer_eval
+from six.moves import zip
 
 protein = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
   "modified_rna_dna", "ccp4_mon_lib_rna_dna"]

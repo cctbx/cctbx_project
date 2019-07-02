@@ -1,11 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from libtbx.str_utils import split_keeping_spaces
 import sys
+import six
 
 trans_dict = {}
-for k,v in iotbx.pdb.rna_dna_atom_names_reference_to_mon_lib_translation_dict \
-             .items():
+for k,v in six.iteritems(iotbx.pdb.rna_dna_atom_names_reference_to_mon_lib_translation_dict):
   trans_dict[k.strip()] = v
 trans_dict["H2'"] = "H2*"
 
@@ -23,7 +23,7 @@ def iter_until_loop(lines):
   for line in lines:
     if (   line.startswith("#")
         or line == "loop_"):
-      print line
+      print(line)
       return
     yield line
 
@@ -33,7 +33,7 @@ def rename_generic(lines, len_flds, i_list):
     assert len(flds) == len_flds
     for i in i_list:
       trans_field(flds, i)
-    print "".join(flds)
+    print("".join(flds))
 
 def rename_atom(lines):
   rename_generic(lines, 10, [3])
@@ -45,7 +45,7 @@ def rename_tree(lines):
     for i in [3, 5, 7, 9]:
       if (flds[i] not in ["n/a", "START", "ADD", "END", "."]):
         trans_field(flds, i)
-    print "".join(flds)
+    print("".join(flds))
 
 def rename_bond(lines):
   rename_generic(lines, 12, [3, 5])
@@ -75,7 +75,7 @@ def run(args):
   assert len(args) == 1
   lines = iter(open(args[0]).read().splitlines())
   for line in lines:
-    print line
+    print(line)
     if (line == "_chem_comp_atom.partial_charge"):
       rename_atom(lines)
     elif (line == "_chem_comp_tree.connect_type"):

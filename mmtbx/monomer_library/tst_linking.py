@@ -1,6 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 from libtbx import easy_run
+from libtbx.utils import to_bytes
+from six.moves import range
 
 pdbs = {"linking_test_CYS_CYS_alt_loc.pdb" : """
 ATOM    274  N   CYS A  27      17.541   4.439  12.897  1.00 13.99           N
@@ -2373,9 +2375,9 @@ def run_and_test(cmd, pdb, i, skip_links=False):
       break
   else :
     raise RuntimeError("Missing expected log output")
-  print "OK"
+  print("OK")
   # test .geo
-  f=file(pdb.replace(".pdb", "_minimized.geo"), "rb")
+  f=open(pdb.replace(".pdb", "_minimized.geo"), "rb")
   lines = f.read()
   f.close()
   bonds = 0
@@ -2393,7 +2395,7 @@ def run_and_test(cmd, pdb, i, skip_links=False):
                       'link_'
                       ]:
       if line.find(bond_like)>-1:
-        print 'Adding %s for "%s"' % (int(line.split()[-1]), line)
+        print('Adding %s for "%s"' % (int(line.split()[-1]), line))
         bonds += int(line.split()[-1])
     if line.find('Bond angle')>-1: break
   assert bonds == links[pdb][i], "found %d bonds but expected %s! File: %s" % (
@@ -2404,7 +2406,7 @@ def run_and_test(cmd, pdb, i, skip_links=False):
   if (os.path.isfile(new_geo)):
     os.remove(new_geo)
   os.rename(pdb.replace(".pdb", "_minimized.geo"), new_geo)
-  print "OK"
+  print("OK")
   if skip_links: return
   # test links
   #if pdb in ["linking_test_LEU-CSY-VAL.pdb",
@@ -2412,7 +2414,7 @@ def run_and_test(cmd, pdb, i, skip_links=False):
   #  return
   number_of_links=0
   fname = pdb.replace(".pdb", "_minimized.pdb")
-  f=file(fname, "rb")
+  f=open(fname, "rb")
   lines = f.readlines()
   f.close()
   for line in lines:
@@ -2451,7 +2453,7 @@ def run(only_i=None):
   if only_i is not None and only_i==1:
     cifs = ""
     for pdb in pdbs:
-      f=file(pdb, "wb")
+      f=open(pdb, "wb")
       f.write(pdbs[pdb])
       f.close()
       if pdb.endswith(".phil"): cifs += " %s" % pdb
@@ -2459,16 +2461,16 @@ def run(only_i=None):
       if pdb=='linking_test_exclusion_SO4.pdb':
         cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
         cmd += ' link_small_molecules=True'
-        print cmd
+        print(cmd)
         run_and_test(cmd, pdb, 0, True)
         cmd += "  %s" % (cifs)
-        print cmd
+        print(cmd)
         run_and_test(cmd, pdb, 1, True)
   #
   cifs = ""
   for pdb in pdbs:
-    f=file(pdb, "wb")
-    f.write(pdbs[pdb])
+    f=open(pdb, "wb")
+    f.write(to_bytes(pdbs[pdb], codec='utf8'))
     f.close()
     if pdb.endswith(".cif"): cifs += " %s" % pdb
   j=0
@@ -2482,7 +2484,7 @@ def run(only_i=None):
     if pdb.find("partial")>-1: continue
     #if pdb.find('SO4')==-1: continue
     if pdb in ['linking_test_exclusion_SO4.pdb']: continue
-    print 'pdb '*10,pdb
+    print('pdb '*10,pdb)
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):
@@ -2497,8 +2499,8 @@ def run(only_i=None):
           cmd += " secondary_structure.enabled=1"
       if pdb.replace(".pdb", ".params") in pdbs:
         cmd += " %s" % pdb.replace(".pdb", ".params")
-      print "test number:",j
-      print cmd
+      print("test number:",j)
+      print(cmd)
       run_and_test(cmd, pdb,i)
 
   for pdb in sorted(pdbs):
@@ -2511,7 +2513,7 @@ def run(only_i=None):
         log_filename = "%s_%d_%d.log" % (pdb, i, ii)
         cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
         cmd += " link_all=%d link_carbohydrate=%d" % (i, ii)
-        print cmd
+        print(cmd)
         run_and_test(cmd, pdb,k)
         k+=1
 

@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from boost_adaptbx import graph
 
 import math
+from six.moves import zip
 
 class Atom(object):
   """
@@ -33,14 +34,14 @@ class Molecule(object):
 
   @property
   def descriptor_for(self):
-
-    return dict( zip( self.atom_for.values(), self.atom_for.keys() ) )
+    # TODO: six.moves.zip this file
+    return dict( zip( self.atom_for.values(), self.atom_for.keys() ))
 
 
   @property
   def atoms(self):
 
-    return self.atom_for.values()
+    return list(self.atom_for.values())
 
 
   def add(self, atom, xyz):
@@ -83,19 +84,19 @@ class Compound(object):
   @property
   def atom_for(self):
 
-    return dict( zip( self.descriptor_for.values(), self.descriptor_for.keys() ) )
+    return dict( zip( self.descriptor_for.values(), self.descriptor_for.keys() ))
 
 
   @property
   def atoms(self):
 
-    return self.descriptor_for.keys()
+    return list(self.descriptor_for.keys())
 
 
   @property
   def descriptors(self):
 
-    return self.descriptor_for.values()
+    return list(self.descriptor_for.values())
 
 
   @property
@@ -133,7 +134,7 @@ class Compound(object):
   def distances_from(self, atom):
 
     if atom not in self.descriptor_for:
-      raise ValueError, "Unknown atom: %s" % atom
+      raise ValueError("Unknown atom: %s" % atom)
 
     from boost_adaptbx.graph import breadth_first_search as bfs
 
@@ -155,7 +156,7 @@ class Compound(object):
   def subset(self, atoms):
 
     if not all( a in self.descriptor_for for a in atoms ):
-      raise ValueError, "Unknown atoms: %s" % atoms
+      raise ValueError("Unknown atoms: %s" % atoms)
 
     from boost_adaptbx.graph import maximum_clique
     subgraph = maximum_clique.selected_subgraph(
@@ -178,7 +179,7 @@ class Compound(object):
   def connected_segment_from(self, atom):
 
     if atom not in self.descriptor_for:
-      raise ValueError, "Unknown atom: %s" % atom
+      raise ValueError("Unknown atom: %s" % atom)
 
     from boost_adaptbx.graph import breadth_first_search as bfs
 

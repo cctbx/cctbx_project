@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import uctbx
 from cctbx.eltbx import wavelengths
 from cctbx.array_family import flex
@@ -8,6 +8,8 @@ import scitbx.minimizers
 import libtbx.utils
 import platform
 import sys
+from six.moves import range
+from six.moves import zip
 
 def residual(
       two_thetas_obs, miller_indices, wavelength, unit_cell):
@@ -17,7 +19,7 @@ def residual(
 def gradients(
       two_thetas_obs, miller_indices, wavelength, unit_cell, eps=1.e-6):
   result = flex.double()
-  for i in xrange(6):
+  for i in range(6):
     rs = []
     for signed_eps in [eps, -eps]:
       params_eps = list(unit_cell.parameters())
@@ -32,7 +34,7 @@ def gradients(
 def hessian(
       two_thetas_obs, miller_indices, wavelength, unit_cell, eps=1.e-6):
   result = flex.double()
-  for i in xrange(6):
+  for i in range(6):
     rs = []
     for signed_eps in [eps, -eps]:
       params_eps = list(unit_cell.parameters())
@@ -73,7 +75,7 @@ class refinery:
         (2, 1, 1)][mode-2]
       self.plot_legend = "%d:lbfgs_d=%d_u=%d_l=%d" % (
         mode, diagco, use_hessian, lbfgs_impl_switch)
-      print "plot_legend:", self.plot_legend
+      print("plot_legend:", self.plot_legend)
       self.x = self.run_lbfgs_raw(
         unit_cell=unit_cell,
         diagco=diagco,
@@ -81,7 +83,7 @@ class refinery:
         lbfgs_impl_switch=lbfgs_impl_switch)
     elif (mode < 8):
       self.plot_legend = "%d:lbfgsb" % mode
-      print "plot_legend:", self.plot_legend
+      print("plot_legend:", self.plot_legend)
       self.x = self.run_lbfgsb(unit_cell=unit_cell)
     else:
       raise AssertionError("bad mode=%d" % mode)
@@ -91,26 +93,26 @@ class refinery:
 
   def functional(self, x):
     if (0):
-      print "functional(): x =", list(x)
+      print("functional(): x =", list(x))
     if (flex.min(x[:3]) < 1):
-      print "FunctionalException: small length"
+      print("FunctionalException: small length")
       raise scitbx.minimizers.FunctionalException
     if (flex.min(x[3:]) < 50):
-      print "FunctionalException: small angle"
+      print("FunctionalException: small angle")
       raise scitbx.minimizers.FunctionalException
     try:
       result = residual(
         self.two_thetas_obs, self.miller_indices, self.wavelength,
         unit_cell=uctbx.unit_cell(iter(x)))
     except KeyboardInterrupt: raise
-    except Exception, e:
-      print "FunctionalException:", str(e)
+    except Exception as e:
+      print("FunctionalException:", str(e))
       raise scitbx.minimizers.FunctionalException
     if (len(self.functionals) != 0 and result > 2 * self.functionals[0]):
-      print "FunctionalException: greater than 2 * initial"
+      print("FunctionalException: greater than 2 * initial")
       raise scitbx.minimizers.FunctionalException
     if (0):
-      print "functional result:", result
+      print("functional result:", result)
     self.functionals.append(result)
     return result
 
@@ -130,8 +132,8 @@ class refinery:
       result.matrix_diagonal_set_in_place(diagonal=d)
     if (0):
       from scitbx import matrix
-      print "hessian:"
-      print matrix.sqr(result)
+      print("hessian:")
+      print(matrix.sqr(result))
     return result
 
   def run_lbfgs_raw(self,
@@ -213,8 +215,8 @@ class refinery:
 def show_fit(two_thetas_obs, miller_indices, wavelength, unit_cell):
   two_thetas_calc = unit_cell.two_theta(miller_indices, wavelength, deg=True)
   for h,o,c in zip(miller_indices, two_thetas_obs, two_thetas_calc):
-    print "(%2d, %2d, %2d)" % h, "%6.2f - %6.2f = %6.2f" % (o, c, o-c)
-  print
+    print("(%2d, %2d, %2d)" % h, "%6.2f - %6.2f = %6.2f" % (o, c, o-c))
+  print()
 
 two_theta_and_index_list = """\
   8.81   0  1  1
@@ -284,37 +286,37 @@ def run(args):
     else:
       modes = [eval(arg)]
   else:
-    modes = range(8)
-  print "modes:", modes
-  print
+    modes = list(range(8))
+  print("modes:", modes)
+  print()
   for mode in modes:
     refined = refinery(
       two_thetas_obs, miller_indices, wavelength, unit_cell_start, mode=mode)
     refined_accu.append(refined)
-    print
+    print()
 
   p = open("tmp.xy", "w")
-  print >> p, "@with g0"
-  print >> p, '@ title "%s"' % "\\n".join([
+  print("@with g0", file=p)
+  print('@ title "%s"' % "\\n".join([
     platform.platform(),
-    platform.node()])
+    platform.node()]), file=p)
   for i,r in enumerate(refined_accu):
-    print >> p, '@ s%d legend "%s"' % (i, r.plot_legend)
-    print >> p, '@ s%d symbol 1' % i
+    print('@ s%d legend "%s"' % (i, r.plot_legend), file=p)
+    print('@ s%d symbol 1' % i, file=p)
   for refined in refined_accu:
     for x,y in enumerate(refined.functionals):
       if (x > 15): break
-      print >> p, x,y
-    print >> p, "&"
+      print(x,y, file=p)
+    print("&", file=p)
   del p
 
   if (0):
     show_fit(
       two_thetas_obs, miller_indices, wavelength, refined.unit_cell())
 
-  print refined.unit_cell()
-  print
-  print libtbx.utils.format_cpu_times()
+  print(refined.unit_cell())
+  print()
+  print(libtbx.utils.format_cpu_times())
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

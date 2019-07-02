@@ -3,7 +3,7 @@
 # LIBTBX_SET_DISPATCHER_NAME dev.cxi.merge
 #
 # $Id$
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from xfel.command_line.cxi_merge import master_phil
 from libtbx.utils import Usage, multi_out
@@ -72,7 +72,7 @@ class Script(object):
     out = multi_out()
     out.register("log", log, atexit_send_to=None)
     out.register("stdout", sys.stdout)
-    print >> out, "I model"
+    print("I model", file=out)
     if self.params.model is not None:
       from xfel.merging.general_fcalc import run as run_fmodel
       i_model = run_fmodel(self.params)
@@ -82,9 +82,9 @@ class Script(object):
     else:
       i_model = None
 
-    print >> out, "Target unit cell and space group:"
-    print >> out, "  ", self.params.target_unit_cell
-    print >> out, "  ", self.params.target_space_group
+    print("Target unit cell and space group:", file=out)
+    print("  ", self.params.target_unit_cell, file=out)
+    print("  ", self.params.target_space_group, file=out)
     from xfel.command_line.cxi_merge import consistent_set_and_model
     self.miller_set, self.i_model = consistent_set_and_model(self.params,i_model)
     self.frame_files = get_observations(self.params)
@@ -106,12 +106,12 @@ class Script(object):
       average_cell = uctbx.unit_cell(list(average_cell_abc) +
         list(self.params.target_unit_cell.parameters()[3:]))
       self.params.target_unit_cell = average_cell
-      print >> out, ""
-      print >> out, "#" * 80
-      print >> out, "RESCALING WITH NEW TARGET CELL"
-      print >> out, "  average cell: %g %g %g %g %g %g" % \
-        self.params.target_unit_cell.parameters()
-      print >> out, ""
+      print("", file=out)
+      print("#" * 80, file=out)
+      print("RESCALING WITH NEW TARGET CELL", file=out)
+      print("  average cell: %g %g %g %g %g %g" % \
+        self.params.target_unit_cell.parameters(), file=out)
+      print("", file=out)
       scaler.reset()
       scaler.scale_all(frame_files)
       scaler.show_unit_cell_histograms()
@@ -119,9 +119,9 @@ class Script(object):
       try :
         plot_overall_completeness(completeness)
       except Exception as e :
-        print "ERROR: can't show plots"
-        print "  %s" % str(e)
-    print >> self.out, "\n"
+        print("ERROR: can't show plots")
+        print("  %s" % str(e))
+    print("\n", file=self.out)
 
     sum_I, sum_I_SIGI = scaler.sum_intensities()
 
@@ -138,12 +138,12 @@ class Script(object):
       title="Statistics for all reflections",
       out=self.out,
       work_params=self.params)
-    print >> self.out, ""
+    print("", file=self.out)
     if self.params.model is not None:
       n_refl, corr = scaler.get_overall_correlation(sum_I)
     else:
       n_refl, corr = ((scaler.completeness > 0).count(True), 0)
-    print >> self.out, "\n"
+    print("\n", file=self.out)
     table2 = show_overall_observations(
       obs=miller_set_avg,
       redundancy=scaler.summed_N,
@@ -170,7 +170,7 @@ class Script(object):
   Asu. Multiplicity  = # measurements / # Miller indices theoretical in asymmetric unit
   Obs. Multiplicity  = # measurements / # unique Miller indices present in data
   Pred. Multiplicity = # predictions on all accepted images / # Miller indices theoretical in asymmetric unit"""
-    print >> self.out, explanation
+    print(explanation, file=self.out)
     mtz_file, miller_array = scaler.finalize_and_save_data()
     #table_pickle_file = "%s_graphs.pkl" % self.params.output.prefix
     #easy_pickle.dump(table_pickle_file, [table1, table2])
@@ -200,9 +200,9 @@ class Script(object):
           from wxtbx.command_line import loggraph
           loggraph.run([result.loggraph_file])
         except Exception as e :
-          print "Can't display plots"
-          print "You should be able to view them by running this command:"
-          print "  wxtbx.loggraph %s" % result.loggraph_file
+          print("Can't display plots")
+          print("You should be able to view them by running this command:")
+          print("  wxtbx.loggraph %s" % result.loggraph_file)
           raise e
 
   def run(self):
@@ -218,5 +218,5 @@ if __name__ == '__main__':
   script = Script(scaling_manager)
   result = script.run()
   script.show_plot(result)
-  print "DONE"
+  print("DONE")
 

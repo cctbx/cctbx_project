@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.omegalyze
 # LIBTBX_SET_DISPATCHER_NAME molprobity.omegalyze
 ###
@@ -11,7 +11,7 @@ from __future__ import division, print_function
 import sys
 
 from iotbx.cli_parser import CCTBXParser
-from libtbx.utils import multi_out, show_total_time, null_out
+from libtbx.utils import multi_out, show_total_time #, null_out
 from mmtbx.programs import omegalyze
 
 # =============================================================================
@@ -20,7 +20,9 @@ def run(args):
   # create parser
   #logger = multi_out() #logging.getLogger('main')
   #logger.register('stdout', sys.stdout)
-  logger = null_out()
+  #logger = null_out()
+  logger = multi_out()
+  logger.register('stderr', sys.stderr)
   logger2 = multi_out()
   logger2.register('stdout', sys.stdout)
   #only omegalyze output is sent to stdout for backward compatibility with

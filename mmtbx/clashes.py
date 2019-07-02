@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 import sys
 from cctbx.geometry_restraints.linking_class import linking_class
+from six.moves import zip
 origin_ids = linking_class()
 from libtbx import adopt_init_args
 import mmtbx.model
@@ -71,7 +72,7 @@ class from_pdb(object):
   def show(self, log=None):
     if(log is None): log = sys.stdout
     for pair in self._pairs:
-      print >> log, self.format_clash_string(pair=pair)
+      print(self.format_clash_string(pair=pair), file=log)
 
 # END_MARKED_FOR_DELETION_OLEG
 

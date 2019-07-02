@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.kriber import strudat
 from iotbx.option_parser import iotbx_option_parser
 from cctbx.array_family import flex
@@ -6,9 +6,10 @@ from scitbx import matrix
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import approx_equal
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import math
 import sys, os
+from six.moves import range
 
 flex.set_random_seed(0)
 
@@ -38,7 +39,7 @@ class cos_alpha:
 def df_d_site_finite(h, site_constraints, independent_params, eps=1.e-8):
   result = flex.double()
   independent_params_eps = list(independent_params)
-  for ip in xrange(len(independent_params)):
+  for ip in range(len(independent_params)):
     vs = []
     for signed_eps in [eps, -eps]:
       independent_params_eps[ip] = independent_params[ip] + signed_eps
@@ -54,7 +55,7 @@ def df_d_site_finite(h, site_constraints, independent_params, eps=1.e-8):
 def d2f_d_site_finite(h, site_constraints, independent_params, eps=1.e-8):
   result = flex.double()
   independent_params_eps = list(independent_params)
-  for ip in xrange(len(independent_params)):
+  for ip in range(len(independent_params)):
     vs = []
     for signed_eps in [eps, -eps]:
       independent_params_eps[ip] = independent_params[ip] + signed_eps
@@ -90,7 +91,7 @@ def exercise(structure, out):
     all_params = site_constraints.all_params(
       independent_params=independent_params)
     assert approx_equal(all_params, site)
-    for i_trial in xrange(10):
+    for i_trial in range(10):
       shifted_params = flex.double(independent_params) \
                      + (flex.random_double(size=nip)-0.5)
       shifted_site = site_constraints.all_params(
@@ -115,23 +116,23 @@ def exercise(structure, out):
       h=h,
       site_constraints=site_constraints,
       independent_params=independent_params)
-    print >> out, "grads_fin:", list(grads_fin)
+    print("grads_fin:", list(grads_fin), file=out)
     ca = cos_alpha(
       h=h,
       site_constraints=site_constraints,
       independent_params=independent_params)
     grads_ana = ca.df_d_site()
-    print >> out, "grads_ana:", list(grads_ana)
+    print("grads_ana:", list(grads_ana), file=out)
     assert approx_equal(grads_ana, grads_fin)
     curvs_fin = d2f_d_site_finite(
       h=h,
       site_constraints=site_constraints,
       independent_params=independent_params)
-    print >> out, "curvs_fin:", list(curvs_fin)
+    print("curvs_fin:", list(curvs_fin), file=out)
     curvs_ana = ca.d2f_d_site()
-    print >> out, "curvs_ana:", list(curvs_ana)
+    print("curvs_ana:", list(curvs_ana), file=out)
     assert approx_equal(curvs_ana, curvs_fin)
-  print >> out
+  print(file=out)
 
 def exercise_shake_sites_in_place(structure):
   for target_difference in [0, 0.7, 1.0, 1.3]:
@@ -152,7 +153,7 @@ def exercise_shake_sites_in_place(structure):
         shaken.shake_sites_in_place(
           rms_difference=target_difference,
           selection=selection)
-      except RuntimeError, e:
+      except RuntimeError as e:
         if (selection is not None):
           if (selection.count(True) == 0):
             assert str(e) == "No scatterers selected."
@@ -189,7 +190,7 @@ def process_zeolite_atlas(args):
     relative_path="phenix_regression/misc/strudat_zeolite_atlas",
     test=os.path.isfile)
   if (atlas_file is None):
-    print "Skipping process_zeolite_atlas(): input file not available"
+    print("Skipping process_zeolite_atlas(): input file not available")
     return
   if (command_line.options.verbose):
     out = sys.stdout
@@ -201,13 +202,13 @@ def process_zeolite_atlas(args):
     if (command_line.options.tag is not None):
       if (command_line.options.tag != entry.tag):
         continue
-    print >> out, "strudat tag:", entry.tag
+    print("strudat tag:", entry.tag, file=out)
     exercise(structure=structure, out=out)
     exercise_shake_sites_in_place(structure=structure)
 
 def run():
   process_zeolite_atlas(sys.argv[1:])
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

@@ -1,8 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.matrix
 
 import operator
 import math
+from functools import reduce
+from six.moves import zip
 
 __doc__ = """
 Chirikjian, G. Stochastic models, information theory, and Lie groups.

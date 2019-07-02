@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.command_line import massage_data
 from iotbx import file_reader
 from cctbx.development import random_structure
@@ -8,6 +8,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 import os.path as op
 import random
+from six.moves import zip
 
 def exercise_twin_detwin():
   random.seed(12345)
@@ -72,4 +73,4 @@ def exercise_twin_detwin():
 
 if (__name__ == "__main__"):
   exercise_twin_detwin()
-  print "OK"
+  print("OK")

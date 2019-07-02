@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx import math
+from six.moves import zip
 
 def makexyz():
   xyz=flex.vec3_double()
@@ -118,4 +119,4 @@ if __name__ == "__main__":
   nmax = 4
   np = 20
   tst_moments(nmax, np)
-  print "OK"
+  print("OK")

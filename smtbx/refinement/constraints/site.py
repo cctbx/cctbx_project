@@ -1,6 +1,6 @@
-from __future__ import division
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 import smtbx.refinement.constraints as _
+from six.moves import range
 
 class shared_site(object):
   """ a site shared by two or more scatterers
@@ -18,7 +18,7 @@ class shared_site(object):
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
     site = reparametrisation.add_new_site_parameter(self.indices[0])
-    for i in xrange(1, len(self.indices)):
+    for i in range(1, len(self.indices)):
       param = reparametrisation.add(
         _.shared_site,
         reference=site,

@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.development import random_structure
 from cctbx import miller
 from cctbx.array_family import flex
 import random
+from six.moves import range
 
 def random_f_calc(space_group_info, n_scatterers, d_min, anomalous_flag,
                   verbose=0):
@@ -23,7 +24,7 @@ def random_f_calc(space_group_info, n_scatterers, d_min, anomalous_flag,
     data=f_calc.data()/flex.mean(flex.abs(f_calc.data())))
   if (f_calc.anomalous_flag()):
     selection = flex.bool(f_calc.indices().size(), True)
-    for i in xrange(f_calc.indices().size()//10):
+    for i in range(f_calc.indices().size()//10):
       j = random.randrange(f_calc.indices().size())
       selection[j] = False
     f_calc = f_calc.select(selection)

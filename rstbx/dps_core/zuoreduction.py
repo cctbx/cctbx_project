@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.uctbx import unit_cell,fast_minimum_reduction
 from rstbx.dps_core.cell_assessment import unit_cell_too_small
 from scitbx import matrix
@@ -38,4 +38,4 @@ def test_reduction():
 
 if __name__=='__main__':
   test_reduction()
-  print "OK"
+  print("OK")

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import mmtbx.model
 from libtbx.utils import null_out, Sorry
@@ -18,8 +18,8 @@ Usage:
 
 def show_ss_counts(model):
   ss = model.get_ss_annotation()
-  print "Number of helices:", ss.get_n_helices()
-  print "Number of sheets :", ss.get_n_sheets()
+  print("Number of helices:", ss.get_n_helices())
+  print("Number of sheets :", ss.get_n_sheets())
 
 
 
@@ -35,8 +35,8 @@ def run(args):
       restraint_objects = None, # these are ligands if any [('fname', cif_object), ()]
       log = null_out(),
       )
-  print "="*80
-  print "number of atoms with MTRIX multiplication:", model.get_number_of_atoms()
+  print("="*80)
+  print("number of atoms with MTRIX multiplication:", model.get_number_of_atoms())
   show_ss_counts(model)
 
   # Expand with BIOMT if needed. MTRIX are already expanded by default
@@ -49,8 +49,8 @@ def run(args):
   except Sorry as e:
     if e.message.startswith("Model has been already expanded"):
       double_counter += 1
-  print "="*80
-  print "number of atoms with BIOMT multiplication:", model.get_number_of_atoms()
+  print("="*80)
+  print("number of atoms with BIOMT multiplication:", model.get_number_of_atoms())
   show_ss_counts(model)
 
   # Get default params

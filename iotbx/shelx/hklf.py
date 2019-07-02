@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import boost.python
 iotbx_shelx_ext = boost.python.import_ext("iotbx_shelx_ext")
 import sys
@@ -59,8 +59,8 @@ def miller_array_export_as_shelx_hklf(
           assert len(result) == 8
       return result
     line = fmt_3i4(h) + fmt_f8(data[i]*scale) + fmt_f8(s*scale)
-    print >> file_object, line
-  print >> file_object, "   0   0   0    0.00    0.00"
+    print(line, file=file_object)
+  print("   0   0   0    0.00    0.00", file=file_object)
 
 class reader(iotbx_shelx_ext.hklf_reader):
 

@@ -1,11 +1,10 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 import time
-#import os
 from cStringIO import StringIO
 import iotbx.pdb
 #import mmtbx.model
-#import cctbx.geometry_restraints.nonbonded_overlaps as nbo
+
 import libtbx.load_env
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 from cctbx import adptbx
@@ -13,13 +12,14 @@ from iotbx import phil
 from cctbx.array_family import flex
 from libtbx import group_args
 from libtbx.str_utils import make_sub_header
-#from libtbx.utils import null_out
+from libtbx.utils import null_out
 #from libtbx import easy_run
 #from cctbx import miller
 #from mmtbx import monomer_library
 from mmtbx import real_space_correlation
 #from mmtbx import map_tools
 from elbow.command_line.ready_set import model_interface as ready_set_model_interface
+from six.moves import zip
 
 
 master_params_str = """
@@ -51,7 +51,6 @@ class manager(dict):
                model,
                fmodel,
                params,
-               model_fn,
                log=None):
     self.model = model
     self.params = params
@@ -59,8 +58,7 @@ class manager(dict):
     self.fmodel = fmodel
     #
     self.nproc = params.nproc
-    # TODO:  tidy up filename requirement once ready set is refactored
-    self.model_fn = model_fn
+
     if fmodel is not None:
       self.two_fofc_map = fmodel.map_coefficients(map_type="2mFo-DFc",
         fill_missing=False,
@@ -181,6 +179,7 @@ class manager(dict):
     self.readyset_model = ready_set_model_interface(
         model  = self.model,
         params = params)
+    self.readyset_model.set_log(null_out())
 
 
 
@@ -524,4 +523,3 @@ class ligand_result(object):
         clashes_dict   = clashes._clashes_dict)
 
     return self._overlaps
-

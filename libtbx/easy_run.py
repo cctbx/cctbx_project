@@ -1,11 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
-from builtins import range
 import os
 import subprocess
 import sys
 import threading
 import signal
+from six.moves import range
 
 def _show_lines(lines, out, prefix):
   if (out is None): out = sys.stdout

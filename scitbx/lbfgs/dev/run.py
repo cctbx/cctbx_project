@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx import lbfgs as scitbx_lbfgs
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
@@ -46,9 +46,9 @@ def lbfgs_run(target_evaluator,
         requests_f_and_g=requests_f_and_g,
         requests_diag=requests_diag)
       if (requests_diag):
-        print "x,f,d:", tuple(x), f, tuple(d)
+        print("x,f,d:", tuple(x), f, tuple(d))
       else:
-        print "x,f:", tuple(x), f
+        print("x,f:", tuple(x), f)
       if (use_curvatures):
         if (d is None): d = flex.double(x.size())
         have_request = minimizer.run(x, f, g, d)
@@ -73,7 +73,7 @@ def lbfgs_run(target_evaluator,
       if (not have_request): break
       requests_f_and_g = minimizer.requests_f_and_g()
       requests_diag = minimizer.requests_diag()
-  except RuntimeError, e:
+  except RuntimeError as e:
     minimizer.error = str(e)
   minimizer.n_calls = icall
   return minimizer
@@ -115,15 +115,15 @@ class minimizer:
 
 def run():
   for use_curvatures in (False, True):
-    print "use_curvatures:", use_curvatures
+    print("use_curvatures:", use_curvatures)
     m = minimizer().run(use_curvatures=use_curvatures)
-    print tuple(m.x), "final"
+    print(tuple(m.x), "final")
     if (abs(m.x[0]) > 1.e-4 or abs(m.x[1]) > 1.e-4):
-      print tuple(m.x), "failure, use_curvatures="+str(use_curvatures)
-    print "iter,exception:", m.minimizer.iter(), m.minimizer.error
-    print "n_calls:", m.minimizer.n_calls
+      print(tuple(m.x), "failure, use_curvatures="+str(use_curvatures))
+    print("iter,exception:", m.minimizer.iter(), m.minimizer.error)
+    print("n_calls:", m.minimizer.n_calls)
     assert m.minimizer.n_calls == m.minimizer.nfun()
-    print
+    print()
 
 if (__name__ == "__main__"):
   run()

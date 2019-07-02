@@ -1,8 +1,8 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 import libtbx.load_env
-import StringIO
+from six.moves import cStringIO as StringIO
 
 l1r_pdb = """
 HETATM 3890  C1 AL1R A1247      21.777  10.761  29.793  0.50  4.10           C
@@ -307,15 +307,15 @@ L1R   C9      C25     C5          119.97 3.000
 
 def run():
   if (not libtbx.env.has_module("phenix")):
-    print "phenix not configured, skipping"
+    print("phenix not configured, skipping")
     return
   elif (not libtbx.env.find_in_repositories("chem_data")):
-    print "chem_data not configured, skipping"
+    print("chem_data not configured, skipping")
     return
-  f=file("l1r.pdb", "wb")
+  f=open("l1r.pdb", "w")
   f.write(l1r_pdb)
   f.close()
-  f=file("l1r.cif", "wb")
+  f=open("l1r.cif", "w")
   f.write(l1r_cif)
   f.close()
 
@@ -323,9 +323,9 @@ def run():
   cmd += " l1r.pdb l1r.cif use_neutron_distances=False"
   cmd += ' selection="element H or element D" write_geo_file=False'
   cmd += ' correct_hydrogens=True'
-  print cmd
+  print(cmd)
   ero = easy_run.fully_buffered(command=cmd)
-  err = StringIO.StringIO()
+  err = StringIO()
   ero.show_stdout(out=err)
 
   cmd = "phenix.fmodel high_res=4.5 format=mtz label=FOBS type=real r_free=0.1 l1r.pdb generate_fake_p1_symmetry=1"
@@ -334,11 +334,11 @@ def run():
   cmd += " l1r.pdb l1r.pdb.mtz l1r.cif"
   cmd += " main.number_of_macro_cycles=1"
   cmd += ' correct_hydrogens=True'
-  print cmd
+  print(cmd)
   ero = easy_run.fully_buffered(command=cmd)
-  err = StringIO.StringIO()
+  err = StringIO()
   ero.show_stdout(out=err)
-  print "OK"
+  print("OK")
 
 
 if __name__=="__main__":

@@ -1,5 +1,5 @@
-from __future__ import division
 """ handle queue usage """
+from __future__ import absolute_import, division, print_function
 __author__ = 'Monarin Uervirojnangkoorn, monarin@gmail.com'
 
 import time, os
@@ -13,4 +13,4 @@ class run_handler(object):
         not os.path.isfile(os.path.join(iparams.run_no,'.done'))):
       print("Running - Elapsed times: {0:6.1f} seconds".format(time.time() - program_starts))
       time.sleep(5)
-    print "Done. You can view your results and log file in ", iparams.run_no
+    print("Done. You can view your results and log file in ", iparams.run_no)

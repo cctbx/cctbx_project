@@ -1,10 +1,11 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.chemical_components import cif_parser
 from libtbx.utils import Sorry
 import libtbx.load_env
 import os
 import sys
+from six.moves import zip
 
 loaded_cifs = {}
 
@@ -171,7 +172,7 @@ def generate_chemical_components_codes(sort_reverse_by_smiles=False):
 def get_header(code):
   filename=get_cif_filename(code)
   if not filename: return ""
-  f=file(filename)
+  f=open(filename)
   lines=f.readlines()
   f.close()
   outl=""
@@ -183,25 +184,25 @@ def get_header(code):
   return outl
 
 if __name__=="__main__":
-  print '\nSMILES'
-  print get_smiles(sys.argv[1])
-  print '\nType'
-  print get_type(sys.argv[1])
-  print '\nWeight'
-  print get_field_simple(sys.argv[1], "_chem_comp", "formula_weight")
-  print '\nName'
-  print get_name(sys.argv[1])
-  print '\nAtom names'
-  print get_atom_names(sys.argv[1])
-  print '\nAlternate atom names'
-  print get_atom_names(sys.argv[1], alternate=True)
-  print '\nHydrogen names'
-  print get_hydrogen_names(sys.argv[1])
-  print '\nAlternate hydrogen names'
-  print get_hydrogen_names(sys.argv[1], alternate=True)
-  print '\nWrapped hydrogen names'
-  print get_hydrogen_names(sys.argv[1], wrap=True)
-  print '\nBond pairs'
-  print get_bond_pairs(sys.argv[1])
-  print '\nAlternate name bond pairs'
-  print get_bond_pairs(sys.argv[1], alternate=True)
+  print('\nSMILES')
+  print(get_smiles(sys.argv[1]))
+  print('\nType')
+  print(get_type(sys.argv[1]))
+  print('\nWeight')
+  print(get_field_simple(sys.argv[1], "_chem_comp", "formula_weight"))
+  print('\nName')
+  print(get_name(sys.argv[1]))
+  print('\nAtom names')
+  print(get_atom_names(sys.argv[1]))
+  print('\nAlternate atom names')
+  print(get_atom_names(sys.argv[1], alternate=True))
+  print('\nHydrogen names')
+  print(get_hydrogen_names(sys.argv[1]))
+  print('\nAlternate hydrogen names')
+  print(get_hydrogen_names(sys.argv[1], alternate=True))
+  print('\nWrapped hydrogen names')
+  print(get_hydrogen_names(sys.argv[1], wrap=True))
+  print('\nBond pairs')
+  print(get_bond_pairs(sys.argv[1]))
+  print('\nAlternate name bond pairs')
+  print(get_bond_pairs(sys.argv[1], alternate=True))

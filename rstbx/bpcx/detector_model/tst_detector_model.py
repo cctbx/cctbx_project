@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 from rstbx.bpcx import sensor
 
@@ -20,7 +20,7 @@ def work_detector_model():
 
     assert(k.dot(matrix.col(panel0.origin)) > 0.999)
 
-    print 'OK'
+    print('OK')
     return
 
 if __name__ == '__main__':

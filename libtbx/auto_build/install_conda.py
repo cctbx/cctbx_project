@@ -8,7 +8,7 @@ Advanced users should use conda natively so that they have full control.
 
 This is called by bootstrap.py to set up a developer's conda
 environment. If no conda installation is found, one will be downloaded.
-It will be installed in the "miniconda3" directory at the same level as
+It will be installed in the "mc3" directory at the same level as
 "modules."
 
 The minimum version for conda is 4.4. This is when conda moved towards
@@ -22,6 +22,7 @@ import os
 import platform
 import shutil
 import sys
+import warnings
 
 # Python 2/3 compatibility
 py2 = False
@@ -72,10 +73,9 @@ conda_platform = {
   'Windows': 'win-64',
 }
 
-version = '36'
-if py2:
-  version = '27'
-default_filename = 'cctbx_py{version}_{platform}.txt'.format(
+version = 'PYTHON_VERSION'
+default_format = '{builder}_py{version}_{platform}.txt'
+default_filename = default_format.format(builder='cctbx',
   version=version, platform=conda_platform[platform.system()])
 
 root_dir = os.path.abspath(
@@ -147,8 +147,12 @@ class conda_manager(object):
   env_locations = {
     'cctbxlite': default_file,
     'cctbx': default_file,
-    'phenix': default_file,
-    'phenix_tng': default_file,
+    'phenix': os.path.join('phenix', 'conda_envs',
+      default_format.format(builder='phenix', version=version,
+                            platform=conda_platform[platform.system()])),
+    'phenix_tng': os.path.join('phenix', 'conda_envs',
+      default_format.format(builder='phenix', version=version,
+                            platform=conda_platform[platform.system()])),
     'xfel': default_file,
     'labelit': default_file,
     'dials': default_file,
@@ -173,8 +177,8 @@ class conda_manager(object):
       Required argument for specifying the root level directory for
       CCTBX builds. This is where the "modules" and "build" directories
       reside. If a new conda installation is required, it will be placed
-      here under the "miniconda3" directory. The conda environment for
-      building will also be placed in this directory
+      here under the "mc3" directory. The conda environment for building
+      will also be placed in this directory
     conda_base: str
       Required argument for specifying location of a conda installation.
       If this is None, miniconda will be installed unless conda_env is
@@ -288,7 +292,7 @@ value."""
 
     # install conda if necessary
     if (self.conda_base is None) and (self.conda_env is None):
-      install_dir = os.path.join(self.root_dir, 'miniconda3')
+      install_dir = os.path.join(self.root_dir, 'mc3')
       if os.path.isdir(install_dir):
         print('Using default conda installation', file=self.log)
         self.conda_base = install_dir
@@ -318,12 +322,13 @@ value."""
       for env in self.environments:
         consistency_check.append(env in conda_info['envs'])
       if False in consistency_check:
-        raise RuntimeWarning("""
+        message = """
 There is a mismatch between the conda settings in your home directory
 and what "conda info" is reporting. This is not a fatal error, but if
 an error is encountered, please check that your conda installation and
 environments exist and are working.
-""")
+"""
+        warnings.warn(message, RuntimeWarning)
       if conda_info['conda_version'] < '4.4':
         raise RuntimeError("""
 CCTBX programs require conda version 4.4 and greater to make use of the
@@ -496,7 +501,7 @@ common compilers provided by conda. Please update your version with
         file=self.log)
 
     # run the installer
-    install_dir = os.path.join(prefix, 'miniconda3')
+    install_dir = os.path.join(prefix, 'mc3')
     if self.system == 'Windows':
       flags = '/InstallationType=JustMe /RegisterPython=0 /AddToPath=0 /S /D={install_dir}'.\
         format(install_dir=install_dir)
@@ -513,8 +518,8 @@ common compilers provided by conda. Please update your version with
     return install_dir
 
   # ---------------------------------------------------------------------------
-  def create_environment(self, builder='cctbx', filename=None, copy=False,
-    offline=False):
+  def create_environment(self, builder='cctbx', filename=None, python=None,
+    copy=False, offline=False):
     """
     Create the environment based on the builder and file. The
     environment name is "conda_base".
@@ -528,6 +533,10 @@ common compilers provided by conda. Please update your version with
       If filename is not None, the argument overrides the file defined
       in the env_locations dictionary. The filename should be a
       relative path to the "modules" directory.
+    python: str
+      If set, the specific Python version of the environment for the
+      builder is used instead of the default. Current options are
+      '27' and '36' for Python 2.7 and 3.6, respectively.
     copy: bool
       If set to True, the --copy flag is passed to conda
     offline: bool
@@ -548,6 +557,11 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
     if filename is None:
       filename = os.path.join(
         self.root_dir, 'modules', self.env_locations[builder])
+      if python is not None:
+        if python not in ['27', '36']:
+          raise RuntimeError(
+            """Only Python 2.7 and 3.6 are currently supported.""")
+        filename = filename.replace('PYTHON_VERSION', python)
     else:
       filename = os.path.abspath(filename)
 
@@ -624,6 +638,9 @@ Example usage:
   {prog} --install_conda --builder=<builder>
     Install conda and default environment for <builder>
 
+  {prog} --install_conda --builder=<builder> --python=36
+    Install conda and default Python 3.6 environment for <builder>
+
   {prog} --conda_base=<path> --builder=<builder>
     Install default environment for <builder> with known conda installation
 
@@ -648,6 +665,11 @@ Example usage:
     choices=sorted(conda_manager.env_locations.keys()),
     help="""Install the default environment for a builder. The choices are the
       same as the ones for bootstrap.py. The default builder is "cctbx." """)
+  parser.add_argument(
+    '--python', default='27', type=str, nargs='?', const='27',
+    choices=['27', '36'],
+    help="""When set, a specific Python version of the environment will be used.
+    This only affects environments selected with the --builder flag.""")
   parser.add_argument(
     '--install_conda', action='store_true',
     help="""When set, conda will be automatically downloaded and installed
@@ -712,6 +734,7 @@ Example usage:
 
   if builder is not None:
     m.create_environment(builder=builder, filename=filename,
+                         python=namespace.python,
                          copy=namespace.copy, offline=namespace.offline)
 
 # =============================================================================

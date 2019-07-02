@@ -1,6 +1,4 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 from scitbx.lstbx import normal_eqns_solving
 from cctbx import geometry_restraints, adp_restraints, sgtbx, adptbx
 from cctbx.array_family import flex
@@ -19,6 +17,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import wall_clock_time
 import libtbx
 from scitbx import matrix
+from six.moves import range
 
 geom = geometry_restraints
 adp = adp_restraints
@@ -66,7 +65,7 @@ class geometry_restraints_test_case(restraints_test_case):
     eps = 1e-8
     uc = self.xray_structure.unit_cell()
     sites_cart = self.xray_structure.sites_cart().deep_copy()
-    for i in xrange(self.param_map.n_scatterers):
+    for i in range(self.param_map.n_scatterers):
       grad_site_cart = [0,0,0]
       for j in range(3):
         h = [0,0,0]
@@ -136,8 +135,8 @@ class adp_restraints_test_case(restraints_test_case):
     single_delta_classes = (
       adp.fixed_u_eq_adp,
     )
-    for n in xrange(n_restraints):
-      for i in xrange(self.param_map.n_scatterers):
+    for n in range(n_restraints):
+      for i in range(self.param_map.n_scatterers):
         use_u_aniso = self.param_map[i].u_aniso > -1
         use_u_iso = self.param_map[i].u_iso > -1
         for j in range(6):
@@ -316,7 +315,7 @@ def exercise_restrained_refinement(options):
     xs0, algorithm="direct").f_calc().norm()
   fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(), 1))
 
-  i, j, k, l = random.sample(xrange(options.n_scatterers), 4)
+  i, j, k, l = random.sample(range(options.n_scatterers), 4)
   bond_proxies = geometry_restraints.shared_bond_simple_proxy()
   w = 1e9
   d_ij = uc.distance(sc0[i].site, sc0[j].site)*0.8

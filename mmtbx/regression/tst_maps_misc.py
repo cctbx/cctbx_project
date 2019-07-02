@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import null_out
 
 def exercise_anomalous_maps_misc():
@@ -69,4 +69,4 @@ def exercise_omit_atom_selection():
 if (__name__ == "__main__"):
   exercise_anomalous_maps_misc()
   exercise_omit_atom_selection()
-  print "OK"
+  print("OK")

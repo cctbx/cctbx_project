@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # Compare intensities and positions of measurements from XDS INTEGRATE (which
 # are not necessarily correctly LP corrected) and from Mosflm via sortmtz and
 # scala to sum partials but not merge or scale e.g.
@@ -31,6 +31,8 @@ from cctbx.array_family import flex
 from annlib_ext import AnnAdaptor as ann_adaptor
 from cctbx.sgtbx import space_group, space_group_symbols
 from cctbx.miller import map_to_asu
+from six.moves import range
+from six.moves import zip
 
 def meansd(values):
     assert(len(values) > 3)
@@ -125,9 +127,9 @@ def read_xds_integrate(xds_integrate_file):
         if '!' in record[:1]:
             continue
         values = record.split()
-        hkls.append(map(int, values[:3]))
+        hkls.append( [int(h) for h in values[:3]] )
         xyzs.append((float(values[5]), float(values[6]), float(values[7])))
-        isigmas.append(map(float, values[3:5]))
+        isigmas.append([float(x) for x in values[3:5]])
 
     map_to_asu(sg.type(), False, hkls)
 
@@ -139,12 +141,12 @@ def read_xds_integrate(xds_integrate_file):
 def main(mtz_file, xds_integrate_file):
     mos_hkl_xyz_isigi = get_hkl_xyz_isigi(mtz_file)
 
-    print 'Read %d observations from %s' % (len(mos_hkl_xyz_isigi), mtz_file)
+    print('Read %d observations from %s' % (len(mos_hkl_xyz_isigi), mtz_file))
 
     xds_hkl_xyz_isigi = read_xds_integrate(xds_integrate_file)
 
-    print 'Read %d observations from %s' % \
-          (len(xds_hkl_xyz_isigi), xds_integrate_file)
+    print('Read %d observations from %s' % \
+          (len(xds_hkl_xyz_isigi), xds_integrate_file))
 
     # treat XDS as reference, mosflm as query (arbitrary)
 
@@ -173,9 +175,9 @@ def main(mtz_file, xds_integrate_file):
             i_s_mos.append(mos_hkl_xyz_isigi[j][2][0])
             i_s_xds.append(xds_hkl_xyz_isigi[c][2][0])
 
-    print 'Matched %d observations' % len(i_s_mos)
+    print('Matched %d observations' % len(i_s_mos))
 
-    print cc(i_s_mos, i_s_xds)
+    print(cc(i_s_mos, i_s_xds))
 
 if __name__ == '__main__':
     main(sys.argv[1], sys.argv[2])

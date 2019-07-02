@@ -1,5 +1,3 @@
-from __future__ import division
-
 """
 Generic file input module, used in Phenix GUI and elsewhere.  This trades some
 loss of efficiency for a simplified API for loading any file type more or less
@@ -22,16 +20,18 @@ Examples
 >>> mtz_in = any_file("data.mtz", force_type="hkl")
 >>> miller_arrays = mtz_in.file_server.miller_arrays
 """
+from __future__ import absolute_import, division, print_function
 
 # MTZ file handling is kludgy, but unfortunately there are circumstances
 # where only an MTZ file will do, so it requires some extra code to work
 # around the automatic behavior
 
 from libtbx.utils import Sorry, to_str
-import cPickle
+from six.moves import cPickle as pickle
 import os
 import re
 import sys
+import six
 
 standard_file_types = ["hkl", "ccp4_map", "xplor_map", "pdb", "cif", "phil",
   "hhr", "ncs", "aln", "seq", "xml", "pkl", "txt",]
@@ -131,7 +131,7 @@ def guess_file_type(file_name, extensions=standard_file_extensions):
     return None
   if (ext == ".mtz") : # XXX gross
     return "hkl"
-  for known_type, known_extensions in extensions.iteritems():
+  for known_type, known_extensions in six.iteritems(extensions):
     if ext[1:] in known_extensions :
       return known_type
   return None
@@ -156,7 +156,8 @@ def sort_by_file_type(file_names, sort_order=None):
       return 1
     else :
       return 0
-  file_names.sort(_sort)
+  from functools import cmp_to_key
+  file_names.sort(key = cmp_to_key(_sort))
   return file_names
 
 def any_file(file_name,
@@ -255,7 +256,7 @@ class any_file_input(object):
         if (raise_sorry_if_errors):
           try :
             read_method()
-          except Exception, e :
+          except Exception as e :
             raise Sorry("Couldn't read '%s' as file type '%s': %s" %
               (file_name, force_type, str(e)))
         else :
@@ -273,9 +274,9 @@ class any_file_input(object):
             read_method()
           except KeyboardInterrupt :
             raise
-          except FormatError, e :
+          except FormatError as e :
             raise e
-          except Exception, e :
+          except Exception as e :
             # XXX we need to be a little careful about what extensions we
             # do this for - they are not necessarily all unambiguous!
             if ((raise_sorry_if_not_expected_format) and
@@ -343,7 +344,7 @@ class any_file_input(object):
     import iotbx.pdb.hierarchy
     try :
       pdb_inp = iotbx.pdb.hierarchy.input(self.file_name)
-    except ValueError, e :
+    except ValueError as e :
       raise Sorry(str(e))
     if (pdb_inp.hierarchy.models_size() == 0):
       raise ValueError("No ATOM or HETATM records found in %s."%self.file_name)
@@ -443,7 +444,7 @@ class any_file_input(object):
     self._file_object = map_object
 
   def _try_as_pkl(self):
-    pkl_object = cPickle.load(open(self.file_name, "rb"))
+    pkl_object = pickle.load(open(self.file_name, "rb"))
     self._file_type = "pkl"
     self._file_object = pkl_object
 
@@ -474,7 +475,7 @@ class any_file_input(object):
       pdb_inp=iotbx.pdb.input(file_name=self.file_name)
       ncs_object.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=null_out(),
         quiet=True)
-    except Exception,e: # try as regular ncs object
+    except Exception as e: # try as regular ncs object
       ncs_object.read_ncs(file_name=self.file_name,log=sys.stdout,quiet=True)
     assert ncs_object.max_operators() > 0
     self._file_object = ncs_object
@@ -488,7 +489,7 @@ class any_file_input(object):
         read_method()
       except KeyboardInterrupt :
         raise
-      except Exception, e :
+      except Exception as e :
         if (str(e).startswith("Space group is incompatible") or
             str(e).startswith("The space group") ):
           raise
@@ -580,20 +581,20 @@ class any_file_input(object):
     Print out some basic information about the file.
     """
     if (self._file_type is None):
-      print >> out, "File type could not be determined."
+      print("File type could not be determined.", file=out)
     else :
-      print >> out, "File name: %s" % self.file_name
-      print >> out, "Format: %s (%s)" % (self._file_type,
-        standard_file_descriptions.get(self._file_type, "unknown"))
+      print("File name: %s" % self.file_name, file=out)
+      print("Format: %s (%s)" % (self._file_type,
+        standard_file_descriptions.get(self._file_type, "unknown")), file=out)
     if (self._file_type == "pdb"):
-      print >> out, "Atoms in file: %d" % (len(self._file_object.input.atoms()))
+      print("Atoms in file: %d" % (len(self._file_object.input.atoms())), file=out)
       title = "\n".join(self._file_object.input.title_section())
       if (title != ""):
-        print >> out, "Title section:"
-        print >> out, title
+        print("Title section:", file=out)
+        print(title, file=out)
     elif (self._file_type == "hkl"):
       for array in self.file_server.miller_arrays :
-        print >> out, ""
+        print("", file=out)
         array.show_comprehensive_summary(f=out)
     elif (self._file_type == "ccp4_map"):
       self._file_object.show_summary(out)

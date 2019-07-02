@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math
 """assume data collection at two-theta angle of zero.
    assume a flat square detector normal to beam.
@@ -53,4 +53,4 @@ if __name__=='__main__':
   test_values = [(200,1.0), (100,1.0), (50,0.7643789), (30,0.2827813), (20,0.0)]
   for item in test_values:
     assert approx_equal(f(item[0]),item[1])
-  print "OK"
+  print("OK")

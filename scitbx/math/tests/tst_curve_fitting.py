@@ -1,4 +1,4 @@
-from __future__ import division, absolute_import
+from __future__ import absolute_import, division, print_function
 import random
 
 import libtbx.load_env
@@ -7,6 +7,8 @@ from libtbx.utils import frange
 from scitbx.array_family import flex
 from scitbx.math import curve_fitting
 import scitbx.lbfgs
+from six.moves import range
+from six.moves import zip
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
@@ -185,4 +187,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  print "OK"
+  print("OK")

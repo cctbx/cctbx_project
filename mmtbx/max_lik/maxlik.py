@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math
 from cctbx.array_family import flex
 from cctbx.eltbx.xray_scattering import wk1995
@@ -9,6 +9,8 @@ from cctbx.array_family import flex
 from cctbx import miller
 from libtbx import adopt_init_args
 import iotbx.phil
+from six.moves import zip
+from six.moves import range
 
 alpha_beta_params = iotbx.phil.parse("""\
   free_reflections_per_bin = 140
@@ -151,7 +153,7 @@ class alpha_beta_calc(object):
     b_wk=table.array_of_b()
     c_wk=table.c()
     result_wk=c_wk
-    for i in xrange(5):
+    for i in range(5):
        result_wk += a_wk[i]*math.exp(-b_wk[i]*ss/4.0)
     return result_wk
 
@@ -376,8 +378,8 @@ class alpha_beta(object):
       omega_calc_ma_test.use_binning_of(alpha_calc_ma_test)
       omega_est_ma_test.use_binning_of(alpha_calc_ma_test)
 
-      print "    Resolution           Estimated and calculated alpha, beta and model error"
-      print "   d1        d2    nref alpha_e    beta_e    err_e alpha_c   beta_c     err_c"
+      print("    Resolution           Estimated and calculated alpha, beta and model error")
+      print("   d1        d2    nref alpha_e    beta_e    err_e alpha_c   beta_c     err_c")
       for i_bin in alpha_calc_ma_test.binner().range_used():
         sel = alpha_calc_ma_test.binner().selection(i_bin)
         sel_alpha_calc_ma_test = alpha_calc_ma_test.select(sel)
@@ -404,9 +406,9 @@ class alpha_beta(object):
         omega_e = flex.mean(sel_omega_est_ma_test.data())
         d1 = alpha_calc_ma_test.binner().bin_d_range(i_bin)[0]
         d2 = alpha_calc_ma_test.binner().bin_d_range(i_bin)[1]
-        print "%8.4f %8.4f %5d %6.5f %12.3f %5.3f %6.5f %12.3f %5.3f" % \
+        print("%8.4f %8.4f %5d %6.5f %12.3f %5.3f %6.5f %12.3f %5.3f" % \
           (d1,d2,size,v_alpha_est,\
-           v_beta_est,omega_e,alpha_calc,beta_calc,omega_c)
+           v_beta_est,omega_e,alpha_calc,beta_calc,omega_c))
 
   def alpha_beta(self):
     return self.alpha, self.beta
@@ -420,7 +422,7 @@ def sigma_miss(miller_array, n_atoms_absent, bf_atoms_absent, absent_atom_type):
     b_wk=table.array_of_b()
     c_wk=table.c()
     result_wk=c_wk
-    for i in xrange(5):
+    for i in range(5):
       result_wk += a_wk[i]*math.exp(-b_wk[i]*ssi/4.0)
     return result_wk
   ss = 1./flex.pow2(miller_array.d_spacings().data())

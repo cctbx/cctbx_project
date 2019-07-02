@@ -1,9 +1,9 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 from libtbx.utils import null_out
 from libtbx import group_args
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def exercise():
   from mmtbx.regression import make_fake_anomalous_data
@@ -144,4 +144,4 @@ TER
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

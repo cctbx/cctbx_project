@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run, group_args
 from iotbx.cns.space_group_symbols import cns_format
 import os, shutil, time
@@ -78,14 +78,14 @@ def do_dirty_work(params, fo, hl_coeffs):
 
   cmd = "%s/bin/cns_transfer -def params.inp -inp tmp.inp -out density_modify.inp" %(
     cns_solve_dir)
-  print cmd
+  print(cmd)
   result = easy_run.fully_buffered(command=cmd).raise_if_errors_or_output()
 
   cmd = "cns_solve < density_modify.inp > density_modify.out"
-  print cmd
+  print(cmd)
   t0 = time.time()
   result = easy_run.fully_buffered(command=cmd).raise_if_errors()
-  print "CNS time: %.2f" %(time.time()-t0)
+  print("CNS time: %.2f" %(time.time()-t0))
 
   result.show_stdout()
   import iotbx.xplor.map

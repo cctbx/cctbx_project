@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import scitbx.math
 from scitbx import matrix
@@ -121,4 +121,5 @@ class iotbx_converter(metric_subgroups,list):
     subgroup['constraints']=echelon_constraints(subgroup['reduced_group'])
     self.append(MetricSubgroup().import_iotbx_style(subgroup))
   if (sort):
-    self.sort(bestcmp)
+    from functools import cmp_to_key
+    self.sort(key=cmp_to_key(bestcmp))

@@ -1,6 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.analyze_static_disorder
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.str_utils import make_header, make_sub_header
 from libtbx import easy_pickle
 import os.path
@@ -47,7 +47,7 @@ def run(args, out=sys.stdout):
   segments = []
   make_header("Analyzing model", out=out)
   if (params.ignore_inconsistent_occupancy):
-    print >> out, "Discontinuous occupancies will be ignored."
+    print("Discontinuous occupancies will be ignored.", file=out)
   process = analyze_model.process_pdb_hierarchy(
     pdb_hierarchy=hierarchy,
     validation=validation,
@@ -57,7 +57,7 @@ def run(args, out=sys.stdout):
   validation.show_summary(out=out)
   make_sub_header("Disorder analysis", out=out)
   if (process.n_disordered == 0):
-    print >> out, "No alternate conformations found."
+    print("No alternate conformations found.", file=out)
   else :
     process.show(out=out, verbose=params.verbose)
   if (params.pickle):

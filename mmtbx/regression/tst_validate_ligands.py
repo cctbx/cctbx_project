@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 import time
 from mmtbx.validation import validate_ligands
 from mmtbx.validation.validate_ligands import master_params_str
@@ -6,6 +6,7 @@ import mmtbx.model
 import iotbx.pdb
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
+from six.moves import zip
 
 pdb_str_1 = """
 CRYST1   26.971   23.398   30.626  90.00  90.00  90.00 P 1
@@ -239,7 +240,6 @@ HETATM   65  O   HOH A   9      11.300 -16.164 -16.305  0.98  5.35           O
 ANISOU   65  O   HOH A   9      793    561    680     46    -95    -87       O
 END
 '''
-
 filenames = ['test_1.pdb', 'test_2.pdb']
 pdb_strings = [pdb_str_1, pdb_str_2]
 
@@ -312,20 +312,18 @@ def run_test1():
   '''
   pdb_inp = iotbx.pdb.input(lines=pdb_str_1.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
+  model.set_log(null_out())
 
   params = iotbx.phil.parse(
     input_string=master_params_str, process_includes=True).extract()
   # do not place H atoms for this test
   #params.validate_ligands.place_hydrogens = False
 
-  fn = filenames[0]
-
   vl_manager = validate_ligands.manager(
     model = model,
-    model_fn = fn,
     fmodel = None,
     params = params.validate_ligands,
-    log   = null_out)
+    log   = null_out())
   vl_manager.run()
 
   tst_get_ligands(vl_manager = vl_manager)
@@ -351,7 +349,6 @@ def tst_get_overlaps(vl_manager):
   for id_tuple, ligand_dict in vl_manager.items():
     for altloc, lr in ligand_dict.items():
       clashes_result = lr.get_overlaps()
-      print(clashes_result.clashscore)
       assert(clashes_result.n_clashes == 5)
       assert approx_equal(clashes_result.clashscore, 31.6, eps=1.0)
 # anaconda
@@ -375,6 +372,7 @@ def tst_get_occupancies(vl_manager):
   id_tuple_answer = [('', 'A', '   2'), ('', 'A', '   3'), ('', 'A', '   4'), ('', 'A', '   5')]
   ligand_dict_length_answer = [2, 1, 1, 1]
   occupancy_answer = []
+  # TODO six zip me
   for id_tuple, id_tuple_answer, length_answer in zip(vl_manager.keys(), id_tuple_answer, ligand_dict_length_answer):
     ligand_dict = vl_manager[id_tuple]
     assert (id_tuple == id_tuple_answer)
@@ -403,12 +401,11 @@ def run_test2():
   '''
   pdb_inp = iotbx.pdb.input(lines=pdb_str_2.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
+  model.set_log(null_out())
   params = iotbx.phil.parse(
     input_string=master_params_str, process_includes=True).extract()
-  fn = filenames[1]
   vl_manager = validate_ligands.manager(
     model = model,
-    model_fn = fn,
     fmodel = None,
     params = params.validate_ligands,
     log   = null_out)

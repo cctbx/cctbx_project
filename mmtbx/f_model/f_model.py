@@ -1,4 +1,4 @@
-from __future__ import division, absolute_import
+from __future__ import absolute_import, division, print_function
 
 import mmtbx.f_model.f_model_info
 import libtbx.load_env
@@ -24,7 +24,7 @@ from libtbx.math_utils import iround
 from libtbx.utils import user_plus_sys_time, date_and_time, Sorry
 from libtbx.str_utils import format_value, show_string
 import libtbx.path
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import iotbx.phil
 from mmtbx.scaling import outlier_rejection
 from mmtbx.scaling import absolute_scaling
@@ -41,6 +41,8 @@ from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 import libtbx
 import mmtbx.bulk_solvent
+import six
+from six.moves import zip, range
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -67,18 +69,18 @@ def show_times(out = None):
           time_r_factors                      +\
           time_phase_errors                   +\
           time_foms
-  print >> out, "  Micro-tasks:"
-  print >> out, "    mask                            = %-7.2f" % (time_mask)
-  print >> out, "    f_calc                          = %-7.2f" % time_f_calc
-  print >> out, "    alpha_beta                      = %-7.2f" % time_alpha_beta
-  print >> out, "    target                          = %-7.2f" % time_target
-  print >> out, "    gradients_wrt_atomic_parameters = %-7.2f" % \
-    time_gradients_wrt_atomic_parameters
-  print >> out, "    fmodel                         = %-7.2f" % time_fmodel_core_data
-  print >> out, "    r_factors                      = %-7.2f" % time_r_factors
-  print >> out, "    phase_errors                   = %-7.2f" % time_phase_errors
-  print >> out, "    foms                           = %-7.2f" % time_foms
-  print >> out, "    TOTAL for micro-tasks          = %-7.2f" % total
+  print("  Micro-tasks:", file=out)
+  print("    mask                            = %-7.2f" % (time_mask), file=out)
+  print("    f_calc                          = %-7.2f" % time_f_calc, file=out)
+  print("    alpha_beta                      = %-7.2f" % time_alpha_beta, file=out)
+  print("    target                          = %-7.2f" % time_target, file=out)
+  print("    gradients_wrt_atomic_parameters = %-7.2f" % \
+    time_gradients_wrt_atomic_parameters, file=out)
+  print("    fmodel                         = %-7.2f" % time_fmodel_core_data, file=out)
+  print("    r_factors                      = %-7.2f" % time_r_factors, file=out)
+  print("    phase_errors                   = %-7.2f" % time_phase_errors, file=out)
+  print("    foms                           = %-7.2f" % time_foms, file=out)
+  print("    TOTAL for micro-tasks          = %-7.2f" % total, file=out)
   return total
 
 class arrays(object):
@@ -568,18 +570,18 @@ class manager(manager_mixin):
       result = s1 & s2 & s3 & s4
     else: result = s1 & s2 & s3
     if(log is not None):
-      print >> log
-      print >> log, "basic_wilson_outliers    =", s1.count(False)
-      print >> log, "extreme_wilson_outliers  =", s2.count(False)
-      print >> log, "beamstop_shadow_outliers =", s3.count(False)
+      print(file=log)
+      print("basic_wilson_outliers    =", s1.count(False), file=log)
+      print("extreme_wilson_outliers  =", s2.count(False), file=log)
+      print("beamstop_shadow_outliers =", s3.count(False), file=log)
       if(n_free > 0 and s4 is not None):
-        print >> log, "model_based_outliers     =", s4.count(False)
-      print >> log, "total                    =", result.count(False)
+        print("model_based_outliers     =", s4.count(False), file=log)
+      print("total                    =", result.count(False), file=log)
     return result
 
   def remove_outliers(self, log = None, use_model=True):
     if(log is not None):
-      print >> log, "Distribution of F-obs values:"
+      print("Distribution of F-obs values:", file=log)
       show_histogram(data = self.f_obs().data(), n_slots = 10, log = log)
     o_sel = self.outlier_selection(log = log, use_model=use_model)
     if(o_sel.count(False) > 0):
@@ -590,28 +592,26 @@ class manager(manager_mixin):
       o_sel_neg = (~o_sel).iselection()
       d_spacings = self.f_obs().d_spacings().data()
       if(log is not None):
-        print >> log, "Discarded reflections:"
+        print("Discarded reflections:", file=log)
         if(sigmas is not None):
-          print >> log, \
-            "    h    k    l           f_obs       sigma   d_min"
+          print("    h    k    l           f_obs       sigma   d_min", file=log)
           fmt = "%5d%5d%5d %15.4f %10.4f %7.4f"
           for si in o_sel_neg:
             i = indices[si]
-            print >> log, fmt%(i[0],i[1],i[2], data[si],
-              sigmas[si], d_spacings[si])
+            print(fmt%(i[0],i[1],i[2], data[si],
+              sigmas[si], d_spacings[si]), file=log)
         else:
-          print >> log, \
-            "    h    k    l           f_obs    d_min"
+          print("    h    k    l           f_obs    d_min", file=log)
           fmt = "%5d%5d%5d %15.4f %7.4f"
           for si in o_sel_neg:
             i = indices[si]
-            print >> log, fmt%(i[0],i[1],i[2], data[si],
-              d_spacings[si])
+            print(fmt%(i[0],i[1],i[2], data[si],
+              d_spacings[si]), file=log)
       #
       new = self.select(selection = o_sel, in_place=True,
         deep_copy_xray_structure=False)
       if(log is not None):
-        print >> log, "\nDistribution of active F-obs values after outliers rejection:"
+        print("\nDistribution of active F-obs values after outliers rejection:", file=log)
         show_histogram(data=new.arrays.f_obs.data(),n_slots=10,log=log)
 
   def wilson_b(self, force_update = False):
@@ -712,7 +712,8 @@ class manager(manager_mixin):
     result.k_h = self.k_h
     result.b_h = self.b_h
     if(in_place): # XXX USE THIS INSTEAD OF ABOVE
-      for k, v in zip(self.__dict__.keys(), self.__dict__.values()):
+      # TODO: six.moves.zip this file
+      for k, v in six.iteritems(self.__dict__):
         try: self.__dict__[k] = result.__dict__[k]
         except KeyError:
           raise RuntimeError("Corrupt refinement: ad hoc key", k)
@@ -866,21 +867,19 @@ class manager(manager_mixin):
     if(out is None): return
     line_len = len("|-"+"|"+prefix)
     fill_len = 80-line_len-1
-    print >> out, "|-"+prefix+"-"*(fill_len)+"|"
-    print >> out, \
-      "| Solvent (probe) radius= %4.2f Shrink truncation radius= %4.2f%s|"%(
+    print("|-"+prefix+"-"*(fill_len)+"|", file=out)
+    print("| Solvent (probe) radius= %4.2f Shrink truncation radius= %4.2f%s|"%(
       self.mask_params.solvent_radius,
-      self.mask_params.shrink_truncation_radius," "*17)
-    print >> out, \
-      "| all data:                         500 lowest resolution reflections:        |"
+      self.mask_params.shrink_truncation_radius," "*17), file=out)
+    print("| all data:                         500 lowest resolution reflections:        |", file=out)
     fmtl = "| r_work= %s r_free= %s     r_work= %s  "%(
       format_value(format="%6.4f", value=self.r_work()).strip(),
       format_value(format="%6.4f", value=self.r_free()).strip(),
       format_value(format="%6.4f", value=self.r_work_low()).strip())
     pad = " "*(78-len(fmtl))
-    print >> out, fmtl + pad + "|"
-    print >> out, "|"+"-"*77+"|"
-    print >> out
+    print(fmtl + pad + "|", file=out)
+    print("|"+"-"*77+"|", file=out)
+    print(file=out)
 
   def optimize_mask(self, params = None, thorough=False, out = None,
       nproc=1):
@@ -903,7 +902,7 @@ class manager(manager_mixin):
         r_solvs.append(tr2)
     r_solv = trial_range[:]
     r_shrink = trial_range[:]
-    trial_params = zip(r_solvs, r_shrinks)
+    trial_params = list(zip(r_solvs, r_shrinks))
     parallel = False
     mask_results = []
     if(nproc is Auto) or (nproc > 1):
@@ -928,7 +927,7 @@ class manager(manager_mixin):
         rf_       = result.r_free
         r_solv_   = result.r_solv
         r_shrink_ = result.r_shrink
-    if(out is not None): print >> out
+    if(out is not None): print(file=out)
     self.mask_params.solvent_radius = r_solv_
     self.mask_params.shrink_truncation_radius = r_shrink_
     self.mask_manager.mask_params = self.mask_params
@@ -1259,26 +1258,26 @@ class manager(manager_mixin):
     f3 = "    k_total = k_isotropic * k_anisotropic"
     m=(77-len(l))//2
     if(show_header):
-      print >> log, "\n","="*m,l,"="*m,"\n"
-      print >> log, f1
-      print >> log, f2
-      print >> log, f3
+      print("\n","="*m,l,"="*m,"\n", file=log)
+      print(f1, file=log)
+      print(f2, file=log)
+      print(f3, file=log)
     fmt="%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f %5.3f %s"
-    print >> log, "   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> kiso   kani kmask"
+    print("   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> kiso   kani kmask", file=log)
     for b in self.bins():
-      print >> log, fmt % (b.d_max,b.d_min,b.cmpl,b.nw,b.nf,b.r,b.fo_mean,b.fm_mean,b.ki,b.ka,b.km)
+      print(fmt % (b.d_max,b.d_min,b.cmpl,b.nw,b.nf,b.r,b.fo_mean,b.fm_mean,b.ki,b.ka,b.km), file=log)
     def overall_isotropic_kb_estimate(self):
       k_total = self.k_isotropic() * self.k_anisotropic()
       assert self.ss.size() == self.k_isotropic().size()
       r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(self.ss), y=k_total)
       return r.a, r.b
     k_overall, b_overall = overall_isotropic_kb_estimate(self)
-    print >> log
+    print(file=log)
     f3="  Approximation of k_total with k_overall*exp(-b_overall*s**2/4)"
     f4="    k_overall=%-8.4f b_overall=%-8.4f"%(k_overall, b_overall)
     if(show_approx):
-      print >> log, f3
-      print >> log, f4
+      print(f3, file=log)
+      print(f4, file=log)
 
   def remove_unreliable_atoms_and_update(self, min_map_value=0.5, min_cc=0.7):
     """
@@ -1786,8 +1785,8 @@ class manager(manager_mixin):
     for fo, fm, d in zip(self.f_obs().data(),
                          abs(self.f_model_scaled_with_k1()),
                          self.f_obs().d_spacings().data()):
-      print >> log, "Fobe   Fmodel   resolution (A)"
-      print >> log, "%12.3f %12.3f %6.3f"%(fo, fm, d)
+      print("Fobe   Fmodel   resolution (A)", file=log)
+      print("%12.3f %12.3f %6.3f"%(fo, fm, d), file=log)
 
   #Ensemble refinement alpha beta parameters
   set_sigmaa = None
@@ -2373,9 +2372,9 @@ class manager(manager_mixin):
        fmodel_dc.update(sf_and_grads_accuracy_params = dir_p)
     elif(self.sfg_params.algorithm == "direct"):
        fmodel_dc.update(sf_and_grads_accuracy_params = fft_p)
-    print >> out, "|"+"-"*77+"|"
-    print >> out, "| Bin     Resolution   Compl.  No.       Scale_k1             R-work          |"
-    print >> out, "|number     range              Refl.      direct       fft direct fft-direct,%|"
+    print("|"+"-"*77+"|", file=out)
+    print("| Bin     Resolution   Compl.  No.       Scale_k1             R-work          |", file=out)
+    print("|number     range              Refl.      direct       fft direct fft-direct,%|", file=out)
     deltas = flex.double()
     for i_bin in f_obs_w.binner().range_used():
         sel         = f_obs_w.binner().selection(i_bin)
@@ -2393,12 +2392,12 @@ class manager(manager_mixin):
                    i_bin = i_bin, show_bin_number = False, show_counts = False)
         format = "|%3d: %-17s %4.2f %6d %14.3f %6.4f %6.4f   %9.4f  |"
         if(self.sfg_params.algorithm == "fft"):
-           print >> out, format % (i_bin,d_range,compl,n_ref,
-                                            scale_k1_2,r_work_1,r_work_2,delta)
+           print(format % (i_bin,d_range,compl,n_ref,
+                                            scale_k1_2,r_work_1,r_work_2,delta), file=out)
         else:
-           print >> out, format % (i_bin,d_range,compl,n_ref,
-                                            scale_k1_1,r_work_2,r_work_1,delta)
-    print >> out, "|"+"-"*77+"|"
+           print(format % (i_bin,d_range,compl,n_ref,
+                                            scale_k1_1,r_work_2,r_work_1,delta), file=out)
+    print("|"+"-"*77+"|", file=out)
     out.flush()
 
   def explain_members(self, out=None, prefix="", suffix=""):
@@ -2413,7 +2412,7 @@ class manager(manager_mixin):
        "k_isotropic   = overall resolution-dependent scale factor",
        "k_anisotropic = overall Millerindex-dependent scale factor",
        "k_mask        = bulk-solvent scale factor"]:
-      print >> out, prefix + line + suffix
+      print(prefix + line + suffix, file=out)
 
   def export_f_obs_flags_as_mtz(self,
       file_name,
@@ -2524,7 +2523,7 @@ def show_histogram(data, n_slots, log):
   s_1 = enumerate(hm.slots())
   for (i_1,n_1) in s_1:
     hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
-    print >> log, "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
+    print("%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1), file=log)
     lc_1 = hc_1
 
 class mask_result(object):
@@ -2533,12 +2532,12 @@ class mask_result(object):
 
   def show(self, out):
     if (out is None) : return
-    print >> out, "r_solv=%s r_shrink=%s r_work=%s r_free=%s r_work_low=%s"%(
+    print("r_solv=%s r_shrink=%s r_work=%s r_free=%s r_work_low=%s"%(
           format_value("%6.2f", self.r_solv),
           format_value("%6.2f", self.r_shrink),
           format_value("%6.4f", self.r_work),
           format_value("%6.4f", self.r_free),
-          format_value("%6.4f", self.r_work_low))
+          format_value("%6.4f", self.r_work_low)), file=out)
 
 # XXX backwards compatibility 2011-02-08
 # bad hack... - relative import

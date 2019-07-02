@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from mmtbx.command_line.fix_rotamer_outliers import run
 import iotbx.pdb
@@ -147,4 +147,4 @@ def exercise_2():
 if (__name__ == "__main__"):
   exercise_1()
   exercise_2()
-  print "OK"
+  print("OK")

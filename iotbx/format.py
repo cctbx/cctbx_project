@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 def crystal_symmetry(cs):
   if (cs.unit_cell() is None):
     u = "None"
@@ -8,7 +8,7 @@ def crystal_symmetry(cs):
     s = "None"
   else:
     s = "'%s'" % str(cs.space_group_info()).replace("'", "\\'")
-  print """\
+  print("""\
 crystal.symmetry(
   unit_cell=%s,
-  space_group_symbol=%s)""" % (u, s)
+  space_group_symbol=%s)""" % (u, s))

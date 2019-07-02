@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import adp_restraints, uctbx, adptbx, sgtbx
 import scitbx.random
 from scitbx import linalg, matrix
 from libtbx.test_utils import approx_equal
 import libtbx.utils
+from six.moves import range
 
 site_coord = scitbx.random.variate(
   scitbx.random.uniform_distribution(0, 1))
@@ -27,7 +28,7 @@ def exercise_mean_square_displacement(options, n_trials):
 
   # check adptbx.mean_square_displacement_difference
   # against adp_restraints.rigid_bond_pair
-  for i in xrange(n_trials):
+  for i in range(n_trials):
     x1 = matrix.col(site_coord(3))
     x2 = matrix.col(site_coord(3))
     u1 = matrix.col(as_sym_mat3(symm_mat(u_eigenval(3))))
@@ -45,7 +46,7 @@ def exercise_mean_square_displacement(options, n_trials):
   # check gradients with finite difference
   finite_difference_computation = scitbx.math.finite_difference_computation()
   best_delta = finite_difference_computation.best_delta
-  for i in xrange(n_trials):
+  for i in range(n_trials):
     z = site_coord(3)
     dz = best_delta(z, site_coord(3))
     z = matrix.col(z)
@@ -82,7 +83,7 @@ def exercise_hirshfeld_relative_difference(options, n_trials):
 
   # check against adptbx.mean_square_displacement_difference
   for op in operators:
-    for i in xrange(n_trials):
+    for i in range(n_trials):
       x1 = matrix.col(site_coord(3))
       x2 = matrix.col(site_coord(3))
       u1 = matrix.col(as_sym_mat3(symm_mat(u_eigenval(3))))
@@ -99,7 +100,7 @@ def exercise_hirshfeld_relative_difference(options, n_trials):
   finite_difference_computation = scitbx.math.finite_difference_computation()
   best_delta = finite_difference_computation.best_delta
   for op in operators:
-    for i in xrange(n_trials):
+    for i in range(n_trials):
       x1 = site_coord(3)
       dx1 = best_delta(x1, site_coord(3))
       x1 = matrix.col(x1)
@@ -145,7 +146,7 @@ def exercise_hirshfeld_relative_difference(options, n_trials):
 
   # check esd computation
   for op in operators:
-    for i in xrange(n_trials):
+    for i in range(n_trials):
       x1 = matrix.col(site_coord(3))
       x2 = matrix.col(site_coord(3))
       u1 = matrix.col(as_sym_mat3(symm_mat(u_eigenval(3))))

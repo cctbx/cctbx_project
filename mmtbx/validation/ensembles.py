@@ -1,7 +1,7 @@
 
 # TODO tests
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import ramalyze
 from mmtbx.validation import rotalyze
 from libtbx import slots_getstate_setstate_default_initializer
@@ -9,6 +9,7 @@ from libtbx.utils import null_out
 from libtbx import easy_mp
 from libtbx import Auto
 import sys
+from six.moves import range
 
 class ensemble_validation(object):
   def __init__(self,
@@ -120,7 +121,7 @@ class residue_analysis(slots_getstate_setstate_default_initializer):
   __slots__ = ["id_str", "rama", "rota", "residues"]
   def show(self, out=sys.stdout, prefix=""):
     if (self.rota is not None):
-      print >> out, prefix + self.rota.as_string()
+      print(prefix + self.rota.as_string(), file=out)
 
 def combine_model_validation_results(
     validation_objects,
@@ -146,7 +147,7 @@ def combine_model_validation_results(
       if (not id_str in results_dict):
         msg = "The residue ID '%s' was not found in the expected list."%id_str
         if (ignore_unexpected_residues):
-          print >> log, "  " + msg
+          print("  " + msg, file=log)
         else :
           raise RuntimeError(msg)
       else :

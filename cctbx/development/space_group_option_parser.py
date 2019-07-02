@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os, sys
 import libtbx.option_parser
 from cctbx.development import debug_utils
@@ -57,7 +57,8 @@ class space_group_option_parser(libtbx.option_parser.option_parser):
     command_line.space_group_info_list = [
       sgtbx.space_group_info(symbol) for symbol in sg_symbols ]
     del command_line.options.space_group_set
-    for attr in command_line.options.__dict__.keys():
+    # convert to list since attributes are deleted in the loop
+    for attr in list(command_line.options.__dict__.keys()):
       if getattr(command_line.options, attr) in ('', None):
         delattr(command_line.options, attr)
     command_line.args = ()

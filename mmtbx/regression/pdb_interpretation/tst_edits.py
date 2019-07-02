@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
@@ -281,7 +281,7 @@ def exercise_add_when_restraint_is_present():
   inp = iotbx.pdb.input(lines=raw_records1, source_info=None)
   model = mmtbx.model.manager(model_input = inp)
   geo = model.restraints_as_geo(force=True)
-  print geo
+  print(geo)
   assert_lines_in_text(geo, """Bond restraints: 8""")
   assert_lines_in_text(geo, """bond pdb=" N   LYS A 135 "
       pdb=" CA  LYS A 135 "
@@ -300,11 +300,11 @@ def exercise_add_when_restraint_is_present():
      -60.00  -54.19   -5.81     3      1.50e+01 4.44e-03 2.18e-01""")
 
   # Now with modifications
-  print "*"*80
+  print("*"*80)
   model2 = mmtbx.model.manager(model_input = inp,
       pdb_interpretation_params=params)
   geo2 = model2.restraints_as_geo(force=True)
-  print geo2
+  print(geo2)
   # !!! Note that bond-restraint was applied: one less standard, one more
   # nonstandard.
   assert_lines_in_text(geo2, """Bond restraints: 7""")
@@ -389,7 +389,7 @@ def exercise():
     mon_lib_srv = monomer_library.server.server()
     ener_lib = monomer_library.server.ener_lib()
   except: # intentional
-    print "Can not initialize monomer_library, skipping test."
+    print("Can not initialize monomer_library, skipping test.")
   if mon_lib_srv is not None and ener_lib is not None:
     exercise_user_edits(mon_lib_srv, ener_lib)
     exercise_angle_edits_change(mon_lib_srv, ener_lib)
@@ -398,4 +398,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

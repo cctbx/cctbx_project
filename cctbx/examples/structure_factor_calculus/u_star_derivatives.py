@@ -1,11 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 from scitbx.array_family import flex
 from scitbx.math import tensor_rank_2_gradient_transform_matrix
 from libtbx.test_utils import approx_equal
 import math
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
+from six.moves import range
 
 flex.set_random_seed(0)
 
@@ -60,7 +61,7 @@ class debye_waller:
 def d_debye_waller_d_u_finite(u, ops, hkl, eps=1.e-8):
   result = flex.double()
   u_eps = list(u)
-  for ip in xrange(6):
+  for ip in range(6):
     vs = []
     for signed_eps in [eps, -eps]:
       u_eps[ip] = u[ip] + signed_eps
@@ -73,7 +74,7 @@ def d_debye_waller_d_u_finite(u, ops, hkl, eps=1.e-8):
 def d2_debye_waller_d_u_finite(u, ops, hkl, eps=1.e-8):
   result = flex.double()
   u_eps = list(u)
-  for ip in xrange(6):
+  for ip in range(6):
     vs = []
     for signed_eps in [eps, -eps]:
       u_eps[ip] = u[ip] + signed_eps
@@ -93,25 +94,25 @@ def exercise(args):
     out = StringIO()
   else:
     out = sys.stdout
-  for i_trial in xrange(100):
+  for i_trial in range(100):
     ops = []
-    for i in xrange(3):
+    for i in range(3):
       ops.append(matrix.sqr(flex.random_double(size=9, factor=4)-2))
     u = matrix.col((flex.random_double(size=6, factor=2)-1)*1.e-3)
     hkl = matrix.row(flex.random_double(size=3, factor=4)-2)
     dw = debye_waller(u=u, ops=ops, hkl=hkl)
     grads_fin = d_debye_waller_d_u_finite(u=u, ops=ops, hkl=hkl)
-    print >> out, "grads_fin:", list(grads_fin)
+    print("grads_fin:", list(grads_fin), file=out)
     grads_ana = dw.d_u()
-    print >> out, "grads_ana:", list(grads_ana)
+    print("grads_ana:", list(grads_ana), file=out)
     compare_derivatives(grads_ana, grads_fin)
     curvs_fin = d2_debye_waller_d_u_finite(u=u, ops=ops, hkl=hkl)
-    print >> out, "curvs_fin:", list(curvs_fin)
+    print("curvs_fin:", list(curvs_fin), file=out)
     curvs_ana = dw.d2_u()
-    print >> out, "curvs_ana:", list(curvs_ana)
+    print("curvs_ana:", list(curvs_ana), file=out)
     compare_derivatives(curvs_ana, curvs_fin)
-    print >> out
-  print "OK"
+    print(file=out)
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

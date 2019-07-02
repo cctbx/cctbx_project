@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import math, sys
 from mmtbx.utils import rotatable_bonds
@@ -8,6 +8,7 @@ import mmtbx.monomer_library.server
 from mmtbx.validation import rotalyze
 import iotbx.phil
 from libtbx import adopt_init_args
+from six.moves import zip
 
 torsion_search_params_str = """\
 torsion_search
@@ -239,7 +240,7 @@ class manager(object):
           include_labels=True,
           log=None)
     if (axis_and_atoms_to_rotate is None):
-      print >> self.log, "Skipped %s rotamer (TARDY error)" % key
+      print("Skipped %s rotamer (TARDY error)" % key, file=self.log)
       return False
     assert len(m_chis) == len(r_chis)
     #exclude H-only clusters if necessary

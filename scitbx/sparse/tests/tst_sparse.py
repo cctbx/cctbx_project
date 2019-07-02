@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx import sparse
 import libtbx
@@ -6,6 +6,7 @@ from libtbx.test_utils import approx_equal, Exception_expected
 import random
 import scitbx.random
 import itertools
+from six.moves import range
 
 def exercise_vector():
   v = sparse.vector(5)
@@ -16,7 +17,7 @@ def exercise_vector():
   v[3] = 6
   assert list(v) == [(1,2.), (2,0.), (3,6.)]
   assert list(v.compact()) == [(1,2.), (2,0.), (3,6.)]
-  assert [ v[i] for i in xrange(5) ] == [0, 2, 0, 6, 0]
+  assert [ v[i] for i in range(5) ] == [0, 2, 0, 6, 0]
   p = flex.size_t([1,2,3,4,0])
   assert list(v.permute(p)) == [(2,2.), (3,0.), (4,6.)]
   assert v.non_zeroes == 3
@@ -32,7 +33,7 @@ def exercise_vector():
   v[1] = 3
   v[4] = 0
   assert list(v.compact()) == [(1,3.), (4,0.), (7,6.), (9,9.)]
-  assert ([ v.is_structural_zero(i) for i in xrange(10) ]
+  assert ([ v.is_structural_zero(i) for i in range(10) ]
           ==
           [ True, False, True, True, False, True, True, False, True, False ])
 
@@ -67,8 +68,8 @@ def exercise_vector():
   assert u*v == -5
   assert sparse.weighted_dot(u, flex.double_range(10), v) == -47
   a = flex.double()
-  for i in xrange(10):
-    for j in xrange(i,10):
+  for i in range(10):
+    for j in range(i,10):
       a.append(1/(i+j+1))
   assert approx_equal(sparse.quadratic_form(u, a, v), 4003/1980,
                       eps=1e-15)
@@ -96,7 +97,7 @@ def exercise_vector():
   try:
     sparse.vector(4, [1, 2, 3, 4])
     raise Exception_expected
-  except Exception, e:
+  except Exception as e:
     assert e.__class__.__module__ == 'Boost.Python'
     assert e.__class__.__name__ == 'ArgumentError'
 
@@ -127,8 +128,8 @@ def exercise_vector():
       sparse.vector_distribution(
         8, density=0.4,
         elements=scitbx.random.uniform_distribution(min=-2, max=2)))
-    u = random_vectors.next()
-    v = random_vectors.next()
+    u = next(random_vectors)
+    v = next(random_vectors)
     w = list(-2*u.as_dense_vector() + 3*v.as_dense_vector())
     yield u, v, w
   for u, v, w in itertools.islice(linear_combination_trial_vectors(), 50):
@@ -155,8 +156,8 @@ def exercise_matrix():
   a[0,1] = 1.
   a[9,5] = 2.
   assert a.non_zeroes == 2
-  for i in xrange(10):
-    for j in xrange(7):
+  for i in range(10):
+    for j in range(7):
       if (i,j) == (0,1): assert a[i,j] == 1.
       elif (i,j) == (9,5): assert a[i,j] == 2.
       else: assert a[i,j] == 0, (i, j, a[i,j])
@@ -192,7 +193,7 @@ def exercise_matrix():
   try:
     a[1,:] = sparse.vector(2, {1:1})
     raise Exception_expected
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)
 
   a = sparse.matrix(10, 3,
@@ -229,7 +230,7 @@ def exercise_random():
   for a in itertools.islice(g, 10):
     assert a.n_rows== 5 and a.n_cols == 3
     assert approx_equal(a.non_zeroes, a.n_rows*a.n_cols*0.4, eps=1)
-    for j in xrange(a.n_cols):
+    for j in range(a.n_cols):
       for i,x in a.col(j):
         assert -1 <= x < 0.5, (i,j, x)
 
@@ -254,9 +255,9 @@ def exercise_matrix_x_vector():
       sparse.matrix_distribution(
         m, n, density=0.3,
         elements=uniform_distribution(min=-2, max=2)))
-    for n_test in xrange(50):
-      a = random_matrices.next()
-      x = random_vectors.next()
+    for n_test in range(50):
+      a = next(random_matrices)
+      x = next(random_vectors)
       y = a*x
       aa = a.as_dense_matrix()
       xx = x.as_dense_vector()
@@ -269,8 +270,8 @@ def exercise_matrix_x_vector():
       sparse.matrix_distribution(
         m, n, density=0.4,
         elements=uniform_distribution(min=-2, max=2)))
-    for n_test in xrange(50):
-      a = random_matrices.next()
+    for n_test in range(50):
+      a = next(random_matrices)
       x = flex.random_double(n)
       y = a*x
       aa = a.as_dense_matrix()
@@ -296,9 +297,9 @@ def exercise_a_tr_b_a():
       sparse.matrix_distribution(
         m, n, density=0.6,
         elements=uniform_distribution(min=-3, max=10)))
-    for n_test in xrange(50):
+    for n_test in range(50):
       b = flex.random_double(m*(m+1)//2)
-      a = random_matrices.next()
+      a = next(random_matrices)
       c = a.self_transpose_times_symmetric_times_self(b)
       aa = a.as_dense_matrix()
       bb = b.matrix_packed_u_as_symmetric()
@@ -314,9 +315,9 @@ def exercise_a_b_a_tr():
       sparse.matrix_distribution(
         m, n, density=0.6,
         elements=uniform_distribution(min=-3, max=10)))
-    for n_test in xrange(50):
+    for n_test in range(50):
       b = flex.random_double(n*(n+1)//2)
-      a = random_matrices.next()
+      a = next(random_matrices)
       c = a.self_times_symmetric_times_self_transpose(b)
       aa = a.as_dense_matrix()
       bb = b.matrix_packed_u_as_symmetric()
@@ -362,8 +363,8 @@ def exercise_a_tr_diag_a_and_a_diag_a_tr():
     ww = flex.double(m*m)
     ww.resize(flex.grid(m,m))
     ww.matrix_diagonal_set_in_place(diagonal=w)
-    for n_test in xrange(50):
-      a = random_matrices.next()
+    for n_test in range(50):
+      a = next(random_matrices)
       b = a.self_transpose_times_diagonal_times_self(w)
       aa = a.as_dense_matrix()
       bb = b.as_dense_matrix()

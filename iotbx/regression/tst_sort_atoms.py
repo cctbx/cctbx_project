@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from libtbx import easy_run
 import time
@@ -822,7 +822,7 @@ END
       "iotbx.pdb.sort_atoms",
       "%s.pdb" % prefix,
       ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
   assert os.path.isfile("%s_sorted.pdb" % prefix)
   out_f = open("%s_sorted.pdb" % prefix, 'r')
@@ -833,5 +833,5 @@ END
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_1()
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")

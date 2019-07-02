@@ -53,7 +53,8 @@ class cumulative:
 
 class singleton_data(dict):
   def __del__(self):
-    if len(self.keys()) > 0: print("Exiting profiler")
+    Nkeys = len(self)
+    if Nkeys > 0: print("Exiting profiler")
     total_tm =0.
     total_el =0.
     for key in self:
@@ -61,7 +62,7 @@ class singleton_data(dict):
         self[key][0],self[key][1],self[key][2]))
       total_tm+=self[key][0]
       total_el+=self[key][1]
-    if len(self.keys()) > 0:
+    if Nkeys > 0:
       print("TOTAL    %30s: CPU, %8.3fs; elapsed, %8.3fs"%("",
         total_tm,total_el))
 

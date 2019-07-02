@@ -1,6 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_value_at_point
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 import mmtbx.utils
 from libtbx.utils import Sorry
@@ -56,10 +56,10 @@ low_resolution = None
 """
 
 def defaults(log):
-  print >> log, "Default params::\n"
+  print("Default params::\n", file=log)
   parsed = iotbx.phil.parse(master_params_str)
   parsed.show(prefix="  ", out=log)
-  print >> log
+  print(file=log)
   return parsed
 
 def map_from_reflection_file(reflection_files, params):
@@ -76,33 +76,33 @@ def map_from_reflection_file(reflection_files, params):
     if(ma.info().labels[0].lower() != params.label.lower()):
       raise Sorry("Specified label 'label=%s' does not match any label in input file."%params.label)
   elif(len(miller_arrays)>1 and params.label is not None):
-    found = filter(lambda ma: ma.info().labels[0].lower() == params.label.lower(), miller_arrays)
+    found = list(filter(lambda ma: ma.info().labels[0].lower() == params.label.lower(), miller_arrays))
     if not found: raise Sorry("Specified label not found.")
     ma = found[0]
   if(not ma.is_complex_array()):
     raise Sorry("Data must be complex type (real provided).")
-  print "Input reflection data (Fourier map coefficients):"
+  print("Input reflection data (Fourier map coefficients):")
   ma.show_comprehensive_summary(prefix="  ")
-  print
+  print()
   #
   if params.resolution is not None or params.low_resolution is not None:
     ma=ma.resolution_filter(d_min=params.resolution,
        d_max=params.low_resolution)
-    print "Applying resolution filter from ",params.resolution,"to",params.low_resolution," NREFL: ",ma.data().size()
+    print("Applying resolution filter from ",params.resolution,"to",params.low_resolution," NREFL: ",ma.data().size())
 
   fft_map = ma.fft_map(resolution_factor=params.resolution_factor)
   if(params.scale == "sigma"):
     fft_map.apply_sigma_scaling()
-    print "Using sigma scaled map.\n"
+    print("Using sigma scaled map.\n")
   else:
     fft_map.apply_volume_scaling()
-    print "Using volume scale map.\n"
+    print("Using volume scale map.\n")
   map_3d = fft_map.real_map_unpadded()
   return map_3d
 
 def run(args, log = sys.stdout):
   if(len(args)==0):
-    print >> log, legend
+    print(legend, file=log)
     defaults(log=log)
     return
   #
@@ -136,7 +136,7 @@ def run(args, log = sys.stdout):
     map_3d = map_from_reflection_file(reflection_files=reflection_files, params=params)
   else:
     map_3d = processed_args.ccp4_map.data.as_double()
-  print "Map values at specified points:"
+  print("Map values at specified points:")
   for point in params.point:
     point_frac = unit_cell.fractionalize(point)
     point_formatted = ",".join([str("%10.3f"%p).strip() for p in point])
@@ -144,8 +144,8 @@ def run(args, log = sys.stdout):
       ",".join([str("%10.3f"%p).strip() for p in point_frac])
     map_value = str(
       "%10.3f"%map_3d.eight_point_interpolation(point_frac)).strip()
-    print "  Input point: (%s) Fractionalized: (%s) Map value: %s"%(
-      point_formatted, point_frac_formatted, map_value)
+    print("  Input point: (%s) Fractionalized: (%s) Map value: %s"%(
+      point_formatted, point_frac_formatted, map_value))
   #
   if(atoms_with_labels is not None):
     for point in atoms_with_labels:
@@ -153,10 +153,10 @@ def run(args, log = sys.stdout):
       point_formatted = ",".join([str("%8.3f"%p) for p in point.xyz])
       map_value = str(
         "%10.3f"%map_3d.eight_point_interpolation(point_frac)).strip()
-      print point.quote(), "Point: %s Map value: %s"%(point_formatted,map_value)
+      print(point.quote(), "Point: %s Map value: %s"%(point_formatted,map_value))
   #
-  print
-  print "All done."
+  print()
+  print("All done.")
 
 if(__name__ == "__main__"):
   run(sys.argv[1:])

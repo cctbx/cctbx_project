@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import sys, os
 op = os.path
@@ -29,7 +29,7 @@ def exercise_image_simple():
           spot_intensity_factors = flex.double([spot_intensity_factor])
         for apply_proximity_factor in [False, True]:
           if (star == "*"):
-            expected_sum_image_pixels = expected_sum_image_pixels_iter.next()
+            expected_sum_image_pixels = next(expected_sum_image_pixels_iter)
           for code in range(16):
             store_miller_index_i_seqs = bool(code & 0x1)
             store_spots = bool(code & 0x2)
@@ -163,7 +163,7 @@ detector {
   full_path = libtbx.env.find_in_repositories(
     relative_path=relative_path, test=op.isfile)
   if (full_path is None):
-    print "Skipping some tests due to missing file: %s" % relative_path
+    print("Skipping some tests due to missing file: %s" % relative_path)
   else:
     check(
       args=["pdb_file="+show_string(full_path)],
@@ -177,13 +177,13 @@ lattice_symmetry = "P 6 2 2"
 def exercise_explore_completeness():
   import libtbx.load_env
   if (not libtbx.env.has_module("spotfinder")):
-    print "Skipping some tests due to missing module: spotfinder"
+    print("Skipping some tests due to missing module: spotfinder")
     return
   from libtbx.test_utils import contains_substring
   from libtbx import easy_run
   def run(args):
     cmd = " ".join(["rstbx.simage.explore_completeness"] + args)
-    print cmd
+    print(cmd)
     buf = easy_run.fully_buffered(
       command=cmd, stdout_splitlines=False).raise_if_errors().stdout_buffer
     for key in [
@@ -203,13 +203,13 @@ def exercise_explore_completeness():
 def exercise_solver():
   import libtbx.load_env
   if (not libtbx.env.has_module("spotfinder")):
-    print "Skipping some tests due to missing module: spotfinder"
+    print("Skipping some tests due to missing module: spotfinder")
     return
   from libtbx.test_utils import block_show_diff, contains_substring
   from libtbx import easy_run
   def run(args):
     cmd = " ".join(["rstbx.simage.solver"] + args)
-    print cmd
+    print(cmd)
     buf = easy_run.fully_buffered(
       command=cmd, stdout_splitlines=False).raise_if_errors().stdout_buffer
     for key in [
@@ -244,12 +244,12 @@ Correlation of input and estimated I-obs:
   i_perm=5:  1.00000 (r1: 0.00000)
 """)
   if (not libtbx.env.has_module("labelit")):
-    print "Skipping some tests due to missing module: labelit"
+    print("Skipping some tests due to missing module: labelit")
   else:
     from libtbx import easy_mp
     mp_problem = easy_mp.detect_problem()
     if (mp_problem is not None):
-      print "Skipping some tests:", mp_problem
+      print("Skipping some tests:", mp_problem)
     else:
       buf = run([
         "d_min=5", "lattice_symmetry=P422", "intensity_symmetry=P4",
@@ -268,7 +268,7 @@ def run(args):
   exercise_create()
   exercise_explore_completeness()
   exercise_solver()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

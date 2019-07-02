@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import time
 from cctbx import maptbx
@@ -269,7 +269,7 @@ def exercise():
   """
   for i_pdb, pdb_str in enumerate([pdb_str_1, pdb_str_2, pdb_str_3]):
     for solvent_radius in [0, 1.0]:
-      print "file %d solvent_raius: %3.1f"%(i_pdb, solvent_radius)
+      print("file %d solvent_raius: %3.1f"%(i_pdb, solvent_radius))
       xrs = iotbx.pdb.input(source_info = None,
         lines = pdb_str).xray_structure_simple()
       mp = mmtbx.masks.mask_master_params.extract()
@@ -284,7 +284,7 @@ def exercise():
         mmtbx_masks_asu_mask_obj.asu_mask.contact_surface_fraction
       assert c1o+c0o==s
       f1o, f0o = c1o*100./s, c0o*100./s
-      print "  old", f1o, f0o, csf
+      print("  old", f1o, f0o, csf)
       mask_data = maptbx.mask(
         xray_structure = xrs, # Expanded to P1 internally
         n_real         = mask_data.focus(),
@@ -292,7 +292,7 @@ def exercise():
       c1n, c0n, s = mask_data.count(1), mask_data.count(0), mask_data.size()
       assert c1n+c0n==s
       f1n, f0n = c1n*100./s, c0n*100./s
-      print "  new:", f1n, f0n
+      print("  new:", f1n, f0n)
       assert approx_equal(f1o, f1n, 1)
       assert approx_equal(f0o, f0n, 1)
       assert approx_equal(f1o, csf*100, 1)
@@ -300,5 +300,5 @@ def exercise():
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise()
-  print "Total time: %-8.4f"%(time.time()-t0)
-  print "OK"
+  print("Total time: %-8.4f"%(time.time()-t0))
+  print("OK")

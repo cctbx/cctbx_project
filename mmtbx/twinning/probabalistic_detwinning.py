@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
 from scitbx import lbfgs
 from cctbx.array_family import flex
 import scitbx.lbfgs
 import math
 from libtbx.test_utils import approx_equal
+from six.moves import zip
 
 
 class detwin(object):
@@ -168,4 +169,4 @@ def run():
 
 if __name__ == '__main__':
   run()
-  print "OK"
+  print("OK")

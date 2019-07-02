@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import Auto
 import os.path
 import sys
@@ -73,7 +73,7 @@ Utility to compute a single set of map coefficients with minimal input.
     params.output_file = os.path.splitext(pdb_file)[0] + "_%s.mtz" % \
       params.map_type
   mtz_dataset.mtz_object().write(params.output_file)
-  print >> out, "Wrote %s" % params.output_file
+  print("Wrote %s" % params.output_file, file=out)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

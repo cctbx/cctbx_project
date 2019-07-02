@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # TODO:
 #  - prompt user for missing symmetry
@@ -125,6 +125,7 @@ ma5 = miller.array(miller.set(xs, mi5), data=flex.double( [12.429, 38.635, -3.32
 ma5.set_info(miller.array_info(source="artificial file", labels=["BarFoo"]))
 
 
+
 mtz1 = ma1.as_mtz_dataset(column_root_label="I")
 mtz1.add_miller_array(ma2, column_root_label="MyMap")
 mtz1.add_miller_array(ma3, column_root_label="Oink")
@@ -197,6 +198,7 @@ import libtbx
 import traceback
 import sys, zmq, threading,  time
 
+from six.moves import input
 
 
 argn = 1
@@ -209,9 +211,9 @@ def Inputarg(varname):
   if argc > 1 and argn < argc:
     myvar = sys.argv[argn]
     argn = argn + 1
-    print varname + " " + myvar
+    print(varname + " " + myvar)
   else:
-    myvar = raw_input(varname)
+    myvar = input(varname)
   return myvar
 
 
@@ -222,7 +224,7 @@ class settings_window () :
 
 
   def update_reflection_info (self, hkl, d_min, value) :
-    print hkl, value
+    print(hkl, value)
     if (hkl is None) :
       self.hkl_info.SetValue("")
       self.d_min_info.SetValue("")
@@ -250,7 +252,7 @@ class HKLViewFrame() :
     self.dmin = -1
     self.settings = display.settings()
     self.verbose = True
-    if kwds.has_key('verbose'):
+    if 'verbose' in kwds:
       self.verbose = kwds['verbose']
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
@@ -259,13 +261,13 @@ class HKLViewFrame() :
     self.NewFileLoaded = False
     self.infostr = ""
     self.useSocket=False
-    if kwds.has_key('useSocket'):
+    if 'useSocket' in kwds:
       self.useSocket = kwds['useSocket']
       self.context = zmq.Context()
       self.socket = self.context.socket(zmq.PAIR)
       self.socket.connect("tcp://127.0.0.1:7895")
       self.STOP = False
-      print "starting socketthread"
+      print("starting socketthread")
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen )
       self.msgqueuethrd.daemon = True
       self.msgqueuethrd.start()
@@ -385,14 +387,14 @@ class HKLViewFrame() :
         self.mprint( "No miller array has been selected", True)
         return False
       return True
-    except Exception, e:
+    except Exception as e:
       self.mprint(to_str(e) + "\n" + traceback.format_exc(), True)
       return False
 
 
   def mprint(self, m, verbose=False):
     if self.verbose or verbose:
-      print m
+      print(m)
 
 
   def update_clicked (self, index) :#hkl, d_min=None, value=None) :
@@ -593,7 +595,7 @@ class HKLViewFrame() :
         arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
           )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)
         #arrays = f.file_server.miller_arrays
-      except Exception, e :
+      except Exception as e :
         self.NewFileLoaded=False
         self.mprint(to_str(e), True)
         arrays = []

@@ -1,9 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
 from functools import cmp_to_key
+from six import string_types
 from six.moves import cStringIO
 
 import sys
+from six.moves import zip
 
 def format_none(format, null_value=0, replace_with="None"):
   assert isinstance(replace_with, str)
@@ -167,7 +169,7 @@ def make_sub_header(text, out=None, header_len=80, sep='-'):
   >>>
   """
   if (out is None): out = sys.stdout
-  assert isinstance(sep, basestring)
+  assert isinstance(sep, string_types)
   border = sep*10
   line = border+text+border
   line_len = len(line)

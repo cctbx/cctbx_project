@@ -6,8 +6,9 @@ and refinement of such models, see mmtbx.building.alternate_conformations or
 mmtbx.refinement.ensemble_refinement.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math
+import six
 
 def set_ensemble_b_factors_to_xyz_displacement(pdb_hierarchy,
     include_hydrogens=False,
@@ -57,7 +58,7 @@ def set_ensemble_b_factors_to_xyz_displacement(pdb_hierarchy,
       else :
         xyz_by_atom[atom_key] = flex.vec3_double([atom.xyz])
   dev_by_atom = {}
-  for atom_key, xyz in xyz_by_atom.iteritems():
+  for atom_key, xyz in six.iteritems(xyz_by_atom):
     if (method == "mcs"):
       mcs = minimum_covering_sphere(points=xyz, epsilon=0.1)
       radius = mcs.radius()
@@ -68,11 +69,12 @@ def set_ensemble_b_factors_to_xyz_displacement(pdb_hierarchy,
       mean_array = flex.vec3_double(xyz.size(), xyz.mean())
       rmsf = xyz.rms_difference(mean_array)
       dev_by_atom[atom_key] = rmsf
-  all_dev = flex.double(dev_by_atom.values())
+  # NOTE it seems flex.double handles list generators, not sure about funky python3 dict.values() though
+  all_dev = flex.double(list(dev_by_atom.values()))
   if (method == "mcs"):
-    print >> log, "Distribution of sphere radii:"
+    print("Distribution of sphere radii:", file=log)
   else :
-    print >> log, "Distribution of root-mean-square fluctuation values:"
+    print("Distribution of root-mean-square fluctuation values:", file=log)
   flex.histogram(all_dev, n_slots=20).show(f=log, prefix="  ",
     format_cutoffs="%.2f")
   for model in pdb_hierarchy.models():

@@ -4,7 +4,7 @@
 #
 # $Id: stills_merge.py 20545 2014-08-25 22:22:15Z idyoung $
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 
 import iotbx.phil
@@ -40,7 +40,7 @@ def eval_ending (file_name):
   return None
 
 def get_observations (data_dirs,data_subset):
-  print "Step 1.  Get a list of all files"
+  print("Step 1.  Get a list of all files")
   file_names = []
   for dir_name in data_dirs :
     if not os.path.isdir(dir_name):
@@ -51,7 +51,7 @@ def get_observations (data_dirs,data_subset):
           (data_subset == 1 and int(eval_ending(file_name)[0][-1]) % 2 == 1 or \
           (data_subset == 2 and int(eval_ending(file_name)[0][-1]) % 2 == 0)):
           file_names.append(os.path.join(dir_name, file_name))
-  print "Number of frames found:", len(file_names)
+  print("Number of frames found:", len(file_names))
   return file_names
 
 cxi_merge.get_observations = get_observations
@@ -72,7 +72,7 @@ def load_result (file_name,
   # If @p file_name cannot be read, the load_result() function returns
   # @c None.
 
-  print "Step 2.  Load frame obj and filter on lattice & cell with",reindex_op
+  print("Step 2.  Load frame obj and filter on lattice & cell with",reindex_op)
   """
   Take a frame with all expected contents of an integration pickle, confirm
   that it contains the appropriate data, and check the lattice type and unit
@@ -93,11 +93,11 @@ def load_result (file_name,
   result_array = obj["observations"][0]
   unit_cell = result_array.unit_cell()
   sg_info = result_array.space_group_info()
-  print >> out, ""
-  print >> out, "-" * 80
-  print >> out, file_name
-  print >> out, sg_info
-  print >> out, unit_cell
+  print("", file=out)
+  print("-" * 80, file=out)
+  print(file_name, file=out)
+  print(sg_info, file=out)
+  print(unit_cell, file=out)
 
   #Check for pixel size (at this point we are assuming we have square pixels, all experiments described in one
   #refined_experiments.json file use the same detector, and all panels on the detector have the same pixel size)
@@ -130,7 +130,7 @@ def load_result (file_name,
     raise OutlierCellError(
       "Skipping cell with outlier dimensions (%g %g %g %g %g %g" %
       unit_cell.parameters())
-  print >> out, "Integrated data:"
+  print("Integrated data:", file=out)
   result_array.show_summary(f=out, prefix="  ")
   # XXX don't force reference setting here, it will be done later, after the
   # original unit cell is recorded
@@ -153,7 +153,7 @@ if (__name__ == "__main__"):
       from wxtbx.command_line import loggraph
       loggraph.run([result.loggraph_file])
     except Exception as e :
-      print "Can't display plots"
-      print "You should be able to view them by running this command:"
-      print "  wxtbx.loggraph %s" % result.loggraph_file
+      print("Can't display plots")
+      print("You should be able to view them by running this command:")
+      print("  wxtbx.loggraph %s" % result.loggraph_file)
       raise e

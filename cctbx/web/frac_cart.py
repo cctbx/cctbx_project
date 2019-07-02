@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # Convert coordinates from/to Fractional or Orthogonal.
 
 from cctbx import uctbx
@@ -14,16 +14,16 @@ def interpret_form_data(form):
   return inp
 
 def run(server_info, inp, status):
-  print "<pre>"
+  print("<pre>")
   unit_cell = uctbx.unit_cell(inp.ucparams)
   unit_cell.show_parameters()
-  print
+  print()
 
   if (inp.coor_type == "Fractional"):
-    print "Cartesian coordinates:"
+    print("Cartesian coordinates:")
   else:
-    print "Fractional coordinates:"
-  print
+    print("Fractional coordinates:")
+  print()
 
   skip_columns = io_utils.interpret_skip_columns(inp.skip_columns)
 
@@ -33,6 +33,6 @@ def run(server_info, inp, status):
       c = unit_cell.orthogonalize(coordinates)
     else:
       c = unit_cell.fractionalize(coordinates)
-    print skipped, "%.6g %.6g %.6g" % tuple(c)
+    print(skipped, "%.6g %.6g %.6g" % tuple(c))
 
-  print "</pre>"
+  print("</pre>")

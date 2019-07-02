@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex # import dependency
 import scitbx.array_family.shared # import dependency
 
 import boost.python
+from six.moves import zip
 ext = boost.python.import_ext("cctbx_uctbx_ext")
 from cctbx_uctbx_ext import *
 
@@ -53,7 +54,13 @@ class unit_cell(ext.unit_cell):
     else:
       ext.unit_cell.__init__(self, parameters=[])
 
-ext.unit_cell.metrical_matrix.__func__.__doc__ = """
+def update_docstring(obj, string):
+  try:
+    obj.__doc__ = string # Py3
+  except AttributeError:
+    obj.__func__.__doc__ = string # Py2
+
+update_docstring(ext.unit_cell.metrical_matrix, """
 Access to the metrical matrix:
 
 .. math::
@@ -65,9 +72,9 @@ Access to the metrical matrix:
 
 :returns: the metrical matrix
 :rtype: tuple
-"""
+""")
 
-ext.unit_cell.orthogonalization_matrix.__func__.__doc__ = """
+update_docstring(ext.unit_cell.orthogonalization_matrix, """
 Matrix for the conversion of fractional to Cartesian coordinates:
 
 .. math::
@@ -75,9 +82,9 @@ Matrix for the conversion of fractional to Cartesian coordinates:
 
 :returns: the orthogonalization matrix
 :rtype: tuple
-"""
+""")
 
-ext.unit_cell.fractionalization_matrix.__func__.__doc__ = """
+update_docstring(ext.unit_cell.fractionalization_matrix, """
 Matrix for the conversion of fractional to Cartesian coordinates:
 
 .. math::
@@ -85,9 +92,9 @@ Matrix for the conversion of fractional to Cartesian coordinates:
 
 :returns: the fractionalization matrix
 :rtype: tuple
-"""
+""")
 
-ext.unit_cell.orthogonalize.__func__.__doc__ = """
+update_docstring(ext.unit_cell.orthogonalize, """
 Conversion of fractional coordinates to Cartesian coordinates.
 
 :param sites_frac: The fractional coordinates.
@@ -96,9 +103,9 @@ Conversion of fractional coordinates to Cartesian coordinates.
 
 :returns: the Cartesian coordinates
 :rtype: 3-tuple or flex.vec3_double
-"""
+""")
 
-ext.unit_cell.fractionalize.__func__.__doc__ = """
+update_docstring(ext.unit_cell.fractionalize, """
 Conversion of Cartesian coordinates to fractional coordinates.
 
 :param sites_cart: The Cartesian coordinates.
@@ -107,10 +114,10 @@ Conversion of Cartesian coordinates to fractional coordinates.
 
 :returns: the fractional coordinates
 :rtype: 3-tuple or flex.vec3_double
-"""
+""")
 
-
-class _(boost.python.injector, ext.unit_cell):
+@boost.python.inject_into(ext.unit_cell)
+class _():
 
   def __str__(self):
     return format(self, "({:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g})")
@@ -120,7 +127,7 @@ class _(boost.python.injector, ext.unit_cell):
 
   def show_parameters(self, f=None, prefix="Unit cell: "):
     if (f is None): f = sys.stdout
-    print >> f, prefix + str(self)
+    print(prefix + str(self), file=f)
 
   def is_conventional_hexagonal_basis(self,
         absolute_length_tolerance=1e-3,

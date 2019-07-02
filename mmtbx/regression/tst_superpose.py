@@ -1,5 +1,5 @@
 """Tests for superpose.py"""
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import random
 import os
 import unittest
@@ -9,6 +9,7 @@ import libtbx.load_env
 import libtbx.test_utils
 
 import mmtbx.superpose as superpose
+from six.moves import range
 
 if (1):
   # Fix random seed to avoid rare failures
@@ -76,10 +77,10 @@ class SuperposeExamples(object):
         result[(moving_chain.id, fixed_chain.id)] = moving.superpose(fixed)
 
     keys = set([i[0] for i in sorted(result.keys())])
-    print "\t"+"\t".join(keys)
+    print("\t"+"\t".join(keys))
     for key1 in keys:
       rmsds = [result[(key1,key2)][0] for key2 in keys]
-      print "%s:\t"%key1, "\t".join(["%0.2f"%i for i in rmsds])
+      print("%s:\t"%key1, "\t".join(["%0.2f"%i for i in rmsds]))
 
   def test_example_sieve(self):
     pass
@@ -109,7 +110,7 @@ class SuperposeTest(unittest.TestCase):
     # OK!
     def test_alignment_used_2(self, filename='fab_a_cut.pdb', test='test_alignment_used_2', tolerance=0.003):
       filename = get_filename(filename)
-      for attempt in xrange(1):
+      for attempt in range(1):
         filename_shifted = '%s.%s.shifted.pdb'%(test, attempt)
         gap_selection = "chain A and (resid %s:%s or resid %s:%s or resid %s:%s)"%(tuple(
           random_pair(0, 15)+
@@ -141,7 +142,7 @@ class SuperposeTest(unittest.TestCase):
       ]
       count = 0
       for shift, shift_selection, remove_selection in tests:
-        print "========= shift: %s -- shift_selection: %s -- remove_selection: %s"%(shift, shift_selection, remove_selection)
+        print("========= shift: %s -- shift_selection: %s -- remove_selection: %s"%(shift, shift_selection, remove_selection))
         filename_shifted = '%s.%s.shifted.pdb'%(test, count)
         filename_fitted = '%s.%s.fitted.pdb'%(test, count)
         cmd = """phenix.pdbtools %(filename)s output.file_name=%(filename_shifted)s selection="%(shift_selection)s" remove="%(remove_selection)s" %(shift)s"""%{
@@ -180,7 +181,7 @@ class SuperposeTest(unittest.TestCase):
       ph = pi.construct_hierarchy()
       pa = ph.atoms()
       uij = pa.extract_uij().as_double()
-      print uij.all_eq(-1.0)
+      print(uij.all_eq(-1.0))
       assert uij.all_eq(-1.0)
 
     # Mostly OK!

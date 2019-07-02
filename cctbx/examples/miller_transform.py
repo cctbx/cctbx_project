@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -6,6 +6,7 @@ from cctbx.array_family import flex
 from cmath import exp, pi
 from scitbx.matrix import row, col
 from libtbx.test_utils import approx_equal
+from six.moves import zip
 
 def exercise():
   ma = miller.array(
@@ -35,7 +36,7 @@ def exercise():
 
 def run():
   exercise()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

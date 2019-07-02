@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 import iotbx.pdb
 import iotbx.mrcfile
@@ -108,12 +108,12 @@ def run(prefix="tst_model_map"):
     x=abs(fc0).data(), y=abs(fc1).data()).coefficient()
   cc2 = flex.linear_correlation(
     x=abs(fc0).data(), y=abs(fc2).data()).coefficient()
-  print cc1, cc2
+  print(cc1, cc2)
   assert cc1>0.9999
   assert cc2>0.97 # WHY?
 
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  print "Time: %6.3f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.3f"%(time.time()-t0))
+  print("OK")

@@ -5,7 +5,7 @@ This does not actually handle any of the scaling and fmodel calculations,
 which are performed approximately as in model_vs_data.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import residue, validation
 from libtbx import Auto, slots_getstate_setstate
 from libtbx.str_utils import format_value
@@ -117,28 +117,28 @@ class data_statistics(slots_getstate_setstate):
     self.n_free_outer = r_free_flags_outer.data().count(True)
 
   def show_summary(self, out=sys.stdout, prefix=""):
-    print >> out, "%sHigh resolution       = %7.3f" % (prefix, self.d_min)
-    print >> out, "%sR-work                = %8.4f" % (prefix, self.r_work)
-    print >> out, "%sR-free                = %8.4f" % (prefix, self.r_free)
+    print("%sHigh resolution       = %7.3f" % (prefix, self.d_min), file=out)
+    print("%sR-work                = %8.4f" % (prefix, self.r_work), file=out)
+    print("%sR-free                = %8.4f" % (prefix, self.r_free), file=out)
 
   def show(self, out=sys.stdout, prefix=""):
     def fv(fs, val):
       return format_value(fs, val, replace_none_with="----")
     if (not self.wavelength in [None, 0]):
-      print >> out, "%sWavelength                 = %.4g" % (prefix,
-        self.wavelength)
-    print >> out, "%sResolution range           = %7.3f - %.3f (%.3f - %.3f)" \
-      % (prefix, self.d_max, self.d_min, self.d_max_outer, self.d_min_outer)
-    print >> out, "%sNumber of reflections      = %8d (%d)" % (prefix,
-      self.n_refl, self.n_refl_outer)
-    print >> out, "%s   after outlier rejection = %8d (%d)" % (prefix,
-      self.n_refl_refine, self.n_refl_refine_outer)
-    print >> out, "%sCompleteness               = %6.2f%% (%.2f%%)" % (prefix,
-      self.info.completeness_in_range*100, self.completeness_outer*100)
-    print >> out, "%sR-work                     = %8.4f (%s)" % (prefix,
-      self.r_work, fv("%.4f", self.r_work_outer))
-    print >> out, "%sR-free                     = %8.4f (%s)" % (prefix,
-      self.r_free, fv("%.4f", self.r_free_outer))
+      print("%sWavelength                 = %.4g" % (prefix,
+        self.wavelength), file=out)
+    print("%sResolution range           = %7.3f - %.3f (%.3f - %.3f)" \
+      % (prefix, self.d_max, self.d_min, self.d_max_outer, self.d_min_outer), file=out)
+    print("%sNumber of reflections      = %8d (%d)" % (prefix,
+      self.n_refl, self.n_refl_outer), file=out)
+    print("%s   after outlier rejection = %8d (%d)" % (prefix,
+      self.n_refl_refine, self.n_refl_refine_outer), file=out)
+    print("%sCompleteness               = %6.2f%% (%.2f%%)" % (prefix,
+      self.info.completeness_in_range*100, self.completeness_outer*100), file=out)
+    print("%sR-work                     = %8.4f (%s)" % (prefix,
+      self.r_work, fv("%.4f", self.r_work_outer)), file=out)
+    print("%sR-free                     = %8.4f (%s)" % (prefix,
+      self.r_free, fv("%.4f", self.r_free_outer)), file=out)
     self.info.show_rwork_rfree_number_completeness(prefix=prefix, out=out,
       title="By resolution bin:")
 
@@ -172,7 +172,7 @@ class real_space(validation):
     self.protein = list()
     self.other = list()
     self.water = list()
-    aa_codes = one_letter_given_three_letter.keys()
+    aa_codes = one_letter_given_three_letter
 
     # redo real_space_corelation.simple to use map objects instead of filenames
     self.overall_rsc = None
@@ -225,7 +225,7 @@ class real_space(validation):
           pdb_hierarchy=pdb_hierarchy,
           params=rsc_params,
           log=null_out())
-    except Exception, e :
+    except Exception as e :
       raise
     else :
       assert ( (self.overall_rsc is not None) and (rsc is not None) )
@@ -264,7 +264,7 @@ class real_space(validation):
         # print outliers, however.
         if (result_.residue.resname != 'HOH'): # water is handled by waters.py
           self.everything.append(result)
-          if (result_.residue.resname in aa_codes):
+          if result_.residue.resname in one_letter_given_three_letter:
             self.protein.append(result)
           else:
             self.other.append(result)
@@ -280,16 +280,16 @@ class real_space(validation):
       self.everything += water
 
   def show_summary(self, out=sys.stdout, prefix=""):
-    print >> out, prefix +\
+    print(prefix +\
       "%d residues (including water) with CC(Fc,2mFo-DFc) < 0.8" % \
-      self.n_outliers
+      self.n_outliers, file=out)
 
   def show(self, out=sys.stdout, prefix="  ", verbose=True):
     if (self.n_outliers > 0):
-      print >> out, prefix + self.get_result_class().header()
+      print(prefix + self.get_result_class().header(), file=out)
       for result in (self.protein + self.other):
         if result.is_outlier():
-          print >> out, prefix + str(result)
+          print(prefix + str(result), file=out)
     self.show_summary(out=out, prefix=prefix)
 
 def merging_and_model_statistics(

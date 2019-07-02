@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb.hierarchy
 
 from iotbx import pdb
@@ -91,7 +91,7 @@ def run(args, command_name="phenix.pdb.hierarchy"):
       if (not co.no_cryst):
         s = pdb_objs.input.crystallographic_section()
         if (s.size() != 0):
-          print >> open(co.write_pdb_file, "wb"), "\n".join(s)
+          print("\n".join(s), file=open(co.write_pdb_file, "w"))
           open_append = True
       pdb_objs.hierarchy.write_pdb_file(
         file_name=co.write_pdb_file,
@@ -102,7 +102,7 @@ def run(args, command_name="phenix.pdb.hierarchy"):
         sigatm=not co.no_sigatm,
         anisou=not co.no_anisou,
         siguij=not co.no_anisou)
-    print co.prefix.rstrip()
+    print(co.prefix.rstrip())
 
 def execute(
       file_name,
@@ -118,9 +118,9 @@ def execute(
       duplicate_atom_labels_max_show=duplicate_atom_labels_max_show,
       level_id=level_id)
   except KeyboardInterrupt: raise
-  except Exception, e:
-    print "Exception: file %s: %s: %s" % (
-      show_string(file_name), e.__class__.__name__, str(e))
+  except Exception as e:
+    print("Exception: file %s: %s: %s" % (
+      show_string(file_name), e.__class__.__name__, str(e)))
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

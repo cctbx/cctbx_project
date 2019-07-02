@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import adptbx, sgtbx
 from cctbx.development import debug_utils
 from scitbx.math import row_echelon_full_pivoting
@@ -6,13 +6,14 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import random
 import sys
+from six.moves import range
 
 
 def f(u_cart):
   """ A non-linear function of the 6 components u_cart """
   result = 0
   u = u_cart[0]
-  for i in xrange(1,6):
+  for i in range(1,6):
     if i%2: v = u*u
     else:   v = u*u*u
     result += v * u_cart[i]
@@ -27,9 +28,9 @@ def exercise_all_wyckoff(flags, space_group_info):
     volume=1000)
   unit_cell = crystal.unit_cell()
   wyckoffs = space_group_info.wyckoff_table()
-  for i in xrange(wyckoffs.size()):
+  for i in range(wyckoffs.size()):
     wyckoff_pos = wyckoffs.position(i)
-    print "%s," % wyckoff_pos.letter(),
+    print("%s," % wyckoff_pos.letter(), end=' ')
     special_op = wyckoff_pos.special_op()
     exact_site = eval("(%s)" % special_op, {'x':0.1, 'y':0.2, 'z':0.3})
     site_symmetry = sgtbx.site_symmetry(crystal.unit_cell(),
@@ -42,7 +43,7 @@ def exercise_all_wyckoff(flags, space_group_info):
     n = u_cart_constraints.n_independent_params()
     assert n == u_star_constraints.n_independent_params()
     basis = []
-    for i in xrange(n):
+    for i in range(n):
       v = [0]*n
       v[i] = 1
       basis.append(v)
@@ -61,10 +62,10 @@ def exercise_all_wyckoff(flags, space_group_info):
 
     """ Test the independent gradient computation """
     eps = 1e-4
-    v0 = tuple([ random.random() for i in xrange(n) ])
+    v0 = tuple([ random.random() for i in range(n) ])
     u_cart_0 = u_cart_constraints.all_params(v0)
     grad_f_wrt_independent_u_cart = []
-    for i in xrange(n):
+    for i in range(n):
       v_up = list(v0)
       v_up[i] += eps
       v_down = list(v0)
@@ -74,7 +75,7 @@ def exercise_all_wyckoff(flags, space_group_info):
             ) / (2 * eps)
       grad_f_wrt_independent_u_cart.append(der)
     grad_f_wrt_u_cart = []
-    for i in xrange(6):
+    for i in range(6):
       u_cart_up = list(u_cart_0)
       u_cart_up[i] += eps
       u_cart_down = list(u_cart_0)
@@ -87,12 +88,12 @@ def exercise_all_wyckoff(flags, space_group_info):
              - flex.double(grad_f_wrt_independent_u_cart) ) ) < 5*eps**2
 
     """ Check independent_params """
-    v = tuple([ random.random() for i in xrange(n) ])
+    v = tuple([ random.random() for i in range(n) ])
     u_cart = u_cart_constraints.all_params(v)
     w = u_cart_constraints.independent_params(u_cart)
     assert approx_equal(v, w, eps=1e-12)
 
-  print
+  print()
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:],

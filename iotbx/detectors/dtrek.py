@@ -1,5 +1,6 @@
-from __future__ import division
-import re,struct
+from __future__ import absolute_import, division, print_function
+import re
+import struct
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 from iotbx.detectors.detectorbase import DetectorImageBase
@@ -15,17 +16,14 @@ class DTREKImage(DetectorImageBase):
     self.vendortype = "RAXIS"
 
   def read_vendor_header(self):
-    G = open(self.filename, "rb")
-    try:
-      assert G.read(14)=="{\nHEADER_BYTES"
-      raw = [charac for charac in G.read(6) if charac.isdigit()]
+    with open(self.filename, "rb") as fh:
+      tag = fh.read(14)
+      assert tag==b"{\nHEADER_BYTES"
+      raw = [charac for charac in fh.read(6).decode("ascii", "replace") if charac.isdigit()]
       header_bytes = int("".join(raw))
       assert header_bytes%512==0
-      G.seek(0)
-      padded_header = G.read(header_bytes)
-    finally:
-      # ensure that the file gets closed no matter what!
-      G.close()
+      fh.seek(0)
+      padded_header = fh.read(header_bytes).decode("latin-1", "replace")
     unpadded_header = padded_header.rstrip()
     assert unpadded_header[0:2]=="{\n"
     assert unpadded_header[-2:]=="\n}"
@@ -61,10 +59,9 @@ class DTREKImage(DetectorImageBase):
                ("HEADER_BYTES",int,1),
               ]
     for mandate in self.enf:
-      pattern = re.compile(mandate[0])
-      matches = pattern.findall(self.header)
+      matches = re.findall(mandate[0], self.header)
       for match in matches:
-        if verbose: print match,
+        if verbose: print(match, end=' ')
         if mandate[2]==1:
           self.keys[match] = mandate[1](self.keys[match])
         else:
@@ -73,8 +70,8 @@ class DTREKImage(DetectorImageBase):
           if mandate[2] > 1: assert len(all_values)==mandate[2]
           self.keys[match] = all_values
         if verbose:
-          print self.keys[match],
-          print
+          print(self.keys[match], end=' ')
+          print()
 
     for integer in ["SIZE1","SIZE2","SATURATED_VALUE"]:
       self.keys[integer]=int(self.keys[integer])
@@ -90,7 +87,7 @@ class DTREKImage(DetectorImageBase):
       self.parameters={}
       if verbose:
        for i in self.headerlines:
-        print "%29s"%i[0],self.keys[i[0]]
+        print("%29s"%i[0],self.keys[i[0]])
       # Note that SIZE1 is slow for ADSC/CBF but fast for RAXIS
       # Note that SIZE2 is fast for ADSC/CBF but slow for RAXIS
       self.parameters['SIZE1'] = self.keys["SIZE1"]
@@ -151,9 +148,8 @@ class DTREKImage(DetectorImageBase):
       return 0 #little_endian
 
   def read(self):
-    G = open(self.filename, "rb")
-    try:
-      G.seek(self.keys["HEADER_BYTES"])
+    with open(self.filename, "rb") as fh:
+      fh.seek(self.keys["HEADER_BYTES"])
 
       endian_code = {'little_endian':'<','big_endian':'>'}[self.keys["BYTE_ORDER"]]
       type_code = {'signed char':'b',
@@ -167,10 +163,7 @@ class DTREKImage(DetectorImageBase):
       type_size = {'b':1,'B':1,'h':2,'H':2,'i':4,'I':4,'f':4}[type_code]
       assert not type_code=="I" # for I, a flex.int() will exceed type limits
       array_size = self.parameters['SIZE1'] * self.parameters['SIZE2']
-      rawdata = G.read(array_size * type_size)
-    finally:
-      # ensure that the file gets closed no matter what!
-      G.close()
+      rawdata = fh.read(array_size * type_size)
       #Python prototype--
       #doesn't handle raxis uncompression & is 10x slower than C++ version
       #uncoded_data = struct.unpack(endian_code+type_code*array_size,rawdata)

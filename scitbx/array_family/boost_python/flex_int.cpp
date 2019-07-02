@@ -14,6 +14,10 @@
 #include <boost/lexical_cast.hpp>
 #include <map>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 namespace scitbx { namespace af { namespace boost_python {
 
   flex<int>::type*
@@ -91,7 +95,11 @@ namespace scitbx { namespace af { namespace boost_python {
     return result;
   }
 
+#ifdef IS_PY3K
+  PyObject*
+#else
   std::string
+#endif
   as_rgb_scale_string(
     af::const_ref<int, af::flex_grid<> > const& O,
     af::tiny<double, 3> const& rgb_scales_low,
@@ -118,7 +126,11 @@ namespace scitbx { namespace af { namespace boost_python {
         result[j++] = static_cast<char>(c);
       }
     }
+#ifdef IS_PY3K
+    return PyBytes_FromStringAndSize(result.c_str(), result.size());
+#else
     return result;
+#endif
   }
 
   af::shared<int> bitwise_not(

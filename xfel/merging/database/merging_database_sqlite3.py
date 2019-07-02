@@ -2,9 +2,10 @@
 #
 # $Id$
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from cctbx.array_family import flex
+from six.moves import zip
 
 
 def _execute(db_commands_queue, db_results_queue, db, semaphore):
@@ -80,16 +81,16 @@ class manager:
     """
 
     sql = ("INSERT INTO %s (" % table) \
-          + ", ".join(kwargs.keys()) + ") VALUES (" \
-          + ", ".join(["?"] * len(kwargs.keys())) + ")"
+          + ", ".join(kwargs) + ") VALUES (" \
+          + ", ".join(["?"] * len(kwargs)) + ")"
 
     # If there are more than one rows to insert, "unpack" the keyword
     # argument iterables and zip them up.  This effectively rearranges
     # a list of columns into a list of rows.
     try:
-      parameters = zip(*kwargs.values())
+      parameters = list(zip(*list(kwargs.values()))) # FIXME
     except TypeError:
-      parameters = [kwargs.values()]
+      parameters = [list(kwargs.values())]
 
     return (sql, parameters)
 

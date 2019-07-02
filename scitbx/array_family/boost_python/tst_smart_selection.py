@@ -1,9 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx.test_utils import show_diff
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 import sys
@@ -113,7 +113,7 @@ $&selected elements: 3 of 5
   assert l._flags is None
   assert l._indices is not None
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

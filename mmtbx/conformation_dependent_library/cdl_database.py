@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+import six
 
 version = "CDL v1.2"
 
@@ -10462,15 +10463,16 @@ class custom_cdl_dict(dict):
     self.version=None
 
 O = custom_cdl_dict()
-for k,v in zip(cdl_database.keys(), cdl_database.values()): O[k]=v
+for k,v in six.iteritems(cdl_database):
+  O[k]=v
 cdl_database=O
 cdl_database.version=version
 
 def run(args):
   assert len(args) == 0
-  print cdl_database["Pro_nonxpro"][(-180,-180)]
+  print(cdl_database["Pro_nonxpro"][(-180,-180)])
   for res_group_type in cdl_database:
-    print res_group_type, len(cdl_database[res_group_type])
+    print(res_group_type, len(cdl_database[res_group_type]))
 
 if (__name__ == "__main__"):
   import sys

@@ -1,17 +1,18 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.viewstats
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 9/19/2014
 Description : View convergence and other stats for post-refinement.
 '''
+from __future__ import absolute_import, division, print_function
 import matplotlib.pyplot as plt
 import sys
 import numpy as np
+from six.moves import range
 
 if len(sys.argv)==1:
-  print 'Use prime.viewstats to view convergence of post-refined parameters.'
-  print 'Usage: prime.viewstats your_run_no'
+  print('Use prime.viewstats to view convergence of post-refined parameters.')
+  print('Usage: prime.viewstats your_run_no')
   exit()
 run_no = sys.argv[1]
 
@@ -23,9 +24,9 @@ for file_in in os.listdir(run_no):
     cn_file += 1
 
 if cn_file == 0:
-  print 'Cannot find .paramhist file in your ', run_no, '.'
-  print 'To enable viewstats, rerun prime with flag_output_verbose=True in .phil file.'
-  print 'The .paramhist parameters will be recorded during the run.'
+  print('Cannot find .paramhist file in your ', run_no, '.')
+  print('To enable viewstats, rerun prime with flag_output_verbose=True in .phil file.')
+  print('The .paramhist parameters will be recorded during the run.')
   exit()
 
 param_file_list = []
@@ -52,7 +53,7 @@ for param_file in param_file_list:
 data_dict_0 = data_dict_list[0]
 data_dict_1 = data_dict_list[1]
 for i in range(n_data):
-  test_key = data_dict_list[0].keys()[i]
+  test_key = list(data_dict_list[0].keys())[i]
   if (test_key in data_dict_0) and (test_key in data_dict_1):
     test_id = i
     break
@@ -70,12 +71,12 @@ for key in data_dict_0.keys():
 
 test_param_0_update = data_dict_0[test_key]
 test_delta_1_calc = np.absolute(test_param_1-test_param_0_update)
-print 'test id', test_id
-print 'test key', test_key
-print '0th cycle (raw):', test_param_0_raw
-print '0th cycle (updated):', test_param_0_update
-print '1st cycle:', test_param_1
-print 'delta (calc.):', test_delta_1_calc
+print('test id', test_id)
+print('test key', test_key)
+print('0th cycle (raw):', test_param_0_raw)
+print('0th cycle (updated):', test_param_0_update)
+print('1st cycle:', test_param_1)
+print('delta (calc.):', test_delta_1_calc)
 
 delta_dict_list = []
 for i in range(len(data_dict_list)-1):
@@ -92,11 +93,11 @@ for i in range(len(data_dict_list)-1):
 
 delta_dict_0 = delta_dict_list[0]
 test_delta_1 = delta_dict_0[test_key]
-print 'delta (prog.):', test_delta_1
-print 'delta diff.:', test_delta_1 - test_delta_1_calc
-print 'sum of delta diff.', np.sum(np.absolute(test_delta_1 - test_delta_1_calc))
+print('delta (prog.):', test_delta_1)
+print('delta diff.:', test_delta_1 - test_delta_1_calc)
+print('sum of delta diff.', np.sum(np.absolute(test_delta_1 - test_delta_1_calc)))
 
-x_range = range(1, len(delta_dict_list)+1)
+x_range = list(range(1, len(delta_dict_list)+1))
 x_label = []
 for i in range(1, len(delta_dict_list)+1):
   x_label.append(str(i))

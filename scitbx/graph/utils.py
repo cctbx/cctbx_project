@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate
+from six.moves import range
 
 def construct_edge_sets(n_vertices, edge_list, assert_i_lt_j=True):
-  result = [set() for i in xrange(n_vertices)]
+  result = [set() for i in range(n_vertices)]
   for i,j in edge_list:
     if (assert_i_lt_j):
       assert i < j
@@ -22,7 +23,7 @@ def extract_edge_list(edge_sets):
 
 def bond_bending_edge_sets(edge_sets, omit_bonds=False):
   if (omit_bonds):
-    result = [set() for i in xrange(len(edge_sets))]
+    result = [set() for i in range(len(edge_sets))]
   else:
     result = [set(edge_set) for edge_set in edge_sets]
   for i,edge_set in enumerate(edge_sets):
@@ -39,7 +40,7 @@ def bond_bending_edge_sets(edge_sets, omit_bonds=False):
   return result
 
 def potential_implied_one_way_edge_sets(edge_sets, bond_bending_edge_sets):
-  result = [set() for i in xrange(len(edge_sets))]
+  result = [set() for i in range(len(edge_sets))]
   for i,edge_set in enumerate(edge_sets):
     for j in edge_set:
       if (j == i): continue
@@ -90,7 +91,7 @@ class tree_marking(slots_getstate_setstate):
     n_vertices = len(edge_sets)
     indices = [n_vertices] * n_vertices
     i_tree = 0
-    for i_root in xrange(n_vertices):
+    for i_root in range(n_vertices):
       if (indices[i_root] == n_vertices):
         follow = [i_root]
         while (len(follow) != 0):

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 #!/usr/bin/env python
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
@@ -15,7 +15,7 @@ from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.recompute_mosaicity
 #
 from dxtbx.model.experiment_list import ExperimentListDumper
-from dials.algorithms.indexing.nave_parameters import nave_parameters
+from dials.algorithms.indexing.nave_parameters import NaveParameters
 from dials.array_family import flex
 import libtbx.load_env
 from libtbx.phil import parse
@@ -79,7 +79,7 @@ class Script(object):
     for i in range(len(experiments)):
       refls = reflections.select(reflections['id'] == i)
       try:
-        nv = nave_parameters(params = None, experiments=experiments[i:i+1], reflections=refls, refinery=None, graph_verbose=False)
+        nv = NaveParameters(params = None, experiments=experiments[i:i+1], reflections=refls, refinery=None, graph_verbose=False)
         crystal_model_nv = nv()
       except Exception as e:
         continue
@@ -90,12 +90,12 @@ class Script(object):
       refls = refls.select(nv.nv_acceptance_flags)
       filtered_reflections.extend(refls)
 
-    print "Saving new experiments as %s"%params.output.experiments
+    print("Saving new experiments as %s"%params.output.experiments)
     dump = ExperimentListDumper(experiments)
     dump.as_json(params.output.experiments)
 
-    print "Removed %d out of %d reflections as outliers"%(len(reflections) - len(filtered_reflections), len(reflections))
-    print "Saving filtered reflections as %s"%params.output.experiments
+    print("Removed %d out of %d reflections as outliers"%(len(reflections) - len(filtered_reflections), len(reflections)))
+    print("Saving filtered reflections as %s"%params.output.experiments)
     filtered_reflections.as_pickle(params.output.reflections)
 
     if params.plot_changes:

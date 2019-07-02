@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 import libtbx.load_env
 import os
@@ -16,16 +16,16 @@ def exercise():
     relative_path="phenix_regression/reflection_files/1yjp.mtz",
     test=os.path.isfile)
   if (None in [pdb_file, mtz_file]):
-    print "phenix_regression not found, skipping"
+    print("phenix_regression not found, skipping")
     return
   assert (script_file is not None)
   args = [script_file, pdb_file, mtz_file]
   result = easy_run.fully_buffered("mmtbx.python \"%s\" \"%s\" \"%s\"" %
     (script_file, pdb_file, mtz_file)).raise_if_errors()
   for l in result.stdout_lines:
-    print l
+    print(l)
   assert ("CC(obs-calc): 0.949" in result.stdout_lines)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

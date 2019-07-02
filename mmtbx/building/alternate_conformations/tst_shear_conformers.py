@@ -1,7 +1,7 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.phil
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 master_params = """
 set_partial_occupancy = None
@@ -168,4 +168,4 @@ END
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # XXX most of this code is unused when run from the command line, but the
 # PHENIX GUI includes a simple frontend that uses the phil interface.
@@ -55,14 +55,14 @@ def run2(args=(), out=sys.stdout):
     working_params.cdl_lookup.residue_group_class = cdl_utils.get_res_type_group(
       *tuple(working_params.cdl_lookup.residue_names.split(",")[1:])
       )
-    print "\nPeptide triplet class : %s" % working_params.cdl_lookup.residue_group_class
+    print("\nPeptide triplet class : %s" % working_params.cdl_lookup.residue_group_class)
   key = working_params.cdl_lookup.phi_psi_angles.split(",")
   key[0] = int(key[0])
   key[1] = int(key[1])
   key = tuple(key)
   restraints_values = cdl_database[working_params.cdl_lookup.residue_group_class][key]
   outl = conformation_dependent_library.restraints_show(restraints_values)
-  print "\nCDL values\n%s" % outl
+  print("\nCDL values\n%s" % outl)
   return restraints_values
 
 def validate_params(params):

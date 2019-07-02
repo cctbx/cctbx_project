@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
@@ -8,8 +8,9 @@ from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from libtbx.utils import Sorry
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
+from six.moves import range
 
 def exercise_symmetry():
   xs = crystal.symmetry()
@@ -175,7 +176,7 @@ def exercise_select_crystal_symmetry():
                                                           from_parameter_file   = None,
                                                           from_coordinate_files = [None],
                                                           from_reflection_files = [None] )
-  except AssertionError ,e :
+  except AssertionError as e :
     assert str(e)=="No unit cell and symmetry information supplied"
   else: raise Exception_expected
 
@@ -287,7 +288,7 @@ def exercise_site_symmetry(space_group_info):
     min_distance_sym_equiv
       =special_position_settings.min_distance_sym_equiv()*0.99)
   wyckoff_table = space_group_info.wyckoff_table()
-  for i_position in xrange(wyckoff_table.size()):
+  for i_position in range(wyckoff_table.size()):
     site_symmetry = wyckoff_table.random_site_symmetry(
       special_position_settings=special_position_settings,
       i_position=i_position)

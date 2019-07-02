@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from libtbx.test_utils import show_diff, Exception_expected
 from libtbx.utils import Sorry
@@ -188,8 +188,8 @@ unit_cell = None
   from iotbx.file_reader import any_file
   try :
     hkl_in = any_file(params.data, force_type="hkl")
-    print hkl_in.file_server.miller_arrays[0].is_xray_intensity_array()
-  except Sorry, s :
+    print(hkl_in.file_server.miller_arrays[0].is_xray_intensity_array())
+  except Sorry as s :
     assert ("Unresolved amplitude/intensity ambiguity" in str(s))
   else :
     raise Exception_expected
@@ -268,7 +268,7 @@ ncs_file = None
 
 
 
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

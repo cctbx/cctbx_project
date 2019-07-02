@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.geometry_restraints.auto_linking_types import origin_ids
 
 class linking_class(dict):
@@ -26,12 +26,12 @@ class linking_class(dict):
   def __getitem__(self, key):
     try:
       return dict.__getitem__(self, key)
-    except KeyError, e:
-      print '''
+    except KeyError as e:
+      print('''
 Look for a key in the list below
 
 %s
-      ''' % self
+      ''' % self)
       raise e
 
   def get_origin_id(self, key):
@@ -40,7 +40,7 @@ Look for a key in the list below
     return rc
 
   def _get_origin_id_labels(self, internals=None):
-    keys = self.keys()
+    keys = list(self.keys())
     def _sort_on_values(k1, k2):
       if self[k1]<self[k2]: return -1
       return 1
@@ -55,7 +55,8 @@ Look for a key in the list below
       if internals is None: return True
       if ptr in self.data[k1].internals: return True
       return False
-    keys.sort(_sort_on_values)
+    from functools import cmp_to_key
+    keys.sort(key = cmp_to_key(_sort_on_values))
     keys = filter(_filter_on_internals, keys)
     return keys
 
@@ -94,4 +95,4 @@ Look for a key in the list below
 
 if __name__=='__main__':
   lc = linking_class()
-  print lc
+  print(lc)

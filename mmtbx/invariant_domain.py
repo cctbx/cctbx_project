@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from scitbx.math import euler_angles_as_matrix
 from scitbx.math import superpose
 import sys
+from six.moves import range
 
 class find_domain(object):
   """This class tries to find pseudo invariant domain given a set of sites.
@@ -38,25 +39,25 @@ the best course of action."""
     if out is None:
       out = sys.stdout
     count=1
-    print >> out, "%i invariant-like domains have been found. "% len(self.matches)
+    print("%i invariant-like domains have been found. "% len(self.matches), file=out)
     if len(self.matches)>0:
-      print >> out, "Listing transformations below."
+      print("Listing transformations below.", file=out)
     else:
-      print "Change settings in improve results."
+      print("Change settings in improve results.")
 
     for item in self.matches:
       r = item[1]
       t = item[2]
       rmsd = item[3]
       n = item[4]
-      print >> out
-      print >> out, "Operator set %i: "%(count)
-      print >> out, r.mathematica_form(label="r", one_row_per_line=True, format="%8.5f")
-      print >> out
-      print >> out, t.mathematica_form(label="t", format="%8.5f")
-      print >> out
-      print >> out, "rmsd: %5.3f; number of sites: %i"%(rmsd,n)
-      print >> out
+      print(file=out)
+      print("Operator set %i: "%(count), file=out)
+      print(r.mathematica_form(label="r", one_row_per_line=True, format="%8.5f"), file=out)
+      print(file=out)
+      print(t.mathematica_form(label="t", format="%8.5f"), file=out)
+      print(file=out)
+      print("rmsd: %5.3f; number of sites: %i"%(rmsd,n), file=out)
+      print(file=out)
       count += 1
 
   def process(self,matches, overlap_thres=0.75,minimum_size=10):
@@ -80,7 +81,7 @@ the best course of action."""
   def find_similar_matches( self, target, matches, used, overlap_thres ):
     tmp_a =  flex.double(  self.set_a.size() , 0.0 ).set_selected( target[0], 1.0 )
     result = flex.size_t()
-    for ii in xrange(len(matches) ):
+    for ii in range(len(matches) ):
       if not used[ii]:
         match = matches[ii][0]
         tmp_b = flex.double( self.set_a.size(), 0.0 ).set_selected( match, 1.0 )
@@ -100,7 +101,7 @@ the best course of action."""
 
   def zipper(self,initial_rms, level):
     matches = []
-    for jj in xrange( 1,self.n-1 ):
+    for jj in range( 1,self.n-1 ):
       ii = jj - 1
       kk = jj + 1
       #make triplets of sequence related sites
@@ -173,7 +174,7 @@ def exercise_core(n=10, verbose=0):
   from libtbx.test_utils import approx_equal
   import random
   # make two random sets of sites please
-  c = euler_angles_as_matrix([random.uniform(0,360) for i in xrange(3)])
+  c = euler_angles_as_matrix([random.uniform(0,360) for i in range(3)])
   set_1 = flex.vec3_double(flex.random_double(n*3)*10-2)
   set_2 = flex.vec3_double(flex.random_double(n*3)*10-2)
   set_3 = tuple(c)*set_2
@@ -200,7 +201,7 @@ def exercise():
   verbose = "--verbose" in sys.argv[1:]
   for n in [4,10,20,100,200]:
     exercise_core(n=n, verbose=verbose)
-  print "OK"
+  print("OK")
 
 if( __name__ == "__main__"):
   exercise()

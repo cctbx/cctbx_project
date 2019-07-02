@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import reflection_file_reader
 from cctbx import miller
 from cctbx.array_family import flex
@@ -9,6 +9,9 @@ import libtbx.phil
 from itertools import count
 import math
 import sys, os
+from functools import cmp_to_key
+from six.moves import range
+from six.moves import zip
 
 class Sorry_No_array_of_the_required_type(Sorry):
   __orig_module__ = __module__
@@ -73,58 +76,57 @@ class label_table(object):
         minimum_score=None,
         parameter_name=None):
     if (f is None): f = self.err
-    print >> f, "Possible choices:"
+    print("Possible choices:", file=f)
     if (scores is None):
       for info_string in self.info_strings:
-        print >> f, " ", info_string
+        print(" ", info_string, file=f)
     else:
       for info_string,score in zip(self.info_strings, scores):
         if (score >= minimum_score):
-          print >> f, " ", info_string
-    print >> f
+          print(" ", info_string, file=f)
+    print(file=f)
     if (parameter_name is None): hint = ""
     else: hint = "use %s\nto " % parameter_name
-    print >> f, \
-      "Please %sspecify an unambiguous substring of the target label." % hint
-    print >> f
+    print("Please %sspecify an unambiguous substring of the target label." % hint, file=f)
+    print(file=f)
 
   def match_data_label(self, label, command_line_switch, f=None):
     if (f is None): f = self.err
     assert label is not None
     scores = self.scores(label=label)
     selected_array = None
-    for high_score in xrange(max(scores),0,-1):
+    for high_score in range(max(scores),0,-1):
       if (scores.count(high_score) > 0):
         if (scores.count(high_score) > 1):
-          print >> f
-          print >> f, "Ambiguous %s=%s" % (command_line_switch, label)
-          print >> f
+          print(file=f)
+          print("Ambiguous %s=%s" % (command_line_switch, label), file=f)
+          print(file=f)
           self.show_possible_choices(
             f=f, scores=scores, minimum_score=high_score)
           return None
         return self.miller_arrays[scores.index(high_score)]
-    print >> f
-    print >> f, "Unknown %s=%s" % (command_line_switch, label)
-    print >> f
+    print(file=f)
+    print("Unknown %s=%s" % (command_line_switch, label), file=f)
+    print(file=f)
     self.show_possible_choices(f=f)
     return None
 
   def select_array(self, label, command_line_switch, f=None):
     if (f is None): f = self.err
     if (len(self.miller_arrays) == 0):
-      print >> f
-      print >> f, "No reflection arrays available."
-      print >> f
+      print(file=f)
+      print("No reflection arrays available.", file=f)
+      print(file=f)
       return None
     if (len(self.miller_arrays) == 1):
       return self.miller_arrays[0]
     if (label is None):
-      print >> f
+      print(file=f)
       s = command_line_switch
-      print >> f, "Please use %s to select a reflection array." % s
-      print >> f, "For example: %s=%s" % (s, show_string(str(
-        self.miller_arrays[1].info()).split(":")[-1]))
-      print >> f
+      print("Please use %s to select a reflection array." % s, file=f)
+      print("For example: %s=%s" % (s, show_string(str(
+        self.miller_arrays[1].info()).split(":")[-1])), file=f)
+      print(file=f)
       self.show_possible_choices(f=f)
       return None
     return self.match_data_label(
@@ -293,8 +295,8 @@ class get_r_free_flags_scores(object):
         try: counts = data.counts(max_keys=200)
         except RuntimeError: pass
         else:
-          c_keys = counts.keys()
-          c_values = counts.values()
+          c_keys = list(counts.keys())
+          c_values = list(counts.values())
           if (   test_flag_value is None
               or test_flag_value in c_keys):
             if (counts.size() == 2):
@@ -320,7 +322,7 @@ class get_r_free_flags_scores(object):
               c_keys_min = min(c_keys)
               c_keys_max = max(c_keys)
               if (((c_keys_max - c_keys_min) < data.size()) and
-                  (c_keys == range(c_keys_min, c_keys_max+1))):
+                  (c_keys == list(range(c_keys_min, c_keys_max+1)))):
                 # XXX 0.55 may be too close a margin - the routine to export
                 # R-free flags for CCP4 seems to get this wrong frequently.
                 if (min(c_values) > max(c_values)*0.55):
@@ -396,7 +398,9 @@ def sort_arrays_by_score(miller_arrays, array_scores, minimum_score):
   for array in miller_arrays :
     scored_arrays.append( (array, array_scores[i]) )
     i += 1
-  scored_arrays.sort(lambda x, y: y[1] - x[1])
+  def cmp_fn(x,y):
+    return y[1] - x[1]
+  scored_arrays.sort(key=cmp_to_key(cmp_fn))
   valid_arrays = []
   for (array, score) in scored_arrays :
     if score >= minimum_score :
@@ -427,7 +431,7 @@ def select_array(
     label_scores = lbl_tab.scores(labels=labels)
   if (label_scores is not None and max(label_scores) == 0):
     error = "No matching array: %s=%s" % (parameter_name, " ".join(labels))
-    print >> err, "\n" + error + "\n"
+    print("\n" + error + "\n", file=err)
     if (max(data_scores) > 0):
       lbl_tab.show_possible_choices(
         scores=data_scores,
@@ -436,11 +440,11 @@ def select_array(
     raise Sorry(error)
   if (max(data_scores) == 0):
     if (label_scores is None):
-      print >> err, "\n" + error_message_no_array + "\n"
+      print("\n" + error_message_no_array + "\n", file=err)
       raise Sorry_No_array_of_the_required_type(error_message_no_array)
     error = "%s%s=%s" % (
       error_message_not_a_suitable_array, parameter_name, " ".join(labels))
-    print >> err, "\n" + error + "\n"
+    print("\n" + error + "\n", file=err)
     raise Sorry_Not_a_suitable_array(error)
   if (label_scores is None):
     combined_scores = data_scores
@@ -452,7 +456,7 @@ def select_array(
   i = combined_scores.index(max(combined_scores))
   if (combined_scores.count(combined_scores[i]) > 1):
     error = error_message_multiple_equally_suitable
-    print >> err, "\n" + error + "\n"
+    print("\n" + error + "\n", file=err)
     lbl_tab.show_possible_choices(
       scores=combined_scores,
       minimum_score=max(combined_scores),
@@ -716,7 +720,9 @@ class reflection_file_server(object):
       scored_arrays = []
       for i, array in enumerate(miller_arrays):
         scored_arrays.append( (array, test_flag_values[i], data_scores[i]) )
-      scored_arrays.sort(lambda x, y: y[2] - x[2])
+      def cmp_fn(x,y):
+        return y[2] - x[2]
+      scored_arrays.sort(key=cmp_to_key(cmp_fn))
       valid_arrays_and_flags = []
       for (array, flag_value, score) in scored_arrays :
         if score >= minimum_score :
@@ -744,7 +750,7 @@ class reflection_file_server(object):
           ="Not a suitable array of R-free flags: ",
         error_message_multiple_equally_suitable
           ="Multiple equally suitable arrays of R-free flags found.")
-    except Sorry_Not_a_suitable_array, e:
+    except Sorry_Not_a_suitable_array as e:
       raise Sorry_Not_a_suitable_array(
         str(e) + "\nTo override the suitability test define:"
                + " %s.disable_suitability_test=True" % parameter_scope)
@@ -862,15 +868,15 @@ def extract_miller_array_from_file(file_name, label=None, type=None, log=None):
     return (type == "complex" and ma.is_complex_array()) or \
            (type == "real"    and ma.is_real_array()) or \
            type is None
-  print >> log, "  Available suitable arrays:"
+  print("  Available suitable arrays:", file=log)
   suitable_arrays = []
   suitable_labels = []
   for ma in miller_arrays:
     if(get_flag(ma=ma)):
-      print >> log, "    ", ma.info().label_string()
+      print("    ", ma.info().label_string(), file=log)
       suitable_arrays.append(ma)
       suitable_labels.append(ma.info().label_string())
-  print >> log
+  print(file=log)
   if(  len(suitable_arrays) == 0): raise Sorry("No suitable arrays.")
   elif(len(suitable_arrays) == 1): result = suitable_arrays[0]
   elif(len(suitable_arrays) >  1):
@@ -883,7 +889,7 @@ def extract_miller_array_from_file(file_name, label=None, type=None, log=None):
     else:
       for ma in miller_arrays:
         if(get_flag(ma=ma) and (ma.info().label_string() == label)):
-          print >> log, "  Selected:", ma.info().label_string()
+          print("  Selected:", ma.info().label_string(), file=log)
           result = ma
   return result
 
@@ -936,11 +942,11 @@ class process_raw_data(object):
     assert (obs is not None)
     merged_obs = obs.average_bijvoet_mates()
     if (merged_obs.completeness() < 0.9):
-      print >> log, """
+      print("""
   WARNING: data are incomplete (%.1f%% of possible reflections measured to
   %.2fA).  This may cause problems if you plan to use the maps for building
   and/or ligand fitting!
-    """ % (100*merged_obs.completeness(), merged_obs.d_min())
+    """ % (100*merged_obs.completeness(), merged_obs.d_min()), file=log)
     # XXX this is kind of a hack (the reconstructed arrays break some of my
     # assumptions about labels)
     if (merge_anomalous):
@@ -977,21 +983,21 @@ class process_raw_data(object):
         n_obs = obs_tmp.indices().size()
         if ((test_flag_value is None) or
             (r_free_flags.data().all_eq(r_free_flags.data()[0]))):
-          print >> log, """
+          print("""
   WARNING: uniform R-free flags detected; a new test set will be generated,
   but this will bias the refinement statistics.
-"""
+""", file=log)
           r_free_flags = None
         elif (n_r_free != n_obs):
           missing_set = obs_tmp.lone_set(other=r_free_flags)
           n_missing = missing_set.indices().size()
           if (n_missing > 0):
-            print >> log, """
+            print("""
   WARNING: R-free flags are incomplete relative to experimental
   data (%d vs. %d reflections).  The flags will be extended to
   complete the set, but we recommend supplying flags that are already
   generated to the maximum expected resolution.
-""" % (n_r_free, n_obs)
+""" % (n_r_free, n_obs), file=log)
             if (n_missing < 20) : # FIXME
               if (format == "cns"):
                 missing_flags = missing_set.array(data=flex.bool(n_missing,
@@ -1008,7 +1014,7 @@ class process_raw_data(object):
         if (r_free_flags is not None):
           assert (r_free_flags.indices().size() == obs_tmp.indices().size())
       else :
-        print >> log, """
+        print("""
     NOTE: incompatible symmetry between the data and the R-free flags:
          Data  : %s  %s
          Flags : %s  %s
@@ -1016,12 +1022,12 @@ class process_raw_data(object):
 """ % (str(obs.space_group_info()),
           " ".join([ "%g" % x for x in obs.unit_cell().parameters() ]),
           str(r_free_flags.space_group_info()),
-          " ".join(["%g" % x for x in r_free_flags.unit_cell().parameters()]))
+          " ".join(["%g" % x for x in r_free_flags.unit_cell().parameters()])), file=log)
     else :
-      print >> log, """
+      print("""
  WARNING: R-free flags not supplied.  This may bias the refinement if the
      structures are very nearly isomorphous!
-"""
+""", file=log)
     self._generate_new = False
     if (r_free_flags is None):
       r_free_flags = obs.generate_r_free_flags(

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import os
 
@@ -30,15 +30,15 @@ def exercise_out(prefix="tst_fix_cablam_basic_cl_operations_pdb_out"):
         ])
     assert not easy_run.call(cmd)
     if fmt.find("pdb") >= 0:
-      print "checking %s" % (in_fname[:-4]+prfx+'.pdb')
+      print("checking %s" % (in_fname[:-4]+prfx+'.pdb'))
       assert os.path.isfile(in_fname[:-4]+prfx+'.pdb')
     if fmt.find("cif") >= 0:
-      print "checking %s" % (in_fname[:-4]+prfx+'.cif')
+      print("checking %s" % (in_fname[:-4]+prfx+'.cif'))
       assert os.path.isfile(in_fname[:-4]+prfx+'.cif')
 
 
 if __name__ == '__main__':
   if (not libtbx.env.has_module(name="probe")):
-    print "Skipping: probe not configured"
+    print("Skipping: probe not configured")
   else:
     exercise_out()

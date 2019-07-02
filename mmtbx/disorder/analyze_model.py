@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.disorder import backbone
 from scitbx.array_family import flex
 from scitbx.matrix import col
@@ -7,6 +7,7 @@ from libtbx.str_utils import format_value as fv
 from libtbx import Auto, slots_getstate_setstate
 import math
 import sys
+from six.moves import range
 
 # XXX in order to make this run in parallel over many PDB IDs, I need to cheat
 # slightly and substitute pickle-able objects for the original classes in
@@ -80,14 +81,14 @@ class disordered_segment(object):
 
   def show(self, prefix="", out=sys.stdout):
     if (self.n_residues() == 1):
-      print >> out, prefix + "Segment: 1 residue (%s), %d conformers" % \
-        (self.residue_groups[0].id_str(), self.n_confs())
+      print(prefix + "Segment: 1 residue (%s), %d conformers" % \
+        (self.residue_groups[0].id_str(), self.n_confs()), file=out)
     else :
-      print >> out, prefix+"Segment: %d residues (%s --> %s), %d conformers" %\
+      print(prefix+"Segment: %d residues (%s --> %s), %d conformers" %\
         (self.n_residues(), self.residue_groups[0].id_str(),
-         self.residue_groups[-1].id_str(), self.n_confs())
+         self.residue_groups[-1].id_str(), self.n_confs()), file=out)
     for i_res, rg in enumerate(self.residue_groups):
-      print >> out, prefix+"  residue_group=%s" % rg.id_str()
+      print(prefix+"  residue_group=%s" % rg.id_str(), file=out)
       for ag in rg.atom_groups():
         rama = rota = None
         for o in self.ramachandran.get(rg.id_str(), []):
@@ -98,23 +99,23 @@ class disordered_segment(object):
           if (o.altloc == ag.altloc):
             rota = o
             break
-        print >> out, prefix + "    " + \
+        print(prefix + "    " + \
           "atom_group=%1s %3s  occ=%.2f phi=%-6s psi=%-6s rot=%-7s" %\
           (ag.altloc,
            ag.resname,
            flex.mean(ag.atoms().extract_occ()),
            fv("%.1f", getattr(rama, "phi", None)),
            fv("%.1f", getattr(rama, "psi", None)),
-           getattr(rota, "rotamer_name", None))
+           getattr(rota, "rotamer_name", None)), file=out)
       if (len(self.backrubs[i_res]) > 0):
         for backrub in self.backrubs[i_res] :
           backrub.show(out=out, prefix=prefix+"    ")
       outliers = self.outliers[rg.id_str()]
       if (len(outliers) > 0):
-        print >> out, prefix+"     MolProbity outliers:"
+        print(prefix+"     MolProbity outliers:", file=out)
       for outlier in outliers :
-        print >> out, prefix+"       %s: %s" % (type(outlier).__name__,
-          str(outlier))
+        print(prefix+"       %s: %s" % (type(outlier).__name__,
+          str(outlier)), file=out)
 
   def get_previous_conformer(self, index=0):
     rg = self.residue_groups[-1]
@@ -465,8 +466,8 @@ class process_residue_groups(object):
       if (len(atom_groups) > 1):
         self.n_disordered += 1
         if only_amide_hydrogen_split(residue_group):
-          print >> log, "    residue %s only has alt. confs. for H" % \
-            residue_group.id_str()
+          print("    residue %s only has alt. confs. for H" % \
+            residue_group.id_str(), file=log)
           segment = None
           continue
         else :
@@ -490,8 +491,8 @@ class process_residue_groups(object):
         segment.extract_validation_results(multi_criterion_validation)
 
   def show(self, prefix="", out=sys.stdout):
-    print >> out, prefix+"Chain '%s': %d residues, %d disordered" % (
-      self.chain_id, self.n_residue_groups, self.n_disordered)
+    print(prefix+"Chain '%s': %d residues, %d disordered" % (
+      self.chain_id, self.n_residue_groups, self.n_disordered), file=out)
     for segment in self.segments :
       segment.show(out=out, prefix=prefix+"  ")
 
@@ -512,7 +513,7 @@ class process_pdb_hierarchy(object):
       multi_criterion_validation = validation.as_multi_criterion_view()
     for chain in pdb_hierarchy.only_model().chains():
       if (chain.is_protein()):
-        print >> log, "  processing chain '%s'" % chain.id
+        print("  processing chain '%s'" % chain.id, file=log)
         chain_info = process_residue_groups(chain=chain,
           multi_criterion_validation=multi_criterion_validation,
           ignore_inconsistent_occupancy=ignore_inconsistent_occupancy,
@@ -523,7 +524,7 @@ class process_pdb_hierarchy(object):
         for segment in chain_info.segments :
           self.sequence_disorder.extend(segment.detect_sequence_disorder())
       else :
-        print >> log, "  skipping non-protein chain '%s'" % chain.id
+        print("  skipping non-protein chain '%s'" % chain.id, file=log)
     # TODO post-analysis
 
   @property
@@ -551,15 +552,15 @@ class process_pdb_hierarchy(object):
     return dist_max, segment_max
 
   def show(self, out=sys.stdout, verbose=True):
-    print >> out, ""
-    print >> out, "Overall: %d protein chain(s)" % len(self.chains)
-    print >> out, "         %d residues" % self.n_residue_groups
-    print >> out, "         %d disorered in %d segments" % (self.n_disordered,
-      sum([ len(c.segments) for c in self.chains ]))
+    print("", file=out)
+    print("Overall: %d protein chain(s)" % len(self.chains), file=out)
+    print("         %d residues" % self.n_residue_groups, file=out)
+    print("         %d disorered in %d segments" % (self.n_disordered,
+      sum([ len(c.segments) for c in self.chains ])), file=out)
     if (len(self.sequence_disorder) > 0):
-      print >> out, "%d heterogeneous residues:" % len(self.sequence_disorder)
+      print("%d heterogeneous residues:" % len(self.sequence_disorder), file=out)
       for rg_id, resnames in self.sequence_disorder :
-        print "  %s (%s)" % (rg_id, ",".join(resnames))
+        print("  %s (%s)" % (rg_id, ",".join(resnames)))
     n_rotamer_changes = n_cbeta_dev = n_partial_splits = 0
     peptide_flips = []
     for segment in self.segments :
@@ -567,41 +568,41 @@ class process_pdb_hierarchy(object):
       n_cbeta_dev += segment.n_cbeta_outliers()
       n_partial_splits += segment.n_partial_splits(join_at_calpha=True)
       peptide_flips.extend(segment.find_peptide_flips())
-    print >> out, "%d disordered residues have multiple rotamers" % \
-      n_rotamer_changes
+    print("%d disordered residues have multiple rotamers" % \
+      n_rotamer_changes, file=out)
     if (n_partial_splits > 0):
-      print >> out, "%d disordered residues have a single C-alpha atom" % \
-        n_partial_splits
+      print("%d disordered residues have a single C-alpha atom" % \
+        n_partial_splits, file=out)
     if (n_cbeta_dev > 0):
-      print >> out, "%d disordered residues have C-beta deviations" % \
-        n_cbeta_dev
+      print("%d disordered residues have C-beta deviations" % \
+        n_cbeta_dev, file=out)
     if (len(peptide_flips) > 0):
-      print >> out, "%d apparent peptide flips:"
+      print("%d apparent peptide flips:", file=out)
       for residue_id_str, angle in peptide_flips :
-        print >> out, "  %s (angle=%.1f)" % (residue_id_str, angle)
+        print("  %s (angle=%.1f)" % (residue_id_str, angle), file=out)
     # distances and RMSDs
     rmsd_max, segment_max = self.max_rmsd_between_conformers()
     rmsd_mc_max, segment_mc_max = self.max_rmsd_between_conformers(
       backbone=True)
     assert (rmsd_max is not None)
-    print >> out, "Max. RMSD between conformers:"
-    print >> out, "  %6.3f (%s) [all non-H atoms]" % (rmsd_max, segment_max)
+    print("Max. RMSD between conformers:", file=out)
+    print("  %6.3f (%s) [all non-H atoms]" % (rmsd_max, segment_max), file=out)
     if (rmsd_mc_max is not None):
-      print >> out, "  %6.3f (%s) [backbone only]" %(rmsd_mc_max,
-        segment_mc_max)
+      print("  %6.3f (%s) [backbone only]" %(rmsd_mc_max,
+        segment_mc_max), file=out)
     dist_max, segment_max = self.max_distance_between_conformers()
     dist_mc_max, segment_mc_max = self.max_distance_between_conformers(
       backbone=True)
     assert (dist_max is not None)
-    print >> out, "Max. distance between conformers:"
-    print >> out, "  %6.3f (%s) [all non-H atoms]" % (dist_max, segment_max)
+    print("Max. distance between conformers:", file=out)
+    print("  %6.3f (%s) [all non-H atoms]" % (dist_max, segment_max), file=out)
     if (dist_mc_max is not None):
-      print >> out, "  %6.3f (%s) [backbone only]" %(dist_mc_max,
-        segment_mc_max)
+      print("  %6.3f (%s) [backbone only]" %(dist_mc_max,
+        segment_mc_max), file=out)
     # verbose output
     if (verbose):
       for chain in self.chains :
         chain.show(out=out)
     else :
-      print >> out, "Run with --verbose to show per-residue results."
-    print >> out, ""
+      print("Run with --verbose to show per-residue results.", file=out)
+    print("", file=out)

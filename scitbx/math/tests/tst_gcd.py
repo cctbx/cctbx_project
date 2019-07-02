@@ -1,16 +1,18 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.math
 import boost.rational
 import time
 import sys, os
+from six.moves import range
+from six.moves import zip
 
 def compare_with_boost_rational_gcd(label):
   other_gcd = getattr(scitbx.math, label, None)
   if (other_gcd is None): return
-  print "compare_with_boost_rational_gcd(%s)" % label
-  samples = range(-100,101) \
-          + range(-100000-10,-100000+11) \
-          + range( 100000-10, 100000+11)
+  print("compare_with_boost_rational_gcd(%s)" % label)
+  samples = list(range(-100,101)) \
+          + list(range(-100000-10,-100000+11)) \
+          + list(range( 100000-10, 100000+11))
   for a in samples:
     for b in samples:
       r = boost.rational.gcd(a, b)
@@ -45,12 +47,12 @@ def run(args):
     w0 = time.time()
     us0 = sum(os.times()[:2])
     result = impl(n)
-    print "%-24s %d w=%.2f u+s=%.2f" % (
+    print("%-24s %d w=%.2f u+s=%.2f" % (
       label,
       result,
       time.time()-w0,
-      sum(os.times()[:2])-us0)
-  print "OK"
+      sum(os.times()[:2])-us0))
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

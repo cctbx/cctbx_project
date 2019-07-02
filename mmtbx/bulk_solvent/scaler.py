@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 import sys
 from mmtbx import bulk_solvent
 from cctbx import adptbx
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 from cctbx import sgtbx
 from mmtbx.bulk_solvent import kbu_refinery
@@ -20,7 +21,7 @@ from libtbx.test_utils import approx_equal
 
 def moving_average(x):
   x_ = x_ = [x[0]] + list(x) + [x[len(x)-1]]
-  for cycle in xrange(5):
+  for cycle in range(5):
     result = x_[:]
     selection = flex.bool(len(result), False)
     for i, s in enumerate(selection):
@@ -28,7 +29,7 @@ def moving_average(x):
         if((result[i-1]<result[i] and result[i+1]<result[i]) or
            (result[i-1]>result[i] and result[i+1]>result[i])):
           selection[i]=True
-    for i in xrange(len(result)):
+    for i in range(len(result)):
       if(i!=0 and i!=len(result)-1 and selection[i]):
         result[i] = (x_[i-1]+x_[i]+x_[i+1])/3.
     x_ = result[:]
@@ -122,9 +123,8 @@ class run(object):
     self.bss_result = init_result()
     if(log is None): log = sys.stdout
     if(verbose):
-      print >> log, "-"*80
-      print >> log, \
-        "Overall, iso- and anisotropic scaling and bulk-solvent modeling:"
+      print("-"*80, file=log)
+      print("Overall, iso- and anisotropic scaling and bulk-solvent modeling:", file=log)
     point_group = sgtbx.space_group_info(
       symbol=f_obs.space_group().type().lookup_symbol()
       ).group().build_derived_point_group()
@@ -137,7 +137,7 @@ class run(object):
     self.low_resolution_selection = self._low_resolution_selection()
     self.high_resolution_selection = self._high_resolution_selection()
     if(verbose):
-      print >> log, "  Using %d resolution bins"%len(self.bin_selections)
+      print("  Using %d resolution bins"%len(self.bin_selections), file=log)
     self.ss_bin_values=[]
     sel_positive = self.f_obs.data()>0
     self.selection_work = self.selection_work.customized_copy(
@@ -152,14 +152,14 @@ class run(object):
         flex.min(ss),
         flex.max(ss),
         flex.mean(ss)])
-    for cycle in xrange(number_of_cycles):
+    for cycle in range(number_of_cycles):
       r_start = self.r_factor(use_scale=True)
       r_start0 = r_start
       use_scale_r=False
       if(cycle==0): use_scale_r=True
       if(verbose):
-        print >> log, "  cycle %d:"%cycle
-        print >> log, "    r(start): %6.4f"%(r_start)
+        print("  cycle %d:"%cycle, file=log)
+        print("    r(start): %6.4f"%(r_start), file=log)
       # bulk-solvent and overall isotropic scale
       if(self.bulk_solvent):
         if(cycle==0):
@@ -167,21 +167,21 @@ class run(object):
             use_scale_r=use_scale_r, verbose=verbose)
           r_start = self.k_mask_grid_search(r_start=r_start)
           if(verbose):
-            print >> self.log, "    r(bulk_solvent_grid_search): %6.4f"%r_start
+            print("    r(bulk_solvent_grid_search): %6.4f"%r_start, file=self.log)
           r_start = self.set_k_isotropic_exp(r_start = r_start,
             use_scale_r=use_scale_r, verbose=verbose)
         else:
           r_start = self.bulk_solvent_scaling(r_start = r_start)
       # anisotropic scale
       if([try_poly, try_expanal, try_expmin].count(True)):
-        if(verbose): print >> log, "    anisotropic scaling:"
+        if(verbose): print("    anisotropic scaling:", file=log)
         self.anisotropic_scaling(r_start = r_start)
       if(self.auto_convergence and self.is_converged(r_start=r_start0,
          tolerance=self.auto_convergence_tolerance)):
         break
     self.apply_overall_scale()
     if(verbose):
-      print >> log, "  r(final): %6.4f"%(self.r_factor())
+      print("  r(final): %6.4f"%(self.r_factor()), file=log)
       self.show()
     #
     self.r_low = self._r_low()
@@ -191,9 +191,9 @@ class run(object):
       d1 = ("%7.4f"%flex.min(d)).strip()
       d2 = ("%7.4f"%flex.max(d)).strip()
       n = d.size()
-      print >> self.log, "r(low-resolution: %s-%s A; %d reflections): %6.4f"%(
-        d2,d1,n,self.r_low)
-      print >> log, "-"*80
+      print("r(low-resolution: %s-%s A; %d reflections): %6.4f"%(
+        d2,d1,n,self.r_low), file=self.log)
+      print("-"*80, file=log)
     self.r_final = self.r_factor()
 
   def is_flags_good(self):
@@ -227,12 +227,12 @@ class run(object):
     r = self.try_scale(k_isotropic_exp = k, use_scale_r=use_scale_r)
     if(r<r_start):
       if(verbose):
-        print >> self.log, "    r(set_k_isotropic_exp): %6.4f"%r
+        print("    r(set_k_isotropic_exp): %6.4f"%r, file=self.log)
       self.core = self.core.update(k_isotropic_exp = k)
       r_start = self.r_factor()
     else:
       if(verbose):
-        print >> self.log, "    r(set_k_isotropic_exp): %6.4f (rejected)"%r
+        print("    r(set_k_isotropic_exp): %6.4f (rejected)"%r, file=self.log)
     return r_start
 
   def try_scale(self,
@@ -400,12 +400,12 @@ class run(object):
 
   def show(self):
     b = self.bss_result
-    print >> self.log, "  Statistics in resolution bins:"
+    print("  Statistics in resolution bins:", file=self.log)
     #assert k_mask.size() == len(self.bin_selections)
     fmt="  %7.5f %6.2f -%6.2f %5.1f %5d %-6s %-6s %-6s  %6.3f %6.3f %8.2f %6.4f"
     f_model = self.core.f_model.data()
-    print >> self.log, "  s^2      Resolution    Compl Nrefl k_mask                 k_iso  k_ani <Fobs>   R"
-    print >> self.log, "                (A)        (%)       orig   smooth average"
+    print("  s^2      Resolution    Compl Nrefl k_mask                 k_iso  k_ani <Fobs>   R", file=self.log)
+    print("                (A)        (%)       orig   smooth average", file=self.log)
     k_mask_bin_orig_   = str(None)
     k_mask_bin_smooth_ = str(None)
     k_mask_bin_approx_ = str(None)
@@ -428,9 +428,9 @@ class run(object):
       k_anisotropic_ = flex.mean(self.core.k_anisotropic.select(sel))
       cmpl_          = f_obs_.completeness(d_max=d_max_)*100.
       r_             = bulk_solvent.r_factor(f_obs_.data(),f_model.select(sel),1)
-      print >> self.log, fmt%(ss_, d_max_, d_min_, cmpl_, n_ref_,
+      print(fmt%(ss_, d_max_, d_min_, cmpl_, n_ref_,
         k_mask_bin_orig_, k_mask_bin_smooth_,k_mask_bin_averaged_,
-        k_isotropic_, k_anisotropic_, f_obs_mean_, r_)
+        k_isotropic_, k_anisotropic_, f_obs_mean_, r_), file=self.log)
 
   def _k_isotropic_as_scale_k1(self, r_start, k_mask=None):
     k_isotropic = flex.double(self.ss.size(), -1)
@@ -576,10 +576,10 @@ class run(object):
       self.bss_result.k_isotropic       = k_isotropic
       r_start = r
       if(self.verbose):
-        print >> self.log, "    %s: %6.4f"%("bulk-solvent", r_start)
+        print("    %s: %6.4f"%("bulk-solvent", r_start), file=self.log)
     else:
       if(self.verbose):
-        print >> self.log, "    %s: %6.4f (%s)"%("bulk-solvent", r, "result rejected")
+        print("    %s: %6.4f (%s)"%("bulk-solvent", r, "result rejected"), file=self.log)
     return self.r_factor()
 
   def smooth(self, x):
@@ -596,21 +596,21 @@ class run(object):
     if(sm is None): sm = self.scale_matrices
     out = log
     if(sm is None):
-      print >> log, "  k_anisotropic=1"
+      print("  k_anisotropic=1", file=log)
       return
     if(len(sm)<=6):
-      print >> out, "      b_cart(11,22,33,12,13,23):",\
-        ",".join([str("%8.4f"%i).strip() for i in sm])
+      print("      b_cart(11,22,33,12,13,23):",\
+        ",".join([str("%8.4f"%i).strip() for i in sm]), file=out)
     else:
       v0=[]
       v1=[]
       for i, a in enumerate(sm):
         if(i in [0,2,4,6,8,10]): v1.append(a)
         else: v0.append(a)
-      print >> out, "      V0:",\
-        ",".join([str("%8.4f"%i).strip() for i in v0])
-      print >> out, "      V1:",\
-        ",".join([str("%8.4f"%i).strip() for i in v1])
+      print("      V0:",\
+        ",".join([str("%8.4f"%i).strip() for i in v0]), file=out)
+      print("      V1:",\
+        ",".join([str("%8.4f"%i).strip() for i in v1]), file=out)
 
   def anisotropic_scaling(self, r_start):
     r_expanal, r_poly, r_expmin = None,None,None
@@ -635,7 +635,7 @@ class run(object):
       k_anisotropic_expanal = ext.k_anisotropic(mi_all, u_star)
       r_expanal = self.try_scale(k_anisotropic = k_anisotropic_expanal)
       if(self.verbose):
-        print >> self.log, "      r_expanal: %6.4f"%r_expanal
+        print("      r_expanal: %6.4f"%r_expanal, file=self.log)
     # try poly
     if(self.try_poly):
       obj = bulk_solvent.aniso_u_scaler(
@@ -647,7 +647,7 @@ class run(object):
       k_anisotropic_poly = ext.k_anisotropic(mi_all, obj.a, uc)
       r_poly = self.try_scale(k_anisotropic = k_anisotropic_poly)
       if(self.verbose):
-        print >> self.log, "      r_poly   : %6.4f"%r_poly
+        print("      r_poly   : %6.4f"%r_poly, file=self.log)
     # pre-analyze
     force_to_use_expmin=False
     if(k_anisotropic_poly is not None and self.auto and r_poly<r_expanal and
@@ -678,7 +678,7 @@ class run(object):
       scale_matrix_expmin = adptbx.u_as_b(adptbx.u_star_as_u_cart(uc, u_star))
       k_anisotropic_expmin = ext.k_anisotropic(mi_all, u_star)
       r_expmin = self.try_scale(k_anisotropic = k_anisotropic_expmin)
-      if(self.verbose): print >> self.log, "    r_expmin   : %6.4f"%r_expmin
+      if(self.verbose): print("    r_expmin   : %6.4f"%r_expmin, file=self.log)
       if(force_to_use_expmin):
         self.core = self.core.update(k_anisotropic = k_anisotropic_expmin)
         if(self.verbose):
@@ -699,14 +699,14 @@ class run(object):
         scale_matrix_best = scale_matrix[:]
     if(scale_matrix_best is None):
       if(self.verbose):
-        print >> self.log, "      result rejected due to r-factor increase"
+        print("      result rejected due to r-factor increase", file=self.log)
     else:
       self.scale_matrices = scale_matrix_best
       self.core = self.core.update(k_anisotropic = k_anisotropic_best)
       r_aniso = self.r_factor()
       if(self.verbose):
         self.format_scale_matrix()
-        print >> self.log, "      r_final  : %6.4f"%r_aniso
+        print("      r_final  : %6.4f"%r_aniso, file=self.log)
 
   def overall_isotropic_kb_estimate(self):
     k_total = self.core.k_isotropic * self.core.k_anisotropic * \

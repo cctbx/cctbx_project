@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 #!/usr/bin/env python
 #
 # Biostruct-X Data Reduction Use Case 1.2:
@@ -13,6 +13,7 @@ import random
 from cctbx.array_family import flex
 from annlib_ext import AnnAdaptor as ann_adaptor
 from scitbx import matrix
+from six.moves import range
 
 def meansd(values):
 
@@ -78,10 +79,10 @@ def read_spot_xds(spot_xds):
         if '!' in record[:1]:
             continue
         values = record.split()
-        hkl = map(int, values[-3:])
-        if hkl == (0, 0, 0):
+        hkl = [int(x) for x in values[-3:]]
+        if hkl == [0, 0, 0]:
             continue
-        xyz = map(float, values[:3])
+        xyz = [float(x) for x in values[:3]]
 
         observations.append((hkl, xyz))
 
@@ -92,8 +93,8 @@ def read_uc1_2(uc1_2):
 
     for record in open(uc1_2):
         values = record.split()
-        hkl = map(int, values[:3])
-        xyz = map(float, values[3:])
+        hkl = [int(h) for h in values[:3]]
+        xyz = [float(x) for x in values[3:]]
 
         predictions.append((hkl, xyz))
 
@@ -137,7 +138,7 @@ def validate_predictions(spot_xds, uc1_2):
             dys.append(dy)
             dzs.append(dz)
 
-            print x, y, z, dx, dy, dz
+            print(x, y, z, dx, dy, dz)
 
     return meansd(dxs), meansd(dys), meansd(dzs)
 

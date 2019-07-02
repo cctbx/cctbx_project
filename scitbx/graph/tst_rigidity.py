@@ -1,10 +1,11 @@
-from __future__ import division
-from rigidity import \
+from __future__ import absolute_import, division, print_function
+from scitbx.graph.rigidity import \
   gcd, \
   float_row_echelon_form_back_substitution, \
   row_reduced_float_rigidity_matrix, \
   determine_degrees_of_freedom, random, double_banana_edge_list
 import sys, os
+from six.moves import range
 
 try:
   from libtbx.math_utils import next_permutation
@@ -24,7 +25,7 @@ def int_or_none(v):
 
 sge_task_id = int_or_none(os.environ.get("SGE_TASK_ID"))
 if (sge_task_id is not None):
-  print "sge_task_id:", sge_task_id
+  print("sge_task_id:", sge_task_id)
   sys.stdout.flush()
   random.seed(sge_task_id)
 
@@ -55,8 +56,8 @@ def update_repeat_log(nr):
 
 def exercise_minimal():
   for method in ["integer", "float"]:
-    for n_dim in xrange(1,10):
-      for n_vertices in xrange(5):
+    for n_dim in range(1,10):
+      for n_vertices in range(5):
         assert determine_degrees_of_freedom(
           n_dim=n_dim, n_vertices=n_vertices, edge_list=[], method=method) \
             == n_dim * n_vertices
@@ -141,7 +142,7 @@ def ddof(n_dim, n_vertices, edge_list):
       for method in ["float", "integer"][:n]]
   nr = results[0][1]
   if (results[0][1] != 0):
-    print "INFO: float repeats:", results[0][1]
+    print("INFO: float repeats:", results[0][1])
     sys.stdout.flush()
   update_repeat_log(nr=nr)
   if (len(results) > 1):
@@ -159,15 +160,15 @@ def exercise_double_banana():
   assert ddof(
     n_dim=4, n_vertices=n_vertices, edge_list=edge_list) == 14
   # remove each edge in turn
-  for remove in xrange(len(edge_list)):
+  for remove in range(len(edge_list)):
     assert ddof(
       n_dim=3,
       n_vertices=n_vertices,
       edge_list=edge_list[:remove]+edge_list[remove+1:]) == 7
   # add all possible edges
   dofs = []
-  for i in xrange(n_vertices-1):
-    for j in xrange(i+1,n_vertices):
+  for i in range(n_vertices-1):
+    for j in range(i+1,n_vertices):
       dofs.append(ddof(
         n_dim=3, n_vertices=n_vertices, edge_list=edge_list+[(i,j)]))
   assert dofs == [
@@ -248,17 +249,17 @@ def exercise():
   exercise_gcd()
   exercise_float_row_echelon_form_back_substitution()
   exercise_minimal()
-  for i_repeat in xrange(option_repeats):
+  for i_repeat in range(option_repeats):
     exercise_is_redundant()
     exercise_double_banana()
     exercise_mt1996()
     exercise_k6_6_minus_six_parallel_edges()
     if (option_all):
       exercise_p120()
-  print "repeat_log =", repeat_log
+  print("repeat_log =", repeat_log)
   # inline format_cpu_times (to minimize dependencies)
   t = os.times()
-  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
+  print("u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1]))
   sys.stdout.flush()
 
 if (__name__ == "__main__"):

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx.distance_based_connectivity import \
   expected_bond_lengths_by_element_pair
 from cctbx.eltbx.van_der_waals_radii import vdw
@@ -6,12 +6,13 @@ from scitbx.stl import map
 import cctbx.crystal
 import cctbx.uctbx
 from scitbx.array_family import flex, shared
+import six
 
 def __build_tables():
   global expected_bond_lengths, vdw_radii
   expected_bond_lengths = map.stl_string_double()
   vdw_radii = map.stl_string_double()
-  for (e1, e2), length in expected_bond_lengths_by_element_pair.iteritems():
+  for (e1, e2), length in six.iteritems(expected_bond_lengths_by_element_pair):
     assert e1.find(":") < 0
     assert e2.find(":") < 0
     expected_bond_lengths[e1+":"+e2] = length

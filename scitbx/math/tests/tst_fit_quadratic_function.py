@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.math import fit_quadratic_function as fqf
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 def test_fit():
   x1_obs=[]
@@ -28,7 +29,7 @@ def test_fit():
   assert approx_equal( fit.a, a, eps=1e-5)
   assert approx_equal( fit.b, b, eps=1e-5)
   assert approx_equal( fit.c, c, eps=1e-5)
-  print 'OK'
+  print('OK')
 
 if (__name__ == "__main__"):
   test_fit()

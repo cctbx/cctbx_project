@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.real_space_diff_map
 
 from scitbx.array_family import flex
@@ -11,6 +11,8 @@ from cctbx import miller
 from cctbx import uctbx
 from cctbx import crystal
 from libtbx import adopt_init_args
+from six.moves import zip
+from six.moves import range
 
 legend = """phenix.real_space_diff_map:
   Given PDB file and a map file calculate difference map:
@@ -38,14 +40,14 @@ def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
 
 def broadcast(m, log):
-  print >> log, "-"*79
-  print >> log, m
-  print >> log, "*"*len(m)
+  print("-"*79, file=log)
+  print(m, file=log)
+  print("*"*len(m), file=log)
 
 def run(args, log=sys.stdout):
-  print >> log, "-"*79
-  print >> log, legend
-  print >> log, "-"*79
+  print("-"*79, file=log)
+  print(legend, file=log)
+  print("-"*79, file=log)
   inputs = mmtbx.utils.process_command_line_args(args = args,
     master_params = master_params())
   params = inputs.params.extract()
@@ -72,7 +74,7 @@ def run(args, log=sys.stdout):
   d_min = params.resolution
   if(d_min is None):
     raise Sorry("Map resolution must be given.")
-  print >> log, "  d_min: %6.4f"%d_min
+  print("  d_min: %6.4f"%d_min, file=log)
   #
   result_obj = compdiff(
     map_data_obs = map_data,
@@ -117,7 +119,7 @@ def scale_two_real_maps_in_fourier_space(m1, m2, cs, d_min, vector_map):
   if(vector_map):
     f2 = f2.phase_transfer(phase_source=f1)
   ss = 1./flex.pow2(f1.d_spacings().data()) / 4.
-  bs = flex.double([i for i in xrange(0,100)])
+  bs = flex.double([i for i in range(0,100)])
   mc = mmtbx.bulk_solvent.complex_f_minus_f_kb_scaled(
     f1.data(),f2.data(),bs,ss)
   crystal_gridding = maptbx.crystal_gridding(

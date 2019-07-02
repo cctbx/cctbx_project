@@ -4,7 +4,7 @@
 # simple frontend to mmtbx.find_peaks, primarily intended for use in quickly
 # analyzing structures in the PDB (and storing results)
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx import utils
 from scitbx.array_family import flex
 from libtbx.str_utils import make_header, format_value
@@ -15,6 +15,9 @@ from libtbx import adopt_init_args, group_args
 from iotbx.pdb.hybrid_36 import hy36encode
 import os
 import sys
+from functools import cmp_to_key
+from past.builtins import cmp
+from six.moves import zip
 
 def get_master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
@@ -83,11 +86,12 @@ class peaks_holes_container(object):
     if (self.anom_peaks is not None):
       self.anom_peaks.sort(reverse=True)
     if (self.water_peaks is not None):
-      self.water_peaks = sorted(self.water_peaks,
-        lambda x,y: cmp(y.peak_height, x.peak_height))
+      cmp_fn = lambda x,y: cmp(y.peak_height, x.peak_height)
+      self.water_peaks = sorted(self.water_peaks, key=cmp_to_key(cmp_fn))
     if (self.water_anom_peaks is not None):
+      cmp_fn = lambda x,y: cmp(y.peak_height, x.peak_height)
       self.water_anom_peaks = sorted(self.water_anom_peaks,
-        lambda x,y: cmp(y.peak_height, x.peak_height))
+                                     key=cmp_to_key(cmp_fn))
     self.pdb_file = None
     self.map_file = None
 
@@ -225,7 +229,7 @@ class peaks_holes_container(object):
         anom_chain_2.append_residue_group(rg)
     f.write(root.as_pdb_string())
     f.close()
-    print >> log, "Wrote %s" % file_name
+    print("Wrote %s" % file_name, file=log)
     self.pdb_file = file_name
 
   def get_output_file_info(self):
@@ -238,8 +242,8 @@ class peaks_holes_container(object):
 
 class summary(group_args):
   def show(self, out=sys.stdout):
-    print >> out, ""
-    print >> out, "SUMMARY OF MAP PEAKS:"
+    print("", file=out)
+    print("SUMMARY OF MAP PEAKS:", file=out)
     cutoffs = [self.map_cutoff, self.map_cutoff + 3.0, self.map_cutoff + 6.0]
     peaks = [ self.n_peaks_1, self.n_peaks_2, self.n_peaks_3 ]
     labels = []
@@ -272,16 +276,16 @@ class summary(group_args):
     format = "%%-%ds" % label_len
     for label, value in zip(labels, values):
       formatted = format % label
-      print >> out, "  %s %s" % (formatted, value)
-    print >> out, ""
+      print("  %s %s" % (formatted, value), file=out)
+    print("", file=out)
 
 class water_peak(object):
   def __init__(self, id_str, xyz, peak_height, map_type="mFo-DFc"):
     adopt_init_args(self, locals())
 
   def show(self, out=sys.stdout):
-    print >> out, "  %s  map_type=%s  peak=%g" % (self.id_str,
-      self.map_type, self.peak_height)
+    print("  %s  map_type=%s  peak=%g" % (self.id_str,
+      self.map_type, self.peak_height), file=out)
 
 def find_peaks_holes(
     fmodel,
@@ -332,12 +336,12 @@ def find_peaks_holes(
     n_removed = peaks.filter_by_secondary_map(
       map=f_map,
       min_value=filter_peaks_by_2fofc)
-    print >> out, ""
-    print >> out, "%d peaks remaining after 2mFo-DFc filtering" % \
-      len(peaks.sites)
+    print("", file=out)
+    print("%d peaks remaining after 2mFo-DFc filtering" % \
+      len(peaks.sites), file=out)
   # very important - sites are initially fractional coordinates!
   peaks.sites = unit_cell.orthogonalize(peaks.sites)
-  print >> out, ""
+  print("", file=out)
   out.flush()
   make_header("Negative difference map holes", out=out)
   holes_result = find_peaks.manager(
@@ -355,7 +359,7 @@ def find_peaks_holes(
   #    map=f_map,
   #    min_value=filter_peaks_by_2fofc)
   holes.sites = unit_cell.orthogonalize(holes.sites)
-  print >> out, ""
+  print("", file=out)
   out.flush()
   anom = None
   anom_map_coeffs = None
@@ -365,7 +369,7 @@ def find_peaks_holes(
     if ((use_phaser_if_available) and (libtbx.env.has_module("phaser")) and
         (not fmodel.twin)):
       import mmtbx.map_tools
-      print >> out, "Will use Phaser LLG map"
+      print("Will use Phaser LLG map", file=out)
       anom_map_type = None
       anom_map_coeffs = mmtbx.map_tools.get_phaser_sad_llg_map_coefficients(
         fmodel=fmodel,
@@ -385,11 +389,11 @@ def find_peaks_holes(
       anom.filter_by_secondary_map(
         map=f_map,
         min_value=filter_peaks_by_2fofc)
-      print >> out, ""
-      print >> out, "%d peaks remaining after 2mFo-DFc filtering" % \
-        len(anom.sites)
+      print("", file=out)
+      print("%d peaks remaining after 2mFo-DFc filtering" % \
+        len(anom.sites), file=out)
     anom.sites = unit_cell.orthogonalize(anom.sites)
-    print >> out, ""
+    print("", file=out)
     out.flush()
   anom_map = None
   cache = pdb_hierarchy.atom_selection_cache()
@@ -433,7 +437,7 @@ def find_peaks_holes(
         make_header("Water molecules with %s peaks" % map_type, out=out)
         for peak in suspicious_waters :
           peak.show(out=out)
-        print >> out, ""
+        print("", file=out)
         waters_out[k] = suspicious_waters
   non_water_anom_peaks = None
   if (fmodel.f_obs().anomalous_flag()):

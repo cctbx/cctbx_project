@@ -1,7 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx import math
 from scitbx.array_family import flex
 from scitbx.array_family import shared
+from six.moves import range
+from six.moves import zip
 
 def tst_nlm():
   nlm_array = math.nlm_array(10)
@@ -190,4 +192,4 @@ if __name__ == "__main__":
   tst_zernike_radial()
   tst_zernike_grid()
 
-  print "OK"
+  print("OK")

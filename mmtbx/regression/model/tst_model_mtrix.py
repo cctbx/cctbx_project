@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.model
 import iotbx.pdb
 from libtbx.utils import format_cpu_times, null_out
@@ -129,5 +129,5 @@ def exercise_2():
 if (__name__ == "__main__"):
   exercise_1()
   exercise_2()
-  print format_cpu_times()
-  print "OK"
+  print(format_cpu_times())
+  print("OK")

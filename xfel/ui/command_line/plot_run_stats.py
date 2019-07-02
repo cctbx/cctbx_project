@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 '''
 Author      : Young, I.D.
@@ -17,7 +17,7 @@ import sys
 
 phil_str = """
   run = None
-    .type = int
+    .type = str
     .multiple = True
   trial = None
     .type = int

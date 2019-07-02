@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.tls import tools
 import math
 import time
@@ -37,7 +37,7 @@ def exercise_03():
   for pdb_str in [pdb_str_1, pdb_str_2, pdb_str_3, pdb_str_4]:
     for vs_ in vs:
       vx,vy,vz = vs_
-      print vx,vy,vz
+      print(vx,vy,vz)
       tools.u_tls_vs_u_ens(pdb_str=pdb_str,
           tx=0.05,ty=0.07,tz=0.09,
           vx=vx, vy=vy, vz=vz,
@@ -46,5 +46,5 @@ def exercise_03():
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_03()
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")

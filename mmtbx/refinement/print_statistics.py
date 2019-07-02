@@ -1,4 +1,4 @@
-from __future__ import division, absolute_import
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import scitbx.math.euler_angles
 from scitbx import matrix
@@ -14,6 +14,7 @@ import cctbx.xray.structure_factors.global_counters
 from libtbx import easy_pickle
 from itertools import count
 from libtbx import group_args
+from six.moves import zip
 
 enable_show_process_info = getenv_bool(
   "MMTBX_PRINT_STATISTICS_ENABLE_SHOW_PROCESS_INFO")
@@ -24,15 +25,15 @@ def show_times(out = None):
   if(out is None): out = sys.stdout
   total = time_collect_and_process
   if(total > 0.01):
-     print >> out, "Collect and process                      = %-7.2f" % time_collect_and_process
+     print("Collect and process                      = %-7.2f" % time_collect_and_process, file=out)
   return total
 
 def show_process_info(out):
-  print >> out, "\\/"*39
+  print("\\/"*39, file=out)
   introspection.virtual_memory_info().show_if_available(out=out, show_max=True)
   xray.structure_factors.global_counters.show(out=out)
-  print >> out, format_cpu_times()
-  print >> out, "/\\"*39
+  print(format_cpu_times(), file=out)
+  print("/\\"*39, file=out)
   out.flush()
 
 def make_header(line, out=None):
@@ -63,7 +64,7 @@ def macro_cycle_header(macro_cycle, number_of_macro_cycles, out=None):
   str1 = "\n"+"*"*(fill_l-1)+" REFINEMENT MACRO_CYCLE "+macro_cycle+" OF "
   str2 = number_of_macro_cycles+" "+"*"*(fill_r)+"\n"
   out_string = str1+str2
-  print >> out, out_string
+  print(out_string, file=out)
   out.flush()
 
 def show_rigid_body_rotations_and_translations(
@@ -76,22 +77,22 @@ def show_rigid_body_rotations_and_translations(
   assert euler_angle_convention in ["xyz", "zyz"]
   euler_angles_as_matrix = getattr(
     scitbx.math.euler_angles, euler_angle_convention+"_matrix")
-  print >> out, prefix_each_line_suffix(
+  print(prefix_each_line_suffix(
     prefix=prefix+frame, lines_as_one_string=
 "                            rotation (deg)                 translation (A)   "
 "\n"
 "                         %s              total           xyz          total "
-      % euler_angle_convention, suffix=frame)
+      % euler_angle_convention, suffix=frame), file=out)
   for i,r,t in zip(count(1), rotations, translations):
     r = list(r)
     r.reverse()
     r_total = abs(scitbx.math.r3_rotation_axis_and_angle_from_matrix(
       r=euler_angles_as_matrix(*r)).angle(deg=True))
     t_total = abs(matrix.col(t))
-    print >> out, (prefix + frame +
+    print((prefix + frame +
       " group %4d: %8.3f %8.3f %8.3f %7.2f  %6.2f %6.2f %6.2f %6.2f "
         % tuple([i] + r + [r_total] + list(t) + [t_total])
-      + frame).rstrip()
+      + frame).rstrip(), file=out)
   out.flush()
 
 # these are the steps we actually want to display in the GUI
@@ -225,7 +226,7 @@ class refinement_monitor(object):
     if(out is None): out = self.out
     separator = "-"*72
     if(self.rigid_body_shift_accumulator is not None):
-      print >> out, remark + "Information about total rigid body shift of selected groups:"
+      print(remark + "Information about total rigid body shift of selected groups:", file=out)
       show_rigid_body_rotations_and_translations(
         out=out,
         prefix=remark,
@@ -235,36 +236,36 @@ class refinement_monitor(object):
         rotations=self.rigid_body_shift_accumulator.rotations,
         translations=self.rigid_body_shift_accumulator.translations)
     #
-    print >> out, remark + "****************** REFINEMENT STATISTICS STEP BY STEP ******************"
-    print >> out, remark + "leading digit, like 1_, means number of macro-cycle                     "
-    print >> out, remark + "0    : statistics at the very beginning when nothing is done yet        "
+    print(remark + "****************** REFINEMENT STATISTICS STEP BY STEP ******************", file=out)
+    print(remark + "leading digit, like 1_, means number of macro-cycle                     ", file=out)
+    print(remark + "0    : statistics at the very beginning when nothing is done yet        ", file=out)
     if(self.params.main.bulk_solvent_and_scale):
-       print >> out, remark + "1_bss: bulk solvent correction and/or (anisotropic) scaling             "
+       print(remark + "1_bss: bulk solvent correction and/or (anisotropic) scaling             ", file=out)
     if("individual_sites" in self.params.refine.strategy):
-       print >> out, remark + "1_xyz: refinement of coordinates                                        "
+       print(remark + "1_xyz: refinement of coordinates                                        ", file=out)
     if("individual_adp" in self.params.refine.strategy):
-       print >> out, remark + "1_adp: refinement of ADPs (Atomic Displacement Parameters)              "
+       print(remark + "1_adp: refinement of ADPs (Atomic Displacement Parameters)              ", file=out)
     if(self.params.main.simulated_annealing):
-       print >> out, remark + "1_sar: simulated annealing refinement of x,y,z                          "
+       print(remark + "1_sar: simulated annealing refinement of x,y,z                          ", file=out)
     if(self.params.main.ordered_solvent):
-       print >> out, remark + "1_wat: ordered solvent update (add / remove)                            "
+       print(remark + "1_wat: ordered solvent update (add / remove)                            ", file=out)
     if("rigid_body" in self.params.refine.strategy):
-       print >> out, remark + "1_rbr: rigid body refinement                                            "
+       print(remark + "1_rbr: rigid body refinement                                            ", file=out)
     if("group_adp" in self.params.refine.strategy):
-       print >> out, remark + "1_gbr: group B-factor refinement                                        "
+       print(remark + "1_gbr: group B-factor refinement                                        ", file=out)
     if("occupancies" in self.params.refine.strategy):
-       print >> out, remark + "1_occ: refinement of occupancies                                        "
-    print >> out, remark + separator
+       print(remark + "1_occ: refinement of occupancies                                        ", file=out)
+    print(remark + separator, file=out)
     #
     has_bonds_angles=True
     if len(self.geom.bonds):
-      print >> out, remark + \
-        " stage r-work r-free bonds angles b_min b_max b_ave n_water shift"
+      print(remark + \
+        " stage r-work r-free bonds angles b_min b_max b_ave n_water shift", file=out)
       format = remark + "%s%ds"%("%",max_step_len)+\
         " %6.4f %6.4f %5.3f %6.3f %5.1f %5.1f %5.1f %3d %s"
     else:
-      print >> out, remark + \
-        " stage       r-work r-free b_min b_max b_ave n_water shift"
+      print(remark + \
+        " stage       r-work r-free b_min b_max b_ave n_water shift", file=out)
       format = remark + "%s%ds"%("%",max_step_len)+\
         " %6.4f %6.4f %5.1f %5.1f %5.1f %3d %s"
     for a,b,c, d1,d2, e,f,g,h,i in zip(self.steps,
@@ -280,10 +281,10 @@ class refinement_monitor(object):
         if(type(1.)==type(i)): i = "     "+str("%5.3f"%i)
         else: i = "%9s"%i
         if has_bonds_angles:
-          print >> out, format % (a,b,c,d1,d2,e,f,g,h,i)
+          print(format % (a,b,c,d1,d2,e,f,g,h,i), file=out)
         else:
-          print >> out, format % (a,b,c,e,f,g,h,i)
-    print >> out, remark + separator
+          print(format % (a,b,c,e,f,g,h,i), file=out)
+    print(remark + separator, file=out)
     out.flush()
     #
     t2 = time.time()
@@ -340,10 +341,10 @@ class refinement_monitor(object):
         action_label = "start"
       else :
         action_label = "end"
-    print >> out, "%s%-6s  r_work=%s  r_free=%s" % (prefix,
+    print("%s%-6s  r_work=%s  r_free=%s" % (prefix,
       action_label,
       format_value("%.4f", self.r_works[-1]),
-      format_value("%.4f", self.r_frees[-1]))
+      format_value("%.4f", self.r_frees[-1])), file=out)
 
 class stats_table(slots_getstate_setstate):
   __slots__ = [
@@ -419,8 +420,8 @@ class trajectory_output(object):
     f.write(pdb_hierarchy.as_pdb_string(
       crystal_symmetry=model.get_xray_structure()))
     f.close()
-    print >> self.log, "wrote model to %s.pdb" % file_base
-    print >> self.log, "wrote map coefficients to %s.mtz" % file_base
+    print("wrote model to %s.pdb" % file_base, file=self.log)
+    print("wrote map coefficients to %s.mtz" % file_base, file=self.log)
 
 class annealing_callback(object):
   def __init__(self, model, monitor):

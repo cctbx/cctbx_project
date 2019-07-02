@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.monomer_library.pdb_interpretation
 import cctbx.geometry_restraints.flags
 from cctbx.array_family import flex
@@ -110,4 +110,4 @@ def exercise(d_min = 2.0, resolution_factor = 0.1):
 if(__name__ == "__main__"):
   t0 = time.time()
   exercise()
-  print "Time: %6.2f" % (time.time()-t0)
+  print("Time: %6.2f" % (time.time()-t0))

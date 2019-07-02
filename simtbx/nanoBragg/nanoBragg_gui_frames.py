@@ -1,11 +1,10 @@
-from __future__ import division
-
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/12/2017
-Last Changed: 01/29/2018
+Last Changed: 06/20/2019
 Description : SIMTBX (nanoBragg) GUI Windows / frames
 '''
+from __future__ import absolute_import, division, print_function
 
 import os
 import wx
@@ -19,8 +18,9 @@ from matplotlib.figure import Figure
 from iotbx import phil as ip
 from simtbx.nanoBragg import nanoBragg_gui_dialogs as dlg
 from simtbx.nanoBragg import nanoBragg_threads as thr
-from iota.components import iota_ui_controls as ct
+from iota.components.gui import controls as ct
 from iota.components.iota_utils import InputFinder, WxFlags, noneset
+from six.moves import range
 
 ginp = InputFinder()
 import time
@@ -255,7 +255,7 @@ class TopPanel(BasePanel):
   def onFinishedSimThread(self, e):
     pixels = e.GetValue()
     self.display_image(pixels=pixels)
-    print 'TOTAL TIME = ', time.time() - self.start_timer
+    print('TOTAL TIME = ', time.time() - self.start_timer)
 
   def display_image(self, pixels=None):
     if pixels is None:
@@ -272,8 +272,8 @@ class TopPanel(BasePanel):
     self.img_figure.subplots_adjust(left=0, bottom=0, right=1, top=1)
 
     self.preview_panel.Layout()
-    print 'DEBUG: AVERAGE PIXEL VALUE = ', np.mean(pixels)
-    print 'DONE!'
+    print('DEBUG: AVERAGE PIXEL VALUE = ', np.mean(pixels))
+    print('DONE!')
 
   def on_button_press(self, e):
     if e.button == 1 and e.dblclick:

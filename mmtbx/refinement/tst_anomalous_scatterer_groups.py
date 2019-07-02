@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.refinement.anomalous_scatterer_groups
 import mmtbx.f_model
 from cctbx.development import random_structure
@@ -8,6 +8,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import random
 import sys
+from six.moves import zip
 
 if (1):
   random.seed(0)

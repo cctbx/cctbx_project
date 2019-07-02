@@ -1,8 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx, uctbx, crystal, xray
 from cctbx.xray import observations
 from iotbx.shelx import hklf
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def excersise():
   s = """\
@@ -67,15 +67,15 @@ def excersise():
     ps = 1-obs.ref_twin_fractions[0].value
     itr = obs.iterator(0)
     assert obs.scale(0) == ts*ps
-    nv = itr.next()
+    nv = next(itr)
     assert nv.scale == obs.ref_twin_components[0].value*ps
-  except RuntimeError, e:
+  except RuntimeError as e:
     pass
 
 
 def run():
   excersise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

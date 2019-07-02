@@ -1,25 +1,26 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.graph import utils
 import sys
+from six.moves import range
 
 def exercise_tree_marking():
   tree_marking = utils.tree_marking
   el = []
-  for n_vertices in xrange(5):
+  for n_vertices in range(5):
     es = utils.construct_edge_sets(n_vertices=n_vertices, edge_list=el)
     ti = tree_marking(edge_sets=es).indices
-    assert ti == range(n_vertices)
+    assert ti == list(range(n_vertices))
   el = [(0,1)]
-  for n_vertices in xrange(2,5):
+  for n_vertices in range(2,5):
     es = utils.construct_edge_sets(n_vertices=n_vertices, edge_list=el)
     ti = tree_marking(edge_sets=es).indices
-    assert ti == [0] + range(n_vertices-1)
+    assert ti == [0] + list(range(n_vertices-1))
   el = [(2,5)]
   es = utils.construct_edge_sets(n_vertices=7, edge_list=el)
   ti = tree_marking(edge_sets=es).indices
   assert ti == [0,1,2,3,4,2,5]
-  for n_vertices in xrange(7):
-    el = [(i,i+1) for i in xrange(n_vertices-1)]
+  for n_vertices in range(7):
+    el = [(i,i+1) for i in range(n_vertices-1)]
     es = utils.construct_edge_sets(n_vertices=n_vertices, edge_list=el)
     ti = tree_marking(edge_sets=es).indices
     assert ti == [0] * n_vertices
@@ -39,11 +40,11 @@ def exercise_tree_marking():
   tm = tree_marking(edge_sets=es)
   assert tm.indices == [0,1,2,3,1,0,1,3,3,3,4,3,3,3,3,3]
   assert tm.partitions_of(vertex_indices=()) == []
-  for i in xrange(16):
+  for i in range(16):
     assert tm.partitions_of(vertex_indices=[i]) == [[i]]
   assert tm.partitions_of(vertex_indices=[14,3]) == [[14,3]]
   assert tm.partitions_of(vertex_indices=[5,10]) == [[5],[10]]
-  assert tm.partitions_of(vertex_indices=range(16)) == [
+  assert tm.partitions_of(vertex_indices=list(range(16))) == [
     [0,5], [1,4,6], [2], [3,7,8,9,11,12,13,14,15], [10]]
 
 def run(args):
@@ -195,7 +196,7 @@ def run(args):
   #
   exercise_tree_marking()
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

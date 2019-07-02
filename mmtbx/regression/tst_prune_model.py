@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import libtbx.load_env
 from libtbx import easy_run
@@ -12,7 +12,7 @@ def exercise():
     relative_path="phenix_regression/reflection_files/prune_data.mtz",
     test=os.path.isfile)
   if (None in [pdb_file, mtz_file]):
-    print "Input files not found, skipping test"
+    print("Input files not found, skipping test")
     return
   cmd = "mmtbx.prune_model \"%s\" \"%s\" mainchain=True" % (pdb_file, mtz_file)
   result = easy_run.fully_buffered(cmd).raise_if_errors()
@@ -22,4 +22,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

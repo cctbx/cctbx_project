@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 import time
 
@@ -71,7 +71,7 @@ def adjust_rotamer_restraints(pdb_hierarchy,
   assert 0
   if log is None: log = sys.stdout
   t0=time.time()
-  print >> log, "  Rotamer Conformation Library"
+  print("  Rotamer Conformation Library", file=log)
   def _get_i_seqs_restraints(pdb_hierarchy):
     name_restraints = {}
     chains=[]
@@ -82,12 +82,12 @@ def adjust_rotamer_restraints(pdb_hierarchy,
       if resname not in rdl_database: continue
       if rotamer not in rdl_database[resname]: continue
       if verbose:
-        print "resn %s chain %s id %s altloc %s rotamer %s" % (resname,
+        print("resn %s chain %s id %s altloc %s rotamer %s" % (resname,
                                                                chain,
                                                                id_str,
                                                                altloc,
                                                                rotamer,
-                                                               )
+                                                               ))
       restraints = rdl_database[resname][rotamer]
       defaults = rdl_database[resname]["default"]
       name_restraints[id_str] = (chain,
@@ -147,24 +147,24 @@ def adjust_rotamer_restraints(pdb_hierarchy,
     atoms = pdb_hierarchy.atoms()
   for angle_proxy in geometry_restraints_manager.angle_proxies:
     if angle_proxy.i_seqs in i_seqs_restraints:
-      if verbose: print " i_seqs %-15s initial %12.3f %12.3f :%s-%s-%s" % (
+      if verbose: print(" i_seqs %-15s initial %12.3f %12.3f :%s-%s-%s" % (
           angle_proxy.i_seqs,
           angle_proxy.angle_ideal,
           angle_proxy.weight,
           atoms[angle_proxy.i_seqs[0]].quote()[11:-12],
           atoms[angle_proxy.i_seqs[1]].quote()[11:-12],
           atoms[angle_proxy.i_seqs[2]].quote()[11:-12],
-        )
+        ))
       angle_proxy.angle_ideal = i_seqs_restraints[angle_proxy.i_seqs][0]
       angle_proxy.weight = 1/i_seqs_restraints[angle_proxy.i_seqs][1]**2
-      if verbose: print " i_seqs %-15s final   %12.3f %12.3f" % (
+      if verbose: print(" i_seqs %-15s final   %12.3f %12.3f" % (
         angle_proxy.i_seqs,
         angle_proxy.angle_ideal,
         angle_proxy.weight,
-        )
+        ))
       count += 1
-  print >> log, "    Number of angles RDL adjusted : %d" % count
-  print >> log, "    Time to adjust                : %0.3f" % (time.time()-t0)
+  print("    Number of angles RDL adjusted : %d" % count, file=log)
+  print("    Time to adjust                : %0.3f" % (time.time()-t0), file=log)
   return i_seqs_restraints, i_seqs_restraints_reversal
 
 def update_restraints(hierarchy,
@@ -195,19 +195,19 @@ def update_restraints(hierarchy,
     count = 0
     for angle_proxy in geometry.angle_proxies:
       if angle_proxy.i_seqs in lookup:
-        if verbose: print " i_seqs %-15s initial %12.3f %12.3f" % (
+        if verbose: print(" i_seqs %-15s initial %12.3f %12.3f" % (
           angle_proxy.i_seqs,
           angle_proxy.angle_ideal,
           angle_proxy.weight,
-          )
+          ))
         assert angle_proxy.angle_ideal<181
         angle_proxy.angle_ideal = lookup[angle_proxy.i_seqs][0]
         angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
-        if verbose: print " i_seqs %-15s final   %12.3f %12.3f" % (
+        if verbose: print(" i_seqs %-15s final   %12.3f %12.3f" % (
           angle_proxy.i_seqs,
           angle_proxy.angle_ideal,
           angle_proxy.weight,
-          )
+          ))
         count += 1
     return count
   #
@@ -218,24 +218,24 @@ def update_restraints(hierarchy,
     count = 0
     for angle_proxy in geometry.dihedral_proxies:
       if angle_proxy.i_seqs in lookup:
-        if verbose: print " i_seqs %-15s initial %12.3f %12.3f %s %d" % (
+        if verbose: print(" i_seqs %-15s initial %12.3f %12.3f %s %d" % (
           angle_proxy.i_seqs,
           angle_proxy.angle_ideal,
           angle_proxy.weight,
           angle_proxy.alt_angle_ideals,
           angle_proxy.periodicity,
-          )
+          ))
         angle_proxy.angle_ideal = lookup[angle_proxy.i_seqs][0]
         angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
         angle_proxy.alt_angle_ideals=None
         angle_proxy.periodicity = lookup[angle_proxy.i_seqs][2]
-        if verbose: print " i_seqs %-15s final   %12.3f %12.3f %s %d" % (
+        if verbose: print(" i_seqs %-15s final   %12.3f %12.3f %s %d" % (
           angle_proxy.i_seqs,
           angle_proxy.angle_ideal,
           angle_proxy.weight,
           angle_proxy.alt_angle_ideals,
           angle_proxy.periodicity,
-          )
+          ))
         count += 1
     return count
   #
@@ -281,24 +281,24 @@ def update_restraints(hierarchy,
                 chis_str += " %6.1f," % chi
               chis_str = chis_str[:-1]+']'
             try:
-              print >> log, "  %s %s %s %-5s %-60s %0.1f" % (
+              print("  %s %s %s %-5s %-60s %0.1f" % (
                 chain.id,
                 atom_group.resname,
                 residue_group.resseq,
                 rotamer_name,
                 chis_str,
                 value,
-              )
-            except TypeError, e:
-              print >> log, "  %s %s %s %-5s %-60s %s" % (
+              ), file=log)
+            except TypeError as e:
+              print("  %s %s %s %-5s %-60s %s" % (
                 chain.id,
                 atom_group.resname,
                 residue_group.resseq,
                 rotamer_name,
                 chis_str,
                 value,
-              )
-          if loud: print 'exclude_backbone',exclude_backbone
+              ), file=log)
+          if loud: print('exclude_backbone',exclude_backbone)
           if rotamer_name in ["OUTLIER"]: continue
           resname_lookup = substitute_residue_lookup.get(atom_group.resname,
                                                          atom_group.resname,
@@ -308,11 +308,11 @@ def update_restraints(hierarchy,
               raise Sorry("rotamer %s not found in db" % rotamer_name)
             else:
               continue
-          if loud: print 'not outlier'
+          if loud: print('not outlier')
           if rotamer_name not in rdl_database[resname_lookup]:
-            if loud: print "rotamer_name %s not in RDL db" % rotamer_name
+            if loud: print("rotamer_name %s not in RDL db" % rotamer_name)
             continue
-          if loud: print 'rotamer_name %s found' % rotamer_name
+          if loud: print('rotamer_name %s found' % rotamer_name)
           restraints = rdl_database[resname_lookup][rotamer_name]
           defaults = rdl_database[resname_lookup]["default"]
           rdl_proxies.append(atom_group.id_str())
@@ -335,7 +335,7 @@ def update_restraints(hierarchy,
   #
   if loud:
     for i, atom in enumerate(hierarchy.atoms()):
-      print i, atom.quote()
+      print(i, atom.quote())
   count = _set_or_reset_dihedral_restraints(geometry,
                                             i_seqs_restraints_reverse,
                                             #verbose=loud,
@@ -353,17 +353,17 @@ def update_restraints(hierarchy,
                                          verbose=loud,
                                          )
   #
-  print >> log, "    Number of angles, dihedrals RDL adjusted : %d, %d" % (
+  print("    Number of angles, dihedrals RDL adjusted : %d, %d" % (
     count_a,
     count_d,
-    )
-  print >> log, "    Time to adjust                           : %0.1fs" % (
-    time.time()-t0)
+    ), file=log)
+  print("    Time to adjust                           : %0.1fs" % (
+    time.time()-t0), file=log)
   return rdl_proxies
 
 def run(pdb_filename):
   from iotbx import pdb
-  print pdb_filename
+  print(pdb_filename)
   pdb_inp = pdb.input(pdb_filename)
   pdb_hieratchy = pdb_inp.construct_hierarchy()
   for residue_group in pdb_hieratchy.residue_groups():
@@ -372,7 +372,7 @@ def run(pdb_filename):
                                                  rotamer_evaluator,
                                                  rotamer_id,
       )
-    print rotamer_name
+    print(rotamer_name)
 
 if __name__=="__main__":
   run(sys.argv[1])

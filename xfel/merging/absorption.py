@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from cctbx.array_family import flex
 
@@ -75,10 +75,10 @@ class show_observations:
         )
         self.result.append(bin)
     self.set_limits(unobstructed)
-    print >>out, "\n Bin  Resolution Range  Compl.         <I>     <I/sig(I)> Unobstructed <I>     <I/sig(I)> Obstructed <I>     <I/sig(I)>"
+    print("\n Bin  Resolution Range  Compl.         <I>     <I/sig(I)> Unobstructed <I>     <I/sig(I)> Obstructed <I>     <I/sig(I)>", file=out)
     for bin in self.result:
       fmt = " %s %s    %s  %s%s   %s   %s  %s%s   %s  %s   %s%s"
-      print >>out,fmt%(
+      print(fmt%(
         format_value("%3d",   bin.i_bin),
         format_value("%-17s", bin.d_range),
         format_value("%8.1f", bin.mean_I),
@@ -92,7 +92,7 @@ class show_observations:
         format_value("%8.1f", bin.atten_mean_I),
         format_value("%8.2f", bin.atten_mean_I_sigI),
         format_value("%1s",   getattr(bin,"atten_limit"," ")),
-        )
+        ), file=out)
 
   def set_limits(self, unobstructed):
     acceptable_resolution_bins = [
@@ -122,8 +122,8 @@ class show_observations:
     # Now compute the appropriate selections
     unattenuated_res_limit = float(self.result[unatten_acceptable].d_range.split()[2])
     attenuated_res_limit = float(self.result[atten_acceptable].d_range.split()[2])
-    print >> self.out, "New combination resolution filter at %7.2f and %7.2f"%(unattenuated_res_limit,
-    attenuated_res_limit)
+    print("New combination resolution filter at %7.2f and %7.2f"%(unattenuated_res_limit,
+    attenuated_res_limit), file=self.out)
 
     unattenuated_res_selection = self.obs.resolution_filter_selection(
             d_min=unattenuated_res_limit)

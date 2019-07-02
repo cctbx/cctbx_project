@@ -437,4 +437,3 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
 }}} // namespace cctbx::sgtbx::asu
 #endif
-

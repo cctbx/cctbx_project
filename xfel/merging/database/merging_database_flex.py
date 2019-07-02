@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 
 def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore, X):
@@ -31,7 +31,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore, X):
 
     elif table == 'observation':
       rows_observation = X["rows"].get_obj()[0]
-      new_rows_observation = rows_observation+len(data[data.keys()[0]])
+      new_rows_observation = rows_observation+len(data[list(data.keys())[0]]) # XXX FIXME
       X["intensity_proxy"].get_obj()[rows_observation:new_rows_observation]=data["i"]
       X["sigma_proxy"].get_obj()[rows_observation:new_rows_observation]=data["sigi"]
       X["miller_proxy"].get_obj()[rows_observation:new_rows_observation]=data["hkl_id_0_base"]
@@ -44,7 +44,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore, X):
 
     else:
       raise RuntimeError("Unknown table '%s'" % command[0])
-    print "FRAME",rows_frame,"OBS",X['rows'].get_obj()[0]
+    print("FRAME",rows_frame,"OBS",X['rows'].get_obj()[0])
     if lastrowid_key is not None:
       db_results_queue.put((lastrowid_key, lastrowid_value))
     db_commands_queue.task_done()
@@ -103,7 +103,7 @@ class manager:
         self._db_results_queue.put(item)
 
   def insert_observation(self, **kwargs):
-    print "inserting obs:"
+    print("inserting obs:")
     self._db_commands_queue.put(('observation', kwargs, None))
 
   def join(self,data_dict):
@@ -116,7 +116,7 @@ class manager:
     self._db_results_queue.join()
     self._semaphore.acquire()
     nrows = data_dict["rows"].get_obj()[0]
-    print "writing observation pickle with %d rows"%nrows
+    print("writing observation pickle with %d rows"%nrows)
     kwargs = dict(
       miller_lookup =      flex.size_t(data_dict["miller_proxy"].get_obj()[:nrows]),
       observed_intensity = flex.double(data_dict["intensity_proxy"].get_obj()[:nrows]),
@@ -225,18 +225,18 @@ class read_experiments(object):
   def show_summary(self):
     w = flex.double([e.beam.get_wavelength() for e in self.experiments])
     stats=flex.mean_and_variance(w)
-    print "Wavelength mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
+    print("Wavelength mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation())
     uc = [e.crystal.get_unit_cell().parameters() for e in self.experiments]
     a = flex.double([u[0] for u in uc])
     stats=flex.mean_and_variance(a)
-    print "Unit cell a mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
+    print("Unit cell a mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation())
     b = flex.double([u[1] for u in uc])
     stats=flex.mean_and_variance(b)
-    print "Unit cell b mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
+    print("Unit cell b mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation())
     c = flex.double([u[2] for u in uc])
     stats=flex.mean_and_variance(c)
-    print "Unit cell c mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
+    print("Unit cell c mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation())
     d = flex.double([e.crystal.get_domain_size_ang() for e in self.experiments])
     stats=flex.mean_and_variance(d)
     # NOTE XXX FIXME:  cxi.index seems to record the half-domain size; report here the full domain size
-    print "Domain size mean and standard deviation:",2.*stats.mean(),2.*stats.unweighted_sample_standard_deviation()
+    print("Domain size mean and standard deviation:",2.*stats.mean(),2.*stats.unweighted_sample_standard_deviation())

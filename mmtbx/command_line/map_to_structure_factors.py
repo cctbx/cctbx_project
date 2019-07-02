@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_to_structure_factors
 
 import iotbx.ccp4_map
@@ -9,6 +9,7 @@ import sys
 from libtbx.utils import Sorry
 from cctbx import maptbx
 from cctbx import miller
+from six.moves import range
 
 master_params_str = """
 output_file_name = map_to_structure_factors.mtz
@@ -84,9 +85,9 @@ def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=True)
 
 def broadcast(m, log):
-  print >> log, "-"*79
-  print >> log, m
-  print >> log, "*"*len(m)
+  print("-"*79, file=log)
+  print(m, file=log)
+  print("*"*len(m), file=log)
 
 def get_hl(f_obs_cmpl, k_blur, b_blur):
   f_model_phases = f_obs_cmpl.phases().data()
@@ -145,15 +146,15 @@ def run(args, log=None, ccp4_map=None,
   if(m.space_group_number > 1):
     raise Sorry("Input map space group: %d. Must be P1."%m.space_group_number)
   broadcast(m="Input map information:", log=log)
-  print >>out,"m.all()   :", m.data.all()
-  print >>out,"m.focus() :", m.data.focus()
-  print >>out,"m.origin():", m.data.origin()
-  print >>out,"m.nd()    :", m.data.nd()
-  print >>out,"m.size()  :", m.data.size()
-  print >>out,"m.focus_size_1d():", m.data.focus_size_1d()
-  print >>out,"m.is_0_based()   :", m.data.is_0_based()
-  print >>out,"map: min/max/mean:", flex.min(m.data), flex.max(m.data), flex.mean(m.data)
-  print >>out,"unit cell:", m.unit_cell_parameters
+  print("m.all()   :", m.data.all(), file=out)
+  print("m.focus() :", m.data.focus(), file=out)
+  print("m.origin():", m.data.origin(), file=out)
+  print("m.nd()    :", m.data.nd(), file=out)
+  print("m.size()  :", m.data.size(), file=out)
+  print("m.focus_size_1d():", m.data.focus_size_1d(), file=out)
+  print("m.is_0_based()   :", m.data.is_0_based(), file=out)
+  print("map: min/max/mean:", flex.min(m.data), flex.max(m.data), flex.mean(m.data), file=out)
+  print("unit cell:", m.unit_cell_parameters, file=out)
   #
   if not space_group_number:
     space_group_number=1
@@ -169,43 +170,41 @@ def run(args, log=None, ccp4_map=None,
   cs = m.crystal_symmetry()
 
   if m.unit_cell_grid == m.data.all():
-    print >>out,"\nOne unit cell of data is present in map"
+    print("\nOne unit cell of data is present in map", file=out)
   else:
     if params.keep_origin:
-      print >>out,\
-       "\nNOTE: This map does not have exactly one unit cell of data, so \n"+\
-        "keep_origin is not available\n"
-      print >>out,\
-        "--> Setting keep_origin=False and creating a new cell and gridding.\n"
+      print("\nNOTE: This map does not have exactly one unit cell of data, so \n"+\
+        "keep_origin is not available\n", file=out)
+      print("--> Setting keep_origin=False and creating a new cell and gridding.\n", file=out)
       params.keep_origin=False
-    print >>out,"Moving origin of input map to (0,0,0)"
-    print >>out,"New cell will be: (%.3f, %.3f, %.3f, %.1f, %.1f, %.1f) A " %(
-       cs.unit_cell().parameters())
-    print >>out,"New unit cell grid will be: (%s, %s, %s) "%(
-      m.data.all())
+    print("Moving origin of input map to (0,0,0)", file=out)
+    print("New cell will be: (%.3f, %.3f, %.3f, %.1f, %.1f, %.1f) A " %(
+       cs.unit_cell().parameters()), file=out)
+    print("New unit cell grid will be: (%s, %s, %s) "%(
+      m.data.all()), file=out)
 
   map_data=m.data
 
   # Get origin in grid units and new position of origin in grid units
   original_origin=map_data.origin()
-  print >>out,"\nInput map has origin at grid point (%s,%s,%s)" %(
-        tuple(original_origin))
+  print("\nInput map has origin at grid point (%s,%s,%s)" %(
+        tuple(original_origin)), file=out)
 
   if params.output_origin_grid_units is not None:
     params.keep_origin=False
     new_origin=tuple(params.output_origin_grid_units)
-    print >>out,"User-specified origin at grid point (%s,%s,%s)" %(
-        tuple(params.output_origin_grid_units))
+    print("User-specified origin at grid point (%s,%s,%s)" %(
+        tuple(params.output_origin_grid_units)), file=out)
     if tuple(params.output_origin_grid_units)==tuple(original_origin):
-      print >>out,"This is the same as the input origin. No origin shift."
+      print("This is the same as the input origin. No origin shift.", file=out)
   elif params.keep_origin:
     new_origin=original_origin
-    print >>out,"Keeping origin at grid point  (%s,%s,%s)" %(
-        tuple(original_origin))
+    print("Keeping origin at grid point  (%s,%s,%s)" %(
+        tuple(original_origin)), file=out)
   else:
     new_origin=(0,0,0,)
-    print >>out,"New origin at grid point (%s,%s,%s)" %(
-        tuple((0,0,0,)))
+    print("New origin at grid point (%s,%s,%s)" %(
+        tuple((0,0,0,))), file=out)
 
   # shift_cart is shift away from (0,0,0)
   if new_origin != (0,0,0,):
@@ -229,8 +228,8 @@ def run(args, log=None, ccp4_map=None,
       map_data  = map_data,
       unit_cell = cs.unit_cell(),
       resolution_factor = params.resolution_factor)
-    print >>out,"\nResolution of map coefficients using "+\
-       "resolution_factor of %.2f: %.1f A\n" %(params.resolution_factor,d_min)
+    print("\nResolution of map coefficients using "+\
+       "resolution_factor of %.2f: %.1f A\n" %(params.resolution_factor,d_min), file=out)
   if(d_min is None):
     # box of reflections in |h|<N1/2, |k|<N2/2, 0<=|l|<N3/2
     f_obs_cmpl = miller.structure_factor_box_from_map(
@@ -248,7 +247,7 @@ def run(args, log=None, ccp4_map=None,
         use_scale      = True,
         anomalous_flag = False,
         use_sg         = False)
-    except Exception, e:
+    except Exception as e:
       if(str(e) == "cctbx Error: Miller index not in structure factor map."):
         msg = "Too high resolution requested. Try running with larger d_min."
         raise Sorry(msg)
@@ -261,12 +260,12 @@ def run(args, log=None, ccp4_map=None,
 
   from scitbx.matrix import col
   if col(shift_cart) != col((0,0,0,)):
-    print >>out,"Output origin is at: (%.3f, %.3f, %.3f) A "%(
-      tuple(-col(shift_cart)))
+    print("Output origin is at: (%.3f, %.3f, %.3f) A "%(
+      tuple(-col(shift_cart))), file=out)
     f_obs_cmpl=f_obs_cmpl.translational_shift(
         cs.unit_cell().fractionalize(-col(shift_cart)), deg=False)
   else:
-    print >>out,"Output origin is at (0.000, 0.000, 0.000) A"
+    print("Output origin is at (0.000, 0.000, 0.000) A", file=out)
 
   if nohl and return_as_miller_arrays and not return_f_obs:
     return f_obs_cmpl
@@ -287,9 +286,9 @@ def run(args, log=None, ccp4_map=None,
     broadcast(m="Convert phases into HL coefficients:", log=log)
     hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=params.b_blur)
     cc = get_cc(f = f_obs_cmpl, hl = hl)
-    print >>out, "cc:", cc
+    print("cc:", cc, file=out)
     if(abs(1.-cc)>1.e-3):
-      print >>out, "Supplied b_blur is not good. Attempting to find optimal b_blur."
+      print("Supplied b_blur is not good. Attempting to find optimal b_blur.", file=out)
       cc_best = 999.
       b_blur_best = params.b_blur
       for b_blur in range(1, 100):
@@ -302,8 +301,8 @@ def run(args, log=None, ccp4_map=None,
           b_blur_best = b_blur
           break
       hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=b_blur_best)
-      print >>out,"cc:", get_cc(f = f_obs_cmpl, hl = hl)
-      print >>out,"b_blur_best:", b_blur_best
+      print("cc:", get_cc(f = f_obs_cmpl, hl = hl), file=out)
+      print("b_blur_best:", b_blur_best, file=out)
     mtz_dataset.add_miller_array(
       miller_array      = hl,
       column_root_label = "HL")
@@ -317,10 +316,10 @@ def run(args, log=None, ccp4_map=None,
   else:
     # write output MTZ file with all the data
     broadcast(m="Writing output MTZ file:", log=log)
-    print >> log, "  file name:", params.output_file_name
+    print("  file name:", params.output_file_name, file=log)
     mtz_object = mtz_dataset.mtz_object()
     mtz_object.write(file_name = params.output_file_name)
 
 if(__name__ == "__main__"):
   run(sys.argv[1:])
-  print "All done."
+  print("All done.")

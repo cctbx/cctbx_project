@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
 import libtbx.load_env
 import os.path as op
+from six.moves import range
 
 if (libtbx.env.has_module("ccp4io")):
   for _ in ["libccp4/data", "data"]:
@@ -22,7 +23,7 @@ P 21/m 21/m 2/n a
 """.splitlines())
 
 def ccp4_symbol(space_group_info, lib_name, require_at_least_one_lib=True):
-  assert lib_name in _ccp4_symbol_cache.keys()
+  assert lib_name in _ccp4_symbol_cache
   sg_type = space_group_info.type()
   lookup_symbol = sg_type.lookup_symbol()
   cache = _ccp4_symbol_cache[lib_name]
@@ -71,8 +72,8 @@ def search_symop_lib_for_ccp4_symbol(space_group_info, file_iter):
     space_group_number = int(flds[0][-3:])
     order_z = int(flds[1])
     if (space_group_number != given_space_group_number):
-      for i in xrange(order_z):
-        file_iter.next()
+      for i in range(order_z):
+        next(file_iter)
     else:
       result = flds[3]
       group = collect_symops(file_iter=file_iter, order_z=order_z)
@@ -82,14 +83,14 @@ def search_symop_lib_for_ccp4_symbol(space_group_info, file_iter):
 
 def collect_symops(file_iter, order_z):
   result = sgtbx.space_group()
-  for i in xrange(order_z):
-    line = file_iter.next().strip()
+  for i in range(order_z):
+    line = next(file_iter).strip()
     result.expand_smx(sgtbx.rt_mx(line))
   return result
 
 def build_syminfo_lib_cache(lib_path):
   _syminfo_lib_cache.append(None)
-  for number in xrange(230):
+  for number in range(230):
     _syminfo_lib_cache.append([])
   file_iter = open(lib_path)
   for line in file_iter:

@@ -10,9 +10,9 @@ They all feature:
 """
 
 
-from __future__ import division
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
 
 
@@ -21,7 +21,8 @@ from cctbx.array_family import flex
 import math
 
 
-class _(boost.python.injector, ext.mainstream_shelx_weighting):
+@boost.python.inject_into(ext.mainstream_shelx_weighting)
+class _():
 
   def __str__(self):
     if round(self.a, 4) in (0.1, 0.2):
@@ -149,7 +150,8 @@ class _(boost.python.injector, ext.mainstream_shelx_weighting):
     weighting.b = start_b
     return weighting
 
-class _(boost.python.injector, ext.unit_weighting):
+@boost.python.inject_into(ext.unit_weighting)
+class _():
 
   def __str__(self):
     return "w=1"
@@ -162,7 +164,8 @@ class _(boost.python.injector, ext.unit_weighting):
     # no parameters to optimise!
     return self
 
-class _(boost.python.injector, ext.sigma_weighting):
+@boost.python.inject_into(ext.sigma_weighting)
+class _():
 
   def __str__(self): return "w=1/sigma^2"
 

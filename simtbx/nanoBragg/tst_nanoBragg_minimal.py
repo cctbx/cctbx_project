@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # absolute bare-minimum diffraction image simulation
 
 from simtbx.nanoBragg import nanoBragg
@@ -16,9 +16,9 @@ SIM.Ncells_abc = (5,5,5)
 # default orientation is with a axis down the beam, lets pick a random one
 SIM.randomize_orientation()
 # display randomly-picked missetting angles
-print SIM.missets_deg
+print(SIM.missets_deg)
 # or an Arndt-Wonacott A matrix (U*B), same as used by mosflm
-print SIM.Amatrix
+print(SIM.Amatrix)
 
 # show all parameters
 SIM.show_params()
@@ -37,4 +37,4 @@ SIM.to_smv_format(fileout="noiseimage_001.img")
 
 
 if __name__=="__main__":
-  print "OK"
+  print("OK")

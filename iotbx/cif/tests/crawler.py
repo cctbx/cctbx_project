@@ -1,6 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import glob, os, sys
-import urllib2
+from six.moves import urllib
 
 from libtbx.utils import time_log
 import libtbx.load_env
@@ -23,16 +23,16 @@ class crawl(object):
           reader = self.run_once(path, build_miller_arrays=build_miller_arrays,
                             build_xray_structure=build_xray_structure)
 
-        except Exception, e:
-          print "error reading %s" %path
-          print e
+        except Exception as e:
+          print("error reading %s" %path)
+          print(e)
           error_count += 1
         timer.stop()
-    print
-    print "%i files read (%i with building errors and %i with parsing errors)" %(
-      timer.n, error_count, self.parsing_error_count)
-    print timer.legend
-    print timer.report()
+    print()
+    print("%i files read (%i with building errors and %i with parsing errors)" %(
+      timer.n, error_count, self.parsing_error_count))
+    print(timer.legend)
+    print(timer.report())
     sys.stdout.flush()
 
   def run_once(self, file_path, build_miller_arrays=False,
@@ -78,12 +78,12 @@ def run(args, out=sys.stdout):
              build_xray_structure=build_xray_structure)
   else:
     try:
-      file_object = urllib2.urlopen(filepath)
-    except urllib2.URLError, e:
+      file_object = urllib.request.urlopen(filepath)
+    except urllib.error.URLError as e:
       pass
     else:
       cm = reader(file_object=file_object).model()
 
 if __name__ == '__main__':
   run(sys.argv[1:])
-  print "OK"
+  print("OK")

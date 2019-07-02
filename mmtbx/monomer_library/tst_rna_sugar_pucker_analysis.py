@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from libtbx.test_utils import approx_equal
 import sys
+from six.moves import zip
 
 class atom(object):
   def __init__(O, xyz):
@@ -97,7 +98,7 @@ def exercise(args):
   assert analysis.is_2p_o3p_distance_c1p_outbound_line is None
   assert analysis.is_2p is None
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

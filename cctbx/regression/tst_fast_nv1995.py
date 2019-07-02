@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import translation_search
 from cctbx import crystal
 from cctbx import miller
@@ -11,6 +11,8 @@ from libtbx.test_utils import approx_equal
 from scitbx import matrix
 import random
 import sys
+from six.moves import range
+from six.moves import zip
 
 def run_fast_terms(structure_fixed, structure_p1,
                    f_obs, f_calc_fixed, f_calc_p1,
@@ -23,7 +25,7 @@ def run_fast_terms(structure_fixed, structure_p1,
   else:
     f_part = f_calc_fixed.data()
   m = flex.double()
-  for i in xrange(f_obs.indices().size()):
+  for i in range(f_obs.indices().size()):
     m.append(random.random())
   assert f_obs.anomalous_flag() == f_calc_p1.anomalous_flag()
   fast_terms = translation_search.fast_terms(
@@ -45,7 +47,7 @@ def run_fast_terms(structure_fixed, structure_p1,
     grid_tags.build(f_obs.space_group_info().type(), symmetry_flags)
     assert grid_tags.n_grid_misses() == 0
     assert grid_tags.verify(map)
-    for i_sample in xrange(n_sample_grid_points):
+    for i_sample in range(n_sample_grid_points):
       run_away_counter = 0
       while 1:
         run_away_counter += 1
@@ -105,9 +107,9 @@ def run_fast_nv1995(f_obs, f_calc_fixed, f_calc_p1,
     max_peaks=10,
     interpolate=True)
   if (0 or verbose):
-    print "gridding:", gridding
+    print("gridding:", gridding)
     for i,site in enumerate(peak_list.sites()):
-      print "(%.4f,%.4f,%.4f)" % site, "%.6g" % peak_list.heights()[i]
+      print("(%.4f,%.4f,%.4f)" % site, "%.6g" % peak_list.heights()[i])
   assert approx_equal(map_stats.max(), flex.max(peak_list.grid_heights()))
   return peak_list
 
@@ -310,7 +312,7 @@ def test_shift(space_group_info,
 
 def run_call_back(flags, space_group_info):
   if (space_group_info.group().order_p() > 24 and not flags.HighSymmetry):
-    print "High symmetry space group skipped."
+    print("High symmetry space group skipped.")
     return
   if (not (flags.Atom or flags.Molecule or flags.Shift)):
     flags.Atom = True
@@ -328,7 +330,7 @@ def run_call_back(flags, space_group_info):
         test_molecule(space_group_info, use_primitive_setting, flag_f_part,
                       verbose=flags.Verbose)
   if flags.Shift:
-    for i in xrange(1):
+    for i in range(1):
       test_shift(space_group_info, verbose=flags.Verbose)
 
 def run():

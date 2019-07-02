@@ -1,6 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 pdb_str = """\
 ATOM      1  C5'   U     5      97.750 -47.885 -63.217  1.00 83.53      A16S C
@@ -58,8 +58,8 @@ def exercise(prefix="iotbx_tst_mmcif_segids"):
   out = StringIO()
   pdb_inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
   h = pdb_inp.construct_hierarchy()
-  print "Original:"
-  print h.as_pdb_string()
+  print("Original:")
+  print(h.as_pdb_string())
   assert len(h.only_model().chains()) == 3
   assert [x.id for x in h.only_model().chains()] == [' ', ' ', ' ']
   assert [x.segid for x in h.atoms()] == ['A16S', 'A16S', 'A16S', 'A16S', 'A16S',
@@ -69,12 +69,11 @@ def exercise(prefix="iotbx_tst_mmcif_segids"):
       'B23S', 'B23S', 'B23S', 'B23S', 'B23S', 'BL28', 'BL28', 'BL28', 'BL28',
       'BL28', 'BL28', 'BL28']
   cif_block = h.as_cif_block()
-  print dir(cif_block)
   cif = iotbx.cif.model.cif()
   cif['test'] = cif_block
   cif.show(out=out, align_columns=True)
   lines = out.getvalue()
-  assert "  ATOM  20  OP2  .  C    B23S  172  ?  77.56000   39.38700  -72.10600  1.000  132.48000  O  1-  B  ?  2  1" in lines
+  assert "  ATOM  20  OP2  .  C    B23S  172  ?  77.56000   39.38700  -72.10600  1.000  132.48000  O  1-  B  ?  .  1" in lines
 
 if __name__ == "__main__":
   exercise()

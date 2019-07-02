@@ -1,11 +1,13 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.examples.exp_i_alpha_derivatives import least_squares
 from scitbx import matrix
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import cmath
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
+from six.moves import range
+from six.moves import zip
 
 flex.set_random_seed(0)
 
@@ -70,7 +72,7 @@ class exp_i_hx:
                 + dbb * di.imag * dj.imag \
                 + dab * (di.real * dj.imag + di.imag * dj.real)
             if (di0 is dj0):
-              d2ij = d2ij_iter.next()
+              d2ij = next(d2ij_iter)
               sum += da * d2ij.real + db * d2ij.imag
             row.append(sum)
         result.append(row)
@@ -81,7 +83,7 @@ def d_exp_i_hx_d_sites_finite(sites, ops, hkl, obs, eps=1.e-8):
   sites_eps = list(sites)
   for js,site in enumerate(sites):
     site_eps = list(site)
-    for jp in xrange(3):
+    for jp in range(3):
       vs = []
       for signed_eps in [eps, -eps]:
         site_eps[jp] = site[jp] + signed_eps
@@ -98,7 +100,7 @@ def d2_exp_i_hx_d_sites_finite(sites, ops, hkl, obs, eps=1.e-8):
   sites_eps = list(sites)
   for js,site in enumerate(sites):
     site_eps = list(site)
-    for jp in xrange(3):
+    for jp in range(3):
       vs = []
       for signed_eps in [eps, -eps]:
         site_eps[jp] = site[jp] + signed_eps
@@ -120,13 +122,13 @@ def exercise(args):
     out = StringIO()
   else:
     out = sys.stdout
-  for i_trial in xrange(10):
-    for n_sites in xrange(2,5+1):
+  for i_trial in range(10):
+    for n_sites in range(2,5+1):
       ops = []
-      for i in xrange(3):
+      for i in range(3):
         ops.append(matrix.sqr(flex.random_double(size=9, factor=2)-1))
       sites = []
-      for i in xrange(n_sites):
+      for i in range(n_sites):
         sites.append(matrix.col(flex.random_double(size=3, factor=4)-2))
       hkl = matrix.row(flex.random_double(size=3, factor=4)-2)
       sf = exp_i_hx(sites=sites, ops=ops, hkl=hkl)
@@ -134,19 +136,19 @@ def exercise(args):
         obs = abs(sf.f()) * obs_factor
         grads_fin = d_exp_i_hx_d_sites_finite(
           sites=sites, ops=ops, obs=obs, hkl=hkl)
-        print >> out, "grads_fin:", list(grads_fin)
+        print("grads_fin:", list(grads_fin), file=out)
         tf = least_squares(obs=obs, calc=sf.f())
         grads_ana = sf.d_target_d_sites(target=tf)
-        print >> out, "grads_ana:", list(grads_ana)
+        print("grads_ana:", list(grads_ana), file=out)
         compare_derivatives(grads_ana, grads_fin)
         curvs_fin = d2_exp_i_hx_d_sites_finite(
           sites=sites, ops=ops, obs=obs, hkl=hkl)
-        print >> out, "curvs_fin:", list(curvs_fin)
+        print("curvs_fin:", list(curvs_fin), file=out)
         curvs_ana = sf.d2_target_d_sites(target=tf)
-        print >> out, "curvs_ana:", list(curvs_ana)
+        print("curvs_ana:", list(curvs_ana), file=out)
         compare_derivatives(curvs_ana, curvs_fin)
-        print >> out
-  print "OK"
+        print(file=out)
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

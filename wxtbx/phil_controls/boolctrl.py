@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from wxtbx import phil_controls
 import wx
@@ -73,7 +73,7 @@ if (__name__ == "__main__"):
   box1.SetValue(True)
   assert (box1.GetStringValue() == "True")
   def OnChange(event):
-    print event.GetEventObject().GetPhilValue()
+    print(event.GetEventObject().GetPhilValue())
   frame.Bind(phil_controls.EVT_PHIL_CONTROL, OnChange)
   frame.Show()
   app.MainLoop()

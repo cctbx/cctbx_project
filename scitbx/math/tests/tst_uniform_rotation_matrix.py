@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math, random
 from scitbx import matrix
 from scitbx.array_family import flex
+from six.moves import range
 
 # -----------------------------------------------------------------------------
 # simplified form of surface integral for spherical harmonic (l = m)
@@ -61,17 +62,17 @@ def test_uniform_rotation_matrix(N=10000,choice=2,verbose=False):
   for i in range(N):
     R  = [ matrix.sqr(flex.random_double_r3_rotation_matrix()),
            matrix.sqr(flex.random_double_r3_rotation_matrix_arvo_1992()) ]
-    for j in xrange(len(result)):
+    for j in range(len(result)):
       result[j] += add_point(lm,c,R[j])
 
   # multipy by area at the end, each point has an area of 4pi/N
   point_area = 4.0*math.pi/N  # surface area of unit sphere / number of points
-  for i in xrange(len(result)):
+  for i in range(len(result)):
     result[i] = point_area * result[i]
     if (verbose):
-      print result[i],
+      print(result[i], end=' ')
   if (verbose):
-    print
+    print()
 
   assert(result[0].real > 0.85)
   assert(result[0].real < 1.15)
@@ -80,6 +81,6 @@ def test_uniform_rotation_matrix(N=10000,choice=2,verbose=False):
 
 if (__name__ == '__main__'):
   flex.set_random_seed(0)
-  for i in xrange(3):
+  for i in range(3):
     test_uniform_rotation_matrix(N=1000, choice=i, verbose=False)
-  print 'OK'
+  print('OK')

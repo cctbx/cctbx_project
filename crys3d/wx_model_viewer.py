@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # XXX: To keep these classes as clean as possible, selections are handled
 # entirely in wx_selection_editor.py.
@@ -17,6 +17,8 @@ import libtbx.phil
 from libtbx.introspection import method_debug_log
 from libtbx import adopt_init_args
 import wx
+import six
+from six.moves import zip
 
 debug = method_debug_log()
 
@@ -553,7 +555,7 @@ class model_viewer_mixin (wxGLWindow) :
     if len(self.scene_objects) > 0 :
       from scitbx.array_family import flex
       points = flex.vec3_double()
-      for object_id, scene in self.scene_objects.iteritems() :
+      for object_id, scene in six.iteritems(self.scene_objects) :
         points.extend(scene.points)
       self.update_mcs(points)
 
@@ -650,7 +652,7 @@ class model_viewer_mixin (wxGLWindow) :
   def toggle_visibility (self, show_object, object_id=None) :
     for model_id, model in self.iter_models() :
       if object_id is None or object_id == model_id :
-        print model_id, show_object
+        print(model_id, show_object)
         self.show_object[model_id] = show_object
     self.update_scene = True
 
@@ -718,7 +720,7 @@ class model_viewer_mixin (wxGLWindow) :
     self.flag_show_labels = show_labels
 
   def clear_all_labels (self) :
-    for object_id, scene in self.scene_objects.iteritems() :
+    for object_id, scene in six.iteritems(self.scene_objects) :
       scene.clear_labels()
 
   #---------------------------------------------------------------------

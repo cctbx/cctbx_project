@@ -10,7 +10,7 @@ wraps much of the functionality in :py:mod:`mmtbx.utils` while hiding the
 messy details.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.scaling import twin_analyses
 from cctbx import miller
 from cctbx import crystal
@@ -23,7 +23,7 @@ import iotbx.phil
 from iotbx import reflection_file_utils
 from iotbx.pdb import xray_structure
 from iotbx import pdb
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from cctbx import adptbx
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
@@ -56,6 +56,8 @@ from iotbx.file_reader import any_file
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 
 import boost.python
+from six.moves import zip
+from six.moves import range
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
 from mmtbx_utils_ext import *
 
@@ -75,9 +77,9 @@ def miller_array_symmetry_safety_check(miller_array,
       data_description = data_description)
   if(msg is not None):
      if(symmetry_safety_check == "warning"):
-        print >> log, "*" * 79
-        print >> log, "WARNING:", msg
-        print >> log, "*" * 79
+        print("*" * 79, file=log)
+        print("WARNING:", msg, file=log)
+        print("*" * 79, file=log)
      else:
         raise Sorry(msg + """
   The program inspects all inputs to determine the working crystal
@@ -107,7 +109,7 @@ If the structure was refined previously using different R-free flags,
 the values for R-free will become meaningful only after many cycles of
 refinement.
 """
-  print >> log, part1 + flags_parameter_scope+""".generate=True""" + part3
+  print(part1 + flags_parameter_scope+""".generate=True""" + part3, file=log)
 
 data_and_flags_str_part1 = """\
   file_name = None
@@ -326,11 +328,11 @@ class determine_data_and_flags(object):
     self.parameters.file_name = data.info().source
     self.parameters.labels = [data.info().label_string()]
     if(data.is_xray_intensity_array()):
-      print >> self.log, "I-obs:"
+      print("I-obs:", file=self.log)
       self.intensity_flag = True
     else:
-      print >> self.log, "F-obs:"
-    print >> self.log, " ", data.info()
+      print("F-obs:", file=self.log)
+    print(" ", data.info(), file=self.log)
     if([self.data_description, self.working_point_group,
        self.symmetry_safety_check].count(None) == 0):
       miller_array_symmetry_safety_check(
@@ -339,19 +341,19 @@ class determine_data_and_flags(object):
         working_point_group   = self.working_point_group,
         symmetry_safety_check = self.symmetry_safety_check,
         log                   = self.log)
-      print >> self.log
+      print(file=self.log)
     info = data.info()
     processed = data.eliminate_sys_absent(log = self.log)
     if(processed is not data):
       info = info.customized_copy(systematic_absences_eliminated = True)
     if(not processed.is_unique_set_under_symmetry()):
       if(data.is_xray_intensity_array()):
-        print >> self.log, "Merging symmetry-equivalent intensities:"
+        print("Merging symmetry-equivalent intensities:", file=self.log)
       else:
-        print >> self.log, "Merging symmetry-equivalent amplitudes:"
+        print("Merging symmetry-equivalent amplitudes:", file=self.log)
       merged = processed.merge_equivalents()
       merged.show_summary(out = self.log, prefix="  ")
-      print >> self.log
+      print(file=self.log)
       processed = merged.array()
       info = info.customized_copy(merged=True)
     if (self.force_non_anomalous):
@@ -370,7 +372,7 @@ class determine_data_and_flags(object):
             test_flag_value          = params.test_flag_value,
             disable_suitability_test = params.disable_suitability_test,
             parameter_scope          = self.flags_parameter_scope)
-      except reflection_file_utils.Sorry_No_array_of_the_required_type, e:
+      except reflection_file_utils.Sorry_No_array_of_the_required_type as e:
         if(self.parameters.r_free_flags.generate is not None):
           explain_how_to_generate_array_of_r_free_flags(log = self.log,
             flags_parameter_scope = self.flags_parameter_scope)
@@ -381,8 +383,8 @@ class determine_data_and_flags(object):
         params.file_name = r_free_flags.info().source
         params.label = r_free_flags.info().label_string()
         params.test_flag_value = test_flag_value
-        print >> self.log, data_description+":"
-        print >> self.log, " ", r_free_flags.info()
+        print(data_description+":", file=self.log)
+        print(" ", r_free_flags.info(), file=self.log)
         if([self.working_point_group,
            self.symmetry_safety_check].count(None) == 0):
           miller_array_symmetry_safety_check(
@@ -391,26 +393,25 @@ class determine_data_and_flags(object):
             working_point_group   = self.working_point_group,
             symmetry_safety_check = self.symmetry_safety_check,
             log                   = self.log)
-          print >> self.log
+          print(file=self.log)
         info = r_free_flags.info()
         processed = r_free_flags.eliminate_sys_absent(log = self.log)
         if(processed is not r_free_flags):
           info = info.customized_copy(systematic_absences_eliminated = True)
         if(not processed.is_unique_set_under_symmetry()):
-           print >> self.log, \
-             "Checking symmetry-equivalent R-free flags for consistency:",
+           print("Checking symmetry-equivalent R-free flags for consistency:", end=' ', file=self.log)
            try:
              merged = processed.merge_equivalents()
-           except RuntimeError, e:
-             print >> self.log
+           except RuntimeError as e:
+             print(file=self.log)
              error_message = str(e)
              expected_error_message = "cctbx Error: merge_equivalents_exact: "
              assert error_message.startswith(expected_error_message)
              raise Sorry("Incompatible symmetry-equivalent R-free flags: %s" %
                error_message[len(expected_error_message):])
            else:
-             print >> self.log, "OK"
-             print >> self.log
+             print("OK", file=self.log)
+             print(file=self.log)
            processed = merged.array()
            info = info.customized_copy(merged=True)
            del merged
@@ -423,8 +424,8 @@ class determine_data_and_flags(object):
           (params.use_lattice_symmetry is None)):
         raise Sorry("No R-free flags are available, but one or more "+
           "parameters required to generate new flags is undefined.")
-      print >> self.log, "Generating a new array of R-free flags."
-      print >> self.log
+      print("Generating a new array of R-free flags.", file=self.log)
+      print(file=self.log)
       libtbx.call_back(message="warn",
         data="PHENIX will generate a new array of R-free flags.  Please "+
           "check to make sure that the input data do not already contain "+
@@ -464,7 +465,7 @@ class determine_data_and_flags(object):
     # Delete F(0,0,0) if present
     sel = f_obs.indices()==(0,0,0)
     if(sel.count(True)>0):
-      print >> self.log, "F(0,0,0) will be removed."
+      print("F(0,0,0) will be removed.", file=self.log)
       f_obs = f_obs.select(~sel)
     #
     d_min = f_obs.d_min()
@@ -472,7 +473,7 @@ class determine_data_and_flags(object):
       raise Sorry("Resolution of data is too high: %-6.4f A"%d_min)
     f_obs.show_comprehensive_summary(f = self.log)
     f_obs_data_size = f_obs.data().size()
-    print >> self.log
+    print(file=self.log)
     if(f_obs.is_complex_array()): f_obs = abs(f_obs)
     f_obs_fw = None
     if(f_obs.is_xray_intensity_array()):
@@ -484,9 +485,9 @@ class determine_data_and_flags(object):
             sigma_iobs_rejection_criterion=\
               self.parameters.sigma_iobs_rejection_criterion,
             log=self.log)
-        except Exception, e:
-          print >> self.log, str(e)
-          print >> self.log, "Using alternative Iobs->Fobs conversion."
+        except Exception as e:
+          print(str(e), file=self.log)
+          print("Using alternative Iobs->Fobs conversion.", file=self.log)
           f_obs_fw = f_obs.f_sq_as_f()
         if f_obs_fw is not None:
           f_obs = f_obs_fw
@@ -498,9 +499,8 @@ class determine_data_and_flags(object):
         if(selection_by_isigma is not None):
           f_obs = f_obs.select(selection_by_isigma)
         f_obs = f_obs.f_sq_as_f()
-      print >> self.log, \
-        "Intensities converted to amplitudes for use in refinement."
-      print >> self.log
+      print("Intensities converted to amplitudes for use in refinement.", file=self.log)
+      print(file=self.log)
     #
     sigmas = f_obs.sigmas()
     if(sigmas is not None):
@@ -508,9 +508,8 @@ class determine_data_and_flags(object):
       selection &= f_obs.data()>=0
       n_both_zero = selection.count(False)
       if(n_both_zero>0):
-        print >> self.log, \
-          "Number of pairs (Fobs,sigma)=(0,0) is %s. They will be removed"%\
-          n_both_zero
+        print("Number of pairs (Fobs,sigma)=(0,0) is %s. They will be removed"%\
+          n_both_zero, file=self.log)
         f_obs = f_obs.select(selection)
     #
     f_obs.set_observation_type_xray_amplitude()
@@ -521,16 +520,13 @@ class determine_data_and_flags(object):
     if(self.parameters.high_resolution is not None):
       selection &= f_obs.d_spacings().data() >= self.parameters.high_resolution
     selection_positive = f_obs.data() >= 0
-    print >> self.log, \
-      "Number of F-obs in resolution range:                  ", \
-      selection.count(True)
-    print >> self.log, \
-      "Number of F-obs<0 (these reflections will be rejected):", \
-      selection_positive.count(False)
+    print("Number of F-obs in resolution range:                  ", \
+      selection.count(True), file=self.log)
+    print("Number of F-obs<0 (these reflections will be rejected):", \
+      selection_positive.count(False), file=self.log)
     selection_zero = f_obs.data() == 0
-    print >> self.log, \
-      "Number of F-obs=0 (these reflections will be used in refinement):", \
-      selection_zero.count(True)
+    print("Number of F-obs=0 (these reflections will be used in refinement):", \
+      selection_zero.count(True), file=self.log)
     selection &= selection_positive
     selection_by_fsigma = self._apply_sigma_cutoff(
       f_obs   = f_obs,
@@ -540,35 +536,35 @@ class determine_data_and_flags(object):
     selection &= f_obs.d_star_sq().data() > 0
     f_obs = f_obs.select(selection)
     rr = f_obs.resolution_range()
-    print >> self.log, "Refinement resolution range: d_max = %8.4f" % rr[0]
-    print >> self.log, "                             d_min = %8.4f" % rr[1]
-    print >> self.log
+    print("Refinement resolution range: d_max = %8.4f" % rr[0], file=self.log)
+    print("                             d_min = %8.4f" % rr[1], file=self.log)
+    print(file=self.log)
     if(f_obs.indices().size() == 0):
       raise Sorry(
         "No data left after applying resolution limits and sigma cutoff.")
     if(self.parameters.force_anomalous_flag_to_be_equal_to is not None):
       if(not self.parameters.force_anomalous_flag_to_be_equal_to):
-        print >> self.log, "force_anomalous_flag_to_be_equal_to=False"
+        print("force_anomalous_flag_to_be_equal_to=False", file=self.log)
         if(f_obs.anomalous_flag()):
-          print >> self.log, "Reducing data to non-anomalous array."
+          print("Reducing data to non-anomalous array.", file=self.log)
           merged = f_obs.as_non_anomalous_array().merge_equivalents()
           merged.show_summary(out = self.log, prefix="  ")
           f_obs = merged.array().set_observation_type( f_obs )
           del merged
-          print >> self.log
+          print(file=self.log)
       elif(not f_obs.anomalous_flag()):
-        print >> self.log, "force_anomalous_flag_to_be_equal_to=True"
-        print >> self.log, "Generating Bijvoet mates of X-ray data."
+        print("force_anomalous_flag_to_be_equal_to=True", file=self.log)
+        print("Generating Bijvoet mates of X-ray data.", file=self.log)
         observation_type = f_obs.observation_type()
         f_obs = f_obs.generate_bijvoet_mates()
         f_obs.set_observation_type(observation_type)
-        print >> self.log
+        print(file=self.log)
     else:
       f_obs = f_obs.convert_to_non_anomalous_if_ratio_pairs_lone_less_than(
         threshold=self.parameters.
           convert_to_non_anomalous_if_ratio_pairs_lone_less_than_threshold)
     if(f_obs_data_size != f_obs.data().size()):
-      print >> self.log, "\nFobs statistics after all cutoffs applied:\n"
+      print("\nFobs statistics after all cutoffs applied:\n", file=self.log)
       f_obs.show_comprehensive_summary(f = self.log)
     return f_obs
 
@@ -578,8 +574,8 @@ class determine_data_and_flags(object):
       sigma_cutoff = n
       if(sigma_cutoff is not None and sigma_cutoff > 0):
         selection_by_sigma = f_obs.data() > f_obs.sigmas()*sigma_cutoff
-        print >> self.log, message % (sigma_cutoff,
-          selection_by_sigma.count(False))
+        print(message % (sigma_cutoff,
+          selection_by_sigma.count(False)), file=self.log)
         selection = selection_by_sigma
     return selection
 
@@ -594,9 +590,9 @@ class determine_data_and_flags(object):
         "a single value; please check the file to make sure the flags are "+
         "suitable for use.") % self.parameters.r_free_flags.label)
     r_free_flags.show_comprehensive_summary(f = self.log)
-    print >> self.log
-    print >> self.log, "Test (R-free flags) flag value:", test_flag_value
-    print >> self.log
+    print(file=self.log)
+    print("Test (R-free flags) flag value:", test_flag_value, file=self.log)
+    print(file=self.log)
     if (isinstance(r_free_flags.data(), flex.bool)):
       r_free_flags = r_free_flags.array(
         data = r_free_flags.data() == bool(test_flag_value))
@@ -613,13 +609,13 @@ class determine_data_and_flags(object):
         records              = self.remark_r_free_flags_md5_hexdigest)
     if(not f_obs.anomalous_flag()):
       if(r_free_flags.anomalous_flag()):
-        print >> self.log, "Reducing R-free flags to non-anomalous array."
+        print("Reducing R-free flags to non-anomalous array.", file=self.log)
         r_free_flags = r_free_flags.average_bijvoet_mates()
-        print >> self.log
+        print(file=self.log)
     elif(not r_free_flags.anomalous_flag()):
-       print >> self.log, "Generating Bijvoet mates of R-free flags."
+       print("Generating Bijvoet mates of R-free flags.", file=self.log)
        r_free_flags = r_free_flags.generate_bijvoet_mates()
-       print >> self.log
+       print(file=self.log)
     r_free_flags = r_free_flags.map_to_asu().common_set(f_obs)
     n_missing_r_free_flags = f_obs.indices().size() \
       - r_free_flags.indices().size()
@@ -670,11 +666,11 @@ class determine_data_and_flags(object):
         " found in the input PDB file.")
     if (len(from_file) == 1 and current not in from_file):
       log = self.log
-      for i in xrange(2): print >> log, "*"*79
+      for i in range(2): print("*"*79, file=log)
       if (ignore_pdb_hexdigest):
-        print >> log
-        print >> log, " ".join(["WARNING"]*9)
-      print >> log, """
+        print(file=log)
+        print(" ".join(["WARNING"]*9), file=log)
+      print("""
 The MD5 checksum for the R-free flags array summarized above is:
   %s
 
@@ -689,36 +685,36 @@ the values for R-free could be biased and misleading.
 However, there is no problem if the R-free flags were just extended to
 a higher resolution, or if some reflections with no data or that are
 not part of the R-free set have been added or removed.""" % (
-  current, sorted(from_file)[0]),
+  current, sorted(from_file)[0]), end=' ', file=log)
       if (not ignore_pdb_hexdigest):
-        print >> log, """\
+        print("""\
 In this case,
 simply remove the
 
   REMARK r_free_flags.md5.hexdigest %s
 
 record from the input PDB file to proceed with the refinement.""" % (
-  sorted(from_file)[0]),
-      print >> log, """
+  sorted(from_file)[0]), end=' ', file=log)
+      print("""
 
 Otherwise it is best to recover the previously used R-free flags
 and use them consistently throughout the refinement of the model.
 Run this command again with the name of the file containing the
 original flags as an additional input.
-"""
+""", file=log)
       if (not ignore_pdb_hexdigest):
-        print >> log, """\
+        print("""\
 If the original R-free flags are unrecoverable, remove the REMARK
 record as indicated above. In this case the values for R-free will
 become meaningful only after many cycles of refinement.
-"""
+""", file=log)
       else:
-        print >> log, """\
+        print("""\
 If the original R-free flags are unrecoverable, the values for R-free
 will become meaningful only after many cycles of refinement.
-"""
-      for i in xrange(2): print >> log, "*"*79
-      print >> log
+""", file=log)
+      for i in range(2): print("*"*79, file=log)
+      print(file=log)
       if (not ignore_pdb_hexdigest):
         if ("PHENIX_GUI_ENVIRONMENT" in os.environ):
           log.flush()
@@ -775,25 +771,24 @@ def determine_experimental_phases(reflection_file_server,
   else:
     parameters.file_name = experimental_phases.info().source
     parameters.labels = [experimental_phases.info().label_string()]
-    print >> log, "Experimental phases:"
-    print >> log, " ", experimental_phases.info()
+    print("Experimental phases:", file=log)
+    print(" ", experimental_phases.info(), file=log)
     miller_array_symmetry_safety_check(
       miller_array          = experimental_phases,
       data_description      = "Experimental phases",
       working_point_group   = working_point_group,
       symmetry_safety_check = symmetry_safety_check,
       log                   = log)
-    print >> log
+    print(file=log)
     info = experimental_phases.info()
     processed = experimental_phases.eliminate_sys_absent(log = log)
     if(processed is not experimental_phases):
        info = info.customized_copy(systematic_absences_eliminated = True)
     if(not processed.is_unique_set_under_symmetry()):
-       print >> log, \
-         "Merging symmetry-equivalent Hendrickson-Lattman coefficients:"
+       print("Merging symmetry-equivalent Hendrickson-Lattman coefficients:", file=log)
        merged = processed.merge_equivalents()
        merged.show_summary(out = log, prefix="  ")
-       print >> log
+       print(file=log)
        processed = merged.array()
        info = info.customized_copy(merged = True)
     return processed.set_info(info)
@@ -928,14 +923,14 @@ def atom_selection(model, string, allow_empty_selection = False):
   return result
 
 def print_programs_start_header(log, text):
-  print >> log
+  print(file=log)
   host_and_user().show(out= log)
-  print >> log, date_and_time()
-  print >> log
-  print >> log, "-"*79
-  print >> log, text
-  print >> log, "-"*79
-  print >> log
+  print(date_and_time(), file=log)
+  print(file=log)
+  print("-"*79, file=log)
+  print(text, file=log)
+  print("-"*79, file=log)
+  print(file=log)
 
 def set_log(args, out=sys.stdout, replace_stderr=True):
   log = multi_out()
@@ -1049,7 +1044,7 @@ class process_pdb_file_srv(object):
                                   lines       = flex.std_string(raw_records))
         if(self.crystal_symmetry is None):
           self.crystal_symmetry = pdb_inp.crystal_symmetry()
-      except ValueError, e :
+      except ValueError as e :
         raise Sorry("PDB format error:\n%s" % str(e))
     if pdb_inp is not None and pdb_inp.atoms().size() == 0:
       msg = ["No atomic coordinates found in PDB files:"]
@@ -1112,7 +1107,7 @@ class process_pdb_file_srv(object):
   #   stop_for_unknowns=False"""
       raise Sorry(msg)
     if (self.log):
-      print >> self.log
+      print(file=self.log)
     return processed_pdb_file, pdb_inp
 
   def _process_monomer_cif_files(self):
@@ -1127,7 +1122,7 @@ class process_pdb_file_srv(object):
       file_name = libtbx.path.canonical_path(file_name=file_name)
       index_dict[file_name] = len(all)
       all.append((file_name,cif_object))
-    unique_indices = index_dict.values()
+    unique_indices = list(index_dict.values())
     unique_indices.sort()
     unique = flex.select(sequence=all, permutation=unique_indices)
     if(self.cif_parameters is not None): del self.cif_parameters.file_name[:]
@@ -1359,7 +1354,7 @@ class xray_structures_from_processed_pdb_file(object):
          self.xray_structures.append(self.xray_structure_all.select(sel))
     else:
       self.model_selections.append(
-        flex.size_t(xrange(self.xray_structure_all.scatterers().size())) )
+        flex.size_t(range(self.xray_structure_all.scatterers().size())) )
       self.xray_structures.append(self.xray_structure_all)
 # END_MARKED_FOR_DELETION_OLEG
 
@@ -1396,7 +1391,7 @@ def setup_scattering_dictionaries(scattering_table,
     try :
       neutron_scattering_dict = \
         xray_structure.switch_to_neutron_scattering_dictionary()
-    except ValueError, e :
+    except ValueError as e :
       raise Sorry("Error setting up neutron scattering dictionary: %s"%str(e))
     if(log is not None):
       print_statistics.make_sub_header(
@@ -1417,7 +1412,7 @@ def setup_scattering_dictionaries(scattering_table,
           " the scattering type.\n"
         "    - Provide custom monomer definitions for the affected residues.")
     if(log is not None):
-      print >> log
+      print(file=log)
   return xray_scattering_dict, neutron_scattering_dict
 # END_MARKED_FOR_DELETION_OLEG
 
@@ -1599,7 +1594,7 @@ def pdb_inp_from_multiple_files(pdb_files, log):
   try:
     pdb_inp = iotbx.pdb.input(source_info = None,
                               lines       = flex.std_string(raw_records))
-  except ValueError, e :
+  except ValueError as e :
     raise Sorry("Model format (PDB or mmCIF) error:\n%s" % str(e))
   return pdb_inp
 
@@ -1694,7 +1689,7 @@ class process_command_line_args(object):
       if(master_params is not None and is_parameter):
         try:
           params = parameter_interpreter.process(arg = arg)
-        except Sorry, e:
+        except Sorry as e:
           if(not os.path.isfile(arg)):
             if("=" in arg): raise
             raise Sorry("File not found: %s" % show_string(arg))
@@ -1706,11 +1701,11 @@ class process_command_line_args(object):
         sources=parsed_params+command_line_params,
         track_unused_definitions=True)
       if(len(unused_definitions)):
-        print >> self.log, "Unused parameter definitions:"
+        print("Unused parameter definitions:", file=self.log)
         for obj_loc in unused_definitions:
-          print >> self.log, " ", str(obj_loc)
-        print >> self.log, "*"*79
-        print >> self.log
+          print(" ", str(obj_loc), file=self.log)
+        print("*"*79, file=self.log)
+        print(file=self.log)
         raise Sorry("Unused parameter definitions.")
     else:
       assert len(command_line_params) == 0
@@ -1813,7 +1808,7 @@ class guess_observation_type(object):
       if(dtype=="N"):
         try:
           xrs.switch_to_neutron_scattering_dictionary()
-        except Exception, e:
+        except Exception as e:
           err = str(e)
       if(err is None):
         f_calc = f_obs.structure_factors_from_scatterers(
@@ -1840,10 +1835,10 @@ class guess_observation_type(object):
         results.append([dtype,ftype,False,1.e9])
         results.append([dtype,ftype,False,1.e9])
     #
-    print "All scores (stage 1):"
+    print("All scores (stage 1):")
     for r in results:
       st_r = " ".join(["%6s"%str(r_) for r_ in r])
-      print st_r
+      print(st_r)
     #
     results_x = []
     results_n = []
@@ -1864,11 +1859,11 @@ class guess_observation_type(object):
         self.result = result_best_x
       else:
         self.result = ["X", self.label, None, None]
-    if(len(self.result)==0): print "Answer: %s"%self.label
+    if(len(self.result)==0): print("Answer: %s"%self.label)
     elif([self.result[2], self.result[3]].count(None)==2):
-      print "Answer: %s_%s"%(self.result[1], self.result[0])
+      print("Answer: %s_%s"%(self.result[1], self.result[0]))
     else:
-      print "Answer: %s"%" ".join(["%6s"%str(r_) for r_ in self.result])
+      print("Answer: %s"%" ".join(["%6s"%str(r_) for r_ in self.result]))
 
   def find_best(self, results):
     r_best = 1.e+9
@@ -1914,7 +1909,7 @@ class guess_observation_type(object):
   def get_r_factor(self, f_obs, f_calc, scattering_table, xray_structure,
         twin_switch_tolerance, skip_twin_detection):
     r_free_flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
-    for trial in xrange(3):
+    for trial in range(3):
       result = outlier_rejection.outlier_manager(
         miller_obs   = f_obs,
         r_free_flags = r_free_flags,
@@ -2040,7 +2035,7 @@ class fmodel_from_xray_structure(object):
             data = f_model.data()
             fr = f_model.data()*params.add_random_error_to_amplitudes_percent/100.
             ri = flex.double()
-            for trial in xrange(data.size()):
+            for trial in range(data.size()):
               r = random.randint(0,1)
               if(r == 0): r = -1
               ri.append(r)
@@ -2072,13 +2067,13 @@ class fmodel_from_xray_structure(object):
       ofo = open(file_name, "w")
       crystal_symmetry_as_cns_comments(
         crystal_symmetry=self.f_model, out=ofo)
-      print >> ofo, "NREFlections=%d" % self.f_model.indices().size()
-      print >> ofo, "ANOMalous=%s" % {0: "FALSE"}.get(
-        int(self.f_model.anomalous_flag()), "TRUE")
+      print("NREFlections=%d" % self.f_model.indices().size(), file=ofo)
+      print("ANOMalous=%s" % {0: "FALSE"}.get(
+        int(self.f_model.anomalous_flag()), "TRUE"), file=ofo)
       for n_t in [("%s"%op.label, "%s"%op.type.upper())]:
-        print >> ofo, "DECLare NAME=%s DOMAin=RECIprocal TYPE=%s END"%n_t
+        print("DECLare NAME=%s DOMAin=RECIprocal TYPE=%s END"%n_t, file=ofo)
       if(self.params.r_free_flags_fraction is not None):
-        print >> ofo, "DECLare NAME=TEST DOMAin=RECIprocal TYPE=INTeger END"
+        print("DECLare NAME=TEST DOMAin=RECIprocal TYPE=INTeger END", file=ofo)
       if(op.type == "complex"):
         arrays = [
           self.f_model.indices(), flex.abs(self.f_model.data()),
@@ -2087,12 +2082,12 @@ class fmodel_from_xray_structure(object):
           arrays.append(self.r_free_flags.data())
         for values in zip(*arrays):
           if(self.params.r_free_flags_fraction is None):
-            print >> ofo, "INDE %d %d %d" % values[0],
-            print >> ofo, " %s= %.6g %.6g" % (op.label, values[1],values[2])
+            print("INDE %d %d %d" % values[0], end=' ', file=ofo)
+            print(" %s= %.6g %.6g" % (op.label, values[1],values[2]), file=ofo)
           else:
-            print >> ofo, "INDE %d %d %d" % values[0],
-            print >> ofo, " %s= %.6g %.6g TEST=%d" % (op.label, values[1],
-              values[2], values[3])
+            print("INDE %d %d %d" % values[0], end=' ', file=ofo)
+            print(" %s= %.6g %.6g TEST=%d" % (op.label, values[1],
+              values[2], values[3]), file=ofo)
       else:
         arrays = [
           self.f_model.indices(), self.f_model.data()]
@@ -2100,11 +2095,11 @@ class fmodel_from_xray_structure(object):
           arrays.append(self.r_free_flags.data())
         for values in zip(*arrays):
           if(self.params.r_free_flags_fraction is None):
-            print >> ofo, "INDE %d %d %d" % values[0],
-            print >> ofo, " %s= %.6g" % (op.label, values[1])
+            print("INDE %d %d %d" % values[0], end=' ', file=ofo)
+            print(" %s= %.6g" % (op.label, values[1]), file=ofo)
           else:
-            print >> ofo, "INDE %d %d %d" % values[0],
-            print >> ofo, " %s= %.6g TEST=%d" % (op.label, values[1],values[2])
+            print("INDE %d %d %d" % values[0], end=' ', file=ofo)
+            print(" %s= %.6g TEST=%d" % (op.label, values[1],values[2]), file=ofo)
     else:
       output_array = self.f_model
       if (obs_type == "intensities"):
@@ -2216,7 +2211,7 @@ def equivalent_sigma_from_cumulative_histogram_match(
   assert size_1 == size_2
   #
   fmt = "%5.2f %6.2f %6.2f"
-  if(verbose): print flex.min(map_1), flex.min(map_2)
+  if(verbose): print(flex.min(map_1), flex.min(map_2))
   start = max(-tail_cutoff*100,int(min(flex.min(map_1), flex.min(map_2)))*100)
   end   = min(tail_cutoff*100+step,int(max(flex.max(map_1), flex.max(map_2)))*100)
   sigmas = flex.double()
@@ -2225,12 +2220,12 @@ def equivalent_sigma_from_cumulative_histogram_match(
   for sig in [i/100. for i in range(start,end,step)]:
     s_a = (map_1>=sig).count(True)*100./size_1
     s_o = (map_2>=sig).count(True)*100./size_2
-    if(verbose): print fmt % (sig, s_o, s_a)
+    if(verbose): print(fmt % (sig, s_o, s_a))
     sigmas.append(sig)
     c_1.append(s_a)
     c_2.append(s_o)
   #
-  if(verbose): print
+  if(verbose): print()
   #
   s = flex.sort_permutation(flex.abs(sigmas-sigma_1))
   tmp1 = c_1.select(s)[0]
@@ -2238,7 +2233,7 @@ def equivalent_sigma_from_cumulative_histogram_match(
   tmp1 = c_2.select(s)[0]
   tmp2 = sigmas.select(s)[0]
   #
-  if(verbose): print tmp1, tmp2
+  if(verbose): print(tmp1, tmp2)
   #
   return tmp2
 
@@ -2251,10 +2246,10 @@ def optimize_h(fmodel, mon_lib_srv, pdb_hierarchy=None, model=None, log=None,
   if(log is None): log = sys.stdout
   if(fmodel.xray_structure.hd_selection().count(True)==0): return
   if(verbose):
-    print >> log
-    print >> log, "Optimizing scattering from H..."
-    print >> log, "  before optimization: r_work=%6.4f r_free=%6.4f"%(
-    fmodel.r_work(), fmodel.r_free())
+    print(file=log)
+    print("Optimizing scattering from H...", file=log)
+    print("  before optimization: r_work=%6.4f r_free=%6.4f"%(
+    fmodel.r_work(), fmodel.r_free()), file=log)
   if(model is not None):
     assert_xray_structures_equal(
       x1 = fmodel.xray_structure,
@@ -2278,8 +2273,8 @@ def optimize_h(fmodel, mon_lib_srv, pdb_hierarchy=None, model=None, log=None,
   if(model is not None):
     model.set_xray_structure(fmodel.xray_structure)
   if(verbose):
-    print >> log, "  after optimization:  r_work=%6.4f r_free=%6.4f"%(
-      fmodel.r_work(), fmodel.r_free())
+    print("  after optimization:  r_work=%6.4f r_free=%6.4f"%(
+      fmodel.r_work(), fmodel.r_free()), file=log)
   #
 # END_MARKED_FOR_DELETION_OLEG
 
@@ -2450,7 +2445,7 @@ class extract_box_around_model_and_map(object):
       self.pdb_outside_box_msg=""
       frac_min = [0.,0.,0.]
       frac_max = [1.,1.,1.]
-      for kk in xrange(3):
+      for kk in range(3):
         frac_min[kk]=max(0.,frac_min[kk])
         frac_max[kk]=min(1.-1./map_data.all()[kk], frac_max[kk])
     elif(density_select):
@@ -2459,7 +2454,7 @@ class extract_box_around_model_and_map(object):
         get_half_height_width=get_half_height_width)
       frac_max = list(flex.double(frac_max)+cushion)
       frac_min = list(flex.double(frac_min)-cushion)
-      for kk in xrange(3):
+      for kk in range(3):
         frac_min[kk]=max(0.,frac_min[kk])
         frac_max[kk]=min(1.-1./map_data.all()[kk], frac_max[kk])
     else:
@@ -2480,12 +2475,12 @@ class extract_box_around_model_and_map(object):
         self.gridding_last=[max(gf,min(n,g)) for gf,n,g in zip(self.gridding_first,na,self.gridding_last)]
     self.map_box = self.cut_and_copy_map(map_data=self.map_data)
     secondary_shift_frac = [
-      -self.map_box.origin()[i]/self.map_data.all()[i] for i in xrange(3)]
+      -self.map_box.origin()[i]/self.map_data.all()[i] for i in range(3)]
     secondary_shift_cart = cs.unit_cell().orthogonalize(secondary_shift_frac)
     if(self.shift_cart is None):
       self.shift_cart = secondary_shift_cart
     else:
-      self.shift_cart = [self.shift_cart[i]+secondary_shift_cart[i] for i in xrange(3)]
+      self.shift_cart = [self.shift_cart[i]+secondary_shift_cart[i] for i in range(3)]
     self.map_box.reshape(flex.grid(self.map_box.all()))
     # shrink unit cell to match the box
     p = cs.unit_cell().parameters()
@@ -2621,7 +2616,7 @@ class extract_box_around_model_and_map(object):
     all=list(map_data.all())
     # Get max value vs x,y,z
     value_list=flex.double()
-    for i in xrange(0,all[0]):
+    for i in range(0,all[0]):
       new_map_data = maptbx.copy(map_data,
          tuple((i,0,0)),
          tuple((i,all[1],all[2]))
@@ -2634,7 +2629,7 @@ class extract_box_around_model_and_map(object):
       get_half_height_width=get_half_height_width)
 
     value_list=flex.double()
-    for j in xrange(0,all[1]):
+    for j in range(0,all[1]):
       new_map_data = maptbx.copy(map_data,
          tuple((0,j,0)),
          tuple((all[0],j,all[2]))
@@ -2644,7 +2639,7 @@ class extract_box_around_model_and_map(object):
       get_half_height_width=get_half_height_width)
 
     value_list=flex.double()
-    for k in xrange(0,all[2]):
+    for k in range(0,all[2]):
       new_map_data = maptbx.copy(map_data,
          tuple((0,0,k)),
          tuple((all[0],all[1],k))
@@ -2737,12 +2732,12 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     else:
       i_off=0
     i_low=None
-    for i in xrange(i_off,n_tot-i_off):
+    for i in range(i_off,n_tot-i_off):
       if value_list[i]>cutoff:
         i_low=max(i_off,i-1)
         break
     i_high=None
-    for i in xrange(i_off,n_tot-i_off):
+    for i in range(i_off,n_tot-i_off):
       ii=n_tot-1-i
       if value_list[ii]>cutoff:
         i_high=min(n_tot-1-i_off,ii+1)
@@ -2956,19 +2951,19 @@ class experimental_data_target_and_gradients(object):
 
   def show(self, log=None):
     if(log is None): log = sys.stdout
-    print >> log, "Target type and value: %s %-15.6f" %(self.fmodel.target_name,
-      self.target())
-    print >> log, "r_work=%6.4f r_free=%6.4f" % (self.fmodel.r_work(),
-      self.fmodel.r_free())
+    print("Target type and value: %s %-15.6f" %(self.fmodel.target_name,
+      self.target()), file=log)
+    print("r_work=%6.4f r_free=%6.4f" % (self.fmodel.r_work(),
+      self.fmodel.r_free()), file=log)
     go = self.grad_occ()
     gs = self.grad_sites_cart()
     sites_cart = self.fmodel.xray_structure.sites_cart()
-    print >> log, "                                          Gradients"
-    print >> log, "                sites_cart   occ   b_iso      occ                 sites_cart"
+    print("                                          Gradients", file=log)
+    print("                sites_cart   occ   b_iso      occ                 sites_cart", file=log)
     fmt="%8.3f %8.3f %8.3f %5.2f %7.2f %8.4f %8.4f %8.4f %8.4f"
     for i, sc in enumerate(self.fmodel.xray_structure.scatterers()):
-      print >> log, fmt%(sites_cart[i][0], sites_cart[i][1], sites_cart[i][2],
-        sc.occupancy,adptbx.u_as_b(sc.u_iso), go[i], gs[i][0],gs[i][1],gs[i][2])
+      print(fmt%(sites_cart[i][0], sites_cart[i][1], sites_cart[i][2],
+        sc.occupancy,adptbx.u_as_b(sc.u_iso), go[i], gs[i][0],gs[i][1],gs[i][2]), file=log)
 
   def group_occupancy_grads(
         self,
@@ -3141,7 +3136,7 @@ class detect_hydrogen_nomenclature_problem(object):
     if (nb_reg.n_unknown_type_symbols() > 0):
       unknown_atoms = nb_reg.get_unknown_atoms(pdb_atoms)
       for atom in unknown_atoms :
-        print atom.quote()
+        print(atom.quote())
         labels = atom.fetch_labels()
         if (atom.name == "HD22") and (labels.resname == "ASN"):
           self.n_asn_hd22 += 1

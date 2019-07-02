@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 from math import sqrt
 import sys
@@ -61,15 +61,15 @@ given an anomalous scatterer type and expected asymmetric unit contents.""")
   else :
     n_atoms = params.mw / 15
   bijvoet_ratio_acentric = sqrt(2 * params.n_sites / n_atoms) * (fdp / 6.7)
-  print >> out, "Heavy atom type: %s" % params.element
-  print >> out, "Number of sites: %d" % params.n_sites
-  print >> out, "Approx. # of non-H/D atoms: %d" % n_atoms
+  print("Heavy atom type: %s" % params.element, file=out)
+  print("Number of sites: %d" % params.n_sites, file=out)
+  print("Approx. # of non-H/D atoms: %d" % n_atoms, file=out)
   if (params.fdp is None):
-    print >> out, "f'' of %s at %s : %6.3f" % (params.element, caption, fdp)
+    print("f'' of %s at %s : %6.3f" % (params.element, caption, fdp), file=out)
   else :
-    print >> out, "f'' (experimental) : %6.3f" % fdp
-  print >> out, "Expected Bijvoet ratio : %4.1f%%" % \
-    (bijvoet_ratio_acentric * 100)
+    print("f'' (experimental) : %6.3f" % fdp, file=out)
+  print("Expected Bijvoet ratio : %4.1f%%" % \
+    (bijvoet_ratio_acentric * 100), file=out)
   return bijvoet_ratio_acentric
 
 def validate_params(params):
@@ -82,7 +82,7 @@ def validate_params(params):
   if (params.n_sites is None):
     raise Sorry("Number of sites not specified.")
   if ([params.fdp, params.energy, params.wavelength].count(None) != 2):
-    print [params.fdp, params.energy, params.wavelength]
+    print([params.fdp, params.energy, params.wavelength])
     raise Sorry("Please specify either an X-ray wavelength or energy "+
       "(but not both), or the expected f''.")
   if ([params.n_res, params.mw].count(None) != 1):

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.web import cgi_utils
 import iotbx.cif
 from iotbx.cif import validation
@@ -27,58 +27,59 @@ def run_implementation(server_info, inp, status):
 
   reader = iotbx.cif.reader(input_string=cif_text, raise_if_errors=False)
   if reader.error_count():
-    print "Errors encountered during parsing"
+    print("Errors encountered during parsing")
     return
   else:
-    print "No parsing errors."
+    print("No parsing errors.")
 
   if inp.cif_dic is not None:
     cif_dic = validation.smart_load_dictionary(name=inp.cif_dic)
-    print
-    print "Validating CIF against %s:" %inp.cif_dic
+    print()
+    print("Validating CIF against %s:" %inp.cif_dic)
     cif_model = reader.model()
     error_handler = cif_model.validate(cif_dic, show_warnings=True)
     if len(error_handler.warnings) + len(error_handler.errors) == 0:
-      print "No validation errors found."
-    print
+      print("No validation errors found.")
+    print()
 
   if inp.extract_miller_arrays:
-    print "Extracting Miller arrays:"
+    print("Extracting Miller arrays:")
     try:
       miller_arrays = reader.as_miller_arrays()
-    except iotbx.cif.builders.CifBuilderError, e:
-      print "CifBuilderError: %s" %str(e)
+    except iotbx.cif.builders.CifBuilderError as e:
+      print("CifBuilderError: %s" %str(e))
     else:
       for ma in miller_arrays:
-        print ma
+        print(ma)
         ma.show_comprehensive_summary()
       if len(miller_arrays) == 0:
-        print "No Miller arrays found."
-      print
+        print("No Miller arrays found.")
+      print()
 
   if inp.extract_crystal_structures:
-    print "Extracting crystal structures:"
+    print("Extracting crystal structures:")
     try:
       crystal_structures = reader.build_crystal_structures()
-    except iotbx.cif.builders.CifBuilderError, e:
-      print "CifBuilderError: %s" %str(e)
+    except iotbx.cif.builders.CifBuilderError as e:
+      print("CifBuilderError: %s" %str(e))
     else:
       for xs in crystal_structures.values():
         xs.show_summary().show_scatterers()
-        print
+        print()
       if len(crystal_structures) == 0:
-        print "No crystal structures found."
-    print
+        print("No crystal structures found.")
+    print()
 
   if inp.extract_pdb_hierarchy:
-    print "Extracting pdb.hierarchy:"
+    print("Extracting pdb.hierarchy:")
+    # TODO am I a dictionary ?- if so change me accordingly..
     hierarchy = iotbx.pdb.mmcif.pdb_hierarchy_builder(
       cif_model.blocks.values()[0]).hierarchy
     hierarchy.show()
-    print
+    print()
 
 
 def run(server_info, inp, status):
-  print "<pre>"
+  print("<pre>")
   run_implementation(server_info=server_info, inp=inp, status=status)
-  print "</pre>"
+  print("</pre>")

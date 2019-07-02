@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math
 import os
 
@@ -7,6 +7,7 @@ from scitbx.array_family import flex
 import scitbx.math
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import common_mode
+from six.moves import range
 
 class pixel_histograms(common_mode.common_mode_correction):
 
@@ -90,7 +91,7 @@ class pixel_histograms(common_mode.common_mode_correction):
     self.nmemb += 1
     if 0 and math.log(self.nmemb, 2) % 1 == 0:
       self.endjob(env)
-    print self.nmemb
+    print(self.nmemb)
 
   #signature for pyana:
   #def endjob(self, env):

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 def raise_usage():
   from libtbx.utils import Usage
   import libtbx.load_env
@@ -19,7 +19,7 @@ def run(args):
       a = factor_kev_angstrom / k
     else:
       raise_usage()
-    print "%.5f A = %.5f keV" % (a, k)
+    print("%.5f A = %.5f keV" % (a, k))
 
 if (__name__ == "__main__"):
   import sys

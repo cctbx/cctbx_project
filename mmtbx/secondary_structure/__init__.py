@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.secondary_structure import proteins, nucleic_acids
 from cctbx import geometry_restraints
 import iotbx.pdb
@@ -19,6 +19,7 @@ from libtbx.utils import null_out
 from itertools import groupby
 from operator import itemgetter
 import iotbx.phil
+from six.moves import range
 
 def contiguous_ss_selections(pdb_hierarchy):
   """
@@ -37,8 +38,8 @@ def contiguous_ss_selections(pdb_hierarchy):
   ss_all.extend(ssm.beta_selection().iselection())
   ss_all.extend(ssm.base_pair_selection().iselection())
   chain_selections = []
-  for k, g in groupby(enumerate(ss_all), lambda (i, x): i-x):
-    chain_selections.append(flex.size_t(list(map(itemgetter(1), g))))
+  for k, g in groupby(enumerate(ss_all), lambda i_x: i_x[0]-i_x[1]):
+    chain_selections.append(flex.size_t([itemgetter(1) for _ in g]))
   #
   if(ss_all.size()>0):
     ss_all_as_one_array_bool = flex.bool(n_atoms, ss_all)
@@ -49,8 +50,8 @@ def contiguous_ss_selections(pdb_hierarchy):
   for atom in pdb_hierarchy.atoms():
     if(not ss_all_as_one_array_bool[atom.i_seq]):
       iseqs.append(atom.i_seq)
-  for k, g in groupby(enumerate(iseqs), lambda (i, x): i-x):
-    isels = list(map(itemgetter(1), g))
+  for k, g in groupby(enumerate(iseqs), lambda i_x1: i_x1[0]-i_x1[1]):
+    isels = [itemgetter(1) for _ in  g]
     chain_selections.append(flex.size_t(isels))
   # DEBUG
   C1 = flex.size_t()
@@ -58,7 +59,7 @@ def contiguous_ss_selections(pdb_hierarchy):
     C1.extend(s)
   s = flex.sort_permutation(C1)
   C1 = C1.select(s)
-  C2 = flex.size_t(xrange(n_atoms))
+  C2 = flex.size_t(range(n_atoms))
   assert approx_equal(C1, C2)
   assert C1.size()==C2.size()
   #
@@ -238,8 +239,8 @@ class manager(object):
       if (not protein_ss_definition_present and
           (self.sec_str_from_pdb_file is None or self.sec_str_from_pdb_file.is_empty())):
         if(self.verbose>0):
-          print >> self.log, "No existing protein secondary structure definitions " + \
-          "found in .pdb file or phil parameters."
+          print("No existing protein secondary structure definitions " + \
+          "found in .pdb file or phil parameters.", file=self.log)
         # find_automatically = True
       else:
         # find_automatically = False
@@ -324,26 +325,26 @@ class manager(object):
   def find_sec_str(self, pdb_hierarchy):
     if (pdb_hierarchy.atoms_size() > 99999 and
         self.params.secondary_structure.protein.search_method == "ksdssp"):
-      print >> self.log, "Warning!!! ksdssp method is not applicable for" + \
-          "structures with more than 99999 atoms!\nSwitching to from_ca."
+      print("Warning!!! ksdssp method is not applicable for" + \
+          "structures with more than 99999 atoms!\nSwitching to from_ca.", file=self.log)
       self.params.secondary_structure.protein.search_method = "from_ca"
     if self.params.secondary_structure.protein.search_method == "ksdssp":
       pdb_str = pdb_hierarchy.as_pdb_string()
-      print >> self.log, "  running ksdssp..."
+      print("  running ksdssp...", file=self.log)
       (records, stderr) = run_ksdssp_direct(pdb_str)
       return iotbx.pdb.secondary_structure.annotation.from_records(
           records=records,
           log=self.log)
     elif self.params.secondary_structure.protein.search_method == "mmtbx_dssp":
       from mmtbx.secondary_structure import dssp
-      print >> self.log, "  running mmtbx.dssp..."
+      print("  running mmtbx.dssp...", file=self.log)
       return dssp.dssp(
         pdb_hierarchy=pdb_hierarchy,
         pdb_atoms=self.pdb_atoms,
         out=null_out()).get_annotation()
     elif self.params.secondary_structure.protein.search_method == "from_ca":
       from mmtbx.secondary_structure import find_ss_from_ca
-      print >> self.log, "  running find_ss_from_ca..."
+      print("  running find_ss_from_ca...", file=self.log)
       fss = find_ss_from_ca.find_secondary_structure(
           hierarchy=pdb_hierarchy,
           ss_by_chain=self.params.secondary_structure.ss_by_chain,
@@ -356,7 +357,7 @@ class manager(object):
       return fss.get_annotation()
     elif self.params.secondary_structure.protein.search_method == "cablam":
       from mmtbx.validation import cablam
-      print >> self.log, "  running cablam..."
+      print("  running cablam...", file=self.log)
       cablam_results = cablam.cablamalyze(
           pdb_hierarchy = pdb_hierarchy,
           outliers_only=False,
@@ -364,13 +365,13 @@ class manager(object):
           quiet=False)
       return cablam_results.as_secondary_structure()
     else:
-      print >> self.log, "  WARNING: Unknown search method for SS. No SS found."
+      print("  WARNING: Unknown search method for SS. No SS found.", file=self.log)
       return iotbx.pdb.secondary_structure.annotation.from_records()
 
 
   def find_approximate_helices(self, log=sys.stdout):
-    print >> log, "  Looking for approximately helical regions. . ."
-    print >> log, "    warning: experimental, results not guaranteed to work!"
+    print("  Looking for approximately helical regions. . .", file=log)
+    print("    warning: experimental, results not guaranteed to work!", file=log)
     find_helices = proteins.find_helices_simple(self.pdb_hierarchy)
     find_helices.show(out=log)
     restraint_groups = find_helices.as_restraint_groups()
@@ -475,7 +476,7 @@ class manager(object):
     if self.params.secondary_structure.protein.enabled:
       for helix in self.params.secondary_structure.protein.helix :
         if helix.selection is not None:
-          print >> log, "    Processing helix ", helix.selection
+          print("    Processing helix ", helix.selection, file=log)
           proxies, angle_proxies = proteins.create_helix_hydrogen_bond_proxies(
               params=helix,
               pdb_hierarchy=self.pdb_hierarchy,
@@ -488,14 +489,14 @@ class manager(object):
               restrain_hbond_angles=self.params.secondary_structure.protein.restrain_hbond_angles,
               log=log)
           if (proxies.size() == 0):
-            print >> log, "      No H-bonds generated for '%s'" % helix.selection
+            print("      No H-bonds generated for '%s'" % helix.selection, file=log)
             continue
           else:
             generated_proxies.extend(proxies)
             hb_angle_proxies += angle_proxies
       for k, sheet in enumerate(self.params.secondary_structure.protein.sheet):
-        print >> log, "    Processing sheet with id=%s, first strand: %s" % (
-            sheet.sheet_id, sheet.first_strand)
+        print("    Processing sheet with id=%s, first strand: %s" % (
+            sheet.sheet_id, sheet.first_strand), file=log)
         if sheet.first_strand is not None:
           proxies, angle_proxies = proteins.create_sheet_hydrogen_bond_proxies(
             sheet_params=sheet,
@@ -509,20 +510,19 @@ class manager(object):
             restrain_hbond_angles=self.params.secondary_structure.protein.restrain_hbond_angles,
             log=log)
           if (proxies.size() == 0):
-            print >> log, \
-                "  No H-bonds generated for sheet with id=%s" % sheet.sheet_id
+            print("  No H-bonds generated for sheet with id=%s" % sheet.sheet_id, file=log)
             continue
           else:
             generated_proxies.extend(proxies)
             hb_angle_proxies += angle_proxies
 
     n_proxies = generated_proxies.size()
-    print >> log, ""
+    print("", file=log)
     if (n_proxies == 0):
-      print >> log, "    No hydrogen bonds defined for protein."
+      print("    No hydrogen bonds defined for protein.", file=log)
     else :
-      print >> log, "    %d hydrogen bonds defined for protein." % n_proxies
-      print >> log, "    %d hydrogen bond angles defined for protein." % len(hb_angle_proxies)
+      print("    %d hydrogen bonds defined for protein." % n_proxies, file=log)
+      print("    %d hydrogen bond angles defined for protein." % len(hb_angle_proxies), file=log)
     return generated_proxies, geometry_restraints.shared_angle_proxy(hb_angle_proxies)
 
   def create_all_new_restraints(self,
@@ -566,12 +566,12 @@ class manager(object):
     # print >> log, "    Time for creating basepair proxies (hbond, angle, planarity):%f" % (t4-t2)
     self.stats = {'n_protein_hbonds':0, 'n_na_hbonds':0, 'n_na_hbond_angles':0,
         'n_na_basepairs':0, 'n_na_stacking_pairs':0}
-    print >> log, "    Restraints generated for nucleic acids:"
-    print >> log, "      %d hydrogen bonds" % len(hb_bond_proxies)
-    print >> log, "      %d hydrogen bond angles" % len(hb_angle_proxies)
-    print >> log, "      %d basepair planarities" % len(planarity_bp_proxies)
-    print >> log, "      %d basepair parallelities" % len(parallelity_bp_proxies)
-    print >> log, "      %d stacking parallelities" % len(stacking_proxies)
+    print("    Restraints generated for nucleic acids:", file=log)
+    print("      %d hydrogen bonds" % len(hb_bond_proxies), file=log)
+    print("      %d hydrogen bond angles" % len(hb_angle_proxies), file=log)
+    print("      %d basepair planarities" % len(planarity_bp_proxies), file=log)
+    print("      %d basepair parallelities" % len(parallelity_bp_proxies), file=log)
+    print("      %d stacking parallelities" % len(stacking_proxies), file=log)
     all_hbonds = proteins_hbonds.deep_copy()
     all_hbonds.extend(hb_bond_proxies)
     all_angle = prot_angle_proxies.deep_copy()
@@ -635,10 +635,10 @@ class manager(object):
     if n_stacking_pairs == 1:
       if self.params.secondary_structure.nucleic_acid.stacking_pair[0].base1 is None:
         n_stacking_pairs = 0
-    print >> log, "    Secondary structure from input PDB file:"
-    print >> log, "      %d helices and %d sheets defined" % (n_helices,n_sheets)
-    print >> log, "      %.1f%% alpha, %.1f%% beta" %(frac_alpha*100,frac_beta*100)
-    print >> log, "      %d base pairs and %d stacking pairs defined." % (n_base_pairs,n_stacking_pairs)
+    print("    Secondary structure from input PDB file:", file=log)
+    print("      %d helices and %d sheets defined" % (n_helices,n_sheets), file=log)
+    print("      %.1f%% alpha, %.1f%% beta" %(frac_alpha*100,frac_beta*100), file=log)
+    print("      %d base pairs and %d stacking pairs defined." % (n_base_pairs,n_stacking_pairs), file=log)
 
   def helix_selections(self, limit=None, main_conf_only=False,
       alpha_only=False):
@@ -765,7 +765,7 @@ def run_ksdssp(file_name, log=sys.stdout):
   if not os.path.isfile(file_name):
     raise RuntimeError("File %s not found.")
   exe_path = get_ksdssp_exe_path()
-  print >> log, "  Running KSDSSP to generate HELIX and SHEET records"
+  print("  Running KSDSSP to generate HELIX and SHEET records", file=log)
   ksdssp_out = easy_run.fully_buffered(command="%s %s" % (exe_path, file_name))
 #  if len(ksdssp_out.stderr_lines) > 0 :
 #    print >> log, "\n".join(ksdssp_out.stderr_lines)
@@ -809,25 +809,25 @@ def analyze_distances(self, params, pdb_hierarchy=None, log=sys.stdout):
   remove_outliers = params.secondary_structure.protein.remove_outliers
   atoms = pdb_hierarchy.atoms()
   hist =  flex.histogram(self.bond_lengths, 10)
-  print >> log, "  Distribution of hydrogen bond lengths without filtering:"
+  print("  Distribution of hydrogen bond lengths without filtering:", file=log)
   hist.show(f=log, prefix="    ", format_cutoffs="%.4f")
-  print >> log, ""
+  print("", file=log)
   if not remove_outliers :
     return False
   for i, distance in enumerate(self.bond_lengths):
     if distance > distance_max :
       self.flag_use_bond[i] = False
       if params.verbose :
-        print >> log, "Excluding H-bond with length %.3fA" % distance
+        print("Excluding H-bond with length %.3fA" % distance, file=log)
         i_seq, j_seq = self.bonds[i]
-        print >> log, "  %s" % atoms[i_seq].fetch_labels().id_str()
-        print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
-  print >> log, "  After filtering: %d bonds remaining." % \
-    self.flag_use_bond.count(True)
-  print >> log, "  Distribution of hydrogen bond lengths after applying cutoff:"
+        print("  %s" % atoms[i_seq].fetch_labels().id_str(), file=log)
+        print("  %s" % atoms[j_seq].fetch_labels().id_str(), file=log)
+  print("  After filtering: %d bonds remaining." % \
+    self.flag_use_bond.count(True), file=log)
+  print("  Distribution of hydrogen bond lengths after applying cutoff:", file=log)
   hist = flex.histogram(self.bond_lengths.select(self.flag_use_bond), 10)
   hist.show(f=log, prefix="    ", format_cutoffs="%.4f")
-  print >> log, ""
+  print("", file=log)
   return True
 
 def manager_from_pdb_file(pdb_file):

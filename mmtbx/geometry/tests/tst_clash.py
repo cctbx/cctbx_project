@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from mmtbx.geometry import clash
 
 import unittest
+from six.moves import zip
 
 class TestAltlocStrategy(unittest.TestCase):
 

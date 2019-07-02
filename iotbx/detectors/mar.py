@@ -1,17 +1,22 @@
-from __future__ import division
-import re,struct
+from __future__ import absolute_import, division, print_function
+
+import re
+import struct
+
 from iotbx.detectors.detectorbase import DetectorImageBase
+from six.moves import range
 
 class MARImage(DetectorImageBase):
   def __init__(self,filename):
     DetectorImageBase.__init__(self,filename)
     self.vendortype = "MARCCD"
 
-    byte_order = str(open(self.filename,"rb").read(2))
-    if byte_order == 'II':
-      self.endian = 0
-    else:
-      self.endian = 1
+    with open(self.filename,"rb") as fh:
+      byte_order = fh.read(2)
+      if byte_order == b"II":
+        self.endian = 0
+      else:
+        self.endian = 1
 
     assert not self.isCompressed()
 
@@ -19,8 +24,7 @@ class MARImage(DetectorImageBase):
     if self.getEndian(): format = '>'
     else: format = '<'
 
-    f = open(self.filename,"rb")
-    try:
+    with open(self.filename,"rb") as f:
       f.seek(4)
       rawdata = f.read(4)
       ifd = struct.unpack(format+'i',rawdata)[0]
@@ -54,11 +58,8 @@ class MARImage(DetectorImageBase):
         rawdata = f.read(4)
         ifd = struct.unpack(format+'i',rawdata)[0]
 
-    finally:
-      f.close()
-
     # control should never reach this point
-    assert 1==0
+    assert False
 
   # returns 0 for little endian 'II'
   # returns 1 for big endian 'MM'
@@ -70,19 +71,18 @@ class MARImage(DetectorImageBase):
       if self.getEndian(): format = '>'
       else: format = '<'
 
-      f = open(self.filename,"rb")
-      try:
+      with open(self.filename, "rb") as f:
         f.seek(2464) # seek to file_comments
         file_comments = f.read(512) # read file_comments
 
         parameters={}
-        for item in [('Detector Serial Number','DETECTOR_SN')]: #expected integers
-          pattern = re.compile(item[0]+' = '+r'(.*)')
-          matches = pattern.findall(file_comments)
-          if len(matches) > 0:
-            parameters[item[1]] = int(matches[-1])
-          else:
-            parameters[item[1]] = 0
+        item = (b'Detector Serial Number',b'DETECTOR_SN') #expected integers
+        pattern = re.compile(item[0]+b" = (.*)")
+        matches = pattern.findall(file_comments)
+        if len(matches) > 0:
+          parameters[item[1]] = int(matches[-1])
+        else:
+          parameters[item[1]] = 0
 
         f.seek(offset+28)
         rawdata = f.read(8)
@@ -179,9 +179,6 @@ class MARImage(DetectorImageBase):
         rawdata = f.read(4)
         parameters['WAVELENGTH'] = struct.unpack(format+'i',rawdata)[0]*1.0e-5 # convert from femto to angstrom
 
-      finally:
-        f.close()
-
       self.parameters=parameters
 
       self._read_header_asserts()
@@ -201,7 +198,7 @@ if __name__=='__main__':
   i = "/net/racer/scratch1/ttleese/lyso201.0002"
   #i = "/net/racer/scratch1/ttleese/oxford.tif"
   m = MARImage(i)
-  print m.isCompressed()
+  print(m.isCompressed())
   #m.read()
   #print 'endian:',m.getEndian()
   #print 'serial number:',m.serial_number

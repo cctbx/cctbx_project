@@ -1,5 +1,6 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 def tst_glm():
   from scitbx.glmtbx import glm
@@ -23,7 +24,7 @@ def tst_glm():
     assert(abs(c - exp(result.parameters()[0])) < 0.1*c)
 
 
-  print 'OK'
+  print('OK')
 
 def tst_robust_glm():
   from scitbx.glmtbx import robust_glm
@@ -57,7 +58,7 @@ def tst_robust_glm():
     result = robust_glm(X, Y, B, family="poisson", max_iter=100)
     assert(abs(c - exp(result.parameters()[0])) < 0.1*c)
 
-  print 'OK'
+  print('OK')
 
 def run():
   tst_glm()

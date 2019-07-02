@@ -8,7 +8,9 @@
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
+from six.moves import zip
 
 class reader(object):
   '''Class to read the SPOT.XDS file.'''
@@ -52,13 +54,13 @@ class writer(object):
   def write_file(self, filename=None):
     '''Write the spot file.'''
 
-    with open(filename, 'wb') as f:
+    with open(filename, 'w') as f:
       for i in range(len(self.centroids)):
-        print >> f, " %.2f"*3 %self.centroids[i],
-        print >> f, "%.2f" %self.intensities[i],
+        print(" %.2f"*3 %self.centroids[i], end=' ', file=f)
+        print("%.2f" %self.intensities[i], end=' ', file=f)
         if self.miller_indices is not None:
-          print >> f, " %i"*3 %self.miller_indices[i],
-        print >> f, "\n",
+          print(" %i"*3 %self.miller_indices[i], end=' ', file=f)
+        print("\n", end='', file=f)
 
 if __name__ == '__main__':
   import sys
@@ -69,4 +71,4 @@ if __name__ == '__main__':
   for (xc, yc, zc), i, (h, k, l) in zip(handle.centroid,
                                         handle.intensity,
                                         handle.miller_index):
-    print (xc, yc, zc), i, (h, k, l)
+    print((xc, yc, zc), i, (h, k, l))

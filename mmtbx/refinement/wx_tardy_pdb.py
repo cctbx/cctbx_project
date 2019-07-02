@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.refinement import tst_tardy_pdb
 from gltbx import wx_viewer
 from gltbx import gl_managed
@@ -9,6 +9,7 @@ import scitbx.iso_surface
 from scitbx.math import minimum_covering_sphere, sphere_3d
 import wx
 import sys
+from six.moves import range
 
 class draw_map(object):
 
@@ -29,7 +30,7 @@ class draw_map(object):
     if (direction == "down"):
       shift *= -1
     O.iso_level = min(max(0.5, old + shift), 10)
-    print "New iso-level: %.2f" % O.iso_level
+    print("New iso-level: %.2f" % O.iso_level)
     O.display_list = None
 
   def draw_unit_cell(O):
@@ -151,8 +152,8 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
         draw_ideal_line()
         O.line_i_seqs.append(line)
         O.line_colors[line] = color
-      print "\n".join(tardy_model.tardy_tree.viewer_lines_with_colors_legend(
-        include_loop_edge_bendings=False))
+      print("\n".join(tardy_model.tardy_tree.viewer_lines_with_colors_legend(
+        include_loop_edge_bendings=False)))
     else:
       for line in tardy_model.potential_obj.geo_manager.simple_edge_list():
         draw_ideal_line()
@@ -169,10 +170,10 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     else:               O.action_callback()
 
   def show_key_stroke_help(O):
-    print "Press and hold Tab key to continue execution."
-    print "Press i to change iso-surface level down."
-    print "Press I to change iso-surface level up."
-    print "Press R to re-run from the start."
+    print("Press and hold Tab key to continue execution.")
+    print("Press i to change iso-surface level down.")
+    print("Press I to change iso-surface level up.")
+    print("Press R to re-run from the start.")
 
   def process_key_stroke(O, key):
     if   (key == ord("i")):
@@ -183,7 +184,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       O.child_thread.resume(last_iteration=True)
       O.set_points_and_lines()
     else:
-      print "No action for this key stroke."
+      print("No action for this key stroke.")
       O.show_key_stroke_help()
     O.OnRedraw()
 
@@ -193,7 +194,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
 
   def OnUpdate(O, event):
     sites_moved = event.data
-    for i in xrange(len(sites_moved)):
+    for i in range(len(sites_moved)):
       O.points[i] = sites_moved[i]
     O.labels_display_list = None
     O.lines_display_list = None

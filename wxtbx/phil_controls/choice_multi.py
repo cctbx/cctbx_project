@@ -1,7 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from wxtbx import phil_controls
 import wx
+import six
+from six.moves import zip
 
 class MultiChoiceCtrl(wx.Panel, phil_controls.PhilCtrl):
   """
@@ -38,7 +40,7 @@ class MultiChoiceCtrl(wx.Panel, phil_controls.PhilCtrl):
 
   def SetToolTip(self, tooltip):
     super(MultiChoiceCtrl, self).SetToolTip(tooltip)
-    for key, ctrl in self._option_controls.iteritems():
+    for key, ctrl in six.iteritems(self._option_controls):
       # Never reuse a Tooltip as this will may lead to a nasty crash of Python
       # So create a new tooltip for each additional control
       newtt = wx.ToolTip(tooltip.GetTip())

@@ -1,15 +1,15 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx.python_utils import command_line
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal, show_diff
 import libtbx.math_utils
-from cStringIO import StringIO
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import cStringIO as StringIO
+from past.builtins import cmp
+from six.moves import range
+from six.moves import cPickle as pickle
+import six
 import math
 import random
 import time
@@ -18,6 +18,7 @@ import sys, os
 # Boost 1.56 changes normal distribution, but keep old tests for testing
 # older versions of Boost
 import libtbx.load_env
+from six.moves import zip
 boost_version = libtbx.env.boost_version
 
 def exercise_flex_grid():
@@ -211,7 +212,7 @@ def exercise_flex_constructors():
   f = flex.double([2,1,3,5])
   assert f.size() == 4
   assert tuple(f) == (2,1,3,5)
-  f = flex.double(xrange(10,13))
+  f = flex.double(range(10,13))
   assert f.size() == 3
   assert tuple(f) == (10,11,12)
   assert flex.to_list(f) == [10,11,12]
@@ -221,7 +222,7 @@ def exercise_flex_constructors():
       for n_rows in range(4):
         for n_columns in range(4):
           matrix = list()
-          for i_row in xrange(n_rows):
+          for i_row in range(n_rows):
             matrix.append(column_type(flex.random_double(n_columns)))
           m = flex.double(row_type(matrix))
           if (n_rows == 0):
@@ -229,46 +230,47 @@ def exercise_flex_constructors():
           else:
             assert m.focus() == (n_rows, n_columns)
           try: flex.double(row_type([column_type([]),column_type([1])]))
-          except RuntimeError, e:
+          except RuntimeError as e:
             assert str(e) == "matrix columns must have identical sizes."
           else: raise Exception_expected
           try: flex.double(row_type([column_type([0]),column_type(["x"])]))
-          except TypeError, e:
+          except TypeError as e:
             assert str(e) in [
               "bad argument type for built-in operation",
-              "a float is required"]
+              "a float is required",
+              "must be real number, not str"]
           else: raise Exception_expected
   for arg in [[[0],""], ([0],"",)]:
     try: flex.double(arg)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == \
         "argument must be a Python list or tuple of lists or tuples."
     else: raise Exception_expected
   #
-  assert list(flex.int_range(stop=3)) == range(3)
-  assert list(flex.int_range(start=1, stop=3)) == range(1, 3)
-  assert list(flex.int_range(start=1, stop=5, step=2)) == range(1, 5, 2)
+  assert list(flex.int_range(stop=3)) == list(range(3))
+  assert list(flex.int_range(start=1, stop=3)) == list(range(1, 3))
+  assert list(flex.int_range(start=1, stop=5, step=2)) == list(range(1, 5, 2))
   for start in range(-5,6):
     for stop in range(-5,6):
       for step in range(-5,6):
         if (step == 0): continue
         args = (start,stop,step)
-        assert list(flex.int_range(*args)) == range(*args)
-        assert list(flex.long_range(*args)) == range(*args)
-        assert approx_equal(flex.double_range(*args), range(*args))
-        assert approx_equal(flex.float_range(*args), range(*args))
-  assert list(flex.size_t_range(stop=3)) == range(3)
-  assert list(flex.size_t_range(start=8, stop=3, step=-1)) == range(8, 3, -1)
+        assert list(flex.int_range(*args)) == list(range(*args))
+        assert list(flex.long_range(*args)) == list(range(*args))
+        assert approx_equal(flex.double_range(*args), list(range(*args)))
+        assert approx_equal(flex.float_range(*args), list(range(*args)))
+  assert list(flex.size_t_range(stop=3)) == list(range(3))
+  assert list(flex.size_t_range(start=8, stop=3, step=-1)) == list(range(8, 3, -1))
   try: flex.int_range(0, 0, 0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "range step argument must not be zero."
   else: raise Exception_expected
   try: flex.size_t_range(-1, 0, 1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "range start argument must not be negative."
   else: raise Exception_expected
   try: flex.size_t_range(0, -1, 1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "range stop argument must not be negative."
   else: raise Exception_expected
 
@@ -280,14 +282,14 @@ def exercise_numbers_from_string():
   #
   try:
     flex.int(flex.std_string(['']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Empty string (integer value expected).')
   else:
     raise Exception_expected
   try:
     flex.int(flex.std_string(['+-0']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Invalid integer value: "+-0"')
   else:
@@ -295,7 +297,7 @@ def exercise_numbers_from_string():
   s = str(2**1000).replace("L", "")
   try:
     flex.int(flex.std_string([s]))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Invalid integer value: "%s"' % s)
   else:
@@ -318,56 +320,56 @@ def exercise_numbers_from_string():
   #
   try:
     flex.double(flex.std_string(['']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Empty string (floating-point value expected).')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['1.2(']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Missing closing parenthesis: "1.2("')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['1.2(3)4']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Unexpected trailing characters after ")": "1.2(3)4"')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['(3)']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Empty value part: "(3)"')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['5()']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Empty esd part: "5()"')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['6x']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Invalid floating-point value: "6x"')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['7x(8)']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Invalid value part: "7x(8)"')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['1.2','+2e-3(x)']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), 'Invalid esd part: "+2e-3(x)"')
   else:
     raise Exception_expected
@@ -382,12 +384,12 @@ def exercise_std_string():
   assert list(a.strip().lower()) == ["abc","def","ghi","jkl", "1 23"]
   #
   a = fss()
-  assert a.i_seqs_by_value().keys() == []
+  assert len(a.i_seqs_by_value()) == 0
   ibv = fss([""]).i_seqs_by_value()
-  assert ibv.keys() == [""]
+  assert list(ibv.keys()) == [""]
   assert list(ibv[""]) == [0]
   ibv = fss(["", ""]).i_seqs_by_value()
-  assert ibv.keys() == [""]
+  assert list(ibv.keys()) == [""]
   assert list(ibv[""]) == [0,1]
   ibv = fss(["", "a"]).i_seqs_by_value()
   assert sorted(ibv.keys()) == ["", "a"]
@@ -459,7 +461,7 @@ def exercise_misc():
   assert b.md5().hexdigest() == "bc115dabbd6dc87323302b082152be14"
   #
   try: flex.int([0,0,1,0,2,0,1,0,0,1,1,0,0,0]).as_bool(strict=True)
-  except ValueError, e:
+  except ValueError as e:
     assert str(e) == "scitbx.array_family.flex.int.as_bool(strict=True):" \
       " all array elements must be 0 or 1, but value=2 at array index=4."
   else: raise Exception_expected
@@ -489,7 +491,7 @@ def exercise_misc():
   assert flex.double(new_style([3,4,5])).all_eq(flex.double([3,4,5]))
   for s in ["", u""]:
     try: flex.double(s)
-    except Exception, e:
+    except Exception as e:
       assert str(e).startswith("Python argument types in")
     else: raise Exception_expected
   #
@@ -500,17 +502,17 @@ def exercise_misc():
   a.reshape(flex.grid(2,3,2))
   assert a.focus() == (2,3,2)
   try: a.reshape(flex.grid(5,6))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("SCITBX_ASSERT(grid.size_1d() == a.size())") > 0
   else: raise Exception_expected
   #
-  for l in [[], [12], [2,3], [4,6,7], range(-123,2345)]:
+  for l in [[], [12], [2,3], [4,6,7], list(range(-123,2345))]:
     for flex_type,flex_from_byte_str in [
           (flex.int, flex.int_from_byte_str),
           (flex.size_t, flex.size_t_from_byte_str),
           (flex.double, flex.double_from_byte_str)]:
       if (flex_type is flex.size_t and len(l) != 0 and l[0] < 0):
-        l = range(0, 2345)
+        l = list(range(0, 2345))
       a = flex_type(l)
       b = a.copy_to_byte_str()
       if (len(l) == 0):
@@ -537,9 +539,9 @@ def exercise_misc():
       assert f.size() == a_slice.size()
       assert list(f) == list(a_slice)
   #
-  for n in xrange(10):
+  for n in range(10):
     a = flex.size_t(range(n)).as_int()
-    assert list(a) == range(n)
+    assert list(a) == list(range(n))
     s = a.as_rgb_scale_string(
       rgb_scales_low=(1,1,1),
       rgb_scales_high=(0,0,0),
@@ -550,13 +552,17 @@ def exercise_misc():
     rgb_scales_low=(1,1,1),
     rgb_scales_high=(0,0,0),
     saturation=2)
-  assert [ord(c) for c in s] \
+  if six.PY3:
+    ord_ = lambda x: x
+  else:
+    ord_ = ord
+  assert [ord_(c) for c in s] \
       == [128, 128, 128, 0, 0, 0, 255, 255, 255, 0, 0, 0, 255, 255, 255]
   s = a.as_rgb_scale_string(
     rgb_scales_low=(1,1,1),
     rgb_scales_high=(1,0,0),
     saturation=2)
-  assert [ord(c) for c in s] \
+  assert [ord_(c) for c in s] \
       == [255, 128, 128, 255, 0, 0, 255, 255, 255, 255, 0, 0, 255, 255, 255]
   #
   a = flex.double([1,2,3,-4,5,6])
@@ -621,7 +627,7 @@ def exercise_1d_slicing_core(a):
   assert tuple(a[-1:1:-2]) == (5,3)
   assert tuple(a[-1:2:-2]) == (5,)
   try: tuple(a[3:3:0]) == ()
-  except ValueError, e: assert str(e) == "slice step cannot be zero"
+  except ValueError as e: assert str(e) == "slice step cannot be zero"
 
 def exercise_flex_sum_axis():
   try:
@@ -658,9 +664,9 @@ def exercise_1d_slicing():
   except ImportError:
     pass
   else:
-    print "Testing compatibility with numpy slicing...",
+    print("Testing compatibility with numpy slicing...", end=' ')
     exercise_1d_slicing_core(numpy.array((1,2,3,4,5)))
-    print "OK"
+    print("OK")
   assert list(flex.slice_indices(5, slice(10))) == [0,1,2,3,4]
   assert list(flex.slice_indices(5, slice(0))) == []
   assert list(flex.slice_indices(5, slice(0,10,2))) == [0,2,4]
@@ -742,7 +748,7 @@ def exercise_numpy_slicing_compatibility():
   try:
     import numpy
   except ImportError:
-    print "Skipping exercise_numpy_slicing_compatibility..."
+    print("Skipping exercise_numpy_slicing_compatibility...")
     return
   for j in range(50):
     for n_dim in (3,4,5,6):
@@ -756,13 +762,13 @@ def exercise_numpy_slicing_compatibility():
         start = random.randint(0,dim[i]-1)
         stop = random.randint(start+1,dim[i])
         slices.append(slice(start,stop))
-      assert approx_equal(flex.double(a_numpy[slices].flatten()), a[slices])
+      assert approx_equal(flex.double(a_numpy[tuple(slices)].flatten()), a[slices])
       slices = []
       for i in range(n_dim):
         start = random.randint(-dim[i],-2)
         stop = random.randint(start+1,-1)
         slices.append(slice(start,stop))
-      assert approx_equal(flex.double(a_numpy[slices].flatten()), a[slices])
+      assert approx_equal(flex.double(a_numpy[tuple(slices)].flatten()), a[slices])
 
 def exercise_push_back_etc():
   a = flex.double(3)
@@ -811,7 +817,7 @@ def exercise_push_back_etc():
   assert list(f) == [11] * 6
   b = flex.double([10,13,17])
   assert list(a.reversed()) == [6,5,4,3,2,1,0]
-  assert list(a.reversed().reversed()) == range(7)
+  assert list(a.reversed().reversed()) == list(range(7))
   assert list(a.concatenate(b)) == [0,1,2,3,4,5,6,10,13,17]
   assert list(b.concatenate(a)) == [10,13,17,0,1,2,3,4,5,6]
   #
@@ -824,7 +830,7 @@ def exercise_push_back_etc():
   assert list(a) == [1,3,2]
   vi = sys.version_info
   if (not (vi[0] == 2 and vi[1] < 3)): # skipping test under Python 2.2 since
-    for i in xrange(-3,4):             # l.insert(-2, 5) doesn't work right
+    for i in range(-3,4):             # l.insert(-2, 5) doesn't work right
       c = a.deep_copy()
       l = list(a)
       c.insert(i, 5)
@@ -848,10 +854,10 @@ def exercise_setitem():
   assert tuple(a) == (11, 12)
   g = flex.grid((2,3))
   a = flex.double(g)
-  for i in xrange(2):
-    for j in xrange(3):
+  for i in range(2):
+    for j in range(3):
       a[(i,j)] = i * 3 + j
-  assert list(a) == range(6)
+  assert list(a) == list(range(6))
 
 def exercise_select():
   from scitbx import stl
@@ -866,7 +872,7 @@ def exercise_select():
   p = flex.size_t([0,3,1,2,4])
   assert list(a.select(p)) == [1,4,2,3,5]
   assert list(a.select(p).select(p, reverse=True)) == list(a)
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     p = flex.random_permutation(size=a.size())
     assert list(a.select(p).select(p, reverse=True)) == list(a)
   assert tuple(a.set_selected(b, flex.double((7,8,9)))) == (1,7,3,8,9)
@@ -929,7 +935,7 @@ def exercise_select():
   b = flex.size_t((2,4,1,2,4))
   assert tuple(a.select(b)) == (3,5,2,3,5)
   a = flex.size_t((1,2,3))
-  for i in xrange(3):
+  for i in range(3):
     for expected in ([1, 2, 3],
                      [1, 3, 2],
                      [2, 1, 3],
@@ -940,7 +946,7 @@ def exercise_select():
       assert a.next_permutation() == (expected != [3, 2, 1])
   s = [1,2,3]
   a = flex.size_t(s)
-  for i in xrange(3):
+  for i in range(3):
     while True:
       assert list(a) == s
       if (not a.next_permutation()):
@@ -1009,22 +1015,22 @@ def exercise_select():
   #
   fs = flex.size_t
   try: fs([1,1]).intersection(fs([1,2]))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("first") > 0
     assert str(e).find("duplicate") > 0
   else: raise Exception_expected
   try: fs([2,1]).intersection(fs([1,2]))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("first") > 0
     assert str(e).find("sorted") > 0
   else: raise Exception_expected
   try: fs([1,2]).intersection(fs([1,1]))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("second") > 0
     assert str(e).find("duplicate") > 0
   else: raise Exception_expected
   try: fs([1,3]).intersection(fs([2,1]))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("second") > 0
     assert str(e).find("sorted") > 0
   else: raise Exception_expected
@@ -1052,7 +1058,7 @@ def exercise_select():
   for f in (mt.random_selection, flex.random_selection):
     s = f(population_size=15, sample_size=10)
     assert list(s) == [0, 1, 2, 3, 5, 9, 10, 11, 12, 14]
-    for n in xrange(2):
+    for n in range(2):
       s = f(population_size=n, sample_size=0)
       assert s.size() == 0
 
@@ -1186,7 +1192,7 @@ def exercise_bool():
   assert not a == None
   assert type(a == None) == type(False)
   try: a == flex.int()
-  except TypeError, e:
+  except TypeError as e:
     assert str(e) \
         == "Type of argument must be a Python bool, flex.bool, or None."
   else: raise Exception_expected
@@ -1195,7 +1201,7 @@ def exercise_bool():
   assert a != None
   assert type(a != None) == type(False)
   try: a != flex.int()
-  except TypeError, e:
+  except TypeError as e:
     assert str(e) \
         == "Type of argument must be a Python bool, flex.bool, or None."
   else: raise Exception_expected
@@ -1217,7 +1223,7 @@ def exercise_bool():
   assert type(f.all_ne(False)) == type(False)
   for mf in [t.all_eq, t.all_ne]:
     try: mf(None)
-    except TypeError, e:
+    except TypeError as e:
       assert str(e) == "Type of argument must be a Python bool or flex.bool."
     else: raise Exception_expected
   assert tuple(~a) == (True, False, True, False)
@@ -1364,18 +1370,18 @@ def exercise_functions():
                       keep_ends=keep_ends,
                       count_lines_first=count_lines_first)) \
             == multi_line_string.splitlines(keep_ends)
-  #
-  a = flex.int(range(-2,2) + range(2,4) + range(1,3))
+  # 2to3 migration comment: must use list(range); do not wrap items() in list, a.counts() is not dict
+  a = flex.int(list(range(-2,2)) + list(range(2,4)) + list(range(1,3)))
   assert a.counts().items() == [(-2,1),(-1,1),(0,1),(1,2),(2,2),(3,1)]
   assert a.counts(max_keys=6).items() == a.counts().items()
-  a = flex.long(range(-2,2) + range(-1,3) + range(1,3))
+  a = flex.long(list(range(-2,2)) + list(range(-1,3)) + list(range(1,3)))
   assert a.counts().items() == [(-2,1),(-1,2),(0,2),(1,3),(2,2)]
   assert a.counts(max_keys=5).items() == a.counts().items()
-  a = flex.size_t(range(1,2) + range(1,3) + range(1,4))
+  a = flex.size_t(list(range(1,2)) + list(range(1,3)) + list(range(1,4)))
   assert a.counts().items() == [(1, 3), (2, 2), (3, 1)]
   assert a.counts(max_keys=3).items() == a.counts().items()
   try: a.counts(max_keys=2)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "scitbx::af::counts::limited: max_keys exceeded."
   else: raise Exception_expected
   #
@@ -1540,7 +1546,7 @@ def exercise_sort():
     p = flex.sort_permutation(x, reverse=True, stable=True)
     assert approx_equal(p, expected)
 
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     a = flex.size_t([0,0,0,1,1,2,2,2,3,4,4])
     if (i_trial):
       a = a.select(flex.sort_permutation(flex.random_double(size=a.size())))
@@ -1572,23 +1578,23 @@ def exercise_random():
   assert mt.random_size_t_max() == 4294967295
   assert mt.random_size_t() == 1791095845
   assert approx_equal(mt.random_double(), 0.997184808365)
-  for i in xrange(3):
-    for j in xrange(2):
+  for i in range(3):
+    for j in range(2):
       if (j == 0): mt = flex.mersenne_twister()
       else: mt.seed()
       assert tuple(mt.random_size_t(3)) \
-          == (1791095845, 4282876139L, 3093770124L)
+          == (1791095845, 4282876139, 3093770124)
       assert approx_equal(mt.random_double(3),
        (0.9325573593386588, 0.12812444792935673, 0.99904051532414473))
       if (j == 0): mt = flex.mersenne_twister(seed=4357)
       else: mt.seed(value=4357)
       assert tuple(mt.random_size_t(size=3)) \
-          == (2983900864L, 1547366158, 1775641839)
+          == (2983900864, 1547366158, 1775641839)
       assert approx_equal(mt.random_double(size=3),
         (0.10064729869939604, 0.89184217257908471, 0.20721445761797463))
   assert mt.random_size_t(size=3).size() == 3
   assert mt.random_double(size=3).size() == 3
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     a = mt.random_size_t(size=100000, modulus=10)
     assert a.size() == 100000
     assert flex.min(a) == 0
@@ -1597,7 +1603,7 @@ def exercise_random():
     assert approx_equal(flex.mean(a), 4.5, eps=1.e-1)
     assert approx_equal(
       flex.mean(a*a) - flex.mean(a)*flex.mean(a), 8.25, eps=1.e-1)
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     a = mt.random_double(size=100000, factor=10)
     assert a.size() == 100000
     assert flex.min(a) >= 0
@@ -1607,7 +1613,7 @@ def exercise_random():
       flex.mean(a*a) - flex.mean(a)*flex.mean(a), 8.25, eps=0.2)
   flex.set_random_seed(value=0)
   assert tuple(flex.random_size_t(3)) \
-      == (1791095845, 4282876139L, 3093770124L)
+      == (1791095845, 4282876139, 3093770124)
   assert approx_equal(flex.random_double(3),
     (0.9325573593386588, 0.12812444792935673, 0.99904051532414473))
   assert list(flex.random_permutation(size=5)) == [2, 1, 4, 0, 3]
@@ -1617,7 +1623,7 @@ def exercise_random():
   #
   state = flex.random_generator.getstate()
   r1 = flex.random_size_t(13)
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     flex.random_generator.setstate(state=state)
     r2 = flex.random_size_t(13)
     assert r2.all_eq(r1)
@@ -1630,7 +1636,7 @@ def exercise_random():
   assert approx_equal(flex.random_double_point_on_sphere(),
     [0.59191534709710958, 0.38795698109618137, -0.70648821836577391])
   a = matrix.col([0,0,0])
-  for i_trial in xrange(1000):
+  for i_trial in range(1000):
     p = matrix.col(flex.random_double_point_on_sphere())
     assert approx_equal(p.norm_sq(), 1.0)
     a += p
@@ -1652,7 +1658,7 @@ def exercise_random():
        -0.4123652,  0.5113358,  0.7539831,
         0.3489328,  0.8531631, -0.3877608])
   def check_r3r(method):
-    for i_trial in xrange(100):
+    for i_trial in range(100):
       r = matrix.sqr(method())
       assert approx_equal(r.determinant(), 1)
       assert r.is_r3_rotation_matrix()
@@ -1664,7 +1670,7 @@ def exercise_random():
   else:
     assert approx_equal(flex.random_double_unit_quaternion(), (
       -0.707011, -0.3049360, -0.1297506, -0.6247512))
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     assert approx_equal(
       abs(matrix.col(flex.random_double_unit_quaternion())), 1)
   #
@@ -1748,7 +1754,7 @@ def exercise_flex_vec3_double():
   zoz = flex.vec3_double([(0,0,0),(0,1,0),(0,0,0)])
   try:
     zoz.each_normalize()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "flex.vec3_double.each_normalize():" \
       " number of vectors with length zero: 2 of 3"
   else: raise Exception_expected
@@ -1771,7 +1777,7 @@ def exercise_flex_vec3_double():
   assert approx_equal(b.rms_difference(b), 0)
   assert approx_equal(a.rms_length(), math.sqrt(flex.mean(a.dot())))
   assert approx_equal((a-a).rms_length(), 0)
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     for n in [7,10,13]:
       sites_1 = flex.vec3_double(flex.random_double(n*3)*5)
       sites_2 = flex.vec3_double(flex.random_double(n*3)*7)
@@ -1911,7 +1917,7 @@ def exercise_flex_vec2_double():
   assert approx_equal(b.rms_difference(b), 0)
   assert approx_equal(a.rms_length(), math.sqrt(flex.mean(a.dot())))
   assert approx_equal((a-a).rms_length(), 0)
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     for n in [7,10,13]:
       sites_1 = flex.vec2_double(flex.random_double(n*2)*5)
       sites_2 = flex.vec2_double(flex.random_double(n*2)*7)
@@ -1942,8 +1948,8 @@ def exercise_flex_vec2_double():
   y2 = flex.random_double(size=15)
   V = flex.vec2_double(x,y); V2 = flex.vec2_double(x2,y2)
   DIST = V.distance_matrix(V2)
-  for i in xrange(len(x)):
-    for j in xrange(len(x2)):
+  for i in range(len(x)):
+    for j in range(len(x2)):
       pydist = math.sqrt( (x[i]-x2[j])**2 + (y[i]-y2[j])**2 )
       assert approx_equal(pydist, DIST[i,j])
 
@@ -2022,7 +2028,7 @@ def exercise_flex_tiny_size_t_2():
   assert tuple(a.column(1)) == (2,3,4)
 
 def exercise_histogram():
-  x = flex.double(xrange(20))
+  x = flex.double(range(20))
   h = flex.histogram(data=x)
   assert h.slots().size() == 1000
   h = flex.histogram(x, n_slots=5)
@@ -2052,7 +2058,7 @@ def exercise_histogram():
   h3 = flex.histogram(flex.double((1,2,3,4,5)), -2, 4, 4)
   h2.update(h3)
   assert tuple(h2.slots()) == (0, 0, 2, 5)
-  y = flex.double(xrange(-3,23))
+  y = flex.double(range(-3,23))
   hy = flex.histogram(other=h, data=y)
   assert approx_equal(hy.data_min(), 0)
   assert approx_equal(hy.data_max(), 19)
@@ -2092,8 +2098,8 @@ def exercise_histogram():
   assert l.n_out_of_slot_range() == 17
 
 def exercise_weighted_histogram():
-  x = flex.double(xrange(20))
-  w = 0.5 * flex.double(xrange(20))
+  x = flex.double(range(20))
+  w = 0.5 * flex.double(range(20))
   h = flex.weighted_histogram(data=x, weights=w)
   assert h.slots().size() == 1000
   h = flex.weighted_histogram(data=x)
@@ -2130,7 +2136,7 @@ def exercise_weighted_histogram():
   h3 = flex.weighted_histogram(flex.double((1,2,3,4,5)), -2, 4, 4)
   h2.update(h3)
   assert tuple(h2.slots()) == (0, 0, 2, 5)
-  y = flex.double(xrange(-3,23))
+  y = flex.double(range(-3,23))
   hy = flex.weighted_histogram(other=h, data=y)
   assert approx_equal(hy.data_min(), 0)
   assert approx_equal(hy.data_max(), 19)
@@ -2230,7 +2236,7 @@ def exercise_show_count_stats():
 >=   24:  50  0.98039
 >=   12:  51  1.00000
 """)
-  check([0]*93+range(0,10001,100), group_size=5000, expected="""\
+  check([0]*93+list(range(0,10001,100)), group_size=5000, expected="""\
 >= 10000:    1  0.00515
 >=  5000:   51  0.26289
 >=     1:  100  0.51546
@@ -2246,7 +2252,7 @@ def simple_linear_regression(x_obs, y_obs, w_obs):
   x2 = 0
   y2 = 0
   xy = 0
-  for i in xrange(len(x_obs)):
+  for i in range(len(x_obs)):
     w += w_obs[i]
     x += x_obs[i]*w_obs[i]
     y += y_obs[i]*w_obs[i]
@@ -2296,7 +2302,7 @@ def exercise_linear_regression():
     a, b = simple_linear_regression(x, y, weights)
     assert approx_equal(a, r.y_intercept())
     assert approx_equal(b, r.slope())
-  for i_trial in xrange(100):
+  for i_trial in range(100):
     x = flex.random_double(size=10)
     y = x + flex.random_double(size=10) * 0.2 - 0.1 + 3
     weights = flex.random_double(size=10)
@@ -2402,7 +2408,7 @@ def exercise_linear_interpolation():
       eps=1.e-4)
     assert approx_equal(flex.linear_interpolation(tab_x, tab_y, 4-1.e-6), 40,
       eps=1.e-4)
-    for i in xrange(11):
+    for i in range(11):
       x = 1+3*i/10.
       assert approx_equal(flex.linear_interpolation(tab_x, tab_y, x), 10*x)
     for x in [0,5]:
@@ -2477,17 +2483,17 @@ def exercise_loops():
   n_trials = 2
   nl = flex.nested_loop
   t0 = time.time()
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     c = list(nl(begin=[3,-5,8,10,-7], end=[7,0,13,12,-3], open_range=False))
   if (n_trials > 2):
-    print "C++ nested_loop: %.2f s" % (time.time()-t0)
+    print("C++ nested_loop: %.2f s" % (time.time()-t0))
   nl = libtbx.math_utils.nested_loop
   t0 = time.time()
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     p = [tuple(i) for i in
       nl(begin=[3,-5,8,10,-7], end=[7,0,13,12,-3], open_range=False)]
   if (n_trials > 2):
-    print "Python nested_loop: %.2f s" % (time.time()-t0)
+    print("Python nested_loop: %.2f s" % (time.time()-t0))
   assert p == c
 
 def exercise_extract_attributes():
@@ -2496,7 +2502,7 @@ def exercise_extract_attributes():
       self.a = a
       self.b = b
   groups = []
-  for i in xrange(3):
+  for i in range(3):
     groups.append(group(i, i+1))
   for array in [groups, tuple(groups)]:
     eas = flex.extract_double_attributes(
@@ -2518,20 +2524,20 @@ def exercise_extract_attributes():
 def exercise_exceptions():
   f = flex.double(flex.grid((2,3)))
   try: f.assign(1, 0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Array must be 0-based 1-dimensional."
   else:
-    raise AssertionError, "No exception or wrong exception."
+    raise AssertionError("No exception or wrong exception.")
   try: f.append(0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Array must be 0-based 1-dimensional."
   else:
-    raise AssertionError, "No exception or wrong exception."
+    raise AssertionError("No exception or wrong exception.")
   try: f[(2,0)]
-  except IndexError, e:
+  except IndexError as e:
     assert str(e) == "Index out of range."
   else:
-    raise AssertionError, "No exception or wrong exception."
+    raise AssertionError("No exception or wrong exception.")
 
 def exercise_matrix():
   for ag,bg in [[(0,0),(0,0)],[(0,1),(1,0)],[(1,0),(0,2)]]:
@@ -2560,8 +2566,8 @@ def exercise_matrix():
             a.matrix_multiply_transpose(b.matrix_transpose())]:
     assert c.focus() == (3,3)
     assert list(c) == [9, 12, 15, 19, 26, 33, 29, 40, 51]
-  for a_n_rows in xrange(1,4):
-    for a_n_columns in xrange(1,4):
+  for a_n_rows in range(1,4):
+    for a_n_columns in range(1,4):
       a = flex.random_double(size=a_n_rows*a_n_columns)
       b = flex.random_double(size=a_n_rows*a_n_columns)
       c = a.matrix_multiply(b)
@@ -2570,7 +2576,7 @@ def exercise_matrix():
       assert approx_equal(c, d[0])
       assert approx_equal(a.dot(b), matrix.row(a).dot(matrix.col(b)))
       a.reshape(flex.grid(a_n_rows, a_n_columns))
-      for b_n_columns in xrange(1,4):
+      for b_n_columns in range(1,4):
         b = flex.random_double(size=a_n_columns*b_n_columns)
         b.reshape(flex.grid(a_n_columns, b_n_columns))
         d = matrix.rec(a, a.focus()) * matrix.rec(b, b.focus())
@@ -2610,8 +2616,8 @@ def exercise_matrix():
         assert c.focus() == (d.n[1],)
         assert approx_equal(c, d)
   #
-  for n_rows in xrange(10):
-    for n_columns in xrange(10):
+  for n_rows in range(10):
+    for n_columns in range(10):
       m = flex.random_double(size=n_rows*n_columns)*4-2
       m.reshape(flex.grid(n_rows,n_columns))
       p = flex.random_double(size=n_columns*(n_columns+1)//2)
@@ -2681,19 +2687,19 @@ def exercise_matrix():
   pivot_indices = lu.matrix_lu_decomposition_in_place()
   assert approx_equal(lu, [1,0,0,0,1,0,0,0,1])
   assert list(pivot_indices) == [0,1,2,0]
-  for rank in range(1,6) + [18]:
-    for i in xrange(10):
+  for rank in list(range(1,6)) + [18]:
+    for i in range(10):
       m = flex.random_double(size=rank*rank)*3-1.5
       m.resize(flex.grid(rank,rank))
       assert approx_equal(
-        m.matrix_diagonal(), [m[j*rank+j] for j in xrange(rank)])
+        m.matrix_diagonal(), [m[j*rank+j] for j in range(rank)])
       mc = m.deep_copy()
       mc.matrix_diagonal_set_in_place(value=3)
       assert approx_equal(mc.matrix_diagonal(), [3]*rank)
       mc.matrix_diagonal_set_in_place(diagonal=flex.double(range(1,1+rank)))
-      assert approx_equal(mc.matrix_diagonal(), range(1,1+rank))
+      assert approx_equal(mc.matrix_diagonal(), list(range(1,1+rank)))
       mc.matrix_diagonal_add_in_place(value=-5)
-      assert approx_equal(mc.matrix_diagonal(), range(1-5,1-5+rank))
+      assert approx_equal(mc.matrix_diagonal(), list(range(1-5,1-5+rank)))
       assert approx_equal(
         m.matrix_diagonal_sum(), flex.sum(m.matrix_diagonal()))
       assert m.matrix_trace() == m.matrix_diagonal_sum()
@@ -2707,7 +2713,7 @@ def exercise_matrix():
   lu = flex.double([0,0,0,0,1,0,0,0,1])
   lu.resize(flex.grid(3,3))
   try: lu.matrix_lu_decomposition_in_place()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "lu_decomposition_in_place: singular matrix"
   else: raise Exception_expected
   lu = flex.double([1,0,0,0,1,0,0,0,1])
@@ -2715,7 +2721,7 @@ def exercise_matrix():
   b = flex.double([1,2,3])
   pivot_indices = flex.size_t([0,1,4,0])
   try: lu.matrix_lu_back_substitution(pivot_indices, b)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "lu_back_substitution: pivot_indices[i] out of range"
   else: raise Exception_expected
   lu = flex.double([1,6,4,32,6,2,-1,63,-4,1,4,6,1,0,-13,5])
@@ -2730,15 +2736,15 @@ def exercise_matrix():
   m = [0,0,0,0,6,2,-1,63,-4,1,4,6,1,0,-13,5]
   assert matrix.sqr(m).determinant() == 0
   #
-  for size in xrange(10):
+  for size in range(10):
     a = flex.double(size)
     b = flex.double(size)
     assert a.cos_angle(b=b, value_if_undefined=-10) == -10
     assert a.cos_angle(b=b) is None
     assert a.angle(b=b) is None
-  for size in xrange(1,10):
-    a = flex.double(xrange(10))
-    b = flex.double(xrange(10))
+  for size in range(1,10):
+    a = flex.double(range(10))
+    b = flex.double(range(10))
     assert approx_equal(a.cos_angle(b=b, value_if_undefined=-10), 1,eps=1.e-10)
     assert approx_equal(a.cos_angle(b=b), 1, eps=1.e-10)
     assert approx_equal(a.angle(b=b), 0, eps=1.e-10)
@@ -2748,7 +2754,7 @@ def exercise_matrix():
   b = flex.double([1,2])
   assert approx_equal(a.angle(b, deg=True), 63.4349488229)
   mersenne_twister = flex.mersenne_twister(0)
-  for size in xrange(1,100):
+  for size in range(1,100):
     a = mersenne_twister.random_double(size=size)
     b = mersenne_twister.random_double(size=size)
     assert approx_equal(
@@ -2772,7 +2778,7 @@ def exercise_matrix():
   assert approx_equal(
     flex.double([1,4,5,7,8,9]).matrix_packed_l_as_lower_triangle(),
     [1,0,0, 4,5,0, 7,8,9])
-  m = flex.double(xrange(1,17))
+  m = flex.double(range(1,17))
   m.resize(flex.grid(4, 4))
   assert approx_equal(
     m.matrix_upper_triangle_as_packed_u(),
@@ -2835,7 +2841,7 @@ def exercise_matrix():
     s=flex.double([[1,-2,3,4], [-2,-5,6,-7], [3,6,8,9], [4,-7,9,-10]]),
     u=flex.double([1,-2,3,4,-5,6,-7,8,9,-10]),
     l=flex.double([1,-2,-5,3,6,8,4,-7,9,-10]))
-  for n in xrange(20):
+  for n in range(20):
     p = flex.random_double(size=n*(n+1)//2)
     exercise_packed(
       n=n,
@@ -2849,13 +2855,13 @@ def exercise_matrix():
       l=p)
   e = flex.double([[1,2,3],[2,4,5],[3,9,6]])
   try: e.matrix_symmetric_as_packed_u()
-  except RuntimeError, err:
+  except RuntimeError as err:
     assert str(err) == "symmetric_as_packed_u(): matrix is not symmetric."
   else: raise Exception_expected
   p = e.matrix_symmetric_as_packed_u(relative_epsilon=1)
   assert approx_equal(p, [1,2,3,4,7,6])
   try: e.matrix_symmetric_as_packed_l()
-  except RuntimeError, err:
+  except RuntimeError as err:
     assert str(err) == "symmetric_as_packed_l(): matrix is not symmetric."
   else: raise Exception_expected
   p = e.matrix_symmetric_as_packed_l(relative_epsilon=1)
@@ -2866,20 +2872,20 @@ def exercise_matrix():
   for method in [p.matrix_packed_u_as_symmetric,
                  p.matrix_packed_l_as_symmetric]:
     try: method()
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e).endswith(
         "SCITBX_ASSERT(n*(n+1)/2 == packed_size) failure.")
     else: raise Exception_expected
   #
   n_not_symmetric = 0
-  for n in xrange(10):
+  for n in range(10):
     a = mersenne_twister.random_double(size=n*n)*2-1
     a.reshape(flex.grid(n,n))
     d = mersenne_twister.random_double(size=n)*2-1
     atda_u = a.matrix_transpose_multiply_diagonal_multiply_as_packed_u(
       diagonal_elements=d)
     dsq = flex.double(flex.grid(n,n), 0)
-    for i in xrange(n):
+    for i in range(n):
       dsq[i*(n+1)] = d[i]
     atda_sym = a.matrix_transpose().matrix_multiply(dsq).matrix_multiply(a)
     assert approx_equal(atda_u.matrix_packed_u_as_symmetric(), atda_sym)
@@ -2951,21 +2957,21 @@ def exercise_matrix_move():
   b = a.matrix_copy_block(0,0,2,2)
   assert b.focus() == (2,2)
   assert b.all_eq(a)
-  a = flex.double(xrange(1,20+1))
+  a = flex.double(range(1,20+1))
   a.resize(flex.grid(4,5))
   b = a.matrix_copy_block(0,0,4,5)
   assert b.focus() == (4,5)
   assert b.all_eq(a)
-  for i in xrange(4):
-    for j in xrange(5):
+  for i in range(4):
+    for j in range(5):
       b = a.matrix_copy_block(i,j,1,1)
       assert b.focus() == (1,1)
       assert b[0] == a[(i,j)]
       c = a.deep_copy()
       c.matrix_paste_block_in_place(flex.double([[93]]), i, j)
       assert c[(i,j)] == 93
-  for i in xrange(3):
-    for j in xrange(5):
+  for i in range(3):
+    for j in range(5):
       b = a.matrix_copy_block(i,j,2,1)
       assert b.focus() == (2,1)
       assert b[0] == a[(i,j)]
@@ -2974,8 +2980,8 @@ def exercise_matrix_move():
       c.matrix_paste_block_in_place(flex.double([[91],[-10]]), i, j)
       assert c[(i,j)] == 91
       assert c[(i+1,j)] == -10
-  for i in xrange(3):
-    for j in xrange(4):
+  for i in range(3):
+    for j in range(4):
       b = a.matrix_copy_block(i,j,2,2)
       assert b.focus() == (2,2)
       assert b[0] == a[(i,j)]
@@ -2988,8 +2994,8 @@ def exercise_matrix_move():
       assert c[(i,j+1)] == -4
       assert c[(i+1,j)] == -13
       assert c[(i+1,j+1)] == 84
-  for i in xrange(3):
-    for j in xrange(3):
+  for i in range(3):
+    for j in range(3):
       b = a.matrix_copy_block(i,j,2,3)
       assert b.focus() == (2,3)
       assert b[0] == a[(i,j)]
@@ -3065,11 +3071,11 @@ def exercise_matrix_move():
   assert list(a) == [5,6,3,1,4,2]
   a.matrix_swap_rows_in_place(i=2, j=0)
   assert list(a) == [4,2,3,1,5,6]
-  for n in xrange(1,11): # must be at least 8 to reveal all bugs
-    a0 = flex.double(xrange(1,n+1))
+  for n in range(1,11): # must be at least 8 to reveal all bugs
+    a0 = flex.double(range(1,n+1))
     a0.resize(flex.grid(n,n))
-    for i in xrange(n):
-      for j in xrange(n):
+    for i in range(n):
+      for j in range(n):
         for triangle_flag in ["u","l"]:
           a = a0.deep_copy()
           if (triangle_flag == "u"):
@@ -3084,8 +3090,8 @@ def exercise_matrix_move():
           b0 = b.deep_copy()
           b.matrix_symmetric_upper_triangle_swap_rows_and_columns_in_place(
             i=i, j=j)
-          for ii in xrange(1,n):
-            for jj in xrange(i):
+          for ii in range(1,n):
+            for jj in range(i):
               assert b[(ii,jj)] == b0[(ii,jj)]
           b.matrix_symmetric_upper_triangle_swap_rows_and_columns_in_place(
             i=i, j=j)
@@ -3100,7 +3106,7 @@ def exercise_matrix_move():
           u.matrix_packed_u_swap_rows_and_columns_in_place(i=i, j=j)
           assert list(u) == list(b0.matrix_upper_triangle_as_packed_u())
   #
-  for n_columns in xrange(1,4):
+  for n_columns in range(1,4):
     a = flex.double(flex.grid(0, n_columns))
     b = a.matrix_copy_column(i_column=0)
     assert b.size() == 0
@@ -3121,7 +3127,7 @@ def exercise_matrix_move():
   b = a.matrix_copy_column(i_column=1)
   assert list(b) == [2,4]
   #
-  a = flex.bool([i%2 == 0 for i in xrange(1,20+1)])
+  a = flex.bool([i%2 == 0 for i in range(1,20+1)])
   a.resize(flex.grid(4,5))
   b = a.matrix_copy_block(i_row=1,i_column=2,n_rows=2,n_columns=3)
   assert b.focus() == (2,3)
@@ -3139,7 +3145,7 @@ def exercise_matrix_move():
    False,True,True,False,True,
    True,False,False,True,False]
   #
-  a = flex.int(xrange(1,20+1))
+  a = flex.int(range(1,20+1))
   a.resize(flex.grid(4,5))
   b = a.matrix_copy_block(i_row=1,i_column=2,n_rows=2,n_columns=3)
   assert b.focus() == (2,3)
@@ -3157,7 +3163,7 @@ def exercise_matrix_move():
    11,12,8,9,10,
    16,17,13,14,15]
   #
-  a = flex.long(xrange(1,20+1))
+  a = flex.long(range(1,20+1))
   a.resize(flex.grid(4,5))
   b = a.matrix_copy_block(i_row=1,i_column=2,n_rows=2,n_columns=3)
   assert b.focus() == (2,3)
@@ -3205,7 +3211,7 @@ def exercise_matrix_move():
     raise Exception_expected
   except RuntimeError:
     pass
-  for j in xrange(n):
+  for j in range(n):
     a.matrix_paste_column_in_place(u, j)
     assert a.matrix_copy_column(j).all_eq(u)
 
@@ -3215,25 +3221,25 @@ def exercise_copy_upper_or_lower_triangle():
                 (3,2), (2,3), (3,3),
                 (2,2),
                 (2,1), (1,2) ]:
-    a = flex.double(xrange(m*n))
+    a = flex.double(range(m*n))
     a.resize(flex.grid(m,n))
     try:
       u = a.matrix_copy_upper_triangle()
       assert u.focus() == (n,n)
-      for i in xrange(n):
-        for j in xrange(n):
+      for i in range(n):
+        for j in range(n):
           if i > j: assert u[i,j] == 0
           else: assert u[i,j] == a[i,j]
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert m < n and str(e).find('SCITBX_ASSERT(m >= n)') > 0
     try:
       l = a.matrix_copy_lower_triangle()
       assert l.focus() == (m,m)
-      for i in xrange(m):
-        for j in xrange(m):
+      for i in range(m):
+        for j in range(m):
           if i < j: assert l[i,j] == 0
           else: assert l[i,j] == a[i,j]
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert m > n and str(e).find('SCITBX_ASSERT(m <= n)') > 0
 
 def exercise_matrix_bidiagonal():
@@ -3242,21 +3248,21 @@ def exercise_matrix_bidiagonal():
                 (3,2), (2,3), (3,3),
                 (2,2),
                 (2,1), (1,2) ]:
-    a = flex.double(xrange(m*n))
+    a = flex.double(range(m*n))
     a.resize(flex.grid(m,n))
     d,f = a.matrix_upper_bidiagonal()
     assert len(d) == min(m,n)
     assert len(f) == len(d) - 1
-    assert list(d) == [ a[i,i] for i in xrange(len(d)) ]
-    assert list(f) == [ a[i,i+1] for i in xrange(len(f)) ]
+    assert list(d) == [ a[i,i] for i in range(len(d)) ]
+    assert list(f) == [ a[i,i+1] for i in range(len(f)) ]
     d,f = a.matrix_lower_bidiagonal()
     assert len(d) == min(m,n)
     assert len(f) == len(d) - 1
-    assert list(d) == [ a[i,i] for i in xrange(len(d)) ]
-    assert list(f) == [ a[i+1,i] for i in xrange(len(f)) ]
+    assert list(d) == [ a[i,i] for i in range(len(d)) ]
+    assert list(f) == [ a[i+1,i] for i in range(len(f)) ]
 
 def exercise_quadratic_form():
-  for n in xrange(1,10):
+  for n in range(1,10):
     a = flex.random_double(n*(n+1)//2)
     x = flex.double(n)
     s = a.matrix_symmetric_upper_triangle_quadratic_form(x)
@@ -3292,22 +3298,22 @@ def exercise_matrix_inversion_in_place():
   m.matrix_inversion_in_place()
   assert approx_equal(m, [1/7.,-1/14.,5/56.,0,1/4.,1/16.,-2/7.,1/7.,1/14.])
   from scitbx import matrix
-  for n in xrange(1,12):
+  for n in range(1,12):
     u = flex.double(n*n, 0)
-    for i in xrange(0,n*n,n+1): u[i] = 1
+    for i in range(0,n*n,n+1): u[i] = 1
     for diag in [1,2]:
       m = flex.double(n*n, 0)
-      for i in xrange(0,n*n,n+1): m[i] = diag
+      for i in range(0,n*n,n+1): m[i] = diag
       m.resize(flex.grid(n,n))
       m_orig = matrix.rec(m, (n,n))
       m.matrix_inversion_in_place()
       m_inv = matrix.rec(m, (n,n))
       assert approx_equal(m_orig*m_inv, u)
       assert approx_equal(m_inv*m_orig, u)
-      for n_b in xrange(0,4):
+      for n_b in range(0,4):
         m = flex.double(m_orig)
         m.resize(flex.grid(n,n))
-        b = flex.double(xrange(1,n*n_b+1))
+        b = flex.double(range(1,n*n_b+1))
         b.resize(flex.grid(n_b,n))
         b_orig = matrix.rec(b, (n,n_b))
         m.matrix_inversion_in_place(b)
@@ -3315,26 +3321,26 @@ def exercise_matrix_inversion_in_place():
         x = matrix.rec(b, (n_b,n))
         assert approx_equal(m_orig*m_inv, u)
         assert approx_equal(m_inv*m_orig, u)
-        for i_b in xrange(n_b):
+        for i_b in range(n_b):
           b_i = matrix.col(b_orig.elems[i_b*n:(i_b+1)*n])
           x_i = matrix.col(x.elems[i_b*n:(i_b+1)*n])
           assert approx_equal(m_orig*x_i, b_i)
-  for n in xrange(1,12):
+  for n in range(1,12):
     u = flex.double(n*n, 0)
-    for i in xrange(0,n*n,n+1): u[i] = 1
-    for i_trial in xrange(3):
+    for i in range(0,n*n,n+1): u[i] = 1
+    for i_trial in range(3):
       m = 2*flex.random_double(n*n)-1
       m.resize(flex.grid(n,n))
       m_orig = matrix.rec(m, (n,n))
       try:
         m.matrix_inversion_in_place()
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert str(e) == "inversion_in_place: singular matrix"
       else:
         m_inv = matrix.rec(m, (n,n))
         assert approx_equal(m_orig*m_inv, u)
         assert approx_equal(m_inv*m_orig, u)
-        for n_b in xrange(0,4):
+        for n_b in range(0,4):
           m = flex.double(m_orig)
           m.resize(flex.grid(n,n))
           b = flex.random_double(n*n_b)
@@ -3345,7 +3351,7 @@ def exercise_matrix_inversion_in_place():
           x = matrix.rec(b, (n_b,n))
           assert approx_equal(m_orig*m_inv, u)
           assert approx_equal(m_inv*m_orig, u)
-          for i_b in xrange(n_b):
+          for i_b in range(n_b):
             b_i = matrix.col(b_orig.elems[i_b*n:(i_b+1)*n])
             x_i = matrix.col(x.elems[i_b*n:(i_b+1)*n])
             assert approx_equal(m_orig*x_i, b_i)
@@ -3414,7 +3420,7 @@ def pickle_large_arrays(max_exp, verbose):
         flex.double,
         flex.complex_double,
         flex.std_string):
-      for e in xrange(max_exp+1):
+      for e in range(max_exp+1):
         n = 2**e
         if (array_type == flex.bool):
           val = True
@@ -3424,7 +3430,7 @@ def pickle_large_arrays(max_exp, verbose):
           val = -2147483647
         elif (array_type == flex.long):
           val = -9223372036854775807
-          if (type(val) == type(1L)):
+          if (sys.platform == 'win32'):
             val = -2147483647
         elif (array_type == flex.complex_double):
           val = complex(-1.234567809123456e+20, -1.234567809123456e+20)
@@ -3433,7 +3439,7 @@ def pickle_large_arrays(max_exp, verbose):
         elif (array_type == flex.std_string):
           val = "x" * 10
         else:
-          raise AssertionError, "Unexpected array type."
+          raise AssertionError("Unexpected array type.")
         a = array_type(n, val)
         for pickler in (0, pickle):
           if (pickler == 0):
@@ -3458,7 +3464,7 @@ def pickle_large_arrays(max_exp, verbose):
             tl = time.time() - t0
             f.close()
           if (verbose):
-            print array_type.__name__, n, pickler_name, "%.2f %.2f" % (td, tl)
+            print(array_type.__name__, n, pickler_name, "%.2f %.2f" % (td, tl))
           sys.stdout.flush()
   finally:
     try: os.unlink("pickle.tmp")
@@ -3470,8 +3476,8 @@ def exercise_py_object():
   assert a.data() == [3,3,3,3,3,3]
   a = flex.py_object(flex.grid(2,3), value_factory=list)
   assert a.data() == [[],[],[],[],[],[]]
-  a = flex.py_object(flex.grid(2,3), values=range(6))
-  assert a.data() == range(6)
+  a = flex.py_object(flex.grid(2,3), values=list(range(6)))
+  assert a.data() == list(range(6))
   assert a[(1,2)] == 5
   a[(1,2)] = -5
   assert a[(1,2)] == -5
@@ -3522,7 +3528,7 @@ def exercise_first_index_etc():
   assert flex.first_index(a, "z") is None
 
 def exercise_c_grid_flex_conversion():
-  a = flex.int(xrange(24))
+  a = flex.int(range(24))
   a.resize(flex.grid((2,3,4)))
   assert flex.tst_c_grid_flex_conversion(a, -1,4,-2) == a[1,1,2]
 
@@ -3534,7 +3540,7 @@ def exercise_versa_packed_u_to_flex():
   )
 
 def exercise_triangular_systems():
-  for n in xrange(1,5):
+  for n in range(1,5):
     a = flex.random_double(n*(n+1)//2)
     isinstance(a, flex.double)
     b = flex.random_double(n)
@@ -3666,4 +3672,4 @@ if (__name__ == "__main__"):
     pickle_large_arrays(max_exp=n, verbose=1)
   else:
     run(n)
-  print "OK"
+  print("OK")

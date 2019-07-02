@@ -36,25 +36,25 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
   };
 
   static const char* d_amino_acid[] = {
-    "DAL",
-    "DAR",
-    "DAS",
-    "DCY",
-    "DGL",
-    "DGN",
-    "DHI",
-    "DIL",
-    "DLE",
-    "DLY",
-    "DPN",
-    "DPR",
-    "DSG",
-    "DSN",
-    "DTH",
-    "DTR",
-    "DTY",
-    "DVA",
-    "MED",
+    "DAL", // ALA
+    "DAR", // ARG
+    "DAS", // ASP
+    "DCY", // CYS
+    "DGL", // GLU
+    "DGN", // GLN
+    "DHI", // HIS
+    "DIL", // ILE
+    "DLE", // LEU
+    "DLY", // LYS
+    "DPN", // PHE
+    "DPR", // PRO
+    "DSG", // ASN
+    "DSN", // SER
+    "DTH", // THR
+    "DTR", // TRP
+    "DTY", // TYR
+    "DVA", // VAL
+    "MED", // MET
     0
   };
 

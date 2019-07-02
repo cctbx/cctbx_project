@@ -1,13 +1,14 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.math
 from scitbx.array_family import flex
 import math
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 def exercise_1():
   x = flex.double()
   y = flex.double()
-  for x_ in xrange(0, 10):
+  for x_ in range(0, 10):
     x_ = x_/10.
     x.append(x_)
     y.append( 2.*math.exp(-3.*x_**2) )
@@ -18,9 +19,9 @@ def exercise_1():
 def exercise_2():
   x = flex.double()
   z = flex.double()
-  for i in xrange(1,11):
+  for i in range(1,11):
     x.append(i)
-  for i in xrange(11,21):
+  for i in range(11,21):
     z.append(i)
   y = z * 2 * flex.exp(-5.*x*x)
   r = scitbx.math.gaussian_fit_1d_analytical(x = x, y = y, z = z)
@@ -30,4 +31,4 @@ def exercise_2():
 if (__name__ == "__main__"):
   exercise_1()
   exercise_2()
-  print "OK"
+  print("OK")

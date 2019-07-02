@@ -67,9 +67,9 @@ def exercise_basic(verbose):
     if (show): print()
 
 def exercise_pickle():
-  import pickle
-  from six.moves import cPickle
-  for p in [pickle, cPickle]:
+  # TODO: verify this is intended change for py2/3 compat
+  from six.moves import cPickle as pickle
+  for p in [pickle]:
     o = tokenizer.word(value="hello")
     l = p.loads(p.dumps(o))
     assert l.value == "hello"

@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from wxtbx.phil_controls.numbers import NumbersCtrlBase, NumbersValidator
 from libtbx import Auto
 import wx
+from six.moves import range
 
 class IntsCtrl(NumbersCtrlBase):
   def CheckType(self, value):
@@ -62,10 +63,10 @@ if (__name__ == "__main__"):
   def OnOkay(evt):
     ints = ints_ctrl.GetPhilValue()
     ints2 = ints_ctrl2.GetPhilValue()
-    print type(ints).__name__, str(ints)
-    print type(ints2).__name__, str(ints2)
+    print(type(ints).__name__, str(ints))
+    print(type(ints2).__name__, str(ints2))
   def OnChange(evt):
-    print "OnChange"
+    print("OnChange")
   frame.Bind(wx.EVT_BUTTON, OnOkay, btn)
   import wxtbx.phil_controls
   frame.Bind(wxtbx.phil_controls.EVT_PHIL_CONTROL, OnChange)

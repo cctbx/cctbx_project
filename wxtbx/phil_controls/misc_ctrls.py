@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from wxtbx.phil_controls import strings
 from wxtbx.phil_controls import strctrl
 from wxtbx import phil_controls
@@ -99,20 +99,20 @@ if (__name__ == "__main__"):
   txt2 = wx.StaticText(panel, -1, "Atom selection:", pos=(20,240))
   sel_ctrl = AtomSelectionCtrl(panel, -1, pos=(200,240), name="Selection")
   def OnUpdate(evt):
-    print "OnUpdate:"
-    print "  current scatterer:", sc_ctrl.GetPhilValue()
+    print("OnUpdate:")
+    print("  current scatterer:", sc_ctrl.GetPhilValue())
     elems = elems_ctrl.GetPhilValue()
-    print "  current elements:", elems
+    print("  current elements:", elems)
     sel = sel_ctrl.GetPhilValue()
-    print "  atom selection:", sel
+    print("  atom selection:", sel)
   def OnOkay(evt):
-    print "OnOkay:"
-    print "  scatterer:", sc_ctrl.GetPhilValue()
-    print "  scatterer phil:", sc_ctrl.GetStringValue()
-    print "  elems:", elems_ctrl.GetPhilValue()
-    print "  elems phil:", elems_ctrl.GetStringValue()
-    print "  selection:", sel_ctrl.GetPhilValue()
-    print "  selection phil:", sel_ctrl.GetStringValue()
+    print("OnOkay:")
+    print("  scatterer:", sc_ctrl.GetPhilValue())
+    print("  scatterer phil:", sc_ctrl.GetStringValue())
+    print("  elems:", elems_ctrl.GetPhilValue())
+    print("  elems phil:", elems_ctrl.GetStringValue())
+    print("  selection:", sel_ctrl.GetPhilValue())
+    print("  selection phil:", sel_ctrl.GetStringValue())
   frame.Bind(phil_controls.EVT_PHIL_CONTROL, OnUpdate, sc_ctrl)
   frame.Bind(phil_controls.EVT_PHIL_CONTROL, OnUpdate, elems_ctrl)
   frame.Bind(phil_controls.EVT_PHIL_CONTROL, OnUpdate, sel_ctrl)

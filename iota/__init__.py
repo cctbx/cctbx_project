@@ -1,16 +1,16 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import absolute_import, division, print_function
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 03/25/2019
+Last Changed: 06/20/2019
 Description : IOTA initialization module (also contains app info)
 '''
 
 from datetime import datetime
 
 
-iota_version = '1.3.008'
+iota_version = '1.3.010'
 intx_version = '1.0.001'
 now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
 
@@ -21,13 +21,7 @@ analysis (IOTA) toolkit for the processing of serial diffraction data.
 Reference: Lyubimov, et al., J Appl Cryst, 2016
 '''
 
-prime_description = ''' The Post-RefInement and MErging (PRIME) program for
-the scaling, merging and post-refinement of integrated diffraction images.
-
-Reference: Uervirojnangkoorn, et al., eLife, 2015'''
-
 gui_license = ''' IOTA is distributed under open source license '''
-prime_license = ''' PRIME is distributed under open source license'''
 cxi_merge_license = ''' cxi.merge is distributed under open source license '''
 
 help_message = '\n{:-^70}'\

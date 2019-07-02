@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import mmtbx.utils
 import mmtbx.refinement.group
@@ -219,20 +219,20 @@ def run(refine, target, residues_per_window = 1):
     f_obs                        = f_obs)
   fmodel.show()
   fmodel.update(target_name=target)
-  print "Initial r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free())
+  print("Initial r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()))
   tg = mmtbx.utils.experimental_data_target_and_gradients(fmodel = fmodel)
   # get group gradients using internal splitting into groups
   result = tg.group_occupancy_grads(
     pdb_hierarchy       = ph,
     residues_per_window = residues_per_window)
   for r in result:
-    print "chainID_resseqs: %s occupancy_grad: %-15.6f"%tuple(r)
-  print
+    print("chainID_resseqs: %s occupancy_grad: %-15.6f"%tuple(r))
+  print()
   # group occupancy selections
   selections = ph.chunk_selections(residues_per_chunk=residues_per_window)
   # refine occupancies
   if refine_occ:
-    print "refine occupancies:"
+    print("refine occupancies:")
     rr = mmtbx.refinement.group.manager(
       fmodel                      = fmodel,
       selections                  = selections,
@@ -246,7 +246,7 @@ def run(refine, target, residues_per_window = 1):
       occupancy_min               = -999)
   # refine group B-factors
   if refine_adp:
-    print "refine b-factors"
+    print("refine b-factors")
     rr = mmtbx.refinement.group.manager(
       fmodel                      = fmodel,
       selections                  = selections,
@@ -256,8 +256,8 @@ def run(refine, target, residues_per_window = 1):
       run_finite_differences_test = True,
       refine_adp                  = True,
       use_restraints              = True)
-  print "After refinement r_work=%6.4f r_free=%6.4f"%(
-    fmodel.r_work(), fmodel.r_free())
+  print("After refinement r_work=%6.4f r_free=%6.4f"%(
+    fmodel.r_work(), fmodel.r_free()))
   ph.adopt_xray_structure(fmodel.xray_structure)
   ph.write_pdb_file(file_name="refined_occupancies.pdb",
     crystal_symmetry = f_obs.crystal_symmetry())

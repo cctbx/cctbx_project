@@ -69,4 +69,3 @@ int main(int argc, char *[])
   find_distances(unit_cell, space_group, sites_frac.const_ref(), 5.0);
   return 0;
 }
-

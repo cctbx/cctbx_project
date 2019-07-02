@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 import iotbx.pdb
 from mmtbx.conformation_dependent_library import generate_protein_threes
+from six.moves import range
 
 rec_1_residue = """\
 CRYST1   41.566   72.307   92.870 108.51  93.02  90.06 P 1           4
@@ -469,9 +470,9 @@ def exercise_phi_psi_extraction():
           hierarchy=tmp_hierarchy,
           geometry=None):
         ppp = three.get_dummy_dihedral_proxies(only_psi_phi_pairs=opp)
-        print three,'ppp',len(ppp)
+        print(three,'ppp',len(ppp))
         proxies.extend(ppp)
-      print len(proxies), n_prox
+      print(len(proxies), n_prox)
       assert len(proxies) == n_prox[opp], \
          "Expected %d, got %d" % (
            n_prox[opp],

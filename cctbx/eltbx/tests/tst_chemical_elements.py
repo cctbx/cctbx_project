@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx import chemical_elements
 from scitbx import stl
 import scitbx.stl.set
+from six.moves import zip
 
 def exercise():
   lc = chemical_elements.proper_caps_list()
@@ -20,7 +21,7 @@ def exercise():
   su = chemical_elements.proper_and_isotopes_upper_set()
   assert len(su) == len(lc) + 2
   assert list(su) == list(stl.set.stl_string(lu+["D", "T"]))
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

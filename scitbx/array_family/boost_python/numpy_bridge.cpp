@@ -1,3 +1,4 @@
+#include <boost/python/numpy.hpp>
 #include <boost/python.hpp>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
@@ -5,6 +6,9 @@
 #include <boost_adaptbx/floating_point_exceptions.h>
 
 #if defined(SCITBX_HAVE_NUMPY_INCLUDE)
+// https://docs.scipy.org/doc/numpy/reference/c-api.array.html
+#define PY_ARRAY_UNIQUE_SYMOL FLEX_ARRAY_API
+// #define NO_IMPORT_ARRAY
 #include <numpy/arrayobject.h>
 #else
 #define NPY_BOOL 0
@@ -36,18 +40,14 @@ namespace scitbx { namespace af { namespace boost_python {
   {
 #if defined(SCITBX_HAVE_NUMPY_INCLUDE)
     {
-      /* On Snow Leopard, numpy is shipped with the system
-       and the call import_array() triggers a floating-point exception,
-       which then crashes the program thanks to the default unforgiving
-       FP trapping policy of the cctbx.
-       Temporarily changing to a more lenient policy is the simplest
-       possible fix.
-       */
-      using namespace boost_adaptbx::floating_point;
-      exception_trapping guard(exception_trapping::dont_trap);
-      import_array();
+    // Fix segmentaion faults
+    // http://boostorg.github.io/python/doc/html/numpy/tutorial/simple.html
+    using namespace boost_adaptbx::floating_point;
+    exception_trapping guard(exception_trapping::dont_trap);
+    Py_Initialize();
+    boost::python::numpy::initialize();
+    import_array();
     }
-    boost::python::numeric::array::set_module_and_type("numpy", "ndarray");
 #endif
 #ifdef IS_PY3K
     return NULL;
@@ -100,7 +100,7 @@ namespace scitbx { namespace af { namespace boost_python {
   template <typename ElementType>
   versa<ElementType, flex_grid<> >
   versa_flex_from_numpy_array(
-    boost::python::numeric::array const& arr_obj)
+    boost::python::numpy::ndarray const& arr_obj)
   {
     namespace bp = boost::python;
 #if !defined(SCITBX_HAVE_NUMPY_INCLUDE)
@@ -167,7 +167,7 @@ namespace scitbx { namespace af { namespace boost_python {
  \
   versa<ElementType, flex_grid<> >* \
   flex_##pyname##_from_numpy_array( \
-    boost::python::numeric::array const& arr_obj) \
+    boost::python::numpy::ndarray const& arr_obj) \
   { \
     return new versa<ElementType, flex_grid<> >( \
       versa_flex_from_numpy_array<ElementType >(arr_obj)); \

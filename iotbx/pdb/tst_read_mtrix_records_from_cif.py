@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.ncs
 import iotbx.pdb
 import mmtbx.model
@@ -230,4 +230,4 @@ MTRIX3   1 -0.004354  0.608886  0.793246        0.70450
 
 if __name__ == "__main__":
   exercise()
-  print "OK"
+  print("OK")

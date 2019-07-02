@@ -4,10 +4,11 @@
 #
 # $Id
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 
 import sys, copy
+from six.moves import zip
 
 def run(argv=None):
   """Compute mean, standard deviation, and maximum projection images

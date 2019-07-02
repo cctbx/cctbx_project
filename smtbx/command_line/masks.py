@@ -1,8 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME smtbx.masks
 
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 
 from cctbx import miller, sgtbx, uctbx, xray
 from iotbx import reflection_file_utils, reflection_file_reader
@@ -11,8 +9,9 @@ from smtbx import masks
 from libtbx.utils import time_log
 from iotbx.option_parser import option_parser
 
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
+from six.moves import range
 
 def exercise_masks(xs, fo_sq,
                    solvent_radius,

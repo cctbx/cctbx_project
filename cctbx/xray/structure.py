@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import division, absolute_import
+from __future__ import absolute_import, division, print_function
 from cctbx.xray import ext
 from cctbx.xray import structure_factors
 from cctbx import miller
@@ -13,9 +13,9 @@ import scitbx.math
 from scitbx import matrix
 import math
 from itertools import count
-import types
 import sys
 import random
+import six
 from libtbx.utils import count_max, Sorry, Keep
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
@@ -25,6 +25,8 @@ from cctbx import eltbx
 from libtbx.utils import format_float_with_standard_uncertainty \
      as format_float_with_su
 from cctbx import covariance
+from six.moves import range
+from six.moves import zip
 
 class scattering_type_registry_params(object):
   def __init__(self,
@@ -230,7 +232,7 @@ class structure(crystal.special_position_settings):
     selection = None
     l = max(fraction - 0.05, 0.0)
     r = min(fraction + 0.05, 1.0)
-    for i in xrange(5):
+    for i in range(5):
       while l <= r:
         arr = flex.random_double(scatterers_size)-l
         sel = arr > 0.0
@@ -412,7 +414,7 @@ class structure(crystal.special_position_settings):
           sc.u_iso = sc.u_iso * factor
         if(sc.flags.use_u_aniso()):
           result = []
-          for i in xrange(6): result.append(sc.u_star[i] * factor)
+          for i in range(6): result.append(sc.u_star[i] * factor)
           sc.u_star = result
 
   def shake_adp(self, b_max=None, b_min=None, spread=10.0, aniso_spread=0.1,
@@ -425,7 +427,8 @@ class structure(crystal.special_position_settings):
         b_mean = adptbx.u_as_b(flex.mean(u_isos))
         b_max = int(b_mean + spread)
         b_min = int(max(0.0, b_mean - spread))
-    assert b_min <= b_max, [b_min,b_max,spread,b_mean]
+    if b_min is not None and b_max is not None:
+      assert b_min <= b_max, [b_min,b_max,spread,b_mean]
     if(selection is not None):
       assert selection.size() == self._scatterers.size()
     else:
@@ -438,7 +441,7 @@ class structure(crystal.special_position_settings):
           sc.u_iso=adptbx.b_as_u(r)
         if(sc.flags.use_u_aniso() and not keep_anisotropic):
           result = []
-          for i in xrange(6):
+          for i in range(6):
             result.append(sc.u_star[i]+sc.u_star[i]*random.choice(
                                              (-aniso_spread,aniso_spread)))
           if(is_special_position(i_seq=i_seq)):
@@ -738,7 +741,7 @@ class structure(crystal.special_position_settings):
         def find_3():
           sl = shift_length
           while (sl != 0):
-            for i_trial in xrange(10):
+            for i_trial in range(10):
               shift_frac = col(frac(
                 col(mersenne_twister.random_double_point_on_sphere()) * sl))
               site_mod = site_frac + shift_frac
@@ -760,9 +763,9 @@ class structure(crystal.special_position_settings):
         assert len(plane_vectors) == 9
         axis = None
         axis_length = None
-        for i in xrange(8):
+        for i in range(8):
           vi = plane_vectors[i]
-          for j in xrange(i+1,9):
+          for j in range(i+1,9):
             vj = plane_vectors[j]
             cross = vi.cross(vj)
             length = cross.length()
@@ -1148,8 +1151,8 @@ class structure(crystal.special_position_settings):
     try:
       result.set_selected(flex.size_t(selected_scatterers), True)
     except(RuntimeError):
-      raise(IndexError("Tried to select a scatterer by index with index => "+\
-            "of scatterers for this structuture."))
+      raise IndexError("Tried to select a scatterer by index with index => "+\
+            "of scatterers for this structuture.")
     return result
 
   def apply_rigid_body_shift(self, rot, trans, selection = None,
@@ -1223,21 +1226,21 @@ class structure(crystal.special_position_settings):
     part1 = "|-"+text
     part2 = "-|"
     n = 79 - len(part1+part2)
-    print >> out, part1 + "-"*n + part2
+    print(part1 + "-"*n + part2, file=out)
     n = 79 - len(part1 + "|")
-    print >> out, "| iso = %-5d   aniso = %-5d   pos. def. = %-5d   "\
-          "non-pos. def. = %-5d     |"%(n_isotropic,n_anisotropic,npd,nnpd)
-    print >> out, "| Total B(isotropic equivalent): min = %-6.2f   "\
+    print("| iso = %-5d   aniso = %-5d   pos. def. = %-5d   "\
+          "non-pos. def. = %-5d     |"%(n_isotropic,n_anisotropic,npd,nnpd), file=out)
+    print("| Total B(isotropic equivalent): min = %-6.2f   "\
                   "max = %-6.2f   mean = %-6.2f"%(flex.min(beq),flex.max(beq),
-                  flex.mean(beq))+" "*2+"|"
-    print >> out, "| Isotropic B only:              min = %-6.2f   "\
+                  flex.mean(beq))+" "*2+"|", file=out)
+    print("| Isotropic B only:              min = %-6.2f   "\
                   "max = %-6.2f   mean = %-6.2f"%(flex.min(bisos),
-                  flex.max(bisos),flex.mean(bisos))+" "*2+"|"
-    print >> out, "| "+"- "*38+"|"
-    print >> out, "|                     Distribution of isotropic B-factors:"\
-                  "                    |"
-    print >> out, "|            Isotropic                |             Total "\
-                  "                    |"
+                  flex.max(bisos),flex.mean(bisos))+" "*2+"|", file=out)
+    print("| "+"- "*38+"|", file=out)
+    print("|                     Distribution of isotropic B-factors:"\
+                  "                    |", file=out)
+    print("|            Isotropic                |             Total "\
+                  "                    |", file=out)
     histogram_1 = flex.histogram(data = bisos, n_slots = 10)
     low_cutoff_1 = histogram_1.data_min()
     histogram_2 = flex.histogram(data = beq, n_slots = 10)
@@ -1246,11 +1249,11 @@ class structure(crystal.special_position_settings):
                                    enumerate(histogram_2.slots())):
       high_cutoff_1 = histogram_1.data_min() + histogram_1.slot_width()*(i_1+1)
       high_cutoff_2 = histogram_2.data_min() + histogram_2.slot_width()*(i_2+1)
-      print >> out, "|  %9.3f -%9.3f:%8d      |    %9.3f -%9.3f:%8d      |" % \
-             (low_cutoff_1,high_cutoff_1,n_1,low_cutoff_2,high_cutoff_2,n_2)
+      print("|  %9.3f -%9.3f:%8d      |    %9.3f -%9.3f:%8d      |" % \
+             (low_cutoff_1,high_cutoff_1,n_1,low_cutoff_2,high_cutoff_2,n_2), file=out)
       low_cutoff_1 = high_cutoff_1
       low_cutoff_2 = high_cutoff_2
-    print >> out, "|" +"-"*77+"|"
+    print("|" +"-"*77+"|", file=out)
 
   def site_symmetry_table(self):
     return self._site_symmetry_table
@@ -1378,7 +1381,7 @@ class structure(crystal.special_position_settings):
          / self.unit_cell().volume()
 
   def __getitem__(self, slice_object):
-    assert type(slice_object) == types.SliceType
+    assert type(slice_object) == slice
     assert self.scatterers() is not None
     sel = flex.slice_indices(
       array_size=self._scatterers.size(),
@@ -1459,8 +1462,8 @@ class structure(crystal.special_position_settings):
   def concatenate_inplace(self, other):
     d1 = self.scattering_type_registry().as_type_gaussian_dict()
     d2 = other.scattering_type_registry().as_type_gaussian_dict()
-    for key1, item1 in zip(d1.keys(), d1.items()):
-      for key2, item2 in zip(d2.keys(), d2.items()):
+    for key1, item1 in six.moves.zip(d1.keys(), six.iteritems(d1)):
+      for key2, item2 in six.moves.zip(d2.keys(), six.iteritems(d2)):
         if(key1 == key2):
           i1 = item1[1]
           i2 = item2[1]
@@ -1593,17 +1596,17 @@ class structure(crystal.special_position_settings):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix + "Number of scatterers:", \
-      self.scatterers().size()
-    print >> f, prefix + "At special positions:", \
-      self.special_position_indices().size()
+    print(prefix + "Number of scatterers:", \
+      self.scatterers().size(), file=f)
+    print(prefix + "At special positions:", \
+      self.special_position_indices().size(), file=f)
     crystal.symmetry.show_summary(self, f=f, prefix=prefix)
     return self
 
   def show_scatterers(self, f=None, special_positions_only=False):
     if (f is None): f = sys.stdout
-    print >> f, ("Label, Scattering, Multiplicity, Coordinates, Occupancy, "
-                 "Uiso, Ustar as Uiso")
+    print(("Label, Scattering, Multiplicity, Coordinates, Occupancy, "
+                 "Uiso, Ustar as Uiso"), file=f)
     scatterers = self.scatterers()
     if (special_positions_only):
       scatterers = scatterers.select(self.special_position_indices())
@@ -1880,20 +1883,20 @@ class structure(crystal.special_position_settings):
       if (flags.grad_occupancy()): n_grad_occupancy += 1
       if (flags.grad_fp()):        n_grad_fp += 1
       if (flags.grad_fdp()):       n_grad_fdp += 1
-    print >> out, "n_use            = ", n_use
+    print("n_use            = ", n_use, file=out)
     if (n_use_u_none != 0):
-      print >> out, "n_use_u_none     = ", n_use_u_none
+      print("n_use_u_none     = ", n_use_u_none, file=out)
     if (n_use_u_both != 0):
-      print >> out, "n_use_u_both     = ", n_use_u_both
-    print >> out, "n_use_u_iso      = ", n_use_u_iso
-    print >> out, "n_use_u_aniso    = ", n_use_u_aniso
-    print >> out, "n_grad_site      = ", n_grad_site
-    print >> out, "n_grad_u_iso     = ", n_grad_u_iso
-    print >> out, "n_grad_u_aniso   = ", n_grad_u_aniso
-    print >> out, "n_grad_occupancy = ", n_grad_occupancy
-    print >> out, "n_grad_fp        = ", n_grad_fp
-    print >> out, "n_grad_fdp       = ", n_grad_fdp
-    print >> out, "total number of scatterers = ", self.scatterers().size()
+      print("n_use_u_both     = ", n_use_u_both, file=out)
+    print("n_use_u_iso      = ", n_use_u_iso, file=out)
+    print("n_use_u_aniso    = ", n_use_u_aniso, file=out)
+    print("n_grad_site      = ", n_grad_site, file=out)
+    print("n_grad_u_iso     = ", n_grad_u_iso, file=out)
+    print("n_grad_u_aniso   = ", n_grad_u_aniso, file=out)
+    print("n_grad_occupancy = ", n_grad_occupancy, file=out)
+    print("n_grad_fp        = ", n_grad_fp, file=out)
+    print("n_grad_fdp       = ", n_grad_fdp, file=out)
+    print("total number of scatterers = ", self.scatterers().size(), file=out)
 
   def scatterer_flags(self):
     return ext.shared_scatterer_flags(self.scatterers())
@@ -2169,7 +2172,7 @@ class structure(crystal.special_position_settings):
     import iotbx.cif
     cif = iotbx.cif.model.cif()
     cif[data_name] = self.as_cif_block()
-    print >> out, cif
+    print(cif, file=out)
 
   def as_cif_block(self, covariance_matrix=None,
     cell_covariance_matrix=None, format="mmCIF"):
@@ -2343,7 +2346,7 @@ class structure(crystal.special_position_settings):
         reset(label=lbl)
       else:
         def find_tail_replacement(fmt, n):
-          for i in xrange(1,n):
+          for i in range(1,n):
             s = fmt % i
             trial = lbl[:4-len(s)]+s
             if (trial not in lbl_set):
@@ -2360,7 +2363,7 @@ class structure(crystal.special_position_settings):
           if (len(e) == 1): fmt, n = "%03d", 1000
           else:             fmt, n = "%02d", 100
           e = e.upper()
-          for i in xrange(1,n):
+          for i in range(1,n):
             trial = e + fmt % i
             if (trial not in lbl_set):
               reset(label=trial)
@@ -2368,7 +2371,7 @@ class structure(crystal.special_position_settings):
           return False
         def find_complete_replacement():
           for c in upper:
-            for i in xrange(1,1000):
+            for i in range(1,1000):
               trial = c + "%03d" % i
               if (trial not in lbl_set):
                 reset(label=trial)
@@ -2476,6 +2479,5 @@ class meaningful_site_cart_differences(object):
     return flex.max_absolute(self.delta.as_double())
 
   def show(self):
-    import itertools
-    for lbl, diff in itertools.izip(self.labels, self.delta):
-      print "%6s: (%.6f, %.6f, %.6f)" % ((lbl,) + diff)
+    for lbl, diff in six.moves.zip(self.labels, self.delta):
+      print("%6s: (%.6f, %.6f, %.6f)" % ((lbl,) + diff))

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys, os
 import iotbx.phil
 from libtbx.utils import Sorry
@@ -683,10 +683,10 @@ def get_params(args,out=sys.stdout):
     master_phil=master_phil)
 
 
-  print >>out,"\nAuto-sharpen a map\n"
+  print("\nAuto-sharpen a map\n", file=out)
   params=command_line.work.extract()
-  print >>out,"Command used: %s\n" %(
-   " ".join(['phenix.auto_sharpen']+args))
+  print("Command used: %s\n" %(
+   " ".join(['phenix.auto_sharpen']+args)), file=out)
   master_params.format(python_object=params).show(out=out)
 
   if params.output_files.output_directory is None:
@@ -723,29 +723,27 @@ def set_sharpen_params(params,out=sys.stdout):
     if params.map_modification.box_in_auto_sharpen and (
       not getattr(params.map_modification,'allow_box_if_b_iso_set',None)):
       params.map_modification.box_in_auto_sharpen=False
-      print >>out,"Set box_in_auto_sharpen=False as parameters are set "+\
+      print("Set box_in_auto_sharpen=False as parameters are set "+\
         "\nand sharpening method is %s" %(
-        params.map_modification.auto_sharpen_methods[0])
+        params.map_modification.auto_sharpen_methods[0]), file=out)
     if params.map_modification.density_select_in_auto_sharpen and (
       not getattr(params.map_modification,'allow_box_if_b_iso_set',None)):
       params.map_modification.density_select_in_auto_sharpen=False
-      print >>out,"Set density_select_in_auto_sharpen=False as parameters are set "+\
+      print("Set density_select_in_auto_sharpen=False as parameters are set "+\
         "\nand sharpening method is %s" %(
-        params.map_modification.auto_sharpen_methods[0])
+        params.map_modification.auto_sharpen_methods[0]), file=out)
 
   if params.map_modification.optimize_b_blur_hires and \
     not 'b_iso_to_d_cut' in params.map_modification.auto_sharpen_methods and \
        not 'b_iso' in params.map_modification.auto_sharpen_methods:
-     print >>out,\
-          "Set optimize_b_blur_hires=False as neither b_iso_to_d_cut nor"+\
-         " b_iso are used"
+     print("Set optimize_b_blur_hires=False as neither b_iso_to_d_cut nor"+\
+         " b_iso are used", file=out)
      params.map_modification.optimize_b_blur_hires=False
   if params.map_modification.iterate and \
     not 'b_iso_to_d_cut' in params.map_modification.auto_sharpen_methods and \
        not 'b_iso' in params.map_modification.auto_sharpen_methods:
-     print >>out,\
-          "Set iterate=False as neither b_iso_to_d_cut nor"+\
-         " b_iso are used"
+     print("Set iterate=False as neither b_iso_to_d_cut nor"+\
+         " b_iso are used", file=out)
      params.map_modification.iterate=False
 
 
@@ -807,7 +805,7 @@ def get_map_and_model(params=None,
       origin_frac=(0.,0.,0.)
 
   elif params.input_files.map_file:
-    print >>out,"\nReading map from %s\n" %( params.input_files.map_file)
+    print("\nReading map from %s\n" %( params.input_files.map_file), file=out)
     from cctbx.maptbx.segment_and_split_map import get_map_object
     map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
         original_crystal_symmetry,original_unit_cell_grid,map_labels=\
@@ -816,9 +814,9 @@ def get_map_and_model(params=None,
       get_map_labels=True,out=out)
     map_data=map_data.as_double()
     if origin_frac != (0,0,0) and acc is None:
-      print >>out,"\nWARNING: Unable to place output map at position of "+\
+      print("\nWARNING: Unable to place output map at position of "+\
         "input map though input map has non-zero origin at %s\n" %(
-        str(origin_frac))
+        str(origin_frac)), file=out)
 
   elif params.input_files.map_coeffs_file:
     map_coeffs=get_map_coeffs_from_file(
@@ -828,9 +826,9 @@ def get_map_and_model(params=None,
     if not map_coeffs:
       raise Sorry("Could not get map coeffs from %s with labels %s" %(
         params.input_files.map_coeffs_file,params.input_files.map_coeffs_labels))
-    print >>out,"Map coefficients read from %s with labels %s" %(
+    print("Map coefficients read from %s with labels %s" %(
          params.input_files.map_coeffs_file,
-         str(params.input_files.map_coeffs_labels))
+         str(params.input_files.map_coeffs_labels)), file=out)
     crystal_symmetry=map_coeffs.crystal_symmetry()
     from cctbx.maptbx.segment_and_split_map import get_map_from_map_coeffs
     map_data=get_map_from_map_coeffs(
@@ -840,8 +838,8 @@ def get_map_and_model(params=None,
     original_unit_cell_grid=None
     if not params.crystal_info.resolution:
       params.crystal_info.resolution=map_coeffs.d_min()
-      print >>out,"Resolution from map_coeffs is %7.2f A" %(
-          params.crystal_info.resolution)
+      print("Resolution from map_coeffs is %7.2f A" %(
+          params.crystal_info.resolution), file=out)
   else:
     raise Sorry("Need ccp4 map or map_coeffs")
 
@@ -851,7 +849,7 @@ def get_map_and_model(params=None,
     half_map_data_list=[]
     from cctbx.maptbx.segment_and_split_map import get_map_object
     for file_name in params.input_files.half_map_file:
-      print >>out,"\nReading half-map from %s\n" %(file_name)
+      print("\nReading half-map from %s\n" %(file_name), file=out)
       half_map_data,half_map_space_group,half_map_unit_cell,\
         half_map_crystal_symmetry,half_map_origin_frac,half_map_acc,\
          half_map_original_crystal_symmetry,half_map_original_unit_cell_grid=\
@@ -865,9 +863,9 @@ def get_map_and_model(params=None,
     raise Sorry("Need resolution if map is supplied")
 
   if params.crystal_info.resolution >= 10:
-    print >>out,"\n** WARNING: auto_sharpen is designed for maps at a "+\
+    print("\n** WARNING: auto_sharpen is designed for maps at a "+\
       "resolution of about 4.5 A\nor better.  Sharpening may be"+\
-      "poor at %7.0f A" %(params.crystal_info.resolution)
+      "poor at %7.0f A" %(params.crystal_info.resolution), file=out)
 
 
   if params.input_files.pdb_file and not pdb_inp: # get model
@@ -877,7 +875,7 @@ def get_map_and_model(params=None,
     pdb_inp=iotbx.pdb.input(file_name=model_file)
   if pdb_inp: # XXX added 2019-05-05
     if origin_frac != (0,0,0):
-      print >>out,"Shifting model by %s" %(str(origin_frac))
+      print("Shifting model by %s" %(str(origin_frac)), file=out)
       from cctbx.maptbx.segment_and_split_map import \
          apply_shift_to_pdb_hierarchy
       origin_shift=crystal_symmetry.unit_cell().orthogonalize(
@@ -897,7 +895,7 @@ def get_map_and_model(params=None,
     if origin_frac != (0,0,0):
       origin_shift=crystal_symmetry.unit_cell().orthogonalize(
          (-origin_frac[0],-origin_frac[1],-origin_frac[2]))
-      print >>out,"Shifting NCS by (%7.2f,%7.2f,%7.2f) " %((origin_shift))
+      print("Shifting NCS by (%7.2f,%7.2f,%7.2f) " %((origin_shift)), file=out)
       from scitbx.math import  matrix
       ncs_obj=ncs_obj.coordinate_offset(
        coordinate_offset=matrix.col(origin_shift))
@@ -1055,11 +1053,11 @@ def run(args=None,params=None,
   temp_b_iso=get_b_iso(f,d_min=params.crystal_info.resolution)
 
   if not si.is_model_sharpening():
-    print >>out
-    print >>out,80*"=","\n",80*"="
-    print >>out,"\n           Summary of sharpening information\n "
+    print(file=out)
+    print(80*"=","\n",80*"=", file=out)
+    print("\n           Summary of sharpening information\n ", file=out)
     si.show_summary(verbose=params.control.verbose,out=out)
-    print >>out,80*"=","\n",80*"="
+    print(80*"=","\n",80*"=", file=out)
 
   # write out the new map_coeffs and map if requested:
 
@@ -1073,17 +1071,16 @@ def run(args=None,params=None,
         params.output_files.sharpened_map_file)
     from cctbx.maptbx.segment_and_split_map import write_ccp4_map
     if acc is not None:  # we offset the map to match original
-      print >>out,\
-       "\nWrote sharpened map in original location with origin at %s\nto %s" %(
-         str(offset_map_data.origin()),output_map_file)
+      print("\nWrote sharpened map in original location with origin at %s\nto %s" %(
+         str(offset_map_data.origin()),output_map_file), file=out)
       write_ccp4_map(original_crystal_symmetry, output_map_file,
         offset_map_data,
         output_unit_cell_grid=original_unit_cell_grid)
     else:
-      print >>out,"\nWrote sharpened map with origin at 0,0,0 "+\
+      print("\nWrote sharpened map with origin at 0,0,0 "+\
         "(NOTE: may be boxed map and may not be "+\
         "\nsame as original location) to %s\n" %(
-         output_map_file)
+         output_map_file), file=out)
 
     from iotbx.mrcfile import create_output_labels
     program_name='auto_sharpen'
@@ -1102,8 +1099,8 @@ def run(args=None,params=None,
         params.output_files.shifted_sharpened_map_file)
     from cctbx.maptbx.segment_and_split_map import write_ccp4_map
     write_ccp4_map(crystal_symmetry, output_map_file, new_map_data)
-    print >>out,"\nWrote sharpened map (origin at %s)\nto %s" %(
-     str(new_map_data.origin()),output_map_file)
+    print("\nWrote sharpened map (origin at %s)\nto %s" %(
+     str(new_map_data.origin()),output_map_file), file=out)
 
   if write_output_files and params.output_files.sharpened_map_coeffs_file and \
       new_map_coeffs:
@@ -1111,8 +1108,8 @@ def run(args=None,params=None,
         params.output_files.sharpened_map_coeffs_file)
     new_map_coeffs.as_mtz_dataset(column_root_label='FWT').mtz_object().write(
        file_name=output_map_coeffs_file)
-    print >>out,"\nWrote sharpened map_coeffs (origin at 0,0,0)\n to %s\n" %(
-       output_map_coeffs_file)
+    print("\nWrote sharpened map_coeffs (origin at 0,0,0)\n to %s\n" %(
+       output_map_coeffs_file), file=out)
 
   if return_unshifted_map:
     map_to_return=offset_map_data

@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import wxtbx.app
 from libtbx.utils import Sorry
 import wx
@@ -67,7 +67,7 @@ class MtzContentsPanel(wx.Panel):
     from iotbx import mtz
     try :
       self._mtz_obj = mtz.object(file_name=file_name)
-    except RuntimeError, e :
+    except RuntimeError as e :
       raise Sorry(("The file '%s' could not be read as an MTZ file "+
         "(original error: %s)") % (file_name, str(e)))
     self.title_txt.SetLabel(self._mtz_obj.title())
@@ -151,7 +151,7 @@ class MtzColumnList(wx.ListCtrl):
   def AddMtzColumn(self, fields):
     assert (len(fields) == len(columns))
     n = self.GetItemCount() + 1
-    item = self.InsertStringItem(sys.maxint, str(n))
+    item = self.InsertStringItem(sys.maxsize, str(n))
     for i, field in enumerate(fields[:-2]):
       self.SetStringItem(item, i+1, field)
     self.SetStringItem(item, len(fields)-1, "%s %s" % (fields[-2], fields[-1]))

@@ -1,12 +1,14 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
+from six.moves import zip
 def range_parser( txt ):
   splitter = " "
   if "," in txt:
     splitter = ","
   txt_ranges = txt.split(splitter)
   ranges = []
-  for range in txt_ranges:
-    tmp = range.split("-")
+  for range_ in txt_ranges:
+    tmp = range_.split("-")
     assert len(tmp)<=2
     if len(tmp)==2:
       ranges.append( [int(tmp[0]),int(tmp[1])]  )
@@ -14,13 +16,13 @@ def range_parser( txt ):
       ranges.append( [ int(tmp[0]) ] )
   return ranges
 
-def range_to_list(range):
+def range_to_list(range_):
   result = []
-  for item in range:
+  for item in range_:
     if len(item)==1:
       result.append( item[0] )
     if len(item)==2:
-      for ii in xrange(item[0],item[1]+1):
+      for ii in range(item[0],item[1]+1):
         result.append( ii )
   return result
 
@@ -128,4 +130,4 @@ def tst_ranges():
 if __name__ == "__main__":
   tst_ranges()
   tst_file_names()
-  print "OK"
+  print("OK")

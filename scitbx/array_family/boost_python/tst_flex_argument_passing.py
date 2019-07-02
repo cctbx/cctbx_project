@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 
 def exercise():
@@ -7,7 +7,7 @@ def exercise():
   try:
     a = flex.double()
     test.shared_as_reference_fails(a)
-  except Exception, ex:
+  except Exception as ex:
     assert str(type(ex)) == "<class 'Boost.Python.ArgumentError'>"
   a = flex.double()
   test.shared_as_value_fails(a)
@@ -26,7 +26,7 @@ def exercise():
 
 def run():
   exercise()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

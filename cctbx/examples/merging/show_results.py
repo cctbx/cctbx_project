@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import sys
 from cctbx.array_family import flex
@@ -137,7 +137,7 @@ def show_overall_observations(Fit_I,Fit_I_stddev,I_visited,ordered,sim,
     cumulative_Isigma += I_sigI_sum
 
   if (title is not None):
-    print >> out, title
+    print(title, file=out)
   from libtbx import table_utils
   table_header = ["","","","<asu","<obs",""," #"," %","","",""]
   table_header2 = ["Bin","Resolution Range","Completeness","multi>","multi>","n_meas"," neg"," neg","n_xtal","<I>","<I/sig(I)>"]
@@ -173,8 +173,8 @@ def show_overall_observations(Fit_I,Fit_I_stddev,I_visited,ordered,sim,
       format_value("%8.3f", cumulative_Isigma/cumulative_In),
   ])
 
-  print
-  print >>out,table_utils.format(table_data,has_header=2,justify='center',delim=" ")
+  print()
+  print(table_utils.format(table_data,has_header=2,justify='center',delim=" "), file=out)
 
   # XXX generate table object for displaying plots
   if (title is None):

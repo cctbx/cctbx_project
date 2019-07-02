@@ -1,12 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import cif
 from iotbx.cif import validation
 from iotbx.cif.validation import smart_load_dictionary
 import libtbx.load_env
 from libtbx.test_utils import Exception_expected
 
-from urllib2 import URLError
-from cStringIO import StringIO
+from six.moves.urllib.error import URLError
+from six.moves import cStringIO as StringIO
 import sys
 
 cif_core_dic_url = "ftp://ftp.iucr.org/pub/cif_core.dic"
@@ -21,7 +21,7 @@ def exercise(args):
   try:
     exercise_smart_load(show_timings=show_timings, exercise_url=exercise_url)
   except URLError:
-    print "Skipping tst_validation.exercise_smart_load() because of URLError."
+    print("Skipping tst_validation.exercise_smart_load() because of URLError.")
   exercise_dictionary_merging()
   exercise_validation()
 
@@ -42,8 +42,8 @@ def exercise_validation():
   cd.err.reset()
   s = StringIO()
   cm_valid.validate(cd, out=s)
-  assert len(cd.err.errors.keys()) == 0
-  assert len(cd.err.warnings.keys()) == 0
+  assert len(list(cd.err.errors.keys())) == 0
+  assert len(list(cd.err.warnings.keys())) == 0
   cd2 = validation.smart_load_dictionary(name="cif_mm.dic")
   cm_invalid_2 = cif.reader(input_string=cif_invalid_2).model()
   s = StringIO()
@@ -84,12 +84,12 @@ def exercise_smart_load(show_timings=False, exercise_url=False):
     cd = validation.smart_load_dictionary(file_path=os.path.join(tempdir, name))
     file_timer.stop()
   if show_timings:
-    print time_log.legend
-    print gz_timer.report()
+    print(time_log.legend)
+    print(gz_timer.report())
     if exercise_url:
-      print url_timer.report()
-      print url_to_file_timer.report()
-      print file_timer.report()
+      print(url_timer.report())
+      print(url_to_file_timer.report())
+      print(file_timer.report())
 
 def exercise_dictionary_merging():
   #
@@ -325,4 +325,4 @@ x,y,z
 
 if __name__ == "__main__":
   exercise(sys.argv[1:])
-  print "OK"
+  print("OK")

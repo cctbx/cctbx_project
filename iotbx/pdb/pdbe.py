@@ -2,7 +2,7 @@
 PDBe web services
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from iotbx.pdb.web_service_api import FTPService, RESTService
 from iotbx.pdb.download import openurl, NotFound
@@ -157,11 +157,11 @@ class Redirections(object):
 
   def seed(self, identifiers):
 
-    import itertools
+    from six.moves import zip
 
     blocks = PDB_ENTRY_STATUS.multiple( identifiers = identifiers )
 
-    for ( code, data ) in itertools.izip( identifiers, blocks ):
+    for ( code, data ) in zip( identifiers, blocks ):
       if not data:
         continue
 
