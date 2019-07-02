@@ -271,7 +271,7 @@ def exercise_inverse():
       for bb in range(n):
         tmp=0
         if aa==bb: tmp=1.0
-        assert approx_equal( uu[(aa,bb)], tmp,1e-3 )
+        assert approx_equal( uu[(aa,bb)], tmp,1e-2 )
 
 
 def run_for_class(show_progress, exercise_tntbx, full_coverage, klass):
