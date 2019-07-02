@@ -364,6 +364,21 @@ class validation(object):
         args=range(len(self.chains)),
         processes=nproc)
     assert (len(alignments_and_names) == len(self.chains) == len(pdb_chains))
+    # Check that everything was aligned, otherwise show Sorry,
+    # because there is no way to produce mmCIF without alignment
+    no_alignment = []
+    for ch, a_and_names in zip(self.chains, alignments_and_names):
+      if a_and_names[0] is None:
+        no_alignment.append(ch.chain_id)
+    if len(no_alignment) > 0:
+      msg = "Could not find sequence for following chains:\n"
+      for c_id in no_alignment:
+        msg += "%s, " % c_id
+      msg += "\nPossible reasons:\n"
+      msg += "  - No sequence in sequence file.\n"
+      msg += "  - Too small amount of residues is modelled.\n"
+      msg += "  - Real sequence provided when model is poly-ALA.\n"
+      raise Sorry(msg)
     for i, c in enumerate(self.chains):
       alignment, seq_name, seq_id = alignments_and_names[i]
       if (alignment is None) : continue
