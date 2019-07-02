@@ -5,22 +5,22 @@ from xfel.merging.application.mpi_logger import mpi_logger
 
 default_steps = [
   'input',
-  'model scaling', # the full miller set is based on the target unit cell
-  'modify', # polarization correction, etc.
-  'edit',   # add asu HKL column, remove unnecessary columns from reflection table
-  'filter', # unit cell, I/Sigma
-  'errors pre_merge', # e.g. ha14
+  'model scaling', # generate a reference to be used for scaling and post-refinement
+  'modify', # apply polarization correction, etc.
+  'edit',   # add an asu HKL column, remove unnecessary columns from reflection table
+  'filter', # reject whole experiments and individual reflections based on various criteria
+  'errors pre_merge', # correct errors using a per-experiment algorithm, e.g. ha14
   'scale',
   'postrefine',
-  'statistics unit_cell', # if required, saves the average unit cell to the phil parameters
-  'statistics beam', # saves the average wavelength to the phil parameters
-  'model statistics', # if required, the full miller set is based on the average unit cell
+  'statistics unit_cell', # if required, save the average unit cell to the phil parameters
+  'statistics beam', # save the average wavelength to the phil parameters
+  'model statistics', # generate a reference to be used for statistics; if required, use the average unit cell
   'statistics experiment_resolution',
-  'group', # MPI-alltoall: this must be done before any analysis or merging that requires all measurements of an HKL
-  'errors post_merge', # e.g. errors_from_sample_residuals
+  'group', # re-distribute reflections, so that all measurements of any given HKL are gathered at the same rank
+  'errors post_merge', # correct errors using a per-HKL algorithm, e.g. errors_from_sample_residuals
   'statistics intensity',
   'merge', # merge HKL intensities, MPI-gather all HKLs at rank 0, output "odd", "even" and "all" HKLs as mtz files
-  'statistics intensity cxi', # follows the merge step and uses cxi_cc code ported from cxi-xmerge
+  'statistics intensity cxi', # run cxi_cc code ported from cxi-xmerge
 ]
 
 class Script(object):
