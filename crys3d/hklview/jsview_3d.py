@@ -1368,7 +1368,7 @@ mysocket.onmessage = function (e)
 # if the html content is huge the browser will be unresponsive until it has finished
 # reading the html content. This may crash this thread. So try restarting this thread until
 # browser is ready
-    except Exception, e:
+    except Exception as e:
       self.mprint( str(e) + ", Restarting WebBrowserMsgQueue")
       self.WebBrowserMsgQueue()
 
