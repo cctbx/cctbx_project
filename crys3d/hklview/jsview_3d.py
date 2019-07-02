@@ -250,6 +250,13 @@ class hklview_3d:
 
 
   def update_settings(self, diffphil, currentphil) :
+    if not self.sceneisdirty:
+      if self.settings.inbrowser and hasattr(diffphil, "viewer") and \
+               ( hasattr(diffphil.viewer, "expand_anomalous") or \
+                hasattr(diffphil.viewer, "expand_to_p1") ):
+        return self.ExpandInBrowser(P1= self.settings.expand_to_p1,
+                              friedel_mate= self.settings.expand_anomalous)
+
     if hasattr(diffphil, "filename") \
       or hasattr(diffphil, "spacegroup_choice") \
       or hasattr(diffphil, "merge_data") \
@@ -267,14 +274,15 @@ class hklview_3d:
       or hasattr(diffphil.viewer, "slice_index") \
       or hasattr(diffphil.viewer, "scale") \
       or hasattr(diffphil.viewer, "nth_power_scale_radii") \
-      or hasattr(diffphil.viewer, "expand_anomalous") \
-      or hasattr(diffphil.viewer, "expand_to_p1")
+      or self.settings.inbrowser==False and \
+               ( hasattr(diffphil.viewer, "expand_anomalous") or \
+                hasattr(diffphil.viewer, "expand_to_p1") )\
       or hasattr(diffphil.viewer, "show_anomalous_pairs") \
       ):
         self.sceneisdirty = True
         if not self.ConstructReciprocalSpace(currentphil, merge=self.merge) or \
          self.miller_array is None or self.iarray < 0:
-          return
+          return ""
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     msg = ""
     if self.iarray >=0:
@@ -410,7 +418,7 @@ class hklview_3d:
     #self.miller_array = self.proc_arrays[self.iarray]
     if not self.sceneisdirty:
       self.mprint("Scene is clean", verbose=True)
-      return
+      return True
 
     self.HKLscenesKey = (currentphil.filename,
                          currentphil.spacegroup_choice,
@@ -438,6 +446,7 @@ class hklview_3d:
         self.hkl_scenes_info
       ) =  self.HKLscenesdict[self.HKLscenesKey]
       self.mprint("Scene key is already present", verbose=True)
+      self.sceneisdirty = False
       return True
 
     HKLscenes = []
@@ -509,10 +518,9 @@ class hklview_3d:
       self.hkl_scenes_info
     ) =  self.HKLscenesdict[self.HKLscenesKey]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    self.sceneisdirty = False
     for j,inf in enumerate(hkl_scenes_info):
       self.mprint("%d, %s" %(j, inf[0]) )
-
+    self.sceneisdirty = False
     return True
 
 
@@ -1136,16 +1144,18 @@ mysocket.onmessage = function (e)
 
     if (msgtype.includes("Expand") )
     {
-      // test something new
       mysocket.send( 'Expanding data...' );
 
-      if (br_positions.length > 0)
-      {
-        mysocket.send('Data has already been expanded' );
-        return;
-      }
-
+      // delete the shapebufs[] that holds the positions[] arrays
       shapeComp.removeRepresentation(repr);
+      // remove shapecomp from stage first
+      stage.removeComponent(shapeComp);
+
+      br_positions = [];
+      br_colours = [];
+      br_radii = [];
+      br_ttips = [];
+      br_shapebufs = [];
 
       //alert('rotations:\\n' + val);
       strs = datval[1].split("\\n");
@@ -1205,14 +1215,14 @@ mysocket.onmessage = function (e)
           br_positions[bin].push( [] );
           br_shapebufs[bin].push( [] );
           br_ttips[bin].push( [g] );
+          br_positions[bin][g] = new Float32Array( csize );
+
           var elmstrs = strs[g].split(",");
+          //alert('rot' + g + ': ' + elmstrs);
 
           for (j=0; j<9; j++)
             sm[j] = parseFloat(elmstrs[j]);
           Rotmat.fromArray(sm);
-          //alert('rot' + g + ': ' + elmstrs);
-
-          br_positions[bin][g] = new Float32Array( csize );
 
           for (var i=0; i<nsize; i++)
           {
@@ -1250,7 +1260,9 @@ mysocket.onmessage = function (e)
         }
       }
 
-      repr = shapeComp.addRepresentation('buffer');
+      shapeComp = stage.addComponentFromObject(shape);
+      repr = shapeComp.addRepresentation('buffer42');
+      repr.update();
 
       stage.viewer.requestRender();
     }
@@ -1274,6 +1286,7 @@ mysocket.onmessage = function (e)
 
 
   }
+
   catch(err)
   {
     mysocket.send('error: ' + err.stack );
@@ -1287,7 +1300,7 @@ mysocket.onmessage = function (e)
       if (Object(thisval) !== thisval) // only interested in primitive values, not objects
       {
         //varname = Object.keys({thisval:0} )[0]
-        msg = msg.concat( someKey + ': ' + String(self[someKey]) + '\n');
+        msg = msg.concat( someKey + ': ' + String(self[someKey]) + '\\n');
 
       }
     }
@@ -1435,26 +1448,34 @@ mysocket.onmessage = function (e)
   def ExpandInBrowser(self, P1=True, friedel_mate=True):
     uc = self.miller_array.unit_cell()
     OrtMx = matrix.sqr( uc.orthogonalization_matrix())
+    print("wibble")
     InvMx = OrtMx.inverse()
-
     msgtype = "Expand"
     msg = ""
+    retmsg = ""
     unique_rot_ops = []
     if P1:
+      msgtype += "P1"
       unique_rot_ops = self.symops[ 0 : self.sg.order_p() ]
+      retmsg = "expanding to P1 in browser"
+    else:
+      unique_rot_ops = [ self.symops[0] ] # first one is the identity matrix
     if friedel_mate:
       msgtype += "Friedel"
-
-    for symop in unique_rot_ops:
+      retmsg = "expanding Friedel mates in browser"
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    for i, symop in enumerate(unique_rot_ops):
       RotMx = matrix.sqr( symop.r().as_double())
-
       ortrot = (OrtMx * RotMx * InvMx).as_mat3()
+      if RotMx.is_r3_identity_matrix():
+        # avoid machine precision rounding errors converting 1.0 to 0.99999999..
+        ortrot = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
       str_rot = str(ortrot)
       str_rot = str_rot.replace("(", "")
       str_rot = str_rot.replace(")", "")
       msg += str_rot + "\n"
-
     self.SendWebSockMsg(msgtype, msg)
+    return retmsg
 
 
   def TestNewFunction(self):

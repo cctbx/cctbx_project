@@ -225,29 +225,6 @@ class scene(object):
     multiplicities = None
     try:
       if self.merge_equivalents :
-        """
-        if self.settings.show_anomalous_pairs:
-          merge = array.merge_equivalents()
-          multiplicities = merge.redundancies()
-          asu, matches = multiplicities.match_bijvoet_mates()
-          mult_plus, mult_minus = multiplicities.hemispheres_acentrics()
-          anom_mult = flex.int(
-            min(p, m) for (p, m) in zip(mult_plus.data(), mult_minus.data()))
-          #flex.min_max_mean_double(anom_mult.as_double()).show()
-          anomalous_multiplicities = miller.array(
-            miller.set(asu.crystal_symmetry(),
-                       mult_plus.indices(),
-                       anomalous_flag=False), anom_mult)
-          anomalous_multiplicities = anomalous_multiplicities.select(
-            anomalous_multiplicities.data() > 0)
-
-          array = anomalous_multiplicities
-          multiplicities = anomalous_multiplicities
-        else:
-          merge = array.merge_equivalents()
-          array = merge.array()
-          multiplicities = merge.redundancies()
-        """
         array, multiplicities, merge = MergeData(array, self.settings.show_anomalous_pairs)
       settings = self.settings
       data = array.data()
@@ -711,6 +688,8 @@ philstr = """
   expand_to_p1 = False
     .type = bool
   expand_anomalous = False
+    .type = bool
+  inbrowser = True
     .type = bool
   show_missing = False
     .type = bool

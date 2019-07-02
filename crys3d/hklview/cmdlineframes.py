@@ -644,13 +644,15 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def ExpandToP1(self, val):
+  def ExpandToP1(self, val, inbrowser=True):
     self.params.NGL_HKLviewer.viewer.expand_to_p1 = val
+    self.params.NGL_HKLviewer.viewer.inbrowser = inbrowser
     self.update_settings()
 
 
-  def ExpandAnomalous(self, val):
+  def ExpandAnomalous(self, val, inbrowser=True):
     self.params.NGL_HKLviewer.viewer.expand_anomalous = val
+    self.params.NGL_HKLviewer.viewer.inbrowser = inbrowser
     self.update_settings()
 
 
