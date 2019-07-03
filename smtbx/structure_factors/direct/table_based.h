@@ -24,6 +24,10 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     af::shared<sgtbx::rot_mx> rot_mxs_;
     bool expanded;
   public:
+    table_data()
+    : expanded(false),
+      use_ad(false)
+    {}
     af::shared<std::vector<complex_type> > const &data() const {
       return data_;
     }
