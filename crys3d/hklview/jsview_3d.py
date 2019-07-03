@@ -1,6 +1,7 @@
 
 from __future__ import absolute_import, division, print_function
 from libtbx.math_utils import roundoff
+import traceback
 from cctbx.miller import display2 as display
 from cctbx.array_family import flex
 from cctbx import miller
@@ -162,7 +163,7 @@ class hklview_3d:
     self.scene = None
     self.merge = False
     self.NGLscriptstr = ""
-    self.cameratype = "orthographic"
+    self.camera_type = "orthographic"
     self.primitivetype = "SphereBuffer"
     self.script_has_tooltips = False
     self.url = ""
@@ -560,20 +561,23 @@ class hklview_3d:
     l_axis = self.scene.axes[2]
     nrefls = self.scene.points.size()
 
-    Hstararrowstart = roundoff( [-h_axis[0]*100, -h_axis[1]*100, -h_axis[2]*100] )
-    Hstararrowend = roundoff( [h_axis[0]*100, h_axis[1]*100, h_axis[2]*100] )
-    Hstararrowtxt  = roundoff( [h_axis[0]*102, h_axis[1]*102, h_axis[2]*102] )
-    Kstararrowstart = roundoff( [-k_axis[0]*100, -k_axis[1]*100, -k_axis[2]*100] )
-    Kstararrowend = roundoff( [k_axis[0]*100, k_axis[1]*100, k_axis[2]*100] )
-    Kstararrowtxt  = roundoff( [k_axis[0]*102, k_axis[1]*102, k_axis[2]*102] )
-    Lstararrowstart = roundoff( [-l_axis[0]*100, -l_axis[1]*100, -l_axis[2]*100] )
-    Lstararrowend = roundoff( [l_axis[0]*100, l_axis[1]*100, l_axis[2]*100] )
-    Lstararrowtxt  = roundoff( [l_axis[0]*102, l_axis[1]*102, l_axis[2]*102] )
+    l1 = 110
+    l2= 115
+    Hstararrowstart = roundoff( [-h_axis[0]*l1, -h_axis[1]*l1, -h_axis[2]*l1] )
+    Hstararrowend = roundoff( [h_axis[0]*l1, h_axis[1]*l1, h_axis[2]*l1] )
+    Hstararrowtxt  = roundoff( [h_axis[0]*l2, h_axis[1]*l2, h_axis[2]*l2] )
+    Kstararrowstart = roundoff( [-k_axis[0]*l1, -k_axis[1]*l1, -k_axis[2]*l1] )
+    Kstararrowend = roundoff( [k_axis[0]*l1, k_axis[1]*l1, k_axis[2]*l1] )
+    Kstararrowtxt  = roundoff( [k_axis[0]*l2, k_axis[1]*l2, k_axis[2]*l2] )
+    Lstararrowstart = roundoff( [-l_axis[0]*l1, -l_axis[1]*l1, -l_axis[2]*l1] )
+    Lstararrowend = roundoff( [l_axis[0]*l1, l_axis[1]*l1, l_axis[2]*l1] )
+    Lstararrowtxt  = roundoff( [l_axis[0]*l2, l_axis[1]*l2, l_axis[2]*l2] )
     # make arrow font size roughly proportional to radius of highest resolution shell
     #fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
     fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0)))
-
-    arrowstr = """
+    axisfuncstr = """
+var MakeHKL_Axis = function()
+{
   // xyz arrows
   shape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origo');
   //blue-x
@@ -586,6 +590,7 @@ class hklview_3d:
   shape.addText( %s, [ 0, 0, 1 ], %s, 'h');
   shape.addText( %s, [ 0, 1, 0 ], %s, 'k');
   shape.addText( %s, [ 1, 0, 0 ], %s, 'l');
+};
     """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, fontsize,
           Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
@@ -714,12 +719,12 @@ class hklview_3d:
         if colstr=="dres":
           bin1= 1.0/self.workingbinvals[ibin]
           bin2= 1.0/self.workingbinvals[ibin+1]
-        mstr= "\n// bin[%d] has %d reflections with %s in ]%2.2f; %2.2f]" %(cntbin, nreflsinbin, \
+        mstr= "bin[%d] has %d reflections with %s in ]%2.2f; %2.2f]" %(cntbin, nreflsinbin, \
                 colstr, bin1, bin2)
         self.binstrs.append(mstr)
         self.mprint(mstr, verbose=True)
 
-        spherebufferstr += "%s\n" %mstr
+        spherebufferstr += "\n// %s\n" %mstr
         if self.script_has_tooltips:
           uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
           uncrustttips = uncrustttips.replace("\'\'+", "")
@@ -730,7 +735,6 @@ class hklview_3d:
   positions.push( new Float32Array( %s ) );
   colours.push( new Float32Array( %s ) );
   radii.push( new Float32Array( %s ) );
-
   shapebufs.push( new NGL.%s({
     position: positions[%d],
     color: colours[%d], """ %(str(positions[ibin]), str(colours[ibin]), \
@@ -778,18 +782,20 @@ class hklview_3d:
         }
         // tell python the id of the hkl and id number of the symmetry operator
         mysocket.send( 'tooltip_id: [' + String([pickingProxy.pid, symcp]) + ']' );
-        tooltip.innerText = current_ttip;
+        if (current_ttip !== "" )
+        {
+          tooltip.innerText = current_ttip;
     """
-    spherebufferstr += """
-        tooltip.style.bottom = cp.y + 7 + "px";
-        tooltip.style.left = cp.x + 8 + "px";
-        tooltip.style.fontSize = "smaller";
-        tooltip.style.display = "block";
+    spherebufferstr += """      tooltip.style.bottom = cp.y + 7 + "px";
+          tooltip.style.left = cp.x + 8 + "px";
+          tooltip.style.fontSize = "smaller";
+          tooltip.style.display = "block";
+        }
+        else
+          tooltip.style.display = "none";
       }
       else
-      {
         tooltip.style.display = "none";
-      }
       current_ttip = "";
     }
   );
@@ -964,15 +970,20 @@ Object.assign(tooltip.style, {
   fontFamily: "sans-serif"
 });
 
+
+%s
+
+
 var hklscene = function()
 {
   shape = new NGL.Shape('shape');
   stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false,
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
-  %s
+  MakeHKL_Axis();
 
   %s
+
   shapeComp = stage.addComponentFromObject(shape);
   repr = shapeComp.addRepresentation('buffer');
   shapeComp.autoView();
@@ -1108,7 +1119,6 @@ mysocket.onmessage = function (e)
     if (msgtype === "ShowTooltip")
     {
       current_ttip = eval( String(val));
-      //current_ttip = val;
     }
 
     if (msgtype === "Redraw")
@@ -1259,6 +1269,7 @@ mysocket.onmessage = function (e)
 
         }
       }
+      MakeHKL_Axis();
 
       shapeComp = stage.addComponentFromObject(shape);
       repr = shapeComp.addRepresentation('buffer42');
@@ -1312,8 +1323,8 @@ mysocket.onmessage = function (e)
 };
 
 
-    """ % (self.__module__, self.__module__, self.cameratype, arrowstr, spherebufferstr, \
-            negativeradiistr, colourgradstrs, colourlabel, fomlabel, self.nbin - 1)
+    """ % (self.__module__, self.__module__, axisfuncstr, self.camera_type, spherebufferstr, \
+            negativeradiistr, colourgradstrs, colourlabel, fomlabel, cntbin)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
@@ -1330,44 +1341,47 @@ mysocket.onmessage = function (e)
 
 
   def OnWebsocketClientMessage(self, client, server, message):
-    verb = self.verbose
-    if message != "":
-      if "Error:" in message:
-        verb = True
-      self.mprint( message, verb)
-    self.lastmsg = message
-    if "Current vieworientation:" in message:
-      # The NGL.Matrix4 with the orientation is a list of floats.
-      self.viewmtrxelms = message[ message.find("\n") + 1: ]
-      sleep(0.2)
-      self.mprint( "Reorienting client after refresh:" + str( self.websockclient ) )
-      if not self.isnewfile:
+    try:
+      verb = self.verbose
+      if message != "":
+        if "Error:" in message:
+          verb = True
+        self.mprint( message, verb)
+      self.lastmsg = message
+      if "Current vieworientation:" in message:
+        # The NGL.Matrix4 with the orientation is a list of floats.
+        self.viewmtrxelms = message[ message.find("\n") + 1: ]
+        sleep(0.2)
+        self.mprint( "Reorienting client after refresh:" + str( self.websockclient ) )
+        if not self.isnewfile:
+          #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+          self.pendingmessagetype = "ReOrient"
+          self.pendingmessage = self.viewmtrxelms
+        self.isnewfile = False
+      if "tooltip_id:" in message:
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-        self.pendingmessagetype = "ReOrient"
-        self.pendingmessage = self.viewmtrxelms
-      self.isnewfile = False
-    if "tooltip_id:" in message:
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      # TODO: fix bug in data2bin()
-      id = int( eval(message.split("tooltip_id:")[1] )[0] )
-      symcp = int( eval(message.split("tooltip_id:")[1] )[1] )
-      rotmx = None
-      if symcp >= 0:
-        rotmx = self.symops[symcp].r()
+        # TODO: fix bug in data2bin()
+        id = int( eval(message.split("tooltip_id:")[1] )[0] )
+        symcp = int( eval(message.split("tooltip_id:")[1] )[1] )
+        rotmx = None
+        if symcp >= 0:
+          rotmx = self.symops[symcp].r()
 
-      hkls = self.scene.indices
-      #ttip = self.tooltipstringsdict[hkls[id]]
-      if id < len(hkls):
-        ttip = self.GetTooltipOnTheFly(hkls[id], rotmx)
-        self.mprint("tooltip for : " + str(hkls[id]))
-      else:
-        # if id > len(hkls) then these hkls are added as the friedel mates during the
-        # "if (anoexp)" condition in the javascript code
-        id = id % len(hkls)
-        ttip = "id: %d" %id
-        ttip = self.GetTooltipOnTheFly(hkls[id], rotmx, anomalous=True)
-      self.SendWebSockMsg("ShowTooltip", ttip)
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+        hkls = self.scene.indices
+        #ttip = self.tooltipstringsdict[hkls[id]]
+        if id < len(hkls):
+          ttip = self.GetTooltipOnTheFly(hkls[id], rotmx)
+          self.mprint("tooltip for : " + str(hkls[id]))
+        else:
+          # if id > len(hkls) then these hkls are added as the friedel mates during the
+          # "if (anoexp)" condition in the javascript code
+          id = id % len(hkls)
+          ttip = "id: %d" %id
+          ttip = self.GetTooltipOnTheFly(hkls[id], rotmx, anomalous=True)
+        self.SendWebSockMsg("ShowTooltip", ttip)
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    except Exception as e:
+      self.mprint( str(e) + "".join(traceback.format_stack(limit=10)))
 
 
   def WebBrowserMsgQueue(self):
@@ -1448,7 +1462,6 @@ mysocket.onmessage = function (e)
   def ExpandInBrowser(self, P1=True, friedel_mate=True):
     uc = self.miller_array.unit_cell()
     OrtMx = matrix.sqr( uc.orthogonalization_matrix())
-    print("wibble")
     InvMx = OrtMx.inverse()
     msgtype = "Expand"
     msg = ""

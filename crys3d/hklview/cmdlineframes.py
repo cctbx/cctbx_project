@@ -81,7 +81,7 @@ mi = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
 
 ma = miller.array( miller.set(xs, mi) )
 
-ma1 = miller.array( miller.set(xs, mi), ) [11.205, 6.353, 26.167, 14.94, 2.42, 24.921, 16.185, 11.798, 21.183, 4.98] ),
+ma1 = miller.array( miller.set(xs, mi), flex.double( [11.205, 6.353, 26.167, 14.94, 2.42, 24.921, 16.185, 11.798, 21.183, 4.98] ),
                    sigmas=flex.double( [13.695, 6.353, 24.921, 6.225, 11.193, 26.167, 8.715, 4.538, 27.413, 21.165] )
                    ).set_observation_type( observation_types.intensity() )
 ma1.set_info(miller.array_info(source="artificial file", labels=["MyI", "SigMyI"]))
@@ -143,7 +143,7 @@ myHKLview.LoadReflectionsFile("mymtz.mtz")
 myHKLview.SetColumn(0)
 no
 myHKLview.SetRadiiScale(1, nth_power_scale=0.2)
-myHKLview.SetColumnBinThresholds([50, 20, 15, 12, 9])
+myHKLview.SetColumnBinThresholds([50, 15, 9])
 myHKLview.SetOpacity(0, 0.0)
 myHKLview.SetOpacity(1, 0.0)
 myHKLview.SetOpacity(2, 0.0)
@@ -635,12 +635,12 @@ class HKLViewFrame() :
 
 
   def set_camera_type(self, camtype):
-    self.viewer.cameratype = self.params.NGL_HKLviewer.cameratype
+    self.viewer.camera_type = self.params.NGL_HKLviewer.camera_type
     self.viewer.DrawNGLJavaScript()
 
 
   def SetCameraType(self, camtype):
-    self.params.NGL_HKLviewer.cameratype = camtype
+    self.params.NGL_HKLviewer.camera_type = camtype
     self.update_settings()
 
 
