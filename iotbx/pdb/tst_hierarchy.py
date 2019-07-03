@@ -6009,6 +6009,23 @@ ATOM     48  CA  PTR A   9       9.159   2.144   7.299  1.00 15.18           C
 """).construct_hierarchy()
   main_conf = pdb_hierarchy.models()[0].chains()[0].conformers()[0]
   assert (main_conf.as_padded_sequence() == "XXGNNQAGQNY")
+
+  # Ligand with big resid
+  pdb_hierarchy = pdb.input(source_info=None, lines="""\
+ATOM      2  CA  GLY A   3      -9.052   4.207   4.651  1.00 16.57           C
+ATOM      6  CA  ASN A   4      -6.522   2.038   2.831  1.00 14.10           C
+ATOM     14  CA  ASN A   5      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     22  CA  GLN A   6       0.384   1.888   3.199  1.00 10.53           C
+ATOM     31  CA  GLN A   7       3.270   2.361   5.640  1.00 11.39           C
+ATOM     40  CA  ASN A   8       6.831   2.310   4.318  1.00 12.30           C
+ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
+HETATM45571  NB  CLA A1401      10.336  10.558  15.466  1.00 79.02      k    N
+
+""").construct_hierarchy()
+  ch = pdb_hierarchy.models()[0].chains()[0]
+  # assert ch.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
+  # assert ch.as_padded_sequence() == "XXGNNQQNY"
+
   # sites_diff
   hierarchy_1 = pdb.input(source_info=None, lines="""\
 ATOM      0  O   WAT B   1      17.523   2.521  10.381  1.10 16.78           O
