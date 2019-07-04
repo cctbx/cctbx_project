@@ -85,10 +85,10 @@ jobs:
       cd tests
       call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=simtbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
     failOnStderr: false
-    continueOnError: true
     displayName: Test
 
   - task: PublishTestResults@2
+    condition: succeededOrFailed()
     inputs:
       testResultsFormat: 'JUnit'
-      testResultsFiles: '**\output.xml'
+      testResultsFiles: '..\..\tests\output.xml'

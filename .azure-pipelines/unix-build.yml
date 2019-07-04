@@ -50,10 +50,10 @@ steps:
       module=annlib_adaptbx module=cbflib_adaptbx \
       nproc=4
   failOnStderr: false
-  continueOnError: true
   displayName: Test
 
 - task: PublishTestResults@2
+  condition: succeededOrFailed()
   inputs:
     testResultsFormat: 'JUnit'
-    testResultsFiles: '**/output.xml'
+    testResultsFiles: '../../tests/output.xml'
