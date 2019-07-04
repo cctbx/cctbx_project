@@ -705,6 +705,8 @@ var MakeHKL_Axis = function()
       spherebufferstr = ""
       if self.script_has_tooltips:
         spbufttips[ibin].append(self.tooltipstringsdict[hkls[i]])
+      else:
+        spbufttips[ibin].append( i )
 
     spherebufferstr += self.colstraliases
     negativeradiistr = ""
@@ -730,7 +732,10 @@ var MakeHKL_Axis = function()
           uncrustttips = uncrustttips.replace("\'\'+", "")
           spherebufferstr += "  ttips.push( %s );" %uncrustttips
         else:
-          spherebufferstr += "  ttips.push( [ ] );"
+          #spherebufferstr += "  ttips.push( [ ] );"
+          ttlst = [-1]
+          ttlst.extend(spbufttips[ibin])
+          spherebufferstr += "  ttips.push( %s );" %str( ttlst )
         spherebufferstr += """
   positions.push( new Float32Array( %s ) );
   colours.push( new Float32Array( %s ) );
@@ -776,12 +781,18 @@ var MakeHKL_Axis = function()
     else:
       spherebufferstr += """
         symcp = -1;
+        id = -1
         if (pickingProxy.picker.length > 0)
         { // get stored id number of symmetry operator applied to this hkl
-          symcp = pickingProxy.picker;
+          var symcp = pickingProxy.picker[0];
+          var ids = pickingProxy.picker.slice(1);
+          if (pickingProxy.pid < ids.length)
+            id = ids[ pickingProxy.pid ];
+          else
+            id = -ids[ pickingProxy.pid % ids.length ]; // indicate friedel mate with negative id
         }
         // tell python the id of the hkl and id number of the symmetry operator
-        mysocket.send( 'tooltip_id: [' + String([pickingProxy.pid, symcp]) + ']' );
+        mysocket.send( 'tooltip_id: [' + String([symcp, id]) + ']' );
         if (current_ttip !== "" )
         {
           tooltip.innerText = current_ttip;
@@ -1224,7 +1235,11 @@ mysocket.onmessage = function (e)
 
           br_positions[bin].push( [] );
           br_shapebufs[bin].push( [] );
-          br_ttips[bin].push( [g] );
+
+          br_ttips[bin].push( [] );
+          br_ttips[bin][g] = ttips[bin].slice(); // deep copy with slice()
+          br_ttips[bin][g][0] = g;
+
           br_positions[bin][g] = new Float32Array( csize );
 
           var elmstrs = strs[g].split(",");
@@ -1361,15 +1376,21 @@ mysocket.onmessage = function (e)
       if "tooltip_id:" in message:
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         # TODO: fix bug in data2bin()
-        id = int( eval(message.split("tooltip_id:")[1] )[0] )
-        symcp = int( eval(message.split("tooltip_id:")[1] )[1] )
+        #ids = eval(message.split("tooltip_id:")[1])[2:]
+        #idx = eval(message.split("tooltip_id:")[1])[0] % len(ids)
+        #symcp = eval(message.split("tooltip_id:")[1])[1]
+        #id = eval(message.split("tooltip_id:")[1])[2:][idx]
+
+        symcp = eval(message.split("tooltip_id:")[1])[0]
+        id = eval(message.split("tooltip_id:")[1])[1]
+
         rotmx = None
         if symcp >= 0:
           rotmx = self.symops[symcp].r()
 
         hkls = self.scene.indices
         #ttip = self.tooltipstringsdict[hkls[id]]
-        if id < len(hkls):
+        if id >=0:
           ttip = self.GetTooltipOnTheFly(hkls[id], rotmx)
           self.mprint("tooltip for : " + str(hkls[id]))
         else:
