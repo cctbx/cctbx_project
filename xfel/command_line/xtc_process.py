@@ -1081,8 +1081,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     self.cache_ranges(dxtbx_img, self.params.input.override_spotfinding_trusted_min, self.params.input.override_spotfinding_trusted_max)
 
-    from dxtbx.imageset import ImageSet, ImageSetData, MemReader, MemMasker
-    imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), MemMasker([dxtbx_img])))
+    from dxtbx.imageset import ImageSet, ImageSetData, MemReader
+    imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), None))
     imgset.set_beam(dxtbx_img.get_beam())
     imgset.set_detector(dxtbx_img.get_detector())
 
@@ -1248,7 +1248,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     if self.cached_ranges is not None:
       # Load a dials mask from the trusted range and psana mask
-      imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), MemMasker([dxtbx_img])))
+      imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), None))
       imgset.set_beam(dxtbx_img.get_beam())
       imgset.set_detector(dxtbx_img.get_detector())
       from dials.util.masking import MaskGenerator
