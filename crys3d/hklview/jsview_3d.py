@@ -182,12 +182,13 @@ class hklview_3d:
     self.HKLscenesMindata = []
     self.HKLscenesMaxsigmas = []
     self.HKLscenesMinsigmas = []
-    self.sceneisdirty = False
+    self.sceneisdirty = True
+    self.isscenecreated = False
     self.hkl_scenes_info = []
     self.match_valarrays = []
     self.binstrs = []
     self.mapcoef_fom_dict = {}
-    self.verbose = True
+    self.verbose = False
     if kwds.has_key('verbose'):
       self.verbose = kwds['verbose']
     self.mprint = sys.stdout.write
@@ -234,10 +235,10 @@ class hklview_3d:
     self.viewmtrxelms = None
     self.HKLscenesKey = ( 0, False,
                           self.settings.expand_anomalous, self.settings.expand_to_p1  )
-    self.pendingmessage = None
-    self.pendingmessagetype = None
+    self.msgqueue = []
     self.websockclient = None
-    self.lastmsg = ""
+    self.lastmsg = "Ready"
+    self.browserisopen = False
     self.msgdelim = ":\n"
     self.msgqueuethrd = None
     self.StartWebsocket()
@@ -251,13 +252,6 @@ class hklview_3d:
 
 
   def update_settings(self, diffphil, currentphil) :
-    if not self.sceneisdirty:
-      if self.settings.inbrowser and hasattr(diffphil, "viewer") and \
-               ( hasattr(diffphil.viewer, "expand_anomalous") or \
-                hasattr(diffphil.viewer, "expand_to_p1") ):
-        return self.ExpandInBrowser(P1= self.settings.expand_to_p1,
-                              friedel_mate= self.settings.expand_anomalous)
-
     if hasattr(diffphil, "filename") \
       or hasattr(diffphil, "spacegroup_choice") \
       or hasattr(diffphil, "merge_data") \
@@ -281,15 +275,23 @@ class hklview_3d:
       or hasattr(diffphil.viewer, "show_anomalous_pairs") \
       ):
         self.sceneisdirty = True
-        if not self.ConstructReciprocalSpace(currentphil, merge=self.merge) or \
-         self.miller_array is None or self.iarray < 0:
-          return ""
+        if self.miller_array is None or self.iarray < 0 or self.isnewfile:
+          self.ConstructReciprocalSpace(currentphil, merge=self.merge)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     msg = ""
     if self.iarray >=0:
       self.scene = self.HKLscenes[self.iarray]
       self.DrawNGLJavaScript()
+
       msg = "Rendered %d reflections\n" % self.scene.points.size()
+
+    """if self.settings.inbrowser and hasattr(diffphil, "viewer") and \
+             ( hasattr(diffphil.viewer, "expand_anomalous") or \
+              hasattr(diffphil.viewer, "expand_to_p1") ):
+    """
+    msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
+                            friedel_mate= self.settings.expand_anomalous)
+
     return msg
 
 
@@ -417,8 +419,8 @@ class hklview_3d:
     self.mprint("Constructing HKL scenes")
     #self.miller_array = self.match_valarrays[self.iarray]
     #self.miller_array = self.proc_arrays[self.iarray]
-    if not self.sceneisdirty:
-      self.mprint("Scene is clean", verbose=True)
+    if self.isscenecreated:
+      self.mprint("Scene was already created", verbose=True)
       return True
 
     self.HKLscenesKey = (currentphil.filename,
@@ -521,7 +523,8 @@ class hklview_3d:
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     for j,inf in enumerate(hkl_scenes_info):
       self.mprint("%d, %s" %(j, inf[0]) )
-    self.sceneisdirty = False
+    self.sceneisdirty = True
+    self.isscenecreated = True
     return True
 
 
@@ -550,7 +553,7 @@ class hklview_3d:
 
 
   def DrawNGLJavaScript(self):
-    if not self.scene:
+    if not self.scene or not self.sceneisdirty:
       return
     if self.miller_array is None :
       self.mprint( "A miller array must be selected for rendering the reflections" )
@@ -721,7 +724,7 @@ var MakeHKL_Axis = function()
         if colstr=="dres":
           bin1= 1.0/self.workingbinvals[ibin]
           bin2= 1.0/self.workingbinvals[ibin+1]
-        mstr= "bin[%d] has %d reflections with %s in ]%2.2f; %2.2f]" %(cntbin, nreflsinbin, \
+        mstr= "bin[%d] has %d reflections with %s in ]%2.3f; %2.3f]" %(cntbin, nreflsinbin, \
                 colstr, bin1, bin2)
         self.binstrs.append(mstr)
         self.mprint(mstr, verbose=True)
@@ -770,6 +773,7 @@ var MakeHKL_Axis = function()
   stage.signals.hovered.add(
     function (pickingProxy)
     {
+      tooltip.style.display = "none";
       if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  ))
       {
         var cp = pickingProxy.canvasPosition;
@@ -780,19 +784,19 @@ var MakeHKL_Axis = function()
     """
     else:
       spherebufferstr += """
-        symcp = -1;
-        id = -1
+        var sym_id = -1;
+        var hkl_id = -1
         if (pickingProxy.picker.length > 0)
         { // get stored id number of symmetry operator applied to this hkl
-          var symcp = pickingProxy.picker[0];
+          sym_id = pickingProxy.picker[0];
           var ids = pickingProxy.picker.slice(1);
-          if (pickingProxy.pid < ids.length)
-            id = ids[ pickingProxy.pid ];
-          else
-            id = -ids[ pickingProxy.pid % ids.length ]; // indicate friedel mate with negative id
+          var is_friedel_mate = 0;
+          hkl_id = ids[ pickingProxy.pid % ids.length ];
+          if (pickingProxy.pid >= ids.length)
+            is_friedel_mate = 1;
         }
         // tell python the id of the hkl and id number of the symmetry operator
-        mysocket.send( 'tooltip_id: [' + String([symcp, id]) + ']' );
+        mysocket.send( 'tooltip_id: [' + String([sym_id, hkl_id, is_friedel_mate]) + ']' );
         if (current_ttip !== "" )
         {
           tooltip.innerText = current_ttip;
@@ -802,11 +806,7 @@ var MakeHKL_Axis = function()
           tooltip.style.fontSize = "smaller";
           tooltip.style.display = "block";
         }
-        else
-          tooltip.style.display = "none";
       }
-      else
-        tooltip.style.display = "none";
       current_ttip = "";
     }
   );
@@ -874,11 +874,13 @@ var mysocket = new WebSocket('ws://127.0.0.1:7894/');
 mysocket.onopen = function(e)
 {
   mysocket.send('%s now connected via websocket to ' + pagename + '\\n');
+  mysocket.send( 'Ready ' + pagename + '\\n');
 };
 
 mysocket.onclose = function(e)
 {
   mysocket.send('%s now disconnecting from websocket ' + pagename + '\\n');
+  mysocket.send( 'Ready ' + pagename + '\\n');
 };
 
 // Log errors to debugger of your browser
@@ -1087,7 +1089,7 @@ mysocket.onmessage = function (e)
   var c,
   alpha,
   si;
-  mysocket.send('got ' + e.data ); // tell server what it sent us
+  mysocket.send('\\n    Browser: Got ' + e.data ); // tell server what it sent us
   try
   {
     var datval = e.data.split(":\\n");
@@ -1157,7 +1159,6 @@ mysocket.onmessage = function (e)
       cvorient = stage.viewerControls.getOrientation().elements;
       msg = String(cvorient);
       mysocket.send('Current vieworientation:\\n' + msg );
-
       mysocket.send( 'Refreshing ' + pagename );
       window.location.reload(true);
     }
@@ -1166,7 +1167,6 @@ mysocket.onmessage = function (e)
     if (msgtype.includes("Expand") )
     {
       mysocket.send( 'Expanding data...' );
-
       // delete the shapebufs[] that holds the positions[] arrays
       shapeComp.removeRepresentation(repr);
       // remove shapecomp from stage first
@@ -1281,7 +1281,6 @@ mysocket.onmessage = function (e)
             });
 
           shape.addBuffer(br_shapebufs[bin][g]);
-
         }
       }
       MakeHKL_Axis();
@@ -1291,6 +1290,7 @@ mysocket.onmessage = function (e)
       repr.update();
 
       stage.viewer.requestRender();
+      mysocket.send( 'Expanded data' );
     }
 
 
@@ -1310,7 +1310,7 @@ mysocket.onmessage = function (e)
       */
     }
 
-
+    mysocket.send( 'Ready ' + pagename );
   }
 
   catch(err)
@@ -1344,6 +1344,7 @@ mysocket.onmessage = function (e)
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
     self.ReloadNGL()
+    self.sceneisdirty = False
 
 
   def OnConnectWebsocketClient(self, client, server):
@@ -1362,7 +1363,7 @@ mysocket.onmessage = function (e)
         if "Error:" in message:
           verb = True
         self.mprint( message, verb)
-      self.lastmsg = message
+        self.lastmsg = message
       if "Current vieworientation:" in message:
         # The NGL.Matrix4 with the orientation is a list of floats.
         self.viewmtrxelms = message[ message.find("\n") + 1: ]
@@ -1370,27 +1371,20 @@ mysocket.onmessage = function (e)
         self.mprint( "Reorienting client after refresh:" + str( self.websockclient ) )
         if not self.isnewfile:
           #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-          self.pendingmessagetype = "ReOrient"
-          self.pendingmessage = self.viewmtrxelms
+          self.msgqueue.append( ("ReOrient", self.viewmtrxelms) )
         self.isnewfile = False
       if "tooltip_id:" in message:
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-        # TODO: fix bug in data2bin()
-        #ids = eval(message.split("tooltip_id:")[1])[2:]
-        #idx = eval(message.split("tooltip_id:")[1])[0] % len(ids)
-        #symcp = eval(message.split("tooltip_id:")[1])[1]
-        #id = eval(message.split("tooltip_id:")[1])[2:][idx]
-
-        symcp = eval(message.split("tooltip_id:")[1])[0]
+        sym_id = eval(message.split("tooltip_id:")[1])[0]
         id = eval(message.split("tooltip_id:")[1])[1]
+        is_friedel_mate = eval(message.split("tooltip_id:")[1])[2]
 
         rotmx = None
-        if symcp >= 0:
-          rotmx = self.symops[symcp].r()
-
+        if sym_id >= 0:
+          rotmx = self.symops[sym_id].r()
         hkls = self.scene.indices
         #ttip = self.tooltipstringsdict[hkls[id]]
-        if id >=0:
+        if not is_friedel_mate:
           ttip = self.GetTooltipOnTheFly(hkls[id], rotmx)
           self.mprint("tooltip for : " + str(hkls[id]))
         else:
@@ -1408,11 +1402,11 @@ mysocket.onmessage = function (e)
   def WebBrowserMsgQueue(self):
     try:
       while True:
-        sleep(1)
-        if self.pendingmessagetype:
-          self.SendWebSockMsg(self.pendingmessagetype, self.pendingmessage)
-          self.pendingmessage = None
-          self.pendingmessagetype = None
+        sleep(0.5)
+        if len(self.msgqueue):
+          pendingmessagetype, pendingmessage = self.msgqueue[0]
+          self.SendWebSockMsg(pendingmessagetype, pendingmessage)
+          self.msgqueue.remove( self.msgqueue[0] )
 # if the html content is huge the browser will be unresponsive until it has finished
 # reading the html content. This may crash this thread. So try restarting this thread until
 # browser is ready
@@ -1439,12 +1433,11 @@ mysocket.onmessage = function (e)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     #print "self.server.clients: ", self.server.clients
     #print "self.websockclient: ",
-    message = u""
-    message = msgtype + self.msgdelim + msg
+    message = u"" + msgtype + self.msgdelim + msg
     if self.websockclient:
-      while "Refreshing" in self.lastmsg:
+      while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg):
         sleep(0.5)
-        self.lastmsg = ""
+        #self.lastmsg = ""
       self.server.send_message(self.websockclient, message )
     else:
       self.OpenBrowser()
@@ -1459,34 +1452,40 @@ mysocket.onmessage = function (e)
 
 
   def RedrawNGL(self):
-    self.SendWebSockMsg("Redraw")
+    #self.SendWebSockMsg("Redraw")
+    self.msgqueue.append( ("Redraw", "") )
 
 
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
     self.mprint("Rendering JavaScript...", True)
-    self.SendWebSockMsg("Reload")
+    #self.SendWebSockMsg("Reload")
+    self.msgqueue.append( ("Reload", "") )
 
 
   def OpenBrowser(self):
-    NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
-    htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
-    htmlstr += self.htmldiv
-    with open(self.hklfname, "w") as f:
-      f.write( htmlstr )
-    self.url = "file://" + os.path.abspath( self.hklfname )
-    self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname)
-    if self.UseOSBrowser:
-      webbrowser.open(self.url, new=1)
-    self.isnewfile = False
+    if not self.browserisopen:
+      NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
+      htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
+      htmlstr += self.htmldiv
+      with open(self.hklfname, "w") as f:
+        f.write( htmlstr )
+      self.url = "file://" + os.path.abspath( self.hklfname )
+      self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname)
+      if self.UseOSBrowser:
+        webbrowser.open(self.url, new=1)
+      self.isnewfile = False
+      self.browserisopen = True
 
 
   def ExpandInBrowser(self, P1=True, friedel_mate=True):
+    retmsg = "scene is dirty"
+    if self.sceneisdirty:
+      return retmsg
     uc = self.miller_array.unit_cell()
     OrtMx = matrix.sqr( uc.orthogonalization_matrix())
     InvMx = OrtMx.inverse()
     msgtype = "Expand"
     msg = ""
-    retmsg = ""
     unique_rot_ops = []
     if P1:
       msgtype += "P1"
@@ -1508,7 +1507,8 @@ mysocket.onmessage = function (e)
       str_rot = str_rot.replace("(", "")
       str_rot = str_rot.replace(")", "")
       msg += str_rot + "\n"
-    self.SendWebSockMsg(msgtype, msg)
+    #self.SendWebSockMsg(msgtype, msg)
+    self.msgqueue.append( (msgtype, msg) )
     return retmsg
 
 

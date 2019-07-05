@@ -251,7 +251,7 @@ class HKLViewFrame() :
     self.merge_answer = [None]
     self.dmin = -1
     self.settings = display.settings()
-    self.verbose = True
+    self.verbose = False
     if 'verbose' in kwds:
       self.verbose = kwds['verbose']
     kwds['settings'] = self.settings
@@ -296,6 +296,8 @@ class HKLViewFrame() :
     self.viewer.sg = None
     self.viewer.proc_arrays = []
     self.viewer.HKLscenesdict = {}
+    self.viewer.isscenecreated = False
+    self.viewer.sceneisdirty = True
 
 
   def GetNewCurrentPhilFromString(self, philstr, oldcurrentphil):
