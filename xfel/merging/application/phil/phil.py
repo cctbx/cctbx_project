@@ -405,15 +405,12 @@ statistics {
 }
 
 parallel {
-  nproc = 1
-    .type = int
-    .help = Number of processors
-    .help = 1: use no parallel execution.
   a2a = 1
     .type = int
-    .help = memory reduction factor for MPI alltoall (expert only)
-    .help = Use a2a > 1, when available hardware memory is insufficient for MPI alltoall
-    .help = The data is split into a2a parts and alltoall is performed in a2a iterations.
+    .expert_level = 2
+    .help = memory reduction factor for MPI alltoall.
+    .help = Use a2a > 1, when available RAM memory is insufficient for doing MPI alltoall on all data at once.
+    .help = The data will be split into a2a parts and, correspondingly, alltoall will be performed in a2a iterations.
 }
 
 """ + mysql_master_phil
