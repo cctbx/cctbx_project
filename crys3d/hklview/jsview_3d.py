@@ -183,7 +183,6 @@ class hklview_3d:
     self.HKLscenesMaxsigmas = []
     self.HKLscenesMinsigmas = []
     self.sceneisdirty = True
-    self.isscenecreated = False
     self.hkl_scenes_info = []
     self.match_valarrays = []
     self.binstrs = []
@@ -275,8 +274,8 @@ class hklview_3d:
       or hasattr(diffphil.viewer, "show_anomalous_pairs") \
       ):
         self.sceneisdirty = True
-        if self.miller_array is None or self.iarray < 0 or self.isnewfile:
-          self.ConstructReciprocalSpace(currentphil, merge=self.merge)
+        #if self.miller_array is None or self.iarray < 0 or self.isnewfile:
+        self.ConstructReciprocalSpace(currentphil, merge=self.merge)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     msg = ""
     if self.iarray >=0:
@@ -369,7 +368,9 @@ class hklview_3d:
     return alltooltipstringsdict, allcolstraliases
 
 
-  def GetTooltipOnTheFly(self, hkl, rotmx=None, anomalous=False):
+  #def GetTooltipOnTheFly(self, hkl, rotmx=None, anomalous=False):
+  def GetTooltipOnTheFly(self, id, rotmx=None, anomalous=False):
+    hkl = self.scene.indices[id]
     hklvec = flex.vec3_double( [(hkl[0], hkl[1], hkl[2])])
     Rhkl = hklvec[0]
     if rotmx:
@@ -385,7 +386,10 @@ class hklview_3d:
     for hklscene in self.HKLscenes:
       if hklscene.isUsingFOMs():
         continue # already have tooltips for the scene without the associated fom
-      datval = hklscene.work_array.data_at_first_index(hkl)
+      #datval = hklscene.work_array.data_at_first_index(hkl)
+      if id >= hklscene.data.size():
+        continue
+      datval = hklscene.data[id]
       if datval and (not (math.isnan( abs(datval) ) or datval == display.inanval)):
         if hklscene.work_array.is_complex_array():
           ampl = abs(datval)
@@ -419,16 +423,13 @@ class hklview_3d:
     self.mprint("Constructing HKL scenes")
     #self.miller_array = self.match_valarrays[self.iarray]
     #self.miller_array = self.proc_arrays[self.iarray]
-    if self.isscenecreated:
-      self.mprint("Scene was already created", verbose=True)
-      return True
-
     self.HKLscenesKey = (currentphil.filename,
                          currentphil.spacegroup_choice,
                          currentphil.using_space_subgroup,
                          currentphil.merge_data,
-                         self.settings.expand_anomalous,
-                         self.settings.expand_to_p1,
+                         #self.settings.expand_anomalous,
+                         #self.settings.expand_to_p1,
+                         self.settings.inbrowser,
                          self.settings.slice_axis,
                          self.settings.slice_mode,
                          self.settings.slice_index,
@@ -438,6 +439,7 @@ class hklview_3d:
                          self.settings.scale,
                          self.settings.nth_power_scale_radii
                          )
+
     if self.HKLscenesdict.has_key(self.HKLscenesKey):
       (
         self.HKLscenes,
@@ -449,7 +451,7 @@ class hklview_3d:
         self.hkl_scenes_info
       ) =  self.HKLscenesdict[self.HKLscenesKey]
       self.mprint("Scene key is already present", verbose=True)
-      self.sceneisdirty = False
+      #self.sceneisdirty = False
       return True
 
     HKLscenes = []
@@ -521,10 +523,10 @@ class hklview_3d:
       self.hkl_scenes_info
     ) =  self.HKLscenesdict[self.HKLscenesKey]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    self.mprint("\nReflection data scenes:", verbose=True)
     for j,inf in enumerate(hkl_scenes_info):
-      self.mprint("%d, %s" %(j, inf[0]) )
+      self.mprint("%d, %s" %(j, inf[0]), verbose=True)
     self.sceneisdirty = True
-    self.isscenecreated = True
     return True
 
 
@@ -1384,19 +1386,21 @@ mysocket.onmessage = function (e)
           rotmx = self.symops[sym_id].r()
         hkls = self.scene.indices
         #ttip = self.tooltipstringsdict[hkls[id]]
+        self.mprint("tooltip for : " + str(hkls[id]))
         if not is_friedel_mate:
-          ttip = self.GetTooltipOnTheFly(hkls[id], rotmx)
-          self.mprint("tooltip for : " + str(hkls[id]))
+          #ttip = self.GetTooltipOnTheFly(hkls[id], rotmx)
+          ttip = self.GetTooltipOnTheFly(id, rotmx)
         else:
           # if id > len(hkls) then these hkls are added as the friedel mates during the
           # "if (anoexp)" condition in the javascript code
           id = id % len(hkls)
           ttip = "id: %d" %id
-          ttip = self.GetTooltipOnTheFly(hkls[id], rotmx, anomalous=True)
+          #ttip = self.GetTooltipOnTheFly(hkls[id], rotmx, anomalous=True)
+          ttip = self.GetTooltipOnTheFly(id, rotmx, anomalous=True)
         self.SendWebSockMsg("ShowTooltip", ttip)
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     except Exception as e:
-      self.mprint( str(e) + "".join(traceback.format_stack(limit=10)))
+      self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10))
 
 
   def WebBrowserMsgQueue(self):
@@ -1478,7 +1482,7 @@ mysocket.onmessage = function (e)
 
 
   def ExpandInBrowser(self, P1=True, friedel_mate=True):
-    retmsg = "scene is dirty"
+    retmsg = "Not expanding in browser"
     if self.sceneisdirty:
       return retmsg
     uc = self.miller_array.unit_cell()

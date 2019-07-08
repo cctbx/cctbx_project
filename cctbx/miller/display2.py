@@ -471,7 +471,7 @@ class scene(object):
         self.colors.extend(flex.vec3_double(n_missing, (1.,0,0)))
       else :
         self.colors.extend(flex.vec3_double(n_missing, (1.,1.,1.)))
-      self.radii.extend(flex.double(n_missing, self.max_radius/2.0 ))
+      self.radii.extend(flex.double(n_missing, self.settings.scale * self.max_radius/2.0 ))
       self.missing_flags.extend(flex.bool(n_missing, True))
       self.indices.extend(missing)
       self.ExtendData(n_missing)

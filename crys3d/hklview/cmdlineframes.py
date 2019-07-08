@@ -183,6 +183,21 @@ myHKLview.ShowMissing(True)
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Work\TNCS\4N3E\4n3e_final.mtz")
 
 
+myHKLview.LoadReflectionsFile("r4v9hsf.cif")
+myHKLview.SetColumn(0)
+
+myHKLview.SetColumnBinThresholds([0,2.8, 2.86, 2.88, 2.898, 3.0, 3.03, 3.06, 3.1, 3.15, 3.2, 3.25, 3.3, 3.35, 3.4, 3.5, 3.6, 3.8, 4.0, 4.5, 5.0, 6.0, 8, 9,11, 15, 20, 30, 100 ])
+for i in range(27):
+  myHKLview.SetOpacity(i, 0.0)
+
+myHKLview.SetOpacity(26, 0.0)
+myHKLview.SetOpacity(26, 1.0)
+myHKLview.SetOpacity(25, 1.0)
+myHKLview.SetOpacity(24, 1.0)
+myHKLview.SetOpacity(10, 1.0)
+myHKLview.SetOpacity(14, 1.0)
+
+
 """
 
 
@@ -216,6 +231,7 @@ def Inputarg(varname):
     myvar = input(varname)
   return myvar
 
+NOREFLDATA = "No reflection data scene has been selected"
 
 
 class settings_window () :
@@ -296,7 +312,6 @@ class HKLViewFrame() :
     self.viewer.sg = None
     self.viewer.proc_arrays = []
     self.viewer.HKLscenesdict = {}
-    self.viewer.isscenecreated = False
     self.viewer.sceneisdirty = True
 
 
@@ -386,7 +401,7 @@ class HKLViewFrame() :
       self.NewFileLoaded = False
 
       if (self.viewer.miller_array is None) :
-        self.mprint( "No miller array has been selected", True)
+        self.mprint( NOREFLDATA, True)
         return False
       return True
     except Exception as e:
@@ -617,6 +632,7 @@ class HKLViewFrame() :
         self.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
+      self.mprint("Available miller arrays:", verbose=True)
       for i,e in enumerate(self.array_infostrs):
         self.mprint("%d, %s" %(i, e), True)
       self.NewFileLoaded = True
@@ -811,7 +827,7 @@ class HKLViewFrame() :
     return array of strings with available subgroups of the space group
     """
     if (self.viewer.miller_array is None) :
-      self.mprint( "No miller array has been selected", True)
+      self.mprint( NOREFLDATA, True)
     if self.spacegroup_choices:
       return [e.symbol_and_number() for e in self.spacegroup_choices]
     return []
