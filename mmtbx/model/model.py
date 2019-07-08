@@ -2533,6 +2533,9 @@ class manager(object):
     new_riding_h_manager = None
     if self.riding_h_manager is not None:
       new_riding_h_manager = self.riding_h_manager.select(selection)
+    xrs_new = None
+    if(self._xray_structure is not None):
+      xrs_new = self.get_xray_structure().select(selection)
     new = manager(
       model_input                = self._model_input, # any selection here?
       crystal_symmetry           = self._crystal_symmetry,
@@ -2540,7 +2543,7 @@ class manager(object):
       monomer_parameters         = self._monomer_parameters,
       restraints_manager         = new_restraints_manager,
       expand_with_mtrix          = False,
-      xray_structure             = self.get_xray_structure().select(selection),
+      xray_structure             = xrs_new,
       pdb_hierarchy              = new_pdb_hierarchy,
       pdb_interpretation_params  = self._pdb_interpretation_params,
       tls_groups                 = self.tls_groups, # XXX not selected, potential bug
