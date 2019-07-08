@@ -3629,8 +3629,13 @@ class find_secondary_structure: # class to look for secondary structure
     if self.annotation and self.annotation.as_pdb_str():
       print("\nFINAL PDB RECORDS:", file=out)
       print(self.annotation.as_pdb_str(), file=out)
+      print("\n\nFINAL HELIX selections:", file=out)
+      print('"%s"' %(self.annotation.overall_helix_selection()), file=out)
+      print("\n\nFINAL SHEET selections:", file=out)
+      print('"%s"' %(self.annotation.overall_sheet_selection()), file=out)
       print("\n\nFINAL PDB selections:", file=out)
       print('"%s"' %(self.annotation.overall_selection()), file=out)
+
 
     if pdb_records_file and self.annotation:
       f=open(pdb_records_file,'w')
@@ -3639,6 +3644,8 @@ class find_secondary_structure: # class to look for secondary structure
       print("\nRecords written to %s\n" %(
          pdb_records_file), file=out)
 
+  def get_results(self):
+    return self.get_annotation()
 
   def get_annotation(self):
     if hasattr(self,'annotation'):
