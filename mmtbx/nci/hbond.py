@@ -225,6 +225,21 @@ class find(object):
           atom_i = atom_i, atom_j = atom_j)
         self.pair_proxies.append(proxy_custom)
 
+  def get_params_as_arrays(self, b=None, occ=None):
+    d_HA  = flex.double()
+    a_DHA = flex.double()
+    a_YAH = flex.double()
+    for r in self.result:
+      if(b   is not None and r.atom_i.b>b): continue
+      if(b   is not None and r.atom_j.b>b): continue
+      if(occ is not None and r.atom_i.occ<occ): continue
+      if(occ is not None and r.atom_j.occ<occ): continue
+      d_HA .append(r.d_HA )
+      a_DHA.append(r.a_DHA)
+      if(len(r.a_YAH)>0):
+        a_YAH.extend(flex.double(r.a_YAH))
+    return group_args(d_HA=d_HA, a_DHA=a_DHA, a_YAH=a_YAH)
+
   def get_counts(self):
     data_theta_1_all = flex.double()
     data_theta_1_fil = flex.double()
@@ -268,8 +283,10 @@ class find(object):
   def show_summary(self, log = sys.stdout):
     def printit(o,f):
       fmt="%7.3f %7.3f %7.3f %7.3f"
-      print("  overall : "+fmt%(o.mean, o.sd, o.skew, o.kurtosis), file=log)
-      print("  filtered: "+fmt%(f.mean, f.sd, f.skew, f.kurtosis), file=log)
+      if(o is not None):
+        print("  overall : "+fmt%(o.mean, o.sd, o.skew, o.kurtosis), file=log)
+      if(f is not None):
+        print("  filtered: "+fmt%(f.mean, f.sd, f.skew, f.kurtosis), file=log)
     c = self.get_counts()
     print("Total:       %d"%c.n,     file=log)
     print("Symmetry:    %d"%c.n_sym, file=log)

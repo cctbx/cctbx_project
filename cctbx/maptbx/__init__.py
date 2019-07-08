@@ -23,6 +23,7 @@ from libtbx import group_args
 from scitbx import fftpack
 from libtbx.test_utils import approx_equal
 from cctbx import uctbx
+import scitbx.math
 
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
@@ -1407,10 +1408,11 @@ Fourier image of specified resolution, etc.
             d_min,
             b_iso,
             d_max=None,
+            radius_min=0,
             radius_max=5.,
             radius_step=0.001,
             n_integration_steps=2000):
-    r = 0.0
+    r = radius_min
     assert d_max != 0.
     if(d_max is None): s_min=0
     else:              s_min=1./d_max
@@ -1426,6 +1428,7 @@ Fourier image of specified resolution, etc.
       r+=radius_step
     # Fine first inflection point
     first_inflection_point=None
+    i_first_inflection_point=None
     size = image_values.size()
     second_derivatives = flex.double()
     for i in range(size):
@@ -1437,13 +1440,15 @@ Fourier image of specified resolution, etc.
         dxx = second_derivatives[i-1]*radius_step**2
       if(first_inflection_point is None and dxx>0):
         first_inflection_point = (radii[i-1]+radii[i])/2.
+        i_first_inflection_point=i
       second_derivatives.append(dxx/radius_step**2)
     return group_args(
-      radii                  = radii,
-      image_values           = image_values,
-      first_inflection_point = first_inflection_point,
-      radius                 = first_inflection_point*2,
-      second_derivatives     = second_derivatives)
+      radii                    = radii,
+      image_values             = image_values,
+      first_inflection_point   = first_inflection_point,
+      i_first_inflection_point = i_first_inflection_point,
+      radius                   = first_inflection_point*2,
+      second_derivatives       = second_derivatives)
 
   def image_from_miller_indices(self, miller_indices, b_iso, uc,
                                 radius_max, radius_step):
@@ -1489,6 +1494,35 @@ Fourier image of specified resolution, etc.
       radii.append(r)
       r+=step
     return group_args(radii=radii, image_values=mv)
+
+  def one_gaussian_exact(self, r, A0, B0, b=0):
+    cmn = 4*math.pi/(B0+b)
+    return A0*cmn**1.5 * math.exp(-math.pi*cmn*r**2)
+
+  def one_gaussian_approximation(self, d_min, b, use_inflection_point=True):
+    ib0 = self.image(
+      d_min = d_min, b_iso = 0, radius_max=5, radius_step=0.01)
+    if(use_inflection_point):
+      i_cut = ib0.i_first_inflection_point
+    else:
+      i_cut = None
+      for i in xrange(ib0.radii.size()):
+        if(ib0.image_values[i]<=0):
+          rad_cut = ib0.radii[i-1]
+          i_cut = i-1
+          break
+    assert i_cut is not None
+    # this gives a*exp(-b*x**2)
+    r = scitbx.math.gaussian_fit_1d_analytical(
+      x = ib0.radii[:i_cut], y = ib0.image_values[:i_cut])
+    B0 = 4*math.pi**2/r.b
+    A0 = r.a/(r.b/math.pi)**1.5
+    image_approx_values = flex.double()
+    for rad in ib0.radii:
+      v = self.one_gaussian_exact(r=rad, A0=A0, B0=B0, b=b)
+      image_approx_values.append(v)
+    return group_args(image_b0=ib0, image_approx_at_b = image_approx_values,
+      i_cut = i_cut, n_points = ib0.radii.size())
 
 def sharpen2(map, xray_structure, resolution, file_name_prefix):
   from cctbx import miller
