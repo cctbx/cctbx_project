@@ -4098,7 +4098,7 @@ def get_mask_around_molecule(map_data=None,
   if solvent_content:
     delta_as_is=abs(solvent_content- (1-masked_fraction))
     delta_expanded=abs(solvent_content- (1-expanded_fraction))
-    if delta_expanded > delta_as_is: 
+    if delta_expanded > delta_as_is:
       # already there
       expand_size=0
       print ("Setting expand size to zero as masked fraction already ",
