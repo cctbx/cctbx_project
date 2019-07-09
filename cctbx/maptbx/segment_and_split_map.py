@@ -4051,6 +4051,9 @@ def get_mask_around_molecule(map_data=None,
         wang_radius=None,
         buffer_radius=None,
         return_masked_fraction=False,
+        minimum_fraction_of_max=0.01,
+        solvent_content=None,
+        solvent_content_iterations=None,
         crystal_symmetry=None, out=sys.stdout):
   # use iterated solvent fraction tool to identify mask around molecule
   try:
@@ -4058,9 +4061,15 @@ def get_mask_around_molecule(map_data=None,
     solvent_fraction,mask=iterated_solvent_fraction(
       crystal_symmetry=crystal_symmetry,
       wang_radius=wang_radius,
+      solvent_content=solvent_content,
+      solvent_content_iterations=solvent_content_iterations,
       map_as_double=map_data,
       out=out)
   except Exception as e:
+    print("No mask obtained...", file=out)
+    return None,None
+
+  if not mask:
     print("No mask obtained...", file=out)
     return None,None
 
@@ -4077,12 +4086,38 @@ def get_mask_around_molecule(map_data=None,
   co,sorted_by_volume,min_b,max_b=get_co(map_data=mask,
      threshold=0.5,wrapping=False)
   masked_fraction=sorted_by_volume[1][0]/mask.size()
-  print("\nMasked fraction before buffering: %7.2f" %(masked_fraction), file=out)
+
+  bool_region_mask = co.expand_mask(id_to_expand=sorted_by_volume[1][1],
+       expand_size=expand_size)
+  s=(bool_region_mask==True)
+  expanded_fraction=s.count(True)/s.size()
+  print("\nLargest masked region before buffering: %7.2f" %(masked_fraction),
+      file=out)
+  print("\nLargest masked region after buffering: %7.2f" %(expanded_fraction),
+     file=out)
+  if solvent_content:
+    delta_as_is=abs(solvent_content- (1-masked_fraction))
+    delta_expanded=abs(solvent_content- (1-expanded_fraction))
+    if delta_expanded > delta_as_is: 
+      # already there
+      expand_size=0
+      print ("Setting expand size to zero as masked fraction already ",
+         "close to solvent_content",file=out)
 
   s=None
+  minimum_size=sorted_by_volume[1][0] * minimum_fraction_of_max
+  if expand_size==0:
+    result=co.result()
+  else:
+    result=None
+
   for v1,i1 in sorted_by_volume[1:]:
-    bool_region_mask = co.expand_mask(
-      id_to_expand=i1, expand_size=expand_size)
+    if v1 < minimum_size: break
+    if expand_size > 0:
+      bool_region_mask = co.expand_mask(
+        id_to_expand=i1, expand_size=expand_size)
+    else:
+      bool_region_mask=(result==i1)
     if s is None:
       s = (bool_region_mask==True)
     else:
@@ -5182,6 +5217,8 @@ def get_and_apply_soft_mask_to_maps(
     wang_radius=None, #params.crystal_info.wang_radius
     buffer_radius=None, #params.crystal_info.buffer_radius
     map_data=None,crystal_symmetry=None,
+    solvent_content=None,
+    solvent_content_iterations=None,
     rad_smooth=None,
     half_map_data_list=None,
     out=sys.stdout):
@@ -5212,6 +5249,8 @@ def get_and_apply_soft_mask_to_maps(
   mask_data,solvent_fraction=get_mask_around_molecule(map_data=map_data,
     crystal_symmetry=crystal_symmetry,
     wang_radius=wang_radius,
+    solvent_content=solvent_content,
+    solvent_content_iterations=solvent_content_iterations,
     buffer_radius=buffer_radius,
     return_masked_fraction=True,
     out=out)
