@@ -5,6 +5,7 @@ from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
 from cctbx import miller
 from cctbx.crystal import symmetry
+import sys
 
 class scaling_result(object):
   '''Stores results of scaling of an experiment'''
@@ -30,8 +31,12 @@ class experiment_scaler(worker):
     return 'Scaling; cross-correlation'
 
   def run(self, experiments, reflections):
-
     self.logger.log_step_time("SCALE_FRAMES")
+    if self.params.scaling.algorithm != "mark0": # mark1 implies no scaling/post-refinement
+      self.logger.log("No scaling was done")
+      if self.mpi_helper.rank == 0:
+        self.logger.main_log("No scaling was done")
+      return experiments, reflections
 
     new_experiments = ExperimentList()
     new_reflections = flex.reflection_table()
@@ -164,7 +169,12 @@ class experiment_scaler(worker):
       sum_w += I_w
 
     # calculate Pearson correlation coefficient between X and Y and test it
-    result.correlation = (result.data_count * sum_xy - sum_x * sum_y) / (math.sqrt(result.data_count * sum_xx - sum_x**2) * math.sqrt(result.data_count * sum_yy - sum_y**2))
+    DELTA_1 = result.data_count * sum_xx - sum_x**2
+    DELTA_2 = result.data_count * sum_yy - sum_y**2
+    if (abs(DELTA_1) < sys.float_info.epsilon) or (abs(DELTA_2) < sys.float_info.epsilon):
+      result.error = scaling_result.err_low_signal
+      return result
+    result.correlation = (result.data_count * sum_xy - sum_x * sum_y) / (math.sqrt(DELTA_1) * math.sqrt(DELTA_2))
     if result.correlation < self.params.filter.outlier.min_corr:
       result.error = scaling_result.err_low_correlation
       return result
@@ -172,15 +182,15 @@ class experiment_scaler(worker):
     if self.params.scaling.mark0.fit_offset:
       # calculate slope and offset
       DELTA = sum_w * sum_xx - sum_x**2 # see p. 105 in Bevington & Robinson
-      if DELTA == 0.0: # TODO: use an epsilon instead of zero ?
-        result.error = scaling_result.err_LS_singularity
+      if abs(DELTA) < sys.float_info.epsilon:
+        result.error = scaling_result.err_low_signal
         return result
       result.slope = (sum_w * sum_xy - sum_x * sum_y) / DELTA
       result.offset = (sum_xx * sum_y - sum_x * sum_xy) / DELTA
     else: # calculate slope only
       DELTA = sum_w * sum_xx
-      if DELTA == 0.0: # TODO: use an epsilon instead of zero ?
-        result.error = scaling_result.err_LS_singularity
+      if abs(DELTA) < sys.float_info.epsilon:
+        result.error = scaling_result.err_low_signal
         return result
       result.slope = sum_w * sum_xy / DELTA
 
@@ -217,8 +227,12 @@ class experiment_scaler(worker):
       sum_w += I_w
 
     # calculate Pearson correlation coefficient between X and Y and test it
-    result.correlation = (result.data_count * sum_xy - sum_x * sum_y) / (math.sqrt(result.data_count * sum_xx - sum_x**2) * math.sqrt(result.data_count * sum_yy - sum_y**2))
-
+    DELTA_1 = result.data_count * sum_xx - sum_x**2
+    DELTA_2 = result.data_count * sum_yy - sum_y**2
+    if (abs(DELTA_1) < sys.float_info.epsilon) or (abs(DELTA_2) < sys.float_info.epsilon):
+      result.error = scaling_result.err_low_signal
+      return result
+    result.correlation = (result.data_count * sum_xy - sum_x * sum_y) / (math.sqrt(DELTA_1) * math.sqrt(DELTA_2))
     if result.correlation < self.params.filter.outlier.min_corr:
       result.error = scaling_result.err_low_correlation
       return result
@@ -226,15 +240,15 @@ class experiment_scaler(worker):
     if self.params.scaling.mark0.fit_offset:
       # calculate slope and offset
       DELTA = sum_w * sum_xx - sum_x**2 # see p. 105 in Bevington & Robinson
-      if DELTA == 0.0: # TODO: use an epsilon instead of zero ?
-        result.error = scaling_result.err_LS_singularity
+      if abs(DELTA) < sys.float_info.epsilon:
+        result.error = scaling_result.err_low_signal
         return result
       result.slope = (sum_w * sum_xy - sum_x * sum_y) / DELTA
       result.offset = (sum_xx * sum_y - sum_x * sum_xy) / DELTA
     else: # calculate slope only
       DELTA = sum_w * sum_xx
-      if DELTA == 0.0: # TODO: use an epsilon instead of zero ?
-        result.error = scaling_result.err_LS_singularity
+      if abs(DELTA) < sys.float_info.epsilon:
+        result.error = scaling_result.err_low_signal
         return result
       result.slope = sum_w * sum_xy / DELTA
 

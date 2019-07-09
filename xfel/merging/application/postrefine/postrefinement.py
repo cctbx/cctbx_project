@@ -22,13 +22,11 @@ class postrefinement(worker):
     return 'Postrefinement'
 
   def run(self, experiments, reflections):
-
     self.logger.log_step_time("POSTREFINEMENT")
-
-    if not self.params.postrefinement.enable:
-      self.logger.log("Postrefinement was not done")
+    if (not self.params.postrefinement.enable) or (self.params.scaling.algorithm != "mark0"): # mark1 implies no scaling/post-refinement
+      self.logger.log("No post-refinement was done")
       if self.mpi_helper.rank == 0:
-        self.logger.main_log("Postrefinement was not done")
+        self.logger.main_log("No post-refinement was done")
       return experiments, reflections
 
     target_symm = symmetry(unit_cell = self.params.scaling.unit_cell, space_group_info = self.params.scaling.space_group)

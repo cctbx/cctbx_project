@@ -21,7 +21,7 @@ class reflection_table_editor(worker):
     from cctbx.crystal import symmetry
     import copy
 
-    # build target space group
+    # Build target symmetry. The exact experiment unit cell values don't matter for converting HKLs to asu HKLs.
     target_unit_cell = self.params.scaling.unit_cell
     target_space_group_info = self.params.scaling.space_group
     target_symmetry = symmetry(unit_cell=target_unit_cell, space_group_info=target_space_group_info)
