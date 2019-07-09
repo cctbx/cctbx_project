@@ -836,7 +836,7 @@ def format_80(s):
     i += 1
     if i == 80:
       i = 0
-      ss += ' \ \n'
+      ss += ' \\ \n'
   return ss
 
 def inverse_transform(r,t):

@@ -1281,7 +1281,7 @@ the percentage of R-free reflections).
 
       if not rows:
         header = ("bin", "d_max", "d_min", "n_work", "r_work", "n_free", "r_free")
-        comments = """
+        comments = r"""
 Overall r values
 R Work : %4.3f
 R Free : %4.3f

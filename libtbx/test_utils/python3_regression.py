@@ -39,7 +39,7 @@ def find_new_python3_incompatible_code(module_under_test):
   module_path = module_under_test.__path__[0]
   try:
     import procrunner
-    result = procrunner.run(['python3', '-m', 'compileall', '-x', '\.git', '-q', module_path], environment_override=environ_override, print_stdout=False)
+    result = procrunner.run(['python3', '-m', 'compileall', '-x', r'\.git', '-q', module_path], environment_override=environ_override, print_stdout=False)
   except ImportError:
     return None
   except OSError as e:

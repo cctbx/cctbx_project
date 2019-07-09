@@ -31,7 +31,7 @@ class _():
       a = "%.4f" %self.a
     if round(self.b, 4) == 0: b_part=""
     else: b_part = "+%.4fP" %self.b
-    return ("w=1/[\s^2^(Fo^2^)+(%sP)^2^%s]"
+    return (r"w=1/[\s^2^(Fo^2^)+(%sP)^2^%s]"
             " where P=(Fo^2^+2Fc^2^)/3" %(a, b_part))
 
   def type(self):

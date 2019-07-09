@@ -570,7 +570,7 @@ def export_bins_table_data(bins, title="Statistics by resolution bin"):
   data_rows = []
   for bin in bins :
     bin_stats = []
-    (min_res_str, max_res_str) = re.sub("\s*", "", bin.d_range).split("-")
+    (min_res_str, max_res_str) = re.sub(r"\s*", "", bin.d_range).split("-")
     (min_res, max_res) = (string.atof(min_res_str), string.atof(max_res_str))
     bin_stats.append(1 / (max_res ** 2))
     for stat_attr_name in table_stats :

@@ -294,7 +294,7 @@ class any_reflection_file(object):
         shelx_file.seek(0)
         remaining = shelx_file.read()
         shelx_file.close()
-        m = re.search("^HKLF\s*(\d)", remaining, re.X|re.M|re.S)
+        m = re.search(r"^HKLF\s*(\d)", remaining, re.X|re.M|re.S)
         if m is None:
           raise Sorry("%s does not contain the mandatory HKLF instruction"
                       % shelx_file.name)

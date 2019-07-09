@@ -128,7 +128,7 @@ class table_data(object):
     if (reference_marks is not None):
       assert (len(reference_marks) == len(graph_columns) == 1)
     if (data is not None) : # check column size consistency
-      lengths = set([ len(column) for column in data ])
+      lengths = { len(column) for column in data }
       assert len(lengths) == 1
     self._is_complete = False
     self._graphs = {}
@@ -188,11 +188,11 @@ class table_data(object):
     assert remainder == '', 'loggraph table has %d bytes following the table end' % len(remainder)
 
     if '$TABLE' in header:
-      title = re.search('\$TABLE\s*:(.*?)(:|\n|$)', header, re.MULTILINE)
+      title = re.search('\\$TABLE\\s*:(.*?)(:|\n|$)', header, re.MULTILINE)
       if title:
         self.title = title.group(1).strip()
 
-    graphs = re.search('\$(GRAPHS|SCATTER)[\s\n]*((:[^:\n]*:[^:\n]*:[^:\n]*(:|$)[\s\n]*)*)($|\$)', header, re.MULTILINE)
+    graphs = re.search('\\$(GRAPHS|SCATTER)[\\s\n]*((:[^:\n]*:[^:\n]*:[^:\n]*(:|$)[\\s\n]*)*)($|\\$)', header, re.MULTILINE)
     if graphs:
       if graphs.group(1) == 'GRAPHS':
         self.plot_type = "GRAPH"
@@ -208,7 +208,7 @@ class table_data(object):
 
     # Newlines, spaces, tabs etc. are not allowed in column names.
     # Treat them as separators.
-    columns = re.sub('\s+', ' ', columns).split(' ')
+    columns = re.sub(r'\s+', ' ', columns).split(' ')
     data_width = len(columns)
     self.column_labels = [ lbl.replace('_', ' ') for lbl in columns ]
     if self.column_labels[0] in ("1/d^2", "1/d**2", "1/resol^2"):
@@ -217,7 +217,7 @@ class table_data(object):
     self.data = [[] for x in range(data_width)]
 
     # Now load the data
-    data = re.sub('\s+', ' ', data).split(' ')
+    data = re.sub(r'\s+', ' ', data).split(' ')
     for entry, datum in enumerate(data):
       self.data[entry % data_width].append(_tolerant_float(datum))
 
@@ -306,7 +306,7 @@ class table_data(object):
     out = _formatting_buffer(indent)
     if self.title is not None :
       out += self.title
-    trailing_spaces = re.compile("\ *$")
+    trailing_spaces = re.compile(r"\ *$")
     labels = " ".join(self._format_labels(self.column_labels, column_width))
     out += trailing_spaces.sub("", labels)
     nrows = len(data[0])
@@ -397,7 +397,7 @@ class table_data(object):
       out += ":%s:%s:\n" % (graph_types[i],
                            ",".join([ "%d"%(x+1) for x in graph_columns[i] ]))
     out += "$$\n"
-    re_spaces = re.compile("[\ ]{1,}")
+    re_spaces = re.compile(r"[\ ]{1,}")
     labels = [ re_spaces.sub("_", lab) for lab in column_labels ]
     if column_width is None :
       column_width = max(self._max_column_width(precision),
@@ -407,7 +407,7 @@ class table_data(object):
     labels = [ re_spaces.sub("_", lab) for lab in column_labels ]
     out += "%s $$\n" % "  ".join([ f2 % lab for lab in labels ])
     out += "$$\n"
-    trailing_spaces = re.compile("\ *$")
+    trailing_spaces = re.compile(r"\ *$")
     for j in range(len(data[0])):
       row = [ col[j] for col in data ]
       frow = self._format_num_row(row, column_width, precision)
@@ -613,7 +613,7 @@ def import_ccp4i_logfile(file_name=None, log_lines=None):
   sections_read = 0
   for line in log_lines :
     line = line.strip()
-    if re.match("\$TABLE\s*:", line):
+    if re.match(r"\$TABLE\s*:", line):
       current_lines = [ line ]
       sections_read = 0
     elif line[-2:] == "$$" and current_lines is not None :

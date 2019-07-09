@@ -827,8 +827,8 @@ def expand_selection_to_entire_atom_groups(selection, pdb_atoms):
   return selection_complete
 
 def convert_wildcards_in_chain_id(chain_id):
-  chain_id = chain_id.replace("?", "\?")
-  chain_id = chain_id.replace("*", "\*")
+  chain_id = chain_id.replace("?", r"\?")
+  chain_id = chain_id.replace("*", r"\*")
   return chain_id
 
 def chain_is_needed(selection, chain_selections):

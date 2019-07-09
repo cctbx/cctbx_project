@@ -9,20 +9,20 @@ from iotbx.shelx import tokens
 class command_stream(object):
   """ An ins/res file parsed as a stream of commands """
 
-  commands_allowing_atom_names = dict([ (cmd, 1) for cmd in [
+  commands_allowing_atom_names = { cmd: 1 for cmd in [
     'ANIS', 'BIND', 'BLOC', 'BOND', 'CHIV', 'CONF', 'CONN', 'DANG', 'DELU',
     'DFIX', 'EADP', 'EXYZ', 'FLAT', 'FREE', 'HFIX', 'HTAB', 'ISOR', 'MPLA',
     'NCSY', 'OMIT', 'RTAB', 'SADI', 'SAME', 'SIMU', 'RIGU'
-  ]])
+  ]}
 
-  shelx_commands = dict([ (cmd, 1) for cmd in [
+  shelx_commands = { cmd: 1 for cmd in [
     'ACTA', 'AFIX', 'BASF', 'BUMP', 'CELL', 'CGLS', 'DAMP', 'DEFS', 'DISP',
     'END' , 'EQIV', 'EXTI', 'FEND', 'FMAP', 'FRAG', 'FVAR', 'GRID', 'HKLF',
     'HOPE', 'L.S.', 'LATT', 'LAUE', 'LIST', 'MERG', 'MOLE', 'MORE', 'MOVE',
     'MUST', 'PART', 'PLAN', 'REM' , 'RESI', 'SFAC', 'SHEL', 'SIZE', 'SPEC',
     'STIR', 'SUMP', 'SWAT', 'SYMM', 'TEMP', 'TIME', 'TITL', 'TWIN', 'UNIT',
     'WGHT', 'WPDB', 'ZERR'
-  ]])
+  ]}
   shelx_commands.update(commands_allowing_atom_names)
 
 
@@ -31,7 +31,7 @@ class command_stream(object):
     if file is None: file = open(filename)
     self.file = file
 
-  _cmd_pat = re.compile("""
+  _cmd_pat = re.compile(r"""
     ^
     (?:
       (TITL | REM)
@@ -59,14 +59,14 @@ class command_stream(object):
     """ %(" | ".join(commands_allowing_atom_names.keys())),
         re.X | re.I)
 
-  _continuation_pat = re.compile("""
+  _continuation_pat = re.compile(r"""
     ^
     \s+
     ([^!=]*)
     (=?)
     """, re.X | re.I)
 
-  _atom_name_pat = re.compile("""
+  _atom_name_pat = re.compile(r"""
     (?P<name>[a-z] [^_]{0,3})
     (?: _ \$ (?P<symmetry>\d+) )?
     (?: _ (?P<resnum>\d+))?
@@ -77,15 +77,15 @@ class command_stream(object):
     (?P<range> > | <)
     """, re.X | re.I)
 
-  symm_space = re.compile("""
+  symm_space = re.compile(r"""
     (?<! , ) \s+
     """, re.X | re.I)
 
-  _eqiv_pat = re.compile("""
+  _eqiv_pat = re.compile(r"""
     \$ (\d+) \s+ (.*) $
     """, re.X | re.I)
 
-  _include_filename_pat = re.compile("""(\+)(.*)""")
+  _include_filename_pat = re.compile(r"""(\+)(.*)""")
 
   def __iter__(self):
     """

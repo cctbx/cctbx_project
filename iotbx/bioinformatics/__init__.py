@@ -244,9 +244,9 @@ class alignment(object):
 
     # The number of names should match the number of alignments
     if len( alignments ) != len( names ):
-      raise ValueError((
+      raise ValueError(
         "'alignments' and 'names' do not have the same length"
-      ))
+      )
 
     self._set_alignments( alignments = alignments )
 
@@ -429,9 +429,9 @@ class fasta_alignment(alignment):
 
     # The number of names, types and description should be equal
     if len( names ) != len( descriptions ):
-      raise ValueError((
+      raise ValueError(
         "Inconsistent 'alignments' and 'descriptions' attributes"
-        ))
+        )
 
     super( fasta_alignment, self ).__init__( alignments, names, gap )
     self.descriptions = descriptions
@@ -473,9 +473,9 @@ class pir_alignment(alignment):
     # The number of names, types and description should be equal
     if ( len( names ) != len( types )
       or len( names ) != len( descriptions ) ):
-      raise ValueError((
+      raise ValueError(
         "Inconsistent 'alignments', 'types' and 'descriptions' attributes"
-        ))
+        )
 
     super( pir_alignment, self ).__init__( alignments, names, gap )
     self.types = types
@@ -926,8 +926,8 @@ def any_sequence_format(file_name, assign_name_if_not_defined=False,
               print(seq.name)
         return objects, non_compliant
   # fallback: unformatted
-  data = re.sub("\s", "", data)
-  if (re.search("[^a-zA-Z\*]", data) is None):
+  data = re.sub(r"\s", "", data)
+  if (re.search(r"[^a-zA-Z\*]", data) is None):
     seq = sequence(data)
     if (assign_name_if_not_defined ):
       seq.name = os.path.splitext(os.path.basename(file_name))[0]
