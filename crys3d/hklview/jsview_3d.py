@@ -168,9 +168,9 @@ class hklview_3d:
     self.script_has_tooltips = False
     self.url = ""
     self.binarray = "Resolution"
-    self.icolourcol = None
-    self.iradiicol = None
-    self.iarray = None
+    self.colour_scene_id = None
+    self.radii_scene_id = None
+    self.scene_id = None
     self.isnewfile = False
     self.colstraliases = ""
     self.binvals = []
@@ -254,7 +254,7 @@ class hklview_3d:
     if hasattr(diffphil, "filename") \
       or hasattr(diffphil, "spacegroup_choice") \
       or hasattr(diffphil, "merge_data") \
-      or hasattr(diffphil, "column")  \
+      or hasattr(diffphil, "scene_id")  \
       or hasattr(diffphil, "spacegroup_choice") \
       or hasattr(diffphil, "using_space_subgroup") \
       or hasattr(diffphil, "viewer") \
@@ -274,32 +274,25 @@ class hklview_3d:
       or hasattr(diffphil.viewer, "show_anomalous_pairs") \
       ):
         self.sceneisdirty = True
-        #if self.miller_array is None or self.iarray < 0 or self.isnewfile:
+        #if self.miller_array is None or self.scene_id < 0 or self.isnewfile:
         self.ConstructReciprocalSpace(currentphil, merge=self.merge)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     msg = ""
-    if self.iarray >=0:
-      self.scene = self.HKLscenes[self.iarray]
+    if self.scene_id >=0:
+      self.scene = self.HKLscenes[self.scene_id]
       self.DrawNGLJavaScript()
-
       msg = "Rendered %d reflections\n" % self.scene.points.size()
-
-    """if self.settings.inbrowser and hasattr(diffphil, "viewer") and \
-             ( hasattr(diffphil.viewer, "expand_anomalous") or \
-              hasattr(diffphil.viewer, "expand_to_p1") ):
-    """
     msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
-
     return msg
 
 
-  def set_miller_array(self, col=None, merge=None, details=""):
-    if col is not None:
-      self.iarray = col
-    if self.iarray >= 0:
-      self.miller_array = self.HKLscenes[self.iarray].miller_array
-      self.scene = self.HKLscenes[self.iarray]
+  def set_miller_array(self, scene_id=None, merge=None, details=""):
+    if scene_id is not None:
+      self.scene_id = scene_id
+    if self.scene_id >= 0:
+      self.miller_array = self.HKLscenes[self.scene_id].miller_array
+      self.scene = self.HKLscenes[self.scene_id]
     self.merge = merge
     if (self.miller_array is None):
       return
@@ -368,7 +361,6 @@ class hklview_3d:
     return alltooltipstringsdict, allcolstraliases
 
 
-  #def GetTooltipOnTheFly(self, hkl, rotmx=None, anomalous=False):
   def GetTooltipOnTheFly(self, id, rotmx=None, anomalous=False):
     hkl = self.scene.indices[id]
     hklvec = flex.vec3_double( [(hkl[0], hkl[1], hkl[2])])
@@ -421,8 +413,8 @@ class hklview_3d:
 
   def ConstructReciprocalSpace(self, currentphil, merge=None):
     self.mprint("Constructing HKL scenes")
-    #self.miller_array = self.match_valarrays[self.iarray]
-    #self.miller_array = self.proc_arrays[self.iarray]
+    #self.miller_array = self.match_valarrays[self.scene_id]
+    #self.miller_array = self.proc_arrays[self.scene_id]
     self.HKLscenesKey = (currentphil.filename,
                          currentphil.spacegroup_choice,
                          currentphil.using_space_subgroup,
@@ -601,11 +593,11 @@ var MakeHKL_Axis = function()
           Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
 
     # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
-    mincolourscalar = self.HKLscenesMindata[self.icolourcol]
-    maxcolourscalar = self.HKLscenesMaxdata[self.icolourcol]
+    mincolourscalar = self.HKLscenesMindata[self.colour_scene_id]
+    maxcolourscalar = self.HKLscenesMaxdata[self.colour_scene_id]
     if self.settings.sigma_color:
-      mincolourscalar = self.HKLscenesMinsigmas[self.icolourcol]
-      maxcolourscalar = self.HKLscenesMaxsigmas[self.icolourcol]
+      mincolourscalar = self.HKLscenesMinsigmas[self.colour_scene_id]
+      maxcolourscalar = self.HKLscenesMaxsigmas[self.colour_scene_id]
     span = maxcolourscalar - mincolourscalar
     ln = 60
     incr = span/ln
@@ -616,7 +608,7 @@ var MakeHKL_Axis = function()
     for j,sc in enumerate(range(ln)):
       val += incr
       colourscalararray.append( val )
-    if self.HKLscenes[self.icolourcol].miller_array.is_complex_array():
+    if self.HKLscenes[self.colour_scene_id].miller_array.is_complex_array():
       # When displaying phases from map coefficients together with fom values
       # compute colour map chart as a function of fom and phase values (x,y axis)
       incr = 360.0/ln
@@ -628,7 +620,7 @@ var MakeHKL_Axis = function()
         colourscalararray.append( val )
 
       fomarrays = []
-      if self.HKLscenes[self.icolourcol].isUsingFOMs():
+      if self.HKLscenes[self.colour_scene_id].isUsingFOMs():
         fomln = 50
         fom = 1.0
         fomdecr = 1.0/(fomln-1.0)
@@ -651,15 +643,15 @@ var MakeHKL_Axis = function()
         color_all=False,
         gradient_type= self.settings.color_scheme) * 255.0)
 
-    colors = self.HKLscenes[self.icolourcol].colors
-    radii = self.HKLscenes[self.iradiicol].radii
+    colors = self.HKLscenes[self.colour_scene_id].colors
+    radii = self.HKLscenes[self.radii_scene_id].radii
     points = self.scene.points
     hkls = self.scene.indices
     dres = self.scene.dres
     colstr = self.scene.miller_array.info().label_string()
     data = self.scene.data
-    colourlabel = self.HKLscenes[self.icolourcol].colourlabel
-    fomlabel = self.HKLscenes[self.icolourcol].fomlabel
+    colourlabel = self.HKLscenes[self.colour_scene_id].colourlabel
+    fomlabel = self.HKLscenes[self.colour_scene_id].fomlabel
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (colors.size() == radii.size() == nrefls)
     colours = []
@@ -1295,6 +1287,44 @@ mysocket.onmessage = function (e)
       mysocket.send( 'Expanded data' );
     }
 
+    if (msgtype === "UnMouseRotation")
+    {
+      mysocket.send( 'Fix mouse rotation' + pagename );
+      stage.mouseControls.remove("drag-left");
+    }
+
+    if (msgtype === "MouseRotation")
+    {
+      mysocket.send( 'Can mouse rotate ' + pagename );
+      stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
+    }
+
+
+    if (msgtype === "RotateStage")
+    {
+      mysocket.send( 'Rotating stage ' + pagename );
+
+      strs = datval[1].split("\\n");
+      nbins = %d;
+      var sm = new Float32Array(9);
+      var m4 = new NGL.Matrix4();
+      var elmstrs = strs[0].split(",");
+      //alert('rot' + g + ': ' + elmstrs);
+
+      for (j=0; j<9; j++)
+        sm[j] = parseFloat(elmstrs[j]);
+
+      m4.set( sm[0], sm[1], sm[2], 0.0,
+              sm[3], sm[4], sm[5], 0.0,
+              sm[6], sm[7], sm[8], 0.0,
+              0.0,   0.0,   0.0,   1.0
+      );
+      stage.viewerControls.orient(m4);
+      stage.viewer.requestRender();
+
+    }
+
+
 
     if (msgtype === "Testing")
     {
@@ -1520,6 +1550,28 @@ mysocket.onmessage = function (e)
     self.SendWebSockMsg("Testing")
 
 
+  def UnMouseRotation(self): # disable rotating with the mouse
+    self.SendWebSockMsg("UnMouseRotation")
+
+
+  def MouseRotation(self): # enable rotating with the mouse
+    self.SendWebSockMsg("MouseRotation")
+
+
+  def RotateStage(self):
+    uc = self.miller_array.unit_cell()
+    OrtMx = matrix.sqr( uc.orthogonalization_matrix())
+    InvMx = OrtMx.inverse()
+
+    RotMx = matrix.sqr( symop.r().as_double())
+    ortrot = (OrtMx * RotMx * InvMx).as_mat3()
+
+    str_rot = str(ortrot)
+    str_rot = str_rot.replace("(", "")
+    str_rot = str_rot.replace(")", "")
+    msg += str_rot + "\n"
+
+    self.msgqueue.append( ("RotateStage", msg) )
 
 
 

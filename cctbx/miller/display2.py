@@ -352,9 +352,9 @@ class scene(object):
     else :
       data_for_colors = flex.abs(data.deep_copy())
     uc = self.work_array.unit_cell()
-    min_dist = min(uc.reciprocal_space_vector((1,1,1)))
-    min_radius = 0.5 * min_dist
-    max_radius = 45 * min_dist
+    min_dist = min(uc.reciprocal_space_vector((1,1,1))) * self.renderscale
+    min_radius = 0.05 * min_dist
+    max_radius = 0.45 * min_dist
     if ((self.multiplicities is not None) and
         (settings.scale_radii_multiplicity)):
       data_for_radii = self.multiplicities.data().as_double()
@@ -403,7 +403,7 @@ class scene(object):
     if len(data_for_radii):
       dat2 = flex.abs(flex.double([e for e in data_for_radii if not math.isnan(e)]))
       # don't divide by 0 if dealing with selection of Rfree array where all values happen to be zero
-      scale = max_radius/(flex.max(dat2) + 1.0)
+      scale = max_radius/(flex.max(dat2) + 0.001)
       radii = data_for_radii * (self.settings.scale * scale)
       assert radii.size() == colors.size()
     else:

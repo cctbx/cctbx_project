@@ -18,21 +18,21 @@ myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\N
 
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.tncs.mtz")
 myHKLview.GetArrayInfo()
-myHKLview.SetColumn(0)
+myHKLview.SetScene(0)
 
 myHKLview.SetRadiiScale(3, nth_power_scale=1)
-myHKLview.SetColourColumn(3)
-myHKLview.SetRadiusColumn(7)
+myHKLview.SetColourScene(3)
+myHKLview.SetRadiusScene(7)
 
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", htmlfname = "myhkl.html", UseOSBrowser= False)
 
-myHKLview.SetColumn(3)
+myHKLview.SetScene(3)
 myHKLview.SetRadiiScale(3, nth_root_scale=1)
-myHKLview.SetColumnBinThresholds([0, 3.4, 3.5, 3.6, 3.8, 4.0, 4.5, 5.0, 6.0, 8, 9,11, 15, 20, 30, 100 ], "Resolution")
+myHKLview.SetSceneBinThresholds([0, 3.4, 3.5, 3.6, 3.8, 4.0, 4.5, 5.0, 6.0, 8, 9,11, 15, 20, 30, 100 ], "Resolution")
 for i in range(13):
   myHKLview.SetOpacity(i, 0.0)
 
-myHKLview.SetColumnBinThresholds([0, 0.1, 1, 10], 3)
+myHKLview.SetSceneBinThresholds([0, 0.1, 1, 10], 3)
 myHKLview.ExpandToP1(True)
 myHKLview.SetOpacity(2, 0.1)
 
@@ -49,18 +49,18 @@ myHKLview.SetCameraType("persp")
 
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Experiments\CRLF3\DLS20151206CRLF3\5840-F11-X1-Hg-SAD-ONsoak\5840-F11-X1_pk_5_5_1_\xia2\dials-run\DataFiles\mx11235v49_x5840F11X1pk551_free.mtz")
 
-myHKLview.SetColumn(0)
+myHKLview.SetScene(0)
 myHKLview.SetRadiiScale(1, nth_power_scale=0.2)
-myHKLview.SetColumn(1)
-myHKLview.SetColumnBinThresholds(1, [-20, 30, 300, 3000])
+myHKLview.SetScene(1)
+myHKLview.SetSceneBinThresholds(1, [-20, 30, 300, 3000])
 
 
 myHKLview.ShowSlice(True, "h", 20)
 
 
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Phenix\dev-2814-working\modules\phenix_examples\beta-blip\beta_blip_P3221.mtz")
-myHKLview.SetColumn(0)
-myHKLview.SetColumnBinThresholds([3, 3.2, 3.4, 3.8, 4.5, 6, 9, 30])
+myHKLview.SetScene(0)
+myHKLview.SetSceneBinThresholds([3, 3.2, 3.4, 3.8, 4.5, 6, 9, 30])
 for a in range(6):
   myHKLview.SetOpacity(a, 0.0)
 
@@ -140,10 +140,10 @@ mtz1.mtz_object().write("mymtz.mtz")
 from crys3d.hklview import cmdlineframes
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js")
 myHKLview.LoadReflectionsFile("mymtz.mtz")
-myHKLview.SetColumn(0)
+myHKLview.SetScene(0)
 no
 myHKLview.SetRadiiScale(1, nth_power_scale=0.2)
-myHKLview.SetColumnBinThresholds([50, 15, 9])
+myHKLview.SetSceneBinThresholds([50, 15, 9])
 myHKLview.SetOpacity(0, 0.0)
 myHKLview.SetOpacity(1, 0.0)
 myHKLview.SetOpacity(2, 0.0)
@@ -154,25 +154,25 @@ myHKLview.ExpandAnomalous(True)
 myHKLview.ShowMissing(True)
 myHKLview.ShowSystematicAbsences(True)
 
-myHKLview.SetColourColumn(2)
-myHKLview.SetRadiusColumn(3)
-myHKLview.SetColumn(1)
+myHKLview.SetColourScene(2)
+myHKLview.SetRadiusScene(3)
+myHKLview.SetScene(1)
 
-myHKLview.SetColumn(0)
+myHKLview.SetScene(0)
 myHKLview.SetRadiiToSigmas(True)
 
 from crys3d.hklview import cmdlineframes
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", htmlfname = "myhkl.html")
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Tests\MRproblem\MRproblem_15.1.mtz")
 
-myHKLview.SetColumn(2)
+myHKLview.SetScene(2)
 myHKLview.SetColoursToPhases(True)
 
 
 from crys3d.hklview import cmdlineframes
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js")
 myHKLview.LoadReflectionsFile("3RP2_A.1.mtz")
-myHKLview.SetColumn(1,4)
+myHKLview.SetScene(1,4)
 myHKLview.SetRadiiScale(1, nth_power_scale=0.0)
 myHKLview.ExpandToP1(True)
 myHKLview.ExpandAnomalous(True)
@@ -184,9 +184,9 @@ myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Work\TNCS\4N3E\4n3e_final
 
 
 myHKLview.LoadReflectionsFile("r4v9hsf.cif")
-myHKLview.SetColumn(0)
+myHKLview.SetScene(0)
 
-myHKLview.SetColumnBinThresholds([0,2.8, 2.86, 2.88, 2.898, 3.0, 3.03, 3.06, 3.1, 3.15, 3.2, 3.25, 3.3, 3.35, 3.4, 3.5, 3.6, 3.8, 4.0, 4.5, 5.0, 6.0, 8, 9,11, 15, 20, 30, 100 ])
+myHKLview.SetSceneBinThresholds([0,2.8, 2.86, 2.88, 2.898, 3.0, 3.03, 3.06, 3.1, 3.15, 3.2, 3.25, 3.3, 3.35, 3.4, 3.5, 3.6, 3.8, 4.0, 4.5, 5.0, 6.0, 8, 9,11, 15, 20, 30, 100 ])
 for i in range(27):
   myHKLview.SetOpacity(i, 0.0)
 
@@ -326,14 +326,14 @@ class HKLViewFrame() :
     newcurrentphil = oldcurrentphil.fetch(source = pyphilobj)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
 
-    oldcolbintrshld = oldcurrentphil.extract().NGL_HKLviewer.column_bin_thresholds
-    newcolbintrshld = pyphilobj.extract().NGL_HKLviewer.column_bin_thresholds
+    oldcolbintrshld = oldcurrentphil.extract().NGL_HKLviewer.scene_bin_thresholds
+    newcolbintrshld = pyphilobj.extract().NGL_HKLviewer.scene_bin_thresholds
     # fetch_diff doesn't seem able to correclty spot changes
-    # in the multiple scope phil object "NGL_HKLviewer.column_bin_thresholds"
+    # in the multiple scope phil object "NGL_HKLviewer.scene_bin_thresholds"
     # Must do it manually
     if oldcolbintrshld != newcolbintrshld:
       params = newcurrentphil.extract()
-      params.NGL_HKLviewer.column_bin_thresholds = newcolbintrshld
+      params.NGL_HKLviewer.scene_bin_thresholds = newcolbintrshld
       newcurrentphil = self.master_phil.format(python_object = params)
       diffphil = self.master_phil.fetch_diff(source = newcurrentphil)
 
@@ -366,12 +366,12 @@ class HKLViewFrame() :
         self.ResetPhilandViewer(diff_phil)
         self.load_reflections_file(phl.filename)
 
-      #if hasattr(diff, "column") or hasattr(diff, "fom_column") \
-      if hasattr(diff, "column") \
-       or hasattr(diff, "merge_data") or hasattr(diff, "column_bin_thresholds"):
-        #if self.set_column(phl.column, phl.fom_column):
-        if self.set_column(phl.column):
-          self.set_column_bin_thresholds(phl.column_bin_thresholds, phl.bin_array)
+      #if hasattr(diff, "scene_id") or hasattr(diff, "fom_scene_id") \
+      if hasattr(diff, "scene_id") \
+       or hasattr(diff, "merge_data") or hasattr(diff, "scene_bin_thresholds"):
+        #if self.set_scene(phl.scene_id, phl.fom_scene_id):
+        if self.set_scene(phl.scene_id):
+          self.set_scene_bin_thresholds(phl.scene_bin_thresholds, phl.bin_array)
 
       if hasattr(diff, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
@@ -524,7 +524,7 @@ class HKLViewFrame() :
     array_info = self.process_all_miller_arrays(col)
     self.viewer.set_miller_array(col, merge=array_info.merge,
        details=array_info.details_str)
-    self.viewer.proc_arrays=self.procarrays
+    self.viewer.proc_arrays = self.procarrays
     self.viewer.identify_suitable_fomsarrays()
     self.update_space_group_choices()
 
@@ -598,8 +598,8 @@ class HKLViewFrame() :
       self.viewer.isnewfile = True
       #self.params.NGL_HKLviewer.mergedata = None
       self.viewer.iarray = -1
-      self.viewer.icolourcol = -1
-      self.viewer.iradiicol = -1
+      self.viewer.colour_scene_id = -1
+      self.viewer.radii_scene_id = -1
       self.viewer.match_valarrays = []
       self.viewer.proc_arrays = []
       self.spacegroup_choices = []
@@ -632,9 +632,9 @@ class HKLViewFrame() :
         self.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
-      self.mprint("Available miller arrays:", verbose=True)
-      for i,e in enumerate(self.array_infostrs):
-        self.mprint("%d, %s" %(i, e), True)
+      self.mprint("Miller arrays in this file:", verbose=True)
+      for e in self.array_infostrs:
+        self.mprint("%s" %e, True)
       self.NewFileLoaded = True
       if (len(valid_arrays) == 0):
         msg = "No arrays of the supported types in this file."
@@ -701,7 +701,7 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def set_column_bin_thresholds(self, binvals=[], bin_array="Resolution"):
+  def set_scene_bin_thresholds(self, binvals=[], bin_array="Resolution"):
     self.viewer.binarray = bin_array
     if binvals:
       if self.viewer.binarray=="Resolution":
@@ -710,8 +710,8 @@ class HKLViewFrame() :
     self.viewer.UpdateBinValues( binvals )
 
 
-  def SetColumnBinThresholds(self, binvals, bin_array="Resolution"):
-    self.params.NGL_HKLviewer.column_bin_thresholds = binvals
+  def SetSceneBinThresholds(self, binvals, bin_array="Resolution"):
+    self.params.NGL_HKLviewer.scene_bin_thresholds = binvals
     self.params.NGL_HKLviewer.bin_array = bin_array
     self.update_settings()
 
@@ -720,13 +720,13 @@ class HKLViewFrame() :
     self.viewer.SetOpacity(bin, alpha)
 
 
-  #def set_column(self, column, fom_column=None) :
-  def set_column(self, column) :
+  #def set_scene(self, column, fom_column=None) :
+  def set_scene(self, scene_id) :
     self.viewer.binvals = []
-    if column is None:
+    if scene_id is None:
       return False
-    self.viewer.icolourcol = column
-    self.viewer.iradiicol = column
+    self.viewer.colour_scene_id = scene_id
+    self.viewer.radii_scene_id = scene_id
     """
     if self.valid_arrays[column].is_complex_array():
       if fom_column and self.valid_arrays[fom_column].is_real_array():
@@ -739,13 +739,14 @@ class HKLViewFrame() :
     """
     #self.set_miller_array(self.valid_arrays[column])
     #self.set_miller_array(column)
-    self.viewer.set_miller_array(column)
-    self.viewer.miller_array = self.viewer.HKLscenes[column].miller_array
+    self.viewer.set_miller_array(scene_id)
+    self.viewer.miller_array = self.viewer.HKLscenes[scene_id].miller_array
     if (self.viewer.miller_array is None):
       raise Sorry("No data loaded!")
     self.mprint( "Miller array %s runs from hkls: %s to %s" \
      %(self.viewer.miller_array.info().label_string(), self.viewer.miller_array.index_span().min(),
         self.viewer.miller_array.index_span().max() ), True )
+    self.mprint("Spacegroup: %s" %self.viewer.miller_array.space_group().info().symbol_and_number(), True)
     self.update_space_group_choices()
     #self.viewer.DrawNGLJavaScript()
     #self.update_settings()
@@ -753,8 +754,8 @@ class HKLViewFrame() :
     return True
 
 
-  def SetColumn(self, column):
-    self.params.NGL_HKLviewer.column = column
+  def SetScene(self, scene_id):
+    self.params.NGL_HKLviewer.scene_id = scene_id
     self.update_settings()
 
 
@@ -762,13 +763,13 @@ class HKLViewFrame() :
     self.params.NGL_HKLviewer.merge_data = val
     self.update_settings()
 
-  def SetColourColumn(self, colourcol):
-    self.params.NGL_HKLviewer.viewer.icolourcol = colourcol
+  def SetColourScene(self, colourcol):
+    self.params.NGL_HKLviewer.viewer.colour_scene_id = colourcol
     self.update_settings()
 
 
-  def SetRadiusColumn(self, radiuscol):
-    self.params.NGL_HKLviewer.viewer.iradiicol = radiuscol
+  def SetRadiusScene(self, radiuscol):
+    self.params.NGL_HKLviewer.viewer.radii_scene_id = radiuscol
     self.update_settings()
 
 
@@ -885,7 +886,7 @@ masterphilstr = """
 NGL_HKLviewer {
   filename = None
     .type = path
-  column = None
+  scene_id = None
     .type = int
   merge_data = False
     .type = bool
@@ -893,7 +894,7 @@ NGL_HKLviewer {
     .type = int
   using_space_subgroup = False
     .type = bool
-  column_bin_thresholds = None
+  scene_bin_thresholds = None
     .type = float
     .multiple = True
   bin_array = 'Resolution'
