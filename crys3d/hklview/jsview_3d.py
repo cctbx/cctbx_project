@@ -171,6 +171,10 @@ class hklview_3d:
     self.colour_scene_id = None
     self.radii_scene_id = None
     self.scene_id = None
+    self.rotation_mx = matrix.identity(3)
+    self.cameradist = 0.0
+    self.cameratranslation = ( 0,0,0 )
+    self.radangles = ( 0,0,0 )
     self.isnewfile = False
     self.colstraliases = ""
     self.binvals = []
@@ -231,7 +235,7 @@ class hklview_3d:
     self.UseOSBrowser = True
     if 'UseOSBrowser' in kwds:
       self.UseOSBrowser = kwds['UseOSBrowser']
-    self.viewmtrxelms = None
+    self.viewmtrx = None
     self.HKLscenesKey = ( 0, False,
                           self.settings.expand_anomalous, self.settings.expand_to_p1  )
     self.msgqueue = []
@@ -805,6 +809,26 @@ var MakeHKL_Axis = function()
     }
   );
 
+
+  stage.mouseObserver.signals.dragged.add(
+    function ( deltaX, deltaY)
+    {
+      cvorient = stage.viewerControls.getOrientation().elements;
+      msg = String(cvorient);
+      mysocket.send('CurrentViewOrientation:\\n' + msg );
+    }
+  );
+
+
+  stage.mouseObserver.signals.scrolled.add(
+    function (delta)
+    {
+      cvorient = stage.viewerControls.getOrientation().elements;
+      msg = String(cvorient);
+      mysocket.send('CurrentViewOrientation:\\n' + msg );
+    }
+  );
+
     """
 
     spherebufferstr += """
@@ -897,6 +921,9 @@ window.addEventListener( 'resize',
 var stage;
 var shape;
 var shapeComp;
+var vectorrepr;
+var vectorshape;
+var vectorshapeComp;
 var repr;
 var AA = String.fromCharCode(197); // short for angstrom
 var DGR = String.fromCharCode(176); // short for degree symbol
@@ -912,6 +939,7 @@ var radii = [];
 var shapebufs = [];
 var br_shapebufs = [];
 var nrots = 0;
+var cvorient = new NGL.Matrix4();
 
 
 function createElement(name, properties, style)
@@ -984,6 +1012,7 @@ Object.assign(tooltip.style, {
 var hklscene = function()
 {
   shape = new NGL.Shape('shape');
+  vectorshape = new NGL.Shape('vectorshape');
   stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false,
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
@@ -1152,7 +1181,7 @@ mysocket.onmessage = function (e)
     // refresh browser with the javascript file
       cvorient = stage.viewerControls.getOrientation().elements;
       msg = String(cvorient);
-      mysocket.send('Current vieworientation:\\n' + msg );
+      mysocket.send('OrientationBeforeReload:\\n' + msg );
       mysocket.send( 'Refreshing ' + pagename );
       window.location.reload(true);
     }
@@ -1305,11 +1334,10 @@ mysocket.onmessage = function (e)
       mysocket.send( 'Rotating stage ' + pagename );
 
       strs = datval[1].split("\\n");
-      nbins = %d;
       var sm = new Float32Array(9);
       var m4 = new NGL.Matrix4();
       var elmstrs = strs[0].split(",");
-      //alert('rot' + g + ': ' + elmstrs);
+      alert('rot: ' + elmstrs);
 
       for (j=0; j<9; j++)
         sm[j] = parseFloat(elmstrs[j]);
@@ -1324,6 +1352,26 @@ mysocket.onmessage = function (e)
 
     }
 
+    if (msgtype === "AddVector")
+    {
+      strs = datval[1].split("\\n");
+      var sm = new Float32Array(3);
+      var elmstrs = strs[0].split(",");
+      for (j=0; j<3; j++)
+        sm[j] = parseFloat(elmstrs[j]);
+
+      vectorshape.addArrow( [0.0, 0.0, 0.0], sm , [ 1, 1, 0 ], 0.5);
+      vectorshapeComp = stage.addComponentFromObject(vectorshape);
+      vectorrepr = vectorshapeComp.addRepresentation('buffer');
+      stage.viewer.requestRender();
+    }
+
+    if (msgtype === "RemoveVector")
+    {
+      vectorshapeComp.removeRepresentation(vectorrepr);
+      stage.removeComponent(vectorshapeComp);
+      stage.viewer.requestRender();
+    }
 
 
     if (msgtype === "Testing")
@@ -1394,16 +1442,46 @@ mysocket.onmessage = function (e)
       if message != "":
         if "Error:" in message:
           verb = True
-        self.mprint( message, verb)
+        if "Orientation" in message:
+          # The NGL.Matrix4 with the orientation is a list of floats.
+          self.viewmtrx = message[ message.find("\n") + 1: ]
+          lst = self.viewmtrx.split(",")
+          flst = [float(e) for e in lst]
+          #rflst = roundoff(flst)
+          #self.mprint(message.split("\n")[0] + """
+          #%s,  %s,  %s,  %s
+          #%s,  %s,  %s,  %s
+          #%s,  %s,  %s,  %s
+          #%s,  %s,  %s,  %s
+          #""" %tuple(rflst), verb )
+          ScaleRotMx = matrix.sqr( (flst[0], flst[1], flst[2],
+                               flst[4], flst[5], flst[6],
+                               flst[8], flst[9], flst[10]
+                               )
+          )
+          self.cameratranslation = (flst[12], flst[13], flst[14])
+          self.mprint("translation: %s" %str(roundoff(self.cameratranslation)) )
+          self.cameradist = math.pow(ScaleRotMx.determinant(), 1.0/3.0)
+          self.mprint("distance: %s" %roundoff(self.cameradist))
+          self.rotation_mx = ScaleRotMx/self.cameradist
+          rotlst = roundoff(self.rotation_mx.elems)
+          self.mprint("""Rotation:
+  %s,  %s,  %s
+  %s,  %s,  %s
+  %s,  %s,  %s
+          """ %rotlst, verb )
+          self.radangles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles()
+          angles = [180.0*e/math.pi for e in self.radangles]
+          self.mprint("angles: %s" %roundoff(angles))
+        else:
+          self.mprint( message, verb)
         self.lastmsg = message
-      if "Current vieworientation:" in message:
-        # The NGL.Matrix4 with the orientation is a list of floats.
-        self.viewmtrxelms = message[ message.find("\n") + 1: ]
-        sleep(0.2)
+      if "OrientationBeforeReload:" in message:
+        #sleep(0.2)
         self.mprint( "Reorienting client after refresh:" + str( self.websockclient ) )
         if not self.isnewfile:
           #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-          self.msgqueue.append( ("ReOrient", self.viewmtrxelms) )
+          self.msgqueue.append( ("ReOrient", self.viewmtrx) )
         self.isnewfile = False
       if "tooltip_id:" in message:
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -1469,7 +1547,8 @@ mysocket.onmessage = function (e)
     #print "self.websockclient: ",
     message = u"" + msgtype + self.msgdelim + msg
     if self.websockclient:
-      while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg):
+      while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
+        or "CurrentViewOrientation" in self.lastmsg):
         sleep(0.5)
         #self.lastmsg = ""
       self.server.send_message(self.websockclient, message )
@@ -1546,6 +1625,14 @@ mysocket.onmessage = function (e)
     return retmsg
 
 
+  def AddVector(self, x,y,z):
+    self.msgqueue.append( ("AddVector", "%s, %s, %s" %(x,y,z) ))
+
+
+  def RemoveVector(self):
+    self.msgqueue.append( ("RemoveVector", "" ))
+
+
   def TestNewFunction(self):
     self.SendWebSockMsg("Testing")
 
@@ -1563,13 +1650,14 @@ mysocket.onmessage = function (e)
     OrtMx = matrix.sqr( uc.orthogonalization_matrix())
     InvMx = OrtMx.inverse()
 
-    RotMx = matrix.sqr( symop.r().as_double())
-    ortrot = (OrtMx * RotMx * InvMx).as_mat3()
+    RotMx = matrix.sqr( (1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0 ) )
+    #ortrot = (OrtMx * RotMx * InvMx).as_mat3()
+    ortrot = RotMx.as_mat3()
 
     str_rot = str(ortrot)
     str_rot = str_rot.replace("(", "")
     str_rot = str_rot.replace(")", "")
-    msg += str_rot + "\n"
+    msg = str_rot + "\n"
 
     self.msgqueue.append( ("RotateStage", msg) )
 

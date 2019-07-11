@@ -364,7 +364,8 @@ class HKLViewFrame() :
 
       if hasattr(diff, "filename"):
         self.ResetPhilandViewer(diff_phil)
-        self.load_reflections_file(phl.filename)
+        if not self.load_reflections_file(phl.filename):
+          return False
 
       #if hasattr(diff, "scene_id") or hasattr(diff, "fom_scene_id") \
       if hasattr(diff, "scene_id") \
@@ -640,10 +641,11 @@ class HKLViewFrame() :
         msg = "No arrays of the supported types in this file."
         self.mprint(msg, True)
         self.NewFileLoaded=False
+        return False
       elif (len(valid_arrays) >= 1):
         if (set_array):
           self.set_miller_array()
-      return True
+        return True
 
 
   def LoadReflectionsFile(self, filename):
