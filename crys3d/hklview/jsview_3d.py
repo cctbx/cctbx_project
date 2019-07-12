@@ -7,6 +7,7 @@ from cctbx.array_family import flex
 from cctbx import miller
 from scitbx import graphics_utils
 from scitbx import matrix
+import scitbx.math
 from libtbx.utils import Sorry, to_str
 from websocket_server import WebsocketServer
 import threading, math, sys, cmath
@@ -175,6 +176,13 @@ class hklview_3d:
     self.cameradist = 0.0
     self.cameratranslation = ( 0,0,0 )
     self.radangles = ( 0,0,0 )
+    self.angle_x_svec = 0.0
+    self.angle_y_svec = 0.0
+    self.angle_z_svec = 0.0
+    self.angle_z_yzvec = 0.0
+    self.angle_y_yzvec = 0.0
+    self.angle_y_xyvec = 0.0
+    self.angle_x_xyvec = 0.0
     self.isnewfile = False
     self.colstraliases = ""
     self.binvals = []
@@ -562,8 +570,8 @@ class hklview_3d:
     l_axis = self.scene.axes[2]
     nrefls = self.scene.points.size()
 
-    l1 = 110
-    l2= 115
+    l1 = self.scene.renderscale * 1.1
+    l2= self.scene.renderscale * 1.15
     Hstararrowstart = roundoff( [-h_axis[0]*l1, -h_axis[1]*l1, -h_axis[2]*l1] )
     Hstararrowend = roundoff( [h_axis[0]*l1, h_axis[1]*l1, h_axis[2]*l1] )
     Hstararrowtxt  = roundoff( [h_axis[0]*l2, h_axis[1]*l2, h_axis[2]*l2] )
@@ -921,9 +929,9 @@ window.addEventListener( 'resize',
 var stage;
 var shape;
 var shapeComp;
-var vectorrepr;
+var vectorreprs = [];
 var vectorshape;
-var vectorshapeComp;
+var vectorshapeComps = [];
 var repr;
 var AA = String.fromCharCode(197); // short for angstrom
 var DGR = String.fromCharCode(176); // short for degree symbol
@@ -1337,14 +1345,21 @@ mysocket.onmessage = function (e)
       var sm = new Float32Array(9);
       var m4 = new NGL.Matrix4();
       var elmstrs = strs[0].split(",");
-      alert('rot: ' + elmstrs);
+      //alert('rot: ' + elmstrs);
 
       for (j=0; j<9; j++)
         sm[j] = parseFloat(elmstrs[j]);
 
+      /* GL matrices are the transpose of the conventional rotation matrices
       m4.set( sm[0], sm[1], sm[2], 0.0,
               sm[3], sm[4], sm[5], 0.0,
               sm[6], sm[7], sm[8], 0.0,
+              0.0,   0.0,   0.0,   1.0
+      );
+      */
+      m4.set( sm[0], sm[3], sm[6], 0.0,
+              sm[1], sm[4], sm[7], 0.0,
+              sm[2], sm[5], sm[8], 0.0,
               0.0,   0.0,   0.0,   1.0
       );
       stage.viewerControls.orient(m4);
@@ -1361,15 +1376,21 @@ mysocket.onmessage = function (e)
         sm[j] = parseFloat(elmstrs[j]);
 
       vectorshape.addArrow( [0.0, 0.0, 0.0], sm , [ 1, 1, 0 ], 0.5);
-      vectorshapeComp = stage.addComponentFromObject(vectorshape);
-      vectorrepr = vectorshapeComp.addRepresentation('buffer');
+      vectorshapeComps.push( stage.addComponentFromObject(vectorshape) );
+      vectorreprs.push( vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vectorbuffer') )
       stage.viewer.requestRender();
     }
 
-    if (msgtype === "RemoveVector")
+    if (msgtype === "RemoveAllVectors")
     {
-      vectorshapeComp.removeRepresentation(vectorrepr);
-      stage.removeComponent(vectorshapeComp);
+      for (i=0; i<vectorshapeComps.length; i++)
+      {
+        vectorshapeComps[i].removeRepresentation(vectorreprs[i]);
+        stage.removeComponent(vectorshapeComps[i]);
+      }
+      vectorshapeComps = [];
+      vectorreprs = [];
+
       stage.viewer.requestRender();
     }
 
@@ -1396,24 +1417,7 @@ mysocket.onmessage = function (e)
   catch(err)
   {
     mysocket.send('error: ' + err.stack );
-    /*
-    msg = "";
-    for(var n=0; n<Object.getOwnPropertyNames(self).length; n++)
-    {
-      someKey = Object.getOwnPropertyNames(self)[n];
-      // We check if this key exists in the obj
-      var thisval = self[someKey];
-      if (Object(thisval) !== thisval) // only interested in primitive values, not objects
-      {
-        //varname = Object.keys({thisval:0} )[0]
-        msg = msg.concat( someKey + ': ' + String(self[someKey]) + '\\n');
-
-      }
-    }
-    mysocket.send('Variable values: ' + msg );
-    */
   }
-
 
 };
 
@@ -1474,7 +1478,7 @@ mysocket.onmessage = function (e)
           angles = [180.0*e/math.pi for e in self.radangles]
           self.mprint("angles: %s" %roundoff(angles))
         else:
-          self.mprint( message, verb)
+          self.mprint( message, False)
         self.lastmsg = message
       if "OrientationBeforeReload:" in message:
         #sleep(0.2)
@@ -1494,7 +1498,7 @@ mysocket.onmessage = function (e)
           rotmx = self.symops[sym_id].r()
         hkls = self.scene.indices
         #ttip = self.tooltipstringsdict[hkls[id]]
-        self.mprint("tooltip for : " + str(hkls[id]))
+        #self.mprint("tooltip for : " + str(hkls[id]))
         if not is_friedel_mate:
           #ttip = self.GetTooltipOnTheFly(hkls[id], rotmx)
           ttip = self.GetTooltipOnTheFly(id, rotmx)
@@ -1625,12 +1629,40 @@ mysocket.onmessage = function (e)
     return retmsg
 
 
-  def AddVector(self, x,y,z):
-    self.msgqueue.append( ("AddVector", "%s, %s, %s" %(x,y,z) ))
+  def AddReciprocalVector(self, h, k, l):
+    vec = self.miller_array.unit_cell().reciprocal_space_vector((h, k, l))
+    svec = [vec[0]*self.scene.renderscale, vec[1]*self.scene.renderscale, vec[2]*self.scene.renderscale ]
+    self.mprint("cartesian vector is: " + str(roundoff(svec)))
+
+    xyvec = svec[:]
+    xyvec[2] = 0.0
+    xyvecnorm = math.sqrt( xyvec[0]*xyvec[0] + xyvec[1]*xyvec[1] )
+    self.angle_x_xyvec = math.acos( xyvec[0]/xyvecnorm )*180.0/math.pi
+    self.angle_y_xyvec = math.acos( xyvec[1]/xyvecnorm )*180.0/math.pi
+    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(self.angle_x_xyvec, self.angle_y_xyvec))
+
+    yzvec = svec[:]
+    yzvec[0] = 0.0
+    yzvecnorm = math.sqrt( yzvec[1]*yzvec[1] + yzvec[2]*yzvec[2] )
+    self.angle_y_yzvec = math.acos( yzvec[1]/yzvecnorm )*180.0/math.pi
+    self.angle_z_yzvec = math.acos( yzvec[2]/yzvecnorm )*180.0/math.pi
+    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(self.angle_y_yzvec, self.angle_z_yzvec))
+
+    svecnorm = math.sqrt( svec[0]*svec[0] + svec[1]*svec[1] + svec[2]*svec[2] )
+    self.angle_x_svec = math.acos( svec[0]/svecnorm )*180.0/math.pi
+    self.angle_y_svec = math.acos( svec[1]/svecnorm )*180.0/math.pi
+    self.angle_z_svec = math.acos( svec[2]/svecnorm )*180.0/math.pi
+
+    self.mprint("angles to x,y,z axis are: %s, %s, %s" %(self.angle_x_svec, self.angle_y_svec, self.angle_z_svec ))
+    self.msgqueue.append( ("AddVector", "%s, %s, %s" %tuple(svec) ))
 
 
-  def RemoveVector(self):
-    self.msgqueue.append( ("RemoveVector", "" ))
+  def PointReciprocalvectorOut(self):
+    self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
+
+
+  def RemoveReciprocalVector(self):
+    self.msgqueue.append( ("RemoveAllVectors", "" ))
 
 
   def TestNewFunction(self):
@@ -1645,14 +1677,17 @@ mysocket.onmessage = function (e)
     self.SendWebSockMsg("MouseRotation")
 
 
-  def RotateStage(self):
-    uc = self.miller_array.unit_cell()
-    OrtMx = matrix.sqr( uc.orthogonalization_matrix())
-    InvMx = OrtMx.inverse()
+  def RotateStage(self, eulerangles):
+    #uc = self.miller_array.unit_cell()
+    #OrtMx = matrix.sqr( uc.orthogonalization_matrix())
+    #InvMx = OrtMx.inverse()
 
-    RotMx = matrix.sqr( (1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0 ) )
+    #RotMx = matrix.sqr( (1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0 ) )
     #ortrot = (OrtMx * RotMx * InvMx).as_mat3()
-    ortrot = RotMx.as_mat3()
+    radangles = [e*math.pi/180.0 for e in eulerangles]
+    RotMx = scitbx.math.euler_angles_as_matrix(radangles)
+    scaleRot = RotMx * self.cameradist
+    ortrot = scaleRot.as_mat3()
 
     str_rot = str(ortrot)
     str_rot = str_rot.replace("(", "")

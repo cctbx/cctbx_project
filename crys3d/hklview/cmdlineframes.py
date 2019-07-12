@@ -410,8 +410,8 @@ class HKLViewFrame() :
       return False
 
 
-  def mprint(self, m, verbose=False):
-    if self.verbose or verbose:
+  def mprint(self, m, verbose=True):
+    if self.verbose and verbose:
       print(m)
 
 
