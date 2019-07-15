@@ -25,7 +25,11 @@ except (ValueError, ImportError):
   from bootstrap import Toolbox
   from installer_utils import *
 
-BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
+BASE_CCI_PKG_URL = [
+  "http://cci.lbl.gov/cctbx_dependencies",
+  "https://gitcdn.link/repo/dials/dependencies/master",
+  "https://github.com/dials/dependencies/raw/master",
+]
 
 def get_pypi_package_information(package, version=None, information_only=False):
   '''Retrieve information about a PyPi package.'''
