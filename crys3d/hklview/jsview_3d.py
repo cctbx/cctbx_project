@@ -174,6 +174,10 @@ class hklview_3d:
     self.scene_id = None
     self.rotation_mx = matrix.identity(3)
     self.cameradist = 0.0
+    self.clipNear = None
+    self.clipFar = None
+    self.OrigClipNear = None
+    self.OrigClipFar = None
     self.cameratranslation = ( 0,0,0 )
     self.radangles = ( 0,0,0 )
     self.angle_x_svec = 0.0
@@ -248,7 +252,7 @@ class hklview_3d:
                           self.settings.expand_anomalous, self.settings.expand_to_p1  )
     self.msgqueue = []
     self.websockclient = None
-    self.lastmsg = "Ready"
+    self.lastmsg = "" # "Ready"
     self.browserisopen = False
     self.msgdelim = ":\n"
     self.msgqueuethrd = None
@@ -1324,13 +1328,13 @@ mysocket.onmessage = function (e)
       mysocket.send( 'Expanded data' );
     }
 
-    if (msgtype === "UnMouseRotation")
+    if (msgtype === "DisableMouseRotation")
     {
       mysocket.send( 'Fix mouse rotation' + pagename );
       stage.mouseControls.remove("drag-left");
     }
 
-    if (msgtype === "MouseRotation")
+    if (msgtype === "EnableMouseRotation")
     {
       mysocket.send( 'Can mouse rotate ' + pagename );
       stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
@@ -1395,6 +1399,23 @@ mysocket.onmessage = function (e)
     }
 
 
+    if (msgtype === "SetClipPlaneDistances")
+    {
+      strs = datval[1].split("\\n");
+      var elmstrs = strs[0].split(",");
+      stage.viewer.parameters.clipNear = parseFloat(elmstrs[0]);
+      stage.viewer.parameters.clipFar = parseFloat(elmstrs[1]);
+      stage.viewer.requestRender();
+    }
+
+
+    if (msgtype === "GetClipPlaneDistances")
+    {
+      msg = String( [stage.viewer.parameters.clipNear, stage.viewer.parameters.clipFar] )
+      mysocket.send('ReturnClipPlaneDistances:\\n' + msg );
+    }
+
+
     if (msgtype === "Testing")
     {
       // test something new
@@ -1428,6 +1449,12 @@ mysocket.onmessage = function (e)
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
     self.ReloadNGL()
+    sleep(1)
+    self.GetClipPlaneDistances()
+    while not self.clipFar:
+      sleep(0.2)
+    self.OrigClipFar = self.clipFar
+    self.OrigClipNear = self.clipNear
     self.sceneisdirty = False
 
 
@@ -1478,7 +1505,7 @@ mysocket.onmessage = function (e)
           angles = [180.0*e/math.pi for e in self.radangles]
           self.mprint("angles: %s" %roundoff(angles))
         else:
-          self.mprint( message, False)
+          self.mprint( message)
         self.lastmsg = message
       if "OrientationBeforeReload:" in message:
         #sleep(0.2)
@@ -1487,6 +1514,12 @@ mysocket.onmessage = function (e)
           #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
           self.msgqueue.append( ("ReOrient", self.viewmtrx) )
         self.isnewfile = False
+      if "ReturnClipPlaneDistances:" in message:
+        datastr = message[ message.find("\n") + 1: ]
+        lst = datastr.split(",")
+        flst = [float(e) for e in lst]
+        self.clipNear = flst[0]
+        self.clipFar = flst[1]
       if "tooltip_id:" in message:
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         sym_id = eval(message.split("tooltip_id:")[1])[0]
@@ -1512,7 +1545,7 @@ mysocket.onmessage = function (e)
         self.SendWebSockMsg("ShowTooltip", ttip)
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     except Exception as e:
-      self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10))
+      self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), True)
 
 
   def WebBrowserMsgQueue(self):
@@ -1520,8 +1553,11 @@ mysocket.onmessage = function (e)
       while True:
         sleep(0.5)
         if len(self.msgqueue):
+          #print("self.msgqueue: " + str(self.msgqueue))
           pendingmessagetype, pendingmessage = self.msgqueue[0]
           self.SendWebSockMsg(pendingmessagetype, pendingmessage)
+          while not (self.browserisopen and self.websockclient):
+            sleep(0.2)
           self.msgqueue.remove( self.msgqueue[0] )
 # if the html content is huge the browser will be unresponsive until it has finished
 # reading the html content. This may crash this thread. So try restarting this thread until
@@ -1529,6 +1565,20 @@ mysocket.onmessage = function (e)
     except Exception as e:
       self.mprint( str(e) + ", Restarting WebBrowserMsgQueue")
       self.WebBrowserMsgQueue()
+
+
+  def SendWebSockMsg(self, msgtype, msg=""):
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #print "self.server.clients: ", self.server.clients
+    #print "self.websockclient: ",
+    message = u"" + msgtype + self.msgdelim + msg
+    if self.websockclient:
+      while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
+        or "CurrentViewOrientation" in self.lastmsg):
+        sleep(0.5)
+      self.server.send_message(self.websockclient, message )
+    else:
+      self.OpenBrowser()
 
 
   def StartWebsocket(self):
@@ -1543,21 +1593,6 @@ mysocket.onmessage = function (e)
     self.msgqueuethrd = threading.Thread(target = self.WebBrowserMsgQueue )
     self.msgqueuethrd.daemon = True
     self.msgqueuethrd.start()
-
-
-  def SendWebSockMsg(self, msgtype, msg=""):
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    #print "self.server.clients: ", self.server.clients
-    #print "self.websockclient: ",
-    message = u"" + msgtype + self.msgdelim + msg
-    if self.websockclient:
-      while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
-        or "CurrentViewOrientation" in self.lastmsg):
-        sleep(0.5)
-        #self.lastmsg = ""
-      self.server.send_message(self.websockclient, message )
-    else:
-      self.OpenBrowser()
 
 
   def SetOpacity(self, bin, alpha):
@@ -1661,7 +1696,19 @@ mysocket.onmessage = function (e)
     self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
 
 
-  def RemoveReciprocalVector(self):
+  def SetClipPlaneDistances(self, near, far):
+    msg = str(near) + ", " + str(far)
+    self.msgqueue.append( ("SetClipPlaneDistances", msg) )
+
+
+  def GetClipPlaneDistances(self):
+    self.clipNear = None
+    self.clipFar = None
+    self.msgqueue.append( ("GetClipPlaneDistances", "") )
+    #print("GetClipPlaneDistances, msgqueue: " + str(self.msgqueue))
+
+
+  def RemoveAllReciprocalVectors(self):
     self.msgqueue.append( ("RemoveAllVectors", "" ))
 
 
@@ -1669,12 +1716,12 @@ mysocket.onmessage = function (e)
     self.SendWebSockMsg("Testing")
 
 
-  def UnMouseRotation(self): # disable rotating with the mouse
-    self.SendWebSockMsg("UnMouseRotation")
+  def DisableMouseRotation(self): # disable rotating with the mouse
+    self.SendWebSockMsg("DisableMouseRotation")
 
 
-  def MouseRotation(self): # enable rotating with the mouse
-    self.SendWebSockMsg("MouseRotation")
+  def EnableMouseRotation(self): # enable rotating with the mouse
+    self.SendWebSockMsg("EnableMouseRotation")
 
 
   def RotateStage(self, eulerangles):

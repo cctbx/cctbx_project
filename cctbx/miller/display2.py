@@ -168,6 +168,7 @@ class scene(object):
     index_span = array.index_span()
     self.colourlabel = self.miller_array.info().labels[0]
     self.d_min = array.d_min()
+    self.min_dist = 0.0
     self.hkl_range = index_span.abs_range()
     self.axes = [ uc.reciprocal_space_vector((self.hkl_range[0],0,0)),
                   uc.reciprocal_space_vector((0,self.hkl_range[1],0)),
@@ -352,9 +353,9 @@ class scene(object):
     else :
       data_for_colors = flex.abs(data.deep_copy())
     uc = self.work_array.unit_cell()
-    min_dist = min(uc.reciprocal_space_vector((1,1,1))) * self.renderscale
-    min_radius = 0.05 * min_dist
-    max_radius = 0.45 * min_dist
+    self.min_dist = min(uc.reciprocal_space_vector((1,1,1))) * self.renderscale
+    min_radius = 0.05 * self.min_dist
+    max_radius = 0.45 * self.min_dist
     if ((self.multiplicities is not None) and
         (settings.scale_radii_multiplicity)):
       data_for_radii = self.multiplicities.data().as_double()

@@ -410,8 +410,8 @@ class HKLViewFrame() :
       return False
 
 
-  def mprint(self, m, verbose=True):
-    if self.verbose and verbose:
+  def mprint(self, m, verbose=False):
+    if verbose or self.verbose:
       print(m)
 
 
@@ -823,6 +823,24 @@ class HKLViewFrame() :
   def ShowTooltips(self, val):
     self.params.NGL_HKLviewer.tooltips_in_script  = val
     self.update_settings()
+
+
+  def NormalVectorToClipPlane(self, h, k, l, clipNear=None, clipFar=None):
+    self.viewer.RemoveAllReciprocalVectors()
+    self.viewer.AddReciprocalVector(h, k, l)
+    self.viewer.DisableMouseRotation()
+    self.viewer.PointReciprocalvectorOut()
+    if clipNear is None or clipFar is None:
+      halfdist = (self.viewer.OrigClipFar - self.viewer.OrigClipNear) / 2.0
+      clipNear = halfdist - self.viewer.scene.min_dist
+      clipFar = halfdist + self.viewer.scene.min_dist
+    self.viewer.SetClipPlaneDistances(clipNear, clipFar)
+
+
+  def RemoveNormalVectorToClipPlane(self):
+    self.viewer.EnableMouseRotation()
+    self.viewer.RemoveAllReciprocalVectors()
+    self.viewer.SetClipPlaneDistances(0, 100)
 
 
   def GetSpaceGroupChoices(self):
