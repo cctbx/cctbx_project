@@ -173,13 +173,18 @@ class hklview_3d:
     self.radii_scene_id = None
     self.scene_id = None
     self.rotation_mx = matrix.identity(3)
+    self.rot_recip_zvec = None
+    self.rot_zvec = None
     self.cameradist = 0.0
     self.clipNear = None
     self.clipFar = None
+    self.boundingX = None
+    self.boundingY = None
+    self.boundingZ = None
+    self.trackballrotatespeed = None
     self.OrigClipNear = None
     self.OrigClipFar = None
     self.cameratranslation = ( 0,0,0 )
-    self.radangles = ( 0,0,0 )
     self.angle_x_svec = 0.0
     self.angle_y_svec = 0.0
     self.angle_z_svec = 0.0
@@ -1399,6 +1404,21 @@ mysocket.onmessage = function (e)
     }
 
 
+    if (msgtype === "SetTrackBallRotateSpeed")
+    {
+      strs = datval[1].split("\\n");
+      var elmstrs = strs[0].split(",");
+      stage.trackballControls.rotateSpeed = parseFloat(elmstrs[0]);
+    }
+
+
+    if (msgtype === "GetTrackBallRotateSpeed")
+    {
+      msg = String( [stage.trackballControls.rotateSpeed] )
+      mysocket.send('ReturnTrackBallRotateSpeed:\\n' + msg );
+    }
+
+
     if (msgtype === "SetClipPlaneDistances")
     {
       strs = datval[1].split("\\n");
@@ -1413,6 +1433,13 @@ mysocket.onmessage = function (e)
     {
       msg = String( [stage.viewer.parameters.clipNear, stage.viewer.parameters.clipFar] )
       mysocket.send('ReturnClipPlaneDistances:\\n' + msg );
+    }
+
+
+    if (msgtype === "GetBoundingBox")
+    {
+      msg = String( [stage.viewer.boundingBoxSize.x, stage.viewer.boundingBoxSize.y, stage.viewer.boundingBoxSize.z] )
+      mysocket.send('ReturnBoundingBox:\\n' + msg );
     }
 
 
@@ -1451,6 +1478,8 @@ mysocket.onmessage = function (e)
     self.ReloadNGL()
     sleep(1)
     self.GetClipPlaneDistances()
+    self.GetBoundingBox()
+    self.GetTrackBallRotateSpeed()
     while not self.clipFar:
       sleep(0.2)
     self.OrigClipFar = self.clipFar
@@ -1466,7 +1495,6 @@ mysocket.onmessage = function (e)
     #  self.mprint( "Unexpected browser connection was rejected" )
 
 
-
   def OnWebsocketClientMessage(self, client, server, message):
     try:
       verb = self.verbose
@@ -1478,16 +1506,9 @@ mysocket.onmessage = function (e)
           self.viewmtrx = message[ message.find("\n") + 1: ]
           lst = self.viewmtrx.split(",")
           flst = [float(e) for e in lst]
-          #rflst = roundoff(flst)
-          #self.mprint(message.split("\n")[0] + """
-          #%s,  %s,  %s,  %s
-          #%s,  %s,  %s,  %s
-          #%s,  %s,  %s,  %s
-          #%s,  %s,  %s,  %s
-          #""" %tuple(rflst), verb )
-          ScaleRotMx = matrix.sqr( (flst[0], flst[1], flst[2],
-                               flst[4], flst[5], flst[6],
-                               flst[8], flst[9], flst[10]
+          ScaleRotMx = matrix.sqr( (flst[0], flst[4], flst[8],
+                               flst[1], flst[5], flst[9],
+                               flst[2], flst[6], flst[10]
                                )
           )
           self.cameratranslation = (flst[12], flst[13], flst[14])
@@ -1496,14 +1517,20 @@ mysocket.onmessage = function (e)
           self.mprint("distance: %s" %roundoff(self.cameradist))
           self.rotation_mx = ScaleRotMx/self.cameradist
           rotlst = roundoff(self.rotation_mx.elems)
-          self.mprint("""Rotation:
+          self.mprint("""Rotation matrix:
   %s,  %s,  %s
   %s,  %s,  %s
   %s,  %s,  %s
           """ %rotlst, verb )
-          self.radangles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles()
-          angles = [180.0*e/math.pi for e in self.radangles]
-          self.mprint("angles: %s" %roundoff(angles))
+          angles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
+          self.mprint("angles: %s" %str(roundoff(angles)))
+          z_vec = flex.vec3_double( [(0,0,1)])
+          self.rot_zvec = z_vec * self.rotation_mx
+          self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])))
+          rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().fractionalization_matrix() )
+          self.rot_recip_zvec = self.rot_zvec * rfracmx
+          self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
+          self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])))
         else:
           self.mprint( message)
         self.lastmsg = message
@@ -1520,20 +1547,28 @@ mysocket.onmessage = function (e)
         flst = [float(e) for e in lst]
         self.clipNear = flst[0]
         self.clipFar = flst[1]
+      if "ReturnBoundingBox:" in message:
+        datastr = message[ message.find("\n") + 1: ]
+        lst = datastr.split(",")
+        flst = [float(e) for e in lst]
+        self.boundingX = flst[0]
+        self.boundingY = flst[1]
+        self.boundingZ = flst[2]
+      if "ReturnTrackBallRotateSpeed" in message:
+        datastr = message[ message.find("\n") + 1: ]
+        lst = datastr.split(",")
+        flst = [float(e) for e in lst]
+        self.trackballrotatespeed = flst[0]
       if "tooltip_id:" in message:
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         sym_id = eval(message.split("tooltip_id:")[1])[0]
         id = eval(message.split("tooltip_id:")[1])[1]
         is_friedel_mate = eval(message.split("tooltip_id:")[1])[2]
-
         rotmx = None
         if sym_id >= 0:
           rotmx = self.symops[sym_id].r()
         hkls = self.scene.indices
-        #ttip = self.tooltipstringsdict[hkls[id]]
-        #self.mprint("tooltip for : " + str(hkls[id]))
         if not is_friedel_mate:
-          #ttip = self.GetTooltipOnTheFly(hkls[id], rotmx)
           ttip = self.GetTooltipOnTheFly(id, rotmx)
         else:
           # if id > len(hkls) then these hkls are added as the friedel mates during the
@@ -1661,6 +1696,7 @@ mysocket.onmessage = function (e)
       msg += str_rot + "\n"
     #self.SendWebSockMsg(msgtype, msg)
     self.msgqueue.append( (msgtype, msg) )
+    self.GetBoundingBox() # bounding box changes when the extent of the displayed lattice changes
     return retmsg
 
 
@@ -1668,32 +1704,47 @@ mysocket.onmessage = function (e)
     vec = self.miller_array.unit_cell().reciprocal_space_vector((h, k, l))
     svec = [vec[0]*self.scene.renderscale, vec[1]*self.scene.renderscale, vec[2]*self.scene.renderscale ]
     self.mprint("cartesian vector is: " + str(roundoff(svec)))
-
     xyvec = svec[:]
-    xyvec[2] = 0.0
+    xyvec[2] = 0.0 # projection vector of svec in the xy plane
     xyvecnorm = math.sqrt( xyvec[0]*xyvec[0] + xyvec[1]*xyvec[1] )
-    self.angle_x_xyvec = math.acos( xyvec[0]/xyvecnorm )*180.0/math.pi
-    self.angle_y_xyvec = math.acos( xyvec[1]/xyvecnorm )*180.0/math.pi
+    if xyvecnorm > 0.0:
+      self.angle_x_xyvec = math.acos( xyvec[0]/xyvecnorm )*180.0/math.pi
+      self.angle_y_xyvec = math.acos( xyvec[1]/xyvecnorm )*180.0/math.pi
+    else:
+      self.angle_x_xyvec = 90.0
+      self.angle_y_xyvec = 90.0
     self.mprint("angles in xy plane to x,y axis are: %s, %s" %(self.angle_x_xyvec, self.angle_y_xyvec))
-
     yzvec = svec[:]
-    yzvec[0] = 0.0
+    yzvec[0] = 0.0 # projection vector of svec in the yz plane
     yzvecnorm = math.sqrt( yzvec[1]*yzvec[1] + yzvec[2]*yzvec[2] )
-    self.angle_y_yzvec = math.acos( yzvec[1]/yzvecnorm )*180.0/math.pi
-    self.angle_z_yzvec = math.acos( yzvec[2]/yzvecnorm )*180.0/math.pi
+    if yzvecnorm > 0.0:
+      self.angle_y_yzvec = math.acos( yzvec[1]/yzvecnorm )*180.0/math.pi
+      self.angle_z_yzvec = math.acos( yzvec[2]/yzvecnorm )*180.0/math.pi
+    else:
+      self.angle_y_yzvec = 90.0
+      self.angle_z_yzvec = 90.0
     self.mprint("angles in yz plane to y,z axis are: %s, %s" %(self.angle_y_yzvec, self.angle_z_yzvec))
-
     svecnorm = math.sqrt( svec[0]*svec[0] + svec[1]*svec[1] + svec[2]*svec[2] )
     self.angle_x_svec = math.acos( svec[0]/svecnorm )*180.0/math.pi
     self.angle_y_svec = math.acos( svec[1]/svecnorm )*180.0/math.pi
     self.angle_z_svec = math.acos( svec[2]/svecnorm )*180.0/math.pi
-
     self.mprint("angles to x,y,z axis are: %s, %s, %s" %(self.angle_x_svec, self.angle_y_svec, self.angle_z_svec ))
     self.msgqueue.append( ("AddVector", "%s, %s, %s" %tuple(svec) ))
 
 
   def PointReciprocalvectorOut(self):
     self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
+
+
+  def SetTrackBallRotateSpeed(self, trackspeed):
+    msg = str(trackspeed)
+    self.msgqueue.append( ("SetTrackBallRotateSpeed", msg) )
+    self.GetTrackBallRotateSpeed()
+
+
+  def GetTrackBallRotateSpeed(self):
+    self.trackballrotatespeed = None
+    self.msgqueue.append( ("GetTrackBallRotateSpeed", "") )
 
 
   def SetClipPlaneDistances(self, near, far):
@@ -1705,7 +1756,13 @@ mysocket.onmessage = function (e)
     self.clipNear = None
     self.clipFar = None
     self.msgqueue.append( ("GetClipPlaneDistances", "") )
-    #print("GetClipPlaneDistances, msgqueue: " + str(self.msgqueue))
+
+
+  def GetBoundingBox(self):
+    self.boundingX = None
+    self.boundingY = None
+    self.boundingZ = None
+    self.msgqueue.append( ("GetBoundingBox", "") )
 
 
   def RemoveAllReciprocalVectors(self):

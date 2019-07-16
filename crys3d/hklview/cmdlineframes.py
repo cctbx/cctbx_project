@@ -44,7 +44,7 @@ myHKLview.ShowMissing(True)
 myHKLview.GetSpaceGroupChoices()
 myHKLview.SetSpaceGroupChoice(3)
 
-myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Phenix\dev-2814-working\modules\phenix_examples\lysozyme-MRSAD\lyso2001_scala1.mtz")
+myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Phenix\phenix-installer-dev-3484-win7vc90\modules\phenix_examples\lysozyme-MRSAD\lyso2001_scala1.mtz")
 myHKLview.SetCameraType("persp")
 
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Experiments\CRLF3\DLS20151206CRLF3\5840-F11-X1-Hg-SAD-ONsoak\5840-F11-X1_pk_5_5_1_\xia2\dials-run\DataFiles\mx11235v49_x5840F11X1pk551_free.mtz")
@@ -825,15 +825,18 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def NormalVectorToClipPlane(self, h, k, l, clipNear=None, clipFar=None):
+  def NormalVectorToClipPlane(self, h, k, l, clipNear=None, clipFar=None, fixorientation=True):
     self.viewer.RemoveAllReciprocalVectors()
     self.viewer.AddReciprocalVector(h, k, l)
-    self.viewer.DisableMouseRotation()
+    if fixorientation:
+      self.viewer.DisableMouseRotation()
+    else:
+      self.viewer.EnableMouseRotation()
     self.viewer.PointReciprocalvectorOut()
     if clipNear is None or clipFar is None:
       halfdist = (self.viewer.OrigClipFar - self.viewer.OrigClipNear) / 2.0
-      clipNear = halfdist - self.viewer.scene.min_dist
-      clipFar = halfdist + self.viewer.scene.min_dist
+      clipNear = halfdist - self.viewer.scene.min_dist*50/self.viewer.boundingZ
+      clipFar = halfdist + self.viewer.scene.min_dist*50/self.viewer.boundingZ
     self.viewer.SetClipPlaneDistances(clipNear, clipFar)
 
 
