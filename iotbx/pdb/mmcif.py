@@ -528,10 +528,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def get_program_name(self):
     software_name = self.cif_block.get('_software.name')
     software_classification = self.cif_block.get('_software.classification')
-    if (isinstance(software_classification, string_types) and
-        software_classification == 'refinement'):
-      return software_name
-    if software_classification is not None:
+    if isinstance(software_classification, string_types):
+      if software_classification == 'refinement':
+        return software_name
+    elif software_classification is not None:
       i = flex.first_index(software_classification, 'refinement')
       if i >= 0: return software_name[i]
 
