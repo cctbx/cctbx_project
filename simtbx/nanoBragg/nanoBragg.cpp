@@ -1994,7 +1994,7 @@ nanoBragg::init_sources()
         double flux_sum = 0.0, lambda_sum = 0.0, polar_sum = 0.0, div_sum = 0.0;
         for (i=0; i < sources; ++i)
         {
-            xyz = pythony_beams[i].get_direction();
+            xyz = pythony_beams[i].get_sample_to_source_direction();
             source_X[i] = xyz[0];
             source_Y[i] = xyz[1];
             source_Z[i] = xyz[2];
