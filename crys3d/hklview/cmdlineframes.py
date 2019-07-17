@@ -58,7 +58,7 @@ myHKLview.SetSceneBinThresholds(1, [-20, 30, 300, 3000])
 myHKLview.ShowSlice(True, "h", 20)
 
 
-myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Phenix\dev-2814-working\modules\phenix_examples\beta-blip\beta_blip_P3221.mtz")
+myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Phenix\phenix-installer-dev-3484-win7vc90\modules\phenix_examples\beta-blip\beta_blip_P3221.mtz")
 myHKLview.SetScene(0)
 myHKLview.SetSceneBinThresholds([3, 3.2, 3.4, 3.8, 4.5, 6, 9, 30])
 for a in range(6):
@@ -825,7 +825,8 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def NormalVectorToClipPlane(self, h, k, l, clipNear=None, clipFar=None, fixorientation=True):
+  def NormalVectorToClipPlane(self, h, k, l, hkldist=0.0,
+                           clipNear=None, clipFar=None, fixorientation=True):
     self.viewer.RemoveAllReciprocalVectors()
     self.viewer.AddReciprocalVector(h, k, l)
     if fixorientation:
@@ -838,12 +839,14 @@ class HKLViewFrame() :
       clipNear = halfdist - self.viewer.scene.min_dist*50/self.viewer.boundingZ
       clipFar = halfdist + self.viewer.scene.min_dist*50/self.viewer.boundingZ
     self.viewer.SetClipPlaneDistances(clipNear, clipFar)
+    self.viewer.TranslateHKLpoints(h, k, l, hkldist)
 
 
   def RemoveNormalVectorToClipPlane(self):
     self.viewer.EnableMouseRotation()
     self.viewer.RemoveAllReciprocalVectors()
     self.viewer.SetClipPlaneDistances(0, 100)
+    self.viewer.TranslateHKLpoints(0, 0, 0, 0.0)
 
 
   def GetSpaceGroupChoices(self):

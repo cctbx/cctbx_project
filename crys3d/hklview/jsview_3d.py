@@ -84,6 +84,9 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
     settings.expand_to_p1 = False
     mprint("The " + proc_array.info().label_string() + \
          " array is not symmetry unique and therefore won't be expanded")
+  if (settings.inbrowser==True):
+    settings.expand_anomalous = False
+    settings.expand_to_p1 = False
   for (fomsarray, fidx) in fomsarrays_idx:
     hklscene = display.scene(miller_array=proc_array, merge=merge,
       settings=settings, foms_array=fomsarray, fullprocessarray=True )
@@ -1345,7 +1348,6 @@ mysocket.onmessage = function (e)
       stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
     }
 
-
     if (msgtype === "RotateStage")
     {
       mysocket.send( 'Rotating stage ' + pagename );
@@ -1376,6 +1378,19 @@ mysocket.onmessage = function (e)
 
     }
 
+    if (msgtype === "TranslateHKLpoints")
+    {
+      mysocket.send( 'Translating HKLs ' + pagename );
+      strs = datval[1].split("\\n");
+      var sm = new Float32Array(3);
+      var elmstrs = strs[0].split(",");
+      //alert('trans: ' + elmstrs);
+      for (j=0; j<3; j++)
+        sm[j] = parseFloat(elmstrs[j]);
+      shapeComp.setPosition([ sm[0], sm[1], sm[2] ])
+      stage.viewer.requestRender();
+    }
+
     if (msgtype === "AddVector")
     {
       strs = datval[1].split("\\n");
@@ -1386,7 +1401,7 @@ mysocket.onmessage = function (e)
 
       vectorshape.addArrow( [0.0, 0.0, 0.0], sm , [ 1, 1, 0 ], 0.5);
       vectorshapeComps.push( stage.addComponentFromObject(vectorshape) );
-      vectorreprs.push( vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vectorbuffer') )
+      vectorreprs.push( vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vectorbuffer') );
       stage.viewer.requestRender();
     }
 
@@ -1522,6 +1537,15 @@ mysocket.onmessage = function (e)
   %s,  %s,  %s
   %s,  %s,  %s
           """ %rotlst, verb )
+
+          alllst = roundoff(flst)
+          self.mprint("""OrientationMatrix matrix:
+  %s,  %s,  %s,  %s
+  %s,  %s,  %s,  %s
+  %s,  %s,  %s,  %s
+  %s,  %s,  %s,  %s
+          """ %tuple(alllst), verb )
+
           angles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
           self.mprint("angles: %s" %str(roundoff(angles)))
           z_vec = flex.vec3_double( [(0,0,1)])
@@ -1586,7 +1610,7 @@ mysocket.onmessage = function (e)
   def WebBrowserMsgQueue(self):
     try:
       while True:
-        sleep(0.5)
+        sleep(0.2)
         if len(self.msgqueue):
           #print("self.msgqueue: " + str(self.msgqueue))
           pendingmessagetype, pendingmessage = self.msgqueue[0]
@@ -1610,7 +1634,7 @@ mysocket.onmessage = function (e)
     if self.websockclient:
       while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
         or "CurrentViewOrientation" in self.lastmsg):
-        sleep(0.5)
+        sleep(0.2)
       self.server.send_message(self.websockclient, message )
     else:
       self.OpenBrowser()
@@ -1785,20 +1809,41 @@ mysocket.onmessage = function (e)
     #uc = self.miller_array.unit_cell()
     #OrtMx = matrix.sqr( uc.orthogonalization_matrix())
     #InvMx = OrtMx.inverse()
-
     #RotMx = matrix.sqr( (1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0 ) )
     #ortrot = (OrtMx * RotMx * InvMx).as_mat3()
     radangles = [e*math.pi/180.0 for e in eulerangles]
     RotMx = scitbx.math.euler_angles_as_matrix(radangles)
     scaleRot = RotMx * self.cameradist
     ortrot = scaleRot.as_mat3()
-
     str_rot = str(ortrot)
     str_rot = str_rot.replace("(", "")
     str_rot = str_rot.replace(")", "")
     msg = str_rot + "\n"
-
     self.msgqueue.append( ("RotateStage", msg) )
+
+
+  def TranslateHKLpoints(self, h, k, l, mag):
+    # cast this reciprocal vector into cartesian before messaging NGL to translate our HKL points
+    #vec = self.miller_array.unit_cell().reciprocal_space_vector((h, k, l))
+    hkl_vec = flex.vec3_double( [(h,k,l)])
+    rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().orthogonalization_matrix() )
+    cartvec = hkl_vec * rfracmx
+    if cartvec.norm()==0.0 or mag==0.0:
+      svec = (0, 0, 0)
+    else:
+      #cartvec = (mag/cartvec.norm()) * cartvec
+      cartvec = (mag*self.scene.renderscale) * cartvec
+      #svec = [cartvec[0][0]*self.scene.renderscale, cartvec[0][1]*self.scene.renderscale, cartvec[0][2]*self.scene.renderscale ]
+      svec = cartvec[0]
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    self.mprint("cartesian translation vector is: " + str(roundoff(svec)))
+    str_vec = str(svec)
+    str_vec = str_vec.replace("(", "")
+    str_vec = str_vec.replace(")", "")
+    msg = str_vec + "\n"
+    self.msgqueue.append( ("TranslateHKLpoints", msg) )
+
+
 
 
 
