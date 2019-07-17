@@ -48,28 +48,41 @@ class compute_polder_map():
                r_free_flags,
                model,
                params,
-               selection_bool):
+               selection_string):
+               #selection_bool):
     self.f_obs = f_obs
     self.r_free_flags = r_free_flags
     self.xray_structure = model.get_xray_structure()
     self.pdb_hierarchy = model.get_hierarchy()
     self.params = params
-    self.selection_bool = selection_bool
+    self.selection_string = selection_string
+    #self.selection_bool = selection_bool
     #
     self.resolution_factor = self.params.resolution_factor
     self.sphere_radius = self.params.sphere_radius
     self.validation_results = None
     self.fmodel_biased, self.mc_biased = None, None
+    # New scaling method for alternative conformations
+    self.apply_scale_for_altloc = False
 
   # ---------------------------------------------------------------------------
 
   def validate(self):
     assert not None in [self.f_obs, self.xray_structure, self.pdb_hierarchy,
-      self.params, self.selection_bool]
+      self.params, self.selection_string]
 
   # ---------------------------------------------------------------------------
 
   def run(self):
+    self.selection_bool = self.pdb_hierarchy.atom_selection_cache().selection(
+      string = self.selection_string)
+    ph_selected = self.pdb_hierarchy.select(self.selection_bool)
+    ai = ph_selected.altloc_indices()
+    if len(ai) == 2:
+      self.apply_altloc_scale = True
+#    print(list(ai))
+#    print(len(ai))
+#    STOP()
     # When extracting cartesian coordinates, xray_structure needs to be in P1:
     sites_cart_ligand_expanded = self.xray_structure.select(
       self.selection_bool).expand_to_p1(sites_mod_positive = True).sites_cart()

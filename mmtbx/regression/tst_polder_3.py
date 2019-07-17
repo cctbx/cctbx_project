@@ -197,8 +197,9 @@ def exercise(prefix="tst_polder_3"):
   model = mmtbx.model.manager(model_input = pdb_inp)
   pdb_hierarchy = model.get_hierarchy()
 
-  selection_bool = pdb_hierarchy.atom_selection_cache().selection(
-    string = 'chain A')
+  selection_string = 'chain A'
+#  selection_bool = pdb_hierarchy.atom_selection_cache().selection(
+#    string = 'chain A')
 
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
     "tst_polder_3.mtz").as_miller_arrays()
@@ -218,11 +219,11 @@ def exercise(prefix="tst_polder_3"):
   for radius in [3, 5, 7]:
     params.polder.sphere_radius = radius
     polder_object = mmtbx.maps.polder.compute_polder_map(
-      f_obs          = fobs,
-      r_free_flags   = None,
-      model          = model,
-      params         = params.polder,
-      selection_bool = selection_bool)
+      f_obs            = fobs,
+      r_free_flags     = None,
+      model            = model,
+      params           = params.polder,
+      selection_string = selection_string)
     polder_object.validate()
     polder_object.run()
     results = polder_object.get_results()
@@ -248,11 +249,11 @@ def exercise(prefix="tst_polder_3"):
     params.polder.box_buffer = box_buffer
     params.polder.compute_box = True
     polder_object = mmtbx.maps.polder.compute_polder_map(
-      f_obs             = fobs,
-      r_free_flags      = None,
-      model             = model,
-      params            = params.polder,
-      selection_bool    = selection_bool)
+      f_obs               = fobs,
+      r_free_flags        = None,
+      model               = model,
+      params              = params.polder,
+      selection_string    = selection_string)
     polder_object.validate()
     polder_object.run()
     results = polder_object.get_results()

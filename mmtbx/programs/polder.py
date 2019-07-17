@@ -394,8 +394,9 @@ Optional output:
 
   def run(self):
 
-    print('Using model file:', self.params.model_file_name)
-    print('Using reflection file(s):', self.data_manager.get_miller_array_names())
+    print('Using model file:', self.params.model_file_name, file=self.logger)
+    print('Using reflection file(s):', self.data_manager.get_miller_array_names(),
+      file=self.logger)
 
     cs = self.get_crystal_symmetry()
 
@@ -428,11 +429,12 @@ Optional output:
       d_min            = f_obs.d_min())
 
     polder_object = mmtbx.maps.polder.compute_polder_map(
-      f_obs          = f_obs,
-      r_free_flags   = r_free_flags,
-      model          = model,
-      params         = self.params.polder,
-      selection_bool = selection_bool)
+      f_obs            = f_obs,
+      r_free_flags     = r_free_flags,
+      model            = model,
+      params           = self.params.polder,
+      selection_string = self.params.solvent_exclusion_mask_selection)
+      #selection_bool = selection_bool)
     polder_object.validate()
     polder_object.run()
     results = polder_object.get_results()

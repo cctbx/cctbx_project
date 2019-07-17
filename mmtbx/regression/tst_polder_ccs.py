@@ -142,8 +142,9 @@ def exercise(prefix="tst_polder_ccs"):
   pdb_inp = iotbx.pdb.input(file_name = 'tst_polder_ccs.pdb')
   model = mmtbx.model.manager(model_input = pdb_inp)
   pdb_hierarchy = model.get_hierarchy()
-  selection_bool = pdb_hierarchy.atom_selection_cache().selection(
-    string = 'resseq 88')
+  selection_string = 'resseq 88'
+  #selection_bool = pdb_hierarchy.atom_selection_cache().selection(
+  #  string = 'resseq 88')
   #f_obs = abs(xray_structure.structure_factors(d_min=2).f_calc())
   #mtz = f_obs.as_mtz_dataset(column_root_label = "Fobs")
   #mtz.mtz_object().write("bla.mtz")
@@ -161,7 +162,7 @@ def exercise(prefix="tst_polder_ccs"):
     r_free_flags      = None,
     model             = model,
     params            = params.polder,
-    selection_bool    = selection_bool)
+    selection_string    = selection_string)
   polder_object.validate()
   polder_object.run()
   results = polder_object.get_results()
