@@ -211,9 +211,11 @@ class HitrateStats(object):
 
     if len(timestamps_s) > 0:
       timestamps = flex.double([i[0] for i in sorted(enumerate(timestamps_s), key=lambda x:x[1])])
-
-    order = flex.sort_permutation(timestamps)
-    timestamps = timestamps.select(order)
+      order = flex.size_t([i for i in timestamps.iround()])
+      timestamps = flex.sorted(timestamps)
+    else:
+      order = flex.sort_permutation(timestamps)
+      timestamps = timestamps.select(order)
     n_strong = n_strong.select(order)
     two_theta_low = two_theta_low.select(order)
     two_theta_high = two_theta_high.select(order)

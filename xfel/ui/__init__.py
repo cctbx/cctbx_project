@@ -13,7 +13,7 @@ dry_run = False
   .help = If True, the program will create the trial directory but not submit the job, \
           and will show the command that would have been executed.
 facility {
-  name = *lcls standalone
+  name = *lcls standalone sacla
     .type = choice
     .help = Facility for the XFEL gui. LCLS configures the GUI to use LCLS services \
             for data monitoring, job submission, and so forth. Standlone runs the \
@@ -59,6 +59,21 @@ facility {
       .type = bool
       .help = If True, files are submitted as individual runs. Otherwise, groups \
               of files are submitted as single runs
+    }
+    sacla {
+      beamline = 2
+        .type = int
+        .help = Beamline number (1, 2 or 3)
+      experiment = None
+        .type = str
+        .help = Experiment identifier, e.g. 2019A8088
+      rayonix_root = "/xustrg0"
+        .type = path
+        .help = Path to tiff files
+      start_run = None
+        .type = int
+      end_run = None
+        .type = int
     }
 }
 output_folder = ""

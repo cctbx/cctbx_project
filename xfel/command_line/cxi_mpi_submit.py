@@ -343,7 +343,7 @@ class Script(object):
     if params.input.locator is not None:
       locator_file = os.path.join(trialdir, "data.loc")
       shutil.copyfile(params.input.locator, locator_file)
-      data_str = locator_file
+      data_str += locator_file
     if params.input.experiment is None:
       from xfel.ui import known_dials_dispatchers
       if params.input.dispatcher in known_dials_dispatchers:
@@ -351,10 +351,10 @@ class Script(object):
         dispatcher_params = importlib.import_module(known_dials_dispatchers[params.input.dispatcher]).phil_scope.extract()
         if hasattr(dispatcher_params, 'input') and hasattr(dispatcher_params.input, 'trial'):
           assert hasattr(dispatcher_params.input, 'run_num')
-          data_str = "input.trial=%s input.run_num=%s" % ( # pass along for logging
+          data_str += " input.trial=%s input.run_num=%s" % ( # pass along for logging
             params.input.trial, params.input.run_num)
     else:
-      data_str = "input.trial=%s input.experiment=%s input.run_num=%s" % (
+      data_str += " input.trial=%s input.experiment=%s input.run_num=%s" % (
         params.input.trial, params.input.experiment, params.input.run_num)
 
     for arg in dispatcher_args:

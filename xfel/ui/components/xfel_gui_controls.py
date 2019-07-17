@@ -80,7 +80,7 @@ class RunBlockButton(GradButton):
     db = block.app
     self.rnum = block.rungroup_id
     self.first_run, self.last_run = block.get_first_and_last_runs()
-    self.use_ids = db.params.facility.name != 'lcls'
+    self.use_ids = db.params.facility.name not in ['lcls', 'sacla']
 
     GradButton.__init__(self, parent=parent, label='',
                         size=size)

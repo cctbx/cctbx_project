@@ -701,11 +701,36 @@ class xfel_db_application(db_application):
   def get_stats(self, **kwargs):
     return Stats(self, **kwargs)
 
+class sacla_run_finder(object):
+  def __init__(self, params):
+    self.params = params
+    self.known_runs = []
+
+  def list_runs(self):
+    import dbpy
+    assert self.params.facility.sacla.start_run is not None
+    runs = []
+    run = self.params.facility.sacla.start_run
+    while True:
+      if run in self.known_runs:
+        run += 1
+        continue
+      try:
+        info = dbpy.read_runinfo(self.params.facility.sacla.beamline, run)
+      except dbpy.APIError:
+        break
+      if info['runstatus'] == 0:
+        runs.append(run)
+        self.known_runs.append(run)
+      run += 1
+
+    return self.known_runs
+
 class standalone_run_finder(object):
   def __init__(self, params):
     self.params = params
 
-  def list_standalone_runs(self):
+  def list_runs(self):
     import glob
 
     runs = []
@@ -737,8 +762,8 @@ class cheetah_run_finder(standalone_run_finder):
     self.known_runs = []
     self.known_bad_runs = []
 
-  def list_standalone_runs(self):
-    runs = super(cheetah_run_finder, self).list_standalone_runs()
+  def list_runs(self):
+    runs = super(cheetah_run_finder, self).list_runs()
 
     good_runs = []
     for name, path in runs:
