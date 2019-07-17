@@ -3630,7 +3630,7 @@ class find_secondary_structure: # class to look for secondary structure
       print("\nFINAL PDB RECORDS:", file=out)
       print(self.annotation.as_pdb_str(), file=out)
 
-      if self.params.control.verbose: 
+      if self.params.control.verbose:
         print("\n\nFINAL HELIX selections:", file=out)
         print('"%s"' %(self.annotation.overall_helix_selection()), file=out)
         print("\n\nFINAL SHEET selections:", file=out)
