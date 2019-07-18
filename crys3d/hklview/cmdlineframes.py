@@ -57,6 +57,11 @@ myHKLview.SetSceneBinThresholds(1, [-20, 30, 300, 3000])
 
 myHKLview.ShowSlice(True, "h", 20)
 
+# P1 crystal
+myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Tests\P1xtals\5aws-sf.mtz")
+myHKLview.SetScene(0)
+
+
 
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Phenix\phenix-installer-dev-3484-win7vc90\modules\phenix_examples\beta-blip\beta_blip_P3221.mtz")
 myHKLview.SetScene(0)
@@ -267,7 +272,7 @@ class HKLViewFrame() :
     self.merge_answer = [None]
     self.dmin = -1
     self.settings = display.settings()
-    self.verbose = False
+    self.verbose = 0
     if 'verbose' in kwds:
       self.verbose = kwds['verbose']
     kwds['settings'] = self.settings
@@ -289,11 +294,16 @@ class HKLViewFrame() :
       self.msgqueuethrd.start()
 
 
+  def mprint(self, m, verbose=0):
+    if verbose <= self.verbose:
+      print(m)
+
+
   def zmq_listen(self):
     while not self.STOP:
       philstr = self.socket.recv()
       philstr = str(philstr)
-      self.mprint("Received phil string:\n" + philstr)
+      self.mprint("Received phil string:\n" + philstr, verbose=1)
       new_phil = libtbx.phil.parse(philstr)
       self.update_settings(new_phil)
       #print "in zmq listen"
@@ -357,7 +367,7 @@ class HKLViewFrame() :
         return False
 
       diff = diff_phil.extract().NGL_HKLviewer
-      self.mprint("diff phil:\n" + diff_phil.as_str(), True )
+      self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
       self.params = self.currentphil.extract()
       phl = self.params.NGL_HKLviewer
@@ -410,11 +420,6 @@ class HKLViewFrame() :
       return False
 
 
-  def mprint(self, m, verbose=False):
-    if verbose or self.verbose:
-      print(m)
-
-
   def update_clicked (self, index) :#hkl, d_min=None, value=None) :
     if (index is None) :
       self.settings_panel.clear_reflection_info()
@@ -463,7 +468,7 @@ class HKLViewFrame() :
         while 1:
           philstr = self.socket.recv()
           philstr = str(philstr)
-          self.mprint("process_miller_array, Received phil:\n" + philstr, True)
+          self.mprint("Received phil:\n" + philstr, verbose=2)
           new_phil = libtbx.phil.parse(philstr)
           #working_phil = self.master_phil.fetch(source = new_phil)
           params = new_phil.extract().NGL_HKLviewer
@@ -567,7 +572,7 @@ class HKLViewFrame() :
       arr = arr.merge_equivalents().array().set_info(validarray.info())
       arr = self.detect_Rfree(arr)
       othervalidarrays.append( arr )
-    self.mprint( "MERGING 2")
+    self.mprint( "MERGING 2", verbose=2)
     self.viewer.proc_arrays = othervalidarrays
     self.params.NGL_HKLviewer.using_space_subgroup = True
     #self.viewer.identify_suitable_fomsarrays()
@@ -615,7 +620,7 @@ class HKLViewFrame() :
         #arrays = f.file_server.miller_arrays
       except Exception as e :
         self.NewFileLoaded=False
-        self.mprint(to_str(e), True)
+        self.mprint(to_str(e))
         arrays = []
       valid_arrays = []
       self.array_infostrs = []
@@ -627,19 +632,19 @@ class HKLViewFrame() :
         if (not array.is_real_array()) and (not array.is_complex_array()) \
          and (not array.is_integer_array()) and (not array.is_bool_array()) :
           self.mprint('Ignoring miller array \"%s\" of %s' \
-            %(array.info().label_string(), type(array.data()[0]) ), True )
+            %(array.info().label_string(), type(array.data()[0]) ) )
           continue
         self.array_infostrs.append( ArrayInfo(array, self.mprint).infostr )
         self.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
-      self.mprint("Miller arrays in this file:", verbose=True)
+      self.mprint("Miller arrays in this file:")
       for e in self.array_infostrs:
-        self.mprint("%s" %e, True)
+        self.mprint("%s" %e)
       self.NewFileLoaded = True
       if (len(valid_arrays) == 0):
         msg = "No arrays of the supported types in this file."
-        self.mprint(msg, True)
+        self.mprint(msg)
         self.NewFileLoaded=False
         return False
       elif (len(valid_arrays) >= 1):
@@ -747,8 +752,8 @@ class HKLViewFrame() :
       raise Sorry("No data loaded!")
     self.mprint( "Miller array %s runs from hkls: %s to %s" \
      %(self.viewer.miller_array.info().label_string(), self.viewer.miller_array.index_span().min(),
-        self.viewer.miller_array.index_span().max() ), True )
-    self.mprint("Spacegroup: %s" %self.viewer.miller_array.space_group().info().symbol_and_number(), True)
+        self.viewer.miller_array.index_span().max() ) )
+    self.mprint("Spacegroup: %s" %self.viewer.miller_array.space_group().info().symbol_and_number())
     self.update_space_group_choices()
     #self.viewer.DrawNGLJavaScript()
     #self.update_settings()
@@ -833,7 +838,7 @@ class HKLViewFrame() :
       self.viewer.DisableMouseRotation()
     else:
       self.viewer.EnableMouseRotation()
-    self.viewer.PointReciprocalvectorOut()
+    #self.viewer.PointReciprocalvectorOut()
     if clipNear is None or clipFar is None:
       halfdist = (self.viewer.OrigClipFar - self.viewer.OrigClipNear) / 2.0
       clipNear = halfdist - self.viewer.scene.min_dist*50/self.viewer.boundingZ
@@ -849,12 +854,23 @@ class HKLViewFrame() :
     self.viewer.TranslateHKLpoints(0, 0, 0, 0.0)
 
 
+  def SetTrackBallRotateSpeed(self, trackspeed):
+    self.viewer.SetTrackBallRotateSpeed(trackspeed)
+
+
+  def GetTrackBallRotateSpeed(self):
+    self.viewer.GetTrackBallRotateSpeed()
+    while self.viewer.trackballrotatespeed is None:
+      time.sleep(0.2)
+    return self.viewer.trackballrotatespeed
+
+
   def GetSpaceGroupChoices(self):
     """
     return array of strings with available subgroups of the space group
     """
     if (self.viewer.miller_array is None) :
-      self.mprint( NOREFLDATA, True)
+      self.mprint( NOREFLDATA)
     if self.spacegroup_choices:
       return [e.symbol_and_number() for e in self.spacegroup_choices]
     return []

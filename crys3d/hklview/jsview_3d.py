@@ -211,7 +211,7 @@ class hklview_3d:
     self.match_valarrays = []
     self.binstrs = []
     self.mapcoef_fom_dict = {}
-    self.verbose = False
+    self.verbose = 0
     if kwds.has_key('verbose'):
       self.verbose = kwds['verbose']
     self.mprint = sys.stdout.write
@@ -331,7 +331,7 @@ class hklview_3d:
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % self.miller_array.unit_cell().parameters()
     self.mprint( "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
       % (array_info.label_string(), details, self.miller_array.indices().size(), \
-          self.miller_array.space_group_info(), uc) )
+          self.miller_array.space_group_info(), uc), verbose=0 )
 
 
   def MakeToolTips(self, HKLscenes):
@@ -436,7 +436,7 @@ class hklview_3d:
 
 
   def ConstructReciprocalSpace(self, currentphil, merge=None):
-    self.mprint("Constructing HKL scenes")
+    self.mprint("Constructing HKL scenes", verbose=0)
     #self.miller_array = self.match_valarrays[self.scene_id]
     #self.miller_array = self.proc_arrays[self.scene_id]
     self.HKLscenesKey = (currentphil.filename,
@@ -466,7 +466,7 @@ class hklview_3d:
         self.HKLscenesMinsigmas,
         self.hkl_scenes_info
       ) =  self.HKLscenesdict[self.HKLscenesKey]
-      self.mprint("Scene key is already present", verbose=True)
+      self.mprint("Scene key is already present", verbose=1)
       #self.sceneisdirty = False
       return True
 
@@ -539,9 +539,9 @@ class hklview_3d:
       self.hkl_scenes_info
     ) =  self.HKLscenesdict[self.HKLscenesKey]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    self.mprint("\nReflection data scenes:", verbose=True)
+    self.mprint("\nReflection data scenes:", verbose=0)
     for j,inf in enumerate(hkl_scenes_info):
-      self.mprint("%d, %s" %(j, inf[0]), verbose=True)
+      self.mprint("%d, %s" %(j, inf[0]), verbose=0)
     self.sceneisdirty = True
     return True
 
@@ -576,23 +576,26 @@ class hklview_3d:
     if self.miller_array is None :
       self.mprint( "A miller array must be selected for rendering the reflections" )
       return
-    self.mprint("Composing NGL JavaScript...")
-    h_axis = self.scene.axes[0]
-    k_axis = self.scene.axes[1]
-    l_axis = self.scene.axes[2]
-    nrefls = self.scene.points.size()
+    self.mprint("Composing JavaScript...")
 
-    l1 = self.scene.renderscale * 1.1
-    l2= self.scene.renderscale * 1.15
-    Hstararrowstart = roundoff( [-h_axis[0]*l1, -h_axis[1]*l1, -h_axis[2]*l1] )
-    Hstararrowend = roundoff( [h_axis[0]*l1, h_axis[1]*l1, h_axis[2]*l1] )
-    Hstararrowtxt  = roundoff( [h_axis[0]*l2, h_axis[1]*l2, h_axis[2]*l2] )
-    Kstararrowstart = roundoff( [-k_axis[0]*l1, -k_axis[1]*l1, -k_axis[2]*l1] )
-    Kstararrowend = roundoff( [k_axis[0]*l1, k_axis[1]*l1, k_axis[2]*l1] )
-    Kstararrowtxt  = roundoff( [k_axis[0]*l2, k_axis[1]*l2, k_axis[2]*l2] )
-    Lstararrowstart = roundoff( [-l_axis[0]*l1, -l_axis[1]*l1, -l_axis[2]*l1] )
-    Lstararrowend = roundoff( [l_axis[0]*l1, l_axis[1]*l1, l_axis[2]*l1] )
-    Lstararrowtxt  = roundoff( [l_axis[0]*l2, l_axis[1]*l2, l_axis[2]*l2] )
+    h_axis = flex.vec3_double([self.scene.axes[0]])
+    k_axis = flex.vec3_double([self.scene.axes[1]])
+    l_axis = flex.vec3_double([self.scene.axes[2]])
+    unit_h_axis = 1.0/h_axis.norm() * h_axis
+    unit_k_axis = 1.0/k_axis.norm() * k_axis
+    unit_l_axis = 1.0/l_axis.norm() * l_axis
+    maxnorm = max(h_axis.norm(), max(k_axis.norm(), l_axis.norm()))
+    l1 = self.scene.renderscale * maxnorm * 1.1
+    l2= self.scene.renderscale * maxnorm * 1.15
+    Hstararrowstart = roundoff( [-unit_h_axis[0][0]*l1, -unit_h_axis[0][1]*l1, -unit_h_axis[0][2]*l1] )
+    Hstararrowend = roundoff( [unit_h_axis[0][0]*l1, unit_h_axis[0][1]*l1, unit_h_axis[0][2]*l1] )
+    Hstararrowtxt  = roundoff( [unit_h_axis[0][0]*l2, unit_h_axis[0][1]*l2, unit_h_axis[0][2]*l2] )
+    Kstararrowstart = roundoff( [-unit_k_axis[0][0]*l1, -unit_k_axis[0][1]*l1, -unit_k_axis[0][2]*l1] )
+    Kstararrowend = roundoff( [unit_k_axis[0][0]*l1, unit_k_axis[0][1]*l1, unit_k_axis[0][2]*l1] )
+    Kstararrowtxt  = roundoff( [unit_k_axis[0][0]*l2, unit_k_axis[0][1]*l2, unit_k_axis[0][2]*l2] )
+    Lstararrowstart = roundoff( [-unit_l_axis[0][0]*l1, -unit_l_axis[0][1]*l1, -unit_l_axis[0][2]*l1] )
+    Lstararrowend = roundoff( [unit_l_axis[0][0]*l1, unit_l_axis[0][1]*l1, unit_l_axis[0][2]*l1] )
+    Lstararrowtxt  = roundoff( [unit_l_axis[0][0]*l2, unit_l_axis[0][1]*l2, unit_l_axis[0][2]*l2] )
     # make arrow font size roughly proportional to radius of highest resolution shell
     #fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
     fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0)))
@@ -616,6 +619,7 @@ var MakeHKL_Axis = function()
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, fontsize,
           Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
 
+    nrefls = self.scene.points.size()
     # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
     mincolourscalar = self.HKLscenesMindata[self.colour_scene_id]
     maxcolourscalar = self.HKLscenesMaxdata[self.colour_scene_id]
@@ -745,7 +749,7 @@ var MakeHKL_Axis = function()
         mstr= "bin[%d] has %d reflections with %s in ]%2.3f; %2.3f]" %(cntbin, nreflsinbin, \
                 colstr, bin1, bin2)
         self.binstrs.append(mstr)
-        self.mprint(mstr, verbose=True)
+        self.mprint(mstr, verbose=0)
 
         spherebufferstr += "\n// %s\n" %mstr
         if self.script_has_tooltips:
@@ -1399,7 +1403,7 @@ mysocket.onmessage = function (e)
       for (j=0; j<3; j++)
         sm[j] = parseFloat(elmstrs[j]);
 
-      vectorshape.addArrow( [0.0, 0.0, 0.0], sm , [ 1, 1, 0 ], 0.5);
+      vectorshape.addArrow( [0.0, 0.0, 0.0], sm , [ 1, 1, 0 ], 0.3);
       vectorshapeComps.push( stage.addComponentFromObject(vectorshape) );
       vectorreprs.push( vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vectorbuffer') );
       stage.viewer.requestRender();
@@ -1494,7 +1498,7 @@ mysocket.onmessage = function (e)
     sleep(1)
     self.GetClipPlaneDistances()
     self.GetBoundingBox()
-    self.GetTrackBallRotateSpeed()
+    self.SetTrackBallRotateSpeed(0.5)
     while not self.clipFar:
       sleep(0.2)
     self.OrigClipFar = self.clipFar
@@ -1505,14 +1509,13 @@ mysocket.onmessage = function (e)
   def OnConnectWebsocketClient(self, client, server):
     #if not self.websockclient:
     self.websockclient = client
-    self.mprint( "Browser connected:" + str( self.websockclient ) )
+    self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
     #else:
     #  self.mprint( "Unexpected browser connection was rejected" )
 
 
   def OnWebsocketClientMessage(self, client, server, message):
     try:
-      verb = self.verbose
       if message != "":
         if "Error:" in message:
           verb = True
@@ -1527,16 +1530,16 @@ mysocket.onmessage = function (e)
                                )
           )
           self.cameratranslation = (flst[12], flst[13], flst[14])
-          self.mprint("translation: %s" %str(roundoff(self.cameratranslation)) )
+          self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=1 )
           self.cameradist = math.pow(ScaleRotMx.determinant(), 1.0/3.0)
-          self.mprint("distance: %s" %roundoff(self.cameradist))
+          self.mprint("distance: %s" %roundoff(self.cameradist), verbose=1)
           self.rotation_mx = ScaleRotMx/self.cameradist
           rotlst = roundoff(self.rotation_mx.elems)
           self.mprint("""Rotation matrix:
   %s,  %s,  %s
   %s,  %s,  %s
   %s,  %s,  %s
-          """ %rotlst, verb )
+          """ %rotlst, verbose=1)
 
           alllst = roundoff(flst)
           self.mprint("""OrientationMatrix matrix:
@@ -1544,23 +1547,23 @@ mysocket.onmessage = function (e)
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
-          """ %tuple(alllst), verb )
+          """ %tuple(alllst), verbose=2)
 
           angles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
           self.mprint("angles: %s" %str(roundoff(angles)))
           z_vec = flex.vec3_double( [(0,0,1)])
           self.rot_zvec = z_vec * self.rotation_mx
-          self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])))
+          self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=1)
           rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().fractionalization_matrix() )
           self.rot_recip_zvec = self.rot_zvec * rfracmx
           self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
-          self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])))
+          self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=1)
         else:
-          self.mprint( message)
+          self.mprint( message, verbose=2)
         self.lastmsg = message
       if "OrientationBeforeReload:" in message:
         #sleep(0.2)
-        self.mprint( "Reorienting client after refresh:" + str( self.websockclient ) )
+        self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=1 )
         if not self.isnewfile:
           #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
           self.msgqueue.append( ("ReOrient", self.viewmtrx) )
@@ -1604,7 +1607,7 @@ mysocket.onmessage = function (e)
         self.SendWebSockMsg("ShowTooltip", ttip)
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     except Exception as e:
-      self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), True)
+      self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
 
 
   def WebBrowserMsgQueue(self):
@@ -1622,7 +1625,7 @@ mysocket.onmessage = function (e)
 # reading the html content. This may crash this thread. So try restarting this thread until
 # browser is ready
     except Exception as e:
-      self.mprint( str(e) + ", Restarting WebBrowserMsgQueue")
+      self.mprint( str(e) + ", Restarting WebBrowserMsgQueue", verbose=2)
       self.WebBrowserMsgQueue()
 
 
@@ -1681,7 +1684,7 @@ mysocket.onmessage = function (e)
       with open(self.hklfname, "w") as f:
         f.write( htmlstr )
       self.url = "file://" + os.path.abspath( self.hklfname )
-      self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname)
+      self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
       if self.UseOSBrowser:
         webbrowser.open(self.url, new=1)
       self.isnewfile = False
@@ -1727,7 +1730,7 @@ mysocket.onmessage = function (e)
   def AddReciprocalVector(self, h, k, l):
     vec = self.miller_array.unit_cell().reciprocal_space_vector((h, k, l))
     svec = [vec[0]*self.scene.renderscale, vec[1]*self.scene.renderscale, vec[2]*self.scene.renderscale ]
-    self.mprint("cartesian vector is: " + str(roundoff(svec)))
+    self.mprint("cartesian vector is: " + str(roundoff(svec)), verbose=1)
     xyvec = svec[:]
     xyvec[2] = 0.0 # projection vector of svec in the xy plane
     xyvecnorm = math.sqrt( xyvec[0]*xyvec[0] + xyvec[1]*xyvec[1] )
@@ -1737,7 +1740,7 @@ mysocket.onmessage = function (e)
     else:
       self.angle_x_xyvec = 90.0
       self.angle_y_xyvec = 90.0
-    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(self.angle_x_xyvec, self.angle_y_xyvec))
+    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(self.angle_x_xyvec, self.angle_y_xyvec), verbose=1)
     yzvec = svec[:]
     yzvec[0] = 0.0 # projection vector of svec in the yz plane
     yzvecnorm = math.sqrt( yzvec[1]*yzvec[1] + yzvec[2]*yzvec[2] )
@@ -1747,12 +1750,12 @@ mysocket.onmessage = function (e)
     else:
       self.angle_y_yzvec = 90.0
       self.angle_z_yzvec = 90.0
-    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(self.angle_y_yzvec, self.angle_z_yzvec))
+    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(self.angle_y_yzvec, self.angle_z_yzvec), verbose=1)
     svecnorm = math.sqrt( svec[0]*svec[0] + svec[1]*svec[1] + svec[2]*svec[2] )
     self.angle_x_svec = math.acos( svec[0]/svecnorm )*180.0/math.pi
     self.angle_y_svec = math.acos( svec[1]/svecnorm )*180.0/math.pi
     self.angle_z_svec = math.acos( svec[2]/svecnorm )*180.0/math.pi
-    self.mprint("angles to x,y,z axis are: %s, %s, %s" %(self.angle_x_svec, self.angle_y_svec, self.angle_z_svec ))
+    self.mprint("angles to x,y,z axis are: %s, %s, %s" %(self.angle_x_svec, self.angle_y_svec, self.angle_z_svec ), verbose=1)
     self.msgqueue.append( ("AddVector", "%s, %s, %s" %tuple(svec) ))
 
 
@@ -1832,11 +1835,11 @@ mysocket.onmessage = function (e)
       svec = (0, 0, 0)
     else:
       #cartvec = (mag/cartvec.norm()) * cartvec
-      cartvec = (mag*self.scene.renderscale) * cartvec
+      cartvec = (mag*self.scene.renderscale/hkl_vec.norm()) * cartvec
       #svec = [cartvec[0][0]*self.scene.renderscale, cartvec[0][1]*self.scene.renderscale, cartvec[0][2]*self.scene.renderscale ]
       svec = cartvec[0]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    self.mprint("cartesian translation vector is: " + str(roundoff(svec)))
+    self.mprint("cartesian translation vector is: " + str(roundoff(svec)), verbose=1)
     str_vec = str(svec)
     str_vec = str_vec.replace("(", "")
     str_vec = str_vec.replace(")", "")
