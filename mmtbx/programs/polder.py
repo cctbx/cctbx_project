@@ -330,6 +330,8 @@ Optional output:
   # ---------------------------------------------------------------------------
   def print_validation(self, results):
     vr = results.validation_results
+    if vr is None:
+      return ''
     print('Map 1: calculated Fobs with ligand')
     print('Map 2: calculated Fobs without ligand')
     print('Map 3: real Fobs data')

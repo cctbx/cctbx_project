@@ -34,6 +34,11 @@ polder {
     .short_caption = Use box
     .help = Reset mask within a box (parallel to unit cell axes) defined by an \
      atom selection
+  altloc_scale = False
+    .type = bool
+    .short_caption = apply scale for altlocs
+    .help = Apply special scaling procedure for alternate conformations \
+     (only one residue, no mix)
 }
 """
 
@@ -54,8 +59,10 @@ class compute_polder_map():
     self.r_free_flags = r_free_flags
     self.xray_structure = model.get_xray_structure()
     self.pdb_hierarchy = model.get_hierarchy()
+    self.model = model
     self.params = params
     self.selection_string = selection_string
+    self.cs = self.xray_structure.crystal_symmetry()
     #
     self.resolution_factor = self.params.resolution_factor
     self.sphere_radius = self.params.sphere_radius
@@ -74,16 +81,85 @@ class compute_polder_map():
     selection_bool = self.pdb_hierarchy.atom_selection_cache().selection(
       string = self.selection_string)
     ph_selected = self.pdb_hierarchy.select(selection_bool)
-    ai = ph_selected.altloc_indices()
-    if len(ai) == 2:
+    altloc_indices = ph_selected.altloc_indices()
+    if (len(altloc_indices) == 2 and '' not in list(altloc_indices) and
+      not self.params.compute_box and self.params.altloc_scale):
       self.apply_scale_for_altloc = True
+    else:
+      self.apply_scale_for_altloc = False
 
     computed_results = self.compute(selection_bool = selection_bool)
     if not self.apply_scale_for_altloc:
       self.computed_results = computed_results
     else:
       # to be changed with modified code but use this to make it run
-      self.computed_results = computed_results
+      self.computed_results = self.compute_if_altloc(
+                                altloc_indices      = altloc_indices,
+                                computed_results_AB = computed_results)
+
+  # ---------------------------------------------------------------------------
+
+  def compute_if_altloc(self, altloc_indices, computed_results_AB):
+    #
+    def combine(mA, mB, sc):
+      #m = (mA+mB*sc)/2
+      m = maptbx.combine_and_maximize_maps(map_data_1=mA, map_data_2=mB*sc, n_real=mB.all())
+      return m/m.sample_standard_deviation()
+    def scale(x, y):
+      x = flex.abs(x)
+      y = flex.abs(y)
+      d = flex.sum(y*y)
+      return flex.sum(x*y)/d
+    def get_map(mc):
+      fft_map = mc.fft_map(resolution_factor=0.25)
+      #fft_map.apply_volume_scaling()
+      fft_map.apply_sigma_scaling()
+      m = fft_map.real_map_unpadded()
+      return m
+    # Not sure if this definition of sel strings can be prone to errors...
+    sel_A_string = self.selection_string + ' altloc %s' % list(altloc_indices)[0]
+    sel_B_string = self.selection_string + ' altloc %s' % list(altloc_indices)[1]
+    sel_AB_string = self.selection_string
+    sel_A = self.model.selection(string=sel_A_string)
+    sel_B = self.model.selection(string=sel_B_string)
+    sel_AB = self.model.selection(string=sel_AB_string)
+    sf_A = self.model.get_sites_frac().select(sel_A)
+    sf_B = self.model.get_sites_frac().select(sel_B)
+    sf_AB = self.model.get_sites_frac().select(sel_AB)
+    #
+    computed_results_A = self.compute(selection_bool = sel_A)
+    computed_results_B = self.compute(selection_bool = sel_B)
+    mc_A_polder = computed_results_A.mc_polder
+    mc_B_polder = computed_results_B.mc_polder
+    mc_AB_polder = computed_results_AB.mc_polder
+    m_A  = get_map(mc_A_polder)
+    m_B  = get_map(mc_B_polder)
+    m_AB = get_map(mc_AB_polder)
+    mv_A = flex.double()
+    mv_B = flex.double()
+    for sf_A_, sf_B_ in zip(sf_A, sf_B):
+      mv_A.append(m_A.tricubic_interpolation(sf_A_))
+      mv_B.append(m_B.tricubic_interpolation(sf_B_))
+    sc = scale(mv_A, mv_B)
+    m = combine(m_A, m_B, sc)
+    ###
+    mv_A = flex.double()
+    mv_B = flex.double()
+    for sf_ in sf_AB:
+      mv_A.append(m.tricubic_interpolation(sf_))
+      mv_B.append(m_AB.tricubic_interpolation(sf_))
+    sc = scale(mv_A, mv_B)
+    m = combine(m, m_AB, sc)
+    #
+    mc = maptbx.map_to_map_coefficients(m=m, cs=self.cs, d_min=mc_A_polder.d_min())
+#    mtz_dataset = mc.as_mtz_dataset(column_root_label='polder')
+#    mtz_object = mtz_dataset.mtz_object()
+#    mtz_object.write(file_name = "%s.mtz"%'polder_cl')
+    #
+    computed_results = computed_results_AB
+    computed_results.mc_polder = mc
+
+    return computed_results
 
   # ---------------------------------------------------------------------------
 
@@ -130,12 +206,12 @@ class compute_polder_map():
      xray_structure = self.xray_structure)
     fmodel_input.update_all_scales()
     # Biased map
-    if (not self.params.compute_box):
+    if self.params.compute_box:
+      fmodel_biased, mc_biased = None, None
+    else:
       fmodel_biased, mc_biased = self.get_fmodel_and_map_coefficients(
           xray_structure = xray_structure_noligand,
           mask_data      = mask_data_all)
-    else:
-      fmodel_biased, mc_biased = None, None
     # Polder map
     fmodel_polder, mc_polder = self.get_fmodel_and_map_coefficients(
       xray_structure = xray_structure_noligand,
@@ -145,13 +221,13 @@ class compute_polder_map():
       xray_structure = xray_structure_noligand,
       mask_data      = mask_data_omit)
     # Validation only applies if selection present in model:
-    if not(self.params.compute_box):
+    if (self.params.compute_box or self.apply_scale_for_altloc):
+      validation_results = None
+    else:
       validation_results = self.validate_polder_map(
         selection_bool = selection_bool,
         xray_structure_noligand = xray_structure_noligand,
         mask_data_polder = mask_data_polder)
-    else:
-      validation_results = None
 
     computed_results = group_args(
       fmodel_input     = fmodel_input,
@@ -177,7 +253,7 @@ class compute_polder_map():
 
   def modify_mask(self, mask_data, sites_cart):
     sel = maptbx.grid_indices_around_sites(
-      unit_cell  = self.f_obs.crystal_symmetry().unit_cell(),
+      unit_cell  = self.cs.unit_cell(),
       fft_n_real = mask_data.focus(),
       fft_m_real = mask_data.all(),
       sites_cart = sites_cart,
@@ -213,11 +289,11 @@ class compute_polder_map():
       frac_min = [x_min, y_min, z_min]
       frac_max = [x_max, y_max, z_max]
 
-      cs = self.xray_structure.crystal_symmetry()
+      #cs = self.xray_structure.crystal_symmetry()
 
       # Add buffer to box if indicated.
       if (box_buffer is not None):
-        cushion = flex.double(cs.unit_cell().fractionalize((box_buffer,)*3))
+        cushion = flex.double(self.cs.unit_cell().fractionalize((box_buffer,)*3))
         frac_min = list(flex.double(frac_min) - cushion)
         frac_max = list(flex.double(frac_max) + cushion)
 
@@ -321,7 +397,7 @@ class compute_polder_map():
     f_obs_2 = abs(fmodel.f_model())
     pdb_hierarchy_selected = self.pdb_hierarchy.select(selection_bool)
     xrs_selected = pdb_hierarchy_selected.extract_xray_structure(
-      crystal_symmetry = self.f_obs.crystal_symmetry())
+      crystal_symmetry = self.cs)
     f_calc = fmodel.f_obs().structure_factors_from_scatterers(
       xray_structure = xray_structure_noligand).f_calc()
     f_mask = fmodel.f_obs().structure_factors_from_map(
