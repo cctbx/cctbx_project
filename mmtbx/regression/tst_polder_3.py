@@ -228,8 +228,8 @@ def exercise(prefix="tst_polder_3"):
     polder_object.run()
     results = polder_object.get_results()
 
-    mmm_list.append(polder_object.mask_data_omit.as_1d().min_max_mean().as_tuple())
-    mmm_list.append(polder_object.mask_data_polder.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(results.mask_data_omit.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(results.mask_data_polder.as_1d().min_max_mean().as_tuple())
 
   for i in range(6):
     assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)
@@ -258,8 +258,8 @@ def exercise(prefix="tst_polder_3"):
     polder_object.run()
     results = polder_object.get_results()
 
-    mmm_list.append(polder_object.mask_data_omit.as_1d().min_max_mean().as_tuple())
-    mmm_list.append(polder_object.mask_data_polder.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(results.mask_data_omit.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(results.mask_data_polder.as_1d().min_max_mean().as_tuple())
 
   for i in range(6):
     assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)

@@ -56,12 +56,9 @@ class compute_polder_map():
     self.pdb_hierarchy = model.get_hierarchy()
     self.params = params
     self.selection_string = selection_string
-    #self.selection_bool = selection_bool
     #
     self.resolution_factor = self.params.resolution_factor
     self.sphere_radius = self.params.sphere_radius
-    self.validation_results = None
-    self.fmodel_biased, self.mc_biased = None, None
     # New scaling method for alternative conformations
     self.apply_scale_for_altloc = False
 
@@ -74,71 +71,107 @@ class compute_polder_map():
   # ---------------------------------------------------------------------------
 
   def run(self):
-    self.selection_bool = self.pdb_hierarchy.atom_selection_cache().selection(
+    selection_bool = self.pdb_hierarchy.atom_selection_cache().selection(
       string = self.selection_string)
-    ph_selected = self.pdb_hierarchy.select(self.selection_bool)
+    ph_selected = self.pdb_hierarchy.select(selection_bool)
     ai = ph_selected.altloc_indices()
     if len(ai) == 2:
-      self.apply_altloc_scale = True
-#    print(list(ai))
-#    print(len(ai))
-#    STOP()
+      self.apply_scale_for_altloc = True
+
+    computed_results = self.compute(selection_bool = selection_bool)
+    if not self.apply_scale_for_altloc:
+      self.computed_results = computed_results
+    else:
+      # to be changed with modified code but use this to make it run
+      self.computed_results = computed_results
+
+  # ---------------------------------------------------------------------------
+
+  def compute(self, selection_bool):
     # When extracting cartesian coordinates, xray_structure needs to be in P1:
     sites_cart_ligand_expanded = self.xray_structure.select(
-      self.selection_bool).expand_to_p1(sites_mod_positive = True).sites_cart()
+      selection_bool).expand_to_p1(sites_mod_positive = True).sites_cart()
     sites_frac_ligand_expanded = self.xray_structure.select(
-      self.selection_bool).expand_to_p1(sites_mod_positive = False).sites_frac()
+      selection_bool).expand_to_p1(sites_mod_positive = False).sites_frac()
     # xray_structure object without ligand/selection
     if (self.params.compute_box):
-      self.xray_structure_noligand = self.xray_structure
+      xray_structure_noligand = self.xray_structure
     else:
-      self.xray_structure_noligand = self.xray_structure.select(~self.selection_bool)
+      xray_structure_noligand = self.xray_structure.select(~selection_bool)
     self.crystal_gridding = self.f_obs.crystal_gridding(
       d_min             = self.f_obs.d_min(),
       symmetry_flags    = maptbx.use_space_group_symmetry,
       resolution_factor = self.resolution_factor)
     n_real = self.crystal_gridding.n_real()
     # Mask using all atoms
-    self.mask_data_all = self.mask_from_xrs_unpadded(
+    mask_data_all = self.mask_from_xrs_unpadded(
       xray_structure = self.xray_structure,
       n_real         = n_real)
     # Mask if ligand is not in model
-    self.mask_data_omit = self.mask_from_xrs_unpadded(
-      xray_structure = self.xray_structure_noligand,
+    mask_data_omit = self.mask_from_xrs_unpadded(
+      xray_structure = xray_structure_noligand,
       n_real         = n_real)
     # Polder mask
     if (self.params.compute_box):
       # TODO: check if mask_omit = mask_all
-      self.mask_data_polder = self.modify_mask_box(
-        mask_data  = self.mask_data_all.deep_copy(),
-        sites_frac =  sites_frac_ligand_expanded)
+      mask_data_polder = self.modify_mask_box(
+        mask_data  = mask_data_all.deep_copy(),
+        sites_frac =  sites_frac_ligand_expanded,
+        selection_bool = selection_bool)
     else:
-      self.mask_data_polder = self.modify_mask(
-        mask_data     = self.mask_data_all.deep_copy(),
+      mask_data_polder = self.modify_mask(
+        mask_data     = mask_data_all.deep_copy(),
         sites_cart    = sites_cart_ligand_expanded)
     # Compute fmodel and map coeffs for input, biased, polder, omit case
     # Input model
-    self.fmodel_input = mmtbx.f_model.manager(
+    fmodel_input = mmtbx.f_model.manager(
      f_obs          = self.f_obs,
      r_free_flags   = self.r_free_flags,
      xray_structure = self.xray_structure)
-    self.fmodel_input.update_all_scales()
+    fmodel_input.update_all_scales()
     # Biased map
     if (not self.params.compute_box):
-      self.fmodel_biased, self.mc_biased = self.get_fmodel_and_map_coefficients(
-          xray_structure = self.xray_structure_noligand,
-          mask_data      = self.mask_data_all)
+      fmodel_biased, mc_biased = self.get_fmodel_and_map_coefficients(
+          xray_structure = xray_structure_noligand,
+          mask_data      = mask_data_all)
+    else:
+      fmodel_biased, mc_biased = None, None
     # Polder map
-    self.fmodel_polder, self.mc_polder = self.get_fmodel_and_map_coefficients(
-      xray_structure = self.xray_structure_noligand,
-      mask_data      = self.mask_data_polder)
+    fmodel_polder, mc_polder = self.get_fmodel_and_map_coefficients(
+      xray_structure = xray_structure_noligand,
+      mask_data      = mask_data_polder)
     # OMIT map
-    self.fmodel_omit, self.mc_omit = self.get_fmodel_and_map_coefficients(
-      xray_structure = self.xray_structure_noligand,
-      mask_data      = self.mask_data_omit)
+    fmodel_omit, mc_omit = self.get_fmodel_and_map_coefficients(
+      xray_structure = xray_structure_noligand,
+      mask_data      = mask_data_omit)
     # Validation only applies if selection present in model:
     if not(self.params.compute_box):
-      self.validate_polder_map()
+      validation_results = self.validate_polder_map(
+        selection_bool = selection_bool,
+        xray_structure_noligand = xray_structure_noligand,
+        mask_data_polder = mask_data_polder)
+    else:
+      validation_results = None
+
+    computed_results = group_args(
+      fmodel_input     = fmodel_input,
+      fmodel_biased    = fmodel_biased,
+      fmodel_omit      = fmodel_omit,
+      fmodel_polder    = fmodel_polder,
+      mask_data_all    = mask_data_all,
+      mask_data_omit   = mask_data_omit,
+      mask_data_polder = mask_data_polder,
+      mc_biased        = mc_biased,
+      mc_polder        = mc_polder,
+      mc_omit          = mc_omit,
+      validation_results = validation_results)
+
+    return computed_results
+
+  # ---------------------------------------------------------------------------
+
+  def get_results(self):
+    return self.computed_results
 
   # ---------------------------------------------------------------------------
 
@@ -156,10 +189,10 @@ class compute_polder_map():
 
   # ---------------------------------------------------------------------------
 
-  def modify_mask_box(self, mask_data, sites_frac):
+  def modify_mask_box(self, mask_data, sites_frac, selection_bool):
     box_buffer = self.params.box_buffer
     # Number of selected atoms
-    n_selected = self.selection_bool.count(True)
+    n_selected = selection_bool.count(True)
     na = mask_data.all()
     n_selected_p1 = sites_frac.size()
     n_boxes = int(n_selected_p1/n_selected)
@@ -167,7 +200,7 @@ class compute_polder_map():
     for n_box in range(n_boxes):
       for i in range(n_selected):
         box_list[n_box].append(sites_frac[n_box + n_boxes*i])
-    na = self.mask_data_all.all()
+    #na = self.mask_data_all.all()
     k = 0
     for box in box_list:
       k+=1
@@ -266,23 +299,10 @@ class compute_polder_map():
 
   # ---------------------------------------------------------------------------
 
-  def get_results(self):
-    return group_args(
-      fmodel_input     = self.fmodel_input,
-      fmodel_biased    = self.fmodel_biased,
-      fmodel_omit      = self.fmodel_omit,
-      fmodel_polder    = self.fmodel_polder,
-      mask_data_all    = self.mask_data_all,
-      mask_data_omit   = self.mask_data_omit,
-      mask_data_polder = self.mask_data_polder,
-      mc_polder        = self.mc_polder,
-      mc_biased        = self.mc_biased,
-      mc_omit          = self.mc_omit,
-      validation_results = self.validation_results)
-
-  # ---------------------------------------------------------------------------
-
-  def validate_polder_map(self):
+  def validate_polder_map(self,
+                          selection_bool,
+                          xray_structure_noligand,
+                          mask_data_polder):
   # Significance check
     fmodel = mmtbx.f_model.manager(
      f_obs          = self.f_obs,
@@ -293,19 +313,19 @@ class compute_polder_map():
       fast            = True)
     f_obs_1 = abs(fmodel.f_model())
     fmodel.update_xray_structure(
-      xray_structure      = self.xray_structure_noligand,
+      xray_structure      = xray_structure_noligand,
       update_f_calc       = True,
       update_f_mask       = True,
       force_update_f_mask = True)
   ## PVA: do we need it? fmodel.update_all_scales(remove_outliers=False)
     f_obs_2 = abs(fmodel.f_model())
-    pdb_hierarchy_selected = self.pdb_hierarchy.select(self.selection_bool)
+    pdb_hierarchy_selected = self.pdb_hierarchy.select(selection_bool)
     xrs_selected = pdb_hierarchy_selected.extract_xray_structure(
       crystal_symmetry = self.f_obs.crystal_symmetry())
     f_calc = fmodel.f_obs().structure_factors_from_scatterers(
-      xray_structure = self.xray_structure_noligand).f_calc()
+      xray_structure = xray_structure_noligand).f_calc()
     f_mask = fmodel.f_obs().structure_factors_from_map(
-      map            = self.mask_data_polder,
+      map            = mask_data_polder,
       use_scale      = True,
       anomalous_flag = False,
       use_sg         = False)
@@ -358,7 +378,7 @@ class compute_polder_map():
     d13 = maptbx.discrepancy_function(map_1=b1, map_2=b3, cutoffs=cutoffs)
     d23 = maptbx.discrepancy_function(map_1=b2, map_2=b3, cutoffs=cutoffs)
     pdb_hierarchy_selected.adopt_xray_structure(box_1.xray_structure_box)
-    self.validation_results = group_args(
+    return group_args(
       box_1 = box_1,
       box_2 = box_2,
       box_3 = box_3,
