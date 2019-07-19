@@ -1020,27 +1020,30 @@ class KnobCtrl(CtrlBase):
 
 class CustomListCtrl(CtrlBase):
   def __init__(self, parent, *args, **kwargs):
+    custom_style = kwargs.pop('style', None)
     CtrlBase.__init__(self, parent=parent, *args, **kwargs)
 
-    self.sizer = wx.GridBagSizer(0, 0) #wx.BoxSizer(wx.VERTICAL)
+    self.sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.sizer)
 
+    style = ulc.ULC_REPORT | \
+            ulc.ULC_HRULES | \
+            ulc.ULC_VRULES | \
+            ulc.ULC_SINGLE_SEL | \
+            ulc.ULC_HAS_VARIABLE_ROW_HEIGHT \
+            #| ulc.ULC_NO_HIGHLIGHT
+    if custom_style:
+      style |= custom_style
+
     # Input List control
-    self.ctr = InputListCtrl(self, ID=wx.ID_ANY,
-                             style=ulc.ULC_REPORT |
-                                   ulc.ULC_HRULES |
-                                   ulc.ULC_VRULES |
-                                   ulc.ULC_SINGLE_SEL |
-                                   ulc.ULC_HAS_VARIABLE_ROW_HEIGHT |
-                                   ulc.ULC_NO_HIGHLIGHT)
-    self.sizer.Add(self.ctr, pos=(0, 0), flag=wx.EXPAND)
-    self.sizer.AddGrowableRow(0)
-    self.sizer.AddGrowableCol(0)
+    self.ctr = InputListCtrl(self, ID=wx.ID_ANY, style=style)
+    self.sizer.Add(self.ctr, 1, flag=wx.EXPAND)
     self.ctr.SetFont(self.cfont)
 
 
 class CustomImageListCtrl(CtrlBase):
-  def __init__(self, parent, size=wx.DefaultSize, content_style='normal'):
+  def __init__(self, parent, size=wx.DefaultSize, content_style='normal',
+               *args, **kwargs):
     CtrlBase.__init__(self, parent=parent, content_style=content_style)
 
     self.sizer = wx.BoxSizer(wx.VERTICAL)
@@ -1055,6 +1058,7 @@ class CustomImageListCtrl(CtrlBase):
                                    ulc.ULC_VRULES)
     self.control_sizer.Add(self.ctr, -1, flag=wx.EXPAND)
     self.sizer.Add(self.control_sizer, 1, flag=wx.EXPAND)
+
 
 class VirtualImageListCtrl(CtrlBase):
   def __init__(self, parent, size=wx.DefaultSize, content_style='normal'):
@@ -1077,8 +1081,25 @@ class VirtualImageListCtrl(CtrlBase):
 class FileListCtrl(CustomListCtrl):
   """ File list window for the input tab """
 
-  def __init__(self, parent, size=(-1, 200)):
-    CustomListCtrl.__init__(self, parent=parent, size=size)
+  _file_types = [
+    'text file',
+    'binary file'
+  ]
+
+  _folder_types = [
+    'text folder',
+    'binary folder'
+  ]
+  _data_types = ['file', 'folder']
+
+  def __init__(self, parent, size=(-1, 400), file_types=None,
+               folder_types=None, data_types=None, *args, **kwargs):
+    CustomListCtrl.__init__(self, parent=parent, size=size,
+                            style=ulc.ULC_STICKY_HIGHLIGHT |
+                                  ulc.ULC_STICKY_NOSELEVENT |
+                                  ulc.ULC_BORDER_SELECT,
+                            # style=ulc.ULC_HOT_TRACKING,
+                            *args, **kwargs)
 
     self.parent = parent
     self.window = parent.window
@@ -1088,6 +1109,15 @@ class FileListCtrl(CustomListCtrl):
     self.all_img_objects = {}
     self.all_proc_pickles = {}
     self.image_count = 0
+
+    # Add custom parameters
+    if file_types:
+      self._file_types = file_types
+    if folder_types:
+      self._folder_types = folder_types
+
+    if data_types:
+      self._data_types = data_types
 
     # Generate columns
     self.ctr.InsertColumn(0, "")
@@ -1104,7 +1134,7 @@ class FileListCtrl(CustomListCtrl):
     self.btn_add_path = GradButton(self, bmp=bmp_add, label=' Add Path',
                                    label_size=norm_font_size)
     self.btn_add_path.Disable()
-    self.btn_browse = GradButton(self, bmp=bmp_browse, label=' Browse...',
+    self.btn_browse = GradButton(self, label=' Browse...',
                                  label_size=norm_font_size)
     self.txt_total_images = wx.StaticText(self, label='0 total images')
     self.button_sizer.Add(self.inp_path, flag=wx.EXPAND)
@@ -1113,10 +1143,8 @@ class FileListCtrl(CustomListCtrl):
     self.button_sizer.Add((20, 0))
     self.button_sizer.Add(self.txt_total_images, flag=wx.ALIGN_RIGHT)
     self.button_sizer.AddGrowableCol(0)
-    # self.button_sizer.AddGrowableCol(3)
 
-    self.sizer.Add(self.button_sizer, pos=(1, 0), border=10,
-                   flag=wx.EXPAND | wx.TOP | wx.BOTTOM)
+    self.sizer.Add(self.button_sizer, flag=wx.EXPAND | wx.TOP, border=10)
 
     # Event bindings
     self.Bind(wx.EVT_BUTTON, self.onAddPath, self.btn_add_path)
@@ -1153,6 +1181,7 @@ class FileListCtrl(CustomListCtrl):
         self.add_item(os.path.abspath(p))
 
   def onBrowse(self, e):
+    obj = e.GetEventObject()
     command_list = [('Browse folders...',
                      lambda evt: self.open_folder_dialog()),
                     ('Browse files...',
@@ -1164,14 +1193,11 @@ class FileListCtrl(CustomListCtrl):
 
   def open_file_dialog(self):
     wx.SystemOptions.SetOption("osx.openfiledialog.always-show-types", "1")
-    wildcard = "Image Files (*.cbf; *.mccd; *.img)|*.cbf;*.mccd;*.img|" \
-               "Image List Files (*.lst; *.txt)|*.lst;*.txt|" \
-               "All Files (*.*)|*.*|"
     file_dlg = wx.FileDialog(self,
                              message="Load File",
                              defaultDir=os.curdir,
-                             defaultFile="*.cbf;*.mccd;*.img",
-                             wildcard=wildcard,
+                             defaultFile='*',
+                             wildcard="All Files (*.*)|*.*|",
                              style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST |
                                    wx.FD_MULTIPLE)
     if file_dlg.ShowModal() == wx.ID_OK:
@@ -1195,18 +1221,13 @@ class FileListCtrl(CustomListCtrl):
     preferred_selection = 0
     inputs, input_type = ginp.get_input(path)
     if os.path.isdir(path):
-      type_choices.extend(['raw image folder', 'image pickle folder'])
+      type_choices.extend(self._folder_types)
       if input_type in type_choices:
         preferred_selection = type_choices.index(input_type)
     elif os.path.isfile(path):
-      if input_type in ('image pickle file', 'raw image file'):
-        type_choices.extend(['raw image file', 'image pickle file'])
-        if input_type in type_choices:
-          preferred_selection = type_choices.index(input_type)
-      elif input_type in ('raw image list', 'image pickle list'):
-        type_choices.extend(['raw image list', 'image pickle list'])
-        if input_type in type_choices:
-          preferred_selection = type_choices.index(input_type)
+      type_choices.extend(self._file_types)
+      if input_type in type_choices:
+        preferred_selection = type_choices.index(input_type)
     return inputs, type_choices, preferred_selection
 
   def add_item(self, path):
@@ -1231,13 +1252,9 @@ class FileListCtrl(CustomListCtrl):
 
     # Set drop-down selection, check it for data and open other tabs
     item.type.type.SetSelection(inp_sel)
-    if item.type.type.GetString(inp_sel) in ['raw image folder',
-                                             'image pickle folder',
-                                             'image pickle file',
-                                             'raw image file',
-                                             'raw image list',
-                                             'image pickle list']:
-      # self.window.set_tool_state(self.window.tb_btn_run, True)
+    sel = item.type.type.GetString(inp_sel)
+    have_data = True in [(t in sel) for t in self._data_types]
+    if have_data:
       self.window.btn_run.Enable()
       self.all_data_images[item.path] = inputs
 
@@ -1291,8 +1308,7 @@ class FileListCtrl(CustomListCtrl):
     for idx in range(self.ctr.GetItemCount()):
       if self.ctr.GetItemData(idx).type_selection != 0:
         data_items += 1
-    self.window.set_tool_state(self.window.tb_btn_run,
-                               (data_items > 0))
+    self.window.set_tool_state(self.window.btn_run, (data_items > 0))
     e.Skip()
 
   def onMagButton(self, e):
@@ -1302,13 +1318,14 @@ class FileListCtrl(CustomListCtrl):
     type = item_obj.type.type.GetString(item_obj.type_selection)
 
     if os.path.isfile(path):
-      if type in ('raw image file', 'image pickle file'):
-        self.view_images([path], img_type=type)
-      elif type in ('raw image list', 'image pickle list'):
-        with open(path, 'r') as f:
-          file_list = [i.replace('\n', '') for i in f.readlines()]
-          self.view_images(file_list, img_type=type)
-      elif type == 'text':
+      if 'image' in type:
+        if 'file' in type:
+          self.view_images([path], img_type=type)
+        elif 'list' in type:
+          with open(path, 'r') as f:
+            file_list = [i.replace('\n', '') for i in f.readlines()]
+            self.view_images(file_list, img_type=type)
+      elif type == 'text' or 'list' in type:
         with open(path, 'r') as f:
           file_list = f.readlines()
           msg = ' '.join(file_list)
@@ -1318,8 +1335,13 @@ class FileListCtrl(CustomListCtrl):
         wx.MessageBox('Unknown file format', 'Warning',
                       wx.OK | wx.ICON_EXCLAMATION)
     elif os.path.isdir(path):
-      file_list, _ = ginp.get_input(path)
-      self.view_images(file_list, img_type=type)
+      file_list, input_type = ginp.get_input(path)
+      if 'image' in input_type:
+        self.view_images(file_list, img_type=type)
+      else:
+        msg = ' '.join(file_list)
+        textview = TextFileView(self, title=path, contents=msg)
+        textview.ShowModal()
 
   def view_images(self, img_list, img_type=None):
     """ Launches image viewer (depending on backend) """
@@ -1409,15 +1431,6 @@ class FileListCtrl(CustomListCtrl):
 
   def update_total_image_count(self):
     self.txt_total_images.SetLabel("{} total images".format(self.image_count))
-    # col1 = self.ctr.GetColumn(1)
-    # col1.SetFooterText("{} total images".format(self.image_count))
-    #
-    # font = self.ctr.GetFont()
-    # font.SetPointSize(18)
-    # font.SetWeight(wx.FONTWEIGHT_BOLD)
-    # col1.SetFooterFont(font)
-    #
-    # self.ctr.SetColumn(1, col1)
 
 class TextFileView(wx.Dialog):
   def __init__(self, parent,

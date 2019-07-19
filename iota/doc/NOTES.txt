@@ -1,17 +1,15 @@
-IOTA v1.4.003 - GUI Update
+IOTA v1.4.004 - UI updates and bugfixes
 
-1. New set of controls that are automatically created from PHIL objects
-2. Converted IOTA to use PHIL controls
-3. Some GUI changes:
-    - Moved "Run IOTA" button from toolbar down to lower left corner for better
-      visibility to user
-    - Changed the input list control to allow custom path addition, which reads
-      wildcards
-    - Combined most IOTA options under a single button
-    - All Stills Processor options are now accessible as dialogs from IOTA
-      interface; user can fiddle with them without editing the script
-    - Image selection options are now present in the main IOTA window
-    - A number of minor tweaks in IOTA and PRIME GUIs
+1. Converted PRIME UI to PHIL-based controls
+    - had to amend some PRIME code to make sure that it coped with a couple of
+      changes in the PRIME PHIL (e.g. str types changed to space_group, etc.)
+    - updated PRIME controls to reflect improvements in IOTA
 
-07.17.2019
+2. IOTA UI bugfixes
+    - Recovery dialog now actually cancels when Cancel is pressed
+    - Reset works after run recovery
+    - Added exempt controls to reset (and also preserving them when initializing
+      or resetting PHIL), which the GUI modifies to fit environment
+
+07.18.2019
 # -- end

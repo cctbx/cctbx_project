@@ -156,9 +156,20 @@ class MainWindow(IOTABaseFrame):
     # Instantiate input window
     main_window_scopes = ['description', 'output', 'input']
     input_scope = self.iota_index.get_scopes(include=main_window_scopes)
-    self.input_window = InputWindow(self, size=(600, -1),
+
+    self.input_window = InputWindow(self,
+                                    size=(600, -1),
                                     scope=input_scope,
-                                    phil_index=self.iota_index)
+                                    phil_index=self.iota_index,
+                                    path_extras={
+                                      "file_types": ['image pickle file',
+                                                     'raw image file',
+                                                     'raw image list',
+                                                     'image pickle list'],
+                                      "folder_types":['raw image folder',
+                                                       'image pickle folder'],
+                                      'data_types':['image']
+                                    })
 
     # Front options panel
     self.bottom_sizer = wx.GridBagSizer(5, 5)
@@ -233,8 +244,7 @@ class MainWindow(IOTABaseFrame):
   def onReset(self, e):
     self.reset_settings()
 
-  def open_options_dialog(self, phil_index, include=None, name=None,
-                          with_sections=False):
+  def open_options_dialog(self, phil_index, include=None, name=None):
     if not name:
       if isinstance(include, list):
         name = include[0]
@@ -247,8 +257,7 @@ class MainWindow(IOTABaseFrame):
     phil_dlg = pct.PHILDialog(self,
                               scope=phil_scope,
                               phil_index=phil_index,
-                              name=name,
-                              with_sections=with_sections)
+                              name=name)
 
     if phil_dlg.ShowModal() == wx.ID_OK:
       OK = True
@@ -319,7 +328,7 @@ class MainWindow(IOTABaseFrame):
 
     ok_init, self.info, msg = init.initialize_new_run(
       phil=self.iota_phil,
-      target_phil=self.target_phil
+      target_phil=self.bknd_index.get_diff().as_str()
     )
     if not ok_init and msg:
       msg_string = 'IOTA Reported the following error(s):{}\n\n' \
@@ -452,18 +461,11 @@ class MainWindow(IOTABaseFrame):
     '''Clears settings and loads new settings from IOTA param file
 
     :param filepath: path to IOTA parameter file
-    :param update_input_window: set to True to update input window with settings
     :return: None
     '''
 
-    self.reset_settings()
-
     self.iota_phil, _ = inp.get_input_phil(paramfile=filepath, gui=True)
     self.update_IOTA_index(phil=self.iota_phil)
-
-    if self.gparams.mp.n_processors == 0:
-      self.gparams.mp.n_processors = multiprocessing.cpu_count() * 0.75
-      self.iota_index.update_from_python(python_object=self.gparams)
 
     # Pass on target PHIL (if found) to input window
     target = self.gparams.cctbx_xfel.target
@@ -487,15 +489,8 @@ class MainWindow(IOTABaseFrame):
     self.reset_IOTA_index()
     self.reset_backend_index()
 
-    self.gparams.mp.n_processors = int(multiprocessing.cpu_count() * 0.75)
-    self.iota_index.update_from_python(python_object=self.gparams)
-
-    # Redraw PHIL panel
-    main_window_scopes = ['description', 'output', 'input']
-    scope = self.iota_index.get_scopes(include=main_window_scopes)
-    self.input_window.redraw_panel(reset=True)
-
-    mp_scope = self.iota_index.get_scopes(include=['data_selection'])
+    # Redraw PHIL panels
+    self.input_window.redraw_panel(reset=True, exempt=['description'])
     self.option_panel.redraw_panel(reset=True)
     self.gparams = self.iota_index.working_phil.extract()
 
@@ -514,7 +509,13 @@ class MainWindow(IOTABaseFrame):
     self.bknd_index.update_phil(phil_string=target_phil.as_str())
 
   def reset_IOTA_index(self):
+    description = self.gparams.description
+    n_processors = self.gparams.mp.n_processors
     self.iota_index.reset_phil(reindex=True)
+    self.gparams = self.iota_index.working_phil.extract()
+    self.gparams.description = description
+    self.gparams.mp.n_processors = n_processors
+    self.iota_index.update_from_python(python_object=self.gparams)
 
   def reset_backend_index(self):
     self.bknd_index.reset_phil(reindex=True)
@@ -1860,10 +1861,10 @@ class SummaryTab(IOTABaseScrolledPanel):
       # Make plot
       proc_plot = Plotter(self, info=self.info)
       proc_plot.initialize_figure(figsize=(0.1, 0.1))
-      self.smr_box_grid.Add(proc_plot, span=(4, 1), pos=(0, 0), flag=wx.EXPAND)
+      self.smr_box_grid.Add(proc_plot, span=(5, 1), pos=(0, 0), flag=wx.EXPAND)
       proc_plot.plot_table(data=proc_data)
       self.smr_box_grid.AddGrowableCol(0)
-      self.smr_box_grid.AddGrowableRow(0)
+      self.smr_box_grid.AddGrowableRow(4)
 
     # Add clustering info
     if self.info.clusters:
@@ -2510,5 +2511,21 @@ class ProcWindow(IOTABaseFrame):
 
       print ("IOTA: Total run time: {} hours, {} minutes, {} seconds"
              "".format(hours, minutes, seconds))
+
+  # def OnClose(self, e):
+  #   """ Make sure that all threads are killed if window is closed by user """
+  #   try:
+  #     self.proc_thread.abort()
+  #     if self.running_cluster:
+  #       self.cluster_thread.abort()
+  #     if self.running_prime:
+  #       self.prime_thread.abort()
+  #   except AttributeError:
+  #     pass
+  #
+  #   self.proc_timer.Stop()
+  #   self.chart_timer.Stop()
+  #
+  #   e.Skip()
 
 # -- end

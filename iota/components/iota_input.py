@@ -11,6 +11,8 @@ Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
 
 
 import os
+from multiprocessing import cpu_count
+
 import iotbx.phil as ip
 
 from iota.components.iota_utils import convert_phil_to_text
@@ -299,7 +301,6 @@ def process_ui_input(args, phil_args, paramfile, mode='auto'):
 
   # Check for -n option and set number of processors override
   # (for parallel map only, for now)
-  from multiprocessing import cpu_count
   max_proc = cpu_count() - 2
   if args.nproc > 0:
     if args.nproc >= max_proc:

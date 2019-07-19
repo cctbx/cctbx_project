@@ -513,10 +513,11 @@ class InputFinder():
     suffix = 'file'
 
     if os.path.isfile(path):
-      if input_type == 'file list':
+      if self.identify_file_type(filepath=path) == 'file list':
         with open(path, 'r') as f:
           input_list = [i.rstrip('\n') for i in f.readlines()]
-          suffix = 'list'
+        suffix = 'list'
+        filter_results = False
       else:
         input_list = [os.path.abspath(path)]
     elif os.path.isdir(path):
@@ -561,7 +562,7 @@ class InputFinder():
 
       # Images can be outnumbered by other files in a folder; for that
       # reason, search for even one occurence of an image
-      choices = ['raw image', 'image pickle']
+      choices = ['raw image', 'image pickle', 'processed pickle']
       input_type = next((s for s in input_types if s in choices), None)
 
       # Test for whatever's most common

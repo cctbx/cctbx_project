@@ -58,7 +58,7 @@ class postref_handler(object):
         beam = experiments[0].beam
         crystal_symmetry = crystal.symmetry(
             unit_cell=dials_crystal.get_unit_cell().parameters(),
-            space_group_symbol=iparams.target_space_group)
+            space_group_symbol=str(iparams.target_space_group))
         miller_set_all=miller.set(
                     crystal_symmetry=crystal_symmetry,
                     indices=observations_pickle['miller_index'],
@@ -127,7 +127,7 @@ class postref_handler(object):
       #apply constrain using the crystal system
       miller_set = symmetry(
           unit_cell=uc_constrained,
-          space_group_symbol=iparams.target_space_group
+          space_group_symbol=str(iparams.target_space_group)
         ).build_miller_set(
           anomalous_flag=target_anomalous_flag,
           d_min=iparams.merge.d_min)

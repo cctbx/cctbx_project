@@ -10,7 +10,6 @@ Description : IOTA GUI controls for PHIL-formatted settings
 import os
 import sys
 import wx
-import wx.richtext
 from wx.lib.scrolledpanel import ScrolledPanel
 
 from wxtbx import bitmaps
@@ -197,6 +196,7 @@ class PHILPanelMixin(object):
     self._input_lists = {}
     self._toggled_scopes = {}
     self.scope_switch = None
+    self.control_index = {}
 
     # Create a box around panel
     if box is not None:
@@ -377,12 +377,14 @@ class PHILPanelMixin(object):
         panel = PHILMultiScopePanel(self, multi_scopes, box=box_label)
         sizer.Add(panel, 1, flag=flag, border=border)
         self.controls.update({index:panel})
+        self.control_index.update({scope.full_path():panel})
         self._multiples.append(scope.full_path())
       return
     else:
       panel = PHILScopePanel(self, scope, box=box_label)
       sizer.Add(panel, flag=flag, border=border)
       self.controls.update({index:panel})
+      self.control_index.update({scope.full_path(): panel})
 
     # Iterate through PHIL objects; if scope is found, it's added to the list
     # of scopes that will become buttons
@@ -439,14 +441,18 @@ class PHILPanelMixin(object):
             multi_panel = PHILMultiDefPanel(parent, multi_defs, style=style)
             sizer.Add(multi_panel, flag=wx.EXPAND | wx.BOTTOM, border=10)
             parent.controls[idx] = multi_panel
+            parent.control_index[obj.full_path()] = multi_panel
           except RuntimeError:
             pass
           self._multiples.append(obj.full_path())
         return
 
     # Create widget and add to sizer / controls dictionary
+    extras = getattr(self, '_{}_extras'.format(obj.type.phil_type), None)
+
     wdg = WidgetFactory.make_widget(parent, obj, label_size, value=value,
-                                    border=border, style=style, label=label)
+                                    border=border, style=style, label=label,
+                                    extras=extras)
     if obj.type.phil_type in ('str', 'unit_cell', 'space_group', 'path'):
       expand = True
       if style.input_list:
@@ -455,6 +461,7 @@ class PHILPanelMixin(object):
       expand = False
 
     parent.controls[idx] = wdg
+    parent.control_index[obj.full_path()] = wdg
     if style.input_list:
       self._input_lists[obj.full_path()] = wdg
     if style.scope_switch:
@@ -476,6 +483,7 @@ class PHILPanelMixin(object):
                              name=name,
                              expert_level=scope.expert_level)
       parent.controls.update({len(parent.controls):btn})
+      parent.control_index.update({scope.full_path():btn})
       btn_sizer.add_widget(btn)
     parent.main_sizer.add_widget(btn_sizer, expand=True)
 
@@ -516,16 +524,25 @@ class PHILPanelMixin(object):
     self.clear_panel()
     self.construct_panel(scope=scope)
 
-  def redraw_panel(self, panel=None, reset=False):
+  def redraw_panel(self, panel=None, reset=False, exempt=None):
     if not panel:
       panel = self
+    if exempt is None:
+      exempt = []
     for idx, ctrl in panel.controls.items():
       style = self.phil_index.get_scope_style(scope_name=ctrl.full_path)
       if ctrl.is_definition:
-        if ctrl.multi_definition:
-          ctrl.redraw_dialog(reset_to_default=reset)
+        if reset and ctrl.full_path not in exempt:
+          reset_ctrl = True
         else:
-          value = self.phil_index.get_value(path=ctrl.full_path)
+          reset_ctrl = False
+        if ctrl.multi_definition:
+          ctrl.redraw_dialog(reset_to_default=reset_ctrl)
+        else:
+          if reset_ctrl:
+            value = ctrl.default_value
+          else:
+            value = self.phil_index.get_value(path=ctrl.full_path)
           if style.input_list:
             ctrl.ResetValue(value)
           else:
@@ -534,9 +551,11 @@ class PHILPanelMixin(object):
             ctrl.ctr.SetValue(value)
             ctrl.parent.check_scope_switches()
       else:
+        if ctrl.full_path in exempt:
+          continue
         if ctrl.multi_scope:
           ctrl.redraw_dialog(reset_to_default=reset)
-        ctrl.redraw_panel()
+        ctrl.redraw_panel(reset=reset)
     self.mark_non_defaults()
 
   def construct_panel(self, scope=None):
@@ -599,7 +618,6 @@ class PHILPanelMixin(object):
 
     panel.main_sizer.DeleteWindows()
 
-
   def enable_panel(self, enable=True, children=None):
     if not children:
       if hasattr(self, 'GetChildren'):
@@ -611,6 +629,42 @@ class PHILPanelMixin(object):
         self.enable_panel(enable=enable, children=child.GetChildren())
       child.Enable(enable=enable)
 
+  def collect_errors(self, panel=None):
+    """ Go through all controls recursively and collect any format errors """
+
+    if panel is None:
+      panel = self
+
+    errors = {}
+    for idx, ctrl in panel.controls.items():
+      if ctrl.is_definition:
+        if ctrl.multi_definition:
+          multi_def_errors = ctrl.collect_errors()
+          if multi_def_errors:
+            errors.update(multi_def_errors)
+        else:
+          if hasattr(ctrl.ctr, 'error_msg') and ctrl.ctr.error_msg:
+            errors[ctrl.name] = ctrl.ctr.error_msg
+      elif ctrl.is_scope:
+        scope_errors = ctrl.collect_errors()
+        if scope_errors:
+          errors.update(scope_errors)
+      else:
+        return None
+
+    return errors
+
+  def change_value(self, full_path, value):
+    # NOTE: won't work with multiples!
+    if full_path in self.control_index:
+      if self.control_index[full_path].is_definition:
+        self.control_index[full_path].SetValue(value)
+
+  def get_value(self, full_path):
+    if full_path in self.control_index and \
+            self.control_index[full_path].is_definition:
+        return self.control_index[full_path].GetStringValue()
+    return None
 
 class MultiObjectPanelMixin(object):
   """ Control-handing mixin for multi-scope and multi-definition panels """
@@ -811,31 +865,6 @@ class PHILBaseDialog(base.FormattedDialog):
     x, y = self.set_relative_position()
     self.SetPosition((x, y))
 
-  def _collect_errors(self, panel=None):
-    """ Go through all controls recursively and collect any format errors """
-
-    if panel is None:
-      panel = self.phil_panel
-
-    errors = {}
-    for idx, ctrl in panel.controls.items():
-      if ctrl.is_definition:
-        if ctrl.multi_definition:
-          multi_def_errors = self._collect_errors(panel=ctrl)
-          if multi_def_errors:
-            errors.update(multi_def_errors)
-        else:
-          if hasattr(ctrl.ctr, 'error_msg') and ctrl.ctr.error_msg:
-            errors[ctrl.name] = ctrl.ctr.error_msg
-      elif ctrl.is_scope:
-        scope_errors = self._collect_errors(panel=ctrl)
-        if scope_errors:
-          errors.update(scope_errors)
-      else:
-        return None
-
-    return errors
-
   def OnCancel (self, event):
     self.EndModal(wx.ID_CANCEL)
 
@@ -868,7 +897,6 @@ class PHILDefPanel(PHILBaseDefPanel):
 
     self.error_btn = None
     self.ctr = None
-    self.default_value = self.value_from_words(phil_object=phil_object)[0]
     self.selected = False
 
     # Set grid
@@ -1131,7 +1159,7 @@ class PHILMultiScopePanel(PHILBaseDialogPanel, MultiObjectPanelMixin):
     self.check_scope_switches()
     # self.SetupScrolling()
     self.Layout()
-    # self.GetTopLevelParent().Layout()
+    self.GetTopLevelParent().Layout()
 
   def onAdd(self, e):
     self.add_default()
@@ -1209,8 +1237,7 @@ class PHILMultiDefPanel(PHILBaseFixedPanel, gui.IOTADefinitionCtrl,
     self.dialog_layout()
 
   def dialog_layout(self):
-    # self.GetTopLevelParent().Layout()
-    pass
+    self.GetTopLevelParent().Layout()
 
   def onAdd(self, e):
     self.add_default()
@@ -1282,7 +1309,8 @@ class ValidatedTextCtrl(wx.TextCtrl):
     self.Bind(wx.EVT_SET_FOCUS, self.OnSetFocus, self)
 
     # Apply value if one was passed to this control
-    saved_value = self.parent.ReformatValue(value=saved_value)
+    saved_value = self.parent.ReformatValue(value=saved_value,
+                                            raise_error=False)
     self.SetStringValue(value=saved_value)
 
   def SetStringValue(self, value=None):
@@ -1413,7 +1441,7 @@ class ValidatedPathCtrl(ValidatedTextCtrl):
     else:
       dirname = os.path.dirname(value)
     if self.read:
-      if not os.path.exists(value):
+      if not self.write and not os.path.exists(value):
         raise ValueError('Path {} not found!'.format(value))
       if not os.access(dirname, os.R_OK):
         permission_errors.append('Read permission for {} denied!'
@@ -1689,7 +1717,20 @@ class PHILDialogButton(ct.IOTAButton):
 
 class PHILFileListCtrl(ct.FileListCtrl, gui.IOTADefinitionCtrl):
   def __init__(self, parent, phil_object, value=None, *args, **kwargs):
-    ct.FileListCtrl.__init__(self, parent=parent, size=(600, 300))
+
+    extras = kwargs.pop('extras', None)
+    if extras:
+      file_types = extras.get('file_types', None)
+      folder_types = extras.get('folder_types', None)
+      data_types = extras.get('data_types', None)
+    else:
+      file_types = folder_types = data_types = None
+
+    ct.FileListCtrl.__init__(self, parent=parent,
+                             size=(600, 300),
+                             file_types=file_types,
+                             folder_types=folder_types,
+                             data_types=data_types)
     gui.IOTADefinitionCtrl.__init__(self, phil_object=phil_object)
     self.multi_definition = False
     self.SetValue(value)
@@ -1775,7 +1816,7 @@ class PHILPathCtrl(PHILDefPanel):
     self.ctrl_sizer.add_growable(cols=[3])
 
     # Create browse and view buttons
-    self.btn_browse = wx.Button(self, label='Browse...')
+    self.btn_browse = wx.Button(self, label='...', style=wx.BU_EXACTFIT)
     viewmag_bmp = bitmaps.fetch_icon_bitmap('actions', 'viewmag', size=16)
     self.btn_mag = wx.BitmapButton(self, bitmap=viewmag_bmp)
     self.ctrl_sizer.add_widget(self.btn_browse)
@@ -1872,7 +1913,9 @@ class PHILStringCtrl(PHILDefPanel):
     return self.ctr.GetValue()
 
   def SetValue(self, value=None):
+    value = self.ReformatValue(value, raise_error=False)
     self.ctr.SetStringValue(value=value)
+    self.ctr.Validate()
 
 
 class PHILSpaceGroupCtrl(PHILStringCtrl):
@@ -2059,7 +2102,9 @@ class PHILNumberCtrl(PHILDefPanel):
     return self.ctr.GetValue()
 
   def SetValue(self, value):
+    value = self.ReformatValue(value, raise_error=False)
     self.ctr.SetStringValue(value=value)
+    self.ctr.Validate()
 
 
 class PHILCheckBoxCtrl(PHILDefPanel):
@@ -2097,6 +2142,13 @@ class PHILCheckBoxCtrl(PHILDefPanel):
       self.parent.check_scope_switches()
 
   def SetValue(self, value=None):
+    if isinstance(value, str):
+      if value.lower() == 'none':
+        value = False
+      else:
+        value = True
+    elif not isinstance(value, bool):
+      value = bool(value)
     self.ctr.SetValue(state=value)
 
 class WidgetFactory(object):
@@ -2142,8 +2194,10 @@ class WidgetFactory(object):
     if wtype in ('int', 'float'):
       wtype = 'number'
     if wtype == 'path' and (style and style.input_list):
-      widget = PHILFileListCtrl(parent=parent, phil_object=phil_object,
-                                value=value)
+      widget = PHILFileListCtrl(parent=parent,
+                                phil_object=phil_object,
+                                value=value,
+                                *args, **kwargs)
     else:
       if wtype in widget_types:
         widget_ctrl = widget_types[wtype]
@@ -2166,7 +2220,43 @@ class WidgetFactory(object):
 class PHILDialogPanel(PHILBaseDialogPanel):
   """ Panel automatically created from PHIL settings """
 
+  _str_extras = {}
+  _path_extras = {}
+  _number_extras = {}
+  _unit_cell_extras = {}
+  _space_group_extras = {}
+  _choice_extras = {}
+  _checkbox_extras = {}
+
   def __init__(self, parent, scope, *args, **kwargs):
+    str_extras = kwargs.pop('str_extras', None)
+    if str_extras:
+      self._str_extras.update(str_extras)
+
+    path_extras = kwargs.pop('path_extras', None)
+    if path_extras:
+      self._path_extras.update(path_extras)
+
+    number_extras = kwargs.pop('number_extras', None)
+    if number_extras:
+      self._number_extras.update(number_extras)
+
+    unit_cell_extras = kwargs.pop('unit_cell_extras', None)
+    if unit_cell_extras:
+      self._unit_cell_extras.update(unit_cell_extras)
+
+    space_group_extras = kwargs.pop('space_group_extras', None)
+    if space_group_extras:
+      self._space_group_extras.update(space_group_extras)
+
+    choice_extras = kwargs.pop('choice_extras', None)
+    if choice_extras:
+      self._choice_extras.update(choice_extras)
+
+    checkbox_extras = kwargs.pop('checkbox_extras', None)
+    if checkbox_extras:
+      self._checkbox_extras.update(checkbox_extras)
+
     super(PHILDialogPanel, self).__init__(parent, scope, *args, **kwargs)
     self.scope = scope
 
@@ -2186,8 +2276,7 @@ class PHILDialogPanel(PHILBaseDialogPanel):
 class PHILDialog(PHILBaseDialog):
   """ Dialog auto-populated with PHIL settings """
 
-  def __init__(self, parent, scope, phil_index, name=None, with_sections=False,
-               *args, **kwargs):
+  def __init__(self, parent, scope, phil_index, name=None, *args, **kwargs):
     """ Constructor
     :param parent: parent GUI element
     :param name: name of the PHIL scope rendered by this dialog
@@ -2241,7 +2330,7 @@ class PHILDialog(PHILBaseDialog):
     """ Check for saved errors and pop a warning if any are found (user
         cannot continue if any errors are present) """
 
-    all_errors = self._collect_errors()
+    all_errors = self.phil_panel.collect_errors()
     if all_errors:
       # Check for errors and pop up a message if any are present
       wx.MessageBox(caption='Errors in Settings!',

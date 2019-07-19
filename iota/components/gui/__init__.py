@@ -40,6 +40,10 @@ def make_phil_index(master_phil, working_phil=None, fetch_new=True):
   # collect scopes of the same name in phil
   merged_scopes = collect_scopes(phil=master_phil)
   updated_master_phil = master_phil.customized_copy(objects=merged_scopes)
+
+  # self-fetch to resolve variables
+  updated_master_phil = updated_master_phil.fetch(source=updated_master_phil)
+
   return PHILIndex(master_phil=updated_master_phil,
                    working_phil=working_phil,
                    fetch_new=fetch_new)
@@ -364,8 +368,11 @@ class PHILIndex(interface.index):
       value = dfn.type.from_words(dfn.words, dfn)
     return value
 
-  def reset_phil(self, reindex=False):
-    self.working_phil = self.master_phil.copy()
+  def reset_phil(self, phil=None, reindex=False):
+    if phil is not None:
+      self.working_phil = self.master_phil.fetch(phil)
+    else:
+      self.working_phil = self.master_phil.copy()
     if reindex:
       self.rebuild_index()
 
@@ -465,15 +472,17 @@ class IOTAPHILCtrl(object):
     self.is_dlg_button = False
 
     self.is_primary_parent = phil_object.primary_parent_scope is None
+    if self.is_definition:
+      value = phil_object.type.from_words(phil_object.words, phil_object)
+      self.default_value = self.ReformatValue(value, raise_error=False)
 
     # Some scopes or definitions may be explicitly set as optional
     if phil_object.optional is not None:
       self.SetOptional(optional=phil_object.optional)
     else:
       if self.is_definition:
-        default_value = self.type.from_words(phil_object.words, phil_object)
-        self.SetOptional(optional=(default_value is None))
-        self.SetUseAuto(enable=(default_value is Auto))
+        self.SetOptional(optional=(self.default_value is None))
+        self.SetUseAuto(enable=(self.default_value is Auto))
       else:
         self.SetOptional(optional=False)
 
@@ -495,7 +504,7 @@ class IOTAPHILCtrl(object):
   def UseAuto(self):
     return getattr(self, "_blank_is_auto", False)
 
-  def ReformatValue(self, value=None):
+  def ReformatValue(self, value=None, raise_error=True):
     """ Takes value of any format and returns a string. Returns an AutoType
         object if value is Auto or blank; returns a NonType object if value
         is None or blank (blank can be a string of spaces). If value is not
@@ -520,7 +529,10 @@ class IOTAPHILCtrl(object):
         else:
           return None
       else:
-        raise Sorry("Value required for {}.".format(self.GetPHILName()))
+        if raise_error:
+          raise Sorry("Value required for {}.".format(self.GetPHILName()))
+        else:
+          return None
     elif str(value).lower() == 'auto':
       if self.UseAuto():
         return Auto
@@ -530,7 +542,9 @@ class IOTAPHILCtrl(object):
       if self.IsOptional():
         return None
       else:
-        raise Sorry("Value required for {}.".format(self.GetPHILName()))
+        if raise_error:
+          raise Sorry("Value required for {}.".format(self.GetPHILName()))
+        return None
     else:
       return value
 

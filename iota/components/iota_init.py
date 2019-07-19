@@ -34,6 +34,7 @@ def prog_message(msg, mode='xterm'):
   else:
     yield
 
+
 def initialize_interface(args, phil_args=None, gui=False):
   """ Read and process input, create PHIL """
 

@@ -181,7 +181,7 @@ class intensities_scaler(object):
     #from all observations merge them
     crystal_symmetry = crystal.symmetry(
         unit_cell=tuple(uc_mean),
-        space_group_symbol=iparams.target_space_group)
+        space_group_symbol=str(iparams.target_space_group))
     miller_set_all=miller.set(
                 crystal_symmetry=crystal_symmetry,
                 indices=miller_indices_all,
@@ -303,7 +303,7 @@ class intensities_scaler(object):
     #output mtz file and report binning stat
     miller_set_merge = crystal.symmetry(
           unit_cell=unit_cell(tuple(uc_mean)),
-          space_group_symbol=iparams.target_space_group
+          space_group_symbol=str(iparams.target_space_group)
         ).build_miller_set(
           anomalous_flag=target_anomalous_flag,
           d_min=iparams.merge.d_min)
@@ -594,7 +594,7 @@ class intensities_scaler(object):
     wavelength_mean = np.mean(wavelength_mean_set)
     ms_template = crystal.symmetry(
         unit_cell=tuple(uc_mean),
-        space_group_symbol=iparams.target_space_group
+        space_group_symbol=str(iparams.target_space_group)
         ).build_miller_set(
         anomalous_flag=iparams.target_anomalous_flag,
         d_min=iparams.merge.d_min)
