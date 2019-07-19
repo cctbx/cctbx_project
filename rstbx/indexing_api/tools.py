@@ -27,6 +27,11 @@ modularities = [2,3,5]
 max_spiral = max(modularities)
 
 def generate_spiral_order():  #This is G0 in the paper
+  import six
+  if six.PY3:
+    import warnings
+    warnings.warn("rstbx.indexing_api.tools not supported on Python 3", stacklevel=3)
+    return []
   points = []
   for x in range(max_spiral,-max_spiral-1,-1):
     for y in range(max_spiral,-max_spiral-1,-1):
