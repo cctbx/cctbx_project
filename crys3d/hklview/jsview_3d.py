@@ -195,6 +195,12 @@ class hklview_3d:
     self.angle_y_yzvec = 0.0
     self.angle_y_xyvec = 0.0
     self.angle_x_xyvec = 0.0
+    self.unit_h_axis = None
+    self.unit_k_axis = None
+    self.unit_l_axis = None
+    self.normal_hk = None
+    self.normal_kl = None
+    self.normal_lh = None
     self.isnewfile = False
     self.colstraliases = ""
     self.binvals = []
@@ -581,21 +587,25 @@ class hklview_3d:
     h_axis = flex.vec3_double([self.scene.axes[0]])
     k_axis = flex.vec3_double([self.scene.axes[1]])
     l_axis = flex.vec3_double([self.scene.axes[2]])
-    unit_h_axis = 1.0/h_axis.norm() * h_axis
-    unit_k_axis = 1.0/k_axis.norm() * k_axis
-    unit_l_axis = 1.0/l_axis.norm() * l_axis
+    self.unit_h_axis = 1.0/h_axis.norm() * h_axis
+    self.unit_k_axis = 1.0/k_axis.norm() * k_axis
+    self.unit_l_axis = 1.0/l_axis.norm() * l_axis
+    self.normal_hk = self.unit_h_axis.cross( self.unit_k_axis )
+    self.normal_kl = self.unit_k_axis.cross( self.unit_l_axis )
+    self.normal_lh = self.unit_l_axis.cross( self.unit_h_axis )
+
     maxnorm = max(h_axis.norm(), max(k_axis.norm(), l_axis.norm()))
     l1 = self.scene.renderscale * maxnorm * 1.1
     l2= self.scene.renderscale * maxnorm * 1.15
-    Hstararrowstart = roundoff( [-unit_h_axis[0][0]*l1, -unit_h_axis[0][1]*l1, -unit_h_axis[0][2]*l1] )
-    Hstararrowend = roundoff( [unit_h_axis[0][0]*l1, unit_h_axis[0][1]*l1, unit_h_axis[0][2]*l1] )
-    Hstararrowtxt  = roundoff( [unit_h_axis[0][0]*l2, unit_h_axis[0][1]*l2, unit_h_axis[0][2]*l2] )
-    Kstararrowstart = roundoff( [-unit_k_axis[0][0]*l1, -unit_k_axis[0][1]*l1, -unit_k_axis[0][2]*l1] )
-    Kstararrowend = roundoff( [unit_k_axis[0][0]*l1, unit_k_axis[0][1]*l1, unit_k_axis[0][2]*l1] )
-    Kstararrowtxt  = roundoff( [unit_k_axis[0][0]*l2, unit_k_axis[0][1]*l2, unit_k_axis[0][2]*l2] )
-    Lstararrowstart = roundoff( [-unit_l_axis[0][0]*l1, -unit_l_axis[0][1]*l1, -unit_l_axis[0][2]*l1] )
-    Lstararrowend = roundoff( [unit_l_axis[0][0]*l1, unit_l_axis[0][1]*l1, unit_l_axis[0][2]*l1] )
-    Lstararrowtxt  = roundoff( [unit_l_axis[0][0]*l2, unit_l_axis[0][1]*l2, unit_l_axis[0][2]*l2] )
+    Hstararrowstart = roundoff( [-self.unit_h_axis[0][0]*l1, -self.unit_h_axis[0][1]*l1, -self.unit_h_axis[0][2]*l1] )
+    Hstararrowend = roundoff( [self.unit_h_axis[0][0]*l1, self.unit_h_axis[0][1]*l1, self.unit_h_axis[0][2]*l1] )
+    Hstararrowtxt  = roundoff( [self.unit_h_axis[0][0]*l2, self.unit_h_axis[0][1]*l2, self.unit_h_axis[0][2]*l2] )
+    Kstararrowstart = roundoff( [-self.unit_k_axis[0][0]*l1, -self.unit_k_axis[0][1]*l1, -self.unit_k_axis[0][2]*l1] )
+    Kstararrowend = roundoff( [self.unit_k_axis[0][0]*l1, self.unit_k_axis[0][1]*l1, self.unit_k_axis[0][2]*l1] )
+    Kstararrowtxt  = roundoff( [self.unit_k_axis[0][0]*l2, self.unit_k_axis[0][1]*l2, self.unit_k_axis[0][2]*l2] )
+    Lstararrowstart = roundoff( [-self.unit_l_axis[0][0]*l1, -self.unit_l_axis[0][1]*l1, -self.unit_l_axis[0][2]*l1] )
+    Lstararrowend = roundoff( [self.unit_l_axis[0][0]*l1, self.unit_l_axis[0][1]*l1, self.unit_l_axis[0][2]*l1] )
+    Lstararrowtxt  = roundoff( [self.unit_l_axis[0][0]*l2, self.unit_l_axis[0][1]*l2, self.unit_l_axis[0][2]*l2] )
     # make arrow font size roughly proportional to radius of highest resolution shell
     #fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
     fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0)))
@@ -1132,7 +1142,6 @@ document.addEventListener('DOMContentLoaded', function() { hklscene() }, false )
 
 mysocket.onmessage = function (e)
 {
-  //alert('received:\\n' + e.data);
   var c,
   alpha,
   si;
@@ -1142,7 +1151,6 @@ mysocket.onmessage = function (e)
     var datval = e.data.split(":\\n");
     //alert('received2:\\n' + datval);
     var msgtype = datval[0];
-    //alert('received3:\\n' + msgtype);
     var val = datval[1].split(",");
 
     if (msgtype === "alpha")
@@ -1152,7 +1160,6 @@ mysocket.onmessage = function (e)
       shapebufs[ibin].setParameters({opacity: alpha});
       for (var g=0; g < nrots; g++ )
         br_shapebufs[ibin][g].setParameters({opacity: alpha});
-
       stage.viewer.requestRender();
     }
 
@@ -1172,7 +1179,6 @@ mysocket.onmessage = function (e)
         br_colours[ibin][3*si+2] = parseFloat(val[4]);
         br_shapebufs[ibin][g].setAttributes({ color: br_colours[ibin] });
       }
-
       stage.viewer.requestRender();
     }
 
@@ -1209,7 +1215,6 @@ mysocket.onmessage = function (e)
       mysocket.send( 'Refreshing ' + pagename );
       window.location.reload(true);
     }
-
 
     if (msgtype.includes("Expand") )
     {
@@ -1418,10 +1423,8 @@ mysocket.onmessage = function (e)
       }
       vectorshapeComps = [];
       vectorreprs = [];
-
       stage.viewer.requestRender();
     }
-
 
     if (msgtype === "SetTrackBallRotateSpeed")
     {
@@ -1429,7 +1432,6 @@ mysocket.onmessage = function (e)
       var elmstrs = strs[0].split(",");
       stage.trackballControls.rotateSpeed = parseFloat(elmstrs[0]);
     }
-
 
     if (msgtype === "GetTrackBallRotateSpeed")
     {
@@ -1447,20 +1449,17 @@ mysocket.onmessage = function (e)
       stage.viewer.requestRender();
     }
 
-
     if (msgtype === "GetClipPlaneDistances")
     {
       msg = String( [stage.viewer.parameters.clipNear, stage.viewer.parameters.clipFar] )
       mysocket.send('ReturnClipPlaneDistances:\\n' + msg );
     }
 
-
     if (msgtype === "GetBoundingBox")
     {
       msg = String( [stage.viewer.boundingBoxSize.x, stage.viewer.boundingBoxSize.y, stage.viewer.boundingBoxSize.z] )
       mysocket.send('ReturnBoundingBox:\\n' + msg );
     }
-
 
     if (msgtype === "Testing")
     {
@@ -1727,8 +1726,10 @@ mysocket.onmessage = function (e)
     return retmsg
 
 
-  def AddReciprocalVector(self, h, k, l):
-    vec = self.miller_array.unit_cell().reciprocal_space_vector((h, k, l))
+  def AddVector(self, r1, r2, r3, isreciprocal=True):
+    vec = (r1, r2, r3)
+    if isreciprocal:
+      vec = self.miller_array.unit_cell().reciprocal_space_vector((r1, r2, r3))
     svec = [vec[0]*self.scene.renderscale, vec[1]*self.scene.renderscale, vec[2]*self.scene.renderscale ]
     self.mprint("cartesian vector is: " + str(roundoff(svec)), verbose=1)
     xyvec = svec[:]
@@ -1759,7 +1760,7 @@ mysocket.onmessage = function (e)
     self.msgqueue.append( ("AddVector", "%s, %s, %s" %tuple(svec) ))
 
 
-  def PointReciprocalvectorOut(self):
+  def PointVectorOut(self):
     self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
 
 

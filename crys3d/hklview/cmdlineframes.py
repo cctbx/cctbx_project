@@ -833,17 +833,38 @@ class HKLViewFrame() :
   def NormalVectorToClipPlane(self, h, k, l, hkldist=0.0,
                            clipNear=None, clipFar=None, fixorientation=True):
     self.viewer.RemoveAllReciprocalVectors()
-    self.viewer.AddReciprocalVector(h, k, l)
+    self.viewer.AddVector(h, k, l)
     if fixorientation:
       self.viewer.DisableMouseRotation()
     else:
       self.viewer.EnableMouseRotation()
-    #self.viewer.PointReciprocalvectorOut()
+    self.viewer.PointVectorOut()
     if clipNear is None or clipFar is None:
       halfdist = (self.viewer.OrigClipFar - self.viewer.OrigClipNear) / 2.0
+      self.GetBoundingBox()
       clipNear = halfdist - self.viewer.scene.min_dist*50/self.viewer.boundingZ
       clipFar = halfdist + self.viewer.scene.min_dist*50/self.viewer.boundingZ
     self.viewer.SetClipPlaneDistances(clipNear, clipFar)
+    self.viewer.TranslateHKLpoints(h, k, l, hkldist)
+
+
+  def ClipPlaneParallelToHKLplane(self, h, k, l, hkldist=0.0,
+                           clipNear=None, clipFar=None, fixorientation=True):
+    self.viewer.RemoveAllReciprocalVectors()
+    R = l * self.viewer.normal_hk + h * self.viewer.normal_kl + k * self.viewer.normal_lh
+    self.viewer.AddVector(R[0][0], R[0][1], R[0][2], isreciprocal=False)
+    if fixorientation:
+      self.viewer.DisableMouseRotation()
+    else:
+      self.viewer.EnableMouseRotation()
+    self.viewer.PointVectorOut()
+    if clipNear is None or clipFar is None:
+      halfdist = (self.viewer.OrigClipFar - self.viewer.OrigClipNear) / 2.0
+      self.GetBoundingBox()
+      clipNear = halfdist - self.viewer.scene.min_dist*50/self.viewer.boundingZ
+      clipFar = halfdist + self.viewer.scene.min_dist*50/self.viewer.boundingZ
+    self.viewer.SetClipPlaneDistances(clipNear, clipFar)
+    #self.viewer.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
     self.viewer.TranslateHKLpoints(h, k, l, hkldist)
 
 
@@ -856,6 +877,13 @@ class HKLViewFrame() :
 
   def SetTrackBallRotateSpeed(self, trackspeed):
     self.viewer.SetTrackBallRotateSpeed(trackspeed)
+
+
+  def GetBoundingBox(self):
+    self.viewer.GetBoundingBox()
+    while self.viewer.boundingX is None:
+      time.sleep(0.2)
+    return (self.viewer.boundingX, self.viewer.boundingY, self.viewer.boundingZ)
 
 
   def GetTrackBallRotateSpeed(self):
