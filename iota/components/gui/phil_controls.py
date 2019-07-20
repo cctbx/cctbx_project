@@ -244,15 +244,13 @@ class PHILPanelMixin(object):
       if obj.is_definition:
         path = obj.full_path()
         value = obj.type.from_words(obj.words, obj)
-        saved_values[path] = value
+        saved_values[path] = str(value)
       elif obj.is_scope:
         try:
           from_scope = self.flatten_scope(scope=obj)
         except RuntimeError as e:
           raise e
         saved_values.update(from_scope)
-
-
     return saved_values
 
   def check_full_path(self, full_path=None):
@@ -449,10 +447,15 @@ class PHILPanelMixin(object):
 
     # Create widget and add to sizer / controls dictionary
     extras = getattr(self, '_{}_extras'.format(obj.type.phil_type), None)
-
     wdg = WidgetFactory.make_widget(parent, obj, label_size, value=value,
                                     border=border, style=style, label=label,
                                     extras=extras)
+
+    # Set default value
+    d_value = self.phil_index.get_value(path=obj.full_path(), default=True)
+    wdg.default_value = d_value
+
+    # Set widget_specific formatting
     if obj.type.phil_type in ('str', 'unit_cell', 'space_group', 'path'):
       expand = True
       if style.input_list:
@@ -460,6 +463,7 @@ class PHILPanelMixin(object):
     else:
       expand = False
 
+    # Add widget to sizer and dictionaries
     parent.controls[idx] = wdg
     parent.control_index[obj.full_path()] = wdg
     if style.input_list:
