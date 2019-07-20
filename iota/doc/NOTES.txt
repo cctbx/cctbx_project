@@ -1,15 +1,7 @@
-IOTA v1.4.004 - UI updates and bugfixes
+IOTA v1.4.005 - minor UI tweak
 
-1. Converted PRIME UI to PHIL-based controls
-    - had to amend some PRIME code to make sure that it coped with a couple of
-      changes in the PRIME PHIL (e.g. str types changed to space_group, etc.)
-    - updated PRIME controls to reflect improvements in IOTA
+- Added spacer to bottom of main window to prevent Run button from being cut off
+  on some systems
 
-2. IOTA UI bugfixes
-    - Recovery dialog now actually cancels when Cancel is pressed
-    - Reset works after run recovery
-    - Added exempt controls to reset (and also preserving them when initializing
-      or resetting PHIL), which the GUI modifies to fit environment
-
-07.18.2019
+07.20.2019
 # -- end

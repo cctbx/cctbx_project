@@ -5,7 +5,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 07/17/2019
+Last Changed: 07/20/2019
 Description : IOTA GUI Windows / frames
 '''
 
@@ -218,6 +218,7 @@ class MainWindow(IOTABaseFrame):
     self.panel_sizer.Add(self.input_window, 1, flag=wx.EXPAND)
     self.panel_sizer.Add(self.bottom_sizer, flag=wx.EXPAND )
     self.main_sizer.Add(self.panel_sizer, 1, flag=wx.EXPAND | wx.ALL, border=15)
+    self.main_sizer.Add((0, 0), flag=wx.EXPAND | wx.ALL, border=5)
     self.Fit()
     self.Layout()
 
