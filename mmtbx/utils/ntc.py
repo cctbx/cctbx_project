@@ -12,6 +12,7 @@ class ntc_validation_results(object):
       return
     f = gzip.open(results_fname)
     self.js_data = json.load(f)
+    f.close()
 
   def get_number_of_residues(self):
     if self.js_data is not None:
@@ -20,13 +21,13 @@ class ntc_validation_results(object):
 
   def print_rmsds_for_steps(self, out=sys.stdout):
     for step_name, rmsds in self.js_data['rmsd_dict'].iteritems():
-      print(step_name) # can be cleverer and parse the name out
+      print(step_name, file=out) # can be cleverer and parse the name out
       curated_data = []
       for step_type, rmsd in rmsds.iteritems():
         curated_data.append((step_type, float(rmsd))) # why they are in string?
       curated_data.sort(key=lambda tup:tup[1])
       for step_type, rmsd in curated_data:
-        print("  %s: %.3f" % (step_type, rmsd))
+        print("  %s: %.3f" % (step_type, rmsd), file=out)
 
 # Usage example
 
