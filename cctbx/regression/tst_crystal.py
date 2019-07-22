@@ -142,6 +142,7 @@ def exercise_correct_rhombohedral_setting_if_necessary():
 Unit cell: (20.3388, 20.3388, 20.3388, 98.9315, 98.9315, 98.9315)
 Space group: R 3 :R (No. 146)
 """)
+  assert not show_diff(sio.getvalue().rstrip(), str(cs))
   cs = crystal.symmetry(
     unit_cell="31 31 31 85 85 86",
     space_group_symbol="R3:H",
@@ -153,6 +154,7 @@ Space group: R 3 :R (No. 146)
 Unit cell: (36.4146, 36.4146, 31, 90, 90, 120)
 Space group: R 3 :H (No. 146)
 """)
+  assert not show_diff(sio.getvalue().rstrip(), str(cs))
 
 def exercise_select_crystal_symmetry():
   xs1 = crystal.symmetry(unit_cell   = "23,30,40,90,90,90",
