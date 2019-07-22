@@ -344,6 +344,28 @@ def exercise_subtract_continuous_allowed_origin_shifts(
     xray_structure=structure_transl, algorithm="direct").f_calc())
   assert approx_equal(f_transl.data(), f_obs.data())
 
+
+def exercise_str():
+  uc = uctbx.unit_cell((10, 11, 12, 89, 90, 91))
+  sg = sgtbx.space_group_info("P1").group()
+  cs = crystal.symmetry(unit_cell=None, space_group=None)
+  assert not show_diff(str(cs), """\
+Unit cell: None
+Space group: None""")
+  cs = crystal.symmetry(unit_cell=uc, space_group=None)
+  assert not show_diff(str(cs), """\
+Unit cell: (10, 11, 12, 89, 90, 91)
+Space group: None""")
+  cs = crystal.symmetry(unit_cell=None, space_group=sg)
+  assert not show_diff(str(cs), """\
+Unit cell: None
+Space group: P 1 (No. 1)""")
+  cs = crystal.symmetry(unit_cell=uc, space_group=sg)
+  assert not show_diff(str(cs), """\
+Unit cell: (10, 11, 12, 89, 90, 91)
+Space group: P 1 (No. 1)""")
+
+
 def run_call_back(flags, space_group_info):
   exercise_site_symmetry(space_group_info)
   for use_niggli_cell in [False, True]:
@@ -352,6 +374,7 @@ def run_call_back(flags, space_group_info):
       use_niggli_cell=use_niggli_cell)
 
 def run():
+  exercise_str()
   exercise_symmetry()
   exercise_correct_rhombohedral_setting_if_necessary()
   exercise_non_crystallographic_symmetry()
