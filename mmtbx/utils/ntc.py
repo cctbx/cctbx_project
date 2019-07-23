@@ -19,6 +19,10 @@ class ntc_validation_results(object):
       return self.js_data.get('num_std_residues', None)
     return None
 
+  def print_number_of_steps(self):
+    if self.js_data is not None:
+      print(str(self.js_data['num_steps']), file=out)
+
   def print_rmsds_for_steps(self, out=sys.stdout):
     for step_name, rmsds in self.js_data['rmsd_dict'].iteritems():
       print(step_name, file=out) # can be cleverer and parse the name out
