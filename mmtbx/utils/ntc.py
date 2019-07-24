@@ -24,7 +24,9 @@ class ntc_validation_results(object):
       return self.js_data.get('num_steps', None)
     return None
 
-  def print_number_of_steps(self, out=sys.stdout):
+  def print_number_of_steps(self, out=None):
+    if out is None:
+      out=sys.stdout
     if self.js_data is not None:
       val = self.js_data.get('num_steps', None)
       if val:
@@ -32,7 +34,9 @@ class ntc_validation_results(object):
       else:
         print("Number of steps is not available.", file=out)
 
-  def print_rmsds_for_steps(self, out=sys.stdout):
+  def print_rmsds_for_steps(self, out=None):
+    if out is None:
+      out=sys.stdout
     for step_name, rmsds in self.js_data['rmsd_dict'].iteritems():
       print(step_name, file=out) # can be cleverer and parse the name out
       curated_data = []
