@@ -178,7 +178,7 @@ class find_outliers:
       else:
         self.not_good_dr.append(key)
     if verbose: print(", ".join(["=".join([str(i[0]),"%d"%i[1]]) for i in spotclasses.items()]), end=' ')
-    totalsp = sum([spotclasses.values()[iidx] for iidx in range(len(spotclasses))])
+    totalsp = sum(spotclasses.values())
     if verbose: print("Total=%d"%(totalsp),"# observed spots",len(self.observed_spots))
     assert totalsp == len(self.observed_spots), "Some spot pairs have the same predicted-observed distances. Do you have duplicated images?"
 
