@@ -7,7 +7,7 @@ try:
 except ImportError:
   import pickle
 from cctbx.array_family import flex
-from cctbx import uctbx
+from cctbx import sgtbx, uctbx
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, not_approx_equal, show_diff
 import random
@@ -237,7 +237,6 @@ def exercise_frac_orth():
     assert approx_equal(om*matrix.col(fi), ci)
     assert approx_equal(fm*matrix.col(ci), fi)
   #
-  from cctbx import sgtbx
   s = sgtbx.rt_mx("-x,-x+y,-x+z", r_den=12)
   assert approx_equal(u.matrix_cart(rot_mx=s.r()), [
     -0.3622586, -0.1191822, -0.5137527,
@@ -292,7 +291,6 @@ def exercise_change_basis():
     u.change_basis((0,1,0, 0,0,1, 1,0,0)).parameters(),
     (5,2,3,90,90,90))
   #
-  from cctbx import sgtbx
   cb_op = sgtbx.change_of_basis_op("y,z,x").inverse()
   assert approx_equal(
     u.change_basis(cb_op=cb_op).parameters(),
@@ -733,7 +731,6 @@ def exercise_d_metrical_matrix_d_params():
     grads = flex.double(grads)
     grads.resize(flex.grid((6,6)))
     return grads.matrix_transpose()
-  from cctbx import sgtbx
   p1 = sgtbx.space_group_info('P1')
   uc = p1.any_compatible_unit_cell(27)
   grads = uc.d_metrical_matrix_d_params()
@@ -758,7 +755,6 @@ def exercise_downstream_methods():
       assert ms.indices().size() == 26
 
 def exercise_unit_cell_format():
-  from cctbx import sgtbx
   sgi = sgtbx.space_group_info('P1')
   uc = sgi.any_compatible_unit_cell(volume=1000)
   s = str(uc)
@@ -766,7 +762,14 @@ def exercise_unit_cell_format():
   s = format(uc, '{:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f}')
   assert s == '8.53 11.08 14.49 83.00 109.00 129.00', s
 
+def exercise_unit_cell_repr():
+  sgi = sgtbx.space_group_info('P1')
+  uc = sgi.any_compatible_unit_cell(volume=1000)
+  assert eval(repr(uc)).is_similar_to(uc, 1e-8, 1e-3)
+
+
 def run():
+  exercise_unit_cell_repr()
   exercise_unit_cell_format()
   exercise_d_metrical_matrix_d_params()
   exercise_tensor_rank_2_orth_and_frac_linear_maps()
