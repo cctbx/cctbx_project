@@ -178,9 +178,13 @@ class hklview_3d:
     self.rotation_mx = matrix.identity(3)
     self.rot_recip_zvec = None
     self.rot_zvec = None
+    self.high_quality = True
+    if kwds.has_key('high_quality'):
+      self.high_quality = kwds['high_quality']
     self.cameradist = 0.0
     self.clipNear = None
     self.clipFar = None
+    self.cameraPosZ = None
     self.boundingX = None
     self.boundingY = None
     self.boundingZ = None
@@ -786,10 +790,15 @@ var MakeHKL_Axis = function()
         if self.primitivetype == "PointBuffer":
           spherebufferstr += "\n  }, {pointSize: %1.2f})\n" %self.settings.scale
         else:
-          spherebufferstr += """\n  })
-  //}, { disableImpostor: true // to enable changing sphereDetail
-  //, sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
-  //}, { disableImpostor: true }) // if true allows wireframe spheres but does not allow resizing spheres
+          if self.high_quality:
+            spherebufferstr += """
+    })
+  );
+  """
+          else:
+            spherebufferstr += """
+    }, { disableImpostor: true
+   ,    sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
   );
   """
         spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n" %cntbin
@@ -847,6 +856,12 @@ var MakeHKL_Axis = function()
   stage.mouseObserver.signals.dragged.add(
     function ( deltaX, deltaY)
     {
+      if (clipFixToCamPosZ === true)
+      {
+        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos - stage.viewer.camera.position.z);
+        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos - stage.viewer.camera.position.z);
+        stage.viewer.requestRender();
+      }
       cvorient = stage.viewerControls.getOrientation().elements;
       msg = String(cvorient);
       mysocket.send('CurrentViewOrientation:\\n' + msg );
@@ -857,6 +872,12 @@ var MakeHKL_Axis = function()
   stage.mouseObserver.signals.scrolled.add(
     function (delta)
     {
+      if (clipFixToCamPosZ === true)
+      {
+        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos - stage.viewer.camera.position.z);
+        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos - stage.viewer.camera.position.z);
+        stage.viewer.requestRender();
+      }
       cvorient = stage.viewerControls.getOrientation().elements;
       msg = String(cvorient);
       mysocket.send('CurrentViewOrientation:\\n' + msg );
@@ -912,9 +933,11 @@ var MakeHKL_Axis = function()
     #for ibin in range(self.nbin):
     #  if self.workingbinvals[ibin] < 0.0:
     #    negativeradiistr += "shapebufs[%d].setParameters({metalness: 1})\n" %ibin
-
-
-
+    qualitystr = """ , { disableImpostor: true
+                  , sphereDetail: 0 } // rather than default value of 2 icosahedral subdivisions
+            """
+    if self.high_quality:
+      qualitystr = ""
     self.NGLscriptstr = """
 // Microsoft Edge users follow instructions on
 // https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
@@ -974,6 +997,10 @@ var shapebufs = [];
 var br_shapebufs = [];
 var nrots = 0;
 var cvorient = new NGL.Matrix4();
+var clipFixToCamPosZ = false;
+var origclipnear;
+var origclipfar;
+var origcameraZpos;
 
 
 function createElement(name, properties, style)
@@ -1330,8 +1357,7 @@ mysocket.onmessage = function (e)
               radius: br_radii[bin],
               // g works as the id number of the rotation of applied symmetry operator when creating tooltip for an hkl
               picking: br_ttips[bin][g],
-            });
-
+              } %s  );
           shape.addBuffer(br_shapebufs[bin][g]);
         }
       }
@@ -1349,12 +1375,16 @@ mysocket.onmessage = function (e)
     {
       mysocket.send( 'Fix mouse rotation' + pagename );
       stage.mouseControls.remove("drag-left");
+      stage.mouseControls.remove("scroll-ctrl");
+      stage.mouseControls.remove("scroll-shift");
     }
 
     if (msgtype === "EnableMouseRotation")
     {
       mysocket.send( 'Can mouse rotate ' + pagename );
       stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
+      stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
+      stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
     }
 
     if (msgtype === "RotateStage")
@@ -1423,6 +1453,7 @@ mysocket.onmessage = function (e)
       }
       vectorshapeComps = [];
       vectorreprs = [];
+      clipFixToCamPosZ = false;
       stage.viewer.requestRender();
     }
 
@@ -1444,14 +1475,32 @@ mysocket.onmessage = function (e)
     {
       strs = datval[1].split("\\n");
       var elmstrs = strs[0].split(",");
-      stage.viewer.parameters.clipNear = parseFloat(elmstrs[0]);
-      stage.viewer.parameters.clipFar = parseFloat(elmstrs[1]);
+      var near = parseFloat(elmstrs[0]);
+      var far = parseFloat(elmstrs[1]);
+      origcameraZpos = parseFloat(elmstrs[2]);
+      stage.viewer.parameters.clipMode = 'camera';
+      stage.viewer.parameters.clipScale = 'absolute';
+
+      if (near >= far )
+      { // default to no clipping if near >= far
+        stage.viewer.parameters.clipMode = 'scene';
+        stage.viewer.parameters.clipScale = 'relative';
+        near = 0;
+        far = 100;
+      }
+      stage.viewer.parameters.clipNear = near;
+      stage.viewer.parameters.clipFar = far;
+      origclipnear = near;
+      origclipfar = far;
+      clipFixToCamPosZ = true;
+      stage.viewer.camera.position.z = origcameraZpos;
       stage.viewer.requestRender();
     }
 
     if (msgtype === "GetClipPlaneDistances")
     {
-      msg = String( [stage.viewer.parameters.clipNear, stage.viewer.parameters.clipFar] )
+      msg = String( [stage.viewer.parameters.clipNear, stage.viewer.parameters.clipFar,
+                      stage.viewer.camera.position.z] )
       mysocket.send('ReturnClipPlaneDistances:\\n' + msg );
     }
 
@@ -1487,9 +1536,8 @@ mysocket.onmessage = function (e)
 
 };
 
-
     """ % (self.__module__, self.__module__, axisfuncstr, self.camera_type, spherebufferstr, \
-            negativeradiistr, colourgradstrs, colourlabel, fomlabel, cntbin)
+            negativeradiistr, colourgradstrs, colourlabel, fomlabel, cntbin, qualitystr)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
@@ -1497,9 +1545,7 @@ mysocket.onmessage = function (e)
     sleep(1)
     self.GetClipPlaneDistances()
     self.GetBoundingBox()
-    self.SetTrackBallRotateSpeed(0.5)
-    while not self.clipFar:
-      sleep(0.2)
+    self.SetTrackBallRotateSpeed(0.2)
     self.OrigClipFar = self.clipFar
     self.OrigClipNear = self.clipNear
     self.sceneisdirty = False
@@ -1547,18 +1593,18 @@ mysocket.onmessage = function (e)
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
           """ %tuple(alllst), verbose=2)
-
-          angles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
-          self.mprint("angles: %s" %str(roundoff(angles)))
-          z_vec = flex.vec3_double( [(0,0,1)])
-          self.rot_zvec = z_vec * self.rotation_mx
-          self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=1)
-          rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().fractionalization_matrix() )
-          self.rot_recip_zvec = self.rot_zvec * rfracmx
-          self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
-          self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=1)
+          if self.rotation_mx.is_r3_rotation_matrix():
+            angles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
+            self.mprint("angles: %s" %str(roundoff(angles)))
+            z_vec = flex.vec3_double( [(0,0,1)])
+            self.rot_zvec = z_vec * self.rotation_mx
+            self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=1)
+            rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().fractionalization_matrix() )
+            self.rot_recip_zvec = self.rot_zvec * rfracmx
+            self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
+            self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=1)
         else:
-          self.mprint( message, verbose=2)
+          self.mprint( message, verbose=3)
         self.lastmsg = message
       if "OrientationBeforeReload:" in message:
         #sleep(0.2)
@@ -1573,6 +1619,7 @@ mysocket.onmessage = function (e)
         flst = [float(e) for e in lst]
         self.clipNear = flst[0]
         self.clipFar = flst[1]
+        self.cameraPosZ = flst[2]
       if "ReturnBoundingBox:" in message:
         datastr = message[ message.find("\n") + 1: ]
         lst = datastr.split(",")
@@ -1658,7 +1705,7 @@ mysocket.onmessage = function (e)
 
   def SetOpacity(self, bin, alpha):
     if bin > self.nbin:
-      self.mprint( "There are only %d bins of data present" %self.nbin, True )
+      self.mprint( "There are only %d bins of data present" %self.nbin, verbose=0 )
       return
     msg = "%d, %f" %(bin, alpha)
     self.SendWebSockMsg("alpha", msg)
@@ -1670,14 +1717,15 @@ mysocket.onmessage = function (e)
 
 
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
-    self.mprint("Rendering JavaScript...", True)
+    self.mprint("Rendering JavaScript...", verbose=1)
     #self.SendWebSockMsg("Reload")
     self.msgqueue.append( ("Reload", "") )
 
 
   def OpenBrowser(self):
     if not self.browserisopen:
-      NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
+      #NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
+      NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.dev.js") )
       htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
       htmlstr += self.htmldiv
       with open(self.hklfname, "w") as f:
@@ -1728,9 +1776,10 @@ mysocket.onmessage = function (e)
 
   def AddVector(self, r1, r2, r3, isreciprocal=True):
     vec = (r1, r2, r3)
+    svec = list(vec)
     if isreciprocal:
       vec = self.miller_array.unit_cell().reciprocal_space_vector((r1, r2, r3))
-    svec = [vec[0]*self.scene.renderscale, vec[1]*self.scene.renderscale, vec[2]*self.scene.renderscale ]
+      svec = [vec[0]*self.scene.renderscale, vec[1]*self.scene.renderscale, vec[2]*self.scene.renderscale ]
     self.mprint("cartesian vector is: " + str(roundoff(svec)), verbose=1)
     xyvec = svec[:]
     xyvec[2] = 0.0 # projection vector of svec in the xy plane
@@ -1741,7 +1790,7 @@ mysocket.onmessage = function (e)
     else:
       self.angle_x_xyvec = 90.0
       self.angle_y_xyvec = 90.0
-    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(self.angle_x_xyvec, self.angle_y_xyvec), verbose=1)
+    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(self.angle_x_xyvec, self.angle_y_xyvec), verbose=2)
     yzvec = svec[:]
     yzvec[0] = 0.0 # projection vector of svec in the yz plane
     yzvecnorm = math.sqrt( yzvec[1]*yzvec[1] + yzvec[2]*yzvec[2] )
@@ -1751,12 +1800,12 @@ mysocket.onmessage = function (e)
     else:
       self.angle_y_yzvec = 90.0
       self.angle_z_yzvec = 90.0
-    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(self.angle_y_yzvec, self.angle_z_yzvec), verbose=1)
+    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(self.angle_y_yzvec, self.angle_z_yzvec), verbose=2)
     svecnorm = math.sqrt( svec[0]*svec[0] + svec[1]*svec[1] + svec[2]*svec[2] )
     self.angle_x_svec = math.acos( svec[0]/svecnorm )*180.0/math.pi
     self.angle_y_svec = math.acos( svec[1]/svecnorm )*180.0/math.pi
     self.angle_z_svec = math.acos( svec[2]/svecnorm )*180.0/math.pi
-    self.mprint("angles to x,y,z axis are: %s, %s, %s" %(self.angle_x_svec, self.angle_y_svec, self.angle_z_svec ), verbose=1)
+    self.mprint("angles to x,y,z axis are: %s, %s, %s" %(self.angle_x_svec, self.angle_y_svec, self.angle_z_svec ), verbose=2)
     self.msgqueue.append( ("AddVector", "%s, %s, %s" %tuple(svec) ))
 
 
@@ -1775,15 +1824,23 @@ mysocket.onmessage = function (e)
     self.msgqueue.append( ("GetTrackBallRotateSpeed", "") )
 
 
-  def SetClipPlaneDistances(self, near, far):
-    msg = str(near) + ", " + str(far)
+  def SetClipPlaneDistances(self, near, far, cameraPosZ=None):
+    if cameraPosZ is None:
+      cameraPosZ = self.cameraPosZ
+    msg = str(near) + ", " + str(far) + ", " + str(cameraPosZ)
     self.msgqueue.append( ("SetClipPlaneDistances", msg) )
 
 
   def GetClipPlaneDistances(self):
     self.clipNear = None
     self.clipFar = None
+    self.cameraPosZ = None
     self.msgqueue.append( ("GetClipPlaneDistances", "") )
+    while self.clipFar is None:
+      time.sleep(0.2)
+    self.mprint("clipnear, clipfar, cameraPosZ: %2.2f, %2.2f %2.2f" \
+               %(self.clipNear, self.clipFar, self.cameraPosZ), 1)
+    return (self.clipNear, self.clipFar, self.cameraPosZ)
 
 
   def GetBoundingBox(self):
@@ -1791,6 +1848,11 @@ mysocket.onmessage = function (e)
     self.boundingY = None
     self.boundingZ = None
     self.msgqueue.append( ("GetBoundingBox", "") )
+    while self.boundingX is None:
+      time.sleep(0.2)
+    self.mprint("boundingXYZ: %2.2f %2.2f %2.2f" \
+       %(self.boundingX, self.boundingY, self.boundingZ), verbose=1)
+    return (self.boundingX, self.boundingY, self.boundingZ)
 
 
   def RemoveAllReciprocalVectors(self):
