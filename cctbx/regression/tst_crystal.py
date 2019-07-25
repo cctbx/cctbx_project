@@ -345,24 +345,28 @@ def exercise_subtract_continuous_allowed_origin_shifts(
   assert approx_equal(f_transl.data(), f_obs.data())
 
 
-def exercise_str():
-  uc = uctbx.unit_cell((10, 11, 12, 89, 90, 91))
-  sg = sgtbx.space_group_info("P1").group()
+def exercise_str_repr():
+  sgi = sgtbx.space_group_info('P1')
+  uc = sgi.any_compatible_unit_cell(volume=1000)
   cs = crystal.symmetry(unit_cell=None, space_group=None)
+  assert eval(repr(cs)).is_similar_symmetry(cs)
   assert not show_diff(str(cs), """\
 Unit cell: None
 Space group: None""")
   cs = crystal.symmetry(unit_cell=uc, space_group=None)
+  assert eval(repr(cs)).is_similar_symmetry(cs, 1e-8, 1e-3)
   assert not show_diff(str(cs), """\
-Unit cell: (10, 11, 12, 89, 90, 91)
+Unit cell: (8.52593, 11.0837, 14.4941, 83, 109, 129)
 Space group: None""")
-  cs = crystal.symmetry(unit_cell=None, space_group=sg)
+  cs = crystal.symmetry(unit_cell=None, space_group=sgi.group())
+  assert eval(repr(cs)).is_similar_symmetry(cs, 1e-8, 1e-3)
   assert not show_diff(str(cs), """\
 Unit cell: None
 Space group: P 1 (No. 1)""")
-  cs = crystal.symmetry(unit_cell=uc, space_group=sg)
+  cs = crystal.symmetry(unit_cell=uc, space_group=sgi.group())
+  assert eval(repr(cs)).is_similar_symmetry(cs, 1e-8, 1e-3)
   assert not show_diff(str(cs), """\
-Unit cell: (10, 11, 12, 89, 90, 91)
+Unit cell: (8.52593, 11.0837, 14.4941, 83, 109, 129)
 Space group: P 1 (No. 1)""")
 
 
@@ -374,7 +378,7 @@ def run_call_back(flags, space_group_info):
       use_niggli_cell=use_niggli_cell)
 
 def run():
-  exercise_str()
+  exercise_str_repr()
   exercise_symmetry()
   exercise_correct_rhombohedral_setting_if_necessary()
   exercise_non_crystallographic_symmetry()

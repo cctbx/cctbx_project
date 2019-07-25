@@ -23,11 +23,12 @@ def exercise_symmetry():
   cspc = cs.as_py_code(indent="*$")
   assert not show_diff(cspc, """\
 crystal.symmetry(
-*$  unit_cell=(12.548, 12.548, 20.789, 90, 90, 120),
-*$  space_group_symbol="P 63/m m c")""")
+*$  unit_cell=(12.548, 12.548, 20.789, 90.0, 90.0, 120.0),
+*$  space_group_symbol="P 63/m m c"
+)""")
   cspc = cs.as_py_code()
   cs2 = eval(cspc)
-  assert cs2.is_similar_symmetry(cs)
+  assert cs2.is_similar_symmetry(cs, 1e-8, 1e-8)
 
 def trial_structure(choice_of_coordinates=0):
   # zeolite framework type AFG
