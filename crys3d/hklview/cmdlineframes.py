@@ -177,7 +177,9 @@ myHKLview.SetColoursToPhases(True)
 from crys3d.hklview import cmdlineframes
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js")
 myHKLview.LoadReflectionsFile("3RP2_A.1.mtz")
-myHKLview.SetScene(1,4)
+myHKLview.SetScene(0)
+myHKLview.ClipPlaneParallelToHKLplane(0, 3, 0)
+myHKLview.ClipPlaneParallelToHKLplane(0, 3, 3, clipNear=-1, clipFar=1, fixorientation=False)
 myHKLview.SetRadiiScale(1, nth_power_scale=0.0)
 myHKLview.ExpandToP1(True)
 myHKLview.ExpandAnomalous(True)
@@ -201,6 +203,22 @@ myHKLview.SetOpacity(25, 1.0)
 myHKLview.SetOpacity(24, 1.0)
 myHKLview.SetOpacity(10, 1.0)
 myHKLview.SetOpacity(14, 1.0)
+
+
+
+from crys3d.hklview import cmdlineframes
+myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", htmlfname = "myhkl.html", high_quality=False, verbose=2)
+myHKLview.LoadReflectionsFile(r"C:\Busers\oeffner\Phenix\phenix-installer-1.15.2-3472-intel-windows-x86_64\modules\phenix_examples\beta-blip\beta_blip_P3221.mtz")
+myHKLview.SetScene(0)
+myHKLview.SetRadiiScale(1,0)
+myHKLview.ExpandToP1(True)
+myHKLview.ExpandAnomalous(True)
+myHKLview.ClipPlaneParallelToHKLplane(0, 3, 3, hkldist=0)
+myHKLview.RemoveNormalVectorToClipPlane()
+
+
+
+
 
 
 """
@@ -841,17 +859,17 @@ class HKLViewFrame() :
     self.viewer.PointVectorOut()
     if clipNear is None or clipFar is None:
       halfdist = (self.viewer.OrigClipFar - self.viewer.OrigClipNear) / 2.0
-      self.GetBoundingBox()
+      self.viewer.GetBoundingBox()
       clipNear = halfdist - self.viewer.scene.min_dist*50/self.viewer.boundingZ
       clipFar = halfdist + self.viewer.scene.min_dist*50/self.viewer.boundingZ
-    self.viewer.SetClipPlaneDistances(clipNear, clipFar)
+    self.viewer.SetClipPlaneDistances(clipNear, clipFar, self.viewer.cameraPosZ)
     self.viewer.TranslateHKLpoints(h, k, l, hkldist)
 
 
   def ClipPlaneParallelToHKLplane(self, h, k, l, hkldist=0.0,
                            clipNear=None, clipFar=None, fixorientation=True):
     self.viewer.RemoveAllReciprocalVectors()
-    R = l * self.viewer.normal_hk + h * self.viewer.normal_kl + k * self.viewer.normal_lh
+    R = -l * self.viewer.normal_hk + h * self.viewer.normal_kl + k * self.viewer.normal_lh
     self.viewer.AddVector(R[0][0], R[0][1], R[0][2], isreciprocal=False)
     if fixorientation:
       self.viewer.DisableMouseRotation()
@@ -859,31 +877,28 @@ class HKLViewFrame() :
       self.viewer.EnableMouseRotation()
     self.viewer.PointVectorOut()
     if clipNear is None or clipFar is None:
-      halfdist = (self.viewer.OrigClipFar - self.viewer.OrigClipNear) / 2.0
-      self.GetBoundingBox()
-      clipNear = halfdist - self.viewer.scene.min_dist*50/self.viewer.boundingZ
-      clipFar = halfdist + self.viewer.scene.min_dist*50/self.viewer.boundingZ
-    self.viewer.SetClipPlaneDistances(clipNear, clipFar)
-    #self.viewer.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
-    self.viewer.TranslateHKLpoints(h, k, l, hkldist)
+      #halfdist = (self.viewer.OrigClipFar - self.viewer.OrigClipNear) / 2.0
+      #self.viewer.cameraPosZ = -hkldist
+      self.viewer.GetBoundingBox()
+      halfdist = -self.viewer.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
+      clipNear = halfdist - self.viewer.scene.min_dist*0.5 # 50/self.viewer.boundingZ
+      clipFar = halfdist + self.viewer.scene.min_dist*0.5  #50/self.viewer.boundingZ
+    #self.viewer.SetClipPlaneDistances(clipNear, clipFar, hkldist)
+    self.viewer.SetClipPlaneDistances(clipNear, clipFar, self.viewer.cameraPosZ)
+    self.viewer.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
+    #self.viewer.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], 0.0)
+    #self.viewer.TranslateHKLpoints(h, k, l, hkldist)
 
 
   def RemoveNormalVectorToClipPlane(self):
     self.viewer.EnableMouseRotation()
     self.viewer.RemoveAllReciprocalVectors()
-    self.viewer.SetClipPlaneDistances(0, 100)
+    self.viewer.SetClipPlaneDistances(0, 0)
     self.viewer.TranslateHKLpoints(0, 0, 0, 0.0)
 
 
   def SetTrackBallRotateSpeed(self, trackspeed):
     self.viewer.SetTrackBallRotateSpeed(trackspeed)
-
-
-  def GetBoundingBox(self):
-    self.viewer.GetBoundingBox()
-    while self.viewer.boundingX is None:
-      time.sleep(0.2)
-    return (self.viewer.boundingX, self.viewer.boundingY, self.viewer.boundingZ)
 
 
   def GetTrackBallRotateSpeed(self):
