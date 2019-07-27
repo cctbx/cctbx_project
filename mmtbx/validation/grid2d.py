@@ -105,5 +105,3 @@ class Grid2D(object):
     # fname = "4sc_%s_%s.png" % (k, r_type)
     print ("saving", fname)
     p.save_image(fname, dpi=300)
-
-
