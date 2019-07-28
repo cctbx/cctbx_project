@@ -901,7 +901,15 @@ class run_ensemble_refinement(object):
         for atom in chain.atoms():
           if atom.element_is_hydrogen(): count_h+=1
         chain_id_non_h = ("'" + chain.id + "'", chain.atoms_size() - count_h)
-        chains_info.append(chain_id_non_h)
+        # check if this chain is already there, e.g. ligand in the same chain
+        # at the end of file
+        cur_ch_id_list = [x[0] for x in chains_info]
+        if "'" + chain.id + "'" in cur_ch_id_list:
+          ind = cur_ch_id_list.index("'" + chain.id + "'")
+          old_n_atoms = chains_info[ind][1]
+          chains_info[ind] = ("'" + chain.id + "'", old_n_atoms+chain_id_non_h[1])
+        else:
+          chains_info.append(chain_id_non_h)
       # Check all chains > 63 heavy atoms for TLS fitting
       chains_size = flex.int(zip(*chains_info)[1])
       chains_size_ok = flex.bool(chains_size > 63)

@@ -12,7 +12,6 @@ Description : Runs spotfinding, indexing, refinement and integration using
 
 import os
 import numpy as np
-import traceback
 
 from iotbx.phil import parse
 from cctbx import sgtbx, crystal

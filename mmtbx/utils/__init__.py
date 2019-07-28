@@ -813,18 +813,11 @@ def find_overlapping_selections(selections, selection_strings):
   of selection strings found to overlap, or None if all selections are unique.
   """
   assert (len(selections) == len(selection_strings))
-  for i_sel in range(len(selections) - 1):
-    selection1 = selections[i_sel]
+  for i_sel, selection1 in enumerate(selections[:-1]):
     for j_sel in range(i_sel + 1, len(selections)):
       selection2 = selections[j_sel]
-      if (isinstance(selection1, flex.bool)):
-        joint_sel = selection1 & selection2
-        if (joint_sel.count(True) > 0):
-          return (selection_strings[i_sel], selection_strings[j_sel])
-      else :
-        intersection = selection1.intersection(selection2)
-        if (len(intersection) > 0):
-          return (selection_strings[i_sel], selection_strings[j_sel])
+      if ((selection1 & selection2).count(True) > 0):
+        return (selection_strings[i_sel], selection_strings[j_sel])
   return None
 
 def get_atom_selections(
@@ -866,7 +859,7 @@ def get_atom_selections(
                   or scat_types[i_seq] in ["H", "D"]):
                 rg_i_seqs.append(atom.i_seq)
           if (len(rg_i_seqs) != 0):
-            selections.append(flex.size_t(rg_i_seqs))
+            selections.append(flex.bool(model.get_number_of_atoms(), flex.size_t(rg_i_seqs)))
   elif(ss_size != 1 or n_none == 0 and not one_group_per_residue):
     for selection_string in selection_strings:
       selections.append(atom_selection(model             = model,
@@ -875,23 +868,14 @@ def get_atom_selections(
   else:
     raise Sorry('Ambiguous selection.')
   if(len(selections)>1):
-    if(not isinstance(selections[0], flex.bool)):
-      tmp = flex.bool(model.get_number_of_atoms(), selections[0]).as_int()
-    else:
-      tmp = selections[0].deep_copy().as_int()
-    for k_, tmp_s in enumerate(selections[1:]):
-      k = k_ + 1 # XXX Python 2.5 workaround
-      if(not isinstance(tmp_s, flex.bool)):
-        tmp = tmp + flex.bool(model.get_number_of_atoms(),tmp_s).as_int()
-      else:
-        tmp = tmp + tmp_s.as_int()
+    tmp = selections[0].deep_copy().as_int()
+    for tmp_s in selections[1:]:
+      tmp = tmp + tmp_s.as_int()
     if(flex.max(tmp)>1):
       sel1, sel2 = find_overlapping_selections(selections, selection_strings)
-      if (parameter_name is not None):
-        raise Sorry("One or more overlapping selections for %s:\n%s\n%s" %
-          (parameter_name, sel1, sel2))
-      else :
-        raise Sorry("One or more overlapping selections:\n%s\n%s" %(sel1,sel2))
+      pn = "for " + parameter_name if parameter_name else ""
+      raise Sorry("One or more overlapping selections %s:\n%s\n%s" %
+        (pn, sel1, sel2))
   #
   if(iselection):
     for i_seq, selection in enumerate(selections):
