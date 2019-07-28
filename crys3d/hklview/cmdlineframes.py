@@ -146,7 +146,7 @@ from crys3d.hklview import cmdlineframes
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js")
 myHKLview.LoadReflectionsFile("mymtz.mtz")
 myHKLview.SetScene(0)
-no
+
 myHKLview.SetRadiiScale(1, nth_power_scale=0.2)
 myHKLview.SetSceneBinThresholds([50, 15, 9])
 myHKLview.SetOpacity(0, 0.0)
@@ -295,9 +295,6 @@ class HKLViewFrame() :
       self.verbose = kwds['verbose']
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
-    self.viewer = view_3d.hklview_3d( **kwds )
-    self.ResetPhilandViewer()
-    self.NewFileLoaded = False
     self.infostr = ""
     self.useSocket=False
     if 'useSocket' in kwds:
@@ -310,6 +307,10 @@ class HKLViewFrame() :
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen )
       self.msgqueuethrd.daemon = True
       self.msgqueuethrd.start()
+      kwds['socket'] = self.socket
+    self.viewer = view_3d.hklview_3d( **kwds )
+    self.ResetPhilandViewer()
+    self.NewFileLoaded = False
 
 
   def mprint(self, m, verbose=0):
@@ -353,9 +354,10 @@ class HKLViewFrame() :
   def GetNewCurrentPhilFromPython(self, pyphilobj, oldcurrentphil):
     newcurrentphil = oldcurrentphil.fetch(source = pyphilobj)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
-
     oldcolbintrshld = oldcurrentphil.extract().NGL_HKLviewer.scene_bin_thresholds
-    newcolbintrshld = pyphilobj.extract().NGL_HKLviewer.scene_bin_thresholds
+    newcolbintrshld = oldcolbintrshld
+    if hasattr(pyphilobj.extract().NGL_HKLviewer, "scene_bin_thresholds"):
+      newcolbintrshld = pyphilobj.extract().NGL_HKLviewer.scene_bin_thresholds
     # fetch_diff doesn't seem able to correclty spot changes
     # in the multiple scope phil object "NGL_HKLviewer.scene_bin_thresholds"
     # Must do it manually
@@ -422,9 +424,9 @@ class HKLViewFrame() :
         self.settings = phl.viewer
 
       msg = self.viewer.update_settings(diff, phl)
-      self.mprint( msg, True)
+      self.mprint( msg, 1)
       for i,e in enumerate(self.spacegroup_choices):
-        self.mprint("%d, %s" %(i,e.symbol_and_number()) , True)
+        self.mprint("%d, %s" %(i,e.symbol_and_number()) , 0)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.SendInfo()
       self.NewFileLoaded = False
@@ -434,7 +436,7 @@ class HKLViewFrame() :
         return False
       return True
     except Exception as e:
-      self.mprint(to_str(e) + "\n" + traceback.format_exc(), True)
+      self.mprint(to_str(e) + "\n" + traceback.format_exc(), 0)
       return False
 
 
@@ -867,7 +869,7 @@ class HKLViewFrame() :
 
 
   def ClipPlaneParallelToHKLplane(self, h, k, l, hkldist=0.0,
-                           clipNear=None, clipFar=None, fixorientation=True):
+             clipwidth=None, fixorientation=True):
     self.viewer.RemoveAllReciprocalVectors()
     R = -l * self.viewer.normal_hk + h * self.viewer.normal_kl + k * self.viewer.normal_lh
     self.viewer.AddVector(R[0][0], R[0][1], R[0][2], isreciprocal=False)
@@ -876,13 +878,11 @@ class HKLViewFrame() :
     else:
       self.viewer.EnableMouseRotation()
     self.viewer.PointVectorOut()
-    if clipNear is None or clipFar is None:
-      #halfdist = (self.viewer.OrigClipFar - self.viewer.OrigClipNear) / 2.0
-      #self.viewer.cameraPosZ = -hkldist
-      self.viewer.GetBoundingBox()
-      halfdist = -self.viewer.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
-      clipNear = halfdist - self.viewer.scene.min_dist*0.5 # 50/self.viewer.boundingZ
-      clipFar = halfdist + self.viewer.scene.min_dist*0.5  #50/self.viewer.boundingZ
+    halfdist = -self.viewer.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
+    if clipwidth is None:
+      clipwidth = self.viewer.meanradius
+    clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
+    clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
     #self.viewer.SetClipPlaneDistances(clipNear, clipFar, hkldist)
     self.viewer.SetClipPlaneDistances(clipNear, clipFar, self.viewer.cameraPosZ)
     self.viewer.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
@@ -929,7 +929,7 @@ class HKLViewFrame() :
 
   def GetArrayInfotpls(self):
     """
-    return array of strings with information on each miller array
+    return array of tuples with information on each miller array
     """
     return self.array_infotpls
 
@@ -953,7 +953,7 @@ class HKLViewFrame() :
 
   def SendInfo(self):
     mydict = { "info": self.infostr,
-               "miller_arrays": self.array_infotpls,
+               "array_infotpls": self.array_infotpls,
                "hklscenes_arrays": self.viewer.hkl_scenes_info,
                "bin_info": self.viewer.binstrs,
                "html_url": self.viewer.url,
@@ -961,8 +961,8 @@ class HKLViewFrame() :
                "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
                "NewFileLoaded": self.NewFileLoaded
             }
-    #print str(mydict)
     if self.useSocket:
+      #print("sending2: " + str(mydict))
       self.socket.send( str(mydict).encode("utf-8") )
 
 

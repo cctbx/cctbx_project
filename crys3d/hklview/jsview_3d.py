@@ -70,7 +70,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
   sceneminsigmas = []
   scenearrayinfos = []
   hklscenes = []
-  fomsarrays_idx = [(None, [])]
+  fomsarrays_idx = [(None, None)]
   #mprint("in MakeHKLscene", verbose=True)
   #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
   if proc_array.is_complex_array():
@@ -178,6 +178,7 @@ class hklview_3d:
     self.rotation_mx = matrix.identity(3)
     self.rot_recip_zvec = None
     self.rot_zvec = None
+    self.meanradius = -1
     self.high_quality = True
     if kwds.has_key('high_quality'):
       self.high_quality = kwds['high_quality']
@@ -240,6 +241,9 @@ class hklview_3d:
       os.remove(self.jscriptfname)
     if 'jscriptfname' in kwds:
       self.jscriptfname = kwds['jscriptfname']
+    self.socket = None
+    if 'socket' in kwds:
+      self.socket = kwds['socket']
     self.mprint('Output will be written to \"%s\"\n' \
       'including reference to NGL JavaScript \"%s\"' %(self.hklfname, self.jscriptfname))
     self.hklhtml = r"""
@@ -687,6 +691,7 @@ var MakeHKL_Axis = function()
 
     colors = self.HKLscenes[self.colour_scene_id].colors
     radii = self.HKLscenes[self.radii_scene_id].radii
+    self.meanradius = flex.mean(radii)
     points = self.scene.points
     hkls = self.scene.indices
     dres = self.scene.dres
@@ -1671,7 +1676,8 @@ mysocket.onmessage = function (e)
 # reading the html content. This may crash this thread. So try restarting this thread until
 # browser is ready
     except Exception as e:
-      self.mprint( str(e) + ", Restarting WebBrowserMsgQueue", verbose=2)
+      self.mprint( str(e) + ", Restarting WebBrowserMsgQueue\n" \
+                         + traceback.format_exc(limit=10), verbose=2)
       self.WebBrowserMsgQueue()
 
 
@@ -1730,10 +1736,14 @@ mysocket.onmessage = function (e)
       htmlstr += self.htmldiv
       with open(self.hklfname, "w") as f:
         f.write( htmlstr )
-      self.url = "file://" + os.path.abspath( self.hklfname )
+      self.url = "file:///" + os.path.abspath( self.hklfname )
+      self.url = self.url.replace("\\", "/")
       self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
       if self.UseOSBrowser:
         webbrowser.open(self.url, new=1)
+      if self.socket:
+        mydict = { "html_url": self.url }
+        self.socket.send( str(mydict).encode("utf-8") )
       self.isnewfile = False
       self.browserisopen = True
 
@@ -1908,8 +1918,6 @@ mysocket.onmessage = function (e)
     str_vec = str_vec.replace(")", "")
     msg = str_vec + "\n"
     self.msgqueue.append( ("TranslateHKLpoints", msg) )
-
-
 
 
 

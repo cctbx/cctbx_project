@@ -11,14 +11,17 @@ from __future__ import absolute_import, division, print_function
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtWidgets import ( QApplication, QCheckBox, QComboBox,
+from PySide2.QtCore import Qt, QUrl, QTimer
+from PySide2.QtWidgets import ( QApplication, QCheckBox, QComboBox,
         QDial, QDialog, QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
-import sys, zmq, subprocess, time
+from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
+
+
+import sys, zmq, subprocess, time, traceback
 
 class NGL_HKLViewer(QDialog):
   def __init__(self, parent=None):
@@ -40,12 +43,6 @@ class NGL_HKLViewer(QDialog):
 
     self.MillerLabel = QLabel()
     self.MillerLabel.setText("Selected Miller Array")
-
-    self.FOMComboBox = QComboBox()
-    self.FOMComboBox.activated.connect(self.FOMComboSelchange)
-
-    self.FOMLabel = QLabel()
-    self.FOMLabel.setText("Use Figure of Merits")
 
     self.SpaceGroupComboBox = QComboBox()
     self.SpaceGroupComboBox.activated.connect(self.SpacegroupSelchange)
@@ -136,10 +133,11 @@ class NGL_HKLViewer(QDialog):
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
 
     self.createTopLeftGroupBox()
-    #self.createTopRightGroupBox()
+    self.createTopRightGroupBox()
     self.createBottomLeftTabWidget()
     self.createRadiiScaleGroupBox()
 
+    self.BrowserBox = QWebEngineView()
     #topLayout = QHBoxLayout()
     #topLayout.addWidget(self.openFileNameButton)
     #topLayout.addStretch(1)
@@ -149,16 +147,20 @@ class NGL_HKLViewer(QDialog):
     mainLayout.addWidget(self.HKLnameedit,         1, 0, 1, 1)
 
     mainLayout.addWidget(self.topLeftGroupBox,     2, 0)
-    #mainLayout.addWidget(self.topRightGroupBox,    1, 1)
+    mainLayout.addWidget(self.topRightGroupBox,    0, 1)
     mainLayout.addWidget(self.RadiiScaleGroupBox,  3, 0)
     mainLayout.addWidget(self.bottomLeftGroupBox,  4, 0)
+    mainLayout.addWidget(self.BrowserBox,  2, 1, 3, 3)
+
+    self.BrowserBox.load(QUrl("http://www.oeffner.net"))
+
     mainLayout.setRowStretch(0, 0)
     mainLayout.setRowStretch(1, 0)
     mainLayout.setRowStretch(2, 0)
     mainLayout.setRowStretch(3, 0)
     mainLayout.setRowStretch(4, 1)
     #mainLayout.setColumnStretch(0, 1)
-    #mainLayout.setColumnStretch(1, 0)
+    mainLayout.setColumnStretch(2, 1)
     self.setLayout(mainLayout)
 
     self.setWindowTitle("NGL-HKL-viewer")
@@ -166,7 +168,8 @@ class NGL_HKLViewer(QDialog):
     self.LaunchCCTBXPython()
     self.out = None
     self.err = None
-    self.miller_arrays = None
+    self.hklscenes_arrays = None
+    self.array_infotpls = None
     self.matching_arrays = None
     self.bin_info = None
     self.html_url = None
@@ -200,19 +203,31 @@ class NGL_HKLViewer(QDialog):
       try:
         msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
         #msg = self.socket.recv()
-        self.info = eval(msg.decode())
-
+        msgstr = msg.decode()
+#        print(msgstr)
+        self.info = eval(msgstr)
+        #print("received from cctbx: " + str(self.info))
         ngl_hkl_infodict = self.info
         if ngl_hkl_infodict:
-          self.miller_arrays = ngl_hkl_infodict["miller_arrays"]
-          self.matching_arrays = ngl_hkl_infodict["matching_arrays"]
-          self.bin_info = ngl_hkl_infodict["bin_info"]
-          self.html_url = ngl_hkl_infodict["html_url"]
-          self.spacegroups = ngl_hkl_infodict["spacegroups"]
-          self.mergedata = ngl_hkl_infodict["merge_data"]
-          self.infostr = ngl_hkl_infodict["info"]
-          self.NewFileLoaded = ngl_hkl_infodict["NewFileLoaded"]
+          if ngl_hkl_infodict.get("hklscenes_arrays"):
+            self.hklscenes_arrays = ngl_hkl_infodict["hklscenes_arrays"]
+          if ngl_hkl_infodict.get("array_infotpls"):
+            self.array_infotpls = ngl_hkl_infodict["array_infotpls"]
+          if ngl_hkl_infodict.get("bin_info"):
+            self.bin_info = ngl_hkl_infodict["bin_info"]
+          if ngl_hkl_infodict.get("html_url"):
+            self.html_url = ngl_hkl_infodict["html_url"]
+            self.BrowserBox.load(QUrl(self.html_url))
+          if ngl_hkl_infodict.get("spacegroups"):
+            self.spacegroups = ngl_hkl_infodict["spacegroups"]
+          if ngl_hkl_infodict.get("merge_data"):
+            self.mergedata = ngl_hkl_infodict["merge_data"]
+          if ngl_hkl_infodict.get("info"):
+            self.infostr = ngl_hkl_infodict["info"]
+          if ngl_hkl_infodict.get("NewFileLoaded"):
+            self.NewFileLoaded = ngl_hkl_infodict["NewFileLoaded"]
           self.fileisvalid = True
+          print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
 
           if self.infostr:
             print(self.infostr)
@@ -222,39 +237,39 @@ class NGL_HKLViewer(QDialog):
             self.textInfo.setPlainText("")
             #self.mergecheckbox.setEnabled(False)
           if self.NewFileLoaded:
-            if self.mergedata == True : val = 2
-            if self.mergedata == None : val = 1
-            if self.mergedata == False : val = 0
-            self.mergecheckbox.setCheckState(val )
+            #if self.mergedata == True : val = Qt.CheckState.Checked
+            #if self.mergedata == None : val = Qt.CheckState.PartiallyChecked
+            #if self.mergedata == False : val = Qt.CheckState.Unchecked
+            #self.mergecheckbox.setCheckState(val )
+            print("got hklscenes: " + str(self.hklscenes_arrays))
 
             self.MillerComboBox.clear()
             self.MillerComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
-                                             for e in self.miller_arrays ] )
-            self.FOMComboBox.clear()
-            self.FOMComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
-                                           for e in self.miller_arrays ] )
+                                             for e in self.hklscenes_arrays ] )
             self.SpaceGroupComboBox.clear()
             self.SpaceGroupComboBox.addItems( self.spacegroups )
 
-            self.millertable.setRowCount(len(self.miller_arrays))
+            self.millertable.setRowCount(len(self.hklscenes_arrays))
             #self.millertable.setColumnCount(8)
-            for n,millarr in enumerate(self.miller_arrays):
+            for n,millarr in enumerate(self.hklscenes_arrays):
               for m,elm in enumerate(millarr):
                 self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
 
       except Exception as e:
-        #print( str(e) )
+        errmsg = str(e)
+        if "Resource temporarily unavailable" not in errmsg:
+          print( errmsg  +  traceback.format_exc(limit=10) )
         pass
 
 
 
 
   def MergeData(self):
-    if self.mergecheckbox.checkState()== 2:
+    if self.mergecheckbox.checkState()== Qt.CheckState.Checked:
       self.NGL_HKL_command('NGL_HKLviewer.mergedata = True')
-    if self.mergecheckbox.checkState()== 1:
+    if self.mergecheckbox.checkState()== Qt.CheckState.PartiallyChecked:
       self.NGL_HKL_command('NGL_HKLviewer.mergedata = None')
-    if self.mergecheckbox.checkState()== 0:
+    if self.mergecheckbox.checkState()== Qt.CheckState.Unchecked:
       self.NGL_HKL_command('NGL_HKLviewer.mergedata = False')
 
 
@@ -301,8 +316,8 @@ class NGL_HKLViewer(QDialog):
 
 
   def onSliceComboSelchange(self,i):
-    rmin = self.miller_arrays[self.MillerComboBox.currentIndex()][3][0][i]
-    rmax = self.miller_arrays[self.MillerComboBox.currentIndex()][3][1][i]
+    rmin = self.hklscenes_arrays[self.MillerComboBox.currentIndex()][3][0][i]
+    rmax = self.hklscenes_arrays[self.MillerComboBox.currentIndex()][3][1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
     self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
 
@@ -354,7 +369,6 @@ class NGL_HKLViewer(QDialog):
       self.fileisvalid = False
       self.NGL_HKL_command('NGL_HKLviewer.filename = "%s"' %fileName )
       self.MillerComboBox.clear()
-      self.FOMComboBox.clear()
       #while not self.fileisvalid:
       #  time.sleep(1)
         #print("file not valid")
@@ -366,20 +380,18 @@ class NGL_HKLViewer(QDialog):
     layout = QGridLayout()
     layout.addWidget(self.MillerComboBox,            1, 1, 1, 1)
     layout.addWidget(self.MillerLabel,               1, 0, 1, 1)
-    layout.addWidget(self.FOMComboBox,               2, 1, 1, 1)
-    layout.addWidget(self.FOMLabel,                  2, 0, 1, 1)
-    layout.addWidget(self.SpaceGroupComboBox,        3, 1, 1, 1)
-    layout.addWidget(self.SpacegroupLabel,           3, 0, 1, 1)
-    layout.addWidget(self.mergecheckbox,             4, 0, 1, 1)
-    layout.addWidget(self.expandP1checkbox,          4, 1, 1, 1)
-    layout.addWidget(self.expandAnomalouscheckbox,   5, 0, 1, 1)
-    layout.addWidget(self.sysabsentcheckbox,         5, 1, 1, 1)
-    layout.addWidget(self.missingcheckbox,           6, 0, 1, 1)
-    layout.addWidget(self.onlymissingcheckbox,       6, 1, 1, 1)
+    layout.addWidget(self.SpaceGroupComboBox,        2, 1, 1, 1)
+    layout.addWidget(self.SpacegroupLabel,           2, 0, 1, 1)
+    layout.addWidget(self.mergecheckbox,             3, 0, 1, 1)
+    layout.addWidget(self.expandP1checkbox,          3, 1, 1, 1)
+    layout.addWidget(self.expandAnomalouscheckbox,   4, 0, 1, 1)
+    layout.addWidget(self.sysabsentcheckbox,         4, 1, 1, 1)
+    layout.addWidget(self.missingcheckbox,           5, 0, 1, 1)
+    layout.addWidget(self.onlymissingcheckbox,       5, 1, 1, 1)
 
-    layout.addWidget(self.showslicecheckbox,         7, 0, 1, 1)
-    layout.addWidget(self.SliceLabelComboBox,        7, 1, 1, 1)
-    layout.addWidget(self.sliceindexspinBox,         7, 2, 1, 1)
+    layout.addWidget(self.showslicecheckbox,         6, 0, 1, 1)
+    layout.addWidget(self.SliceLabelComboBox,        6, 1, 1, 1)
+    layout.addWidget(self.sliceindexspinBox,         6, 2, 1, 1)
     #layout.addStretch(1)
     self.topLeftGroupBox.setLayout(layout)
 
@@ -414,7 +426,7 @@ class NGL_HKLViewer(QDialog):
 
 
   def DoSomething(self):
-    print( self.miller_arrays )
+    print( self.hklscenes_arrays )
     print( self.matching_arrays )
     print( self.bin_info )
     print( self.html_url )
@@ -454,23 +466,15 @@ class NGL_HKLViewer(QDialog):
 
 
   def MillerComboSelchange(self,i):
-    self.NGL_HKL_command("NGL_HKLviewer.column = %d" %i)
-    if self.miller_arrays[ i ][1] == 'Map coeffs':
-      self.FOMComboBox.setEnabled(True)
-    else:
-      self.FOMComboBox.setEnabled(False)
-
+    self.NGL_HKL_command("NGL_HKLviewer.scene_id = %d" %i)
     self.SpaceGroupComboBox.clear()
     self.SpaceGroupComboBox.addItems( self.spacegroups )
+    # need to supply issymunique flag in infotuple
+    #if self.hklscenes_arrays[ i ][6] == 0:
+    #  self.mergecheckbox.setEnabled(True)
+    #else:
+    #  self.mergecheckbox.setEnabled(False)
 
-    if self.miller_arrays[ i ][7] == False:
-      self.mergecheckbox.setEnabled(True)
-    else:
-      self.mergecheckbox.setEnabled(False)
-
-
-  def FOMComboSelchange(self,i):
-    self.NGL_HKL_command("NGL_HKLviewer.fomcolumn = %d" %i)
 
 
   def SpacegroupSelchange(self,i):
@@ -497,7 +501,8 @@ class NGL_HKLViewer(QDialog):
     try: msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
     except Exception: pass
 
-    cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, verbose=False)"\n'
+    #cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=False, verbose=0)"\n'
+    cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=False, verbose=2, UseOSBrowser= False)"\n'
     #self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdout=sys.stdout, stderr=sys.stderr)
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
     #self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
