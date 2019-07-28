@@ -396,8 +396,9 @@ class HKLViewFrame() :
         self.ResetPhilandViewer(diff_phil)
         if not self.load_reflections_file(phl.filename):
           return False
+        else:
+          self.SendInfo()
 
-      #if hasattr(diff, "scene_id") or hasattr(diff, "fom_scene_id") \
       if hasattr(diff, "scene_id") \
        or hasattr(diff, "merge_data") or hasattr(diff, "scene_bin_thresholds"):
         #if self.set_scene(phl.scene_id, phl.fom_scene_id):
@@ -428,7 +429,6 @@ class HKLViewFrame() :
       for i,e in enumerate(self.spacegroup_choices):
         self.mprint("%d, %s" %(i,e.symbol_and_number()) , 0)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      self.SendInfo()
       self.NewFileLoaded = False
 
       if (self.viewer.miller_array is None) :
@@ -574,6 +574,8 @@ class HKLViewFrame() :
     else :
       self.spacegroup_choices.insert(0, sg_info)
       self.current_spacegroup = sg_info
+    mydict = { "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices] }
+    self.SendInfoToGUI(mydict)
 
 
   def set_spacegroup_choice(self, n) :
@@ -670,6 +672,13 @@ class HKLViewFrame() :
       elif (len(valid_arrays) >= 1):
         if (set_array):
           self.set_miller_array()
+        mydict = { "info": self.infostr,
+                   "array_infotpls": self.array_infotpls,
+                   "merge_data": self.params.NGL_HKLviewer.merge_data,
+                   "NewFileLoaded": self.NewFileLoaded
+                }
+
+        self.SendInfoToGUI(mydict)
         return True
 
 
@@ -949,6 +958,11 @@ class HKLViewFrame() :
     Useful when deciding which bin of reflections to make transparent
     """
     return self.viewer.binstrs
+
+
+  def SendInfoToGUI(self, infodict):
+    if self.useSocket:
+      self.socket.send( str(infodict).encode("utf-8") )
 
 
   def SendInfo(self):

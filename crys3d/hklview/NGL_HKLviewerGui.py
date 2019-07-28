@@ -168,13 +168,13 @@ class NGL_HKLViewer(QDialog):
     self.LaunchCCTBXPython()
     self.out = None
     self.err = None
-    self.hklscenes_arrays = None
-    self.array_infotpls = None
-    self.matching_arrays = None
+    self.hklscenes_arrays = []
+    self.array_infotpls = []
+    self.matching_arrays = []
     self.bin_info = None
-    self.html_url = None
-    self.spacegroups = None
-    self.info = None
+    self.html_url = ""
+    self.spacegroups = []
+    self.info = []
     self.infostr = ""
     self.fileisvalid = False
     self.NewFileLoaded = False
@@ -210,22 +210,22 @@ class NGL_HKLViewer(QDialog):
         ngl_hkl_infodict = self.info
         if ngl_hkl_infodict:
           if ngl_hkl_infodict.get("hklscenes_arrays"):
-            self.hklscenes_arrays = ngl_hkl_infodict["hklscenes_arrays"]
+            self.hklscenes_arrays = ngl_hkl_infodict.get("hklscenes_arrays", [])
           if ngl_hkl_infodict.get("array_infotpls"):
-            self.array_infotpls = ngl_hkl_infodict["array_infotpls"]
+            self.array_infotpls = ngl_hkl_infodict.get("array_infotpls",[])
           if ngl_hkl_infodict.get("bin_info"):
             self.bin_info = ngl_hkl_infodict["bin_info"]
           if ngl_hkl_infodict.get("html_url"):
             self.html_url = ngl_hkl_infodict["html_url"]
             self.BrowserBox.load(QUrl(self.html_url))
           if ngl_hkl_infodict.get("spacegroups"):
-            self.spacegroups = ngl_hkl_infodict["spacegroups"]
+            self.spacegroups = ngl_hkl_infodict.get("spacegroups",[])
           if ngl_hkl_infodict.get("merge_data"):
             self.mergedata = ngl_hkl_infodict["merge_data"]
           if ngl_hkl_infodict.get("info"):
-            self.infostr = ngl_hkl_infodict["info"]
+            self.infostr = ngl_hkl_infodict.get("info",[])
           if ngl_hkl_infodict.get("NewFileLoaded"):
-            self.NewFileLoaded = ngl_hkl_infodict["NewFileLoaded"]
+            self.NewFileLoaded = ngl_hkl_infodict.get("NewFileLoaded",False)
           self.fileisvalid = True
           print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
 
@@ -502,7 +502,7 @@ class NGL_HKLViewer(QDialog):
     except Exception: pass
 
     #cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=False, verbose=0)"\n'
-    cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=False, verbose=2, UseOSBrowser= False)"\n'
+    cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=False, verbose=3, UseOSBrowser= False)"\n'
     #self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdout=sys.stdout, stderr=sys.stderr)
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
     #self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -531,14 +531,18 @@ class NGL_HKLViewer(QDialog):
 
 
 if __name__ == '__main__':
-  app = QApplication(sys.argv)
-  guiobj = NGL_HKLViewer()
+  try:
+    app = QApplication(sys.argv)
+    guiobj = NGL_HKLViewer()
 
-  timer = QTimer()
-  timer.setInterval(0.1)
-  timer.timeout.connect(guiobj.update)
-  timer.start(500)
+    timer = QTimer()
+    timer.setInterval(0.1)
+    timer.timeout.connect(guiobj.update)
+    timer.start(500)
 
-  if guiobj.cctbxproc:
-    guiobj.cctbxproc.terminate()
-  sys.exit(app.exec_())
+    if guiobj.cctbxproc:
+      guiobj.cctbxproc.terminate()
+    sys.exit(app.exec_())
+  except Exception as e:
+    errmsg = str(e)
+    print( errmsg  +  traceback.format_exc(limit=10) )

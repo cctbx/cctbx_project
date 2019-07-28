@@ -557,6 +557,9 @@ class hklview_3d:
     for j,inf in enumerate(hkl_scenes_info):
       self.mprint("%d, %s" %(j, inf[0]), verbose=0)
     self.sceneisdirty = True
+    if self.socket:
+      mydict = { "hklscenes_arrays": self.hkl_scenes_info }
+      self.socket.send( str(mydict).encode("utf-8") )
     return True
 
 
@@ -1008,6 +1011,11 @@ var origclipfar;
 var origcameraZpos;
 
 
+var script=document.createElement('script');
+script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
+document.head.appendChild(script);
+
+
 function createElement(name, properties, style)
 {
 // utility function used in for loop over colourgradvalarray
@@ -1364,6 +1372,8 @@ mysocket.onmessage = function (e)
               picking: br_ttips[bin][g],
               } %s  );
           shape.addBuffer(br_shapebufs[bin][g]);
+          mysocket.send( 'Memory usage: ' + String(window.performance.memory.totalJSHeapSize) +
+                  ', ' + String(window.performance.memory.totalJSHeapSize) );
         }
       }
       MakeHKL_Axis();
