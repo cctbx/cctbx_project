@@ -18,7 +18,7 @@ from PySide2.QtWidgets import ( QApplication, QCheckBox, QComboBox,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
-from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
+from PySide2.QtWebEngineWidgets import QWebEngineView
 
 
 import sys, zmq, subprocess, time, traceback
