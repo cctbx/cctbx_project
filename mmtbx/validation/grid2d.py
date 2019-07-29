@@ -6,6 +6,10 @@ import math
 from scipy import interpolate
 import numpy as np
 
+def calculate_indexes(x, y, xmin, x_step, ymin, y_step):
+  i = math.floor((x-xmin) / x_step)
+  j = math.floor((y-ymin) / y_step)
+  return int(i), int(j)
 
 class Grid2D(object):
   def __init__(self, data, xmin, xmax, ymin, ymax):
@@ -22,7 +26,7 @@ class Grid2D(object):
     self.x_step = (xmax-xmin)/n_x
     self.y_step = (ymax-ymin)/n_y
 
-    print("x y steps:", self.x_step, self.y_step)
+    # print("x y steps:", self.x_step, self.y_step)
 
     # assert 360 % self.phi_step == 0
     # assert 360 // self.phi_step % 2 == 0
@@ -38,6 +42,28 @@ class Grid2D(object):
     # self.mean = None
     # self.std = None
     self.interpolation_f = self.set_interpolation_f()
+
+  @classmethod
+  def make_Grid2d(cls, points, x_nbins, y_nbins,
+      xmin=None, xmax=None, ymin=None, ymax=None):
+    # points - list of tuples [(x,y), (x,y)...]
+    if xmin is None:
+      xmin = min(*points)[0]
+    if xmax is None:
+      xmax = max(*points)[0]
+    if ymin is None:
+      ymin = min(*points)[1]
+    if ymax is None:
+      ymax = max(*points)[1]
+    x_step = (xmax-xmin)/x_nbins
+    y_step = (ymax-ymin)/y_nbins
+    data = []
+    for i in range(x_nbins):
+      data.append([0]*y_nbins)
+    for p in points:
+      i,j = calculate_indexes(p[0], p[1], xmin, x_step, ymin, y_step)
+      data[i][j] += 1
+    return cls(data, xmin, xmax, ymin, ymax)
 
   def set_interpolation_f(self):
     x = []
@@ -68,11 +94,6 @@ class Grid2D(object):
           jj = 0
         z[i][j] = self.g[jj][ii]
     self.interpolation_f = interpolate.interp2d(x,y,z, kind='linear')
-
-  def _calc_ij(self, x, y):
-    i = math.floor(x-self.xmin / self.x_step)
-    j = math.floor(y-self.ymin / self.y_step)
-    return i,j
 
   def get_interpolated_score(self, x, y):
     # i, j = self._calc_ij(x,y)
