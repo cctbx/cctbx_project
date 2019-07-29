@@ -48,13 +48,18 @@ class Grid2D(object):
       xmin=None, xmax=None, ymin=None, ymax=None):
     # points - list of tuples [(x,y), (x,y)...]
     if xmin is None:
-      xmin = min(*points)[0]
+      print ("xmin = ", min([x[0] for x in points]) )
+      xmin =  min([x[0] for x in points])
     if xmax is None:
-      xmax = max(*points)[0]
+      print ("xmax = ", max([x[0] for x in points]) )
+      xmax = max([x[0] for x in points])
     if ymin is None:
-      ymin = min(*points)[1]
+      print ("ymin = ", min([x[1] for x in points]) )
+      ymin = min([x[1] for x in points])
     if ymax is None:
-      ymax = max(*points)[1]
+      print ("ymax = ", max([x[1] for x in points]) )
+      ymax = max([x[1] for x in points])
+
     x_step = (xmax-xmin)/x_nbins
     y_step = (ymax-ymin)/y_nbins
     data = []
@@ -71,7 +76,7 @@ class Grid2D(object):
     for target_list, vmin, vmax, vstep in [(x, self.xmin, self.xmax, self.x_step),
         (y, self.ymin, self.ymax, self.y_step)]:
       current_tick = vmin - vstep/2
-      while current_tick <= vmax + vstep/2:
+      while current_tick <= vmax + vstep/2 + 1e-6:
         target_list.append(current_tick)
         current_tick += vstep
 
@@ -93,6 +98,11 @@ class Grid2D(object):
         if j == len(z) - 1:
           jj = 0
         z[i][j] = self.g[jj][ii]
+    # print ("len(x)", len(x))
+    # print ("len(y)", len(y))
+    # print ("len(z)", len(z), len(z[0]))
+    # print ("x", x)
+    # print ("y", y)
     self.interpolation_f = interpolate.interp2d(x,y,z, kind='linear')
 
   def get_interpolated_score(self, x, y):
