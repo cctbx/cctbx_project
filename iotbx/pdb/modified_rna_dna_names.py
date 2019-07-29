@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Tue Mar 19 14:34:48 2019
+The date of file generation: Sun Jul 28 21:04:35 2019
 """
 from __future__ import absolute_import, division, print_function
 
@@ -17,6 +17,7 @@ lookup = {
   "2MA" : "A",
   "31H" : "A",
   "31M" : "A",
+  "45A" : "A",
   "5FA" : "A",
   "6IA" : "A",
   "6MA" : "A",
@@ -80,6 +81,7 @@ lookup = {
   "CSF" : "C",
   "E3C" : "C",
   "IC" : "C",
+  "JMH" : "C",
   "LC" : "C",
   "M4C" : "C",
   "M5M" : "C",
@@ -89,6 +91,7 @@ lookup = {
   "RPC" : "C",
   "RSQ" : "C",
   "S4C" : "C",
+  "TC" : "C",
   "ZBC" : "C",
   "ZCY" : "C",
   "0AM" : "DA",
@@ -153,6 +156,7 @@ lookup = {
   "5PC" : "DC",
   "6HC" : "DC",
   "8RO" : "DC",
+  "8YN" : "DC",
   "B7C" : "DC",
   "C2S" : "DC",
   "C32" : "DC",
@@ -425,6 +429,7 @@ lookup = {
   "GRB" : "G",
   "IG" : "G",
   "KAG" : "G",
+  "KAK" : "G",
   "LG" : "G",
   "M2G" : "G",
   "MGV" : "G",
@@ -435,6 +440,7 @@ lookup = {
   "P7G" : "G",
   "PGP" : "G",
   "QUO" : "G",
+  "TG" : "G",
   "TPG" : "G",
   "XTS" : "G",
   "YG" : "G",
