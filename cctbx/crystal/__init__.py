@@ -134,14 +134,15 @@ class symmetry(object):
       'crystal.symmetry(\n'
       '%s  unit_cell=%s,\n'
       '%s  space_group_symbol=%s\n'
-      ')')
+      '%s)')
     return fmt % (
       indent,
       "(%s, %s, %s, %s, %s, %s)" % self.unit_cell().parameters()
       if self.unit_cell() is not None else None,
       indent,
       '"%s"' % self.space_group_info().type().lookup_symbol()
-      if self.space_group_info() is not None else None
+      if self.space_group_info() is not None else None,
+      indent
     )
 
   def show_summary(self, f=None, prefix=""):

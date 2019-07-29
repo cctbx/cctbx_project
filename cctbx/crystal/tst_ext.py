@@ -25,7 +25,7 @@ def exercise_symmetry():
 crystal.symmetry(
 *$  unit_cell=(12.548, 12.548, 20.789, 90.0, 90.0, 120.0),
 *$  space_group_symbol="P 63/m m c"
-)""")
+*$)""")
   cspc = cs.as_py_code()
   cs2 = eval(cspc)
   assert cs2.is_similar_symmetry(cs, 1e-8, 1e-8)
