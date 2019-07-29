@@ -85,7 +85,7 @@ class find(object):
         As           = ["O","N","S","F","CL"],
         Ds           = ["O","N","S"],
         d_HA_cutoff  = [1.4, 3.0], # original: [1.4, 2.4],
-        d_DA_cutoff  = [2.5, 3.5], # not used
+        d_DA_cutoff  = [2.5, 4.1], # not used
         a_DHA_cutoff = 120,        # should be greater than this
         a_YAH_cutoff = [90, 180],  # should be within this interval
         protein_only = False,
