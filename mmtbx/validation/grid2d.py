@@ -102,7 +102,7 @@ class Grid2D(object):
       self.set_interpolation_f()
     # int_sc = self.interpolation_f([point[0]], [point[1]])
     # print "Get interp score:", point, int_sc, self.g[i][j]
-    return self.interpolation_f([x],[y])
+    return self.interpolation_f([x],[y])[0]
     # return [self.g[i][j], self.interpolation_f([point[0]], [point[1]])[0]]
 
   def plot_distribution(self, fname, title="Default title"):
