@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 
 from six.moves import zip_longest
 from boost import rational
+from collections import OrderedDict
 
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -328,7 +329,7 @@ class atom_parser(parser, variable_decoder):
     idx_assigned_by_builder_to_free_var_idx = {}
     builder = self.builder
     if self.builder_does_occupancy_pair_affine_constraint:
-      self.occupancies_depending_on_free_variable = {}
+      self.occupancies_depending_on_free_variable = OrderedDict()
     for command, line in self.command_stream:
       self.line = line
       cmd, args = command[0], command[-1]
