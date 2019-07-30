@@ -122,6 +122,9 @@ class _():
   def __str__(self):
     return format(self, "({:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g})")
 
+  def __repr__(self):
+    return format(self, "uctbx.unit_cell(({}, {}, {}, {}, {}, {}))")
+
   def __format__(self, format_spec="({:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g})"):
     return format_spec.format(*self.parameters())
 

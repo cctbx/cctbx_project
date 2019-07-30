@@ -133,21 +133,35 @@ class symmetry(object):
     fmt = (
       'crystal.symmetry(\n'
       '%s  unit_cell=%s,\n'
-      '%s  space_group_symbol="%s")')
+      '%s  space_group_symbol=%s\n'
+      '%s)')
     return fmt % (
-      indent, str(self.unit_cell()),
-      indent, str(self.space_group_info()))
+      indent,
+      "(%s, %s, %s, %s, %s, %s)" % self.unit_cell().parameters()
+      if self.unit_cell() is not None else None,
+      indent,
+      '"%s"' % self.space_group_info().type().lookup_symbol()
+      if self.space_group_info() is not None else None,
+      indent
+    )
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    if (self.unit_cell() is None):
-      print(prefix + "Unit cell:", None, file=f)
-    else:
-      self.unit_cell().show_parameters(f=f, prefix=prefix+"Unit cell: ")
-    if (self.space_group_info() is None):
-      print(prefix + "Space group:", None, file=f)
-    else:
-      self.space_group_info().show_summary(f=f, prefix=prefix+"Space group: ")
+    print(self.as_str(prefix=prefix), file=f)
+
+  def as_str(self, prefix=""):
+    return (
+      prefix + "Unit cell: %s\n" % self.unit_cell() +
+      prefix + "Space group: %s" % (
+        self.space_group_info().symbol_and_number()
+        if self.space_group_info() is not None else None)
+    )
+
+  def __str__(self):
+    return self.as_str()
+
+  def __repr__(self):
+    return self.as_py_code(indent="  ")
 
   def is_similar_symmetry(self,
                           other,
