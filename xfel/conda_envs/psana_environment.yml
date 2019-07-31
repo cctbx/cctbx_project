@@ -1,0 +1,12 @@
+name: psana_env
+channels:
+ - phyy-nx
+ - lcls-rhel7
+ - defaults
+ - cctbx
+ - conda-forge
+ - anaconda
+dependencies:
+ - xfel_dependencies
+ - mysql
+ - mysql-python
