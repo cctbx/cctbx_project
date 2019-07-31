@@ -137,7 +137,7 @@ class symmetry(object):
       '%s)')
     return fmt % (
       indent,
-      "(%s, %s, %s, %s, %s, %s)" % self.unit_cell().parameters()
+      "(%.10g, %.10g, %.10g, %.10g, %.10g, %.10g)" % self.unit_cell().parameters()
       if self.unit_cell() is not None else None,
       indent,
       '"%s"' % self.space_group_info().type().lookup_symbol()
