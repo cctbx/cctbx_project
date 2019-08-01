@@ -429,6 +429,8 @@ phil_scope = parse(xtc_phil_str + dials_phil_str + extra_dials_phil_str + db_phi
 
 from xfel.command_line.xfel_process import Script as DialsProcessScript
 from xfel.ui.db.frame_logging import DialsProcessorWithLogging
+from xfel.ui.db.dxtbx_db import dxtbx_xfel_db_application
+
 class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
   """ Script to process XFEL data at LCLS """
   def __init__(self):
@@ -461,6 +463,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     self.tt_low = None
     self.tt_high = None
+    self.db_app = None
 
   def debug_start(self, ts):
     self.debug_str = "%s,%s"%(socket.gethostname(), ts)
@@ -714,6 +717,10 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       max_events = sys.maxsize
     else:
       max_events = params.dispatch.max_events
+
+    # Set up db connection if being used
+    if self.params.experiment_tag is not None:
+      self.db_app = dxtbx_xfel_db_application(params)
 
     for run in ds.runs():
       if params.format.file_format == "cbf":

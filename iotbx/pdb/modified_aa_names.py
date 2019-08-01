@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Tue Mar 19 14:34:48 2019
+The date of file generation: Sun Jul 28 21:04:35 2019
 """
 from __future__ import absolute_import, division, print_function
 
@@ -473,6 +473,11 @@ lookup = {
   "74P" : "K",
   "8RE" : "K",
   "9E7" : "K",
+  "9KP" : "K",
+  "9TR" : "K",
+  "9TU" : "K",
+  "9TX" : "K",
+  "9U0" : "K",
   "ALY" : "K",
   "API" : "K",
   "APK" : "K",
@@ -495,12 +500,14 @@ lookup = {
   "FH7" : "K",
   "FHL" : "K",
   "FHO" : "K",
+  "FQA" : "K",
   "FZN" : "K",
   "GPL" : "K",
   "HLY" : "K",
   "I58" : "K",
   "IEL" : "K",
   "IT1" : "K",
+  "JLP" : "K",
   "KBE" : "K",
   "KCR" : "K",
   "KCX" : "K",
@@ -533,6 +540,7 @@ lookup = {
   "LYK" : "K",
   "LYM" : "K",
   "LYN" : "K",
+  "LYO" : "K",
   "LYR" : "K",
   "LYU" : "K",
   "LYX" : "K",
@@ -666,6 +674,7 @@ lookup = {
   "HY3" : "P",
   "HYP" : "P",
   "HZP" : "P",
+  "JKH" : "P",
   "LPD" : "P",
   "LWY" : "P",
   "MP8" : "P",
@@ -689,13 +698,14 @@ lookup = {
   "VH0" : "P",
   "XPR" : "P",
   "YPR" : "P",
+  "ZPO" : "P",
   "ZYJ" : "P",
   "ZYK" : "P",
-  "XPL" : "Z",
-  "30F" : "Z",
-  "PSW" : "Z",
-  "SE7" : "Z",
-  "UOX" : "Z",
+  "XPL" : "O",
+  "30F" : "U",
+  "PSW" : "U",
+  "SE7" : "U",
+  "UOX" : "U",
   "0AH" : "S",
   "1X6" : "S",
   "2JG" : "S",

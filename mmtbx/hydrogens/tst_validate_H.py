@@ -547,6 +547,128 @@ ATOM     19  HE2ATYR A 139       6.765   4.548   8.805  0.50 10.00           H
 ATOM     20  HH ATYR A 139       4.834   4.492   7.672  0.50 10.00           H
 """
 
+pdb_str12a = """
+CRYST1   19.968   16.881   14.617  90.00  90.00  90.00 P 1
+SCALE1      0.050080  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.059238  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.068413        0.00000
+ATOM     62  P     A A   3      24.641  -3.951  -5.491  1.00 29.43           P
+ANISOU   62  P     A A   3     4128   3373   3681   -371    815   -398       P
+ATOM     63  OP1   A A   3      25.708  -4.265  -6.475  1.00 31.32           O
+ANISOU   63  OP1   A A   3     4348   3730   3823   -437   1123   -264       O
+ATOM     64  OP2   A A   3      23.848  -2.702  -5.549  1.00 33.50           O
+ANISOU   64  OP2   A A   3     5180   3675   3874    -38    594   -122       O
+ATOM     65  O5'   A A   3      23.568  -5.100  -5.644  1.00 27.30           O
+ANISOU   65  O5'   A A   3     3750   3254   3367   -244    624   -238       O
+ATOM     66  C5'   A A   3      24.008  -6.432  -5.684  1.00 26.59           C
+ANISOU   66  C5'   A A   3     3613   3318   3174   -268    449    -24       C
+ATOM     67  C4'   A A   3      22.856  -7.369  -5.558  1.00 24.31           C
+ANISOU   67  C4'   A A   3     2940   3360   2938   -132    191    158       C
+ATOM     68  O4'   A A   3      22.216  -7.202  -4.268  1.00 23.51           O
+ANISOU   68  O4'   A A   3     2669   3549   2716    229    -49    181       O
+ATOM     69  C3'   A A   3      21.713  -7.204  -6.543  1.00 22.64           C
+ANISOU   69  C3'   A A   3     2570   3095   2939     23    108     75       C
+ATOM     70  O3'   A A   3      22.036  -7.703  -7.822  1.00 21.70           O
+ANISOU   70  O3'   A A   3     2381   2989   2875    340    -63   -119       O
+ATOM     71  C2'   A A   3      20.618  -7.974  -5.834  1.00 22.54           C
+ANISOU   71  C2'   A A   3     2683   2965   2917    254    -84    254       C
+ATOM     72  O2'   A A   3      20.877  -9.368  -5.907  1.00 24.68           O
+ANISOU   72  O2'   A A   3     3062   3194   3120    501    -66    167       O
+ATOM     73  C1'   A A   3      20.844  -7.504  -4.393  1.00 22.32           C
+ANISOU   73  C1'   A A   3     2600   3126   2756    137    -50    130       C
+ATOM     74  N9    A A   3      20.071  -6.281  -4.150  1.00 22.38           N
+ANISOU   74  N9    A A   3     2766   3075   2660     40     47   -196       N
+ATOM     75  C8    A A   3      20.479  -4.970  -4.244  1.00 21.65           C
+ANISOU   75  C8    A A   3     2769   2846   2611     60     91   -156       C
+ATOM     76  N7    A A   3      19.514  -4.113  -4.001  1.00 22.55           N
+ANISOU   76  N7    A A   3     2915   3122   2532    126    220   -226       N
+ATOM     77  C5    A A   3      18.408  -4.919  -3.782  1.00 22.50           C
+ANISOU   77  C5    A A   3     2913   3131   2505     96    130   -148       C
+ATOM     78  C6    A A   3      17.070  -4.648  -3.477  1.00 22.18           C
+ANISOU   78  C6    A A   3     3024   3082   2321    -26    -12   -123       C
+ATOM     79  N6    A A   3      16.576  -3.426  -3.369  1.00 22.36           N
+ANISOU   79  N6    A A   3     3152   3016   2329    -60   -158   -237       N
+ATOM     80  N1    A A   3      16.209  -5.667  -3.317  1.00 23.05           N
+ANISOU   80  N1    A A   3     3000   3481   2278     36    174    -84       N
+ATOM     81  C2    A A   3      16.692  -6.903  -3.440  1.00 23.27           C
+ANISOU   81  C2    A A   3     2794   3522   2524    122    366     11       C
+ATOM     82  N3    A A   3      17.931  -7.310  -3.719  1.00 23.07           N
+ANISOU   82  N3    A A   3     2685   3428   2651   -328    327    261       N
+ATOM     83  C4    A A   3      18.742  -6.255  -3.880  1.00 22.38           C
+ANISOU   83  C4    A A   3     2707   3187   2607   -200    133     38       C
+ATOM     84  H5'   A A   3      24.629  -6.587  -4.955  1.00 31.92           H
+ATOM     85 H5''   A A   3      24.462  -6.594  -6.526  1.00 31.92           H
+ATOM     86  H4'   A A   3      23.200  -8.273  -5.635  1.00 29.18           H
+ATOM     87  H3'   A A   3      21.456  -6.273  -6.629  1.00 27.18           H
+ATOM     88  H2'   A A   3      19.729  -7.755  -6.155  1.00 27.05           H
+ATOM     89 HO2'   A A   3      21.392  -9.583  -5.278  1.00 29.62           H
+ATOM     90  H1'   A A   3      20.611  -8.194  -3.752  1.00 26.79           H
+ATOM     91  H8    A A   3      21.348  -4.717  -4.457  1.00 25.99           H
+ATOM     92  H61   A A   3      15.740  -3.313  -3.205  1.00 26.84           H
+ATOM     93  H62   A A   3      17.091  -2.744  -3.464  1.00 26.84           H
+ATOM     94  H2    A A   3      16.073  -7.585  -3.310  1.00 27.93           H
+"""
+
+pdb_str12b = """
+CRYST1   19.968   16.881   14.617  90.00  90.00  90.00 P 1
+SCALE1      0.050080  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.059238  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.068413        0.00000
+ATOM     62  P     A A   3      24.641  -3.951  -5.491  1.00 29.43           P
+ANISOU   62  P     A A   3     4128   3373   3681   -371    815   -398       P
+ATOM     63  OP1   A A   3      25.708  -4.265  -6.475  1.00 31.32           O
+ANISOU   63  OP1   A A   3     4348   3730   3823   -437   1123   -264       O
+ATOM     64  OP2   A A   3      23.848  -2.702  -5.549  1.00 33.50           O
+ANISOU   64  OP2   A A   3     5180   3675   3874    -38    594   -122       O
+ATOM     65  O5'   A A   3      23.568  -5.100  -5.644  1.00 27.30           O
+ANISOU   65  O5'   A A   3     3750   3254   3367   -244    624   -238       O
+ATOM     66  C5'   A A   3      24.008  -6.432  -5.684  1.00 26.59           C
+ANISOU   66  C5'   A A   3     3613   3318   3174   -268    449    -24       C
+ATOM     67  C4'   A A   3      22.856  -7.369  -5.558  1.00 24.31           C
+ANISOU   67  C4'   A A   3     2940   3360   2938   -132    191    158       C
+ATOM     68  O4'   A A   3      22.216  -7.202  -4.268  1.00 23.51           O
+ANISOU   68  O4'   A A   3     2669   3549   2716    229    -49    181       O
+ATOM     69  C3'   A A   3      21.713  -7.204  -6.543  1.00 22.64           C
+ANISOU   69  C3'   A A   3     2570   3095   2939     23    108     75       C
+ATOM     70  O3'   A A   3      22.036  -7.703  -7.822  1.00 21.70           O
+ANISOU   70  O3'   A A   3     2381   2989   2875    340    -63   -119       O
+ATOM     71  C2'   A A   3      20.618  -7.974  -5.834  1.00 22.54           C
+ANISOU   71  C2'   A A   3     2683   2965   2917    254    -84    254       C
+ATOM     72  O2'   A A   3      20.877  -9.368  -5.907  1.00 24.68           O
+ANISOU   72  O2'   A A   3     3062   3194   3120    501    -66    167       O
+ATOM     73  C1'   A A   3      20.844  -7.504  -4.393  1.00 22.32           C
+ANISOU   73  C1'   A A   3     2600   3126   2756    137    -50    130       C
+ATOM     74  N9    A A   3      20.071  -6.281  -4.150  1.00 22.38           N
+ANISOU   74  N9    A A   3     2766   3075   2660     40     47   -196       N
+ATOM     75  C8    A A   3      20.479  -4.970  -4.244  1.00 21.65           C
+ANISOU   75  C8    A A   3     2769   2846   2611     60     91   -156       C
+ATOM     76  N7    A A   3      19.514  -4.113  -4.001  1.00 22.55           N
+ANISOU   76  N7    A A   3     2915   3122   2532    126    220   -226       N
+ATOM     77  C5    A A   3      18.408  -4.919  -3.782  1.00 22.50           C
+ANISOU   77  C5    A A   3     2913   3131   2505     96    130   -148       C
+ATOM     78  C6    A A   3      17.070  -4.648  -3.477  1.00 22.18           C
+ANISOU   78  C6    A A   3     3024   3082   2321    -26    -12   -123       C
+ATOM     79  N6    A A   3      16.576  -3.426  -3.369  1.00 22.36           N
+ANISOU   79  N6    A A   3     3152   3016   2329    -60   -158   -237       N
+ATOM     80  N1    A A   3      16.209  -5.667  -3.317  1.00 23.05           N
+ANISOU   80  N1    A A   3     3000   3481   2278     36    174    -84       N
+ATOM     81  C2    A A   3      16.692  -6.903  -3.440  1.00 23.27           C
+ANISOU   81  C2    A A   3     2794   3522   2524    122    366     11       C
+ATOM     82  N3    A A   3      17.931  -7.310  -3.719  1.00 23.07           N
+ANISOU   82  N3    A A   3     2685   3428   2651   -328    327    261       N
+ATOM     83  C4    A A   3      18.742  -6.255  -3.880  1.00 22.38           C
+ANISOU   83  C4    A A   3     2707   3187   2607   -200    133     38       C
+ATOM     86  H4'   A A   3      23.200  -8.273  -5.635  1.00 29.18           H
+ATOM     87  H3'   A A   3      21.456  -6.273  -6.629  1.00 27.18           H
+ATOM     88  H2'   A A   3      19.729  -7.755  -6.155  1.00 27.05           H
+ATOM     89 HO2'   A A   3      21.392  -9.583  -5.278  1.00 29.62           H
+ATOM     90  H1'   A A   3      20.611  -8.194  -3.752  1.00 26.79           H
+ATOM     91  H8    A A   3      21.348  -4.717  -4.457  1.00 25.99           H
+ATOM     92  H61   A A   3      15.740  -3.313  -3.205  1.00 26.84           H
+ATOM     93  H62   A A   3      17.091  -2.744  -3.464  1.00 26.84           H
+ATOM     94  H2    A A   3      16.073  -7.585  -3.310  1.00 27.93           H
+"""
+
 def get_results_from_validate_H(neutron_distances, pdb_str):
   pdb_interpretation_phil = iotbx.phil.parse(
     input_string = grand_master_phil_str, process_includes = True)
@@ -961,12 +1083,38 @@ def exercise11():
 
   test_output(results)
 
-# ------------------------------------------------------------------------------
-# CHECK HD STATE (hd_state)
-# This is not a result but used internally to decide if H/D site analysis is
-# necessary or not
-# ------------------------------------------------------------------------------
+
+def exercise12():
+  '''
+  Make sure that RNA H atoms are correctly identified as missing or present
+  These atoms have names with '*' in libraries, but most recent used is "'"
+  for example: H5*2 is in the database and in the file is H5''
+  (issue raised by Jermaine Jenkins July 2019)
+  '''
+  results = get_results_from_validate_H(
+    neutron_distances = False,
+    pdb_str = pdb_str12a)
+  missing = results.missing_HD_atoms
+  assert (len(missing)==0)
+
+  test_output(results)
+
+  results = get_results_from_validate_H(
+    neutron_distances = False,
+    pdb_str = pdb_str12b)
+  missing = results.missing_HD_atoms
+  mt = missing[0]
+  atom_names = mt[1]
+  assert ("H5''" in atom_names and "H5'" in atom_names)
+  assert (len(atom_names) == 2)
+
+
 def exercise_hd_state():
+  '''
+  CHECK HD STATE (hd_state)
+  This is not a result but used internally to decide if H/D site analysis is
+  necessary or not
+  '''
   pdb_interpretation_phil = iotbx.phil.parse(
     input_string = grand_master_phil_str, process_includes = True)
 
@@ -1011,6 +1159,7 @@ def run():
   exercise9()
   exercise10()
   exercise11()
+  exercise12()
   exercise_hd_state()
 
 if (__name__ == "__main__"):

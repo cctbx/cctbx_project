@@ -1316,7 +1316,8 @@ def exercise_xray_structure_as_py_code():
 Vxray.structure(
 V  crystal_symmetry=crystal.symmetry(
 V    unit_cell=(2, 2, 3, 90, 90, 80),
-V    space_group_symbol="P 1 1 2"),
+V    space_group_symbol="P 1 1 2"
+V  ),
 V  scatterers=flex.xray_scatterer([
 V    xray.scatterer( #0
 V      label="C1",

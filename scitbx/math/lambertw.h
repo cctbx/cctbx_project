@@ -43,6 +43,7 @@ namespace scitbx { namespace math {
       w = std::log(x);
     }
     if (x > 3) {
+      SCITBX_ASSERT(w>0);
       w -= std::log(w);
     }
     for(unsigned i=0;i<max_iterations;i++) {

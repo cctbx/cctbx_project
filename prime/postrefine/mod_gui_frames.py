@@ -1282,8 +1282,7 @@ class FileListCtrl(ct.CustomListCtrl):
     self.button_sizer.Add(self.btn_add_file)
     self.button_sizer.Add(self.btn_add_dir, flag=wx.LEFT, border=10)
 
-    self.sizer.Add(self.button_sizer, pos=(1, 0),
-                   flag=wx.TOP | wx.BOTTOM, border=10)
+    self.sizer.Add(self.button_sizer, flag=wx.TOP | wx.BOTTOM, border=10)
 
     # Event bindings
     self.Bind(wx.EVT_BUTTON, self.onAddFile, self.btn_add_file)
