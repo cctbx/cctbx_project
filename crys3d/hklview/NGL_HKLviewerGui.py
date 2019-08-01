@@ -158,7 +158,8 @@ class NGL_HKLViewer(QWidget):
     mainLayout.addWidget(self.bottomLeftGroupBox,  4, 0)
     mainLayout.addWidget(self.BrowserBox,  0, 1, 5, 3)
 
-    self.BrowserBox.load(QUrl("http://www.oeffner.net"))
+    #self.BrowserBox.load(QUrl("https://cctbx.github.io/"))
+    self.BrowserBox.setHtml("https://cctbx.github.io/")
 
     mainLayout.setRowStretch(0, 0)
     mainLayout.setRowStretch(1, 0)
@@ -168,6 +169,11 @@ class NGL_HKLViewer(QWidget):
     #mainLayout.setColumnStretch(0, 1)
     mainLayout.setColumnStretch(2, 1)
     self.setLayout(mainLayout)
+
+    self.verbose = 0
+    for e in sys.argv:
+      if "verbose" in e:
+        self.verbose = e.split("verbose=")[1]
 
     self.setWindowTitle("NGL-HKL-viewer")
     self.cctbxproc = None
@@ -184,10 +190,6 @@ class NGL_HKLViewer(QWidget):
     self.infostr = ""
     self.fileisvalid = False
     self.NewFileLoaded = False
-
-    #self.msgqueuethrd = threading.Thread(target = self.update )
-    #self.msgqueuethrd.daemon = True
-    #self.msgqueuethrd.start()
 
     self.show()
 
@@ -223,7 +225,7 @@ class NGL_HKLViewer(QWidget):
             self.bin_info = ngl_hkl_infodict["bin_info"]
           if ngl_hkl_infodict.get("html_url"):
             self.html_url = ngl_hkl_infodict["html_url"]
-            self.BrowserBox.load(QUrl(self.html_url))
+            self.BrowserBox.setHtml(self.html_url)
           if ngl_hkl_infodict.get("spacegroups"):
             self.spacegroups = ngl_hkl_infodict.get("spacegroups",[])
           if ngl_hkl_infodict.get("merge_data"):
@@ -378,14 +380,10 @@ class NGL_HKLViewer(QWidget):
       self.fileisvalid = False
       self.NGL_HKL_command('NGL_HKLviewer.filename = "%s"' %fileName )
       self.MillerComboBox.clear()
-      #while not self.fileisvalid:
-      #  time.sleep(1)
-        #print("file not valid")
 
 
   def createGroupBox1(self):
     self.topLeftGroupBox = QGroupBox("Group 1")
-
     layout = QGridLayout()
     layout.addWidget(self.MillerComboBox,            1, 1, 1, 1)
     layout.addWidget(self.MillerLabel,               1, 0, 1, 1)
@@ -397,7 +395,6 @@ class NGL_HKLViewer(QWidget):
     layout.addWidget(self.sysabsentcheckbox,         4, 1, 1, 1)
     layout.addWidget(self.missingcheckbox,           5, 0, 1, 1)
     layout.addWidget(self.onlymissingcheckbox,       5, 1, 1, 1)
-
     layout.addWidget(self.showslicecheckbox,         6, 0, 1, 1)
     layout.addWidget(self.SliceLabelComboBox,        6, 1, 1, 1)
     layout.addWidget(self.sliceindexspinBox,         6, 2, 1, 1)
@@ -409,25 +406,20 @@ class NGL_HKLViewer(QWidget):
     self.GroupBox2 = QGroupBox("Group 2")
     slider = QSlider(Qt.Horizontal, self.RadiiScaleGroupBox)
     slider.setValue(40)
-
     scrollBar = QScrollBar(Qt.Horizontal, self.RadiiScaleGroupBox)
     scrollBar.setValue(60)
-
     layout = QGridLayout()
     layout.addWidget(self.openFileNameButton,  0, 0, 1, 1)
     layout.addWidget(self.flatPushButton, 0, 1, 1, 1)
-
     layout.addWidget(slider)
     layout.addWidget(scrollBar)
     layout.addWidget(self.mousemovedial)
-
     #layout.addStretch(1)
     self.GroupBox2.setLayout(layout)
 
 
   def DebugInteractively(self):
     import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-
 
 
   def createBottomLeftTabWidget(self):
@@ -487,16 +479,26 @@ class NGL_HKLViewer(QWidget):
     self.RadiiScaleGroupBox.setLayout(layout)
 
 
+  def find_free_port(self):
+    import socket
+    s = socket.socket()
+    s.bind(('', 0))      # Bind to a free port provided by the host.
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
 
   def LaunchCCTBXPython(self):
+    self.sockport = self.find_free_port()
     self.context = zmq.Context()
     self.socket = self.context.socket(zmq.PAIR)
-    self.socket.bind("tcp://127.0.0.1:7895")
+    self.socket.bind("tcp://127.0.0.1:%s" %self.sockport)
     try: msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
-    except Exception: pass
-
+    except Exception as e: pass
     #cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=False, verbose=0)"\n'
-    cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=True, verbose=1, UseOSBrowser= False)"\n'
+    cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes;' \
+     + ' myHKLview = cmdlineframes.HKLViewFrame(useGuiSocket=%s, high_quality=True,' %self.sockport \
+     + ' verbose=%s, UseOSBrowser= False)"\n' %self.verbose
     #self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdout=sys.stdout, stderr=sys.stderr)
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
     #self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

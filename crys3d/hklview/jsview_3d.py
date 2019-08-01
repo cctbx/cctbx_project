@@ -241,9 +241,12 @@ class hklview_3d:
       os.remove(self.jscriptfname)
     if 'jscriptfname' in kwds:
       self.jscriptfname = kwds['jscriptfname']
-    self.socket = None
-    if 'socket' in kwds:
-      self.socket = kwds['socket']
+    self.websockport = 7894
+    if 'websockport' in kwds:
+      self.websockport = kwds['websockport']
+    self.guisocket = None
+    if 'guisocket' in kwds:
+      self.guisocket = kwds['guisocket']
     self.mprint('Output will be written to \"%s\"\n' \
       'including reference to NGL JavaScript \"%s\"' %(self.hklfname, self.jscriptfname))
     self.hklhtml = r"""
@@ -557,9 +560,9 @@ class hklview_3d:
     for j,inf in enumerate(hkl_scenes_info):
       self.mprint("%d, %s" %(j, inf[0]), verbose=0)
     self.sceneisdirty = True
-    if self.socket:
+    if self.guisocket:
       mydict = { "hklscenes_arrays": self.hkl_scenes_info }
-      self.socket.send( str(mydict).encode("utf-8") )
+      self.guisocket.send( str(mydict).encode("utf-8") )
     return True
 
 
@@ -952,7 +955,7 @@ var MakeHKL_Axis = function()
 // to enable websocket connection
 
 var pagename = location.pathname.substring(1);
-var mysocket = new WebSocket('ws://127.0.0.1:7894/');
+var mysocket = new WebSocket('ws://127.0.0.1:%s/');
 
 mysocket.onopen = function(e)
 {
@@ -1551,8 +1554,9 @@ mysocket.onmessage = function (e)
 
 };
 
-    """ % (self.__module__, self.__module__, axisfuncstr, self.camera_type, spherebufferstr, \
-            negativeradiistr, colourgradstrs, colourlabel, fomlabel, cntbin, qualitystr)
+    """ % (self.websockport, self.__module__, self.__module__, axisfuncstr, \
+            self.camera_type, spherebufferstr, negativeradiistr, colourgradstrs, \
+            colourlabel, fomlabel, cntbin, qualitystr)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
@@ -1706,9 +1710,9 @@ mysocket.onmessage = function (e)
 
 
   def StartWebsocket(self):
-    self.server = WebsocketServer(7894, host='127.0.0.1')
+    self.server = WebsocketServer(self.websockport, host='127.0.0.1')
     if not self.server:
-      raise Sorry("Could not connect socket to web browser")
+      raise Sorry("Could not connect to web browser")
     self.server.set_fn_new_client(self.OnConnectWebsocketClient)
     self.server.set_fn_message_received(self.OnWebsocketClientMessage)
     self.wst = threading.Thread(target=self.server.run_forever)
@@ -1751,9 +1755,9 @@ mysocket.onmessage = function (e)
       self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
       if self.UseOSBrowser:
         webbrowser.open(self.url, new=1)
-      if self.socket:
+      if self.guisocket:
         mydict = { "html_url": self.url }
-        self.socket.send( str(mydict).encode("utf-8") )
+        self.guisocket.send( str(mydict).encode("utf-8") )
       self.isnewfile = False
       self.browserisopen = True
 
@@ -1835,7 +1839,6 @@ mysocket.onmessage = function (e)
 
   def SetTrackBallRotateSpeed(self, trackspeed):
     msg = str(trackspeed)
-    print("wibble")
     self.msgqueue.append( ("SetTrackBallRotateSpeed", msg) )
     self.GetTrackBallRotateSpeed()
 

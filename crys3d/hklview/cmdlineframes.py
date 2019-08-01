@@ -143,7 +143,7 @@ mtz1.mtz_object().write("mymtz.mtz")
 
 
 from crys3d.hklview import cmdlineframes
-myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js")
+myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=True, verbose=3)
 myHKLview.LoadReflectionsFile("mymtz.mtz")
 myHKLview.SetScene(0)
 
@@ -296,18 +296,19 @@ class HKLViewFrame() :
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
     self.infostr = ""
-    self.useSocket=False
-    if 'useSocket' in kwds:
-      self.useSocket = kwds['useSocket']
+    self.guiSocketPort=None
+    if 'useGuiSocket' in kwds:
+      self.guiSocketPort = kwds['useGuiSocket']
       self.context = zmq.Context()
-      self.socket = self.context.socket(zmq.PAIR)
-      self.socket.connect("tcp://127.0.0.1:7895")
+      self.guisocket = self.context.socket(zmq.PAIR)
+      self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
       self.STOP = False
       print("starting socketthread")
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen )
       self.msgqueuethrd.daemon = True
       self.msgqueuethrd.start()
-      kwds['socket'] = self.socket
+      kwds['guisocket'] = self.guisocket
+    kwds['websockport'] = self.find_free_port()
     self.viewer = view_3d.hklview_3d( **kwds )
     self.ResetPhilandViewer()
     self.NewFileLoaded = False
@@ -318,16 +319,25 @@ class HKLViewFrame() :
       print(m)
 
 
+  def find_free_port(self):
+    import socket
+    s = socket.socket()
+    s.bind(('', 0))      # Bind to a free port provided by the host.
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
   def zmq_listen(self):
     while not self.STOP:
-      philstr = self.socket.recv()
+      philstr = self.guisocket.recv()
       philstr = str(philstr)
       self.mprint("Received phil string:\n" + philstr, verbose=1)
       new_phil = libtbx.phil.parse(philstr)
       self.update_settings(new_phil)
       #print "in zmq listen"
       time.sleep(0.2)
-    del self.socket
+    del self.guisocket
 
 
   def ResetPhilandViewer(self, extraphil=None):
@@ -494,7 +504,7 @@ class HKLViewFrame() :
         self.infostr = shouldmergestr
         self.SendInfo()
         while 1:
-          philstr = self.socket.recv()
+          philstr = self.guisocket.recv()
           philstr = str(philstr)
           self.mprint("Received phil:\n" + philstr, verbose=2)
           new_phil = libtbx.phil.parse(philstr)
@@ -624,7 +634,6 @@ class HKLViewFrame() :
     self.viewer.proc_arrays = self.procarrays
     self.viewer.set_miller_array()
     self.viewer.identify_suitable_fomsarrays()
-
 
 
   def load_reflections_file(self, file_name, set_array=True, data_only=False):
@@ -982,8 +991,8 @@ class HKLViewFrame() :
 
 
   def SendInfoToGUI(self, infodict):
-    if self.useSocket:
-      self.socket.send( str(infodict).encode("utf-8") )
+    if self.guiSocketPort:
+      self.guisocket.send( str(infodict).encode("utf-8") )
 
 
   def SendInfo(self):
@@ -996,9 +1005,9 @@ class HKLViewFrame() :
                "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
                "NewFileLoaded": self.NewFileLoaded
             }
-    if self.useSocket:
+    if self.guiSocketPort:
       #print("sending2: " + str(mydict))
-      self.socket.send( str(mydict).encode("utf-8") )
+      self.guisocket.send( str(mydict).encode("utf-8") )
 
 
 
