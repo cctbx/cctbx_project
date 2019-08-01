@@ -207,7 +207,7 @@ myHKLview.SetOpacity(14, 1.0)
 
 
 from crys3d.hklview import cmdlineframes
-myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", htmlfname = "myhkl.html", high_quality=False, verbose=2)
+myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", htmlfname = "myhkl.html", high_quality=True, verbose=1)
 myHKLview.LoadReflectionsFile(r"C:\Busers\oeffner\Phenix\phenix-installer-1.15.2-3472-intel-windows-x86_64\modules\phenix_examples\beta-blip\beta_blip_P3221.mtz")
 myHKLview.SetScene(0)
 myHKLview.SetRadiiScale(1,0)
@@ -326,7 +326,7 @@ class HKLViewFrame() :
       new_phil = libtbx.phil.parse(philstr)
       self.update_settings(new_phil)
       #print "in zmq listen"
-      time.sleep(1)
+      time.sleep(0.2)
     del self.socket
 
 
@@ -410,6 +410,14 @@ class HKLViewFrame() :
 
       if hasattr(diff, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
+
+      if hasattr(diff, "normal_clip_plane"):
+        self.clip_plane_normal_to_HKL_vector(phl.normal_clip_plane.h, phl.normal_clip_plane.k,
+            phl.normal_clip_plane.l, phl.normal_clip_plane.hkldist,
+            phl.normal_clip_plane.clipwidth, phl.normal_clip_plane.fixorientation)
+
+      if hasattr(diff, "mouse_sensitivity"):
+        self.viewer.SetTrackBallRotateSpeed(phl.mouse_sensitivity)
 
       if hasattr(diff, "camera_type"):
         self.set_camera_type(phl.camera_type)
@@ -877,7 +885,19 @@ class HKLViewFrame() :
     self.viewer.TranslateHKLpoints(h, k, l, hkldist)
 
 
-  def ClipPlaneParallelToHKLplane(self, h, k, l, hkldist=0.0,
+  def ClipPlaneNormalToHKLvector(self, h, k, l, hkldist=0.0,
+             clipwidth=None, fixorientation=True):
+    self.params.NGL_HKLviewer.normal_clip_plane.h = h
+    self.params.NGL_HKLviewer.normal_clip_plane.k = k
+    self.params.NGL_HKLviewer.normal_clip_plane.l = l
+    self.params.NGL_HKLviewer.normal_clip_plane.hkldist = hkldist
+    self.params.NGL_HKLviewer.normal_clip_plane.clipwidth = clipwidth
+    self.params.NGL_HKLviewer.normal_clip_plane.fixorientation = fixorientation
+    self.update_settings()
+
+
+
+  def clip_plane_normal_to_HKL_vector(self, h, k, l, hkldist=0.0,
              clipwidth=None, fixorientation=True):
     self.viewer.RemoveAllReciprocalVectors()
     R = -l * self.viewer.normal_hk + h * self.viewer.normal_kl + k * self.viewer.normal_lh
@@ -907,7 +927,8 @@ class HKLViewFrame() :
 
 
   def SetTrackBallRotateSpeed(self, trackspeed):
-    self.viewer.SetTrackBallRotateSpeed(trackspeed)
+    self.params.NGL_HKLviewer.mouse_sensitivity = trackspeed
+    self.update_settings()
 
 
   def GetTrackBallRotateSpeed(self):
@@ -993,6 +1014,20 @@ NGL_HKLviewer {
     .type = int
   using_space_subgroup = False
     .type = bool
+  normal_clip_plane {
+    h = 1
+      .type = float
+    k = 1
+      .type = float
+    l = 1
+      .type = float
+    hkldist = 0.0
+      .type = float
+    clipwidth = None
+      .type = float
+    fixorientation = True
+      .type = bool
+  }
   scene_bin_thresholds = None
     .type = float
     .multiple = True
@@ -1004,6 +1039,8 @@ NGL_HKLviewer {
     .type = choice
   tooltips_in_script = False
     .type = bool
+  mouse_sensitivity = 0.2
+    .type = float
   viewer {
     %s
   }

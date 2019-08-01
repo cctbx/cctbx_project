@@ -13,7 +13,7 @@ from __future__ import absolute_import, division, print_function
 
 from PySide2.QtCore import Qt, QUrl, QTimer
 from PySide2.QtWidgets import ( QApplication, QCheckBox, QComboBox,
-        QDial, QDialog, QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
+        QDial, QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
@@ -23,7 +23,7 @@ from PySide2.QtWebEngineWidgets import QWebEngineView
 
 import sys, zmq, subprocess, time, traceback
 
-class NGL_HKLViewer(QDialog):
+class NGL_HKLViewer(QWidget):
   def __init__(self, parent=None):
     super(NGL_HKLViewer, self).__init__(parent)
     self.context = None
@@ -34,12 +34,22 @@ class NGL_HKLViewer(QDialog):
     self.openFileNameButton.setDefault(True)
     self.openFileNameButton.clicked.connect(self.OpenReflectionsFile)
 
-    self.flatPushButton = QPushButton("Flat Push Button")
-    self.flatPushButton.setFlat(True)
-    self.flatPushButton.clicked.connect(self.DoSomething)
+    self.flatPushButton = QPushButton("Debug Button")
+    self.flatPushButton.clicked.connect(self.DebugInteractively)
+
+    self.mousemovedial = QDial()
+    self.mousemovedial.setMinimum(0)
+    self.mousemovedial.setMaximum(400)
+
+    self.mousemovedial.setValue(0)
+    self.mousemovedial.setNotchesVisible(True)
+    self.mousemovedial.setNotchTarget(50)
+    #self.mousemovedial.valueChanged.connect(self.onMouseSensitivity)
+    self.mousemovedial.sliderReleased.connect(self.onMouseSensitivity)
 
     self.MillerComboBox = QComboBox()
     self.MillerComboBox.activated.connect(self.MillerComboSelchange)
+    #self.MillerComboBox.setSizeAdjustPolicy(QComboBox.AdjustToContents)
 
     self.MillerLabel = QLabel()
     self.MillerLabel.setText("Selected Miller Array")
@@ -132,25 +142,21 @@ class NGL_HKLViewer(QDialog):
     # don't allow editing the miller array info
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
 
-    self.createTopLeftGroupBox()
-    self.createTopRightGroupBox()
+    self.createGroupBox1()
+    self.createGroupBox2()
     self.createBottomLeftTabWidget()
     self.createRadiiScaleGroupBox()
 
     self.BrowserBox = QWebEngineView()
-    #topLayout = QHBoxLayout()
-    #topLayout.addWidget(self.openFileNameButton)
-    #topLayout.addStretch(1)
 
     mainLayout = QGridLayout()
-    mainLayout.addWidget(self.openFileNameButton,  0, 0, 1, 1)
     mainLayout.addWidget(self.HKLnameedit,         1, 0, 1, 1)
 
     mainLayout.addWidget(self.topLeftGroupBox,     2, 0)
-    mainLayout.addWidget(self.topRightGroupBox,    0, 1)
+    mainLayout.addWidget(self.GroupBox2,    0, 0)
     mainLayout.addWidget(self.RadiiScaleGroupBox,  3, 0)
     mainLayout.addWidget(self.bottomLeftGroupBox,  4, 0)
-    mainLayout.addWidget(self.BrowserBox,  2, 1, 3, 3)
+    mainLayout.addWidget(self.BrowserBox,  0, 1, 5, 3)
 
     self.BrowserBox.load(QUrl("http://www.oeffner.net"))
 
@@ -227,7 +233,7 @@ class NGL_HKLViewer(QDialog):
           if ngl_hkl_infodict.get("NewFileLoaded"):
             self.NewFileLoaded = ngl_hkl_infodict.get("NewFileLoaded",False)
           self.fileisvalid = True
-          print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
+          #print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
 
           if self.infostr:
             print(self.infostr)
@@ -241,7 +247,7 @@ class NGL_HKLViewer(QDialog):
             #if self.mergedata == None : val = Qt.CheckState.PartiallyChecked
             #if self.mergedata == False : val = Qt.CheckState.Unchecked
             #self.mergecheckbox.setCheckState(val )
-            print("got hklscenes: " + str(self.hklscenes_arrays))
+            #print("got hklscenes: " + str(self.hklscenes_arrays))
 
             self.MillerComboBox.clear()
             self.MillerComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
@@ -251,7 +257,7 @@ class NGL_HKLViewer(QDialog):
 
             self.millertable.setRowCount(len(self.hklscenes_arrays))
             #self.millertable.setColumnCount(8)
-            for n,millarr in enumerate(self.hklscenes_arrays):
+            for n,millarr in enumerate(self.array_infotpls):
               for m,elm in enumerate(millarr):
                 self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
 
@@ -262,6 +268,9 @@ class NGL_HKLViewer(QDialog):
         pass
 
 
+  def onMouseSensitivity(self):
+    val = self.mousemovedial.value()/100.0
+    self.NGL_HKL_command('NGL_HKLviewer.mouse_sensitivity = %f' %val)
 
 
   def MergeData(self):
@@ -374,7 +383,7 @@ class NGL_HKLViewer(QDialog):
         #print("file not valid")
 
 
-  def createTopLeftGroupBox(self):
+  def createGroupBox1(self):
     self.topLeftGroupBox = QGroupBox("Group 1")
 
     layout = QGridLayout()
@@ -396,42 +405,27 @@ class NGL_HKLViewer(QDialog):
     self.topLeftGroupBox.setLayout(layout)
 
 
-  def createTopRightGroupBox(self):
-    self.topRightGroupBox = QGroupBox("Group 2")
-    togglePushButton = QPushButton("Toggle Push Button")
-    togglePushButton.setCheckable(True)
-    togglePushButton.setChecked(True)
-
+  def createGroupBox2(self):
+    self.GroupBox2 = QGroupBox("Group 2")
     slider = QSlider(Qt.Horizontal, self.RadiiScaleGroupBox)
     slider.setValue(40)
 
     scrollBar = QScrollBar(Qt.Horizontal, self.RadiiScaleGroupBox)
     scrollBar.setValue(60)
 
-    dial = QDial(self.RadiiScaleGroupBox)
-    dial.setValue(30)
-    dial.setNotchesVisible(True)
-
-    layout = QVBoxLayout()
-    layout.addWidget(self.openFileNameButton)
-    layout.addWidget(togglePushButton)
-    layout.addWidget(self.flatPushButton)
+    layout = QGridLayout()
+    layout.addWidget(self.openFileNameButton,  0, 0, 1, 1)
+    layout.addWidget(self.flatPushButton, 0, 1, 1, 1)
 
     layout.addWidget(slider)
     layout.addWidget(scrollBar)
-    layout.addWidget(dial)
+    layout.addWidget(self.mousemovedial)
 
-    layout.addStretch(1)
-    self.topRightGroupBox.setLayout(layout)
+    #layout.addStretch(1)
+    self.GroupBox2.setLayout(layout)
 
 
-  def DoSomething(self):
-    print( self.hklscenes_arrays )
-    print( self.matching_arrays )
-    print( self.bin_info )
-    print( self.html_url )
-    print( self.spacegroups )
-    print(self.info)
+  def DebugInteractively(self):
     import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
@@ -502,32 +496,19 @@ class NGL_HKLViewer(QDialog):
     except Exception: pass
 
     #cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=False, verbose=0)"\n'
-    cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=False, verbose=3, UseOSBrowser= False)"\n'
+    cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=True, verbose=1, UseOSBrowser= False)"\n'
     #self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdout=sys.stdout, stderr=sys.stderr)
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
     #self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     time.sleep(1)
-    """
-    self.NGL_HKL_command('''
-    NGL_HKLviewer {
-      filename = "C:\\Users\\oeffner\\Buser\\Tests\LLGperResidue\\map_1six.1.mtz"
-      column=0
-      viewer.expand_anomalous=True
-    }
-    ''')
-    """
+
 
   def NGL_HKL_command(self, cmdstr):
-    #stdinstr = "myHKLview.ExecutePhilString("+  cmdstr + ")\n"
-    #self.cctbxproc.stdin.write( stdinstr.encode() )
     print("sending:\n" + cmdstr)
     self.socket.send(bytes(cmdstr,"utf-8"))
     print("stuff sent")
 
-    #( self.out, self.err ) = self.cctbxproc.communicate(input = bytes(cmdstr, 'utf-8') )
-
-    #print(self.err)
 
 
 if __name__ == '__main__':

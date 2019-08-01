@@ -1011,9 +1011,9 @@ var origclipfar;
 var origcameraZpos;
 
 
-var script=document.createElement('script');
-script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
-document.head.appendChild(script);
+///var script=document.createElement('script');
+//script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
+//document.head.appendChild(script);
 
 
 function createElement(name, properties, style)
@@ -1372,8 +1372,8 @@ mysocket.onmessage = function (e)
               picking: br_ttips[bin][g],
               } %s  );
           shape.addBuffer(br_shapebufs[bin][g]);
-          mysocket.send( 'Memory usage: ' + String(window.performance.memory.totalJSHeapSize) +
-                  ', ' + String(window.performance.memory.totalJSHeapSize) );
+          //mysocket.send( 'Memory usage: ' + String(window.performance.memory.totalJSHeapSize) +
+          //        ', ' + String(window.performance.memory.totalJSHeapSize) );
         }
       }
       MakeHKL_Axis();
@@ -1590,16 +1590,16 @@ mysocket.onmessage = function (e)
                                )
           )
           self.cameratranslation = (flst[12], flst[13], flst[14])
-          self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=1 )
+          self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=2 )
           self.cameradist = math.pow(ScaleRotMx.determinant(), 1.0/3.0)
-          self.mprint("distance: %s" %roundoff(self.cameradist), verbose=1)
+          self.mprint("distance: %s" %roundoff(self.cameradist), verbose=2)
           self.rotation_mx = ScaleRotMx/self.cameradist
           rotlst = roundoff(self.rotation_mx.elems)
           self.mprint("""Rotation matrix:
   %s,  %s,  %s
   %s,  %s,  %s
   %s,  %s,  %s
-          """ %rotlst, verbose=1)
+          """ %rotlst, verbose=2)
 
           alllst = roundoff(flst)
           self.mprint("""OrientationMatrix matrix:
@@ -1607,23 +1607,23 @@ mysocket.onmessage = function (e)
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
-          """ %tuple(alllst), verbose=2)
+          """ %tuple(alllst), verbose=3)
           if self.rotation_mx.is_r3_rotation_matrix():
             angles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
-            self.mprint("angles: %s" %str(roundoff(angles)))
+            self.mprint("angles: %s" %str(roundoff(angles)), verbose=2)
             z_vec = flex.vec3_double( [(0,0,1)])
             self.rot_zvec = z_vec * self.rotation_mx
-            self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=1)
+            self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=2)
             rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().fractionalization_matrix() )
             self.rot_recip_zvec = self.rot_zvec * rfracmx
             self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
-            self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=1)
+            self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=2)
         else:
           self.mprint( message, verbose=3)
         self.lastmsg = message
       if "OrientationBeforeReload:" in message:
         #sleep(0.2)
-        self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=1 )
+        self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
         if not self.isnewfile:
           #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
           self.msgqueue.append( ("ReOrient", self.viewmtrx) )
@@ -1835,6 +1835,7 @@ mysocket.onmessage = function (e)
 
   def SetTrackBallRotateSpeed(self, trackspeed):
     msg = str(trackspeed)
+    print("wibble")
     self.msgqueue.append( ("SetTrackBallRotateSpeed", msg) )
     self.GetTrackBallRotateSpeed()
 
