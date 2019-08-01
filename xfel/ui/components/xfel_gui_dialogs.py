@@ -665,24 +665,25 @@ class AdvancedSettingsDialog(BaseDialog):
                                  ctrl_min=1,
                                  ctrl_max=1000)
       self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
-      self.nproc_per_node = gctr.SpinCtrl(self,
-                                          label='Number of processors per node:',
-                                          label_size=(240, -1),
-                                          label_style='normal',
-                                          ctrl_size=(100, -1),
-                                          ctrl_value='%d'%params.mp.nproc_per_node,
-                                          ctrl_min=1,
-                                          ctrl_max=1000)
-      self.mp_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
 
-      self.env_script = gctr.TextButtonCtrl(self,
-                                       label='Environment setup script:',
-                                       label_style='bold',
-                                       label_size=(200, -1),
-                                       value=params.mp.env_script[0] \
-                                             if len(params.mp.env_script) > 0 and \
-                                             params.mp.env_script[0] is not None else '')
-      self.mp_sizer.Add(self.env_script, flag=wx.EXPAND | wx.ALL, border=10)
+    self.nproc_per_node = gctr.SpinCtrl(self,
+                                        label='Number of processors per node:',
+                                        label_size=(240, -1),
+                                        label_style='normal',
+                                        ctrl_size=(100, -1),
+                                        ctrl_value='%d'%params.mp.nproc_per_node,
+                                        ctrl_min=1,
+                                        ctrl_max=1000)
+    self.mp_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.env_script = gctr.TextButtonCtrl(self,
+                                     label='Environment setup script:',
+                                     label_style='bold',
+                                     label_size=(200, -1),
+                                     value=params.mp.env_script[0] \
+                                           if len(params.mp.env_script) > 0 and \
+                                           params.mp.env_script[0] is not None else '')
+    self.mp_sizer.Add(self.env_script, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
