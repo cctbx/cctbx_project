@@ -86,7 +86,7 @@ def tar_extract(workdir, archive, modulename=None):
     for root, dirs, files in os.walk(module):
       for fname in files:
         full_path = os.path.join(root, fname)
-        os.chmod(full_path, stat.S_IREAD | stat.S_IWRITE)
+        os.chmod(full_path, stat.S_IREAD | stat.S_IWRITE | stat.S_IRGRP | stat.S_IROTH)
     # rename to expected folder name, e.g. boost_hot -> boost
     # only rename if folder names differ
     if modulename:
