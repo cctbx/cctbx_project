@@ -691,14 +691,17 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         else:
           r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y)))
             for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
-        rots.append(matrix.sqr([float(r_elem) for r_elem in r]) )
-        if len(ncs_oper) > 1:
-          t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x)[i])
-            for x in '123']
-        else:
-          t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x))
-            for x in '123']
-        trans.append(matrix.col([float(t_elem) for t_elem in t]))
+        try:
+          rots.append(matrix.sqr([float(r_elem) for r_elem in r]) )
+          if len(ncs_oper) > 1:
+            t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x)[i])
+              for x in '123']
+          else:
+            t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x))
+              for x in '123']
+          trans.append(matrix.col([float(t_elem) for t_elem in t]))
+        except ValueError:
+          raise Sorry("Error in _struct_ncs information. Likely '?' instead of a number.")
     # sort records by serial number
     serial_number.sort()
     items_order = [i for (_,i) in serial_number]
