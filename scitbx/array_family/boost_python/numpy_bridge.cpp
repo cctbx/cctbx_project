@@ -79,7 +79,7 @@ namespace scitbx { namespace af { namespace boost_python {
     }
     result = bp::object(bp::handle<>(PyArray_SimpleNew(nd, dims, type_num)));
     ElementType* result_data = reinterpret_cast<ElementType*>(
-      PyArray_DATA(result.ptr()));
+      PyArray_DATA(reinterpret_cast<PyArrayObject*>(result.ptr())));
     std::copy(O.begin(), O.end(), result_data);
 #endif
     return result;
@@ -106,7 +106,8 @@ namespace scitbx { namespace af { namespace boost_python {
 #if !defined(SCITBX_HAVE_NUMPY_INCLUDE)
     throw std::runtime_error(numpy_api_not_available());
 #else
-    PyObject* arr_ptr = arr_obj.ptr();
+    PyObject* obj_ptr = arr_obj.ptr();
+    PyArrayObject* arr_ptr = reinterpret_cast<PyArrayObject*>(obj_ptr);
     if (!PyArray_Check(arr_ptr)) {
       throw std::invalid_argument(
         "Expected a numpy.ndarray instance");
@@ -125,7 +126,7 @@ namespace scitbx { namespace af { namespace boost_python {
       all.push_back(static_cast<fgivt>(dims[i]));
     }
     flex_grid<> grid(all);
-    SCITBX_ASSERT(grid.size_1d() == PyArray_Size(arr_ptr));
+    SCITBX_ASSERT(grid.size_1d() == PyArray_Size(obj_ptr));
     versa<ElementType, flex_grid<> > result(
       grid, init_functor_null<ElementType>());
     void* data = PyArray_DATA(arr_ptr);
