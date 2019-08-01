@@ -72,6 +72,8 @@ ensemble_refinement {
   ensemble_reduction = True
     .type = bool
     .help = 'Find miminium number of structures to reproduce simulation R-values'
+  ensemble_reduction_rfree_tolerance = 0.0025
+    .type = float
   verbose = -1
     .type = int
   output_file_prefix = None
@@ -727,7 +729,8 @@ class run_ensemble_refinement(object):
         params = self.bsp)
     #Minimize number of ensemble models
     if self.params.ensemble_reduction:
-      self.ensemble_utils.ensemble_reduction()
+      self.ensemble_utils.ensemble_reduction(
+          rfree_tolerance=self.params.ensemble_reduction_rfree_tolerance)
 
     #Optimise fmodel_total k, b_aniso, k_sol, b_sol
     self.fmodel_total.set_scale_switch = 0
