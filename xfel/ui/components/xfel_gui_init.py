@@ -557,7 +557,7 @@ class RunStatsSentinel(Thread):
       run_statuses=self.run_statuses,
       minimalist=self.parent.run_window.runstats_tab.entire_expt,
       easy_run=True,
-      xsize=(sizex-25)/85, ysize=sizey/95,
+      xsize=(sizex-25)/85, ysize=(sizey-25)/95,
       high_vis=self.parent.high_vis)
       # convert px to inches with fudge factor for scaling inside borders
     self.parent.run_window.runstats_tab.redraw_windows = True
@@ -1967,7 +1967,6 @@ class RunStatsTab(SpotfinderTab):
     self.strong_indexed_image_timestamps = None
 
     self.runstats_panel = wx.Panel(self, size=(100, 100))
-    self.runstats_panelsize = self.runstats_panel.GetSize()
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
     self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.HORIZONTAL)
     self.runstats_panel.SetSizer(self.runstats_sizer)
@@ -2104,6 +2103,11 @@ class RunStatsTab(SpotfinderTab):
     self.main_sizer.Add(self.bottom_sizer, 0,
                         flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.static_bitmap = wx.StaticBitmap(
+      self.runstats_panel, wx.ID_ANY)#, wx.BitmapFromImage(img))
+    self.runstats_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
+    self.runstats_panel.SetSizer(self.runstats_sizer)
+
     # Bindings
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
     self.Bind(wx.EVT_BUTTON, self.onLastFiveRuns, self.last_five_runs)
@@ -2119,6 +2123,10 @@ class RunStatsTab(SpotfinderTab):
     self.Bind(wx.EVT_BUTTON, self.onDumpImages, self.shi_dump_images_button)
     self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
+
+    self.Layout()
+    self.Fit()
+    self.runstats_panelsize = self.runstats_panel.GetSize()
 
   def OnSize(self, e):
     self.runstats_panelsize = self.runstats_panel.GetSize()
@@ -2166,20 +2174,15 @@ class RunStatsTab(SpotfinderTab):
       self.runstats_box.SetLabel('Run Statistics - No trial selected')
 
   def plot_static_runstats(self):
-    import time
+    #import time
     #from xfel.ui.components.timeit import duration
-    t1 = time.time()
+    #t1 = time.time()
     if self.png is not None:
-      if self.static_bitmap is not None:
-        self.static_bitmap.Destroy()
       img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
-      self.static_bitmap = wx.StaticBitmap(
-        self.runstats_panel, wx.ID_ANY, wx.BitmapFromImage(img))
-      self.runstats_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
-      self.runstats_panel.SetSizer(self.runstats_sizer)
+      self.static_bitmap.SetBitmap(wx.BitmapFromImage(img))
       self.runstats_panel.Layout()
-      # self.figure_panel.SetupScrolling(scrollToTop=False)
-    t2 = time.time()
+      self.Layout()
+    #t2 = time.time()
 
   def print_strong_indexed_paths(self):
     try:
