@@ -17,7 +17,7 @@ output {{
 }}
 mp {{
   method = {method}
-  use_mpi = True
+  use_mpi = {use_mpi}
   nproc = {nproc}
   queue = {queue}
 }}

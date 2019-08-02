@@ -327,6 +327,8 @@ def submit_job(app, job):
     dbname                    = app.params.db.name,
     user                      = app.params.db.user,
     port                      = app.params.db.port,
+    # always use mpi for 'lcls'
+    use_mpi                   = app.params.mp.method != 'local' or (app.params.mp.method == 'local' and app.params.facility.name == 'lcls')
   )
   if app.params.facility == 'sacla': d['experiment'] = app.params.facility.sacla.experiment
   if app.params.db.password is not None and len(app.params.db.password) == 0:

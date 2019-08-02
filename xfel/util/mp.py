@@ -186,7 +186,9 @@ class get_submit_command(object):
 class get_local_submit_command(get_submit_command):
 
   def customize_for_method(self):
-    if self.params.nproc > 1:
+    if self.params.use_mpi:
+      self.command = "mpirun -n %d %s mp.method=mpi" % (self.params.nproc, self.command)
+    elif self.params.nproc > 1:
       self.command += " mp.nproc=%d" % self.params.nproc
 
   def generate_submit_command(self):
