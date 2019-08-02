@@ -1155,6 +1155,7 @@ class MainWindow(wx.Frame):
 
     if (settings_dlg.ShowModal() == wx.ID_OK):
       self.params = settings_dlg.params
+      save_cached_settings(self.params)
       if self.params.facility.name == 'lcls':
         self.title = 'CCTBX.XFEL | {} | {}'.format(self.params.experiment_tag,
                                                    self.params.facility.lcls.experiment)
