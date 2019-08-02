@@ -31,6 +31,7 @@ gui
     .type = choice
     .help = Select image viewer (GUI only)
     .alias = Image Viewer
+    .optional = False
   monitor_mode = False
     .type = bool
     .help = Set to true to keep watch for incoming images (GUI only)

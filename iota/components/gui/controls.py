@@ -314,6 +314,7 @@ class OKButton(IOTAButton):
 class CancelButton(IOTAButton):
   _id = wx.ID_CANCEL
 
+
 # ---------------------------------- Inputs ---------------------------------- #
 
 class InputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin):

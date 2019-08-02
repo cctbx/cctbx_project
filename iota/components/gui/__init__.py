@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/02/2019
-Last Changed: 06/25/2019
+Last Changed: 08/01/2019
 Description : IOTA GUI initialization module
 '''
 
@@ -470,12 +470,25 @@ class IOTAPHILCtrl(object):
     self.style = phil_object.style
     self.alias = phil_object.alias
     self.multiple = phil_object.multiple
+    self.helpstring = phil_object.help
 
     self.is_definition = phil_object.is_definition
     self.is_scope = phil_object.is_scope
     self.is_dlg_button = False
 
     self.is_primary_parent = phil_object.primary_parent_scope is None
+    self.SetOptional(optional=phil_object.optional)
+
+    # 'int' and 'float' types don't seem to have an attribute for whether to
+    # use Auto; thus it will be set to True in all such cases. UseNone will
+    # not affect the GUI for the time being before I learn more.
+    if self.is_definition:
+      if self.type.phil_type in ('int', 'float'):
+        self.SetUseAuto()
+        self.SetUseNone(enable=self.type.allow_none)
+      elif self.type.phil_type in ('ints', 'floats'):
+        self.SetUseAuto(enable=self.type.allow_auto_elements)
+        self.SetUseNone(enable=self.type.allow_none_elements)
 
     # Set expert level
     self.expert_level = phil_object.expert_level
@@ -483,7 +496,6 @@ class IOTAPHILCtrl(object):
       self.expert_level = 0
 
   def __str__(self):
-
     if hasattr(self, 'name'):
       return type(self).__name__ + (" ({})".format(self.name))
     else:
@@ -492,8 +504,14 @@ class IOTAPHILCtrl(object):
   def SetUseAuto(self, enable=True):
     self._blank_is_auto = enable
 
+  def SetUseNone(self, enable=True):
+    self._use_none = enable
+
   def UseAuto(self):
     return getattr(self, "_blank_is_auto", False)
+
+  def UseNone(self):
+    return getattr(self, '_use_none', False)
 
   def ReformatValue(self, value=None, raise_error=True):
     """ Takes value of any format and returns a string. Returns an AutoType
@@ -508,39 +526,54 @@ class IOTAPHILCtrl(object):
 
     # Join a list/tuple into a single string; convert non-strings into strings
     if type(value) in (list, tuple):
-      value = ' '.join(str(i) for i in value)
-    elif type(value) != str:
-      value = str(value)
+      errors = []
+      new_values = []
+      for v in value:
+        fv, e = self.check_value(value=v)
+        if e:
+          errors.append(e)
+        new_values.append(fv)
+      if errors and raise_error:
+        error_msg = 'The following errors were found: \n{}' \
+                    ''.format('\n'.join(errors))
+        raise Sorry(error_msg)
+      else:
+        return ' '.join([str(v) for v in new_values])
+    else:
+      if type(value) != str:
+        value = str(value)
+      new_value, error = self.check_value(value)
+      if error and raise_error:
+        raise Sorry(error)
+      return new_value
 
+  def check_value(self, value):
     # Check if value is blank ('' or whitespace of any length), None, or Auto
-    if value.isspace():
+    error = None
+    if str(value).isspace():
       if self.IsOptional():
         if self.UseAuto():
-          return Auto
+          value = Auto
         else:
-          return None
+          value = None
       else:
-        if raise_error:
-          raise Sorry("Value required for {}.".format(self.GetPHILName()))
-        else:
-          return None
+        error = "Value required for {}.".format(self.GetPHILName())
+        value = None
     elif str(value).lower() == 'auto':
       if self.UseAuto():
-        return Auto
+        value = Auto
       else:
-        return None
+        value = None
     elif str(value).lower() == 'none':
-      if raise_error:
-        if self.IsOptional():
-          return None
-        else:
-          if raise_error:
-            raise Sorry("Value required for {}.".format(self.GetPHILName()))
-          return None
-    else:
-      return value
+      if self.IsOptional():
+        value = None
+      else:
+        error = "Value required for {}.".format(self.GetPHILName())
+        value = None
 
-  def SetOptional(self, optional=True):
+    return value, error
+
+  def SetOptional(self, optional=None):
     if optional is None:
       optional = True
     self.optional = optional
@@ -569,16 +602,9 @@ class IOTADefinitionCtrl(IOTAPHILCtrl):
     if isinstance(phil_object, list):
       phil_object = phil_object[0]
     assert phil_object.is_definition
-    self.optional = phil_object.optional
-    self.default_value = getattr(self, 'default_value', None)
-    self.set_optional_and_auto()
     IOTAPHILCtrl.__init__(self, phil_object=phil_object)
-
-  def set_optional_and_auto(self):
-    # Some scopes or definitions may be explicitly set as optional
-    if self.optional is None:
-      self.SetOptional(optional=(self.default_value is None))
-      self.SetUseAuto(enable=(self.default_value is Auto))
+    self.default_value = phil_object.type.from_words(phil_object.words,
+                                                     phil_object)
 
   def GetPHIL(self, full_path=False, indent_length=2):
     """ Get PHIL entry for this control
@@ -909,6 +935,8 @@ class TextCtrlValidator(Validator):
     return True
 
   def CheckFormat(self, value):
+    if type(value) not in (list, tuple):
+      value = str(value)
     return self.ctrl.CheckFormat(value)
 
   def Validate(self, parent):
@@ -918,8 +946,11 @@ class TextCtrlValidator(Validator):
     try:
       raw_value = self.ctrl.GetValue()
       adj_value = self.parent.ReformatValue(value=raw_value)
-      value = self.ctrl.CheckFormat(value=str(adj_value))
-      reformatted = to_unicode(str(value))
+      value = self.CheckFormat(value=adj_value)
+      if type(value) in (list, tuple):
+        reformatted = to_unicode(' '.join([str(v) for v in value]))
+      else:
+        reformatted = to_unicode(str(value))
     except UnicodeEncodeError:
       self.ctrl.error_msg = "Only the standard UTF-8 character set is allowed."
       return False

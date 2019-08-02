@@ -274,11 +274,10 @@ class PRIMEWindow(IOTABaseFrame):
     self.pref_scopes = ['n_processors', 'queue']
     self.pr_scopes = ['scale', 'merge', 'postref']
     self.opt_scopes = ['target_space_group', 'target_unit_cell',
-                  'target_anomalous_flag', 'n_residues', 'pixel_size_mm']
+                       'target_anomalous_flag', 'n_residues', 'pixel_size_mm']
 
     # Instantiate input window
     input_scope = self.prime_index.get_scopes(include=self.main_window_scopes)
-
     self.input_window = InputWindow(self, size=(600, -1),
                                     scope=input_scope,
                                     phil_index=self.prime_index,
@@ -297,7 +296,6 @@ class PRIMEWindow(IOTABaseFrame):
     line = wx.StaticLine(self, style=wx.LI_HORIZONTAL, size=(-1, -1))
     self.bottom_sizer.Add(line, pos=(0, 0), span=(1, 3),
                           flag=wx.EXPAND | wx.TOP | wx.BOTTOM, border=5)
-
 
     opt_scope = self.prime_index.get_scopes(include=self.opt_scopes)
     self.option_panel = pct.PHILDialogPanel(self, scope=opt_scope,
@@ -407,6 +405,7 @@ class PRIMEWindow(IOTABaseFrame):
     self.pparams = self.prime_index.get_python_object(make_copy=True)
     self.out_dir = os.path.dirname(self.pparams.run_no) if \
       self.pparams.run_no else os.curdir
+    self.update_PRIME_index()
 
   def update_PRIME_index(self, phil=None, update_run_no=True):
     # update from existing PHIL
@@ -417,8 +416,6 @@ class PRIMEWindow(IOTABaseFrame):
         except Exception as e:
           raise Sorry('PRIME GUI ERROR: Cannot read PHIL object! ', e)
       self.prime_index.update_phil(phil_string=phil)
-
-    self.prime_index.working_phil.show()
     self.pparams = self.prime_index.get_python_object(make_copy=True)
 
     # update n_processors

@@ -1,7 +1,18 @@
-IOTA v1.4.005 - minor UI tweak
+IOTA v1.4.006 - UI tweaks and debugging
 
-- Added spacer to bottom of main window to prevent Run button from being cut off
-  on some systems
+1. Bugfixes:
+    - Fixed default marking in PHIL panels
+    - Fixed IOTA Summary window crash
+    - Fixed PRIME run folder path bug
+    - Added pre-set sizing to PRIME main window
+    - Made image_viewer parameter not optional
 
-07.20.2019
+2. Tweaks
+    - Added options for Auto and None values of ints and floats
+    - Added multi-value controls for strings, ints, and floats
+    - Added a tribool control (though seems unnecessary and isn't working that
+      well)
+
+
+08.01.2019
 # -- end

@@ -3,13 +3,13 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 07/20/2019
+Last Changed: 08/01/2019
 Description : IOTA initialization module (also contains app info)
 '''
 
 from datetime import datetime
 
-iota_version = '1.4.005'
+iota_version = '1.4.006'
 intx_version = '1.0.001'
 now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
 

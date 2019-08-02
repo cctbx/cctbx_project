@@ -28,7 +28,7 @@ class MainApp(wx.App):
 
     # Initialize Main window
     self.frame = PRIMEWindow(None, -1, title='PRIME')
-    self.frame.place_and_size(set_by='mouse', center=True)
+    self.frame.place_and_size(set_size='v_default', set_by='mouse', center=True)
 
     # Show main window
     self.frame.Show(True)

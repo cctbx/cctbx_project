@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/02/2019
-Last Changed: 07/17/2019
+Last Changed: 08/01/2019
 Description : IOTA GUI controls for PHIL-formatted settings
 '''
 
@@ -15,6 +15,7 @@ from wx.lib.scrolledpanel import ScrolledPanel
 from wxtbx import bitmaps
 
 from libtbx.utils import Sorry
+from libtbx import Auto
 
 from iota.components import gui
 from iota.components.gui import base
@@ -283,12 +284,12 @@ class PHILPanelMixin(object):
           for i, c in ctrl.controls.items():
             path = c.full_path
             if path and path in defaults:
-              c.default_value = defaults[path]
+              # c.default_value = defaults[path]
               c.set_background()
         else:
           path = ctrl.full_path
           if path and path in defaults:
-            ctrl.default_value = defaults[path]
+            # ctrl.default_value = defaults[path]
             ctrl.set_background()
 
   def get_default_scope(self, full_path=None):
@@ -298,7 +299,7 @@ class PHILPanelMixin(object):
     if full_path is not None:
       master_scopes = self.phil_index.get_master_scope(full_path)
       if isinstance(master_scopes, list):
-       return master_scopes[0]
+        return master_scopes[0]
       else:
         return master_scopes
 
@@ -308,7 +309,8 @@ class PHILPanelMixin(object):
     if full_path is not None:
       scope = self.get_default_scope(full_path=full_path)
       if scope:
-       return self.flatten_scope(scope=[scope])
+       dv = self.flatten_scope(scope=[scope])
+       return dv
 
   def get_max_label_size(self, scope=None, scopes=None):
     # Get font info for string-to-pixels conversion
@@ -451,12 +453,9 @@ class PHILPanelMixin(object):
                                     border=border, style=style, label=label,
                                     extras=extras)
 
-    # Set default value
-    d_value = self.phil_index.get_value(path=obj.full_path(), default=True)
-    wdg.default_value = d_value
-
     # Set widget_specific formatting
-    if obj.type.phil_type in ('str', 'unit_cell', 'space_group', 'path'):
+    if obj.type.phil_type in ('str', 'strings', 'unit_cell', 'space_group',
+                              'path'):
       expand = True
       if style.input_list:
         proportion = 1
@@ -552,6 +551,7 @@ class PHILPanelMixin(object):
           else:
             ctrl.SetValue(value)
           if style.scope_switch:
+            value = bool(value)
             ctrl.ctr.SetValue(value)
             ctrl.parent.check_scope_switches()
       else:
@@ -593,6 +593,9 @@ class PHILPanelMixin(object):
     self.check_scope_switches()
     self.Layout()
 
+    # Mark widgets with non-default values
+    self.mark_non_defaults(self.full_path)
+
   def check_scope_switches(self, force_switch=False):
     # Go through all scope boxes and disables ones that are turned off
     if self.scope_switch is not None or force_switch:
@@ -612,14 +615,10 @@ class PHILPanelMixin(object):
   def clear_panel(self, panel=None):
     if panel is None:
       panel = self
-
     self._multiples = []
     self._input_lists = {}
     self._toggled_scopes = {}
     self.controls = {}
-
-    print ('debug: clearing windows in ', panel, panel.main_sizer)
-
     panel.main_sizer.DeleteWindows()
 
   def enable_panel(self, enable=True, children=None):
@@ -669,6 +668,7 @@ class PHILPanelMixin(object):
             self.control_index[full_path].is_definition:
         return self.control_index[full_path].GetStringValue()
     return None
+
 
 class MultiObjectPanelMixin(object):
   """ Control-handing mixin for multi-scope and multi-definition panels """
@@ -776,9 +776,6 @@ class PHILBaseDialogPanel(PHILBaseScrolledPanel, gui.IOTAScopeCtrl):
     if self.expert_level is None:
       self.expert_level = 0
 
-    # Mark widgets with non-default values
-    self.mark_non_defaults(self.full_path)
-
 
 class PHILBaseScopePanel(PHILBaseFixedPanel, gui.IOTAScopeCtrl):
   def __init__(self, parent, scope, box=None, direction=wx.VERTICAL,
@@ -794,9 +791,6 @@ class PHILBaseScopePanel(PHILBaseFixedPanel, gui.IOTAScopeCtrl):
     self.expert_level = self.phil_index.get_min_expert_level(scope)
     if self.expert_level is None:
       self.expert_level = 0
-
-    # Mark widgets with non-default values
-    self.mark_non_defaults(self.full_path)
 
 
 class PHILBaseDefPanel(wx.Panel, gui.IOTADefinitionCtrl, PHILPanelMixin):
@@ -967,10 +961,8 @@ class PHILDefPanel(PHILBaseDefPanel):
     c_new = (254, 240, 217)
 
     if force_null:
-      # self.ctr.SetBackgroundColour(wx.NullColour)
       color = wx.NullColour
     elif is_error:
-      # self.ctr.SetBackgroundColour(c_err)
       color = c_err
     else:
       if self.is_default():
@@ -982,7 +974,9 @@ class PHILDefPanel(PHILBaseDefPanel):
     self.Refresh()
 
   def is_default(self):
-    return str(self.GetStringValue()) == str(self.default_value)
+    default_value = str(self.default_value)
+    control_value = str(self.GetStringValue())
+    return control_value == default_value
 
 
 class PHILScopePanel(PHILBaseScopePanel):
@@ -1319,7 +1313,7 @@ class ValidatedTextCtrl(wx.TextCtrl):
 
   def SetStringValue(self, value=None):
     if type(value) in (list, tuple):
-      value = ' '.join(value)
+      value = ' '.join([str(v) for v in value])
     self.SetValue(str(value))
 
   def GetStringValue(self):
@@ -1381,6 +1375,49 @@ class ValidatedStringCtrl(ValidatedTextCtrl):
     elif len(value) < self.GetMinLength():
       raise ValueError("Value must be at least {} characters."
                        "".format(self.GetMinLength()))
+    return value
+
+
+class ValidatedMultiStringCtrl(ValidatedStringCtrl):
+  """ A subclass of ValidatedNumberCtrl for multi-number PHIL objects """
+
+  def __init__(self, *args, **kwargs):
+    super(ValidatedMultiStringCtrl, self).__init__(*args, **kwargs)
+
+  def CheckFormat(self, value):
+    if value in (None, Auto):
+      return value
+
+    if isinstance(value, str):
+      values = value.split(' ')
+    elif type(value) in (list, tuple):
+      values = value
+    else:
+      raise ValueError('Unrecognized format: expecting string or iterable')
+
+    # Iterate through values and check format for each
+    errors = []
+    for v in values:
+      err = None
+      idx = values.index(v) + 1
+      if v in (None, Auto):
+        pass
+      if "$" in v:
+        err = "Item #{}: The dollar symbol ($) may not be used here." \
+              "".format(idx)
+      elif len(value) > self.GetMaxLength():
+       err = "Item #{}: Value must be {} characters or less." \
+             "".format(idx, self.GetMaxLength())
+      elif len(value) < self.GetMinLength():
+        err = "Item #{}: Value must be {} characters or more." \
+              "".format(idx, self.GetMinLength())
+      if err:
+        errors.append(err)
+
+    # Raise Value Error if any errors are found
+    if errors:
+      error_msg = 'Error(s) found!\n{}'.format('\n'.join(errors))
+      raise ValueError(error_msg)
     return value
 
 
@@ -1470,80 +1507,84 @@ class ValidatedNumberCtrl(ValidatedTextCtrl):
   def __init__(self, *args, **kwargs):
 
     # Check for "type" kwarg, for int or float
-    if kwargs.get(self, 'as_type'):
-      self._num_type = kwargs.pop('as_type', None)
-    else:
-      self._num_type = 'float'  # float by default for now
+    self._num_type = kwargs.pop('as_type', 'float')
 
     # Check for 'min' kwarg to set min value for control
-    if kwargs.get(self, 'min'):
-      min_num = kwargs.pop('min', None)
-      if min_num is None:
-        min_num = -sys.maxint
-    else:
-      min_num = -sys.maxint
-    self._min_num = int(min_num) if self._num_type == 'int' else float(min_num)
+    vmin = kwargs.pop('min', -sys.maxint)
+    if vmin is None:
+      vmin = -sys.maxint
+    self._value_min = int(vmin) if self._num_type == 'int' else float(vmin)
 
     # Check for 'max' kwarg to set max value for control
-    if kwargs.get(self, 'max'):
-      max_num = kwargs.pop('max', None)
-      if max_num is None:
-        max_num = sys.maxint
-    else:
-      max_num = sys.maxint
-    self._max_num = int(max_num) if self._num_type == 'int' else float(max_num)
+    vmax = kwargs.pop('max', sys.maxint)
+    if vmax is None:
+      vmax = sys.maxint
+    self._value_max = int(vmax) if self._num_type == 'int' else float(vmax)
+
+    # Check for 'allow_none' option (won't be used in subclassed multinumber
+    # control)
+    self._allow_none = kwargs.pop('allow_none', True)
 
     super(ValidatedNumberCtrl, self).__init__(*args, **kwargs)
 
   def SetMinValue(self, n):
     assert (n >= 0)
-    self._min_num = n
+    self._value_min = n
 
   def SetMaxValue(self, n):
     assert (n >= 1)
-    self._max_num = n
+    self._value_max = n
 
   def GetMinValue(self):
-    return self._min_num
+    return self._value_min
 
   def GetMaxValue(self):
-    return self._max_num
+    return self._value_max
 
-  def CheckFormat(self, value):
+  def determine_type(self, value, is_none=True, is_auto=True):
+    suggested_type = 'a number'
     try:
-      if self._num_type == 'int':
+      if 'int' in self._num_type:
         value = int(value)
-      elif self._num_type == 'float':
-        value = float(value)
+        suggested_type = 'an integer'
       else:
         value = float(value)
+        suggested_type = 'a float'
     except ValueError:
       value = str(value)
-
-    is_none = self.parent.IsOptional()
-    is_auto = self.parent.UseAuto()
-
+      if value.lower() == 'none':
+        value = None
+      elif value.lower() == 'auto':
+        value = Auto
     if isinstance(value, str):
+      if is_auto and is_none:
+        suggested_type += ', None, or Auto'
+      elif is_none:
+        suggested_type += 'or None'
+      elif is_auto:
+        suggested_type += ', None, or Auto'
+    return suggested_type, value
 
-      if value.lower() in ('none', 'auto') and (is_auto or is_none):
-        pass         # allow None or Auto through the string filter
+  def CheckFormat(self, value):
+    """ Checks that the format of the value is numerical; if string is found,
+        only 'none' and 'auto' can be accepted as valid
+    :param value: entered value
+    :return: checked value or error
+    """
+    is_none = self._allow_none
+    is_auto = self.parent.UseAuto()
+    suggested_type, value = self.determine_type(value,
+                                                is_none=is_none,
+                                                is_auto=is_auto)
+    if (value is None and is_none) or (value is Auto and is_auto):
+      pass
+    elif isinstance(value, str):
+      if (value.lower() == 'none' and is_none) or \
+              (value.lower() == 'auto' and is_auto):
+        pass
       else:
-        if self._num_type == 'int':
-          suggested_type = 'an integer'
-        elif self._num_type == 'float':
-          suggested_type = 'a float'
-        else:
-          suggested_type = 'a number'
-
-        if is_auto and is_none:
-          suggested_type += ', None, or Auto'
-        elif is_none:
-          suggested_type += 'or None'
-        elif is_auto:
-          suggested_type += ', None, or Auto'
-
-        raise ValueError("String entries are not allowed! Enter {}, None, "
-                         "or Auto.".format(suggested_type))
+        raise ValueError("String entries are not allowed! Enter {}."
+                         "".format(suggested_type))
     else:
       if value > self.GetMaxValue():
         raise ValueError("Value ({}) must be less than the maximum of {}."
@@ -1551,8 +1592,80 @@ class ValidatedNumberCtrl(ValidatedTextCtrl):
       elif value < self.GetMinValue():
         raise ValueError("Value ({}) must be more than the minimum of {}."
                          "".format(value, self.GetMinValue()))
-
     return value
+
+
+class ValidatedMultiNumberCtrl(ValidatedNumberCtrl):
+  """ A subclass of ValidatedNumberCtrl for multi-number PHIL objects """
+
+  def __init__(self, *args, **kwargs):
+    self._size_min = kwargs.pop('size_min', 0)
+    self._size_max = kwargs.pop('size_max', sys.maxint)
+    self._allow_none_elements = kwargs.pop('allow_none_elements', True)
+    self._allow_auto_elements = kwargs.pop('allow_auto_elements', True)
+    super(ValidatedMultiNumberCtrl, self).__init__(*args, **kwargs)
+
+  def CheckFormat(self, value):
+    """ Checks that the value list is the right size; that each of the items
+        is numerical; and if string values are found, only 'none' and 'auto' can
+        be accepted as valid
+    :param value: string or list containing entered value(s)
+    :return: checked values or error
+    """
+    is_none = self._allow_none_elements
+    is_auto = self._allow_auto_elements
+    if (str(value).lower() == 'none' and is_none) or \
+            (str(value).lower() == 'auto' and is_auto):
+      return value
+    if isinstance(value, str):
+      values = value.strip().split(' ')
+    else:
+      assert type(value) in (list, tuple)
+      values = value
+    if len(values) < self._size_min:
+      raise ValueError("Need a minimum of {} values in this field!"
+                       "".format(self._size_min))
+    if len(values) > self._size_max:
+      raise ValueError("Cannot have more than {} values in this field!"
+                       "".format(self._size_max))
+
+    # Iterate through values and check format for each; error message will be
+    # a summary of all found errors
+    errors = []
+    new_values = []
+    for item in values:
+      idx = values.index(item)
+      err = None
+      suggested_type, item = self.determine_type(item,
+                                                 is_none=is_none,
+                                                 is_auto=is_auto)
+      new_values.append(item)
+      if (item is None and is_none) or (item is Auto and is_auto):
+        pass
+      if isinstance(item, str):
+        if (item.lower() == 'none' and is_none) or\
+                (item.lower() == 'auto' and is_auto):
+          pass
+        else:
+          err = "String entries are not allowed! Enter {}."\
+                "".format(suggested_type)
+      else:
+        if item > self.GetMaxValue():
+          err = "Value ({}) must be less than the maximum of {}."
+          "".format(item, self.GetMaxValue())
+        elif item < self.GetMinValue():
+          err = "Value ({}) must be more than the minimum of {}."
+          "".format(item, self.GetMinValue())
+      if err:
+        msg = '   Item #{}: {}'.format(idx, err)
+        errors.append(msg)
+
+    # Raise Value Error if any errors are found
+    if errors:
+      error_msg = 'Error(s) found!\n{}'.format('\n'.join(errors))
+      raise ValueError(error_msg)
+
+    return new_values
 
 
 class ValidatedUnitCellCtrl(ValidatedTextCtrl):
@@ -1852,7 +1965,7 @@ class PHILPathCtrl(PHILDefPanel):
                        lambda evt: self._open_file_dialog()),
                       ('Browse folders...',
                        lambda evt: self._open_folder_dialog())]
-      browse_menu = iota.components.gui.controls.Menu(self)
+      browse_menu = ct.Menu(self)
       browse_menu.add_commands(command_list)
       self.PopupMenu(browse_menu)
       browse_menu.Destroy()
@@ -1922,6 +2035,46 @@ class PHILStringCtrl(PHILDefPanel):
     self.ctr.Validate()
 
 
+class PHILMultiStringCtrl(PHILDefPanel):
+  """ Control for the PHIL ints and floats (multiple numbers) types """
+
+  def __init__(self, parent, phil_object, label='', value=None,
+               label_size=wx.DefaultSize, *args, **kwargs):
+    vgap = kwargs.pop('vgap', 0)
+    PHILDefPanel.__init__(self, parent=parent, phil_object=phil_object,
+                          vgap=vgap, *args, **kwargs)
+
+    # make control
+    self.ctr = ValidatedMultiStringCtrl(self, value=value)
+    self.ctr.Validate()
+
+    # place control in sizer
+    self.ctrl_sizer.add_widget_and_label(self.ctr, label=label,
+                                         label_size=label_size, expand=True)
+    self.ctrl_sizer.add_growable(cols=[3])
+
+  def SetValue(self, value):
+    if isinstance(value, str):
+      value = value.split()
+    elif type(value) not in (list, tuple):
+      raise ValueError('IOTA GUI Error: Multi-string Control: Value should be a '
+                       'string or an iterable!')
+    value = self.ReformatValue(value, raise_error=False)
+    self.ctr.SetStringValue(value=value)
+    self.ctr.Validate()
+
+  def GetStringValue(self):
+    return self.ctr.GetValue()
+
+  def is_default(self):
+    if type(self.default_value) in (list, tuple):
+      default_value = ' '.join([str(v).lower() for v in self.default_value])
+    else:
+      default_value = str(self.default_value).lower()
+    control_value = self.GetStringValue().lower()
+    return default_value == control_value
+
+
 class PHILSpaceGroupCtrl(PHILStringCtrl):
   """ Control for the PHIL Space Group, subclassed from PHILStringCtrl """
 
@@ -1951,32 +2104,21 @@ class PHILUnitCellCtrl(PHILStringCtrl):
                             *args, **kwargs)
 
 
-class PHILChoiceCtrl(PHILDefPanel):
+class PHILBaseChoiceCtrl(PHILDefPanel):
   """ Choice control for PHIL choice item, with label """
 
   def __init__(self, parent,
                phil_object,
-               captions=None,
                label='',
                label_size=wx.DefaultSize,
                ctrl_size=wx.DefaultSize,
-               value=None,
                *args, **kwargs):
     """ Constructor
     :param parent: parent object
-    :param choices: Choices in list or tuple format (a choice can contain an
-    asterisk to designate selection; if that's the case, the choice control
-    will be set to that selection)
-    :param captions: Captions for selections (optional). The number of
-    captions must be the same as the number of choices. Otherwise, choice
-    names will serve as captions.
     :param label: choice control label
     :param label_size: size of choice control label
     :param label_style: normal, bold, italic, or italic_bold
     :param ctrl_size: size of choice control
-    :param allow_none: allow for all the choices to be unselected (in that
-    case, a three-dash entry will be added to the choice list, and the
-    control set to that selection)
     """
     # Initialize the base class
     PHILDefPanel.__init__(self, parent=parent, phil_object=phil_object,
@@ -1987,21 +2129,25 @@ class PHILChoiceCtrl(PHILDefPanel):
     self.ctr = wx.Choice(self, size=ctrl_size)
     self.ctrl_sizer.add_widget_and_label(widget=self.ctr, label=label,
                                          label_size=label_size)
-
-    # Set choices
-    choices = [w.value for w in phil_object.words]
-    self.SetChoices(choices=choices, captions=captions, value=value)
     self.Bind(wx.EVT_CHOICE, self.onChoice, self.ctr)
 
   def is_default(self):
-    return self.GetPHILValue() == self.default_value
+    default_value = self.default_value
+    control_value = self.GetPHILValue()
+
+    # Sometimes None is replaced with '---' in PHIL choice controls
+    if control_value == '---':
+      control_value = None
+
+    return str(control_value) == str(default_value)
 
   def onChoice(self, e):
     self.set_background()
 
-  def SetChoices(self, choices, captions=None, value=None):
+  def SetChoices(self, choices, captions=None, value=None, allow_none=True):
     ''' Insert choices into the control
     :param choices: list of choices (must be list or tuple)
+    :param value: definition value from PHIL object
     :param captions: list of captions (optional)
     :param allow_none: allow no selection
     '''
@@ -2021,9 +2167,9 @@ class PHILChoiceCtrl(PHILDefPanel):
     choices = [choice.replace("*", "") for choice in choices]
 
     # Apply or create captions and set selection
-    if (captions is None):
+    if captions is None:
       captions = list(choices)
-    if (len(captions) != len(choices)):
+    if len(captions) != len(choices):
       raise RuntimeError("Wrong number of caption items for {}\n"
                          "Choices: {}\n"
                          "Captions: {}"
@@ -2032,12 +2178,18 @@ class PHILChoiceCtrl(PHILDefPanel):
                                    '\n'.join(captions)))
 
     # Add a dashed line if parameter is optional (or None is an option)
-    if choices[0] is None or choices[0].lower() == 'none':
-      captions[0] = '---'
-      choices[0] = None
-    elif self.IsOptional():
-      captions.insert(0, "---")
-      choices.insert(0, None)
+    if allow_none:
+      if choices[0] is None or choices[0].lower() == 'none':
+        captions[0] = '---'
+        choices[0] = None
+      elif self.IsOptional():
+        captions.insert(0, "---")
+        choices.insert(0, None)
+        # Increment selection to account for item insertion
+        if selection is not None:
+          selection += 1
+
+    # Sometimes selection may be None; if so, set it to zero
     if selection is None:
       selection = 0
 
@@ -2067,13 +2219,66 @@ class PHILChoiceCtrl(PHILDefPanel):
     selection = self.ctr.GetSelection()
     choices_out = []
     for i, choice in enumerate(self._options):
-      if (choice is None):
+      if choice is None:
         continue
-      elif (i == selection):
+      elif i == selection:
         choices_out.append("*" + choice)
       else:
         choices_out.append(choice)
     return " ".join(choices_out)
+
+
+class PHILChoiceCtrl(PHILBaseChoiceCtrl):
+  def __init__(self, parent, phil_object, label='', captions=None, value=None,
+               *args, **kwargs):
+    super(PHILChoiceCtrl, self).__init__(parent=parent,
+                                          phil_object=phil_object,
+                                          label=label,
+                                          *args, **kwargs)
+    choices = [str(i) for i in phil_object.words]
+    self.SetChoices(choices=choices, captions=captions, value=value)
+
+  def GetValue(self):
+    raise NotImplementedError("Please use GetPhilValue()")
+
+
+class PHILTriBoolCtrl(PHILChoiceCtrl):
+  """ Three-way boolean control: returns True, False, or None. Currently used as
+      the option if a boolean PHIL definition has a default value of None.
+      PHIL definitions with default values of Auto or True/False are
+      automatically made as wx.CheckBox controls. That can be overridden by
+      specifying 'tribool' in a definition's style card.
+  """
+  def __init__(self, parent, phil_object, label='', value=None,
+               *args, **kwargs):
+    super(PHILTriBoolCtrl, self).__init__(parent=parent,
+                                          phil_object=phil_object,
+                                          label=label,
+                                          value=value,
+                                          *args, **kwargs)
+    self._options = None
+    self.SetOptional(True)
+    self.SetChoices(choices=['None', 'Yes', 'No'], value=value,
+                    allow_none=False)
+
+  def SetValue(self, value):
+    if value is True:
+      self.ctr.SetSelection(1)
+    elif value is False:
+      self.ctr.SetSelection(2)
+    else:
+      assert value in [None, Auto]
+      self.ctr.SetSelection(0)
+
+  def GetValue(self):
+    return self.GetPhilValue()
+
+  def GetPhilValue(self):
+    vals = [None, True, False]
+    return vals[self.ctr.GetSelection()]
+
+  def GetStringValue(self):
+    return str(self.GetPhilValue())
 
 
 class PHILNumberCtrl(PHILDefPanel):
@@ -2092,10 +2297,8 @@ class PHILNumberCtrl(PHILDefPanel):
                                    value=value)
     self.ctr.Validate()   # Validate to make sure the input value is legit
 
-    if hasattr(phil_object.type, 'allow_none_elements'):
-      self.SetOptional(optional=phil_object.type.allow_none_elements)
-    if hasattr(phil_object.type, 'allow_auto_elements'):
-      self.SetUseAuto(enable=phil_object.type.allow_auto_elements)
+    if hasattr(phil_object.type, 'allow_none'):
+      self.SetOptional(optional=phil_object.type.allow_none)
 
     self.ctrl_sizer.add_widget_and_label(self.ctr, label=label,
                                          label_size=label_size, expand=True)
@@ -2110,9 +2313,91 @@ class PHILNumberCtrl(PHILDefPanel):
     self.ctr.SetStringValue(value=value)
     self.ctr.Validate()
 
+  def is_default(self):
+    default_value = str(self.default_value)
+    control_value = str(self.GetStringValue())
+
+    # convert to float (unless None, Auto) for accurate comparison
+    if default_value.isdigit():
+      default_value = float(default_value)
+    if control_value.isdigit():
+      control_value = float(control_value)
+    return control_value == default_value
+
+
+class PHILMultiNumberCtrl(PHILDefPanel):
+  """ Control for the PHIL ints and floats (multiple numbers) types """
+
+  def __init__(self, parent, phil_object, label='', value=None,
+               label_size=wx.DefaultSize, *args, **kwargs):
+    vgap = kwargs.pop('vgap', 0)
+    PHILDefPanel.__init__(self, parent=parent, phil_object=phil_object,
+                          vgap=vgap, *args, **kwargs)
+
+    # make control
+    self.ctr = ValidatedMultiNumberCtrl(
+      self,
+      as_type=phil_object.type.phil_type,
+      min=phil_object.type.value_min,
+      max=phil_object.type.value_max,
+      size_min=phil_object.type.size_min,
+      size_max=phil_object.type.size_max,
+      value=value
+    )
+
+    # Validate to make sure the input value is legit
+    self.ctr.Validate()
+
+    # place control in sizer
+    self.ctrl_sizer.add_widget_and_label(self.ctr, label=label,
+                                         label_size=label_size, expand=True)
+    self.ctrl_sizer.add_growable(cols=[2])
+
+  def GetStringValue(self):
+    """ Extract value as a string """
+    return self.ctr.GetValue()
+
+  def SetValue(self, value):
+    if isinstance(value, str):
+      value = value.split()
+    value = self.ReformatValue(value, raise_error=False)
+    self.ctr.SetStringValue(value=value)
+    self.ctr.Validate()
+
+  def is_default(self):
+    # Convert strings into lists for comparison
+    if isinstance(self.default_value, str):
+      default_values = self.default_value.split()
+    else:
+      default_values = self.default_value
+    control_values = self.GetStringValue().split()
+
+    # Iterate through values and compare (assume None and Auto values will be
+    # NoneType and AutoType objects, rather than strings)
+    if default_values is not None:
+      for dv in default_values:
+        idx = default_values.index(dv)
+        cv = str(control_values[idx])
+        dv = str(dv)
+        if dv.isdigit():
+          dv = float(dv)
+        if cv.isdigit():
+          cv = float(cv)
+        if dv != cv:
+          return False
+      return True
+    else:
+      if len(control_values) == 1:
+        control_values = control_values[0]
+      elif len(control_values) == 0:
+        control_values = None
+      return str(default_values) == str(control_values)
+
 
 class PHILCheckBoxCtrl(PHILDefPanel):
-  """ Checkbox control for PHIL bool item """
+  """ Checkbox control for PHIL bool item (with tribool option as default;
+      PHIL style has to be set to noauto in order to make this a regular
+      bool) """
 
   def __init__(self, parent, phil_object, label='', style=None,
                label_size=wx.DefaultSize, value=False, *args, **kwargs):
@@ -2122,11 +2407,13 @@ class PHILCheckBoxCtrl(PHILDefPanel):
                           label_size=label_size, vgap=vgap, *args, **kwargs)
     self.style = style
     self.scope_switch = self.style.scope_switch
-    if value is None:
-      value = False
-
-    self.ctr = wx.CheckBox(self, label=label)
-    self.ctr.SetValue(state=bool(value))
+    if self.default_value is Auto:
+      self.ctr = wx.CheckBox(self, label=label,
+                             style=wx.CHK_ALLOW_3RD_STATE_FOR_USER |
+                                   wx.CHK_3STATE)
+    else:
+      self.ctr = wx.CheckBox(self, label=label)
+    self.SetValue(value)
 
     if label == '':
       border = 0
@@ -2138,7 +2425,7 @@ class PHILCheckBoxCtrl(PHILDefPanel):
 
   def GetStringValue(self):
     """ Extract value as a string """
-    return str(self.ctr.GetValue())
+    return str(self.GetValue())
 
   def onChangeValue(self, e):
     self.set_background()
@@ -2146,24 +2433,44 @@ class PHILCheckBoxCtrl(PHILDefPanel):
       self.parent.check_scope_switches()
 
   def SetValue(self, value=None):
-    if isinstance(value, str):
-      if value.lower() == 'none':
-        value = False
-      else:
-        value = True
-    elif not isinstance(value, bool):
+    """ Set checkbox state, None is interpreted as Auto if either is allowed """
+    if value in (None, Auto):
+      assert (self.ctr.Is3State())
+      self.ctr.Set3StateValue(wx.CHK_UNDETERMINED)
+    else:
       value = bool(value)
-    self.ctr.SetValue(state=value)
+      if self.ctr.Is3State():
+        if value:
+          self.ctr.Set3StateValue(wx.CHK_CHECKED)
+        else:
+          self.ctr.Set3StateValue(wx.CHK_UNCHECKED)
+      else:
+        self.ctr.SetValue(value)
+
+  def GetValue(self):
+    """ Set checkbox state """
+    if self.ctr.Is3State():
+      value = self.ctr.Get3StateValue()
+      if value == wx.CHK_UNDETERMINED:
+        return Auto
+      else:
+        return value == wx.CHK_CHECKED
+    else:
+      return self.ctr.GetValue()
+
 
 class WidgetFactory(object):
   ''' Class that will automatically make widgets for automated dialog making '''
   widget_types = {
-    'path'        : PHILPathCtrl     ,
-    'str'         : PHILStringCtrl   ,
-    'choice'      : PHILChoiceCtrl   ,
-    'number'      : PHILNumberCtrl   ,
-    'bool'        : PHILCheckBoxCtrl,
-    'space_group' : PHILSpaceGroupCtrl,
+    'path'        : PHILPathCtrl        ,
+    'str'         : PHILStringCtrl      ,
+    'strings'     : PHILMultiStringCtrl ,
+    'choice'      : PHILChoiceCtrl      ,
+    'number'      : PHILNumberCtrl      ,
+    'numbers'     : PHILMultiNumberCtrl ,
+    'bool'        : PHILCheckBoxCtrl    ,
+    'tribool'     : PHILTriBoolCtrl     ,
+    'space_group' : PHILSpaceGroupCtrl  ,
     'unit_cell'   : PHILUnitCellCtrl
   }
 
@@ -2197,6 +2504,10 @@ class WidgetFactory(object):
 
     if wtype in ('int', 'float'):
       wtype = 'number'
+    elif wtype in ('ints', 'floats'):
+      wtype = 'numbers'
+    elif style.tribool or (wtype == 'bool' and value is None):
+      wtype = 'tribool'
     if wtype == 'path' and (style and style.input_list):
       widget = PHILFileListCtrl(parent=parent,
                                 phil_object=phil_object,
@@ -2280,7 +2591,8 @@ class PHILDialogPanel(PHILBaseDialogPanel):
 class PHILDialog(PHILBaseDialog):
   """ Dialog auto-populated with PHIL settings """
 
-  def __init__(self, parent, scope, phil_index, name=None, *args, **kwargs):
+  def __init__(self, parent, scope, phil_index, name=None, title=None,
+               *args, **kwargs):
     """ Constructor
     :param parent: parent GUI element
     :param name: name of the PHIL scope rendered by this dialog
@@ -2289,10 +2601,11 @@ class PHILDialog(PHILBaseDialog):
     self.phil_index = phil_index
     self.parent = parent
     self.name = name
-    super(PHILDialog, self).__init__(parent, *args, **kwargs)
-
     if not self.name:
       self.name = parent.name
+    if not title:
+      title = self.name.replace('_', ' ').capitalize()
+    super(PHILDialog, self).__init__(parent, title=title, *args, **kwargs)
 
     if not isinstance(scope, list) and scope.multiple:
       self.scope = [scope]
@@ -2323,7 +2636,6 @@ class PHILDialog(PHILBaseDialog):
     self.phil_panel.SetupScrolling()
     self.size_and_place()
     self.Layout()
-    self.phil_panel.mark_non_defaults(self.phil_panel.full_path)
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.OnOkay, id=wx.ID_OK)

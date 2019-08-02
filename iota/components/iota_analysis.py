@@ -5,7 +5,7 @@ from six.moves import range, zip
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 07/17/2019
+Last Changed: 08/01/2019
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -762,11 +762,10 @@ class Analyzer(object):
       idx_ambiguity_selected = int(round(idx_ambiguity_sample / 3))
 
     # Set run number to 000 if running LivePRIME
+    out_dir = os.path.join(os.path.dirname(self.prime_data_path), 'prime')
     if run_zero:
-      run_path = os.path.join(os.path.dirname(self.prime_data_path),
-                              'prime/000')
+      run_path = os.path.join(out_dir, '000')
     else:
-      out_dir = os.path.dirname(self.prime_data_path)
       run_path = util.set_base_dir(out_dir=out_dir)
 
     # Populate pertinent data parameters
