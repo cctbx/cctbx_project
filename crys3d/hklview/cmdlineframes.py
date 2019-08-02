@@ -208,7 +208,7 @@ myHKLview.SetOpacity(14, 1.0)
 
 from crys3d.hklview import cmdlineframes
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", htmlfname = "myhkl.html", high_quality=True, verbose=1)
-myHKLview.LoadReflectionsFile(r"C:\Busers\oeffner\Phenix\phenix-installer-1.15.2-3472-intel-windows-x86_64\modules\phenix_examples\beta-blip\beta_blip_P3221.mtz")
+myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Phenix\phenix-installer-dev-3484-win7vc90\modules\phenix_examples\beta-blip\beta_blip_P3221.mtz")
 myHKLview.SetScene(0)
 myHKLview.SetRadiiScale(1,0)
 myHKLview.ExpandToP1(True)
@@ -406,8 +406,6 @@ class HKLViewFrame() :
         self.ResetPhilandViewer(diff_phil)
         if not self.load_reflections_file(phl.filename):
           return False
-        else:
-          self.SendInfo()
 
       if hasattr(diff, "scene_id") \
        or hasattr(diff, "merge_data") or hasattr(diff, "scene_bin_thresholds"):
@@ -1006,7 +1004,6 @@ class HKLViewFrame() :
                "NewFileLoaded": self.NewFileLoaded
             }
     if self.guiSocketPort:
-      #print("sending2: " + str(mydict))
       self.guisocket.send( str(mydict).encode("utf-8") )
 
 

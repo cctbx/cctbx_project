@@ -950,6 +950,7 @@ var MakeHKL_Axis = function()
     if self.high_quality:
       qualitystr = ""
     self.NGLscriptstr = """
+
 // Microsoft Edge users follow instructions on
 // https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
 // to enable websocket connection
@@ -1093,6 +1094,7 @@ var hklscene = function()
   stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false,
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
+
   MakeHKL_Axis();
 
   %s
@@ -1246,6 +1248,9 @@ mysocket.onmessage = function (e)
       var m = new NGL.Matrix4();
       m.fromArray(sm);
       stage.viewerControls.orient(m);
+
+      stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
+
       stage.viewer.requestRender();
     }
 
@@ -1846,6 +1851,8 @@ mysocket.onmessage = function (e)
   def GetTrackBallRotateSpeed(self):
     self.trackballrotatespeed = None
     self.msgqueue.append( ("GetTrackBallRotateSpeed", "") )
+    while self.trackballrotatespeed is None:
+      time.sleep(0.2)
 
 
   def SetClipPlaneDistances(self, near, far, cameraPosZ=None):
@@ -1863,7 +1870,7 @@ mysocket.onmessage = function (e)
     while self.clipFar is None:
       time.sleep(0.2)
     self.mprint("clipnear, clipfar, cameraPosZ: %2.2f, %2.2f %2.2f" \
-               %(self.clipNear, self.clipFar, self.cameraPosZ), 1)
+               %(self.clipNear, self.clipFar, self.cameraPosZ), 2)
     return (self.clipNear, self.clipFar, self.cameraPosZ)
 
 
@@ -1875,7 +1882,7 @@ mysocket.onmessage = function (e)
     while self.boundingX is None:
       time.sleep(0.2)
     self.mprint("boundingXYZ: %2.2f %2.2f %2.2f" \
-       %(self.boundingX, self.boundingY, self.boundingZ), verbose=1)
+       %(self.boundingX, self.boundingY, self.boundingZ), verbose=2)
     return (self.boundingX, self.boundingY, self.boundingZ)
 
 

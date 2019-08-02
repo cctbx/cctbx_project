@@ -34,18 +34,18 @@ class NGL_HKLViewer(QWidget):
     self.openFileNameButton.setDefault(True)
     self.openFileNameButton.clicked.connect(self.OpenReflectionsFile)
 
-    self.flatPushButton = QPushButton("Debug Button")
-    self.flatPushButton.clicked.connect(self.DebugInteractively)
+    self.debugbutton = QPushButton("Debug Button")
+    self.debugbutton.clicked.connect(self.DebugInteractively)
 
-    self.mousemovedial = QDial()
-    self.mousemovedial.setMinimum(0)
-    self.mousemovedial.setMaximum(400)
+    self.mousemoveslider = QSlider(Qt.Horizontal)
+    self.mousemoveslider.setMinimum(0)
+    self.mousemoveslider.setMaximum(400)
+    self.mousemoveslider.setValue(0)
+    self.mousemoveslider.sliderReleased.connect(self.onFinalMouseSensitivity)
+    self.mousemoveslider.valueChanged.connect(self.onMouseSensitivity)
 
-    self.mousemovedial.setValue(0)
-    self.mousemovedial.setNotchesVisible(True)
-    self.mousemovedial.setNotchTarget(50)
-    #self.mousemovedial.valueChanged.connect(self.onMouseSensitivity)
-    self.mousemovedial.sliderReleased.connect(self.onMouseSensitivity)
+    self.mousesensitxtbox = QLineEdit('')
+    self.mousesensitxtbox.setReadOnly(True)
 
     self.MillerComboBox = QComboBox()
     self.MillerComboBox.activated.connect(self.MillerComboSelchange)
@@ -108,7 +108,6 @@ class NGL_HKLViewer(QWidget):
     self.textInfo.setReadOnly(True)
 
     self.RadiiScaleGroupBox = QGroupBox("Radii Size of HKL Spheres")
-
     #self.PowerScaleGroupBox = QGroupBox("Manual Power Scaling of Sphere Radii")
 
     self.ManualPowerScalecheckbox = QCheckBox()
@@ -144,22 +143,25 @@ class NGL_HKLViewer(QWidget):
 
     self.createGroupBox1()
     self.createGroupBox2()
+    self.CreateSliceGroupBox()
     self.createBottomLeftTabWidget()
     self.createRadiiScaleGroupBox()
 
     self.BrowserBox = QWebEngineView()
 
     mainLayout = QGridLayout()
+    mainLayout.addWidget(self.GroupBox2,           0, 0)
     mainLayout.addWidget(self.HKLnameedit,         1, 0, 1, 1)
-
     mainLayout.addWidget(self.topLeftGroupBox,     2, 0)
-    mainLayout.addWidget(self.GroupBox2,    0, 0)
-    mainLayout.addWidget(self.RadiiScaleGroupBox,  3, 0)
-    mainLayout.addWidget(self.bottomLeftGroupBox,  4, 0)
-    mainLayout.addWidget(self.BrowserBox,  0, 1, 5, 3)
+    mainLayout.addWidget(self.sliceTabWidget,      3, 0)
+    mainLayout.addWidget(self.RadiiScaleGroupBox,  4, 0)
+    mainLayout.addWidget(self.bottomLeftGroupBox,  5, 0)
+    mainLayout.addWidget(self.BrowserBox,          0, 1, 6, 3)
 
     #self.BrowserBox.load(QUrl("https://cctbx.github.io/"))
-    self.BrowserBox.setHtml("https://cctbx.github.io/")
+    self.BrowserBox.setUrl("https://cctbx.github.io/")
+    self.BrowserBox.loadFinished.connect(self.onLoadFinished)
+    self.BrowserBox.renderProcessTerminated.connect(self.onRenderProcessTerminated)
 
     mainLayout.setRowStretch(0, 0)
     mainLayout.setRowStretch(1, 0)
@@ -213,27 +215,35 @@ class NGL_HKLViewer(QWidget):
         #msg = self.socket.recv()
         msgstr = msg.decode()
 #        print(msgstr)
-        self.info = eval(msgstr)
+        self.infodict = eval(msgstr)
         #print("received from cctbx: " + str(self.info))
-        ngl_hkl_infodict = self.info
-        if ngl_hkl_infodict:
-          if ngl_hkl_infodict.get("hklscenes_arrays"):
-            self.hklscenes_arrays = ngl_hkl_infodict.get("hklscenes_arrays", [])
-          if ngl_hkl_infodict.get("array_infotpls"):
-            self.array_infotpls = ngl_hkl_infodict.get("array_infotpls",[])
-          if ngl_hkl_infodict.get("bin_info"):
-            self.bin_info = ngl_hkl_infodict["bin_info"]
-          if ngl_hkl_infodict.get("html_url"):
-            self.html_url = ngl_hkl_infodict["html_url"]
-            self.BrowserBox.setHtml(self.html_url)
-          if ngl_hkl_infodict.get("spacegroups"):
-            self.spacegroups = ngl_hkl_infodict.get("spacegroups",[])
-          if ngl_hkl_infodict.get("merge_data"):
-            self.mergedata = ngl_hkl_infodict["merge_data"]
-          if ngl_hkl_infodict.get("info"):
-            self.infostr = ngl_hkl_infodict.get("info",[])
-          if ngl_hkl_infodict.get("NewFileLoaded"):
-            self.NewFileLoaded = ngl_hkl_infodict.get("NewFileLoaded",False)
+        if self.infodict:
+
+          if self.infodict.get("hklscenes_arrays"):
+            self.hklscenes_arrays = self.infodict.get("hklscenes_arrays", [])
+
+          if self.infodict.get("array_infotpls"):
+            self.array_infotpls = self.infodict.get("array_infotpls",[])
+
+          if self.infodict.get("bin_info"):
+            self.bin_info = self.infodict["bin_info"]
+
+          if self.infodict.get("html_url"):
+            self.html_url = self.infodict["html_url"]
+            self.BrowserBox.setUrl(self.html_url)
+
+          if self.infodict.get("spacegroups"):
+            self.spacegroups = self.infodict.get("spacegroups",[])
+
+          if self.infodict.get("merge_data"):
+            self.mergedata = self.infodict["merge_data"]
+
+          if self.infodict.get("info"):
+            self.infostr = self.infodict.get("info",[])
+
+          if self.infodict.get("NewFileLoaded"):
+            self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
+
           self.fileisvalid = True
           #print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
 
@@ -270,9 +280,14 @@ class NGL_HKLViewer(QWidget):
         pass
 
 
-  def onMouseSensitivity(self):
-    val = self.mousemovedial.value()/100.0
+  def onFinalMouseSensitivity(self):
+    val = self.mousemoveslider.value()/100.0
     self.NGL_HKL_command('NGL_HKLviewer.mouse_sensitivity = %f' %val)
+
+
+  def onMouseSensitivity(self):
+    val = self.mousemoveslider.value()/100.0
+    self.mousesensitxtbox.setText("%2.2f" %val )
 
 
   def MergeData(self):
@@ -359,6 +374,13 @@ class NGL_HKLViewer(QWidget):
       """ %(self.nth_power_scale, self.radii_scale)
     )
 
+  def onLoadFinished(self, val):
+    print("web page finished loading now")
+
+
+  def onRenderProcessTerminated(self, termstatus, exitcode):
+    print("Rendering terminated with status: %s and exitcode: %s" %(str(termstatus), str(exitcode)))
+
 
   def onManualPowerScale(self):
     if self.ManualPowerScalecheckbox.isChecked():
@@ -395,27 +417,172 @@ class NGL_HKLViewer(QWidget):
     layout.addWidget(self.sysabsentcheckbox,         4, 1, 1, 1)
     layout.addWidget(self.missingcheckbox,           5, 0, 1, 1)
     layout.addWidget(self.onlymissingcheckbox,       5, 1, 1, 1)
-    layout.addWidget(self.showslicecheckbox,         6, 0, 1, 1)
-    layout.addWidget(self.SliceLabelComboBox,        6, 1, 1, 1)
-    layout.addWidget(self.sliceindexspinBox,         6, 2, 1, 1)
     #layout.addStretch(1)
     self.topLeftGroupBox.setLayout(layout)
 
 
+  def CreateSliceGroupBox(self):
+    self.sliceTabWidget = QTabWidget()
+    tab1 = QWidget()
+    layout1 = QGridLayout()
+    layout1.addWidget(self.showslicecheckbox,         0, 0, 1, 1)
+    layout1.addWidget(self.SliceLabelComboBox,        0, 1, 1, 1)
+    layout1.addWidget(self.sliceindexspinBox,         0, 2, 1, 1)
+    tab1.setLayout(layout1)
+
+    tab2 = QWidget()
+    layout2 = QGridLayout()
+
+    self.hvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
+    self.hvecval = 0.0
+    self.hvec_spinBox.setValue(self.nth_power_scale)
+    self.hvec_spinBox.setDecimals(2)
+    self.hvec_spinBox.setSingleStep(0.5)
+    self.hvec_spinBox.setRange(-100.0, 10.0)
+    self.hvec_spinBox.valueChanged.connect(self.onHvecChanged)
+    self.hvec_Label = QLabel()
+    self.hvec_Label.setText("H")
+    layout2.addWidget(self.hvec_Label,      0, 0, 1, 1)
+    layout2.addWidget(self.hvec_spinBox,    0, 1, 1, 1)
+
+    self.kvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
+    self.kvecval = 0.0
+    self.kvec_spinBox.setValue(self.nth_power_scale)
+    self.kvec_spinBox.setDecimals(2)
+    self.kvec_spinBox.setSingleStep(0.5)
+    self.kvec_spinBox.setRange(-100.0, 10.0)
+    self.kvec_spinBox.valueChanged.connect(self.onLvecChanged)
+    self.kvec_Label = QLabel()
+    self.kvec_Label.setText("K")
+    layout2.addWidget(self.kvec_Label,      1, 0, 1, 1)
+    layout2.addWidget(self.kvec_spinBox,    1, 1, 1, 1)
+
+    self.lvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
+    self.lvecval = 0.0
+    self.lvec_spinBox.setValue(self.nth_power_scale)
+    self.lvec_spinBox.setDecimals(2)
+    self.lvec_spinBox.setSingleStep(0.5)
+    self.lvec_spinBox.setRange(-100.0, 10.0)
+    self.lvec_spinBox.valueChanged.connect(self.onKvecChanged)
+    self.lvec_Label = QLabel()
+    self.lvec_Label.setText("L")
+    layout2.addWidget(self.lvec_Label,      2, 0, 1, 1)
+    layout2.addWidget(self.lvec_spinBox,    2, 1, 1, 1)
+
+    self.fixedorientcheckbox = QCheckBox(self.sliceTabWidget)
+    self.fixedorientcheckbox.setText("Allow mouse zoom and translation but no rotation")
+    self.fixedorientcheckbox.clicked.connect(self.onFixedorient)
+    layout2.addWidget(self.fixedorientcheckbox,   3, 0, 1, 1)
+
+    self.hkldist_spinBox = QDoubleSpinBox(self.sliceTabWidget)
+    self.hkldistval = 0.0
+    self.hkldist_spinBox.setValue(self.nth_power_scale)
+    self.hkldist_spinBox.setDecimals(2)
+    self.hkldist_spinBox.setSingleStep(0.5)
+    self.hkldist_spinBox.setRange(-100.0, 10.0)
+    self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
+    self.hkldist_Label = QLabel()
+    self.hkldist_Label.setText("Distance from Origin")
+    layout2.addWidget(self.hkldist_Label,      4, 0, 1, 1)
+    layout2.addWidget(self.hkldist_spinBox,    4, 1, 1, 1)
+
+    self.clipwidth_spinBox = QDoubleSpinBox(self.sliceTabWidget)
+    self.clipwidthval = 0.0
+    self.clipwidth_spinBox.setValue(self.nth_power_scale)
+    self.clipwidth_spinBox.setDecimals(2)
+    self.clipwidth_spinBox.setSingleStep(0.5)
+    self.clipwidth_spinBox.setRange(-100.0, 10.0)
+    self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
+    self.clipwidth_Label = QLabel()
+    self.clipwidth_Label.setText("Clip Plane Width")
+    layout2.addWidget(self.clipwidth_Label,      5, 0, 1, 1)
+    layout2.addWidget(self.clipwidth_spinBox,    5, 1, 1, 1)
+
+    tab2.setLayout(layout2)
+    self.sliceTabWidget.addTab(tab1, "Explicit Slicing")
+    self.sliceTabWidget.addTab(tab2, "Clip Plane Slicing")
+
+
+  def onClipwidthChanged(self, val):
+    self.clipwidthval = val
+    self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.clipwidth = %f" %self.clipwidthval)
+
+
+  def onHKLdistChanged(self, val):
+    self.hkldist = val
+    self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.hkldist = %f" %self.hkldist)
+
+
+  def onHvecChanged(self, val):
+    self.hvecval = val
+    self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.h = %f" %self.hvecval)
+
+
+  def onKvecChanged(self, val):
+    self.kvecval = val
+    self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.k = %f" %self.kvecval)
+
+
+  def onLvecChanged(self, val):
+    self.lvecval = val
+    self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.l = %f" %self.lvecval)
+
+
+  def onFixedorient(self):
+    if self.fixedorientcheckbox.isChecked():
+      self.NGL_HKL_command('NGL_HKLviewer.normal_clip_plane.fixorientation = True')
+    else:
+      self.NGL_HKL_command('NGL_HKLviewer.normal_clip_plane.fixorientation = False')
+
+
   def createGroupBox2(self):
     self.GroupBox2 = QGroupBox("Group 2")
-    slider = QSlider(Qt.Horizontal, self.RadiiScaleGroupBox)
-    slider.setValue(40)
-    scrollBar = QScrollBar(Qt.Horizontal, self.RadiiScaleGroupBox)
-    scrollBar.setValue(60)
     layout = QGridLayout()
     layout.addWidget(self.openFileNameButton,  0, 0, 1, 1)
-    layout.addWidget(self.flatPushButton, 0, 1, 1, 1)
-    layout.addWidget(slider)
-    layout.addWidget(scrollBar)
-    layout.addWidget(self.mousemovedial)
-    #layout.addStretch(1)
+    layout.addWidget(self.debugbutton, 0, 3, 1, 3)
+    layout.addWidget(self.mousemoveslider,  1, 0, 1, 1)
+    layout.addWidget(self.mousesensitxtbox,  1, 3, 1, 3)
+    #layout.setColumnStretch(1, 2)
     self.GroupBox2.setLayout(layout)
+
+
+  def createRadiiScaleGroupBox(self):
+    self.RadiiScaleGroupBox = QGroupBox("Radii Size of HKL Spheres")
+    #self.PowerScaleGroupBox = QGroupBox("Manual Power Scaling of Sphere Radii")
+
+    self.ManualPowerScalecheckbox = QCheckBox()
+    self.ManualPowerScalecheckbox.setText("Manual Power Scaling of Sphere Radii")
+    self.ManualPowerScalecheckbox.clicked.connect(self.onManualPowerScale)
+
+    self.power_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
+    self.nth_power_scale = 0.5
+    self.power_scale_spinBox.setValue(self.nth_power_scale)
+    self.power_scale_spinBox.setDecimals(2)
+    self.power_scale_spinBox.setSingleStep(0.05)
+    self.power_scale_spinBox.setRange(0.0, 1.0)
+    self.power_scale_spinBox.valueChanged.connect(self.onPowerScaleChanged)
+    self.powerscaleLabel = QLabel()
+    self.powerscaleLabel.setText("Power scale Factor")
+
+    self.radii_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
+    self.radii_scale = 1.0
+    self.radii_scale_spinBox.setValue(self.radii_scale)
+    self.radii_scale_spinBox.setDecimals(1)
+    self.radii_scale_spinBox.setSingleStep(0.1)
+    self.radii_scale_spinBox.setRange(0.2, 2.0)
+    self.radii_scale_spinBox.valueChanged.connect(self.onRadiiScaleChanged)
+    self.radiiscaleLabel = QLabel()
+    self.radiiscaleLabel.setText("Linear Scale Factor")
+
+    layout = QGridLayout()
+    layout.addWidget(self.ManualPowerScalecheckbox, 1, 0, 1, 2)
+    layout.addWidget(self.powerscaleLabel,          2, 0, 1, 2)
+    layout.addWidget(self.power_scale_spinBox,      2, 1, 1, 2)
+    layout.addWidget(self.radiiscaleLabel,          3, 0, 1, 2)
+    layout.addWidget(self.radii_scale_spinBox,      3, 1, 1, 2)
+    layout.setColumnStretch (0, 1)
+    layout.setColumnStretch (1 ,0)
+    self.RadiiScaleGroupBox.setLayout(layout)
 
 
   def DebugInteractively(self):
@@ -465,18 +632,6 @@ class NGL_HKLViewer(QWidget):
 
   def SpacegroupSelchange(self,i):
     self.NGL_HKL_command("NGL_HKLviewer.spacegroupchoice = %d" %i)
-
-
-  def createRadiiScaleGroupBox(self):
-    layout = QGridLayout()
-    layout.addWidget(self.ManualPowerScalecheckbox, 1, 0, 1, 2)
-    layout.addWidget(self.powerscaleLabel,          2, 0, 1, 2)
-    layout.addWidget(self.power_scale_spinBox,      2, 1, 1, 2)
-    layout.addWidget(self.radiiscaleLabel,          3, 0, 1, 2)
-    layout.addWidget(self.radii_scale_spinBox,      3, 1, 1, 2)
-    layout.setColumnStretch (0, 1)
-    layout.setColumnStretch (1 ,0)
-    self.RadiiScaleGroupBox.setLayout(layout)
 
 
   def find_free_port(self):
