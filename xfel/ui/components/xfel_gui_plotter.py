@@ -265,7 +265,7 @@ class PopUpCharts(object):
         if len(info_list) == 1:
           sub.hist2d(d1, d2, bins=100, range=[lim1, lim2] if ranges is not None else None)
         else:
-          sub.plot(d1.as_numpy_array(), d2.as_numpy_array(), '.')
+          sub.plot(d1.as_numpy_array(), d2.as_numpy_array(), '.', alpha=0.1, markeredgewidth=0, markersize=2)
           if ranges is not None:
             sub.set_xlim(lim1)
             sub.set_ylim(lim2)
