@@ -249,12 +249,8 @@ class SettingsDialog(BaseDialog):
       self.params.db.name     = creds.db_name.ctr.GetValue()
       self.params.db.user     = creds.db_user.ctr.GetValue()
       self.params.db.password = creds.db_password.ctr.GetValue()
-      if self.params.facility.name == 'lcls':
-        self.params.facility.lcls.web.user     = creds.web_user.ctr.GetValue()
-        self.params.facility.lcls.web.password = creds.web_password.ctr.GetValue()
 
       self.drop_tables = creds.chk_drop_tables.GetValue()
-
 
   def onOK(self, e):
     self.params.facility.name = self.facility.ctr.GetStringSelection().lower()
@@ -333,27 +329,6 @@ class DBCredentialsDialog(BaseDialog):
                                        label='Delete and regenerate all tables')
     self.main_sizer.Add(self.chk_drop_tables, flag=wx.ALL, border=10)
 
-    if params.facility.name == 'lcls':
-      self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
-      # LCLS user name
-      self.web_user = gctr.TextButtonCtrl(self,
-                                         label='LCLS user name',
-                                         label_style='bold',
-                                         label_size=(150, -1),
-                                         big_button_size=(130, -1),
-                                         value=params.facility.lcls.web.user)
-      self.main_sizer.Add(self.web_user, flag=wx.EXPAND | wx.ALL, border=10)
-
-      # LCLS password
-      self.web_password = gctr.TextButtonCtrl(self,
-                                             label='LCLS Password',
-                                             label_style='bold',
-                                             label_size=(150, -1),
-                                             text_style=wx.TE_PASSWORD,
-                                             big_button_size=(130, -1),
-                                             value=params.facility.lcls.web.password)
-      self.main_sizer.Add(self.web_password, flag=wx.EXPAND | wx.ALL, border=10)
-
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
@@ -389,6 +364,27 @@ class LCLSFacilityOptions(BaseDialog):
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
+    # LCLS user name
+    self.web_user = gctr.TextButtonCtrl(self,
+                                       label='LCLS user name',
+                                       label_style='bold',
+                                       label_size=(150, -1),
+                                       big_button_size=(130, -1),
+                                       value=params.facility.lcls.web.user)
+    self.main_sizer.Add(self.web_user, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # LCLS password
+    self.web_password = gctr.TextButtonCtrl(self,
+                                           label='LCLS Password',
+                                           label_style='bold',
+                                           label_size=(150, -1),
+                                           text_style=wx.TE_PASSWORD,
+                                           big_button_size=(130, -1),
+                                           value=params.facility.lcls.web.password)
+    self.main_sizer.Add(self.web_password, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
+
     self.chk_use_ffb = wx.CheckBox(self,
                                    label='Use ffb (fast feedback) file system. Active experiment only, on hiprio or prio queues')
     self.chk_use_ffb.SetValue(params.facility.lcls.use_ffb)
@@ -423,6 +419,8 @@ class LCLSFacilityOptions(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def onOK(self, e):
+    self.params.facility.lcls.web.user     = self.web_user.ctr.GetValue()
+    self.params.facility.lcls.web.password = self.web_password.ctr.GetValue()
     self.params.facility.lcls.use_ffb = bool(self.chk_use_ffb.GetValue())
     self.params.facility.lcls.dump_shots = bool(self.chk_dump_shots.GetValue())
     self.params.facility.lcls.web.enforce80 = bool(self.chk_enforce80.GetValue())
