@@ -27,7 +27,8 @@ class file_table:
       print("Status",R.getcode())
     import xml.etree.ElementTree
     X = xml.etree.ElementTree.XML(R.read())
-    #from IPython import embed; embed()#help(X)
+    if X.tag == 'error':
+      print('Error getting run list:', X.text)
     self.runs = []
     self.items = []
     self.times = []
@@ -63,7 +64,6 @@ class file_table:
       if filter is None or (filter[0]<=key and key<=filter[1]):
         values.append(dict(run=key,time=max(self.rundict[key]["unixtimes"])))
     return values
-  pass
 
 class application:
   def __init__(self,param):
