@@ -1256,7 +1256,9 @@ class FileListCtrl(CustomListCtrl):
     sel = item.type.type.GetString(inp_sel)
     have_data = True in [(t in sel) for t in self._data_types]
     if have_data:
-      self.window.btn_run.Enable()
+      # Main Window may not have the run button yet
+      if hasattr(self.window, 'btn_run'):
+        self.window.btn_run.Enable()
       self.all_data_images[item.path] = inputs
 
       # Calculate # of images and display w/ item
