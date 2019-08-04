@@ -39,7 +39,7 @@ class NGL_HKLViewer(QWidget):
 
     self.mousemoveslider = QSlider(Qt.Horizontal)
     self.mousemoveslider.setMinimum(0)
-    self.mousemoveslider.setMaximum(400)
+    self.mousemoveslider.setMaximum(300)
     self.mousemoveslider.setValue(0)
     self.mousemoveslider.sliderReleased.connect(self.onFinalMouseSensitivity)
     self.mousemoveslider.valueChanged.connect(self.onMouseSensitivity)
@@ -177,7 +177,7 @@ class NGL_HKLViewer(QWidget):
       if "verbose" in e:
         self.verbose = e.split("verbose=")[1]
 
-    self.setWindowTitle("NGL-HKL-viewer")
+    self.setWindowTitle("HKL-viewer")
     self.cctbxproc = None
     self.LaunchCCTBXPython()
     self.out = None
@@ -264,6 +264,7 @@ class NGL_HKLViewer(QWidget):
             self.MillerComboBox.clear()
             self.MillerComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
                                              for e in self.hklscenes_arrays ] )
+            self.MillerComboBox.setCurrentIndex(-1) # unselect the first item in the list
             self.SpaceGroupComboBox.clear()
             self.SpaceGroupComboBox.addItems( self.spacegroups )
 
@@ -282,7 +283,7 @@ class NGL_HKLViewer(QWidget):
 
   def onFinalMouseSensitivity(self):
     val = self.mousemoveslider.value()/100.0
-    self.NGL_HKL_command('NGL_HKLviewer.mouse_sensitivity = %f' %val)
+    self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.mouse_sensitivity = %f' %val)
 
 
   def onMouseSensitivity(self):
@@ -450,7 +451,7 @@ class NGL_HKLViewer(QWidget):
     self.kvec_spinBox.setValue(self.nth_power_scale)
     self.kvec_spinBox.setDecimals(2)
     self.kvec_spinBox.setSingleStep(0.5)
-    self.kvec_spinBox.setRange(-100.0, 10.0)
+    self.kvec_spinBox.setRange(-100.0, 100.0)
     self.kvec_spinBox.valueChanged.connect(self.onLvecChanged)
     self.kvec_Label = QLabel()
     self.kvec_Label.setText("K")
@@ -462,7 +463,7 @@ class NGL_HKLViewer(QWidget):
     self.lvec_spinBox.setValue(self.nth_power_scale)
     self.lvec_spinBox.setDecimals(2)
     self.lvec_spinBox.setSingleStep(0.5)
-    self.lvec_spinBox.setRange(-100.0, 10.0)
+    self.lvec_spinBox.setRange(-100.0, 100.0)
     self.lvec_spinBox.valueChanged.connect(self.onKvecChanged)
     self.lvec_Label = QLabel()
     self.lvec_Label.setText("L")
@@ -479,7 +480,7 @@ class NGL_HKLViewer(QWidget):
     self.hkldist_spinBox.setValue(self.nth_power_scale)
     self.hkldist_spinBox.setDecimals(2)
     self.hkldist_spinBox.setSingleStep(0.5)
-    self.hkldist_spinBox.setRange(-100.0, 10.0)
+    self.hkldist_spinBox.setRange(-100.0, 100.0)
     self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
     self.hkldist_Label = QLabel()
     self.hkldist_Label.setText("Distance from Origin")
@@ -490,8 +491,8 @@ class NGL_HKLViewer(QWidget):
     self.clipwidthval = 0.0
     self.clipwidth_spinBox.setValue(self.nth_power_scale)
     self.clipwidth_spinBox.setDecimals(2)
-    self.clipwidth_spinBox.setSingleStep(0.5)
-    self.clipwidth_spinBox.setRange(-100.0, 10.0)
+    self.clipwidth_spinBox.setSingleStep(0.05)
+    self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
     self.clipwidth_Label = QLabel()
     self.clipwidth_Label.setText("Clip Plane Width")
@@ -664,7 +665,6 @@ class NGL_HKLViewer(QWidget):
   def NGL_HKL_command(self, cmdstr):
     print("sending:\n" + cmdstr)
     self.socket.send(bytes(cmdstr,"utf-8"))
-    print("stuff sent")
 
 
 

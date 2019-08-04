@@ -143,7 +143,7 @@ mtz1.mtz_object().write("mymtz.mtz")
 
 
 from crys3d.hklview import cmdlineframes
-myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=True, verbose=3)
+myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=True, verbose=1)
 myHKLview.LoadReflectionsFile("mymtz.mtz")
 myHKLview.SetScene(0)
 
@@ -336,7 +336,7 @@ class HKLViewFrame() :
       new_phil = libtbx.phil.parse(philstr)
       self.update_settings(new_phil)
       #print "in zmq listen"
-      time.sleep(0.2)
+      time.sleep(0.1)
     del self.guisocket
 
 
@@ -402,45 +402,42 @@ class HKLViewFrame() :
       self.params = self.currentphil.extract()
       phl = self.params.NGL_HKLviewer
 
-      if hasattr(diff, "filename"):
+      if view_3d.has_phil_path(diff_phil, "filename"):
         self.ResetPhilandViewer(diff_phil)
         if not self.load_reflections_file(phl.filename):
           return False
 
-      if hasattr(diff, "scene_id") \
-       or hasattr(diff, "merge_data") or hasattr(diff, "scene_bin_thresholds"):
+      if view_3d.has_phil_path(diff_phil, "scene_id") \
+       or view_3d.has_phil_path(diff_phil, "merge_data") or view_3d.has_phil_path(diff_phil, "scene_bin_thresholds"):
         #if self.set_scene(phl.scene_id, phl.fom_scene_id):
         if self.set_scene(phl.scene_id):
           self.set_scene_bin_thresholds(phl.scene_bin_thresholds, phl.bin_array)
 
-      if hasattr(diff, "spacegroup_choice"):
+      if view_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
 
-      if hasattr(diff, "using_space_subgroup") and phl.using_space_subgroup==False:
+      if view_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
 
-      if hasattr(diff, "normal_clip_plane"):
+      if view_3d.has_phil_path(diff_phil, "normal_clip_plane"):
         self.clip_plane_normal_to_HKL_vector(phl.normal_clip_plane.h, phl.normal_clip_plane.k,
             phl.normal_clip_plane.l, phl.normal_clip_plane.hkldist,
             phl.normal_clip_plane.clipwidth, phl.normal_clip_plane.fixorientation)
 
-      if hasattr(diff, "mouse_sensitivity"):
-        self.viewer.SetTrackBallRotateSpeed(phl.mouse_sensitivity)
-
-      if hasattr(diff, "camera_type"):
+      if view_3d.has_phil_path(diff_phil, "camera_type"):
         self.set_camera_type(phl.camera_type)
 
-      if hasattr(diff, "shape_primitive"):
+      if view_3d.has_phil_path(diff_phil, "shape_primitive"):
         self.set_shape_primitive(phl.shape_primitive)
 
-      if hasattr(diff, "tooltips_in_script"):
+      if view_3d.has_phil_path(diff_phil, "tooltips_in_script"):
         self.viewer.script_has_tooltips = phl.tooltips_in_script
 
-      if hasattr(diff, "viewer"):
+      if view_3d.has_phil_path(diff_phil, "viewer"):
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
-      msg = self.viewer.update_settings(diff, phl)
+      msg = self.viewer.update_settings(diff_phil, phl)
       self.mprint( msg, 1)
       for i,e in enumerate(self.spacegroup_choices):
         self.mprint("%d, %s" %(i,e.symbol_and_number()) , 0)
@@ -906,6 +903,11 @@ class HKLViewFrame() :
 
   def clip_plane_normal_to_HKL_vector(self, h, k, l, hkldist=0.0,
              clipwidth=None, fixorientation=True):
+
+    if h==0.0 and k==0.0 and l==0.0 or clipwidth==0.0:
+      self.RemoveNormalVectorToClipPlane()
+      return
+
     self.viewer.RemoveAllReciprocalVectors()
     R = -l * self.viewer.normal_hk + h * self.viewer.normal_kl + k * self.viewer.normal_lh
     self.viewer.AddVector(R[0][0], R[0][1], R[0][2], isreciprocal=False)
@@ -934,15 +936,15 @@ class HKLViewFrame() :
 
 
   def SetTrackBallRotateSpeed(self, trackspeed):
-    self.params.NGL_HKLviewer.mouse_sensitivity = trackspeed
+    self.params.NGL_HKLviewer.viewer.NGL.mouse_sensitivity = trackspeed
     self.update_settings()
 
 
   def GetTrackBallRotateSpeed(self):
     self.viewer.GetTrackBallRotateSpeed()
-    while self.viewer.trackballrotatespeed is None:
-      time.sleep(0.2)
-    return self.viewer.trackballrotatespeed
+    while self.params.viewer.NGL.mouse_sensitivity is None:
+      time.sleep(0.1)
+    return self.params.viewer.NGL.mouse_sensitivity
 
 
   def GetSpaceGroupChoices(self):
@@ -1045,14 +1047,15 @@ NGL_HKLviewer {
     .type = choice
   tooltips_in_script = False
     .type = bool
-  mouse_sensitivity = 0.2
-    .type = float
   viewer {
     %s
+    NGL {
+      %s
+    }
   }
 }
 
-""" %display.philstr
+""" %(display.philstr, view_3d.ngl_philstr)
 
 
 

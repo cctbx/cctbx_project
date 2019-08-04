@@ -20,6 +20,10 @@ from six.moves import range
 
 
 
+def has_phil_path(philobj, path):
+  return [ e.path for e in philobj.all_definitions() if path in e.path ]
+
+
 class ArrayInfo:
   def __init__(self, millarr, mprint=sys.stdout.write, fomlabel=None):
     from iotbx.gui_tools.reflections import get_array_description
@@ -158,6 +162,7 @@ def MakeTtips(hklscene, j):
 class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
+    self.ngl_setttings = NGLsettings()
     self.miller_array = None
     self.symops = []
     self.sg = None
@@ -189,7 +194,6 @@ class hklview_3d:
     self.boundingX = None
     self.boundingY = None
     self.boundingZ = None
-    self.trackballrotatespeed = None
     self.OrigClipNear = None
     self.OrigClipFar = None
     self.cameratranslation = ( 0,0,0 )
@@ -207,6 +211,7 @@ class hklview_3d:
     self.normal_kl = None
     self.normal_lh = None
     self.isnewfile = False
+    self.sleeptime = 0.1
     self.colstraliases = ""
     self.binvals = []
     self.workingbinvals = []
@@ -291,28 +296,28 @@ class hklview_3d:
       os.remove(self.hklfname)
 
 
-  def update_settings(self, diffphil, currentphil) :
-    if hasattr(diffphil, "filename") \
-      or hasattr(diffphil, "spacegroup_choice") \
-      or hasattr(diffphil, "merge_data") \
-      or hasattr(diffphil, "scene_id")  \
-      or hasattr(diffphil, "spacegroup_choice") \
-      or hasattr(diffphil, "using_space_subgroup") \
-      or hasattr(diffphil, "viewer") \
+  def update_settings(self, diff_phil, currentphil) :
+    if has_phil_path(diff_phil, "filename") \
+      or has_phil_path(diff_phil, "spacegroup_choice") \
+      or has_phil_path(diff_phil, "merge_data") \
+      or has_phil_path(diff_phil, "scene_id")  \
+      or has_phil_path(diff_phil, "spacegroup_choice") \
+      or has_phil_path(diff_phil, "using_space_subgroup") \
+      or has_phil_path(diff_phil, "viewer") \
       and ( \
-       hasattr(diffphil.viewer, "show_data_over_sigma") \
-      or hasattr(diffphil.viewer, "show_missing") \
-      or hasattr(diffphil.viewer, "show_only_missing") \
-      or hasattr(diffphil.viewer, "show_systematic_absences") \
-      or hasattr(diffphil.viewer, "slice_axis") \
-      or hasattr(diffphil.viewer, "slice_mode") \
-      or hasattr(diffphil.viewer, "slice_index") \
-      or hasattr(diffphil.viewer, "scale") \
-      or hasattr(diffphil.viewer, "nth_power_scale_radii") \
+       has_phil_path(diff_phil, "show_data_over_sigma") \
+      or has_phil_path(diff_phil, "show_missing") \
+      or has_phil_path(diff_phil, "show_only_missing") \
+      or has_phil_path(diff_phil, "show_systematic_absences") \
+      or has_phil_path(diff_phil, "slice_axis") \
+      or has_phil_path(diff_phil, "slice_mode") \
+      or has_phil_path(diff_phil, "slice_index") \
+      or has_phil_path(diff_phil, "scale") \
+      or has_phil_path(diff_phil, "nth_power_scale_radii") \
       or self.settings.inbrowser==False and \
-               ( hasattr(diffphil.viewer, "expand_anomalous") or \
-                hasattr(diffphil.viewer, "expand_to_p1") )\
-      or hasattr(diffphil.viewer, "show_anomalous_pairs") \
+               ( has_phil_path(diff_phil, "expand_anomalous") or \
+                has_phil_path(diff_phil, "expand_to_p1") )\
+      or has_phil_path(diff_phil, "show_anomalous_pairs") \
       ):
         self.sceneisdirty = True
         #if self.miller_array is None or self.scene_id < 0 or self.isnewfile:
@@ -323,6 +328,9 @@ class hklview_3d:
       self.scene = self.HKLscenes[self.scene_id]
       self.DrawNGLJavaScript()
       msg = "Rendered %d reflections\n" % self.scene.points.size()
+      if has_phil_path(diff_phil, "mouse_sensitivity"):
+        self.SetTrackBallRotateSpeed(currentphil.viewer.NGL.mouse_sensitivity)
+
     msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
     return msg
@@ -1569,7 +1577,7 @@ mysocket.onmessage = function (e)
     sleep(1)
     self.GetClipPlaneDistances()
     self.GetBoundingBox()
-    self.SetTrackBallRotateSpeed(0.2)
+    self.SetTrackBallRotateSpeed( self.ngl_setttings.mouse_sensitivity )
     self.OrigClipFar = self.clipFar
     self.OrigClipNear = self.clipNear
     self.sceneisdirty = False
@@ -1655,7 +1663,7 @@ mysocket.onmessage = function (e)
         datastr = message[ message.find("\n") + 1: ]
         lst = datastr.split(",")
         flst = [float(e) for e in lst]
-        self.trackballrotatespeed = flst[0]
+        self.ngl_setttings.mouse_sensitivity = flst[0]
       if "tooltip_id:" in message:
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         sym_id = eval(message.split("tooltip_id:")[1])[0]
@@ -1683,13 +1691,13 @@ mysocket.onmessage = function (e)
   def WebBrowserMsgQueue(self):
     try:
       while True:
-        sleep(0.2)
+        sleep(self.sleeptime)
         if len(self.msgqueue):
           #print("self.msgqueue: " + str(self.msgqueue))
           pendingmessagetype, pendingmessage = self.msgqueue[0]
           self.SendWebSockMsg(pendingmessagetype, pendingmessage)
           while not (self.browserisopen and self.websockclient):
-            sleep(0.2)
+            sleep(self.sleeptime)
           self.msgqueue.remove( self.msgqueue[0] )
 # if the html content is huge the browser will be unresponsive until it has finished
 # reading the html content. This may crash this thread. So try restarting this thread until
@@ -1708,7 +1716,7 @@ mysocket.onmessage = function (e)
     if self.websockclient:
       while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
         or "CurrentViewOrientation" in self.lastmsg):
-        sleep(0.2)
+        sleep(self.sleeptime)
       self.server.send_message(self.websockclient, message )
     else:
       self.OpenBrowser()
@@ -1849,10 +1857,10 @@ mysocket.onmessage = function (e)
 
 
   def GetTrackBallRotateSpeed(self):
-    self.trackballrotatespeed = None
+    self.ngl_setttings.mouse_sensitivity = None
     self.msgqueue.append( ("GetTrackBallRotateSpeed", "") )
-    while self.trackballrotatespeed is None:
-      time.sleep(0.2)
+    while self.ngl_setttings.mouse_sensitivity is None:
+      time.sleep(self.sleeptime)
 
 
   def SetClipPlaneDistances(self, near, far, cameraPosZ=None):
@@ -1868,7 +1876,7 @@ mysocket.onmessage = function (e)
     self.cameraPosZ = None
     self.msgqueue.append( ("GetClipPlaneDistances", "") )
     while self.clipFar is None:
-      time.sleep(0.2)
+      time.sleep(self.sleeptime)
     self.mprint("clipnear, clipfar, cameraPosZ: %2.2f, %2.2f %2.2f" \
                %(self.clipNear, self.clipFar, self.cameraPosZ), 2)
     return (self.clipNear, self.clipFar, self.cameraPosZ)
@@ -1880,7 +1888,7 @@ mysocket.onmessage = function (e)
     self.boundingZ = None
     self.msgqueue.append( ("GetBoundingBox", "") )
     while self.boundingX is None:
-      time.sleep(0.2)
+      time.sleep(self.sleeptime)
     self.mprint("boundingXYZ: %2.2f %2.2f %2.2f" \
        %(self.boundingX, self.boundingY, self.boundingZ), verbose=2)
     return (self.boundingX, self.boundingY, self.boundingZ)
@@ -1939,6 +1947,42 @@ mysocket.onmessage = function (e)
     str_vec = str_vec.replace(")", "")
     msg = str_vec + "\n"
     self.msgqueue.append( ("TranslateHKLpoints", msg) )
+
+
+
+
+
+ngl_philstr = """
+  mouse_sensitivity = 0.2
+    .type = float
+
+"""
+
+NGLmaster_phil = libtbx.phil.parse( ngl_philstr )
+NGLparams = NGLmaster_phil.fetch().extract()
+
+def reset_NGLsettings():
+  """
+  Reset NGL settings to their default values as specified in the phil definition string
+  """
+  global NGLmaster_phil
+  global ngl_philstr
+  global NGLparams
+  NGLparams = NGLmaster_phil.fetch(source = libtbx.phil.parse( ngl_philstr) ).extract()
+
+
+def NGLsettings():
+  """
+  Get a global phil parameters object containing some NGL settings
+  """
+  global NGLparams
+  return NGLparams
+
+
+
+
+
+
 
 
 
@@ -2015,7 +2059,5 @@ async def time(websocket, path):
 start_server = websockets.serve(time, '127.0.0.1', 7894)
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
-
-
 
 """
