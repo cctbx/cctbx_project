@@ -314,9 +314,12 @@ class HKLViewFrame() :
     self.NewFileLoaded = False
 
 
-  def mprint(self, m, verbose=0):
+  def mprint(self, msg, verbose=0):
     if verbose <= self.verbose:
-      print(m)
+      if self.guiSocketPort:
+        self.SendInfoToGUI( { "info": msg } )
+      else:
+        print(msg)
 
 
   def find_free_port(self):
@@ -1003,7 +1006,7 @@ class HKLViewFrame() :
                "html_url": self.viewer.url,
                "merge_data": self.params.NGL_HKLviewer.merge_data,
                "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
-               "NewFileLoaded": self.NewFileLoaded
+               #"NewFileLoaded": self.NewFileLoaded
             }
     if self.guiSocketPort:
       self.guisocket.send( str(mydict).encode("utf-8") )

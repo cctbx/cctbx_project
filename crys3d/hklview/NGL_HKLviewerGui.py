@@ -52,7 +52,7 @@ class NGL_HKLViewer(QWidget):
     #self.MillerComboBox.setSizeAdjustPolicy(QComboBox.AdjustToContents)
 
     self.MillerLabel = QLabel()
-    self.MillerLabel.setText("Selected Miller Array")
+    self.MillerLabel.setText("Selected HKL Scene")
 
     self.SpaceGroupComboBox = QComboBox()
     self.SpaceGroupComboBox.activated.connect(self.SpacegroupSelchange)
@@ -105,6 +105,7 @@ class NGL_HKLViewer(QWidget):
     self.HKLnameedit = QLineEdit('')
     self.HKLnameedit.setReadOnly(True)
     self.textInfo = QTextEdit()
+    self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
     self.textInfo.setReadOnly(True)
 
     self.RadiiScaleGroupBox = QGroupBox("Radii Size of HKL Spheres")
@@ -141,24 +142,24 @@ class NGL_HKLViewer(QWidget):
     # don't allow editing the miller array info
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
 
-    self.createGroupBox1()
-    self.createGroupBox2()
-    self.CreateSliceGroupBox()
+    self.createExpansionBox()
+    self.createFileInfoBox()
+    self.CreateSliceTabs()
     self.createBottomLeftTabWidget()
     self.createRadiiScaleGroupBox()
+    self.createShellsBox()
+    self.CreateFunctionTabs()
 
     self.BrowserBox = QWebEngineView()
 
     mainLayout = QGridLayout()
-    mainLayout.addWidget(self.GroupBox2,           0, 0)
-    mainLayout.addWidget(self.HKLnameedit,         1, 0, 1, 1)
-    mainLayout.addWidget(self.topLeftGroupBox,     2, 0)
-    mainLayout.addWidget(self.sliceTabWidget,      3, 0)
-    mainLayout.addWidget(self.RadiiScaleGroupBox,  4, 0)
-    mainLayout.addWidget(self.bottomLeftGroupBox,  5, 0)
-    mainLayout.addWidget(self.BrowserBox,          0, 1, 6, 3)
+    mainLayout.addWidget(self.FileInfoBox,         0, 0)
+    mainLayout.addWidget(self.MillerLabel,         1, 0)
+    mainLayout.addWidget(self.MillerComboBox,      2, 0)
+    mainLayout.addWidget(self.functionTabWidget,   3, 0)
+    mainLayout.addWidget(self.bottomLeftGroupBox,  4, 0)
+    mainLayout.addWidget(self.BrowserBox,          0, 1, 5, 3)
 
-    #self.BrowserBox.load(QUrl("https://cctbx.github.io/"))
     self.BrowserBox.setUrl("https://cctbx.github.io/")
     self.BrowserBox.loadFinished.connect(self.onLoadFinished)
     self.BrowserBox.renderProcessTerminated.connect(self.onRenderProcessTerminated)
@@ -167,7 +168,7 @@ class NGL_HKLViewer(QWidget):
     mainLayout.setRowStretch(1, 0)
     mainLayout.setRowStretch(2, 0)
     mainLayout.setRowStretch(3, 0)
-    mainLayout.setRowStretch(4, 1)
+    mainLayout.setRowStretch(4, 2)
     #mainLayout.setColumnStretch(0, 1)
     mainLayout.setColumnStretch(2, 1)
     self.setLayout(mainLayout)
@@ -216,7 +217,7 @@ class NGL_HKLViewer(QWidget):
         msgstr = msg.decode()
 #        print(msgstr)
         self.infodict = eval(msgstr)
-        #print("received from cctbx: " + str(self.info))
+        #print("received from cctbx: " + str(self.infodict))
         if self.infodict:
 
           if self.infodict.get("hklscenes_arrays"):
@@ -238,8 +239,9 @@ class NGL_HKLViewer(QWidget):
           if self.infodict.get("merge_data"):
             self.mergedata = self.infodict["merge_data"]
 
+          currentinfostr = ""
           if self.infodict.get("info"):
-            self.infostr = self.infodict.get("info",[])
+            currentinfostr = self.infodict.get("info",[])
 
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
@@ -247,13 +249,11 @@ class NGL_HKLViewer(QWidget):
           self.fileisvalid = True
           #print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
 
-          if self.infostr:
-            print(self.infostr)
+          if currentinfostr:
+            #print(currentinfostr)
+            self.infostr += currentinfostr + "\n"
             self.textInfo.setPlainText(self.infostr)
-            #self.mergecheckbox.setEnabled(True)
-          else:
-            self.textInfo.setPlainText("")
-            #self.mergecheckbox.setEnabled(False)
+
           if self.NewFileLoaded:
             #if self.mergedata == True : val = Qt.CheckState.Checked
             #if self.mergedata == None : val = Qt.CheckState.PartiallyChecked
@@ -400,16 +400,18 @@ class NGL_HKLViewer(QWidget):
             "All Files (*);;MTZ Files (*.mtz);;CIF (*.cif)", "", options)
     if fileName:
       self.HKLnameedit.setText(fileName)
+      self.infostr = ""
+      self.textInfo.setPlainText("")
       self.fileisvalid = False
       self.NGL_HKL_command('NGL_HKLviewer.filename = "%s"' %fileName )
       self.MillerComboBox.clear()
 
 
-  def createGroupBox1(self):
-    self.topLeftGroupBox = QGroupBox("Group 1")
+  def createExpansionBox(self):
+    self.ExpansionBox = QGroupBox("Expansions")
     layout = QGridLayout()
-    layout.addWidget(self.MillerComboBox,            1, 1, 1, 1)
-    layout.addWidget(self.MillerLabel,               1, 0, 1, 1)
+    #layout.addWidget(self.MillerComboBox,            1, 1, 1, 1)
+    #layout.addWidget(self.MillerLabel,               1, 0, 1, 1)
     layout.addWidget(self.SpaceGroupComboBox,        2, 1, 1, 1)
     layout.addWidget(self.SpacegroupLabel,           2, 0, 1, 1)
     layout.addWidget(self.mergecheckbox,             3, 0, 1, 1)
@@ -419,10 +421,10 @@ class NGL_HKLViewer(QWidget):
     layout.addWidget(self.missingcheckbox,           5, 0, 1, 1)
     layout.addWidget(self.onlymissingcheckbox,       5, 1, 1, 1)
     #layout.addStretch(1)
-    self.topLeftGroupBox.setLayout(layout)
+    self.ExpansionBox.setLayout(layout)
 
 
-  def CreateSliceGroupBox(self):
+  def CreateSliceTabs(self):
     self.sliceTabWidget = QTabWidget()
     tab1 = QWidget()
     layout1 = QGridLayout()
@@ -536,15 +538,16 @@ class NGL_HKLViewer(QWidget):
       self.NGL_HKL_command('NGL_HKLviewer.normal_clip_plane.fixorientation = False')
 
 
-  def createGroupBox2(self):
-    self.GroupBox2 = QGroupBox("Group 2")
+  def createFileInfoBox(self):
+    self.FileInfoBox = QGroupBox("Reflection File Information")
     layout = QGridLayout()
-    layout.addWidget(self.openFileNameButton,  0, 0, 1, 1)
-    layout.addWidget(self.debugbutton, 0, 3, 1, 3)
-    layout.addWidget(self.mousemoveslider,  1, 0, 1, 1)
-    layout.addWidget(self.mousesensitxtbox,  1, 3, 1, 3)
+    layout.addWidget(self.openFileNameButton,     0, 0, 1, 2)
+    layout.addWidget(self.debugbutton,            0, 2, 1, 1)
+    layout.addWidget(self.HKLnameedit,            1, 0, 1, 3)
+    layout.addWidget(self.millertable,            2, 0, 1, 3)
+    layout.addWidget(self.textInfo,               3, 0, 1, 3)
     #layout.setColumnStretch(1, 2)
-    self.GroupBox2.setLayout(layout)
+    self.FileInfoBox.setLayout(layout)
 
 
   def createRadiiScaleGroupBox(self):
@@ -586,6 +589,15 @@ class NGL_HKLViewer(QWidget):
     self.RadiiScaleGroupBox.setLayout(layout)
 
 
+
+  def createShellsBox(self):
+    self.ShellsGroupBox = QGroupBox("Shells")
+    layout = QGridLayout()
+    #layout.addWidget(self.openFileNameButton,     0, 0, 1, 2)
+    #layout.setColumnStretch(1, 2)
+    self.ShellsGroupBox.setLayout(layout)
+
+
   def DebugInteractively(self):
     import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
@@ -611,12 +623,41 @@ class NGL_HKLViewer(QWidget):
     self.bottomLeftTabWidget.addTab(tab1, "&Miller Arrays")
     self.bottomLeftTabWidget.addTab(tab2, "Information")
     """
+    layout.addWidget(self.mousemoveslider,  0, 0, 1, 1)
+    layout.addWidget(self.mousesensitxtbox,  0, 3, 1, 3)
 
-    layout.addWidget(self.millertable,            0, 0, 1, 1)
-    layout.addWidget(self.textInfo,               1, 0, 1, 1)
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
     self.bottomLeftGroupBox.setLayout(layout)
+
+
+
+  def CreateFunctionTabs(self):
+    self.functionTabWidget = QTabWidget()
+    tab1 = QWidget()
+    layout1 = QGridLayout()
+    layout1.addWidget(self.ExpansionBox,     1, 0)
+    tab1.setLayout(layout1)
+
+    tab2 = QWidget()
+    layout2 = QGridLayout()
+    layout2.addWidget(self.sliceTabWidget,     1, 0)
+    tab2.setLayout(layout2)
+
+    tab3 = QWidget()
+    layout3 = QGridLayout()
+    layout3.addWidget(self.RadiiScaleGroupBox,     1, 0)
+    tab3.setLayout(layout3)
+
+    tab4 = QWidget()
+    layout4 = QGridLayout()
+    layout4.addWidget(self.ShellsGroupBox,     1, 0)
+    tab3.setLayout(layout4)
+
+    self.functionTabWidget.addTab(tab1, "Expand")
+    self.functionTabWidget.addTab(tab2, "Slice")
+    self.functionTabWidget.addTab(tab3, "Size")
+    self.functionTabWidget.addTab(tab4, "Shells")
 
 
   def MillerComboSelchange(self,i):
