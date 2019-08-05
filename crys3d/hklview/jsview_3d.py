@@ -110,12 +110,11 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
       if fomsarray:
         fomslabel = fomsarray.info().label_string()
       ainf = ArrayInfo(hklscene.work_array, fomlabel=fomslabel)
-      infostr = ainf.infostr
       scenemaxdata.append( ainf.maxdata )
       scenemindata.append( ainf.mindata )
       scenemaxsigmas.append(ainf.maxsigmas)
       sceneminsigmas.append(ainf.minsigmas)
-      scenearrayinfos.append((infostr, pidx, fidx))
+      scenearrayinfos.append((ainf.infostr, pidx, fidx, ainf.labels))
       #self.mprint("%d, %s" %(i, infostr) )
       #i +=1
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
@@ -226,6 +225,7 @@ class hklview_3d:
     self.hkl_scenes_info = []
     self.match_valarrays = []
     self.binstrs = []
+    self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
     self.verbose = 0
     if kwds.has_key('verbose'):
@@ -770,6 +770,7 @@ var MakeHKL_Axis = function()
     negativeradiistr = ""
     cntbin = 0
     self.binstrs = []
+    self.bin_infotpls = []
     for ibin in range(self.nbin):
       mstr =""
       nreflsinbin = len(radii2[ibin])
@@ -781,6 +782,7 @@ var MakeHKL_Axis = function()
           bin2= 1.0/self.workingbinvals[ibin+1]
         mstr= "bin[%d] has %d reflections with %s in ]%2.3f; %2.3f]" %(cntbin, nreflsinbin, \
                 colstr, bin1, bin2)
+        self.bin_infotpls.append( roundoff((nreflsinbin, colstr, bin1, bin2 )) )
         self.binstrs.append(mstr)
         self.mprint(mstr, verbose=0)
 
@@ -825,6 +827,9 @@ var MakeHKL_Axis = function()
         if self.workingbinvals[ibin] < 0.0:
           negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
         cntbin += 1
+
+    if self.guisocket:
+      self.guisocket.send( str( {"bin_infotpls": self.bin_infotpls} ).encode("utf-8") )
 
     spherebufferstr += """
 // create tooltip element and add to the viewer canvas
@@ -1574,7 +1579,7 @@ mysocket.onmessage = function (e)
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
     self.ReloadNGL()
-    sleep(1)
+    sleep(self.sleeptime)
     self.GetClipPlaneDistances()
     self.GetBoundingBox()
     self.SetTrackBallRotateSpeed( self.ngl_setttings.mouse_sensitivity )

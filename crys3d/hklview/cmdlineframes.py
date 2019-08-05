@@ -233,6 +233,7 @@ from cctbx.array_family import flex
 from libtbx.utils import Sorry, to_str
 from libtbx import group_args
 import libtbx
+from cctbx import miller
 import traceback
 import sys, zmq, threading,  time
 
@@ -511,7 +512,7 @@ class HKLViewFrame() :
           if hasattr(params, "merge_data"): # awaiting user to tick a checkbox on the gui
             self.params.NGL_HKLviewer.mergedata = params.merge_data
             break
-          time.sleep(1)
+          time.sleep(0.1)
       else:
         self.params.NGL_HKLviewer.merge_data = Inputarg(shouldmergestr).lower()[0] == "y"
         if self.params.NGL_HKLviewer.merge_data:
@@ -752,18 +753,27 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def set_scene_bin_thresholds(self, binvals=[], bin_array="Resolution"):
+  def set_scene_bin_thresholds(self, binvals=[], bin_array="Resolution", nbins=20):
     self.viewer.binarray = bin_array
     if binvals:
       if self.viewer.binarray=="Resolution":
         binvals = list( 1.0/flex.double(binvals) )
-      binvals.sort()
+    else:
+      uc = self.viewer.miller_array.unit_cell()
+      indices = self.viewer.miller_array.indices()
+      dmaxmin = self.viewer.miller_array.d_max_min()
+      binning = miller.binning( uc, nbins, indices, dmaxmin[0], dmaxmin[1] )
+      binvals = [ binning.bin_d_range(n)[0]  for n in binning.range_all() ]
+      binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
+      binvals = list( 1.0/flex.double(binvals) )
+    binvals.sort()
     self.viewer.UpdateBinValues( binvals )
 
 
-  def SetSceneBinThresholds(self, binvals, bin_array="Resolution"):
+  def SetSceneBinThresholds(self, binvals=[], bin_array="Resolution", nbins=20):
     self.params.NGL_HKLviewer.scene_bin_thresholds = binvals
     self.params.NGL_HKLviewer.bin_array = bin_array
+    self.params.NGL_HKLviewer.nbins = nbins
     self.update_settings()
 
 
@@ -1002,7 +1012,7 @@ class HKLViewFrame() :
     mydict = { "info": self.infostr,
                "array_infotpls": self.array_infotpls,
                "hklscenes_arrays": self.viewer.hkl_scenes_info,
-               "bin_info": self.viewer.binstrs,
+               "bin_infotpls": self.viewer.bin_infotpls,
                "html_url": self.viewer.url,
                "merge_data": self.params.NGL_HKLviewer.merge_data,
                "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
@@ -1044,6 +1054,8 @@ NGL_HKLviewer {
     .multiple = True
   bin_array = 'Resolution'
     .type = str
+  nbins = 20
+    .type = int
   camera_type = *'orthographic' 'perspective'
     .type = choice
   shape_primitive = *'spheres' 'points'

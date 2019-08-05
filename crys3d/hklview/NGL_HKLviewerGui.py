@@ -48,7 +48,7 @@ class NGL_HKLViewer(QWidget):
     self.mousesensitxtbox.setReadOnly(True)
 
     self.MillerComboBox = QComboBox()
-    self.MillerComboBox.activated.connect(self.MillerComboSelchange)
+    self.MillerComboBox.activated.connect(self.onMillerComboSelchange)
     #self.MillerComboBox.setSizeAdjustPolicy(QComboBox.AdjustToContents)
 
     self.MillerLabel = QLabel()
@@ -139,15 +139,21 @@ class NGL_HKLViewer(QWidget):
     labels = ["label", "type", "no. of HKLs", "span of HKLs",
        "min max data", "min max sigmas", "d_min, d_max", "symmetry unique"]
     self.millertable.setHorizontalHeaderLabels(labels)
-    # don't allow editing the miller array info
+    # don't allow editing this table
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
+
+    self.binstable = QTableWidget(0, 5)
+    labels = ["no. of HKLs", "bintype", "max_bin_val", "min_bin_val", "opacity"]
+    self.binstable.setHorizontalHeaderLabels(labels)
+    # don't allow editing this table
+    self.binstable.setEditTriggers(QTableWidget.NoEditTriggers)
 
     self.createExpansionBox()
     self.createFileInfoBox()
     self.CreateSliceTabs()
     self.createBottomLeftTabWidget()
     self.createRadiiScaleGroupBox()
-    self.createShellsBox()
+    self.createBinsBox()
     self.CreateFunctionTabs()
 
     self.BrowserBox = QWebEngineView()
@@ -164,11 +170,11 @@ class NGL_HKLViewer(QWidget):
     self.BrowserBox.loadFinished.connect(self.onLoadFinished)
     self.BrowserBox.renderProcessTerminated.connect(self.onRenderProcessTerminated)
 
-    mainLayout.setRowStretch(0, 0)
+    mainLayout.setRowStretch(0, 1)
     mainLayout.setRowStretch(1, 0)
-    mainLayout.setRowStretch(2, 0)
-    mainLayout.setRowStretch(3, 0)
-    mainLayout.setRowStretch(4, 2)
+    mainLayout.setRowStretch(2, 1)
+    mainLayout.setRowStretch(3, 1)
+    #mainLayout.setRowStretch(4, 0)
     #mainLayout.setColumnStretch(0, 1)
     mainLayout.setColumnStretch(2, 1)
     self.setLayout(mainLayout)
@@ -186,7 +192,7 @@ class NGL_HKLViewer(QWidget):
     self.hklscenes_arrays = []
     self.array_infotpls = []
     self.matching_arrays = []
-    self.bin_info = None
+    self.bin_infotpls = None
     self.html_url = ""
     self.spacegroups = []
     self.info = []
@@ -226,8 +232,13 @@ class NGL_HKLViewer(QWidget):
           if self.infodict.get("array_infotpls"):
             self.array_infotpls = self.infodict.get("array_infotpls",[])
 
-          if self.infodict.get("bin_info"):
-            self.bin_info = self.infodict["bin_info"]
+          if self.infodict.get("bin_infotpls"):
+            self.bin_infotpls = self.infodict["bin_infotpls"]
+
+            self.binstable.setRowCount(len(self.bin_infotpls))
+            for n,bin_infotpl in enumerate(self.bin_infotpls):
+              for m,elm in enumerate(bin_infotpl):
+                self.binstable.setItem(n, m, QTableWidgetItem(str(elm)))
 
           if self.infodict.get("html_url"):
             self.html_url = self.infodict["html_url"]
@@ -262,8 +273,9 @@ class NGL_HKLViewer(QWidget):
             #print("got hklscenes: " + str(self.hklscenes_arrays))
 
             self.MillerComboBox.clear()
-            self.MillerComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
-                                             for e in self.hklscenes_arrays ] )
+            #self.MillerComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
+            #                                 for e in self.hklscenes_arrays ] )
+            self.MillerComboBox.addItems( [ e[3] for e in self.hklscenes_arrays ] )
             self.MillerComboBox.setCurrentIndex(-1) # unselect the first item in the list
             self.SpaceGroupComboBox.clear()
             self.SpaceGroupComboBox.addItems( self.spacegroups )
@@ -538,6 +550,17 @@ class NGL_HKLViewer(QWidget):
       self.NGL_HKL_command('NGL_HKLviewer.normal_clip_plane.fixorientation = False')
 
 
+  def onMillerComboSelchange(self,i):
+    self.NGL_HKL_command("NGL_HKLviewer.scene_id = %d" %i)
+    self.SpaceGroupComboBox.clear()
+    self.SpaceGroupComboBox.addItems( self.spacegroups )
+    # need to supply issymunique flag in infotuple
+    #if self.hklscenes_arrays[ i ][6] == 0:
+    #  self.mergecheckbox.setEnabled(True)
+    #else:
+    #  self.mergecheckbox.setEnabled(False)
+
+
   def createFileInfoBox(self):
     self.FileInfoBox = QGroupBox("Reflection File Information")
     layout = QGridLayout()
@@ -589,13 +612,12 @@ class NGL_HKLViewer(QWidget):
     self.RadiiScaleGroupBox.setLayout(layout)
 
 
-
-  def createShellsBox(self):
-    self.ShellsGroupBox = QGroupBox("Shells")
+  def createBinsBox(self):
+    self.BinsGroupBox = QGroupBox("Bins")
     layout = QGridLayout()
-    #layout.addWidget(self.openFileNameButton,     0, 0, 1, 2)
-    #layout.setColumnStretch(1, 2)
-    self.ShellsGroupBox.setLayout(layout)
+    layout.addWidget(self.binstable)
+    layout.setColumnStretch(0, 1)
+    self.BinsGroupBox.setLayout(layout)
 
 
   def DebugInteractively(self):
@@ -651,24 +673,13 @@ class NGL_HKLViewer(QWidget):
 
     tab4 = QWidget()
     layout4 = QGridLayout()
-    layout4.addWidget(self.ShellsGroupBox,     1, 0)
-    tab3.setLayout(layout4)
+    layout4.addWidget(self.BinsGroupBox,     1, 0)
+    tab4.setLayout(layout4)
 
     self.functionTabWidget.addTab(tab1, "Expand")
     self.functionTabWidget.addTab(tab2, "Slice")
     self.functionTabWidget.addTab(tab3, "Size")
-    self.functionTabWidget.addTab(tab4, "Shells")
-
-
-  def MillerComboSelchange(self,i):
-    self.NGL_HKL_command("NGL_HKLviewer.scene_id = %d" %i)
-    self.SpaceGroupComboBox.clear()
-    self.SpaceGroupComboBox.addItems( self.spacegroups )
-    # need to supply issymunique flag in infotuple
-    #if self.hklscenes_arrays[ i ][6] == 0:
-    #  self.mergecheckbox.setEnabled(True)
-    #else:
-    #  self.mergecheckbox.setEnabled(False)
+    self.functionTabWidget.addTab(tab4, "Bins")
 
 
 
@@ -715,9 +726,9 @@ if __name__ == '__main__':
     guiobj = NGL_HKLViewer()
 
     timer = QTimer()
-    timer.setInterval(0.1)
+    #timer.setInterval(0.1)
     timer.timeout.connect(guiobj.update)
-    timer.start(500)
+    timer.start(100)
 
     if guiobj.cctbxproc:
       guiobj.cctbxproc.terminate()
