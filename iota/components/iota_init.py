@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 07/17/2019
+Last Changed: 08/05/2019
 Description : Interprets command line arguments. Initializes all IOTA starting
               parameters. Starts main log. Options for a variety of running
               modes, including resuming an aborted run.
@@ -89,8 +89,13 @@ def initialize_new_run(phil, input_dict=None, target_phil=None):
             lf.write('{}\n'.format(f))
           params.input = [input_list_file]
       else:
+        # FIXME: This will break down if user specifies > 10 individual
+        #  imagefiles from a variety of paths
         input_list_file = None
-        params.input = input_dict['imagepaths']
+        if len(input_dict['imagefiles']) <= 10:
+          params.input = input_dict['imagefiles']
+        else:
+          params.input = input_dict['imagepaths']
     else:
       input_list_file = None
 
@@ -248,6 +253,7 @@ def initialize_single_image(img, paramfile, output_file=None, output_dir=None,
   params.input = [img]
   params.mp.n_processors = 1
   params.data_selection.image_triage.minimum_Bragg_peaks = min_bragg
+  phil = phil.format(python_object=params)
 
   info = ProcInfo.from_args(iota_phil=phil.as_str(),
                             paramfile=paramfile)

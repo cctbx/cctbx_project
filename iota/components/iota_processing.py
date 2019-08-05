@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 07/17/2019
+Last Changed: 08/05/2019
 Description : Runs spotfinding, indexing, refinement and integration using
               subclassed DIALS Stills Processor module. Selector class
               applies filters based on unit cell, space group, etc.
@@ -320,7 +320,7 @@ class IOTAImageProcessor(Processor):
 
   def error_handler(self, error, p_name, img_object, output=None):
     if not output:
-      output = ''
+      output = []
 
     if hasattr(error, "classname"):
       # print(error.classname, "for {}:".format(img_object.img_path), )
@@ -344,7 +344,7 @@ class IOTAImageProcessor(Processor):
     img_object.log_info.append(log_entry)
 
     # Write log entry into log file
-    output += '\n{}'.format(error_message)
+    output.append(error_message)
     if self.write_logs:
       with open(img_object.int_log, 'w') as tf:
         for o in output:
@@ -354,14 +354,15 @@ class IOTAImageProcessor(Processor):
 
   def process(self, img_object):
 
-    # write out DIALS info
-    pfx = os.path.splitext(img_object.obj_file)[0]
-    self.params.output.experiments_filename = pfx + '_experiments.json'
-    self.params.output.indexed_filename = pfx + '_indexed.pickle'
-    self.params.output.strong_filename = pfx + '_strong.pickle'
-    self.params.output.refined_experiments_filename = pfx + '_refined_experiments.json'
-    self.params.output.integrated_experiments_filename = pfx + '_integrated_experiments.json'
-    self.params.output.integrated_filename = pfx + '_integrated.pickle'
+    # write out DIALS info (tied to self.write_pickle)
+    if self.write_pickle:
+      pfx = os.path.splitext(img_object.obj_file)[0]
+      self.params.output.experiments_filename = pfx + '_experiments.json'
+      self.params.output.indexed_filename = pfx + '_indexed.pickle'
+      self.params.output.strong_filename = pfx + '_strong.pickle'
+      self.params.output.refined_experiments_filename = pfx + '_refined_experiments.json'
+      self.params.output.integrated_experiments_filename = pfx + '_integrated_experiments.json'
+      self.params.output.integrated_filename = pfx + '_integrated.pickle'
 
     # Set up integration pickle path and logfile
     self.params.verbosity = 10
@@ -410,8 +411,6 @@ class IOTAImageProcessor(Processor):
       except Exception as e:
         print ('DEBUG: cannot set detector! ', e)
 
-    # proc_output = []
-
     # **** SPOTFINDING **** #
     with util.Capturing() as output:
       try:
@@ -437,12 +436,17 @@ class IOTAImageProcessor(Processor):
     if not observed:
       return self.error_handler(e_spf, 'spotfinding', img_object, output)
 
-    self.write_int_log(path=img_object.int_log, output=output)
+    if self.write_logs:
+      self.write_int_log(path=img_object.int_log, output=output)
 
     # Finish if spotfinding is the last processing stage
     if 'spotfind' in self.last_stage:
-      detector = img_object.experiments.unique_detectors()[0]
-      beam = img_object.experiments.unique_beams()[0]
+      try:
+        detector = img_object.experiments.unique_detectors()[0]
+        beam = img_object.experiments.unique_beams()[0]
+      except AttributeError:
+        detector = img_object.experiments.imagesets()[0].get_detector()
+        beam = img_object.experiments.imagesets()[0].get_beam()
 
       s1 = flex.vec3_double()
       for i in range(len(observed)):
@@ -470,7 +474,8 @@ class IOTAImageProcessor(Processor):
           img_object.fail = 'failed indexing'
 
     if indexed:
-      self.write_int_log(path=img_object.int_log, output=output)
+      if self.write_logs:
+        self.write_int_log(path=img_object.int_log, output=output)
     else:
       return self.error_handler(e_idx, 'indexing', img_object, output)
 
@@ -492,7 +497,8 @@ class IOTAImageProcessor(Processor):
           reindex_success = False
 
     if reindex_success:
-      self.write_int_log(path=img_object.int_log, output=output)
+      if self.write_logs:
+        self.write_int_log(path=img_object.int_log, output=output)
     else:
       return self.error_handler(e_ridx, 'indexing', img_object, output)
 

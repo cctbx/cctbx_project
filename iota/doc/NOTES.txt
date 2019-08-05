@@ -1,4 +1,9 @@
-IOTA v1.4.007 - bugfix for command line arg handling on GUI launch
+IOTA v1.4.008 - bugfixes for command-line module
 
-08.04.2019
+- dry run option exits gracefully rather than trying and failing to process
+- iota.run can now process up to 10 individual images introduced as command-line
+ args (hacky solution; need a better one)
+- iota.single_image now works as intended
+
+08.05.2019
 # -- end

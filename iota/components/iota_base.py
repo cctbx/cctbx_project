@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/18/2018
-Last Changed: 07/17/2019
+Last Changed: 08/05/2019
 Description : IOTA base classes
 '''
 
@@ -267,7 +267,6 @@ class ImageImporterBase():
   def make_image_object(self, input_entry):
     '''Run image importer (override as needed)'''
     img_object, error = self.import_image(input_entry=input_entry)
-
     if error:
       print(error)
     return img_object
@@ -659,10 +658,9 @@ class ProcInfo(object):
     return cls(kwargs)
 
   @classmethod
-  def from_folder(cls, path, **kwargs):
+  def from_folder(cls, path):
     ''' Generate INFO object from an integration folder
     :param path: path to folder with integration results
-    :param kwargs: additional keyword args
     :return: ProcInfo class generated with attributes
     '''
 
