@@ -5,7 +5,9 @@ from __future__ import absolute_import, division, print_function
 #-----------------------------------------------------------------------
 
 import libtbx.phil
-from cxi_xdr_xes.cftbx.cspad_ana import db as db
+try:
+  from cxi_xdr_xes.cftbx.cspad_ana import db as db
+except ImportError: pass
 import os
 import sys
 import time

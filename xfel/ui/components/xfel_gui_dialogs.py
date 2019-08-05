@@ -365,6 +365,11 @@ class LCLSFacilityOptions(BaseDialog):
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
     # LCLS user name
+    self.monitor_help = wx.StaticText(self,
+      label="LCLS web service credentials. If provided, the LCLS web service will be queried when looking for data. Leave blank to search the file system instead.")
+    self.monitor_help.Wrap(600)
+    self.main_sizer.Add(self.monitor_help, flag=wx.EXPAND | wx.ALL, border=10)
+
     self.web_user = gctr.TextButtonCtrl(self,
                                        label='LCLS user name',
                                        label_style='bold',

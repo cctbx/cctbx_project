@@ -273,12 +273,19 @@ class xfel_db_application(db_application):
     self.columns_dict = self.init_tables.set_up_columns_dict(self)
 
   def list_lcls_runs(self):
-    from xfel.xpp.simulate import file_table
-    query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.facility.lcls.experiment)
-    FT = file_table(self.params.facility.lcls, query, enforce80=self.params.facility.lcls.web.enforce80, enforce81=self.params.facility.lcls.web.enforce81)
-    runs = FT.get_runs()
-    for r in runs: r['run'] = str(r['run'])
-    return runs
+    if self.params.facility.lcls.web.user is None or len(self.params.facility.lcls.web.user) == 0:
+      from xfel.command_line.auto_submit import match_runs
+      import os
+      exp_prefix = self.params.facility.lcls.experiment[0:3].upper()
+      xtc_dir = os.path.join(os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm'), exp_prefix, self.params.facility.lcls.experiment, 'xtc')
+      return [{'run':str(r.id)} for r in match_runs(xtc_dir, False)]
+    else:
+      from xfel.xpp.simulate import file_table
+      query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.facility.lcls.experiment)
+      FT = file_table(self.params.facility.lcls, query, enforce80=self.params.facility.lcls.web.enforce80, enforce81=self.params.facility.lcls.web.enforce81)
+      runs = FT.get_runs()
+      for r in runs: r['run'] = str(r['run'])
+      return runs
 
   def verify_tables(self):
     return self.init_tables.verify_tables()
