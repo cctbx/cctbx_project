@@ -1736,7 +1736,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     model = mmtbx.model.manager(
       model_input = pdb_inp,
       restraint_objects = cif_objects,
-      pdb_interpretation_params = pdb_ip,
+      pdb_interpretation_params = params.ensemble_refinement,
       log = log)
 
   # Refinement flags
