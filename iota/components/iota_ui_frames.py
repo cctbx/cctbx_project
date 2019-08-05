@@ -156,7 +156,6 @@ class MainWindow(IOTABaseFrame):
     # Instantiate input window
     main_window_scopes = ['description', 'output', 'input']
     input_scope = self.iota_index.get_scopes(include=main_window_scopes)
-
     self.input_window = InputWindow(self,
                                     size=(600, -1),
                                     scope=input_scope,
@@ -207,7 +206,10 @@ class MainWindow(IOTABaseFrame):
                                  label_size=big_button_font_size)
     self.bottom_sizer.Add(self.btn_run, pos=(2, 2),
                           flag=wx.SHAPED | wx.ALIGN_BOTTOM)
-    self.btn_run.Disable()
+
+    # do not disable if there's already pre-loaded
+    if not self.gparams.input:
+      self.btn_run.Disable()
 
     # Option button bindings
     self.Bind(wx.EVT_BUTTON, self.onIOTAOptions, self.opt_btn_iota)
@@ -226,8 +228,8 @@ class MainWindow(IOTABaseFrame):
     self.test_index = getattr(self, 'test_index', None)
     if not self.test_index:
       self.test_index = make_phil_index(master_phil=pct.get_test_phil(),
-                                  working_phil=pct.get_test_phil(),
-                                  fetch_new=True)
+                                        working_phil=pct.get_test_phil(),
+                                        fetch_new=True)
 
     scope_names = ['string_definition',
                    'multi_string',
@@ -538,6 +540,18 @@ class MainWindow(IOTABaseFrame):
     :param messages: Error message list
     """
 
+    # update from existing PHIL first, THEN append the contents of input_dict
+    if phil:
+      if not isinstance(phil, str):
+        try:
+          phil = phil.as_str()
+        except Exception as e:
+          raise Sorry('IOTA GUI ERROR: Cannot read PHIL object! ', e)
+      self.iota_index.update_phil(phil_string=phil)
+
+    # Update gparams here, to include new stuff from PHIL
+    self.gparams = self.iota_index.get_python_object(make_copy=True)
+
     # Read input OR update from window params
     if input_dict:
       if messages:
@@ -557,23 +571,14 @@ class MainWindow(IOTABaseFrame):
         self.gparams.input = input_list_file
       else:
         for path in input_dict['imagepaths']:
-          self.gparams.input.append(path)
-      self.iota_index.update_from_python(python_object=self.gparams)
-
-    # update from existing PHIL
-    if phil:
-      if not isinstance(phil, str):
-        try:
-          phil = phil.as_str()
-        except Exception as e:
-          raise Sorry('IOTA GUI ERROR: Cannot read PHIL object! ', e)
-      self.iota_index.update_phil(phil_string=phil)
+          if path not in self.gparams.input:
+            self.gparams.input.append(path)
 
     # update n_processors
-    self.gparams = self.iota_index.get_python_object(make_copy=True)
     if self.gparams.mp.n_processors <= 1:
       self.gparams.mp.n_processors = int(multiprocessing.cpu_count() * 0.75)
-      self.iota_index.update_from_python(python_object=self.gparams)
+
+    self.iota_index.update_from_python(python_object=self.gparams)
 
   def update_backend_index(self, phil=None):
     if phil:

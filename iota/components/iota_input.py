@@ -223,6 +223,7 @@ mp
 
 master_phil = ip.parse(master_phil_str + cctbx_str, process_includes=True)
 
+
 def get_input_phil(paramfile=None, phil_args=None, ha14=False, gui=False):
   ''' Generate PHIL from file, master, and/or command arguments
   :param args: command line arguments
@@ -254,20 +255,20 @@ def get_input_phil(paramfile=None, phil_args=None, ha14=False, gui=False):
       working_phil.adopt_scope(gui_phil)
 
   # Parse in-line params into phil
+  bad_args = []
   if phil_args:
     argument_interpreter = argument_interpreter(master_phil=working_phil)
     for arg in phil_args:
       try:
         command_line_params = argument_interpreter.process(arg=arg)
         working_phil = working_phil.fetch(sources=[command_line_params,])
-        phil_args.remove(arg)
       except Sorry:
-        pass
+        bad_args.append(arg)
 
   # Self-fetch to resolve variables
   working_phil = working_phil.fetch(source=working_phil)
 
-  return working_phil, phil_args
+  return working_phil, bad_args
 
 def process_ui_input(args, phil_args, paramfile, mode='auto'):
   ''' Read and parse parameter file and/or command-line args for IOTA GUI

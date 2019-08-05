@@ -1,18 +1,4 @@
-IOTA v1.4.006 - UI tweaks and debugging
+IOTA v1.4.007 - bugfix for command line arg handling on GUI launch
 
-1. Bugfixes:
-    - Fixed default marking in PHIL panels
-    - Fixed IOTA Summary window crash
-    - Fixed PRIME run folder path bug
-    - Added pre-set sizing to PRIME main window
-    - Made image_viewer parameter not optional
-
-2. Tweaks
-    - Added options for Auto and None values of ints and floats
-    - Added multi-value controls for strings, ints, and floats
-    - Added a tribool control (though seems unnecessary and isn't working that
-      well)
-
-
-08.01.2019
+08.04.2019
 # -- end
