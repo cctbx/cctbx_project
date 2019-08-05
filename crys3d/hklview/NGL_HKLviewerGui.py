@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, print_function
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from PySide2.QtCore import Qt, QUrl, QTimer
+from PySide2.QtCore import Qt, QTimer
 from PySide2.QtWidgets import ( QApplication, QCheckBox, QComboBox,
         QDial, QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
