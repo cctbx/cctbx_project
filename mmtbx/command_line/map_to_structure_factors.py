@@ -281,7 +281,7 @@ def run(args, log=None, ccp4_map=None,
   mtz_dataset.add_miller_array(
     miller_array      = f_obs.generate_r_free_flags(),
     column_root_label = "R-free-flags")
-  if not nohl:
+  if not nohl and params.k_blur is not None and params.b_blur is None:
     # convert phases into HL coefficeints
     broadcast(m="Convert phases into HL coefficients:", log=log)
     hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=params.b_blur)
