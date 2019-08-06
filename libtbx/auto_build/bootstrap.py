@@ -415,7 +415,7 @@ class Toolbox(object):
         except Exception: pass
         if not is_directory:
           source = z.open(member)
-          target = file(filename, "wb")
+          target = open(filename, "wb")
           shutil.copyfileobj(source, target)
           target.close()
           source.close()
