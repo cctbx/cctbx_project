@@ -34,9 +34,21 @@ Look for a key in the list below
       ''' % self)
       raise e
 
-  def get_origin_id(self, key):
+  def get_origin_id(self,
+                    key,
+                    add_if_absent=False,
+                    return_none_if_absent=False,
+                    ):
     rc = self.get(key, None)
-    assert rc is not None, 'linking origin id not found for "%s"' % key
+    if not rc:
+      if return_none_if_absent:
+        pass
+      elif add_if_absent:
+        rc = max(self.values())+1 # = origins(key, internals=[0,1,2,3,4,5])
+        self[key] = rc
+        self.data[key] = ['key', 'user supplied link']
+      else:
+        assert rc is not None, 'linking origin id not found for "%s"' % key
     return rc
 
   def _get_origin_id_labels(self, internals=None):

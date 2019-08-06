@@ -750,7 +750,12 @@ Residue classes
       #
       if link:
         # apply a standard link
-        origin_id = origin_ids['link_%s' % key]
+        origin_id = origin_ids.get_origin_id('link_%s' % key,
+                                             return_none_if_absent=True,
+                                             )
+        if origin_id is None:
+          # user defined links should not be applied here
+          continue
         count, bond_i_seqs = _apply_link_using_proxies(
           link,
           atom_group1,
