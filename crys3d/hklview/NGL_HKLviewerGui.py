@@ -26,6 +26,15 @@ import sys, zmq, subprocess, time, traceback
 class NGL_HKLViewer(QWidget):
   def __init__(self, parent=None):
     super(NGL_HKLViewer, self).__init__(parent)
+
+    self.verbose = 0
+    self.UseOSbrowser = False
+    for e in sys.argv:
+      if "verbose" in e:
+        self.verbose = e.split("verbose=")[1]
+      if "UseOSbrowser" in e:
+        self.UseOSbrowser = e.split("UseOSbrowser=")[1]
+
     self.context = None
 
     self.originalPalette = QApplication.palette()
@@ -34,7 +43,7 @@ class NGL_HKLViewer(QWidget):
     self.openFileNameButton.setDefault(True)
     self.openFileNameButton.clicked.connect(self.OpenReflectionsFile)
 
-    self.debugbutton = QPushButton("Debug Button")
+    self.debugbutton = QPushButton("Debug")
     self.debugbutton.clicked.connect(self.DebugInteractively)
 
     self.mousemoveslider = QSlider(Qt.Horizontal)
@@ -142,11 +151,20 @@ class NGL_HKLViewer(QWidget):
     # don't allow editing this table
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
 
-    self.binstable = QTableWidget(0, 5)
-    labels = ["no. of HKLs", "bintype", "max_bin_val", "min_bin_val", "opacity"]
+    self.binstable = QTableWidget(0, 4)
+    labels = ["no. of HKLs", "max_bin_val", "min_bin_val", "opacity"]
     self.binstable.setHorizontalHeaderLabels(labels)
     # don't allow editing this table
     self.binstable.setEditTriggers(QTableWidget.NoEditTriggers)
+    self.bindata_labeltxt = QLabel()
+    self.bindata_labeltxt.setText("Miller label")
+    self.bindata_labeledit = QLineEdit('')
+    self.bindata_labeledit.setReadOnly(True)
+    self.bindataComboBox = QComboBox()
+    self.bindataComboBox.activated.connect(self.onBindataComboSelchange)
+
+
+
 
     self.createExpansionBox()
     self.createFileInfoBox()
@@ -156,7 +174,6 @@ class NGL_HKLViewer(QWidget):
     self.createBinsBox()
     self.CreateFunctionTabs()
 
-    self.BrowserBox = QWebEngineView()
 
     mainLayout = QGridLayout()
     mainLayout.addWidget(self.FileInfoBox,         0, 0)
@@ -164,27 +181,23 @@ class NGL_HKLViewer(QWidget):
     mainLayout.addWidget(self.MillerComboBox,      2, 0)
     mainLayout.addWidget(self.functionTabWidget,   3, 0)
     mainLayout.addWidget(self.bottomLeftGroupBox,  4, 0)
-    mainLayout.addWidget(self.BrowserBox,          0, 1, 5, 3)
 
-    self.BrowserBox.setUrl("https://cctbx.github.io/")
-    self.BrowserBox.loadFinished.connect(self.onLoadFinished)
-    self.BrowserBox.renderProcessTerminated.connect(self.onRenderProcessTerminated)
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    if self.UseOSbrowser==False:
+      self.BrowserBox = QWebEngineView()
+      mainLayout.addWidget(self.BrowserBox,          0, 1, 5, 3)
+      self.BrowserBox.setUrl("https://cctbx.github.io/")
+      self.BrowserBox.loadFinished.connect(self.onLoadFinished)
+      self.BrowserBox.renderProcessTerminated.connect(self.onRenderProcessTerminated)
 
     mainLayout.setRowStretch(0, 1)
     mainLayout.setRowStretch(1, 0)
     mainLayout.setRowStretch(2, 1)
     mainLayout.setRowStretch(3, 1)
-    #mainLayout.setRowStretch(4, 0)
-    #mainLayout.setColumnStretch(0, 1)
     mainLayout.setColumnStretch(2, 1)
     self.setLayout(mainLayout)
 
-    self.verbose = 0
-    for e in sys.argv:
-      if "verbose" in e:
-        self.verbose = e.split("verbose=")[1]
-
-    self.setWindowTitle("HKL-viewer")
+    self.setWindowTitle("HKL-Viewer")
     self.cctbxproc = None
     self.LaunchCCTBXPython()
     self.out = None
@@ -204,8 +217,6 @@ class NGL_HKLViewer(QWidget):
 
 
   def update(self):
-    #while 1:
-    #  time.sleep(1)
     if self.cctbxproc:
       if self.cctbxproc.stdout:
         print(self.cctbxproc.stdout.read().decode("utf-8"))
@@ -232,6 +243,9 @@ class NGL_HKLViewer(QWidget):
           if self.infodict.get("array_infotpls"):
             self.array_infotpls = self.infodict.get("array_infotpls",[])
 
+          if self.infodict.get("bin_data_label"):
+            self.bindata_labeledit.setText(self.infodict["bin_data_label"])
+
           if self.infodict.get("bin_infotpls"):
             self.bin_infotpls = self.infodict["bin_infotpls"]
 
@@ -242,7 +256,8 @@ class NGL_HKLViewer(QWidget):
 
           if self.infodict.get("html_url"):
             self.html_url = self.infodict["html_url"]
-            self.BrowserBox.setUrl(self.html_url)
+            if self.UseOSbrowser==False:
+              self.BrowserBox.setUrl(self.html_url)
 
           if self.infodict.get("spacegroups"):
             self.spacegroups = self.infodict.get("spacegroups",[])
@@ -264,6 +279,7 @@ class NGL_HKLViewer(QWidget):
             #print(currentinfostr)
             self.infostr += currentinfostr + "\n"
             self.textInfo.setPlainText(self.infostr)
+            self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
 
           if self.NewFileLoaded:
             #if self.mergedata == True : val = Qt.CheckState.Checked
@@ -361,6 +377,12 @@ class NGL_HKLViewer(QWidget):
     self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
 
 
+
+  def onBindataComboSelchange(self,i):
+    pass
+
+
+
   def onSliceIndexChanged(self, val):
     self.sliceindex = val
     self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_index = %d" %self.sliceindex)
@@ -412,27 +434,30 @@ class NGL_HKLViewer(QWidget):
             "All Files (*);;MTZ Files (*.mtz);;CIF (*.cif)", "", options)
     if fileName:
       self.HKLnameedit.setText(fileName)
-      self.infostr = ""
+      #self.infostr = ""
       self.textInfo.setPlainText("")
       self.fileisvalid = False
       self.NGL_HKL_command('NGL_HKLviewer.filename = "%s"' %fileName )
       self.MillerComboBox.clear()
+      self.bindata_labeledit.setText("")
+      self.bindataComboBox.clear()
 
 
   def createExpansionBox(self):
     self.ExpansionBox = QGroupBox("Expansions")
     layout = QGridLayout()
-    #layout.addWidget(self.MillerComboBox,            1, 1, 1, 1)
-    #layout.addWidget(self.MillerLabel,               1, 0, 1, 1)
-    layout.addWidget(self.SpaceGroupComboBox,        2, 1, 1, 1)
-    layout.addWidget(self.SpacegroupLabel,           2, 0, 1, 1)
-    layout.addWidget(self.mergecheckbox,             3, 0, 1, 1)
-    layout.addWidget(self.expandP1checkbox,          3, 1, 1, 1)
-    layout.addWidget(self.expandAnomalouscheckbox,   4, 0, 1, 1)
-    layout.addWidget(self.sysabsentcheckbox,         4, 1, 1, 1)
-    layout.addWidget(self.missingcheckbox,           5, 0, 1, 1)
-    layout.addWidget(self.onlymissingcheckbox,       5, 1, 1, 1)
-    #layout.addStretch(1)
+    layout.addWidget(self.SpacegroupLabel,           0, 0)
+    layout.addWidget(self.SpaceGroupComboBox,        0, 1)
+    layout.addWidget(self.mergecheckbox,             1, 0)
+    layout.addWidget(self.expandP1checkbox,          1, 1)
+    layout.addWidget(self.expandAnomalouscheckbox,   2, 0)
+    layout.addWidget(self.sysabsentcheckbox,         2, 1)
+    layout.addWidget(self.missingcheckbox,           3, 0)
+    layout.addWidget(self.onlymissingcheckbox,       3, 1)
+    layout.setRowStretch(0,0)
+    layout.setRowStretch(1,0)
+    layout.setRowStretch(2,0)
+    layout.setRowStretch(3,1)
     self.ExpansionBox.setLayout(layout)
 
 
@@ -446,11 +471,12 @@ class NGL_HKLViewer(QWidget):
     tab1.setLayout(layout1)
 
     tab2 = QWidget()
+
     layout2 = QGridLayout()
 
     self.hvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
-    self.hvecval = 0.0
-    self.hvec_spinBox.setValue(self.nth_power_scale)
+    self.hvecval = 2.0
+    self.hvec_spinBox.setValue(self.hvecval)
     self.hvec_spinBox.setDecimals(2)
     self.hvec_spinBox.setSingleStep(0.5)
     self.hvec_spinBox.setRange(-100.0, 10.0)
@@ -462,7 +488,7 @@ class NGL_HKLViewer(QWidget):
 
     self.kvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.kvecval = 0.0
-    self.kvec_spinBox.setValue(self.nth_power_scale)
+    self.kvec_spinBox.setValue(self.kvecval)
     self.kvec_spinBox.setDecimals(2)
     self.kvec_spinBox.setSingleStep(0.5)
     self.kvec_spinBox.setRange(-100.0, 100.0)
@@ -474,7 +500,7 @@ class NGL_HKLViewer(QWidget):
 
     self.lvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.lvecval = 0.0
-    self.lvec_spinBox.setValue(self.nth_power_scale)
+    self.lvec_spinBox.setValue(self.lvecval)
     self.lvec_spinBox.setDecimals(2)
     self.lvec_spinBox.setSingleStep(0.5)
     self.lvec_spinBox.setRange(-100.0, 100.0)
@@ -491,7 +517,7 @@ class NGL_HKLViewer(QWidget):
 
     self.hkldist_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.hkldistval = 0.0
-    self.hkldist_spinBox.setValue(self.nth_power_scale)
+    self.hkldist_spinBox.setValue(self.hkldistval)
     self.hkldist_spinBox.setDecimals(2)
     self.hkldist_spinBox.setSingleStep(0.5)
     self.hkldist_spinBox.setRange(-100.0, 100.0)
@@ -502,8 +528,8 @@ class NGL_HKLViewer(QWidget):
     layout2.addWidget(self.hkldist_spinBox,    4, 1, 1, 1)
 
     self.clipwidth_spinBox = QDoubleSpinBox(self.sliceTabWidget)
-    self.clipwidthval = 0.0
-    self.clipwidth_spinBox.setValue(self.nth_power_scale)
+    self.clipwidthval = 0.5
+    self.clipwidth_spinBox.setValue(self.clipwidthval )
     self.clipwidth_spinBox.setDecimals(2)
     self.clipwidth_spinBox.setSingleStep(0.05)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
@@ -513,9 +539,39 @@ class NGL_HKLViewer(QWidget):
     layout2.addWidget(self.clipwidth_Label,      5, 0, 1, 1)
     layout2.addWidget(self.clipwidth_spinBox,    5, 1, 1, 1)
 
-    tab2.setLayout(layout2)
+    self.ClipBox = QGroupBox("Normal Vector to Clip Plane")
+    self.ClipBox.setLayout(layout2)
+
+    layout3 = QGridLayout()
+    self.ClipPlaneChkBox = QCheckBox(self.sliceTabWidget)
+    self.ClipPlaneChkBox.setText("Use clip plane normal to HKL vector pointing out")
+    self.ClipPlaneChkBox.clicked.connect(self.onClipPlaneChkBox)
+
+    layout3.addWidget(self.ClipPlaneChkBox, 0, 0)
+    layout3.addWidget(self.ClipBox, 1, 0)
+    tab2.setLayout(layout3)
     self.sliceTabWidget.addTab(tab1, "Explicit Slicing")
     self.sliceTabWidget.addTab(tab2, "Clip Plane Slicing")
+    self.ClipBox.setDisabled(True)
+
+
+  def onClipPlaneChkBox(self):
+    if self.ClipPlaneChkBox.isChecked():
+      self.ClipBox.setDisabled(False)
+      philstr = """NGL_HKLviewer.normal_clip_plane {
+  h = %s
+  k = %s
+  l = %s
+  hkldist = %s
+  clipwidth = %s
+  fixorientation = %s
+}
+      """ %(self.hvecval, self.kvecval, self.lvecval, self.hkldistval, self.clipwidthval, \
+                              str(self.fixedorientcheckbox.isChecked()) )
+      self.NGL_HKL_command(philstr)
+    else:
+      self.ClipBox.setDisabled(True)
+      self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.clipwidth = None")
 
 
   def onClipwidthChanged(self, val):
@@ -524,8 +580,8 @@ class NGL_HKLViewer(QWidget):
 
 
   def onHKLdistChanged(self, val):
-    self.hkldist = val
-    self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.hkldist = %f" %self.hkldist)
+    self.hkldistval = val
+    self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.hkldist = %f" %self.hkldistval)
 
 
   def onHvecChanged(self, val):
@@ -544,10 +600,8 @@ class NGL_HKLViewer(QWidget):
 
 
   def onFixedorient(self):
-    if self.fixedorientcheckbox.isChecked():
-      self.NGL_HKL_command('NGL_HKLviewer.normal_clip_plane.fixorientation = True')
-    else:
-      self.NGL_HKL_command('NGL_HKLviewer.normal_clip_plane.fixorientation = False')
+    self.NGL_HKL_command('NGL_HKLviewer.normal_clip_plane.fixorientation = %s' \
+                                    %str(self.fixedorientcheckbox.isChecked()))
 
 
   def onMillerComboSelchange(self,i):
@@ -615,8 +669,13 @@ class NGL_HKLViewer(QWidget):
   def createBinsBox(self):
     self.BinsGroupBox = QGroupBox("Bins")
     layout = QGridLayout()
-    layout.addWidget(self.binstable)
-    layout.setColumnStretch(0, 1)
+    layout.addWidget(self.bindata_labeltxt, 0, 0)
+    #layout.addWidget(self.bindata_labeledit, 0, 1)
+    layout.addWidget(self.bindataComboBox, 0, 1)
+    layout.addWidget(self.binstable, 1, 0, 1, 2)
+    layout.setColumnStretch(0, 0)
+    #layout.setColumnStretch(2, 1)
+    layout.setColumnStretch(1, 1)
     self.BinsGroupBox.setLayout(layout)
 
 
@@ -627,24 +686,6 @@ class NGL_HKLViewer(QWidget):
   def createBottomLeftTabWidget(self):
     self.bottomLeftGroupBox = QGroupBox("Group 3")
     layout = QGridLayout()
-
-    """
-    self.bottomLeftTabWidget = QTabWidget()
-    self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Preferred,  QSizePolicy.Ignored)
-    tab1 = QWidget()
-    tab1hbox = QHBoxLayout()
-    tab1hbox.setContentsMargins(5, 5, 5, 5)
-    tab1hbox.addWidget(self.millertable)
-    tab1.setLayout(tab1hbox)
-    tab2 = QWidget()
-
-    tab2hbox = QHBoxLayout()
-    tab2hbox.setContentsMargins(5, 5, 5, 5)
-    tab2hbox.addWidget(self.textInfo)
-    tab2.setLayout(tab2hbox)
-    self.bottomLeftTabWidget.addTab(tab1, "&Miller Arrays")
-    self.bottomLeftTabWidget.addTab(tab2, "Information")
-    """
     layout.addWidget(self.mousemoveslider,  0, 0, 1, 1)
     layout.addWidget(self.mousesensitxtbox,  0, 3, 1, 3)
 
@@ -658,22 +699,23 @@ class NGL_HKLViewer(QWidget):
     self.functionTabWidget = QTabWidget()
     tab1 = QWidget()
     layout1 = QGridLayout()
-    layout1.addWidget(self.ExpansionBox,     1, 0)
+    layout1.addWidget(self.ExpansionBox,     0, 0)
+    layout1.setRowStretch (0 ,0)
     tab1.setLayout(layout1)
 
     tab2 = QWidget()
     layout2 = QGridLayout()
-    layout2.addWidget(self.sliceTabWidget,     1, 0)
+    layout2.addWidget(self.sliceTabWidget,     0, 0)
     tab2.setLayout(layout2)
 
     tab3 = QWidget()
     layout3 = QGridLayout()
-    layout3.addWidget(self.RadiiScaleGroupBox,     1, 0)
+    layout3.addWidget(self.RadiiScaleGroupBox,     0, 0)
     tab3.setLayout(layout3)
 
     tab4 = QWidget()
     layout4 = QGridLayout()
-    layout4.addWidget(self.BinsGroupBox,     1, 0)
+    layout4.addWidget(self.BinsGroupBox,     0, 0)
     tab4.setLayout(layout4)
 
     self.functionTabWidget.addTab(tab1, "Expand")
@@ -706,7 +748,7 @@ class NGL_HKLViewer(QWidget):
     #cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=False, verbose=0)"\n'
     cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes;' \
      + ' myHKLview = cmdlineframes.HKLViewFrame(useGuiSocket=%s, high_quality=True,' %self.sockport \
-     + ' verbose=%s, UseOSBrowser= False)"\n' %self.verbose
+     + ' verbose=%s, UseOSBrowser= %s )"\n' %(self.verbose, str(self.UseOSbrowser))
     #self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdout=sys.stdout, stderr=sys.stderr)
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
     #self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

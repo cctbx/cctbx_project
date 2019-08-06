@@ -917,7 +917,7 @@ class HKLViewFrame() :
   def clip_plane_normal_to_HKL_vector(self, h, k, l, hkldist=0.0,
              clipwidth=None, fixorientation=True):
 
-    if h==0.0 and k==0.0 and l==0.0 or clipwidth==0.0:
+    if h==0.0 and k==0.0 and l==0.0 or clipwidth==None:
       self.RemoveNormalVectorToClipPlane()
       return
 
@@ -1036,11 +1036,11 @@ NGL_HKLviewer {
   using_space_subgroup = False
     .type = bool
   normal_clip_plane {
-    h = 1
+    h = 2.0
       .type = float
-    k = 1
+    k = 0
       .type = float
-    l = 1
+    l = 0
       .type = float
     hkldist = 0.0
       .type = float

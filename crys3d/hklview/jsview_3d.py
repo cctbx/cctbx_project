@@ -782,7 +782,7 @@ var MakeHKL_Axis = function()
           bin2= 1.0/self.workingbinvals[ibin+1]
         mstr= "bin[%d] has %d reflections with %s in ]%2.3f; %2.3f]" %(cntbin, nreflsinbin, \
                 colstr, bin1, bin2)
-        self.bin_infotpls.append( roundoff((nreflsinbin, colstr, bin1, bin2 )) )
+        self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 )) )
         self.binstrs.append(mstr)
         self.mprint(mstr, verbose=0)
 
@@ -829,7 +829,11 @@ var MakeHKL_Axis = function()
         cntbin += 1
 
     if self.guisocket:
-      self.guisocket.send( str( {"bin_infotpls": self.bin_infotpls} ).encode("utf-8") )
+      self.guisocket.send( str( { "bin_infotpls": self.bin_infotpls,
+                                  "bin_data_label": colstr
+                                }
+                              ).encode("utf-8")
+                         )
 
     spherebufferstr += """
 // create tooltip element and add to the viewer canvas
