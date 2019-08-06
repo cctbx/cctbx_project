@@ -3,6 +3,8 @@
 
 //Contributed by Billy Poon, LBNL.
 
+extern "C" int get_num_devices_cu();
+
 // function declaration from nanoBraggCUDA.cu
 extern "C"
 void nanoBraggSpotsCUDA(int deviceId, int timelog, int spixels, int fpixels, int roi_xmin, int roi_xmax,
@@ -101,5 +103,13 @@ nanoBragg::add_nanoBragg_spots_cuda()
   floatimage = raw_pixels.begin();
 }
 // end of add_nanoBragg_spots_cuda()
+
+int nanoBragg::get_num_devices() {
+  #ifdef HAVE_NANOBRAGG_SPOTS_CUDA
+    get_num_devices_cu();
+  #else
+    throw SCITBX_ERROR("no CUDA implementation of nanoBragg_add_spots");
+  #endif
+  }
 
 }}// namespace simtbx::nanoBragg

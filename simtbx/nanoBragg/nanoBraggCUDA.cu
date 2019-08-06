@@ -25,19 +25,6 @@ static void CheckCudaErrorAux(const char *, unsigned, const char *, cudaError_t)
 #define THREADS_PER_BLOCK_TOTAL (THREADS_PER_BLOCK_X * THREADS_PER_BLOCK_Y)
 #define VECTOR_SIZE 4
 
-struct hklParams {
-	int hkls;
-	int h_min;
-	int h_max;
-	int h_range;
-	int k_min;
-	int k_max;
-	int k_range;
-	int l_min;
-	int l_max;
-	int l_range;
-};
-
 /**
  * Check the return value of the CUDA runtime API call and exit
  * the application if the call has failed.
