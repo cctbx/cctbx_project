@@ -21,6 +21,8 @@ steps:
   displayName: Create conda environment
 
 - script: |
+    source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
+    conda activate $(PYTHON_VERSION)
     cd ../..
     python bootstrap.py hot update --builder=cctbx
   displayName: Download sources

@@ -6,9 +6,9 @@ jobs:
   - template: ./.azure-pipelines/azure-pipelines-linux.yml
     parameters:
       distribution: centos
-      version: 6.10
+      version: [6, 10]
   - template: ./.azure-pipelines/azure-pipelines-osx.yml
     parameters:
-      vmImage: macOS-10.14
-      xcode_version: 10.2.1
+      vmImage: [10, 14]
+      xcode_version: [10, 2, 1]
   - template: ./.azure-pipelines/azure-pipelines-win.yml
