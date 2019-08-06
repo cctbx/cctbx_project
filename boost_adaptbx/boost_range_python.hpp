@@ -30,7 +30,7 @@ struct generic_range_wrapper
           "__iter__",
           boost::python::iterator< Range >()
           )
-        .def( "__len__", boost::distance< Range > )
+        .def( "__len__", boost::size< Range > )
         .def( "empty", boost::empty< Range > )
         ;
     }
