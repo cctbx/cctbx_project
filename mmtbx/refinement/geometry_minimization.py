@@ -64,7 +64,7 @@ def add_rotamer_restraints(
       mon_lib_srv    = mon_lib_srv,
       rotamer_manager= rotamer_manager)
   else:
-    pdb_hierarchy_for_proxies = pdb_hierarchy.deep_copy()
+    pdb_hierarchy_for_proxies = pdb_hierarch.deep_copy()
   restraints_manager.geometry.add_chi_torsion_restraints_in_place(
     pdb_hierarchy   = pdb_hierarchy_for_proxies,
     sites_cart      = pdb_hierarchy_for_proxies.atoms().extract_xyz(),
@@ -154,7 +154,7 @@ class run2(object):
         geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
       self.update_cdl_restraints(macro_cycle=i_macro_cycle)
       if(fix_rotamer_outliers):
-        self.pdb_hierarchy, self.restraints_manager = add_rotamer_restraints(
+        junk, self.restraints_manager = add_rotamer_restraints(
           pdb_hierarchy      = self.pdb_hierarchy,
           restraints_manager = self.restraints_manager,
           selection          = selection,
