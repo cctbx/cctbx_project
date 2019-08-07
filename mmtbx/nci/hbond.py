@@ -5,6 +5,14 @@ import math, sys, os
 from libtbx import group_args
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from mmtbx.secondary_structure import find_ss_from_ca
+from libtbx.utils import null_out
+import libtbx.load_env
+from libtbx import easy_pickle
+from cctbx import uctbx
+from mmtbx.utils import run_reduce_with_timeout
+
+import numpy as np # XXX See if I can avoid it!
 
 def get_pair_generator(crystal_symmetry, buffer_thickness, sites_cart):
   sst = crystal_symmetry.special_position_settings().site_symmetry_table(
@@ -51,7 +59,6 @@ def get_stats(data):
   kurtosis=(x**4).min_max_mean().mean/sd**4
   return group_args(mean=mean, sd=sd, skew=skew, kurtosis=kurtosis)
 
-
 # XXX None at the moment
 master_phil_str = '''
 hbond {
@@ -59,6 +66,120 @@ hbond {
 }
 '''
 
+def show_histogram(data, n_slots, data_min, data_max, log=sys.stdout):
+  from cctbx.array_family import flex
+  h_data = flex.double()
+  hm = flex.histogram(
+    data=data, n_slots=n_slots, data_min=data_min, data_max=data_max)
+  lc_1 = hm.data_min()
+  s_1 = enumerate(hm.slots())
+  for (i_1,n_1) in s_1:
+    hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
+    #print >> log, "%10.5f - %-10.5f : %d" % (lc_1, hc_1, n_1)
+    #print >> log, "%10.2f : %d" % ((lc_1+hc_1)/2, n_1)
+    print ("%10.2f : %10.4f" % ((lc_1+hc_1)/2, n_1*100./data.size()), file=log)
+    lc_1 = hc_1
+  return h_data
+
+def stats(model, prefix):
+  # Get rid of H, multi-model, no-protein and single-atom residue models
+  if(model.percent_of_single_atom_residues()>20):
+    return None
+  sel = model.selection(string = "protein")
+  if(sel.count(True)==0):
+    return None
+  ssr = "protein and not (element H or element D or resname UNX or resname UNK or resname UNL)"
+  sel = model.selection(string = ssr)
+  model = model.select(sel)
+  if(len(model.get_hierarchy().models())>1):
+    return None
+  # Add H; this looses CRYST1 !
+  rr = run_reduce_with_timeout(
+    stdin_lines = model.get_hierarchy().as_pdb_string().splitlines(),
+    file_name   = None,
+    parameters  = "-oh -his -flip -keep -allalt -pen9999 -",
+    override_auto_timeout_with=None)
+  # Create model; this is a single-model pure protein with new H added
+  pdb_inp = iotbx.pdb.input(source_info = None, lines = rr.stdout_lines)
+  model = mmtbx.model.manager(
+    model_input      = None,
+    build_grm        = True,
+    pdb_hierarchy    = pdb_inp.construct_hierarchy(),
+    process_input    = True,
+    log              = null_out())
+  box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+    sites_cart   = model.get_sites_cart(),
+    buffer_layer = 5)
+  model.set_sites_cart(box.sites_cart)
+  model._crystal_symmetry = box.crystal_symmetry()
+  # Get SS annotations
+  SS = find_ss_from_ca.find_secondary_structure(
+    hierarchy   = model.get_hierarchy(),
+    #ss_by_chain = False, # enabling will make it slow.
+    out         = null_out())
+  # Convert SS annotations into bool selections
+  alpha_sel = SS.annotation.overall_helix_selection().strip()
+  beta_sel  = SS.annotation.overall_sheet_selection().strip()
+  if(len(alpha_sel)==0 or alpha_sel=="()"): alpha_sel=None
+  if(len(beta_sel) ==0 or beta_sel =="()"):  beta_sel=None
+  if([alpha_sel, beta_sel].count(None)==0):
+    alpha_sel = model.selection(string="%s"%alpha_sel)
+    beta_sel  = model.selection(string="%s"%beta_sel)
+    loop_sel  = ~(alpha_sel | beta_sel)
+  elif(alpha_sel is not None):
+    alpha_sel = model.selection(string="%s"%alpha_sel)
+    loop_sel = ~alpha_sel
+  elif(beta_sel is not None):
+    beta_sel  = model.selection(string="%s"%beta_sel)
+    loop_sel  = ~beta_sel
+  else:
+    loop_sel = model.selection(string="all")
+  # Get individual stats
+  def get_selected(sel):
+    result = None
+    if(type(sel)==str and sel=="all"):
+      return find(model = model, a_DHA_cutoff=90).get_params_as_arrays()
+    elif(sel is not None and sel.count(True)>0):
+      result = find(
+        model = model.select(sel), a_DHA_cutoff=90).get_params_as_arrays()
+    return result
+  result_dict = {}
+  result_dict["all"]   = get_selected(sel="all")
+  result_dict["alpha"] = get_selected(sel=alpha_sel)
+  result_dict["beta"]  = get_selected(sel=beta_sel)
+  result_dict["loop"]  = get_selected(sel=loop_sel)
+  # Load histograms for reference high-resolution d_HA and a_DHA
+  pkl_fn = libtbx.env.find_in_repositories(
+    relative_path="mmtbx")+"/nci/d_HA_and_a_DHA_high_res.pkl"
+  assert os.path.isfile(pkl_fn)
+  ref = easy_pickle.load(pkl_fn)
+  #
+  import matplotlib as mpl
+  mpl.use('Agg')
+  import matplotlib.pyplot as plt
+  fig = plt.figure(figsize=(15,15))
+  kwargs = dict(histtype='bar', bins=20, range=[1.6,3.0], alpha=.8)
+  for i, key in enumerate(["alpha", "beta", "loop", "all"]):
+    ax = plt.subplot(int("42%d"%(i+1)))
+    HB = result_dict[key]
+    if HB is None: continue
+    w1 = np.ones_like(HB.d_HA)/HB.d_HA.size()
+    ax.hist(HB.d_HA, color="orangered", weights=w1, rwidth=0.3, **kwargs)
+    ax.set_title("Distance (%s)"%key)
+    bins = list(flex.double(ref.distances[key].bins))
+    ax.bar(bins, ref.distances[key].vals, alpha=.3, width=0.07)
+  #
+  kwargs = dict(histtype='bar', bins=20, range=[90,180], alpha=.8)
+  for j, key in enumerate(["alpha", "beta", "loop", "all"]):
+    ax = plt.subplot(int("42%d"%(i+j+2)))
+    HB = result_dict[key]
+    if HB is None: continue
+    w1 = np.ones_like(HB.a_DHA)/HB.a_DHA.size()
+    ax.hist(HB.a_DHA, color="orangered", weights=w1, rwidth=0.3, **kwargs)
+    ax.set_title("Angle (%s)"%key)
+    ax.bar(ref.angles[key].bins, ref.angles[key].vals, width=4.5, alpha=.3)
+
+  fig.savefig("%s.png"%prefix, dpi=100)
 
 class find(object):
   """
@@ -224,6 +345,7 @@ class find(object):
         proxy_custom = group_args(i_seq = i, j_seq = j, rt_mx_ji = rt_mx_ji,
           atom_i = atom_i, atom_j = atom_j)
         self.pair_proxies.append(proxy_custom)
+    #
 
   def get_params_as_arrays(self, b=None, occ=None):
     d_HA  = flex.double()
