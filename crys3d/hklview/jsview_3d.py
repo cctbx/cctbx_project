@@ -175,7 +175,7 @@ class hklview_3d:
     self.primitivetype = "SphereBuffer"
     self.script_has_tooltips = False
     self.url = ""
-    self.binarray = "Resolution"
+    self.binscenelabel = "Resolution"
     self.colour_scene_id = None
     self.radii_scene_id = None
     self.scene_id = None
@@ -221,6 +221,7 @@ class hklview_3d:
     self.HKLscenesMindata = []
     self.HKLscenesMaxsigmas = []
     self.HKLscenesMinsigmas = []
+    self.bindata = None
     self.sceneisdirty = True
     self.hkl_scenes_info = []
     self.match_valarrays = []
@@ -301,6 +302,9 @@ class hklview_3d:
       or has_phil_path(diff_phil, "spacegroup_choice") \
       or has_phil_path(diff_phil, "merge_data") \
       or has_phil_path(diff_phil, "scene_id")  \
+      or has_phil_path(diff_phil, "nbins") \
+      or has_phil_path(diff_phil, "bin_scene_label") \
+      or has_phil_path(diff_phil, "scene_bin_thresholds") \
       or has_phil_path(diff_phil, "spacegroup_choice") \
       or has_phil_path(diff_phil, "using_space_subgroup") \
       or has_phil_path(diff_phil, "viewer") \
@@ -330,16 +334,18 @@ class hklview_3d:
       msg = "Rendered %d reflections\n" % self.scene.points.size()
       if has_phil_path(diff_phil, "mouse_sensitivity"):
         self.SetTrackBallRotateSpeed(currentphil.viewer.NGL.mouse_sensitivity)
-
     msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
+    if has_phil_path(diff_phil, "bin_opacities"):
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      msg += self.SetOpacities(currentphil.bin_opacities )
     return msg
 
 
   def set_miller_array(self, scene_id=None, merge=None, details=""):
     if scene_id is not None:
       self.scene_id = scene_id
-    if self.scene_id >= 0:
+    if self.scene_id >= 0 and self.HKLscenes:
       self.miller_array = self.HKLscenes[self.scene_id].miller_array
       self.scene = self.HKLscenes[self.scene_id]
     self.merge = merge
@@ -350,7 +356,6 @@ class hklview_3d:
     array_info = self.miller_array.info()
     self.sg = self.miller_array.space_group()
     self.symops = self.sg.all_ops()
-
     self.binvals = [ 1.0/self.miller_array.d_max_min()[0], 1.0/self.miller_array.d_max_min()[1]  ]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % self.miller_array.unit_cell().parameters()
@@ -602,7 +607,7 @@ class hklview_3d:
     if not self.scene or not self.sceneisdirty:
       return
     if self.miller_array is None :
-      self.mprint( "A miller array must be selected for rendering the reflections" )
+      self.mprint( "An HKL scene must be selected for rendering reflections" )
       return
     self.mprint("Composing JavaScript...")
 
@@ -709,7 +714,10 @@ var MakeHKL_Axis = function()
     points = self.scene.points
     hkls = self.scene.indices
     dres = self.scene.dres
-    colstr = self.scene.miller_array.info().label_string()
+    if self.binscenelabel=="Resolution":
+      colstr = "dres"
+    else:
+      colstr = self.HKLscenes[ int(self.binscenelabel) ].work_array.info().label_string()
     data = self.scene.data
     colourlabel = self.HKLscenes[self.colour_scene_id].colourlabel
     fomlabel = self.HKLscenes[self.colour_scene_id].fomlabel
@@ -721,21 +729,20 @@ var MakeHKL_Axis = function()
     spbufttips = []
 
     self.workingbinvals = []
-    if not self.binarray=="Resolution":
-      ibinarray= int(self.binarray)
+    if not self.binscenelabel=="Resolution":
+      ibinarray= int(self.binscenelabel)
       self.workingbinvals = [ self.HKLscenesMindata[ibinarray] - 0.1 , self.HKLscenesMaxdata[ibinarray] + 0.1 ]
       self.workingbinvals.extend( self.binvals )
       self.workingbinvals.sort()
       if self.workingbinvals[0] < 0.0:
         self.workingbinvals.append(0.0)
         self.workingbinvals.sort()
-      bindata = self.HKLscenes[ibinarray].data
+      self.bindata = self.HKLscenes[ibinarray].data
       if self.HKLscenes[ibinarray].work_array.is_complex_array():
-        bindata = self.HKLscenes[ibinarray].ampl
+        self.bindata = self.HKLscenes[ibinarray].ampl
     else:
       self.workingbinvals = self.binvals
-      colstr = "dres"
-      bindata = 1.0/dres
+      self.bindata = 1.0/self.scene.dres
     self.nbin = len(self.workingbinvals)
 
     for ibin in range(self.nbin):
@@ -755,7 +762,7 @@ var MakeHKL_Axis = function()
 
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
-      ibin = data2bin( bindata[i] )
+      ibin = data2bin( self.bindata[i] )
       positions[ibin].extend( roundoff(list(hklstars), 2) )
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )
@@ -1745,12 +1752,23 @@ mysocket.onmessage = function (e)
     self.msgqueuethrd.start()
 
 
-  def SetOpacity(self, bin, alpha):
+  def SetOpacities(self, bin_opacities_str):
+    retstr = ""
+    if bin_opacities_str:
+      bin_opacities = eval(bin_opacities_str)
+      for binopacity in bin_opacities:
+        alpha = float(binopacity.split(",")[0])
+        bin = int(binopacity.split(",")[1])
+        retstr += self.set_opacity(bin, alpha)
+    return retstr
+
+
+  def set_opacity(self, bin, alpha):
     if bin > self.nbin:
-      self.mprint( "There are only %d bins of data present" %self.nbin, verbose=0 )
-      return
+      return "There are only %d bins present\n" %self.nbin
     msg = "%d, %f" %(bin, alpha)
     self.SendWebSockMsg("alpha", msg)
+    return "Opacity %s set on bin[%s]\n" %(alpha, bin)
 
 
   def RedrawNGL(self):

@@ -155,16 +155,15 @@ class NGL_HKLViewer(QWidget):
     labels = ["no. of HKLs", "max_bin_val", "min_bin_val", "opacity"]
     self.binstable.setHorizontalHeaderLabels(labels)
     # don't allow editing this table
-    self.binstable.setEditTriggers(QTableWidget.NoEditTriggers)
+    #self.binstable.setEditTriggers(QTableWidget.NoEditTriggers)
     self.bindata_labeltxt = QLabel()
     self.bindata_labeltxt.setText("Miller label")
     self.bindata_labeledit = QLineEdit('')
     self.bindata_labeledit.setReadOnly(True)
-    self.bindataComboBox = QComboBox()
-    self.bindataComboBox.activated.connect(self.onBindataComboSelchange)
+    self.binstable.cellChanged.connect(self.onBinsTableCellChanged  )
 
-
-
+    self.BinDataComboBox = QComboBox()
+    self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)
 
     self.createExpansionBox()
     self.createFileInfoBox()
@@ -173,7 +172,6 @@ class NGL_HKLViewer(QWidget):
     self.createRadiiScaleGroupBox()
     self.createBinsBox()
     self.CreateFunctionTabs()
-
 
     mainLayout = QGridLayout()
     mainLayout.addWidget(self.FileInfoBox,         0, 0)
@@ -295,6 +293,9 @@ class NGL_HKLViewer(QWidget):
             self.MillerComboBox.setCurrentIndex(-1) # unselect the first item in the list
             self.SpaceGroupComboBox.clear()
             self.SpaceGroupComboBox.addItems( self.spacegroups )
+            self.BinDataComboBox.clear()
+            self.BinDataComboBox.addItems(["d_res"] + [ e[3] for e in self.hklscenes_arrays ] )
+            self.BinDataComboBox.setCurrentIndex(-1) # unselect the first item in the list
 
             self.millertable.setRowCount(len(self.hklscenes_arrays))
             #self.millertable.setColumnCount(8)
@@ -380,6 +381,10 @@ class NGL_HKLViewer(QWidget):
 
   def onBindataComboSelchange(self,i):
     pass
+
+
+  def onBinsTableCellChanged(self, row, column):
+    print( row, column, self.binstable.currentItem().text())
 
 
 
@@ -671,7 +676,7 @@ class NGL_HKLViewer(QWidget):
     layout = QGridLayout()
     layout.addWidget(self.bindata_labeltxt, 0, 0)
     #layout.addWidget(self.bindata_labeledit, 0, 1)
-    layout.addWidget(self.bindataComboBox, 0, 1)
+    layout.addWidget(self.BinDataComboBox, 0, 1)
     layout.addWidget(self.binstable, 1, 0, 1, 2)
     layout.setColumnStretch(0, 0)
     #layout.setColumnStretch(2, 1)

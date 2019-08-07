@@ -143,7 +143,7 @@ mtz1.mtz_object().write("mymtz.mtz")
 
 
 from crys3d.hklview import cmdlineframes
-myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=True, verbose=1)
+myHKLview = cmdlineframes.HKLViewFrame(high_quality=True, verbose=1)
 myHKLview.LoadReflectionsFile("mymtz.mtz")
 myHKLview.SetScene(0)
 
@@ -368,19 +368,23 @@ class HKLViewFrame() :
   def GetNewCurrentPhilFromPython(self, pyphilobj, oldcurrentphil):
     newcurrentphil = oldcurrentphil.fetch(source = pyphilobj)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
+
     oldcolbintrshld = oldcurrentphil.extract().NGL_HKLviewer.scene_bin_thresholds
     newcolbintrshld = oldcolbintrshld
     if hasattr(pyphilobj.extract().NGL_HKLviewer, "scene_bin_thresholds"):
       newcolbintrshld = pyphilobj.extract().NGL_HKLviewer.scene_bin_thresholds
+
     # fetch_diff doesn't seem able to correclty spot changes
     # in the multiple scope phil object "NGL_HKLviewer.scene_bin_thresholds"
     # Must do it manually
-    if oldcolbintrshld != newcolbintrshld:
-      params = newcurrentphil.extract()
+    params = newcurrentphil.extract()
+    if oldcolbintrshld != newcolbintrshld: # or old_binopacities != new_binopacities:
       params.NGL_HKLviewer.scene_bin_thresholds = newcolbintrshld
+
       newcurrentphil = self.master_phil.format(python_object = params)
       diffphil = self.master_phil.fetch_diff(source = newcurrentphil)
 
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     return newcurrentphil, diffphil
 
 
@@ -412,10 +416,15 @@ class HKLViewFrame() :
           return False
 
       if view_3d.has_phil_path(diff_phil, "scene_id") \
-       or view_3d.has_phil_path(diff_phil, "merge_data") or view_3d.has_phil_path(diff_phil, "scene_bin_thresholds"):
-        #if self.set_scene(phl.scene_id, phl.fom_scene_id):
+       or view_3d.has_phil_path(diff_phil, "merge_data") \
+       or view_3d.has_phil_path(diff_phil, "nbins") \
+       or view_3d.has_phil_path(diff_phil, "bin_scene_label") \
+       or view_3d.has_phil_path(diff_phil, "scene_bin_thresholds"):
+        #import code; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         if self.set_scene(phl.scene_id):
-          self.set_scene_bin_thresholds(phl.scene_bin_thresholds, phl.bin_array)
+          self.set_scene_bin_thresholds(binvals=phl.scene_bin_thresholds,
+                                         bin_scene_label=phl.bin_scene_label,
+                                         nbins=phl.nbins )
 
       if view_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
@@ -753,55 +762,53 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def set_scene_bin_thresholds(self, binvals=[], bin_array="Resolution", nbins=20):
-    self.viewer.binarray = bin_array
+  def set_scene_bin_thresholds(self, binvals=[], bin_scene_label="Resolution", nbins=15):
+    self.viewer.binscenelabel = bin_scene_label
     if binvals:
-      if self.viewer.binarray=="Resolution":
-        binvals = list( 1.0/flex.double(binvals) )
-    else:
-      uc = self.viewer.miller_array.unit_cell()
-      indices = self.viewer.miller_array.indices()
-      dmaxmin = self.viewer.miller_array.d_max_min()
-      binning = miller.binning( uc, nbins, indices, dmaxmin[0], dmaxmin[1] )
-      binvals = [ binning.bin_d_range(n)[0]  for n in binning.range_all() ]
-      binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
       binvals = list( 1.0/flex.double(binvals) )
+    else:
+      if self.viewer.binscenelabel=="Resolution":
+        uc = self.viewer.miller_array.unit_cell()
+        indices = self.viewer.miller_array.indices()
+        dmaxmin = self.viewer.miller_array.d_max_min()
+        binning = miller.binning( uc, nbins, indices, dmaxmin[0], dmaxmin[1] )
+        binvals = [ binning.bin_d_range(n)[0]  for n in binning.range_all() ]
+        binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
+        binvals = list( 1.0/flex.double(binvals) )
+      else:
+        bindata = self.viewer.HKLscenes[int(self.viewer.binscenelabel)].data
+        selection = flex.sort_permutation( bindata )
+        bindata_sorted = bindata.select(selection)
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+        # get binvals by dividing bindata_sorted with nbins
+        binvals = [bindata_sorted[0]] * nbins #
+        for i,e in enumerate(bindata_sorted):
+          idiv = int(nbins*float(i)/len(bindata_sorted))
+          binvals[idiv] = e
     binvals.sort()
     self.viewer.UpdateBinValues( binvals )
 
 
-  def SetSceneBinThresholds(self, binvals=[], bin_array="Resolution", nbins=20):
+  def SetSceneBinThresholds(self, binvals=[], bin_scene_label="Resolution", nbins=15):
     self.params.NGL_HKLviewer.scene_bin_thresholds = binvals
-    self.params.NGL_HKLviewer.bin_array = bin_array
+    self.params.NGL_HKLviewer.bin_scene_label = bin_scene_label
     self.params.NGL_HKLviewer.nbins = nbins
+    self.params.NGL_HKLviewer.bin_opacities = str([ "1.0, %d"%e for e in range(nbins) ])
     self.update_settings()
 
 
-  def SetOpacity(self, bin, alpha):
-    self.viewer.SetOpacity(bin, alpha)
+  def SetOpacities(self, bin_opacities):
+    self.params.NGL_HKLviewer.bin_opacities = bin_opacities
+    self.update_settings()
 
 
-  #def set_scene(self, column, fom_column=None) :
   def set_scene(self, scene_id) :
     self.viewer.binvals = []
     if scene_id is None:
       return False
     self.viewer.colour_scene_id = scene_id
     self.viewer.radii_scene_id = scene_id
-    """
-    if self.valid_arrays[column].is_complex_array():
-      if fom_column and self.valid_arrays[fom_column].is_real_array():
-        self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()] = fom_column
-        self.mprint("Using array %d as FOM values for array %d" %(fom_column, column))
-      else:
-        if self.viewer.mapcoef_fom_dict.get(self.valid_arrays[column].info().label_string()):
-          del self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()]
-        self.mprint("No valid FOM array provided.")
-    """
-    #self.set_miller_array(self.valid_arrays[column])
-    #self.set_miller_array(column)
     self.viewer.set_miller_array(scene_id)
-    self.viewer.miller_array = self.viewer.HKLscenes[scene_id].miller_array
     if (self.viewer.miller_array is None):
       raise Sorry("No data loaded!")
     self.mprint( "Miller array %s runs from hkls: %s to %s" \
@@ -809,9 +816,6 @@ class HKLViewFrame() :
         self.viewer.miller_array.index_span().max() ) )
     self.mprint("Spacegroup: %s" %self.viewer.miller_array.space_group().info().symbol_and_number())
     self.update_space_group_choices()
-    #self.viewer.DrawNGLJavaScript()
-    #self.update_settings()
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     return True
 
 
@@ -1052,9 +1056,11 @@ NGL_HKLviewer {
   scene_bin_thresholds = None
     .type = float
     .multiple = True
-  bin_array = 'Resolution'
+  bin_opacities = ""
     .type = str
-  nbins = 20
+  bin_scene_label = 'Resolution'
+    .type = str
+  nbins = 15
     .type = int
   camera_type = *'orthographic' 'perspective'
     .type = choice
