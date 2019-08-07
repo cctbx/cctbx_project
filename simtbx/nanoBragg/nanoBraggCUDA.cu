@@ -123,7 +123,6 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 
   cudaSetDevice(deviceId);
 
-  int total_pixels = spixels * fpixels;
 
 	/*allocate and zero reductions */
 	bool * rangemap = (bool*) calloc(total_pixels, sizeof(bool));
