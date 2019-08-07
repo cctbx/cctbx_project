@@ -2615,15 +2615,15 @@ provided. Specifying an environment or using $CONDA_PREFIX is for developers
 that maintain their own conda environment.""",
                     default=None, nargs='?', const='')
 
-  parser.add_argument("--build-dir", 
-                     dest="build_dir", 
-                     help="directory where the build will be. Should be at the same level as modules! default is 'build'", 
+  parser.add_argument("--build-dir",
+                     dest="build_dir",
+                     help="directory where the build will be. Should be at the same level as modules! default is 'build'",
                      default="build", type=str)
 
   options = parser.parse_args()
   args = options.action
-  
-  global _BUILD_DIR 
+
+  global _BUILD_DIR
   _BUILD_DIR = options.build_dir  # TODO: this is probably ok way to go with globalvar, but check and see
 
   # process external
