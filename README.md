@@ -1,12 +1,12 @@
 # Computational Crystallography Toolbox
 
-Greetings, earthling. We see you intend to embark on the arduous quest of becoming an elite computational crystallographer. Many before you have dared to try. Some have succeeded. Most, have perished. We hope the CCTBX package grants you success along your journey. 
+Greetings, earthling. We see you intend to embark on the arduous quest of becoming an elite computational crystallographer. Many before you have dared to try. We hope the CCTBX package grants you success along your journey. 
 
 ## Contents
 
 * [About](#intro)
 
-* [Installation](#install)
+* [Installation (Mac OS / Linux)](#install)
 
   * [Download the Bootstrap installer script](#getboot)
      * [hot / update](#hot)
@@ -16,7 +16,7 @@ Greetings, earthling. We see you intend to embark on the arduous quest of becomi
   * [Bootstrap usage (full)](#boot_doc)
   * [Install without conda](#deprecated)
 
-* [Build on Windows](#windows)
+* [Installation on Windows](#windows)
 
 * [Actually using CCTBX](#using)
 
@@ -41,13 +41,13 @@ Use of the Python interfaces is highly recommended, but optional. The cctbx can 
 
 
 <a name="install"></a>
-# Installation
+## Installation (Mac OS / Linux)
 
 Current efforts are to incorporate cctbx into a conda environment. Here is a basic installation workflow. Note, cctbx is closely linked to the DIALS diffraction software package, and the DXTBX software package, which provide algorithms for processing experimental diffraction data. Therefore this build will include builds of DIALS and DXTBX, as well as a few others. 
 
 
 <a name="getboot"></a>
-## Download the installer script
+### Download the installer script
 
 The installer script [bootstrap](https://raw.githubusercontent.com/cctbx/cctbx_project/darwin_omp/libtbx/auto_build/bootstrap) downloads dependencies and builds the software. Place it in your main working directory, e.g. ```~/crystal```
 
@@ -329,13 +329,13 @@ make
 
 <a name="deprecated"></a>
 ### Deprecated installation instructions
-While seemingly simpler, one can just execute bootstrap and let the default settings work the magic of installation.. **Do this at your own risk.** Current efforts to use conda have made cross platform builds and post-install development much more stable. Note this installation procedure will take longer, and requires a lot of space:
+One can just execute bootstrap and let the default settings work the magic of installation. While seemingly more simple, **do this at your own risk.** Current efforts to use conda have made cross platform builds and post-install development much more stable. Note this installation procedure will take longer, and requires a lot of space:
 
 ```
 ./bootstrap.py 
 ```
 
-### After you build
+## After you build
 
 #### updating internal dependencies
 hot update can be run at anytime to update the modules
@@ -367,7 +367,7 @@ make
 ```
 
 <a name="windows"></a>
-## Build on windows
+## Installing on windows
 On Windows follow the instructions detailed [here](https://github.com/cctbx/cctbx_project/wiki/How-to-build-CCTBX-on-Windows)
 
 <a name="using"></a>
@@ -378,15 +378,9 @@ Once you have a successful build, one can set the environment like so
 source ~/crystal/build/setpaths.sh
 ```
 
-which brings in all of the relevant binaries. For example, after building with the ```--builder=dials``` options above, one can now use the dials command line scripts to process or view data, e.g.
+which brings in all of the relevant binaries. 
 
-```
-dials.image_viewer  my.cbf
-```
-
-To see more checkout the [dials homepage](https://dials.github.io/).
-
-Further, one can access the cctbx python base using the not-so-keyboard-friendly ```libtbx.python```
+One can access the cctbx python base using the binary wrapper script ```libtbx.python```
 
 ```
 libtbx.python -c "import sys;print (sys.prefix)"
@@ -400,9 +394,19 @@ Work can also be done interactively
 libtbx.ipython
 ```
 
+
+Further, after having built with the ```--builder=dials``` options above, one can now use the dials command line scripts to process or view data, e.g.
+
+```
+dials.image_viewer  my.cbf
+```
+
+To see more about DIALS checkout the [dials homepage](https://dials.github.io/).
+
+
 <a name="Examples"></a>
 ## Examples
-Example can be found at this [link](https://cctbx.github.io/). Run the scripts using e.g.
+Many example scripts can be found at this [link](https://cctbx.github.io/). Run the scripts using
 
 ```libtbx.python my_example.py```
 
