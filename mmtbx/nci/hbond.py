@@ -253,8 +253,8 @@ class find(object):
       if(self.external_proxies): # making sure proxies point to same atoms
         a_i = make_atom_id(atom = atoms[i], index = i).id_str
         a_j = make_atom_id(atom = atoms[j], index = j).id_str
-        assert a_i == p.atom_i.id_str, [a_i, p.atom_i.id_str]
-        assert a_j == p.atom_j.id_str, [a_j, p.atom_j.id_str]
+        assert a_i == p.atom_A.id_str, [a_i, p.atom_A.id_str]
+        assert a_j == p.atom_H.id_str, [a_j, p.atom_H.id_str]
       ei, ej = atoms[i].element, atoms[j].element
       altloc_i = atoms[i].parent().altloc
       altloc_j = atoms[j].parent().altloc
@@ -289,8 +289,9 @@ class find(object):
         A = atoms[j]
         if(j in a_bonded_to):
           Y = [atoms[a.i_seq] for a in a_bonded_to[j]]
-        atom_i = make_atom_id(atom = H, index = i)
-        atom_j = make_atom_id(atom = A, index = j)
+        atom_H = make_atom_id(atom = H, index = i)
+        atom_A = make_atom_id(atom = A, index = j)
+        atom_D = make_atom_id(atom = D, index = h_bonded_to[H.i_seq].i_seq)
         if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
           A = apply_symop_to_copy(A, rt_mx_ji, fm, om)
           if(len(Y)>0):
@@ -301,8 +302,9 @@ class find(object):
         A = atoms[i]
         if(i in a_bonded_to):
           Y = [atoms[a.i_seq] for a in a_bonded_to[i]]
-        atom_i = make_atom_id(atom = A, index = i)
-        atom_j = make_atom_id(atom = H, index = j)
+        atom_A = make_atom_id(atom = A, index = i)
+        atom_H = make_atom_id(atom = H, index = j)
+        atom_D = make_atom_id(atom = D, index = h_bonded_to[H.i_seq].i_seq)
         if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
           H = apply_symop_to_copy(H, rt_mx_ji, fm, om)
           D = apply_symop_to_copy(D, rt_mx_ji, fm, om)
@@ -333,8 +335,9 @@ class find(object):
       self.result.append(group_args(
         i       = i,
         j       = j,
-        atom_i  = atom_i,
-        atom_j  = atom_j,
+        atom_H  = atom_H,
+        atom_A  = atom_A,
+        atom_D  = atom_D,
         symop   = rt_mx_ji,
         d_HA    = d_HA,
         a_DHA   = a_DHA,
@@ -343,19 +346,20 @@ class find(object):
       ))
       if(not self.external_proxies):
         proxy_custom = group_args(i_seq = i, j_seq = j, rt_mx_ji = rt_mx_ji,
-          atom_i = atom_i, atom_j = atom_j)
+          atom_H = atom_H, atom_A = atom_A)
         self.pair_proxies.append(proxy_custom)
     #
+    self.as_restraints()
 
   def get_params_as_arrays(self, b=None, occ=None):
     d_HA  = flex.double()
     a_DHA = flex.double()
     a_YAH = flex.double()
     for r in self.result:
-      if(b   is not None and r.atom_i.b>b): continue
-      if(b   is not None and r.atom_j.b>b): continue
-      if(occ is not None and r.atom_i.occ<occ): continue
-      if(occ is not None and r.atom_j.occ<occ): continue
+      if(b   is not None and r.atom_H.b>b): continue
+      if(b   is not None and r.atom_A.b>b): continue
+      if(occ is not None and r.atom_H.occ<occ): continue
+      if(occ is not None and r.atom_A.occ<occ): continue
       d_HA .append(r.d_HA )
       a_DHA.append(r.a_DHA)
       if(len(r.a_YAH)>0):
@@ -376,10 +380,10 @@ class find(object):
       data_theta_1_all.append(r.a_DHA)
       data_theta_2_all.extend(flex.double(r.a_YAH))
       data_d_HA_all.append(r.d_HA)
-      if(r.atom_i.b>30):    continue
-      if(r.atom_j.b>30):    continue
-      if(r.atom_i.occ<0.9): continue
-      if(r.atom_j.occ<0.9): continue
+      if(r.atom_H.b>30):    continue
+      if(r.atom_A.b>30):    continue
+      if(r.atom_H.occ<0.9): continue
+      if(r.atom_A.occ<0.9): continue
       data_theta_1_fil.append(r.a_DHA)
       data_theta_2_fil.extend(flex.double(r.a_YAH))
       data_d_HA_fil.append(r.d_HA)
@@ -426,8 +430,8 @@ class find(object):
 
   def show(self, log = sys.stdout, sym_only=False):
     for r in self.result:
-      ids_i = r.atom_i.id_str
-      ids_j = r.atom_j.id_str
+      ids_i = r.atom_H.id_str
+      ids_j = r.atom_A.id_str
       if(sym_only):
         if(str(r.symop)=="x,y,z"): continue
       print("%4d %4d"%(r.i,r.j), "%s<>%s"%(ids_i, ids_j), \
@@ -443,36 +447,42 @@ class find(object):
       print("load", "/".join([os.getcwd(), pdb_file_name]), file=of)
       for r in self.result:
         if(str(r.symop) != "x,y,z"): continue
-        ai = r.atom_i
-        aj = r.atom_j
+        ai = r.atom_H
+        aj = r.atom_A
         one = "chain %s and resi %s and name %s and alt '%s'"%(
           ai.chain, ai.resseq, ai.name, ai.altloc)
         two = "chain %s and resi %s and name %s and alt '%s'"%(
           aj.chain, aj.resseq, aj.name, aj.altloc)
         print("dist %s, %s"%(one, two), file=of)
 
-  def as_restraints(self, file_name, distance_ideal=None, sigma_dist=0.1,
+  def as_restraints(self, file_name="hbond.eff", distance_ideal=None, sigma_dist=0.1,
        angle_ideal = None, sigma_angle=2):
-    base = """bond{
-      atom_selection_1 = %s
-      atom_selection_2 = %s
-      symmetry_operation = None
-      distance_ideal = %f
-      sigma = %f
-
-    }
-    angle {
-      atom_selection_1 = %s
-      atom_selection_2 = %s
-      atom_selection_3 = %s
-      angle_ideal = %f
-      sigma = %f
-    }
-    """
-    top = """refinement{
-  geometry_restraints.edits{
-    %s
-  }
-}
-    """
-    raise Sorry("Not Implemented.")
+    f = "chain %s and resseq %s and name %s"
+    with open(file_name, "w") as of:
+      print("geometry_restraints.edits {", file=of)
+      for r in self.result:
+        h = f%(r.atom_H.chain, r.atom_H.resseq, r.atom_H.name)
+        a = f%(r.atom_A.chain, r.atom_A.resseq, r.atom_A.name)
+        d = f%(r.atom_D.chain, r.atom_D.resseq, r.atom_D.name)
+        if(r.d_HA<2.5): dt = 2.05
+        else:           dt = 2.8
+        if(r.a_DHA<130): at = 115
+        else:            at = 160
+        dis = """    bond {
+          atom_selection_1 = %s
+          atom_selection_2 = %s
+          symmetry_operation = %s
+          distance_ideal = %f
+          sigma = 0.05
+         }"""%(h,a,str(r.symop),dt)
+        if(str(r.symop)!="x,y,z"): continue
+        ang = """    angle {
+          atom_selection_1 = %s
+          atom_selection_2 = %s
+          atom_selection_3 = %s
+          angle_ideal = %f
+          sigma = 5
+          }"""%(a,h,d,at)
+        print(dis, file=of)
+        print(ang, file=of)
+      print("}", file=of)
