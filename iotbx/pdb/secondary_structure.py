@@ -608,6 +608,24 @@ class annotation(structure_base):
         and struct_sheet_order_loop is not None
         and struct_sheet_range_loop is not None
         and struct_sheet_hbond_loop is not None):
+      # Check that keys are unique
+      error_msg_list = []
+      dups_sheet = struct_sheet_loop.check_key_is_unique(key_list=["_struct_sheet.id"])
+      dups_order = struct_sheet_order_loop.check_key_is_unique(key_list=["_struct_sheet_order.sheet_id",
+          "_struct_sheet_order.range_id_1", "_struct_sheet_order.range_id_2"])
+      dups_range = struct_sheet_range_loop.check_key_is_unique(key_list=["_struct_sheet_range.sheet_id",
+            "_struct_sheet_range.id"])
+      dups_hbond = struct_sheet_hbond_loop.check_key_is_unique(key_list=["_pdbx_struct_sheet_hbond.sheet_id",
+          "_pdbx_struct_sheet_hbond.range_id_1", "_pdbx_struct_sheet_hbond.range_id_2"])
+      for e_str, dups in [("Duplication in _struct_sheet.id: %s", dups_sheet),
+          ("Duplication in _struct_sheet_order: %s %s %s", dups_order),
+          ("Duplication in _struct_sheet_range: %s %s", dups_range),
+          ("Duplication in _pdbx_struct_sheet_hbond: %s %s %s", dups_hbond)]:
+        for dup in dups:
+          error_msg_list.append(e_str % dup)
+      if len(error_msg_list) > 0:
+        msg = "Error in sheet definitions:\n  " + "\n  ".join(error_msg_list)
+        raise Sorry(msg)
       for sheet_row in struct_sheet_loop.iterrows():
         sheet_id = sheet_row['_struct_sheet.id']
         # we will count number_of_strands in from_cif_rows
@@ -2450,8 +2468,6 @@ class pdb_sheet(structure_base):
         })
       if i == 1:
         # the first strand, no sense, no hbond
-        if len(f_rows) != 1:
-          raise Sorry("Error in sheet definitions")
         strands.append(pdb_strand.from_cif_dict(f_rows[0], 0))
         registrations.append(None)
       else:

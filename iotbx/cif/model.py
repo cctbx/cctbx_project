@@ -5,7 +5,7 @@ import sys
 import string
 import copy
 from six.moves import cStringIO as StringIO
-from collections import MutableMapping
+from collections import MutableMapping, Counter
 from cctbx.array_family import flex
 from six.moves import range
 from six.moves import zip
@@ -704,6 +704,21 @@ class loop(MutableMapping):
       if goodrow:
         result.append(OrderedDict(zip(self_keys, [s_values[j][i] for j in range_len_self])))
     return result
+
+  def check_key_is_unique(self, key_list):
+    """
+    Majority (if not all) loops have 1 or more keys that should be unique
+    to identify a row. This function checks if this holds up
+    """
+    self_keys = self.keys()
+    for k in key_list:
+      assert k in self_keys
+    key_comb_list = []
+    for i in range(self.size()):
+      key_comb_list.append(tuple([self[k][i] for k in key_list]))
+    c = Counter(key_comb_list)
+    duplicates = [k for k in c.keys() if c[k] > 1]
+    return duplicates
 
   def sort(self, key=None, reverse=False):
     self._columns = OrderedDict(
