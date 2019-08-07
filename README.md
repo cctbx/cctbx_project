@@ -15,6 +15,8 @@ Greetings, earthling. We see you intend to embark on the arduous quest of becomi
      * [build (manual)](#manual_build)
   * [Bootstrap usage (full)](#boot_doc)
 
+* [Actually using CCTBX](#using)
+
 * [Examples](#Examples)
  
 
@@ -362,8 +364,34 @@ If your new modules involve code that needs to be compiled, after configuring , 
 
 * On Windows follow the instructions detailed on https://github.com/cctbx/cctbx_project/wiki/How-to-build-CCTBX-on-Windows.
 
+<a name="using"></a>
+## Actually using cctbx
+Once you have a successful build, one can set the environment like so
+
+```
+source ~/crystal/build/setpaths.sh
+```
+
+which brings in all of the relevant binaries. For example, with the builder=dials options above, one can use the dials command line scripts to process data
+
+```
+dials.image_viewer  my.cbf
+```
+
+Further, one can access the cctbx python base using the not-so-keyboard-friendly ```libtbx.python```
+
+```
+libtbx.python -c "import sys;print (sys.prefix)"
+```
+
+which should return something like ```~/crystal/conda_base```.
+
+Example can be found at this [link](https://cctbx.github.io/). Run the scripts like
+
+```libtbx.python my_example.py```
+
 <a name="Examples"></a>
-##Examples
+## Examples
 Insert the awesomeness of cctbx project
 
 
