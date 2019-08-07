@@ -1,6 +1,6 @@
 # Computational Crystallography Toolbox
 
-Greetings, earthling. We see you intend to embark on the arduous quest of becoming an elite computational crystallgrapher. Many before you have dared to try. Some have succeeded. Most, have perished. We hope the CCTBX package grants you success along your journey. 
+Greetings, earthling. We see you intend to embark on the arduous quest of becoming an elite computational crystallographer. Many before you have dared to try. Some have succeeded. Most, have perished. We hope the CCTBX package grants you success along your journey. 
 
 ## Contents
 
@@ -14,6 +14,9 @@ Greetings, earthling. We see you intend to embark on the arduous quest of becomi
      * [build (auto)](#build)
      * [build (manual)](#manual_build)
   * [Bootstrap usage (full)](#boot_doc)
+  * [Install without conda](#deprecated)
+
+* [Build on Windows](#windows)
 
 * [Actually using CCTBX](#using)
 
@@ -46,7 +49,7 @@ Current efforts are to incorporate cctbx into a conda environment. Here is a bas
 <a name="getboot"></a>
 ## Download the installer script
 
-The installer script [boostrap](https://raw.githubusercontent.com/cctbx/cctbx_project/darwin_omp/libtbx/auto_build/bootstrap) downloads dependencies and builds the software. Place it in your main working directory, e.g. ```~/crystal```
+The installer script [bootstrap](https://raw.githubusercontent.com/cctbx/cctbx_project/darwin_omp/libtbx/auto_build/bootstrap) downloads dependencies and builds the software. Place it in your main working directory, e.g. ```~/crystal```
 
 ```
 mkdir ~/crystal  # make a working directory
@@ -61,7 +64,7 @@ chmod +x bootstrap.py
 ./bootstrap.py --help
 ```
 
-Note, in the past boostrap required that the first python binary in your path be python version 2, or else it will fail. Verify this by running
+Note, in the past bootstrap required that the first python binary in your path be python version 2, or else it will fail. Verify this by running
  
 ```
 python -c "import sys;print (sys.version_info[0])"
@@ -79,22 +82,22 @@ Typically the first step is to download the internal sources created by the CCTB
 
 Running Hot and update with the ```--builder=dials``` argument will download the packages that dials depends on, in this case ```cctbx_project``` and all its goodies. This is the *"builder"* that most developers will use and all of the source materials are available to the public. The packages will be stored in the newly created ```~/crystal/modules``` folder.
 
-```./boostrap.py hot update --builder=dials``` can be run multiple times to bring in the latests updates to the sources in the ```modules``` folder
+```./bootstrap.py hot update --builder=dials``` can be run multiple times to bring in the latests updates to the sources in the ```modules``` folder
 
 
 <a name="conda"></a>
-### Base: getting external dependencies: conda
+### Base: getting external dependencies
 Now you want to download a base python installation as well as any other external dependencies. This is most easily done using the ```conda``` package manager, and bootstrap makes this relatively painless. 
 
-The most straightforward way involves bringing in a brand new conda install, so if you dont mind the 2GB download, this is the way to go. If however you already have a conda install that you love, then with a little help you can use that one as well. See towards the end of this section. 
+Bringing in a new conda uses about 2 GB of space. If however you already have a conda install that you love, then with a little help you can use that one as well. See towards the end of this section. 
 
-**To bring a new conda install in:** first verify there is not conda in your path by typing ```conda``` in the terminal and verifying its not there. Next, verify you do not have a ```CONDA_PREFIX``` envionment variable set (sometimes this can be set in a .bashrc for example, or sourced from somewhere not so obvious). To do this , type ```printenv | grep CONDA``` into the terminal and verify the output is empty. Now you can run 
+**To bring a new conda install in:** first verify there is not conda in your path by typing ```conda``` in the terminal and verifying its not there. Next, verify you do not have a ```CONDA_PREFIX``` environment variable set (sometimes this can be set in a .bashrc for example, or sourced from somewhere not so obvious). To do this , type ```printenv | grep CONDA``` into the terminal and verify the output is empty. Also, verify you don't have ```miniconda``` folders in home folders or you don't have a ```~/.condarc``` file. If you have them already, you might want to proceed to the below instructions for installing with a preexisting conda However, to proceed with a fresh install, type 
 
 ```
 ./bootstrap.py base --use_conda --builder=dials
 ```
 
-And it will download a ```mc3``` folder (miniconda3) and create a ```conda_base``` folder in the current directory. The ```conda_base``` is actually a conda environment, and it has all of the cctbx dependencies for your current operating system.
+and it will download a ```mc3``` folder (miniconda3) and create a ```conda_base``` folder in the current directory. The ```conda_base``` is actually a conda environment, and it has all of the cctbx dependencies for your current operating system.
 
 **If you already have conda installed**: Create an empty conda environment
 
@@ -116,7 +119,7 @@ One can auto-build with the bootstrap script. Typically, after the conda environ
 ./bootstrap.py build --use_conda ./conda_base --build-dir ompbuild --nproc 8
 ```
 
-This should compile the code in a build folder with the default configuration for your current OS. It is useful to have multiple build folders, for example a CUDA-compaitble build. In such a case one needs the NVCC configuration flags, so one would
+This should compile the code in a build folder with the default configuration for your current OS. It is useful to have multiple build folders, for example a CUDA-compatible build. In such a case one needs the NVCC configuration flags, so one would
 
 ```
 ./bootstrap.py build --use_conda ./conda_base --build-dir cudabuild --config-flags="--enable_cuda" --nproc 8
@@ -324,34 +327,29 @@ make
 make
 ```
 
+<a name="deprecated"></a>
+### Deprecated installation instructions
+While seemingly simpler, one can just execute bootstrap and let the default settings work the magic of installation.. **Do this at your own risk.** Current efforts to use conda have made cross platform builds and post-install development much more stable. Note this installation procedure will take longer, and requires a lot of space:
+
+```
+./bootstrap.py 
+```
+
 ### After you build
-* Run the command
 
-```
-source ~/crystal/build/setpaths.sh
-```
+#### updating internal dependencies
+hot update can be run at anytime to update the modules
 
-to load the binaries into your path. cctbx scripts can be run as
+#### adding more python programs
 
-```
-libtbx.python mycctbx_script.py
-```
-
-or run interactively using
-
-```
-libtbx.ipython
-```
-
-* hot update can be run at anytime to update the modules
-
-* additional python dependencies can be pulled in with pip by running e.g.
+Additional python dependencies can be pulled in with pip by running e.g.
 
 ```
 libtbx.python -m pip install joblib
 ```
 
-* New python modules can be added by putting them in the modules folder
+#### Adding new modules or other github repos
+New python modules can be added by putting them in the modules folder
 
 ```
 cd modules
@@ -359,10 +357,18 @@ git clone https://githiub.com/newproject.git
 libtbx.configure newproject
 ```
 
-If your new modules involve code that needs to be compiled, after configuring , go to the relevant build folder and type ```make```.
+#### Compiling code during development
+If your new modules involve code that needs to be compiled, after configuring , go to the relevant build folder and run make 
 
+```
+# after updating C code in one of the modules
+cd ~/crystal/build. # or whatever your build dir is named
+make
+```
 
-* On Windows follow the instructions detailed on https://github.com/cctbx/cctbx_project/wiki/How-to-build-CCTBX-on-Windows.
+<a name="windows"></a>
+## Build on windows
+On Windows follow the instructions detailed [here](https://github.com/cctbx/cctbx_project/wiki/How-to-build-CCTBX-on-Windows)
 
 <a name="using"></a>
 ## Actually using cctbx
@@ -372,11 +378,13 @@ Once you have a successful build, one can set the environment like so
 source ~/crystal/build/setpaths.sh
 ```
 
-which brings in all of the relevant binaries. For example, with the builder=dials options above, one can use the dials command line scripts to process data
+which brings in all of the relevant binaries. For example, after building with the ```--builder=dials``` options above, one can now use the dials command line scripts to process or view data, e.g.
 
 ```
 dials.image_viewer  my.cbf
 ```
+
+To see more checkout the [dials homepage](https://dials.github.io/).
 
 Further, one can access the cctbx python base using the not-so-keyboard-friendly ```libtbx.python```
 
@@ -386,11 +394,15 @@ libtbx.python -c "import sys;print (sys.prefix)"
 
 which should return something like ```~/crystal/conda_base```.
 
+Work can also be done interactively
 
+```
+libtbx.ipython
+```
 
 <a name="Examples"></a>
 ## Examples
-Example can be found at this [link](https://cctbx.github.io/). Run the scripts using
+Example can be found at this [link](https://cctbx.github.io/). Run the scripts using e.g.
 
 ```libtbx.python my_example.py```
 
