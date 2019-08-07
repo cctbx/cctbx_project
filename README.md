@@ -21,6 +21,8 @@ Greetings, earthling. We see you intend to embark on the arduous quest of becomi
 * [Actually using CCTBX](#using)
 
 * [Examples](#Examples)
+
+* [Additional information] (#additional)
  
 
 <a name="intro"></a>
@@ -335,37 +337,6 @@ One can just execute bootstrap and let the default settings work the magic of in
 ./bootstrap.py 
 ```
 
-## After you build
-
-#### updating internal dependencies
-hot update can be run at anytime to update the modules
-
-#### adding more python programs
-
-Additional python dependencies can be pulled in with pip by running e.g.
-
-```
-libtbx.python -m pip install joblib
-```
-
-#### Adding new modules or other github repos
-New python modules can be added by putting them in the modules folder
-
-```
-cd modules
-git clone https://githiub.com/newproject.git
-libtbx.configure newproject
-```
-
-#### Compiling code during development
-If your new modules involve code that needs to be compiled, after configuring , go to the relevant build folder and run make 
-
-```
-# after updating C code in one of the modules
-cd ~/crystal/build. # or whatever your build dir is named
-make
-```
-
 <a name="windows"></a>
 ## Installing on windows
 On Windows follow the instructions detailed [here](https://github.com/cctbx/cctbx_project/wiki/How-to-build-CCTBX-on-Windows)
@@ -409,6 +380,39 @@ To see more about DIALS checkout the [dials homepage](https://dials.github.io/).
 Many example scripts can be found at this [link](https://cctbx.github.io/). Run the scripts using
 
 ```libtbx.python my_example.py```
+
+<a name="additional"></a>
+## Additional information
+
+#### Updating internal dependencies
+hot update can be run at anytime to update the modules
+
+#### Adding more python programs
+
+Additional python dependencies can be pulled in with pip by running e.g.
+
+```
+libtbx.python -m pip install joblib
+```
+
+#### Adding new modules or other github repos
+New python modules can be added by putting them in the modules folder
+
+```
+cd modules
+git clone https://githiub.com/newproject.git
+libtbx.configure newproject
+```
+
+#### Compiling code during development
+If your new modules involve code that needs to be compiled, after configuring , go to the relevant build folder and run make 
+
+```
+# after updating C code in one of the modules
+cd ~/crystal/build. # or whatever your build dir is named
+make
+```
+
 
 
 
