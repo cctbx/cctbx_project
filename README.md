@@ -19,13 +19,19 @@
 <a name="install"></a>
 ## Installation
 
-Current efforts are to incorporate cctbx into a conda environment. Here is a basic installation workflow, that while non-standard, should work !
+Current efforts are to incorporate cctbx into a conda environment. Here is a basic installation workflow.
 
-First
+
 <a name="getboot"></a>
-### Get bootstrap.py
+### Download the installer script
 
-Download the installer script [boostrap](https://raw.githubusercontent.com/cctbx/cctbx_project/darwin_omp/libtbx/auto_build/bootstrap) in your main working directory. 
+The installer script [boostrap](https://raw.githubusercontent.com/cctbx/cctbx_project/darwin_omp/libtbx/auto_build/bootstrap) downloads dependencies, configures and builds. Place it in your main working directory.
+
+```
+mkdir ~/crystal  # make a working directory
+cd ~/crystal
+wget https://raw.githubusercontent.com/cctbx/cctbx_project/darwin_omp/libtbx/auto_build/bootstrap
+``` 
 
 Make ```bootstrap.py``` an executable and look at the options (we'll just use a few)
 
@@ -50,7 +56,7 @@ and seeing a 2 printed to the screen. If its a 3, you might need to change your 
 ./bootstrap.py --builder=dials hot update
 ```
 
-Hot and update will download the packages that dials depends on, in this case ```cctbx_project``` and all its goodies. This is the *"builder"* that most developers will use and all of the source materials are available to the public. The packages will be stored in the newly created ```modules``` folder.
+Hot and update with the ```--builder=dials``` argument will download the packages that dials depends on, in this case ```cctbx_project``` and all its goodies. This is the *"builder"* that most developers will use and all of the source materials are available to the public. The packages will be stored in the newly created ```~/crystal/modules``` folder.
 
 <a name="conda"></a>
 ### Getting external dependencies: conda
