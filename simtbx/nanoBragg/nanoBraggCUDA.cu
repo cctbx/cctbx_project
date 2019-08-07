@@ -288,6 +288,7 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 	CUDAREAL * cu_Fhkl = NULL;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_Fhkl, sizeof(*cu_Fhkl) * hklsize));
 	CUDA_CHECK_RETURN(cudaMemcpy(cu_Fhkl, FhklLinear, sizeof(*cu_Fhkl) * hklsize, cudaMemcpyHostToDevice));
+    free(FhklLinear);
 
 	//int deviceId = 0;
 	CUDA_CHECK_RETURN(cudaGetDevice(&deviceId));
