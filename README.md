@@ -22,7 +22,7 @@ Greetings, earthling. We see you intend to embark on the arduous quest of becomi
 
 * [Examples](#Examples)
 
-* [Additional information] (#additional)
+* [Additional information](#additional)
  
 
 <a name="intro"></a>
@@ -405,11 +405,11 @@ libtbx.configure newproject
 ```
 
 #### Compiling code during development
-If your new modules involve code that needs to be compiled, after configuring , go to the relevant build folder and run make 
+If your new modules involve code that needs to be compiled, go to the relevant build folder and run make 
 
 ```
 # after updating C code in one of the modules
-cd ~/crystal/build. # or whatever your build dir is named
+cd ~/crystal/build # or whatever your build dir is named
 make
 ```
 
