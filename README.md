@@ -386,14 +386,13 @@ libtbx.python -c "import sys;print (sys.prefix)"
 
 which should return something like ```~/crystal/conda_base```.
 
-Example can be found at this [link](https://cctbx.github.io/). Run the scripts like
 
-```libtbx.python my_example.py```
 
 <a name="Examples"></a>
 ## Examples
-Insert the awesomeness of cctbx project
+Example can be found at this [link](https://cctbx.github.io/). Run the scripts using
 
+```libtbx.python my_example.py```
 
 
 
