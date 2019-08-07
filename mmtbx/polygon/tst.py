@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from mmtbx import polygon
 import libtbx, os
+import libtbx.load_env
 
 params1 = iotbx.phil.parse("""\
 polygon {
