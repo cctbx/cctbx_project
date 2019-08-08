@@ -297,6 +297,11 @@ class hklview_3d:
       os.remove(self.hklfname)
 
 
+  def SendInfoToGUI(self, mydict):
+    if self.guisocket:
+      self.guisocket.send( str(mydict).encode("utf-8") )
+
+
   def update_settings(self, diff_phil, currentphil) :
     if has_phil_path(diff_phil, "filename") \
       or has_phil_path(diff_phil, "spacegroup_choice") \
@@ -573,9 +578,7 @@ class hklview_3d:
     for j,inf in enumerate(hkl_scenes_info):
       self.mprint("%d, %s" %(j, inf[0]), verbose=0)
     self.sceneisdirty = True
-    if self.guisocket:
-      mydict = { "hklscenes_arrays": self.hkl_scenes_info }
-      self.guisocket.send( str(mydict).encode("utf-8") )
+    self.SendInfoToGUI({ "hklscenes_arrays": self.hkl_scenes_info, "NewHKLscenes" : True })
     return True
 
 
@@ -835,12 +838,7 @@ var MakeHKL_Axis = function()
           negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
         cntbin += 1
 
-    if self.guisocket:
-      self.guisocket.send( str( { "bin_infotpls": self.bin_infotpls,
-                                  "bin_data_label": colstr
-                                }
-                              ).encode("utf-8")
-                         )
+    self.SendInfoToGUI( { "bin_infotpls": self.bin_infotpls, "bin_data_label": colstr }  )
 
     spherebufferstr += """
 // create tooltip element and add to the viewer canvas
@@ -1760,6 +1758,7 @@ mysocket.onmessage = function (e)
         alpha = float(binopacity.split(",")[0])
         bin = int(binopacity.split(",")[1])
         retstr += self.set_opacity(bin, alpha)
+      self.SendInfoToGUI( { "bin_opacities": bin_opacities_str } )
     return retstr
 
 
@@ -1795,9 +1794,7 @@ mysocket.onmessage = function (e)
       self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
       if self.UseOSBrowser:
         webbrowser.open(self.url, new=1)
-      if self.guisocket:
-        mydict = { "html_url": self.url }
-        self.guisocket.send( str(mydict).encode("utf-8") )
+      self.SendInfoToGUI({ "html_url": self.url } )
       self.isnewfile = False
       self.browserisopen = True
 
@@ -1964,7 +1961,7 @@ mysocket.onmessage = function (e)
       svec = (0, 0, 0)
     else:
       #cartvec = (mag/cartvec.norm()) * cartvec
-      cartvec = (mag*self.scene.renderscale/hkl_vec.norm()) * cartvec
+      cartvec = (-mag*self.scene.renderscale/hkl_vec.norm()) * cartvec
       #svec = [cartvec[0][0]*self.scene.renderscale, cartvec[0][1]*self.scene.renderscale, cartvec[0][2]*self.scene.renderscale ]
       svec = cartvec[0]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )

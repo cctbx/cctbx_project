@@ -151,19 +151,6 @@ class NGL_HKLViewer(QWidget):
     # don't allow editing this table
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
 
-    self.binstable = QTableWidget(0, 4)
-    labels = ["no. of HKLs", "max_bin_val", "min_bin_val", "opacity"]
-    self.binstable.setHorizontalHeaderLabels(labels)
-    # don't allow editing this table
-    #self.binstable.setEditTriggers(QTableWidget.NoEditTriggers)
-    self.bindata_labeltxt = QLabel()
-    self.bindata_labeltxt.setText("Miller label")
-    self.bindata_labeledit = QLineEdit('')
-    self.bindata_labeledit.setReadOnly(True)
-    self.binstable.cellChanged.connect(self.onBinsTableCellChanged  )
-
-    self.BinDataComboBox = QComboBox()
-    self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)
 
     self.createExpansionBox()
     self.createFileInfoBox()
@@ -187,12 +174,13 @@ class NGL_HKLViewer(QWidget):
       self.BrowserBox.setUrl("https://cctbx.github.io/")
       self.BrowserBox.loadFinished.connect(self.onLoadFinished)
       self.BrowserBox.renderProcessTerminated.connect(self.onRenderProcessTerminated)
+      mainLayout.setColumnStretch(2, 1)
 
     mainLayout.setRowStretch(0, 1)
     mainLayout.setRowStretch(1, 0)
     mainLayout.setRowStretch(2, 1)
     mainLayout.setRowStretch(3, 1)
-    mainLayout.setColumnStretch(2, 1)
+
     self.setLayout(mainLayout)
 
     self.setWindowTitle("HKL-Viewer")
@@ -204,12 +192,14 @@ class NGL_HKLViewer(QWidget):
     self.array_infotpls = []
     self.matching_arrays = []
     self.bin_infotpls = None
+    self.bin_opacities= None
     self.html_url = ""
     self.spacegroups = []
     self.info = []
     self.infostr = ""
     self.fileisvalid = False
     self.NewFileLoaded = False
+    self.NewHKLscenes = False
 
     self.show()
 
@@ -242,15 +232,21 @@ class NGL_HKLViewer(QWidget):
             self.array_infotpls = self.infodict.get("array_infotpls",[])
 
           if self.infodict.get("bin_data_label"):
-            self.bindata_labeledit.setText(self.infodict["bin_data_label"])
+            self.BinDataComboBox.setCurrentText(self.infodict["bin_data_label"])
+
+          if self.infodict.get("bin_opacities"):
+            self.bin_opacities = self.infodict["bin_opacities"]
 
           if self.infodict.get("bin_infotpls"):
             self.bin_infotpls = self.infodict["bin_infotpls"]
 
             self.binstable.setRowCount(len(self.bin_infotpls))
-            for n,bin_infotpl in enumerate(self.bin_infotpls):
-              for m,elm in enumerate(bin_infotpl):
-                self.binstable.setItem(n, m, QTableWidgetItem(str(elm)))
+            for row,bin_infotpl in enumerate(self.bin_infotpls):
+              for col,elm in enumerate(bin_infotpl):
+                item = QTableWidgetItem(str(elm))
+                if col==0:
+                  item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                self.binstable.setItem(row, col, item)
 
           if self.infodict.get("html_url"):
             self.html_url = self.infodict["html_url"]
@@ -270,6 +266,9 @@ class NGL_HKLViewer(QWidget):
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
 
+          if self.infodict.get("NewHKLscenes"):
+            self.NewHKLscenes = self.infodict.get("NewHKLscenes",False)
+
           self.fileisvalid = True
           #print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
 
@@ -279,7 +278,7 @@ class NGL_HKLViewer(QWidget):
             self.textInfo.setPlainText(self.infostr)
             self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
 
-          if self.NewFileLoaded:
+          if self.NewHKLscenes:
             #if self.mergedata == True : val = Qt.CheckState.Checked
             #if self.mergedata == None : val = Qt.CheckState.PartiallyChecked
             #if self.mergedata == False : val = Qt.CheckState.Unchecked
@@ -294,7 +293,7 @@ class NGL_HKLViewer(QWidget):
             self.SpaceGroupComboBox.clear()
             self.SpaceGroupComboBox.addItems( self.spacegroups )
             self.BinDataComboBox.clear()
-            self.BinDataComboBox.addItems(["d_res"] + [ e[3] for e in self.hklscenes_arrays ] )
+            self.BinDataComboBox.addItems(["dres"] + [ e[3] for e in self.hklscenes_arrays ] )
             self.BinDataComboBox.setCurrentIndex(-1) # unselect the first item in the list
 
             self.millertable.setRowCount(len(self.hklscenes_arrays))
@@ -302,6 +301,8 @@ class NGL_HKLViewer(QWidget):
             for n,millarr in enumerate(self.array_infotpls):
               for m,elm in enumerate(millarr):
                 self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
+            self.functionTabWidget.setDisabled(True)
+            self.NewHKLscenes = False
 
       except Exception as e:
         errmsg = str(e)
@@ -383,9 +384,43 @@ class NGL_HKLViewer(QWidget):
     pass
 
 
-  def onBinsTableCellChanged(self, row, column):
-    print( row, column, self.binstable.currentItem().text())
+  def onBinsTableItemChanged(self, item):
+    row = item.row()
+    column = item.column()
+    try:
+      newval = float(item.text())
+    except Exception as e:
+      print(str(e))
+      self.binstable.currentItem().setText( self.currentSelectedBinsTableVal)
 
+
+  def onBinsTableitemActivated(self, item):
+    row = item.row()
+    column = item.column()
+    currentval = item.text()
+    #print( "in itemActivated " + currentval)
+
+
+  def onBinsTableItemSelectionChanged(self):
+    row = self.binstable.currentItem().row()
+    column = self.binstable.currentItem().column()
+    self.currentSelectedBinsTableVal = self.binstable.currentItem().text()
+    #print( "in itemSelectionChanged " + self.currentSelectedBinsTableVal)
+
+
+  def onBinsTableCellentered(self, row, col):
+    pass
+    #print( "in Cellentered " + self.binstable.currentItem().text() )
+
+
+  def onBinsTableCellPressed(self, row, col):
+    pass
+    #print( "in CellPressed " + self.binstable.currentItem().text() )
+
+
+  def onNbinsChanged(self, val):
+    self.nbins = val
+    self.NGL_HKL_command("NGL_HKLviewer.nbins = %d" %self.nbins)
 
 
   def onSliceIndexChanged(self, val):
@@ -444,8 +479,7 @@ class NGL_HKLViewer(QWidget):
       self.fileisvalid = False
       self.NGL_HKL_command('NGL_HKLviewer.filename = "%s"' %fileName )
       self.MillerComboBox.clear()
-      self.bindata_labeledit.setText("")
-      self.bindataComboBox.clear()
+      self.BinDataComboBox.clear()
 
 
   def createExpansionBox(self):
@@ -609,8 +643,14 @@ class NGL_HKLViewer(QWidget):
                                     %str(self.fixedorientcheckbox.isChecked()))
 
 
-  def onMillerComboSelchange(self,i):
+  def onMillerComboSelchange(self, i):
     self.NGL_HKL_command("NGL_HKLviewer.scene_id = %d" %i)
+    #self.MillerComboBox.setCurrentIndex(i)
+    if self.MillerComboBox.currentText():
+      self.functionTabWidget.setEnabled(True)
+    else:
+      self.functionTabWidget.setDisabled(True)
+
     self.SpaceGroupComboBox.clear()
     self.SpaceGroupComboBox.addItems( self.spacegroups )
     # need to supply issymunique flag in infotuple
@@ -672,14 +712,37 @@ class NGL_HKLViewer(QWidget):
 
 
   def createBinsBox(self):
+    self.binstable = QTableWidget(0, 4)
+    labels = ["no. of HKLs", "lower bin value", "upper bin value", "opacity"]
+    self.binstable.setHorizontalHeaderLabels(labels)
+    # don't allow editing this table
+    #self.binstable.setEditTriggers(QTableWidget.NoEditTriggers)
+    self.bindata_labeltxt = QLabel()
+    self.bindata_labeltxt.setText("Data binned:")
+    self.Nbins_spinBox = QSpinBox()
+    self.nbins = 15
+    self.Nbins_spinBox.setValue(self.nbins)
+    self.Nbins_spinBox.setSingleStep(1)
+    self.Nbins_spinBox.setRange(0, 40)
+    self.Nbins_spinBox.valueChanged.connect(self.onNbinsChanged)
+    self.Nbins_labeltxt = QLabel()
+    self.Nbins_labeltxt.setText("Number of bins:")
+    self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
+    self.binstable.itemEntered.connect(self.onBinsTableitemActivated)
+    self.binstable.cellEntered.connect(self.onBinsTableCellentered)
+    self.binstable.cellPressed.connect(self.onBinsTableCellPressed)
+    self.binstable.itemSelectionChanged.connect(self.onBinsTableItemSelectionChanged  )
+    self.BinDataComboBox = QComboBox()
+    self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)
+
     self.BinsGroupBox = QGroupBox("Bins")
     layout = QGridLayout()
     layout.addWidget(self.bindata_labeltxt, 0, 0)
-    #layout.addWidget(self.bindata_labeledit, 0, 1)
     layout.addWidget(self.BinDataComboBox, 0, 1)
-    layout.addWidget(self.binstable, 1, 0, 1, 2)
+    layout.addWidget(self.Nbins_labeltxt, 0, 2)
+    layout.addWidget(self.Nbins_spinBox, 0, 3)
+    layout.addWidget(self.binstable, 1, 0, 1, 4)
     layout.setColumnStretch(0, 0)
-    #layout.setColumnStretch(2, 1)
     layout.setColumnStretch(1, 1)
     self.BinsGroupBox.setLayout(layout)
 
@@ -727,6 +790,7 @@ class NGL_HKLViewer(QWidget):
     self.functionTabWidget.addTab(tab2, "Slice")
     self.functionTabWidget.addTab(tab3, "Size")
     self.functionTabWidget.addTab(tab4, "Bins")
+    self.functionTabWidget.setDisabled(True)
 
 
 

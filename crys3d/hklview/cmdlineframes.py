@@ -373,17 +373,14 @@ class HKLViewFrame() :
     newcolbintrshld = oldcolbintrshld
     if hasattr(pyphilobj.extract().NGL_HKLviewer, "scene_bin_thresholds"):
       newcolbintrshld = pyphilobj.extract().NGL_HKLviewer.scene_bin_thresholds
-
     # fetch_diff doesn't seem able to correclty spot changes
     # in the multiple scope phil object "NGL_HKLviewer.scene_bin_thresholds"
     # Must do it manually
     params = newcurrentphil.extract()
     if oldcolbintrshld != newcolbintrshld: # or old_binopacities != new_binopacities:
       params.NGL_HKLviewer.scene_bin_thresholds = newcolbintrshld
-
       newcurrentphil = self.master_phil.format(python_object = params)
       diffphil = self.master_phil.fetch_diff(source = newcurrentphil)
-
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     return newcurrentphil, diffphil
 
@@ -510,7 +507,6 @@ class HKLViewFrame() :
         "than a full pseudo-precession view.). yes/no?\n"
       if self.useSocket:
         self.infostr = shouldmergestr
-        self.SendInfo()
         while 1:
           philstr = self.guisocket.recv()
           philstr = str(philstr)
@@ -699,10 +695,12 @@ class HKLViewFrame() :
           self.set_miller_array()
         mydict = { "info": self.infostr,
                    "array_infotpls": self.array_infotpls,
+                   "bin_infotpls": self.viewer.bin_infotpls,
+                   "html_url": self.viewer.url,
                    "merge_data": self.params.NGL_HKLviewer.merge_data,
+                   "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
                    "NewFileLoaded": self.NewFileLoaded
-                }
-
+                  }
         self.SendInfoToGUI(mydict)
         return True
 
@@ -1010,21 +1008,6 @@ class HKLViewFrame() :
   def SendInfoToGUI(self, infodict):
     if self.guiSocketPort:
       self.guisocket.send( str(infodict).encode("utf-8") )
-
-
-  def SendInfo(self):
-    mydict = { "info": self.infostr,
-               "array_infotpls": self.array_infotpls,
-               "hklscenes_arrays": self.viewer.hkl_scenes_info,
-               "bin_infotpls": self.viewer.bin_infotpls,
-               "html_url": self.viewer.url,
-               "merge_data": self.params.NGL_HKLviewer.merge_data,
-               "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
-               #"NewFileLoaded": self.NewFileLoaded
-            }
-    if self.guiSocketPort:
-      self.guisocket.send( str(mydict).encode("utf-8") )
-
 
 
 masterphilstr = """
