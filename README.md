@@ -377,7 +377,7 @@ To see more about DIALS checkout the [dials homepage](https://dials.github.io/).
 
 <a name="Examples"></a>
 ## Examples
-Many example scripts can be found at this [link](git commit -m $'updates\n\n[no ci]'). Run the scripts using
+Many example scripts can be found at this [link](https://cctbx.github.io/tour.html). Run the scripts using
 
 ```libtbx.python my_example.py```
 
