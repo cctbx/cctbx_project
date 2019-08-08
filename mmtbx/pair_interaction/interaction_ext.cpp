@@ -96,7 +96,7 @@ namespace {
                      af::shared<vec3<double> > const&,
                      af::shared<int> const&,
                      boost::python::list const&,
-                     string const & silva_type
+                     std::string const & silva_type
                      )) has_interaction_at_point, (
        arg("p"),
        arg("a_xyz"),
@@ -114,15 +114,16 @@ namespace {
                      af::shared<int> const&,
                      af::shared<int> const&,
                      boost::python::list const&,
-                     string const & silva_type)) points_and_pairs, (
+                     std::string const & silva_type)) points_and_pairs, (
        arg("ngrid"),
        arg("step_size"),
        arg("xyz"),
        arg("xyz_min"),
        arg("atom_in_residue"),
        arg("element_flags"),
-       arg("wfc_obj"))),
+       arg("wfc_obj"),
        arg("silva_type")
+       ))
    ;
 
 

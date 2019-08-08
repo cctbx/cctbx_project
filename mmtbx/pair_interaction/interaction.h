@@ -116,7 +116,7 @@ class density_props
     }
 
   // add argument for dori or sedd
-  bool has_silva_interaction(string const & silva_type)
+  bool has_silva_interaction(std::string const & silva_type)
     {
     if(density<0.0001) return false;
     FloatType silva = cal_silva();
@@ -331,7 +331,7 @@ bool has_interaction_at_point(
   af::shared<vec3<double> > const& a_xyz,
   af::shared<int> const&           element_flags,
   boost::python::list const& wfc_obj,
-  string const & silva_type
+  std::string const & silva_type
   )
 {
   density_props<double> density_props_obj = density_props<double>();
@@ -379,7 +379,7 @@ af::shared<vec3<int> > points_and_pairs(
   af::shared<int> const& atom_in_residue,
   af::shared<int> const& element_flags,
   boost::python::list const& wfc_obj,
-  string const & silva_type
+  std::string const & silva_type
   )
 {
   af::shared<vec3<int> > interacting_pairs;

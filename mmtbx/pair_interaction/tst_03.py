@@ -528,7 +528,7 @@ def check_buffer(clusters, qms):
     ph = pdb_inp.construct_hierarchy()
     core_atoms,qm_atoms, qm_molecules = pair_interaction.run(ph,clusters[i])
     qms_calculated.append(list(qm_molecules))
-    assert(len(set(qms[i])-set(qm_molecules))==0)
+    assert(len(set(qms[i])-set(qm_molecules))==0), len(set(qms[i])-set(qm_molecules))
 
 if(__name__ == "__main__"):
   run()
