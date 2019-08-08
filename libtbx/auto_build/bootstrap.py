@@ -46,6 +46,8 @@ need to install it separately. On CentOS 6, you can run
 with administrative privileges.
 """)
 
+_BUILD_DIR = "build"  # set by arg parser further on down
+
 windows_remove_list = []
 
 rosetta_version_tar_bundle='rosetta_src_2018.33.60351_bundle'
@@ -112,7 +114,7 @@ class ShellCommand(object):
     return None
 
   def get_workdir(self):
-    return self.kwargs.get('workdir', 'build')
+    return self.kwargs.get('workdir', _BUILD_DIR)
 
   def get_environment(self):
     # gets environment from kwargs
@@ -1057,7 +1059,7 @@ class Builder(object):
 
     # Cleanup
     if cleanup:
-      self.cleanup(['dist', 'tests', 'doc', 'tmp', 'base', 'base_tmp', 'build',
+      self.cleanup(['dist', 'tests', 'doc', 'tmp', 'base', 'base_tmp', _BUILD_DIR,
                     'conda_base'])
     else:
       self.cleanup(['dist', 'tests', 'tmp'])
@@ -1545,14 +1547,14 @@ sure you have a valid conda environment in
     if self.isPlatformWindows():
       command = command + '.bat'
     # Relative path to workdir.
-    workdir = workdir or ['build']
+    workdir = workdir or [_BUILD_DIR]
     dots = [".."]*len(workdir)
     if workdir[0] == '.':
       dots = []
     if sys.platform == "win32": # assuming we run standalone without buildbot
-      dots.extend([os.getcwd(), 'build', 'bin', command])
+      dots.extend([os.getcwd(), _BUILD_DIR, 'bin', command])
     else:
-      dots.extend(['build', 'bin', command])
+      dots.extend([_BUILD_DIR, 'bin', command])
     self.add_step(self.shell(
       name=name or command,
       command=[self.opjoin(*dots)] + (args or []),
@@ -1735,7 +1737,7 @@ sure you have a valid conda environment in
         '--prologue=%s' % prologue,
         #"--epilogue=%s"
       ] + dispatcher_opts,
-      workdir=['build']
+      workdir=[_BUILD_DIR]
     ))
 
   def add_configure(self):
@@ -1758,7 +1760,7 @@ sure you have a valid conda environment in
         self.python_base, # default to using our python rather than system python
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
         ] + self.get_libtbx_configure() + self.config_flags
-    self.add_step(self.shell(command=configcmd, workdir=['build'],
+    self.add_step(self.shell(command=configcmd, workdir=[_BUILD_DIR],
       description="run configure.py", env=env))
     # Prepare saving configure.py command to file should user want to manually recompile Phenix
     fname = self.opjoin("config_modules.cmd")
@@ -1774,12 +1776,12 @@ sure you have a valid conda environment in
     self.add_step(self.shell(command=[
          'python','-c','open(r\"%s\",\"w\").write(r\"\"\"%s\"\"\" + \"\\n\")' %(fname, confstr)
          ],
-      workdir=['build'],
+      workdir=[_BUILD_DIR],
       description="save configure command",
     ))
     if not self.isPlatformWindows():
       self.add_step(self.shell(command=[ 'chmod', '+x', fname ],
-        workdir=['build'],
+        workdir=[_BUILD_DIR],
         description="permit execution of config_modules.sh",
       ))
 
@@ -2219,7 +2221,7 @@ class PhenixExternalRegression(PhenixBuilder):
     lt = time.localtime()
     cleaning = ['dist', 'tests', 'doc', 'tmp', 'base_tmp']
     if lt.tm_wday==5: # do a completer build on Saturday night
-      cleaning += ['base', 'base_tmp', 'build', 'conda_base']
+      cleaning += ['base', 'base_tmp', _BUILD_DIR, 'conda_base']
     # Preparation
     # AFITT
     if self.subcategory in [None, "afitt"]:
@@ -2258,7 +2260,7 @@ class PhenixExternalRegression(PhenixBuilder):
       '-c',
       'import os; open("%s","w").write("""%s""" %% os.environ)' %(fname, outl)
       ],
-      workdir=['build'],
+      workdir=[_BUILD_DIR],
       description="save csh external paths",
     ))
     outl = ""
@@ -2271,7 +2273,7 @@ class PhenixExternalRegression(PhenixBuilder):
       '-c',
       'import os; open("%s","w").write("""%s""" %% os.environ)' %(fname, outl)
       ],
-      workdir=['build'],
+      workdir=[_BUILD_DIR],
       description="save sh external paths",
     ))
 
@@ -2612,8 +2614,17 @@ is currently active, $CONDA_PREFIX will be used if ENV_DIRECTORY is not
 provided. Specifying an environment or using $CONDA_PREFIX is for developers
 that maintain their own conda environment.""",
                     default=None, nargs='?', const='')
+
+  parser.add_argument("--build-dir",
+                     dest="build_dir",
+                     help="directory where the build will be. Should be at the same level as modules! default is 'build'",
+                     default="build", type=str)
+
   options = parser.parse_args()
   args = options.action
+
+  global _BUILD_DIR
+  _BUILD_DIR = options.build_dir  # TODO: this is probably ok way to go with globalvar, but check and see
 
   # process external
   options.specific_external_builder=None
