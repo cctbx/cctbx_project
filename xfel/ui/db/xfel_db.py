@@ -759,7 +759,11 @@ class standalone_run_finder(object):
       path = self.params.facility.standalone.data_dir
       for filepath in sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template))):
         if self.params.facility.standalone.files.last_modified > 0:
-          if not time.time() - os.path.getmtime(filepath) > self.params.facility.standalone.files.last_modified:
+          if time.time() - os.path.getmtime(filepath) < self.params.facility.standalone.files.last_modified:
+            continue
+        if self.params.facility.standalone.files.minimum_file_size > 0:
+          statinfo = os.stat(filepath)
+          if statinfo.st_size < self.params.facility.standalone.files.minimum_file_size:
             continue
         filename = os.path.basename(filepath)
         runs.append((os.path.splitext(filename)[0], filepath))

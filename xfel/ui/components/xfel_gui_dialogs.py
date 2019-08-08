@@ -497,6 +497,13 @@ class StandaloneOptions(BaseDialog):
                                              value=str(self.params.facility.standalone.files.last_modified))
     self.main_sizer.Add(self.last_modified, flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.minimum_file_size = gctr.TextButtonCtrl(self,
+                                             label='Minimum file size\n(in bytes)',
+                                             label_style='normal',
+                                             label_size=(-1, -1),
+                                             value=str(self.params.facility.standalone.files.minimum_file_size))
+    self.main_sizer.Add(self.minimum_file_size, flag=wx.EXPAND | wx.ALL, border=10)
+
     # File matching template control
     if self.params.facility.standalone.template is None:
       self.params.facility.standalone.template = ''
@@ -539,6 +546,7 @@ class StandaloneOptions(BaseDialog):
     if self.monitor_for.files.GetValue():
       self.params.facility.standalone.monitor_for = 'files'
       self.params.facility.standalone.files.last_modified = float(self.last_modified.ctr.GetValue())
+      self.params.facility.standalone.files.minimum_file_size = int(self.minimum_file_size.ctr.GetValue())
     else:
       self.params.facility.standalone.monitor_for = 'folders'
     if self.folders_options.status_file.GetValue():
@@ -566,6 +574,7 @@ class StandaloneOptions(BaseDialog):
       self.folders_options.Disable()
       self.n_files_needed.Disable()
       self.last_modified.Enable()
+      self.minimum_file_size.Enable()
     else:
       self.folders_options.Enable()
       if self.folders_options.status_file.GetValue():
@@ -573,6 +582,7 @@ class StandaloneOptions(BaseDialog):
       else:
         self.n_files_needed.Enable()
       self.last_modified.Disable()
+      self.minimum_file_size.Disable()
 
 class SaclaOptions(BaseDialog):
   ''' Options settings specific to standalone GUI '''

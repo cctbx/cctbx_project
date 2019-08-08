@@ -68,6 +68,9 @@ facility {
         .type = float
         .help = This is the miniumum number of seconds since a file was last \
                 modified before the run is complete
+      minimum_file_size = 0
+        .type = int
+        .help = Minimum file size (in bytes) before the run is complete
     }
     template = None
       .type = str
