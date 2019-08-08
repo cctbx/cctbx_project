@@ -456,7 +456,7 @@ class find(object):
         print("dist %s, %s"%(one, two), file=of)
 
   def as_restraints(self, file_name="hbond.eff", distance_ideal=None, sigma_dist=0.1,
-       angle_ideal = None, sigma_angle=2):
+       angle_ideal = None, sigma_angle=2, use_actual=True):
     f = "chain %s and resseq %s and name %s"
     with open(file_name, "w") as of:
       print("geometry_restraints.edits {", file=of)
@@ -464,10 +464,14 @@ class find(object):
         h = f%(r.atom_H.chain, r.atom_H.resseq, r.atom_H.name)
         a = f%(r.atom_A.chain, r.atom_A.resseq, r.atom_A.name)
         d = f%(r.atom_D.chain, r.atom_D.resseq, r.atom_D.name)
-        if(r.d_HA<2.5): dt = 2.05
-        else:           dt = 2.8
-        if(r.a_DHA<130): at = 115
-        else:            at = 160
+        if(not use_actual):
+          if(r.d_HA<2.5): dt = 2.05
+          else:           dt = 2.8
+          if(r.a_DHA<130): at = 115
+          else:            at = 160
+        else:
+          dt = r.d_HA
+          at = r.a_DHA
         dis = """    bond {
           atom_selection_1 = %s
           atom_selection_2 = %s
