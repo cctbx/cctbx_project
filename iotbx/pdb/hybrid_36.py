@@ -62,7 +62,7 @@ lower-case letters. I.e. in total each chain may contain up to 2436111
 (9999+2*1213056) residues that can be uniquely referenced from the
 other record types given above.
 
-The implementation in this file should run with Python 2.2 or higher.
+The implementation in this file should run with Python 2.6 or higher.
 There are no other requirements. Run this script without arguments to
 obtain usage examples.
 
@@ -83,8 +83,11 @@ See also:
 Ralf W. Grosse-Kunstleve, Feb 2007.
 """
 from __future__ import absolute_import, division, print_function
-from six.moves import range
-from six.moves import zip
+try:
+  from six.moves import range
+  from six.moves import zip
+except ImportError:
+  pass
 
 digits_upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 digits_lower = digits_upper.lower()
