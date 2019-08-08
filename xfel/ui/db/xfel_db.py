@@ -751,13 +751,16 @@ class standalone_run_finder(object):
             runs.append((foldername + "_" + os.path.splitext(filename)[0], filepath))
         else:
           files = sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template)))
-          if len(files) > 0:
+          if len(files) >= self.params.facility.standalone.folders.n_files_needed:
             runs.append((foldername, os.path.join(path, self.params.facility.standalone.template)))
     elif self.params.facility.standalone.monitor_for == 'files':
       if not self.params.facility.standalone.composite_files:
         print("Warning, monitoring a single folder for single image files is inefficient")
       path = self.params.facility.standalone.data_dir
       for filepath in sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template))):
+        if self.params.facility.standalone.files.last_modified > 0:
+          if not time.time() - os.path.getmtime(filepath) > self.params.facility.standalone.files.last_modified:
+            continue
         filename = os.path.basename(filepath)
         runs.append((os.path.splitext(filename)[0], filepath))
 

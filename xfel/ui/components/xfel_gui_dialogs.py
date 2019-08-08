@@ -249,6 +249,9 @@ class SettingsDialog(BaseDialog):
       self.params.db.name     = creds.db_name.ctr.GetValue()
       self.params.db.user     = creds.db_user.ctr.GetValue()
       self.params.db.password = creds.db_password.ctr.GetValue()
+      if self.params.facility.name == 'lcls':
+        self.params.facility.lcls.web.user     = creds.web_user.ctr.GetValue()
+        self.params.facility.lcls.web.password = creds.web_password.ctr.GetValue()
 
       self.drop_tables = creds.chk_drop_tables.GetValue()
 
@@ -329,6 +332,27 @@ class DBCredentialsDialog(BaseDialog):
                                        label='Delete and regenerate all tables')
     self.main_sizer.Add(self.chk_drop_tables, flag=wx.ALL, border=10)
 
+    if params.facility.name == 'lcls':
+      self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
+      # LCLS user name
+      self.web_user = gctr.TextButtonCtrl(self,
+                                         label='LCLS user name',
+                                         label_style='bold',
+                                         label_size=(150, -1),
+                                         big_button_size=(130, -1),
+                                         value=params.facility.lcls.web.user)
+      self.main_sizer.Add(self.web_user, flag=wx.EXPAND | wx.ALL, border=10)
+
+      # LCLS password
+      self.web_password = gctr.TextButtonCtrl(self,
+                                             label='LCLS Password',
+                                             label_style='bold',
+                                             label_size=(150, -1),
+                                             text_style=wx.TE_PASSWORD,
+                                             big_button_size=(130, -1),
+                                             value=params.facility.lcls.web.password)
+      self.main_sizer.Add(self.web_password, flag=wx.EXPAND | wx.ALL, border=10)
+
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
@@ -364,32 +388,6 @@ class LCLSFacilityOptions(BaseDialog):
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
-    # LCLS user name
-    self.monitor_help = wx.StaticText(self,
-      label="LCLS web service credentials. If provided, the LCLS web service will be queried when looking for data. Leave blank to search the file system instead.")
-    self.monitor_help.Wrap(600)
-    self.main_sizer.Add(self.monitor_help, flag=wx.EXPAND | wx.ALL, border=10)
-
-    self.web_user = gctr.TextButtonCtrl(self,
-                                       label='LCLS user name',
-                                       label_style='bold',
-                                       label_size=(150, -1),
-                                       big_button_size=(130, -1),
-                                       value=params.facility.lcls.web.user)
-    self.main_sizer.Add(self.web_user, flag=wx.EXPAND | wx.ALL, border=10)
-
-    # LCLS password
-    self.web_password = gctr.TextButtonCtrl(self,
-                                           label='LCLS Password',
-                                           label_style='bold',
-                                           label_size=(150, -1),
-                                           text_style=wx.TE_PASSWORD,
-                                           big_button_size=(130, -1),
-                                           value=params.facility.lcls.web.password)
-    self.main_sizer.Add(self.web_password, flag=wx.EXPAND | wx.ALL, border=10)
-
-    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
-
     self.chk_use_ffb = wx.CheckBox(self,
                                    label='Use ffb (fast feedback) file system. Active experiment only, on hiprio or prio queues')
     self.chk_use_ffb.SetValue(params.facility.lcls.use_ffb)
@@ -424,8 +422,6 @@ class LCLSFacilityOptions(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def onOK(self, e):
-    self.params.facility.lcls.web.user     = self.web_user.ctr.GetValue()
-    self.params.facility.lcls.web.password = self.web_password.ctr.GetValue()
     self.params.facility.lcls.use_ffb = bool(self.chk_use_ffb.GetValue())
     self.params.facility.lcls.dump_shots = bool(self.chk_dump_shots.GetValue())
     self.params.facility.lcls.web.enforce80 = bool(self.chk_enforce80.GetValue())
@@ -464,7 +460,7 @@ class StandaloneOptions(BaseDialog):
 
     self.SetSizer(self.main_sizer)
 
-    # Raw image option
+    # Raw image options
     self.monitor_for = gctr.RadioCtrl(self,
                                       label='Monitor for',
                                       label_style='bold',
@@ -476,11 +472,36 @@ class StandaloneOptions(BaseDialog):
 
     self.main_sizer.Add(self.monitor_for, flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.folders_options = gctr.RadioCtrl(self,
+                                          label='Run complete criteria',
+                                          label_style='bold',
+                                          label_size=(-1, -1),
+                                          direction='horizontal',
+                                          items={'status_file':'Status file',
+                                            'n_files':'Number of files'})
+    getattr(self.folders_options, self.params.facility.standalone.folders.method).SetValue(1)
+
+    self.main_sizer.Add(self.folders_options, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.n_files_needed = gctr.TextButtonCtrl(self,
+                                              label='Number of files per run',
+                                              label_style='normal',
+                                              label_size=(-1, -1),
+                                              value=str(self.params.facility.standalone.folders.n_files_needed))
+    self.main_sizer.Add(self.n_files_needed, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.last_modified = gctr.TextButtonCtrl(self,
+                                             label='Minimum time since last modified\n(in seconds)',
+                                             label_style='normal',
+                                             label_size=(-1, -1),
+                                             value=str(self.params.facility.standalone.files.last_modified))
+    self.main_sizer.Add(self.last_modified, flag=wx.EXPAND | wx.ALL, border=10)
+
     # File matching template control
     if self.params.facility.standalone.template is None:
       self.params.facility.standalone.template = ''
     self.template = gctr.TextButtonCtrl(self,
-                                          label='File matching template (example *.h5)',
+                                          label='File matching template\n(example *.h5)',
                                           label_style='bold',
                                           label_size=(300, -1),
                                           value=self.params.facility.standalone.template)
@@ -506,13 +527,25 @@ class StandaloneOptions(BaseDialog):
 
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
     self.Bind(wx.EVT_BUTTON, self.onBrowse, id=self.data_dir.btn_big.GetId())
+    self.Bind(wx.EVT_RADIOBUTTON, self.onOptionsChanged, self.monitor_for.files)
+    self.Bind(wx.EVT_RADIOBUTTON, self.onOptionsChanged, self.monitor_for.folders)
+    self.Bind(wx.EVT_RADIOBUTTON, self.onOptionsChanged, self.folders_options.status_file)
+    self.Bind(wx.EVT_RADIOBUTTON, self.onOptionsChanged, self.folders_options.n_files)
+    self.Bind(wx.EVT_CHECKBOX, self.onOptionsChanged, self.chk_composite)
+    self.update_options()
 
   def onOK(self, e):
     self.params.facility.standalone.data_dir = self.data_dir.ctr.GetValue()
     if self.monitor_for.files.GetValue():
       self.params.facility.standalone.monitor_for = 'files'
+      self.params.facility.standalone.files.last_modified = float(self.last_modified.ctr.GetValue())
     else:
       self.params.facility.standalone.monitor_for = 'folders'
+    if self.folders_options.status_file.GetValue():
+      self.params.facility.standalone.folders.method = 'status_file'
+    elif self.folders_options.n_files.GetValue():
+      self.params.facility.standalone.folders.method = 'n_files'
+      self.params.facility.standalone.folders.n_files_needed = int(self.n_files_needed.ctr.GetValue())
     self.params.facility.standalone.template = self.template.ctr.GetValue()
     self.params.facility.standalone.composite_files = self.chk_composite.GetValue()
     e.Skip()
@@ -524,6 +557,22 @@ class StandaloneOptions(BaseDialog):
     if dlg.ShowModal() == wx.ID_OK:
       self.data_dir.ctr.SetValue(dlg.GetPath())
     dlg.Destroy()
+
+  def onOptionsChanged(self, e):
+    self.update_options()
+
+  def update_options(self):
+    if self.monitor_for.files.GetValue():
+      self.folders_options.Disable()
+      self.n_files_needed.Disable()
+      self.last_modified.Enable()
+    else:
+      self.folders_options.Enable()
+      if self.folders_options.status_file.GetValue():
+        self.n_files_needed.Disable()
+      else:
+        self.n_files_needed.Enable()
+      self.last_modified.Disable()
 
 class SaclaOptions(BaseDialog):
   ''' Options settings specific to standalone GUI '''
@@ -707,7 +756,7 @@ class AdvancedSettingsDialog(BaseDialog):
 
     self.back_end = gctr.ChoiceCtrl(self,
                                     label='Processing back end:',
-                                    label_size=(180, -1),
+                                    label_size=(240, -1),
                                     label_style='bold',
                                     ctrl_size=(-1, -1),
                                     choices=self.back_ends)

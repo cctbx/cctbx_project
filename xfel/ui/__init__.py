@@ -52,6 +52,23 @@ facility {
     monitor_for = *files folders
       .type = choice
       .help = Whether to monitor for new files or new folders with files in them
+    folders {
+      method = *status_file n_files
+        .type = choice
+        .help = How to determine if a run is complete. status_file: look for a \
+                status.txt file. n_files: run is complete when at least \
+                n_files_needed files are found
+      n_files_needed = 0
+        .type = int
+        .help = If criteria is n_files, this is how many files are needed \
+                before a run is complete
+    }
+    files {
+      last_modified = 0
+        .type = float
+        .help = This is the miniumum number of seconds since a file was last \
+                modified before the run is complete
+    }
     template = None
       .type = str
       .help = File matching pattern for new data. Example: *.h5
@@ -59,22 +76,22 @@ facility {
       .type = bool
       .help = If True, files are submitted as individual runs. Otherwise, groups \
               of files are submitted as single runs
-    }
-    sacla {
-      beamline = 2
-        .type = int
-        .help = Beamline number (1, 2 or 3)
-      experiment = None
-        .type = str
-        .help = Experiment identifier, e.g. 2019A8088
-      rayonix_root = "/xustrg0"
-        .type = path
-        .help = Path to tiff files
-      start_run = None
-        .type = int
-      end_run = None
-        .type = int
-    }
+  }
+  sacla {
+    beamline = 2
+      .type = int
+      .help = Beamline number (1, 2 or 3)
+    experiment = None
+      .type = str
+      .help = Experiment identifier, e.g. 2019A8088
+    rayonix_root = "/xustrg0"
+      .type = path
+      .help = Path to tiff files
+    start_run = None
+      .type = int
+    end_run = None
+      .type = int
+  }
 }
 output_folder = ""
   .type = path

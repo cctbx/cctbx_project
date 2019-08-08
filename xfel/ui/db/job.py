@@ -242,6 +242,7 @@ def submit_job(app, job):
   dispatcher = app.params.dispatcher
 
   phil_str = job.trial.target_phil_str
+  if phil_str is None: phil_str = ""
   if job.rungroup.extra_phil_str is not None:
     phil_str += "\n" + job.rungroup.extra_phil_str
 

@@ -79,8 +79,13 @@ class RunSentinel(Thread):
     self.active = active
 
     if self.parent.params.facility.name == 'standalone':
-      from xfel.ui.db.xfel_db import cheetah_run_finder
-      self.finder = cheetah_run_finder(self.parent.params)
+      if self.parent.params.facility.standalone.monitor_for == 'folders' and \
+         self.parent.params.facility.standalone.folders.method == 'status_file':
+        from xfel.ui.db.xfel_db import cheetah_run_finder
+        self.finder = cheetah_run_finder(self.parent.params)
+      else:
+        from xfel.ui.db.xfel_db import standalone_run_finder
+        self.finder = standalone_run_finder(self.parent.params)
     elif self.parent.params.facility.name == 'sacla':
       from xfel.ui.db.xfel_db import sacla_run_finder
       self.finder = sacla_run_finder(self.parent.params)
