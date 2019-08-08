@@ -42,7 +42,8 @@ license = 'cctbx.xfel and cctbx.xfel UI are developed under the open source ' \
           'license'
 
 description = 'The cctbx.xfel UI is developed for use during data collection ' \
-              'and initial processing at LCSL XFEL beamlines.'
+              'and initial processing of serial crystallographic data from' \
+              'XFELs and synchrotrons.'
 
 class TagSet(object):
   def __init__(self, tag_selection_mode, tags):
@@ -474,8 +475,8 @@ class RunStatsSentinel(Thread):
         run_no = self.run_numbers[idx]
         rg_id = rungroup_ids[idx]
         t_id = trial_ids[idx]
+        found_it = False
         for job in jobs:
-          found_it = False
           if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
             self.run_statuses.append(job.status)
             found_it = True; break
@@ -980,12 +981,12 @@ class MainWindow(wx.Frame):
                               shortHelp='Auto-submit jobs',
                               longHelp='Auto-submit all pending jobs')
     self.toolbar.AddSeparator()
-    self.tb_btn_calibrate = self.toolbar.AddLabelTool(wx.ID_ANY,
-                        label='Calibration',
-                        bitmap=wx.Bitmap('{}/32x32/calib.png'.format(icons)),
-                        shortHelp='Calibration',
-                        longHelp='Detector geometry calibration')
-    self.toolbar.AddSeparator()
+    #self.tb_btn_calibrate = self.toolbar.AddLabelTool(wx.ID_ANY,
+    #                    label='Calibration',
+    #                    bitmap=wx.Bitmap('{}/32x32/calib.png'.format(icons)),
+    #                    shortHelp='Calibration',
+    #                    longHelp='Detector geometry calibration')
+    #self.toolbar.AddSeparator()
     self.tb_btn_settings = self.toolbar.AddLabelTool(wx.ID_ANY,
                         label='Settings',
                         bitmap=wx.Bitmap('{}/32x32/settings.png'.format(icons)),
@@ -1027,7 +1028,7 @@ class MainWindow(wx.Frame):
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
     self.Bind(wx.EVT_TOOL, self.onWatchRuns, self.tb_btn_watch_new_runs)
     self.Bind(wx.EVT_TOOL, self.onAutoSubmit, self.tb_btn_auto_submit)
-    self.Bind(wx.EVT_TOOL, self.onCalibration, self.tb_btn_calibrate)
+    #self.Bind(wx.EVT_TOOL, self.onCalibration, self.tb_btn_calibrate)
     self.Bind(wx.EVT_TOOL, self.onSettings, self.tb_btn_settings)
     self.Bind(wx.EVT_TOOL, self.onZoom, self.tb_btn_zoom)
     self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onTabChange,
@@ -1148,6 +1149,7 @@ class MainWindow(wx.Frame):
     info.AddDeveloper('Artem Lyubimov')
     info.AddDeveloper('Aaron Brewster')
     info.AddDeveloper('Iris Young')
+    info.AddDeveloper('Asmit Bhowmick')
     info.AddDeveloper('Axel Brunger')
     info.AddDeveloper('Nicholas Sauter')
     wx.AboutBox(info)
@@ -1191,53 +1193,55 @@ class MainWindow(wx.Frame):
       self.start_job_sentinel()
 
   def onTabChange(self, e):
-    tab = self.run_window.main_nbook.GetSelection()
-    if tab == 2:
+    name = self.run_window.main_nbook.GetPageText((self.run_window.main_nbook.GetSelection()))
+    if name == self.run_window.jobs_tab.name:
       if self.job_monitor is None or not self.job_monitor.active:
         self.start_job_monitor()
         self.run_window.jmn_light.change_status('on')
-    elif tab == 3:
-      if self.job_monitor is None or not self.job_monitor.active:
-        self.start_job_monitor()
-        self.run_window.jmn_light.change_status('on')
-      if self.spotfinder_sentinel is None or not self.spotfinder_sentinel.active:
-        self.start_spotfinder_sentinel()
-        self.run_window.spotfinder_light.change_status('on')
-    elif tab == 4:
+    # Disabled
+    #elif name == self.run_window.spotfinder_tab.name:
+    #  if self.job_monitor is None or not self.job_monitor.active:
+    #    self.start_job_monitor()
+    #    self.run_window.jmn_light.change_status('on')
+    #  if self.spotfinder_sentinel is None or not self.spotfinder_sentinel.active:
+    #    self.start_spotfinder_sentinel()
+    #    self.run_window.spotfinder_light.change_status('on')
+    elif name == self.run_window.runstats_tab.name:
       if self.job_monitor is None or not self.job_monitor.active:
         self.start_job_monitor()
         self.run_window.jmn_light.change_status('on')
       if self.runstats_sentinel is None or not self.runstats_sentinel.active:
         self.start_runstats_sentinel()
         self.run_window.runstats_light.change_status('on')
-    elif tab == 5:
+    elif name == self.run_window.unitcell_tab.name:
       if self.unitcell_sentinel is None or not self.unitcell_sentinel.active:
         self.start_unitcell_sentinel()
         self.run_window.unitcell_light.change_status('on')
-    elif tab == 6:
+    elif name == self.run_window.merge_tab.name:
       self.run_window.merge_tab.find_trials()
 
   def onLeavingTab(self, e):
-    tab = self.run_window.main_nbook.GetSelection()
-    if tab == 2:
+    name = self.run_window.main_nbook.GetPageText((self.run_window.main_nbook.GetSelection()))
+    if name == self.run_window.jobs_tab.name:
       if self.job_monitor.active:
         self.stop_job_monitor(block = False)
         self.run_window.jmn_light.change_status('off')
-    elif tab == 3:
-      if self.job_monitor.active:
-        self.stop_job_monitor(block = False)
-        self.run_window.jmn_light.change_status('off')
-      if self.spotfinder_sentinel.active:
-        self.stop_spotfinder_sentinel(block = False)
-        self.run_window.spotfinder_light.change_status('off')
-    elif tab == 4:
+    # Disabled
+    #elif name == self.run_window.spotfinder_tab.name:
+    #  if self.job_monitor.active:
+    #    self.stop_job_monitor(block = False)
+    #    self.run_window.jmn_light.change_status('off')
+    #  if self.spotfinder_sentinel.active:
+    #    self.stop_spotfinder_sentinel(block = False)
+    #    self.run_window.spotfinder_light.change_status('off')
+    elif name == self.run_window.runstats_tab.name:
       if self.job_monitor.active:
         self.stop_job_monitor(block = False)
         self.run_window.jmn_light.change_status('off')
       if self.runstats_sentinel.active:
         self.stop_runstats_sentinel(block = False)
         self.run_window.runstats_light.change_status('off')
-    elif tab == 5:
+    elif name == self.run_window.unitcell_tab.name:
       if self.unitcell_sentinel.active:
         self.stop_unitcell_sentinel(block = False)
         self.run_window.unitcell_light.change_status('off')
@@ -1261,17 +1265,17 @@ class RunWindow(wx.Panel):
     self.runs_tab = RunTab(self.main_nbook, main=self.parent)
     self.trials_tab = TrialsTab(self.main_nbook, main=self.parent)
     self.jobs_tab = JobsTab(self.main_nbook, main=self.parent)
-    self.spotfinder_tab = SpotfinderTab(self.main_nbook, main=self.parent)
+    #self.spotfinder_tab = SpotfinderTab(self.main_nbook, main=self.parent) # Disabled
     self.runstats_tab = RunStatsTab(self.main_nbook, main=self.parent)
     self.unitcell_tab = UnitCellTab(self.main_nbook, main=self.parent)
     self.merge_tab = MergeTab(self.main_nbook, main=self.parent)
-    self.main_nbook.AddPage(self.runs_tab, 'Runs')
-    self.main_nbook.AddPage(self.trials_tab, 'Trials')
-    self.main_nbook.AddPage(self.jobs_tab, 'Jobs')
-    self.main_nbook.AddPage(self.spotfinder_tab, 'Spotfinder')
-    self.main_nbook.AddPage(self.runstats_tab, 'Run Stats')
-    self.main_nbook.AddPage(self.unitcell_tab, 'Unit Cell')
-    self.main_nbook.AddPage(self.merge_tab, 'Merge')
+    self.main_nbook.AddPage(self.runs_tab, self.runs_tab.name)
+    self.main_nbook.AddPage(self.trials_tab, self.trials_tab.name)
+    self.main_nbook.AddPage(self.jobs_tab, self.jobs_tab.name)
+    #self.main_nbook.AddPage(self.spotfinder_tab, self.spotfinder_tab.name) # Disabled
+    self.main_nbook.AddPage(self.runstats_tab, self.runstats_tab.name)
+    self.main_nbook.AddPage(self.unitcell_tab, self.unitcell_tab.name)
+    self.main_nbook.AddPage(self.merge_tab, self.merge_tab.name)
 
     self.sentinel_box = wx.FlexGridSizer(1, 6, 0, 20)
     self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
@@ -1313,6 +1317,7 @@ class BaseTab(wx.Panel):
 class RunTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Runs'
     self.main = main
     self.last_run = 0
     self.all_runs = []
@@ -1435,6 +1440,7 @@ class RunTab(BaseTab):
 class TrialsTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Trials'
 
     self.main = main
     self.show_active_only = False
@@ -1503,6 +1509,7 @@ class TrialsTab(BaseTab):
 class JobsTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Jobs'
 
     self.main = main
     self.all_trials = []
@@ -1736,6 +1743,7 @@ class JobsTab(BaseTab):
 class SpotfinderTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Spotfinder'
 
     self.main = main
     self.all_trials = []
@@ -1947,6 +1955,7 @@ class SpotfinderTab(BaseTab):
 class RunStatsTab(SpotfinderTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Run Stats'
 
     self.main = main
     self.all_trials = []
@@ -2322,6 +2331,7 @@ class RunStatsTab(SpotfinderTab):
 class UnitCellTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Unit Cell'
 
     self.main = main
     self.all_trials = []
@@ -2535,8 +2545,10 @@ class UnitCellTab(BaseTab):
       self.unit_cell_panel.Layout()
 
 class MergeTab(BaseTab):
+
   def __init__(self, parent, main, prefix='prime'):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Merge'
 
     self.main = main
     self.prefix = prefix
