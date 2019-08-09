@@ -212,20 +212,20 @@ def precheck(atoms, i, j, Hs, As, Ds, fsc0):
 
   return is_candidate
 
-
 def get_D_H_A_Y(p, Hs, fsc0, rt_mx_ji, fm, om, atoms):
+  '''
+    Get atom objects for donor and acceptor atoms
+    Apply symmetry op if necessary, so that correct geometry can be calculated
+  '''
   i, j = p.i_seq, p.j_seq
   Y = []
   if(atoms[i].element in Hs):
     H = atoms[i]
     D = atoms[fsc0[i][0]]
-#    D = atoms[h_bonded_to[H.i_seq].i_seq]
     A = atoms[j]
     Y_iseqs = fsc0[j]
     if(len(Y_iseqs)>0):
       Y = [atoms[k] for k in fsc0[j]]
-#    if(j in a_bonded_to):
-#      Y = [atoms[a.i_seq] for a in a_bonded_to[j]]
     atom_H = make_atom_id(atom = H, index = i)
     atom_A = make_atom_id(atom = A, index = j)
     atom_D = make_atom_id(atom = D, index = D.i_seq)
@@ -236,37 +236,18 @@ def get_D_H_A_Y(p, Hs, fsc0, rt_mx_ji, fm, om, atoms):
   if(atoms[j].element in Hs):
     H = atoms[j]
     D = atoms[fsc0[j][0]]
-#    D = atoms[h_bonded_to[H.i_seq].i_seq]
     A = atoms[i]
     Y_iseqs = fsc0[i]
     if(len(Y_iseqs)>0):
       Y = [atoms[k] for k in fsc0[i]]
-#    if(i in a_bonded_to):
-#      Y = [atoms[a.i_seq] for a in a_bonded_to[i]]
     atom_A = make_atom_id(atom = A, index = i)
     atom_H = make_atom_id(atom = H, index = j)
     atom_D = make_atom_id(atom = D, index = D.i_seq)
     if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
       H = apply_symop_to_copy(H, rt_mx_ji, fm, om)
       D = apply_symop_to_copy(D, rt_mx_ji, fm, om)
+  #
   return D, H, A, Y, atom_A, atom_H, atom_D
-#  d_HA = A.distance(H)
-#  if(not external_proxies):
-#    assert d_HA <= d_HA_cutoff
-#    assert approx_equal(math.sqrt(p.dist_sq), d_HA, 1.e-3)
-##  assert H.distance(D) < 1.15, [H.distance(D), H.name, D.name]
-#  # filter by a_DHA
-#  a_DHA = H.angle(A, D, deg=True)
-#  if(not external_proxies):
-#    if(a_DHA < a_DHA_cutoff): continue
-#  # filter by a_YAH
-#  a_YAH = []
-#  if(len(Y)>0):
-#    for Y_ in Y:
-#      a_YAH_ = A.angle(Y_, H, deg=True)
-#      a_YAH.append(a_YAH_)
-
-
 
 class find(object):
   """
@@ -309,16 +290,6 @@ class find(object):
     fsc0 = geometry.geometry.shell_sym_tables[0].full_simple_connectivity()
     bond_proxies_simple, asu = geometry.geometry.get_all_bond_proxies(
       sites_cart = self.model.get_sites_cart())
-#    h_bonded_to = {}
-#    a_bonded_to = {}
-#    for p in bond_proxies_simple:
-#      i, j = p.i_seqs
-#      ei, ej = atoms[p.i_seqs[0]].element, atoms[p.i_seqs[1]].element
-#      if(ei in Hs): h_bonded_to[i] = atoms[j]
-#      if(ej in Hs): h_bonded_to[j] = atoms[i]
-#      # collect all bonded to A to make sure A has only one bonded
-#      if(ei in As): a_bonded_to.setdefault(i, []).append(atoms[j])
-#      if(ej in As): a_bonded_to.setdefault(j, []).append(atoms[i])
     sites_cart = self.model.get_sites_cart()
     crystal_symmetry = self.model.crystal_symmetry()
     fm = crystal_symmetry.unit_cell().fractionalization_matrix()
@@ -343,17 +314,8 @@ class find(object):
         a_j = make_atom_id(atom = atoms[j], index = j).id_str
         assert a_i == p.atom_A.id_str, [a_i, p.atom_A.id_str]
         assert a_j == p.atom_H.id_str, [a_j, p.atom_H.id_str]
-
+      # presecreen candidates
       ei, ej = atoms[i].element, atoms[j].element
-#      altloc_i = atoms[i].parent().altloc
-#      altloc_j = atoms[j].parent().altloc
-#      resseq_i = atoms[i].parent().parent().resseq
-#      resseq_j = atoms[j].parent().parent().resseq
-      # pre-screen candidates begin
-#      one_is_Hs = ei in Hs or ej in Hs
-#      other_is_acceptor = ei in As or ej in As
-#      is_candidate = one_is_Hs and other_is_acceptor and \
-#        altloc_i == altloc_j and resseq_i != resseq_j
       is_candidate = precheck(
         atoms = atoms,
         i = i,
@@ -362,15 +324,11 @@ class find(object):
         As = As,
         Ds = Ds,
         fsc0 = fsc0)
-
       if(protein_only):
         for it in [i,j]:
           resname = atoms[it].parent().resname
           is_candidate &= get_class(name=resname) == "common_amino_acid"
-
       if(not is_candidate): continue
-#      if(ei in Hs and not h_bonded_to[i].element in As): continue
-#      if(ej in Hs and not h_bonded_to[j].element in As): continue
       # pre-screen candidates end
       # symop tp map onto symmetry related
       rt_mx_ji = None
@@ -388,35 +346,7 @@ class find(object):
                                                        fm = fm,
                                                        om = om,
                                                        atoms = atoms)
-
-      if len(Y) == 0: continue
-
-#      Y = []
-#      if(ei in Hs):
-#        H = atoms[i]
-#        D = atoms[h_bonded_to[H.i_seq].i_seq]
-#        A = atoms[j]
-#        if(j in a_bonded_to):
-#          Y = [atoms[a.i_seq] for a in a_bonded_to[j]]
-#        atom_H = make_atom_id(atom = H, index = i)
-#        atom_A = make_atom_id(atom = A, index = j)
-#        atom_D = make_atom_id(atom = D, index = h_bonded_to[H.i_seq].i_seq)
-#        if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
-#          A = apply_symop_to_copy(A, rt_mx_ji, fm, om)
-#          if(len(Y)>0):
-#            Y = [apply_symop_to_copy(y, rt_mx_ji, fm, om) for y in Y]
-#      if(ej in Hs):
-#        H = atoms[j]
-#        D = atoms[h_bonded_to[H.i_seq].i_seq]
-#        A = atoms[i]
-#        if(i in a_bonded_to):
-#          Y = [atoms[a.i_seq] for a in a_bonded_to[i]]
-#        atom_A = make_atom_id(atom = A, index = i)
-#        atom_H = make_atom_id(atom = H, index = j)
-#        atom_D = make_atom_id(atom = D, index = h_bonded_to[H.i_seq].i_seq)
-#        if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
-#          H = apply_symop_to_copy(H, rt_mx_ji, fm, om)
-#          D = apply_symop_to_copy(D, rt_mx_ji, fm, om)
+      if len(Y) == 0: continue # don't use 'lone' acceptors
       d_HA = A.distance(H)
       if(not self.external_proxies):
         assert d_HA <= d_HA_cutoff[1]
@@ -432,7 +362,6 @@ class find(object):
         for Y_ in Y:
           a_YAH_ = A.angle(Y_, H, deg=True)
           a_YAH.append(a_YAH_)
-      #print(atom_H, atom_A, atom_D)
       if(not self.external_proxies):
         flags = []
         for a_YAH_ in a_YAH:
