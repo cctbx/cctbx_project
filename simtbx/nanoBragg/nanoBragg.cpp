@@ -269,6 +269,9 @@ nanoBragg::init_defaults()
     printout = 0;
     printout_spixel=printout_fpixel=-1;
     verbose = 1;
+#ifdef NANOBRAGG_HAVE_CUDA
+    device_Id = 0; // for running the CUDA code
+#endif
 
     /* default x-ray beam properties */
 //    double beam_vector[4] = {0,1,0,0};  this->beam_vector = beam_vector;
