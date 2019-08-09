@@ -356,18 +356,11 @@ namespace cctbx { namespace geometry {
   class dihedral {
     typedef scitbx::vec3<FloatType> vec_t;
     struct evaluator {
-      FloatType epsilon;
-      evaluator(FloatType epsilon = 1.e-16)
-        : epsilon(epsilon)
-      {}
       FloatType calculate(af::const_ref<vec_t> const &sites)const {
         vec_t d10 = sites[1] - sites[0],
           d21 = sites[2] - sites[1],
-          d32 = sites[3] - sites[2];
-        if (d21.length_sq() < epsilon) {
-          return 0;
-        }
-        vec_t x = d21.cross(d32);
+          d32 = sites[3] - sites[2],
+          x = d21.cross(d32);
         return std::atan2(d21.length()*(d10*x), d10.cross(d21)*x)
           / scitbx::constants::pi_180;
       }
@@ -381,22 +374,22 @@ namespace cctbx { namespace geometry {
       dihedral_model = evaluator().calculate(sites.const_ref());
     }
 
-    //! Gradient of the dihedral angle with respect to the sites.
-    /*! The formula for the gradients is singular when the middle bond length
-    is 0. In this case, when the middle bond squared length is less than
-    epsilon, the gradients are set to 0.
-            See also:
+    //! Gradient of the angle with respect to the three sites.
+    /*! The formula for the gradients is singular at delta = 0
+        and delta = 180. However, the gradients converge to zero
+        near these singularities. To avoid numerical problems, the
+        gradients and curvatures are set to zero exactly if the
+        intermediate result sqrt(1-cos(angle_model)**2) < epsilon.
+
+        See also:
           http://salilab.org/modeller/manual/manual.html,
           "Features and their derivatives"
      */
-    af::tiny<vec_t, 4> d_angle_d_sites(FloatType epsilon = 1.e-16) const {
+    af::tiny<vec_t, 4> d_angle_d_sites(FloatType epsilon = 1.e-100) const {
       af::tiny<vec_t, 4> grads;
       vec_t ij = sites[0] - sites[1];
       vec_t kj = sites[2] - sites[1];
       vec_t kl = sites[3] - sites[2];
-      if (kj.length_sq() < epsilon) {
-        return grads;
-      }
       vec_t mj = ij.cross(kj);
       vec_t nk = kj.cross(kl);
       const FloatType kj_ql = kj.length_sq();
