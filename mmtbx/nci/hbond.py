@@ -15,8 +15,6 @@ from mmtbx.utils import run_reduce_with_timeout
 import numpy as np # XXX See if I can avoid it!
 
 
-
-
 def get_pair_generator(crystal_symmetry, buffer_thickness, sites_cart):
   sst = crystal_symmetry.special_position_settings().site_symmetry_table(
     sites_cart = sites_cart)
@@ -200,15 +198,74 @@ def precheck(atoms, i, j, Hs, As, Ds, fsc0):
     altloc_i == altloc_j and resseq_i != resseq_j
 
   if ei in Hs:
-    bound_to_h = fsc0[i][0] # Use only first atom bound to H
-    if (atoms[bound_to_h].element not in Ds):
+    bound_to_h = fsc0[i]
+    if (not bound_to_h): # exclude 'lone' H
+      is_candidate = False
+    elif (atoms[bound_to_h[0]].element not in Ds): # Use only first atom bound to H
       is_candidate = False
   if ej in Hs:
-    bound_to_h = fsc0[j][0] # Use only first atom bound to H
-    if (atoms[bound_to_h].element not in Ds):
+    bound_to_h = fsc0[j]
+    if (not bound_to_h):
+      is_candidate = False
+    elif (atoms[bound_to_h[0]].element not in Ds):
       is_candidate = False
 
   return is_candidate
+
+
+def get_D_H_A_Y(p, Hs, fsc0, rt_mx_ji, fm, om, atoms):
+  i, j = p.i_seq, p.j_seq
+  Y = []
+  if(atoms[i].element in Hs):
+    H = atoms[i]
+    D = atoms[fsc0[i][0]]
+#    D = atoms[h_bonded_to[H.i_seq].i_seq]
+    A = atoms[j]
+    Y_iseqs = fsc0[j]
+    if(len(Y_iseqs)>0):
+      Y = [atoms[k] for k in fsc0[j]]
+#    if(j in a_bonded_to):
+#      Y = [atoms[a.i_seq] for a in a_bonded_to[j]]
+    atom_H = make_atom_id(atom = H, index = i)
+    atom_A = make_atom_id(atom = A, index = j)
+    atom_D = make_atom_id(atom = D, index = D.i_seq)
+    if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
+      A = apply_symop_to_copy(A, rt_mx_ji, fm, om)
+      if(len(Y_iseqs)>0):
+        Y = [apply_symop_to_copy(y, rt_mx_ji, fm, om) for y in Y]
+  if(atoms[j].element in Hs):
+    H = atoms[j]
+    D = atoms[fsc0[j][0]]
+#    D = atoms[h_bonded_to[H.i_seq].i_seq]
+    A = atoms[i]
+    Y_iseqs = fsc0[i]
+    if(len(Y_iseqs)>0):
+      Y = [atoms[k] for k in fsc0[i]]
+#    if(i in a_bonded_to):
+#      Y = [atoms[a.i_seq] for a in a_bonded_to[i]]
+    atom_A = make_atom_id(atom = A, index = i)
+    atom_H = make_atom_id(atom = H, index = j)
+    atom_D = make_atom_id(atom = D, index = D.i_seq)
+    if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
+      H = apply_symop_to_copy(H, rt_mx_ji, fm, om)
+      D = apply_symop_to_copy(D, rt_mx_ji, fm, om)
+  return D, H, A, Y, atom_A, atom_H, atom_D
+#  d_HA = A.distance(H)
+#  if(not external_proxies):
+#    assert d_HA <= d_HA_cutoff
+#    assert approx_equal(math.sqrt(p.dist_sq), d_HA, 1.e-3)
+##  assert H.distance(D) < 1.15, [H.distance(D), H.name, D.name]
+#  # filter by a_DHA
+#  a_DHA = H.angle(A, D, deg=True)
+#  if(not external_proxies):
+#    if(a_DHA < a_DHA_cutoff): continue
+#  # filter by a_YAH
+#  a_YAH = []
+#  if(len(Y)>0):
+#    for Y_ in Y:
+#      a_YAH_ = A.angle(Y_, H, deg=True)
+#      a_YAH.append(a_YAH_)
+
 
 
 class find(object):
@@ -252,16 +309,16 @@ class find(object):
     fsc0 = geometry.geometry.shell_sym_tables[0].full_simple_connectivity()
     bond_proxies_simple, asu = geometry.geometry.get_all_bond_proxies(
       sites_cart = self.model.get_sites_cart())
-    h_bonded_to = {}
-    a_bonded_to = {}
-    for p in bond_proxies_simple:
-      i, j = p.i_seqs
-      ei, ej = atoms[p.i_seqs[0]].element, atoms[p.i_seqs[1]].element
-      if(ei in Hs): h_bonded_to[i] = atoms[j]
-      if(ej in Hs): h_bonded_to[j] = atoms[i]
-      # collect all bonded to A to make sure A has only one bonded
-      if(ei in As): a_bonded_to.setdefault(i, []).append(atoms[j])
-      if(ej in As): a_bonded_to.setdefault(j, []).append(atoms[i])
+#    h_bonded_to = {}
+#    a_bonded_to = {}
+#    for p in bond_proxies_simple:
+#      i, j = p.i_seqs
+#      ei, ej = atoms[p.i_seqs[0]].element, atoms[p.i_seqs[1]].element
+#      if(ei in Hs): h_bonded_to[i] = atoms[j]
+#      if(ej in Hs): h_bonded_to[j] = atoms[i]
+#      # collect all bonded to A to make sure A has only one bonded
+#      if(ei in As): a_bonded_to.setdefault(i, []).append(atoms[j])
+#      if(ej in As): a_bonded_to.setdefault(j, []).append(atoms[i])
     sites_cart = self.model.get_sites_cart()
     crystal_symmetry = self.model.crystal_symmetry()
     fm = crystal_symmetry.unit_cell().fractionalization_matrix()
@@ -324,32 +381,42 @@ class find(object):
       else:
         rt_mx_ji = p.rt_mx_ji
       #
-      Y = []
-      if(ei in Hs):
-        H = atoms[i]
-        D = atoms[h_bonded_to[H.i_seq].i_seq]
-        A = atoms[j]
-        if(j in a_bonded_to):
-          Y = [atoms[a.i_seq] for a in a_bonded_to[j]]
-        atom_H = make_atom_id(atom = H, index = i)
-        atom_A = make_atom_id(atom = A, index = j)
-        atom_D = make_atom_id(atom = D, index = h_bonded_to[H.i_seq].i_seq)
-        if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
-          A = apply_symop_to_copy(A, rt_mx_ji, fm, om)
-          if(len(Y)>0):
-            Y = [apply_symop_to_copy(y, rt_mx_ji, fm, om) for y in Y]
-      if(ej in Hs):
-        H = atoms[j]
-        D = atoms[h_bonded_to[H.i_seq].i_seq]
-        A = atoms[i]
-        if(i in a_bonded_to):
-          Y = [atoms[a.i_seq] for a in a_bonded_to[i]]
-        atom_A = make_atom_id(atom = A, index = i)
-        atom_H = make_atom_id(atom = H, index = j)
-        atom_D = make_atom_id(atom = D, index = h_bonded_to[H.i_seq].i_seq)
-        if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
-          H = apply_symop_to_copy(H, rt_mx_ji, fm, om)
-          D = apply_symop_to_copy(D, rt_mx_ji, fm, om)
+      D, H, A, Y, atom_A, atom_H, atom_D = get_D_H_A_Y(p = p,
+                                                       Hs = Hs,
+                                                       fsc0 = fsc0,
+                                                       rt_mx_ji = rt_mx_ji,
+                                                       fm = fm,
+                                                       om = om,
+                                                       atoms = atoms)
+
+      if len(Y) == 0: continue
+
+#      Y = []
+#      if(ei in Hs):
+#        H = atoms[i]
+#        D = atoms[h_bonded_to[H.i_seq].i_seq]
+#        A = atoms[j]
+#        if(j in a_bonded_to):
+#          Y = [atoms[a.i_seq] for a in a_bonded_to[j]]
+#        atom_H = make_atom_id(atom = H, index = i)
+#        atom_A = make_atom_id(atom = A, index = j)
+#        atom_D = make_atom_id(atom = D, index = h_bonded_to[H.i_seq].i_seq)
+#        if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
+#          A = apply_symop_to_copy(A, rt_mx_ji, fm, om)
+#          if(len(Y)>0):
+#            Y = [apply_symop_to_copy(y, rt_mx_ji, fm, om) for y in Y]
+#      if(ej in Hs):
+#        H = atoms[j]
+#        D = atoms[h_bonded_to[H.i_seq].i_seq]
+#        A = atoms[i]
+#        if(i in a_bonded_to):
+#          Y = [atoms[a.i_seq] for a in a_bonded_to[i]]
+#        atom_A = make_atom_id(atom = A, index = i)
+#        atom_H = make_atom_id(atom = H, index = j)
+#        atom_D = make_atom_id(atom = D, index = h_bonded_to[H.i_seq].i_seq)
+#        if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
+#          H = apply_symop_to_copy(H, rt_mx_ji, fm, om)
+#          D = apply_symop_to_copy(D, rt_mx_ji, fm, om)
       d_HA = A.distance(H)
       if(not self.external_proxies):
         assert d_HA <= d_HA_cutoff[1]
@@ -365,6 +432,7 @@ class find(object):
         for Y_ in Y:
           a_YAH_ = A.angle(Y_, H, deg=True)
           a_YAH.append(a_YAH_)
+      #print(atom_H, atom_A, atom_D)
       if(not self.external_proxies):
         flags = []
         for a_YAH_ in a_YAH:
