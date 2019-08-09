@@ -14,6 +14,9 @@ from mmtbx.utils import run_reduce_with_timeout
 
 import numpy as np # XXX See if I can avoid it!
 
+
+
+
 def get_pair_generator(crystal_symmetry, buffer_thickness, sites_cart):
   sst = crystal_symmetry.special_position_settings().site_symmetry_table(
     sites_cart = sites_cart)
@@ -181,6 +184,33 @@ def stats(model, prefix):
 
   fig.savefig("%s.png"%prefix, dpi=100)
 
+
+def precheck(atoms, i, j, Hs, As, Ds, fsc0):
+  '''
+    Check if two atoms are potential H bond partners, based on element and altloc
+  '''
+  ei, ej = atoms[i].element, atoms[j].element
+  altloc_i = atoms[i].parent().altloc
+  altloc_j = atoms[j].parent().altloc
+  resseq_i = atoms[i].parent().parent().resseq
+  resseq_j = atoms[j].parent().parent().resseq
+  one_is_Hs = ei in Hs or ej in Hs
+  other_is_acceptor = ei in As or ej in As
+  is_candidate = one_is_Hs and other_is_acceptor and \
+    altloc_i == altloc_j and resseq_i != resseq_j
+
+  if ei in Hs:
+    bound_to_h = fsc0[i][0] # Use only first atom bound to H
+    if (atoms[bound_to_h].element not in Ds):
+      is_candidate = False
+  if ej in Hs:
+    bound_to_h = fsc0[j][0] # Use only first atom bound to H
+    if (atoms[bound_to_h].element not in Ds):
+      is_candidate = False
+
+  return is_candidate
+
+
 class find(object):
   """
      Y
@@ -219,6 +249,7 @@ class find(object):
       self.external_proxies = True
     atoms = self.model.get_hierarchy().atoms()
     geometry = self.model.get_restraints_manager()
+    fsc0 = geometry.geometry.shell_sym_tables[0].full_simple_connectivity()
     bond_proxies_simple, asu = geometry.geometry.get_all_bond_proxies(
       sites_cart = self.model.get_sites_cart())
     h_bonded_to = {}
@@ -255,23 +286,34 @@ class find(object):
         a_j = make_atom_id(atom = atoms[j], index = j).id_str
         assert a_i == p.atom_A.id_str, [a_i, p.atom_A.id_str]
         assert a_j == p.atom_H.id_str, [a_j, p.atom_H.id_str]
+
       ei, ej = atoms[i].element, atoms[j].element
-      altloc_i = atoms[i].parent().altloc
-      altloc_j = atoms[j].parent().altloc
-      resseq_i = atoms[i].parent().parent().resseq
-      resseq_j = atoms[j].parent().parent().resseq
+#      altloc_i = atoms[i].parent().altloc
+#      altloc_j = atoms[j].parent().altloc
+#      resseq_i = atoms[i].parent().parent().resseq
+#      resseq_j = atoms[j].parent().parent().resseq
       # pre-screen candidates begin
-      one_is_Hs = ei in Hs or ej in Hs
-      other_is_acceptor = ei in As or ej in As
-      is_candidate = one_is_Hs and other_is_acceptor and \
-        altloc_i == altloc_j and resseq_i != resseq_j
+#      one_is_Hs = ei in Hs or ej in Hs
+#      other_is_acceptor = ei in As or ej in As
+#      is_candidate = one_is_Hs and other_is_acceptor and \
+#        altloc_i == altloc_j and resseq_i != resseq_j
+      is_candidate = precheck(
+        atoms = atoms,
+        i = i,
+        j = j,
+        Hs = Hs,
+        As = As,
+        Ds = Ds,
+        fsc0 = fsc0)
+
       if(protein_only):
         for it in [i,j]:
           resname = atoms[it].parent().resname
           is_candidate &= get_class(name=resname) == "common_amino_acid"
+
       if(not is_candidate): continue
-      if(ei in Hs and not h_bonded_to[i].element in As): continue
-      if(ej in Hs and not h_bonded_to[j].element in As): continue
+#      if(ei in Hs and not h_bonded_to[i].element in As): continue
+#      if(ej in Hs and not h_bonded_to[j].element in As): continue
       # pre-screen candidates end
       # symop tp map onto symmetry related
       rt_mx_ji = None
