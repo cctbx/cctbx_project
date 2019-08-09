@@ -339,7 +339,7 @@ class HKLViewFrame() :
       self.mprint("Received phil string:\n" + philstr, verbose=1)
       new_phil = libtbx.phil.parse(philstr)
       self.update_settings(new_phil)
-      #print "in zmq listen"
+      #print( "in zmq listen")
       time.sleep(0.1)
     del self.guisocket
 
@@ -448,9 +448,7 @@ class HKLViewFrame() :
         self.settings = phl.viewer
 
       msg = self.viewer.update_settings(diff_phil, phl)
-      self.mprint( msg, 1)
-      for i,e in enumerate(self.spacegroup_choices):
-        self.mprint("%d, %s" %(i,e.symbol_and_number()) , 0)
+      self.mprint( msg, verbose=1)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.NewFileLoaded = False
 
@@ -622,6 +620,8 @@ class HKLViewFrame() :
     #self.viewer.identify_suitable_fomsarrays()
     self.viewer.set_miller_array()
     #self.viewer.DrawNGLJavaScript()
+    for i,e in enumerate(self.spacegroup_choices):
+      self.mprint("%d, %s" %(i,e.symbol_and_number()) , verbose=0)
 
 
   def SetSpaceGroupChoice(self, n):
@@ -791,12 +791,12 @@ class HKLViewFrame() :
     self.params.NGL_HKLviewer.scene_bin_thresholds = binvals
     self.params.NGL_HKLviewer.bin_scene_label = bin_scene_label
     self.params.NGL_HKLviewer.nbins = nbins
-    self.params.NGL_HKLviewer.bin_opacities = str([ "1.0, %d"%e for e in range(nbins) ])
+    self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = str([ "1.0, %d"%e for e in range(nbins) ])
     self.update_settings()
 
 
   def SetOpacities(self, bin_opacities):
-    self.params.NGL_HKLviewer.bin_opacities = bin_opacities
+    self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = bin_opacities
     self.update_settings()
 
 
@@ -1039,11 +1039,9 @@ NGL_HKLviewer {
   scene_bin_thresholds = None
     .type = float
     .multiple = True
-  bin_opacities = ""
-    .type = str
   bin_scene_label = 'Resolution'
     .type = str
-  nbins = 15
+  nbins = 10
     .type = int
   camera_type = *'orthographic' 'perspective'
     .type = choice

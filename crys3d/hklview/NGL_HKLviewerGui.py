@@ -144,9 +144,9 @@ class NGL_HKLViewer(QWidget):
     self.radiiscaleLabel = QLabel()
     self.radiiscaleLabel.setText("Linear Scale Factor")
 
-    self.millertable = QTableWidget(0, 8)
-    labels = ["label", "type", "no. of HKLs", "span of HKLs",
-       "min max data", "min max sigmas", "d_min, d_max", "symmetry unique"]
+    self.millertable = QTableWidget(0, 9)
+    labels = ["Label", "Type", "no. of HKLs", "Span of HKLs",
+       "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
     self.millertable.setHorizontalHeaderLabels(labels)
     # don't allow editing this table
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -171,7 +171,8 @@ class NGL_HKLViewer(QWidget):
     if self.UseOSbrowser==False:
       self.BrowserBox = QWebEngineView()
       mainLayout.addWidget(self.BrowserBox,          0, 1, 5, 3)
-      self.BrowserBox.setUrl("https://cctbx.github.io/")
+      #self.BrowserBox.setUrl("https://cctbx.github.io/")
+      self.BrowserBox.setUrl("https://webglreport.com/")
       self.BrowserBox.loadFinished.connect(self.onLoadFinished)
       self.BrowserBox.renderProcessTerminated.connect(self.onRenderProcessTerminated)
       mainLayout.setColumnStretch(2, 1)
@@ -214,13 +215,10 @@ class NGL_HKLViewer(QWidget):
       print(self.out.decode("utf-8"))
     if self.err:
       print(self.err.decode("utf-8"))
-    #print("in update\n")
     if self.context:
       try:
         msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
-        #msg = self.socket.recv()
         msgstr = msg.decode()
-#        print(msgstr)
         self.infodict = eval(msgstr)
         #print("received from cctbx: " + str(self.infodict))
         if self.infodict:
@@ -234,24 +232,33 @@ class NGL_HKLViewer(QWidget):
           if self.infodict.get("bin_data_label"):
             self.BinDataComboBox.setCurrentText(self.infodict["bin_data_label"])
 
-          if self.infodict.get("bin_opacities"):
-            self.bin_opacities = self.infodict["bin_opacities"]
-
           if self.infodict.get("bin_infotpls"):
             self.bin_infotpls = self.infodict["bin_infotpls"]
 
-            self.binstable.setRowCount(len(self.bin_infotpls))
+            self.nbins = len(self.bin_infotpls)
+            self.Nbins_spinBox.setValue(self.nbins)
+            self.binstable.setRowCount(self.nbins)
             for row,bin_infotpl in enumerate(self.bin_infotpls):
               for col,elm in enumerate(bin_infotpl):
                 item = QTableWidgetItem(str(elm))
                 if col==0:
                   item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 self.binstable.setItem(row, col, item)
+            if self.bin_opacities:
+              self.update_table_opacities()
+
+          if self.infodict.get("bin_opacities"):
+            self.bin_opacities = self.infodict["bin_opacities"]
+            if self.binstable.rowCount() > 0:
+              self.update_table_opacities()
 
           if self.infodict.get("html_url"):
             self.html_url = self.infodict["html_url"]
             if self.UseOSbrowser==False:
               self.BrowserBox.setUrl(self.html_url)
+              # workaround for background colour
+              # https://bugreports.qt.io/browse/QTBUG-41960
+              self.BrowserBox.page().setBackgroundColor(Qt.transparent)
 
           if self.infodict.get("spacegroups"):
             self.spacegroups = self.infodict.get("spacegroups",[])
@@ -278,7 +285,7 @@ class NGL_HKLViewer(QWidget):
             self.textInfo.setPlainText(self.infostr)
             self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
 
-          if self.NewHKLscenes:
+          if self.NewHKLscenes and self.NewFileLoaded:
             #if self.mergedata == True : val = Qt.CheckState.Checked
             #if self.mergedata == None : val = Qt.CheckState.PartiallyChecked
             #if self.mergedata == False : val = Qt.CheckState.Unchecked
@@ -303,6 +310,7 @@ class NGL_HKLViewer(QWidget):
                 self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
             self.functionTabWidget.setDisabled(True)
             self.NewHKLscenes = False
+            self.NewFileLoaded = False
 
       except Exception as e:
         errmsg = str(e)
@@ -379,9 +387,23 @@ class NGL_HKLViewer(QWidget):
     self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
 
 
-
   def onBindataComboSelchange(self,i):
-    pass
+    if self.BinDataComboBox.currentText():
+      if self.BinDataComboBox.currentIndex() > 0:
+        bin_scene_label = str(self.BinDataComboBox.currentIndex()-1)
+      else:
+        bin_scene_label = "dres"
+      self.NGL_HKL_command("NGL_HKLviewer.bin_scene_label = %s" % bin_scene_label )
+
+
+  def update_table_opacities(self):
+    bin_opacitieslst = eval(self.bin_opacities)
+    self.binstable_isready = False
+    for binopacity in bin_opacitieslst:
+      alpha = float(binopacity.split(",")[0])
+      bin = int(binopacity.split(",")[1])
+      self.binstable.setItem(bin, 3, QTableWidgetItem(str(alpha)))
+    self.binstable_isready = True
 
 
   def onBinsTableItemChanged(self, item):
@@ -389,6 +411,12 @@ class NGL_HKLViewer(QWidget):
     column = item.column()
     try:
       newval = float(item.text())
+      if column==3 and self.binstable_isready: # changing opacity
+        assert (newval <= 1.0 and newval >= 0.0)
+        bin_opacitieslst = eval(self.bin_opacities)
+        bin_opacitieslst[row] = str(newval) + ', ' + str(row)
+        self.bin_opacities = str(bin_opacitieslst)
+        self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
     except Exception as e:
       print(str(e))
       self.binstable.currentItem().setText( self.currentSelectedBinsTableVal)
@@ -450,7 +478,8 @@ class NGL_HKLViewer(QWidget):
     )
 
   def onLoadFinished(self, val):
-    print("web page finished loading now")
+    pass
+    #print("web page finished loading now")
 
 
   def onRenderProcessTerminated(self, termstatus, exitcode):
@@ -648,6 +677,13 @@ class NGL_HKLViewer(QWidget):
     #self.MillerComboBox.setCurrentIndex(i)
     if self.MillerComboBox.currentText():
       self.functionTabWidget.setEnabled(True)
+      self.expandAnomalouscheckbox.setEnabled(True)
+      # don' allow anomalous expansion for data that's already anomalous
+      for arrayinfo in self.array_infotpls:
+        isanomalous = arrayinfo[-1]
+        label = arrayinfo[0]
+        if isanomalous and label == self.MillerComboBox.currentText()[: len(label) ]:
+          self.expandAnomalouscheckbox.setDisabled(True)
     else:
       self.functionTabWidget.setDisabled(True)
 
@@ -713,6 +749,7 @@ class NGL_HKLViewer(QWidget):
 
   def createBinsBox(self):
     self.binstable = QTableWidget(0, 4)
+    self.binstable_isready = False
     labels = ["no. of HKLs", "lower bin value", "upper bin value", "opacity"]
     self.binstable.setHorizontalHeaderLabels(labels)
     # don't allow editing this table
@@ -720,8 +757,6 @@ class NGL_HKLViewer(QWidget):
     self.bindata_labeltxt = QLabel()
     self.bindata_labeltxt.setText("Data binned:")
     self.Nbins_spinBox = QSpinBox()
-    self.nbins = 15
-    self.Nbins_spinBox.setValue(self.nbins)
     self.Nbins_spinBox.setSingleStep(1)
     self.Nbins_spinBox.setRange(0, 40)
     self.Nbins_spinBox.valueChanged.connect(self.onNbinsChanged)

@@ -60,9 +60,10 @@ class ArrayInfo:
     except Exception as e:
       mprint(to_str(e))
     issymunique = millarr.is_unique_set_under_symmetry()
+    isanomalous = millarr.anomalous_flag()
     self.infotpl = (self.labels, self.desc, millarr.indices().size(), self.span,
-     self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique )
-    self.infostr = "%s (%s), %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d" %self.infotpl
+     self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique, isanomalous )
+    self.infostr = "%s (%s), %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
 
 
 
@@ -161,7 +162,7 @@ def MakeTtips(hklscene, j):
 class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
-    self.ngl_setttings = NGLsettings()
+    self.ngl_settings = NGLsettings()
     self.miller_array = None
     self.symops = []
     self.sg = None
@@ -234,7 +235,7 @@ class hklview_3d:
     self.mprint = sys.stdout.write
     if 'mprint' in kwds:
       self.mprint = kwds['mprint']
-    self.nbin = 0
+    self.nbins = 0
     tempdir = tempfile.gettempdir()
     self.hklfname = os.path.join(tempdir, "hkl.htm" )
     if os.path.isfile(self.hklfname):
@@ -343,7 +344,7 @@ class hklview_3d:
                             friedel_mate= self.settings.expand_anomalous)
     if has_phil_path(diff_phil, "bin_opacities"):
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      msg += self.SetOpacities(currentphil.bin_opacities )
+      msg += self.SetOpacities(currentphil.viewer.NGL.bin_opacities )
     return msg
 
 
@@ -746,9 +747,11 @@ var MakeHKL_Axis = function()
     else:
       self.workingbinvals = self.binvals
       self.bindata = 1.0/self.scene.dres
-    self.nbin = len(self.workingbinvals)
+    self.nbins = len(self.workingbinvals)
+    self.ngl_settings.bin_opacities = str([ "1.0, %d"%e for e in range(self.nbins) ])
+    self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities } )
 
-    for ibin in range(self.nbin):
+    for ibin in range(self.nbins):
       colours.append([]) # colours and positions are 3 x size of data()
       positions.append([])
       radii2.append([])
@@ -756,7 +759,7 @@ var MakeHKL_Axis = function()
 
     def data2bin(d):
       for ibin, binval in enumerate(self.workingbinvals):
-        if (ibin+1) == self.nbin:
+        if (ibin+1) == self.nbins:
           return ibin
         if d > binval and d <= self.workingbinvals[ibin+1]:
           return ibin
@@ -781,10 +784,10 @@ var MakeHKL_Axis = function()
     cntbin = 0
     self.binstrs = []
     self.bin_infotpls = []
-    for ibin in range(self.nbin):
+    for ibin in range(self.nbins):
       mstr =""
       nreflsinbin = len(radii2[ibin])
-      if (ibin+1) < self.nbin and nreflsinbin > 0:
+      if (ibin+1) < self.nbins and nreflsinbin > 0:
         bin1= self.workingbinvals[ibin]
         bin2= self.workingbinvals[ibin+1]
         if colstr=="dres":
@@ -963,7 +966,7 @@ var MakeHKL_Axis = function()
       colourgradstrs += "  colourgradvalarray[%s] = %s;\n" %(g, str(colourgradstr) )
 
     #negativeradiistr = ""
-    #for ibin in range(self.nbin):
+    #for ibin in range(self.nbins):
     #  if self.workingbinvals[ibin] < 0.0:
     #    negativeradiistr += "shapebufs[%d].setParameters({metalness: 1})\n" %ibin
     qualitystr = """ , { disableImpostor: true
@@ -1113,7 +1116,7 @@ var hklscene = function()
 {
   shape = new NGL.Shape('shape');
   vectorshape = new NGL.Shape('vectorshape');
-  stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false,
+  stage = new NGL.Stage('viewport', { backgroundColor: "green", tooltip:false,
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
 
@@ -1202,6 +1205,7 @@ var hklscene = function()
     }
   }
 
+  stage.viewer.requestRender();
 }
 
 document.addEventListener('DOMContentLoaded', function() { hklscene() }, false );
@@ -1591,7 +1595,7 @@ mysocket.onmessage = function (e)
     sleep(self.sleeptime)
     self.GetClipPlaneDistances()
     self.GetBoundingBox()
-    self.SetTrackBallRotateSpeed( self.ngl_setttings.mouse_sensitivity )
+    self.SetTrackBallRotateSpeed( self.ngl_settings.mouse_sensitivity )
     self.OrigClipFar = self.clipFar
     self.OrigClipNear = self.clipNear
     self.sceneisdirty = False
@@ -1677,7 +1681,7 @@ mysocket.onmessage = function (e)
         datastr = message[ message.find("\n") + 1: ]
         lst = datastr.split(",")
         flst = [float(e) for e in lst]
-        self.ngl_setttings.mouse_sensitivity = flst[0]
+        self.ngl_settings.mouse_sensitivity = flst[0]
       if "tooltip_id:" in message:
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         sym_id = eval(message.split("tooltip_id:")[1])[0]
@@ -1753,18 +1757,19 @@ mysocket.onmessage = function (e)
   def SetOpacities(self, bin_opacities_str):
     retstr = ""
     if bin_opacities_str:
-      bin_opacities = eval(bin_opacities_str)
-      for binopacity in bin_opacities:
+      self.ngl_settings.bin_opacities = bin_opacities_str
+      bin_opacitieslst = eval(self.ngl_settings.bin_opacities)
+      for binopacity in bin_opacitieslst:
         alpha = float(binopacity.split(",")[0])
         bin = int(binopacity.split(",")[1])
         retstr += self.set_opacity(bin, alpha)
-      self.SendInfoToGUI( { "bin_opacities": bin_opacities_str } )
+      #self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities } )
     return retstr
 
 
   def set_opacity(self, bin, alpha):
-    if bin > self.nbin:
-      return "There are only %d bins present\n" %self.nbin
+    if bin > self.nbins:
+      return "There are only %d bins present\n" %self.nbins
     msg = "%d, %f" %(bin, alpha)
     self.SendWebSockMsg("alpha", msg)
     return "Opacity %s set on bin[%s]\n" %(alpha, bin)
@@ -1815,7 +1820,7 @@ mysocket.onmessage = function (e)
       retmsg = "expanding to P1 in browser"
     else:
       unique_rot_ops = [ self.symops[0] ] # first one is the identity matrix
-    if friedel_mate:
+    if friedel_mate and not self.miller_array.anomalous_flag():
       msgtype += "Friedel"
       retmsg = "expanding Friedel mates in browser"
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -1881,9 +1886,9 @@ mysocket.onmessage = function (e)
 
 
   def GetTrackBallRotateSpeed(self):
-    self.ngl_setttings.mouse_sensitivity = None
+    self.ngl_settings.mouse_sensitivity = None
     self.msgqueue.append( ("GetTrackBallRotateSpeed", "") )
-    while self.ngl_setttings.mouse_sensitivity is None:
+    while self.ngl_settings.mouse_sensitivity is None:
       time.sleep(self.sleeptime)
 
 
@@ -1979,7 +1984,8 @@ mysocket.onmessage = function (e)
 ngl_philstr = """
   mouse_sensitivity = 0.2
     .type = float
-
+  bin_opacities = ""
+    .type = str
 """
 
 NGLmaster_phil = libtbx.phil.parse( ngl_philstr )
