@@ -1206,6 +1206,8 @@ class MainWindow(wx.Frame):
     #  if self.spotfinder_sentinel is None or not self.spotfinder_sentinel.active:
     #    self.start_spotfinder_sentinel()
     #    self.run_window.spotfinder_light.change_status('on')
+    elif name == self.run_window.trials_tab.name:
+      self.run_window.trials_tab.refresh_trials()
     elif name == self.run_window.runstats_tab.name:
       if self.job_monitor is None or not self.job_monitor.active:
         self.start_job_monitor()
