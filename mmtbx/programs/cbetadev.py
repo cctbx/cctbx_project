@@ -29,8 +29,11 @@ Example:
   include scope mmtbx.validation.molprobity_cmdline_phil_str
     cbetadev {
       output = *text kin
-      .type = choice
-      .help = '''choose output type'''
+        .type = choice
+        .help = '''choose output type'''
+      apply_phi_psi_correction = False
+        .type = bool
+        .help = XXX
       }
 """
   datatypes = ['model','phil']
@@ -45,6 +48,7 @@ Example:
     result = cbetadev(
       pdb_hierarchy=hierarchy,
       outliers_only=self.params.outliers_only,
+      apply_phi_psi_correction=self.params.cbetadev.apply_phi_psi_correction,
       out=self.logger,
       quiet=False)
     if self.params.cbetadev.output == "kin":
