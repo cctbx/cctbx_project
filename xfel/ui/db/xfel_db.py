@@ -708,6 +708,8 @@ class xfel_db_application(db_application):
   def get_stats(self, **kwargs):
     return Stats(self, **kwargs)
 
+# Deprecated, but preserved here in case it proves useful later
+"""
 class sacla_run_finder(object):
   def __init__(self, params):
     self.params = params
@@ -732,6 +734,7 @@ class sacla_run_finder(object):
       run += 1
 
     return self.known_runs
+"""
 
 class standalone_run_finder(object):
   def __init__(self, params):

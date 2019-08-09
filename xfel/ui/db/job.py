@@ -232,9 +232,6 @@ def submit_job(app, job):
   if app.params.facility.name == 'lcls':
     identifier_string = "%s_%s_r%04d_t%03d_rg%03d"% \
       (app.params.facility.lcls.experiment, app.params.experiment_tag, int(job.run.run), job.trial.trial, job.rungroup.id)
-  elif app.params.facility.name == 'sacla':
-    identifier_string = "%s_%s_r%04d_t%03d_rg%03d"% \
-      (app.params.facility.sacla.experiment, app.params.experiment_tag, int(job.run.run), job.trial.trial, job.rungroup.id)
   else:
     identifier_string = "%s_%s_t%03d_rg%03d"% \
       (app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id)
@@ -331,7 +328,6 @@ def submit_job(app, job):
     # always use mpi for 'lcls'
     use_mpi                   = app.params.mp.method != 'local' or (app.params.mp.method == 'local' and app.params.facility.name == 'lcls')
   )
-  if app.params.facility == 'sacla': d['experiment'] = app.params.facility.sacla.experiment
   if app.params.db.password is not None and len(app.params.db.password) == 0:
     d['password'] = None
   else:
@@ -380,15 +376,6 @@ def submit_job(app, job):
             locator.write("rayonix.bin_size=%s\n"%job.rungroup.binning)
           elif mode == 'cspad':
             locator.write("cspad.detz_offset=%s\n"%job.rungroup.detz_parameter)
-        locator.close()
-        d['locator'] = locator_path
-      elif app.params.facility.name == 'sacla':
-        locator_path = os.path.join(configs_dir, identifier_string + ".loc")
-        locator = open(locator_path, 'w')
-        locator.write("experiment=%s\n"%app.params.facility.sacla.experiment) # SACLA specific parameter
-        locator.write("run=%s\n"%job.run.run)
-        locator.write("rayonix_root=%s\n"%app.params.facility.sacla.rayonix_root)
-        locator.write("beamline=%s\n"%app.params.facility.sacla.beamline)
         locator.close()
         d['locator'] = locator_path
       else:
@@ -483,6 +470,6 @@ def submit_job(app, job):
 
   from xfel.command_line.cxi_mpi_submit import Script as submit_script
   args = [submit_phil_path]
-  if app.params.facility.name not in ['lcls', 'sacla']:
+  if app.params.facility.name not in ['lcls']:
     args.append(job.run.path)
   return submit_script().run(args)

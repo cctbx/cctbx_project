@@ -120,7 +120,7 @@ class SettingsDialog(BaseDialog):
     # Facility control
     self.facility_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
-    choices = ['LCLS', 'Standalone', 'Sacla']
+    choices = ['LCLS', 'Standalone']
     lower_choices = [f.lower() for f in choices]
     self.facility = gctr.ChoiceCtrl(self,
                                     label='Facility',
@@ -142,7 +142,6 @@ class SettingsDialog(BaseDialog):
     # Experiment name control
     experiment = None
     if self.params.facility.name == 'lcls': experiment = self.params.facility.lcls.experiment
-    elif self.params.facility.name == 'sacla': experiment = self.params.facility.sacla.experiment
     if experiment is None: experiment = ''
     self.experiment = gctr.TextButtonCtrl(self,
                                           label='Experiment',
@@ -211,7 +210,7 @@ class SettingsDialog(BaseDialog):
     self.setup_facility_options()
 
   def setup_facility_options(self):
-    if self.params.facility.name in ['lcls', 'sacla']:
+    if self.params.facility.name in ['lcls']:
       self.experiment.Enable()
     else:
       self.experiment.Disable()
@@ -224,11 +223,6 @@ class SettingsDialog(BaseDialog):
       opts.ShowModal()
     elif self.params.facility.name == 'standalone':
       opts = StandaloneOptions(self, self.params)
-      opts.Fit()
-      opts.Center()
-      opts.ShowModal()
-    elif self.params.facility.name == 'sacla':
-      opts = SaclaOptions(self, self.params)
       opts.Fit()
       opts.Center()
       opts.ShowModal()
@@ -261,8 +255,6 @@ class SettingsDialog(BaseDialog):
     self.params.output_folder = self.output.ctr.GetValue()
     if self.params.facility.name == 'lcls':
       self.params.facility.lcls.experiment = self.experiment.ctr.GetValue()
-    elif self.params.facility.name == 'sacla':
-      self.params.facility.sacla.experiment = self.experiment.ctr.GetValue()
     e.Skip()
 
 
@@ -583,77 +575,6 @@ class StandaloneOptions(BaseDialog):
         self.n_files_needed.Enable()
       self.last_modified.Disable()
       self.minimum_file_size.Disable()
-
-class SaclaOptions(BaseDialog):
-  ''' Options settings specific to standalone GUI '''
-  def __init__(self, parent, params,
-               label_style='bold',
-               content_style='normal',
-               *args, **kwargs):
-
-    self.params = params
-    BaseDialog.__init__(self, parent, label_style=label_style,
-                        content_style=content_style, *args, **kwargs)
-
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-
-    self.beamline = gctr.TextButtonCtrl(self,
-                                        label='Beamline',
-                                        label_style='bold',
-                                        label_size=(300, -1),
-                                        value=str(self.params.facility.sacla.beamline))
-    self.main_sizer.Add(self.beamline,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
-
-    self.rayonix_root = gctr.TextButtonCtrl(self,
-                                            label='Rayonix root folder',
-                                            label_style='bold',
-                                            label_size=(300, -1),
-                                            value=self.params.facility.sacla.rayonix_root)
-    self.main_sizer.Add(self.rayonix_root,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
-
-    self.start_run = gctr.TextButtonCtrl(self,
-                                            label='Starting run number',
-                                            label_style='bold',
-                                            label_size=(300, -1),
-                                            value=str(self.params.facility.sacla.start_run))
-    self.main_sizer.Add(self.start_run,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
-
-    self.end_run = gctr.TextButtonCtrl(self,
-                                            label='Ending run number',
-                                            label_style='bold',
-                                            label_size=(300, -1),
-                                            value=str(self.params.facility.sacla.end_run))
-    self.main_sizer.Add(self.end_run,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
-
-
-    self.SetSizer(self.main_sizer)
-    self.SetTitle('Sacla settings')
-
-    # Dialog control
-    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
-                        border=10)
-
-    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
-
-  def onOK(self, e):
-    self.params.facility.sacla.beamline = int(self.beamline.ctr.GetValue())
-    self.params.facility.sacla.rayonix_root = self.rayonix_root.ctr.GetValue()
-    self.params.facility.sacla.start_run = int(self.start_run.ctr.GetValue())
-    try:
-      self.params.facility.sacla.end_run = int(self.end_run.ctr.GetValue())
-    except ValueError:
-      self.params.facility.sacla.end_run = None
-    e.Skip()
 
 class AdvancedSettingsDialog(BaseDialog):
   ''' Advanced settings for the cctbx.xfel front end '''
@@ -1502,7 +1423,7 @@ class RunBlockDialog(BaseDialog):
     self.block = block
     self.all_blocks = []
     self.db = db
-    self.use_ids = db.params.facility.name not in ['lcls', 'sacla']
+    self.use_ids = db.params.facility.name not in ['lcls']
     self.is_lcls = db.params.facility.name == 'lcls'
 
     all_runs = db.get_all_runs()

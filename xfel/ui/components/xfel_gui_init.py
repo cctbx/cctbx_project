@@ -87,9 +87,6 @@ class RunSentinel(Thread):
       else:
         from xfel.ui.db.xfel_db import standalone_run_finder
         self.finder = standalone_run_finder(self.parent.params)
-    elif self.parent.params.facility.name == 'sacla':
-      from xfel.ui.db.xfel_db import sacla_run_finder
-      self.finder = sacla_run_finder(self.parent.params)
 
   def post_refresh(self):
     evt = RefreshRuns(tp_EVT_RUN_REFRESH, -1)
@@ -113,10 +110,6 @@ class RunSentinel(Thread):
                            run[0] not in known_runs]
         unknown_run_runs = [r[0] for r in standalone_runs]
         unknown_run_paths = [r[1] for r in standalone_runs]
-      elif self.parent.params.facility.name == 'sacla':
-        unknown_run_runs = [str(run) for run in self.finder.list_runs() if
-                            str(run) not in known_runs]
-        unknown_run_paths = [''] * len(unknown_run_runs)
 
       if len(unknown_run_runs) > 0:
         for run_run, run_path in zip(unknown_run_runs, unknown_run_paths):
