@@ -1153,6 +1153,175 @@ class show_angles(object):
       print >> out, "*%s" %(i+1),
       print >> out, rt_mx
 
+class calculate_dihedrals(object):
+
+  def __init__(self,
+               pair_asu_table,
+               sites_frac,
+               skip_j_seq_less_than_i_seq=True,
+               covariance_matrix=None,
+               cell_covariance_matrix=None,
+               parameter_map=None,
+               conformer_indices=None):
+    libtbx.adopt_init_args(self, locals())
+    self.distances = flex.double()
+    if self.covariance_matrix is not None:
+      self.variances = flex.double()
+    else:
+      self.variances = None
+    self.dihedrals = flex.double()
+    self.pair_counts = flex.size_t()
+
+  def __iter__(self):
+    return self.next()
+
+  def next(self):
+
+    class dihedral(object):
+      def __init__(self,
+                   angle,
+                   i_seqs,
+                   rt_mxs=None,
+                   variance=None):
+        libtbx.adopt_init_args(self, locals())
+
+    asu_mappings = self.pair_asu_table.asu_mappings()
+    unit_cell = asu_mappings.unit_cell()
+    if self.covariance_matrix is not None:
+      assert self.parameter_map is not None
+      cov_cart = covariance.orthogonalize_covariance_matrix(
+        self.covariance_matrix, unit_cell, self.parameter_map)
+    table = self.pair_asu_table.table()
+    for i_seq,asu_dict in enumerate(table):
+      for j_seq,j_sym_groups in asu_dict.items():
+        for j_sym_group in j_sym_groups:
+          for i_j_sym,j_sym in enumerate(j_sym_group):
+            for k_seq, k_sym_groups in asu_dict.items():
+              if self.skip_j_seq_less_than_i_seq and j_seq < k_seq:
+                continue
+              if k_seq == j_seq and j_sym_group.size() <= 1:
+                continue
+              if k_seq > j_seq:
+                continue
+              for k_sym_group in k_sym_groups:
+                for i_k_sym,k_sym in enumerate(k_sym_group):
+                  if j_seq == k_seq and i_j_sym <= i_k_sym:
+                    continue
+                  if i_seq == k_seq and i_k_sym == 0:
+                    continue
+                  if (self.conformer_indices is not None and
+                      self.conformer_indices[j_seq] !=
+                      self.conformer_indices[k_seq]):
+                    continue
+                  dihedrals = []
+                  # collect dihedrals on the j side
+                  for l_seq, l_sym_groups in table[j_seq].items():
+                    if l_seq > j_seq or l_seq > k_seq:
+                      continue
+                    if (self.conformer_indices is not None and
+                      self.conformer_indices[k_seq] !=
+                      self.conformer_indices[l_seq]):
+                      continue
+                    for l_sym_group in l_sym_groups:
+                      for idx,l_sym in enumerate(l_sym_group):
+                        if (l_seq == i_seq or l_seq == k_seq) and idx == 0:
+                          continue
+                        if l_sym != 0:
+                          continue
+                        dihedrals.append(((l_seq, j_seq, i_seq, k_seq),
+                                          (l_sym, j_sym, 0, k_sym)))
+                  # collect dihedrals on the k side
+                  for l_seq, l_sym_groups in table[k_seq].items():
+                    if l_seq > j_seq or l_seq > k_seq:
+                      continue
+                    if (self.conformer_indices is not None and
+                      self.conformer_indices[k_seq] !=
+                      self.conformer_indices[l_seq]):
+                      continue
+                    for l_sym_group in l_sym_groups:
+                      for idx,l_sym in enumerate(l_sym_group):
+                        if (l_seq == i_seq or l_seq == k_seq) and idx == 0:
+                          continue
+                        if l_sym != 0:
+                          continue
+                        dihedrals.append(((j_seq, i_seq, k_seq, l_seq),
+                                          (j_sym, 0, k_sym, l_sym)))
+                  for seqs, syms in dihedrals:
+                    rt_mx_i_inv = asu_mappings.get_rt_mx(seqs[0], syms[0]).inverse()
+                    rt_mx_i = sgtbx.rt_mx()
+                    rt_mxs = [rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(seqs[i], syms[i]))\
+                              for i in xrange(1,4)]
+                    rt_mxs.insert(0, rt_mx_i)
+                    sites = [unit_cell.orthogonalize(rt_mxs[i] * self.sites_frac[seqs[i]])\
+                             for i in xrange(1,4)]
+                    sites.insert(0, unit_cell.orthogonalize(self.sites_frac[seqs[0]]))
+                    a = geometry.dihedral(sites)
+                    angle_ = a.dihedral_model
+                    self.dihedrals.append(angle_)
+                    if self.covariance_matrix is not None:
+                      cov = covariance.extract_covariance_matrix_for_sites(
+                        flex.size_t(seqs), cov_cart, self.parameter_map)
+                      if self.cell_covariance_matrix is not None:
+                        var = a.variance(cov, unit_cell, rt_mxs)
+                      else:
+                        var = a.variance(cov, unit_cell, rt_mxs)
+                      self.variances.append(var)
+                    else:
+                      var = None
+                    yield dihedral(angle_, seqs, rt_mxs, variance=var)
+
+class show_dihedrals(object):
+
+  def __init__(self,
+        pair_asu_table,
+        site_labels=None,
+        sites_frac=None,
+        sites_cart=None,
+        show_cartesian=False,
+        keep_pair_asu_table=False,
+        out=None):
+
+    assert [sites_frac, sites_cart].count(None) == 1
+    if (out is None): out = sys.stdout
+    if (keep_pair_asu_table):
+      self.pair_asu_table = pair_asu_table
+    else:
+      self.pair_asu_table = None
+    rt_mxs = []
+    if (site_labels is None):
+      label_len = len("%d" % (sites_frac.size()+1))
+      label_fmt = "site_%%0%dd" % label_len
+      label_len += 5
+    else:
+      label_len = 1
+      for label in site_labels:
+        label_len = max(label_len, len(label))
+      label_fmt = "%%-%ds" % (label_len+4)
+    angles = calculate_dihedrals(pair_asu_table, sites_frac)
+    for d in angles:
+      if (site_labels is None):
+        s = label_fmt % (d.i_seqs[0]+1) + ":"
+      else:
+        s = ""
+        for idx, i_seq in enumerate(d.i_seqs):
+          label = label_fmt % site_labels[i_seq]
+          rt_mx = d.rt_mcs[idx]
+          if not rt_mx.is_unit_mx():
+            if rt_mx in rt_mxs:
+              j = rt_mxs.index(rt_mx) + 1
+            else:
+              rt_mxs.append(rt_mx)
+              j = len(rt_mxs)
+          label += "*%s" %j
+          s += label
+      s += " %6.2f" % d.angle
+      print >> out, s
+
+    self.dihedrals = angles.dihedrals
+    for i, rt_mx in enumerate(rt_mxs):
+      print >> out, "*%s" %(i+1),
+      print >> out, rt_mx
+
 class sym_pair(libtbx.slots_getstate_setstate):
 
   __slots__ = ["i_seq", "j_seq", "rt_mx_ji"]

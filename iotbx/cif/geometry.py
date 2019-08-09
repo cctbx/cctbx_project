@@ -125,6 +125,74 @@ class angles_as_cif_loop(object):
     self.angles = angles.angles
     self.variances = angles.variances
 
+class dihedral_angles_as_cif_loop(object):
+
+  def __init__(self,
+               pair_asu_table,
+               site_labels,
+               sites_frac=None,
+               sites_cart=None,
+               covariance_matrix=None,
+               cell_covariance_matrix=None,
+               parameter_map=None,
+               include_bonds_to_hydrogen=False,
+               fixed_angles=None,
+               conformer_indices=None,
+               eps=2e-16):
+    assert [sites_frac, sites_cart].count(None) == 1
+    fmt = "%.1f"
+    asu_mappings = pair_asu_table.asu_mappings()
+    space_group_info = sgtbx.space_group_info(group=asu_mappings.space_group())
+    unit_cell = asu_mappings.unit_cell()
+    if sites_cart is not None:
+      sites_frac = unit_cell.fractionalize(sites_cart)
+    self.loop = model.loop(header=(
+      "_geom_tortion_atom_site_label_1",
+      "_geom_tortion_atom_site_label_2",
+      "_geom_tortion_atom_site_label_3",
+      "_geom_tortion_atom_site_label_4",
+      "_geom_tortion",
+      "_geom_tortion_site_symmetry_1",
+      "_geom_tortion_site_symmetry_2",
+      "_geom_tortion_site_symmetry_3",
+      "_geom_tortion_site_symmetry_4"
+    ))
+    angles = crystal.calculate_dihedrals(
+      pair_asu_table, sites_frac,
+      covariance_matrix=covariance_matrix,
+      cell_covariance_matrix=cell_covariance_matrix,
+      parameter_map=parameter_map,
+      conformer_indices=conformer_indices)
+    for a in angles:
+      i_seq, j_seq, k_seq, l_seq = a.i_seqs
+      if (not include_bonds_to_hydrogen
+          and (site_labels[i_seq].startswith('H') or
+               site_labels[l_seq].startswith('H'))):
+        continue
+      sym_code_i = space_group_info.cif_symmetry_code(a.rt_mxs[0])
+      sym_code_j = space_group_info.cif_symmetry_code(a.rt_mxs[1])
+      sym_code_k = space_group_info.cif_symmetry_code(a.rt_mxs[2])
+      sym_code_l = space_group_info.cif_symmetry_code(a.rt_mxs[3])
+      if sym_code_i == "1": sym_code_i = "."
+      if sym_code_j == "1": sym_code_j = "."
+      if sym_code_k == "1": sym_code_k = "."
+      if sym_code_l == "1": sym_code_l = "."
+      if a.variance is not None and a.variance > eps:
+        angle = format_float_with_su(a.angle, math.sqrt(a.variance))
+      else:
+        angle = fmt % a.angle
+      self.loop.add_row((site_labels[i_seq],
+                         site_labels[j_seq],
+                         site_labels[k_seq],
+                         site_labels[l_seq],
+                         angle,
+                         sym_code_i,
+                         sym_code_j,
+                         sym_code_k,
+                         sym_code_l,
+                         ))
+    self.dihedrals = angles.dihedrals
+    self.variances = angles.variances
 
 class hbond(object):
   def __init__(self, d_seq, a_seq, rt_mx=None):
