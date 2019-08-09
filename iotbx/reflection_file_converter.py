@@ -177,7 +177,7 @@ def run(
     .option(None, "--shelx",
       action="store",
       type="string",
-      help="write data to SHELX FILE ('--shelx .' copies name of input file)",
+      help="write intensity or amplitude data to SHELX FILE ('--shelx .' copies name of input file)",
       metavar="FILE")
   ).process(args=args)
   co = command_line.options
@@ -568,14 +568,22 @@ def run(
   if (co.shelx is not None):
     if (co.generate_r_free_flags):
       raise Sorry("Cannot write R-free flags to SHELX file.")
+    file_extension = "hkl"
+    if (co.shelx.endswith("shelx")):
+      file_extension = "shelx"
     file_name = reflection_file_utils.construct_output_file_name(
       input_file_names=[selected_array.info().source],
       user_file_name=co.shelx,
       file_type_label="SHELX",
-      file_extension="shelx")
-    print("Writing SHELX file:", file_name)
-    processed_array.as_amplitude_array().export_as_shelx_hklf(
-      open(file_name, "w"))
+      file_extension=file_extension)
+
+    if processed_array.is_xray_intensity_array():
+      data_status = "HKLF 4 (intensity)"
+    else:
+      data_status = "HKLF 3 (amplitude)"
+    print("Writing SHELX", data_status, "file:", file_name)
+    processed_array.export_as_shelx_hklf(
+      open(file_name, "w"),full_dynamic_range=True)
     n_output_files += 1
     print()
   if (n_output_files == 0):

@@ -8,12 +8,16 @@ def miller_array_export_as_shelx_hklf(
       miller_array,
       file_object=None,
       normalise_if_format_overflow=False,
+      full_dynamic_range=False,
       scale_range=None):
   """\
-  If the maximum data value does not fit into the f8.2/f8.0 format:
-  normalise_if_format_overflow=False: RuntimeError is thrown
-  normalise_if_format_overflow=True: data is normalised to the largest
-  number to fit f8.2/f8.0 format
+  For the full_dynamic_range option, normalise data outside the range that
+  fits into 8.6g format, regardless of settings for normalise_if_format_overflow
+  or scale_range
+  Otherwise, if the maximum data value does not fit into the f8.2/f8.0 format:
+    normalise_if_format_overflow=False: RuntimeError is thrown
+    normalise_if_format_overflow=True: data is normalised to the largest
+      number to fit f8.2/f8.0 format or within specified scale_range
   """
   assert miller_array.is_real_array()
   if (file_object is None): file_object = sys.stdout
@@ -29,17 +33,23 @@ def miller_array_export_as_shelx_hklf(
     max_val = max(max_val, flex.max(sigmas))
   min_sc = 1
   max_sc = 1
-  if scale_range is None:
+  scale = 1
+  if full_dynamic_range:
+    max_abs = 999999.
+    max_val = max(abs(max_val),abs(min_val))
+    if (max_val > max_abs):
+      scale = max_abs / max_val
+  elif scale_range is None:
     scale_range = (-999999., 9999999.)
-  if (min_val < scale_range[0]):
-    if not normalise_if_format_overflow:
-      raise_f8_overflow(min_val)
-    min_sc = scale_range[0] / min_val
-  if (max_val > scale_range[1]):
-    if (not normalise_if_format_overflow):
-      raise_f8_overflow(max_val)
-    max_sc = scale_range[1] / max_val
-  scale = min(min_sc, max_sc)
+    if (min_val < scale_range[0]):
+      if not normalise_if_format_overflow:
+        raise_f8_overflow(min_val)
+      min_sc = scale_range[0] / min_val
+    if (max_val > scale_range[1]):
+      if (not normalise_if_format_overflow):
+        raise_f8_overflow(max_val)
+      max_sc = scale_range[1] / max_val
+    scale = min(min_sc, max_sc)
   sigmas = miller_array.sigmas()
   s = 0.01
   for i,h in enumerate(miller_array.indices()):
@@ -58,7 +68,24 @@ def miller_array_export_as_shelx_hklf(
           result = "%7d." % round(v)
           assert len(result) == 8
       return result
-    line = fmt_3i4(h) + fmt_f8(data[i]*scale) + fmt_f8(s*scale)
+    def fmt_fullrange_data(v):
+      if (abs(v) >= 1.):
+        result = "%8.6g" % v
+      else:
+        result = "%8.5f" % v
+      return result
+    def fmt_fullrange_sigma(v):
+      if (abs(v) >= 1.):
+        result = "%8.6g" % v
+      elif (abs(v) < 0.00001):
+        result = "%8.5f" % 0.00001
+      else:
+        result = "%8.5f" % v
+      return result
+    if (full_dynamic_range):
+      line = fmt_3i4(h) + fmt_fullrange_data(data[i]*scale) + fmt_fullrange_sigma(s*scale)
+    else:
+      line = fmt_3i4(h) + fmt_f8(data[i]*scale) + fmt_f8(s*scale)
     print(line, file=file_object)
   print("   0   0   0    0.00    0.00", file=file_object)
 

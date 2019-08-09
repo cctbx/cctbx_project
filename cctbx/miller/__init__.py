@@ -4457,7 +4457,8 @@ class array(set):
 
   def export_as_shelx_hklf(self,
         file_object=None,
-        normalise_if_format_overflow=False):
+        normalise_if_format_overflow=False,
+        full_dynamic_range=False):
     """
     Write reflections to a SHELX-format .hkl file.
     """
@@ -4465,7 +4466,8 @@ class array(set):
     hklf.miller_array_export_as_shelx_hklf(
       miller_array=self,
       file_object=file_object,
-      normalise_if_format_overflow=normalise_if_format_overflow)
+      normalise_if_format_overflow=normalise_if_format_overflow,
+      full_dynamic_range=full_dynamic_range)
 
   def export_as_cns_hkl(self,
         file_object,
