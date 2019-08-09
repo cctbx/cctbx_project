@@ -9,6 +9,7 @@ import psana
 import numpy as np
 from xfel.cxi.cspad_ana import cspad_tbx, parse_calib
 import libtbx
+import libtbx.load_env
 from libtbx import easy_pickle
 import libtbx.option_parser
 from scitbx.array_family import flex
@@ -213,7 +214,7 @@ the output images in the folder cxi49812.
 
   if command_line.options.config is not None:
     psana.setConfigFile(command_line.options.config)
-  dataset_name = "exp=%s:run=%d:idx"%(command_line.options.experiment, command_line.options.run)
+  dataset_name = "exp=%s:run=%d:smd"%(command_line.options.experiment, command_line.options.run)
   if command_line.options.xtc_dir is not None:
     if command_line.options.use_ffb:
       raise Sorry("Cannot specify the xtc_dir and use SLAC's ffb system")
@@ -244,14 +245,11 @@ the output images in the folder cxi49812.
       print("Skipping first image in the Rayonix detector") # Shuttering issue
       command_line.options.skipevents = 1
 
-    times = run.times()[command_line.options.skipevents:]
-    nevents = min(len(times),maxevents)
-    # chop the list into pieces, depending on rank.  This assigns each process
-    # events such that the get every Nth event where N is the number of processes
-    mytimes = [times[i] for i in range(nevents) if (i+rank)%size == 0]
-    for i in range(len(mytimes)):
-      if i%10==0: print('Rank',rank,'processing event',rank*len(mytimes)+i,', ',i,'of',len(mytimes))
-      evt = run.event(mytimes[i])
+    for i, evt in enumerate(run.events()):
+      if i%size != rank: continue
+      if i < command_line.options.skipevents: continue
+      if i >= maxevents: break
+      if i%10==0: print('Rank',rank,'processing event',i)
       #print "Event #",rank*mylength+i," has id:",evt.get(EventId)
       if 'Rayonix' in command_line.options.address or 'FeeHxSpectrometer' in command_line.options.address or 'XrayTransportDiagnostic' in command_line.options.address:
         data = evt.get(psana.Camera.FrameV1,src)
