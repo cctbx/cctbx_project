@@ -292,11 +292,9 @@ general_tests = [
   # automatic linking
   "$D/monomer_library/tst_superpose_ideal.py",
   #
-  "$D/ions/tst_pick_ca_svm.py",
   "$D/scaling/tst_plan_sad_experiment.py",
   #
   "$D/regression/tst_models_to_from_chains.py",
-  "$D/regression/tst_helix_sheet_recs_as_pdb_files.py",
   # tNCS
   "$D/regression/tncs/tst_pair.py",
   "$D/regression/tncs/tst_epsfac_and_radius.py",
