@@ -19,6 +19,31 @@ import sys
 from scitbx.array_family import flex
 from libtbx import group_args
 
+from mmtbx.conformation_dependent_library import generate_protein_threes
+
+relevant_atom_names = {
+  " CA ": None, " N  ": None, " C  ": None, " CB ": None} # FUTURE: set
+
+def get_phi_psi_dict(pdb_hierarchy):
+  rc = {}
+  for i, three in enumerate(generate_protein_threes(hierarchy=pdb_hierarchy,
+                                                    geometry=None)):
+    phi_psi_angles = three.get_phi_psi_angles()
+    is_alt_conf = ' '
+    relevant_atoms = {}
+    for atom in three[1].atoms():
+      if (atom.name in relevant_atom_names):
+        if (len(atom.parent().altloc) != 0):
+          is_alt_conf = atom.parent().altloc
+          break
+    id_str = '|%s:%s|' % (three[1].id_str(), is_alt_conf)
+    rc[id_str] = phi_psi_angles
+  return rc
+
+def get_correction(resdiue, phi_psi):
+
+  assert 0
+
 class cbeta(residue):
   """
   Result class for protein C-beta deviation analysis (phenix.cbetadev).
@@ -55,50 +80,34 @@ class cbeta(residue):
     return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname, self.resid),
              self.deviation, self.dihedral_NABB ]
 
-def generate_residues(pdb_hierarchy, apply_phi_psi_correction=False):
-  from mmtbx.validation import utils
-  from mmtbx.conformation_dependent_library import generate_protein_threes
+class cbetadev(validation):
+  __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs","stats"]
+  program_description = "Analyze protein sidechain C-beta deviation"
+  output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
+  gui_list_headers = ["Chain", "Residue","Deviation","Angle"]
+  gui_formats = ["%s", "%s", "%.3f", "%.2f"]
+  wx_column_widths = [75, 125, 100, 100]
 
-  relevant_atom_names = {
-    " CA ": None, " N  ": None, " C  ": None, " CB ": None} # FUTURE: set
-  use_segids = utils.use_segids_in_place_of_chainids(
-    hierarchy=pdb_hierarchy)
-  if apply_phi_psi_correction:
-    def _process_residue(residue):
-      if (residue.resname == "GLY"):
-        return False
-      cf = residue.parent()
-      chain = cf.parent()
-      if use_segids:
-        chain_id = utils.get_segid_as_chainid(chain=chain)
-      else:
-        chain_id = chain.id
-      is_alt_conf = False
-      if (is_alt_conf):
-        altchar = cf.altloc
-      else:
-        altchar = " "
-      relevant_atoms = {}
-      for atom in residue.atoms():
-        if (atom.name in relevant_atom_names):
-          relevant_atoms[atom.name] = atom
-          if (len(atom.parent().altloc) != 0):
-            is_alt_conf = True
-      return residue, chain_id, altchar, relevant_atoms
+  def get_result_class(self) : return cbeta
 
-    for i, three in enumerate(generate_protein_threes(hierarchy=pdb_hierarchy,
-                                                      geometry=None)):
-      phi_psi_angles = three.get_phi_psi_angles()
-      if not i:
-        rc = _process_residue(three[0])
-        if not rc: continue
-        residue, chain_id, altchar, relevant_atoms = rc
-        yield residue, chain_id, altchar, relevant_atoms, phi_psi_angles
-      rc = _process_residue(three[0])
-      if not rc: continue
-      residue, chain_id, altchar, relevant_atoms = rc
-      yield residue, chain_id, altchar, relevant_atoms, phi_psi_angles
-  else:
+  def __init__(self, pdb_hierarchy,
+      outliers_only=False,
+      out=sys.stdout,
+      collect_ideal=False,
+      apply_phi_psi_correction=False,
+      quiet=False):
+    validation.__init__(self)
+    self._outlier_i_seqs = flex.size_t()
+    self.beta_ideal = {}
+    output_list = []
+    self.stats = group_args(n_results=0,
+                            n_weighted_results = 0,
+                            n_weighted_outliers = 0)
+    if apply_phi_psi_correction:
+      phi_psi_angles = get_phi_psi_dict(pdb_hierarchy)
+    from mmtbx.validation import utils
+    use_segids = utils.use_segids_in_place_of_chainids(
+      hierarchy=pdb_hierarchy)
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         if use_segids:
@@ -119,72 +128,51 @@ def generate_residues(pdb_hierarchy, apply_phi_psi_correction=False):
                   if (len(atom.parent().altloc) != 0):
                     is_alt_conf = True
               if ((is_first or is_alt_conf) and len(relevant_atoms) == 4):
+                result = calculate_ideal_and_deviation(
+                  relevant_atoms=relevant_atoms,
+                  resname=residue.resname)
+                dev = result.deviation
+                dihedralNABB = result.dihedral
+                betaxyz = result.ideal
+                if (dev is None) : continue
+                resCB = relevant_atoms[" CB "]
+                self.stats.n_results += 1
+                self.stats.n_weighted_results += resCB.occ
                 if (is_alt_conf):
                   altchar = cf.altloc
                 else:
                   altchar = " "
-                yield residue, chain_id, altchar, relevant_atoms, None
-
-class cbetadev(validation):
-  __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs","stats"]
-  program_description = "Analyze protein sidechain C-beta deviation"
-  output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
-  gui_list_headers = ["Chain", "Residue","Deviation","Angle"]
-  gui_formats = ["%s", "%s", "%.3f", "%.2f"]
-  wx_column_widths = [75, 125, 100, 100]
-
-  def get_result_class(self) : return cbeta
-
-  def __init__(self,
-               pdb_hierarchy,
-               # restraints_manager=None,
-               outliers_only=False,
-               out=sys.stdout,
-               collect_ideal=False,
-               apply_phi_psi_correction=False,
-               quiet=False):
-    validation.__init__(self)
-    self._outlier_i_seqs = flex.size_t()
-    self.beta_ideal = {}
-    output_list = []
-    self.stats = group_args(n_results=0,
-                            n_weighted_results = 0,
-                            n_weighted_outliers = 0)
-    for residue, chain_id, altchar, relevant_atoms, phi_psi in \
-        generate_residues(pdb_hierarchy,
-                          apply_phi_psi_correction=apply_phi_psi_correction):
-      result = calculate_ideal_and_deviation(
-        relevant_atoms=relevant_atoms,
-        resname=residue.resname)
-      dev = result.deviation
-      dihedralNABB = result.dihedral
-      betaxyz = result.ideal
-      if (dev is None) : continue
-      resCB = relevant_atoms[" CB "]
-      self.stats.n_results += 1
-      self.stats.n_weighted_results += resCB.occ
-      if(dev >=0.25 or outliers_only==False):
-        if(dev >=0.25):
-          self.n_outliers+=1
-          self.stats.n_weighted_outliers += resCB.occ
-          self._outlier_i_seqs.append(atom.i_seq)
-        res=residue.resname.lower()
-        result = cbeta(
-          chain_id=chain_id,
-          resname=residue.resname,
-          resseq=residue.resseq,
-          icode=residue.icode,
-          altloc=altchar,
-          xyz=resCB.xyz,
-          occupancy=resCB.occ,
-          deviation=dev,
-          dihedral_NABB=dihedralNABB,
-          ideal_xyz=betaxyz,
-          outlier=(dev >= 0.25))
-        self.results.append(result)
-        key = result.id_str()
-        if (collect_ideal):
-          self.beta_ideal[key] = betaxyz
+                if apply_phi_psi_correction:
+                  id_str = '|%s:%s|' % (residue.id_str(), altchar)
+                  phi_psi = phi_psi_angles.get(id_str, None)
+                  # print(id_str, phi_psi)
+                  if phi_psi:
+                    get_correction(residue, phi_psi)
+                if(dev >=0.25 or outliers_only==False):
+                  if(dev >=0.25):
+                    self.n_outliers+=1
+                    self.stats.n_weighted_outliers += resCB.occ
+                    self._outlier_i_seqs.append(atom.i_seq)
+                  res=residue.resname.lower()
+                  sub=chain.id
+                  if(len(sub)==1):
+                    sub=" "+sub
+                  result = cbeta(
+                    chain_id=chain_id,
+                    resname=residue.resname,
+                    resseq=residue.resseq,
+                    icode=residue.icode,
+                    altloc=altchar,
+                    xyz=resCB.xyz,
+                    occupancy=resCB.occ,
+                    deviation=dev,
+                    dihedral_NABB=dihedralNABB,
+                    ideal_xyz=betaxyz,
+                    outlier=(dev >= 0.25))
+                  self.results.append(result)
+                  key = result.id_str()
+                  if (collect_ideal):
+                    self.beta_ideal[key] = betaxyz
 
   def show_old_output(self, out, verbose=False, prefix="pdb"):
     if (verbose):
