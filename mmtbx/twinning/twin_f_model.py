@@ -1202,7 +1202,7 @@ the percentage of R-free reflections).
         r_abs_work_f_bin.append(tmp_work)
         r_abs_free_f_bin.append(tmp_free)
         d_max,d_min = self.f_obs().d_max_min()
-        d_range = "%7.4f - %7.4f"%(d_max,d_min)
+        d_range = "%7.2f - %7.2f"%(d_max,d_min)
 
         alpha_w, beta_w = self.alpha_beta_w()
         alpha_f, beta_f = self.alpha_beta_f()
