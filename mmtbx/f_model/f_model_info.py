@@ -221,8 +221,7 @@ class info(object):
            sel_tpr_t = flex.sum(tpr_t.select(sel_t))
       d_max_,d_min_ = sel_fo_all.d_max_min()
       completeness = sel_fo_all.completeness(d_max = d_max_)
-      d_range = fo_t.binner().bin_legend(
-        i_bin=i_bin, show_bin_number=False, show_counts=False)
+      d_range = "%7.4f - %7.4f"%(d_max_,d_min_)
       s_fo_w_d = sel_fo_w.data()
       s_fc_w_d = sel_fc_w.data()
       assert s_fo_w_d.size() == s_fc_w_d.size()
