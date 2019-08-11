@@ -34,6 +34,8 @@ class NGL_HKLViewer(QWidget):
         self.verbose = e.split("verbose=")[1]
       if "UseOSbrowser" in e:
         self.UseOSbrowser = e.split("UseOSbrowser=")[1]
+      if "jscriptfname" in e:
+        self.jscriptfname = e.split("jscriptfname=")[1]
 
     self.context = None
 
@@ -282,6 +284,8 @@ class NGL_HKLViewer(QWidget):
           if currentinfostr:
             #print(currentinfostr)
             self.infostr += currentinfostr + "\n"
+            # display no more than 10 Kbyte text
+            self.infostr = self.infostr[-10000:]
             self.textInfo.setPlainText(self.infostr)
             self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
 
@@ -849,19 +853,16 @@ class NGL_HKLViewer(QWidget):
     self.socket.bind("tcp://127.0.0.1:%s" %self.sockport)
     try: msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
     except Exception as e: pass
-    #cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes; myHKLview = cmdlineframes.HKLViewFrame(useSocket=True, high_quality=False, verbose=0)"\n'
     cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes;' \
      + ' myHKLview = cmdlineframes.HKLViewFrame(useGuiSocket=%s, high_quality=True,' %self.sockport \
+     + ' jscriptfname = \'%s\', ' %self.jscriptfname \
      + ' verbose=%s, UseOSBrowser= %s )"\n' %(self.verbose, str(self.UseOSbrowser))
-    #self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdout=sys.stdout, stderr=sys.stderr)
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
-    #self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    time.sleep(1)
+    #time.sleep(1)
 
 
   def NGL_HKL_command(self, cmdstr):
-    print("sending:\n" + cmdstr)
+    #print("sending:\n" + cmdstr)
     self.socket.send(bytes(cmdstr,"utf-8"))
 
 

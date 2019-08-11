@@ -143,7 +143,7 @@ mtz1.mtz_object().write("mymtz.mtz")
 
 
 from crys3d.hklview import cmdlineframes
-myHKLview = cmdlineframes.HKLViewFrame(high_quality=True, verbose=1)
+myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", high_quality=True, verbose=1)
 myHKLview.LoadReflectionsFile("mymtz.mtz")
 myHKLview.SetScene(0)
 
@@ -217,6 +217,12 @@ myHKLview.ClipPlaneParallelToHKLplane(0, 3, 3, hkldist=0)
 myHKLview.RemoveNormalVectorToClipPlane()
 
 
+
+from crys3d.hklview import cmdlineframes
+myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", verbose=1)
+myHKLview.LoadReflectionsFile("4XVY.tncs.mtz")
+myHKLview.SetScene(0)
+myHKLview.SetSceneNbins(5)
 
 
 
@@ -787,11 +793,19 @@ class HKLViewFrame() :
     self.viewer.UpdateBinValues( binvals )
 
 
-  def SetSceneBinThresholds(self, binvals=[], bin_scene_label="Resolution", nbins=15):
-    self.params.NGL_HKLviewer.scene_bin_thresholds = binvals
+  def SetSceneBinLabel(self, bin_scene_label="Resolution"):
     self.params.NGL_HKLviewer.bin_scene_label = bin_scene_label
+    self.update_settings()
+
+
+  def SetSceneNbins(self, nbins):
     self.params.NGL_HKLviewer.nbins = nbins
     self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = str([ "1.0, %d"%e for e in range(nbins) ])
+    self.update_settings()
+
+
+  def SetSceneBinThresholds(self, binvals=[]):
+    self.params.NGL_HKLviewer.scene_bin_thresholds = binvals
     self.update_settings()
 
 

@@ -80,7 +80,6 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
   #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
   if proc_array.is_complex_array():
     fomsarrays_idx.extend( mapcoef_fom_dict.get(proc_array.info().label_string()) )
-
   settings = setts
   if (settings.expand_anomalous or settings.expand_to_p1) \
       and not proc_array.is_unique_set_under_symmetry() and not merge:
@@ -214,7 +213,7 @@ class hklview_3d:
     self.sleeptime = 0.1
     self.colstraliases = ""
     self.binvals = []
-    self.workingbinvals = []
+    self.binvalsboundaries = []
     self.proc_arrays = []
     self.HKLscenes = []
     self.HKLscenesdict = {}
@@ -235,7 +234,7 @@ class hklview_3d:
     self.mprint = sys.stdout.write
     if 'mprint' in kwds:
       self.mprint = kwds['mprint']
-    self.nbins = 0
+    self.nbinvalsboundaries = 0
     tempdir = tempfile.gettempdir()
     self.hklfname = os.path.join(tempdir, "hkl.htm" )
     if os.path.isfile(self.hklfname):
@@ -345,6 +344,7 @@ class hklview_3d:
     if has_phil_path(diff_phil, "bin_opacities"):
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       msg += self.SetOpacities(currentphil.viewer.NGL.bin_opacities )
+      #self.mprint(currentphil.viewer.NGL.bin_opacities )
     return msg
 
 
@@ -732,42 +732,42 @@ var MakeHKL_Axis = function()
     radii2 = []
     spbufttips = []
 
-    self.workingbinvals = []
+    self.binvalsboundaries = []
     if not self.binscenelabel=="Resolution":
       ibinarray= int(self.binscenelabel)
-      self.workingbinvals = [ self.HKLscenesMindata[ibinarray] - 0.1 , self.HKLscenesMaxdata[ibinarray] + 0.1 ]
-      self.workingbinvals.extend( self.binvals )
-      self.workingbinvals.sort()
-      if self.workingbinvals[0] < 0.0:
-        self.workingbinvals.append(0.0)
-        self.workingbinvals.sort()
+      self.binvalsboundaries = [ self.HKLscenesMindata[ibinarray] - 0.1 , self.HKLscenesMaxdata[ibinarray] + 0.1 ]
+      self.binvalsboundaries.extend( self.binvals )
+      self.binvalsboundaries.sort()
+      if self.binvalsboundaries[0] < 0.0:
+        self.binvalsboundaries.append(0.0)
+        self.binvalsboundaries.sort()
       self.bindata = self.HKLscenes[ibinarray].data
       if self.HKLscenes[ibinarray].work_array.is_complex_array():
         self.bindata = self.HKLscenes[ibinarray].ampl
     else:
-      self.workingbinvals = self.binvals
+      self.binvalsboundaries = self.binvals
       self.bindata = 1.0/self.scene.dres
-    self.nbins = len(self.workingbinvals)
-    self.ngl_settings.bin_opacities = str([ "1.0, %d"%e for e in range(self.nbins) ])
-    self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities } )
+    self.nbinvalsboundaries = len(self.binvalsboundaries)
 
-    for ibin in range(self.nbins):
+    for ibin in range(self.nbinvalsboundaries):
       colours.append([]) # colours and positions are 3 x size of data()
       positions.append([])
       radii2.append([])
       spbufttips.append([])
 
     def data2bin(d):
-      for ibin, binval in enumerate(self.workingbinvals):
-        if (ibin+1) == self.nbins:
+      for ibin, binval in enumerate(self.binvalsboundaries):
+        if (ibin+1) == self.nbinvalsboundaries:
           return ibin
-        if d > binval and d <= self.workingbinvals[ibin+1]:
+        if d > binval and d <= self.binvalsboundaries[ibin+1]:
           return ibin
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       raise Sorry("Should never get here")
 
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
+      if i >= self.bindata.size():
+        continue # not binning data where value of other miller array is undefined
       ibin = data2bin( self.bindata[i] )
       positions[ibin].extend( roundoff(list(hklstars), 2) )
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )
@@ -784,15 +784,15 @@ var MakeHKL_Axis = function()
     cntbin = 0
     self.binstrs = []
     self.bin_infotpls = []
-    for ibin in range(self.nbins):
+    for ibin in range(self.nbinvalsboundaries):
       mstr =""
       nreflsinbin = len(radii2[ibin])
-      if (ibin+1) < self.nbins and nreflsinbin > 0:
-        bin1= self.workingbinvals[ibin]
-        bin2= self.workingbinvals[ibin+1]
+      if (ibin+1) < self.nbinvalsboundaries and nreflsinbin > 0:
+        bin1= self.binvalsboundaries[ibin]
+        bin2= self.binvalsboundaries[ibin+1]
         if colstr=="dres":
-          bin1= 1.0/self.workingbinvals[ibin]
-          bin2= 1.0/self.workingbinvals[ibin+1]
+          bin1= 1.0/self.binvalsboundaries[ibin]
+          bin2= 1.0/self.binvalsboundaries[ibin+1]
         mstr= "bin[%d] has %d reflections with %s in ]%2.3f; %2.3f]" %(cntbin, nreflsinbin, \
                 colstr, bin1, bin2)
         self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 )) )
@@ -837,11 +837,15 @@ var MakeHKL_Axis = function()
   """
         spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n" %cntbin
 
-        if self.workingbinvals[ibin] < 0.0:
+        if self.binvalsboundaries[ibin] < 0.0:
           negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
         cntbin += 1
 
-    self.SendInfoToGUI( { "bin_infotpls": self.bin_infotpls, "bin_data_label": colstr }  )
+    self.ngl_settings.bin_opacities = str([ "1.0, %d"%e for e in range(cntbin) ])
+    self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
+                          "bin_infotpls": self.bin_infotpls,
+                          "bin_data_label": colstr
+                         } )
 
     spherebufferstr += """
 // create tooltip element and add to the viewer canvas
@@ -966,8 +970,8 @@ var MakeHKL_Axis = function()
       colourgradstrs += "  colourgradvalarray[%s] = %s;\n" %(g, str(colourgradstr) )
 
     #negativeradiistr = ""
-    #for ibin in range(self.nbins):
-    #  if self.workingbinvals[ibin] < 0.0:
+    #for ibin in range(self.nbinvalsboundaries):
+    #  if self.binvalsboundaries[ibin] < 0.0:
     #    negativeradiistr += "shapebufs[%d].setParameters({metalness: 1})\n" %ibin
     qualitystr = """ , { disableImpostor: true
                   , sphereDetail: 0 } // rather than default value of 2 icosahedral subdivisions
@@ -1116,7 +1120,7 @@ var hklscene = function()
 {
   shape = new NGL.Shape('shape');
   vectorshape = new NGL.Shape('vectorshape');
-  stage = new NGL.Stage('viewport', { backgroundColor: "green", tooltip:false,
+  stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false,
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
 
@@ -1575,14 +1579,14 @@ mysocket.onmessage = function (e)
       */
     }
 
-    mysocket.send( 'Ready ' + pagename );
   }
 
   catch(err)
   {
-    mysocket.send('error: ' + err.stack );
+    mysocket.send('JavaScriptError: ' + err.stack );
   }
 
+  mysocket.send( 'Ready ' + pagename );
 };
 
     """ % (self.websockport, self.__module__, self.__module__, axisfuncstr, \
@@ -1656,6 +1660,9 @@ mysocket.onmessage = function (e)
         else:
           self.mprint( message, verbose=3)
         self.lastmsg = message
+      if "JavaScriptError:" in message:
+        self.mprint( message, verbose=0)
+        #raise Sorry(message)
       if "OrientationBeforeReload:" in message:
         #sleep(0.2)
         self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
@@ -1706,9 +1713,20 @@ mysocket.onmessage = function (e)
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
 
 
+  def WaitforHandshake(self, sec):
+    nwait = 0
+    while not self.websockclient:
+      time.sleep(self.sleeptime)
+      nwait += self.sleeptime
+      if nwait > sec:
+        return False
+    return True
+
+
   def WebBrowserMsgQueue(self):
     try:
       while True:
+        nwait = 0.0
         sleep(self.sleeptime)
         if len(self.msgqueue):
           #print("self.msgqueue: " + str(self.msgqueue))
@@ -1716,6 +1734,11 @@ mysocket.onmessage = function (e)
           self.SendWebSockMsg(pendingmessagetype, pendingmessage)
           while not (self.browserisopen and self.websockclient):
             sleep(self.sleeptime)
+            nwait += self.sleeptime
+            if nwait > 5 and self.browserisopen:
+              self.mprint("ERROR: No handshake from browser! Security settings may have to be adapted", verbose=0 )
+              return
+              #break
           self.msgqueue.remove( self.msgqueue[0] )
 # if the html content is huge the browser will be unresponsive until it has finished
 # reading the html content. This may crash this thread. So try restarting this thread until
@@ -1768,8 +1791,8 @@ mysocket.onmessage = function (e)
 
 
   def set_opacity(self, bin, alpha):
-    if bin > self.nbins:
-      return "There are only %d bins present\n" %self.nbins
+    if bin > self.nbinvalsboundaries-1:
+      return "There are only %d bins present\n" %self.nbinvalsboundaries
     msg = "%d, %f" %(bin, alpha)
     self.SendWebSockMsg("alpha", msg)
     return "Opacity %s set on bin[%s]\n" %(alpha, bin)
@@ -1805,7 +1828,7 @@ mysocket.onmessage = function (e)
 
 
   def ExpandInBrowser(self, P1=True, friedel_mate=True):
-    retmsg = "Not expanding in browser"
+    retmsg = "Not expanding in browser\n"
     if self.sceneisdirty:
       return retmsg
     uc = self.miller_array.unit_cell()
@@ -1817,12 +1840,12 @@ mysocket.onmessage = function (e)
     if P1:
       msgtype += "P1"
       unique_rot_ops = self.symops[ 0 : self.sg.order_p() ]
-      retmsg = "expanding to P1 in browser"
+      retmsg = "expanding to P1 in browser\n"
     else:
       unique_rot_ops = [ self.symops[0] ] # first one is the identity matrix
     if friedel_mate and not self.miller_array.anomalous_flag():
       msgtype += "Friedel"
-      retmsg = "expanding Friedel mates in browser"
+      retmsg = "expanding Friedel mates in browser\n"
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     for i, symop in enumerate(unique_rot_ops):
       RotMx = matrix.sqr( symop.r().as_double())
@@ -1888,8 +1911,9 @@ mysocket.onmessage = function (e)
   def GetTrackBallRotateSpeed(self):
     self.ngl_settings.mouse_sensitivity = None
     self.msgqueue.append( ("GetTrackBallRotateSpeed", "") )
-    while self.ngl_settings.mouse_sensitivity is None:
-      time.sleep(self.sleeptime)
+    if self.WaitforHandshake(5):
+      while self.ngl_settings.mouse_sensitivity is None:
+        time.sleep(self.sleeptime)
 
 
   def SetClipPlaneDistances(self, near, far, cameraPosZ=None):
@@ -1900,14 +1924,16 @@ mysocket.onmessage = function (e)
 
 
   def GetClipPlaneDistances(self):
+
     self.clipNear = None
     self.clipFar = None
     self.cameraPosZ = None
     self.msgqueue.append( ("GetClipPlaneDistances", "") )
-    while self.clipFar is None:
-      time.sleep(self.sleeptime)
-    self.mprint("clipnear, clipfar, cameraPosZ: %2.2f, %2.2f %2.2f" \
-               %(self.clipNear, self.clipFar, self.cameraPosZ), 2)
+    if self.WaitforHandshake(5):
+      while self.clipFar is None:
+        time.sleep(self.sleeptime)
+      self.mprint("clipnear, clipfar, cameraPosZ: %2.2f, %2.2f %2.2f" \
+                 %(self.clipNear, self.clipFar, self.cameraPosZ), 2)
     return (self.clipNear, self.clipFar, self.cameraPosZ)
 
 
@@ -1916,10 +1942,11 @@ mysocket.onmessage = function (e)
     self.boundingY = None
     self.boundingZ = None
     self.msgqueue.append( ("GetBoundingBox", "") )
-    while self.boundingX is None:
-      time.sleep(self.sleeptime)
-    self.mprint("boundingXYZ: %2.2f %2.2f %2.2f" \
-       %(self.boundingX, self.boundingY, self.boundingZ), verbose=2)
+    if self.WaitforHandshake(5):
+      while self.boundingX is None:
+        time.sleep(self.sleeptime)
+      self.mprint("boundingXYZ: %2.2f %2.2f %2.2f" \
+         %(self.boundingX, self.boundingY, self.boundingZ), verbose=2)
     return (self.boundingX, self.boundingY, self.boundingZ)
 
 
