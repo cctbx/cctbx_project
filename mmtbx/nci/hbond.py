@@ -184,9 +184,9 @@ def stats(model, prefix):
 
 
 def precheck(atoms, i, j, Hs, As, Ds, fsc0):
-  '''
-    Check if two atoms are potential H bond partners, based on element and altloc
-  '''
+  """
+  Check if two atoms are potential H bond partners, based on element and altloc
+  """
   ei, ej = atoms[i].element, atoms[j].element
   altloc_i = atoms[i].parent().altloc
   altloc_j = atoms[j].parent().altloc
@@ -196,27 +196,25 @@ def precheck(atoms, i, j, Hs, As, Ds, fsc0):
   other_is_acceptor = ei in As or ej in As
   is_candidate = one_is_Hs and other_is_acceptor and \
     altloc_i == altloc_j and resseq_i != resseq_j
-
-  if ei in Hs:
+  if(ei in Hs):
     bound_to_h = fsc0[i]
-    if (not bound_to_h): # exclude 'lone' H
+    if(not bound_to_h): # exclude 'lone' H
       is_candidate = False
-    elif (atoms[bound_to_h[0]].element not in Ds): # Use only first atom bound to H
+    elif(atoms[bound_to_h[0]].element not in Ds): # Use only first atom bound to H
       is_candidate = False
-  if ej in Hs:
+  if(ej in Hs):
     bound_to_h = fsc0[j]
-    if (not bound_to_h):
+    if(not bound_to_h):
       is_candidate = False
-    elif (atoms[bound_to_h[0]].element not in Ds):
+    elif(atoms[bound_to_h[0]].element not in Ds):
       is_candidate = False
-
   return is_candidate
 
 def get_D_H_A_Y(p, Hs, fsc0, rt_mx_ji, fm, om, atoms):
-  '''
-    Get atom objects for donor and acceptor atoms
-    Apply symmetry op if necessary, so that correct geometry can be calculated
-  '''
+  """
+  Get atom objects for donor and acceptor atoms
+  Apply symmetry op if necessary, so that correct geometry can be calculated
+  """
   i, j = p.i_seq, p.j_seq
   Y = []
   if(atoms[i].element in Hs):
@@ -246,7 +244,6 @@ def get_D_H_A_Y(p, Hs, fsc0, rt_mx_ji, fm, om, atoms):
     if(rt_mx_ji is not None and str(rt_mx_ji) != "x,y,z"):
       H = apply_symop_to_copy(H, rt_mx_ji, fm, om)
       D = apply_symop_to_copy(D, rt_mx_ji, fm, om)
-  #
   return D, H, A, Y, atom_A, atom_H, atom_D
 
 class find(object):
@@ -339,14 +336,15 @@ class find(object):
       else:
         rt_mx_ji = p.rt_mx_ji
       #
-      D, H, A, Y, atom_A, atom_H, atom_D = get_D_H_A_Y(p = p,
-                                                       Hs = Hs,
-                                                       fsc0 = fsc0,
-                                                       rt_mx_ji = rt_mx_ji,
-                                                       fm = fm,
-                                                       om = om,
-                                                       atoms = atoms)
-      if len(Y) == 0: continue # don't use 'lone' acceptors
+      D, H, A, Y, atom_A, atom_H, atom_D = get_D_H_A_Y(
+        p        = p,
+        Hs       = Hs,
+        fsc0     = fsc0,
+        rt_mx_ji = rt_mx_ji,
+        fm       = fm,
+        om       = om,
+        atoms    = atoms)
+      if(len(Y) == 0): continue # don't use 'lone' acceptors
       d_HA = A.distance(H)
       if(not self.external_proxies):
         assert d_HA <= d_HA_cutoff[1]
