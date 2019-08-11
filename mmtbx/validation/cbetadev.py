@@ -20,6 +20,7 @@ from scitbx.array_family import flex
 from libtbx import group_args
 
 from mmtbx.conformation_dependent_library import generate_protein_threes
+from mmtbx.validation import cbd_utils
 
 relevant_atom_names = {
   " CA ": None, " N  ": None, " C  ": None, " CB ": None} # FUTURE: set
@@ -39,10 +40,6 @@ def get_phi_psi_dict(pdb_hierarchy):
     id_str = '|%s:%s|' % (three[1].id_str(), is_alt_conf)
     rc[id_str] = phi_psi_angles
   return rc
-
-def get_correction(resdiue, phi_psi):
-
-  assert 0
 
 class cbeta(residue):
   """
@@ -105,6 +102,8 @@ class cbetadev(validation):
                             n_weighted_outliers = 0)
     if apply_phi_psi_correction:
       phi_psi_angles = get_phi_psi_dict(pdb_hierarchy)
+      new_outliers = 0
+      outliers_removed = 0
     from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
@@ -145,9 +144,14 @@ class cbetadev(validation):
                 if apply_phi_psi_correction:
                   id_str = '|%s:%s|' % (residue.id_str(), altchar)
                   phi_psi = phi_psi_angles.get(id_str, None)
-                  # print(id_str, phi_psi)
                   if phi_psi:
-                    get_correction(residue, phi_psi)
+                    rc = cbd_utils.get_phi_psi_correction(result, residue, phi_psi)
+                    if rc:
+                      dev, dihedralNABB, start, finish = rc
+                      if start and not finish:
+                        outliers_removed += 1
+                      elif not start and finish:
+                        new_outliers += 1
                 if(dev >=0.25 or outliers_only==False):
                   if(dev >=0.25):
                     self.n_outliers+=1
@@ -173,6 +177,9 @@ class cbetadev(validation):
                   key = result.id_str()
                   if (collect_ideal):
                     self.beta_ideal[key] = betaxyz
+      if apply_phi_psi_correction:
+        print('Outliers removed : %2d\nNew outliers     : %2d\n' % (outliers_removed,
+                                                                    new_outliers))
 
   def show_old_output(self, out, verbose=False, prefix="pdb"):
     if (verbose):
