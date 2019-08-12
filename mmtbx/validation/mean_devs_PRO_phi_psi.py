@@ -1,3 +1,4 @@
+from __future__ import division
 
 mean_devs = {
   (-120, 0) : (0.022552, 1.979762),
@@ -140,3 +141,7 @@ mean_devs = {
   (-30, -60) : (0.100022, -2.074830),
   (-30, -50) : (0.123726, -2.095036),
 }
+
+if __name__ == '__main__':
+  for phi_psi in [(0,0), (-60,-60)]:
+    print(phi_psi, mean_devs.get(phi_psi, None))

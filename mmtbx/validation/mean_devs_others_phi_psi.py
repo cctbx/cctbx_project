@@ -1,3 +1,4 @@
+from __future__ import division
 
 mean_devs = {
   (-180, -180) : (0.035380, 0.662277),
