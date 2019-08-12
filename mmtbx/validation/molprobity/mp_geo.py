@@ -178,6 +178,23 @@ def run(args):
                         result.score,
                         chain_types[atom_info.chain_id]] )
 
+    for result in sorted(rc.chiralities.results, key=lambda x: (x.atoms_info[0].resseq, get_altloc(atoms_info=x.atoms_info), get_atoms_str(atoms_info=x.atoms_info))):
+      atom_info = result.atoms_info[0]
+      # label:chain:number:ins:alt:type:measure:value:sigmas:class
+      #atoms_str = get_atoms_str(atoms_info=result.atoms_info)
+      atoms_str = result.atoms_info[0].name.strip() #report chiral center instead of atom list
+      altloc = get_altloc(atoms_info=result.atoms_info)
+      chain_id = atom_info.chain_id
+      outliers.append( [chain_id,
+                        atom_info.resseq,
+                        atom_info.icode,
+                        altloc,
+                        atom_info.resname,
+                        atoms_str,
+                        result.model,
+                        result.score,
+                        chain_types[atom_info.chain_id]] )
+
     if do_bonds_and_angles:
       for outlier in outliers:
         print("%s:%2s:%s:%s:%s:%s:%s:%.3f:%.3f:%s" % (
