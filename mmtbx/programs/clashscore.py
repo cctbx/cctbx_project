@@ -66,6 +66,10 @@ Example:
   b_factor_cutoff = None
     .type = int
     .help = '''B factor cutoff for use with MolProbity'''
+
+  clash_cutoff = -0.4
+    .type = float
+    .help = '''dummy variable for MolProbity, will be removed after MP update'''
 """
   datatypes = ['model','phil']
   known_article_ids = ['molprobity']
