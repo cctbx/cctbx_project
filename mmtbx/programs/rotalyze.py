@@ -23,6 +23,9 @@ Example:
 
   master_phil_str = """
   include scope mmtbx.validation.molprobity_cmdline_phil_str
+  data_version = 8000
+    .type = str
+    .help = '''Use rotamer distributions from top8000'''
   show_errors = False
     .type = bool
     .help = '''Print out errors'''
@@ -41,7 +44,7 @@ Example:
 
     result = rotalyze(
       pdb_hierarchy=hierarchy,
-      data_version="8000",#params.data_version,
+      data_version="8000",#was 'params.data_version', no options currently
       show_errors=self.params.show_errors,
       outliers_only=self.params.outliers_only,
       out=self.logger,
