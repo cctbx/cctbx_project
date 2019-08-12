@@ -375,6 +375,12 @@ class manager(object):
   def set_log(self, log):
     self.log = log
 
+  def set_stop_for_unknowns(self, value):
+    self._stop_for_unknowns=value
+
+  def get_stop_for_unknowns(self):
+    return self._stop_for_unknowns
+
   def set_shift_manager(self, shift_manager):
     self._shift_manager = shift_manager
     if shift_manager is not None:
