@@ -29,6 +29,7 @@ class NGL_HKLViewer(QWidget):
 
     self.verbose = 0
     self.UseOSbrowser = False
+    self.jscriptfname = ""
     for e in sys.argv:
       if "verbose" in e:
         self.verbose = e.split("verbose=")[1]
@@ -37,7 +38,8 @@ class NGL_HKLViewer(QWidget):
       if "jscriptfname" in e:
         self.jscriptfname = e.split("jscriptfname=")[1]
 
-    self.context = None
+    self.zmq_context = None
+    self.bufsize = 20000
 
     self.originalPalette = QApplication.palette()
 
@@ -119,33 +121,6 @@ class NGL_HKLViewer(QWidget):
     self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
     self.textInfo.setReadOnly(True)
 
-    self.RadiiScaleGroupBox = QGroupBox("Radii Size of HKL Spheres")
-    #self.PowerScaleGroupBox = QGroupBox("Manual Power Scaling of Sphere Radii")
-
-    self.ManualPowerScalecheckbox = QCheckBox()
-    self.ManualPowerScalecheckbox.setText("Manual Power Scaling of Sphere Radii")
-    self.ManualPowerScalecheckbox.clicked.connect(self.onManualPowerScale)
-
-    self.power_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
-    self.nth_power_scale = 0.5
-    self.power_scale_spinBox.setValue(self.nth_power_scale)
-    self.power_scale_spinBox.setDecimals(2)
-    self.power_scale_spinBox.setSingleStep(0.05)
-    self.power_scale_spinBox.setRange(0.0, 1.0)
-    self.power_scale_spinBox.valueChanged.connect(self.onPowerScaleChanged)
-    self.powerscaleLabel = QLabel()
-    self.powerscaleLabel.setText("Power scale Factor")
-
-    self.radii_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
-    self.radii_scale = 1.0
-    self.radii_scale_spinBox.setValue(self.radii_scale)
-    self.radii_scale_spinBox.setDecimals(1)
-    self.radii_scale_spinBox.setSingleStep(0.1)
-    self.radii_scale_spinBox.setRange(0.2, 2.0)
-    self.radii_scale_spinBox.valueChanged.connect(self.onRadiiScaleChanged)
-    self.radiiscaleLabel = QLabel()
-    self.radiiscaleLabel.setText("Linear Scale Factor")
-
     self.millertable = QTableWidget(0, 9)
     labels = ["Label", "Type", "no. of HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
@@ -175,7 +150,7 @@ class NGL_HKLViewer(QWidget):
       mainLayout.addWidget(self.BrowserBox,          0, 1, 5, 3)
       #self.BrowserBox.setUrl("https://cctbx.github.io/")
       self.BrowserBox.setUrl("https://webglreport.com/")
-      self.BrowserBox.loadFinished.connect(self.onLoadFinished)
+      #self.BrowserBox.loadFinished.connect(self.onLoadFinished)
       self.BrowserBox.renderProcessTerminated.connect(self.onRenderProcessTerminated)
       mainLayout.setColumnStretch(2, 1)
 
@@ -191,6 +166,7 @@ class NGL_HKLViewer(QWidget):
     self.LaunchCCTBXPython()
     self.out = None
     self.err = None
+    self.comboviewwidth = 0
     self.hklscenes_arrays = []
     self.array_infotpls = []
     self.matching_arrays = []
@@ -203,6 +179,7 @@ class NGL_HKLViewer(QWidget):
     self.fileisvalid = False
     self.NewFileLoaded = False
     self.NewHKLscenes = False
+    self.updatingNbins = False
 
     self.show()
 
@@ -217,7 +194,7 @@ class NGL_HKLViewer(QWidget):
       print(self.out.decode("utf-8"))
     if self.err:
       print(self.err.decode("utf-8"))
-    if self.context:
+    if self.zmq_context:
       try:
         msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
         msgstr = msg.decode()
@@ -238,12 +215,15 @@ class NGL_HKLViewer(QWidget):
             self.bin_infotpls = self.infodict["bin_infotpls"]
 
             self.nbins = len(self.bin_infotpls)
+            self.updatingNbins = True
             self.Nbins_spinBox.setValue(self.nbins)
+            self.updatingNbins = False
             self.binstable.setRowCount(self.nbins)
             for row,bin_infotpl in enumerate(self.bin_infotpls):
               for col,elm in enumerate(bin_infotpl):
                 item = QTableWidgetItem(str(elm))
-                if col==0:
+                # only allow changing the last column with opacity values
+                if col != 3:
                   item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 self.binstable.setItem(row, col, item)
             if self.bin_opacities:
@@ -258,7 +238,7 @@ class NGL_HKLViewer(QWidget):
             self.html_url = self.infodict["html_url"]
             if self.UseOSbrowser==False:
               self.BrowserBox.setUrl(self.html_url)
-              # workaround for background colour
+              # workaround for background colour bug in chromium
               # https://bugreports.qt.io/browse/QTBUG-41960
               self.BrowserBox.page().setBackgroundColor(Qt.transparent)
 
@@ -284,12 +264,12 @@ class NGL_HKLViewer(QWidget):
           if currentinfostr:
             #print(currentinfostr)
             self.infostr += currentinfostr + "\n"
-            # display no more than 10 Kbyte text
-            self.infostr = self.infostr[-10000:]
+            # display no more than self.bufsize bytes of text
+            self.infostr = self.infostr[-self.bufsize:]
             self.textInfo.setPlainText(self.infostr)
             self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
 
-          if self.NewHKLscenes and self.NewFileLoaded:
+          if self.NewFileLoaded and self.NewHKLscenes:
             #if self.mergedata == True : val = Qt.CheckState.Checked
             #if self.mergedata == None : val = Qt.CheckState.PartiallyChecked
             #if self.mergedata == False : val = Qt.CheckState.Unchecked
@@ -297,15 +277,15 @@ class NGL_HKLViewer(QWidget):
             #print("got hklscenes: " + str(self.hklscenes_arrays))
 
             self.MillerComboBox.clear()
-            #self.MillerComboBox.addItems( [ (str(e[0]) + " (" + str(e[1]) +")" )
-            #                                 for e in self.hklscenes_arrays ] )
             self.MillerComboBox.addItems( [ e[3] for e in self.hklscenes_arrays ] )
             self.MillerComboBox.setCurrentIndex(-1) # unselect the first item in the list
+            self.comboviewwidth = 0
+            for e in self.hklscenes_arrays:
+              self.comboviewwidth = max(self.comboviewwidth, self.MillerComboBox.fontMetrics().width( e[3]) )
+            self.MillerComboBox.view().setMinimumWidth(self.comboviewwidth)
+
             self.SpaceGroupComboBox.clear()
             self.SpaceGroupComboBox.addItems( self.spacegroups )
-            self.BinDataComboBox.clear()
-            self.BinDataComboBox.addItems(["dres"] + [ e[3] for e in self.hklscenes_arrays ] )
-            self.BinDataComboBox.setCurrentIndex(-1) # unselect the first item in the list
 
             self.millertable.setRowCount(len(self.hklscenes_arrays))
             #self.millertable.setColumnCount(8)
@@ -313,8 +293,14 @@ class NGL_HKLViewer(QWidget):
               for m,elm in enumerate(millarr):
                 self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
             self.functionTabWidget.setDisabled(True)
-            self.NewHKLscenes = False
             self.NewFileLoaded = False
+
+          if self.NewHKLscenes:
+            self.BinDataComboBox.clear()
+            self.BinDataComboBox.addItems(["Resolution"] + [ e[3] for e in self.hklscenes_arrays ] )
+            self.BinDataComboBox.view().setMinimumWidth(self.comboviewwidth)
+            #self.BinDataComboBox.setCurrentIndex(-1) # unselect the first item in the list
+            self.NewHKLscenes = False
 
       except Exception as e:
         errmsg = str(e)
@@ -396,7 +382,7 @@ class NGL_HKLViewer(QWidget):
       if self.BinDataComboBox.currentIndex() > 0:
         bin_scene_label = str(self.BinDataComboBox.currentIndex()-1)
       else:
-        bin_scene_label = "dres"
+        bin_scene_label = "Resolution"
       self.NGL_HKL_command("NGL_HKLviewer.bin_scene_label = %s" % bin_scene_label )
 
 
@@ -426,18 +412,24 @@ class NGL_HKLViewer(QWidget):
       self.binstable.currentItem().setText( self.currentSelectedBinsTableVal)
 
 
-  def onBinsTableitemActivated(self, item):
-    row = item.row()
-    column = item.column()
-    currentval = item.text()
-    #print( "in itemActivated " + currentval)
-
-
   def onBinsTableItemSelectionChanged(self):
     row = self.binstable.currentItem().row()
     column = self.binstable.currentItem().column()
     self.currentSelectedBinsTableVal = self.binstable.currentItem().text()
     #print( "in itemSelectionChanged " + self.currentSelectedBinsTableVal)
+
+
+  """
+  def onLoadFinished(self, val):
+    pass
+    #print("web page finished loading now")
+
+
+  def onBinsTableitemActivated(self, item):
+    row = item.row()
+    column = item.column()
+    currentval = item.text()
+    #print( "in itemActivated " + currentval)
 
 
   def onBinsTableCellentered(self, row, col):
@@ -448,11 +440,12 @@ class NGL_HKLViewer(QWidget):
   def onBinsTableCellPressed(self, row, col):
     pass
     #print( "in CellPressed " + self.binstable.currentItem().text() )
-
+  """
 
   def onNbinsChanged(self, val):
     self.nbins = val
-    self.NGL_HKL_command("NGL_HKLviewer.nbins = %d" %self.nbins)
+    if not self.updatingNbins: # avoid possible endless loop to cctbx
+      self.NGL_HKL_command("NGL_HKLviewer.nbins = %d" %self.nbins)
 
 
   def onSliceIndexChanged(self, val):
@@ -480,11 +473,6 @@ class NGL_HKLViewer(QWidget):
       }
       """ %(self.nth_power_scale, self.radii_scale)
     )
-
-  def onLoadFinished(self, val):
-    pass
-    #print("web page finished loading now")
-
 
   def onRenderProcessTerminated(self, termstatus, exitcode):
     print("Rendering terminated with status: %s and exitcode: %s" %(str(termstatus), str(exitcode)))
@@ -714,7 +702,6 @@ class NGL_HKLViewer(QWidget):
 
   def createRadiiScaleGroupBox(self):
     self.RadiiScaleGroupBox = QGroupBox("Radii Size of HKL Spheres")
-    #self.PowerScaleGroupBox = QGroupBox("Manual Power Scaling of Sphere Radii")
 
     self.ManualPowerScalecheckbox = QCheckBox()
     self.ManualPowerScalecheckbox.setText("Manual Power Scaling of Sphere Radii")
@@ -757,19 +744,15 @@ class NGL_HKLViewer(QWidget):
     labels = ["no. of HKLs", "lower bin value", "upper bin value", "opacity"]
     self.binstable.setHorizontalHeaderLabels(labels)
     # don't allow editing this table
-    #self.binstable.setEditTriggers(QTableWidget.NoEditTriggers)
     self.bindata_labeltxt = QLabel()
     self.bindata_labeltxt.setText("Data binned:")
     self.Nbins_spinBox = QSpinBox()
     self.Nbins_spinBox.setSingleStep(1)
-    self.Nbins_spinBox.setRange(0, 40)
+    self.Nbins_spinBox.setRange(1, 40)
     self.Nbins_spinBox.valueChanged.connect(self.onNbinsChanged)
     self.Nbins_labeltxt = QLabel()
     self.Nbins_labeltxt.setText("Number of bins:")
     self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
-    self.binstable.itemEntered.connect(self.onBinsTableitemActivated)
-    self.binstable.cellEntered.connect(self.onBinsTableCellentered)
-    self.binstable.cellPressed.connect(self.onBinsTableCellPressed)
     self.binstable.itemSelectionChanged.connect(self.onBinsTableItemSelectionChanged  )
     self.BinDataComboBox = QComboBox()
     self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)
@@ -782,7 +765,8 @@ class NGL_HKLViewer(QWidget):
     layout.addWidget(self.Nbins_spinBox, 0, 3)
     layout.addWidget(self.binstable, 1, 0, 1, 4)
     layout.setColumnStretch(0, 0)
-    layout.setColumnStretch(1, 1)
+    layout.setColumnStretch(1, 3)
+    layout.setColumnStretch(3, 1)
     self.BinsGroupBox.setLayout(layout)
 
 
@@ -848,8 +832,8 @@ class NGL_HKLViewer(QWidget):
 
   def LaunchCCTBXPython(self):
     self.sockport = self.find_free_port()
-    self.context = zmq.Context()
-    self.socket = self.context.socket(zmq.PAIR)
+    self.zmq_context = zmq.Context()
+    self.socket = self.zmq_context.socket(zmq.PAIR)
     self.socket.bind("tcp://127.0.0.1:%s" %self.sockport)
     try: msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
     except Exception as e: pass

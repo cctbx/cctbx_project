@@ -245,7 +245,7 @@ class hklview_3d:
     self.jscriptfname = os.path.join(tempdir, "hkljstr.js")
     if os.path.isfile(self.jscriptfname):
       os.remove(self.jscriptfname)
-    if 'jscriptfname' in kwds:
+    if 'jscriptfname' in kwds and kwds['jscriptfname'] != "":
       self.jscriptfname = kwds['jscriptfname']
     self.websockport = 7894
     if 'websockport' in kwds:
@@ -341,9 +341,9 @@ class hklview_3d:
         self.SetTrackBallRotateSpeed(currentphil.viewer.NGL.mouse_sensitivity)
     msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
-    if has_phil_path(diff_phil, "bin_opacities"):
+    #if has_phil_path(diff_phil, "bin_opacities"):
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      msg += self.SetOpacities(currentphil.viewer.NGL.bin_opacities )
+    msg += self.SetOpacities(currentphil.viewer.NGL.bin_opacities )
       #self.mprint(currentphil.viewer.NGL.bin_opacities )
     return msg
 
@@ -733,7 +733,10 @@ var MakeHKL_Axis = function()
     spbufttips = []
 
     self.binvalsboundaries = []
-    if not self.binscenelabel=="Resolution":
+    if self.binscenelabel=="Resolution":
+      self.binvalsboundaries = self.binvals
+      self.bindata = 1.0/self.scene.dres
+    else:
       ibinarray= int(self.binscenelabel)
       self.binvalsboundaries = [ self.HKLscenesMindata[ibinarray] - 0.1 , self.HKLscenesMaxdata[ibinarray] + 0.1 ]
       self.binvalsboundaries.extend( self.binvals )
@@ -744,9 +747,7 @@ var MakeHKL_Axis = function()
       self.bindata = self.HKLscenes[ibinarray].data
       if self.HKLscenes[ibinarray].work_array.is_complex_array():
         self.bindata = self.HKLscenes[ibinarray].ampl
-    else:
-      self.binvalsboundaries = self.binvals
-      self.bindata = 1.0/self.scene.dres
+
     self.nbinvalsboundaries = len(self.binvalsboundaries)
 
     for ibin in range(self.nbinvalsboundaries):
@@ -764,10 +765,11 @@ var MakeHKL_Axis = function()
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       raise Sorry("Should never get here")
 
+    if self.bindata.size() != points.size():
+      raise Sorry("Not the same number of reflections in bin-data and displayed data")
+
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
-      if i >= self.bindata.size():
-        continue # not binning data where value of other miller array is undefined
       ibin = data2bin( self.bindata[i] )
       positions[ibin].extend( roundoff(list(hklstars), 2) )
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )
@@ -1614,10 +1616,10 @@ mysocket.onmessage = function (e)
 
 
   def OnWebsocketClientMessage(self, client, server, message):
+    if self.scene_id is None:
+      return
     try:
       if message != "":
-        if "Error:" in message:
-          verb = True
         if "Orientation" in message:
           # The NGL.Matrix4 with the orientation is a list of floats.
           self.viewmtrx = message[ message.find("\n") + 1: ]
@@ -1786,7 +1788,7 @@ mysocket.onmessage = function (e)
         alpha = float(binopacity.split(",")[0])
         bin = int(binopacity.split(",")[1])
         retstr += self.set_opacity(bin, alpha)
-      #self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities } )
+      self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities } )
     return retstr
 
 

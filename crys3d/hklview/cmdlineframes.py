@@ -15,7 +15,6 @@ positioned in reciprocal space using a webbrowser. Usage:
 
 from crys3d.hklview import cmdlineframes
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js", htmlfname = "C:\Users\oeffner\Buser\NGL_HKLviewer\myhkl.html")
-
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.tncs.mtz")
 myHKLview.GetArrayInfo()
 myHKLview.SetScene(0)
@@ -261,7 +260,7 @@ def Inputarg(varname):
     myvar = input(varname)
   return myvar
 
-NOREFLDATA = "No reflection data scene has been selected"
+NOREFLDATA = "No reflection data has been selected"
 
 
 class settings_window () :
@@ -558,7 +557,7 @@ class HKLViewFrame() :
       if c==col:
         array_info = procarray_info
         self.viewer.miller_array = procarray
-    if col < 0:
+    if col is None:
       array_info = procarray_info
     self.merge_answer = [None]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -568,10 +567,10 @@ class HKLViewFrame() :
     return array_info
 
 
-  def set_miller_array(self, col=-1) :
+  def set_miller_array(self, col=None) :
     #print "in set_miller_array"
     #if col >= len(self.valid_arrays):
-    if col >= len(self.viewer.hkl_scenes_info ):
+    if col is not None and col >= len(self.viewer.hkl_scenes_info ):
       return
     array_info = self.process_all_miller_arrays(col)
     self.viewer.set_miller_array(col, merge=array_info.merge,
@@ -585,7 +584,7 @@ class HKLViewFrame() :
     if self.viewer.miller_array is None or \
       self.params.NGL_HKLviewer.using_space_subgroup:
       return
-    current_miller_array_idx = self.viewer.hkl_scenes_info[self.viewer.iarray][1]
+    current_miller_array_idx = self.viewer.hkl_scenes_info[self.viewer.scene_id][1]
     matching_valid_array = self.valid_arrays[ current_miller_array_idx ]
     from cctbx.sgtbx.subgroups import subgroups
     from cctbx import sgtbx
@@ -652,9 +651,9 @@ class HKLViewFrame() :
       from iotbx.reflection_file_reader import any_reflection_file
       self.viewer.isnewfile = True
       #self.params.NGL_HKLviewer.mergedata = None
-      self.viewer.iarray = -1
-      self.viewer.colour_scene_id = -1
-      self.viewer.radii_scene_id = -1
+      self.viewer.scene_id = None
+      self.viewer.colour_scene_id = None
+      self.viewer.radii_scene_id = None
       self.viewer.match_valarrays = []
       self.viewer.proc_arrays = []
       self.spacegroup_choices = []
@@ -780,10 +779,9 @@ class HKLViewFrame() :
         binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
         binvals = list( 1.0/flex.double(binvals) )
       else:
-        bindata = self.viewer.HKLscenes[int(self.viewer.binscenelabel)].data
+        bindata = self.viewer.HKLscenes[int(self.viewer.binscenelabel)].data.deep_copy()
         selection = flex.sort_permutation( bindata )
         bindata_sorted = bindata.select(selection)
-        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         # get binvals by dividing bindata_sorted with nbins
         binvals = [bindata_sorted[0]] * nbins #
         for i,e in enumerate(bindata_sorted):
