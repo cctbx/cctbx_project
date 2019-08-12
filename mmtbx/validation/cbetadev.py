@@ -104,6 +104,7 @@ class cbetadev(validation):
       phi_psi_angles = get_phi_psi_dict(pdb_hierarchy)
       new_outliers = 0
       outliers_removed = 0
+      total_residues = 0
     from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
@@ -142,6 +143,7 @@ class cbetadev(validation):
                 else:
                   altchar = " "
                 if apply_phi_psi_correction:
+                  total_residues+=1
                   id_str = '|%s:%s|' % (residue.id_str(), altchar)
                   phi_psi = phi_psi_angles.get(id_str, None)
                   if phi_psi:
@@ -178,8 +180,16 @@ class cbetadev(validation):
                   if (collect_ideal):
                     self.beta_ideal[key] = betaxyz
       if apply_phi_psi_correction:
-        print('Outliers removed : %2d\nNew outliers     : %2d\n' % (outliers_removed,
-                                                                    new_outliers))
+        print('''
+  Outliers removed : %5d
+  New outliers     : %5d
+  Num. of outliers : %5d
+  Num. of residues : %5d
+  ''' % (outliers_removed,
+         new_outliers,
+         self.n_outliers,
+         total_residues,
+        ))
 
   def show_old_output(self, out, verbose=False, prefix="pdb"):
     if (verbose):
