@@ -3,6 +3,7 @@
 
 jobs:
   - template: ./.azure-pipelines/azure-pipelines-syntax.yml
+  - template: ./.azure-pipelines/azure-pipelines-win.yml
   - template: ./.azure-pipelines/azure-pipelines-linux.yml
     parameters:
       distribution: centos
@@ -11,4 +12,3 @@ jobs:
     parameters:
       vmImage: [10, 14]
       xcode_version: [10, 2, 1]
-  - template: ./.azure-pipelines/azure-pipelines-win.yml
