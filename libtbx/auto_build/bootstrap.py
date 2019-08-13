@@ -1457,31 +1457,23 @@ class Builder(object):
     else:
       from .install_conda import conda_manager
 
-    # check for active conda environment
-    conda_env = os.environ.get('CONDA_PREFIX')
-
     # drop output
     log = open(os.devnull, 'w')
 
     # no path provided
-    if self.use_conda == '' and conda_env is None:
-      conda_env = os.path.join('..', 'conda_base')
+    check_file = False
+    if self.use_conda == '':
+      # base step has not run yet, so do not check if files exist
+      self.use_conda = os.path.join('..', 'conda_base')
       if self.isPlatformWindows():
-        conda_env = os.path.join(os.getcwd(), 'conda_base')
-      # base step is not run yet, so do not check if files exist
-      m = conda_manager(root_dir=os.getcwd(), conda_env=conda_env,
-                        check_file=False, log=log)
+        self.use_conda = os.path.join(os.getcwd(), 'conda_base')
     else:
-      # conda environment is active, overrides any path provided to --use-conda
-      if conda_env is not None:
-        self.use_conda = conda_env
-      # check that directory exists
-      if not os.path.isdir(self.use_conda):
-        raise RuntimeError('The path provided to --use-conda does not exist.')
-      # basic checks for python and conda
+      # environment is provided, so do check that it exists
+      check_file = True
       self.use_conda = os.path.abspath(self.use_conda)
-      m = conda_manager(root_dir=os.getcwd(), conda_env=self.use_conda,
-                        check_file=True, log=log)
+    # basic checks for python and conda
+    m = conda_manager(root_dir=os.getcwd(), conda_env=self.use_conda,
+                      check_file=check_file, log=log)
 
     return m
 
@@ -1510,23 +1502,11 @@ class Builder(object):
 
       conda_python = None
 
-      # check for active conda environment
-      conda_env = os.environ.get('CONDA_PREFIX')
-
       # (case 1)
-      if self.use_conda == '' and conda_env is None:
+      if self.use_conda == '':
         conda_python = self.op.join('..', 'conda_base',
                                     m_get_conda_python(self))
       # (case 2)
-      # conda environment is active, overrides any path provided to --use-conda
-      elif conda_env is not None:
-        if os.path.isdir(conda_env):
-          conda_python = os.path.join(conda_env, m_get_conda_python(self))
-        else:
-          raise RuntimeError("""
-The path specified by the CONDA_PREFIX environment variable does not
-exist. Please make sure you have a valid conda environment in
-{conda_env}""".format(conda_env=conda_env))
       # use path provided to --use-conda
       else:
         self.use_conda = os.path.abspath(self.use_conda)
@@ -1643,17 +1623,13 @@ sure you have a valid conda environment in
     #      A path to a conda environment should be provided. No checks are done
     #      on the environment. The environment files for the build should be
     #      used to construct the starting environment and the developer is
-    #      responsible for maintaining it. Also, if a conda environment is
-    #      active, the $CONDA_PREFIX environment variable will be used.
+    #      responsible for maintaining it.
     if self.use_conda is not None:  # --use-conda flag is set
       # reset command
       command = []
 
-      # check for active conda environment
-      conda_env = os.environ.get('CONDA_PREFIX')
-
       # no path provided (case 1), case 2 handled in _get_conda_python
-      if self.use_conda == '' and conda_env is None:
+      if self.use_conda == '':
         flags = ['--builder={builder}'.format(builder=self.category)]
         # check for existing miniconda3 installation
         if not os.path.isdir('mc3'):
@@ -1709,11 +1685,6 @@ sure you have a valid conda environment in
       # error-checking done in _get_conda_python function
       if self.use_conda != '':
         base_dir = self.use_conda
-      # override with $CONDA_PREFIX
-      # error-checking done in _get_conda_python function
-      conda_env = os.environ.get('CONDA_PREFIX')
-      if conda_env is not None:
-        base_dir = conda_env
 
       dispatcher_opts += [
       "--base_dir=%s" % base_dir,
@@ -2609,10 +2580,11 @@ be passed separately with quotes to avoid confusion (e.g
                     dest="use_conda",
                     help="""Use conda for dependencies. The directory to an
 existing conda environment can be provided. The build will use that environment
-instead of creating a default one for the builder. Also, if a conda environment
-is currently active, $CONDA_PREFIX will be used if ENV_DIRECTORY is not
-provided. Specifying an environment or using $CONDA_PREFIX is for developers
-that maintain their own conda environment.""",
+instead of creating a default one for the builder. If the currently
+active conda environment is to be used for building, $CONDA_PREFIX should
+be the argument for this flag. Otherwise, a new environment will be created.
+Specifying an environment is for developers that maintain their own conda
+environment.""",
                     default=None, nargs='?', const='')
 
   parser.add_argument("--build-dir",

@@ -189,9 +189,7 @@ class conda_manager(object):
       Optional argument for specifying location of a conda environment.
       Since this is assumed to be a working conda environment, a new
       installation of conda will not be created. This is for developers
-      that want to manage their own environments. If a conda environment
-      is active, this will be automatically set to the CONDA_PREFIX
-      environment variable.
+      that want to manage their own environments.
     check_file: bool
       Flag for checking if a file exists. A RuntimeError is raised if a
       this flag is set and a file does not exist. Used in get_conda_exe
@@ -212,9 +210,6 @@ class conda_manager(object):
     self.conda_env = None
     if conda_env is not None:
       self.conda_env = os.path.normpath(conda_env)
-    env_variable = os.environ.get('CONDA_PREFIX')
-    if env_variable is not None:
-      self.conda_env = env_variable
 
     self.check_file = check_file
     self.verbose = verbose
@@ -436,7 +431,7 @@ common compilers provided by conda. Please update your version with
     try:
       with open(self.environment_file) as f:
         paths = f.readlines()
-      for i, env in enumerate(paths):
+      for env in paths:
         env = env.strip()
         if os.path.isdir(env):
           environments.add(os.path.normpath(env))
@@ -649,12 +644,6 @@ Example usage:
   {prog} --conda_env=<path> --builder=<builder>
     Update conda environment for builder
 
-  In an active conda environment, the last example can just be
-
-    {prog} --builder=<builder>
-
-  because $CONDA_PREFIX is known.
-
 """.format(prog=prog)
 
   parser = argparse.ArgumentParser(
@@ -693,9 +682,8 @@ Example usage:
     '--conda_env', default=None, type=str, metavar='ENV_DIRECTORY',
     help="""The location of the conda environment for building. This is useful
       for when the exact conda environment is known. Providing the path will
-      ensure that that environment is used. Also, if a conda environment
-      is currently active, the CONDA_PREFIX environment variable will be
-      used as this location.""")
+      ensure that that environment is used. Using $CONDA_PREFIX as the
+      argument will use the currently active environment for building.""")
   parser.add_argument(
     '--copy', action='store_true', default=False,
     help="""When set, the new environment has copies, not links to files. This

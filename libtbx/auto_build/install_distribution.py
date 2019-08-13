@@ -171,7 +171,7 @@ class installer(object):
     parser.add_option("--python_static", default=False, action="store_true",
       help="Compile Python as static executable and library (Linux only)")
     parser.add_option("--use-conda", default=False, action="store_true",
-      help="Install conda dependencies, if a conda environment is active, that environment is used. (source install only)")
+      help="Install conda dependencies (source install only)")
     # Deprecated
     parser.add_option("--makedirs", default=False, action="store_true",
       help="Create installation path prefix if not already present")
@@ -344,10 +344,6 @@ class installer(object):
     if self.options.use_conda:
       cmd.append('--use-conda')
       self.base_dir = op.join(self.dest_dir, "conda_base")
-      if os.environ.get('CONDA_PREFIX') is not None:
-        self.base_dir = os.environ.get('CONDA_PREFIX')
-        if not os.path.isdir(self.base_dir):
-          raise InstallerError("$CONDA_PREFIX directory does not exist.")
     call(cmd, log=log)
     self.product_specific_source_install(log=log)
     self.install_from_binary()
