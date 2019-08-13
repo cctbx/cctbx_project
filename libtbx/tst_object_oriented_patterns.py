@@ -173,12 +173,8 @@ def run():
   exercise_null()
   exercise_memoize()
   # tests for injection with metaclass
-  if sys.hexversion < 0x03000000:
-    exercise_injector()
-    exercise_memoize_with_injector()
-  else:
-    print('Skip tests with injection, Python 3 does not support __metaclass__')
-
+  exercise_injector()
+  exercise_memoize_with_injector()
 
 if __name__ == '__main__':
   run()
