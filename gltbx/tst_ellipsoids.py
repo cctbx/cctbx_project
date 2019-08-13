@@ -31,8 +31,6 @@ def exercise_ellipsoid(n_trials=100, n_sub_trials=10):
   metrics = r * matrix.diag((-1, 0.1, 1)) * r.transpose()
   t = quadrics.ellipsoid_to_sphere_transform(centre, metrics.as_sym_mat3())
   assert t.non_positive_definite()
-  x = r * matrix.col((1,0,0))
-  assert x.transpose() * metrics.inverse() * x > 0
 
 def time_ellipsoid(n=1000000):
   from gltbx.quadrics import time_ellipsoid_to_sphere_transform

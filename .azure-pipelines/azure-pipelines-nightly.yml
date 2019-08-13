@@ -6,7 +6,7 @@ pr: none
 
 # only nightly builds
 schedules:
-- cron: "0 1 * * *"
+- cron: '0 1 * * *'
   displayName: Nightly build
   branches:
     include:
@@ -14,6 +14,7 @@ schedules:
 
 jobs:
   - template: ./azure-pipelines-syntax.yml
+  - template: ./azure-pipelines-win.yml
   - template: ./azure-pipelines-linux.yml
     parameters:
       distribution: centos
@@ -37,6 +38,10 @@ jobs:
   - template: ./azure-pipelines-osx.yml
     parameters:
       vmImage: [10, 14]
+      xcode_version: [11]
+  - template: ./azure-pipelines-osx.yml
+    parameters:
+      vmImage: [10, 14]
       xcode_version: [10, 3]
   - template: ./azure-pipelines-osx.yml
     parameters:
@@ -50,4 +55,3 @@ jobs:
     parameters:
       vmImage: [10, 13]
       xcode_version: [8, 3, 3]
-  - template: ./azure-pipelines-win.yml
