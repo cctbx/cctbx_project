@@ -1181,6 +1181,18 @@ class annotation(structure_base):
     return selections
 
   def overall_selection(self,add_segid=None,trim_ends_by=None):
+    result = ""
+    result = self.overall_helices_selection(add_segid=add_segid,trim_ends_by=trim_ends_by)
+    s_s = self.overall_sheets_selection(add_segid=add_segid,trim_ends_by=trim_ends_by)
+    if len(s_s) > 0 and len(result) > 0:
+      result += " or %s" % s_s
+      return result
+    if len(result) == 0:
+      return s_s
+    else:
+      return result
+
+  def overall_helices_selection(self, add_segid=None,trim_ends_by=None):
     selections = []
     for helix in self.helices:
       try :
@@ -1188,13 +1200,18 @@ class annotation(structure_base):
          trim_ends_by=trim_ends_by))
       except RuntimeError as e :
         pass
+    return "(" + ") or (".join(selections) + ")" if len(selections) > 0 else ""
+
+  def overall_sheets_selection(self, add_segid=None,trim_ends_by=None):
+    selections = []
     for sheet in self.sheets:
       try:
         selections.extend(sheet.as_atom_selections(add_segid=add_segid,
           trim_ends_by=trim_ends_by))
       except RuntimeError as e :
         pass
-    return "(" + ") or (".join(selections) + ")"
+    return "(" + ") or (".join(selections) + ")" if len(selections) > 0 else ""
+
 
   def overall_helix_selection(self,
                               add_segid=None,
