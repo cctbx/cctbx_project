@@ -99,6 +99,7 @@ def summarize_blast_output(blast_out=None, blast_file=None,
       length=hsp.align_length,
       identity=identity,
       positives=100*hsp.positives/hsp.align_length,
+      hsp=hsp,
       all_ids=all_ids)
     results.append(summary)
   return results
