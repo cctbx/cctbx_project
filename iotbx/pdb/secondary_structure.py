@@ -731,20 +731,21 @@ class annotation(structure_base):
         del self.sheets[i]
     return annotation(helices=deleted_helices, sheets=deleted_sheets)
 
-  def remove_short_annotations(self):
+  def remove_short_annotations(self,
+      helix_min_len=5, sheet_min_len=3, keep_one_stranded_sheets=False):
     # returns nothing
     # Remove short annotations
     h_indeces_to_delete = []
     for i, h in enumerate(self.helices):
-      if h.length < 5:
+      if h.length < helix_min_len:
         h_indeces_to_delete.append(i)
     if len(h_indeces_to_delete) > 0:
       for i in reversed(h_indeces_to_delete):
         del self.helices[i]
     sh_indeces_to_delete = []
     for i, sh in enumerate(self.sheets):
-      sh.remove_short_strands()
-      if sh.n_strands < 2:
+      sh.remove_short_strands(size=sheet_min_len)
+      if sh.n_strands < 2 and not keep_one_stranded_sheets:
         sh_indeces_to_delete.append(i)
     if len(sh_indeces_to_delete) > 0:
       for i in reversed(sh_indeces_to_delete):
