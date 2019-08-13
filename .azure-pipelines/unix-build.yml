@@ -31,7 +31,7 @@ steps:
     source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd ../..
-    python bootstrap.py build --builder=cctbx --use-conda --nproc=4
+    python bootstrap.py build --builder=cctbx --use-conda=${CONDA_PREFIX} --nproc=4
     cd build
     source setpaths.sh
     libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx
