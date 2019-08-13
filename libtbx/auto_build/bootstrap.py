@@ -2465,7 +2465,7 @@ class PhenixTNGBuilder(PhenixBuilder):
   Phenix with phaser_tng and c++11
   '''
   CODEBASES = PhenixBuilder.CODEBASES + ['phaser_tng']
-  LIBTBX = PhenixBuilder.CODEBASES + ['phaser_tng']
+  LIBTBX = PhenixBuilder.LIBTBX + ['phaser_tng']
 
   def get_libtbx_configure(self):
     configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()
