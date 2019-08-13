@@ -12,20 +12,45 @@ from __future__ import absolute_import, division, print_function
 #-------------------------------------------------------------------------------
 
 from PySide2.QtCore import Qt, QTimer
-from PySide2.QtWidgets import ( QApplication, QCheckBox, QComboBox,
-        QDial, QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
+from PySide2.QtWidgets import ( QApplication, QCheckBox, QComboBox, QDial, QDialog, 
+        QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
+from PySide2.QtGui import QFont
 from PySide2.QtWebEngineWidgets import QWebEngineView
-
-
 import sys, zmq, subprocess, time, traceback
+
+
+
+class SettingsForm(QDialog):
+  def __init__(self, parent=None):
+    super(SettingsForm, self).__init__(parent)
+    self.setWindowTitle("Settings")
+    myGroupBox = QGroupBox("Mouse Settings")
+    layout = QGridLayout()
+    layout.addWidget(parent.mousemoveslider,  0, 0, 1, 1)
+    layout.addWidget(parent.mousesensitxtbox,  0, 3, 1, 3)
+    layout.addWidget(parent.Fontsize_labeltxt,  1, 0, 1, 1)
+    layout.addWidget(parent.fontspinBox,  1, 3, 1, 3)
+
+    layout.setRowStretch (0, 1)
+    layout.setRowStretch (1 ,0)
+    myGroupBox.setLayout(layout)
+
+    mainLayout = QGridLayout()
+    mainLayout.addWidget(myGroupBox,     0, 0)
+    self.setLayout(mainLayout)
+    self.setFixedSize( self.sizeHint() )
+
+    
+
 
 class NGL_HKLViewer(QWidget):
   def __init__(self, parent=None):
     super(NGL_HKLViewer, self).__init__(parent)
+
 
     self.verbose = 0
     self.UseOSbrowser = False
@@ -50,15 +75,29 @@ class NGL_HKLViewer(QWidget):
     self.debugbutton = QPushButton("Debug")
     self.debugbutton.clicked.connect(self.DebugInteractively)
 
+    self.settingsbtn = QPushButton("Settings")
+    self.settingsbtn.clicked.connect(self.SettingsDialog)
+
     self.mousemoveslider = QSlider(Qt.Horizontal)
     self.mousemoveslider.setMinimum(0)
     self.mousemoveslider.setMaximum(300)
     self.mousemoveslider.setValue(0)
     self.mousemoveslider.sliderReleased.connect(self.onFinalMouseSensitivity)
     self.mousemoveslider.valueChanged.connect(self.onMouseSensitivity)
-
     self.mousesensitxtbox = QLineEdit('')
     self.mousesensitxtbox.setReadOnly(True)
+    self.fontspinBox = QDoubleSpinBox()
+    self.fontspinBox.setSingleStep(1)
+    self.fontspinBox.setRange(4, 50)
+    self.font = QFont()
+    self.font.setFamily(self.font.defaultFamily())
+    self.fontspinBox.setValue(self.font.pointSize())
+    #self.fontspinBox.setValue(self.font.pixelSize())
+    self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
+    self.Fontsize_labeltxt = QLabel()
+    self.Fontsize_labeltxt.setText("Font size:")
+
+    self.settingsform = SettingsForm(self)
 
     self.MillerComboBox = QComboBox()
     self.MillerComboBox.activated.connect(self.onMillerComboSelchange)
@@ -66,54 +105,6 @@ class NGL_HKLViewer(QWidget):
 
     self.MillerLabel = QLabel()
     self.MillerLabel.setText("Selected HKL Scene")
-
-    self.SpaceGroupComboBox = QComboBox()
-    self.SpaceGroupComboBox.activated.connect(self.SpacegroupSelchange)
-
-    self.SpacegroupLabel = QLabel()
-    self.SpacegroupLabel.setText("Space Subgroups")
-
-    self.mergecheckbox = QCheckBox()
-    self.mergecheckbox.setText("Merge data")
-    #self.mergecheckbox.setTristate (True)
-    self.mergecheckbox.clicked.connect(self.MergeData)
-
-    self.expandP1checkbox = QCheckBox()
-    self.expandP1checkbox.setText("Expand to P1")
-    self.expandP1checkbox.clicked.connect(self.ExpandToP1)
-
-    self.expandAnomalouscheckbox = QCheckBox()
-    self.expandAnomalouscheckbox.setText("Show Friedel pairs")
-    self.expandAnomalouscheckbox.clicked.connect(self.ExpandAnomalous)
-
-    self.sysabsentcheckbox = QCheckBox()
-    self.sysabsentcheckbox.setText("Show Systematic Absences")
-    self.sysabsentcheckbox.clicked.connect(self.showSysAbsent)
-
-    self.missingcheckbox = QCheckBox()
-    self.missingcheckbox.setText("Show Missing")
-    self.missingcheckbox.clicked.connect(self.showMissing)
-
-    self.onlymissingcheckbox = QCheckBox()
-    self.onlymissingcheckbox.setText("Only Show Missing")
-    self.onlymissingcheckbox.clicked.connect(self.showOnlyMissing)
-
-    self.showslicecheckbox = QCheckBox()
-    self.showslicecheckbox.setText("Show Slice")
-    self.showslicecheckbox.clicked.connect(self.showSlice)
-
-    self.sliceindexspinBox = QDoubleSpinBox()
-    self.sliceindex = 0
-    self.sliceindexspinBox.setValue(self.sliceindex)
-    self.sliceindexspinBox.setDecimals(0)
-    self.sliceindexspinBox.setSingleStep(1)
-    self.sliceindexspinBox.setRange(0, 20)
-    self.sliceindexspinBox.valueChanged.connect(self.onSliceIndexChanged)
-
-    self.SliceLabelComboBox = QComboBox()
-    self.SliceLabelComboBox.activated.connect(self.onSliceComboSelchange)
-    self.sliceaxis = [ "h", "k", "l" ]
-    self.SliceLabelComboBox.addItems( self.sliceaxis )
 
     self.HKLnameedit = QLineEdit('')
     self.HKLnameedit.setReadOnly(True)
@@ -128,11 +119,9 @@ class NGL_HKLViewer(QWidget):
     # don't allow editing this table
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
 
-
     self.createExpansionBox()
     self.createFileInfoBox()
     self.CreateSliceTabs()
-    self.createBottomLeftTabWidget()
     self.createRadiiScaleGroupBox()
     self.createBinsBox()
     self.CreateFunctionTabs()
@@ -142,23 +131,22 @@ class NGL_HKLViewer(QWidget):
     mainLayout.addWidget(self.MillerLabel,         1, 0)
     mainLayout.addWidget(self.MillerComboBox,      2, 0)
     mainLayout.addWidget(self.functionTabWidget,   3, 0)
-    mainLayout.addWidget(self.bottomLeftGroupBox,  4, 0)
+    mainLayout.addWidget(self.settingsbtn,         4, 0, 1, 1)
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if self.UseOSbrowser==False:
       self.BrowserBox = QWebEngineView()
       mainLayout.addWidget(self.BrowserBox,          0, 1, 5, 3)
-      #self.BrowserBox.setUrl("https://cctbx.github.io/")
-      self.BrowserBox.setUrl("https://webglreport.com/")
+      self.BrowserBox.setUrl("https://cctbx.github.io/")
+      #self.BrowserBox.setUrl("https://webglreport.com/")
       #self.BrowserBox.loadFinished.connect(self.onLoadFinished)
-      self.BrowserBox.renderProcessTerminated.connect(self.onRenderProcessTerminated)
       mainLayout.setColumnStretch(2, 1)
 
     mainLayout.setRowStretch(0, 1)
     mainLayout.setRowStretch(1, 0)
     mainLayout.setRowStretch(2, 1)
     mainLayout.setRowStretch(3, 1)
-
+    mainLayout.setColumnStretch(4, 0)
     self.setLayout(mainLayout)
 
     self.setWindowTitle("HKL-Viewer")
@@ -182,6 +170,10 @@ class NGL_HKLViewer(QWidget):
     self.updatingNbins = False
 
     self.show()
+
+    
+  def SettingsDialog(self):
+    self.settingsform.show()
 
 
   def update(self):
@@ -317,6 +309,13 @@ class NGL_HKLViewer(QWidget):
   def onMouseSensitivity(self):
     val = self.mousemoveslider.value()/100.0
     self.mousesensitxtbox.setText("%2.2f" %val )
+
+
+  def onFontsizeChanged(self, val):
+    font = app.font()
+    font.setPointSize(val);
+    app.setFont(font);
+    self.settingsform.setFixedSize( self.settingsform.sizeHint() )
 
 
   def MergeData(self):
@@ -474,9 +473,6 @@ class NGL_HKLViewer(QWidget):
       """ %(self.nth_power_scale, self.radii_scale)
     )
 
-  def onRenderProcessTerminated(self, termstatus, exitcode):
-    print("Rendering terminated with status: %s and exitcode: %s" %(str(termstatus), str(exitcode)))
-
 
   def onManualPowerScale(self):
     if self.ManualPowerScalecheckbox.isChecked():
@@ -504,6 +500,37 @@ class NGL_HKLViewer(QWidget):
 
 
   def createExpansionBox(self):
+    self.SpaceGroupComboBox = QComboBox()
+    self.SpaceGroupComboBox.activated.connect(self.SpacegroupSelchange)
+
+    self.SpacegroupLabel = QLabel()
+    self.SpacegroupLabel.setText("Space Subgroups")
+
+    self.mergecheckbox = QCheckBox()
+    self.mergecheckbox.setText("Merge data")
+    #self.mergecheckbox.setTristate (True)
+    self.mergecheckbox.clicked.connect(self.MergeData)
+
+    self.expandP1checkbox = QCheckBox()
+    self.expandP1checkbox.setText("Expand to P1")
+    self.expandP1checkbox.clicked.connect(self.ExpandToP1)
+
+    self.expandAnomalouscheckbox = QCheckBox()
+    self.expandAnomalouscheckbox.setText("Show Friedel pairs")
+    self.expandAnomalouscheckbox.clicked.connect(self.ExpandAnomalous)
+
+    self.sysabsentcheckbox = QCheckBox()
+    self.sysabsentcheckbox.setText("Show Systematic Absences")
+    self.sysabsentcheckbox.clicked.connect(self.showSysAbsent)
+
+    self.missingcheckbox = QCheckBox()
+    self.missingcheckbox.setText("Show Missing")
+    self.missingcheckbox.clicked.connect(self.showMissing)
+
+    self.onlymissingcheckbox = QCheckBox()
+    self.onlymissingcheckbox.setText("Only Show Missing")
+    self.onlymissingcheckbox.clicked.connect(self.showOnlyMissing)
+
     self.ExpansionBox = QGroupBox("Expansions")
     layout = QGridLayout()
     layout.addWidget(self.SpacegroupLabel,           0, 0)
@@ -522,6 +549,23 @@ class NGL_HKLViewer(QWidget):
 
 
   def CreateSliceTabs(self):
+    self.showslicecheckbox = QCheckBox()
+    self.showslicecheckbox.setText("Show Slice")
+    self.showslicecheckbox.clicked.connect(self.showSlice)
+
+    self.sliceindexspinBox = QDoubleSpinBox()
+    self.sliceindex = 0
+    self.sliceindexspinBox.setValue(self.sliceindex)
+    self.sliceindexspinBox.setDecimals(0)
+    self.sliceindexspinBox.setSingleStep(1)
+    self.sliceindexspinBox.setRange(0, 20)
+    self.sliceindexspinBox.valueChanged.connect(self.onSliceIndexChanged)
+
+    self.SliceLabelComboBox = QComboBox()
+    self.SliceLabelComboBox.activated.connect(self.onSliceComboSelchange)
+    self.sliceaxis = [ "h", "k", "l" ]
+    self.SliceLabelComboBox.addItems( self.sliceaxis )
+
     self.sliceTabWidget = QTabWidget()
     tab1 = QWidget()
     layout1 = QGridLayout()
@@ -552,7 +596,7 @@ class NGL_HKLViewer(QWidget):
     self.kvec_spinBox.setDecimals(2)
     self.kvec_spinBox.setSingleStep(0.5)
     self.kvec_spinBox.setRange(-100.0, 100.0)
-    self.kvec_spinBox.valueChanged.connect(self.onLvecChanged)
+    self.kvec_spinBox.valueChanged.connect(self.onKvecChanged)
     self.kvec_Label = QLabel()
     self.kvec_Label.setText("K")
     layout2.addWidget(self.kvec_Label,      1, 0, 1, 1)
@@ -564,7 +608,7 @@ class NGL_HKLViewer(QWidget):
     self.lvec_spinBox.setDecimals(2)
     self.lvec_spinBox.setSingleStep(0.5)
     self.lvec_spinBox.setRange(-100.0, 100.0)
-    self.lvec_spinBox.valueChanged.connect(self.onKvecChanged)
+    self.lvec_spinBox.valueChanged.connect(self.onLvecChanged)
     self.lvec_Label = QLabel()
     self.lvec_Label.setText("L")
     layout2.addWidget(self.lvec_Label,      2, 0, 1, 1)
@@ -774,18 +818,6 @@ class NGL_HKLViewer(QWidget):
     import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
-  def createBottomLeftTabWidget(self):
-    self.bottomLeftGroupBox = QGroupBox("Group 3")
-    layout = QGridLayout()
-    layout.addWidget(self.mousemoveslider,  0, 0, 1, 1)
-    layout.addWidget(self.mousesensitxtbox,  0, 3, 1, 3)
-
-    layout.setRowStretch (0, 1)
-    layout.setRowStretch (1 ,0)
-    self.bottomLeftGroupBox.setLayout(layout)
-
-
-
   def CreateFunctionTabs(self):
     self.functionTabWidget = QTabWidget()
     tab1 = QWidget()
@@ -854,6 +886,7 @@ class NGL_HKLViewer(QWidget):
 if __name__ == '__main__':
   try:
     app = QApplication(sys.argv)
+
     guiobj = NGL_HKLViewer()
 
     timer = QTimer()

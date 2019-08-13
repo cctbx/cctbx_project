@@ -765,7 +765,7 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def set_scene_bin_thresholds(self, binvals=[], bin_scene_label="Resolution", nbins=15):
+  def set_scene_bin_thresholds(self, binvals=[], bin_scene_label="Resolution", nbins=6):
     self.viewer.binscenelabel = bin_scene_label
     if binvals:
       binvals = list( 1.0/flex.double(binvals) )
@@ -1053,7 +1053,7 @@ NGL_HKLviewer {
     .multiple = True
   bin_scene_label = 'Resolution'
     .type = str
-  nbins = 10
+  nbins = 6
     .type = int
   camera_type = *'orthographic' 'perspective'
     .type = choice

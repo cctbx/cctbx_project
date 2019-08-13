@@ -607,6 +607,28 @@ class hklview_3d:
                        1.0/(self.miller_array.d_max_min()[1]*0.999) ]
 
 
+  def MatchBinArrayToSceneArray(self):
+    # match bindata with data(scene_id)
+    if self.binscenelabel=="Resolution": 
+      return
+    # get the array id that is mapped through an HKLscene id
+    binarray = self.hkl_scenes_info[int(self.binscenelabel)]
+    scenearray = self.HKLscenes[self.scene_id]
+    matchindices = miller.match_indices(scenearray.indices, binarray.indices )
+    valarray = binarray.select( matchindices.pairs().column(1) )
+    #valarray.sort(by_value="packed_indices")
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    missing = scenearray.lone_set( valarray )
+    # insert NAN values for reflections in self.miller_array not found in binarray
+    valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices())
+    match_valindices = miller.match_indices(scenearray.indices(), valarray.indices() )
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    match_valarray = valarray.select( match_valindices.pairs().column(1) )
+    match_valarray.sort(by_value="packed_indices")
+    match_valarray.set_info(binarray.info() )
+    return match_valarray
+
+
   def DrawNGLJavaScript(self):
     if not self.scene or not self.sceneisdirty:
       return
