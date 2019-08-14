@@ -329,9 +329,7 @@ class hklview_3d:
       or has_phil_path(diff_phil, "show_anomalous_pairs") \
       ):
         self.sceneisdirty = True
-        #if self.miller_array is None or self.scene_id < 0 or self.isnewfile:
         self.ConstructReciprocalSpace(currentphil, merge=self.merge)
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     msg = ""
     if self.scene_id >=0:
       self.scene = self.HKLscenes[self.scene_id]
@@ -339,11 +337,23 @@ class hklview_3d:
       msg = "Rendered %d reflections\n" % self.scene.points.size()
       if has_phil_path(diff_phil, "mouse_sensitivity"):
         self.SetTrackBallRotateSpeed(currentphil.viewer.NGL.mouse_sensitivity)
-    msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
+      if has_phil_path(diff_phil, "normal_clip_plane"):
+        self.clip_plane_normal_to_HKL_vector(currentphil.normal_clip_plane.h, currentphil.normal_clip_plane.k,
+            currentphil.normal_clip_plane.l, currentphil.normal_clip_plane.hkldist,
+            currentphil.normal_clip_plane.clipwidth, currentphil.viewer.NGL.fixorientation)
+
+      if currentphil.viewer.slice_mode:
+        if currentphil.viewer.slice_axis=="h": hkl = [1,0,0]
+        if currentphil.viewer.slice_axis=="k": hkl = [0,1,0]
+        if currentphil.viewer.slice_axis=="l": hkl = [0,0,1]
+        self.clip_plane_normal_to_HKL_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
+                         fixorientation = currentphil.viewer.NGL.fixorientation)
+
+    if self.settings.inbrowser:
+      msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
-    #if has_phil_path(diff_phil, "bin_opacities"):
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     msg += self.SetOpacities(currentphil.viewer.NGL.bin_opacities )
+
       #self.mprint(currentphil.viewer.NGL.bin_opacities )
     return msg
 
@@ -1925,6 +1935,35 @@ mysocket.onmessage = function (e)
     self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
 
 
+  def clip_plane_normal_to_HKL_vector(self, h, k, l, hkldist=0.0,
+             clipwidth=None, fixorientation=True):
+    if h==0.0 and k==0.0 and l==0.0 or clipwidth==None:
+      self.RemoveNormalVectorToClipPlane()
+      return
+    self.RemoveAllReciprocalVectors()
+    R = -l * self.normal_hk + h * self.normal_kl + k * self.normal_lh
+    self.AddVector(R[0][0], R[0][1], R[0][2], isreciprocal=False)
+    if fixorientation:
+      self.DisableMouseRotation()
+    else:
+      self.EnableMouseRotation()
+    self.PointVectorOut()
+    halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
+    if clipwidth is None:
+      clipwidth = self.meanradius
+    clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
+    clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
+    self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
+    self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
+
+
+  def RemoveNormalVectorToClipPlane(self):
+    self.EnableMouseRotation()
+    self.RemoveAllReciprocalVectors()
+    self.SetClipPlaneDistances(0, 0)
+    self.TranslateHKLpoints(0, 0, 0, 0.0)
+
+
   def SetTrackBallRotateSpeed(self, trackspeed):
     msg = str(trackspeed)
     self.msgqueue.append( ("SetTrackBallRotateSpeed", msg) )
@@ -1947,7 +1986,6 @@ mysocket.onmessage = function (e)
 
 
   def GetClipPlaneDistances(self):
-
     self.clipNear = None
     self.clipFar = None
     self.cameraPosZ = None
@@ -2036,6 +2074,8 @@ ngl_philstr = """
     .type = float
   bin_opacities = ""
     .type = str
+  fixorientation = False
+    .type = bool
 """
 
 NGLmaster_phil = libtbx.phil.parse( ngl_philstr )

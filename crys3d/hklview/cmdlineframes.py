@@ -434,11 +434,6 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
 
-      if view_3d.has_phil_path(diff_phil, "normal_clip_plane"):
-        self.clip_plane_normal_to_HKL_vector(phl.normal_clip_plane.h, phl.normal_clip_plane.k,
-            phl.normal_clip_plane.l, phl.normal_clip_plane.hkldist,
-            phl.normal_clip_plane.clipwidth, phl.normal_clip_plane.fixorientation)
-
       if view_3d.has_phil_path(diff_phil, "camera_type"):
         self.set_camera_type(phl.camera_type)
 
@@ -759,8 +754,9 @@ class HKLViewFrame() :
 
 
   def ShowSlice(self, val, axis="h", index=0):
+    axisstr = axis.lower()
     self.params.NGL_HKLviewer.viewer.slice_mode = val
-    self.params.NGL_HKLviewer.viewer.slice_axis = axis.lower()
+    self.params.NGL_HKLviewer.viewer.slice_axis = axisstr
     self.params.NGL_HKLviewer.viewer.slice_index = index
     self.update_settings()
 
@@ -923,18 +919,16 @@ class HKLViewFrame() :
     self.params.NGL_HKLviewer.normal_clip_plane.l = l
     self.params.NGL_HKLviewer.normal_clip_plane.hkldist = hkldist
     self.params.NGL_HKLviewer.normal_clip_plane.clipwidth = clipwidth
-    self.params.NGL_HKLviewer.normal_clip_plane.fixorientation = fixorientation
+    self.params.NGL_HKLviewer.viewer.NGL.fixorientation = fixorientation
     self.update_settings()
 
 
 
   def clip_plane_normal_to_HKL_vector(self, h, k, l, hkldist=0.0,
              clipwidth=None, fixorientation=True):
-
     if h==0.0 and k==0.0 and l==0.0 or clipwidth==None:
       self.RemoveNormalVectorToClipPlane()
       return
-
     self.viewer.RemoveAllReciprocalVectors()
     R = -l * self.viewer.normal_hk + h * self.viewer.normal_kl + k * self.viewer.normal_lh
     self.viewer.AddVector(R[0][0], R[0][1], R[0][2], isreciprocal=False)
@@ -948,11 +942,8 @@ class HKLViewFrame() :
       clipwidth = self.viewer.meanradius
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
-    #self.viewer.SetClipPlaneDistances(clipNear, clipFar, hkldist)
     self.viewer.SetClipPlaneDistances(clipNear, clipFar, self.viewer.cameraPosZ)
     self.viewer.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
-    #self.viewer.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], 0.0)
-    #self.viewer.TranslateHKLpoints(h, k, l, hkldist)
 
 
   def RemoveNormalVectorToClipPlane(self):
@@ -1045,8 +1036,6 @@ NGL_HKLviewer {
       .type = float
     clipwidth = None
       .type = float
-    fixorientation = True
-      .type = bool
   }
   scene_bin_thresholds = None
     .type = float

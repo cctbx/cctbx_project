@@ -370,15 +370,36 @@ class NGL_HKLViewer(QWidget):
   def showSlice(self):
     if self.showslicecheckbox.isChecked():
       self.NGL_HKL_command('NGL_HKLviewer.viewer.slice_mode = True')
+      if self.expandP1checkbox.isChecked():
+        self.NGL_HKL_command("""NGL_HKLviewer.viewer {
+                                                       expand_to_p1 = True
+                                                       inbrowser = False
+                                                    }
+                             """)
+      if self.expandAnomalouscheckbox.isChecked():
+        self.NGL_HKL_command("""NGL_HKLviewer.viewer {
+                                                       expand_anomalous = True
+                                                       inbrowser = False
+                                                     }
+                             """)
     else:
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.slice_mode = False')
+      self.NGL_HKL_command("""NGL_HKLviewer.viewer {
+                                                      slice_mode = False
+                                                      inbrowser = True
+                                                    }
+                            """)
 
 
   def onSliceComboSelchange(self,i):
-    rmin = self.hklscenes_arrays[self.MillerComboBox.currentIndex()][3][0][i]
-    rmax = self.hklscenes_arrays[self.MillerComboBox.currentIndex()][3][1][i]
+    rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][3][0][i]
+    rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][3][1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
     self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
+
+
+  def onSliceIndexChanged(self, val):
+    self.sliceindex = val
+    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_index = %d" %self.sliceindex)
 
 
   def onBindataComboSelchange(self,i):
@@ -460,11 +481,6 @@ class NGL_HKLViewer(QWidget):
     self.nbins = val
     if not self.updatingNbins: # avoid possible endless loop to cctbx
       self.NGL_HKL_command("NGL_HKLviewer.nbins = %d" %self.nbins)
-
-
-  def onSliceIndexChanged(self, val):
-    self.sliceindex = val
-    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_index = %d" %self.sliceindex)
 
 
   def onRadiiScaleChanged(self, val):
@@ -590,7 +606,6 @@ class NGL_HKLViewer(QWidget):
     tab1.setLayout(layout1)
 
     tab2 = QWidget()
-
     layout2 = QGridLayout()
 
     self.hvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
@@ -629,11 +644,6 @@ class NGL_HKLViewer(QWidget):
     layout2.addWidget(self.lvec_Label,      2, 0, 1, 1)
     layout2.addWidget(self.lvec_spinBox,    2, 1, 1, 1)
 
-    self.fixedorientcheckbox = QCheckBox(self.sliceTabWidget)
-    self.fixedorientcheckbox.setText("Allow mouse zoom and translation but no rotation")
-    self.fixedorientcheckbox.clicked.connect(self.onFixedorient)
-    layout2.addWidget(self.fixedorientcheckbox,   3, 0, 1, 1)
-
     self.hkldist_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.hkldistval = 0.0
     self.hkldist_spinBox.setValue(self.hkldistval)
@@ -643,8 +653,8 @@ class NGL_HKLViewer(QWidget):
     self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
     self.hkldist_Label = QLabel()
     self.hkldist_Label.setText("Distance from Origin")
-    layout2.addWidget(self.hkldist_Label,      4, 0, 1, 1)
-    layout2.addWidget(self.hkldist_spinBox,    4, 1, 1, 1)
+    layout2.addWidget(self.hkldist_Label,      3, 0, 1, 1)
+    layout2.addWidget(self.hkldist_spinBox,    3, 1, 1, 1)
 
     self.clipwidth_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.clipwidthval = 0.5
@@ -655,8 +665,8 @@ class NGL_HKLViewer(QWidget):
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
     self.clipwidth_Label = QLabel()
     self.clipwidth_Label.setText("Clip Plane Width")
-    layout2.addWidget(self.clipwidth_Label,      5, 0, 1, 1)
-    layout2.addWidget(self.clipwidth_spinBox,    5, 1, 1, 1)
+    layout2.addWidget(self.clipwidth_Label,      4, 0, 1, 1)
+    layout2.addWidget(self.clipwidth_spinBox,    4, 1, 1, 1)
 
     self.ClipBox = QGroupBox("Normal Vector to Clip Plane")
     self.ClipBox.setLayout(layout2)
@@ -683,8 +693,9 @@ class NGL_HKLViewer(QWidget):
   l = %s
   hkldist = %s
   clipwidth = %s
-  fixorientation = %s
 }
+  NGL_HKLviewer.viewer.NGL.fixorientation = %s
+
       """ %(self.hvecval, self.kvecval, self.lvecval, self.hkldistval, self.clipwidthval, \
                               str(self.fixedorientcheckbox.isChecked()) )
       self.NGL_HKL_command(philstr)
@@ -719,7 +730,7 @@ class NGL_HKLViewer(QWidget):
 
 
   def onFixedorient(self):
-    self.NGL_HKL_command('NGL_HKLviewer.normal_clip_plane.fixorientation = %s' \
+    self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.fixorientation = %s' \
                                     %str(self.fixedorientcheckbox.isChecked()))
 
 
@@ -842,7 +853,13 @@ class NGL_HKLViewer(QWidget):
 
     tab2 = QWidget()
     layout2 = QGridLayout()
-    layout2.addWidget(self.sliceTabWidget,     0, 0)
+
+    self.fixedorientcheckbox = QCheckBox(self.sliceTabWidget)
+    self.fixedorientcheckbox.setText("Fix orientation but allow zoom and translation")
+    self.fixedorientcheckbox.clicked.connect(self.onFixedorient)
+    layout2.addWidget(self.fixedorientcheckbox,   0, 0)
+
+    layout2.addWidget(self.sliceTabWidget,     1, 0)
     tab2.setLayout(layout2)
 
     tab3 = QWidget()
