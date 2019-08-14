@@ -1516,7 +1516,7 @@ class Builder(object):
 The --use-conda flag can accept a directory to a conda environment or a
 file that defines a conda environment. Please make sure a valid conda
 environment exists in or is defined by {conda_env}.
-""".format(conda_env=self.use.conda))
+""".format(conda_env=self.use_conda))
 
       if conda_python is None:
         raise RuntimeError('A conda version of python could not be found.')
