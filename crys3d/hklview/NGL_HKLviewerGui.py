@@ -221,7 +221,7 @@ class NGL_HKLViewer(QWidget):
                 else:
                   item = QTableWidgetItem()
                   item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
-                  item.setCheckState(Qt.Checked)       
+                  item.setCheckState(Qt.Checked)
                 self.binstable.setItem(row, col, item)
             if self.bin_opacities:
               self.update_table_opacities()
@@ -420,9 +420,9 @@ class NGL_HKLViewer(QWidget):
       item = QTableWidgetItem()
       item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
       if alpha < 0.5:
-        item.setCheckState(Qt.Unchecked)       
+        item.setCheckState(Qt.Unchecked)
       else:
-        item.setCheckState(Qt.Checked)       
+        item.setCheckState(Qt.Checked)
       self.binstable.setItem(bin, 3, item)
     self.binstable_isready = True
 
