@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-import sys
 from libtbx import object_oriented_patterns as oop
 from libtbx.test_utils import approx_equal, Exception_expected
 from six.moves import range
