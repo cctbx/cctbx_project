@@ -121,7 +121,9 @@ nanoBragg::nanoBragg(
     unitize(spindle_vector,spindle_vector);
 
     /* NOT IMPLEMENTED: read in any other stuff?  */
-    show_params();
+    /*TODO: consider reading in a crystal model as well, showing params without crystal model can be confusing*/
+    if (verbose)
+      show_params();
 
     /* sensible initialization of all unititialized values */
     reconcile_parameters();

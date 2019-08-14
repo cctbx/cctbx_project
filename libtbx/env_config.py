@@ -59,25 +59,19 @@ def using_conda_python():
 
 def get_conda_prefix():
   '''
-  Return the root directory of the conda environment. Usually, this is defined
-  by the CONDA_PREFIX environment variable. This function will try to figure
-  out the root directory if the environment is not active. A special case
-  exists for macOS where the framework package (python.app) is used for GUI
-  programs.
+  Return the root directory of the conda environment. This function will
+  try to figure out the root directory if the environment is not active.
+  A special case exists for macOS where the framework package (python.app)
+  is used for GUI programs.
 
   A RuntimeError is raised if the root directory of the conda environment
   cannot be determined.
   '''
-  conda_prefix = None
+  conda_prefix = sys.prefix
   if (using_conda_python()):
-    conda_prefix = os.environ.get('CONDA_PREFIX')
-    if (conda_prefix is None):  # case where environment is not active
-      conda_prefix = sys.prefix
-      if (sys.platform == 'darwin'):  # case where python.app is used
-        if ('python.app' in conda_prefix):
-          conda_prefix = conda_prefix.split('python.app')[0]
-  if (conda_prefix is None):
-    raise RuntimeError('Unable to find conda environment.')
+    if (sys.platform == 'darwin'):  # case where python.app is used
+      if ('python.app' in conda_prefix):
+        conda_prefix = conda_prefix.split('python.app')[0]
   return conda_prefix
 
 def unique_paths(paths):

@@ -69,7 +69,7 @@ jobs:
       cd ..\..
       call "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat" amd64
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
-      python bootstrap.py build --builder=cctbx --use-conda --nproc=4
+      python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
       call .\build\setpaths.bat
       call libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx
       cd build

@@ -164,7 +164,7 @@ class density_modification_iterator(object):
   def __iter__(self):
     return self
 
-  def next(self):
+  def __next__(self):
     """ perform one cycle and return itself """
     self.modify_electron_density()
     self.compute_structure_factors()
@@ -172,6 +172,11 @@ class density_modification_iterator(object):
     self.f_000 = self._g_000
     self.compute_electron_density_map()
     return self # iterator-is-its-own-state trick
+
+  ## Python 2 compatibility ##
+  if sys.hexversion < 0x03000000:
+    next = __next__
+    del __next__
 
   def compute_electron_density_map(self):
     """ Compute the electron density from the structure factors self.f_calc
