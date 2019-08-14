@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, print_function
 #-------------------------------------------------------------------------------
 
 from PySide2.QtCore import Qt, QTimer
-from PySide2.QtWidgets import ( QApplication, QCheckBox, QComboBox, QDial, QDialog, 
+from PySide2.QtWidgets import ( QApplication, QCheckBox, QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
@@ -44,7 +44,7 @@ class SettingsForm(QDialog):
     self.setLayout(mainLayout)
     self.setFixedSize( self.sizeHint() )
 
-    
+
 
 
 class NGL_HKLViewer(QWidget):
@@ -171,7 +171,7 @@ class NGL_HKLViewer(QWidget):
 
     self.show()
 
-    
+
   def SettingsDialog(self):
     self.settingsform.show()
 

@@ -609,7 +609,7 @@ class hklview_3d:
 
   def MatchBinArrayToSceneArray(self):
     # match bindata with data(scene_id)
-    if self.binscenelabel=="Resolution": 
+    if self.binscenelabel=="Resolution":
       return
     # get the array id that is mapped through an HKLscene id
     binarray = self.hkl_scenes_info[int(self.binscenelabel)]
