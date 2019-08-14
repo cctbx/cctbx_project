@@ -566,6 +566,10 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       raise RuntimeError("""The file, {filename}, is not available""".\
                          format(filename=filename))
 
+    yaml_format = False
+    if filename.endswith('yml') or filename.endswith('yaml'):
+      yaml_format = True
+
     # make a new environment directory
     if self.conda_env is None:
       name = 'conda_base'
@@ -577,18 +581,22 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
     # install a new environment or update and existing one
     if prefix in self.environments:
       command = 'install'
+      if yaml_format:
+        command = 'update'
       text_messages = ['Updating', 'update of']
     else:
       command = 'create'
       text_messages = ['Installing', 'installation into']
     command_list = [self.conda_exe, command, '--prefix', prefix,
                     '--file', filename]
+    if yaml_format:
+      command_list.insert(1, 'env')
     if self.system == 'Windows':
       command_list = [os.path.join(self.conda_base, 'Scripts', 'activate'),
                       'base', '&&'] + command_list
-    if copy:
+    if copy and not yaml_format:
       command_list.append('--copy')
-    if offline:
+    if offline and not yaml_format:
       command_list.append('--offline')
     # RuntimeError is raised on failure
     print('{text} {builder} environment with:\n  {filename}'.format(

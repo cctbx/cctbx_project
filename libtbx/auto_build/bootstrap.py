@@ -1460,14 +1460,13 @@ class Builder(object):
     # drop output
     log = open(os.devnull, 'w')
 
-    # no path provided
+    # no path provided or file provided
     check_file = False
-    if self.use_conda == '':
-      # base step has not run yet, so do not check if files exist
-      self.use_conda = os.path.join('..', 'conda_base')
-      if self.isPlatformWindows():
-        self.use_conda = os.path.join(os.getcwd(), 'conda_base')
-    else:
+    # base step has not run yet, so do not check if files exist
+    self.use_conda = os.path.join('..', 'conda_base')
+    if self.isPlatformWindows():
+      self.use_conda = os.path.join(os.getcwd(), 'conda_base')
+    if os.path.isdir(self.use_conda):
       # environment is provided, so do check that it exists
       check_file = True
       self.use_conda = os.path.abspath(self.use_conda)
@@ -1688,7 +1687,7 @@ environment exists in or is defined by {conda_env}.
       base_dir = '../conda_base'
       # use path from --use-conda flag
       # error-checking done in _get_conda_python function
-      if self.use_conda != '':
+      if os.path.isdir(self.use_conda):
         base_dir = self.use_conda
 
       dispatcher_opts += [
