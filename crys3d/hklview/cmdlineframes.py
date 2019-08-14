@@ -923,36 +923,6 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-
-  def clip_plane_normal_to_HKL_vector(self, h, k, l, hkldist=0.0,
-             clipwidth=None, fixorientation=True):
-    if h==0.0 and k==0.0 and l==0.0 or clipwidth==None:
-      self.RemoveNormalVectorToClipPlane()
-      return
-    self.viewer.RemoveAllReciprocalVectors()
-    R = -l * self.viewer.normal_hk + h * self.viewer.normal_kl + k * self.viewer.normal_lh
-    self.viewer.AddVector(R[0][0], R[0][1], R[0][2], isreciprocal=False)
-    if fixorientation:
-      self.viewer.DisableMouseRotation()
-    else:
-      self.viewer.EnableMouseRotation()
-    self.viewer.PointVectorOut()
-    halfdist = -self.viewer.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
-    if clipwidth is None:
-      clipwidth = self.viewer.meanradius
-    clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
-    clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
-    self.viewer.SetClipPlaneDistances(clipNear, clipFar, self.viewer.cameraPosZ)
-    self.viewer.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
-
-
-  def RemoveNormalVectorToClipPlane(self):
-    self.viewer.EnableMouseRotation()
-    self.viewer.RemoveAllReciprocalVectors()
-    self.viewer.SetClipPlaneDistances(0, 0)
-    self.viewer.TranslateHKLpoints(0, 0, 0, 0.0)
-
-
   def SetTrackBallRotateSpeed(self, trackspeed):
     self.params.NGL_HKLviewer.viewer.NGL.mouse_sensitivity = trackspeed
     self.update_settings()
