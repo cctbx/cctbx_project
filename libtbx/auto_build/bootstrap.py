@@ -2581,7 +2581,7 @@ be passed separately with quotes to avoid confusion (e.g
 --config_flags="--build=debug" --config_flags="--enable_cxx11")""",
                     action="append",
                     default=[])
-  parser.add_argument("--use-conda", "--use_conda", metavar="ENV_DIRECTORY",
+  parser.add_argument("--use-conda", "--use_conda", metavar="ENVIRONMENT",
                     dest="use_conda",
                     help="""Use conda for dependencies. The directory to an
 existing conda environment or a file defining a conda environment can be
