@@ -1503,20 +1503,21 @@ class Builder(object):
       conda_python = None
 
       # (case 1)
-      if self.use_conda == '':
+      # use default location or file provided to --use-conda
+      if self.use_conda == '' or os.path.isfile(self.use_conda):
         conda_python = self.op.join('..', 'conda_base',
                                     m_get_conda_python(self))
       # (case 2)
       # use path provided to --use-conda
-      else:
+      elif os.path.isdir(self.use_conda):
         self.use_conda = os.path.abspath(self.use_conda)
-        if os.path.isdir(self.use_conda):
-          conda_python = os.path.join(self.use_conda, m_get_conda_python(self))
-        else:
-          raise RuntimeError("""
-The path specified by the --use-conda flag does not exist. Please make
-sure you have a valid conda environment in
-{conda_env}""".format(conda_env=self.use_conda))
+        conda_python = os.path.join(self.use_conda, m_get_conda_python(self))
+      else:
+        raise RuntimeError("""
+The --use-conda flag can accept a directory to a conda environment or a
+file that defines a conda environment. Please make sure a valid conda
+environment exists in or is defined by {conda_env}.
+""".format(conda_env=self.use.conda))
 
       if conda_python is None:
         raise RuntimeError('A conda version of python could not be found.')
@@ -1628,9 +1629,13 @@ sure you have a valid conda environment in
       # reset command
       command = []
 
-      # no path provided (case 1), case 2 handled in _get_conda_python
-      if self.use_conda == '':
+      # file or no path provided (case 1), case 2 handled in _get_conda_python
+      if self.use_conda == '' or os.path.isfile(self.use_conda):
         flags = ['--builder={builder}'.format(builder=self.category)]
+        # check if a file was an argument
+        if os.path.isfile(self.use_conda):
+          filename = os.path.abspath(self.use_conda)
+          flags.append('--install_env={filename}'.format(filename=filename))
         # check for existing miniconda3 installation
         if not os.path.isdir('mc3'):
           flags.append('--install_conda')
@@ -2579,12 +2584,13 @@ be passed separately with quotes to avoid confusion (e.g
   parser.add_argument("--use-conda", "--use_conda", metavar="ENV_DIRECTORY",
                     dest="use_conda",
                     help="""Use conda for dependencies. The directory to an
-existing conda environment can be provided. The build will use that environment
-instead of creating a default one for the builder. If the currently
-active conda environment is to be used for building, $CONDA_PREFIX should
-be the argument for this flag. Otherwise, a new environment will be created.
-Specifying an environment is for developers that maintain their own conda
-environment.""",
+existing conda environment or a file defining a conda environment can be
+provided. The build will use that environment instead of creating a default one
+for the builder. If the currently active conda environment is to be used for
+building, $CONDA_PREFIX should be the argument for this flag. Otherwise, a new
+environment will be created. The --python3 flag will be ignored when there is
+an argument for this flag. Specifying an environment is for developers that
+maintain their own conda environment.""",
                     default=None, nargs='?', const='')
 
   parser.add_argument("--build-dir",
