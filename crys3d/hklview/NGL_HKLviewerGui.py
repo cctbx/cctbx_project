@@ -18,7 +18,7 @@ from PySide2.QtWidgets import ( QApplication, QCheckBox, QComboBox, QDialog,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
-from PySide2.QtGui import QFont
+from PySide2.QtGui import QColor, QFont
 from PySide2.QtWebEngineWidgets import QWebEngineView
 import sys, zmq, subprocess, time, traceback
 
@@ -116,6 +116,7 @@ class NGL_HKLViewer(QWidget):
     labels = ["Label", "Type", "no. of HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
     self.millertable.setHorizontalHeaderLabels(labels)
+    self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     # don't allow editing this table
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
 
@@ -213,10 +214,14 @@ class NGL_HKLViewer(QWidget):
             self.binstable.setRowCount(self.nbins)
             for row,bin_infotpl in enumerate(self.bin_infotpls):
               for col,elm in enumerate(bin_infotpl):
-                item = QTableWidgetItem(str(elm))
                 # only allow changing the last column with opacity values
                 if col != 3:
+                  item = QTableWidgetItem(str(elm))
                   item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                else:
+                  item = QTableWidgetItem()
+                  item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+                  item.setCheckState(Qt.Checked)       
                 self.binstable.setItem(row, col, item)
             if self.bin_opacities:
               self.update_table_opacities()
@@ -232,7 +237,7 @@ class NGL_HKLViewer(QWidget):
               self.BrowserBox.setUrl(self.html_url)
               # workaround for background colour bug in chromium
               # https://bugreports.qt.io/browse/QTBUG-41960
-              self.BrowserBox.page().setBackgroundColor(Qt.transparent)
+              self.BrowserBox.page().setBackgroundColor(QColor(100, 100, 100, 1.0) )
 
           if self.infodict.get("spacegroups"):
             self.spacegroups = self.infodict.get("spacegroups",[])
@@ -391,7 +396,13 @@ class NGL_HKLViewer(QWidget):
     for binopacity in bin_opacitieslst:
       alpha = float(binopacity.split(",")[0])
       bin = int(binopacity.split(",")[1])
-      self.binstable.setItem(bin, 3, QTableWidgetItem(str(alpha)))
+      item = QTableWidgetItem()
+      item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+      if alpha < 0.5:
+        item.setCheckState(Qt.Unchecked)       
+      else:
+        item.setCheckState(Qt.Checked)       
+      self.binstable.setItem(bin, 3, item)
     self.binstable_isready = True
 
 
@@ -399,7 +410,11 @@ class NGL_HKLViewer(QWidget):
     row = item.row()
     column = item.column()
     try:
-      newval = float(item.text())
+      #newval = float(item.text())
+      if item.checkState()==Qt.Unchecked:
+        newval = 0
+      else:
+        newval = 1.0
       if column==3 and self.binstable_isready: # changing opacity
         assert (newval <= 1.0 and newval >= 0.0)
         bin_opacitieslst = eval(self.bin_opacities)
@@ -787,7 +802,7 @@ class NGL_HKLViewer(QWidget):
     self.binstable_isready = False
     labels = ["no. of HKLs", "lower bin value", "upper bin value", "opacity"]
     self.binstable.setHorizontalHeaderLabels(labels)
-    # don't allow editing this table
+    self.binstable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.bindata_labeltxt = QLabel()
     self.bindata_labeltxt.setText("Data binned:")
     self.Nbins_spinBox = QSpinBox()
@@ -800,7 +815,6 @@ class NGL_HKLViewer(QWidget):
     self.binstable.itemSelectionChanged.connect(self.onBinsTableItemSelectionChanged  )
     self.BinDataComboBox = QComboBox()
     self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)
-
     self.BinsGroupBox = QGroupBox("Bins")
     layout = QGridLayout()
     layout.addWidget(self.bindata_labeltxt, 0, 0)
@@ -809,7 +823,7 @@ class NGL_HKLViewer(QWidget):
     layout.addWidget(self.Nbins_spinBox, 0, 3)
     layout.addWidget(self.binstable, 1, 0, 1, 4)
     layout.setColumnStretch(0, 0)
-    layout.setColumnStretch(1, 3)
+    layout.setColumnStretch(1, 2)
     layout.setColumnStretch(3, 1)
     self.BinsGroupBox.setLayout(layout)
 
@@ -892,7 +906,7 @@ if __name__ == '__main__':
     timer = QTimer()
     #timer.setInterval(0.1)
     timer.timeout.connect(guiobj.update)
-    timer.start(100)
+    timer.start()
 
     if guiobj.cctbxproc:
       guiobj.cctbxproc.terminate()

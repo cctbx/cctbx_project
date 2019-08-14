@@ -1620,7 +1620,6 @@ mysocket.onmessage = function (e)
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
     self.ReloadNGL()
-    sleep(self.sleeptime)
     self.GetClipPlaneDistances()
     self.GetBoundingBox()
     self.SetTrackBallRotateSpeed( self.ngl_settings.mouse_sensitivity )
