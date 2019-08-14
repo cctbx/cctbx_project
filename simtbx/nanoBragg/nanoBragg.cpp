@@ -2791,7 +2791,7 @@ nanoBragg::add_nanoBragg_spots()
                                 }
 
                                 /* convert amplitudes into intensity (photons per steradian) */
-                                    I += F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction;
+                                    I += F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
                             }
                             /* end of mosaic loop */
                         }
@@ -2806,7 +2806,7 @@ nanoBragg::add_nanoBragg_spots()
             /* end of sub-pixel x loop */
 
 
-            floatimage[i] += r_e_sqr*fluence*spot_scale*polar*I/steps*omega_pixel;
+            floatimage[i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
 //          floatimage[i] = test;
             if(floatimage[i] > max_I) {
                 max_I = floatimage[i];

@@ -609,11 +609,11 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 
 					/* now calculate detector thickness effects */
 					CUDAREAL capture_fraction = 1.0;
-					if (detector_thick > 0.0) {
+					if (detector_thick > 0.0 && detector_mu> 0.0) {
 						/* inverse of effective thickness increase */
 						CUDAREAL parallax = dot_product_ldg(odet_vector, diffracted);
-						capture_fraction = exp(-thick_tic * detector_thickstep * detector_mu / parallax)
-								- exp(-(thick_tic + 1) * detector_thickstep * detector_mu / parallax);
+						capture_fraction = exp(-thick_tic * detector_thickstep / detector_mu / parallax)
+								- exp(-(thick_tic + 1) * detector_thickstep / detector_mu / parallax);
 					}
 
 					/* loop over sources now */
