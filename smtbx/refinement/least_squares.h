@@ -218,6 +218,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             else {
               f_calc_function.compute(h, boost::none, compute_grad);
             }
+            f_calc[i_h] = f_calc_function.f_calc;
             if (compute_grad) {
               gradients =
                 jacobian_transpose_matching_grad_fc*f_calc_function.grad_observable;
@@ -228,7 +229,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             // extinction correction
             af::tiny<FloatType, 2> exti_k = exti.compute(h, observable, compute_grad);
             observable *= exti_k[0];
-            f_calc[i_h] = f_calc_function.f_calc*std::sqrt(exti_k[0]);
+            f_calc[i_h] *= std::sqrt(exti_k[0]);
             observables[i_h] = observable;
 
             FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
