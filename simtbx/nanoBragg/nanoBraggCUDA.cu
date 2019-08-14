@@ -101,7 +101,7 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 		const CUDAREAL * __restrict c0, shapetype xtal_shape, CUDAREAL mosaic_spread, int mosaic_domains, const CUDAREAL * __restrict__ mosaic_umats,
 		CUDAREAL Na, CUDAREAL Nb,
 		CUDAREAL Nc, CUDAREAL V_cell,
-		CUDAREAL water_size, CUDAREAL water_F, CUDAREAL water_MW, CUDAREAL r_e_sqr, CUDAREAL fluence, CUDAREAL Avogadro, int integral_form, CUDAREAL default_F,
+		CUDAREAL water_size, CUDAREAL water_F, CUDAREAL water_MW, CUDAREAL r_e_sqr, CUDAREAL fluence, CUDAREAL Avogadro, CUDAREAL spot_scale, int integral_form, CUDAREAL default_F,
 		int interpolate, const CUDAREAL * __restrict__ Fhkl, const hklParams * __restrict__ Fhklparams, int nopolar, const CUDAREAL * __restrict__ polar_vector, CUDAREAL polarization, CUDAREAL fudge,
 		const int unsigned short * __restrict__ maskimage, float * floatimage /*out*/, float * omega_reduction/*out*/, float * max_I_x_reduction/*out*/,
 		float * max_I_y_reduction /*out*/, bool * rangemap);
@@ -117,12 +117,11 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
                 int interpolate, double *** Fhkl, int h_min, int h_max, int h_range, int k_min, int k_max, int k_range, int l_min, int l_max, int l_range, int hkls,
                 int nopolar, double polar_vector[4], double polarization, double fudge, int unsigned short * maskimage, float * floatimage /*out*/,
                 double * omega_sum/*out*/, int * sumn /*out*/, double * sum /*out*/, double * sumsqr /*out*/, double * max_I/*out*/, double * max_I_x/*out*/,
-                double * max_I_y /*out*/) {
+                double * max_I_y /*out*/, double spot_scale) {
 
 	int total_pixels = spixels * fpixels;
 
-  cudaSetDevice(deviceId);
-
+    cudaSetDevice(deviceId);
 
 	/*allocate and zero reductions */
 	bool * rangemap = (bool*) calloc(total_pixels, sizeof(bool));
@@ -130,7 +129,7 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 	float * max_I_x_reduction = (float*) calloc(total_pixels, sizeof(float));
 	float * max_I_y_reduction = (float*) calloc(total_pixels, sizeof(float));
 
-	/* clear memory */
+	/* clear memory (TODO: consider this being optional) */
 	memset(floatimage, 0, sizeof(typeof(*floatimage)) * total_pixels);
 
 	/*create transfer arguments to device space*/
@@ -158,7 +157,7 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 	int cu_mosaic_domains = mosaic_domains;
 
 	CUDAREAL cu_Na = Na, cu_Nb = Nb, cu_Nc = Nc, cu_V_cell = V_cell, cu_water_size = water_size, cu_water_F = water_F, cu_water_MW = water_MW;
-	CUDAREAL cu_r_e_sqr = r_e_sqr, cu_fluence = fluence, cu_Avogadro = Avogadro;
+	CUDAREAL cu_r_e_sqr = r_e_sqr, cu_fluence = fluence, cu_Avogadro = Avogadro, cu_spot_scale = spot_scale;
 
 	int cu_integral_form = integral_form;
 	CUDAREAL cu_default_F = default_F;
@@ -312,8 +311,8 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 			cu_sdet_vector, cu_fdet_vector, cu_odet_vector, cu_pix0_vector, cu_curved_detector, cu_distance, cu_close_distance, cu_beam_vector,
 			cu_Xbeam, cu_Ybeam, cu_dmin, cu_phi0, cu_phistep, cu_phisteps, cu_spindle_vector,
 			cu_sources, cu_source_X, cu_source_Y, cu_source_Z, cu_source_I, cu_source_lambda, cu_a0, cu_b0, cu_c0, cu_xtal_shape,
-			cu_mosaic_spread, cu_mosaic_domains, cu_mosaic_umats, cu_Na, cu_Nb, cu_Nc, cu_V_cell, cu_water_size, cu_water_F, cu_water_MW, cu_r_e_sqr, cu_fluence,
-			cu_Avogadro, cu_integral_form, cu_default_F, cu_interpolate, cu_Fhkl, cu_FhklParams,
+			cu_mosaic_spread, cu_mosaic_domains, cu_mosaic_umats, cu_Na, cu_Nb, cu_Nc, cu_V_cell, cu_water_size, cu_water_F, cu_water_MW, cu_r_e_sqr, cu_fluence, 
+			cu_Avogadro, cu_spot_scale, cu_integral_form, cu_default_F, cu_interpolate, cu_Fhkl, cu_FhklParams,
 			cu_nopolar, cu_polar_vector, cu_polarization, cu_fudge, cu_maskimage,
 			cu_floatimage /*out*/, cu_omega_reduction/*out*/, cu_max_I_x_reduction/*out*/, cu_max_I_y_reduction /*out*/, cu_rangemap /*out*/);
 
@@ -445,7 +444,7 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 		const CUDAREAL * __restrict__ source_I, const CUDAREAL * __restrict__ source_lambda, const CUDAREAL * __restrict__ a0, const CUDAREAL * __restrict__ b0,
 		const CUDAREAL * __restrict c0, shapetype xtal_shape, CUDAREAL mosaic_spread, int mosaic_domains, const CUDAREAL * __restrict__ mosaic_umats,
 		CUDAREAL Na, CUDAREAL Nb, CUDAREAL Nc, CUDAREAL V_cell, CUDAREAL water_size, CUDAREAL water_F, CUDAREAL water_MW, CUDAREAL r_e_sqr, CUDAREAL fluence,
-		CUDAREAL Avogadro, int integral_form, CUDAREAL default_F, int interpolate, const CUDAREAL * __restrict__ Fhkl, const hklParams * __restrict__ FhklParams, int nopolar, const CUDAREAL * __restrict__ polar_vector,
+		CUDAREAL Avogadro, CUDAREAL spot_scale, int integral_form, CUDAREAL default_F, int interpolate, const CUDAREAL * __restrict__ Fhkl, const hklParams * __restrict__ FhklParams, int nopolar, const CUDAREAL * __restrict__ polar_vector,
 		CUDAREAL polarization, CUDAREAL fudge, const int unsigned short * __restrict__ maskimage, float * floatimage /*out*/, float * omega_reduction/*out*/,
 		float * max_I_x_reduction/*out*/, float * max_I_y_reduction /*out*/, bool * rangemap) {
 
@@ -937,7 +936,7 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 			/* end of sub-pixel y loop */
 		}
 		/* end of sub-pixel x loop */
-		const double photons = I_bg + (r_e_sqr * fluence * polar * I) / steps;
+		const double photons = I_bg + (r_e_sqr * spot_scale * fluence * polar * I) / steps;
 		floatimage[j] = photons;
 		omega_reduction[j] = omega_sub_reduction; // shared contention
 		max_I_x_reduction[j] = max_I_x_sub_reduction;
