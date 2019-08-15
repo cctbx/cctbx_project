@@ -348,6 +348,7 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 	CUDA_CHECK_RETURN(cudaFree(cu_max_I_y_reduction));
 	CUDA_CHECK_RETURN(cudaFree(cu_maskimage));
 	CUDA_CHECK_RETURN(cudaFree(cu_rangemap));
+    CUDA_CHECK_RETURN(cudaFree(cu_Fhkl));
 
 	*max_I = 0;
 	*max_I_x = 0;
