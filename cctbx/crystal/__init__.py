@@ -1162,7 +1162,9 @@ class calculate_dihedrals(object):
                covariance_matrix=None,
                cell_covariance_matrix=None,
                parameter_map=None,
-               conformer_indices=None):
+               conformer_indices=None,
+               max_d = 1.9,
+               max_angle = 170):
     libtbx.adopt_init_args(self, locals())
     self.distances = flex.double()
     if self.covariance_matrix is not None:
@@ -1192,83 +1194,77 @@ class calculate_dihedrals(object):
       cov_cart = covariance.orthogonalize_covariance_matrix(
         self.covariance_matrix, unit_cell, self.parameter_map)
     table = self.pair_asu_table.table()
-    for i_seq,asu_dict in enumerate(table):
-      for j_seq,j_sym_groups in asu_dict.items():
+    for i_seq,i_asu_dict in enumerate(table):
+      rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
+      i_site_frac = self.sites_frac[i_seq]
+      for j_seq,j_sym_groups in i_asu_dict.items():
+        if j_seq < i_seq: continue
+        rt_mx_j0_inv = asu_mappings.get_rt_mx(j_seq, 0).inverse()
         for j_sym_group in j_sym_groups:
-          for i_j_sym,j_sym in enumerate(j_sym_group):
-            for k_seq, k_sym_groups in asu_dict.items():
-              if self.skip_j_seq_less_than_i_seq and j_seq < k_seq:
+          for j_sym_idx,j_sym in enumerate(j_sym_group):
+            rt_mx_j = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq, j_sym))
+            j_site_frac = rt_mx_j * self.sites_frac[j_seq]
+            for k_seq, k_sym_groups in table[j_seq].items():
+              if k_seq < i_seq: continue
+              if (self.conformer_indices is not None and
+                  self.conformer_indices[j_seq] !=
+                  self.conformer_indices[k_seq]):
                 continue
-              if k_seq == j_seq and j_sym_group.size() <= 1:
-                continue
-              if k_seq > j_seq:
-                continue
+              rt_mx_k0_inv = asu_mappings.get_rt_mx(k_seq, 0).inverse()
+              rt_mx_kj = rt_mx_j.multiply(rt_mx_j0_inv)
               for k_sym_group in k_sym_groups:
-                for i_k_sym,k_sym in enumerate(k_sym_group):
-                  if j_seq == k_seq and i_j_sym <= i_k_sym:
+                for k_sym_idx,k_sym in enumerate(k_sym_group):
+                  rt_mx_k = rt_mx_kj.multiply(asu_mappings.get_rt_mx(k_seq, k_sym))
+                  k_site_frac = rt_mx_k *  self.sites_frac[k_seq]
+                  if k_site_frac == i_site_frac:
                     continue
-                  if i_seq == k_seq and i_k_sym == 0:
+                  if unit_cell.distance(j_site_frac, k_site_frac) > self.max_d:
                     continue
-                  if (self.conformer_indices is not None and
-                      self.conformer_indices[j_seq] !=
-                      self.conformer_indices[k_seq]):
-                    continue
-                  dihedrals = []
-                  # collect dihedrals on the j side
-                  for l_seq, l_sym_groups in table[j_seq].items():
-                    if l_seq > j_seq or l_seq > k_seq:
-                      continue
-                    if (self.conformer_indices is not None and
-                      self.conformer_indices[k_seq] !=
-                      self.conformer_indices[l_seq]):
-                      continue
-                    for l_sym_group in l_sym_groups:
-                      for idx,l_sym in enumerate(l_sym_group):
-                        if (l_seq == i_seq or l_seq == k_seq) and idx == 0:
-                          continue
-                        if l_sym != 0:
-                          continue
-                        dihedrals.append(((l_seq, j_seq, i_seq, k_seq),
-                                          (l_sym, j_sym, 0, k_sym)))
-                  # collect dihedrals on the k side
+                  rt_mx_lk = rt_mx_k.multiply(rt_mx_k0_inv)
                   for l_seq, l_sym_groups in table[k_seq].items():
-                    if l_seq > j_seq or l_seq > k_seq:
-                      continue
+                    if l_seq < i_seq: continue
                     if (self.conformer_indices is not None and
-                      self.conformer_indices[k_seq] !=
-                      self.conformer_indices[l_seq]):
+                        self.conformer_indices[k_seq] !=
+                        self.conformer_indices[l_seq]):
                       continue
                     for l_sym_group in l_sym_groups:
-                      for idx,l_sym in enumerate(l_sym_group):
-                        if (l_seq == i_seq or l_seq == k_seq) and idx == 0:
+                      for l_sym_idx, l_sym in enumerate(l_sym_group):
+                        rt_mx_l = rt_mx_lk.multiply(asu_mappings.get_rt_mx(l_seq, l_sym))
+                        l_site_frac = rt_mx_l *  self.sites_frac[l_seq]
+                        if l_site_frac in (i_site_frac, j_site_frac):
+                          continue 
+                        if unit_cell.angle(i_site_frac, j_site_frac, k_site_frac) > self.max_angle or\
+                           unit_cell.angle(j_site_frac, k_site_frac, l_site_frac) > self.max_angle:
                           continue
-                        if l_sym != 0:
-                          continue
-                        dihedrals.append(((j_seq, i_seq, k_seq, l_seq),
-                                          (j_sym, 0, k_sym, l_sym)))
-                  for seqs, syms in dihedrals:
-                    rt_mx_i_inv = asu_mappings.get_rt_mx(seqs[0], syms[0]).inverse()
-                    rt_mx_i = sgtbx.rt_mx()
-                    rt_mxs = [rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(seqs[i], syms[i]))\
-                              for i in xrange(1,4)]
-                    rt_mxs.insert(0, rt_mx_i)
-                    sites = [unit_cell.orthogonalize(rt_mxs[i] * self.sites_frac[seqs[i]])\
-                             for i in xrange(1,4)]
-                    sites.insert(0, unit_cell.orthogonalize(self.sites_frac[seqs[0]]))
-                    a = geometry.dihedral(sites)
-                    angle_ = a.dihedral_model
-                    self.dihedrals.append(angle_)
-                    if self.covariance_matrix is not None:
-                      cov = covariance.extract_covariance_matrix_for_sites(
-                        flex.size_t(seqs), cov_cart, self.parameter_map)
-                      if self.cell_covariance_matrix is not None:
-                        var = a.variance(cov, unit_cell, rt_mxs)
-                      else:
-                        var = a.variance(cov, unit_cell, rt_mxs)
-                      self.variances.append(var)
-                    else:
-                      var = None
-                    yield dihedral(angle_, seqs, rt_mxs, variance=var)
+                        rt_mxs = [sgtbx.rt_mx(), rt_mx_j, rt_mx_k, rt_mx_l]
+                        sites = [i_site_frac, j_site_frac, k_site_frac, l_site_frac]
+                        seqs = [i_seq, j_seq, k_seq, l_seq]
+                        rtmx_count = [0,0,0,0]
+                        # find the most common matrix to eliminate
+                        for idx, rt_mx in enumerate(rt_mxs):
+                          for idx1 in xrange(idx+1, 4):
+                            if rt_mx == rt_mxs[idx1]:
+                              rtmx_count[idx] += 1
+                        max_idx = rtmx_count.index(max(rtmx_count))
+                        rt_mx_inv = rt_mxs[max_idx].inverse()
+                        for i in xrange(0, 4):
+                          sites[i] = rt_mxs[i].inverse() * sites[i]
+                          rt_mxs[i] = rt_mx_inv.multiply(rt_mxs[i])
+                          sites[i] = unit_cell.orthogonalize(rt_mxs[i] * sites[i])
+                        a = geometry.dihedral(sites)
+                        angle_ = a.dihedral_model
+                        self.dihedrals.append(angle_)
+                        if self.covariance_matrix is not None:
+                          cov = covariance.extract_covariance_matrix_for_sites(
+                            flex.size_t(seqs), cov_cart, self.parameter_map)
+                          if self.cell_covariance_matrix is not None:
+                            var = a.variance(cov, unit_cell, rt_mxs)
+                          else:
+                            var = a.variance(cov, unit_cell, rt_mxs)
+                          self.variances.append(var)
+                        else:
+                          var = None
+                        yield dihedral(angle_, seqs, rt_mxs, variance=var)
 
 class show_dihedrals(object):
 

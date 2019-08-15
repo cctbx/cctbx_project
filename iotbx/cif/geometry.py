@@ -167,6 +167,8 @@ class dihedral_angles_as_cif_loop(object):
       i_seq, j_seq, k_seq, l_seq = a.i_seqs
       if (not include_bonds_to_hydrogen
           and (site_labels[i_seq].startswith('H') or
+               site_labels[j_seq].startswith('H') or
+               site_labels[k_seq].startswith('H') or
                site_labels[l_seq].startswith('H'))):
         continue
       sym_code_i = space_group_info.cif_symmetry_code(a.rt_mxs[0])
