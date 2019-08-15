@@ -308,6 +308,7 @@ class hklview_3d:
       or has_phil_path(diff_phil, "merge_data") \
       or has_phil_path(diff_phil, "scene_id")  \
       or has_phil_path(diff_phil, "nbins") \
+      or has_phil_path(diff_phil, "camera_type") \
       or has_phil_path(diff_phil, "bin_scene_label") \
       or has_phil_path(diff_phil, "scene_bin_thresholds") \
       or has_phil_path(diff_phil, "spacegroup_choice") \
@@ -911,7 +912,7 @@ var MakeHKL_Axis = function()
             is_friedel_mate = 1;
         }
         // tell python the id of the hkl and id number of the symmetry operator
-        mysocket.send( 'tooltip_id: [' + String([sym_id, hkl_id, is_friedel_mate]) + ']' );
+        WebsockSendMsg( 'tooltip_id: [' + String([sym_id, hkl_id, is_friedel_mate]) + ']' );
         if (current_ttip !== "" )
         {
           tooltip.innerText = current_ttip;
@@ -938,7 +939,7 @@ var MakeHKL_Axis = function()
       }
       cvorient = stage.viewerControls.getOrientation().elements;
       msg = String(cvorient);
-      mysocket.send('CurrentViewOrientation:\\n' + msg );
+      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
   );
 
@@ -954,7 +955,7 @@ var MakeHKL_Axis = function()
       }
       cvorient = stage.viewerControls.getOrientation().elements;
       msg = String(cvorient);
-      mysocket.send('CurrentViewOrientation:\\n' + msg );
+      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
   );
 
@@ -976,7 +977,7 @@ var MakeHKL_Axis = function()
         var innerText = pickingProxy.pid;
     """
     spherebufferstr += """
-        mysocket.send( innerText);
+        WebsockSendMsg( innerText);
       }
     }
   );
@@ -1021,16 +1022,31 @@ var MakeHKL_Axis = function()
 var pagename = location.pathname.substring(1);
 var mysocket = new WebSocket('ws://127.0.0.1:%s/');
 
+
+function WebsockSendMsg(msg)
+{
+  try
+  {
+    mysocket.send(msg);
+  }
+
+  catch(err)
+  {
+    alert('JavaScriptError: ' + err.stack );
+  }
+}
+
+
 mysocket.onopen = function(e)
 {
-  mysocket.send('%s now connected via websocket to ' + pagename + '\\n');
-  mysocket.send( 'Ready ' + pagename + '\\n');
+  WebsockSendMsg('%s now connected via websocket to ' + pagename + '\\n');
+  WebsockSendMsg( 'Ready ' + pagename + '\\n');
 };
 
 mysocket.onclose = function(e)
 {
-  mysocket.send('%s now disconnecting from websocket ' + pagename + '\\n');
-  mysocket.send( 'Ready ' + pagename + '\\n');
+  WebsockSendMsg('%s now disconnecting from websocket ' + pagename + '\\n');
+  WebsockSendMsg( 'Ready ' + pagename + '\\n');
 };
 
 // Log errors to debugger of your browser
@@ -1254,7 +1270,7 @@ mysocket.onmessage = function (e)
   var c,
   alpha,
   si;
-  mysocket.send('\\n    Browser: Got ' + e.data ); // tell server what it sent us
+  WebsockSendMsg('\\n    Browser: Got ' + e.data ); // tell server what it sent us
   try
   {
     var datval = e.data.split(":\\n");
@@ -1303,7 +1319,7 @@ mysocket.onmessage = function (e)
 
     if (msgtype === "ReOrient")
     {
-      mysocket.send( 'Reorienting ' + pagename );
+      WebsockSendMsg( 'Reorienting ' + pagename );
       sm = new Float32Array(16);
       //alert('ReOrienting: ' + val)
       for (j=0; j<16; j++)
@@ -1323,14 +1339,14 @@ mysocket.onmessage = function (e)
     // refresh browser with the javascript file
       cvorient = stage.viewerControls.getOrientation().elements;
       msg = String(cvorient);
-      mysocket.send('OrientationBeforeReload:\\n' + msg );
-      mysocket.send( 'Refreshing ' + pagename );
+      WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
+      WebsockSendMsg( 'Refreshing ' + pagename );
       window.location.reload(true);
     }
 
     if (msgtype.includes("Expand") )
     {
-      mysocket.send( 'Expanding data...' );
+      WebsockSendMsg( 'Expanding data...' );
       // delete the shapebufs[] that holds the positions[] arrays
       shapeComp.removeRepresentation(repr);
       // remove shapecomp from stage first
@@ -1444,7 +1460,7 @@ mysocket.onmessage = function (e)
               picking: br_ttips[bin][g],
               } %s  );
           shape.addBuffer(br_shapebufs[bin][g]);
-          //mysocket.send( 'Memory usage: ' + String(window.performance.memory.totalJSHeapSize) +
+          //WebsockSendMsg( 'Memory usage: ' + String(window.performance.memory.totalJSHeapSize) +
           //        ', ' + String(window.performance.memory.totalJSHeapSize) );
         }
       }
@@ -1455,12 +1471,12 @@ mysocket.onmessage = function (e)
       repr.update();
 
       stage.viewer.requestRender();
-      mysocket.send( 'Expanded data' );
+      WebsockSendMsg( 'Expanded data' );
     }
 
     if (msgtype === "DisableMouseRotation")
     {
-      mysocket.send( 'Fix mouse rotation' + pagename );
+      WebsockSendMsg( 'Fix mouse rotation' + pagename );
       stage.mouseControls.remove("drag-left");
       stage.mouseControls.remove("scroll-ctrl");
       stage.mouseControls.remove("scroll-shift");
@@ -1468,7 +1484,7 @@ mysocket.onmessage = function (e)
 
     if (msgtype === "EnableMouseRotation")
     {
-      mysocket.send( 'Can mouse rotate ' + pagename );
+      WebsockSendMsg( 'Can mouse rotate ' + pagename );
       stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
       stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
       stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
@@ -1476,7 +1492,7 @@ mysocket.onmessage = function (e)
 
     if (msgtype === "RotateStage")
     {
-      mysocket.send( 'Rotating stage ' + pagename );
+      WebsockSendMsg( 'Rotating stage ' + pagename );
 
       strs = datval[1].split("\\n");
       var sm = new Float32Array(9);
@@ -1506,7 +1522,7 @@ mysocket.onmessage = function (e)
 
     if (msgtype === "TranslateHKLpoints")
     {
-      mysocket.send( 'Translating HKLs ' + pagename );
+      WebsockSendMsg( 'Translating HKLs ' + pagename );
       strs = datval[1].split("\\n");
       var sm = new Float32Array(3);
       var elmstrs = strs[0].split(",");
@@ -1554,7 +1570,7 @@ mysocket.onmessage = function (e)
     if (msgtype === "GetTrackBallRotateSpeed")
     {
       msg = String( [stage.trackballControls.rotateSpeed] )
-      mysocket.send('ReturnTrackBallRotateSpeed:\\n' + msg );
+      WebsockSendMsg('ReturnTrackBallRotateSpeed:\\n' + msg );
     }
 
 
@@ -1588,19 +1604,19 @@ mysocket.onmessage = function (e)
     {
       msg = String( [stage.viewer.parameters.clipNear, stage.viewer.parameters.clipFar,
                       stage.viewer.camera.position.z] )
-      mysocket.send('ReturnClipPlaneDistances:\\n' + msg );
+      WebsockSendMsg('ReturnClipPlaneDistances:\\n' + msg );
     }
 
     if (msgtype === "GetBoundingBox")
     {
       msg = String( [stage.viewer.boundingBoxSize.x, stage.viewer.boundingBoxSize.y, stage.viewer.boundingBoxSize.z] )
-      mysocket.send('ReturnBoundingBox:\\n' + msg );
+      WebsockSendMsg('ReturnBoundingBox:\\n' + msg );
     }
 
     if (msgtype === "Testing")
     {
       // test something new
-      mysocket.send( 'Testing something new ' + pagename );
+      WebsockSendMsg( 'Testing something new ' + pagename );
       /*
       var newradii = radii[0].map(function(element) {
         return element*1.5;
@@ -1617,10 +1633,10 @@ mysocket.onmessage = function (e)
 
   catch(err)
   {
-    mysocket.send('JavaScriptError: ' + err.stack );
+    WebsockSendMsg('JavaScriptError: ' + err.stack );
   }
 
-  mysocket.send( 'Ready ' + pagename );
+  WebsockSendMsg( 'Ready ' + pagename );
 };
 
     """ % (self.websockport, self.__module__, self.__module__, axisfuncstr, \

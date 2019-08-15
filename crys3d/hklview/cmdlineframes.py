@@ -1014,7 +1014,7 @@ NGL_HKLviewer {
     .type = str
   nbins = 6
     .type = int
-  camera_type = *'orthographic' 'perspective'
+  camera_type = *orthographic perspective
     .type = choice
   shape_primitive = *'spheres' 'points'
     .type = choice

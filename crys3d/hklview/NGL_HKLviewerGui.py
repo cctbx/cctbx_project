@@ -28,12 +28,13 @@ class SettingsForm(QDialog):
   def __init__(self, parent=None):
     super(SettingsForm, self).__init__(parent)
     self.setWindowTitle("Settings")
-    myGroupBox = QGroupBox("Mouse Settings")
+    myGroupBox = QGroupBox("Stuff")
     layout = QGridLayout()
     layout.addWidget(parent.mousemoveslider,  0, 0, 1, 1)
     layout.addWidget(parent.mousesensitxtbox,  0, 3, 1, 3)
     layout.addWidget(parent.Fontsize_labeltxt,  1, 0, 1, 1)
     layout.addWidget(parent.fontspinBox,  1, 3, 1, 3)
+    layout.addWidget(parent.cameraPerspectCheckBox,  2, 0, 1, 1)
 
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
@@ -51,10 +52,10 @@ class NGL_HKLViewer(QWidget):
   def __init__(self, parent=None):
     super(NGL_HKLViewer, self).__init__(parent)
 
-
     self.verbose = 0
     self.UseOSbrowser = False
     self.jscriptfname = ""
+    self.devmode = False
     for e in sys.argv:
       if "verbose" in e:
         self.verbose = e.split("verbose=")[1]
@@ -62,6 +63,8 @@ class NGL_HKLViewer(QWidget):
         self.UseOSbrowser = e.split("UseOSbrowser=")[1]
       if "jscriptfname" in e:
         self.jscriptfname = e.split("jscriptfname=")[1]
+      if "devmode" in e:
+        self.devmode = True
 
     self.zmq_context = None
     self.bufsize = 20000
@@ -97,6 +100,11 @@ class NGL_HKLViewer(QWidget):
     self.Fontsize_labeltxt = QLabel()
     self.Fontsize_labeltxt.setText("Font size:")
 
+    self.cameraPerspectCheckBox = QCheckBox()
+    self.cameraPerspectCheckBox.setText("Perspective camera")
+    self.cameraPerspectCheckBox.clicked.connect(self.onCameraPerspect)
+    self.cameraPerspectCheckBox.setCheckState(Qt.Unchecked)
+
     self.settingsform = SettingsForm(self)
 
     self.MillerComboBox = QComboBox()
@@ -112,9 +120,9 @@ class NGL_HKLViewer(QWidget):
     self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
     self.textInfo.setReadOnly(True)
 
-    self.millertable = QTableWidget(0, 9)
     labels = ["Label", "Type", "no. of HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
+    self.millertable = QTableWidget(0, len(labels))
     self.millertable.setHorizontalHeaderLabels(labels)
     self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     # don't allow editing this table
@@ -211,17 +219,18 @@ class NGL_HKLViewer(QWidget):
             self.updatingNbins = True
             self.Nbins_spinBox.setValue(self.nbins)
             self.updatingNbins = False
+            self.binstable.clearContents()
             self.binstable.setRowCount(self.nbins)
             for row,bin_infotpl in enumerate(self.bin_infotpls):
               for col,elm in enumerate(bin_infotpl):
                 # only allow changing the last column with opacity values
                 if col != 3:
                   item = QTableWidgetItem(str(elm))
-                  item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 else:
                   item = QTableWidgetItem()
                   item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
                   item.setCheckState(Qt.Checked)
+                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 self.binstable.setItem(row, col, item)
             if self.bin_opacities:
               self.update_table_opacities()
@@ -241,6 +250,8 @@ class NGL_HKLViewer(QWidget):
 
           if self.infodict.get("spacegroups"):
             self.spacegroups = self.infodict.get("spacegroups",[])
+            self.SpaceGroupComboBox.clear()
+            self.SpaceGroupComboBox.addItems( self.spacegroups )
 
           if self.infodict.get("merge_data"):
             self.mergedata = self.infodict["merge_data"]
@@ -281,11 +292,8 @@ class NGL_HKLViewer(QWidget):
               self.comboviewwidth = max(self.comboviewwidth, self.MillerComboBox.fontMetrics().width( e[3]) )
             self.MillerComboBox.view().setMinimumWidth(self.comboviewwidth)
 
-            self.SpaceGroupComboBox.clear()
-            self.SpaceGroupComboBox.addItems( self.spacegroups )
-
+            self.millertable.clearContents()
             self.millertable.setRowCount(len(self.hklscenes_arrays))
-            #self.millertable.setColumnCount(8)
             for n,millarr in enumerate(self.array_infotpls):
               for m,elm in enumerate(millarr):
                 self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
@@ -321,6 +329,13 @@ class NGL_HKLViewer(QWidget):
     font.setPointSize(val);
     app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
+
+
+  def onCameraPerspect(self,val):
+    if self.cameraPerspectCheckBox.isChecked():
+      self.NGL_HKL_command("NGL_HKLviewer.camera_type = perspective")
+    else:
+      self.NGL_HKL_command("NGL_HKLviewer.camera_type = orthographic")
 
 
   def MergeData(self):
@@ -423,6 +438,7 @@ class NGL_HKLViewer(QWidget):
         item.setCheckState(Qt.Unchecked)
       else:
         item.setCheckState(Qt.Checked)
+      item.setFlags(item.flags() ^ Qt.ItemIsEditable)
       self.binstable.setItem(bin, 3, item)
     self.binstable_isready = True
 
@@ -512,6 +528,7 @@ class NGL_HKLViewer(QWidget):
     else:
       self.NGL_HKL_command('NGL_HKLviewer.viewer.nth_power_scale_radii = -1.0')
       self.power_scale_spinBox.setEnabled(False)
+      self.nth_power_scale = -1.0
 
 
   def OpenReflectionsFile(self):
@@ -762,7 +779,8 @@ class NGL_HKLViewer(QWidget):
     self.FileInfoBox = QGroupBox("Reflection File Information")
     layout = QGridLayout()
     layout.addWidget(self.openFileNameButton,     0, 0, 1, 2)
-    layout.addWidget(self.debugbutton,            0, 2, 1, 1)
+    if self.devmode:
+      layout.addWidget(self.debugbutton,            0, 2, 1, 1)
     layout.addWidget(self.HKLnameedit,            1, 0, 1, 3)
     layout.addWidget(self.millertable,            2, 0, 1, 3)
     layout.addWidget(self.textInfo,               3, 0, 1, 3)
@@ -784,6 +802,7 @@ class NGL_HKLViewer(QWidget):
     self.power_scale_spinBox.setSingleStep(0.05)
     self.power_scale_spinBox.setRange(0.0, 1.0)
     self.power_scale_spinBox.valueChanged.connect(self.onPowerScaleChanged)
+    self.power_scale_spinBox.setEnabled(False)
     self.powerscaleLabel = QLabel()
     self.powerscaleLabel.setText("Power scale Factor")
 
@@ -879,9 +898,8 @@ class NGL_HKLViewer(QWidget):
     self.functionTabWidget.setDisabled(True)
 
 
-
   def SpacegroupSelchange(self,i):
-    self.NGL_HKL_command("NGL_HKLviewer.spacegroupchoice = %d" %i)
+    self.NGL_HKL_command("NGL_HKLviewer.spacegroup_choice = %d" %i)
 
 
   def find_free_port(self):
