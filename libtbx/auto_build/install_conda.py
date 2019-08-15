@@ -22,6 +22,7 @@ import os
 import platform
 import shutil
 import sys
+import time
 import warnings
 
 # Python 2/3 compatibility
@@ -167,7 +168,7 @@ class conda_manager(object):
 
   # ---------------------------------------------------------------------------
   def __init__(self, root_dir=root_dir, conda_base=None, conda_env=None,
-               check_file=True, verbose=False, log=sys.stdout):
+               check_file=True, max_retries=5, verbose=False, log=sys.stdout):
     """
     Constructor that performs that basic check for the conda installation.
     If an installation is not found, the latest version can be downloaded
@@ -194,6 +195,12 @@ class conda_manager(object):
       Flag for checking if a file exists. A RuntimeError is raised if a
       this flag is set and a file does not exist. Used in get_conda_exe
       and get_conda_python.
+    max_retries: int
+      When downloading conda packages, there may be network issues that
+      prevent the environment from being constructed. This parameter
+      controls the number of retry attempts for constructing the conda
+      environment. The first retry is attempted 1 minute after the
+      initial failure. The second retry is attempted 2 minutes, etc.
     verbose: bool
       Flag for showing conda output
     log: file
@@ -212,6 +219,7 @@ class conda_manager(object):
       self.conda_env = os.path.normpath(conda_env)
 
     self.check_file = check_file
+    self.max_retries = max_retries
     self.verbose = verbose
     self.log = log
 
@@ -602,7 +610,25 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
     print('{text} {builder} environment with:\n  {filename}'.format(
           text=text_messages[0], builder=builder, filename=filename),
           file=self.log)
-    output = check_output(command_list, env=self.env)
+    for retry in range(self.max_retries):
+      retry += 1
+      try:
+        output = check_output(command_list, env=self.env)
+      except Exception:
+        print("""
+*******************************************************************************
+There was a failure in constructing the conda environment.
+Attempt {retry} of {max_retries} will start {retry} minute(s) from {t}.
+*******************************************************************************
+""".format(retry=retry, max_retries=self.max_retries, t=time.asctime()))
+        time.sleep(retry*60)
+      else:
+        break
+    if retry == self.max_retries:
+      raise RuntimeError("""
+The conda environment could not be constructed. Please check that there is a
+working network connection for downloading conda packages.
+""")
     if self.verbose:
       print(output, file=self.log)
     print('Completed {text}:\n  {prefix}'.format(text=text_messages[1],
@@ -735,9 +761,11 @@ Example usage:
                          python=namespace.python,
                          copy=namespace.copy, offline=namespace.offline)
 
+  return 0
+
 # =============================================================================
 if __name__ == '__main__':
-  run()
+  sys.exit(run())
 
 # =============================================================================
 # end
