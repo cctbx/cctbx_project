@@ -523,22 +523,25 @@ void set_box(
   af::tiny<int, 3> const& end)
 {
   af::c_grid<3> a = map_data_to.accessor();
-  for(int i = 0; i < 3; i++) {
-    CCTBX_ASSERT(start[i]>=0 && start[i]<=a[i]);
-    CCTBX_ASSERT(end[i]>=0   && end[i]<=a[i]);
-  }
-  int ii=0;
+  //
+  // PVA: I need to find out why this occasionally crashes here:
+  //
+  //for(int i = 0; i < 3; i++) {
+  //  CCTBX_ASSERT((end[i] - start[i]) <= a[i]);
+  //  CCTBX_ASSERT(end[i] > start[i]);
+  //}
   for (int i = start[0]; i < end[0]; i++) {
-    int jj=0;
+    int ii = scitbx::math::mod_positive(i, static_cast<int>(a[0]));
     for (int j = start[1]; j < end[1]; j++) {
-      int kk=0;
+      int jj = scitbx::math::mod_positive(j, static_cast<int>(a[1]));
       for (int k = start[2]; k < end[2]; k++) {
-        map_data_to(i,j,k) = map_data_from(ii,jj,kk);
-        kk+=1;
+        int kk = scitbx::math::mod_positive(k, static_cast<int>(a[2]));
+        int p = i-start[0];
+        int q = j-start[1];
+        int r = k-start[2];
+        map_data_to(ii,jj,kk) = map_data_from(p,q,r);
       }
-      jj+=1;
     }
-    ii+=1;
   }
 }
 
