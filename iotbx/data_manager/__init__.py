@@ -149,14 +149,6 @@ class DataManagerBase(object):
 
     # dynamically construct master PHIL string
     self.master_phil_str = 'data_manager {\n'
-    self.master_phil_str += """
-default_output_filename = None
-  .type = str
-  .help = The default filename for output files (without file extension).
-overwrite = False
-  .type = bool
-  .help = The default setting for overwriting files with the same name.
-"""
     for datatype in self.datatypes:
 
       # check if a datatype has a custom PHIL str
@@ -226,8 +218,6 @@ overwrite = False
     This assumes that the key names in the data structures are valid filenames.
     '''
     phil_extract = self.master_phil.extract()
-    phil_extract.data_manager.default_output_filename = self._default_output_filename
-    phil_extract.data_manager.overwrite = self._overwrite
     for datatype in self.datatypes:
       if (hasattr(self, self.export_custom_phil_extract % datatype)):
         setattr(phil_extract.data_manager, '%s' % datatype,

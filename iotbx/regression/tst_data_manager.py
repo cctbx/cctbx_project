@@ -560,6 +560,9 @@ def test_default_filenames():
                        format(datatype=datatype))()
     assert filename == 'cctbx_program.' + extension
 
+  filename = dm.get_default_output_model_filename(extension='.abc')
+  assert filename == 'cctbx_program.abc'
+
 # -----------------------------------------------------------------------------
 if (__name__ == '__main__'):
 
