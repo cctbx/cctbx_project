@@ -177,6 +177,7 @@ class NGL_HKLViewer(QWidget):
     self.NewFileLoaded = False
     self.NewHKLscenes = False
     self.updatingNbins = False
+    self.binstableitemchanges = False
 
     self.show()
 
@@ -426,11 +427,14 @@ class NGL_HKLViewer(QWidget):
       self.NGL_HKL_command("NGL_HKLviewer.bin_scene_label = %s" % bin_scene_label )
 
 
-  def update_table_opacities(self):
+  def update_table_opacities(self, allalpha=None):
     bin_opacitieslst = eval(self.bin_opacities)
     self.binstable_isready = False
     for binopacity in bin_opacitieslst:
-      alpha = float(binopacity.split(",")[0])
+      if not allalpha:
+        alpha = float(binopacity.split(",")[0])
+      else:
+        alpha = allalpha
       bin = int(binopacity.split(",")[1])
       item = QTableWidgetItem()
       item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
@@ -443,11 +447,26 @@ class NGL_HKLViewer(QWidget):
     self.binstable_isready = True
 
 
+  def SetOpaqueAll(self):
+    if self.binstableitemchanges:
+      return
+    bin_opacitieslst = eval(self.bin_opacities)
+    nbins = len(bin_opacitieslst)
+    sum = 0
+    for binopacity in bin_opacitieslst:
+      sum += float(binopacity.split(",")[0])
+    if sum >= nbins:
+      self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
+    if sum == 0:
+      self.OpaqueAllCheckbox.setCheckState(Qt.Unchecked)
+    if sum >0.0 and sum < nbins:
+      self.OpaqueAllCheckbox.setCheckState(Qt.PartiallyChecked)
+
+
   def onBinsTableItemChanged(self, item):
     row = item.row()
     column = item.column()
     try:
-      #newval = float(item.text())
       if item.checkState()==Qt.Unchecked:
         newval = 0
       else:
@@ -457,10 +476,11 @@ class NGL_HKLViewer(QWidget):
         bin_opacitieslst = eval(self.bin_opacities)
         bin_opacitieslst[row] = str(newval) + ', ' + str(row)
         self.bin_opacities = str(bin_opacitieslst)
+        self.SetOpaqueAll()
         self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
     except Exception as e:
       print(str(e))
-      self.binstable.currentItem().setText( self.currentSelectedBinsTableVal)
+      #self.binstable.currentItem().setText( self.currentSelectedBinsTableVal)
 
 
   def onBinsTableItemSelectionChanged(self):
@@ -468,6 +488,25 @@ class NGL_HKLViewer(QWidget):
     column = self.binstable.currentItem().column()
     self.currentSelectedBinsTableVal = self.binstable.currentItem().text()
     #print( "in itemSelectionChanged " + self.currentSelectedBinsTableVal)
+
+
+  def onOpaqueAll(self):
+    self.binstableitemchanges = True
+    bin_opacitieslst = eval(self.bin_opacities)
+    nbins = len(bin_opacitieslst)
+    bin_opacitieslst = []
+    self.binstable_isready = False
+    if self.OpaqueAllCheckbox.isChecked():
+      for i in range(nbins):
+        bin_opacitieslst.append("1.0, %d" %i)
+    else:
+      for i in range(nbins):
+        bin_opacitieslst.append("0.0, %d" %i)
+    self.bin_opacities = str(bin_opacitieslst)
+    self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
+    self.binstableitemchanges = False
+    self.binstable_isready = True
+
 
 
   """
@@ -841,6 +880,12 @@ class NGL_HKLViewer(QWidget):
     self.Nbins_spinBox.valueChanged.connect(self.onNbinsChanged)
     self.Nbins_labeltxt = QLabel()
     self.Nbins_labeltxt.setText("Number of bins:")
+
+    self.OpaqueAllCheckbox = QCheckBox()
+    #self.OpaqueAllCheckbox.setTristate()
+    self.OpaqueAllCheckbox.setText("Show all data in bins")
+    self.OpaqueAllCheckbox.clicked.connect(self.onOpaqueAll)
+
     self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
     self.binstable.itemSelectionChanged.connect(self.onBinsTableItemSelectionChanged  )
     self.BinDataComboBox = QComboBox()
@@ -851,7 +896,8 @@ class NGL_HKLViewer(QWidget):
     layout.addWidget(self.BinDataComboBox, 0, 1)
     layout.addWidget(self.Nbins_labeltxt, 0, 2)
     layout.addWidget(self.Nbins_spinBox, 0, 3)
-    layout.addWidget(self.binstable, 1, 0, 1, 4)
+    layout.addWidget(self.OpaqueAllCheckbox, 1, 2)
+    layout.addWidget(self.binstable, 2, 0, 1, 4)
     layout.setColumnStretch(0, 0)
     layout.setColumnStretch(1, 2)
     layout.setColumnStretch(3, 1)
@@ -939,7 +985,7 @@ if __name__ == '__main__':
     guiobj = NGL_HKLViewer()
 
     timer = QTimer()
-    #timer.setInterval(0.1)
+    timer.setInterval(20)
     timer.timeout.connect(guiobj.update)
     timer.start()
 
