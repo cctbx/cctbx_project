@@ -158,29 +158,60 @@ def stats(model, prefix):
   import matplotlib as mpl
   mpl.use('Agg')
   import matplotlib.pyplot as plt
-  fig = plt.figure(figsize=(15,15))
+  fig = plt.figure(figsize=(10,10))
   kwargs = dict(histtype='bar', bins=20, range=[1.6,3.0], alpha=.8)
-  for i, key in enumerate(["alpha", "beta", "loop", "all"]):
-    ax = plt.subplot(int("42%d"%(i+1)))
+  for j, it in enumerate([["alpha",1], ["beta",3], ["loop",5]]):
+    key, i = it
+    ax = plt.subplot(int("32%d"%i))
+    if(j in [0,1]):
+      ax.tick_params(bottom=False)
+      ax.set_xticklabels([])
+    ax.tick_params(axis="x", labelsize=12)
+    ax.tick_params(axis="y", labelsize=12, left=False, pad=-2)
+    ax.text(0.98,0.92,key, size=12, horizontalalignment='right',
+      transform=ax.transAxes)
     HB = result_dict[key]
     if HB is None: continue
     w1 = np.ones_like(HB.d_HA)/HB.d_HA.size()
     ax.hist(HB.d_HA, color="orangered", weights=w1, rwidth=0.3, **kwargs)
-    ax.set_title("Distance (%s)"%key)
+    #
+    start, end1, end2 = 0, max(ref.distances[key].vals), \
+      round(max(ref.distances[key].vals),2)
+    plt.yticks([0.01,end1], ["0", end2], visible=True, rotation="horizontal")
+    #
+    if(j==0): ax.set_title("Distance", size=15)
     bins = list(flex.double(ref.distances[key].bins))
     ax.bar(bins, ref.distances[key].vals, alpha=.3, width=0.07)
   #
   kwargs = dict(histtype='bar', bins=20, range=[90,180], alpha=.8)
-  for j, key in enumerate(["alpha", "beta", "loop", "all"]):
-    ax = plt.subplot(int("42%d"%(i+j+2)))
+  for j, it in enumerate([["alpha",2], ["beta",4], ["loop",6]]):
+    key, i = it
+    ax = plt.subplot(int("32%d"%i))
+
+    if(j in [0,1]):
+      ax.tick_params(bottom=False)
+      ax.set_xticklabels([])
+    ax.tick_params(axis="x", labelsize=12)
+    ax.tick_params(axis="y", labelsize=12, left=False, pad=-2)
+    ax.text(0.98,0.92,key, size=12, horizontalalignment='right',
+      transform=ax.transAxes)
+
+    ax.text(0.98,0.92,key, size=12, horizontalalignment='right',
+      transform=ax.transAxes)
+    #if(j in [0,1]): ax.plot_params(bottom=False)
     HB = result_dict[key]
     if HB is None: continue
     w1 = np.ones_like(HB.a_DHA)/HB.a_DHA.size()
     ax.hist(HB.a_DHA, color="orangered", weights=w1, rwidth=0.3, **kwargs)
-    ax.set_title("Angle (%s)"%key)
+    #
+    start, end1, end2 = 0, max(ref.angles[key].vals), \
+      round(max(ref.angles[key].vals),2)
+    plt.yticks([0.01,end1], ["0", end2], visible=True, rotation="horizontal")
+    #
+    if(j==0): ax.set_title("Angle", size=15)
     ax.bar(ref.angles[key].bins, ref.angles[key].vals, width=4.5, alpha=.3)
-
-  fig.savefig("%s.png"%prefix, dpi=100)
+  plt.subplots_adjust(wspace=0.12, hspace=0.025)
+  fig.savefig("%s.png"%prefix, dpi=1000)
 
 
 def precheck(atoms, i, j, Hs, As, Ds, fsc0):
