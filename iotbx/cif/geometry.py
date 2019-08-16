@@ -134,15 +134,15 @@ class dihedral_angles_as_cif_loop(object):
                eps=2e-16):
     fmt = "%.1f"
     self.loop = model.loop(header=(
-      "_geom_tortion_atom_site_label_1",
-      "_geom_tortion_atom_site_label_2",
-      "_geom_tortion_atom_site_label_3",
-      "_geom_tortion_atom_site_label_4",
-      "_geom_tortion",
-      "_geom_tortion_site_symmetry_1",
-      "_geom_tortion_site_symmetry_2",
-      "_geom_tortion_site_symmetry_3",
-      "_geom_tortion_site_symmetry_4"
+      "_geom_torsion_atom_site_label_1",
+      "_geom_torsion_atom_site_label_2",
+      "_geom_torsion_atom_site_label_3",
+      "_geom_torsion_atom_site_label_4",
+      "_geom_torsion",
+      "_geom_torsion_site_symmetry_1",
+      "_geom_torsion_site_symmetry_2",
+      "_geom_torsion_site_symmetry_3",
+      "_geom_torsion_site_symmetry_4"
     ))
     for a in angles:
       i_seq, j_seq, k_seq, l_seq = a.i_seqs
