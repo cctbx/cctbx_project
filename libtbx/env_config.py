@@ -2695,6 +2695,39 @@ def warm_start(args):
     env.clear_scons_memory()
   env.refresh()
 
+def get_boost_library_with_python_version(name, libpath):
+  """
+  Standard Boost.Python libraries may have the Python version appended
+  as a suffix. This function returns the name with the current Python
+  version if there is a file with that name in LIBPATH. Otherwise, it
+  will return the original name. For example, libboost_python.so may be
+  named libboost_python27.so for Python 2.7.
+
+  Parameters
+  ----------
+  name: str
+    The base name for a library (e.g. "boost_python")
+  libpath: list
+    The paths to search for this library
+
+  Returns
+  -------
+  name: str
+    The input name modified with the current Python version, if available
+  """
+
+  version = str(sys.version_info.major) + str(sys.version_info.minor)
+  for p in libpath:
+    name_version = name + version
+    full_name = os.path.join(p, 'lib' + name_version )
+    if sys.platform == 'win32':
+      full_name += '.lib'
+    else:
+      full_name += '.so'
+    if os.path.isfile(full_name):
+      return name_version
+  return name
+
 if (__name__ == "__main__"):
   if (len(sys.argv) == 2 and sys.argv[1] == "__libtbx_refresh__"):
     unpickle().refresh()
