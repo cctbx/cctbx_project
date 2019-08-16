@@ -824,6 +824,23 @@ class _(boost.python.injector, pair_asu_table):
       keep_pair_asu_table=keep_pair_asu_table,
       out=out)
 
+  def show_dihedral_angles(self,
+        site_labels=None,
+        sites_frac=None,
+        sites_cart=None,
+        keep_pair_asu_table=False,
+        max_d=1.7,
+        max_angle=170,
+        out=None):
+    return show_dihedral_angles(
+      pair_asu_table=self,
+      site_labels=site_labels,
+      sites_frac=sites_frac,
+      sites_cart=sites_cart,
+      max_d=max_d,
+      max_angle=max_angle,
+      out=out)
+
 class calculate_distances(object):
 
   def __init__(self,
@@ -1153,11 +1170,16 @@ class show_angles(object):
       print >> out, "*%s" %(i+1),
       print >> out, rt_mx
 
-class calculate_dihedrals(object):
 
+class dihedral_angle_def(object):
+  def __init__(self, seqs, rt_mxs):
+    libtbx.adopt_init_args(self, locals())
+
+class calculate_dihedrals(object):
   def __init__(self,
                pair_asu_table,
                sites_frac,
+               dihedral_defs=None, #angle definition
                skip_j_seq_less_than_i_seq=True,
                covariance_matrix=None,
                cell_covariance_matrix=None,
@@ -1166,13 +1188,11 @@ class calculate_dihedrals(object):
                max_d = 1.9,
                max_angle = 170):
     libtbx.adopt_init_args(self, locals())
-    self.distances = flex.double()
     if self.covariance_matrix is not None:
       self.variances = flex.double()
     else:
       self.variances = None
     self.dihedrals = flex.double()
-    self.pair_counts = flex.size_t()
 
   def __iter__(self):
     return self.next()
@@ -1183,9 +1203,14 @@ class calculate_dihedrals(object):
       def __init__(self,
                    angle,
                    i_seqs,
-                   rt_mxs=None,
+                   rt_mxs,
                    variance=None):
         libtbx.adopt_init_args(self, locals())
+      def __eq__(self, other):
+        for i in xrange(0,4):
+          if self.i_seqs[i] != other.i_seqs[i] or self.rt_mxs[i] != other.rt_mxs[i]:
+            return False
+        return True
 
     asu_mappings = self.pair_asu_table.asu_mappings()
     unit_cell = asu_mappings.unit_cell()
@@ -1193,6 +1218,27 @@ class calculate_dihedrals(object):
       assert self.parameter_map is not None
       cov_cart = covariance.orthogonalize_covariance_matrix(
         self.covariance_matrix, unit_cell, self.parameter_map)
+    if self.dihedral_defs is not None:
+      for ad in self.dihedral_defs:
+        sites = []
+        for i in xrange(0,4):
+          site_frac = ad.rt_mxs[i] * self.sites_frac[ad.seqs[i]]
+          sites.append(unit_cell.orthogonalize(site_frac))
+        a = geometry.dihedral(sites)
+        angle_ = a.dihedral_model
+        self.dihedrals.append(angle_)
+        if self.covariance_matrix is not None:
+          cov = covariance.extract_covariance_matrix_for_sites(
+            flex.size_t(ad.seqs), cov_cart, self.parameter_map)
+          if self.cell_covariance_matrix is not None:
+            var = a.variance(cov, unit_cell, ad.rt_mxs)
+          else:
+            var = a.variance(cov, unit_cell, ad.rt_mxs)
+          self.variances.append(var)
+        else:
+          var = None
+        yield dihedral(angle_, ad.seqs, ad.rt_mxs, variance=var)
+      return
     table = self.pair_asu_table.table()
     for i_seq,i_asu_dict in enumerate(table):
       rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
@@ -1266,7 +1312,7 @@ class calculate_dihedrals(object):
                           var = None
                         yield dihedral(angle_, seqs, rt_mxs, variance=var)
 
-class show_dihedrals(object):
+class show_dihedral_angles(object):
 
   def __init__(self,
         pair_asu_table,
@@ -1274,15 +1320,12 @@ class show_dihedrals(object):
         sites_frac=None,
         sites_cart=None,
         show_cartesian=False,
-        keep_pair_asu_table=False,
+        max_d=1.7,
+        max_angle=170,
         out=None):
 
     assert [sites_frac, sites_cart].count(None) == 1
     if (out is None): out = sys.stdout
-    if (keep_pair_asu_table):
-      self.pair_asu_table = pair_asu_table
-    else:
-      self.pair_asu_table = None
     rt_mxs = []
     if (site_labels is None):
       label_len = len("%d" % (sites_frac.size()+1))
@@ -1293,7 +1336,8 @@ class show_dihedrals(object):
       for label in site_labels:
         label_len = max(label_len, len(label))
       label_fmt = "%%-%ds" % (label_len+4)
-    angles = calculate_dihedrals(pair_asu_table, sites_frac)
+    angles = calculate_dihedrals(pair_asu_table, sites_frac,
+      max_d=max_d, max_angle=max_angle)
     for d in angles:
       if (site_labels is None):
         s = label_fmt % (d.i_seqs[0]+1) + ":"
@@ -1301,14 +1345,14 @@ class show_dihedrals(object):
         s = ""
         for idx, i_seq in enumerate(d.i_seqs):
           label = label_fmt % site_labels[i_seq]
-          rt_mx = d.rt_mcs[idx]
+          rt_mx = d.rt_mxs[idx]
           if not rt_mx.is_unit_mx():
             if rt_mx in rt_mxs:
               j = rt_mxs.index(rt_mx) + 1
             else:
               rt_mxs.append(rt_mx)
               j = len(rt_mxs)
-          label += "*%s" %j
+            label += "*%s" %j
           s += label
       s += " %6.2f" % d.angle
       print >> out, s

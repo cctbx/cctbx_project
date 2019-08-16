@@ -356,11 +356,15 @@ namespace cctbx { namespace geometry {
   class dihedral {
     typedef scitbx::vec3<FloatType> vec_t;
     struct evaluator {
+      FloatType epsilon;
+      evaluator(FloatType epsilon = 1.e-16)
+        : epsilon(epsilon)
+      {}
       FloatType calculate(af::const_ref<vec_t> const &sites)const {
         vec_t d10 = sites[1] - sites[0],
           d21 = sites[2] - sites[1],
           d32 = sites[3] - sites[2];
-        if (d21.length_sq() < epsilon()) {
+        if (d21.length_sq() < epsilon) {
           return 0;
         }
         vec_t x = d21.cross(d32);
@@ -385,12 +389,12 @@ namespace cctbx { namespace geometry {
           http://salilab.org/modeller/manual/manual.html,
           "Features and their derivatives"
      */
-    af::tiny<vec_t, 4> d_angle_d_sites(FloatType epsilon = 1.e-100) const {
+    af::tiny<vec_t, 4> d_angle_d_sites(FloatType epsilon = 1.e-16) const {
       af::tiny<vec_t, 4> grads;
       vec_t ij = sites[0] - sites[1];
       vec_t kj = sites[2] - sites[1];
       vec_t kl = sites[3] - sites[2];
-      if (kj.length_sq() < epsilon()) {
+      if (kj.length_sq() < epsilon) {
         return grads;
       }
       vec_t mj = ij.cross(kj);
