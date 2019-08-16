@@ -405,6 +405,8 @@ class structure_base(object):
   @staticmethod
   def filter_helix_records(lines):
     result = []
+    if lines is None:
+      return result
     for line in lines:
       if line.startswith("HELIX"):
         result.append(line)
@@ -416,6 +418,8 @@ class structure_base(object):
     returns [[lines with equal sheetID], ... ,[lines with equal sheetID]]
     """
     result = []
+    if lines is None:
+      return result
     current_sh_lines = []
     current_sh_id = ""
     for line in lines:
