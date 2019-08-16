@@ -4,6 +4,7 @@ import os.path
 from libtbx import slots_getstate_setstate
 import numpy
 import os, sys
+from iotbx.pdb.hybrid_36 import hy36decode
 
 from mmtbx.conformation_dependent_library import generate_protein_fragments
 
@@ -328,7 +329,7 @@ class omegalyze(validation):
         i_seqs = main_residue.atoms().extract_i_seq()
         assert (not i_seqs.all_eq(0)) #This assert copied from ramalyze
         self._outlier_i_seqs.extend(i_seqs)
-      self.results.sort(key=lambda r: (r.model_id, r.chain_id, int(r.resseq), r.icode, r.altloc))
+      self.results.sort(key=lambda r: (r.model_id, r.chain_id, int(hy36decode(len(r.resseq), r.resseq)), r.icode, r.altloc))
 
   def _get_count_and_fraction(self, res_type, omega_type):
     total = self.residue_count[res_type]
