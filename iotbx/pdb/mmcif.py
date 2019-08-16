@@ -42,7 +42,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     seq_id = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_seq_id")
     if seq_id is None:
       seq_id = self._wrap_loop_if_needed(cif_block, "_atom_site.label_seq_id") # residue number
-    assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id, seq_id].count(None) == 0, "someting is not present"
+    assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id, seq_id].count(None) == 0, "something is not present"
     assert type_symbol is not None
 
     atom_site_fp = cif_block.get('_atom_site.phenix_scat_dispersion_real')
