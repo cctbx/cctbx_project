@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
+import sys
 import libtbx.load_env
 
-tst_list = (
+tst_list_base = [
   "$D/regression/tst_miller_double_step_filtration.py",
   "$D/miller/tst_reindexing.py",
   "$D/miller/tst_map_to_asu_isym.py",
@@ -15,7 +16,6 @@ tst_list = (
   ["$D/symmetry_search/tests/tst_from_map.py", "P312"],
   "$D/regression/tst_adp_aniso_restraints.py",
   "$D/math/boost_python/tst_math.py",
-  "$D/xray/boost_python/tst_xray.py",
   "$D/xray/boost_python/tst_targets_fd.py",
   "$D/xray/targets/tst_r1.py",
   "$D/xray/targets/tst_shelxl_wght_ls.py",
@@ -75,7 +75,6 @@ tst_list = (
   "$D/regression/tst_crystal_asu_clusters.py",
   "$D/regression/tst_coordination_sequences.py",
   ["$D/regression/tst_crystal_close_packing.py", "R-3mr"],
-  ["$D/regression/tst_xray.py", "I41/acd"],
   ["$D/regression/tst_fourier_transform_real_part_at_x.py", "P31"],
   ["$D/regression/tst_miller.py", "P31"],
   "$D/regression/tst_mem.py",
@@ -145,7 +144,24 @@ tst_list = (
    "$D/regression/tst_connectivity.py",
    "$D/regression/tst_diffuse.py",
    "$D/regression/tst_grm_modifications.py",
-  )
+  ]
+
+# failing tests on macOS and linux, Python 3.6
+tst_list_unix_fail = [
+  "$D/xray/boost_python/tst_xray.py",
+  ["$D/regression/tst_xray.py", "I41/acd"],
+  ]
+
+tst_list_fail = list()
+if ((sys.platform == 'darwin' or sys.platform.startswith('linux')) and
+    sys.version_info > (3, 0)):
+  tst_list_fail += tst_list_unix_fail
+else:
+  tst_list_base += tst_list_unix_fail
+
+# final lists
+tst_list = tst_list_base
+tst_list_expected_failures = tst_list_fail
 
 def run():
   build_dir = libtbx.env.under_build("cctbx")

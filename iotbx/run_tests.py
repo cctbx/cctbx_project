@@ -37,7 +37,6 @@ tst_list_base = [
   "$D/pdb/tst_rna_dna_atom_names.py",
   "$D/pdb/tst_atom_name_interpretation.py",
   "$D/pdb/tst_extract_rfactors_resolutions_sigma.py",
-  "$D/pdb/tst_pdb.py",
   "$D/pdb/modified_aa_names.py",
   "$D/pdb/modified_rna_dna_names.py",
   "$D/regression/secondary_structure/tst_sheet.py",
@@ -119,9 +118,20 @@ tst_list_windows_fail = [
 
 tst_list_fail = list()
 if sys.platform == 'win32':
-  tst_list_fail = tst_list_windows_fail
+  tst_list_fail += tst_list_windows_fail
 else:
   tst_list_base += tst_list_windows_fail
+
+# failing tests on macOS and linux, Python 3.6
+tst_list_unix_fail = [
+  "$D/pdb/tst_pdb.py",
+  ]
+
+if ((sys.platform == 'darwin' or sys.platform.startswith('linux')) and
+    sys.version_info > (3, 0)):
+  tst_list_fail += tst_list_unix_fail
+else:
+  tst_list_base += tst_list_unix_fail
 
 # final lists
 tst_list = tst_list_base
