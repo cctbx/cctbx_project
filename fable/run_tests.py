@@ -10,9 +10,12 @@ tst_list = (
   "$D/test/tst_show_calls.py",
   "$D/test/tst_command_line.py",
   "$D/test/tst_separate_files.py",
-  "$D/test/tst_io.py",
   ["$D/tst_cout_compile.py", "stop"],
   )
+
+tst_list_expected_unstable = [
+  "$D/test/tst_io.py",
+]
 
 def run():
   build_dir = libtbx.env.under_build("fable")
