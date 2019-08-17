@@ -80,11 +80,15 @@ def run(args, return_list_of_tests=None):
     all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests))
   for module_name in params.module :
     module_tests = libtbx.test_utils.parallel.get_module_tests(module_name, slow_tests = params.slow_tests)
+    fail_tests = libtbx.test_utils.parallel.\
+      get_module_expected_test_failures(module_name)
+    unstable_tests = libtbx.test_utils.\
+      parallel.get_module_expected_unstable_tests(module_name)
     all_tests.extend(module_tests)
-    expected_failure_list.extend(
-      libtbx.test_utils.parallel.get_module_expected_test_failures(module_name))
-    expected_unstable_list.extend(
-      libtbx.test_utils.parallel.get_module_expected_unstable_tests(module_name))
+    all_tests.extend(fail_tests)
+    all_tests.extend(unstable_tests)
+    expected_failure_list.extend(fail_tests)
+    expected_unstable_list.extend(unstable_tests)
     # check that test lists are unique
     seen = set()
     duplicates = set()
@@ -94,8 +98,6 @@ def run(args, return_list_of_tests=None):
       else:
         seen.add(t)
     assert len(duplicates) == 0, "Duplicate tests found.\n%s" % list(duplicates)
-    all_tests.extend(expected_failure_list)
-    all_tests.extend(expected_unstable_list)
   if return_list_of_tests:
     return all_tests
   if (len(all_tests) == 0):
