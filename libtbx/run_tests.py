@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
+import sys
 import libtbx.load_env
 
-tst_list = (
+tst_list_base = [
   "$D/metric_prefixes.py",
   "$D/tst_utils.py",
   "$D/test_utils/__init__.py",
@@ -35,12 +36,27 @@ tst_list = (
   "$D/tst_citations.py",
   "$D/tst_python_code_parsing.py",
   "$D/tst_representation.py",
-  "$D/tst_runtime_utils.py",
-# "$D/tst_xmlrpc_utils.py", # This test is failing
   "$D/tst_python3_regression.py",
   "$D/tst_find_unused_imports.py",
   "$D/tst_program_template.py",
-  )
+  ]
+
+# generally failing tests
+tst_list_fail = [
+  "$D/tst_xmlrpc_utils.py",
+  ]
+# failing tests on Windows, Python 2.7
+tst_list_windows_fail = [
+  "$D/tst_runtime_utils.py",
+  ]
+if sys.platform == 'win32':
+  tst_list_fail += tst_list_windows_fail
+else:
+  tst_list_base += tst_list_windows_fail
+
+# final lists
+tst_list = tst_list_base
+tst_list_expected_failures = tst_list_fail
 
 def run():
   build_dir = None

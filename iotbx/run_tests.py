@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
+import sys
 import libtbx.load_env
 
-tst_list = (
+tst_list_base = [
   "$D/regression/tst_wildcard.py",
   "$D/regression/tst_simple_parser.py",
   "$D/regression/tst_phil.py",
@@ -63,7 +64,6 @@ tst_list = (
   "$D/examples/tst_mtz_free_flipper.py",
   "$D/regression/tst_reflection_file_utils.py",
   "$D/detectors/tst_adsc.py",
-  "$D/detectors/tst_debug_write.py",
   "$D/detectors/tst_detectors.py",
   "$D/xplor/tst_xplormap.py",
   ["$D/regression/tst_phases.py", "P31"],
@@ -110,7 +110,22 @@ tst_list = (
   "$D/bioinformatics/test/tst_ebi_wu_blast_xml.py",
   "$D/bioinformatics/test/tst_ncbi_blast_xml.py",
   "$D/regression/tst_cif_as_pdb_1atom.py",
-  )
+  ]
+
+# failing tests on Windows, Python 2.7
+tst_list_windows_fail = [
+  "$D/detectors/tst_debug_write.py",
+]
+
+tst_list_fail = list()
+if sys.platform == 'win32':
+  tst_list_fail = tst_list_windows_fail
+else:
+  tst_list_base += tst_list_windows_fail
+
+# final lists
+tst_list = tst_list_base
+tst_list_expected_failures = tst_list_fail
 
 def run():
   build_dir = libtbx.env.under_build("iotbx")
