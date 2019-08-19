@@ -3,8 +3,7 @@ from libtbx.utils import Sorry
 from libtbx import slots_getstate_setstate_default_initializer
 import libtbx.utils
 from six.moves import urllib
-import cStringIO
-import urllib
+from six.moves import cStringIO as StringIO
 import time
 import os
 
@@ -62,12 +61,12 @@ def summarize_blast_output(blast_out=None, blast_file=None,
   from Bio.Blast import NCBIXML
   import iotbx.pdb.fetch
   if (blast_out is not None):
-    blast_in = cStringIO.StringIO(blast_out)
+    blast_in = StringIO(blast_out)
   else :
     assert os.path.isfile(blast_file)
     blast_in = open(blast_file)
   parsed = NCBIXML.parse(blast_in)
-  blast = parsed.next()
+  blast = next(parsed)
   if (len(blast.alignments) == 0):
     raise Sorry("No matching sequences!")
   results = []
@@ -140,7 +139,7 @@ def get_ebi_pdb_wublast(sequence, email, file_name=None, blast_type="blastp",
   """
   assert (email is not None)
   url = "http://www.ebi.ac.uk/Tools/services/rest/wublast/run/"
-  params = urllib.urlencode({
+  params = urllib.parse.urlencode({
     'sequence': sequence,
     'program' : program,
     'email'   : email,
