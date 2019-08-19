@@ -2719,13 +2719,14 @@ def get_boost_library_with_python_version(name, libpath):
   version = str(sys.version_info.major) + str(sys.version_info.minor)
   for p in libpath:
     name_version = name + version
-    full_name = os.path.join(p, 'lib' + name_version )
     if sys.platform == 'win32':
-      full_name += '.lib'
-    elif sys.platform == 'darwin':
-      full_name += '.dylib'
+      full_name = os.path.join(p, name_version + '.dll')
     else:
-      full_name += '.so'
+      full_name = os.path.join(p, 'lib' + name_version)
+      if sys.platform == 'darwin':
+        full_name += '.dylib'
+      else:
+        full_name += '.so'
     if os.path.isfile(full_name):
       return name_version
   return name
