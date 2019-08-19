@@ -44,8 +44,9 @@ class error_modifier_ha14(worker):
       SDFAC = Stats.unweighted_sample_standard_deviation()
     else:
       SDFAC = 1.
-    self.logger.log("The applied SDFAC is %7.4f"%SDFAC)
     reflections['intensity.sum.variance'] *= (SDFAC**2)
+    if self.params.output.log_level == 0:
+      self.logger.log("The applied SDFAC is %7.4f"%SDFAC)
     return reflections
 
 if __name__ == '__main__':
