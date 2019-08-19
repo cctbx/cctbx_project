@@ -89,6 +89,11 @@ class pdbaa(object):
     except KeyboardInterrupt :
       raise KeyboardInterrupt
     else :
+      ## output contain wrong tag e.g. 6f3a
+      ## should remove later
+      if result.stdout_lines[-2] != "  </BlastOutput_iterations>":
+        result.stdout_lines[-2] = "  </BlastOutput_iterations>"
+      ##
       if debug:
         output='myprotein.xml'
         open(output, "w").write("\n".join(result.stdout_lines))
