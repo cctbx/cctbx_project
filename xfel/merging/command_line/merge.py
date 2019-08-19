@@ -143,7 +143,6 @@ class Script(object):
       self.mpi_logger.log_step_time("STEP_" + worker.__repr__(), True)
 
     if self.params.output.save_experiments_and_reflections:
-      from dxtbx.model.experiment_list import ExperimentListDumper
       import os
       if 'id' not in reflections:
         from dials.array_family import flex
@@ -153,9 +152,13 @@ class Script(object):
           id_.set_selected(sel, expt_number)
         reflections['id'] = id_
 
-      reflections.as_pickle(os.path.join(self.params.output.output_dir, self.params.output.prefix + "_%06d.refl"%self.mpi_helper.rank))
-      dump = ExperimentListDumper(experiments)
-      dump.as_file(os.path.join(self.params.output.output_dir, self.params.output.prefix + "_%06d.expt"%self.mpi_helper.rank))
+      if self.mpi_helper.size == 1:
+        filename_suffix = ""
+      else:
+        filename_suffix = "_%06d"%self.mpi_helper.rank
+
+      reflections.as_pickle(os.path.join(self.params.output.output_dir, "%s%s.refl"%(self.params.output.prefix, filename_suffix)))
+      experiments.as_file(os.path.join(self.params.output.output_dir, "%s%s.expt"%(self.params.output.prefix, filename_suffix)))
 
     self.mpi_logger.log_step_time("TOTAL", True)
 
