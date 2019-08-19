@@ -508,13 +508,13 @@ common compilers provided by conda. Please update your version with
     # run the installer
     install_dir = os.path.join(prefix, 'mc3')
     if self.system == 'Windows':
-      flags = '/InstallationType=JustMe /RegisterPython=0 /AddToPath=0 /S /D={install_dir}'.\
+      flags = '/InstallationType=JustMe /RegisterPython=0 /AddToPath=0 /S /D="{install_dir}"'.\
         format(install_dir=install_dir)
       command_list = ['"' + filename + '"', flags]
     else:
-      flags = '-b -u -p {install_dir}'.format(install_dir=install_dir)
+      flags = '-b -u -p "{install_dir}"'.format(install_dir=install_dir)
       command_list = ['/bin/sh', filename, flags]
-    print('Installing miniconda to {install_dir}'.format(
+    print('Installing miniconda to "{install_dir}"'.format(
       install_dir=install_dir), file=self.log)
     output = check_output(command_list, env=self.env)
     if self.verbose:
