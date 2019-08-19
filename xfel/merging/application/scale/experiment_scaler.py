@@ -127,9 +127,13 @@ class experiment_scaler(worker):
       self.logger.main_log('Reflections rejected because of rejected experiments: %d'%total_reflections_removed_because_of_rejected_experiments)
       self.logger.main_log('Experiments with high resolution of %5.2f Angstrom or better: %d'%(self.params.merging.d_min, total_high_res_experiments))
 
-      stats_slope = flex.mean_and_variance(flex.double(all_slopes))
-      stats_correlation = flex.mean_and_variance(flex.double(all_correlations))
-      self.logger.main_log('Average experiment scale factor wrt reference: %f; correlation: %f +/- %f'%(stats_slope.mean(),stats_correlation.mean(), stats_correlation.unweighted_sample_standard_deviation()))
+      if len(all_slopes) > 0:
+        stats_slope = flex.mean_and_variance(flex.double(all_slopes))
+        self.logger.main_log('Average experiment scale factor wrt reference: %f'%(stats_slope.mean()))
+      if len(all_correlations) > 0:
+        stats_correlation = flex.mean_and_variance(flex.double(all_correlations))
+        self.logger.main_log('Average experiment correlation with reference: %f +/- %f'%(
+            stats_correlation.mean(), stats_correlation.unweighted_sample_standard_deviation()))
 
       if self.params.postrefinement.enable:
         self.logger.main_log("Note: scale factors were not applied, because postrefinement is enabled")

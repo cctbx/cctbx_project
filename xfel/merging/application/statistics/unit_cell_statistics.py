@@ -16,10 +16,12 @@ class unit_cell_distribution(object):
     self.logger = logger
     self.mpi_helper = mpi_helper
 
+    # this rank cell edge values
     self.uc_a_values = flex.double()
     self.uc_b_values = flex.double()
     self.uc_c_values = flex.double()
 
+    # all ranks cell edge values
     self.all_uc_a_values = flex.double()
     self.all_uc_b_values = flex.double()
     self.all_uc_c_values = flex.double()
@@ -37,6 +39,9 @@ class unit_cell_distribution(object):
     self.all_uc_b_values = self.mpi_helper.aggregate_flex(self.uc_b_values, flex.double)
     self.all_uc_c_values = self.mpi_helper.aggregate_flex(self.uc_c_values, flex.double)
 
+  def is_valid(self):
+    return len(self.all_uc_a_values) > 0 and len(self.all_uc_b_values) > 0 and len(self.all_uc_c_values) > 0
+
   def show_histograms(self, n_slots=histogram_slots):
     assert self.mpi_helper.rank == 0
 
@@ -49,10 +54,8 @@ class unit_cell_distribution(object):
     ref_edges = [a0,b0,c0]
 
     def _show_each(edges):
-
       for edge, ref_edge, label in zip(edges, ref_edges, labels):
         h = flex.histogram(edge, n_slots=n_slots)
-
         smin, smax = flex.min(edge), flex.max(edge)
         stats = flex.mean_and_variance(edge)
 
@@ -83,23 +86,18 @@ class unit_cell_statistics(worker):
   def __repr__(self):
     return 'Unit cell statistics'
 
-  '''
-  def __init__(self, params, save_average=False):
-    super(unit_cell_statistics, self).__init__(params=params)
-    self.save_average = save_average
-  '''
-
   def run(self, experiments, reflections):
     self.logger.log_step_time("UNIT_CELL_STATISTICS")
     ucd = unit_cell_distribution(self.params.scaling.unit_cell, self.logger, self.mpi_helper)
     for experiment in experiments:
       ucd.add_cell(experiment.crystal.get_unit_cell())
     ucd.collect_from_all_ranks()
+
+    average_unit_cell = None
     if self.mpi_helper.rank == 0:
-      ucd.show_histograms()
-      average_unit_cell = ucd.get_average_cell()
-    else:
-      average_unit_cell = None
+      if ucd.is_valid():
+        ucd.show_histograms()
+        average_unit_cell = ucd.get_average_cell()
 
     self.logger.log_step_time("BROADCAST_UNIT_CELL")
     average_unit_cell = self.mpi_helper.comm.bcast(average_unit_cell, root = 0)
