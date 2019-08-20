@@ -6,6 +6,7 @@ from mmtbx.rotamer.n_dim_table import NDimTable #handles contours
 from libtbx import easy_pickle #NDimTables are stored as pickle files
 import libtbx.load_env
 import os, sys
+from iotbx.pdb.hybrid_36 import hy36decode
 
 #{{{ global constants
 #-------------------------------------------------------------------------------
@@ -822,7 +823,8 @@ class cablamalyze(validation):
         record_start = None
         helix_in_progress = False
         result_ids = list(conf.results.keys())
-        result_ids.sort()
+        result_ids.sort(key=lambda k: (k[0:2], int(hy36decode(4,k[2:6])), k[6:7]))
+        #results.sort(key=lambda r: (r.chain_id, int(r.resseq), r.icode, r.altloc))
         for result_id in result_ids:
           result = conf.results[result_id]
           #is it evaluable?
@@ -928,7 +930,7 @@ class cablamalyze(validation):
         continue #go to next chain
       #else, combine results into single list
       result_ids = list(conf.results.keys())
-      result_ids.sort()
+      ###result_ids.sort()
       #for result_id in conf.results:
       for result_id in result_ids:
         result = conf.results[result_id]
@@ -948,6 +950,7 @@ class cablamalyze(validation):
           result.altloc = ''
           #set self.results id
           pass
+    self.results.sort(key=lambda r: (r. chain_id, int(hy36decode(len(r.resseq),r.resseq)), r.icode, r.altloc))
   #-----------------------------------------------------------------------------
   #}}}
 
