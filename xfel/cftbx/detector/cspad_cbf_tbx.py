@@ -731,7 +731,8 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, di
    intensities. Items may be looped to identify and assign weights
    to distinct wavelength components from a polychromatic beam."""
   cbf.add_category("diffrn_radiation_wavelength", ["id","wavelength","wt"])
-  cbf.add_row(["WAVELENGTH1",str(wavelength),"1.0"])
+  # FIXME local edit here for writing out CBF wavelength with more precision that usual
+  cbf.add_row(["WAVELENGTH1",'%.16f'%wavelength,"1.0"])
 
   """Data items in the DIFFRN_MEASUREMENT category record details
    about the device used to orient and/or position the crystal
