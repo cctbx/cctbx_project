@@ -32,6 +32,7 @@ class SimpleSamplerTool {
   double incr;  //initial directional spacing in radians
   flex_Direction angles;
   flex_Direction finegrained_angles;
+  scitbx::af::shared<int> n_entries_finegrained;
 
   SimpleSamplerTool(const double& characteristic_grid):
     // The maximum allowable characteristic grid should be about 0.029 radians,
@@ -85,7 +86,9 @@ class SimpleSamplerTool {
     int n_filters=SST_filter_angles.size();
     int psi_index_range = int (0.5 + 2.0*old_sampling/sampling);
     double adjusted_psi_incr = 2*old_sampling/psi_index_range;
-
+    //scitbx::af::shared<int> n_entries_finegrained;
+    int n_filter_counter=0;
+    n_entries_finegrained.push_back(n_filter_counter);
     for (int ii=0; ii<n_filters; ++ii) {
       Direction dir = SST_filter_angles[ii];
       double max_psi=dir.psi+old_sampling;
@@ -100,6 +103,7 @@ class SimpleSamplerTool {
         if (psi==0) {
           double phi=0;
           finegrained_angles.push_back(Direction(psi,phi));
+          n_filter_counter++;
         }
         else {
           int phi_index_range = int (0.5 + 2.0*old_sampling/sampling) ;
@@ -107,10 +111,12 @@ class SimpleSamplerTool {
           for (int y=0; y <= phi_index_range; ++y) {
             double phi = min_phi + y*adjusted_phi_incr;
             finegrained_angles.push_back(Direction(psi,phi));
+            n_filter_counter++;
           }
 
         }
       }
+      n_entries_finegrained.push_back(n_filter_counter);
     }
     return finegrained_angles;
   }
@@ -312,6 +318,8 @@ namespace boost_python { namespace {
                              make_setter(&SimpleSamplerTool::angles, dcp()))
       .add_property("finegrained_angles",make_getter(&SimpleSamplerTool::finegrained_angles, rbv()),
                              make_setter(&SimpleSamplerTool::finegrained_angles, dcp()))
+      .add_property("n_entries_finegrained",make_getter(&SimpleSamplerTool::n_entries_finegrained, rbv()),
+                             make_setter(&SimpleSamplerTool::n_entries_finegrained, dcp()))
       .def("construct_hemisphere_grid",&SimpleSamplerTool::construct_hemisphere_grid)
       .def("construct_hemisphere_grid_finegrained",&SimpleSamplerTool::construct_hemisphere_grid_finegrained,
                                                    "Function to construct a more fine-grained hemisphere grid about certain psi/phi angles\n"
