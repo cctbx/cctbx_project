@@ -34,50 +34,10 @@ class manager(object):
     self.geometry = geometry
     self.cartesian_ncs_manager = cartesian_ncs_manager
     self.normalization = normalization
-    # amber
-    self.use_amber = use_amber
-    self.amber_structs = amber_structs
-    self.sander = None
-    #afitt
+    # amber moved to a Base_geometry class
+    # afitt
     self.use_afitt = use_afitt
     self.afitt_object = afitt_object
-
-  def init_amber(self, params, pdb_hierarchy, log):
-    if hasattr(params, "amber"):
-      self.use_amber = params.amber.use_amber
-      self.print_amber_energies = params.amber.print_amber_energies
-      self.qmmask = params.amber.qmmask
-      self.log = log
-      if (self.use_amber):
-        sites_cart = pdb_hierarchy.atoms().extract_xyz()
-        compute_gradients=False
-        make_header("Initializing AMBER", out=log)
-        print("  topology    : %s" % params.amber.topology_file_name, file=log)
-        print("  atom order  : %s" % params.amber.order_file_name, file=log)
-        if params.amber.coordinate_file_name:
-          print("  coordinates : %s" % params.amber.coordinate_file_name, file=log)
-        from amber_adaptbx import interface
-        self.amber_structs, sander = interface.get_amber_struct_object(params)
-        self.sander=sander # used for cleanup
-        import amber_adaptbx
-        amber_geometry_manager = amber_adaptbx.geometry_manager(
-          sites_cart=sites_cart,
-          #number_of_restraints=geometry_energy.number_of_restraints,
-          gradients_factory=flex.vec3_double,
-          amber_structs=self.amber_structs)
-        geometry = amber_geometry_manager.energies_sites(
-          crystal_symmetry = self.geometry.crystal_symmetry,
-          compute_gradients = compute_gradients,
-          log=log,
-          print_amber_energies=self.print_amber_energies,
-          qmmask=self.qmmask)
-
-  def cleanup_amber(self):
-    if self.sander and self.amber_structs:
-      if self.amber_structs.is_LES:
-        import sanderles; sanderles.cleanup()
-      else:
-        import sander; sander.cleanup()
 
   def init_afitt(self, params, pdb_hierarchy, log):
     if hasattr(params, "afitt"):
@@ -124,6 +84,7 @@ class manager(object):
         self.afitt_object = afitt_object
 
   def select(self, selection):
+    print('manager select')
     if (self.geometry is None):
       geometry = None
     else:
@@ -140,8 +101,8 @@ class manager(object):
       geometry=geometry,
       cartesian_ncs_manager=cartesian_ncs_manager,
       normalization=self.normalization,
-      use_amber=self.use_amber,
-      amber_structs=self.amber_structs,
+      # use_amber=self.use_amber,
+      # amber_structs=self.amber_structs,
       )
 
   def energies_sites(self,
