@@ -63,7 +63,8 @@ namespace sx_clustering {
     }
 
     void cluster_assignment(scitbx::af::shared<std::size_t> rho_order,
-                            scitbx::af::shared<int> cluster_id){
+                            scitbx::af::shared<int> cluster_id,
+                            scitbx::af::shared<size_t> rho){
       //! one-pass assignment of clusters
       /*! assign each point to its nearest neighbor (Dij) of higher density
           the cluster_id input array is modified, the return type is void
@@ -86,7 +87,13 @@ namespace sx_clustering {
             }
           }
           SCITBX_ASSERT(i_neighbor != init_value);
-          cluster_id[item_idx] = cluster_id[i_neighbor];
+          if (true) {
+          //if (rho[item_idx] > 1) {
+            cluster_id[item_idx] = cluster_id[i_neighbor];
+          }
+          else {
+            std::cout << " ########## " <<item_idx << " "<<i_neighbor << std::endl;
+          }
         }
       }
     }
@@ -142,7 +149,7 @@ namespace boost_python { namespace {
       .def("get_delta",&Rodriguez_Laio_clustering_2014::get_delta,(
           (arg_("rho_order"),arg_("delta_i_max"))))
       .def("cluster_assignment",&Rodriguez_Laio_clustering_2014::cluster_assignment,(
-          (arg_("rho_order"),arg_("cluster_id"))))
+          (arg_("rho_order"),arg_("cluster_id"), arg_("rho"))))
       .def("get_border",&Rodriguez_Laio_clustering_2014::get_border,(
           (arg_("cluster_id"))))
     ;
