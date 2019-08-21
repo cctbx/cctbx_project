@@ -1546,6 +1546,7 @@ class scope(slots_getstate_setstate):
     primary_parent_scope.objects.append(object)
 
   def adopt_scope(self, other):
+    assert self is not other, "Cannot adopt own scope"
     for active_object in other.active_objects():
       results = self.get_without_substitution(active_object.full_path())
       if len(results) == 0:
