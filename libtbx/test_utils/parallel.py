@@ -179,6 +179,10 @@ def write_JUnit_XML(results, output_filename="output.xml"):
         # find first line including word 'skip' and use it as message
         skipline = re.search('^((.*)skip(.*))$', output, re.IGNORECASE | re.MULTILINE).group(1)
         tc.add_skipped_info(skipline)
+    elif result.alert_status == Status.EXPECTED_FAIL:
+      tc.add_skipped_info("Expected test failure")
+    elif result.alert_status == Status.EXPECTED_UNSTABLE:
+      tc.add_skipped_info("Expected test instability")
     else:
       # Test failed. Extract error message and stack trace if possible
       error_message = 'exit code %d' % result.return_code
@@ -191,7 +195,6 @@ def write_JUnit_XML(results, output_filename="output.xml"):
     test_cases.append(tc)
   ts = junit_xml.TestSuite("libtbx.run_tests_parallel", test_cases=test_cases)
   with codecs.open(output_filename, "w", encoding="utf-8") as f:
-  #with open(output_filename, 'w') as f:
     ts.to_file(f, [ts], prettyprint=True, encoding="utf-8")
 
 class run_command_list(object):
