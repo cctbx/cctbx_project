@@ -823,8 +823,8 @@ class cablamalyze(validation):
         record_start = None
         helix_in_progress = False
         result_ids = list(conf.results.keys())
-        result_ids.sort(key=lambda k: (k[0:2], int(hy36decode(4,k[2:6])), k[6:7]))
-        #results.sort(key=lambda r: (r.chain_id, int(r.resseq), r.icode, r.altloc))
+        #result_ids.sort(key=lambda k: (k[0:2], int(hy36decode(4,k[2:6])), k[6:7])) #this broke for non 2-char segids
+        result_ids.sort(key=lambda k: (conf.results[k].chain_id, int(hy36decode(len(conf.results[k].resseq),conf.results[k].resseq)), conf.results[k].icode))
         for result_id in result_ids:
           result = conf.results[result_id]
           #is it evaluable?
@@ -950,7 +950,7 @@ class cablamalyze(validation):
           result.altloc = ''
           #set self.results id
           pass
-    self.results.sort(key=lambda r: (r. chain_id, int(hy36decode(len(r.resseq),r.resseq)), r.icode, r.altloc))
+    self.results.sort(key=lambda r: (r.chain_id, int(hy36decode(len(r.resseq),r.resseq)), r.icode, r.altloc))
   #-----------------------------------------------------------------------------
   #}}}
 
