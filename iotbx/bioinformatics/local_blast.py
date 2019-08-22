@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 import os,sys,libtbx.load_env
 
@@ -9,11 +9,9 @@ with Phenix so no extra installation is required. PDBaa has been
 implemted.  More classes, e.g. ScopE, PDBstructure ... will be
 added later.
 LWH 4/12/19
-
 Useage:
 >>>from iotbx.bioinformatics import local_blast
 >>>myxml=local_blast.pdbaa(seq=myseq).run()
-
 where
 myseq is the query protein sequence string. You can use 'X' to fill gaps.
 myxml is the stdout_lines object of the blast XML output.
@@ -45,9 +43,9 @@ def checkblast():
   if os.path.exists(phenix_blast):
     blastpath=phenix_blast
     blastexe=phenix_blast_exe
-    print '%s version is running...\n'%sysname
+    print('%s version is running...\n'%sysname)
   else:
-    print 'BLAST executable does not exist. please check your Phenix installation.'
+    print('BLAST executable does not exist. please check your Phenix installation.')
     sys.exit(0)
   return blastpath
 
@@ -66,7 +64,7 @@ class pdbaa(object):
     if self.workdir is None:
       self.workdir=curdir
     elif os.path.exists(self.workdir) is False:
-      print "Input working directory does not exist. Try to work in current directory instead."
+      print("Input working directory does not exist. Try to work in current directory instead.")
       self.workdir=curdir
     fasta_file='myprotein.fasta'
     fasta_path=os.path.join(self.workdir,fasta_file)
@@ -77,10 +75,10 @@ class pdbaa(object):
     dbname="pdbaa.00"
     outfmt="-outfmt 5" #xml_out
     blastdb=os.path.join(ligand_lib_dir,dbname)
-    
+
     blastrun_seq=" -query %s -matrix BLOSUM62 -num_threads 8 -word_size 3 -gapopen 11 \
-          -gapextend 1 -evalue 1E-3 %s -db %s "%(fasta_path,outfmt, blastdb)
-    
+        -gapextend 1 -evalue 1E-3 %s -db %s "%(fasta_path,outfmt, blastdb)
+
     cmds="%s %s"%(blastpath,blastrun_seq)
     #print cmds
     try:
@@ -90,6 +88,11 @@ class pdbaa(object):
     except KeyboardInterrupt :
       raise KeyboardInterrupt
     else :
+      ## output contain wrong tag e.g. 6f3a
+      ## should remove later
+      if result.stdout_lines[-2] != "  </BlastOutput_iterations>":
+        result.stdout_lines[-2] = "  </BlastOutput_iterations>"
+      ##
       if debug:
         output='myprotein.xml'
         open(output, "w").write("\n".join(result.stdout_lines))
