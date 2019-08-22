@@ -3530,7 +3530,10 @@ class find_secondary_structure: # class to look for secondary structure
           len(unique_sequence_list)< \
             self.params.find_ss_structure.max_representative_chains:
           # See if this sequence has been analyzed already:
-          cg=result_dict.get(current_fss_result.sequence,conformation_group())
+          test_sequence_string="%s_%s::%s" %(
+            current_fss_result.start_resno,current_fss_result.end_resno,
+            current_fss_result.sequence)
+          cg=result_dict.get(test_sequence_string,conformation_group())
           # cg is either empty or a conformation_group with current sequence
           existing_fss_result=cg.get_similar_fss_result(current_fss_result)
           # if present, existing_fss_result is same conformation as current
@@ -3563,7 +3566,8 @@ class find_secondary_structure: # class to look for secondary structure
             current_fss_result.start_resno,current_fss_result.end_resno,
             current_fss_result.sequence)
           result_dict[sequence_string]=cg
-          unique_sequence_list.append(sequence_string)
+          if not sequence_string in unique_sequence_list:
+            unique_sequence_list.append(sequence_string)
 
 
     # Go through all chains and save annotation and number of good/poor h bonds
