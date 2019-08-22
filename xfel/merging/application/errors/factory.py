@@ -8,11 +8,11 @@ class factory(factory_base):
   @staticmethod
   def from_parameters(params, additional_info=[], mpi_helper=None, mpi_logger=None):
     assert len(additional_info) > 0
-    assert additional_info[0] in ["pre_merge", "post_merge"]
-    if additional_info[0] == "pre_merge":
+    assert additional_info[0] in ["premerge", "postmerge"]
+    if additional_info[0] == "premerge":
       if params.merging.error.model == "ha14":
         return [error_modifier_ha14(params, mpi_helper, mpi_logger)]
-    elif additional_info[0] == "post_merge":
+    elif additional_info[0] == "postmerge":
       if params.merging.error.model == "errors_from_sample_residuals":
         return [error_modifier_sr(params, mpi_helper, mpi_logger)]
     return []

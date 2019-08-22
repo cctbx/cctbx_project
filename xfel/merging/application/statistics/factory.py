@@ -14,16 +14,17 @@ class factory(factory_base):
     """ """
     info_count = len(additional_info)
     assert info_count > 0
-    if additional_info[0] == 'unit_cell':
+    if additional_info[0] == 'unitcell':
       return [unit_cell_statistics(params, mpi_helper, mpi_logger)]
     elif additional_info[0] == 'beam':
       return [beam_statistics(params, mpi_helper, mpi_logger)]
-    elif additional_info[0] == 'experiment_resolution':
+    elif additional_info[0] == 'resolution':
       return [experiment_resolution_statistics(params, mpi_helper, mpi_logger)]
     elif additional_info[0] == 'intensity':
-      if info_count > 1 and additional_info[1] == 'cxi':
-        return [intensity_resolution_statistics_cxi(params, mpi_helper, mpi_logger)]
-      else:
+      if info_count == 1:
         return [intensity_resolution_statistics(params, mpi_helper, mpi_logger)]
-    elif additional_info[0] == 'intensity_histogram':
-      return [intensity_histogram(params, mpi_helper, mpi_logger)]
+      elif info_count > 1 and additional_info[1] == 'cxi':
+        return [intensity_resolution_statistics_cxi(params, mpi_helper, mpi_logger)]
+      elif info_count > 1 and additional_info[1] == 'histogram':
+        return [intensity_histogram(params, mpi_helper, mpi_logger)]
+

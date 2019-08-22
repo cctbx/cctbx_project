@@ -5,22 +5,22 @@ from xfel.merging.application.mpi_logger import mpi_logger
 
 default_steps = [
   'input',
-  'model scaling', # generate a reference to be used for scaling and post-refinement
+  'model_scaling', # generate a reference to be used for scaling and post-refinement
   'modify', # apply polarization correction, etc.
   'edit',   # add an asu HKL column, remove unnecessary columns from reflection table
   'filter', # reject whole experiments and individual reflections based on various criteria
-  'errors pre_merge', # correct errors using a per-experiment algorithm, e.g. ha14
+  'errors_premerge', # correct errors using a per-experiment algorithm, e.g. ha14
   'scale',
   'postrefine',
-  'statistics unit_cell', # if required, save the average unit cell to the phil parameters
-  'statistics beam', # save the average wavelength to the phil parameters
-  'model statistics', # generate a reference to be used for statistics; if required, use the average unit cell
-  'statistics experiment_resolution',
+  'statistics_unitcell', # if required, save the average unit cell to the phil parameters
+  'statistics_beam', # save the average wavelength to the phil parameters
+  'model_statistics', # generate a reference to be used for statistics, optionaly using the average unit cell
+  'statistics_resolution', # calculate resolution statistics for experiments
   'group', # re-distribute reflections, so that all measurements of any given HKL are gathered at the same rank
-  'errors post_merge', # correct errors using a per-HKL algorithm, e.g. errors_from_sample_residuals
-  'statistics intensity',
+  'errors_postmerge', # correct errors using a per-HKL algorithm, e.g. errors_from_sample_residuals
+  'statistics_intensity', # calculate resolution statistics for intensities
   'merge', # merge HKL intensities, MPI-gather all HKLs at rank 0, output "odd", "even" and "all" HKLs as mtz files
-  'statistics intensity cxi', # run cxi_cc code ported from cxi-xmerge
+  'statistics_intensity_cxi', # run cxi_cc code ported from cxi-xmerge
 ]
 
 class Script(object):
@@ -106,7 +106,7 @@ class Script(object):
       step_factory_name = step
       step_additional_info = []
 
-      step_info = step.split(' ')
+      step_info = step.split('_')
       assert len(step_info) > 0
       if len(step_info) > 1:
         step_factory_name = step_info[0]
