@@ -49,7 +49,8 @@ class _():
       max_boundaries.append(maxb)
     return min_boundaries, max_boundaries
 
-def smooth_map(map, crystal_symmetry, rad_smooth, method="exp"):
+def smooth_map(map, crystal_symmetry, rad_smooth, method="exp",
+     non_negative=True):
   from cctbx import miller
   assert method in ["exp", "box_average"]
   map_smooth = None
@@ -58,7 +59,9 @@ def smooth_map(map, crystal_symmetry, rad_smooth, method="exp"):
       map              = map,
       crystal_symmetry = crystal_symmetry,
       include_000      = True)
-    ss = 1./flex.pow2(f_map.d_spacings().data()) / 4.
+    ddd=f_map.d_spacings().data()
+    ddd.set_selected(ddd == -1 , 1.e+10)  # d_spacing for (0,0,0) was set to -1
+    ss = 1./flex.pow2(ddd) / 4.
     b_smooth = 8*math.pi**2*rad_smooth**2
     smooth_scale = flex.exp(-b_smooth*ss)
     f_map = f_map.array(data = f_map.data()*smooth_scale)
@@ -71,7 +74,8 @@ def smooth_map(map, crystal_symmetry, rad_smooth, method="exp"):
       fourier_coefficients = f_map)
     fft_map.apply_volume_scaling()
     map_smooth = fft_map.real_map_unpadded()
-    map_smooth = map_smooth.set_selected(map_smooth<0., 0)
+    if non_negative:
+      map_smooth = map_smooth.set_selected(map_smooth<0., 0)
   elif(method=="box_average"): # assume 0/1 binary map
     assert abs(flex.max(map)-1.)<1.e-6
     mmin = flex.min(map)
