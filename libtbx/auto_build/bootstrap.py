@@ -2625,6 +2625,15 @@ maintain their own conda environment.""",
   for arg in allowedargs:
     if arg in args:
       actions.append(arg)
+
+  # Check if an action was an argument to --use-conda
+  if options.use_conda in allowedargs:
+    if len(options.action) == 0:
+      actions = [options.use_conda]
+    else:
+      actions.append(options.use_conda)
+    options.use_conda = ''
+
   print("Performing actions:", " ".join(actions))
 
   # Check builder
