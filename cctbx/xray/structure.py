@@ -2293,11 +2293,12 @@ class structure(crystal.special_position_settings):
       resname=resname,
       connect=connect)
 
+  @classmethod
   def from_shelx(cls, *args, **kwds):
     import iotbx.shelx
-    return iotbx.shelx.cctbx_xray_structure_from(cls, *args, **kwds)
-  from_shelx = classmethod(from_shelx)
+    return iotbx.shelx._cctbx_xray_structure_from(*args, **kwds)
 
+  @classmethod
   def from_cif(cls, file_object=None, file_path=None, data_block_name=None):
     import iotbx.cif
     from iotbx.cif import builders
@@ -2312,7 +2313,6 @@ class structure(crystal.special_position_settings):
         return result.xray_structures
     else:
       raise Sorry("Could not extract an xray.structure from the given input")
-  from_cif = classmethod(from_cif)
 
   def unit_cell_content(self, omit=None):
     """ The content of the unit cell as a chemical formula """

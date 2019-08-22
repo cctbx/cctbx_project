@@ -7,10 +7,11 @@ import iotbx.shelx.writer # implicit import
 import boost.python
 ext = boost.python.import_ext("iotbx_shelx_ext")
 
-def cctbx_xray_structure_from(cls, file=None, filename=None,
-                              set_grad_flags=True,
-                              min_distance_sym_equiv=0.5,
-                              strictly_shelxl=True):
+def _cctbx_xray_structure_from(file=None, filename=None,
+                               set_grad_flags=True,
+                               min_distance_sym_equiv=0.5,
+                               strictly_shelxl=True):
+  # Not intended to be called directly: use cctbx.xray.structure.from_shelx() instead
   from iotbx import builders
   builder = builders.crystal_structure_builder(
     set_grad_flags=set_grad_flags,
@@ -21,8 +22,9 @@ def cctbx_xray_structure_from(cls, file=None, filename=None,
   stream.parse()
   return builder.structure
 
-def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None,
-                                fo_sq=None, strictly_shelxl=True):
+def _smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None,
+                                 fo_sq=None, strictly_shelxl=True):
+  # Not intended to be called directly: use smtbx.refinement.model.from_shelx() instead
   import os
   from iotbx.reflection_file_reader import any_reflection_file
 

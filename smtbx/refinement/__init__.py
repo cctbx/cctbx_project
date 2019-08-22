@@ -5,11 +5,12 @@ import smtbx.utils
 
 class model(object):
 
+  @classmethod
   def from_shelx(cls, *args, **kwds):
-    from iotbx.shelx import smtbx_refinement_model_from as _
+    from iotbx.shelx import _smtbx_refinement_model_from as _
     return _(cls, *args, **kwds)
-  from_shelx = classmethod(from_shelx)
 
+  @classmethod
   def from_cif(cls, model, reflections):
     """
     We could try to read in the weighting scheme.
@@ -31,7 +32,6 @@ class model(object):
                constraints=[],
                restraints_manager=restraints.manager(),
                weighting_scheme=least_squares.sigma_weighting())
-  from_cif=classmethod(from_cif)
 
   def __init__(self, fo_sq, xray_structure,
                constraints, restraints_manager, weighting_scheme,
