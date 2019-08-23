@@ -14,7 +14,8 @@ nanoBragg_obj = nanoBragg_env.SharedObject(
     "nanoBragg_ext.cpp",
     "nanoBragg.cpp",
     "nanoBragg_nks.cpp",
-    "../diffBragg/diffBragg_ext.cpp"
+    "../diffBragg/diffBragg_ext.cpp",
+    "../diffBragg/diffBragg.cpp"
   ])
 
 # compile nanoBraggCUDA.cu if possible
