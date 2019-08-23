@@ -8,6 +8,7 @@ import libtbx.phil
 import mmtbx.model
 
 from cctbx import crystal
+from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
 from iotbx.data_manager import DataManager
 from six.moves import zip
@@ -562,6 +563,40 @@ def test_default_filenames():
 
   filename = dm.get_default_output_model_filename(extension='.abc')
   assert filename == 'cctbx_program.abc'
+
+  class TestProgram(ProgramTemplate):
+    master_phil_str = """
+output {
+  serial = 0
+    .type = int
+}
+"""
+  master_phil = iotbx.phil.parse(TestProgram.master_phil_str)
+  working_phil = iotbx.phil.parse(ProgramTemplate.master_phil_str)
+  params = master_phil.fetch(working_phil).extract()
+  p = ProgramTemplate(dm, params, master_phil)
+  assert dm.get_default_output_filename() == 'cctbx_program_000'
+  dm.set_overwrite(True)
+  dm.write_model_file('abc')    # cctbx_program_000.cif
+  dm.write_phil_file('123')     # cctbx_program_000.eff
+  dm.write_phil_file('456')     # cctbx_program_001.eff
+  dm.write_model_file('def')    # cctbx_program_001.cif
+  assert dm.get_default_output_filename() == 'cctbx_program_001'
+  dm.write_sequence_file('ghi') # cctbx_program_001.seq
+  dm.write_sequence_file('hkl') # cctbx_program_002.seq
+  assert dm.get_default_output_filename() == 'cctbx_program_002'
+  assert os.path.isfile('cctbx_program_000.cif')
+  assert os.path.isfile('cctbx_program_001.cif')
+  assert os.path.isfile('cctbx_program_000.eff')
+  assert os.path.isfile('cctbx_program_001.eff')
+  assert os.path.isfile('cctbx_program_001.seq')
+  assert os.path.isfile('cctbx_program_002.seq')
+  os.remove('cctbx_program_000.cif')
+  os.remove('cctbx_program_001.cif')
+  os.remove('cctbx_program_000.eff')
+  os.remove('cctbx_program_001.eff')
+  os.remove('cctbx_program_001.seq')
+  os.remove('cctbx_program_002.seq')
 
 # -----------------------------------------------------------------------------
 if (__name__ == '__main__'):

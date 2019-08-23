@@ -198,6 +198,10 @@ class DataManagerBase(object):
     # set defaults
     self._default_output_filename = 'cctbx_program'
     self._overwrite = False
+    self._used_output_ext = set()
+
+    # set program
+    self._program = None
 
     # logger (currently used for models)
     self.logger = logger
@@ -290,6 +294,14 @@ class DataManagerBase(object):
 
   def get_overwrite(self, overwrite):
     return self._overwrite
+
+  # ---------------------------------------------------------------------------
+  def set_program(self, program):
+    '''
+    Function for linking the program to the DataManager. This allows the
+    DataManager to update values in the program if necessary.
+    '''
+    self._program = program
 
   # ---------------------------------------------------------------------------
   # Generic functions for manipulating data
@@ -396,6 +408,38 @@ class DataManagerBase(object):
       else:
         self._add(datatype, filename, a.file_object)
 
+  def _update_default_output_filename(self, filename):
+    '''
+    Increments program.params.serial by 1 and sets new default output
+    filename
+
+    Parameters
+    ----------
+    filename: str
+      The filename to be updated. This will only be done when the
+      filename follows the default output format.
+
+    Returns
+    -------
+    filename: str
+      The updated filename if it has been updated, otherwise the original
+      filename
+    '''
+    basename, ext = os.path.splitext(filename)
+    if basename == self._default_output_filename:
+      if ext in self._used_output_ext:
+        if (self._program is not None and
+            self._program.params.output.serial is not None):
+          self._program.params.output.serial += 1
+          self.set_default_output_filename(
+            self._program.get_default_output_filename())
+          basename = self.get_default_output_filename()
+          self._used_output_ext = set()
+      else:
+        self._used_output_ext.add(ext)
+      filename = basename + ext
+    return filename
+
   def _write_text(self, datatype, text_str, filename=Auto, overwrite=Auto):
     '''
     Convenience function for writing text to file
@@ -406,6 +450,9 @@ class DataManagerBase(object):
       filename = self._default_output_filename
     if (overwrite is Auto):
       overwrite = self._overwrite
+
+    # update default output filename, if necessary
+    filename = self._update_default_output_filename(filename)
 
     # check arguments
     if (os.path.isfile(filename) and (not overwrite)):

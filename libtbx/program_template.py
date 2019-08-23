@@ -157,6 +157,7 @@ output {
         self.data_manager.set_overwrite(self.params.output.overwrite)
       except AttributeError:
         pass
+      self.data_manager.set_program(self)
 
   def header(self, text):
     print("-"*79, file=self.logger)
