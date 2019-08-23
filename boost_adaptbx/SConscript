@@ -676,6 +676,7 @@ main()
 """ % "\n".join(["    << static_cast<int>(typeid(%s) == typeid(size_t))" % u
       for u in unsigned_types])
     env = env_base.Clone()
+    env.Replace(LIBS=list())  # no need to link Boost libraries here
     conf = env.Configure()
     flag, output = conf.TryRun(test_code, extension='.cpp')
     conf.Finish()
