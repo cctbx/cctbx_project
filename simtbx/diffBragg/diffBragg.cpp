@@ -23,7 +23,7 @@ void diffBragg::add_diffBragg_spots()
                          0,           0, 1);
 
     RXYZ = RX*RY*RZ;
-
+    //printf("First row: %f | %f | %f \n", RXYZ(0,0), RXYZ(0,1), RXYZ(0,2));
     /*  update Umats to be U*RXYZ   */
     for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
         double uxx,uxy,uxz,uyx,uyy,uyz,uzx,uzy,uzz;
@@ -50,7 +50,10 @@ void diffBragg::add_diffBragg_spots()
         mosaic_umats[mos_tic*9+7] = U(2,1);
         mosaic_umats[mos_tic*9+8] = U(2,2);
     }
-
+   // printf("mosaic_umats\n %f | %f | %f \n %f | %f  | %f \n %f | %f | %f\n" , mosaic_umats[0], mosaic_umats[1], mosaic_umats[2],
+   //  mosaic_umats[3], mosaic_umats[4], mosaic_umats[5],
+   //  mosaic_umats[6], mosaic_umats[7], mosaic_umats[8]
+        //        );
     if(verbose) printf("TESTING sincg(1,1)= %f\n",sincg(1,1));
 
     /* make sure we are normalizing with the right number of sub-steps */
@@ -192,6 +195,9 @@ void diffBragg::add_diffBragg_spots()
                                     b[1]=bp[1];b[2]=bp[2];b[3]=bp[3];
                                     c[1]=cp[1];c[2]=cp[2];c[3]=cp[3];
                                 }
+
+                                if (mos_tic==0 && fpixel==0 && spixel==0)
+                                  printf("AAAAAAAAAAAA: %f, %f, %f \n", a[1]*1e10, a[2]*1e10, a[3]*1e10);
 
                                 /* construct fractional Miller indicies */
                                 h = dot_product(a,scattering);
