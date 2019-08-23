@@ -14,6 +14,7 @@ nanoBragg_obj = nanoBragg_env.SharedObject(
     "nanoBragg_ext.cpp",
     "nanoBragg.cpp",
     "nanoBragg_nks.cpp",
+    "../diffBragg/diffBragg_ext.cpp"
   ])
 
 # compile nanoBraggCUDA.cu if possible
@@ -53,6 +54,13 @@ if (env_etc.enable_cuda):
 env.Prepend(LIBS=["omptbx"])
 env.SharedLibrary(
   target="#lib/simtbx_nanoBragg_ext",
+  source=[
+    nanoBragg_obj
+  ]
+)
+
+env.SharedLibrary(
+  target="#lib/simtbx_diffBragg_ext",
   source=[
     nanoBragg_obj
   ]
