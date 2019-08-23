@@ -23,6 +23,27 @@ namespace boost_python { namespace {
          arg_("verbose")=0,
          arg_("panel_id")=0),
         "nanoBragg simulation initialized from dxtbx detector and beam objects"))
+
+      /* function for doing some differentiation */
+      .def("add_diffBragg_spots",&simtbx::nanoBragg::diffBragg::add_diffBragg_spots,
+       "gives derivitive of average photon count w.r.t. parameter of choice")
+
+      .add_property("thetaX",
+                 make_getter(&simtbx::nanoBragg::diffBragg::thetaX,rbv()),
+                 make_setter(&simtbx::nanoBragg::diffBragg::thetaX,dcp()),
+                 "Rotation perturbation about lab X ")
+
+      .add_property("thetaY",
+                 make_getter(&simtbx::nanoBragg::diffBragg::thetaY,rbv()),
+                 make_setter(&simtbx::nanoBragg::diffBragg::thetaY,dcp()),
+                 "Rotation perturbation about lab Y ")
+
+      .add_property("thetaZ",
+                 make_getter(&simtbx::nanoBragg::diffBragg::thetaZ,rbv()),
+                 make_setter(&simtbx::nanoBragg::diffBragg::thetaZ,dcp()),
+                 "Rotation perturbation about lab Z ")
+
+
     ; // end of class def
   } // end of diffBragg_init_module
 } // end of namespace
