@@ -7,26 +7,26 @@ namespace simtbx{
 namespace diffBragg{
 namespace boost_python { namespace {
 
-  /* spindle starting angle phi, in deg */
+  /* choosing to expose these as simply thetaX as opposed to rotX.value */
   static double get_thetaZ(simtbx::nanoBragg::diffBragg const& diffBragg) {
-      return diffBragg.thetaZ*simtbx::nanoBragg::RTD;
+      return diffBragg.rotZ_man.value*simtbx::nanoBragg::RTD;
   }
   static void   set_thetaZ(simtbx::nanoBragg::diffBragg& diffBragg, double const& value) {
-      diffBragg.thetaZ = value/simtbx::nanoBragg::RTD;
+      diffBragg.rotZ_man.value = value/simtbx::nanoBragg::RTD;
   }
 
   static double get_thetaY(simtbx::nanoBragg::diffBragg const& diffBragg) {
-      return diffBragg.thetaY*simtbx::nanoBragg::RTD;
+      return diffBragg.rotY_man.value*simtbx::nanoBragg::RTD;
   }
   static void   set_thetaY(simtbx::nanoBragg::diffBragg& diffBragg, double const& value) {
-      diffBragg.thetaY = value/simtbx::nanoBragg::RTD;
+      diffBragg.rotY_man.value = value/simtbx::nanoBragg::RTD;
   }
 
   static double get_thetaX(simtbx::nanoBragg::diffBragg const& diffBragg) {
-      return diffBragg.thetaX*simtbx::nanoBragg::RTD;
+      return diffBragg.rotX_man.value*simtbx::nanoBragg::RTD;
   }
   static void   set_thetaX(simtbx::nanoBragg::diffBragg& diffBragg, double const& value) {
-      diffBragg.thetaX = value/simtbx::nanoBragg::RTD;
+      diffBragg.rotX_man.value = value/simtbx::nanoBragg::RTD;
   }
 
   void diffBragg_init_module() {
@@ -65,8 +65,9 @@ namespace boost_python { namespace {
                  make_function(&set_thetaX,dcp()),
                  "Rotation perturbation about lab X ")
 
-
     ; // end of class def
+    class_<simtbx::nanoBragg::derivative_manager>
+        ("derivative_manager", no_init);
   } // end of diffBragg_init_module
 } // end of namespace
 } // end of boost python namespace
