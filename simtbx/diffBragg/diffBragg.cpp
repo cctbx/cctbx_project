@@ -3,8 +3,43 @@
 namespace simtbx {
 namespace nanoBragg {
 
+// derivative manager begin:
+derivative_manager::derivative_manager(){}
+
+void derivative_manager::initialize(int sdim, int fdim)
+{
+    raw_pixels = af::flex_double(af::flex_grid<>(sdim,fdim));
+    floatimage = raw_pixels.begin();
+    value=0;
+}
+// end of derivative manager
+
+
+// rotation manager begin
+rot_manager::rot_manager(){}
+// end of rot manager
+
+
+// diffBragg Begin
+diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model::Beam& beam,
+            int verbose, int panel_id = 0):
+    nanoBragg(detector, beam, verbose, panel_id){}
+
+void diffBragg::initialize_managers()
+{
+    int fdim = roi_xmax-roi_xmin;
+    int sdim = roi_ymax-roi_ymin;
+    rotX_man.initialize(sdim, fdim);
+    rotY_man.initialize(sdim, fdim);
+    rotZ_man.initialize(sdim, fdim);
+}
+
 void diffBragg::add_diffBragg_spots()
 {
+    double thetaX = rotX_man.value;
+    double thetaY = rotY_man.value;
+    double thetaZ = rotZ_man.value;
+
     max_I = 0.0;
     i = 0;
     floatimage = raw_pixels.begin();
@@ -463,6 +498,7 @@ void diffBragg::add_diffBragg_spots()
     if(verbose) printf("max_I= %g sum= %g avg= %g\n",max_I,sum,sum/sumn);
 
 } // end of add_diffBragg_spots
+// end of diffBragg
 
 } // end of namespace nanoBragg
 } // end of namespace simtbx
