@@ -65,6 +65,8 @@ def main():
     D.mosaic_spread_deg = 0.01
     D.mosaic_domains = 10
     D.Fhkl = Fhkl
+    D.initialize_managers()
+    D.vectorize_umats()
 
     from scitbx.matrix import col, sqr
     x = col((1,0,0))
