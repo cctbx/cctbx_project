@@ -50,6 +50,13 @@ namespace boost_python { namespace {
       .def("add_diffBragg_spots",&simtbx::nanoBragg::diffBragg::add_diffBragg_spots,
        "gives derivitive of average photon count w.r.t. parameter of choice")
 
+      /* Run this before running add_diffBragg_spots */
+      .def("vectorize_umats",&simtbx::nanoBragg::diffBragg::vectorize_umats,
+       "caches the UMATS")
+
+      .def("initialize_managers",&simtbx::nanoBragg::diffBragg::initialize_managers,
+       "sets up the managers")
+
       .add_property("thetaZ",
                  make_function(&get_thetaZ,rbv()),
                  make_function(&set_thetaZ,dcp()),
