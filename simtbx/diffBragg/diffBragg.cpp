@@ -11,12 +11,36 @@ void derivative_manager::initialize(int sdim, int fdim)
     raw_pixels = af::flex_double(af::flex_grid<>(sdim,fdim));
     floatimage = raw_pixels.begin();
     value=0;
+    dI=0;
 }
 // end of derivative manager
 
 
 // rotation manager begin
 rot_manager::rot_manager(){}
+
+double rot_manager::compute_increment(
+        int Na, int Nb, int Nc,
+        double hfrac, double kfrac, double lfrac,
+        double fudge,
+        mat3 U, mat3 X, mat3 Y, mat3 Z,
+        vec3 a, vec3 b, vec3 c,  vec3 q,
+        double Hrad, double Fcell, double Flatt,
+        double source_I, double capture_fraction, double omega_pixel)
+{
+  /* X,Y,Z will change depending on whether its RotX, RotY, or RotZ manager */
+  XYZ = X*Y*Z;
+  double dh = U*XYZ*a*q;
+  double dk = U*XYZ*b*q;
+  double dl = U*XYZ*c*q;
+  double dHrad = 2*hfrac*hfrac*Na*Na*dh +
+                 2*kfrac*kfrac*Nb*Nb*dk +
+                 2*lfrac*lfrac*Nc*Nc*dl;
+
+  double dFlatt = -1*Flatt * Hrad / 0.63 * fudge * dHrad;
+
+  return Fcell*Fcell*2*Flatt*source_I*capture_fraction*omega_pixel*dFlatt;
+}
 // end of rot manager
 
 
@@ -34,33 +58,12 @@ void diffBragg::initialize_managers()
     rotZ_man.initialize(sdim, fdim);
 }
 
-void diffBragg::add_diffBragg_spots()
+
+void diffBragg::vectorize_umats()
 {
-    double thetaX = rotX_man.value;
-    double thetaY = rotY_man.value;
-    double thetaZ = rotZ_man.value;
-
-    max_I = 0.0;
-    i = 0;
-    floatimage = raw_pixels.begin();
-
-    /* calc rotation perturbation matrix*/
-    RX= mat3(1,           0,           0,
-             0,  cos(thetaX), sin(thetaX),
-             0, -sin(thetaX), cos(thetaX));
-
-    RY= mat3(cos(thetaY),0, -sin(thetaY),
-             0,          1,             0,
-            sin(thetaY), 0, cos(thetaY));
-
-    RZ = mat3(cos(thetaZ),  sin(thetaZ), 0,
-              -sin(thetaZ), cos(thetaZ), 0,
-                         0,           0, 1);
-
-    RXYZ = RX*RY*RZ;
-    //printf("First row: %f | %f | %f \n", RXYZ(0,0), RXYZ(0,1), RXYZ(0,2));
-    /*  update Umats to be U*RXYZ   */
-    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
+    /* vector store two copies of Umats, one unperturbed for reference */
+    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
+    {
         double uxx,uxy,uxz,uyx,uyy,uyz,uzx,uzy,uzz;
         uxx = mosaic_umats[mos_tic*9+0];
         uxy = mosaic_umats[mos_tic*9+1];
@@ -74,16 +77,57 @@ void diffBragg::add_diffBragg_spots()
         mat3 U = mat3(uxx, uxy, uxz,
                       uyx, uyy, uyz,
                       uzx, uzy, uzz);
-        U = U*RXYZ;
-        mosaic_umats[mos_tic*9+0] = U(0,0);
-        mosaic_umats[mos_tic*9+1] = U(0,1);
-        mosaic_umats[mos_tic*9+2] = U(0,2);
-        mosaic_umats[mos_tic*9+3] = U(1,0);
-        mosaic_umats[mos_tic*9+4] = U(1,1);
-        mosaic_umats[mos_tic*9+5] = U(1,2);
-        mosaic_umats[mos_tic*9+6] = U(2,0);
-        mosaic_umats[mos_tic*9+7] = U(2,1);
-        mosaic_umats[mos_tic*9+8] = U(2,2);
+        UMATS.push_back(U);
+        UMATS_RXYZ.push_back(U);
+    }
+}
+
+void diffBragg::add_diffBragg_spots()
+{
+
+    double thetaX = rotX_man.value;
+    double thetaY = rotY_man.value;
+    double thetaZ = rotZ_man.value;
+
+    rotX_man.dI = 0;
+    rotY_man.dI = 0;
+    rotZ_man.dI = 0;
+
+    max_I = 0.0;
+    i = 0;
+    floatimage = raw_pixels.begin();
+
+    /* calc rotation perturbation matrix*/
+    RX= mat3(1,           0,           0,
+             0,  cos(thetaX), sin(thetaX),
+             0, -sin(thetaX), cos(thetaX));
+
+    dRX= mat3(0,           0,           0,
+               0,  -sin(thetaX), cos(thetaX),
+               0, -cos(thetaX), -sin(thetaX));
+
+    RY= mat3(cos(thetaY),0, -sin(thetaY),
+             0,          1,             0,
+            sin(thetaY), 0, cos(thetaY));
+
+    dRY= mat3(-sin(thetaY),0, -cos(thetaY),
+                0,          0,             0,
+                cos(thetaY), 0, -sin(thetaY));
+
+    RZ = mat3(cos(thetaZ),  sin(thetaZ), 0,
+              -sin(thetaZ), cos(thetaZ), 0,
+                         0,           0, 1);
+
+    dRZ = mat3(-sin(thetaZ),  cos(thetaZ), 0,
+               -cos(thetaZ), -sin(thetaZ), 0,
+                           0,           0, 0);
+
+    RXYZ = RX*RY*RZ;
+
+    //printf("First row: %f | %f | %f \n", RXYZ(0,0), RXYZ(0,1), RXYZ(0,2));
+    /*  update Umats to be U*RXYZ   */
+    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
+        UMATS_RXYZ[mos_tic] = UMATS[mos_tic]*RXYZ;
     }
    // printf("mosaic_umats\n %f | %f | %f \n %f | %f  | %f \n %f | %f | %f\n" , mosaic_umats[0], mosaic_umats[1], mosaic_umats[2],
    //  mosaic_umats[3], mosaic_umats[4], mosaic_umats[5],
@@ -99,6 +143,7 @@ void diffBragg::add_diffBragg_spots()
     i = sumn = 0;
     progress_pixel = 0;
     omega_sum = 0.0;
+    int roi_i = -1;
     for(spixel=0;spixel<spixels;++spixel)
     {
         for(fpixel=0;fpixel<fpixels;++fpixel)
@@ -109,13 +154,15 @@ void diffBragg::add_diffBragg_spots()
             {
                 ++i; continue;
             }
+            else
+                roi_i += 1;
             /* allow for the use of a mask */
             if(maskimage != NULL)
             {
                 /* skip any flagged pixels in the mask */
                 if(maskimage[i] == 0)
                 {
-                    ++i; continue;
+                    ++i; ++roi_i; continue;
                 }
             }
 
@@ -218,26 +265,56 @@ void diffBragg::add_diffBragg_spots()
                             for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
                             {
                                 /* apply mosaic rotation after phi rotation */
-                                if( mosaic_spread > 0.0 )
-                                {
-                                    rotate_umat(ap,a,&mosaic_umats[mos_tic*9]);
-                                    rotate_umat(bp,b,&mosaic_umats[mos_tic*9]);
-                                    rotate_umat(cp,c,&mosaic_umats[mos_tic*9]);
-                                }
-                                else
-                                {
-                                    a[1]=ap[1];a[2]=ap[2];a[3]=ap[3];
-                                    b[1]=bp[1];b[2]=bp[2];b[3]=bp[3];
-                                    c[1]=cp[1];c[2]=cp[2];c[3]=cp[3];
-                                }
+                                //if( mosaic_spread > 0.0 )
+                                //{
+                                //    rotate_umat(ap,a,&mosaic_umats[mos_tic*9]);
+                                //    rotate_umat(bp,b,&mosaic_umats[mos_tic*9]);
+                                //    rotate_umat(cp,c,&mosaic_umats[mos_tic*9]);
 
-                                if (mos_tic==0 && fpixel==0 && spixel==0)
-                                  printf("AAAAAAAAAAAA: %f, %f, %f \n", a[1]*1e10, a[2]*1e10, a[3]*1e10);
+                                //}
+                                //else
+                                //{
+                                //    a[1]=ap[1];a[2]=ap[2];a[3]=ap[3];
+                                //    b[1]=bp[1];b[2]=bp[2];b[3]=bp[3];
+                                //    c[1]=cp[1];c[2]=cp[2];c[3]=cp[3];
+                                //}
+
+                                ap_vec[0] = ap[1];
+                                ap_vec[1] = ap[2];
+                                ap_vec[2] = ap[3];
+
+                                a_vec[0] = a[1];
+                                a_vec[1] = a[2];
+                                a_vec[2] = a[3];
+
+                                bp_vec[0] = bp[1];
+                                bp_vec[1] = bp[2];
+                                bp_vec[2] = bp[3];
+                                b_vec[0] = b[1];
+                                b_vec[1] = b[2];
+                                b_vec[2] = b[3];
+
+                                cp_vec[0] = cp[1];
+                                cp_vec[1] = cp[2];
+                                cp_vec[2] = cp[3];
+                                c_vec[0] = c[1];
+                                c_vec[1] = c[2];
+                                c_vec[2] = c[3];
+
+                                q_vec[0] = scattering[1];
+                                q_vec[1] = scattering[2];
+                                q_vec[2] = scattering[3];
+
+                                //if (mos_tic==0 && fpixel==0 && spixel==0)
+                                //  printf("AAAAAAAAAAAA: %f, %f, %f \n", a[1]*1e10, a[2]*1e10, a[3]*1e10);
 
                                 /* construct fractional Miller indicies */
-                                h = dot_product(a,scattering);
-                                k = dot_product(b,scattering);
-                                l = dot_product(c,scattering);
+                                //h = dot_product(a,scattering);
+                                //k = dot_product(b,scattering);
+                                //l = dot_product(c,scattering);
+                                h = UMATS_RXYZ[mos_tic] * ap_vec *q_vec;
+                                k = UMATS_RXYZ[mos_tic] * bp_vec *q_vec;
+                                l = UMATS_RXYZ[mos_tic] * cp_vec *q_vec;
 
                                 /* round off to nearest whole index */
                                 h0 = static_cast<int>(ceil(h-0.5));
@@ -283,61 +360,61 @@ void diffBragg::add_diffBragg_spots()
                                 if(F_latt == 0.0) continue;
 
                                 /* find nearest point on Ewald sphere surface? */
-                                if( integral_form )
-                                {
+                                //if( integral_form )
+                                //{
 
-                                    if( phi != 0.0 || mos_tic > 0 )
-                                    {
-                                        /* need to re-calculate reciprocal matrix */
+                                //    if( phi != 0.0 || mos_tic > 0 )
+                                //    {
+                                //        /* need to re-calculate reciprocal matrix */
 
-                                        /* various cross products */
-                                        cross_product(a,b,a_cross_b);
-                                        cross_product(b,c,b_cross_c);
-                                        cross_product(c,a,c_cross_a);
+                                //        /* various cross products */
+                                //        cross_product(a,b,a_cross_b);
+                                //        cross_product(b,c,b_cross_c);
+                                //        cross_product(c,a,c_cross_a);
 
-                                        /* new reciprocal-space cell vectors */
-                                        vector_scale(b_cross_c,a_star,1e20/V_cell);
-                                        vector_scale(c_cross_a,b_star,1e20/V_cell);
-                                        vector_scale(a_cross_b,c_star,1e20/V_cell);
-                                    }
+                                //        /* new reciprocal-space cell vectors */
+                                //        vector_scale(b_cross_c,a_star,1e20/V_cell);
+                                //        vector_scale(c_cross_a,b_star,1e20/V_cell);
+                                //        vector_scale(a_cross_b,c_star,1e20/V_cell);
+                                //    }
 
-                                    /* reciprocal-space coordinates of nearest relp */
-                                    relp[1] = h0*a_star[1] + k0*b_star[1] + l0*c_star[1];
-                                    relp[2] = h0*a_star[2] + k0*b_star[2] + l0*c_star[2];
-                                    relp[3] = h0*a_star[3] + k0*b_star[3] + l0*c_star[3];
+                                //    /* reciprocal-space coordinates of nearest relp */
+                                //    relp[1] = h0*a_star[1] + k0*b_star[1] + l0*c_star[1];
+                                //    relp[2] = h0*a_star[2] + k0*b_star[2] + l0*c_star[2];
+                                //    relp[3] = h0*a_star[3] + k0*b_star[3] + l0*c_star[3];
 
-                                    /* reciprocal-space coordinates of center of Ewald sphere */
-                                    Ewald0[1] = -incident[1]/lambda/1e10;
-                                    Ewald0[2] = -incident[2]/lambda/1e10;
-                                    Ewald0[3] = -incident[3]/lambda/1e10;
-//                                  1/lambda = magnitude(Ewald0)
+                                //    /* reciprocal-space coordinates of center of Ewald sphere */
+                                //    Ewald0[1] = -incident[1]/lambda/1e10;
+                                //    Ewald0[2] = -incident[2]/lambda/1e10;
+                                //    Ewald0[3] = -incident[3]/lambda/1e10;
+//                              //    1/lambda = magnitude(Ewald0)
 
-                                     /* distance from Ewald sphere in lambda=1 units */
-                                    vector[1] = relp[1]-Ewald0[1];
-                                    vector[2] = relp[2]-Ewald0[2];
-                                    vector[3] = relp[3]-Ewald0[3];
-                                    d_r = magnitude(vector)-1.0;
+                                //     /* distance from Ewald sphere in lambda=1 units */
+                                //    vector[1] = relp[1]-Ewald0[1];
+                                //    vector[2] = relp[2]-Ewald0[2];
+                                //    vector[3] = relp[3]-Ewald0[3];
+                                //    d_r = magnitude(vector)-1.0;
 
-                                    /* unit vector of diffracted ray through relp */
-                                    unitize(vector,diffracted0);
+                                //    /* unit vector of diffracted ray through relp */
+                                //    unitize(vector,diffracted0);
 
-                                    /* intersection with detector plane */
-                                    xd = dot_product(fdet_vector,diffracted0);
-                                    yd = dot_product(sdet_vector,diffracted0);
-                                    zd = dot_product(odet_vector,diffracted0);
+                                //    /* intersection with detector plane */
+                                //    xd = dot_product(fdet_vector,diffracted0);
+                                //    yd = dot_product(sdet_vector,diffracted0);
+                                //    zd = dot_product(odet_vector,diffracted0);
 
-                                    /* where does the central direct-beam hit */
-                                    xd0 = dot_product(fdet_vector,incident);
-                                    yd0 = dot_product(sdet_vector,incident);
-                                    zd0 = dot_product(odet_vector,incident);
+                                //    /* where does the central direct-beam hit */
+                                //    xd0 = dot_product(fdet_vector,incident);
+                                //    yd0 = dot_product(sdet_vector,incident);
+                                //    zd0 = dot_product(odet_vector,incident);
 
-                                    /* convert to mm coordinates */
-                                    Fdet0 = distance*(xd/zd) + Xbeam;
-                                    Sdet0 = distance*(yd/zd) + Ybeam;
+                                //    /* convert to mm coordinates */
+                                //    Fdet0 = distance*(xd/zd) + Xbeam;
+                                //    Sdet0 = distance*(yd/zd) + Ybeam;
 
-                                    if(verbose>8) printf("integral_form: %g %g   %g %g\n",Fdet,Sdet,Fdet0,Sdet0);
-                                    test = exp(-( (Fdet-Fdet0)*(Fdet-Fdet0)+(Sdet-Sdet0)*(Sdet-Sdet0) + d_r*d_r )/1e-8);
-                                } // end of integral form
+                                //    if(verbose>8) printf("integral_form: %g %g   %g %g\n",Fdet,Sdet,Fdet0,Sdet0);
+                                //    test = exp(-( (Fdet-Fdet0)*(Fdet-Fdet0)+(Sdet-Sdet0)*(Sdet-Sdet0) + d_r*d_r )/1e-8);
+                                //} // end of integral form
 
                                 ///* structure factor of the unit cell */
                                 //if(interpolate){
@@ -430,6 +507,29 @@ void diffBragg::add_diffBragg_spots()
 
                                 /* convert amplitudes into intensity (photons per steradian) */
                                 I += F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
+
+                                /* checkpoint for rotataion derivatives */
+                                rotX_man.dI +=  rotX_man.compute_increment(
+                                                    Na, Nb, Nc,
+                                                    h-h0, k-k0, l-l0,
+                                                    fudge, UMATS[mos_tic],
+                                                    dRX, RY, RZ,
+                                                    ap_vec, bp_vec, cp_vec, q_vec,
+                                                    hrad_sqr, F_cell, F_latt,
+                                                    source_I[source], capture_fraction, omega_pixel);
+
+                                //rotY_man.dI +=   rotY_man.compute_increment(
+                                //                    Na, Nb, Nc,
+                                //                    h-h0, k-k0, l-l0,
+                                //                    fudge,
+                                //                    A, B, C,
+                                //                    a, b, c, q,
+                                //                    hrad_sqr, Fcell, Flatt,
+                                //                    source_I[source], capture_fraction, omega_pixel);
+
+
+                                //rotX_man.dI += F_cell*F_cell*2*F_latt*source_I[source]*capture_fraction*omega_pixel;
+                                //RXYZ*
                             }
                             /* end of mosaic loop */
                         }
@@ -445,6 +545,10 @@ void diffBragg::add_diffBragg_spots()
 
 
             floatimage[i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
+
+            /* udpate the derivative images*/
+            rotX_man.floatimage[roi_i] += r_e_sqr*fluence*spot_scale*polar*rotX_man.dI/steps;
+
             if(floatimage[i] > max_I) {
                 max_I = floatimage[i];
                 max_I_x = Fdet;
