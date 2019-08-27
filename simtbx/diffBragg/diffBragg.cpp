@@ -39,11 +39,11 @@ void rot_manager::increment(
   double dh = U*XYZ*a*q;
   double dk = U*XYZ*b*q;
   double dl = U*XYZ*c*q;
-  double dHrad = 2*hfrac*hfrac*Na*Na*dh +
-                 2*kfrac*kfrac*Nb*Nb*dk +
-                 2*lfrac*lfrac*Nc*Nc*dl;
+  double dHrad = 2*hfrac*Na*Na*dh +
+                 2*kfrac*Nb*Nb*dk +
+                 2*lfrac*Nc*Nc*dl;
 
-  double dFlatt = -1*Flatt * Hrad / 0.63 * fudge * dHrad;
+  double dFlatt = -1*Flatt / 0.63 * fudge * dHrad;
 
   dI += Fcell*Fcell*2*Flatt*source_I*capture_fraction*omega_pixel*dFlatt;
 }
