@@ -129,7 +129,7 @@ void diffBragg::initialize_managers()
     int sdim = roi_ymax-roi_ymin;
     for (int i_rot=0; i_rot < 3; i_rot++){
         if (rot_managers[i_rot]->refine_me)
-            printf("Refine parameter %d <<><><><><><><>>\n", i_rot );
+            //printf("Refine parameter %d <<><><><><><><>>\n", i_rot );
             rot_managers[i_rot]->initialize(sdim, fdim);
     }
 }
@@ -233,6 +233,13 @@ void diffBragg::add_diffBragg_spots()
             }
             /* reset photon count for this pixel */
             I = 0;
+
+            /* reset derivative photon count for this pixel */
+            for (int i_rot =0 ; i_rot < 3 ; i_rot++){
+                if (rot_managers[i_rot]->refine_me){
+                    rot_managers[i_rot]->dI =0;
+                }
+            }
 
             /* loop over sub-pixels */
             for(subS=0;subS<oversample;++subS)
@@ -416,8 +423,6 @@ void diffBragg::add_diffBragg_spots()
                                 /* checkpoint for rotataion derivatives */
                                 for (int i_rot =0 ; i_rot < 3 ; i_rot++){
                                     if (rot_managers[i_rot]->refine_me){
-                                        if (mos_tic==0 && fpixel==0 && spixel==0)
-                                          printf("Runnung and refining parameter %d <><><><><><><><>\n", i_rot);
                                         R3[i_rot] = dRotMats[i_rot]; // TODO: design upgrade
                                         rot_managers[i_rot]->increment(
                                                             Na, Nb, Nc,
@@ -448,10 +453,11 @@ void diffBragg::add_diffBragg_spots()
             /* udpate the derivative images*/
             for (int i_rot =0 ; i_rot < 3 ; i_rot++){
                 if (rot_managers[i_rot]->refine_me){
-                    if (mos_tic==0 && fpixel==0 && spixel==0)
-                      printf("Updating image for parameter %d <><><<><>>\n", i_rot);
+                    //if (mos_tic==0 && fpixel==0 && spixel==0)
+                    //  printf("Updating image for parameter %d <><><<><>>\n", i_rot);
                     double value = r_e_sqr*fluence*spot_scale*polar*rot_managers[i_rot]->dI/steps;
-                    rot_managers[i_rot]->increment_image(roi_i, value);
+                    //rot_managers[i_rot]->increment_image(roi_i, value);
+                    rot_managers[i_rot]->increment_image(i, value);
                 }
             }
 
