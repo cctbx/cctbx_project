@@ -113,24 +113,26 @@ def _generate_reindex_transformations():
     indefinitely.  Therefore the application always uses a cell volume filter
     after making the correction.
     '''
-    vecrep = _generate_vector_representations()
+    representatives = _generate_vector_representations()
     reindex = []
-    for vec in vecrep:
+    for vec in representatives:
       for mod in _modularities:
+        candidate_points = [pt for pt in _spiral_order if sum(v*p for v,p in zip(vec,pt))%mod == 0]
+
         #first point
-        for pt in _spiral_order:
-          if (vec[0]*pt[0] + vec[1]*pt[1] + vec[2]*pt[2])%mod == 0:
+        for pt in candidate_points:
+          if True:
             first = pt
             break
         #second point
-        for pt in _spiral_order:
-          if (vec[0]*pt[0] + vec[1]*pt[1] + vec[2]*pt[2])%mod == 0 and \
+        for pt in candidate_points:
+          if True and \
             not _is_collinear(first,pt):
             second = pt
             break
         #third point
-        for pt in _spiral_order:
-          if (vec[0]*pt[0] + vec[1]*pt[1] + vec[2]*pt[2])%mod == 0 and \
+        for pt in candidate_points:
+          if True and \
             not _is_coplanar(first,second,pt):
             third = pt
             break
