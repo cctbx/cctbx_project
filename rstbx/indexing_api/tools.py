@@ -87,7 +87,7 @@ def generate_vector_representations():  #This is G1 in the paper
         conditions_lhs.append(divide(np))
     return conditions_lhs
 
-def generate_reindex_transformations():
+def _generate_reindex_transformations():
     '''The reindex transformations are specific for a particular
     presence condition, such as H + 2K + 3L = 5n.  The transformation
     is applied in reciprocal space, and is intended to change the
@@ -141,7 +141,7 @@ def generate_reindex_transformations():
         #print "found pts",A.elems,"for vec",vec,"mod",mod
     return reindex
 
-R = generate_reindex_transformations()
+R = _generate_reindex_transformations()
 
 class AbsenceHandler:
   def __init__(self):
