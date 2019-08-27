@@ -33,7 +33,7 @@ conda env create -f $WORKING/dialsBuild/modules/cctbx_project/xfel/conda_envs/ps
 conda activate psana_env
 
 # Build DIALS sources
-python bootstrap.py --builder=dials build --nproc $NPROC --use-conda
+python bootstrap.py --builder=dials build --nproc $NPROC --use-conda $WORKING/dialsBuild/miniconda3/envs/psana_env
 
 # Create setup file
 echo "\
