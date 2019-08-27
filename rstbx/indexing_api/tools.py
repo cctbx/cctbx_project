@@ -118,12 +118,8 @@ def _generate_reindex_transformations():
     for vec in representatives:
       for mod in _modularities:
         candidate_points = [pt for pt in _spiral_order if sum(v*p for v,p in zip(vec,pt))%mod == 0]
-
         #first point
-        for pt in candidate_points:
-          if True:
-            first = pt
-            break
+        first = candidate_points.pop(0)
         #second point
         for pt in candidate_points:
           if True and \
