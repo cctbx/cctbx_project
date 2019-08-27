@@ -11,21 +11,6 @@ from six.moves import range
 def _distance(vector):
   return sum(c*c for c in vector)
 
-def _radcmp(a,b):
-  #gives -1,0,1 depending on a<b, a==b, a>b
-  ad = _distance(a)
-  bd = _distance(b)
-  if ad<bd: return -1
-  if ad==bd:
-    #a and b have same length, but sort with positive numbers higher in list
-    # purely for aesthetic reasons--it makes ordering look cleaner
-    aL = a[0] + a[1] + a[2]
-    bL = b[0] + b[1] + b[2]
-    if aL > bL: return -1
-    if aL < bL: return 1
-    return 0
-  return 1
-
 # modularities 2,3,5 were sufficient for every two-image case
 # need up to 11 for Fig 4 in the single-image indexing
 _modularities = [2,3,5]
@@ -37,7 +22,7 @@ def _generate_spiral_order():  #This is G0 in the paper
     return []
   mod_range = range(_max_spiral,-_max_spiral-1,-1)
   points = list(itertools.product(mod_range, mod_range, mod_range))
-  points.sort(_radcmp)
+  points.sort(key=lambda v: (sum(c*c for c in v), -sum(v)))
   points.remove((0,0,0))
   return points
 
