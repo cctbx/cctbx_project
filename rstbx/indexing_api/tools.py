@@ -28,12 +28,6 @@ def _is_coplanar(x,y,z):
   z = scitbx.matrix.row(z)
   return x.cross(y).dot(z)==0
 
-def _divide(np):
-  if np[0]%2 == 0 and np[1]%2== 0 and np[2]%2==0:
-    return (np[0]/2,np[1]/2,np[2]/2)
-  else:
-    return np
-
 def _generate_vector_representations():  #This is G1 in the paper
     '''The vector representations connote systematic absence conditions.
     For example, the vector v = (1,2,3) means H + 2K + 3L = ?n,
@@ -43,7 +37,7 @@ def _generate_vector_representations():  #This is G1 in the paper
     for vector in _spiral_order:
       if sum(c*c for c in vector) > 6: continue
       if any(_is_collinear(vector, item) for item in conditions_lhs): continue
-      conditions_lhs.append(_divide(vector))
+      conditions_lhs.append(vector)
     return conditions_lhs
 
 def _generate_reindex_transformations():
