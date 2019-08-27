@@ -56,7 +56,7 @@ def _generate_reindex_transformations():
     where the ? represents the modularity (2,3,5,...) specified elsewhere
     '''
     for vector in spiral_order:
-      if sum(c*c for c in vector) > 6: continue
+      if sum(c*c for c in vector) > 6: break
       if any(_is_collinear(vector, item) for item in representatives): continue
       representatives.append(vector)
 
