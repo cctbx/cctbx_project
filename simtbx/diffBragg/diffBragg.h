@@ -19,6 +19,8 @@ class derivative_manager{
     void increment_image(int idx, double value);
 };
 
+
+
 class rot_manager: public derivative_manager{
   public:
     rot_manager();
@@ -67,6 +69,7 @@ class diffBragg: public nanoBragg{
   void refine(int refine_id);
   void set_value( int refine_id, double value);
   double get_value( int refine_id);
+  af::flex_double get_derivative_pixels(int refine_id);
 
   mat3 RXYZ;
   std::vector<mat3> RotMats;
