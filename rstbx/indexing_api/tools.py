@@ -42,11 +42,8 @@ def _generate_vector_representations():  #This is G1 in the paper
     conditions_lhs = []
     for vector in _spiral_order:
       if sum(c*c for c in vector) > 6: continue
-      collinear_match = 0
-      for item in conditions_lhs:
-        if _is_collinear(vector, item): collinear_match = 1
-      if not collinear_match:
-        conditions_lhs.append(_divide(vector))
+      if any(_is_collinear(vector, item) for item in conditions_lhs): continue
+      conditions_lhs.append(_divide(vector))
     return conditions_lhs
 
 def _generate_reindex_transformations():
