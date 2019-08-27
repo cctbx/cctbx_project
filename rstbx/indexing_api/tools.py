@@ -9,15 +9,6 @@ from rstbx.indexing_api import cpp_absence_test
 # need up to 11 for Fig 4 in the single-image indexing
 _modularities = [2,3,5]
 
-def _generate_spiral_order():  #This is G0 in the paper
-  mod_range = range(max(_modularities),-max(_modularities)-1,-1)
-  points = itertools.product(mod_range, mod_range, mod_range)
-  points = list(sorted(points, key=lambda v: (sum(c*c for c in v), -sum(v))))
-  points.remove((0,0,0))
-  return points
-
-_spiral_order = _generate_spiral_order()
-
 def _is_collinear(x,y): # X x Y cross product is zero
   return x[0]*y[1]-x[1]*y[0]==x[1]*y[2]-x[2]*y[1]==x[2]*y[0]-x[0]*y[2]==0
 
@@ -54,13 +45,17 @@ def _generate_reindex_transformations():
     indefinitely.  Therefore the application always uses a cell volume filter
     after making the correction.
     '''
+    mod_range = range(max(_modularities),-max(_modularities)-1,-1)
+    points = itertools.product(mod_range, mod_range, mod_range)
+    spiral_order = list(sorted(points, key=lambda v: (sum(c*c for c in v), -sum(v))))
+    spiral_order.remove((0,0,0))
 
     representatives = []
     '''The vector representations connote systematic absence conditions.
     For example, the vector v = (1,2,3) means H + 2K + 3L = ?n,
     where the ? represents the modularity (2,3,5,...) specified elsewhere
     '''
-    for vector in _spiral_order:
+    for vector in spiral_order:
       if sum(c*c for c in vector) > 6: continue
       if any(_is_collinear(vector, item) for item in representatives): continue
       representatives.append(vector)
@@ -68,7 +63,7 @@ def _generate_reindex_transformations():
     reindex = []
     for vec in representatives:
       for mod in _modularities:
-        candidate_points = [pt for pt in _spiral_order if sum(v*p for v,p in zip(vec,pt))%mod == 0]
+        candidate_points = [pt for pt in spiral_order if sum(v*p for v,p in zip(vec,pt))%mod == 0]
         #first point
         first = candidate_points.pop(0)
         #second point
