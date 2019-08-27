@@ -7,13 +7,13 @@ from rstbx.dps_core.cell_assessment import unit_cell_too_small
 from rstbx.indexing_api import cpp_absence_test
 from six.moves import range
 
-def distance(a):
+def _distance(a):
   return a[0]*a[0] + a[1]*a[1] + a[2]*a[2]
 
-def radcmp(a,b):
+def _radcmp(a,b):
   #gives -1,0,1 depending on a<b, a==b, a>b
-  ad = distance(a)
-  bd = distance(b)
+  ad = _distance(a)
+  bd = _distance(b)
   if ad<bd: return -1
   if ad==bd:
     #a and b have same length, but sort with positive numbers higher in list
@@ -40,13 +40,13 @@ def _generate_spiral_order():  #This is G0 in the paper
       for z in range(_max_spiral,-_max_spiral-1,-1):
         np = (x,y,z)
         points.append(np)
-  points.sort(radcmp)
+  points.sort(_radcmp)
   points.remove((0,0,0))
   return points
 
-spiral_order = _generate_spiral_order()
+_spiral_order = _generate_spiral_order()
 
-def good_pred(obs):
+def _good_pred(obs):
     good = 0
     for i in range(obs.size()):
       o = obs[i]
@@ -56,35 +56,35 @@ def good_pred(obs):
     bad = obs.size()-good
     return good,bad
 
-def is_collinear(x,y): # X x Y cross product is zero
+def _is_collinear(x,y): # X x Y cross product is zero
   return x[0]*y[1]-x[1]*y[0]==0 and x[1]*y[2]-x[2]*y[1]==0 and x[2]*y[0]-x[0]*y[2]==0
 
-def is_coplanar(x,y,z):
+def _is_coplanar(x,y,z):
   #triple product is zero; (X x Y).Z
   x = scitbx.matrix.row(x)
   y = scitbx.matrix.row(y)
   z = scitbx.matrix.row(z)
   return x.cross(y).dot(z)==0
 
-def divide(np):
+def _divide(np):
   if np[0]%2 == 0 and np[1]%2== 0 and np[2]%2==0:
     return (np[0]/2,np[1]/2,np[2]/2)
   else:
     return np
 
-def generate_vector_representations():  #This is G1 in the paper
+def _generate_vector_representations():  #This is G1 in the paper
     '''The vector representations connote systematic absence conditions.
     For example, the vector v = (1,2,3) means H + 2K + 3L = ?n,
     where the ? represents the modularity (2,3,5,...) specified elsewhere
     '''
     conditions_lhs = []
-    for np in spiral_order:
-      if distance(np) > 6: continue
+    for np in _spiral_order:
+      if _distance(np) > 6: continue
       collinear_match = 0
       for item in conditions_lhs:
-        if is_collinear(np,item): collinear_match = 1
+        if _is_collinear(np,item): collinear_match = 1
       if not collinear_match:
-        conditions_lhs.append(divide(np))
+        conditions_lhs.append(_divide(np))
     return conditions_lhs
 
 def _generate_reindex_transformations():
@@ -113,25 +113,25 @@ def _generate_reindex_transformations():
     indefinitely.  Therefore the application always uses a cell volume filter
     after making the correction.
     '''
-    vecrep = generate_vector_representations()
+    vecrep = _generate_vector_representations()
     reindex = []
     for vec in vecrep:
       for mod in _modularities:
         #first point
-        for pt in spiral_order:
+        for pt in _spiral_order:
           if (vec[0]*pt[0] + vec[1]*pt[1] + vec[2]*pt[2])%mod == 0:
             first = pt
             break
         #second point
-        for pt in spiral_order:
+        for pt in _spiral_order:
           if (vec[0]*pt[0] + vec[1]*pt[1] + vec[2]*pt[2])%mod == 0 and \
-            not is_collinear(first,pt):
+            not _is_collinear(first,pt):
             second = pt
             break
         #third point
-        for pt in spiral_order:
+        for pt in _spiral_order:
           if (vec[0]*pt[0] + vec[1]*pt[1] + vec[2]*pt[2])%mod == 0 and \
-            not is_coplanar(first,second,pt):
+            not _is_coplanar(first,second,pt):
             third = pt
             break
         A = scitbx.matrix.sqr(first+second+third)
