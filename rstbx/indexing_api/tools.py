@@ -1,7 +1,11 @@
 from __future__ import absolute_import, division, print_function
-from six.moves import range
-from rstbx.indexing_api import cpp_absence_test
+
+import scitbx
+import six
+import warnings
 from rstbx.dps_core.cell_assessment import unit_cell_too_small
+from rstbx.indexing_api import cpp_absence_test
+from six.moves import range
 
 def distance(a):
   return a[0]*a[0] + a[1]*a[1] + a[2]*a[2]
@@ -27,9 +31,7 @@ modularities = [2,3,5]
 max_spiral = max(modularities)
 
 def generate_spiral_order():  #This is G0 in the paper
-  import six
   if six.PY3:
-    import warnings
     warnings.warn("rstbx.indexing_api.tools not supported on Python 3", stacklevel=3)
     return []
   points = []
@@ -59,10 +61,9 @@ def is_collinear(x,y): # X x Y cross product is zero
 
 def is_coplanar(x,y,z):
   #triple product is zero; (X x Y).Z
-  from scitbx import matrix
-  x = matrix.row(x)
-  y = matrix.row(y)
-  z = matrix.row(z)
+  x = scitbx.matrix.row(x)
+  y = scitbx.matrix.row(y)
+  z = scitbx.matrix.row(z)
   return x.cross(y).dot(z)==0
 
 def divide(np):
@@ -133,9 +134,8 @@ def generate_reindex_transformations():
             not is_coplanar(first,second,pt):
             third = pt
             break
-        from scitbx import matrix
-        A = matrix.sqr(first+second+third)
-        if A.determinant()<0: A = matrix.sqr(second + first + third)
+        A = scitbx.matrix.sqr(first+second+third)
+        if A.determinant()<0: A = scitbx.matrix.sqr(second + first + third)
         assert A.determinant()==mod
         reindex.append({'mod':mod,'vec':vec,'trans':A,})
         #print "found pts",A.elems,"for vec",vec,"mod",mod
@@ -167,8 +167,7 @@ class AbsenceHandler:
 
   def correct(self,orientation):
     if self.flag==None:  raise # no correction necessary
-    from scitbx import matrix
-    M1 = matrix.sqr(self.flag['trans'])
+    M1 = scitbx.matrix.sqr(self.flag['trans'])
     corrected = orientation.change_basis(M1.transpose().elems)
     unit_cell_too_small(corrected.unit_cell(),cutoff = 100.)
     return corrected
@@ -184,11 +183,11 @@ class AbsenceHandler:
         print(((m[2]-m[0])%2,(m[2]+m[0])%2), end=' ')
         print(((m[0]-m[1])%2,(m[0]+m[1])%2))
         count+=1
+
 if __name__=='__main__':
   def pelem(arg):
     return arg.elems.__repr__()
-  from scitbx.matrix import sqr
-  sqr.__repr__ = pelem
+  scitbx.matrix.sqr.__repr__ = pelem
   import pprint
   pprint.pprint( R)
   print(len(R))
