@@ -65,6 +65,12 @@ def main():
     D.mosaic_spread_deg = 0.01
     D.mosaic_domains = 10
     D.Fhkl = Fhkl
+
+    rotX,rotY,rotZ = 0,1,2
+    D.refine(rotX)  # rotX
+    D.refine(rotY)  # rotY
+    D.refine(rotZ)  # rotZ
+
     D.initialize_managers()
     D.vectorize_umats()
 
@@ -92,9 +98,9 @@ def main():
         imgA = D.raw_pixels.as_numpy_array()
 
         D.raw_pixels *= 0
-        D.thetaX=thetaX
-        D.thetaY=thetaY
-        D.thetaZ=thetaZ
+        D.set_value(rotX, thetaX)
+        D.set_value(rotY, thetaY)
+        D.set_value(rotZ, thetaZ)
         D.Amatrix = Arecip_orig.transpose().elems
         D.add_diffBragg_spots()
         imgB = D.raw_pixels.as_numpy_array()
