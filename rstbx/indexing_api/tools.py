@@ -27,24 +27,24 @@ def radcmp(a,b):
 
 # modularities 2,3,5 were sufficient for every two-image case
 # need up to 11 for Fig 4 in the single-image indexing
-modularities = [2,3,5]
-max_spiral = max(modularities)
+_modularities = [2,3,5]
+_max_spiral = max(_modularities)
 
-def generate_spiral_order():  #This is G0 in the paper
+def _generate_spiral_order():  #This is G0 in the paper
   if six.PY3:
     warnings.warn("rstbx.indexing_api.tools not supported on Python 3", stacklevel=3)
     return []
   points = []
-  for x in range(max_spiral,-max_spiral-1,-1):
-    for y in range(max_spiral,-max_spiral-1,-1):
-      for z in range(max_spiral,-max_spiral-1,-1):
+  for x in range(_max_spiral,-_max_spiral-1,-1):
+    for y in range(_max_spiral,-_max_spiral-1,-1):
+      for z in range(_max_spiral,-_max_spiral-1,-1):
         np = (x,y,z)
         points.append(np)
   points.sort(radcmp)
   points.remove((0,0,0))
   return points
 
-spiral_order = generate_spiral_order()
+spiral_order = _generate_spiral_order()
 
 def good_pred(obs):
     good = 0
@@ -116,7 +116,7 @@ def _generate_reindex_transformations():
     vecrep = generate_vector_representations()
     reindex = []
     for vec in vecrep:
-      for mod in modularities:
+      for mod in _modularities:
         #first point
         for pt in spiral_order:
           if (vec[0]*pt[0] + vec[1]*pt[1] + vec[2]*pt[2])%mod == 0:
