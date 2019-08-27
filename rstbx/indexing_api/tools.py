@@ -28,18 +28,6 @@ def _is_coplanar(x,y,z):
   z = scitbx.matrix.row(z)
   return x.cross(y).dot(z)==0
 
-def _generate_vector_representations():  #This is G1 in the paper
-    '''The vector representations connote systematic absence conditions.
-    For example, the vector v = (1,2,3) means H + 2K + 3L = ?n,
-    where the ? represents the modularity (2,3,5,...) specified elsewhere
-    '''
-    conditions_lhs = []
-    for vector in _spiral_order:
-      if sum(c*c for c in vector) > 6: continue
-      if any(_is_collinear(vector, item) for item in conditions_lhs): continue
-      conditions_lhs.append(vector)
-    return conditions_lhs
-
 def _generate_reindex_transformations():
     '''The reindex transformations are specific for a particular
     presence condition, such as H + 2K + 3L = 5n.  The transformation
@@ -66,7 +54,17 @@ def _generate_reindex_transformations():
     indefinitely.  Therefore the application always uses a cell volume filter
     after making the correction.
     '''
-    representatives = _generate_vector_representations()
+
+    representatives = []
+    '''The vector representations connote systematic absence conditions.
+    For example, the vector v = (1,2,3) means H + 2K + 3L = ?n,
+    where the ? represents the modularity (2,3,5,...) specified elsewhere
+    '''
+    for vector in _spiral_order:
+      if sum(c*c for c in vector) > 6: continue
+      if any(_is_collinear(vector, item) for item in representatives): continue
+      representatives.append(vector)
+
     reindex = []
     for vec in representatives:
       for mod in _modularities:
