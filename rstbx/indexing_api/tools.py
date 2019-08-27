@@ -166,7 +166,8 @@ class AbsenceHandler:
     return 0
 
   def correct(self,orientation):
-    if self.flag==None:  raise # no correction necessary
+    if self.flag is None:
+      raise RuntimeError("no correction necessary")
     M1 = scitbx.matrix.sqr(self.flag['trans'])
     corrected = orientation.change_basis(M1.transpose().elems)
     unit_cell_too_small(corrected.unit_cell(),cutoff = 100.)
