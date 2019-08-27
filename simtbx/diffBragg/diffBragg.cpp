@@ -3,26 +3,24 @@
 namespace simtbx {
 namespace nanoBragg {
 
-// derivative manager begin:
+// BEGIN derivative manager
 derivative_manager::derivative_manager(){}
 
 void derivative_manager::initialize(int sdim, int fdim)
 {
     raw_pixels = af::flex_double(af::flex_grid<>(sdim,fdim));
     floatimage = raw_pixels.begin();
-    value=0;
     dI=0;
-    refine_me = false;
 }
 
 void derivative_manager::increment_image(int idx, double value){
     floatimage[idx] += value;
 }
 
-// end of derivative manager
+// END derivative manager
 
 
-// rotation manager begin
+// BEGIN rotation manager begin
 rot_manager::rot_manager(){}
 
 void rot_manager::set_R(){assert (false);}
@@ -74,7 +72,7 @@ void rotX_manager::set_R(){
 }
 void rotY_manager::set_R(){
     R= mat3(cos(value),0, -sin(value),
-             0,          1,             0,
+             0,         1,             0,
             sin(value), 0, cos(value));
 
     dR= mat3(-sin(value),0, -cos(value),
@@ -90,9 +88,9 @@ void rotZ_manager::set_R(){
                -cos(value), -sin(value), 0,
                            0,           0, 0);
 }
-// end of rot manager
+// END rot manager
 
-// diffBragg Begin
+// BEGIN diffBragg
 diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model::Beam& beam,
             int verbose, int panel_id = 0):
     nanoBragg(detector, beam, verbose, panel_id)
@@ -115,6 +113,10 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     boost::shared_ptr<rot_manager> rotY = boost::shared_ptr<rot_manager>(new rotY_manager());
     boost::shared_ptr<rot_manager> rotZ = boost::shared_ptr<rot_manager>(new rotZ_manager());
 
+    rotX->refine_me = false;
+    rotY->refine_me = false;
+    rotZ->refine_me = false;
+
     rot_managers.push_back(rotX);
     rot_managers.push_back(rotY);
     rot_managers.push_back(rotZ);
@@ -127,6 +129,7 @@ void diffBragg::initialize_managers()
     int sdim = roi_ymax-roi_ymin;
     for (int i_rot=0; i_rot < 3; i_rot++){
         if (rot_managers[i_rot]->refine_me)
+            printf("Refine parameter %d <<><><><><><><>>\n", i_rot );
             rot_managers[i_rot]->initialize(sdim, fdim);
     }
 }
@@ -168,6 +171,11 @@ double diffBragg::get_value( int refine_id){
     return rot_managers[refine_id]->value;
 }
 
+af::flex_double diffBragg::get_derivative_pixels(int refine_id){
+    return rot_managers[refine_id]->raw_pixels;
+}
+
+// BEGIN diffBragg_add_spots
 void diffBragg::add_diffBragg_spots()
 {
     max_I = 0.0;
@@ -185,14 +193,13 @@ void diffBragg::add_diffBragg_spots()
     RXYZ = RotMats[0]*RotMats[1]*RotMats[2];
 
     //printf("First row: %f | %f | %f \n", RXYZ(0,0), RXYZ(0,1), RXYZ(0,2));
+    //printf("Second row: %f | %f | %f \n", RXYZ(1,0), RXYZ(1,1), RXYZ(1,2));
+    //printf("Third row: %f | %f | %f \n", RXYZ(2,0), RXYZ(2,1), RXYZ(2,2));
+
     /*  update Umats to be U*RXYZ   */
-    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
+    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
         UMATS_RXYZ[mos_tic] = UMATS[mos_tic] * RXYZ;
-    }
-   // printf("mosaic_umats\n %f | %f | %f \n %f | %f  | %f \n %f | %f | %f\n" , mosaic_umats[0], mosaic_umats[1], mosaic_umats[2],
-   //  mosaic_umats[3], mosaic_umats[4], mosaic_umats[5],
-   //  mosaic_umats[6], mosaic_umats[7], mosaic_umats[8]
-        //        );
+
     if(verbose) printf("TESTING sincg(1,1)= %f\n",sincg(1,1));
 
     /* make sure we are normalizing with the right number of sub-steps */
@@ -325,30 +332,21 @@ void diffBragg::add_diffBragg_spots()
                                 ap_vec[1] = ap[2];
                                 ap_vec[2] = ap[3];
 
-                                a_vec[0] = a[1];
-                                a_vec[1] = a[2];
-                                a_vec[2] = a[3];
-
                                 bp_vec[0] = bp[1];
                                 bp_vec[1] = bp[2];
                                 bp_vec[2] = bp[3];
-                                b_vec[0] = b[1];
-                                b_vec[1] = b[2];
-                                b_vec[2] = b[3];
 
                                 cp_vec[0] = cp[1];
                                 cp_vec[1] = cp[2];
                                 cp_vec[2] = cp[3];
-                                c_vec[0] = c[1];
-                                c_vec[1] = c[2];
-                                c_vec[2] = c[3];
 
                                 q_vec[0] = scattering[1];
                                 q_vec[1] = scattering[2];
                                 q_vec[2] = scattering[3];
 
+                                //vec3 AA = UMATS_RXYZ[mos_tic]*cp_vec;
                                 //if (mos_tic==0 && fpixel==0 && spixel==0)
-                                //  printf("AAAAAAAAAAAA: %f, %f, %f \n", a[1]*1e10, a[2]*1e10, a[3]*1e10);
+                                //  printf("AAAAAAAAAAAA: %f, %f, %f \n", AA[0]*1e10, AA[1]*1e10, AA[2]*1e10);
 
                                 /* construct fractional Miller indicies */
                                 h = UMATS_RXYZ[mos_tic] * ap_vec *q_vec;
@@ -418,6 +416,8 @@ void diffBragg::add_diffBragg_spots()
                                 /* checkpoint for rotataion derivatives */
                                 for (int i_rot =0 ; i_rot < 3 ; i_rot++){
                                     if (rot_managers[i_rot]->refine_me){
+                                        if (mos_tic==0 && fpixel==0 && spixel==0)
+                                          printf("Runnung and refining parameter %d <><><><><><><><>\n", i_rot);
                                         R3[i_rot] = dRotMats[i_rot]; // TODO: design upgrade
                                         rot_managers[i_rot]->increment(
                                                             Na, Nb, Nc,
@@ -448,6 +448,8 @@ void diffBragg::add_diffBragg_spots()
             /* udpate the derivative images*/
             for (int i_rot =0 ; i_rot < 3 ; i_rot++){
                 if (rot_managers[i_rot]->refine_me){
+                    if (mos_tic==0 && fpixel==0 && spixel==0)
+                      printf("Updating image for parameter %d <><><<><>>\n", i_rot);
                     double value = r_e_sqr*fluence*spot_scale*polar*rot_managers[i_rot]->dI/steps;
                     rot_managers[i_rot]->increment_image(roi_i, value);
                 }
@@ -505,8 +507,8 @@ void diffBragg::add_diffBragg_spots()
     if(verbose) printf("solid angle subtended by detector = %g steradian ( %g%% sphere)\n",omega_sum/steps,100*omega_sum/steps/4/M_PI);
     if(verbose) printf("max_I= %g sum= %g avg= %g\n",max_I,sum,sum/sumn);
 
-} // end of add_diffBragg_spots
-// end of diffBragg
+} // END  of add_diffBragg_spots
+// END diffBragg
 
 } // end of namespace nanoBragg
 } // end of namespace simtbx
