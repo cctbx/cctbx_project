@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 import itertools
-import scitbx
+
+import scitbx.matrix
 from rstbx.dps_core.cell_assessment import unit_cell_too_small
 from rstbx.indexing_api import cpp_absence_test
 
@@ -45,16 +46,16 @@ def _generate_reindex_transformations():
     indefinitely.  Therefore the application always uses a cell volume filter
     after making the correction.
     '''
-    mod_range = range(max(_modularities),-max(_modularities)-1,-1)
+    mod_range = range(max(_modularities), -max(_modularities)-1,-1)
     points = itertools.product(mod_range, mod_range, mod_range)
+    # sort by increasing distance and descending size
     spiral_order = list(sorted(points, key=lambda v: (sum(c*c for c in v), -sum(v))))
     spiral_order.remove((0,0,0))
 
     representatives = []
-    '''The vector representations connote systematic absence conditions.
-    For example, the vector v = (1,2,3) means H + 2K + 3L = ?n,
-    where the ? represents the modularity (2,3,5,...) specified elsewhere
-    '''
+    # The vector representations connote systematic absence conditions.
+    # For example, the vector v = (1,2,3) means H + 2K + 3L = ?n,
+    # where the ? represents the modularity (2,3,5,...) specified elsewhere
     for vector in spiral_order:
       if sum(c*c for c in vector) > 6: break
       if any(_is_collinear(vector, item) for item in representatives): continue
@@ -79,7 +80,6 @@ def _generate_reindex_transformations():
         if A.determinant()<0: A = scitbx.matrix.sqr(second + first + third)
         assert A.determinant()==mod
         reindex.append({'mod':mod,'vec':vec,'trans':A})
-        #print "found pts",A.elems,"for vec",vec,"mod",mod
     return reindex
 
 R = _generate_reindex_transformations()
