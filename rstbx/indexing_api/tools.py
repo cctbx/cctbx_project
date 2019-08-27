@@ -7,8 +7,8 @@ from rstbx.dps_core.cell_assessment import unit_cell_too_small
 from rstbx.indexing_api import cpp_absence_test
 from six.moves import range
 
-def _distance(a):
-  return a[0]*a[0] + a[1]*a[1] + a[2]*a[2]
+def _distance(vector):
+  return sum(c*c for c in vector)
 
 def _radcmp(a,b):
   #gives -1,0,1 depending on a<b, a==b, a>b
@@ -35,9 +35,10 @@ def _generate_spiral_order():  #This is G0 in the paper
     warnings.warn("rstbx.indexing_api.tools not supported on Python 3", stacklevel=3)
     return []
   points = []
-  for x in range(_max_spiral,-_max_spiral-1,-1):
-    for y in range(_max_spiral,-_max_spiral-1,-1):
-      for z in range(_max_spiral,-_max_spiral-1,-1):
+  mod_range = range(_max_spiral,-_max_spiral-1,-1)
+  for x in mod_range:
+    for y in mod_range:
+      for z in mod_range:
         np = (x,y,z)
         points.append(np)
   points.sort(_radcmp)
