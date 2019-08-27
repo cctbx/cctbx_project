@@ -174,6 +174,8 @@ class manager(object):
                 was_initialized=False,
                 mon_lib_srv=None,
                 verbose=-1,
+                alpha_rise_tolerance=0.5,
+                beta_rise_tolerance=0.5,
                 log=sys.stdout):
     self.pdb_hierarchy = pdb_hierarchy
     self.mon_lib_srv = mon_lib_srv
@@ -182,6 +184,8 @@ class manager(object):
     self.grm = geometry_restraints_manager
     self.sec_str_from_pdb_file = sec_str_from_pdb_file
     self.params = sec_str_master_phil.extract()
+    self.alpha_rise_tolerance = alpha_rise_tolerance,
+    self.beta_rise_tolerance = beta_rise_tolerance,
     if params is not None:
       self.params.secondary_structure = params
 
@@ -347,6 +351,8 @@ class manager(object):
       print("  running find_ss_from_ca...", file=self.log)
       fss = find_ss_from_ca.find_secondary_structure(
           hierarchy=pdb_hierarchy,
+          args=["alpha.rise_tolerance=%f" % self.alpha_rise_tolerance,
+                "beta.rise_tolerance=%f" % self.beta_rise_tolerance],
           ss_by_chain=self.params.secondary_structure.ss_by_chain,
           max_rmsd=self.params.secondary_structure.max_rmsd,
           use_representative_chains=\
