@@ -57,7 +57,7 @@ def _good_pred(obs):
     return good,bad
 
 def _is_collinear(x,y): # X x Y cross product is zero
-  return x[0]*y[1]-x[1]*y[0]==0 and x[1]*y[2]-x[2]*y[1]==0 and x[2]*y[0]-x[0]*y[2]==0
+  return x[0]*y[1]-x[1]*y[0]==x[1]*y[2]-x[2]*y[1]==x[2]*y[0]-x[0]*y[2]==0
 
 def _is_coplanar(x,y,z):
   #triple product is zero; (X x Y).Z
