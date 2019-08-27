@@ -121,10 +121,9 @@ def _generate_reindex_transformations():
         #first point
         first = candidate_points.pop(0)
         #second point
-        for pt in candidate_points:
-          if True and \
-            not _is_collinear(first,pt):
-            second = pt
+        while candidate_points:
+          second = candidate_points.pop(0)
+          if not _is_collinear(first,second):
             break
         #third point
         for pt in candidate_points:
