@@ -4,7 +4,6 @@ import itertools
 import scitbx
 from rstbx.dps_core.cell_assessment import unit_cell_too_small
 from rstbx.indexing_api import cpp_absence_test
-from six.moves import range
 
 # modularities 2,3,5 were sufficient for every two-image case
 # need up to 11 for Fig 4 in the single-image indexing
