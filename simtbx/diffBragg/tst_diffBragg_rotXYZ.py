@@ -1,20 +1,23 @@
 
-def main():
+from argparse import ArgumentParser
+parser = ArgumentParser("diffBragg tests")
+parser.add_argument("--plot", action='store_true')
+args = parser.parse_args()
 
-    from dxtbx.model.crystal import CrystalFactory
+
+def get_diffBragg_instance():
+
+    #from dxtbx.model.crystal import CrystalFactory
     from dxtbx.model.detector import DetectorFactory
     from dxtbx.model.beam import BeamFactory
     from simtbx.nanoBragg.tst_nanoBragg_basic import fcalc_from_pdb
     from simtbx.nanoBragg import shapetype
     from simtbx.diffBragg import diffBragg
-    import numpy as np
 
-    n_trials = 10
     wavelen = 1.24
-    flux = 1e12
+    flux = 1e15
     SHAPE = shapetype.Gauss
-    np.random.seed( n_trials)
-    angles_XYZ = np.random.random( (n_trials, 3))
+
     NCELLS_ABC=(15,15,15)
     
     beam_descr = {'direction': (0.0, 0.0, 1.0),
@@ -26,11 +29,11 @@ def main():
                  'transmission': 1.0,
                  'wavelength': wavelen}
 
-    cryst_descr = {'__id__': 'crystal',
-                   'real_space_a': (79, 0, 0),
-                   'real_space_b': (0, 79, 0),
-                   'real_space_c': (0, 0, 38),
-                   'space_group_hall_symbol': '-P 4 2'}
+    #cryst_descr = {'__id__': 'crystal',
+    #               'real_space_a': (79, 0, 0),
+    #               'real_space_b': (0, 79, 0),
+    #               'real_space_c': (0, 0, 38),
+    #               'space_group_hall_symbol': '-P 4 2'}
 
     det_descr = {'panels':
                    [{'fast_axis': (-1.0, 0.0, 0.0),
@@ -53,7 +56,7 @@ def main():
 
     DET = DetectorFactory.from_dict(det_descr)
     BEAM = BeamFactory.from_dict(beam_descr)
-    crystal = CrystalFactory.from_dict(cryst_descr)
+    #crystal = CrystalFactory.from_dict(cryst_descr)
 
     Fhkl = fcalc_from_pdb(resolution=4, algorithm="fft", wavelength=wavelen)
 
@@ -66,6 +69,17 @@ def main():
     D.mosaic_domains = 10
     D.Fhkl = Fhkl
 
+    return D
+
+def main():
+    import numpy as np
+
+    n_trials = 10
+    np.random.seed( n_trials)
+    angles_XYZ = np.random.random( (n_trials, 3))*2 * np.pi / 180.
+
+    D = get_diffBragg_instance()
+
     rotX,rotY,rotZ = 0,1,2
     D.refine(rotX)  # rotX
     D.refine(rotY)  # rotY
@@ -75,25 +89,38 @@ def main():
     D.vectorize_umats()
 
     from scitbx.matrix import col, sqr
-    x = col((1,0,0))
+    x = col((-1,0,0))
     y = col((0,-1,0))
-    z = col((0,0,1))
+    z = col((0,0,-1))
 
+    #thX = np.linspace(0,20*np.pi / 180. ,10)
+    #thY = np.linspace(0,20*np.pi / 180. ,10)
+    #thZ = np.linspace(0,20*np.pi / 180. ,10)
+    #angles_XYZ = zip(thX, thY, thZ)
+
+    Arecip_orig = sqr(D.Amatrix)
+
+    if args.plot:
+        import pylab as plt
+        plt.figure()
+        axA = plt.subplot(121)
+        axB = plt.subplot(122)
     for i_ang, (thetaX, thetaY, thetaZ) in enumerate(angles_XYZ):
 
-        RX = x.axis_and_angle_as_r3_rotation_matrix(thetaX, deg=True)
-        RY = y.axis_and_angle_as_r3_rotation_matrix(thetaY, deg=True)
-        RZ = z.axis_and_angle_as_r3_rotation_matrix(thetaZ, deg=True)
+        RX = x.axis_and_angle_as_r3_rotation_matrix(thetaX, deg=False)
+        RY = y.axis_and_angle_as_r3_rotation_matrix(thetaY, deg=False)
+        RZ = z.axis_and_angle_as_r3_rotation_matrix(thetaZ, deg=False)
 
-        Arecip_orig = sqr(crystal.get_A())
+        #Arecip_orig = sqr(crystal.get_A())
         Areal = Arecip_orig.inverse()
         Areal = RX*RY*RZ*Areal
         Arecip = Areal.inverse()
 
-        D.thetaX=0
-        D.thetaY=0
-        D.thetaZ=0
-        D.Amatrix = Arecip.transpose().elems
+        D.raw_pixels *= 0
+        D.set_value(rotX,0)
+        D.set_value(rotY,0)
+        D.set_value(rotZ,0)
+        D.Amatrix = Arecip  #.transpose().elems
         D.add_diffBragg_spots()
         imgA = D.raw_pixels.as_numpy_array()
 
@@ -101,14 +128,25 @@ def main():
         D.set_value(rotX, thetaX)
         D.set_value(rotY, thetaY)
         D.set_value(rotZ, thetaZ)
-        D.Amatrix = Arecip_orig.transpose().elems
+        D.Amatrix = Arecip_orig   #.transpose().elems
         D.add_diffBragg_spots()
         imgB = D.raw_pixels.as_numpy_array()
+        if args.plot:
+            m = imgA[ imgA > 0].mean()
+            s = imgA[ imgA > 0].std()
+
+            axA.clear()
+            axB.clear()
+            axA.imshow( imgA, vmin=0, vmax=m+2*s, cmap='gnuplot')
+            axB.imshow( imgB, vmin=0, vmax=m+2*s, cmap='gnuplot')
+            plt.draw()
+            plt.pause(1.)
 
         assert(np.allclose(imgA, imgB, atol=1e-4))
         print("OK (%d / %d)" % (i_ang+1, len(angles_XYZ)))
 
 
 if __name__=="__main__":
+
     main()
     print("OK")
