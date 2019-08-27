@@ -126,15 +126,13 @@ def _generate_reindex_transformations():
           if not _is_collinear(first,second):
             break
         #third point
-        for pt in candidate_points:
-          if True and \
-            not _is_coplanar(first,second,pt):
-            third = pt
+        for third in candidate_points:
+          if not _is_coplanar(first,second,third):
             break
         A = scitbx.matrix.sqr(first+second+third)
         if A.determinant()<0: A = scitbx.matrix.sqr(second + first + third)
         assert A.determinant()==mod
-        reindex.append({'mod':mod,'vec':vec,'trans':A,})
+        reindex.append({'mod':mod,'vec':vec,'trans':A})
         #print "found pts",A.elems,"for vec",vec,"mod",mod
     return reindex
 
