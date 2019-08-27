@@ -8,19 +8,15 @@ from rstbx.dps_core.cell_assessment import unit_cell_too_small
 from rstbx.indexing_api import cpp_absence_test
 from six.moves import range
 
-def _distance(vector):
-  return sum(c*c for c in vector)
-
 # modularities 2,3,5 were sufficient for every two-image case
 # need up to 11 for Fig 4 in the single-image indexing
 _modularities = [2,3,5]
-_max_spiral = max(_modularities)
 
 def _generate_spiral_order():  #This is G0 in the paper
   if six.PY3:
     warnings.warn("rstbx.indexing_api.tools not supported on Python 3", stacklevel=3)
     return []
-  mod_range = range(_max_spiral,-_max_spiral-1,-1)
+  mod_range = range(max(_modularities),-max(_modularities)-1,-1)
   points = list(itertools.product(mod_range, mod_range, mod_range))
   points.sort(key=lambda v: (sum(c*c for c in v), -sum(v)))
   points.remove((0,0,0))
@@ -60,13 +56,13 @@ def _generate_vector_representations():  #This is G1 in the paper
     where the ? represents the modularity (2,3,5,...) specified elsewhere
     '''
     conditions_lhs = []
-    for np in _spiral_order:
-      if _distance(np) > 6: continue
+    for vector in _spiral_order:
+      if sum(c*c for c in vector) > 6: continue
       collinear_match = 0
       for item in conditions_lhs:
-        if _is_collinear(np,item): collinear_match = 1
+        if _is_collinear(vector, item): collinear_match = 1
       if not collinear_match:
-        conditions_lhs.append(_divide(np))
+        conditions_lhs.append(_divide(vector))
     return conditions_lhs
 
 def _generate_reindex_transformations():
