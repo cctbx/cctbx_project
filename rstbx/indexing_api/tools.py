@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import itertools
 import scitbx
 import six
 import warnings
@@ -34,13 +35,8 @@ def _generate_spiral_order():  #This is G0 in the paper
   if six.PY3:
     warnings.warn("rstbx.indexing_api.tools not supported on Python 3", stacklevel=3)
     return []
-  points = []
   mod_range = range(_max_spiral,-_max_spiral-1,-1)
-  for x in mod_range:
-    for y in mod_range:
-      for z in mod_range:
-        np = (x,y,z)
-        points.append(np)
+  points = list(itertools.product(mod_range, mod_range, mod_range))
   points.sort(_radcmp)
   points.remove((0,0,0))
   return points
