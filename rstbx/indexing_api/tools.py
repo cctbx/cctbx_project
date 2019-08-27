@@ -2,8 +2,6 @@ from __future__ import absolute_import, division, print_function
 
 import itertools
 import scitbx
-import six
-import warnings
 from rstbx.dps_core.cell_assessment import unit_cell_too_small
 from rstbx.indexing_api import cpp_absence_test
 from six.moves import range
@@ -13,26 +11,13 @@ from six.moves import range
 _modularities = [2,3,5]
 
 def _generate_spiral_order():  #This is G0 in the paper
-  if six.PY3:
-    warnings.warn("rstbx.indexing_api.tools not supported on Python 3", stacklevel=3)
-    return []
   mod_range = range(max(_modularities),-max(_modularities)-1,-1)
-  points = list(itertools.product(mod_range, mod_range, mod_range))
-  points.sort(key=lambda v: (sum(c*c for c in v), -sum(v)))
+  points = itertools.product(mod_range, mod_range, mod_range)
+  points = list(sorted(points, key=lambda v: (sum(c*c for c in v), -sum(v))))
   points.remove((0,0,0))
   return points
 
 _spiral_order = _generate_spiral_order()
-
-def _good_pred(obs):
-    good = 0
-    for i in range(obs.size()):
-      o = obs[i]
-      if abs(o[0] - round(o[0]))<0.2 and abs(o[1] - round(o[1]))<0.2 and \
-         abs(o[2] - round(o[2]))<0.2:
-         good+=1
-    bad = obs.size()-good
-    return good,bad
 
 def _is_collinear(x,y): # X x Y cross product is zero
   return x[0]*y[1]-x[1]*y[0]==x[1]*y[2]-x[2]*y[1]==x[2]*y[0]-x[0]*y[2]==0
