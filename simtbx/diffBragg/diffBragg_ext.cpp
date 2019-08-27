@@ -42,7 +42,7 @@ namespace boost_python { namespace {
 
       .def("set_value", &simtbx::nanoBragg::diffBragg::set_value, "set value of the refinement parameter")
 
-      .def("derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels, "gets the manager raw image")
+      .def("get_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels, "gets the manager raw image")
 
     ; // end of diffBragg extention
 
