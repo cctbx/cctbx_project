@@ -55,5 +55,5 @@ jobs:
 
   # build
   - template: ./unix-checkout.yml
-  - template: ./unix-install-miniconda.yml
+  - template: ./unix-install-conda.yml
   - template: ./unix-build.yml
