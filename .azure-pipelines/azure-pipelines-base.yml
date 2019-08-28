@@ -14,7 +14,6 @@ schedules:
 
 jobs:
   - template: ./azure-pipelines-syntax.yml
-  - template: ./azure-pipelines-win.yml
   - template: ./base-linux.yml
     parameters:
       distribution: centos
