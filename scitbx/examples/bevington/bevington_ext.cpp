@@ -1,5 +1,5 @@
 #include <cctbx/boost_python/flex_fwd.h>
-
+#include <boost/python/enum.hpp>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
@@ -25,12 +25,20 @@ namespace boost_python { namespace {
     typedef return_value_policy<return_by_value> rbv;
     typedef default_call_policies dcp;
 
+    enum_<linear_ls_eigen_wrapper::SolverAlgo>("linsolver_backend")
+      .value("ldlt", linear_ls_eigen_wrapper::LDLT)
+      .value("llt", linear_ls_eigen_wrapper::LLT)
+      .value("cg", linear_ls_eigen_wrapper::CG)
+      .value("bicgstab", linear_ls_eigen_wrapper::BICGSTAB)
+      .export_values()
+    ;
+
     class_<linear_ls_eigen_wrapper>("linear_ls_eigen_wrapper", no_init)
       .def(init<int>(arg("n_parameters")))
       .def("n_parameters", &linear_ls_eigen_wrapper::n_parameters)
       .def("reset", &linear_ls_eigen_wrapper::reset)
       .def("right_hand_side", &linear_ls_eigen_wrapper::right_hand_side)
-      .def("solve", &linear_ls_eigen_wrapper::solve)
+      .def("solve", &linear_ls_eigen_wrapper::solve, ( arg("solverIdx")=linear_ls_eigen_wrapper::LDLT ) )
       .def("solved", &linear_ls_eigen_wrapper::solved)
       .def("normal_matrix", &linear_ls_eigen_wrapper::normal_matrix)
       .def("solution", &linear_ls_eigen_wrapper::solution)

@@ -165,8 +165,6 @@ def run(show_plots,args):
         filename = all_files[x]
         print(filename, " ".join([str(a) for a in modified_A.elems]), file=out)
 
-
-
     work_params.scaling.algorithm="levmar"
     from xfel.cxi.cxi_cc import run_cc
     run_cc(work_params,work_params.model_reindex_op,sys.stdout)

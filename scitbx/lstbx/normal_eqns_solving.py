@@ -6,7 +6,6 @@ import libtbx
 from scitbx.array_family import flex
 from timeit import default_timer as current_time
 
-
 class journaled_non_linear_ls(object):
   """ A decorator that keeps the history of the objective, gradient,
   step, etc of an underlying normal equations object. An instance of this
@@ -155,7 +154,6 @@ class iterations(object):
 
   def do(self):
     raise NotImplementedError
-
 
 class naive_iterations(iterations):
 
