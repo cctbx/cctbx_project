@@ -35,5 +35,6 @@ jobs:
       rm ~/uninstall_homebrew
     displayName: Remove homebrew
 
+  - template: ./unix-checkout.yml
   - template: ./unix-install-miniconda.yml
   - template: ./unix-build.yml

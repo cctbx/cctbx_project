@@ -1,31 +1,9 @@
 # Script for building CCTBX on linux and macOS
 #
 # Variables:
-#   PYTHON_VERSION: py27, py36
 #   OS: linux-64, osx-64
 
 steps:
-
-- checkout: self
-  path: ./modules/cctbx_project
-
-- script: |
-    cd ../..
-    ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
-  displayName: Link bootstrap.py
-
-- script: |
-    source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
-    conda create -y -n $(PYTHON_VERSION) --file ./libtbx/auto_build/conda_envs/cctbx_$(PYTHON_VERSION)_$(OS).txt
-    conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
-  displayName: Create conda environment
-
-- script: |
-    source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
-    conda activate $(PYTHON_VERSION)
-    cd ../..
-    python bootstrap.py hot update --builder=cctbx
-  displayName: Download sources
 
 - script: |
     source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
