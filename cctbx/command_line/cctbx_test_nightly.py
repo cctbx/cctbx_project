@@ -15,8 +15,6 @@ if (__name__ == "__main__"):
     "module=smtbx",
     "nproc=Auto",
   ]
-  if 'dxtbx' in libtbx.env.module_dict:
-    args.append("module=dxtbx")
 
   if (libtbx.env.find_in_repositories("chem_data") is not None and
       os.path.exists(libtbx.env.find_in_repositories("chem_data"))):
