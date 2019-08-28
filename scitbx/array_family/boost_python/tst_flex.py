@@ -3598,6 +3598,21 @@ def exercise_python_functions():
   assert list(rows[1]) == [3,4]
   assert list(rows[2]) == [5,6]
 
+def exercise_vec3_double_as_numpy_array():
+  try:
+    import numpy as np
+  except ImportError:
+    "Skipping exercise_vec3_double_as_numpy_array (numpy not available)"
+    return
+
+  test_data = [
+    [0, 1, 30.5],
+    [-4.0, 2.0, 300000],
+  ]
+  vec3 = flex.vec3_double(test_data)
+  np_vec3 = vec3.as_numpy_array()
+  assert np.all(np.isclose(np_vec3, np.array(test_data)))
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
@@ -3659,6 +3674,7 @@ def run(iterations):
     exercise_py_object()
     exercise_condense_as_ranges()
     exercise_python_functions()
+    exercise_vec3_double_as_numpy_array()
     i += 1
 
 if (__name__ == "__main__"):
