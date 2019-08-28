@@ -35,7 +35,7 @@ jobs:
 
   - script: |
       sudo yum groupinstall -y 'Development Tools'
-      sudo yum install -y python-argparse mesa-libGLU-devel mesa-libGL-devel
+      sudo yum install -y python-argparse mesa-libGLU-devel mesa-libGL-devel zlib-devel
     displayName: Install dependencies for CentOS
     condition: eq('${{ parameters.distribution }}', 'centos')
 
