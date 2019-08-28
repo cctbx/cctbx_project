@@ -997,16 +997,24 @@ namespace {
       arg("start"),
       arg("end")));
 
-    def("set_box",
+    def("set_box_with_symmetry",
       (void(*)
         (af::const_ref<double, af::c_grid<3> > const&,
          af::ref<double, af::c_grid<3> >,
          af::tiny<int, 3> const&,
-         af::tiny<int, 3> const&)) set_box, (
+         af::tiny<int, 3> const&,
+         cctbx::uctbx::unit_cell const& unit_cel,
+         af::shared<scitbx::mat3<double> > const&,
+         af::shared<scitbx::vec3<double> > const&
+         )) set_box_with_symmetry, (
       arg("map_data_from"),
       arg("map_data_to"),
       arg("start"),
-      arg("end")));
+      arg("end"),
+      arg("unit_cell"),
+      arg("rotation_matrix"),
+      arg("translation_vector")
+      ));
 
     def("copy_box",
       (void(*)

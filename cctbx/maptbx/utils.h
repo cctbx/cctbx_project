@@ -11,6 +11,8 @@
 #include <scitbx/random.h>
 #include <scitbx/math/linear_correlation.h>
 
+#include <cctbx/uctbx.h>
+
 #include <cctbx/maptbx/interpolation.h> //indirect import?
 
 namespace cctbx { namespace maptbx {
@@ -516,30 +518,48 @@ void copy_box(
 }
 
 template <typename DataType>
-void set_box(
+void set_box_with_symmetry(
   af::const_ref<DataType, af::c_grid<3> > const& map_data_from,
   af::ref<DataType, af::c_grid<3> > map_data_to,
   af::tiny<int, 3> const& start,
-  af::tiny<int, 3> const& end)
+  af::tiny<int, 3> const& end,
+  cctbx::uctbx::unit_cell const& unit_cell,
+  af::shared<scitbx::mat3<double> > const& rotation_matrices,
+  af::shared<scitbx::vec3<double> > const& translation_vectors)
 {
+  /*
+  This is a specialized function. It takes two maps: a larger empty map
+  (map_data_to) and smaller map (map_data_from).
+  Parameter start are the coordinates of the origin of map_data_from wrt origin
+  of map_data_to.
+  Parameters start, end, unit_cell are related to map_data_to.
+  */
   af::c_grid<3> a = map_data_to.accessor();
-  //
-  // PVA: I need to find out why this occasionally crashes here:
-  //
-  //for(int i = 0; i < 3; i++) {
-  //  CCTBX_ASSERT((end[i] - start[i]) <= a[i]);
-  //  CCTBX_ASSERT(end[i] > start[i]);
-  //}
-  for (int i = start[0]; i < end[0]; i++) {
-    int ii = scitbx::math::mod_positive(i, static_cast<int>(a[0]));
-    for (int j = start[1]; j < end[1]; j++) {
-      int jj = scitbx::math::mod_positive(j, static_cast<int>(a[1]));
-      for (int k = start[2]; k < end[2]; k++) {
-        int kk = scitbx::math::mod_positive(k, static_cast<int>(a[2]));
+  for (int i = start[0]; i <= end[0]; i++) {
+    for (int j = start[1]; j <= end[1]; j++) {
+      for (int k = start[2]; k <= end[2]; k++) {
+        // position in map_data_from
         int p = i-start[0];
         int q = j-start[1];
         int r = k-start[2];
-        map_data_to(ii,jj,kk) = map_data_from(p,q,r);
+        // fractional coordinates of i,j,k
+        cctbx::fractional<> grid_node_frac = cctbx::fractional<>(
+          i/static_cast<double>(a[0]),
+          j/static_cast<double>(a[1]),
+          k/static_cast<double>(a[2]));
+        for (int o = 0; o < rotation_matrices.size(); o++) {
+          scitbx::mat3<double> rm = rotation_matrices[o];
+          scitbx::vec3<double> tv = translation_vectors[o];
+          cctbx::fractional<> grid_node_frac_rt = rm * grid_node_frac + tv;
+          // position of rotated+translated point in original map
+          int ii = scitbx::math::mod_positive(
+            static_cast<int>(grid_node_frac_rt[0]*a[0]), static_cast<int>(a[0]));
+          int jj = scitbx::math::mod_positive(
+            static_cast<int>(grid_node_frac_rt[1]*a[1]), static_cast<int>(a[1]));
+          int kk = scitbx::math::mod_positive(
+            static_cast<int>(grid_node_frac_rt[2]*a[2]), static_cast<int>(a[2]));
+          map_data_to(ii,jj,kk) = map_data_from(p,q,r);
+        }
       }
     }
   }
