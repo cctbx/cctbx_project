@@ -20,3 +20,12 @@ if (self.env.is_ready_for_build()):
   from scitbx.source_generators import lbfgs_fem
   print("  Using fable to convert", op.join("scitbx", "lbfgs.f"))
   lbfgs_fem.run()
+
+  import libtbx.pkg_utils
+  libtbx.pkg_utils.define_entry_points(
+    {
+      "pytest_randomly.random_seeder": [
+        "scitbx_flex = scitbx.array_family.flex:set_random_seed"
+      ],
+    }
+  )
