@@ -149,8 +149,8 @@ class legacy_rs(object):
     # in samosa, handle this at a higher level, but handle it somehow.
     if fat_count < 0:
       raise ValueError("< 0 near-fulls after refinement")
-    print >> self.out, "On total %5d the fat selection is %5d"%(
-      len(self.observations_pair1_selected.indices()), fat_count)
+    print ( self.out, "On total %5d the fat selection is %5d"%(
+      len(self.observations_pair1_selected.indices()), fat_count))
     observations_original_index = \
       self.observations_original_index_pair1_selected.select(fat_selection)
 
