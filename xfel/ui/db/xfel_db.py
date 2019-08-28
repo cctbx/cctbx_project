@@ -17,11 +17,6 @@ from six.moves import range
 import six
 from six.moves import zip
 
-try:
-  from MySQLdb import OperationalError
-except ImportError:
-  raise Sorry('Mysql not available')
-
 from xfel.command_line.experiment_manager import initialize as initialize_base
 
 class initialize(initialize_base):
