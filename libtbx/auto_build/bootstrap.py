@@ -2023,8 +2023,14 @@ class DIALSBuilder(CCIBuilder):
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
   HOT_EXTRA = ['msgpack']
   def add_tests(self):
-    self.add_test_command('cctbx_regression.test_nightly')
-    self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
+    self.add_test_command('libtbx.pytest',
+                          args=['--regression', '-n', 'auto'],
+                          workdir=['modules', 'dxtbx'],
+                          haltOnFailure=True)
+    self.add_test_command('libtbx.pytest',
+                          args=['--regression', '-n', 'auto'],
+                          workdir=['modules', 'dials'],
+                          haltOnFailure=True)
 
   def add_base(self, extra_opts=[]):
     super(DIALSBuilder, self).add_base(
