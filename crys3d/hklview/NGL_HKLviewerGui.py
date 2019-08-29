@@ -56,7 +56,7 @@ class NGL_HKLViewer(QWidget):
     self.UseOSbrowser = False
     self.jscriptfname = ""
     self.devmode = False
-    self.hklfnamedef = ""
+    self.hklfname = ""
     self.handshakewait = 5
     for e in sys.argv:
       if "verbose" in e:
