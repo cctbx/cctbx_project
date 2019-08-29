@@ -7,10 +7,11 @@ pr: none
 # only nightly builds
 schedules:
 - cron: '0 3 * * *'
-  displayName: Nightly build
+  displayName: Nightly base build
   branches:
     include:
     - master
+    - base_updates/*
 
 jobs:
   - template: ./azure-pipelines-syntax.yml
@@ -18,39 +19,35 @@ jobs:
     parameters:
       distribution: centos
       version: [6, 10]
-  # - template: ./base-linux.yml
-  #   parameters:
-  #     distribution: centos
-  #     version: [7, 6, 1810]
-  # - template: ./base-linux.yml
-  #   parameters:
-  #     distribution: ubuntu
-  #     version: ['18', '04']
-  # - template: ./base-linux.yml
-  #   parameters:
-  #     distribution: ubuntu
-  #     version: ['16', '04']
-  # - template: ./base-linux.yml
-  #   parameters:
-  #     distribution: ubuntu
-  #     version: ['14', '04']
-  # - template: ./base-osx.yml
-  #   parameters:
-  #     vmImage: [10, 14]
-  #     xcode_version: [11]
+  - template: ./base-linux.yml
+    parameters:
+      distribution: centos
+      version: [7, 6, 1810]
+  - template: ./base-linux.yml
+    parameters:
+      distribution: ubuntu
+      version: ['16', '04']
+  - template: ./base-linux.yml
+    parameters:
+      distribution: ubuntu
+      version: ['14', '04']
+  - template: ./base-osx.yml
+    parameters:
+      vmImage: [10, 14]
+      xcode_version: [10, 3]
+  - template: ./base-osx.yml
+    parameters:
+      vmImage: [10, 14]
+      xcode_version: [10, 2, 1]
   - template: ./base-osx.yml
     parameters:
       vmImage: [10, 13]
       xcode_version: [10, 1]
-  # - template: ./base-osx.yml
-  #   parameters:
-  #     vmImage: [10, 14]
-  #     xcode_version: [10, 2, 1]
-  # - template: ./base-osx.yml
-  #   parameters:
-  #     vmImage: [10, 13]
-  #     xcode_version: [9, 4, 1]
-  # - template: ./base-osx.yml
-  #   parameters:
-  #     vmImage: [10, 13]
-  #     xcode_version: [8, 3, 3]
+  - template: ./base-osx.yml
+    parameters:
+      vmImage: [10, 13]
+      xcode_version: [9, 4, 1]
+  - template: ./base-osx.yml
+    parameters:
+      vmImage: [10, 13]
+      xcode_version: [8, 3, 3]
