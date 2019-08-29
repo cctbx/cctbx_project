@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 from iotbx import mtz
 import libtbx.load_env
 import os.path
+from six.moves import range
 
 if (__name__ == "__main__"):
   fname = libtbx.env.find_in_repositories(
@@ -15,5 +16,5 @@ if (__name__ == "__main__"):
   j = m.extract_original_index_miller_indices()
   misym = m.extract_integers("M_ISYM")
 
-  for idx in xrange(len(h)):
-    print "asu:%17s    orig:%17s    M/ISYM:%4d"%(h[idx],j[idx],misym.data[idx])
+  for idx in range(len(h)):
+    print("asu:%17s    orig:%17s    M/ISYM:%4d"%(h[idx],j[idx],misym.data[idx]))

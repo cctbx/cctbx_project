@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from cctbx import crystal, miller, sgtbx, uctbx
 from iotbx import cif
@@ -8,8 +8,9 @@ from iotbx import crystal_symmetry_from_any
 from iotbx.reflection_file_reader import any_reflection_file
 from libtbx.test_utils import \
      approx_equal, show_diff, Exception_expected, open_tmp_file
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
+from six.moves import zip
 
 
 def exercise_miller_arrays_as_cif_block():
@@ -28,7 +29,7 @@ def exercise_miller_arrays_as_cif_block():
   for key in ('_refln_F_squared_meas', '_refln_F_squared_sigma',
               '_refln_F_calc', '_refln_phase_calc',
               '_refln_A_calc', '_refln_A_calc'):
-    assert key in mas_as_cif_block.cif_block.keys(), key
+    assert (key in mas_as_cif_block.cif_block.keys()), key
   #
   mas_as_cif_block = cif.miller_arrays_as_cif_block(
     ma1, array_type='meas', format="mmcif")
@@ -49,10 +50,10 @@ def exercise_miller_arrays_as_cif_block():
     column_name='_diffrn_refln_intensity_u')
   for key in ('_diffrn_refln_intensity_net', '_diffrn_refln_intensity_sigma',
               '_diffrn_refln_intensity_u'):
-    assert key in mas_as_cif_block.cif_block.keys()
+    assert key in list(mas_as_cif_block.cif_block.keys())
   #
   try: reader(input_string=cif_global)
-  except CifParserError, e: pass
+  except CifParserError as e: pass
   else: raise Exception_expected
   cif_model = reader(input_string=cif_global, strict=False).model()
   assert not show_diff(str(cif_model), """\
@@ -98,7 +99,7 @@ _d                                4
   ma_builder = cif.builders.miller_array_builder(
     cif_model['r3adrAsf'],
     base_array_info=miller.array_info(crystal_symmetry_from_file=cs))
-  miller_arrays = ma_builder.arrays().values()
+  miller_arrays = list(ma_builder.arrays().values())
   assert len(miller_arrays) == 4
   mas_as_cif_block = cif.miller_arrays_as_cif_block(
       miller_arrays[0].map_to_asu(),
@@ -113,7 +114,7 @@ _d                                4
     mas_as_cif_block.add_miller_array(
       array=array.map_to_asu(), column_names=array.info().labels)
   s = StringIO()
-  print >> s, mas_as_cif_block.refln_loop
+  print(mas_as_cif_block.refln_loop, file=s)
   assert not show_diff(s.getvalue(), """\
 loop_
   _refln_index_h
@@ -185,9 +186,9 @@ data_2
 _b 2
 """
   cm = cif.reader(input_string=cif_str_1).model()
-  assert cm.keys() == ['1']
+  assert list(cm.keys()) == ['1']
   cif.reader(input_string=cif_str_2, cif_object=cm).model()
-  assert cm.keys() == ['1', '2']
+  assert list(cm.keys()) == ['1', '2']
   try: cm = cif.reader(input_string=cif_invalid_loop).model()
   except CifParserError: pass
   else: raise Exception_expected
@@ -520,7 +521,7 @@ def exercise_atom_type_loop():
   xs.set_inelastic_form_factors(photon=0.71073, table="henke")
   loop = cif.atom_type_cif_loop(xray_structure=xs, format="mmcif")
   s = StringIO()
-  print >> s, loop
+  print(loop, file=s)
   assert not show_diff(
     "\n".join([li.rstrip() for li in s.getvalue().splitlines()]), """\
 loop_
@@ -576,7 +577,7 @@ def exercise_partial_crystal_symmetry():
   assert str(cs.space_group_info()) == "P 1 21/n 1"
   try:
     get_cs(get_inp(True, False))
-  except CifBuilderError, e:
+  except CifBuilderError as e:
     assert str(e) == "Not all unit cell parameters are given in the cif file"
   else: raise Exception_expected
 
@@ -608,7 +609,7 @@ def exercise_mmcif_structure_factors():
   abcd = []
   for key in ('_refln.pdbx_HL_A_iso', '_refln.pdbx_HL_B_iso',
               '_refln.pdbx_HL_C_iso', '_refln.pdbx_HL_D_iso'):
-    assert key in mas_as_cif_block.cif_block.keys()
+    assert key in list(mas_as_cif_block.cif_block.keys())
     abcd.append(flex.double(mas_as_cif_block.cif_block[key]))
   hl_coeffs_from_cif_block = flex.hendrickson_lattman(*abcd)
   assert approx_equal(hl_coeffs.data(), hl_coeffs_from_cif_block)
@@ -879,7 +880,7 @@ def exercise_detect_binary():
   binary_string = '\xff\xf8\x00\x00\x00\x00\x00\x00'
   from iotbx.cif import reader
   try: reader(input_string=binary_string)
-  except CifParserError, e: pass
+  except CifParserError as e: pass
   else: raise Exception_expected
 
 def exercise_syntax_errors():
@@ -893,7 +894,7 @@ _b
 3 4
 """
   try: cif.reader(input_string=empty_loop_str)
-  except CifParserError, e: pass
+  except CifParserError as e: pass
   else: raise Exception_expected
   bad_semicolon_text_field = """\
 data_sucrose
@@ -904,7 +905,7 @@ Final HKLF 4 output contains 64446 reflections, Rint = 0.0650
  (47528 with I > 3sig(I), Rint = 0.0624);
 """
   try: cif.reader(input_string=bad_semicolon_text_field)
-  except CifParserError, e: pass
+  except CifParserError as e: pass
   else: raise Exception_expected
 
 def exercise_missing_atom_site_type_symbol():
@@ -1039,4 +1040,4 @@ def exercise():
 
 if __name__ == '__main__':
   exercise()
-  print "OK"
+  print("OK")

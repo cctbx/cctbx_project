@@ -1,4 +1,4 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import absolute_import, division, print_function
 
 '''
 Author      : Lyubimov, A.Y.
@@ -18,9 +18,10 @@ from iota.components.iota_base import SingleImageBase, ImageImporterBase
 class SingleImage(SingleImageBase):    # For current cctbx.xfel
   def __init__(self, imgpath, idx=None):
     SingleImageBase.__init__(self, imgpath=imgpath, idx=idx)
-    self.center_int = None
+    self.center_int = 0
     self.gain = 1.0
     self.img_index = idx
+
 
 class ImageImporter(ImageImporterBase):
   def __init__(self, **kwargs):

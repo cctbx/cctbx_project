@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import os, time
 import libtbx.load_env
@@ -13,11 +13,9 @@ from xfel.ui.db.stats import Stats
 from xfel.ui.db.experiment import Cell, Bin, Isoform, Event
 
 from xfel.ui.db import get_db_connection
-
-try:
-  from MySQLdb import OperationalError
-except ImportError:
-  raise Sorry('Mysql not available')
+from six.moves import range
+import six
+from six.moves import zip
 
 from xfel.command_line.experiment_manager import initialize as initialize_base
 
@@ -55,7 +53,7 @@ class initialize(initialize_base):
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
-      column_names = zip(*columns)[0]
+      column_names = list(zip(*columns))[0]
       if 'two_theta_low' not in column_names and 'two_theta_high' not in column_names:
         query = """
           ALTER TABLE %s_event
@@ -73,7 +71,7 @@ class initialize(initialize_base):
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
-      column_names = zip(*columns)[0]
+      column_names = list(zip(*columns))[0]
       if 'submission_id' not in column_names:
         query = """
           ALTER TABLE %s_job
@@ -86,7 +84,7 @@ class initialize(initialize_base):
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
-      column_names = zip(*columns)[0]
+      column_names = list(zip(*columns))[0]
       for needed_column, column_format in zip(['format', 'two_theta_low', 'two_theta_high'],
                                               ["VARCHAR(45) NOT NULL DEFAULT 'pickle'",
                                                "DOUBLE NULL", "DOUBLE NULL"]):
@@ -102,7 +100,7 @@ class initialize(initialize_base):
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
-      column_names = zip(*columns)[0]
+      column_names = list(zip(*columns))[0]
       if 'd_min' not in column_names:
         query = """
           ALTER TABLE `%s_trial`
@@ -113,7 +111,7 @@ class initialize(initialize_base):
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
-      column_names = zip(*columns)[0]
+      column_names = list(zip(*columns))[0]
       if 'trial_id' not in column_names:
         query = """
           ALTER TABLE `%s_cell`
@@ -127,7 +125,7 @@ class initialize(initialize_base):
       query = "SHOW TABLES LIKE '%s_rungroup_run'"%(self.params.experiment_tag)
       cursor.execute(query)
       if cursor.rowcount == 0:
-        print "Upgrading to version 4 of mysql database schema"
+        print("Upgrading to version 4 of mysql database schema")
         query = """
         CREATE TABLE IF NOT EXISTS `%s`.`%s_rungroup_run` (
           `rungroup_id` INT NOT NULL,
@@ -160,11 +158,11 @@ class initialize(initialize_base):
             # This run is 'open', so get the last run available and update the open bit for the rungroup
             query = 'SELECT run FROM `%s_run`'%self.params.experiment_tag
             cursor.execute(query)
-            endrun = max(zip(*cursor.fetchall())[0])
+            endrun = max(list(zip(*cursor.fetchall()))[0])
             query = 'UPDATE `%s_rungroup` set open = 1 where id = %d'%(self.params.experiment_tag, rungroup_id)
             cursor.execute(query)
           # Add all thr runs to the rungroup
-          for run in xrange(startrun, endrun+1):
+          for run in range(startrun, endrun+1):
             query = 'SELECT id FROM `%s_run` run WHERE run.run = %d'%(self.params.experiment_tag, run)
             cursor.execute(query)
             rows = cursor.fetchall(); assert len(rows) <= 1
@@ -207,6 +205,7 @@ class initialize(initialize_base):
 class db_application(object):
   def __init__(self, params):
     self.params = params
+    self.dbobj = None
 
   def execute_query(self, query, commit = False):
     if self.params.db.verbose:
@@ -219,6 +218,10 @@ class db_application(object):
     sleep_time = 0.1
     while retry_count < retry_max:
       try:
+        if self.dbobj is None or not commit:
+          self.dbobj = dbobj = get_db_connection(self.params)
+        else:
+          dbobj = self.dbobj
         dbobj = get_db_connection(self.params)
         cursor = dbobj.cursor()
         cursor.execute(query)
@@ -228,21 +231,21 @@ class db_application(object):
         if self.params.db.verbose:
           et = time() - st
           if et > 1:
-            print 'Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, et), query[:min(len(query),145)]
+            print('Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, et), query[:min(len(query),145)])
         return cursor
       except OperationalError as e:
         if "Can't connect to MySQL server" not in str(e):
-          print query
+          print(query)
           raise e
         retry_count += 1
-        print "Couldn't connect to MYSQL, retry", retry_count
+        print("Couldn't connect to MYSQL, retry", retry_count)
         time.sleep(sleep_time)
         sleep_time *= 2
       except Exception as e:
-        print "Couldn't execute MYSQL query.  Query:"
-        print query
-        print "Exception:"
-        print str(e)
+        print("Couldn't execute MYSQL query.  Query:")
+        print(query)
+        print("Exception:")
+        print(str(e))
         raise e
     raise Sorry("Couldn't execute MYSQL query. Too many reconnects. Query: %s"%query)
 
@@ -258,19 +261,26 @@ class xfel_db_application(db_application):
 
     if verify_tables and not self.verify_tables():
       self.create_tables()
-      print 'Creating experiment tables...'
+      print('Creating experiment tables...')
       if not self.verify_tables():
         raise Sorry("Couldn't create experiment tables")
 
     self.columns_dict = self.init_tables.set_up_columns_dict(self)
 
   def list_lcls_runs(self):
-    from xfel.xpp.simulate import file_table
-    query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.facility.lcls.experiment)
-    FT = file_table(self.params.facility.lcls, query, enforce80=self.params.facility.lcls.web.enforce80, enforce81=self.params.facility.lcls.web.enforce81)
-    runs = FT.get_runs()
-    for r in runs: r['run'] = str(r['run'])
-    return runs
+    if self.params.facility.lcls.web.user is None or len(self.params.facility.lcls.web.user) == 0:
+      from xfel.command_line.auto_submit import match_runs
+      import os
+      exp_prefix = self.params.facility.lcls.experiment[0:3].upper()
+      xtc_dir = os.path.join(os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm'), exp_prefix, self.params.facility.lcls.experiment, 'xtc')
+      return [{'run':str(r.id)} for r in match_runs(xtc_dir, False)]
+    else:
+      from xfel.xpp.simulate import file_table
+      query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.facility.lcls.experiment)
+      FT = file_table(self.params.facility.lcls, query, enforce80=self.params.facility.lcls.web.enforce80, enforce81=self.params.facility.lcls.web.enforce81)
+      runs = FT.get_runs()
+      for r in runs: r['run'] = str(r['run'])
+      return runs
 
   def verify_tables(self):
     return self.init_tables.verify_tables()
@@ -299,7 +309,7 @@ class xfel_db_application(db_application):
         isoforms = trial_params.indexing.stills.isoforms
       if len(isoforms) > 0:
         for isoform in isoforms:
-          print "Creating isoform", isoform.name
+          print("Creating isoform", isoform.name)
           db_isoform = Isoform(self,
                                name = isoform.name,
                                trial_id = trial.id)
@@ -322,7 +332,7 @@ class xfel_db_application(db_application):
       else:
         if trial_params.indexing.known_symmetry.unit_cell is not None and \
             trial_params.indexing.known_symmetry.space_group is not None:
-          print "Creating target cell"
+          print("Creating target cell")
           unit_cell = trial_params.indexing.known_symmetry.unit_cell
           symbol = str(trial_params.indexing.known_symmetry.space_group)
           a, b, c, alpha, beta, gamma = unit_cell.parameters()
@@ -490,7 +500,7 @@ class xfel_db_application(db_application):
       _id = d.pop("id")
       d["%s_id"%name] = _id
       results.append(cls(self, **d)) # instantiate the main class
-      for sub_d_n, sub_d in sub_ds.iteritems():
+      for sub_d_n, sub_d in six.iteritems(sub_ds):
         _id = sub_d[1].pop("id")
         sub_d[1]["%s_id"%sub_d_n] = _id
         setattr(results[-1], sub_d_n, sub_d[0](self, **sub_d[1])) # instantiate the sub items
@@ -693,11 +703,39 @@ class xfel_db_application(db_application):
   def get_stats(self, **kwargs):
     return Stats(self, **kwargs)
 
+# Deprecated, but preserved here in case it proves useful later
+"""
+class sacla_run_finder(object):
+  def __init__(self, params):
+    self.params = params
+    self.known_runs = []
+
+  def list_runs(self):
+    import dbpy
+    assert self.params.facility.sacla.start_run is not None
+    runs = []
+    run = self.params.facility.sacla.start_run
+    while True:
+      if run in self.known_runs:
+        run += 1
+        continue
+      try:
+        info = dbpy.read_runinfo(self.params.facility.sacla.beamline, run)
+      except dbpy.APIError:
+        break
+      if info['runstatus'] == 0:
+        runs.append(run)
+        self.known_runs.append(run)
+      run += 1
+
+    return self.known_runs
+"""
+
 class standalone_run_finder(object):
   def __init__(self, params):
     self.params = params
 
-  def list_standalone_runs(self):
+  def list_runs(self):
     import glob
 
     runs = []
@@ -711,13 +749,20 @@ class standalone_run_finder(object):
             runs.append((foldername + "_" + os.path.splitext(filename)[0], filepath))
         else:
           files = sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template)))
-          if len(files) > 0:
+          if len(files) >= self.params.facility.standalone.folders.n_files_needed:
             runs.append((foldername, os.path.join(path, self.params.facility.standalone.template)))
     elif self.params.facility.standalone.monitor_for == 'files':
       if not self.params.facility.standalone.composite_files:
-        print "Warning, monitoring a single folder for single image files is inefficient"
+        print("Warning, monitoring a single folder for single image files is inefficient")
       path = self.params.facility.standalone.data_dir
       for filepath in sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template))):
+        if self.params.facility.standalone.files.last_modified > 0:
+          if time.time() - os.path.getmtime(filepath) < self.params.facility.standalone.files.last_modified:
+            continue
+        if self.params.facility.standalone.files.minimum_file_size > 0:
+          statinfo = os.stat(filepath)
+          if statinfo.st_size < self.params.facility.standalone.files.minimum_file_size:
+            continue
         filename = os.path.basename(filepath)
         runs.append((os.path.splitext(filename)[0], filepath))
 
@@ -729,8 +774,8 @@ class cheetah_run_finder(standalone_run_finder):
     self.known_runs = []
     self.known_bad_runs = []
 
-  def list_standalone_runs(self):
-    runs = super(cheetah_run_finder, self).list_standalone_runs()
+  def list_runs(self):
+    runs = super(cheetah_run_finder, self).list_runs()
 
     good_runs = []
     for name, path in runs:
@@ -743,7 +788,7 @@ class cheetah_run_finder(standalone_run_finder):
         if len(status_lines) != 1: continue
         l = status_lines[0].strip()
         status = l.split(',')[-1].split('=')[-1]
-        print name, status
+        print(name, status)
         if status == 'Finished':
           good_runs.append((name, path))
           self.known_runs.append(name)

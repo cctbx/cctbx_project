@@ -1,5 +1,3 @@
-from __future__ import division
-
 """Test case dramatically improves LBFGS multiparameter refinement by
 using curvatures to provide relative weightings for the contributions of
 each parameter to the target functional.
@@ -7,6 +5,8 @@ This implementation is based on code from Ralf Grosse-Kunstleve
 in the module scitbx/lbfgs/dev/twisted_gaussian.py.
 Here, the re-usable part of the code is abstracted to a mix-in class
 that can be used by any other application wishing to use curvatures."""
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 def lbfgs_run(target_evaluator,
               min_iterations=0,
@@ -39,9 +39,9 @@ def lbfgs_run(target_evaluator,
         requests_diag=requests_diag)
       if verbose:
         if (requests_diag):
-          print "x,f,d:", tuple(x), f, tuple(d)
+          print("x,f,d:", tuple(x), f, tuple(d))
         else:
-          print "x,f:", tuple(x), f
+          print("x,f:", tuple(x), f)
       if (use_curvatures):
         from scitbx.array_family import flex
         if (d is None): d = flex.double(x.size())
@@ -69,7 +69,7 @@ def lbfgs_run(target_evaluator,
       if (not have_request): break
       requests_f_and_g = minimizer.requests_f_and_g()
       requests_diag = minimizer.requests_diag()
-  except RuntimeError, e:
+  except RuntimeError as e:
     minimizer.error = str(e)
   minimizer.n_calls = icall
   return minimizer
@@ -141,13 +141,13 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
       max_iterations=1000,
       use_curvatures=use_curvatures)
     if self.verbose:
-      print ["%8.5f"%a for a in self.x[0::2]]
-      print ["%8.5f"%a for a in self.x[1::2]]
+      print(["%8.5f"%a for a in self.x[0::2]])
+      print(["%8.5f"%a for a in self.x[1::2]])
 
   def curvatures(self):
     from scitbx.array_family import flex
     curvs = flex.double([0.]*12)
-    for x in xrange(6):
+    for x in range(6):
       selection = (self.master_groups==x)
       curvs[2*x] = 2. * selection.count(True)
       curvs[2*x+1]=2. * selection.count(True)
@@ -160,7 +160,7 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
     self.model_mean_x = flex.double(len(self.observed_x))
     self.model_mean_y = flex.double(len(self.observed_x))
 
-    for x in xrange(6):
+    for x in range(6):
       selection = (self.master_groups==x)
       self.model_mean_x.set_selected(selection, self.x[2*x])
       self.model_mean_y.set_selected(selection, self.x[2*x+1])
@@ -172,12 +172,12 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
     f = flex.sum(delrsq)
 
     gradients = flex.double([0.]*12)
-    for x in xrange(6):
+    for x in range(6):
       selection = (self.master_groups==x)
       gradients[2*x] = -2. * flex.sum( delx.select(selection) )
       gradients[2*x+1]=-2. * flex.sum( dely.select(selection) )
     if self.verbose:
-      print "Functional ",math.sqrt(flex.mean(delrsq))
+      print("Functional ",math.sqrt(flex.mean(delrsq)))
     self.count_iterations += 1
     return f,gradients
 
@@ -191,7 +191,7 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
     random.seed(0.0)
 
     for group_N in [30000, 25000, 20000, 10000, 2000, 5]:  # six data groups of different sizes
-      for x in xrange(group_N):
+      for x in range(group_N):
         self.observed_x.append( random.gauss(0.,1.) )
         self.observed_y.append( random.gauss(0.,1.) )
         self.master_groups.append(igroup)
@@ -199,13 +199,13 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
 
     self.known_mean_x = flex.double()
     self.known_mean_y = flex.double()
-    for x in xrange(6):
+    for x in range(6):
       selection = (self.master_groups==x)
       self.known_mean_x.append( flex.mean( self.observed_x.select(selection) ) )
       self.known_mean_y.append( flex.mean( self.observed_y.select(selection) ) )
     if self.verbose:
-      print ["%8.5f"%a for a in self.known_mean_x]
-      print ["%8.5f"%a for a in self.known_mean_y]
+      print(["%8.5f"%a for a in self.known_mean_x])
+      print(["%8.5f"%a for a in self.known_mean_y])
 
 def run(verbose=False):
 
@@ -219,4 +219,4 @@ def run(verbose=False):
 if (__name__ == "__main__"):
 
   result = run(verbose=False)
-  print "OK"
+  print("OK")

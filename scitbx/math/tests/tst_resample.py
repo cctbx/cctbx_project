@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.math
 from scitbx.array_family import flex
 import math
+from six.moves import range
 
 def test_resample(seed=0):
   obs_ori=flex.double(range(20))
@@ -50,7 +51,7 @@ def test_resample(seed=0):
 def run():
   for ii in range(10):
     test_resample(ii)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

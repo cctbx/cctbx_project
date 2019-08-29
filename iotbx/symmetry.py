@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import group_args
 from libtbx.utils import Sorry
 import os
@@ -59,7 +59,7 @@ class manager(object):
       from cctbx import sgtbx
       try :
         self.current_space_group = sgtbx.space_group_info(space_group)
-      except RuntimeError, e :
+      except RuntimeError as e :
         if ("symbol not recognized" in str(e)):
           raise Sorry(("The current value for the space group parameter, "+
             "'%s', could not be recognized as a valid space group symbol.") %
@@ -124,7 +124,7 @@ class manager(object):
       try :
         symm = crystal.symmetry(space_group=self.current_space_group.group(),
           unit_cell=self.current_unit_cell)
-      except AssertionError, e :
+      except AssertionError as e :
         raise Sorry("Unit cell parameters are not consistent with the "+
           "currently set space group.  Please make sure that the symmetry "+
           "information is entered correctly.")
@@ -180,8 +180,8 @@ class manager(object):
     all_file_names = self.pdb_file_names + self.reflection_file_names
     for file_name in all_file_names :
       space_group, unit_cell = self.symmetry_by_file[file_name]
-      print >> out, "%s: %s %s" % (os.path.basename(file_name), str(unit_cell),
-        str(space_group))
+      print("%s: %s %s" % (os.path.basename(file_name), str(unit_cell),
+        str(space_group)), file=out)
 
 # FIXME combine with the above code
 # exercised as part of mmtbx/regression/tst_combine_symmetry.py

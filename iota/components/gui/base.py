@@ -1,9 +1,9 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import absolute_import, division, print_function
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 11/15/2018
-Last Changed: 01/30/2019
+Last Changed: 07/17/2019
 Description : IOTA GUI base classes (with backwards compatibility for
               wxPython 3)
 '''
@@ -16,7 +16,8 @@ from wx.lib.scrolledpanel import ScrolledPanel
 from wxtbx import bitmaps
 from iotbx.phil import parse
 
-import iota.components.iota_ui_controls as ct
+import iota.components.gui.controls as ct
+from iota.components import gui
 from iota.components.iota_utils import norm_font_size
 
 wx4 = wx.__version__[0] == '4'
@@ -30,6 +31,7 @@ gui
     .type = choice
     .help = Select image viewer (GUI only)
     .alias = Image Viewer
+    .optional = False
   monitor_mode = False
     .type = bool
     .help = Set to true to keep watch for incoming images (GUI only)
@@ -45,19 +47,60 @@ gui
 }
 ''')
 
+
 class IOTAFrameError(Exception):
   def __init__(self, msg):
     Exception.__init__(self, msg)
 
-class IOTABaseFrame(wx.Frame):
+
+class IOTABaseFrame(wx.Frame, gui.IOTAWindowMixin):
   """ New frame that will show processing info """
 
   def __init__(self, parent, id, title, *args, **kwargs):
     wx.Frame.__init__(self, parent, id, title, *args, **kwargs)
     self.parent = parent
+    self.window = self.GetTopLevelParent()
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.main_sizer)
+
+    # Status bar
+    self.sb = self.CreateStatusBar()
+    self.sb.SetFieldsCount(3)
+    self.sb.SetStatusWidths([320, 200, -2])
+
+    # Menu bar
+    menubar = wx.MenuBar()
+
+    m_help = wx.Menu()
+    m_file = wx.Menu()
+    self.mb_load_script = m_file.Append(wx.ID_OPEN, '&Load Script...')
+    self.mb_save_script = m_file.Append(wx.ID_SAVE, '&Save Script...')
+    m_file.AppendSeparator()
+    self.mb_reset = m_file.Append(wx.ID_ANY, '&Reset Settings')
+    self.mb_about = m_help.Append(wx.ID_ANY, '&About')
+    menubar.Append(m_file, '&File')
+    menubar.Append(m_help, '&Help')
+
+    self.SetMenuBar(menubar)
+
+    # Menubar button bindings
+    self.Bind(wx.EVT_MENU, self.OnAboutBox, self.mb_about)
+    self.Bind(wx.EVT_MENU, self.onOutputScript, self.mb_save_script)
+    self.Bind(wx.EVT_MENU, self.onLoadScript, self.mb_load_script)
+    self.Bind(wx.EVT_MENU, self.onReset, self.mb_reset)
+
+  def OnAboutBox(self, e):
+    e.Skip()
+
+  def onOutputScript(self, e):
+    e.Skip()
+
+  def onLoadScript(self, e):
+    e.Skip()
+
+  def onReset(self, e):
+    e.Skip()
 
   def initialize_toolbar(self):
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS | wx.TB_TEXT)
@@ -116,91 +159,90 @@ class IOTABaseFrame(wx.Frame):
       self.toolbar.ToggleTool(id, toggle)
 
 
-  def place_and_size(self, set_size=False, set_by=None, center=False):
-    """ Place and size the frame"""
-
-    # Determine effective minimum size
-    if set_size:
-      self.SetMinSize(self.GetEffectiveMinSize())
-
-    # Find mouse position
-    if set_by == 'mouse':
-      self.SetPosition(wx.GetMousePosition())
-    elif set_by == 'parent':
-      self.SetPosition(self.set_relative_position())
-    else:
-      self.SetPosition((0, 0))
-
-    # Center on display
-    if center:
-      self.Center()
-
-  def set_relative_position(self):
-    """ Determines screen position w/ respect to parent window; will also
-    detect if it goes beyond the display edge, and adjust """
-
-    # Position proc window w/ respect to IOTA window
-    mx, my = self.parent.GetPosition()
-    px = mx + 50
-    py = my + 50
-
-    # Calculate if proc window is going out of bounds, and adjust
-    disp_idx = wx.Display.GetFromWindow(self.parent)
-    disp_geom = wx.Display(disp_idx).GetClientArea()
-    dxmin = disp_geom[0]
-    dxmax = disp_geom[0] + disp_geom[2]
-    dymin = disp_geom[1]
-    dymax = disp_geom[1] + disp_geom[3]
-
-    pw, pl = self.GetSize()
-    if not (px + pw * 1.1 in range(dxmin, dxmax)):
-      px = dxmax - pw * 1.1
-    if not (py + pl * 1.1 in range(dymin, dymax)):
-      py = dymax - pl * 1.1
-
-    return (px, py)
-
-
 class IOTABasePanel(wx.Panel):
-  def __init__(self, parent, *args, **kwargs):
-    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=(800, 500),
-                      *args, **kwargs)
+  def __init__(self, parent, box=None, direction=wx.VERTICAL,
+               *args,  **kwargs):
+    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, *args, **kwargs)
 
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.window = self.GetTopLevelParent()
+    self.parent = parent
+
+    if box:
+      assert type(box) == str
+      panel_box = wx.StaticBox(self, label=box)
+      self.main_sizer = wx.StaticBoxSizer(panel_box, direction)
+    else:
+      self.main_sizer = wx.BoxSizer(direction)
+
     self.SetSizer(self.main_sizer)
 
-class BaseDialog(wx.Dialog):
+
+class IOTABaseScrolledPanel(ScrolledPanel):
+  def __init__(self, parent, box=None, direction=wx.VERTICAL, *args, **kwargs):
+    ScrolledPanel.__init__(self, parent=parent, id=wx.ID_ANY, *args, **kwargs)
+
+    self.window = self.GetTopLevelParent()
+    self.parent = parent
+
+    if box:
+      assert type(box) == str
+      panel_box = wx.StaticBox(self, label=box)
+      self.main_sizer = wx.StaticBoxSizer(panel_box, direction)
+    else:
+      self.main_sizer = wx.BoxSizer(direction)
+
+    self.SetupScrolling()
+
+
+class FormattedDialog(wx.Dialog, gui.IOTAWindowMixin):
   def __init__(self, parent, style=wx.DEFAULT_DIALOG_STYLE,
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
     wx.Dialog.__init__(self, parent, style=style, *args, **kwargs)
+    self.window = parent.GetTopLevelParent()
+    self.parent = parent
 
     self.envelope = wx.BoxSizer(wx.VERTICAL)
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.envelope.Add(self.main_sizer, 1, flag=wx.EXPAND | wx.ALL, border=5)
     self.SetSizer(self.envelope)
 
     if label_style == 'normal':
-      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
+      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                          wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
     elif label_style == 'bold':
-      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
+      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                          wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
     elif label_style == 'italic':
-      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_NORMAL)
+      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                          wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_NORMAL)
     elif label_style == 'italic_bold':
-      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD)
+      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                          wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD)
 
     if content_style == 'normal':
-      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
+      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                           wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
     elif content_style == 'bold':
-      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
+      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                           wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
     elif content_style == 'italic':
-      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_NORMAL)
+      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                           wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_NORMAL)
     elif content_style == 'italic_bold':
-      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD)
+      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                           wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD)
 
 
-class BaseBackendDialog(BaseDialog):
+
+class IOTABaseDialog(FormattedDialog):
+  def __init__(self, *args, **kwargs):
+    super(IOTABaseDialog, self).__init__(*args, **kwargs)
+
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.envelope.Add(self.main_sizer, 1, flag=wx.EXPAND | wx.ALL, border=5)
+
+
+class BaseBackendDialog(IOTABaseDialog):
   def __init__(self, parent, phil,
                backend_name = 'BACKEND',
                target=None,
@@ -209,10 +251,10 @@ class BaseBackendDialog(BaseDialog):
                opt_size=(500, 500),
                phil_size=(500, 500),
                *args, **kwargs):
-    BaseDialog.__init__(self, parent,
-                        content_style=content_style,
-                        label_style=label_style,
-                        *args, **kwargs)
+    IOTABaseDialog.__init__(self, parent,
+                            content_style=content_style,
+                            label_style=label_style,
+                            *args, **kwargs)
 
     self.parent = parent
     self.target_phil = target
@@ -303,12 +345,13 @@ class BaseBackendDialog(BaseDialog):
                                      write_param_file=False)
     self.target_phil = default_phil.as_str()
 
-class BaseOptionsDialog(BaseDialog):
+
+class BaseOptionsDialog(IOTABaseDialog):
   ''' Test class to work out AutoPHIL, etc. '''
 
   def __init__(self, parent, input, *args, **kwargs):
     dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
-    BaseDialog.__init__(self, parent, style=dlg_style, *args, **kwargs)
+    IOTABaseDialog.__init__(self, parent, style=dlg_style, *args, **kwargs)
 
     self.parent = parent
 
@@ -321,77 +364,6 @@ class BaseOptionsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
-    self.Fit()
+    self.Layout()
 
-
-class PHILPanelFactory(IOTABasePanel):
-  def __init__(self, parent, objects, layers=None, *args, **kwargs):
-    IOTABasePanel.__init__(self, parent=parent, *args, **kwargs)
-
-    self.layers = layers
-
-    for obj in objects:
-      if type(obj) in (list, tuple):
-        pass
-      elif obj.is_scope:
-        self.add_scope_box(obj=obj)
-      elif obj.is_definition:
-        self.add_definition_control(self, obj)
-
-
-  def get_all_path_names(self, phil_object, paths=None):
-    if paths is None:
-      paths = []
-    if phil_object.is_scope:
-      for object in phil_object.objects:
-        paths = self.get_all_path_names(object, paths)
-        paths.extend(paths)
-    elif phil_object.is_definition:
-      full_path = phil_object.full_path()
-      if not full_path in paths:
-        paths.append(full_path)
-    return paths
-
-  def add_definition_control(self, parent, obj):
-    alias = obj.alias_path()
-    label = alias if alias else obj.full_path().split('.')[-1]
-
-    wdg = ct.WidgetFactory.make_widget(parent, obj, label)
-    sizer = parent.GetSizer()
-    sizer.Add(wdg, flag=wx.RIGHT|wx.LEFT|wx.BOTTOM|wx.EXPAND,
-                        border=5)
-    self.__setattr__(label, wdg)
-
-  def add_scope_box(self, obj):
-    obj_name = obj.full_path().split('.')[-1]
-    label = obj.alias_path() if obj.alias_path() else obj_name
-
-    # Make scope panel
-    panel = wx.Panel(self)
-    box = wx.StaticBox(panel, label=label)
-    box_sz = wx.StaticBoxSizer(box, wx.VERTICAL)
-    panel.SetSizer(box_sz)
-
-    self.main_sizer.Add(panel, flag=wx.ALL|wx.EXPAND, border=10)
-
-    # Add widgets to box (do one layer so far)
-    for box_obj in obj.active_objects():
-      if box_obj.is_definition:
-        self.add_definition_control(panel, box_obj)
-
-  @classmethod
-  def from_scope_objects(cls, parent, scope):
-
-    scope_type = type(scope).__name__
-    if scope_type in ('list', 'tuple'):
-      objects = (r for r in scope)
-    elif scope_type == 'scope':
-      objects = scope.active_objects()
-    else:
-      objects = scope
-
-    return cls(parent, objects)
-
-  @classmethod
-  def from_filename(cls, filepath):
-    pass
+# -- end

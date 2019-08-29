@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.utils import get_atom_selections
 import mmtbx.utils
 from cctbx.array_family import flex
@@ -7,6 +7,7 @@ from scitbx import lbfgs
 from libtbx.str_utils import format_value, make_sub_header
 from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
+from six.moves import range
 
 class manager(object):
   def __init__(self, fmodels,
@@ -66,7 +67,7 @@ class manager(object):
           par_initial.append(val)
         constrained_groups_selections.append(ss)
       minimized = None
-      for macro_cycle in xrange(number_of_macro_cycles):
+      for macro_cycle in range(number_of_macro_cycles):
         if(minimized is not None): par_initial = minimized.par_min
         minimized = minimizer(
           fmodels                       = fmodels,
@@ -96,22 +97,21 @@ class manager(object):
 
   def show(self, fmodels, message, log):
     if(log is not None):
-      print >> log, "|-"+message+"-"*(79-len("|-"+message+"|"))+"|"
+      print("|-"+message+"-"*(79-len("|-"+message+"|"))+"|", file=log)
       fm_x, fm_n = fmodels.fmodel_xray(), fmodels.fmodel_neutron()
       if(fm_n is not None):
-        print >> log, "|"+" "*36+"X-ray"+" "*36+"|"
+        print("|"+" "*36+"X-ray"+" "*36+"|", file=log)
       self.show_helper(fmodel = fm_x, log = log)
       if(fm_n is not None):
-        print >> log, "|"+" "*35+"neutron"+" "*35+"|"
+        print("|"+" "*35+"neutron"+" "*35+"|", file=log)
         self.show_helper(fmodel = fm_n, log = log)
       occupancies = fm_x.xray_structure.scatterers().extract_occupancies()
       occ_max = format_value("%4.2f", flex.max(occupancies))
       occ_min = format_value("%4.2f", flex.min(occupancies))
       number_small = format_value("%8d", (occupancies < 0.1).count(True))
-      print >> log, \
-        "| occupancies: max = %s  min = %s   number of occupancies < 0.1: %s |"%(
-        occ_max, occ_min, number_small)
-      print >> log, "|"+"-"*77+"|"
+      print("| occupancies: max = %s  min = %s   number of occupancies < 0.1: %s |"%(
+        occ_max, occ_min, number_small), file=log)
+      print("|"+"-"*77+"|", file=log)
 
   def show_helper(self, fmodel, log):
     r_work = format_value("%6.4f", fmodel.r_work())
@@ -120,7 +120,7 @@ class manager(object):
     target_name = format_value("%s", fmodel.target_name)
     p1 = "| r_work = %s r_free = %s" % (r_work, r_free)
     p2 = "target_work(%s) = %s |" % (target_name, target)
-    print >> log, p1+" "*(79-len(p1+p2))+p2
+    print(p1+" "*(79-len(p1+p2))+p2, file=log)
 
 class minimizer(object):
   def __init__(self,
@@ -555,7 +555,7 @@ def assemble_constraint_groups_3d(
   if (log is None):
     log = null_out()
   make_sub_header("Correlated occupancy grouping", out=log)
-  print >> log, """
+  print("""
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!                  WARNING - EXPERIMENTAL FEATURE                        !!
   !!                                                                        !!
@@ -563,7 +563,7 @@ def assemble_constraint_groups_3d(
   !! tested.  Use at your own risk!  For bug reports, etc. contact us by    !!
   !! email at bugs@phenix-online.org.                                       !!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-"""
+""", file=log)
   occupancies = pdb_atoms.extract_occ()
   pair_asu_table = xray_structure.pair_asu_table(
     distance_cutoff=interaction_distance_cutoff)
@@ -572,12 +572,12 @@ def assemble_constraint_groups_3d(
   n_groups_start = len(constraint_groups)
   while (k < len(constraint_groups)):
     groups = constraint_groups[k]
-    print >> log, "Constraint group %d: %d conformers" % (k+1, len(groups))
+    print("Constraint group %d: %d conformers" % (k+1, len(groups)), file=log)
     merge_constraints = []
     for i_sel, selection in enumerate(groups):
       occ = occupancies.select(selection)
       altloc = pdb_atoms[selection[0]].fetch_labels().altloc
-      print >> log, "  conformer '%s': %d atoms" % (altloc, len(selection))
+      print("  conformer '%s': %d atoms" % (altloc, len(selection)), file=log)
       if (not occ.all_eq(occ[0])):
         raise Sorry("At least one occupancy constraint group has "+
           "inconsistent occupancies for atoms in a single conformer.  To use "+
@@ -589,7 +589,7 @@ def assemble_constraint_groups_3d(
           continue
         pair_sym_dict = pair_sym_table[i_seq]
         if (verbose):
-          print "%s (group %d):" % (pdb_atoms[i_seq].id_str(), k+1)
+          print("%s (group %d):" % (pdb_atoms[i_seq].id_str(), k+1))
         for j_seq, sym_ops in pair_sym_dict.items():
           kk = k + 1
           while (kk < len(constraint_groups)):
@@ -597,7 +597,7 @@ def assemble_constraint_groups_3d(
             for other_selection in constraint_groups[kk] :
               if (j_seq in other_selection):
                 if (verbose):
-                  print "  %s (group %d)" % (pdb_atoms[j_seq].id_str(), kk+1)
+                  print("  %s (group %d)" % (pdb_atoms[j_seq].id_str(), kk+1))
                 merge_constraints.append(constraint_groups[kk])
                 del constraint_groups[kk]
                 combine_group = True
@@ -605,8 +605,8 @@ def assemble_constraint_groups_3d(
             if (not combine_group):
               kk += 1
     if (len(merge_constraints) > 0):
-      print >> log, "Merging %d constraint groups with group %d" % (
-        len(merge_constraints), (k+1))
+      print("Merging %d constraint groups with group %d" % (
+        len(merge_constraints), (k+1)), file=log)
       for selection in groups :
         first_atom = pdb_atoms[selection[0]]
         altloc = first_atom.fetch_labels().altloc
@@ -619,8 +619,8 @@ def assemble_constraint_groups_3d(
             other_selection = merge_groups[kk]
             altloc2 = pdb_atoms[other_selection[0]].fetch_labels().altloc
             if (altloc2 == altloc):
-              print >> log, "  combining %d atoms with altloc %s" % \
-                (len(other_selection), altloc)
+              print("  combining %d atoms with altloc %s" % \
+                (len(other_selection), altloc), file=log)
               occ1 = occupancies.select(selection)
               occ2 = occupancies.select(other_selection)
               if (not occ1.all_eq(occ2[0])) or (not occ2.all_eq(occ1[0])):
@@ -637,15 +637,15 @@ def assemble_constraint_groups_3d(
         if (len(merge_groups) > 0):
           for other_selection in merge_groups :
             altloc = pdb_atoms[other_selection[0]].fetch_labels().altloc
-            print >> log, ("  warning: %d atoms with altloc %s do not "+
+            print(("  warning: %d atoms with altloc %s do not "+
               "correspond to an existing group") % (len(other_selection),
-              altloc)
+              altloc), file=log)
             groups.append(other_selection)
     k += 1
   if (len(constraint_groups) != n_groups_start):
-    print >> log, "New occupancy constraint groups:"
+    print("New occupancy constraint groups:", file=log)
     for i_group, constraint_group in enumerate(constraint_groups):
-      print >> log, "  group %d:" % (i_group+1)
+      print("  group %d:" % (i_group+1), file=log)
       for selection in constraint_group :
         resids = []
         altlocs = set()
@@ -656,11 +656,11 @@ def assemble_constraint_groups_3d(
           if (not ag_id in resids):
             resids.append(ag_id)
         assert len(altlocs) == 1
-        print >> log, "    conformer '%s' (%d atoms):" % (list(altlocs)[0],
-          len(selection))
+        print("    conformer '%s' (%d atoms):" % (list(altlocs)[0],
+          len(selection)), file=log)
         for ag_id in resids :
-          print >> log, "      atom_group %s" % ag_id
+          print("      atom_group %s" % ag_id, file=log)
   else :
-    print >> log, "Occupancy constraint groups unmodified."
-  print >> log, ""
+    print("Occupancy constraint groups unmodified.", file=log)
+  print("", file=log)
   return constraint_groups

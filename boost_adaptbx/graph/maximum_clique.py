@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import boost.python
+from functools import reduce
 ext = boost.python.import_ext( "boost_adaptbx_graph_maximum_clique_ext" )
 import operator
 

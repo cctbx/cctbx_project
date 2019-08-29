@@ -45,6 +45,7 @@ namespace {
         .def("over", &w_t::over)
         .def("__iter__", scitbx::boost_python::pass_through)
         .def("next", next)
+        .def("__next__", next)
       ;
     }
   };

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os, sys
 
 cif_keyword_dictionary = {
@@ -78,7 +78,7 @@ class empty(object):
     return outl
 
   def __len__(self):
-    return len(self.__dict__.keys())
+    return len(self.__dict__)
 
 def smart_split_cif_line(line):
   line = " %s " % line
@@ -91,7 +91,7 @@ def smart_split_cif_line(line):
     start = line.find(delimiter)
     finish = line.find(delimiter, start+1)
     items = line.split(delimiter)
-    items = filter(None, items)
+    items = list(filter(None, items))
     if not items: break
     item=items[0]
     tmp.append(item)
@@ -107,7 +107,9 @@ def smart_split_cif_line(line):
 
 def run(filename):
   if not os.path.exists(filename): return None
-  lines = open(filename).read().splitlines()
+  lines = []
+  with open(filename) as f:
+    lines = f.read().splitlines()
   merge = True
   while merge:
     merge = []
@@ -197,9 +199,9 @@ def run(filename):
         for ptr, item in enumerate(smart_split_cif_line(line)):
           if ptr in remove_loop_fields.get(cif_key, []): continue
           if len(loop_list)<=i:
-            print 'Problem with CIF line parsing'
-            print line
-            print loop_list
+            print('Problem with CIF line parsing')
+            print(line)
+            print(loop_list)
             continue
           if loop_list[i]=="comp_id": code = item
           if item not in ["?", "."]:
@@ -227,10 +229,10 @@ def run(filename):
         if item not in ["?", "."]:
           try: item = cif_keyword_dictionary[cif_key][sk](item)
           except Exception:
-            print key
-            print sk
-            print cif_key
-            print cif_keyword_dictionary[cif_key].keys()
+            print(key)
+            print(sk)
+            print(cif_key)
+            print(list(cif_keyword_dictionary[cif_key].keys()))
             raise
         setattr(obj, sk, item)
     if len(obj):
@@ -242,7 +244,7 @@ if __name__=="__main__":
   import os, sys
   cif = run(sys.argv[1])
   for key in cif:
-    print '_'*80
-    print key
+    print('_'*80)
+    print(key)
     for item in cif[key]:
-      print item
+      print(item)

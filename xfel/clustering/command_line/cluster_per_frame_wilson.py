@@ -1,5 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME cluster.individual_frame_intensity
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 __author__ = 'zeldin'
 
 import logging

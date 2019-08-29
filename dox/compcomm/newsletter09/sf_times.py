@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Usage
 from libtbx import easy_run
@@ -307,7 +307,7 @@ def build_run(a_out, n_scatt, n_refl, build_cmd, check_max_a_b):
     easy_run.fully_buffered(command=build_cmd).raise_if_errors_or_output()
   else:
     open("a.out", "w").write(a_out)
-    os.chmod("a.out", 0755)
+    os.chmod("a.out", 0o755)
   assert op.isfile("a.out")
   run_cmd = "/usr/bin/time  -p ./a.out"
   buffers = easy_run.fully_buffered(command=run_cmd)
@@ -330,7 +330,7 @@ def build_run(a_out, n_scatt, n_refl, build_cmd, check_max_a_b):
         n_refl=n_refl,
         output_lines=buffers.stdout_lines)
     else:
-      raise RuntimeError, (max_a, max_b)
+      raise RuntimeError(max_a, max_b)
   utime = float(buffers.stderr_lines[1].split()[1])
   return utime
 
@@ -404,14 +404,14 @@ def run_combinations(
       compiler_versions.append(compiler_version)
       a_out = None
     build_cmd = " ".join([compiler, build_opts])
-    print build_cmd
+    print(build_cmd)
     utimes = []
     for real in real_list:
-      print "  %s" % real
+      print("  %s" % real)
       for replace_cos in [False, True]:
-        print "    replace_cos", replace_cos
+        print("    replace_cos", replace_cos)
         for replace_exp in [False, True]:
-          print "      replace_exp", replace_exp
+          print("      replace_exp", replace_exp)
           sys.stdout.flush()
           a_out_key = (build_cmd, replace_cos, replace_exp)
           if (not write_a_out_archive):
@@ -426,14 +426,14 @@ def run_combinations(
               build_cmd=build_cmd,
               replace_cos=replace_cos,
               replace_exp=replace_exp)
-            print "        %4.2f" % utime
+            print("        %4.2f" % utime)
             if (write_a_out_archive):
               a_out_archive[a_out_key] = (
                 compiler_version,
                 open("a.out", "rb").read())
           else:
             utime = -1.0
-            print "        n/a"
+            print("        n/a")
           utimes.append(utime)
           sys.stdout.flush()
     all_utimes.append(utimes)
@@ -514,7 +514,7 @@ def run(args):
       real_list=["float", "double"],
       write_build_run=cpp_write_build_run)
   if (write_a_out_archive and len(a_out_archive) != 0):
-    print "Writing file: a_out_archive.pickle"
+    print("Writing file: a_out_archive.pickle")
     easy_pickle.dump(
       file_name="a_out_archive.pickle",
       obj=(
@@ -525,17 +525,17 @@ def run(args):
         compiler_versions,
         gcc_static,
         a_out_archive))
-  print
-  print "current_platform:", platform.platform()
-  print "current_node:", platform.node()
-  print "build_platform:", build_platform
-  print "build_node:", build_node
-  print 'gcc_static: "%s"' % gcc_static
+  print()
+  print("current_platform:", platform.platform())
+  print("current_node:", platform.node())
+  print("build_platform:", build_platform)
+  print("build_node:", build_node)
+  print('gcc_static: "%s"' % gcc_static)
   for compiler_version in compiler_versions:
-    print "compiler:", compiler_version
-  print "n_scatt * n_refl: %d * %d" % (n_scatt, n_refl)
+    print("compiler:", compiler_version)
+  print("n_scatt * n_refl: %d * %d" % (n_scatt, n_refl))
   for utimes in all_utimes:
-    print " ".join(["%6.2f" % u for u in utimes])
+    print(" ".join(["%6.2f" % u for u in utimes]))
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

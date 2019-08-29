@@ -1,5 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math as m
+from six.moves import range
+from six.moves import zip
 
 def Function(name):
     ''' Easy way to get a function constructor
@@ -144,8 +146,8 @@ if __name__ == "__main__":
     for xx in x:
       for yy in y:
         tmp = [xx/10.0,yy/10.0]
-        print xx/10.0,yy/10.0,
+        print(xx/10.0,yy/10.0, end=' ')
         for name in funcs:
-          print Function(name)(2).eval( tmp ),
-        print
-      print
+          print(Function(name)(2).eval( tmp ), end=' ')
+        print()
+      print()

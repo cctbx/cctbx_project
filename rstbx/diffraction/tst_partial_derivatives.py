@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 #!/usr/bin/env python
 import math
 
@@ -94,4 +94,4 @@ if __name__ == '__main__':
     rotation_scattering(calc,matrix.col((0.,1.,0.)),Amat,wavelength)
     test_finite_differences(calc,matrix.col((0.,1.,0.)),Amat,wavelength)
 
-    print "OK"
+    print("OK")

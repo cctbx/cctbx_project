@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import iotbx.pdb
 import mmtbx.model
@@ -22,7 +22,7 @@ ATOM     23  N   PHE A   1       9.929  10.880  10.444  1.00  2.00           N
 ATOM     24  CA  PHE A   1      11.008  11.488  11.213  1.00  2.00           C
 """
 
-reference_md5 = "10bd3c50dc5857a45df9ed698fe69eb4"
+reference_md5 = "fa81dab6fed0070935b3dc021437918e"
 
 def exercise_1(prefix="tst_add_arrows_on_plot_1"):
   model = mmtbx.model.manager(

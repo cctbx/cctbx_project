@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import shelx
 from cctbx import sgtbx
 import sys
@@ -34,11 +34,11 @@ def convert(file_object):
 def run(args):
   if (len(args) == 0):
     space_group_info = convert(file_object=sys.stdin)
-    print space_group_info.type().lookup_symbol()
+    print(space_group_info.type().lookup_symbol())
   else:
     for file_name in args:
       space_group_info = convert(file_object=open(file_name))
-      print space_group_info.type().lookup_symbol()
+      print(space_group_info.type().lookup_symbol())
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

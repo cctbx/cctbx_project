@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.fmodel
 
 import sys, os
@@ -258,7 +258,7 @@ def set_fp_fdp_for_anomalous_scatterers(pdb_hierarchy, xray_structure,
       scatterers[i_seq].fdp = group.f_double_prime
 
 def run(args, log = sys.stdout):
-  print >> log, legend
+  print(legend, file=log)
   # XXX: pre-processing for GUI; duplicates some of mmtbx.utils
   sources = []
   for arg in args :
@@ -286,8 +286,8 @@ def run(args, log = sys.stdout):
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(
     file_names = processed_args.pdb_file_names)
   pdb_combined.report_non_unique(out = log)
-  print >> log, "-"*79
-  print >> log, "\nParameters to compute Fmodel::\n"
+  print("-"*79, file=log)
+  print("\nParameters to compute Fmodel::\n", file=log)
   processed_args.params.show(out = log, prefix=" ")
   params = processed_args.params.extract()
   if(params.random_seed is not None):
@@ -300,8 +300,8 @@ def run(args, log = sys.stdout):
   pdb_combined.report_non_unique(out = log)
   if(len(pdb_combined.unique_file_names) == 0):
     raise Sorry("Model file is not provided.")
-  print >> log, "-"*79
-  print >> log, "\nInput model file(s):", " ".join(processed_args.pdb_file_names)
+  print("-"*79, file=log)
+  print("\nInput model file(s):", " ".join(processed_args.pdb_file_names), file=log)
   pdb_inp = iotbx.pdb.input(source_info = None,
     lines = flex.std_string(pdb_combined.raw_records))
   # select miller array to use as a set of miller indices for f_model
@@ -311,9 +311,9 @@ def run(args, log = sys.stdout):
   # FIXME this does not pick up the reference_file parameter!  in fact, it
   # appears to be ignored completely when run on the command line.
   if(len(processed_args.reflection_files) == 1):
-    print >> log, "-"*79
-    print >> log, "Input reflection data:", \
-      " ".join(processed_args.reflection_file_names)
+    print("-"*79, file=log)
+    print("Input reflection data:", \
+      " ".join(processed_args.reflection_file_names), file=log)
     if([params.high_resolution, params.low_resolution].count(None) != 2):
       raise Sorry("high_resolution and low_resolution must be undefined "+
                   "if reflection data file is given.")
@@ -378,16 +378,16 @@ def run(args, log = sys.stdout):
     if (params.scattering_table == "neutron"):
       raise Sorry("Wavelength parameter not supported when the neutron "+
         "scattering table is used.")
-    print >> log, "Setting inelastic form factors for wavelength = %g" % \
-      params.wavelength
+    print("Setting inelastic form factors for wavelength = %g" % \
+      params.wavelength, file=log)
     xray_structure.set_inelastic_form_factors(
       photon=params.wavelength,
       table="sasaki")
   #
   validate_params_command_line(params)
   #
-  print >> log, "-"*79
-  print >> log, "Computing model structure factors, Fmodel:"
+  print("-"*79, file=log)
+  print("Computing model structure factors, Fmodel:", file=log)
   if(params.output.format == "cns"): extension = ".hkl"
   elif(params.output.format == "mtz"): extension = ".mtz"
   ofn = params.output.file_name
@@ -406,9 +406,9 @@ def run(args, log = sys.stdout):
     twin_fraction  = params.twin_fraction,
     out            = log).write_to_file(file_name = ofn,
       obs_type=params.output.obs_type)
-  print >> log, "Output file name:", ofn
-  print >> log, "All done."
-  print >> log, "-"*79
+  print("Output file name:", ofn, file=log)
+  print("All done.", file=log)
+  print("-"*79, file=log)
   return ofn
 
 class launcher(runtime_utils.target_with_save_result):

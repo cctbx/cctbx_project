@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from gltbx import wx_viewer
 import wx
 from gltbx.gl import *

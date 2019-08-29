@@ -1,10 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb.atom_selection import selection_string_from_selection
 from iotbx.pdb.atom_selection import get_clean_selection_string
 from mmtbx.ncs.ncs_search import get_chains_info
 from scitbx.array_family import flex
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
+from six.moves import range
+from six.moves import zip
 
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
@@ -558,7 +560,7 @@ def test_avoid_chain_selection2():
   s = "(chain 'H' and resid 48 through 52)"
   assert sel_str1 == s, sel_str1
   #
-  l1 = range(6,25) + range(29,46)
+  l1 = list(range(6,25)) + list(range(29,46))
   isel1 = flex.size_t(l1)
   # s = '(chain H and (resid 48 or resid 49 or resid 50:52))'
   # better way:
@@ -736,7 +738,7 @@ def test_7():
   """
   pdb_h = iotbx.pdb.input(
       source_info=None, lines=test_pdb_9).construct_hierarchy()
-  isel = flex.size_t([0,1,2,3,4]+range(11,27))
+  isel = flex.size_t([0,1,2,3,4]+list(range(11,27)))
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain 'A' and ((resid 124 through 125 and (name N or name CA or name C or name O or name CB )) or resid 126 through 127))", tsel
   # print "tsel", tsel
@@ -744,7 +746,7 @@ def test_7():
 def test_8():
   pdb_h = iotbx.pdb.input(
       source_info=None, lines=test_pdb_10).construct_hierarchy()
-  isel = flex.size_t(range(8)+[8,9,10,11,12]+range(19,35))
+  isel = flex.size_t(list(range(8))+[8,9,10,11,12]+list(range(19,35)))
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain 'A' and (resid 117 or (resid 124 through 125 and (name N or name CA or name C or name O or name CB )) or resid 126 through 127))", tsel
 
@@ -755,7 +757,7 @@ def test_11():
   """
   pdb_h = iotbx.pdb.input(
       source_info=None, lines=test_pdb_11).construct_hierarchy()
-  isel = flex.size_t(range(5)+[6])
+  isel = flex.size_t(list(range(5))+[6])
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain 'A' and (resid 480 through 482 or (resid 483 through 484 and (name CA ))))", tsel
 
@@ -768,7 +770,7 @@ def test_12():
   """
   pdb_h = iotbx.pdb.input(
       source_info=None, lines=test_pdb_12).construct_hierarchy()
-  isel = flex.size_t(range(26)+range(30,45))
+  isel = flex.size_t(list(range(26))+list(range(30,45)))
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain 'A' and (resid 279 through 281 or (resid 282 through 285 and (name N or name CA or name C or name O or name CB ))))", tsel
 
@@ -778,11 +780,11 @@ def test_13():
   """
   pdb_h = iotbx.pdb.input(
       source_info=None, lines=test_pdb_13).construct_hierarchy()
-  isel = flex.size_t(range(20)+range(31,41))
+  isel = flex.size_t(list(range(20))+list(range(31,41)))
   tsel = selection_string_from_selection(pdb_h, isel)
   # print tsel
   assert tsel == "chain 'A'"
-  isel = flex.size_t(range(19)+range(31,41))
+  isel = flex.size_t(list(range(19))+list(range(31,41)))
   tsel = selection_string_from_selection(pdb_h, isel)
   # print tsel
   assert tsel == "(chain 'A' and (resid 260 through 261 or (resid 262 and (name N or name CA or name C or name O )) or resid 301))"
@@ -841,4 +843,4 @@ if __name__=='__main__':
   test_12()
   test_13()
   test_14()
-  print "OK"
+  print("OK")

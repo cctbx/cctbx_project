@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # -*- coding: utf-8 -*-
 from cctbx.xray.structure_factors.manager import manager
 from cctbx.xray.structure_factors.from_scatterers_direct \

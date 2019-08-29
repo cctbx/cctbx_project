@@ -1,0 +1,57 @@
+# Nightly builds
+
+# no continuous integration or pull request builds
+trigger: none
+pr: none
+
+# only nightly builds
+schedules:
+- cron: '0 1 * * *'
+  displayName: Nightly build
+  branches:
+    include:
+    - master
+
+jobs:
+  - template: ./azure-pipelines-syntax.yml
+  - template: ./azure-pipelines-win.yml
+  - template: ./azure-pipelines-linux.yml
+    parameters:
+      distribution: centos
+      version: [6, 10]
+  - template: ./azure-pipelines-linux.yml
+    parameters:
+      distribution: centos
+      version: [7, 6, 1810]
+  - template: ./azure-pipelines-linux.yml
+    parameters:
+      distribution: ubuntu
+      version: ['18', '04']
+  - template: ./azure-pipelines-linux.yml
+    parameters:
+      distribution: ubuntu
+      version: ['16', '04']
+  - template: ./azure-pipelines-linux.yml
+    parameters:
+      distribution: ubuntu
+      version: ['14', '04']
+  - template: ./azure-pipelines-osx.yml
+    parameters:
+      vmImage: [10, 14]
+      xcode_version: [11]
+  - template: ./azure-pipelines-osx.yml
+    parameters:
+      vmImage: [10, 14]
+      xcode_version: [10, 3]
+  - template: ./azure-pipelines-osx.yml
+    parameters:
+      vmImage: [10, 14]
+      xcode_version: [10, 2, 1]
+  - template: ./azure-pipelines-osx.yml
+    parameters:
+      vmImage: [10, 13]
+      xcode_version: [9, 4, 1]
+  - template: ./azure-pipelines-osx.yml
+    parameters:
+      vmImage: [10, 13]
+      xcode_version: [8, 3, 3]

@@ -4,7 +4,7 @@ Deals with examing the atoms around a site and recognizing distinct and useful
 chemical environments.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx import ions
 from iotbx.pdb import common_residue_names_get_class as get_class
 from cctbx.eltbx import sasaki
@@ -12,6 +12,7 @@ from scitbx.matrix import col
 from libtbx.utils import Sorry
 from libtbx import slots_getstate_setstate
 from collections import Counter
+from six.moves import range
 
 # Enums for the chemical environments supported by this module
 N_SUPPORTED_ENVIRONMENTS = 14

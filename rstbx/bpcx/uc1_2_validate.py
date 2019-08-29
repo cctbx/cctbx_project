@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 #!/usr/bin/env python
 #
 # Biostruct-X Data Reduction Use Case 1.2:
@@ -12,6 +12,7 @@ import random
 from cctbx.array_family import flex
 from annlib_ext import AnnAdaptor as ann_adaptor
 from scitbx import matrix
+from six.moves import range
 
 def meansd(values):
 
@@ -77,9 +78,9 @@ def read_integrate_hkl(integrate_hkl):
         if '!' in record[:1]:
             continue
         values = record.split()
-        hkl = map(int, values[:3])
-        xyz = map(float, values[5:8])
-        isigma = map(float, values[3:5])
+        hkl = [int(h) for h in values[:3]]
+        xyz = [float(x) for x in  values[5:8]]
+        isigma = [float(x) for x in values[3:5]]
 
         observations.append((hkl, xyz, isigma))
 
@@ -90,7 +91,7 @@ def read_uc1_2(uc1_2):
 
     for record in open(uc1_2):
         values = record.split()
-        hkl = map(int, values[1:4])
+        hkl = [int(h) for h in values[1:4]]
         xyz = float(values[7]), float(values[8]), float(values[5])
         isigma = float(values[10]), float(values[12])
 
@@ -138,13 +139,13 @@ def validate_predictions(integrate_hkl, uc1_2):
             dzs.append(dz)
             ivalues_o.append(observations[c][2][0])
             ivalues_p.append(predictions[j][2][0])
-            print observations[c][2][0], predictions[j][2][0]
+            print(observations[c][2][0], predictions[j][2][0])
 
     return meansd(dxs), meansd(dys), meansd(dzs), cc(ivalues_o, ivalues_p)
 
 if __name__ == '__main__':
     dx, dy, dz, cc = validate_predictions(sys.argv[1], sys.argv[2])
-    print 'X: %.4f %.4f' % dx
-    print 'Y: %.4f %.4f' % dy
-    print 'Z: %.4f %.4f' % dz
-    print 'CC: %.4f' % cc
+    print('X: %.4f %.4f' % dx)
+    print('Y: %.4f %.4f' % dy)
+    print('Z: %.4f %.4f' % dz)
+    print('CC: %.4f' % cc)

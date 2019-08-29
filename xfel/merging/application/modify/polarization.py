@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 from dials.array_family import flex
 from scitbx import matrix
 from xfel.merging.application.worker import worker
@@ -10,6 +10,8 @@ class polarization(worker):
   Modifies the intensity.sum.value and intensity.sum.variance columns
   in place.
   """
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(polarization, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
 
   def __repr__(self):
     return 'Apply polarization correction'

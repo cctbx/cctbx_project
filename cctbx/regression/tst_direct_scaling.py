@@ -1,5 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import random
+from six.moves import range
 random.seed(0)
 from scitbx.array_family import flex
 flex.set_random_seed(0)
@@ -26,21 +27,21 @@ def show_times_vs_complexity(times, header):
     table_row = ["%.0f"%i,"%.2f"%t,"%.2f"%s,"%.2f"%f,"%.2f"%fR,
                  "%.2f"%g,"%.2f"%gf,"%.5f"%gfR,"%5.2f"%d]
     table_data.append(table_row)
-  print table_utils.format(table_data,has_header=True,justify="left",
-    prefix="| ",postfix=" |")
+  print(table_utils.format(table_data,has_header=True,justify="left",
+    prefix="| ",postfix=" |"))
 
 def show_diagnostics(xs):
   #help(xs.scatterers())
-  print list(xs.scatterers().extract_labels())
-  print list(xs.scatterers().extract_occupancies())
-  print list(xs.scatterers().extract_scattering_types())
-  print list(xs.scatterers().extract_sites())
-  print
-  print list(xs.scatterers().extract_u_cart(xs.unit_cell()))
-  print
-  print list(xs.scatterers().extract_u_iso())
-  print
-  print list(xs.scatterers().extract_u_star())
+  print(list(xs.scatterers().extract_labels()))
+  print(list(xs.scatterers().extract_occupancies()))
+  print(list(xs.scatterers().extract_scattering_types()))
+  print(list(xs.scatterers().extract_sites()))
+  print()
+  print(list(xs.scatterers().extract_u_cart(xs.unit_cell())))
+  print()
+  print(list(xs.scatterers().extract_u_iso()))
+  print()
+  print(list(xs.scatterers().extract_u_star()))
 
 def exercise_direct(space_group_info,
                     elements,
@@ -63,8 +64,8 @@ def exercise_direct(space_group_info,
 
   direct_reference = True
 
-  for x in xrange(1,7):
-    print "There are %d scatterers"%len(elements)
+  for x in range(1,7):
+    print("There are %d scatterers"%len(elements))
     number_of_reflections = pow(10.,x)
     Volume = number_of_reflections *  reciprocal_volume * 2. #2 P1 asymmetric units
     Volume *= space_group_info.group().order_z() # take space group into acct.
@@ -130,11 +131,11 @@ def exercise_direct(space_group_info,
   show_times_vs_complexity(times, header="run time vs. # reflections")
 
 def run_scattering_type_tests():
-  for C in xrange(35):
-    for N in xrange(35):
-      for total in xrange(93,99):
+  for C in range(35):
+    for N in range(35):
+      for total in range(93,99):
         elements = ['C']*C + ['N']*N + ['O']*(total-N-C)
-        print "".join(elements)
+        print("".join(elements))
         exercise_direct(sgtbx.space_group_info("P1"),elements)
 
 def run(args,multiplier):
@@ -146,24 +147,24 @@ def run(args,multiplier):
   allelements = elements*multiplier
 
   if 0:
-    for sn in xrange(1,231):
+    for sn in range(1,231):
       try:
         sgi = sgtbx.space_group_info(sn)
-        print "Space group",sgi,"number",sn
+        print("Space group",sgi,"number",sn)
         exercise_direct(sgi, allelements, use_random_u_iso=use_random_u_iso, verbose=verbose)
-      except Exception, e:
-        print e
+      except Exception as e:
+        print(e)
     return
 
   if 0:
     for symbol in ["P1","P3","P41","P212121","I41","F432"]:
       sgi = sgtbx.space_group_info(symbol)
-      print "Space group",sgi
+      print("Space group",sgi)
       exercise_direct(sgi, allelements, use_random_u_iso=use_random_u_iso, verbose=verbose)
 
   if 1:
     sgi = sgtbx.space_group_info("P1")
-    print "Space group",sgi
+    print("Space group",sgi)
     exercise_direct(sgi, allelements, use_random_u_iso=use_random_u_iso, verbose=verbose)
 
 if __name__ == '__main__':

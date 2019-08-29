@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-from builtins import object, range
+from builtins import object
 from collections import deque
+from six.moves import range, zip
 
 class single_pooler(object):
   """
@@ -73,7 +74,7 @@ class multi_pooler(object):
 
   def submit_one_job(self, calcsiter, manager):
 
-    calculations = [ c for ( i, c ) in zip( range( self.size), calcsiter ) ]
+    calculations = [ c for ( i, c ) in zip( range(self.size), calcsiter ) ]
 
     if not calculations:
       raise StopIteration

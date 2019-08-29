@@ -1,11 +1,10 @@
-from __future__ import division
-
 '''
 Author      : Young, I.D.
 Created     : 07/14/2016
 Last Changed: 07/14/2016
 Description : XFEL UI plot real-time run stats
 '''
+from __future__ import absolute_import, division, print_function
 
 from libtbx.phil import parse
 from libtbx.utils import Sorry
@@ -14,6 +13,7 @@ from xfel.ui.db.stats import HitrateStats
 import sys
 from xfel.ui.command_line.plot_run_stats import phil_scope
 from scitbx.array_family import flex
+from six.moves import zip
 
 def run(args):
   user_phil = []
@@ -23,9 +23,9 @@ def run(args):
     except Exception as e:
       raise Sorry("Unrecognized argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
-  print "Printing results for trial", params.trial, "using a hit cutoff of", params.n_strong_cutoff, "reflections"
-  print
-  print " Run   N Hits   (%) N Indexed   (%) N Lattices N High qual   (%)  %HQR   N Frames"
+  print("Printing results for trial", params.trial, "using a hit cutoff of", params.n_strong_cutoff, "reflections")
+  print()
+  print(" Run   N Hits   (%) N Indexed   (%) N Lattices N High qual   (%)  %HQR   N Frames")
 
   hit_total = 0
   indexed_total = 0
@@ -55,7 +55,7 @@ def run(args):
     try:
       timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min)()
     except Exception as e:
-      print "Couldn't get run", run_no
+      print("Couldn't get run", run_no)
       continue
     n_hit = (n_strong >= params.n_strong_cutoff).count(True)
     n_indexed = (n_lattices > 0).count(True)
@@ -63,9 +63,9 @@ def run(args):
     n_total = len(timestamps)
     n_high_quality = ((average_i_sigi > 0) & (n_strong >= params.n_strong_cutoff)).count(True)
     try:
-      print "% 20s  % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (run_no, n_hit, 100*n_hit/n_total, n_indexed, 100*n_indexed/n_total, n_lattices, n_high_quality, 100*n_high_quality/n_total, 100*n_high_quality/n_indexed, n_total)
+      print("% 20s  % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (run_no, n_hit, 100*n_hit/n_total, n_indexed, 100*n_indexed/n_total, n_lattices, n_high_quality, 100*n_high_quality/n_total, 100*n_high_quality/n_indexed, n_total))
     except ZeroDivisionError:
-      print "% 20s  % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (run_no, n_hit, 0, n_indexed, 0, n_lattices, n_high_quality, 0, 0, n_total)
+      print("% 20s  % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (run_no, n_hit, 0, n_indexed, 0, n_lattices, n_high_quality, 0, 0, n_total))
 
     hit_total += n_hit
     indexed_total += n_indexed
@@ -74,14 +74,14 @@ def run(args):
     overall_total += n_total
 
   if len(runs) > 1:
-    print "-" * 80
+    print("-" * 80)
     try:
-      print "Total % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (hit_total, 100*hit_total/overall_total, indexed_total, 100*indexed_total/overall_total, lattices_total, high_quality_total, 100*high_quality_total/overall_total, 100*high_quality_total/indexed_total, overall_total)
+      print("Total % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (hit_total, 100*hit_total/overall_total, indexed_total, 100*indexed_total/overall_total, lattices_total, high_quality_total, 100*high_quality_total/overall_total, 100*high_quality_total/indexed_total, overall_total))
     except ZeroDivisionError:
       if overall_total == 0:
-        print "Total % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (hit_total, 0, indexed_total, 0, lattices_total, 0, 0, 0, overall_total)
+        print("Total % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (hit_total, 0, indexed_total, 0, lattices_total, 0, 0, 0, overall_total))
       else:
-        print "Total % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (hit_total, 100*hit_total/overall_total, indexed_total, 100*indexed_total/overall_total, lattices_total, high_quality_total, 100*high_quality_total/overall_total, 0, overall_total)
+        print("Total % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (hit_total, 100*hit_total/overall_total, indexed_total, 100*indexed_total/overall_total, lattices_total, high_quality_total, 100*high_quality_total/overall_total, 0, overall_total))
 
 if __name__ == "__main__":
   run(sys.argv[1:])

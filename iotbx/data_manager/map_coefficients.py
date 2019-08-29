@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 '''
 '''
 
@@ -110,9 +110,9 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
       MapCoefficientsDataManager.datatype, filename, known_labels)
 
   def write_map_coefficients_file(
-      self, miller_arrays, filename=Auto, overwrite=Auto):
+      self, mtz_object, filename=Auto, overwrite=Auto):
     self.write_miller_array_file(
-      miller_arrays, filename=filename, overwrite=overwrite)
+      mtz_object, filename=filename, overwrite=overwrite)
 
 # =============================================================================
 # end

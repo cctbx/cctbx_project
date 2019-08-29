@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.bulk_solvent
 from scitbx.array_family import flex
 import math, time
+from six.moves import range
 
 def run(nref, k, b, k_start, b_start):
   data = flex.double()
@@ -23,4 +24,4 @@ if (__name__ == "__main__"):
             (10000, 90, -10, -10, 10) # outside convergence well
             ]:
     r = run(nref=i[0], k=i[1], b=i[2], k_start=i[3], b_start=i[4])
-    print r
+    print(r)

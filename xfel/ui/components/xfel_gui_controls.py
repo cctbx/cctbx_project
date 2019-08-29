@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+import six
 
 '''
 Author      : Lyubimov, A.Y.
@@ -79,7 +80,7 @@ class RunBlockButton(GradButton):
     db = block.app
     self.rnum = block.rungroup_id
     self.first_run, self.last_run = block.get_first_and_last_runs()
-    self.use_ids = db.params.facility.name != 'lcls'
+    self.use_ids = db.params.facility.name not in ['lcls']
 
     GradButton.__init__(self, parent=parent, label='',
                         size=size)
@@ -502,7 +503,7 @@ class MultiChoiceCtrl(CtrlBase):
     self.txt.SetFont(self.font)
     choice_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
 
-    for key, choices in items.iteritems():
+    for key, choices in six.iteritems(items):
       if len(items) > 1:
         ch_label =wx.StaticText(self, id=wx.ID_ANY, label=key)
         choice_box.Add(ch_label, flag=wx.ALIGN_CENTER_VERTICAL)
@@ -580,7 +581,7 @@ class RadioCtrl(CtrlBase):
       self.txt.SetFont(self.font)
       radio_group.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
 
-    for key, value in items.iteritems():
+    for key, value in six.iteritems(items):
       button = wx.RadioButton(self, id=wx.ID_ANY, label=value)
       radio_group.Add(button)
       self.__setattr__(key, button)

@@ -1,6 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.maximum_entropy_map
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.utils
 import iotbx.phil
 from iotbx import reflection_file_utils
@@ -70,12 +70,12 @@ def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=True)
 
 def broadcast(m, log):
-  print >> log, "-"*79
-  print >> log, m
-  print >> log, "*"*len(m)
+  print("-"*79, file=log)
+  print(m, file=log)
+  print("*"*len(m), file=log)
 
 def format_usage_message(log):
-  print >> log, "-"*79
+  print("-"*79, file=log)
   msg = """\
 phenix.max_entropy_map: map modification using Maximum Entropy Method (MEM)
 
@@ -86,8 +86,8 @@ Usage examples:
 
 Feedback:
   PAfonine@lbl.gov or phenixbb@phenix-online.org"""
-  print >> log, msg
-  print >> log, "-"*79
+  print(msg, file=log)
+  print("-"*79, file=log)
 
 def run(args, log):
   timer = user_plus_sys_time()
@@ -104,7 +104,7 @@ def run(args, log):
   if(len(inputs.pdb_file_names)>0):
     broadcast(m="Input model", log = log)
     assert len(inputs.pdb_file_names) == 1
-    print >> log, "  file name:", inputs.pdb_file_names[0]
+    print("  file name:", inputs.pdb_file_names[0], file=log)
     xray_structure = iotbx.pdb.input(
       file_name = inputs.pdb_file_names[0]).xray_structure_simple()
     assert xray_structure is not None
@@ -142,9 +142,9 @@ def run(args, log):
       mean_solvent_density = params.mean_solvent_density)
     f_000 = f_000_obj.f_000
     solvent_fraction = f_000_obj.solvent_fraction
-  print >> log, "F(0,0,0): %12.6f"%f_000
+  print("F(0,0,0): %12.6f"%f_000, file=log)
   if(solvent_fraction is not None):
-    print >> log, "solvent_fraction: %6.4f" % solvent_fraction
+    print("solvent_fraction: %6.4f" % solvent_fraction, file=log)
   result = mem.run(
     f                       = map_coeffs,
     f_000                   = f_000,
@@ -166,7 +166,7 @@ def run(args, log):
   ofn = params.output_file_name
   if (ofn is None):
     ofn = reff[0]+"_mem.mtz" if ind==0 else reff[0][:ind]+"_mem.mtz"
-  print >> log, "  Output file name:", ofn
+  print("  Output file name:", ofn, file=log)
   result.write_mtz_file(file_name = ofn,
     column_root_label=params.column_root_label,
     d_min=params.output_high_resolution)
@@ -198,4 +198,4 @@ if(__name__ == "__main__"):
   timer = user_plus_sys_time()
   log = sys.stdout
   run(sys.argv[1:], log=log)
-  print >> log, "Total time: %-8.3f" % timer.elapsed()
+  print("Total time: %-8.3f" % timer.elapsed(), file=log)

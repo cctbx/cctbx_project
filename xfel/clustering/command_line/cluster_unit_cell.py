@@ -1,5 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME cluster.unit_cell
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import logging
 from xfel.clustering.cluster import Cluster
 from xfel.clustering.cluster_groups import unit_cell_info
@@ -25,7 +25,7 @@ def run(_args):
                                write_file_lists=_args.nofiles,
                                schnell=_args.schnell,
                                doplot=_args.noplot)
-    print unit_cell_info(clusters)
+    print(unit_cell_info(clusters))
   else:
     plt.figure("Andrews-Bernstein distance dendogram", figsize=(12, 8))
     ax = plt.gca()
@@ -33,7 +33,7 @@ def run(_args):
                                             write_file_lists=_args.nofiles,
                                             schnell=_args.schnell,
                                             doplot=_args.noplot)
-    print unit_cell_info(clusters)
+    print(unit_cell_info(clusters))
     plt.tight_layout()
     plt.show()
 

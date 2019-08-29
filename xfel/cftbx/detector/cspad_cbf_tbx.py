@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -8,6 +8,9 @@ from six.moves import range
 import pycbf, os
 from scitbx import matrix
 from scitbx.array_family import flex
+import six
+from six.moves import zip
+from six.moves import map
 
 # need to define these here since it not defined in SLAC's metrology definitions
 asic_dimension = (194,185)
@@ -16,7 +19,7 @@ pixel_size = 0.10992
 from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value, cspad_min_trusted_value
 
 def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, common_mode=None, apply_gain_mask=True,
-                             gain_mask_value=None, per_pixel_gain=False, gain_mask=None):
+                             gain_mask_value=None, per_pixel_gain=False, gain_mask=None, additional_gain_factor=None):
   """
   Given a psana Detector object, apply corrections as appropriate and return the data from the event
   @param psana_det psana Detector object
@@ -29,7 +32,9 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
   @param apply_gain_mask Whether to apply the common mode gain mask correction
   @param gain_mask_value Multiplier to apply to the pixels, according to the gain mask
   @param per_pixel_gain If available, use the per pixel gain deployed to the calibration folder
-  @param, gain_mask, gain mask showing which pixels to apply gain mask value
+  @param gain_mask gain mask showing which pixels to apply gain mask value
+  @param additional_gain_factor Additional gain factor. Pixels counts are divided by this number after all other
+  corrections.
   @return Numpy array corrected as specified.
   """
   # order is pedestals, then common mode, then gain mask, then per pixel gain
@@ -70,6 +75,8 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
     data[gain_mask] = data[gain_mask]*gain_mask_value
   if per_pixel_gain: # TODO: test this
     data *= psana_det.gain(run)
+  if additional_gain_factor is not None:
+    data /= additional_gain_factor
   return data
 
 from dxtbx.format.FormatCBFMultiTile import cbf_wrapper as dxtbx_cbf_wrapper
@@ -444,7 +451,7 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
   quadrants_trans = {}
   if detector == "CxiDs1":
     # rotate sensors 6 and 7 180 degrees
-    for q_id, quadrant in quadrants.iteritems():
+    for q_id, quadrant in six.iteritems(quadrants):
       six = quadrant[6]
       svn = quadrant[7]
       assert len(six) == 4 and len(svn) == 4
@@ -454,7 +461,7 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
 
     # apply transformations: bring to order (slow, fast) <=> (column,
      # row).  This takes care of quadrant rotations
-    for (q, sensors) in quadrants.iteritems():
+    for (q, sensors) in six.iteritems(quadrants):
       quadrants_trans[q] = {}
 
       q_apa = q
@@ -463,28 +470,28 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
         # Q0:
         #   x -> -slow
         #   y -> -fast
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in six.iteritems(sensors):
           quadrants_trans[q][s] = [matrix.col((-v[1]/1000, +v[0]/1000, v[2]/1000))
                                    for v in quadrants[q_apa][s]]
       elif q == 1:
         # Q1:
         #   x -> +fast
         #   y -> -slow
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in six.iteritems(sensors):
           quadrants_trans[q][s] = [matrix.col((+v[0]/1000, +v[1]/1000, v[2]/1000))
                                    for v in quadrants[q_apa][s]]
       elif q == 2:
         # Q2:
         #   x -> +slow
         #   y -> +fast
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in six.iteritems(sensors):
           quadrants_trans[q][s] = [matrix.col((+v[1]/1000, -v[0]/1000, v[2]/1000))
                                    for v in quadrants[q_apa][s]]
       elif q == 3:
         # Q3:
         #   x -> -fast
         #   y -> +slow
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in six.iteritems(sensors):
           quadrants_trans[q][s] = [matrix.col((-v[0]/1000, -v[1]/1000, v[2]/1000))
                                    for v in quadrants[q_apa][s]]
       else:
@@ -503,10 +510,10 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
     # quadrants.
     o = matrix.col((0, 0, 0))
     N = 0
-    slen = len(quadrants[quadrants.keys()[0]])
-    for (q, sensors) in quadrants.iteritems():
+    slen = len(quadrants[list(quadrants.keys())[0]])
+    for (q, sensors) in six.iteritems(quadrants):
       assert len(sensors) == slen
-      for s, sensor in sensors.iteritems():
+      for s, sensor in six.iteritems(sensors):
         o += center(sensor)
         N += 1
     o /= N
@@ -514,9 +521,9 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
     rot_mat = matrix.col((0,0,1)).axis_and_angle_as_r3_rotation_matrix(180,deg=True)
     sensors_to_rotate = [4,5,10,11,12,13,14,15,16,17,18,19,22,23,24,25]
 
-    for (q, quadrant) in quadrants.iteritems():
+    for (q, quadrant) in six.iteritems(quadrants):
       quadrants_trans[q] = {}
-      for (s, vertices) in quadrant.iteritems():
+      for (s, vertices) in six.iteritems(quadrant):
         # move to origin, rotate 180 degrees around origin, and scale
         vertices = [rot_mat*(v-o)/1000 for v in vertices]
 
@@ -535,13 +542,13 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
 
     a = []; b = []; c = []; d = []; cents = {}
 
-    for q_id, q in quadrants_trans.iteritems():
+    for q_id, q in six.iteritems(quadrants_trans):
       q_c = matrix.col((0,0,0))
-      for s_id, s in q.iteritems():
+      for s_id, s in six.iteritems(q):
         q_c += center(s)
       q_c /= len(q)
       cents["Q%d"%q_id] = q_c
-      for s_id, s in q.iteritems():
+      for s_id, s in six.iteritems(q):
         sensor = ((s[0][0], s[0][1]),
                   (s[1][0], s[1][1]),
                   (s[2][0], s[2][1]),
@@ -554,7 +561,7 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
     ax.set_xlim((-100, 100))
     ax.set_ylim((-100, 100))
     plt.scatter([v[0] for v in a], [v[1] for v in a], c = 'black')
-    for i, v in cents.iteritems():
+    for i, v in six.iteritems(cents):
         ax.annotate(i, (v[0],v[1]))
     plt.scatter([v[0] for v in b], [v[1] for v in b], c = 'yellow')
     #plt.scatter([v[0] for v in c], [v[1] for v in c], c = 'yellow')
@@ -565,16 +572,16 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
   null_ori = matrix.col((0,0,1)).axis_and_angle_as_unit_quaternion(0, deg=True)
   metro = { (0,): basis(null_ori, matrix.col((0,0,0))) }
 
-  for q_id, q in quadrants_trans.iteritems():
+  for q_id, q in six.iteritems(quadrants_trans):
     # calculate the center of the quadrant
     q_c = matrix.col((0,0,0))
-    for s_id, s in q.iteritems():
+    for s_id, s in six.iteritems(q):
       q_c += center(s)
     q_c /= len(q)
 
     metro[(0,q_id)] = basis(null_ori,q_c)
 
-    for s_id, s in q.iteritems():
+    for s_id, s in six.iteritems(q):
       sensorcenter_wrt_detector = center(s)
       sensorcenter_wrt_quadrant = sensorcenter_wrt_detector - q_c
 
@@ -594,7 +601,7 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
       metro[(0,q_id,s_id,1)] = basis(null_ori,matrix.col((+w,0,0)))
 
   if plot:
-    print "Validating transofmation matrices set up correctly"
+    print("Validating transofmation matrices set up correctly")
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon
     fig = plt.figure()
@@ -804,7 +811,7 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
   cbf.add_category("array_data",["array_id","binary_id","data"])
 
   if verbose:
-    print "Compressing tiles...",
+    print("Compressing tiles...", end=' ')
 
   for i, (tilekey, array_name) in enumerate(zip(sorted(tiles.keys()), array_names)):
     focus = tiles[tilekey].focus()
@@ -901,7 +908,7 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, cbf_root, wavelength, 
       pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
 
   if verbose:
-    print "%s written"%cbf_root
+    print("%s written"%cbf_root)
 
 def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelength, distance, verbose = True, header_only = False):
   assert metro_style in ['calibdir','flatfile','cbf']

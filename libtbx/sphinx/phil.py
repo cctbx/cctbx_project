@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+from six import string_types
 from six.moves import cStringIO as StringIO
 import docutils.nodes
 from docutils.parsers.rst import Directive
@@ -66,7 +67,7 @@ class PhilDirective(Directive):
     # Check if the module attribute is a string, a scope, ...
     if isinstance(master_params, libtbx.phil.scope):
       pass
-    elif isinstance(master_params, (str, unicode)):
+    elif isinstance(master_params, string_types):
       master_params = iotbx.phil.parse(master_params, process_includes=True)
     elif hasattr(master_params, '__call__'):
       master_params = master_params()

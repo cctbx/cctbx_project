@@ -68,6 +68,8 @@ def run(args, return_list_of_tests=None):
   if (len(params.directory) == 0) and (len(params.module) == 0):
     raise Sorry("Please specify modules and/or directories to test.")
   all_tests = []
+  expected_failure_list = []
+  expected_unstable_list = []
   all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script))
   for dir_name in params.directory :
     if os.path.split(dir_name)[-1].find("cctbx_project")>-1:
@@ -78,7 +80,24 @@ def run(args, return_list_of_tests=None):
     all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests))
   for module_name in params.module :
     module_tests = libtbx.test_utils.parallel.get_module_tests(module_name, slow_tests = params.slow_tests)
+    fail_tests = libtbx.test_utils.parallel.\
+      get_module_expected_test_failures(module_name)
+    unstable_tests = libtbx.test_utils.\
+      parallel.get_module_expected_unstable_tests(module_name)
     all_tests.extend(module_tests)
+    all_tests.extend(fail_tests)
+    all_tests.extend(unstable_tests)
+    expected_failure_list.extend(fail_tests)
+    expected_unstable_list.extend(unstable_tests)
+    # check that test lists are unique
+    seen = set()
+    duplicates = set()
+    for t in all_tests:
+      if t in seen:
+        duplicates.add(t)
+      else:
+        seen.add(t)
+    assert len(duplicates) == 0, "Duplicate tests found.\n%s" % list(duplicates)
   if return_list_of_tests:
     return all_tests
   if (len(all_tests) == 0):
@@ -90,6 +109,8 @@ def run(args, return_list_of_tests=None):
   with open("run_tests_parallel_zlog", "w") as log:
     result = libtbx.test_utils.parallel.run_command_list(
       cmd_list=all_tests,
+      expected_failure_list=expected_failure_list,
+      expected_unstable_list=expected_unstable_list,
       nprocs=params.nproc,
       log=log,
       verbosity=params.verbosity,

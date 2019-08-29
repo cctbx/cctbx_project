@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from dials.array_family import flex
 import math
+from six.moves import zip
 
 def residual_map_special_deltapsi_add_on( reflections,experiments,matches,hkllist, predicted,plot,eta_deg,deff ):
 

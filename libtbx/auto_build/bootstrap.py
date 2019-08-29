@@ -25,8 +25,13 @@ import tempfile
 import textwrap
 import time
 import traceback
-import urllib2
-import urlparse
+try: # Python 3
+    from urllib.parse import urlparse
+    from urllib.request import urlopen, Request
+    from urllib.error import HTTPError, URLError
+except ImportError: # Python 2
+    from urlparse import urlparse
+    from urllib2 import urlopen, Request, HTTPError, URLError
 import zipfile
 
 try:
@@ -40,6 +45,8 @@ need to install it separately. On CentOS 6, you can run
 
 with administrative privileges.
 """)
+
+_BUILD_DIR = "build"  # set by arg parser further on down
 
 windows_remove_list = []
 
@@ -81,7 +88,7 @@ def tar_extract(workdir, archive, modulename=None):
     for root, dirs, files in os.walk(module):
       for fname in files:
         full_path = os.path.join(root, fname)
-        os.chmod(full_path, stat.S_IREAD | stat.S_IWRITE)
+        os.chmod(full_path, stat.S_IREAD | stat.S_IWRITE | stat.S_IRGRP | stat.S_IROTH)
     # rename to expected folder name, e.g. boost_hot -> boost
     # only rename if folder names differ
     if modulename:
@@ -107,7 +114,7 @@ class ShellCommand(object):
     return None
 
   def get_workdir(self):
-    return self.kwargs.get('workdir', 'build')
+    return self.kwargs.get('workdir', _BUILD_DIR)
 
   def get_environment(self):
     # gets environment from kwargs
@@ -252,14 +259,14 @@ class Toolbox(object):
         else:
           # Handle target environment that doesn't support HTTPS verification
           ssl._create_default_https_context = _create_unverified_https_context
-      url_request = urllib2.Request(url)
+      url_request = Request(url)
       if etag:
         url_request.add_header("If-None-Match", etag)
       if localcopy:
         # Shorten timeout to 7 seconds if a copy of the file is already present
-        socket = urllib2.urlopen(url_request, None, 7)
+        socket = urlopen(url_request, None, 7)
       else:
-        socket = urllib2.urlopen(url_request)
+        socket = urlopen(url_request)
     except SSLError as e:
       # This could be a timeout
       if localcopy:
@@ -269,8 +276,8 @@ class Toolbox(object):
         return -2
       # otherwise pass on the error message
       raise
-    except (pysocket.timeout, urllib2.HTTPError) as e:
-      if isinstance(e, urllib2.HTTPError) and etag and e.code == 304:
+    except (pysocket.timeout, HTTPError) as e:
+      if isinstance(e, HTTPError) and etag and e.code == 304:
         # When using ETag. a 304 error means everything is fine
         log.write("local copy is current (etag)\n")
         return -2
@@ -281,7 +288,7 @@ class Toolbox(object):
         return -2
       # otherwise pass on the error message
       raise
-    except urllib2.URLError as e:
+    except URLError as e:
       if localcopy:
         # Download failed for some reason, but a valid local copy of
         # the file exists, so use that one instead.
@@ -290,14 +297,17 @@ class Toolbox(object):
       # if url fails to open, try using curl
       # temporary fix for old OpenSSL in system Python on macOS
       # https://github.com/cctbx/cctbx_project/issues/33
-      command = ['/usr/bin/curl', '--http1.0', '-Lo', file, '--retry', '5', url]
+      command = ['/usr/bin/curl', '--http1.0', '-fLo', file, '--retry', '5', url]
       subprocess.call(command, shell=False)
       socket = None     # prevent later socket code from being run
-      received = 1      # satisfy (filesize > 0) checks later on
+      try:
+        received = os.path.getsize(file)
+      except OSError:
+        raise RuntimeError("Download failed")
 
     if (socket is not None):
       try:
-        file_size = int(socket.info().getheader('Content-Length'))
+        file_size = int(socket.info().get('Content-Length'))
       except Exception:
         file_size = 0
 
@@ -376,9 +386,9 @@ class Toolbox(object):
         atime = st[ST_ATIME] # current access time
         os.utime(file,(atime,remote_mtime))
 
-      if cache and socket.info().getheader('ETag'):
+      if cache and socket.info().get('ETag'):
         # If the server sent an ETAG, then keep it alongside the file
-        open(tagfile, 'w').write(socket.info().getheader('ETag'))
+        open(tagfile, 'w').write(socket.info().get('ETag'))
 
     return received
 
@@ -407,7 +417,7 @@ class Toolbox(object):
         except Exception: pass
         if not is_directory:
           source = z.open(member)
-          target = file(filename, "wb")
+          target = open(filename, "wb")
           shutil.copyfileobj(source, target)
           target.close()
           source.close()
@@ -484,8 +494,7 @@ class Toolbox(object):
       if ('cctbx_project.git' in parameters[0]):
         print('\n' + '=' * 80 + '\nCCTBX moved to git on November 22, 2016.\n\nTo update cctbx_project to the last available subversion revision please run "svn update" while in the cctbx_project directory.\n' + '*'*80 + '\n')
       return
-
-    if isinstance(parameters, basestring):
+    if isinstance(parameters, str):
       parameters = [ parameters ]
     git_parameters = []
     for source_candidate in parameters:
@@ -528,7 +537,7 @@ class Toolbox(object):
         ).run()
         return returncode
       filename = "%s-%s" % (module,
-                            urlparse.urlparse(source_candidate)[2].split('/')[-1])
+                            urlparse(source_candidate)[2].split('/')[-1])
       filename = os.path.join(destpath, filename)
       if verbose:
         print("===== Downloading %s: " % source_candidate, end=' ')
@@ -632,7 +641,7 @@ class SourceModule(object):
       self.update_subclasses()
 
   def items(self):
-    return self._modules.items()
+    return list(self._modules.items())
 
   @classmethod
   def update_subclasses(cls):
@@ -913,7 +922,11 @@ class dials_regression_module(SourceModule):
 
 class msgpack_module(SourceModule):
   module = 'msgpack'
-  anonymous = ['curl', "https://gitcdn.link/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz"]
+  anonymous = ['curl', [
+    "https://gitcdn.xyz/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz",
+    "https://gitcdn.link/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz",
+    "https://github.com/dials/dependencies/raw/dials-1.13/msgpack-3.1.1.tar.gz",
+  ]]
 
 class xfel_regression_module(SourceModule):
   module = 'xfel_regression'
@@ -1046,7 +1059,7 @@ class Builder(object):
 
     # Cleanup
     if cleanup:
-      self.cleanup(['dist', 'tests', 'doc', 'tmp', 'base', 'base_tmp', 'build',
+      self.cleanup(['dist', 'tests', 'doc', 'tmp', 'base', 'base_tmp', _BUILD_DIR,
                     'conda_base'])
     else:
       self.cleanup(['dist', 'tests', 'tmp'])
@@ -1058,12 +1071,12 @@ class Builder(object):
 
     # Add 'hot' sources
     if hot:
-      map(self.add_module, self.get_hot())
+      list(map(self.add_module, self.get_hot()))
 
     # Add svn sources.
     self.revert=revert
     if update:
-      map(self.add_module, self.get_codebases())
+      list(map(self.add_module, self.get_codebases()))
 
     # always remove .pyc files
     self.remove_pyc()
@@ -1332,14 +1345,29 @@ class Builder(object):
     ))
 
   def _add_download(self, url, to_file):
+    if not isinstance(url, list):
+      url = [url]
     class _download(object):
       def run(self):
-        print("===== Downloading %s: " % url, end=' ')
-        Toolbox().download_to_file(url, to_file)
+        for _url in url:
+          for retry in (3,3,0):
+            print("===== Downloading %s: " % _url, end=' ')
+            try:
+              Toolbox().download_to_file(_url, to_file)
+              return
+            except Exception as e:
+              print("Download failed with", e)
+              if retry:
+                print("Retrying in %d seconds" % retry)
+                time.sleep(retry)
+        raise RuntimeError("Could not download " + to_file)
     self.add_step(_download())
 
   def _add_curl(self, module, url):
-    filename = urlparse.urlparse(url)[2].split('/')[-1]
+    if isinstance(url, list):
+      filename = urlparse(url[0])[2].split('/')[-1]
+    else:
+      filename = urlparse(url)[2].split('/')[-1]
     self._add_download(url, os.path.join('modules', filename))
     self.add_step(self.shell(
       name="extracting files from %s" %filename,
@@ -1429,31 +1457,23 @@ class Builder(object):
     else:
       from .install_conda import conda_manager
 
-    # check for active conda environment
-    conda_env = os.environ.get('CONDA_PREFIX')
-
     # drop output
     log = open(os.devnull, 'w')
 
-    # no path provided
-    if self.use_conda == '' and conda_env is None:
-      conda_env = os.path.join('..', 'conda_base')
-      if self.isPlatformWindows():
-        conda_env = os.path.join(os.getcwd(), 'conda_base')
-      # base step is not run yet, so do not check if files exist
-      m = conda_manager(root_dir=os.getcwd(), conda_env=conda_env,
-                        check_file=False, log=log)
-    else:
-      # conda environment is active, overrides any path provided to --use-conda
-      if conda_env is not None:
-        self.use_conda = conda_env
-      # check that directory exists
-      if not os.path.isdir(self.use_conda):
-        raise RuntimeError('The path provided to --use-conda does not exist.')
-      # basic checks for python and conda
+    # environment is provided, so do check that it exists
+    if os.path.isdir(self.use_conda):
+      check_file = True
       self.use_conda = os.path.abspath(self.use_conda)
-      m = conda_manager(root_dir=os.getcwd(), conda_env=self.use_conda,
-                        check_file=True, log=log)
+    # no path provided or file provided
+    else:
+      check_file = False
+      # base step has not run yet, so do not check if files exist
+      self.use_conda = os.path.join('..', 'conda_base')
+      if self.isPlatformWindows():
+        self.use_conda = os.path.join(os.getcwd(), 'conda_base')
+    # basic checks for python and conda
+    m = conda_manager(root_dir=os.getcwd(), conda_env=self.use_conda,
+                      check_file=check_file, log=log)
 
     return m
 
@@ -1482,33 +1502,22 @@ class Builder(object):
 
       conda_python = None
 
-      # check for active conda environment
-      conda_env = os.environ.get('CONDA_PREFIX')
-
       # (case 1)
-      if self.use_conda == '' and conda_env is None:
+      # use default location or file provided to --use-conda
+      if self.use_conda == '' or os.path.isfile(self.use_conda):
         conda_python = self.op.join('..', 'conda_base',
                                     m_get_conda_python(self))
       # (case 2)
-      # conda environment is active, overrides any path provided to --use-conda
-      elif conda_env is not None:
-        if os.path.isdir(conda_env):
-          conda_python = os.path.join(conda_env, m_get_conda_python(self))
-        else:
-          raise RuntimeError("""
-The path specified by the CONDA_PREFIX environment variable does not
-exist. Please make sure you have a valid conda environment in
-{conda_env}""".format(conda_env=conda_env))
       # use path provided to --use-conda
-      else:
+      elif os.path.isdir(self.use_conda):
         self.use_conda = os.path.abspath(self.use_conda)
-        if os.path.isdir(self.use_conda):
-          conda_python = os.path.join(self.use_conda, m_get_conda_python(self))
-        else:
-          raise RuntimeError("""
-The path specified by the --use-conda flag does not exist. Please make
-sure you have a valid conda environment in
-{conda_env}""".format(conda_env=self.use_conda))
+        conda_python = os.path.join(self.use_conda, m_get_conda_python(self))
+      else:
+        raise RuntimeError("""
+The --use-conda flag can accept a directory to a conda environment or a
+file that defines a conda environment. Please make sure a valid conda
+environment exists in or is defined by {conda_env}.
+""".format(conda_env=self.use_conda))
 
       if conda_python is None:
         raise RuntimeError('A conda version of python could not be found.')
@@ -1519,14 +1528,14 @@ sure you have a valid conda environment in
     if self.isPlatformWindows():
       command = command + '.bat'
     # Relative path to workdir.
-    workdir = workdir or ['build']
+    workdir = workdir or [_BUILD_DIR]
     dots = [".."]*len(workdir)
     if workdir[0] == '.':
       dots = []
     if sys.platform == "win32": # assuming we run standalone without buildbot
-      dots.extend([os.getcwd(), 'build', 'bin', command])
+      dots.extend([os.getcwd(), _BUILD_DIR, 'bin', command])
     else:
-      dots.extend(['build', 'bin', command])
+      dots.extend([_BUILD_DIR, 'bin', command])
     self.add_step(self.shell(
       name=name or command,
       command=[self.opjoin(*dots)] + (args or []),
@@ -1615,21 +1624,24 @@ sure you have a valid conda environment in
     #      A path to a conda environment should be provided. No checks are done
     #      on the environment. The environment files for the build should be
     #      used to construct the starting environment and the developer is
-    #      responsible for maintaining it. Also, if a conda environment is
-    #      active, the $CONDA_PREFIX environment variable will be used.
+    #      responsible for maintaining it.
     if self.use_conda is not None:  # --use-conda flag is set
       # reset command
       command = []
 
-      # check for active conda environment
-      conda_env = os.environ.get('CONDA_PREFIX')
-
-      # no path provided (case 1), case 2 handled in _get_conda_python
-      if self.use_conda == '' and conda_env is None:
+      # file or no path provided (case 1), case 2 handled in _get_conda_python
+      if self.use_conda == '' or os.path.isfile(self.use_conda):
         flags = ['--builder={builder}'.format(builder=self.category)]
+        # check if a file was an argument
+        if os.path.isfile(self.use_conda):
+          filename = os.path.abspath(self.use_conda)
+          flags.append('--install_env={filename}'.format(filename=filename))
         # check for existing miniconda3 installation
-        if not os.path.isdir('miniconda3'):
+        if not os.path.isdir('mc3'):
           flags.append('--install_conda')
+        # check if --python3 is set
+        if self.python3:
+          flags.append('--python=36')
         command = [
           'python',
           self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build',
@@ -1676,13 +1688,8 @@ sure you have a valid conda environment in
       base_dir = '../conda_base'
       # use path from --use-conda flag
       # error-checking done in _get_conda_python function
-      if self.use_conda != '':
+      if os.path.isdir(self.use_conda):
         base_dir = self.use_conda
-      # override with $CONDA_PREFIX
-      # error-checking done in _get_conda_python function
-      conda_env = os.environ.get('CONDA_PREFIX')
-      if conda_env is not None:
-        base_dir = conda_env
 
       dispatcher_opts += [
       "--base_dir=%s" % base_dir,
@@ -1706,7 +1713,7 @@ sure you have a valid conda environment in
         '--prologue=%s' % prologue,
         #"--epilogue=%s"
       ] + dispatcher_opts,
-      workdir=['build']
+      workdir=[_BUILD_DIR]
     ))
 
   def add_configure(self):
@@ -1729,7 +1736,7 @@ sure you have a valid conda environment in
         self.python_base, # default to using our python rather than system python
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
         ] + self.get_libtbx_configure() + self.config_flags
-    self.add_step(self.shell(command=configcmd, workdir=['build'],
+    self.add_step(self.shell(command=configcmd, workdir=[_BUILD_DIR],
       description="run configure.py", env=env))
     # Prepare saving configure.py command to file should user want to manually recompile Phenix
     fname = self.opjoin("config_modules.cmd")
@@ -1745,12 +1752,12 @@ sure you have a valid conda environment in
     self.add_step(self.shell(command=[
          'python','-c','open(r\"%s\",\"w\").write(r\"\"\"%s\"\"\" + \"\\n\")' %(fname, confstr)
          ],
-      workdir=['build'],
+      workdir=[_BUILD_DIR],
       description="save configure command",
     ))
     if not self.isPlatformWindows():
       self.add_step(self.shell(command=[ 'chmod', '+x', fname ],
-        workdir=['build'],
+        workdir=[_BUILD_DIR],
         description="permit execution of config_modules.sh",
       ))
 
@@ -1839,7 +1846,7 @@ class MOLPROBITYBuilder(Builder):
   ]
   CODEBASES_EXTRA = [
     'molprobity',
-    'chem_data',
+    #'chem_data', #chem_data removed from molprobity builder until accessible outside cci, -CJW
     'reduce',
     'probe',
     'suitename'
@@ -2016,8 +2023,14 @@ class DIALSBuilder(CCIBuilder):
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
   HOT_EXTRA = ['msgpack']
   def add_tests(self):
-    self.add_test_command('cctbx_regression.test_nightly')
-    self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
+    self.add_test_command('libtbx.pytest',
+                          args=['--regression', '-n', 'auto'],
+                          workdir=['modules', 'dxtbx'],
+                          haltOnFailure=True)
+    self.add_test_command('libtbx.pytest',
+                          args=['--regression', '-n', 'auto'],
+                          workdir=['modules', 'dials'],
+                          haltOnFailure=True)
 
   def add_base(self, extra_opts=[]):
     super(DIALSBuilder, self).add_base(
@@ -2190,7 +2203,7 @@ class PhenixExternalRegression(PhenixBuilder):
     lt = time.localtime()
     cleaning = ['dist', 'tests', 'doc', 'tmp', 'base_tmp']
     if lt.tm_wday==5: # do a completer build on Saturday night
-      cleaning += ['base', 'base_tmp', 'build', 'conda_base']
+      cleaning += ['base', 'base_tmp', _BUILD_DIR, 'conda_base']
     # Preparation
     # AFITT
     if self.subcategory in [None, "afitt"]:
@@ -2229,7 +2242,7 @@ class PhenixExternalRegression(PhenixBuilder):
       '-c',
       'import os; open("%s","w").write("""%s""" %% os.environ)' %(fname, outl)
       ],
-      workdir=['build'],
+      workdir=[_BUILD_DIR],
       description="save csh external paths",
     ))
     outl = ""
@@ -2242,7 +2255,7 @@ class PhenixExternalRegression(PhenixBuilder):
       '-c',
       'import os; open("%s","w").write("""%s""" %% os.environ)' %(fname, outl)
       ],
-      workdir=['build'],
+      workdir=[_BUILD_DIR],
       description="save sh external paths",
     ))
 
@@ -2434,7 +2447,7 @@ class PhenixTNGBuilder(PhenixBuilder):
   Phenix with phaser_tng and c++11
   '''
   CODEBASES = PhenixBuilder.CODEBASES + ['phaser_tng']
-  LIBTBX = PhenixBuilder.CODEBASES + ['phaser_tng']
+  LIBTBX = PhenixBuilder.LIBTBX + ['phaser_tng']
 
   def get_libtbx_configure(self):
     configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()
@@ -2506,7 +2519,7 @@ def run(root=None):
   parser.add_argument('action', nargs='*', help="Actions for building")
   parser.add_argument(
     "--builder",
-    help="Builder: " + ",".join(builders.keys()),
+    help="Builder: " + ",".join(list(builders.keys())),
     default="cctbx")
   parser.add_argument("--cciuser", help="CCI SVN username.")
   parser.add_argument("--sfuser", help="SourceForge SVN username.")
@@ -2574,17 +2587,28 @@ be passed separately with quotes to avoid confusion (e.g
 --config_flags="--build=debug" --config_flags="--enable_cxx11")""",
                     action="append",
                     default=[])
-  parser.add_argument("--use-conda", "--use_conda", metavar="ENV_DIRECTORY",
+  parser.add_argument("--use-conda", "--use_conda", metavar="ENVIRONMENT",
                     dest="use_conda",
                     help="""Use conda for dependencies. The directory to an
-existing conda environment can be provided. The build will use that enviroment
-instead of creating a default one for the builder. Also, if a conda environment
-is currently active, $CONDA_PREFIX will be used if ENV_DIRECTORY is not
-provided. Specifying an environment or using $CONDA_PREFIX is for developers
-that maintain their own conda environment.""",
+existing conda environment or a file defining a conda environment can be
+provided. The build will use that environment instead of creating a default one
+for the builder. If the currently active conda environment is to be used for
+building, $CONDA_PREFIX should be the argument for this flag. Otherwise, a new
+environment will be created. The --python3 flag will be ignored when there is
+an argument for this flag. Specifying an environment is for developers that
+maintain their own conda environment.""",
                     default=None, nargs='?', const='')
+
+  parser.add_argument("--build-dir",
+                     dest="build_dir",
+                     help="directory where the build will be. Should be at the same level as modules! default is 'build'",
+                     default="build", type=str)
+
   options = parser.parse_args()
   args = options.action
+
+  global _BUILD_DIR
+  _BUILD_DIR = options.build_dir  # TODO: this is probably ok way to go with globalvar, but check and see
 
   # process external
   options.specific_external_builder=None
@@ -2607,6 +2631,15 @@ that maintain their own conda environment.""",
   for arg in allowedargs:
     if arg in args:
       actions.append(arg)
+
+  # Check if an action was an argument to --use-conda
+  if options.use_conda in allowedargs:
+    if len(options.action) == 0:
+      actions = [options.use_conda]
+    else:
+      actions.append(options.use_conda)
+    options.use_conda = ''
+
   print("Performing actions:", " ".join(actions))
 
   # Check builder

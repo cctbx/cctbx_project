@@ -202,22 +202,6 @@ af::flex_int ReadDIP(const std::string& filename,
   return z;
 }
 
-std::string
-unpad_raxis(const std::string& in, const int& recordlength, const int& pad){
-  int number_records = in.size()/recordlength;
-  int outlength = (recordlength-pad)*number_records;
-  std::vector<char> out;
-  out.reserve(outlength);
-  std::string::const_iterator inptr=in.begin();
-  for (int irec=0; irec<number_records; ++irec){
-    for (int y=0; y<(recordlength-pad); ++y,++inptr) {
-      out.push_back(*inptr);
-    }
-    inptr+=pad;
-  }
-  return std::string(out.begin(),out.end());
-}
-
 af::flex_int MakeSquareRAXIS(const int& np,
                              const int& extra,
                              const int& oldnslow,
@@ -427,7 +411,6 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
    def("ReadMAR", ReadMAR);
    def("ReadRAXIS", ReadRAXIS);
    def("ReadDIP", ReadDIP);
-   def("unpad_raxis", unpad_raxis);
    def("MakeSquareRAXIS", MakeSquareRAXIS);
    def("Bin2_by_2", Bin2_by_2);
    def("ReadDTrek", ReadDTrek,

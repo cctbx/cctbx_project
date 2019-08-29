@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
-import pair_interaction
+from mmtbx.pair_interaction import pair_interaction
+from six.moves import range
 
 pdb_str = """
 REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "./data_files/2lvr.pdb"
@@ -527,7 +528,7 @@ def check_buffer(clusters, qms):
     ph = pdb_inp.construct_hierarchy()
     core_atoms,qm_atoms, qm_molecules = pair_interaction.run(ph,clusters[i])
     qms_calculated.append(list(qm_molecules))
-    assert(len(set(qms[i])-set(qm_molecules))==0)
+    assert(len(set(qms[i])-set(qm_molecules))==0), len(set(qms[i])-set(qm_molecules))
 
 if(__name__ == "__main__"):
   run()

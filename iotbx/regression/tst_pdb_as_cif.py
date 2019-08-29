@@ -1,6 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import null_out
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os.path
 import iotbx.pdb
 
@@ -60,7 +60,7 @@ ATOM      9 O    GLY     2      26.154  23.705  18.108  1.00  9.22
                 args=["tst_pdb_as_cif_2.pdb"],
                 logger=out,
                 )
-  except Exception, e:
+  except Exception as e:
     pass
   if 0:
     assert (out.getvalue() == """\
@@ -107,8 +107,8 @@ if (__name__ == "__main__"):
   try:
     mon_lib_srv = mmtbx.monomer_library.server.server()
   except mmtbx.monomer_library.server.MonomerLibraryServerError:
-    print "Can not initialize monomer_library, skipping tst_pdb_as_cif."
+    print("Can not initialize monomer_library, skipping tst_pdb_as_cif.")
   else:
     exercise_01()
     exercise_02()
-  print "OK"
+  print("OK")

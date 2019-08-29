@@ -8,7 +8,7 @@ as described in:
   Nature Methods, in press.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.ringer.em_scoring
 import argparse
 import os.path
@@ -25,8 +25,8 @@ def run(args, out=sys.stdout):
     #if (not args.show_gui):
     try :
       import matplotlib
-    except ImportError, e :
-      print >> out, "WARNING: matplotlib not present, plotting disabled"
+    except ImportError as e :
+      print("WARNING: matplotlib not present, plotting disabled", file=out)
       matplotlib = None
       args.show_gui = False
     else :

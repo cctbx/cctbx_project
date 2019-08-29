@@ -11,7 +11,7 @@ ServerProxy class in xmlrpclib.  However, the client code could just as easily
 be written in an entirely different language.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import SimpleXMLRPCServer
 import traceback
 import os
@@ -20,9 +20,9 @@ from libtbx.utils import to_str
 
 try :
   import coot_python
-except Exception, e :
-  print "Could not import coot_python module!"
-  print "Coot GUI extensions will be disabled."
+except Exception as e :
+  print("Could not import coot_python module!")
+  print("Coot GUI extensions will be disabled.")
   class empty(object):
     def main_menubar(self):
       return None
@@ -55,13 +55,13 @@ class coot_interface(object):
         interface=self,
         addr=("127.0.0.1", port))
       self.xmlrpc_server.socket.settimeout(0.01)
-    except Exception, e :
-      print "Error starting XML-RPC server:"
-      print str(e)
+    except Exception as e :
+      print("Error starting XML-RPC server:")
+      print(str(e))
     else :
       import gobject
       import gtk
-      print "xml-rpc server running on port %d" % port
+      print("xml-rpc server running on port %d" % port)
       # timeout used to be set to whatever the Phenix preferences have it as,
       # but 250ms seems to be a universally good choice, and much shorter
       # intervals screw up the Coot GUI (at least on Windows)
@@ -127,11 +127,11 @@ class coot_xmlrpc_server(SimpleXMLRPCServer.SimpleXMLRPCServer):
     elif hasattr(coot, method):
       func = getattr(coot, method)
     if not hasattr(func, "__call__"):
-      print "%s is not a callable object!" % method
+      print("%s is not a callable object!" % method)
     else :
       try :
         result = func(*params)
-      except Exception, e :
+      except Exception as e :
         traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
         raise Exception("%s\nOriginal traceback:%s" % (str(e), traceback_str))
       else :

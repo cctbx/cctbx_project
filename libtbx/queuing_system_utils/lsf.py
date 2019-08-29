@@ -3,6 +3,7 @@ from six.moves import cPickle as pickle
 import subprocess
 #import sys
 import os
+from six.moves import range
 
 class Job:
   def __init__(self, name, execObj, modules=[], pythonExec='python'):

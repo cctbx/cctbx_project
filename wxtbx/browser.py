@@ -6,7 +6,7 @@ the simpler wx.html.HtmlWindow.  This is used in the Phenix GUI to display
 documentation.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import wxtbx.bitmaps
 import wx.html
 import wx
@@ -23,7 +23,7 @@ class browser_frame(wx.Frame):
     if (wx.Platform == '__WXMAC__'):
       try :
         from wx import webkit
-      except ImportError, e :
+      except ImportError as e :
         _import_error = str(e)
       else :
         self.viewer = webkit.WebKitCtrl(self, -1)
@@ -33,7 +33,7 @@ class browser_frame(wx.Frame):
     elif (wx.Platform == '__WXMSW__'):
       try :
         from wx.html2 import WebView
-      except ImportError, e :
+      except ImportError as e :
         _import_error = str(e)
       else :
         self.viewer = WebView.New(self)
@@ -208,7 +208,7 @@ class HtmlPanel(wx.html.HtmlWindow):
         # XXX calling self.ScrollToAnchor() directly doesn't work!
         wx.CallAfter(self.ScrollToAnchor, anchor)
       else :
-        print "Missing anchor %s" % anchor
+        print("Missing anchor %s" % anchor)
 
 if __name__ == "__main__" :
   app = wx.App(0)

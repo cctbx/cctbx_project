@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import time
 import iotbx.pdb
 import mmtbx.utils
@@ -208,7 +208,7 @@ class scorer(object):
     if(target > self.target):
       self.target = target
       self.sites_cart = sites_cart
-    print self.target, target # XXX for debugging
+    print(self.target, target) # XXX for debugging
 
 def run(prefix="tst_00"):
   # Good answer model
@@ -269,10 +269,10 @@ def run(prefix="tst_00"):
     restraints_manager      = restraints_manager,
     states                  = states,
     nproc=1)
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))
   ear.pdb_hierarchy.write_pdb_file(file_name="%s_refined.pdb"%prefix)
   states.write(file_name="%s_refined_all_states.pdb"%prefix)
 
 if (__name__ == "__main__"):
   run()
-  print "OK"
+  print("OK")

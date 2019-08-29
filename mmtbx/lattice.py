@@ -8,8 +8,10 @@ crystallography. Proc Natl Acad Sci U S A. 2011 Sep 27;108(39):16247-52.
 <http://www.ncbi.nlm.nih.gov/pubmed/21918110>`_
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
+from past.builtins import cmp
+from functools import cmp_to_key
 
 def find_crystal_contacts(xray_structure,
                            pdb_atoms, # atom_with_labels, not atom!
@@ -87,7 +89,8 @@ def extract_closest_contacting_residues(residue_contacts,
     if (len(contacts) == 0):
       reduced_contacts.append((residue_key, None, None, None))
     else :
-      contacts.sort(lambda x,y: cmp(x[2], y[2]))
+      cmp_fn = lambda x,y: cmp(x[2], y[2])
+      contacts.sort(key=cmp_to_key(cmp))
       (j_seq, sym_op, distance) = contacts[0]
       atom_rec = pdb_atoms[j_seq].fetch_labels()
       contact_key = (atom_rec.chain_id, atom_rec.resname, atom_rec.resid(),
@@ -102,19 +105,19 @@ def summarize_contacts_by_residue(residue_contacts,
   summary = extract_closest_contacting_residues(residue_contacts,
     pdb_hierarchy.atoms())
   make_header("Crystal contacts by residue", out=out)
-  print >> out, "  %-16s %-16s %-16s %-16s" % ("residue", "closest contact",
-    "symop", "distance (A)")
-  print >> out, "-"*72
+  print("  %-16s %-16s %-16s %-16s" % ("residue", "closest contact",
+    "symop", "distance (A)"), file=out)
+  print("-"*72, file=out)
   for (residue_key, contact_key, sym_op, distance) in summary :
     (chain_id, resname, resid, altloc) = residue_key
     id_str = "%s%5s %3s %s" % (chain_id, resid, resname, altloc)
     if (contact_key is None):
-      print >> out, "  %-16s %-16s %-16s %-4s" % (id_str, "*","*","*")
+      print("  %-16s %-16s %-16s %-4s" % (id_str, "*","*","*"), file=out)
     else :
       (chain_id, resname, resid, altloc) = contact_key
       id_str_2 = "%s%5s %3s %s" % (chain_id, resid, resname, altloc)
-      print >> out, "  %-16s %-16s %-16s %-4.2f" % (id_str, id_str_2, sym_op,
-        distance)
+      print("  %-16s %-16s %-16s %-4.2f" % (id_str, id_str_2, sym_op,
+        distance), file=out)
 
 def show_contacts(contacts, pdb_atoms):
   for contact in contacts :
@@ -127,7 +130,7 @@ def show_contacts(contacts, pdb_atoms):
     #  atom_i.resname, atom_i.name)
     #fmt_j = "%-2s %4s %3s %4s" % (atom_j.chain_id, atom_j.resid(),
     #  atom_j.resname, atom_j.name)
-    print "%s %s %5.2f %s" % (fmt_i,fmt_j,distance,str(sym_op))
+    print("%s %s %5.2f %s" % (fmt_i,fmt_j,distance,str(sym_op)))
 
 def show_contacts_for_pymol(contacts, pdb_atoms, object_name,
     distance_cutoff=3.5):
@@ -139,7 +142,7 @@ def show_contacts_for_pymol(contacts, pdb_atoms, object_name,
       atom_i.chain_id, atom_i.resseq_as_int(), atom_i.name)
     s2 = "((not %s) and (chain '%s' and resi %d and name %s))" % (
       object_name, atom_j.chain_id, atom_j.resseq_as_int(), atom_j.name)
-    print "dist %s, %s within %.1f of %s" % (s1, s2, distance_cutoff+0.1, s1)
+    print("dist %s, %s within %.1f of %s" % (s1, s2, distance_cutoff+0.1, s1))
 
 def apply_sym_op_to_pdb(pdb_hierarchy, sym_op, unit_cell):
   #import scitbx.matrix

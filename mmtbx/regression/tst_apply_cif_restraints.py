@@ -1,6 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
-import StringIO
+from six.moves import cStringIO as StringIO
 
 from libtbx import easy_run
 
@@ -234,23 +234,23 @@ pdb_interpretation {
 
 def run():
   for name, text in files.items():
-    f=file(name, 'wb')
+    f=open(name, 'w')
     f.write(text)
     f.close()
   cmd = 'phenix.geometry_minimization %(preamble)s.pdb %(preamble)s_01.cif' % {'preamble' : preamble}
-  print cmd
+  print(cmd)
   ero = easy_run.fully_buffered(command=cmd)
-  err = StringIO.StringIO()
+  err = StringIO()
   ero.show_stderr(out=err)
   assert err.getvalue()
-  print 'ok'
+  print('ok')
   cmd += ' %(preamble)s.eff' % {'preamble' : preamble}
-  print cmd
+  print(cmd)
   ero = easy_run.fully_buffered(command=cmd)
-  err = StringIO.StringIO()
+  err = StringIO()
   ero.show_stderr(out=err)
   assert not err.getvalue()
-  print 'ok'
+  print('ok')
   return err.getvalue()
 
 if __name__=="__main__":

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.rigid_body.essence import tst_tardy
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex
@@ -6,6 +6,7 @@ from gltbx import wx_viewer
 from libtbx.option_parser import libtbx_option_parser
 import wx
 import sys
+from six.moves import range
 
 class viewer(wx_viewer.show_points_and_lines_mixin):
 
@@ -40,8 +41,8 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
           include_loop_edge_bendings=show_loop_edge_bendings):
       self.line_i_seqs.append(line)
       self.line_colors[line] = color
-    print "\n".join(tardy_model.tardy_tree.viewer_lines_with_colors_legend(
-      include_loop_edge_bendings=show_loop_edge_bendings))
+    print("\n".join(tardy_model.tardy_tree.viewer_lines_with_colors_legend(
+      include_loop_edge_bendings=show_loop_edge_bendings)))
     mcs = minimum_covering_sphere(self.points, epsilon=1.e-2)
     self.minimum_covering_sphere = sphere_3d(
       center=mcs.center(),
@@ -52,15 +53,15 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.show_key_stroke_help()
 
   def show_key_stroke_help(self):
-    print "Press and hold Tab key to run the dynamics."
-    print "Press Shift-Tab to increase speed."
-    print "Press Ctrl-Tab  to decrease speed."
-    print "Press M for minimization."
+    print("Press and hold Tab key to run the dynamics.")
+    print("Press Shift-Tab to increase speed.")
+    print("Press Ctrl-Tab  to decrease speed.")
+    print("Press M for minimization.")
 
   def process_key_stroke(self, key):
     if (key == ord("M")):
       return self.minimization()
-    print "No action for this key stroke."
+    print("No action for this key stroke.")
     self.show_key_stroke_help()
 
   def tab_callback(self, shift_down=False, control_down=False):
@@ -69,27 +70,27 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
         self.steps_per_tab = min(256, self.steps_per_tab * 2)
       else:
         self.steps_per_tab = max(1, self.steps_per_tab // 2)
-      print "Steps per Tab:", self.steps_per_tab
+      print("Steps per Tab:", self.steps_per_tab)
       return
     tm = self.tardy_model
     tm.dynamics_step(delta_t=0.05)
     if (self.velocity_scaling):
       tm.reset_e_kin(e_kin_target=self.e_kin_target)
-    print "e_kin+e_pot: %12.6g + %12.6g = %12.6g" % (
-      tm.e_kin(), tm.e_pot(), tm.e_tot())
+    print("e_kin+e_pot: %12.6g + %12.6g = %12.6g" % (
+      tm.e_kin(), tm.e_pot(), tm.e_tot()))
     self.set_points()
     self.OnRedraw()
 
   def minimization(self):
-    print "Minimization:"
-    print "  start e_pot:", self.tardy_model.e_pot()
+    print("Minimization:")
+    print("  start e_pot:", self.tardy_model.e_pot())
     self.tardy_model.minimization(
       max_iterations=10,
       callback_after_step=self.minimization_callback)
-    print "  final e_pot:", self.tardy_model.e_pot()
+    print("  final e_pot:", self.tardy_model.e_pot())
 
   def minimization_callback(self, minimizer):
-    print "        e_pot:", self.tardy_model.e_pot()
+    print("        e_pot:", self.tardy_model.e_pot())
     self.set_points()
     self.OnRedraw()
 
@@ -141,7 +142,7 @@ scitbx.python wx_tardy.py [options] model_index
     tardy_model = tst_tardy.get_test_model_by_index(
       i=self.model_index, fixed_vertex_lists=self.fixed_vertex_lists)
     if (self.i_seq_labels):
-      tardy_model.labels = [str(i) for i in xrange(len(tardy_model.labels))]
+      tardy_model.labels = [str(i) for i in range(len(tardy_model.labels))]
     self.view_objects.set_points_and_lines(
       tardy_model=tardy_model,
       velocity_scaling=self.velocity_scaling,

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.hist_finalise
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
@@ -24,5 +24,5 @@ if __name__ == '__main__':
   runs = command_line.args
   if output_dirname is None:
     output_dirname = runs[0]
-  print "Output directory: %s" %output_dirname
+  print("Output directory: %s" %output_dirname)
   histogram_finalise(output_dirname, runs, pickle_pattern=pickle_pattern)

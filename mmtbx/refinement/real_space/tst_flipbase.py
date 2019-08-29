@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx import group_args
 from libtbx.utils import user_plus_sys_time
@@ -6,6 +6,7 @@ from mmtbx.refinement.real_space import individual_sites, flipbase
 import mmtbx
 import iotbx
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 pdb_str_answer = """\
 CRYST1   23.136   23.980   28.180  90.00  90.00  90.00 P 1
@@ -98,7 +99,7 @@ def exercise():
   xrs_poor = pi_poor.xrs.deep_copy_scatterers()
   #
   d = xrs_good.distances(other=xrs_poor)
-  print d.min_max_mean().as_tuple()
+  print(d.min_max_mean().as_tuple())
   assert flex.max(d)>3
   assert flex.mean(d)>1
 
@@ -111,10 +112,10 @@ def exercise():
   sites_cart = xrs_poor.sites_cart()
   for ch in pi_poor.ph.chains():
     if ch.id.strip() != chain : continue
-    print 'chain'
+    print('chain')
     for rg in ch.residue_groups():
       if rg.resseq_as_int() != res_num : continue
-      print "res#"
+      print("res#")
       if rg.have_conformers() and not alt_loc :
         s = 'Specified residue has alternate conformations. Please specify '
         raise RuntimeError(s + 'alt_loc on the command line')
@@ -127,20 +128,20 @@ def exercise():
           residue.atoms().extract_xyz())
         xray_structure = xrs_poor.replace_sites_cart(sites_cart)
         sele = residue.atoms().extract_i_seq()
-        print 'real-space refinement BEGIN'.center(79,'*')
+        print('real-space refinement BEGIN'.center(79,'*'))
         for i in range(n_refine_cycles):
-          print 'real-space refinement cycle %i...' % (i + 1)
+          print('real-space refinement cycle %i...' % (i + 1))
           ero = individual_sites.easy(
             map_data                    = target_map,
             xray_structure              = xray_structure,
             pdb_hierarchy               = pi_poor.ph,
             geometry_restraints_manager = pi_poor.grm,
             selection                   = sele)
-        print 'real-space refinement FINISHED'.center(79,'*')
+        print('real-space refinement FINISHED'.center(79,'*'))
         xrs_refined = ero.xray_structure
   if not ero : raise RuntimeError('Specified residue not found')
   d = xrs_good.distances(other=xrs_refined)
-  print d.min_max_mean().as_tuple()
+  print(d.min_max_mean().as_tuple())
   assert flex.max(d)<0.07
   assert flex.mean(d)<0.03
   ero.pdb_hierarchy.write_pdb_file(file_name="refined.pdb",
@@ -182,5 +183,5 @@ if(__name__ == "__main__"):
   timer = user_plus_sys_time()
   exercise()
   exercise2()
-  print "Time: %6.2f" % timer.elapsed()
-  print "OK"
+  print("Time: %6.2f" % timer.elapsed())
+  print("OK")

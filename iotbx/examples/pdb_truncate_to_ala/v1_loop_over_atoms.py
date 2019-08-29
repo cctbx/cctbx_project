@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import sys
 
@@ -11,11 +11,11 @@ def run(args):
     for model in pdb_obj.hierarchy.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
-          print 'resid: "%s"' % rg.resid()
+          print('resid: "%s"' % rg.resid())
           for ag in rg.atom_groups():
-            print '  altloc: "%s", resname: "%s"' % (ag.altloc, ag.resname)
+            print('  altloc: "%s", resname: "%s"' % (ag.altloc, ag.resname))
             for atom in ag.atoms():
-              print '    ', atom.name
+              print('    ', atom.name)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

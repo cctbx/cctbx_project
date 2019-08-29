@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
 from libtbx import phil
 import libtbx.phil
 from libtbx.utils import Sorry
@@ -11,6 +10,7 @@ import warnings
 from six.moves import cStringIO as StringIO
 import copy
 import sys, os
+from six.moves import range
 
 def exercise_string_quote_and_tokenize():
   n_ok = [0]

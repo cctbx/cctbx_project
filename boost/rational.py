@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("boost_rational_ext")
 from boost_rational_ext import *
 

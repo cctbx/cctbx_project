@@ -1,5 +1,5 @@
-from __future__ import division
-from six.moves import range
+from __future__ import absolute_import, division, print_function
+from six.moves import range, zip, map
 
 '''
 Author      : Lyubimov, A.Y.
@@ -42,7 +42,8 @@ license = 'cctbx.xfel and cctbx.xfel UI are developed under the open source ' \
           'license'
 
 description = 'The cctbx.xfel UI is developed for use during data collection ' \
-              'and initial processing at LCSL XFEL beamlines.'
+              'and initial processing of serial crystallographic data from' \
+              'XFELs and synchrotrons.'
 
 class TagSet(object):
   def __init__(self, tag_selection_mode, tags):
@@ -79,8 +80,13 @@ class RunSentinel(Thread):
     self.active = active
 
     if self.parent.params.facility.name == 'standalone':
-      from xfel.ui.db.xfel_db import cheetah_run_finder
-      self.finder = cheetah_run_finder(self.parent.params)
+      if self.parent.params.facility.standalone.monitor_for == 'folders' and \
+         self.parent.params.facility.standalone.folders.method == 'status_file':
+        from xfel.ui.db.xfel_db import cheetah_run_finder
+        self.finder = cheetah_run_finder(self.parent.params)
+      else:
+        from xfel.ui.db.xfel_db import standalone_run_finder
+        self.finder = standalone_run_finder(self.parent.params)
 
   def post_refresh(self):
     evt = RefreshRuns(tp_EVT_RUN_REFRESH, -1)
@@ -100,7 +106,7 @@ class RunSentinel(Thread):
                             str(run['run']) not in known_runs]
         unknown_run_paths = [''] * len(unknown_run_runs)
       elif self.parent.params.facility.name == 'standalone':
-        standalone_runs = [run for run in self.finder.list_standalone_runs() if
+        standalone_runs = [run for run in self.finder.list_runs() if
                            run[0] not in known_runs]
         unknown_run_runs = [r[0] for r in standalone_runs]
         unknown_run_paths = [r[1] for r in standalone_runs]
@@ -121,7 +127,7 @@ class RunSentinel(Thread):
           if last_run is not None: last_run = last_run.id
           rungroup.sync_runs(first_run, last_run)
 
-        print "%d new runs" % len(unknown_run_runs)
+        print("%d new runs" % len(unknown_run_runs))
         self.post_refresh()
       time.sleep(10)
 
@@ -462,9 +468,12 @@ class RunStatsSentinel(Thread):
         run_no = self.run_numbers[idx]
         rg_id = rungroup_ids[idx]
         t_id = trial_ids[idx]
+        found_it = False
         for job in jobs:
           if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
             self.run_statuses.append(job.status)
+            found_it = True; break
+        if not found_it: self.run_statuses.append('UNKWN')
     self.reorder()
     t2 = time.time()
 
@@ -547,7 +556,7 @@ class RunStatsSentinel(Thread):
       run_statuses=self.run_statuses,
       minimalist=self.parent.run_window.runstats_tab.entire_expt,
       easy_run=True,
-      xsize=(sizex-25)/85, ysize=sizey/95,
+      xsize=(sizex-25)/85, ysize=(sizey-25)/95,
       high_vis=self.parent.high_vis)
       # convert px to inches with fudge factor for scaling inside borders
     self.parent.run_window.runstats_tab.redraw_windows = True
@@ -658,9 +667,9 @@ class SpotfinderSentinel(Thread):
             try:
               self.spot_length_stats.append(get_spot_length_stats(run_outdir, ref_stats=sf_stats))
             except OSError:
-              print "Outdir %s no longer accessible." % run_outdir
+              print("Outdir %s no longer accessible." % run_outdir)
             except Exception as e:
-              print e
+              print(e)
               from dials.array_family import flex
               self.spot_length_stats.append((flex.double(), flex.double(), flex.double()))
 
@@ -711,7 +720,7 @@ class ImageDumpThread(Thread):
     self.command = command
 
   def run(self):
-    print self.command
+    print(self.command)
     easy_run.fully_buffered(command=self.command).show_stderr()
 
 # ----------------------------- Unit Cell Sentinel ----------------------------- #
@@ -819,12 +828,12 @@ class FramesSentinel(Thread):
     while self.active:
       trial = db.get_trial(trial_number=int(self.parent.trial_number.ctr.GetStringSelection()))
       runs = [db.get_run(run_number=int(r)) for r in self.parent.trial_runs.ctr.GetCheckedStrings()]
-      print "Total events in trial", trial.trial,
+      print("Total events in trial", trial.trial, end=' ')
       if len(runs) == 0:
         runs = None
       else:
-        print "runs", ", ".join(sorted([str(r.run) for r in runs])),
-      print ":", len(db.get_all_events(trial, runs))
+        print("runs", ", ".join(sorted([str(r.run) for r in runs])), end=' ')
+      print(":", len(db.get_all_events(trial, runs)))
       self.post_refresh()
       time.sleep(2)
 
@@ -880,11 +889,11 @@ class Clusterer():
                    i.endswith('pickle') and 'int-' in i]
         all_pickles = all_pickles + pickles
       except OSError as error:
-        print 'Folder not found!'
-        print error
+        print('Folder not found!')
+        print(error)
 
     if len(all_pickles) == 0:
-      print 'No images integrated (yet)'
+      print('No images integrated (yet)')
       return
 
     # If clustering button was pressed, do clustering
@@ -965,12 +974,12 @@ class MainWindow(wx.Frame):
                               shortHelp='Auto-submit jobs',
                               longHelp='Auto-submit all pending jobs')
     self.toolbar.AddSeparator()
-    self.tb_btn_calibrate = self.toolbar.AddLabelTool(wx.ID_ANY,
-                        label='Calibration',
-                        bitmap=wx.Bitmap('{}/32x32/calib.png'.format(icons)),
-                        shortHelp='Calibration',
-                        longHelp='Detector geometry calibration')
-    self.toolbar.AddSeparator()
+    #self.tb_btn_calibrate = self.toolbar.AddLabelTool(wx.ID_ANY,
+    #                    label='Calibration',
+    #                    bitmap=wx.Bitmap('{}/32x32/calib.png'.format(icons)),
+    #                    shortHelp='Calibration',
+    #                    longHelp='Detector geometry calibration')
+    #self.toolbar.AddSeparator()
     self.tb_btn_settings = self.toolbar.AddLabelTool(wx.ID_ANY,
                         label='Settings',
                         bitmap=wx.Bitmap('{}/32x32/settings.png'.format(icons)),
@@ -1012,7 +1021,7 @@ class MainWindow(wx.Frame):
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
     self.Bind(wx.EVT_TOOL, self.onWatchRuns, self.tb_btn_watch_new_runs)
     self.Bind(wx.EVT_TOOL, self.onAutoSubmit, self.tb_btn_auto_submit)
-    self.Bind(wx.EVT_TOOL, self.onCalibration, self.tb_btn_calibrate)
+    #self.Bind(wx.EVT_TOOL, self.onCalibration, self.tb_btn_calibrate)
     self.Bind(wx.EVT_TOOL, self.onSettings, self.tb_btn_settings)
     self.Bind(wx.EVT_TOOL, self.onZoom, self.tb_btn_zoom)
     self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onTabChange,
@@ -1133,6 +1142,7 @@ class MainWindow(wx.Frame):
     info.AddDeveloper('Artem Lyubimov')
     info.AddDeveloper('Aaron Brewster')
     info.AddDeveloper('Iris Young')
+    info.AddDeveloper('Asmit Bhowmick')
     info.AddDeveloper('Axel Brunger')
     info.AddDeveloper('Nicholas Sauter')
     wx.AboutBox(info)
@@ -1145,6 +1155,7 @@ class MainWindow(wx.Frame):
 
     if (settings_dlg.ShowModal() == wx.ID_OK):
       self.params = settings_dlg.params
+      save_cached_settings(self.params)
       if self.params.facility.name == 'lcls':
         self.title = 'CCTBX.XFEL | {} | {}'.format(self.params.experiment_tag,
                                                    self.params.facility.lcls.experiment)
@@ -1175,53 +1186,57 @@ class MainWindow(wx.Frame):
       self.start_job_sentinel()
 
   def onTabChange(self, e):
-    tab = self.run_window.main_nbook.GetSelection()
-    if tab == 2:
+    name = self.run_window.main_nbook.GetPageText((self.run_window.main_nbook.GetSelection()))
+    if name == self.run_window.jobs_tab.name:
       if self.job_monitor is None or not self.job_monitor.active:
         self.start_job_monitor()
         self.run_window.jmn_light.change_status('on')
-    elif tab == 3:
-      if self.job_monitor is None or not self.job_monitor.active:
-        self.start_job_monitor()
-        self.run_window.jmn_light.change_status('on')
-      if self.spotfinder_sentinel is None or not self.spotfinder_sentinel.active:
-        self.start_spotfinder_sentinel()
-        self.run_window.spotfinder_light.change_status('on')
-    elif tab == 4:
+    # Disabled
+    #elif name == self.run_window.spotfinder_tab.name:
+    #  if self.job_monitor is None or not self.job_monitor.active:
+    #    self.start_job_monitor()
+    #    self.run_window.jmn_light.change_status('on')
+    #  if self.spotfinder_sentinel is None or not self.spotfinder_sentinel.active:
+    #    self.start_spotfinder_sentinel()
+    #    self.run_window.spotfinder_light.change_status('on')
+    elif name == self.run_window.trials_tab.name:
+      self.run_window.trials_tab.refresh_trials()
+    elif name == self.run_window.runstats_tab.name:
       if self.job_monitor is None or not self.job_monitor.active:
         self.start_job_monitor()
         self.run_window.jmn_light.change_status('on')
       if self.runstats_sentinel is None or not self.runstats_sentinel.active:
         self.start_runstats_sentinel()
         self.run_window.runstats_light.change_status('on')
-    elif tab == 5:
+    elif name == self.run_window.unitcell_tab.name:
       if self.unitcell_sentinel is None or not self.unitcell_sentinel.active:
         self.start_unitcell_sentinel()
         self.run_window.unitcell_light.change_status('on')
-    elif tab == 6:
+    elif name == self.run_window.merge_tab.name:
       self.run_window.merge_tab.find_trials()
 
   def onLeavingTab(self, e):
-    tab = self.run_window.main_nbook.GetSelection()
-    if tab == 2:
+    name = self.run_window.main_nbook.GetPageText((self.run_window.main_nbook.GetSelection()))
+    if name == self.run_window.jobs_tab.name:
       if self.job_monitor.active:
         self.stop_job_monitor(block = False)
         self.run_window.jmn_light.change_status('off')
-    elif tab == 3:
-      if self.job_monitor.active:
-        self.stop_job_monitor(block = False)
-        self.run_window.jmn_light.change_status('off')
-      if self.spotfinder_sentinel.active:
-        self.stop_spotfinder_sentinel(block = False)
-        self.run_window.spotfinder_light.change_status('off')
-    elif tab == 4:
+    # Disabled
+    #elif name == self.run_window.spotfinder_tab.name:
+    #  if self.job_monitor.active:
+    #    self.stop_job_monitor(block = False)
+    #    self.run_window.jmn_light.change_status('off')
+    #  if self.spotfinder_sentinel.active:
+    #    self.stop_spotfinder_sentinel(block = False)
+    #    self.run_window.spotfinder_light.change_status('off')
+    elif name == self.run_window.runstats_tab.name:
       if self.job_monitor.active:
         self.stop_job_monitor(block = False)
         self.run_window.jmn_light.change_status('off')
       if self.runstats_sentinel.active:
         self.stop_runstats_sentinel(block = False)
         self.run_window.runstats_light.change_status('off')
-    elif tab == 5:
+    elif name == self.run_window.unitcell_tab.name:
       if self.unitcell_sentinel.active:
         self.stop_unitcell_sentinel(block = False)
         self.run_window.unitcell_light.change_status('off')
@@ -1245,17 +1260,17 @@ class RunWindow(wx.Panel):
     self.runs_tab = RunTab(self.main_nbook, main=self.parent)
     self.trials_tab = TrialsTab(self.main_nbook, main=self.parent)
     self.jobs_tab = JobsTab(self.main_nbook, main=self.parent)
-    self.spotfinder_tab = SpotfinderTab(self.main_nbook, main=self.parent)
+    #self.spotfinder_tab = SpotfinderTab(self.main_nbook, main=self.parent) # Disabled
     self.runstats_tab = RunStatsTab(self.main_nbook, main=self.parent)
     self.unitcell_tab = UnitCellTab(self.main_nbook, main=self.parent)
     self.merge_tab = MergeTab(self.main_nbook, main=self.parent)
-    self.main_nbook.AddPage(self.runs_tab, 'Runs')
-    self.main_nbook.AddPage(self.trials_tab, 'Trials')
-    self.main_nbook.AddPage(self.jobs_tab, 'Jobs')
-    self.main_nbook.AddPage(self.spotfinder_tab, 'Spotfinder')
-    self.main_nbook.AddPage(self.runstats_tab, 'Run Stats')
-    self.main_nbook.AddPage(self.unitcell_tab, 'Unit Cell')
-    self.main_nbook.AddPage(self.merge_tab, 'Merge')
+    self.main_nbook.AddPage(self.runs_tab, self.runs_tab.name)
+    self.main_nbook.AddPage(self.trials_tab, self.trials_tab.name)
+    self.main_nbook.AddPage(self.jobs_tab, self.jobs_tab.name)
+    #self.main_nbook.AddPage(self.spotfinder_tab, self.spotfinder_tab.name) # Disabled
+    self.main_nbook.AddPage(self.runstats_tab, self.runstats_tab.name)
+    self.main_nbook.AddPage(self.unitcell_tab, self.unitcell_tab.name)
+    self.main_nbook.AddPage(self.merge_tab, self.merge_tab.name)
 
     self.sentinel_box = wx.FlexGridSizer(1, 6, 0, 20)
     self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
@@ -1297,6 +1312,7 @@ class BaseTab(wx.Panel):
 class RunTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Runs'
     self.main = main
     self.last_run = 0
     self.all_runs = []
@@ -1419,6 +1435,7 @@ class RunTab(BaseTab):
 class TrialsTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Trials'
 
     self.main = main
     self.show_active_only = False
@@ -1487,6 +1504,7 @@ class TrialsTab(BaseTab):
 class JobsTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Jobs'
 
     self.main = main
     self.all_trials = []
@@ -1620,7 +1638,7 @@ class JobsTab(BaseTab):
         if job.id in jobs_to_restart:
           job.delete()
           if job.status != "DELETED":
-            print "Couldn't restart job", job.id, "job is not deleted"
+            print("Couldn't restart job", job.id, "job is not deleted")
             continue
           job.remove_from_db()
 
@@ -1636,7 +1654,7 @@ class JobsTab(BaseTab):
     if e.jobs is not None:
       self.all_jobs = e.jobs
       if str(self.filter).lower() == 'all jobs':
-        selected_trials = e.jobs.keys()
+        selected_trials = e.jobs.keys() # iterator OK in Py3
       else:
         selected_trials = [int(self.filter.split()[-1])]
 
@@ -1704,7 +1722,7 @@ class JobsTab(BaseTab):
     self.job_list_sort_flag = self.job_list._colSortFlag
 
   def find_trials(self):
-    print "Found trials"
+    print("Found trials")
     if self.main.db is not None:
       choices = ['All jobs'] + \
                 ['trial {}'.format(i.trial) for i in self.main.db.get_all_trials()]
@@ -1720,6 +1738,7 @@ class JobsTab(BaseTab):
 class SpotfinderTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Spotfinder'
 
     self.main = main
     self.all_trials = []
@@ -1931,6 +1950,7 @@ class SpotfinderTab(BaseTab):
 class RunStatsTab(SpotfinderTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Run Stats'
 
     self.main = main
     self.all_trials = []
@@ -1957,7 +1977,6 @@ class RunStatsTab(SpotfinderTab):
     self.strong_indexed_image_timestamps = None
 
     self.runstats_panel = wx.Panel(self, size=(100, 100))
-    self.runstats_panelsize = self.runstats_panel.GetSize()
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
     self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.HORIZONTAL)
     self.runstats_panel.SetSizer(self.runstats_sizer)
@@ -2094,6 +2113,11 @@ class RunStatsTab(SpotfinderTab):
     self.main_sizer.Add(self.bottom_sizer, 0,
                         flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.static_bitmap = wx.StaticBitmap(
+      self.runstats_panel, wx.ID_ANY)#, wx.BitmapFromImage(img))
+    self.runstats_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
+    self.runstats_panel.SetSizer(self.runstats_sizer)
+
     # Bindings
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
     self.Bind(wx.EVT_BUTTON, self.onLastFiveRuns, self.last_five_runs)
@@ -2109,6 +2133,10 @@ class RunStatsTab(SpotfinderTab):
     self.Bind(wx.EVT_BUTTON, self.onDumpImages, self.shi_dump_images_button)
     self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
+
+    self.Layout()
+    self.Fit()
+    self.runstats_panelsize = self.runstats_panel.GetSize()
 
   def OnSize(self, e):
     self.runstats_panelsize = self.runstats_panel.GetSize()
@@ -2156,20 +2184,15 @@ class RunStatsTab(SpotfinderTab):
       self.runstats_box.SetLabel('Run Statistics - No trial selected')
 
   def plot_static_runstats(self):
-    import time
+    #import time
     #from xfel.ui.components.timeit import duration
-    t1 = time.time()
+    #t1 = time.time()
     if self.png is not None:
-      if self.static_bitmap is not None:
-        self.static_bitmap.Destroy()
       img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
-      self.static_bitmap = wx.StaticBitmap(
-        self.runstats_panel, wx.ID_ANY, wx.BitmapFromImage(img))
-      self.runstats_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
-      self.runstats_panel.SetSizer(self.runstats_sizer)
+      self.static_bitmap.SetBitmap(wx.BitmapFromImage(img))
       self.runstats_panel.Layout()
-      # self.figure_panel.SetupScrolling(scrollToTop=False)
-    t2 = time.time()
+      self.Layout()
+    #t2 = time.time()
 
   def print_strong_indexed_paths(self):
     try:
@@ -2179,7 +2202,7 @@ class RunStatsTab(SpotfinderTab):
       image_paths = '\n'.join(paths)
       self.strong_indexed_list.SetValue(image_paths)
     except TypeError:
-      print "Error getting list of best indexed images"
+      print("Error getting list of best indexed images")
       pass
 
   def print_should_have_indexed_paths(self):
@@ -2191,7 +2214,7 @@ class RunStatsTab(SpotfinderTab):
         image_paths = '\n'.join(paths)
         self.should_have_indexed_list.SetValue(image_paths)
       except TypeError:
-        print "Error getting list of images that should have indexed"
+        print("Error getting list of images that should have indexed")
         pass
 
   def onLastFiveRuns(self, e):
@@ -2288,7 +2311,7 @@ class RunStatsTab(SpotfinderTab):
       params, ts_list = self.strong_indexed_image_timestamps[idx]
       ext = '.' + params['format']
       image_paths = self.strong_indexed_image_paths[idx][:self.n_dump]
-      indexed_paths = [path.split(ext)[0]+'_indexed.pickle' for path in image_paths]
+      indexed_paths = [path.split(ext)[0]+'_indexed.refl' for path in image_paths]
       if all([os.path.exists(p) for p in (image_paths + indexed_paths)]):
         command = str('dials.image_viewer ' + ' '.join(image_paths) + \
           ' ' + ' '.join(indexed_paths))
@@ -2303,6 +2326,7 @@ class RunStatsTab(SpotfinderTab):
 class UnitCellTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Unit Cell'
 
     self.main = main
     self.all_trials = []
@@ -2516,8 +2540,10 @@ class UnitCellTab(BaseTab):
       self.unit_cell_panel.Layout()
 
 class MergeTab(BaseTab):
+
   def __init__(self, parent, main, prefix='prime'):
     BaseTab.__init__(self, parent=parent)
+    self.name = 'Merge'
 
     self.main = main
     self.prefix = prefix
@@ -2719,7 +2745,7 @@ class MergeTab(BaseTab):
                    i.endswith('pickle') and 'int-' in i]
         self.all_pickles = self.all_pickles + pickles
       except OSError as error:
-        print 'Folder not found: {}'.format(path)
+        print('Folder not found: {}'.format(path))
         continue
 
     self.input_number.SetLabel('{} images in {} folders:'
@@ -2819,7 +2845,7 @@ class MergeTab(BaseTab):
       list_prefix = 'prime'
     self.pickle_path_file = os.path.join(self.working_dir,
                            '{}_trial_{}.lst'.format(list_prefix, self.trial_no))
-    print 'Saving list of pickles to ', self.pickle_path_file
+    print('Saving list of pickles to ', self.pickle_path_file)
 
     with open(self.pickle_path_file, 'w') as lfile:
       for pickle in self.all_pickles:
@@ -2867,7 +2893,7 @@ class MergeTab(BaseTab):
     with open(prime_file, 'w') as pf:
       pf.write(txt_out)
 
-    if params.mp.method == 'python':
+    if params.mp.method == 'local':
       command=None
     else:
       job_name = 'prime_t{}'.format(self.trial_no)
@@ -2890,8 +2916,8 @@ class MergeTab(BaseTab):
       self.prime_run_window.Show(True)
 
     elif e.GetId() == self.tb_btn_cmd.GetId():
-      print 'Submission command:'
-      print command
+      print('Submission command:')
+      print(command)
 
     # Try and write files to created folder
 

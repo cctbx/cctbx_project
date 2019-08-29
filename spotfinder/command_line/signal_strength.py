@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME distl.signal_strength
 import spotfinder
 import libtbx.phil
@@ -135,13 +135,13 @@ Full documentation: http://cci.lbl.gov/publications/download/ccn_jul2010_page18.
 """
 
   if (len(args) == 0 or args[0] in ["H","h","-H","-h","help","--help","-help"]):
-    print "usage:   %s image_filename [parameter=value ...]" % command_name
-    print "example: %s lysozyme_001.img distl.res.outer=2.0 distl.res.inner=6.0 distl.minimum_spot_area=8"%command_name
+    print("usage:   %s image_filename [parameter=value ...]" % command_name)
+    print("example: %s lysozyme_001.img distl.res.outer=2.0 distl.res.inner=6.0 distl.minimum_spot_area=8"%command_name)
     master_params.show(attributes_level=1,expert_level=1)
-    print help_str
+    print(help_str)
     return
 
-  print "%s: characterization of candidate Bragg spots"%command_name
+  print("%s: characterization of candidate Bragg spots"%command_name)
 
   phil_objects = []
   argument_interpreter = master_params.command_line_argument_interpreter(
@@ -173,14 +173,14 @@ Missing file name for %(what)s structure:
   else:
     params.distl.image = image_file_name
 
-  print "#Parameters used:"
-  print "#phil __ON__"
-  print
+  print("#Parameters used:")
+  print("#phil __ON__")
+  print()
   working_params = master_params.format(python_object=params)
   working_params.show(expert_level=1)
-  print
-  print "#phil __OFF__"
-  print
+  print()
+  print("#phil __OFF__")
+  print()
 
   #Now actually run the program logic
   from spotfinder.applications import signal_strength

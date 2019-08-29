@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.ncs
 import iotbx.pdb
 import mmtbx.ncs.ncs_utils as nu
@@ -576,7 +576,7 @@ TER
   nu.flip_atoms_in_ncs_groups(h, ncs_groups)
   h.write_pdb_file("test_7_result.pdb")
   rmsd_smart = calculate_rmsd_smart(anwer_h, h)
-  print rmsd_smart
+  print(rmsd_smart)
   assert rmsd_smart < 0.01
 
 def test_8():
@@ -894,7 +894,7 @@ TER
   nu.flip_atoms_in_ncs_groups(h, ncs_groups)
   h.write_pdb_file("test_8_result.pdb")
   rmsd_smart = calculate_rmsd_smart(anwer_h, h)
-  print rmsd_smart
+  print(rmsd_smart)
   assert rmsd_smart < 0.01
 
 
@@ -907,4 +907,4 @@ if __name__=='__main__':
   test_6()
   test_7()
   test_8()
-  print "OK"
+  print("OK")

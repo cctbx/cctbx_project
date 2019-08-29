@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 def run(args):
   if (len(args) == 0):
     from libtbx.utils import Usage
@@ -9,7 +10,7 @@ def run(args):
   from cctbx.sgtbx import space_group_info
   from cctbx.sgtbx.subgroups import show
   if (args == ["all"]):
-    for space_group_number in xrange(1,231):
+    for space_group_number in range(1,231):
       show(parent_group_info=space_group_info(space_group_number))
   else:
     for arg in args:

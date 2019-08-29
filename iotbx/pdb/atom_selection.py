@@ -4,7 +4,7 @@ Tools for creating atom selection arrays (flex.bool or flex.size_t) based on
 a simple keyword syntax and boolean operators.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import simple_parser
 from iotbx import wildcard
 from cctbx import crystal
@@ -15,6 +15,8 @@ from libtbx.phil import tokenizer
 from libtbx.utils import Sorry, format_exception
 from libtbx import slots_getstate_setstate
 from mmtbx.ncs.ncs_search import get_chains_info
+from six.moves import range
+from six.moves import zip
 
 abc="abcdefghijklmnopqrstuvwxyz"
 ABC="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -825,8 +827,8 @@ def expand_selection_to_entire_atom_groups(selection, pdb_atoms):
   return selection_complete
 
 def convert_wildcards_in_chain_id(chain_id):
-  chain_id = chain_id.replace("?", "\?")
-  chain_id = chain_id.replace("*", "\*")
+  chain_id = chain_id.replace("?", r"\?")
+  chain_id = chain_id.replace("*", r"\*")
   return chain_id
 
 def chain_is_needed(selection, chain_selections):
@@ -927,7 +929,7 @@ def selection_string_from_selection(pdb_h,
 
       first_resid = chains_info[ch_id].resid[0]
       last_resid = None
-      for i in xrange(res_len):
+      for i in range(res_len):
         cur_resid = chains_info[ch_id].resid[i]
         # test that all atoms in residue are included in selection
         a_sel = set(chains_info[ch_id].atom_selection[i])

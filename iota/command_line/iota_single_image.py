@@ -1,4 +1,4 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import absolute_import, division, print_function
 
 # LIBTBX_SET_DISPATCHER_NAME iota.single_image
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
@@ -7,7 +7,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/31/2018
-Last Changed: 01/30/2019
+Last Changed: 08/05/2019
 Description : IOTA Single Image: can process single image using DIALS,
 with an array of options (i.e. anything from only spotfinding, to indexing,
 space group determination, refinement, integration)
@@ -24,8 +24,6 @@ def parse_command_args():
   parser = argparse.ArgumentParser(prog='iota.single_image')
   parser.add_argument('path', type=str, nargs = '?', default = None,
                       help = 'Path to data file')
-  # parser.add_argument('--backend', type=str, default='dials',
-  #                     help='Backend for processing')
   parser.add_argument('--paramfile', type=str, default=None,
                       help='Parameter file for processing')
   parser.add_argument('--output_file', type=str, default=None,
@@ -73,7 +71,6 @@ class SingleImageProcessor(ProcessingBase):
       elapsed = time.time() - file_wait_start
       if elapsed > 30:
         errors.append('{} does not exist'.format(img))
-        print('DEBUG: ELAPSED = ', time.time() - file_wait_start)
 
         break
       if os.path.isfile(img):
@@ -99,10 +96,10 @@ class SingleImageProcessor(ProcessingBase):
     if img_object:
       if self.verbose:
         print ('SPOTS FOUND: {}'.format(n_spots))
-        print ('INDEXING: {} INDEXED SPOTS'.format(score))
         if res[0] != 999:
           print ('RESOLUTION: {:.2f} - {:.2f}'.format(lres, hres))
         if sg and uc:
+          print('INDEXING: {} INDEXED SPOTS'.format(score))
           print ('BRAVAIS LATTICE: {}'.format(sg))
           print ('UNIT CELL: {}'.format(uc))
         print ('TOTAL PROCESSING TIME: {:.2f} SEC'
@@ -149,8 +146,8 @@ if __name__ == "__main__":
                                           min_bragg=args.min_bragg)
 
   interceptor = SingleImageProcessor.for_single_image(info, iparams,
-                                                action_code=args.action,
-                                                verbose=args.verbose)
+                                                      action_code=args.action,
+                                                      verbose=args.verbose)
   if args.output_dir is not None:
     if not os.path.isdir(args.output_dir):
       os.makedirs(args.output_dir)

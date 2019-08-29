@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex as flex# import dependency
 import os,time
 from libtbx.utils import Sorry
@@ -8,6 +8,8 @@ import warnings
 from scitbx.array_family.flex import grid
 from cctbx import maptbx
 import numpy as np
+from six.moves import range
+from six.moves import zip
 
 #  mrcfile
 
@@ -78,7 +80,7 @@ class map_reader(utils):
          text="\n  NOTE: WARNING message for the file '%s':\n  '%s'\n " %(
             file_name,war.message)
          if print_warning_messages:
-           print text
+           print(text)
 
          if ignore_all_errors:
            pass
@@ -120,7 +122,7 @@ class map_reader(utils):
 
     # Labels
     self.labels=[]
-    for i in xrange(mrc.header.nlabl):
+    for i in range(mrc.header.nlabl):
       text=mrc.header.label[i].strip()
       if text:
         self.labels.append(mrc.header.label[i])
@@ -404,7 +406,7 @@ class write_ccp4_map:
     output_labels=select_output_labels(labels)
 
     mrc.header.nlabl=len(output_labels)
-    for i in xrange(min(10,len(output_labels))):
+    for i in range(min(10,len(output_labels))):
       mrc.header.label[i]=output_labels[i]
     mrc.update_header_from_data() # don't move this later as we overwrite values
 
@@ -489,10 +491,10 @@ def create_output_labels(
   # any specific limitations
   if limitations:
     for limitation in limitations:
-      if not limitation in STANDARD_LIMITATIONS_DICT.keys():
-        print "The limitation '%s' is not in STANDARD_LIMITATIONS_DICT: '%s'" %(
-       limitation,str(STANDARD_LIMITATIONS_DICT.keys()))
-      assert limitation in STANDARD_LIMITATIONS_DICT.keys()
+      if not limitation in STANDARD_LIMITATIONS_DICT:
+        print("The limitation '%s' is not in STANDARD_LIMITATIONS_DICT: '%s'" %(
+       limitation,str(list(STANDARD_LIMITATIONS_DICT))))
+      assert limitation in STANDARD_LIMITATIONS_DICT
       output_map_labels.append(limitation)
 
   # any specific labels given
@@ -515,7 +517,7 @@ def select_output_labels(labels,max_labels=10):
   n_limitations=0
   used_labels=[]
   for label in labels:
-    if label in STANDARD_LIMITATIONS_DICT.keys() and not label in used_labels:
+    if label in STANDARD_LIMITATIONS_DICT and not label in used_labels:
       n_limitations+=1
       used_labels.append(label)
   output_labels=[]
@@ -525,7 +527,7 @@ def select_output_labels(labels,max_labels=10):
     if label in output_labels: continue
     if len(output_labels)>=max_labels:
       continue
-    if label in STANDARD_LIMITATIONS_DICT.keys():
+    if label in STANDARD_LIMITATIONS_DICT:
       output_labels.append(label)
     elif n_general < n_available:
       n_general+=1
@@ -613,7 +615,7 @@ def get_standard_order(mapc,mapr,maps,internal_standard_order=None,
 
   if not reverse:
     assert i_order.count(None)==0
-    for i in xrange(3):
+    for i in range(3):
       assert i_order.count(i)==1
     return i_order
   else:
@@ -621,10 +623,10 @@ def get_standard_order(mapc,mapr,maps,internal_standard_order=None,
     #   if standard is: input axis 0 -> output 2 :i0=2
     #   then reversed:  input 2 -> output 0      :i2=0
     i_order_reverse=[None,None,None]
-    for i in xrange(3):
+    for i in range(3):
       i_order_reverse[i_order[i]]=i
     assert i_order_reverse.count(None)==0
-    for i in xrange(3):
+    for i in range(3):
       assert i_order_reverse.count(i)==1
     return i_order_reverse
 
@@ -648,7 +650,7 @@ def origin_as_crs(origin=None,mapc=None,mapr=None,maps=None):
   #   is the origin along Z
 
   nxstart_nystart_nzstart=[None,None,None]
-  for i in xrange(3):
+  for i in range(3):
     nxstart_nystart_nzstart[order[i]]=origin[i]
   return nxstart_nystart_nzstart
 
@@ -672,7 +674,7 @@ def origin_as_xyz(nxstart_nystart_nzstart=None,mapc=None,mapr=None,maps=None):
   #   is the origin along Z
 
   origin=[None,None,None]
-  for i in xrange(3):
+  for i in range(3):
     origin[order[i]]=nxstart_nystart_nzstart[i]
   return origin
 

@@ -1,9 +1,8 @@
-from __future__ import division
-
 """
 Utility for matching a dials-format non-image pickle file to an experiment list and producing a cctbx-format dictionary
 from the pair.
 """
+from __future__ import absolute_import, division, print_function
 
 import os
 from dials.util.options import Importer, flatten_reflections, flatten_experiments
@@ -11,7 +10,7 @@ from xfel.command_line.frame_extractor import ConstructFrame
 
 def find_json(pickle, pickle_ext=None, json_ext=None):
   """find the matching json file for a given dials-format non-image pickle file"""
-  name = os.path.basename(pickle).split(".pickle")[0]
+  name = os.path.basename(pickle).split(".refl")[0]
   dirname = os.path.dirname(pickle)
   if pickle_ext is not None:
     if pickle_ext == "":
@@ -25,11 +24,11 @@ def find_json(pickle, pickle_ext=None, json_ext=None):
   else:
     base = name
   if json_ext is not None:
-    json = os.path.join(dirname, base + json_ext + ".json")
-  elif os.path.exists(os.path.join(dirname, base + "_refined_experiments.json")):
-    json = os.path.join(dirname, base + "_refined_experiments.json")
-  elif os.path.exists(os.path.join(dirname, base + "_experiments.json")):
-    json = os.path.join(dirname, base + "_experiments.json")
+    json = os.path.join(dirname, base + json_ext + ".expt")
+  elif os.path.exists(os.path.join(dirname, base + "_refined.expt")):
+    json = os.path.join(dirname, base + "_refined.expt")
+  elif os.path.exists(os.path.join(dirname, base + "_indexed.expt")):
+    json = os.path.join(dirname, base + "_indexed.expt")
   else:
     json = None
   return json
@@ -41,19 +40,19 @@ class read_dials_pickle(object):
       json = find_json(path, pickle_ext, json_ext)
     if json is None:
       importer = Importer([path], read_experiments=False, read_reflections=True, check_format=False)
-      print "unable to find experiment list"
+      print("unable to find experiment list")
       self.experiments = None
     else:
       importer = Importer([path, json], read_experiments=True, read_reflections=True, check_format=False)
       try:
         self.experiments = flatten_experiments(importer.experiments)[0]
       except IndexError:
-        print "unable to read experiment list"
+        print("unable to read experiment list")
         self.experiments = None
     try:
       self.reflections = flatten_reflections(importer.reflections)[0]
     except IndexError:
-      print "unable to read reflection table"
+      print("unable to read reflection table")
       self.reflections = None
   def make_pickle(self):
     if (self.experiments is None) or (self.reflections is None):

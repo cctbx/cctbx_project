@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
 
@@ -41,7 +41,7 @@ class frame_data (intensity_data) :
     self.log_out = out_str
 
   def show_log_out (self, out) :
-    print >> out, self.log_out
+    print(self.log_out, file=out)
 
 class null_data (object) :
   """
@@ -59,4 +59,4 @@ class null_data (object) :
     adopt_init_args(self, locals())
 
   def show_log_out (self, out) :
-    print >> out, self.log_out
+    print(self.log_out, file=out)

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.find_reticular_twin_laws
 
 import sys
@@ -25,16 +25,16 @@ def run(args, command_name="phenix.find_reticular_twin_laws"):
   max_index = co.max_index
   xs = command_line.symmetry
 
-  print "----- Input symmetry -----"
+  print("----- Input symmetry -----")
   xs.show_summary()
-  print
-  print " Settings:"
-  print "   max_delta: ", max_delta
-  print "   max_index: ", max_index
-  print
-  print "----- Finding reticular twin laws -----"
-  print
-  print """
+  print()
+  print(" Settings:")
+  print("   max_delta: ", max_delta)
+  print("   max_index: ", max_index)
+  print()
+  print("----- Finding reticular twin laws -----")
+  print()
+  print("""
 
 
 
@@ -44,10 +44,10 @@ def run(args, command_name="phenix.find_reticular_twin_laws"):
    reticular twin laws of twin index 1, are 'normal' twin laws
 
 
-  """
+  """)
   tl = reticular_twin_laws.reticular_twin_laws(xs,max_delta,max_index)
-  print "--------------- Twin law listing ---------------"
-  print
+  print("--------------- Twin law listing ---------------")
+  print()
   tl.show()
 
 

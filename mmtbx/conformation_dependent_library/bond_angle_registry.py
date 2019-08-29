@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 class bond_angle_registry(dict):
   def __init__(self):
     pass

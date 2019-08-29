@@ -12,7 +12,7 @@ def show_pickle_sizes(obj, indent="",
   if hasattr(obj, "__slots__"):
     attr_names = obj.__slots__
   else :
-    attr_names = obj.__dict__.keys()
+    attr_names = list(obj.__dict__.keys())
   for attr in attr_names :
     child_obj = getattr(obj, attr, None)
     if (child_obj is not None):

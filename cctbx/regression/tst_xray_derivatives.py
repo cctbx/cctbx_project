@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import xray
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -7,15 +7,17 @@ import random
 import math
 import sys
 from cctbx import adptbx
+from six.moves import range
+from six.moves import zip
 
 def finite_differences_site(cartesian_flag, target_ftor, structure,
                             delta=0.00001):
   unit_cell = structure.unit_cell()
   abc = unit_cell.parameters()[:3]
   derivatives = flex.vec3_double()
-  for i_scatterer in xrange(structure.scatterers().size()):
+  for i_scatterer in range(structure.scatterers().size()):
     d_target_d_site = [0,0,0]
-    for ix in xrange(3):
+    for ix in range(3):
       target_values = []
       for d_sign in (-1, 1):
         modified_structure = structure.deep_copy_scatterers()
@@ -42,10 +44,10 @@ def finite_differences_site(cartesian_flag, target_ftor, structure,
 def finite_differences_u_star(target_ftor, structure,
                               delta=0.000001):
   derivatives = flex.sym_mat3_double()
-  for i_scatterer in xrange(structure.scatterers().size()):
+  for i_scatterer in range(structure.scatterers().size()):
     d_target_d_u_star = [0,0,0,0,0,0]
     if(structure.scatterers()[i_scatterer].flags.use_u_aniso()):
-       for iu in xrange(6):
+       for iu in range(6):
          target_values = []
          for d_sign in (-1, 1):
            modified_structure = structure.deep_copy_scatterers()
@@ -68,7 +70,7 @@ def finite_differences_u_star(target_ftor, structure,
 def finite_differences_scalar(parameter_name, target_ftor, structure,
                               delta=0.00001):
   derivatives = flex.double()
-  for i_scatterer in xrange(structure.scatterers().size()):
+  for i_scatterer in range(structure.scatterers().size()):
     target_values = []
     for d_sign in (-1, 1):
       modified_structure = structure.deep_copy_scatterers()
@@ -111,8 +113,8 @@ def linear_regression_test(d_analytical, d_numerical, test_hard=True,
   if (type(d_numerical) != type(flex.double())):
     d_numerical = flex_tuple_as_flex_double(d_numerical)
   if (0 or verbose):
-    print "analytical:", tuple(d_analytical)
-    print "numerical: ", tuple(d_numerical)
+    print("analytical:", tuple(d_analytical))
+    print("numerical: ", tuple(d_numerical))
   if (    flex.max(flex.abs(d_analytical)) == 0
       and flex.max(flex.abs(d_numerical)) == 0):
     return
@@ -120,12 +122,12 @@ def linear_regression_test(d_analytical, d_numerical, test_hard=True,
   corr = flex.linear_correlation(d_analytical, d_numerical).coefficient()
   assert regr.is_well_defined()
   if (abs(regr.slope() - 1) > slope_tolerance or corr < correlation_min):
-    print "Error: finite difference mismatch:"
-    print "slope:", regr.slope()
-    print "correlation:", corr
+    print("Error: finite difference mismatch:")
+    print("slope:", regr.slope())
+    print("correlation:", corr)
     if (0 or verbose):
       for a, n in zip(d_analytical, d_numerical):
-        print a, n
+        print(a, n)
     assert not test_hard
 
 def exercise(target_functor, data_type, parameter_name, space_group_info,

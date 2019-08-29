@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from libtbx.test_utils import show_diff
 import libtbx.utils
@@ -10,6 +9,7 @@ import smtbx.development
 
 import random
 import math
+from six.moves import range
 
 def exercise_optimise_shelxl_weights():
   def calc_goof(fo2, fc, w, k, n_params):

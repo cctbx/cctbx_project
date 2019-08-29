@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 from iotbx.phil import parse
 from libtbx.utils import Sorry
@@ -52,6 +52,26 @@ facility {
     monitor_for = *files folders
       .type = choice
       .help = Whether to monitor for new files or new folders with files in them
+    folders {
+      method = *status_file n_files
+        .type = choice
+        .help = How to determine if a run is complete. status_file: look for a \
+                status.txt file. n_files: run is complete when at least \
+                n_files_needed files are found
+      n_files_needed = 0
+        .type = int
+        .help = If criteria is n_files, this is how many files are needed \
+                before a run is complete
+    }
+    files {
+      last_modified = 0
+        .type = float
+        .help = This is the miniumum number of seconds since a file was last \
+                modified before the run is complete
+      minimum_file_size = 0
+        .type = int
+        .help = Minimum file size (in bytes) before the run is complete
+    }
     template = None
       .type = str
       .help = File matching pattern for new data. Example: *.h5
@@ -59,14 +79,11 @@ facility {
       .type = bool
       .help = If True, files are submitted as individual runs. Otherwise, groups \
               of files are submitted as single runs
-    }
+  }
 }
 output_folder = ""
   .type = path
   .help = Processing results will go in this folder
-average_raw_data = False
-  .type = bool
-  .help = If True, don't use any psana corrections (dark, common mode, etc.)
 
 include scope xfel.command_line.cxi_mpi_submit.mp_phil_scope
 """

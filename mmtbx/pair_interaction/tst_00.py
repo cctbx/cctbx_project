@@ -1,6 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
-import pair_interaction
+from mmtbx.pair_interaction import pair_interaction
 from libtbx.test_utils import approx_equal
 
 import boost.python

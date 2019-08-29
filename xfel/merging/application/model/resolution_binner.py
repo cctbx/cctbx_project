@@ -1,7 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 
 class resolution_binner(worker):
+
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(resolution_binner, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
 
   def __repr__(self):
     return 'Set up resolution bins'
@@ -15,9 +18,12 @@ class resolution_binner(worker):
     resolution_binner = full_miller_set.binner()
 
     # Save resolution binner to the parameters
-    self.params.statistics.__inject__('resolution_binner', resolution_binner)
+    if not 'resolution_binner' in (self.params.statistics).__dict__:
+      self.params.statistics.__inject__('resolution_binner', resolution_binner)
+    else:
+      self.params.statistics.__setattr__('resolution_binner', resolution_binner)
 
-    # Provide resolution bin number for each asu hkl
+    # Provide resolution bin number for each asu hkl in the full miller set
     hkl_resolution_bins = {} # hkl vs resolution bin number
     hkls_with_assigned_bin = 0
     for i_bin in resolution_binner.range_used():
@@ -30,7 +36,10 @@ class resolution_binner(worker):
     self.logger.log("Provided resolution bin number for %d asu hkls"%(hkls_with_assigned_bin))
 
     # Save hkl bin asignments to the parameters
-    self.params.statistics.__inject__('hkl_resolution_bins', hkl_resolution_bins)
+    if not 'hkl_resolution_bins' in (self.params.statistics).__dict__:
+      self.params.statistics.__inject__('hkl_resolution_bins', hkl_resolution_bins)
+    else:
+      self.params.statistics.__setattr__('hkl_resolution_bins', hkl_resolution_bins)
 
     return experiments, reflections
 

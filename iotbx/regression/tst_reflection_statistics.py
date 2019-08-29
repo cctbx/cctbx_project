@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 if (libtbx.env.has_module("ccp4io")):
   from iotbx.command_line import reflection_statistics
@@ -11,7 +11,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.sgtbx import subgroups
 from cctbx.development import debug_utils
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 def generate_mtz_files(space_group_info, anomalous_flag):
@@ -85,7 +85,7 @@ def exercise_reflection_statistics(
 def run_call_back(flags, space_group_info):
   for anomalous_flag in [False, True]:
     if (flags.Verbose):
-      print space_group_info, "anomalous_flag:", anomalous_flag
+      print(space_group_info, "anomalous_flag:", anomalous_flag)
     if (anomalous_flag and space_group_info.group().is_centric()): continue
     miller_arrays, file_names = generate_mtz_files(
       space_group_info=space_group_info,
@@ -98,15 +98,14 @@ def run_call_back(flags, space_group_info):
 
 def exercise():
   if (mtz is None):
-    print \
-      "Skipping iotbx/regression/tst_reflection_statistics.py:" \
-      " ccp4io not available"
+    print("Skipping iotbx/regression/tst_reflection_statistics.py:" \
+      " ccp4io not available")
     return
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 def run():
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

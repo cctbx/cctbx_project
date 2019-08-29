@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 
 class dict_with_add(dict):
@@ -51,11 +51,11 @@ class interpreter(object):
     for expected_pattern in expected_patterns:
       alt = alternative_hydrogen_pattern(expected_pattern)
       if (alt is not None): synonym_patterns[alt] = expected_pattern
-    for synonym_pattern,expected_pattern in synonym_patterns.items():
+    for synonym_pattern,expected_pattern in list(synonym_patterns.items()):
       alt = alternative_hydrogen_pattern(synonym_pattern)
       if (alt is not None): synonym_patterns[alt] = expected_pattern
     synonyms = {}
-    for synonym_pattern,expected_pattern in synonym_patterns.items():
+    for synonym_pattern,expected_pattern in list(synonym_patterns.items()):
       for h in ["H", "D"]:
         name = synonym_pattern.replace("h", h)
         if (name in synonyms):
@@ -128,16 +128,16 @@ class matched_atom_names(object):
     result = 0
     if (out is None): out = sys.stdout
     if (len(self.unexpected) != 0):
-      print >> out, prefix+"unexpected atom names:", ", ".join(['"'+name+'"'
-        for name in self.unexpected])
+      print(prefix+"unexpected atom names:", ", ".join(['"'+name+'"'
+        for name in self.unexpected]), file=out)
       result += 1
     for expected_pattern,names in \
           self.expected_patterns_with_multiple_matches().items():
-      print >> out, prefix+"multiple matches: expected pattern=%s  names=%s" \
-        % (expected_pattern, ", ".join(['"'+name+'"' for name in names]))
+      print(prefix+"multiple matches: expected pattern=%s  names=%s" \
+        % (expected_pattern, ", ".join(['"'+name+'"' for name in names])), file=out)
       result += 1
     for pair in self.mutually_exclusive_pairs():
-      print >> out, prefix+"mutually exclusive: %s" % " ".join(pair)
+      print(prefix+"mutually exclusive: %s" % " ".join(pair), file=out)
       result += 1
     return result
 

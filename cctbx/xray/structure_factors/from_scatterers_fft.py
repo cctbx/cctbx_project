@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.xray.structure_factors.manager import managed_calculation_base
 from cctbx.xray.structure_factors import global_counters
 from cctbx.xray import ext

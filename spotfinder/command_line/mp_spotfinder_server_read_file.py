@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME distl.mp_spotfinder_server_read_file
 from libtbx.utils import Sorry
 from spotfinder.command_line.signal_strength import master_params
@@ -10,11 +10,11 @@ Allowed parameters:
 """
 
   if (len(args)>=1 and args[0] in ["H","h","-H","-h","help","--help","-help"]):
-    print "usage:   %s [parameter=value ...]" % command_name
-    print "example: %s distl.port=8125 distl.processors=8"%command_name
-    print help_str
+    print("usage:   %s [parameter=value ...]" % command_name)
+    print("example: %s distl.port=8125 distl.processors=8"%command_name)
+    print(help_str)
     return
-  else:  print help_str
+  else:  print(help_str)
 
   phil_objects = []
   argument_interpreter = master_params.command_line_argument_interpreter(
@@ -39,20 +39,20 @@ Allowed parameters:
     help = D.object.help
     if D.object.expert_level > 1: continue
     if len(name) + len(help) < screen and len(name) < 36:
-        print "%-36s"%name,"[%s]"%help
+        print("%-36s"%name,"[%s]"%help)
     else:
-      print "%-36s"%name,
+      print("%-36s"%name, end=' ')
       tokens = ("[%s]"%help).split()
       reserve = min(screen-36,screen-len(name))
       while len(tokens)>0:
         reserve -= len(tokens[0])
         if len(tokens[0])>(screen-36):break
         while reserve<0:
-          print
-          print " "*36,
+          print()
+          print(" "*36, end=' ')
           reserve = screen-36
-        print tokens.pop(0),
-      print
+        print(tokens.pop(0), end=' ')
+      print()
 
   #Now actually run the program logic
   from spotfinder.servers import mp_spotfinder_server_read_file as srv
@@ -64,8 +64,8 @@ Allowed parameters:
 
   srv.image_request_handler.protocol_version = "HTTP/1.0"
 
-  print "Serving %d-process HTTP on"%NUMBER_OF_PROCESSES, server_address[0], "port", server_address[1], "..."
-  print "To exit press Ctrl-C"
+  print("Serving %d-process HTTP on"%NUMBER_OF_PROCESSES, server_address[0], "port", server_address[1], "...")
+  print("To exit press Ctrl-C")
   srv.runpool(server_address,NUMBER_OF_PROCESSES,srv.image_request_handler)
 
 if (__name__ == "__main__"):

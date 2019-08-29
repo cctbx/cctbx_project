@@ -1,6 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 from libtbx import easy_run
 import iotbx.pdb
 
@@ -249,12 +249,12 @@ def largest_torsion(s, f, i):
   f="ideal   model   delta sinusoidal    sigma   weight residual"
   reading = False
   for line in s:
-    print line
+    print(line)
     if reading: break
     if line.find(f)>-1:
       reading=True
   d=line.split()
-  print d
+  print(d)
   return float(d[i])
 
 def largest_chiral(s, f, i):
@@ -264,21 +264,21 @@ def largest_chiral(s, f, i):
   f="both_signs  ideal   model   delta    sigma   weight residual"
   reading = False
   for line in s:
-    print line
+    print(line)
     if reading: break
     if line.find(f)>-1:
       reading=True
   d=line.split()
-  print d
+  print(d)
   return float(d[i])
 
 def run():
   for code, lines in pdbs.items():
     #if code!='VAL': continue
-    print ('-%s- ' % code)*10
-    f=file("tst_symmetric_flips_%s.pdb" % code, "wb").write(lines)
+    print(('-%s- ' % code)*10)
+    f=open("tst_symmetric_flips_%s.pdb" % code, "w").write(lines)
     cmd = "phenix.pdb_interpretation tst_symmetric_flips_%s.pdb" % code
-    print cmd
+    print(cmd)
     ero = easy_run.fully_buffered(command=cmd)
     out = StringIO()
     ero.show_stdout(out=out)
@@ -287,35 +287,35 @@ def run():
       d = largest_chiral(out.getvalue(),
                          geo_strs[code],
                          i+2)
-      print 'chiral',d
+      print('chiral',d)
       assert abs(d-values[code][i])<.1, '%s %s' % (d, values[code][i])
     else:
       d = largest_torsion(out.getvalue(),
                           geo_strs[code],
                           i+1)
-      print 'torsion',d
+      print('torsion',d)
       assert abs(d-values[code][i])<1, '%s %s' % (d, values[code][i])
     i+=1
     if code in ['LEU', 'VAL']:
       d = largest_chiral(out.getvalue(),
                          geo_strs[code],
                          i+2)
-      print 'delta',d
+      print('delta',d)
       assert abs(d-values[code][i])<.1, '%s %s' % (d, values[code][i])
     else:
       d = largest_torsion(out.getvalue(),
                           geo_strs[code],
                           i+1)
-      print 'delta',d
+      print('delta',d)
       assert abs(d-values[code][i])<1, '%s %s' % (d, values[code][i])
 
     pdb_inp = iotbx.pdb.input('tst_symmetric_flips_%s.pdb' % code)
     hierarchy = pdb_inp.construct_hierarchy()
     rc = hierarchy.flip_symmetric_amino_acids()
-    print rc
+    print(rc)
     hierarchy.write_pdb_file("tst_symmetric_flips_%s.pdb" % code)
     cmd = "phenix.pdb_interpretation tst_symmetric_flips_%s.pdb" % code
-    print cmd
+    print(cmd)
     ero = easy_run.fully_buffered(command=cmd)
     out = StringIO()
     ero.show_stdout(out=out)
@@ -325,26 +325,26 @@ def run():
       d = largest_chiral(out.getvalue(),
                          geo_strs[code],
                          i)
-      print 'chiral',d
+      print('chiral',d)
       assert abs(d-values[code][i])<.1, '%s %s' % (d, values[code][i])
     else:
       d = largest_torsion(out.getvalue(),
                           geo_strs[code],
                           i-1)
-      print 'torsion',d
+      print('torsion',d)
       assert abs(d-values[code][i])<1, '%s %s' % (d, values[code][i])
     i+=1
     if code in ['LEU', 'VAL']:
       d = largest_chiral(out.getvalue(),
                          geo_strs[code],
                          i)
-      print 'delta',d
+      print('delta',d)
       assert abs(d-values[code][i])<.1, '%s %s' % (d, values[code][i])
     else:
       d = largest_torsion(out.getvalue(),
                           geo_strs[code],
                           i-1)
-      print 'delta',d
+      print('delta',d)
       assert abs(d-values[code][i])<1, '%s %s' % (d, values[code][i])
 
 if __name__=="__main__":

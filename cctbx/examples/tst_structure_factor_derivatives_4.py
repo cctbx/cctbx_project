@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import xray
 from cctbx import miller
 from cctbx.examples.structure_factor_derivatives_4 import structure_factors
@@ -11,8 +11,10 @@ from libtbx.test_utils import approx_equal
 import libtbx.load_env
 import random
 from itertools import count
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
+from six.moves import range
+from six.moves import zip
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -59,11 +61,11 @@ def d_target_d_params_finite(d_order, f_obs, xray_structure, eps=1.e-8):
       site_constraints = site_symmetry_ops.site_constraints()
       ips = list(site_constraints.independent_indices)
       if (not scatterer.flags.use_u_aniso()):
-        ips.extend(range(3,7))
+        ips.extend(list(range(3,7)))
       else:
         adp_constraints = site_symmetry_ops.adp_constraints()
         ips.extend([i+3 for i in adp_constraints.independent_indices])
-        ips.extend(range(9,12))
+        ips.extend(list(range(9,12)))
     dx = []
     for ip in ips:
       vs = []
@@ -111,23 +113,23 @@ def compare_analytical_and_finite(
       out):
   grads_fin = d_target_d_params_finite(
     d_order=1, f_obs=f_obs, xray_structure=xray_structure)
-  print >> out, "grads_fin:", list(grads_fin)
+  print("grads_fin:", list(grads_fin), file=out)
   sf = structure_factors(
     xray_structure=xray_structure, miller_set=f_obs)
   grads_ana = sf.d_target_d_params(f_obs=f_obs, target_type=least_squares)
-  print >> out, "grads_ana:", list(grads_ana)
+  print("grads_ana:", list(grads_ana), file=out)
   if (gradients_should_be_zero):
     flex.compare_derivatives(grads_ana, flex.double(grads_ana.size(), 0), eps)
   else:
     flex.compare_derivatives(grads_ana, grads_fin, eps)
   curvs_fin = d_target_d_params_finite(
     d_order=2, f_obs=f_obs, xray_structure=xray_structure)
-  print >> out, "curvs_fin:", list(curvs_fin)
+  print("curvs_fin:", list(curvs_fin), file=out)
   curvs_ana = sf.d2_target_d_params(f_obs=f_obs, target_type=least_squares)
-  print >> out, "curvs_ana:", list(curvs_ana)
+  print("curvs_ana:", list(curvs_ana), file=out)
   flex.compare_derivatives(curvs_ana.as_1d(), curvs_fin, eps)
   assert curvs_ana.matrix_is_symmetric(relative_epsilon=1e-10)
-  print >> out
+  print(file=out)
   #
   for i_method,curvs_method in enumerate([
         sf.d2_target_d_params_diag,
@@ -227,7 +229,7 @@ def run_call_back(flags,
   else:
     use_u_aniso_flags = [False, True]
   if (not flags.tag):
-    for n_scatterers in xrange(2,3+1):
+    for n_scatterers in range(2,3+1):
       for use_u_aniso in use_u_aniso_flags:
         xray_structure = random_structure.xray_structure(
           space_group_info=space_group_info,
@@ -251,12 +253,12 @@ def run_call_back(flags,
   else:
     i_structure = count()
     for entry in strudat_entries:
-      if (i_structure.next() % chunk_n != chunk_i): continue
+      if (next(i_structure) % chunk_n != chunk_i): continue
       # XXX Not sure why this stderr output is necessary. Disabling to clean
       # up t96 output.
       # print >> sys.stderr, "strudat tag:", entry.tag
       # sys.stderr.flush()
-      print >> out, "strudat tag:", entry.tag
+      print("strudat tag:", entry.tag, file=out)
       out.flush()
       for use_u_aniso in use_u_aniso_flags:
         xray_structure = entry.as_xray_structure()

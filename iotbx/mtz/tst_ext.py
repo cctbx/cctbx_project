@@ -1,5 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.load_env
+from six.moves import range
+from six.moves import zip
 if (libtbx.env.has_module("ccp4io")):
   from iotbx import mtz
 else:
@@ -10,17 +12,17 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from itertools import count
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 
 def exercise_read_corrupt():
-  for i_trial in xrange(5):
-    f = open("tmp_iotbx_mtz_ext.mtz", "wb")
+  for i_trial in range(5):
+    f = open("tmp_iotbx_mtz_ext.mtz", "w")
     if (i_trial > 0):
       f.write("\0"*(40*i_trial))
     f.close()
     try: mtz.object(file_name="tmp_iotbx_mtz_ext.mtz")
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == "cctbx Error: MTZ file read error: tmp_iotbx_mtz_ext.mtz"
     else: raise Exception_expected
 
@@ -57,7 +59,7 @@ def exercise_basic():
     relative_path="phenix_regression/reflection_files/dano.mtz",
     test=os.path.isfile)
   if (file_name is None):
-    print "Skipping dano.mtz test: input file not available"
+    print("Skipping dano.mtz test: input file not available")
   else:
     mtz_object = mtz.object(file_name=file_name)
     assert mtz_object.title() == "......"
@@ -90,7 +92,7 @@ def exercise_basic():
     assert crystal.set_name("abc") is crystal
     assert crystal.name() == "abc"
     try: crystal.set_name("unknown3")
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == 'mtz::crystal::set_name(new_name="unknown3"):' \
         ' new_name is used already for another crystal.'
     else: raise Exception_expected
@@ -133,7 +135,7 @@ def exercise_basic():
     assert column.set_label(new_label="New") is column
     assert column.label() == "New"
     try: column.set_label("a,b,c")
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == 'mtz::column::set_label(new_label="a,b,c"):' \
         ' new_label must not include commas.'
     else: raise Exception_expected
@@ -141,7 +143,7 @@ def exercise_basic():
     assert column.set_label(new_label="New") is column
     assert column.label() == "New"
     try: column.set_label(new_label="K")
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == 'mtz::column::set_label(new_label="K"):' \
         ' new_label is used already for another column.'
     else: raise Exception_expected
@@ -232,15 +234,15 @@ def exercise_basic():
       for i_dataset,dataset in enumerate(crystal.datasets()):
         assert dataset.mtz_crystal().i_crystal() == i_crystal
         assert dataset.i_dataset() == i_dataset
-        assert dataset.id() == expected_dataset_ids.next()
-        assert dataset.name() == expected_dataset_names.next()
+        assert dataset.id() == next(expected_dataset_ids)
+        assert dataset.name() == next(expected_dataset_names)
         assert dataset.wavelength() == 0
-        assert dataset.n_columns() == expected_n_columns.next()
+        assert dataset.n_columns() == next(expected_n_columns)
         for i_column,column in enumerate(dataset.columns()):
           assert column.mtz_dataset().i_dataset() == i_dataset
           assert column.i_column() == i_column
-          assert column.label() == expected_column_labels.next()
-          assert column.type() == expected_column_types.next()
+          assert column.label() == next(expected_column_labels)
+          assert column.type() == next(expected_column_types)
           assert column.is_active()
           assert column.array_size() == 165
           assert column.array_capacity() == 200
@@ -488,7 +490,7 @@ def walk_callback(arg, top, names):
   for name in names:
     if (not name.lower().endswith(".mtz")): continue
     file_name = os.path.normpath(os.path.join(top, name))
-    print >> out, "Processing:", file_name
+    print("Processing:", file_name, file=out)
     exercise_function(file_name=file_name, out=out)
     exercise_function.raise_if_all_tests_ran_at_least_once()
 
@@ -504,7 +506,7 @@ def exercise_walk(root_dir, full, verbose=False):
   except QuickStop:
     pass
   if (verbose):
-    print exercise_function.counters
+    print(exercise_function.counters)
 
 def exercise_modifiers(verbose=0):
   if (verbose):
@@ -576,7 +578,7 @@ def exercise_modifiers(verbose=0):
   assert mtz_object.title() == "exercise"
   assert list(mtz_object.history()) == ["h1", "h2"]
   for stage in [0,1]:
-    for i_crystal in xrange(3):
+    for i_crystal in range(3):
       if (stage == 0):
         if (i_crystal % 2 == 0):
           crystal = mtz_object.add_crystal(
@@ -636,7 +638,7 @@ Crystal 3:
     [11,20,20,90,90,120])
   for stage in [0,1]:
     for i_crystal,crystal in enumerate(mtz_object.crystals()):
-      for i_dataset in xrange(5-i_crystal):
+      for i_dataset in range(5-i_crystal):
         if (stage == 0):
           new_name = "dataset_%d" % i_dataset
           assert not crystal.has_dataset(name=new_name)
@@ -747,7 +749,7 @@ Crystal 3:
   assert dataset_0_0.set_name(new_name="dataset_0") is dataset_0_0
   assert dataset_0_0.name() == "dataset_0"
   try: dataset_0_0.set_name(new_name="dataset_1")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'mtz::dataset::set_name(new_name="dataset_1"):' \
       ' new_name is used already for another dataset.'
   else: raise Exception_expected
@@ -757,8 +759,8 @@ Crystal 3:
     i_seq_iter = count()
     for i_crystal,crystal in enumerate(mtz_object.crystals()):
       for i_dataset,dataset in enumerate(crystal.datasets()):
-        for i_column in xrange((i_crystal+i_dataset) % 3 + 1):
-          i_seq = i_seq_iter.next()
+        for i_column in range((i_crystal+i_dataset) % 3 + 1):
+          i_seq = next(i_seq_iter)
           col_label = "column_%d"%i_seq
           col_type = "FB?"[(i_crystal-i_dataset+i_column) % 3]
           if (stage == 0):
@@ -923,7 +925,7 @@ Crystal 3:
       name="crystal_1",
       wavelength=0)
   try: dataset.add_column(label="a,b,c", type="H")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'mtz::dataset::add_column(label="a,b,c", ...):' \
       ' label must not include commas.'
   else: raise Exception_expected
@@ -1091,7 +1093,7 @@ Crystal 2:
     selection_valid=flex.bool([False]*4))
   v = c.extract_values(not_a_number_substitute=-1)
   assert approx_equal(v, [-1]*4)
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     s = flex.random_bool(size=4, threshold=0.5)
     v = flex.float(list(flex.random_double(size=4)*10-5))
     c.set_values(values=v, selection_valid=s)
@@ -1104,11 +1106,11 @@ Crystal 2:
   #
   values_in = count()
   values_out = count()
-  for i_batch in xrange(10):
+  for i_batch in range(10):
     batch = mtz_object.add_batch()
     assert batch.num() == i_batch+1
-    assert batch.set_num(value=values_in.next()) is batch
-    assert batch.num() == values_out.next()
+    assert batch.set_num(value=next(values_in)) is batch
+    assert batch.num() == next(values_out)
     assert batch.set_num(value=i_batch+1) is batch
     assert batch.title() == " "
     assert batch.set_title("Hello MTZ") is batch
@@ -1120,128 +1122,128 @@ Crystal 2:
       flex.std_string(["what", "ever", "this_is....."])) is batch
     assert list(batch.gonlab()) == ["what", "ever", "this_is"]
     assert batch.iortyp() == 0
-    assert batch.set_iortyp(value=values_in.next()) is batch
-    assert batch.iortyp() == values_out.next()
+    assert batch.set_iortyp(value=next(values_in)) is batch
+    assert batch.iortyp() == next(values_out)
     assert list(batch.lbcell()) == [0, 0, 0, 0, 0, 0]
     assert batch.set_lbcell(flex.int(range(3,9))) is batch
-    assert list(batch.lbcell()) == range(3,9)
+    assert list(batch.lbcell()) == list(range(3,9))
     assert batch.misflg() == 0
-    assert batch.set_misflg(value=values_in.next()) is batch
-    assert batch.misflg() == values_out.next()
+    assert batch.set_misflg(value=next(values_in)) is batch
+    assert batch.misflg() == next(values_out)
     assert batch.jumpax() == 0
-    assert batch.set_jumpax(value=values_in.next()) is batch
-    assert batch.jumpax() == values_out.next()
+    assert batch.set_jumpax(value=next(values_in)) is batch
+    assert batch.jumpax() == next(values_out)
     assert batch.ncryst() == 0
-    assert batch.set_ncryst(value=values_in.next()) is batch
-    assert batch.ncryst() == values_out.next()
+    assert batch.set_ncryst(value=next(values_in)) is batch
+    assert batch.ncryst() == next(values_out)
     assert batch.lcrflg() == 0
-    assert batch.set_lcrflg(value=values_in.next()) is batch
-    assert batch.lcrflg() == values_out.next()
+    assert batch.set_lcrflg(value=next(values_in)) is batch
+    assert batch.lcrflg() == next(values_out)
     assert batch.ldtype() == 0
-    assert batch.set_ldtype(value=values_in.next()) is batch
-    assert batch.ldtype() == values_out.next()
+    assert batch.set_ldtype(value=next(values_in)) is batch
+    assert batch.ldtype() == next(values_out)
     assert batch.jsaxs() == 0
-    assert batch.set_jsaxs(value=values_in.next()) is batch
-    assert batch.jsaxs() == values_out.next()
+    assert batch.set_jsaxs(value=next(values_in)) is batch
+    assert batch.jsaxs() == next(values_out)
     assert batch.nbscal() == 0
-    assert batch.set_nbscal(value=values_in.next()) is batch
-    assert batch.nbscal() == values_out.next()
+    assert batch.set_nbscal(value=next(values_in)) is batch
+    assert batch.nbscal() == next(values_out)
     assert batch.ngonax() == 0
-    assert batch.set_ngonax(value=values_in.next()) is batch
-    assert batch.ngonax() == values_out.next()
+    assert batch.set_ngonax(value=next(values_in)) is batch
+    assert batch.ngonax() == next(values_out)
     assert batch.lbmflg() == 0
-    assert batch.set_lbmflg(value=values_in.next()) is batch
-    assert batch.lbmflg() == values_out.next()
+    assert batch.set_lbmflg(value=next(values_in)) is batch
+    assert batch.lbmflg() == next(values_out)
     assert batch.ndet() == 0
-    assert batch.set_ndet(value=values_in.next() % 3) is batch
-    assert batch.ndet() == values_out.next() % 3
+    assert batch.set_ndet(value=next(values_in) % 3) is batch
+    assert batch.ndet() == next(values_out) % 3
     assert batch.nbsetid() == 0
-    assert batch.set_nbsetid(value=values_in.next()) is batch
-    assert batch.nbsetid() == values_out.next()
+    assert batch.set_nbsetid(value=next(values_in)) is batch
+    assert batch.nbsetid() == next(values_out)
     assert list(batch.cell()) == [0]*6
     assert batch.set_cell(flex.float(range(18,24))) is batch
-    assert list(batch.cell()) == range(18,24)
+    assert list(batch.cell()) == list(range(18,24))
     assert list(batch.umat()) == [0]*9
     assert batch.set_umat(flex.float(range(16,25))) is batch
-    assert list(batch.umat()) == range(16,25)
+    assert list(batch.umat()) == list(range(16,25))
     assert list(batch.phixyz()) == [0]*6
     assert batch.set_phixyz(flex.float(range(28,34))) is batch
-    assert list(batch.phixyz()) == range(28,34)
+    assert list(batch.phixyz()) == list(range(28,34))
     assert list(batch.crydat()) == [0]*12
     assert batch.set_crydat(flex.float(range(26,38))) is batch
-    assert list(batch.crydat()) == range(26,38)
+    assert list(batch.crydat()) == list(range(26,38))
     assert list(batch.datum()) == [0]*3
     assert batch.set_datum(flex.float(range(26,29))) is batch
-    assert list(batch.datum()) == range(26,29)
+    assert list(batch.datum()) == list(range(26,29))
     assert batch.phistt() == 0
-    assert batch.set_phistt(value=values_in.next()) is batch
-    assert batch.phistt() == values_out.next()
+    assert batch.set_phistt(value=next(values_in)) is batch
+    assert batch.phistt() == next(values_out)
     assert batch.phiend() == 0
-    assert batch.set_phiend(value=values_in.next()) is batch
-    assert batch.phiend() == values_out.next()
+    assert batch.set_phiend(value=next(values_in)) is batch
+    assert batch.phiend() == next(values_out)
     assert list(batch.scanax()) == [0]*3
     assert batch.set_scanax(flex.float(range(62,65))) is batch
-    assert list(batch.scanax()) == range(62,65)
+    assert list(batch.scanax()) == list(range(62,65))
     assert batch.time1() == 0
-    assert batch.set_time1(value=values_in.next()) is batch
-    assert batch.time1() == values_out.next()
+    assert batch.set_time1(value=next(values_in)) is batch
+    assert batch.time1() == next(values_out)
     assert batch.time2() == 0
-    assert batch.set_time2(value=values_in.next()) is batch
-    assert batch.time2() == values_out.next()
+    assert batch.set_time2(value=next(values_in)) is batch
+    assert batch.time2() == next(values_out)
     assert batch.bscale() == 0
-    assert batch.set_bscale(value=values_in.next()) is batch
-    assert batch.bscale() == values_out.next()
+    assert batch.set_bscale(value=next(values_in)) is batch
+    assert batch.bscale() == next(values_out)
     assert batch.bbfac() == 0
-    assert batch.set_bbfac(value=values_in.next()) is batch
-    assert batch.bbfac() == values_out.next()
+    assert batch.set_bbfac(value=next(values_in)) is batch
+    assert batch.bbfac() == next(values_out)
     assert batch.sdbscale() == 0
-    assert batch.set_sdbscale(value=values_in.next()) is batch
-    assert batch.sdbscale() == values_out.next()
+    assert batch.set_sdbscale(value=next(values_in)) is batch
+    assert batch.sdbscale() == next(values_out)
     assert batch.sdbfac() == 0
-    assert batch.set_sdbfac(value=values_in.next()) is batch
-    assert batch.sdbfac() == values_out.next()
+    assert batch.set_sdbfac(value=next(values_in)) is batch
+    assert batch.sdbfac() == next(values_out)
     assert batch.phirange() == 0
-    assert batch.set_phirange(value=values_in.next()) is batch
-    assert batch.phirange() == values_out.next()
+    assert batch.set_phirange(value=next(values_in)) is batch
+    assert batch.phirange() == next(values_out)
     assert list(batch.e1()) == [0]*3
     assert batch.set_e1(flex.float(range(71,74))) is batch
-    assert list(batch.e1()) == range(71,74)
+    assert list(batch.e1()) == list(range(71,74))
     assert list(batch.e2()) == [0]*3
     assert batch.set_e2(flex.float(range(72,75))) is batch
-    assert list(batch.e2()) == range(72,75)
+    assert list(batch.e2()) == list(range(72,75))
     assert list(batch.e3()) == [0]*3
     assert batch.set_e3(flex.float(range(73,76))) is batch
-    assert list(batch.e3()) == range(73,76)
+    assert list(batch.e3()) == list(range(73,76))
     assert list(batch.source()) == [0]*3
     assert batch.set_source(flex.float(range(74,77))) is batch
-    assert list(batch.source()) == range(74,77)
+    assert list(batch.source()) == list(range(74,77))
     assert list(batch.so()) == [0]*3
     assert batch.set_so(flex.float(range(75,78))) is batch
-    assert list(batch.so()) == range(75,78)
+    assert list(batch.so()) == list(range(75,78))
     assert batch.alambd() == 0
-    assert batch.set_alambd(value=values_in.next()) is batch
-    assert batch.alambd() == values_out.next()
+    assert batch.set_alambd(value=next(values_in)) is batch
+    assert batch.alambd() == next(values_out)
     assert batch.delamb() == 0
-    assert batch.set_delamb(value=values_in.next()) is batch
-    assert batch.delamb() == values_out.next()
+    assert batch.set_delamb(value=next(values_in)) is batch
+    assert batch.delamb() == next(values_out)
     assert batch.delcor() == 0
-    assert batch.set_delcor(value=values_in.next()) is batch
-    assert batch.delcor() == values_out.next()
+    assert batch.set_delcor(value=next(values_in)) is batch
+    assert batch.delcor() == next(values_out)
     assert batch.divhd() == 0
-    assert batch.set_divhd(value=values_in.next()) is batch
-    assert batch.divhd() == values_out.next()
+    assert batch.set_divhd(value=next(values_in)) is batch
+    assert batch.divhd() == next(values_out)
     assert batch.divvd() == 0
-    assert batch.set_divvd(value=values_in.next()) is batch
-    assert batch.divvd() == values_out.next()
+    assert batch.set_divvd(value=next(values_in)) is batch
+    assert batch.divvd() == next(values_out)
     assert list(batch.dx()) == [0]*2
     assert batch.set_dx(flex.float(range(84,86))) is batch
-    assert list(batch.dx()) == range(84,86)
+    assert list(batch.dx()) == list(range(84,86))
     assert list(batch.theta()) == [0]*2
     assert batch.set_theta(flex.float(range(85,87))) is batch
-    assert list(batch.theta()) == range(85,87)
+    assert list(batch.theta()) == list(range(85,87))
     assert list(batch.detlm()) == [0]*8
     assert batch.set_detlm(flex.float(range(86,94))) is batch
-    assert list(batch.detlm()) == range(86,94)
+    assert list(batch.detlm()) == list(range(86,94))
     if (not verbose): out = StringIO()
     batch.show(out=out)
     if (not verbose and i_batch == 3):
@@ -1302,7 +1304,7 @@ min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.
   restored.batches()[3].show(out=out)
   if (not verbose):
     assert out.getvalue() == batch_3_show.getvalue()
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     perm = flex.random_permutation(size=10)
     for batch,new_num in zip(mtz_object.batches(), perm):
       batch.set_num(value=new_num+1)
@@ -1343,7 +1345,7 @@ min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.
 
 def exercise():
   if (mtz is None):
-    print "Skipping iotbx/mtz/tst_ext.py: ccp4io not available"
+    print("Skipping iotbx/mtz/tst_ext.py: ccp4io not available")
     return
   command_line = (option_parser()
     .option(None, "--verbose",
@@ -1377,7 +1379,7 @@ def exercise():
 
 def run():
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

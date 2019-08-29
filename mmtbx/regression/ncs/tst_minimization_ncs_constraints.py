@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.refinement.minimization_ncs_constraints
 from libtbx.test_utils import approx_equal
 import mmtbx.refinement.adp_refinement
@@ -16,6 +16,7 @@ import sys
 import os
 import iotbx.ncs
 from cctbx import adptbx
+from six.moves import range
 
 __author__ = 'Youval'
 
@@ -76,8 +77,8 @@ class ncs_minimization_test(object):
       buffer_size=8)
     ph.adopt_xray_structure(xrs_one_ncs)
     of = open("one_ncs_in_asu.pdb", "w")
-    print >> of, mtrix_object.as_pdb_string()
-    print >> of, ph.as_pdb_string(crystal_symmetry=xrs_one_ncs.crystal_symmetry())
+    print(mtrix_object.as_pdb_string(), file=of)
+    print(ph.as_pdb_string(crystal_symmetry=xrs_one_ncs.crystal_symmetry()), file=of)
     of.close()
     # 1 NCS copy -> full asu (expand NCS). This is the answer-structure
     xrs_asu, pdb_str, dummy1, dummy2, dummy3 = step_1(
@@ -105,8 +106,8 @@ class ncs_minimization_test(object):
       xrs_shaken = xrs_shaken.set_u_iso(values=u_random)
     ph.adopt_xray_structure(xrs_shaken)
     of = open("one_ncs_in_asu_shaken.pdb", "w")
-    print >> of, mtrix_object.as_pdb_string()
-    print >> of, ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
+    print(mtrix_object.as_pdb_string(), file=of)
+    print(ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry()), file=of)
     of.close()
     self.f_obs = f_obs
     self.r_free_flags = r_free_flags
@@ -153,8 +154,8 @@ class ncs_minimization_test(object):
       target_name                  = "ls_wunit_k1")
     r_start = self.fmodel.r_work()
     assert r_start > 0.1, r_start
-    print "start r_factor: %6.4f" % r_start
-    for macro_cycle in xrange(self.n_macro_cycle):
+    print("start r_factor: %6.4f" % r_start)
+    for macro_cycle in range(self.n_macro_cycle):
       data_weight = None
       if(self.use_geometry_restraints):
         self.transformations=False
@@ -182,9 +183,9 @@ class ncs_minimization_test(object):
       outstr = "  macro_cycle {0:3} ({1})   r_factor: {2:6.4f}   " + \
             self.finite_grad_differences_test * \
             "finite_grad_difference_val: {3:.4f}"
-      print outstr.format(
+      print(outstr.format(
         macro_cycle, refine_type,self.fmodel.r_work(),
-        minimized.finite_grad_difference_val)
+        minimized.finite_grad_difference_val))
       assert (minimized.finite_grad_difference_val < 1.0e-3)
       assert approx_equal(self.fmodel.r_work(), target_and_grads_object.fmodel.r_work())
       # break test if r_work is very small
@@ -218,8 +219,8 @@ class ncs_minimization_test(object):
         crystal_symmetry=self.fmodel.xray_structure.crystal_symmetry())
       xrs2 = pdb_inp_refined.xray_structure_simple().select(
         minimized.extended_ncs_selection)
-      print xrs1.crystal_symmetry().unit_cell().parameters()
-      print xrs2.crystal_symmetry().unit_cell().parameters()
+      print(xrs1.crystal_symmetry().unit_cell().parameters())
+      print(xrs2.crystal_symmetry().unit_cell().parameters())
       mmtbx.utils.assert_xray_structures_equal(
         x1 = xrs1,
         x2 = xrs2,
@@ -242,7 +243,7 @@ class ncs_minimization_test(object):
       if os.path.isfile(fn): os.remove(fn)
 
 def exercise_without_geometry_restaints():
-  print 'Running ',sys._getframe().f_code.co_name
+  print('Running ',sys._getframe().f_code.co_name)
   for sites, u_iso, n_macro_cycle in [(True, False, 100), (False, True, 50)]:
     t = ncs_minimization_test(
       n_macro_cycle   = n_macro_cycle,
@@ -256,7 +257,7 @@ def exercise_without_geometry_restaints():
     t.clean_up_temp_test_files()
 
 def exercise_site_refinement():
-  print 'Running ',sys._getframe().f_code.co_name
+  print('Running ',sys._getframe().f_code.co_name)
   t = ncs_minimization_test(
     n_macro_cycle   = 40,
     sites           = True,
@@ -269,7 +270,7 @@ def exercise_site_refinement():
   t.clean_up_temp_test_files()
 
 def exercise_u_iso_refinement():
-  print 'Running ',sys._getframe().f_code.co_name
+  print('Running ',sys._getframe().f_code.co_name)
   t = ncs_minimization_test(
     n_macro_cycle   = 40,
     sites           = False,

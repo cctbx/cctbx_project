@@ -1,9 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
 from libtbx.utils import Sorry
 from libtbx.containers import OrderedDict
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import copy
 
 import iotbx.cif
@@ -20,13 +20,13 @@ def exercise_cif_model():
   else: raise Exception_expected
   assert len(loop) == 3 # the number of columns (keys)
   assert loop.size() == 4 # the number of rows (loop iterations)
-  assert loop.keys() == ['_loop_a', '_loop_c', '_loop_b']
+  assert list(loop.keys()) == ['_loop_a', '_loop_c', '_loop_b']
   try: loop["no_leading_underscore"] = 3
   except Sorry: pass
   else: raise Exception_expected
   loop2 = model.loop(header=("_loop2_a", "_loop2_b"), data=(1,2,3,4,5,6))
-  assert loop2.keys() == ["_loop2_a", "_loop2_b"]
-  assert loop2.values() == [flex.std_string(['1', '3', '5']),
+  assert list(loop2.keys()) == ["_loop2_a", "_loop2_b"]
+  assert list(loop2.values()) == [flex.std_string(['1', '3', '5']),
                             flex.std_string(['2', '4', '6'])]
   assert list(loop2.iterrows()) == [
     {'_loop2_a': '1', '_loop2_b': '2'},
@@ -43,20 +43,20 @@ def exercise_cif_model():
   assert block["_tag"] == '3'
   assert block["_tag1"] == "'a string'"
   assert block["_another_tag"] == "3.142"
-  assert block.keys() == ['_tag', '_tag1', '_another_tag']
-  assert block.values() == ["3", "'a string'", "3.142"]
+  assert list(block.keys()) == ['_tag', '_tag1', '_another_tag']
+  assert list(block.values()) == ["3", "'a string'", "3.142"]
   try: block["no_leading_underscore"] = 3
   except Sorry: pass
   else: raise Exception_expected
   block.add_loop(loop)
   assert len(block) == 6
-  assert block.items() == [
+  assert list(block.items()) == [
     ('_tag', '3'), ('_tag1', "'a string'"), ('_another_tag', '3.142'),
     ('_loop_a', flex.std_string(['1', '2', '3', '4'])),
     ('_loop_c', flex.std_string(['4', '5', '6', '7'])),
     ('_loop_b', flex.std_string(['7', '8', '9', '0']))]
   block['_loop_c'] = [11, 12, 13, 14]
-  assert '_loop_c' in block.loops['_loop'].keys()
+  assert '_loop_c' in list(block.loops['_loop'].keys())
   assert list(block['_loop_c']) == ['11', '12', '13', '14']
   #
   block1 = model.block()
@@ -66,10 +66,12 @@ def exercise_cif_model():
   block1.add_loop(loop2)
   block1.add_loop(loop3)
   block.update(block1)
-  assert block._items.keys() == ['_another_tag', '_tag2', '_tag', '_tag1']
-  assert block._items.values() == ['3.142', '1.2', '2', "'a string'"]
-  assert block.loops.keys() == ['_loop', '_loop2']
-  assert block.keys() == ['_tag', '_tag1', '_another_tag', '_loop_a',
+  for key in block._items.keys():
+    assert key in ['_another_tag', '_tag2', '_tag', '_tag1']
+  for value in block._items.values():
+    assert value in ['3.142', '1.2', '2', "'a string'"]
+  assert list(block.loops.keys()) == ['_loop', '_loop2']
+  assert list(block.keys()) == ['_tag', '_tag1', '_another_tag', '_loop_a',
                           '_loop_b','_tag2', '_loop2_a', '_loop2_b']
   assert list(block['_loop_a']) == ['6', '4', '2']
   assert list(block['_loop_b']) == ['5', '3', '1']
@@ -117,15 +119,15 @@ def exercise_cif_model():
   cm = cif_model.deepcopy()
   l = cm["fred"]["_loop"]
   del cm["Fred"]["_loop_B"]
-  assert not cm["fred"].has_key("_loop_b")
-  assert not l.has_key("_loop_b")
-  assert cm["fred"].loops.has_key("_loop")
+  assert "_loop_b" not in cm["fred"]
+  assert "_loop_b" not in l
+  assert "_loop" in cm["fred"].loops
   del cm["fred"]["_loop_a"]
-  assert not cm["fred"].loops.has_key("_loop")
+  assert "_loop" not in cm["fred"].loops
   del cm["fred"]["_loop2"]
-  assert not cm["fred"].loops.has_key("_loop2")
+  assert "_loop2" not in cm["fred"].loops
   s = StringIO()
-  print >> s, cm
+  print(cm, file=s)
   assert not show_diff(s.getvalue(),
 """\
 data_fred
@@ -276,8 +278,10 @@ save_bob
   b2['_d'] = 4
   b3 = b1.difference(b2)
   b4 = b2.difference(b1)
-  assert b3.items() == [('_b', '2'), ('_a', '2')]
-  assert b4.items() == [('_d', '4'), ('_a', '1')]
+  for item in b3.items():
+    assert item in [('_b', '2'), ('_a', '2')]
+  for item in b4.items():
+    assert item in [('_d', '4'), ('_a', '1')]
   l = model.loop(data=dict(_loop_d=(1,2),_loop_e=(3,4),_loop_f=(5,6)))
   assert l == l
   assert l == l.deepcopy()
@@ -354,11 +358,11 @@ loop_
   l2.delete_row(index=0)
   l2.delete_row(index=0)
   try: l2.show(out=s)
-  except AssertionError, e: pass
+  except AssertionError as e: pass
   else: raise Exception_expected
   l.clear()
   try: l.show(out=s)
-  except AssertionError, e: pass
+  except AssertionError as e: pass
   else: raise Exception_expected
   #
   loop = model.loop(data={"_a_1": ('string with spaces','nospaces'),
@@ -435,7 +439,7 @@ THVFRLKKWIQKVIDQFGE
   cb["_d"] = 'O2"'
   cb["_e"] = """1 'a' "b" 3"""
   s = StringIO()
-  print >> s, cm
+  print(cm, file=s)
   s.seek(0)
   assert not show_diff("\n".join(l.rstrip() for l in s.readlines()), """\
 data_a
@@ -471,7 +475,7 @@ loop_
   4  4  ?  "chain 'B' and (resid    1  through   14 )"
   5  5  ?  "chain 'B' and (resid   15  through   20 )"
 """).model()
-  print cm
+  print(cm)
   #
   cif_block = model.block()
   loop_a = model.loop(header=("_a.1", "_a.2"), data=(1,2,3,4,5,6))
@@ -534,7 +538,7 @@ A 2 MET A
 #
 """).model()
   #
-  cif_block = cm.values()[0]
+  cif_block = list(cm.values())[0]
   loop_or_row = cif_block.get_loop_or_row('_test_row')
   assert loop_or_row.n_rows() == 1
   assert loop_or_row.n_columns() == 4
@@ -563,4 +567,4 @@ loop_
 if __name__ == '__main__':
   exercise_cif_model()
   test_301()
-  print "OK"
+  print("OK")

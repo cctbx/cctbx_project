@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 
 def exercise():
@@ -202,4 +202,4 @@ _refln.intensity_sigma
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

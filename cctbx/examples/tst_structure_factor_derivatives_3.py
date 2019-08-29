@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import miller
 from cctbx.examples.structure_factor_derivatives_3 \
   import scatterer_as_list, scatterer_from_list, structure_factors
@@ -8,8 +8,10 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from libtbx.test_utils import approx_equal
 import random
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
+from six.moves import range
+from six.moves import zip
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -19,13 +21,13 @@ def d_target_d_params_finite(f_obs, xray_structure, eps=1.e-8):
   scatterers = xray_structure.scatterers()
   xray_structure_eps = xray_structure.deep_copy_scatterers()
   scatterers_eps = xray_structure_eps.scatterers()
-  for i_scatterer in xrange(len(scatterers)):
+  for i_scatterer in range(len(scatterers)):
     if (not scatterers[i_scatterer].flags.use_u_aniso()):
       np = 7
     else:
       np = 12
     dx = []
-    for ix in xrange(np):
+    for ix in range(np):
       ts = []
       for signed_eps in [eps, -eps]:
         si_eps = scatterer_as_list(scatterers[i_scatterer])
@@ -47,13 +49,13 @@ def d2_target_d_params_finite(f_obs, xray_structure, eps=1.e-8):
   scatterers = xray_structure.scatterers()
   xray_structure_eps = xray_structure.deep_copy_scatterers()
   scatterers_eps = xray_structure_eps.scatterers()
-  for i_scatterer in xrange(len(scatterers)):
+  for i_scatterer in range(len(scatterers)):
     if (not scatterers[i_scatterer].flags.use_u_aniso()):
       np = 7
     else:
       np = 12
     dx = []
-    for ix in xrange(np):
+    for ix in range(np):
       gs = []
       for signed_eps in [eps, -eps]:
         si_eps = scatterer_as_list(scatterers[i_scatterer])
@@ -70,19 +72,19 @@ def d2_target_d_params_finite(f_obs, xray_structure, eps=1.e-8):
 def compare_analytical_and_finite(f_obs, xray_structure, out):
   grads_fin = d_target_d_params_finite(
     f_obs=f_obs, xray_structure=xray_structure)
-  print >> out, "grads_fin:", list(grads_fin)
+  print("grads_fin:", list(grads_fin), file=out)
   sf = structure_factors(
     xray_structure=xray_structure, miller_set=f_obs)
   grads_ana = sf.d_target_d_params(f_obs=f_obs, target_type=least_squares)
-  print >> out, "grads_ana:", list(grads_ana)
+  print("grads_ana:", list(grads_ana), file=out)
   flex.compare_derivatives(grads_ana, grads_fin)
   curvs_fin = d2_target_d_params_finite(
     f_obs=f_obs, xray_structure=xray_structure)
-  print >> out, "curvs_fin:", list(curvs_fin)
+  print("curvs_fin:", list(curvs_fin), file=out)
   curvs_ana = sf.d2_target_d_params(f_obs=f_obs, target_type=least_squares)
-  print >> out, "curvs_ana:", list(curvs_ana)
+  print("curvs_ana:", list(curvs_ana), file=out)
   flex.compare_derivatives(curvs_ana.as_1d(), curvs_fin)
-  print >> out
+  print(file=out)
 
 def exercise(
       space_group_info,
@@ -94,8 +96,8 @@ def exercise(
     out = StringIO()
   else:
     out = sys.stdout
-  for n_scatterers in xrange(3,3+1):
-    for i_trial in xrange(1):
+  for n_scatterers in range(3,3+1):
+    for i_trial in range(1):
       xray_structure = random_structure.xray_structure(
         space_group_info=space_group_info,
         elements=["const"]*n_scatterers,

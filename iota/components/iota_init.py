@@ -1,9 +1,9 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import absolute_import, division, print_function
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 01/30/2019
+Last Changed: 08/05/2019
 Description : Interprets command line arguments. Initializes all IOTA starting
               parameters. Starts main log. Options for a variety of running
               modes, including resuming an aborted run.
@@ -33,6 +33,7 @@ def prog_message(msg, mode='xterm'):
     print ('IOTA: {} -- DONE'.format(msg))
   else:
     yield
+
 
 def initialize_interface(args, phil_args=None, gui=False):
   """ Read and process input, create PHIL """
@@ -68,6 +69,7 @@ def initialize_interface(args, phil_args=None, gui=False):
 
   return input_dict, iota_phil, msg
 
+
 def initialize_new_run(phil, input_dict=None, target_phil=None):
   ''' Create base integration folder; safe phil, input, and info to file '''
   try:
@@ -87,8 +89,13 @@ def initialize_new_run(phil, input_dict=None, target_phil=None):
             lf.write('{}\n'.format(f))
           params.input = [input_list_file]
       else:
+        # FIXME: This will break down if user specifies > 10 individual
+        #  imagefiles from a variety of paths
         input_list_file = None
-        params.input = input_dict['imagepaths']
+        if len(input_dict['imagefiles']) <= 10:
+          params.input = input_dict['imagefiles']
+        else:
+          params.input = input_dict['imagepaths']
     else:
       input_list_file = None
 
@@ -105,7 +112,7 @@ def initialize_new_run(phil, input_dict=None, target_phil=None):
                                      write_target_file=True)
       else:
         method = params.advanced.processing_backend
-        target_phil, _ = inp.write_defaults(method=method, write_target_file=True,
+        target_phil, _ = inp.write_defaults(method=method,
                                             write_param_file=False,
                                             filepath=target_fp)
     params.cctbx_xfel.target = target_fp
@@ -120,20 +127,27 @@ def initialize_new_run(phil, input_dict=None, target_phil=None):
     logfile = os.path.abspath(os.path.join(int_base, 'iota.log'))
 
     # Initialize proc.info object and save to file
-    info = ProcInfo.from_args(iota_phil=phil.as_str(),
-                              target_phil=target_phil.as_str(),
-                              int_base=int_base,
-                              input_list_file=input_list_file,
-                              info_file=os.path.join(int_base, 'proc.info'),
-                              cluster_info_file=os.path.join(int_base, 'cluster.info'),
-                              paramfile=paramfile,
-                              logfile=logfile,
-                              run_number=run_no,
-                              status='initialized',
-                              init_proc=False)
+    info = ProcInfo.from_args(
+      iota_phil=phil.as_str(),
+      target_phil=target_phil.as_str(),
+      int_base=int_base,
+      input_list_file=input_list_file,
+      info_file=os.path.join(int_base, 'proc.info'),
+      cluster_info_file=os.path.join(int_base, 'cluster.info'),
+      paramfile=paramfile,
+      logfile=logfile,
+      run_number=run_no,
+      description=params.description,
+      status='initialized',
+      have_results=False,
+      errors=[],
+      init_proc=False)
     info.export_json()
     return True, info, 'IOTA_XTERM_INIT: Initialization complete!'
   except Exception as e:
+    import traceback
+    traceback.print_exc()
+
     msg = 'IOTA_INIT_ERROR: Could not initialize run! {}'.format(e)
     return False, None, msg
 
@@ -181,7 +195,10 @@ def initialize_processing(paramfile, run_no):
                viz_base=os.path.join(int_base, 'visualization'),
                tmp_base=os.path.join(int_base, 'tmp'),
                input_base=input_base)
-  for bkey, bvalue in paths.items()[:-1]:
+  # FIXME: ordering of items in dictionaries changes depending on python version
+  for bkey, bvalue in paths.items():
+    if bkey == "input_base":  # I think this is what the original code wanted to do
+      continue
     if not os.path.isdir(bvalue):
       os.makedirs(bvalue)
   info.update(paths)
@@ -206,6 +223,7 @@ def initialize_processing(paramfile, run_no):
   info.export_json()
 
   return info, params
+
 
 def resume_processing(info):
   ''' Initialize run parameters for an existing run (e.g. for resuming a
@@ -234,7 +252,8 @@ def initialize_single_image(img, paramfile, output_file=None, output_dir=None,
 
   params.input = [img]
   params.mp.n_processors = 1
-  params.image_import.minimum_Bragg_peaks = min_bragg
+  params.data_selection.image_triage.minimum_Bragg_peaks = min_bragg
+  phil = phil.format(python_object=params)
 
   info = ProcInfo.from_args(iota_phil=phil.as_str(),
                             paramfile=paramfile)
@@ -288,7 +307,8 @@ def generate_stat_containers(info, params):
     stats={},
     pixel_size=None,
     status='processing',
-    init_proc=True
+    init_proc=True,
+    have_results=False
   )
 
   # Grid search stats dictionary (HA14 - deprecated)

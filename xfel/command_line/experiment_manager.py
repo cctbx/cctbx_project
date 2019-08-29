@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME xpp.experiment_manager
 
 import iotbx.phil
 from libtbx.utils import Usage, Sorry
 import sys, os
 import libtbx.load_env
+from six.moves import input
 
 master_phil = """
   experiment = None
@@ -34,14 +35,14 @@ def get_bool_from_user(prompt, default=True):
     prompt += " y/n [n] "
 
   while True:
-    response = raw_input(prompt).lower()
+    response = input(prompt).lower()
     if response in yes:
       return True
     if response in no:
       return False
 
 def get_optional_input(prompt):
-  response = raw_input(prompt)
+  response = input(prompt)
   if response == "":
     return "NULL"
   else:
@@ -58,17 +59,17 @@ class initialize(object):
 
   def __call__(self):
     if self.params.experiment is None:
-      self.params.experiment = raw_input("Administrate which experiment? ")
+      self.params.experiment = input("Administrate which experiment? ")
 
     if self.params.experiment_tag is None:
       if get_bool_from_user("Use experiment name as experiment tag?"):
         self.params.experiment_tag = self.params.experiment
       else:
-        self.params.experiment_tag = raw_input("Input an experiment tag: ")
+        self.params.experiment_tag = input("Input an experiment tag: ")
 
     assert self.params.experiment is not None and self.params.experiment_tag is not None and len(self.params.experiment_tag) > 0
 
-    print "Administering experiment", self.params.experiment, "using tag", self.params.experiment_tag
+    print("Administering experiment", self.params.experiment, "using tag", self.params.experiment_tag)
     if self.interactive and self.do_drop_tables is None:
       if get_bool_from_user("Drop existing tables for %s?"%self.params.experiment_tag, default=False):
         self.drop_tables()
@@ -81,7 +82,7 @@ class initialize(object):
         raise Sorry("Couldn't create experiment tables")
 
   def verify_tables(self):
-    print "Checking tables...",
+    print("Checking tables...", end=' ')
 
     bools = []
     for table in self.expected_tables:
@@ -91,20 +92,20 @@ class initialize(object):
       bools.append(cursor.rowcount > 0)
 
     if bools.count(True) == len(self.expected_tables):
-      print "good to go"
+      print("good to go")
       return True
     elif bools.count(False) == len(self.expected_tables):
-      print "experiment tag not found"
+      print("experiment tag not found")
       return False
     else:
-      print "some tables are missing"
+      print("some tables are missing")
       return False
 
   def drop_tables(self):
-    if self.interactive and raw_input("Are you sure? Type drop: ").lower() != "drop":
+    if self.interactive and input("Are you sure? Type drop: ").lower() != "drop":
       return
 
-    print "Dropping tables..."
+    print("Dropping tables...")
     for table in self.expected_tables:
       cmd = "SHOW TABLES LIKE '%s'"%(self.params.experiment_tag + "_" + table)
       cursor = self.dbobj.cursor()
@@ -117,7 +118,7 @@ class initialize(object):
         cursor.execute(cmd);
 
   def create_tables(self, sql_path = None):
-    print "Creating tables..."
+    print("Creating tables...")
     if sql_path is None:
       sql_path = os.path.join(libtbx.env.find_in_repositories("xfel/xpp"), "experiment_schema.sql")
     assert os.path.exists(sql_path)
@@ -145,9 +146,9 @@ class initialize(object):
           try:
             cursor.execute(cmd)
           except Exception as e:
-            print "Failed to create table. SQL command:"
-            print cmd
-            print e
+            print("Failed to create table. SQL command:")
+            print(cmd)
+            print(e)
 
           cmd = []
           reading_create = False
@@ -164,25 +165,25 @@ class option_chooser(object):
 
   def __call__(self):
     while True:
-      print "############################"
-      print self.menu_string
+      print("############################")
+      print(self.menu_string)
       for o in self.options:
-        print o, ":", self.options[o].selection_string
-      print "h : get help on a selection"
-      print "q : exit this menu"
+        print(o, ":", self.options[o].selection_string)
+      print("h : get help on a selection")
+      print("q : exit this menu")
 
-      i = raw_input("Selection: ").lower()
-      print "############################"
+      i = input("Selection: ").lower()
+      print("############################")
       if i == 'h':
-        i = raw_input("Help on which item? ")
+        i = input("Help on which item? ")
         if i in self.options:
-          print self.options[i].help_string
+          print(self.options[i].help_string)
         else:
-          print "Option not found:", i
+          print("Option not found:", i)
       elif i == 'q':
         return
       elif i not in self.options:
-        print "Option not found:", i
+        print("Option not found:", i)
       else:
         self.options[i](self.params, self.dbobj)()
 
@@ -213,11 +214,11 @@ class runs_menu(option_chooser):
       cursor = self.dbobj.cursor()
       cursor.execute(cmd)
       if cursor.rowcount == 0:
-        print "No runs logged yet"
+        print("No runs logged yet")
       else:
         for entry in cursor.fetchall():
           id, run, tags = entry
-          print "Run %s. Tags: %s"%(run, tags)
+          print("Run %s. Tags: %s"%(run, tags))
 
   class update_tags(db_action):
     selection_string = "Update run tags"
@@ -227,21 +228,21 @@ class runs_menu(option_chooser):
       if get_bool_from_user("%s All runs? "%prompt):
         return ""
       else:
-        start = raw_input("%s Starting with run: "%prompt)
-        end = raw_input("%s Ending with run: "%prompt)
+        start = input("%s Starting with run: "%prompt)
+        end = input("%s Ending with run: "%prompt)
         return "WHERE %s_runs.run >= %s and %s_runs.run <= %s"%(
           self.params.experiment_tag, start, self.params.experiment_tag, end)
 
     def __call__(self):
-      choice = raw_input("Add or remove tag? [a/r]: ").lower()
+      choice = input("Add or remove tag? [a/r]: ").lower()
       if choice == 'a':
         prompt = "Add tag."
       elif choice == 'r':
         prompt = "Remove tag."
       else:
-        print "Choice not recognized"
+        print("Choice not recognized")
         return
-      tag = raw_input("Enter tag: ")
+      tag = input("Enter tag: ")
       cursor = self.dbobj.cursor()
 
       cmd = "SELECT * from %s_runs %s"%(self.params.experiment_tag, self.get_runs_from_user(prompt))
@@ -268,7 +269,7 @@ class runs_menu(option_chooser):
         cursor.execute(cmd)
 
       self.dbobj.commit()
-      print "Run tags updated"
+      print("Run tags updated")
 
   def __init__(self, params, dbobj):
     option_chooser.__init__(self, params, dbobj)
@@ -291,43 +292,43 @@ class trials_menu(option_chooser):
       cursor = self.dbobj.cursor()
       cursor.execute(cmd)
       if cursor.rowcount == 0:
-        print "No trials set up yet"
+        print("No trials set up yet")
       else:
         for entry in cursor.fetchall():
           id, trial, active, target, comment = entry
           active = bool(active)
-          print "Trial %s. Active: %s, target: %s, comment: %s"%(trial, active, target, comment)
+          print("Trial %s. Active: %s, target: %s, comment: %s"%(trial, active, target, comment))
 
   class add_trial(db_action):
     selection_string = "Add trial"
     help_string = "Add a trial for use with this experiment tag"
 
     def __call__(self):
-      trial = raw_input("Trial number: ")
+      trial = input("Trial number: ")
       active = get_bool_from_user("Make trial active? ")
-      target = raw_input("Path to target phil file: ")
-      comment = raw_input("Add a comment: ")
+      target = input("Path to target phil file: ")
+      comment = input("Add a comment: ")
 
       cmd = "INSERT INTO %s_trials (trial,active,target_phil_path,comment) VALUES (%s,%s,'%s','%s')"%(self.params.experiment_tag, trial, active, target, comment)
       cursor = self.dbobj.cursor()
       cursor.execute(cmd)
       self.dbobj.commit()
-      print "Trial added"
+      print("Trial added")
 
   class update_trial(db_action):
     selection_string = "Update trial"
     help_string = "Activate/inactivate a trial or change its comment"
 
     def __call__(self):
-      trial = raw_input("Trial number: ")
+      trial = input("Trial number: ")
       active = get_bool_from_user("Make trial active? ")
-      comment = raw_input("New comment: ")
+      comment = input("New comment: ")
 
       cmd = "UPDATE %s_trials SET active=%s, comment='%s' WHERE trial=%s"%(self.params.experiment_tag, active, comment, trial)
       cursor = self.dbobj.cursor()
       cursor.execute(cmd)
       self.dbobj.commit()
-      print "Trial updated"
+      print("Trial updated")
 
   def __init__(self, params, dbobj):
     option_chooser.__init__(self, params, dbobj)
@@ -351,24 +352,24 @@ class link_trials_to_rungroup_menu(option_chooser):
       cursor = self.dbobj.cursor()
       cursor.execute(cmd)
       if cursor.rowcount == 0:
-        print "No links set up yet"
+        print("No links set up yet")
       else:
-        print "Link Trial  RG Start run End run   Active"
+        print("Link Trial  RG Start run End run   Active")
         for entry in cursor.fetchall():
           link_id, trial_id, rungroup_id, trial, startrun, endrun, active = entry
           active = bool(active)
           if endrun is None:
-            print "% 4d % 5d % 3d % 9d       +   %s"%(link_id, trial, rungroup_id, startrun, active)
+            print("% 4d % 5d % 3d % 9d       +   %s"%(link_id, trial, rungroup_id, startrun, active))
           else:
-            print "% 4d % 5d % 3d % 9d % 7d   %s"%(link_id, trial, rungroup_id, startrun, endrun, active)
+            print("% 4d % 5d % 3d % 9d % 7d   %s"%(link_id, trial, rungroup_id, startrun, endrun, active))
 
   class add_link(db_action):
     selection_string = "Add trial/rungroup link"
     help_string = "Link a trial to a rungroup for processing"
 
     def __call__(self):
-      trial = raw_input("Trial: ")
-      rungroup_id = raw_input("Run group id: ")
+      trial = input("Trial: ")
+      rungroup_id = input("Run group id: ")
       active = get_bool_from_user("Make link active? ")
 
       cmd = "SELECT trial_id from %s_trials where %s_trials.trial = %s"%(self.params.experiment_tag, self.params.experiment_tag, trial)
@@ -376,7 +377,7 @@ class link_trials_to_rungroup_menu(option_chooser):
       cursor.execute(cmd)
       assert cursor.rowcount <= 1
       if cursor.rowcount == 0:
-        print "Trial %s not found."%trial
+        print("Trial %s not found."%trial)
         return
       trial_id = cursor.fetchall()[0][0]
 
@@ -385,7 +386,7 @@ class link_trials_to_rungroup_menu(option_chooser):
       cursor.execute(cmd)
       assert cursor.rowcount <= 1
       if cursor.rowcount == 0:
-        print "Rungroup %s not found."%rungroup_id
+        print("Rungroup %s not found."%rungroup_id)
         return
 
       cmd = "INSERT INTO %s_trial_rungroups (trials_id, rungroups_id, active) VALUES (%s,%s,%s)"%(self.params.experiment_tag, trial_id, rungroup_id, active)
@@ -393,21 +394,21 @@ class link_trials_to_rungroup_menu(option_chooser):
       cursor = self.dbobj.cursor()
       cursor.execute(cmd)
       self.dbobj.commit()
-      print "Link added"
+      print("Link added")
 
   class update_link(db_action):
     selection_string = "Update trial/rungroup links"
     help_string = "Activate or inactivate trial/rungroup links"
 
     def __call__(self):
-      link_id = raw_input("Trial/rungroup link to change: ")
+      link_id = input("Trial/rungroup link to change: ")
       active = get_bool_from_user("Make link active? ")
 
       cmd = "UPDATE %s_trial_rungroups SET active=%s WHERE trial_rungroup_id=%s"%(self.params.experiment_tag, active, link_id)
       cursor = self.dbobj.cursor()
       cursor.execute(cmd)
       self.dbobj.commit()
-      print "Link updated"
+      print("Link updated")
 
   def __init__(self, params, dbobj):
     option_chooser.__init__(self, params, dbobj)
@@ -431,24 +432,24 @@ class rungroups_menu(option_chooser):
       cursor = self.dbobj.cursor()
       cursor.execute(cmd)
       if cursor.rowcount == 0:
-        print "No run groups set up yet"
+        print("No run groups set up yet")
       else:
-        print "RG  Start run End run   Comment"
+        print("RG  Start run End run   Comment")
         for entry in cursor.fetchall():
           id, startrun, endrun, comment = entry
           if endrun is None:
-            print "% 3d % 9d       +   %s"%(id, startrun, comment)
+            print("% 3d % 9d       +   %s"%(id, startrun, comment))
           else:
-            print "% 3d % 9d % 7d   %s"%(id, startrun, endrun, comment)
+            print("% 3d % 9d % 7d   %s"%(id, startrun, endrun, comment))
 
   class add_rungroup(db_action):
     selection_string = "Add run group"
     help_string = "Add a run group defining a set of runs with the same parameters"
 
     def __call__(self):
-      startrun = raw_input("Start run: ")
+      startrun = input("Start run: ")
       endrun = get_optional_input("End run (leave blank if the last run in this group hasn't been collected yet): ")
-      detz_parameter = raw_input("Detz parameter (CXI: detz_offset, XPP: distance): ")
+      detz_parameter = input("Detz parameter (CXI: detz_offset, XPP: distance): ")
       beamx = get_optional_input("Beam center x (leave blank to not override): ")
       beamy = get_optional_input("Beam center y (leave blank to not override): ")
       pixelmask = get_optional_input("Path to untrusted pixel mask (if available): ")
@@ -457,29 +458,29 @@ class rungroups_menu(option_chooser):
       gainmap = get_optional_input("Path to gain map image (if available): ")
       binning = get_optional_input("Binning (if applicable): ")
       #usecase = get_optional_input("Use case (list available cases here):")
-      comment = raw_input("Add a comment: ")
+      comment = input("Add a comment: ")
 
       cmd = "INSERT INTO %s_rungroups (startrun,endrun,detz_parameter,beamx,beamy,untrusted_pixel_mask_path,dark_avg_path,dark_stddev_path,gain_map_path,binning,comment) VALUES (%s,%s,%s,%s,%s,'%s','%s','%s','%s',%s,'%s')"%(self.params.experiment_tag, startrun, endrun, detz_parameter, beamx, beamy, pixelmask, darkavg, darkstddev, gainmap, binning, comment)
       cursor = self.dbobj.cursor()
       cursor.execute(cmd)
       self.dbobj.commit()
-      print "Run group added"
+      print("Run group added")
 
   class update_rungroup(db_action):
     selection_string = "Update run group"
     help_string = "Change run group start and end values and comments"
 
     def __call__(self):
-      rungroup = raw_input("Run group number: ")
-      startrun = raw_input("New start run: ")
+      rungroup = input("Run group number: ")
+      startrun = input("New start run: ")
       endrun = get_optional_input("New end run (leave blank if the last run in this group hasn't been collected yet): ")
-      comment = raw_input("New comment: ")
+      comment = input("New comment: ")
 
       cmd = "UPDATE %s_rungroups SET startrun=%s, endrun=%s, comment='%s' WHERE rungroup_id=%s"%(self.params.experiment_tag, startrun, endrun, comment, rungroup)
       cursor = self.dbobj.cursor()
       cursor.execute(cmd)
       self.dbobj.commit()
-      print "Run group updated"
+      print("Run group updated")
 
   def __init__(self, params, dbobj):
     option_chooser.__init__(self, params, dbobj)
@@ -533,7 +534,7 @@ def run(args):
   initialize(params, dbobj)()
   top_menu(params, dbobj)()
 
-  print "Done"
+  print("Done")
 
 if __name__ == "__main__":
   run(sys.argv[1:])

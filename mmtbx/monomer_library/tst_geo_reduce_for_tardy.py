@@ -1,10 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from libtbx.test_utils import approx_equal
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 
 def exercise_geo_reduce_for_tardy(
@@ -17,8 +17,8 @@ def exercise_geo_reduce_for_tardy(
     relative_path="phenix_regression/tardy_action/"+file_name,
     test=os.path.isfile)
   if (file_path is None):
-    print 'Skipping exercise_geo_reduce_for_tardy("%s"):' \
-      ' input file not available' % file_name
+    print('Skipping exercise_geo_reduce_for_tardy("%s"):' \
+      ' input file not available' % file_name)
     return
   log = StringIO()
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -45,7 +45,7 @@ def exercise_geo_reduce_for_tardy(
   awl = list(processed_pdb_file.all_chain_proxies.pdb_hierarchy
     .atoms_with_labels())
   for proxy in geo.get_dihedral_proxies():
-    if (not proxy_i_seqs_red.has_key(proxy.i_seqs)):
+    if (proxy.i_seqs not in proxy_i_seqs_red):
       sigma = 1/proxy.weight**0.5
       if (sigma > 10):
         assert awl[proxy.i_seqs[0]].resname in [ "PRO", "CYS" ]
@@ -68,7 +68,7 @@ def run(args):
       file_name=file_name,
       expected_bond_counts=expected_bond_counts,
       expected_dihedral_counts=expected_dihedral_counts)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

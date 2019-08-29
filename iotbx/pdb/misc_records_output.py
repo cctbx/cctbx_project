@@ -3,7 +3,7 @@
 # Proposal: use origin_id in bond proxies. Write a class capable of
 # taking GRM and hierarchy/labels to produce links in various formats.
 #
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 def link_record_output(all_chain_proxies):
   outl = ""
   for key, item in all_chain_proxies.pdb_link_records.items():

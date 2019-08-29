@@ -1,16 +1,17 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.math.superpose import kabsch_rotation, kearsley_rotation, least_squares_fit
 from scitbx.math import euler_angles_as_matrix
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import random
+from six.moves import range
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
   flex.set_random_seed(0)
 
 def random_rotation():
-  return euler_angles_as_matrix([random.uniform(0,360) for i in xrange(3)])
+  return euler_angles_as_matrix([random.uniform(0,360) for i in range(3)])
 
 def exercise_rotation():
   reference = flex.vec3_double(flex.random_double(10*3)*10-5)
@@ -21,7 +22,7 @@ def exercise_rotation():
   for n_sites in [1,2,3,7,10,30]:
     reference = flex.vec3_double(flex.random_double(n_sites*3)*10-5)
     other = reference.deep_copy()
-    for i_trial in xrange(10):
+    for i_trial in range(10):
       c = random_rotation()
       other_c = tuple(c) * other
       kc = kabsch_rotation(reference, other_c)
@@ -31,7 +32,7 @@ def exercise_rotation():
   for n_sites in [1,2,3,7,10,30]:
     reference = flex.vec3_double(flex.random_double(n_sites*3)*10-5)
     other = reference.deep_copy()
-    for i_trial in xrange(10):
+    for i_trial in range(10):
       other_s = other + flex.vec3_double(flex.random_double(n_sites*3)*0.5)
       ks = kabsch_rotation(reference, other_s)
       other_ks = ks.elems * other_s
@@ -112,7 +113,7 @@ def exercise(method):
   for n_sites in [1,3,7,10,30]:
     reference = flex.vec3_double(flex.random_double(n_sites*3)*10-5)
     other = reference + list(flex.random_double(3)*100-50)
-    for i_trial in xrange(10):
+    for i_trial in range(10):
       s = least_squares_fit(reference, other, method)
       assert approx_equal(reference, s.other_sites_best_fit())
       c = random_rotation()
@@ -128,4 +129,4 @@ if (__name__ == "__main__"):
   exercise_rotation()
   exercise("kabsch")
   exercise("kearsley")
-  print "OK"
+  print("OK")

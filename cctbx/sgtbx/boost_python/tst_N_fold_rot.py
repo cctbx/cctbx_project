@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 from libtbx.math_utils import iround
 from cctbx import sgtbx
@@ -84,4 +84,4 @@ if __name__=='__main__':
   C.test_list('ersatz_tests')
   C.test_list('IT96_Table_11_2') #test non-hexagonal cells
   C.test_list('IT96_Table_11_3') #test hexagonal cells
-  print "OK"
+  print("OK")

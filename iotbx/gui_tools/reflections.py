@@ -1,9 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import iotbx.gui_tools
 from iotbx import file_reader
 from libtbx.utils import Sorry
 import os
+import six
+from six.moves import range
 
 def space_group_as_str(space_group):
   from cctbx import sgtbx
@@ -420,7 +422,7 @@ class reflections_handler(iotbx.gui_tools.manager):
     from iotbx.reflection_file_editor import get_best_resolution
     miller_arrays = []
     if (file_name is None) and (file_param_name is None):
-      for phil_name, file_name in self._param_files.iteritems():
+      for phil_name, file_name in six.iteritems(self._param_files):
         input_file = self.get_file(file_name)
         if (input_file is not None):
           miller_arrays.extend(input_file.file_server.miller_arrays)
@@ -482,7 +484,7 @@ class reflections_handler(iotbx.gui_tools.manager):
   def crystal_symmetry(self, file_name=None, file_param_name=None):
     final_symm = None
     if file_name is None and file_param_name is None :
-      for param_name, file_name in self._param_files.iteritems():
+      for param_name, file_name in six.iteritems(self._param_files):
         input_file = self.get_file(file_name)
         miller_arrays = input_file.file_server.miller_arrays
         for array in miller_arrays :
@@ -511,7 +513,7 @@ def get_fp_fpp_from_sasaki(guess_ha,wavelength):
     return None, None
   try:
     table = sasaki.table(guess_ha)
-  except Exception, e :
+  except Exception as e :
     return None, None
   fp_fdp = table.at_angstrom(wavelength)
   f_prime=fp_fdp.fp()

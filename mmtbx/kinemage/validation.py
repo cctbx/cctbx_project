@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os, string
 from iotbx import pdb
 from mmtbx import monomer_library
@@ -63,9 +63,9 @@ def get_angle_outliers(angle_proxies, chain, sites_cart, hierarchy):
   for ap in angle_proxies:
     restraint = geometry_restraints.angle(sites_cart=sites_cart,
                                           proxy=ap)
-    res = i_seq_name_hash[ap.i_seqs[0]][5:]
-    altloc = i_seq_name_hash[ap.i_seqs[0]][4:5].lower()
-    cur_chain = i_seq_name_hash[ap.i_seqs[0]][8:10]
+    res = i_seq_name_hash[ap.i_seqs[1]][5:]
+    altloc = i_seq_name_hash[ap.i_seqs[1]][4:5].lower()
+    cur_chain = i_seq_name_hash[ap.i_seqs[1]][8:10]
     if chain.id.strip() is not cur_chain.strip():
       continue
     atom1 = i_seq_name_hash[ap.i_seqs[0]][0:4].strip()
@@ -135,9 +135,9 @@ def get_bond_outliers(bond_proxies, chain, sites_cart, hierarchy):
   for bp in bond_proxies.simple:
     restraint = geometry_restraints.bond(sites_cart=sites_cart,
                                          proxy=bp)
-    res = i_seq_name_hash[bp.i_seqs[0]][5:]
-    altloc = i_seq_name_hash[bp.i_seqs[0]][4:5].lower()
-    cur_chain = i_seq_name_hash[bp.i_seqs[0]][8:10]
+    res = i_seq_name_hash[bp.i_seqs[1]][5:]
+    altloc = i_seq_name_hash[bp.i_seqs[1]][4:5].lower()
+    cur_chain = i_seq_name_hash[bp.i_seqs[1]][8:10]
     if chain.id.strip() is not cur_chain.strip():
       continue
     atom1 = i_seq_name_hash[bp.i_seqs[0]][0:4].strip()
@@ -921,7 +921,7 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
   kin_out += make_probe_dots(hierarchy=hierarchy, keep_hydrogens=keep_hydrogens)
   kin_out += get_footer()
 
-  outfile = file(f, 'w')
+  outfile = open(f, 'w')
   for line in kin_out:
     outfile.write(line)
   outfile.close()

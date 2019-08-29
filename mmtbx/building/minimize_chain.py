@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys,os
 import iotbx.pdb
 import mmtbx.utils
@@ -138,7 +138,7 @@ def get_params(args,out=sys.stdout):
     args=args,
     master_phil=master_phil)
   params = command_line.work.extract()
-  print >>out,"\nMinimize_chain ... optimize a coarse-grain model in EM or low-resolution X-ray map"
+  print("\nMinimize_chain ... optimize a coarse-grain model in EM or low-resolution X-ray map", file=out)
   master_phil.format(python_object=params).show(out=out)
   return params
 
@@ -218,10 +218,10 @@ def get_pdb_inp(
     cryst1_line=iotbx.pdb.format_cryst1_record(
          crystal_symmetry=crystal_symmetry)
     if not pdb_inp.crystal_symmetry(): # get it
-      from cStringIO import StringIO
+      from six.moves import cStringIO as StringIO
       f=StringIO()
-      print >>f, cryst1_line
-      print >>f,pdb_string
+      print(cryst1_line, file=f)
+      print(pdb_string, file=f)
       pdb_string=f.getvalue()
       pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
   if pdb_string is None:
@@ -294,7 +294,7 @@ def run(args,
     import random
     random.seed(params.control.random_seed)
     flex.set_random_seed(params.control.random_seed)
-    print >>out,"\nUsing random seed of %d" %(params.control.random_seed)
+    print("\nUsing random seed of %d" %(params.control.random_seed), file=out)
 
   # Get map_data if not present
   map_data,map_coeffs,crystal_symmetry=get_map_data_and_symmetry(
@@ -323,9 +323,9 @@ def run(args,
 
   if params.output_files.pdb_out:
     f=open(params.output_files.pdb_out,'w')
-    print >>f, cryst1_line
-    print >>f, pdb_hierarchy.as_pdb_string()
-    print >>out,"\nWrote output model to %s" %(params.output_files.pdb_out)
+    print(cryst1_line, file=f)
+    print(pdb_hierarchy.as_pdb_string(), file=f)
+    print("\nWrote output model to %s" %(params.output_files.pdb_out), file=out)
     f.close()
   # all done
   return pdb_hierarchy,multiple_models_hierarchy

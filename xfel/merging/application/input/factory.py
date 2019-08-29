@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from xfel.merging.application.input.file_loader import simple_file_loader
 from xfel.merging.application.worker import factory as factory_base
 
@@ -6,6 +6,6 @@ from xfel.merging.application.worker import factory as factory_base
 
 class factory(factory_base):
   @staticmethod
-  def from_parameters(params, additional_info=None):
+  def from_parameters(params, additional_info=None, mpi_helper=None, mpi_logger=None):
     """ Only one kind of loading supported at present, so construct a simple file loader """
-    return [simple_file_loader(params)]
+    return [simple_file_loader(params, mpi_helper, mpi_logger)]

@@ -1,6 +1,8 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx.stdlib import random
+from six.moves import range
+from six.moves import zip
 
 class differential_evolution_optimizer(object):
   """
@@ -88,7 +90,7 @@ Note: [0.5,1.0] dither is the default behavior unless f is set to a value other 
     if insert_solution_vector is not None:
       assert len( insert_solution_vector )==self.vector_length
       self.seeded = insert_solution_vector
-    for ii in xrange(self.population_size):
+    for ii in range(self.population_size):
       self.population.append( flex.double(self.vector_length,0) )
 
 
@@ -142,7 +144,7 @@ Note: [0.5,1.0] dither is the default behavior unless f is set to a value other 
         converged =True
 
   def make_random_population(self):
-    for ii in xrange(self.vector_length):
+    for ii in range(self.vector_length):
       delta  = self.evaluator.domain[ii][1]-self.evaluator.domain[ii][0]
       offset = self.evaluator.domain[ii][0]
       random_values = flex.random_double(self.population_size)
@@ -155,12 +157,12 @@ Note: [0.5,1.0] dither is the default behavior unless f is set to a value other 
       self.population[0] = self.seeded
 
   def score_population(self):
-    for vector,ii in zip(self.population,xrange(self.population_size)):
+    for vector,ii in zip(self.population,range(self.population_size)):
       tmp_score = self.evaluator.target(vector)
       self.scores[ii]=tmp_score
 
   def evolve(self):
-    for ii in xrange(self.population_size):
+    for ii in range(self.population_size):
       rnd = flex.random_double(self.population_size-1)
       permut = flex.sort_permutation(rnd)
       # make parent indices
@@ -189,7 +191,7 @@ Note: [0.5,1.0] dither is the default behavior unless f is set to a value other 
       permut = flex.sort_permutation(rnd)
       test_vector = self.population[ii].deep_copy()
       # first the parameters that sure cross over
-      for jj in xrange( self.vector_length  ):
+      for jj in range( self.vector_length  ):
         if (jj<self.n_cross):
           test_vector[ permut[jj] ] = vi[ permut[jj] ]
         else:
@@ -204,7 +206,7 @@ Note: [0.5,1.0] dither is the default behavior unless f is set to a value other 
 
 
   def show_population(self):
-    print "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     for vec in self.population:
-      print list(vec)
-    print "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+      print(list(vec))
+    print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++")

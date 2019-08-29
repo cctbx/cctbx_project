@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import mmtbx
 from libtbx.utils import null_out
@@ -99,6 +99,6 @@ if (__name__ == "__main__"):
   if libtbx.env.has_module("ksdssp"):
     # removed check for old h-bond proxies
     exercise_geo_out()
-    print "OK"
+    print("OK")
   else :
-    print "skipping test, ksdssp not available"
+    print("skipping test, ksdssp not available")

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # TODO:
 #  - prompt user for missing symmetry
@@ -269,7 +269,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self._index_span = index_span
 
   def update_reflection_info (self, hkl, d_min, value) :
-    print hkl, value
+    print(hkl, value)
     if (hkl is None) :
       self.hkl_info.SetValue("")
       self.d_min_info.SetValue("")
@@ -341,7 +341,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     if (not self.is_3d_view) or (self.slice_ctrl.GetValue()) :
       try :
         self.parent.update_settings()
-      except ValueError, e : # TODO set limits
+      except ValueError as e : # TODO set limits
         raise Sorry(str(e))
 
   def OnChangeSpaceGroup (self, event) :
@@ -631,7 +631,7 @@ class HKLViewFrame (wx.Frame) :
       unit_cell=self.miller_array.unit_cell())
     array = self.miller_array.expand_to_p1().customized_copy(
       crystal_symmetry=symm)
-    print "MERGING 2"
+    print("MERGING 2")
     array = array.merge_equivalents().array().set_info(self.miller_array.info())
     self.viewer.set_miller_array(array, zoom=False)
     self.viewer.Refresh()
@@ -673,7 +673,7 @@ class HKLViewFrame (wx.Frame) :
       from iotbx.gui_tools.reflections import get_array_description
       try :
         hkl_file = any_reflection_file(file_name)
-      except Exception, e :
+      except Exception as e :
         raise Sorry(to_str(e))
       arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
         )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)

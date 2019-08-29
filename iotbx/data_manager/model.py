@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 '''
 '''
 
@@ -156,19 +156,22 @@ model
       log=self.logger)
     self.add_model(label, model)
 
-  def get_default_output_model_filename(self):
+  def get_default_output_model_filename(self, extension=Auto):
     '''
     Function for returning the filename with extension. By default ".cif" will
     be used.
     '''
     filename = self.get_default_output_filename()
+    if extension is Auto:
+      extension = '.cif'
     if not (filename.endswith('.cif') or filename.endswith('.pdb')):
-      filename += '.cif'
+      filename += extension
     return filename
 
-  def write_model_file(self, model_str, filename=Auto, overwrite=Auto):
+  def write_model_file(self, model_str, filename=Auto, extension=Auto,
+                       overwrite=Auto):
     if filename is Auto:
-      filename = self.get_default_output_model_filename()
+      filename = self.get_default_output_model_filename(extension=extension)
     self._write_text(ModelDataManager.datatype, model_str,
                      filename=filename, overwrite=overwrite)
 

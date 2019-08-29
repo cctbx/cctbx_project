@@ -1,0 +1,42 @@
+# Script for installing base and building
+#
+# The source must have already been checked out
+
+steps:
+
+- script: |
+    cd ../..
+    python bootstrap.py base --builder=cctbx --nproc=4
+    cd build
+    source setpaths.sh
+    libtbx.pip install junit-xml
+  displayName: Install base dependencies
+
+- script: |
+    cd ../..
+    python bootstrap.py build --builder=cctbx --nproc=4
+    cd build
+    source setpaths.sh
+    libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx
+    make -j 4
+    make -j 4
+  displayName: Configure and Build
+
+- script: |
+    cd ../..
+    source ./build/setpaths.sh
+    mkdir tests
+    cd tests
+    libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es \
+      module=fable module=gltbx module=iotbx module=libtbx module=rstbx \
+      module=scitbx module=simtbx module=smtbx module=spotfinder \
+      module=annlib_adaptbx module=cbflib_adaptbx \
+      nproc=4
+  failOnStderr: false
+  displayName: Test
+
+- task: PublishTestResults@2
+  condition: succeededOrFailed()
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '../../tests/output.xml'

@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex # import dependency
 from cctbx import uctbx # import dependency
 import boost.python
@@ -9,7 +9,8 @@ class basis_type:
   direct = False
   reciprocal = True
 
-class _(boost.python.injector,ext.crystal_orientation):
+@boost.python.inject_into(ext.crystal_orientation)
+class _():
 
   def __getattr__(self,tag):
     if tag in 'abc':

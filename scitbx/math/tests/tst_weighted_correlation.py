@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 class simple_weighted_correlation(object): # used for data merging
   def __init__(self,w, x, y, derivatives_wrt_y_depth=0):
@@ -65,7 +66,7 @@ def weighted_correlation(w, x, y, derivatives_wrt_y_depth=0):
 def finite_difference_derivatives(w, x, y, depth, eps=1e-6):
   assert depth in [1,2]
   result = flex.double()
-  for i in xrange(len(y)):
+  for i in range(len(y)):
     fs = []
     y_orig = y[i]
     for signed_eps in [eps, -eps]:
@@ -82,7 +83,7 @@ def finite_difference_derivatives(w, x, y, depth, eps=1e-6):
 def exercise():
   mt = flex.mersenne_twister(seed=0)
   sz = 12
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     x = mt.random_double(size=sz)*5-1
     y = mt.random_double(size=sz)*3-1
     for i_w,w in enumerate([flex.double(sz, 1), mt.random_double(size=sz)*7]):
@@ -101,7 +102,7 @@ def exercise():
 def run(args):
   assert len(args) == 0
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

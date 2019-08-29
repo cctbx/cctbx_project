@@ -1,5 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx import math
+from six.moves import range
 
 def tst_sph_zeroes(l,n):
   z = math.sph_bessel_j_zeroes(l,n)
@@ -18,7 +19,7 @@ def tst_all():
   for ii in range(30):
      tst_sph_zeroes(ii,100)
      tst_bessel_zeroes(ii,100)
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   tst_all()

@@ -1,8 +1,8 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import null_out
 from libtbx import easy_pickle
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def run_validation(pdb_file, ignore_hd=True):
   from mmtbx.validation import restraints
@@ -112,4 +112,4 @@ ATOM      8  CA  ALA A  13      -7.313  -1.820 -14.420  1.00141.04           C
 
 if (__name__ == "__main__"):
   exercise_simple()
-  print "OK"
+  print("OK")

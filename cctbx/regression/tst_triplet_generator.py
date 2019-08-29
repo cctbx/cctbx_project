@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import approx_equal
 from cctbx import dmtbx
 from cctbx import maptbx
@@ -12,6 +12,7 @@ from cctbx.development import debug_utils
 import random
 import math
 import sys
+from six.moves import range
 
 def direct_space_squaring(start, selection_fixed):
   map_gridding = miller.index_span(
@@ -52,12 +53,12 @@ def direct_space_squaring(start, selection_fixed):
 def reciprocal_space_squaring(start, selection_fixed, verbose):
   tprs = dmtbx.triplet_generator(miller_set=start)
   if (0 or verbose):
-    for ih in xrange(start.indices()[:1].size()):
+    for ih in range(start.indices()[:1].size()):
       for relation in tprs.relations_for(ih):
-        print relation.format(start.indices(), ih),
+        print(relation.format(start.indices(), ih), end=' ')
         if (not relation.is_sigma_2(ih)):
-          print "not sigma-2",
-        print
+          print("not sigma-2", end=' ')
+        print()
   amplitudes = abs(start).data()
   if (selection_fixed is not None):
     amplitudes.set_selected(~selection_fixed, 0)
@@ -98,7 +99,7 @@ def exercise_truncate(q_large):
   n_rel_full = tprs_full.n_relations()
   n_rel = tprs.n_relations()
   amp = q_large.data()
-  for ih in xrange(q_large.indices().size()):
+  for ih in range(q_large.indices().size()):
     if (n_rel[ih] == n_rel_full[ih]): continue
     aa_full = flex.double()
     for relation in tprs_full.relations_for(ih):
@@ -140,7 +141,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
   q_large = q_obs.select(
     q_obs.quasi_normalized_as_normalized().data() > e_min)
   if (0 or verbose):
-    print "Number of e-values > %.6g: %d" % (e_min, q_large.size())
+    print("Number of e-values > %.6g: %d" % (e_min, q_large.size()))
   other_structure = random_structure.xray_structure(
     space_group_info,
     elements=["const"]*n_scatterers,
@@ -154,7 +155,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
   start = q_large.phase_transfer(q_calc.data())
   for selection_fixed in (
         None,
-        flex.double([random.random() for i in xrange(start.size())]) < 0.4):
+        flex.double([random.random() for i in range(start.size())]) < 0.4):
     from_map_data = direct_space_squaring(start, selection_fixed)
     direct_space_result = start.phase_transfer(phase_source=from_map_data)
     new_phases = reciprocal_space_squaring(start, selection_fixed, verbose)
@@ -163,7 +164,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
     mwpe = direct_space_result.mean_weighted_phase_error(
       reciprocal_space_result)
     if (0 or verbose):
-      print "mwpe: %.2f" % mwpe, start.space_group_info()
+      print("mwpe: %.2f" % mwpe, start.space_group_info())
     for i,h in enumerate(direct_space_result.indices()):
       amp_d,phi_d = complex_math.abs_arg(
         direct_space_result.data()[i], deg=True)

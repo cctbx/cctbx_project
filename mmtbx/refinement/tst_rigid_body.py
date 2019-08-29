@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from iotbx import pdb
 import libtbx.load_env
@@ -14,12 +14,13 @@ import iotbx.pdb
 from scitbx import matrix
 import mmtbx.command_line.fmodel
 import scitbx.rigid_body
+from six.moves import range
 
 random.seed(0)
 flex.set_random_seed(0)
 
 def test_matrices_zyz():
-  for i in xrange(10000):
+  for i in range(10000):
     aa,bb,cc = random.randrange(-361,361),\
                random.randrange(-361,361),\
                random.randrange(-361,361)
@@ -139,7 +140,7 @@ def test_5(fmodel, convention):
   size = fmodel.xray_structure.scatterers().size()
   sel1 = flex.bool()
   sel2 = flex.bool()
-  for i in xrange(size):
+  for i in range(size):
     if(i<500):
        sel1.append(True)
        sel2.append(False)
@@ -213,20 +214,20 @@ def run_tests():
   fmodel_big = get_fmodel_from_pdb(pdb_file_name = "lys_rigid_body.pdb",
     algorithm = "fft")
   for convention in ["xyz", "zyz"]:
-    print "test 1: ", convention
+    print("test 1: ", convention)
     test_1(fmodel = fmodel_small.deep_copy(), convention = convention)
-    print "test 2: ", convention
+    print("test 2: ", convention)
     test_2(fmodel = fmodel_small.deep_copy(), convention = convention)
-    print "test 3: ", convention
+    print("test 3: ", convention)
     test_3(fmodel = fmodel_small.deep_copy(), convention = convention)
-    print "test 4: ", convention
+    print("test 4: ", convention)
     test_4(fmodel = fmodel_big.deep_copy(), convention = convention)
-    print "test 5: ", convention
+    print("test 5: ", convention)
     test_5(fmodel = fmodel_big.deep_copy(), convention = convention)
 
 
 def finite_differences_test():
-  print "finite_differences_test: "
+  print("finite_differences_test: ")
   fmodel = get_fmodel_from_pdb(pdb_file_name = "enk_rbr.pdb",
                                algorithm = "direct",
                                d_min = 2.0,
@@ -323,7 +324,7 @@ def exercise():
   test_matrices_zyz()
   run_tests()
   finite_differences_test()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise()

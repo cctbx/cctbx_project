@@ -1,4 +1,4 @@
-from __future__ import division, absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 import time
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server

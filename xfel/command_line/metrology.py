@@ -2,7 +2,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cspad.metrology
 #
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scipy.optimize import leastsq # special import
 from xfel.metrology.mark10 import fit_translation4
 from libtbx.utils import Sorry
@@ -50,7 +50,7 @@ diff_cutoff = 5
 """
 
 def get_phil(args):
-  print args
+  print(args)
 
   import iotbx.phil
   phil = iotbx.phil.process_command_line(args=args, master_string=master_phil).show()
@@ -92,7 +92,7 @@ def run(args):
     raise s
 
   C = fit_translation4(work_params)
-  print "done constructor"
+  print("done constructor")
 
   #parse a phil file from the args
   for item in args:
@@ -101,13 +101,13 @@ def run(args):
       C.optional_params = load_cxi_phil(item,[])
       break
 
-  print
+  print()
   C.run_cycle_a()
   C.run_cycle_b(0)
-  print
+  print()
   C.run_cycle_a()
   C.run_cycle_b(1)
-  print
+  print()
   C.run_cycle_a()
 
 if (__name__ == "__main__"):

@@ -6,7 +6,7 @@ from __future__ import absolute_import, division, print_function
 ##   http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/267662
 ## slightly modifed functionality.
 ##
-from builtins import range
+from six.moves import range, zip, map
 try: # Python 3
     from itertools import zip_longest
 except ImportError: # Python 2
@@ -47,11 +47,11 @@ def format(rows,
     def row_wrapper(row):
         new_rows = [wrapfunc(item).split('\n') for item in row]
         return [[substr or '' for substr in item] for item in
-                map(lambda *a: a, *zip(*zip_longest(*new_rows)))]
+                map(lambda *a: a, *list(zip(*zip_longest(*new_rows))))]
     # break each logical row into one or more physical ones
     logical_rows = [row_wrapper(row) for row in rows]
     # columns of physical rows
-    columns = list(map(lambda *a: a, *zip(*zip_longest(*reduce(operator.add, logical_rows)))))
+    columns = list(map(lambda *a: a, *list(zip(*zip_longest(*reduce(operator.add, logical_rows))))))
     # get the maximum of each column by the string length of its items
     max_widths = [max([len(str(item))
       for item in column]) for column in columns]

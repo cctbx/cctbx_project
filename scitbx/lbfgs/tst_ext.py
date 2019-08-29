@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math
 from scitbx.array_family import flex
 from scitbx import lbfgs
+from six.moves import range
 
 def exercise_drop_convergence_test():
   c = lbfgs.drop_convergence_test()
@@ -23,7 +24,7 @@ def exercise_drop_convergence_test():
     c = lbfgs.drop_convergence_test(n_test_points, 1.e-3)
     assert c.n_test_points() == n_test_points
     converged = []
-    for x in xrange(10):
+    for x in range(10):
       converged.append(c(math.exp(-x)))
     c.objective_function_values().size() == 10
     if (n_test_points == 2):
@@ -35,18 +36,18 @@ def exercise_minimization(verbose):
   n = 100
   x = flex.double(n)
   g = flex.double(n)
-  for j in xrange(0, n, 2):
+  for j in range(0, n, 2):
     x[j] = -1.2
     x[j+1] = 1.
   minimizer = lbfgs.minimizer(n)
   is_converged = lbfgs.traditional_convergence_test(n)
   if (verbose):
-    print "n: ", minimizer.n()
-    print "m: ", minimizer.m()
-    print "xtol: ", minimizer.xtol()
+    print("n: ", minimizer.n())
+    print("m: ", minimizer.m())
+    print("xtol: ", minimizer.xtol())
   while 1:
     f = 0.
-    for j in xrange(0, n, 2):
+    for j in range(0, n, 2):
       t1 = 1.e0 - x[j]
       t2 = 1.e1 * (x[j+1] - x[j] * x[j])
       g[j+1] = 2.e1 * t2
@@ -54,8 +55,8 @@ def exercise_minimization(verbose):
       f = f + t1 * t1 + t2 * t2
     if (minimizer.run(x, f, g)): continue
     if (verbose):
-      print "f:", f, "gnorm:", minimizer.euclidean_norm(g)
-      print minimizer.iter(), minimizer.nfun(), minimizer.stp()
+      print("f:", f, "gnorm:", minimizer.euclidean_norm(g))
+      print(minimizer.iter(), minimizer.nfun(), minimizer.stp())
     if (is_converged(x, g)): break
     if (minimizer.nfun() > 2000): break
     assert minimizer.run(x, f, g)
@@ -74,7 +75,7 @@ def run():
     exercise_minimization(verbose)
     if (not Endless): break
   t = os.times()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

@@ -1,6 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.screen_conformations
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from libtbx.utils import Sorry
 from libtbx import easy_run
@@ -80,7 +80,7 @@ def run(args, out=None ):
   if (len(ensembles) == 0):
     raise Sorry("No alternate conformations found.")
   t2 = time.time()
-  print >> out, "search time: %.1fs" % (t2-t1)
+  print("search time: %.1fs" % (t2-t1), file=out)
   for i_ens, ensemble in enumerate(ensembles):
     ensemble_hierarchy = iotbx.pdb.hierarchy.root()
     for k, model_str in enumerate(ensemble):
@@ -91,7 +91,7 @@ def run(args, out=None ):
     f = open("ensemble_%d.pdb" % (i_ens+1), "w")
     f.write(ensemble_hierarchy.as_pdb_string())
     f.close()
-    print "wrote ensemble_%d.pdb" % (i_ens+1)
+    print("wrote ensemble_%d.pdb" % (i_ens+1))
   if (params.coot):
     easy_run.call("coot --pdb %s --auto map_coeffs.mtz --pdb ensemble.pdb" %
       params.input.pdb.file_name[0])

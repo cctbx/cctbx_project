@@ -48,6 +48,7 @@ namespace {
         .def("anomalous_flag", &w_t::anomalous_flag)
         .def("asu", &w_t::asu, rir())
         .def("next", next)
+        .def("__next__", next)
         .def("__iter__", scitbx::boost_python::pass_through)
         .def("to_array", &w_t::to_array)
       ;

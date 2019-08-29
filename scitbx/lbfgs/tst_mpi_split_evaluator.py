@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from scitbx.lbfgs import core_parameters, termination_parameters
 from scitbx.lbfgs import exception_handling_parameters, ext
@@ -44,16 +44,16 @@ def mpi_split_evaluator_run(target_evaluator,
     exception_handling_params = exception_handling_parameters()
   x = target_evaluator.x
   if (log is not None):
-    print >> log, "lbfgs minimizer():"
-    print >> log, "  x.size():", x.size()
-    print >> log, "  m:", core_params.m
-    print >> log, "  maxfev:", core_params.maxfev
-    print >> log, "  gtol:", core_params.gtol
-    print >> log, "  xtol:", core_params.xtol
-    print >> log, "  stpmin:", core_params.stpmin
-    print >> log, "  stpmax:", core_params.stpmax
-    print >> log, "lbfgs traditional_convergence_test:", \
-      termination_params.traditional_convergence_test
+    print("lbfgs minimizer():", file=log)
+    print("  x.size():", x.size(), file=log)
+    print("  m:", core_params.m, file=log)
+    print("  maxfev:", core_params.maxfev, file=log)
+    print("  gtol:", core_params.gtol, file=log)
+    print("  xtol:", core_params.xtol, file=log)
+    print("  stpmin:", core_params.stpmin, file=log)
+    print("  stpmax:", core_params.stpmax, file=log)
+    print("lbfgs traditional_convergence_test:", \
+      termination_params.traditional_convergence_test, file=log)
   minimizer = ext.minimizer(
     x.size(),
     core_params.m,
@@ -101,9 +101,9 @@ def mpi_split_evaluator_run(target_evaluator,
       elif (f_min > f):
         f_min, x_min = f, x.deep_copy()
       if (log is not None):
-        print >> log, "lbfgs minimizer.run():" \
+        print("lbfgs minimizer.run():" \
           " f=%.6g, |g|=%.6g, x_min=%.6g, x_mean=%.6g, x_max=%.6g" % (
-          f, g.norm(), flex.min(x), flex.mean(x), flex.max(x))
+          f, g.norm(), flex.min(x), flex.mean(x), flex.max(x)), file=log)
       if (d is None):
         #---> Insertion starts
         if (minimizer.run(x, f, g, gradient_only,line_search)): continue
@@ -113,32 +113,32 @@ def mpi_split_evaluator_run(target_evaluator,
         if (minimizer.run(x, f, g, d, gradient_only,line_search)): continue
         #<--- Insertion ends
       if (log is not None):
-        print >> log, "lbfgs minimizer step"
+        print("lbfgs minimizer step", file=log)
       if (callback_after_step is not None):
         if (callback_after_step(minimizer) is True):
           if (log is not None):
-            print >> log, "lbfgs minimizer stop: callback_after_step is True"
+            print("lbfgs minimizer stop: callback_after_step is True", file=log)
           break
       if (termination_params.traditional_convergence_test):
         if (    minimizer.iter() >= termination_params.min_iterations
             and is_converged(x, g)):
           if (log is not None):
-            print >> log, "lbfgs minimizer stop: traditional_convergence_test"
+            print("lbfgs minimizer stop: traditional_convergence_test", file=log)
           break
       else:
         if (is_converged(f)):
           if (log is not None):
-            print >> log, "lbfgs minimizer stop: drop_convergence_test"
+            print("lbfgs minimizer stop: drop_convergence_test", file=log)
           break
       if (    termination_params.max_iterations is not None
           and minimizer.iter() >= termination_params.max_iterations):
         if (log is not None):
-          print >> log, "lbfgs minimizer stop: max_iterations"
+          print("lbfgs minimizer stop: max_iterations", file=log)
         break
       if (    termination_params.max_calls is not None
           and minimizer.nfun() > termination_params.max_calls):
         if (log is not None):
-          print >> log, "lbfgs minimizer stop: max_calls"
+          print("lbfgs minimizer stop: max_calls", file=log)
         break
       if (d is None):
         #---> Insertion starts
@@ -151,7 +151,7 @@ def mpi_split_evaluator_run(target_evaluator,
   except RuntimeError as e:
     minimizer.error = str(e)
     if (log is not None):
-      print >> log, "lbfgs minimizer exception:", str(e)
+      print("lbfgs minimizer exception:", str(e), file=log)
     if (x_min is not None):
       x.clear()
       x.extend(x_min)
@@ -167,7 +167,7 @@ def mpi_split_evaluator_run(target_evaluator,
     minimizer.error = None
     minimizer.is_unusual_error = None
   if (log is not None):
-    print >> log, "lbfgs minimizer done."
+    print("lbfgs minimizer done.", file=log)
   return minimizer
 
 class simple_quadratic(object):

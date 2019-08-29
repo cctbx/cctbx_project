@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx import group_args
 from libtbx.utils import user_plus_sys_time
@@ -1773,4 +1773,4 @@ if(__name__ == "__main__"):
   random.seed(10000)
   timer = user_plus_sys_time()
   exercise()
-  print "Time: %6.2f" % timer.elapsed()
+  print("Time: %6.2f" % timer.elapsed())

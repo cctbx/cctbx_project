@@ -8,7 +8,7 @@ Sophia-Antipolis by the TROPICS team.
 
 http://www-sop.inria.fr/tropics/tapenade.html
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 def run(args):
   file_names = []
@@ -46,7 +46,7 @@ C  Hint: nbdirsmax should be the maximum number of differentiation directions
       output_lines.append(line)
   while (len(output_lines) != 0 and len(output_lines[-1]) == 0):
     output_lines.pop()
-  print "\n".join(output_lines)
+  print("\n".join(output_lines))
 
 if (__name__ == "__main__"):
   import sys

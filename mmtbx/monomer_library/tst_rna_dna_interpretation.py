@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.monomer_library import server
 from libtbx.utils import null_out
@@ -12,8 +12,8 @@ def run(args, residue_type, expected_results):
     relative_path="phenix_regression/%s_pdb_files" % residue_type,
     test=os.path.isdir)
   if (pdb_files is None):
-    print "Skipping tst_%s_interpretation: input files not available" \
-      % residue_type
+    print("Skipping tst_%s_interpretation: input files not available" \
+      % residue_type)
     return
   mon_lib_srv = server.server()
   ener_lib = server.ener_lib()
@@ -53,15 +53,15 @@ def run(args, residue_type, expected_results):
         mm.incomplete_info]
       key = file_name[:-4]
       if (debug):
-        print '"%s":' % key
-        print " ", str(result)+","
-        print " ", str(expected_results[key])+","
+        print('"%s":' % key)
+        print(" ", str(result)+",")
+        print(" ", str(expected_results[key])+",")
       if (expected_results is not None):
         assert result == expected_results[key], "%s not %s" % (
           result,
           expected_results[key],
           )
-  print "OK"
+  print("OK")
 
 expected_results = {
 "a_v2": ['  A', 33, [], 'RNA', None, None],

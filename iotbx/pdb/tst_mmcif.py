@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.cif
 from iotbx.pdb import mmcif
 from libtbx.test_utils import approx_equal
@@ -121,4 +121,4 @@ def run():
 
 if __name__ == '__main__':
   run()
-  print "OK"
+  print("OK")

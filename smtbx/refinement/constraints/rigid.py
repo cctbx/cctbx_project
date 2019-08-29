@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint
 import math
@@ -7,6 +6,7 @@ from scitbx.math import superpose
 from scitbx import matrix
 from scitbx.array_family import flex
 import itertools
+from six.moves import range
 
 class rigid_pivoted_rotatable_group(object):
   """ a set of atoms (rigid body) rides on a pivot atom and rotates around
@@ -152,7 +152,7 @@ class idealised_fragment(object):
     sa = math.sin(angle)
     result = []
     p = idealised_fragment.point(ca, -sa)
-    for i in xrange(0, edges):
+    for i in range(0, edges):
       result.append(p*r)
       x = p.x
       p.x = ca*x + sa*p.y
@@ -179,10 +179,10 @@ class idealised_fragment(object):
     if fragment == "Naphthalene":
       res = self.generate_ring(6, lengths[0])
       res.append(res[0])
-      for i in xrange(3,6):  res.append(res[i]);
+      for i in range(3,6):  res.append(res[i]);
       p = res[4]+res[5]
       p = p * (lengths[0]*2*math.cos(math.pi/6)/p.length())
-      for i in xrange(6, len(res)):
+      for i in range(6, len(res)):
         res[i] = res[i] + p
       p = res[7]
       res[7] = res[9]
@@ -280,7 +280,7 @@ class same_group(object):
         flex.vec3_double(crds), flex.vec3_double(src_crds))
       #create a list of inverted coordinates if needed
       if len(inv_src_crds) == 0:
-        for i in xrange(0, len(g)):
+        for i in range(0, len(g)):
           inv_src_crds.append(
             2*matrix.col(lsf.other_shift)-matrix.col(src_crds[i]))
       rm = lsf.r

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 import sys
 
@@ -11,6 +11,8 @@ import scitbx.math
 from xfel.command_line import view_pixel_histograms # XXX
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import xes_finalise
+from six.moves import range
+from six.moves import zip
 
 
 master_phil_str = """
@@ -67,12 +69,12 @@ def run(args):
   nproc = work_params.nproc
   photon_threshold = work_params.photon_threshold
   method = work_params.method
-  print output_dirname
+  print(output_dirname)
   if output_dirname is None:
     output_dirname = os.path.join(os.path.dirname(args[0]), "finalise")
-    print output_dirname
+    print(output_dirname)
   hist_d = easy_pickle.load(args[0])
-  if len(hist_d.keys())==2:
+  if len(hist_d)==2:
     hist_d = hist_d['histogram']
   pixel_histograms = view_pixel_histograms.pixel_histograms(
     hist_d, estimated_gain=estimated_gain)
@@ -97,8 +99,8 @@ def run(args):
     background = (background[0].as_double(), background[1])
     signal_x, background_subtracted = subtract_background(signal, background, plot=True)
     f = open(os.path.join(output_dirname, "background_subtracted.txt"), "wb")
-    print >> f, "\n".join(["%i %f" %(x, y)
-                           for x, y in zip(signal_x, background_subtracted)])
+    print("\n".join(["%i %f" %(x, y)
+                           for x, y in zip(signal_x, background_subtracted)]), file=f)
     f.close()
 
   else:
@@ -131,7 +133,7 @@ class xes_from_histograms(object):
 
     start_row = 370
     end_row = 0
-    print len(pixel_histograms.histograms)
+    print(len(pixel_histograms.histograms))
 
     pixels = list(pixel_histograms.pixels())
     n_pixels = len(pixels)
@@ -151,7 +153,7 @@ class xes_from_histograms(object):
     results = None
     if nproc is None: nproc = easy_mp.Auto
     nproc = easy_mp.get_processes(nproc)
-    print "nproc: ", nproc
+    print("nproc: ", nproc)
 
     stdout_and_results = easy_mp.pool_map(
       processes=nproc,
@@ -171,8 +173,8 @@ class xes_from_histograms(object):
         try:
           gaussians = pixel_histograms.fit_one_histogram(pixel)
         except RuntimeError as e:
-          print "Error fitting pixel %s" %str(pixel)
-          print str(e)
+          print("Error fitting pixel %s" %str(pixel))
+          print(str(e))
           mask[pixel] = 1
           continue
       else:
@@ -180,14 +182,14 @@ class xes_from_histograms(object):
       hist = pixel_histograms.histograms[pixel]
       if gaussians is None:
         # Presumably the peak fitting failed in some way
-        print "Skipping pixel %s" %str(pixel)
+        print("Skipping pixel %s" %str(pixel))
         continue
       zero_peak_diff = gaussians[0].params[1]
       if gain_map is None:
         try:
           view_pixel_histograms.check_pixel_histogram_fit(hist, gaussians)
         except view_pixel_histograms.PixelFitError as e:
-          print "PixelFitError:", str(pixel), str(e)
+          print("PixelFitError:", str(pixel), str(e))
           mask[pixel] = 1
           continue
         gain = gaussians[1].params[1] - gaussians[0].params[1]
@@ -196,7 +198,7 @@ class xes_from_histograms(object):
       else:
         gain = gain_map[pixel]
         if gain == 0:
-          print "bad gain!!!!!", pixel
+          print("bad gain!!!!!", pixel)
           continue
         gain = 30/gain
         gain_ratio = 1/gain
@@ -245,7 +247,7 @@ class xes_from_histograms(object):
         self.sum_img[pixel] = n_photons
 
     stats = scitbx.math.basic_statistics(gains)
-    print "gain statistics:"
+    print("gain statistics:")
     stats.show()
 
     mask.set_selected(self.sum_img == 0, 1)
@@ -264,10 +266,10 @@ class xes_from_histograms(object):
 
     xes_finalise.filter_outlying_pixels(spectrum_focus, mask_focus)
 
-    print "Number of rows: %i" %spectrum_focus.all()[0]
-    print "Estimated no. photons counted: %i" %flex.sum(spectrum_focus)
-    print "Number of images used: %i" %flex.sum(
-      pixel_histograms.histograms.values()[0].slots())
+    print("Number of rows: %i" %spectrum_focus.all()[0])
+    print("Estimated no. photons counted: %i" %flex.sum(spectrum_focus))
+    print("Number of images used: %i" %flex.sum(
+      pixel_histograms.histograms.values()[0].slots()))
 
     d = cspad_tbx.dpack(
       address='CxiSc1-0|Cspad2x2-0',
@@ -304,7 +306,7 @@ class xes_from_histograms(object):
     self.spectrum_focus = spectrum_focus
 
     xes_finalise.output_matlab_form(spectrum_focus, "%s/sum%s.m" %(output_dirname,runstr))
-    print output_dirname
+    print(output_dirname)
 
 if __name__ == '__main__':
   run(sys.argv[1:])

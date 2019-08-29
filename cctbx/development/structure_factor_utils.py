@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import scitbx.math
 from libtbx.complex_math import abs_arg
@@ -10,8 +10,8 @@ def check_regression(x, y, label, min_correlation=0, verbose=0):
   xy_corr = flex.linear_correlation(x, y)
   assert xy_regr.is_well_defined()
   if (0 or verbose):
-    print label, "correlation: %.4f slope: %.3f" % (
-      xy_corr.coefficient(), xy_regr.slope())
+    print(label, "correlation: %.4f slope: %.3f" % (
+      xy_corr.coefficient(), xy_regr.slope()))
   assert min_correlation == 0 or xy_corr.coefficient() >= min_correlation
 
 class collector(object):
@@ -30,11 +30,11 @@ class collector(object):
     a1, p1 = abs_arg(f1, deg=True)
     a2, p2 = abs_arg(f2, deg=True)
     if (0 or self.verbose):
-      print h
-      print " ", a1, p1
-      print " ", a2, p2
-      print " " * 20, "%.2f" % scitbx.math.phase_error(
-        phi1=p1, phi2=p2, deg=True)
+      print(h)
+      print(" ", a1, p1)
+      print(" ", a2, p2)
+      print(" " * 20, "%.2f" % scitbx.math.phase_error(
+        phi1=p1, phi2=p2, deg=True))
     self.amp1.append(a1)
     self.amp2.append(a2)
     self.sum_amp1_minus_amp2_sq += (a1 - a2)**2
@@ -47,15 +47,15 @@ class collector(object):
     if (self.sum_amp1_sq):
       r = self.sum_amp1_minus_amp2_sq / self.sum_amp1_sq
       if (0 or self.verbose):
-        print self.label, "R-factor: %.3f" % (r,)
+        print(self.label, "R-factor: %.3f" % (r,))
     if (self.sum_w):
       self.mean_w_phase_error = self.sum_w_phase_error / self.sum_w
     check_regression(
       self.amp1, self.amp2, self.label + " ampl", self.min_corr_ampl,
       self.verbose)
     if (0 or self.verbose):
-      print self.label + (" mean weighted phase error: %.2f" % (
-        self.mean_w_phase_error,))
+      print(self.label + (" mean weighted phase error: %.2f" % (
+        self.mean_w_phase_error,)))
     if (self.max_mean_w_phase_error):
       assert self.mean_w_phase_error <= self.max_mean_w_phase_error
 
@@ -80,6 +80,6 @@ def check_phase_restrictions(miller_array, epsilon=1.e-10, verbose=0):
   for i,h in enumerate(miller_array.indices()):
     f = miller_array.data()[i]
     if (verbose):
-      print h, f, abs(f), phases[i]*180/math.pi
+      print(h, f, abs(f), phases[i]*180/math.pi)
     if (abs(f.real) > epsilon and abs(f.imag) > epsilon):
       assert space_group.is_valid_phase(h, phases[i])

@@ -5,6 +5,7 @@ from libtbx import group_args
 from libtbx import mutable
 from libtbx import Auto
 import os.path
+from six.moves import zip
 
 fmt_comma_placeholder = chr(255)
 
@@ -2551,8 +2552,14 @@ def generate_common_report(
     #  return result
     #vv.sort(vv_cmp)
 
-    def vv_key(a): return size_sums.get(a, a)
-    vv.sort(key=vv_key, reverse=True)
+    from past.builtins import cmp
+    from functools import cmp_to_key
+    def vv_cmp(a, b):
+      result = cmp(size_sums[b], size_sums[a])
+      if (result == 0): result = cmp(a, b)
+      return result
+
+    vv.sort(key=cmp_to_key(vv_cmp))
     print("  %-20s   procedures    sum of members" % "common name", file=report)
     for common_name in vv:
       print("  %-20s   %8d         %8d" % (

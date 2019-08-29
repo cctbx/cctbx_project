@@ -1,7 +1,7 @@
 #
 # Data from Acta Cryst. D62 (2006), 678-682.
 #
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
 import sys
 
@@ -3357,7 +3357,7 @@ def get_basepair_target_distance(atom1, atom2, which_basepair):
                         # is so distorted that wrong atoms seems to be linked
 
 def run(atom1, atom2, return_non_protein=True):
-  from linking_utils import ad_hoc_single_metal_residue_element_types
+  from mmtbx.monomer_library.linking_utils import ad_hoc_single_metal_residue_element_types
   metal = None
   coordination_atom = None
   if atom1.element.upper().strip() in ad_hoc_single_metal_residue_element_types:
@@ -3431,22 +3431,22 @@ if __name__=="__main__":
           coordination_atom.resName = residue
           if name:
             coordination_atom.name = name
-          print "-"*80
-          print metal.Display()
-          print coordination_atom.Display()
+          print("-"*80)
+          print(metal.Display())
+          print(coordination_atom.Display())
           rc = run(metal, coordination_atom)
-          print rc
+          print(rc)
           if rc!=results[i]:
-            print i, rc, results[i]
+            print(i, rc, results[i])
             assert 0
           i+=1
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   if len(sys.argv)>1:
-    print get_default_bondlength(*tuple(sys.argv[1:]))
+    print(get_default_bondlength(*tuple(sys.argv[1:])))
   else:
     for atoms in [("At", "At"),
                   ("At", "H"),
         ]:
-      print atoms, get_default_bondlength(*atoms)
+      print(atoms, get_default_bondlength(*atoms))

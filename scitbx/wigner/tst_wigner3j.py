@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx import wigner
 import math
 
@@ -31,4 +31,4 @@ def tst1():
 
 if __name__=="__main__":
   tst1()
-  print "OK"
+  print("OK")

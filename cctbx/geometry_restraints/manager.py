@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.flags
 import cctbx.geometry_restraints.energies
@@ -9,10 +9,13 @@ from libtbx import introspection
 from libtbx import adopt_init_args
 from libtbx import dict_with_default_0
 from libtbx.utils import Sorry
-import sys, math, StringIO
+import sys, math
+from six import StringIO
 import iotbx.pdb
 
 import boost.python
+from six.moves import range
+from six.moves import zip
 boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import reindexing_array
 
@@ -83,7 +86,7 @@ class manager(Base_geometry):
         plain_pairs_radius=None,
         max_reasonable_bond_distance=None,
         min_cubicle_edge=5,
-        log=StringIO.StringIO()):
+        log=StringIO()):
     super(manager, self).__init__()
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
@@ -108,7 +111,7 @@ class manager(Base_geometry):
   #   return state
 
   # def __setstate__(self, state):
-  #   state[ "log" ] = StringIO.StringIO( state[ "log" ] )
+  #   state[ "log" ] = StringIO( state[ "log" ] )
   #   self.__dict__.update( state )
 
   def reset_internals(self):
@@ -304,7 +307,7 @@ class manager(Base_geometry):
       new_site_symmetry_table = self.site_symmetry_table.deep_copy()
       new_site_symmetry_table.reserve(new_site_symmetry_table.indices().size()
                                     + n_additional_sites)
-      for i_seq in xrange(n_additional_sites):
+      for i_seq in range(n_additional_sites):
         new_site_symmetry_table.process(site_symmetry_table.get(i_seq))
       site_symmetry_table = new_site_symmetry_table
     bond_params_table = None
@@ -396,7 +399,7 @@ class manager(Base_geometry):
         raise RuntimeError("Cannot determine n_seq.")
       if (len(n_seqs) != 1):
         raise RuntimeError("Selection size mismatches: %s." % str(n_seqs))
-      return n_seqs.keys()[0]
+      return list(n_seqs.keys())[0]  # FIXME this might break py2/3 compat unless there is only 1 key
 
     n_seq = get_n_seq()
 
@@ -1600,7 +1603,7 @@ class manager(Base_geometry):
       outf_descriptor = file_descriptor
     else:
       outf_descriptor = open(file_name, "w")
-    print >> outf_descriptor, header
+    print(header, file=outf_descriptor)
     self.show_sorted(
       sites_cart=sites_cart,
       site_labels=site_labels,
@@ -1627,12 +1630,12 @@ class manager(Base_geometry):
           site_labels=site_labels,
           f=f,
           origin_id=default_origin_id)
-      print >> f
+      print(file=f)
       for key in origin_ids.get_bond_origin_id_labels():
         origin_id=origin_ids.get_origin_id(key)
         if origin_id==default_origin_id: continue
         label=origin_ids.get_geo_file_header(key)
-        tempbuffer = StringIO.StringIO()
+        tempbuffer = StringIO()
         pair_proxies.bond_proxies.show_sorted(
             by_value="residual",
             sites_cart=sites_cart,
@@ -1641,7 +1644,7 @@ class manager(Base_geometry):
             prefix="",
             origin_id=origin_id)
         if tempbuffer.getvalue().find(': 0')==-1:
-          print >> f, label, tempbuffer.getvalue()[5:]
+          print(label, tempbuffer.getvalue()[5:], file=f)
 
     for p_label, proxies, internals, i_label, keys, start in [
       ("Bond angle",
@@ -1682,14 +1685,14 @@ class manager(Base_geometry):
           site_labels=site_labels,
           f=f,
           origin_id=default_origin_id)
-        print >> f
+        print(file=f)
         for key in keys: #origin_ids.get_dihedral_origin_id_labels():
           origin_id=origin_ids.get_origin_id(key)
           if origin_id==default_origin_id: continue
           label=origin_ids.get_geo_file_header(key, internals=internals)
           if label is None: continue
           if i_label: label = '%s %s' % (label, i_label)
-          tempbuffer = StringIO.StringIO()
+          tempbuffer = StringIO()
           proxies.show_sorted(
               by_value="residual",
               sites_cart=sites_cart,
@@ -1698,7 +1701,7 @@ class manager(Base_geometry):
               prefix="",
               origin_id=origin_id)
           if len(tempbuffer.getvalue()) and tempbuffer.getvalue().find(': 0')==-1:
-            print >> f, label, tempbuffer.getvalue()[start:]
+            print(label, tempbuffer.getvalue()[start:], file=f)
 
     for p_label, proxies in [
         ("Reference torsion angle", self.reference_dihedral_manager),
@@ -1720,7 +1723,7 @@ class manager(Base_geometry):
         by_value="delta",
         sites_cart=sites_cart, site_labels=site_labels, f=f,
         suppress_model_minus_vdw_greater_than=None)
-      print >> f
+      print(file=f)
 
 # This should be in model class?
 #  def nb_overlaps_info(
@@ -1750,22 +1753,56 @@ class manager(Base_geometry):
       yield bond
 
   def get_struct_conn_mmcif(self, atoms):
-    def _atom_info(atom):
-      return [atom.parent().resname,
-              atom.parent().parent().parent().id,
-              atom.parent().parent().resseq.strip(),
-              atom.name.strip(),
-             ]
+    from iotbx.pdb.utils import all_label_asym_ids
+    label_asym_ids = all_label_asym_ids()
+    def _atom_info(atom, use_label_asym_ids=False):
+      if use_label_asym_ids:
+        return [atom.parent().resname,
+                label_asym_ids[atom.tmp],
+                atom.parent().parent().resseq.strip(),
+                atom.name.strip(),
+               ]
+      else:
+        return [atom.parent().resname,
+                atom.parent().parent().parent().id,
+                atom.parent().parent().resseq.strip(),
+                atom.name.strip(),
+               ]
+    def _atom_info_grouped(bond):
+      row = []
+      if hasattr(bond, 'i_seqs'):
+        row += _atom_info(atoms[bond.i_seqs[0]])
+        row += _atom_info(atoms[bond.i_seqs[0]], use_label_asym_ids=True)
+        row.append('.')      # role
+        row += _atom_info(atoms[bond.i_seqs[1]])
+        row += _atom_info(atoms[bond.i_seqs[1]], use_label_asym_ids=True)
+      else:
+        row += _atom_info(atoms[bond.i_seq])
+        row += _atom_info(atoms[bond.i_seq], use_label_asym_ids=True)
+        row.append('.')      # role
+        row += _atom_info(atoms[bond.j_seq])
+        row += _atom_info(atoms[bond.j_seq], use_label_asym_ids=True)
+      row.append('.')      # role
+      #row.append('1_555') # symmetry!
+      return row
     from cctbx.geometry_restraints.auto_linking_types import origin_ids
     struct_conn_loop = iotbx.cif.model.loop(header=(
       '_struct_conn.id',
       '_struct_conn.conn_type_id',
+      '_struct_conn.ptnr1_auth_comp_id',
+      '_struct_conn.ptnr1_auth_asym_id',
+      '_struct_conn.ptnr1_auth_seq_id',
+      '_struct_conn.ptnr1_auth_atom_id',
       '_struct_conn.ptnr1_label_comp_id',
       '_struct_conn.ptnr1_label_asym_id',
       '_struct_conn.ptnr1_label_seq_id',
       '_struct_conn.ptnr1_label_atom_id',
       '_struct_conn.ptnr1_role',
       #'_struct_conn.ptnr1_symmetry',
+      '_struct_conn.ptnr2_auth_comp_id',
+      '_struct_conn.ptnr2_auth_asym_id',
+      '_struct_conn.ptnr2_auth_seq_id',
+      '_struct_conn.ptnr2_auth_atom_id',
       '_struct_conn.ptnr2_label_comp_id',
       '_struct_conn.ptnr2_label_asym_id',
       '_struct_conn.ptnr2_label_seq_id',
@@ -1781,14 +1818,7 @@ class manager(Base_geometry):
       if origin_id_info[0]=='SS BOND': row.append('disulf')
       elif origin_id_info[0]=='metal coordination': row.append('metalc')
       else: row.append('covale')
-      if hasattr(bond, 'i_seqs'): row += _atom_info(atoms[bond.i_seqs[0]])
-      else: row += _atom_info(atoms[bond.i_seq])
-      row.append('.')      # role
-      #row.append('1_555') # symmetry!
-      if hasattr(bond, 'i_seqs'): row += _atom_info(atoms[bond.i_seqs[1]])
-      else: row += _atom_info(atoms[bond.j_seq])
-      row.append('.')
-      #row.append('1_555')
+      row += _atom_info_grouped(bond)
       if len(origin_id_info)>2 and origin_id_info[2]:
         row.append(origin_id_info[2])
       elif origin_id_info[1]: row.append(origin_id_info[1])
@@ -1820,7 +1850,7 @@ class manager(Base_geometry):
         # not writing cif_link for various reasons like programatic links
         pass
       else:
-        print origin_id_info[0]
+        print(origin_id_info[0])
         assert 0
     return links
 

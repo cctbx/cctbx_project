@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import residue, validation, atom
 import os.path
 from libtbx import slots_getstate_setstate
 import numpy
 import os, sys
+from iotbx.pdb.hybrid_36 import hy36decode
 
 from mmtbx.conformation_dependent_library import generate_protein_fragments
 
@@ -328,7 +329,7 @@ class omegalyze(validation):
         i_seqs = main_residue.atoms().extract_i_seq()
         assert (not i_seqs.all_eq(0)) #This assert copied from ramalyze
         self._outlier_i_seqs.extend(i_seqs)
-      self.results.sort(key=lambda x: x.model_id+':'+x.id_str())
+      self.results.sort(key=lambda r: (r.model_id, r.chain_id, int(hy36decode(len(r.resseq), r.resseq)), r.icode, r.altloc))
 
   def _get_count_and_fraction(self, res_type, omega_type):
     total = self.residue_count[res_type]
@@ -387,18 +388,18 @@ class omegalyze(validation):
     return data
 
   def show_summary(self, out=sys.stdout, prefix=""):
-    print >> out, prefix + 'SUMMARY: %i cis prolines out of %i PRO' % (
+    print(prefix + 'SUMMARY: %i cis prolines out of %i PRO' % (
       self.n_cis_proline(),
-      self.n_proline())
-    print >> out, prefix + 'SUMMARY: %i twisted prolines out of %i PRO' % (
+      self.n_proline()), file=out)
+    print(prefix + 'SUMMARY: %i twisted prolines out of %i PRO' % (
       self.n_twisted_proline(),
-      self.n_proline())
-    print >> out, prefix + 'SUMMARY: %i other cis residues out of %i nonPRO' % (
+      self.n_proline()), file=out)
+    print(prefix + 'SUMMARY: %i other cis residues out of %i nonPRO' % (
       self.n_cis_general(),
-      self.n_general())
-    print >> out, prefix + 'SUMMARY: %i other twisted residues out of %i nonPRO' % (
+      self.n_general()), file=out)
+    print(prefix + 'SUMMARY: %i other twisted residues out of %i nonPRO' % (
       self.n_twisted_general(),
-      self.n_general())
+      self.n_general()), file=out)
 
   def summary_only(self, out=sys.stdout, pdbid="pdbid"):
     out.write(os.path.basename(pdbid) + ":")

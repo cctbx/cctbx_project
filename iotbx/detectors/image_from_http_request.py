@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import cStringIO as StringIO
 from iotbx.detectors.adsc_module import ADSCModule
 from iotbx.detectors.pilatus_slice import PilatusSlice

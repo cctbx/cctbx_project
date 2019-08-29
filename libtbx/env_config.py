@@ -8,10 +8,9 @@ from libtbx.utils import detect_binary_file
 from libtbx import adopt_init_args
 import platform
 import shutil
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import zip, map
+from six.moves import cPickle as pickle
+
 import os
 import re
 import site
@@ -60,25 +59,19 @@ def using_conda_python():
 
 def get_conda_prefix():
   '''
-  Return the root directory of the conda environment. Usually, this is defined
-  by the CONDA_PREFIX environment variable. This function will try to figure
-  out the root directory if the environment is not active. A special case
-  exists for macOS where the framework package (python.app) is used for GUI
-  programs.
+  Return the root directory of the conda environment. This function will
+  try to figure out the root directory if the environment is not active.
+  A special case exists for macOS where the framework package (python.app)
+  is used for GUI programs.
 
   A RuntimeError is raised if the root directory of the conda environment
   cannot be determined.
   '''
-  conda_prefix = None
+  conda_prefix = sys.prefix
   if (using_conda_python()):
-    conda_prefix = os.environ.get('CONDA_PREFIX')
-    if (conda_prefix is None):  # case where environment is not active
-      conda_prefix = sys.prefix
-      if (sys.platform == 'darwin'):  # case where python.app is used
-        if ('python.app' in conda_prefix):
-          conda_prefix = conda_prefix.split('python.app')[0]
-  if (conda_prefix is None):
-    raise RuntimeError('Unable to find conda environment.')
+    if (sys.platform == 'darwin'):  # case where python.app is used
+      if ('python.app' in conda_prefix):
+        conda_prefix = conda_prefix.split('python.app')[0]
   return conda_prefix
 
 def unique_paths(paths):
@@ -1209,13 +1202,13 @@ Wait for the command to finish, then try again.""" % vars())
         for $lib(<$ENV{LIBTBX_BUILD}/lib/*.so>) {
             open OTOOL, "-|", "otool", "-L", $lib;
             while(<OTOOL>) {
-                m{^\s+(lib\S+)} and $libs{$lib}{$1}++;
+                m{^\\s+(lib\\S+)} and $libs{$lib}{$1}++;
             }
         }
         while(($so, $relative_libs) = each %libs) {
             for $lib(keys %$relative_libs) {
                 system "install_name_tool",
-                       "-change", $lib, "\@loader_path/../$lib", $so;
+                       "-change", $lib, "\\@loader_path/../$lib", $so;
             }
         }
       """, file=f)
@@ -1723,7 +1716,7 @@ selfx:
 
     base_bin_dispatchers = set(os.listdir(bin_directory))
     existing_dispatchers = filter(lambda f: f.startswith('libtbx.'), self.bin_path.listdir())
-    existing_dispatchers = set(map(lambda f: f[7:], existing_dispatchers))
+    existing_dispatchers = set([f[7:] for f in existing_dispatchers])
     entry_point_candidates = base_bin_dispatchers - existing_dispatchers
 
     entry_points = pkg_resources.iter_entry_points('console_scripts')
@@ -2159,12 +2152,11 @@ class module:
       custom_refresh = dist_path / "libtbx_refresh.py"
       if custom_refresh.isfile():
         print("Processing: %s" % show_string(abs(custom_refresh)))
+        global_vars = globals()
+        global_vars["__name__"] = dist_path.basename() + ".libtbx_refresh"
+        global_vars["self"] = self
         with open(abs(custom_refresh)) as fh:
-          exec(
-              fh.read(),
-              {"__name__": dist_path.basename() + ".libtbx_refresh"},
-              {"self": self},
-          )
+          exec(fh.read(), global_vars)
 
   def collect_test_scripts(self,
         file_names=["run_tests.py", "run_examples.py"]):

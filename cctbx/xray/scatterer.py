@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.xray import ext
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
@@ -6,7 +6,7 @@ from cctbx import adptbx
 from cctbx.array_family import flex
 from libtbx.str_utils import show_string
 import boost.python
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 class scatterer(ext.scatterer):
@@ -28,7 +28,8 @@ class scatterer(ext.scatterer):
     ext.scatterer.__init__(
       self, label, site, u, occupancy, scattering_type, fp, fdp)
 
-class _(boost.python.injector, ext.scatterer):
+@boost.python.inject_into(ext.scatterer)
+class _():
 
   def customized_copy(self,
         label=None,
@@ -155,27 +156,27 @@ class _(boost.python.injector, ext.scatterer):
 
   def show(self, f=None, unit_cell=None):
     if (f is None): f = sys.stdout
-    print >> f, "%-4s" % self.label,
-    print >> f, "%-4s" % self.scattering_type,
-    print >> f, "%3d" % self.multiplicity(),
-    print >> f, "(%7.4f %7.4f %7.4f)" % self.site,
-    print >> f, "%4.2f" % self.occupancy,
+    print("%-4s" % self.label, end=' ', file=f)
+    print("%-4s" % self.scattering_type, end=' ', file=f)
+    print("%3d" % self.multiplicity(), end=' ', file=f)
+    print("(%7.4f %7.4f %7.4f)" % self.site, end=' ', file=f)
+    print("%4.2f" % self.occupancy, end='', file=f)
     if self.flags.use_u_iso():
-      print >> f, "%6.4f" % self.u_iso,
+      print(" %6.4f" % self.u_iso, end='', file=f)
     else:
-      print >> f, '[ - ]',
+      print(' [ - ]', end='', file=f)
     if self.flags.use_u_aniso():
       assert unit_cell is not None
       u_cart = adptbx.u_star_as_u_cart(unit_cell, self.u_star)
-      print >> f, "%6.4f" % adptbx.u_cart_as_u_iso(u_cart)
-      print >> f, "     u_cart =", ("%6.3f " * 5 + "%6.3f") % u_cart,
+      print(" %6.4f" % adptbx.u_cart_as_u_iso(u_cart), file=f)
+      print("     u_cart =", ("%6.3f " * 5 + "%6.3f") % u_cart, end='', file=f)
     else:
-      print >> f, '[ - ]',
+      print(' [ - ]', end='', file=f)
     if (self.fp != 0 or self.fdp != 0):
-      print >> f, "\n     fp,fdp = %6.4f,%6.4f" % (
+      print("\n     fp,fdp = %6.4f,%6.4f" % (
         self.fp,
-        self.fdp),
-    print >> f
+        self.fdp), end='', file=f)
+    print(file=f)
 
 class anomalous_scatterer_group:
 
@@ -208,17 +209,17 @@ class anomalous_scatterer_group:
 
   def show_summary(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    print >> out, prefix+"Anomalous scatterer group:"
+    print(prefix+"Anomalous scatterer group:", file=out)
     if (self.selection_string is not None):
-      print >> out, prefix+"  Selection:", show_string(self.selection_string)
-    print >> out, prefix+"  Number of selected scatterers:", \
-      self.iselection.size()
-    print >> out, prefix+"  f_prime:        %.6g" % self.f_prime
-    print >> out, prefix+"  f_double_prime: %.6g" % self.f_double_prime
+      print(prefix+"  Selection:", show_string(self.selection_string), file=out)
+    print(prefix+"  Number of selected scatterers:", \
+      self.iselection.size(), file=out)
+    print(prefix+"  f_prime:        %.6g" % self.f_prime, file=out)
+    print(prefix+"  f_double_prime: %.6g" % self.f_double_prime, file=out)
     labels_refine = self.labels_refine()
-    print >> out, prefix+"  refine:",
-    if (len(labels_refine) == 0): print >> out, "None"
-    else: print >> out, " ".join(labels_refine)
+    print(prefix+"  refine:", end=' ', file=out)
+    if (len(labels_refine) == 0): print("None", file=out)
+    else: print(" ".join(labels_refine), file=out)
 
   def copy_to_scatterers_in_place(self, scatterers):
     for i_seq in self.iselection:

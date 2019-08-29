@@ -1,21 +1,23 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.examples.structure_factor_derivatives \
   import parameters, gradients, pack_gradients, structure_factor
 from cctbx.examples.exp_i_alpha_derivatives import least_squares
 from libtbx.test_utils import approx_equal
 import random
 import copy
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
+from six.moves import range
+from six.moves import zip
 
 random.seed(0)
 
 def d_target_d_params_finite(obs, hkl, d_star_sq, params, eps=1.e-8):
   result = []
   params_eps = copy.deepcopy(params)
-  for i_param in xrange(len(params)):
+  for i_param in range(len(params)):
     dx = []
-    for ix in xrange(7):
+    for ix in range(7):
       ts = []
       for signed_eps in [eps, -eps]:
         pi_eps = params[i_param].as_list()
@@ -32,8 +34,8 @@ def d_target_d_params_finite(obs, hkl, d_star_sq, params, eps=1.e-8):
 def d2_target_d_params_finite(obs, hkl, d_star_sq, params, eps=1.e-8):
   result = []
   params_eps = copy.deepcopy(params)
-  for i_param in xrange(len(params)):
-    for ix in xrange(7):
+  for i_param in range(len(params)):
+    for ix in range(7):
       gs = []
       for signed_eps in [eps, -eps]:
         pi_eps = params[i_param].as_list()
@@ -50,19 +52,19 @@ def d2_target_d_params_finite(obs, hkl, d_star_sq, params, eps=1.e-8):
 def compare_analytical_and_finite(obs, hkl, d_star_sq, params, out):
   grads_fin = d_target_d_params_finite(
     obs=obs, hkl=hkl, d_star_sq=d_star_sq, params=params)
-  print >> out, "grads_fin:", pack_gradients(grads_fin)
+  print("grads_fin:", pack_gradients(grads_fin), file=out)
   sf = structure_factor(hkl=hkl, d_star_sq=d_star_sq, params=params)
   target = least_squares(obs=obs, calc=sf.f())
   grads_ana = sf.d_target_d_params(target=target)
-  print >> out, "grads_ana:", pack_gradients(grads_ana)
+  print("grads_ana:", pack_gradients(grads_ana), file=out)
   assert approx_equal(pack_gradients(grads_ana), pack_gradients(grads_fin))
   curvs_fin = d2_target_d_params_finite(
     obs=obs, hkl=hkl, d_star_sq=d_star_sq, params=params)
-  print >> out, "curvs_fin:", curvs_fin
+  print("curvs_fin:", curvs_fin, file=out)
   curvs_ana = sf.d2_target_d_params(target=target)
-  print >> out, "curvs_ana:", curvs_ana
+  print("curvs_ana:", curvs_ana, file=out)
   assert approx_equal(curvs_ana, curvs_fin, 1.e-5)
-  print >> out
+  print(file=out)
 
 def exercise(args):
   verbose =  "--verbose" in args
@@ -72,12 +74,12 @@ def exercise(args):
     out = sys.stdout
   hkl = (1,2,3)
   d_star_sq = 1e-3
-  for n_params in xrange(2,5):
-    for i_trial in xrange(5):
+  for n_params in range(2,5):
+    for i_trial in range(5):
       params = []
-      for i in xrange(n_params):
+      for i in range(n_params):
         params.append(parameters(
-          xyz=[random.random() for i in xrange(3)],
+          xyz=[random.random() for i in range(3)],
           u=random.random()*0.1,
           w=random.random(),
           fp=(random.random()-0.5)*2,
@@ -96,7 +98,7 @@ def exercise(args):
         d_star_sq=d_star_sq,
         params=params,
         out=out)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx import wavelengths
 
 """ The purpose of this module is to interface cctbx with the FullProf progamm
@@ -29,9 +28,9 @@ def rietveld_refine_structure(crystalstructure,
   """
   # Check preconditions
   if [I_obs, Profile, ProfileFile].count(None) != 2:
-    raise(ValueError("You may only pass one of I_obs, Profile and ProfileFile"))
+    raise ValueError("You may only pass one of I_obs, Profile and ProfileFile")
   # start work
-  from write_pcr import write_pcr
+  from iotbx.write_pcr import write_pcr
   import tempfile
   import shutil
   import os
@@ -85,7 +84,7 @@ def simulate_powder_pattern(crystalstructure,
 
   XXX Todo: implement extraction of calculated profile
   """
-  from write_pcr import write_pcr
+  from iotbx.write_pcr import write_pcr
   from iotbx.reflection_file_reader import any_reflection_file
   import tempfile
   import os
@@ -155,7 +154,7 @@ def run_fullprof(pcrfile, verbose=0):
   if pcrfile.lower().endswith(".pcr"):
     pcrfile = os.path.splitext(pcrfile)[0]
   if not os.path.exists(pcrfile + ".pcr"):
-    raise(IOError(pcrfile + ".pcr not found!"))
+    raise IOError(pcrfile + ".pcr not found!")
   pcrfile = os.path.abspath(pcrfile)
   old_cwd = os.getcwd()
   workdir = os.path.split(pcrfile)[0]

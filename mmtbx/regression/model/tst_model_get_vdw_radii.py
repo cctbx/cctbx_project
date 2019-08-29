@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import mmtbx.utils
 import mmtbx.model
@@ -349,10 +349,10 @@ _chem_comp_tor.period
 
 def run(prefix = "tst_model_get_vdw_radii"):
   fo = open("%s.pdb"%prefix,"w")
-  print >> fo, pdb
+  print(pdb, file=fo)
   fo.close()
   fo = open("%s.cif"%prefix,"w")
-  print >> fo, cif
+  print(cif, file=fo)
   fo.close()
   #
   i = mmtbx.utils.process_command_line_args(args = ["%s.cif"%prefix])
@@ -362,10 +362,10 @@ def run(prefix = "tst_model_get_vdw_radii"):
     restraint_objects = i.cif_objects,
     process_input     = True,
     log               = null_out())
-  derived_keays = model.get_vdw_radii().keys()
+  derived_keys = model.get_vdw_radii()
   # compare with answer
   for atom_name in pdb_inp.atoms().extract_name():
-    assert atom_name.strip() in derived_keays
+    assert atom_name.strip() in derived_keys
 
 if (__name__ == "__main__"):
   run()

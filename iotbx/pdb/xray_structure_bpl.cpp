@@ -33,6 +33,7 @@ namespace {
                scitbx::vec3<double> const&>())
         .add_property("scatterers", make_getter(&w_t::scatterers, rbv()))
         .def("next", &w_t::next)
+        .def("__next__", &w_t::next)
       ;
     }
   };

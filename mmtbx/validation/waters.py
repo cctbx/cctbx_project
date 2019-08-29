@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import maptbx, miller
 from cctbx.sgtbx import space_group_info
 from iotbx.file_reader import any_file
@@ -209,26 +209,26 @@ class waters(validation):
 
   def show_summary(self, out=sys.stdout, prefix="  "):
     if (self.n_bad > 0):
-      print >> out, "%sPoorly ordered waters:  %4d" % (prefix, self.n_bad)
+      print("%sPoorly ordered waters:  %4d" % (prefix, self.n_bad), file=out)
     if (self.n_heavy > 0):
-      print >> out, "%sMislabeled waters:      %4d" % (prefix, self.n_heavy)
+      print("%sMislabeled waters:      %4d" % (prefix, self.n_heavy), file=out)
     if (self.n_bad == 0) and (self.n_heavy == 0):
-      print >> out, "%sAll waters okay." % prefix
+      print("%sAll waters okay." % prefix, file=out)
 
   def show(self, out=sys.stdout, prefix="  ", verbose=True):
     if (len(self.results) > 0):
       if (self.n_bad > 0):
-        print >> out, prefix + "Waters in poor density:"
-        print >> out, prefix + self.get_result_class().header()
+        print(prefix + "Waters in poor density:", file=out)
+        print(prefix + self.get_result_class().header(), file=out)
         for result in self.results :
           if (result.is_bad_water()):
-            print >> out, prefix + str(result)
-        print >> out, ""
+            print(prefix + str(result), file=out)
+        print("", file=out)
       if (self.n_heavy > 0):
-        print >> out, prefix + "Possibly mislabeled atoms:"
-        print >> out, prefix + self.get_result_class().header()
+        print(prefix + "Possibly mislabeled atoms:", file=out)
+        print(prefix + self.get_result_class().header(), file=out)
         for result in self.results :
           if (result.is_heavy_atom()):
-            print >> out, prefix + str(result)
-        print >> out, ""
+            print(prefix + str(result), file=out)
+        print("", file=out)
     self.show_summary(out=out, prefix=prefix)

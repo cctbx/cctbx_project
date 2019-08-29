@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import cctbx.crystal.direct_space_asu
 import cctbx.sgtbx.direct_space_asu.reference_table
 from cctbx.sgtbx.direct_space_asu import proto
@@ -51,15 +51,15 @@ def find_distances(unit_cell, space_group, sites_frac, distance_cutoff):
   pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
   pair_sym_table = pair_asu_table.extract_pair_sym_table()
   for i,pair_sym_dict in enumerate(pair_sym_table):
-    print "i:", i
+    print("i:", i)
     for j,sym_ops in pair_sym_dict.items():
-      print "  j:", j
+      print("  j:", j)
       for sym_op in sym_ops:
         frac_i = sites_frac[i]
         frac_j = sites_frac[j]
         frac_ji = sym_op * frac_j
-        print "    %-20s %8.3f" % (
-          str(sym_op), unit_cell.distance(frac_i, frac_ji))
+        print("    %-20s %8.3f" % (
+          str(sym_op), unit_cell.distance(frac_i, frac_ji)))
 
 def run(args):
   assert len(args) == 0

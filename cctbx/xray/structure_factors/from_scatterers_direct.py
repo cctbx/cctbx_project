@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # -*- coding: utf-8 -*-
 from cctbx.xray.structure_factors.manager import managed_calculation_base
 from cctbx.xray.structure_factors.manager import default_cos_sin_table

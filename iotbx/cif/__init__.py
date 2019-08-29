@@ -9,9 +9,12 @@ https://doi.org/10.1107/S0021889811041161
 http://cctbx.sourceforge.net/iotbx_cif
 
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import boost.python
+from six.moves import range
+from six.moves import zip
+import six
 ext = boost.python.import_ext("iotbx_cif_ext")
 
 from cctbx.array_family import flex
@@ -77,9 +80,9 @@ class reader(object):
   def show_errors(self, max_errors=50, out=None):
     if out is None: out = sys.stdout
     for msg in self.parser.lexer_errors()[:max_errors]:
-      print >> out, msg
+      print(msg, file=out)
     for msg in self.parser.parser_errors()[:max_errors]:
-      print >> out, msg
+      print(msg, file=out)
 
   def build_crystal_structures(self, data_block_name=None):
     xray_structures = cctbx_data_structures_from_cif(
@@ -115,12 +118,12 @@ class reader(object):
       base_array_info = miller.array_info(
         source=self.file_path, source_type="cif")
     if data_block_name is not None:
-      arrays = self.build_miller_arrays(
+      arrays = list(self.build_miller_arrays(
         data_block_name=data_block_name,
-        base_array_info=base_array_info).values()
+        base_array_info=base_array_info).values())
     else:
       arrays = flat_list([
-        arrays.values() for arrays in
+        list(arrays.values()) for arrays in
         self.build_miller_arrays(base_array_info=base_array_info).values()])
     other_symmetry=crystal_symmetry
     for i, array in enumerate(arrays):
@@ -179,7 +182,7 @@ def atom_type_cif_loop(xray_structure, format="mmcif"):
     disp_source = xray_structure.inelastic_form_factors_source
   if disp_source is None:
     disp_source = "."
-  for atom_type, gaussian in scattering_type_registry.as_type_gaussian_dict().iteritems():
+  for atom_type, gaussian in six.iteritems(scattering_type_registry.as_type_gaussian_dict()):
     scat_source = sources.get(params.table)
     if params.custom_dict and atom_type in params.custom_dict:
       scat_source = "Custom %i-Gaussian" %gaussian.n_terms()
@@ -321,7 +324,7 @@ class miller_arrays_as_cif_block():
         # cif loop, therefore need to add rows of '?' values
         single_indices = other_indices.select(match.single_selection(1))
         self.indices.extend(single_indices)
-        n_data_columns = len(self.refln_loop.keys()) - 3
+        n_data_columns = len(self.refln_loop) - 3
         for hkl in single_indices:
           row = list(hkl) + ['?'] * n_data_columns
           self.refln_loop.add_row(row)
@@ -434,6 +437,6 @@ def category_sort_function(key):
   key_category = key.split('.')[0]
   try:
     return category_order.index(key_category)
-  except ValueError, e:
+  except ValueError as e:
     # any categories we don't know about will end up at the end of the file
-    return key_category
+    return len(category_order)

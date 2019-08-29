@@ -5,6 +5,7 @@ from smtbx.refinement.restraints import adp_restraints
 from smtbx import development
 from cctbx.array_family import flex
 from cctbx import crystal
+from six.moves import range
 
 def get_pair_sym_table(xray_structure):
   asu_mappings = xray_structure.asu_mappings(buffer_thickness=3.5)

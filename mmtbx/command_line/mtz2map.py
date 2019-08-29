@@ -4,7 +4,7 @@
 
 # TODO: remove R-free set from map coefficients?
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.maps import utils
 import iotbx.map_tools
 import iotbx.phil
@@ -115,7 +115,7 @@ def run(args, log=sys.stdout, run_in_current_working_directory=False):
   mtz_file = None
   input_phil = []
   if len(args) == 0 :
-    print >> log, "Parameter syntax:"
+    print("Parameter syntax:", file=log)
     master_phil.show(out=log, prefix="  ")
     raise Usage("phenix.mtz2map [mtz_file] [pdb_file] [param_file] " +
       "[--show_maps]")
@@ -159,7 +159,7 @@ def run(args, log=sys.stdout, run_in_current_working_directory=False):
     else :
       all_labels = map_labels
     if len(all_labels) > 0 :
-      print >> log, "Available map coefficients in this MTZ file:"
+      print("Available map coefficients in this MTZ file:", file=log)
       for labels in all_labels :
         if isinstance(labels, str):
           labels_list = [labels]
@@ -170,7 +170,7 @@ def run(args, log=sys.stdout, run_in_current_working_directory=False):
         else :
           extra = ""
           params.labels.append(labels_list)
-        print >> log, "  %s%s" % (labels_list, extra)
+        print("  %s%s" % (labels_list, extra), file=log)
     else :
       raise Sorry("No map coefficients found in this MTZ file.")
     if params.show_maps : return False
@@ -205,7 +205,7 @@ def run(args, log=sys.stdout, run_in_current_working_directory=False):
       if (len(sites_cart) == 0):
         raise Sorry("No atoms found matching the specified selection.")
   else :
-    print >> log, "No model input - will output map(s) in unit cell."
+    print("No model input - will output map(s) in unit cell.", file=log)
   file_info = []
   suffixes = []
   for i, map_labels in enumerate(params.labels):
@@ -240,15 +240,15 @@ def run(args, log=sys.stdout, run_in_current_working_directory=False):
       assert phi.is_real_array()
       assert (fom is None) or (fom.is_real_array())
       map_coeffs = iotbx.map_tools.combine_f_phi_and_fom(f=f, phi=phi, fom=fom)
-    print >> log, "Processing map: %s" % " ".join(map_labels)
+    print("Processing map: %s" % " ".join(map_labels), file=log)
     assert map_coeffs.is_complex_array()
     map_coeffs = map_coeffs.map_to_asu().average_bijvoet_mates()
     map_coeffs = map_coeffs.resolution_filter(d_min=params.d_min,
       d_max=params.d_max)
     if (r_free_flags is not None):
       map_coeffs, flags = map_coeffs.common_sets(other=r_free_flags)
-      print >> log, "  removing %d R-free flagged reflections" % \
-        flags.data().count(True)
+      print("  removing %d R-free flagged reflections" % \
+        flags.data().count(True), file=log)
       map_coeffs = map_coeffs.select(~(flags.data()))
     from cctbx import maptbx
 
@@ -265,10 +265,10 @@ def run(args, log=sys.stdout, run_in_current_working_directory=False):
       symmetry_flags=maptbx.use_space_group_symmetry,
       crystal_gridding=cg)
     if params.scale == "sigma" :
-      print >> log, "  applying sigma-scaling"
+      print("  applying sigma-scaling", file=log)
       map.apply_sigma_scaling()
     elif params.scale == "volume" :
-      print >> log, "  applying volume-scaling"
+      print("  applying volume-scaling", file=log)
       map.apply_volume_scaling()
     suffix = None
     if map_labels == ["FP,SIGFP", "PHIM", "FOMM"] :
@@ -358,7 +358,7 @@ def run(args, log=sys.stdout, run_in_current_working_directory=False):
       else :
         map.as_ccp4_map(file_name=map_file_name)
       file_info.append((map_file_name, "CCP4 map"))
-    print >> log, "  wrote %s" % map_file_name
+    print("  wrote %s" % map_file_name, file=log)
   return file_info
 
 def finish_job(result):

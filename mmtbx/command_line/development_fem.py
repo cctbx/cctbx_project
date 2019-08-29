@@ -1,7 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.fem
 # LIBTBX_SET_DISPATCHER_NAME phenix.feature_enhanced_map
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.command_line
 import mmtbx.maps
 import iotbx.phil
@@ -118,4 +118,4 @@ def validate_params(params):
 if(__name__ == "__main__"):
   t0 = time.time()
   run(sys.argv[1:])
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))

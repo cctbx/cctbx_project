@@ -1,15 +1,19 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx.math import superpose
 from libtbx.utils import Sorry
 import sys
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import iotbx.pdb
 from iotbx.pdb.hierarchy import new_hierarchy_from_chain
 from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list, \
     NCS_restraint_group, NCS_copy
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flippable_sidechains
+
+import six
+from six.moves import zip
+from six.moves import range
 
 __author__ = 'Youval, massively rewritten by Oleg'
 
@@ -29,13 +33,13 @@ class Chains_info(object):
   def __str__(self):
     assert 0
     res = StringIO()
-    print >> res, "res_names:", self.res_names
-    print >> res, "self.resid", self.resid
-    print >> res, "self.atom_names", self.atom_names
-    print >> res, "self.atom_selection", self.atom_selection
-    print >> res, "self.chains_atom_number", self.chains_atom_number
-    print >> res, "self.no_altloc", self.no_altloc
-    print >> res, "self.center_of_coordinates", self.center_of_coordinates
+    print("res_names:", self.res_names, file=res)
+    print("self.resid", self.resid, file=res)
+    print("self.atom_names", self.atom_names, file=res)
+    print("self.atom_selection", self.atom_selection, file=res)
+    print("self.chains_atom_number", self.chains_atom_number, file=res)
+    print("self.no_altloc", self.no_altloc, file=res)
+    print("self.center_of_coordinates", self.center_of_coordinates, file=res)
     return res.getvalue()
 
 def get_chain_xyz(hierarchy, chain_id):
@@ -63,21 +67,21 @@ def shortcut_1(
 
   # new convenience structure: {<n_atoms>:[ch_id, ch_id, ch_id]}
   n_atom_chain_id_dict = {}
-  for k,v in chains_info.iteritems():
+  for k,v in six.iteritems(chains_info):
     if v.chains_atom_number not in n_atom_chain_id_dict:
       n_atom_chain_id_dict[v.chains_atom_number] = [k]
     else:
       n_atom_chain_id_dict[v.chains_atom_number].append(k)
-  print >> log, "n_atom_chain_id_dict", n_atom_chain_id_dict
-  for k,v in n_atom_chain_id_dict.iteritems():
+  print("n_atom_chain_id_dict", n_atom_chain_id_dict, file=log)
+  for k,v in six.iteritems(n_atom_chain_id_dict):
     if len(v) == 1:
-      print >> log, "No shortcut, there is a chain with unique number of atoms:", v
+      print("No shortcut, there is a chain with unique number of atoms:", v, file=log)
       return empty_result
   # now we starting to check atom names, align chains, check rmsd and
   # populate result. If at some point we are not satisfied with any measure,
   # we will return empty result.
   result = class_ncs_restraints_group_list()
-  for n_atoms, chains_list in n_atom_chain_id_dict.iteritems():
+  for n_atoms, chains_list in six.iteritems(n_atom_chain_id_dict):
     # this should make one ncs group
     master_chain_id = chains_list[0]
     master_iselection = flatten_list_of_list(
@@ -89,7 +93,7 @@ def shortcut_1(
     for copy_chain_id in chains_list[1:]:
       # these are copies
       if chains_info[master_chain_id].atom_names != chains_info[copy_chain_id].atom_names:
-        print >> log, "No shortcut, atom names are not identical"
+        print("No shortcut, atom names are not identical", file=log)
         return empty_result
       copy_iselection = flatten_list_of_list(
         chains_info[copy_chain_id].atom_selection)
@@ -100,13 +104,13 @@ def shortcut_1(
       r = lsq_fit_obj.r
       t = lsq_fit_obj.t
       rmsd = copy_xyz.rms_difference(lsq_fit_obj.other_sites_best_fit())
-      print >> log, "rmsd", master_chain_id, copy_chain_id, rmsd
+      print("rmsd", master_chain_id, copy_chain_id, rmsd, file=log)
       #
       # XXX should we compare rmsd to chain_max_rmsd to be more relaxed and
       #     process more structures quickly?
       #
       if rmsd is None or rmsd > 0.2:
-        print >> log, "No shortcut, low rmsd:", rmsd, "for chains", master_chain_id, copy_chain_id
+        print("No shortcut, low rmsd:", rmsd, "for chains", master_chain_id, copy_chain_id, file=log)
         return empty_result
       # seems like a good enough copy
       c = NCS_copy(
@@ -117,7 +121,7 @@ def shortcut_1(
           rmsd=rmsd)
       ncs_gr.append_copy(c)
     result.append(ncs_gr)
-  print >> log, "Shortcut complete."
+  print("Shortcut complete.", file=log)
   return result
 
 def find_ncs_in_hierarchy(ph,
@@ -331,10 +335,11 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
     # will be always possible though
     # also, we should try to determine the smallest selection for the master
     # chain straight away
-    all_pairs = prel_gr_dict.values()
+    all_pairs = list(prel_gr_dict.values())
     left = set(all_pairs[0])
     # print "left", left
     # print "all_pairs", all_pairs
+    # FIXME indexing dict.values order changes with py2/3
     for i in all_pairs[1:]:
       left = left & set(i)
     # should be 1 (a lot of chains) or 2 (if there only 2 chains)
@@ -359,7 +364,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
     # selecting smallest master key - for no reason actually
     key_with_smallest_selection = None
     len_of_smallest_selection = 1e100
-    for ch, key in prel_gr_dict.iteritems():
+    for ch, key in six.iteritems(prel_gr_dict):
       # print "ch, master, key:", ch, master, key
       if master in key:
         master_sel, master_res, master_rmsd = get_info_from_match_dict(
@@ -377,7 +382,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
     # Let's do intersection of all master selection to determine
     # the minimum selection suitable to all copies.
     min_master_selection = None
-    for ch, key in prel_gr_dict.iteritems():
+    for ch, key in six.iteritems(prel_gr_dict):
       if master in key:
         master_sel, master_res, master_rmsd = get_info_from_match_dict(
                 match_dict, key, master)
@@ -446,7 +451,7 @@ def get_copy_master_selections_from_match_dict(
   # in prel_gr_dict we want to find value with both master and ch_copy
   # return copy_sel, copy_res, m_sel
   key = None
-  for v in prel_gr_dict.itervalues():
+  for v in six.itervalues(prel_gr_dict):
     if v == (master, ch_copy) or v == (ch_copy, master):
       key = v
       break
@@ -628,7 +633,7 @@ def remove_far_atoms(list_a, list_b,
   sel_a = flex.size_t([])
   sel_b = flex.size_t([])
   current_pos = 0
-  for i in xrange(len(res_list_a)):
+  for i in range(len(res_list_a)):
     # find the matching atoms form each residue (work on small sections)
     res_len = list_a[i].size()
     res_ref_sites = ref_sites[current_pos:current_pos+res_len]
@@ -689,7 +694,7 @@ def search_ncs_relations(ph=None,
   n_chains = len(sorted_ch)
   chains_in_copies = set()
   match_dict = {}
-  for i in xrange(n_chains-1):
+  for i in range(n_chains-1):
     m_ch_id = sorted_ch[i]
 
     if m_ch_id in chains_in_copies:
@@ -700,7 +705,7 @@ def search_ncs_relations(ph=None,
     if master_n_res == 0:
       continue
     # get residue lists for master
-    for j in xrange(i+1,n_chains):
+    for j in range(i+1,n_chains):
       c_ch_id = sorted_ch[j]
       copy_n_res = len(chains_info[c_ch_id].res_names)
       frac_d = min(copy_n_res,master_n_res)/max(copy_n_res,master_n_res)
@@ -737,7 +742,7 @@ def search_ncs_relations(ph=None,
           # print "  good"
   # loop over all chains
   if msg:
-    print >> log,msg
+    print(msg, file=log)
   if (chain_similarity_threshold == 1) and msg:
     # must be identical
     raise Sorry('NCS copies are not identical')
@@ -749,7 +754,7 @@ def mmtbx_res_alignment(seq_a, seq_b,
   a = len(seq_a)
   b = len(seq_b)
   if (a == 0) or (b == 0): return [], [], 0
-  if seq_a == seq_b: return range(a), range(a), 1.0
+  if seq_a == seq_b: return list(range(a)), list(range(a)), 1.0
   norm_seq_a = seq_a
   norm_seq_b = seq_b
   if not atomnames:
@@ -915,7 +920,7 @@ def get_chains_info(ph, selection_list=None):
   for ch in model.chains():
     # print "ch_id", ch.id
     gr = True
-    if not chains_info.has_key(ch.id):
+    if ch.id not in chains_info:
       chains_info[ch.id] = Chains_info()
       gr = False
       # This is very time-consuming

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import os,math
 from libtbx.test_utils import approx_equal
@@ -52,14 +52,14 @@ def exercise_debug_write():
   checkaccum = 0
   for x in range(a.npixels):
     if moddata[x]!=a.linearintdata[x]:
-      print x,moddata[x],a.linearintdata[x]
+      print(x,moddata[x],a.linearintdata[x])
     checkaccum+=a.linearintdata[x]
   assert accum == checkaccum
   os.remove(filename)
 
 def run():
   exercise_debug_write()
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   run()

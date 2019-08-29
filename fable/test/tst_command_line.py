@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 def run(args):
   assert len(args) == 0
   from libtbx import easy_run

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.rigid_body.proto import featherstone
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto.utils import \
@@ -13,6 +13,8 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out, show_times_at_exit
 import math
 import sys
+from six.moves import range
+from six.moves import zip
 
 class random_revolute(object):
 
@@ -23,7 +25,7 @@ class random_revolute(object):
       return (mersenne_twister.random_double()*2-1)*math.pi
     #
     O.sites = [random_vector()]
-    for i_trial in xrange(100): # guard against unlikely singularity
+    for i_trial in range(100): # guard against unlikely singularity
       O.A = joint_lib.revolute_alignment(
         pivot=random_vector(),
         normal=random_vector().normalize())
@@ -67,7 +69,7 @@ class revolute_simulation(object):
   def __init__(O, mersenne_twister, NB, config):
     O.bodies = []
     if (config == "random"):
-      for ib in xrange(NB):
+      for ib in range(NB):
         B = random_revolute(mersenne_twister=mersenne_twister)
         B.parent = -1+ib
         O.bodies.append(B)
@@ -179,7 +181,7 @@ class revolute_simulation(object):
 def FDab_X0(model, q, qd):
   Xup = [None] * model.NB
   X0 = [None] * model.NB
-  for i in xrange(model.NB):
+  for i in range(model.NB):
     XJ, S = featherstone.jcalc( model.pitch[i], q[i] )
     Xup[i] = XJ * model.Xtree[i]
     if model.parent[i] == -1:
@@ -224,33 +226,33 @@ def exercise_sim(out, n_dynamics_steps, delta_t, sim):
   sim.check_d_pot_d_q()
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
-  for i_step in xrange(n_dynamics_steps):
+  for i_step in range(n_dynamics_steps):
     sim.dynamics_step(delta_t=delta_t)
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin)
   e_tots = e_pots + e_kins
   sim.check_d_pot_d_q()
-  print >> out, "energy samples:", e_tots.size()
-  print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
-  print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
-  print >> out, "e_tot min, max:", min(e_tots), max(e_tots)
-  print >> out, "start e_tot:", e_tots[0]
-  print >> out, "final e_tot:", e_tots[-1]
+  print("energy samples:", e_tots.size(), file=out)
+  print("e_pot min, max:", min(e_pots), max(e_pots), file=out)
+  print("e_kin min, max:", min(e_kins), max(e_kins), file=out)
+  print("e_tot min, max:", min(e_tots), max(e_tots), file=out)
+  print("start e_tot:", e_tots[0], file=out)
+  print("final e_tot:", e_tots[-1], file=out)
   ave = flex.sum(e_tots) / e_tots.size()
-  range = flex.max(e_tots) - flex.min(e_tots)
+  range_ = flex.max(e_tots) - flex.min(e_tots)
   if (ave == 0): relative_range = 0
-  else:          relative_range = range / ave
-  print >> out, "ave:", ave
-  print >> out, "range:", range
-  print >> out, "relative range:", relative_range
-  print >> out
+  else:          relative_range = range_ / ave
+  print("ave:", ave, file=out)
+  print("range:", range_, file=out)
+  print("relative range:", relative_range, file=out)
+  print(file=out)
   out.flush()
   if (out is sys.stdout):
     f = open("tmp%02d.xy" % plot_number[0], "w")
     for es in [e_pots, e_kins, e_tots]:
       for e in es:
-        print >> f, e
-      print >> f, "&"
+        print(e, file=f)
+      print("&", file=f)
     f.close()
     plot_number[0] += 1
   return relative_range
@@ -262,7 +264,7 @@ def exercise_revolute_sim(
       delta_t,
       NB,
       config):
-  print >> out, "config:", config
+  print("config:", config, file=out)
   sim = revolute_simulation(
     mersenne_twister=mersenne_twister,
     NB=NB,
@@ -273,7 +275,7 @@ def exercise_revolute_sim(
 def exercise_revolute(out, n_trials, n_dynamics_steps, delta_t=0.001, NB=3):
   mersenne_twister = flex.mersenne_twister(seed=0)
   relative_ranges = flex.double()
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     relative_ranges.append(exercise_revolute_sim(
       out=out,
       mersenne_twister=mersenne_twister,
@@ -281,11 +283,11 @@ def exercise_revolute(out, n_trials, n_dynamics_steps, delta_t=0.001, NB=3):
       delta_t=delta_t,
       NB=[1, NB][min(i_trial, 1)],
       config=["singular", "zigzag", "random"][min(i_trial, 2)]))
-  print >> out, "relative ranges:"
+  print("relative ranges:", file=out)
   relative_ranges.min_max_mean().show(out=out, prefix="  ")
   if (out is not sys.stdout):
     assert flex.max(relative_ranges) < 0.0006
-  print >> out
+  print(file=out)
 
 def run(args):
   assert len(args) in [0,2]
@@ -300,7 +302,7 @@ def run(args):
   show_times_at_exit()
   exercise_revolute(
     out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

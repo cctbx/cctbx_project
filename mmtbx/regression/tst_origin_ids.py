@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.regression import model_1yjp, model_1yjp_with_waters
 from iotbx.data_manager import DataManager
 
@@ -46,7 +46,7 @@ def check_geo(geo_lines):
   rc = {}
   for line in geo_lines.splitlines():
     tmp = line.split(':')
-    tmp = filter(None, tmp)
+    tmp = list(filter(None, tmp))
     if len(tmp)!= 2: continue
     rc[tmp[0]]=int(tmp[1])
   return rc
@@ -122,7 +122,7 @@ def main():
   #current['  sinusoidal'] = 16
   current['Nonbonded interactions']   = 1176
   assert rc == current, check_diff(rc, current)
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   main()

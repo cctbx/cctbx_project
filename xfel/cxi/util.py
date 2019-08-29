@@ -1,11 +1,13 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import os
 
 #for integration pickles:
 allowable_basename_endings = ["_00000.pickle",
                               ".pickle",
+                              ".refl",
                               "_refined_experiments.json",
+                              "_refined.expt",
                               "_experiments.json"
                              ]
 def is_odd_numbered(file_name, use_hash = False):
@@ -26,4 +28,4 @@ def is_odd_numbered(file_name, use_hash = False):
       return int(file_name[-idx])%2==1
   raise ValueError
 if __name__=="__main__":
-  print is_odd_numbered("int_fake_19989.img")
+  print(is_odd_numbered("int_fake_19989.img"))

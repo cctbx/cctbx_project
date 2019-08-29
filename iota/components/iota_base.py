@@ -1,19 +1,15 @@
-from __future__ import division, print_function, absolute_import
-from past.builtins import range
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/18/2018
-Last Changed: 03/06/2019
+Last Changed: 08/05/2019
 Description : IOTA base classes
 '''
 
 import os
 import json
-try:  # for Py3 compatibility
-    import itertools.ifilter as filter
-except ImportError:
-    pass
 
 from dxtbx.model import experiment_list as exp
 from libtbx.easy_mp import parallel_map
@@ -271,7 +267,6 @@ class ImageImporterBase():
   def make_image_object(self, input_entry):
     '''Run image importer (override as needed)'''
     img_object, error = self.import_image(input_entry=input_entry)
-
     if error:
       print(error)
     return img_object
@@ -484,16 +479,18 @@ class ProcInfo(object):
         inputs = None
 
       if inputs:
-        input_list = util.ginp.make_input_list(inputs, filter=True,
-                                                 filter_type='image')
+        input_list = util.ginp.make_input_list(inputs, filter_results=True,
+                                               filter_type='image')
 
     if prm and input_list:
-      if prm.advanced.image_range.flag_on:
-        input_list = self._select_image_range(input_list,
-                                              prm.advanced.image_range.range)
-      if prm.advanced.random_sample.flag_on:
-        input_list = self._select_random_subset(input_list,
-                                              prm.advanced.random_sample.number)
+      if prm.data_selection.image_range.flag_on:
+        input_list = self._select_image_range(
+          input_list,
+          prm.data_selection.image_range.range)
+      if prm.data_selection.random_sample.flag_on:
+        input_list = self._select_random_subset(
+          input_list,
+          prm.data_selection.random_sample.number)
 
     return [str(i) for i in input_list]
 
@@ -661,10 +658,9 @@ class ProcInfo(object):
     return cls(kwargs)
 
   @classmethod
-  def from_folder(cls, path, **kwargs):
+  def from_folder(cls, path):
     ''' Generate INFO object from an integration folder
     :param path: path to folder with integration results
-    :param kwargs: additional keyword args
     :return: ProcInfo class generated with attributes
     '''
 

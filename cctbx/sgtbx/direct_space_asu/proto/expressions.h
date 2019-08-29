@@ -499,4 +499,3 @@ namespace cctbx { namespace sgtbx { namespace asu {
 }}}
 // \endcond
 #endif
-

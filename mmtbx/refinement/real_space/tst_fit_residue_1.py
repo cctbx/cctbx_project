@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import time
 import mmtbx.refinement.real_space.fit_residues
 import mmtbx.refinement.real_space
@@ -133,4 +133,4 @@ if(__name__ == "__main__"):
     exercise(
       pdb_poor_str = pdb_poor_str,
       i_pdb        = i_pdb)
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))

@@ -5,7 +5,7 @@
 
 XXX mod_param must be run as a single process--guard against it!
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 __version__ = "$Revision$"
 

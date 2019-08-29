@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.scaling import data_statistics as ds
 from mmtbx.scaling import xtriage
 from mmtbx.command_line import fmodel
@@ -13,10 +13,11 @@ from libtbx.development import show_pickle_sizes
 from libtbx.easy_pickle import dumps, loads
 from libtbx.utils import null_out, Sorry
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import warnings
 import os.path
 import sys
+from six.moves import range
 
 # synthetic data
 def exercise_1():
@@ -416,7 +417,7 @@ Centric reflections:
 # XXX code for debugging pickle size issues
 def show_pickled_object_sizes(result):
   result_pkl = dumps(result)
-  print "result", len(result_pkl)
+  print("result", len(result_pkl))
   show_pickle_sizes(result, "  ")
 
 # test consistency of output after pickling and unpickling
@@ -426,7 +427,7 @@ def test_pickle_consistency_and_size(result):
   result_pkl_str = dumps(result)
   pkl_size = len(result_pkl_str)
   if (pkl_size >= 100000):
-    print "Oversized pickle:", pkl_size
+    print("Oversized pickle:", pkl_size)
     show_pickled_object_sizes(result)
     raise OverflowError()
   assert (pkl_size < 100000), pkl_size # limit pickle size
@@ -556,4 +557,4 @@ if (__name__ == "__main__"):
   exercise_2()
   exercise_1()
   exercise_analyze_resolution_limits()
-  print "OK"
+  print("OK")

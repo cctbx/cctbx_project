@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.tls import tools
 import math
 import time
+from six.moves import zip
 
 pdb_str_1 = """
 CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P1
@@ -40,8 +41,8 @@ def exercise_04():
     for ls_, vs_ in zip(ls,vs):
       lx,ly,lz = ls_
       vx,vy,vz = vs_
-      print lx,ly,lz
-      print vx,vy,vz
+      print(lx,ly,lz)
+      print(vx,vy,vz)
       tools.u_tls_vs_u_ens(pdb_str=pdb_str,
           dx=0.05,dy=0.06,dz=0.07,
           sx=0.3, sy=0.2, sz=0.1,
@@ -53,5 +54,5 @@ def exercise_04():
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_04()
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")

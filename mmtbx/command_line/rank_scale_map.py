@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.rank_scale_map
 
 from cctbx import maptbx
@@ -10,14 +10,14 @@ import sys, time
 
 def show_overall_statistics(m, header):
   s = maptbx.more_statistics(m)
-  print header
-  print "  min/max/mean: %6.4f %6.4f %6.4f"%(s.min(), s.max(), s.mean())
-  print "  kurtosis    : %6.4f" % s.kurtosis()
-  print "  skewness    : %6.4f" % s.skewness()
-  print "  sigma       : %6.4f" % s.sigma()
+  print(header)
+  print("  min/max/mean: %6.4f %6.4f %6.4f"%(s.min(), s.max(), s.mean()))
+  print("  kurtosis    : %6.4f" % s.kurtosis())
+  print("  skewness    : %6.4f" % s.skewness())
+  print("  sigma       : %6.4f" % s.sigma())
 
 def show_citation():
-  print "-"*79
+  print("-"*79)
   msg = """Compute rank-scaled (histogram equalized) map.
 
 Input: CCP4 formatted map file.
@@ -30,8 +30,8 @@ Citation:
   Acta Cryst. (2014). D70, 2593-2606
   Metrics for comparison of crystallographic maps
   A. Urzhumtsev, P. V. Afonine, V. Y. Lunin, T. C. Terwilliger and P. D. Adams"""
-  print msg
-  print "-"*79
+  print(msg)
+  print("-"*79)
 
 def run(args):
   show_citation()
@@ -62,5 +62,5 @@ def run(args):
 if (__name__ == "__main__"):
   t0 = time.time()
   run(sys.argv[1:])
-  print "Time: %-8.3f"%(time.time()-t0)
-  print "All done."
+  print("Time: %-8.3f"%(time.time()-t0))
+  print("All done.")

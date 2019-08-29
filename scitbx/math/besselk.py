@@ -12,9 +12,10 @@ The total range has been split in 3 regions:
 No efforst have been made to ensure continuity, nor a rigorous error analyses has been
 carried out. The error should be lower then a 5% over the x range 1E-4 to 100.
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import libtbx # for enumerate forward compatibility
+from six.moves import zip
 
 def log_besselk_1_4(x):
   result = None
@@ -53,10 +54,10 @@ def test(debug=False):
   yy = [ 1.81901, 1.27752, 0.987739, -0.0404925, -5.5961, -51.7321] # from mathematica.
   for x,y in zip(xx,yy):
     f = log_besselk_1_4(x)
-    if debug: print x,y,f,100*abs((f-y)/y)
+    if debug: print(x,y,f,100*abs((f-y)/y))
     assert abs((f-y)/y)*100.0 < 2.0
 
 if __name__ == "__main__":
   import sys
   test('-debug' in sys.argv[1:])
-  print 'OK'
+  print('OK')

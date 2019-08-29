@@ -3,7 +3,7 @@ Provides a command-line utility for fetching PDB files and their associated
 reflection data.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # LIBTBX_SET_DISPATCHER_NAME phenix.fetch_pdb
 # LIBTBX_SET_DISPATCHER_NAME iotbx.fetch_pdb
@@ -73,13 +73,13 @@ def run(args=(), params=None, out=sys.stdout):
         args.insert(1, "--mtz")
       try :
         data_files = run2(args=args, log=out)
-        print >> out, "\n".join(data_files)
+        print("\n".join(data_files), file=out)
         output_files.extend(data_files)
       except Exception as e:
         errors.append(str(e))
     else :
       pdb_file = run2(args=[mirror,id], log=out)
-      print >> out, pdb_file
+      print(pdb_file, file=out)
       output_files.append(pdb_file)
   return output_files, errors
 
@@ -161,7 +161,7 @@ Command-line options:
           (id, " ".join(misc_args)))
         if os.path.isfile("%s-sf.mtz" % id):
           os.rename("%s-sf.mtz" % id, "%s.mtz" % id)
-          print >> log, "Converted structure factors saved to %s.mtz" % id
+          print("Converted structure factors saved to %s.mtz" % id, file=log)
         #  os.remove("%s-sf.cif" % id)
         files[-1] = os.path.abspath("%s.mtz" % id)
         if (not os.path.isfile("%s.mtz" % id)):
@@ -172,7 +172,7 @@ Command-line options:
         mtz_in.assert_file_type("hkl")
         for array in mtz_in.file_server.miller_arrays :
           if (array.anomalous_flag()):
-            print >> log, "  %s is anomalous" % array.info().label_string()
+            print("  %s is anomalous" % array.info().label_string(), file=log)
     return files
 
 def validate_params(params):

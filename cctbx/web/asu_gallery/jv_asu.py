@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.web.asu_gallery import jvx
 from cctbx.web.asu_gallery import jv_index
 from cctbx.web.asu_gallery import guide_to_notation
@@ -8,9 +8,10 @@ from cctbx.sgtbx.direct_space_asu import facet_analysis
 from cctbx import sgtbx
 from scitbx import matrix
 from libtbx.option_parser import OptionParser
-import urllib
+from six.moves import urllib
 import math
 import os
+from six.moves import range
 
 def select_color(inclusive_flag):
   if (inclusive_flag): return (0,255,0)
@@ -37,12 +38,12 @@ def unit_cell_geometry(ortho, xy_plane_only=False):
         points_int.append(v)
         points_cart.append(ortho(v))
   lines = g.lines
-  for i in xrange(0,len(points_int.points)-1):
-    for j in xrange(i+1,len(points_int.points)):
+  for i in range(0,len(points_int.points)-1):
+    for j in range(i+1,len(points_int.points)):
       v1 = points_int.points[i].vertex
       v2 = points_int.points[j].vertex
       n = 0
-      for k in xrange(3):
+      for k in range(3):
         if (v1[k] != v2[k]): n += 1
       if (n == 1):
         lines.append(jvx.line((i,j)))
@@ -52,13 +53,13 @@ def basis_vector_geometry(ortho, min_fractional):
   g = jvx.geometry("basis_vectors")
   g.points.hide_points()
   g.lines = jvx.lineSet(thickness=3)
-  for i in xrange(3):
+  for i in range(3):
     v = [float(x) - 0.15 for x in min_fractional]
     if (i == 0):
       g.points.append(ortho(v))
     v[i] += 0.25
     g.points.append(ortho(v))
-  for i in xrange(3):
+  for i in range(3):
     color=[0,0,0]
     color[i] = 255
     g.lines.append(jvx.line(vertices=(0,i+1), color=color))
@@ -75,7 +76,7 @@ def get_diagonal_extend(ortho, all_vertices):
   max_coor = list(ortho((-2,-2,-2)))
   for vertex in all_vertices.keys():
     vertex_cart = ortho(vertex)
-    for i in xrange(3):
+    for i in range(3):
       min_coor[i] = min(min_coor[i], vertex_cart[i])
       max_coor[i] = max(max_coor[i], vertex_cart[i])
   return abs(matrix.col(max_coor) - matrix.col(min_coor))
@@ -83,7 +84,7 @@ def get_diagonal_extend(ortho, all_vertices):
 def get_min_fractional(all_vertices):
   result = [0,0,0]
   for vertex in all_vertices.keys():
-    for i in xrange(3):
+    for i in range(3):
       result[i] = min(result[i], vertex[i])
   return result
 
@@ -91,7 +92,7 @@ def get_edge_vectors(vertices):
   col = matrix.col
   n = len(vertices)
   result = []
-  for i in xrange(n):
+  for i in range(n):
     j = (i+1) % n
     result.append(col(vertices[j]) - col(vertices[i]))
   return result
@@ -101,7 +102,7 @@ def shrink_polygon(vertices, shrink_length):
   edge_vectors = get_edge_vectors(vertices)
   normal_vector = edge_vectors[0].cross(edge_vectors[1])
   result = []
-  for i in xrange(n):
+  for i in range(n):
     j = (i-1) % n
     ei = edge_vectors[i]
     ej = edge_vectors[j]
@@ -128,7 +129,7 @@ def edge_geometry(ortho, all_edge_segments, shrink_length, xy_plane_only=False):
   g.points.hide_points()
   g.lines = jvx.lineSet(thickness=3)
   for edge_segments in all_edge_segments:
-    for i_segment in xrange(len(edge_segments)-1):
+    for i_segment in range(len(edge_segments)-1):
       v1, v2 = [edge_segments[i_segment+_].vertex for _ in [0,1]]
       if (xy_plane_only and (v1[2] != 0 or v2[2] != 0)):
         continue
@@ -295,7 +296,7 @@ def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
     title = "ASU " + str(space_group_info)
     header = 'Space group: <a href="%s">%s</a> (No. %d)' % (
       explore_symmetry_url % http_server_name
-        + urllib.quote_plus(str(space_group_info)),
+        + urllib.parse.quote_plus(str(space_group_info)),
       str(space_group_info),
       group_type_number)
     sub_header = None
@@ -307,7 +308,7 @@ def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
     header = 'Plane group: %s (No. %d)' % (pg_symbol, -group_type_number)
     sub_header = 'Corresponding space group: <a href="%s">%s</a> (No. %d)' % (
       explore_symmetry_url % http_server_name
-        + urllib.quote_plus(str(space_group_info)),
+        + urllib.parse.quote_plus(str(space_group_info)),
       str(space_group_info),
       space_group_info.type().number())
   f = open(html_file_name, "w")
@@ -352,14 +353,14 @@ def run(http_server_name=None, html_subdir="asu_gallery"):
     numbers = [int(n) for n in arg.split('-')]
     assert len(numbers) in (1,2)
     if (len(numbers) == 1): numbers *= 2
-    for group_type_number in xrange(numbers[0], numbers[1]+1):
+    for group_type_number in range(numbers[0], numbers[1]+1):
       if (options.plane_group):
-        print "Plane group number:", group_type_number
+        print("Plane group number:", group_type_number)
         from cctbx.sgtbx.direct_space_asu import plane_group_reference_table
         asu = plane_group_reference_table.get_asu(group_type_number)
         group_type_number *= -1
       else:
-        print "Space group number:", group_type_number
+        print("Space group number:", group_type_number)
         asu = reference_table.get_asu(group_type_number)
       for colored_grid_points in [None, []]:
         asu_as_jvx(

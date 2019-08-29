@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from BaseHTTPServer import BaseHTTPRequestHandler
 from scitbx.array_family import flex
 from libtbx.development.timers import Timer
@@ -43,15 +43,15 @@ def module_image_stats(S,key):
 
     for item in canonical_info:
       if item[2]==None:
-        print "%63s : None"%item[1]
+        print("%63s : None"%item[1])
       else:
-        print "%63s : %s"%(item[1],item[0]%item[2])
+        print("%63s : %s"%(item[1],item[0]%item[2]))
 
 class image_request_handler(BaseHTTPRequestHandler):
 
   def shutdown(self):
       def my_shutdown(arg1):
-        print "IN SHUTDOWN THREAD"
+        print("IN SHUTDOWN THREAD")
         arg1.server.shutdown()
       import thread
       thread.start_new_thread(my_shutdown,(self,))
@@ -100,11 +100,11 @@ class image_request_handler(BaseHTTPRequestHandler):
       {"boundary":boundary,
        "content-disposition":self.headers.getheaders('content-disposition')
       })
-    print "*****************************"
+    print("*****************************")
     for item in parts.keys():
       if len(parts[item][0])< 1000:
-        print item, parts[item]
-    print "*****************************"
+        print(item, parts[item])
+    print("*****************************")
 
     if parts["filename"][0].find("EXIT")>=0:
       self.shutdown()
@@ -116,24 +116,24 @@ class image_request_handler(BaseHTTPRequestHandler):
 
     Files = ImageFiles(Spotspickle_argument_module(parts["filename"][0]),response_params)
 
-    print "Final image object:"
+    print("Final image object:")
     Files.images[0].show_header()
-    print "beam_center_convention",Files.images[0].beam_center_convention
-    print "beam_center_reference_frame",Files.images[0].beam_center_reference_frame
+    print("beam_center_convention",Files.images[0].beam_center_convention)
+    print("beam_center_reference_frame",Files.images[0].beam_center_reference_frame)
 
     logfile = StringIO()
     if response_params.distl.bins.verbose: sys.stdout = logfile
 
     from spotfinder.applications.wrappers import spotfinder_factory
     S = spotfinder_factory(None, Files, response_params)
-    print
+    print()
     sys.stdout = sys.__stdout__
 
     frames = Files.frames()
 
     sys.stdout = logfile
 
-    print "Image: %s"%parts["filename"][0]
+    print("Image: %s"%parts["filename"][0])
     from spotfinder.applications.stats_distl import pretty_image_stats,notes
     for frame in frames:
       #pretty_image_stats(S,frame)
@@ -142,7 +142,7 @@ class image_request_handler(BaseHTTPRequestHandler):
 
     sys.stdout = sys.__stdout__
     log = logfile.getvalue()
-    print log
+    print(log)
 
     ctype = 'text/plain'
     self.send_response(200)
@@ -197,7 +197,7 @@ class image_request_handler(BaseHTTPRequestHandler):
     if not os.path.isfile(params.distl.image):
       return  str(Sorry("%s is not a readable file" % params.distl.image))
 
-    print "Image: %s"%params.distl.image
+    print("Image: %s"%params.distl.image)
 
     logfile = LoggingFramework()
     from spotfinder.applications import signal_strength

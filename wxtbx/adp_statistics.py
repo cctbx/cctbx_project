@@ -1,8 +1,9 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from wxtbx import plots
 import wx
 import sys
+from six.moves import range
 
 #-----------------------------------------------------------------------
 # GUI objects
@@ -102,15 +103,15 @@ class ADPStatisticsFrame(wx.Frame):
       self.sele_text.SetLabel(selection)
     t1, t2, t3 = stats.format_tables()
     for row in t1 :
-      i = self.list1.InsertStringItem(sys.maxint, str(row[0]))
+      i = self.list1.InsertStringItem(sys.maxsize, str(row[0]))
       for j, value in enumerate(row[1:]):
         self.list1.SetStringItem(i, j+1, str(value))
     for row in t2 :
-      i = self.list2.InsertStringItem(sys.maxint, str(row[0]))
+      i = self.list2.InsertStringItem(sys.maxsize, str(row[0]))
       for j, value in enumerate(row[1:]):
         self.list2.SetStringItem(i, j+1, str(value))
     for row in t3 :
-      i = self.list3.InsertStringItem(sys.maxint, str(row[0]))
+      i = self.list3.InsertStringItem(sys.maxsize, str(row[0]))
       for j, value in enumerate(row[1:]):
         self.list3.SetStringItem(i, j+1, str(value))
     p1, p2 = stats.format_plots()

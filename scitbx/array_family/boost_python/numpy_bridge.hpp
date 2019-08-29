@@ -1,4 +1,4 @@
-#include <boost/python/numeric.hpp>
+#include <boost/python/numpy.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {
 
@@ -10,7 +10,7 @@ namespace scitbx { namespace af { namespace boost_python {
  \
   versa<ElementType, flex_grid<> >* \
   flex_##pyname##_from_numpy_array( \
-    boost::python::numeric::array const& arr_obj);
+    boost::python::numpy::ndarray const& arr_obj);
 
   SCITBX_LOC(bool, bool)
   SCITBX_LOC(int, int)

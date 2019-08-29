@@ -1,10 +1,14 @@
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 
 class reflection_table_editor(worker):
   """
   Add and/or remove columns in the reflection table
   """
+
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(reflection_table_editor, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+
   def __repr__(self):
     return 'Add/remove columns in reflection table'
 
@@ -17,7 +21,7 @@ class reflection_table_editor(worker):
     from cctbx.crystal import symmetry
     import copy
 
-    # build target space group
+    # Build target symmetry. The exact experiment unit cell values don't matter for converting HKLs to asu HKLs.
     target_unit_cell = self.params.scaling.unit_cell
     target_space_group_info = self.params.scaling.space_group
     target_symmetry = symmetry(unit_cell=target_unit_cell, space_group_info=target_space_group_info)

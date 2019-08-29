@@ -1,8 +1,9 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
 from libtbx.utils import null_out
+from six.moves import zip
 
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of H/D atoms in models containing

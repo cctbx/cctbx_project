@@ -187,6 +187,8 @@ def adopt_init_args(obj, args, exclude=(), hide=False):
     del args[param]
   if (hide == False):
     for key in args.keys():
+      if key.startswith("__") and key.endswith("__"):
+        continue
       assert not hasattr(obj.__dict__, key)
     obj.__dict__.update(args)
   else:

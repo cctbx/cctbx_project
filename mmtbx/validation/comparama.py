@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import iotbx.phil
 from libtbx import group_args
@@ -8,6 +8,9 @@ from mmtbx.validation.ramalyze import ramalyze, find_region_max_value
 import math
 import numpy as np
 from collections import Counter
+from scitbx.array_family import flex
+import six
+from six.moves import zip
 
 master_phil_str = '''
 comparama {
@@ -138,10 +141,19 @@ class rcompare(object):
           self.skipped_2.append(r2)
     self.res_columns = None
     if len(self.results) > 0:
-      self.res_columns = zip(*self.get_results())
+      self.res_columns = list(zip(*self.get_results()))
 
   def get_results(self):
     return self.results
+
+  def get_results_as_vec3(self):
+    r1 = flex.vec3_double()
+    r2 = flex.vec3_double()
+    assert len(self.results) > 0
+    for r in self.results:
+      r1.append((r[2], r[3], 0))
+      r2.append((r[4], r[5], 0))
+    return r1, r2
 
   def get_ramalyze_objects(self):
     return self.rama1, self.rama2
@@ -178,7 +190,7 @@ class rcompare(object):
         markeredgecolor="black",
         dpi=300,
         markerfacecolor="white")
-    for pos, plot in self.plots.iteritems():
+    for pos, plot in six.iteritems(self.plots):
       # prepare data
       arrows_info = []
       if self.params.allowed_outlier is not None:

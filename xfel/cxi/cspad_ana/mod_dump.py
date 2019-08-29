@@ -6,7 +6,7 @@
 """
 
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 __version__ = "$Revision$"
 
@@ -52,7 +52,7 @@ class mod_dump(common_mode.common_mode_correction):
       return
 
     if self.cspad_img is None:
-      print "No image to save for %s"%self.timestamp
+      print("No image to save for %s"%self.timestamp)
       return
 
     # Where the sample-detector distance is not available, set it to

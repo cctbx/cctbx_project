@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 import wx
@@ -20,7 +20,8 @@ class UnitCellCtrl(ValidatedTextCtrl):
       uc = self.FormatValue(uc)
     elif (uc is None):
       uc = ""
-    assert isinstance(uc, basestring)
+    from six import string_types
+    assert isinstance(uc, string_types)
     wx.TextCtrl.SetValue(self, uc)
 
   def SetValue(self, value):
@@ -58,7 +59,7 @@ if (__name__ == "__main__"):
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))
   def OnOkay(evt):
     uc = sg_ctrl.GetPhilValue()
-    print type(uc).__name__, str(uc)
+    print(type(uc).__name__, str(uc))
   frame.Bind(wx.EVT_BUTTON, OnOkay, btn)
   frame.Fit()
   frame.Show()

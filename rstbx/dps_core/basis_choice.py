@@ -1,11 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
-import exceptions,math
+import math
 from scitbx import matrix
 from cctbx.uctbx.reduction_base import iteration_limit_exceeded as KGerror
 from rstbx.dps_core.cell_assessment import unit_cell_too_small,SmallUnitCellVolume
 from rstbx.dps_core import directional_show
 from rstbx_ext import Direction
+from six.moves import zip
 
 diagnostic = False
 
@@ -39,7 +40,7 @@ class AbsenceHandler:
 
         #print "transformation",invS.transpose().elems,{True:"is",False:"not"}[idx_possible],"possible"
         if idx_possible:
-          print "There are systematic absences. Applying transformation",invS.transpose().elems
+          print("There are systematic absences. Applying transformation",invS.transpose().elems)
           self.cb_op = invS.transpose().inverse()  # not sure if transpose.inverse or just inverse
           self.flag = True
           return 1
@@ -47,14 +48,14 @@ class AbsenceHandler:
     return 0
 
   def correct(self,orientation):
-    print "before", orientation.unit_cell(),orientation.unit_cell().volume()
-    print [float(i) for i in self.cb_op.elems]
+    print("before", orientation.unit_cell(),orientation.unit_cell().volume())
+    print([float(i) for i in self.cb_op.elems])
     corrected = orientation.change_basis([float(i) for i in self.cb_op.elems])
-    print "after", corrected.unit_cell(),orientation.unit_cell().volume()
+    print("after", corrected.unit_cell(),orientation.unit_cell().volume())
     unit_cell_too_small(corrected.unit_cell(),cutoff=25.)
     return corrected
 
-class FewSpots(exceptions.Exception): pass
+class FewSpots(Exception): pass
 
 class SolutionTracker:
   def __init__(self):
@@ -163,8 +164,8 @@ def select_best_combo_of(ai,better_than=0.15,candidates=20,basis=15):
     except (RuntimeError) as f:
       if str(f).find("Iteration limit exceeded")>0: continue
       if str(f).find("Matrix is not invertible")>=0: continue# colinear or coplanar
-      print "Report this problem to LABELIT developers:"
-      print "COMBO: (%d,%d,%d) rejected on C++ runtime error"%(combo[0],combo[1],combo[2])
+      print("Report this problem to LABELIT developers:")
+      print("COMBO: (%d,%d,%d) rejected on C++ runtime error"%(combo[0],combo[1],combo[2]))
       #printcombo(ai,combo)
       continue
     except Exception:
@@ -189,7 +190,7 @@ class SelectBasisMetaprocedure:
       self.evaluate_combo(best_combo)
       return
 
-    raise exceptions.Exception("AutoIndexing Failed to Select Basis")
+    raise Exception("AutoIndexing Failed to Select Basis")
 
   def evaluate_combo(self,best_combo,verbose=False):
     #print "best combo",best_combo
@@ -197,13 +198,13 @@ class SelectBasisMetaprocedure:
     HC.handle_absences()
 
   def show_rms(self):
-    print "+++++++++++++++++++++++++++++++"
+    print("+++++++++++++++++++++++++++++++")
     cell = self.input_index_engine.getOrientation().unit_cell()
-    print "cell=%s volume(A^3)=%.3f"%(cell,cell.volume())
-    print "RMSDEV: %5.3f"%self.input_index_engine.rmsdev()
-    print "-------------------------------"
+    print("cell=%s volume(A^3)=%.3f"%(cell,cell.volume()))
+    print("RMSDEV: %5.3f"%self.input_index_engine.rmsdev())
+    print("-------------------------------")
 
     for hkl,obs in zip(self.input_index_engine.hklobserved(),self.input_index_engine.observed()):
       displace = matrix.col(hkl) - matrix.col(obs)
       diff = math.sqrt(displace.dot(displace))
-      print "%-15s %5.3f"%(hkl,diff)
+      print("%-15s %5.3f"%(hkl,diff))

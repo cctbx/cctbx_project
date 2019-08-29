@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import math,copy
 import scitbx.math
@@ -73,8 +73,8 @@ class fit_translation2(fit_translation):
     sq_displacements = ((all_model.cx - self.spotcx)*(all_model.cx - self.spotcx) +
                         (all_model.cy - self.spotcy)*(all_model.cy - self.spotcy))
     selected_sq_displacements = sq_displacements.select( all_model.flags == True )
-    print "Root Mean squared displacement all spots      %8.3f"%math.sqrt(
-      flex.sum(selected_sq_displacements)/len(selected_sq_displacements))
+    print("Root Mean squared displacement all spots      %8.3f"%math.sqrt(
+      flex.sum(selected_sq_displacements)/len(selected_sq_displacements)))
     return all_model.cx, all_model.cy, all_model.flags
 
   def __init__(self,params):
@@ -115,7 +115,7 @@ class fit_translation2(fit_translation):
                                               spotfy = self.spotfy,
                                               master_tiles = self.master_tiles)
 
-    print "Functional ",math.sqrt(engine.f()/self.cx.size())
+    print("Functional ",math.sqrt(engine.f()/self.cx.size()))
     self.c_curvatures = engine.curvatures()
     self.model_calcx = engine.model_calcx
     self.model_calcy = engine.model_calcy
@@ -161,12 +161,12 @@ class fit_translation2(fit_translation):
     order = flex.sort_permutation(radii)
     if verbose:
       for x in order:
-        print "%02d %02d %5.0f"%(2*x,2*x+1,weight[x]),
-        print "%6.1f"%radii[x],
-        print "%5.2f"%(delrot[x]),
-        print "%6.3f"%(displacement[x].length()-194.) # ASIC is 194; just print gap
+        print("%02d %02d %5.0f"%(2*x,2*x+1,weight[x]), end=' ')
+        print("%6.1f"%radii[x], end=' ')
+        print("%5.2f"%(delrot[x]), end=' ')
+        print("%6.3f"%(displacement[x].length()-194.)) # ASIC is 194; just print gap
     stats = flex.mean_and_variance(flex.double([t.length()-194. for t in displacement]),weight)
-    print "sensor gap is %7.3f px +/- %7.3f"%(stats.mean(), stats.gsl_stats_wsd())
+    print("sensor gap is %7.3f px +/- %7.3f"%(stats.mean(), stats.gsl_stats_wsd()))
 
   def print_table(self):
     from libtbx import table_utils
@@ -259,8 +259,8 @@ class fit_translation2(fit_translation):
         format_value("%s", ""),
     ])
 
-    print
-    print table_utils.format(table_data,has_header=1,justify='center',delim=" ")
+    print()
+    print(table_utils.format(table_data,has_header=1,justify='center',delim=" "))
 
 def run(args):
 
@@ -272,13 +272,13 @@ def run(args):
   for key in C.frame_delx.keys():
     mn_x = flex.mean(C.frame_delx[key])
     mn_y = flex.mean(C.frame_dely[key])
-    print "frame %d count %4d delx %7.2f  dely %7.2f"%(key,
+    print("frame %d count %4d delx %7.2f  dely %7.2f"%(key,
       len(C.frame_delx[key]),
       mn_x,
-      mn_y )
+      mn_y ))
     sum_sq += mn_x*mn_x + mn_y*mn_y
-  displacement = math.sqrt(sum_sq / len(C.frame_delx.keys()))
-  print "rms displacement of frames %7.2f"%displacement
+  displacement = math.sqrt(sum_sq / len(C.frame_delx))
+  print("rms displacement of frames %7.2f"%displacement)
   C.same_sensor_table()
   return None
 

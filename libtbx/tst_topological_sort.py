@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
+from six.moves import range
 def exercise_specific():
   from libtbx.topological_sort import stable
   from libtbx.topological_sort import strongly_connected_components as scc

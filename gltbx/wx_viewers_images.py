@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from gltbx.images import img_data
 
 align_a_img = img_data(width=32, height=32, mask=-1, encoded_data = """\

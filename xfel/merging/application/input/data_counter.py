@@ -1,14 +1,17 @@
-from __future__ import division
-
-from xfel.merging.application.mpi_helper import mpi_helper
-from xfel.merging.application.mpi_logger import mpi_logger
+from __future__ import absolute_import, division, print_function
 
 class data_counter(object):
-  def __init__(self, params):
-    # create logger
-    self.logger = mpi_logger(params)
-    # create MPI helper
-    self.mpi_helper = mpi_helper()
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+
+    self.mpi_helper = mpi_helper
+    if self.mpi_helper == None:
+      from xfel.merging.application.mpi_helper import mpi_helper
+      self.mpi_helper = mpi_helper()
+
+    self.logger = mpi_logger
+    if self.logger == None:
+      from xfel.merging.application.mpi_logger import mpi_logger
+      self.logger = mpi_logger(params)
 
   def count(self, experiments, reflections):
 
@@ -20,7 +23,6 @@ class data_counter(object):
 
     # count images
     image_count = sum(len(iset) for iset in experiments.imagesets())
-
 
     # MPI-reduce all counts
     comm = self.mpi_helper.comm

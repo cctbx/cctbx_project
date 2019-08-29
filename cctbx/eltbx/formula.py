@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx import tiny_pse
 from scitbx.math import continued_fraction
+import six
 
 class formula(object):
 
@@ -13,7 +14,7 @@ class formula(object):
       n = self.count_of_element.get(elt)
       if n: head.append((elt, n))
     tail = [ (tiny_pse.table(elt).atomic_number(), (elt, n))
-             for elt, n in self.count_of_element.iteritems()
+             for elt, n in six.iteritems(self.count_of_element)
              if elt not in ('C', 'H') ]
     tail.sort()
     self.element_count_pairs = head + [ item[-1] for item in tail ]

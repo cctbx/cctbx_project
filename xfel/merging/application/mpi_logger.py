@@ -1,11 +1,14 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+import os
 
 class mpi_logger(object):
   """A class to facilitate each rank writing to its own log file and (optionally) to a special log file for timing"""
 
-  def __init__(self, params=None):
-    from xfel.merging.application.mpi_helper import mpi_helper
-    self.mpi_helper = mpi_helper()
+  def __init__(self, params=None, mpi_helper=None):
+    self.mpi_helper = mpi_helper
+    if self.mpi_helper == None:
+      from xfel.merging.application.mpi_helper import mpi_helper
+      self.mpi_helper = mpi_helper()
 
     if params:
       self.set_log_file_paths(params)
@@ -14,7 +17,7 @@ class mpi_logger(object):
       self.rank_log_file_path = None
       self.timing_file_path = None
 
-    self.log_buffer = self.main_log_buffer = '' # the buffer is needed to store the output while the file path isn't known yet
+    self.log_buffer = self.main_log_buffer = '' # a buffer for handling a run-time case, when the file path isn't known yet, so we need to store the output somewhere
 
     self.timing_table = dict()
 
@@ -25,11 +28,11 @@ class mpi_logger(object):
     else:
       title = 'merge'
 
-    self.main_log_file_path = params.output.output_dir + '/' + title + ".log"
-    self.rank_log_file_path = params.output.output_dir + '/rank_%06d_%06d.out'%(self.mpi_helper.size, self.mpi_helper.rank)
+    self.main_log_file_path = os.path.join(params.output.output_dir, title + ".log")
+    self.rank_log_file_path = os.path.join(params.output.output_dir, 'rank_%06d_%06d.out'%(self.mpi_helper.size, self.mpi_helper.rank))
 
     if params.output.do_timing:
-      self.timing_file_path = params.output.output_dir + '/timing_%06d_%06d.out'%(self.mpi_helper.size, self.mpi_helper.rank)
+      self.timing_file_path = os.path.join(params.output.output_dir, 'timing_%06d_%06d.out'%(self.mpi_helper.size, self.mpi_helper.rank))
     else:
       self.timing_file_path = None
 
@@ -66,6 +69,8 @@ class mpi_logger(object):
 
   def log_step_time(self, step, step_finished=False):
     '''Log elapsed time for an execution step'''
+
+    step = step.replace(' ', '_') # for easier log file post-processing
 
     if not step_finished: # a step has started - cache its start time and return
       if not step in self.timing_table:

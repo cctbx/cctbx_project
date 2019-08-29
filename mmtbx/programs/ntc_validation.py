@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 #
 import requests #, json
 from operator import itemgetter
@@ -88,7 +88,7 @@ action {
     try:
       r = requests.post(dnatco_cgi, json=json.loads(query))
       jsonres = r.json()
-    except Exception, e:
+    except Exception as e:
       print(repr(e))
       sys.exit()
 
@@ -116,7 +116,7 @@ action {
           nearest.append( [ str(ntc),
                           float(jsonres["result"][ntc]["confalH"]),
                           float(jsonres["result"][ntc]["bb_rmsd"]) ])
-        except Exception, e:
+        except Exception as e:
           pass
   #     nearest.sort(key = itemgetter(2), reverse=True)
       nearest.sort(key = itemgetter(2), reverse=False)

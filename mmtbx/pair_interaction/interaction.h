@@ -115,15 +115,27 @@ class density_props
       return silva;
     }
 
-  bool has_silva_interaction()
+  // add argument for dori or sedd
+  bool has_silva_interaction(std::string const & silva_type)
     {
     if(density<0.0001) return false;
     FloatType silva = cal_silva();
     MMTBX_ASSERT(gradient != 0);
-    silva *=(4.0 / (gradient*gradient*gradient));
-    silva /=(1.0 + silva);
-    if(silva>=0.9) return true;
-    else           return false;
+    if(silva_type.compare("dori")==0) {
+      silva *=(4.0 / (gradient*gradient*gradient));
+      silva /=(1.0 + silva);
+      if(silva>=0.9) return true;
+      else           return false;
+    }
+    else if(silva_type.compare("sedd")==0) {
+      silva *= (4.0 / (std::pow(density, 8)));
+      silva = std::log((1.0 + silva));
+      if(silva<=5) return true;
+      else         return false;
+    }
+    else { // PVA: is this OK to do. Otherwise compiler doesn't like it.
+      return false;
+    }
     }
 
 };
@@ -313,11 +325,13 @@ density_props<double> atom_density_props(
     );
 }
 
+// add argument of choosing dori or sedd
 bool has_interaction_at_point(
   vec3<double> const&              p,
   af::shared<vec3<double> > const& a_xyz,
   af::shared<int> const&           element_flags,
-  boost::python::list const& wfc_obj
+  boost::python::list const& wfc_obj,
+  std::string const & silva_type
   )
 {
   density_props<double> density_props_obj = density_props<double>();
@@ -336,24 +350,26 @@ bool has_interaction_at_point(
   vec3<double> gv = density_props_obj.gradient_vector;
   double dot = gv[0]*gv[0]+gv[1]*gv[1]+gv[2]*gv[2];
   density_props_obj.gradient = dot;
-  return density_props_obj.has_silva_interaction();
+  // add argument of choosing dori or sedd
+  return density_props_obj.has_silva_interaction(silva_type);
 }
 
-template <typename FloatType=double>
-class point_and_pair
-{
-  public:
-    vec3<double> point;
-    int i;
-    int j;
-
-    point_and_pair() {}
-
-    point_and_pair(vec3<double> const& point_, int const& i_, int const& j_)
-    :
-      point(point_), i(i_), j(j_)
-    {}
-};
+//template <typename FloatType=double>
+//class point_and_pair
+//{
+//  public:
+//    vec3<double> point;
+//    int i;
+//    int j;
+//
+//    point_and_pair() {}
+//
+//    point_and_pair(vec3<double> const& point_, int const& i_, int const& j_)
+//    :
+//      point(point_), i(i_), j(j_)
+//    {}
+//    //string const & silva_type
+//};
 
 af::shared<vec3<int> > points_and_pairs(
   vec3<int> const& ngrid,
@@ -362,7 +378,8 @@ af::shared<vec3<int> > points_and_pairs(
   vec3<double> const& xyz_min,
   af::shared<int> const& atom_in_residue,
   af::shared<int> const& element_flags,
-  boost::python::list const& wfc_obj
+  boost::python::list const& wfc_obj,
+  std::string const & silva_type
   )
 {
   af::shared<vec3<int> > interacting_pairs;
@@ -400,7 +417,7 @@ af::shared<vec3<int> > points_and_pairs(
         int ia1 = atom_in_residue[atom_id_1];
         int ia2 = atom_in_residue[atom_id_2];
         bool has_interaction = has_interaction_at_point(
-          point, xyz, element_flags, wfc_obj);
+          point, xyz, element_flags, wfc_obj, silva_type);
         if(has_interaction) {
           vec3<int> pair;
           if(ia1<ia2) pair = vec3<int>(ia1, ia2, 0);

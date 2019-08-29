@@ -1,13 +1,14 @@
 """ Module for working with single images in a serial crystallography
 dataset"""
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_pickle
 import numpy as np
 import math
 import logging
 from cctbx.array_family import flex
 from six.moves import cPickle as pickle
-from api import InputFrame
+from .api import InputFrame
+from six.moves import zip
 logger = logging.getLogger('sf')
 
 class SingleFrame(InputFrame):

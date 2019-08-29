@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import xray
 from cctbx import crystal
 from cctbx import miller
@@ -26,7 +26,7 @@ def run():
   exercise_shelx_weighting(f_calc, obs, scale_factor)
   exercise_quasi_unit_weighting(obs)
 
-  print 'OK'
+  print('OK')
 
 
 def exercise_shelx_weighting(f_calc, obs, scale_factor):

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # this is so useful that we might as well store it centrally
 model_1yjp = """\

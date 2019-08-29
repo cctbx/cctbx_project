@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.utils
 from libtbx.test_utils import approx_equal
 import scitbx.random
@@ -10,6 +10,7 @@ import math
 # Boost 1.56 changes normal distribution, but keep old tests for testing
 # older versions of Boost
 import libtbx.load_env
+from six.moves import range
 boost_version = libtbx.env.boost_version
 
 def exercise_distributions():
@@ -23,7 +24,7 @@ def exercise_variate_generators():
   from scitbx.random \
        import variate, normal_distribution, bernoulli_distribution, \
               gamma_distribution, poisson_distribution
-  for i in xrange(10):
+  for i in range(10):
     scitbx.random.set_random_seed(0)
     g = variate(normal_distribution())
     if (boost_version < 105600):

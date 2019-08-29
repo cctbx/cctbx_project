@@ -1,101 +1,258 @@
 
-# TODO:
-#  - cached scenes
-
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.math_utils import roundoff
+import traceback
 from cctbx.miller import display2 as display
 from cctbx.array_family import flex
-from scitbx import graphics_utils
 from cctbx import miller
-from libtbx.utils import Sorry
+from scitbx import graphics_utils
+from scitbx import matrix
+import scitbx.math
+from libtbx.utils import Sorry, to_str
 from websocket_server import WebsocketServer
-import threading, math, sys
+import threading, math, sys, cmath
 from time import sleep
-import os.path, time
+import os.path, time, copy
 import libtbx
-import numpy as np
+from libtbx import easy_mp
 import webbrowser, tempfile
+from six.moves import range
 
 
+
+def has_phil_path(philobj, path):
+  return [ e.path for e in philobj.all_definitions() if path in e.path ]
 
 
 class ArrayInfo:
-  def __init__(self, millarr):
+  def __init__(self, millarr, mprint=sys.stdout.write, fomlabel=None):
     from iotbx.gui_tools.reflections import get_array_description
     data = millarr.data()
     if (isinstance(data, flex.int)):
       data = [e for e in data if e!= display.inanval]
     if millarr.is_complex_array():
       data = flex.abs(millarr.data())
+    data = [e for e in data if not math.isnan(e)]
     self.maxdata =max( data )
     self.mindata =min( data )
-    self.maxsigmas = self.minsigmas = display.nanval
+    self.maxsigmas = self.minsigmas = None
     if millarr.sigmas() is not None:
       data = millarr.sigmas()
+      data = [e for e in data if not math.isnan(e)]
       self.maxsigmas =max( data )
       self.minsigmas =min( data )
-      self.minmaxstr = "MinMaxValues:[%s; %s], MinMaxSigmaValues:[%s; %s]" \
-        %(roundoff(self.mindata), roundoff(self.maxdata), \
-            roundoff(self.minsigmas), roundoff(self.maxsigmas))
-    else:
-      self.minmaxstr = "MinMaxValues:[%s; %s]" %(roundoff(self.mindata), roundoff(self.maxdata))
+    self.minmaxdata = (roundoff(self.mindata), roundoff(self.maxdata))
+    self.minmaxsigs = (roundoff(self.minsigmas), roundoff(self.maxsigmas))
     self.labels = self.desc = ""
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if millarr.info():
       self.labels = millarr.info().label_string()
+      if fomlabel:
+        self.labels = millarr.info().label_string() + " + " + fomlabel
       self.desc = get_array_description(millarr)
-    self.span = "HKLs: %s to %s" % \
-      ( millarr.index_span().min(), millarr.index_span().max())
-    dmin = millarr.d_max_min()[1]
-    dmax = millarr.d_max_min()[0]
-    self.infostr = "%s (%s), %s %s, %s, d_min_max: %s, %s" % \
-      (self.labels, self.desc, millarr.indices().size(), self.span,
-       self.minmaxstr, roundoff(dmin), roundoff(dmax) )
+    self.span = ("?" , "?")
+    dmin = 0.0
+    dmax = 0.0
+    try:
+      self.span = ( millarr.index_span().min(), millarr.index_span().max())
+      dmin = millarr.d_max_min()[1]
+      dmax = millarr.d_max_min()[0]
+    except Exception as e:
+      mprint(to_str(e))
+    issymunique = millarr.is_unique_set_under_symmetry()
+    isanomalous = millarr.anomalous_flag()
+    self.infotpl = (self.labels, self.desc, millarr.indices().size(), self.span,
+     self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique, isanomalous )
+    self.infostr = "%s (%s), %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
+
+
+
+
+def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
+  scenemaxdata =[]
+  scenemindata =[]
+  scenemaxsigmas = []
+  sceneminsigmas = []
+  scenearrayinfos = []
+  hklscenes = []
+  fomsarrays_idx = [(None, None)]
+  #mprint("in MakeHKLscene", verbose=True)
+  #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+  if proc_array.is_complex_array():
+    fomsarrays_idx.extend( mapcoef_fom_dict.get(proc_array.info().label_string()) )
+  settings = setts
+  if (settings.expand_anomalous or settings.expand_to_p1) \
+      and not proc_array.is_unique_set_under_symmetry() and not merge:
+    #settings = copy.deepcopy(settings)
+    settings.expand_anomalous = False
+    settings.expand_to_p1 = False
+    mprint("The " + proc_array.info().label_string() + \
+         " array is not symmetry unique and therefore won't be expanded")
+  if (settings.inbrowser==True):
+    settings.expand_anomalous = False
+    settings.expand_to_p1 = False
+  for (fomsarray, fidx) in fomsarrays_idx:
+    hklscene = display.scene(miller_array=proc_array, merge=merge,
+      settings=settings, foms_array=fomsarray, fullprocessarray=True )
+    if not hklscene.SceneCreated:
+      mprint("The " + proc_array.info().label_string() + " array was not processed")
+      #return False
+      continue
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    # cast any NAN values to 1 of the colours and radii to 0.2 before writing javascript
+    if hklscene.SceneCreated:
+      hklscenes.append( hklscene)
+      b = flex.bool([bool(math.isnan(e[0]) + math.isnan(e[1]) + math.isnan(e[2])) for e in hklscene.colors])
+      hklscene.colors = hklscene.colors.set_selected(b, (1.0, 1.0, 1.0))
+      b = flex.bool([bool(math.isnan(e)) for e in hklscene.radii])
+      hklscene.radii = hklscene.radii.set_selected(b, 0.2)
+      fomslabel = None
+      if fomsarray:
+        fomslabel = fomsarray.info().label_string()
+      ainf = ArrayInfo(hklscene.work_array, fomlabel=fomslabel)
+      scenemaxdata.append( ainf.maxdata )
+      scenemindata.append( ainf.mindata )
+      scenemaxsigmas.append(ainf.maxsigmas)
+      sceneminsigmas.append(ainf.minsigmas)
+      scenearrayinfos.append((ainf.infostr, pidx, fidx, ainf.labels))
+      #self.mprint("%d, %s" %(i, infostr) )
+      #i +=1
+  return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
+
+
+def MakeTtips(hklscene, j):
+  tooltipstringsdict = {}
+  colstraliases = ""
+  if hklscene.isUsingFOMs():
+    return tooltipstringsdict, colstraliases # already have tooltips for the scene without the associated fom
+  colstraliases += "\n  var st%d = '\\n%s: '" %(j, hklscene.work_array.info().label_string() )
+  ocolstr = hklscene.work_array.info().label_string()
+  if hklscene.work_array.is_complex_array():
+    ampl = flex.abs(hklscene.data)
+    phases = flex.arg(hklscene.data) * 180.0/math.pi
+    # purge nan values from array to avoid crash in fmod_positive()
+    b = flex.bool([bool(math.isnan(e)) for e in phases])
+    # replace the nan values with an arbitrary float value
+    phases = phases.set_selected(b, 42.4242)
+    # Cast negative degrees to equivalent positive degrees
+    phases = flex.fmod_positive(phases, 360.0)
+  sigmas = hklscene.sigmas
+  for i,datval in enumerate(hklscene.data):
+    od =""
+    if hklscene.work_array.is_complex_array():
+      od = str(roundoff(ampl[i], 2)) + ", " + str(roundoff(phases[i], 1)) + \
+        "\'+DGR+\'"
+    elif sigmas is not None:
+      od = str(roundoff(datval, 2)) + ", " + str(roundoff(sigmas[i], 2))
+    else:
+      od = str(roundoff(datval, 2))
+    if not (math.isnan( abs(datval) ) or datval == display.inanval):
+      hkl = hklscene.indices[i]
+      if not tooltipstringsdict.has_key(hkl):
+        spbufttip = '\'+hk+\'%s, %s, %s' %(hkl[0], hkl[1], hkl[2])
+        spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i], 2) )
+        spbufttip += '\'+AA+\'' # javascript alias for angstrom
+        tooltipstringsdict[hkl] = spbufttip
+      # st1, st2,... are javascript aliases for miller array labelstrings as declared in colstraliases
+      tooltipstringsdict[hkl] += '\'+st%d+\'%s' %(j, od)
+  return tooltipstringsdict, colstraliases
 
 
 class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
+    self.ngl_settings = NGLsettings()
     self.miller_array = None
+    self.symops = []
+    self.sg = None
+    self.tooltipstrings = []
+    self.tooltipstringsdict = {}
     self.d_min = None
     self.scene = None
+    self.merge = False
     self.NGLscriptstr = ""
-    self.cameratype = "orthographic"
+    self.camera_type = "orthographic"
+    self.primitivetype = "SphereBuffer"
+    self.script_has_tooltips = False
     self.url = ""
-    self.binarray = "Resolution"
-    self.icolourcol = 0
-    self.iradiicol = 0
+    self.binscenelabel = "Resolution"
+    self.colour_scene_id = None
+    self.radii_scene_id = None
+    self.scene_id = None
+    self.rotation_mx = matrix.identity(3)
+    self.rot_recip_zvec = None
+    self.rot_zvec = None
+    self.meanradius = -1
+    self.high_quality = True
+    if kwds.has_key('high_quality'):
+      self.high_quality = kwds['high_quality']
+    self.cameradist = 0.0
+    self.clipNear = None
+    self.clipFar = None
+    self.cameraPosZ = None
+    self.boundingX = None
+    self.boundingY = None
+    self.boundingZ = None
+    self.OrigClipNear = None
+    self.OrigClipFar = None
+    self.cameratranslation = ( 0,0,0 )
+    self.angle_x_svec = 0.0
+    self.angle_y_svec = 0.0
+    self.angle_z_svec = 0.0
+    self.angle_z_yzvec = 0.0
+    self.angle_y_yzvec = 0.0
+    self.angle_y_xyvec = 0.0
+    self.angle_x_xyvec = 0.0
+    self.unit_h_axis = None
+    self.unit_k_axis = None
+    self.unit_l_axis = None
+    self.normal_hk = None
+    self.normal_kl = None
+    self.normal_lh = None
     self.isnewfile = False
+    self.sleeptime = 0.1
+    self.colstraliases = ""
     self.binvals = []
-    self.workingbinvals = []
+    self.binvalsboundaries = []
     self.proc_arrays = []
-    self.otherscenes = []
-    self.othermaxdata = []
-    self.othermindata = []
-    self.othermaxsigmas = []
-    self.otherminsigmas = []
-    self.matchingarrayinfo = []
+    self.HKLscenes = []
+    self.HKLscenesdict = {}
+    self.HKLscenesMaxdata = []
+    self.HKLscenesMindata = []
+    self.HKLscenesMaxsigmas = []
+    self.HKLscenesMinsigmas = []
+    self.bindata = None
+    self.sceneisdirty = True
+    self.hkl_scenes_info = []
+    self.match_valarrays = []
     self.binstrs = []
+    self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
+    self.verbose = 0
+    if kwds.has_key('verbose'):
+      self.verbose = kwds['verbose']
     self.mprint = sys.stdout.write
-    if kwds.has_key('mprint'):
+    if 'mprint' in kwds:
       self.mprint = kwds['mprint']
-    self.nbin = 0
-    self.websockclient = None
-    self.lastmsg = ""
-    self.StartWebsocket()
+    self.nbinvalsboundaries = 0
     tempdir = tempfile.gettempdir()
     self.hklfname = os.path.join(tempdir, "hkl.htm" )
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
-    if kwds.has_key('htmlfname'):
+    if 'htmlfname' in kwds and kwds['htmlfname']:
       self.hklfname = kwds['htmlfname']
     self.hklfname = os.path.abspath( self.hklfname )
     self.jscriptfname = os.path.join(tempdir, "hkljstr.js")
     if os.path.isfile(self.jscriptfname):
       os.remove(self.jscriptfname)
-    if kwds.has_key('jscriptfname'):
+    if 'jscriptfname' in kwds and kwds['jscriptfname'] != "":
       self.jscriptfname = kwds['jscriptfname']
+    self.websockport = 7894
+    if 'websockport' in kwds:
+      self.websockport = kwds['websockport']
+    self.guisocket = None
+    if 'guisocket' in kwds:
+      self.guisocket = kwds['guisocket']
     self.mprint('Output will be written to \"%s\"\n' \
       'including reference to NGL JavaScript \"%s\"' %(self.hklfname, self.jscriptfname))
     self.hklhtml = r"""
@@ -119,11 +276,21 @@ class hklview_3d:
     """
     self.colourgradientvalues = []
     self.UseOSBrowser = True
-    if kwds.has_key('UseOSBrowser'):
+    if 'UseOSBrowser' in kwds:
       self.UseOSBrowser = kwds['UseOSBrowser']
-    self.viewmtrxelms = None
-    self.pendingmessage = None
-
+    self.viewmtrx = None
+    self.HKLscenesKey = ( 0, False,
+                          self.settings.expand_anomalous, self.settings.expand_to_p1  )
+    self.msgqueue = []
+    self.websockclient = None
+    self.handshakewait = 5
+    if 'handshakewait' in kwds:
+      self.handshakewait = kwds['handshakewait']
+    self.lastmsg = "" # "Ready"
+    self.browserisopen = False
+    self.msgdelim = ":\n"
+    self.msgqueuethrd = None
+    self.StartWebsocket()
 
 
   def __exit__(self, exc_type, exc_value, traceback):
@@ -133,230 +300,409 @@ class hklview_3d:
       os.remove(self.hklfname)
 
 
-  def set_miller_array(self, miller_array, merge=None, details="", proc_arrays=[]) :
-    if (miller_array is None):
-      return
-    self.miller_array = miller_array
-    self.proc_arrays = proc_arrays
-    self.merge = merge
-    self.d_min = miller_array.d_min()
-    array_info = miller_array.info()
-    self.binvals = [ 1.0/miller_array.d_max_min()[0], 1.0/miller_array.d_max_min()[1]  ]
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    uc = "a=%g b=%g c=%g angles=%g,%g,%g" % miller_array.unit_cell().parameters()
-    self.mprint( "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
-      % (array_info.label_string(), details, miller_array.indices().size(), \
-          miller_array.space_group_info(), uc) )
-    self.construct_reciprocal_space(merge=merge)
+  def SendInfoToGUI(self, mydict):
+    if self.guisocket:
+      self.guisocket.send( str(mydict).encode("utf-8") )
 
 
-  def construct_reciprocal_space (self, merge=None) :
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    matchcolourindices = miller.match_indices(self.miller_array.indices(),
-       self.proc_arrays[self.icolourcol].indices() )
-    matchcolourarray = self.miller_array.select( matchcolourindices.pairs().column(0) )
+  def update_settings(self, diff_phil, currentphil) :
+    if has_phil_path(diff_phil, "filename") \
+      or has_phil_path(diff_phil, "spacegroup_choice") \
+      or has_phil_path(diff_phil, "merge_data") \
+      or has_phil_path(diff_phil, "scene_id")  \
+      or has_phil_path(diff_phil, "nbins") \
+      or has_phil_path(diff_phil, "camera_type") \
+      or has_phil_path(diff_phil, "bin_scene_label") \
+      or has_phil_path(diff_phil, "scene_bin_thresholds") \
+      or has_phil_path(diff_phil, "spacegroup_choice") \
+      or has_phil_path(diff_phil, "using_space_subgroup") \
+      or has_phil_path(diff_phil, "viewer") \
+      and ( \
+       has_phil_path(diff_phil, "show_data_over_sigma") \
+      or has_phil_path(diff_phil, "show_missing") \
+      or has_phil_path(diff_phil, "show_only_missing") \
+      or has_phil_path(diff_phil, "show_systematic_absences") \
+      or has_phil_path(diff_phil, "slice_axis") \
+      or has_phil_path(diff_phil, "slice_mode") \
+      or has_phil_path(diff_phil, "slice_index") \
+      or has_phil_path(diff_phil, "scale") \
+      or has_phil_path(diff_phil, "nth_power_scale_radii") \
+      or self.settings.inbrowser==False and \
+               ( has_phil_path(diff_phil, "expand_anomalous") or \
+                has_phil_path(diff_phil, "expand_to_p1") )\
+      or has_phil_path(diff_phil, "show_anomalous_pairs") \
+      ):
+        if currentphil.viewer.slice_mode and self.settings.inbrowser:
+          self.settings.inbrowser = False
+        self.sceneisdirty = True
+        self.ConstructReciprocalSpace(currentphil, merge=self.merge)
+    msg = ""
+    if self.scene_id >=0:
+      self.scene = self.HKLscenes[self.scene_id]
+      self.DrawNGLJavaScript()
+      msg = "Rendered %d reflections\n" % self.scene.points.size()
+      if has_phil_path(diff_phil, "mouse_sensitivity"):
+        self.SetTrackBallRotateSpeed(currentphil.viewer.NGL.mouse_sensitivity)
+      if has_phil_path(diff_phil, "normal_clip_plane"):
+        self.clip_plane_normal_to_HKL_vector(currentphil.normal_clip_plane.h, currentphil.normal_clip_plane.k,
+            currentphil.normal_clip_plane.l, currentphil.normal_clip_plane.hkldist,
+            currentphil.normal_clip_plane.clipwidth, currentphil.viewer.NGL.fixorientation)
 
-    matchradiiindices = miller.match_indices(self.miller_array.indices(),
-       self.proc_arrays[self.iradiicol ].indices() )
-    matchradiiarray = self.miller_array.select( matchradiiindices.pairs().column(0) )
+      if currentphil.viewer.slice_mode:
+        if currentphil.viewer.slice_axis=="h": hkl = [1,0,0]
+        if currentphil.viewer.slice_axis=="k": hkl = [0,1,0]
+        if currentphil.viewer.slice_axis=="l": hkl = [0,0,1]
+        self.clip_plane_normal_to_HKL_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
+                         fixorientation = currentphil.viewer.NGL.fixorientation)
 
-    matchcolourradiiindices = miller.match_indices(self.proc_arrays[self.icolourcol].indices(),
-       self.proc_arrays[self.iradiicol ].indices() )
+    if self.settings.inbrowser and not currentphil.viewer.slice_mode:
+      msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
+                            friedel_mate= self.settings.expand_anomalous)
+    msg += self.SetOpacities(currentphil.viewer.NGL.bin_opacities )
 
-    commonindices = miller.match_indices(self.miller_array.indices(),
-       matchcolourradiiindices.paired_miller_indices(0) )
-    commonarray = self.miller_array.select( commonindices.pairs().column(0) )
-    commonarray.set_info(self.miller_array.info() )
-    commonarray.sort(by_value="packed_indices")
-
-    foms_array = None
-    if self.miller_array.is_complex_array():
-      fomcolm = self.mapcoef_fom_dict.get(self.miller_array.info().label_string())
-      if fomcolm:
-        foms_array = self.proc_arrays[fomcolm].deep_copy()
-    self.scene = display.scene(miller_array=self.miller_array, merge=merge,
-     settings=self.settings, foms_array=foms_array)
-
-    self.rotation_center = (0,0,0)
-
-    self.otherscenes = []
-    self.othermaxdata = []
-    self.othermindata = []
-    self.matchingarrayinfo = []
-    match_valarrays = []
-    # loop over all miller arrays to find the subsets of hkls common between currently selected
-    # miler array and the other arrays. hkls found in the currently selected miller array but
-    # missing in the subsets are populated populated with NaN values
-    for i,validarray in enumerate(self.proc_arrays):
-      # first match indices in currently selected miller array with indices in the other miller arrays
-      #matchindices = miller.match_indices(matchcolourradiiarray.indices(), validarray.indices() )
-      matchindices = miller.match_indices(self.miller_array.indices(), validarray.indices() )
-      #matchindices = miller.match_indices( commonarray.indices(), validarray.indices() )
-      #print validarray.info().label_string()
-
-      valarray = validarray.select( matchindices.pairs().column(1) )
-
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      if valarray.anomalous_flag() and not self.miller_array.anomalous_flag():
-        # valarray gets its anomalous_flag from validarray. But it cannot have more HKLs than self.miller_array
-        # so set its anomalous_flag to False if self.miller_array is not anomalous data
-        valarray._anomalous_flag = False
-      if not valarray.anomalous_flag() and self.miller_array.anomalous_flag():
-        # temporarily expand other arrays to anomalous if self.miller_array is anomalous
-        valarray = valarray.generate_bijvoet_mates()
-
-      missing = self.miller_array.lone_set( valarray )
-      # insert NAN values for reflections in self.miller_array not found in validarray
-      valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices())
-      match_valindices = miller.match_indices(self.miller_array.indices(), valarray.indices() )
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      match_valarray = valarray.select( match_valindices.pairs().column(1) )
-      match_valarray.sort(by_value="packed_indices")
-      match_valarray.set_info(validarray.info() )
-      match_valarrays.append( match_valarray )
-
-    for i,match_valarray in enumerate(match_valarrays):
-      foms = None
-      if match_valarray.is_complex_array():
-        fomcolm = self.mapcoef_fom_dict.get(match_valarray.info().label_string())
-        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-        if fomcolm:
-          foms = match_valarrays[fomcolm]
-
-      otherscene = display.scene(miller_array=match_valarray,  merge=merge,
-        settings=self.settings, foms_array=foms)
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      # cast any NAN values to -1 of the colours and radii arrays before writing javascript
-      nplst = np.array( list( otherscene.data ) )
-      mask = np.isnan(nplst)
-      npcolour = np.array( list(otherscene.colors))
-      npcolourcol = npcolour.reshape( len(otherscene.data), 3 )
-      #npcolourcol[mask] = -1
-      otherscene.colors = flex.vec3_double()
-      otherscene.colors.extend( flex.vec3_double( npcolourcol.tolist()) )
-      """
-      nplst = np.array( list( otherscene.radii ) )
-      mask = np.isnan(nplst)
-      npradii = np.array( list(otherscene.radii))
-      npradiicol = npradii.reshape( len(otherscene.data), 1 )
-      npradiicol[mask] = 0.2
-      otherscene.radii = flex.double( npradiicol.flatten().tolist())
-      """
-      b = flex.bool([bool(math.isnan(e)) for e in otherscene.radii])
-      # replace any nan values with 0.2
-      otherscene.radii = otherscene.radii.set_selected(b, 0.2)
-
-      d = otherscene.data
-      if (isinstance(d, flex.int)):
-        d = [e for e in self.scene.data if e!= display.inanval]
-      if match_valarray.is_complex_array():
-        d = otherscene.ampl
-      maxdata =max( d )
-      mindata =min( d )
-      self.othermaxdata.append( maxdata )
-      self.othermindata.append( mindata )
-
-      maxsigmas = minsigmas = display.nanval
-      if otherscene.sigmas is not None:
-        d = otherscene.sigmas
-        maxsigmas = max( d )
-        minsigmas = min( d )
-
-      self.othermaxsigmas.append(maxsigmas)
-      self.otherminsigmas.append(minsigmas)
-      # TODO: tag array according to which otherscene is included
-      self.otherscenes.append( otherscene)
-
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      infostr = ArrayInfo(otherscene.work_array).infostr
-      #infostr = ArrayInfo(match_valarray).infostr
-      self.mprint("%d, %s" %(i, infostr) )
-      self.matchingarrayinfo.append(infostr)
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-
-
-  #--- user input and settings
-  def update_settings (self) :
-    if (self.miller_array is None):
-      return
-    self.construct_reciprocal_space(merge=self.merge)
-    self.DrawNGLJavaScript()
-    msg = "Rendered %d reflections\n" % self.scene.points.size()
+      #self.mprint(currentphil.viewer.NGL.bin_opacities )
     return msg
 
 
-  def process_pick_points (self) :
-    self.closest_point_i_seq = None
-    if (self.pick_points is not None) and (self.scene is not None) :
-      closest_point_i_seq = gltbx.viewer_utils.closest_visible_point(
-        points=self.scene.points,
-        atoms_visible=self.scene.visible_points,
-        point0=self.pick_points[0],
-        point1=self.pick_points[1])
-      if (closest_point_i_seq is not None) :
-        self.closest_point_i_seq = closest_point_i_seq
-    if (self.closest_point_i_seq is not None) :
-      self.scene.label_points.add(self.closest_point_i_seq)
-      self.GetParent().update_clicked(index=self.closest_point_i_seq)
-      #hkl, d_min, value = self.scene.get_reflection_info(
-      #  self.closest_point_i_seq)
-      #self.GetParent().update_clicked(hkl, d_min, value)
-    else :
-      self.GetParent().update_clicked(index=None)
+  def set_miller_array(self, scene_id=None, merge=None, details=""):
+    if scene_id is not None:
+      self.scene_id = scene_id
+    if self.scene_id >= 0 and self.HKLscenes:
+      self.miller_array = self.HKLscenes[self.scene_id].miller_array
+      self.scene = self.HKLscenes[self.scene_id]
+    self.merge = merge
+    if (self.miller_array is None):
+      return
+    self.identify_suitable_fomsarrays()
+    self.d_min = self.miller_array.d_min()
+    array_info = self.miller_array.info()
+    self.sg = self.miller_array.space_group()
+    self.symops = self.sg.all_ops()
+    self.binvals = [ 1.0/self.miller_array.d_max_min()[0], 1.0/self.miller_array.d_max_min()[1]  ]
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    uc = "a=%g b=%g c=%g angles=%g,%g,%g" % self.miller_array.unit_cell().parameters()
+    self.mprint( "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
+      % (array_info.label_string(), details, self.miller_array.indices().size(), \
+          self.miller_array.space_group_info(), uc), verbose=0 )
+
+
+  def MakeToolTips(self, HKLscenes):
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    allcolstraliases = "var hk = \'H,K,L: \';\n"
+    alltooltipstringsdict = {}
+    if self.script_has_tooltips:
+      # large data sets will make javascript file very large with risk of crashing browser
+      self.mprint( "making tooltips")
+      tooltipstringsdict = {}
+      for j,hklscene in enumerate(HKLscenes):
+        #tooltipstringsdict, colstraliases = MakeTtips(hklscene, j)
+        #"""
+        if hklscene.isUsingFOMs():
+          continue # already have tooltips for the scene without the associated fom
+        colstraliases = "\n  var st%d = '\\n%s: ';" %(j, hklscene.work_array.info().label_string() )
+        ocolstr = hklscene.work_array.info().label_string()
+        if hklscene.work_array.is_complex_array():
+          ampl = flex.abs(hklscene.data)
+          phases = flex.arg(hklscene.data) * 180.0/math.pi
+          # purge nan values from array to avoid crash in fmod_positive()
+          b = flex.bool([bool(math.isnan(e)) for e in phases])
+          # replace the nan values with an arbitrary float value
+          phases = phases.set_selected(b, 42.4242)
+          # Cast negative degrees to equivalent positive degrees
+          phases = flex.fmod_positive(phases, 360.0)
+        sigmas = hklscene.sigmas
+        for i,datval in enumerate(hklscene.data):
+          hkl = hklscene.indices[i]
+          if not tooltipstringsdict.has_key(hkl):
+            spbufttip = '\'+hk+\'%s, %s, %s' %(hkl[0], hkl[1], hkl[2])
+            spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i], 2) )
+            spbufttip += '\'+AA+\'' # javascript alias for angstrom
+            tooltipstringsdict[hkl] = spbufttip
+          od =""
+          if hklscene.work_array.is_complex_array():
+            od = str(roundoff(ampl[i], 2)) + ", " + str(roundoff(phases[i], 1)) + \
+              "\'+DGR+\'"
+          elif sigmas is not None:
+            od = str(roundoff(datval, 2)) + ", " + str(roundoff(sigmas[i], 2))
+          else:
+            od = str(roundoff(datval, 2))
+          if not (math.isnan( abs(datval) ) or datval == display.inanval):
+            # st1, st2,... are javascript aliases for miller array labelstrings as declared in self.colstraliases
+            tooltipstringsdict[hkl] += '\'+st%d+\'%s' %(j, od)
+        #"""
+        alltooltipstringsdict.update( tooltipstringsdict )
+        allcolstraliases += colstraliases
+      allcolstraliases += "\n"
+
+    return alltooltipstringsdict, allcolstraliases
+
+
+  def GetTooltipOnTheFly(self, id, rotmx=None, anomalous=False):
+    hkl = self.scene.indices[id]
+    hklvec = flex.vec3_double( [(hkl[0], hkl[1], hkl[2])])
+    Rhkl = hklvec[0]
+    if rotmx:
+      Rhkl = hklvec[0] * rotmx
+    rothkl = Rhkl
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    if anomalous:
+      rothkl =  (-Rhkl[0], -Rhkl[1], -Rhkl[2])
+    spbufttip = '\'H,K,L: %d, %d, %d' %(rothkl[0], rothkl[1], rothkl[2])
+    # resolution and angstrom character
+    spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
+      %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
+    for hklscene in self.HKLscenes:
+      if hklscene.isUsingFOMs():
+        continue # already have tooltips for the scene without the associated fom
+      #datval = hklscene.work_array.data_at_first_index(hkl)
+      if id >= hklscene.data.size():
+        continue
+      datval = hklscene.data[id]
+      if datval and (not (math.isnan( abs(datval) ) or datval == display.inanval)):
+        if hklscene.work_array.is_complex_array():
+          ampl = abs(datval)
+          phase = cmath.phase(datval) * 180.0/math.pi
+          # purge nan values from array to avoid crash in fmod_positive()
+          # and replace the nan values with an arbitrary float value
+          if math.isnan(phase):
+            phase = 42.4242
+          # Cast negative degrees to equivalent positive degrees
+          phase = phase % 360.0
+        spbufttip +="\\n" + hklscene.work_array.info().label_string() + ': '
+        if hklscene.work_array.is_complex_array():
+          spbufttip += str(roundoff(ampl, 2)) + ", " + str(roundoff(phase, 1)) + \
+            "\'+ String.fromCharCode(176) +\'" # degree character
+        elif hklscene.work_array.sigmas() is not None:
+          sigma = hklscene.work_array.sigma_at_first_index(hkl)
+          spbufttip += str(roundoff(datval, 2)) + ", " + str(roundoff(sigma, 2))
+        else:
+          spbufttip += str(roundoff(datval, 2))
+    spbufttip += '\''
+    return spbufttip
+
+
+  def get_col_fomcol(self, idx):
+    if len(self.hkl_scenes_info) == 0:
+      return -1, -1
+    return self.hkl_scenes_info[idx][6], self.hkl_scenes_info[idx][7]
+
+
+  def ConstructReciprocalSpace(self, currentphil, merge=None):
+    self.mprint("Constructing HKL scenes", verbose=0)
+    #self.miller_array = self.match_valarrays[self.scene_id]
+    #self.miller_array = self.proc_arrays[self.scene_id]
+    self.HKLscenesKey = (currentphil.filename,
+                         currentphil.spacegroup_choice,
+                         currentphil.using_space_subgroup,
+                         currentphil.merge_data,
+                         self.settings.expand_anomalous,
+                         self.settings.expand_to_p1,
+                         self.settings.inbrowser,
+                         self.settings.slice_axis,
+                         self.settings.slice_mode,
+                         self.settings.slice_index,
+                         self.settings.show_missing,
+                         self.settings.show_only_missing,
+                         self.settings.show_systematic_absences,
+                         self.settings.scale,
+                         self.settings.nth_power_scale_radii
+                         )
+
+    if self.HKLscenesdict.has_key(self.HKLscenesKey):
+      (
+        self.HKLscenes,
+        self.tooltipstringsdict,
+        self.HKLscenesMaxdata,
+        self.HKLscenesMindata,
+        self.HKLscenesMaxsigmas,
+        self.HKLscenesMinsigmas,
+        self.hkl_scenes_info
+      ) =  self.HKLscenesdict[self.HKLscenesKey]
+      self.mprint("Scene key is already present", verbose=1)
+      #self.sceneisdirty = False
+      return True
+
+    HKLscenes = []
+    HKLscenesMaxdata = []
+    HKLscenesMindata = []
+    HKLscenesMaxsigmas = []
+    HKLscenesMinsigmas = []
+    hkl_scenes_info = []
+    tooltipstringsdict = {}
+    i = 0
+    # arguments tuple for multi_core_run
+    assert(self.proc_arrays)
+    argstuples = [ (e.deep_copy(), idx, copy.deepcopy(self.settings), self.mapcoef_fom_dict, merge, self.mprint) \
+                     for (idx,e) in enumerate(self.proc_arrays)]
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    """
+    for (i, (args, res, errstr)) in enumerate( easy_mp.multi_core_run( MakeHKLscene, argstuples, 8)):
+      if errstr:
+        self.mprint(errstr)
+      (hkl_scenes, scenemaxdata,
+        scenemindata, scenemaxsigmas,
+        sceneminsigmas, scenearrayinfos
+      ) = res
+      HKLscenesMaxdata.extend(scenemaxdata)
+      HKLscenesMindata.extend(scenemindata)
+      HKLscenesMaxsigmas.extend(scenemaxsigmas)
+      HKLscenesMinsigmas.extend(sceneminsigmas)
+      hkl_scenes_info.extend(scenearrayinfos)
+      HKLscenes.extend(hkl_scenes)
+      for inf in scenearrayinfos:
+        self.mprint("%d, %s" %(i, inf) )
+        i += 1
+
+    """
+    for j,proc_array in enumerate(self.proc_arrays):
+      (hklscenes, scenemaxdata,
+        scenemindata, scenemaxsigmas,
+         sceneminsigmas, scenearrayinfos
+         ) = MakeHKLscene(argstuples[j][0], argstuples[j][1], argstuples[j][2], argstuples[j][3], argstuples[j][4], argstuples[j][5] )
+         #) = MakeHKLscene(proc_array, copy.deepcopy(self.settings), self.mapcoef_fom_dict, merge)
+
+      HKLscenesMaxdata.extend(scenemaxdata)
+      HKLscenesMindata.extend(scenemindata)
+      HKLscenesMaxsigmas.extend(scenemaxsigmas)
+      HKLscenesMinsigmas.extend(sceneminsigmas)
+      hkl_scenes_info.extend(scenearrayinfos)
+      HKLscenes.extend(hklscenes)
+      #for inf in scenearrayinfos:
+      #  self.mprint("%d, %s" %(i, inf) )
+      #  i += 1
+
+    tooltipstringsdict, self.colstraliases = self.MakeToolTips(HKLscenes)
+    self.HKLscenesdict[self.HKLscenesKey] = (
+                HKLscenes,
+                tooltipstringsdict,
+                HKLscenesMaxdata,
+                HKLscenesMindata,
+                HKLscenesMaxsigmas,
+                HKLscenesMinsigmas,
+                hkl_scenes_info
+                )
+    (
+      self.HKLscenes,
+      self.tooltipstringsdict,
+      self.HKLscenesMaxdata,
+      self.HKLscenesMindata,
+      self.HKLscenesMaxsigmas,
+      self.HKLscenesMinsigmas,
+      self.hkl_scenes_info
+    ) =  self.HKLscenesdict[self.HKLscenesKey]
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    self.mprint("\nReflection data scenes:", verbose=0)
+    for j,inf in enumerate(hkl_scenes_info):
+      self.mprint("%d, %s" %(j, inf[0]), verbose=0)
+    self.sceneisdirty = True
+    self.SendInfoToGUI({ "hklscenes_arrays": self.hkl_scenes_info, "NewHKLscenes" : True })
+    return True
+
+
+  def identify_suitable_fomsarrays(self):
+    self.mprint("Matching complex arrays to suitable FOM arrays")
+    self.mapcoef_fom_dict = {}
+    for proc_array in self.proc_arrays:
+      fom_arrays_idx = []
+      for i,foms_array in enumerate(self.proc_arrays):
+        if not proc_array.is_complex_array() or not foms_array.is_real_array():
+          continue
+        if proc_array.size() != foms_array.size():
+          continue
+        if  min(foms_array.data()) < 0.0 or max(foms_array.data()) > 1.0:
+          continue
+        fom_arrays_idx.append( (foms_array, i) )
+      self.mapcoef_fom_dict[proc_array.info().label_string()] = fom_arrays_idx
 
 
   def UpdateBinValues(self, binvals = [] ):
     if binvals:
       self.binvals = binvals
-    else:
-      self.binvals = [ 1.0/self.miller_array.d_max_min()[0], 1.0/self.miller_array.d_max_min()[1] ]
+    else: # ensure default resolution interval includes all data by avoiding rounding errors
+      self.binvals = [ 1.0/(self.miller_array.d_max_min()[0]*1.001),
+                       1.0/(self.miller_array.d_max_min()[1]*0.999) ]
 
 
-  def DrawNGLJavaScript(self):
-    if self.miller_array is None :
-      self.mprint( "A miller array must be selected for drawing" )
+  def MatchBinArrayToSceneArray(self):
+    # match bindata with data(scene_id)
+    if self.binscenelabel=="Resolution":
       return
-    self.mprint("Composing NGL JavaScript...")
-    h_axis = self.scene.axes[0]
-    k_axis = self.scene.axes[1]
-    l_axis = self.scene.axes[2]
-    nrefls = self.scene.points.size()
+    # get the array id that is mapped through an HKLscene id
+    binarray = self.hkl_scenes_info[int(self.binscenelabel)]
+    scenearray = self.HKLscenes[self.scene_id]
+    matchindices = miller.match_indices(scenearray.indices, binarray.indices )
+    valarray = binarray.select( matchindices.pairs().column(1) )
+    #valarray.sort(by_value="packed_indices")
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    missing = scenearray.lone_set( valarray )
+    # insert NAN values for reflections in self.miller_array not found in binarray
+    valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices())
+    match_valindices = miller.match_indices(scenearray.indices(), valarray.indices() )
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    match_valarray = valarray.select( match_valindices.pairs().column(1) )
+    match_valarray.sort(by_value="packed_indices")
+    match_valarray.set_info(binarray.info() )
+    return match_valarray
 
-    Hstararrowstart = roundoff( [-h_axis[0]*100, -h_axis[1]*100, -h_axis[2]*100] )
-    Hstararrowend = roundoff( [h_axis[0]*100, h_axis[1]*100, h_axis[2]*100] )
-    Hstararrowtxt  = roundoff( [h_axis[0]*102, h_axis[1]*102, h_axis[2]*102] )
-    Kstararrowstart = roundoff( [-k_axis[0]*100, -k_axis[1]*100, -k_axis[2]*100] )
-    Kstararrowend = roundoff( [k_axis[0]*100, k_axis[1]*100, k_axis[2]*100] )
-    Kstararrowtxt  = roundoff( [k_axis[0]*102, k_axis[1]*102, k_axis[2]*102] )
-    Lstararrowstart = roundoff( [-l_axis[0]*100, -l_axis[1]*100, -l_axis[2]*100] )
-    Lstararrowend = roundoff( [l_axis[0]*100, l_axis[1]*100, l_axis[2]*100] )
-    Lstararrowtxt  = roundoff( [l_axis[0]*102, l_axis[1]*102, l_axis[2]*102] )
+
+  def DrawNGLJavaScript(self, blankscene=False):
+    if not self.scene or not self.sceneisdirty:
+      return
+    if self.miller_array is None :
+      self.mprint( "An HKL scene must be selected for rendering reflections" )
+      return
+    self.mprint("Composing JavaScript...")
+
+    h_axis = flex.vec3_double([self.scene.axes[0]])
+    k_axis = flex.vec3_double([self.scene.axes[1]])
+    l_axis = flex.vec3_double([self.scene.axes[2]])
+    self.unit_h_axis = 1.0/h_axis.norm() * h_axis
+    self.unit_k_axis = 1.0/k_axis.norm() * k_axis
+    self.unit_l_axis = 1.0/l_axis.norm() * l_axis
+    self.normal_hk = self.unit_h_axis.cross( self.unit_k_axis )
+    self.normal_kl = self.unit_k_axis.cross( self.unit_l_axis )
+    self.normal_lh = self.unit_l_axis.cross( self.unit_h_axis )
+
+    maxnorm = max(h_axis.norm(), max(k_axis.norm(), l_axis.norm()))
+    l1 = self.scene.renderscale * maxnorm * 1.1
+    l2= self.scene.renderscale * maxnorm * 1.15
+    Hstararrowstart = roundoff( [-self.unit_h_axis[0][0]*l1, -self.unit_h_axis[0][1]*l1, -self.unit_h_axis[0][2]*l1] )
+    Hstararrowend = roundoff( [self.unit_h_axis[0][0]*l1, self.unit_h_axis[0][1]*l1, self.unit_h_axis[0][2]*l1] )
+    Hstararrowtxt  = roundoff( [self.unit_h_axis[0][0]*l2, self.unit_h_axis[0][1]*l2, self.unit_h_axis[0][2]*l2] )
+    Kstararrowstart = roundoff( [-self.unit_k_axis[0][0]*l1, -self.unit_k_axis[0][1]*l1, -self.unit_k_axis[0][2]*l1] )
+    Kstararrowend = roundoff( [self.unit_k_axis[0][0]*l1, self.unit_k_axis[0][1]*l1, self.unit_k_axis[0][2]*l1] )
+    Kstararrowtxt  = roundoff( [self.unit_k_axis[0][0]*l2, self.unit_k_axis[0][1]*l2, self.unit_k_axis[0][2]*l2] )
+    Lstararrowstart = roundoff( [-self.unit_l_axis[0][0]*l1, -self.unit_l_axis[0][1]*l1, -self.unit_l_axis[0][2]*l1] )
+    Lstararrowend = roundoff( [self.unit_l_axis[0][0]*l1, self.unit_l_axis[0][1]*l1, self.unit_l_axis[0][2]*l1] )
+    Lstararrowtxt  = roundoff( [self.unit_l_axis[0][0]*l2, self.unit_l_axis[0][1]*l2, self.unit_l_axis[0][2]*l2] )
     # make arrow font size roughly proportional to radius of highest resolution shell
-    fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
+    #fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
+    fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0)))
+    axisfuncstr = """
+var MakeHKL_Axis = function()
+{
+  // xyz arrows
+  shape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origo');
+  //blue-x
+  shape.addArrow( %s, %s , [ 0, 0, 1 ], 0.1);
+  //green-y
+  shape.addArrow( %s, %s , [ 0, 1, 0 ], 0.1);
+  //red-z
+  shape.addArrow( %s, %s , [ 1, 0, 0 ], 0.1);
 
-    arrowstr = """
-    // xyz arrows
-    shape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origo');
-    //blue-x
-    shape.addArrow( %s, %s , [ 0, 0, 1 ], 0.1);
-    //green-y
-    shape.addArrow( %s, %s , [ 0, 1, 0 ], 0.1);
-    //red-z
-    shape.addArrow( %s, %s , [ 1, 0, 0 ], 0.1);
-
-    shape.addText( %s, [ 0, 0, 1 ], %s, 'h');
-    shape.addText( %s, [ 0, 1, 0 ], %s, 'k');
-    shape.addText( %s, [ 1, 0, 0 ], %s, 'l');
+  shape.addText( %s, [ 0, 0, 1 ], %s, 'h');
+  shape.addText( %s, [ 0, 1, 0 ], %s, 'k');
+  shape.addText( %s, [ 1, 0, 0 ], %s, 'l');
+};
     """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, fontsize,
           Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
-
     # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
-    mincolourscalar = self.othermindata[self.icolourcol]
-    maxcolourscalar = self.othermaxdata[self.icolourcol]
+    mincolourscalar = self.HKLscenesMindata[self.colour_scene_id]
+    maxcolourscalar = self.HKLscenesMaxdata[self.colour_scene_id]
     if self.settings.sigma_color:
-      mincolourscalar = self.otherminsigmas[self.icolourcol]
-      maxcolourscalar = self.othermaxsigmas[self.icolourcol]
+      mincolourscalar = self.HKLscenesMinsigmas[self.colour_scene_id]
+      maxcolourscalar = self.HKLscenesMaxsigmas[self.colour_scene_id]
     span = maxcolourscalar - mincolourscalar
     ln = 60
     incr = span/ln
@@ -367,7 +713,7 @@ class hklview_3d:
     for j,sc in enumerate(range(ln)):
       val += incr
       colourscalararray.append( val )
-    if self.otherscenes[self.icolourcol].miller_array.is_complex_array():
+    if self.HKLscenes[self.colour_scene_id].miller_array.is_complex_array():
       # When displaying phases from map coefficients together with fom values
       # compute colour map chart as a function of fom and phase values (x,y axis)
       incr = 360.0/ln
@@ -379,7 +725,7 @@ class hklview_3d:
         colourscalararray.append( val )
 
       fomarrays = []
-      if self.otherscenes[self.icolourcol].isUsingFOMs():
+      if self.HKLscenes[self.colour_scene_id].isUsingFOMs():
         fomln = 50
         fom = 1.0
         fomdecr = 1.0/(fomln-1.0)
@@ -402,15 +748,27 @@ class hklview_3d:
         color_all=False,
         gradient_type= self.settings.color_scheme) * 255.0)
 
-    colors = self.otherscenes[self.icolourcol].colors
-    radii = self.otherscenes[self.iradiicol].radii
-    points = self.scene.points
+    colors = self.HKLscenes[self.colour_scene_id].colors
+    radii = self.HKLscenes[self.radii_scene_id].radii
+    self.meanradius = flex.mean(radii)
+
+    if blankscene:
+      points = flex.vec3_double( [ ] )
+      colors = flex.vec3_double( [ ] )
+      radii = flex.double( [ ] )
+    else:
+      points = self.scene.points
+
+    nrefls = points.size()
     hkls = self.scene.indices
     dres = self.scene.dres
-    colstr = self.scene.miller_array.info().label_string()
+    if self.binscenelabel=="Resolution":
+      colstr = "dres"
+    else:
+      colstr = self.HKLscenes[ int(self.binscenelabel) ].work_array.info().label_string()
     data = self.scene.data
-    colourlabel = self.otherscenes[self.icolourcol].colourlabel
-    fomlabel = self.otherscenes[self.icolourcol].fomlabel
+    colourlabel = self.HKLscenes[self.colour_scene_id].colourlabel
+    fomlabel = self.HKLscenes[self.colour_scene_id].fomlabel
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (colors.size() == radii.size() == nrefls)
     colours = []
@@ -418,153 +776,222 @@ class hklview_3d:
     radii2 = []
     spbufttips = []
 
-    self.workingbinvals = []
-    if not self.binarray=="Resolution":
-      ibinarray= int(self.binarray)
-      self.workingbinvals = [ self.othermindata[ibinarray] - 0.1 , self.othermaxdata[ibinarray] + 0.1 ]
-      self.workingbinvals.extend( self.binvals )
-      self.workingbinvals.sort()
-      if self.workingbinvals[0] < 0.0:
-         self.workingbinvals.append(0.0)
-         self.workingbinvals.sort()
-      bindata = self.otherscenes[ibinarray].data
-      if self.otherscenes[ibinarray].work_array.is_complex_array():
-        bindata = self.otherscenes[ibinarray].ampl
+    self.binvalsboundaries = []
+    if self.binscenelabel=="Resolution":
+      self.binvalsboundaries = self.binvals
+      self.bindata = 1.0/self.scene.dres
     else:
-      self.workingbinvals = self.binvals
-      colstr = "dres"
-      bindata = 1.0/dres
-    self.nbin = len(self.workingbinvals)
+      ibinarray= int(self.binscenelabel)
+      self.binvalsboundaries = [ self.HKLscenesMindata[ibinarray] - 0.1 , self.HKLscenesMaxdata[ibinarray] + 0.1 ]
+      self.binvalsboundaries.extend( self.binvals )
+      self.binvalsboundaries.sort()
+      if self.binvalsboundaries[0] < 0.0:
+        self.binvalsboundaries.append(0.0)
+        self.binvalsboundaries.sort()
+      self.bindata = self.HKLscenes[ibinarray].data
+      if self.HKLscenes[ibinarray].work_array.is_complex_array():
+        self.bindata = self.HKLscenes[ibinarray].ampl
 
-    for ibin in range(self.nbin):
+    self.nbinvalsboundaries = len(self.binvalsboundaries)
+
+    for ibin in range(self.nbinvalsboundaries):
       colours.append([]) # colours and positions are 3 x size of data()
       positions.append([])
       radii2.append([])
       spbufttips.append([])
 
     def data2bin(d):
-      for ibin, binval in enumerate(self.workingbinvals):
-        if (ibin+1) == self.nbin:
+      for ibin, binval in enumerate(self.binvalsboundaries):
+        if (ibin+1) == self.nbinvalsboundaries:
           return ibin
-        if d > binval and d <= self.workingbinvals[ibin+1]:
+        if d > binval and d <= self.binvalsboundaries[ibin+1]:
           return ibin
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       raise Sorry("Should never get here")
 
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    if nrefls > 0 and self.bindata.size() != points.size():
+      raise Sorry("Not the same number of reflections in bin-data and displayed data")
+
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
-      ibin = data2bin( bindata[i] )
-      spbufttip = 'H,K,L: %s, %s, %s' %(hkls[i][0], hkls[i][1], hkls[i][2])
-      spbufttip += '\ndres: %s ' %str(roundoff(dres[i])  )
-      spbufttip += '\' + AA + \''
-      for j,otherscene in enumerate(self.otherscenes):
-        ocolstr = self.proc_arrays[j].info().label_string()
-        odata = otherscene.data
-        od =""
-        if self.proc_arrays[j].is_complex_array():
-          if not math.isnan(otherscene.foms[i]):
-            od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phases[i])  ) + \
-              "\' + DGR + \'" +  ", " + str(roundoff(otherscene.foms[i])  )
-          else:
-            od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phases[i])  ) + \
-              "\' + DGR + \'"
-        elif self.proc_arrays[j].sigmas() is not None:
-          od = str(roundoff(odata[i]) ) + ", " + str(roundoff(otherscene.sigmas[i]))
-        else:
-          od = str(roundoff(odata[i]) )
-        if not (math.isnan( abs(odata[i]) ) or odata[i] == display.inanval):
-          spbufttip += "\n%s: %s" %(ocolstr, od)
-      positions[ibin].extend( roundoff(list(hklstars)) )
+      ibin = data2bin( self.bindata[i] )
+      positions[ibin].extend( roundoff(list(hklstars), 2) )
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )
-      spbufttips[ibin].append(spbufttip)
+      #spbufttips[ibin].append(self.tooltipstrings[i] )
+      if self.script_has_tooltips:
+        spbufttips[ibin].append(self.tooltipstringsdict[hkls[i]])
+      else:
+        spbufttips[ibin].append( i )
 
-    spherebufferstr = """
-  ttips = new Array(%d)
-  positions = new Array(%d)
-  colours = new Array(%d)
-  radii = new Array(%d)
-  spherebufs = new Array(%d)
-    """ %(self.nbin, self.nbin, self.nbin, self.nbin, self.nbin)
-
+    #spherebufferstr = ""
+    spherebufferstr = self.colstraliases
     negativeradiistr = ""
     cntbin = 0
     self.binstrs = []
-    for ibin in range(self.nbin):
+    self.bin_infotpls = []
+    for ibin in range(self.nbinvalsboundaries):
       mstr =""
       nreflsinbin = len(radii2[ibin])
-      if (ibin+1) < self.nbin and nreflsinbin > 0:
-        bin1= self.workingbinvals[ibin]
-        bin2= self.workingbinvals[ibin+1]
+      if (ibin+1) < self.nbinvalsboundaries and nreflsinbin > 0:
+        bin1= self.binvalsboundaries[ibin]
+        bin2= self.binvalsboundaries[ibin+1]
         if colstr=="dres":
-          bin1= 1.0/self.workingbinvals[ibin]
-          bin2= 1.0/self.workingbinvals[ibin+1]
-        mstr= "bin:%d, %d reflections with %s in ]%2.2f; %2.2f]" %(cntbin, nreflsinbin, \
+          bin1= 1.0/self.binvalsboundaries[ibin]
+          bin2= 1.0/self.binvalsboundaries[ibin+1]
+        mstr= "bin[%d] has %d reflections with %s in ]%2.3f; %2.3f]" %(cntbin, nreflsinbin, \
                 colstr, bin1, bin2)
+        self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 )) )
         self.binstrs.append(mstr)
-        self.mprint(mstr, verbose=True)
+        self.mprint(mstr, verbose=0)
+
+        spherebufferstr += "\n// %s\n" %mstr
+        if self.script_has_tooltips:
+          uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
+          uncrustttips = uncrustttips.replace("\'\'+", "")
+          spherebufferstr += "  ttips.push( %s );" %uncrustttips
+        else:
+          #spherebufferstr += "  ttips.push( [ ] );"
+          ttlst = [-1]
+          ttlst.extend(spbufttips[ibin])
+          spherebufferstr += "  ttips.push( %s );" %str( ttlst )
         spherebufferstr += """
-  // %s
-  ttips[%d] = %s
-  positions[%d] = new Float32Array( %s )
-  colours[%d] = new Float32Array( %s )
-  radii[%d] = new Float32Array( %s )
-  spherebufs[%d] = new NGL.SphereBuffer({
+  positions.push( new Float32Array( %s ) );
+  colours.push( new Float32Array( %s ) );
+  radii.push( new Float32Array( %s ) );
+  shapebufs.push( new NGL.%s({
     position: positions[%d],
-    color: colours[%d],
-    radius: radii[%d],
-    picking: ttips[%d],
-  })
-  //}, { disableImpostor: true }) // if true allows wireframe spheres but does not allow resizing spheres
+    color: colours[%d], """ %(str(positions[ibin]), str(colours[ibin]), \
+         str(radii2[ibin]), self.primitivetype, cntbin, \
+         cntbin)
+        if self.primitivetype == "SphereBuffer":
+          spherebufferstr += "\n    radius: radii[%d]," %cntbin
+        spherebufferstr += "\n    picking: ttips[%d]," %cntbin
+        if self.primitivetype == "PointBuffer":
+          spherebufferstr += "\n  }, {pointSize: %1.2f})\n" %self.settings.scale
+        else:
+          if self.high_quality:
+            spherebufferstr += """
+    })
+  );
+  """
+          else:
+            spherebufferstr += """
+    }, { disableImpostor: true
+   ,    sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
+  );
+  """
+        spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n" %cntbin
 
-  shape.addBuffer(spherebufs[%d])
-      """ %(mstr, cntbin, str(spbufttips[ibin]).replace('\"', '\''), \
-         cntbin, str(positions[ibin]), cntbin, str(colours[ibin]), \
-         cntbin, str(radii2[ibin]), cntbin, cntbin, cntbin, cntbin, cntbin, cntbin )
-
-        if self.workingbinvals[ibin] < 0.0:
-          negativeradiistr += "spherebufs[%d].setParameters({metalness: 1})\n" %cntbin
+        if self.binvalsboundaries[ibin] < 0.0:
+          negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
         cntbin += 1
+
+    self.ngl_settings.bin_opacities = str([ "1.0, %d"%e for e in range(cntbin) ])
+    self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
+                          "bin_infotpls": self.bin_infotpls,
+                          "bin_data_label": colstr
+                         } )
 
     spherebufferstr += """
 // create tooltip element and add to the viewer canvas
-  tooltip = document.createElement("div");
-  Object.assign(tooltip.style, {
-    display: "none",
-    position: "absolute",
-    zIndex: 10,
-    pointerEvents: "none",
-    backgroundColor: "rgba(255, 255, 255, 0.75)",
-    color: "black",
-    padding: "0.1em",
-    fontFamily: "sans-serif"
-  });
-
   stage.viewer.container.appendChild(tooltip);
   // listen to `hovered` signal to move tooltip around and change its text
-  stage.signals.hovered.add(function (pickingProxy) {
-    if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  )){
-      var sphere = pickingProxy.sphere;
-      var cp = pickingProxy.canvasPosition;
-      tooltip.innerText = pickingProxy.picker[pickingProxy.pid];
-      tooltip.style.bottom = cp.y + 7 + "px";
-      tooltip.style.left = cp.x + 8 + "px";
-      tooltip.style.fontSize = "smaller";
-      tooltip.style.display = "block";
-    }else{
+  stage.signals.hovered.add(
+    function (pickingProxy)
+    {
       tooltip.style.display = "none";
+      if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  ))
+      {
+        var cp = pickingProxy.canvasPosition;
+    """
+    if self.script_has_tooltips:
+      spherebufferstr += """
+        tooltip.innerText = pickingProxy.picker[pickingProxy.pid];
+    """
+    else:
+      spherebufferstr += """
+        var sym_id = -1;
+        var hkl_id = -1
+        if (pickingProxy.picker.length > 0)
+        { // get stored id number of symmetry operator applied to this hkl
+          sym_id = pickingProxy.picker[0];
+          var ids = pickingProxy.picker.slice(1);
+          var is_friedel_mate = 0;
+          hkl_id = ids[ pickingProxy.pid % ids.length ];
+          if (pickingProxy.pid >= ids.length)
+            is_friedel_mate = 1;
+        }
+        // tell python the id of the hkl and id number of the symmetry operator
+        WebsockSendMsg( 'tooltip_id: [' + String([sym_id, hkl_id, is_friedel_mate]) + ']' );
+        if (current_ttip !== "" )
+        {
+          tooltip.innerText = current_ttip;
+    """
+    spherebufferstr += """      tooltip.style.bottom = cp.y + 7 + "px";
+          tooltip.style.left = cp.x + 8 + "px";
+          tooltip.style.fontSize = "smaller";
+          tooltip.style.display = "block";
+        }
+      }
+      current_ttip = "";
     }
-  });
+  );
 
-  stage.signals.clicked.add(function (pickingProxy) {
-  if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  )){
-    var innerText = pickingProxy.picker[pickingProxy.pid];
-    mysocket.send( innerText);
-  }
-  });
+
+  stage.mouseObserver.signals.dragged.add(
+    function ( deltaX, deltaY, lkj)
+    {
+      if (clipFixToCamPosZ === true)
+      {
+        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos - stage.viewer.camera.position.z);
+        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos - stage.viewer.camera.position.z);
+        stage.viewer.requestRender();
+      }
+      cvorient = stage.viewerControls.getOrientation().elements;
+      msg = String(cvorient);
+      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+    }
+  );
+
+
+  stage.mouseObserver.signals.scrolled.add(
+    function (delta)
+    {
+      if (clipFixToCamPosZ === true)
+      {
+        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos - stage.viewer.camera.position.z);
+        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos - stage.viewer.camera.position.z);
+        stage.viewer.requestRender();
+      }
+      cvorient = stage.viewerControls.getOrientation().elements;
+      msg = String(cvorient);
+      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+    }
+  );
+
 
     """
-    colourgradstrs = "colourgradvalarray = new Array(%s)\n" %fomln
+
+    spherebufferstr += """
+  stage.signals.clicked.add(
+    function (pickingProxy)
+    {
+      if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  ))
+      {
+"""
+    if self.script_has_tooltips:
+      spherebufferstr += "   var innerText = pickingProxy.picker[pickingProxy.pid];\n"
+    else:
+      spherebufferstr += "        var innerText = pickingProxy.pid;"
+    spherebufferstr += """
+        WebsockSendMsg( innerText);
+      }
+    }
+  );
+
+    """
+    colourgradstrs = "colourgradvalarray = new Array(%s);\n" %fomln
     # if displaying phases from map coefficients together with fom values then
     for g,colourgradarray in enumerate(colourgradarrays):
       self.colourgradientvalues = []
@@ -577,84 +1004,60 @@ class hklview_3d:
       for j,val in enumerate(self.colourgradientvalues):
         vstr = ""
         alpha = 1.0
-        gradval = "rgba(%s, %s, %s, %s)" %(val[1][0], val[1][1], val[1][2], alpha)
+        rgb = roundoff(val[1], 1)
+        gradval = "rgba(%s, %s, %s, %s)" %(rgb[0], rgb[1], rgb[2], alpha)
         if j%10 == 0 or j==len(self.colourgradientvalues)-1 :
           vstr = str( roundoff(val[0], 2) )
         colourgradstr.append([vstr , gradval])
 
-      colourgradstrs += "  colourgradvalarray[%s] = %s\n" %(g, str(colourgradstr) )
+      colourgradstrs += "  colourgradvalarray[%s] = %s;\n" %(g, str(colourgradstr) )
 
     #negativeradiistr = ""
-    #for ibin in range(self.nbin):
-    #  if self.workingbinvals[ibin] < 0.0:
-    #    negativeradiistr += "spherebufs[%d].setParameters({metalness: 1})\n" %ibin
-
-
-
+    #for ibin in range(self.nbinvalsboundaries):
+    #  if self.binvalsboundaries[ibin] < 0.0:
+    #    negativeradiistr += "shapebufs[%d].setParameters({metalness: 1})\n" %ibin
+    qualitystr = """ , { disableImpostor: true
+                  , sphereDetail: 0 } // rather than default value of 2 icosahedral subdivisions
+            """
+    if self.high_quality:
+      qualitystr = ""
     self.NGLscriptstr = """
-// Microsoft Edge users follow instructions on
-// https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
-// to enable websocket connection
-
-var pagename = location.pathname.substring(1);
-var mysocket = new WebSocket('ws://127.0.0.1:7894/');
-
-mysocket.onopen = function (e) {
-  mysocket.send('%s now connected via websocket to ' + pagename + '\\n');
-};
-
-mysocket.onclose = function (e) {
-  mysocket.send('%s now disconnecting from websocket ' + pagename + '\\n');
-};
-
-// Log errors to debugger of your browser
-mysocket.onerror = function (error) {
-  console.log('WebSocket Error ' + error);
-};
 
 
-window.addEventListener( 'resize', function( event ){
-    stage.handleResize();
-}, false );
-
-
-
-
-var stage;
-var shape;
-var shapeComp;
-var repr;
-var AA = String.fromCharCode(197); // short for angstrom
-var DGR = String.fromCharCode(176); // short for degree symbol
-
-function createElement (name, properties, style) {
+function createElement(name, properties, style)
+{
 // utility function used in for loop over colourgradvalarray
-  var el = document.createElement(name)
-  Object.assign(el, properties)
-  Object.assign(el.style, style)
-  Object.assign(el.style, {
+  var el = document.createElement(name);
+  Object.assign(el, properties);
+  Object.assign(el.style, style);
+  Object.assign(el.style,
+  {
       display: "block",
       position: "absolute",
       color: "black",
       fontFamily: "sans-serif",
       fontSize: "smaller",
-    }
-  )
-  return el
+  }
+  );
+  return el;
 }
 
 
-function addElement (el) {
+function addElement(el)
+{
 // utility function used in for loop over colourgradvalarray
-  Object.assign(el.style, {
+  Object.assign(el.style,
+  {
     position: "absolute",
     zIndex: 10
-  })
-  stage.viewer.container.appendChild(el)
+  }
+  );
+  stage.viewer.container.appendChild(el);
 }
 
 
-function addDivBox(txt, t, l, w, h, bgcolour='rgba(255.0, 255.0, 255.0, 0.0)') {
+function addDivBox(txt, t, l, w, h, bgcolour='rgba(255.0, 255.0, 255.0, 0.0)')
+{
   divbox = createElement("div",
   {
     innerText: txt
@@ -668,24 +1071,126 @@ function addDivBox(txt, t, l, w, h, bgcolour='rgba(255.0, 255.0, 255.0, 0.0)') {
     height: h.toString() + "px",
   }
   );
-  addElement(divbox)
+  addElement(divbox);
+}
+
+// Microsoft Edge users follow instructions on
+// https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
+// to enable websocket connection
+
+var pagename = location.pathname.substring(1);
+var mysocket = new WebSocket('ws://127.0.0.1:%s/');
+
+
+function WebsockSendMsg(msg)
+{
+  try
+  {
+    mysocket.send(msg);
+    mysocket.send( 'Ready ' + pagename + '\\n' );
+  }
+
+  catch(err)
+  {
+    alert('JavaScriptError: ' + err.stack );
+    addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100.0, 100.0, 100.0, 0.0));
+  }
 }
 
 
-var hklscene = function () {
+mysocket.onopen = function(e)
+{
+  WebsockSendMsg('%s now connected via websocket to ' + pagename + '\\n');
+};
+
+mysocket.onclose = function(e)
+{
+  WebsockSendMsg('%s now disconnecting from websocket ' + pagename + '\\n');
+};
+
+// Log errors to debugger of your browser
+mysocket.onerror = function(error)
+{
+  console.log('WebSocket Error ' + error);
+};
+
+
+window.addEventListener( 'resize',
+  function( event ){
+      stage.handleResize();
+  },
+  false
+);
+
+
+
+
+var stage;
+var shape;
+var shapeComp;
+var vectorreprs = [];
+var vectorshape;
+var vectorshapeComps = [];
+var repr;
+var AA = String.fromCharCode(197); // short for angstrom
+var DGR = String.fromCharCode(176); // short for degree symbol
+var ttips = [];
+var current_ttip = "";
+var positions = [];
+var br_positions = [];
+var br_colours = [];
+var br_radii = [];
+var br_ttips = [];
+var colours = [];
+var radii = [];
+var shapebufs = [];
+var br_shapebufs = [];
+var nrots = 0;
+var cvorient = new NGL.Matrix4();
+var clipFixToCamPosZ = false;
+var origclipnear;
+var origclipfar;
+var origcameraZpos;
+
+
+///var script=document.createElement('script');
+//script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
+//document.head.appendChild(script);
+
+
+// define tooltip element
+var tooltip = document.createElement("div");
+Object.assign(tooltip.style, {
+  display: "none",
+  position: "absolute",
+  zIndex: 10,
+  pointerEvents: "none",
+  backgroundColor: "rgba(255, 255, 255, 0.75)",
+  color: "black",
+  padding: "0.1em",
+  fontFamily: "sans-serif"
+});
+
+
+%s
+
+
+var hklscene = function()
+{
   shape = new NGL.Shape('shape');
+  vectorshape = new NGL.Shape('vectorshape');
   stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false,
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
 
-  %s
+  MakeHKL_Axis();
 
   %s
 
   shapeComp = stage.addComponentFromObject(shape);
   repr = shapeComp.addRepresentation('buffer');
   shapeComp.autoView();
-  repr.update()
+  repr.update();
 
   // if some radii are negative draw them with wireframe
   %s
@@ -693,23 +1198,24 @@ var hklscene = function () {
   //colourgradvalarrays
   %s
 
-  var ih = 3;
-  var topr = 35
-  var topr2 = 10
-  var lp = 10
-  var wp = 40
-  var lp2 = lp + wp
-  var gl = 3
-  var wp2 = gl
-  var fomlabelheight = 25
-  if (colourgradvalarray.length === 1) {
-    wp2 = 15
-    fomlabelheight = 0
+  var ih = 3,
+  topr = 35,
+  topr2 = 10,
+  lp = 10,
+  wp = 40,
+  lp2 = lp + wp,
+  gl = 3,
+  wp2 = gl,
+  fomlabelheight = 25;
+  if (colourgradvalarray.length === 1)
+  {
+    wp2 = 15;
+    fomlabelheight = 0;
   }
 
-  var wp3 = wp + colourgradvalarray.length * wp2 + 2
+  var wp3 = wp + colourgradvalarray.length * wp2 + 2;
 
-  totalheight = ih*colourgradvalarray[0].length + 35 + fomlabelheight
+  totalheight = ih*colourgradvalarray[0].length + 35 + fomlabelheight;
   // make a white box on top of which boxes with transparent background are placed
   // containing the colour values at regular intervals as well as label legend of
   // the displayed miller array
@@ -718,219 +1224,913 @@ var hklscene = function () {
   // print label of the miller array used for colouring
   addDivBox("%s", topr2, lp, wp, 20);
 
-  if (colourgradvalarray.length > 1) {
+  if (colourgradvalarray.length > 1)
+  {
     // print FOM label, 1, 0.5 and 0.0 values below colour chart
-    fomtop = topr2 + totalheight - 18
-    fomlp = lp + wp
-    fomwp = wp3
-    fomtop2 = fomtop - 13
+    fomtop = topr2 + totalheight - 18;
+    fomlp = lp + wp;
+    fomwp = wp3;
+    fomtop2 = fomtop - 13;
+    // print the 1 number
+    addDivBox("1", fomtop2, fomlp, fomwp, 20);
+    // print the 0.5 number
+    leftp = fomlp + 0.48 * gl * colourgradvalarray.length;
+    addDivBox("0.5", fomtop2, leftp, fomwp, 20);
     // print the FOM label
     addDivBox("%s", fomtop, fomlp, fomwp, 20);
-
-    // print the 3 numbers
-    addDivBox("1", fomtop2, fomlp, fomwp, 20)
-
-    leftp = fomlp + 0.48 * gl * colourgradvalarray.length
-    addDivBox("0.5", fomtop2, leftp, fomwp, 20)
-
-    leftp = fomlp + 0.96 * gl * colourgradvalarray.length
-    addDivBox("0", fomtop2, leftp, fomwp, 20)
+    // print the 0 number
+    leftp = fomlp + 0.96 * gl * colourgradvalarray.length;
+    addDivBox("0", fomtop2, leftp, fomwp, 20);
   }
 
-  for (j = 0; j < colourgradvalarray[0].length; j++) {
+  for (j = 0; j < colourgradvalarray[0].length; j++)
+  {
     rgbcol = colourgradvalarray[0][j][1];
-    val = colourgradvalarray[0][j][0]
-    topv = j*ih + topr
-    toptxt = topv - 5
+    val = colourgradvalarray[0][j][0];
+    topv = j*ih + topr;
+    toptxt = topv - 5;
     // print value of miller array if present in colourgradvalarray[0][j][0]
     addDivBox(val, toptxt, lp, wp, ih);
   }
 
   // draw the colour gradient
-  for (g = 0; g < colourgradvalarray.length; g++) {
-    leftp = g*gl + lp + wp
-
+  for (g = 0; g < colourgradvalarray.length; g++)
+  {
+    leftp = g*gl + lp + wp;
     // if FOM values are supplied draw colour gradients with decreasing
     // saturation values as stored in the colourgradvalarray[g] arrays
-    for (j = 0; j < colourgradvalarray[g].length; j++) {
+    for (j = 0; j < colourgradvalarray[g].length; j++)
+    {
       rgbcol = colourgradvalarray[g][j][1];
-      val = colourgradvalarray[g][j][0]
-      topv = j*ih + topr
+      val = colourgradvalarray[g][j][0];
+      topv = j*ih + topr;
       addDivBox("", topv, leftp, wp2, ih, rgbcol);
     }
   }
 
+  stage.viewer.requestRender();
 }
 
-document.addEventListener('DOMContentLoaded', function() { hklscene() }, false );
+
+try
+{
+  document.addEventListener('DOMContentLoaded', function() { hklscene() }, false );
+}
+catch(err)
+{
+  WebsockSendMsg('JavaScriptError: ' + err.stack );
+}
 
 
-mysocket.onmessage = function (e) {
-  //alert('Server: ' + e.data);
-  var c
-  var alpha
-  var si
-  mysocket.send('got ' + e.data ); // tell server what it sent us
-  try {
-    val = e.data.split(",")
+mysocket.onmessage = function (e)
+{
+  var c,
+  alpha,
+  si;
+  WebsockSendMsg('\\n    Browser: Got ' + e.data ); // tell server what it sent us
+  try
+  {
+    var datval = e.data.split(":\\n");
+    //alert('received2:\\n' + datval);
+    var msgtype = datval[0];
+    var val = datval[1].split(",");
 
-    if (val[0] === "alpha") {
-      ibin = parseInt(val[1])
-      alpha = parseFloat(val[2])
-      spherebufs[ibin].setParameters({opacity: alpha})
-      stage.viewer.requestRender()
+    if (msgtype === "alpha")
+    {
+      ibin = parseInt(val[0]);
+      alpha = parseFloat(val[1]);
+      shapebufs[ibin].setParameters({opacity: alpha});
+      for (var g=0; g < nrots; g++ )
+        br_shapebufs[ibin][g].setParameters({opacity: alpha});
+      stage.viewer.requestRender();
     }
 
-    if (val[0] === "colour") {
-      ibin = parseInt(val[1])
-      si =  parseInt(val[2])
-      colours[ibin][3*si] = parseFloat(val[3])
-      colours[ibin][3*si+1] = parseFloat(val[4])
-      colours[ibin][3*si+2] = parseFloat(val[5])
-      spherebufs[ibin].setAttributes({ color: colours[ibin] })
-      stage.viewer.requestRender()
+    if (msgtype === "colour")
+    {
+      ibin = parseInt(val[0]);
+      si =  parseInt(val[1]);
+      colours[ibin][3*si] = parseFloat(val[2]);
+      colours[ibin][3*si+1] = parseFloat(val[3]);
+      colours[ibin][3*si+2] = parseFloat(val[4]);
+      shapebufs[ibin].setAttributes({ color: colours[ibin] });
+
+      for (var g=0; g < nrots; g++ )
+      {
+        br_colours[ibin][3*si] = parseFloat(val[2]);
+        br_colours[ibin][3*si+1] = parseFloat(val[3]);
+        br_colours[ibin][3*si+2] = parseFloat(val[4]);
+        br_shapebufs[ibin][g].setAttributes({ color: br_colours[ibin] });
+      }
+      stage.viewer.requestRender();
     }
 
-    if (val[0] === "Redraw") {
-      stage.viewer.requestRender()
+    if (msgtype === "ShowTooltip")
+    {
+      current_ttip = eval( String(val));
     }
 
-    if (val[0] === "ReOrient") {
-      mysocket.send( 'Reorienting ' + pagename );
+    if (msgtype === "Redraw")
+    {
+      stage.viewer.requestRender();
+    }
+
+    if (msgtype === "ReOrient")
+    {
+      WebsockSendMsg( 'Reorienting ' + pagename );
       sm = new Float32Array(16);
+      //alert('ReOrienting: ' + val)
       for (j=0; j<16; j++)
-        sm[j] = parseFloat(val[j + 2]) // first 2 are "ReOrient", "NGL\\n"
+        sm[j] = parseFloat(val[j]);
 
       var m = new NGL.Matrix4();
       m.fromArray(sm);
       stage.viewerControls.orient(m);
+      stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
       stage.viewer.requestRender();
     }
 
-    if (val[0] === "Reload") {
+    if (msgtype === "Reload")
+    {
     // refresh browser with the javascript file
-      cvorient = stage.viewerControls.getOrientation().elements
-      msg = String(cvorient)
-      mysocket.send('Current vieworientation:\\n, ' + msg );
-
-      mysocket.send( 'Refreshing ' + pagename );
+      cvorient = stage.viewerControls.getOrientation().elements;
+      msg = String(cvorient);
+      WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
+      WebsockSendMsg( 'Refreshing ' + pagename );
       window.location.reload(true);
     }
 
-    if (val[0] === "Testing") {
+    if (msgtype.includes("Expand") )
+    {
+      WebsockSendMsg( 'Expanding data...' );
+      // delete the shapebufs[] that holds the positions[] arrays
+      shapeComp.removeRepresentation(repr);
+      // remove shapecomp from stage first
+      stage.removeComponent(shapeComp);
+
+      br_positions = [];
+      br_colours = [];
+      br_radii = [];
+      br_ttips = [];
+      br_shapebufs = [];
+
+      //alert('rotations:\\n' + val);
+      strs = datval[1].split("\\n");
+      nbins = %d;
+      var Rotmat = new NGL.Matrix3();
+      var sm = new Float32Array(9);
+      var r = new NGL.Vector3();
+
+      for (var bin=0; bin<nbins; bin++)
+      {
+        var nsize = positions[bin].length/3;
+        var csize = nsize*3;
+        var nsize3 = nsize*3;
+        var anoexp = false;
+
+        if (msgtype.includes("Friedel") )
+        {
+          anoexp = true;
+          csize = nsize*6;
+        }
+        br_positions.push( [] );
+        br_shapebufs.push( [] );
+        br_colours.push( [] );
+        br_radii.push( [] );
+        br_ttips.push( [] );
+
+        br_colours[bin] = colours[bin];
+        br_radii[bin] = radii[bin];
+        if (anoexp)
+        {
+          var colarr = [];
+          var cl = colours[bin].length;
+          for (var i=0; i<cl; i++)
+          {
+            colarr[i] = colours[bin][i];
+            colarr[i+cl] = colours[bin][i];
+          }
+          br_colours[bin] = new Float32Array(colarr);
+
+          var radiiarr = [];
+          var rl = radii[bin].length;
+          for (var i=0; i<rl; i++)
+          {
+            radiiarr[i] = radii[bin][i];
+            radiiarr[i+rl] = radii[bin][i];
+          }
+          br_radii[bin] = new Float32Array(radiiarr);
+        }
+
+        nrots = 0;
+        for (var g=0; g < strs.length; g++ )
+        {
+          if (strs[g] < 1 )
+            continue;
+          nrots++;
+
+          br_positions[bin].push( [] );
+          br_shapebufs[bin].push( [] );
+          br_ttips[bin].push( [] );
+          br_ttips[bin][g] = ttips[bin].slice(); // deep copy with slice()
+          br_ttips[bin][g][0] = g;
+          br_positions[bin][g] = new Float32Array( csize );
+
+          var elmstrs = strs[g].split(",");
+          //alert('rot' + g + ': ' + elmstrs);
+
+          for (j=0; j<9; j++)
+            sm[j] = parseFloat(elmstrs[j]);
+          Rotmat.fromArray(sm);
+
+          for (var i=0; i<nsize; i++)
+          {
+            idx= i*3;
+            r.x = positions[bin][idx];
+            r.y = positions[bin][idx+1];
+            r.z = positions[bin][idx+2];
+
+            r.applyMatrix3(Rotmat)
+
+            br_positions[bin][g][idx] = r.x;
+            br_positions[bin][g][idx + 1] = r.y;
+            br_positions[bin][g][idx + 2] = r.z;
+
+            if (anoexp)
+            {
+              r.negate(); // inversion for anomalous pair
+              br_positions[bin][g][nsize3 + idx] = r.x;
+              br_positions[bin][g][nsize3 + idx + 1] = r.y;
+              br_positions[bin][g][nsize3 + idx + 2] = r.z;
+            }
+
+          }
+
+          br_shapebufs[bin][g] = new NGL.SphereBuffer({
+              position: br_positions[bin][g],
+              color: br_colours[bin],
+              radius: br_radii[bin],
+              // g works as the id number of the rotation of applied symmetry operator when creating tooltip for an hkl
+              picking: br_ttips[bin][g],
+              } %s  );
+          shape.addBuffer(br_shapebufs[bin][g]);
+          //WebsockSendMsg( 'Memory usage: ' + String(window.performance.memory.totalJSHeapSize) +
+          //        ', ' + String(window.performance.memory.totalJSHeapSize) );
+        }
+      }
+      MakeHKL_Axis();
+
+      shapeComp = stage.addComponentFromObject(shape);
+      repr = shapeComp.addRepresentation('buffer42');
+      repr.update();
+
+      stage.viewer.requestRender();
+      WebsockSendMsg( 'Expanded data' );
+    }
+
+    if (msgtype === "DisableMouseRotation")
+    {
+      WebsockSendMsg( 'Fix mouse rotation' + pagename );
+      stage.mouseControls.remove("drag-left");
+      stage.mouseControls.remove("scroll-ctrl");
+      stage.mouseControls.remove("scroll-shift");
+    }
+
+    if (msgtype === "EnableMouseRotation")
+    {
+      WebsockSendMsg( 'Can mouse rotate ' + pagename );
+      stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
+      stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
+      stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
+    }
+
+    if (msgtype === "RotateStage")
+    {
+      WebsockSendMsg( 'Rotating stage ' + pagename );
+
+      strs = datval[1].split("\\n");
+      var sm = new Float32Array(9);
+      var m4 = new NGL.Matrix4();
+      var elmstrs = strs[0].split(",");
+      //alert('rot: ' + elmstrs);
+
+      for (j=0; j<9; j++)
+        sm[j] = parseFloat(elmstrs[j]);
+
+      /* GL matrices are the transpose of the conventional rotation matrices
+      m4.set( sm[0], sm[1], sm[2], 0.0,
+              sm[3], sm[4], sm[5], 0.0,
+              sm[6], sm[7], sm[8], 0.0,
+              0.0,   0.0,   0.0,   1.0
+      );
+      */
+      m4.set( sm[0], sm[3], sm[6], 0.0,
+              sm[1], sm[4], sm[7], 0.0,
+              sm[2], sm[5], sm[8], 0.0,
+              0.0,   0.0,   0.0,   1.0
+      );
+      stage.viewerControls.orient(m4);
+      stage.viewer.requestRender();
+
+    }
+
+    if (msgtype === "TranslateHKLpoints")
+    {
+      WebsockSendMsg( 'Translating HKLs ' + pagename );
+      strs = datval[1].split("\\n");
+      var sm = new Float32Array(3);
+      var elmstrs = strs[0].split(",");
+      //alert('trans: ' + elmstrs);
+      for (j=0; j<3; j++)
+        sm[j] = parseFloat(elmstrs[j]);
+      shapeComp.setPosition([ sm[0], sm[1], sm[2] ])
+      stage.viewer.requestRender();
+    }
+
+    if (msgtype === "AddVector")
+    {
+      strs = datval[1].split("\\n");
+      var sm = new Float32Array(3);
+      var elmstrs = strs[0].split(",");
+      for (j=0; j<3; j++)
+        sm[j] = parseFloat(elmstrs[j]);
+
+      vectorshape.addArrow( [0.0, 0.0, 0.0], sm , [ 1, 1, 0 ], 0.3);
+      vectorshapeComps.push( stage.addComponentFromObject(vectorshape) );
+      vectorreprs.push( vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vectorbuffer') );
+      stage.viewer.requestRender();
+    }
+
+    if (msgtype === "RemoveAllVectors")
+    {
+      for (i=0; i<vectorshapeComps.length; i++)
+      {
+        vectorshapeComps[i].removeRepresentation(vectorreprs[i]);
+        stage.removeComponent(vectorshapeComps[i]);
+      }
+      vectorshapeComps = [];
+      vectorreprs = [];
+      clipFixToCamPosZ = false;
+      stage.viewer.requestRender();
+    }
+
+    if (msgtype === "SetTrackBallRotateSpeed")
+    {
+      strs = datval[1].split("\\n");
+      var elmstrs = strs[0].split(",");
+      stage.trackballControls.rotateSpeed = parseFloat(elmstrs[0]);
+    }
+
+    if (msgtype === "GetTrackBallRotateSpeed")
+    {
+      msg = String( [stage.trackballControls.rotateSpeed] )
+      WebsockSendMsg('ReturnTrackBallRotateSpeed:\\n' + msg );
+    }
+
+
+    if (msgtype === "SetClipPlaneDistances")
+    {
+      strs = datval[1].split("\\n");
+      var elmstrs = strs[0].split(",");
+      var near = parseFloat(elmstrs[0]);
+      var far = parseFloat(elmstrs[1]);
+      origcameraZpos = parseFloat(elmstrs[2]);
+      stage.viewer.parameters.clipMode = 'camera';
+      stage.viewer.parameters.clipScale = 'absolute';
+
+      if (near >= far )
+      { // default to no clipping if near >= far
+        stage.viewer.parameters.clipMode = 'scene';
+        stage.viewer.parameters.clipScale = 'relative';
+        near = 0;
+        far = 100;
+      }
+      stage.viewer.parameters.clipNear = near;
+      stage.viewer.parameters.clipFar = far;
+      origclipnear = near;
+      origclipfar = far;
+      clipFixToCamPosZ = true;
+      stage.viewer.camera.position.z = origcameraZpos;
+      stage.viewer.requestRender();
+    }
+
+    if (msgtype === "GetClipPlaneDistances")
+    {
+      msg = String( [stage.viewer.parameters.clipNear, stage.viewer.parameters.clipFar,
+                      stage.viewer.camera.position.z] )
+      WebsockSendMsg('ReturnClipPlaneDistances:\\n' + msg );
+    }
+
+    if (msgtype === "GetBoundingBox")
+    {
+      msg = String( [stage.viewer.boundingBoxSize.x, stage.viewer.boundingBoxSize.y, stage.viewer.boundingBoxSize.z] )
+      WebsockSendMsg('ReturnBoundingBox:\\n' + msg );
+    }
+
+    if (msgtype === "Testing")
+    {
       // test something new
-      mysocket.send( 'Testing something new ' + pagename );
+      WebsockSendMsg( 'Testing something new ' + pagename );
+      /*
       var newradii = radii[0].map(function(element) {
         return element*1.5;
       });
-
-      spherebufs[0].setAttributes({
+      shapebufs[0].setAttributes({
           radius: newradii
-        })
-      stage.viewer.requestRender()
+      })
+      repr = shapeComp.addRepresentation('buffer');
+      stage.viewer.requestRender();
+      */
     }
 
   }
-  catch(err) {
-    mysocket.send('error: ' + err );
+
+  catch(err)
+  {
+    WebsockSendMsg('JavaScriptError: ' + err.stack );
   }
+
 };
 
-
-
-
-    """ % (self.__module__, self.__module__, self.cameratype, arrowstr, spherebufferstr, \
-            negativeradiistr, colourgradstrs, colourlabel, fomlabel)
+    """ % (self.websockport, self.__module__, self.__module__, axisfuncstr, \
+            self.camera_type, spherebufferstr, negativeradiistr, colourgradstrs, \
+            colourlabel, fomlabel, cntbin, qualitystr)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
     self.ReloadNGL()
+    self.GetClipPlaneDistances()
+    self.GetBoundingBox()
+    self.SetTrackBallRotateSpeed( self.ngl_settings.mouse_sensitivity )
+    self.OrigClipFar = self.clipFar
+    self.OrigClipNear = self.clipNear
+    self.sceneisdirty = False
 
 
   def OnConnectWebsocketClient(self, client, server):
+    #if not self.websockclient:
     self.websockclient = client
-    self.mprint( "New client:" + str( self.websockclient ) )
+    self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
+    #else:
+    #  self.mprint( "Unexpected browser connection was rejected" )
 
 
   def OnWebsocketClientMessage(self, client, server, message):
-    if message != "":
-      self.mprint( message, verbose=False)
-    self.lastmsg = message
-    if "Current vieworientation:" in message:
-      # The NGL.Matrix4 with the orientation is a list of floats.
-      self.viewmtrxelms = message[ message.find("\n") : ]
-      sleep(0.2)
-      self.mprint( "Reorienting client after refresh:" + str( self.websockclient ) )
-      if not self.isnewfile:
-        self.pendingmessage = u"ReOrient, NGL" + self.viewmtrxelms
-      self.isnewfile = False
+    if self.scene_id is None:
+      return
+    try:
+      if message != "":
+        if "Orientation" in message:
+          # The NGL.Matrix4 with the orientation is a list of floats.
+          self.viewmtrx = message[ message.find("\n") + 1: ]
+          lst = self.viewmtrx.split(",")
+          flst = [float(e) for e in lst]
+          ScaleRotMx = matrix.sqr( (flst[0], flst[4], flst[8],
+                               flst[1], flst[5], flst[9],
+                               flst[2], flst[6], flst[10]
+                               )
+          )
+          self.cameratranslation = (flst[12], flst[13], flst[14])
+          self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=2 )
+          self.cameradist = math.pow(ScaleRotMx.determinant(), 1.0/3.0)
+          self.mprint("distance: %s" %roundoff(self.cameradist), verbose=2)
+          self.rotation_mx = ScaleRotMx/self.cameradist
+          rotlst = roundoff(self.rotation_mx.elems)
+          self.mprint("""Rotation matrix:
+  %s,  %s,  %s
+  %s,  %s,  %s
+  %s,  %s,  %s
+          """ %rotlst, verbose=2)
+
+          alllst = roundoff(flst)
+          self.mprint("""OrientationMatrix matrix:
+  %s,  %s,  %s,  %s
+  %s,  %s,  %s,  %s
+  %s,  %s,  %s,  %s
+  %s,  %s,  %s,  %s
+          """ %tuple(alllst), verbose=3)
+          if self.rotation_mx.is_r3_rotation_matrix():
+            angles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
+            self.mprint("angles: %s" %str(roundoff(angles)), verbose=2)
+            z_vec = flex.vec3_double( [(0,0,1)])
+            self.rot_zvec = z_vec * self.rotation_mx
+            self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=2)
+            rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().fractionalization_matrix() )
+            self.rot_recip_zvec = self.rot_zvec * rfracmx
+            self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
+            self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=2)
+        else:
+          self.mprint( message, verbose=3)
+        self.lastmsg = message
+      if "JavaScriptError:" in message:
+        self.mprint( message, verbose=0)
+        #raise Sorry(message)
+      if "OrientationBeforeReload:" in message:
+        #sleep(0.2)
+        self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
+        if not self.isnewfile:
+          #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+          self.msgqueue.append( ("ReOrient", self.viewmtrx) )
+        self.isnewfile = False
+      if "ReturnClipPlaneDistances:" in message:
+        datastr = message[ message.find("\n") + 1: ]
+        lst = datastr.split(",")
+        flst = [float(e) for e in lst]
+        self.clipNear = flst[0]
+        self.clipFar = flst[1]
+        self.cameraPosZ = flst[2]
+      if "ReturnBoundingBox:" in message:
+        datastr = message[ message.find("\n") + 1: ]
+        lst = datastr.split(",")
+        flst = [float(e) for e in lst]
+        self.boundingX = flst[0]
+        self.boundingY = flst[1]
+        self.boundingZ = flst[2]
+      if "ReturnTrackBallRotateSpeed" in message:
+        datastr = message[ message.find("\n") + 1: ]
+        lst = datastr.split(",")
+        flst = [float(e) for e in lst]
+        self.ngl_settings.mouse_sensitivity = flst[0]
+      if "tooltip_id:" in message:
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+        sym_id = eval(message.split("tooltip_id:")[1])[0]
+        id = eval(message.split("tooltip_id:")[1])[1]
+        is_friedel_mate = eval(message.split("tooltip_id:")[1])[2]
+        rotmx = None
+        if sym_id >= 0 and sym_id < len(self.symops):
+          rotmx = self.symops[sym_id].r()
+        hkls = self.scene.indices
+        if not is_friedel_mate:
+          ttip = self.GetTooltipOnTheFly(id, rotmx)
+        else:
+          # if id > len(hkls) then these hkls are added as the friedel mates during the
+          # "if (anoexp)" condition in the javascript code
+          id = id % len(hkls)
+          ttip = "id: %d" %id
+          #ttip = self.GetTooltipOnTheFly(hkls[id], rotmx, anomalous=True)
+          ttip = self.GetTooltipOnTheFly(id, rotmx, anomalous=True)
+        self.SendWebSockMsg("ShowTooltip", ttip)
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    except Exception as e:
+      self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
 
 
-  def EmptyMsgQueue(self):
-    while True:
-        sleep(1)
-        if hasattr(self, "pendingmessage") and self.pendingmessage:
-          self.SendWebSockMsg(self.pendingmessage)
-          self.pendingmessage = None
+  def WaitforHandshake(self, sec):
+    nwait = 0
+    while not self.websockclient:
+      time.sleep(self.sleeptime)
+      nwait += self.sleeptime
+      if nwait > sec:
+        return False
+    return True
+
+
+  def WebBrowserMsgQueue(self):
+    try:
+      while True:
+        nwait = 0.0
+        sleep(self.sleeptime)
+        if len(self.msgqueue):
+          #print("self.msgqueue: " + str(self.msgqueue))
+          pendingmessagetype, pendingmessage = self.msgqueue[0]
+          self.SendWebSockMsg(pendingmessagetype, pendingmessage)
+          while not (self.browserisopen and self.websockclient):
+            sleep(self.sleeptime)
+            nwait += self.sleeptime
+            if nwait > self.handshakewait and self.browserisopen:
+              self.mprint("ERROR: No handshake from browser! Security settings may have to be adapted", verbose=0 )
+              return
+              #break
+          self.msgqueue.remove( self.msgqueue[0] )
+# if the html content is huge the browser will be unresponsive until it has finished
+# reading the html content. This may crash this thread. So try restarting this thread until
+# browser is ready
+    except Exception as e:
+      self.mprint( str(e) + ", Restarting WebBrowserMsgQueue\n" \
+                         + traceback.format_exc(limit=10), verbose=2)
+      self.WebBrowserMsgQueue()
+
+
+  def SendWebSockMsg(self, msgtype, msg=""):
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #print "self.server.clients: ", self.server.clients
+    #print "self.websockclient: ",
+    message = u"" + msgtype + self.msgdelim + msg
+    if self.websockclient:
+      while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
+        or "CurrentViewOrientation" in self.lastmsg):
+        sleep(self.sleeptime)
+      self.server.send_message(self.websockclient, message )
+    else:
+      self.OpenBrowser()
 
 
   def StartWebsocket(self):
-    self.server = WebsocketServer(7894, host='127.0.0.1')
+    self.server = WebsocketServer(self.websockport, host='127.0.0.1')
+    if not self.server:
+      raise Sorry("Could not connect to web browser")
     self.server.set_fn_new_client(self.OnConnectWebsocketClient)
     self.server.set_fn_message_received(self.OnWebsocketClientMessage)
     self.wst = threading.Thread(target=self.server.run_forever)
     self.wst.daemon = True
     self.wst.start()
-    self.msgqueuethrd = threading.Thread(target = self.EmptyMsgQueue )
+    self.msgqueuethrd = threading.Thread(target = self.WebBrowserMsgQueue )
     self.msgqueuethrd.daemon = True
     self.msgqueuethrd.start()
 
 
-  def SendWebSockMsg(self, msg):
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    #print "self.server.clients: ", self.server.clients
-    #print "self.websockclient: ",
-    if self.websockclient:
-      while "Refreshing" in self.lastmsg:
-        sleep(0.5)
-        self.lastmsg = ""
-      self.server.send_message(self.websockclient, msg )
-    else:
-      self.OpenBrowser()
+  def SetOpacities(self, bin_opacities_str):
+    retstr = ""
+    if bin_opacities_str:
+      self.ngl_settings.bin_opacities = bin_opacities_str
+      bin_opacitieslst = eval(self.ngl_settings.bin_opacities)
+      for binopacity in bin_opacitieslst:
+        alpha = float(binopacity.split(",")[0])
+        bin = int(binopacity.split(",")[1])
+        retstr += self.set_opacity(bin, alpha)
+      self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities } )
+    return retstr
 
 
-  def SetOpacity(self, bin, alpha):
-    if bin > self.nbin:
-      self.mprint( "There are only %d bins of data present" %self.nbin )
-      return
-    msg = u"alpha, %d, %f" %(bin, alpha)
-    self.SendWebSockMsg(msg)
+  def set_opacity(self, bin, alpha):
+    if bin > self.nbinvalsboundaries-1:
+      return "There are only %d bins present\n" %self.nbinvalsboundaries
+    msg = "%d, %f" %(bin, alpha)
+    self.SendWebSockMsg("alpha", msg)
+    return "Opacity %s set on bin[%s]\n" %(alpha, bin)
 
 
   def RedrawNGL(self):
-    self.SendWebSockMsg( u"Redraw, NGL\n" )
+    #self.SendWebSockMsg("Redraw")
+    self.msgqueue.append( ("Redraw", "") )
 
 
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
-    self.mprint("Rendering NGL JavaScript...")
-    self.SendWebSockMsg( u"Reload, NGL\n" )
+    self.mprint("Rendering JavaScript...", verbose=1)
+    #self.SendWebSockMsg("Reload")
+    self.msgqueue.append( ("Reload", "") )
 
 
   def OpenBrowser(self):
-    NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
-    htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
-    htmlstr += self.htmldiv
-    with open(self.hklfname, "w") as f:
-      f.write( htmlstr )
-    self.url = "file://" + os.path.abspath( self.hklfname )
-    self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname )
-    if self.UseOSBrowser:
-      webbrowser.open(self.url, new=1)
-    self.isnewfile = False
+    if not self.browserisopen:
+      #NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
+      NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.dev.js") )
+      htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
+      htmlstr += self.htmldiv
+      with open(self.hklfname, "w") as f:
+        f.write( htmlstr )
+      self.url = "file:///" + os.path.abspath( self.hklfname )
+      self.url = self.url.replace("\\", "/")
+      self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
+      if self.UseOSBrowser:
+        webbrowser.open(self.url, new=1)
+      self.SendInfoToGUI({ "html_url": self.url } )
+      self.isnewfile = False
+      self.browserisopen = True
+
+
+  def ExpandInBrowser(self, P1=True, friedel_mate=True):
+    retmsg = "Not expanding in browser\n"
+    if self.sceneisdirty:
+      return retmsg
+    uc = self.miller_array.unit_cell()
+    OrtMx = matrix.sqr( uc.orthogonalization_matrix())
+    InvMx = OrtMx.inverse()
+    msgtype = "Expand"
+    msg = ""
+    unique_rot_ops = []
+    if P1:
+      msgtype += "P1"
+      unique_rot_ops = self.symops[ 0 : self.sg.order_p() ]
+      retmsg = "expanding to P1 in browser\n"
+    else:
+      unique_rot_ops = [ self.symops[0] ] # first one is the identity matrix
+    if friedel_mate and not self.miller_array.anomalous_flag():
+      msgtype += "Friedel"
+      retmsg = "expanding Friedel mates in browser\n"
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    for i, symop in enumerate(unique_rot_ops):
+      RotMx = matrix.sqr( symop.r().as_double())
+      ortrot = (OrtMx * RotMx * InvMx).as_mat3()
+      if RotMx.is_r3_identity_matrix():
+        # avoid machine precision rounding errors converting 1.0 to 0.99999999..
+        ortrot = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
+      str_rot = str(ortrot)
+      str_rot = str_rot.replace("(", "")
+      str_rot = str_rot.replace(")", "")
+      msg += str_rot + "\n"
+    #self.SendWebSockMsg(msgtype, msg)
+    self.msgqueue.append( (msgtype, msg) )
+    self.GetBoundingBox() # bounding box changes when the extent of the displayed lattice changes
+    return retmsg
+
+
+  def AddVector(self, r1, r2, r3, isreciprocal=True):
+    vec = (r1, r2, r3)
+    svec = list(vec)
+    if isreciprocal:
+      vec = self.miller_array.unit_cell().reciprocal_space_vector((r1, r2, r3))
+      svec = [vec[0]*self.scene.renderscale, vec[1]*self.scene.renderscale, vec[2]*self.scene.renderscale ]
+    self.mprint("cartesian vector is: " + str(roundoff(svec)), verbose=1)
+    xyvec = svec[:]
+    xyvec[2] = 0.0 # projection vector of svec in the xy plane
+    xyvecnorm = math.sqrt( xyvec[0]*xyvec[0] + xyvec[1]*xyvec[1] )
+    if xyvecnorm > 0.0:
+      self.angle_x_xyvec = math.acos( xyvec[0]/xyvecnorm )*180.0/math.pi
+      self.angle_y_xyvec = math.acos( xyvec[1]/xyvecnorm )*180.0/math.pi
+    else:
+      self.angle_x_xyvec = 90.0
+      self.angle_y_xyvec = 90.0
+    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(self.angle_x_xyvec, self.angle_y_xyvec), verbose=2)
+    yzvec = svec[:]
+    yzvec[0] = 0.0 # projection vector of svec in the yz plane
+    yzvecnorm = math.sqrt( yzvec[1]*yzvec[1] + yzvec[2]*yzvec[2] )
+    if yzvecnorm > 0.0:
+      self.angle_y_yzvec = math.acos( yzvec[1]/yzvecnorm )*180.0/math.pi
+      self.angle_z_yzvec = math.acos( yzvec[2]/yzvecnorm )*180.0/math.pi
+    else:
+      self.angle_y_yzvec = 90.0
+      self.angle_z_yzvec = 90.0
+    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(self.angle_y_yzvec, self.angle_z_yzvec), verbose=2)
+    svecnorm = math.sqrt( svec[0]*svec[0] + svec[1]*svec[1] + svec[2]*svec[2] )
+    self.angle_x_svec = math.acos( svec[0]/svecnorm )*180.0/math.pi
+    self.angle_y_svec = math.acos( svec[1]/svecnorm )*180.0/math.pi
+    self.angle_z_svec = math.acos( svec[2]/svecnorm )*180.0/math.pi
+    self.mprint("angles to x,y,z axis are: %s, %s, %s" %(self.angle_x_svec, self.angle_y_svec, self.angle_z_svec ), verbose=2)
+    self.msgqueue.append( ("AddVector", "%s, %s, %s" %tuple(svec) ))
+
+
+  def PointVectorOut(self):
+    self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
+
+
+  def clip_plane_normal_to_HKL_vector(self, h, k, l, hkldist=0.0,
+             clipwidth=None, fixorientation=True):
+    if h==0.0 and k==0.0 and l==0.0 or clipwidth==None:
+      self.RemoveNormalVectorToClipPlane()
+      return
+    self.RemoveAllReciprocalVectors()
+    R = -l * self.normal_hk + h * self.normal_kl + k * self.normal_lh
+    self.AddVector(R[0][0], R[0][1], R[0][2], isreciprocal=False)
+    if fixorientation:
+      self.DisableMouseRotation()
+    else:
+      self.EnableMouseRotation()
+    self.PointVectorOut()
+    halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
+    if clipwidth is None:
+      clipwidth = self.meanradius
+    clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
+    clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
+    self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
+    self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
+
+
+  def RemoveNormalVectorToClipPlane(self):
+    self.EnableMouseRotation()
+    self.RemoveAllReciprocalVectors()
+    self.SetClipPlaneDistances(0, 0)
+    self.TranslateHKLpoints(0, 0, 0, 0.0)
+
+
+  def SetTrackBallRotateSpeed(self, trackspeed):
+    msg = str(trackspeed)
+    self.msgqueue.append( ("SetTrackBallRotateSpeed", msg) )
+    self.GetTrackBallRotateSpeed()
+
+
+  def GetTrackBallRotateSpeed(self):
+    self.ngl_settings.mouse_sensitivity = None
+    self.msgqueue.append( ("GetTrackBallRotateSpeed", "") )
+    if self.WaitforHandshake(5):
+      while self.ngl_settings.mouse_sensitivity is None:
+        time.sleep(self.sleeptime)
+
+
+  def SetClipPlaneDistances(self, near, far, cameraPosZ=None):
+    if cameraPosZ is None:
+      cameraPosZ = self.cameraPosZ
+    msg = str(near) + ", " + str(far) + ", " + str(cameraPosZ)
+    self.msgqueue.append( ("SetClipPlaneDistances", msg) )
+
+
+  def GetClipPlaneDistances(self):
+    self.clipNear = None
+    self.clipFar = None
+    self.cameraPosZ = None
+    self.msgqueue.append( ("GetClipPlaneDistances", "") )
+    if self.WaitforHandshake(5):
+      while self.clipFar is None:
+        time.sleep(self.sleeptime)
+      self.mprint("clipnear, clipfar, cameraPosZ: %2.2f, %2.2f %2.2f" \
+                 %(self.clipNear, self.clipFar, self.cameraPosZ), 2)
+    return (self.clipNear, self.clipFar, self.cameraPosZ)
+
+
+  def GetBoundingBox(self):
+    self.boundingX = None
+    self.boundingY = None
+    self.boundingZ = None
+    self.msgqueue.append( ("GetBoundingBox", "") )
+    if self.WaitforHandshake(5):
+      while self.boundingX is None:
+        time.sleep(self.sleeptime)
+      self.mprint("boundingXYZ: %2.2f %2.2f %2.2f" \
+         %(self.boundingX, self.boundingY, self.boundingZ), verbose=2)
+    return (self.boundingX, self.boundingY, self.boundingZ)
+
+
+  def RemoveAllReciprocalVectors(self):
+    self.msgqueue.append( ("RemoveAllVectors", "" ))
 
 
   def TestNewFunction(self):
-    self.SendWebSockMsg( u"Testing, NGL\n" )
+    self.SendWebSockMsg("Testing")
+
+
+  def DisableMouseRotation(self): # disable rotating with the mouse
+    self.SendWebSockMsg("DisableMouseRotation")
+
+
+  def EnableMouseRotation(self): # enable rotating with the mouse
+    self.SendWebSockMsg("EnableMouseRotation")
+
+
+  def RotateStage(self, eulerangles):
+    #uc = self.miller_array.unit_cell()
+    #OrtMx = matrix.sqr( uc.orthogonalization_matrix())
+    #InvMx = OrtMx.inverse()
+    #RotMx = matrix.sqr( (1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0 ) )
+    #ortrot = (OrtMx * RotMx * InvMx).as_mat3()
+    radangles = [e*math.pi/180.0 for e in eulerangles]
+    RotMx = scitbx.math.euler_angles_as_matrix(radangles)
+    scaleRot = RotMx * self.cameradist
+    ortrot = scaleRot.as_mat3()
+    str_rot = str(ortrot)
+    str_rot = str_rot.replace("(", "")
+    str_rot = str_rot.replace(")", "")
+    msg = str_rot + "\n"
+    self.msgqueue.append( ("RotateStage", msg) )
+
+
+  def TranslateHKLpoints(self, h, k, l, mag):
+    # cast this reciprocal vector into cartesian before messaging NGL to translate our HKL points
+    #vec = self.miller_array.unit_cell().reciprocal_space_vector((h, k, l))
+    hkl_vec = flex.vec3_double( [(h,k,l)])
+    rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().orthogonalization_matrix() )
+    cartvec = hkl_vec * rfracmx
+    if cartvec.norm()==0.0 or mag==0.0:
+      svec = (0, 0, 0)
+    else:
+      #cartvec = (mag/cartvec.norm()) * cartvec
+      cartvec = (-mag*self.scene.renderscale/hkl_vec.norm()) * cartvec
+      #svec = [cartvec[0][0]*self.scene.renderscale, cartvec[0][1]*self.scene.renderscale, cartvec[0][2]*self.scene.renderscale ]
+      svec = cartvec[0]
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    self.mprint("cartesian translation vector is: " + str(roundoff(svec)), verbose=1)
+    str_vec = str(svec)
+    str_vec = str_vec.replace("(", "")
+    str_vec = str_vec.replace(")", "")
+    msg = str_vec + "\n"
+    self.msgqueue.append( ("TranslateHKLpoints", msg) )
+
+
+
+
+
+ngl_philstr = """
+  mouse_sensitivity = 0.2
+    .type = float
+  bin_opacities = ""
+    .type = str
+  fixorientation = False
+    .type = bool
+"""
+
+NGLmaster_phil = libtbx.phil.parse( ngl_philstr )
+NGLparams = NGLmaster_phil.fetch().extract()
+
+def reset_NGLsettings():
+  """
+  Reset NGL settings to their default values as specified in the phil definition string
+  """
+  global NGLmaster_phil
+  global ngl_philstr
+  global NGLparams
+  NGLparams = NGLmaster_phil.fetch(source = libtbx.phil.parse( ngl_philstr) ).extract()
+
+
+def NGLsettings():
+  """
+  Get a global phil parameters object containing some NGL settings
+  """
+  global NGLparams
+  return NGLparams
+
+
+
+
+
+
 
 
 
@@ -1007,7 +2207,5 @@ async def time(websocket, path):
 start_server = websockets.serve(time, '127.0.0.1', 7894)
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
-
-
 
 """

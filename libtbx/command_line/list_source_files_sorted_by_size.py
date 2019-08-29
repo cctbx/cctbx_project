@@ -35,7 +35,7 @@ def run(args):
   print()
   print("Number of files by extension:")
   libtbx.str_utils.show_sorted_by_counts(
-    label_count_pairs=ext_counts.items(),
+    label_count_pairs=list(ext_counts.items()),
     prefix="  ")
   print()
   n = len(sz_ln_fn_ext)

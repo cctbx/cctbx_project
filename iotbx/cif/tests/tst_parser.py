@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 class accu_builder(object):
 
   __slots__ = ["accu"]
@@ -28,14 +29,14 @@ def exercise(verbose):
   assert reader.lexer_errors().size() == 0
   assert reader.parser_errors().size() == 0
   assert len(builder.accu) == 0
-  for i in xrange(256):
+  for i in range(256):
     builder = accu_builder()
     reader = iotbx.cif.ext.fast_reader(
       input_string=chr(i), filename="", builder=builder, strict=True)
     if (verbose):
-      print reader.lexer_errors().size(), \
+      print(reader.lexer_errors().size(), \
             reader.parser_errors().size(), \
-            len(builder.accu)
+            len(builder.accu))
 
 def run(args):
   assert args in [[], ["--forever"]]

@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 import time
 from libtbx.test_utils import approx_equal
@@ -9,6 +9,7 @@ from cctbx import miller
 from scitbx.array_family import flex
 from mmtbx.maps.polder import master_params_str
 import mmtbx.maps.polder
+from six.moves import range
 
 pdb_str = """\
 CRYST1   28.992   28.409   27.440  90.00  90.00  90.00 P 1
@@ -196,8 +197,9 @@ def exercise(prefix="tst_polder_3"):
   model = mmtbx.model.manager(model_input = pdb_inp)
   pdb_hierarchy = model.get_hierarchy()
 
-  selection_bool = pdb_hierarchy.atom_selection_cache().selection(
-    string = 'chain A')
+  selection_string = 'chain A'
+#  selection_bool = pdb_hierarchy.atom_selection_cache().selection(
+#    string = 'chain A')
 
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
     "tst_polder_3.mtz").as_miller_arrays()
@@ -217,17 +219,17 @@ def exercise(prefix="tst_polder_3"):
   for radius in [3, 5, 7]:
     params.polder.sphere_radius = radius
     polder_object = mmtbx.maps.polder.compute_polder_map(
-      f_obs          = fobs,
-      r_free_flags   = None,
-      model          = model,
-      params         = params.polder,
-      selection_bool = selection_bool)
+      f_obs            = fobs,
+      r_free_flags     = None,
+      model            = model,
+      params           = params.polder,
+      selection_string = selection_string)
     polder_object.validate()
     polder_object.run()
     results = polder_object.get_results()
 
-    mmm_list.append(polder_object.mask_data_omit.as_1d().min_max_mean().as_tuple())
-    mmm_list.append(polder_object.mask_data_polder.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(results.mask_data_omit.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(results.mask_data_polder.as_1d().min_max_mean().as_tuple())
 
   for i in range(6):
     assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)
@@ -247,17 +249,17 @@ def exercise(prefix="tst_polder_3"):
     params.polder.box_buffer = box_buffer
     params.polder.compute_box = True
     polder_object = mmtbx.maps.polder.compute_polder_map(
-      f_obs             = fobs,
-      r_free_flags      = None,
-      model             = model,
-      params            = params.polder,
-      selection_bool    = selection_bool)
+      f_obs               = fobs,
+      r_free_flags        = None,
+      model               = model,
+      params              = params.polder,
+      selection_string    = selection_string)
     polder_object.validate()
     polder_object.run()
     results = polder_object.get_results()
 
-    mmm_list.append(polder_object.mask_data_omit.as_1d().min_max_mean().as_tuple())
-    mmm_list.append(polder_object.mask_data_polder.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(results.mask_data_omit.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(results.mask_data_polder.as_1d().min_max_mean().as_tuple())
 
   for i in range(6):
     assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)

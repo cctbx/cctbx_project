@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 class Test(object):
 
@@ -50,7 +50,7 @@ class Test(object):
     assert content.beam_vector == (-0.001316, 0.001644, 1.020927)
     assert content.wavelength == 0.9795
 
-    print 'OK'
+    print('OK')
 
 if __name__ == '__main__':
   test = Test()

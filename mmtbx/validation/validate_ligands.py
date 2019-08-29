@@ -1,44 +1,56 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
-import time, os
+import time
+from cStringIO import StringIO
 import iotbx.pdb
-import mmtbx.model
-import cctbx.geometry_restraints.nonbonded_overlaps as nbo
+#import mmtbx.model
+
+import libtbx.load_env
+import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 from cctbx import adptbx
 from iotbx import phil
 from cctbx.array_family import flex
 from libtbx import group_args
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
-from libtbx import easy_run
+#from libtbx import easy_run
 #from cctbx import miller
-from mmtbx import monomer_library
+#from mmtbx import monomer_library
 from mmtbx import real_space_correlation
 #from mmtbx import map_tools
+from elbow.command_line.ready_set import model_interface as ready_set_model_interface
+from six.moves import zip
+
 
 master_params_str = """
 validate_ligands {
+
 place_hydrogens = True
   .type = bool
   .help = Add H atoms with ready_set.
+
 nproc = 1
   .type = int
+
 }
 """
+
 
 def master_params():
   return phil.parse(master_params_str, process_includes = False)
 
+
 # =============================================================================
-# Manager class for ALL ligands
+
 
 class manager(dict):
-
+  '''
+  Manager class for ALL ligands
+  '''
   def __init__(self,
                model,
                fmodel,
                params,
-               model_fn,
                log=None):
     self.model = model
     self.params = params
@@ -46,8 +58,7 @@ class manager(dict):
     self.fmodel = fmodel
     #
     self.nproc = params.nproc
-    # TODO:  tidy up filename requirement once ready set is refactored
-    self.model_fn = model_fn
+
     if fmodel is not None:
       self.two_fofc_map = fmodel.map_coefficients(map_type="2mFo-DFc",
         fill_missing=False,
@@ -66,7 +77,6 @@ class manager(dict):
       self.fofc_map = None
       self.fmodel_map = None
 
-  # ---------------------------------------------------------------------------
 
   def parallel_populate(self, args):
     from libtbx import easy_mp
@@ -117,12 +127,10 @@ class manager(dict):
         i+=1
     return ligand_results
 
-  # ---------------------------------------------------------------------------
 
   def run(self):
-    args = []
     self.get_readyset_model_with_grm()
-
+    args = []
     def _generate_ligand_isel():
       #done = []
       ph = self.model.get_hierarchy()
@@ -146,63 +154,41 @@ class manager(dict):
       ligand_dict = self.setdefault(id_tuple, {})
       ligand_dict[altloc] = lr
 
-  # ---------------------------------------------------------------------------
 
   def get_readyset_model_with_grm(self):
-    # TODO: user should have possibility to use existing H atoms,
-    # in this case, how to run readyset (because if might be still necessary to get
-    # ligand cif file)
+    '''
+    Run ready set by default (to get ligand cif and/or add H atoms)
+    TODO: Once it it refactored, make running it optional
+          Complicated case is when cif is input for one ligand, but missing
+          for another ligand
+    '''
     self.readyset_model = None
-    fn_pdb, fn_cif = self.run_ready_set(file_name = self.model_fn)
-    if fn_cif is not None:
-      cif_object = monomer_library.server.read_cif(file_name=fn_cif)
-      cif_objects = [(fn_cif, cif_object)]
-    else:
-      cif_objects = []
-    if fn_pdb is not None:
-      pdb_inp = iotbx.pdb.input(file_name=fn_pdb)
-      self.readyset_model = mmtbx.model.manager(
-        model_input = pdb_inp,
-        restraint_objects = cif_objects,
-        build_grm   = True,
-        log         = null_out())
-
-  # ---------------------------------------------------------------------------
-
-  def run_ready_set(self, file_name):
-    print('\nRunning ready_set to get ligand cif_files...')
-    import libtbx.load_env
-    has_ready_set = libtbx.env.has_module(name="phenix")
-    if not has_ready_set:
-      raise_sorry('phenix.ready_set could not be detected on your system.')
+    #if not self.model.has_hd():
     if (self.params.place_hydrogens):
-      cmd = "phenix.ready_set {} --silent".format(file_name)
-      print('Placing H atoms...')
+      params=["add_h_to_water=False",
+               "optimise_final_geometry_of_hydrogens=False",
+               "--silent"]
     else:
-      cmd = "phenix.ready_set {} hydrogens=False --silent".format(file_name)
-      print('H atoms are NOT added to the model...')
-    print(cmd)
-    out = easy_run.fully_buffered(cmd)
-    if (out.return_code != 0):
-      msg_str = "ready_set crashed - dumping stderr:\n%s"
-      raise RuntimeError(msg_str % ( "\n".join(out.stderr_lines)))
-    fn_pdb = file_name.replace('.pdb','.updated.pdb')
-    fn_cif = file_name.replace('.pdb','.ligands.cif')
-    if (os.path.isfile(fn_cif)):
-      print('Ligand(s) cif file created: ', fn_cif)
-    else:
-      fn_cif = None
-    if (os.path.isfile(fn_pdb)):
-      print('Updated model file: ', fn_pdb)
-    else:
-      fn_pdb = None
-    return fn_pdb, fn_cif
+      params=["add_h_to_water=False",
+              "hydrogens=False",
+              "optimise_final_geometry_of_hydrogens=False",
+              "--silent"]
+    assert (libtbx.env.has_module(name="reduce"))
+    assert (libtbx.env.has_module(name="elbow"))
+    # runs reduce internally
+    self.readyset_model = ready_set_model_interface(
+        model  = self.model,
+        params = params)
+    self.readyset_model.set_log(null_out())
 
-  # ---------------------------------------------------------------------------
+
+
 
   def get_ligands(self, ph):
-    # Store ligands as list of iselections --> better way? Careful if H will be
-    # added at some point!
+    '''
+    Store ligands as list of iselections --> better way? Careful if H will be
+    added at some point!
+    '''
     ligand_isel_dict = {}
     get_class = iotbx.pdb.common_residue_names_get_class
     exclude = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
@@ -218,7 +204,6 @@ class manager(dict):
               ligand_isel_dict[id_tuple] = iselection
     return ligand_isel_dict
 
-  # ---------------------------------------------------------------------------
 
   def show_ligand_counts(self):
     make_sub_header(' Ligands in input model ', out=self.log)
@@ -226,9 +211,11 @@ class manager(dict):
       for altloc, lr in ligand_dict.items():
         print(lr.id_str)
 
-  # ---------------------------------------------------------------------------
 
   def show_adps(self):
+    '''
+    Show results for ADPs of ligand and surrounding atoms
+    '''
     make_sub_header(' ADPs ', out=self.log)
     pad1 = ' '*18
     print(pad1, "min   max    mean   n_iso   n_aniso", file=self.log)
@@ -243,9 +230,11 @@ class manager(dict):
             (round(adps.b_min_within,1), round(adps.b_max_within,1),
              round(adps.b_mean_within,1) ), file = self.log)
 
-  # ---------------------------------------------------------------------------
 
   def show_ligand_occupancies(self):
+    '''
+    Show results for ligand occupancies
+    '''
     make_sub_header(' Occupancies ', out=self.log)
     pad1 = ' '*20
     print('If three values: min, max, mean, otherwise the same occupancy for entire ligand.', \
@@ -259,9 +248,11 @@ class manager(dict):
           print(lr.id_str.ljust(16), '%s   %s   %s' %
             (occs.occ_min, occs.occ_max, occs.occ_mean), file = self.log)
 
-  # ---------------------------------------------------------------------------
 
   def show_ccs(self):
+    '''
+    Show results for correlation coefficients
+    '''
     if self.fmodel is None: return
     make_sub_header(' Correlation coefficients ', out=self.log)
     for id_tuple, ligand_dict in self.items():
@@ -272,57 +263,27 @@ class manager(dict):
         fofc_min  = round(ccs.fofc_min, 2)
         fofc_max  = round(ccs.fofc_max, 2)
         fofc_mean = round(ccs.fofc_mean, 2)
-        print(lr.id_str.ljust(16), cc_two_fofc, cc_fofc, fofc_min, fofc_max, fofc_mean, file = self.log)
+        print(lr.id_str.ljust(16),
+          cc_two_fofc, cc_fofc, fofc_min, fofc_max, fofc_mean, file = self.log)
 
-  # ---------------------------------------------------------------------------
 
   def show_nonbonded_overlaps(self):
-    make_sub_header(' Nonbonded overlaps', out=self.log)
-    overlaps_found = False
-    out_str = '{:>16}-{:>16}     {:>6.3f}       {:>6.3f}   {:^10}'
+    '''
+    Print results for overlaps
+    '''
     for id_tuple, ligand_dict in self.items():
       for altloc, lr in ligand_dict.items():
-        nbo = lr.get_nonbonded_overlaps()
-        nbo_proxies = nbo.result.nb_overlaps_proxies_all
-        out_list = []
-        #argmented_counts = [0,0]
-        #def _adjust_count(d):
-        #  d=(abs(d)-0.4)*10
-        #  return d+1
-        if (len(nbo_proxies) > 0):
-          overlaps_found = True
-          for data in nbo_proxies:
-            d = list(data)
-            rec_list = [x.replace('pdb=','') for x in d[0]]
-            rec_list = [x.replace('"','') for x in rec_list]
-            #rec_list.extend(d[1:3])
-            rec_list.append(d[3])
-            rec_list.append(d[4])
-            rec_list.append('1'*bool(d[5]) + ' '*(not bool(d[5])))
-            ptr = 0
-            if rec_list[4].strip(): ptr=1
-            #argmented_counts[ptr] += _adjust_count(rec_list[2])
-            out_list.append(out_str.format(*rec_list))
-          out_string = '\n'.join(out_list)
-    if overlaps_found:
-      lbl_str = '{:^33} {:^11} {:^11} {:<10}'
-      print(lbl_str.format(*["Overlapping atoms","model distance", "vdW distance",
-                     "sym overlap"]), file=self.log)
-      print('-'*73, file=self.log)
-      print(out_string, file=self.log)
-    else:
-      print('No clashes found', file=self.log)
-        #print argmented_counts
-#        nbo.show(
-#          log=self.log,
-#          nbo_type='all',
-#          normalized_nbo=False)
+        clashes_result = lr.get_overlaps()
+        print(clashes_result.clashes_str, file=self.log)
+
 
 # =============================================================================
-# Class storing info per ligand
+
 
 class ligand_result(object):
-
+  '''
+  Class storing info per ligand
+  '''
   def __init__(self,
                model,
                fmodel,
@@ -343,7 +304,7 @@ class ligand_result(object):
     # results
     self._result_attrs = {'_occupancies' : 'get_occupancies',
                           '_adps'        : 'get_adps',
-                          '_nb_overlaps' : 'get_nonbonded_overlaps',
+                          '_overlaps' : 'get_overlaps',
                           '_ccs'         : 'get_ccs'
     }
     for attr, func in self._result_attrs.items():
@@ -356,7 +317,6 @@ class ligand_result(object):
     self._xrs_ligand = self.model.select(isel).get_xray_structure()
     self._get_id_str(id_list=id_list)
 
-  # ---------------------------------------------------------------------------
 
   def __repr__(self):
     outl = 'ligand %s\n' % self.id_str
@@ -364,7 +324,6 @@ class ligand_result(object):
       outl += '  %s : %s\n' % (attr, getattr(self, attr))
     return outl
 
-  # ---------------------------------------------------------------------------
 
   def _get_id_str(self, id_list):
     rg_ligand = self._ph.select(self.isel).only_residue_group()
@@ -377,7 +336,6 @@ class ligand_result(object):
       self.sel_str = " ".join([self.sel_str, 'and altloc', id_list[3]])
     self.id_str = self.id_str.strip()
 
-  # ---------------------------------------------------------------------------
 
   def get_ccs(self):
     # still a stub
@@ -457,9 +415,6 @@ class ligand_result(object):
     return self._ccs
 
 
-
-  # ---------------------------------------------------------------------------
-
   def get_adps(self):
     if self._adps is None:
       b_isos  = self._xrs_ligand.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
@@ -475,7 +430,6 @@ class ligand_result(object):
       within_radius = 3.0 #TODO should this be a parameter?
       sel_within_str = '(within (%s, %s)) and (protein or water)' % (within_radius, self.sel_str)
       isel_within = self.model.iselection(sel_within_str)
-      #xrs_within = self.model.select(isel_within).get_xray_structure()
       xrs_within = self._xrs.select(isel_within)
       b_isos_within = xrs_within.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
       b_min_within, b_max_within, b_mean_within = b_isos_within.min_max_mean().as_tuple()
@@ -495,7 +449,6 @@ class ligand_result(object):
         )
     return self._adps
 
-  # ---------------------------------------------------------------------------
 
   def get_occupancies(self):
     if self._occupancies is None:
@@ -524,31 +477,49 @@ class ligand_result(object):
 
     return self._occupancies
 
-  # ---------------------------------------------------------------------------
 
-  def get_nonbonded_overlaps(self):
-    # TODO this function should use a model with H atoms!!
-    if self.readyset_model is None:
+  def get_overlaps(self):
+    '''
+    Obtain overlaps involving ligands
+    '''
+    # A model with H atoms is necessary to process overlaps
+    if not self.readyset_model.has_hd():
       return None
-    if self._nb_overlaps is None:
+    elif self._overlaps is None:
       # sel_within could be done in __init__?
       within_radius = 3.0
-      sel_within_str = '%s or (within (%s, %s)) and (protein or water)' \
+      # TODO clashes with other ligands?
+      sel_within_str = '%s or (residues_within (%s, %s)) and (protein or water)' \
         % (self.sel_str, within_radius, self.sel_str)
-      #isel_within = self.readyset_model.iselection(sel_within_str)
       sel_within = self.readyset_model.selection(sel_within_str)
-      sel_ligand_within = self.readyset_model.select(sel_within).selection(self.sel_str)
-      #xrs_within = self.readyset_model.select(sel_within).get_xray_structure()
-      #xrs = self.model.get_xray_structure()
-      #geometry = self.readyset_model.get_restraints_manager().select(sel_within).geometry
+      isel_ligand_within = self.readyset_model.select(sel_within).iselection(self.sel_str)
       #sel = flex.bool([True]*len(sel_within))
-      self._nb_overlaps = nbo.info(
-#        geometry_restraints_manager=geometry,
-        macro_molecule_selection=~sel_ligand_within, #TODO should be only ligand, not sel_within?
-        model = self.readyset_model.select(sel_within))
-#        sites_cart=xrs_within.sites_cart(),
-#        site_labels=xrs_within.scatterers().extract_labels(),
-#        hd_sel=xrs_within.hd_selection())
+      model_within = self.readyset_model.select(sel_within)
 
-    return self._nb_overlaps
+      processed_nbps = pnp.manager(model = model_within)
+      clashes = processed_nbps.get_clashes()
+      clashes_dict   = clashes._clashes_dict
 
+      ligand_clashes_dict = dict()
+      for iseq_tuple, record in clashes_dict.iteritems():
+        if (iseq_tuple[0] in isel_ligand_within or
+            iseq_tuple[1] in isel_ligand_within):
+          ligand_clashes_dict[iseq_tuple] = record
+
+      ligand_clashes = pnp.clashes(
+                      clashes_dict = ligand_clashes_dict,
+                      model        = model_within)
+
+      string_io = StringIO()
+      ligand_clashes.show(log=string_io, show_clashscore=False)
+      results = ligand_clashes.get_results()
+
+      self._overlaps = group_args(
+        n_clashes      = results.n_clashes,
+        clashscore     = results.clashscore,
+        n_clashes_sym  = results.n_clashes_sym,
+        clashscore_sym = results.clashscore_sym,
+        clashes_str    = string_io.getvalue(),
+        clashes_dict   = clashes._clashes_dict)
+
+    return self._overlaps

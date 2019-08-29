@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import sys
 
@@ -129,7 +129,7 @@ class Script(base_Script):
 
     # set things up
     if rank == 0:
-      if timing: print "SETUP START RANK=%d TIME=%f"%(rank,tt())
+      if timing: print("SETUP START RANK=%d TIME=%f"%(rank,tt()))
       self.initialize()
       self.validate()
       self.read_models()
@@ -144,33 +144,33 @@ class Script(base_Script):
                               miller_set=self.miller_set,
                               model = self.i_model,
                               params = self.params )
-      if timing: print "SETUP END RANK=%d TIME=%f"%(rank,tt())
+      if timing: print("SETUP END RANK=%d TIME=%f"%(rank,tt()))
 
     else:
-      if timing: print "SETUP START RANK=%d TIME=%f"%(rank,tt())
+      if timing: print("SETUP START RANK=%d TIME=%f"%(rank,tt()))
       transmitted_info = None
-      if timing: print "SETUP END RANK=%d TIME=%f"%(rank,tt())
+      if timing: print("SETUP END RANK=%d TIME=%f"%(rank,tt()))
 
-    if timing: print "BROADCAST START RANK=%d TIME=%f"%(rank,tt())
+    if timing: print("BROADCAST START RANK=%d TIME=%f"%(rank,tt()))
     transmitted_info = comm.bcast(transmitted_info, root = 0)
-    if timing: print "BROADCAST END RANK=%d TIME=%f"%(rank,tt())
+    if timing: print("BROADCAST END RANK=%d TIME=%f"%(rank,tt()))
 
     # now actually do the work
-    if timing: print "SCALER_WORKER_SETUP START RANK=%d TIME=%f"%(rank,tt())
+    if timing: print("SCALER_WORKER_SETUP START RANK=%d TIME=%f"%(rank,tt()))
     scaler_worker = self.scaler_class(transmitted_info["miller_set"],
                                        transmitted_info["model"],
                                        transmitted_info["params"],
                                        log = sys.stdout)
 
-    if timing: print "SCALER_WORKER_SETUP END RANK=%d TIME=%f"%(rank,tt())
+    if timing: print("SCALER_WORKER_SETUP END RANK=%d TIME=%f"%(rank,tt()))
     assert scaler_worker.params.backend == 'FS' # only option that makes sense
     from xfel.merging.database.merging_database_fs import manager2 as manager
     db_mgr = manager(scaler_worker.params)
 
     file_names = [transmitted_info["file_names"][i] for i in range(len(transmitted_info["file_names"])) if i%size == rank]
-    if timing: print "SCALER_WORKERS START RANK=%d TIME=%f"%(rank, tt())
+    if timing: print("SCALER_WORKERS START RANK=%d TIME=%f"%(rank, tt()))
     scaler_worker._scale_all_serial(file_names, db_mgr)
-    if timing: print "SCALER_WORKERS END RANK=%d TIME=%f"%(rank, tt())
+    if timing: print("SCALER_WORKERS END RANK=%d TIME=%f"%(rank, tt()))
     scaler_worker.finished_db_mgr = db_mgr
 
     # might want to clean up a bit before returning
@@ -180,31 +180,31 @@ class Script(base_Script):
     del scaler_worker.i_model
     del scaler_worker.reverse_lookup
 
-    if timing: print "SCALER_WORKERS_REDUCE START RANK=%d TIME=%f"%(rank, tt())
+    if timing: print("SCALER_WORKERS_REDUCE START RANK=%d TIME=%f"%(rank, tt()))
     scaler_workers = comm.reduce(scaler_worker, op=merge_op, root=0)
-    if timing: print "SCALER_WORKERS_REDUCE END RANK=%d TIME=%f"%(rank, tt())
+    if timing: print("SCALER_WORKERS_REDUCE END RANK=%d TIME=%f"%(rank, tt()))
 
     MPI.Finalize()
     if rank == 0:
-      if timing: print "SCALER_MASTER_ADD START RANK=%d TIME=%f"%(rank, tt())
+      if timing: print("SCALER_MASTER_ADD START RANK=%d TIME=%f"%(rank, tt()))
       scaler_master._add_all_frames(scaler_workers)
-      if timing: print "SCALER_MASTER_ADD END RANK=%d TIME=%f"%(rank, tt())
+      if timing: print("SCALER_MASTER_ADD END RANK=%d TIME=%f"%(rank, tt()))
 
       for call_instance in scaler_workers.finished_db_mgr.sequencer:
         if call_instance["call"] == "insert_frame":
-          if timing: print "SCALER_MASTER_INSERT_FRAME START RANK=%d TIME=%f"%(rank, tt())
+          if timing: print("SCALER_MASTER_INSERT_FRAME START RANK=%d TIME=%f"%(rank, tt()))
           frame_id_zero_base = scaler_master.master_db_mgr.insert_frame(**call_instance["data"])
-          if timing: print "SCALER_MASTER_INSERT_FRAME END RANK=%d TIME=%f"%(rank, tt())
+          if timing: print("SCALER_MASTER_INSERT_FRAME END RANK=%d TIME=%f"%(rank, tt()))
         elif call_instance["call"] == "insert_observation":
-          if timing: print "SCALER_MASTER_INSERT_OBS START RANK=%d TIME=%f"%(rank, tt())
+          if timing: print("SCALER_MASTER_INSERT_OBS START RANK=%d TIME=%f"%(rank, tt()))
           call_instance["data"]['frame_id_0_base'] = [frame_id_zero_base] * len(call_instance["data"]['frame_id_0_base'])
           scaler_master.master_db_mgr.insert_observation(**call_instance["data"])
-          if timing: print "SCALER_MASTER_INSERT_OBS END RANK=%d TIME=%f"%(rank, tt())
+          if timing: print("SCALER_MASTER_INSERT_OBS END RANK=%d TIME=%f"%(rank, tt()))
 
-      if timing: print "SCALER_MASTER_FINALISE START RANK=%d TIME=%f"%(rank, tt())
+      if timing: print("SCALER_MASTER_FINALISE START RANK=%d TIME=%f"%(rank, tt()))
       scaler_master.master_db_mgr.join() # database written, finalize the manager
       scaler_master.mpi_finalize()
-      if timing: print "SCALER_MASTER_FINALISE END RANK=%d TIME=%f"%(rank, tt())
+      if timing: print("SCALER_MASTER_FINALISE END RANK=%d TIME=%f"%(rank, tt()))
 
       return self.finalize(scaler_master)
 

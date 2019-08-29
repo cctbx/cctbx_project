@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 path_random_picks_pickle = (
   "/net/anaconda/scratch1/rwgk/pdbtools/minidb/random_picks.pickle")
 
-import sys, os, time, cPickle
+import sys, os, time
+from six.moves import cPickle as pickle
 
 def get_primes(n):
   n = abs(n)
@@ -41,7 +42,7 @@ def memory(grid, sizeof_FloatType = 8):
 
 def run_one(memlimit, package, iter, type_and_dir):
   f = open(path_random_picks_pickle, "r")
-  Records = cPickle.load(f)
+  Records = pickle.load(f)
   f.close()
   for idCode, data in Records.items():
     depDate, ucparams, resolution = data
@@ -52,7 +53,7 @@ def run_one(memlimit, package, iter, type_and_dir):
       os.system("tst3d %s %s %d %d %d %d" % (
        (package, type_and_dir) + tuple(grid) + (iter,)))
       t = time.time() - t0
-      print idCode, ucparams, resolution, grid, memuse, iter, t
+      print(idCode, ucparams, resolution, grid, memuse, iter, t)
       sys.stdout.flush()
 
 def run(type_and_dir, memlimit = 0):
@@ -60,7 +61,7 @@ def run(type_and_dir, memlimit = 0):
     for iter in (0, 1):
       t0 = time.time()
       run_one(memlimit, package, iter, type_and_dir)
-      print "Time %s %d:" % (package, iter), time.time() - t0
+      print("Time %s %d:" % (package, iter), time.time() - t0)
       sys.stdout.flush()
 
 if (__name__ == "__main__"):

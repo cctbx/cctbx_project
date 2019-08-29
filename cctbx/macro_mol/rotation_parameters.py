@@ -26,9 +26,10 @@ based on the FORTRAN program CONVROT:
 Revision history:
   2002 Jan: Created (Ralf W. Grosse-Kunstleve)
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import math, types
+from six.moves import range
 
 class matrix33(object):
   "Minimal class for the handling of (3x3) matrices."
@@ -61,12 +62,12 @@ class matrix33(object):
             + m[2] * (m[3] * m[7] - m[4] * m[6]))
 
 def degree_as_radians(angles):
-  if (type(angles) in (types.TupleType, types.ListType)):
+  if (type(angles) in (tuple, list)):
     return [a * math.pi / 180 for a in angles]
   return angles * math.pi / 180
 
 def degree_from_radians(angles):
-  if (type(angles) in (types.TupleType, types.ListType)):
+  if (type(angles) in (tuple, list)):
     return [a / math.pi * 180 for a in angles]
   return angles / math.pi * 180
 
@@ -101,13 +102,13 @@ class converter_base(object):
 
   def __init__(self, params = None, matrix = None, tolerance = 1.e-6):
     if ((params is None) == (matrix is None)):
-      raise ArgumentError, "Either parameters or matrix required."
+      raise ArgumentError("Either parameters or matrix required.")
     if (params is not None):
       self.params = params
       self.matrix = self.params_to_matrix(params, tolerance)
     else:
       if (abs(matrix.det()-1) > tolerance):
-        raise ValueError, "Determinant of matrix is not equal to 1."
+        raise ValueError("Determinant of matrix is not equal to 1.")
       self.matrix = matrix
       self.params = self.matrix_to_params(matrix, tolerance)
       self.params = self.normalize()
@@ -133,7 +134,7 @@ def amore_alpha_beta_gamma_from_matrix(matrix, tolerance = 1.e-6):
   c = [0,0,0]
   a = [0,0,0]
   if (abs(matrix(2,2)) > 1.0 + tolerance):
-    raise ValueError, "Corrupt matrix."
+    raise ValueError("Corrupt matrix.")
   c[1] = adjust_cosine(matrix(2,2))
   a[1]=math.acos(c[1])
   if (c[1] == 1.0):
@@ -163,8 +164,7 @@ def amore_kappa_l_m_n_as_matrix(params, tolerance = 1.e-6):
   c = params[1:4]
   sc2=c[0]*c[0]+c[1]*c[1]+c[2]*c[2]
   if (abs(sc2-1.0) > tolerance):
-    raise ValueError, \
-      "Corrupt direction cosines: the sum of their squares is not equal to 1."
+    raise ValueError("Corrupt direction cosines: the sum of their squares is not equal to 1.")
   c = [x / math.sqrt(sc2) for x in c]
   return matrix33((
       (1.-ck)*c[0]*c[0]+ck,
@@ -181,16 +181,16 @@ def amore_kappa_l_m_n_from_matrix(matrix, tolerance = 1.e-6):
   "Core routine for conversion of direction cosines."
   ck = (matrix.trace() - 1.) / 2.
   if (-1.-tolerance > ck > 1.+tolerance):
-    raise ValueError, "Corrupt matrix."
+    raise ValueError("Corrupt matrix.")
   if (ck >= 1.):
     return [0.,0.,0.,1.]
   if (ck < -1.): ck = -1.
   kappa = math.acos(ck)
   sk = math.sin(kappa)
-  c = [(matrix(i,i) - ck) / (1.-ck) for i in xrange(3)]
-  for i in xrange(3):
+  c = [(matrix(i,i) - ck) / (1.-ck) for i in range(3)]
+  for i in range(3):
     if (c[i] < -tolerance):
-      raise ValueError, "Corrupt matrix."
+      raise ValueError("Corrupt matrix.")
     if (c[i] <= 0.): c[i] = 0.
     else: c[i] = math.sqrt(c[i])
   # At this point the absolute values of the direction cosines
@@ -205,7 +205,7 @@ def amore_kappa_l_m_n_from_matrix(matrix, tolerance = 1.e-6):
   for f[0] in (1,-1):
     for f[1] in (1,-1):
       for f[2] in (1,-1):
-        fc = [f[i] * c[i] for i in xrange(3)]
+        fc = [f[i] * c[i] for i in range(3)]
         ok = 1
         sum_d2 = 0
         for i,j,k in ((0,1,2), (1,2,0), (2,0,1)):
@@ -219,7 +219,7 @@ def amore_kappa_l_m_n_from_matrix(matrix, tolerance = 1.e-6):
           best_fc = fc
           best_sum_d2 = sum_d2
   if (best_fc is None):
-    raise ValueError, "Corrupt matrix."
+    raise ValueError("Corrupt matrix.")
   return [degree_from_radians(kappa)] + best_fc
 
 def amore_kappa_l_m_n_normalize(kappa, l, m, n, alternative):
@@ -445,27 +445,27 @@ if (__name__ == "__main__"):
   import sys
 
   def cns_input(matrix):
-    print "rotman"
-    print "matrix=" + (("(%.10g %.10g %.10g)" * 3) % matrix.elems)
-    print "copy"
+    print("rotman")
+    print("matrix=" + (("(%.10g %.10g %.10g)" * 3) % matrix.elems))
+    print("copy")
     for label, conv in (("eule", cns_theta1_theta2_theta3),
                         ("latt", cns_theta_plus_theta2_theta_minus),
                         ("sphe", cns_psi_phi_kappa),
                         ("axis", cns_axis_x_axis_y_axis_z_axis_kappa)):
       if (label == "axis"): fmt = "%s=(%.10g %.10g %.10g) %.10g"
       else:                 fmt = "%s=(%.10g %.10g %.10g)"
-      print fmt % tuple([label] + conv(matrix=matrix).params)
-      print "? distance"
-      print fmt % tuple([label] + conv(matrix=matrix).normalize(1))
-      print "? distance"
-    print "end"
+      print(fmt % tuple([label] + conv(matrix=matrix).params))
+      print("? distance")
+      print(fmt % tuple([label] + conv(matrix=matrix).normalize(1)))
+      print("? distance")
+    print("end")
 
   def compare_lists(list1, list2):
-    for i in xrange(len(list1)):
+    for i in range(len(list1)):
       if (abs(list1[i] - list2[i]) > 1.e-5):
-        print (" %.5f %.5f %.5f\n" * 3) % tuple(list1)
-        print (" %.5f %.5f %.5f\n" * 3) % tuple(list2)
-        raise RuntimeError, "Matrix mismatch."
+        print((" %.5f %.5f %.5f\n" * 3) % tuple(list1))
+        print((" %.5f %.5f %.5f\n" * 3) % tuple(list2))
+        raise RuntimeError("Matrix mismatch.")
 
   def check_conversion(conv, matrix):
     if ("--CNS" in sys.argv[1:]):
@@ -475,41 +475,41 @@ if (__name__ == "__main__"):
     rot1 = conv(params = rot0.params)
     rot2 = conv(params = rot0.normalize(1))
     if ("-v" in sys.argv[1:]):
-      print "rot1", rot1.params
-      print "rot2", rot2.params
+      print("rot1", rot1.params)
+      print("rot2", rot2.params)
     compare_lists(rot0.matrix.elems, rot1.matrix.elems)
     compare_lists(rot0.matrix.elems, rot2.matrix.elems)
 
   def check_45deg_incr(conv):
-    for a1 in xrange(0, 361, 45):
-      for a2 in xrange(0, 361, 45):
-        for a3 in xrange(0, 361, 45):
+    for a1 in range(0, 361, 45):
+      for a2 in range(0, 361, 45):
+        for a3 in range(0, 361, 45):
           if ("-v" in sys.argv[1:]):
-            print "Angles:", a1, a2, a3
+            print("Angles:", a1, a2, a3)
           matrix = cns_theta1_theta2_theta3(params = (a1, a2, a3)).matrix
           try:
             check_conversion(conv, matrix)
-          except RuntimeError, e:
-            print e
-            print
+          except RuntimeError as e:
+            print(e)
+            print()
             return
 
   def random_angles():
     import random
     rng = random.random
-    return [rng() * 180 for i in xrange(3)]
+    return [rng() * 180 for i in range(3)]
 
   def run():
     for conv in get_converters():
       if (not "--CNS" in sys.argv[1:]):
-        print conv.__doc__
-      for trial in xrange(10):
+        print(conv.__doc__)
+      for trial in range(10):
         matrix = cns_theta1_theta2_theta3(params = random_angles()).matrix
         check_conversion(conv, matrix)
       if (not "--RandomOnly" in sys.argv[1:]):
         check_45deg_incr(conv)
       if ("--CNS" in sys.argv[1:]):
-        print "stop"
+        print("stop")
         break
 
   run()

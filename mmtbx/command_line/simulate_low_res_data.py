@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.phil
 import libtbx.load_env
 from libtbx.str_utils import make_header
@@ -10,6 +10,8 @@ import random
 import math
 import os
 import sys
+from six.moves import zip
+from six.moves import range
 
 master_phil = iotbx.phil.parse("""
 simulate_data {
@@ -146,7 +148,7 @@ def run(args, out=None):
   if (out is None):
     out = sys.stdout
   make_header("mmtbx.simulate_low_res_data", out=out)
-  print >> out, """
+  print("""
   For generation of realistic data (model-based, or using real
   high-resolution data) for methods development.
 
@@ -163,9 +165,9 @@ def run(args, out=None):
 
    mmtbx.simulate_low_res_data --help
      (print full parameters with additional info)
-"""
+""", file=out)
   if (len(args) == 0) or ("--help" in args):
-    print >> out, "# full parameters:"
+    print("# full parameters:", file=out)
     if ("--help" in args):
       master_phil.show(attributes_level=1)
     else :
@@ -193,7 +195,7 @@ def run(args, out=None):
       try :
         arg_phil = interpreter.process(arg=arg)
       except RuntimeError :
-        print >> out, "ignoring uninterpretable argument '%s'" % arg
+        print("ignoring uninterpretable argument '%s'" % arg, file=out)
       else :
         user_phil.append(arg_phil)
   working_phil = master_phil.fetch(sources=user_phil)
@@ -239,7 +241,7 @@ class prepare_data(object):
       f_raw, r_free = self.import_r_free_flags(f_raw)
     self.r_free = r_free
     make_header("Applying low-resolution filtering", out=sys.stdout)
-    print >> out, "  Target resolution: %.2f A" % params.d_min
+    print("  Target resolution: %.2f A" % params.d_min, file=out)
     self.n_residues, self.n_bases = None, None
     if (self.pdb_in is not None):
       self.n_residues, self.n_bases = get_counts(self.pdb_hierarchy)
@@ -261,16 +263,16 @@ class prepare_data(object):
       apply_sigma_noise(i_obs)
       self.f_out = i_obs.f_sq_as_f()
     make_header("Done processing", out=sys.stdout)
-    print >> out, "  Completeness after processing: %.2f%%" % (
-      self.f_out.completeness() * 100.)
-    print >> out, "  Final resolution: %.2f A" % self.f_out.d_min()
+    print("  Completeness after processing: %.2f%%" % (
+      self.f_out.completeness() * 100.), file=out)
+    print("  Final resolution: %.2f A" % self.f_out.d_min(), file=out)
     if (self.pdb_in is not None):
       iso_scale, aniso_scale = wilson_scaling(self.f_out, self.n_residues,
         self.n_bases)
-      print >> out, ""
-      print >> out, "  Scaling statistics for output data:"
+      print("", file=out)
+      print("  Scaling statistics for output data:", file=out)
       show_b_factor_info(iso_scale, aniso_scale, out=out)
-      print >> out, ""
+      print("", file=out)
     self.write_output()
 
   def write_output(self):
@@ -299,14 +301,14 @@ class prepare_data(object):
         base_name = os.path.splitext(os.path.basename(params.pdb_file))[0]
       params.output_file = base_name + "_low_res.mtz"
     mtz_object.write(file_name=params.output_file)
-    print >> out, "  Wrote %s" % params.output_file
+    print("  Wrote %s" % params.output_file, file=out)
     if (self.pdb_hierarchy is not None) and (params.write_modified_pdb):
       pdb_out = os.path.splitext(params.output_file)[0] + ".pdb"
       f = open(pdb_out, "w")
       f.write("%s\n" % "\n".join(self.pdb_in.input.crystallographic_section()))
       f.write(self.pdb_hierarchy.as_pdb_string())
       f.close()
-      print >> out, "  Wrote modified model to %s" % pdb_out
+      print("  Wrote modified model to %s" % pdb_out, file=out)
 
   def from_pdb(self):
     out = self.out
@@ -336,7 +338,7 @@ class prepare_data(object):
       unit_cell=apply_uc,
       space_group_info=apply_sg)
     if (params.modify_pdb.remove_waters):
-      print >> out, "  Removing solvent atoms..."
+      print("  Removing solvent atoms...", file=out)
       for model in pdb_hierarchy.models():
         for chain in model.chains():
           for residue_group in chain.residue_groups():
@@ -348,33 +350,33 @@ class prepare_data(object):
           if (len(chain.atoms()) == 0):
             model.remove_chain(chain=chain)
     if (params.modify_pdb.remove_alt_confs):
-      print >> out, "  Removing all alternate conformations and resetting occupancies..."
+      print("  Removing all alternate conformations and resetting occupancies...", file=out)
       from mmtbx import pdbtools
       pdbtools.remove_alt_confs(hierarchy=pdb_hierarchy)
     xray_structure = self.pdb_in.xray_structure_simple(
       crystal_symmetry=apply_symm)
-    sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
+    sctr_keys = xray_structure.scattering_type_registry().type_count_dict()
     hd_selection = xray_structure.hd_selection()
     if (not (("H" in sctr_keys) or ("D" in sctr_keys))):
-      print >> out, "  WARNING: this model does not contain hydrogen atoms!"
-      print >> out, "           strongly recommend running phenix.ready_set or"
-      print >> out, "           equivalent to ensure realistic simulated data."
-      print >> out, ""
+      print("  WARNING: this model does not contain hydrogen atoms!", file=out)
+      print("           strongly recommend running phenix.ready_set or", file=out)
+      print("           equivalent to ensure realistic simulated data.", file=out)
+      print("", file=out)
     if (params.modify_pdb.convert_to_isotropic):
       xray_structure.convert_to_isotropic()
     set_b = None
     if (params.modify_pdb.set_mean_b_iso is not None):
       assert (not params.modify_pdb.set_wilson_b)
-      print >> out, "  Scaling B-factors to have mean of %.2f" % \
-        params.modify_pdb.set_mean_b_iso
+      print("  Scaling B-factors to have mean of %.2f" % \
+        params.modify_pdb.set_mean_b_iso, file=out)
       assert (params.modify_pdb.set_mean_b_iso > 0)
       set_b = params.modify_pdb.set_mean_b_iso
     elif (params.modify_pdb.set_wilson_b):
-      print >> out, "  Scaling B-factors to match mean Wilson B for this resolution"
+      print("  Scaling B-factors to match mean Wilson B for this resolution", file=out)
       set_b = get_mean_statistic_for_resolution(
         d_min=params.d_min,
         stat_type="wilson_b")
-      print >> out, ""
+      print("", file=out)
     if (set_b is not None):
       u_iso = xray_structure.extract_u_iso_or_u_equiv()
       u_iso = u_iso.select(~hd_selection)
@@ -392,19 +394,19 @@ class prepare_data(object):
     fake_data = params.fake_data_from_fmodel
     fmodel_params.fmodel = fake_data.fmodel
     if (fmodel_params.fmodel.b_sol == 0):
-      print >> out, "  b_sol is zero - will use mean value for d_min +/- 0.2A"
-      print >> out, "   (this is not strongly correlated with resolution, but"
-      print >> out, "    it is preferrable to use a real value instead of leaving"
-      print >> out, "    it set to 0)"
+      print("  b_sol is zero - will use mean value for d_min +/- 0.2A", file=out)
+      print("   (this is not strongly correlated with resolution, but", file=out)
+      print("    it is preferrable to use a real value instead of leaving", file=out)
+      print("    it set to 0)", file=out)
       fmodel_params.fmodel.b_sol = 46.0
-      print >> out, ""
+      print("", file=out)
     if (fmodel_params.fmodel.k_sol == 0):
-      print >> out, "  k_sol is zero - will use mean value for d_min +/- 0.2A"
-      print >> out, "   (this is not strongly correlated with resolution, but"
-      print >> out, "    it is preferrable to use a real value instead of leaving"
-      print >> out, "     it set to 0)"
+      print("  k_sol is zero - will use mean value for d_min +/- 0.2A", file=out)
+      print("   (this is not strongly correlated with resolution, but", file=out)
+      print("    it is preferrable to use a real value instead of leaving", file=out)
+      print("     it set to 0)", file=out)
       fmodel_params.fmodel.k_sol = 0.35
-      print >> out, ""
+      print("", file=out)
     fmodel_params.structure_factors_accuracy = fake_data.structure_factors_accuracy
     fmodel_params.mask = fake_data.mask
     fmodel_params.r_free_flags_fraction = params.r_free_flags.fraction
@@ -430,18 +432,18 @@ class prepare_data(object):
       elif (array.is_xray_amplitude_array()):
         f_obs = array.map_to_asu()
         params.data_label = array.info().label_string()
-        print >> out, "  F-obs: %s" % params.data_label
+        print("  F-obs: %s" % params.data_label, file=out)
       elif (array.is_xray_intensity_array()):
         f_obs = array.f_sq_as_f().map_to_asu()
         params.data_label = array.info().label_string()
-        print >> out, "  I-obs: %s" % params.data_label
+        print("  I-obs: %s" % params.data_label, file=out)
       if (params.r_free_flags.label is not None):
         if (array.info().label_string() == params.r_free_flags.label):
           r_free = array.map_to_asu()
-          print >> out, "  R-free: %s" % array.info().label_string()
+          print("  R-free: %s" % array.info().label_string(), file=out)
       elif (array.info().label_string() in ["FreeR_flag", "FREE"]):
         r_free = array.map_to_asu()
-        print >> out, "  R-free: %s" % array.info().label_string()
+        print("  R-free: %s" % array.info().label_string(), file=out)
     f_obs = f_obs.resolution_filter(d_min=params.d_min)
     if (r_free is not None):
       r_free = r_free.common_set(f_obs)
@@ -462,18 +464,18 @@ class prepare_data(object):
       disable_suitability_test=False)
     r_free = r_free_raw.customized_copy(data=r_free_raw.data() == flag_value)
     r_free = r_free.map_to_asu().common_set(F)
-    print >> out, "  Using R-free flags from %s:%s" % (rfree_in.file_name,
-      r_free_raw.info().label_string())
+    print("  Using R-free flags from %s:%s" % (rfree_in.file_name,
+      r_free_raw.info().label_string()), file=out)
     if (F.data().size() != r_free.data().size()):
       n_missing = F.data().size() - r_free.data().size()
       assert (n_missing > 0)
       if (params.missing_flags == "discard"):
-        print >> out, "    discarding %d amplitudes without R-free flags" % \
-          n_missing
+        print("    discarding %d amplitudes without R-free flags" % \
+          n_missing, file=out)
         F = F.common_set(r_free)
       else :
-        print >> out, "    generating missing R-free flags for %d reflections" %\
-          n_missing
+        print("    generating missing R-free flags for %d reflections" %\
+          n_missing, file=out)
         missing_set = F.lone_set(r_free)
         missing_flags = missing_set.generate_r_free_flags(
           fraction=r_free.data().count(True) / r_free.data().size(),
@@ -488,41 +490,41 @@ class prepare_data(object):
     out = self.out
     from scitbx.array_family import flex
     if (params.truncate.add_b_iso is not None):
-      print >> out, "  Applying isotropic B-factor of %.2f A^2" % (
-        params.truncate.add_b_iso)
+      print("  Applying isotropic B-factor of %.2f A^2" % (
+        params.truncate.add_b_iso), file=out)
       F = F.apply_debye_waller_factors(
         b_iso=params.truncate.add_b_iso,
         apply_to_sigmas=params.truncate.apply_b_to_sigmas)
     if (params.truncate.add_b_aniso != [0,0,0,0,0,0]):
-      print >> out, "  Adding anisotropy..."
+      print("  Adding anisotropy...", file=out)
       F = F.apply_debye_waller_factors(
         b_cart=params.truncate.add_b_aniso,
         apply_to_sigmas=params.truncate.apply_b_to_sigmas)
     if (params.truncate.add_random_error_percent is not None):
-      print >> out, "  Adding random error as percent of amplitude..."
+      print("  Adding random error as percent of amplitude...", file=out)
       F = add_random_error(f_obs=F,
         error_percent=params.truncate.add_random_error_percent)
     if (params.truncate.remove_cone_around_axis is not None):
-      print >> out, "  Removing cone of data around axis of rotation..."
-      print >> out, "    radius = %.1f degrees" % \
-        params.truncate.remove_cone_around_axis
+      print("  Removing cone of data around axis of rotation...", file=out)
+      print("    radius = %.1f degrees" % \
+        params.truncate.remove_cone_around_axis, file=out)
       assert (params.truncate.axis_of_rotation is not None)
       n_hkl, delta_n_hkl = remove_cone_around_axis(
         array=F,
         axis=params.truncate.axis_of_rotation,
         cone_radius=params.truncate.remove_cone_around_axis)
-      print >> out, "    removed %d reflections (out of %d)" %(delta_n_hkl,
-        n_hkl)
+      print("    removed %d reflections (out of %d)" %(delta_n_hkl,
+        n_hkl), file=out)
     if (params.truncate.elliptical_truncation):
-      print >> out, "  Truncating the data elliptically..."
+      print("  Truncating the data elliptically...", file=out)
       target_completeness = params.truncate.ellipse_target_completeness
       completeness_start = F.completeness() * 100.0
       if (completeness_start < target_completeness):
-        print >> out, "    completeness is already less than target value:"
-        print >> out, "       %.2f versus %.2f"
-        print >> out, "    elliptical truncation will be skipped."
+        print("    completeness is already less than target value:", file=out)
+        print("       %.2f versus %.2f", file=out)
+        print("    elliptical truncation will be skipped.", file=out)
       else :
-        print >> out, "    using overall anisotropic B as a guide."
+        print("    using overall anisotropic B as a guide.", file=out)
         iso_scale, aniso_scale = wilson_scaling(
           F=F,
           n_residues=self.n_residues,
@@ -532,8 +534,8 @@ class prepare_data(object):
           b_cart=aniso_scale.b_cart,
           scale_factor=params.truncate.ellipse_scale,
           target_completeness=target_completeness)
-        print >> out, "    removed %d reflections (out of %d)" %(delta_n_hkl,
-          n_hkl)
+        print("    removed %d reflections (out of %d)" %(delta_n_hkl,
+          n_hkl), file=out)
     return F
 
 def get_counts(hierarchy):
@@ -560,12 +562,12 @@ def wilson_scaling(F, n_residues, n_bases):
 
 def show_b_factor_info(iso_scale, aniso_scale, out):
   b_cart = aniso_scale.b_cart
-  print >> out, "    overall isotropic B-factor:   %6.2f" % iso_scale.b_wilson
-  print >> out, "    overall anisotropic B-factor: %6.2f, %6.2f, %6.2f" % (
-    b_cart[0], b_cart[3], b_cart[4])
-  print >> out, "                                  %14.2f, %6.2f" % (
-    b_cart[1], b_cart[5])
-  print >> out, "                                  %22.2f" % b_cart[2]
+  print("    overall isotropic B-factor:   %6.2f" % iso_scale.b_wilson, file=out)
+  print("    overall anisotropic B-factor: %6.2f, %6.2f, %6.2f" % (
+    b_cart[0], b_cart[3], b_cart[4]), file=out)
+  print("                                  %14.2f, %6.2f" % (
+    b_cart[1], b_cart[5]), file=out)
+  print("                                  %22.2f" % b_cart[2], file=out)
 
 def add_random_error(f_obs, error_percent):
   from scitbx.array_family import flex
@@ -573,7 +575,7 @@ def add_random_error(f_obs, error_percent):
   data = f_obs.data()
   fr = F.data() * error_percent / 100.
   ri = flex.double()
-  for trial in xrange(data.size()):
+  for trial in range(data.size()):
     r = random.randint(0,1)
     if(r == 0): r = -1
     ri.append(r)
@@ -588,7 +590,7 @@ def elliptical_truncation(array,
   from scitbx.array_family import flex
   indices = array.indices()
   axis_index = -1
-  min_b_directional = sys.maxint
+  min_b_directional = sys.maxsize
   for n, b_index in enumerate(b_cart[0:3]):
     if (b_index < min_b_directional):
       min_b_directional = b_index
@@ -678,16 +680,16 @@ def get_mean_statistic_for_resolution(d_min, stat_type, range=0.2, out=None):
       if (d > (d_min - range)) and (d < (d_min + range)):
         values_for_range.append(v)
   h = flex.histogram(values_for_range, n_slots=10)
-  print >> out, "  %s for d_min = %.3f - %.3f A" % (stat_names[stat_type], d_min-range,
-    d_min+range)
+  print("  %s for d_min = %.3f - %.3f A" % (stat_names[stat_type], d_min-range,
+    d_min+range), file=out)
   min = flex.min(values_for_range)
   max = flex.max(values_for_range)
   mean = flex.mean(values_for_range)
-  print >> out, "    count: %d" % values_for_range.size()
-  print >> out, "    min: %.2f" % min
-  print >> out, "    max: %.2f" % max
-  print >> out, "    mean: %.2f" % mean
-  print >> out, "    histogram of values:"
+  print("    count: %d" % values_for_range.size(), file=out)
+  print("    min: %.2f" % min, file=out)
+  print("    max: %.2f" % max, file=out)
+  print("    mean: %.2f" % mean, file=out)
+  print("    histogram of values:", file=out)
   h.show(prefix="      ")
   return mean
 
@@ -736,13 +738,13 @@ class profile_sigma_generator(object):
     if (out is None):
       out = sys.stdout
     if (wilson_b is None) or (pdb_file is None):
-      print >> out, """\
+      print("""\
   WARNING: missing desired Wilson B-factor and/or PDB file
            for noise profile data.  Without this information
            the intensity falloff with resolution will probably
            not be the same for your synthetic data and the
            data used to generate sigmas.
-"""
+""", file=out)
     self._resolution_bins = []
     from iotbx.file_reader import any_file
     from scitbx.array_family import flex
@@ -762,7 +764,7 @@ class profile_sigma_generator(object):
       i_obs = f_obs.f_as_f_sq()
     assert (i_obs.sigmas() is not None)
     if (wilson_b is not None) and (pdb_file is not None):
-      print >> out, "  Correcting reference data intensity falloff..."
+      print("  Correcting reference data intensity falloff...", file=out)
       f_obs = i_obs.f_sq_as_f()
       pdb_hierarchy = any_file(pdb_file).file_object.hierarchy
       n_residues, n_bases = get_counts(pdb_hierarchy)
@@ -771,7 +773,7 @@ class profile_sigma_generator(object):
         n_residues=n_residues,
         n_bases=n_bases)
       # TODO anisotropic?
-      print >> out, "  Scaling statistics for unmodified reference data:"
+      print("  Scaling statistics for unmodified reference data:", file=out)
       show_b_factor_info(iso_scale, aniso_scale, out=out)
       delta_b = wilson_b - iso_scale.b_wilson
       f_obs = f_obs.apply_debye_waller_factors(b_iso=delta_b)

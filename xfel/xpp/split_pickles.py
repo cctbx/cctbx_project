@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from libtbx import easy_pickle
 from cctbx import miller # import dependency
@@ -32,7 +32,7 @@ for runroot in os.listdir("."):
       if os.path.splitext(picklename)[1] != ".pickle":
         continue
       picklepath = os.path.join(intpath, picklename)
-      print picklepath
+      print(picklepath)
       destpath_l = os.path.join(destroot_l, os.path.splitext(picklename)[0] + "_l.pickle")
       destpath_r = os.path.join(destroot_r, os.path.splitext(picklename)[0] + "_r.pickle")
       destpath_m = os.path.join(destroot_m, os.path.splitext(picklename)[0] + "_m.pickle")
@@ -41,7 +41,7 @@ for runroot in os.listdir("."):
       try:
         data = easy_pickle.load(picklepath)
       except Exception as e:
-        print "Pickle failed to load", picklepath
+        print("Pickle failed to load", picklepath)
         continue
       if not "fuller_kapton_absorption_correction" in data:
         continue
@@ -93,7 +93,7 @@ for runroot in os.listdir("."):
         sel_nomid.append(nomid_sel)
 
       if not all_good:
-        print "Weird one", picklepath
+        print("Weird one", picklepath)
         continue
 
       dl = {}

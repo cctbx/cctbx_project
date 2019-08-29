@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 import time
 import sys
@@ -32,7 +32,7 @@ def run(args, out=sys.stdout):
     out.write(pdb_hierarchy.as_pdb_string(crystal_symmetry=xray_structure))
   t2 = time.time()
   if (params.verbosity >= 1):
-    print >> sys.stderr, "total DSSP runtime: %.3fs" % (t2-t1)
+    print("total DSSP runtime: %.3fs" % (t2-t1), file=sys.stderr)
   return SS
 
 if (__name__ == "__main__"):

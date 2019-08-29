@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.ss_idealization
 
 from mmtbx.secondary_structure import build as ssb
@@ -24,8 +24,8 @@ def run(args):
   txt = model.model_as_pdb()
   with open(out_fname, 'w') as f:
     f.write(txt)
-  print "File saved: %s" % out_fname
-  print "All done."
+  print("File saved: %s" % out_fname)
+  print("All done.")
 
 if __name__ == "__main__" :
   run(sys.argv[1:])

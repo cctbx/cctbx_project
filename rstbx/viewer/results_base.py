@@ -1,9 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
 import re
 import os
+from functools import cmp_to_key
+from past.builtins import cmp
+from six.moves import zip
 
 class result(object):
   def __init__(self, dir_name):
@@ -99,13 +102,14 @@ def load_integration_results(dir_name, base_name, image_id=1):
     sol_id_, img_id_ = suffix.split("_")
     if (int(img_id_) != image_id):
       continue
-    print "integration file: %s" % file_path
+    print("integration file: %s" % file_path)
     result = easy_pickle.load(file_path)
     results.append(result)
     summary = get_integration_summary(result, int(sol_id_))
     summaries.append(summary)
   r_s = list(zip(results, summaries))
-  r_s_sorted = sorted(r_s, lambda x,y: cmp(y[1]['solution'], x[1]['solution']))
+  cmp_fn = lambda x,y: cmp(y[1]['solution'], x[1]['solution'])
+  r_s_sorted = sorted(r_s, key=cmp_to_key(cmp_fn))
   return [ r for r,s in r_s_sorted ], [ s for r, s in r_s_sorted ]
 
 class TableData(object):

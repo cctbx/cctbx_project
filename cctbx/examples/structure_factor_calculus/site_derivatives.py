@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import math
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
+from six.moves import range
 
 flex.set_random_seed(0)
 
@@ -46,7 +47,7 @@ class cos_alpha:
 def d_cos_alpha_d_site_finite(site, ops, hkl, eps=1.e-6):
   result = flex.double()
   site_eps = list(site)
-  for ip in xrange(3):
+  for ip in range(3):
     vs = []
     for signed_eps in [eps, -eps]:
       site_eps[ip] = site[ip] + signed_eps
@@ -59,7 +60,7 @@ def d_cos_alpha_d_site_finite(site, ops, hkl, eps=1.e-6):
 def d2_cos_alpha_d_site_finite(site, ops, hkl, eps=1.e-6):
   result = flex.double()
   site_eps = list(site)
-  for ip in xrange(3):
+  for ip in range(3):
     vs = []
     for signed_eps in [eps, -eps]:
       site_eps[ip] = site[ip] + signed_eps
@@ -75,25 +76,25 @@ def exercise(args):
     out = StringIO()
   else:
     out = sys.stdout
-  for i_trial in xrange(100):
+  for i_trial in range(100):
     ops = []
-    for i in xrange(3):
+    for i in range(3):
       ops.append(matrix.sqr(flex.random_double(size=9, factor=4)-2))
     site = matrix.col(flex.random_double(size=3, factor=4)-2)
     hkl = matrix.row(flex.random_double(size=3, factor=4)-2)
     ca = cos_alpha(site=site, ops=ops, hkl=hkl)
     grads_fin = d_cos_alpha_d_site_finite(site=site, ops=ops, hkl=hkl)
-    print >> out, "grads_fin:", list(grads_fin)
+    print("grads_fin:", list(grads_fin), file=out)
     grads_ana = ca.d_site()
-    print >> out, "grads_ana:", list(grads_ana)
+    print("grads_ana:", list(grads_ana), file=out)
     assert approx_equal(grads_ana, grads_fin)
     curvs_fin = d2_cos_alpha_d_site_finite(site=site, ops=ops, hkl=hkl)
-    print >> out, "curvs_fin:", list(curvs_fin)
+    print("curvs_fin:", list(curvs_fin), file=out)
     curvs_ana = ca.d2_site()
-    print >> out, "curvs_ana:", list(curvs_ana)
+    print("curvs_ana:", list(curvs_ana), file=out)
     assert approx_equal(curvs_ana, curvs_fin)
-    print >> out
-  print "OK"
+    print(file=out)
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

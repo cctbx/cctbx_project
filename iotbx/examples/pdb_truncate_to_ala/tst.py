@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import v0_getting_started
 import v1_loop_over_atoms
 import v2_simple
@@ -27,7 +27,7 @@ def run(args):
                v3_better,
                v4_with_bells_and_whistles]:
       vx.run(args=[file_name])
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

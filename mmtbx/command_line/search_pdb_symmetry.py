@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import iotbx.phil
 from libtbx.utils import Sorry, Usage
@@ -62,24 +62,24 @@ def run(args=(), params=None, out=sys.stdout):
     symm = crystal.symmetry(
       unit_cell=params.unit_cell,
       space_group_info=params.space_group)
-  print >> out, ""
-  print >> out, "Input symmetry:"
+  print("", file=out)
+  print("Input symmetry:", file=out)
   symm.show_summary()
   scores = pdb_symmetry.symmetry_search(db, symm, max_rmsd=params.max_rmsd)
   niggli_cell = symm.niggli_cell().unit_cell().parameters()
-  print >> out, ""
-  print >> out, "Top %d matches (sorted by RMSD):"
+  print("", file=out)
+  print("Top %d matches (sorted by RMSD):", file=out)
   results = []
   for scored in scores[:params.max_hits_to_display] :
-    print >> out, "%s (rmsd = %.3f, volume ratio = %.2f)" % \
-      (scored.entry.pdb_id, scored.rmsd, scored.volume_ratio)
-    print >> out, "    Unit cell: %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f" % \
-      scored.entry.crystal_symmetry.unit_cell().parameters()
-    print >> out, "  Niggli cell: %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f" % \
-      scored.entry.niggli_cell.unit_cell().parameters()
-    print >> out, "  Target cell: %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f" % \
-      niggli_cell
-    print >> out, ""
+    print("%s (rmsd = %.3f, volume ratio = %.2f)" % \
+      (scored.entry.pdb_id, scored.rmsd, scored.volume_ratio), file=out)
+    print("    Unit cell: %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f" % \
+      scored.entry.crystal_symmetry.unit_cell().parameters(), file=out)
+    print("  Niggli cell: %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f" % \
+      scored.entry.niggli_cell.unit_cell().parameters(), file=out)
+    print("  Target cell: %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f" % \
+      niggli_cell, file=out)
+    print("", file=out)
     results.append(group_args(
       pdb_id=scored.entry.pdb_id,
       rmsd=scored.rmsd,

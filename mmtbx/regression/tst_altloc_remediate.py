@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
+from six.moves import range
 
 pdbs = [
   # 0
@@ -505,34 +506,34 @@ def assert_lines(s1, s2):
     for l2 in generate_lines(s2):
       if l1==l2: break
     else:
-      print l1
-      print l2
+      print(l1)
+      print(l2)
       assert 0
 
 def run():
-  f=file("ALA_different.cif", "wb")
+  f=open("ALA_different.cif", "w")
   f.write(ala_cif)
   f.close()
   for i, (input_str, output_str) in enumerate(pdbs):
     if i==6: break
     preamble = "tst_altloc_specific_restraints_%02d" % i
-    print '-'*80
-    print input_str
-    print '-'*80
-    print output_str
-    print '-'*80
+    print('-'*80)
+    print(input_str)
+    print('-'*80)
+    print(output_str)
+    print('-'*80)
     for j in range(2):
-      f=file("%s.pdb" % preamble, "wb")
+      f=open("%s.pdb" % preamble, "w")
       f.write(input_str)
       f.close()
-      f=file("%s_%02d.params" % (preamble, j), "wb")
+      f=open("%s_%02d.params" % (preamble, j), "w")
       f.write(params[i][j])
       f.close()
       cmd = "phenix.pdb_interpretation %s %s" % ("%s.pdb" % preamble,
                                                  "%s_%02d.params" % (preamble,j),
         )
       cmd += " write_geo=1 cdl=0"
-      print "\n  ~> %s\n" % cmd
+      print("\n  ~> %s\n" % cmd)
       lines=StringIO()
       rc = easy_run.fully_buffered(cmd)
       rc.show_stdout(out=lines)
@@ -549,7 +550,7 @@ def run():
             break
         if not_finding:
           if line.find(not_finding)>-1:
-            print line
+            print(line)
             assert 0
       if finding is not None:
         if finding==True: pass
@@ -557,24 +558,24 @@ def run():
 
   for i, (input_str, output_str) in enumerate(pdbs):
     preamble = "tst_altloc_remediate_%02d" % i
-    print '-'*80
-    print input_str
-    print '-'*80
-    print output_str
-    print '-'*80
-    f=file("%s.pdb" % preamble, "wb")
+    print('-'*80)
+    print(input_str)
+    print('-'*80)
+    print(output_str)
+    print('-'*80)
+    f=open("%s.pdb" % preamble, "w")
     f.write(input_str)
     f.close()
     cmd = "mmtbx.altloc_remediate %s" % "%s.pdb" % preamble
-    print cmd
+    print(cmd)
     easy_run.call(cmd)
-    f=file("%s_correct.pdb" % preamble, "rb")
+    f=open("%s_correct.pdb" % preamble, "rb")
     lines = f.read()
     f.close()
-    print lines
-    print output_str
+    print(lines)
+    print(output_str)
     assert_lines(lines, output_str)
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   run()#sys.argv[1])

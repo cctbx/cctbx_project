@@ -1,5 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME iota.double_gauss_visualizer
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import logging
 import prime.iota.double_gauss as dg
 

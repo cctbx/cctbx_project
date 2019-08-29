@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from mmtbx import hydrogens
 from mmtbx import monomer_library
@@ -579,7 +579,7 @@ def exercise_00(debug=True):
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   for i, l in enumerate(loop):
-    if(debug): print "-"*70, i
+    if(debug): print("-"*70, i)
     ppf = monomer_library.pdb_interpretation.process(
       mon_lib_srv    = mon_lib_srv,
       ener_lib       = ener_lib,
@@ -594,13 +594,13 @@ def exercise_00(debug=True):
     sel = hydrogens.rotatable(pdb_hierarchy=ph, mon_lib_srv=mon_lib_srv,
       restraints_manager = restraints_manager, log=None)
     if(debug):
-      print
-      print sel
-      print l[2]
-      print l[0]
-      print "\n".join([a.format_atom_record() for a in ph.atoms()])
+      print()
+      print(sel)
+      print(l[2])
+      print(l[0])
+      print("\n".join([a.format_atom_record() for a in ph.atoms()]))
     ppf.all_chain_proxies.pdb_inp.write_pdb_file(file_name = "m%s.pdb"%str(i))
-    if(debug): print "-"*80
+    if(debug): print("-"*80)
     assert sel == l[2], "%s != %s" % (sel, l[2])
     assert hydrogens.count_rotatable(sel) == l[1]
 
@@ -676,5 +676,5 @@ if (__name__ == "__main__"):
   exercise_00()
   exercise_01()
   exercise_02()
-  print "Total time: %-8.4f"%(time.time()-t0)
-  print "OK"
+  print("Total time: %-8.4f"%(time.time()-t0))
+  print("OK")

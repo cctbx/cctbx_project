@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math
 import os
 import sys
@@ -7,6 +7,8 @@ import sys
 import iotbx.phil
 from scitbx.array_family import flex
 from scitbx import smoothing
+from six.moves import range
+from six.moves import zip
 
 def pyplot_label_axes(xlabel="Pixel column", ylabel="Intensity", fontsize=20):
   from matplotlib import pyplot
@@ -57,7 +59,7 @@ def run(args):
     assert work_params.fourier_filter_cutoff is not None
 
   for i, filename in enumerate(args):
-    print filename
+    print(filename)
     f = open(filename, 'rb')
     x, y = zip(*[line.split() for line in f.readlines() if not line.startswith("#")])
     x = flex.double(flex.std_string(x))
@@ -89,10 +91,10 @@ def run(args):
 
     filename = os.path.join(os.path.dirname(filename), "smoothed_spectrum.txt")
     f = open(filename, "wb")
-    print >> f, "\n".join(["%i %f" %(xi, yi)
-                           for xi, yi in zip(x, y_smoothed)])
+    print("\n".join(["%i %f" %(xi, yi)
+                           for xi, yi in zip(x, y_smoothed)]), file=f)
     f.close()
-    print "Smoothed spectrum written to %s" %filename
+    print("Smoothed spectrum written to %s" %filename)
 
     x_interp_size = x.size()
     for i, x_i in enumerate(reversed(x)):

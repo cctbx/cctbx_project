@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor
 from libtbx import Auto
@@ -7,6 +6,7 @@ from six.moves import cStringIO as StringIO
 import traceback
 import os
 import sys
+from six.moves import range
 
 _have_maxtasksperchild = (sys.version_info[:2] >= (2,7))
 

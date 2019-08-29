@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.dynamics import \
   kinetic_energy_as_temperature, \
   temperature_as_kinetic_energy
@@ -13,6 +13,7 @@ from libtbx.utils import Sorry
 from libtbx.str_utils import format_value, show_string
 from libtbx import group_args
 import os
+from six.moves import range
 op = os.path
 
 master_phil_str = """\
@@ -196,9 +197,9 @@ def run(fmodels, model, target_weights, params, log,
         =params.constrain_dihedrals_with_sigma_less_than,
       near_singular_hinges_angular_tolerance_deg
         =params.near_singular_hinges_angular_tolerance_deg)
-  print >> log, "tardy_tree summary:"
+  print("tardy_tree summary:", file=log)
   tt.show_summary(vertex_labels=labels, out=log, prefix="  ")
-  print >> log
+  print(file=log)
   log.flush()
   if (params.emulate_cartesian):
     reduced_geo_manager = None
@@ -255,7 +256,7 @@ def action(
   qd_e_kin_scales = tardy_model.assign_random_velocities()
   traj_dir = params.trajectory_directory
   if (traj_dir is not None):
-    print >> log, "Creating trajectory directory: %s" % show_string(traj_dir)
+    print("Creating trajectory directory: %s" % show_string(traj_dir), file=log)
     from libtbx.path import move_old_create_new_directory
     move_old_create_new_directory(path=traj_dir)
     from libtbx import easy_pickle
@@ -271,7 +272,7 @@ def action(
       easy_pickle.dump(
         file_name=op.join(traj_dir, "xray_structure"),
         obj=fmodel.xray_structure)
-    print >> log
+    print(file=log)
   cartesian_dof = sites_cart_start.size() * 3
   if   (params.temperature_degrees_of_freedom == "cartesian"):
     temperature_dof = cartesian_dof
@@ -286,26 +287,26 @@ def action(
   def t_as_e(t):
     return temperature_as_kinetic_energy(dof=temperature_dof, t=t)
   time_step_akma = params.time_step_pico_seconds / akma_time_as_pico_seconds
-  print >> log, "tardy dynamics:"
-  print >> log, "  number of bodies:", tardy_model.bodies_size()
+  print("tardy dynamics:", file=log)
+  print("  number of bodies:", tardy_model.bodies_size(), file=log)
   fmt = "%%%dd" % len(str(cartesian_dof))
-  print >> log, "  number of degrees of freedom:", \
-    fmt % tardy_model.degrees_of_freedom
-  print >> log, "           number of atoms * 3:", fmt % cartesian_dof
-  print >> log, "                         ratio: %.3f = 1/%.2f" % (
+  print("  number of degrees of freedom:", \
+    fmt % tardy_model.degrees_of_freedom, file=log)
+  print("           number of atoms * 3:", fmt % cartesian_dof, file=log)
+  print("                         ratio: %.3f = 1/%.2f" % (
     tardy_model.degrees_of_freedom / max(1, cartesian_dof),
-    cartesian_dof / max(1, tardy_model.degrees_of_freedom))
-  print >> log, "  temperature degrees of freedom: %s (%d)" % (
-    params.temperature_degrees_of_freedom, temperature_dof)
-  print >> log, "  kinetic energy sensitivity to generalized velocities:"
+    cartesian_dof / max(1, tardy_model.degrees_of_freedom)), file=log)
+  print("  temperature degrees of freedom: %s (%d)" % (
+    params.temperature_degrees_of_freedom, temperature_dof), file=log)
+  print("  kinetic energy sensitivity to generalized velocities:", file=log)
   qd_e_kin_scales.min_max_mean().show(out=log, prefix="    ")
-  print >> log, "  time step: %7.5f pico seconds" % (
-    params.time_step_pico_seconds)
-  print >> log, "  velocity scaling:", params.velocity_scaling
+  print("  time step: %7.5f pico seconds" % (
+    params.time_step_pico_seconds), file=log)
+  print("  velocity scaling:", params.velocity_scaling, file=log)
   allowed_origin_shifts_need_to_be_suppressed = tardy_model.potential_obj \
     .allowed_origin_shifts_need_to_be_suppressed
-  print >> log, "  suppressing allowed origin shifts:", \
-    allowed_origin_shifts_need_to_be_suppressed
+  print("  suppressing allowed origin shifts:", \
+    allowed_origin_shifts_need_to_be_suppressed, file=log)
   log.flush()
   if (callback is not None):
     if (callback(
@@ -342,7 +343,7 @@ def action(
     den_update_interval = (50 *params.number_of_cooling_steps /
         (params.start_temperature_kelvin - params.final_temperature_kelvin))
     den_update_interval = int(round(den_update_interval))
-  for i_cool_step in xrange(params.number_of_cooling_steps+1):
+  for i_cool_step in range(params.number_of_cooling_steps+1):
     if (params.number_of_cooling_steps == 0):
       if (   params.start_temperature_kelvin
           != params.final_temperature_kelvin):
@@ -357,42 +358,42 @@ def action(
       if (tardy_model.potential_obj.reduced_geo_manager. \
           den_manager is not None) and \
          i_cool_step > 0 and not (i_cool_step)%den_update_interval:
-        print >> log, "   update DEN eq distances at step %d, temp=%.1f" % \
-          ( (n_time_steps), t_target)
+        print("   update DEN eq distances at step %d, temp=%.1f" % \
+          ( (n_time_steps), t_target), file=log)
         tardy_model.potential_obj.reduced_geo_manager. \
           den_manager.update_eq_distances(
             sites_cart=tardy_model.sites_moved())
     e_kin_target = t_as_e(t=t_target)
     def reset_e_kin(msg):
       tardy_model.reset_e_kin(e_kin_target=e_kin_target)
-      print >> log, "  %s temperature: %8.2f K" % (
-        msg, e_as_t(e=tardy_model.e_kin()))
+      print("  %s temperature: %8.2f K" % (
+        msg, e_as_t(e=tardy_model.e_kin())), file=log)
       log.flush()
       return True
     if (   n_time_steps == 0
         or params.number_of_time_steps > 1):
       show_column_headings = reset_e_kin("new target")
-    for i_time_step in xrange(params.number_of_time_steps):
+    for i_time_step in range(params.number_of_time_steps):
       assert params.temperature_cap_factor > 1.0
       assert params.excessive_temperature_factor > params.temperature_cap_factor
       if (tardy_model.e_kin() > e_kin_target * params.temperature_cap_factor):
-        print >> log, "  system temperature is too high:"
+        print("  system temperature is too high:", file=log)
         if (tardy_model.e_kin()
               > e_kin_target * params.excessive_temperature_factor):
-          print >> log, "    excessive_temperature_factor: %.6g" % \
-            params.excessive_temperature_factor
-          print >> log, "    excessive temperature limit: %.2f K" % (
-            t_target * params.excessive_temperature_factor)
-          print >> log, "    time_step_pico_seconds: %.6g" % (
-            params.time_step_pico_seconds)
+          print("    excessive_temperature_factor: %.6g" % \
+            params.excessive_temperature_factor, file=log)
+          print("    excessive temperature limit: %.2f K" % (
+            t_target * params.excessive_temperature_factor), file=log)
+          print("    time_step_pico_seconds: %.6g" % (
+            params.time_step_pico_seconds), file=log)
           log.flush()
           raise Sorry(
             "Excessive system temperature in torsion angle dynamics:\n"
             "  Please try again with a smaller time_step_pico_seconds.")
-        print >> log, "     temperature_cap_factor: %.6g" % \
-          params.temperature_cap_factor
-        print >> log, "     temperature cap: %.2f K" % (
-          t_target * params.temperature_cap_factor)
+        print("     temperature_cap_factor: %.6g" % \
+          params.temperature_cap_factor, file=log)
+        print("     temperature cap: %.2f K" % (
+          t_target * params.temperature_cap_factor), file=log)
         show_column_headings = reset_e_kin("resetting")
       e_kin_before, e_tot_before = tardy_model.e_kin(), tardy_model.e_tot()
       tardy_model.dynamics_step(delta_t=time_step_akma)
@@ -416,12 +417,12 @@ def action(
         if(n_time_steps==1 or not n_time_steps%25):
           fmtr = "   step=%s temperature=%s rmsd=%s r_work=%s r_free=%s"
           rmsd = rmsd_calculator(tardy_model.sites_moved(), sites_cart_start)
-          print >> log, fmtr%(
+          print(fmtr%(
             format_value("%5d", n_time_steps),
             format_value("%7.1f", e_as_t(e=tardy_model.e_kin())),
             format_value("%6.4f", rmsd),
             format_value("%6.4f", fmodel.r_work()),
-            format_value("%6.4f", fmodel.r_free()))
+            format_value("%6.4f", fmodel.r_free())), file=log)
           if hasattr(refinement_callback, "__call__"):
             refinement_callback(fmodel) # for phenix.refine GUI
       else:
@@ -431,7 +432,7 @@ def action(
             coordinate                   fluctuations        gradient rms
     step      rmsd        temp        temp   e_total     geo %    7s   total
 """ % grms.real_or_xray)
-        print >> log, "    %4d  %8.4f A  %8.2f K  %8.2f K  %s" \
+        print("    %4d  %8.4f A  %8.2f K  %8.2f K  %s" \
           "  %6.2f  %6.2f  %6.2f" % (
             n_time_steps,
             rmsd_calculator(tardy_model.sites_moved(), sites_cart_start),
@@ -440,28 +441,26 @@ def action(
             format_value(format="%6.3f", value=fluct_e_tot),
             grms.geo,
             getattr(grms, grms.real_or_xray),
-            grms.total)
+            grms.total), file=log)
       log.flush()
       if (callback is not None):
         if (callback() == False): return
   if (allowed_origin_shifts_need_to_be_suppressed):
-    print >> log, \
-      "  allowed origin shift velocity corrections applied (magnitudes):"
+    print("  allowed origin shift velocity corrections applied (magnitudes):", file=log)
     allowed_origin_shift_velocity_corrections.min_max_mean().show(
       out=log, prefix="    ")
-    print >> log, \
-      "  sum of allowed origin shift velocity corrections (vectors):"
-    print >> log, "   ", numstr(
+    print("  sum of allowed origin shift velocity corrections (vectors):", file=log)
+    print("   ", numstr(
       values=sum_of_allowed_origin_shift_velocity_corrections[0].elems,
       fmt="%.5f",
-      brackets=("(",")"))
+      brackets=("(",")")), file=log)
   if (   params.minimization_max_iterations is None
       or params.minimization_max_iterations > 0):
-    print >> log, "tardy gradient-driven minimization:"
+    print("tardy gradient-driven minimization:", file=log)
     log.flush()
     def show_rms(minimizer=None):
-      print >> log, "  coor. rmsd: %8.4f" % (
-        rmsd_calculator(tardy_model.sites_moved(), sites_cart_start))
+      print("  coor. rmsd: %8.4f" % (
+        rmsd_calculator(tardy_model.sites_moved(), sites_cart_start)), file=log)
       log.flush()
       if (callback is not None):
         if (callback() == False): raise StopIteration
@@ -471,10 +470,10 @@ def action(
         callback_after_step=show_rms)
     except StopIteration:
       return
-    print >> log, "After tardy minimization:"
+    print("After tardy minimization:", file=log)
     show_rms()
-    print >> log, "  number of function evaluations:", \
-      refinery.function_evaluations_total
-    print >> log, "  number of lbfgs steps:", refinery.lbfgs_steps_total
-    print >> log, "  number of lbfgs restarts:", refinery.lbfgs_restarts
-    print >> log
+    print("  number of function evaluations:", \
+      refinery.function_evaluations_total, file=log)
+    print("  number of lbfgs steps:", refinery.lbfgs_steps_total, file=log)
+    print("  number of lbfgs restarts:", refinery.lbfgs_restarts, file=log)
+    print(file=log)

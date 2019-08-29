@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import copy
 
 from scitbx.math import dihedral_angle
@@ -10,6 +10,7 @@ from mmtbx.conformation_dependent_library.cdl_utils import \
 from mmtbx.conformation_dependent_library.cdl_setup import columns
 
 from cctbx.geometry_restraints.linking_class import linking_class
+from six.moves import range
 origin_ids = linking_class()
 
 class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
@@ -40,7 +41,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
     else: del omegas[1]
     def _is_cis(angle):
       return self._define_omega_a_la_duke_using_limit(angle, limit=limit)=='cis'
-    if filter(_is_cis, omegas): return True
+    if list(filter(_is_cis, omegas)): return True
     return False
 
   def get_omega_value(self,
@@ -80,10 +81,10 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
       backbone_i_minus_1, junk = get_c_ca_n(self[0], return_subset=True)
       assert len(backbone_i_minus_1)==self.length
     backbone_i, junk = get_c_ca_n(self[1], return_subset=True)
-    if verbose: print backbone_i
+    if verbose: print(backbone_i)
     if None in backbone_i: return None
     backbone_i_plus_1, junk = get_c_ca_n(self[2], return_subset=True)
-    if verbose: print backbone_i_plus_1, junk
+    if verbose: print(backbone_i_plus_1, junk)
     if None in backbone_i_plus_1: return None
     assert len(backbone_i)==self.length
     assert len(backbone_i_plus_1)==self.length
@@ -109,7 +110,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
       ]
     atoms = [phi_atoms, psi_atoms]
     if verbose:
-      print atoms
+      print(atoms)
     if not only_psi_phi_pairs:
       if self.start:
         psi_atoms = [
@@ -129,9 +130,9 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
         atoms.append(phi_atoms)
     if 0:
       for dihedral in atoms:
-        print '-'*80
+        print('-'*80)
         for atom in dihedral:
-          print atom.quote()
+          print(atom.quote())
     return atoms
 
   def get_phi_psi_angles(self,
@@ -152,7 +153,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
       dihedrals.append(phi_or_psi)
     if verbose:
       for phi_or_psi in dihedrals:
-        print 'phi_or_psi',phi_or_psi
+        print('phi_or_psi',phi_or_psi)
     return dihedrals
 
   def get_cdl_key(self,
@@ -196,7 +197,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
     ####################
     if not average:
       if restraint_values[0]=="I":
-        print restraint_values
+        print(restraint_values)
         assert 0
         return
     atoms = self.get_i_seqs()
@@ -236,13 +237,13 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
 
   Check:%s""" % outl)
         if verbose:
-          print " i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
+          print(" i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
             angle_proxy.i_seqs,
             angle_proxy.angle_ideal,
             angle_proxy.weight,
             restraint_values[i],
             1/restraint_values[i+1]**2,
-            )
+            ))
         names.sort()
         self.registry[tuple(names)] = restraint_values[i]
         if ideal: angle_proxy.angle_ideal = restraint_values[i]
@@ -259,13 +260,13 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
             )
           raise Sorry(outl)
         if verbose:
-          print " i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
+          print(" i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
             names,
             bond.distance_ideal,
             bond.weight,
             restraint_values[i],
             1/restraint_values[i+1]**2,
-            )
+            ))
         names.sort()
         self.registry[tuple(names)] = restraint_values[i]
         #print "BOND", 1/restraint_values[i+1]**2/bond.weight,1/restraint_values[i+1]**2, bond.weight
@@ -276,10 +277,13 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
         assert 0
     # adjust X-N-H angles to obtain planar
     nh_atoms = {}
+    error_atoms = []
     for atom in self[0].atoms():
+      error_atoms.append('%s\n' %atom.quote())
       if atom.name.strip() in ['C']:
         nh_atoms[atom.name.strip()] = atom
     for atom in self[1].atoms():
+      error_atoms.append('%s\n' %atom.quote())
       if atom.name.strip() in ['N', 'H', 'CA']:
         nh_atoms[atom.name.strip()] = atom
     if len(nh_atoms)==4:
@@ -294,8 +298,10 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
 
   This is unlikely.
 
-  However, to persist, set cdl=False.
-                    ''')
+  However, to proceed, set cdl=False.
+
+%s
+                    ''' % ''.join(error_atoms))
       total = CNCA.angle_ideal + CNH.angle_ideal + CANH.angle_ideal
       diff = (total-360)/2
       CNH.angle_ideal-=diff
@@ -304,11 +310,10 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
 
   def apply_average_updates(self, averages, verbose=False):
     if verbose:
-      print averages
-      print averages.n
+      print(averages)
+      print(averages.n)
     if not averages.n: return
-    keys = averages.n.keys()
-    for key in keys:
+    for key in list(averages.n.keys()):
       if len(key)==2:
         bond=self.bond_params_table.lookup(*key)
         bond.distance_ideal = averages[key]/averages.n[key]

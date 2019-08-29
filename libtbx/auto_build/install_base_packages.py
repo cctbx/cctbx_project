@@ -210,6 +210,12 @@ class installer(object):
     if self.python3: python_executable = 'python3'
     self.wxpython4 = options.wxpython4 # or self.python3 # Python3 should imply wxpython4, but
                                                          # wait until we can actually build it
+    if (not self.wxpython4 and
+        self.flag_is_mac and
+        get_os_version().startswith('10.') and
+        int(get_os_version().split('.')[1]) >= 14):
+      print("Setting wxpython4=True as Mac OS X version >= 10.14", file=self.log)
+      self.wxpython4 = True
     if os.path.exists(os.path.join(self.build_dir, 'base', 'bin', python_executable)):
       self.python_exe = os.path.join(self.build_dir, 'base', 'bin', python_executable)
     elif options.with_python:
@@ -793,6 +799,8 @@ Installation of Python packages may fail.
 
     if self.flag_is_mac and not op.exists('/usr/include/zlib.h'):
       print("zlib.h missing -- try running 'xcode-select --install' first", file=self.log)
+      if get_os_version().startswith('10.') and int(get_os_version().split('.')[1]) >= 14:
+        print("followed by 'sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -target /", file=self.log)
       sys.exit(1)
     log = self.start_building_package("Python")
     os.chdir(self.tmp_dir)

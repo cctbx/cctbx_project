@@ -3,10 +3,29 @@ from __future__ import absolute_import, division, print_function
 
 from builtins import object
 
+import sys
 import weakref
 from types import MethodType
+import six
 
-class injector:
+
+class meta_injector(type):
+
+  def __init__(cls, name, bases, namespace, **kwds):
+    for target_class in bases[1:]:
+      for name, attribute in namespace.items():
+        if name in ('__module__', '__doc__'):
+          continue
+        if sys.hexversion >= 0x03000000:
+          if name in ('__qualname__',):
+            continue
+        assert not hasattr(target_class, name), (
+          "class %s already has attribute '%s'"
+          % (target_class.__name__, name))
+        setattr(target_class, name, attribute)
+
+
+class injector(six.with_metaclass(meta_injector)):
   """ Injection of new methods into an existing class
 
   * synopsis *
@@ -39,15 +58,6 @@ class injector:
 
   A bit of metaclass trickery results in a cleaner syntax.
   """
-  class __metaclass__(type):
-    def __init__(cls, classname, bases, classdict):
-      for target_class in bases[1:]:
-        for name, attribute in classdict.items():
-          if name in ('__module__', '__doc__'): continue
-          assert not hasattr(target_class, name), (
-            "class %s already has attribute '%s'"
-            % (target_class.__name__, name))
-          setattr(target_class, name, attribute)
 
 
 class memoize(object):
@@ -106,7 +116,7 @@ class null(object):
   def __getattr__(self, a): return self
   def __setattr__(self, a, v): return self
   def __delattr__(self, a): return self
-
+  def __getnewargs__(self):  return () # allow for pickling during multiprocessing
   def __call__(self, *args, **kwds): return self
 
   def __getitem__(self, i): return self

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 #!/usr/bin/python
 # remediator.py - version 1.61.110622 6/22/11
 # Copyright 2007-2011, Jeffrey J. Headd and Robert Immormino
@@ -88,8 +88,8 @@ def pre_screen_file(filename, atom_exch, alt_atom_exch):
         res_count += 1
       entry = line[12:20]
       clean_entry = entry[0:4] + " " + entry[5:8]
-      if atom_exch.has_key(clean_entry):
-        if alt_atom_exch.has_key(clean_entry):
+      if clean_entry in atom_exch:
+        if clean_entry in alt_atom_exch:
           pass
         else:
           count += 1
@@ -193,7 +193,7 @@ def remediate(filename, atom_exch, remediated_out, remark4, f=None):
       previous = current
       current = line[18:26]
       clean_entry = entry[0:4] + " " + entry[5:8]
-      if atom_exch.has_key(clean_entry):
+      if clean_entry in atom_exch:
         line = line.replace(clean_entry[0:4],atom_exch[clean_entry][0:4],1)
     elif (remark_flag == False) and (remark_block == True): #deal with non-remark lines stuck in the top before main record types
       print_line += remark4 + "\n"
@@ -220,7 +220,7 @@ def remediate(filename, atom_exch, remediated_out, remark4, f=None):
           if re.search('1H   '+res,print_line) or re.search('2H   '+res,print_line):
             print_line = re.sub(' HN2 '+res,'2H   '+res,print_line)
       print_line=print_line.rstrip("\n")
-      print >> f, print_line
+      print(print_line, file=f)
       print_line = line + "\n"
   pdb_file.close()
 
@@ -242,7 +242,7 @@ def remediate(filename, atom_exch, remediated_out, remark4, f=None):
           print_line = re.sub(' HN2 '+res,'2H   '+res,print_line)
 
   print_line=print_line.rstrip("\n")
-  print >> f, print_line
+  print(print_line, file=f)
 #}}}
 
 def remediator(params, log=None):
@@ -281,6 +281,6 @@ def remediator(params, log=None):
       f.close()
   else:
     if remediated_out:
-      print >> log, "All atoms conform to PDB v3.x standard  **skipping**"
+      print("All atoms conform to PDB v3.x standard  **skipping**", file=log)
     else:
-      print >> log, "All atoms conform to PDB v2.3 standard  **skipping**"
+      print("All atoms conform to PDB v2.3 standard  **skipping**", file=log)

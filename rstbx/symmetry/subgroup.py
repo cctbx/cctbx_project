@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import cPickle as pickle
 from libtbx import adopt_init_args
 from cctbx.sgtbx import subgroups
@@ -10,6 +10,7 @@ from cctbx import sgtbx
 from rstbx.symmetry.sgtbx_adaptor import get_patterson_group
 from cctbx.sgtbx.lattice_symmetry import metric_supergroup,metric_subgroups as base_subgroups
 from cctbx.sgtbx import bravais_types,change_of_basis_op
+from six.moves import zip
 find_max_delta = sgtbx.lattice_symmetry_find_max_delta
 
 #For LABELIT, the derive from the iotbx subgroup list such that the

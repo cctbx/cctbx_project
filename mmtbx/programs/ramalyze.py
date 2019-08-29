@@ -1,8 +1,9 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 from mmtbx.validation.ramalyze import ramalyze
 from libtbx.program_template import ProgramTemplate
+from six.moves import range
 try:
   from phenix.program_template import ProgramTemplate
 except ImportError:
@@ -110,7 +111,7 @@ Example:
     if self.params.wxplot :
       try :
         import wxtbx.app
-      except ImportError, e :
+      except ImportError as e :
         raise Sorry("wxPython not available.")
       else :
         app = wxtbx.app.CCTBXApp(0)

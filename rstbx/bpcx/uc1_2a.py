@@ -1,4 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import zip
+from six.moves import map
 #!/usr/bin/env cctbx.python
 #
 # Use case 1.2A - going back to the use case for predictions and making sure that
@@ -56,8 +58,8 @@ def import_xds_integrate_hkl(xds_integrate_hkl_file, phi_range):
 
         values = record.split()
 
-        hkl = map(int, values[:3])
-        xyz = map(float, values[5:8])
+        hkl = list(map(int, values[:3]))
+        xyz = list(map(float, values[5:8]))
 
         xyz_mod = (xyz[0] * px, xyz[1] * py,
                    (xyz[2] - frame0) * dphi + phi0)
@@ -161,7 +163,7 @@ def regenerate_predictions_brute(xds_integrate_hkl_file, phi_range):
             continue
 
         xyz = (x, y, angle / d2r)
-        xyz_to_hkl[xyz] = map(int, hkl)
+        xyz_to_hkl[xyz] = list(map(int, hkl))
 
     return xyz_to_hkl
 
@@ -249,7 +251,7 @@ def regenerate_predictions_reeke(xds_integrate_hkl_file, phi_range):
             continue
 
         xyz = (x, y, angle / d2r)
-        xyz_to_hkl[xyz] = map(int, hkl)
+        xyz_to_hkl[xyz] = list(map(int, hkl))
 
     return xyz_to_hkl
 
@@ -327,30 +329,30 @@ def work():
 
     xyz_to_hkl_xds = import_xds_integrate_hkl(integrate_hkl, phi_range)
 
-    print 'XDS:', ranges(xyz_to_hkl_xds)
+    print('XDS:', ranges(xyz_to_hkl_xds))
 
     xyz_to_hkl = regenerate_predictions_brute(integrate_hkl, phi_range)
 
-    print 'Brute:', ranges(xyz_to_hkl)
+    print('Brute:', ranges(xyz_to_hkl))
 
     n_correct, n_wrong = compare(xyz_to_hkl, xyz_to_hkl_xds)
-    print n_correct, n_wrong
+    print(n_correct, n_wrong)
     # assert(float(n_correct) / float(n_correct + n_wrong) > 0.999)
-    print 'OK'
+    print('OK')
 
     try:
         from dials.algorithms.refinement.prediction.reeke import reeke_model
         xyz_to_hkl = regenerate_predictions_reeke(integrate_hkl, phi_range)
 
-        print 'Reeke:', ranges(xyz_to_hkl)
+        print('Reeke:', ranges(xyz_to_hkl))
 
         n_correct, n_wrong = compare(xyz_to_hkl, xyz_to_hkl_xds)
-        print n_correct, n_wrong
+        print(n_correct, n_wrong)
         # assert(float(n_correct) / float(n_correct + n_wrong) > 0.999)
 
-        print 'OK'
+        print('OK')
     except ImportError as e:
-        print "Test of the Reeke algorithm requires DIALS."
+        print("Test of the Reeke algorithm requires DIALS.")
 
 if __name__ == '__main__':
     work()

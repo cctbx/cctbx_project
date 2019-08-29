@@ -12,7 +12,7 @@
 #
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_statistics
 #
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from libtbx.phil import parse
 import libtbx.load_env
@@ -60,8 +60,8 @@ class Script(object):
     if params.tag is None:
       raise Usage(self.parser.usage)
 
-    level_json = "%s_%d_refined_experiments_level%d.json"
-    level_pickle = "%s_%d_refined_reflections_level%d.pickle"
+    level_json = "%s_%d_refined_level%d.expt"
+    level_pickle = "%s_%d_refined_level%d.refl"
 
     command = "cspad.detector_congruence %s %s %s %s hierarchy_level=%d show_plots=False"
 
@@ -78,10 +78,10 @@ class Script(object):
                    level_pickle%(params.tag, 2, i),
                    i)
 
-      print "*"*80
-      print "Showing statistics for detector at level %d (%s)"%(i, help_strs[i])
-      print "*"*80
-      print c
+      print("*"*80)
+      print("Showing statistics for detector at level %d (%s)"%(i, help_strs[i]))
+      print("*"*80)
+      print(c)
       result = easy_run.fully_buffered(c).raise_if_errors()
       result.show_stdout()
 

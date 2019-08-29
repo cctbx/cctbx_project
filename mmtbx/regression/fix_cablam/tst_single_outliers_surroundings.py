@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import iotbx.pdb
 import mmtbx.model
@@ -251,7 +251,7 @@ def exercise_yes_sidechains(prefix="tst_single_outliers_sur_yes_sidechains"):
 
 if __name__ == '__main__':
   if (not libtbx.env.has_module(name="probe")):
-    print "Skipping: probe not configured"
+    print("Skipping: probe not configured")
   else:
     exercise_no_sidechains()
     exercise_yes_sidechains()

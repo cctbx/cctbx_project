@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation.molprobity import mp_geo
 from iotbx import pdb
 import time
@@ -163,7 +163,7 @@ def exercise_mp_geo():
           'out_file=mp_geo.out',
           'rna_backbone=True']
   mp_geo.run(args)
-  f = file('mp_geo.out', 'rb')
+  f = open('mp_geo.out', 'rb')
   lines = [i.rstrip('\n\r') for i in f.readlines()]
   assert lines[0] == \
     ' :1: B: 115: : :  C:__?__:178.072:55.525:76.414:-158.236:-67.172'
@@ -177,4 +177,4 @@ def exercise_mp_geo():
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_mp_geo()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

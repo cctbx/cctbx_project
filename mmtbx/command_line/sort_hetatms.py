@@ -3,13 +3,16 @@
 # TODO sort waters by distance from macromolecule
 # FIXME special treatment required for carbohydrates?
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, Usage, null_out
 from libtbx import adopt_init_args
 from libtbx import runtime_utils
 import libtbx.phil
 import os
 import sys
+from functools import cmp_to_key
+from past.builtins import cmp
+from six.moves import zip
 
 sorting_params_str = """
 preserve_chain_id = False
@@ -151,7 +154,7 @@ def sort_hetatms(
     else :
       hetatm_chains.append(chain)
   if (len(hetatm_chains) == 0):
-    print >> log, "No heteroatoms - hierarchy will not be modified."
+    print("No heteroatoms - hierarchy will not be modified.", file=log)
     if (return_pdb_hierarchy):
       return pdb_hierarchy
     else :
@@ -172,7 +175,7 @@ def sort_hetatms(
     new_model.append_chain(chain.detached_copy())
     new_hetatm_chains.append(pdb.hierarchy.chain(id=chain.id))
     if (params.preserve_chain_id) and (chain.id in new_hetatm_chain_ids):
-      print >> log, "Warning: chain ID '%s' is duplicated"
+      print("Warning: chain ID '%s' is duplicated", file=log)
     new_hetatm_chain_ids.append(chain.id)
     if (params.sequential_numbering):
       last_resseq = chain.residue_groups()[-1].resseq_as_int()
@@ -195,9 +198,8 @@ def sort_hetatms(
           i_chain = new_hetatm_chain_ids.index(chain_id)
           new_hetatm_chains[i_chain].append_residue_group(rg.detached_copy())
         else :
-          print >> log, \
-            "Warning: no corresponding macromolecule chain match for %s %s" % \
-            (chain_id, rg.resid())
+          print("Warning: no corresponding macromolecule chain match for %s %s" % \
+            (chain_id, rg.resid()), file=log)
           loose_residues.append_residue_group(rg.detached_copy())
         chain.remove_residue_group(rg)
         continue
@@ -235,7 +237,7 @@ def sort_hetatms(
       is_water = (atom_groups[0].resname in ["HOH", "WAT", "DOD"])
       rg_atoms = rg.atoms()
       i_seqs = rg_atoms.extract_tmp_as_size_t()
-      closest_distance = sys.maxint
+      closest_distance = sys.maxsize
       closest_i_seq = None
       closest_rt_mx = None
       for i_seq, atom in zip(i_seqs, rg_atoms):
@@ -263,32 +265,29 @@ def sort_hetatms(
         # XXX possible bug: what about waters H-bonded to ligands, but still
         # outside radius of macromolecule?
         if (is_water and params.remove_waters_outside_radius):
-          print >> log, "Water %s is not near any polymer chain, will delete" \
-            % rg.id_str()
+          print("Water %s is not near any polymer chain, will delete" \
+            % rg.id_str(), file=log)
           n_deleted += len(rg.atoms())
           continue
         # XXX not sure what to do here - if we have only one macromolecule
         # chain, does it make more sense to keep all hetatms grouped together
         # regardless of distance?  e.g. waters in 1BS2
         else :
-          print >> log, \
-            "Residue group %s %s is not near any macromolecule chain" % \
-            (chain_id, rg.resid())
+          print("Residue group %s %s is not near any macromolecule chain" % \
+            (chain_id, rg.resid()), file=log)
           loose_residues.append_residue_group(rg)
       else :
         for j_seqs, hetatm_chain in zip(new_chain_i_seqs, new_hetatm_chains):
           if (closest_i_seq in j_seqs):
             if (verbose):
               if (closest_rt_mx.is_unit_mx()):
-                print >> log, \
-                  "Residue group %s added to chain %s (distance = %.3f)" % \
-                  (rg.atoms()[0].id_str(), hetatm_chain.id, closest_distance)
+                print("Residue group %s added to chain %s (distance = %.3f)" % \
+                  (rg.atoms()[0].id_str(), hetatm_chain.id, closest_distance), file=log)
               else :
-                print >> log, \
-                  ("Residue group %s added to chain %s "+
+                print(("Residue group %s added to chain %s "+
                    "(distance = %.3f, symop = %s)") % \
                   (rg.atoms()[0].id_str(), hetatm_chain.id, closest_distance,
-                   str(closest_rt_mx))
+                   str(closest_rt_mx)), file=log)
             if (not closest_rt_mx.is_unit_mx()):
               # closest macromolecule is in another ASU, so map the hetatms to
               # be near the copy in the current ASU
@@ -311,7 +310,8 @@ def sort_hetatms(
         chain.remove_residue_group(rg)
     if (len(waters_and_b_iso) > 0):
       if (params.sort_waters_by != "none"):
-        waters_and_b_iso.sort(lambda x,y: cmp(x[1], y[1]))
+        cmp_fn = lambda x,y: cmp(x[1], y[1])
+        waters_and_b_iso.sort(key=cmp_to_key(cmp_fn))
       for water, b_iso in waters_and_b_iso :
         chain.append_residue_group(water)
   if (params.renumber):
@@ -331,8 +331,8 @@ def sort_hetatms(
     raise RuntimeError("Atom counts do not match: %d --> %d" % (n_atoms,
       n_atoms_new))
   if (n_deleted > 0):
-    print >> log, "WARNING: %d atoms removed from model" % n_deleted
-    print >> log, "  You must refine this model again before deposition!"
+    print("WARNING: %d atoms removed from model" % n_deleted, file=log)
+    print("  You must refine this model again before deposition!", file=log)
   if (return_pdb_hierarchy):
     return new_hierarchy
   else :
@@ -421,7 +421,7 @@ Full parameters:
     f.write(pdb_str)
   f.write("END")
   f.close()
-  print >> out, "Wrote %s" % params.output_file
+  print("Wrote %s" % params.output_file, file=out)
   out.flush()
   return sort_hetatms_result(
     file_name=os.path.abspath(params.output_file),

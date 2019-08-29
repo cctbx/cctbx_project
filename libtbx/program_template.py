@@ -65,7 +65,8 @@ program {
 
   # text shown at the end of the command-line program
   epilog = '''
-For additional help, you can contact the developers at cctbx@cci.lbl.gov
+For additional help, you can contact the developers at cctbxbb@phenix-online.org
+or https://github.com/cctbx/cctbx_project
 
 '''
 
@@ -152,7 +153,11 @@ output {
     if self.data_manager is not None:
       self.data_manager.set_default_output_filename(
         self.get_default_output_filename())
-      self.data_manager.set_overwrite(self.params.output.overwrite)
+      try:
+        self.data_manager.set_overwrite(self.params.output.overwrite)
+      except AttributeError:
+        pass
+      self.data_manager.set_program(self)
 
   def header(self, text):
     print("-"*79, file=self.logger)
@@ -345,13 +350,14 @@ output {
       The default output filename without a file extension
     '''
 
-    filename = self.params.output.prefix
-    if filename is None:
-      filename = 'cctbx_program'
-    if self.params.output.suffix is not None:
-      filename += '{suffix}'.format(suffix=self.params.output.suffix)
-    if self.params.output.serial is not None:
-      filename += '_{serial:03d}'.format(serial=self.params.output.serial)
+    filename = 'cctbx_program'
+    if hasattr(self.params, 'output'):
+      if getattr(self.params.output, 'prefix', None) is not None:
+        filename = self.params.output.prefix
+      if getattr(self.params.output, 'suffix', None) is not None:
+        filename += '{suffix}'.format(suffix=self.params.output.suffix)
+      if getattr(self.params.output, 'serial', None) is not None:
+        filename += '_{serial:03d}'.format(serial=self.params.output.serial)
 
     return filename
 

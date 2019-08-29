@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # It is common that a certain crystal structure is published in the
 # literature in two or more different settings of the same space group. A
 # typical example is that of a rhombohedral space group (e.g. R 3) where
@@ -31,18 +31,18 @@ def interpret_form_data(form):
   return inp
 
 def run(server_info, inp, status):
-  print "<pre>"
+  print("<pre>")
 
   unit_cell_old = uctbx.unit_cell(inp.ucparams_old)
-  print "Old symmetry:"
-  print " ",
+  print("Old symmetry:")
+  print(" ", end=' ')
   unit_cell_old.show_parameters()
   space_group_info_old = sgtbx.space_group_info(
     symbol=inp.sgsymbol_old,
     table_id=inp.convention_old)
-  print " ",
+  print(" ", end=' ')
   space_group_info_old.show_summary()
-  print
+  print()
 
   if (len(inp.sgsymbol_new.strip()) == 0):
     space_group_info_new = space_group_info_old.reference_setting()
@@ -51,33 +51,33 @@ def run(server_info, inp, status):
     space_group_info_new = sgtbx.space_group_info(
       symbol=inp.sgsymbol_new,
       table_id=inp.convention_new)
-  print "New space group symbol:"
-  print " ",
+  print("New space group symbol:")
+  print(" ", end=' ')
   space_group_info_new.show_summary()
-  print
+  print()
 
   if (   space_group_info_new.type().number()
       != space_group_info_old.type().number()):
-    print "Space group numbers are not equal!"
+    print("Space group numbers are not equal!")
   else:
     c = space_group_info_new.type().cb_op().c_inv().multiply(
         space_group_info_old.type().cb_op().c()).new_denominators(
           sgtbx.cb_r_den, sgtbx.cb_t_den)
     cb_op = sgtbx.change_of_basis_op(c)
-    print "Change-of-basis matrix:", cb_op.c()
-    print "               Inverse:", cb_op.c_inv()
-    print
+    print("Change-of-basis matrix:", cb_op.c())
+    print("               Inverse:", cb_op.c_inv())
+    print()
 
     assert space_group_info_old.group().is_compatible_unit_cell(unit_cell_old)
     unit_cell_new = unit_cell_old.change_basis(cb_op=cb_op)
-    print "New unit cell parameters:"
-    print " ",
+    print("New unit cell parameters:")
+    print(" ", end=' ')
     unit_cell_new.show_parameters()
     assert space_group_info_new.group().is_compatible_unit_cell(unit_cell_new)
-    print
+    print()
 
-    print inp.coor_type, "coordinates:"
-    print
+    print(inp.coor_type, "coordinates:")
+    print()
 
     skip_columns = io_utils.interpret_skip_columns(inp.skip_columns)
 
@@ -88,6 +88,6 @@ def run(server_info, inp, status):
       new_coordinates = cb_op(coordinates)
       if (inp.coor_type != "Fractional"):
         new_coordinates = unit_cell_new.orthogonalize(new_coordinates)
-      print skipped, "%.6g %.6g %.6g" % tuple(new_coordinates)
+      print(skipped, "%.6g %.6g %.6g" % tuple(new_coordinates))
 
-  print "</pre>"
+  print("</pre>")

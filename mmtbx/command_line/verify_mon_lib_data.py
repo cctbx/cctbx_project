@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 def run():
   from mmtbx.monomer_library import server
@@ -14,7 +14,7 @@ def run():
       "you are using a Phenix installer, we recommend downloading the "+
       "installer again and reinstalling.")
   else :
-    print "OK"
+    print("OK")
 
 if (__name__ == "__main__"):
   run()

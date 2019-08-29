@@ -90,17 +90,19 @@ namespace {
        arg("wfc_obj")
        ))
    ;
-
+   // add argument for choosing dori or sedd
    def("has_interaction_at_point", (bool(*)(
                      vec3<double> const&,
                      af::shared<vec3<double> > const&,
                      af::shared<int> const&,
-                     boost::python::list const&
+                     boost::python::list const&,
+                     std::string const & silva_type
                      )) has_interaction_at_point, (
        arg("p"),
        arg("a_xyz"),
        arg("element_flags"),
-       arg("wfc_obj")
+       arg("wfc_obj"),
+       arg("silva_type")
        ))
    ;
 
@@ -111,14 +113,17 @@ namespace {
                      vec3<double> const&,
                      af::shared<int> const&,
                      af::shared<int> const&,
-                     boost::python::list const&)) points_and_pairs, (
+                     boost::python::list const&,
+                     std::string const & silva_type)) points_and_pairs, (
        arg("ngrid"),
        arg("step_size"),
        arg("xyz"),
        arg("xyz_min"),
        arg("atom_in_residue"),
        arg("element_flags"),
-       arg("wfc_obj")))
+       arg("wfc_obj"),
+       arg("silva_type")
+       ))
    ;
 
 

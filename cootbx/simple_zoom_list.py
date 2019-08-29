@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # basic window for displaying a list of features of interest - these could
 # be ligands, difference map peaks, validation outliers, etc. (adapted from

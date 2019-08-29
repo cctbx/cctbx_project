@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 import iotbx.pdb.cryst1_interpretation
 import iotbx.pdb.remark_290_interpretation
@@ -10,8 +10,10 @@ import scitbx.math
 from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
+from six.moves import range
+from six.moves import zip
 op = os.path
 import iotbx.mtrix_biomt
 
@@ -484,8 +486,8 @@ def exercise_format_fasta(regression_pdb, coverage=0.1):
       assert is_na == [False, False, True, False]
       looking_for.remove(node)
   if (len(looking_for) != 0):
-    print "WARNING: exercise_format_fasta(): some input files missing:", \
-      looking_for
+    print("WARNING: exercise_format_fasta(): some input files missing:", \
+      looking_for)
 
 def exercise_xray_structure(use_u_aniso, verbose=0):
   structure = random_structure.xray_structure(
@@ -638,8 +640,8 @@ def exercise_header_misc(regression_pdb):
 def dump_pdb(file_name, sites_cart, crystal_symmetry=None):
   f = open(file_name, "w")
   if (crystal_symmetry is not None):
-    print >> f, iotbx.pdb.format_cryst1_record(
-      crystal_symmetry=crystal_symmetry)
+    print(iotbx.pdb.format_cryst1_record(
+      crystal_symmetry=crystal_symmetry), file=f)
   for i,site in enumerate(sites_cart):
     a = iotbx.pdb.hierarchy.atom_with_labels()
     a.serial = i+1
@@ -648,12 +650,12 @@ def dump_pdb(file_name, sites_cart, crystal_symmetry=None):
     a.resseq = 1
     a.xyz = site
     a.occ = 1
-    print >> f, a.format_atom_record_group()
-  print >> f, "END"
+    print(a.format_atom_record_group(), file=f)
+  print("END", file=f)
   f.close()
 
 def write_icosahedron():
-  for level in xrange(3):
+  for level in range(3):
     icosahedron = scitbx.math.icosahedron(level=level)
     scale = 1.5/icosahedron.next_neighbors_distance()
     dump_pdb(
@@ -673,7 +675,7 @@ ATOM   4  CG  LYS 109  27.664   2.793  16.091  1.00 20.00      B
   f.write(bad_pdb_string)
   f.close()
   try: pdb_inp = pdb.input(file_name=f.name, source_info=None)
-  except ValueError, e:
+  except ValueError as e:
     err_message = str(e)
     assert bad_pdb_string.splitlines()[0] in err_message
   else: raise Exception_expected
@@ -707,7 +709,7 @@ ATOM  60  CA . VAL  C   26  ?  -12.16900  22.54800  -4.78000  1.000   8.45988  C
   f.write(bad_cif_loop_string)
   f.close()
   try: pdb_inp = pdb.input(file_name=f.name, source_info=None)
-  except iotbx.cif.CifParserError, e:
+  except iotbx.cif.CifParserError as e:
     err_message = str(e)
     assert err_message == \
            "Wrong number of data items for loop containing _atom_site.group_PDB"
@@ -792,7 +794,7 @@ def run():
     relative_path="phenix_regression/pdb",
     test=op.isdir)
   if (regression_pdb is None):
-    print "Skipping some tests: phenix_regression/pdb not available"
+    print("Skipping some tests: phenix_regression/pdb not available")
   else:
     exercise_format_fasta(regression_pdb=regression_pdb)
     exercise_merge_files_and_check_for_overlap(regression_pdb=regression_pdb)
@@ -803,7 +805,7 @@ def run():
   for use_u_aniso in (False, True):
     exercise_xray_structure(use_u_aniso, verbose=verbose)
   write_icosahedron()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

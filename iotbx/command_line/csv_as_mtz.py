@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.csv_as_mtz
 
 import sys, os
@@ -26,8 +26,8 @@ def run(args, command_name = "mmtbx.csv_to_mtz"):
         type="string",
         help="Use PDB model to make better guess about reflection data type.")
     ).process(args=args)
-  except Exception, e:
-    if(str(e) != "0"): print str(e)
+  except Exception as e:
+    if(str(e) != "0"): print(str(e))
     sys.exit(0)
   crystal_symmetry = command_line.symmetry
   if(command_line.symmetry.unit_cell() is None or
@@ -41,8 +41,8 @@ def run(args, command_name = "mmtbx.csv_to_mtz"):
       "Crystal symmetry is not defined. Please use the --symmetry option.\n"
       "Type %s without arguments to see more options."%command_name)
   if(len(command_line.args) > 1):
-    print "%d arguments are given from the command line:"% \
-      len(command_line.args), command_line.args
+    print("%d arguments are given from the command line:"% \
+      len(command_line.args), command_line.args)
     raise Sorry("Please specify one reflection csv file.")
   file_name = command_line.args[0]
   if(not os.path.isfile(file_name)):

@@ -2,7 +2,7 @@
 # XXX This is a very minimal test with no file dependencies - a more thorough
 # set of tests is located in phenix_regression.
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.regression import model_1yjp
 from mmtbx.command_line import cc_star
 import iotbx.pdb.hierarchy
@@ -60,7 +60,7 @@ def exercise_space_group_handling():
   ]
   try :
     cc_star.run(args=args, out=null_out())
-  except Sorry, s :
+  except Sorry as s :
     assert (str(s) == "Incompatible space groups in merged and unmerged data:P 1 21 1 versus P 1"), s
   else :
     raise Exception_expected
@@ -89,11 +89,11 @@ def exercise_space_group_handling():
   ]
   try :
     cc_star.run(args=args, out=null_out())
-  except Sorry, s :
+  except Sorry as s :
     assert ("Incompatible symmetry definitions:" in str(s)), s
   else :
     raise Exception_expected
 
 if (__name__ == "__main__"):
   exercise_space_group_handling()
-  print "OK"
+  print("OK")

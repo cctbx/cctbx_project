@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from cctbx.array_family import flex
 from cctbx import maptbx, masks, uctbx
 from libtbx.test_utils import approx_equal
 from scitbx import math, matrix
+from six.moves import range
 
 def exercise_flood_fill():
   uc = uctbx.unit_cell('10 10 10 90 90 90')
@@ -68,7 +69,7 @@ def exercise_flood_fill():
 
 def run():
   exercise_flood_fill()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

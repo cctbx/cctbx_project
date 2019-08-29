@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 import time
 from libtbx.test_utils import approx_equal
@@ -7,6 +7,7 @@ from iotbx import reflection_file_reader
 from cctbx import miller
 from cctbx import maptbx
 from scitbx.array_family import flex
+from six.moves import range
 
 pdb_str = """\
 CRYST1   28.992   28.409   27.440  90.00  90.00  90.00 P 1

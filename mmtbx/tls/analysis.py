@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 import math
 from scitbx.linalg import eigensystem
@@ -13,10 +13,11 @@ import mmtbx.tls.tools
 from mmtbx.tls.decompose import decompose_tls_matrices
 from libtbx.utils import multi_out
 from libtbx import adopt_init_args
+from six.moves import range
 
 def print_step(s, log):
   n = 79-len(s)
-  print >> log, s, "*"*n
+  print(s, "*"*n, file=log)
 
 def set_log(prefix, i_current, i_total):
   log = multi_out()
@@ -46,8 +47,8 @@ def cmd_driver(pdb_file_name):
     S = matrix.sqr(tlso.s)*deg_to_rad_scale
     try:
       r = run(T=T, L=L, S=S, log=log)
-    except Exception, e:
-      print >> log, str(e)
+    except Exception as e:
+      print(str(e), file=log)
     log.close()
 
 def truncate(m, eps=1.e-8):
@@ -64,7 +65,7 @@ def truncate(m, eps=1.e-8):
     if(not type(m) is matrix.sqr):
       raise Sorry("truncate: arg must be matrix.sqr")
     x = [m[0],m[1],m[2], m[3],m[4],m[5], m[6],m[7],m[8]]
-    for i in xrange(len(x)):
+    for i in range(len(x)):
       if(x[i]<0 and abs(x[i])<eps): x[i]=0
     return matrix.sqr(
       [x[0], x[1], x[2],
@@ -73,32 +74,32 @@ def truncate(m, eps=1.e-8):
 
 def show_matrix(x, title, prefix="  ", log=None):
   if(log is None): log = sys.stdout
-  print >> log, prefix, title
+  print(prefix, title, file=log)
   ff = "%12.9f"
   f = "%s %s %s"%(ff,ff,ff)
-  print >> log, prefix, f%(x[0], x[1], x[2])
-  print >> log, prefix, f%(x[3], x[4], x[5])
-  print >> log, prefix, f%(x[6], x[7], x[8])
-  print >> log
+  print(prefix, f%(x[0], x[1], x[2]), file=log)
+  print(prefix, f%(x[3], x[4], x[5]), file=log)
+  print(prefix, f%(x[6], x[7], x[8]), file=log)
+  print(file=log)
 
 def show_vector(x, title, prefix="  ", log=None):
   if(log is None): log = sys.stdout
   ff = "%12.9f"
-  print >> log, prefix, title
-  print >> log, prefix, ff%x[0]
-  print >> log, prefix, ff%x[1]
-  print >> log, prefix, ff%x[2]
-  print >> log
+  print(prefix, title, file=log)
+  print(prefix, ff%x[0], file=log)
+  print(prefix, ff%x[1], file=log)
+  print(prefix, ff%x[2], file=log)
+  print(file=log)
 
 def show_number(x, title, prefix="  ", log=None):
   if(log is None): log = sys.stdout
   ff = "%12.9f"
-  print >> log, prefix, title
+  print(prefix, title, file=log)
   if(type(x) in [float, int]):
-    print >> log, "   ", ("%s"%ff)%x
+    print("   ", ("%s"%ff)%x, file=log)
   else:
-    print >> log, "   ", " ".join([str(("%s"%ff)%i) for i in x])
-  print >> log
+    print("   ", " ".join([str(("%s"%ff)%i) for i in x]), file=log)
+  print(file=log)
 
 class run(object):
   def __init__(self, T, L, S, log=sys.stdout, eps=1.e-6, self_check_eps=1.e-5,
@@ -118,7 +119,7 @@ class run(object):
     if(self.force_t_S is not None):
       assert self.find_t_S_using_formula is None
     # Choose how to deal with t_S END
-    print >> self.log, "Small is defined as:", self.eps
+    print("Small is defined as:", self.eps, file=self.log)
     self.T_M, self.L_M, self.S_M = T, L, S
     print_step("Input TLS matrices:", self.log)
     show_matrix(x=self.T_M, prefix="  ", title="T_M", log=self.log)
@@ -333,7 +334,7 @@ class run(object):
            t13, t23, t33])
         show_matrix(x=T_lambda, title="T_lambda eq.(29)", log=self.log)
         es = eigensystem.real_symmetric(T_lambda.as_sym_mat3())
-        vals = es.values()
+        vals = es.values() # TODO: am I a dict values method ?
         assert vals[0]>=vals[1]>=vals[2]
         tau_max = vals[0]
         #
@@ -581,7 +582,7 @@ class run(object):
   def eigen_system_default_handler(self, m, suffix):
     ###
     def zero(x, e):
-      for i in xrange(len(x)):
+      for i in range(len(x)):
         if(abs(x[i])<e): x[i]=0
       return x
     ###
@@ -597,8 +598,8 @@ class run(object):
     #
     es = eigensystem.real_symmetric(m.as_sym_mat3())
     vals, vecs = es.values(), es.vectors()
-    print >> self.log, "  eigen values  (%s):"%suffix, " ".join([self.ff%i for i in vals])
-    print >> self.log, "  eigen vectors (%s):"%suffix, " ".join([self.ff%i for i in vecs])
+    print("  eigen values  (%s):"%suffix, " ".join([self.ff%i for i in vals]), file=self.log)
+    print("  eigen vectors (%s):"%suffix, " ".join([self.ff%i for i in vecs]), file=self.log)
     assert vals[0]>=vals[1]>=vals[2]
     ###
     vals = zero(vals, self.eps)
@@ -616,14 +617,14 @@ class run(object):
     elif((abs(vals[0]-vals[1])<self.eps and
          abs(vals[1]-vals[2])<self.eps and
          abs(vals[0]-vals[2])<self.eps)):
-      print >> self.log, "  three eigenvalues are equal: make eigenvectors unit."
+      print("  three eigenvalues are equal: make eigenvectors unit.", file=self.log)
       l_x = matrix.col((1, 0, 0))
       l_y = matrix.col((0, 1, 0))
       l_z = matrix.col((0, 0, 1))
     elif([abs(vals[0]-vals[1])<self.eps,
           abs(vals[1]-vals[2])<self.eps,
           abs(vals[0]-vals[2])<self.eps].count(True)==1):
-      print >> self.log, "  two eigenvalues are equal."
+      print("  two eigenvalues are equal.", file=self.log)
       #
       l_z = matrix.col((vecs[0], vecs[1], vecs[2]))
       l_y = matrix.col((vecs[3], vecs[4], vecs[5]))

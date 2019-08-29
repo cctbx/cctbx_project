@@ -2,7 +2,7 @@
 #
 # $Id$
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 
 import math
@@ -250,8 +250,8 @@ def correlation(self,other, include_negatives=False):
 
 def load_cc_data(params,reindexing_op,output):
   if reindexing_op is not "h,k,l":
-    print """Recalculating after reindexing the new data with %s
-     (it is necessary to pick which indexing choice gives the sensible CC iso):"""%reindexing_op
+    print("""Recalculating after reindexing the new data with %s
+     (it is necessary to pick which indexing choice gives the sensible CC iso):"""%reindexing_op)
   try:
     data_SR = mtz.object(params.scaling.mtz_file)
     have_iso_ref = True
@@ -268,12 +268,12 @@ def load_cc_data(params,reindexing_op,output):
       uniform.append(None)
       continue
     #item.show_summary()
-    print >>output, "-------------------------------"
+    print("-------------------------------", file=output)
     for array in item.as_miller_arrays():
        this_label = array.info().label_string().lower()
-       print this_label, params.scaling.mtz_column_F
+       print(this_label, params.scaling.mtz_column_F)
        if this_label.find("fobs")>=0:
-         print >>output, this_label,array.observation_type()
+         print(this_label,array.observation_type(), file=output)
          uniform.append(array.as_intensity_array())
          break
        if this_label.find("iobs")>=0:
@@ -282,15 +282,15 @@ def load_cc_data(params,reindexing_op,output):
             the unmerged reflections are not picked up by the cc comparison.
             Indicates that this section probably has to be reanalyzed and redesigned.
          """
-         print >>output, this_label,array.observation_type()
+         print(this_label,array.observation_type(), file=output)
          uniform.append(array.as_intensity_array())
          break
        if this_label.find("imean")>=0:
-         print >>output, this_label,array.observation_type()
+         print(this_label,array.observation_type(), file=output)
          uniform.append(array.as_intensity_array())
          break
        if this_label.find(params.scaling.mtz_column_F)==0:
-         print >>output, this_label,array.observation_type()
+         print(this_label,array.observation_type(), file=output)
          uniform.append(array.as_intensity_array())
          break
 
@@ -314,24 +314,24 @@ def load_cc_data(params,reindexing_op,output):
   for x in [0,1,2,3]:
     if not have_iso_ref and x == 0:
       continue
-    print >>output, "%6d indices:"%uniform[x].size(),{0:"Reference intensities",
+    print("%6d indices:"%uniform[x].size(),{0:"Reference intensities",
                      1:"Merged structure factors",
                      2:"Semi-dataset 1",
-                     3:"Semi-dataset 2"}[x]
+                     3:"Semi-dataset 2"}[x], file=output)
     uniform[x] = uniform[x].customized_copy(
       crystal_symmetry = crystal.symmetry(unit_cell=uniform[1].unit_cell(),
                                           space_group_info=sgi),
       ).resolution_filter(d_min=uniform[1].d_min(),d_max=params.d_max,
       ).complete_array(d_min=uniform[1].d_min(),d_max=params.d_max).map_to_asu()
-  print >>output, "%6d indices: An asymmetric unit in the resolution interval %.2f - %.2f Angstrom"%(
-     uniform[1].size(),d_max_min[0],uniform[1].d_min())
+  print("%6d indices: An asymmetric unit in the resolution interval %.2f - %.2f Angstrom"%(
+     uniform[1].size(),d_max_min[0],uniform[1].d_min()), file=output)
 
   if have_iso_ref:
     uniform[0] = uniform[0].common_set(uniform[1])
     assert len(uniform[0].indices()) == len(uniform[1].indices())
   uniform[2] = uniform[2].common_set(uniform[1])
   uniform[3] = uniform[3].common_set(uniform[1])
-  print >>output, "-------------------------------"
+  print("-------------------------------", file=output)
   NBIN = params.output.n_bins
   for x in [0, 1, 2, 3]:
     if not have_iso_ref and x == 0:
@@ -383,11 +383,11 @@ def run_cc(params,reindexing_op,output):
   if have_iso_ref:
     slope, offset, corr_iso, N_iso = correlation(
       selected_uniform[1], selected_uniform[0], params.include_negatives)
-    print >> output, "C.C. iso is %.1f%% on %d indices" % (
-      100 * corr_iso, N_iso)
+    print("C.C. iso is %.1f%% on %d indices" % (
+      100 * corr_iso, N_iso), file=output)
 
   slope,offset,corr_int,N_int = correlation(selected_uniform[2],selected_uniform[3], params.include_negatives)
-  print >>output, "C.C. int is %.1f%% on %d indices"%(100.*corr_int, N_int)
+  print("C.C. int is %.1f%% on %d indices"%(100.*corr_int, N_int), file=output)
 
   if have_iso_ref:
     binned_cc_ref, binned_cc_ref_N = binned_correlation(
@@ -438,20 +438,20 @@ def run_cc(params,reindexing_op,output):
                        scale_factor = oe_scale_all)
   oe_rsplit_all = r_split(selected_uniform[2], selected_uniform[3])
   if have_iso_ref:
-    print >>output, "R factors Riso = %.1f%%, Rint = %.1f%%"%(100.*ref_riso_all, 100.*oe_rint_all)
+    print("R factors Riso = %.1f%%, Rint = %.1f%%"%(100.*ref_riso_all, 100.*oe_rint_all), file=output)
   else:
-    print >>output, "R factor Rint = %.1f%%"%(100.*oe_rint_all)
+    print("R factor Rint = %.1f%%"%(100.*oe_rint_all), file=output)
 
   split_sigma_data = split_sigma_test(selected_uniform[2],selected_uniform[3],
                                       scale=oe_scale,use_binning=True,show_plot=False)
   split_sigma_data_all = split_sigma_test(selected_uniform[2],selected_uniform[3],
                                           scale=oe_scale_all,use_binning=False,show_plot=False)
 
-  print >>output
+  print(file=output)
   if reindexing_op == "h,k,l":
-    print >> output, "Table of Scaling Results:"
+    print("Table of Scaling Results:", file=output)
   else:
-    print >> output, "Table of Scaling Results Reindexing as %s:"%reindexing_op
+    print("Table of Scaling Results Reindexing as %s:"%reindexing_op, file=output)
 
   from libtbx import table_utils
   table_header = ["","","","CC"," N","CC"," N","R","R","R","Scale","Scale","SpSig"]
@@ -553,21 +553,21 @@ def run_cc(params,reindexing_op,output):
 
   table_data.append(table_row)
 
-  print >>output
-  print >>output,table_utils.format(table_data,has_header=2,justify='center',delim=" ")
-  print >>output,"""CCint is the CC-1/2 defined by Diederichs; correlation between odd/even images.
+  print(file=output)
+  print(table_utils.format(table_data,has_header=2,justify='center',delim=" "), file=output)
+  print("""CCint is the CC-1/2 defined by Diederichs; correlation between odd/even images.
   Similarly, Scale int and R int are the scaling factor and scaling R factor between odd/even images.
-  "iso" columns compare the whole XFEL dataset to the isomorphous reference."""
+  "iso" columns compare the whole XFEL dataset to the isomorphous reference.""", file=output)
 
-  print >>output,"""Niso: result vs. reference common set""",
+  print("""Niso: result vs. reference common set""", end=' ', file=output)
   if params.include_negatives:
-    print >>output,"""including negative merged intensities (set by phil parameter)."""
+    print("""including negative merged intensities (set by phil parameter).""", file=output)
   elif params.scaling.log_cutoff is None:
-    print >>output
+    print(file=output)
   else:
-    print >>output,"""with intensites < %7.2g filtered out (controlled by
+    print("""with intensites < %7.2g filtered out (controlled by
     scaling.log_cutoff phil parameter set to %5.1f)"""%(math.exp(params.scaling.log_cutoff),
-    params.scaling.log_cutoff)
+    params.scaling.log_cutoff), file=output)
 
   if have_iso_ref:
     assert N_iso == flex.sum(flex.double([x for x in binned_cc_ref_N.data if x is not None]))
@@ -582,4 +582,4 @@ def run_cc(params,reindexing_op,output):
       plt.plot(flex.log(selected_uniform[0].data()),
                flex.log(selected_uniform[1].data()), 'r.')
       plt.show()
-  print >>output
+  print(file=output)

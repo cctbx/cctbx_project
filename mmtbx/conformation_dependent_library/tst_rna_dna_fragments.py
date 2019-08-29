@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 from test_rdl import get_geometry_restraints_manager
+from six.moves import range
 
 pdb_1ehz = '''HEADER    RIBONUCLEIC ACID                        23-FEB-00   1EHZ
 TITLE     THE CRYSTAL STRUCTURE OF YEAST PHENYLALANINE TRNA AT 1.93 A
@@ -146,9 +147,9 @@ def main():
       length=k,
       #verbose=True,
       )):
-      print k,j,threes
-      print threes.get_base_types()
-      print threes.get_ntc_angles()
+      print(k,j,threes)
+      print(threes.get_base_types())
+      print(threes.get_ntc_angles())
 
 if __name__ == '__main__':
   main()

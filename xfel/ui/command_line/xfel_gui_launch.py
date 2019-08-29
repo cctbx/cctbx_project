@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -16,6 +16,7 @@ mp.use('PS')
 
 from xfel.ui.components.xfel_gui_init import MainWindow
 from xfel.ui.components.xfel_gui_dialogs import SettingsDialog
+from xfel.ui import save_cached_settings
 
 class MainApp(wx.App):
   ''' App for the main GUI window  '''
@@ -36,6 +37,7 @@ class MainApp(wx.App):
     self.login.SetTitle('CCTBX.XFEL Login')
     self.login.Center()
     if (self.login.ShowModal() == wx.ID_OK):
+      save_cached_settings(self.frame.params)
       if self.frame.connect_to_db(drop_tables=self.login.drop_tables):
         self.exp_tag = '| {}'.format(self.login.db_cred.ctr.GetValue())
         self.exp = '| {}'.format(self.login.experiment.ctr.GetValue())

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import maptbx
 from cctbx.array_family import flex
 import scitbx.rigid_body
@@ -9,6 +9,7 @@ from libtbx.test_utils import approx_equal
 from libtbx import adopt_init_args
 import sys
 import boost.python
+from six.moves import range
 cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
 from cctbx import miller
 import mmtbx.utils
@@ -38,8 +39,8 @@ def real_space_rigid_body_gradients_simple(
         selection=flex.bool(sites_cart_delta.size(),True))
       fs.append(rs_f)
     result.append((fs[0]-fs[1])/(2*delta))
-  for i in xrange(4): get(i=i, delta=unit_quaternion_delta)
-  for i in xrange(3): get(i=i+4, delta=translation_delta)
+  for i in range(4): get(i=i, delta=unit_quaternion_delta)
+  for i in range(3): get(i=i+4, delta=translation_delta)
   return result
 
 class refine(object):
@@ -175,7 +176,7 @@ class refine_mz(object):
       d_min            = self.d_min)
     self._show_and_track()
     self.d_mins = self._get_mz_resolution_limits()
-    for macro_cycle in xrange(self.macro_cycles):
+    for macro_cycle in range(self.macro_cycles):
       self._refine()
     self.xray_structure.set_sites_cart(self.sites_cart_best)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
@@ -190,7 +191,7 @@ class refine_mz(object):
       fmt="%sCC=%6.4f (best to keep CC=%6.4f), moved from start (max/mean)=%s"
       s1 = self.sites_cart_start
       d = "%6.3f %6.3f"%flex.sqrt((s1-s2).dot()).min_max_mean().as_tuple()[1:]
-      print >> self.log, fmt%(self.prefix, cc, self.cc_best, d)
+      print(fmt%(self.prefix, cc, self.cc_best, d), file=self.log)
 
   def _refine(self):
     self.lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
@@ -270,7 +271,7 @@ class refine_mz(object):
             use_sg         = True)
         done = True
       except KeyboardInterrupt: raise
-      except Exception, e:
+      except Exception as e:
         if(str(e)=="cctbx Error: Miller index not in structure factor map."):
           d_min += 0.1
       cntr+=1
@@ -298,7 +299,7 @@ class refine_groups(object):
     #
     cs = self.xray_structure.crystal_symmetry()
     for i_chain, chain in enumerate(self.pdb_hierarchy.chains()):
-      print "chain:", chain.id
+      print("chain:", chain.id)
       selection = chain.atoms().extract_i_seq()
       ph = pdb_hierarchy.select(selection)
       #
@@ -309,7 +310,7 @@ class refine_groups(object):
         box_cushion    = 5,
         selection      = flex.bool(xrs_tmp.scatterers().size(), True))
       #
-      shift_back = [-box.shift_cart[i] for i in xrange(3)]
+      shift_back = [-box.shift_cart[i] for i in range(3)]
       ph_b       = box.pdb_hierarchy_box
       md_b       = box.map_box
       xrs_b      = box.xray_structure_box

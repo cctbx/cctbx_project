@@ -1,9 +1,10 @@
 """ A collection of L.S. test problems """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from scitbx.array_family import flex
 from scitbx.lstbx import normal_eqns
 import libtbx
+from six.moves import range
 
 
 def polynomial_fit(non_linear_ls_with_separable_scale_factor_impl):
@@ -23,7 +24,7 @@ def polynomial_fit(non_linear_ls_with_separable_scale_factor_impl):
                                   normalised=normalised)
       libtbx.adopt_optional_init_args(self, kwds)
       self.t = t = flex.double_range(self.n_data)/self.n_data
-      noise = self.noise*flex.double([ (-1)**i for i in xrange(self.n_data) ])
+      noise = self.noise*flex.double([ (-1)**i for i in range(self.n_data) ])
       self.yo = 2.*t**2.*(1-t) + noise
       self.one = flex.double(self.n_data, 1)
       self.t2 = t**2

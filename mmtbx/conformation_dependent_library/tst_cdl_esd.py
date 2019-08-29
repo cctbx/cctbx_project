@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from libtbx import easy_run
 
@@ -41,12 +41,12 @@ ATOM     93  O   GLY A  14      39.013  57.869  34.331  1.00 79.41           O
 """
 
 def run():
-  f=file('cdl_esd.pdb', 'wb')
+  f=open('cdl_esd.pdb', 'w')
   f.write(pdb)
   f.close()
   cmd = 'phenix.pdb_interpretation cdl_esd.pdb'
   rc = easy_run.call(cmd)
-  print 'OK'
+  print('OK')
   return rc
 
 if __name__=="__main__":

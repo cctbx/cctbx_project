@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import statistics
 from cctbx import miller
 from cctbx import crystal
@@ -8,6 +8,8 @@ from cctbx import adptbx
 from cctbx.development import debug_utils
 from cctbx.development import random_structure
 import sys
+from six.moves import range
+from six.moves import zip
 
 def exercise_sys_absent_intensity_distribution():
   xs = crystal.symmetry((3,4,5), "F222")
@@ -81,7 +83,7 @@ class cumulative_intensity_distribution_python(object):
     n_reflections = 0
     self.n_bins = f_obs_sq.binner().n_bins_all()
     self.mean_f_obs_sq = f_obs_sq.mean(use_binning=True)
-    for intensity, d_spacing, indices in itertools.izip(
+    for intensity, d_spacing, indices in zip(
       f_obs_sq.data(), f_obs_sq.d_spacings().data(), f_obs_sq.indices()):
       n_reflections += 1
       i_over_mean_i = intensity/self._get_mean_f_obs_sq(d_spacing)
@@ -90,18 +92,18 @@ class cumulative_intensity_distribution_python(object):
         rounded_i_over_mean_i += 0.01
       for i in range(n_bins_used,int(rounded_i_over_mean_i*n_bins_used)-1,-1):
         key = "%.2f" %(i/n_bins_used)
-        if data.has_key(key):
+        if key in data:
           data[key] += 1
         else:
           continue
 
-    xy_data = data.items()
+    xy_data = list(data.items())
     xy_data.sort()
     self.x = [float(x) for x, y in xy_data]
     self.y = [y/n_reflections for x, y in xy_data]
 
   def _get_mean_f_obs_sq(self, d_spacing):
-    for n_bin in xrange(0,self.n_bins):
+    for n_bin in range(0,self.n_bins):
       if d_spacing >= self.mean_f_obs_sq.binner.bin_d_range(n_bin)[1]:
         break
     return self.mean_f_obs_sq.data[n_bin]
@@ -124,7 +126,7 @@ def run_call_back(flags, space_group_info):
 def run():
   exercise_sys_absent_intensity_distribution()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import wxtbx.bitmaps
 from wxtbx.phil_controls import simple_dialogs
 from wxtbx.phil_controls import strctrl, intctrl
@@ -205,7 +205,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
       rg_node = self.AppendItem(chain_node, format_residue_group(residue_group),
         data=residue_group)
     else :
-      print "index =", index
+      print("index =", index)
       rg_node = self.InsertItemByIndex(chain_node, index,
         format_residue_group(residue_group), data=residue_group)
     for ag in residue_group.atom_groups():
@@ -248,7 +248,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
         else :
           self.SetItemImage(node, 1)
       else :
-        print "Can't modify object %s'" % type(pdb_object).__name__
+        print("Can't modify object %s'" % type(pdb_object).__name__)
     else :
       while (child is not None):
         self.PropagateAtomChanges(child)
@@ -324,7 +324,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
       raise Sorry(("No more changes left to undo (only the previous %d "+
         "states will be remembered)") % self.max_states)
     else :
-      print "Undoing action: %s" % self._hierarchy_actions[self._i_state]
+      print("Undoing action: %s" % self._hierarchy_actions[self._i_state])
       self._i_state -= 1
       self.SetState()
       if (self._i_state == 0):
@@ -336,7 +336,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
       raise Sorry("No more changes to redo.")
     else :
       self._i_state += 1
-      print "Restoring action: %s" % self._hierarchy_actions[self._i_state]
+      print("Restoring action: %s" % self._hierarchy_actions[self._i_state])
       self.SetState()
       self.frame.EnableUndo(True)
       if (self._i_state == len(self._hierarchy_stack) - 1):
@@ -421,15 +421,15 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
       drop_source = wx.DropSource(self)
       drop_source.SetData(data)
       result = drop_source.DoDragDrop(flags=wx.Drag_DefaultMove)
-      print result
+      print(result)
       self.Refresh()
 
   def OnDrop(self, x, y):
-    print x, y
+    print(x, y)
     return True
 
   def OnEndDrag(self, event):
-    print 1
+    print(1)
 
   #---------------------------------------------------------------------
   # action menus
@@ -1717,7 +1717,7 @@ class PDBTreeDropTarget(wx.PyDropTarget):
     return d
 
   def OnDragOver(self, x, y, d):
-    print x, y, d
+    print(x, y, d)
     return d
 
   def OnData(self, x, y, d):

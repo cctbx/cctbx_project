@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from cctbx import  miller
 from cctbx import maptbx
@@ -477,7 +477,7 @@ if (__name__ == "__main__"):
       for b in [20,80,100,200]:
         if((d_min==2. or d_min==3.) and b>50.): continue
         result, b_result, d_fsc_model = run(pdb_str=pdb_str, d_min=d_min, b=b)
-        print b, d_min, "<>", b_result, result, d_fsc_model
+        print(b, d_min, "<>", b_result, result, d_fsc_model)
         #assert approx_equal(d_min, result)
         #XXX assert cc>0.9
         #XXX if(not randomize):

@@ -1,10 +1,10 @@
-from __future__ import division, print_function, absolute_import
-from past.builtins import range
+from __future__ import absolute_import, division, print_function
+from six.moves import range, zip
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 03/06/2019
+Last Changed: 07/17/2019
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -19,10 +19,6 @@ from libtbx import easy_pickle as ep, easy_run
 
 # for Py3 compatibility
 from io import BytesIO
-try:
-    import itertools.izip as zip
-except ImportError:
-    pass
 
 # For testing
 import time
@@ -274,7 +270,8 @@ class InputFinder():
       3. Automatically returns absolute paths
       4. Can be further modified in command line (size of file, wildcards, etc.)
     :param min_back: return only files last modified this many minutes ago
-    :param as_string: boolean, if true will return file list as a string, if false, as list
+    :param as_string: boolean, if true will return file list as a string,
+                      if false, as list
     :param ignore_ext:  will ignore extensions as supplied
     :param ext_only: will only find files with these extensions
     :param path: path to all data (top of folder tree)
@@ -291,6 +288,7 @@ class InputFinder():
       mmin = '-mmin {}'.format(min_back)
     else:
       mmin = ''
+
     command = 'find {} -type f {} {}'.format(path, newer_than, mmin)
     filepaths = easy_run.fully_buffered(command).stdout_lines
     if ignore_ext is not None:
@@ -298,8 +296,7 @@ class InputFinder():
     elif ext_only is not None:
       filepaths = [path for path in filepaths if path.endswith(ext_only)]
     filepaths = [path for path in filepaths if not
-                 os.path.basename(path).startswith('.')]
-
+                 os.path.basename(path).startswith(('.', '_'))]
     filepaths = [os.path.abspath(p) for p in filepaths]
 
     if as_string:
@@ -332,16 +329,14 @@ class InputFinder():
       filetype = self.test_file(filepath)
     if filetype == 'text':
       filetype = self.test_text(filepath)
-
     return filetype
-
 
   def test_extension(self, filepath):
 
     # Check extensions
     filetype = 'unidentified'
     filename = os.path.basename(filepath)
-    ext = filename.split(os.extsep)[1:]  # NOTE: may end up with multiple extensions
+    ext = filename.split(os.extsep)[1:]  # NOTE: may get multiple extensions
 
     for e in ext:
       e = e.lower().replace(' ', '')
@@ -499,13 +494,15 @@ class InputFinder():
       else:
         return 'text'
 
-  def get_input(self, path, filter=True, filter_type='image', last=None,
+  def get_input(self, path, filter_results=True, filter_type='image', last=None,
                 min_back=None):
-    """ Obtain list of files (or single file) from any input; obtain file type in input
-    :param filter:
-    :param filter_type:
-    :param last:
-    :param min_back:
+    """ Obtain list of files (or single file) from any input; obtain file type
+        in input
+    :param filter_results: Set to True to filter the input to include only
+                         files of particular type
+    :param filter_type: type of file to accept (e.g. 'image' or 'list')
+    :param last: Last file to be found (search for files newer than this one)
+    :param min_back: Search for files created this many minutes in the past
     :param path: path to input file(s) or folder(s)
     :return: input_list: list of input file(s) (could be just one file)
              input_type: type of input file(s)
@@ -516,11 +513,11 @@ class InputFinder():
     suffix = 'file'
 
     if os.path.isfile(path):
-      input_type = self.identify_file_type(path)
-      if input_type == 'file list':
+      if self.identify_file_type(filepath=path) == 'file list':
         with open(path, 'r') as f:
           input_list = [i.rstrip('\n') for i in f.readlines()]
-          suffix = 'list'
+        suffix = 'list'
+        filter_results = False
       else:
         input_list = [os.path.abspath(path)]
     elif os.path.isdir(path):
@@ -528,23 +525,31 @@ class InputFinder():
       suffix = "folder"
 
     if len(input_list) > 1:
-      input_pairs = [(filepath, self.identify_file_type(filepath)) for
-        filepath in input_list]
+      input_pairs = [
+        (filepath, self.identify_file_type(filepath)) for filepath in input_list
+      ]
 
-      if filter:
+      if filter_results:
         if filter_type == 'self':
           filter_type = self.get_list_type(file_list=input_list).replace(' folder', '')
         input_pairs = [i for i in input_pairs if
                        (filter_type in i[1] and not '_tmp' in i[0])]
 
       if len(input_pairs) > 0:
-        input_list = [i[0] for i in input_pairs]
-        input_types = [i[1] for i in input_pairs]
-        consensus_type = Counter(input_types).most_common(1)[0][0]
-        input_type = '{} {}'.format(consensus_type, suffix)
+        input_list, input_types = zip(*input_pairs)
+        if filter_results:
+          input_type = '{} {}'.format(input_types[0], suffix)
+        else:
+          consensus_type = Counter(input_types).most_common(1)[0][0]
+          input_type = '{} {}'.format(consensus_type, suffix)
 
         # sort input by filename and ensure type is str and not unicode
-        input_list = list(map(str, sorted(input_list, key=lambda i: i)))
+        input_list = [str(il) for il in sorted(input_list, key=lambda i:i)]
+
+    elif len(input_list) == 1:
+      # This works for both a single file and a folder containing one file
+      input_type = '{} {}'.format(self.identify_file_type(input_list[0]),
+                                  suffix)
 
     return input_list, input_type
 
@@ -557,7 +562,7 @@ class InputFinder():
 
       # Images can be outnumbered by other files in a folder; for that
       # reason, search for even one occurence of an image
-      choices = ['raw image', 'image pickle']
+      choices = ['raw image', 'image pickle', 'processed pickle']
       input_type = next((s for s in input_types if s in choices), None)
 
       # Test for whatever's most common
@@ -582,46 +587,47 @@ class InputFinder():
     else:
       return 'unknown'
 
-  def make_input_list(self, input,
-                      filter=False,
+  def make_input_list(self, paths,
+                      filter_results=False,
                       filter_type=None,
                       last=None,
                       min_back=None):
     """ Makes input list from multiple entries
-    :param filter:
-    :param filter_type:
-    :param last:
-    :param min_back:
-    :param input: one or multiple input paths
+    :param filter_results: Set to True to filter found files / folders to
+                           include only those of specific type
+    :param filter_type: Type of file/folder to accept
+    :param last: last file/folder found
+    :param min_back: how far back (in minutes) to start the search
+    :param paths: one or multiple input paths
     :return: input list: a list of input files
     """
 
-
-    if 'scope_extract' in type(input).__name__:
-      input = [str(i) for i in input if i is not None]
-    elif type(input) == str:
-      input = [input]
+    if 'scope_extract' in type(paths).__name__:
+      paths = [str(i) for i in paths if i is not None]
+    elif type(paths) == str:
+      paths = [paths]
 
     input_list = []
-    for path in input:
+    for path in paths:
       if path is not None:
-        filepaths, _ = self.get_input(path, filter=filter,
+        filepaths, _ = self.get_input(path,
+                                      filter_results=filter_results,
                                       filter_type=filter_type,
                                       last=last,
                                       min_back=min_back)
         input_list.extend(filepaths)
     return input_list
 
-  def process_mixed_input(self, input):
+  def process_mixed_input(self, paths):
     input_dict = dict(paramfile=None,
                       imagefiles=[], imagepaths=[],
                       objectfiles=[], objectpaths=[],
                       neither=[], badpaths=[])
 
-    if type(input) == str:
-      input = [input]
+    if type(paths) == str:
+      paths = [paths]
 
-    for path in input:
+    for path in paths:
       if os.path.exists(path):
         if 'IOTA settings' in self.get_file_type(path):
           input_dict['paramfile'] = path
@@ -634,7 +640,11 @@ class InputFinder():
           input_dict['imagefiles'].extend(self.make_input_list(prm.input))
           input_dict['imagepaths'].extend(prm.input)
         else:
-          contents, ctype = self.get_input(path, filter=True, filter_type='self')
+          contents, ctype = self.get_input(path, filter_type='self')
+          if not contents:
+            continue
+          if ctype is None:
+            ctype = ''
           if type(contents) == str:
             contents = [contents]
           if 'object' in ctype:
@@ -651,9 +661,9 @@ class InputFinder():
               input_dict['imagepaths'].append(os.path.abspath(os.path.dirname(path)))
           else:
             input_dict['neither'].extend(contents)
-            input_dict['badpaths'].append(os.path.abspath(path))
+            input_dict['badpaths'].append(path)
       else:
-        input_dict['badpaths'].append(os.path.abspath(path))
+        input_dict['badpaths'].append(path)
 
       # Make paths unique
       if input_dict['imagefiles']:
@@ -728,7 +738,7 @@ class ObjectFinder(object):
           pickle = ep.load(pickle_path)
           object.final['observations'] = pickle['observations'][0]
       return object
-    except Exception, e:
+    except Exception as e:
       print ('OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e))
       return None
 
@@ -766,8 +776,8 @@ class RadAverageCalculator(object):
         summed_mask = mask
         summed_data = data
       else:
-        summed_data = [ sd + d for sd, d in zip(summed_data, data) ]
-        summed_mask = [ sm & m for sm, m in zip(summed_mask, mask) ]
+        summed_data = [ sd + d for sd, d in list(zip(summed_data, data)) ]
+        summed_mask = [ sm & m for sm, m in list(zip(summed_mask, mask)) ]
 
     if num_bins is None:
       num_bins = int(sum(sum(p.get_image_size()) for p in detector) / 50)
@@ -782,7 +792,7 @@ class RadAverageCalculator(object):
 
     # Compute the radial average
     radial_average = RadialAverage(beam, detector, vmin, vmax, num_bins)
-    for d, m in zip(summed_data, summed_mask):
+    for d, m in list(zip(summed_data, summed_mask)):
       radial_average.add(d.as_double() / (scan_range[1] - scan_range[0]), m)
     mean = radial_average.mean()
     reso = radial_average.inv_d2()

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 phil_str = """\
 base36_timestamp = None
   .type = str
@@ -156,9 +156,9 @@ def process_args(args, extra_phil_str="", out=None):
     assert pdb_inp.source_info().startswith("file ")
     work_params.pdb_file = pdb_inp.source_info()[5:]
     crystal_symmetry = pdb_inp.crystal_symmetry()
-    print >> out, "Crystal symmetry from PDB file:"
+    print("Crystal symmetry from PDB file:", file=out)
     crystal_symmetry.show_summary(f=out, prefix="  ")
-    print >> out
+    print(file=out)
     assert crystal_symmetry.unit_cell() is not None
     assert crystal_symmetry.space_group_info() is not None
     if (work_params.unit_cell is None):
@@ -172,7 +172,7 @@ def process_args(args, extra_phil_str="", out=None):
     work_params.detector.distance = compute_detector_distance(work_params)
   work_phil = master_phil.format(python_object=work_params)
   work_phil.show(out=out)
-  print >> out
+  print(file=out)
   work_params = work_phil.extract()
   work_params.__inject__("phil_master", work_phil)
   return work_params

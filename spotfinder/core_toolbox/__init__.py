@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import spotfinder.array_family.flex # implicit import
 
@@ -57,7 +57,7 @@ class Distl(w_Distl):
     try:
       self.pxlclassify()
     except Exception as e:
-      if str(e).find("cannot distinguish signal")>0: print e
+      if str(e).find("cannot distinguish signal")>0: print(e)
       else: raise e
     self.search_icerings()
     self.search_maximas()
@@ -158,7 +158,8 @@ class Distl(w_Distl):
         raise Sorry( """dataset_preferences.py parameters -bx0 -bx1 -bx2 are no longer allowed; found %s.
     Use command line option distl.scanbox_windows=bx0,bx1,bx2 instead with three integer arguments."""%self.options)
 
-class _(boost.python.injector, SpotFilterAgent):
+@boost.python.inject_into(SpotFilterAgent)
+class _():
   def __getinitargs__(self):
     return (self.pixel_size, self.xbeam, self.ybeam, self.distance,
             self.wavelength, self.icerings)

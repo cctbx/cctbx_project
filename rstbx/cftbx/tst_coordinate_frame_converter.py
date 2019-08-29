@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 def tst_coordinate_frame_converter():
   import libtbx.load_env
   rstbx = libtbx.env.dist_path('rstbx')
@@ -12,7 +12,7 @@ def tst_coordinate_frame_converter():
   assert(cfc.move_c(x, convention = cfc.CBF).angle(
       cfc.get_c('detector_fast')) < 0.1)
 
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   tst_coordinate_frame_converter()

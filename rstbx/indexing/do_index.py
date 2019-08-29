@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 from rstbx.dps_core import dps_core
 from rstbx.dps_core.sampling import hemisphere_shortcut
@@ -41,8 +41,8 @@ def do_index(reciprocal_space_vectors, verbose=True):
 
   if verbose:
     for subgroup in L:
-      print subgroup.short_digest()
-    print "\ntriclinic cell=%s volume(A^3)=%.3f"%(triclinic,triclinic.volume())
-    print "\nafter symmetrizing to %s:"%supergroup.reference_lookup_symbol()
+      print(subgroup.short_digest())
+    print("\ntriclinic cell=%s volume(A^3)=%.3f"%(triclinic,triclinic.volume()))
+    print("\nafter symmetrizing to %s:"%supergroup.reference_lookup_symbol())
     M.show_rms()
   return D,L

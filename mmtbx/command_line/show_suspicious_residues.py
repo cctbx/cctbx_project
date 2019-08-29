@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 from libtbx import Auto
 import sys
@@ -83,7 +83,7 @@ records will be inspected.
       delfwt_coeffs=diff_map,
       file_name=map_file,
       anom_coeffs=anom_map)
-    print "Wrote maps to %s" % map_file
+    print("Wrote maps to %s" % map_file)
   if (len(outliers) > 0) and (params.write_coot_script):
     zoom_list_base = libtbx.env.find_in_repositories(
       relative_path="cctbx_project/cootbx/simple_zoom_list.py",
@@ -101,7 +101,7 @@ draw_simple_zoom_list(
   items=%s)
 """ % str(outliers))
     script.close()
-    print "Coot script is coot_bad_residues.py"
+    print("Coot script is coot_bad_residues.py")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

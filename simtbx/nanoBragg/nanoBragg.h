@@ -447,6 +447,9 @@ class nanoBragg {
     /* misseting angles, applied after any provided A and U matrices */
     double misset[4];
 
+#ifdef NANOBRAGG_HAVE_CUDA
+    int device_Id;
+#endif
     /* special options */
 //    bool calculate_noise; // = 1;
 //    bool write_pgm; // = 1;
@@ -484,8 +487,8 @@ class nanoBragg {
          with class variables that manage memory and lifetime.  These will include std::string,
          std::map, std::vector, std::shared_ptr, and flex arrays.
        */
-
-      printf("free all memory within nanoBragg\n");
+      if (verbose)
+        printf("free all memory within nanoBragg\n");
       if(verbose>9)printf("pixels_in %p\n",pixels_in);
       free(pixels_in);
       if(verbose>9)printf("bin_start %p\n",bin_start);
@@ -534,8 +537,8 @@ class nanoBragg {
         free(Fhkl);
       }
       hkls = 0;
-
-      printf("finished freeing memory\n");
+      if (verbose)
+        printf("finished freeing memory\n");
     }
 
     /* member functions to run once (might allocate memory) */

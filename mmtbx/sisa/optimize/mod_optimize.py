@@ -1,13 +1,14 @@
-from __future__ import division
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 12/1/2014
 Description : Optimizer main module.
 '''
+from __future__ import absolute_import, division, print_function
 import numpy as np
 import math, random
 from cctbx.array_family import flex
 from datetime import datetime
+from six.moves import range
 
 class sisa_optimizer(object):
   '''
@@ -89,7 +90,7 @@ class sisa_optimizer(object):
         list_phis_good.append(list_idv[i_idv])
 
     #find centroid phase for phis_good
-    from mod_util import util_handler
+    from mmtbx.sisa.optimize.mod_util import util_handler
     uth = util_handler()
     flex_phi_bar, dummy = uth.calcphibar(list_phis_good)
 
@@ -107,7 +108,7 @@ class sisa_optimizer(object):
     mapcc_phi = 0
     if iparams.hklrefin is not None and \
       np.sum(phic_selected) > 0:
-      from mod_util import util_handler
+      from mmtbx.sisa.optimize.mod_util import util_handler
       uth = util_handler()
       mapcc_phi, mpe_phi = uth.calcphicc(fp_selected,
                                            [1]*len(fom_selected),
@@ -120,10 +121,10 @@ class sisa_optimizer(object):
   def run_optimize(self, micro_cycle_no, stack_no, miller_arrays, indices_selected, cdf_set, iparams):
 
     #start ga
-    from mod_ga import ga_handler
+    from mmtbx.sisa.optimize.mod_ga import ga_handler
     gah = ga_handler()
 
-    from mod_util import util_handler
+    from mmtbx.sisa.optimize.mod_util import util_handler
     uth = util_handler()
 
     list_phis_intcycle = []
@@ -147,7 +148,7 @@ class sisa_optimizer(object):
 
     txt_prn_out = "Starting stack %2.0f: microcycle %2.0f (initial skew=%6.2f, mapcc=%6.2f, mpe=%6.2f)\n"%(\
       stack_no+1, micro_cycle_no+1, skew, mapcc, mpe*180/math.pi)
-    print txt_prn_out
+    print(txt_prn_out)
     txt_pop_hist_out=""
     for i_idv in range(len(cur_pop)):
       map_coeff = self.setup_map_coeff(miller_arrays, indices_selected,
@@ -160,7 +161,7 @@ class sisa_optimizer(object):
 
     txt_prn_tmp = 'gen'.center(5)+'<skew>'.center(7)+'std_skew'.center(8)+'n_accidv'.center(10)+ \
       'skew'.center(6)+'mapcc'.center(7)+'mpe'.center(5)+'mapccp'.center(7)+'mpep'.center(6)+'time_spent (min)'.center(16)+'\n'
-    print txt_prn_tmp
+    print(txt_prn_tmp)
     txt_prn_out += txt_prn_tmp
     #Set up population map
     #[[7,1,5],
@@ -269,7 +270,7 @@ class sisa_optimizer(object):
       n_idv_pick=int(round(0.05*iparams.ga_params.pop_size))
       mpe_idv_pick=[0]*n_idv_pick
       mapcc_idv_pick=[0]*n_idv_pick
-      id_idv_pick=random.sample(xrange(iparams.ga_params.pop_size), n_idv_pick)
+      id_idv_pick=random.sample(range(iparams.ga_params.pop_size), n_idv_pick)
       for i in range(n_idv_pick):
         i_idv_pick = id_idv_pick[i]
         mpe_to_others = [0] * iparams.ga_params.pop_size
@@ -312,7 +313,7 @@ class sisa_optimizer(object):
         mean_fit_intcycle, std_fit_intcycle, num_good_idv_intcycle, flex_phis_fit_intcycle, \
         mapcc_phis_intcycle, mpe_phis_intcycle*180/math.pi, \
         mapcc_avg_gen, mpe_avg_gen*180/math.pi, time_gen_spent.seconds/60)
-      print txt_prn_tmp
+      print(txt_prn_tmp)
       txt_prn_out += txt_prn_tmp
       #check termination
       if mapcc_avg_gen >= 0.9:

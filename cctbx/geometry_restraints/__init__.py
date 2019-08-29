@@ -1,20 +1,21 @@
-from __future__ import division, absolute_import
+from __future__ import absolute_import, division, print_function
 import cctbx.crystal.direct_space_asu # import dependency
 from cctbx.array_family import flex
 import scitbx.array_family.shared # import dependency
 import cctbx.geometry # import dependency
-
 from libtbx.test_utils import approx_equal
 from libtbx.str_utils import show_string
 
 import boost.python
+from six.moves import range
+from six.moves import zip
 ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
 from cctbx_geometry_restraints_ext import *
 
 import scitbx.stl.map
 import math
 import sys
-import StringIO
+import six
 
 nonbonded_radius_table = scitbx.stl.map.stl_string_double
 
@@ -36,7 +37,8 @@ def angle_delta_deg(angle_1, angle_2, periodicity=1):
   elif (d >  half_period): d -= 2*half_period
   return d
 
-class _(boost.python.injector, bond_params_table):
+@boost.python.inject_into(bond_params_table)
+class _():
 
   def lookup(self, i_seq, j_seq):
     if (i_seq > j_seq): i_seq, j_seq = j_seq, i_seq
@@ -118,10 +120,10 @@ class bond_simple_proxy_registry(proxy_registry_base):
 
   def initialize_table(self):
     proxy_registry_base.initialize_table(self)
-    self.table = [{} for i in xrange(self.n_seq)]
+    self.table = [{} for i in range(self.n_seq)]
 
   def is_proxy_set(self, i_seqs):
-    if (not self.table[i_seqs[0]].has_key(i_seqs[1])):
+    if (i_seqs[1] not in self.table[i_seqs[0]]):
       return None
     else:
       return True
@@ -138,7 +140,7 @@ class bond_simple_proxy_registry(proxy_registry_base):
   def process(self, source_info, proxy, tolerance=1.e-6):
     result = proxy_registry_process_result()
     proxy = proxy.sort_i_seqs()
-    if (not self.table[proxy.i_seqs[0]].has_key(proxy.i_seqs[1])):
+    if (proxy.i_seqs[1] not in self.table[proxy.i_seqs[0]]):
       self.table[proxy.i_seqs[0]][proxy.i_seqs[1]] = self.proxies.size()
       self._append_proxy(
         source_info=source_info,
@@ -172,7 +174,7 @@ class angle_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_1 = self.table.setdefault(proxy.i_seqs[1], {})
     i_seqs_0_2 = (proxy.i_seqs[0], proxy.i_seqs[2])
-    if (not tab_i_seq_1.has_key(i_seqs_0_2)):
+    if (i_seqs_0_2 not in tab_i_seq_1):
       tab_i_seq_1[i_seqs_0_2] = self.proxies.size()
       self.proxies.append(proxy)
       self.counts.append(1)
@@ -184,7 +186,7 @@ class angle_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_1 = self.table.setdefault(proxy.i_seqs[1], {})
     i_seqs_0_2 = (proxy.i_seqs[0], proxy.i_seqs[2])
-    if (not tab_i_seq_1.has_key(i_seqs_0_2)):
+    if (i_seqs_0_2 not in tab_i_seq_1):
       tab_i_seq_1[i_seqs_0_2] = self.proxies.size()
       self._append_proxy(
         source_info=source_info,
@@ -228,7 +230,7 @@ class dihedral_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
     i_seqs_1_2_3 = (proxy.i_seqs[1], proxy.i_seqs[2], proxy.i_seqs[3])
-    if (not tab_i_seq_0.has_key(i_seqs_1_2_3)):
+    if (i_seqs_1_2_3 not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self.proxies.append(proxy)
       self.counts.append(1)
@@ -240,7 +242,7 @@ class dihedral_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
     i_seqs_1_2_3 = (proxy.i_seqs[1], proxy.i_seqs[2], proxy.i_seqs[3])
-    if (not tab_i_seq_0.has_key(i_seqs_1_2_3)):
+    if (i_seqs_1_2_3 not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self._append_proxy(
         source_info=source_info,
@@ -290,7 +292,7 @@ class chirality_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
     i_seqs_1_2_3 = (proxy.i_seqs[1], proxy.i_seqs[2], proxy.i_seqs[3])
-    if (not tab_i_seq_0.has_key(i_seqs_1_2_3)):
+    if (i_seqs_1_2_3 not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self.proxies.append(proxy)
       self.counts.append(1)
@@ -303,7 +305,7 @@ class chirality_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
     i_seqs_1_2_3 = (proxy.i_seqs[1], proxy.i_seqs[2], proxy.i_seqs[3])
-    if (not tab_i_seq_0.has_key(i_seqs_1_2_3)):
+    if (i_seqs_1_2_3 not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self._append_proxy(
         source_info=source_info,
@@ -337,7 +339,7 @@ class planarity_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
     i_seqs_1_up = tuple(proxy.i_seqs[1:])
-    if (not tab_i_seq_0.has_key(i_seqs_1_up)):
+    if (i_seqs_1_up not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_up] = self.proxies.size()
       # saving proxy number in list
       self.proxies.append(proxy)
@@ -351,7 +353,7 @@ class planarity_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
     i_seqs_1_up = tuple(proxy.i_seqs[1:])
-    if (not tab_i_seq_0.has_key(i_seqs_1_up)):
+    if (i_seqs_1_up not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_up] = self.proxies.size()
       self._append_proxy(
         source_info=source_info,
@@ -426,7 +428,8 @@ class parallelity_proxy_registry(proxy_registry_base):
         self.counts[i_list] += 1 # mark somewhere that this is duplicated
     return result
 
-class _(boost.python.injector, prolsq_repulsion_function):
+@boost.python.inject_into(prolsq_repulsion_function)
+class _():
 
   def customized_copy(O, c_rep=None, k_rep=None, irexp=None, rexp=None):
     if (c_rep is None): c_rep = O.c_rep
@@ -462,10 +465,10 @@ def _bond_show_sorted_impl(self,
       origin_id=origin_id)
   len_sorted_table = 0 if sorted_table is None else len(sorted_table)
   if n_not_shown is None: n_not_shown = 0
-  print >> f, "%sBond restraints: %d" % (prefix, len_sorted_table+n_not_shown)
+  print("%sBond restraints: %d" % (prefix, len_sorted_table+n_not_shown), file=f)
   if (f is None): f = sys.stdout
   if len_sorted_table+n_not_shown==0: return
-  print >> f, "%sSorted by %s:" % (prefix, by_value)
+  print("%sSorted by %s:" % (prefix, by_value), file=f)
   if sorted_table is not None:
     for restraint_info in sorted_table :
       (i_seq,j_seq,  # Always
@@ -473,7 +476,7 @@ def _bond_show_sorted_impl(self,
         residual, sym_op_j, rt_mx) = restraint_info
       s = "bond"
       for label in labels :
-        print >> f, "%s%4s %s" % (prefix, s, label)
+        print("%s%4s %s" % (prefix, s, label), file=f)
         s = ""
       if (slack == 0):
         l = ""
@@ -481,18 +484,20 @@ def _bond_show_sorted_impl(self,
       else:
         l = "  slack"
         v = " %6.3f" % slack
-      print >> f, "%s  ideal  model%s  delta    sigma   weight residual%s" % (
-        prefix, l, sym_op_j)
-      print >> f, "%s  %5.3f %6.3f%s %6.3f %6.2e %6.2e %6.2e" % (
+      print("%s  ideal  model%s  delta    sigma   weight residual%s" % (
+        prefix, l, sym_op_j), file=f)
+      print("%s  %5.3f %6.3f%s %6.3f %6.2e %6.2e %6.2e" % (
         prefix, distance_ideal, distance_model, v, delta,
-        sigma, weight, residual),
+        sigma, weight, residual), end='', file=f)
       if (rt_mx is not None):
-        print >> f, rt_mx,
-      print >> f
+        print(" " + str(rt_mx), end='', file=f)
+      print(file=f)
   if (n_not_shown != 0):
-    print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+    print(prefix + "... (remaining %d not shown)" % n_not_shown, file=f)
 
-class _(boost.python.injector, shared_bond_asu_proxy):
+@boost.python.inject_into(shared_bond_asu_proxy)
+class _():
+
   def get_proxies_without_origin_id(self, origin_id):
     result = shared_bond_asu_proxy()
     for p in self:
@@ -500,7 +505,8 @@ class _(boost.python.injector, shared_bond_asu_proxy):
         result.append(p)
     return result
 
-class _(boost.python.injector, shared_bond_simple_proxy):
+@boost.python.inject_into(shared_bond_simple_proxy)
+class _():
 
   def _generate_proxy_and_atom_labels(self, pdb_hierarchy):
     pdb_atoms = pdb_hierarchy.atoms()
@@ -671,7 +677,8 @@ class _(boost.python.injector, shared_bond_simple_proxy):
         result.append(p)
     return result
 
-class _(boost.python.injector, bond_sorted_asu_proxies):
+@boost.python.inject_into(bond_sorted_asu_proxies)
+class _():
 
   def show_histogram_of_model_distances(self,
         sites_cart,
@@ -684,7 +691,7 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         origin_id=None):
     if (self.n_total() == 0): return None
     if (f is None): f = sys.stdout
-    print >> f, "%sHistogram of bond lengths:" % prefix
+    print("%sHistogram of bond lengths:" % prefix, file=f)
     hdata = None
     if origin_id is None:
       hdata = bond_distances_model(
@@ -703,18 +710,18 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
     low_cutoff = histogram.data_min()
     for i,n in enumerate(histogram.slots()):
       high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
-      print >> f, "%s  %8.2f - %8.2f: %d" % (
-        prefix, low_cutoff, high_cutoff, n)
+      print("%s  %8.2f - %8.2f: %d" % (
+        prefix, low_cutoff, high_cutoff, n), file=f)
       low_cutoff = high_cutoff
     if (cutoff_warn_small is not None
         and histogram.data_min() < cutoff_warn_small):
-      print >> f, "%sWarning: very small bond lengths." % prefix
+      print("%sWarning: very small bond lengths." % prefix, file=f)
     if (cutoff_warn_extreme is not None
         and histogram.data_max() > cutoff_warn_extreme):
-      print >> f, "%sWarning: extremely large bond lengths." % prefix
+      print("%sWarning: extremely large bond lengths." % prefix, file=f)
     elif (cutoff_warn_large is not None
           and histogram.data_max() > cutoff_warn_large):
-      print >> f, "%sWarning: very large bond lengths." % prefix
+      print("%sWarning: very large bond lengths." % prefix, file=f)
     return histogram
 
   def deltas(self, sites_cart, origin_id=None):
@@ -747,7 +754,7 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         origin_id=None):
     if (self.n_total() == 0): return
     if (f is None): f = sys.stdout
-    print >> f, "%sHistogram of bond deltas:" % prefix
+    print("%sHistogram of bond deltas:" % prefix, file=f)
     hdata = None
     if origin_id is None:
       hdata = bond_deltas(
@@ -766,8 +773,8 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
     low_cutoff = histogram.data_min()
     for i,n in enumerate(histogram.slots()):
       high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
-      print >> f, "%s  %8.3f - %8.3f: %d" % (
-        prefix, low_cutoff, high_cutoff, n)
+      print("%s  %8.3f - %8.3f: %d" % (
+        prefix, low_cutoff, high_cutoff, n), file=f)
       low_cutoff = high_cutoff
     return histogram
 
@@ -913,7 +920,8 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
                           max_items=max_items,
                           origin_id=origin_id)
 
-class _(boost.python.injector, nonbonded_sorted_asu_proxies):
+@boost.python.inject_into(nonbonded_sorted_asu_proxies)
+class _():
 
   def deltas(self, sites_cart):
     return nonbonded_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
@@ -926,20 +934,20 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
         prefix=""):
     if (self.n_total() == 0): return None
     if (f is None): f = sys.stdout
-    print >> f, "%sHistogram of nonbonded interaction distances:" % prefix
+    print("%sHistogram of nonbonded interaction distances:" % prefix, file=f)
     histogram = flex.histogram(
       data=self.deltas(sites_cart=sites_cart),
       n_slots=n_slots)
     low_cutoff = histogram.data_min()
     for i,n in enumerate(histogram.slots()):
       high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
-      print >> f, "%s  %8.2f - %8.2f: %d" % (
-        prefix, low_cutoff, high_cutoff, n)
+      print("%s  %8.2f - %8.2f: %d" % (
+        prefix, low_cutoff, high_cutoff, n), file=f)
       low_cutoff = high_cutoff
     if (cutoff_warn_small is not None
         and histogram.data_min() < cutoff_warn_small):
-      print >> f, "%sWarning: very small nonbonded interaction distances." % (
-        prefix)
+      print("%sWarning: very small nonbonded interaction distances." % (
+        prefix), file=f)
     return histogram
 
   def get_sorted_i_proxies(self,
@@ -1069,7 +1077,7 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
         rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
         #if str(rt_mx)=="x,y,z": continue # why do I need this?
         result.setdefault(j_seq, []).append(rt_mx)
-    for k,v in zip(result.keys(), result.values()):
+    for k,v in six.iteritems(result):
       result[k] = list(set(v))
     return result
 
@@ -1090,9 +1098,9 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
         max_items=max_items,
         include_proxy=False)
     if (f is None): f = sys.stdout
-    print >> f, "%sNonbonded interactions: %d" % (prefix, len(sorted_table)+n_not_shown)
+    print("%sNonbonded interactions: %d" % (prefix, len(sorted_table)+n_not_shown), file=f)
     if len(sorted_table) == 0: return
-    print >> f, "%sSorted by model distance:" % prefix
+    print("%sSorted by model distance:" % prefix, file=f)
 
     for info in sorted_table:
       labels, i_seq, j_seq, delta, vdw_distance, sym_op_j, rt_mx = info
@@ -1106,31 +1114,33 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
       if (suppress()): continue
       s = "nonbonded"
       for l in labels:
-        print >> f, "%s%9s %s" % (prefix, s, l)
+        print("%s%9s %s" % (prefix, s, l), file=f)
         s = ""
-      print >> f, "%s   model   vdw%s" % (prefix, sym_op_j)
-      print >> f, "%s  %6.3f %5.3f" % (prefix, delta, vdw_distance),
+      print("%s   model   vdw%s" % (prefix, sym_op_j), file=f)
+      print("%s  %6.3f %5.3f" % (prefix, delta, vdw_distance), end='', file=f)
       if (rt_mx is not None):
-        print >> f, rt_mx,
-      print >> f
+        print(" " + str(rt_mx), end='', file=f)
+      print(file=f)
     if (n_not_shown != 0):
-      print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+      print(prefix + "... (remaining %d not shown)" % n_not_shown, file=f)
 
-class _(boost.python.injector, angle):
+@boost.python.inject_into(angle)
+class _():
 
   def _show_sorted_item(O, f, prefix):
-    print >> f, "%s    ideal   model   delta" \
-      "    sigma   weight residual" % prefix
-    print >> f, "%s  %7.2f %7.2f %7.2f %6.2e %6.2e %6.2e" % (
+    print("%s    ideal   model   delta" \
+      "    sigma   weight residual" % prefix, file=f)
+    print("%s  %7.2f %7.2f %7.2f %6.2e %6.2e %6.2e" % (
       prefix,
       O.angle_ideal, O.angle_model, O.delta,
-      weight_as_sigma(weight=O.weight), O.weight, O.residual())
+      weight_as_sigma(weight=O.weight), O.weight, O.residual()), file=f)
 
   def _get_sorted_item(O):
     return [O.angle_ideal, O.angle_model, O.delta,
             weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
-class _(boost.python.injector, shared_angle_proxy):
+@boost.python.inject_into(shared_angle_proxy)
+class _():
 
   def as_pymol_dashes(self, pdb_hierarchy):
     # copied from mmtbx/geometry_restraints/hbond.py due to deprecation of
@@ -1246,23 +1256,26 @@ class _(boost.python.injector, shared_angle_proxy):
         result.append([i,j,k])
     return result
 
-class _(boost.python.injector, dihedral):
+@boost.python.inject_into(dihedral)
+class _():
+
   def _show_sorted_item(O, f, prefix):
-    print >> f, "%s    ideal   model   delta" \
+    print("%s    ideal   model   delta" \
       " %        s    sigma   weight residual" % (
-        prefix, {False: "sinusoidal", True: " harmonic "}[O.periodicity <= 0])
+        prefix, {False: "sinusoidal", True: " harmonic "}[O.periodicity <= 0]), file=f)
     angle_ideal = O.angle_model+O.delta
     if angle_ideal<-180: angle_ideal+=360
-    print >> f, "%s  %7.2f %7.2f %7.2f %5d      %6.2e %6.2e %6.2e" % (
+    print("%s  %7.2f %7.2f %7.2f %5d      %6.2e %6.2e %6.2e" % (
       prefix,
       angle_ideal, O.angle_model, O.delta, O.periodicity,
-      weight_as_sigma(weight=O.weight), O.weight, O.residual())
+      weight_as_sigma(weight=O.weight), O.weight, O.residual()), file=f)
 
   def _get_sorted_item(O):
     return [O.angle_ideal, O.angle_model, O.delta, O.periodicity,
             weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
-class _(boost.python.injector, shared_dihedral_proxy):
+@boost.python.inject_into(shared_dihedral_proxy)
+class _():
 
   def deltas(self, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -1334,21 +1347,23 @@ class _(boost.python.injector, shared_dihedral_proxy):
         result.append(ind)
     return result
 
-class _(boost.python.injector, chirality):
+@boost.python.inject_into(chirality)
+class _():
 
   def _show_sorted_item(O, f, prefix):
-    print >> f, "%s  both_signs  ideal   model" \
-      "   delta    sigma   weight residual" % prefix
-    print >> f, "%s    %-5s   %7.2f %7.2f %7.2f %6.2e %6.2e %6.2e" % (
+    print("%s  both_signs  ideal   model" \
+      "   delta    sigma   weight residual" % prefix, file=f)
+    print("%s    %-5s   %7.2f %7.2f %7.2f %6.2e %6.2e %6.2e" % (
       prefix,
       str(O.both_signs), O.volume_ideal, O.volume_model, O.delta,
-      weight_as_sigma(weight=O.weight), O.weight, O.residual())
+      weight_as_sigma(weight=O.weight), O.weight, O.residual()), file=f)
 
   def _get_sorted_item(O):
     return [str(O.both_signs), O.volume_ideal, O.volume_model, O.delta,
       weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
-class _(boost.python.injector, shared_chirality_proxy):
+@boost.python.inject_into(shared_chirality_proxy)
+class _():
 
   def deltas(self, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -1403,7 +1418,8 @@ class _(boost.python.injector, shared_chirality_proxy):
         site_labels=site_labels, max_items=max_items,
         get_restraints_only=False)
 
-class _(boost.python.injector, shared_planarity_proxy):
+@boost.python.inject_into(shared_planarity_proxy)
+class _():
 
   def deltas_rms(O, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -1488,7 +1504,7 @@ class _(boost.python.injector, shared_planarity_proxy):
     if (f is None): f = sys.stdout
     outl = ''
     if (O.size() == 0):
-      print >> f, "%sPlanarity restraints: %d" % (prefix, O.size())
+      print("%sPlanarity restraints: %d" % (prefix, O.size()), file=f)
       return
     if (max_items is not None and max_items <= 0): return
     if (by_value == "residual"):
@@ -1551,22 +1567,24 @@ class _(boost.python.injector, shared_planarity_proxy):
       outl += prefix + "... (remaining %d not shown)\n" % n_not_shown
     if origin_id is None:
       n_planes = O.size()
-    print >> f, "%sPlanarity restraints: %d" % (prefix, n_planes)
+    print("%sPlanarity restraints: %d" % (prefix, n_planes), file=f)
     if outl:
-      print >> f, "%sSorted by %s:" % (prefix, by_value)
-      print >> f, outl[:-1]
+      print("%sSorted by %s:" % (prefix, by_value), file=f)
+      print(outl[:-1], file=f)
 
-class _(boost.python.injector, parallelity):
+@boost.python.inject_into(parallelity)
+class _():
 
   def _show_sorted_item(O, f, prefix):
     assert 0
-    print >> f, "%s    ideal   model   delta" \
-      "    sigma   weight residual" % prefix
+    print("%s    ideal   model   delta" \
+      "    sigma   weight residual" % prefix, file=f)
 
   def _get_sorted_item(self):
     return [self.residual(), self.weight, self.delta]
 
-class _(boost.python.injector, shared_parallelity_proxy):
+@boost.python.inject_into(shared_parallelity_proxy)
+class _():
 
   def deltas(O, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -1598,33 +1616,33 @@ class _(boost.python.injector, shared_parallelity_proxy):
           site_labels=site_labels,
           max_items=max_items,
           origin_id=origin_id)
-    print >> f, "Parallelity restraints: %d" % (self.size())
+    print("Parallelity restraints: %d" % (self.size()), file=f)
     if (self.size() == 0): return
     if (max_items is not None and max_items <= 0): return
-    print >> f, "%sSorted by %s:" % (prefix, by_value)
+    print("%sSorted by %s:" % (prefix, by_value), file=f)
     for info in sorted_table:
       residual = info[1]
       delta_deg = delta = info[3]
       # delta_deg = math.degrees(math.acos(1-delta))
       weight = info[2]
       sigma = math.sqrt(1./weight)
-      print >> f, "    plane 1                plane 2  "+\
-          "              residual  delta(deg) sigma"
+      print("    plane 1                plane 2  "+\
+          "              residual  delta(deg) sigma", file=f)
       r_info = "  %.2e %8.4f  %8.4f" % (residual, delta_deg, sigma)
       i_labels = info[0][0]
       j_labels = info[0][1]
       i = 0
       long_len = max(len(i_labels), len(j_labels))
       while i < long_len:
-        print >> f, "    %s  %s%s" % \
+        print("    %s  %s%s" % \
             (i_labels[i] if i < len(i_labels) else " "*21,
              j_labels[i] if i < len(j_labels) else "",
-             r_info)
+             r_info), file=f)
         r_info = ""
         i += 1
-      print >> f
+      print(file=f)
     if (n_not_shown != 0):
-      print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+      print(prefix + "... (remaining %d not shown)" % n_not_shown, file=f)
 
   def get_sorted(self,
         by_value,
@@ -1639,7 +1657,8 @@ class _(boost.python.injector, shared_parallelity_proxy):
         get_restraints_only=False,
         origin_id=origin_id)
 
-class _(boost.python.injector, shared_bond_similarity_proxy):
+@boost.python.inject_into(shared_bond_similarity_proxy)
+class _():
 
   def deltas_rms(self, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -1667,7 +1686,7 @@ class _(boost.python.injector, shared_bond_similarity_proxy):
     assert by_value in ["residual", "rms_deltas"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
     if (f is None): f = sys.stdout
-    print >> f, "%sBond similarity restraints: %d" % (prefix, O.size())
+    print("%sBond similarity restraints: %d" % (prefix, O.size()), file=f)
     if (O.size() == 0): return
     if (max_items is not None and max_items <= 0): return
     if (by_value == "residual"):
@@ -1685,7 +1704,7 @@ class _(boost.python.injector, shared_bond_similarity_proxy):
     i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
     if (max_items is not None):
       i_proxies_sorted = i_proxies_sorted[:max_items]
-    print >> f, "%sSorted by %s:" % (prefix, by_value)
+    print("%sSorted by %s:" % (prefix, by_value), file=f)
     for i_proxy in i_proxies_sorted:
       proxy = O[i_proxy]
       if origin_id is not None and proxy.origin_id!=origin_id: continue
@@ -1705,9 +1724,8 @@ class _(boost.python.injector, shared_bond_similarity_proxy):
         restraint = bond_similarity(unit_cell=unit_cell, sites_cart=sites_cart,
                               proxy=proxy)
         sym_op_label = " sym.op."
-      print >> f, \
-        "%s     %s    delta    sigma   weight rms_deltas residual%s" % (
-          prefix, " "*len_max, sym_op_label)
+      print("%s     %s    delta    sigma   weight rms_deltas residual%s" % (
+          prefix, " "*len_max, sym_op_label), file=f)
       s = "bond"
       rdr = None
       for i, (i_seq,weight,delta,l) in enumerate(zip(proxy.i_seqs, proxy.weights,
@@ -1721,15 +1739,15 @@ class _(boost.python.injector, shared_bond_similarity_proxy):
           rt_mx = proxy.sym_ops[i]
           if not rt_mx.is_unit_mx():
             sym_op = "%s %s" %(rdr_spacer, rt_mx.as_xyz())
-        print >> f, "%s%4s %s  %7.3f %6.2e %6.2e%s%s" % (
+        print("%s%4s %s  %7.3f %6.2e %6.2e%s%s" % (
           prefix, s, l+" "*(len_max-len(l)),
-          delta, weight_as_sigma(weight=weight), weight, rdr, sym_op)
+          delta, weight_as_sigma(weight=weight), weight, rdr, sym_op), file=f)
         rdr = ""
         rdr_spacer = " "*20
         s = ""
     n_not_shown = O.size() - i_proxies_sorted.size()
     if (n_not_shown != 0):
-      print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+      print(prefix + "... (remaining %d not shown)" % n_not_shown, file=f)
 
 def _show_histogram_of_deltas_impl(O,
         proxy_label,
@@ -1742,8 +1760,8 @@ def _show_histogram_of_deltas_impl(O,
         origin_id=None):
     if (O.size() == 0): return
     if (f is None): f = sys.stdout
-    print >> f, "%sHistogram of %s deviations from ideal:" % (
-      prefix, proxy_label)
+    print("%sHistogram of %s deviations from ideal:" % (
+      prefix, proxy_label), file=f)
     if origin_id is not None:
       sorted_table, n_not_shown = O.get_sorted(
                         by_value="delta",
@@ -1764,7 +1782,7 @@ def _show_histogram_of_deltas_impl(O,
     low_cutoff = histogram.data_min()
     for i,n in enumerate(histogram.slots()):
       high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
-      print >> f, fmt % (prefix, low_cutoff, high_cutoff, n)
+      print(fmt % (prefix, low_cutoff, high_cutoff, n), file=f)
       low_cutoff = high_cutoff
     return histogram
 
@@ -1873,34 +1891,34 @@ def _show_sorted_impl(O,
         origin_id=origin_id)
   len_sorted_table = 0 if sorted_table is None else len(sorted_table)
   if n_not_shown is None: n_not_shown = 0
-  print >> f, "%s%s restraints: %d" % (prefix, proxy_label, len_sorted_table+n_not_shown)
+  print("%s%s restraints: %d" % (prefix, proxy_label, len_sorted_table+n_not_shown), file=f)
   if (O.size() == 0): return
   if len_sorted_table+n_not_shown==0: return
   n_harmonic = 0
   n_sinusoidal = 0
   if (max_items is not None and max_items <= 0): return
   item_label_blank = " " * len(item_label)
-  outl = StringIO.StringIO()
+  outl = six.StringIO()
   for (labels, restraint) in sorted_table :
     if (proxy_type is dihedral) and (origin_id==0 or origin_id is None):
       if restraint.periodicity<=0: n_harmonic+=1
       else: n_sinusoidal+=1
     s = item_label
     for l in labels :
-      print >> outl, "%s%s %s" % (prefix, s, l)
+      print("%s%s %s" % (prefix, s, l), file=outl)
       s = item_label_blank
     restraint._show_sorted_item(f=outl, prefix=prefix)
   if (n_not_shown != 0):
     if (proxy_type is dihedral):
       n_harmonic = O.count_harmonic()
       n_sinusoidal = O.size() - n_harmonic
-    print >> outl, prefix + "... (remaining %d not shown)" % n_not_shown
+    print(prefix + "... (remaining %d not shown)" % n_not_shown, file=outl)
   #
   if (proxy_type is dihedral) and (origin_id==0 or origin_id is None):
-    print >> f, prefix+"  sinusoidal: %d" % n_sinusoidal
-    print >> f, prefix+"    harmonic: %d" % n_harmonic
-  print >> f, "%sSorted by %s:" % (prefix, by_value)
-  print >> f, outl.getvalue()[:-1]
+    print(prefix+"  sinusoidal: %d" % n_sinusoidal, file=f)
+    print(prefix+"    harmonic: %d" % n_harmonic, file=f)
+  print("%sSorted by %s:" % (prefix, by_value), file=f)
+  print(outl.getvalue()[:-1], file=f)
 
 class pair_proxies(object):
 
@@ -1951,76 +1969,77 @@ class pair_proxies(object):
         min_cubicle_edge=min_cubicle_edge,
         shell_asu_tables=shell_asu_tables)
 
-class _(boost.python.injector, ext.motif):
+@boost.python.inject_into(ext.motif)
+class _():
 
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    print >> out, prefix+"geometry_restraints.motif {"
-    print >> out, prefix+"  id = %s" % show_string(self.id)
-    print >> out, prefix+"  description = %s" % show_string(self.description)
+    print(prefix+"geometry_restraints.motif {", file=out)
+    print(prefix+"  id = %s" % show_string(self.id), file=out)
+    print(prefix+"  description = %s" % show_string(self.description), file=out)
     for info in self.info:
-      print >> out, prefix+"  info = %s" % show_string(info)
+      print(prefix+"  info = %s" % show_string(info), file=out)
     for manipulation_id in self.manipulation_ids:
-      print >> out, prefix+"  manipulation_id = %s" % (
-        show_string(manipulation_id))
+      print(prefix+"  manipulation_id = %s" % (
+        show_string(manipulation_id)), file=out)
     self.show_atoms(out=out, prefix=prefix+"  ")
     self.show_bonds(out=out, prefix=prefix+"  ")
     self.show_angles(out=out, prefix=prefix+"  ")
     self.show_dihedrals(out=out, prefix=prefix+"  ")
     self.show_chiralities(out=out, prefix=prefix+"  ")
     self.show_planarities(out=out, prefix=prefix+"  ")
-    print >> out, prefix+"}"
+    print(prefix+"}", file=out)
 
   def show_atoms(self, out=None, prefix=""):
     atoms = self.atoms_as_list()
     if (len(atoms) > 0):
-      print >> out, prefix+"atom = " \
-        "[name scattering_type nonbonded_type partial_charge]"
+      print(prefix+"atom = " \
+        "[name scattering_type nonbonded_type partial_charge]", file=out)
       for atom in atoms:
-        print >> out, prefix+"atom = %s %s %s %.6g" % (
+        print(prefix+"atom = %s %s %s %.6g" % (
           show_string(atom.name),
           show_string(atom.scattering_type),
           show_string(atom.nonbonded_type),
-          atom.partial_charge)
+          atom.partial_charge), file=out)
 
   def show_bonds(self, out=None, prefix=""):
     bonds = self.bonds_as_list()
     if (len(bonds) > 0):
-      print >> out, prefix+"bond = " \
-        "[atom_name*2 type distance_ideal weight id]"
+      print(prefix+"bond = " \
+        "[atom_name*2 type distance_ideal weight id]", file=out)
       for bond in bonds:
         atom_names = bond.atom_names
-        print >> out, prefix+"bond = %s %s %s %.6g %.6g %s" % (
+        print(prefix+"bond = %s %s %s %.6g %.6g %s" % (
           show_string(atom_names[0]),
           show_string(atom_names[1]),
           show_string(bond.type),
           bond.distance_ideal,
           bond.weight,
-          show_string(bond.id))
+          show_string(bond.id)), file=out)
 
   def show_angles(self, out=None, prefix=""):
     angles = self.angles_as_list()
     if (len(angles) > 0):
-      print >> out, prefix+"angle = " \
-        "[atom_name*3 angle_ideal weight id]"
+      print(prefix+"angle = " \
+        "[atom_name*3 angle_ideal weight id]", file=out)
       for angle in angles:
         atom_names = angle.atom_names
-        print >> out, prefix+"angle = %s %s %s %.6g %.6g %s" % (
+        print(prefix+"angle = %s %s %s %.6g %.6g %s" % (
           show_string(atom_names[0]),
           show_string(atom_names[1]),
           show_string(atom_names[2]),
           angle.angle_ideal,
           angle.weight,
-          show_string(angle.id))
+          show_string(angle.id)), file=out)
 
   def show_dihedrals(self, out=None, prefix=""):
     dihedrals = self.dihedrals_as_list()
     if (len(dihedrals) > 0):
-      print >> out, prefix+"dihedral = " \
-        "[atom_name*4 angle_ideal weight periodicity id]"
+      print(prefix+"dihedral = " \
+        "[atom_name*4 angle_ideal weight periodicity id]", file=out)
       for dihedral in dihedrals:
         atom_names = dihedral.atom_names
-        print >> out, prefix+"dihedral = %s %s %s %s %.6g %.6g %d %s" % (
+        print(prefix+"dihedral = %s %s %s %s %.6g %.6g %d %s" % (
           show_string(atom_names[0]),
           show_string(atom_names[1]),
           show_string(atom_names[2]),
@@ -2028,18 +2047,18 @@ class _(boost.python.injector, ext.motif):
           dihedral.angle_ideal,
           dihedral.weight,
           dihedral.periodicity,
-          show_string(dihedral.id))
+          show_string(dihedral.id)), file=out)
 
   def show_chiralities(self, out=None, prefix=""):
     chiralities = self.chiralities_as_list()
     if (len(chiralities) > 0):
-      print >> out, prefix+"chirality = " \
-        "[atom_name*4 volume_sign both_signs volume_ideal weight id]"
+      print(prefix+"chirality = " \
+        "[atom_name*4 volume_sign both_signs volume_ideal weight id]", file=out)
       for chirality in chiralities:
         atom_names = chirality.atom_names
         if (chirality.both_signs): both_signs = "True"
         else:                      both_signs = "False"
-        print >> out, prefix+"chirality = %s %s %s %s %s %s %.6g %.6g %s" % (
+        print(prefix+"chirality = %s %s %s %s %s %s %.6g %.6g %s" % (
           show_string(atom_names[0]),
           show_string(atom_names[1]),
           show_string(atom_names[2]),
@@ -2048,21 +2067,22 @@ class _(boost.python.injector, ext.motif):
           both_signs,
           chirality.volume_ideal,
           chirality.weight,
-          show_string(chirality.id))
+          show_string(chirality.id)), file=out)
 
   def show_planarities(self, out=None, prefix=""):
     planarities = self.planarities_as_list()
     if (len(planarities) > 0):
       for planarity in planarities:
-        print >> out, prefix+"planarity {"
-        print >> out, prefix+"  id = %s" % show_string(planarity.id)
+        print(prefix+"planarity {", file=out)
+        print(prefix+"  id = %s" % show_string(planarity.id), file=out)
         assert planarity.weights.size() == planarity.atom_names.size()
-        print >> out, prefix+"  atom = [name weight]"
+        print(prefix+"  atom = [name weight]", file=out)
         for an,w in zip(planarity.atom_names, planarity.weights):
-          print >> out, prefix+"  atom = %s %.6g" % (show_string(an), w)
-        print >> out, prefix+"}"
+          print(prefix+"  atom = %s %.6g" % (show_string(an), w), file=out)
+        print(prefix+"}", file=out)
 
-class _(boost.python.injector, ext.motif_alteration):
+@boost.python.inject_into(ext.motif_alteration)
+class _():
 
   def show(self, out=None, prefix="", previous_help=None):
     if (out is None): out = sys.stdout
@@ -2074,36 +2094,36 @@ class _(boost.python.injector, ext.motif_alteration):
       attr = "name scattering_type nonbonded_type partial_charge"
       if (action == "add"):
         help = prefix+"atom = add [motif_id %s]" % attr
-        if (help != previous_help): print >> out, help
-        print >> out, prefix+"atom = add %s %s %s %s %s" % (
+        if (help != previous_help): print(help, file=out)
+        print(prefix+"atom = add %s %s %s %s %s" % (
           show_string(self.motif_ids[0]),
           show_string(atom.name),
           show_string(atom.scattering_type),
           show_string(atom.nonbonded_type),
-          atom.partial_charge)
+          atom.partial_charge), file=out)
       elif (action == "change"):
         help = prefix+"atom = change [motif_id motif_atom_name \\\n" \
                     + prefix+"               %s]" % attr
-        if (help != previous_help): print >> out, help
-        print >> out, prefix+"atom = change %s %s \\" % (
+        if (help != previous_help): print(help, file=out)
+        print(prefix+"atom = change %s %s \\" % (
           show_string(self.motif_ids[0]),
-          show_string(self.motif_atom_name))
+          show_string(self.motif_atom_name)), file=out)
         if (not self.change_partial_charge()):
           partial_charge = "None"
         else:
           partial_charge = "%.6g" % atom.partial_charge
-        print >> out, prefix+"              %s %s %s %s" % (
+        print(prefix+"              %s %s %s %s" % (
           show_string(atom.name),
           show_string(atom.scattering_type),
           show_string(atom.nonbonded_type),
-          partial_charge)
+          partial_charge), file=out)
       else:
         assert action == "delete"
         help = prefix+"atom = delete [motif_id motif_atom_name]"
-        if (help != previous_help): print >> out, help
-        print >> out, prefix+"atom = delete %s %s" % (
+        if (help != previous_help): print(help, file=out)
+        print(prefix+"atom = delete %s %s" % (
           show_string(self.motif_ids[0]),
-          show_string(self.motif_atom_name))
+          show_string(self.motif_atom_name)), file=out)
     elif (operand == "bond"):
       assert len(self.motif_ids) == 2
       bond = self.bond
@@ -2116,8 +2136,8 @@ class _(boost.python.injector, ext.motif_alteration):
         show_string(bond.atom_names[1]))
       if (action == "delete"):
         help = prefix+"%s]" % help_lead
-        if (help != previous_help): print >> out, help
-        print >> out, prefix+"%s" % data_lead
+        if (help != previous_help): print(help, file=out)
+        print(prefix+"%s" % data_lead, file=out)
       else:
         if (action == "change" and not self.change_distance_ideal()):
           distance_ideal = "None"
@@ -2128,9 +2148,9 @@ class _(boost.python.injector, ext.motif_alteration):
         else:
           weight = "%.6g" % bond.weight
         help = prefix+"%s type distance_ideal weight id]" % help_lead
-        if (help != previous_help): print >> out, help
-        print >> out, prefix+"%s %s %s %s" % (
-          data_lead, distance_ideal, weight, show_string(bond.id))
+        if (help != previous_help): print(help, file=out)
+        print(prefix+"%s %s %s %s" % (
+          data_lead, distance_ideal, weight, show_string(bond.id)), file=out)
     elif (operand == "angle"):
       assert len(self.motif_ids) == 3
       angle = self.angle
@@ -2145,8 +2165,8 @@ class _(boost.python.injector, ext.motif_alteration):
         show_string(angle.atom_names[2]))
       if (action == "delete"):
         help = prefix+"%s]" % help_lead
-        if (help != previous_help): print >> out, help
-        print >> out, prefix+"%s" % data_lead
+        if (help != previous_help): print(help, file=out)
+        print(prefix+"%s" % data_lead, file=out)
       else:
         if (action == "change" and not self.change_angle_ideal()):
           angle_ideal = "None"
@@ -2157,9 +2177,9 @@ class _(boost.python.injector, ext.motif_alteration):
         else:
           weight = "%.6g" % angle.weight
         help = prefix+"%s type angle_ideal weight id]" % help_lead
-        if (help != previous_help): print >> out, help
-        print >> out, prefix+"%s %s %s %s" % (
-          data_lead, angle_ideal, weight, show_string(angle.id))
+        if (help != previous_help): print(help, file=out)
+        print(prefix+"%s %s %s %s" % (
+          data_lead, angle_ideal, weight, show_string(angle.id)), file=out)
     elif (operand == "dihedral"):
       assert len(self.motif_ids) == 4
       dihedral = self.dihedral
@@ -2176,8 +2196,8 @@ class _(boost.python.injector, ext.motif_alteration):
         show_string(dihedral.atom_names[3]))
       if (action == "delete"):
         help = prefix+"%s]" % help_lead
-        if (help != previous_help): print >> out, help
-        print >> out, prefix+"%s" % data_lead
+        if (help != previous_help): print(help, file=out)
+        print(prefix+"%s" % data_lead, file=out)
       else:
         if (action == "change" and not self.change_angle_ideal()):
           angle_ideal = "None"
@@ -2192,10 +2212,10 @@ class _(boost.python.injector, ext.motif_alteration):
         else:
           periodicity = "%d" % dihedral.periodicity
         help = prefix+"%s angle_ideal weight periodicity id]" % help_lead
-        if (help != previous_help): print >> out, help
-        print >> out, prefix+"%s %s %s %s %s" % (
+        if (help != previous_help): print(help, file=out)
+        print(prefix+"%s %s %s %s %s" % (
           data_lead, angle_ideal, weight, periodicity,
-          show_string(dihedral.id))
+          show_string(dihedral.id)), file=out)
     elif (operand == "chirality"):
       assert len(self.motif_ids) == 4
       chirality = self.chirality
@@ -2212,8 +2232,8 @@ class _(boost.python.injector, ext.motif_alteration):
         show_string(chirality.atom_names[3]))
       if (action == "delete"):
         help = prefix+"%s]" % help_lead
-        if (help != previous_help): print >> out, help
-        print >> out, prefix+"%s" % data_lead
+        if (help != previous_help): print(help, file=out)
+        print(prefix+"%s" % data_lead, file=out)
       else:
         if (action == "change" and not self.change_volume_ideal()):
           volume_ideal = "None"
@@ -2226,27 +2246,27 @@ class _(boost.python.injector, ext.motif_alteration):
         help = prefix+"%s \\\n" % help_lead \
              + prefix+" "*(14+len(action)) \
              + "volume_sign volume_ideal weight id]"
-        if (help != previous_help): print >> out, help
-        print >> out, prefix+"%s \\\n%s%s%s %s %s %s" % (
+        if (help != previous_help): print(help, file=out)
+        print(prefix+"%s \\\n%s%s%s %s %s %s" % (
           data_lead, prefix, " "*(13+len(action)),
           show_string(chirality.volume_sign),
-          volume_ideal, weight, show_string(chirality.id))
+          volume_ideal, weight, show_string(chirality.id)), file=out)
     elif (operand == "planarity"):
       planarity = self.planarity
-      print >> out, prefix+"planarity {"
-      print >> out, prefix+"  action = %s" % action
-      print >> out, prefix+"  motif_id = %s" % show_string(
-        self.planarity_motif_id)
-      print >> out, prefix+"  id = %s" % show_string(planarity.id)
+      print(prefix+"planarity {", file=out)
+      print(prefix+"  action = %s" % action, file=out)
+      print(prefix+"  motif_id = %s" % show_string(
+        self.planarity_motif_id), file=out)
+      print(prefix+"  id = %s" % show_string(planarity.id), file=out)
       if (action == "add"):
-        print >> out, prefix+"  atom = [motif_id name weight]"
+        print(prefix+"  atom = [motif_id name weight]", file=out)
         assert planarity.weights.size() == planarity.atom_names.size()
         assert self.motif_ids.size() == planarity.atom_names.size()
         for mi,an,w in zip(self.motif_ids,
                            planarity.atom_names,
                            planarity.weights):
-          print >> out, prefix+"  atom = %s %s %.6g" % (
-            show_string(mi), show_string(an), w)
+          print(prefix+"  atom = %s %s %.6g" % (
+            show_string(mi), show_string(an), w), file=out)
       elif (action == "change"):
         assert planarity.weights.size() == planarity.atom_names.size()
         assert self.motif_ids.size() == planarity.atom_names.size()
@@ -2259,32 +2279,33 @@ class _(boost.python.injector, ext.motif_alteration):
                               planarity.weights):
           if (ac != "delete"):
             help = prefix+"  atom = %s [motif_id name weight]" % ac
-            if (help != previous_help): print >> out, help
-            print >> out, prefix+"  atom = %s %s %s %.6g" % (
-              ac, show_string(mi), show_string(an), w)
+            if (help != previous_help): print(help, file=out)
+            print(prefix+"  atom = %s %s %s %.6g" % (
+              ac, show_string(mi), show_string(an), w), file=out)
           else:
             help = prefix+"  atom = delete [motif_id name]"
-            if (help != previous_help): print >> out, help
-            print >> out, prefix+"  atom = %s %s %s" % (
-              ac, show_string(mi), show_string(an))
+            if (help != previous_help): print(help, file=out)
+            print(prefix+"  atom = %s %s %s" % (
+              ac, show_string(mi), show_string(an)), file=out)
           previous_help = help
-      print >> out, prefix+"}"
+      print(prefix+"}", file=out)
       help = None
     else:
       raise RuntimeError("Internal Error: unknown operand: %s" % operand)
     return help
 
-class _(boost.python.injector, ext.motif_manipulation):
+@boost.python.inject_into(ext.motif_manipulation)
+class _():
 
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    print >> out, prefix+"geometry_restraints.motif_manipulation {"
-    print >> out, prefix+"  id = %s" % show_string(self.id)
-    print >> out, prefix+"  description = %s" % show_string(self.description)
+    print(prefix+"geometry_restraints.motif_manipulation {", file=out)
+    print(prefix+"  id = %s" % show_string(self.id), file=out)
+    print(prefix+"  description = %s" % show_string(self.description), file=out)
     for info in self.info:
-      print >> out, prefix+"  info = %s" % show_string(info)
+      print(prefix+"  info = %s" % show_string(info), file=out)
     previous_help = None
     for alteration in self.alterations_as_list():
       previous_help = alteration.show(
         out=out, prefix=prefix+"  ", previous_help=previous_help)
-    print >> out, prefix+"}"
+    print(prefix+"}", file=out)

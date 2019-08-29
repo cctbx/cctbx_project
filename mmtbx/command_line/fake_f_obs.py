@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.fake_f_obs
 
 from cctbx import adptbx
@@ -18,6 +18,7 @@ import mmtbx.f_model
 import iotbx.phil
 import mmtbx.masks
 from libtbx.utils import Sorry
+from six.moves import range
 
 if(1):
   random.seed(0)
@@ -110,8 +111,8 @@ class show(object):
     self.bond_rmsd = esg.bond_deviations()[2]
     self.angle_rmsd = esg.angle_deviations()[2]
     self.error = flex.mean(xrs.distances(other = xrs_start))
-    print "  %s err=%8.3f rmsd: bonds=%6.3f angles=%6.3f"%(prefix, self.error,
-      self.bond_rmsd, self.angle_rmsd)
+    print("  %s err=%8.3f rmsd: bonds=%6.3f angles=%6.3f"%(prefix, self.error,
+      self.bond_rmsd, self.angle_rmsd))
 
 def switch_rotamers(xray_structure, pdb_hierarchy):
   x = xray_structure.deep_copy_scatterers()
@@ -151,8 +152,8 @@ def apply_tls(xray_structure, params):
     u_min=params.min_tl)
   L=random_aniso_adp(space_group=sg, unit_cell=uc, u_scale=params.max_tl,
     u_min=params.min_tl)
-  print "  T: %s"%",".join([("%7.3f"%i).strip() for i in T])
-  print "  L: %s"%",".join([("%7.3f"%i).strip() for i in L])
+  print("  T: %s"%",".join([("%7.3f"%i).strip() for i in T]))
+  print("  L: %s"%",".join([("%7.3f"%i).strip() for i in L]))
   tlsos = mmtbx.tls.tools.generate_tlsos(
     selections     = selections,
     xray_structure = xray_structure,
@@ -242,8 +243,8 @@ def simulate_f_obs(root, crystal_symmetry, params):
       unit_cell=crystal_symmetry.unit_cell(),
       u_scale=params.f_obs.overall_anisotropic_scale_matrix_b_cart.max,
       u_min=params.f_obs.overall_anisotropic_scale_matrix_b_cart.min)
-    print "\noverall_anisotropic_scale_matrix_b_cart: %s"%",".join(
-      [("%7.3f"%i).strip() for i in b_cart])
+    print("\noverall_anisotropic_scale_matrix_b_cart: %s"%",".join(
+      [("%7.3f"%i).strip() for i in b_cart]))
   fmodel = mmtbx.f_model.manager(
     f_obs  = dummy,
     f_calc = fcalc_average,
@@ -296,7 +297,7 @@ def cd(xray_structure, restraints_manager, params):
     verbose                          = -1)
 
 def loop_2(params, xray_structure, pdb_hierarchy, restraints_manager, root):
-  print "model:"
+  print("model:")
   amp = params.f_obs.f_calc.atomic_model
   grm = restraints_manager
   xrs = xray_structure.deep_copy_scatterers()
@@ -342,7 +343,7 @@ def loop_1(params, root, xray_structure, pdb_hierarchy, restraints_manager):
   size = int(math.ceil(params.f_obs.f_calc.atomic_model.ensemble_size/len(xh)))
   for xh_ in xh:
     x_, h_ = xh_
-    for mc in xrange(size):
+    for mc in range(size):
       loop_2(
         params         = params,
         xray_structure = x_,
@@ -354,9 +355,9 @@ def loop_1(params, root, xray_structure, pdb_hierarchy, restraints_manager):
   root.atoms().set_occ(root.atoms().extract_occ()/len(root.models()))
 
 def defaults(log):
-  print >> log, "Default params::\n"
+  print("Default params::\n", file=log)
   parsed = iotbx.phil.parse(master_params_str, process_includes=True)
-  print >> log
+  print(file=log)
   return parsed
 
 def run(args, log = sys.stdout):
@@ -393,7 +394,7 @@ def run(args, log = sys.stdout):
   xray_structure = processed_pdb_file.xray_structure()
   mmtbx.utils.assert_xray_structures_equal(x1 = xray_structure,
     x2 = pdb_inp.xray_structure_simple())
-  sctr_keys=xray_structure.scattering_type_registry().type_count_dict().keys()
+  sctr_keys=xray_structure.scattering_type_registry().type_count_dict()
   has_hd = "H" in sctr_keys or "D" in sctr_keys
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,

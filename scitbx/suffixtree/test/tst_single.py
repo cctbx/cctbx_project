@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from scitbx import suffixtree
 from scitbx.suffixtree import single
 
 import unittest
+from six.moves import range
 
 class TestWord(unittest.TestCase):
 
@@ -863,7 +864,7 @@ class TestLeafIndices(unittest.TestCase):
     self.assertEqual( leaf_indices_below[ leaf_5 ], [ 5 ] )
 
     self.assertEqual( sorted( leaf_indices_below[ branch_t ] ), [ 0, 1 ] )
-    self.assertEqual( sorted( leaf_indices_below[ root ] ), range( 6 ) )
+    self.assertEqual( sorted( leaf_indices_below[ root ] ), list(range( 6)) )
 
 
 suite_word = unittest.TestLoader().loadTestsFromTestCase(

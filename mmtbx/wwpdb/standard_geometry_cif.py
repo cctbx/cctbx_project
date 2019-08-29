@@ -1,7 +1,7 @@
 """Parser for Kim Henrick's standard_geometry.cif file:
   http://www.ebi.ac.uk/~henrick/newpdb/standard_geometry.cif
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 def get_cif_number(type, s):
   s = s.strip()

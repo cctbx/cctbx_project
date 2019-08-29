@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from mmtbx.building.loop_closure import utils
 from mmtbx.validation import ramalyze
@@ -6,6 +6,8 @@ import itertools
 from libtbx.utils import null_out
 
 import boost.python
+from six.moves import zip
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 
@@ -107,7 +109,7 @@ def get_all_starting_conformations(moving_h, change_radius,
   phi_psi_atoms = utils.get_phi_psi_atoms(moving_h, omega=True)
   # print "N residue groups in h", [x.resseq for x in moving_h.residue_groups()]
   if len(phi_psi_atoms) == 0:
-    print >> log, "Strange input to starting conformations!!!"
+    print("Strange input to starting conformations!!!", file=log)
     return result
   n_rama = len(phi_psi_atoms)
   # print "n_rama", n_rama
@@ -122,11 +124,11 @@ def get_all_starting_conformations(moving_h, change_radius,
     for o in omegas:
       if o is not None and abs(abs(o)-180) > 30:
         has_twisted = True
-  print >> log, "n_outliers", n_outliers
+  print("n_outliers", n_outliers, file=log)
   for i, (phi_psi_pair, rama_key, omega) in enumerate(phi_psi_atoms):
     angle_is_outlier = utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER
     twisted = omega is not None and ((abs(abs(omega)-180) > 30) and check_omega)
-    print >> log, "in cycle, N, outlier?, change?, twisted?", i, angle_is_outlier, i in change_angles, twisted
+    print("in cycle, N, outlier?, change?, twisted?", i, angle_is_outlier, i in change_angles, twisted, file=log)
     if angle_is_outlier and n_outliers < 3:
       vs = get_sampled_rama_favored_angles(rama_key, r)
     elif (i in change_angles) or angle_is_outlier or has_twisted:
@@ -135,7 +137,7 @@ def get_all_starting_conformations(moving_h, change_radius,
     else:
       vs = [(None, None)]
     variants.append(vs)
-  print >> log, "variants", variants
+  print("variants", variants, file=log)
   all_angles_combination = list(itertools.product(*variants))
   # filter none combinations
   # print "len(all_angles_combination)", len(all_angles_combination)
@@ -143,7 +145,7 @@ def get_all_starting_conformations(moving_h, change_radius,
   for comb in all_angles_combination:
     if is_not_none_combination(comb):
       all_angles_combination_f.append(comb)
-  print >> log, "len(all_angles_combination_f)", len(all_angles_combination_f)
+  print("len(all_angles_combination_f)", len(all_angles_combination_f), file=log)
   return all_angles_combination_f
   # if len(all_angles_combination_f) == 0:
   #   print "In starting conformations - outlier was fixed?"

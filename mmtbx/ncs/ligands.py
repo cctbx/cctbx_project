@@ -13,13 +13,14 @@ is sufficiently good.
 Usually this will be called via the command mmtbx.apply_ncs_to_ligand.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, null_out
 from libtbx.str_utils import make_sub_header
 from libtbx import adopt_init_args, group_args
 import copy
 from math import sqrt
 import sys
+from six.moves import zip
 
 debug = True
 
@@ -87,17 +88,17 @@ class group_operators(object):
     Print out selections and NCS operators.
     """
     if (out is None) : out = sys.stdout
-    print >> out, prefix+"Reference selection: %s" % self.selection_string
+    print(prefix+"Reference selection: %s" % self.selection_string, file=out)
     for op, op_sele in zip(self.operators, self.op_selections):
-      print >> out, prefix+"  Selection: %s" % op_sele
-      print >> out, prefix+"  Rotation:"
-      print >> out, prefix+"    %6.4f  %6.4f  %6.4f" % op.r.elems[0:3]
-      print >> out, prefix+"    %6.4f  %6.4f  %6.4f" % op.r.elems[3:6]
-      print >> out, prefix+"    %6.4f  %6.4f  %6.4f" % op.r.elems[6:9]
-      print >> out, prefix+"  Translation:"
-      print >> out, prefix+"    %6.4f  %6.4f  %6.4f" % op.t.elems
-      print >> out, ""
-    print >> out, ""
+      print(prefix+"  Selection: %s" % op_sele, file=out)
+      print(prefix+"  Rotation:", file=out)
+      print(prefix+"    %6.4f  %6.4f  %6.4f" % op.r.elems[0:3], file=out)
+      print(prefix+"    %6.4f  %6.4f  %6.4f" % op.r.elems[3:6], file=out)
+      print(prefix+"    %6.4f  %6.4f  %6.4f" % op.r.elems[6:9], file=out)
+      print(prefix+"  Translation:", file=out)
+      print(prefix+"    %6.4f  %6.4f  %6.4f" % op.t.elems, file=out)
+      print("", file=out)
+    print("", file=out)
 
 class sample_operators(object):
   """
@@ -124,10 +125,10 @@ class sample_operators(object):
     best_k = -1
     best_ligand = None
     other_ligands = []
-    print >> log, "Identifying reference ligand..."
+    print("Identifying reference ligand...", file=log)
     def show_map_stats(prefix, stats):
-      print >> log, "   %s: CC = %5.3f  mean = %6.2f" % (prefix, stats.cc,
-        stats.map_mean)
+      print("   %s: CC = %5.3f  mean = %6.2f" % (prefix, stats.cc,
+        stats.map_mean), file=log)
     for k, ligand in enumerate(ligands):
       atoms = ligand.atoms()
       start = self.get_sites_cc(atoms)
@@ -143,10 +144,10 @@ class sample_operators(object):
     for k, ligand in enumerate(ligands):
       if (ligand is not best_ligand):
         other_ligands.append(ligand)
-    print >> log, "Copy #%d was the best, using that as reference" % (best_k+1)
-    print >> log, ""
+    print("Copy #%d was the best, using that as reference" % (best_k+1), file=log)
+    print("", file=log)
     sites_ref = best_ligand.atoms().extract_xyz()
-    min_dist = sys.maxint
+    min_dist = sys.maxsize
     best_group = None
     shifts = ncs_operators.get_ncs_groups_shifts(
       self.xray_structure.sites_cart(),
@@ -159,11 +160,11 @@ class sample_operators(object):
         min_dist = dxyz
     array_of_str_selections = ncs_operators.get_array_of_str_selections()[0]
     if (best_group is not None):
-      print >> log, "This appears to be bound to the selection \"%s\"" % \
-        array_of_str_selections[best_group]
+      print("This appears to be bound to the selection \"%s\"" % \
+        array_of_str_selections[best_group], file=log)
     if best_group==0: pass
     else:
-      print 'best_group',best_group
+      print('best_group',best_group)
       assert 0
     # always have the first ligand in the master
     self.new_ligands = []
@@ -176,7 +177,7 @@ class sample_operators(object):
         sites_other_mean = other.atoms().extract_xyz().mean()
         dxyz = xyz_distance(sites_other_mean, sites_new.mean())
         if (dxyz < params.min_dist_center):
-          print >> log, "  operator %d specifies an existing ligand" % (j+1)
+          print("  operator %d specifies an existing ligand" % (j+1), file=log)
           break
       else :
         atoms.set_xyz(sites_new)
@@ -195,8 +196,8 @@ class sample_operators(object):
         # best new CC, rather than assuming that the best starting ligand will
         # superpose best on the density.
         if (stats_new.cc > params.min_cc):
-          print >> log, "  operator %d has acceptable CC (%.3f)" % (j+1,
-            stats_new.cc)
+          print("  operator %d has acceptable CC (%.3f)" % (j+1,
+            stats_new.cc), file=log)
           self.new_ligands.append(new_ligand)
 
   def setup_maps(self):
@@ -305,7 +306,7 @@ def remove_clashing_atoms(
   if (len(remove_atoms) > 0):
     def show_removed(atoms):
       for atom in atoms :
-        print >> log, "  warning: deleting atom %s" % atom.id_str()
+        print("  warning: deleting atom %s" % atom.id_str(), file=log)
     deleted = []
     bad_atoms = [ pdb_atoms[j_seq] for j_seq in remove_atoms ]
     for atom in bad_atoms :
@@ -340,7 +341,7 @@ def remove_clashing_atoms(
           if (len(other_atoms) == 1):
             chain.remove_residue_group(residue_group)
     n_removed = len(deleted)
-    print >> log, "%d atoms removed due to clashes with ligand(s)." % n_removed
+    print("%d atoms removed due to clashes with ligand(s)." % n_removed, file=log)
     for i_seq in deleted :
       selection[i_seq] = False
     xrs_new = xray_structure.select(selection)
@@ -385,8 +386,8 @@ class get_final_maps_and_cc(object):
       m2 = fcalc_real_map.select(sel)
       cc = flex.linear_correlation(x=m1, y=m2).coefficient()
       final_cc.append(cc)
-      print >> log, "  Ligand %d: CC = %5.3f" % (k+1, cc)
-    print >> log, ""
+      print("  Ligand %d: CC = %5.3f" % (k+1, cc), file=log)
+    print("", file=log)
     self.final_cc = final_cc
 
   def write_maps(self, file_name):
@@ -444,7 +445,7 @@ def combine_ligands_and_hierarchy(pdb_hierarchy, ligands, log=None):
   for i_lig, ligand in enumerate(ligands):
     xyz_mean = ligand.atoms().extract_xyz().mean()
     best_chain = None
-    min_dist = sys.maxint
+    min_dist = sys.maxsize
     for chain in model.chains():
       last_resseq = chain.residue_groups()[-1].resseq_as_int()
       if ((not chain.id in chain_id_counts) or
@@ -464,8 +465,8 @@ def combine_ligands_and_hierarchy(pdb_hierarchy, ligands, log=None):
     new_resseq = 1
     if (best_chain_id in chain_id_counts):
       new_resseq = chain_id_counts[best_chain_id] + 1
-    print >> log, "  ligand %d: chain='%s' resseq=%s" % (i_lig+1,
-      best_chain_id, new_resseq)
+    print("  ligand %d: chain='%s' resseq=%s" % (i_lig+1,
+      best_chain_id, new_resseq), file=log)
     new_rg.resseq = new_resseq
     new_rg.append_atom_group(ligand)
     new_chain.append_residue_group(new_rg)
@@ -507,11 +508,11 @@ class apply_ligand_ncs(object):
     nrgl = ncs_obj.get_ncs_restraints_group_list()
 
     if 0:
-      print >> log, "Summary of NCS operators:"
+      print("Summary of NCS operators:", file=log)
       for ncs_group in ncs_ops :
         for k, group in enumerate(ncs_group):
           group.show_summary(log, prefix="  ")
-    print >> log, "Looking for ligands named %s..." % ligand_code
+    print("Looking for ligands named %s..." % ligand_code, file=log)
     ligands = extract_ligand_residues(pdb_hierarchy, ligand_code,
       only_segid=only_segid)
     if (len(ligands) == 0):

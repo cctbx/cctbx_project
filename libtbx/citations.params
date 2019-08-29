@@ -1326,3 +1326,21 @@ citation {
   pmid = None
   doi_id = 10.1107/S2059798318002425
 }
+
+citation {
+  article_id = mmcif_deposition
+  authors = Adams PD, Afonine PV, Baskaran K, Berman HM, Berrisford J, \
+    Bricogne G, Brown DG, Burley SK, Chen M, Feng Z, Flensburg C, Gutmanas A, \
+    Hoch JC, Ikegawa Y, Kengaku Y, Krissinel E, Kurisu G, Liang Y, \
+    Liebschner D, Mak L, Markley JL, Moriarty NW, Murshudov GN, Noble M, \
+    Peisach E, Persikova I, Poon BK, Sobolev OV, Ulrich EL, Velankar S, \
+    Vonrhein C, Westboork J, Wojdyr M, Yokochi M, Young JY
+  title = Announcing mandatory submission of PDBx/mmCIF format files for \
+    crystallographic depositions to the Protein Data Bank (PDB)
+  year = 2019
+  journal = Acta Cryst. D
+  volume = 75
+  pages = 451-454
+  pmid = 30988261
+  doi_id = 10.1107/S2059798319004522
+}

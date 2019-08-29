@@ -21,7 +21,7 @@
 #
 #
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # LIBTBX_SET_DISPATCHER_NAME phenix.cl_app_example
 
@@ -73,7 +73,7 @@ This tool will cut out range of residues from chain. Usage:
 
     # Now we should have all necessary parsed objects in internal structures
     # like pdb_h etc
-    print >> self.log, "Parsed model in form of pdb_hierarchy:", self.rmodel
+    print("Parsed model in form of pdb_hierarchy:", self.rmodel, file=self.log)
 
     #
     # So do the job like we are in pipeline
@@ -95,7 +95,7 @@ This tool will cut out range of residues from chain. Usage:
     #
     # That's it. We got result, now we just need to display it
     # and the job of CL-tool is over.
-    print >> self.log, "Result, in form of pdb_hierarchy", result.answer
+    print("Result, in form of pdb_hierarchy", result.answer, file=self.log)
     result.answer.write_pdb_file(file_name="%s.pdb" % self.work_params.output_prefix)
 
 cutter_app = cl_cutter(

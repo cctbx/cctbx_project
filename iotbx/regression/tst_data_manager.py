@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 
@@ -8,8 +8,10 @@ import libtbx.phil
 import mmtbx.model
 
 from cctbx import crystal
+from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
 from iotbx.data_manager import DataManager
+from six.moves import zip
 
 # -----------------------------------------------------------------------------
 def test_data_manager():
@@ -467,6 +469,19 @@ def test_miller_array_datatype():
 
   os.remove('test_phil')
 
+  # test writing file
+  arrays = dm.get_miller_arrays()
+  dataset = arrays[2].as_mtz_dataset(column_root_label='label1')
+  dataset.add_miller_array(miller_array=arrays[3], column_root_label='label2')
+  mtz_object = dataset.mtz_object()
+  dm.write_miller_array_file(mtz_object, filename='test.mtz', overwrite=True)
+  dm.process_miller_array_file('test.mtz')
+  new_labels = dm.get_miller_array_labels('test.mtz')
+  assert('label1,SIGlabel1' in new_labels)
+  assert('label2,SIGlabel2' in new_labels)
+
+  os.remove('test.mtz')
+
   # test file server
   fs1 = dm.get_reflection_file_server()
   fs2 = dm.get_reflection_file_server([data_mtz, data_mtz])
@@ -545,6 +560,43 @@ def test_default_filenames():
     filename = getattr(dm, 'get_default_output_{datatype}_filename'.
                        format(datatype=datatype))()
     assert filename == 'cctbx_program.' + extension
+
+  filename = dm.get_default_output_model_filename(extension='.abc')
+  assert filename == 'cctbx_program.abc'
+
+  class TestProgram(ProgramTemplate):
+    master_phil_str = """
+output {
+  serial = 0
+    .type = int
+}
+"""
+  master_phil = iotbx.phil.parse(TestProgram.master_phil_str)
+  working_phil = iotbx.phil.parse(ProgramTemplate.master_phil_str)
+  params = master_phil.fetch(working_phil).extract()
+  p = ProgramTemplate(dm, params, master_phil)
+  assert dm.get_default_output_filename() == 'cctbx_program_000'
+  dm.set_overwrite(True)
+  dm.write_model_file('abc')    # cctbx_program_000.cif
+  dm.write_phil_file('123')     # cctbx_program_000.eff
+  dm.write_phil_file('456')     # cctbx_program_001.eff
+  dm.write_model_file('def')    # cctbx_program_001.cif
+  assert dm.get_default_output_filename() == 'cctbx_program_001'
+  dm.write_sequence_file('ghi') # cctbx_program_001.seq
+  dm.write_sequence_file('hkl') # cctbx_program_002.seq
+  assert dm.get_default_output_filename() == 'cctbx_program_002'
+  assert os.path.isfile('cctbx_program_000.cif')
+  assert os.path.isfile('cctbx_program_001.cif')
+  assert os.path.isfile('cctbx_program_000.eff')
+  assert os.path.isfile('cctbx_program_001.eff')
+  assert os.path.isfile('cctbx_program_001.seq')
+  assert os.path.isfile('cctbx_program_002.seq')
+  os.remove('cctbx_program_000.cif')
+  os.remove('cctbx_program_001.cif')
+  os.remove('cctbx_program_000.eff')
+  os.remove('cctbx_program_001.eff')
+  os.remove('cctbx_program_001.seq')
+  os.remove('cctbx_program_002.seq')
 
 # -----------------------------------------------------------------------------
 if (__name__ == '__main__'):

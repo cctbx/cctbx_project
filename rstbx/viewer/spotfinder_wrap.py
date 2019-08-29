@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 class spot_wrapper:
   def __init__(self,working_phil):
       self.working_phil = working_phil

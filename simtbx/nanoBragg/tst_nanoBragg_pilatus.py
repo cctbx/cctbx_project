@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from simtbx.nanoBragg import nanoBragg, shapetype, convention, pivot, testuple
 #from simtbx.nanoBragg import shapetype
@@ -11,6 +11,7 @@ from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 import libtbx.load_env # possibly implicit
 from cctbx import crystal
 from cctbx import miller
+from six.moves import range
 assert miller
 
 pdb_lines = """HEADER TEST
@@ -75,10 +76,10 @@ def run_sim(seed=1,wavelength=0.9,distance=500,random_orientation=False,phi=0,os
   SIM.polarization = 1
   # this will become F000, marking the beam center
   SIM.F000 = 100
-  print "mosaic_seed=",SIM.mosaic_seed
-  print "seed=",SIM.seed
-  print "calib_seed=",SIM.calib_seed
-  print "missets_deg =", SIM.missets_deg
+  print("mosaic_seed=",SIM.mosaic_seed)
+  print("seed=",SIM.seed)
+  print("calib_seed=",SIM.calib_seed)
+  print("missets_deg =", SIM.missets_deg)
   # re-set the detector to be in
   SIM.beamcenter_convention=convention.DIALS
   SIM.beam_center_mm=(211,214)
@@ -103,7 +104,7 @@ def run_sim(seed=1,wavelength=0.9,distance=500,random_orientation=False,phi=0,os
   from cctbx.eltbx import attenuation_coefficient
   table = attenuation_coefficient.get_table("Si")
   SIM.detector_attenuation_length_mm = 10.0/(table.mu_at_angstrom(SIM.wavelength_A))
-  print "detector_attenuation_length =",SIM.detector_attenuation_length_mm
+  print("detector_attenuation_length =",SIM.detector_attenuation_length_mm)
   #SIM.detector_thick_mm=0
   SIM.detector_thicksteps=3
   #
@@ -119,7 +120,7 @@ def run_sim(seed=1,wavelength=0.9,distance=500,random_orientation=False,phi=0,os
   # option for detector rotations to be about beam center or sample position
   #SIM.detector_pivot=pivot.Sample
   SIM.detector_pivot=pivot.Beam
-  print "pivoting detector about",SIM.detector_pivot
+  print("pivoting detector about",SIM.detector_pivot)
   # make the module roi list
   # and also make up per-module mis-alignments shifts and rotations
   import random
@@ -151,7 +152,7 @@ def run_sim(seed=1,wavelength=0.9,distance=500,random_orientation=False,phi=0,os
   i=-1
   for roi,(dx,dy),drot in modules:
     i=i+1
-    print "rendering module:",i,"roi=",roi
+    print("rendering module:",i,"roi=",roi)
     SIM.region_of_interest = roi
     # shift the beam center
     x = beam_center0[0]+dx
@@ -159,7 +160,7 @@ def run_sim(seed=1,wavelength=0.9,distance=500,random_orientation=False,phi=0,os
     SIM.beam_center_mm = (x,y)
     # also tilt the module by up to 0.05 deg in all directions
     SIM.detector_rotation_deg = drot
-    print "beam center: ",SIM.beam_center_mm,"rotations:",drot
+    print("beam center: ",SIM.beam_center_mm,"rotations:",drot)
     # now actually burn up some CPU
     SIM.add_nanoBragg_spots()
     # add water contribution
@@ -228,7 +229,7 @@ def mask_pixels(raw_pixels):
   # define the mask (f0, f1, s0, s1)
   from dxtbx.format.FormatPilatusHelpers import pilatus_6M_mask
   for pane in pilatus_6M_mask():
-    print "negating pane:",pane
+    print("negating pane:",pane)
     fs=pane[0]-1
     fe=pane[1]
     ss=pane[2]-1
@@ -316,4 +317,4 @@ def tst_all():
 
 if __name__=="__main__":
   tst_all()
-  print "OK"
+  print("OK")

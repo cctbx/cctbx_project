@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.sgtbx import subgroups
 from cctbx.array_family import flex
 from cctbx import sgtbx
@@ -10,11 +10,13 @@ from libtbx.test_utils import Exception_expected, approx_equal, \
 import libtbx.load_env
 import math
 import weakref
+from six.moves import range
+from six.moves import zip
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 
 ad_hoc_1992_pairs = """\
@@ -75,7 +77,7 @@ def exercise_symbols():
     s = sgtbx.space_group_symbols("%s (z, x, y)" % hm)
     assert s.change_of_basis_symbol() == "z,x,y"
     assert s.universal_hermann_mauguin().endswith(" (z,x,y)")
-    print >> o, s.hall()
+    print(s.hall(), file=o)
   assert not show_diff(o.getvalue(), """\
  P 2yb (z,x,y)
  P 31 2 (z+1/3,x,y)
@@ -131,7 +133,7 @@ def exercise_symbols():
     for short in short_symbols_a] == expected_numbers_a
   symbols_cpp = libtbx.env.under_dist("cctbx", "sgtbx/symbols.cpp")
   if (not os.path.isfile(symbols_cpp)):
-    print "Skipping checks based on %s: file not available" % symbols_cpp
+    print("Skipping checks based on %s: file not available" % symbols_cpp)
   else:
     f = iter(open(symbols_cpp))
     for volume,table_name,short_symbols in [
@@ -154,28 +156,28 @@ def exercise_symbols():
   #
   s = sgtbx.space_group_symbols
   try: s("(x,y,z)")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: Space group symbol not recognized: (x,y,z)"
   else: raise Exception_expected
   try: s("P3:2")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: Space group symbol not recognized: P3:2"
   else: raise Exception_expected
   try: s(300)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: Space group number out of range: 300"
   else: raise Exception_expected
   try: s(space_group_number=1, table_id="x")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: table_id not recognized: x"
   else: raise Exception_expected
   for extension in ["1", ":1"]:
     try: s(space_group_number=75, extension=extension)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == "cctbx Error: Space group symbol not recognized: 75:1"
     else: raise Exception_expected
   try: s(space_group_number=75, extension="x")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: Space group symbol not recognized: 75:x"
   else: raise Exception_expected
   #
@@ -633,47 +635,47 @@ def exercise_rt_mx():
   assert str(rt_mx("-x+y,y,-z")) == "-x+y,y,-z"
   assert str(rt_mx("-h,h+k,-l")) == "-x+y,y,-z"
   try: rt_mx("h,x,z")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: mix of x,y,z and h,k,l notation:
   h,x,z
   __^""")
   else: raise Exception_expected
   try: rt_mx("")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: unexpected end of input:
   \n\
   ^""")
   else: raise Exception_expected
   try: rt_mx("x, ")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: unexpected end of input:
   x, \n\
   ___^""")
   else: raise Exception_expected
   try: rt_mx("x")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: not enough row expressions:
   x
   _^""")
   else: raise Exception_expected
   try: rt_mx("x,y,x,z")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: too many row expressions:
   x,y,x,z
   _____^""")
   try: rt_mx("x++")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: unexpected character:
   x++
   __^""")
   try: rt_mx("a, b, c")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: a,b,c notation not supported in this context:
   a, b, c
@@ -694,7 +696,7 @@ Parse error: a,b,c notation not supported in this context:
   #
   try:
     sgtbx.rt_mx(symbol="h,k,1", r_den=12, t_den=144)
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 h,k,l matrix symbol must not include a translation part:
   input symbol: "h,k,1"
@@ -753,7 +755,7 @@ def exercise_change_of_basis_op():
   c = change_of_basis_op("z,x,y")
   assert str(c.apply(rt_mx("-x,-y,z"))) == "x,-y,-z"
   xf = c((0.1,0.2,0.3))
-  for i in xrange(3): assert approx_equal(xf[i], (0.3,0.1,0.2)[i])
+  for i in range(3): assert approx_equal(xf[i], (0.3,0.1,0.2)[i])
   c.update(change_of_basis_op("z,x,y"))
   assert str(c.c()) == "y,z,x"
   assert (c * c.inverse()).is_identity_op()
@@ -892,9 +894,9 @@ def exercise_space_group():
   assert g.order_p() == 8
   assert g.order_z() == 32
   j = 0
-  for i_ltr in xrange(g.n_ltr()):
-    for i_inv in xrange(g.f_inv()):
-      for i_smx in xrange(g.n_smx()):
+  for i_ltr in range(g.n_ltr()):
+    for i_inv in range(g.f_inv()):
+      for i_smx in range(g.n_smx()):
         assert g(i_ltr, i_inv, i_smx) == g(j)
         assert g[j] == g(j)
         j += 1
@@ -1056,14 +1058,14 @@ def exercise_space_group():
       assert t == r
   #
   try: space_group("-P 4 2 (p)")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: unexpected character:
   -P 4 2 (p)
   ________^""")
   else: raise Exception_expected
   try: space_group("-P 4 2 (x,x,x)")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), """\
 cctbx Error: Rotation matrix is not invertible.""")
   else: raise Exception_expected
@@ -1081,7 +1083,7 @@ cctbx Error: Rotation matrix is not invertible.""")
   assert s.r().den() == 2
   assert s.t().den() == 12
   try: sg.expand_smx(s)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: sgtbx::space_group::expand_smx():" \
       " rotation-part denominator must be 1 (implementation limitation)."
   else: raise Exception_expected
@@ -1089,7 +1091,7 @@ cctbx Error: Rotation matrix is not invertible.""")
   assert s.r().den() == 1
   assert s.t().den() == 24
   try: sg.expand_smx(s)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: sgtbx::space_group::expand_smx():" \
       " incompatible translation-part denominator."
   else: raise Exception_expected
@@ -1317,7 +1319,7 @@ def exercise_phase_info():
   assert approx_equal(p.nearest_valid_phase(phi+math.pi/2+1.e-6), phi+math.pi)
   assert approx_equal(p.nearest_valid_phase(phi+math.pi+1.e-15), phi+math.pi)
   assert approx_equal(p.nearest_valid_phase(phi+math.pi-1.e-15), phi+math.pi)
-  for i in xrange(-3, 4):
+  for i in range(-3, 4):
     phi = p.ht_angle() + i * math.pi
     assert p.is_valid_phase(phi)
     assert p.is_valid_phase(phi*180/math.pi, True)
@@ -1338,7 +1340,7 @@ def exercise_phase_info():
     assert p.is_valid_phase(p.nearest_valid_phase(phi-1.e-15, True), True)
     assert p.is_valid_phase(p.nearest_valid_phase(phi+180+1.e-15, True), True)
     assert p.is_valid_phase(p.nearest_valid_phase(phi+180-1.e-15, True), True)
-  for i in xrange(-3, 4):
+  for i in range(-3, 4):
     phi = p.ht_angle() + i * math.pi
     f = complex_math.polar((1, phi))
     assert approx_equal(f, p.valid_structure_factor(f))
@@ -1484,7 +1486,7 @@ def exercise_site_symmetry():
   assert t.get(2).n_matrices() == 4
   assert t.get(3).n_matrices() == 12
   assert t.get(4).n_matrices() == 1
-  for i in xrange(5):
+  for i in range(5):
     assert t.get(i).n_matrices() * t.get(i).multiplicity() == g.order_z()
   assert not t.get(0).is_point_group_1()
   assert t.get(4).is_point_group_1()
@@ -1521,7 +1523,7 @@ def exercise_site_symmetry():
   assert ts.get(3).special_op() == tc.get(5).special_op()
   ts = tc.select(selection=flex.size_t())
   assert ts.indices().size() == 0
-  for i in xrange(tc.indices().size()):
+  for i in range(tc.indices().size()):
     s = tc.get(i)
     p = pickle.dumps(s)
     l = pickle.loads(p)
@@ -1735,7 +1737,7 @@ def exercise_wyckoff():
   assert w.position("n").special_op() == w.position(13).special_op()
   assert w.lookup_index("@") == 0
   assert w.lookup_index("k") == 16
-  for i in xrange(w.size()):
+  for i in range(w.size()):
     assert w.lookup_index(w.position(i).letter()) == i
   p = w.position("t")
   assert p.multiplicity() == 2
@@ -1833,14 +1835,14 @@ def exercise_sym_equiv_sites():
                (-1./5, -1./4, -1./3),
                (1./4, 1./20, -1./3),
                (-1./20, 1./5, -1./3))
-        for i in xrange(6):
+        for i in range(6):
           assert approx_equal(c[i], vfy[i])
       assert tuple(e.sym_op_indices()) == sym_i
       assert e.is_special_position() \
           == (len(e.coordinates()) < e.space_group().order_z())
-      for i in xrange(e.coordinates().size()):
+      for i in range(e.coordinates().size()):
         assert e.sym_op(i) == g(sym_i[i])
-    for i in xrange(2):
+    for i in range(2):
       if (i == 0):
         e = sym_equiv_sites(g, x)
       if (i == 1):
@@ -1858,7 +1860,7 @@ def exercise_sym_equiv_sites():
     assert e.special_op() == ss.special_op()
     assert e.max_accepted_tolerance() < 0
     assert e.coordinates().size() == mult
-    for i in xrange(4):
+    for i in range(4):
       if (i == 0):
         e = sym_equiv_sites(
           unit_cell=u,
@@ -1895,7 +1897,7 @@ def exercise_sym_equiv_sites():
       assert e.coordinates().size() == mult
     e = sym_equiv_sites(u, g, x, 100, 50)
     assert e.coordinates().size() == 1
-    for i in xrange(6):
+    for i in range(6):
       if (i == 0):
         e = sym_equiv_sites(
           site_symmetry=ss)
@@ -2381,7 +2383,7 @@ def exercise_tensor_rank_2_constraints():
     s = [3+1/3.,3+1/3.,3,-3-1/3.,0,0]
     assert approx_equal(c.independent_gradients(all_gradients=a), [3,10])
     assert approx_equal(c.independent_gradients(all_gradients=s), [3,10])
-    a = flex.double(xrange(1,22))
+    a = flex.double(range(1,22))
     assert approx_equal(c.independent_curvatures(all_curvatures=a),[12,35,116])
 
 def exercise_hashing():
@@ -2416,7 +2418,7 @@ def exercise_hashing():
   try:
     hash(sg)
     raise Exception_expected
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("tidy") != -1
 
 def exercise_fractional_mod():
@@ -2449,7 +2451,7 @@ def run():
   exercise_tensor_rank_2_constraints()
   exercise_hashing()
   exercise_fractional_mod()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

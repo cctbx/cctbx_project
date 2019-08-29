@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from scitbx.stdlib import math, random
 from libtbx.utils import frange
 from libtbx.test_utils import approx_equal, is_below_limit
@@ -7,6 +7,7 @@ import scitbx.math.curve_fitting
 import scitbx.random
 from scitbx.smoothing import savitzky_golay_filter, savitzky_golay_coefficients
 from scitbx.smoothing import convolve
+from six.moves import range
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
@@ -26,7 +27,7 @@ def exercise_convolve():
   try:
     import numpy
   except ImportError:
-    print "Skipping numpy compatibility..."
+    print("Skipping numpy compatibility...")
     return
 
   # convolution of two rectangles gives a triangle
@@ -117,4 +118,4 @@ if __name__ == '__main__':
   exercise_convolve()
   exercise_savitzky_golay_smoothing()
   exercise_savitzky_golay_coefficients()
-  print "OK"
+  print("OK")

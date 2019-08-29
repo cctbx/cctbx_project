@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from scitbx.array_family import flex
 import math
@@ -70,7 +70,7 @@ class pdb_code_wrapper(sb_wrapper):
       spacings = self.uc.d(self.hkl_list)
       rev_order = flex.sort_permutation(spacings,reverse = True)
       for x in range(len(rev_order)):
-        print self.hkl_list[rev_order[x]], spacings[rev_order[x]]
+        print(self.hkl_list[rev_order[x]], spacings[rev_order[x]])
       self.experimental_d =  spacings.select(rev_order)
 
   def user_callback(self,dc,panel,wx):
@@ -105,7 +105,7 @@ class unit_cell_wrapper(sb_wrapper):
     self.hkl_list = cctbx.miller.build_set(self.uc, False, d_min=working_phil.viewer.calibrate_unitcell.d_min)
 
     spacings = list(self.hkl_list.d_spacings())
-    print "Printing spacings, len: %s"%len(spacings)
+    print("Printing spacings, len: %s"%len(spacings))
 
     def cmp(a,b):
       if a[1] > b[1]: return 1
@@ -115,7 +115,7 @@ class unit_cell_wrapper(sb_wrapper):
     spacings = sorted(spacings, cmp=cmp, reverse=True)
 
     for d in spacings:
-      print d
+      print(d)
 
   def user_callback(self,dc,panel,wx):
     if not hasattr(panel.settings, "distance"): return # fixes a crash on exit

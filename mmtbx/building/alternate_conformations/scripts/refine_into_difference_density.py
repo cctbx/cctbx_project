@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from libtbx.utils import Sorry
 import time
@@ -48,11 +48,11 @@ def run(args, out=None):
     nproc=params.nproc,
     out=out).as_pdb_ensemble(log=out)
   t2 = time.time()
-  print >> out, "refinement time: %.3fs" % (t2-t1)
+  print("refinement time: %.3fs" % (t2-t1), file=out)
   if (refined_hierarchy is not None):
     refined_hierarchy.write_pdb_file(file_name=params.output_file_name,
       crystal_symmetry = fmodel.xray_structure.crystal_symmetry())
-    print "wrote %s" % params.output_file_name
+    print("wrote %s" % params.output_file_name)
   else :
     raise Sorry("No conformations surviving filtering step!")
 

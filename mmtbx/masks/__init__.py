@@ -1,6 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import boost.python
 from cctbx.array_family import flex
+from six.moves import zip
+from six.moves import range
 ext = boost.python.import_ext("mmtbx_masks_ext")
 from mmtbx_masks_ext import *
 
@@ -97,8 +99,8 @@ class bulk_solvent(around_atoms):
 
   def show_summary(self, out=None):
     if (out is None): out = sys.stdout
-    print >> out, "|- mask summary -----------------------------------------"\
-                  "---------------------|"
+    print("|- mask summary -----------------------------------------"\
+                  "---------------------|", file=out)
     sr = "solvent radius:            %4.2f A" % self.solvent_radius
     st = "shrink truncation radius:  %4.2f A" % self.shrink_truncation_radius
     na = "number of atoms: %d" % self.xray_structure.scatterers().size()
@@ -114,12 +116,12 @@ class bulk_solvent(around_atoms):
     st += " "*(l-len(st))
     na += " "*(l-len(na))
     def show_line(s):
-      print >> out, "| " + s + " " * max(0, 75-len(s)) + " |"
+      print("| " + s + " " * max(0, 75-len(s)) + " |", file=out)
     gap = 6
     show_line(s=sr+" "*gap+gr)
     show_line(s=st+" "*gap+gs)
     show_line(s=na+" "*gap+sc)
-    print >> out, "|"+"-"*77+"|"
+    print("|"+"-"*77+"|", file=out)
 
   def mask_as_xplor_map(self, file_name):
     gridding = iotbx.xplor.map.gridding(n     = self.data.focus(),

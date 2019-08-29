@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 class potential_url_request:
   def __init__(self,text):
     self.text = text

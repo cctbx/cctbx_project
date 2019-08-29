@@ -1858,6 +1858,11 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
        "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, restricted options, plus OpenMP")
 
 #ifdef NANOBRAGG_HAVE_CUDA
+      .add_property("device_Id",
+                     make_getter(&nanoBragg::device_Id,rbv()),
+                     make_setter(&nanoBragg::device_Id,dcp()),
+                     "Which device to simulate on. ")
+
       /* actual run of the spot simulation, CUDA version */
       .def("add_nanoBragg_spots_cuda",&nanoBragg::add_nanoBragg_spots_cuda,
        "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, CUDA version")

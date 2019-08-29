@@ -291,13 +291,13 @@ script is run.
 The Tangent Formula recycling loop has this simple design::
 
   result = input
-  for i in xrange(10):
+  for i in range(10):
     result = function(result)
 
 In the example script the actual corresponding code is::
 
   tangent_formula_phases = input_phases.data()
-  for i in xrange(10):
+  for i in range(10):
     tangent_formula_phases = triplets.apply_tangent_formula(
       amplitudes=large_e_values.data(),
       phases_rad=tangent_formula_phases,

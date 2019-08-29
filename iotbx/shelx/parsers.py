@@ -1,9 +1,10 @@
 """ Lexing of ins/res files """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
-import itertools
+from six.moves import zip_longest
 from boost import rational
+from collections import OrderedDict
 
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -15,6 +16,9 @@ import scitbx.math
 
 from iotbx.shelx.errors import error as shelx_error
 from iotbx.shelx import tokens
+from functools import reduce
+import six
+from six.moves import range
 
 class parser(object):
 
@@ -84,7 +88,7 @@ class instruction_parser(parser):
                                      'f': 1/3 }
         weighting_scheme = dict([
           (key, (arg is not None and arg) or default_weighting_scheme[key])
-          for key, arg in itertools.izip_longest('abcdef', args) ])
+          for key, arg in zip_longest('abcdef', args) ])
         self.instructions['wght'] = weighting_scheme
         self.builder.make_shelx_weighting_scheme(**weighting_scheme)
       elif cmd == 'HKLF':
@@ -211,7 +215,7 @@ class wavelength_parser(parser):
  constant_times_independent_scalar_parameter        , # c*x
                                                       # where c: constant
                                                       # and   x: parameter
- constant_times_u_eq) = xrange(5)
+ constant_times_u_eq) = range(5)
 
 def decode_variables(
       free_variable,
@@ -325,7 +329,7 @@ class atom_parser(parser, variable_decoder):
     idx_assigned_by_builder_to_free_var_idx = {}
     builder = self.builder
     if self.builder_does_occupancy_pair_affine_constraint:
-      self.occupancies_depending_on_free_variable = {}
+      self.occupancies_depending_on_free_variable = OrderedDict()
     for command, line in self.command_stream:
       self.line = line
       cmd, args = command[0], command[-1]
@@ -446,13 +450,13 @@ class atom_parser(parser, variable_decoder):
     if not self.builder_does_occupancy_pair_affine_constraint: return
 
     for free_var_idx, affine_occupancies \
-        in self.occupancies_depending_on_free_variable.iteritems():
+        in six.iteritems(self.occupancies_depending_on_free_variable):
       if len(affine_occupancies) == 1:
         # useless reparametrisation: we keep the occupancy as an independent
         # parameter
         continue
       else:
-        for i in xrange(len(affine_occupancies) - 1):
+        for i in range(len(affine_occupancies) - 1):
           (a, b, i), (a1, b1, i1) = affine_occupancies[i:i+2]
           # occ(i) = a(u + b) and occ(i+1) = a'(u + b')
           # where u is the free variable of index free_var_idx
@@ -601,7 +605,7 @@ class restraint_parser(parser):
 
   def cache_restraint(self, cmd, cmd_residue, line, args):
     from libtbx.containers import OrderedDict
-    if cmd not in self.cached_restraints.keys():
+    if cmd not in self.cached_restraints:
       self.cached_restraints.setdefault(cmd, OrderedDict())
     self.cached_restraints[cmd].setdefault(line, (cmd_residue, args))
 
@@ -611,7 +615,7 @@ class restraint_parser(parser):
       if atom.name == 'LAST':
         # XXX need better way to handle > and < ranges
         i_seqs.extend(
-          xrange(i_seqs[-1] + 1,
+          range(i_seqs[-1] + 1,
                  max(self.builder.index_of_scatterer_named.values()) + 1))
         continue
       atom_resnum = atom.residue_number
@@ -633,7 +637,7 @@ class restraint_parser(parser):
 
   def parse_restraints(self):
     for cmd, restraints in sorted(self.cached_restraints.items()):
-      for line, args in restraints.iteritems():
+      for line, args in six.iteritems(restraints):
         cmd_residue = args[0]
         if cmd_residue is None:
           residues = [None]
@@ -644,7 +648,7 @@ class restraint_parser(parser):
           elif tok == tokens.residue_class_tok:
             residues = self.builder.residue_numbers_having_class[cmd_residue[1]]
           elif tok == tokens.all_residues_tok:
-            residues = self.builder.residue_class_of_residue_number.keys()
+            residues = list(self.builder.residue_class_of_residue_number.keys())
         args = args[1]
         floats = []
         atoms = []
@@ -656,7 +660,7 @@ class restraint_parser(parser):
         for arg in args:
           try:
             floats.append(float(arg))
-          except TypeError, e:
+          except TypeError as e:
             if isinstance(arg, tokens.atomname_token):
               atoms.append(arg)
             elif isinstance(arg, tokens.element_token):

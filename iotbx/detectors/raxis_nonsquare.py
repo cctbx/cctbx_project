@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.detectors.raxisbase import Raxis
 from iotbx.detectors.raxis import RAXISImage
 from iotbx.detectors import ReadRAXIS,MakeSquareRAXIS

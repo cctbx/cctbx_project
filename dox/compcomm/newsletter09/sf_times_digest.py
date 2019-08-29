@@ -1,5 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys, os
+from six.moves import range
 op = os.path
 
 nodes_32bit = set("""\
@@ -36,13 +37,13 @@ class table_entry(object):
 
   def __init__(O, lines):
     assert len(lines) == 16
-    for i_line in xrange(5):
+    for i_line in range(5):
       line = lines[i_line]
       slot = O.__slots__[i_line]
       assert line.startswith(slot+": ")
       setattr(O, slot, line[len(slot)+2:])
     O.compiler_versions = []
-    for i_line in xrange(5, 10):
+    for i_line in range(5, 10):
       line = lines[i_line]
       assert line.startswith("compiler: ")
       O.compiler_versions.append(line[10:])
@@ -55,7 +56,7 @@ class table_entry(object):
     O.n_scatt = int(flds[3])
     O.n_refl = int(flds[5])
     O.all_utimes = []
-    for i_line in xrange(11, 16):
+    for i_line in range(11, 16):
       line = lines[i_line]
       flds = line.split()
       assert len(flds) == 8
@@ -116,7 +117,7 @@ def process_time_tables():
   result = []
   lines = open(time_tables_path).read().splitlines()
   assert len(lines) == 22 * 17
-  for i_line in xrange(0, len(lines), 17):
+  for i_line in range(0, len(lines), 17):
     assert lines[i_line] == ""
     result.append(table_entry(lines=lines[i_line+1:i_line+17]))
   return result
@@ -125,7 +126,7 @@ def run(args):
   assert len(args) == 0
   table_entries = process_time_tables()
   #
-  print "Intel Fortran times on chevy:"
+  print("Intel Fortran times on chevy:")
   tab = {}
   for entry in table_entries:
     if (entry.current_node == "chevy"):
@@ -139,10 +140,10 @@ def run(args):
         continue
       tab[lbl] = (entry.format_utimes(i_compiler=ic), entry.build_node)
   for key in ["if_9.1_32b", "if_9.1_64b", "if11.1_64b"]:
-    print key, " ".join(tab[key])
-  print
+    print(key, " ".join(tab[key]))
+  print()
   #
-  print "GNU Fortran times on chevy:"
+  print("GNU Fortran times on chevy:")
   tab = {}
   for entry in table_entries:
     if (entry.current_node == "chevy"):
@@ -150,18 +151,18 @@ def run(args):
       if (ic is None): continue
       tab[lbl] = (entry.format_utimes(i_compiler=ic), entry.build_node)
   for key in sorted(tab.keys()):
-    print key, " ".join(tab[key])
-  print
+    print(key, " ".join(tab[key]))
+  print()
   #
-  print "Intel C++ times on chevy:"
+  print("Intel C++ times on chevy:")
   for entry in table_entries:
     if (entry.current_node == "chevy" and entry.build_node == "chevy"):
       if (entry.all_utimes[3][0] >= 0):
-        print entry.format_utimes(i_compiler=3), \
-          entry.compiler_versions[3].replace(" (ICC)", "")
-  print
+        print(entry.format_utimes(i_compiler=3), \
+          entry.compiler_versions[3].replace(" (ICC)", ""))
+  print()
   #
-  print "GNU C++ times on chevy:"
+  print("GNU C++ times on chevy:")
   tab = {}
   for entry in table_entries:
     if (entry.current_node == "chevy"):
@@ -169,14 +170,14 @@ def run(args):
       if (ic is None): continue
       tab[lbl] = (entry.format_utimes(i_compiler=ic), entry.build_node)
   for key in sorted(tab.keys()):
-    print key, " ".join(tab[key])
-  print
+    print(key, " ".join(tab[key]))
+  print()
   #
-  print "GNU C++ 3.2 32-bit (Red Hat 8.0) executable on all platforms:"
+  print("GNU C++ 3.2 32-bit (Red Hat 8.0) executable on all platforms:")
   for entry in table_entries:
     if (entry.build_node == "ribbon"):
-      print entry.format_utimes(i_compiler=4), entry.current_node
-  print
+      print(entry.format_utimes(i_compiler=4), entry.current_node)
+  print()
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

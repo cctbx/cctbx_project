@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.maps
 
 import mmtbx.maps
@@ -160,21 +160,21 @@ def analyze_input_params(params):
 
 def run(args, log = sys.stdout, use_output_directory=True,
     suppress_fmodel_output=False):
-  print >> log, legend
-  print >> log, "-"*79
+  print(legend, file=log)
+  print("-"*79, file=log)
   master_params = mmtbx.maps.maps_including_IO_master_params()
   if(len(args)==0 or (len(args)==1 and args[0]=="NO_PARAMETER_FILE")):
     if(not (len(args)==1 and args[0]=="NO_PARAMETER_FILE")):
       parameter_file_name = "maps.params"
-      print >> log, "Creating parameter file '%s' in the following directory:\n%s"%(
-        parameter_file_name, os.path.abspath('.'))
+      print("Creating parameter file '%s' in the following directory:\n%s"%(
+        parameter_file_name, os.path.abspath('.')), file=log)
       if(os.path.isfile(parameter_file_name)):
         msg="File '%s' exists already. Re-name it or move and run the command again."
         raise Sorry(msg%parameter_file_name)
       pfo = open(parameter_file_name, "w")
     else:
       pfo = log
-      print >> pfo, "\nAll phenix.maps parameters::\n"
+      print("\nAll phenix.maps parameters::\n", file=pfo)
     master_params = master_params.fetch(iotbx.phil.parse(default_params))
     master_params.show(out = pfo, prefix = " ", expert_level=1)
     return
@@ -186,7 +186,7 @@ def run(args, log = sys.stdout, use_output_directory=True,
   params = working_phil.extract()
   fmodel_data_file_format = params.maps.output.fmodel_data_file_format
   if (len(params.maps.map_coefficients) == 0) and (len(params.maps.map) == 0):
-    print >> log, "No map input specified - using default map types"
+    print("No map input specified - using default map types", file=log)
     working_phil = master_params.fetch(sources=[working_phil,
         iotbx.phil.parse(default_params)])
     params = working_phil.extract()
@@ -210,10 +210,10 @@ def run(args, log = sys.stdout, use_output_directory=True,
       (len(processed_args.reflection_file_names) == 1)):
     params.maps.input.reflection_data.file_name = \
       processed_args.reflection_file_names[0]
-  print >> log, "FORMAT:", params.maps.output.fmodel_data_file_format
+  print("FORMAT:", params.maps.output.fmodel_data_file_format, file=log)
   working_phil = master_params.format(python_object=params)
-  print >> log, "-"*79
-  print >> log, "\nParameters to compute maps::\n"
+  print("-"*79, file=log)
+  print("\nParameters to compute maps::\n", file=log)
   working_phil.show(out = log, prefix=" ")
   pdb_inp = iotbx.pdb.input(file_name = params.maps.input.pdb_file_name)
   # get all crystal symmetries
@@ -231,7 +231,7 @@ def run(args, log = sys.stdout, use_output_directory=True,
     crystal_symmetry = crystal.select_crystal_symmetry(
       from_coordinate_files=cs_from_coordinate_files,
       from_reflection_files=cs_from_reflection_files)
-  except AssertionError, e :
+  except AssertionError as e :
     if ("No unit cell and symmetry information supplied" in str(e)):
       raise Sorry("Missing or incomplete symmetry information.  This program "+
         "will only work with reflection file formats that contain both "+
@@ -272,8 +272,8 @@ def run(args, log = sys.stdout, use_output_directory=True,
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=None
-  print >> log, "-"*79
-  print >> log, "\nInput model file:", params.maps.input.pdb_file_name
+  print("-"*79, file=log)
+  print("\nInput model file:", params.maps.input.pdb_file_name, file=log)
   pdb_hierarchy = pdb_inp.construct_hierarchy(set_atom_i_seq=True)
   atom_selection_manager = pdb_hierarchy.atom_selection_cache()
   xray_structure = pdb_hierarchy.extract_xray_structure(
@@ -300,8 +300,8 @@ def run(args, log = sys.stdout, use_output_directory=True,
       photon=params.maps.wavelength,
       table="sasaki")
   xray_structure.show_summary(f = log, prefix="  ")
-  print >> log, "-"*79
-  print >> log, "Bulk solvent correction and anisotropic scaling:"
+  print("-"*79, file=log)
+  print("Bulk solvent correction and anisotropic scaling:", file=log)
   fmodel = mmtbx.utils.fmodel_simple(
     xray_structures         = [xray_structure],
     scattering_table        = params.maps.scattering_table,
@@ -313,8 +313,8 @@ def run(args, log = sys.stdout, use_output_directory=True,
     anisotropic_scaling     = params.maps.anisotropic_scaling)
   fmodel_info = fmodel.info()
   fmodel_info.show_rfactors_targets_scales_overall(out = log)
-  print >> log, "-"*79
-  print >> log, "Compute maps."
+  print("-"*79, file=log)
+  print("Compute maps.", file=log)
   # XXX if run from the Phenix GUI, the output directory parameter is actually
   # one level up from the current directory, and use_output_directory=False
   if (params.maps.output.directory is not None) and (use_output_directory):
@@ -350,18 +350,18 @@ def run(args, log = sys.stdout, use_output_directory=True,
   if(params.maps.output.fmodel_data_file_format is not None):
     fmodel_file_name = file_name_base + "_fmodel." + \
       params.maps.output.fmodel_data_file_format
-    print >> log, "Writing fmodel arrays (Fobs, Fcalc, m, ...) to %s file."%\
-      fmodel_file_name
+    print("Writing fmodel arrays (Fobs, Fcalc, m, ...) to %s file."%\
+      fmodel_file_name, file=log)
     fmodel_file_object = open(fmodel_file_name,"w")
     fmodel.export(out = fmodel_file_object, format =
       params.maps.output.fmodel_data_file_format)
     fmodel_file_object.close()
-  print >> log, "All done."
+  print("All done.", file=log)
   if (write_mtz_file_result):
-    print >> log, "Map coefficients: %s" % map_coeff_file_name
+    print("Map coefficients: %s" % map_coeff_file_name, file=log)
   for file_name in xplor_maps :
-    print >> log, "CCP4 or XPLOR map: %s" % file_name
-  print >> log, "-"*79
+    print("CCP4 or XPLOR map: %s" % file_name, file=log)
+  print("-"*79, file=log)
   return (map_coeff_file_name, xplor_maps)
 
 class launcher(runtime_utils.target_with_save_result):
@@ -406,7 +406,7 @@ def validate_map_params(params):
     if (map_coeffs.map_type is not None):
       try :
         decode_map = map_names(map_coeffs.map_type)
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry(str(e))
       f = map_coeffs.mtz_label_amplitudes
       phi = map_coeffs.mtz_label_phases

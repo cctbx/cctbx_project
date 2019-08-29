@@ -123,35 +123,37 @@ def run(ph, core=None):
     #
     interactions=get_interactions(sub_ph,atom_in_residue,silva_type='sedd',core=core)
     new_core=[]
-    print("1. interactions got: ",len(interactions))
+    #print("1. interactions got: ",len(interactions))
     for pair in interactions:
       if(len(set(pair).intersection(set(core)))>0):
         new_core+=pair
     new_core=list(set(new_core)|set(core))
-    print("new core:",new_core)
-    interaction_mols=new_core
+    #print("new core:",new_core)
     #
     interactions=get_interactions(sub_ph, atom_in_residue, silva_type='dori', core=new_core)
-    print("2. interactions got: ",len(interactions))
-    interaction_mols=[]
+    #print("2. interactions got: ",len(interactions))
+    interaction_mols=new_core
     for item in interactions:
-      interaction_mols=interaction_mols+list(item)
+      if(len(set(item).intersection(set(new_core)))>0):
+        interaction_mols=interaction_mols+list(item)
     interaction_atoms=[]
     for i in range(len(core_atoms)):
       core_atoms[i]=core_atoms[i].serial_as_int()
-    print(interaction_mols)
+    #print("3. interaction mols:",set(interaction_mols))
     for mol_id in interaction_mols:
       ams=[a.serial_as_int() for a in atoms_group_dict[mol_id]]
       interaction_atoms+=ams
-    return(core_atoms, interaction_atoms, interaction_mols)
+
+    return(list(set(core_atoms)), list(set(interaction_atoms)), list(set(interaction_mols)))
   else:
     return get_interactions(ph, atom_in_residue)
 
 def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
       core=None):
+  if(silva_type=='sedd'):step_size=0.3*A2B
   t0=time.time()
   atoms = ph.atoms()
-  print("num atoms:",len(atoms))
+  #print("num atoms:",len(atoms))
   elements = atoms.extract_element()
   eldict = dict(enumerate(set(elements)))
   tmp = {}
@@ -168,9 +170,10 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
   xyz = ph.atoms().extract_xyz()
   xyz_min=xyz.min()
   xyz_max=xyz.max()
+  #print(xyz_min,xyz_max)
   xyz_step = [
     int(math.floor((xyz_max[i]-xyz_min[i])/step_size)+1) for i in range(3)]
-  print("points to process:",xyz_step[0]*xyz_step[1]*xyz_step[2])
+  #print("points to process:",xyz_step[0]*xyz_step[1]*xyz_step[2])
   interacting_pairs = ext.points_and_pairs(
     ngrid           = xyz_step,
     step_size       = step_size,
@@ -178,27 +181,30 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
     xyz_min         = xyz_min,
     atom_in_residue = atom_in_residue,
     element_flags   = element_flags,
-    wfc_obj         = wave_functions)
+    wfc_obj         = wave_functions,
+    silva_type      = silva_type)
   tmp = []
   for it in interacting_pairs:
     pair = [int(it[0]),int(it[1])]
     tmp.append(tuple(pair))
   interacting_pairs = list(set(tmp))
-  print("Time ",(time.time()-t0))
+  #print(interacting_pairs)
+  #print("Time ",(time.time()-t0))
   return interacting_pairs
 
 if __name__=="__main__":
   f=qr_unit_tests_data+"/1yjp.pdb"
-  print("1. clustering")
+  #print("1. clustering")
   pdb_inp = iotbx.pdb.input(f)
   ph = pdb_inp.construct_hierarchy()
+  #print(dir(ph))
+  #print(len(list(ph.residue_groups())))
   run(ph)
-  print("2. fragment for residues 1 and 2")
+  #print("2. fragment for residues 1 and 2")
   pdb_inp = iotbx.pdb.input(f)
   ph = pdb_inp.construct_hierarchy()
-  run(ph,core=[1,2])
-
-  print("3. clustering within expanded ph")
+  #print(run(ph,core=[1,2]))
+  #print("3. clustering within expanded ph")
   pdb_inp = iotbx.pdb.input(f)
   cs=pdb_inp.crystal_symmetry()
   ph = pdb_inp.construct_hierarchy()
@@ -207,7 +213,7 @@ if __name__=="__main__":
       crystal_symmetry     = cs,
       select_within_radius = 10.0).ph_super_sphere
   run(expansion)
-  print("4. fragment for residues 1 and 2 within expanded ph")
+  #print("4. fragment for residues 1 and 2 within expanded ph")
   pdb_inp = iotbx.pdb.input(f)
   ph = pdb_inp.construct_hierarchy()
   cs=pdb_inp.crystal_symmetry()

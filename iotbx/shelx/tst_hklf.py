@@ -1,9 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.shelx import hklf
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.test_utils import Exception_expected, show_diff
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def exercise_hklf_reader():
   s = ('   1   2  -1  -23.34    4.56   1\n'
@@ -165,7 +165,7 @@ def exercise_miller_export_as_shelx_hklf():
 def run():
   exercise_hklf_reader()
   exercise_miller_export_as_shelx_hklf()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

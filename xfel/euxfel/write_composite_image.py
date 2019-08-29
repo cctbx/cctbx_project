@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import h5py, os, sys
 import numpy as np
@@ -40,7 +40,7 @@ class composite_image_writer(object):
       else:
         try:
           user_phil.append(parse(arg))
-        except Exception, e:
+        except Exception as e:
           raise Sorry("Unrecognized argument: %s"%arg)
     self.params = phil_scope.fetch(sources=user_phil).extract()
 
@@ -49,7 +49,7 @@ class composite_image_writer(object):
       dest.attrs[attr] = src.attrs[attr]
 
   def recursive_copy(self,src, dest, mode='max', n_frames=None):
-    print src, type(src)
+    print(src, type(src))
     self.copy_attributes(src, dest)
 
     assert n_frames is not None, 'Need to provide n_frames'
@@ -60,12 +60,12 @@ class composite_image_writer(object):
         self.recursive_copy(src[key], dest_child,mode=mode,n_frames=n_frames)
       elif type(src[key]) is h5py._hl.dataset.Dataset:
         dataset = src[key]
-        print key, dataset.shape
+        print(key, dataset.shape)
         if dataset.shape == (n_frames, 8192, 128):
           if dataset.name != "/entry_1/data_1/data":
-            print "Skipping data block", dataset.name
+            print("Skipping data block", dataset.name)
             continue
-          print '====================================='
+          print('=====================================')
           if mode == 'max':
             dmax = np.zeros((8192, 128))
             dmax[:] = -np.inf

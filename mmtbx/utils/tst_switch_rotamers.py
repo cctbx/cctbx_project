@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex

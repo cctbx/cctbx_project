@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 import iotbx.mtz
 from libtbx.test_utils import approx_equal
@@ -103,7 +103,7 @@ END
 #cctbx.diffuse pdb=m.pdb probabilities=0.5,0.5 resolution=4.0 prefix=tst
 def exercise():
   fo = open("tst_diffuse.pdb","w")
-  print >> fo, pdb_str
+  print(pdb_str, file=fo)
   fo.close()
   cmd = " ".join([
     "cctbx.diffuse",
@@ -111,7 +111,7 @@ def exercise():
     "probabilities=0.5,0.5",
     "resolution=4.0",
     "prefix=tst_diffuse"])
-  if 0: print cmd
+  if 0: print(cmd)
   easy_run.call(cmd)
   mas = iotbx.mtz.object(file_name="tst_diffuse.mtz").as_miller_arrays()
   assert len(mas) == 1
@@ -127,5 +127,5 @@ def exercise():
 if __name__ == '__main__':
   t0 = time.time()
   exercise()
-  print "Time: %5.2f"%(time.time()-t0)
-  print "OK"
+  print("Time: %5.2f"%(time.time()-t0))
+  print("OK")

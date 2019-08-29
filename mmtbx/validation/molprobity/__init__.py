@@ -6,7 +6,7 @@ mmtbx.validation, which use the same APIs for storing and displaying results.
 
 # TODO combine with some parts of mmtbx.kinemage.validation
 
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.cli_parser import CCTBXParser
 from libtbx.program_template import ProgramTemplate
 from mmtbx.rotamer import rotamer_eval

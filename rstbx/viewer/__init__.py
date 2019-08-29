@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import rstbx.utils
 from libtbx.math_utils import ifloor, iceil
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
 import math
+from six.moves import range
 
 pi_over_180 = math.pi / 180
 
@@ -273,8 +274,8 @@ class image(screen_params):
   def set_integration_results(self, integration):
     self._integration = integration
     mp = integration['mapped_predictions']
-    print "%d spot predictions loaded" % mp.size()
-    print "max. resolution is %g" % integration['resolution']
+    print("%d spot predictions loaded" % mp.size())
+    print("max. resolution is %g" % integration['resolution'])
 
   def set_spots(self, spots):
     self._spots = spots

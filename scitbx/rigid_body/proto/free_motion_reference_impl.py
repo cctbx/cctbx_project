@@ -17,7 +17,9 @@ Shabana (2005):
   Cambridge University Press, 3 edition, 2005
   ISBN-10: 0521850118
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
+from six.moves import zip
 
 try:
   from scitbx import matrix
@@ -187,15 +189,15 @@ def create_triangle_with_center_of_mass_at_origin():
 
 def run():
   O = simulation()
-  for i_time_step in xrange(10):
-    print "e_kin tot ang lin:", O.e_kin, O.e_kin_ang, O.e_kin_lin
-    print "            e_pot:", O.e_pot
-    print "            e_tot:", O.e_tot
-    print "ang acc 3D:", O.wd_F1.elems
-    print "lin acc 3D:", O.as_F1.elems
-    print
+  for i_time_step in range(10):
+    print("e_kin tot ang lin:", O.e_kin, O.e_kin_ang, O.e_kin_lin)
+    print("            e_pot:", O.e_pot)
+    print("            e_tot:", O.e_tot)
+    print("ang acc 3D:", O.wd_F1.elems)
+    print("lin acc 3D:", O.as_F1.elems)
+    print()
     O.dynamics_step(delta_t=0.01)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

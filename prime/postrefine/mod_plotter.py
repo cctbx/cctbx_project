@@ -1,90 +1,61 @@
-from __future__ import division
+from __future__ import division, unicode_literals, print_function,\
+  absolute_import
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/25/2016
-Last Changed: 01/30/2019
+Last Changed: 07/17/2019
 Description : PRIME Result Plotter module
 '''
 
-import wx
-import os
 import numpy as np
 
-from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-from matplotlib.figure import Figure
 from matplotlib import gridspec, rc
 
-from libtbx import utils as u
+from iota.components.gui.plotter import Plotter as IOTAPlotter
 
-from iota.components.iota_ui_base import IOTABaseFrame, IOTABasePanel
-
-class PlotWindow(IOTABaseFrame):
-  def __init__(self, parent, id, title, plot_panel=None):
-    IOTABaseFrame.__init__(self, parent, id, title)
-
-    self.initialize_toolbar()
-    self.tb_btn_quit = self.add_tool(label='Quit',
-                                     bitmap=('actions', 'exit'),
-                                     shortHelp='Quit')
-    self.tb_btn_save = self.add_tool(label='Save',
-                                     bitmap=('actions', 'save_all'),
-                                     shortHelp='Save image in various formats')
-    self.realize_toolbar()
-
-    self.Bind(wx.EVT_TOOL, self.onSave, self.tb_btn_save)
-    self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
-
-    self.plot_panel = plot_panel
-
-  def plot(self):
-    if self.plot_panel:
-      self.main_sizer.Add(self.plot_panel, 1, flag=wx.EXPAND)
-      self.SetSize(self.plot_panel.canvas.GetSize())
-      self.plot_panel.canvas.draw()
-      self.Layout()
-
-  def onSave(self, e):
-    save_dlg = wx.FileDialog(self,
-                             message="Save Image",
-                             defaultDir=os.curdir,
-                             defaultFile="*",
-                             wildcard="*",
-                             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
-                             )
-    if save_dlg.ShowModal() == wx.ID_OK:
-      script_filepath = save_dlg.GetPath()
-      self.plot_panel.figure.savefig(script_filepath, format='pdf',
-                                     bbox_inches=0)
-
-  def onQuit(self, e):
-    self.Close()
-
-class Plotter(IOTABasePanel):
+class Plotter(IOTAPlotter):
   ''' Class with function to plot various PRIME charts (includes Table 1) '''
 
   def __init__(self, parent, info, output_dir=None, anomalous_flag=False,
                *args, **kwargs):
-    IOTABasePanel.__init__(self, parent=parent, *args, **kwargs)
+    super(Plotter, self).__init__(parent=parent, info=info, *args, **kwargs)
     self.target_anomalous_flag = anomalous_flag
-    self.info = info
     self.output_dir = output_dir
 
-  def initialize_figure(self, figsize=(8, 8)):
-    self.figure = Figure(figsize=figsize)
-    self.canvas = FigureCanvas(self, -1, self.figure)
-    self.main_sizer.Add(self.canvas, 1, flag=wx.EXPAND)
-
-  def table_one(self):
+  def table_one(self, as_tex=False):
     ''' Constructs Table 1 for GUI or logging '''
 
-    A = u'\N{ANGSTROM SIGN}'
-    d = u'\N{DEGREE SIGN}'
-    a = u'\N{GREEK SMALL LETTER ALPHA}'
-    b = u'\N{GREEK SMALL LETTER BETA}'
-    g = u'\N{GREEK SMALL LETTER GAMMA}'
-    s = u'\N{GREEK SMALL LETTER SIGMA}'
-    h = u'\u00BD'
+    if as_tex:
+      A = r'$\AA$'
+      d = r'$\circ$'
+      a = r'$\alpha$'
+      b = r'$\beta$'
+      g = r'$\gamma$'
+      s = r'$\sigma$'
+      h = r'$\frac{1}{2}$'
+      rm = r'$\_merge$'
+    else:
+      A = '\N{ANGSTROM SIGN}'
+      d = '\N{DEGREE SIGN}'
+      a = '\N{GREEK SMALL LETTER ALPHA}'
+      b = '\N{GREEK SMALL LETTER BETA}'
+      g = '\N{GREEK SMALL LETTER GAMMA}'
+      s = '\N{GREEK SMALL LETTER SIGMA}'
+      h = '\u00BD'
+      rm = '_merge'
+    t1_rlabels = ['No. of accepted images',
+                  'No. of rejected images',
+                  'Space Group',
+                  'Cell dimensions',
+                  '  a, b, c ({})  '.format(A),
+                  '  {}, {}, {} ({})    '.format(a, b, g, d),
+                  'Resolution ({})  '.format(A),
+                  'Completeness (%)',
+                  'Multiplicity',
+                  'I / {}(I) '.format(s),
+                  'CC{} '.format(h),
+                  'R{}'.format(rm)]
 
     uc_edges = '{:4.2f}, {:4.2f}, {:4.2f}'.format(self.info['mean_a'][-1],
                                                   self.info['mean_b'][-1],
@@ -97,18 +68,6 @@ class Plotter(IOTABasePanel):
     res_last_shell = '{:4.2f} - {:4.2f}' \
                      ''.format(self.info['binned_resolution'][-1][-2],
                                self.info['binned_resolution'][-1][-1])
-    t1_rlabels = [u.to_unicode(u'No. of accepted images'),
-                  u.to_unicode(u'No. of rejected images'),
-                  u.to_unicode(u'Space Group'),
-                  u.to_unicode(u'Cell dimensions'),
-                  u.to_unicode(u'  a, b, c ({})  '.format(A)),
-                  u.to_unicode(u'  {}, {}, {} ({})    '.format(a, b, g, d)),
-                  u.to_unicode(u'Resolution ({})  '.format(A)),
-                  u.to_unicode(u'Completeness (%)'),
-                  u.to_unicode(u'Multiplicity'),
-                  u.to_unicode(u'I / {}(I) '.format(s)),
-                  u.to_unicode(u'CC{} '.format(h)),
-                  u.to_unicode(u'R_merge')]
 
     n_frames_bad = self.info['n_frames_bad_cc'][-1]      + \
                    self.info['n_frames_bad_G'][-1]       + \
@@ -136,12 +95,29 @@ class Plotter(IOTABasePanel):
 
     return t1_rlabels, t1_data
 
+  def flatten_table_one_data(self, as_tex=False):
+    rlabels, tb1_data = self.table_one(as_tex=as_tex)
+
+    # Flatten data list of lists (works this once, since each sub-list
+    # contains a single item)
+    tb1_data = zip(*tb1_data)[0]
+    data = zip(rlabels, tb1_data)
+    return data
+
+  def table_one_text(self):
+    data = self.flatten_table_one_data()
+    return self.plot_table_text(data=data)
+
+  def table_one_figure(self):
+    data = self.flatten_table_one_data()
+    self.plot_table(data=data)
 
   def stat_charts(self):
     ''' Displays charts of CC1/2, Completeness, Multiplicity and I / sig(I)
         per resolution bin after the final cycle of post-refinement '''
 
     gsp = gridspec.GridSpec(2, 2)
+    gsp.update(wspace=0.1, hspace=0.1)
 
     self.figure.set_alpha(0)
     rc('font', family='sans-serif', size=12)
@@ -222,4 +198,5 @@ class Plotter(IOTABasePanel):
     ax_i_sigi.legend([start, end], labels, loc='lower left',
                           fontsize=9, fancybox=True)
 
-    self.figure.set_tight_layout(True)
+    # self.figure.set_tight_layout(True)
+    self.draw(tight_layout=False)

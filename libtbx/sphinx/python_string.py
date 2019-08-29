@@ -23,7 +23,8 @@ class PythonStringDirective(Directive):
       target_must_be="",
       where_str="").object
 
-    assert isinstance(python_string, basestring)
+    from six import string_types
+    assert isinstance(python_string, string_types)
 
     include_lines = docutils.statemachine.string2lines(
         python_string, tab_width=2, convert_whitespace=True)

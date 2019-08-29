@@ -4,7 +4,7 @@ Collection of miscellaneous tests for iotbx.reflection_file_reader; this is
 tested more thoroughly elsewhere.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import reflection_file_reader
 
 def exercise_sigma_filtering():
@@ -72,4 +72,4 @@ def exercise_sigma_filtering():
 
 if (__name__ == "__main__"):
   exercise_sigma_filtering()
-  print "OK"
+  print("OK")

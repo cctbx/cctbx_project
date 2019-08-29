@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
 import mmtbx.refinement.rigid_body
@@ -257,4 +257,4 @@ if (__name__ == "__main__"):
   exercise_00()
   exercise_01()
   exercise_02()
-  print "OK"
+  print("OK")

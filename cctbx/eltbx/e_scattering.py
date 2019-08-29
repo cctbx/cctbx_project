@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx.xray_scattering import gaussian
 
 # http://it.iucr.org/Cb/ch4o3v0001/sec4o3o2/ 2011-04-25
@@ -127,7 +127,7 @@ def __get_cache():
   return __cache
 
 def ito_vol_c_2011_table_4_3_2_2_elements():
-  return __get_cache().keys()
+  return list(__get_cache().keys())
 
 def ito_vol_c_2011_table_4_3_2_2_entry_as_gaussian(label, exact=False):
   from cctbx.eltbx import xray_scattering

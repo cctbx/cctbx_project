@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from rstbx.viewer import results_base, controls
 from rstbx.viewer.results_base import ResultData, BinData

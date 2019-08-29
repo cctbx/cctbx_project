@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.xplor.map
 from cctbx import maptbx
 from cctbx import sgtbx
@@ -8,13 +8,15 @@ from cctbx.development import random_structure
 from libtbx.math_utils import iround
 from libtbx.test_utils import approx_equal, eps_eq, show_diff
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
+from six.moves import range
+from six.moves import zip
 
 def exercise_map_gridding():
   try:
     g = iotbx.xplor.map.gridding(n=(0,20,30), first=(-3,-4,-5), last=(5,4,3))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Illegal xplor map gridding for dimension X: " \
                    + "gridding=0, first=-3, last=5"
   g = iotbx.xplor.map.gridding(n=(10,20,30), first=(-3,-4,-5), last=(5,4,3))
@@ -179,7 +181,7 @@ def exercise_fft_map_as_xplor_map(space_group_info, n_elements=10, d_min=3):
     assert eps_eq(read.data[first], real_map[first_p1], eps=1.e-4)
     last_p1 = [i%n for i,n in zip(last, fft_map.n_real())]
     assert eps_eq(read.data[last], real_map[last_p1], eps=1.e-4)
-    for x in xrange(1,10):
+    for x in range(1,10):
       point = [iround(f+(l-f)*x/10.) for f,l in zip(first,last)]
       point_p1 = [i%n for i,n in zip(point, fft_map.n_real())]
       assert eps_eq(read.data[point], real_map[point_p1], eps=1.e-4)
@@ -189,7 +191,7 @@ def run():
   recycle()
   test_file_name = get_test_file_name()
   if (test_file_name is None):
-    print "Skipping original CNS map test: input file not available"
+    print("Skipping original CNS map test: input file not available")
   else:
     map1 = read_xplor(test_file_name)
     write_xplor(map1, "tmp.map")
@@ -197,7 +199,7 @@ def run():
     assert flex.max(flex.abs(map2.data-map1.data)) < 2.e-5
   exercise_fft_map_as_xplor_map(
     space_group_info=sgtbx.space_group_info("P 31"))
-  print "OK"
+  print("OK")
 
 if (__name__=="__main__"):
   run()

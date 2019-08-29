@@ -13,8 +13,8 @@ def test_simple_disorder():
 digraph dependencies {
 168 -> 0;
 169 -> 1;
-0 [label="independent_occupancy_parameter (C7A) #0"];
-1 [label="independent_occupancy_parameter (N3) #1"];
+0 [label="independent_occupancy_parameter (N3) #0"];
+1 [label="independent_occupancy_parameter (C7A) #1"];
 2 [label="independent_site_parameter (F1) #2"];
 5 [label="independent_u_star_parameter (F1) #5"];
 11 [label="independent_site_parameter (F2) #11"];
@@ -65,8 +65,8 @@ digraph dependencies {
 165 [label="independent_occupancy_parameter [cst] (C6) #165"];
 166 [label="independent_occupancy_parameter [cst] (N12) #166"];
 167 [label="independent_occupancy_parameter [cst] (C14) #167"];
-168 [label="affine_asu_occupancy_parameter (C7B) #168"];
-169 [label="affine_asu_occupancy_parameter (C3) #169"]
+168 [label="affine_asu_occupancy_parameter (C3) #168"];
+169 [label="affine_asu_occupancy_parameter (C7B) #169"]
 }
 """.strip()
   ls.build_up()

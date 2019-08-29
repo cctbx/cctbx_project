@@ -4,11 +4,12 @@
    - Computes fft map
    - Determines skewness of map
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
+from six.moves import range
 
 def randomize_phases(f_calc, fudge_factor):
   assert 0 <= fudge_factor <= 1
@@ -33,12 +34,12 @@ def skewness_calculation(space_group_info, n_test_points=10,
     volume_per_atom=volume_per_atom,
     random_u_iso=True)
   structure.show_summary()
-  print
+  print()
   f_calc = structure.structure_factors(
     d_min=d_min, anomalous_flag=False).f_calc()
   f_calc.show_summary()
-  print
-  for i_fudge_factor in xrange(n_test_points+1):
+  print()
+  for i_fudge_factor in range(n_test_points+1):
     fudge_factor = i_fudge_factor/float(n_test_points)
     randomized_f_calc = randomize_phases(f_calc, fudge_factor)
     mwpe = f_calc.mean_weighted_phase_error(randomized_f_calc)
@@ -49,9 +50,9 @@ def skewness_calculation(space_group_info, n_test_points=10,
     den = flex.mean(flex.pow(rho_rho_bar, 2))**(3/2.)
     assert den != 0
     skewness = num / den
-    print "fudge factor, phase difference, map skewness:",
-    print "%4.2f, %5.2f, %.4g" % (fudge_factor, mwpe, skewness)
-  print
+    print("fudge factor, phase difference, map skewness:", end=' ')
+    print("%4.2f, %5.2f, %.4g" % (fudge_factor, mwpe, skewness))
+  print()
 
 def run():
   for space_group_symbol in ("P 1", "C 2", "P 21 21 21", "R 32", "F 4 3 2"):

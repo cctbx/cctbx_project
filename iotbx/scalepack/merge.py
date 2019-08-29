@@ -1,5 +1,5 @@
 "Reading and writing of scalepack merge reflection files."
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # Sample scalepack OUTPUT FILE
 #    1
@@ -17,32 +17,33 @@ from cctbx import miller
 from cctbx.array_family import flex
 from libtbx.math_utils import iround
 from libtbx import easy_pickle
-import exceptions
 import os
 import sys
+from six.moves import range
+from six.moves import zip
 
-class FormatError(exceptions.Exception): pass
+class FormatError(Exception): pass
 
 class reader(object):
 
   def __init__(self, file_handle, header_only=False):
     line = file_handle.readline()
     if (line.rstrip() != "    1"):
-      raise FormatError, "line 1: expecting '    1'"
+      raise FormatError("line 1: expecting '    1'")
     file_handle.readline() # ignore line 2
     line_error = "line 3: expecting unit cell parameters and space group label"
     line = file_handle.readline()
     if (len(line) < 63 or line[60] != ' '):
-      raise FormatError, line_error
+      raise FormatError(line_error)
     try:
-      uc_params = [float(line[i * 10 : (i + 1) * 10]) for i in xrange(6)]
+      uc_params = [float(line[i * 10 : (i + 1) * 10]) for i in range(6)]
     except KeyboardInterrupt: raise
     except Exception:
-      raise FormatError, line_error
+      raise FormatError(line_error)
     self.unit_cell = uctbx.unit_cell(uc_params)
     self.space_group_symbol = line[61:].strip()
     if (len(self.space_group_symbol) == 0):
-      raise FormatError, line_error
+      raise FormatError(line_error)
     try:
       self.space_group_info = sgtbx.space_group_info(self.space_group_symbol)
     except KeyboardInterrupt: raise
@@ -69,10 +70,10 @@ class reader(object):
         flds.append(line[used:next_used].strip())
         used = next_used
       try:
-        h = [int(flds[i]) for i in xrange(3)]
+        h = [int(flds[i]) for i in range(3)]
       except KeyboardInterrupt: raise
       except Exception:
-        raise FormatError, line_error
+        raise FormatError(line_error)
       for i in (0,1):
         j = 3+2*i
         if (len(flds[j])):
@@ -82,7 +83,7 @@ class reader(object):
           except Exception:
             if (flds[j] == "*"*len(flds[j])) : # XXX overload
               continue
-            raise FormatError, line_error
+            raise FormatError(line_error)
           # XXX scalepack uses I=0, sigmaI=-1 to denote a missing Friedel
           # mate
           if (i_obs == 0) and (sigma == -1):
@@ -98,9 +99,9 @@ class reader(object):
   def show_summary(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
     self.unit_cell.show_parameters(f=out, prefix=prefix+"Unit cell: ")
-    print >> out, prefix + "Space group symbol:", self.space_group_symbol
-    print >> out, prefix + "Anomalous flag:", self.anomalous
-    print >> out, prefix + "Number of reflections:", self.miller_indices.size()
+    print(prefix + "Space group symbol:", self.space_group_symbol, file=out)
+    print(prefix + "Anomalous flag:", self.anomalous, file=out)
+    print(prefix + "Number of reflections:", self.miller_indices.size(), file=out)
 
   def crystal_symmetry(self):
     def have_r_with_axes_info():
@@ -162,8 +163,8 @@ def scale_intensities_if_necessary(miller_array,out=sys.stdout):
     max_value=0.9999e+08
     if value > max_value: # scale it
       miller_array=miller_array.deep_copy().apply_scaling(target_max=max_value)
-      print >>out,"NOTE: Scaled array (max=%s) to fit in Scalepack format" %(
-         str(max_value))
+      print("NOTE: Scaled array (max=%s) to fit in Scalepack format" %(
+         str(max_value)), file=out)
     return miller_array
 
 def write(file_name=None, file_object=None, miller_array=None,
@@ -190,17 +191,17 @@ def write(file_name=None, file_object=None, miller_array=None,
   if scale_intensities_for_scalepack_merge: # 2014-01-07 TT
     miller_array=scale_intensities_if_necessary(miller_array,out=out)
 
-  print >> file_object, line_1
-  print >> file_object, line_2
-  print >> file_object, ("%10.3f"*6) % miller_array.unit_cell().parameters(),
-  print >> file_object, space_group_symbol
+  print(line_1, file=file_object)
+  print(line_2, file=file_object)
+  print(("%10.3f"*6) % miller_array.unit_cell().parameters(), end=' ', file=file_object)
+  print(space_group_symbol, file=file_object)
   if (not miller_array.anomalous_flag()):
     for h,f,s in zip(miller_array.indices(),
                      miller_array.data(),
                      miller_array.sigmas()):
-      print >> file_object, ((("%4d"*3) % h)
+      print(((("%4d"*3) % h)
         + format_f8_1_or_i8(h, "intensity", f)
-        + format_f8_1_or_i8(h, "sigma", s))
+        + format_f8_1_or_i8(h, "sigma", s)), file=file_object)
   else:
     asu, matches = miller_array.match_bijvoet_mates()
     sel_pairs_plus = matches.pairs_hemisphere_selection("+")
@@ -212,27 +213,27 @@ def write(file_name=None, file_object=None, miller_array=None,
     sigmas_minus = asu.sigmas().select(sel_pairs_minus)
     for h,fp,sp,fm,sm in zip(indices, data_plus, sigmas_plus,
                                       data_minus, sigmas_minus):
-      print >> file_object, ((("%4d"*3) % h)
+      print(((("%4d"*3) % h)
         + format_f8_1_or_i8(h, "intensity", fp)
         + format_f8_1_or_i8(h, "sigma", sp)
         + format_f8_1_or_i8(h, "intensity", fm)
-        + format_f8_1_or_i8(h, "sigma", sm))
+        + format_f8_1_or_i8(h, "sigma", sm)), file=file_object)
     sel_singles = matches.singles_hemisphere_selection("+")
     indices = asu.indices().select(sel_singles)
     data = asu.data().select(sel_singles)
     sigmas = asu.sigmas().select(sel_singles)
     for h,f,s in zip(indices, data, sigmas):
-      print >> file_object, ((("%4d"*3) % h)
+      print(((("%4d"*3) % h)
         + format_f8_1_or_i8(h, "intensity", f)
-        + format_f8_1_or_i8(h, "sigma", s))
+        + format_f8_1_or_i8(h, "sigma", s)), file=file_object)
     sel_singles = matches.singles_hemisphere_selection("-")
     indices = -asu.indices().select(sel_singles)
     data = asu.data().select(sel_singles)
     sigmas = asu.sigmas().select(sel_singles)
     for h,f,s in zip(indices, data, sigmas):
-      print >> file_object, ((("%4d"*3) % h) + (" "*16)
+      print(((("%4d"*3) % h) + (" "*16)
         + format_f8_1_or_i8(h, "intensity", f)
-        + format_f8_1_or_i8(h, "sigma", s))
+        + format_f8_1_or_i8(h, "sigma", s)), file=file_object)
 
 def run(args):
   to_pickle = "--pickle" in args
@@ -243,6 +244,6 @@ def run(args):
     miller_array.show_summary()
     if (to_pickle):
       pickle_file_name = os.path.split(file_name)[1] + ".pickle"
-      print "Writing:", pickle_file_name
+      print("Writing:", pickle_file_name)
       easy_pickle.dump(pickle_file_name, miller_array)
-    print
+    print()

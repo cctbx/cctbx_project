@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os, sys
 
 from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as \
@@ -32,7 +32,7 @@ def run(filename,
   from libtbx.utils import Sorry
   try:
     import iotbx.pdb
-  except ImportError, e:
+  except ImportError as e:
     raise Sorry("iotbx not available")
   if os.path.exists(filename):
     pdb_io = iotbx.pdb.input(filename)
@@ -72,19 +72,19 @@ def run(filename,
                   )
       outl+="\n"
   if unk and print_unknown:
-    print "Unconverted residues",unk
+    print("Unconverted residues",unk)
   if error_outl:
-    print error_outl
+    print(error_outl)
   return outl
 
 def exercise():
   for pdb_file in ["1zap",
                    "1a00",
                    ]:
-    print run(os.path.join(os.environ["PDB_MIRROR_UNCOMPRESSED"],
+    print(run(os.path.join(os.environ["PDB_MIRROR_UNCOMPRESSED"],
                            "pdb%s.ent",
                            )
-              )
+              ))
 
 if __name__=="__main__":
-  print run(sys.argv[1])
+  print(run(sys.argv[1]))

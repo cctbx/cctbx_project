@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from cctbx import xray
 import math,sys
@@ -14,6 +14,7 @@ import mmtbx.utils
 from cctbx import miller
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 output_params_str = """
   output_residue_name = HOH
@@ -216,7 +217,7 @@ class manager(object):
       if(not self.filter_only and self.params.correct_drifted_waters):
         self.correct_drifted_waters(map_cutoff =
           self.params.secondary_map_and_map_cc_filter.poor_map_value_threshold)
-      for i in xrange(self.params.n_cycles):
+      for i in range(self.params.n_cycles):
         self.refine_adp()
         self.refine_occupancies()
     self.show(message = "Before filtering:")
@@ -340,7 +341,7 @@ class manager(object):
       refine_adp             = self.params.new_solvent)
 
   def show(self, message):
-    print >> self.log, message
+    print(message, file=self.log)
     sol_sel = self.model.solvent_selection()
     xrs_mac_h = self.model.get_xray_structure().select(~sol_sel)
     xrs_sol_h = self.model.get_xray_structure().select(sol_sel)
@@ -375,15 +376,15 @@ class manager(object):
     ani_min = format_value("%-7.2f", flex.min_default(scat.anisotropy(
       unit_cell = xrs_sol.unit_cell()), None))
     ani_min_l = format_value("%-7.2f",self.params.anisotropy_min).strip()
-    print >>self.log,"  number           = %s"%number
-    print >>self.log,"  b_iso_min        = %s (limit = %s)"%(b_min, bl_min)
-    print >>self.log,"  b_iso_max        = %s (limit = %s)"%(b_max, bl_max)
-    print >>self.log,"  b_iso_mean       = %s             "%(b_ave)
-    print >>self.log,"  anisotropy_min   = %s (limit = %s)"%(ani_min,ani_min_l)
-    print >>self.log,"  occupancy_min    = %s (limit = %s)"%(o_min, ol_min)
-    print >>self.log,"  occupancy_max    = %s (limit = %s)"%(o_max, ol_max)
-    print >>self.log,"  dist_sol_mol_min = %s (limit = %s)"%(d_min, dl_min)
-    print >>self.log,"  dist_sol_mol_max = %s (limit = %s)"%(d_max, dl_max)
+    print("  number           = %s"%number, file=self.log)
+    print("  b_iso_min        = %s (limit = %s)"%(b_min, bl_min), file=self.log)
+    print("  b_iso_max        = %s (limit = %s)"%(b_max, bl_max), file=self.log)
+    print("  b_iso_mean       = %s             "%(b_ave), file=self.log)
+    print("  anisotropy_min   = %s (limit = %s)"%(ani_min,ani_min_l), file=self.log)
+    print("  occupancy_min    = %s (limit = %s)"%(o_min, ol_min), file=self.log)
+    print("  occupancy_max    = %s (limit = %s)"%(o_max, ol_max), file=self.log)
+    print("  dist_sol_mol_min = %s (limit = %s)"%(d_min, dl_min), file=self.log)
+    print("  dist_sol_mol_max = %s (limit = %s)"%(d_max, dl_max), file=self.log)
 
   def find_peaks(self, map_type, map_cutoff):
     self.fmodel.update_xray_structure(
@@ -429,10 +430,10 @@ class manager(object):
 
   def find_peaks_2fofc(self):
     if(self.fmodel.twin): # XXX Make it possible when someone consolidates fmodels.
-      print >> self.log, "Map CC and map value based filtering is disabled for twin refinement."
+      print("Map CC and map value based filtering is disabled for twin refinement.", file=self.log)
       return
-    print >> self.log, "Before RSCC filtering: ", \
-      self.model.solvent_selection().count(True)
+    print("Before RSCC filtering: ", \
+      self.model.solvent_selection().count(True), file=self.log)
     assert self.fmodel.xray_structure is self.model.get_xray_structure()
     assert len(list(self.model.get_hierarchy().atoms_with_labels())) == \
       self.model.get_number_of_atoms()
@@ -493,8 +494,8 @@ class manager(object):
       self.fmodel.update_xray_structure(
         xray_structure = self.model.get_xray_structure(),
         update_f_calc  = True)
-    print >> self.log, "After RSCC filtering: ", \
-      self.model.solvent_selection().count(True)
+    print("After RSCC filtering: ", \
+      self.model.solvent_selection().count(True), file=self.log)
 
   def add_new_solvent(self):
     if(self.params.b_iso is None):
@@ -553,9 +554,8 @@ class manager(object):
          xray_structure = self.model.get_xray_structure(),
          update_f_calc  = True,
          update_f_mask  = True)
-      print >> self.log, \
-        "ADP refinement (water only), start r_work=%6.4f r_free=%6.4f"%(
-        self.fmodel.r_work(), self.fmodel.r_free())
+      print("ADP refinement (water only), start r_work=%6.4f r_free=%6.4f"%(
+        self.fmodel.r_work(), self.fmodel.r_free()), file=self.log)
       # set refinement flags (not exercised!)
       hd_sel     = self.model.get_hd_selection()
       not_hd_sel = ~hd_sel
@@ -583,9 +583,8 @@ class manager(object):
         is_neutron_scat_table    = self.is_neutron_scat_table,
         refine_adp               = True,
         lbfgs_termination_params = lbfgs_termination_params)
-      print >> self.log,\
-        "ADP refinement (water only), final r_work=%6.4f r_free=%6.4f"%(
-        self.fmodel.r_work(), self.fmodel.r_free())
+      print("ADP refinement (water only), final r_work=%6.4f r_free=%6.4f"%(
+        self.fmodel.r_work(), self.fmodel.r_free()), file=self.log)
 
   def refine_occupancies(self):
     if(not self.filter_only and self.params.refine_occupancies and
@@ -595,9 +594,8 @@ class manager(object):
          xray_structure = self.model.get_xray_structure(),
          update_f_calc  = True,
          update_f_mask  = True)
-      print >> self.log,\
-        "occupancy refinement (water only), start r_work=%6.4f r_free=%6.4f"%(
-        self.fmodel.r_work(), self.fmodel.r_free())
+      print("occupancy refinement (water only), start r_work=%6.4f r_free=%6.4f"%(
+        self.fmodel.r_work(), self.fmodel.r_free()), file=self.log)
       self.fmodels.fmodel_xray().xray_structure.scatterers().flags_set_grads(
         state = False)
       i_selection = self.model.solvent_selection().iselection()
@@ -616,22 +614,21 @@ class manager(object):
         occ_min   = self.params.occupancy_min,
         selection = i_selection)
       #
-      print >> self.log,\
-        "occupancy refinement (water only), start r_work=%6.4f r_free=%6.4f"%(
-        self.fmodel.r_work(), self.fmodel.r_free())
+      print("occupancy refinement (water only), start r_work=%6.4f r_free=%6.4f"%(
+        self.fmodel.r_work(), self.fmodel.r_free()), file=self.log)
 
 def show_histogram(data,
                    n_slots,
                    out=None,
                    prefix=""):
     if (out is None): out = sys.stdout
-    print >> out, prefix
+    print(prefix, file=out)
     histogram = flex.histogram(data    = data,
                                n_slots = n_slots)
     low_cutoff = histogram.data_min()
     for i,n in enumerate(histogram.slots()):
       high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
-      print >> out, "%7.3f - %7.3f: %d" % (low_cutoff, high_cutoff, n)
+      print("%7.3f - %7.3f: %d" % (low_cutoff, high_cutoff, n), file=out)
       low_cutoff = high_cutoff
     out.flush()
     return histogram

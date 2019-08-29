@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import adopt_init_args
 from scitbx.array_family import flex
 from cctbx import maptbx
@@ -7,6 +7,7 @@ from cctbx import adptbx
 from mmtbx import masks
 import sys
 import boost.python
+from six.moves import range
 cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
 from libtbx import group_args
 
@@ -221,7 +222,7 @@ class fsc_model_vs_map(object):
     lines = self.show_lines(prefix=prefix)
     for l in lines:
       if(allcaps): l = l.upper()
-      print >> log, l
+      print(l, file=log)
 
 def assert_same_gridding(map_1, map_2):
   # XXX remove it!

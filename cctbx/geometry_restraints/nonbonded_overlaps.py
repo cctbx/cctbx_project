@@ -1,10 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
 from libtbx import easy_run
 import iotbx.pdb
 import math
 import sys
+import six
+from six.moves import range, zip
 
 class nonbonded_overlaps_results(object):
   """ Container for non-bonded overlaps results """
@@ -93,7 +95,7 @@ class compute(object):
           raise Sorry(e)
         else:
           nbo_list = [[],[]]
-          print e
+          print(e)
       except Sorry as e:
         raise Sorry(e)
       except Exception as e:
@@ -316,8 +318,8 @@ class compute(object):
           for j in range(i+1,n_overlaps):
             vec_i = overlap_atoms_dict[key][i][1]
             vec_j = overlap_atoms_dict[key][j][1]
-            u = map(float,vec_i.split(','))
-            v = map(float,vec_j.split(','))
+            u = [float(_v) for _v in vec_i.split(',')]
+            v = [float(_v) for _v in vec_j.split(',')]
             cos_angle = 0
             # test inline only if the two atoms, overlapping with the
             # common atom, are connected
@@ -348,7 +350,7 @@ class compute(object):
               temp_nbo_list.append(overlap_atoms_dict[key][j])
               temp_nbo_list.append(overlap_atoms_dict[key][i])
         overlap_atoms_dict[key] = temp_nbo_list
-    for (key,val) in overlaps_dict.iteritems():
+    for (key,val) in six.iteritems(overlaps_dict):
       if key.split('::')[2] != '':
         # not to symmetry operation
         Overlapping_atoms_list[0].append(val[2])
@@ -508,13 +510,14 @@ class info(object):
       scores = [nb_overlaps.normalized_nbo_all,
               nb_overlaps.normalized_nbo_macro_molecule,
               nb_overlaps.normalized_nbo_sym]
-    else:
-      names = ['Total non-bonded overlaps',
-               'non-bonded overlaps macro molecule (Protein, RNA, DNA)',
-               'non-bonded overlaps due to symmetry']
-      scores = [nb_overlaps.nb_overlaps_all,
-                nb_overlaps.nb_overlaps_macro_molecule,
-                nb_overlaps.nb_overlaps_due_to_sym_op]
+      for name,score in zip(names,scores):
+        out_list.append(result_str.format(name,round(score,2)))
+    names = ['Total non-bonded overlaps',
+             'non-bonded overlaps macro molecule (Protein, RNA, DNA)',
+             'non-bonded overlaps due to symmetry']
+    scores = [nb_overlaps.nb_overlaps_all,
+              nb_overlaps.nb_overlaps_macro_molecule,
+              nb_overlaps.nb_overlaps_due_to_sym_op]
     for name,score in zip(names,scores):
       out_list.append(result_str.format(name,round(score,2)))
     if nbo_type == 'sym':
@@ -547,14 +550,14 @@ class info(object):
       rec_list.extend(d[1:3])
       rec_list.append(d[3]-d[4])
       rec_list.append('1'*bool(d[5]) + ' '*(not bool(d[5])))
-      #print rec_list
+      #print(rec_list)
       ptr = 0
       if rec_list[5].strip(): ptr=1
       argmented_counts[ptr] += _adjust_count(rec_list[4])
       out_list.append(out_str.format(*rec_list))
     out_string = '\n'.join(out_list)
-    print >> log,out_string
-    #print argmented_counts
+    print(out_string, file=log)
+    #print(argmented_counts)
     return out_string
 
 def get_macro_mol_sel(pdb_processed_file,selection='protein or dna or rna'):
@@ -610,7 +613,7 @@ def create_cif_file_using_ready_set(
   if not has_ready_set:
     msg = 'phenix.ready_set could not be detected on your system.\n'
     msg += 'Cannot process PDB file'
-    print >> log,msg
+    print(msg, file=log)
     return [False,False]
   if not file_name:
     file_name = 'input_pdb_file_for_ready_set.pdb'

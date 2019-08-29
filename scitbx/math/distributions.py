@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.math import ext
-from ext import normal_distribution
+
+normal_distribution = ext.normal_distribution
 if (hasattr(ext, "students_t_distribution")):
-  from ext import students_t_distribution
+  students_t_distribution = ext.students_t_distribution
 else:
   class students_t_distribution(object):
     def __init__(self, *args, **keyword_args):
@@ -44,9 +45,7 @@ class __distribution_mixin(object):
   def quantiles(self, n):
     return ext.quantiles(self, n)
 
-class _(boost.python.injector, normal_distribution, __distribution_mixin):
-  pass
+boost.python.inject(normal_distribution, __distribution_mixin)
 
 if (hasattr(ext, "students_t_distribution")):
-  class _(boost.python.injector, students_t_distribution, __distribution_mixin):
-    pass
+  boost.python.inject(students_t_distribution, __distribution_mixin)

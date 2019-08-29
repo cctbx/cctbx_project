@@ -4,7 +4,7 @@ wxPython-specific code for displaying EM-Ringer plots.  The actual Matplotlib
 plotting code lives in mmtbx.ringer.em_scoring.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from wxtbx.phil_controls import floatctrl
 from wxtbx import phil_controls
 import wxtbx.plots

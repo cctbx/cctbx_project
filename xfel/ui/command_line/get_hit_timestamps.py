@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from libtbx.phil import parse
 from libtbx.utils import Sorry
@@ -56,9 +56,9 @@ def run(args):
         t = e.timestamp
         ts = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
         if all_path is None:
-          print "%04d"%run.run, ts
+          print("%04d"%run.run, ts)
         else:
-          print os.path.join(all_path, "shot-" + ts + ".pickle")
+          print(os.path.join(all_path, "shot-" + ts + ".pickle"))
 
 if __name__ == "__main__":
   run(sys.argv[1:])

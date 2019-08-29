@@ -1,10 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.xray import ext
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.math_utils import iceil
 from itertools import count
 import sys
+from six.moves import range
+from six.moves import zip
 
 class random_inputs(object):
 
@@ -78,7 +80,7 @@ class random_inputs(object):
 def exercise_random(n_trials=10, n_refl=30):
   mt = flex.mersenne_twister(seed=0)
   for target_type in ["ls", "cc"]:
-    for i_trial in xrange(n_trials):
+    for i_trial in range(n_trials):
       for obs_type in ["F", "I"]:
         ri = random_inputs(
           mt=mt, n_refl=n_refl, target_type=target_type, obs_type=obs_type)
@@ -155,7 +157,7 @@ def run(args):
   exercise_random()
   exercise_singular_least_squares()
   exercise_singular_correlation()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

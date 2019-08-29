@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.building import alternate_conformations as alt_confs
 import mmtbx.building
 from libtbx.str_utils import make_sub_header
@@ -10,6 +10,9 @@ import random
 import time
 import os
 import sys
+from functools import cmp_to_key
+from past.builtins import cmp
+from six.moves import range
 
 master_params_str = """
 n_trials = 4
@@ -196,12 +199,13 @@ class refine_into_difference_density(object):
               hierarchy.
     """
     if (log is None) : log = null_out()
-    trials = sorted(self.get_trials(), lambda a,b: cmp(b.cc, a.cc))
+    cmp_fn = lambda a,b: cmp(b.cc, a.cc)
+    trials = sorted(self.get_trials(), key=cmp_to_key(cmp_fn))
     filtered = []
     for k, trial in enumerate(trials):
       hierarchy = self.pdb_hierarchy.deep_copy()
       if (trial.min_fofc < self.params.min_fofc) or (trial.cc < self.params.cc_min):
-        print >> log, "  discarding trial %d [poor map quality]:" % (k+1)
+        print("  discarding trial %d [poor map quality]:" % (k+1), file=log)
         trial.show_summary(out=log, prefix="    ")
         continue
       sites = self.sites_start.deep_copy()
@@ -211,8 +215,8 @@ class refine_into_difference_density(object):
         n_outliers = alt_confs.score_rotamers(hierarchy=hierarchy,
           selection=self.iselection)
         if (n_outliers > 0):
-          print >> log, "  discarding trial %d [%d rotamer outlier(s)]:" % \
-            (k+1, n_outliers)
+          print("  discarding trial %d [%d rotamer outlier(s)]:" % \
+            (k+1, n_outliers), file=log)
           trial.show_summary(out=log, prefix="    ")
           continue
       if (include_pdb_hierarchies):
@@ -239,7 +243,7 @@ class refine_into_difference_density(object):
       n_kept += 1
       new_model = hierarchy.only_model().detached_copy()
       new_model.id = str(n_kept)
-      print >> log, "MODEL %d:" % (k+1)
+      print("MODEL %d:" % (k+1), file=log)
       trial.show_summary(prefix="  ", out=log)
       root.append_model(new_model)
     if (n_kept == 0):

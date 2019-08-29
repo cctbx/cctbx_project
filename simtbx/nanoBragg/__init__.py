@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import boost.python
 import cctbx.uctbx # possibly implicit
 ext = boost.python.import_ext("simtbx_nanoBragg_ext")
 from simtbx_nanoBragg_ext import *
 
-class _(boost.python.injector, ext.nanoBragg):
+@boost.python.inject_into(ext.nanoBragg)
+class _():
 
   def __getattr__(self,name):
     """assemble miller array of structure factors used to compute spot intensities from the internal C cube array

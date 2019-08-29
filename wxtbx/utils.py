@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import object_oriented_patterns as oop
 from libtbx.utils import to_unicode
 import wx.lib.colourselect
@@ -25,8 +25,8 @@ class SettingsToolBase(object):
                        setting,
                        label,
                        captions=None,
-                       min=-sys.maxint,
-                       max=sys.maxint):
+                       min=-sys.maxsize,
+                       max=sys.maxsize):
     panel = self.panel
     value = getattr(self.settings, setting)
     ctrls = []

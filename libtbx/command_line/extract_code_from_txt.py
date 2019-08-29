@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from itertools import count
 import sys, os
+from six.moves import zip
 
 def run(args, command_name="libtbx.extract_code_from_txt"):
   markup_extract_begin = "  ## extract code begin: "

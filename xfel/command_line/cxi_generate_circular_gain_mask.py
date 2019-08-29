@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cxi.generate_circular_gain_mask
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
@@ -68,14 +68,14 @@ if (__name__ == "__main__") :
 
   if annulus:
     if params.resolution is None:
-      print "Generating annular gain mask using %s metrology between %f and %f angstroms, assuming a distance %s mm and wavelength %s angstroms" % \
-        (str(params.detector_format_version), params.annulus_inner, params.annulus_outer, params.distance, params.wavelength)
+      print("Generating annular gain mask using %s metrology between %f and %f angstroms, assuming a distance %s mm and wavelength %s angstroms" % \
+        (str(params.detector_format_version), params.annulus_inner, params.annulus_outer, params.distance, params.wavelength))
     else:
-      print "Generating annular gain mask using %s metrology between %f and %f angstroms, assuming a distance %s mm and wavelength %s angstroms. Also, pixels higher than %f angstroms will be set to low gain." % \
-        (str(params.detector_format_version), params.annulus_inner, params.annulus_outer, params.distance, params.wavelength, params.resolution)
+      print("Generating annular gain mask using %s metrology between %f and %f angstroms, assuming a distance %s mm and wavelength %s angstroms. Also, pixels higher than %f angstroms will be set to low gain." % \
+        (str(params.detector_format_version), params.annulus_inner, params.annulus_outer, params.distance, params.wavelength, params.resolution))
   elif params.resolution is not None:
-    print "Generating circular gain mask using %s metrology at %s angstroms, assuming a distance %s mm and wavelength %s angstroms" % \
-      (str(params.detector_format_version), params.resolution, params.distance, params.wavelength)
+    print("Generating circular gain mask using %s metrology at %s angstroms, assuming a distance %s mm and wavelength %s angstroms" % \
+      (str(params.detector_format_version), params.resolution, params.distance, params.wavelength))
 
   from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp, cbcaa, pixel_size, CsPadDetector
   from iotbx.detectors.cspad_detector_formats import address_and_timestamp_from_detector_format_version
@@ -146,17 +146,17 @@ if (__name__ == "__main__") :
   if annulus:
     inner = params.distance * math.tan(2*math.sinh(params.wavelength/(2*params.annulus_inner)))/pixel_size
     outer = params.distance * math.tan(2*math.sinh(params.wavelength/(2*params.annulus_outer)))/pixel_size
-    print "Pixel inner:", inner
-    print "Pixel outer:", outer
+    print("Pixel inner:", inner)
+    print("Pixel outer:", outer)
   if params.resolution is not None:
     radius = params.distance * math.tan(2*math.sinh(params.wavelength/(2*params.resolution)))/pixel_size
-    print "Pixel radius:", radius
+    print("Pixel radius:", radius)
 
-  print "Percent done: 0",; sys.stdout.flush()
+  print("Percent done: 0", end=' '); sys.stdout.flush()
   next_percent = 10
   for y in range(data.focus()[1]):
     if y*100/data.focus()[1] > next_percent:
-      print next_percent,; sys.stdout.flush()
+      print(next_percent, end=' '); sys.stdout.flush()
       next_percent += 10
     for x in range(data.focus()[0]):
       if annulus:
@@ -169,7 +169,7 @@ if (__name__ == "__main__") :
         else:
           if not point_inside_circle(x,y,beam_center[0],beam_center[1],radius):
             data[y,x] = 1
-  print 100
+  print(100)
 
   if 'XPP' in params.detector_format_version:
     rotations = xpp_active_areas[params.detector_format_version]['rotations']

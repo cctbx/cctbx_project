@@ -1,11 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 
 from mmtbx.conformation_dependent_library.hpdl_database import get_hpdl_database
 from libtbx import easy_run
 try:
   from elbow.formats import refine_geo_parser
-except ImportError, e:
+except ImportError as e:
   refine_geo_parser = None
 
 pdbs = {
@@ -111,35 +111,35 @@ def check_ideals(geo_filename, restraints):
   bond_remove.sort()
   bond_remove.reverse()
   for i in bond_remove: del bonds[i]
-  print "OK"
+  print("OK")
 
 def run(filename=None):
   assert filename is None
   hpdl_database = get_hpdl_database()
   if 0:
-    print "HPDL"
-    print hpdl_database
+    print("HPDL")
+    print(hpdl_database)
     for aa in sorted(hpdl_database):
-      print "  %s" % aa
+      print("  %s" % aa)
       for key, value in sorted(hpdl_database[aa].items()):
-        print "    %s : %s" % (key, value)
+        print("    %s : %s" % (key, value))
     assert 0
   #
   for pdb, lines in pdbs.items():
-    print pdb
+    print(pdb)
     filename="hpdl_%s.pdb" % pdb
-    f=file(filename, "wb")
+    f=open(filename, "w")
     f.write(lines)
     f.close()
     cmd = "phenix.pdb_interpretation %s write_geo=1 hpdl=%s" % (filename, True)
-    print cmd
+    print(cmd)
     easy_run.call(cmd)
     if filename.find("his_double")>-1: key="ND1 and NE2 protonated"
     elif filename.find("his_nd1")>-1: key="Only ND1 protonated"
     elif filename.find("his_ne2")>-1: key="Only NE2 protonated"
     if refine_geo_parser:
       check_ideals("%s.geo" % filename, hpdl_database[key])
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   run(*tuple(sys.argv[1:]))

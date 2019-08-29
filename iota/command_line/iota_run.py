@@ -1,10 +1,10 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME iota.run
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 01/28/2019
+Last Changed: 08/05/2019
 Description : IOTA command-line module.
 '''
 
@@ -117,9 +117,13 @@ class Process(ProcessingBase):
         self.run_analysis()
 
       if 'silent' not in self.out_type:
-        print ('\n'.join(self.info.final_table))
-        print ('\n'.join(self.info.uc_table))
-        print ('\n'.join(self.info.summary))
+        if self.info.have_results:
+          print ('\n'.join(self.info.final_table))
+          print ('\n'.join(self.info.uc_table))
+          print ('\n'.join(self.info.summary))
+        else:
+          print ('\n **** NO IMAGES INTEGRATED! ****')
+
 
 # ============================================================================ #
 if __name__ == "__main__":
@@ -144,6 +148,7 @@ if __name__ == "__main__":
         help_out, txt_out = print_params()
         print('\n{:-^70}\n'.format('IOTA Parameters'))
         print(help_out)
+        util.iota_exit()
 
     with prog_message('Interpreting input', prog='UI INIT',
                       out_type=args.out_type):

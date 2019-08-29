@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.math
 import scitbx.linalg
 from scitbx import matrix
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import random
+from six.moves import range
 
 def exercise_cholesky_decomposition():
   from scitbx.examples import immoptibox_ports
@@ -29,7 +30,7 @@ def exercise_scitbx_cholesky_decomposition(a):
     assert chol.failure
   else:
     assert approx_equal(cl, c.matrix_lower_triangle_as_packed_l())
-    for i_trial in xrange(10):
+    for i_trial in range(10):
       b = flex.random_double(size=a.focus()[0], factor=2)-1
       x = chol.solve(b)
       assert approx_equal(a.matrix_multiply(x), b)
@@ -43,7 +44,7 @@ def exercise_gill_murray_wright_cholesky_decomposition():
     n = len(p)
     m = flex.double(flex.grid(n,n))
     m.matrix_diagonal_set_in_place(1)
-    for i in xrange(n):
+    for i in range(n):
       if p[i] != i:
         m.matrix_swap_rows_in_place(i, p[i])
     return matrix.sqr(m)
@@ -77,7 +78,7 @@ def exercise_gill_murray_wright_cholesky_decomposition():
         eigen = scitbx.linalg.eigensystem.real_symmetric(
           paept.as_flex_double_matrix())
         lambda_ = eigen.values()
-        print "condition number: ", lambda_[0]/lambda_[-1]
+        print("condition number: ", lambda_[0]/lambda_[-1])
       delta_solve = scitbx.linalg.matrix_cholesky_test_ratio(
         a=paept.as_flex_double_matrix(),
         x=flex.double(px),
@@ -94,50 +95,50 @@ def exercise_gill_murray_wright_cholesky_decomposition():
   n_max = 15
   n_trials_per_n = 10
   # identity matrices
-  for n in xrange(1,n_max+1):
+  for n in range(1,n_max+1):
     a = matrix.diag([1]*n)
     p, e, r = core(a)
-    assert list(p) == range(n)
+    assert list(p) == list(range(n))
     assert approx_equal(e, [0]*n)
     assert approx_equal(r, a)
   # null matrices
-  for n in xrange(1,n_max+1):
+  for n in range(1,n_max+1):
     a = matrix.sqr([0]*n*n)
     p, e, r = core(a)
-    assert list(p) == range(n)
+    assert list(p) == list(range(n))
     assert list(e) == [scitbx.math.floating_point_epsilon_double_get()]*n
-    for i in xrange(n):
-      for j in xrange(n):
+    for i in range(n):
+      for j in range(n):
         if (i != j): r(i,j) == 0
         else: r(i,j) == r(0,0)
   # random semi-positive diagonal matrices
-  for n in xrange(1,n_max+1):
-    for i_trial in xrange(n_trials_per_n):
+  for n in range(1,n_max+1):
+    for i_trial in range(n_trials_per_n):
       a = matrix.diag(flex.random_double(size=n))
       p, e, r = core(a)
       assert approx_equal(e, [0]*n)
-      for i in xrange(n):
-        for j in xrange(n):
+      for i in range(n):
+        for j in range(n):
           if (i != j): approx_equal(r(i,j), 0)
   # random diagonal matrices
-  for n in xrange(1,n_max+1):
-    for i_trial in xrange(n_trials_per_n):
+  for n in range(1,n_max+1):
+    for i_trial in range(n_trials_per_n):
       a = matrix.diag(flex.random_double(size=n, factor=2)-1)
       p, e, r = core(a)
-      for i in xrange(n):
-        for j in xrange(n):
+      for i in range(n):
+        for j in range(n):
           if (i != j): approx_equal(r(i,j), 0)
   # random semi-positive definite matrices
-  for n in xrange(1,n_max+1):
-    for i_trial in xrange(n_trials_per_n):
+  for n in range(1,n_max+1):
+    for i_trial in range(n_trials_per_n):
       m = matrix.sqr(flex.random_double(size=n*n, factor=2)-1)
       a = m.transpose_multiply()
       p, e, r = core(a)
       assert approx_equal(e, [0]*n)
   # random matrices
-  for n in xrange(1,n_max+1):
+  for n in range(1,n_max+1):
     size = n*(n+1)//2
-    for i_trial in xrange(n_trials_per_n):
+    for i_trial in range(n_trials_per_n):
       a = (flex.random_double(size=size, factor=2)-1) \
             .matrix_packed_u_as_symmetric()
       core(matrix.sqr(a))
@@ -146,8 +147,8 @@ def exercise_gill_murray_wright_cholesky_decomposition():
   # J. Nocedal and S. Wright:
   # Numerical Optimization.
   # Springer, New York, 1999, pp. 145-150.
-  for i in xrange(3):
-    for j in xrange(3):
+  for i in range(3):
+    for j in range(3):
       a = flex.double([[4,2,1],[2,6,3],[1,3,-0.004]])
       a.matrix_swap_rows_in_place(i=i, j=j)
       a.matrix_swap_columns_in_place(i=i, j=j)
@@ -163,7 +164,7 @@ def exercise_gill_murray_wright_cholesky_decomposition():
 def run():
   exercise_cholesky_decomposition()
   exercise_gill_murray_wright_cholesky_decomposition()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

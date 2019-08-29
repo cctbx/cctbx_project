@@ -1,4 +1,5 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
+from six.moves import zip
 try:
   from phenix.program_template import ProgramTemplate
 except ImportError:
@@ -329,6 +330,8 @@ Optional output:
   # ---------------------------------------------------------------------------
   def print_validation(self, results):
     vr = results.validation_results
+    if vr is None:
+      return ''
     print('Map 1: calculated Fobs with ligand')
     print('Map 2: calculated Fobs without ligand')
     print('Map 3: real Fobs data')
@@ -393,8 +396,9 @@ Optional output:
 
   def run(self):
 
-    print('Using model file:', self.params.model_file_name)
-    print('Using reflection file(s):', self.data_manager.get_miller_array_names())
+    print('Using model file:', self.params.model_file_name, file=self.logger)
+    print('Using reflection file(s):', self.data_manager.get_miller_array_names(),
+      file=self.logger)
 
     cs = self.get_crystal_symmetry()
 
@@ -427,11 +431,12 @@ Optional output:
       d_min            = f_obs.d_min())
 
     polder_object = mmtbx.maps.polder.compute_polder_map(
-      f_obs          = f_obs,
-      r_free_flags   = r_free_flags,
-      model          = model,
-      params         = self.params.polder,
-      selection_bool = selection_bool)
+      f_obs            = f_obs,
+      r_free_flags     = r_free_flags,
+      model            = model,
+      params           = self.params.polder,
+      selection_string = self.params.solvent_exclusion_mask_selection)
+      #selection_bool = selection_bool)
     polder_object.validate()
     polder_object.run()
     results = polder_object.get_results()

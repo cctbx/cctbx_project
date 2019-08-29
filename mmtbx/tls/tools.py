@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 from cctbx.array_family import flex
 import sys, time
@@ -16,6 +16,8 @@ import iotbx
 import math
 import iotbx.pdb.remark_3_interpretation
 from scitbx.linalg import eigensystem
+from six.moves import zip
+from six.moves import range
 
 def combine_tls_and_u_local(xray_structure, tls_selections, tls_groups):
   assert len(tls_selections) == len(tls_groups)
@@ -95,16 +97,16 @@ def show_times(out = None):
         time_make_tlso_compatible_with_u_positive_definite +\
         time_generate_tlsos
   if(total > 0.01):
-    print >> out, "TLS refinement:"
-    print >> out, "  time_u_cart_from_tls                              = %-7.2f" % time_u_cart_from_tls
-    print >> out, "  time_tls_from_uanisos                              = %-7.2f" % time_tls_from_uanisos
-    print >> out, "  time_update_xray_structure_with_tls                = %-7.2f" % time_update_xray_structure_with_tls
-    print >> out, "  time_split_u                                       = %-7.2f" % time_split_u
-    print >> out, "  time_tls_from_u_cart                               = %-7.2f" % time_tls_from_u_cart
-    print >> out, "  time_make_tlso_compatible_with_u_positive_definite = %-7.2f" % time_make_tlso_compatible_with_u_positive_definite
-    print >> out, "  time_generate_tlsos                                = %-7.2f" % time_generate_tlsos
-    print >> out, "  sum_of_partial_contributions                       = %-7.2f" % total
-    print >> out, "  time_tls_total                                     = %-7.2f" % time_tls_total
+    print("TLS refinement:", file=out)
+    print("  time_u_cart_from_tls                              = %-7.2f" % time_u_cart_from_tls, file=out)
+    print("  time_tls_from_uanisos                              = %-7.2f" % time_tls_from_uanisos, file=out)
+    print("  time_update_xray_structure_with_tls                = %-7.2f" % time_update_xray_structure_with_tls, file=out)
+    print("  time_split_u                                       = %-7.2f" % time_split_u, file=out)
+    print("  time_tls_from_u_cart                               = %-7.2f" % time_tls_from_u_cart, file=out)
+    print("  time_make_tlso_compatible_with_u_positive_definite = %-7.2f" % time_make_tlso_compatible_with_u_positive_definite, file=out)
+    print("  time_generate_tlsos                                = %-7.2f" % time_generate_tlsos, file=out)
+    print("  sum_of_partial_contributions                       = %-7.2f" % total, file=out)
+    print("  time_tls_total                                     = %-7.2f" % time_tls_total, file=out)
   return total
 
 class tls_groups(object):
@@ -118,9 +120,9 @@ def remark_3_tls(tlsos, selection_strings, out = None):
     selection_strings = [None]
   else:
     assert len(tlsos) == len(selection_strings)
-  print >> out, "REMARK   3  TLS DETAILS."
-  print >> out, "REMARK   3   NUMBER OF TLS GROUPS: %-6d"%len(tlsos)
-  print >> out, "REMARK   3   ORIGIN: CENTER OF MASS"
+  print("REMARK   3  TLS DETAILS.", file=out)
+  print("REMARK   3   NUMBER OF TLS GROUPS: %-6d"%len(tlsos), file=out)
+  print("REMARK   3   ORIGIN: CENTER OF MASS", file=out)
   r3 = "REMARK   3   "
   counter = 0
   for tlso, selection_string in zip(tlsos, selection_strings):
@@ -131,26 +133,26 @@ def remark_3_tls(tlsos, selection_strings, out = None):
     l = tlso.l
     s = tlso.s
     o = tlso.origin
-    print >>out,r3+"TLS GROUP : %-6d"%(counter)
+    print(r3+"TLS GROUP : %-6d"%(counter), file=out)
     lines = line_breaker(selection_string, width=45)
     for i_line, line in enumerate(lines):
       if(i_line == 0):
-        print >> out, r3+" SELECTION: %s"%line
+        print(r3+" SELECTION: %s"%line, file=out)
       else:
-        print >> out, r3+"          : %s"%line
-    print >>out,r3+" ORIGIN FOR THE GROUP (A):%9.4f%9.4f%9.4f"%(o[0],o[1],o[2])
-    print >>out,r3+" T TENSOR                                            "
-    print >>out,r3+"   T11:%9.4f T22:%9.4f                       "%(t[0], t[1])
-    print >>out,r3+"   T33:%9.4f T12:%9.4f                       "%(t[2], t[3])
-    print >>out,r3+"   T13:%9.4f T23:%9.4f                       "%(t[4], t[5])
-    print >>out,r3+" L TENSOR                                            "
-    print >>out,r3+"   L11:%9.4f L22:%9.4f                       "%(l[0], l[1])
-    print >>out,r3+"   L33:%9.4f L12:%9.4f                       "%(l[2], l[3])
-    print >>out,r3+"   L13:%9.4f L23:%9.4f                       "%(l[4], l[5])
-    print >>out,r3+" S TENSOR                                            "
-    print >>out,r3+"   S11:%9.4f S12:%9.4f S13:%9.4f         "%(s[0],s[1],s[2])
-    print >>out,r3+"   S21:%9.4f S22:%9.4f S23:%9.4f         "%(s[3],s[4],s[5])
-    print >>out,r3+"   S31:%9.4f S32:%9.4f S33:%9.4f         "%(s[6],s[7],s[8])
+        print(r3+"          : %s"%line, file=out)
+    print(r3+" ORIGIN FOR THE GROUP (A):%9.4f%9.4f%9.4f"%(o[0],o[1],o[2]), file=out)
+    print(r3+" T TENSOR                                            ", file=out)
+    print(r3+"   T11:%9.4f T22:%9.4f                       "%(t[0], t[1]), file=out)
+    print(r3+"   T33:%9.4f T12:%9.4f                       "%(t[2], t[3]), file=out)
+    print(r3+"   T13:%9.4f T23:%9.4f                       "%(t[4], t[5]), file=out)
+    print(r3+" L TENSOR                                            ", file=out)
+    print(r3+"   L11:%9.4f L22:%9.4f                       "%(l[0], l[1]), file=out)
+    print(r3+"   L33:%9.4f L12:%9.4f                       "%(l[2], l[3]), file=out)
+    print(r3+"   L13:%9.4f L23:%9.4f                       "%(l[4], l[5]), file=out)
+    print(r3+" S TENSOR                                            ", file=out)
+    print(r3+"   S11:%9.4f S12:%9.4f S13:%9.4f         "%(s[0],s[1],s[2]), file=out)
+    print(r3+"   S21:%9.4f S22:%9.4f S23:%9.4f         "%(s[3],s[4],s[5]), file=out)
+    print(r3+"   S31:%9.4f S32:%9.4f S33:%9.4f         "%(s[6],s[7],s[8]), file=out)
 
 class show_tls(object):
   def __init__(self, tlsos, text="", out=None):
@@ -164,7 +166,7 @@ class show_tls(object):
     part1 = "|-"+text
     part2 = "-|"
     n = 79 - len(part1+part2)
-    print >> out, part1 + "-"*n + part2
+    print(part1 + "-"*n + part2, file=out)
     for item in tlsos:
       counter += 1
       T = item.t
@@ -173,13 +175,13 @@ class show_tls(object):
       origin = item.origin
       line = "|TLS group number %d: " % counter
       n = 79 - len(line+"|")
-      print >> out, line+" "*n+"|"
-      print >> out, "|"+" "*15+"Origin (x,y,z) = %9.4f %9.4f %9.4f"%\
-            (origin[0],origin[1],origin[2])+" "*16+"|"
-      print >> out, formatT % (T[0],T[1],T[2],T[3],T[4],T[5])
-      print >> out, formatL % (L[0],L[1],L[2],L[3],L[4],L[5])
-      print >> out, formatS % (S[0],S[4],S[8],S[1],S[2],S[3],S[5],S[6],S[7])
-    print >> out, "|" +"-"*77+"|"
+      print(line+" "*n+"|", file=out)
+      print("|"+" "*15+"Origin (x,y,z) = %9.4f %9.4f %9.4f"%\
+            (origin[0],origin[1],origin[2])+" "*16+"|", file=out)
+      print(formatT % (T[0],T[1],T[2],T[3],T[4],T[5]), file=out)
+      print(formatL % (L[0],L[1],L[2],L[3],L[4],L[5]), file=out)
+      print(formatS % (S[0],S[4],S[8],S[1],S[2],S[3],S[5],S[6],S[7]), file=out)
+    print("|" +"-"*77+"|", file=out)
 
 class show_tls_one_group(object):
   def __init__(self, tlso, text="", out=None):
@@ -193,18 +195,18 @@ class show_tls_one_group(object):
     part1 = "|-"+text
     part2 = "-|"
     n = 79 - len(part1+part2)
-    print >> out,part1 + "-"*n + part2
+    print(part1 + "-"*n + part2, file=out)
     counter += 1
     T = tlso.t
     L = tlso.l
     S = tlso.s
     origin = tlso.origin
-    print >> out, "|"+" "*15+"Origin (x,y,z) = %9.4f %9.4f %9.4f"%\
-          (origin[0],origin[1],origin[2])+" "*16+"|"
-    print >> out, formatT % (T[0],T[1],T[2],T[3],T[4],T[5])
-    print >> out, formatL % (L[0],L[1],L[2],L[3],L[4],L[5])
-    print >> out, formatS % (S[0],S[4],S[8],S[1],S[2],S[3],S[5],S[6],S[7])
-    print >> out, "|" +"-"*77+"|"
+    print("|"+" "*15+"Origin (x,y,z) = %9.4f %9.4f %9.4f"%\
+          (origin[0],origin[1],origin[2])+" "*16+"|", file=out)
+    print(formatT % (T[0],T[1],T[2],T[3],T[4],T[5]), file=out)
+    print(formatL % (L[0],L[1],L[2],L[3],L[4],L[5]), file=out)
+    print(formatS % (S[0],S[4],S[8],S[1],S[2],S[3],S[5],S[6],S[7]), file=out)
+    print("|" +"-"*77+"|", file=out)
 
 def u_cart_from_tls(sites_cart, selections, tlsos):
   global time_u_cart_from_tls
@@ -272,7 +274,7 @@ def tls_from_uanisos(xray_structure,
       if(refine_S):  S_initial = minimized.S_min
       else:          assert approx_equal(S_initial, minimized.S_min)
     if(verbose > 0):
-      print >> out, "TLS group %d: minimized target = " %(group_counter),minimized.f
+      print("TLS group %d: minimized target = " %(group_counter),minimized.f, file=out)
     T_min_ = minimized.T_min
     L_min_ = minimized.L_min
     if(enforce_positive_definite_TL):
@@ -502,7 +504,7 @@ class tls_xray_target_minimizer(object):
     T_min = []
     L_min = []
     S_min = []
-    for j in xrange(self.n_groups):
+    for j in range(self.n_groups):
       if (self.refine_T):
         self.T_min[j] = tuple(self.x)[i:i+self.dim_T]
         i += self.dim_T
@@ -553,20 +555,20 @@ class tls_xray_target_minimizer(object):
       formats="%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f"
       for m1,m2 in zip(grad_manager.grad_T, GT):
         if(0):
-          print "T1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
-          print "T2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
+          print("T1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5]))
+          print("T2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5]))
         assert approx_equal(m1,m2,tolerance)
       for m1,m2 in zip(grad_manager.grad_L, GL):
         if(0):
-          print "L1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
-          print "L2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
+          print("L1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5]))
+          print("L2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5]))
         assert approx_equal(m1,m2,tolerance)
       for m1,m2 in zip(grad_manager.grad_S, GS):
         if(0):
-          print "S1=" + formats %\
-                (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5],m1[6],m1[7],m1[8])
-          print "S2=" + formats %\
-                (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5],m2[6],m2[7],m2[8])
+          print("S1=" + formats %\
+                (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5],m1[6],m1[7],m1[8]))
+          print("S2=" + formats %\
+                (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5],m2[6],m2[7],m2[8]))
         assert approx_equal(m1,m2,tolerance)
     return self.f, self.g
 
@@ -766,7 +768,7 @@ class tls_refinement(object):
     if (verbose):
       show_tls(tlsos = tlsos, text = prefix+" start parameters",out = out)
     for macro_cycle in range(1, number_of_macro_cycles+1):
-      print >> out
+      print(file=out)
       prefix = "TLS refinement: after macrocycle "+str(macro_cycle)
       minimized = tls_xray_target_minimizer(
         fmodel                      = fmodel,
@@ -895,9 +897,9 @@ def finite_differences_grads_of_xray_target_wrt_tls(target_functor,
                                                     delta=0.00001):
   fmodel = target_functor.manager
   derivative_T = []
-  for j in xrange(len(T)):
+  for j in range(len(T)):
     dT = []
-    for i in xrange(6):
+    for i in range(6):
       target_values = []
       for d_sign in (-1, 1):
         T_ = []
@@ -926,9 +928,9 @@ def finite_differences_grads_of_xray_target_wrt_tls(target_functor,
     derivative_T.append(dT)
 
   derivative_L = []
-  for j in xrange(len(L)):
+  for j in range(len(L)):
     dL = []
-    for i in xrange(6):
+    for i in range(6):
       target_values = []
       for d_sign in (-1, 1):
         L_ = []
@@ -957,9 +959,9 @@ def finite_differences_grads_of_xray_target_wrt_tls(target_functor,
     derivative_L.append(dL)
 
   derivative_S = []
-  for j in xrange(len(L)):
+  for j in range(len(L)):
     dS = []
-    for i in xrange(9):
+    for i in range(9):
       target_values = []
       for d_sign in (-1, 1):
         S_ = []
@@ -1008,13 +1010,13 @@ def u_cart_from_ensemble(models):
     xyz_all.append(m.atoms().extract_xyz())
   n_atoms = xyz_all[0].size()
   xyz_atoms_all = []
-  for i in xrange(n_atoms):
+  for i in range(n_atoms):
     xyz_atoms = flex.vec3_double()
     for xyzs in xyz_all:
       xyz_atoms.append(xyzs[i])
     xyz_atoms_all.append(xyz_atoms)
   result = flex.sym_mat3_double()
-  for i in xrange(n_atoms):
+  for i in range(n_atoms):
     result.append(u_cart_from_xyz(sites_cart=xyz_atoms_all[i]))
   return result
 
@@ -1055,27 +1057,27 @@ class u_tls_vs_u_ens(object):
     from scitbx import matrix
     from libtbx.utils import null_out
     if(show):
-      print >> log, "INPUTS:","-"*73
-      print >> log, "dx    :", dx
-      print >> log, "dy    :", dy
-      print >> log, "dz    :", dz
-      print >> log, "sx    :", sx
-      print >> log, "sy    :", sy
-      print >> log, "sz    :", sz
-      print >> log, "lx    :", [i for i in lx]
-      print >> log, "ly    :", [i for i in ly]
-      print >> log, "lz    :", [i for i in lz]
-      print >> log, "tx    :", tx
-      print >> log, "ty    :", ty
-      print >> log, "tz    :", tz
-      print >> log, "vx    :", [i for i in vx]
-      print >> log, "vy    :", [i for i in vy]
-      print >> log, "vz    :", [i for i in vz]
-      print >> log, "w_M_lx:", [i for i in w_M_lx]
-      print >> log, "w_M_ly:", [i for i in w_M_ly]
-      print >> log, "w_M_lz:", [i for i in w_M_lz]
-      print >> log, "origin:", origin
-      print >> log, "-"*79
+      print("INPUTS:","-"*73, file=log)
+      print("dx    :", dx, file=log)
+      print("dy    :", dy, file=log)
+      print("dz    :", dz, file=log)
+      print("sx    :", sx, file=log)
+      print("sy    :", sy, file=log)
+      print("sz    :", sz, file=log)
+      print("lx    :", [i for i in lx], file=log)
+      print("ly    :", [i for i in ly], file=log)
+      print("lz    :", [i for i in lz], file=log)
+      print("tx    :", tx, file=log)
+      print("ty    :", ty, file=log)
+      print("tz    :", tz, file=log)
+      print("vx    :", [i for i in vx], file=log)
+      print("vy    :", [i for i in vy], file=log)
+      print("vz    :", [i for i in vz], file=log)
+      print("w_M_lx:", [i for i in w_M_lx], file=log)
+      print("w_M_ly:", [i for i in w_M_ly], file=log)
+      print("w_M_lz:", [i for i in w_M_lz], file=log)
+      print("origin:", origin, file=log)
+      print("-"*79, file=log)
     #
     pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
     ph = pdb_inp.construct_hierarchy()
@@ -1126,7 +1128,7 @@ class u_tls_vs_u_ens(object):
     xyz_atoms_all = all_vs_all(xyz_all = xyz_all)
     ###
     self.u_cart_ens = flex.sym_mat3_double()
-    for i in xrange(n_atoms):
+    for i in range(n_atoms):
       self.u_cart_ens.append(u_cart_from_xyz(sites_cart=xyz_atoms_all[i]))
     u1 = self.u_cart_tls.as_double()
     u2 = self.u_cart_ens.as_double()
@@ -1162,7 +1164,7 @@ class u_tls_vs_u_ens(object):
       uD = R.transpose()*u*R
       result = R*(uD+eps)*R.transpose()
       tmp = R*uD*R.transpose()
-      for i in xrange(6):
+      for i in range(6):
         assert approx_equal(tmp[i], u[i])
       return R*(uD+eps)*R.transpose()
 
@@ -1170,12 +1172,12 @@ class u_tls_vs_u_ens(object):
     self.CC=0
     n1,n2,d1,d2=0,0,0,0
     for u1, u2 in zip(self.u_cart_tls, self.u_cart_ens):
-      for i in xrange(6):
+      for i in range(6):
         n1 += abs(u1[i]-u2[i])
         d1 += (abs(u1[i])+abs(u2[i]))
       u1 = add_const(u=u1)
       u2 = add_const(u=u2)
-      for i in xrange(6):
+      for i in range(6):
         n2 += abs(u1[i]-u2[i])
         d2 += (abs(u1[i])+abs(u2[i]))
       iu1 = u1.inverse()
@@ -1192,11 +1194,11 @@ class u_tls_vs_u_ens(object):
     self.r = self.R1
     #
     ###
-    for i in xrange(n_atoms):
+    for i in range(n_atoms):
       ut=["%8.5f"%u for u in self.u_cart_tls[i]]
       ue=["%8.5f"%u for u in self.u_cart_ens[i]]
       if(assert_similarity):
-        for j in xrange(6):
+        for j in range(6):
           assert approx_equal(abs(float(ut[j])), abs(float(ue[j])), 1.e-3)
     #
     if(write_pdb_files):

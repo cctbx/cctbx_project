@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import os, re
 from iotbx.detectors import ImageFactory, url_support
@@ -87,7 +87,7 @@ class FileName:
       self.ext = d['ext']
       self.template = "%s_%s.%s"%(self.fileroot,self.otherstuff,self.ext)
       self.pattern = 0
-      if self.ext.lower() in FileName.exts: print self.template;return 1
+      if self.ext.lower() in FileName.exts: print(self.template);return 1
     if match2!=None:
       d = match2.groupdict()
       self.fileroot = d['fileroot']
@@ -181,9 +181,9 @@ class image_files:
   def frames(self,wedgelimit=None): # gives the frame numbers
     if wedgelimit == None:return [item.number for item in self.filenames.FN]
     import inspect
-    print "image_files.frames deprecated usage called by %s line %d; contact nksauter@lbl.gov"%(
+    print("image_files.frames deprecated usage called by %s line %d; contact nksauter@lbl.gov"%(
       inspect.currentframe().f_back.f_code.co_name,
-      inspect.currentframe().f_back.f_lineno)
+      inspect.currentframe().f_back.f_lineno))
     return [item.number for item in self.filenames.FN[0:wedgelimit]]
 
   def imageindex(self,indexnumber): # gives the actual image
@@ -275,8 +275,8 @@ class spotfinder_image_files(H5_aware_image_files):
 
     if self.phil_params.autoindex_override_deltaphi != None:
         if self.verbose:
-          print "Overriding deltaphi not fully supported: contact authors"
-        print "Altering deltaphi",(filenameobject.number-1)*self.phil_params.autoindex_override_deltaphi
+          print("Overriding deltaphi not fully supported: contact authors")
+        print("Altering deltaphi",(filenameobject.number-1)*self.phil_params.autoindex_override_deltaphi)
         imageobject.parameters['OSC_RANGE']=self.phil_params.autoindex_override_deltaphi
         imageobject.parameters['OSC_START']=(filenameobject.number-1)*self.phil_params.autoindex_override_deltaphi
 
@@ -324,8 +324,8 @@ class spotfinder_image_files(H5_aware_image_files):
           convert_beam_instrument_to_imageblock(imageobject,
             beam_center_convention,force=True)
           if self.verbose:
-            print "Mar CCD image appears to have beam center %.2f %.2f in mm instead of pixels"%(
-            imageobject.beamx,imageobject.beamy)
+            print("Mar CCD image appears to have beam center %.2f %.2f in mm instead of pixels"%(
+            imageobject.beamx,imageobject.beamy))
 
 class Spotspickle_argument_module:  #almost verbatim copy from procedure.py
   def __init__(self,directory,framelist=[]):

@@ -3,12 +3,16 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import compileall
 import os
+import sys
 
 def run():
   # parser with subset of flags
   parser = argparse.ArgumentParser(description='Compiles .py files into .pyc.')
   parser.add_argument('-f', action='store_true', dest='force',
                       help='force rebuild even if timestamps are up to date')
+  parser.add_argument('-i', '--ignore-errors', action='store_true',
+                      dest='ignore_errors',
+                      help='ignore errors')
   parser.add_argument('-v', action='count', dest='quiet', default=0,
                       help=('default is no output, -v is error messages only, '
                             '-vv is all output'))
@@ -27,8 +31,14 @@ def run():
   if (args.quiet < 0):
     args.quiet = 0
 
+  output = list()
   for dest in args.compile_dest:
-    compileall.compile_dir(dest, 100, force=args.force, quiet=args.quiet)
+    output.append(compileall.compile_dir(dest, 100, force=args.force,
+                                         quiet=args.quiet))
+
+  if False in output and not args.ignore_errors:
+    return 1
+  return 0
 
 if (__name__ == "__main__"):
-  run()
+  sys.exit(run())

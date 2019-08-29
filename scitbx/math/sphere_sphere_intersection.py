@@ -1,4 +1,4 @@
-from __future__ import division, absolute_import
+from __future__ import absolute_import, division, print_function
 import math
 pi = math.pi
 
@@ -37,7 +37,7 @@ def exercise():
   assert approx_equal(volume(2, 2.3, 0.31), 33.505660942)
   assert approx_equal(volume(2, 2.3, 4.29), 0.000335811722418)
   assert approx_equal(volume(2, 2.3, 4.3), 0)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

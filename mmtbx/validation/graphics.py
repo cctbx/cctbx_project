@@ -3,9 +3,11 @@
 Base classes for visualization of MolProbity analysis using matplotlib.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate
-import itertools
+from six.moves import filterfalse
+from six.moves import zip
+from six.moves import range
 
 class rotarama_plot_mixin(object):
   extent = [0, 360, 0, 360]
@@ -29,7 +31,7 @@ class rotarama_plot_mixin(object):
                  markerfacecolor="white",
                  markeredgecolor="black",
                  show_filling=True,
-                 markersize=10,
+                 markersize=5,
                  point_style='bo'):
     # points = [(x,y,label, isoutlier(bool)), (), ...]
     import matplotlib.cm
@@ -42,7 +44,13 @@ class rotarama_plot_mixin(object):
     else :
       assert (len(extent) == 4)
     if show_filling:
-      self.plot.imshow(stats, origin="lower", cmap=cm, extent=extent)
+      im = self.plot.imshow(stats, origin="lower", cmap=cm, extent=extent)
+      # This code will draw bar with actual numbers that are represented by
+      # color (sloppily over the axis values)
+      # from mpl_toolkits.axes_grid1 import make_axes_locatable
+      # divider = make_axes_locatable(self.plot)
+      # cax = divider.append_axes('bottom', size='5%', pad=0.05)
+      # self.figure.colorbar(im, cax=cax, orientation='horizontal')
     if (contours is not None):
       self.plot.contour(stats, contours,
         origin="lower",
@@ -55,14 +63,14 @@ class rotarama_plot_mixin(object):
     self.plot.set_title(title)
     if points is not None:
       if xyz is not None: assert (len(xyz) == len(points))
-      out = list(itertools.ifilter(lambda x: x[3], points))
-      out_columns = zip(*out)
+      out = list(filter(lambda x: x[3], points))
+      out_columns = list(zip(*out))
       # ^^^^ is doing e.g. this:
       # >>> l = [(1,2), (3,4), (8,9)]
       # >>> zip(*l)
       # [(1, 3, 8), (2, 4, 9)]
-      non_out = list(itertools.ifilterfalse(lambda x: x[3], points))
-      non_out_columns = zip(*non_out)
+      non_out = list(filterfalse(lambda x: x[3], points))
+      non_out_columns = list(zip(*non_out))
       if len(out) > 0:
         self.plot.plot(tuple(out_columns[0]), tuple(out_columns[1]), point_style,
           markerfacecolor='red', markersize=markersize,
@@ -117,7 +125,7 @@ class residue_bin(slots_getstate_setstate):
     return "%s - %s" % (bin_start, bin_end)
 
   def x_values(self):
-    return range(len(self.residues))
+    return list(range(len(self.residues)))
 
   def get_selected(self, index):
     return self.residues[index]

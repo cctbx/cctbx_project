@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import Exception_expected
 import scitbx.matrix as mat
 
@@ -20,7 +20,7 @@ def exercise_basis_of_mirror_plane_with_normal():
 
 def run():
   exercise_basis_of_mirror_plane_with_normal()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

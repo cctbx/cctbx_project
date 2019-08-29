@@ -10,7 +10,7 @@ The design has been taken from
 http://www2.research.att.com/~njas/sphdesigns/dim3/
 
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from scitbx.array_family import flex
 
