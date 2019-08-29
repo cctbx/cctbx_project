@@ -2281,10 +2281,10 @@ class array(set):
     """
     Takes in an intensity array (including negatives) and spits out amplitudes.
     The basic assumption is that
-    P(Itrue) \propto exp(-(Itrue-Iobs)**2/(2*s))
+    P(Itrue) \\propto exp(-(Itrue-Iobs)**2/(2*s))
     where Itrue>=0 (positivity constraint on error free amplitudes).
     For amplitudes, this results in
-    P(Ftrue) \propto 2 Ftrue exp( -(Ftrue**2-Iobs)**2/(2s) )
+    P(Ftrue) \\propto 2 Ftrue exp( -(Ftrue**2-Iobs)**2/(2s) )
     A Gaussian approximation is fitted to the Mode of this distribution.
     An analytical solution exists and is implemented below.
     This method does not require any Wilson statistics assumptions.
@@ -3316,7 +3316,7 @@ class array(set):
     """Get the R1 factor according to this formula
 
     .. math::
-       R1 = \dfrac{\sum{||F| - k|F'||}}{\sum{|F|}}
+       R1 = \\dfrac{\\sum{||F| - k|F'||}}{\\sum{|F|}}
 
     where F is self.data() and F' is other.data() and
     k is the factor to put F' on the same scale as F
@@ -5542,7 +5542,7 @@ class merge_equivalents(object):
     Standard (but flawed) metric of dataset internal consistency.
 
     .. math::
-       R_{merge} = \dfrac{\sum_{hkl}{\sum_{i}{|I_{i}(hkl) - \left \langle I_{i}(hkl) \\right \\rangle|}}}{\sum_{hkl}{\sum_{i}{I_{i}(hkl)}}}
+       R_{merge} = \\dfrac{\\sum_{hkl}{\\sum_{i}{|I_{i}(hkl) - \\left \\langle I_{i}(hkl) \\right \\rangle|}}}{\\sum_{hkl}{\\sum_{i}{I_{i}(hkl)}}}
     """
     return self._r_merge
 

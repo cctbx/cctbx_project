@@ -1202,13 +1202,13 @@ Wait for the command to finish, then try again.""" % vars())
         for $lib(<$ENV{LIBTBX_BUILD}/lib/*.so>) {
             open OTOOL, "-|", "otool", "-L", $lib;
             while(<OTOOL>) {
-                m{^\s+(lib\S+)} and $libs{$lib}{$1}++;
+                m{^\\s+(lib\\S+)} and $libs{$lib}{$1}++;
             }
         }
         while(($so, $relative_libs) = each %libs) {
             for $lib(keys %$relative_libs) {
                 system "install_name_tool",
-                       "-change", $lib, "\@loader_path/../$lib", $so;
+                       "-change", $lib, "\\@loader_path/../$lib", $so;
             }
         }
       """, file=f)
