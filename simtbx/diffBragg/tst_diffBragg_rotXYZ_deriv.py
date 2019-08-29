@@ -81,8 +81,8 @@ def main(rot_idx):
         vals.append(val)
 
     # STEP6: for the smallest perturbation, assert finite difference
-    # is equivalent to analytical derivative within 1e-7 units ( per pixel)
-    assert np.all( vals[0]) < 1e-8
+    # is equivalent to analytical derivative within 1e-6 units ( per pixel)
+    assert np.all( vals[0] < 1e-6)
     print("OK")
 
     if args.plot:
