@@ -54,6 +54,4 @@ jobs:
     condition: eq('${{ parameters.distribution }}', 'ubuntu')
 
   # build
-  - template: ./unix-checkout.yml
-  - template: ./unix-install-conda.yml
-  - template: ./unix-build.yml
+  - template: ./unix-conda-build.yml
