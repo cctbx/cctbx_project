@@ -1,19 +1,19 @@
 from __future__ import absolute_import, division, print_function
-from six.moves import range
-from scitbx.array_family import flex
+
 import math
 from math import exp,pi,log,pow
-from six.moves import cPickle as pickle
-from six.moves import cStringIO as StringIO
+import sys
+
+from scitbx.array_family import flex
 from scitbx.lbfgs import run,termination_parameters,exception_handling_parameters,core_parameters
+from six.moves import cPickle as pickle
+from six.moves import range
 
 
 class minimizer:
   def __init__(self, d_i, psi_i, eta_rad, Deff):
-    import sys
     self.safelog = -1. + math.log(sys.float_info.max)
-    self.S = StringIO()
-    pickle.dump([d_i, psi_i, eta_rad, Deff],self.S,0)
+    self.S = pickle.dumps([d_i, psi_i, eta_rad, Deff], 0)
     assert len(d_i) == len(psi_i)
     self.d_i = d_i
     self.psi_i = psi_i
@@ -73,7 +73,7 @@ class minimizer:
         print("XXexp",B,expBarg)
         print("XXeta",eta)
         print("XXDeff",1./alpha)
-        print(self.S.getvalue())
+        print(self.S)
         raise ValueError("max likelihood exp argument outside of math domain %f %f"%(expBarg,expBnegarg))
 
       fx = (0.5/psi_model)/(1+exp(expBarg ) ) * (1+exp(self.escalate))
@@ -222,6 +222,7 @@ class minimizer:
 
 
     return (f, flex.double([fd_partf_partalpha,fd_partf_parteta]))
+
 if __name__=="__main__":
   Deff=3031.86582722
   eta_rad = 0.000466410948822
