@@ -984,7 +984,7 @@ class NGL_HKLViewer(QWidget):
     self.socket.bind("tcp://127.0.0.1:%s" %self.sockport)
     try: msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
     except Exception as e: pass
-    cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes;' \
+    cmdargs = 'cctbx.python -i -c "from crys3d.hklview import cmdlineframes;' \
      + ' myHKLview = cmdlineframes.HKLViewFrame(useGuiSocket=%s, high_quality=True,' %self.sockport \
      + ' jscriptfname = \'%s\', ' %self.jscriptfname \
      + ' verbose=%s, UseOSBrowser= %s, htmlfname=\'%s\', handshakewait=%s )"\n'\
