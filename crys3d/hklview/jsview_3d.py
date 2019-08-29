@@ -1274,7 +1274,7 @@ var hklscene = function()
 }
 
 
-try 
+try
 {
   document.addEventListener('DOMContentLoaded', function() { hklscene() }, false );
 }
