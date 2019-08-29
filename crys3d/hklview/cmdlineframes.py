@@ -355,12 +355,14 @@ class HKLViewFrame() :
     if extraphil:
       self.currentphil = self.currentphil.fetch(source = extraphil)
     self.params = self.currentphil.fetch().extract()
-    self.viewer.miller_array = None
     self.viewer.symops = []
     self.viewer.sg = None
     self.viewer.proc_arrays = []
     self.viewer.HKLscenesdict = {}
     self.viewer.sceneisdirty = True
+    if self.viewer.miller_array:
+      self.viewer.DrawNGLJavaScript(blankscene=True)
+    self.viewer.miller_array = None
 
 
   def GetNewCurrentPhilFromString(self, philstr, oldcurrentphil):

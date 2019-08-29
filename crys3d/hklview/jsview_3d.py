@@ -645,7 +645,7 @@ class hklview_3d:
     return match_valarray
 
 
-  def DrawNGLJavaScript(self):
+  def DrawNGLJavaScript(self, blankscene=False):
     if not self.scene or not self.sceneisdirty:
       return
     if self.miller_array is None :
@@ -697,8 +697,6 @@ var MakeHKL_Axis = function()
     """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, fontsize,
           Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
-
-    nrefls = self.scene.points.size()
     # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
     mincolourscalar = self.HKLscenesMindata[self.colour_scene_id]
     maxcolourscalar = self.HKLscenesMaxdata[self.colour_scene_id]
@@ -753,7 +751,15 @@ var MakeHKL_Axis = function()
     colors = self.HKLscenes[self.colour_scene_id].colors
     radii = self.HKLscenes[self.radii_scene_id].radii
     self.meanradius = flex.mean(radii)
-    points = self.scene.points
+
+    if blankscene:
+      points = flex.vec3_double( [ ] )
+      colors = flex.vec3_double( [ ] )
+      radii = flex.double( [ ] )
+    else:
+      points = self.scene.points
+
+    nrefls = points.size()
     hkls = self.scene.indices
     dres = self.scene.dres
     if self.binscenelabel=="Resolution":
@@ -803,7 +809,7 @@ var MakeHKL_Axis = function()
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       raise Sorry("Should never get here")
 
-    if self.bindata.size() != points.size():
+    if nrefls > 0 and self.bindata.size() != points.size():
       raise Sorry("Not the same number of reflections in bin-data and displayed data")
 
     for i, hklstars in enumerate(points):
@@ -813,13 +819,13 @@ var MakeHKL_Axis = function()
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )
       #spbufttips[ibin].append(self.tooltipstrings[i] )
-      spherebufferstr = ""
       if self.script_has_tooltips:
         spbufttips[ibin].append(self.tooltipstringsdict[hkls[i]])
       else:
         spbufttips[ibin].append( i )
 
-    spherebufferstr += self.colstraliases
+    #spherebufferstr = ""
+    spherebufferstr = self.colstraliases
     negativeradiistr = ""
     cntbin = 0
     self.binstrs = []
@@ -964,15 +970,7 @@ var MakeHKL_Axis = function()
     }
   );
 
-/* causes too many exceptions
-  stage.viewer.signals.rendered.add(
-    function ()
-    {
-      msg = "Rendering done " + String( Date.now()) + " seconds since 1970\\n";
-      WebsockSendMsg( msg );
-    }
-  );
-*/
+
     """
 
     spherebufferstr += """
@@ -1758,7 +1756,7 @@ mysocket.onmessage = function (e)
         id = eval(message.split("tooltip_id:")[1])[1]
         is_friedel_mate = eval(message.split("tooltip_id:")[1])[2]
         rotmx = None
-        if sym_id >= 0:
+        if sym_id >= 0 and sym_id < len(self.symops):
           rotmx = self.symops[sym_id].r()
         hkls = self.scene.indices
         if not is_friedel_mate:
