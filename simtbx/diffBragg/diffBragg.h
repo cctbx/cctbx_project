@@ -69,6 +69,7 @@ class diffBragg: public nanoBragg{
   void refine(int refine_id);
   void set_value( int refine_id, double value);
   double get_value( int refine_id);
+  void init_raw_pixels_roi();
   af::flex_double get_derivative_pixels(int refine_id);
 
   mat3 RXYZ;
@@ -83,9 +84,13 @@ class diffBragg: public nanoBragg{
 
   std::vector<mat3> UMATS;
   std::vector<mat3> UMATS_RXYZ;
+  //bool vectorized_umats;
 
   /* derivative managers */
   std::vector<boost::shared_ptr<rot_manager> > rot_managers;
+
+  double* floatimage_roi;
+  af::flex_double raw_pixels_roi;
 
 }; // end of diffBragg
 
