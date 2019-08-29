@@ -121,7 +121,15 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     rot_managers.push_back(rotY);
     rot_managers.push_back(rotZ);
 
+    init_raw_pixels_roi();
     }
+
+void diffBragg::init_raw_pixels_roi(){
+    int fdim = roi_xmax-roi_xmin;
+    int sdim = roi_ymax-roi_ymin;
+    raw_pixels_roi = af::flex_double(af::flex_grid<>(sdim,fdim));
+    floatimage_roi = raw_pixels_roi.begin();
+}
 
 void diffBragg::initialize_managers()
 {
@@ -449,6 +457,7 @@ void diffBragg::add_diffBragg_spots()
             /* end of sub-pixel x loop */
 
             floatimage[i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
+            floatimage_roi[roi_i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
 
             /* udpate the derivative images*/
             for (int i_rot =0 ; i_rot < 3 ; i_rot++){
