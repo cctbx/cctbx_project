@@ -25,13 +25,12 @@ if not os.path.isdir(env_etc.boost_dist) or 'cctbx_project' in env_etc.boost_dis
     for p in env_etc.conda_libpath:
       if p not in env_base['LIBPATH']:
         env_base.Prepend(LIBPATH=env_etc.conda_libpath)
-        break
   else:
     # this may not work for Windows, but conda should be used for Windows
     env_etc.boost_dist = sys.prefix
     env_etc.boost_include = os.path.join(env_etc.boost_dist, 'include')
-    env_base.Append(LIBPATH=[os.path.join(sys.prefix, 'lib'),
-                             os.path.join(sys.prefix, 'lib64')])
+    env_base.Prepend(LIBPATH=[os.path.join(sys.prefix, 'lib'),
+                              os.path.join(sys.prefix, 'lib64')])
   build_boost_libs = False
 env_etc.boost_adaptbx_dist = libtbx.env.dist_path("boost_adaptbx")
 env_etc.boost_adaptbx_include = os.path.dirname(env_etc.boost_adaptbx_dist)
@@ -432,7 +431,6 @@ object/function_doc_signature.cpp
 
     # Boost 1.65 removed the numeric module
     if env_etc.boost_version >= 106500:
-      print("numeric.cpp" in bpl_dll_sources)
       bpl_dll_sources.remove("numeric.cpp")
 
     prefix = "#"+os.path.join(
