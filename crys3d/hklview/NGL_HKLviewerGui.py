@@ -56,6 +56,8 @@ class NGL_HKLViewer(QWidget):
     self.UseOSbrowser = False
     self.jscriptfname = ""
     self.devmode = False
+    self.hklfnamedef = ""
+    self.handshakewait = 5
     for e in sys.argv:
       if "verbose" in e:
         self.verbose = e.split("verbose=")[1]
@@ -65,6 +67,10 @@ class NGL_HKLViewer(QWidget):
         self.jscriptfname = e.split("jscriptfname=")[1]
       if "devmode" in e:
         self.devmode = True
+      if 'htmlfname' in e:
+        self.hklfname = e.split("htmlfname=")[1]
+      if 'handshakewait' in e:
+        self.handshakewait = e.split('handshakewait=')[1]
 
     self.zmq_context = None
     self.bufsize = 20000
@@ -247,7 +253,7 @@ class NGL_HKLViewer(QWidget):
               self.BrowserBox.setUrl(self.html_url)
               # workaround for background colour bug in chromium
               # https://bugreports.qt.io/browse/QTBUG-41960
-              self.BrowserBox.page().setBackgroundColor(QColor(100, 100, 100, 1.0) )
+              self.BrowserBox.page().setBackgroundColor(QColor(255, 255, 255, 0.0) )
 
           if self.infodict.get("spacegroups"):
             self.spacegroups = self.infodict.get("spacegroups",[])
@@ -398,12 +404,16 @@ class NGL_HKLViewer(QWidget):
                                                        inbrowser = False
                                                      }
                              """)
+      self.SliceLabelComboBox.setEnabled(True)
+      self.sliceindexspinBox.setEnabled(True)
     else:
       self.NGL_HKL_command("""NGL_HKLviewer.viewer {
                                                       slice_mode = False
                                                       inbrowser = True
                                                     }
                             """)
+      self.SliceLabelComboBox.setDisabled(True)
+      self.sliceindexspinBox.setDisabled(True)
 
 
   def onSliceComboSelchange(self,i):
@@ -425,6 +435,13 @@ class NGL_HKLViewer(QWidget):
       else:
         bin_scene_label = "Resolution"
       self.NGL_HKL_command("NGL_HKLviewer.bin_scene_label = %s" % bin_scene_label )
+      bin_opacitieslst = []
+      for i in range(self.nbins):
+        bin_opacitieslst.append("1.0, %d" %i)
+      self.bin_opacities = str(bin_opacitieslst)
+      self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
+      #self.OpaqueAllCheckbox.setTristate(false)
+      #self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
 
 
   def update_table_opacities(self, allalpha=None):
@@ -652,6 +669,8 @@ class NGL_HKLViewer(QWidget):
     self.SliceLabelComboBox.activated.connect(self.onSliceComboSelchange)
     self.sliceaxis = [ "h", "k", "l" ]
     self.SliceLabelComboBox.addItems( self.sliceaxis )
+    self.SliceLabelComboBox.setDisabled(True)
+    self.sliceindexspinBox.setDisabled(True)
 
     self.sliceTabWidget = QTabWidget()
     tab1 = QWidget()
@@ -835,7 +854,7 @@ class NGL_HKLViewer(QWidget):
     self.ManualPowerScalecheckbox.clicked.connect(self.onManualPowerScale)
 
     self.power_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
-    self.nth_power_scale = 0.5
+    self.nth_power_scale = 0.33
     self.power_scale_spinBox.setValue(self.nth_power_scale)
     self.power_scale_spinBox.setDecimals(2)
     self.power_scale_spinBox.setSingleStep(0.05)
@@ -846,7 +865,7 @@ class NGL_HKLViewer(QWidget):
     self.powerscaleLabel.setText("Power scale Factor")
 
     self.radii_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
-    self.radii_scale = 1.0
+    self.radii_scale = 1.5
     self.radii_scale_spinBox.setValue(self.radii_scale)
     self.radii_scale_spinBox.setDecimals(1)
     self.radii_scale_spinBox.setSingleStep(0.1)
@@ -883,6 +902,7 @@ class NGL_HKLViewer(QWidget):
 
     self.OpaqueAllCheckbox = QCheckBox()
     #self.OpaqueAllCheckbox.setTristate()
+    self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
     self.OpaqueAllCheckbox.setText("Show all data in bins")
     self.OpaqueAllCheckbox.clicked.connect(self.onOpaqueAll)
 
@@ -967,7 +987,8 @@ class NGL_HKLViewer(QWidget):
     cmdargs = 'cctbx.python.bat -i -c "from crys3d.hklview import cmdlineframes;' \
      + ' myHKLview = cmdlineframes.HKLViewFrame(useGuiSocket=%s, high_quality=True,' %self.sockport \
      + ' jscriptfname = \'%s\', ' %self.jscriptfname \
-     + ' verbose=%s, UseOSBrowser= %s )"\n' %(self.verbose, str(self.UseOSbrowser))
+     + ' verbose=%s, UseOSBrowser= %s, htmlfname=\'%s\', handshakewait=%s )"\n'\
+       %(self.verbose, str(self.UseOSbrowser), self.hklfname, self.handshakewait)
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
     #time.sleep(1)
 

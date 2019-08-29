@@ -283,6 +283,9 @@ class hklview_3d:
                           self.settings.expand_anomalous, self.settings.expand_to_p1  )
     self.msgqueue = []
     self.websockclient = None
+    self.handshakewait = 5
+    if 'handshakewait' in kwds:
+      self.handshakewait = kwds['handshakewait']
     self.lastmsg = "" # "Ready"
     self.browserisopen = False
     self.msgdelim = ":\n"
@@ -329,6 +332,8 @@ class hklview_3d:
                 has_phil_path(diff_phil, "expand_to_p1") )\
       or has_phil_path(diff_phil, "show_anomalous_pairs") \
       ):
+        if currentphil.viewer.slice_mode and self.settings.inbrowser:
+          self.settings.inbrowser = False
         self.sceneisdirty = True
         self.ConstructReciprocalSpace(currentphil, merge=self.merge)
     msg = ""
@@ -350,7 +355,7 @@ class hklview_3d:
         self.clip_plane_normal_to_HKL_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
                          fixorientation = currentphil.viewer.NGL.fixorientation)
 
-    if self.settings.inbrowser:
+    if self.settings.inbrowser and not currentphil.viewer.slice_mode:
       msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
     msg += self.SetOpacities(currentphil.viewer.NGL.bin_opacities )
@@ -490,8 +495,8 @@ class hklview_3d:
                          currentphil.spacegroup_choice,
                          currentphil.using_space_subgroup,
                          currentphil.merge_data,
-                         #self.settings.expand_anomalous,
-                         #self.settings.expand_to_p1,
+                         self.settings.expand_anomalous,
+                         self.settings.expand_to_p1,
                          self.settings.inbrowser,
                          self.settings.slice_axis,
                          self.settings.slice_mode,
@@ -929,7 +934,7 @@ var MakeHKL_Axis = function()
 
 
   stage.mouseObserver.signals.dragged.add(
-    function ( deltaX, deltaY)
+    function ( deltaX, deltaY, lkj)
     {
       if (clipFixToCamPosZ === true)
       {
@@ -959,6 +964,15 @@ var MakeHKL_Axis = function()
     }
   );
 
+/* causes too many exceptions
+  stage.viewer.signals.rendered.add(
+    function ()
+    {
+      msg = "Rendering done " + String( Date.now()) + " seconds since 1970\\n";
+      WebsockSendMsg( msg );
+    }
+  );
+*/
     """
 
     spherebufferstr += """
@@ -967,15 +981,11 @@ var MakeHKL_Axis = function()
     {
       if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  ))
       {
-    """
+"""
     if self.script_has_tooltips:
-      spherebufferstr += """
-        var innerText = pickingProxy.picker[pickingProxy.pid];
-    """
+      spherebufferstr += "   var innerText = pickingProxy.picker[pickingProxy.pid];\n"
     else:
-      spherebufferstr += """
-        var innerText = pickingProxy.pid;
-    """
+      spherebufferstr += "        var innerText = pickingProxy.pid;"
     spherebufferstr += """
         WebsockSendMsg( innerText);
       }
@@ -1014,89 +1024,6 @@ var MakeHKL_Axis = function()
     if self.high_quality:
       qualitystr = ""
     self.NGLscriptstr = """
-
-// Microsoft Edge users follow instructions on
-// https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
-// to enable websocket connection
-
-var pagename = location.pathname.substring(1);
-var mysocket = new WebSocket('ws://127.0.0.1:%s/');
-
-
-function WebsockSendMsg(msg)
-{
-  try
-  {
-    mysocket.send(msg);
-  }
-
-  catch(err)
-  {
-    alert('JavaScriptError: ' + err.stack );
-  }
-}
-
-
-mysocket.onopen = function(e)
-{
-  WebsockSendMsg('%s now connected via websocket to ' + pagename + '\\n');
-  WebsockSendMsg( 'Ready ' + pagename + '\\n');
-};
-
-mysocket.onclose = function(e)
-{
-  WebsockSendMsg('%s now disconnecting from websocket ' + pagename + '\\n');
-  WebsockSendMsg( 'Ready ' + pagename + '\\n');
-};
-
-// Log errors to debugger of your browser
-mysocket.onerror = function(error)
-{
-  console.log('WebSocket Error ' + error);
-};
-
-
-window.addEventListener( 'resize',
-  function( event ){
-      stage.handleResize();
-  },
-  false
-);
-
-
-
-
-var stage;
-var shape;
-var shapeComp;
-var vectorreprs = [];
-var vectorshape;
-var vectorshapeComps = [];
-var repr;
-var AA = String.fromCharCode(197); // short for angstrom
-var DGR = String.fromCharCode(176); // short for degree symbol
-var ttips = [];
-var current_ttip = "";
-var positions = [];
-var br_positions = [];
-var br_colours = [];
-var br_radii = [];
-var br_ttips = [];
-var colours = [];
-var radii = [];
-var shapebufs = [];
-var br_shapebufs = [];
-var nrots = 0;
-var cvorient = new NGL.Matrix4();
-var clipFixToCamPosZ = false;
-var origclipnear;
-var origclipfar;
-var origcameraZpos;
-
-
-///var script=document.createElement('script');
-//script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
-//document.head.appendChild(script);
 
 
 function createElement(name, properties, style)
@@ -1148,6 +1075,90 @@ function addDivBox(txt, t, l, w, h, bgcolour='rgba(255.0, 255.0, 255.0, 0.0)')
   );
   addElement(divbox);
 }
+
+// Microsoft Edge users follow instructions on
+// https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
+// to enable websocket connection
+
+var pagename = location.pathname.substring(1);
+var mysocket = new WebSocket('ws://127.0.0.1:%s/');
+
+
+function WebsockSendMsg(msg)
+{
+  try
+  {
+    mysocket.send(msg);
+    mysocket.send( 'Ready ' + pagename + '\\n' );
+  }
+
+  catch(err)
+  {
+    alert('JavaScriptError: ' + err.stack );
+    addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100.0, 100.0, 100.0, 0.0));
+  }
+}
+
+
+mysocket.onopen = function(e)
+{
+  WebsockSendMsg('%s now connected via websocket to ' + pagename + '\\n');
+};
+
+mysocket.onclose = function(e)
+{
+  WebsockSendMsg('%s now disconnecting from websocket ' + pagename + '\\n');
+};
+
+// Log errors to debugger of your browser
+mysocket.onerror = function(error)
+{
+  console.log('WebSocket Error ' + error);
+};
+
+
+window.addEventListener( 'resize',
+  function( event ){
+      stage.handleResize();
+  },
+  false
+);
+
+
+
+
+var stage;
+var shape;
+var shapeComp;
+var vectorreprs = [];
+var vectorshape;
+var vectorshapeComps = [];
+var repr;
+var AA = String.fromCharCode(197); // short for angstrom
+var DGR = String.fromCharCode(176); // short for degree symbol
+var ttips = [];
+var current_ttip = "";
+var positions = [];
+var br_positions = [];
+var br_colours = [];
+var br_radii = [];
+var br_ttips = [];
+var colours = [];
+var radii = [];
+var shapebufs = [];
+var br_shapebufs = [];
+var nrots = 0;
+var cvorient = new NGL.Matrix4();
+var clipFixToCamPosZ = false;
+var origclipnear;
+var origclipfar;
+var origcameraZpos;
+
+
+///var script=document.createElement('script');
+//script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
+//document.head.appendChild(script);
+
 
 // define tooltip element
 var tooltip = document.createElement("div");
@@ -1262,7 +1273,15 @@ var hklscene = function()
   stage.viewer.requestRender();
 }
 
-document.addEventListener('DOMContentLoaded', function() { hklscene() }, false );
+
+try 
+{
+  document.addEventListener('DOMContentLoaded', function() { hklscene() }, false );
+}
+catch(err)
+{
+  WebsockSendMsg('JavaScriptError: ' + err.stack );
+}
 
 
 mysocket.onmessage = function (e)
@@ -1328,9 +1347,7 @@ mysocket.onmessage = function (e)
       var m = new NGL.Matrix4();
       m.fromArray(sm);
       stage.viewerControls.orient(m);
-
       stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
-
       stage.viewer.requestRender();
     }
 
@@ -1415,11 +1432,9 @@ mysocket.onmessage = function (e)
 
           br_positions[bin].push( [] );
           br_shapebufs[bin].push( [] );
-
           br_ttips[bin].push( [] );
           br_ttips[bin][g] = ttips[bin].slice(); // deep copy with slice()
           br_ttips[bin][g][0] = g;
-
           br_positions[bin][g] = new Float32Array( csize );
 
           var elmstrs = strs[g].split(",");
@@ -1636,7 +1651,6 @@ mysocket.onmessage = function (e)
     WebsockSendMsg('JavaScriptError: ' + err.stack );
   }
 
-  WebsockSendMsg( 'Ready ' + pagename );
 };
 
     """ % (self.websockport, self.__module__, self.__module__, axisfuncstr, \
@@ -1784,7 +1798,7 @@ mysocket.onmessage = function (e)
           while not (self.browserisopen and self.websockclient):
             sleep(self.sleeptime)
             nwait += self.sleeptime
-            if nwait > 5 and self.browserisopen:
+            if nwait > self.handshakewait and self.browserisopen:
               self.mprint("ERROR: No handshake from browser! Security settings may have to be adapted", verbose=0 )
               return
               #break
