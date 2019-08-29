@@ -987,7 +987,7 @@ class NGL_HKLViewer(QWidget):
     cmdargs = 'cctbx.python -i -c "from crys3d.hklview import cmdlineframes;' \
      + ' myHKLview = cmdlineframes.HKLViewFrame(useGuiSocket=%s, high_quality=True,' %self.sockport \
      + ' jscriptfname = \'%s\', ' %self.jscriptfname \
-     + ' verbose=%s, UseOSBrowser= %s, htmlfname=\'%s\', handshakewait=%s )"\n'\
+     + ' verbose=%s, UseOSBrowser=%s, htmlfname=\'%s\', handshakewait=%s )"\n'\
        %(self.verbose, str(self.UseOSbrowser), self.hklfname, self.handshakewait)
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
     #time.sleep(1)
