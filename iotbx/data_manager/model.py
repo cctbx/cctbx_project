@@ -170,6 +170,35 @@ model
 
   def write_model_file(self, model_str, filename=Auto, extension=Auto,
                        overwrite=Auto):
+    '''
+    Function for writing a model to file
+
+    Parameters
+    ----------
+      model_str: str or mmtbx.model.manager object
+        The string to be written or a model object. If a model object is
+        provided, the format (PDB or mmCIF) of the original file is kept.
+      filename: str or Auto
+        The output filename. If set to Auto, a default filename is
+        generated based on params.output.prefix, params.output.suffix,
+        and params.output.serial
+      extension: str or Auto
+        The extension to be added. If set to Auto, defaults to .cif
+      overwrite: bool or Auto
+        Overwrite filename if it exists. If set to Auto, the overwrite
+        state of the DataManager is used.
+
+    Returns
+    -------
+      Nothing
+    '''
+    if isinstance(model_str, mmtbx.model.manager):
+      if model_str.input_format_was_cif():
+        extension = '.cif'
+        model_str = model_str.model_as_mmcif()
+      else:
+        extension = '.pdb'
+        model_str = model_str.model_as_pdb()
     if filename is Auto:
       filename = self.get_default_output_model_filename(extension=extension)
     self._write_text(ModelDataManager.datatype, model_str,
