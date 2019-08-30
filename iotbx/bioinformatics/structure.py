@@ -51,7 +51,7 @@ class blast_hit(slots_getstate_setstate_default_initializer):
       len(self.all_ids)), file=out)
 
 def summarize_blast_output(blast_out=None, blast_file=None,
-    min_identity=None, expect=None):
+    min_identity=None, expect=None, stop_if_no_alignment=True):
   """
   Parse NCBI BLAST XML output and convert to a list of simple summary
   objects.  Note that this is very specific to searching the PDB, and returns
@@ -68,7 +68,11 @@ def summarize_blast_output(blast_out=None, blast_file=None,
   parsed = NCBIXML.parse(blast_in)
   blast = next(parsed)
   if (len(blast.alignments) == 0):
-    raise StopIteration("No matching sequences!")
+    if stop_if_no_alignment:
+      raise StopIteration("No matching sequences!")
+    else: return list()
+  #if (len(blast.alignments) == 0):
+  #  raise StopIteration("No matching sequences!")
   results = []
   for i_hit, hit in enumerate(blast.alignments):
     pdb_chain_id = str(hit.accession)
