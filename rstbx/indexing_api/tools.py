@@ -64,22 +64,22 @@ def _generate_reindex_transformations():
     reindex = []
     for vec in representatives:
       for mod in _modularities:
-        candidate_points = [pt for pt in spiral_order if sum(v*p for v,p in zip(vec,pt))%mod == 0]
-        #first point
-        first = candidate_points.pop(0)
-        #second point
-        while candidate_points:
-          second = candidate_points.pop(0)
-          if not _is_collinear(first,second):
+        candidate_points = (pt for pt in spiral_order if sum(v*p for v,p in zip(vec,pt))%mod == 0)
+        # find three points that are not coplanar
+        first = next(candidate_points)
+        while True:
+          second = next(candidate_points)
+          if not _is_collinear(first, second):
             break
-        #third point
-        for third in candidate_points:
-          if not _is_coplanar(first,second,third):
+        while True:
+          third = next(candidate_points)
+          if not _is_coplanar(first, second, third):
             break
-        A = scitbx.matrix.sqr(first+second+third)
-        if A.determinant()<0: A = scitbx.matrix.sqr(second + first + third)
-        assert A.determinant()==mod
-        reindex.append({'mod':mod,'vec':vec,'trans':A})
+        A = scitbx.matrix.sqr(first + second + third)
+        if A.determinant() < 0:
+          A = scitbx.matrix.sqr(second + first + third)
+        assert A.determinant() == mod
+        reindex.append({'mod':mod, 'vec':vec, 'trans':A})
     return reindex
 
 R = _generate_reindex_transformations()
