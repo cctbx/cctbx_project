@@ -16,16 +16,17 @@ jobs:
         CONDA: MacOSX
         OS: osx-64
         PYTHON_VERSION: py27
-      python3.6:
-        CONDA: MacOSX
-        OS: osx-64
-        PYTHON_VERSION: py36
 
   steps:
   - script: |
       echo "Selecting Xcode version ${{ join('.', parameters.xcode_version) }}"
       sudo xcode-select --switch /Applications/Xcode_${{ join('.', parameters.xcode_version) }}.app/Contents/Developer
     displayName: Select Xcode version
+
+  - script: |
+      sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -target /
+    displayName: Install headers for macOS 10.14
+    condition: eq('${{ parameters.vmImage[1] }}', '14')
 
   - script: |
       echo "Removing homebrew from Azure to avoid conflicts."
@@ -35,5 +36,5 @@ jobs:
       rm ~/uninstall_homebrew
     displayName: Remove homebrew
 
-  - template: ./unix-checkout.yml
-  - template: ./unix-install-base.yml
+  # build
+  - template: ./unix-base-build.yml

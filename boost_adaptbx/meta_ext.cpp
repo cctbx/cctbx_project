@@ -299,6 +299,7 @@ namespace {
     result += "__llvm__\n";
 #endif
 #if defined(BOOST_PYTHON_HAVE_CXXABI_CXA_DEMANGLE_IS_BROKEN) \
+    && !defined(USE_CONDA) \
     && !defined(__MINGW32__) // workaround for MinGW linking problem
     result += "boost::python::cxxabi_cxa_demangle_is_broken(): "
             + to_str(boost::python::cxxabi_cxa_demangle_is_broken()) + nl;

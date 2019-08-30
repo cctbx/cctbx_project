@@ -547,6 +547,76 @@ void copy_box(
 }
 
 template <typename DataType>
+DataType
+_one_map_box_average(
+  af::ref<DataType, af::c_grid<3> > map_data,
+  int const& index_span,
+  int const& lx,
+  int const& ly,
+  int const& lz)
+{
+  af::c_grid<3> a = map_data.accessor();
+  DataType rho = 0.0;
+  int counter = 0;
+  for (int i = lx-index_span; i <= lx+index_span; i++) {
+    int mx = i;
+    if(i<0 || i>=a[0]) {
+      mx = scitbx::math::mod_positive(i, static_cast<int>(a[0]));
+    }
+    for (int j = ly-index_span; j <= ly+index_span; j++) {
+      int my = j;
+      if(j<0 || j>=a[1]) {
+        my = scitbx::math::mod_positive(j, static_cast<int>(a[1]));
+      }
+      for (int k = lz-index_span; k <= lz+index_span; k++) {
+        int mz = k;
+        if(k<0 || k>=a[2]) {
+          mz = scitbx::math::mod_positive(k, static_cast<int>(a[2]));
+        }
+        rho += map_data(mx,my,mz);
+        counter += 1;
+  }}}
+  return rho / counter;
+}
+
+template <typename DataType>
+void
+map_box_average(
+  af::ref<DataType, af::c_grid<3> > map_data,
+  int const& index_span)
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  for (int lx = 0; lx < nx; lx++) {
+    for (int ly = 0; ly < ny; ly++) {
+      for (int lz = 0; lz < nz; lz++) {
+        map_data(lx,ly,lz) = _one_map_box_average(
+          map_data, index_span, lx, ly, lz);
+  }}}
+}
+
+template <typename DataType>
+void
+map_box_average(
+  af::ref<DataType, af::c_grid<3> > map_data,
+  int const& index_span,
+  DataType const& threshold)
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  for (int lx = 0; lx < nx; lx++) {
+    for (int ly = 0; ly < ny; ly++) {
+      for (int lz = 0; lz < nz; lz++) {
+        if(std::abs(map_data(lx,ly,lz))<threshold) {
+          map_data(lx,ly,lz) = _one_map_box_average(
+            map_data, index_span, lx, ly, lz);
+        }
+  }}}
+}
+
+template <typename DataType>
 void set_box_with_symmetry(
   af::const_ref<DataType, af::c_grid<3> > const& map_data_from,
   af::ref<DataType, af::c_grid<3> > map_data_to,
@@ -587,11 +657,14 @@ void set_box_with_symmetry(
             static_cast<int>(grid_node_frac_rt[1]*a[1]), static_cast<int>(a[1]));
           int kk = scitbx::math::mod_positive(
             static_cast<int>(grid_node_frac_rt[2]*a[2]), static_cast<int>(a[2]));
-          map_data_to(ii,jj,kk) = map_data_from(p,q,r);
+          // Using max avoids overwriting set non-zero values with zeros from the box
+          map_data_to(ii,jj,kk) = std::max(
+            map_data_from(p,q,r), map_data_to(ii,jj,kk));
         }
       }
     }
   }
+  map_box_average(map_data_to, 1, 1.e-4);
 }
 
 template <typename DataType1, typename DataType2>
@@ -973,36 +1046,6 @@ map_box_average(
               counter += 1;
         }}}
         map_data(lx,ly,lz) = rho / counter;
-  }}}
-}
-
-template <typename DataType>
-void
-map_box_average(
-  af::ref<DataType, af::c_grid<3> > map_data,
-  int const& index_span)
-{
-  int nx = map_data.accessor()[0];
-  int ny = map_data.accessor()[1];
-  int nz = map_data.accessor()[2];
-  for (int lx = 0; lx < nx; lx++) {
-    for (int ly = 0; ly < ny; ly++) {
-      for (int lz = 0; lz < nz; lz++) {
-          DataType rho = 0.0;
-          int counter = 0;
-          for (int i = lx-index_span; i <= lx+index_span; i++) {
-            int mx = i;
-            if(i<0 || i>=nx) mx = scitbx::math::mod_positive(i, nx);
-            for (int j = ly-index_span; j <= ly+index_span; j++) {
-              int my = j;
-              if(j<0 || j>=ny) my = scitbx::math::mod_positive(j, ny);
-              for (int k = lz-index_span; k <= lz+index_span; k++) {
-                int mz = k;
-                if(k<0 || k>=nz) mz = scitbx::math::mod_positive(k, nz);
-                rho += map_data(mx,my,mz);
-                counter += 1;
-          }}}
-          map_data(lx,ly,lz) = rho / counter;
   }}}
 }
 

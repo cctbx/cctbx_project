@@ -15,10 +15,6 @@ jobs:
         CONDA: Linux
         OS: linux-64
         PYTHON_VERSION: py27
-      python3.6:
-        CONDA: Linux
-        OS: linux-64
-        PYTHON_VERSION: py36
   container:
     image: ${{ parameters.distribution }}:${{ join('.', parameters.version) }}
     options: "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
@@ -35,7 +31,7 @@ jobs:
 
   - script: |
       sudo yum groupinstall -y 'Development Tools'
-      sudo yum install -y python-argparse mesa-libGLU-devel mesa-libGL-devel zlib-devel
+      sudo yum install -y python-argparse mesa-libGLU-devel mesa-libGL-devel zlib-devel perl python2-bz2file bzip2-devel
     displayName: Install dependencies for CentOS
     condition: eq('${{ parameters.distribution }}', 'centos')
 
@@ -47,12 +43,11 @@ jobs:
     condition: eq('${{ parameters.distribution }}', 'ubuntu')
 
   - script: |
-      sudo apt-get install -y build-essential curl git libgl1-mesa-dev libglu1-mesa-dev locales subversion
+      sudo apt-get install -y build-essential curl git libgl1-mesa-dev libglu1-mesa-dev locales subversion perl zlib1g-dev libbz2-dev python pkg-config
       sudo locale-gen en_US.UTF-8
       sudo update-locale
     displayName: Install dependencies for Ubuntu
     condition: eq('${{ parameters.distribution }}', 'ubuntu')
 
   # build
-  - template: ./unix-checkout.yml
-  - template: ./unix-install-base.yml
+  - template: ./unix-base-build.yml

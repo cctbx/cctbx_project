@@ -967,7 +967,8 @@ if (libtbx.env.build_options.use_conda):
     env_etc.conda_cpppath.append(
       os.path.join(env_etc.conda_prefix, 'Library', 'include'))
     env_etc.conda_libpath.extend([os.path.join(env_etc.conda_prefix, 'libs'),
-                                  os.path.join(env_etc.conda_prefix, 'Library', 'lib')])
+                                  os.path.join(env_etc.conda_prefix, 'Library', 'lib'),
+                                  os.path.join(env_etc.conda_prefix, 'Library', 'bin')])
   if (sys.platform == 'darwin'):
     env_etc.conda_shlinkflags = ['-headerpad_max_install_names']
     env_etc.conda_rpath = [
@@ -1223,7 +1224,7 @@ def enable_cuda_if_possible():
     for line in cuda_version:
       if ('release' in line):
         break
-    
+
     major = None
     cuda_version = re.findall('release [0-9]+\.*[0-9]+', line)
     if cuda_version:
@@ -1240,7 +1241,7 @@ def enable_cuda_if_possible():
         ' Current CUDA version: %s' % line)
     env_etc.enable_cuda = True
 
-    # generate compute flags based on version 
+    # generate compute flags based on version
     # these are flags for base version
     if cuda_version >=6 and cuda_version <= 7.5:
         arch_flags = ['--generate-code=arch=compute_30,code=sm_30',

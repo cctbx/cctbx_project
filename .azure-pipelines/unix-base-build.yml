@@ -4,14 +4,30 @@
 
 steps:
 
+# checkout sources
+- checkout: self
+  path: ./modules/cctbx_project
+
 - script: |
     cd ../..
+    ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
+  displayName: Link bootstrap.py
+
+- script: |
+    cd ../..
+    python bootstrap.py hot update --builder=cctbx
+  displayName: Download sources
+
+# install base
+- script: |
+    cd ../..
+    # SYSTEM environment variable breaks OpenSSL builds
+    # https://developercommunity.visualstudio.com/content/problem/602584/openssl-build-error-when-using-pipelines.html
+    unset SYSTEM
     python bootstrap.py base --builder=cctbx --nproc=4
-    cd build
-    source setpaths.sh
-    libtbx.pip install junit-xml
   displayName: Install base dependencies
 
+# build
 - script: |
     cd ../..
     python bootstrap.py build --builder=cctbx --nproc=4
@@ -22,11 +38,13 @@ steps:
     make -j 4
   displayName: Configure and Build
 
+# test
 - script: |
     cd ../..
     source ./build/setpaths.sh
     mkdir tests
     cd tests
+    libtbx.pip install junit-xml
     libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es \
       module=fable module=gltbx module=iotbx module=libtbx module=rstbx \
       module=scitbx module=simtbx module=smtbx module=spotfinder \
