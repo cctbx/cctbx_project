@@ -15,6 +15,9 @@ def process_simdata(plot=False):
     # STEP 1: simulate an image
     #<><><><><><><><><><><><><>
     S = SimData()
+    S.instantiate_diffBragg()
+    S._add_diffBragg_spots()
+    spots = S.D.raw_pixels.as_numpy_array()
     img = S.generate_simulated_image()
 
     # STEP 2: find the strong spots
@@ -34,12 +37,12 @@ def process_simdata(plot=False):
     Areal_GrnTru = sqr(S.D.Amatrix).inverse()
 
     # perturb the Amatrix to simulate uncertainty
-    x = col((1,0,0))
-    y = col((0,1,0))
-    z = col((0,0,1))
+    x = col((1, 0, 0))
+    y = col((0, 1, 0))
+    z = col((0, 0, 1))
 
     np.random.seed(1)
-    angles = np.random.uniform(0.1, 0.5, 3)
+    angles = np.random.uniform(0, 0.00000000015, 3)
     RX = x.axis_and_angle_as_r3_rotation_matrix(angles[0], deg=True)
     RY = y.axis_and_angle_as_r3_rotation_matrix(angles[1], deg=True)
     RZ = z.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
@@ -50,7 +53,7 @@ def process_simdata(plot=False):
         from itertools import cycle
         S.D.Amatrix = Areal_approx.inverse()
         S.D.raw_pixels*=0
-        S._add_nanoBragg_spots()
+        S._add_diffBragg_spots()
         S._add_background()
         S._add_noise()
         img_approx = S.D.raw_pixels.as_numpy_array()
@@ -60,7 +63,7 @@ def process_simdata(plot=False):
         while count < 5:
             plt.cla()
             plt.imshow(imgs.next(), vmax=200)
-            title= titles.next()
+            title = titles.next()
             title += "\nContinuing in %d ..." % (5-count)
             plt.title(title)
             plt.draw()
@@ -89,14 +92,14 @@ def process_simdata(plot=False):
     # STEP 5:  get initial estimates of the a,b,c background plane parameters
     #<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     # make a mask of the strong spot (simple, just the smallest box fitting around the spot)
-    is_bg_pixel = np.zeros( img.shape, bool)
+    is_bg_pixel = np.ones( img.shape, bool)
     for bb_ss, bb_fs in spot_data["bboxes"]:
-        is_bg_pixel[ bb_ss, bb_fs] = True
+        is_bg_pixel[bb_ss, bb_fs] = False
 
     # now fit tilting planes
     shoebox_sz = 16
     tilt_abc = np.zeros((num_spots, 3))
-    spot_roi = np.zeros( (num_spots,4) , int)
+    spot_roi = np.zeros((num_spots, 4), int)
     if plot:
         patches = []
     for i_spot, (x_com, y_com) in enumerate( zip( fs_spot, ss_spot)):
@@ -113,9 +116,9 @@ def process_simdata(plot=False):
             mask=shoebox_mask,  # mask specifies which spots are bg pixels...
             zscore=2)
 
-        tilt_abc[i_spot] = coeff
+        tilt_abc[i_spot] = coeff[1], coeff[2], coeff[0]  # store as fast-scan coeff, slow-scan coeff, offset coeff
 
-        spot_roi[i_spot] = i1,i2,j1,j2
+        spot_roi[i_spot] = i1, i2, j1, j2
         if plot:
             R = plt.Rectangle(xy=(x_com-shoebox_sz/2, y_com-shoebox_sz/2.),
                           width=shoebox_sz,
@@ -124,8 +127,7 @@ def process_simdata(plot=False):
             patches.append(R)
 
     if plot:
-        patch_coll = plt.mpl.collections.PatchCollection(patches,
-                                                 match_original=True)
+        patch_coll = plt.mpl.collections.PatchCollection(patches, match_original=True)
         plt.imshow( img, vmin=0, vmax=200)
         plt.gca().add_collection(patch_coll)
         plt.show()
