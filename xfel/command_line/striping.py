@@ -8,6 +8,7 @@ from six.moves import range
 # run group and then distrbute each run group's results into subgroups and run
 # dials.combine_experiments (optionally with clustering and selecting clusters).
 #
+from dials.util import show_mail_on_error
 from libtbx.phil import parse
 from libtbx.utils import Sorry
 from libtbx import easy_run
@@ -568,7 +569,7 @@ class Script(object):
     return all_commands
 
 if __name__ == "__main__":
-  from dials.util import halraiser
+  import sys
   if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
     print(helpstring)
     exit()
@@ -579,8 +580,6 @@ if __name__ == "__main__":
     with open("striping_defaults.phil", "wb") as defaults:
       defaults.write(phil_scope.as_str())
     exit()
-  try:
+  with show_mail_on_error():
     script = Script()
     script.run()
-  except Exception as e:
-    halraiser(e)

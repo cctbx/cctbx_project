@@ -15,6 +15,7 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 from dials.array_family import flex
+from dials.util import show_mail_on_error
 from scitbx.matrix import col
 from matplotlib import pyplot as plt
 from libtbx.phil import parse
@@ -196,16 +197,11 @@ class Script(object):
 
     print("Final experiment count", len(filtered_experiments))
 
-    from dxtbx.model.experiment_list import ExperimentListDumper
-    dump = ExperimentListDumper(filtered_experiments)
-    dump.as_json(params.output.filtered_experiments)
+    filtered_experiments.as_file(params.output.filtered_experiments)
 
     filtered_reflections.as_pickle(params.output.filtered_reflections)
 
 if __name__ == '__main__':
-  from dials.util import halraiser
-  try:
+  with show_mail_on_error():
     script = Script()
     script.run()
-  except Exception as e:
-    halraiser(e)

@@ -43,7 +43,6 @@ def exercise_worker(worker_class):
   """ Boilerplate code for testing a worker class """
   from xfel.merging.application.phil.phil import phil_scope
   from dials.util.options import OptionParser
-  from dxtbx.model.experiment_list import ExperimentListDumper
   # Create the parser
   parser = OptionParser(phil=phil_scope)
 
@@ -65,4 +64,4 @@ def exercise_worker(worker_class):
 
   prefix = worker_class.__name__
   reflections.as_msgpack_file(prefix + ".mpack")
-  ExperimentListDumper(experiments).as_file(prefix + ".expt")
+  experiments.as_file(prefix + ".expt")

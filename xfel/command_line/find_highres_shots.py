@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 #
 import os, glob
 import libtbx.load_env
+from dials.util import show_mail_on_error
 from dials.util.options import OptionParser
 from libtbx.phil import parse
 from libtbx import easy_pickle
@@ -160,9 +161,6 @@ class Script(object):
     print(cmd.rstrip())
 
 if __name__ == "__main__":
-  from dials.util import halraiser
-  try:
+  with show_mail_on_error():
     script = Script()
     script.run()
-  except Exception as e:
-    halraiser(e)

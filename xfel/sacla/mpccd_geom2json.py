@@ -84,12 +84,10 @@ def run(args):
   beam = BeamFactory.simple(wavelength)
 
   from dxtbx.model import Experiment, ExperimentList
-  from dxtbx.model.experiment_list import ExperimentListDumper
   experiments = ExperimentList()
   experiment = Experiment(detector = detector, beam = beam)
   experiments.append(experiment)
-  dump = ExperimentListDumper(experiments)
-  dump.as_json("geometry.expt")
+  experiments.as_file("geometry.expt")
 
 if __name__ == "__main__":
   run(sys.argv[1:])

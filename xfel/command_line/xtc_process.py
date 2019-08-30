@@ -14,11 +14,13 @@ except ImportError:
 except AttributeError:
   pass
 
+import errno
 from xfel.cftbx.detector import cspad_cbf_tbx
 from xfel.cxi.cspad_ana import cspad_tbx, rayonix_tbx
 import pycbf, os, sys, copy, socket
 import libtbx.load_env
 from libtbx.utils import Sorry, Usage
+from dials.util import show_mail_on_error
 from dials.util.options import OptionParser
 from libtbx.phil import parse
 from dxtbx.model.experiment_list import ExperimentListFactory
@@ -350,9 +352,6 @@ xtc_phil_str = '''
 from dials.command_line.stills_process import dials_phil_str, program_defaults_phil_str
 
 extra_dials_phil_str = '''
-  verbosity = 1
-   .type = int(value_min=0)
-   .help = The verbosity level
   border_mask {
     include scope dials.util.masking.phil_scope
   }
@@ -545,12 +544,13 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         else:
           tmp_dir = os.path.join(params.output.tmp_output_dir, '.tmp')
         if not os.path.exists(tmp_dir):
-          try:
-            os.makedirs(tmp_dir)
-          except Exception as e:
-            # Can fail if running multiprocessed, which is ok if the tmp folder was created
-            if not os.path.exists(tmp_dir):
-              halraiser(e)
+          with show_mail_on_error():
+            try:
+              os.makedirs(tmp_dir)
+              # Can fail if running multiprocessed - that's OK if the folder was created
+            except OSError as e:  # In Python 2, a FileExistsError is just an OSError
+              if e.errno != errno.EEXIST:  # If this OSError is not a FileExistsError
+                raise
       os.environ['CBF_TMP_DIR'] = tmp_dir
 
     for abs_params in params.integration.absorption_correction:
@@ -633,7 +633,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       debug_path = os.path.join(params.output.logging_dir, "debug_rank%04d.out"%rank)
 
     from dials.util import log
-    log.config(params.verbosity, info=info_path, debug=debug_path)
+    log.config(options.verbose, info=info_path, debug=debug_path)
 
     debug_dir = os.path.join(params.output.output_dir, "debug")
     if not os.path.exists(debug_dir):
@@ -929,10 +929,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         experiments = refiner.get_experiments()
         reflections = combined_reflections.select(refiner.selection_used_for_refinement())
 
-        from dxtbx.model.experiment_list import ExperimentListDumper
         from dxtbx.model import ExperimentList
-        dump = ExperimentListDumper(experiments)
-        dump.as_json(os.path.join(reint_dir, "refined.expt"))
+        experiments.as_file(os.path.join(reint_dir, "refined.expt"))
         reflections.as_pickle(os.path.join(reint_dir, "refined.refl"))
 
         for expt_id, (expt, img_file) in enumerate(zip(experiments, images)):
@@ -944,8 +942,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
             expts = ExperimentList([expt])
             self.integrate(expts, refls)
-            dump = ExperimentListDumper(expts)
-            dump.as_json(os.path.join(reint_dir, base_name + "_refined.expt"))
+            expts.as_file(os.path.join(reint_dir, base_name + "_refined.expt"))
           except Exception as e:
             print("Couldn't reintegrate", img_file, str(e))
     print("Rank %d signing off"%rank)
@@ -1356,9 +1353,6 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     super(InMemScript, self).finalize()
 
 if __name__ == "__main__":
-  from dials.util import halraiser
-  try:
+  with show_mail_on_error():
     script = InMemScript()
     script.run()
-  except Exception as e:
-    halraiser(e)
