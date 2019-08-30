@@ -13,6 +13,7 @@
 #
 from __future__ import absolute_import, division, print_function
 from six.moves import range
+from dials.util import show_mail_on_error
 from scitbx.array_family import flex
 from scitbx.matrix import col
 from libtbx.phil import parse
@@ -295,9 +296,6 @@ Rot Z: rotation around detector normal in lab space
 """)
 
 if __name__ == '__main__':
-  from dials.util import halraiser
-  try:
+  with show_mail_on_error():
     script = Script()
     script.run()
-  except Exception as e:
-    halraiser(e)

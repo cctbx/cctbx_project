@@ -22,7 +22,7 @@ import cctbx.miller
 from cctbx.uctbx import unit_cell
 from cctbx import sgtbx
 import operator
-from dxtbx.model.experiment_list import ExperimentListFactory, ExperimentListDumper
+from dxtbx.model.experiment_list import ExperimentListFactory
 
 from dials.algorithms.shoebox import MaskCode
 mask_peak = MaskCode.Valid|MaskCode.Foreground
@@ -1083,8 +1083,9 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
         crystal = ori_to_crystal(ori, horiz_phil.small_cell.spacegroup)
         experiments = ExperimentListFactory.from_imageset_and_crystal(imageset, crystal)
         if write_output:
-          dump = ExperimentListDumper(experiments)
-          dump.as_json(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated.expt")
+          experiments.as_file(
+            os.path.splitext(os.path.basename(path).strip())[0] + "_integrated.expt"
+          )
 
         refls = flex.reflection_table()
         refls['id'] = flex.int(len(indexed_hkls), 0)

@@ -14,9 +14,9 @@ from six.moves import range
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.recompute_mosaicity
 #
-from dxtbx.model.experiment_list import ExperimentListDumper
 from dials.algorithms.indexing.nave_parameters import NaveParameters
 from dials.array_family import flex
+from dials.util import show_mail_on_error
 import libtbx.load_env
 from libtbx.phil import parse
 
@@ -99,8 +99,7 @@ class Script(object):
       filtered_reflections.extend(refls)
 
     print("Saving new experiments as %s"%params.output.experiments)
-    dump = ExperimentListDumper(experiments)
-    dump.as_json(params.output.experiments)
+    experiments.as_file(params.output.experiments)
 
     print("Removed %d out of %d reflections as outliers"%(len(reflections) - len(filtered_reflections), len(reflections)))
     print("Saving filtered reflections as %s"%params.output.experiments)
@@ -117,9 +116,6 @@ class Script(object):
       plt.show()
 
 if __name__ == '__main__':
-  from dials.util import halraiser
-  try:
+  with show_mail_on_error():
     script = Script()
     script.run()
-  except Exception as e:
-    halraiser(e)
