@@ -10,7 +10,6 @@ https://conda.anaconda.org/cctbx/win-64/libsvm-323-0.tar.bz2#bfeda92110eed464cf2
 https://conda.anaconda.org/cctbx/win-64/vs2008_runtime-9.0.30729.6161-0.tar.bz2#9531fa584348748d666b66055c771182
 https://conda.anaconda.org/cctbx/win-64/mkl-2019.1-144.tar.bz2#429418273137ee591a55a0a210cf7436
 https://conda.anaconda.org/cctbx/win-64/vc-9-0.tar.bz2#a914b67a66d15adde2f00cc47a9d454d
-https://conda.anaconda.org/cctbx/win-64/blosc-1.15.1-hc56fc5f_1002.tar.bz2#7627853f1fda2e9b9883a8270353b71c
 https://conda.anaconda.org/cctbx/win-64/jpeg-9c-h0c8e037_1001.tar.bz2#6fda01fefb6ea9de2db6332c5faeb763
 https://conda.anaconda.org/cctbx/win-64/openssl-1.0.2r-h0c8e037_0.tar.bz2#c1d5060d9094e261df2ce560f90a9b66
 https://conda.anaconda.org/cctbx/win-64/python-2.7.15-h2880e7c_1006.tar.bz2#df0056ce188a4e94dfd30e9261b532af
@@ -119,7 +118,6 @@ https://conda.anaconda.org/cctbx/win-64/matplotlib-base-2.2.3-py27hf194043_1.tar
 https://conda.anaconda.org/cctbx/win-64/mkl_fft-1.0.10-py27h0c8e037_1.tar.bz2#802eed61dbc91bd603bfa9f8a7c790bc
 https://conda.anaconda.org/cctbx/win-64/numpy-1.15.4-py27h5fc8d92_0.tar.bz2#d543fc0520696698f5663ec9741aa242
 https://conda.anaconda.org/cctbx/win-64/mrcfile-1.1.2-py27_0.tar.bz2#316621ceb2152f9eaeaba9ad781bfcf3
-https://conda.anaconda.org/cctbx/win-64/python-blosc-1.7.0-py27hc56fc5f_1001.tar.bz2#744d994186d70f5b603e0ddd1b3afa38
 https://conda.anaconda.org/cctbx/win-64/scipy-1.2.0-py27h4c3ab11_0.tar.bz2#303039b460a8bfc4f989c639e043b68a
 https://conda.anaconda.org/cctbx/win-64/scikit-learn-0.20.2-py27hf381715_0.tar.bz2#0d9e300668dfc5c1f5f0bcc82cbe2cb6
 https://conda.anaconda.org/cctbx/win-64/cctbx_dependencies-2019.02.13-0.tar.bz2#78fcb1272209af10c73985fc63671094

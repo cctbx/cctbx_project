@@ -74,7 +74,6 @@ IPYTHON_PKG = "ipython-5.8.0.tar.gz"     # IPython
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
-BLOSC_VERSION = "1.8.0"
 CYTHON_VERSION = "0.28.6"
 DOCUTILS_VERSION = "0.14"
 FUTURE_VERSION = "0.17.1"

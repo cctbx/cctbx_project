@@ -13,7 +13,6 @@ https://conda.anaconda.org/cctbx/osx-64/lz4-c-1.8.1.2-0.tar.bz2#20f9a500f8af5890
 https://conda.anaconda.org/cctbx/osx-64/nomkl-3.0-0.tar.bz2#d6fab0c8315628f7594ed7e0f23bb64d
 https://conda.anaconda.org/cctbx/osx-64/xz-5.2.4-h1de35cc_1001.tar.bz2#dc8b7a1b9693da71d74823233757c527
 https://conda.anaconda.org/cctbx/osx-64/zlib-1.2.11-h1de35cc_1004.tar.bz2#a675e7ae21f9b77f2afd15f78cd21b7a
-https://conda.anaconda.org/cctbx/osx-64/blosc-1.15.1-h0a44026_1002.tar.bz2#5a8388da01aac3d8e768ccc353107a92
 https://conda.anaconda.org/cctbx/osx-64/hdf5-1.10.4-nompi_h0cbb7df_1106.tar.bz2#9494518b97298433cc1f37a964e18ed6
 https://conda.anaconda.org/cctbx/osx-64/icu-58.2-h0a44026_1000.tar.bz2#2556f93480a4301688bd4f0e24310e99
 https://conda.anaconda.org/cctbx/osx-64/libffi-3.2.1-h0a44026_1005.tar.bz2#403003f7025d137629c9c603601371cd
@@ -97,7 +96,6 @@ https://conda.anaconda.org/cctbx/osx-64/pexpect-4.6.0-py27_1000.tar.bz2#dec36f46
 https://conda.anaconda.org/cctbx/osx-64/pillow-5.4.1-py27hbddbef0_1000.tar.bz2#58f283d3b613b77e28c5bf2779a42c03
 https://conda.anaconda.org/cctbx/osx-64/procrunner-0.9.0-py27_1050.tar.bz2#476a17c7d00cf2e3f304aaae8fb604af
 https://conda.anaconda.org/cctbx/osx-64/pyrtf-0.45-py27_1.tar.bz2#59abd8edc5b784da0c117cc24c73a19e
-https://conda.anaconda.org/cctbx/osx-64/python-blosc-1.7.0-py27h0a44026_1001.tar.bz2#7d9c1b480afa3e447479b52966f3dc73
 https://conda.anaconda.org/cctbx/noarch/python-dateutil-2.8.0-py_0.tar.bz2#8bcc79846bbfac2ece4a24bcb9851693
 https://conda.anaconda.org/cctbx/osx-64/scipy-1.2.1-py27_blas_openblash486cb9f_0.tar.bz2#f136b37ade5fefc08de7c9e6b0ed0005
 https://conda.anaconda.org/cctbx/osx-64/setuptools-40.8.0-py27_0.tar.bz2#b85a3ea35aa75e4b55d86698dbe3de28
