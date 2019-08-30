@@ -19,16 +19,16 @@ def main(rot_idx):
 
         # STEP 1: simulate the un-perturbed image:
         D.add_diffBragg_spots()
-        img0 = D.raw_pixels.as_numpy_array()
+        img0 = D.raw_pixels_roi.as_numpy_array()
 
         # STEP 2: simulate the same crystal , directly perturbed by the rotation matrix in python
-        D.raw_pixels*=0
+        D.zero_raw_pixel_rois()
 
-        if rot_idx==0:
+        if rot_idx == 0:
             rot_ax = col((-1, 0, 0))
-        elif rot_idx==1:
+        elif rot_idx == 1:
             rot_ax = col((0, -1, 0))
-        elif rot_idx==2:
+        elif rot_idx == 2:
             rot_ax = col((0,0,-1))
         else:
             assert False, "Rot idx should be 0,1 or 2"
@@ -44,7 +44,7 @@ def main(rot_idx):
         D.Amatrix = Arecip
         # simulate the scattering in the rotated crystal:
         D.add_diffBragg_spots()
-        img = D.raw_pixels.as_numpy_array()
+        img = D.raw_pixels_roi.as_numpy_array()
 
         # STEP3 : compute finite differenceL
         finite_diff = (img-img0)/theta
@@ -53,7 +53,7 @@ def main(rot_idx):
         D.refine(rot_idx)
         D.initialize_managers()
 
-        D.raw_pixels *= 0
+        D.zero_raw_pixel_rois()
         D.set_value(rot_idx, 0)
         D.Amatrix = Arecip_orig
         D.add_diffBragg_spots()
