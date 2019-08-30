@@ -421,7 +421,83 @@ void diffBragg::add_diffBragg_spots()
                                 /* no need to go further if result will be zero */
                                 if(F_latt == 0.0) continue;
 
-                                F_cell = Fhkl[h0-h_min][k0-k_min][l0-l_min];
+                                /* structure factor of the unit cell */
+                                if(interpolate){
+                                    h0_flr = static_cast<int>(floor(h));
+                                    k0_flr = static_cast<int>(floor(k));
+                                    l0_flr = static_cast<int>(floor(l));
+
+
+                                    if ( ((h-h_min+3)>h_range) ||
+                                         (h-2<h_min)           ||
+                                         ((k-k_min+3)>k_range) ||
+                                         (k-2<k_min)           ||
+                                         ((l-l_min+3)>l_range) ||
+                                         (l-2<l_min)  ) {
+                                        if(babble){
+                                            babble=0;
+                                            if(verbose) printf ("WARNING: out of range for three point interpolation: h,k,l,h0,k0,l0: %g,%g,%g,%d,%d,%d \n", h,k,l,h0,k0,l0);
+                                            if(verbose) printf("WARNING: further warnings will not be printed! ");
+                                        }
+                                        F_cell = default_F;
+                                        interpolate=0;
+                                        continue;
+                                    }
+
+                                    /* integer versions of nearest HKL indicies */
+                                    h_interp[0]=h0_flr-1;
+                                    h_interp[1]=h0_flr;
+                                    h_interp[2]=h0_flr+1;
+                                    h_interp[3]=h0_flr+2;
+                                    k_interp[0]=k0_flr-1;
+                                    k_interp[1]=k0_flr;
+                                    k_interp[2]=k0_flr+1;
+                                    k_interp[3]=k0_flr+2;
+                                    l_interp[0]=l0_flr-1;
+                                    l_interp[1]=l0_flr;
+                                    l_interp[2]=l0_flr+1;
+                                    l_interp[3]=l0_flr+2;
+
+                                    /* polin function needs doubles */
+                                    h_interp_d[0] = (double) h_interp[0];
+                                    h_interp_d[1] = (double) h_interp[1];
+                                    h_interp_d[2] = (double) h_interp[2];
+                                    h_interp_d[3] = (double) h_interp[3];
+                                    k_interp_d[0] = (double) k_interp[0];
+                                    k_interp_d[1] = (double) k_interp[1];
+                                    k_interp_d[2] = (double) k_interp[2];
+                                    k_interp_d[3] = (double) k_interp[3];
+                                    l_interp_d[0] = (double) l_interp[0];
+                                    l_interp_d[1] = (double) l_interp[1];
+                                    l_interp_d[2] = (double) l_interp[2];
+                                    l_interp_d[3] = (double) l_interp[3];
+
+                                    /* now populate the "y" values (nearest four structure factors in each direction) */
+                                    for (i1=0;i1<4;i1++) {
+                                        for (i2=0;i2<4;i2++) {
+                                           for (i3=0;i3<4;i3++) {
+                                                  sub_Fhkl[i1][i2][i3]= Fhkl[h_interp[i1]-h_min][k_interp[i2]-k_min][l_interp[i3]-l_min];
+                                           }
+                                        }
+                                     }
+
+                                    /* run the tricubic polynomial interpolation */
+                                    polin3(h_interp_d,k_interp_d,l_interp_d,sub_Fhkl,h,k,l,&F_cell);
+                                }
+
+                                if(! interpolate)
+                                {
+                                    if ( (h0<=h_max) && (h0>=h_min) && (k0<=k_max) && (k0>=k_min) && (l0<=l_max) && (l0>=l_min)  ) {
+                                        /* just take nearest-neighbor */
+                                        F_cell = Fhkl[h0-h_min][k0-k_min][l0-l_min];
+                                    }
+                                    else
+                                    {
+                                        F_cell = default_F; // usually zero
+                                    }
+                                }
+
+                                //F_cell = Fhkl[h0-h_min][k0-k_min][l0-l_min];
 
                                 /* now we have the structure factor for this pixel */
 
