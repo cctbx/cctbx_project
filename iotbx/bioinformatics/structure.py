@@ -68,7 +68,7 @@ def summarize_blast_output(blast_out=None, blast_file=None,
   parsed = NCBIXML.parse(blast_in)
   blast = next(parsed)
   if (len(blast.alignments) == 0):
-    raise Sorry("No matching sequences!")
+    raise StopIteration("No matching sequences!")
   results = []
   for i_hit, hit in enumerate(blast.alignments):
     pdb_chain_id = str(hit.accession)

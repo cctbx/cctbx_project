@@ -5,6 +5,10 @@ import libtbx.utils
 import xml.etree.ElementTree as ET
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
+import libtbx.load_env
+from libtbx import smart_open
+import os
+import csv
 
 web_urls = {"rcsb": "http://www.rcsb.org/pdb/rest/customReport.xml?"+\
     "pdbids={pdb_list}"+\
@@ -41,8 +45,15 @@ class pdb_info_local(object):
     Loads pickle with data. Path is temporary in current work dir.
     Should be centralized somewhere else upon going to production.
     """
-    self.db_dict = easy_pickle.load("pdb_dict.pickle")
-    # print self.db_dict
+    db_dict = {}
+    pdb_info_file = libtbx.env.find_in_repositories(
+      relative_path="cctbx_project/iotbx/bioinformatics/pdb_info.csv.gz",
+      test=os.path.isfile)
+    csv_file = smart_open.for_reading(file_name=pdb_info_file)
+    csv_reader = csv.reader(csv_file,delimiter=";")
+    for row in csv_reader:
+      db_dict[row[0]] = (row[1],row[2],row[3],row[4],row[5])
+    self.db_dict = db_dict
 
   def _get_info(self, pdbid, skip_none=True, raise_if_absent=False):
     info = self.db_dict.get(pdbid.upper(), None)
