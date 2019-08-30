@@ -8,13 +8,11 @@ def main(rot_idx):
     from scitbx.matrix import col, sqr
 
     vals = []
-    theta_vals = [0.00001 *(2**i) for i in range(1,25,3)]
+    theta_vals = [0.00001 * (2**i) for i in range(1, 25, 1)]
     for theta in theta_vals:
         theta = theta * np.pi / 180
 
         D = get_diffBragg_instance()
-        #D.progress_meter = True
-        #D.verbose = 1
         D.vectorize_umats()
 
         # STEP 1: simulate the un-perturbed image:
@@ -22,14 +20,13 @@ def main(rot_idx):
         img0 = D.raw_pixels_roi.as_numpy_array()
 
         # STEP 2: simulate the same crystal , directly perturbed by the rotation matrix in python
-        D.zero_raw_pixel_rois()
 
         if rot_idx == 0:
             rot_ax = col((-1, 0, 0))
         elif rot_idx == 1:
             rot_ax = col((0, -1, 0))
         elif rot_idx == 2:
-            rot_ax = col((0,0,-1))
+            rot_ax = col((0, 0, -1))
         else:
             assert False, "Rot idx should be 0,1 or 2"
 
@@ -43,6 +40,7 @@ def main(rot_idx):
         # put back in diffBragg:
         D.Amatrix = Arecip
         # simulate the scattering in the rotated crystal:
+        D.raw_pixels_roi *= 0
         D.add_diffBragg_spots()
         img = D.raw_pixels_roi.as_numpy_array()
 
@@ -53,7 +51,8 @@ def main(rot_idx):
         D.refine(rot_idx)
         D.initialize_managers()
 
-        D.zero_raw_pixel_rois()
+        #D.zero_raw_pixel_rois()
+        D.raw_pixels_roi *= 0
         D.set_value(rot_idx, 0)
         D.Amatrix = Arecip_orig
         D.add_diffBragg_spots()
@@ -69,7 +68,7 @@ def main(rot_idx):
             plt.imshow(ana_deriv)
             plt.title("analytical")
             #plt.gca().images[0].set_clim(plt.gcf().axes[0].images[0].get_clim())
-            plt.suptitle("Theta = %f deg. " % (theta* 180 / np.pi))
+            plt.suptitle("Theta = %f deg. " % (theta * 180 / np.pi))
             plt.draw()
             plt.pause(0.2)
 
@@ -82,13 +81,22 @@ def main(rot_idx):
 
     # STEP6: for the smallest perturbation, assert finite difference
     # is equivalent to analytical derivative within 1e-6 units ( per pixel)
-    assert np.all( vals[0] < 1e-6)
-    print("OK")
+    assert np.all(vals[0] < 1e-3)
+
+    from scipy import stats
+    x = theta_vals[:16]
+    y = [v.mean() for v in vals][:16]
+    slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+    assert slope > 0
+    assert r_value > 0.9
+    assert p_value < 1e-5
+
+    # TODO: use second derivative and finite difference error model to check error scaling
 
     if args.plot:
         plt.close()
-        plt.plot( theta_vals, [v.mean() for v in vals], '.')
-        ax =plt.gca()
+        plt.plot(theta_vals, [v.mean() for v in vals], '.')
+        ax = plt.gca()
         ax.set_xlabel("theta (degrees)")
         ax.set_xscale("log")
         ax.set_ylabel(r"$\langle |\,$finite_diff - analytical$\,| \rangle$", fontsize=14)

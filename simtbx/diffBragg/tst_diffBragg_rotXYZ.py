@@ -65,18 +65,19 @@ def get_diffBragg_instance():
     D.Ncells_abc = NCELLS_ABC
     D.wavelength_A = wavelen
     D.flux = flux
-    D.mosaic_spread_deg = 0  # 0.01
-    D.mosaic_domains = 1
+    D.mosaic_spread_deg = 0.01
+    D.mosaic_domains = 10
     D.Fhkl = Fhkl
 
     return D
+
 
 def main():
     import numpy as np
 
     n_trials = 10
-    np.random.seed( n_trials)
-    angles_XYZ = np.random.random( (n_trials, 3))*2 * np.pi / 180.
+    np.random.seed(n_trials)
+    angles_XYZ = np.random.random((n_trials, 3))*2 * np.pi / 180.
 
     D = get_diffBragg_instance()
 
