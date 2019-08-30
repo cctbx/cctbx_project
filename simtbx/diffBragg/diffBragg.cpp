@@ -9,11 +9,11 @@ derivative_manager::derivative_manager(){}
 void derivative_manager::initialize(int sdim, int fdim)
 {
     raw_pixels = af::flex_double(af::flex_grid<>(sdim,fdim));
-    floatimage = raw_pixels.begin();
     dI=0;
 }
 
 void derivative_manager::increment_image(int idx, double value){
+    double* floatimage = raw_pixels.begin();
     floatimage[idx] += value;
 }
 
@@ -128,7 +128,7 @@ void diffBragg::init_raw_pixels_roi(){
     int fdim = roi_xmax-roi_xmin;
     int sdim = roi_ymax-roi_ymin;
     raw_pixels_roi = af::flex_double(af::flex_grid<>(sdim,fdim));
-    floatimage_roi = raw_pixels_roi.begin();
+    //floatimage_roi = raw_pixels_roi.begin();
 }
 
 void diffBragg::initialize_managers()
@@ -183,13 +183,22 @@ af::flex_double diffBragg::get_derivative_pixels(int refine_id){
     return rot_managers[refine_id]->raw_pixels;
 }
 
+void diffBragg::zero_raw_pixel_rois(){
+    init_raw_pixels_roi();
+    initialize_managers();
+}
+
 // BEGIN diffBragg_add_spots
 void diffBragg::add_diffBragg_spots()
 {
     max_I = 0.0;
     i = 0;
+
     floatimage = raw_pixels.begin();
 
+    double * floatimage_roi = raw_pixels_roi.begin();
+
+    //floatimage_roi = raw_pixels_roi.begin();
     for (int i_rot=0; i_rot < 3; i_rot++){
         if (rot_managers[i_rot]->refine_me){
             RotMats[i_rot] = rot_managers[i_rot]->R;
@@ -218,7 +227,7 @@ void diffBragg::add_diffBragg_spots()
     i = sumn = 0;
     progress_pixel = 0;
     omega_sum = 0.0;
-    int roi_i = -1;
+    //int roi_i = -1;
     for(spixel=0;spixel<spixels;++spixel)
     {
         for(fpixel=0;fpixel<fpixels;++fpixel)
@@ -228,15 +237,16 @@ void diffBragg::add_diffBragg_spots()
             {
                 ++i; continue;
             }
-            else
-                roi_i += 1;
+            //else
+                //roi_i += 1;
             /* allow for the use of a mask */
             if(maskimage != NULL)
             {
                 /* skip any flagged pixels in the mask */
                 if(maskimage[i] == 0)
                 {
-                    ++i; ++roi_i; continue;
+                    ++i; //++roi_i;
+                    continue;
                 }
             }
             /* reset photon count for this pixel */
@@ -457,6 +467,12 @@ void diffBragg::add_diffBragg_spots()
             /* end of sub-pixel x loop */
 
             floatimage[i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
+
+            int roi_fs = i % fpixels - roi_xmin ;
+            int roi_ss = i / spixels - roi_ymin;
+            int roi_fdim = roi_xmax - roi_xmin;
+            int roi_i = roi_ss*roi_fdim + roi_fs;
+
             floatimage_roi[roi_i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
 
             /* udpate the derivative images*/
@@ -465,8 +481,7 @@ void diffBragg::add_diffBragg_spots()
                     //if (mos_tic==0 && fpixel==0 && spixel==0)
                     //  printf("Updating image for parameter %d <><><<><>>\n", i_rot);
                     double value = r_e_sqr*fluence*spot_scale*polar*rot_managers[i_rot]->dI/steps;
-                    //rot_managers[i_rot]->increment_image(roi_i, value);
-                    rot_managers[i_rot]->increment_image(i, value);
+                    rot_managers[i_rot]->increment_image(roi_i, value);
                 }
             }
 
@@ -492,7 +507,7 @@ void diffBragg::add_diffBragg_spots()
                     printf("I/steps %15.10g\n", I/steps);
                     printf("polar   %15.10g\n", polar);
                     printf("omega   %15.10g\n", omega_pixel);
-                    printf("pixel   %15.10g\n", floatimage[i]);
+                    //printf("pixel   %15.10g\n", floatimage[i]);
                     printf("real-space cell vectors (Angstrom):\n");
                     printf("     %-10s  %-10s  %-10s\n","a","b","c");
                     printf("X: %11.8f %11.8f %11.8f\n",a[1]*1e10,b[1]*1e10,c[1]*1e10);
