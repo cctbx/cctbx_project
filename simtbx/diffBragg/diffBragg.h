@@ -10,8 +10,6 @@ class derivative_manager{
   public:
     derivative_manager();
     void initialize(int sdim, int fdim);
-
-    double* floatimage;
     af::flex_double raw_pixels;
     double value; // the value of the parameter
     double dI; // the incremental derivative
@@ -64,13 +62,16 @@ class diffBragg: public nanoBragg{
   void initialize_managers();
   void vectorize_umats();
   void add_diffBragg_spots();
+  void init_raw_pixels_roi();
+  void zero_raw_pixel_rois();
+  //void reset_derivative_pixels(int refine_id);
 
   /* methods for interacting with the derivative managers */
   void refine(int refine_id);
   void set_value( int refine_id, double value);
   double get_value( int refine_id);
-  void init_raw_pixels_roi();
   af::flex_double get_derivative_pixels(int refine_id);
+  af::flex_double get_raw_pixels_roi();
 
   mat3 RXYZ;
   std::vector<mat3> RotMats;

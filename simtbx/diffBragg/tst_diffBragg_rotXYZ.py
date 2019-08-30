@@ -65,8 +65,8 @@ def get_diffBragg_instance():
     D.Ncells_abc = NCELLS_ABC
     D.wavelength_A = wavelen
     D.flux = flux
-    D.mosaic_spread_deg = 0.01
-    D.mosaic_domains = 10
+    D.mosaic_spread_deg = 0  # 0.01
+    D.mosaic_domains = 1
     D.Fhkl = Fhkl
 
     return D

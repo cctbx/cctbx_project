@@ -79,21 +79,21 @@ def tilting_plane(img, mask=None, zscore=2 ):
     :return: tilting plane, same shape as img
     """
     from cxid9114 import utils
-    Y,X = np.indices( img.shape)
-    YY,XX = Y.ravel(), X.ravel()
+    Y, X = np.indices(img.shape)
+    YY, XX = Y.ravel(), X.ravel()
 
     img1d = img.ravel()
 
     if mask is None:
-        mask = np.ones( img.shape, bool)
+        mask = np.ones(img.shape, bool)
     mask1d = mask.ravel()
 
-    out1d = np.zeros( mask1d.shape, bool)
-    out1d[mask1d] = utils.is_outlier( img1d[mask1d].ravel(), zscore)
-    out2d = out1d.reshape (img.shape)
+    out1d = np.zeros(mask1d.shape, bool)
+    out1d[mask1d] = utils.is_outlier(img1d[mask1d].ravel(), zscore)
+    out2d = out1d.reshape(img.shape)
 
     fit_sel = np.logical_and(~out2d, mask)  # fit plane to these points, no outliers, no masked
-    x,y,z = X[fit_sel], Y[fit_sel], img[fit_sel]
+    x, y, z = X[fit_sel], Y[fit_sel], img[fit_sel]
     guess = np.array([np.ones_like(x), x, y ] ).T
     coeff, r, rank, s = np.linalg.lstsq(guess, z)
     ev = (coeff[0] + coeff[1]*XX + coeff[2]*YY )
