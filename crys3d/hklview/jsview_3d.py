@@ -623,25 +623,24 @@ class hklview_3d:
                        1.0/(self.miller_array.d_max_min()[1]*0.999) ]
 
 
-  def MatchBinArrayToSceneArray(self):
+  def MatchBinArrayToSceneArray(self, ibinarray):
     # match bindata with data(scene_id)
     if self.binscenelabel=="Resolution":
-      return
+      return bindata
     # get the array id that is mapped through an HKLscene id
-    binarray = self.hkl_scenes_info[int(self.binscenelabel)]
-    scenearray = self.HKLscenes[self.scene_id]
-    matchindices = miller.match_indices(scenearray.indices, binarray.indices )
-    valarray = binarray.select( matchindices.pairs().column(1) )
+    binarraydata = self.HKLscenes[ibinarray].data
+    scenearraydata = self.HKLscenes[self.scene_id].data
+    matchindices = miller.match_indices(self.HKLscenes[self.scene_id].indices, self.HKLscenes[ibinarray].indices )
+    valarray = binarraydata.select( matchindices.pairs().column(1) )
     #valarray.sort(by_value="packed_indices")
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    missing = scenearray.lone_set( valarray )
+    missing = scenearraydata.lone_set( valarray )
     # insert NAN values for reflections in self.miller_array not found in binarray
-    valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices())
+    valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices() )
     match_valindices = miller.match_indices(scenearray.indices(), valarray.indices() )
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     match_valarray = valarray.select( match_valindices.pairs().column(1) )
     match_valarray.sort(by_value="packed_indices")
-    match_valarray.set_info(binarray.info() )
+    match_valarray.set_info(binarraydata.info() )
     return match_valarray
 
 
@@ -678,7 +677,11 @@ class hklview_3d:
     # make arrow font size roughly proportional to radius of highest resolution shell
     #fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
     fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0)))
-    axisfuncstr = """
+
+    if blankscene:
+      axisfuncstr = "\nvar MakeHKL_Axis = function() { };\n"
+    else:
+      axisfuncstr = """
 var MakeHKL_Axis = function()
 {
   // xyz arrows
@@ -697,6 +700,7 @@ var MakeHKL_Axis = function()
     """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, fontsize,
           Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
+
     # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
     mincolourscalar = self.HKLscenesMindata[self.colour_scene_id]
     maxcolourscalar = self.HKLscenesMaxdata[self.colour_scene_id]
@@ -788,7 +792,8 @@ var MakeHKL_Axis = function()
       if self.binvalsboundaries[0] < 0.0:
         self.binvalsboundaries.append(0.0)
         self.binvalsboundaries.sort()
-      self.bindata = self.HKLscenes[ibinarray].data
+      #self.bindata = self.HKLscenes[ibinarray].data
+      self.bindata = self.MatchBinArrayToSceneArray(ibinarray)
       if self.HKLscenes[ibinarray].work_array.is_complex_array():
         self.bindata = self.HKLscenes[ibinarray].ampl
 
@@ -1011,6 +1016,86 @@ var MakeHKL_Axis = function()
         colourgradstr.append([vstr , gradval])
 
       colourgradstrs += "  colourgradvalarray[%s] = %s;\n" %(g, str(colourgradstr) )
+    if blankscene:
+      colourscriptstr = ""
+    else:
+      colourscriptstr = """
+
+  //colourgradvalarrays
+  %s
+
+  var ih = 3,
+  topr = 35,
+  topr2 = 10,
+  lp = 10,
+  wp = 40,
+  lp2 = lp + wp,
+  gl = 3,
+  wp2 = gl,
+  fomlabelheight = 25;
+  if (colourgradvalarray.length === 1)
+  {
+    wp2 = 15;
+    fomlabelheight = 0;
+  }
+
+  var wp3 = wp + colourgradvalarray.length * wp2 + 2;
+
+  totalheight = ih*colourgradvalarray[0].length + 35 + fomlabelheight;
+  // make a white box on top of which boxes with transparent background are placed
+  // containing the colour values at regular intervals as well as label legend of
+  // the displayed miller array
+  addDivBox("", topr2, lp, wp3, totalheight, 'rgba(255.0, 255.0, 255.0, 1.0)');
+
+  // print label of the miller array used for colouring
+  addDivBox("%s", topr2, lp, wp, 20);
+
+  if (colourgradvalarray.length > 1)
+  {
+    // print FOM label, 1, 0.5 and 0.0 values below colour chart
+    fomtop = topr2 + totalheight - 18;
+    fomlp = lp + wp;
+    fomwp = wp3;
+    fomtop2 = fomtop - 13;
+    // print the 1 number
+    addDivBox("1", fomtop2, fomlp, fomwp, 20);
+    // print the 0.5 number
+    leftp = fomlp + 0.48 * gl * colourgradvalarray.length;
+    addDivBox("0.5", fomtop2, leftp, fomwp, 20);
+    // print the FOM label
+    addDivBox("%s", fomtop, fomlp, fomwp, 20);
+    // print the 0 number
+    leftp = fomlp + 0.96 * gl * colourgradvalarray.length;
+    addDivBox("0", fomtop2, leftp, fomwp, 20);
+  }
+
+  for (j = 0; j < colourgradvalarray[0].length; j++)
+  {
+    rgbcol = colourgradvalarray[0][j][1];
+    val = colourgradvalarray[0][j][0];
+    topv = j*ih + topr;
+    toptxt = topv - 5;
+    // print value of miller array if present in colourgradvalarray[0][j][0]
+    addDivBox(val, toptxt, lp, wp, ih);
+  }
+
+  // draw the colour gradient
+  for (g = 0; g < colourgradvalarray.length; g++)
+  {
+    leftp = g*gl + lp + wp;
+    // if FOM values are supplied draw colour gradients with decreasing
+    // saturation values as stored in the colourgradvalarray[g] arrays
+    for (j = 0; j < colourgradvalarray[g].length; j++)
+    {
+      rgbcol = colourgradvalarray[g][j][1];
+      val = colourgradvalarray[g][j][0];
+      topv = j*ih + topr;
+      addDivBox("", topv, leftp, wp2, ih, rgbcol);
+    }
+  }
+
+    """ % (colourgradstrs, colourlabel, fomlabel)
+
 
     #negativeradiistr = ""
     #for ibin in range(self.nbinvalsboundaries):
@@ -1021,8 +1106,8 @@ var MakeHKL_Axis = function()
             """
     if self.high_quality:
       qualitystr = ""
-    self.NGLscriptstr = """
 
+    self.NGLscriptstr = """
 
 function createElement(name, properties, style)
 {
@@ -1195,79 +1280,7 @@ var hklscene = function()
   // if some radii are negative draw them with wireframe
   %s
 
-  //colourgradvalarrays
   %s
-
-  var ih = 3,
-  topr = 35,
-  topr2 = 10,
-  lp = 10,
-  wp = 40,
-  lp2 = lp + wp,
-  gl = 3,
-  wp2 = gl,
-  fomlabelheight = 25;
-  if (colourgradvalarray.length === 1)
-  {
-    wp2 = 15;
-    fomlabelheight = 0;
-  }
-
-  var wp3 = wp + colourgradvalarray.length * wp2 + 2;
-
-  totalheight = ih*colourgradvalarray[0].length + 35 + fomlabelheight;
-  // make a white box on top of which boxes with transparent background are placed
-  // containing the colour values at regular intervals as well as label legend of
-  // the displayed miller array
-  addDivBox("", topr2, lp, wp3, totalheight, 'rgba(255.0, 255.0, 255.0, 1.0)');
-
-  // print label of the miller array used for colouring
-  addDivBox("%s", topr2, lp, wp, 20);
-
-  if (colourgradvalarray.length > 1)
-  {
-    // print FOM label, 1, 0.5 and 0.0 values below colour chart
-    fomtop = topr2 + totalheight - 18;
-    fomlp = lp + wp;
-    fomwp = wp3;
-    fomtop2 = fomtop - 13;
-    // print the 1 number
-    addDivBox("1", fomtop2, fomlp, fomwp, 20);
-    // print the 0.5 number
-    leftp = fomlp + 0.48 * gl * colourgradvalarray.length;
-    addDivBox("0.5", fomtop2, leftp, fomwp, 20);
-    // print the FOM label
-    addDivBox("%s", fomtop, fomlp, fomwp, 20);
-    // print the 0 number
-    leftp = fomlp + 0.96 * gl * colourgradvalarray.length;
-    addDivBox("0", fomtop2, leftp, fomwp, 20);
-  }
-
-  for (j = 0; j < colourgradvalarray[0].length; j++)
-  {
-    rgbcol = colourgradvalarray[0][j][1];
-    val = colourgradvalarray[0][j][0];
-    topv = j*ih + topr;
-    toptxt = topv - 5;
-    // print value of miller array if present in colourgradvalarray[0][j][0]
-    addDivBox(val, toptxt, lp, wp, ih);
-  }
-
-  // draw the colour gradient
-  for (g = 0; g < colourgradvalarray.length; g++)
-  {
-    leftp = g*gl + lp + wp;
-    // if FOM values are supplied draw colour gradients with decreasing
-    // saturation values as stored in the colourgradvalarray[g] arrays
-    for (j = 0; j < colourgradvalarray[g].length; j++)
-    {
-      rgbcol = colourgradvalarray[g][j][1];
-      val = colourgradvalarray[g][j][0];
-      topv = j*ih + topr;
-      addDivBox("", topv, leftp, wp2, ih, rgbcol);
-    }
-  }
-
   stage.viewer.requestRender();
 }
 
@@ -1281,7 +1294,12 @@ catch(err)
   WebsockSendMsg('JavaScriptError: ' + err.stack );
 }
 
+    """ % (self.websockport, self.__module__, self.__module__, axisfuncstr, \
+            self.camera_type, spherebufferstr, negativeradiistr, colourscriptstr)
 
+
+
+    WebsockMsgHandlestr = """
 mysocket.onmessage = function (e)
 {
   var c,
@@ -1615,14 +1633,18 @@ mysocket.onmessage = function (e)
 
     if (msgtype === "GetClipPlaneDistances")
     {
-      msg = String( [stage.viewer.parameters.clipNear, stage.viewer.parameters.clipFar,
-                      stage.viewer.camera.position.z] )
+      msg = String( [stage.viewer.parameters.clipNear,
+                     stage.viewer.parameters.clipFar,
+                     stage.viewer.camera.position.z] )
       WebsockSendMsg('ReturnClipPlaneDistances:\\n' + msg );
     }
 
     if (msgtype === "GetBoundingBox")
     {
-      msg = String( [stage.viewer.boundingBoxSize.x, stage.viewer.boundingBoxSize.y, stage.viewer.boundingBoxSize.z] )
+      msg = String( [stage.viewer.boundingBoxSize.x,
+                     stage.viewer.boundingBoxSize.y,
+                     stage.viewer.boundingBoxSize.z]
+                  )
       WebsockSendMsg('ReturnBoundingBox:\\n' + msg );
     }
 
@@ -1651,9 +1673,9 @@ mysocket.onmessage = function (e)
 
 };
 
-    """ % (self.websockport, self.__module__, self.__module__, axisfuncstr, \
-            self.camera_type, spherebufferstr, negativeradiistr, colourgradstrs, \
-            colourlabel, fomlabel, cntbin, qualitystr)
+    """ %(cntbin, qualitystr)
+
+    self.NGLscriptstr += WebsockMsgHandlestr
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
