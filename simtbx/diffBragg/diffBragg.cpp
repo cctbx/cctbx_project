@@ -1,5 +1,5 @@
 #include <simtbx/diffBragg/diffBragg.h>
-
+#include <assert.h>
 namespace simtbx {
 namespace nanoBragg {
 
@@ -125,16 +125,15 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     }
 
 void diffBragg::init_raw_pixels_roi(){
-    int fdim = roi_xmax-roi_xmin;
-    int sdim = roi_ymax-roi_ymin;
+    int fdim = roi_xmax-roi_xmin+1;
+    int sdim = roi_ymax-roi_ymin+1;
     raw_pixels_roi = af::flex_double(af::flex_grid<>(sdim,fdim));
-    //floatimage_roi = raw_pixels_roi.begin();
 }
 
 void diffBragg::initialize_managers()
 {
-    int fdim = roi_xmax-roi_xmin;
-    int sdim = roi_ymax-roi_ymin;
+    int fdim = roi_xmax-roi_xmin+1;
+    int sdim = roi_ymax-roi_ymin+1;
     for (int i_rot=0; i_rot < 3; i_rot++){
         if (rot_managers[i_rot]->refine_me)
             //printf("Refine parameter %d <<><><><><><><>>\n", i_rot );
@@ -167,6 +166,9 @@ void diffBragg::vectorize_umats()
 
 void diffBragg::refine(int refine_id){
     rot_managers[refine_id]->refine_me=true;
+    int fdim = roi_xmax-roi_xmin+1;
+    int sdim = roi_ymax-roi_ymin+1;
+    rot_managers[refine_id]->initialize(sdim, fdim);
 }
 
 void diffBragg::set_value( int refine_id, double value ){
@@ -222,6 +224,10 @@ void diffBragg::add_diffBragg_spots()
     /* make sure we are normalizing with the right number of sub-steps */
     steps = phisteps*mosaic_domains*oversample*oversample;
     subpixel_size = pixel_size/oversample;
+
+    //int min_i= 10000000000;
+    //int max_i= -1;
+    int roi_fdim = roi_xmax - roi_xmin;
 
     sum = sumsqr = 0.0;
     i = sumn = 0;
@@ -544,11 +550,24 @@ void diffBragg::add_diffBragg_spots()
 
             floatimage[i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
 
-            int roi_fs = i % fpixels - roi_xmin ;
-            int roi_ss = i / spixels - roi_ymin;
-            int roi_fdim = roi_xmax - roi_xmin;
-            int roi_i = roi_ss*roi_fdim + roi_fs;
+            int roi_fs = i % fpixels - roi_xmin;
+            int roi_ss = floor(i / spixels) - roi_ymin ;
+            int roi_i =  roi_ss*(roi_fdim+1) + roi_fs ;
+            //int iii = i % fpixels;
+            //int jjj = floor(i / spixels);
+            //if ( roi_fs >= (roi_xmax - roi_xmin))
+            //  printf("OOPS:  %d, %d, %d, %d, %d\n", i, fpixels, roi_xmin, roi_i, iii);
+            //SCITBX_ASSERT( roi_fs < (roi_xmax - roi_xmin));
+            //if ( roi_ss >= (roi_ymax - roi_ymin))
+            //  printf("OOPS:  %d, %d, %d, %d, %d\n", i, spixels, roi_ymin, roi_i, jjj);
+            //SCITBX_ASSERT( roi_ss < (roi_ymax - roi_ymin));
+            //min_i = std::min(roi_i, min_i);
+            //max_i = std::max(roi_i, max_i);
+            //if (roi_i < 0)
+            // printf("OOPS: %d %d %d\n", i, iii, jjj);
 
+            //SCITBX_ASSERT(roi_i >= 0);
+            // SCITBX_ASSERT(roi_i < (roi_xmax - roi_xmin + 1)*(roi_ymax - roi_ymin+1) ) ;
             floatimage_roi[roi_i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
 
             /* udpate the derivative images*/
