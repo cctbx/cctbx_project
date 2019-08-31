@@ -64,10 +64,10 @@ class RefineRot:
         for x1, x2, y1, y2 in self.spot_rois:
 
             self.nanoBragg_rois.append(((x1, x2), (y1, y2)))
-            yr, xr = np.indices((y2-y1, x2-x1))
+            yr, xr = np.indices((y2-y1+1, x2-x1+1))
             self.xrel.append(xr)
             self.yrel.append(yr)
-            self.roi_img.append(self.img[y1:y2, x1:x2])
+            self.roi_img.append(self.img[y1:y2+1, x1:x2+1])
 
     def _set_diffBragg_instance(self):
         self.S = SimData()
@@ -80,18 +80,11 @@ class RefineRot:
         self.D.initialize_managers()
 
     def _run_diffBragg_current(self, i_spot):
-        print("SET ROI")
-        print self.nanoBragg_rois[i_spot]
         self.D.region_of_interest = self.nanoBragg_rois[i_spot]
-        print("SET values 0")
         self.D.set_value(0, self.thetaX)
-        print("SET values 1")
         self.D.set_value(1, self.thetaY)
-        print("SET values 2")
         self.D.set_value(2, self.thetaZ)
-        print("Diff Bragging")
         self.D.add_diffBragg_spots()
-        print("Done Diff bragg %d" % i_spot)
 
     def _set_background_plane(self, i_spot):
         xr = self.xrel[i_spot]
@@ -137,46 +130,45 @@ class RefineRot:
 
             self._unpack_params(i_spot)
             self._run_diffBragg_current(i_spot)
-            #self._set_background_plane(i_spot)
-            #self._extract_pixel_data(i_spot)
-            #self._evaluate_averageI()
-            #self._evaluate_log_averageI()
+            self._set_background_plane(i_spot)
+            self._extract_pixel_data(i_spot)
+            self._evaluate_averageI()
+            self._evaluate_log_averageI()
 
-            #Imeas = self.roi_img[i_spot]
+            Imeas = self.roi_img[i_spot]
 
-            #f += (self.model_Lambda - Imeas*self.log_Lambda).sum()
+            f += (self.model_Lambda - Imeas*self.log_Lambda).sum()
 
-            #one_minus_k_over_Lambda = (1. - Imeas / self.model_Lambda)
+            one_minus_k_over_Lambda = (1. - Imeas / self.model_Lambda)
 
-            ## compute gradients for background plane constants a,b,c
-            #xr = self.xrel[i_spot]  # fast scan pixels
-            #yr = self.yrel[i_spot]  # slow scan pixels
-            #g[i_spot] += (xr * one_minus_k_over_Lambda).sum()  # from handwritten notes
-            #g[self.n_spots + i_spot] += (yr * one_minus_k_over_Lambda).sum()
-            #g[self.n_spots*2 + i_spot] += one_minus_k_over_Lambda.sum()
+            # compute gradients for background plane constants a,b,c
+            xr = self.xrel[i_spot]  # fast scan pixels
+            yr = self.yrel[i_spot]  # slow scan pixels
+            g[i_spot] += (xr * one_minus_k_over_Lambda).sum()  # from handwritten notes
+            g[self.n_spots + i_spot] += (yr * one_minus_k_over_Lambda).sum()
+            g[self.n_spots*2 + i_spot] += one_minus_k_over_Lambda.sum()
+            #plt.cla()
+            #plt.subplot(121)
+            #plt.imshow(self.model_Lambda)
+            #plt.subplot(122)
+            #plt.imshow(Imeas)
+            #plt.suptitle("Spot %d / %d" % (i_spot+1, self.n_spots))
+            #plt.draw()
+            #plt.pause(0.7)
 
-            ##plt.cla()
-            ##plt.subplot(121)
-            ##plt.imshow(self.model_Lambda)
-            ##plt.subplot(122)
-            ##plt.imshow(Imeas)
-            ##plt.suptitle("Spot %d / %d" % (i_spot+1, self.n_spots))
-            ##plt.draw()
-            ##plt.pause(0.7)
+            # rotation derivative
+            g[self.n_spots*3] += (one_minus_k_over_Lambda * (self.dRotX)).sum()
+            g[self.n_spots*3+1] += (one_minus_k_over_Lambda * (self.dRotY)).sum()
+            g[self.n_spots*3+2] += (one_minus_k_over_Lambda * (self.dRotZ)).sum()
 
-            ## rotation derivative
-            #g[self.n_spots*3] += (one_minus_k_over_Lambda * (self.dRotX)).sum()
-            #g[self.n_spots*3+1] += (one_minus_k_over_Lambda * (self.dRotY)).sum()
-            #g[self.n_spots*3+2] += (one_minus_k_over_Lambda * (self.dRotZ)).sum()
+            # scale factor derivative
+            g[-1] += ((self.model_bragg_spots) * one_minus_k_over_Lambda).sum()
 
-            ## scale factor derivative
-            #g[-1] += ((self.model_bragg_spots) * one_minus_k_over_Lambda).sum()
-
-        #plt.cla()
-        #plt.title("f=%g"%f)
-        #plt.imshow(self.D.raw_pixels.as_numpy_array(), vmax=200)
-        #plt.draw()
-        #plt.pause(0.2)
+        plt.cla()
+        plt.title("f=%g"%f)
+        plt.imshow(self.D.raw_pixels.as_numpy_array(), vmax=200)
+        plt.draw()
+        plt.pause(2.2)
 
         #self.D.raw_pixels *= 0
         #self.D.initialize_managers()
@@ -185,7 +177,7 @@ class RefineRot:
 
     def print_step(self, message, target):
         print ("%s %10.4f" % (message, target),
-               "[", " ".join(["%9.3f" % a for a in self.x]), "]")
+               "[", " ".join(["%9.6f" % a for a in self.x]), "]")
 
         #f = 0.
         #g = flex.double(self.n)

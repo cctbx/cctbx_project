@@ -12,7 +12,7 @@ def main():
         D.region_of_interest = ((x1, x2), (y1, y2))
         D.add_nanoBragg_spots()
         nano_pixels = D.raw_pixels.as_numpy_array()
-        nano_roi_pixels = nano_pixels[y1:y2, x1:x2]
+        nano_roi_pixels = nano_pixels[y1:y2+1, x1:x2+1]
 
         D.raw_pixels *= 0
         D.region_of_interest = ((x1, x2), (y1, y2))
