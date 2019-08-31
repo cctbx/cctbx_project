@@ -42,12 +42,14 @@ def process_simdata(plot=False):
     z = col((0, 0, 1))
 
     np.random.seed(1)
-    angles = np.random.uniform(0, 0.00000000015, 3)
+    angles = np.random.uniform(0, 0.04, 3)
     RX = x.axis_and_angle_as_r3_rotation_matrix(angles[0], deg=True)
-    RY = y.axis_and_angle_as_r3_rotation_matrix(angles[1], deg=True)
+    RX = x.axis_and_angle_as_r3_rotation_matrix(0.0045, deg=True)
+    RY = y.axis_and_angle_as_r3_rotation_matrix(0.0045, deg=True)
     RZ = z.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
 
-    Areal_approx = RX*RY*RZ*Areal_GrnTru
+    Areal_approx = RY*Areal_GrnTru
+    #Areal_approx = RX*RY*RZ*Areal_GrnTru
 
     if plot:
         from itertools import cycle
