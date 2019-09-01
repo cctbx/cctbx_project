@@ -7590,8 +7590,8 @@ def write_output_files(params,
         crystal_symmetry=tracking_data.crystal_symmetry,
         out=out)
       half_map_data_list_au.append(hm_data_ncs_au)
-       
-      
+
+
   elif (box_ncs_au): # usual.  If box_ncs_au is False, do not mask
 
     map_data_ncs_au=map_data_ncs_au*mask
@@ -7644,7 +7644,7 @@ def write_output_files(params,
       origin=box_mask_ncs_au.origin(),
       all=box_mask_ncs_au.all())
 
-  # Map 
+  # Map
   box_map_ncs_au,box_crystal_symmetry,\
        dummy_smoothed_box_mask_data,dummy_original_box_map_data=cut_out_map(
        soft_mask=tracking_data.params.map_modification.soft_mask,
@@ -7654,7 +7654,7 @@ def write_output_files(params,
        min_point=lower_bounds, max_point=upper_bounds,out=out)
 
   half_map_data_list_au_box=[]
-  for hmdlu in half_map_data_list_au: 
+  for hmdlu in half_map_data_list_au:
     hm_box_map_ncs_au,dummy_box_crystal_symmetry,\
        dummy_smoothed_box_mask_data,dummy_original_box_map_data=cut_out_map(
        soft_mask=tracking_data.params.map_modification.soft_mask,

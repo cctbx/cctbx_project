@@ -2828,7 +2828,7 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     shifted_map_data.resize(flex.grid(new_origin,new_all))
     return shifted_map_data
 
-  def write_ccp4_map(self, 
+  def write_ccp4_map(self,
       map_data=None,
       file_name="box.ccp4",
       shift_back=False,

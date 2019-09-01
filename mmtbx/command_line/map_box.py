@@ -37,7 +37,7 @@ master_phil = libtbx.phil.parse("""
     .type = str
   target_ncs_au_file = None
     .help = File with model indicating which au to choose in extract_unique
-    .short_caption = Input target ncs au file 
+    .short_caption = Input target ncs au file
     .type = str
   half_map_list = None
     .type = strings
@@ -533,7 +533,7 @@ Parameters:"""%h
       print_statistics.make_sub_header("CCP4 map", out=log)
       h_ccp4_map = af.file_content
       h_ccp4_map.show_summary(prefix="  ",out=log)
-      h_map_data = h_ccp4_map.data 
+      h_map_data = h_ccp4_map.data
       half_map_data_list.append(h_map_data)
       half_map_labels_list.append(h_ccp4_map.get_labels())
 
