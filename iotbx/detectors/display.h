@@ -631,8 +631,6 @@ public:
 
   /**
    * Return data in bytes form
-   * @param self The reflection table
-   * @returns The msgpack string
    */
   inline
   boost::python::object as_bytes(){
