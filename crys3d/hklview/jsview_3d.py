@@ -454,10 +454,7 @@ class hklview_3d:
     for hklscene in self.HKLscenes:
       if hklscene.isUsingFOMs():
         continue # already have tooltips for the scene without the associated fom
-      #datval = hklscene.work_array.data_at_first_index(hkl)
-      if id >= hklscene.data.size():
-        continue
-      datval = hklscene.data[id]
+      datval = hklscene.work_array.data_at_first_index(hkl)
       if datval and (not (math.isnan( abs(datval) ) or datval == display.inanval)):
         if hklscene.work_array.is_complex_array():
           ampl = abs(datval)
@@ -632,9 +629,8 @@ class hklview_3d:
     scenearraydata = self.HKLscenes[self.scene_id].data
     matchindices = miller.match_indices(self.HKLscenes[self.scene_id].indices, self.HKLscenes[ibinarray].indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
-    matched_scenarrayidx = matchindices.pairs().column(0)
     #valarray.sort(by_value="packed_indices")
-    import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     #missing = scenearraydata.lone_set( valarray )
     # insert NAN values for reflections in self.miller_array not found in binarray
     #valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices() )
@@ -642,6 +638,7 @@ class hklview_3d:
     #match_valarray = valarray.select( match_valindices.pairs().column(1) )
     #match_valarray.sort(by_value="packed_indices")
     #match_valarray.set_info(binarraydata.info() )
+    # patch the bin array so its sequence matches the scene array
     patched_binarraydata = []
     c = 0
     for b in matchindices.pair_selection(0):
@@ -807,8 +804,9 @@ var MakeHKL_Axis = function()
         self.bindata = self.HKLscenes[ibinarray].ampl
 
     self.nbinvalsboundaries = len(self.binvalsboundaries)
-
-    for ibin in range(self.nbinvalsboundaries):
+    # Un-binnable data is scene data values where the bin array has no corresponding miller index
+    # Just put these in a separate bin and pay attention to the book keeping!
+    for ibin in range(self.nbinvalsboundaries+1): # adding the extra bin for un-binnable data
       colours.append([]) # colours and positions are 3 x size of data()
       positions.append([])
       radii2.append([])
@@ -816,6 +814,8 @@ var MakeHKL_Axis = function()
 
     def data2bin(d):
       for ibin, binval in enumerate(self.binvalsboundaries):
+        if math.isnan(d): # NaN values are un-binnable. Tag them for an additional last bin
+          return self.nbinvalsboundaries
         if (ibin+1) == self.nbinvalsboundaries:
           return ibin
         if d > binval and d <= self.binvalsboundaries[ibin+1]:
@@ -844,10 +844,16 @@ var MakeHKL_Axis = function()
     cntbin = 0
     self.binstrs = []
     self.bin_infotpls = []
-    for ibin in range(self.nbinvalsboundaries):
+    for ibin in range(self.nbinvalsboundaries+1):
       mstr =""
       nreflsinbin = len(radii2[ibin])
-      if (ibin+1) < self.nbinvalsboundaries and nreflsinbin > 0:
+      if nreflsinbin == 0:
+        continue
+      bin2 = float("nan"); bin1= float("nan") # indicates un-binned data
+      if ibin == self.nbinvalsboundaries:
+        mstr= "bin[%d] has %d un-matching reflections with %s in ]%2.3f; %2.3f]" %(cntbin, nreflsinbin, \
+                colstr, bin1, bin2)
+      if ibin < (self.nbinvalsboundaries-1):
         bin1= self.binvalsboundaries[ibin]
         bin2= self.binvalsboundaries[ibin+1]
         if colstr=="dres":
@@ -855,51 +861,51 @@ var MakeHKL_Axis = function()
           bin2= 1.0/self.binvalsboundaries[ibin+1]
         mstr= "bin[%d] has %d reflections with %s in ]%2.3f; %2.3f]" %(cntbin, nreflsinbin, \
                 colstr, bin1, bin2)
-        self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 )) )
-        self.binstrs.append(mstr)
-        self.mprint(mstr, verbose=0)
+      self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 )) )
+      self.binstrs.append(mstr)
+      self.mprint(mstr, verbose=0)
 
-        spherebufferstr += "\n// %s\n" %mstr
-        if self.script_has_tooltips:
-          uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
-          uncrustttips = uncrustttips.replace("\'\'+", "")
-          spherebufferstr += "  ttips.push( %s );" %uncrustttips
-        else:
-          #spherebufferstr += "  ttips.push( [ ] );"
-          ttlst = [-1]
-          ttlst.extend(spbufttips[ibin])
-          spherebufferstr += "  ttips.push( %s );" %str( ttlst )
-        spherebufferstr += """
+      spherebufferstr += "\n// %s\n" %mstr
+      if self.script_has_tooltips:
+        uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
+        uncrustttips = uncrustttips.replace("\'\'+", "")
+        spherebufferstr += "  ttips.push( %s );" %uncrustttips
+      else:
+        #spherebufferstr += "  ttips.push( [ ] );"
+        ttlst = [-1]
+        ttlst.extend(spbufttips[ibin])
+        spherebufferstr += "  ttips.push( %s );" %str( ttlst )
+      spherebufferstr += """
   positions.push( new Float32Array( %s ) );
   colours.push( new Float32Array( %s ) );
   radii.push( new Float32Array( %s ) );
   shapebufs.push( new NGL.%s({
     position: positions[%d],
     color: colours[%d], """ %(str(positions[ibin]), str(colours[ibin]), \
-         str(radii2[ibin]), self.primitivetype, cntbin, \
-         cntbin)
-        if self.primitivetype == "SphereBuffer":
-          spherebufferstr += "\n    radius: radii[%d]," %cntbin
-        spherebufferstr += "\n    picking: ttips[%d]," %cntbin
-        if self.primitivetype == "PointBuffer":
-          spherebufferstr += "\n  }, {pointSize: %1.2f})\n" %self.settings.scale
-        else:
-          if self.high_quality:
-            spherebufferstr += """
+        str(radii2[ibin]), self.primitivetype, cntbin, \
+        cntbin)
+      if self.primitivetype == "SphereBuffer":
+        spherebufferstr += "\n    radius: radii[%d]," %cntbin
+      spherebufferstr += "\n    picking: ttips[%d]," %cntbin
+      if self.primitivetype == "PointBuffer":
+        spherebufferstr += "\n  }, {pointSize: %1.2f})\n" %self.settings.scale
+      else:
+        if self.high_quality:
+          spherebufferstr += """
     })
   );
   """
-          else:
-            spherebufferstr += """
+        else:
+          spherebufferstr += """
     }, { disableImpostor: true
    ,    sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
   );
   """
-        spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n" %cntbin
+      spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n" %cntbin
 
-        if self.binvalsboundaries[ibin] < 0.0:
-          negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
-        cntbin += 1
+      if ibin <self.nbinvalsboundaries and self.binvalsboundaries[ibin] < 0.0:
+        negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
+      cntbin += 1
 
     self.ngl_settings.bin_opacities = str([ "1.0, %d"%e for e in range(cntbin) ])
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
