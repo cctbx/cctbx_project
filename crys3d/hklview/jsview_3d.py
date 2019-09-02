@@ -626,22 +626,31 @@ class hklview_3d:
   def MatchBinArrayToSceneArray(self, ibinarray):
     # match bindata with data(scene_id)
     if self.binscenelabel=="Resolution":
-      return bindata
+      return 1.0/self.scene.dres
     # get the array id that is mapped through an HKLscene id
     binarraydata = self.HKLscenes[ibinarray].data
     scenearraydata = self.HKLscenes[self.scene_id].data
     matchindices = miller.match_indices(self.HKLscenes[self.scene_id].indices, self.HKLscenes[ibinarray].indices )
-    valarray = binarraydata.select( matchindices.pairs().column(1) )
+    matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
+    matched_scenarrayidx = matchindices.pairs().column(0)
     #valarray.sort(by_value="packed_indices")
-    missing = scenearraydata.lone_set( valarray )
+    import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #missing = scenearraydata.lone_set( valarray )
     # insert NAN values for reflections in self.miller_array not found in binarray
-    valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices() )
-    match_valindices = miller.match_indices(scenearray.indices(), valarray.indices() )
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    match_valarray = valarray.select( match_valindices.pairs().column(1) )
-    match_valarray.sort(by_value="packed_indices")
-    match_valarray.set_info(binarraydata.info() )
-    return match_valarray
+    #valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices() )
+    #match_valindices = miller.match_indices(scenearray.indices(), valarray.indices() )
+    #match_valarray = valarray.select( match_valindices.pairs().column(1) )
+    #match_valarray.sort(by_value="packed_indices")
+    #match_valarray.set_info(binarraydata.info() )
+    patched_binarraydata = []
+    c = 0
+    for b in matchindices.pair_selection(0):
+      if b:
+        patched_binarraydata.append(matched_binarray[c])
+        c +=1
+      else:
+        patched_binarraydata.append(float("nan"))
+    return flex.double(patched_binarraydata)
 
 
   def DrawNGLJavaScript(self, blankscene=False):
