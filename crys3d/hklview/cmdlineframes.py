@@ -361,7 +361,7 @@ class HKLViewFrame() :
     self.viewer.HKLscenesdict = {}
     self.viewer.sceneisdirty = True
     if self.viewer.miller_array:
-      self.viewer.DrawNGLJavaScript(blankscene=True)
+      self.viewer.DrawNGLJavaScript( blankscene=True)
     self.viewer.miller_array = None
 
 
@@ -449,11 +449,12 @@ class HKLViewFrame() :
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
-      msg = self.viewer.update_settings(diff_phil, phl)
+      msg, self.params.NGL_HKLviewer = self.viewer.update_settings(diff_phil, phl)
+      # parameters might have been changed. So update self.currentphil accordingly
+      self.currentphil = self.master_phil.format(python_object = self.params)
       self.mprint( msg, verbose=1)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.NewFileLoaded = False
-
       if (self.viewer.miller_array is None) :
         self.mprint( NOREFLDATA, True)
         return False
@@ -796,7 +797,8 @@ class HKLViewFrame() :
 
   def SetSceneNbins(self, nbins):
     self.params.NGL_HKLviewer.nbins = nbins
-    self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = str([ "1.0, %d"%e for e in range(nbins) ])
+    #self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = str([ "1.0, %d"%e for e in range(nbins) ])
+    self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = str([ (1.0, e) for e in range(nbins) ])
     self.update_settings()
 
 

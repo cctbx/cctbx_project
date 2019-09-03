@@ -205,6 +205,7 @@ class NGL_HKLViewer(QWidget):
     if self.zmq_context:
       try:
         msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
+        nan = float("nan") # workaround for "evaluating" any NaN values in the messages received
         msgstr = msg.decode()
         self.infodict = eval(msgstr)
         #print("received from cctbx: " + str(self.infodict))
@@ -437,7 +438,7 @@ class NGL_HKLViewer(QWidget):
       self.NGL_HKL_command("NGL_HKLviewer.bin_scene_label = %s" % bin_scene_label )
       bin_opacitieslst = []
       for i in range(self.nbins):
-        bin_opacitieslst.append("1.0, %d" %i)
+        bin_opacitieslst.append((1.0, i)) #   ("1.0, %d" %i)
       self.bin_opacities = str(bin_opacitieslst)
       self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
       #self.OpaqueAllCheckbox.setTristate(false)
@@ -449,10 +450,10 @@ class NGL_HKLViewer(QWidget):
     self.binstable_isready = False
     for binopacity in bin_opacitieslst:
       if not allalpha:
-        alpha = float(binopacity.split(",")[0])
+        alpha = binopacity[0]  #float(binopacity.split(",")[0])
       else:
         alpha = allalpha
-      bin = int(binopacity.split(",")[1])
+      bin = binopacity[1]  #int(binopacity.split(",")[1])
       item = QTableWidgetItem()
       item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
       if alpha < 0.5:
@@ -471,7 +472,7 @@ class NGL_HKLViewer(QWidget):
     nbins = len(bin_opacitieslst)
     sum = 0
     for binopacity in bin_opacitieslst:
-      sum += float(binopacity.split(",")[0])
+      sum += binopacity[0]  # float(binopacity.split(",")[0])
     if sum >= nbins:
       self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
     if sum == 0:
@@ -481,22 +482,22 @@ class NGL_HKLViewer(QWidget):
 
 
   def onBinsTableItemChanged(self, item):
-    row = item.row()
+    bin = item.row()
     column = item.column()
     try:
       if item.checkState()==Qt.Unchecked:
-        newval = 0
+        alpha = 0.0
       else:
-        newval = 1.0
+        alpha = 1.0
       if column==3 and self.binstable_isready: # changing opacity
-        assert (newval <= 1.0 and newval >= 0.0)
+        #assert (alpha <= 1.0 and alpha >= 0.0)
         bin_opacitieslst = eval(self.bin_opacities)
-        bin_opacitieslst[row] = str(newval) + ', ' + str(row)
+        bin_opacitieslst[bin] = (alpha, bin)
         self.bin_opacities = str(bin_opacitieslst)
         self.SetOpaqueAll()
         self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
     except Exception as e:
-      print(str(e))
+      print( str(e)  +  traceback.format_exc(limit=10) )
       #self.binstable.currentItem().setText( self.currentSelectedBinsTableVal)
 
 
@@ -515,10 +516,10 @@ class NGL_HKLViewer(QWidget):
     self.binstable_isready = False
     if self.OpaqueAllCheckbox.isChecked():
       for i in range(nbins):
-        bin_opacitieslst.append("1.0, %d" %i)
+        bin_opacitieslst.append((1.0, i))  #  ("1.0, %d" %i)
     else:
       for i in range(nbins):
-        bin_opacitieslst.append("0.0, %d" %i)
+        bin_opacitieslst.append((0.0, i))  #   ("0.0, %d" %i)
     self.bin_opacities = str(bin_opacitieslst)
     self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
     self.binstableitemchanges = False
@@ -1014,5 +1015,4 @@ if __name__ == '__main__':
       guiobj.cctbxproc.terminate()
     sys.exit(app.exec_())
   except Exception as e:
-    errmsg = str(e)
-    print( errmsg  +  traceback.format_exc(limit=10) )
+    print( str(e)  +  traceback.format_exc(limit=10) )

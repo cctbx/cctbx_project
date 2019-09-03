@@ -161,7 +161,7 @@ def MakeTtips(hklscene, j):
 class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
-    self.ngl_settings = NGLsettings()
+    self.ngl_settings = None #NGLsettings()
     self.miller_array = None
     self.symops = []
     self.sg = None
@@ -305,7 +305,8 @@ class hklview_3d:
       self.guisocket.send( str(mydict).encode("utf-8") )
 
 
-  def update_settings(self, diff_phil, currentphil) :
+  def update_settings(self, diff_phil, curphilparam) :
+    self.ngl_settings = curphilparam.viewer.NGL
     if has_phil_path(diff_phil, "filename") \
       or has_phil_path(diff_phil, "spacegroup_choice") \
       or has_phil_path(diff_phil, "merge_data") \
@@ -332,36 +333,33 @@ class hklview_3d:
                 has_phil_path(diff_phil, "expand_to_p1") )\
       or has_phil_path(diff_phil, "show_anomalous_pairs") \
       ):
-        if currentphil.viewer.slice_mode and self.settings.inbrowser:
+        if curphilparam.viewer.slice_mode and self.settings.inbrowser:
           self.settings.inbrowser = False
         self.sceneisdirty = True
-        self.ConstructReciprocalSpace(currentphil, merge=self.merge)
+        self.ConstructReciprocalSpace(curphilparam, merge=self.merge)
     msg = ""
     if self.scene_id >=0:
       self.scene = self.HKLscenes[self.scene_id]
       self.DrawNGLJavaScript()
       msg = "Rendered %d reflections\n" % self.scene.points.size()
       if has_phil_path(diff_phil, "mouse_sensitivity"):
-        self.SetTrackBallRotateSpeed(currentphil.viewer.NGL.mouse_sensitivity)
+        self.SetTrackBallRotateSpeed(curphilparam.viewer.NGL.mouse_sensitivity)
       if has_phil_path(diff_phil, "normal_clip_plane"):
-        self.clip_plane_normal_to_HKL_vector(currentphil.normal_clip_plane.h, currentphil.normal_clip_plane.k,
-            currentphil.normal_clip_plane.l, currentphil.normal_clip_plane.hkldist,
-            currentphil.normal_clip_plane.clipwidth, currentphil.viewer.NGL.fixorientation)
-
-      if currentphil.viewer.slice_mode:
-        if currentphil.viewer.slice_axis=="h": hkl = [1,0,0]
-        if currentphil.viewer.slice_axis=="k": hkl = [0,1,0]
-        if currentphil.viewer.slice_axis=="l": hkl = [0,0,1]
+        self.clip_plane_normal_to_HKL_vector(curphilparam.normal_clip_plane.h, curphilparam.normal_clip_plane.k,
+            curphilparam.normal_clip_plane.l, curphilparam.normal_clip_plane.hkldist,
+            curphilparam.normal_clip_plane.clipwidth, curphilparam.viewer.NGL.fixorientation)
+      if curphilparam.viewer.slice_mode:
+        if curphilparam.viewer.slice_axis=="h": hkl = [1,0,0]
+        if curphilparam.viewer.slice_axis=="k": hkl = [0,1,0]
+        if curphilparam.viewer.slice_axis=="l": hkl = [0,0,1]
         self.clip_plane_normal_to_HKL_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
-                         fixorientation = currentphil.viewer.NGL.fixorientation)
-
-    if self.settings.inbrowser and not currentphil.viewer.slice_mode:
+                         fixorientation = curphilparam.viewer.NGL.fixorientation)
+    if self.settings.inbrowser and not curphilparam.viewer.slice_mode:
       msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
-    msg += self.SetOpacities(currentphil.viewer.NGL.bin_opacities )
-
-      #self.mprint(currentphil.viewer.NGL.bin_opacities )
-    return msg
+    msg += self.SetOpacities(curphilparam.viewer.NGL.bin_opacities )
+      #self.mprint(curphilparam.viewer.NGL.bin_opacities )
+    return msg, curphilparam
 
 
   def set_miller_array(self, scene_id=None, merge=None, details=""):
@@ -484,14 +482,14 @@ class hklview_3d:
     return self.hkl_scenes_info[idx][6], self.hkl_scenes_info[idx][7]
 
 
-  def ConstructReciprocalSpace(self, currentphil, merge=None):
+  def ConstructReciprocalSpace(self, curphilparam, merge=None):
     self.mprint("Constructing HKL scenes", verbose=0)
     #self.miller_array = self.match_valarrays[self.scene_id]
     #self.miller_array = self.proc_arrays[self.scene_id]
-    self.HKLscenesKey = (currentphil.filename,
-                         currentphil.spacegroup_choice,
-                         currentphil.using_space_subgroup,
-                         currentphil.merge_data,
+    self.HKLscenesKey = (curphilparam.filename,
+                         curphilparam.spacegroup_choice,
+                         curphilparam.using_space_subgroup,
+                         curphilparam.merge_data,
                          self.settings.expand_anomalous,
                          self.settings.expand_to_p1,
                          self.settings.inbrowser,
@@ -907,7 +905,8 @@ var MakeHKL_Axis = function()
         negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
       cntbin += 1
 
-    self.ngl_settings.bin_opacities = str([ "1.0, %d"%e for e in range(cntbin) ])
+    #self.ngl_settings.bin_opacities = str([ "1.0, %d"%e for e in range(cntbin) ])
+    self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,
                           "bin_data_label": colstr
@@ -1881,8 +1880,8 @@ mysocket.onmessage = function (e)
       self.ngl_settings.bin_opacities = bin_opacities_str
       bin_opacitieslst = eval(self.ngl_settings.bin_opacities)
       for binopacity in bin_opacitieslst:
-        alpha = float(binopacity.split(",")[0])
-        bin = int(binopacity.split(",")[1])
+        alpha = binopacity[0] # float(binopacity.split(",")[0])
+        bin = binopacity[1] # int(binopacity.split(",")[1])
         retstr += self.set_opacity(bin, alpha)
       self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities } )
     return retstr
@@ -2150,9 +2149,9 @@ def reset_NGLsettings():
   """
   Reset NGL settings to their default values as specified in the phil definition string
   """
-  global NGLmaster_phil
-  global ngl_philstr
-  global NGLparams
+  #global NGLmaster_phil
+  #global ngl_philstr
+  #global NGLparams
   NGLparams = NGLmaster_phil.fetch(source = libtbx.phil.parse( ngl_philstr) ).extract()
 
 
@@ -2160,7 +2159,7 @@ def NGLsettings():
   """
   Get a global phil parameters object containing some NGL settings
   """
-  global NGLparams
+  #global NGLparams
   return NGLparams
 
 
