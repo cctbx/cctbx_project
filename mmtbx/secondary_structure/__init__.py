@@ -176,6 +176,9 @@ class manager(object):
                 verbose=-1,
                 alpha_rise_tolerance=0.5,
                 beta_rise_tolerance=0.5,
+                # alpha.dot_min_single = 0.3 alpha.dot_min = 0.9
+                # beta.dot_min_single=0.5 beta.dot_min = 0.75 beta.max_sheet_ca_ca_dist=6.
+                other_from_ca_params = [0.3, 0.9, 0.5, 0.75, 6.],
                 log=sys.stdout):
     self.pdb_hierarchy = pdb_hierarchy
     self.mon_lib_srv = mon_lib_srv
@@ -184,8 +187,9 @@ class manager(object):
     self.grm = geometry_restraints_manager
     self.sec_str_from_pdb_file = sec_str_from_pdb_file
     self.params = sec_str_master_phil.extract()
-    self.alpha_rise_tolerance = alpha_rise_tolerance,
-    self.beta_rise_tolerance = beta_rise_tolerance,
+    self.alpha_rise_tolerance = alpha_rise_tolerance
+    self.beta_rise_tolerance = beta_rise_tolerance
+    self.other_from_ca_params = other_from_ca_params
     if params is not None:
       self.params.secondary_structure = params
 
@@ -352,7 +356,13 @@ class manager(object):
       fss = find_ss_from_ca.find_secondary_structure(
           hierarchy=pdb_hierarchy,
           args=["alpha.rise_tolerance=%f" % self.alpha_rise_tolerance,
-                "beta.rise_tolerance=%f" % self.beta_rise_tolerance],
+                "beta.rise_tolerance=%f" % self.beta_rise_tolerance,
+                "alpha.dot_min_single=%f" % self.other_from_ca_params[0],
+                "alpha.dot_min=%f" % self.other_from_ca_params[1],
+                "beta.dot_min_single=%f" % self.other_from_ca_params[2],
+                "beta.dot_min=%f" % self.other_from_ca_params[3],
+                "beta.max_sheet_ca_ca_dist=%f" % self.other_from_ca_params[4],
+                ],
           ss_by_chain=self.params.secondary_structure.ss_by_chain,
           max_rmsd=self.params.secondary_structure.max_rmsd,
           use_representative_chains=\
