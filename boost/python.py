@@ -185,44 +185,6 @@ class gcc_version(object):
       return "GCC, it is not"
 
 
-class injector(object):
-  '''Deprecated function. Instead of
-
-  class CrystalExt(boost.python.injector, Crystal):
-
-  please use
-
-  @boost.python.inject_into(Crystal)
-  class _(object):
-  '''
-  class __metaclass__(meta_class):
-
-    def __init__(self, name, bases, dict):
-      import warnings
-      warnings.warn(
-        "boost.python.injector is deprecated and does not work on Python 3. "
-        "Please see https://github.com/cctbx/cctbx_project/pull/386 for more information.",
-        DeprecationWarning,
-        stacklevel=2
-      )
-      if (len(bases) > 1):
-        # bases[0] is this injector
-        target = bases[1] # usually a Boost.Python class
-        def setattr_from_dict(d):
-          for k,v in d.items():
-            if (k not in (
-                  "__init__",
-                  "__del__",
-                  "__module__",
-                  "__file__",
-                  "__dict__")):
-              if (k != "__doc__" or v is not None):
-                setattr(target,k,v)
-        setattr_from_dict(dict)
-        for b in bases[2:]: # usually mix-in classes, if any
-          setattr_from_dict(b.__dict__)
-      return type.__init__(self, name, (), {})
-
 def inject(target_class, *mixin_classes):
    '''Add entries from python class dictionaries to a boost extension class.
 
