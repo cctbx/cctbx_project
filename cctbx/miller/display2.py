@@ -281,12 +281,12 @@ class scene(object):
         data_as_float = flex.double(data.size(), 0.0)
         data_as_float.set_selected(data==True, flex.double(data.size(), 1.0))
         data = data_as_float
-        self.data = data.deep_copy()
+        self.data = data #.deep_copy()
       else :
         if isinstance(data, flex.double):
-          self.data = data.deep_copy()
+          self.data = data #.deep_copy()
         elif isinstance(data, flex.complex_double):
-          self.data = data.deep_copy()
+          self.data = data #.deep_copy()
           self.ampl = flex.abs(data)
           self.phases = flex.arg(data) * 180.0/math.pi
           # purge nan values from array to avoid crash in fmod_positive()
@@ -515,7 +515,7 @@ class scene(object):
         points = uc.reciprocal_space_vector(new_indices) * 100
         self.points.extend(points)
         n_sys_absent = new_indices.size()
-        self.radii.extend(flex.double(new_indices.size(), self.max_radius))
+        self.radii.extend(flex.double(new_indices.size(), self.max_radius/2.0))
         self.indices.extend(new_indices)
         self.missing_flags.extend(flex.bool(new_indices.size(), False))
         self.sys_absent_flags.extend(flex.bool(new_indices.size(), True))

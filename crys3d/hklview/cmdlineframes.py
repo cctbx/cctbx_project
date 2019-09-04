@@ -114,7 +114,7 @@ mafom = miller.array(miller.set(xs, mi2),
                     flex.double( [0.0, 0.1, 0.25, 0.35, 0.4, 0.5, 0.6, 0.75, 1.0 ] ) )
 mafom.set_info(miller.array_info(source="artificial file", labels=["FOM"]))
 
-mi3 = flex.miller_index([ (1,-2,3), (0,0,-4), (0, 1, 2), (1, 0, 2), (-1, 1, -2), (-2, 1, 0) , (1, 0, -2), (0, 0, 2) ] )
+mi3 = flex.miller_index([ (1, 0, 2), (-1, 1, -2), (-2, 1, 0) , (1, 0, -2), (1,-2,3), (0,0,-4), (0, 1, 2), (0, 0, 2) ] )
 ma3 = miller.array(miller.set(xs, mi3), data=flex.double( [22.429, 28.635, 3.328, 3.738, 24.9, 14.521, 3.738, 19.92] ) )
 ma3.set_info(miller.array_info(source="artificial file", labels=["Foo"]))
 
@@ -339,14 +339,19 @@ class HKLViewFrame() :
 
   def zmq_listen(self):
     while not self.STOP:
-      philstr = self.guisocket.recv()
-      philstr = str(philstr)
-      self.mprint("Received phil string:\n" + philstr, verbose=1)
-      new_phil = libtbx.phil.parse(philstr)
-      self.update_settings(new_phil)
-      #print( "in zmq listen")
-      time.sleep(0.1)
+      try:
+        philstr = self.guisocket.recv()
+        philstr = str(philstr)
+        self.mprint("Received phil string:\n" + philstr, verbose=1)
+        new_phil = libtbx.phil.parse(philstr)
+        self.update_settings(new_phil)
+        #print( "in zmq listen")
+        time.sleep(0.1)
+      except Exception as e:
+        self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
+
     del self.guisocket
+    self.mprint( "Exiting zmq_listen() thread", 1)
 
 
   def ResetPhilandViewer(self, extraphil=None):
@@ -770,9 +775,10 @@ class HKLViewFrame() :
       binvals = list( 1.0/flex.double(binvals) )
     else:
       if self.viewer.binscenelabel=="Resolution":
-        uc = self.viewer.miller_array.unit_cell()
-        indices = self.viewer.miller_array.indices()
-        dmaxmin = self.viewer.miller_array.d_max_min()
+        warray = self.viewer.HKLscenes[int(self.viewer.scene_id)].work_array
+        uc = warray.unit_cell()
+        indices = warray.indices()
+        dmaxmin = warray.d_max_min()
         binning = miller.binning( uc, nbins, indices, dmaxmin[0], dmaxmin[1] )
         binvals = [ binning.bin_d_range(n)[0]  for n in binning.range_all() ]
         binvals = [ e for e in binvals if e != -1.0] # delete dummy limit

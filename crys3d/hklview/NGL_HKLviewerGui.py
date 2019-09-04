@@ -893,7 +893,7 @@ class NGL_HKLViewer(QWidget):
     self.binstable.setHorizontalHeaderLabels(labels)
     self.binstable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.bindata_labeltxt = QLabel()
-    self.bindata_labeltxt.setText("Data binned:")
+    self.bindata_labeltxt.setText("Binning according to:")
     self.Nbins_spinBox = QSpinBox()
     self.Nbins_spinBox.setSingleStep(1)
     self.Nbins_spinBox.setRange(1, 40)

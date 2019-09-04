@@ -452,7 +452,14 @@ class hklview_3d:
     for hklscene in self.HKLscenes:
       if hklscene.isUsingFOMs():
         continue # already have tooltips for the scene without the associated fom
+      datval = None
+      if id >= hklscene.data.size():
+        continue
+      if (hklscene.sys_absent_flags[id] or hklscene.missing_flags[id]):
+        continue
       datval = hklscene.work_array.data_at_first_index(hkl)
+      #else:
+      #  datval = hklscene.data[id]
       if datval and (not (math.isnan( abs(datval) ) or datval == display.inanval)):
         if hklscene.work_array.is_complex_array():
           ampl = abs(datval)
@@ -1937,12 +1944,15 @@ mysocket.onmessage = function (e)
     if P1:
       msgtype += "P1"
       unique_rot_ops = self.symops[ 0 : self.sg.order_p() ]
-      retmsg = "expanding to P1 in browser\n"
+      retmsg = "Expanding to P1 in browser\n"
+      if not self.miller_array.is_unique_set_under_symmetry():
+        retmsg += "Not all reflections are in the same asymmetric unit in reciprocal space.\n"
+        retmsg += "Some reflections might be displayed on top of one another.\n"
     else:
       unique_rot_ops = [ self.symops[0] ] # first one is the identity matrix
     if friedel_mate and not self.miller_array.anomalous_flag():
       msgtype += "Friedel"
-      retmsg = "expanding Friedel mates in browser\n"
+      retmsg = "Expanding Friedel mates in browser\n"
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     for i, symop in enumerate(unique_rot_ops):
       RotMx = matrix.sqr( symop.r().as_double())
