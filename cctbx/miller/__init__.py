@@ -4111,7 +4111,11 @@ class array(set):
       d_mid = fsc_curve.d[i_mid]
       if(i_mid is not None):
         i_min = i_mid-5
+        if i_min < 0:
+          i_min = 0
         i_max = i_mid+6
+        if i_max > len(fsc_curve.fsc):
+          i_max = len(fsc_curve.fsc) - 1
         on_slope=True
         if(fsc_cutoff>0.): # does not have to be on slope around fsc_cutoff=0
           on_slope = [
