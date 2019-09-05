@@ -658,13 +658,17 @@ void set_box_with_symmetry(
           int kk = scitbx::math::mod_positive(
             static_cast<int>(grid_node_frac_rt[2]*a[2]), static_cast<int>(a[2]));
           // Using max avoids overwriting set non-zero values with zeros from the box
+
+          //if(std::abs(map_data_to(ii,jj,kk)) < 0.1 && std::abs(map_data_to(ii,jj,kk))>0.1 ) {
+          //  map_data_to(ii,jj,kk) = map_data_from(p,q,r);
+          //}
           map_data_to(ii,jj,kk) = std::max(
             map_data_from(p,q,r), map_data_to(ii,jj,kk));
         }
       }
     }
   }
-  map_box_average(map_data_to, 1, 1.e-4);
+  map_box_average(map_data_to, 1, 0.1); // This doesn't seem to do much
 }
 
 template <typename DataType1, typename DataType2>
