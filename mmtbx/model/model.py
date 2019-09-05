@@ -3032,7 +3032,7 @@ class manager(object):
       rm = rm.select(not_hd_sel)
     if(use_hydrogens is None):
       if(self.riding_h_manager is not None or
-         scattering_table in ["n_gaussian","wk1995", "it1992"]):
+         scattering_table in ["n_gaussian","wk1995", "it1992", "electron"]):
         not_hd_sel = ~hd_selection
         ph = ph.select(not_hd_sel)
         rm = rm.select(not_hd_sel)
