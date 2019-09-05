@@ -5,6 +5,11 @@ import scitbx.graph.tardy_tree
 import mmtbx.monomer_library.rotamer_utils
 
 def tardy_model_one_residue(residue, mon_lib_srv, log = None):
+  # FIXME atom_group objects have no id_str
+  def format_atom_group_id_str(residue):
+    assert (type(residue).__name__ == "atom_group")
+    return '"%3s %s%4s%s"' % (residue.resname, residue.parent().parent().id,
+      residue.parent().resseq, residue.parent().icode)
   if(log is None): log = sys.stdout
   comp_comp_id = mon_lib_srv.get_comp_comp_id_direct(comp_id=residue.resname)
   # create external clusters to address planes with missing atoms
@@ -27,6 +32,12 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
   matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
     residue.resname].match_atom_names(atom_names=atom_names)
   mon_lib_atom_names = matched_atom_names.mon_lib_names()
+  if(mon_lib_atom_names.count(None)>1):
+    msg="Canot create TARDY: bad atom names in '%s %s':"%(
+      residue.resname, residue.resid())
+    print(msg, file=log)
+    print(list(residue.atoms().extract_name()), file=log)
+    return None
   #
   rotamer_info = comp_comp_id.rotamer_info()
   bonds_to_omit = mmtbx.monomer_library.rotamer_utils.extract_bonds_to_omit(
@@ -61,11 +72,6 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
     external_edge_list = external_edge_list,
     external_clusters  = external_clusters,
     return_none_if_unexpected_degrees_of_freedom = True)
-  # FIXME atom_group objects have no id_str
-  def format_atom_group_id_str(residue):
-    assert (type(residue).__name__ == "atom_group")
-    return '"%3s %s%4s%s"' % (residue.resname, residue.parent().parent().id,
-      residue.parent().resseq, residue.parent().icode)
   if(tardy_model is None):
     mes = "TARDY: cannot create tardy model for: %s (corrupted residue). Skipping it."
     if (hasattr(residue, "id_str")):
