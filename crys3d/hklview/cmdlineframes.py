@@ -290,8 +290,6 @@ class HKLViewFrame() :
   def __init__ (self, *args, **kwds) :
     self.valid_arrays = []
     self.spacegroup_choices = []
-    self.array_infostrs = []
-    self.array_infotpls = []
     self.procarrays = []
     self.merge_answer = [None]
     self.dmin = -1
@@ -360,6 +358,7 @@ class HKLViewFrame() :
     if extraphil:
       self.currentphil = self.currentphil.fetch(source = extraphil)
     self.params = self.currentphil.fetch().extract()
+    self.viewer.viewerparams = self.params.NGL_HKLviewer.viewer
     self.viewer.symops = []
     self.viewer.sg = None
     self.viewer.proc_arrays = []
@@ -426,11 +425,14 @@ class HKLViewFrame() :
 
       if view_3d.has_phil_path(diff_phil, "scene_id") \
        or view_3d.has_phil_path(diff_phil, "merge_data") \
+       or view_3d.has_phil_path(diff_phil, "show_missing") \
+       or view_3d.has_phil_path(diff_phil, "show_only_missing") \
+       or view_3d.has_phil_path(diff_phil, "show_systematic_absences") \
        or view_3d.has_phil_path(diff_phil, "nbins") \
        or view_3d.has_phil_path(diff_phil, "bin_scene_label") \
        or view_3d.has_phil_path(diff_phil, "scene_bin_thresholds"):
         #import code; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-        if self.set_scene(phl.scene_id):
+        if self.set_scene(phl.viewer.scene_id):
           self.set_scene_bin_thresholds(binvals=phl.scene_bin_thresholds,
                                          bin_scene_label=phl.bin_scene_label,
                                          nbins=phl.nbins )
@@ -587,7 +589,7 @@ class HKLViewFrame() :
     if self.viewer.miller_array is None or \
       self.params.NGL_HKLviewer.using_space_subgroup:
       return
-    current_miller_array_idx = self.viewer.hkl_scenes_info[self.viewer.scene_id][1]
+    current_miller_array_idx = self.viewer.hkl_scenes_info[self.params.NGL_HKLviewer.viewer.scene_id][1]
     matching_valid_array = self.valid_arrays[ current_miller_array_idx ]
     from cctbx.sgtbx.subgroups import subgroups
     from cctbx import sgtbx
@@ -654,7 +656,7 @@ class HKLViewFrame() :
       from iotbx.reflection_file_reader import any_reflection_file
       self.viewer.isnewfile = True
       #self.params.NGL_HKLviewer.mergedata = None
-      self.viewer.scene_id = None
+      self.params.NGL_HKLviewer.viewer.scene_id = None
       self.viewer.colour_scene_id = None
       self.viewer.radii_scene_id = None
       self.viewer.match_valarrays = []
@@ -674,8 +676,8 @@ class HKLViewFrame() :
         self.mprint(to_str(e))
         arrays = []
       valid_arrays = []
-      self.array_infostrs = []
-      self.array_infotpls = []
+      self.viewer.array_infostrs = []
+      self.viewer.array_infotpls = []
       for array in arrays :
         #if array.is_hendrickson_lattman_array() :
         #  continue
@@ -685,12 +687,12 @@ class HKLViewFrame() :
           self.mprint('Ignoring miller array \"%s\" of %s' \
             %(array.info().label_string(), type(array.data()[0]) ) )
           continue
-        self.array_infostrs.append( ArrayInfo(array, self.mprint).infostr )
-        self.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
+        self.viewer.array_infostrs.append( ArrayInfo(array, self.mprint).infostr )
+        self.viewer.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
       self.mprint("Miller arrays in this file:")
-      for e in self.array_infostrs:
+      for e in self.viewer.array_infostrs:
         self.mprint("%s" %e)
       self.NewFileLoaded = True
       if (len(valid_arrays) == 0):
@@ -702,7 +704,7 @@ class HKLViewFrame() :
         if (set_array):
           self.set_miller_array()
         mydict = { "info": self.infostr,
-                   "array_infotpls": self.array_infotpls,
+                   "array_infotpls": self.viewer.array_infotpls,
                    "bin_infotpls": self.viewer.bin_infotpls,
                    "html_url": self.viewer.url,
                    "merge_data": self.params.NGL_HKLviewer.merge_data,
@@ -775,11 +777,11 @@ class HKLViewFrame() :
       binvals = list( 1.0/flex.double(binvals) )
     else:
       if self.viewer.binscenelabel=="Resolution":
-        warray = self.viewer.HKLscenes[int(self.viewer.scene_id)].work_array
+        warray = self.viewer.HKLscenes[int(self.params.NGL_HKLviewer.viewer.scene_id)].work_array
+        dres = self.viewer.HKLscenes[int(self.params.NGL_HKLviewer.viewer.scene_id)].dres
         uc = warray.unit_cell()
-        indices = warray.indices()
-        dmaxmin = warray.d_max_min()
-        binning = miller.binning( uc, nbins, indices, dmaxmin[0], dmaxmin[1] )
+        indices = self.viewer.HKLscenes[int(self.params.NGL_HKLviewer.viewer.scene_id)].indices
+        binning = miller.binning( uc, nbins, indices, max(dres), min(dres) )
         binvals = [ binning.bin_d_range(n)[0]  for n in binning.range_all() ]
         binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
         binvals = list( 1.0/flex.double(binvals) )
@@ -836,7 +838,7 @@ class HKLViewFrame() :
 
 
   def SetScene(self, scene_id):
-    self.params.NGL_HKLviewer.scene_id = scene_id
+    self.params.NGL_HKLviewer.viewer.scene_id = scene_id
     self.update_settings()
 
 
@@ -997,8 +999,6 @@ masterphilstr = """
 NGL_HKLviewer {
   filename = None
     .type = path
-  scene_id = None
-    .type = int
   merge_data = False
     .type = bool
   spacegroup_choice = None
@@ -1031,6 +1031,8 @@ NGL_HKLviewer {
   tooltips_in_script = False
     .type = bool
   viewer {
+    scene_id = None
+      .type = int
     %s
     NGL {
       %s

@@ -771,7 +771,6 @@ class NGL_HKLViewer(QWidget):
   clipwidth = %s
 }
   NGL_HKLviewer.viewer.NGL.fixorientation = %s
-
       """ %(self.hvecval, self.kvecval, self.lvecval, self.hkldistval, self.clipwidthval, \
                               str(self.fixedorientcheckbox.isChecked()) )
       self.NGL_HKL_command(philstr)
@@ -811,7 +810,7 @@ class NGL_HKLViewer(QWidget):
 
 
   def onMillerComboSelchange(self, i):
-    self.NGL_HKL_command("NGL_HKLviewer.scene_id = %d" %i)
+    self.NGL_HKL_command("NGL_HKLviewer.viewer.scene_id = %d" %i)
     #self.MillerComboBox.setCurrentIndex(i)
     if self.MillerComboBox.currentText():
       self.functionTabWidget.setEnabled(True)

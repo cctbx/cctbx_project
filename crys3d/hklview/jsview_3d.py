@@ -162,6 +162,7 @@ class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
     self.ngl_settings = None #NGLsettings()
+    self.viewerparams = None
     self.miller_array = None
     self.symops = []
     self.sg = None
@@ -178,7 +179,7 @@ class hklview_3d:
     self.binscenelabel = "Resolution"
     self.colour_scene_id = None
     self.radii_scene_id = None
-    self.scene_id = None
+    #self.scene_id = None
     self.rotation_mx = matrix.identity(3)
     self.rot_recip_zvec = None
     self.rot_zvec = None
@@ -225,6 +226,8 @@ class hklview_3d:
     self.sceneisdirty = True
     self.hkl_scenes_info = []
     self.match_valarrays = []
+    self.array_infostrs = []
+    self.array_infotpls = []
     self.binstrs = []
     self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
@@ -307,6 +310,7 @@ class hklview_3d:
 
   def update_settings(self, diff_phil, curphilparam) :
     self.ngl_settings = curphilparam.viewer.NGL
+    self.viewerparams = curphilparam.viewer
     if has_phil_path(diff_phil, "filename") \
       or has_phil_path(diff_phil, "spacegroup_choice") \
       or has_phil_path(diff_phil, "merge_data") \
@@ -338,8 +342,8 @@ class hklview_3d:
         self.sceneisdirty = True
         self.ConstructReciprocalSpace(curphilparam, merge=self.merge)
     msg = ""
-    if self.scene_id >=0:
-      self.scene = self.HKLscenes[self.scene_id]
+    if self.viewerparams.scene_id >=0:
+      self.scene = self.HKLscenes[self.viewerparams.scene_id]
       self.DrawNGLJavaScript()
       msg = "Rendered %d reflections\n" % self.scene.points.size()
       if has_phil_path(diff_phil, "mouse_sensitivity"):
@@ -364,10 +368,10 @@ class hklview_3d:
 
   def set_miller_array(self, scene_id=None, merge=None, details=""):
     if scene_id is not None:
-      self.scene_id = scene_id
-    if self.scene_id >= 0 and self.HKLscenes:
-      self.miller_array = self.HKLscenes[self.scene_id].miller_array
-      self.scene = self.HKLscenes[self.scene_id]
+      self.viewerparams.scene_id = scene_id
+    if self.viewerparams and self.viewerparams.scene_id >= 0 and self.HKLscenes:
+      self.miller_array = self.HKLscenes[self.viewerparams.scene_id].miller_array
+      self.scene = self.HKLscenes[self.viewerparams.scene_id]
     self.merge = merge
     if (self.miller_array is None):
       return
@@ -631,8 +635,8 @@ class hklview_3d:
       return 1.0/self.scene.dres
     # get the array id that is mapped through an HKLscene id
     binarraydata = self.HKLscenes[ibinarray].data
-    scenearraydata = self.HKLscenes[self.scene_id].data
-    matchindices = miller.match_indices(self.HKLscenes[self.scene_id].indices, self.HKLscenes[ibinarray].indices )
+    scenearraydata = self.HKLscenes[self.viewerparams.scene_id].data
+    matchindices = miller.match_indices(self.HKLscenes[self.viewerparams.scene_id].indices, self.HKLscenes[ibinarray].indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
     #valarray.sort(by_value="packed_indices")
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -659,7 +663,7 @@ class hklview_3d:
     if not self.scene or not self.sceneisdirty:
       return
     if self.miller_array is None :
-      self.mprint( "An HKL scene must be selected for rendering reflections" )
+      self.mprint( "Select an HKL scene to display reflections" )
       return
     self.mprint("Composing JavaScript...")
 
@@ -687,7 +691,10 @@ class hklview_3d:
     Lstararrowtxt  = roundoff( [self.unit_l_axis[0][0]*l2, self.unit_l_axis[0][1]*l2, self.unit_l_axis[0][2]*l2] )
     # make arrow font size roughly proportional to radius of highest resolution shell
     #fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
-    fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0)))
+    if not self.miller_array:
+      fontsize = str(1.0)
+    else:
+      fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0)))
 
     if blankscene:
       axisfuncstr = "\nvar MakeHKL_Axis = function() { };\n"
@@ -771,6 +778,7 @@ var MakeHKL_Axis = function()
       points = flex.vec3_double( [ ] )
       colors = flex.vec3_double( [ ] )
       radii = flex.double( [ ] )
+      self.binscenelabel = "Resolution"
     else:
       points = self.scene.points
 
@@ -1701,11 +1709,12 @@ mysocket.onmessage = function (e)
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
     self.ReloadNGL()
-    self.GetClipPlaneDistances()
-    self.GetBoundingBox()
-    self.SetTrackBallRotateSpeed( self.ngl_settings.mouse_sensitivity )
-    self.OrigClipFar = self.clipFar
-    self.OrigClipNear = self.clipNear
+    if not blankscene:
+      self.GetClipPlaneDistances()
+      self.GetBoundingBox()
+      self.OrigClipFar = self.clipFar
+      self.OrigClipNear = self.clipNear
+      self.SetTrackBallRotateSpeed( self.ngl_settings.mouse_sensitivity )
     self.sceneisdirty = False
 
 
@@ -1718,7 +1727,7 @@ mysocket.onmessage = function (e)
 
 
   def OnWebsocketClientMessage(self, client, server, message):
-    if self.scene_id is None:
+    if self.viewerparams.scene_id is None or self.miller_array is None:
       return
     try:
       if message != "":
@@ -1883,7 +1892,7 @@ mysocket.onmessage = function (e)
 
   def SetOpacities(self, bin_opacities_str):
     retstr = ""
-    if bin_opacities_str:
+    if self.miller_array and bin_opacities_str:
       self.ngl_settings.bin_opacities = bin_opacities_str
       bin_opacitieslst = eval(self.ngl_settings.bin_opacities)
       for binopacity in bin_opacitieslst:
@@ -2048,8 +2057,10 @@ mysocket.onmessage = function (e)
     self.ngl_settings.mouse_sensitivity = None
     self.msgqueue.append( ("GetTrackBallRotateSpeed", "") )
     if self.WaitforHandshake(5):
-      while self.ngl_settings.mouse_sensitivity is None:
+      nwait = 0
+      while self.ngl_settings.mouse_sensitivity is None and nwait < 5:
         time.sleep(self.sleeptime)
+        nwait += self.sleeptime
 
 
   def SetClipPlaneDistances(self, near, far, cameraPosZ=None):
@@ -2065,8 +2076,10 @@ mysocket.onmessage = function (e)
     self.cameraPosZ = None
     self.msgqueue.append( ("GetClipPlaneDistances", "") )
     if self.WaitforHandshake(5):
-      while self.clipFar is None:
+      nwait = 0
+      while self.clipFar is None and nwait < 5:
         time.sleep(self.sleeptime)
+        nwait += self.sleeptime
       self.mprint("clipnear, clipfar, cameraPosZ: %2.2f, %2.2f %2.2f" \
                  %(self.clipNear, self.clipFar, self.cameraPosZ), 2)
     return (self.clipNear, self.clipFar, self.cameraPosZ)
@@ -2078,8 +2091,10 @@ mysocket.onmessage = function (e)
     self.boundingZ = None
     self.msgqueue.append( ("GetBoundingBox", "") )
     if self.WaitforHandshake(5):
-      while self.boundingX is None:
+      nwait = 0
+      while self.boundingX is None and nwait < 5:
         time.sleep(self.sleeptime)
+        nwait += self.sleeptime
       self.mprint("boundingXYZ: %2.2f %2.2f %2.2f" \
          %(self.boundingX, self.boundingY, self.boundingZ), verbose=2)
     return (self.boundingX, self.boundingY, self.boundingZ)
