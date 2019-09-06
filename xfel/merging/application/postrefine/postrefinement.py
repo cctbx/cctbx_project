@@ -250,7 +250,8 @@ class postrefinement(worker):
   def run_plain(self):
 
     out = StringIO()
-    self.MINI = lbfgs_minimizer_base(current_x = self.current,
+    self.MINI = lbfgs_minimizer_base(self.params,
+                                     current_x = self.current,
                                      parameterization = self.parameterization_class,
                                      refinery = self.refinery,
                                      out = out)
@@ -394,19 +395,18 @@ class unpack_base(object):
   "abstract interface"
   def __init__(YY,values):
     YY.reference = values # simply the flex double list of parameters
+    YY.keys = None # override
   def __getattr__(YY,item):
-    raise NotImplementedError
+    if item not in YY.keys:
+      raise AttributeError(item)
+    return YY.reference[YY.keys.index(item)]
   def show(values,out):
     raise NotImplementedError
 
 class rs_parameterization(unpack_base):
-  def __getattr__(YY,item):
-    if item=="thetax" : return YY.reference[3]
-    if item=="thetay" : return YY.reference[4]
-    if item=="G" :      return YY.reference[0]
-    if item=="BFACTOR": return YY.reference[1]
-    if item=="RS":      return YY.reference[2]
-    raise AttributeError(item)
+  def __init__(YY,values):
+    super(rs_parameterization, YY).__init__(values)
+    YY.keys = ['G', 'BFACTOR','RS','thetax','thetay']
 
   def show(YY, out):
     print ("G: %10.7f; B: %10.7f; RS: %10.7f; THETAX: %7.3f deg; THETAY: %7.3f deg"\
@@ -414,15 +414,9 @@ class rs_parameterization(unpack_base):
           , file=out)
 
 class eta_deff_parameterization(unpack_base):
-  def __getattr__(YY,item):
-    if item=="thetax" : return YY.reference[3]
-    if item=="thetay" : return YY.reference[4]
-    if item=="G" :      return YY.reference[0]
-    if item=="BFACTOR": return YY.reference[1]
-    if item=="ETA":      return YY.reference[2]
-    if item=="DEFF":      return YY.reference[5]
-    raise AttributeError(item)
-
+  def __init__(YY,values):
+    super(eta_deff_parameterization, YY).__init__(values)
+    YY.keys = ['G', 'BFACTOR','ETA','thetax','thetay','DEFF']
 
   def show(YY, out):
     print ("G: %10.7f; B: %10.7f; eta: %10.7f; Deff %10.2f; THETAX: %7.3f deg; THETAY: %7.3f deg"\
@@ -431,7 +425,7 @@ class eta_deff_parameterization(unpack_base):
 
 class lbfgs_minimizer_base:
 
-  def __init__(self, current_x=None, parameterization=None, refinery=None, out=None,
+  def __init__(self, params, current_x=None, parameterization=None, refinery=None, out=None,
                min_iterations=0, max_calls=1000, max_drop_eps=1.e-5):
     adopt_init_args(self, locals())
     self.n = current_x.size()
@@ -471,7 +465,10 @@ class lbfgs_minimizer_base:
       dfunctional = flex.sum(dfunc*dfunc)
       #calculate by finite_difference
       self.g.append( ( dfunctional-functional )/DELTA )
-    self.g[2]=0.
+
+    if self.params.postrefinement.algorithm == 'rs':
+      for p in self.params.postrefinement.rs.fix:
+        self.g[values.keys.index(p)] = 0
 
     print ("rms %10.3f; "%math.sqrt(flex.mean(self.func*self.func)), file=self.out, end='')
     values.show(self.out)
