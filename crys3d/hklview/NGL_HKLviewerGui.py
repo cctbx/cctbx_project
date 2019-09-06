@@ -79,7 +79,7 @@ class NGL_HKLViewer(QWidget):
 
     self.openFileNameButton = QPushButton("Load reflection file")
     self.openFileNameButton.setDefault(True)
-    self.openFileNameButton.clicked.connect(self.OpenReflectionsFile)
+    self.openFileNameButton.clicked.connect(self.onOpenReflectionFile)
 
     self.debugbutton = QPushButton("Debug")
     self.debugbutton.clicked.connect(self.DebugInteractively)
@@ -126,7 +126,7 @@ class NGL_HKLViewer(QWidget):
     self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
     self.textInfo.setReadOnly(True)
 
-    labels = ["Label", "Type", "no. of HKLs", "Span of HKLs",
+    labels = ["Label", "Type", "Space group", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
     self.millertable = QTableWidget(0, len(labels))
     self.millertable.setHorizontalHeaderLabels(labels)
@@ -588,7 +588,7 @@ class NGL_HKLViewer(QWidget):
       self.nth_power_scale = -1.0
 
 
-  def OpenReflectionsFile(self):
+  def onOpenReflectionFile(self):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getOpenFileName(self,
             "Load reflections file",

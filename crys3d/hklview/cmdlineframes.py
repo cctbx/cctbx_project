@@ -771,30 +771,11 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def set_scene_bin_thresholds(self, binvals=[], bin_scene_label="Resolution", nbins=6):
-    self.viewer.binscenelabel = bin_scene_label
+  def set_scene_bin_thresholds(self, binvals=None, bin_scene_label="Resolution", nbins=6):
     if binvals:
       binvals = list( 1.0/flex.double(binvals) )
     else:
-      if self.viewer.binscenelabel=="Resolution":
-        warray = self.viewer.HKLscenes[int(self.params.NGL_HKLviewer.viewer.scene_id)].work_array
-        dres = self.viewer.HKLscenes[int(self.params.NGL_HKLviewer.viewer.scene_id)].dres
-        uc = warray.unit_cell()
-        indices = self.viewer.HKLscenes[int(self.params.NGL_HKLviewer.viewer.scene_id)].indices
-        binning = miller.binning( uc, nbins, indices, max(dres), min(dres) )
-        binvals = [ binning.bin_d_range(n)[0]  for n in binning.range_all() ]
-        binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
-        binvals = list( 1.0/flex.double(binvals) )
-      else:
-        bindata = self.viewer.HKLscenes[int(self.viewer.binscenelabel)].data.deep_copy()
-        selection = flex.sort_permutation( bindata )
-        bindata_sorted = bindata.select(selection)
-        # get binvals by dividing bindata_sorted with nbins
-        binvals = [bindata_sorted[0]] * nbins #
-        for i,e in enumerate(bindata_sorted):
-          idiv = int(nbins*float(i)/len(bindata_sorted))
-          binvals[idiv] = e
-    binvals.sort()
+      binvals = self.viewer.calc_bin_thresholds(bin_scene_label, nbins)
     self.viewer.UpdateBinValues( binvals )
 
 

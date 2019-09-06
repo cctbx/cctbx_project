@@ -51,6 +51,7 @@ class ArrayInfo:
         self.labels = millarr.info().label_string() + " + " + fomlabel
       self.desc = get_array_description(millarr)
     self.span = ("?" , "?")
+    self.spginf = millarr.space_group_info().symbol_and_number()
     dmin = 0.0
     dmax = 0.0
     try:
@@ -61,9 +62,9 @@ class ArrayInfo:
       mprint(to_str(e))
     issymunique = millarr.is_unique_set_under_symmetry()
     isanomalous = millarr.anomalous_flag()
-    self.infotpl = (self.labels, self.desc, millarr.indices().size(), self.span,
+    self.infotpl = ( self.labels, self.desc, self.spginf, millarr.indices().size(), self.span,
      self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique, isanomalous )
-    self.infostr = "%s (%s), %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
+    self.infostr = "%s (%s), space group: %s, %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
 
 
 
@@ -312,36 +313,41 @@ class hklview_3d:
     self.ngl_settings = curphilparam.viewer.NGL
     self.viewerparams = curphilparam.viewer
     if has_phil_path(diff_phil, "filename") \
-      or has_phil_path(diff_phil, "spacegroup_choice") \
-      or has_phil_path(diff_phil, "merge_data") \
-      or has_phil_path(diff_phil, "scene_id")  \
-      or has_phil_path(diff_phil, "nbins") \
-      or has_phil_path(diff_phil, "camera_type") \
-      or has_phil_path(diff_phil, "bin_scene_label") \
-      or has_phil_path(diff_phil, "scene_bin_thresholds") \
-      or has_phil_path(diff_phil, "spacegroup_choice") \
-      or has_phil_path(diff_phil, "using_space_subgroup") \
-      or has_phil_path(diff_phil, "viewer") \
-      and ( \
-       has_phil_path(diff_phil, "show_data_over_sigma") \
-      or has_phil_path(diff_phil, "show_missing") \
-      or has_phil_path(diff_phil, "show_only_missing") \
-      or has_phil_path(diff_phil, "show_systematic_absences") \
-      or has_phil_path(diff_phil, "slice_axis") \
-      or has_phil_path(diff_phil, "slice_mode") \
-      or has_phil_path(diff_phil, "slice_index") \
-      or has_phil_path(diff_phil, "scale") \
-      or has_phil_path(diff_phil, "nth_power_scale_radii") \
-      or self.settings.inbrowser==False and \
+     or has_phil_path(diff_phil, "spacegroup_choice") \
+     or has_phil_path(diff_phil, "merge_data") \
+     or has_phil_path(diff_phil, "scene_id")  \
+     or has_phil_path(diff_phil, "nbins") \
+     or has_phil_path(diff_phil, "camera_type") \
+     or has_phil_path(diff_phil, "bin_scene_label") \
+     or has_phil_path(diff_phil, "scene_bin_thresholds") \
+     or has_phil_path(diff_phil, "spacegroup_choice") \
+     or has_phil_path(diff_phil, "using_space_subgroup") \
+     or has_phil_path(diff_phil, "viewer") \
+     and ( \
+      has_phil_path(diff_phil, "show_data_over_sigma") \
+     or has_phil_path(diff_phil, "show_missing") \
+     or has_phil_path(diff_phil, "show_only_missing") \
+     or has_phil_path(diff_phil, "show_systematic_absences") \
+     or has_phil_path(diff_phil, "slice_axis") \
+     or has_phil_path(diff_phil, "slice_mode") \
+     or has_phil_path(diff_phil, "slice_index") \
+     or has_phil_path(diff_phil, "scale") \
+     or has_phil_path(diff_phil, "nth_power_scale_radii") \
+     or self.settings.inbrowser==False and \
                ( has_phil_path(diff_phil, "expand_anomalous") or \
                 has_phil_path(diff_phil, "expand_to_p1") )\
-      or has_phil_path(diff_phil, "show_anomalous_pairs") \
+     or has_phil_path(diff_phil, "show_anomalous_pairs") \
       ):
         if curphilparam.viewer.slice_mode and self.settings.inbrowser:
           self.settings.inbrowser = False
         self.sceneisdirty = True
         self.ConstructReciprocalSpace(curphilparam, merge=self.merge)
     msg = ""
+    if has_phil_path(diff_phil, "show_missing") \
+     or has_phil_path(diff_phil, "show_only_missing") \
+     or has_phil_path(diff_phil, "show_systematic_absences"):
+      self.binvals = self.calc_bin_thresholds(curphilparam.bin_scene_label, curphilparam.nbins)
+
     if self.viewerparams.scene_id >=0:
       self.scene = self.HKLscenes[self.viewerparams.scene_id]
       self.DrawNGLJavaScript()
@@ -457,11 +463,11 @@ class hklview_3d:
       if hklscene.isUsingFOMs():
         continue # already have tooltips for the scene without the associated fom
       datval = None
-      if id >= hklscene.data.size():
-        continue
-      if (hklscene.sys_absent_flags[id] or hklscene.missing_flags[id]):
-        continue
       datval = hklscene.work_array.data_at_first_index(hkl)
+      #if id >= hklscene.data.size():
+      #  continue
+      #if (hklscene.sys_absent_flags[id] or hklscene.missing_flags[id]):
+      #  continue
       #else:
       #  datval = hklscene.data[id]
       if datval and (not (math.isnan( abs(datval) ) or datval == display.inanval)):
@@ -621,8 +627,33 @@ class hklview_3d:
       self.mapcoef_fom_dict[proc_array.info().label_string()] = fom_arrays_idx
 
 
+  def calc_bin_thresholds(self, bin_scene_label, nbins):
+    self.binscenelabel = bin_scene_label
+    if self.binscenelabel=="Resolution":
+      warray = self.HKLscenes[int(self.viewerparams.scene_id)].work_array
+      dres = self.HKLscenes[int(self.viewerparams.scene_id)].dres
+      uc = warray.unit_cell()
+      indices = self.HKLscenes[int(self.viewerparams.scene_id)].indices
+      binning = miller.binning( uc, nbins, indices, max(dres), min(dres) )
+      binvals = [ binning.bin_d_range(n)[0]  for n in binning.range_all() ]
+      binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
+      binvals = list( 1.0/flex.double(binvals) )
+    else:
+      bindata = self.HKLscenes[int(self.binscenelabel)].data.deep_copy()
+      selection = flex.sort_permutation( bindata )
+      bindata_sorted = bindata.select(selection)
+      # get binvals by dividing bindata_sorted with nbins
+      binvals = [bindata_sorted[0]] * nbins #
+      for i,e in enumerate(bindata_sorted):
+        idiv = int(nbins*float(i)/len(bindata_sorted))
+        binvals[idiv] = e
+    binvals.sort()
+    return binvals
+
+
   def UpdateBinValues(self, binvals = [] ):
     if binvals:
+      binvals.sort()
       self.binvals = binvals
     else: # ensure default resolution interval includes all data by avoiding rounding errors
       self.binvals = [ 1.0/(self.miller_array.d_max_min()[0]*1.001),

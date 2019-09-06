@@ -509,7 +509,10 @@ class scene(object):
         #  self.missing_flags[j_seq] = False
         #  self.sys_absent_flags[j_seq] = True
         #else :
-        new_indices.append(hkl)
+        if hkl in self.indices:
+          print("Systematically absent reflection %s is unexpectedly present in %s" %(hkl, array.info().label_string()) )
+        else:
+          new_indices.append(hkl)
       if (new_indices.size() > 0):
         uc = self.work_array.unit_cell()
         points = uc.reciprocal_space_vector(new_indices) * 100
