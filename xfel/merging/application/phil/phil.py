@@ -259,7 +259,7 @@ postrefinement {
     .type = bool
     .help = enable the preliminary postrefinement algorithm (monochromatic)
     .expert_level = 3
-  algorithm = *rs rs2 rs_hybrid eta_deff
+  algorithm = *rs rs2 rs_hybrid eta_deff ratchet1
     .type = choice
     .help = rs only, eta_deff protocol 7
     .expert_level = 3
