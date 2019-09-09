@@ -119,34 +119,39 @@ secondary_structure
       .help = Turn on secondary structure restraints for nucleic acids
     %s
   }
-     ss_by_chain = True
-       .type = bool
-       .help = Find secondary structure only within individual chains. \
-               Alternative is to allow H-bonds between chains. Can be \
-               much slower with ss_by_chain=False. If your model is complete \
-               use ss_by_chain=True. If your model is many fragments, use \
-               ss_by_chain=False.
-       .short_caption = Secondary structure by chain
-       .expert_level = 1
-     max_rmsd = 1
-       .type = float
-       .help = Maximum rmsd to consider two chains with identical sequences \
-               as the same for ss identification
-       .short_caption = Maximum rmsd
-       .expert_level = 3
-     use_representative_chains = True
-       .type = bool
-       .help = Use a representative of all chains with the same sequence. \
-               Alternative is to examine each chain individually. Can be \
-               much slower with use_representative_of_chain=False if there \
-               are many symmetry copies. Ignored unless ss_by_chain is True.
-       .short_caption = Use representative chains
-       .expert_level = 3
-     max_representative_chains = 100
-       .type = float
-       .help = Maximum number of representative chains
-       .short_caption = Maximum representative chains
-       .expert_level = 3
+    ss_by_chain = True
+      .type = bool
+      .help = Find secondary structure only within individual chains. \
+              Alternative is to allow H-bonds between chains. Can be \
+              much slower with ss_by_chain=False. If your model is complete \
+              use ss_by_chain=True. If your model is many fragments, use \
+              ss_by_chain=False.
+      .short_caption = Secondary structure by chain
+      .expert_level = 1
+    from_ca_conservative = False
+      .type = bool
+      .help = various parameters changed to make from_ca method more \
+        conservative, hopefully to closer resemble ksdssp.
+      .short_caption = Conservative mode of from_ca
+    max_rmsd = 1
+      .type = float
+      .help = Maximum rmsd to consider two chains with identical sequences \
+              as the same for ss identification
+      .short_caption = Maximum rmsd
+      .expert_level = 3
+    use_representative_chains = True
+      .type = bool
+      .help = Use a representative of all chains with the same sequence. \
+              Alternative is to examine each chain individually. Can be \
+              much slower with use_representative_of_chain=False if there \
+              are many symmetry copies. Ignored unless ss_by_chain is True.
+      .short_caption = Use representative chains
+      .expert_level = 3
+    max_representative_chains = 100
+      .type = float
+      .help = Maximum number of representative chains
+      .short_caption = Maximum representative chains
+      .expert_level = 3
 
   enabled = False
     .short_caption = Use secondary structure restraints
@@ -174,11 +179,6 @@ class manager(object):
                 was_initialized=False,
                 mon_lib_srv=None,
                 verbose=-1,
-                alpha_rise_tolerance=0.5,
-                beta_rise_tolerance=0.5,
-                # alpha.dot_min_single = 0.3 alpha.dot_min = 0.9
-                # beta.dot_min_single=0.5 beta.dot_min = 0.75 beta.max_sheet_ca_ca_dist=6.
-                other_from_ca_params = [0.3, 0.9, 0.5, 0.75, 6.],
                 log=sys.stdout):
     self.pdb_hierarchy = pdb_hierarchy
     self.mon_lib_srv = mon_lib_srv
@@ -187,9 +187,6 @@ class manager(object):
     self.grm = geometry_restraints_manager
     self.sec_str_from_pdb_file = sec_str_from_pdb_file
     self.params = sec_str_master_phil.extract()
-    self.alpha_rise_tolerance = alpha_rise_tolerance
-    self.beta_rise_tolerance = beta_rise_tolerance
-    self.other_from_ca_params = other_from_ca_params
     if params is not None:
       self.params.secondary_structure = params
 
@@ -352,17 +349,17 @@ class manager(object):
         out=null_out()).get_annotation()
     elif self.params.secondary_structure.protein.search_method == "from_ca":
       from mmtbx.secondary_structure import find_ss_from_ca
-      print("  running find_ss_from_ca...", file=self.log)
+      from_ca_args = []
+      ca_label = "liberal"
+      if self.params.secondary_structure.from_ca_conservative:
+        from_ca_args = ["alpha.rise_tolerance=0.1",
+                        "beta.rise_tolerance=0.3",
+                        "alpha.dot_min=0.73",]
+        ca_label = "conservative"
+      print("  running find_ss_from_ca %s..." % ca_label, file=self.log)
       fss = find_ss_from_ca.find_secondary_structure(
           hierarchy=pdb_hierarchy,
-          args=["alpha.rise_tolerance=%f" % self.alpha_rise_tolerance,
-                "beta.rise_tolerance=%f" % self.beta_rise_tolerance,
-                "alpha.dot_min_single=%f" % self.other_from_ca_params[0],
-                "alpha.dot_min=%f" % self.other_from_ca_params[1],
-                "beta.dot_min_single=%f" % self.other_from_ca_params[2],
-                "beta.dot_min=%f" % self.other_from_ca_params[3],
-                "beta.max_sheet_ca_ca_dist=%f" % self.other_from_ca_params[4],
-                ],
+          args = from_ca_args,
           ss_by_chain=self.params.secondary_structure.ss_by_chain,
           max_rmsd=self.params.secondary_structure.max_rmsd,
           use_representative_chains=\
