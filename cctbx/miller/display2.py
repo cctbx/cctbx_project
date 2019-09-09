@@ -48,7 +48,7 @@ def nth_power_scale(dataarray, nth_power):
   If nth_power < 0 then an automatic value is computed that maps the smallest
   values to 0.1 of the largest values
   """
-  absdat = flex.abs(dataarray)
+  absdat = flex.abs(dataarray).as_double()
   absdat2 = flex.double([e for e in absdat if not math.isnan(e)])
   maxdat = flex.max(absdat2)
   mindat = max(1e-10*maxdat, flex.min(absdat2) )
@@ -299,7 +299,7 @@ class scene(object):
           # replace the nan values with an arbitrary float value
           self.radians = self.radians.set_selected(b, 0.424242)
         elif hasattr(array.data(), "as_double"):
-          self.data = array.data().as_double()
+          self.data = data
         else:
           raise RuntimeError("Unexpected data type: %r" % data)
         if (settings.show_data_over_sigma):

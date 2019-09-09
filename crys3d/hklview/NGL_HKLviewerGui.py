@@ -30,11 +30,17 @@ class SettingsForm(QDialog):
     self.setWindowTitle("Settings")
     myGroupBox = QGroupBox("Stuff")
     layout = QGridLayout()
-    layout.addWidget(parent.mousemoveslider,  0, 0, 1, 1)
-    layout.addWidget(parent.mousesensitxtbox,  0, 3, 1, 3)
-    layout.addWidget(parent.Fontsize_labeltxt,  1, 0, 1, 1)
-    layout.addWidget(parent.fontspinBox,  1, 3, 1, 3)
+    layout.addWidget(parent.mousespeed_labeltxt,     0, 0, 1, 1)
+    layout.addWidget(parent.mousemoveslider,         0, 1, 1, 3)
+    layout.addWidget(parent.mousesensitxtbox,        0, 4, 1, 1)
+
+    layout.addWidget(parent.Fontsize_labeltxt,       1, 0, 1, 1)
+    layout.addWidget(parent.fontspinBox,             1, 4, 1, 1)
+
     layout.addWidget(parent.cameraPerspectCheckBox,  2, 0, 1, 1)
+
+    layout.addWidget(parent.bufsize_labeltxt,        3, 0, 1, 1)
+    layout.addWidget(parent.bufsizespinBox,          3, 4, 1, 1)
 
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
@@ -73,7 +79,6 @@ class NGL_HKLViewer(QWidget):
         self.handshakewait = e.split('handshakewait=')[1]
 
     self.zmq_context = None
-    self.bufsize = 20000
 
     self.originalPalette = QApplication.palette()
 
@@ -87,6 +92,8 @@ class NGL_HKLViewer(QWidget):
     self.settingsbtn = QPushButton("Settings")
     self.settingsbtn.clicked.connect(self.SettingsDialog)
 
+    self.mousespeed_labeltxt = QLabel()
+    self.mousespeed_labeltxt.setText("Mouse speed:")
     self.mousemoveslider = QSlider(Qt.Horizontal)
     self.mousemoveslider.setMinimum(0)
     self.mousemoveslider.setMaximum(300)
@@ -111,6 +118,16 @@ class NGL_HKLViewer(QWidget):
     self.cameraPerspectCheckBox.clicked.connect(self.onCameraPerspect)
     self.cameraPerspectCheckBox.setCheckState(Qt.Unchecked)
 
+    self.bufsize = 20000
+    self.bufsizespinBox = QSpinBox()
+    self.bufsizespinBox.setSingleStep(1000)
+    self.bufsizespinBox.setRange(1000, 100000)
+    self.bufsizespinBox.setValue(self.bufsize)
+    self.bufsizespinBox.valueChanged.connect(self.onTextbuffersizeChanged)
+    self.bufsize_labeltxt = QLabel()
+    self.bufsize_labeltxt.setText("Text buffer size (bytes):")
+
+
     self.settingsform = SettingsForm(self)
 
     self.MillerComboBox = QComboBox()
@@ -118,7 +135,7 @@ class NGL_HKLViewer(QWidget):
     #self.MillerComboBox.setSizeAdjustPolicy(QComboBox.AdjustToContents)
 
     self.MillerLabel = QLabel()
-    self.MillerLabel.setText("Selected HKL Scene")
+    self.MillerLabel.setText("Show the following reflection data")
 
     self.HKLnameedit = QLineEdit('')
     self.HKLnameedit.setReadOnly(True)
@@ -332,6 +349,10 @@ class NGL_HKLViewer(QWidget):
     self.mousesensitxtbox.setText("%2.2f" %val )
 
 
+  def onTextbuffersizeChanged(self, val):
+    self.bufsize = val
+
+
   def onFontsizeChanged(self, val):
     font = app.font()
     font.setPointSize(val);
@@ -418,8 +439,9 @@ class NGL_HKLViewer(QWidget):
 
 
   def onSliceComboSelchange(self,i):
-    rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][3][0][i]
-    rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][3][1][i]
+    # 4th element in each table row is the min-max span of hkls.
+    rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][4][0][i]
+    rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][4][1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
     self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
 

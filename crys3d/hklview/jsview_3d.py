@@ -463,13 +463,12 @@ class hklview_3d:
       if hklscene.isUsingFOMs():
         continue # already have tooltips for the scene without the associated fom
       datval = None
-      datval = hklscene.work_array.data_at_first_index(hkl)
-      #if id >= hklscene.data.size():
-      #  continue
-      #if (hklscene.sys_absent_flags[id] or hklscene.missing_flags[id]):
-      #  continue
-      #else:
-      #  datval = hklscene.data[id]
+      if hkl in hklscene.work_array.indices():
+        datval = hklscene.work_array.data_at_first_index(hkl)
+      else:
+        if id >= hklscene.data.size():
+          continue
+        datval = hklscene.data[id]
       if datval and (not (math.isnan( abs(datval) ) or datval == display.inanval)):
         if hklscene.work_array.is_complex_array():
           ampl = abs(datval)
