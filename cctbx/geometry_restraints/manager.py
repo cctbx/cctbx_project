@@ -245,7 +245,7 @@ class manager(Base_geometry):
     reduced_dihedral_proxies = get()
     #
     if not include_den_restraints:
-      return manager(
+      result = manager(
         crystal_symmetry=self.crystal_symmetry,
         site_symmetry_table=self.site_symmetry_table,
         bond_params_table=self.bond_params_table,
@@ -254,7 +254,7 @@ class manager(Base_geometry):
         dihedral_proxies=reduced_dihedral_proxies,
         ncs_dihedral_manager=self.ncs_dihedral_manager)
     else:
-      return manager(
+      result = manager(
         crystal_symmetry=self.crystal_symmetry,
         site_symmetry_table=self.site_symmetry_table,
         bond_params_table=self.bond_params_table,
@@ -264,6 +264,8 @@ class manager(Base_geometry):
         ncs_dihedral_manager=self.ncs_dihedral_manager,
         den_manager=self.den_manager,
         ramachandran_manager=self.ramachandran_manager)
+    result.set_source(source = self.get_source())
+    return result
 
   def sites_cart_used_for_pair_proxies(self):
     return self._sites_cart_used_for_pair_proxies
@@ -332,7 +334,7 @@ class manager(Base_geometry):
       assert (nonbonded_charges.size() == n_additional_sites)
       nonbonded_charges = self.nonbonded_charges.concatenate(
         nonbonded_charges)
-    return manager(
+    result = manager(
       crystal_symmetry=self.crystal_symmetry,
       model_indices=model_indices,
       conformer_indices=conformer_indices,
@@ -358,6 +360,8 @@ class manager(Base_geometry):
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
       plain_pairs_radius=self.plain_pairs_radius)
+    result.set_source(source = self.get_source())
+    return result
 
   def select(self, selection=None, iselection=None):
     assert [selection, iselection].count(None) == 1
@@ -448,7 +452,7 @@ class manager(Base_geometry):
   def discard_symmetry(self, new_unit_cell):
     assert self.site_symmetry_table is not None #XXX lazy
     assert self.shell_sym_tables is not None #XXX lazy
-    return manager(
+    result = manager(
       crystal_symmetry=crystal.symmetry(
         unit_cell=new_unit_cell,
         space_group_symbol="P1"),
@@ -476,6 +480,8 @@ class manager(Base_geometry):
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
       plain_pairs_radius=self.plain_pairs_radius)
+    result.set_source(source = self.get_source())
+    return result
 
   def add_angles_in_place(self, additional_angle_proxies):
     self.angle_proxies.extend(additional_angle_proxies)
@@ -1015,6 +1021,7 @@ class manager(Base_geometry):
     new_grm.add_new_bond_restraints_in_place(proxies, sites_cart,
       max_distance_between_connecting_atoms=max_distance_between_connecting_atoms,
       skip_max_proxy_distance_calculation=skip_max_proxy_distance_calculation)
+    new_grm.set_source(source = self.get_source())
     return new_grm
 
   def add_new_hbond_restraints_in_place(self, proxies, sites_cart,
@@ -1896,7 +1903,7 @@ def construct_non_crystallographic_conserving_bonds_and_angles(
   nonbonded_params = geometry_restraints.nonbonded_params()
   nonbonded_params.distance_table.setdefault(
     "Default")["Default"] = vdw_distance
-  return box.sites_cart, manager(
+  new_grm = manager(
     crystal_symmetry=box.crystal_symmetry(),
     site_symmetry_table=asu_mappings.site_symmetry_table(),
     bond_params_table=bond_params_table,
@@ -1905,6 +1912,7 @@ def construct_non_crystallographic_conserving_bonds_and_angles(
     nonbonded_types=nonbonded_types,
     nonbonded_function=geometry_restraints.prolsq_repulsion_function(),
     max_reasonable_bond_distance=max_reasonable_bond_distance)
+  return box.sites_cart, new_grm
 
 def format_distances_for_error_message(
       pair_sym_table,

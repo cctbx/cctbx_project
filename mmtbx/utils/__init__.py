@@ -2379,6 +2379,7 @@ class extract_box_around_model_and_map(object):
                lower_bounds=None,
                upper_bounds=None,
                extract_unique=None,
+               target_ncs_au_file=None,
                regions_to_keep=None,
                box_buffer=None,
                soft_mask_extract_unique=None,
@@ -2391,6 +2392,7 @@ class extract_box_around_model_and_map(object):
                molecular_mass=None,
                ncs_object=None,
                symmetry=None,
+               half_map_data_list=None,
                    ):
     adopt_init_args(self, locals())
     cs = xray_structure.crystal_symmetry()
@@ -2412,13 +2414,16 @@ class extract_box_around_model_and_map(object):
       # box_map_data but everything else we will set with lower_bounds and
       # upper_bounds
       from scitbx.matrix import col
-      extract_unique_map_data,extract_unique_crystal_symmetry=\
+      extract_unique_map_data,extract_unique_crystal_symmetry,\
+           extract_unique_box_map_ncs_au_half_map_data_list=\
          self.get_map_from_segment_and_split(regions_to_keep=regions_to_keep)
       lower_bounds=extract_unique_map_data.origin()
       upper_bounds=tuple(
         col(extract_unique_map_data.focus())-col((1,1,1)))
       # shift the map so it is in the same position as the box map will be in
       extract_unique_map_data.reshape(flex.grid(extract_unique_map_data.all()))
+      for hm in extract_unique_box_map_ncs_au_half_map_data_list:
+        hm.reshape(flex.grid(extract_unique_map_data.all()))
 
       # Now box map is going to extract the same volume, but not the same
       #  contents because extract_unique keeps just the density for the
@@ -2482,6 +2487,9 @@ class extract_box_around_model_and_map(object):
       assert extract_unique_crystal_symmetry.is_similar_symmetry(
          self.box_crystal_symmetry)
       self.map_box=extract_unique_map_data
+      self.map_box_half_map_list=extract_unique_box_map_ncs_au_half_map_data_list
+    else:
+      self.map_box_half_map_list=[]
 
     # Shift ncs_object to match the box
     if self.ncs_object:
@@ -2551,6 +2559,8 @@ class extract_box_around_model_and_map(object):
     #    (origin shifted to 0,0,0)
     assert self.map_data.origin()==(0,0,0)
     args=[]
+    if self.target_ncs_au_file:
+      args.append("target_ncs_au_file=%s" %(self.target_ncs_au_file))
     args.append("write_files=False")
     args.append("add_neighbors=False") # XXX perhaps allow user to set this
     args.append("save_box_map_ncs_au=True")
@@ -2582,15 +2592,19 @@ class extract_box_around_model_and_map(object):
       args.append("mask_expand_ratio=%s" %(self.mask_expand_ratio))
 
     # import params from s&s here and set them.  set write_files=false etc.
-
     ncs_group_obj,remainder_ncs_group_obj,tracking_data =\
       segment_and_split_map(args,
           map_data=self.map_data,
+          half_map_data_list=self.half_map_data_list,
           crystal_symmetry=self.crystal_symmetry,
           ncs_obj=self.ncs_object)
     ncs_au_map_data=tracking_data.box_map_ncs_au_map_data
+    ncs_au_map_data=tracking_data.box_map_ncs_au_map_data
+    box_map_ncs_au_half_map_data_list=\
+       tracking_data.box_map_ncs_au_half_map_data_list
     ncs_au_crystal_symmetry=tracking_data.box_map_ncs_au_crystal_symmetry
-    return ncs_au_map_data,ncs_au_crystal_symmetry
+    return ncs_au_map_data,ncs_au_crystal_symmetry,\
+        box_map_ncs_au_half_map_data_list
 
   def select_box(self,threshold,xrs=None,get_half_height_width=None):
     # Select box where data are positive (> threshold*max)
@@ -2814,7 +2828,10 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     shifted_map_data.resize(flex.grid(new_origin,new_all))
     return shifted_map_data
 
-  def write_ccp4_map(self, file_name="box.ccp4",shift_back=False,
+  def write_ccp4_map(self,
+      map_data=None,
+      file_name="box.ccp4",
+      shift_back=False,
       output_unit_cell_grid=None,
       output_sd=None,
       output_mean=None,
@@ -2826,11 +2843,12 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     #  instead of the size of the actual available map (self.map_box.all())
 
     from iotbx import mrcfile
-    assert tuple(self.map_box.origin())==(0,0,0)
+    if not map_data:
+      map_data=self.map_box
+
+    assert tuple(map_data.origin())==(0,0,0)
     if shift_back:
-      map_data=self.shift_map_back(self.map_box)
-    else:
-      map_data = self.map_box
+      map_data=self.shift_map_back(map_data)
 
     if output_mean is not None or output_sd is not None:
       mean_value=map_data.as_1d().min_max_mean().mean

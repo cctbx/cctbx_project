@@ -30,11 +30,17 @@ class SettingsForm(QDialog):
     self.setWindowTitle("Settings")
     myGroupBox = QGroupBox("Stuff")
     layout = QGridLayout()
-    layout.addWidget(parent.mousemoveslider,  0, 0, 1, 1)
-    layout.addWidget(parent.mousesensitxtbox,  0, 3, 1, 3)
-    layout.addWidget(parent.Fontsize_labeltxt,  1, 0, 1, 1)
-    layout.addWidget(parent.fontspinBox,  1, 3, 1, 3)
+    layout.addWidget(parent.mousespeed_labeltxt,     0, 0, 1, 1)
+    layout.addWidget(parent.mousemoveslider,         0, 1, 1, 3)
+    layout.addWidget(parent.mousesensitxtbox,        0, 4, 1, 1)
+
+    layout.addWidget(parent.Fontsize_labeltxt,       1, 0, 1, 1)
+    layout.addWidget(parent.fontspinBox,             1, 4, 1, 1)
+
     layout.addWidget(parent.cameraPerspectCheckBox,  2, 0, 1, 1)
+
+    layout.addWidget(parent.bufsize_labeltxt,        3, 0, 1, 1)
+    layout.addWidget(parent.bufsizespinBox,          3, 4, 1, 1)
 
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
@@ -73,13 +79,12 @@ class NGL_HKLViewer(QWidget):
         self.handshakewait = e.split('handshakewait=')[1]
 
     self.zmq_context = None
-    self.bufsize = 20000
 
     self.originalPalette = QApplication.palette()
 
     self.openFileNameButton = QPushButton("Load reflection file")
     self.openFileNameButton.setDefault(True)
-    self.openFileNameButton.clicked.connect(self.OpenReflectionsFile)
+    self.openFileNameButton.clicked.connect(self.onOpenReflectionFile)
 
     self.debugbutton = QPushButton("Debug")
     self.debugbutton.clicked.connect(self.DebugInteractively)
@@ -87,6 +92,8 @@ class NGL_HKLViewer(QWidget):
     self.settingsbtn = QPushButton("Settings")
     self.settingsbtn.clicked.connect(self.SettingsDialog)
 
+    self.mousespeed_labeltxt = QLabel()
+    self.mousespeed_labeltxt.setText("Mouse speed:")
     self.mousemoveslider = QSlider(Qt.Horizontal)
     self.mousemoveslider.setMinimum(0)
     self.mousemoveslider.setMaximum(300)
@@ -111,6 +118,16 @@ class NGL_HKLViewer(QWidget):
     self.cameraPerspectCheckBox.clicked.connect(self.onCameraPerspect)
     self.cameraPerspectCheckBox.setCheckState(Qt.Unchecked)
 
+    self.bufsize = 20000
+    self.bufsizespinBox = QSpinBox()
+    self.bufsizespinBox.setSingleStep(1000)
+    self.bufsizespinBox.setRange(1000, 100000)
+    self.bufsizespinBox.setValue(self.bufsize)
+    self.bufsizespinBox.valueChanged.connect(self.onTextbuffersizeChanged)
+    self.bufsize_labeltxt = QLabel()
+    self.bufsize_labeltxt.setText("Text buffer size (bytes):")
+
+
     self.settingsform = SettingsForm(self)
 
     self.MillerComboBox = QComboBox()
@@ -118,7 +135,7 @@ class NGL_HKLViewer(QWidget):
     #self.MillerComboBox.setSizeAdjustPolicy(QComboBox.AdjustToContents)
 
     self.MillerLabel = QLabel()
-    self.MillerLabel.setText("Selected HKL Scene")
+    self.MillerLabel.setText("Show the following reflection data")
 
     self.HKLnameedit = QLineEdit('')
     self.HKLnameedit.setReadOnly(True)
@@ -126,7 +143,7 @@ class NGL_HKLViewer(QWidget):
     self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
     self.textInfo.setReadOnly(True)
 
-    labels = ["Label", "Type", "no. of HKLs", "Span of HKLs",
+    labels = ["Label", "Type", "Space group", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
     self.millertable = QTableWidget(0, len(labels))
     self.millertable.setHorizontalHeaderLabels(labels)
@@ -205,6 +222,7 @@ class NGL_HKLViewer(QWidget):
     if self.zmq_context:
       try:
         msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
+        nan = float("nan") # workaround for "evaluating" any NaN values in the messages received
         msgstr = msg.decode()
         self.infodict = eval(msgstr)
         #print("received from cctbx: " + str(self.infodict))
@@ -331,6 +349,10 @@ class NGL_HKLViewer(QWidget):
     self.mousesensitxtbox.setText("%2.2f" %val )
 
 
+  def onTextbuffersizeChanged(self, val):
+    self.bufsize = val
+
+
   def onFontsizeChanged(self, val):
     font = app.font()
     font.setPointSize(val);
@@ -417,8 +439,9 @@ class NGL_HKLViewer(QWidget):
 
 
   def onSliceComboSelchange(self,i):
-    rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][3][0][i]
-    rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][3][1][i]
+    # 4th element in each table row is the min-max span of hkls.
+    rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][4][0][i]
+    rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][4][1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
     self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
 
@@ -437,7 +460,7 @@ class NGL_HKLViewer(QWidget):
       self.NGL_HKL_command("NGL_HKLviewer.bin_scene_label = %s" % bin_scene_label )
       bin_opacitieslst = []
       for i in range(self.nbins):
-        bin_opacitieslst.append("1.0, %d" %i)
+        bin_opacitieslst.append((1.0, i)) #   ("1.0, %d" %i)
       self.bin_opacities = str(bin_opacitieslst)
       self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
       #self.OpaqueAllCheckbox.setTristate(false)
@@ -449,10 +472,10 @@ class NGL_HKLViewer(QWidget):
     self.binstable_isready = False
     for binopacity in bin_opacitieslst:
       if not allalpha:
-        alpha = float(binopacity.split(",")[0])
+        alpha = binopacity[0]  #float(binopacity.split(",")[0])
       else:
         alpha = allalpha
-      bin = int(binopacity.split(",")[1])
+      bin = binopacity[1]  #int(binopacity.split(",")[1])
       item = QTableWidgetItem()
       item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
       if alpha < 0.5:
@@ -471,7 +494,7 @@ class NGL_HKLViewer(QWidget):
     nbins = len(bin_opacitieslst)
     sum = 0
     for binopacity in bin_opacitieslst:
-      sum += float(binopacity.split(",")[0])
+      sum += binopacity[0]  # float(binopacity.split(",")[0])
     if sum >= nbins:
       self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
     if sum == 0:
@@ -481,22 +504,22 @@ class NGL_HKLViewer(QWidget):
 
 
   def onBinsTableItemChanged(self, item):
-    row = item.row()
+    bin = item.row()
     column = item.column()
     try:
       if item.checkState()==Qt.Unchecked:
-        newval = 0
+        alpha = 0.0
       else:
-        newval = 1.0
+        alpha = 1.0
       if column==3 and self.binstable_isready: # changing opacity
-        assert (newval <= 1.0 and newval >= 0.0)
+        #assert (alpha <= 1.0 and alpha >= 0.0)
         bin_opacitieslst = eval(self.bin_opacities)
-        bin_opacitieslst[row] = str(newval) + ', ' + str(row)
+        bin_opacitieslst[bin] = (alpha, bin)
         self.bin_opacities = str(bin_opacitieslst)
         self.SetOpaqueAll()
         self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
     except Exception as e:
-      print(str(e))
+      print( str(e)  +  traceback.format_exc(limit=10) )
       #self.binstable.currentItem().setText( self.currentSelectedBinsTableVal)
 
 
@@ -515,10 +538,10 @@ class NGL_HKLViewer(QWidget):
     self.binstable_isready = False
     if self.OpaqueAllCheckbox.isChecked():
       for i in range(nbins):
-        bin_opacitieslst.append("1.0, %d" %i)
+        bin_opacitieslst.append((1.0, i))  #  ("1.0, %d" %i)
     else:
       for i in range(nbins):
-        bin_opacitieslst.append("0.0, %d" %i)
+        bin_opacitieslst.append((0.0, i))  #   ("0.0, %d" %i)
     self.bin_opacities = str(bin_opacitieslst)
     self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
     self.binstableitemchanges = False
@@ -587,7 +610,7 @@ class NGL_HKLViewer(QWidget):
       self.nth_power_scale = -1.0
 
 
-  def OpenReflectionsFile(self):
+  def onOpenReflectionFile(self):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getOpenFileName(self,
             "Load reflections file",
@@ -770,7 +793,6 @@ class NGL_HKLViewer(QWidget):
   clipwidth = %s
 }
   NGL_HKLviewer.viewer.NGL.fixorientation = %s
-
       """ %(self.hvecval, self.kvecval, self.lvecval, self.hkldistval, self.clipwidthval, \
                               str(self.fixedorientcheckbox.isChecked()) )
       self.NGL_HKL_command(philstr)
@@ -810,7 +832,7 @@ class NGL_HKLViewer(QWidget):
 
 
   def onMillerComboSelchange(self, i):
-    self.NGL_HKL_command("NGL_HKLviewer.scene_id = %d" %i)
+    self.NGL_HKL_command("NGL_HKLviewer.viewer.scene_id = %d" %i)
     #self.MillerComboBox.setCurrentIndex(i)
     if self.MillerComboBox.currentText():
       self.functionTabWidget.setEnabled(True)
@@ -892,7 +914,7 @@ class NGL_HKLViewer(QWidget):
     self.binstable.setHorizontalHeaderLabels(labels)
     self.binstable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.bindata_labeltxt = QLabel()
-    self.bindata_labeltxt.setText("Data binned:")
+    self.bindata_labeltxt.setText("Binning according to:")
     self.Nbins_spinBox = QSpinBox()
     self.Nbins_spinBox.setSingleStep(1)
     self.Nbins_spinBox.setRange(1, 40)
@@ -1014,5 +1036,4 @@ if __name__ == '__main__':
       guiobj.cctbxproc.terminate()
     sys.exit(app.exec_())
   except Exception as e:
-    errmsg = str(e)
-    print( errmsg  +  traceback.format_exc(limit=10) )
+    print( str(e)  +  traceback.format_exc(limit=10) )

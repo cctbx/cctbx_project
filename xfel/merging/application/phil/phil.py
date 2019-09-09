@@ -249,6 +249,11 @@ postrefinement {
     .type = choice
     .help = rs only, eta_deff protocol 7
     .expert_level = 3
+  rs {
+    fix = thetax thetay *RS G BFACTOR
+      .type = choice(multi=True)
+      .help = Which parameters to fix during postrefinement
+  }
   rs2
     .help = Reimplement postrefinement with the following (Oct 2016):
     .help = Refinement engine now work on analytical derivatives instead of finite differences

@@ -35,6 +35,15 @@ master_phil = libtbx.phil.parse("""
     .help = Input map file (CCP4/mrc format).
     .short_caption = Input map file
     .type = str
+  target_ncs_au_file = None
+    .help = File with model indicating which au to choose in extract_unique
+    .short_caption = Input target ncs au file
+    .type = str
+  half_map_list = None
+    .type = strings
+    .help = Half maps (extract_unique only). Supply file names \
+              separated by spaces
+    .short_caption = Half maps (extract_unique only)
   selection = all
     .type = str
     .help = Atom selection to be applied to input PDB file
@@ -330,6 +339,8 @@ def run(args, crystal_symmetry=None,
      ncs_object=None,
      pdb_hierarchy=None,
      map_data=None,
+     half_map_data_list=None,
+     half_map_labels_list=None,
      lower_bounds=None,
      upper_bounds=None,
      write_output_files=True,
@@ -510,6 +521,22 @@ Parameters:"""%h
   else: # have map_data
     map_or_map_coeffs_prefix=None
 
+  if params.half_map_list and (not half_map_data_list):
+    if not params.extract_unique:
+      raise Sorry("Can only use half_map_with extract_unique")
+    print ("Reading half-maps",params.half_map_list)
+    half_map_data_list=[]
+    half_map_labels_list=[]
+    for fn in params.half_map_list:
+      print("Reading half map from %s" %(fn),file=log)
+      af = any_file(fn)
+      print_statistics.make_sub_header("CCP4 map", out=log)
+      h_ccp4_map = af.file_content
+      h_ccp4_map.show_summary(prefix="  ",out=log)
+      h_map_data = h_ccp4_map.data
+      half_map_data_list.append(h_map_data)
+      half_map_labels_list.append(h_ccp4_map.get_labels())
+
   if params.map_scale_factor:
     print("Applying scale factor of %s to map data on read-in" %(
        params.map_scale_factor))
@@ -652,6 +679,7 @@ Parameters:"""%h
     lower_bounds          = params.lower_bounds,
     upper_bounds          = params.upper_bounds,
     extract_unique        = params.extract_unique,
+    target_ncs_au_file    = params.target_ncs_au_file,
     regions_to_keep       = params.regions_to_keep,
     box_buffer            = params.box_buffer,
     soft_mask_extract_unique = params.soft_mask_extract_unique,
@@ -664,7 +692,7 @@ Parameters:"""%h
     resolution            = params.resolution,
     ncs_object            = ncs_object,
     symmetry              = params.symmetry,
-
+    half_map_data_list    = half_map_data_list,
     )
 
   ph_box = pdb_hierarchy.select(selection)
@@ -911,6 +939,32 @@ Parameters:"""%h
        output_external_origin=params.output_external_origin)
      print("Writing boxed map "+\
           "to CCP4 formatted file:   %s"%file_name, file=log)
+     if not params.half_map_list:
+        params.half_map_list=[]
+     if not output_box.map_box_half_map_list:
+       output_box.map_box_half_map_list=[]
+     if not half_map_labels_list:
+       half_map_labels_list=len(output_box.map_box_half_map_list)*[None]
+     for hm,labels,fn in zip(
+       output_box.map_box_half_map_list,
+       half_map_labels_list,
+       params.half_map_list):  # half maps matching
+       labels=create_output_labels(program_name=program_name,
+         input_file_name=fn,
+         input_labels=labels,
+         limitations=limitations,
+         output_labels=params.output_map_labels)
+       hm_fn="%s_box.ccp4" %( ".".join(os.path.basename(fn).split(".")[:-1]))
+       output_box.write_ccp4_map(file_name=hm_fn,
+         map_data=hm,
+         output_crystal_symmetry=output_crystal_symmetry,
+         output_mean=params.output_ccp4_map_mean,
+         output_sd=params.output_ccp4_map_sd,
+         output_unit_cell_grid=output_unit_cell_grid,
+         shift_back=shift_back,
+         output_map_labels=labels,
+         output_external_origin=params.output_external_origin)
+       print ("Writing boxed half map to: %s " %(hm_fn),file=log)
 
     # Write xplor map.  Shift back if keep_origin=True
     if("xplor" in params.output_format):

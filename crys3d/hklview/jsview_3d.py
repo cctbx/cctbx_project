@@ -51,6 +51,7 @@ class ArrayInfo:
         self.labels = millarr.info().label_string() + " + " + fomlabel
       self.desc = get_array_description(millarr)
     self.span = ("?" , "?")
+    self.spginf = millarr.space_group_info().symbol_and_number()
     dmin = 0.0
     dmax = 0.0
     try:
@@ -61,9 +62,9 @@ class ArrayInfo:
       mprint(to_str(e))
     issymunique = millarr.is_unique_set_under_symmetry()
     isanomalous = millarr.anomalous_flag()
-    self.infotpl = (self.labels, self.desc, millarr.indices().size(), self.span,
+    self.infotpl = ( self.labels, self.desc, self.spginf, millarr.indices().size(), self.span,
      self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique, isanomalous )
-    self.infostr = "%s (%s), %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
+    self.infostr = "%s (%s), space group: %s, %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
 
 
 
@@ -161,7 +162,8 @@ def MakeTtips(hklscene, j):
 class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
-    self.ngl_settings = NGLsettings()
+    self.ngl_settings = None #NGLsettings()
+    self.viewerparams = None
     self.miller_array = None
     self.symops = []
     self.sg = None
@@ -178,7 +180,7 @@ class hklview_3d:
     self.binscenelabel = "Resolution"
     self.colour_scene_id = None
     self.radii_scene_id = None
-    self.scene_id = None
+    #self.scene_id = None
     self.rotation_mx = matrix.identity(3)
     self.rot_recip_zvec = None
     self.rot_zvec = None
@@ -225,6 +227,8 @@ class hklview_3d:
     self.sceneisdirty = True
     self.hkl_scenes_info = []
     self.match_valarrays = []
+    self.array_infostrs = []
+    self.array_infotpls = []
     self.binstrs = []
     self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
@@ -305,71 +309,75 @@ class hklview_3d:
       self.guisocket.send( str(mydict).encode("utf-8") )
 
 
-  def update_settings(self, diff_phil, currentphil) :
+  def update_settings(self, diff_phil, curphilparam) :
+    self.ngl_settings = curphilparam.viewer.NGL
+    self.viewerparams = curphilparam.viewer
     if has_phil_path(diff_phil, "filename") \
-      or has_phil_path(diff_phil, "spacegroup_choice") \
-      or has_phil_path(diff_phil, "merge_data") \
-      or has_phil_path(diff_phil, "scene_id")  \
-      or has_phil_path(diff_phil, "nbins") \
-      or has_phil_path(diff_phil, "camera_type") \
-      or has_phil_path(diff_phil, "bin_scene_label") \
-      or has_phil_path(diff_phil, "scene_bin_thresholds") \
-      or has_phil_path(diff_phil, "spacegroup_choice") \
-      or has_phil_path(diff_phil, "using_space_subgroup") \
-      or has_phil_path(diff_phil, "viewer") \
-      and ( \
-       has_phil_path(diff_phil, "show_data_over_sigma") \
-      or has_phil_path(diff_phil, "show_missing") \
-      or has_phil_path(diff_phil, "show_only_missing") \
-      or has_phil_path(diff_phil, "show_systematic_absences") \
-      or has_phil_path(diff_phil, "slice_axis") \
-      or has_phil_path(diff_phil, "slice_mode") \
-      or has_phil_path(diff_phil, "slice_index") \
-      or has_phil_path(diff_phil, "scale") \
-      or has_phil_path(diff_phil, "nth_power_scale_radii") \
-      or self.settings.inbrowser==False and \
+     or has_phil_path(diff_phil, "spacegroup_choice") \
+     or has_phil_path(diff_phil, "merge_data") \
+     or has_phil_path(diff_phil, "scene_id")  \
+     or has_phil_path(diff_phil, "nbins") \
+     or has_phil_path(diff_phil, "camera_type") \
+     or has_phil_path(diff_phil, "bin_scene_label") \
+     or has_phil_path(diff_phil, "scene_bin_thresholds") \
+     or has_phil_path(diff_phil, "spacegroup_choice") \
+     or has_phil_path(diff_phil, "using_space_subgroup") \
+     or has_phil_path(diff_phil, "viewer") \
+     and ( \
+      has_phil_path(diff_phil, "show_data_over_sigma") \
+     or has_phil_path(diff_phil, "show_missing") \
+     or has_phil_path(diff_phil, "show_only_missing") \
+     or has_phil_path(diff_phil, "show_systematic_absences") \
+     or has_phil_path(diff_phil, "slice_axis") \
+     or has_phil_path(diff_phil, "slice_mode") \
+     or has_phil_path(diff_phil, "slice_index") \
+     or has_phil_path(diff_phil, "scale") \
+     or has_phil_path(diff_phil, "nth_power_scale_radii") \
+     or self.settings.inbrowser==False and \
                ( has_phil_path(diff_phil, "expand_anomalous") or \
                 has_phil_path(diff_phil, "expand_to_p1") )\
-      or has_phil_path(diff_phil, "show_anomalous_pairs") \
+     or has_phil_path(diff_phil, "show_anomalous_pairs") \
       ):
-        if currentphil.viewer.slice_mode and self.settings.inbrowser:
+        if curphilparam.viewer.slice_mode and self.settings.inbrowser:
           self.settings.inbrowser = False
         self.sceneisdirty = True
-        self.ConstructReciprocalSpace(currentphil, merge=self.merge)
+        self.ConstructReciprocalSpace(curphilparam, merge=self.merge)
     msg = ""
-    if self.scene_id >=0:
-      self.scene = self.HKLscenes[self.scene_id]
+    if has_phil_path(diff_phil, "show_missing") \
+     or has_phil_path(diff_phil, "show_only_missing") \
+     or has_phil_path(diff_phil, "show_systematic_absences"):
+      self.binvals = self.calc_bin_thresholds(curphilparam.bin_scene_label, curphilparam.nbins)
+
+    if self.viewerparams.scene_id >=0:
+      self.scene = self.HKLscenes[self.viewerparams.scene_id]
       self.DrawNGLJavaScript()
       msg = "Rendered %d reflections\n" % self.scene.points.size()
       if has_phil_path(diff_phil, "mouse_sensitivity"):
-        self.SetTrackBallRotateSpeed(currentphil.viewer.NGL.mouse_sensitivity)
+        self.SetTrackBallRotateSpeed(curphilparam.viewer.NGL.mouse_sensitivity)
       if has_phil_path(diff_phil, "normal_clip_plane"):
-        self.clip_plane_normal_to_HKL_vector(currentphil.normal_clip_plane.h, currentphil.normal_clip_plane.k,
-            currentphil.normal_clip_plane.l, currentphil.normal_clip_plane.hkldist,
-            currentphil.normal_clip_plane.clipwidth, currentphil.viewer.NGL.fixorientation)
-
-      if currentphil.viewer.slice_mode:
-        if currentphil.viewer.slice_axis=="h": hkl = [1,0,0]
-        if currentphil.viewer.slice_axis=="k": hkl = [0,1,0]
-        if currentphil.viewer.slice_axis=="l": hkl = [0,0,1]
+        self.clip_plane_normal_to_HKL_vector(curphilparam.normal_clip_plane.h, curphilparam.normal_clip_plane.k,
+            curphilparam.normal_clip_plane.l, curphilparam.normal_clip_plane.hkldist,
+            curphilparam.normal_clip_plane.clipwidth, curphilparam.viewer.NGL.fixorientation)
+      if curphilparam.viewer.slice_mode:
+        if curphilparam.viewer.slice_axis=="h": hkl = [1,0,0]
+        if curphilparam.viewer.slice_axis=="k": hkl = [0,1,0]
+        if curphilparam.viewer.slice_axis=="l": hkl = [0,0,1]
         self.clip_plane_normal_to_HKL_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
-                         fixorientation = currentphil.viewer.NGL.fixorientation)
-
-    if self.settings.inbrowser and not currentphil.viewer.slice_mode:
+                         fixorientation = curphilparam.viewer.NGL.fixorientation)
+    if self.settings.inbrowser and not curphilparam.viewer.slice_mode:
       msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
-    msg += self.SetOpacities(currentphil.viewer.NGL.bin_opacities )
-
-      #self.mprint(currentphil.viewer.NGL.bin_opacities )
-    return msg
+    msg += self.SetOpacities(curphilparam.viewer.NGL.bin_opacities )
+      #self.mprint(curphilparam.viewer.NGL.bin_opacities )
+    return msg, curphilparam
 
 
   def set_miller_array(self, scene_id=None, merge=None, details=""):
     if scene_id is not None:
-      self.scene_id = scene_id
-    if self.scene_id >= 0 and self.HKLscenes:
-      self.miller_array = self.HKLscenes[self.scene_id].miller_array
-      self.scene = self.HKLscenes[self.scene_id]
+      self.viewerparams.scene_id = scene_id
+    if self.viewerparams and self.viewerparams.scene_id >= 0 and self.HKLscenes:
+      self.miller_array = self.HKLscenes[self.viewerparams.scene_id].miller_array
+      self.scene = self.HKLscenes[self.viewerparams.scene_id]
     self.merge = merge
     if (self.miller_array is None):
       return
@@ -454,10 +462,13 @@ class hklview_3d:
     for hklscene in self.HKLscenes:
       if hklscene.isUsingFOMs():
         continue # already have tooltips for the scene without the associated fom
-      #datval = hklscene.work_array.data_at_first_index(hkl)
-      if id >= hklscene.data.size():
-        continue
-      datval = hklscene.data[id]
+      datval = None
+      if hkl in hklscene.work_array.indices():
+        datval = hklscene.work_array.data_at_first_index(hkl)
+      else:
+        if id >= hklscene.data.size():
+          continue
+        datval = hklscene.data[id]
       if datval and (not (math.isnan( abs(datval) ) or datval == display.inanval)):
         if hklscene.work_array.is_complex_array():
           ampl = abs(datval)
@@ -487,14 +498,14 @@ class hklview_3d:
     return self.hkl_scenes_info[idx][6], self.hkl_scenes_info[idx][7]
 
 
-  def ConstructReciprocalSpace(self, currentphil, merge=None):
+  def ConstructReciprocalSpace(self, curphilparam, merge=None):
     self.mprint("Constructing HKL scenes", verbose=0)
     #self.miller_array = self.match_valarrays[self.scene_id]
     #self.miller_array = self.proc_arrays[self.scene_id]
-    self.HKLscenesKey = (currentphil.filename,
-                         currentphil.spacegroup_choice,
-                         currentphil.using_space_subgroup,
-                         currentphil.merge_data,
+    self.HKLscenesKey = (curphilparam.filename,
+                         curphilparam.spacegroup_choice,
+                         curphilparam.using_space_subgroup,
+                         curphilparam.merge_data,
                          self.settings.expand_anomalous,
                          self.settings.expand_to_p1,
                          self.settings.inbrowser,
@@ -615,8 +626,33 @@ class hklview_3d:
       self.mapcoef_fom_dict[proc_array.info().label_string()] = fom_arrays_idx
 
 
+  def calc_bin_thresholds(self, bin_scene_label, nbins):
+    self.binscenelabel = bin_scene_label
+    if self.binscenelabel=="Resolution":
+      warray = self.HKLscenes[int(self.viewerparams.scene_id)].work_array
+      dres = self.HKLscenes[int(self.viewerparams.scene_id)].dres
+      uc = warray.unit_cell()
+      indices = self.HKLscenes[int(self.viewerparams.scene_id)].indices
+      binning = miller.binning( uc, nbins, indices, max(dres), min(dres) )
+      binvals = [ binning.bin_d_range(n)[0]  for n in binning.range_all() ]
+      binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
+      binvals = list( 1.0/flex.double(binvals) )
+    else:
+      bindata = self.HKLscenes[int(self.binscenelabel)].data.deep_copy()
+      selection = flex.sort_permutation( bindata )
+      bindata_sorted = bindata.select(selection)
+      # get binvals by dividing bindata_sorted with nbins
+      binvals = [bindata_sorted[0]] * nbins #
+      for i,e in enumerate(bindata_sorted):
+        idiv = int(nbins*float(i)/len(bindata_sorted))
+        binvals[idiv] = e
+    binvals.sort()
+    return binvals
+
+
   def UpdateBinValues(self, binvals = [] ):
     if binvals:
+      binvals.sort()
       self.binvals = binvals
     else: # ensure default resolution interval includes all data by avoiding rounding errors
       self.binvals = [ 1.0/(self.miller_array.d_max_min()[0]*1.001),
@@ -626,29 +662,38 @@ class hklview_3d:
   def MatchBinArrayToSceneArray(self, ibinarray):
     # match bindata with data(scene_id)
     if self.binscenelabel=="Resolution":
-      return bindata
+      return 1.0/self.scene.dres
     # get the array id that is mapped through an HKLscene id
     binarraydata = self.HKLscenes[ibinarray].data
-    scenearraydata = self.HKLscenes[self.scene_id].data
-    matchindices = miller.match_indices(self.HKLscenes[self.scene_id].indices, self.HKLscenes[ibinarray].indices )
-    valarray = binarraydata.select( matchindices.pairs().column(1) )
+    scenearraydata = self.HKLscenes[self.viewerparams.scene_id].data
+    matchindices = miller.match_indices(self.HKLscenes[self.viewerparams.scene_id].indices, self.HKLscenes[ibinarray].indices )
+    matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
     #valarray.sort(by_value="packed_indices")
-    missing = scenearraydata.lone_set( valarray )
-    # insert NAN values for reflections in self.miller_array not found in binarray
-    valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices() )
-    match_valindices = miller.match_indices(scenearray.indices(), valarray.indices() )
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    match_valarray = valarray.select( match_valindices.pairs().column(1) )
-    match_valarray.sort(by_value="packed_indices")
-    match_valarray.set_info(binarraydata.info() )
-    return match_valarray
+    #missing = scenearraydata.lone_set( valarray )
+    # insert NAN values for reflections in self.miller_array not found in binarray
+    #valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices() )
+    #match_valindices = miller.match_indices(scenearray.indices(), valarray.indices() )
+    #match_valarray = valarray.select( match_valindices.pairs().column(1) )
+    #match_valarray.sort(by_value="packed_indices")
+    #match_valarray.set_info(binarraydata.info() )
+    # patch the bin array so its sequence matches the scene array
+    patched_binarraydata = []
+    c = 0
+    for b in matchindices.pair_selection(0):
+      if b:
+        patched_binarraydata.append(matched_binarray[c])
+        c +=1
+      else:
+        patched_binarraydata.append(float("nan"))
+    return flex.double(patched_binarraydata)
 
 
   def DrawNGLJavaScript(self, blankscene=False):
     if not self.scene or not self.sceneisdirty:
       return
     if self.miller_array is None :
-      self.mprint( "An HKL scene must be selected for rendering reflections" )
+      self.mprint( "Select an HKL scene to display reflections" )
       return
     self.mprint("Composing JavaScript...")
 
@@ -676,7 +721,10 @@ class hklview_3d:
     Lstararrowtxt  = roundoff( [self.unit_l_axis[0][0]*l2, self.unit_l_axis[0][1]*l2, self.unit_l_axis[0][2]*l2] )
     # make arrow font size roughly proportional to radius of highest resolution shell
     #fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
-    fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0)))
+    if not self.miller_array:
+      fontsize = str(1.0)
+    else:
+      fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0)))
 
     if blankscene:
       axisfuncstr = "\nvar MakeHKL_Axis = function() { };\n"
@@ -760,6 +808,7 @@ var MakeHKL_Axis = function()
       points = flex.vec3_double( [ ] )
       colors = flex.vec3_double( [ ] )
       radii = flex.double( [ ] )
+      self.binscenelabel = "Resolution"
     else:
       points = self.scene.points
 
@@ -798,8 +847,9 @@ var MakeHKL_Axis = function()
         self.bindata = self.HKLscenes[ibinarray].ampl
 
     self.nbinvalsboundaries = len(self.binvalsboundaries)
-
-    for ibin in range(self.nbinvalsboundaries):
+    # Un-binnable data is scene data values where the bin array has no corresponding miller index
+    # Just put these in a separate bin and pay attention to the book keeping!
+    for ibin in range(self.nbinvalsboundaries+1): # adding the extra bin for un-binnable data
       colours.append([]) # colours and positions are 3 x size of data()
       positions.append([])
       radii2.append([])
@@ -807,6 +857,8 @@ var MakeHKL_Axis = function()
 
     def data2bin(d):
       for ibin, binval in enumerate(self.binvalsboundaries):
+        if math.isnan(d): # NaN values are un-binnable. Tag them for an additional last bin
+          return self.nbinvalsboundaries
         if (ibin+1) == self.nbinvalsboundaries:
           return ibin
         if d > binval and d <= self.binvalsboundaries[ibin+1]:
@@ -835,10 +887,16 @@ var MakeHKL_Axis = function()
     cntbin = 0
     self.binstrs = []
     self.bin_infotpls = []
-    for ibin in range(self.nbinvalsboundaries):
+    for ibin in range(self.nbinvalsboundaries+1):
       mstr =""
       nreflsinbin = len(radii2[ibin])
-      if (ibin+1) < self.nbinvalsboundaries and nreflsinbin > 0:
+      if nreflsinbin == 0:
+        continue
+      bin2 = float("nan"); bin1= float("nan") # indicates un-binned data
+      if ibin == self.nbinvalsboundaries:
+        mstr= "bin[%d] has %d un-matching reflections with %s in ]%2.3f; %2.3f]" %(cntbin, nreflsinbin, \
+                colstr, bin1, bin2)
+      if ibin < (self.nbinvalsboundaries-1):
         bin1= self.binvalsboundaries[ibin]
         bin2= self.binvalsboundaries[ibin+1]
         if colstr=="dres":
@@ -846,53 +904,54 @@ var MakeHKL_Axis = function()
           bin2= 1.0/self.binvalsboundaries[ibin+1]
         mstr= "bin[%d] has %d reflections with %s in ]%2.3f; %2.3f]" %(cntbin, nreflsinbin, \
                 colstr, bin1, bin2)
-        self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 )) )
-        self.binstrs.append(mstr)
-        self.mprint(mstr, verbose=0)
+      self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 )) )
+      self.binstrs.append(mstr)
+      self.mprint(mstr, verbose=0)
 
-        spherebufferstr += "\n// %s\n" %mstr
-        if self.script_has_tooltips:
-          uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
-          uncrustttips = uncrustttips.replace("\'\'+", "")
-          spherebufferstr += "  ttips.push( %s );" %uncrustttips
-        else:
-          #spherebufferstr += "  ttips.push( [ ] );"
-          ttlst = [-1]
-          ttlst.extend(spbufttips[ibin])
-          spherebufferstr += "  ttips.push( %s );" %str( ttlst )
-        spherebufferstr += """
+      spherebufferstr += "\n// %s\n" %mstr
+      if self.script_has_tooltips:
+        uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
+        uncrustttips = uncrustttips.replace("\'\'+", "")
+        spherebufferstr += "  ttips.push( %s );" %uncrustttips
+      else:
+        #spherebufferstr += "  ttips.push( [ ] );"
+        ttlst = [-1]
+        ttlst.extend(spbufttips[ibin])
+        spherebufferstr += "  ttips.push( %s );" %str( ttlst )
+      spherebufferstr += """
   positions.push( new Float32Array( %s ) );
   colours.push( new Float32Array( %s ) );
   radii.push( new Float32Array( %s ) );
   shapebufs.push( new NGL.%s({
     position: positions[%d],
     color: colours[%d], """ %(str(positions[ibin]), str(colours[ibin]), \
-         str(radii2[ibin]), self.primitivetype, cntbin, \
-         cntbin)
-        if self.primitivetype == "SphereBuffer":
-          spherebufferstr += "\n    radius: radii[%d]," %cntbin
-        spherebufferstr += "\n    picking: ttips[%d]," %cntbin
-        if self.primitivetype == "PointBuffer":
-          spherebufferstr += "\n  }, {pointSize: %1.2f})\n" %self.settings.scale
-        else:
-          if self.high_quality:
-            spherebufferstr += """
+        str(radii2[ibin]), self.primitivetype, cntbin, \
+        cntbin)
+      if self.primitivetype == "SphereBuffer":
+        spherebufferstr += "\n    radius: radii[%d]," %cntbin
+      spherebufferstr += "\n    picking: ttips[%d]," %cntbin
+      if self.primitivetype == "PointBuffer":
+        spherebufferstr += "\n  }, {pointSize: %1.2f})\n" %self.settings.scale
+      else:
+        if self.high_quality:
+          spherebufferstr += """
     })
   );
   """
-          else:
-            spherebufferstr += """
+        else:
+          spherebufferstr += """
     }, { disableImpostor: true
    ,    sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
   );
   """
-        spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n" %cntbin
+      spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n" %cntbin
 
-        if self.binvalsboundaries[ibin] < 0.0:
-          negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
-        cntbin += 1
+      if ibin <self.nbinvalsboundaries and self.binvalsboundaries[ibin] < 0.0:
+        negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
+      cntbin += 1
 
-    self.ngl_settings.bin_opacities = str([ "1.0, %d"%e for e in range(cntbin) ])
+    #self.ngl_settings.bin_opacities = str([ "1.0, %d"%e for e in range(cntbin) ])
+    self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,
                           "bin_data_label": colstr
@@ -1680,11 +1739,12 @@ mysocket.onmessage = function (e)
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
     self.ReloadNGL()
-    self.GetClipPlaneDistances()
-    self.GetBoundingBox()
-    self.SetTrackBallRotateSpeed( self.ngl_settings.mouse_sensitivity )
-    self.OrigClipFar = self.clipFar
-    self.OrigClipNear = self.clipNear
+    if not blankscene:
+      self.GetClipPlaneDistances()
+      self.GetBoundingBox()
+      self.OrigClipFar = self.clipFar
+      self.OrigClipNear = self.clipNear
+      self.SetTrackBallRotateSpeed( self.ngl_settings.mouse_sensitivity )
     self.sceneisdirty = False
 
 
@@ -1697,7 +1757,7 @@ mysocket.onmessage = function (e)
 
 
   def OnWebsocketClientMessage(self, client, server, message):
-    if self.scene_id is None:
+    if self.viewerparams.scene_id is None or self.miller_array is None:
       return
     try:
       if message != "":
@@ -1862,12 +1922,12 @@ mysocket.onmessage = function (e)
 
   def SetOpacities(self, bin_opacities_str):
     retstr = ""
-    if bin_opacities_str:
+    if self.miller_array and bin_opacities_str:
       self.ngl_settings.bin_opacities = bin_opacities_str
       bin_opacitieslst = eval(self.ngl_settings.bin_opacities)
       for binopacity in bin_opacitieslst:
-        alpha = float(binopacity.split(",")[0])
-        bin = int(binopacity.split(",")[1])
+        alpha = binopacity[0] # float(binopacity.split(",")[0])
+        bin = binopacity[1] # int(binopacity.split(",")[1])
         retstr += self.set_opacity(bin, alpha)
       self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities } )
     return retstr
@@ -1923,12 +1983,15 @@ mysocket.onmessage = function (e)
     if P1:
       msgtype += "P1"
       unique_rot_ops = self.symops[ 0 : self.sg.order_p() ]
-      retmsg = "expanding to P1 in browser\n"
+      retmsg = "Expanding to P1 in browser\n"
+      if not self.miller_array.is_unique_set_under_symmetry():
+        retmsg += "Not all reflections are in the same asymmetric unit in reciprocal space.\n"
+        retmsg += "Some reflections might be displayed on top of one another.\n"
     else:
       unique_rot_ops = [ self.symops[0] ] # first one is the identity matrix
     if friedel_mate and not self.miller_array.anomalous_flag():
       msgtype += "Friedel"
-      retmsg = "expanding Friedel mates in browser\n"
+      retmsg = "Expanding Friedel mates in browser\n"
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     for i, symop in enumerate(unique_rot_ops):
       RotMx = matrix.sqr( symop.r().as_double())
@@ -2024,8 +2087,10 @@ mysocket.onmessage = function (e)
     self.ngl_settings.mouse_sensitivity = None
     self.msgqueue.append( ("GetTrackBallRotateSpeed", "") )
     if self.WaitforHandshake(5):
-      while self.ngl_settings.mouse_sensitivity is None:
+      nwait = 0
+      while self.ngl_settings.mouse_sensitivity is None and nwait < 5:
         time.sleep(self.sleeptime)
+        nwait += self.sleeptime
 
 
   def SetClipPlaneDistances(self, near, far, cameraPosZ=None):
@@ -2041,8 +2106,10 @@ mysocket.onmessage = function (e)
     self.cameraPosZ = None
     self.msgqueue.append( ("GetClipPlaneDistances", "") )
     if self.WaitforHandshake(5):
-      while self.clipFar is None:
+      nwait = 0
+      while self.clipFar is None and nwait < 5:
         time.sleep(self.sleeptime)
+        nwait += self.sleeptime
       self.mprint("clipnear, clipfar, cameraPosZ: %2.2f, %2.2f %2.2f" \
                  %(self.clipNear, self.clipFar, self.cameraPosZ), 2)
     return (self.clipNear, self.clipFar, self.cameraPosZ)
@@ -2054,8 +2121,10 @@ mysocket.onmessage = function (e)
     self.boundingZ = None
     self.msgqueue.append( ("GetBoundingBox", "") )
     if self.WaitforHandshake(5):
-      while self.boundingX is None:
+      nwait = 0
+      while self.boundingX is None and nwait < 5:
         time.sleep(self.sleeptime)
+        nwait += self.sleeptime
       self.mprint("boundingXYZ: %2.2f %2.2f %2.2f" \
          %(self.boundingX, self.boundingY, self.boundingZ), verbose=2)
     return (self.boundingX, self.boundingY, self.boundingZ)
@@ -2135,9 +2204,9 @@ def reset_NGLsettings():
   """
   Reset NGL settings to their default values as specified in the phil definition string
   """
-  global NGLmaster_phil
-  global ngl_philstr
-  global NGLparams
+  #global NGLmaster_phil
+  #global ngl_philstr
+  #global NGLparams
   NGLparams = NGLmaster_phil.fetch(source = libtbx.phil.parse( ngl_philstr) ).extract()
 
 
@@ -2145,7 +2214,7 @@ def NGLsettings():
   """
   Get a global phil parameters object containing some NGL settings
   """
-  global NGLparams
+  #global NGLparams
   return NGLparams
 
 

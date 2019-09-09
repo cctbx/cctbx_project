@@ -123,10 +123,7 @@ class bond_simple_proxy_registry(proxy_registry_base):
     self.table = [{} for i in range(self.n_seq)]
 
   def is_proxy_set(self, i_seqs):
-    if (i_seqs[1] not in self.table[i_seqs[0]]):
-      return None
-    else:
-      return True
+    return (i_seqs[1] in self.table[i_seqs[0]])
 
   def is_any_proxy_set(self, i_seqs, j_seqs):
     for i in i_seqs:

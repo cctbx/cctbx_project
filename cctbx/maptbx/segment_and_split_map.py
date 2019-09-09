@@ -1387,14 +1387,27 @@ class info_object:
     self.init_asctime=time.asctime()
 
   def set_box_map_ncs_au_map_data(self,box_map_ncs_au_map_data=None,
+       box_map_ncs_au_half_map_data_list=None,
        box_map_ncs_au_crystal_symmetry=None):
     self.box_map_ncs_au_map_data=box_map_ncs_au_map_data.deep_copy()
+    self.box_map_ncs_au_half_map_data_list=[]
+    for hm in box_map_ncs_au_half_map_data_list:
+       self.box_map_ncs_au_half_map_data_list.append(hm.deep_copy())
     self.box_map_ncs_au_crystal_symmetry=box_map_ncs_au_crystal_symmetry
     if self.origin_shift and self.origin_shift != (0,0,0):
-        self.box_map_ncs_au_map_data=self.shift_map_back(
-      map_data=self.box_map_ncs_au_map_data,
-      crystal_symmetry=self.box_map_ncs_au_crystal_symmetry,
-      shift_cart=self.origin_shift)
+      self.box_map_ncs_au_map_data=self.shift_map_back(
+        map_data=self.box_map_ncs_au_map_data,
+        crystal_symmetry=self.box_map_ncs_au_crystal_symmetry,
+        shift_cart=self.origin_shift)
+
+      new_hm_list=[]
+      for hm in self.box_map_ncs_au_half_map_data_list:
+        hm=self.shift_map_back(
+          map_data=hm,
+          crystal_symmetry=self.box_map_ncs_au_crystal_symmetry,
+          shift_cart=self.origin_shift)
+        new_hm_list.append(hm)
+      self.box_map_ncs_au_half_map_data_list=new_hm_list
 
   def shift_map_back(self,map_data=None,
       crystal_symmetry=None,shift_cart=None):
@@ -4593,6 +4606,7 @@ def check_memory(map_data,ratio_needed,maximum_fraction_to_use=0.90,
         "memory (%.0f GB needed) \nto run this job" %(needed_memory))
 
 def get_params(args,map_data=None,crystal_symmetry=None,
+    half_map_data_list=None,
     sharpening_target_pdb_inp=None,
     ncs_object=None,
     sequence=None,
@@ -4687,7 +4701,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       "set residual_target=kurtosis and sharpening_target=kurtosis")
     print("OK", file=out)
 
-  half_map_data_list=[]
+  if not half_map_data_list: half_map_data_list=[]
 
   if params.input_files.info_file:
     map_data=None
@@ -7403,11 +7417,15 @@ def get_bounds_from_sites(sites_cart=None,map_data=None,
 def write_output_files(params,
     tracking_data=None,
     map_data=None,
+    half_map_data_list=None,
     ncs_group_obj=None,
     remainder_ncs_group_obj=None,
     pdb_hierarchy=None,
     removed_ncs=None,
     out=sys.stdout):
+
+  half_map_data_list_au=[]
+  if not half_map_data_list: half_map_data_list=[]
 
   if params.output_files.au_output_file_stem:
     au_mask_output_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.au_output_file_stem+"_mask.ccp4")
@@ -7563,6 +7581,17 @@ def write_output_files(params,
       rad_smooth=tracking_data.params.crystal_info.resolution,
       crystal_symmetry=tracking_data.crystal_symmetry,
       out=out)
+    half_map_data_list_au=[]
+    for hm in half_map_data_list:  # apply mask to half maps
+      hm_data_ncs_au,hm_smoothed_mask_data=apply_soft_mask(
+        map_data=hm.deep_copy().as_double(),
+        mask_data=mask.as_double(),
+        rad_smooth=tracking_data.params.crystal_info.resolution,
+        crystal_symmetry=tracking_data.crystal_symmetry,
+        out=out)
+      half_map_data_list_au.append(hm_data_ncs_au)
+
+
   elif (box_ncs_au): # usual.  If box_ncs_au is False, do not mask
 
     map_data_ncs_au=map_data_ncs_au*mask
@@ -7572,6 +7601,13 @@ def write_output_files(params,
     n_tot=mask.size()
     mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
     map_data_ncs_au=map_data_ncs_au+(1-mask)*mean_in_box
+    half_map_data_list_au=[]
+    for hm in half_map_data_list:  # apply mask to half maps
+      one_d=hm.as_1d()
+      mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
+      hm_data_ncs_au=hm+(1-mask)*mean_in_box
+      half_map_data_list_au.append(hm_data_ncs_au)
+
     del one_d,mask
 
   if au_map_output_file and params.output_files.write_output_maps:
@@ -7616,10 +7652,24 @@ def write_output_files(params,
        map_data=map_data_ncs_au.as_double(),
        crystal_symmetry=tracking_data.crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds,out=out)
+
+  half_map_data_list_au_box=[]
+  for hmdlu in half_map_data_list_au:
+    hm_box_map_ncs_au,dummy_box_crystal_symmetry,\
+       dummy_smoothed_box_mask_data,dummy_original_box_map_data=cut_out_map(
+       soft_mask=tracking_data.params.map_modification.soft_mask,
+       resolution=tracking_data.params.crystal_info.resolution,
+       map_data=hmdlu.as_double(),
+       crystal_symmetry=tracking_data.crystal_symmetry,
+       min_point=lower_bounds, max_point=upper_bounds,out=out)
+    half_map_data_list_au_box.append(hm_box_map_ncs_au)
+
   if params.control.save_box_map_ncs_au:
        tracking_data.set_box_map_ncs_au_map_data(
        box_map_ncs_au_crystal_symmetry=box_crystal_symmetry,
-       box_map_ncs_au_map_data=box_map_ncs_au,)
+       box_map_ncs_au_map_data=box_map_ncs_au,
+       box_map_ncs_au_half_map_data_list=half_map_data_list_au_box,
+       )
 
   write_ccp4_map(tracking_data.crystal_symmetry,'map_data_ncs_au.ccp4',map_data_ncs_au)
   write_ccp4_map(box_crystal_symmetry,'box_map_ncs_au.ccp4',box_map_ncs_au)
@@ -11108,6 +11158,7 @@ def run(args,
     params,map_data,half_map_data_list,pdb_hierarchy,tracking_data,\
         shifted_ncs_object=get_params( #
        args,map_data=map_data,crystal_symmetry=crystal_symmetry,
+       half_map_data_list=half_map_data_list,
        ncs_object=ncs_obj,
        sequence=sequence,
        sharpening_target_pdb_inp=sharpening_target_pdb_inp,out=out)
@@ -11346,6 +11397,7 @@ def run(args,
   map_files_written=write_output_files(params,
       tracking_data=tracking_data,
       map_data=map_data,
+      half_map_data_list=half_map_data_list,
       ncs_group_obj=ncs_group_obj,
       remainder_ncs_group_obj=remainder_ncs_group_obj,
       pdb_hierarchy=pdb_hierarchy,

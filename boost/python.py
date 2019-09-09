@@ -1,7 +1,12 @@
 from __future__ import absolute_import, division, print_function
-import sys, os
+
+import inspect
+import os
 import re
+import sys
+
 from libtbx import cpp_function_name
+
 symbol_not_found_pat = re.compile(
   r"[Ss]ymbol[ ]not[ ]found: \s* (\w+) $", re.X | re.M | re.S)
 
@@ -158,7 +163,6 @@ sizeof_void_ptr = c_sizeof("void*")
 class gcc_version(object):
 
   def __init__(self):
-    import re
     pat = r" \s* = \s* (\d+) \s+"
     m = re.search("__GNUC__ %s __GNUC_MINOR__ %s __GNUC_PATCHLEVEL__ %s"
                   % ((pat,)*3),
@@ -182,10 +186,25 @@ class gcc_version(object):
 
 
 class injector(object):
+  '''Deprecated function. Instead of
 
+  class CrystalExt(boost.python.injector, Crystal):
+
+  please use
+
+  @boost.python.inject_into(Crystal)
+  class _(object):
+  '''
   class __metaclass__(meta_class):
 
     def __init__(self, name, bases, dict):
+      import warnings
+      warnings.warn(
+        "boost.python.injector is deprecated and does not work on Python 3. "
+        "Please see https://github.com/cctbx/cctbx_project/pull/386 for more information.",
+        DeprecationWarning,
+        stacklevel=2
+      )
       if (len(bases) > 1):
         # bases[0] is this injector
         target = bases[1] # usually a Boost.Python class
@@ -231,8 +250,16 @@ def inject(target_class, *mixin_classes):
                       "__dict__") and (key != '__doc__' or value):
          setattr(target_class, key, value)
 
-import inspect
 def inject_into(target_class, *mixin_classes):
+  '''Add entries from python class dictionaries to a boost extension class.
+
+     It is used as follows:
+
+           @boost.python.inject_into(extension_class)
+           class _():
+             def method(...):
+               ...
+  '''
   def _inject(c):
     if inspect.isclass(c):
       inject(target_class, c, *mixin_classes)

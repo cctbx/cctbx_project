@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <boost/python.hpp>
 #include <boost/shared_ptr.hpp>
 
 #include <scitbx/constants.h>
@@ -627,6 +628,18 @@ public:
   }
 
   std::string export_s; //export data in string form; make public for readonly
+
+  /**
+   * Return data in bytes form
+   */
+  inline
+  boost::python::object as_bytes(){
+    // Convert to a python bytes object
+    boost::python::object data_bytes(
+      boost::python::handle<>(PyBytes_FromStringAndSize(export_s.c_str(), export_s.size()))
+    );
+    return data_bytes;
+  }
 
   inline
   void circle_overlay(const double& pixel_size,

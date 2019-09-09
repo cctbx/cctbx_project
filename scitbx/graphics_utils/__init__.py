@@ -13,7 +13,7 @@ def color_by_property(
   gradients = ["rainbow", "redblue", "heatmap"]
   assert (gradient_type in gradients)
   return color_by_property_(
-    properties=properties,
+    properties=properties.as_double(),
     selection=selection,
     color_all=color_all,
     gradient_type=gradients.index(gradient_type),

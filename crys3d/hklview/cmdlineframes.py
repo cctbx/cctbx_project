@@ -114,7 +114,7 @@ mafom = miller.array(miller.set(xs, mi2),
                     flex.double( [0.0, 0.1, 0.25, 0.35, 0.4, 0.5, 0.6, 0.75, 1.0 ] ) )
 mafom.set_info(miller.array_info(source="artificial file", labels=["FOM"]))
 
-mi3 = flex.miller_index([ (1,-2,3), (0,0,-4), (0, 1, 2), (1, 0, 2), (-1, 1, -2), (-2, 1, 0) , (1, 0, -2), (0, 0, 2) ] )
+mi3 = flex.miller_index([ (1, 0, 2), (-1, 1, -2), (-2, 1, 0) , (1, 0, -2), (1,-2,3), (0,0,-4), (0, 1, 2), (0, 0, 2) ] )
 ma3 = miller.array(miller.set(xs, mi3), data=flex.double( [22.429, 28.635, 3.328, 3.738, 24.9, 14.521, 3.738, 19.92] ) )
 ma3.set_info(miller.array_info(source="artificial file", labels=["Foo"]))
 
@@ -133,7 +133,7 @@ ma5.set_info(miller.array_info(source="artificial file", labels=["BarFoo"]))
 mtz1 = ma1.as_mtz_dataset(column_root_label="I")
 mtz1.add_miller_array(ma2, column_root_label="MyMap")
 mtz1.add_miller_array(ma3, column_root_label="Oink")
-mtz1.add_miller_array(ma4, column_root_label="blip")
+#mtz1.add_miller_array(ma4, column_root_label="blip")
 mtz1.add_miller_array(ma5, column_root_label="bleep")
 mtz1.add_miller_array(mafom, column_root_label="FOM")
 mtz1.set_wavelength(1.2)
@@ -290,8 +290,6 @@ class HKLViewFrame() :
   def __init__ (self, *args, **kwds) :
     self.valid_arrays = []
     self.spacegroup_choices = []
-    self.array_infostrs = []
-    self.array_infotpls = []
     self.procarrays = []
     self.merge_answer = [None]
     self.dmin = -1
@@ -339,14 +337,19 @@ class HKLViewFrame() :
 
   def zmq_listen(self):
     while not self.STOP:
-      philstr = self.guisocket.recv()
-      philstr = str(philstr)
-      self.mprint("Received phil string:\n" + philstr, verbose=1)
-      new_phil = libtbx.phil.parse(philstr)
-      self.update_settings(new_phil)
-      #print( "in zmq listen")
-      time.sleep(0.1)
+      try:
+        philstr = self.guisocket.recv()
+        philstr = str(philstr)
+        self.mprint("Received phil string:\n" + philstr, verbose=1)
+        new_phil = libtbx.phil.parse(philstr)
+        self.update_settings(new_phil)
+        #print( "in zmq listen")
+        time.sleep(0.1)
+      except Exception as e:
+        self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
+
     del self.guisocket
+    self.mprint( "Exiting zmq_listen() thread", 1)
 
 
   def ResetPhilandViewer(self, extraphil=None):
@@ -355,13 +358,14 @@ class HKLViewFrame() :
     if extraphil:
       self.currentphil = self.currentphil.fetch(source = extraphil)
     self.params = self.currentphil.fetch().extract()
+    self.viewer.viewerparams = self.params.NGL_HKLviewer.viewer
     self.viewer.symops = []
     self.viewer.sg = None
     self.viewer.proc_arrays = []
     self.viewer.HKLscenesdict = {}
     self.viewer.sceneisdirty = True
     if self.viewer.miller_array:
-      self.viewer.DrawNGLJavaScript(blankscene=True)
+      self.viewer.DrawNGLJavaScript( blankscene=True)
     self.viewer.miller_array = None
 
 
@@ -421,11 +425,14 @@ class HKLViewFrame() :
 
       if view_3d.has_phil_path(diff_phil, "scene_id") \
        or view_3d.has_phil_path(diff_phil, "merge_data") \
+       or view_3d.has_phil_path(diff_phil, "show_missing") \
+       or view_3d.has_phil_path(diff_phil, "show_only_missing") \
+       or view_3d.has_phil_path(diff_phil, "show_systematic_absences") \
        or view_3d.has_phil_path(diff_phil, "nbins") \
        or view_3d.has_phil_path(diff_phil, "bin_scene_label") \
        or view_3d.has_phil_path(diff_phil, "scene_bin_thresholds"):
         #import code; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-        if self.set_scene(phl.scene_id):
+        if self.set_scene(phl.viewer.scene_id):
           self.set_scene_bin_thresholds(binvals=phl.scene_bin_thresholds,
                                          bin_scene_label=phl.bin_scene_label,
                                          nbins=phl.nbins )
@@ -449,11 +456,12 @@ class HKLViewFrame() :
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
-      msg = self.viewer.update_settings(diff_phil, phl)
+      msg, self.params.NGL_HKLviewer = self.viewer.update_settings(diff_phil, phl)
+      # parameters might have been changed. So update self.currentphil accordingly
+      self.currentphil = self.master_phil.format(python_object = self.params)
       self.mprint( msg, verbose=1)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.NewFileLoaded = False
-
       if (self.viewer.miller_array is None) :
         self.mprint( NOREFLDATA, True)
         return False
@@ -581,7 +589,7 @@ class HKLViewFrame() :
     if self.viewer.miller_array is None or \
       self.params.NGL_HKLviewer.using_space_subgroup:
       return
-    current_miller_array_idx = self.viewer.hkl_scenes_info[self.viewer.scene_id][1]
+    current_miller_array_idx = self.viewer.hkl_scenes_info[self.params.NGL_HKLviewer.viewer.scene_id][1]
     matching_valid_array = self.valid_arrays[ current_miller_array_idx ]
     from cctbx.sgtbx.subgroups import subgroups
     from cctbx import sgtbx
@@ -648,7 +656,7 @@ class HKLViewFrame() :
       from iotbx.reflection_file_reader import any_reflection_file
       self.viewer.isnewfile = True
       #self.params.NGL_HKLviewer.mergedata = None
-      self.viewer.scene_id = None
+      self.params.NGL_HKLviewer.viewer.scene_id = None
       self.viewer.colour_scene_id = None
       self.viewer.radii_scene_id = None
       self.viewer.match_valarrays = []
@@ -668,8 +676,8 @@ class HKLViewFrame() :
         self.mprint(to_str(e))
         arrays = []
       valid_arrays = []
-      self.array_infostrs = []
-      self.array_infotpls = []
+      self.viewer.array_infostrs = []
+      self.viewer.array_infotpls = []
       for array in arrays :
         #if array.is_hendrickson_lattman_array() :
         #  continue
@@ -679,12 +687,12 @@ class HKLViewFrame() :
           self.mprint('Ignoring miller array \"%s\" of %s' \
             %(array.info().label_string(), type(array.data()[0]) ) )
           continue
-        self.array_infostrs.append( ArrayInfo(array, self.mprint).infostr )
-        self.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
+        self.viewer.array_infostrs.append( ArrayInfo(array, self.mprint).infostr )
+        self.viewer.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
       self.mprint("Miller arrays in this file:")
-      for e in self.array_infostrs:
+      for e in self.viewer.array_infostrs:
         self.mprint("%s" %e)
       self.NewFileLoaded = True
       if (len(valid_arrays) == 0):
@@ -696,7 +704,7 @@ class HKLViewFrame() :
         if (set_array):
           self.set_miller_array()
         mydict = { "info": self.infostr,
-                   "array_infotpls": self.array_infotpls,
+                   "array_infotpls": self.viewer.array_infotpls,
                    "bin_infotpls": self.viewer.bin_infotpls,
                    "html_url": self.viewer.url,
                    "merge_data": self.params.NGL_HKLviewer.merge_data,
@@ -763,29 +771,11 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def set_scene_bin_thresholds(self, binvals=[], bin_scene_label="Resolution", nbins=6):
-    self.viewer.binscenelabel = bin_scene_label
+  def set_scene_bin_thresholds(self, binvals=None, bin_scene_label="Resolution", nbins=6):
     if binvals:
       binvals = list( 1.0/flex.double(binvals) )
     else:
-      if self.viewer.binscenelabel=="Resolution":
-        uc = self.viewer.miller_array.unit_cell()
-        indices = self.viewer.miller_array.indices()
-        dmaxmin = self.viewer.miller_array.d_max_min()
-        binning = miller.binning( uc, nbins, indices, dmaxmin[0], dmaxmin[1] )
-        binvals = [ binning.bin_d_range(n)[0]  for n in binning.range_all() ]
-        binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
-        binvals = list( 1.0/flex.double(binvals) )
-      else:
-        bindata = self.viewer.HKLscenes[int(self.viewer.binscenelabel)].data.deep_copy()
-        selection = flex.sort_permutation( bindata )
-        bindata_sorted = bindata.select(selection)
-        # get binvals by dividing bindata_sorted with nbins
-        binvals = [bindata_sorted[0]] * nbins #
-        for i,e in enumerate(bindata_sorted):
-          idiv = int(nbins*float(i)/len(bindata_sorted))
-          binvals[idiv] = e
-    binvals.sort()
+      binvals = self.viewer.calc_bin_thresholds(bin_scene_label, nbins)
     self.viewer.UpdateBinValues( binvals )
 
 
@@ -796,7 +786,8 @@ class HKLViewFrame() :
 
   def SetSceneNbins(self, nbins):
     self.params.NGL_HKLviewer.nbins = nbins
-    self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = str([ "1.0, %d"%e for e in range(nbins) ])
+    #self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = str([ "1.0, %d"%e for e in range(nbins) ])
+    self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = str([ (1.0, e) for e in range(nbins) ])
     self.update_settings()
 
 
@@ -828,7 +819,7 @@ class HKLViewFrame() :
 
 
   def SetScene(self, scene_id):
-    self.params.NGL_HKLviewer.scene_id = scene_id
+    self.params.NGL_HKLviewer.viewer.scene_id = scene_id
     self.update_settings()
 
 
@@ -989,8 +980,6 @@ masterphilstr = """
 NGL_HKLviewer {
   filename = None
     .type = path
-  scene_id = None
-    .type = int
   merge_data = False
     .type = bool
   spacegroup_choice = None
@@ -1023,6 +1012,8 @@ NGL_HKLviewer {
   tooltips_in_script = False
     .type = bool
   viewer {
+    scene_id = None
+      .type = int
     %s
     NGL {
       %s

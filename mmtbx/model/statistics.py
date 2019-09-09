@@ -324,7 +324,7 @@ class geometry(object):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
     cif_block["_refine.pdbx_stereochemistry_target_values"] = \
-      self.restraints_source
+        self.restraints_source if self.restraints_source is not None else '?'
     loop = iotbx.cif.model.loop(header=(
       "_refine_ls_restr.pdbx_refine_id",
       "_refine_ls_restr.type",

@@ -48,7 +48,7 @@ def nth_power_scale(dataarray, nth_power):
   If nth_power < 0 then an automatic value is computed that maps the smallest
   values to 0.1 of the largest values
   """
-  absdat = flex.abs(dataarray)
+  absdat = flex.abs(dataarray).as_double()
   absdat2 = flex.double([e for e in absdat if not math.isnan(e)])
   maxdat = flex.max(absdat2)
   mindat = max(1e-10*maxdat, flex.min(absdat2) )
@@ -281,12 +281,12 @@ class scene(object):
         data_as_float = flex.double(data.size(), 0.0)
         data_as_float.set_selected(data==True, flex.double(data.size(), 1.0))
         data = data_as_float
-        self.data = data.deep_copy()
+        self.data = data #.deep_copy()
       else :
         if isinstance(data, flex.double):
-          self.data = data.deep_copy()
+          self.data = data #.deep_copy()
         elif isinstance(data, flex.complex_double):
-          self.data = data.deep_copy()
+          self.data = data #.deep_copy()
           self.ampl = flex.abs(data)
           self.phases = flex.arg(data) * 180.0/math.pi
           # purge nan values from array to avoid crash in fmod_positive()
@@ -299,7 +299,7 @@ class scene(object):
           # replace the nan values with an arbitrary float value
           self.radians = self.radians.set_selected(b, 0.424242)
         elif hasattr(array.data(), "as_double"):
-          self.data = array.data().as_double()
+          self.data = data
         else:
           raise RuntimeError("Unexpected data type: %r" % data)
         if (settings.show_data_over_sigma):
@@ -509,13 +509,16 @@ class scene(object):
         #  self.missing_flags[j_seq] = False
         #  self.sys_absent_flags[j_seq] = True
         #else :
-        new_indices.append(hkl)
+        if hkl in self.indices:
+          print("Systematically absent reflection %s is unexpectedly present in %s" %(hkl, array.info().label_string()) )
+        else:
+          new_indices.append(hkl)
       if (new_indices.size() > 0):
         uc = self.work_array.unit_cell()
         points = uc.reciprocal_space_vector(new_indices) * 100
         self.points.extend(points)
         n_sys_absent = new_indices.size()
-        self.radii.extend(flex.double(new_indices.size(), self.max_radius))
+        self.radii.extend(flex.double(new_indices.size(), self.max_radius/2.0))
         self.indices.extend(new_indices)
         self.missing_flags.extend(flex.bool(new_indices.size(), False))
         self.sys_absent_flags.extend(flex.bool(new_indices.size(), True))
