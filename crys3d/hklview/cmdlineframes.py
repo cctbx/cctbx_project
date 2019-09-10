@@ -551,6 +551,7 @@ class HKLViewFrame() :
 
   def process_all_miller_arrays(self, col):
     #print "in process_all_miller_arrays"
+    self.mprint("Processing reflection data...")
     self.procarrays = []
     if self.params.NGL_HKLviewer.merge_data == False:
       self.settings.expand_to_p1 = False
@@ -653,6 +654,7 @@ class HKLViewFrame() :
   def load_reflections_file(self, file_name, set_array=True, data_only=False):
     file_name = to_str(file_name)
     if (file_name != ""):
+      self.mprint("Reading file...")
       from iotbx.reflection_file_reader import any_reflection_file
       self.viewer.isnewfile = True
       #self.params.NGL_HKLviewer.mergedata = None
@@ -694,6 +696,7 @@ class HKLViewFrame() :
       self.mprint("Miller arrays in this file:")
       for e in self.viewer.array_infostrs:
         self.mprint("%s" %e)
+      self.mprint("\n")
       self.NewFileLoaded = True
       if (len(valid_arrays) == 0):
         msg = "No arrays of the supported types in this file."

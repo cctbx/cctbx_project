@@ -368,7 +368,6 @@ class hklview_3d:
       msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
     msg += self.SetOpacities(curphilparam.viewer.NGL.bin_opacities )
-      #self.mprint(curphilparam.viewer.NGL.bin_opacities )
     return msg, curphilparam
 
 
@@ -944,7 +943,7 @@ var MakeHKL_Axis = function()
    ,    sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
   );
   """
-      spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n" %cntbin
+      spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n  alphas.push(1.0);\n" %cntbin
 
       if ibin <self.nbinvalsboundaries and self.binvalsboundaries[ibin] < 0.0:
         negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
@@ -1286,6 +1285,7 @@ var br_colours = [];
 var br_radii = [];
 var br_ttips = [];
 var colours = [];
+var alphas = [];
 var radii = [];
 var shapebufs = [];
 var br_shapebufs = [];
@@ -1362,7 +1362,6 @@ catch(err)
 mysocket.onmessage = function (e)
 {
   var c,
-  alpha,
   si;
   WebsockSendMsg('\\n    Browser: Got ' + e.data ); // tell server what it sent us
   try
@@ -1374,29 +1373,29 @@ mysocket.onmessage = function (e)
 
     if (msgtype === "alpha")
     {
-      ibin = parseInt(val[0]);
-      alpha = parseFloat(val[1]);
-      shapebufs[ibin].setParameters({opacity: alpha});
+      bin = parseInt(val[0]);
+      alphas[bin] = parseFloat(val[1]);
+      shapebufs[bin].setParameters({opacity: alphas[bin]});
       for (var g=0; g < nrots; g++ )
-        br_shapebufs[ibin][g].setParameters({opacity: alpha});
+        br_shapebufs[bin][g].setParameters({opacity: alphas[bin]});
       stage.viewer.requestRender();
     }
 
     if (msgtype === "colour")
     {
-      ibin = parseInt(val[0]);
+      bin = parseInt(val[0]);
       si =  parseInt(val[1]);
-      colours[ibin][3*si] = parseFloat(val[2]);
-      colours[ibin][3*si+1] = parseFloat(val[3]);
-      colours[ibin][3*si+2] = parseFloat(val[4]);
-      shapebufs[ibin].setAttributes({ color: colours[ibin] });
+      colours[bin][3*si] = parseFloat(val[2]);
+      colours[bin][3*si+1] = parseFloat(val[3]);
+      colours[bin][3*si+2] = parseFloat(val[4]);
+      shapebufs[bin].setAttributes({ color: colours[bin] });
 
       for (var g=0; g < nrots; g++ )
       {
-        br_colours[ibin][3*si] = parseFloat(val[2]);
-        br_colours[ibin][3*si+1] = parseFloat(val[3]);
-        br_colours[ibin][3*si+2] = parseFloat(val[4]);
-        br_shapebufs[ibin][g].setAttributes({ color: br_colours[ibin] });
+        br_colours[bin][3*si] = parseFloat(val[2]);
+        br_colours[bin][3*si+1] = parseFloat(val[3]);
+        br_colours[bin][3*si+2] = parseFloat(val[4]);
+        br_shapebufs[bin][g].setAttributes({ color: br_colours[bin] });
       }
       stage.viewer.requestRender();
     }
@@ -1451,7 +1450,7 @@ mysocket.onmessage = function (e)
       br_shapebufs = [];
 
       //alert('rotations:\\n' + val);
-      strs = datval[1].split("\\n");
+      rotationstrs = datval[1].split("\\n");
       nbins = %d;
       var Rotmat = new NGL.Matrix3();
       var sm = new Float32Array(9);
@@ -1459,7 +1458,7 @@ mysocket.onmessage = function (e)
 
       for (var bin=0; bin<nbins; bin++)
       {
-        var nsize = positions[bin].length/3;
+        var nsize = positions[bin].length/3; // number of reflections in each bin
         var csize = nsize*3;
         var nsize3 = nsize*3;
         var anoexp = false;
@@ -1499,22 +1498,22 @@ mysocket.onmessage = function (e)
         }
 
         nrots = 0;
-        for (var g=0; g < strs.length; g++ )
+        for (var rotmxidx=0; rotmxidx < rotationstrs.length; rotmxidx++ )
         {
-          if (strs[g] < 1 )
+          if (rotationstrs[rotmxidx] < 1 )
             continue;
           nrots++;
 
           br_positions[bin].push( [] );
           br_shapebufs[bin].push( [] );
           br_ttips[bin].push( [] );
-          br_ttips[bin][g] = ttips[bin].slice(); // deep copy with slice()
-          br_ttips[bin][g][0] = g;
-          br_positions[bin][g] = new Float32Array( csize );
+          br_ttips[bin][rotmxidx] = ttips[bin].slice(); // deep copy with slice()
+          br_ttips[bin][rotmxidx][0] = rotmxidx;
+          br_positions[bin][rotmxidx] = new Float32Array( csize );
 
-          var elmstrs = strs[g].split(",");
-          //alert('rot' + g + ': ' + elmstrs);
-
+          // convert string of rotation matrix elements into a Matrix3
+          var elmstrs = rotationstrs[rotmxidx].split(",");
+          //alert('rot' + rotmxidx + ': ' + elmstrs);
           for (j=0; j<9; j++)
             sm[j] = parseFloat(elmstrs[j]);
           Rotmat.fromArray(sm);
@@ -1528,28 +1527,27 @@ mysocket.onmessage = function (e)
 
             r.applyMatrix3(Rotmat)
 
-            br_positions[bin][g][idx] = r.x;
-            br_positions[bin][g][idx + 1] = r.y;
-            br_positions[bin][g][idx + 2] = r.z;
+            br_positions[bin][rotmxidx][idx] = r.x;
+            br_positions[bin][rotmxidx][idx + 1] = r.y;
+            br_positions[bin][rotmxidx][idx + 2] = r.z;
 
             if (anoexp)
             {
               r.negate(); // inversion for anomalous pair
-              br_positions[bin][g][nsize3 + idx] = r.x;
-              br_positions[bin][g][nsize3 + idx + 1] = r.y;
-              br_positions[bin][g][nsize3 + idx + 2] = r.z;
+              br_positions[bin][rotmxidx][nsize3 + idx] = r.x;
+              br_positions[bin][rotmxidx][nsize3 + idx + 1] = r.y;
+              br_positions[bin][rotmxidx][nsize3 + idx + 2] = r.z;
             }
-
           }
 
-          br_shapebufs[bin][g] = new NGL.SphereBuffer({
-              position: br_positions[bin][g],
+          br_shapebufs[bin][rotmxidx] = new NGL.SphereBuffer({
+              position: br_positions[bin][rotmxidx],
               color: br_colours[bin],
               radius: br_radii[bin],
-              // g works as the id number of the rotation of applied symmetry operator when creating tooltip for an hkl
-              picking: br_ttips[bin][g],
+              // rotmxidx works as the id of the rotation of applied symmetry operator when creating tooltip for an hkl
+              picking: br_ttips[bin][rotmxidx],
               } %s  );
-          shape.addBuffer(br_shapebufs[bin][g]);
+          shape.addBuffer(br_shapebufs[bin][rotmxidx]);
           //WebsockSendMsg( 'Memory usage: ' + String(window.performance.memory.totalJSHeapSize) +
           //        ', ' + String(window.performance.memory.totalJSHeapSize) );
         }
@@ -1557,8 +1555,17 @@ mysocket.onmessage = function (e)
       MakeHKL_Axis();
 
       shapeComp = stage.addComponentFromObject(shape);
-      repr = shapeComp.addRepresentation('buffer42');
-      repr.update();
+      repr = shapeComp.addRepresentation('buffer');
+      //repr.update();
+
+      for (var bin=0; bin<nbins; bin++)
+      {
+        for (var rotmxidx=0; rotmxidx < nrots; rotmxidx++ )
+        {
+          br_shapebufs[bin][rotmxidx].setParameters({opacity: alphas[bin]});
+        }
+      }
+      //repr.update();
 
       stage.viewer.requestRender();
       WebsockSendMsg( 'Expanded data' );
@@ -2110,22 +2117,22 @@ mysocket.onmessage = function (e)
       while self.clipFar is None and nwait < 5:
         time.sleep(self.sleeptime)
         nwait += self.sleeptime
-      self.mprint("clipnear, clipfar, cameraPosZ: %2.2f, %2.2f %2.2f" \
+      self.mprint("clipnear, clipfar, cameraPosZ: %s, %s %s" \
                  %(self.clipNear, self.clipFar, self.cameraPosZ), 2)
     return (self.clipNear, self.clipFar, self.cameraPosZ)
 
 
   def GetBoundingBox(self):
-    self.boundingX = None
-    self.boundingY = None
-    self.boundingZ = None
+    self.boundingX = 0.0
+    self.boundingY = 0.0
+    self.boundingZ = 0.0
     self.msgqueue.append( ("GetBoundingBox", "") )
     if self.WaitforHandshake(5):
       nwait = 0
       while self.boundingX is None and nwait < 5:
         time.sleep(self.sleeptime)
         nwait += self.sleeptime
-      self.mprint("boundingXYZ: %2.2f %2.2f %2.2f" \
+      self.mprint("boundingXYZ: %s, %s %s" \
          %(self.boundingX, self.boundingY, self.boundingZ), verbose=2)
     return (self.boundingX, self.boundingY, self.boundingZ)
 
