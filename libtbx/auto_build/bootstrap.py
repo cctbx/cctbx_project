@@ -2373,7 +2373,13 @@ class QRBuilder(PhenixBuilder):
 
   def add_make(self):
     if self.user=='builder': PhenixBuilder.add_make(self)
-    pip_installs = ['ase', 'JPype1','pymongo']
+    #
+    # XXX Use older ASE (the new one is only Python3)
+    # XXX Do not get JPype1 as it fails. This makes QR work only with
+    # XXX fast_interaction=True (=False won't work)
+    #
+    #pip_installs = ['ase', 'JPype1','pymongo']
+    pip_installs = ['ase==3.17.0', 'pymongo']
     instructions = []
     # versioning
     cmd = [os.path.join('..', self.python_base),
