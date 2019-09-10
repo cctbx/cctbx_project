@@ -212,17 +212,16 @@ def define_entry_points(epdict, **kwargs):
   for ep in epdict:
     print("  {n} entries for entry point {ep}".format(ep=ep, n=len(epdict[ep])))
 
-  # Temporarily change to build/ directory. This is where a directory
-  # named libtbx.{caller}.egg-info will be created containing the
-  # entry point info. Create libtbx.{caller}.egg-link in
-  # {libtbx.env.build_path}/lib, which must be in sys.path.
+  # Temporarily change to {libtbx.env.build_path}/lib directory. This
+  # is where a directory named libtbx.{caller}.egg-info will be
+  # created containing the entry point info.
   try:
     curdir = os.getcwd()
-    os.chdir(abs(libtbx.env.build_path))
+    os.chdir(os.path.join(abs(libtbx.env.build_path), 'lib'))
     # Now trick setuptools into thinking it is in control here.
     try:
       argv_orig = sys.argv
-      sys.argv = ['setup.py', 'develop', '--install-dir=%s' % os.path.join(abs(libtbx.env.build_path), 'lib')]
+      sys.argv = ['setup.py', 'egg_info']
       # And make it run quietly
       with _silence():
         setuptools.setup(
