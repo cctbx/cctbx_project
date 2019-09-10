@@ -9,7 +9,6 @@ https://conda.anaconda.org/cctbx/linux-64/libstdcxx-ng-7.3.0-hdf63c60_0.tar.bz2#
 https://conda.anaconda.org/cctbx/linux-64/libsvm-323-0.tar.bz2#f5849cbafea13890fd746cdf95d9a608
 https://conda.anaconda.org/cctbx/linux-64/lz4-c-1.8.1.2-0.tar.bz2#61aaf0dbcc58eb0a3030d78f6d2c6b15
 https://conda.anaconda.org/cctbx/linux-64/nomkl-3.0-0.tar.bz2#dd8bdca858ba54245790a3cab33cec32
-https://conda.anaconda.org/cctbx/linux-64/blosc-1.15.1-hf484d3e_1002.tar.bz2#2cd91766d181359ecc700b3fc66e6c4d
 https://conda.anaconda.org/cctbx/linux-64/bzip2-1.0.6-h14c3975_1002.tar.bz2#0ab8427d81b55fcd2212a84a8f6f9728
 https://conda.anaconda.org/cctbx/linux-64/graphite2-1.3.13-hf484d3e_1000.tar.bz2#160e65b3904ab30a4a6b0e418b09255f
 https://conda.anaconda.org/cctbx/linux-64/icu-58.2-hf484d3e_1000.tar.bz2#3749214646d41293022b45ce51386141
@@ -120,7 +119,6 @@ https://conda.anaconda.org/cctbx/linux-64/pexpect-4.6.0-py27_1000.tar.bz2#6e5467
 https://conda.anaconda.org/cctbx/linux-64/pillow-5.4.1-py27h00a061d_1000.tar.bz2#f9ac269e3283aa96793f926f4e12959c
 https://conda.anaconda.org/cctbx/linux-64/procrunner-0.9.0-py27_1050.tar.bz2#7ae07ea1cf13e62097d6e209ed65c576
 https://conda.anaconda.org/cctbx/linux-64/pyrtf-0.45-py27_1.tar.bz2#d610582c9d1f553b57b3a7b3c60afbac
-https://conda.anaconda.org/cctbx/linux-64/python-blosc-1.7.0-py27hf484d3e_1001.tar.bz2#d18032843733b57247a7669a93767ad4
 https://conda.anaconda.org/cctbx/noarch/python-dateutil-2.8.0-py_0.tar.bz2#8bcc79846bbfac2ece4a24bcb9851693
 https://conda.anaconda.org/cctbx/linux-64/scipy-1.2.1-py27_blas_openblash1522bff_0.tar.bz2#ffd57cba10714a3cef1f4715d9247486
 https://conda.anaconda.org/cctbx/linux-64/setuptools-40.8.0-py27_0.tar.bz2#8bd49460e52d75d24b111ba6cc063289

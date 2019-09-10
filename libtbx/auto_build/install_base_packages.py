@@ -1128,14 +1128,6 @@ _replace_sysconfig_paths(build_time_vars)
       package_version=MSGPACK_VERSION,
       confirm_import_module="msgpack",
     )
-    # can't guarantee that platforms we distribute to have AVX2 support
-    # RHEL/CentOS 6 gcc does not support AVX2
-    os.environ["DISABLE_BLOSC_AVX2"] = "1"
-    self.build_python_module_pip(
-      package_name='blosc',
-      package_version=BLOSC_VERSION,
-      confirm_import_module="blosc",
-    )
 
   def build_pillow(self):
     self.build_python_module_pip(

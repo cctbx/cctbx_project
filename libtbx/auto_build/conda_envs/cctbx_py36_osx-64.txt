@@ -20,7 +20,6 @@ https://conda.anaconda.org/cctbx/osx-64/openblas-0.3.3-hdc02c5d_1001.tar.bz2#077
 https://conda.anaconda.org/cctbx/osx-64/openssl-1.0.2q-h1de35cc_0.tar.bz2#2338990ecae9fead6236c41ccd145081
 https://conda.anaconda.org/cctbx/osx-64/tk-8.6.9-ha441bb4_1000.tar.bz2#6220d30d09a68259d1980b06a733c325
 https://conda.anaconda.org/cctbx/osx-64/blas-1.1-openblas.tar.bz2#794dbf30b6f568889ba6b04a50fd7989
-https://conda.anaconda.org/cctbx/osx-64/blosc-1.15.1-h0a44026_1002.tar.bz2#5a8388da01aac3d8e768ccc353107a92
 https://conda.anaconda.org/cctbx/osx-64/expat-2.2.5-h0a44026_1002.tar.bz2#0ab8942e29a51a69a93552647f210f03
 https://conda.anaconda.org/cctbx/osx-64/freetype-2.9.1-h597ad8a_1005.tar.bz2#1a3a4b07481ace672e06326b4095f298
 https://conda.anaconda.org/cctbx/osx-64/hdf5-1.10.4-nompi_h0cbb7df_1106.tar.bz2#9494518b97298433cc1f37a964e18ed6
@@ -94,7 +93,6 @@ https://conda.anaconda.org/cctbx/osx-64/pexpect-4.6.0-py36_1000.tar.bz2#31e5d20f
 https://conda.anaconda.org/cctbx/osx-64/pillow-5.4.1-py36hbddbef0_1000.tar.bz2#c5553fc581b33dd16690b14fd769cdbb
 https://conda.anaconda.org/cctbx/osx-64/procrunner-0.9.0-py36_1050.tar.bz2#1cbc0b6a8fd5374b842606f47aed2e9a
 https://conda.anaconda.org/cctbx/osx-64/pyrtf-0.45-py36_1.tar.bz2#a453f3a22276f33fb0e57c6486cd3986
-https://conda.anaconda.org/cctbx/osx-64/python-blosc-1.7.0-py36h0a44026_1001.tar.bz2#6410b94d7e4250a7936729642fd3419a
 https://conda.anaconda.org/cctbx/noarch/python-dateutil-2.8.0-py_0.tar.bz2#8bcc79846bbfac2ece4a24bcb9851693
 https://conda.anaconda.org/cctbx/osx-64/scipy-1.2.1-py36_blas_openblash486cb9f_0.tar.bz2#3cbeea9b07724158582658eca37532ff
 https://conda.anaconda.org/cctbx/osx-64/setuptools-40.8.0-py36_0.tar.bz2#381cc3e02eb9de955f46899f1aa2761f

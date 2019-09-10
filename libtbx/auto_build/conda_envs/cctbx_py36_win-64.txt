@@ -13,7 +13,6 @@ https://conda.anaconda.org/cctbx/win-64/m2w64-gmp-6.1.0-2.tar.bz2#fec04371463ec6
 https://conda.anaconda.org/cctbx/win-64/m2w64-libwinpthread-git-5.0.0.4634.697f757-2.tar.bz2#67e61e700eb27424979778fae9293f13
 https://conda.anaconda.org/cctbx/win-64/mkl-2018.0.3-1.tar.bz2#3097902ad98b2f408bad39b7482fa200
 https://conda.anaconda.org/cctbx/win-64/vc-14-0.tar.bz2#d02c910045ac7ea07190cf0419c2993b
-https://conda.anaconda.org/cctbx/win-64/blosc-1.15.1-h6538335_1002.tar.bz2#793df50f68096543549840052d843553
 https://conda.anaconda.org/cctbx/win-64/jpeg-9c-hfa6e2cd_1001.tar.bz2#e4ecbdbea17c045df33c8241085a2d5d
 https://conda.anaconda.org/cctbx/win-64/m2w64-gcc-libs-core-5.3.0-7.tar.bz2#276d396bfe8d958f71173b7134f739fa
 https://conda.anaconda.org/cctbx/win-64/openssl-1.0.2q-hfa6e2cd_0.tar.bz2#b572b472a54d1046f436a1d26e49f876
@@ -112,7 +111,6 @@ https://conda.anaconda.org/cctbx/win-64/mkl_fft-1.0.10-py36_0.tar.bz2#4a3b086658
 https://conda.anaconda.org/cctbx/win-64/mkl_random-1.0.2-py36_0.tar.bz2#e071d15538e2880a73b0ab076f62700a
 https://conda.anaconda.org/cctbx/win-64/numpy-1.15.4-py36ha559c80_0.tar.bz2#f9e121e038370ab73921bf720c63fa76
 https://conda.anaconda.org/cctbx/win-64/mrcfile-1.1.2-py36_0.tar.bz2#00ae12145e432a0c037911afdffaaf73
-https://conda.anaconda.org/cctbx/win-64/python-blosc-1.7.0-py36h6538335_1001.tar.bz2#3820f9fba1730a9019d8e55ebf16b16b
 https://conda.anaconda.org/cctbx/win-64/scipy-1.1.0-py36h4f6bf74_1.tar.bz2#0eb459e671056ec9d8d11ae725ec2a7e
 https://conda.anaconda.org/cctbx/win-64/scikit-learn-0.20.0-py36heebcf9a_1.tar.bz2#b3c358289d6e380e1f595e5e6b706ad7
 https://conda.anaconda.org/cctbx/win-64/cctbx_dependencies-2019.02.13-0.tar.bz2#78fcb1272209af10c73985fc63671094
