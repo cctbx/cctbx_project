@@ -212,23 +212,29 @@ def define_entry_points(epdict, **kwargs):
   for ep in epdict:
     print("  {n} entries for entry point {ep}".format(ep=ep, n=len(epdict[ep])))
 
-  # Now trick setuptools into thinking it is in control here.  Create
-  # libtbx.{caller}.egg-info with the entry point information in
-  # {libtbx.env.build_path} and libtbx.{caller}.egg-link in
-  # {libtbx.env.build_path}/lib, which must be in PYTHONPATH.
+  # Temporarily change to build/ directory. This is where a directory
+  # named libtbx.{caller}.egg-info will be created containing the
+  # entry point info. Create libtbx.{caller}.egg-link in
+  # {libtbx.env.build_path}/lib, which must be in sys.path.
   try:
-    argv_orig = sys.argv
-    sys.argv = ['setup.py', 'develop', '--install-dir=%s' % os.path.join(abs(libtbx.env.build_path), 'lib'), '--script-dir=%s' % abs(libtbx.env.build_path)]
-    # And make it run quietly
-    with _silence():
-      setuptools.setup(
-        name='libtbx.{}'.format(caller),
-        description='libtbx entry point manager for {}'.format(caller),
-        entry_points=epdict,
-        **kwargs
-      )
+    curdir = os.getcwd()
+    os.chdir(abs(libtbx.env.build_path))
+    # Now trick setuptools into thinking it is in control here.
+    try:
+      argv_orig = sys.argv
+      sys.argv = ['setup.py', 'develop', '--install-dir=%s' % os.path.join(abs(libtbx.env.build_path), 'lib')]
+      # And make it run quietly
+      with _silence():
+        setuptools.setup(
+          name='libtbx.{}'.format(caller),
+          description='libtbx entry point manager for {}'.format(caller),
+          entry_points=epdict,
+          **kwargs
+        )
+    finally:
+      sys.argv = argv_orig
   finally:
-    sys.argv = argv_orig
+    os.chdir(curdir)
 
 def _merge_requirements(requirements, new_req):
   # type: (List[packaging.requirements.Requirement], packaging.requirements.Requirement) -> None
