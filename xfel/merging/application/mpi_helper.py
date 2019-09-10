@@ -17,7 +17,7 @@ class mpi_helper(object):
     self.MPI.Finalize()
 
   def cumulative_flex(self, flex_array, flex_type):
-    '''Build a cumulative sum flex array out of multiple flex arrays. All arays must be the same size.'''
+    '''Build a cumulative sum flex array out of multiple same-size flex arrays.'''
     # Example: (a1,a2,a3) + (b1, b2, b3) = (a1+b1, a2+b2, a3+b3)
     if self.rank == 0:
       cumulative = flex_type(flex_array.size(), 0)

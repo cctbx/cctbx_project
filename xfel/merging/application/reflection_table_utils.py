@@ -77,3 +77,21 @@ class reflection_table_utils(object):
                                   'sigma' : standard_error_of_weighted_mean_intensity,
                                   'multiplicity' : refls.size()})
     return merged_reflections
+
+  @staticmethod
+  def prune_reflection_table_keys(reflections, keys_to_delete=None, keys_to_keep=None):
+    '''Remove reflection table keys: either inclusive or exclusive'''
+    if len(reflections) != 0:
+      all_keys = list()
+      for key in reflections[0]:
+        all_keys.append(key)
+      if keys_to_delete != None:
+        for key in keys_to_delete:
+          if key in all_keys:
+            del reflections[key]
+      elif keys_to_keep != None:
+        for key in all_keys:
+          #if not key in ['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', 'exp_id', 'odd_frame', 's1']:
+          if not key in keys_to_keep:
+            del reflections[key]
+    return reflections

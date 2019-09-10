@@ -21,6 +21,8 @@ class mpiCommEmulator(object):
     return self.reduce(data, operation, 0)
   def alltoall(self, items):
     return items
+  def scatter(self, items):
+    return items
   def gather(self, item, root):
     items = []
     items.append(item)

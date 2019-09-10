@@ -5,19 +5,19 @@ from xfel.merging.application.mpi_logger import mpi_logger
 
 default_steps = [
   'input',
-  'model_scaling', # generate a reference to be used for scaling and post-refinement
+  'balance', # balance input load
+  'model_scaling', # build full Miller list, model intensities, and resolution binner - for scaling and post-refinement
   'modify', # apply polarization correction, etc.
-  'edit',   # add an asu HKL column, remove unnecessary columns from reflection table
-  'filter', # reject whole experiments and individual reflections based on various criteria
+  'filter', # reject whole experiments or individual reflections
   'errors_premerge', # correct errors using a per-experiment algorithm, e.g. ha14
   'scale',
   'postrefine',
   'statistics_unitcell', # if required, save the average unit cell to the phil parameters
   'statistics_beam', # save the average wavelength to the phil parameters
-  'model_statistics', # generate a reference to be used for statistics, optionaly using the average unit cell
+  'model_statistics', # build full Miller list, model intensities, and resolution binner - for statistics. May use average unit cell.
   'statistics_resolution', # calculate resolution statistics for experiments
-  'group', # re-distribute reflections, so that all measurements of any given HKL are gathered at the same rank
-  'errors_postmerge', # correct errors using a per-HKL algorithm, e.g. errors_from_sample_residuals
+  'group', # re-distribute reflections, so that all measurements of every HKL are gathered at the same rank
+  'errors_merge', # correct errors using a per-HKL algorithm, e.g. errors_from_sample_residuals
   'statistics_intensity', # calculate resolution statistics for intensities
   'merge', # merge HKL intensities, MPI-gather all HKLs at rank 0, output "odd", "even" and "all" HKLs as mtz files
   'statistics_intensity_cxi', # run cxi_cc code ported from cxi-xmerge

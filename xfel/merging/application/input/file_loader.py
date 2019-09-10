@@ -65,7 +65,7 @@ def is_odd_numbered(file_name, use_hash = False):
 #  print is_odd_numbered("int_fake_19989.img")
 
 from xfel.merging.application.worker import worker
-from xfel.merging.application.input.data_counter import data_counter
+from xfel.merging.application.utils.data_counter import data_counter
 
 class simple_file_loader(worker):
   '''A class for running the script.'''
@@ -77,11 +77,9 @@ class simple_file_loader(worker):
     return 'Read experiments and data'
 
   def get_list(self):
-    """ Read the list of json/reflection table pickle pairs """
+    """ Returns the list of experiments/reflections file pairs """
     lister = file_lister(self.params)
-
     file_list = list(lister.filepair_generator())
-
     return file_list
 
   def run(self, all_experiments, all_reflections):
@@ -105,7 +103,7 @@ class simple_file_loader(worker):
     if self.mpi_helper.rank == 0:
       file_list = self.get_list()
       self.logger.log("Built an input list of %d json/pickle file pairs"%(len(file_list)))
-      self.params.input.path = None # the input is already parsed
+      self.params.input.path = None # Rank 0 has already parsed the input parameters
       per_rank_file_list = file_load_calculator(self.params, file_list, self.logger).\
                               calculate_file_load(available_rank_count = self.mpi_helper.size)
       self.logger.log('Transmitting a list of %d lists of json/pickle file pairs'%(len(per_rank_file_list)))
@@ -114,31 +112,42 @@ class simple_file_loader(worker):
       transmitted = None
 
     self.logger.log_step_time("BROADCAST_FILE_LIST")
-
     transmitted = self.mpi_helper.comm.bcast(transmitted, root = 0)
-
-    new_file_list = transmitted[self.mpi_helper.rank]
-
-    self.logger.log("Received a list of %d json/pickle file pairs"%len(new_file_list))
+    new_file_list = transmitted[self.mpi_helper.rank] if self.mpi_helper.rank < len(transmitted) else None
     self.logger.log_step_time("BROADCAST_FILE_LIST", True)
 
     # Load the data
     self.logger.log_step_time("LOAD")
-    for experiments_filename, reflections_filename in new_file_list:
-      experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
-      reflections = flex.reflection_table.from_file(reflections_filename)
+    if new_file_list is not None:
+      self.logger.log("Received a list of %d json/pickle file pairs"%len(new_file_list))
+      for experiments_filename, reflections_filename in new_file_list:
+        experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
+        reflections = flex.reflection_table.from_file(reflections_filename)
 
-      for experiment_id, experiment in enumerate(experiments):
-        if experiment.identifier is None or len(experiment.identifier) == 0:
-          experiment.identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
-        all_experiments.append(experiment)
+        for experiment_id, experiment in enumerate(experiments):
+          if experiment.identifier is None or len(experiment.identifier) == 0:
+            experiment.identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
+          all_experiments.append(experiment)
+          #experiment.identifier = "%d"%(len(all_experiments) - 1)
 
-        refls = reflections.select(reflections['id'] == experiment_id)
-        refls['exp_id'] = flex.std_string(len(refls), experiment.identifier)
-        all_reflections.extend(refls)
+          # select reflections of the current experiment
+          refls = reflections.select(reflections['id'] == experiment_id)
+
+          # Reflection experiment 'id' is supposed to be unique within this rank; 'exp_id' (i.e. experiment identifier) is supposed to be unique globally
+          #refls['id'] = flex.size_t(len(refls), len(all_experiments)-1)
+          refls['exp_id'] = flex.std_string(len(refls), experiment.identifier)
+
+          all_reflections.extend(refls)
+    else:
+      self.logger.log("Received a list of 0 json/pickle file pairs")
     self.logger.log_step_time("LOAD", True)
 
     self.logger.log('Read %d experiments consisting of %d reflections'%(len(all_experiments)-starting_expts_count, len(all_reflections)-starting_refls_count))
+    self.logger.log(get_memory_usage())
+
+    from xfel.merging.application.reflection_table_utils import reflection_table_utils
+    all_reflections = reflection_table_utils.prune_reflection_table_keys(reflections=all_reflections, keys_to_keep=['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', 'exp_id', 'odd_frame', 's1'])
+    self.logger.log("Pruned reflection table")
     self.logger.log(get_memory_usage())
 
     # Count the loaded data

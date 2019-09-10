@@ -27,18 +27,25 @@ class data_counter(object):
     # MPI-reduce all counts
     comm = self.mpi_helper.comm
     MPI = self.mpi_helper.MPI
+
     total_experiment_count  = comm.reduce(experiment_count, MPI.SUM, 0)
     total_image_count       = comm.reduce(image_count, MPI.SUM, 0)
     total_reflection_count  = comm.reduce(reflection_count, MPI.SUM, 0)
+
+    max_experiment_count    = comm.reduce(experiment_count, MPI.MAX, 0)
+    min_experiment_count    = comm.reduce(experiment_count, MPI.MIN, 0)
+
     max_reflection_count    = comm.reduce(reflection_count, MPI.MAX, 0)
     min_reflection_count    = comm.reduce(reflection_count, MPI.MIN, 0)
 
     # rank 0: log data statistics
     if self.mpi_helper.rank == 0:
-      self.logger.main_log('All ranks have read %d experiments'%total_experiment_count)
-      self.logger.main_log('All ranks have read %d images'%total_image_count)
-      self.logger.main_log('All ranks have read %d reflections'%total_reflection_count)
-      self.logger.main_log('The maximum number of reflections loaded per rank is: %d reflections'%max_reflection_count)
-      self.logger.main_log('The minimum number of reflections loaded per rank is: %d reflections'%min_reflection_count)
+      self.logger.main_log('All ranks have %d experiments'%total_experiment_count)
+      self.logger.main_log('All ranks have %d images'%total_image_count)
+      self.logger.main_log('All ranks have %d reflections'%total_reflection_count)
+      self.logger.main_log('The maximum number of experiments per rank is: %d experiments'%max_experiment_count)
+      self.logger.main_log('The minimum number of experiments per rank is: %d experiments'%min_experiment_count)
+      self.logger.main_log('The maximum number of reflections per rank is: %d reflections'%max_reflection_count)
+      self.logger.main_log('The minimum number of reflections per rank is: %d reflections'%min_reflection_count)
 
     self.logger.log_step_time("CALC_LOAD_STATISTICS", True)

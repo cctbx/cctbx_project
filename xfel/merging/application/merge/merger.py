@@ -65,7 +65,8 @@ class merger(worker):
       self.logger.log_step_time("MERGE", True)
 
       # output as mtz
-      self.output_reflections_mtz(final_merged_reflection_table, selection_name)
+      if len(final_merged_reflection_table) > 0:
+        self.output_reflections_mtz(final_merged_reflection_table, selection_name)
 
       # free the memory
       del all_merged_reflection_tables
