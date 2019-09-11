@@ -1780,7 +1780,7 @@ class find_segment: # class to look for a type of segment
       n_space=2  # at least 2 apart in the end
       for i1,i2,i3 in zip([None]+keys[:-2],keys,keys[1:]+[None]):
         if found: break
-        if i2 > 0 and ( i1 is None or 
+        if i2 > 0 and ( i1 is None or
             i2 > segment_dict[i1]+self.last_residue_offset+1+n_space):
           # try adding before i2
           h=self.segment_class(params=params,
@@ -1793,7 +1793,7 @@ class find_segment: # class to look for a type of segment
            del segment_dict[i2]
         if found: break
         if segment_dict[i2]+self.last_residue_offset+1+1 < sites.size()  and (
-           i3 is None or 
+           i3 is None or
             segment_dict[i2]+self.last_residue_offset+1+n_space  < i3):
           # try adding after i2
           h=self.segment_class(params=params,
