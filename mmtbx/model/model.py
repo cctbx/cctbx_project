@@ -2502,6 +2502,7 @@ class manager(object):
       hd_sel                      = self.selection("element H or element D"))
 
   def percent_of_single_atom_residues(self, macro_molecule_only=True):
+    # XXX Should be a method of pdb.hierarchy
     sizes = flex.int()
     h = self.get_hierarchy()
     if(macro_molecule_only):

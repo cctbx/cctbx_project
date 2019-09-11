@@ -211,7 +211,8 @@ def stats(model, prefix):
     if(j==0): ax.set_title("Angle", size=15)
     ax.bar(ref.angles[key].bins, ref.angles[key].vals, width=4.5, alpha=.3)
   plt.subplots_adjust(wspace=0.12, hspace=0.025)
-  fig.savefig("%s.png"%prefix, dpi=1000)
+  #fig.savefig("%s.png"%prefix, dpi=1000)
+  fig.savefig("%s.pdf"%prefix)
 
 
 def precheck(atoms, i, j, Hs, As, Ds, fsc0):
@@ -298,15 +299,16 @@ class find(object):
   """
   def __init__(self,
         model,
-        Hs           = ["H", "D"],
-        As           = ["O","N","S","F","CL"],
-        Ds           = ["O","N","S"],
-        d_HA_cutoff  = [1.4, 3.0], # original: [1.4, 2.4],
-        d_DA_cutoff  = [2.5, 4.1], # not used
-        a_DHA_cutoff = 120,        # should be greater than this
-        a_YAH_cutoff = [90, 180],  # should be within this interval
-        protein_only = False,
-        pair_proxies = None):
+        Hs             = ["H", "D"],
+        As             = ["O","N","S","F","CL"],
+        Ds             = ["O","N","S"],
+        d_HA_cutoff    = [1.4, 3.0], # original: [1.4, 2.4],
+        d_DA_cutoff    = [2.5, 4.1], # not used
+        a_DHA_cutoff   = 120,        # should be greater than this
+        a_YAH_cutoff   = [90, 180],  # should be within this interval
+        protein_only   = False,
+        pair_proxies   = None,
+        write_eff_file = False):
     self.result = []
     self.model = model
     self.pair_proxies = pair_proxies
@@ -417,7 +419,8 @@ class find(object):
           atom_H = atom_H, atom_A = atom_A)
         self.pair_proxies.append(proxy_custom)
     #
-    self.as_restraints()
+    if(write_eff_file):
+      self.as_restraints()
 
   def get_params_as_arrays(self, b=None, occ=None):
     d_HA  = flex.double()
