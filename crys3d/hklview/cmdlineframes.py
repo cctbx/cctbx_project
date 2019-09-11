@@ -806,6 +806,7 @@ class HKLViewFrame() :
 
   def set_scene(self, scene_id) :
     self.viewer.binvals = []
+    self.viewer.isinjected = False
     if scene_id is None:
       return False
     self.viewer.colour_scene_id = scene_id

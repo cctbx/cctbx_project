@@ -279,6 +279,7 @@ class hklview_3d:
 
     """
     self.colourgradientvalues = []
+    self.isinjected = False
     self.UseOSBrowser = True
     if 'UseOSBrowser' in kwds:
       self.UseOSBrowser = kwds['UseOSBrowser']
@@ -349,7 +350,8 @@ class hklview_3d:
       self.binvals = self.calc_bin_thresholds(curphilparam.bin_scene_label, curphilparam.nbins)
 
     if self.viewerparams.scene_id >=0:
-      self.scene = self.HKLscenes[self.viewerparams.scene_id]
+      if not self.isinjected:
+        self.scene = self.HKLscenes[self.viewerparams.scene_id]
       self.DrawNGLJavaScript()
       msg = "Rendered %d reflections\n" % self.scene.points.size()
       if has_phil_path(diff_phil, "mouse_sensitivity"):
@@ -374,6 +376,7 @@ class hklview_3d:
   def set_miller_array(self, scene_id=None, merge=None, details=""):
     if scene_id is not None:
       self.viewerparams.scene_id = scene_id
+      self.isinjected = False
     if self.viewerparams and self.viewerparams.scene_id >= 0 and self.HKLscenes:
       self.miller_array = self.HKLscenes[self.viewerparams.scene_id].miller_array
       self.scene = self.HKLscenes[self.viewerparams.scene_id]
@@ -498,7 +501,6 @@ class hklview_3d:
 
 
   def ConstructReciprocalSpace(self, curphilparam, merge=None):
-    self.mprint("Constructing HKL scenes", verbose=0)
     #self.miller_array = self.match_valarrays[self.scene_id]
     #self.miller_array = self.proc_arrays[self.scene_id]
     self.HKLscenesKey = (curphilparam.filename,
@@ -531,6 +533,7 @@ class hklview_3d:
       self.mprint("Scene key is already present", verbose=1)
       #self.sceneisdirty = False
       return True
+    self.mprint("Constructing HKL scenes", verbose=0)
 
     HKLscenes = []
     HKLscenesMaxdata = []
@@ -569,7 +572,7 @@ class hklview_3d:
         scenemindata, scenemaxsigmas,
          sceneminsigmas, scenearrayinfos
          ) = MakeHKLscene(argstuples[j][0], argstuples[j][1], argstuples[j][2], argstuples[j][3], argstuples[j][4], argstuples[j][5] )
-         #) = MakeHKLscene(proc_array, copy.deepcopy(self.settings), self.mapcoef_fom_dict, merge)
+         #) = MakeHKLscene(proc_array, j, copy.deepcopy(self.settings), self.mapcoef_fom_dict, None)
 
       HKLscenesMaxdata.extend(scenemaxdata)
       HKLscenesMindata.extend(scenemindata)
@@ -1295,7 +1298,7 @@ var clipFixToCamPosZ = false;
 var origclipnear;
 var origclipfar;
 var origcameraZpos;
-
+var nbins = %s;
 
 ///var script=document.createElement('script');
 //script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
@@ -1353,7 +1356,7 @@ catch(err)
   WebsockSendMsg('JavaScriptError: ' + err.stack );
 }
 
-    """ % (self.websockport, self.__module__, self.__module__, axisfuncstr, \
+    """ % (self.websockport, self.__module__, self.__module__, cntbin, axisfuncstr, \
             self.camera_type, spherebufferstr, negativeradiistr, colourscriptstr)
 
 
@@ -1450,8 +1453,9 @@ mysocket.onmessage = function (e)
       br_shapebufs = [];
 
       //alert('rotations:\\n' + val);
+      // Rotation matrices are concatenated to a string of floats
+      // separated by line breaks between each roation matrix
       rotationstrs = datval[1].split("\\n");
-      nbins = %d;
       var Rotmat = new NGL.Matrix3();
       var sm = new Float32Array(9);
       var r = new NGL.Vector3();
@@ -1498,6 +1502,7 @@ mysocket.onmessage = function (e)
         }
 
         nrots = 0;
+        // if there is only the identity matrix that means no P1 expansion
         for (var rotmxidx=0; rotmxidx < rotationstrs.length; rotmxidx++ )
         {
           if (rotationstrs[rotmxidx] < 1 )
@@ -1556,7 +1561,6 @@ mysocket.onmessage = function (e)
 
       shapeComp = stage.addComponentFromObject(shape);
       repr = shapeComp.addRepresentation('buffer');
-      //repr.update();
 
       for (var bin=0; bin<nbins; bin++)
       {
@@ -1565,7 +1569,6 @@ mysocket.onmessage = function (e)
           br_shapebufs[bin][rotmxidx].setParameters({opacity: alphas[bin]});
         }
       }
-      //repr.update();
 
       stage.viewer.requestRender();
       WebsockSendMsg( 'Expanded data' );
@@ -1714,6 +1717,69 @@ mysocket.onmessage = function (e)
       WebsockSendMsg('ReturnBoundingBox:\\n' + msg );
     }
 
+    if (msgtype === "InjectNewReflections")
+    {
+      WebsockSendMsg( 'Rendering new reflections ' + pagename );
+      var nrefl = parseInt(val.length/7);
+      if (nrefl !== val.length/7)
+      {
+        alert("Mismatch in array of reflections, colours and radii!")
+        return;
+      }
+
+      // delete the shapebufs[] that holds the positions[] arrays
+      shapeComp.removeRepresentation(repr);
+      // remove shapecomp from stage first
+      stage.removeComponent(shapeComp);
+
+      positions = [];
+      colours = [];
+      radii = [];
+      alphas = [];
+      shapebufs = [];
+      ttips = [];
+      shapebufs = [];
+      nbins = 1; // currently no binning when injecting reflections
+
+      positions_ = []; // dummy variables for conforming to binning scheme above
+      colours_ = [];   // as used when expanding reflections
+      radii_ = [];
+      ttips_ = [-1]
+
+      for (j=0; j<nrefl; j++)
+      {
+        positions_.push( parseFloat(val[7*j]) );
+        positions_.push( parseFloat(val[7*j+1]) );
+        positions_.push( parseFloat(val[7*j+2]) );
+        colours_.push( parseFloat(val[7*j+3]) );
+        colours_.push( parseFloat(val[7*j+4]) );
+        colours_.push( parseFloat(val[7*j+5]) );
+        radii_.push( parseFloat(val[7*j+6]) );
+        ttips_.push(j)
+      }
+
+      positions.push( new Float32Array( positions_ ));
+      colours.push( new Float32Array( colours_ ));
+      radii.push( new Float32Array( radii_ ));
+      ttips.push(ttips_);
+
+      shapebufs.push( new NGL.SphereBuffer({
+        position: positions[0],
+        color: colours[0],
+        radius: radii[0],
+        picking: ttips[0],
+        })
+      );
+      shape.addBuffer(shapebufs[0]);
+      alphas.push(1.0);
+
+      MakeHKL_Axis();
+      shapeComp = stage.addComponentFromObject(shape);
+      repr = shapeComp.addRepresentation('buffer');
+      stage.viewer.requestRender();
+      WebsockSendMsg('Injected new reflections');
+    }
+
     if (msgtype === "Testing")
     {
       // test something new
@@ -1739,7 +1805,7 @@ mysocket.onmessage = function (e)
 
 };
 
-    """ %(cntbin, qualitystr)
+    """ %qualitystr
 
     self.NGLscriptstr += WebsockMsgHandlestr
     if self.jscriptfname:
@@ -1903,7 +1969,7 @@ mysocket.onmessage = function (e)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     #print "self.server.clients: ", self.server.clients
     #print "self.websockclient: ",
-    message = u"" + msgtype + self.msgdelim + msg
+    message = u"" + msgtype + self.msgdelim + str(msg)
     if self.websockclient:
       while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
         or "CurrentViewOrientation" in self.lastmsg):
@@ -1929,7 +1995,7 @@ mysocket.onmessage = function (e)
 
   def SetOpacities(self, bin_opacities_str):
     retstr = ""
-    if self.miller_array and bin_opacities_str:
+    if self.miller_array and bin_opacities_str and not self.isinjected:
       self.ngl_settings.bin_opacities = bin_opacities_str
       bin_opacitieslst = eval(self.ngl_settings.bin_opacities)
       for binopacity in bin_opacitieslst:
@@ -1989,13 +2055,13 @@ mysocket.onmessage = function (e)
     unique_rot_ops = []
     if P1:
       msgtype += "P1"
-      unique_rot_ops = self.symops[ 0 : self.sg.order_p() ]
+      unique_rot_ops = self.symops[ 0 : self.sg.order_p() ] # avoid duplicate rotation matrices
       retmsg = "Expanding to P1 in browser\n"
       if not self.miller_array.is_unique_set_under_symmetry():
         retmsg += "Not all reflections are in the same asymmetric unit in reciprocal space.\n"
         retmsg += "Some reflections might be displayed on top of one another.\n"
     else:
-      unique_rot_ops = [ self.symops[0] ] # first one is the identity matrix
+      unique_rot_ops = [ self.symops[0] ] # No P1 expansion. So only submit the identity matrix
     if friedel_mate and not self.miller_array.anomalous_flag():
       msgtype += "Friedel"
       retmsg = "Expanding Friedel mates in browser\n"
@@ -2192,6 +2258,23 @@ mysocket.onmessage = function (e)
     self.msgqueue.append( ("TranslateHKLpoints", msg) )
 
 
+  def InjectNewReflections(self, proc_array):
+    (hklscenes, scenemaxdata,
+      scenemindata, scenemaxsigmas,
+        sceneminsigmas, scenearrayinfos
+     ) = MakeHKLscene(proc_array, 0, copy.deepcopy(self.settings), { } , None)
+
+    strdata = ""
+    hklscene = hklscenes[0]
+    self.scene = hklscene
+
+    for i,radius in enumerate(hklscene.radii):
+      ftuple = (hklscene.points[i][0], hklscene.points[i][1], hklscene.points[i][2],
+               hklscene.colors[i][0], hklscene.colors[i][1], hklscene.colors[i][2], radius )
+      strdata += "%s,%s,%s,%s,%s,%s,%s," % roundoff(ftuple, 2)
+    strdata = strdata[:-1] # avoid the last comma
+    self.isinjected = True
+    self.msgqueue.append( ("InjectNewReflections", strdata) )
 
 
 
