@@ -1750,10 +1750,8 @@ class find_segment: # class to look for a type of segment
 
     # try to extend by 1 in each direction if it doesn't overlap anything
     if self.extend_segments:
-      print ("ZZC",segment_dict)
       segment_dict=self.try_to_extend_segments(params=params,
         segment_dict=segment_dict,sites=sites)
-      print ("ZZD",segment_dict)
 
     # trim ends of any segments that are connected by fewer than n_link_min=3
     #  residues and that go in opposite directions (connected by tight turns).
