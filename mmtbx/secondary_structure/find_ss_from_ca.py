@@ -129,6 +129,10 @@ master_phil = iotbx.phil.parse("""
        .help = Cut up segments (make short segments of secondary structure)
        .short_caption = Cut up segments
 
+     extend_segments = False
+       .type = bool
+       .help = Try to extend segments in both directions one residue at a time
+       .short_caption = Extend segments
 
      set_up_helices_sheets = True
        .type = bool
@@ -1493,6 +1497,7 @@ class find_segment: # class to look for a type of segment
       extract_segments_from_pdb=None,
       make_unique=None,
       cut_up_segments=None,
+      extend_segments=None,
       model_as_segment=None, # take the whole model as a segment
       verbose=None,
       out=sys.stdout):
@@ -1503,6 +1508,7 @@ class find_segment: # class to look for a type of segment
     self.extract_segments_from_pdb=extract_segments_from_pdb
     self.make_unique=make_unique
     self.cut_up_segments=cut_up_segments
+    self.extend_segments=extend_segments
     self.model_as_segment=model_as_segment
     self.verbose=verbose
     self.params=params
@@ -1726,6 +1732,7 @@ class find_segment: # class to look for a type of segment
         if dot < dot_min: break
         segment_dict[i]=j
         used_residues.append(j)
+
     # skip if only as long as a single span (requires 2 to be sure)
     for i in list(segment_dict.keys()):
       segment_length=segment_dict[i]+1+self.last_residue_offset-i
@@ -1738,9 +1745,15 @@ class find_segment: # class to look for a type of segment
       diffs=diffs,dot_min=dot_min,minimum_length=minimum_length)
 
     # merge any segments that can be combined
-
     segment_dict=self.merge_segments(params=params,
        segment_dict=segment_dict,sites=sites)
+
+    # try to extend by 1 in each direction if it doesn't overlap anything
+    if self.extend_segments:
+      print ("ZZC",segment_dict)
+      segment_dict=self.try_to_extend_segments(params=params,
+        segment_dict=segment_dict,sites=sites)
+      print ("ZZD",segment_dict)
 
     # trim ends of any segments that are connected by fewer than n_link_min=3
     #  residues and that go in opposite directions (connected by tight turns).
@@ -1748,7 +1761,50 @@ class find_segment: # class to look for a type of segment
     segment_dict=self.trim_short_linkages(
      params=params,segment_dict=segment_dict,sites=sites)
 
+    # again merge any segments that can be combined
+    segment_dict=self.merge_segments(params=params,
+       segment_dict=segment_dict,sites=sites)
+
     return diffs,norms,segment_dict
+
+
+  def try_to_extend_segments(self,params=None,segment_dict=None,sites=None):
+    # try to extend segments if they do not overlap
+    found=True
+    n_cycles=0
+    while found and n_cycles <=len(segment_dict):
+      found=False
+      n_cycles+=1
+      keys=list(segment_dict.keys())
+      keys.sort()  # sorted on start
+      n_space=2  # at least 2 apart in the end
+      for i1,i2,i3 in zip([None]+keys[:-2],keys,keys[1:]+[None]):
+        if found: break
+        if i2 > 0 and ( i1 is None or 
+            i2 > segment_dict[i1]+self.last_residue_offset+1+n_space):
+          # try adding before i2
+          h=self.segment_class(params=params,
+             sites=sites[i2-1:segment_dict[i2]+self.last_residue_offset+1],
+             start_resno=i2-1+self.start_resno)
+          if h.is_ok():
+           found=True
+           print("ZZA",i1,i2,i3,":",segment_dict[i2])
+           segment_dict[i2-1]=segment_dict[i2]
+           del segment_dict[i2]
+        if found: break
+        if segment_dict[i2]+self.last_residue_offset+1+1 < sites.size()  and (
+           i3 is None or 
+            segment_dict[i2]+self.last_residue_offset+1+n_space  < i3):
+          # try adding after i2
+          h=self.segment_class(params=params,
+             sites=sites[i2:segment_dict[i2]+self.last_residue_offset+1+1],
+             start_resno=i2+self.start_resno)
+          if h.is_ok():
+           found=True
+           print("ZZB",i1,i2,i3,":",segment_dict[i2])
+           segment_dict[i2]=segment_dict[i2]+1
+
+    return segment_dict
 
 
   def merge_segments(self,params=None,segment_dict=None,sites=None):
@@ -1771,7 +1827,8 @@ class find_segment: # class to look for a type of segment
           if h.is_ok():
            found=True
            segment_dict[i1]=segment_dict[i2]
-           del segment_dict[i2]
+           if i1 != i2:
+             del segment_dict[i2]
     return segment_dict
 
   def remove_bad_residues(self,segment_dict=None,diffs=None,dot_min=None,
@@ -1850,7 +1907,8 @@ class find_segment: # class to look for a type of segment
         if ok:
           segment_dict[new_i2]=segment_dict[i2]
         # remove original
-        del segment_dict[i2]
+        if new_i2 != i2:
+          del segment_dict[i2]
 
     return segment_dict
 
@@ -1894,6 +1952,7 @@ class find_helix(find_segment):
     previously_used_residues=None,
     model_as_segment=None,
     cut_up_segments=None,
+    extend_segments=None,
     out=sys.stdout):
     self.previously_used_residues=previously_used_residues
 
@@ -1902,6 +1961,7 @@ class find_helix(find_segment):
      make_unique=make_unique,
      model_as_segment=model_as_segment,
      cut_up_segments=cut_up_segments,
+     extend_segments=extend_segments,
      verbose=verbose,out=out)
 
   def pdb_records(self,segment_list=None,last_id=0,helix_type='alpha',
@@ -2027,6 +2087,7 @@ class find_beta_strand(find_segment):
       extract_segments_from_pdb=None,
       make_unique=None,
       cut_up_segments=None,
+      extend_segments=None,
       model_as_segment=None,
       previously_used_residues=None,
       out=sys.stdout):
@@ -2039,6 +2100,7 @@ class find_beta_strand(find_segment):
       make_unique=make_unique,
       model_as_segment=model_as_segment,
       cut_up_segments=cut_up_segments,
+      extend_segments=extend_segments,
       verbose=verbose,out=out)
 
   def get_pdb_strand(self,sheet_id=None,strand_id=1,segment=None,
@@ -2435,6 +2497,7 @@ class find_other_structure(find_segment):
       extract_segments_from_pdb=None,
       make_unique=None,
       cut_up_segments=None,
+      extend_segments=None,
       verbose=None,out=sys.stdout):
 
     self.previously_used_residues=previously_used_residues
@@ -2443,6 +2506,7 @@ class find_other_structure(find_segment):
       extract_segments_from_pdb=extract_segments_from_pdb,
       make_unique=make_unique,
       cut_up_segments=cut_up_segments,
+      extend_segments=extend_segments,
       verbose=verbose,out=out)
 
   def pdb_records(self,last_id=0,out=sys.stdout):   #other (nothing)
@@ -3867,6 +3931,7 @@ class find_secondary_structure: # class to look for secondary structure
         make_unique=params.find_ss_structure.make_unique,
         extract_segments_from_pdb=params.extract_segments_from_pdb.extract,
         cut_up_segments=params.find_ss_structure.cut_up_segments,
+        extend_segments=params.find_ss_structure.extend_segments,
         previously_used_residues=previously_used_residues,
         out=out)
       if params.find_ss_structure.exclude_alpha_in_beta:
@@ -3878,6 +3943,7 @@ class find_secondary_structure: # class to look for secondary structure
         make_unique=params.find_ss_structure.make_unique,
         extract_segments_from_pdb=params.extract_segments_from_pdb.extract,
         cut_up_segments=params.find_ss_structure.cut_up_segments,
+        extend_segments=params.find_ss_structure.extend_segments,
         previously_used_residues=previously_used_residues,
         out=out)
       if params.find_ss_structure.exclude_alpha_in_beta:
@@ -3889,6 +3955,7 @@ class find_secondary_structure: # class to look for secondary structure
         make_unique=params.find_ss_structure.make_unique,
         extract_segments_from_pdb=params.extract_segments_from_pdb.extract,
         cut_up_segments=params.find_ss_structure.cut_up_segments,
+        extend_segments=params.find_ss_structure.extend_segments,
         previously_used_residues=previously_used_residues,
         out=out)
       if params.find_ss_structure.exclude_alpha_in_beta:
@@ -3902,6 +3969,7 @@ class find_secondary_structure: # class to look for secondary structure
         make_unique=params.find_ss_structure.make_unique,
         extract_segments_from_pdb=params.extract_segments_from_pdb.extract,
         cut_up_segments=params.find_ss_structure.cut_up_segments,
+        extend_segments=params.find_ss_structure.extend_segments,
         previously_used_residues=previously_used_residues,
         out=out)
       if params.find_ss_structure.exclude_alpha_in_beta:
@@ -3917,6 +3985,7 @@ class find_secondary_structure: # class to look for secondary structure
         make_unique=params.find_ss_structure.make_unique,
         extract_segments_from_pdb=params.extract_segments_from_pdb.extract,
         cut_up_segments=params.find_ss_structure.cut_up_segments,
+        extend_segments=params.find_ss_structure.extend_segments,
         previously_used_residues=previously_used_residues,
         out=out)
 

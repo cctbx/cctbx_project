@@ -996,9 +996,10 @@ SHEET    3   2 4 LYSAa  58  THRAa  63 -1  N  GLNAa  62   O  VALAa   9
 SHEET    4   2 4 GLYAa  66  GLUAa  71 -1  N  SERAa  70   O  ALAAa  59
 
 
-
 FINAL PDB selections:
-" ( chain 'Aa' and resid 32  through 36 )  or  ( chain 'Aa' and resid 17  through 22 )  or  ( chain 'Aa' and resid 52  through 55 )  or  ( chain 'Aa' and resid 40  through 45 )  or  ( chain 'Aa' and resid 7  through 12 )  or  ( chain 'Aa' and resid 58  through 63 )  or  ( chain 'Aa' and resid 66  through 71 ) "
+"(chain 'Aa' and resid   32  through   36 ) or (chain 'Aa' and resid   17  through   22 ) or (chain 'Aa' and resid   52  through   55 ) or (chain 'Aa' and resid   40  through   45 ) or (chain 'Aa' and resid    7  through   12 ) or (chain 'Aa' and resid   58  through   63 ) or (chain 'Aa' and resid   66  through   71 )"
+
+
 """
   f=StringIO()
   fss.show_summary(out=f,verbose=True)
