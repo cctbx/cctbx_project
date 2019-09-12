@@ -4372,7 +4372,7 @@ class build_all_chain_proxies(linking_mixins):
       raise Sorry(
         "Custom bonds with excessive length: %d\n"
         "  Please check the log file for details." % n_excessive)
-    print("    Total number of custom bonds:", len(bond_sym_proxies), file=log)
+    print("    Total number of added/changed bonds:", len(bond_sym_proxies), file=log)
     return group_args(
       bond_sym_proxies=bond_sym_proxies,
       bond_distance_model_max=bond_distance_model_max)
@@ -4390,6 +4390,7 @@ class build_all_chain_proxies(linking_mixins):
       special_position_indices = self.special_position_indices
     print("  Custom angles:", file=log)
     atoms = self.pdb_atoms
+    n_changed_angles = 0
     sel_attrs = ["atom_selection_"+n for n in ["1", "2", "3"]]
     for angle in params.angle:
       def show_atom_selections():
@@ -4423,6 +4424,7 @@ class build_all_chain_proxies(linking_mixins):
         a_proxy.angle_ideal=angle.angle_ideal
         a_proxy.weight = geometry_restraints.sigma_as_weight(sigma=angle.sigma)
         a_proxy.origin_id=origin_ids.get_origin_id('edits')
+        n_changed_angles += 1
       elif (angle.action != "add"):
         raise Sorry("%s = %s not implemented." %
           angle.__phil_path_and_value__("action"))
@@ -4456,7 +4458,8 @@ class build_all_chain_proxies(linking_mixins):
             "  Please inspect the output for details."
               % plural_s(n_special))
         result.append(p)
-    print("    Total number of custom angles:", len(result), file=log)
+    print("    Total number of new custom angles:", len(result), file=log)
+    print("    Total number of changed angles:", n_changed_angles, file=log)
     return result
 
   def process_geometry_restraints_edits_dihedral(self, sel_cache, params, log):
