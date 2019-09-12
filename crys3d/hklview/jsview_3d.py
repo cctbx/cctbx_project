@@ -333,6 +333,7 @@ class hklview_3d:
      or has_phil_path(diff_phil, "slice_mode") \
      or has_phil_path(diff_phil, "slice_index") \
      or has_phil_path(diff_phil, "scale") \
+     or has_phil_path(diff_phil, "operate_on_miller_arrays") \
      or has_phil_path(diff_phil, "nth_power_scale_radii") \
      or self.settings.inbrowser==False and \
                ( has_phil_path(diff_phil, "expand_anomalous") or \
@@ -348,6 +349,9 @@ class hklview_3d:
      or has_phil_path(diff_phil, "show_only_missing") \
      or has_phil_path(diff_phil, "show_systematic_absences"):
       self.binvals = self.calc_bin_thresholds(curphilparam.bin_scene_label, curphilparam.nbins)
+
+    if has_phil_path(diff_phil, "camera_type"):
+      self.set_camera_type()
 
     if self.viewerparams.scene_id >=0:
       if not self.isinjected:
@@ -370,6 +374,8 @@ class hklview_3d:
       msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
     msg += self.SetOpacities(curphilparam.viewer.NGL.bin_opacities )
+    if has_phil_path(diff_phil, "tooltip_alpha"):
+      self.set_tooltip_opacity()
     return msg, curphilparam
 
 
@@ -520,7 +526,7 @@ class hklview_3d:
                          self.settings.nth_power_scale_radii
                          )
 
-    if self.HKLscenesdict.has_key(self.HKLscenesKey):
+    if self.HKLscenesdict.has_key(self.HKLscenesKey) and not curphilparam.operate_on_miller_arrays:
       (
         self.HKLscenes,
         self.tooltipstringsdict,
@@ -609,6 +615,7 @@ class hklview_3d:
       self.mprint("%d, %s" %(j, inf[0]), verbose=0)
     self.sceneisdirty = True
     self.SendInfoToGUI({ "hklscenes_arrays": self.hkl_scenes_info, "NewHKLscenes" : True })
+    curphilparam.operate_on_miller_arrays = False
     return True
 
 
@@ -691,6 +698,28 @@ class hklview_3d:
     return flex.double(patched_binarraydata)
 
 
+  def OperateOn1MillerArray(self, millarr, operation):
+    # lets user specify a one line python expression operating on data, sigmas
+    data = millarr.data()
+    sigmas = millarr.sigmas()
+    newarray = millarr.deep_copy()
+    newarray._data = eval(operation)
+    return newarray
+
+
+  def OperateOn2MillerArrays(self, millarr1, millarr2, operation):
+    # lets user specify a one line python expression operating on data1 and data2
+    matchindices = miller.match_indices(millarr1.indices(), millarr2.indices() )
+    matcharr1 = millarr1.select( matchindices.pairs().column(0) )
+    matcharr2 = millarr2.select( matchindices.pairs().column(1) )
+    data1 = matcharr1.data()
+    data2 = matcharr2.data()
+    newarray = matcharr2.deep_copy()
+    newarray._sigmas = None
+    newarray._data = eval(operation)
+    return newarray
+
+
   def DrawNGLJavaScript(self, blankscene=False):
     if not self.scene or not self.sceneisdirty:
       return
@@ -762,7 +791,7 @@ var MakeHKL_Axis = function()
     incr = span/ln
     colourgradarrays = []
     val = mincolourscalar
-    colourscalararray =flex.double()
+    colourscalararray = flex.double()
     colourscalararray.append( val )
     for j,sc in enumerate(range(ln)):
       val += incr
@@ -956,7 +985,8 @@ var MakeHKL_Axis = function()
     self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,
-                          "bin_data_label": colstr
+                          "bin_data_label": colstr,
+                          "tooltip_opacity": self.ngl_settings.tooltip_alpha
                          } )
 
     spherebufferstr += """
@@ -1312,7 +1342,7 @@ Object.assign(tooltip.style, {
   position: "absolute",
   zIndex: 10,
   pointerEvents: "none",
-  backgroundColor: "rgba(255, 255, 255, 0.75)",
+  backgroundColor: "rgba(255, 255, 255, %s )",
   color: "black",
   padding: "0.1em",
   fontFamily: "sans-serif"
@@ -1356,8 +1386,8 @@ catch(err)
   WebsockSendMsg('JavaScriptError: ' + err.stack );
 }
 
-    """ % (self.websockport, self.__module__, self.__module__, cntbin, axisfuncstr, \
-            self.camera_type, spherebufferstr, negativeradiistr, colourscriptstr)
+    """ % (self.websockport, self.__module__, self.__module__, cntbin, self.ngl_settings.tooltip_alpha, \
+            axisfuncstr, self.camera_type, spherebufferstr, negativeradiistr, colourscriptstr)
 
 
 
@@ -1660,6 +1690,15 @@ mysocket.onmessage = function (e)
       stage.viewer.requestRender();
     }
 
+    if (msgtype === "TooltipOpacity")
+    {
+      strs = datval[1].split("\\n");
+      var elmstrs = strs[0].split(",");
+      Object.assign(tooltip.style, {
+        backgroundColor: "rgba(255, 255, 255, " + elmstrs[0] + " )",
+      });
+    }
+
     if (msgtype === "SetTrackBallRotateSpeed")
     {
       strs = datval[1].split("\\n");
@@ -1672,7 +1711,6 @@ mysocket.onmessage = function (e)
       msg = String( [stage.trackballControls.rotateSpeed] )
       WebsockSendMsg('ReturnTrackBallRotateSpeed:\\n' + msg );
     }
-
 
     if (msgtype === "SetClipPlaneDistances")
     {
@@ -1923,7 +1961,7 @@ mysocket.onmessage = function (e)
           ttip = "id: %d" %id
           #ttip = self.GetTooltipOnTheFly(hkls[id], rotmx, anomalous=True)
           ttip = self.GetTooltipOnTheFly(id, rotmx, anomalous=True)
-        self.SendWebSockMsg("ShowTooltip", ttip)
+        self.SendMsgToBrowser("ShowTooltip", ttip)
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     except Exception as e:
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
@@ -1947,7 +1985,7 @@ mysocket.onmessage = function (e)
         if len(self.msgqueue):
           #print("self.msgqueue: " + str(self.msgqueue))
           pendingmessagetype, pendingmessage = self.msgqueue[0]
-          self.SendWebSockMsg(pendingmessagetype, pendingmessage)
+          self.SendMsgToBrowser(pendingmessagetype, pendingmessage)
           while not (self.browserisopen and self.websockclient):
             sleep(self.sleeptime)
             nwait += self.sleeptime
@@ -1965,7 +2003,7 @@ mysocket.onmessage = function (e)
       self.WebBrowserMsgQueue()
 
 
-  def SendWebSockMsg(self, msgtype, msg=""):
+  def SendMsgToBrowser(self, msgtype, msg=""):
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     #print "self.server.clients: ", self.server.clients
     #print "self.websockclient: ",
@@ -1993,6 +2031,15 @@ mysocket.onmessage = function (e)
     self.msgqueuethrd.start()
 
 
+  def set_camera_type(self):
+    self.camera_type = self.ngl_settings.camera_type
+
+
+  def set_tooltip_opacity(self):
+    msg = "%f" %self.ngl_settings.tooltip_alpha
+    self.SendMsgToBrowser("TooltipOpacity", msg)
+
+
   def SetOpacities(self, bin_opacities_str):
     retstr = ""
     if self.miller_array and bin_opacities_str and not self.isinjected:
@@ -2010,18 +2057,18 @@ mysocket.onmessage = function (e)
     if bin > self.nbinvalsboundaries-1:
       return "There are only %d bins present\n" %self.nbinvalsboundaries
     msg = "%d, %f" %(bin, alpha)
-    self.SendWebSockMsg("alpha", msg)
+    self.SendMsgToBrowser("alpha", msg)
     return "Opacity %s set on bin[%s]\n" %(alpha, bin)
 
 
   def RedrawNGL(self):
-    #self.SendWebSockMsg("Redraw")
+    #self.SendMsgToBrowser("Redraw")
     self.msgqueue.append( ("Redraw", "") )
 
 
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
     self.mprint("Rendering JavaScript...", verbose=1)
-    #self.SendWebSockMsg("Reload")
+    #self.SendMsgToBrowser("Reload")
     self.msgqueue.append( ("Reload", "") )
 
 
@@ -2065,7 +2112,6 @@ mysocket.onmessage = function (e)
     if friedel_mate and not self.miller_array.anomalous_flag():
       msgtype += "Friedel"
       retmsg = "Expanding Friedel mates in browser\n"
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     for i, symop in enumerate(unique_rot_ops):
       RotMx = matrix.sqr( symop.r().as_double())
       ortrot = (OrtMx * RotMx * InvMx).as_mat3()
@@ -2076,7 +2122,6 @@ mysocket.onmessage = function (e)
       str_rot = str_rot.replace("(", "")
       str_rot = str_rot.replace(")", "")
       msg += str_rot + "\n"
-    #self.SendWebSockMsg(msgtype, msg)
     self.msgqueue.append( (msgtype, msg) )
     self.GetBoundingBox() # bounding box changes when the extent of the displayed lattice changes
     return retmsg
@@ -2208,15 +2253,15 @@ mysocket.onmessage = function (e)
 
 
   def TestNewFunction(self):
-    self.SendWebSockMsg("Testing")
+    self.SendMsgToBrowser("Testing")
 
 
   def DisableMouseRotation(self): # disable rotating with the mouse
-    self.SendWebSockMsg("DisableMouseRotation")
+    self.SendMsgToBrowser("DisableMouseRotation")
 
 
   def EnableMouseRotation(self): # enable rotating with the mouse
-    self.SendWebSockMsg("EnableMouseRotation")
+    self.SendMsgToBrowser("EnableMouseRotation")
 
 
   def RotateStage(self, eulerangles):
@@ -2283,8 +2328,12 @@ ngl_philstr = """
     .type = float
   bin_opacities = ""
     .type = str
+  tooltip_alpha = 0.75
+    .type = float
   fixorientation = False
     .type = bool
+  camera_type = *orthographic perspective
+    .type = choice
 """
 
 NGLmaster_phil = libtbx.phil.parse( ngl_philstr )

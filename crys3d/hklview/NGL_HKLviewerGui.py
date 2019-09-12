@@ -42,6 +42,10 @@ class SettingsForm(QDialog):
     layout.addWidget(parent.bufsize_labeltxt,        3, 0, 1, 1)
     layout.addWidget(parent.bufsizespinBox,          3, 4, 1, 1)
 
+    layout.addWidget(parent.ttipalpha_labeltxt,      4, 0, 1, 1)
+    layout.addWidget(parent.ttipalpha_spinBox,        4, 4, 1, 1)
+
+
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
     myGroupBox.setLayout(layout)
@@ -127,6 +131,14 @@ class NGL_HKLViewer(QWidget):
     self.bufsize_labeltxt = QLabel()
     self.bufsize_labeltxt.setText("Text buffer size (bytes):")
 
+    self.ttipalpha = 0.75
+    self.ttipalpha_spinBox = QDoubleSpinBox()
+    self.ttipalpha_spinBox.setSingleStep(0.05)
+    self.ttipalpha_spinBox.setRange(0.0, 1.0)
+    self.ttipalpha_spinBox.setValue(self.ttipalpha)
+    self.ttipalpha_spinBox.valueChanged.connect(self.onTooltipAlphaChanged)
+    self.ttipalpha_labeltxt = QLabel()
+    self.ttipalpha_labeltxt.setText("Tooltip Opacity:")
 
     self.settingsform = SettingsForm(self)
 
@@ -353,6 +365,11 @@ class NGL_HKLViewer(QWidget):
     self.bufsize = val
 
 
+  def onTooltipAlphaChanged(self, val):
+    self.ttipalpha = val
+    self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.tooltip_alpha = %f' %val)
+
+
   def onFontsizeChanged(self, val):
     font = app.font()
     font.setPointSize(val);
@@ -362,9 +379,9 @@ class NGL_HKLViewer(QWidget):
 
   def onCameraPerspect(self,val):
     if self.cameraPerspectCheckBox.isChecked():
-      self.NGL_HKL_command("NGL_HKLviewer.camera_type = perspective")
+      self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.camera_type = perspective")
     else:
-      self.NGL_HKL_command("NGL_HKLviewer.camera_type = orthographic")
+      self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.camera_type = orthographic")
 
 
   def MergeData(self):

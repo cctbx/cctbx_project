@@ -443,9 +443,6 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
 
-      if view_3d.has_phil_path(diff_phil, "camera_type"):
-        self.set_camera_type(phl.camera_type)
-
       if view_3d.has_phil_path(diff_phil, "shape_primitive"):
         self.set_shape_primitive(phl.shape_primitive)
 
@@ -651,6 +648,21 @@ class HKLViewFrame() :
     self.viewer.identify_suitable_fomsarrays()
 
 
+  def MakeNewMillerArrayFrom(self, operation, millarr1, millarr2=None):
+    if millarr2:
+      newarray = self.viewer.OperateOn2MillerArrays(millarr1, millarr2, operation)
+    else:
+      newarray = self.viewer.OperateOn1MillerArray(millarr1, operation)
+    newarray.set_info(millarr1.info() )
+    newarray._info.labels = ["sfg"]
+    procarray, procarray_info = self.process_miller_array(newarray)
+    self.procarrays.append(procarray)
+    self.valid_arrays.append(newarray)
+    self.viewer.proc_arrays = self.procarrays
+    self.params.NGL_HKLviewer.operate_on_miller_arrays = True
+    self.update_settings()
+
+
   def load_reflections_file(self, file_name, set_array=True, data_only=False):
     file_name = to_str(file_name)
     if (file_name != ""):
@@ -724,13 +736,8 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def set_camera_type(self, camtype):
-    self.viewer.camera_type = self.params.NGL_HKLviewer.camera_type
-    self.viewer.DrawNGLJavaScript()
-
-
   def SetCameraType(self, camtype):
-    self.params.NGL_HKLviewer.camera_type = camtype
+    self.params.NGL_HKLviewer.viewer.NGL.camera_type = camtype
     self.update_settings()
 
 
@@ -789,13 +796,17 @@ class HKLViewFrame() :
 
   def SetSceneNbins(self, nbins):
     self.params.NGL_HKLviewer.nbins = nbins
-    #self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = str([ "1.0, %d"%e for e in range(nbins) ])
     self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = str([ (1.0, e) for e in range(nbins) ])
     self.update_settings()
 
 
   def SetSceneBinThresholds(self, binvals=[]):
     self.params.NGL_HKLviewer.scene_bin_thresholds = binvals
+    self.update_settings()
+
+
+  def SetToolTipOpacity(self, val):
+    self.params.NGL_HKLviewer.viewer.NGL.tooltip_alpha = val
     self.update_settings()
 
 
@@ -986,6 +997,8 @@ NGL_HKLviewer {
     .type = path
   merge_data = False
     .type = bool
+  operate_on_miller_arrays = False
+    .type = bool
   spacegroup_choice = None
     .type = int
   using_space_subgroup = False
@@ -1009,8 +1022,6 @@ NGL_HKLviewer {
     .type = str
   nbins = 6
     .type = int
-  camera_type = *orthographic perspective
-    .type = choice
   shape_primitive = *'spheres' 'points'
     .type = choice
   tooltips_in_script = False
