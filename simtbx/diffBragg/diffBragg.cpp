@@ -19,6 +19,21 @@ void derivative_manager::increment_image(int idx, double value){
 
 // END derivative manager
 
+//BEGIN unit cell manager
+ucell_manager::ucell_manager(){}
+
+void ucell_manager::increment(
+    vec3 V,
+    mat3 NABC, mat3 U, mat3 R, mat3 B, vec3 q,
+    double Hrad, double Fcell, double Flatt, double fudge,
+    double source_I, double capture_fraction, double omega_pixel){
+
+  vec3 dV = NABC* ((U*R*dB).transpose()) * q;
+  double dHrad = V*dV + dV*V;
+  double dFlatt = -1*Flatt / 0.63 * fudge * dHrad;
+  dI += Fcell*Fcell*2*Flatt*source_I*capture_fraction*omega_pixel*dFlatt;
+};
+
 
 // BEGIN rotation manager begin
 rot_manager::rot_manager(){}
@@ -375,19 +390,51 @@ void diffBragg::add_diffBragg_spots()
                                 q_vec[1] = scattering[2];
                                 q_vec[2] = scattering[3];
 
-                                //vec3 AA = UMATS_RXYZ[mos_tic]*cp_vec;
-                                //if (mos_tic==0 && fpixel==0 && spixel==0)
-                                //  printf("AAAAAAAAAAAA: %f, %f, %f \n", AA[0]*1e10, AA[1]*1e10, AA[2]*1e10);
+
+                                mat3 Bmat_realspace;
+                                Bmat_realspace[0] = ap_vec[0];
+                                Bmat_realspace[3] = ap_vec[1];
+                                Bmat_realspace[6] = ap_vec[2];
+
+                                Bmat_realspace[1] = bp_vec[0];
+                                Bmat_realspace[4] = bp_vec[1];
+                                Bmat_realspace[7] = bp_vec[2];
+
+                                Bmat_realspace[2] = cp_vec[0];
+                                Bmat_realspace[5] = cp_vec[1];
+                                Bmat_realspace[8] = cp_vec[2];
 
                                 /* construct fractional Miller indicies */
-                                h = UMATS_RXYZ[mos_tic] * ap_vec *q_vec;
-                                k = UMATS_RXYZ[mos_tic] * bp_vec *q_vec;
-                                l = UMATS_RXYZ[mos_tic] * cp_vec *q_vec;
+                                vec3 H_vec = (UMATS_RXYZ[mos_tic] * Bmat_realspace).transpose() * q_vec;
+                                h = H_vec[0];
+                                k = H_vec[1];
+                                l = H_vec[2];
 
                                 /* round off to nearest whole index */
                                 h0 = static_cast<int>(ceil(h-0.5));
                                 k0 = static_cast<int>(ceil(k-0.5));
                                 l0 = static_cast<int>(ceil(l-0.5));
+
+                                vec3 H0_vec;
+                                H0_vec[0] = h0;
+                                H0_vec[1] = k0;
+                                H0_vec[2] = l0;
+
+                                mat3 NABC;
+                                NABC[0] = Na;
+                                NABC[1] = 0;
+                                NABC[2] = 0;
+                                NABC[3] = 0;
+                                NABC[4] = Nb;
+                                NABC[5] = 0;
+                                NABC[6] = 0;
+                                NABC[7] = 0;
+                                NABC[8] = Nc;
+
+                                vec3 V = NABC*(H_vec- H0_vec);
+
+                                //if (mos_tic==1 && fpixel==10 && spixel==10)
+                                //  //printf("AAAAAAAAAAAA: %f, %f, %f \n", AA[0]*1e10, AA[1]*1e10, AA[2]*1e10);
 
                                 F_latt = 1.0;
                                     if(xtal_shape == SQUARE)
@@ -406,7 +453,8 @@ void diffBragg::add_diffBragg_spots()
                                     else
                                     {
                                         /* handy radius in reciprocal space, squared */
-                                        hrad_sqr = (h-h0)*(h-h0)*Na*Na + (k-k0)*(k-k0)*Nb*Nb + (l-l0)*(l-l0)*Nc*Nc ;
+                                        hrad_sqr = V*V;
+
                                     }
                                     if(xtal_shape == ROUND)
                                     {
