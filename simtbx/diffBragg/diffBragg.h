@@ -37,6 +37,17 @@ class rot_manager: public derivative_manager{
     mat3 R, dR;
 }; // end of rot_manager
 
+class ucell_manager: public derivative_manager{
+  public:
+    ucell_manager();
+    virtual ~ucell_manager(){}
+    void increment(
+        vec3 V, mat3 NABC, mat3 U, mat3 R, mat3 B, vec3 q,
+        double Hrad, double Fcell, double Flatt, double fudge,
+        double source_I, double capture_fraction, double omega_pixel);
+    mat3 dB;
+};
+
 class rotX_manager: public rot_manager{
   public:
     rotX_manager();
