@@ -3,10 +3,10 @@ organizer for setting the nanoBragg crystal properties
 """
 
 from simtbx.nanoBragg import shapetype
-from scitbx.matrix import sqr, col
+from scitbx.matrix import sqr
 
 
-class nanoBragg_crystal(object):
+class nanoBragg_crystal:
 
     def __init__(self):
 
@@ -20,22 +20,11 @@ class nanoBragg_crystal(object):
         self.missetting_matrix = sqr((1, 0, 0, 0, 1, 0, 0, 0, 1))
 
     @property
-    def Omatrix(self):
-        """
-        Change of basis operator
-        """
-        sgi = self.dxtbx_crystal.get_space_group().info()
-        to_p1 = sgi.change_of_basis_op_to_primitive_setting()
-        return sqr(to_p1.c_inv().r().transpose().as_double())
-
-    @property
     def dxtbx_crystal(self):
         return self._dxtbx_crystal
 
     @dxtbx_crystal.setter
     def dxtbx_crystal(self, val):
-        #sginfo = val.get_space_group().info()
-        #self._dxtbx_crystal = val.change_basis(sginfo.change_of_basis_op_to_primitive_setting())
         self._dxtbx_crystal = val
 
     @property
@@ -52,10 +41,6 @@ class nanoBragg_crystal(object):
 
     @miller_array.setter
     def miller_array(self, val):
-        if str(val.observation_type) == "xray.intensity":
-            val = val.as_amplitude_array()
-        val = val.expand_to_p1()
-        val = val.generate_bijvoet_mates()
         self._miller_array = val
 
     @property
@@ -83,21 +68,10 @@ class nanoBragg_crystal(object):
         self._n_mos_domains = val
 
     @property
-    def a_b_c_realspace_misset(self):
-        # NOTE: this can be done in two lines, but this is explicit and better to read
-        A = sqr(self.dxtbx_crystal.get_A()).inverse()
-        a, b, c = A.as_list_of_lists()
-        arot = self.missetting_matrix * col(a)
-        brot = self.missetting_matrix * col(b)
-        crot = self.missetting_matrix * col(c)
-        return list(arot), list(brot), list(crot)
-
-    @property
-    def astar_bstar_cstar_misset(self):
-        arot, brot, crot = self.a_b_c_realspace_misset
-        self.Amat_star_row_vecs = sqr(arot + brot + crot).inverse()
-        astar_rot, bstar_rot, cstar_rot = self.Amat_star_row_vecs.transpose().as_list_of_lists()  # trick to get the rows as lists
-        return astar_rot, bstar_rot, cstar_rot
+    def Amatrix_realspace(self):
+        B = sqr(self.dxtbx_crystal.get_B()).inverse().transpose()
+        A = (self.missetting_matrix * B).transpose()
+        return A
 
     @property
     def xtal_shape(self):
@@ -116,7 +90,7 @@ class nanoBragg_crystal(object):
         self._thick_mm = val
 
     @staticmethod
-    def dxtbx_crystal_from_ucell_and_symbol(ucell_tuple_Adeg=(65, 40, 75, 90, 110, 90), symbol="P1211"):
+    def dxtbx_crystal_from_ucell_and_symbol(ucell_tuple_Adeg=(79,79,79,90,90,90), symbol="P43212"):
         """
         :param ucell_tuple_Adeg:  unit cell tuple a,b,c al, be, ga in Angstom and degrees
         :param symbol: lookup symbol for space group, e.g. 'P1'
@@ -146,15 +120,4 @@ class nanoBragg_crystal(object):
         from simtbx.nanoBragg.tst_nanoBragg_basic import fcalc_from_pdb
         return fcalc_from_pdb(resolution=2, algorithm="fft", wavelength=1)
 
-    def dxtbx_crystal_with_missetting(self):
-        from copy import deepcopy
-        C = deepcopy(self.dxtbx_crystal)
-        astar, bstar, cstar = self.astar_bstar_cstar_misset
-        C.set_A(tuple(astar) + tuple(bstar) + tuple(cstar))
-        return C
 
-    @staticmethod
-    def abcstar_from_abc(a, b, c):
-        Amat_star_row_vecs = sqr(tuple(a) + tuple(b) + tuple(c)).inverse()
-        astar_rot, bstar_rot, cstar_rot = Amat_star_row_vecs.transpose().as_list_of_lists()
-        return astar_rot, bstar_rot, cstar_rot
