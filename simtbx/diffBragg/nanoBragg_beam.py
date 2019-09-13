@@ -1,11 +1,9 @@
 """
 Organizer for nanoBragg beam properties
 """
-from dxtbx.model.beam import BeamFactory
-from dxtbx_model_ext import flex_Beam
 
 
-class nanoBragg_beam(object):
+class nanoBragg_beam:
 
     def __init__(self):
         self.spectrum = [(1.8, 1e12)]   # angstroms, photons per pulse
@@ -24,7 +22,6 @@ class nanoBragg_beam(object):
 
     @property
     def spectrum(self):
-        """ list of (wavelength, flux) defining the energy spectrum"""
         return self._spectrum
 
     @spectrum.setter
@@ -57,6 +54,9 @@ class nanoBragg_beam(object):
 
     @property
     def xray_beams(self):
+        from dxtbx.model.beam import BeamFactory
+        from dxtbx_model_ext import flex_Beam
+
         self._xray_beams = flex_Beam()
 
         for wavelen, flux in self.spectrum:
@@ -68,10 +68,3 @@ class nanoBragg_beam(object):
             self._xray_beams.append(beam)
 
         return self._xray_beams
-
-    @property
-    def nanoBragg_constructor_beam(self):
-        """dumb necessity FIXME please"""
-        beam = BeamFactory.from_dict(self.xray_beams[0].to_dict())
-        beam.set_wavelength(beam.get_wavelength()*1e10)
-        return beam
