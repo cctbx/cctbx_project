@@ -178,6 +178,11 @@ def stats(model, prefix):
     start, end1, end2 = 0, max(ref.distances[key].vals), \
       round(max(ref.distances[key].vals),2)
     plt.yticks([0.01,end1], ["0", end2], visible=True, rotation="horizontal")
+
+    if  (key=="alpha"): plt.ylim(0, end2+0.02)
+    elif(key=="beta"):  plt.ylim(0, end2+0.02)
+    elif(key=="loop"):  plt.ylim(0, end2+0.02)
+    else: assert 0
     #
     if(j==0): ax.set_title("Distance", size=15)
     bins = list(flex.double(ref.distances[key].bins))
@@ -187,7 +192,6 @@ def stats(model, prefix):
   for j, it in enumerate([["alpha",2], ["beta",4], ["loop",6]]):
     key, i = it
     ax = plt.subplot(int("32%d"%i))
-
     if(j in [0,1]):
       ax.tick_params(bottom=False)
       ax.set_xticklabels([])
@@ -207,6 +211,11 @@ def stats(model, prefix):
     start, end1, end2 = 0, max(ref.angles[key].vals), \
       round(max(ref.angles[key].vals),2)
     plt.yticks([0.01,end1], ["0", end2], visible=True, rotation="horizontal")
+
+    if  (key=="alpha"): plt.ylim(0, end2+0.02)
+    elif(key=="beta"):  plt.ylim(0, end2+0.02)
+    elif(key=="loop"):  plt.ylim(0, end2+0.02)
+    else: assert 0
     #
     if(j==0): ax.set_title("Angle", size=15)
     ax.bar(ref.angles[key].bins, ref.angles[key].vals, width=4.5, alpha=.3)
@@ -303,7 +312,7 @@ class find(object):
         As             = ["O","N","S","F","CL"],
         Ds             = ["O","N","S"],
         d_HA_cutoff    = [1.4, 3.0], # original: [1.4, 2.4],
-        d_DA_cutoff    = [2.5, 4.1], # not used
+        d_DA_cutoff    = [2.5, 4.1],
         a_DHA_cutoff   = 120,        # should be greater than this
         a_YAH_cutoff   = [90, 180],  # should be within this interval
         protein_only   = False,
@@ -378,10 +387,15 @@ class find(object):
         om       = om,
         atoms    = atoms)
       if(len(Y) == 0): continue # don't use 'lone' acceptors
+      #
+      d_DA = D.distance(A)
+      if(d_DA < d_DA_cutoff[0] or d_DA > d_DA_cutoff[1]): continue
+      #
       d_HA = A.distance(H)
       if(not self.external_proxies):
         assert d_HA <= d_HA_cutoff[1]
         assert approx_equal(math.sqrt(p.dist_sq), d_HA, 1.e-3)
+        if(d_HA < d_HA_cutoff[0]): continue
 #      assert H.distance(D) < 1.15, [H.distance(D), H.name, D.name]
       # filter by a_DHA
       a_DHA = H.angle(A, D, deg=True)
@@ -402,6 +416,11 @@ class find(object):
         if(len(flags)>1 or (len(flags)==1 and flags[0])): continue
       #
       assert approx_equal(d_HA, H.distance(A), 1.e-3)
+      #a_YAD = []
+      #if(len(Y)>0):
+      #  for Y_ in Y:
+      #    a_YAD_ = A.angle(Y_, D, deg=True)
+      #    a_YAD.append(a_YAD_)
       self.result.append(group_args(
         i       = i,
         j       = j,
@@ -412,6 +431,7 @@ class find(object):
         d_HA    = d_HA,
         a_DHA   = a_DHA,
         a_YAH   = a_YAH,
+        #a_YAD   = a_YAD,
         d_AD    = A.distance(D)
       ))
       if(not self.external_proxies):
