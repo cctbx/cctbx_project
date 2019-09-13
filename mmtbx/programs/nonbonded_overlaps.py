@@ -34,17 +34,17 @@ phenix.nonbonded_overlaps file.pdb [params.eff] [options ...]
 
 Options:
 
-  keep_hydrogens=True       keep input hydrogen files (otherwise regenerate)
-  add_hydrogen=True         Place H atoms with ready_set
-  nuclear=False             use nuclear x-H distances and vdW radii
+  add_hydrogen=True         Place H atoms with ready_set (recommended!)
+  nuclear=False             Use nuclear X-H distances and vdW radii
+  keep_temp=False           Keep temporary readyset folder
 
 Example:
 
->>> mmtbx.nonbonded_overlaps xxxx.pdb keep_hydrogens=True
+>>> mmtbx.nonbonded_overlaps xxxx.pdb keep_temp=True
 
 >>> mmtbx.nonbonded_overlaps xxxx.pdb add_hydrogen=False
 
->>> mmtbx.nonbonded_overlaps xxxx.pdb yyyyy.cif
+>>> mmtbx.nonbonded_overlaps xxxx.pdb yyyyy.cif add_hydrogen=False
 '''
 
   datatypes = ['model', 'phil', 'restraint']
@@ -74,6 +74,9 @@ Example:
 
     pi_params = model.get_default_pdb_interpretation_params()
     pi_params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+
+    if self.params.nuclear:
+      params.pdb_interpretation.use_neutron_distances = True
 
     # TODO: below are some non-defaults for pdb_interpretation,
     # but they cannot be changed
