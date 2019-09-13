@@ -11,10 +11,10 @@ from __future__ import absolute_import, division, print_function
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from PySide2.QtCore import Qt, QTimer
+from PySide2.QtCore import Qt, QTimer, QEvent
 from PySide2.QtWidgets import ( QApplication, QCheckBox, QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-        QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
+        QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
@@ -162,6 +162,7 @@ class NGL_HKLViewer(QWidget):
     self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     # don't allow editing this table
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
+    self.millertable.installEventFilter(self)
 
     self.createExpansionBox()
     self.createFileInfoBox()
@@ -219,6 +220,38 @@ class NGL_HKLViewer(QWidget):
 
   def SettingsDialog(self):
     self.settingsform.show()
+
+
+  def CustomContextMenuHandler(self, pos):
+    menu = QtGui.QMenu(self)
+    menu.addAction(QtGui.QAction("Xref from...", self,
+            statusTip="List the references where this element is used",
+            triggered=self.actionXref))
+    menu.addAction(QtGui.QAction("Go to...", self,
+            statusTip="Go to element definition",
+            triggered=self.actionGoto))
+    menu.addAction(QtGui.QAction("Rename...", self,
+            statusTip="Rename an element (class, method, ...)",
+            triggered=self.actionRename))
+    menu.addAction(QtGui.QAction("Info...", self,
+            statusTip="Display info of an element (anything useful in the document)",
+            triggered=self.actionInfo))
+    menu.addAction(QtGui.QAction("Reload sources...", self,
+            statusTip="Reload sources (needed when renaming changed other tabs)",
+            triggered=self.reload_java_sources))
+    menu.exec_(QtGui.QCursor.pos())
+
+
+  def eventFilter(self, source, event):
+    if (event.type() == QEvent.ContextMenu and
+      source is self.millertable):
+      menu = QMenu()
+      menu.addAction('Open Window')
+      if menu.exec_(event.globalPos()):
+        item = source.itemAt(event.pos())
+        print(item.text())
+      return True
+    return super(NGL_HKLViewer, self).eventFilter(source, event)
 
 
   def update(self):

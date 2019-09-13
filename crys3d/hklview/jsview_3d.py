@@ -212,6 +212,7 @@ class hklview_3d:
     self.normal_kl = None
     self.normal_lh = None
     self.isnewfile = False
+    self.has_new_miller_array = False
     self.sleeptime = 0.1
     self.colstraliases = ""
     self.binvals = []
@@ -316,6 +317,7 @@ class hklview_3d:
     if has_phil_path(diff_phil, "filename") \
      or has_phil_path(diff_phil, "spacegroup_choice") \
      or has_phil_path(diff_phil, "merge_data") \
+     or has_phil_path(diff_phil, "miller_array_operation") \
      or has_phil_path(diff_phil, "scene_id")  \
      or has_phil_path(diff_phil, "nbins") \
      or has_phil_path(diff_phil, "camera_type") \
@@ -333,7 +335,6 @@ class hklview_3d:
      or has_phil_path(diff_phil, "slice_mode") \
      or has_phil_path(diff_phil, "slice_index") \
      or has_phil_path(diff_phil, "scale") \
-     or has_phil_path(diff_phil, "operate_on_miller_arrays") \
      or has_phil_path(diff_phil, "nth_power_scale_radii") \
      or self.settings.inbrowser==False and \
                ( has_phil_path(diff_phil, "expand_anomalous") or \
@@ -526,7 +527,7 @@ class hklview_3d:
                          self.settings.nth_power_scale_radii
                          )
 
-    if self.HKLscenesdict.has_key(self.HKLscenesKey) and not curphilparam.operate_on_miller_arrays:
+    if self.HKLscenesdict.has_key(self.HKLscenesKey) and not self.has_new_miller_array:
       (
         self.HKLscenes,
         self.tooltipstringsdict,
@@ -615,7 +616,7 @@ class hklview_3d:
       self.mprint("%d, %s" %(j, inf[0]), verbose=0)
     self.sceneisdirty = True
     self.SendInfoToGUI({ "hklscenes_arrays": self.hkl_scenes_info, "NewHKLscenes" : True })
-    curphilparam.operate_on_miller_arrays = False
+    self.has_new_miller_array = False
     return True
 
 
@@ -702,9 +703,15 @@ class hklview_3d:
     # lets user specify a one line python expression operating on data, sigmas
     data = millarr.data()
     sigmas = millarr.sigmas()
+    dres = millarr.unit_cell().d( millarr.indices() )
     newarray = millarr.deep_copy()
-    newarray._data = eval(operation)
-    return newarray
+    self.mprint("Creating new miller array through the operation: %s" %operation)
+    try:
+      newarray._data = eval(operation)
+      return newarray
+    except Exception as e:
+      self.mprint( str(e), verbose=0)
+      return None
 
 
   def OperateOn2MillerArrays(self, millarr1, millarr2, operation):
@@ -714,10 +721,18 @@ class hklview_3d:
     matcharr2 = millarr2.select( matchindices.pairs().column(1) )
     data1 = matcharr1.data()
     data2 = matcharr2.data()
+    sigmas1 = matcharr1.sigmas()
+    sigmas2 = matcharr2.sigmas()
+    dres = matcharr1.unit_cell().d( matcharr1.indices() )
     newarray = matcharr2.deep_copy()
     newarray._sigmas = None
-    newarray._data = eval(operation)
-    return newarray
+    self.mprint("Creating new miller array through the operation: %s" %operation)
+    try:
+      newarray._data = eval(operation)
+      return newarray
+    except Exception as e:
+      self.mprint( str(e), verbose=0)
+      return None
 
 
   def DrawNGLJavaScript(self, blankscene=False):

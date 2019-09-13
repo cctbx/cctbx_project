@@ -301,6 +301,7 @@ class HKLViewFrame() :
     kwds['mprint'] = self.mprint
     self.infostr = ""
     self.guiSocketPort=None
+    self.new_miller_array_operations_lst = []
     if 'useGuiSocket' in kwds:
       self.guiSocketPort = kwds['useGuiSocket']
       self.context = zmq.Context()
@@ -440,6 +441,9 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
 
+      if view_3d.has_phil_path(diff_phil, "miller_array_operations"):
+        self.make_new_miller_array()
+
       if view_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
 
@@ -491,7 +495,7 @@ class HKLViewFrame() :
   def process_miller_array(self, array, merge_answer=[None]) :
     if (array is None) : return
     if (array.is_hendrickson_lattman_array()) :
-      raise Sorry("Hendrickson-Lattman coefficients are not supported.")
+      raise Sorry("Hendrickson-Lattman coefficients are currently not supported.")
     info = array.info()
     if isinstance(info, str) :
       labels = "TEST DATA"
@@ -588,7 +592,8 @@ class HKLViewFrame() :
       self.params.NGL_HKLviewer.using_space_subgroup:
       return
     current_miller_array_idx = self.viewer.hkl_scenes_info[self.params.NGL_HKLviewer.viewer.scene_id][1]
-    matching_valid_array = self.valid_arrays[ current_miller_array_idx ]
+    #matching_valid_array = self.valid_arrays[ current_miller_array_idx ]
+    matching_valid_array = self.procarrays[ current_miller_array_idx ]
     from cctbx.sgtbx.subgroups import subgroups
     from cctbx import sgtbx
     sg_info = matching_valid_array.space_group_info()
@@ -615,7 +620,8 @@ class HKLViewFrame() :
       space_group_info= self.current_spacegroup,
       unit_cell=self.viewer.miller_array.unit_cell())
     othervalidarrays = []
-    for validarray in self.valid_arrays:
+    #for validarray in self.valid_arrays:
+    for validarray in self.procarrays:
       # TODO: check if array is unmerged i.e. not symmetry unique
       #print "Space group casting ", validarray.info().label_string()
       arr = validarray.expand_to_p1().customized_copy(crystal_symmetry=symm)
@@ -648,19 +654,47 @@ class HKLViewFrame() :
     self.viewer.identify_suitable_fomsarrays()
 
 
-  def MakeNewMillerArrayFrom(self, operation, millarr1, millarr2=None):
-    if millarr2:
+  def MakeNewMillerArrayFrom(self, operation, label, arrid1, arrid2=None):
+    # get list of existing new miller arrays and operations if present
+    miller_array_operations_lst = []
+    if self.params.NGL_HKLviewer.miller_array_operations:
+      miller_array_operations_lst = eval(self.params.NGL_HKLviewer.miller_array_operations)
+
+    miller_array_operations_lst.append( ( operation, label, arrid1, arrid2 ) )
+    self.params.NGL_HKLviewer.miller_array_operations = str( miller_array_operations_lst )
+    self.update_settings()
+
+
+  def make_new_miller_array(self):
+    miller_array_operations_lst = eval(self.params.NGL_HKLviewer.miller_array_operations)
+    unique_miller_array_operations_lst = []
+    for (operation, label, arrid1, arrid2) in miller_array_operations_lst:
+      isunique = True
+      for arr in self.procarrays:
+        if label in arr.info().label_string():
+          self.mprint(label + " is already labelling one of the original miller arrays")
+          isunique = False
+          break
+      if isunique:
+        unique_miller_array_operations_lst.append( (operation, label, arrid1, arrid2) )
+
+    self.params.NGL_HKLviewer.miller_array_operations = str(unique_miller_array_operations_lst)
+    from copy import deepcopy
+    millarr1 = deepcopy(self.procarrays[arrid1])
+    newarray = None
+    if arrid2:
+      millarr2 = deepcopy(self.procarrays[arrid2])
       newarray = self.viewer.OperateOn2MillerArrays(millarr1, millarr2, operation)
     else:
       newarray = self.viewer.OperateOn1MillerArray(millarr1, operation)
-    newarray.set_info(millarr1.info() )
-    newarray._info.labels = ["sfg"]
-    procarray, procarray_info = self.process_miller_array(newarray)
-    self.procarrays.append(procarray)
-    self.valid_arrays.append(newarray)
-    self.viewer.proc_arrays = self.procarrays
-    self.params.NGL_HKLviewer.operate_on_miller_arrays = True
-    self.update_settings()
+    if newarray:
+      newarray.set_info(millarr1._info )
+      newarray._info.labels = [ label ]
+      procarray, procarray_info = self.process_miller_array(newarray)
+      self.procarrays.append(procarray)
+      self.viewer.proc_arrays = self.procarrays
+      self.viewer.has_new_miller_array = True
+
 
 
   def load_reflections_file(self, file_name, set_array=True, data_only=False):
@@ -997,8 +1031,8 @@ NGL_HKLviewer {
     .type = path
   merge_data = False
     .type = bool
-  operate_on_miller_arrays = False
-    .type = bool
+  miller_array_operations = ''
+    .type = str
   spacegroup_choice = None
     .type = int
   using_space_subgroup = False
