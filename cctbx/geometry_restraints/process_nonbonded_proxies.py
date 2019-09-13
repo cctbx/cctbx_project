@@ -110,7 +110,7 @@ class clashes(object):
   """
   def __init__(self, clashes_dict, model):
     '''
-    clashes_dict  {(iseq, jseq):(distance, sum_vdw_radii)}
+    clashes_dict  {(iseq, jseq):(distance, sum_vdw_radii, overlap, symop_str, symop)}
     iseq          atom i
     jseq          atom j
     distance      distance between atom i and atom j
