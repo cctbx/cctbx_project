@@ -207,7 +207,7 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
   General tool to identify rotatable H, such as C-O-H, C-H3, in any molecule.
   """
   result = []
-  def analyze_group_aa_specific(g, atoms):
+  def analyze_group_aa_specific(g, atoms, psel):
     result = []
     for gi in g:
       assert len(gi[0])==2 # because this is axis
@@ -216,6 +216,9 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
       a1, a2 = atoms[gi[0][0]], atoms[gi[0][1]]
       e1 = a1.element.strip().upper()
       e2 = a2.element.strip().upper()
+      condition_00 = [a1.i_seq in psel, a2.i_seq in psel].count(True)==2
+      for gi1_ in gi[1]:
+        condition_00 = condition_00 and (atoms[gi1_].i_seq in psel)
       condition_1 = [e1,e2].count("H")==0 and [e1,e2].count("D")==0
       # condition 2: all atoms to rotate are H or D
       condition_2 = True
@@ -226,7 +229,7 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
           break
       rot_atoms = []
       axis = None
-      if(condition_1 and condition_2):
+      if(condition_1 and condition_2 and not condition_00):
         axis = [a1.i_seq, a2.i_seq]
         for gi1i in gi[1]:
           rot_atoms.append(atoms[gi1i].i_seq)
@@ -243,6 +246,9 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
       a1, a2 = atoms[gi[0][0]], atoms[gi[0][1]]
       e1 = a1.element.strip().upper()
       e2 = a2.element.strip().upper()
+      condition_00 = [a1.i_seq in psel, a2.i_seq in psel].count(True)==2
+      for gi1_ in gi[1]:
+        condition_00 = condition_00 and (atoms[gi1_].i_seq in psel)
       condition_1 = [e1,e2].count("H")==0 and [e1,e2].count("D")==0
       s1 = set(gi[1])
       if(condition_1):
@@ -267,7 +273,7 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
             s = list(s1 & s2)
             if(len(s)>0): condition_3 = True
           #
-          if(condition_1 and condition_2 and condition_3):
+          if(condition_1 and condition_2 and condition_3 and not condition_00):
             axis = [a1.i_seq, a2.i_seq]
             rot_atoms = []
             in_plane = False
@@ -277,6 +283,56 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
             if(not in_plane): result.append([axis, rot_atoms])
     if(len(result)>0 is not None): return result
     else: return None
+  def helper_1(residue, mon_lib_srv, log, result, psel):
+    fr = rotatable_bonds.axes_and_atoms_aa_specific(
+      residue=residue, mon_lib_srv=mon_lib_srv,
+      remove_clusters_with_all_h=False, log=log)
+    if(fr is not None):
+      r = analyze_group_aa_specific(g=fr, atoms=residue.atoms(), psel=psel)
+      if(r is not None):
+        for r_ in r: result.append(r_)
+  def helper_2(atoms, restraints_manager):
+    elements = atoms.extract_element()
+    names = atoms.extract_name()
+    # create tardy_model
+    iselection = atoms.extract_i_seq()
+    sites_cart = atoms.extract_xyz()
+    masses     = [1]*sites_cart.size()
+    labels     = list(range(sites_cart.size()))
+    grm_i = restraints_manager.select(iselection)
+    bps, asu = grm_i.geometry.get_all_bond_proxies(
+      sites_cart = sites_cart)
+    edge_list = []
+    for bp in bps: edge_list.append(bp.i_seqs)
+    fixed_vertex_lists = []
+    tmp_r = []
+    # try all possible edges (bonds) as potential fixed vertices and
+    # accept only non-redundant
+    for bp in bps:
+      tardy_tree = scitbx.graph.tardy_tree.construct(
+        sites              = sites_cart,
+        edge_list          = edge_list,
+        fixed_vertex_lists = [bp.i_seqs])
+      tardy_model = scitbx.rigid_body.tardy_model(
+        labels        = labels,
+        sites         = sites_cart,
+        masses        = masses,
+        tardy_tree    = tardy_tree,
+        potential_obj = None)
+      fr = rotatable_bonds.axes_and_atoms_aa_specific(
+        residue=residue, mon_lib_srv=mon_lib_srv,
+        remove_clusters_with_all_h=False, log=None,
+        tardy_model = tardy_model)
+      if(fr is not None):
+        r = analyze_group_general(g=fr, atoms=atoms,bps=bps,psel=psel)
+        if(r is not None and len(r)>0):
+          for r_ in r:
+            if(not r_ in tmp_r):
+              if(not r_ in tmp_r): tmp_r.append(r_)
+    for r in tmp_r:
+      if(not r in result):
+        result.append(r)
+  #
   if(restraints_manager is not None):
     psel = flex.size_t()
     for p in restraints_manager.geometry.planarity_proxies:
@@ -300,55 +356,13 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
             if(get_class(name=residue.resname)=="common_water" and
                len(atoms)==1):
                  continue
-            if(get_class(name=residue.resname)=="common_amino_acid" and
-               not first_or_last):
-              fr = rotatable_bonds.axes_and_atoms_aa_specific(
-                residue=residue, mon_lib_srv=mon_lib_srv,
-                remove_clusters_with_all_h=False, log=log)
-              if(fr is not None):
-                r = analyze_group_aa_specific(g=fr, atoms=atoms)
-                if(r is not None):
-                  for r_ in r: result.append(r_)
-            elif(restraints_manager is not None):
-              elements = atoms.extract_element()
-              names = atoms.extract_name()
-              # create tardy_model
-              iselection = atoms.extract_i_seq()
-              sites_cart = atoms.extract_xyz()
-              masses     = [1]*sites_cart.size()
-              labels     = list(range(sites_cart.size()))
-              grm_i = restraints_manager.select(iselection)
-              bps, asu = grm_i.geometry.get_all_bond_proxies(
-                sites_cart = sites_cart)
-              edge_list = []
-              for bp in bps: edge_list.append(bp.i_seqs)
-              fixed_vertex_lists = []
-              tmp_r = []
-              # try all possible edges (bonds) as potential fixed vertices and
-              # accept only non-redundant
-              for bp in bps:
-                tardy_tree = scitbx.graph.tardy_tree.construct(
-                  sites              = sites_cart,
-                  edge_list          = edge_list,
-                  fixed_vertex_lists = [bp.i_seqs])
-                tardy_model = scitbx.rigid_body.tardy_model(
-                  labels        = labels,
-                  sites         = sites_cart,
-                  masses        = masses,
-                  tardy_tree    = tardy_tree,
-                  potential_obj = None)
-                fr = rotatable_bonds.axes_and_atoms_aa_specific(
-                  residue=residue, mon_lib_srv=mon_lib_srv,
-                  remove_clusters_with_all_h=False, log=None,
-                  tardy_model = tardy_model)
-                if(fr is not None):
-                  r = analyze_group_general(g=fr, atoms=atoms,bps=bps,psel=psel)
-                  if(r is not None and len(r)>0):
-                    for r_ in r:
-                      if(not r_ in tmp_r):
-                        if(not r_ in tmp_r): tmp_r.append(r_)
-              for r in tmp_r:
-                result.append(r)
+            if(get_class(name=residue.resname)=="common_amino_acid" and not first_or_last):
+              helper_1(residue, mon_lib_srv, log, result, psel)
+            elif(get_class(name=residue.resname)=="common_amino_acid"):
+              helper_1(residue, mon_lib_srv, log, result, psel)
+              helper_2(atoms, restraints_manager)
+            elif((restraints_manager is not None)):
+              helper_2(atoms, restraints_manager)
   # very handy for debugging: do not remove
   #for r_ in result:
   #  print "  analyze_group:", r_, \
