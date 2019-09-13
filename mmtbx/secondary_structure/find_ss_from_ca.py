@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+# LIBTBX_SET_DISPATCHER_NAME phenix.find_ss_from_ca
 
 # find_ss_from_ca.py
 # a tool to find helices, strands, non-helices/strands in segments of
