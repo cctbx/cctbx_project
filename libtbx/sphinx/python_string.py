@@ -1,21 +1,20 @@
 from __future__ import absolute_import, division, print_function
 
-from docutils.parsers.rst import Directive
 import docutils.statemachine
+import libtbx.utils
+from docutils.parsers.rst import Directive
+from six import string_types
 
 def setup(app):
   app.add_directive('python_string', PythonStringDirective)
-
+  return {"parallel_read_safe": True}
 
 class PythonStringDirective(Directive):
-
   # this disables content in the directive
   has_content = False
   required_arguments = 1
 
   def run(self):
-    import libtbx.utils
-
     python_path = self.arguments[0]
     python_string = libtbx.utils.import_python_object(
       import_path=python_path,
@@ -23,7 +22,6 @@ class PythonStringDirective(Directive):
       target_must_be="",
       where_str="").object
 
-    from six import string_types
     assert isinstance(python_string, string_types)
 
     include_lines = docutils.statemachine.string2lines(
