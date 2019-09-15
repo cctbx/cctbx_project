@@ -148,7 +148,7 @@ def stats(model, prefix):
   result_dict["all"]   = get_selected(sel="all")
   result_dict["alpha"] = get_selected(sel=alpha_sel)
   result_dict["beta"]  = get_selected(sel=beta_sel)
-  result_dict["loop"]  = get_selected(sel=loop_sel)
+#  result_dict["loop"]  = get_selected(sel=loop_sel)
   # Load histograms for reference high-resolution d_HA and a_DHA
   pkl_fn = libtbx.env.find_in_repositories(
     relative_path="mmtbx")+"/nci/d_HA_and_a_DHA_high_res.pkl"
@@ -160,7 +160,7 @@ def stats(model, prefix):
   import matplotlib.pyplot as plt
   fig = plt.figure(figsize=(10,10))
   kwargs = dict(histtype='bar', bins=20, range=[1.6,3.0], alpha=.8)
-  for j, it in enumerate([["alpha",1], ["beta",3], ["loop",5]]):
+  for j, it in enumerate([["alpha",1], ["beta",3], ["all",5]]):
     key, i = it
     ax = plt.subplot(int("32%d"%i))
     if(j in [0,1]):
@@ -181,7 +181,7 @@ def stats(model, prefix):
 
     if  (key=="alpha"): plt.ylim(0, end2+0.02)
     elif(key=="beta"):  plt.ylim(0, end2+0.02)
-    elif(key=="loop"):  plt.ylim(0, end2+0.02)
+    elif(key=="all"):  plt.ylim(0, end2+0.02)
     else: assert 0
     #
     if(j==0): ax.set_title("Distance", size=15)
@@ -189,7 +189,7 @@ def stats(model, prefix):
     ax.bar(bins, ref.distances[key].vals, alpha=.3, width=0.07)
   #
   kwargs = dict(histtype='bar', bins=20, range=[90,180], alpha=.8)
-  for j, it in enumerate([["alpha",2], ["beta",4], ["loop",6]]):
+  for j, it in enumerate([["alpha",2], ["beta",4], ["all",6]]):
     key, i = it
     ax = plt.subplot(int("32%d"%i))
     if(j in [0,1]):
@@ -214,7 +214,7 @@ def stats(model, prefix):
 
     if  (key=="alpha"): plt.ylim(0, end2+0.02)
     elif(key=="beta"):  plt.ylim(0, end2+0.02)
-    elif(key=="loop"):  plt.ylim(0, end2+0.02)
+    elif(key=="all"):  plt.ylim(0, end2+0.02)
     else: assert 0
     #
     if(j==0): ax.set_title("Angle", size=15)
@@ -457,36 +457,21 @@ class find(object):
         a_YAH.extend(flex.double(r.a_YAH))
     return group_args(d_HA=d_HA, a_DHA=a_DHA, a_YAH=a_YAH)
 
-  def get_counts(self):
-    data_theta_1_all = flex.double()
-    data_theta_1_fil = flex.double()
-    data_theta_2_all = flex.double()
-    data_theta_2_fil = flex.double()
-    data_d_HA_all = flex.double()
-    data_d_HA_fil = flex.double()
+  def get_counts(self, b=None, occ=None):
+    theta_1 = flex.double()
+    theta_2 = flex.double()
+    d_HA    = flex.double()
     n_sym = 0
     for r in self.result:
       if(str(r.symop) != "x,y,z"):
         n_sym += 1
-      data_theta_1_all.append(r.a_DHA)
-      data_theta_2_all.extend(flex.double(r.a_YAH))
-      data_d_HA_all.append(r.d_HA)
-      if(r.atom_H.b>30):    continue
-      if(r.atom_A.b>30):    continue
-      if(r.atom_H.occ<0.9): continue
-      if(r.atom_A.occ<0.9): continue
-      data_theta_1_fil.append(r.a_DHA)
-      data_theta_2_fil.extend(flex.double(r.a_YAH))
-      data_d_HA_fil.append(r.d_HA)
-    theta_1 = group_args(
-      overall  = get_stats(data_theta_1_all),
-      filtered = get_stats(data_theta_1_fil))
-    theta_2 = group_args(
-      overall  = get_stats(data_theta_2_all),
-      filtered = get_stats(data_theta_2_fil))
-    d_HA = group_args(
-      overall  = get_stats(data_d_HA_all),
-      filtered = get_stats(data_d_HA_fil))
+      if(b   is not None and r.atom_H.b>b): continue
+      if(b   is not None and r.atom_A.b>b): continue
+      if(occ is not None and r.atom_H.occ<occ): continue
+      if(occ is not None and r.atom_A.occ<occ): continue
+      theta_1.append(r.a_DHA)
+      theta_2.extend(flex.double(r.a_YAH))
+      d_HA   .append(r.d_HA)
     bpr=float(len(self.result))/\
       len(list(self.model.get_hierarchy().residue_groups()))
     return group_args(
