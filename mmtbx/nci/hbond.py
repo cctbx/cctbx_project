@@ -475,34 +475,25 @@ class find(object):
     bpr=float(len(self.result))/\
       len(list(self.model.get_hierarchy().residue_groups()))
     return group_args(
-      theta_1 = theta_1,
-      theta_2 = theta_2,
-      d_HA    = d_HA,
+      theta_1 = get_stats(theta_1),
+      theta_2 = get_stats(theta_2),
+      d_HA    = get_stats(d_HA),
       n       = len(self.result),
       n_sym   = n_sym,
       bpr     = bpr)
 
   def show_summary(self, log = sys.stdout):
-    def printit(o,f):
-      fmt="%7.3f %7.3f %7.3f %7.3f"
-      if(o is not None):
-        print("  overall : "+fmt%(o.mean, o.sd, o.skew, o.kurtosis), file=log)
-      if(f is not None):
-        print("  filtered: "+fmt%(f.mean, f.sd, f.skew, f.kurtosis), file=log)
+    def printit(o, prefix):
+      fmt="%8s %7.3f %7.3f %7.3f %7.3f"
+      print(fmt%(prefix, o.mean, o.sd, o.skew, o.kurtosis), file=log)
     c = self.get_counts()
     print("Total:       %d"%c.n,     file=log)
     print("Symmetry:    %d"%c.n_sym, file=log)
     print("Per residue: %7.4f"%c.bpr,   file=log)
-    print("               Mean      SD    Skew   Kurtosis",   file=log)
-    print("theta_1:",   file=log)
-    o, f = c.theta_1.overall, c.theta_1.filtered
-    printit(o,f)
-    print("theta_2:",   file=log)
-    o, f = c.theta_2.overall, c.theta_2.filtered
-    printit(o,f)
-    print("d_HA:",   file=log)
-    o, f = c.d_HA.overall, c.d_HA.filtered
-    printit(o,f)
+    print("            Mean      SD    Skew   Kurtosis",   file=log)
+    printit(c.theta_1, "theta_1:")
+    printit(c.theta_2, "theta_2:")
+    printit(c.d_HA,    "d_HA:")
 
   def show(self, log = sys.stdout, sym_only=False):
     for r in self.result:
