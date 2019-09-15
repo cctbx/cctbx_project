@@ -10,6 +10,7 @@ import os
 import sys
 
 import libtbx.load_env
+import libtbx.auto_build.install_conda
 
 try:
   import pip
@@ -146,6 +147,20 @@ def require(pkgname, version=None):
             package=pkgname, currentversion=currentversion, requirement=version, action=action)
     return False
 
+  if libtbx.env.build_options.use_conda:
+    if not os.getenv("LIBTBX_UPDATE_CONDA"):
+      _notice("    WARNING: Can not {action} package {package} automatically.", "",
+              "You are in a conda environment. Please {action} manually.",
+              package=pkgname, currentversion=currentversion, requirement=version, action=action)
+      return False
+    try:
+      return install_conda_package(package=pkgname, requirement=version, action=action)
+    except Exception:
+      _notice("    WARNING: Can not {action} package {package} automatically.", "",
+              "Please {action} manually in conda environment.",
+              package=pkgname, currentversion=currentversion, requirement=version, action=action)
+      raise
+
   print("attempting {action} of {package}...".format(action=action, package=pkgname))
   has_req_tracker = os.environ.get('PIP_REQ_TRACKER')
   exit_code = pip_main(['install', requirestring])
@@ -158,6 +173,20 @@ def require(pkgname, version=None):
   else:
     print("{action} failed. please check manually".format(action=action))
     return False
+
+def install_conda_package(package, requirement, action):
+    conda_manager = libtbx.auto_build.install_conda.conda_manager()
+    conda = conda_manager.get_conda_exe()
+    prefix = conda_manager.conda_env
+    if not prefix:
+        prefix = os.path.join(conda_manager.root_dir, "conda_base")
+    if not prefix or not os.path.exists(prefix):
+        raise RuntimeError("Could not find conda environment at " + repr(prefix))
+    command_list = [conda, action, '--prefix', prefix, package + requirement]
+    if conda_manager.system == 'Windows':
+      command_list = [os.path.join(conda_manager.conda_base, 'Scripts', 'activate'),
+                      'base', '&&'] + command_list
+    raise RuntimeError("Would run " + repr(command_list))
 
 @contextlib.contextmanager
 def _silence():
