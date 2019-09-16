@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, print_function
 #-------------------------------------------------------------------------------
 
 from PySide2.QtCore import Qt, QTimer, QEvent
-from PySide2.QtWidgets import (QAction, QApplication, QCheckBox, QComboBox, QDialog,
+from PySide2.QtWidgets import ( QAction, QApplication, QCheckBox, QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
