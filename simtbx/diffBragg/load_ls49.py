@@ -20,7 +20,7 @@ def strong_spot_mask(refl_tbl, img_size):
     return spot_mask
 
 
-def process_ls49_image(ls49_data_dir="/Users/dermen/crystal/modules/cctbx_project/simtbx/diffBragg/LS49_sim"):
+def process_ls49_image(ls49_data_dir="/Users/dermen/crystal/modules/cctbx_project/simtbx/diffBragg/LS49_sim2"):
     import os
     import numpy as np
     import dxtbx
@@ -30,24 +30,29 @@ def process_ls49_image(ls49_data_dir="/Users/dermen/crystal/modules/cctbx_projec
 
     os.chdir(ls49_data_dir)
 
-    loader = dxtbx.load("step5_MPIbatch_000000.img.gz")
+    loader = dxtbx.load("ls49_0.npz")
     img = loader.get_raw_data().as_numpy_array()
 
-    exp_list = ExperimentListFactory.from_json_file("idx-step5_MPIbatch_000000.img_refined.expt", check_format=False)
+    exp_list = ExperimentListFactory.from_json_file("idx-ls49_0_refined.expt", check_format=False)
     exp = exp_list[0]
 
     C = exp.crystal
     B = exp.beam
-    from dxtbx.model.detector import DetectorFactory
-    import json
-    D = DetectorFactory.from_dict(json.load(open("method3_geom.json", "r")))  # NOTE: from Nick
+    D = exp.detector
 
-    refls = flex.reflection_table.from_file("idx-step5_MPIbatch_000000.img_integrated.refl")
+    refls = flex.reflection_table.from_file("idx-ls49_0_integrated.refl")
+
+    sel = np.zeros(len(refls), bool)
+    n_keep_refls = 30
+    sel[np.random.permutation(len(refls))[:n_keep_refls]] = True
+    refls = refls.select(flex.bool(sel))
 
     bboxes = [list(refls["shoebox"][i].bbox)[:4] for i in range(len(refls))]
+    bboxes = np.array(bboxes)
+    bboxes[bboxes > 3000] = 2999
     mill_idx = [list(refls["miller_index"][i]) for i in range(len(refls))]
 
-    R2 = flex.reflection_table.from_file("idx-step5_MPIbatch_000000.img_indexed.refl")
+    R2 = flex.reflection_table.from_file("idx-ls49_0_indexed.refl")
     strong_mask = strong_spot_mask(refl_tbl=R2, img_size=img.shape)
 
     is_bg_pixel = np.logical_not(strong_mask)
@@ -68,7 +73,7 @@ def process_ls49_image(ls49_data_dir="/Users/dermen/crystal/modules/cctbx_projec
         tilt_abc[i_spot] = coeff[1], coeff[2], coeff[0]  # store as fast-scan coeff, slow-scan coeff, offset coeff
 
     data = np.load("LS49_data0.npz")
-    spectrum = zip(data["wavelens"], data["fluxes"])
+    spectrum = zip(data["wavelens"][33:66], data["fluxes"][33:66])
     sfall = data["sfall"][()]
 
     return {"dxcrystal": C, "dxdetector": D, "dxbeam": B, "mill_idx": mill_idx, "data_img": img,
