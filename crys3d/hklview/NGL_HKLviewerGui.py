@@ -12,16 +12,41 @@ from __future__ import absolute_import, division, print_function
 #-------------------------------------------------------------------------------
 
 from PySide2.QtCore import Qt, QTimer, QEvent
-from PySide2.QtWidgets import ( QApplication, QCheckBox, QComboBox, QDialog,
+from PySide2.QtWidgets import (QAction, QApplication, QCheckBox, QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
-from PySide2.QtGui import QColor, QFont
+from PySide2.QtGui import QColor, QFont, QCursor
 from PySide2.QtWebEngineWidgets import QWebEngineView
 import sys, zmq, subprocess, time, traceback
 
+
+
+class MakeNewDataForm(QDialog):
+  def __init__(self, parent=None):
+    super(MakeNewDataForm, self).__init__(parent)
+    self.setWindowTitle("Make New Data")
+    myGroupBox = QGroupBox("Stuff")
+    layout = QGridLayout()
+    layout.addWidget(parent.operationlabeltxt,     0, 0, 1, 2)
+    layout.addWidget(parent.MillerLabel,           1, 0, 1, 2)
+    layout.addWidget(parent.MillerComboBox,        2, 0, 1, 1)
+    layout.addWidget(parent.MillerLabel2,          2, 1, 1, 1)
+    layout.addWidget(parent.operationtxtbox,       3, 0, 1, 2)
+    layout.addWidget(parent.newlabelLabel,          4, 0, 1, 1)
+    layout.addWidget(parent.newlabeltxtbox,         4, 1, 1, 1)
+    layout.addWidget(parent.operationbutton,       5, 0, 1, 2)
+    layout.setRowStretch (0, 1)
+    layout.setRowStretch (1 ,0)
+    myGroupBox.setLayout(layout)
+    mainLayout = QGridLayout()
+    mainLayout.addWidget(myGroupBox,     0, 0)
+    self.setLayout(mainLayout)
+    m = self.fontMetrics().width( "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf")
+    self.setMinimumWidth(m)
+    #self.setFixedSize( self.sizeHint() )
 
 
 class SettingsForm(QDialog):
@@ -56,6 +81,20 @@ class SettingsForm(QDialog):
     self.setFixedSize( self.sizeHint() )
 
 
+class MyTableWidget(QTableWidget):
+  def __init__(self, *args, **kwargs):
+    QTableWidget.__init__(self, *args, **kwargs)
+    self.mousebutton = None
+
+  def mousePressEvent(self, event):
+    if event.type() == QEvent.MouseButtonPress:
+      self.mousebutton = None
+      if event.button() == Qt.RightButton:
+        print( "Right clicked")
+        self.mousebutton = Qt.RightButton
+      else:
+        print("Left clicked")
+    QTableWidget.mousePressEvent(self, event)
 
 
 class NGL_HKLViewer(QWidget):
@@ -147,7 +186,19 @@ class NGL_HKLViewer(QWidget):
     #self.MillerComboBox.setSizeAdjustPolicy(QComboBox.AdjustToContents)
 
     self.MillerLabel = QLabel()
-    self.MillerLabel.setText("Show the following reflection data")
+    self.MillerLabel.setText("and the following")
+    self.MillerLabel2 = QLabel()
+    self.MillerLabel2.setText("'data2' variable")
+    self.newlabelLabel = QLabel()
+    self.newlabelLabel.setText("Label of new data:")
+    self.newlabeltxtbox = QLineEdit('')
+    self.operationlabeltxt = QLabel()
+    self.operationtxtbox = QLineEdit('')
+    self.operationbutton = QPushButton("OK")
+    self.operationbutton.clicked.connect(self.onMakeNewData)
+    self.makenewdataform = MakeNewDataForm(self)
+    self.makenewdataform.setModal(True)
+
 
     self.HKLnameedit = QLineEdit('')
     self.HKLnameedit.setReadOnly(True)
@@ -157,12 +208,13 @@ class NGL_HKLViewer(QWidget):
 
     labels = ["Label", "Type", "Space group", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
-    self.millertable = QTableWidget(0, len(labels))
+    self.millertable = MyTableWidget(0, len(labels))
     self.millertable.setHorizontalHeaderLabels(labels)
     self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     # don't allow editing this table
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
-    self.millertable.installEventFilter(self)
+    self.millertable.cellPressed.connect(self.onMillerTableCellPressed)
+    #self.millertable.installEventFilter(self)
 
     self.createExpansionBox()
     self.createFileInfoBox()
@@ -173,10 +225,10 @@ class NGL_HKLViewer(QWidget):
 
     mainLayout = QGridLayout()
     mainLayout.addWidget(self.FileInfoBox,         0, 0)
-    mainLayout.addWidget(self.MillerLabel,         1, 0)
-    mainLayout.addWidget(self.MillerComboBox,      2, 0)
-    mainLayout.addWidget(self.functionTabWidget,   3, 0)
-    mainLayout.addWidget(self.settingsbtn,         4, 0, 1, 1)
+    #mainLayout.addWidget(self.MillerLabel,         1, 0)
+    #mainLayout.addWidget(self.MillerComboBox,      2, 0)
+    mainLayout.addWidget(self.functionTabWidget,   1, 0)
+    mainLayout.addWidget(self.settingsbtn,         2, 0, 1, 1)
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if self.UseOSbrowser==False:
@@ -190,7 +242,7 @@ class NGL_HKLViewer(QWidget):
     mainLayout.setRowStretch(0, 1)
     mainLayout.setRowStretch(1, 0)
     mainLayout.setRowStretch(2, 1)
-    mainLayout.setRowStretch(3, 1)
+    #mainLayout.setRowStretch(3, 0)
     mainLayout.setColumnStretch(4, 0)
     self.setLayout(mainLayout)
 
@@ -201,6 +253,8 @@ class NGL_HKLViewer(QWidget):
     self.err = None
     self.comboviewwidth = 0
     self.hklscenes_arrays = []
+    self.millerarraylabels = []
+    self.scenearraylabels = []
     self.array_infotpls = []
     self.matching_arrays = []
     self.bin_infotpls = None
@@ -211,9 +265,12 @@ class NGL_HKLViewer(QWidget):
     self.infostr = ""
     self.fileisvalid = False
     self.NewFileLoaded = False
+    self.NewMillerArray = False
     self.NewHKLscenes = False
     self.updatingNbins = False
     self.binstableitemchanges = False
+    self.millertablemenu = QMenu(self)
+    self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
 
     self.show()
 
@@ -222,36 +279,27 @@ class NGL_HKLViewer(QWidget):
     self.settingsform.show()
 
 
-  def CustomContextMenuHandler(self, pos):
-    menu = QtGui.QMenu(self)
-    menu.addAction(QtGui.QAction("Xref from...", self,
-            statusTip="List the references where this element is used",
-            triggered=self.actionXref))
-    menu.addAction(QtGui.QAction("Go to...", self,
-            statusTip="Go to element definition",
-            triggered=self.actionGoto))
-    menu.addAction(QtGui.QAction("Rename...", self,
-            statusTip="Rename an element (class, method, ...)",
-            triggered=self.actionRename))
-    menu.addAction(QtGui.QAction("Info...", self,
-            statusTip="Display info of an element (anything useful in the document)",
-            triggered=self.actionInfo))
-    menu.addAction(QtGui.QAction("Reload sources...", self,
-            statusTip="Reload sources (needed when renaming changed other tabs)",
-            triggered=self.reload_java_sources))
-    menu.exec_(QtGui.QCursor.pos())
-
-
+  """
   def eventFilter(self, source, event):
+    if (event.type() == QEvent.MouseButtonPress and
+     source is self.millertable):
+      if event.button() == Qt.RightButton:
+        print("Right button clicked")
+    #return False
+
     if (event.type() == QEvent.ContextMenu and
-      source is self.millertable):
-      menu = QMenu()
-      menu.addAction('Open Window')
-      if menu.exec_(event.globalPos()):
-        item = source.itemAt(event.pos())
-        print(item.text())
+     source is self.millertable):
+      self.CustomContextMenuHandler(event.pos())
+
+      #menu = QMenu()
+      #menu.addAction('Open Window')
+      #if menu.exec_(event.globalPos()):
+      #  item = source.itemAt(event.pos())
+      #  print(item.text())
+
       return True
     return super(NGL_HKLViewer, self).eventFilter(source, event)
+  """
 
 
   def update(self):
@@ -275,9 +323,11 @@ class NGL_HKLViewer(QWidget):
 
           if self.infodict.get("hklscenes_arrays"):
             self.hklscenes_arrays = self.infodict.get("hklscenes_arrays", [])
+            self.scenearraylabels = [ e[3] for e in self.hklscenes_arrays ]
 
           if self.infodict.get("array_infotpls"):
             self.array_infotpls = self.infodict.get("array_infotpls",[])
+            self.millerarraylabels = [ e[0] for e in self.array_infotpls ]
 
           if self.infodict.get("bin_data_label"):
             self.BinDataComboBox.setCurrentText(self.infodict["bin_data_label"])
@@ -336,6 +386,9 @@ class NGL_HKLViewer(QWidget):
           if self.infodict.get("NewHKLscenes"):
             self.NewHKLscenes = self.infodict.get("NewHKLscenes",False)
 
+          if self.infodict.get("NewMillerArray"):
+            self.NewMillerArray = self.infodict.get("NewMillerArray",False)
+
           self.fileisvalid = True
           #print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
 
@@ -347,19 +400,20 @@ class NGL_HKLViewer(QWidget):
             self.textInfo.setPlainText(self.infostr)
             self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
 
-          if self.NewFileLoaded and self.NewHKLscenes:
+          if (self.NewFileLoaded or self.NewMillerArray) and self.NewHKLscenes:
             #if self.mergedata == True : val = Qt.CheckState.Checked
             #if self.mergedata == None : val = Qt.CheckState.PartiallyChecked
             #if self.mergedata == False : val = Qt.CheckState.Unchecked
             #self.mergecheckbox.setCheckState(val )
             #print("got hklscenes: " + str(self.hklscenes_arrays))
+            self.NewMillerArray = False
 
             self.MillerComboBox.clear()
-            self.MillerComboBox.addItems( [ e[3] for e in self.hklscenes_arrays ] )
+            self.MillerComboBox.addItems( self.millerarraylabels )
             self.MillerComboBox.setCurrentIndex(-1) # unselect the first item in the list
             self.comboviewwidth = 0
-            for e in self.hklscenes_arrays:
-              self.comboviewwidth = max(self.comboviewwidth, self.MillerComboBox.fontMetrics().width( e[3]) )
+            for e in self.millerarraylabels:
+              self.comboviewwidth = max(self.comboviewwidth, self.MillerComboBox.fontMetrics().width( e) )
             self.MillerComboBox.view().setMinimumWidth(self.comboviewwidth)
 
             self.millertable.clearContents()
@@ -372,7 +426,7 @@ class NGL_HKLViewer(QWidget):
 
           if self.NewHKLscenes:
             self.BinDataComboBox.clear()
-            self.BinDataComboBox.addItems(["Resolution"] + [ e[3] for e in self.hklscenes_arrays ] )
+            self.BinDataComboBox.addItems(["Resolution"] + self.scenearraylabels )
             self.BinDataComboBox.view().setMinimumWidth(self.comboviewwidth)
             #self.BinDataComboBox.setCurrentIndex(-1) # unselect the first item in the list
             self.NewHKLscenes = False
@@ -616,10 +670,6 @@ class NGL_HKLViewer(QWidget):
     pass
     #print( "in Cellentered " + self.binstable.currentItem().text() )
 
-
-  def onBinsTableCellPressed(self, row, col):
-    pass
-    #print( "in CellPressed " + self.binstable.currentItem().text() )
   """
 
   def onNbinsChanged(self, val):
@@ -881,39 +931,97 @@ class NGL_HKLViewer(QWidget):
                                     %str(self.fixedorientcheckbox.isChecked()))
 
 
-  def onMillerComboSelchange(self, i):
-    self.NGL_HKL_command("NGL_HKLviewer.viewer.scene_id = %d" %i)
-    #self.MillerComboBox.setCurrentIndex(i)
-    if self.MillerComboBox.currentText():
-      self.functionTabWidget.setEnabled(True)
-      self.expandAnomalouscheckbox.setEnabled(True)
-      # don' allow anomalous expansion for data that's already anomalous
-      for arrayinfo in self.array_infotpls:
-        isanomalous = arrayinfo[-1]
-        label = arrayinfo[0]
-        if isanomalous and label == self.MillerComboBox.currentText()[: len(label) ]:
-          self.expandAnomalouscheckbox.setDisabled(True)
-    else:
-      self.functionTabWidget.setDisabled(True)
+  def onMillerTableCellPressed(self, row, col):
+    #print( "in millertable CellPressed " + self.millertable.currentItem().text() )
+    if self.millertable.mousebutton == Qt.RightButton:
+      self.MillerTableContextMenuHandler(QCursor.pos(), row)
 
-    self.SpaceGroupComboBox.clear()
-    self.SpaceGroupComboBox.addItems( self.spacegroups )
-    # need to supply issymunique flag in infotuple
-    #if self.hklscenes_arrays[ i ][6] == 0:
-    #  self.mergecheckbox.setEnabled(True)
-    #else:
-    #  self.mergecheckbox.setEnabled(False)
+
+  def MillerTableContextMenuHandler(self, pos, row):
+    self.millertablemenu.clear()
+
+    for i,scenelabel in enumerate(self.scenearraylabels):
+      if self.millerarraylabels[row] in scenelabel:
+        print(i, scenelabel)
+        myqa = QAction("Display %s data" %scenelabel, self, triggered=self.testaction)
+        myqa.setData(i)
+        self.millertablemenu.addAction(myqa)
+    myqa = QAction("Make new data as a function of this data...", self, triggered=self.testaction)
+    myqa.setData( ("newdata_1", row ))
+    self.millertablemenu.addAction(myqa)
+    myqa = QAction("Make new data as a function of this data and another data set...", self, triggered=self.testaction)
+    myqa.setData( ("newdata_2", row ))
+    self.millertablemenu.addAction(myqa)
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    self.millertablemenu.exec_(QCursor.pos())
+
+
+  def onMillerTableMenuAction(self, action):
+    data = action.data()
+    if data is not None:
+      if type(data) is int: # as set above when matching millerarraylabels with scenearraylabels
+        idx = data
+        self.NGL_HKL_command("NGL_HKLviewer.viewer.scene_id = %d" %idx)
+        if self.fileisvalid:
+          self.functionTabWidget.setEnabled(True)
+          self.expandAnomalouscheckbox.setEnabled(True)
+          # don' allow anomalous expansion for data that's already anomalous
+          for arrayinfo in self.array_infotpls:
+            isanomalous = arrayinfo[-1]
+            label = arrayinfo[0]
+            if isanomalous and label == self.MillerComboBox.currentText()[: len(label) ]:
+              self.expandAnomalouscheckbox.setDisabled(True)
+        else:
+          self.functionTabWidget.setDisabled(True)
+        self.SpaceGroupComboBox.clear()
+        self.SpaceGroupComboBox.addItems( self.spacegroups )
+
+      else:
+        (strval, idx) = data
+        self.operate_arrayidx1 = idx
+        if strval=="newdata_1":
+          self.operationlabeltxt.setText("Python expression of " + self.millerarraylabels[idx] + " 'data' variable")
+          self.MillerLabel.setEnabled(True)
+          self.MillerLabel2.setDisabled(True)
+          self.MillerComboBox.setDisabled(True)
+          self.operate_arrayidx2 = None
+        else:
+          self.operationlabeltxt.setText("Python expression of " + self.millerarraylabels[idx] + " 'data1' variable")
+          self.MillerLabel.setEnabled(True)
+          self.MillerLabel2.setEnabled(True)
+          self.MillerComboBox.setEnabled(True)
+
+        self.makenewdataform.show()
+
+
+  def onMakeNewData(self):
+    mtpl = ( self.operationtxtbox.text(), '"' + self.newlabeltxtbox.text() + '"',
+              self.operate_arrayidx1, self.operate_arrayidx2 )
+    self.NGL_HKL_command('NGL_HKLviewer.miller_array_operations = [ %s ]' %str(mtpl) )
+    self.makenewdataform.accept()
+
+
+  def onMillerComboSelchange(self, i):
+    self.operate_arrayidx2 = i
+
+
+  def testaction(self):
+    pass
 
 
   def createFileInfoBox(self):
+    self.datasetLabel = QLabel()
+    self.datasetLabel.setText("Data sets:")
+
     self.FileInfoBox = QGroupBox("Reflection File Information")
     layout = QGridLayout()
     layout.addWidget(self.openFileNameButton,     0, 0, 1, 2)
     if self.devmode:
       layout.addWidget(self.debugbutton,            0, 2, 1, 1)
     layout.addWidget(self.HKLnameedit,            1, 0, 1, 3)
-    layout.addWidget(self.millertable,            2, 0, 1, 3)
-    layout.addWidget(self.textInfo,               3, 0, 1, 3)
+    layout.addWidget(self.datasetLabel,           2, 0, 1, 3)
+    layout.addWidget(self.millertable,            3, 0, 1, 3)
+    layout.addWidget(self.textInfo,               4, 0, 1, 3)
     #layout.setColumnStretch(1, 2)
     self.FileInfoBox.setLayout(layout)
 
@@ -980,6 +1088,7 @@ class NGL_HKLViewer(QWidget):
 
     self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
     self.binstable.itemSelectionChanged.connect(self.onBinsTableItemSelectionChanged  )
+
     self.BinDataComboBox = QComboBox()
     self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)
     self.BinsGroupBox = QGroupBox("Bins")
