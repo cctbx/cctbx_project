@@ -5,11 +5,9 @@ import numpy as np
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatStill import FormatStill
 from dials.array_family import flex
-from dxtbx.model.detector import DetectorFactory
-from dxtbx.model.beam import BeamFactory
 
 
-class FormatLS49NUMPYZ(FormatStill):
+class FormatLS49NUMPYZ(FormatStill, Format):
     """
     Class for reading D9114 simulated monolithic cspad data
     """
@@ -53,19 +51,6 @@ class FormatLS49NUMPYZ(FormatStill):
 
     def get_beam(self, index=None):
         return self._cctbx_beam
-
-    @staticmethod
-    def get_instrument_name(handle):
-        if "short_name" in handle["/entry/instrument"].attrs:
-            name = handle["/entry/instrument"].attrs["short_name"]
-        elif "/entry/instrument/name" in handle:
-            if "short_name" in handle["/entry/instrument/name"].attrs:
-                name = handle["/entry/instrument/name"].attrs["short_name"]
-            else:
-                name = handle["/entry/instrument/name"][()]
-        else:
-            name = None
-        return name
 
 
 if __name__ == '__main__':

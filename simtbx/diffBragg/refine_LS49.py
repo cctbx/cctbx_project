@@ -35,10 +35,10 @@ class RefineLS49Rot:
         self.n = self.n_background_params + self.n_rot_params + self.n_gain_params
         self.x = flex.double(self.n)
         self.x[-1] = 1
-
         self._cache_roi_arrays()
         self._move_abc_init_to_x()
         self._set_diffBragg_instance()
+
 
         #for roi in self.nanoBragg_rois:
         #    self.D.region_of_interest = roi
@@ -114,10 +114,15 @@ class RefineLS49Rot:
         self.D.initialize_managers()
 
     def _run_diffBragg_current(self, i_spot):
+        #import pdb
+        #pdb.set_trace()
         self.D.region_of_interest = self.nanoBragg_rois[i_spot]
         self.D.set_value(0, self.thetaX)
         self.D.set_value(1, self.thetaY)
         self.D.set_value(2, self.thetaZ)
+        print(self.D.region_of_interest, i_spot, self.n_spots)
+        #from IPython import embed
+        #embed()
         self.D.add_diffBragg_spots()
 
     def _set_background_plane(self, i_spot):
@@ -155,6 +160,7 @@ class RefineLS49Rot:
         # fix log(x<=0)
         self.log_Lambda = np.log(self.model_Lambda)
         self.log_Lambda[self.model_Lambda <= 0] = 0
+        self.log_Lambda[self.model_Lambda > 50000] = 0
 
     def compute_functional_and_gradients(self):
         self._set_diffBragg_instance()
@@ -181,14 +187,14 @@ class RefineLS49Rot:
             g[i_spot] += (xr * one_minus_k_over_Lambda).sum()  # from handwritten notes
             g[self.n_spots + i_spot] += (yr * one_minus_k_over_Lambda).sum()
             g[self.n_spots*2 + i_spot] += one_minus_k_over_Lambda.sum()
-            plt.cla()
-            plt.subplot(121)
-            plt.imshow(self.model_Lambda)
-            plt.subplot(122)
-            plt.imshow(Imeas)
-            plt.suptitle("Spot %d / %d" % (i_spot+1, self.n_spots))
-            plt.draw()
-            plt.pause(0.7)
+            #plt.cla()
+            #plt.subplot(121)
+            #plt.imshow(self.model_Lambda)
+            #plt.subplot(122)
+            #plt.imshow(Imeas)
+            #plt.suptitle("Spot %d / %d" % (i_spot+1, self.n_spots))
+            #plt.draw()
+            #plt.pause(0.7)
 
             # rotation derivative
             g[self.n_spots*3] += (one_minus_k_over_Lambda * (self.dRotX)).sum()
