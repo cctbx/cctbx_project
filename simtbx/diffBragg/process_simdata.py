@@ -1,5 +1,5 @@
 
-def process_simdata(plot=False):
+def process_simdata(plot=False, perturb="rotXYZ"):
     """
     returns data needed for refinement script as a 5-tuple:
     --> spot_roi, spot_hkl, perturbed Amatrix, ground truth Amatrix
@@ -31,25 +31,35 @@ def process_simdata(plot=False):
         plt.title("Simulated image with strong spots marked")
         plt.show()
 
-    # STEP 3 : perturn the known ground truth Amatrix intentionally
+    # STEP 3 : perturb the known ground truth Amatrix intentionally
     #<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-    # in order to index the spots we need the Amatrix from the simulation
     Areal_GrnTru = sqr(S.D.Amatrix).inverse()
+    if perturb=="rotXYZ":
+        # in order to index the spots we need the Amatrix from the simulation
 
-    # perturb the Amatrix to simulate uncertainty
-    x = col((1, 0, 0))
-    y = col((0, 1, 0))
-    z = col((0, 0, 1))
+        # perturb the Amatrix to simulate uncertainty
+        x = col((-1, 0, 0))
+        y = col((0, -1, 0))
+        z = col((0, 0, -1))
 
-    np.random.seed(1)
-    angles = np.random.uniform(0, 0.04, 3)
-    RX = x.axis_and_angle_as_r3_rotation_matrix(angles[0], deg=True)
-    RX = x.axis_and_angle_as_r3_rotation_matrix(0.0045, deg=True)
-    RY = y.axis_and_angle_as_r3_rotation_matrix(0.0045, deg=True)
-    RZ = z.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
+        np.random.seed(1)
+        angles = np.random.uniform(0, 0.04, 3)
+        RX = x.axis_and_angle_as_r3_rotation_matrix(angles[0], deg=True)
+        RX = x.axis_and_angle_as_r3_rotation_matrix(0.0045, deg=True)
+        RY = y.axis_and_angle_as_r3_rotation_matrix(0.08, deg=True)
+        RZ = z.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
 
-    Areal_approx = RY*Areal_GrnTru
-    #Areal_approx = RX*RY*RZ*Areal_GrnTru
+        Areal_approx = RY*Areal_GrnTru
+    #elif perturb=="ucell":
+    #    ucell_truth = S.Fhkl.unit_cell()
+    #    from cctbx import crystal
+    #    a, b, c, al, be, ga = ucell_truth.parameters()
+    #    symbol = S.Fhkl.space_group_info().type().lookup_symbol()
+    #    symm_perturb = crystal.symmetry("%f,%f,%f,%f,%f,%f" % (a * 0.99, b * 1.01, c, al, be, ga), symbol)
+    #    ortho_matrix_approx = symm_perturb.unit_cell().orthogonalization_matrix()
+
+    #    from IPython import embed
+    #    embed()
 
     if plot:
         from itertools import cycle
@@ -137,4 +147,4 @@ def process_simdata(plot=False):
     return spot_roi, hkli, Areal_approx, Areal_GrnTru, tilt_abc, img
 
 if __name__=="__main__":
-    process_simdata(plot=True)
+    out = process_simdata(plot=False)
