@@ -69,9 +69,9 @@ class nanoBragg_crystal:
 
     @property
     def Amatrix_realspace(self):
-        B = sqr(self.dxtbx_crystal.get_B()).inverse().transpose()
-        A = (self.missetting_matrix * B).transpose()
-        return A
+        A = sqr(self.dxtbx_crystal.get_A()).inverse().transpose()
+        Anew = (self.missetting_matrix * A).transpose()
+        return Anew
 
     @property
     def xtal_shape(self):
