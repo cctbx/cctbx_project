@@ -352,9 +352,9 @@ class manager(object):
       from_ca_args = []
       ca_label = "liberal"
       if self.params.secondary_structure.from_ca_conservative:
-        from_ca_args = ["alpha.rise_tolerance=0.1",
+        from_ca_args = ["alpha.rise_tolerance=0.13",
                         "beta.rise_tolerance=0.3",
-                        "alpha.dot_min=0.73",]
+                        "alpha.dot_min=0.94",]
         ca_label = "conservative"
       print("  running find_ss_from_ca %s..." % ca_label, file=self.log)
       fss = find_ss_from_ca.find_secondary_structure(
