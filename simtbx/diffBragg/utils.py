@@ -98,3 +98,28 @@ def tilting_plane(img, mask=None, zscore=2 ):
     coeff, r, rank, s = np.linalg.lstsq(guess, z)
     ev = (coeff[0] + coeff[1]*XX + coeff[2]*YY )
     return ev.reshape(img.shape), out2d, coeff
+
+
+def refine_model_from_angles(dxcryst, angles=(0, 0, 0)):
+    from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
+    from copy import deepcopy
+
+    C = nanoBragg_crystal()
+
+    C.dxtbx_crystal = dxcryst
+    angles = np.array(angles) * 180 / np.pi
+    from scitbx.matrix import col
+    x = col((-1, 0, 0))
+    y = col((0, -1, 0))
+    z = col((0, 0, -1))
+
+    RX = x.axis_and_angle_as_r3_rotation_matrix(angles[0], deg=True)
+    RY = y.axis_and_angle_as_r3_rotation_matrix(angles[1], deg=True)
+    RZ = z.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
+    C.missetting_matrix = RX*RY*RZ
+
+    dxcryst_refined = deepcopy(dxcryst)
+    dxcryst_refined.set_A(C.Amatrix_realspace.inverse())
+
+    return dxcryst_refined
+
