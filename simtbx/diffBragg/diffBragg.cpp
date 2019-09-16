@@ -24,11 +24,11 @@ ucell_manager::ucell_manager(){}
 
 void ucell_manager::increment(
     vec3 V,
-    mat3 NABC, mat3 U, mat3 R, mat3 B, vec3 q,
+    mat3 NABC, mat3 UR, vec3 q,
     double Hrad, double Fcell, double Flatt, double fudge,
     double source_I, double capture_fraction, double omega_pixel){
 
-  vec3 dV = NABC* ((U*R*dB).transpose()) * q;
+  vec3 dV = NABC*((UR*dB).transpose()) * q;
   double dHrad = V*dV + dV*V;
   double dFlatt = -1*Flatt / 0.63 * fudge * dHrad;
   dI += Fcell*Fcell*2*Flatt*source_I*capture_fraction*omega_pixel*dFlatt;
@@ -110,6 +110,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
             int verbose, int panel_id = 0):
     nanoBragg(detector, beam, verbose, panel_id)
     {
+
     mat3 EYE = mat3(1,0,0,0,1,0,0,0,1);
 
     RotMats.push_back(EYE);
@@ -128,13 +129,33 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     boost::shared_ptr<rot_manager> rotY = boost::shared_ptr<rot_manager>(new rotY_manager());
     boost::shared_ptr<rot_manager> rotZ = boost::shared_ptr<rot_manager>(new rotZ_manager());
 
+    boost::shared_ptr<ucell_manager> uc1 = boost::shared_ptr<ucell_manager>(new ucell_manager());
+    boost::shared_ptr<ucell_manager> uc2 = boost::shared_ptr<ucell_manager>(new ucell_manager());
+    boost::shared_ptr<ucell_manager> uc3 = boost::shared_ptr<ucell_manager>(new ucell_manager());
+    boost::shared_ptr<ucell_manager> uc4 = boost::shared_ptr<ucell_manager>(new ucell_manager());
+    boost::shared_ptr<ucell_manager> uc5 = boost::shared_ptr<ucell_manager>(new ucell_manager());
+    boost::shared_ptr<ucell_manager> uc6 = boost::shared_ptr<ucell_manager>(new ucell_manager());
+
     rotX->refine_me = false;
     rotY->refine_me = false;
     rotZ->refine_me = false;
+    uc1->refine_me = false;
+    uc2->refine_me = false;
+    uc3->refine_me = false;
+    uc4->refine_me = false;
+    uc5->refine_me = false;
+    uc6->refine_me = false;
 
     rot_managers.push_back(rotX);
     rot_managers.push_back(rotY);
     rot_managers.push_back(rotZ);
+
+    ucell_managers.push_back(uc1);
+    ucell_managers.push_back(uc2);
+    ucell_managers.push_back(uc3);
+    ucell_managers.push_back(uc4);
+    ucell_managers.push_back(uc5);
+    ucell_managers.push_back(uc6);
 
     init_raw_pixels_roi();
     }
@@ -151,8 +172,11 @@ void diffBragg::initialize_managers()
     int sdim = roi_ymax-roi_ymin+1;
     for (int i_rot=0; i_rot < 3; i_rot++){
         if (rot_managers[i_rot]->refine_me)
-            //printf("Refine parameter %d <<><><><><><><>>\n", i_rot );
             rot_managers[i_rot]->initialize(sdim, fdim);
+    }
+    for (int i_uc=0; i_uc < 6; i_uc++){
+        if (ucell_managers[i_uc]->refine_me)
+            ucell_managers[i_uc]->initialize(sdim, fdim);
     }
 }
 
@@ -183,7 +207,16 @@ void diffBragg::refine(int refine_id){
     rot_managers[refine_id]->refine_me=true;
     int fdim = roi_xmax-roi_xmin+1;
     int sdim = roi_ymax-roi_ymin+1;
-    rot_managers[refine_id]->initialize(sdim, fdim);
+    if (refine_id >= 0 && refine_id < 3  ){
+        // 3 possitle rotation managers (rotX, rotY, rotZ)
+        rot_managers[refine_id]->refine_me=true;
+        rot_managers[refine_id]->initialize(sdim, fdim);
+    }
+    else if (refine_id >=3 and refine_id < 9 ){
+        // 6 possible unit cell managers (a,b,c,al,be,ga)
+        ucell_managers[refine_id-3]->refine_me=true;
+        ucell_managers[refine_id-3]->initialize(sdim, fdim);
+    }
 }
 
 void diffBragg::set_value( int refine_id, double value ){
@@ -210,9 +243,7 @@ void diffBragg::add_diffBragg_spots()
 {
     max_I = 0.0;
     i = 0;
-
     floatimage = raw_pixels.begin();
-
     double * floatimage_roi = raw_pixels_roi.begin();
 
     //floatimage_roi = raw_pixels_roi.begin();
@@ -581,6 +612,15 @@ void diffBragg::add_diffBragg_spots()
                                                             hrad_sqr, F_cell, F_latt,
                                                             source_I[source], capture_fraction, omega_pixel);
                                         R3[i_rot] = RotMats[i_rot];
+                                    }
+                                }
+                                /*Checkpoint for unit cell derivatives*/
+                                for(int i_uc=0; i_uc < 6; i_uc++ ){
+                                    if (ucell_managers[i_uc]->refine_me){
+                                        ucell_managers[i_uc]->increment(
+                                            V, NABC, UMATS_RXYZ[mos_tic], q_vec,
+                                            hrad_sqr, F_cell, F_latt, fudge,
+                                            source_I[source], capture_fraction, omega_pixel);
                                     }
                                 }
                             }
