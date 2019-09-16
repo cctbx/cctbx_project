@@ -667,6 +667,7 @@ class HKLViewFrame() :
 
   def make_new_miller_array(self):
     miller_array_operations_lst = eval(self.params.NGL_HKLviewer.miller_array_operations)
+
     unique_miller_array_operations_lst = []
     for (operation, label, arrid1, arrid2) in miller_array_operations_lst:
       isunique = True
@@ -694,6 +695,11 @@ class HKLViewFrame() :
       self.procarrays.append(procarray)
       self.viewer.proc_arrays = self.procarrays
       self.viewer.has_new_miller_array = True
+      self.viewer.array_infostrs.append( ArrayInfo(procarray, self.mprint).infostr )
+      self.viewer.array_infotpls.append( ArrayInfo(procarray, self.mprint).infotpl )
+      mydict = { "array_infotpls": self.viewer.array_infotpls, "NewHKLscenes" : True, "NewMillerArray" : True}
+      self.SendInfoToGUI(mydict)
+
 
 
 
@@ -723,6 +729,7 @@ class HKLViewFrame() :
         self.NewFileLoaded=False
         self.mprint(to_str(e))
         arrays = []
+
       valid_arrays = []
       self.viewer.array_infostrs = []
       self.viewer.array_infotpls = []
