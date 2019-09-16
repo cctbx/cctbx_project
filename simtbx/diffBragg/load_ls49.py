@@ -42,10 +42,16 @@ def process_ls49_image(ls49_data_dir="/Users/dermen/crystal/modules/cctbx_projec
 
     refls = flex.reflection_table.from_file("idx-ls49_0_integrated.refl")
 
-    sel = np.zeros(len(refls), bool)
-    n_keep_refls = 30
-    sel[np.random.permutation(len(refls))[:n_keep_refls]] = True
-    refls = refls.select(flex.bool(sel))
+    # NOTE: filter reflections
+    #sel = np.zeros(len(refls), bool)
+    #n_keep_refls = 30
+    #sel[np.random.permutation(len(refls))[:n_keep_refls]] = True
+    #refls = refls.select(flex.bool(sel))
+
+    snr = refls["intensity.sum.value"]/flex.sqrt(refls["intensity.sum.variance"])
+    order = np.argsort(snr)[::-1]
+    s = snr[order[20]]
+    refls = refls.select(snr > snr[order[20]])
 
     bboxes = [list(refls["shoebox"][i].bbox)[:4] for i in range(len(refls))]
     bboxes = np.array(bboxes)
