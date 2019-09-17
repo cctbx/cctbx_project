@@ -49,8 +49,8 @@ class data_counter(object):
       self.logger.main_log('Reflections: (total,min,max): %d, %d, %d'%(total_reflection_count, min_reflection_count, max_reflection_count))
 
       if total_reflection_count == 0:
-        self.mpi_helper.error = 1
+        self.mpi_helper.set_error("Zero reflection count.")
 
-    self.mpi_helper.abort_on_error()
+    self.mpi_helper.check_errors()
 
     self.logger.log_step_time("CALC_LOAD_STATISTICS", True)

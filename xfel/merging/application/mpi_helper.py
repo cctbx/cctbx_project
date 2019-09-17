@@ -5,27 +5,21 @@ from dials.array_family import flex
 
 import sys
 def system_exception_handler(exception_type, value, traceback):
-  abort_all_mpi_processes()
-
-sys.excepthook = system_exception_handler
-
-def abort_all_mpi_processes():
   try:
-      import libtbx.mpi4py as mpi4py
-      rank = mpi4py.MPI.COMM_WORLD.Get_rank()
-      from traceback import print_exception
-      sys.stderr.write("\nAborting all MPI processes because of exception in process %d:\n"%rank)
-      print_exception(exception_type, value, traceback)
-      sys.stderr.write("\n")
-      sys.stderr.flush()
+    rank = MPI.COMM_WORLD.Get_rank()
+    from traceback import print_exception
+    sys.stderr.write("\nTrying to abort all MPI processes because of exception in process %d:\n"%rank)
+    print_exception(exception_type, value, traceback)
+    sys.stderr.write("\n")
+    sys.stderr.flush()
   finally:
-      try:
-          import libtbx.mpi4py as mpi4py
-          mpi4py.MPI.COMM_WORLD.Abort(1)
-      except Exception as e:
-          sys.stderr.write("\nFailed to abort MPI process\n")
-          sys.stderr.flush()
-          raise e
+    try:
+      MPI.COMM_WORLD.Abort(1)
+    except Exception as e:
+      sys.stderr.write("\nFailed to execute: MPI.COMM_WORLD.Abort(1)\n")
+      sys.stderr.flush()
+      raise e
+sys.excepthook = system_exception_handler
 
 class mpi_helper(object):
   def __init__(self):
@@ -33,7 +27,7 @@ class mpi_helper(object):
     self.comm = self.MPI.COMM_WORLD
     self.rank = self.comm.Get_rank()
     self.size = self.comm.Get_size()
-    self.error = 0
+    self.error = (None,None) # (rank,description)
 
   def time(self):
     return self.MPI.Wtime()
@@ -80,12 +74,15 @@ class mpi_helper(object):
   def sum(self, data, root=0):
     return self.comm.reduce(data, self.MPI.SUM, root=root)
 
-  def set_error(self, error):
-    self.error = error
+  def set_error(self, description):
+    self.error = (self.rank, description)
 
-  def abort_on_error(self):
+  def check_errors(self):
     all_errors = self.comm.allreduce([self.error], self.MPI.SUM)
-    if all_errors.count(1) != 0:
-      sys.stderr.write("\nError detected... Aborting MPI process %d\n"%self.rank)
+    actual_errors = [error for error in all_errors if error != (None,None)]
+    if len(actual_errors) > 0:
+      sys.stderr.write("\nAborting MPI process %d because of the following error(s):"%self.rank)
+      for error in actual_errors:
+        sys.stderr.write("\nError reported by process %d: %s\n"%(error[0], error[1]))
       sys.stderr.flush()
       self.comm.Abort(1)
