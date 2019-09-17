@@ -3,6 +3,7 @@ from xfel.merging.application.worker import worker
 from dials.array_family import flex
 from six.moves import cStringIO as StringIO
 from six.moves import zip
+from cctbx import uctbx
 
 histogram_slots = 20
 
@@ -100,7 +101,7 @@ class unit_cell_distribution(object):
     beta  = flex.mean(self.all_uc_beta_values)
     gamma = flex.mean(self.all_uc_gamma_values)
 
-    return [a,b,c,alpha,beta,gamma]
+    return uctbx.unit_cell([a,b,c,alpha,beta,gamma])
 
 class unit_cell_statistics(worker):
 
