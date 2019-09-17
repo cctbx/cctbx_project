@@ -359,13 +359,12 @@ class hklview_3d:
         self.scene = self.HKLscenes[self.viewerparams.scene_id]
       self.DrawNGLJavaScript()
       msg = "Rendered %d reflections\n" % self.scene.points.size()
+      if has_phil_path(diff_phil, "fixorientation"):
+        self.fix_orientation(curphilparam.viewer.NGL.fixorientation)
       if has_phil_path(diff_phil, "mouse_sensitivity"):
         self.SetTrackBallRotateSpeed(curphilparam.viewer.NGL.mouse_sensitivity)
-      if has_phil_path(diff_phil, "normal_clip_plane"):
-        self.clip_plane_normal_to_HKL_vector(curphilparam.normal_clip_plane.h, curphilparam.normal_clip_plane.k,
-            curphilparam.normal_clip_plane.l, curphilparam.normal_clip_plane.hkldist,
-            curphilparam.normal_clip_plane.clipwidth, curphilparam.viewer.NGL.fixorientation)
-      if curphilparam.viewer.slice_mode:
+
+      if curphilparam.viewer.slice_mode: # explicit slicing
         if curphilparam.viewer.slice_axis=="h": hkl = [1,0,0]
         if curphilparam.viewer.slice_axis=="k": hkl = [0,1,0]
         if curphilparam.viewer.slice_axis=="l": hkl = [0,0,1]
@@ -374,6 +373,12 @@ class hklview_3d:
     if self.settings.inbrowser and not curphilparam.viewer.slice_mode:
       msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
+
+    if curphilparam.normal_clip_plane.clipwidth:
+      self.clip_plane_normal_to_HKL_vector(curphilparam.normal_clip_plane.h, curphilparam.normal_clip_plane.k,
+          curphilparam.normal_clip_plane.l, curphilparam.normal_clip_plane.hkldist,
+          curphilparam.normal_clip_plane.clipwidth, curphilparam.viewer.NGL.fixorientation)
+
     msg += self.SetOpacities(curphilparam.viewer.NGL.bin_opacities )
     if has_phil_path(diff_phil, "tooltip_alpha"):
       self.set_tooltip_opacity()
@@ -1915,7 +1920,7 @@ mysocket.onmessage = function (e)
   %s,  %s,  %s
   %s,  %s,  %s
   %s,  %s,  %s
-          """ %rotlst, verbose=2)
+          """ %rotlst, verbose=3)
 
           alllst = roundoff(flst)
           self.mprint("""OrientationMatrix matrix:
@@ -1935,7 +1940,7 @@ mysocket.onmessage = function (e)
             self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
             self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=2)
         else:
-          self.mprint( message, verbose=3)
+          self.mprint( message, verbose=4)
         self.lastmsg = message
       if "JavaScriptError:" in message:
         self.mprint( message, verbose=0)
@@ -2187,6 +2192,13 @@ mysocket.onmessage = function (e)
 
   def PointVectorOut(self):
     self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
+
+
+  def fix_orientation(self, val):
+    if val:
+      self.DisableMouseRotation()
+    else:
+      self.EnableMouseRotation()
 
 
   def clip_plane_normal_to_HKL_vector(self, h, k, l, hkldist=0.0,

@@ -140,7 +140,7 @@ class NGL_HKLViewer(QWidget):
     self.mousespeed_labeltxt.setText("Mouse speed:")
     self.mousemoveslider = QSlider(Qt.Horizontal)
     self.mousemoveslider.setMinimum(0)
-    self.mousemoveslider.setMaximum(300)
+    self.mousemoveslider.setMaximum(200)
     self.mousemoveslider.setValue(0)
     self.mousemoveslider.sliderReleased.connect(self.onFinalMouseSensitivity)
     self.mousemoveslider.valueChanged.connect(self.onMouseSensitivity)
@@ -162,10 +162,10 @@ class NGL_HKLViewer(QWidget):
     self.cameraPerspectCheckBox.clicked.connect(self.onCameraPerspect)
     self.cameraPerspectCheckBox.setCheckState(Qt.Unchecked)
 
-    self.bufsize = 20000
+    self.bufsize = 5000
     self.bufsizespinBox = QSpinBox()
-    self.bufsizespinBox.setSingleStep(1000)
-    self.bufsizespinBox.setRange(1000, 100000)
+    self.bufsizespinBox.setSingleStep(500)
+    self.bufsizespinBox.setRange(500, 100000)
     self.bufsizespinBox.setValue(self.bufsize)
     self.bufsizespinBox.valueChanged.connect(self.onTextbuffersizeChanged)
     self.bufsize_labeltxt = QLabel()
@@ -228,8 +228,6 @@ class NGL_HKLViewer(QWidget):
 
     mainLayout = QGridLayout()
     mainLayout.addWidget(self.FileInfoBox,         0, 0)
-    #mainLayout.addWidget(self.MillerLabel,         1, 0)
-    #mainLayout.addWidget(self.MillerComboBox,      2, 0)
     mainLayout.addWidget(self.functionTabWidget,   1, 0)
     mainLayout.addWidget(self.settingsbtn,         2, 0, 1, 1)
 
@@ -812,7 +810,7 @@ class NGL_HKLViewer(QWidget):
     self.hvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.hvecval = 2.0
     self.hvec_spinBox.setValue(self.hvecval)
-    self.hvec_spinBox.setDecimals(2)
+    self.hvec_spinBox.setDecimals(6)
     self.hvec_spinBox.setSingleStep(0.5)
     self.hvec_spinBox.setRange(-100.0, 10.0)
     self.hvec_spinBox.valueChanged.connect(self.onHvecChanged)
@@ -824,7 +822,7 @@ class NGL_HKLViewer(QWidget):
     self.kvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.kvecval = 0.0
     self.kvec_spinBox.setValue(self.kvecval)
-    self.kvec_spinBox.setDecimals(2)
+    self.kvec_spinBox.setDecimals(6)
     self.kvec_spinBox.setSingleStep(0.5)
     self.kvec_spinBox.setRange(-100.0, 100.0)
     self.kvec_spinBox.valueChanged.connect(self.onKvecChanged)
@@ -836,7 +834,7 @@ class NGL_HKLViewer(QWidget):
     self.lvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.lvecval = 0.0
     self.lvec_spinBox.setValue(self.lvecval)
-    self.lvec_spinBox.setDecimals(2)
+    self.lvec_spinBox.setDecimals(6)
     self.lvec_spinBox.setSingleStep(0.5)
     self.lvec_spinBox.setRange(-100.0, 100.0)
     self.lvec_spinBox.valueChanged.connect(self.onLvecChanged)
@@ -848,7 +846,7 @@ class NGL_HKLViewer(QWidget):
     self.hkldist_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.hkldistval = 0.0
     self.hkldist_spinBox.setValue(self.hkldistval)
-    self.hkldist_spinBox.setDecimals(2)
+    self.hkldist_spinBox.setDecimals(6)
     self.hkldist_spinBox.setSingleStep(0.5)
     self.hkldist_spinBox.setRange(-100.0, 100.0)
     self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
@@ -860,7 +858,7 @@ class NGL_HKLViewer(QWidget):
     self.clipwidth_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.clipwidthval = 0.5
     self.clipwidth_spinBox.setValue(self.clipwidthval )
-    self.clipwidth_spinBox.setDecimals(2)
+    self.clipwidth_spinBox.setDecimals(6)
     self.clipwidth_spinBox.setSingleStep(0.05)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
@@ -874,11 +872,15 @@ class NGL_HKLViewer(QWidget):
 
     layout3 = QGridLayout()
     self.ClipPlaneChkBox = QCheckBox(self.sliceTabWidget)
-    self.ClipPlaneChkBox.setText("Use clip plane normal to HKL vector pointing out")
+    self.ClipPlaneChkBox.setText("Slice reflections with a clip plane oriented")
+
     self.ClipPlaneChkBox.clicked.connect(self.onClipPlaneChkBox)
+    self.clipLabel = QLabel()
+    self.clipLabel.setText(" perpendicularly to reciprocal vector below pointing out.")
 
     layout3.addWidget(self.ClipPlaneChkBox, 0, 0)
-    layout3.addWidget(self.ClipBox, 1, 0)
+    layout3.addWidget(self.clipLabel,       1, 0)
+    layout3.addWidget(self.ClipBox,         2, 0)
     tab2.setLayout(layout3)
     self.sliceTabWidget.addTab(tab1, "Explicit Slicing")
     self.sliceTabWidget.addTab(tab2, "Clip Plane Slicing")
