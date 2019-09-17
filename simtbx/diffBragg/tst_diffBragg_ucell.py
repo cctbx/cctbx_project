@@ -17,7 +17,6 @@ class RefineRot:
         # get information from the simulated data image
         self.spot_rois, self.spot_hkl, self.Amat_init, self.Amat_known, self.abc_init, self.img = \
             process_simdata(plot=False)
-        embed()
 
         # NOTE spot_rois are x1,x2,y1,y2 where x=fast, y=slow
 
@@ -225,6 +224,9 @@ if __name__ == "__main__":
     X = S.forward_independent_parameters()
     dX = S.forward_gradients()
     n_ucell_params = len(X)
+    B = S.backward_orientation(independent=X)
+    Bstar = B.reciprocal_matrix()
+    embed()
     RefineRot()
 
 

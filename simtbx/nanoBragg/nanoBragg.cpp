@@ -92,6 +92,11 @@ nanoBragg::nanoBragg(
     pix0_vector[1] = detector[panel_id].get_origin()[0]/1000.0;
     pix0_vector[2] = detector[panel_id].get_origin()[1]/1000.0;
     pix0_vector[3] = detector[panel_id].get_origin()[2]/1000.0;
+    //printf("BOODOPASD\n");
+    //SCITBX_EXAMINE(pix0_vector[1]);
+    //SCITBX_EXAMINE(pix0_vector[2]);
+    //SCITBX_EXAMINE(pix0_vector[3]);
+    //printf("BOODOPASD\n");
     /* what is the point of closest approach between sample and detector? */
     Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
     Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
@@ -764,6 +769,7 @@ nanoBragg::init_beamcenter()
     {
         if(! user_beam)
         {
+        //printf("HITTTTTTTT!");
             Xbeam = Xclose;
             Ybeam = Yclose;
         }
@@ -1183,9 +1189,16 @@ nanoBragg::update_beamcenter()
     /* make sure beam center is preserved */
     if(detector_pivot == BEAM){
         if(verbose) printf("pivoting detector around direct beam spot\n");
+        //printf("BIGZSZZZZ");
         pix0_vector[1] = -Fbeam*fdet_vector[1]-Sbeam*sdet_vector[1]+distance*beam_vector[1];
         pix0_vector[2] = -Fbeam*fdet_vector[2]-Sbeam*sdet_vector[2]+distance*beam_vector[2];
         pix0_vector[3] = -Fbeam*fdet_vector[3]-Sbeam*sdet_vector[3]+distance*beam_vector[3];
+        //SCITBX_EXAMINE(Fbeam);
+        //SCITBX_EXAMINE(Sbeam);
+        //SCITBX_EXAMINE(pix0_vector[1]);
+        //SCITBX_EXAMINE(pix0_vector[2]);
+        //SCITBX_EXAMINE(pix0_vector[3]);
+        //printf("BIGZSZZZZ");
     }
 
     /* what is the point of closest approach between sample and detector? */
@@ -2036,7 +2049,7 @@ nanoBragg::init_sources()
             init_beam();
         }
         /* make sure stored source intensities are fractional */
-        double norm = flux_sum/sources;
+        double norm = flux_sum ; //sources;
         for (i=0; i < sources && norm>0.0; ++i)
         {
             source_I[i] /= norm;
@@ -2821,6 +2834,24 @@ nanoBragg::add_nanoBragg_spots()
             {
                 if((fpixel==printout_fpixel && spixel==printout_spixel) || printout_fpixel < 0)
                 {
+                    //printf("LAKSLDKLASKDLKSLAKDA\n");
+                    //SCITBX_EXAMINE(scattering[1]);
+                    //SCITBX_EXAMINE(scattering[2]);
+                    //SCITBX_EXAMINE(scattering[3]);
+
+                    //SCITBX_EXAMINE(incident[1]);
+                    //SCITBX_EXAMINE(incident[2]);
+                    //SCITBX_EXAMINE(incident[3]);
+
+                    //SCITBX_EXAMINE(diffracted[1]) ;
+                    //SCITBX_EXAMINE(diffracted[2]) ;
+                    //SCITBX_EXAMINE(diffracted[3]) ;
+
+                    //SCITBX_EXAMINE(pix0_vector[1]);
+                    //SCITBX_EXAMINE(pix0_vector[2]);
+                    //SCITBX_EXAMINE(pix0_vector[3]);
+
+                    //printf("LAKSLDKLASKDLKSLAKDA\n");
                     twotheta = atan2(sqrt(pixel_pos[2]*pixel_pos[2]+pixel_pos[3]*pixel_pos[3]),pixel_pos[1]);
                     test = sin(twotheta/2.0)/(lambda0*1e10);
                     printf("%4d %4d : stol = %g or %g\n", fpixel,spixel,stol,test);
