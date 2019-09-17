@@ -105,6 +105,10 @@ class experiment_filter(worker):
 
     self.logger.log_step_time("FILTER_EXPERIMENTS", True)
 
+    # Do we have any data left?
+    from xfel.merging.application.utils.data_counter import data_counter
+    data_counter(self.params).count(new_experiments, new_reflections)
+
     return new_experiments, new_reflections
 
 if __name__ == '__main__':

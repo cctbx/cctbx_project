@@ -65,8 +65,6 @@ def is_odd_numbered(file_name, use_hash = False):
 #  print is_odd_numbered("int_fake_19989.img")
 
 from xfel.merging.application.worker import worker
-from xfel.merging.application.utils.data_counter import data_counter
-
 class simple_file_loader(worker):
   '''A class for running the script.'''
 
@@ -150,7 +148,8 @@ class simple_file_loader(worker):
     self.logger.log("Pruned reflection table")
     self.logger.log(get_memory_usage())
 
-    # Count the loaded data
+    # Do we have any data?
+    from xfel.merging.application.utils.data_counter import data_counter
     data_counter(self.params).count(all_experiments, all_reflections)
 
     return all_experiments, all_reflections

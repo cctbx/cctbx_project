@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
-from xfel.merging.application.utils.data_counter import data_counter
 
 try:
   import resource
@@ -38,7 +37,10 @@ class load_balancer(worker):
       mpi_split_comm = self.mpi_helper.comm.Split(mpi_color, mpi_new_rank)
       new_experiments, new_reflections = self.redistribute(experiments, reflections, mpi_split_comm, self.params.input.parallel_file_load.ranks_per_node)
 
+    # Do we have any data?
+    from xfel.merging.application.utils.data_counter import data_counter
     data_counter(self.params).count(new_experiments, new_reflections)
+
     return new_experiments, new_reflections
 
   def redistribute(self, experiments, reflections, mpi_communicator, number_of_mpi_ranks):
