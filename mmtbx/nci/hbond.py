@@ -312,7 +312,7 @@ class find(object):
         As             = ["O","N","S","F","CL"],
         Ds             = ["O","N","S"],
         d_HA_cutoff    = [1.4, 3.0], # original: [1.4, 2.4],
-        d_DA_cutoff    = [2.5, 4.1],
+        d_DA_cutoff    = [2.4, 4.1],
         a_DHA_cutoff   = 120,        # should be greater than this
         a_YAH_cutoff   = [90, 180],  # should be within this interval
         protein_only   = False,
@@ -389,7 +389,9 @@ class find(object):
       if(len(Y) == 0): continue # don't use 'lone' acceptors
       #
       d_DA = D.distance(A)
-      if(d_DA < d_DA_cutoff[0] or d_DA > d_DA_cutoff[1]): continue
+      if(not self.external_proxies):
+        if(d_DA < d_DA_cutoff[0] or d_DA > d_DA_cutoff[1]):
+          continue
       #
       d_HA = A.distance(H)
       if(not self.external_proxies):
