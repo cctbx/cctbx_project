@@ -6,7 +6,7 @@ from simtbx.nanoBragg import shapetype
 from scitbx.matrix import sqr
 
 
-class nanoBragg_crystal:
+class nanoBragg_crystal(object):
 
     def __init__(self):
 
@@ -25,7 +25,8 @@ class nanoBragg_crystal:
 
     @dxtbx_crystal.setter
     def dxtbx_crystal(self, val):
-        self._dxtbx_crystal = val
+        sginfo = val.get_space_group().info()
+        self._dxtbx_crystal = val.change_basis(sginfo.change_of_basis_op_to_primitive_setting())
 
     @property
     def missetting_matrix(self):
@@ -41,6 +42,10 @@ class nanoBragg_crystal:
 
     @miller_array.setter
     def miller_array(self, val):
+        if str(val.observation_type) == "xray.intensity":
+            val = val.as_amplitude_array()
+        val = val.expand_to_p1()
+        val = val.generate_bijvoet_mates()
         self._miller_array = val
 
     @property
