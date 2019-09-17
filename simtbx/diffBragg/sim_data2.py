@@ -17,6 +17,7 @@ class SimData:
         self.include_background = True
         self.include_noise = True
         self.using_diffBragg_spots = False
+        self.functionals = []
 
     @property
     def crystal(self):
@@ -115,6 +116,7 @@ class SimData:
             self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data()
 
         self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
+        #self.D.Amatrix = self.crystal.Amatrix_realspace  #.transpose()
         self.D.Amatrix_RUB = self.crystal.Amatrix_realspace  #.transpose()
         self.D.Ncells_abc = self.crystal.Ncells_abc
         self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
