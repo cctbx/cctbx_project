@@ -161,6 +161,7 @@ class SimData:
         self.D.quantum_gain = 1
         self.D.add_noise()
 
+
 if __name__=="__main__":
     S = SimData()
     img = S.generate_simulated_image()
