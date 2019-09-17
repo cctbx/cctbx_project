@@ -27,17 +27,18 @@ import sys, zmq, subprocess, time, traceback
 class MakeNewDataForm(QDialog):
   def __init__(self, parent=None):
     super(MakeNewDataForm, self).__init__(parent)
-    self.setWindowTitle("Make New Data")
+    self.setWindowTitle("Create New Reflection Data")
     myGroupBox = QGroupBox("Stuff")
     layout = QGridLayout()
     layout.addWidget(parent.operationlabeltxt,     0, 0, 1, 2)
-    layout.addWidget(parent.MillerLabel,           1, 0, 1, 2)
+    layout.addWidget(parent.MillerLabel1,           1, 0, 1, 2)
     layout.addWidget(parent.MillerComboBox,        2, 0, 1, 1)
     layout.addWidget(parent.MillerLabel2,          2, 1, 1, 1)
-    layout.addWidget(parent.operationtxtbox,       3, 0, 1, 2)
-    layout.addWidget(parent.newlabelLabel,          4, 0, 1, 1)
-    layout.addWidget(parent.newlabeltxtbox,         4, 1, 1, 1)
-    layout.addWidget(parent.operationbutton,       5, 0, 1, 2)
+    layout.addWidget(parent.MillerLabel3,          3, 0, 1, 2)
+    layout.addWidget(parent.operationtxtbox,       4, 0, 1, 2)
+    layout.addWidget(parent.newlabelLabel,          5, 0, 1, 1)
+    layout.addWidget(parent.newlabeltxtbox,         5, 1, 1, 1)
+    layout.addWidget(parent.operationbutton,       6, 0, 1, 2)
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
     myGroupBox.setLayout(layout)
@@ -185,12 +186,14 @@ class NGL_HKLViewer(QWidget):
     self.MillerComboBox.activated.connect(self.onMillerComboSelchange)
     #self.MillerComboBox.setSizeAdjustPolicy(QComboBox.AdjustToContents)
 
-    self.MillerLabel = QLabel()
-    self.MillerLabel.setText("and the following")
+    self.MillerLabel1 = QLabel()
+    self.MillerLabel1.setText("and 'data2' and or 'sigma2' variable from the")
     self.MillerLabel2 = QLabel()
-    self.MillerLabel2.setText("'data2' variable")
+    self.MillerLabel2.setText("column")
+    self.MillerLabel3 = QLabel()
+    self.MillerLabel3.setText("Example: 'newdata=data/sigmas; newsigmas= -42*sigmas' ")
     self.newlabelLabel = QLabel()
-    self.newlabelLabel.setText("Label of new data:")
+    self.newlabelLabel.setText("Column label for new data:")
     self.newlabeltxtbox = QLineEdit('')
     self.operationlabeltxt = QLabel()
     self.operationtxtbox = QLineEdit('')
@@ -206,7 +209,7 @@ class NGL_HKLViewer(QWidget):
     self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
     self.textInfo.setReadOnly(True)
 
-    labels = ["Label", "Type", "Space group", "# HKLs", "Span of HKLs",
+    labels = ["Column label", "Type", "Space group", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
     self.millertable = MyTableWidget(0, len(labels))
     self.millertable.setHorizontalHeaderLabels(labels)
@@ -417,7 +420,7 @@ class NGL_HKLViewer(QWidget):
             self.MillerComboBox.view().setMinimumWidth(self.comboviewwidth)
 
             self.millertable.clearContents()
-            self.millertable.setRowCount(len(self.hklscenes_arrays))
+            self.millertable.setRowCount(len(self.array_infotpls))
             for n,millarr in enumerate(self.array_infotpls):
               for m,elm in enumerate(millarr):
                 self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
@@ -941,7 +944,8 @@ class NGL_HKLViewer(QWidget):
     self.millertablemenu.clear()
 
     for i,scenelabel in enumerate(self.scenearraylabels):
-      if self.millerarraylabels[row] in scenelabel:
+      #[e for e in self.millerarraylabels if e in scenelabel]
+      if self.millerarraylabels[row] == scenelabel or self.millerarraylabels[row] + " + " in scenelabel:
         print(i, scenelabel)
         myqa = QAction("Display %s data" %scenelabel, self, triggered=self.testaction)
         myqa.setData(i)
@@ -980,24 +984,26 @@ class NGL_HKLViewer(QWidget):
         (strval, idx) = data
         self.operate_arrayidx1 = idx
         if strval=="newdata_1":
-          self.operationlabeltxt.setText("Python expression of " + self.millerarraylabels[idx] + " 'data' variable")
-          self.MillerLabel.setEnabled(True)
+          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data' and or 'sigma' variable")
+          self.MillerLabel1.setDisabled(True)
           self.MillerLabel2.setDisabled(True)
           self.MillerComboBox.setDisabled(True)
+          self.MillerLabel3.setText("Example: 'newdata=data/sigmas; newsigmas= -42*sigmas' ")
           self.operate_arrayidx2 = None
         else:
-          self.operationlabeltxt.setText("Python expression of " + self.millerarraylabels[idx] + " 'data1' variable")
-          self.MillerLabel.setEnabled(True)
+          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigma1' variable")
+          self.MillerLabel1.setEnabled(True)
           self.MillerLabel2.setEnabled(True)
           self.MillerComboBox.setEnabled(True)
+          self.MillerLabel3.setText("Example: 'newdata=data1+data2; newsigmas= sigmas1 - data2/sigmas1' ")
 
         self.makenewdataform.show()
 
 
   def onMakeNewData(self):
-    mtpl = ( self.operationtxtbox.text(), '"' + self.newlabeltxtbox.text() + '"',
+    mtpl = (self.operationtxtbox.text(), self.newlabeltxtbox.text() ,
               self.operate_arrayidx1, self.operate_arrayidx2 )
-    self.NGL_HKL_command('NGL_HKLviewer.miller_array_operations = [ %s ]' %str(mtpl) )
+    self.NGL_HKL_command('NGL_HKLviewer.miller_array_operations = "[ %s ]"' %str(mtpl) )
     self.makenewdataform.accept()
 
 
