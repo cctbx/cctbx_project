@@ -219,6 +219,10 @@ void diffBragg::refine(int refine_id){
     }
 }
 
+void diffBragg::set_ucell_derivative_matrix(int refine_id,  mat3 const& value){
+    ucell_managers[refine_id-3]->dB = value;
+}
+
 void diffBragg::set_value( int refine_id, double value ){
     rot_managers[refine_id]->value = value;
     if (refine_id < 3)
