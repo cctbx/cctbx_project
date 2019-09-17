@@ -3,7 +3,7 @@ Organizer for nanoBragg beam properties
 """
 
 
-class nanoBragg_beam:
+class nanoBragg_beam(object):
 
     def __init__(self):
         self.spectrum = [(1.8, 1e12)]   # angstroms, photons per pulse
