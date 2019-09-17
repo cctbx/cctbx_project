@@ -140,6 +140,10 @@ class experiment_scaler(worker):
 
     self.logger.log_step_time("SCALE_FRAMES", True)
 
+    # Do we have any data left?
+    from xfel.merging.application.utils.data_counter import data_counter
+    data_counter(self.params).count(new_experiments, new_reflections)
+
     return new_experiments, new_reflections
 
   def fit_experiment_to_reference(self, model_intensities, experiment_intensities, matching_indices):

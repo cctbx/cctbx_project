@@ -90,8 +90,9 @@ class polarization(worker):
       self.logger.log("Applied polarization correction. Mean intensity changed from %.2f to %.2f"%(flex.mean(reflections['intensity.sum.value']), flex.mean(result['intensity.sum.value'])))
 
     self.logger.log_step_time("POLARIZATION_CORRECTION", True)
-
     self.logger.log(get_memory_usage())
+
+    # Remove 's1' column from the reflection table
     from xfel.merging.application.reflection_table_utils import reflection_table_utils
     reflections = reflection_table_utils.prune_reflection_table_keys(reflections=result, keys_to_delete=['s1'])
     self.logger.log("Pruned reflection table")

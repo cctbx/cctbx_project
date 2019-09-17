@@ -3,7 +3,6 @@ from xfel.merging.application.worker import worker
 from dials.array_family import flex
 from six.moves import cStringIO as StringIO
 from six.moves import zip
-from cctbx import uctbx
 
 histogram_slots = 20
 
@@ -16,15 +15,23 @@ class unit_cell_distribution(object):
     self.logger = logger
     self.mpi_helper = mpi_helper
 
-    # this rank cell edge values
+    # this rank cell values
     self.uc_a_values = flex.double()
     self.uc_b_values = flex.double()
     self.uc_c_values = flex.double()
 
-    # all ranks cell edge values
+    self.uc_alpha_values  = flex.double()
+    self.uc_beta_values   = flex.double()
+    self.uc_gamma_values  = flex.double()
+
+    # all ranks cell values
     self.all_uc_a_values = flex.double()
     self.all_uc_b_values = flex.double()
     self.all_uc_c_values = flex.double()
+
+    self.all_uc_alpha_values  = flex.double()
+    self.all_uc_beta_values   = flex.double()
+    self.all_uc_gama_values   = flex.double()
 
   def add_cell(self, unit_cell):
     if unit_cell is None:
@@ -34,18 +41,30 @@ class unit_cell_distribution(object):
     self.uc_b_values.append(b)
     self.uc_c_values.append(c)
 
+    self.uc_alpha_values.append(alpha)
+    self.uc_beta_values.append(beta)
+    self.uc_gamma_values.append(gamma)
+
   def collect_from_all_ranks(self):
     self.all_uc_a_values = self.mpi_helper.aggregate_flex(self.uc_a_values, flex.double)
     self.all_uc_b_values = self.mpi_helper.aggregate_flex(self.uc_b_values, flex.double)
     self.all_uc_c_values = self.mpi_helper.aggregate_flex(self.uc_c_values, flex.double)
 
+    self.all_uc_alpha_values  = self.mpi_helper.aggregate_flex(self.uc_alpha_values, flex.double)
+    self.all_uc_beta_values   = self.mpi_helper.aggregate_flex(self.uc_beta_values, flex.double)
+    self.all_uc_gamma_values  = self.mpi_helper.aggregate_flex(self.uc_gamma_values, flex.double)
+
   def is_valid(self):
-    return len(self.all_uc_a_values) > 0 and len(self.all_uc_b_values) > 0 and len(self.all_uc_c_values) > 0
+    return len(self.all_uc_a_values) > 0 and len(self.all_uc_b_values) > 0 and len(self.all_uc_c_values) > 0 and \
+           len(self.all_uc_alpha_values) > 0 and len(self.all_uc_beta_values) > 0 and len(self.all_uc_gamma_values) > 0
 
   def show_histograms(self, n_slots=histogram_slots):
     assert self.mpi_helper.rank == 0
 
-    [a0,b0,c0,alpha0,beta0,gamma0] = self.reference_unit_cell.parameters()
+    if self.reference_unit_cell is None:
+      a0 = b0 = c0 = alpha0 = beta0 = gamma0 = None
+    else:
+      a0,b0,c0,alpha0,beta0,gamma0 = self.reference_unit_cell.parameters()
 
     self.logger.main_log("")
 
@@ -62,7 +81,8 @@ class unit_cell_distribution(object):
         self.logger.main_log("  %s edge"%label)
         self.logger.main_log("     range:     %6.2f - %.2f"%(smin, smax))
         self.logger.main_log("     mean:      %6.2f +/- %6.2f on N = %d" %(stats.mean(), stats.unweighted_sample_standard_deviation(), edge.size()))
-        self.logger.main_log("     reference: %6.2f"%ref_edge)
+        if ref_edge is not None:
+          self.logger.main_log("     reference: %6.2f"%ref_edge)
 
         out = StringIO()
         h.show(f=out, prefix="    ", format_cutoffs="%6.2f")
@@ -76,7 +96,11 @@ class unit_cell_distribution(object):
     b = flex.mean(self.all_uc_b_values)
     c = flex.mean(self.all_uc_c_values)
 
-    return uctbx.unit_cell(list((a,b,c)) + list(self.reference_unit_cell.parameters()[3:]))
+    alpha = flex.mean(self.all_uc_alpha_values)
+    beta  = flex.mean(self.all_uc_beta_values)
+    gamma = flex.mean(self.all_uc_gamma_values)
+
+    return [a,b,c,alpha,beta,gamma]
 
 class unit_cell_statistics(worker):
 

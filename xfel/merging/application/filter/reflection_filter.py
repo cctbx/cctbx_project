@@ -20,6 +20,11 @@ class reflection_filter(worker):
   def run(self, experiments, reflections):
     if 'significance_filter' in self.params.select.algorithm:
       experiments, reflections = self.apply_significance_filter(experiments, reflections)
+
+    # Do we have any data left?
+    from xfel.merging.application.utils.data_counter import data_counter
+    data_counter(self.params).count(experiments, reflections)
+
     return experiments, reflections
 
   def apply_significance_filter(self, experiments, reflections):

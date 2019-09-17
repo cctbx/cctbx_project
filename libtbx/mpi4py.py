@@ -27,6 +27,8 @@ class mpiCommEmulator(object):
     items = []
     items.append(item)
     return items
+  def Abort(self,error):
+    pass
 
 class mpiEmulator(object):
   COMM_WORLD = mpiCommEmulator()

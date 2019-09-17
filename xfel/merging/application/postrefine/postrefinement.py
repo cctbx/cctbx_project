@@ -245,6 +245,10 @@ class postrefinement(worker):
 
     self.logger.log_step_time("POSTREFINEMENT", True)
 
+    # Do we have any data left?
+    from xfel.merging.application.utils.data_counter import data_counter
+    data_counter(self.params).count(new_experiments, new_reflections)
+
     return new_experiments, new_reflections
 
   def run_plain(self):
