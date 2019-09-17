@@ -77,6 +77,7 @@ class diffBragg: public nanoBragg{
   void add_diffBragg_spots();
   void init_raw_pixels_roi();
   void zero_raw_pixel_rois();
+  void set_ucell_derivative_matrix(int refine_id, mat3 const& value);
   //void reset_derivative_pixels(int refine_id);
 
   /* methods for interacting with the derivative managers */
