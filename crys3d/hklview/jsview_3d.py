@@ -707,7 +707,11 @@ class hklview_3d:
     newarray = millarr.deep_copy()
     self.mprint("Creating new miller array through the operation: %s" %operation)
     try:
-      newarray._data = eval(operation)
+      newdata = None
+      newsigmas = None
+      exec(operation)
+      newarray._data = newdata
+      newarray._sigmas = newsigmas
       return newarray
     except Exception as e:
       self.mprint( str(e), verbose=0)
@@ -728,7 +732,11 @@ class hklview_3d:
     newarray._sigmas = None
     self.mprint("Creating new miller array through the operation: %s" %operation)
     try:
-      newarray._data = eval(operation)
+      newdata = None
+      newsigmas = None
+      exec(operation)
+      newarray._data = newdata
+      newarray._sigmas = newsigmas
       return newarray
     except Exception as e:
       self.mprint( str(e), verbose=0)
