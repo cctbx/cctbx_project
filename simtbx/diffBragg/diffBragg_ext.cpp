@@ -66,6 +66,8 @@ namespace boost_python { namespace {
 
       .def("set_value", &simtbx::nanoBragg::diffBragg::set_value, "set value of the refinement parameter")
 
+      .def("set_ucell_derivative_matrix",  &simtbx::nanoBragg::diffBragg::set_ucell_derivative_matrix, "Boo-ya")
+
       .def("get_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels, "gets the manager raw image")
 
       .def("zero_raw_pixel_rois", &simtbx::nanoBragg::diffBragg::zero_raw_pixel_rois,
