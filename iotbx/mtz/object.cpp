@@ -272,15 +272,12 @@ namespace iotbx { namespace mtz {
 
     CMtz::MTZBAT* p = ptr()->batch;
     CMtz::MTZBAT* p_tail = p;
-    int max_batch_number = 0;
-    int i_batch = 0;
-    int n_batches = image_range[1] - image_range[0] + 1;
-    for(;;i_batch++) {
-      if (p == 0) break;
-      max_batch_number = std::max(max_batch_number, p->num);
+    while(p != 0) {
       p_tail = p;
       p = p->next;
     }
+    int i_batch;
+    int n_batches = image_range[1] - image_range[0] + 1;
     for(i_batch = 0; i_batch < n_batches; i_batch++) {
       int batch_num = i_batch + batch_offset + 1;
 
