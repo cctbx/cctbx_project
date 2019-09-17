@@ -1,19 +1,32 @@
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+
+parser.add_argument("--plot", action='store_true')
+parser.add_argument("--simplesim", action='store_true')
+args = parser.parse_args()
 
 import scitbx
 from scitbx.array_family import flex
 import numpy as np
 from simtbx.diffBragg.sim_data2 import SimData
-from IPython import embed
+from simtbx.diffBragg import utils
 import pylab as plt
 
 
-class RefineLS49Rot:
+class RefineLS49Rot(object):
 
-    def __init__(self):
+    def __init__(self, data=None, plot_imgs=False, starter_x=None,
+                 refine_bg_planes=True, refine_scale=True,
+                 refine_angles=True, init_scale=None):
 
         # get information from the simulated data image
-        from simtbx.diffBragg.load_ls49 import process_ls49_image
-        data = process_ls49_image()
+        if data is None:
+            from simtbx.diffBragg import load_ls49
+        #data = load_ls49.process_ls49_image()
+            data = load_ls49.process_ls49_image_real()
+        #else:
+        #    assert("dxcrystal"in data)
         self.dxcry = data["dxcrystal"]
         self.dxdet = data["dxdetector"]
         self.dxbeam = data["dxbeam"]
@@ -23,6 +36,10 @@ class RefineLS49Rot:
         self.spectrum = data["spectrum"]
         self.Fhkl = data["sfall"]
         self.img = data["data_img"]
+
+        self.refine_angles = refine_angles
+        self.refine_scale = refine_scale
+        self.refine_bg_planes = refine_bg_planes
 
         self._make_nanoBragg_crystal()
         self._make_nanoBragg_beam()
@@ -34,10 +51,19 @@ class RefineLS49Rot:
         self.n_gain_params = 1
         self.n = self.n_background_params + self.n_rot_params + self.n_gain_params
         self.x = flex.double(self.n)
+        self.x[-4] = 0
+        self.x[-3] = 0
+        self.x[-2] = 0
         self.x[-1] = 1
+        if init_scale is not None:
+            self.x[-1] = init_scale
         self._cache_roi_arrays()
         self._move_abc_init_to_x()
         self._set_diffBragg_instance()
+        self.plot_images = plot_imgs
+
+        if starter_x is not None:
+            self.x = flex.double(starter_x)
 
 
         #for roi in self.nanoBragg_rois:
@@ -52,12 +78,12 @@ class RefineLS49Rot:
         #exit()
 
         self.terminator = scitbx.lbfgs.termination_parameters(
-            traditional_convergence_test=False,
-            traditional_convergence_test_eps=0.05, #1.e-3 significantly (4x) quicker than 1.e-4
-            drop_convergence_test_max_drop_eps=1.e-5, # using drop convergence test (since traditional = False), drastic effect
+            traditional_convergence_test=True, #False,
+            traditional_convergence_test_eps=1e-4, #1.e-3 significantly (4x) quicker than 1.e-4
+            #drop_convergence_test_max_drop_eps=1.e-5, # using drop convergence test (since traditional = False), drastic effect
             #min_iterations=min_iterations,
             #max_iterations = None,
-            max_calls=100)
+            max_calls=1000)
         self.minimizer = scitbx.lbfgs.run(
             target_evaluator=self,
             termination_params=self.terminator)
@@ -75,7 +101,7 @@ class RefineLS49Rot:
         self.nbcry.dxtbx_crystal = self.dxcry
         self.nbcry.mos_spread_deg = 0.05
         self.nbcry.n_mos_domains = 25
-        self.nbcry.Ncells_abc = 72, 72, 72
+        self.nbcry.Ncells_abc = 20, 20, 20
         self.nbcry.miller_array = self.Fhkl
 
     def _move_abc_init_to_x(self):
@@ -95,6 +121,7 @@ class RefineLS49Rot:
             self.yrel.append(yr)
             self.roi_img.append(self.img[y1:y2+1, x1:x2+1])
 
+    #@profile
     def _set_diffBragg_instance(self):
         self.S = SimData()
         self.S.using_diffBragg_spots = True
@@ -107,12 +134,13 @@ class RefineLS49Rot:
                                      verbose=0,
                                      oversample=1)
         self.D = self.S.D
-        self.D.spot_scale = 93.75
+        self.D.spot_scale = 1  #93.75
         self.D.refine(0)
         self.D.refine(1)
         self.D.refine(2)
         self.D.initialize_managers()
 
+    #@profile
     def _run_diffBragg_current(self, i_spot):
         #import pdb
         #pdb.set_trace()
@@ -121,8 +149,6 @@ class RefineLS49Rot:
         self.D.set_value(1, self.thetaY)
         self.D.set_value(2, self.thetaZ)
         print(self.D.region_of_interest, i_spot, self.n_spots)
-        #from IPython import embed
-        #embed()
         self.D.add_diffBragg_spots()
 
     def _set_background_plane(self, i_spot):
@@ -142,6 +168,7 @@ class RefineLS49Rot:
         self.dRotZ = self.dRotZ.as_numpy_array()
 
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
+        #print self.model_bragg_spots > 1e-1
 
     def _evaluate_averageI(self):
         """model_Lambda means expected intensity in the pixel"""
@@ -154,7 +181,7 @@ class RefineLS49Rot:
         self.thetaX = self.x[self.n_spots*3]
         self.thetaY = self.x[self.n_spots*3+1]
         self.thetaZ = self.x[self.n_spots*3+2]
-        self.scale_fac = self.x[-1]
+        self.scale_fac = np.exp(self.x[-1])
 
     def _evaluate_log_averageI(self):
         # fix log(x<=0)
@@ -162,6 +189,7 @@ class RefineLS49Rot:
         self.log_Lambda[self.model_Lambda <= 0] = 0
         self.log_Lambda[self.model_Lambda > 50000] = 0
 
+    #@profile
     def compute_functional_and_gradients(self):
         self._set_diffBragg_instance()
         f = 0
@@ -184,31 +212,89 @@ class RefineLS49Rot:
             # compute gradients for background plane constants a,b,c
             xr = self.xrel[i_spot]  # fast scan pixels
             yr = self.yrel[i_spot]  # slow scan pixels
-            g[i_spot] += (xr * one_minus_k_over_Lambda).sum()  # from handwritten notes
-            g[self.n_spots + i_spot] += (yr * one_minus_k_over_Lambda).sum()
-            g[self.n_spots*2 + i_spot] += one_minus_k_over_Lambda.sum()
-            #plt.cla()
-            #plt.subplot(121)
-            #plt.imshow(self.model_Lambda)
-            #plt.subplot(122)
-            #plt.imshow(Imeas)
-            #plt.suptitle("Spot %d / %d" % (i_spot+1, self.n_spots))
-            #plt.draw()
-            #plt.pause(0.7)
+            if self.refine_bg_planes:
+                g[i_spot] += (xr * one_minus_k_over_Lambda).sum()  # from handwritten notes
+                g[self.n_spots + i_spot] += (yr * one_minus_k_over_Lambda).sum()
+                g[self.n_spots*2 + i_spot] += one_minus_k_over_Lambda.sum()
+
+            if self.plot_images:
+                plt.cla()
+                plt.subplot(121)
+                im = plt.imshow(self.model_Lambda)
+                #plt.imshow(self.model_bragg_spots > 1e-6)
+                plt.subplot(122)
+                im2 = plt.imshow(Imeas)
+                im.set_clim(im2.get_clim())
+                plt.suptitle("Spot %d / %d" % (i_spot+1, self.n_spots))
+                #plt.draw()
+                plt.show()
+                #plt.pause(.2)
 
             # rotation derivative
-            g[self.n_spots*3] += (one_minus_k_over_Lambda * (self.dRotX)).sum()
-            g[self.n_spots*3+1] += (one_minus_k_over_Lambda * (self.dRotY)).sum()
-            g[self.n_spots*3+2] += (one_minus_k_over_Lambda * (self.dRotZ)).sum()
+            if self.refine_angles:
+                g[self.n_spots*3] += (one_minus_k_over_Lambda * (self.dRotX)).sum()
+                g[self.n_spots*3+1] += (one_minus_k_over_Lambda * (self.dRotY)).sum()
+                g[self.n_spots*3+2] += (one_minus_k_over_Lambda * (self.dRotZ)).sum()
 
             # scale factor derivative
-            g[-1] += ((self.model_bragg_spots) * one_minus_k_over_Lambda).sum()
+            if self.refine_scale:
+                g[-1] += ((self.scale_fac*self.model_bragg_spots) * one_minus_k_over_Lambda).sum()
 
-        plt.cla()
-        plt.title("f=%g"%f)
-        plt.imshow(self.D.raw_pixels.as_numpy_array(), vmax=200)
-        plt.draw()
-        plt.pause(2.2)
+        if args.simplesim:
+            from cxid9114.parameters import ENERGY_CONV
+            energies = ENERGY_CONV / np.array(self.spectrum)[::10, 0]
+            fluxes = np.array(self.spectrum)[::10, 1]
+            FF = [self.nbcry.miller_array] + [None]*(fluxes.shape[0]-1)
+            from cxid9114.sim import sim_utils
+            out = sim_utils.sim_colors(self.dxcry, self.dxdet, self.dxbeam, FF, energies,
+                                       fluxes, pids=None, Gauss=True, oversample=1, Ncells_abc=(15, 15, 15), verbose=0,
+                                       div_tup=(0.0, 0.0, 0.0), disp_pct=0.0, mos_dom=25, mos_spread=0.05, profile=None,
+                                       roi_pp=None, counts_pp=None, cuda=False, omp=False, gimmie_Patt=False,
+                                       add_water=False, boost=1, device_Id=0, beamsize_mm=0.003, exposure_s=1,
+                                       accumulate=True, only_water=False, add_spots=True, adc_offset=10, show_params=False,
+                                       crystal_size_mm=0.002)
+            from simtbx.diffBragg import utils
+            dxcry2 = utils.refine_model_from_angles(self.dxcry, angles)
+            out2 = sim_utils.sim_colors(dxcry2, self.dxdet, self.dxbeam, FF, energies,
+                                       fluxes, pids=None, Gauss=True, oversample=1, Ncells_abc=(15, 15, 15), verbose=0,
+                                       div_tup=(0.0, 0.0, 0.0), disp_pct=0.0, mos_dom=25, mos_spread=0.05, profile=None,
+                                       roi_pp=None, counts_pp=None, cuda=False, omp=False, gimmie_Patt=False,
+                                       add_water=False, boost=1, device_Id=0, beamsize_mm=0.003, exposure_s=1,
+                                       accumulate=True, only_water=False, add_spots=True, adc_offset=10, show_params=False,
+                                       crystal_size_mm=0.002)
+            from cxid9114.prediction import prediction_utils
+            from dials.array_family import flex as dials_flex
+            refl_sim = prediction_utils.refls_from_sims(out, self.dxdet, self.dxbeam, thresh=1e-3)
+            refl_sim2 = prediction_utils.refls_from_sims(out2, self.dxdet, self.dxbeam, thresh=1e-3)
+            R = dials_flex.reflection_table.from_file(
+                "/Users/dermen/crystal/modules/cctbx_project/simtbx/diffBragg/LS49_real_data2/idx-20180501143559313_indexed.refl")
+            Q1 = prediction_utils.refls_to_q(refl_sim, self.dxdet, self.dxbeam)
+            Q2 = prediction_utils.refls_to_q(refl_sim2, self.dxdet, self.dxbeam)
+            Qdata = prediction_utils.refls_to_q(R, self.dxdet, self.dxbeam)
+            from scipy.spatial import cKDTree
+            tree = cKDTree(Qdata)
+            dists1, pts1 = tree.query(Q1)
+            dists2, pts2 = tree.query(Q2)
+
+            x, y, _ = prediction_utils.xyz_from_refl(refl_sim)
+            x2, y2, _ = prediction_utils.xyz_from_refl(refl_sim2)
+
+            xd, yd, _ = prediction_utils.xyz_from_refl(R)
+
+            T = cKDTree(zip(x,y))
+            T2 = cKDTree(zip(x2,y2))
+
+            d, p = T.query(zip(xd, yd))
+            d2, p2 = T2.query(zip(xd, yd))
+
+            from IPython import embed
+            embed()
+
+        #plt.cla()
+        #plt.title("f=%g"%f)
+        #plt.imshow(self.D.raw_pixels.as_numpy_array(), vmax=200)
+        #plt.draw()
+        #plt.pause(2.2)
 
         #self.D.raw_pixels *= 0
         #self.D.initialize_managers()
@@ -219,6 +305,12 @@ class RefineLS49Rot:
         print ("%s %10.4f" % (message, target),
                "[", " ".join(["%9.6f" % a for a in self.x]), "]")
 
+    def update_crystal_model(self):
+        angles = self.x[-4], self.x[-3], self.x[-2]
+        dxcry_refined = utils.refine_model_from_angles(self.dxcry, angles)
+        return dxcry_refined
 
-if __name__=="__main__":
-    RefineLS49Rot()
+
+if __name__ == "__main__":
+    RLS = RefineLS49Rot(plot_imgs=args.plot, init_scale=6)  #, starter_x=starter_x)
+
