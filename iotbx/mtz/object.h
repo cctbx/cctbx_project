@@ -316,6 +316,21 @@ namespace mtz {
       batch
       add_batch();
 
+      void
+      add_dials_batches(int dataset_id,
+                        af::tiny<int, 2> image_range,
+                        int batch_offset,
+                        float wavelength,
+                        float mosaic,
+                        af::shared<float> phi_start,
+                        af::shared<float> phi_range,
+                        af::const_ref<float, af::c_grid<2>  > cell_array,
+                        af::const_ref<float, af::c_grid<2>  > umat_array,
+                        af::tiny<int, 2> panel_size,
+                        float panel_distance,
+                        af::shared<float> axis,
+                        af::shared<float> s0n);
+
       //! Wrapper for CMtz::sort_batches() .
       void
       sort_batches()
