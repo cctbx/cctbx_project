@@ -577,16 +577,23 @@ namespace mtz {
        */
       void
       delete_reflections(af::const_ref<std::size_t> const& iref) {
-        /* only possible if reflections in memory */
+        if (iref.size() == 0) return;
+
+        /* Deletion is only possible if reflections are in memory */
         IOTBX_ASSERT(ptr()->refs_in_memory);
         int oldsize = ptr()->nref;
         IOTBX_ASSERT(oldsize >= 0);
         int newsize = oldsize - iref.size();
         IOTBX_ASSERT(newsize >= 0);
-        for (std::size_t i=iref.size(); i>0; i--) {
-          // iref must be sorted in ascending order
-          if (i > 1) IOTBX_ASSERT(iref[i-1] > iref[i-2]);
+
+        // Ensure we only delete existing elements, no element more than once,
+        // and the list of elements to delete is in ascending order.
+        IOTBX_ASSERT(iref[0] < oldsize);
+        for (std::size_t i=1; i<iref.size(); i++) {
+          IOTBX_ASSERT(iref[i-1] < iref[i]);
+          IOTBX_ASSERT(iref[i] < oldsize);
         }
+
         for (int x = 0; x < ptr()->nxtal; ++x)
           for (int s = 0; s < ptr()->xtal[x]->nset; ++s)
             for (int c = 0; c < ptr()->xtal[x]->set[s]->ncol; ++c) {
@@ -599,12 +606,12 @@ namespace mtz {
               std::size_t copy_pointer = 0; // pointer into newarray
 
               for (std::size_t i = 0; i < oldsize; i++) {
-                // determine whether element i should be copied
+                // determine whether reflection i should be copied
                 if (skip_pointer < iref.size() && iref[skip_pointer] == i) {
                   // skip i, advance skip_pointer
                   skip_pointer++;
                 } else {
-                  // copy element i of oldarray into newarray at position copy_pointer
+                  // copy reflection i of oldarray into newarray at position copy_pointer
                   newarray[copy_pointer++] = oldarray[i];
                 }
               }
@@ -615,7 +622,9 @@ namespace mtz {
               // Sanity check.
               IOTBX_ASSERT(copy_pointer == newsize);
             }
-        --ptr()->nref;
+
+        // Finally update the number of reflections
+        ptr()->nref = newsize;
       }
 
     protected:
