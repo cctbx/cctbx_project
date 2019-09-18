@@ -55,6 +55,7 @@ master_params_str = """
   mask_maps = None
     .type = bool
     .help = Mask out region outside molecule
+    .style = tribool
   radius_smooth = None
     .type = float
     .help = Mask smoothing radius
