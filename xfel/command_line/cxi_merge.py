@@ -591,7 +591,7 @@ def load_result (file_name,
       raise Sorry("Cannot find pixel size. Specify appropriate pixel size in mm for your detector in phil file.")
 
     #Calculate displacements based on pixel size
-    assert obj['mapped_predictions'][0].size() == obj["observations"][0].size()
+    assert obj['mapped_predictions'][0].size() == obj["observations"][0].size(), 'mapped predict asserts'
     mm_predictions = pixel_size*(obj['mapped_predictions'][0])
     mm_displacements = flex.vec3_double()
     cos_two_polar_angle = flex.double()
@@ -836,7 +836,7 @@ class scaling_manager (intensity_data) :
                + self.n_wrong_bravais + self.n_wrong_cell \
                + self.n_low_resolution \
                + sum([val for val in six.itervalues(self.failure_modes)])
-    assert checksum == len(file_names)
+    assert checksum == len(file_names), 'checksum asserts'
 
     high_res_count = (self.d_min_values <= self.params.d_min).count(True)
     print("Of %d accepted images, %d accepted to %5.2f Angstrom resolution" % \
@@ -1238,7 +1238,7 @@ class scaling_manager (intensity_data) :
     cos_two_polar_angle = result["cos_two_polar_angle"]
     indices_to_edge = result["indices_to_edge"]
 
-    assert observations.size() == cos_two_polar_angle.size()
+    assert observations.size() == cos_two_polar_angle.size(), 'OMG assert'
     tt_vec = observations.two_theta(wavelength)
     #print >> out, "mean tt degrees",180.*flex.mean(tt_vec.data())/math.pi
     cos_tt_vec = flex.cos( tt_vec.data() )
@@ -1277,7 +1277,7 @@ class scaling_manager (intensity_data) :
         indices = result["model_partialities"][0]["indices"],
         ).resolution_filter(d_min=self.params.d_min)
 
-    assert len(observations_original_index.indices()) == len(observations.indices())
+    assert len(observations_original_index.indices()) == len(observations.indices()), 'OBS asserts'
 
     # Now manipulate the data to conform to unit cell, asu, and space group
     # of reference.  The resolution will be cut later.
@@ -1415,7 +1415,7 @@ class scaling_manager (intensity_data) :
 
     print("Step 6.  Match to reference intensities, filter by correlation, filter out negative intensities.", file=out)
     assert len(observations_original_index.indices()) \
-      ==   len(observations.indices())
+      ==   len(observations.indices()), '6 flags asserts'
 
     data = frame_data(self.n_refl, file_name)
     data.set_indexed_cell(indexed_cell)
@@ -1432,7 +1432,7 @@ class scaling_manager (intensity_data) :
     if self.i_model is not None:
       assert len(self.i_model.indices()) == len(self.miller_set.indices()) \
         and  (self.i_model.indices() ==
-              self.miller_set.indices()).count(False) == 0
+              self.miller_set.indices()).count(False) == 0, 'i_model asserts'
 
     matches = miller.match_multi_indices(
       miller_indices_unique=self.miller_set.indices(),
@@ -1550,21 +1550,106 @@ class scaling_manager (intensity_data) :
       return null_data(file_name=file_name, log_out=out.getvalue(), low_resolution=True)
 
     from xfel.cxi.postrefinement_factory import factory
+    import copy
+    copy_observations=copy.deepcopy(observations_original_index)
+    n_obs=len(copy_observations.data())
+    LS49_case=True # Flag to do turn on post-refinement by dropping one reflection at a time
+    #              # Useful for problematic images where even a single misindexed refl leads to divergence
+    # First do the zero case; consider all reflections and see if it works
     PF = factory(self.params)
     postrefinement_algorithm = PF.postrefinement_algorithm()
-
     if self.params.postrefinement.enable:
-      # Refactorization of the Sauter(2015) code; result should be same to 5 significant figures.
-      # Lack of binary identity is due to the use of Python for old-code weighted correlation,
-      #   contrasted with flex.double arithmetic for new-code.
-      postx=postrefinement_algorithm(observations_original_index, self.params,
-           self.i_model, self.miller_set, result, out)
+        postx=postrefinement_algorithm(observations_original_index, self.params,
+             self.i_model, self.miller_set, result, out) 
+        try:
+          postx.run_plain()
+          observations_original_index, observations, matches, fat_count, final_corr=postx.result_for_cxi_merge(file_name, LS49_case)
+        except (AssertionError,ValueError,RuntimeError) as e:
+          return null_data(file_name=file_name, log_out=out.getvalue(), reason=e)
+          #print ('Error in post-refinement')
+        if fat_count > 3 and final_corr>0.2:
+          LS49_case=False
+
+    if LS49_case:
       try:
-        postx.run_plain()
-        observations_original_index,observations,matches = postx.result_for_cxi_merge(file_name)
-      except (AssertionError,ValueError,RuntimeError) as e:
+        net_fat_count=flex.int(n_obs, -1)
+        net_final_corr=flex.double(n_obs, -1.0)
+        # Put in loop here
+        # variable below used at the very end to throw out all reflections that make postrefinement diverge
+        consider_refl_final=flex.bool(n_obs, True) 
+        for ii in range(n_obs):
+          consider_refl=flex.bool(n_obs, True)
+          consider_refl[ii]=False
+          #print ('MILLER INDICES thrown out - ', copy_observations.indices()[ii])
+          observations_original_index=copy_observations.select(consider_refl)
+          # THis is where the postrefinement stuff is set
+          # whether to choose rs or rs2
+          PF = factory(self.params)
+          postrefinement_algorithm = PF.postrefinement_algorithm()
+          if self.params.postrefinement.enable:
+            # Refactorization of the Sauter(2015) code; result should be same to 5 significant figures.
+            # Lack of binary identity is due to the use of Python for old-code weighted correlation,
+            #   contrasted with flex.double arithmetic for new-code.
+            postx=postrefinement_algorithm(observations_original_index, self.params,
+                 self.i_model, self.miller_set, result, out)
+            try:
+              postx.run_plain()
+              observations_original_index,observations,matches, fat_count, final_corr = postx.result_for_cxi_merge(file_name, True)
+            except (AssertionError,ValueError,RuntimeError) as e:
+              print ('Error in post-refinement_2')
+              continue
+              #return null_data(file_name=file_name, log_out=out.getvalue(), reason=e)
+            #if fat_count > 0:
+            #  consider_refl_final[ii]=False
+            net_fat_count[ii]=fat_count
+            net_final_corr[ii]=final_corr
+          ## End loop here 
+
+          # Make decision here on how to do final postrefinement
+        ts=os.path.basename(file_name)[6:23]
+        print ('MAX_CORRELATION', flex.max(net_final_corr), ts)
+        if flex.max(net_final_corr) > 0.2:
+          consider_refl_final[flex.max_index(net_final_corr)]=False
+        else:
+          for ii, entry in enumerate(net_fat_count):
+            if entry > 0:
+              consider_refl_final[ii]=False
+          #consider_refl_final[flex.max_index(net_fat_count)]=False
+        observations_original_index=copy_observations.select(consider_refl_final)
+        #for ii, entry in enumerate(consider_refl_final):
+        #  if not entry:
+        #    print ('MILLER INDICES thrown out FINALLY - ', copy_observations.indices()[ii])
+        # Now do final postrefinement
+        PF = factory(self.params)
+        postrefinement_algorithm = PF.postrefinement_algorithm() 
+        if self.params.postrefinement.enable:
+          postx=postrefinement_algorithm(observations_original_index, self.params,
+               self.i_model, self.miller_set, result, out)
+          try:
+            postx.run_plain()
+            observations_original_index,observations,matches, fat_count, final_corr = postx.result_for_cxi_merge(file_name, False)        
+            #print ('FINAL_POSTREFINE_DONE', ts)
+          except (AssertionError,ValueError,RuntimeError) as e:
+            return null_data(file_name=file_name, log_out=out.getvalue(), reason=e)
+
+      except Exception as e:
+        print (str(e))
         return null_data(file_name=file_name, log_out=out.getvalue(), reason=e)
 
+    else:
+      observations_original_index=copy_observations
+      PF = factory(self.params)
+      postrefinement_algorithm = PF.postrefinement_algorithm()
+      if self.params.postrefinement.enable:
+        postx=postrefinement_algorithm(observations_original_index, self.params,
+             self.i_model, self.miller_set, result, out)
+        try:
+          postx.run_plain()
+          observations_original_index, observations, matches, fat_count, final_corr=postx.result_for_cxi_merge(file_name, False)
+        except (AssertionError,ValueError,RuntimeError) as e:
+          return null_data(file_name=file_name, log_out=out.getvalue(), reason=e)
+    #i  mport pdb; pdb.set_trace()
+    if self.params.postrefinement.enable:
       self.postrefinement_params = postx.parameterization_class(postx.MINI.x)
 
       if self.params.postrefinement.show_trumpet_plot is True:
@@ -1705,7 +1790,7 @@ def consistent_set_and_model(work_params,i_model=None):
       i_model = i_model.select(pairs.column(0))
 
     matches = miller.match_indices(i_model.indices(), miller_set.indices())
-    assert not matches.have_singles()
+    assert not matches.have_singles(), 'singles asserts'
     miller_set = miller_set.select(matches.permutation())
 
   return miller_set, i_model

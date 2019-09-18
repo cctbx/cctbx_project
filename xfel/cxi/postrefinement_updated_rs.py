@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 import math
+import os
 from scitbx import matrix
 from cctbx import miller
 from dials.array_family import flex
@@ -45,7 +46,7 @@ class updated_rs(legacy_rs):
 
     assert len(i_model.indices()) == len(miller_set.indices()) \
         and  (i_model.indices() ==
-              miller_set.indices()).count(False) == 0
+              miller_set.indices()).count(False) == 0, 'RS2 FISHINESS'
 
     matches = miller.match_multi_indices(
       miller_indices_unique=miller_set.indices(),
@@ -144,33 +145,39 @@ class updated_rs(legacy_rs):
         out = self.out )
     self.refined_mini = self.MINI
 
-  def rs2_parameter_range_assertions(self,values):
+  def rs2_parameter_range_assertions(self,values, timestamp):
     # New range assertions for refined variables
-    assert 0 < values.G, "G-scale value out of range ( < 0 ) after rs2 refinement"
-    assert -25 < values.BFACTOR and values.BFACTOR < 25, "B-factor value out of range ( |B|>25 ) after rs2 refinement"
-    assert -0.5<180.*values.thetax/math.pi<0.5,"thetax value out of range ( |rotx|>.5 degrees ) after rs2 refinement"
-    assert -0.5<180.*values.thetay/math.pi<0.5,"thetay value out of range ( |roty|>.5 degrees ) after rs2 refinement"
+    #if abs(180.0*values.thetax/math.pi) > 0.5:
+    #  print ('THETA_X %s'%timestamp) 
+    #if abs(180.0*values.thetay/math.pi) > 0.5:
+    #  print ('THETA_Y %s'%timestamp) 
+    print ('THETA_XY %.4f %.4f %s'%(180.0*values.thetax/math.pi, 180.0*values.thetay/math.pi, timestamp))
+    #assert 0 < values.G, "G-scale value out of range ( < 0 ) after rs2 refinement"
+    #assert -25 < values.BFACTOR and values.BFACTOR < 25, "B-factor value out of range ( |B|>25 ) after rs2 refinement"
+    #assert -0.5<180.*values.thetax/math.pi<0.5,"thetax value out of range ( |rotx|>.5 degrees ) after rs2 refinement"
+    #assert -0.5<180.*values.thetay/math.pi<0.5,"thetay value out of range ( |roty|>.5 degrees ) after rs2 refinement"
 
-  def result_for_cxi_merge(self, file_name):
+  def result_for_cxi_merge(self, file_name, LS49_case=False):
     values = self.get_parameter_values()
-    self.rs2_parameter_range_assertions(values)
+    ts = os.path.basename(file_name)[6:23]
+    self.rs2_parameter_range_assertions(values, ts)
     scaler = self.refinery.scaler_callable(self.parameterization_class(self.MINI.x))
 
     partiality_array = self.refinery.get_partiality_array(values)
     p_scaler = flex.pow(partiality_array,
                         0.5*self.params.postrefinement.merge_partiality_exponent)
 
-    fat_selection = (partiality_array > 0.2)
+    fat_selection = (partiality_array > 0.15)
     fat_count = fat_selection.count(True)
     scaler_s = scaler.select(fat_selection)
     p_scaler_s = p_scaler.select(fat_selection)
 
     #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
     # in samosa, handle this at a higher level, but handle it somehow.
-    if fat_count < 3:
-      raise ValueError("< 3 near-fulls after refinement")
-    print("On total %5d the fat selection is %5d"%(
-      len(self.observations_pair1_selected.indices()), fat_count), file=self.out)
+    if fat_count < 0:
+      raise ValueError("< 0 near-fulls after refinement")
+    print("On totalality %5d the fat selection is %5d"%(
+      len(self.observations_pair1_selected.indices()), fat_count))
     observations_original_index = \
       self.observations_original_index_pair1_selected.select(fat_selection)
 
@@ -183,19 +190,34 @@ class updated_rs(legacy_rs):
       miller_indices_unique=self.miller_set.indices(),
       miller_indices=observations.indices())
 
-    I_weight = flex.double(len(observations.sigmas()), 1.)
-    I_reference = flex.double([self.i_model.data()[pair[0]] for pair in matches.pairs()])
-    I_invalid = flex.bool([self.i_model.sigmas()[pair[0]] < 0. for pair in matches.pairs()])
-    I_weight.set_selected(I_invalid,0.)
-    SWC = simple_weighted_correlation(I_weight, I_reference, observations.data())
-    print("CORR: NEW correlation is", SWC.corr, file=self.out)
-    print("ASTAR_FILE",file_name,tuple(self.refinery.get_eff_Astar(values)), file=self.out)
-    self.final_corr = SWC.corr
-    self.refined_mini = self.MINI
-    #another range assertion
-    assert self.final_corr > 0.1,"correlation coefficient out of range (<= 0.1) after rs2 refinement"
+    final_corr=-1.0
+    #if not LS49_case:
+    try:
+      I_weight = flex.double(len(observations.sigmas()), 1.)
+      I_reference = flex.double([self.i_model.data()[pair[0]] for pair in matches.pairs()])
+      I_invalid = flex.bool([self.i_model.sigmas()[pair[0]] < 0. for pair in matches.pairs()])
+      I_weight.set_selected(I_invalid,0.)
+      SWC = simple_weighted_correlation(I_weight, I_reference, observations.data())
+      print("CORR: NEW correlation is", SWC.corr, file=self.out)
+      print("ASTAR_FILE",file_name,tuple(self.refinery.get_eff_Astar(values)), file=self.out)
+      self.final_corr = SWC.corr
+      self.refined_mini = self.MINI
+      #another range assertion
+    except Exception as e:
+      print (e)
+      self.final_corr=-1.0
+    if not LS49_case:
+      assert self.final_corr > 0.2,"correlation coefficient out of range (<= 0.1) after rs2 refinement"
+    if LS49_case:
+      if abs(180.0*values.thetax/math.pi) < 0.5 and abs(180.0*values.thetay/math.pi) < 0.5 \
+        and  abs(values.BFACTOR) < 25.0 and fat_count > 3:
+        fat_count=fat_count
+        final_corr=self.final_corr
+      else:
+        fat_count=-1
+        final_corr=-1.0
 
-    return observations_original_index,observations,matches
+    return observations_original_index,observations,matches, fat_count, final_corr
 
   def get_parameter_values(self):
     return self.refined_mini.parameterization(self.refined_mini.x)
@@ -213,6 +235,7 @@ class rs2_refinery(rs_refinery):
       rs = values.RS
       Rh = self.get_Rh_array(values)
       immersion = Rh/rs
+      #import pdb; pdb.set_trace()
       gaussian = flex.exp(-2. * math.log(2) * (immersion*immersion))
       return gaussian
 
@@ -248,6 +271,44 @@ class rs2_refinery(rs_refinery):
       Px_terms = P_terms * dPB_dthetax; Py_terms = P_terms * dPB_dthetay
 
       return [G_terms,B_terms,0,Px_terms,Py_terms]
+
+
+    def jacobian_callable_asmit(self,values):
+      PB = self.get_partiality_array(values)
+      EXP = flex.exp(-2.*values.BFACTOR*self.DSSQ)
+      G_terms = (EXP * PB * self.ICALCVEC)
+      B_terms = (values.G * EXP * PB * self.ICALCVEC)*(-2.*self.DSSQ)
+      P_terms = (values.G * EXP * self.ICALCVEC)
+
+      thetax = values.thetax 
+      thetay = values.thetay
+
+      Rx = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(thetax)
+      dRx_dthetax = matrix.col((1,0,0)).axis_and_angle_as_r3_derivative_wrt_angle(thetax)
+      Ry = matrix.col((0,1,0)).axis_and_angle_as_r3_rotation_matrix(thetay)
+      dRy_dthetay = matrix.col((0,1,0)).axis_and_angle_as_r3_derivative_wrt_angle(thetay)
+      ref_ori = matrix.sqr(self.ORI.reciprocal_matrix())
+      miller_vec = self.MILLER.as_vec3_double()
+      ds1_dthetax = flex.mat3_double(len(self.MILLER),Ry * dRx_dthetax * ref_ori) * miller_vec
+      ds1_dthetay = flex.mat3_double(len(self.MILLER),dRy_dthetay * Rx * ref_ori) * miller_vec
+
+      s1vec = self.get_s1_array(values)
+      s1lenvec = flex.sqrt(s1vec.dot(s1vec))
+      dRh_dthetax = s1vec.dot(ds1_dthetax)/s1lenvec
+      dRh_dthetay = s1vec.dot(ds1_dthetay)/s1lenvec
+      rs = values.RS
+      Rh = self.get_Rh_array(values)
+      rs_sq = rs*rs
+      denomin = (2. * Rh * Rh + rs_sq)
+      dPB_dRh = { "lorentzian": -PB * 4. * Rh / denomin,
+                  "gaussian": -PB * 4. * math.log(2) * Rh / rs_sq }[self.profile_shape]
+      dPB_dthetax = dPB_dRh * dRh_dthetax
+      dPB_dthetay = dPB_dRh * dRh_dthetay
+      Px_terms = P_terms * dPB_dthetax; Py_terms = P_terms * dPB_dthetay
+
+      return [G_terms,B_terms,0,Px_terms,Py_terms]
+
+
 
 class lbfgs_minimizer_derivatives(lbfgs_minimizer_base):
 

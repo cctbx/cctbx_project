@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
-import math
+import math, os
 from scitbx import matrix
 from cctbx import miller
 from dials.array_family import flex
@@ -136,7 +136,17 @@ class legacy_rs(object):
         parameterization = self.parameterization_class, refinery = self.refinery,
         out = self.out )
 
-  def result_for_cxi_merge(self, file_name):
+  def result_for_cxi_merge(self, file_name, LS49_case=False):
+    ####
+    # New range assertions for refined variables
+    values = self.get_parameter_values()
+    ts = os.path.basename(file_name)[6:23]
+    print ('THETA_XY %.4f %.4f %s'%(180.0*values.thetax/math.pi, 180.0*values.thetay/math.pi, ts))
+    #assert 0 < values.G, "G-scale value out of range ( < 0 ) after RS refinement"
+    #assert -25 < values.BFACTOR and values.BFACTOR < 25, "B-factor value out of range ( |B|>25 ) after RS refinement"
+    #assert -0.5<180.*values.thetax/math.pi<0.5,"thetax value out of range ( |rotx|>.5 degrees ) after RS refinement"
+    #assert -0.5<180.*values.thetay/math.pi<0.5,"thetay value out of range ( |roty|>.5 degrees ) after RS refinement"
+    ####
     scaler = self.refinery.scaler_callable(self.parameterization_class(self.MINI.x))
     #from IPython import embed; embed(); exit()
     if self.params.postrefinement.algorithm=="rs":
@@ -162,7 +172,17 @@ class legacy_rs(object):
     matches = miller.match_multi_indices(
       miller_indices_unique=self.miller_set.indices(),
       miller_indices=observations.indices())
-    return observations_original_index,observations,matches
+    # Special code for LS49. Use this to verify that the selection is good?bad ?
+    if LS49_case:
+      if abs(180.0*values.thetax/math.pi) < 0.5 and abs(180.0*values.thetay/math.pi) < 0.5 \
+        and  abs(values.BFACTOR) < 25.0 and fat_count > 5:
+        fat_count=fat_count
+      else:
+        fat_count=-1
+
+    # Final return variable should have been final_corr as in rs2 but returning -1 here
+    return observations_original_index,observations,matches, fat_count, -1.0
+      
 
   def get_parameter_values(self):
     values = self.parameterization_class(self.MINI.x)
@@ -273,10 +293,10 @@ class rs_parameterization(unpack_base):
     raise AttributeError(item)
 
   def show(YY, out):
-    print("G: %10.7f"%YY.G, end=' ', file=out)
-    print("B: %10.7f"%YY.BFACTOR, \
+    print("G2: %10.7f"%YY.G, end=' ', file=out)
+    print("B2: %10.7f"%YY.BFACTOR, \
         "RS: %10.7f"%YY.RS, \
-        "%7.3f deg %7.3f deg"%(
+        "%7.3f degg %7.3f deg"%(
         180.*YY.thetax/math.pi,180.*YY.thetay/math.pi), file=out)
 
 class eta_deff_parameterization(unpack_base):
@@ -341,12 +361,13 @@ class lbfgs_minimizer_base:
       #calculate by finite_difference
       self.g.append( ( dfunctional-functional )/DELTA )
     self.g[2]=0.
-    print("rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)), end=' ', file=self.out)
+    print("rmsI %10.3f"%math.sqrt(flex.mean(self.func*self.func)), end=' ', file=self.out)
     values.show(self.out)
+    #import pdb; pdb.set_trace()
     return self.f, self.g
 
   def __del__(self):
     values = self.parameterization(self.x)
     print("FINALMODEL", end=' ', file=self.out)
-    print("rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)), end=' ', file=self.out)
+    print("rmsF %10.3f"%math.sqrt(flex.mean(self.func*self.func)), end=' ', file=self.out)
     values.show(self.out)
