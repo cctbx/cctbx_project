@@ -534,7 +534,7 @@ def calculate_fsc(si=None,
   for sthol2,scale,rms_fo,cc,rms_fc,orig_cc in zip(
      target_sthol2,target_scale_factors,rms_fo_list,cc_list,rms_fc_list,
       original_cc_list):
-     print("%7.1f  %9.1f  %9.1f %7.3f  %7.3f  %5.2f" %(
+     print("%7.2f  %9.1f  %9.1f %7.3f  %7.3f  %5.2f" %(
        0.5/sthol2**0.5,rms_fo,rms_fc,orig_cc,cc,scale), file=out)
 
   si.target_scale_factors=target_scale_factors
