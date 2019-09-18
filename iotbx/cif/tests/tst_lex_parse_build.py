@@ -247,6 +247,8 @@ _b 2
   f.close()
   miller_arrays = any_reflection_file(file_name=f.name).as_miller_arrays()
   assert len(miller_arrays) == 2
+  miller_arrays = any_reflection_file(file_name=f.name).as_miller_arrays(anomalous=True)
+  assert miller_arrays[0].anomalous_flag() is True
 
 def exercise_parser(reader, builder):
   cif_model = reader(

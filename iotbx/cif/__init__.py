@@ -113,7 +113,8 @@ class reader(object):
                        crystal_symmetry=None,
                        force_symmetry=False,
                        merge_equivalents=True,
-                       base_array_info=None):
+                       base_array_info=None,
+                       anomalous=None):
     if base_array_info is None:
       base_array_info = miller.array_info(
         source=self.file_path, source_type="cif")
@@ -134,6 +135,8 @@ class reader(object):
           force=force_symmetry)
         arrays[i] = array.customized_copy(crystal_symmetry=crystal_symmetry)
         arrays[i].set_info(array.info())
+      if anomalous is not None:
+        arrays[i] = array.customized_copy(anomalous_flag=anomalous)
     return arrays
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
