@@ -14,6 +14,11 @@ from mmtbx.utils import run_reduce_with_timeout
 
 import numpy as np # XXX See if I can avoid it!
 
+from mmtbx.secondary_structure import manager as ss_manager
+from mmtbx.secondary_structure import sec_str_master_phil_str
+
+mcss = " or ".join(
+    ["name %s"%i.strip() for i in iotbx.pdb.protein_atom_names_backbone])
 
 def get_pair_generator(crystal_symmetry, buffer_thickness, sites_cart):
   sst = crystal_symmetry.special_position_settings().site_symmetry_table(
@@ -82,6 +87,60 @@ def show_histogram(data, n_slots, data_min, data_max, log=sys.stdout):
     lc_1 = hc_1
   return h_data
 
+# XXX FIND A BETTER PLACE
+def get_ss_selections(hierarchy, filter_short=True):
+  def get_counts(hierarchy, h_sel, s_sel):
+    sh_sel = h_sel | s_sel
+    n   = hierarchy.overall_counts().n_residues
+    nh  = hierarchy.select(h_sel ).overall_counts().n_residues
+    ns  = hierarchy.select(s_sel ).overall_counts().n_residues
+    nhs = hierarchy.select(sh_sel).overall_counts().n_residues
+    return group_args(
+      h  = int(round(nh *100./n,0)),
+      s  = int(round(ns *100./n,0)),
+      hs = int(round(nhs*100./n,0)))
+  def one(hierarchy, method):
+    sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
+    params = sec_str_master_phil.fetch().extract()
+    params.secondary_structure.protein.search_method = method
+    asc = hierarchy.atom_selection_cache()
+    ssm = ss_manager(
+      hierarchy,
+      atom_selection_cache=asc,
+      geometry_restraints_manager=None,
+      sec_str_from_pdb_file=None,
+      params=params.secondary_structure,
+      was_initialized=False,
+      verbose=-1,
+      log=null_out())
+    filtered_ann = ssm.actual_sec_str.deep_copy()
+    if(filter_short):
+      filtered_ann.remove_short_annotations(
+        helix_min_len=4, sheet_min_len=4, keep_one_stranded_sheets=True)
+    mc_sel = asc.selection(mcss)
+    h_sel  = asc.selection(filtered_ann.overall_helices_selection())
+    s_sel  = asc.selection(filtered_ann.overall_sheets_selection())
+    h_sel  = h_sel & mc_sel
+    s_sel  = s_sel & mc_sel
+    ss_counts = get_counts(hierarchy=hierarchy, h_sel=h_sel, s_sel=s_sel)
+    return group_args(h_sel = h_sel, s_sel = s_sel, counts = ss_counts)
+  ksdssp, from_ca, both = None, None, None
+  # from_ca
+  from_ca = one(hierarchy=hierarchy, method="from_ca")
+  # ksdssp
+  try:
+    ksdssp  = one(hierarchy=hierarchy, method="ksdssp")
+  except KeyboardInterrupt: raise
+  except: pass
+  # both
+  if([ksdssp, from_ca].count(None)==0):
+    h_sel = ksdssp.h_sel & from_ca.h_sel
+    s_sel = ksdssp.s_sel & from_ca.s_sel
+    ss_counts = get_counts(hierarchy=hierarchy, h_sel=h_sel, s_sel=s_sel)
+    both = group_args(h_sel = h_sel, s_sel = s_sel, counts = ss_counts)
+  #
+  return group_args(ksdssp=ksdssp, from_ca=from_ca, both=both)
+
 def stats(model, prefix):
   # Get rid of H, multi-model, no-protein and single-atom residue models
   if(model.percent_of_single_atom_residues()>20):
@@ -113,41 +172,18 @@ def stats(model, prefix):
     buffer_layer = 5)
   model.set_sites_cart(box.sites_cart)
   model._crystal_symmetry = box.crystal_symmetry()
-  # Get SS annotations
-  SS = find_ss_from_ca.find_secondary_structure(
-    hierarchy   = model.get_hierarchy(),
-    #ss_by_chain = False, # enabling will make it slow.
-    out         = null_out())
-  # Convert SS annotations into bool selections
-  alpha_sel = SS.annotation.overall_helix_selection().strip()
-  beta_sel  = SS.annotation.overall_sheet_selection().strip()
-  if(len(alpha_sel)==0 or alpha_sel=="()"): alpha_sel=None
-  if(len(beta_sel) ==0 or beta_sel =="()"):  beta_sel=None
-  if([alpha_sel, beta_sel].count(None)==0):
-    alpha_sel = model.selection(string="%s"%alpha_sel)
-    beta_sel  = model.selection(string="%s"%beta_sel)
-    loop_sel  = ~(alpha_sel | beta_sel)
-  elif(alpha_sel is not None):
-    alpha_sel = model.selection(string="%s"%alpha_sel)
-    loop_sel = ~alpha_sel
-  elif(beta_sel is not None):
-    beta_sel  = model.selection(string="%s"%beta_sel)
-    loop_sel  = ~beta_sel
-  else:
-    loop_sel = model.selection(string="all")
-  # Get individual stats
-  def get_selected(sel):
-    result = None
-    if(type(sel)==str and sel=="all"):
-      return find(model = model, a_DHA_cutoff=90).get_params_as_arrays()
-    elif(sel is not None and sel.count(True)>0):
-      result = find(
-        model = model.select(sel), a_DHA_cutoff=90).get_params_as_arrays()
-    return result
+  #
+  SS = get_ss_selections(hierarchy=model.get_hierarchy())
+  HB_all = find(model = model.select(flex.bool(model.size(), True)), a_DHA_cutoff=90
+    ).get_params_as_arrays(replace_with_empty_threshold=50)
+  HB_alpha = find(model = model.select(SS.both.h_sel), a_DHA_cutoff=90
+    ).get_params_as_arrays(replace_with_empty_threshold=50)
+  HB_beta = find(model = model.select(SS.both.s_sel), a_DHA_cutoff=90
+    ).get_params_as_arrays(replace_with_empty_threshold=50)
   result_dict = {}
-  result_dict["all"]   = get_selected(sel="all")
-  result_dict["alpha"] = get_selected(sel=alpha_sel)
-  result_dict["beta"]  = get_selected(sel=beta_sel)
+  result_dict["all"]   = HB_all
+  result_dict["alpha"] = HB_alpha
+  result_dict["beta"]  = HB_beta
 #  result_dict["loop"]  = get_selected(sel=loop_sel)
   # Load histograms for reference high-resolution d_HA and a_DHA
   pkl_fn = libtbx.env.find_in_repositories(
@@ -444,7 +480,8 @@ class find(object):
     if(write_eff_file):
       self.as_restraints()
 
-  def get_params_as_arrays(self, b=None, occ=None):
+  def get_params_as_arrays(self, b=None, occ=None,
+                           replace_with_empty_threshold=None):
     d_HA  = flex.double()
     a_DHA = flex.double()
     a_YAH = flex.double()
@@ -457,6 +494,11 @@ class find(object):
       a_DHA.append(r.a_DHA)
       if(len(r.a_YAH)>0):
         a_YAH.extend(flex.double(r.a_YAH))
+    if(replace_with_empty_threshold is not None and
+       d_HA.size()<replace_with_empty_threshold):
+      d_HA  = flex.double()
+      a_DHA = flex.double()
+      a_YAH = flex.double()
     return group_args(d_HA=d_HA, a_DHA=a_DHA, a_YAH=a_YAH)
 
   def get_counts(self, b=None, occ=None):
