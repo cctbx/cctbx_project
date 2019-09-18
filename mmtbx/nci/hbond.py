@@ -5,7 +5,6 @@ import math, sys, os
 from libtbx import group_args
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
-from mmtbx.secondary_structure import find_ss_from_ca
 from libtbx.utils import null_out
 import libtbx.load_env
 from libtbx import easy_pickle
@@ -175,11 +174,12 @@ def stats(model, prefix):
   #
   SS = get_ss_selections(hierarchy=model.get_hierarchy())
   HB_all = find(model = model.select(flex.bool(model.size(), True)), a_DHA_cutoff=90
-    ).get_params_as_arrays(replace_with_empty_threshold=50)
+    ).get_params_as_arrays(replace_with_empty_threshold=100)
   HB_alpha = find(model = model.select(SS.both.h_sel), a_DHA_cutoff=90
-    ).get_params_as_arrays(replace_with_empty_threshold=50)
+    ).get_params_as_arrays(replace_with_empty_threshold=100)
   HB_beta = find(model = model.select(SS.both.s_sel), a_DHA_cutoff=90
-    ).get_params_as_arrays(replace_with_empty_threshold=50)
+    ).get_params_as_arrays(replace_with_empty_threshold=100)
+  print (HB_all.d_HA.size())
   result_dict = {}
   result_dict["all"]   = HB_all
   result_dict["alpha"] = HB_alpha
