@@ -102,7 +102,6 @@ def tilting_plane(img, mask=None, zscore=2 ):
 
 def refine_model_from_angles(dxcryst, angles=(0, 0, 0)):
     from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
-    from copy import deepcopy
 
     C = nanoBragg_crystal()
 
@@ -118,8 +117,7 @@ def refine_model_from_angles(dxcryst, angles=(0, 0, 0)):
     RZ = z.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
     C.missetting_matrix = RX*RY*RZ
 
-    dxcryst_refined = deepcopy(dxcryst)
-    dxcryst_refined.set_A(C.Amatrix_realspace.inverse())
+    dxcryst_refined = C.dxtbx_crystal_with_missetting()
 
     return dxcryst_refined
 
