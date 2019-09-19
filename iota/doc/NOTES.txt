@@ -1,9 +1,11 @@
-IOTA v1.4.008 - bugfixes for command-line module
+IOTA v1.4.009 - clean-up bugs and address codebase changes
 
-- dry run option exits gracefully rather than trying and failing to process
-- iota.run can now process up to 10 individual images introduced as command-line
- args (hacky solution; need a better one)
-- iota.single_image now works as intended
+- removed all refernces to 'verbosity' parameter, which is no longer in stills
+  processor PHIL
+- check for IOTA PHIL adopting the 'gui' scope, which may already be included in
+  master PHIL
+- updated IOTA logging to better capture DIALS output
+- removed 'show_stdout' from IOTA job threads (that was for debugging)
 
-08.05.2019
+09.18.2019
 # -- end

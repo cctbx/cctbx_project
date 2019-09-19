@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 08/05/2019
+Last Changed: 09/18/2019
 Description : Runs spotfinding, indexing, refinement and integration using
               subclassed DIALS Stills Processor module. Selector class
               applies filters based on unit cell, space group, etc.
@@ -17,6 +17,7 @@ from iotbx.phil import parse
 from cctbx import sgtbx, crystal
 import copy
 
+from dials.util import log
 from dials.array_family import flex
 from dials.algorithms.indexing.symmetry import \
   refined_settings_factory_from_refined_triclinic
@@ -141,6 +142,7 @@ class IOTAImageProcessor(Processor):
     self.write_pickle = write_pickle
     self.write_logs = write_logs
     self.last_stage = last_stage
+    self.dlog_bookmark = 0
 
     # Get Processor PHIL and initialize Processor
     if self.iparams.cctbx_xfel.target:
@@ -217,6 +219,10 @@ class IOTAImageProcessor(Processor):
 
 
   def refine_bravais_settings(self, reflections, experiments):
+
+    # configure DIALS logging
+    log.config(verbosity=0, logfile=self.dials_log)
+
     proc_scope = phil_scope.format(python_object=self.params)
     sgparams = sg_scope.fetch(proc_scope).extract()
     sgparams.refinement.reflections.outlier.algorithm = 'tukey'
@@ -228,8 +234,7 @@ class IOTAImageProcessor(Processor):
       Lfat = refined_settings_factory_from_refined_triclinic(sgparams,
                                                              experiments,
                                                              reflections,
-                                                             lepage_max_delta=5,
-                                                             refiner_verbosity=10)
+                                                             lepage_max_delta=5)
     except Exception as e:
       # If refinement fails, reset to P1 (experiments remain modified by Lfat
       # if there's a refinement failure, which causes issues down the line)
@@ -346,9 +351,8 @@ class IOTAImageProcessor(Processor):
     # Write log entry into log file
     output.append(error_message)
     if self.write_logs:
-      with open(img_object.int_log, 'w') as tf:
-        for o in output:
-          tf.write('\n{}'.format(o))
+      self.write_int_log(path=img_object.int_log, output=output,
+                         log_entry=log_entry)
 
     return img_object
 
@@ -357,17 +361,25 @@ class IOTAImageProcessor(Processor):
     # write out DIALS info (tied to self.write_pickle)
     if self.write_pickle:
       pfx = os.path.splitext(img_object.obj_file)[0]
-      self.params.output.experiments_filename = pfx + '_experiments.json'
-      self.params.output.indexed_filename = pfx + '_indexed.pickle'
-      self.params.output.strong_filename = pfx + '_strong.pickle'
-      self.params.output.refined_experiments_filename = pfx + '_refined_experiments.json'
-      self.params.output.integrated_experiments_filename = pfx + '_integrated_experiments.json'
-      self.params.output.integrated_filename = pfx + '_integrated.pickle'
+      self.params.output.experiments_filename = pfx + '_imported.expt'
+      self.params.output.indexed_filename = pfx + '_indexed.refl'
+      self.params.output.strong_filename = pfx + '_strong.refl'
+      self.params.output.refined_experiments_filename = pfx + '_refined.expt'
+      self.params.output.integrated_experiments_filename = pfx + \
+                                                           '_integrated.expt'
+      self.params.output.integrated_filename = pfx + '_integrated.refl'
 
     # Set up integration pickle path and logfile
-    self.params.verbosity = 10
     self.params.output.integration_pickle = img_object.int_file
     self.int_log = img_object.int_log
+
+    # configure DIALS logging
+    dials_logging_dir = os.path.join(img_object.log_path, 'dials_logs')
+    if not os.path.isdir(dials_logging_dir):
+      os.makedirs(dials_logging_dir)
+    self.dials_log = os.path.join(dials_logging_dir,
+                                  os.path.basename(self.int_log))
+    log.config(verbosity=0, logfile=self.dials_log)
 
     # Create output folder if one does not exist
     if self.write_pickle:
@@ -411,10 +423,20 @@ class IOTAImageProcessor(Processor):
       except Exception as e:
         print ('DEBUG: cannot set detector! ', e)
 
+    # Write full params to file (DEBUG)
+    param_string = phil_scope.format(python_object=self.params).as_str()
+    full_param_dir = os.path.dirname(self.iparams.cctbx_xfel.target)
+    full_param_fn = 'full_' + os.path.basename(self.iparams.cctbx_xfel.target)
+    full_param_file = os.path.join(full_param_dir, full_param_fn)
+    with open(full_param_file, 'w') as ftarg:
+      ftarg.write(param_string)
+
     # **** SPOTFINDING **** #
     with util.Capturing() as output:
       try:
+        # debug:
         print ("{:-^100}\n".format(" SPOTFINDING: "))
+        print ('<--->')
         observed = self.find_spots(img_object.experiments)
         img_object.final['spots'] = len(observed)
       except Exception as e_spf:
@@ -432,12 +454,12 @@ class IOTAImageProcessor(Processor):
           print("{:-^100}\n\n".format(msg))
           e = 'Insufficient spots found ({})!'.format(len(observed))
           return self.error_handler(e, 'triage', img_object, output)
-    # proc_output.extend(output)
     if not observed:
       return self.error_handler(e_spf, 'spotfinding', img_object, output)
 
     if self.write_logs:
-      self.write_int_log(path=img_object.int_log, output=output)
+      self.write_int_log(path=img_object.int_log, output=output,
+                         dials_log=self.dials_log)
 
     # Finish if spotfinding is the last processing stage
     if 'spotfind' in self.last_stage:
@@ -461,7 +483,8 @@ class IOTAImageProcessor(Processor):
     # **** INDEXING **** #
     with util.Capturing() as output:
       try:
-        print ("{:-^100}\n".format(" INDEXING "))
+        print ("{:-^100}\n".format(" INDEXING"))
+        print ('<--->')
         experiments, indexed = self.index(img_object.experiments, observed)
       except Exception as e_idx:
         indexed = None
@@ -475,7 +498,8 @@ class IOTAImageProcessor(Processor):
 
     if indexed:
       if self.write_logs:
-        self.write_int_log(path=img_object.int_log, output=output)
+        self.write_int_log(path=img_object.int_log, output=output,
+                           dials_log=self.dials_log)
     else:
       return self.error_handler(e_idx, 'indexing', img_object, output)
 
@@ -483,7 +507,8 @@ class IOTAImageProcessor(Processor):
       # Bravais lattice and reindex
       if self.iparams.cctbx_xfel.determine_sg_and_reindex:
         try:
-          print ("{:-^100}\n".format(" DETERMINING SPACE GROUP "))
+          print ("{:-^100}\n".format(" DETERMINING SPACE GROUP"))
+          print('<--->')
           experiments, indexed = self.pg_and_reindex(indexed, experiments)
           img_object.final['indexed'] = len(indexed)
           lat = experiments[0].crystal.get_space_group().info()
@@ -498,7 +523,8 @@ class IOTAImageProcessor(Processor):
 
     if reindex_success:
       if self.write_logs:
-        self.write_int_log(path=img_object.int_log, output=output)
+        self.write_int_log(path=img_object.int_log, output=output,
+                           dials_log=self.dials_log)
     else:
       return self.error_handler(e_ridx, 'indexing', img_object, output)
 
@@ -507,6 +533,7 @@ class IOTAImageProcessor(Processor):
       try:
         experiments, indexed = self.refine(experiments, indexed)
         print ("{:-^100}\n".format(" INTEGRATING "))
+        print ('<--->')
         integrated = self.integrate(experiments, indexed)
       except Exception as e_int:
 
@@ -516,7 +543,11 @@ class IOTAImageProcessor(Processor):
           img_object.final['integrated'] = len(integrated)
           print ("{:-^100}\n\n".format(" FINAL {} INTEGRATED REFLECTIONS "
                                        "".format(len(integrated))))
-    if not integrated:
+    if integrated:
+      if self.write_logs:
+        self.write_int_log(path=img_object.int_log, output=output,
+                           dials_log=self.dials_log)
+    else:
       return self.error_handler(e_int, 'integration', img_object, output)
 
     # Filter
@@ -542,23 +573,36 @@ class IOTAImageProcessor(Processor):
     img_object.log_info.append(log_entry)
 
     if self.write_logs:
-      self.write_int_log(path=img_object.int_log, output=output,
-                         log_entry=log_entry)
-      # with open(img_object.int_log, 'w') as tf:
-      #   for i in proc_output:
-      #     if 'cxi_version' not in i:
-      #       tf.write('\n{}'.format(i))
-      #   tf.write('\n{}'.format(log_entry))
-
+      self.write_int_log(path=img_object.int_log, log_entry=log_entry)
     return img_object
 
-  def write_int_log(self, path, output, log_entry=None):
+  def write_int_log(self, path, output=None, log_entry=None, dials_log=None):
+    if output:
+      output = [i for i in output if 'cxi_version' not in i]
+      output_string = '\n'.join(output)
+    else:
+      output_string = ''
+    # insert DIALS logging output
+    if dials_log is not None:
+      with open(dials_log, 'r') as dlog:
+        dlog.seek(self.dlog_bookmark)
+        dials_log_lines = ['  {}'.format(l) for l in dlog.readlines()]
+        dials_log_string = ''.join(dials_log_lines)
+        self.dlog_bookmark = dlog.tell()
+      output_string = output_string.replace('<--->', dials_log_string)
+
+    # Add IOTA log entry if exists
+    if log_entry:
+      output_string += log_entry
+
+    # Write log to file
     with open(path, 'a') as tf:
-      for i in output:
-        if 'cxi_version' not in i:
-          tf.write('\n{}'.format(i))
-      if log_entry:
-        tf.write('\n{}'.format(log_entry))
+      tf.write(output_string)
+      # for i in output:
+      #   if 'cxi_version' not in i:
+      #     tf.write('\n{}'.format(i))
+      # if log_entry:
+      #   tf.write('\n{}'.format(log_entry))
 
 
   def collect_information(self, img_object):

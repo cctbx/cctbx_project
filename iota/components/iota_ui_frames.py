@@ -5,7 +5,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 08/01/2019
+Last Changed: 09/18/2019
 Description : IOTA GUI Windows / frames
 '''
 
@@ -319,8 +319,7 @@ class MainWindow(IOTABaseFrame):
       ('Advanced...',
        lambda evt: self.open_options_dialog(
          phil_index=self.bknd_index,
-         include=['verbosity', 'geometry', 'profile', 'prediction',
-                  'significance_filter'],
+         include=['geometry', 'profile', 'prediction', 'significance_filter'],
          title='Advanced Backend Options'))
     ]
     browse_menu = ct.Menu(self)
@@ -617,7 +616,14 @@ class MainWindow(IOTABaseFrame):
         import shutil
 
         try:
-          shutil.rmtree(self.proc_window.info.tmp_base)
+          # Clean up temp folders and files if necessary
+          if os.path.isdir(self.proc_window.info.tmp_base):
+            shutil.rmtree(self.proc_window.info.tmp_base)
+
+          dials_log_dir = os.path.join(self.proc_window.info.log_base,
+                                       'logs/dials_logs')
+          if os.path.isdir(dials_log_dir):
+            shutil.rmtree(dials_log_dir)
         except Exception:
           pass
         print('JOB TERMINATED!')
@@ -2498,7 +2504,9 @@ class ProcWindow(IOTABaseFrame):
 
       try:
         shutil.rmtree(self.info.tmp_base)
-      except Exception:
+        shutil.rmtree(os.path.join(self.info.log_base, 'dials_logs'))
+      except Exception as e:
+        print ('DEBUG: UNABLE TO DELETE FOLDER: {}'.format(e))
         pass
 
     # Export final info file

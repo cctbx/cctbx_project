@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 07/17/2019
+Last Changed: 09/18/2019
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -99,7 +99,6 @@ class JobSubmitThread(Thread):
       print(command)
       self.job = CustomRun(command=str(command), join_stdout_stderr=True)
       self.job.run()
-      self.job.show_stdout()
       if self.job_id is not None:
         print('JOB NAME = ', self.job_id)
       return

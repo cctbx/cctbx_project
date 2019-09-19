@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 07/17/2019
+Last Changed: 09/17/2019
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected. PHILFixer can be used to ensure
               backwards compatibility with older param sets.
@@ -453,29 +453,22 @@ def write_defaults(current_path=None, txt_out=None, method='cctbx_xfel',
     '''
   elif method.lower() in ('dials', 'cctbx.xfel', 'cctbx_xfel'):
     default_target = '''
-    verbosity=10
-    spotfinder
-    {
-      threshold
-      {
-        dispersion
-        {
+    spotfinder {
+      threshold {
+        dispersion {
           gain = 1
           sigma_strong = 3
           global_threshold = 0
         }
       }
     }
-    geometry
-    {
-      detector
-      {
+    geometry {
+      detector {
         distance = None
         slow_fast_beam_centre = None
       }
     }
-    indexing
-    {
+    indexing {
       refinement_protocol {
         d_min_start = 2.0
       }
@@ -485,8 +478,7 @@ def write_defaults(current_path=None, txt_out=None, method='cctbx_xfel',
         method_list = fft1d real_space_grid_search
       }
     }
-    refinement
-    {
+    refinement {
       parameterisation {
         beam.fix = *all in_spindle_plane out_spindle_plane wavelength
         detector  {
@@ -506,8 +498,7 @@ def write_defaults(current_path=None, txt_out=None, method='cctbx_xfel',
         }
       }
     }
-    integration
-    {
+    integration {
       integrator=stills
       profile.fitting=False
       background {
@@ -684,7 +675,7 @@ class PHILFixer():
     # Append GUI PHIL if it should be there:
     from libtbx.phil import find_scope
     gui_phil = find_scope(phil, 'gui')
-    if gui_phil:
+    if gui_phil and not find_scope(new_phil, 'gui'):
       from iota.components.gui.base import gui_phil
       new_phil.adopt_scope(gui_phil)
 
