@@ -164,6 +164,7 @@ class hklview_3d:
     self.settings = kwds.get("settings")
     self.ngl_settings = None #NGLsettings()
     self.viewerparams = None
+    self.params = None
     self.miller_array = None
     self.symops = []
     self.sg = None
@@ -314,6 +315,7 @@ class hklview_3d:
   def update_settings(self, diff_phil, curphilparam) :
     self.ngl_settings = curphilparam.viewer.NGL
     self.viewerparams = curphilparam.viewer
+    self.params = curphilparam
     if has_phil_path(diff_phil, "filename") \
      or has_phil_path(diff_phil, "spacegroup_choice") \
      or has_phil_path(diff_phil, "merge_data") \
@@ -1754,8 +1756,8 @@ mysocket.onmessage = function (e)
       { // default to no clipping if near >= far
         stage.viewer.parameters.clipMode = 'scene';
         stage.viewer.parameters.clipScale = 'relative';
-        near = 0;
-        far = 100;
+        near = -1000;
+        far = 1000;
       }
       stage.viewer.parameters.clipNear = near;
       stage.viewer.parameters.clipFar = far;
@@ -1911,9 +1913,9 @@ mysocket.onmessage = function (e)
                                )
           )
           self.cameratranslation = (flst[12], flst[13], flst[14])
-          self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=2 )
+          self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=3)
           self.cameradist = math.pow(ScaleRotMx.determinant(), 1.0/3.0)
-          self.mprint("distance: %s" %roundoff(self.cameradist), verbose=2)
+          self.mprint("distance: %s" %roundoff(self.cameradist), verbose=3)
           self.rotation_mx = ScaleRotMx/self.cameradist
           rotlst = roundoff(self.rotation_mx.elems)
           self.mprint("""Rotation matrix:
@@ -1928,17 +1930,18 @@ mysocket.onmessage = function (e)
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
-          """ %tuple(alllst), verbose=3)
+          """ %tuple(alllst), verbose=4)
+          self.params.mouse_moved = True
           if self.rotation_mx.is_r3_rotation_matrix():
             angles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
-            self.mprint("angles: %s" %str(roundoff(angles)), verbose=2)
+            self.mprint("angles: %s" %str(roundoff(angles)), verbose=3)
             z_vec = flex.vec3_double( [(0,0,1)])
             self.rot_zvec = z_vec * self.rotation_mx
-            self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=2)
+            self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=3)
             rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().fractionalization_matrix() )
             self.rot_recip_zvec = self.rot_zvec * rfracmx
             self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
-            self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=2)
+            self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=3)
         else:
           self.mprint( message, verbose=4)
         self.lastmsg = message
@@ -1959,6 +1962,7 @@ mysocket.onmessage = function (e)
         self.clipNear = flst[0]
         self.clipFar = flst[1]
         self.cameraPosZ = flst[2]
+        self.params.normal_clip_plane.clipwidth = None
       if "ReturnBoundingBox:" in message:
         datastr = message[ message.find("\n") + 1: ]
         lst = datastr.split(",")
@@ -2158,8 +2162,11 @@ mysocket.onmessage = function (e)
   def AddVector(self, r1, r2, r3, isreciprocal=True):
     vec = (r1, r2, r3)
     svec = list(vec)
+    uc = self.miller_array.unit_cell()
     if isreciprocal:
-      vec = self.miller_array.unit_cell().reciprocal_space_vector((r1, r2, r3))
+      # uc.reciprocal_space_vector() only takes integer miller indices so compute
+      # the cartesian coordinates for real valued miller indices with the transpose of the fractionalization matrix
+      vec = list(vec*matrix.sqr(uc.fractionalization_matrix()).transpose())
       svec = [vec[0]*self.scene.renderscale, vec[1]*self.scene.renderscale, vec[2]*self.scene.renderscale ]
     self.mprint("cartesian vector is: " + str(roundoff(svec)), verbose=1)
     xyvec = svec[:]
@@ -2171,7 +2178,6 @@ mysocket.onmessage = function (e)
     else:
       self.angle_x_xyvec = 90.0
       self.angle_y_xyvec = 90.0
-    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(self.angle_x_xyvec, self.angle_y_xyvec), verbose=2)
     yzvec = svec[:]
     yzvec[0] = 0.0 # projection vector of svec in the yz plane
     yzvecnorm = math.sqrt( yzvec[1]*yzvec[1] + yzvec[2]*yzvec[2] )
@@ -2181,17 +2187,25 @@ mysocket.onmessage = function (e)
     else:
       self.angle_y_yzvec = 90.0
       self.angle_z_yzvec = 90.0
-    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(self.angle_y_yzvec, self.angle_z_yzvec), verbose=2)
     svecnorm = math.sqrt( svec[0]*svec[0] + svec[1]*svec[1] + svec[2]*svec[2] )
     self.angle_x_svec = math.acos( svec[0]/svecnorm )*180.0/math.pi
     self.angle_y_svec = math.acos( svec[1]/svecnorm )*180.0/math.pi
     self.angle_z_svec = math.acos( svec[2]/svecnorm )*180.0/math.pi
+    if self.angle_y_svec > 90.0:
+      self.angle_x_xyvec = -self.angle_x_xyvec
+
+    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(self.angle_x_xyvec, self.angle_y_xyvec), verbose=2)
+    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(self.angle_y_yzvec, self.angle_z_yzvec), verbose=2)
     self.mprint("angles to x,y,z axis are: %s, %s, %s" %(self.angle_x_svec, self.angle_y_svec, self.angle_z_svec ), verbose=2)
     self.msgqueue.append( ("AddVector", "%s, %s, %s" %tuple(svec) ))
 
 
-  def PointVectorOut(self):
+  def PointVectorPerpendicularToClipPlane(self):
     self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
+
+
+  def PointVectorParallelToClipPlane(self):
+    self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec+90.0, 90.0 ))
 
 
   def fix_orientation(self, val):
@@ -2203,6 +2217,7 @@ mysocket.onmessage = function (e)
 
   def clip_plane_normal_to_HKL_vector(self, h, k, l, hkldist=0.0,
              clipwidth=None, fixorientation=True):
+    # create clip plane that is normal to the reciprocal hkl vector
     if h==0.0 and k==0.0 and l==0.0 or clipwidth==None:
       self.RemoveNormalVectorToClipPlane()
       return
@@ -2213,7 +2228,7 @@ mysocket.onmessage = function (e)
       self.DisableMouseRotation()
     else:
       self.EnableMouseRotation()
-    self.PointVectorOut()
+    self.PointVectorPerpendicularToClipPlane()
     halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
     if clipwidth is None:
       clipwidth = self.meanradius
@@ -2221,6 +2236,50 @@ mysocket.onmessage = function (e)
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
     self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
     self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
+
+
+  def clip_plane_normal_to_ABC_vector(self, a, b, c, hkldist=0.0,
+             clipwidth=None, fixorientation=True):
+    # create clip plane that is normal to the realspace fractional abc vector
+    if a==0.0 and b==0.0 and c==0.0 or clipwidth==None:
+      self.RemoveNormalVectorToClipPlane()
+      return
+    self.RemoveAllReciprocalVectors()
+    R = -c*self.normal_hk + a*self.normal_kl + b*self.normal_lh
+    self.AddVector(R[0][0], R[0][1], R[0][2])
+    if fixorientation:
+      self.DisableMouseRotation()
+    else:
+      self.EnableMouseRotation()
+    self.PointVectorPerpendicularToClipPlane()
+    halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
+    if clipwidth is None:
+      clipwidth = self.meanradius
+    clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
+    clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
+    self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
+    self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
+
+
+  def clip_plane_to_HKL_vector(self, h, k, l, hkldist=0.0,
+             clipwidth=None, fixorientation=True):
+    if h==0.0 and k==0.0 and l==0.0 or clipwidth==None:
+      self.RemoveNormalVectorToClipPlane()
+      return
+    self.RemoveAllReciprocalVectors()
+    self.AddVector(h, k, l, isreciprocal=False)
+    if fixorientation:
+      self.DisableMouseRotation()
+    else:
+      self.EnableMouseRotation()
+    self.PointVectorPerpendicularToClipPlane()
+    halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
+    if clipwidth is None:
+      clipwidth = self.meanradius
+    clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
+    clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
+    self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
+    self.TranslateHKLpoints(h,k,l, hkldist)
 
 
   def RemoveNormalVectorToClipPlane(self):
@@ -2300,12 +2359,13 @@ mysocket.onmessage = function (e)
 
 
   def RotateStage(self, eulerangles):
+    eulerangles1 = eulerangles
     #uc = self.miller_array.unit_cell()
     #OrtMx = matrix.sqr( uc.orthogonalization_matrix())
     #InvMx = OrtMx.inverse()
     #RotMx = matrix.sqr( (1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0 ) )
     #ortrot = (OrtMx * RotMx * InvMx).as_mat3()
-    radangles = [e*math.pi/180.0 for e in eulerangles]
+    radangles = [e*math.pi/180.0 for e in eulerangles1]
     RotMx = scitbx.math.euler_angles_as_matrix(radangles)
     scaleRot = RotMx * self.cameradist
     ortrot = scaleRot.as_mat3()
