@@ -1,5 +1,5 @@
 
-def process_simdata(plot=False, perturb="rotXYZ"):
+def process_simdata(plot=False, angles=None, perturb="rotXYZ"):
     """
     returns data needed for refinement script as a 5-tuple:
     --> spot_roi, spot_hkl, perturbed Amatrix, ground truth Amatrix
@@ -8,7 +8,8 @@ def process_simdata(plot=False, perturb="rotXYZ"):
     import numpy as np
     from scitbx.matrix import sqr, col
     from simtbx.diffBragg import utils
-    from simtbx.diffBragg.sim_data_for_tests import SimData
+    #from simtbx.diffBragg.sim_data_for_tests import SimData
+    from simtbx.diffBragg.sim_data2 import SimData
     if plot:
         import pylab as plt
 
@@ -16,8 +17,7 @@ def process_simdata(plot=False, perturb="rotXYZ"):
     #<><><><><><><><><><><><><>
     S = SimData()
     S.instantiate_diffBragg()
-    S._add_diffBragg_spots()
-    spots = S.D.raw_pixels.as_numpy_array()
+    #S._add_diffBragg_spots()
     img = S.generate_simulated_image()
 
     # STEP 2: find the strong spots
@@ -42,14 +42,15 @@ def process_simdata(plot=False, perturb="rotXYZ"):
         y = col((0, -1, 0))
         z = col((0, 0, -1))
 
-        np.random.seed(1)
-        angles = np.random.uniform(0, 0.04, 3)
+        if angles is None:
+            np.random.seed(1)
+            angles = np.random.uniform(0, 0.04, 3)
+            angles = 0.3, 0.05, 0.3
         RX = x.axis_and_angle_as_r3_rotation_matrix(angles[0], deg=True)
-        RX = x.axis_and_angle_as_r3_rotation_matrix(0.0045, deg=True)
-        RY = y.axis_and_angle_as_r3_rotation_matrix(0.08, deg=True)
+        RY = y.axis_and_angle_as_r3_rotation_matrix(angles[1], deg=True)
         RZ = z.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
-
-        Areal_approx = RY*Areal_GrnTru
+        misset = RX*RY*RZ
+        Areal_approx = misset*Areal_GrnTru
     #elif perturb=="ucell":
     #    ucell_truth = S.Fhkl.unit_cell()
     #    from cctbx import crystal
@@ -65,7 +66,7 @@ def process_simdata(plot=False, perturb="rotXYZ"):
         from itertools import cycle
         S.D.Amatrix = Areal_approx.inverse()
         S.D.raw_pixels*=0
-        S._add_diffBragg_spots()
+        S._add_nanoBragg_spots()
         S._add_background()
         S._add_noise()
         img_approx = S.D.raw_pixels.as_numpy_array()
@@ -85,7 +86,7 @@ def process_simdata(plot=False, perturb="rotXYZ"):
     # STEP 4 : assign miller indices to strong spots using perturbed A matrix
     #<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     # get the momentum transfer vectors of each strong spot
-    q_vecs = utils.x_y_to_q(fs_spot,ss_spot,detector=S.detector, beam=S.beam)
+    q_vecs = utils.x_y_to_q(fs_spot, ss_spot, detector=S.detector, beam=S.beam.xray_beams[0])
 
     # multiply with the real-space Amatrix in order to get fractional miller indices
     hkl = np.dot(Areal_approx.as_numpy_array(), q_vecs.T)
@@ -114,11 +115,12 @@ def process_simdata(plot=False, perturb="rotXYZ"):
     spot_roi = np.zeros((num_spots, 4), int)
     if plot:
         patches = []
-    for i_spot, (x_com, y_com) in enumerate( zip( fs_spot, ss_spot)):
+    img_shape = S.detector[0].get_image_size()
+    for i_spot, (x_com, y_com) in enumerate(zip(fs_spot, ss_spot)):
         i1 = int(max(x_com - shoebox_sz / 2., 0))
-        i2 = int(min(x_com + shoebox_sz / 2., S.image_shape[0]))
+        i2 = int(min(x_com + shoebox_sz / 2., img_shape[0]))
         j1 = int(max(y_com - shoebox_sz / 2., 0))
-        j2 = int(min(y_com + shoebox_sz / 2., S.image_shape[1]))
+        j2 = int(min(y_com + shoebox_sz / 2., img_shape[1]))
 
         shoebox_img = img[j1:j2, i1:i2]
         shoebox_mask = is_bg_pixel[j1:j2, i1:i2]
@@ -144,7 +146,7 @@ def process_simdata(plot=False, perturb="rotXYZ"):
         plt.gca().add_collection(patch_coll)
         plt.show()
 
-    return spot_roi, hkli, Areal_approx, Areal_GrnTru, tilt_abc, img
+    return spot_roi, hkli, Areal_approx, Areal_GrnTru, tilt_abc, img, misset
 
 if __name__=="__main__":
-    out = process_simdata(plot=False)
+    out = process_simdata(plot=True)

@@ -4,20 +4,42 @@ from simtbx.nanoBragg import shapetype, nanoBragg
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.nanoBragg_beam import nanoBragg_beam
 from simtbx.diffBragg import diffBragg
+from scitbx.matrix import sqr
 
 
 class SimData:
     def __init__(self):
-        self.detector = SimData.simple_detector(180, 0.1, (1800, 1800))
+        self.detector = SimData.simple_detector(180, 0.1, (512, 512))
         self.seed = 1
         self.crystal = nanoBragg_crystal()
-        self.beam = nanoBragg_beam()
+        self.add_air = False
+        self.add_background = True
+        self.water_path_mm = 0.005
+        self.air_path_mm = 0
+        nbBeam = nanoBragg_beam()
+        nbBeam.unit_s0 = (0, 0, -1)
+        self.beam = nbBeam
         self.using_cuda = False
         self.panel_id = 0
-        self.include_background = True
         self.include_noise = True
         self.using_diffBragg_spots = False
         self.functionals = []
+
+    @property
+    def air_path(self):
+        return self._air_path
+
+    @air_path.setter
+    def air_path(self, val):
+        self._air_path = val
+
+    @property
+    def water_path(self):
+        return self._water_path
+
+    @water_path.setter
+    def water_path(self, val):
+        self._water_path = val
 
     @property
     def crystal(self):
@@ -60,6 +82,22 @@ class SimData:
         return UMAT_nm
 
     @property
+    def add_air(self):
+        return self._add_air
+
+    @add_air.setter
+    def add_air(self, val):
+        self._add_air = val
+
+    @property
+    def add_water(self):
+        return self._add_water
+
+    @add_water.setter
+    def add_water(self, val):
+        self._add_water = val
+
+    @property
     def panel_id(self):
         return self._panel_id
 
@@ -94,14 +132,6 @@ class SimData:
         self._using_cuda = val
 
     @property
-    def include_background(self):
-        return self._include_background
-
-    @include_background.setter
-    def include_background(self, val):
-        self._include_background = val
-
-    @property
     def include_noise(self):
         return self._include_noise
 
@@ -116,8 +146,11 @@ class SimData:
             self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data()
 
         self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
-        #self.D.Amatrix = self.crystal.Amatrix_realspace  #.transpose()
-        self.D.Amatrix_RUB = self.crystal.Amatrix_realspace  #.transpose()
+
+        astar, bstar, cstar = self.crystal.astar_bstar_cstar_misset
+        self.D.Amatrix = sqr(astar + bstar + cstar)
+
+        #self.D.Amatrix = self.crystal.Amatrix_realspace.inverse().transpose()
         self.D.Ncells_abc = self.crystal.Ncells_abc
         self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
         self.D.mosaic_domains = self.crystal.n_mos_domains
@@ -145,15 +178,15 @@ class SimData:
         setattr(self.D, parameter, value)
 
     def instantiate_diffBragg(self, verbose=0, oversample=0, device_Id=0,
-                              amorphous_sample_thick_mm=0.005, adc_offset=0, default_F=1e3):
+                              adc_offset=0, default_F=1e3, interpolate=0):
 
         self.D = diffBragg(self.detector, self.beam.xray_beams[0],
                            verbose=verbose, panel_id=self.panel_id)
         self._seedlings()
+        self.D.interpolate = interpolate
         self._crystal_properties()
         self._beam_properties()
         self.D.spot_scale = self.determine_spot_scale()
-        self.D.amorphous_sample_thick_mm = amorphous_sample_thick_mm
         self.D.adc_offset_adu = adc_offset
         self.D.default_F = default_F
 
@@ -169,9 +202,7 @@ class SimData:
         self.instantiate_diffBragg()
         print ("add spots")
         self._add_nanoBragg_spots()
-        if self.include_background:
-            print ("add background")
-            self._add_background()
+        self._add_background()
         if self.include_noise:
             print("add noise")
             self._add_noise()
@@ -188,21 +219,31 @@ class SimData:
                 self.D.add_nanoBragg_spots()
 
     def _add_background(self):
-        water_scatter = flex.vec2_double(
-            [(0, 2.57), (0.0365, 2.58), (0.07, 2.8), (0.12, 5), (0.162, 8), (0.2, 6.75), (0.18, 7.32),
-             (0.216, 6.75), (0.236, 6.5), (0.28, 4.5), (0.3, 4.3), (0.345, 4.36), (0.436, 3.77), (0.5, 3.17)])
-        self.D.Fbg_vs_stol = water_scatter
-        self.D.amorphous_density_gcm3 = 1
-        self.D.amorphous_molecular_weight_Da = 18
-        #self.D.xray_beams = self.xray_beams_for_background
-        self.D.add_background()  # (0, 1)
-        #self.D.xray_beams = self.beam.xray_beams
+        if self.add_water:
+            print("add water %f mm" % self.water_path_mm)
+            water_scatter = flex.vec2_double(
+                [(0, 2.57), (0.0365, 2.58), (0.07, 2.8), (0.12, 5), (0.162, 8), (0.2, 6.75), (0.18, 7.32),
+                 (0.216, 6.75), (0.236, 6.5), (0.28, 4.5), (0.3, 4.3), (0.345, 4.36), (0.436, 3.77), (0.5, 3.17)])
+            self.D.Fbg_vs_stol = water_scatter
+            self.D.amorphous_sample_thick_mm = self.water_path_mm
+            self.D.amorphous_density_gcm3 = 1
+            self.D.amorphous_molecular_weight_Da = 18
+            self.D.add_background(1, 0)
+
+        if self.add_air:
+            print("add air %f mm"% self.air_path_mm)
+            air_scatter = flex.vec2_double([(0, 14.1), (0.045, 13.5), (0.174, 8.35), (0.35, 4.78), (0.5, 4.22)])
+            self.D.Fbg_vs_stol = air_scatter
+            self.D.amorphous_sample_thick_mm = self.air_path_mm
+            self.D.amorphous_density_gcm3 = 1.2e-3
+            self.D.amorphous_sample_molecular_weight_Da = 28  # nitrogen = N2
+            self.D.add_background(1, 0)
 
     def _add_noise(self):
         self.D.detector_psf_kernel_radius_pixels = 5
         self.D.detector_psf_type = shapetype.Unknown  # for CSPAself.D
         self.D.detector_psf_fwhm_mm = 0
-        self.D.quantum_gain = 1 #self.gain
+        #self.D.quantum_gain = 1 #self.gain
         self.D.add_noise()
 
     @staticmethod
