@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-import math
+#import math
 from libtbx import group_args
 from scitbx import matrix
 from libtbx.str_utils import make_sub_header
@@ -596,6 +596,10 @@ class manager():
   def _is_hbond(self, item, fsc0):
     """
     Check if a nonbonded proxy is a H bond
+
+    Parameters:
+      item: list item of nonbonded_list
+      fsc0: shell_sym_table
     """
     is_hbond = False
 
