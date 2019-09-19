@@ -130,7 +130,8 @@ def get_ss_selections(hierarchy, filter_short=True):
   try:
     ksdssp  = one(hierarchy=hierarchy, method="ksdssp")
   except KeyboardInterrupt: raise
-  except: pass
+  except: pass # intentional
+               # really don't know what else to do here!
   # both
   if([ksdssp, from_ca].count(None)==0):
     h_sel = ksdssp.h_sel & from_ca.h_sel
@@ -287,12 +288,11 @@ def precheck(atoms, i, j, Hs, As, Ds, fsc0):
       is_candidate = False
   return is_candidate
 
-def get_D_H_A_Y(p, Hs, fsc0, rt_mx_ji, fm, om, atoms):
+def get_D_H_A_Y(i, j, Hs, fsc0, rt_mx_ji, fm, om, atoms):
   """
   Get atom objects for donor and acceptor atoms
   Apply symmetry op if necessary, so that correct geometry can be calculated
   """
-  i, j = p.i_seq, p.j_seq
   Y = []
   if(atoms[i].element in Hs):
     H = atoms[i]
@@ -415,7 +415,8 @@ class find(object):
         rt_mx_ji = p.rt_mx_ji
       #
       D, H, A, Y, atom_A, atom_H, atom_D = get_D_H_A_Y(
-        p        = p,
+        i        = i,
+        j        = j,
         Hs       = Hs,
         fsc0     = fsc0,
         rt_mx_ji = rt_mx_ji,
