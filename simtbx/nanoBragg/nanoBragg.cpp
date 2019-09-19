@@ -2915,10 +2915,12 @@ nanoBragg::add_background( int oversample, int source )
     /* allow user to override automated oversampling decision at call time with arguments */
     if(oversample<=0) oversample = this->oversample;
     if(oversample<=0) oversample = 1;
+    bool single_source = false;
     if(source>=0) {
         /* user-specified source in the argument */
         source_start = source;
         sources = source_start +1;
+        single_source = true;
     }
 
     /* make sure we are normalizing with the right number of sub-steps */
@@ -3042,7 +3044,10 @@ nanoBragg::add_background( int oversample, int source )
                             }
 
                             /* accumulate unscaled pixel intensity from this */
-                            Ibg += sign*Fbg*Fbg*polar*omega_pixel*source_I[source]*capture_fraction;
+                            if (single_source)
+                                Ibg += sign*Fbg*Fbg*polar*omega_pixel*capture_fraction;
+                            else
+                                Ibg += sign*Fbg*Fbg*polar*omega_pixel*source_I[source]*capture_fraction;
                             if(verbose>7 && i==1)printf("DEBUG: Fbg= %g polar= %g omega_pixel= %g source[%d]= %g capture_fraction= %g\n",
                                                            Fbg,polar,omega_pixel,source,source_I[source],capture_fraction);
                         }
