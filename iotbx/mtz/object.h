@@ -601,26 +601,43 @@ namespace mtz {
               float* newarray = NULL;
               float* oldarray = ptr()->xtal[x]->set[s]->col[c]->ref;
               ccp4array_new_size(newarray, newsize);
+              float* next_place_to_copy_to = newarray;
 
-              std::size_t skip_pointer = 0; // pointer into iref
-              std::size_t copy_pointer = 0; // pointer into newarray
-
-              for (std::size_t i = 0; i < oldsize; i++) {
-                // determine whether reflection i should be copied
-                if (skip_pointer < iref.size() && iref[skip_pointer] == i) {
-                  // skip i, advance skip_pointer
-                  skip_pointer++;
+              for (std::size_t i = 0; i < iref.size(); i++) {
+                // i is the next element to be deleted
+                // we want to copy elements [iref[i-1]+1:iref[i]-1] inclusive
+                int copy_start;
+                if (i == 0) {
+                  copy_start = 0; // first element: copy [0:iref[i]-1] inclusive
                 } else {
-                  // copy reflection i of oldarray into newarray at position copy_pointer
-                  newarray[copy_pointer++] = oldarray[i];
+                  copy_start = iref[i-1]+1;
                 }
+                int copy_end = iref[i]-1;
+                if (copy_start <= copy_end) {
+                  // there are elements to copy
+                  int elements_to_copy = copy_end - copy_start + 1;
+                  memcpy(next_place_to_copy_to,
+                         oldarray + copy_start,
+                         elements_to_copy * sizeof(float));
+                  next_place_to_copy_to += elements_to_copy;
+                }
+              }
+
+              // copy rest of list [iref[last]+1:end]
+              int copy_start = iref[iref.size()-1]+1;
+              int elements_to_copy = (oldsize-1) - copy_start + 1;
+              if (elements_to_copy > 0) {
+                memcpy(next_place_to_copy_to,
+                       oldarray + copy_start,
+                       elements_to_copy * sizeof(float));
+                next_place_to_copy_to += elements_to_copy;
               }
               // Put new array in place
               ptr()->xtal[x]->set[s]->col[c]->ref = newarray;
               // Destroy old array
               ccp4array_free(oldarray);
               // Sanity check.
-              IOTBX_ASSERT(copy_pointer == newsize);
+              IOTBX_ASSERT(next_place_to_copy_to == (newarray + newsize));
             }
 
         // Finally update the number of reflections
