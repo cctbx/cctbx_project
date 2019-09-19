@@ -360,6 +360,7 @@ class HKLViewFrame() :
       self.currentphil = self.currentphil.fetch(source = extraphil)
     self.params = self.currentphil.fetch().extract()
     self.viewer.viewerparams = self.params.NGL_HKLviewer.viewer
+    self.viewer.params = self.params.NGL_HKLviewer
     self.viewer.symops = []
     self.viewer.sg = None
     self.viewer.proc_arrays = []
@@ -405,19 +406,22 @@ class HKLViewFrame() :
   def update_settings(self, new_phil=None):
     try:
       if not new_phil:
+        self.params.NGL_HKLviewer = self.viewer.params
         new_phil = self.master_phil.format(python_object = self.params)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.currentphil, diff_phil = self.GetNewCurrentPhilFromPython(new_phil, self.currentphil)
-      diff = None
-      if len(diff_phil.all_definitions()) < 1:
+      #diff = None
+      self.params = self.currentphil.extract()
+      phl = self.params.NGL_HKLviewer
+      if len(diff_phil.all_definitions()) < 1 and not phl.mouse_moved:
         self.mprint( "Nothing's changed")
         return False
 
-      diff = diff_phil.extract().NGL_HKLviewer
+      #diff = diff_phil.extract().NGL_HKLviewer
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
-      self.params = self.currentphil.extract()
-      phl = self.params.NGL_HKLviewer
+      #self.params = self.currentphil.extract()
+      #phl = self.params.NGL_HKLviewer
 
       if view_3d.has_phil_path(diff_phil, "filename"):
         self.ResetPhilandViewer(diff_phil)
@@ -463,6 +467,7 @@ class HKLViewFrame() :
       self.mprint( msg, verbose=1)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.NewFileLoaded = False
+      phl.mouse_moved = False
       if (self.viewer.miller_array is None) :
         self.mprint( NOREFLDATA, True)
         return False
@@ -962,6 +967,7 @@ class HKLViewFrame() :
 
   def ClipPlaneNormalToHKLvector(self, h, k, l, hkldist=0.0,
              clipwidth=None, fixorientation=True):
+    # clip planes are removed if h,k,l = 0,0,0
     self.params.NGL_HKLviewer.normal_clip_plane.h = h
     self.params.NGL_HKLviewer.normal_clip_plane.k = k
     self.params.NGL_HKLviewer.normal_clip_plane.l = l
@@ -1042,6 +1048,8 @@ NGL_HKLviewer {
   spacegroup_choice = None
     .type = int
   using_space_subgroup = False
+    .type = bool
+  mouse_moved = False
     .type = bool
   normal_clip_plane {
     h = 2.0
