@@ -103,7 +103,8 @@ class reader(iotbx_shelx_ext.hklf_reader):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=None):
     from cctbx import miller
     from cctbx import crystal
     if (crystal_symmetry is None):
@@ -112,7 +113,9 @@ class reader(iotbx_shelx_ext.hklf_reader):
       base_array_info = miller.array_info(source_type="shelx_hklf")
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
-      indices=self.indices()).auto_anomalous()
+      indices=self.indices(), anomalous_flag=anomalous)
+    if anomalous is not None:
+      miller_set = miller_set.auto_anomalous()
     miller_arrays = []
     obs = (miller.array(
       miller_set=miller_set,

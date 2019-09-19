@@ -919,13 +919,15 @@ class dataset_statistics(object):
     print("for refinement.", file=out)
 
 def select_data(file_name, data_labels, log=None,
-    assume_shelx_observation_type_is=None, allow_amplitudes=None):
+    assume_shelx_observation_type_is=None, allow_amplitudes=None, anomalous=None):
   if (log is None) : log = null_out()
   from iotbx import reflection_file_reader
   hkl_in = reflection_file_reader.any_reflection_file(file_name)
   print("Format:", hkl_in.file_type(), file=log)
   miller_arrays = hkl_in.as_miller_arrays(merge_equivalents=False,
-    assume_shelx_observation_type_is=assume_shelx_observation_type_is)
+    assume_shelx_observation_type_is=assume_shelx_observation_type_is,
+    anomalous=anomalous,
+  )
   if ((hkl_in.file_type() == "shelx_hklf") and (not "=" in file_name)
        and assume_shelx_observation_type_is is None):
     print("WARNING: SHELX file is assumed to contain intensities", file=log)

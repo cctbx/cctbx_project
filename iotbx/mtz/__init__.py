@@ -528,6 +528,7 @@ class _():
         merge_equivalents=True,
         base_array_info=None,
         include_unmerged_data=False,
+        anomalous=None,
         ):
     assert not include_unmerged_data, "Unmerged data not supported in MTZ"
     other_symmetry = crystal_symmetry
@@ -553,7 +554,9 @@ class _():
           crystal_symmetry_from_file=crystal_symmetry_from_file,
           crystal_symmetry=crystal_symmetry,
           base_array_info=base_dataset_info,
-          dataset=dataset)
+          dataset=dataset,
+          anomalous=anomalous,
+        )
         for column_group in column_groups:
           if (merge_equivalents
               and isinstance(column_group.data(), flex.double)
@@ -613,7 +616,8 @@ class _():
         base_array_info,
         dataset,
         strict=True,
-        skip_incompatible_values=True):
+        skip_incompatible_values=True,
+        anomalous=None):
     known_mtz_column_types = "".join(column_type_legend)
     assert len(known_mtz_column_types) == 17 # safety guard
     all_columns = dataset.columns()
@@ -760,7 +764,9 @@ class _():
         primary_column_type=t0,
         labels=labels,
         group=group,
-        observation_type=observation_type))
+        observation_type=observation_type,
+        anomalous=anomalous,
+      ))
     return groups
 
 def column_group(
@@ -770,26 +776,33 @@ def column_group(
       primary_column_type,
       labels,
       group,
-      observation_type):
+      observation_type,
+      anomalous=None):
   assert group.data.size() == group.indices.size()
   sigmas = getattr(group, "sigmas", None)
   if (sigmas is not None): assert sigmas.size() == group.indices.size()
-  if (group.anomalous_flag):
+  if anomalous is not None:
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
       indices=group.indices,
-      anomalous_flag=True)
-    if (miller_set.n_bijvoet_pairs() == 0):
-      # account for non-sensical files generated via
-      # ccp4i "import merged data" tab with default parameters
+      anomalous_flag=anomalous)
+  else:
+    if (group.anomalous_flag):
       miller_set = miller.set(
         crystal_symmetry=crystal_symmetry,
         indices=group.indices,
-        anomalous_flag=False)
-  else:
-    miller_set = miller.set(
-      crystal_symmetry=crystal_symmetry,
-      indices=group.indices).auto_anomalous(min_fraction_bijvoet_pairs=2/3.)
+        anomalous_flag=True)
+      if (miller_set.n_bijvoet_pairs() == 0):
+        # account for non-sensical files generated via
+        # ccp4i "import merged data" tab with default parameters
+        miller_set = miller.set(
+          crystal_symmetry=crystal_symmetry,
+          indices=group.indices,
+          anomalous_flag=False)
+    else:
+      miller_set = miller.set(
+        crystal_symmetry=crystal_symmetry,
+        indices=group.indices).auto_anomalous(min_fraction_bijvoet_pairs=2/3.)
   result = miller_set.array(
     data=group.data,
     sigmas=sigmas).set_info(
