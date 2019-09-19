@@ -91,7 +91,9 @@ already be on a common scale, but with individual observations unmerged.
     file_name=params.file_name,
     data_labels=params.labels,
     log=out,
-    assume_shelx_observation_type_is=assume_shelx_observation_type_is)
+    assume_shelx_observation_type_is=assume_shelx_observation_type_is,
+    anomalous=params.anomalous,
+  )
   params.labels = i_obs.info().label_string()
   validate_params(params)
   symm = sg = uc = None

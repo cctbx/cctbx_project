@@ -162,7 +162,12 @@ class reader(object):
       unit_cell=None,
       space_group_info=self.space_group_info())
 
-  def unmerged_miller_set(self, crystal_symmetry=None, force_symmetry=False):
+  def unmerged_miller_set(self,
+                          crystal_symmetry=None,
+                          force_symmetry=False,
+                          anomalous=True):
+    if anomalous is None:
+      anomalous = True
     if (not force_symmetry
         or crystal_symmetry is None
         or crystal_symmetry.space_group_info() is None):
@@ -174,13 +179,14 @@ class reader(object):
         other_symmetry=crystal_symmetry,
         force=force_symmetry),
       indices=self.original_indices,
-      anomalous_flag=True)
+      anomalous_flag=anomalous)
 
   def as_miller_array(self,
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=True):
     if (base_array_info is None):
       base_array_info = miller.array_info(
         source_type="scalepack_no_merge_original_index")
@@ -191,7 +197,8 @@ class reader(object):
     result = miller.array(
       miller_set=self.unmerged_miller_set(
         crystal_symmetry=crystal_symmetry,
-        force_symmetry=True),
+        force_symmetry=True,
+        anomalous=anomalous),
       data=self.i_obs,
       sigmas=self.sigmas)
     if (merge_equivalents):
@@ -207,22 +214,29 @@ class reader(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
-    return [self.as_miller_array(
-      crystal_symmetry=crystal_symmetry,
-      force_symmetry=force_symmetry,
-      merge_equivalents=merge_equivalents,
-      base_array_info=base_array_info),
-            self.batch_as_miller_array(
-      crystal_symmetry=crystal_symmetry,
-      force_symmetry=force_symmetry,
-      base_array_info=base_array_info),
-            ]
+        base_array_info=None,
+        anomalous=True):
+    return [
+      self.as_miller_array(
+        crystal_symmetry=crystal_symmetry,
+        force_symmetry=force_symmetry,
+        merge_equivalents=merge_equivalents,
+        base_array_info=base_array_info,
+        anomalous=anomalous,
+      ),
+      self.batch_as_miller_array(
+        crystal_symmetry=crystal_symmetry,
+        force_symmetry=force_symmetry,
+        base_array_info=base_array_info,
+        anomalous=anomalous,
+      ),
+    ]
 
   def batch_as_miller_array(self,
         crystal_symmetry=None,
         force_symmetry=False,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=True):
     if (base_array_info is None):
       base_array_info = miller.array_info(
         source_type="scalepack_no_merge_original_index")
@@ -233,7 +247,8 @@ class reader(object):
     return miller.array(
       miller_set=self.unmerged_miller_set(
         crystal_symmetry=crystal_symmetry,
-        force_symmetry=True),
+        force_symmetry=True,
+        anomalous=anomalous),
       data=self.batch_numbers).set_info(
         base_array_info.customized_copy(
           labels=["BATCH"],

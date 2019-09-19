@@ -96,8 +96,11 @@ class reader(object):
 
   def miller_set(self,
         crystal_symmetry=None,
-        force_symmetry=False):
+        force_symmetry=False,
+        anomalous=None):
     crystal_symmetry_from_file = self.crystal_symmetry()
+    if anomalous is None:
+      anomalous = self.anomalous_flag
     return miller.set(
         crystal_symmetry=crystal_symmetry_from_file.join_symmetry(
           other_symmetry=crystal_symmetry,
@@ -109,14 +112,17 @@ class reader(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=None):
     if (base_array_info is None):
       base_array_info = miller.array_info(source_type="xds_ascii")
     crystal_symmetry_from_file = self.crystal_symmetry()
     array = (miller.array(
       miller_set=self.miller_set(
         crystal_symmetry=crystal_symmetry,
-        force_symmetry=force_symmetry),
+        force_symmetry=force_symmetry,
+        anomalous=anomalous,
+      ),
       data=self.iobs,
       sigmas=self.sigma_iobs)
       .set_info(base_array_info.customized_copy(
@@ -134,12 +140,15 @@ class reader(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=None):
     return [self.as_miller_array(
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
       merge_equivalents=merge_equivalents,
-      base_array_info=base_array_info)]
+      base_array_info=base_array_info,
+      anomalous=anomalous,
+    )]
 
   def batch_as_miller_array(self,
         crystal_symmetry=None,
