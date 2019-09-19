@@ -457,7 +457,10 @@ class cns_reflection_file(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=None):
+    if anomalous is not None:
+      self.anomalous = anomalous
     crystal_symmetry = self.crystal_symmetry(
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry)
