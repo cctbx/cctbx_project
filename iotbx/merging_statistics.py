@@ -485,7 +485,8 @@ class dataset_statistics(object):
     self.crystal_symmetry = crystal_symmetry
     i_obs = i_obs.customized_copy(
       crystal_symmetry=crystal_symmetry).set_info(info)
-    if (assert_is_not_unique_set_under_symmetry and i_obs.is_unique_set_under_symmetry()):
+    if (assert_is_not_unique_set_under_symmetry and
+        i_obs.as_anomalous_array().is_unique_set_under_symmetry()):
       raise Sorry(("The data in %s are already merged.  Only unmerged (but "+
         "scaled) data may be used in this program.")%
         i_obs.info().label_string())
