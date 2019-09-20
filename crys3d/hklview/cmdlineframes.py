@@ -965,15 +965,17 @@ class HKLViewFrame() :
     self.viewer.TranslateHKLpoints(h, k, l, hkldist)
 
 
-  def ClipPlaneNormalToHKLvector(self, h, k, l, hkldist=0.0,
-             clipwidth=None, fixorientation=True):
+  def ClipPlaneAndVector(self, h, k, l, hkldist=0.0, clipwidth=None,
+   fixorientation=True, is_real_space_frac_vec = False, is_parallel=False):
     # clip planes are removed if h,k,l = 0,0,0
-    self.params.NGL_HKLviewer.normal_clip_plane.h = h
-    self.params.NGL_HKLviewer.normal_clip_plane.k = k
-    self.params.NGL_HKLviewer.normal_clip_plane.l = l
-    self.params.NGL_HKLviewer.normal_clip_plane.hkldist = hkldist
-    self.params.NGL_HKLviewer.normal_clip_plane.clipwidth = clipwidth
+    self.params.NGL_HKLviewer.clip_plane.h = h
+    self.params.NGL_HKLviewer.clip_plane.k = k
+    self.params.NGL_HKLviewer.clip_plane.l = l
+    self.params.NGL_HKLviewer.clip_plane.hkldist = hkldist
+    self.params.NGL_HKLviewer.clip_plane.clipwidth = clipwidth
+    self.params.NGL_HKLviewer.clip_plane.is_parallel = is_parallel
     self.params.NGL_HKLviewer.viewer.NGL.fixorientation = fixorientation
+    self.params.NGL_HKLviewer.clip_plane.is_real_space_frac_vec = is_real_space_frac_vec
     self.update_settings()
 
 
@@ -1051,7 +1053,7 @@ NGL_HKLviewer {
     .type = bool
   mouse_moved = False
     .type = bool
-  normal_clip_plane {
+  clip_plane {
     h = 2.0
       .type = float
     k = 0
@@ -1062,6 +1064,10 @@ NGL_HKLviewer {
       .type = float
     clipwidth = None
       .type = float
+    is_real_space_frac_vec = False
+      .type = bool
+    is_parallel = False
+      .type = bool
   }
   scene_bin_thresholds = None
     .type = float

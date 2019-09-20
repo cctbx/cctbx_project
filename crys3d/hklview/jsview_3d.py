@@ -376,10 +376,17 @@ class hklview_3d:
       msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
 
-    if curphilparam.normal_clip_plane.clipwidth:
-      self.clip_plane_normal_to_HKL_vector(curphilparam.normal_clip_plane.h, curphilparam.normal_clip_plane.k,
-          curphilparam.normal_clip_plane.l, curphilparam.normal_clip_plane.hkldist,
-          curphilparam.normal_clip_plane.clipwidth, curphilparam.viewer.NGL.fixorientation)
+    if curphilparam.clip_plane.clipwidth:
+      if  curphilparam.clip_plane.is_real_space_frac_vec:
+        self.clip_plane_abc_vector(curphilparam.clip_plane.h, curphilparam.clip_plane.k,
+          curphilparam.clip_plane.l, curphilparam.clip_plane.hkldist,
+          curphilparam.clip_plane.clipwidth, curphilparam.viewer.NGL.fixorientation,
+          curphilparam.clip_plane.is_parallel)
+      else:
+        self.clip_plane_hkl_vector(curphilparam.clip_plane.h, curphilparam.clip_plane.k,
+          curphilparam.clip_plane.l, curphilparam.clip_plane.hkldist,
+          curphilparam.clip_plane.clipwidth, curphilparam.viewer.NGL.fixorientation,
+          curphilparam.clip_plane.is_parallel)
 
     msg += self.SetOpacities(curphilparam.viewer.NGL.bin_opacities )
     if has_phil_path(diff_phil, "tooltip_alpha"):
@@ -764,9 +771,12 @@ class hklview_3d:
     self.unit_h_axis = 1.0/h_axis.norm() * h_axis
     self.unit_k_axis = 1.0/k_axis.norm() * k_axis
     self.unit_l_axis = 1.0/l_axis.norm() * l_axis
-    self.normal_hk = self.unit_h_axis.cross( self.unit_k_axis )
-    self.normal_kl = self.unit_k_axis.cross( self.unit_l_axis )
-    self.normal_lh = self.unit_l_axis.cross( self.unit_h_axis )
+    self.unit_normal_hk = self.unit_h_axis.cross( self.unit_k_axis )
+    self.unit_normal_kl = self.unit_k_axis.cross( self.unit_l_axis )
+    self.unit_normal_lh = self.unit_l_axis.cross( self.unit_h_axis )
+    self.normal_hk = h_axis.cross( k_axis )
+    self.normal_kl = k_axis.cross( l_axis )
+    self.normal_lh = l_axis.cross( h_axis )
 
     maxnorm = max(h_axis.norm(), max(k_axis.norm(), l_axis.norm()))
     l1 = self.scene.renderscale * maxnorm * 1.1
@@ -1962,7 +1972,7 @@ mysocket.onmessage = function (e)
         self.clipNear = flst[0]
         self.clipFar = flst[1]
         self.cameraPosZ = flst[2]
-        self.params.normal_clip_plane.clipwidth = None
+        self.params.clip_plane.clipwidth = None
       if "ReturnBoundingBox:" in message:
         datastr = message[ message.find("\n") + 1: ]
         lst = datastr.split(",")
@@ -2215,8 +2225,8 @@ mysocket.onmessage = function (e)
       self.EnableMouseRotation()
 
 
-  def clip_plane_normal_to_HKL_vector(self, h, k, l, hkldist=0.0,
-             clipwidth=None, fixorientation=True):
+  def clip_plane_hkl_vector(self, h, k, l, hkldist=0.0,
+             clipwidth=None, fixorientation=True, is_parallel=False):
     # create clip plane that is normal to the reciprocal hkl vector
     if h==0.0 and k==0.0 and l==0.0 or clipwidth==None:
       self.RemoveNormalVectorToClipPlane()
@@ -2228,7 +2238,10 @@ mysocket.onmessage = function (e)
       self.DisableMouseRotation()
     else:
       self.EnableMouseRotation()
-    self.PointVectorPerpendicularToClipPlane()
+    if is_parallel:
+      self.PointVectorParallelToClipPlane()
+    else:
+      self.PointVectorPerpendicularToClipPlane()
     halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
     if clipwidth is None:
       clipwidth = self.meanradius
@@ -2238,8 +2251,8 @@ mysocket.onmessage = function (e)
     self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
 
 
-  def clip_plane_normal_to_ABC_vector(self, a, b, c, hkldist=0.0,
-             clipwidth=None, fixorientation=True):
+  def clip_plane_abc_vector(self, a, b, c, hkldist=0.0,
+             clipwidth=None, fixorientation=True, is_parallel=False):
     # create clip plane that is normal to the realspace fractional abc vector
     if a==0.0 and b==0.0 and c==0.0 or clipwidth==None:
       self.RemoveNormalVectorToClipPlane()
@@ -2251,7 +2264,10 @@ mysocket.onmessage = function (e)
       self.DisableMouseRotation()
     else:
       self.EnableMouseRotation()
-    self.PointVectorPerpendicularToClipPlane()
+    if is_parallel:
+      self.PointVectorParallelToClipPlane()
+    else:
+      self.PointVectorPerpendicularToClipPlane()
     halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
     if clipwidth is None:
       clipwidth = self.meanradius
