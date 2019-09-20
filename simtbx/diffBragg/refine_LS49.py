@@ -28,7 +28,6 @@ data_img = out["data_img"]
 spectrum = out["spectrum"]
 
 poly = False
-
 loader = dxtbx.load(os.path.join(datdir, "ls49_0.npz"))
 ls49_det = loader.get_detector()
 ls49_beam = loader.get_beam()
@@ -111,6 +110,7 @@ brargs = {
     'default_F': 0,
     'verbose': 0,
     'oversample': 1}
+
 S.instantiate_diffBragg(**brargs)
 S.update_nanoBragg_instance("spot_scale", crystal.domains_per_crystal)
 print("spot scale is %f" % crystal.domains_per_crystal)
@@ -119,63 +119,21 @@ S.D.show_params()
 from simtbx.diffBragg.refiners import RefineRot
 RR = RefineRot(spot_rois=spotroi, abc_init=abc_init,
                img=data_img, SimData_instance=S, plot_images=False)
+RR.run()
 
 # Step 2:
-RXYZ = RR.get_rotation_misset()  # perturbation rotation matrix
-
 a_init, b_init, c_init = C.a_b_c_realspace_misset
 C_init = Crystal(a_init, b_init, c_init, "P1")
 
 C_refined = deepcopy(C_init)
-q = RXYZ.r3_rotation_matrix_as_unit_quaternion()
-angle_RXYZ, axis_RXYZ = q.unit_quaternion_as_axis_and_angle(deg=True)
-C_refined.rotate_around_origin(axis_RXYZ, angle_RXYZ)
+correction_ang, correction_ax = RR.get_correction_misset(as_axis_angle_deg=True)  # perturbation rotation matrix
+C_refined.rotate_around_origin(correction_ax, correction_ang)
 
 angles = helpers.compare_with_ground_truth(
     a_gt, b_gt, c_gt, [C_init, C_refined])
 
-print ("\nInitial indexing result misset: %f" % angles[0])
-print ("Optimized misset: %f" % angles[1])
+print ("\nInitial indexing result misset: %f deg." % angles[0])
+print ("Optimized misset: %f deg." % angles[1])
 
 assert angles[1] < angles[0]
 print("OK!")
-
-#from simtbx.diffBragg import utils
-#angles_rad = RR.x[-4:-1]
-#C_refined = utils.refine_model_from_angles(C_init, angles=angles_rad)
-
-#crystal.dxtbx_crystal_with_missetting()
-##C.set_A(sqr(crystal.Amatrix_realspace).inverse())
-#angles_rad = RR.x[-4:-1]
-#from dials.algorithms.indexing import compare_orientation_matrices
-#ang = compare_orientation_matrices.difference_rotation_matrix_axis_angle(C_init, C0)[2]
-#ang2 = compare_orientation_matrices.difference_rotation_matrix_axis_angle(C_refined, C0)[2]
-#
-#from IPython import embed
-#embed()
-
-#assert ang > 0.5
-#assert ang2 < 0.002
-#print("OK!")
-
-
-#S.add_water = True
-#S.add_air = True
-#S.include_noise = True
-#
-#S._add_nanoBragg_spots()
-#reference = np.load("ls49_0_mono_bragg.npy")
-#from IPython import embed
-#embed()
-#
-#
-#S._add_background()
-#reference = np.load("ls49_0_mono_noiseless.npy")
-#from IPython import embed
-#embed()
-#
-#S._add_noise()
-#img = S.D.raw_pixels.as_numpy_array()
-#reference = np.load("ls49_0_mono.npy")
-#embed()
-

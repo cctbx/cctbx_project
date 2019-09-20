@@ -10,27 +10,38 @@ from simtbx.diffBragg import utils
 angles = np.array([.4, .3, .2])
 # NOTE: make this more obvious (whats going on in process simdata:
 spot_rois, spot_hkl, Amat_init, Amat_known, abc_init, img, misset = \
-    process_simdata(plot=True, angles=angles)
+    process_simdata(plot=False, angles=angles)
 # NOTE: misset is an RX*RY*RZ matrix where the angles of rotation are .4,.3,.2 in degrees respectively
 S = SimData()
 S.crystal.missetting_matrix = misset
-
+S.instantiate_diffBragg()
 # Step 1:
 RR = RefineRot(spot_rois=spot_rois,
                abc_init=abc_init, img=img, SimData_instance=S)
+RR.run()
 angles_refined = np.array(RR.x[-4:-1]) * 180 / np.pi
 assert np.all(np.round(angles_refined, 1) == -angles)
 
 # Step 2:
 crystal = RR.S.crystal
 C0 = deepcopy(crystal.dxtbx_crystal)  # NOTE: ground truth
-C = crystal.dxtbx_crystal_with_missetting()
-#C.set_A(sqr(crystal.Amatrix_realspace).inverse())
-angles_rad = RR.x[-4:-1]
-C2 = utils.refine_model_from_angles(C, angles=angles_rad)
-ang = compare_orientation_matrices.difference_rotation_matrix_axis_angle(C, C0)[2]
-ang2 = compare_orientation_matrices.difference_rotation_matrix_axis_angle(C2, C0)[2]
-assert ang > 0.5
-assert ang2 < 0.002
+
+# rotate the ground truth crystal with the .4,.3,.2 degree perturbations
+C = deepcopy(C0)
+q = misset.r3_rotation_matrix_as_unit_quaternion()
+rot_ang, rot_ax = q.unit_quaternion_as_axis_and_angle(deg=True)
+C.rotate_around_origin(rot_ax, rot_ang)
+initial_ang_offset = compare_orientation_matrices.difference_rotation_matrix_axis_angle(C, C0)[2]
+
+# get the correction missetting from refiner
+correction_ang, correction_ax = RR.get_correction_misset(as_axis_angle_deg=True)
+C.rotate_around_origin(correction_ax, correction_ang)
+final_ang_offset = compare_orientation_matrices.difference_rotation_matrix_axis_angle(C, C0)[2]
+
+print("Initial missorientation=%1.2g degrees" % initial_ang_offset)
+print("Final missorientation=%1.2g degrees" % final_ang_offset)
+
+assert initial_ang_offset > 0.5
+assert final_ang_offset < 0.005
 print("OK!")
 
