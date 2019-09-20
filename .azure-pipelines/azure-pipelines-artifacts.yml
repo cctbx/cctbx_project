@@ -1,0 +1,57 @@
+# Script for downloading chem_data and phenix_regression as artifacts
+
+# no continuous integration or pull request builds
+trigger: none
+pr: none
+
+# only daily updates
+schedules:
+- cron: '30 */6 * * *'
+  displayName: Daily update for test data
+  branches:
+    include:
+    - master
+
+jobs:
+- job: artifacts
+  pool:
+    vmImage: ubuntu-16.04
+  timeoutInMinutes: 360
+
+  steps:
+
+  - checkout: none
+
+  - task: InstallSSHKey@0
+    inputs:
+      knownHostsEntry: cci.lbl.gov,131.243.194.153 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAnPOtqyYASs6hc3fsmUQn92ovSozJsMsJyrMWjppUERX1tD4Fh0D7YaNhLvYpKi5mYVREo+tsKoOatCcqKGHCONWpzx7JHXUzfIBsy6nCeygRyyW4yuyoCuYFvOYLkaM4PrN/7XaZEnp1ux6/ZcbRxBDNK4f42svJUV39OX33tRuQWpP+O85paJr1ePHVz6U2n14a+3fRN3DBMti1dJuKOThU4djYEBQimx54pnW71eYORN2oUz+N/4RHAcomtxZpcUMl3Qadw8hD4s1XM6fzJ0Que7KefnnrPOgAEtZxKl9j09aaE70Oh+ie5Y6ckwddJ/4qZB5m2tBaEi3xuy0TSQ==
+      sshPublicKey: ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA7XgVgdU9GmZuo5yVyW/htrAuxe7ypuq7IowWwfUC0WZw9SPzQ8kOGj63plF3ytx/qpgvUlS1AiywO20rZ83gHmRdAiuvt9laH09KlWEUhIhAQTzesqBG5aUT0MKo01yxijoRl5HC8w/MdOanc0h01e6IxnZvgG0N30RB1i4xVPCtR/VBmXSp4R0T+Q/gJjfQssuBxHVMrrute4V3uUHek58FL2QgUB0+zq6ipETjuCJxTSyYVAFtCYDPYs+0lAYYkWrXALCr9kX9s22jYtkyv5kNw6mEW8nhtA7GbTdJLv4M6/WYtcvQV8TDcNCfltOfl81U3gcZ9zhQDKGVoNaJEw== buildbot@cci.lbl.gov
+      sshKeySecureFile: id_rsa
+    displayName: Download SSH key
+
+  - script: |
+      svn co svn+ssh://builder@cci.lbl.gov/chem_data/trunk chem_data
+      cd $(System.DefaultWorkingDirectory)/chem_data
+      rm -fr .svn
+    displayName: Checkout chem_data
+
+  - script: |
+      svn co svn+ssh://builder@cci.lbl.gov/phenix_regression/trunk phenix_regression
+      cd $(System.DefaultWorkingDirectory)/phenix_regression
+      rm -fr .svn
+    displayName: Checkout phenix_regression
+
+  - script: |
+      svn co svn+ssh://builder@cci.lbl.gov/phenix_examples/trunk phenix_examples
+      cd $(System.DefaultWorkingDirectory)/phenix_examples
+      rm -fr .svn
+    displayName: Checkout phenix_examples
+
+  - publish: $(System.DefaultWorkingDirectory)/chem_data
+    artifact: chem_data
+
+  - publish: $(System.DefaultWorkingDirectory)/phenix_regression
+    artifact: phenix_regression
+
+  - publish: $(System.DefaultWorkingDirectory)/phenix_examples
+    artifact: phenix_examples

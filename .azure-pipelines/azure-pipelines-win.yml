@@ -65,6 +65,8 @@ jobs:
       python bootstrap.py hot update --builder=cctbx
     displayName: Download sources
 
+  - template: ./download-artifacts.yml
+
   - script: |
       cd ..\..
       call "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat" amd64
