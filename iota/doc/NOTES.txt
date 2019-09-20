@@ -1,11 +1,7 @@
-IOTA v1.4.009 - clean-up bugs and address codebase changes
+IOTA v1.4.010 - logging bugfix
 
-- removed all refernces to 'verbosity' parameter, which is no longer in stills
-  processor PHIL
-- check for IOTA PHIL adopting the 'gui' scope, which may already be included in
-  master PHIL
-- updated IOTA logging to better capture DIALS output
-- removed 'show_stdout' from IOTA job threads (that was for debugging)
+- suppressed dramatic log-vomit during command-line IOTA mode
+- added runtime string to log for command-line and GUI
 
-09.18.2019
+09.20.2019
 # -- end

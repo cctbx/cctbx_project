@@ -5,7 +5,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 09/18/2019
+Last Changed: 09/20/2019
 Description : IOTA GUI Windows / frames
 '''
 
@@ -2520,7 +2520,6 @@ class ProcWindow(IOTABaseFrame):
     self.status_txt.SetLabel(end_msg)
 
     # Finish up
-    self.display_log()
     self.plot_integration(force_plot=True)
     self.plot_live_analysis(force_plot=True)
 
@@ -2529,11 +2528,13 @@ class ProcWindow(IOTABaseFrame):
     if start_time:
       import datetime
       runtime = datetime.timedelta(seconds=int(time.time() - start_time))
-
       hours, minutes, seconds = str(runtime).split(':')
+      ut.main_log(self.info.logfile,
+                  "Total run time: {} hours, {} minutes, {} seconds"
+                  "".format(hours, minutes, seconds),
+                  print_tag=True)
+    self.display_log()
 
-      print ("IOTA: Total run time: {} hours, {} minutes, {} seconds"
-             "".format(hours, minutes, seconds))
 
   # def OnClose(self, e):
   #   """ Make sure that all threads are killed if window is closed by user """

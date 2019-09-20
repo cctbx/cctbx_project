@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/18/2018
-Last Changed: 08/05/2019
+Last Changed: 09/20/2019
 Description : IOTA base classes
 '''
 
@@ -282,7 +282,7 @@ class ProcessingBase(Thread):
 
     # Set attributes from remaining kwargs
     for key, value in kwargs.items():
-      setattr(self, name=key, value=value)
+      setattr(self, key, value)
 
   def create_iterable(self, input_list):
     return [[i, len(input_list) + 1, str(j)] for i, j in enumerate(input_list, 1)]
@@ -290,7 +290,8 @@ class ProcessingBase(Thread):
   def import_and_process(self, input_entry):
     img_object = self.importer.run(input_entry)
     if img_object.status == 'imported':
-      img_object = self.integrator.run(img_object)
+      with util.Capturing() as junk_output:
+        img_object = self.integrator.run(img_object)
 
     # Update main log
     if hasattr(self.info, 'logfile'):
