@@ -21,10 +21,25 @@ from itertools import cycle
 import pylab as plt
 
 
+
+def toggle_image(imgs, titles, **kwargs):
+    imgs = cycle(imgs)
+    titles = cycle(titles)
+    icount = 0
+    while icount < 6:
+        plt.cla()
+        plt.imshow(imgs.next(), **kwargs)
+        plt.title(titles.next() + "\nContinuing in %d" % (6 - icount))
+        plt.draw()
+        plt.pause(.7)
+        icount += 1
+        plt.close()
+
 ucell = (55, 66, 77, 90, 95, 90)
 symbol = "P1211"
 
-a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
+#a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
+a_real, b_real, c_real = np.reshape(uctbx.unit_cell(ucell).orthogonalization_matrix(), (3,3)).T   #transpose().as_list_of_lists()
 C = Crystal(a_real, b_real, c_real, symbol)
 point_group = sgtbx.space_group_info(symbol=symbol).group().build_derived_point_group()
 S = parameter_reduction.symmetrize_reduce_enlarge(point_group)
@@ -34,35 +49,35 @@ S = parameter_reduction.symmetrize_reduce_enlarge(point_group)
 #rot_ang, rot_axis = Q.unit_quaternion_as_axis_and_angle()
 
 # get a random rotation matrix
-rot = Rotation.random(num=1, random_state=1)[0].as_dcm()
+#rot = Rotation.random(num=1, random_state=1)[0].as_dcm()
 
 # parameters for refinement
-S.set_orientation(a_real+b_real+c_real)
+#S.set_orientation(np.hstack((a_real, b_real, c_real))*1e-10, length_unit=1)
+S.set_orientation(np.hstack((a_real, b_real, c_real)), length_unit=1e-10)
 X = S.forward_independent_parameters()
-dX = S.forward_gradients()
+dX = S.forward_gradients()  # gradients in meters
 
-ar = np.dot(rot, a_real)
-br = np.dot(rot, b_real)
-cr = np.dot(rot, c_real)
-S.set_orientation(np.hstack((ar, br, cr)))
-dX2 = S.forward_gradients()  # same as dX
-
-_ = S.forward_independent_parameters()
-dX3 = S.forward_gradients()  # now its rotated or something...
-embed()
-
-
-
-B = S.backward_orientation(independent=X)
-dX3 = S.forward_gradients()
-
-
-B = S.backward_orientation(independent=X)
-embed()
+#ar = np.dot(rot, a_real)
+#br = np.dot(rot, b_real)
+#cr = np.dot(rot, c_real)
+#S.set_orientation(np.hstack((ar, br, cr)))
+#dX2 = S.forward_gradients()  # same as dX
+#
+#_ = S.forward_independent_parameters()
+#dX3 = S.forward_gradients()  # now its rotated or something...
+#embed()
+#
+#B = S.backward_orientation(independent=X)
+#dX3 = S.forward_gradients()
+#
+#
+#B = S.backward_orientation(independent=X)
+#embed()
 
 n_ucell_params = len(X)
 B = S.backward_orientation(independent=X)
 print("Number of parameters = %d" % n_ucell_params)
+
 assert np.allclose(C.get_B(), B.reciprocal_matrix())
 #Bstar = B.reciprocal_matrix()
 
@@ -95,14 +110,14 @@ SIM.D.free_all()
 ##n_ucell_params2 = len(X2)
 
 np.random.seed(1)
-X_peturb = np.random.normal(X, 1e-8)
+X_peturb = np.random.normal(X, 1e-10)
 
 
 # muck around with the X parameters, toggle one at a time and compare finite differences to analytical derivs
 for i_param in range(n_ucell_params):
 
     X2 = list(X)
-    X2[i_param] = X_peturb[i_param]
+    X2[i_param] += 1e-8 #X_peturb[i_param]
     B2 = S.backward_orientation(independent=X2).direct_matrix()
     a2_real = B2[0], B2[1], B2[2]
     b2_real = B2[3], B2[4], B2[5]
@@ -157,14 +172,17 @@ for i_param in range(n_ucell_params):
     #z2 = sqr(z).transpose()
     #dX_transpose = flex.double(z2.elems)
 
-    D.set_ucell_derivative_matrix(3+i_param, dX[i_param])
+    D.set_ucell_derivative_matrix(3+i_param, dX[i_param]/1e10)
     D.add_diffBragg_spots()
     analy_deriv = D.get_derivative_pixels(3+i_param).as_numpy_array()
     SIM.D.free_all()
 
-    delta_param = X[i_param] - X2[i_param]
+    delta_param = X2[i_param] - X[i_param]
     (x1, x2), (y1, y2) = roi
     finite_deriv = (img2[y1:y2+1, x1:x2+1] - img[y1:y2+1, x1:x2+1]) / delta_param
 
+
+    #titles = cycle(("GT: %s" % gt_ucell, "perturbed: %s" % perturbed_ucell))
     embed()
+    toggle_image()
     print("OK")

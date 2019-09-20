@@ -48,25 +48,18 @@ rot_manager::rot_manager(){}
 void rot_manager::set_R(){assert (false);}
 
 void rot_manager::increment(
-        int Na, int Nb, int Nc,
-        double hfrac, double kfrac, double lfrac,
         double fudge,
-        mat3 U, mat3 X, mat3 Y, mat3 Z,
-        vec3 a, vec3 b, vec3 c,  vec3 q,
+        mat3 X, mat3 Y, mat3 Z,
+        mat3 N, mat3 U, mat3 B,
+        vec3 q, vec3 V,
         double Hrad, double Fcell, double Flatt,
         double source_I, double capture_fraction, double omega_pixel)
 {
   /* X,Y,Z will change depending on whether its RotX, RotY, or RotZ manager */
   XYZ = X*Y*Z;
-  double dh = U*XYZ*a*q;
-  double dk = U*XYZ*b*q;
-  double dl = U*XYZ*c*q;
-  double dHrad = 2*hfrac*Na*Na*dh +
-                 2*kfrac*Nb*Nb*dk +
-                 2*lfrac*Nc*Nc*dl;
-
+  vec3 dV = N*(U*XYZ*B).transpose() * q;
+  double dHrad = V*dV + dV*V;
   double dFlatt = -1*Flatt / 0.63 * fudge * dHrad;
-
   dI += Fcell*Fcell*2*Flatt*source_I*capture_fraction*omega_pixel*dFlatt;
 }
 
@@ -640,11 +633,10 @@ void diffBragg::add_diffBragg_spots()
                                     if (rot_managers[i_rot]->refine_me){
                                         R3[i_rot] = dRotMats[i_rot]; // TODO: design upgrade
                                         rot_managers[i_rot]->increment(
-                                                            Na, Nb, Nc,
-                                                            h-h0, k-k0, l-l0,
-                                                            fudge, UMATS[mos_tic],
+                                                            fudge,
                                                             R3[0], R3[1], R3[2],
-                                                            ap_vec, bp_vec, cp_vec, q_vec,
+                                                            NABC, UMATS[mos_tic], Bmat_realspace,
+                                                            q_vec, V,
                                                             hrad_sqr, F_cell, F_latt,
                                                             source_I[source], capture_fraction, omega_pixel);
                                         R3[i_rot] = RotMats[i_rot];
@@ -677,21 +669,10 @@ void diffBragg::add_diffBragg_spots()
             int roi_fs = i % fpixels - roi_xmin;
             int roi_ss = floor(i / spixels) - roi_ymin ;
             int roi_i =  roi_ss*(roi_fdim+1) + roi_fs ;
-            //int iii = i % fpixels;
-            //int jjj = floor(i / spixels);
-            //if ( roi_fs >= (roi_xmax - roi_xmin))
-            //  printf("OOPS:  %d, %d, %d, %d, %d\n", i, fpixels, roi_xmin, roi_i, iii);
             //SCITBX_ASSERT( roi_fs < (roi_xmax - roi_xmin));
-            //if ( roi_ss >= (roi_ymax - roi_ymin))
-            //  printf("OOPS:  %d, %d, %d, %d, %d\n", i, spixels, roi_ymin, roi_i, jjj);
             //SCITBX_ASSERT( roi_ss < (roi_ymax - roi_ymin));
-            //min_i = std::min(roi_i, min_i);
-            //max_i = std::max(roi_i, max_i);
-            //if (roi_i < 0)
-            // printf("OOPS: %d %d %d\n", i, iii, jjj);
-
             //SCITBX_ASSERT(roi_i >= 0);
-            // SCITBX_ASSERT(roi_i < (roi_xmax - roi_xmin + 1)*(roi_ymax - roi_ymin+1) ) ;
+            //SCITBX_ASSERT(roi_i < (roi_xmax - roi_xmin + 1)*(roi_ymax - roi_ymin+1) ) ;
             floatimage_roi[roi_i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
 
             /* udpate the derivative images*/
