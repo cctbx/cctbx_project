@@ -13,7 +13,7 @@ class SimData:
         self.seed = 1
         self.crystal = nanoBragg_crystal()
         self.add_air = False
-        self.add_background = True
+        self.add_water = True
         self.water_path_mm = 0.005
         self.air_path_mm = 0
         nbBeam = nanoBragg_beam()
