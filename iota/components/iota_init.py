@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 08/05/2019
+Last Changed: 09/20/2019
 Description : Interprets command line arguments. Initializes all IOTA starting
               parameters. Starts main log. Options for a variety of running
               modes, including resuming an aborted run.
@@ -195,9 +195,8 @@ def initialize_processing(paramfile, run_no):
                viz_base=os.path.join(int_base, 'visualization'),
                tmp_base=os.path.join(int_base, 'tmp'),
                input_base=input_base)
-  # FIXME: ordering of items in dictionaries changes depending on python version
   for bkey, bvalue in paths.items():
-    if bkey == "input_base":  # I think this is what the original code wanted to do
+    if bkey == "input_base":
       continue
     if not os.path.isdir(bvalue):
       os.makedirs(bvalue)
