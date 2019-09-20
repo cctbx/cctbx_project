@@ -375,8 +375,6 @@ class IOTAImageProcessor(Processor):
 
     # configure DIALS logging
     dials_logging_dir = os.path.join(img_object.log_path, 'dials_logs')
-    if not os.path.isdir(dials_logging_dir):
-      os.makedirs(dials_logging_dir)
     self.dials_log = os.path.join(dials_logging_dir,
                                   os.path.basename(self.int_log))
     log.config(verbosity=0, logfile=self.dials_log)
