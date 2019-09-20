@@ -31,6 +31,13 @@ void ucell_manager::increment(
   vec3 dV = NABC*((UR*dB).transpose()) * q;
   double dHrad = V*dV + dV*V;
   double dFlatt = -1*Flatt / 0.63 * fudge * dHrad;
+  //SCITBX_EXAMINE(dFlatt);
+  //SCITBX_EXAMINE(dV[0]);
+  //SCITBX_EXAMINE(dV[1]);
+  //SCITBX_EXAMINE(dV[2]);
+  //SCITBX_EXAMINE(dHrad);
+  //SCITBX_EXAMINE(Flatt);
+  //SCITBX_EXAMINE(fudge);
   dI += Fcell*Fcell*2*Flatt*source_I*capture_fraction*omega_pixel*dFlatt;
 };
 
@@ -157,6 +164,10 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     ucell_managers.push_back(uc5);
     ucell_managers.push_back(uc6);
 
+    // initialize ucell gradients as 0
+    for (int i=0; i <6; i++)
+        ucell_managers[i]->dB = mat3(0,0,0,0,0,0,0,0,0);
+
     init_raw_pixels_roi();
     }
 
@@ -204,7 +215,6 @@ void diffBragg::vectorize_umats()
 }
 
 void diffBragg::refine(int refine_id){
-    rot_managers[refine_id]->refine_me=true;
     int fdim = roi_xmax-roi_xmin+1;
     int sdim = roi_ymax-roi_ymin+1;
     if (refine_id >= 0 && refine_id < 3  ){
@@ -219,22 +229,40 @@ void diffBragg::refine(int refine_id){
     }
 }
 
-void diffBragg::set_ucell_derivative_matrix(int refine_id,  mat3 const& value){
-    ucell_managers[refine_id-3]->dB = value;
+void diffBragg::set_ucell_derivative_matrix(int refine_id, af::shared<double> const& value){
+    int ucell_param_idx = refine_id-3;  // its just how the API works, pass in 3 for first ucell matrix
+    if (ucell_param_idx < 0 || ucell_param_idx > 5)
+      printf("WARNING, passing in wrong refine_id for unit cell parameter (should be 3-8).\nNothing done.\n");
+    else
+        ucell_managers[ucell_param_idx]->dB = mat3(
+                        value[0], value[1], value[2],
+                        value[3], value[4], value[5],
+                        value[6], value[7], value[8]);
 }
 
+// TODO : rename set_value and get_value because they done apply to ucell derivatives...
 void diffBragg::set_value( int refine_id, double value ){
     rot_managers[refine_id]->value = value;
     if (refine_id < 3)
         rot_managers[refine_id]->set_R();
 }
 
-double diffBragg::get_value( int refine_id){
+double diffBragg::get_value(int refine_id){
     return rot_managers[refine_id]->value;
 }
 
 af::flex_double diffBragg::get_derivative_pixels(int refine_id){
-    return rot_managers[refine_id]->raw_pixels;
+    if (refine_id>=0 and refine_id < 3){
+        SCITBX_ASSERT(rot_managers[refine_id]->refine_me);
+        return rot_managers[refine_id]->raw_pixels;
+        }
+    else { //if(refine_id >=3 && refine_id < 9){
+        int i_uc = refine_id-3;
+        SCITBX_ASSERT(i_uc >= 0);
+        SCITBX_ASSERT(i_uc < 6);
+        SCITBX_ASSERT(ucell_managers[i_uc]->refine_me);
+        return ucell_managers[i_uc]->raw_pixels;
+        }
 }
 
 void diffBragg::zero_raw_pixel_rois(){
@@ -312,6 +340,11 @@ void diffBragg::add_diffBragg_spots()
             for (int i_rot =0 ; i_rot < 3 ; i_rot++){
                 if (rot_managers[i_rot]->refine_me){
                     rot_managers[i_rot]->dI =0;
+                }
+            }
+            for (int i_uc =0 ; i_uc < 6 ; i_uc++){
+                if (ucell_managers[i_uc]->refine_me){
+                    ucell_managers[i_uc]->dI =0;
                 }
             }
 
@@ -424,7 +457,6 @@ void diffBragg::add_diffBragg_spots()
                                 q_vec[0] = scattering[1];
                                 q_vec[1] = scattering[2];
                                 q_vec[2] = scattering[3];
-
 
                                 mat3 Bmat_realspace;
                                 Bmat_realspace[0] = ap_vec[0];
@@ -665,10 +697,15 @@ void diffBragg::add_diffBragg_spots()
             /* udpate the derivative images*/
             for (int i_rot =0 ; i_rot < 3 ; i_rot++){
                 if (rot_managers[i_rot]->refine_me){
-                    //if (mos_tic==0 && fpixel==0 && spixel==0)
-                    //  printf("Updating image for parameter %d <><><<><>>\n", i_rot);
                     double value = r_e_sqr*fluence*spot_scale*polar*rot_managers[i_rot]->dI/steps;
                     rot_managers[i_rot]->increment_image(roi_i, value);
+                }
+            }
+
+            for (int i_uc=0 ; i_uc < 6 ; i_uc++){
+                if (ucell_managers[i_uc]->refine_me){
+                    double value = r_e_sqr*fluence*spot_scale*polar*ucell_managers[i_uc]->dI/steps;
+                    ucell_managers[i_uc]->increment_image(roi_i, value);
                 }
             }
 
@@ -700,6 +737,11 @@ void diffBragg::add_diffBragg_spots()
                     printf("X: %11.8f %11.8f %11.8f\n",a[1]*1e10,b[1]*1e10,c[1]*1e10);
                     printf("Y: %11.8f %11.8f %11.8f\n",a[2]*1e10,b[2]*1e10,c[2]*1e10);
                     printf("Z: %11.8f %11.8f %11.8f\n",a[3]*1e10,b[3]*1e10,c[3]*1e10);
+                    printf("Rot manager refine status X=%d, Y=%d, Z=%d\n", rot_managers[0]->refine_me, rot_managers[1]->refine_me,
+                        rot_managers[2]->refine_me);
+                    printf("Ucell managers refine status a.a=%d, b.b=%d, c.c=%d, a.b=%d, a.c=%d, b.c=%d\n",
+                        ucell_managers[0]->refine_me, ucell_managers[1]->refine_me, ucell_managers[2]->refine_me,
+                        ucell_managers[3]->refine_me, ucell_managers[4]->refine_me, ucell_managers[5]->refine_me);
                 }
             }
             else

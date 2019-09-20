@@ -142,3 +142,9 @@ class nanoBragg_crystal(object):
         astar, bstar, cstar = self.astar_bstar_cstar_misset
         C.set_A(tuple(astar) + tuple(bstar) + tuple(cstar))
         return C
+
+    @staticmethod
+    def abcstar_from_abc(a,b,c):
+        Amat_star_row_vecs = sqr(tuple(a) + tuple(b) + tuple(c)).inverse()
+        astar_rot, bstar_rot, cstar_rot = Amat_star_row_vecs.transpose().as_list_of_lists()
+        return astar_rot, bstar_rot, cstar_rot
