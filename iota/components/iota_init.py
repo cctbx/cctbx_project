@@ -192,6 +192,7 @@ def initialize_processing(paramfile, run_no):
   paths = dict(obj_base=os.path.join(int_base, 'image_objects'),
                fin_base=os.path.join(int_base, 'final'),
                log_base=os.path.join(int_base, 'logs'),
+               dials_log_base=os.path.join(int_base, 'logs/dials_logs'),
                viz_base=os.path.join(int_base, 'visualization'),
                tmp_base=os.path.join(int_base, 'tmp'),
                input_base=input_base)
