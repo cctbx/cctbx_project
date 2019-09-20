@@ -172,7 +172,7 @@ namespace iotbx { namespace mtz {
     if (selection_valid.size() != 0) {
       IOTBX_ASSERT(selection_valid.size() == static_cast<std::size_t>(n_refl));
     }
-    float const& not_a_number_value = mtz_object().not_a_number_value();
+    float not_a_number_value = mtz_object().not_a_number_value();
     float* ref = ptr()->ref;
     for(int i=0;i<n_refl;i++) {
       if (selection_valid.size() == 0 || selection_valid[i]) {
