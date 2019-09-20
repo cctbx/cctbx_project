@@ -18,6 +18,8 @@ steps:
     python bootstrap.py hot update --builder=cctbx
   displayName: Download sources
 
+- template: ./download-artifacts.yml
+
 # install base
 - script: |
     cd ../..
