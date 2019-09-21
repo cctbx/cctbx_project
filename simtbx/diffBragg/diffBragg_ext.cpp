@@ -8,6 +8,36 @@ namespace simtbx{
 namespace diffBragg{
 namespace boost_python { namespace {
 
+
+  static nanoBragg::mat3 get_U(simtbx::nanoBragg::diffBragg& diffBragg){
+    return diffBragg.Umatrix;
+  }
+
+  void set_U(simtbx::nanoBragg::diffBragg& diffBragg, nanoBragg::mat3 const& value){
+    diffBragg.Umatrix = value;
+  }
+
+  static nanoBragg::mat3 get_B(simtbx::nanoBragg::diffBragg& diffBragg){
+    return diffBragg.Bmatrix;
+  }
+
+  void set_B(simtbx::nanoBragg::diffBragg& diffBragg, nanoBragg::mat3 const& value){
+      diffBragg.Bmatrix = value;
+      diffBragg.a_star[1] = value(0,0);  // initialize Angstrom version, update at the end
+      diffBragg.a_star[2] = value(1,0);
+      diffBragg.a_star[3] = value(2,0);
+      diffBragg.b_star[1] = value(0,1);
+      diffBragg.b_star[2] = value(1,1);
+      diffBragg.b_star[3] = value(2,1);
+      diffBragg.c_star[1] = value(0,2);
+      diffBragg.c_star[2] = value(1,2);
+      diffBragg.c_star[3] = value(2,2);
+
+      diffBragg.user_cell = 0;
+      diffBragg.user_matrix = 1;
+      diffBragg.init_cell();
+  }
+
   void set_roi(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& tupleoftuples){
       boost::python::tuple frange;
       boost::python::tuple srange;
@@ -22,7 +52,8 @@ namespace boost_python { namespace {
       diffBragg.init_raw_pixels_roi();
       diffBragg.initialize_managers();
   }
-   /* region of interest in pixels */
+
+  /* region of interest in pixels */
   static boost::python::tuple get_roi(simtbx::nanoBragg::diffBragg const& diffBragg) {
       boost::python::tuple frange;
       boost::python::tuple srange;
@@ -82,6 +113,16 @@ namespace boost_python { namespace {
                      make_getter(&simtbx::nanoBragg::diffBragg::raw_pixels_roi,rbv()),
                      make_setter(&simtbx::nanoBragg::diffBragg::raw_pixels_roi,dcp()),
                     "raw pixels from region of interest only")
+
+      .add_property("Umatrix",
+             make_function(&get_U,rbv()),
+             make_function(&set_U,dcp()),
+             "rotation portion of Amatrix (dxtbx format, C.get_U())")
+
+      .add_property("Bmatrix",
+             make_function(&get_B,rbv()),
+             make_function(&set_B,dcp()),
+             "unit cell portion of Amatrix (dxtbx format; C.get_B())")
 
     ; // end of diffBragg extention
 
