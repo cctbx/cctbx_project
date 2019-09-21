@@ -145,10 +145,14 @@ class SimData:
         if self.crystal.miller_array is not None:
             self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data()
 
+        # TODO: am I unnecessary?
         self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
 
-        astar, bstar, cstar = self.crystal.astar_bstar_cstar_misset
-        self.D.Amatrix = sqr(astar + bstar + cstar)
+        self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B()
+        self.D.Umatrix = self.crystal.dxtbx_crystal.get_U()
+
+        #astar, bstar, cstar = self.crystal.astar_bstar_cstar_misset
+        #self.D.Amatrix = sqr(astar + bstar + cstar)
 
         #self.D.Amatrix = self.crystal.Amatrix_realspace.inverse().transpose()
         self.D.Ncells_abc = self.crystal.Ncells_abc

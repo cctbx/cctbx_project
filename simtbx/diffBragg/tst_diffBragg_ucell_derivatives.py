@@ -8,11 +8,7 @@ from IPython import embed
 from cctbx import sgtbx
 from rstbx.symmetry.constraints import parameter_reduction
 import numpy as np
-from scipy.spatial.transform import Rotation
 
-from scitbx.matrix import sqr
-from scitbx.array_family import flex
-from scitbx.matrix import rec
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from cctbx import uctbx
 from simtbx.diffBragg.sim_data2 import SimData
@@ -35,9 +31,9 @@ def toggle_image(imgs, titles, **kwargs):
     plt.close()
 
 ucell = (55, 66, 77, 90, 95, 90)
+ucell_perturbed = (55.01, 66, 77, 90, 95, 90)
 symbol = "P1211"
 
-#a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
 a_real, b_real, c_real = np.reshape(uctbx.unit_cell(ucell).orthogonalization_matrix(), (3,3)).T   #transpose().as_list_of_lists()
 C = Crystal(a_real, b_real, c_real, symbol)
 point_group = sgtbx.space_group_info(symbol=symbol).group().build_derived_point_group()
@@ -95,6 +91,8 @@ SIM.crystal = nbcryst
 #SIM.add_air = False
 #SIM.include_noise = True
 SIM.instantiate_diffBragg()
+from IPython import embed
+embed()
 SIM.D.add_diffBragg_spots()
 img = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.free_all()
