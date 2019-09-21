@@ -94,6 +94,8 @@ class diffBragg: public nanoBragg{
   af::flex_double get_derivative_pixels(int refine_id);
   af::flex_double get_raw_pixels_roi();
 
+  mat3 Umatrix;
+  mat3 Bmatrix;
   mat3 RXYZ;
   std::vector<mat3> RotMats;
   std::vector<mat3> dRotMats;

@@ -5,7 +5,6 @@ from simtbx.diffBragg.process_simdata import process_simdata
 from simtbx.diffBragg.refiners import RefineRot
 from dials.algorithms.indexing import compare_orientation_matrices
 from copy import deepcopy
-from simtbx.diffBragg import utils
 
 angles = np.array([.4, .3, .2])
 # NOTE: make this more obvious (whats going on in process simdata:
@@ -13,7 +12,10 @@ spot_rois, spot_hkl, Amat_init, Amat_known, abc_init, img, misset = \
     process_simdata(plot=False, angles=angles)
 # NOTE: misset is an RX*RY*RZ matrix where the angles of rotation are .4,.3,.2 in degrees respectively
 S = SimData()
-S.crystal.missetting_matrix = misset
+ang, ax = misset.r3_rotation_matrix_as_unit_quaternion().unit_quaternion_as_axis_and_angle(deg=True)
+C0 =deepcopy( S.crystal.dxtbx_crystal)  # ground truth
+S.crystal.dxtbx_crystal.rotate_around_origin(ax, ang)
+
 S.instantiate_diffBragg()
 # Step 1:
 RR = RefineRot(spot_rois=spot_rois,
@@ -24,13 +26,13 @@ assert np.all(np.round(angles_refined, 1) == -angles)
 
 # Step 2:
 crystal = RR.S.crystal
-C0 = deepcopy(crystal.dxtbx_crystal)  # NOTE: ground truth
+#C0 = deepcopy(crystal.dxtbx_crystal)  # NOTE: ground truth
 
 # rotate the ground truth crystal with the .4,.3,.2 degree perturbations
-C = deepcopy(C0)
-q = misset.r3_rotation_matrix_as_unit_quaternion()
-rot_ang, rot_ax = q.unit_quaternion_as_axis_and_angle(deg=True)
-C.rotate_around_origin(rot_ax, rot_ang)
+C = S.crystal.dxtbx_crystal #(C0)
+#q = misset.r3_rotation_matrix_as_unit_quaternion()
+#rot_ang, rot_ax = q.unit_quaternion_as_axis_and_angle(deg=True)
+#C.rotate_around_origin(rot_ax, rot_ang)
 initial_ang_offset = compare_orientation_matrices.difference_rotation_matrix_axis_angle(C, C0)[2]
 
 # get the correction missetting from refiner
