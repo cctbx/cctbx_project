@@ -29,11 +29,11 @@ def get_diffBragg_instance():
                  'transmission': 1.0,
                  'wavelength': wavelen}
 
-    #cryst_descr = {'__id__': 'crystal',
-    #               'real_space_a': (79, 0, 0),
-    #               'real_space_b': (0, 79, 0),
-    #               'real_space_c': (0, 0, 38),
-    #               'space_group_hall_symbol': '-P 4 2'}
+    cryst_descr = {'__id__': 'crystal',
+                   'real_space_a': (79, 0, 0),
+                   'real_space_b': (0, 79, 0),
+                   'real_space_c': (0, 0, 38),
+                   'space_group_hall_symbol': '-P 4 2'}
 
     det_descr = {'panels':
                    [{'fast_axis': (-1.0, 0.0, 0.0),
@@ -56,9 +56,10 @@ def get_diffBragg_instance():
 
     DET = DetectorFactory.from_dict(det_descr)
     BEAM = BeamFactory.from_dict(beam_descr)
-    #crystal = CrystalFactory.from_dict(cryst_descr)
+    from dxtbx.model.crystal import CrystalFactory
 
     Fhkl = fcalc_from_pdb(resolution=4, algorithm="fft", wavelength=wavelen)
+    crystal = CrystalFactory.from_dict(cryst_descr)
 
     D = diffBragg(DET, BEAM, verbose=0, panel_id=0)
     D.xtal_shape = SHAPE
@@ -68,7 +69,11 @@ def get_diffBragg_instance():
     D.mosaic_spread_deg = 0.01
     D.mosaic_domains = 10
     D.Fhkl = Fhkl
-
+    D.Bmatrix = crystal.get_B()
+    D.Umatrix = crystal.get_U()
+    D.spot_scale = 1e6
+    #D.show_params()
+    #D.printout_pixel_fastslow = 1,1
     return D
 
 
@@ -77,7 +82,8 @@ def main():
 
     n_trials = 10
     np.random.seed(n_trials)
-    angles_XYZ = np.random.random((n_trials, 3))*2 * np.pi / 180.
+    angles_XYZ = np.random.random((n_trials, 3)) * 3 * np.pi / 180.
+    print angles_XYZ*180 / np.pi
 
     D = get_diffBragg_instance()
 
@@ -93,13 +99,7 @@ def main():
     x = col((-1,0,0))
     y = col((0,-1,0))
     z = col((0,0,-1))
-
-    #thX = np.linspace(0,20*np.pi / 180. ,10)
-    #thY = np.linspace(0,20*np.pi / 180. ,10)
-    #thZ = np.linspace(0,20*np.pi / 180. ,10)
-    #angles_XYZ = zip(thX, thY, thZ)
-
-    Arecip_orig = sqr(D.Amatrix)
+    Uorig = sqr(D.Umatrix)
 
     if args.plot:
         import pylab as plt
@@ -112,16 +112,13 @@ def main():
         RY = y.axis_and_angle_as_r3_rotation_matrix(thetaY, deg=False)
         RZ = z.axis_and_angle_as_r3_rotation_matrix(thetaZ, deg=False)
 
-        #Arecip_orig = sqr(crystal.get_A())
-        Areal = Arecip_orig.inverse()
-        Areal = RX*RY*RZ*Areal
-        Arecip = Areal.inverse()
-
+        Misset = RX*RY*RZ
+        U = Misset*Uorig
         D.raw_pixels *= 0
         D.set_value(rotX,0)
         D.set_value(rotY,0)
         D.set_value(rotZ,0)
-        D.Amatrix = Arecip  #.transpose().elems
+        D.Umatrix = U.elems
         D.add_diffBragg_spots()
         imgA = D.raw_pixels.as_numpy_array()
 
@@ -129,7 +126,7 @@ def main():
         D.set_value(rotX, thetaX)
         D.set_value(rotY, thetaY)
         D.set_value(rotZ, thetaZ)
-        D.Amatrix = Arecip_orig   #.transpose().elems
+        D.Umatrix = Uorig
         D.add_diffBragg_spots()
         imgB = D.raw_pixels.as_numpy_array()
         if args.plot:
