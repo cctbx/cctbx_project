@@ -221,7 +221,8 @@ class IOTAImageProcessor(Processor):
   def refine_bravais_settings(self, reflections, experiments):
 
     # configure DIALS logging
-    log.config(verbosity=0, logfile=self.dials_log)
+    if self.dials_log:
+      log.config(verbosity=0, logfile=self.dials_log)
 
     proc_scope = phil_scope.format(python_object=self.params)
     sgparams = sg_scope.fetch(proc_scope).extract()
@@ -374,10 +375,9 @@ class IOTAImageProcessor(Processor):
     self.int_log = img_object.int_log
 
     # configure DIALS logging
-    dials_logging_dir = os.path.join(img_object.log_path, 'dials_logs')
-    self.dials_log = os.path.join(dials_logging_dir,
-                                  os.path.basename(self.int_log))
-    log.config(verbosity=0, logfile=self.dials_log)
+    self.dials_log = getattr(img_object, 'dials_log', None)
+    if self.dials_log:
+      log.config(verbosity=0, logfile=self.dials_log)
 
     # Create output folder if one does not exist
     if self.write_pickle:
@@ -422,17 +422,17 @@ class IOTAImageProcessor(Processor):
         print ('DEBUG: cannot set detector! ', e)
 
     # Write full params to file (DEBUG)
-    param_string = phil_scope.format(python_object=self.params).as_str()
-    full_param_dir = os.path.dirname(self.iparams.cctbx_xfel.target)
-    full_param_fn = 'full_' + os.path.basename(self.iparams.cctbx_xfel.target)
-    full_param_file = os.path.join(full_param_dir, full_param_fn)
-    with open(full_param_file, 'w') as ftarg:
-      ftarg.write(param_string)
+    if self.write_logs:
+      param_string = phil_scope.format(python_object=self.params).as_str()
+      full_param_dir = os.path.dirname(self.iparams.cctbx_xfel.target)
+      full_param_fn = 'full_' + os.path.basename(self.iparams.cctbx_xfel.target)
+      full_param_file = os.path.join(full_param_dir, full_param_fn)
+      with open(full_param_file, 'w') as ftarg:
+        ftarg.write(param_string)
 
     # **** SPOTFINDING **** #
     with util.Capturing() as output:
       try:
-        # debug:
         print ("{:-^100}\n".format(" SPOTFINDING: "))
         print ('<--->')
         observed = self.find_spots(img_object.experiments)
@@ -519,12 +519,12 @@ class IOTAImageProcessor(Processor):
         except Exception as e_ridx:
           reindex_success = False
 
-    if reindex_success:
-      if self.write_logs:
-        self.write_int_log(path=img_object.int_log, output=output,
-                           dials_log=self.dials_log)
-    else:
-      return self.error_handler(e_ridx, 'indexing', img_object, output)
+        if reindex_success:
+          if self.write_logs:
+            self.write_int_log(path=img_object.int_log, output=output,
+                               dials_log=self.dials_log)
+        else:
+          return self.error_handler(e_ridx, 'indexing', img_object, output)
 
     # **** INTEGRATION **** #
     with util.Capturing() as output:

@@ -7,6 +7,8 @@ Created     : 10/12/2014
 Last Changed: 09/20/2019
 Description : IOTA command-line module.
 '''
+import time
+import datetime
 
 import argparse
 from contextlib import contextmanager
@@ -102,7 +104,6 @@ class Process(ProcessingBase):
   def process(self):
     """ Run importer and/or processor """
 
-    import time
     start_time = time.time()
 
     # Process images
@@ -112,6 +113,13 @@ class Process(ProcessingBase):
         self.prog_count = 0
         self.gs_prog = cmd.ProgressBar(title='PROCESSING')
       img_objects = self.run_process(iterable=self.info.unprocessed)
+
+      proc_time = datetime.timedelta(seconds=int(time.time() - start_time))
+      hours, minutes, seconds = str(proc_time).split(':')
+      util.main_log(self.info.logfile,
+                    "Total processing time: {} hours, {} minutes, {} seconds"
+                    "".format(hours, minutes, seconds),
+                    print_tag=False)
 
     # Run analysis if not in GUI mode
     if not 'gui' in self.out_type:
@@ -130,7 +138,6 @@ class Process(ProcessingBase):
 
     # Determine total runtime
     if not 'gui' in self.out_type:
-      import datetime
       runtime = datetime.timedelta(seconds=int(time.time() - start_time))
       hours, minutes, seconds = str(runtime).split(':')
       util.main_log(self.info.logfile,

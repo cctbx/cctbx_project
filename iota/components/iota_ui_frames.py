@@ -2504,9 +2504,8 @@ class ProcWindow(IOTABaseFrame):
 
       try:
         shutil.rmtree(self.info.tmp_base)
-        shutil.rmtree(os.path.join(self.info.log_base, 'dials_logs'))
-      except Exception as e:
-        print ('DEBUG: UNABLE TO DELETE FOLDER: {}'.format(e))
+        shutil.rmtree(self.info.dials_log_base)
+      except Exception:
         pass
 
     # Export final info file

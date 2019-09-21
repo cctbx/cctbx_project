@@ -170,6 +170,7 @@ class ImageImporterBase():
     obj_base = self.info.obj_base if self.info else self.init.obj_base
     fin_base = self.info.fin_base if self.info else self.init.fin_base
     log_base = self.info.log_base if self.info else self.init.log_base
+    dials_log_base = self.info.dials_log_base if self.info else None
     viz_base = self.info.viz_base if self.info else self.init.viz_base
 
     # Object path (may not need)
@@ -191,6 +192,14 @@ class ImageImporterBase():
     fname = util.make_filename(self.img_object.img_path, new_ext='log')
     self.img_object.int_log = os.path.join(self.img_object.log_path, fname)
 
+    # DIALS log path for image
+    if dials_log_base:
+      self.img_object.dials_log_path = util.make_image_path(
+        self.img_object.img_path, input_base, dials_log_base)
+      fname = util.make_filename(self.img_object.img_path, new_ext='log')
+      self.img_object.dials_log = os.path.join(
+        self.img_object.dials_log_path, fname)
+
     # Visualization path (may need to deprecate)
     self.img_object.viz_path = util.make_image_path(self.img_object.img_path,
                                                     input_base, viz_base)
@@ -200,7 +209,8 @@ class ImageImporterBase():
 
     # Make paths if they don't exist already
     for path in [self.img_object.obj_path, self.img_object.int_path,
-                 self.img_object.log_path, self.img_object.viz_path]:
+                 self.img_object.log_path, self.img_object.viz_path,
+                 self.img_object.dials_log_path]:
       try:
         os.makedirs(path)
       except OSError:

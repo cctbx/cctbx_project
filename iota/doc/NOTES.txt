@@ -1,7 +1,10 @@
-IOTA v1.4.010 - logging bugfix
+IOTA v1.4.011 - logging and single-image bugfixes
 
-- suppressed dramatic log-vomit during command-line IOTA mode
-- added runtime string to log for command-line and GUI
+- added processing time-stamp
+- if determine_sg_and_reindex is turned off, there's no longer an exception
+- DIALS log folder now works with multi-folder datasets
+- Debugged iota.single_image; it now works (without logging)
+- Made silent a failure to delete a temp folder
 
 09.20.2019
 # -- end
