@@ -14,6 +14,14 @@ class RefineRot(object):
 
     def __init__(self, spot_rois, abc_init, img, SimData_instance,
                  plot_images=False):
+        """
+
+        :param spot_rois:
+        :param abc_init:
+        :param img:
+        :param SimData_instance:
+        :param plot_images:
+        """
 
         self.plot_images = plot_images
         self.spot_rois = spot_rois
