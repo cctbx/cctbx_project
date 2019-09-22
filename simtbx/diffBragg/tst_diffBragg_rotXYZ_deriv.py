@@ -42,7 +42,6 @@ def main(rot_idx):
         ## put back in diffBragg:
         #D.Amatrix = Arecip
 
-
         # simulate the scattering in the rotated crystal:
         D.raw_pixels_roi *= 0
         D.Umatrix = R.elems
