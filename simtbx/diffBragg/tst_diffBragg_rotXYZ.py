@@ -71,9 +71,6 @@ def get_diffBragg_instance():
     D.Fhkl = Fhkl
     D.Bmatrix = crystal.get_B()
     D.Umatrix = crystal.get_U()
-    #D.spot_scale = 1e6
-    #D.show_params()
-    #D.printout_pixel_fastslow = 1,1
     return D
 
 
