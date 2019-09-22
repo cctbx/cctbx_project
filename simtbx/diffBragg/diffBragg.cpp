@@ -444,7 +444,6 @@ void diffBragg::add_diffBragg_spots()
                                 q_vec[1] = scattering[2];
                                 q_vec[2] = scattering[3];
 
-                                mat3 Bmat_realspace;
                                 Bmat_realspace[0] = ap_vec[0];
                                 Bmat_realspace[3] = ap_vec[1];
                                 Bmat_realspace[6] = ap_vec[2];
@@ -474,7 +473,6 @@ void diffBragg::add_diffBragg_spots()
                                 H0_vec[1] = k0;
                                 H0_vec[2] = l0;
 
-                                mat3 NABC;
                                 NABC[0] = Na;
                                 NABC[1] = 0;
                                 NABC[2] = 0;
@@ -712,11 +710,20 @@ void diffBragg::add_diffBragg_spots()
                     printf("X: %11.8f %11.8f %11.8f\n",a[1]*1e10,b[1]*1e10,c[1]*1e10);
                     printf("Y: %11.8f %11.8f %11.8f\n",a[2]*1e10,b[2]*1e10,c[2]*1e10);
                     printf("Z: %11.8f %11.8f %11.8f\n",a[3]*1e10,b[3]*1e10,c[3]*1e10);
-                    printf("Rot manager refine status X=%d, Y=%d, Z=%d\n", rot_managers[0]->refine_me, rot_managers[1]->refine_me,
+                    printf("Rot manager refine status X=%d, Y=%d, Z=%d\n",
+                        rot_managers[0]->refine_me, rot_managers[1]->refine_me,
                         rot_managers[2]->refine_me);
                     printf("Ucell managers refine status a.a=%d, b.b=%d, c.c=%d, a.b=%d, a.c=%d, b.c=%d\n",
                         ucell_managers[0]->refine_me, ucell_managers[1]->refine_me, ucell_managers[2]->refine_me,
                         ucell_managers[3]->refine_me, ucell_managers[4]->refine_me, ucell_managers[5]->refine_me);
+                    printf("Bmatrix_real:\n%11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n",
+                        Bmat_realspace[0]*1e10, Bmat_realspace[1]*1e10, Bmat_realspace[2]*1e10,
+                        Bmat_realspace[3]*1e10, Bmat_realspace[4]*1e10, Bmat_realspace[5]*1e10,
+                        Bmat_realspace[6]*1e10, Bmat_realspace[7]*1e10, Bmat_realspace[8]*1e10);
+                    printf("Umatrix_real:\n%11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n",
+                        Umatrix[0], Umatrix[1], Umatrix[2],
+                        Umatrix[3], Umatrix[4], Umatrix[5],
+                        Umatrix[6], Umatrix[7], Umatrix[8]);
                 }
             }
             else
