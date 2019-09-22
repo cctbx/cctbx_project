@@ -44,7 +44,7 @@ def main(rot_idx):
 
         # simulate the scattering in the rotated crystal:
         D.raw_pixels_roi *= 0
-        D.Umatrix = R.elems
+        D.Umatrix = R
         D.add_diffBragg_spots()
         img = D.raw_pixels_roi.as_numpy_array()
 
@@ -55,10 +55,10 @@ def main(rot_idx):
         D.refine(rot_idx)
         D.initialize_managers()
 
+        D.Umatrix = Umat_orig
         #D.zero_raw_pixel_rois()
         D.raw_pixels_roi *= 0
         D.set_value(rot_idx, 0)
-        D.Umatrix = Umat_orig
         D.add_diffBragg_spots()
 
         ana_deriv = D.get_derivative_pixels(rot_idx).as_numpy_array()
@@ -85,7 +85,7 @@ def main(rot_idx):
 
     # STEP6: for the smallest perturbation, assert finite difference
     # is equivalent to analytical derivative within 1e-6 units ( per pixel)
-    #assert np.all(vals[0] < 1e-3)
+    assert np.all(vals[0] < 1e-3)
 
     from scipy import stats
     x = theta_vals[:16]
