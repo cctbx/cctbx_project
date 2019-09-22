@@ -30,9 +30,9 @@ def get_diffBragg_instance():
                  'wavelength': wavelen}
 
     cryst_descr = {'__id__': 'crystal',
-                   'real_space_a': (79, 0, 0),
-                   'real_space_b': (0, 79, 0),
-                   'real_space_c': (0, 0, 38),
+                   'real_space_a': (50, 0, 0),
+                   'real_space_b': (0, 60, 0),
+                   'real_space_c': (0, 0, 70),
                    'space_group_hall_symbol': '-P 4 2'}
 
     det_descr = {'panels':
@@ -71,7 +71,7 @@ def get_diffBragg_instance():
     D.Fhkl = Fhkl
     D.Bmatrix = crystal.get_B()
     D.Umatrix = crystal.get_U()
-    D.spot_scale = 1e6
+    #D.spot_scale = 1e6
     #D.show_params()
     #D.printout_pixel_fastslow = 1,1
     return D
