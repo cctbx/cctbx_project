@@ -52,8 +52,13 @@ class RefineRot(object):
             max_iterations=self.mn_iter,
             max_calls=self.max_calls)
 
+        self.handlers = scitbx.lbfgs.exception_handling_parameters(
+            ignore_line_search_failed_step_at_lower_bound=True
+        )
+
         self.minimizer = scitbx.lbfgs.run(
             target_evaluator=self,
+            exception_handling_params=self.handlers,
             termination_params=self.terminator)
 
     def _setup_lbfgs_x_array(self):
@@ -83,7 +88,6 @@ class RefineRot(object):
             self.roi_img.append(self.img[y1:y2+1, x1:x2+1])
 
     def _set_diffBragg_instance(self):
-        #self.S.instantiate_diffBragg()
         self.D = self.S.D
         self.D.refine(0)
         self.D.refine(1)
@@ -216,7 +220,9 @@ class RefineUnitCell(RefineRot):
         self.symbol = symbol
         self.point_group = sgtbx.space_group_info(symbol=self.symbol).group().build_derived_point_group()
         self.param_ucell_tool = parameter_reduction.symmetrize_reduce_enlarge(self.point_group)
-        self.a_real, self.b_real, self.c_real = self.S.crystal.dxtbx_crystal.get_real_space_vectors()
+        # TODO: get the a_real, b_real, c_real of the aligned crystal
+        self.a_real, self.b_real, self.c_real = \
+            sqr(self.S.crystal.dxtbx_crystal.get_unit_cell().orthogonalization_matrix()).transpose().as_list_of_lists()
         self._set_orientation()
 
     @property
@@ -225,7 +231,16 @@ class RefineUnitCell(RefineRot):
 
     @property
     def gradients(self):
-        return self.param_ucell_tool.forward_gradients()
+        grads = self.param_ucell_tool.forward_gradients()
+        grads_transpose = []
+        for grad in grads:
+            grad = grad / 1e10
+            grad = flex.double(
+                (grad[0], grad[3], grad[6],
+                 grad[1], grad[4], grad[7],
+                 grad[2], grad[5], grad[8]))
+            grads_transpose.append(grad)
+        return grads_transpose
 
     @property
     def n_ucell_param(self):
@@ -246,7 +261,8 @@ class RefineUnitCell(RefineRot):
         self.n_gain_params = 1
         self.n = self.n_background_params + self.n_ucell_param + self.n_gain_params
         self.x = flex.double(self.n)
-        self.x[3*self.n_spots:3*self.n_spots:self.n_ucell_param] = self.parameters
+        for i in range(self.n_ucell_param):
+            self.x[3*self.n_spots + i] = self.parameters[i]
         self.x[-1] = 1
 
     def _set_diffBragg_instance(self):
@@ -262,9 +278,10 @@ class RefineUnitCell(RefineRot):
     def _run_diffBragg_current(self, i_spot):
         self.D.region_of_interest = self.nanoBragg_rois[i_spot]
 
-        # TODO: do I work as expected?
-        astar, bstar, cstar = nanoBragg_crystal.abcstar_from_abc(self.a_real, self.b_real, self.c_real)
-        self.D.Amatrix = sqr(astar+bstar+cstar)
+        # TODO: update the B matrix
+        #astar, bstar, cstar = nanoBragg_crystal.abcstar_from_abc(self.a_real, self.b_real, self.c_real)
+        #self.D.Amatrix = sqr(astar+bstar+cstar)
+        self.D.Bmatrix = self.Brecip
 
         self.D.add_diffBragg_spots()
 
@@ -282,11 +299,17 @@ class RefineUnitCell(RefineRot):
         self.scale_fac = self.x[-1]
 
     def _update_orientation(self):
+        from IPython import embed
+        try:
+            B = self.param_ucell_tool.backward_orientation(independent=self.nicks_special_uc_params)
+        except RuntimeError:
+            pass
         B = self.param_ucell_tool.backward_orientation(independent=self.nicks_special_uc_params)
-        B = B.direct_matrix()
-        self.a_real = B[0], B[1], B[2]
-        self.b_real = B[3], B[4], B[5]
-        self.c_real = B[6], B[7], B[8]
+        self.Breal = B.direct_matrix()
+        self.Brecip = B.reciprocal_matrix()
+        self.a_real = self.Breal[0], self.Breal[1], self.Breal[2]
+        self.b_real = self.Breal[3], self.Breal[4], self.Breal[5]
+        self.c_real = self.Breal[6], self.Breal[7], self.Breal[8]
         self._set_orientation()
         self._send_gradients_to_derivative_managers()
 
@@ -341,6 +364,7 @@ class RefineUnitCell(RefineRot):
         return f, g
 
     def print_step(self, message, target):
-        print ("%s %10.4f" % (message, target),
-               "[", " ".join(["%9.6f" % a for a in self.x]), "]")
+        print ("%s %10.7f" % (message, target),
+               "[", " ".join(["%9.8f" % a for a in self.x]), "]")
+        print self.a_real
 
