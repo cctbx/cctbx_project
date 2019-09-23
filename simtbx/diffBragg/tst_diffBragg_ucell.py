@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--plot", action='store_true')
+parser.add_argument("--refine", action='store_true')
 args = parser.parse_args()
 
 import numpy as np
@@ -46,9 +47,10 @@ n_ucell_params = len(X)
 # STEP3: sanity check
 B = S.backward_orientation(independent=X)
 print("Number of parameters = %d" % n_ucell_params)
+print("Test congruency between parameter reduction module and dxtbx...")
 assert np.allclose(C.get_B(), B.reciprocal_matrix())
 #Bstar = B.reciprocal_matrix()
-print ("OK!")
+print("OK!")
 
 # STEP4:
 # make a nanoBragg crystal to pass to diffBragg
@@ -103,75 +105,186 @@ for i_param in range(n_ucell_params):
     analy_deriv = SIM.D.get_derivative_pixels(3+i_param).as_numpy_array()
     derivs.append(analy_deriv)
 
-print X
-print np.reshape(dX[3], (3, 3))
 # STEP8
 # iterate over the parameters and do a finite difference test for each one
-for i_param in range(n_ucell_params):
-    analy_deriv = derivs[i_param]
-    diffs = []
-    # parameter shifts:
-    shifts = [1e-8 * (2**i) for i in range(1, 12, 2)]
-    for i_shift, param_shift in enumerate(shifts):
-        X2 = list(X)
-        X2[i_param] += param_shift
-        B2 = S.backward_orientation(independent=X2).direct_matrix()
+# parameter shifts:
+shifts = [1e-8 * (2**i) for i in range(1, 12, 2)]
 
-        a2_real = B2[0], B2[1], B2[2]
-        b2_real = B2[3], B2[4], B2[5]
-        c2_real = B2[6], B2[7], B2[8]
-        C2 = Crystal(a2_real, b2_real, c2_real, symbol)
-        print("\tPeturbing parameter %d shift %d / %d" % (i_param, i_shift+1, len(shifts)))
-        print("\tGround truth unit cell:")
-        uc_1 = "%.3f, %.3f, %.3f, %.3f, %.3f, %.3f" % C.get_unit_cell().parameters()
-        print("\t%s" % uc_1)
-        print("\tPeturbed unit cell:")
-        uc_2 = "%.3f, %.3f, %.3f, %.3f, %.3f, %.3f" % C2.get_unit_cell().parameters()
-        print("\t%s" % uc_2)
+if not args.refine:
+    for i_param in range(n_ucell_params):
+        analy_deriv = derivs[i_param]
+        diffs = []
+        for i_shift, param_shift in enumerate(shifts):
+            X2 = list(X)
+            X2[i_param] += param_shift
+            B2 = S.backward_orientation(independent=X2).direct_matrix()
+            a2_real = B2[0], B2[1], B2[2]
+            b2_real = B2[3], B2[4], B2[5]
+            c2_real = B2[6], B2[7], B2[8]
+            C2 = Crystal(a2_real, b2_real, c2_real, symbol)
+            print("\tPeturbing parameter %d shift %d / %d" % (i_param, i_shift+1, len(shifts)))
+            print("\tGround truth unit cell:")
+            uc_1 = "%.3f, %.3f, %.3f, %.3f, %.3f, %.3f" % C.get_unit_cell().parameters()
+            print("\t%s" % uc_1)
+            print("\tPeturbed unit cell:")
+            uc_2 = "%.3f, %.3f, %.3f, %.3f, %.3f, %.3f" % C2.get_unit_cell().parameters()
+            print("\t%s" % uc_2)
 
-        D.Bmatrix = C2.get_B()
-        D.add_diffBragg_spots()
+            D.Bmatrix = C2.get_B()
+            D.add_diffBragg_spots()
 
-        img2 = D.raw_pixels_roi.as_numpy_array()
+            img2 = D.raw_pixels_roi.as_numpy_array()
 
-        # Simulate the derivative
-        delta_param = X2[i_param] - X[i_param]
-        # TODO: why is it necessary to flip the sign to get overlap ?
-        finite_deriv = (img2-img) / param_shift
-        finite_deriv2 = (img-img2) / param_shift
+            # Simulate the derivative
+            delta_param = X2[i_param] - X[i_param]
+            # TODO: why is it necessary to flip the sign to get overlap ?
+            finite_deriv = (img2-img) / param_shift
+            finite_deriv2 = (img-img2) / param_shift
 
-        bragg = img > 0.5
-        r = pearsonr(analy_deriv[bragg].ravel(), finite_deriv2[bragg].ravel())[0]
-        diffs.append(r)
-        D.raw_pixels_roi *= 0
-        D.raw_pixels *= 0
+            bragg = img > 0.5
+            r = pearsonr(analy_deriv[bragg].ravel(), finite_deriv2[bragg].ravel())[0]
+            diffs.append(r)
+            D.raw_pixels_roi *= 0
+            D.raw_pixels *= 0
+            if args.plot:
+                plt.subplot(121)
+                plt.imshow(finite_deriv2)
+                plt.title("finite diff")
+                plt.subplot(122)
+                plt.imshow(analy_deriv)
+                plt.title("analytical")
+                plt.draw()
+                plt.suptitle("Shift %d / %d\n ground truth cell=%s\nperturbed cell=%s"
+                             % (i_shift+1, len(shifts), uc_1, uc_2))
+                plt.pause(0.3)
+
         if args.plot:
-            plt.subplot(121)
-            plt.imshow(finite_deriv2)
-            plt.title("finite diff")
-            plt.subplot(122)
-            plt.imshow(analy_deriv)
-            plt.title("analytical")
-            plt.draw()
-            plt.suptitle("Shift %d / %d\n ground truth cell=%s\nperturbed cell=%s"
-                         % (i_shift+1, len(shifts), uc_1, uc_2))
-            plt.pause(0.3)
+            plt.close()
+            plt.plot(shifts, diffs, 'o')
+            title = "Unit cell parameter %d / %d" % (i_param+1, n_ucell_params)
+            plt.title(title + "\nPearson corr between finite diff and analytical")
+            plt.xlabel("unit cell shifts")
+            plt.ylabel("Pearson corr")
+            plt.show()
 
+        # verify a high correlation for the smallest parameter shift
+        print("Check high pearson R between analytical and finite diff")
+        print("Pearson correlection at smallest parameter shift=%f" % diffs[0])
+        assert(diffs[0] > .98), "%f" % diffs[0]
+        # check monotonic decrease
+        print("Fit polynomial and check monotonic decrease")
+        trend = np.polyval(np.polyfit(shifts, diffs, 2), shifts)
+        assert np.all(np.diff(zip(trend[:-1], trend[1:]), axis=1) <= 0)
+    print("OK!")
+
+
+#X2 = [x + shifts[-2] for x in X]
+#X2 = [x + shifts[-2] for x in X]
+X2 = [x +shifts[-2] for x in X]
+B2 = S.backward_orientation(independent=X2).direct_matrix()
+a2_real = B2[0], B2[1], B2[2]
+b2_real = B2[3], B2[4], B2[5]
+c2_real = B2[6], B2[7], B2[8]
+C2 = Crystal(a2_real, b2_real, c2_real, symbol)
+print("Starting a refinement")
+print("\tGround truth unit cell:")
+uc_1 = "%.3f, %.3f, %.3f, %.3f, %.3f, %.3f" % C.get_unit_cell().parameters()
+print("\t%s" % uc_1)
+print("\tPeturbed unit cell:")
+uc_2 = "%.3f, %.3f, %.3f, %.3f, %.3f, %.3f" % C2.get_unit_cell().parameters()
+print("\t%s" % uc_2)
+
+
+print ("Ensure the U matrices are the same for the ground truth and perturbation")
+C2.rotate_around_origin(rot_axis, rot_ang)
+assert np.allclose(C.get_U(), C2.get_U())
+
+# Setup the simulation and create a realistic image
+# with background and noise
+# <><><><><><><><><><><><><><><><><><><><><><><><><>
+nbcryst.dxtbx_crystal = C2
+nbcryst.thick_mm = 0.1
+
+SIM = SimData()
+SIM.detector = SimData.simple_detector(298, 0.1, (700, 700))
+SIM.crystal = nbcryst
+SIM.instantiate_diffBragg(oversample=0)
+SIM.water_path_mm = 0.005
+SIM.air_path_mm = 0.1
+SIM.add_air = True
+SIM.add_Water = True
+SIM.include_noise = True
+SIM._add_nanoBragg_spots()
+spots = SIM.D.raw_pixels.as_numpy_array()
+SIM._add_background()
+SIM._add_noise()
+img = SIM.D.raw_pixels.as_numpy_array()
+SIM.D.raw_pixels *= 0
+
+# spot_rois, abc_init, img, SimData_instance,
+# locate the strong spots and fit background planes
+# <><><><><><><><><><><><><><><><><><><><><><><><><>
+from simtbx.diffBragg import utils
+spot_data = utils.get_spot_data(spots, thresh=19)
+ss_spot, fs_spot = map(np.array, zip(*spot_data["maxIpos"]))  # slow/fast  scan coords of strong spots
+num_spots = len(ss_spot)
+if args.plot:
+    plt.imshow(img, vmax=200)
+    plt.plot(fs_spot, ss_spot, 'o', mfc='none', mec='r')
+    plt.title("Simulated image with strong spots marked")
+    plt.show()
+
+
+is_bg_pixel = np.ones(img.shape, bool)
+for bb_ss, bb_fs in spot_data["bboxes"]:
+    is_bg_pixel[bb_ss, bb_fs] = False
+
+# now fit tilting planes
+shoebox_sz = 64
+tilt_abc = np.zeros((num_spots, 3))
+spot_roi = np.zeros((num_spots, 4), int)
+if args.plot:
+    patches = []
+img_shape = SIM.detector[0].get_image_size()
+for i_spot, (x_com, y_com) in enumerate(zip(fs_spot, ss_spot)):
+    i1 = int(max(x_com - shoebox_sz / 2., 0))
+    i2 = int(min(x_com + shoebox_sz / 2., img_shape[0]-1))
+    j1 = int(max(y_com - shoebox_sz / 2., 0))
+    j2 = int(min(y_com + shoebox_sz / 2., img_shape[1]-1))
+
+    shoebox_img = img[j1:j2, i1:i2]
+    shoebox_mask = is_bg_pixel[j1:j2, i1:i2]
+
+    tilt, bgmask, coeff = utils.tilting_plane(
+        shoebox_img,
+        mask=shoebox_mask,  # mask specifies which spots are bg pixels...
+        zscore=2)
+
+    tilt_abc[i_spot] = coeff[1], coeff[2], coeff[0]  # store as fast-scan coeff, slow-scan coeff, offset coeff
+
+    spot_roi[i_spot] = i1, i2, j1, j2
     if args.plot:
-        plt.close()
-        plt.plot(shifts, diffs, 'o')
-        title = "Unit cell parameter %d / %d" % (i_param+1, n_ucell_params)
-        plt.title(title + "\nPearson corr between finite diff and analytical")
-        plt.xlabel("unit cell shifts")
-        plt.ylabel("Pearson corr")
-        plt.show()
+        R = plt.Rectangle(xy=(x_com-shoebox_sz/2, y_com-shoebox_sz/2.),
+                      width=shoebox_sz,
+                      height=shoebox_sz,
+                      fc='none', ec='r')
+        patches.append(R)
 
-    # verify a high correlation for the smallest parameter shift
-    print("Check high pearson R between analytical and finite diff")
-    print("Pearson correlection at smallest parameter shift=%f" % diffs[0])
-    assert(diffs[0] > .98), "%f" % diffs[0]
-    # check monotonic decrease
-    print("Fit polynomial and check monotonic decrease")
-    trend = np.polyval(np.polyfit(shifts, diffs, 2), shifts)
-    assert np.all(np.diff(zip(trend[:-1], trend[1:]), axis=1) <= 0)
-print("OK!")
+if args.plot:
+    patch_coll = plt.mpl.collections.PatchCollection(patches, match_original=True)
+    plt.imshow(img, vmin=0, vmax=200)
+    plt.gca().add_collection(patch_coll)
+    plt.show()
+
+from simtbx.diffBragg.refiners import RefineUnitCell
+RUC = RefineUnitCell(spot_rois=spot_roi,
+                     abc_init=tilt_abc,
+                     img=img,
+                     SimData_instance=SIM,
+                     symbol=symbol)
+#from IPython import embed
+#embed()
+RUC.trad_conv = True
+RUC.trad_conv_eps = 1e-6
+RUC.run()
+
