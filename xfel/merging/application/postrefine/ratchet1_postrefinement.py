@@ -77,9 +77,9 @@ class ratchet1_postrefinement(worker):
     if use_weights:
       # variance weighting
       # obviously there is a chance of divide by zero here so recheck the code
-      intensity_weight = 1./reflections['intensity.sum.variance'].select(pair1)
+      intensity_weight = 1./reflections['intensity.sum.variance']
     else:
-      IW = intensity_weight = flex.double(len(reflections), 1.)
+      intensity_weight = flex.double(len(reflections), 1.)
 
     intensity_weight.set_selected(reflection_addresses_with_invalid_intensity_reference, 0.)
     intensity_weight.set_selected(new_matches.singles(1), 0.) # observations with no corresponding reference intensity
@@ -679,32 +679,6 @@ class ratchet1_refinery(refinery_base):
       for managed_parameter in self.parameter_managers:
         jacobian_columns.append(managed_parameter.get_jacobian_column())
 
-      #P_terms = (values.G * EXP * self.ICALCVEC)
-
-      #thetax = values.thetax; thetay = values.thetay;
-      #Rx = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(thetax)
-      #dRx_dthetax = matrix.col((1,0,0)).axis_and_angle_as_r3_derivative_wrt_angle(thetax)
-      #Ry = matrix.col((0,1,0)).axis_and_angle_as_r3_rotation_matrix(thetay)
-      #dRy_dthetay = matrix.col((0,1,0)).axis_and_angle_as_r3_derivative_wrt_angle(thetay)
-      #ref_ori = matrix.sqr(self.ORI.reciprocal_matrix())
-      #miller_vec = self.MILLER.as_vec3_double()
-      #ds1_dthetax = flex.mat3_double(len(self.MILLER),Ry * dRx_dthetax * ref_ori) * miller_vec
-      #ds1_dthetay = flex.mat3_double(len(self.MILLER),dRy_dthetay * Rx * ref_ori) * miller_vec
-
-      #s1vec = self.get_s1_array(values)
-      #s1lenvec = flex.sqrt(s1vec.dot(s1vec))
-      #dRh_dthetax = s1vec.dot(ds1_dthetax)/s1lenvec
-      #dRh_dthetay = s1vec.dot(ds1_dthetay)/s1lenvec
-      #rs = values.RS
-      #Rh = self.get_Rh_array(values)
-      #rs_sq = rs*rs
-      #denomin = (2. * Rh * Rh + rs_sq)
-      #dPB_dRh = { "lorentzian": -PB * 4. * Rh / denomin,
-      #            "gaussian": -PB * 4. * math.log(2) * Rh / rs_sq }[self.profile_shape]
-      #dPB_dthetax = dPB_dRh * dRh_dthetax
-      #dPB_dthetay = dPB_dRh * dRh_dthetay
-      #Px_terms = P_terms * dPB_dthetax; Py_terms = P_terms * dPB_dthetay
-
       return jacobian_columns # [ G, B, G, B, ..., eta, deff ]
 
 
@@ -729,6 +703,7 @@ class lbfgs_minimizer_ratchet(object):
     self.x = current_x
     from scitbx import lbfgs
     from scitbx.lbfgs.tst_mpi_split_evaluator import mpi_split_evaluator_run
+    self.diag_mode=None # None, "once", or "always"
     P = Profiler("LBFGS total run")
     self.minimizer = mpi_split_evaluator_run(
       target_evaluator=self,
@@ -764,7 +739,6 @@ class lbfgs_minimizer_ratchet(object):
                                  flex.sum(self.refinery_target.reflections[ "intensity_weight" ])), end=' ')#, file=self.out)
     print(list(self.x[-4:]))#,file=self.out)
     return self.f, self.g
-
 
 class lbfgs_minimizer_base:
 
