@@ -22,14 +22,16 @@ from dxtbx.model.crystal import Crystal
 
 # STEP 1:
 # make a crystal and orient it randomly
-ucell = (55, 66, 77, 90, 95, 90)
-symbol = "P1211"
+ucell = (55, 55, 77, 90, 90, 90)
+symbol = "P43212"
+#ucell = (55, 65, 77, 90, 95, 90)
+#symbol = "P121"
 a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
 #a_real, b_real, c_real = np.reshape(uctbx.unit_cell(ucell).orthogonalization_matrix(), (3,3)).T   #transpose().as_list_of_lists()
 C = Crystal(a_real, b_real, c_real, symbol)
 
 # random raotation
-rotation = Rotation.random(num=1, random_state=1)[0]
+rotation = Rotation.random(num=1, random_state=10)[0]
 Q = rec(rotation.as_quat(), n=(4, 1))
 rot_ang, rot_axis = Q.unit_quaternion_as_axis_and_angle()
 C.rotate_around_origin(rot_axis, rot_ang)
@@ -77,7 +79,11 @@ for i_param in range(n_ucell_params):
     D.refine(3+i_param)
 D.initialize_managers()
 for i_param in range(n_ucell_params):
-    dB_mat = dX[i_param]/1e10
+    if i_param == 0:
+        scale = 2/55.
+    else:
+        scale = 2/77.
+    dB_mat = dX[i_param] * scale
     dB_mat = flex.double(
         (dB_mat[0], dB_mat[3], dB_mat[6],
          dB_mat[1], dB_mat[4], dB_mat[7],
@@ -104,6 +110,9 @@ derivs = []
 for i_param in range(n_ucell_params):
     analy_deriv = SIM.D.get_derivative_pixels(3+i_param).as_numpy_array()
     derivs.append(analy_deriv)
+
+from IPython import embed
+embed()
 
 # STEP8
 # iterate over the parameters and do a finite difference test for each one
@@ -132,16 +141,16 @@ if not args.refine:
 
             D.Bmatrix = C2.get_B()
             D.add_diffBragg_spots()
-
             img2 = D.raw_pixels_roi.as_numpy_array()
 
-            # Simulate the derivative
-            delta_param = X2[i_param] - X[i_param]
-            # TODO: why is it necessary to flip the sign to get overlap ?
-            finite_deriv = (img2-img) / param_shift
-            finite_deriv2 = (img-img2) / param_shift
-
             bragg = img > 0.5
+            # Simulate the derivative
+
+            # TODO: why is it necessary to flip the sign to get overlap ?
+            delta_param = np.sqrt(1 / X2[0]) - np.sqrt(1/X[0])
+            finite_deriv = (img2-img) / delta_param
+            finite_deriv2 = (img-img2) / delta_param
+
             r = pearsonr(analy_deriv[bragg].ravel(), finite_deriv2[bragg].ravel())[0]
             diffs.append(r)
             D.raw_pixels_roi *= 0
@@ -156,7 +165,7 @@ if not args.refine:
                 plt.draw()
                 plt.suptitle("Shift %d / %d\n ground truth cell=%s\nperturbed cell=%s"
                              % (i_shift+1, len(shifts), uc_1, uc_2))
-                plt.pause(0.3)
+                plt.pause(0.8)
 
         if args.plot:
             plt.close()
@@ -202,7 +211,7 @@ assert np.allclose(C.get_U(), C2.get_U())
 # Setup the simulation and create a realistic image
 # with background and noise
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
-nbcryst.dxtbx_crystal = C2
+nbcryst.dxtbx_crystal = C  # GT crystal
 nbcryst.thick_mm = 0.1
 
 SIM = SimData()
@@ -214,7 +223,7 @@ SIM.air_path_mm = 0.1
 SIM.add_air = True
 SIM.add_Water = True
 SIM.include_noise = True
-SIM._add_nanoBragg_spots()
+SIM.D.add_diffBragg_spots()
 spots = SIM.D.raw_pixels.as_numpy_array()
 SIM._add_background()
 SIM._add_noise()
@@ -277,13 +286,12 @@ if args.plot:
     plt.show()
 
 from simtbx.diffBragg.refiners import RefineUnitCell
+nbcryst.dxtbx_crystal = C2
 RUC = RefineUnitCell(spot_rois=spot_roi,
                      abc_init=tilt_abc,
                      img=img,
                      SimData_instance=SIM,
                      symbol=symbol)
-#from IPython import embed
-#embed()
 RUC.trad_conv = True
 RUC.trad_conv_eps = 1e-6
 RUC.run()
