@@ -132,12 +132,12 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     rotX->refine_me = false;
     rotY->refine_me = false;
     rotZ->refine_me = false;
-    uc1->refine_me = false;
-    uc2->refine_me = false;
-    uc3->refine_me = false;
-    uc4->refine_me = false;
-    uc5->refine_me = false;
-    uc6->refine_me = false;
+    uc1->refine_me = true;
+    uc2->refine_me = true;
+    uc3->refine_me = true;
+    uc4->refine_me = true;
+    uc5->refine_me = true;
+    uc6->refine_me = true;
 
     rot_managers.push_back(rotX);
     rot_managers.push_back(rotY);
@@ -150,9 +150,22 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     ucell_managers.push_back(uc5);
     ucell_managers.push_back(uc6);
 
-    // initialize ucell gradients as 0
-    for (int i=0; i <6; i++)
-        ucell_managers[i]->dB = mat3(0,0,0,0,0,0,0,0,0);
+    // set ucell gradients, Bmatrix is upper triangular in diffBragg?
+    for (int i=0; i <6; i++){
+        mat3 bb =  mat3(0,0,0,0,0,0,0,0,0);
+        if (i <3)
+            bb[i]= 1;
+        else if (i ==3 || i==4)
+            bb[i+1] = 1;
+        else if (i==5)
+            bb[8] = 1;
+
+        printf("Param %d\nbb_real:\n%11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n", i,
+            bb[0], bb[1], bb[2],
+            bb[3], bb[4], bb[5],
+            bb[6], bb[7], bb[8]);
+        ucell_managers[i]->dB = bb;
+        }
 
     init_raw_pixels_roi();
     }
@@ -440,21 +453,21 @@ void diffBragg::add_diffBragg_spots()
                                 cp_vec[1] = cp[2];
                                 cp_vec[2] = cp[3];
 
-                                q_vec[0] = scattering[1];
-                                q_vec[1] = scattering[2];
-                                q_vec[2] = scattering[3];
+                                q_vec[0] = 1e-10*scattering[1];
+                                q_vec[1] = 1e-10*scattering[2];
+                                q_vec[2] = 1e-10*scattering[3];
 
-                                Bmat_realspace[0] = ap_vec[0];
-                                Bmat_realspace[3] = ap_vec[1];
-                                Bmat_realspace[6] = ap_vec[2];
+                                Bmat_realspace[0] = 1e10*ap_vec[0];
+                                Bmat_realspace[3] = 1e10*ap_vec[1];
+                                Bmat_realspace[6] = 1e10*ap_vec[2];
 
-                                Bmat_realspace[1] = bp_vec[0];
-                                Bmat_realspace[4] = bp_vec[1];
-                                Bmat_realspace[7] = bp_vec[2];
+                                Bmat_realspace[1] = 1e10*bp_vec[0];
+                                Bmat_realspace[4] = 1e10*bp_vec[1];
+                                Bmat_realspace[7] = 1e10*bp_vec[2];
 
-                                Bmat_realspace[2] = cp_vec[0];
-                                Bmat_realspace[5] = cp_vec[1];
-                                Bmat_realspace[8] = cp_vec[2];
+                                Bmat_realspace[2] = 1e10*cp_vec[0];
+                                Bmat_realspace[5] = 1e10*cp_vec[1];
+                                Bmat_realspace[8] = 1e10*cp_vec[2];
 
                                 /* construct fractional Miller indicies */
                                 vec3 H_vec = (UMATS_RXYZ[mos_tic] * Umatrix*Bmat_realspace).transpose() * q_vec;
