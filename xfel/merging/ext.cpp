@@ -82,6 +82,76 @@ namespace sx_merging {
     }
   }
 
+  void split_reflections_by_experiment_chunks_cpp(dials::af::reflection_table reflections,
+                                                  const scitbx::af::shared<std::string>& exp_id_list,
+                                                  const scitbx::af::shared<int>& chunk_id_list,
+                                                  boost::python::list reflection_chunks){
+    // set up a map exp_id:chunk_id
+    std::map<std::string, size_t> chunk_lookup;
+    for(size_t i = 0UL; i < exp_id_list.size(); ++i){
+      chunk_lookup[exp_id_list[i]] = (size_t)chunk_id_list[i];
+    }
+
+    SCITBX_ASSERT(reflections.contains("miller_index"));
+    SCITBX_ASSERT(reflections.contains("intensity.sum.value"));
+    SCITBX_ASSERT(reflections.contains("intensity.sum.variance"));
+    SCITBX_ASSERT(reflections.contains("exp_id"));
+    SCITBX_ASSERT(reflections.contains("s1"));
+
+    scitbx::af::ref<miller_index_t> miller_index    = reflections["miller_index"];
+    scitbx::af::ref<double> intensity               = reflections["intensity.sum.value"];
+    scitbx::af::ref<double> variance                = reflections["intensity.sum.variance"];
+    scitbx::af::ref<std::string> experiment_id      = reflections["exp_id"];
+    scitbx::af::ref<scitbx::vec3<double> > s1       = reflections["s1"];
+
+    miller_index_t* mi_ptr          = miller_index.begin();
+    double* intensity_ptr           = intensity.begin();
+    double* variance_ptr            = variance.begin();
+    std::string* experiment_id_ptr  = experiment_id.begin();
+    scitbx::vec3<double>* s1_ptr    = s1.begin();
+
+    int n_chunks = boost::python::len(reflection_chunks);
+    std::vector<dials::af::reflection_table> tables;
+    for(size_t i=0UL; i < n_chunks; ++i){
+      tables.push_back(boost::python::extract<dials::af::reflection_table>(reflection_chunks[i]));
+      SCITBX_ASSERT(tables.back().contains("miller_index"));
+    }
+
+    // cache all columns for all hkl chunks
+    std::vector<scitbx::af::shared<miller_index_t> >  mi_cols;
+    std::vector<scitbx::af::shared<double> >          intensity_cols;
+    std::vector<scitbx::af::shared<double> >          variance_cols;
+    std::vector<scitbx::af::shared<std::string> >     experiment_id_cols;
+    std::vector<scitbx::af::shared<scitbx::vec3<double> > >     s1_cols;
+
+    for(size_t i=0UL; i < n_chunks; ++i){
+      mi_cols.push_back(tables[i]["miller_index"]);
+      intensity_cols.push_back(tables[i]["intensity.sum.value"]);
+      variance_cols.push_back(tables[i]["intensity.sum.variance"]);
+      experiment_id_cols.push_back(tables[i]["exp_id"]);
+      s1_cols.push_back(tables[i]["s1"]);
+    }
+
+    // distribute reflections over chunks
+    for(size_t i=0UL; i < reflections.size(); ++i){
+      miller_index_t  hkl             = *mi_ptr++;
+      double          intensity       = *intensity_ptr++;
+      double          variance        = *variance_ptr++;
+      std::string     experiment_id   = *experiment_id_ptr++;
+      scitbx::vec3<double> s1         = *s1_ptr++;
+
+      if( 0 != chunk_lookup.count(experiment_id) )
+      {
+          size_t chunk_id = chunk_lookup[experiment_id];
+          mi_cols[chunk_id].push_back(hkl);
+          intensity_cols[chunk_id].push_back(intensity);
+          variance_cols[chunk_id].push_back(variance);
+          experiment_id_cols[chunk_id].push_back(experiment_id);
+          s1_cols[chunk_id].push_back(s1);
+       }
+    }
+  }
+
   dials::af::reflection_table isigi_dict_to_reflection_table(
                           dials::af::shared<cctbx::miller::index<> > miller_indices,
                           boost::python::dict ISIGI) {
@@ -127,6 +197,7 @@ namespace boost_python { namespace {
     def("foo2",&sx_merging::foo2);
     def("get_hkl_chunks_cpp",&sx_merging::get_hkl_chunks_cpp);
     def("isigi_dict_to_reflection_table",&sx_merging::isigi_dict_to_reflection_table);
+    def("split_reflections_by_experiment_chunks_cpp",&sx_merging::split_reflections_by_experiment_chunks_cpp);
   }
 
 }

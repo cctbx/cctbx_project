@@ -5,19 +5,7 @@ from dials.array_family import flex
 from six.moves import range
 from xfel.merging.application.input.file_lister import file_lister
 from xfel.merging.application.input.file_load_calculator import file_load_calculator
-
-try:
-  import resource
-  import platform
-  def get_memory_usage():
-    # getrusage returns kb on linux, bytes on mac
-    units_per_mb = 1024
-    if platform.system() == "Darwin":
-      units_per_mb = 1024*1024
-    return ('Memory usage: %.1f MB' % (int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) / units_per_mb))
-except ImportError:
-  def debug_memory_usage():
-    pass
+from xfel.merging.application.utils.memory_usage import get_memory_usage
 
 """
 Utility functions used for reading input data
@@ -141,12 +129,12 @@ class simple_file_loader(worker):
     self.logger.log_step_time("LOAD", True)
 
     self.logger.log('Read %d experiments consisting of %d reflections'%(len(all_experiments)-starting_expts_count, len(all_reflections)-starting_refls_count))
-    self.logger.log(get_memory_usage())
+    self.logger.log("Memory usage: %d MB"%get_memory_usage())
 
     from xfel.merging.application.reflection_table_utils import reflection_table_utils
-    all_reflections = reflection_table_utils.prune_reflection_table_keys(reflections=all_reflections, keys_to_keep=['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', 'exp_id', 'odd_frame', 's1'])
+    all_reflections = reflection_table_utils.prune_reflection_table_keys(reflections=all_reflections, keys_to_keep=['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', 'exp_id', 's1'])
     self.logger.log("Pruned reflection table")
-    self.logger.log(get_memory_usage())
+    self.logger.log("Memory usage: %d MB"%get_memory_usage())
 
     # Do we have any data?
     from xfel.merging.application.utils.data_counter import data_counter
