@@ -16,7 +16,7 @@ default_steps = [
   'statistics_beam', # save the average wavelength to the phil parameters
   'model_statistics', # build full Miller list, model intensities, and resolution binner - for statistics. May use average unit cell.
   'statistics_resolution', # calculate resolution statistics for experiments
-  'group', # re-distribute reflections, so that all measurements of every HKL are gathered at the same rank
+  'group', # re-distribute reflections over the ranks, so that all measurements of every HKL are gathered at the same rank
   'errors_merge', # correct errors using a per-HKL algorithm, e.g. errors_from_sample_residuals
   'statistics_intensity', # calculate resolution statistics for intensities
   'merge', # merge HKL intensities, MPI-gather all HKLs at rank 0, output "odd", "even" and "all" HKLs as mtz files

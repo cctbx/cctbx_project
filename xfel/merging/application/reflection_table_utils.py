@@ -52,7 +52,7 @@ class reflection_table_utils(object):
 
   @staticmethod
   def merge_reflections(reflections, min_multiplicity):
-    '''Merge intensities of multiply-measured symmetry-reduced HKLs'''
+    '''Merge intensities of multiply-measured symmetry-reduced HKLs. The input reflection table must be sorted by symmetry-reduced HKLs.'''
     merged_reflections = reflection_table_utils.merged_reflection_table()
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections):
       if refls.size() == 0:
@@ -91,7 +91,37 @@ class reflection_table_utils(object):
             del reflections[key]
       elif keys_to_keep != None:
         for key in all_keys:
-          #if not key in ['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', 'exp_id', 'odd_frame', 's1']:
           if not key in keys_to_keep:
             del reflections[key]
     return reflections
+
+  @staticmethod
+  def get_next_reflection_table_slice(reflections, n_slices, reflection_table_stub):
+    '''Generate an exact number of slices from a reflection table. Make slices as even as possible. If not enough reflections, generate empty tables'''
+    assert n_slices >= 0
+
+    if n_slices == 1:
+      yield reflections
+    else:
+      import math
+
+      generated_slices = 0
+      count = len(reflections)
+
+      if count > 0:
+        # how many non-empty slices should we generate and with what stride?
+        nonempty_slices = min(count, n_slices)
+        stride = int(math.ceil(count / nonempty_slices))
+
+        # generate all non-empty slices
+        for i in range(0, count, stride):
+          generated_slices += 1
+          i2 = i + stride
+          if generated_slices == nonempty_slices:
+            i2 = count
+          yield reflections[i:i2]
+
+      # generate some empty slices if necessary
+      empty_slices = max(0, n_slices - generated_slices)
+      for i in range(empty_slices):
+        yield reflection_table_stub()

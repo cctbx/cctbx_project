@@ -51,6 +51,12 @@ input {
       .type = choice
       .multiple = False
       .help = balance the input file load by distributing experiments unformly over all available ranks (global) or over the ranks on each node
+    balance_mpi_alltoall_slices = 1
+      .type = int
+      .expert_level = 2
+      .help = memory reduction factor for MPI alltoall.
+      .help = Use mpi_alltoall_slices > 1, when available RAM memory is insufficient for doing MPI alltoall on all data at once.
+      .help = The data will then be split into mpi_alltoall_slices parts and, correspondingly, alltoall will be performed in mpi_alltoall_slices iterations.
   }
 }
 
