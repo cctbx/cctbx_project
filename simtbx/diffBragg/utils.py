@@ -1,4 +1,5 @@
 from scipy import ndimage
+from scitbx.matrix import sqr
 import numpy as np
 
 
@@ -121,3 +122,45 @@ def refine_model_from_angles(dxcryst, angles=(0, 0, 0)):
 
     return dxcryst_refined
 
+
+class TetragonalManager(object):
+    """
+    helper class for derivatives of unit cells
+    Used in testing
+    """
+
+    def __init__(self, a=55, c=77):
+        self.a = a
+        self.c = c
+
+    @property
+    def a(self):
+        return self._a
+
+    @a.setter
+    def a(self, val):
+        self._a = val
+
+    @property
+    def c(self):
+        return self._c
+
+    @c.setter
+    def c(self, val):
+        self._c = val
+
+    @property
+    def B_realspace(self):
+        return sqr((self.a, 0, 0, 0, self.a, 0, 0, 0, self.c))
+
+    @property
+    def B_recipspace(self):
+        return self.B_realspace.inverse().transpose()
+
+    @property
+    def dB_da_real(self):
+        return sqr((1, 0, 0, 0, 1, 0, 0, 0, 0))
+
+    @property
+    def dB_dc_real(self):
+        return sqr((0, 0, 0, 0, 0, 0, 0, 0, 1))
