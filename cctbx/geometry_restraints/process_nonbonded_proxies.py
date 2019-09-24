@@ -565,18 +565,18 @@ class manager():
         if (model_distance <= 3.0
           and [self.hd_sel[i_seq],self.hd_sel[j_seq]].count(True) == 1):
           is_hbond = self._is_hbond(item  = item, fsc0  = fsc0)
-
-      # TODO: proxy cannot be clash and hbond at the same time (?)
+          # proxy cannot be clash and hbond at the same time
+          if is_hbond: continue
 
       # Find clashes
       if find_clashes:
         delta = model_distance - vdw_sum
         if (delta < -0.40):
           is_clash = self._is_clash(
-                      i_seq = i_seq,
-                      j_seq = j_seq,
-                      fsc0 = fsc0,
-                      model_distance = model_distance)
+            i_seq = i_seq,
+            j_seq = j_seq,
+            fsc0 = fsc0,
+            model_distance = model_distance)
           if is_clash:
             clash_tuple = [i_seq, j_seq]
             clash_tuple.sort()
@@ -638,7 +638,7 @@ class manager():
       atoms    = self.atoms)
 
     d_HA = A.distance(H)
-    # something went wrong if the distances are not equal
+    # if the distances are not equal, something went wrong
     assert approx_equal(d_HA, model_distance, eps=0.1)
     d_DA = D.distance(A)
     a_DHA = H.angle(A, D, deg=True)
@@ -660,7 +660,6 @@ class manager():
         hbond_info  = [d_HA, d_DA, a_DHA, symop_str, symop, vdw_sum])
       # TODO: if several atom_x, use the first one found
       #  (show shortest or both)
-      #break
 
     return is_hbond
 
