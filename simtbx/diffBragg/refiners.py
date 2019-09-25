@@ -238,6 +238,8 @@ class RefineUnitCell(RefineRot):
         da_dG = []
         for i in range(self.n_ucell_param):
             da_dG.append(utils.lower_triangle(matrices[i]))
+        from IPython import embed
+        embed()
         return da_dG
 
     def _setup(self):
@@ -247,9 +249,11 @@ class RefineUnitCell(RefineRot):
         self._set_diffBragg_instance()
 
     def _set_orientation(self):
-        self.param_ucell_tool.set_orientation(self.a_real + self.b_real + self.c_real) #,
-        #                                      crystal_orientation.basis_type.direct)
-        _ = self.param_ucell_tool.forward_independent_parameters()  # WHY?!
+        CO = crystal_orientation.crystal_orientation(
+            self.a_real + self.b_real + self.c_real,
+            crystal_orientation.basis_type.direct)
+        self.param_ucell_tool.set_orientation(CO)
+        #_ = self.param_ucell_tool.forward_independent_parameters()  # WHY?!
 
     def _setup_lbfgs_x_array(self):
         self.n_spots = len(self.spot_rois)
@@ -258,7 +262,8 @@ class RefineUnitCell(RefineRot):
         self.n = self.n_background_params + self.n_ucell_param + self.n_gain_params
         self.x = flex.double(self.n)
         for i in range(self.n_ucell_param):
-            self.x[3*self.n_spots + i] = self.init_param[i]
+            # NOTE: using exp of parameter
+            self.x[3*self.n_spots + i] = np.log(self.init_param[i])
         self.x[-1] = 1
 
     def _set_diffBragg_instance(self):
@@ -283,9 +288,11 @@ class RefineUnitCell(RefineRot):
         self.c = self.x[self.n_spots*2 + i_spot]
 
     def _update_orientation(self):
-        self.nicks_special_uc_params = self.x[self.n_spots*3: self.n_spots*3+self.n_ucell_param]
+        #self.param_ucell_tool = parameter_reduction.symmetrize_reduce_enlarge(self.point_group)
+        self.nicks_special_uc_params = [np.exp(i) for i in self.x[self.n_spots*3: self.n_spots*3+self.n_ucell_param]]
         B = self.param_ucell_tool.backward_orientation(independent=self.nicks_special_uc_params)
         self.Breal = B.direct_matrix()
+
         #self.Brecip = B.reciprocal_matrix()
         # NOTE: rstbx B matrix are all in lower diagonal format
         self.a_real = self.Breal[0], self.Breal[1], self.Breal[2]
@@ -336,7 +343,10 @@ class RefineUnitCell(RefineRot):
                 dChi_dG = np.zeros_like(self.dChi_da[0])
                 for i in range(6):
                     dChi_dG += (self.dChi_da[i] * self.da_dG[i_ucell_p][i])
-                g[self.n_spots*3+i_ucell_p] += (one_minus_k_over_Lambda * dChi_dG).sum()
+                # additional factor because using exponential of the G-tensor parameters
+                embed()
+                dG_dp = np.exp(self.x[self.n_spots*3+i_ucell_p])
+                g[self.n_spots*3+i_ucell_p] += (one_minus_k_over_Lambda * dChi_dG*dG_dp).sum()
 
             # scale factor derivative
             g[-1] += ((self.model_bragg_spots) * one_minus_k_over_Lambda).sum()
