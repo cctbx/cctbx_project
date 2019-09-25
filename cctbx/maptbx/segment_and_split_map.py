@@ -1204,7 +1204,7 @@ master_params = master_phil
 
 class map_and_b_object:
   def __init__(self,
-      map_data=None,
+       map_data=None,
       starting_b_iso=None,
       final_b_iso=None):
     from libtbx import adopt_init_args
