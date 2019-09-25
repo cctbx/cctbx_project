@@ -132,12 +132,12 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     rotX->refine_me = false;
     rotY->refine_me = false;
     rotZ->refine_me = false;
-    uc1->refine_me = true;
-    uc2->refine_me = true;
-    uc3->refine_me = true;
-    uc4->refine_me = true;
-    uc5->refine_me = true;
-    uc6->refine_me = true;
+    uc1->refine_me = false;
+    uc2->refine_me = false;
+    uc3->refine_me = false;
+    uc4->refine_me = false;
+    uc5->refine_me = false;
+    uc6->refine_me = false;
 
     rot_managers.push_back(rotX);
     rot_managers.push_back(rotY);

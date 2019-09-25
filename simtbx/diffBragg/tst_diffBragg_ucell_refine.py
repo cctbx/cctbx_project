@@ -1,3 +1,4 @@
+
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--plot", action='store_true')
@@ -20,7 +21,6 @@ from cctbx import uctbx
 from simtbx.diffBragg.sim_data2 import SimData
 from simtbx.diffBragg import utils
 from dxtbx.model.crystal import Crystal
-
 from IPython import embed
 
 #TODO parameters shifts should be percentages
@@ -235,16 +235,19 @@ SIM.D.add_diffBragg_spots()
 spots = SIM.D.raw_pixels.as_numpy_array()
 SIM._add_background()
 SIM._add_noise()
+# this is the ground truth image:
 img = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
 
+# Simulate the perturbed image for comparison
 SIM.D.Bmatrix = C2.get_B()
 SIM.D.add_diffBragg_spots()
 SIM._add_background()
-#SIM._add_noise()
-img3 = SIM.D.raw_pixels.as_numpy_array()
+SIM._add_noise()
+img_pet = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
 
+# NOTE NEED TO DO SPOT FINDING AND WHAT NOT
 # spot_rois, abc_init, img, SimData_instance,
 # locate the strong spots and fit background planes
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -256,7 +259,6 @@ if args.plot:
     plt.plot(fs_spot, ss_spot, 'o', mfc='none', mec='r')
     plt.title("Simulated image with strong spots marked")
     plt.show()
-
 
 is_bg_pixel = np.ones(img.shape, bool)
 for bb_ss, bb_fs in spot_data["bboxes"]:
@@ -299,13 +301,12 @@ if args.plot:
     plt.gca().add_collection(patch_coll)
     plt.show()
 
-from simtbx.diffBragg.ucell_refiners import RefineUcell
+from simtbx.diffBragg.refiners import RefineUcell
 
-ucell=C2.get_unit_cell().parameters()
 if is_tet:
-    UcellMan.variables = [ucell[0], ucell[2]]
+    UcellMan.variables = [ucell2[0], ucell2[2]]
 else:
-    UcellMan.variables = [ucell[0], ucell[1], ucell[2], ucell[4]*np.pi/180]
+    UcellMan.variables = [ucell2[0], ucell2[1], ucell2[2], ucell2[4]*np.pi/180]
 
 nbcryst.dxtbx_crystal = C2
 SIM.crystal = nbcryst
