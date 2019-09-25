@@ -5,19 +5,20 @@ parser.add_argument("--refine", action='store_true')
 args = parser.parse_args()
 
 import numpy as np
+from IPython import embed
 from scipy.spatial.transform import Rotation
 from scipy.stats import pearsonr
 import pylab as plt
 
 from cctbx import sgtbx
 from rstbx.symmetry.constraints import parameter_reduction
-from scitbx.array_family import flex
 from scitbx.matrix import sqr
 from scitbx.matrix import rec
-from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from cctbx import uctbx
 from simtbx.diffBragg.sim_data2 import SimData
 from dxtbx.model.crystal import Crystal
+from simtbx.diffBragg import utils
+from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 
 
 # STEP 1:
@@ -31,7 +32,7 @@ a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).
 C = Crystal(a_real, b_real, c_real, symbol)
 
 # random raotation
-rotation = Rotation.random(num=1, random_state=10)[0]
+rotation = Rotation.random(num=1, random_state=101)[0]
 Q = rec(rotation.as_quat(), n=(4, 1))
 rot_ang, rot_axis = Q.unit_quaternion_as_axis_and_angle()
 C.rotate_around_origin(rot_axis, rot_ang)
@@ -75,24 +76,7 @@ D = SIM.D
 
 # STEP6:
 # initialize the derivative managers for the unit cell parameters
-for i_param in range(n_ucell_params):
-    D.refine(3+i_param)
 D.initialize_managers()
-for i_param in range(n_ucell_params):
-    if i_param == 0:
-        scale = 2/55.
-    else:
-        scale = 2/77.
-    dB_mat = dX[i_param] * scale
-    dB_mat = flex.double(
-        (dB_mat[0], dB_mat[3], dB_mat[6],
-         dB_mat[1], dB_mat[4], dB_mat[7],
-         dB_mat[2], dB_mat[5], dB_mat[8]))
-    D.set_ucell_derivative_matrix(3+i_param, dB_mat)
-
-D.initialize_managers()
-#D.show_params()
-
 roi = ((0, 699), (0, 699))
 rX = slice(roi[0][0], roi[0][1], 1)
 rY = slice(roi[1][0], roi[1][1], 1)
@@ -106,70 +90,67 @@ img = D.raw_pixels_roi.as_numpy_array()
 D.raw_pixels *= 0
 D.raw_pixels_roi *= 0
 
-derivs = []
-for i_param in range(n_ucell_params):
+dChi_da = []
+for i_param in range(6):
     analy_deriv = SIM.D.get_derivative_pixels(3+i_param).as_numpy_array()
-    derivs.append(analy_deriv)
-
-from IPython import embed
-embed()
+    dChi_da.append(analy_deriv)
 
 # STEP8
 # iterate over the parameters and do a finite difference test for each one
 # parameter shifts:
-shifts = [1e-8 * (2**i) for i in range(1, 12, 2)]
+da_shifts = [5e-3 * (2**i) for i in range(1, 12, 2)]
 
 if not args.refine:
     for i_param in range(n_ucell_params):
-        analy_deriv = derivs[i_param]
+        da_dG = utils.lower_triangle(dX[i_param])
+        dChi_dG = np.zeros_like(dChi_da[0])
+        for i in range(6):
+            dChi_dG += (dChi_da[i] * da_dG[i])
+
         diffs = []
-        for i_shift, param_shift in enumerate(shifts):
-            X2 = list(X)
-            X2[i_param] += param_shift
-            B2 = S.backward_orientation(independent=X2).direct_matrix()
-            a2_real = B2[0], B2[1], B2[2]
-            b2_real = B2[3], B2[4], B2[5]
-            c2_real = B2[6], B2[7], B2[8]
-            C2 = Crystal(a2_real, b2_real, c2_real, symbol)
-            print("\tPeturbing parameter %d shift %d / %d" % (i_param, i_shift+1, len(shifts)))
-            print("\tGround truth unit cell:")
-            uc_1 = "%.3f, %.3f, %.3f, %.3f, %.3f, %.3f" % C.get_unit_cell().parameters()
-            print("\t%s" % uc_1)
-            print("\tPeturbed unit cell:")
-            uc_2 = "%.3f, %.3f, %.3f, %.3f, %.3f, %.3f" % C2.get_unit_cell().parameters()
-            print("\t%s" % uc_2)
+        for i_shift, delta_a in enumerate(da_shifts):
+            dChi_dG_findiff = np.zeros_like(dChi_dG)
+            lower_triangle_idx = [0, 3, 6, 4, 7, 8]
+            for i, j in enumerate(lower_triangle_idx):
+                B_real = sqr(C.get_B()).inverse()
+                B_real = list(B_real.elems)
+                B_real[j] += delta_a
+                D.Bmatrix = sqr(B_real).inverse()
+                D.raw_pixels *= 0
+                D.raw_pixels_roi *= 0
+                D.add_diffBragg_spots()
+                img2 = D.raw_pixels_roi.as_numpy_array()
+                D.raw_pixels *= 0
+                D.raw_pixels_roi *= 0
+                dChi_da_findiff = (img2-img) / delta_a
+                dChi_dG_findiff += dChi_da_findiff * da_dG[i]  # use the analytical parameter gradients
 
-            D.Bmatrix = C2.get_B()
-            D.add_diffBragg_spots()
-            img2 = D.raw_pixels_roi.as_numpy_array()
+            bragg = img > 0.5  # region with significant scattering
+            error = np.abs(dChi_dG_findiff[bragg] - dChi_dG[bragg])
+            # error should be of order delta_a (ish, the chain rule probably inflates the errors)
+            print ("Parameter %d/%d; finite difference error=%1.7g, delta_a=%1.7g"
+                   % (i_param+1, n_ucell_params, error.mean(), delta_a))
 
-            bragg = img > 0.5
-            # Simulate the derivative
-
-            # TODO: why is it necessary to flip the sign to get overlap ?
-            delta_param = np.sqrt(1 / X2[0]) - np.sqrt(1/X[0])
-            finite_deriv = (img2-img) / delta_param
-            finite_deriv2 = (img-img2) / delta_param
-
-            r = pearsonr(analy_deriv[bragg].ravel(), finite_deriv2[bragg].ravel())[0]
+            # compare images
+            r = pearsonr(dChi_dG[bragg].ravel(), dChi_dG_findiff[bragg].ravel())[0]
             diffs.append(r)
             D.raw_pixels_roi *= 0
             D.raw_pixels *= 0
             if args.plot:
                 plt.subplot(121)
-                plt.imshow(finite_deriv2)
+                plt.imshow(dChi_dG_findiff)
                 plt.title("finite diff")
                 plt.subplot(122)
-                plt.imshow(analy_deriv)
+                plt.imshow(dChi_dG)
                 plt.title("analytical")
                 plt.draw()
-                plt.suptitle("Shift %d / %d\n ground truth cell=%s\nperturbed cell=%s"
-                             % (i_shift+1, len(shifts), uc_1, uc_2))
+                plt.suptitle("Shift %d / %d , delta_a=%f"
+                             % (i_shift+1, len(da_shifts), delta_a))
                 plt.pause(0.8)
 
         if args.plot:
             plt.close()
-            plt.plot(shifts, diffs, 'o')
+            plt.plot(da_shifts, diffs, 'o')
             title = "Unit cell parameter %d / %d" % (i_param+1, n_ucell_params)
             plt.title(title + "\nPearson corr between finite diff and analytical")
             plt.xlabel("unit cell shifts")
@@ -179,45 +160,50 @@ if not args.refine:
         # verify a high correlation for the smallest parameter shift
         print("Check high pearson R between analytical and finite diff")
         print("Pearson correlection at smallest parameter shift=%f" % diffs[0])
-        assert(diffs[0] > .98), "%f" % diffs[0]
-        # check monotonic decrease
-        print("Fit polynomial and check monotonic decrease")
-        trend = np.polyval(np.polyfit(shifts, diffs, 2), shifts)
+        assert(diffs[0] > .9), "%f" % diffs[0]
+        # check monotonic decrease in correlation as parameter shift increases
+        print("Fit polynomial and check monotonic decrease in corraltion")
+        trend = np.polyval(np.polyfit(da_shifts, diffs, 2), da_shifts)
         assert np.all(np.diff(zip(trend[:-1], trend[1:]), axis=1) <= 0)
     print("OK!")
 
 
-#X2 = [x + shifts[-2] for x in X]
-#X2 = [x + shifts[-2] for x in X]
-X2 = [x +shifts[-2] for x in X]
-B2 = S.backward_orientation(independent=X2).direct_matrix()
-a2_real = B2[0], B2[1], B2[2]
-b2_real = B2[3], B2[4], B2[5]
-c2_real = B2[6], B2[7], B2[8]
+# Now start with a perturbed crystal and do the refinemenet
+from simtbx.diffBragg.refiners import RefineUnitCell
+# perturb the unit cell
+#ucell2 = (55.1, 65.1, 77.2, 90.1, 94.9, 90.1)
+#symbol = "P121"
+ucell2 = (55.8, 55.8, 76.8, 90, 90, 90)
+symbol = "P43212"
+a2_real, b2_real, c2_real = sqr(uctbx.unit_cell(ucell2).orthogonalization_matrix()).transpose().as_list_of_lists()
 C2 = Crystal(a2_real, b2_real, c2_real, symbol)
+print ("Ensure the U matrices are the same for the ground truth and perturbation")
+C2.rotate_around_origin(rot_axis, rot_ang)
+assert np.allclose(C.get_U(), C2.get_U())
+
 print("Starting a refinement")
 print("\tGround truth unit cell:")
-uc_1 = "%.3f, %.3f, %.3f, %.3f, %.3f, %.3f" % C.get_unit_cell().parameters()
-print("\t%s" % uc_1)
+uc_gt = "%.3f, %.3f, %.3f, %.3f, %.3f, %.3f" % C.get_unit_cell().parameters()
+print("\t%s" % uc_gt)
 print("\tPeturbed unit cell:")
 uc_2 = "%.3f, %.3f, %.3f, %.3f, %.3f, %.3f" % C2.get_unit_cell().parameters()
 print("\t%s" % uc_2)
 
 
-print ("Ensure the U matrices are the same for the ground truth and perturbation")
-C2.rotate_around_origin(rot_axis, rot_ang)
-assert np.allclose(C.get_U(), C2.get_U())
-
+# Step 9
 # Setup the simulation and create a realistic image
 # with background and noise
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
 nbcryst.dxtbx_crystal = C  # GT crystal
-nbcryst.thick_mm = 0.1
+nbcryst.thick_mm = 0.5
+nbcryst.Ncells_abc = 12, 12, 12
 
 SIM = SimData()
-SIM.detector = SimData.simple_detector(298, 0.1, (700, 700))
+SIM.detector = SimData.simple_detector(150, 0.1, (512, 512))
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0)
+SIM.update_nanoBragg_instance("progress_meter", False)
+
 SIM.water_path_mm = 0.005
 SIM.air_path_mm = 0.1
 SIM.add_air = True
@@ -228,6 +214,13 @@ spots = SIM.D.raw_pixels.as_numpy_array()
 SIM._add_background()
 SIM._add_noise()
 img = SIM.D.raw_pixels.as_numpy_array()
+SIM.D.raw_pixels *= 0
+
+SIM.D.Bmatrix = C2.get_B()
+SIM.D.add_diffBragg_spots()
+SIM._add_background()
+#SIM._add_noise()
+img3 = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
 
 # spot_rois, abc_init, img, SimData_instance,
@@ -243,13 +236,12 @@ if args.plot:
     plt.title("Simulated image with strong spots marked")
     plt.show()
 
-
 is_bg_pixel = np.ones(img.shape, bool)
 for bb_ss, bb_fs in spot_data["bboxes"]:
     is_bg_pixel[bb_ss, bb_fs] = False
 
 # now fit tilting planes
-shoebox_sz = 64
+shoebox_sz = 20
 tilt_abc = np.zeros((num_spots, 3))
 spot_roi = np.zeros((num_spots, 4), int)
 if args.plot:
@@ -285,14 +277,15 @@ if args.plot:
     plt.gca().add_collection(patch_coll)
     plt.show()
 
-from simtbx.diffBragg.refiners import RefineUnitCell
+
 nbcryst.dxtbx_crystal = C2
+SIM.crystal = nbcryst
 RUC = RefineUnitCell(spot_rois=spot_roi,
                      abc_init=tilt_abc,
                      img=img,
                      SimData_instance=SIM,
-                     symbol=symbol)
-RUC.trad_conv = True
-RUC.trad_conv_eps = 1e-6
-RUC.run()
+                     symbol=symbol, plot_images=args.plot)
 
+RUC.trad_conv = True
+RUC.trad_conv_eps = 1e-5
+RUC.run()
