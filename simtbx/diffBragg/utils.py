@@ -142,12 +142,28 @@ class TetragonalManager(object):
         self._a = val
 
     @property
+    def b(self):
+        return self.a
+
+    @property
     def c(self):
         return self._c
 
     @c.setter
     def c(self, val):
         self._c = val
+
+    @property
+    def alpha(self):
+        return 90
+
+    @property
+    def beta(self):
+        return 90
+
+    @property
+    def gamma(self):
+        return 90
 
     @property
     def B_realspace(self):
@@ -164,3 +180,12 @@ class TetragonalManager(object):
     @property
     def dB_dc_real(self):
         return sqr((0, 0, 0, 0, 0, 0, 0, 0, 1))
+
+
+def lower_triangle(matrix_sqr):
+    return [matrix_sqr[i] for i in [0, 3, 6, 4, 7, 8]]
+
+
+def upper_triangle(matrix_sqr):
+    return [matrix_sqr[i] for i in [0, 1, 2, 4, 5, 8]]
+
