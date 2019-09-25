@@ -4,6 +4,7 @@ import inspect
 import os
 import re
 import sys
+import warnings
 
 from libtbx import cpp_function_name
 
@@ -185,6 +186,7 @@ class gcc_version(object):
       return "GCC, it is not"
 
 
+_skip_warning = True
 class injector(object):
   '''Deprecated function. Instead of
 
@@ -198,13 +200,13 @@ class injector(object):
   class __metaclass__(meta_class):
 
     def __init__(self, name, bases, dict):
-      import warnings
-      warnings.warn(
-        "boost.python.injector is deprecated and does not work on Python 3. "
-        "Please see https://github.com/cctbx/cctbx_project/pull/386 for more information.",
-        DeprecationWarning,
-        stacklevel=2
-      )
+      if not _skip_warning:
+        warnings.warn(
+          "boost.python.injector is deprecated and does not work on Python 3. "
+          "Please see https://github.com/cctbx/cctbx_project/pull/386 for more information.",
+          DeprecationWarning,
+          stacklevel=2
+        )
       if (len(bases) > 1):
         # bases[0] is this injector
         target = bases[1] # usually a Boost.Python class
@@ -222,6 +224,7 @@ class injector(object):
         for b in bases[2:]: # usually mix-in classes, if any
           setattr_from_dict(b.__dict__)
       return type.__init__(self, name, (), {})
+_skip_warning = False
 
 def inject(target_class, *mixin_classes):
    '''Add entries from python class dictionaries to a boost extension class.
