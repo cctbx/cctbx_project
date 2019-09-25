@@ -2,7 +2,6 @@
 from simtbx.diffBragg.refiners import RefineRot
 from scitbx.array_family import flex
 import pylab as plt
-import numpy as np
 
 
 class RefineUcell(RefineRot):
@@ -19,17 +18,12 @@ class RefineUcell(RefineRot):
         self._set_diffBragg_instance()
 
     def _setup_lbfgs_x_array(self):
-        self.n_background_params = 0
-        if self.refine_background_planes:
-            self.n_background_params = 3*self.n_spots
-        self.n_scale_params = 2
-        self.n = self.n_background_params + self.n_ucell_param + self.n_scale_params
+        self.n_background_params = 3*self.n_spots
+        self.n_gain_params = 1
+        self.n = self.n_background_params + self.n_ucell_param + self.n_gain_params
         self.x = flex.double(self.n)
-
-        self.ucell_xstart = self.n_background_params
         for i in range(self.n_ucell_param):
-            self.x[self.ucell_xstart + i] = self.ucell_manager.variables[i]
-        self.x[-2] = 1
+            self.x[3*self.n_spots + i] = self.ucell_manager.variables[i]
         self.x[-1] = 1
 
     def _set_diffBragg_instance(self):
@@ -39,52 +33,37 @@ class RefineUcell(RefineRot):
         self.D.initialize_managers()
 
     def _send_gradients_to_derivative_managers(self):
-        """Needs to be called once each time the orientation is updated"""
         for i in range(self.n_ucell_param):
             self.D.set_ucell_derivative_matrix(
                 i+3,
                 self.ucell_manager.derivative_matrices[i])
-            if self.use_curvatures:
-                self.D.set_ucell_second_derivative_matrix(
-                    i+3, self.ucell_manager.second_derivative_matrices[i])
 
     def _run_diffBragg_current(self, i_spot):
         self.D.region_of_interest = self.nanoBragg_rois[i_spot]
+        self._send_gradients_to_derivative_managers()
         self.D.Bmatrix = self.ucell_manager.B_recipspace
         self.D.add_diffBragg_spots()
 
     def _extract_pixel_data(self):
         self.ucell_derivatives = []
-        self.ucell_second_derivatives = []
         for i in range(self.n_ucell_param):
             self.ucell_derivatives.append(self.D.get_derivative_pixels(3+i).as_numpy_array())
-            if self.use_curvatures:
-                self.ucell_second_derivatives.append(self.D.get_second_derivative_pixels(3+i).as_numpy_array())
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
 
     def _unpack_bgplane_params(self, i_spot):
-        if self.refine_background_planes:
-            self.a = self.x[i_spot]
-            self.b = self.x[self.n_spots + i_spot]
-            self.c = self.x[self.n_spots*2 + i_spot]
-        else:
-            self.a, self.b, self.c = self.abc_init[i_spot]
+        self.a = self.x[i_spot]
+        self.b = self.x[self.n_spots + i_spot]
+        self.c = self.x[self.n_spots*2 + i_spot]
 
-    def _update_ucell(self):
-        _s = slice(self.ucell_xstart, self.ucell_xstart + self.n_ucell_param, 1)
-        self.ucell_manager.variables = list(self.x[_s])
+    def _update_orientation(self):
+        self.ucell_manager.variables = list(self.x[self.n_spots*3:self.n_spots*3+self.n_ucell_param])
         self._send_gradients_to_derivative_managers()
 
     def compute_functional_and_gradients(self):
         f = 0
         g = flex.double(len(self.x))
-        if self.use_curvatures:
-            self.curv = flex.double(len(self.x))
-        self._update_ucell()
+        self._update_orientation()
         self.scale_fac = self.x[-1]
-        self.gain_fac = self.x[-2]
-        G2 = self.gain_fac**2
-        S2 = self.scale_fac**2
         for i_spot in range(self.n_spots):
             self._run_diffBragg_current(i_spot)
             self._unpack_bgplane_params(i_spot)
@@ -95,91 +74,34 @@ class RefineUcell(RefineRot):
 
             Imeas = self.roi_img[i_spot]
             f += (self.model_Lambda - Imeas*self.log_Lambda).sum()
-            one_over_Lambda = 1./self.model_Lambda
-            one_minus_k_over_Lambda = (1. - Imeas * one_over_Lambda)
-            if self.use_curvatures:
-                k_over_squared_Lambda = Imeas * one_over_Lambda * one_over_Lambda
+            one_minus_k_over_Lambda = (1. - Imeas / self.model_Lambda)
 
             # compute gradients for background plane constants a,b,c
             xr = self.xrel[i_spot]  # fast scan pixels
             yr = self.yrel[i_spot]  # slow scan pixels
-            #da = G2*xr
-            #db = G2*yr
-            #dc = G2
-            #if self.refine_background_planes:
-            #    g[i_spot] += (da*one_minus_k_over_Lambda).sum()
-            #    g[self.n_spots + i_spot] += (db*one_minus_k_over_Lambda).sum()
-            #    g[self.n_spots*2 + i_spot] += (dc*one_minus_k_over_Lambda).sum()
-            #    if self.use_curvatures:
-            #        da2 = 0
-            #        db2 = 0
-            #        dc2 = 0
-            #        self.curv[i_spot] += \
-            #            (da2*one_minus_k_over_Lambda + (da**2) * k_over_squared_Lambda).sum()
-            #        self.curv[self.n_spots + i_spot] += \
-            #            (db2*one_minus_k_over_Lambda + (db**2) * k_over_squared_Lambda).sum()
-            #        self.curv[self.n_spots*2 + i_spot] += \
-            #            (dc2*one_minus_k_over_Lambda + (dc**2) * k_over_squared_Lambda).sum()
-
+            g[i_spot] += (xr * one_minus_k_over_Lambda).sum()  # from handwritten notes
+            g[self.n_spots + i_spot] += (yr * one_minus_k_over_Lambda).sum()
+            g[self.n_spots*2 + i_spot] += one_minus_k_over_Lambda.sum()
             if self.plot_images:
-                if self.plot_residuals:
-                    self.ax.clear()
-                    residual = self.model_Lambda - Imeas
-                    if i_spot == 0:
-                        x = residual.max()
-                    else:
-                        x = np.mean([x, residual.max()])
-
-                    self.ax.plot_surface(xr, yr, residual, rstride=2, cstride=2, alpha=0.3, cmap='coolwarm')
-                    self.ax.contour(xr, yr, residual, zdir='z', offset=-x, cmap='coolwarm')
-                    self.ax.set_yticks(range(yr.min(), yr.max()))
-                    self.ax.set_xticks(range(xr.min(), xr.max()))
-                    self.ax.set_xticklabels([])
-                    self.ax.set_yticklabels([])
-                    self.ax.set_zlim(-x, x)
-                    self.ax.set_title("residual (photons)")
-                else:
-                    m = Imeas[Imeas > 1e-9].mean()
-                    s = Imeas[Imeas > 1e-9].std()
-                    vmax = m+5*s
-                    vmin = m-s
-                    m2 = self.model_Lambda.mean()
-                    s2 = self.model_Lambda.std()
-                    vmax2 = m2+5*s2
-                    vmin2 = m2-s2
-                    self.ax1.images[0].set_data(self.model_Lambda)
-                    #self.ax1.images[0].set_clim(vmin2, vmax2)
-                    self.ax1.images[0].set_clim(vmin, vmax)
-                    #self.ax1.images[0].set_data(self.model_bragg_spots)
-                    self.ax2.images[0].set_data(Imeas)
-                    self.ax2.images[0].set_clim(vmin, vmax)
-                plt.suptitle("Iterations = %d, image %d / %d"
-                             % (self.iterations, i_spot+1, self.n_spots))
-                self.fig.canvas.draw()
+                plt.cla()
+                plt.subplot(121)
+                im = plt.imshow(self.model_Lambda)
+                plt.subplot(122)
+                im2 = plt.imshow(Imeas)
+                im.set_clim(im2.get_clim())
+                plt.suptitle("Spot %d / %d" % (i_spot+1, self.n_spots))
+                plt.draw()
                 plt.pause(.02)
 
             # unit cell derivative
             for i_ucell_p in range(self.n_ucell_param):
-                x_idx = self.ucell_xstart + i_ucell_p
-                d = self.ucell_derivatives[i_ucell_p]
-                g[x_idx] += (S2*G2*one_minus_k_over_Lambda * d).sum()
+                g[self.n_spots*3+i_ucell_p] += (one_minus_k_over_Lambda * (self.ucell_derivatives[i_ucell_p])).sum()
 
-                if self.use_curvatures:
-                    d2 = self.ucell_second_derivatives[i_ucell_p]
-                    self.curv[x_idx] += (S2*G2*(d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda)).sum()
-
-            #g[-2] += 0
-            #self.curv[-2] += 0
-
-            #if self.refine_crystal_scale:
-            #    # scale factor derivative
-            #    g[-1] += (2*self.scale_fac*G2*self.model_bragg_spots * one_minus_k_over_Lambda).sum()
-            #    if self.use_curvatures:
-            #        self.curv[-1] += (2*G2*self.model_bragg_spots * self.model_bragg_spots * k_over_squared_Lambda).sum()
+            # scale factor derivative
+            g[-1] += (self.model_bragg_spots * one_minus_k_over_Lambda).sum()
 
         self.D.raw_pixels *= 0
         self.print_step("LBFGS stp", f)
-        self.iterations += 1
         return f, g
 
     def print_step(self, message, target):
@@ -189,9 +111,6 @@ class RefineUcell(RefineRot):
         for n, v in zip(names, vals):
             labels.append('%s=%2.7g' % (n, v))
         print ", ".join(labels)
-
-    def curvatures(self):
-        return self.curv
 
 
 # # FIXME ? Maybe not ?
