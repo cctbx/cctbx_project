@@ -33,6 +33,7 @@ class RefineUcell(RefineRot):
         self.D.initialize_managers()
 
     def _send_gradients_to_derivative_managers(self):
+        """Needs to be called once each time the orientation is updated"""
         for i in range(self.n_ucell_param):
             self.D.set_ucell_derivative_matrix(
                 i+3,
@@ -40,7 +41,6 @@ class RefineUcell(RefineRot):
 
     def _run_diffBragg_current(self, i_spot):
         self.D.region_of_interest = self.nanoBragg_rois[i_spot]
-        self._send_gradients_to_derivative_managers()
         self.D.Bmatrix = self.ucell_manager.B_recipspace
         self.D.add_diffBragg_spots()
 
