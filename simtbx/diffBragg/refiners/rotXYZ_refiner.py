@@ -1,6 +1,5 @@
 
 import pylab as plt
-
 import numpy as np
 
 from scitbx.array_family import flex
@@ -11,7 +10,7 @@ from simtbx.diffBragg.refiners import PixelRefinement
 class RefineRot(PixelRefinement):
 
     def __init__(self, spot_rois, abc_init, img, SimData_instance,
-                 plot_images=False, plot_residuals=False, panel_ids=None):
+                 plot_images=False):
         """
         :param spot_rois:
         :param abc_init:
@@ -19,35 +18,18 @@ class RefineRot(PixelRefinement):
         :param SimData_instance:
         :param plot_images:
         """
-        super(RefineRot, self).__init__()
         self.plot_images = plot_images
-        self.plot_residuals = plot_residuals
         self.spot_rois = spot_rois
         self.abc_init = abc_init
-        if panel_ids is None:
-            self.panel_ids = np.zeros(len(self.spot_rois))
-        else:
-            self.panel_ids = np.array(panel_ids)
-            assert len(self.panel_ids.shape) == 1
-            assert self.panel_ids.shape[0] == len(self.panel_ids)
-        self.gain_fac = 1
         self.img = img
         self.S = SimData_instance
-        self.refine_rotX = self.refine_rotY = self.refine_rotZ = True
-        self.iterations = 0
-        if self.plot_images:
-            if plot_residuals:
-                self.fig = plt.figure()
-                self.ax = self.fig.gca(projection='3d')
-                self.ax.set_yticklabels([])
-                self.ax.set_xticklabels([])
-                self.ax.set_zticklabels([])
-                self.ax.set_zlabel("model residual")
-                self.ax.set_facecolor("gray")
-            else:
-                self.fig, (self.ax1, self.ax2) = plt.subplots(nrows=1, ncols=2)
-                self.ax1.imshow([[0, 1, 1], [0, 1, 2]])
-                self.ax2.imshow([[0, 1, 1], [0, 1, 2]])
+        self.trad_conv = False
+        self.trad_conv_eps = 0.05
+        self.drop_conv_max_eps = 1e-5
+        self.mn_iter = None
+        self.mx_iter = None
+        self.max_calls = 1000
+        self.ignore_line_search = False
 
     def _setup(self):
         # total number of refinement parameters
@@ -56,15 +38,12 @@ class RefineRot(PixelRefinement):
         n_rot = 3
         n_params = n_bg + n_rot + n_scale
         self.x = flex.double(n_params)
-        self.rotX_xpos = n_bg
-        self.rotY_xpos = n_bg + 1
-        self.rotZ_xpos = n_bg + 2
 
         # populate the x-array with initial values
         self._move_abc_init_to_x()
-        self.x[self.rotX_xpos] = 0  # initial delta rotation
-        self.x[self.rotY_xpos] = 0
-        self.x[self.rotZ_xpos] = 0
+        self.x[-4] = 0  # initial delta rotation
+        self.x[-3] = 0
+        self.x[-2] = 0
         self.x[-1] = 1  # initial scale factor
 
         # setup the diffBragg instance
@@ -75,11 +54,10 @@ class RefineRot(PixelRefinement):
         self.D.initialize_managers()
 
     def _move_abc_init_to_x(self):
-        if self.refine_background_planes:
-            for i in range(self.n_spots):
-                self.x[i] = self.abc_init[i, 0]
-                self.x[self.n_spots+i] = self.abc_init[i, 1]
-                self.x[2*self.n_spots+i] = self.abc_init[i, 2]
+        for i in range(self.n_spots):
+            self.x[i] = self.abc_init[i, 0]
+            self.x[self.n_spots+i] = self.abc_init[i, 1]
+            self.x[2*self.n_spots+i] = self.abc_init[i, 2]
 
     @property
     def x(self):
@@ -88,14 +66,6 @@ class RefineRot(PixelRefinement):
     @x.setter
     def x(self, val):
         self._x = val
-
-    @property
-    def n(self):
-        return self._n
-
-    @n.setter
-    def n(self, val):
-        self._n = val
 
     def _run_diffBragg_current(self, i_spot):
         self.D.region_of_interest = self.nanoBragg_rois[i_spot]
@@ -123,27 +93,20 @@ class RefineRot(PixelRefinement):
 
     def _evaluate_averageI(self):
         """model_Lambda means expected intensity in the pixel"""
-        self.model_Lambda = \
-            self.gain_fac*self.gain_fac*(self.tilt_plane + self.scale_fac * self.scale_fac * self.model_bragg_spots)
+        self.model_Lambda = self.tilt_plane + self.scale_fac * self.model_bragg_spots
 
     def _unpack_params(self, i_spot):
         self.a = self.x[i_spot]
         self.b = self.x[self.n_spots + i_spot]
         self.c = self.x[self.n_spots*2 + i_spot]
-        self.thetaX = self.x[self.rotX_xpos]
-        self.thetaY = self.x[self.rotY_xpos]
-        self.thetaZ = self.x[self.rotZ_xpos]
+        self.thetaX = self.x[self.n_spots*3]
+        self.thetaY = self.x[self.n_spots*3+1]
+        self.thetaZ = self.x[self.n_spots*3+2]
         self.scale_fac = self.x[-1]
 
     def _evaluate_log_averageI(self):
         # fix log(x<=0)
-        try:
-            self.log_Lambda = np.log(self.model_Lambda)
-        except FloatingPointError:
-            pass
-        #if any((self.model_Lambda <= 0).ravel()):
-        #    print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
-        #    raise ValueError("model of Bragg spots cannot have negative intensities...")
+        self.log_Lambda = np.log(self.model_Lambda)
         self.log_Lambda[self.model_Lambda <= 0] = 0
 
     def compute_functional_and_gradients(self):
@@ -171,49 +134,46 @@ class RefineRot(PixelRefinement):
             g[self.n_spots + i_spot] += (yr * one_minus_k_over_Lambda).sum()
             g[self.n_spots*2 + i_spot] += one_minus_k_over_Lambda.sum()
             if self.plot_images:
-                m = Imeas[Imeas > 1e-9].mean()
-                s = Imeas[Imeas > 1e-9].std()
-                vmax = m+5*s
-                vmin = m-s
-                self.ax1.images[0].set_data(self.model_Lambda)
-                self.ax1.images[0].set_clim(vmin, vmax)
-                self.ax2.images[0].set_data(Imeas)
-                self.ax2.images[0].set_clim(vmin, vmax)
-                plt.suptitle("Iterations = %d, image %d / %d"
-                             % (self.iterations, i_spot+1, self.n_spots))
-                self.fig.canvas.draw()
-                plt.pause(.02)
+                plt.cla()
+                plt.subplot(121)
+                im = plt.imshow(self.model_Lambda)
+                #plt.imshow(self.model_bragg_spots > 1e-6)
+                plt.subplot(122)
+                im2 = plt.imshow(Imeas)
+                im.set_clim(im2.get_clim())
+                plt.suptitle("Spot %d / %d" % (i_spot+1, self.n_spots))
+                #plt.draw()
+                plt.show()
+                #plt.pause(.2)
 
             # rotation derivative
-            g[self.rotX_xpos] += (one_minus_k_over_Lambda * (self.dRotX)).sum()
-            g[self.rotY_xpos] += (one_minus_k_over_Lambda * (self.dRotY)).sum()
-            g[self.rotZ_xpos] += (one_minus_k_over_Lambda * (self.dRotZ)).sum()
+            g[self.n_spots*3] += (one_minus_k_over_Lambda * (self.dRotX)).sum()
+            g[self.n_spots*3+1] += (one_minus_k_over_Lambda * (self.dRotY)).sum()
+            g[self.n_spots*3+2] += (one_minus_k_over_Lambda * (self.dRotZ)).sum()
 
             # scale factor derivative
-            g[-1] += (self.model_bragg_spots * one_minus_k_over_Lambda).sum()
+            g[-1] += ((self.model_bragg_spots) * one_minus_k_over_Lambda).sum()
 
         self.D.raw_pixels *= 0
         self.print_step("LBFGS stp", f)
-        self.iterations += 1
         return f, g
 
     def print_step(self, message, target):
         print ("%s %10.4f" % (message, target),
                "[", " ".join(["%9.6f" % a for a in self.x]), "]")
 
-    def get_correction_misset(self, as_axis_angle_deg=False, angles=None):
+    def get_correction_misset(self, as_axis_angle_deg=False):
         """
         return the current state of the perturbation matrix
         :return: scitbx.matrix sqr
         """
-        if angles is None:
-            anglesXYZ = self.x[self.rotX_xpos], self.x[self.rotY_xpos], self.x[self.rotZ_xpos]
+        angles = self.x[-4:-1]
         x = col((-1, 0, 0))
         y = col((0, -1, 0))
         z = col((0, 0, -1))
-        RX = x.axis_and_angle_as_r3_rotation_matrix(anglesXYZ[0], deg=False)
-        RY = y.axis_and_angle_as_r3_rotation_matrix(anglesXYZ[1], deg=False)
-        RZ = z.axis_and_angle_as_r3_rotation_matrix(anglesXYZ[2], deg=False)
+        RX = x.axis_and_angle_as_r3_rotation_matrix(angles[0], deg=False)
+        RY = y.axis_and_angle_as_r3_rotation_matrix(angles[1], deg=False)
+        RZ = z.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=False)
         M = RX*RY*RZ
         if as_axis_angle_deg:
             q = M.r3_rotation_matrix_as_unit_quaternion()
