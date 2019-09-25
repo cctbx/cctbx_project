@@ -204,7 +204,7 @@ master_phil = libtbx.phil.parse("""
 
   soft_mask = False
     .type=bool
-    .help = Use Gaussian mask in mask_atoms
+    .help = Use Gaussian mask in mask_atoms and on outside surface of box
     .short_caption = Soft mask
 
   soft_mask_radius=3
@@ -404,8 +404,11 @@ Parameters:"""%h
     raise Sorry("PDB file is needed unless extract_unique, "+
       "density_select, keep_map_size \nor bounds are set .")
   if (len(inputs.pdb_file_names)!=1 and not pdb_hierarchy and \
-       (params.mask_atoms or params.soft_mask )):
-    raise Sorry("PDB file is needed for mask_atoms or soft_mask")
+       (params.mask_atoms )):
+    raise Sorry("PDB file is needed for mask_atoms")
+  if params.soft_mask and (not params.resolution) and \
+        (len(inputs.pdb_file_names)!=1 and not pdb_hierarchy):
+    raise Sorry("Need resolution for soft_mask without PDB file")
   if (params.density_select and params.keep_map_size):
     raise Sorry("Cannot set both density_select and keep_map_size")
   if (params.density_select and params.upper_bounds):
@@ -651,8 +654,11 @@ Parameters:"""%h
     print("\nValue outside atoms mask will be set to mean inside mask", file=log)
   if params.get_half_height_width and params.density_select:
     print("\nHalf width at half height will be used to id boundaries", file=log)
+
   if params.soft_mask and sites_cart_all.size()>0:
     print("\nSoft mask will be applied to model-based mask", file=log)
+  elif params.soft_mask:
+    print ("\nSoft mask will be applied to outside of map box",file=log)
   if params.keep_map_size:
     print("\nEntire map will be kept (not cutting out region)", file=log)
   if params.restrict_map_size:
