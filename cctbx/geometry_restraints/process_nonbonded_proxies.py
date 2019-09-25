@@ -20,16 +20,23 @@ def check_if_1_5_interaction(
   """
   Checks if there is 1-5 interaction between a hydrogen (H) and heavy atom (X): H-A-A-A-X
 
-  Parameters:
-    i_seq (int): atom i_seq
-    j_seq (int): atom i_seq
-    hd_sel (bool array)        hd_sel[i] returns True of False if atom i is H or not
-    full_connectivity_table (dict of lists of int):  dictionary with a list
-                                             of all atoms connected to atom i
+  Parameters
+  ----------
+  i_seq: int
+    Atom i_seq number
+  j_seq: int
+    Atom i_seq
+  hd_sel: bool array
+    hd_sel[i] returns True of False if atom i is H or not
+  full_connectivity_table: dict of lists of int
+    dictionary with a list of all atoms connected to atom i
 
-  Returns:
-    bool: True/False if there is 1-5 hydrogen and heavy atom interaction
+  Returns
+  -------
+  is_1_5_interaction: bool
+    True/False if there is 1-5 interaction between a hydrogen and a heavy atom
   """
+  is_1_5_interaction = False
   # check if there is hydrogen - heavy atom interaction
   xor = lambda a,b: (a or b) and not (a and b)
   if xor(hd_sel[i_seq],hd_sel[j_seq]):
@@ -53,9 +60,11 @@ def check_if_1_5_interaction(
       for new_atom in new_connections:
         atoms_numbers[new_atom] = i
     # return true if j_seq in the is 1-5 connection
-    return (j_seq in atoms_numbers) and (atoms_numbers[j_seq] == 5)
-  else:
-    return False
+    is_1_5_interaction = (j_seq in atoms_numbers) and (atoms_numbers[j_seq] == 5)
+    #return (j_seq in atoms_numbers) and (atoms_numbers[j_seq] == 5)
+  return is_1_5_interaction
+  #else:
+  #  return False
 
 #-------------------------------------------------------------------------------
 
@@ -66,13 +75,19 @@ def cos_vec(u, v, w):
   A1 ~~~ A2
   A1 ~~~ A3
 
-  Parameters:
-  u: vector of clashing atom (A2 or A3, order does not matter)
-  v: vector of clashing atom (A2 or A3, order does not matter)
-  w: vector of common clashing atom (A1)
+  Parameters
+  ----------
+  u: vector
+    vector of clashing atom (A2 or A3, order does not matter)
+  v: vector
+    vector of clashing atom (A2 or A3, order does not matter)
+  w: vector
+    vector of common clashing atom (A1)
 
-  Returns:
-    float (cos_angle): the cosine of the angle between center of the common atom
+  Returns
+  -------
+    cos_angle: float
+    The cosine of the angle between the center of the common atom
       and the mid point between the other two atoms.
   """
   u = matrix.col(u)
