@@ -2,16 +2,9 @@
 import scitbx
 import numpy as np
 from abc import ABCMeta, abstractproperty, abstractmethod
-from scitbx.lbfgs.tst_curvatures import lbfgs_with_curvatures_mix_in
-from scitbx.lbfgs.tst_mpi_split_evaluator import mpi_split_evaluator_run
 
 
-# used in pixel refinement
-class BreakToUseCurvatures(Exception):
-    pass
-
-
-class PixelRefinement(lbfgs_with_curvatures_mix_in):
+class PixelRefinement(object):
     """
     This is the base class for pixel refinement based on
     ROI sub-images, where its understood that each sub-image
@@ -20,121 +13,12 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
     __metaclass__ = ABCMeta
 
-    run_on_init = False
-
-    def __init__(self):
-        self.output_dir = None  # place to dump files
-        self.min_multiplicity = 3
-        self.restart_file = None
-        self.binner_dmin = 2
-        self.bad_shot_list = []
-        self.fcell_bump = 0.1
-        self.filter_bad_shots = False
-        self.binner_dmax = 999
-        self.binner_nbin = 10
-        self.plot_fcell = False
-        self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
-        self.use_curvatures = False  # whether to use the curvatures
-        self.refine_background_planes = True  # whether to refine the background planes
-        self.refine_gain_fac = False  # whether to refine the gain factor
-        self.multi_panel = False  # whether the camera is multi panel or single panel
-        self.split_evaluation = False  # whether to use split evaluation run method
-        self.refine_ncells = False  # whether to refine Ncells abc
-        self.hit_break_to_use_curvatures = False  # internal flag if calculating curvatures
-        self.refine_detdist = False  # whether to refine the detdist
-        self.refine_Amatrix = True  # whether to refine the  Amatrix (deprecated)
-        self.refine_Bmatrix = True  # whether to refine the Bmatrx
-        self.has_pre_cached_roi_data = False  # only for use in global refinement mode
-        self.use_curvatures_threshold = 7   # how many positive curvature iterations required before breaking
-        self.curv = None  # curvatures array used internally
-        self.refine_Umatrix = True  # whether to refine the Umatrix
-        self.verbose = True  # whether to print during iterations
-        self.refine_crystal_scale = True  # whether to refine the crystal scale factor
-        self.plot_images = False  # whether to plot images
-        self.refine_rotX = True  # whether to refine the X rotation
-        self.iterations = 0  # iteration counter , used internally
-        self.refine_rotY = True  # whether to refine Y rotations
-        self.FNAMES = {}  # place holder for fnames dictionary so refinement understands layout of the data
-        self.refine_rotZ = True  # whether to refine Z rotations
-        self.plot_residuals = False  # whether to plot residuals
-        self.debug = False  # for debug print statements
-        self.trad_conv = False  # traditional convergenve
-        self.calc_curvatures = False  # whether to calc curvatures until a region of positive curvature is reached
-        self.trad_conv_eps = 0.05  # converges whern |g| <= max(|x|,1) * trad_conv_eps
-        self.plot_statistics = False  # whether to plot stats (global refinement mode)
-        self.drop_conv_max_eps = 1e-5  # not sure, used in the other scitbx lbfgs convergence test
-        self.mn_iter = None  # not sure used in lbfgs
-        self.mx_iter = None  # not sure used in lbfgs
-        self.max_calls = 1000  # how many overall iterations
-        self.plot_stride = 10  # update plots after this many iterations
-        self.ignore_line_search = False  # leave False, lbfgs
-        self.panel_ids = None  # list of panel_ids (same length as roi images, spot_rois, tilt_abc etc)
-        self.update_curvatures_every = 3  # every 3 consecutive all positive curvatures we will update them
-        self.shot_idx = 0  # place holder because global refinement is across multiple shots
-        self.shot_ids = None  # for global refinement ,
-        self.refine_global_unitcell = True
-
-        self.refine_Fcell = False
-
-        self.poisson_only = True  # use strictly Poissonian statistics
-        self.sigma_r = 3
-        self.log2pi = np.log(np.pi*2)
-
-        self.use_ucell_priors = False  # whether to include priors for the unit cell constants
-        self.use_rot_priors = False  # whether to inc;ude priors for misset corrections
-
-        self.request_diag_once = False  # property of the parent class
-        lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
-
-    @property
-    def _grad_accumulate(self):
-        if self.poisson_only:
-            return self._poisson_d
-        else:
-            return self._gaussian_d
-
-    @property
-    def _curv_accumulate(self):
-        if self.poisson_only:
-            return self._poisson_d2
-        else:
-            return self._gaussian_d2
-
-    @property
-    def _target_accumulate(self):
-        if self.poisson_only:
-            return self._poisson_target
-        else:
-            return self._gaussian_target
-
-    def _poisson_target(self):
-        pass
-
-    def _gaussian_target(self):
-        pass
-
-    def _poisson_d(self, d):
-        pass
-
-    def _poisson_d2(self, d, d2):
-        pass
-
-    def _gaussian_d(self, d):
-        pass
-
-    def _gaussian_d2(self, d, d2):
-        pass
-
     @abstractmethod
     def compute_functional_and_gradients(self):
         pass
 
     @abstractproperty
     def x(self):
-        pass
-
-    @abstractproperty
-    def n(self):
         pass
 
     @property
@@ -159,10 +43,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
     @property
     def n_spots(self):
-        try:
-            return len(self._spot_rois)
-        except AttributeError:
-            return None
+        return len(self._spot_rois)
 
     @property
     def abc_init(self):
@@ -266,96 +147,26 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         """
         pass
 
-    def run(self, curvature_min_verbose=False, setup=True, cache_roi=True):
+    def run(self):
         """runs the LBFGS minimizer"""
-
-        if setup:
-            self._setup()
-            self._cache_roi_arrays()
-
-        # if not working in MPI mode (MPI used in global refinement)
-        if not self.split_evaluation:
-            if self.use_curvatures:
-                self.minimizer = self.lbfgs_run(
-                    target_evaluator=self,
-                    min_iterations=self.mn_iter,
-                    max_iterations=self.mx_iter,
-                    traditional_convergence_test=self.trad_conv,
-                    traditional_convergence_test_eps=self.trad_conv_eps,
-                    use_curvatures=True,
-                    verbose=curvature_min_verbose)
-
-            else:
-                try:
-                    from scitbx.lbfgs import core_parameters
-                    C = core_parameters()
-                    C.gtol = 1
-                    self.minimizer = scitbx.lbfgs.run(
-                        target_evaluator=self,
-                        #core_params=C,
-                        exception_handling_params=self._handler,
-                        termination_params=self._terminator)
-                except BreakToUseCurvatures:
-                    self.hit_break_to_use_curvatures = True
-                    pass
-
-        else:
-            if self.use_curvatures:
-                self.diag_mode = "always"
-                self.minimizer = mpi_split_evaluator_run(
-                    target_evaluator=self,
-                    termination_params=self._terminator,
-                    core_params=None,
-                    exception_handling_params=None, log=None)
-            else:
-                try:
-                    self.diag_mode = None
-                    self.minimizer = mpi_split_evaluator_run(
-                        target_evaluator=self,
-                        termination_params=self._terminator,
-                        core_params=None,
-                        exception_handling_params=None, log=None)
-                    # NOTE: best to leave log=None, not sure what would happen to log in MPI mode
-                except BreakToUseCurvatures:
-                    self.hit_break_to_use_curvatures = True
-                    pass
-
-    def _filter_spot_rois(self):
-        """
-        This is important to handle the edge case where an ROI occurs along
-        the boundary of an image. This arises because
-        NanoBragg assumes inclusive ROI bounds, but an exclusive raw_image
-        """
-        if self.multi_panel:
-            nslow, nfast = self.img[0].shape
-        else:
-            nslow, nfast = self.img.shape
-        for i, (_, x2, _, y2) in enumerate(self.spot_rois):
-            if x2 == nfast:
-                self.spot_rois[i][1] = x2-1  # update roi_xmax
-            if y2 == nslow:
-                self.spot_rois[i][3] = y2-1  # update roi_ymax
+        self._setup()
+        self._cache_roi_arrays()
+        self.minimizer = scitbx.lbfgs.run(
+            target_evaluator=self,
+            exception_handling_params=self._handler,
+            termination_params=self._terminator)
 
     def _cache_roi_arrays(self):
         """useful cache for iterative LBFGS step"""
-        if self.has_pre_cached_roi_data:
-            return
         nanoBragg_rois = []  # special nanoBragg format
         xrel, yrel, roi_img = [], [], []
-        self._filter_spot_rois()
-        for i_roi, (x1, x2, y1, y2) in enumerate(self.spot_rois):
-            nanoBragg_rois.append(((x1, x2), (y1, y2)))
+        for x1, x2, y1, y2 in self.spot_rois:
+            self.nanoBragg_rois.append(((x1, x2), (y1, y2)))
             yr, xr = np.indices((y2-y1+1, x2-x1+1))
             xrel.append(xr)
             yrel.append(yr)
-            if self.multi_panel:
-                pid = self.panel_ids[i_roi]
-                roi_img.append(self.img[pid, y1:y2 + 1, x1:x2 + 1])
-            else:
-                roi_img.append(self.img[y1:y2+1, x1:x2+1])
-
+            roi_img.append(self.img[y1:y2+1, x1:x2+1])
         self.nanoBragg_rois = nanoBragg_rois
-        self.roi_img = roi_img
         self.xrel = xrel
         self.yrel = yrel
 
@@ -394,97 +205,3 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     @yrel.setter
     def yrel(self, val):
         self._yrel = val
-
-    @property
-    def use_curvatures(self):
-        return self._use_curvatures
-
-    @use_curvatures.setter
-    def use_curvatures(self, val):
-        if not isinstance(val, bool):
-            raise ValueError("use_curvatures should be boolean")
-        if val:
-            self.calc_curvatures = True
-        self._use_curvatures = val
-
-    @property
-    def refine_background_planes(self):
-        return self._refine_background_planes
-
-    @refine_background_planes.setter
-    def refine_background_planes(self, val):
-        if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
-        self._refine_background_planes = val
-
-    @property
-    def refine_Amatrix(self):
-        return self._refine_Amatrix
-
-    @refine_Amatrix.setter
-    def refine_Amatrix(self, val):
-        if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
-        self._refine_Amatrix = val
-
-    @property
-    def refine_Umatrix(self):
-        return self._refine_Umatrix
-
-    @refine_Umatrix.setter
-    def refine_Umatrix(self, val):
-        if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
-        self._refine_Umatrix = val
-
-    @property
-    def refine_Bmatrix(self):
-        return self._refine_Bmatrix
-
-    @refine_Bmatrix.setter
-    def refine_Bmatrix(self, val):
-        if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
-        self._refine_Bmatrix = val
-
-    @property
-    def refine_crystal_scale(self):
-        return self._refine_crystal_scale
-
-    @refine_crystal_scale.setter
-    def refine_crystal_scale(self, val):
-        if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
-        self._refine_crystal_scale = val
-
-    @property
-    def refine_gain_fac(self):
-        return self._refine_gain_fac
-
-    @refine_gain_fac.setter
-    def refine_gain_fac(self, val):
-        if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
-        self._refine_gain_fac = val
-
-    @property
-    def refine_detdist(self):
-        return self._refine_detdist
-
-    @refine_detdist.setter
-    def refine_detdist(self, val):
-        if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
-        self._refine_detdist = val
-
-    @property
-    def refine_ncells(self):
-        return self._refine_ncells
-
-    @refine_ncells.setter
-    def refine_ncells(self, val):
-        if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
-        self._refine_ncells = val
-
-
