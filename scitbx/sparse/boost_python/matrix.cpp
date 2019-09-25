@@ -150,6 +150,7 @@ struct matrix_wrapper
         value_type value = boost::python::extract<value_type>(elem[2]);
         obj(row_idx, col_idx) = value;
       }
+      obj.compact();
     }
   };
 
