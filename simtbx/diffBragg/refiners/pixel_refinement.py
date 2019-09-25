@@ -161,12 +161,13 @@ class PixelRefinement(object):
         nanoBragg_rois = []  # special nanoBragg format
         xrel, yrel, roi_img = [], [], []
         for x1, x2, y1, y2 in self.spot_rois:
-            self.nanoBragg_rois.append(((x1, x2), (y1, y2)))
+            nanoBragg_rois.append(((x1, x2), (y1, y2)))
             yr, xr = np.indices((y2-y1+1, x2-x1+1))
             xrel.append(xr)
             yrel.append(yr)
             roi_img.append(self.img[y1:y2+1, x1:x2+1])
         self.nanoBragg_rois = nanoBragg_rois
+        self.roi_img = roi_img
         self.xrel = xrel
         self.yrel = yrel
 

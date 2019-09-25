@@ -9,18 +9,6 @@ class CrystalSystemManager(object):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def variables(self):
-        pass
-
-    @abstractproperty
-    def derivative_matrices(self):
-        pass
-
-    #@abstractproperty
-    #def second_derivative_matrices(self):
-    #    pass
-
-    @abstractproperty
     def a(self):
         """unit cell a parameter"""
         pass

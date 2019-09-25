@@ -21,10 +21,6 @@ class TetragonalManager(CrystalSystemManager):
         return [self._dB_da_real, self._dB_dc_real]
 
     @property
-    def second_derivative_matrices(self):
-        return [self._d2B_da2_real, self._d2B_dc2_real]
-
-    @property
     def a(self):
         return self.variables[0]
 
@@ -59,11 +55,3 @@ class TetragonalManager(CrystalSystemManager):
     @property
     def _dB_dc_real(self):
         return sqr((0, 0, 0, 0, 0, 0, 0, 0, 1))
-
-    @property
-    def _d2B_da2_real(self):
-        return sqr((0, 0, 0, 0, 0, 0, 0, 0, 0))
-
-    @property
-    def _d2B_dc2_real(self):
-        return sqr((0, 0, 0, 0, 0, 0, 0, 0, 0))
