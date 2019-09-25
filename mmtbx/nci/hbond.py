@@ -141,7 +141,7 @@ def get_ss_selections(hierarchy, filter_short=True):
   #
   return group_args(ksdssp=ksdssp, from_ca=from_ca, both=both)
 
-def stats(model, prefix):
+def stats(model, prefix, no_ticks=True):
   # Get rid of H, multi-model, no-protein and single-atom residue models
   if(model.percent_of_single_atom_residues()>20):
     return None
@@ -173,13 +173,14 @@ def stats(model, prefix):
   model.set_sites_cart(box.sites_cart)
   model._crystal_symmetry = box.crystal_symmetry()
   #
+  N = 10
   SS = get_ss_selections(hierarchy=model.get_hierarchy())
   HB_all = find(model = model.select(flex.bool(model.size(), True)), a_DHA_cutoff=90
-    ).get_params_as_arrays(replace_with_empty_threshold=100)
+    ).get_params_as_arrays(replace_with_empty_threshold=N)
   HB_alpha = find(model = model.select(SS.both.h_sel), a_DHA_cutoff=90
-    ).get_params_as_arrays(replace_with_empty_threshold=100)
+    ).get_params_as_arrays(replace_with_empty_threshold=N)
   HB_beta = find(model = model.select(SS.both.s_sel), a_DHA_cutoff=90
-    ).get_params_as_arrays(replace_with_empty_threshold=100)
+    ).get_params_as_arrays(replace_with_empty_threshold=N)
   print (HB_all.d_HA.size())
   result_dict = {}
   result_dict["all"]   = HB_all
@@ -200,6 +201,9 @@ def stats(model, prefix):
   for j, it in enumerate([["alpha",1], ["beta",3], ["all",5]]):
     key, i = it
     ax = plt.subplot(int("32%d"%i))
+    if(no_ticks):
+      #ax.set_xticks([])
+      ax.set_yticks([])
     if(j in [0,1]):
       ax.tick_params(bottom=False)
       ax.set_xticklabels([])
@@ -214,7 +218,8 @@ def stats(model, prefix):
     #
     start, end1, end2 = 0, max(ref.distances[key].vals), \
       round(max(ref.distances[key].vals),2)
-    plt.yticks([0.01,end1], ["0", end2], visible=True, rotation="horizontal")
+    if(not no_ticks):
+      plt.yticks([0.01,end1], ["0", end2], visible=True, rotation="horizontal")
 
     if  (key=="alpha"): plt.ylim(0, end2+0.02)
     elif(key=="beta"):  plt.ylim(0, end2+0.02)
@@ -232,6 +237,9 @@ def stats(model, prefix):
     if(j in [0,1]):
       ax.tick_params(bottom=False)
       ax.set_xticklabels([])
+    if(no_ticks):
+      #ax.set_xticks([])
+      ax.set_yticks([])
     ax.tick_params(axis="x", labelsize=12)
     ax.tick_params(axis="y", labelsize=12, left=False, pad=-2)
     ax.text(0.98,0.92,key, size=12, horizontalalignment='right',
@@ -247,7 +255,8 @@ def stats(model, prefix):
     #
     start, end1, end2 = 0, max(ref.angles[key].vals), \
       round(max(ref.angles[key].vals),2)
-    plt.yticks([0.01,end1], ["0", end2], visible=True, rotation="horizontal")
+    if(not no_ticks):
+      plt.yticks([0.01,end1], ["0", end2], visible=True, rotation="horizontal")
 
     if  (key=="alpha"): plt.ylim(0, end2+0.02)
     elif(key=="beta"):  plt.ylim(0, end2+0.02)
@@ -257,6 +266,8 @@ def stats(model, prefix):
     if(j==0): ax.set_title("Angle", size=15)
     ax.bar(ref.angles[key].bins, ref.angles[key].vals, width=4.5, alpha=.3)
   plt.subplots_adjust(wspace=0.12, hspace=0.025)
+  if(no_ticks):
+    plt.subplots_adjust(wspace=0.025, hspace=0.025)
   #fig.savefig("%s.png"%prefix, dpi=1000)
   fig.savefig("%s.pdf"%prefix)
 
@@ -353,7 +364,7 @@ class find(object):
         a_YAH_cutoff   = [90, 180],  # should be within this interval
         protein_only   = False,
         pair_proxies   = None,
-        write_eff_file = False):
+        write_eff_file = True):
     self.result = []
     self.model = model
     self.pair_proxies = pair_proxies
