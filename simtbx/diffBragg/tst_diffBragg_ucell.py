@@ -23,7 +23,7 @@ from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 
 # STEP 1:
 # make a crystal and orient it randomly
-ucell = (55, 55, 77, 90, 90, 90)
+ucell = (55.8, 55.8, 76.8, 90, 90, 90)
 symbol = "P43212"
 #ucell = (55, 65, 77, 90, 95, 90)
 #symbol = "P121"
@@ -60,13 +60,14 @@ print("OK!")
 nbcryst = nanoBragg_crystal()
 nbcryst.dxtbx_crystal = C
 nbcryst.n_mos_domains = 1
-nbcryst.thick_mm = 0.01
-nbcryst.Ncells_abc = (7, 7, 7)
+nbcryst.thick_mm = 0.5
+nbcryst.Ncells_abc = (12, 12, 12)
 
 # STEP5: make an instance of diffBRagg, use the simData wrapper
 SIM = SimData()
 # overwrite the default detector with a smaller pixels one
-SIM.detector = SimData.simple_detector(298, 0.1, (700, 700))
+#SIM.detector = SimData.simple_detector(298, 0.1, (700, 700))
+SIM.detector = SimData.simple_detector(150, 0.1, (512, 512))
 # FIXME: determine why setting detdist > 298 causes oversample to diverge...
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0)
@@ -77,7 +78,8 @@ D = SIM.D
 # STEP6:
 # initialize the derivative managers for the unit cell parameters
 D.initialize_managers()
-roi = ((0, 699), (0, 699))
+#roi = ((0, 699), (0, 699))
+roi = ((0, 511), (0, 511))
 rX = slice(roi[0][0], roi[0][1], 1)
 rY = slice(roi[1][0], roi[1][1], 1)
 D.region_of_interest = roi
@@ -98,7 +100,7 @@ for i_param in range(6):
 # STEP8
 # iterate over the parameters and do a finite difference test for each one
 # parameter shifts:
-da_shifts = [5e-3 * (2**i) for i in range(1, 12, 2)]
+da_shifts = [5e-4 * (2**i) for i in range(1, 12, 2)]
 
 if not args.refine:
     for i_param in range(n_ucell_params):
@@ -106,11 +108,13 @@ if not args.refine:
         dChi_dG = np.zeros_like(dChi_da[0])
         for i in range(6):
             dChi_dG += (dChi_da[i] * da_dG[i])
+        embed()
 
         diffs = []
         for i_shift, delta_a in enumerate(da_shifts):
             dChi_dG_findiff = np.zeros_like(dChi_dG)
             lower_triangle_idx = [0, 3, 6, 4, 7, 8]
+            partials = []
             for i, j in enumerate(lower_triangle_idx):
                 B_real = sqr(C.get_B()).inverse()
                 B_real = list(B_real.elems)
@@ -124,6 +128,8 @@ if not args.refine:
                 D.raw_pixels_roi *= 0
                 dChi_da_findiff = (img2-img) / delta_a
                 dChi_dG_findiff += dChi_da_findiff * da_dG[i]  # use the analytical parameter gradients
+                partials.append(dChi_da_findiff)
+            embed()
 
             bragg = img > 0.5  # region with significant scattering
             error = np.abs(dChi_dG_findiff[bragg] - dChi_dG[bragg])
