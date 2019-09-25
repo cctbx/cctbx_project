@@ -30,6 +30,7 @@ class RefineRot(PixelRefinement):
         self.mx_iter = None
         self.max_calls = 1000
         self.ignore_line_search = False
+        self.refine_rotX = self.refine_rotY = self.refine_rotZ = True
 
     def _setup(self):
         # total number of refinement parameters
@@ -38,12 +39,15 @@ class RefineRot(PixelRefinement):
         n_rot = 3
         n_params = n_bg + n_rot + n_scale
         self.x = flex.double(n_params)
+        self.rotX_xpos = n_bg
+        self.rotY_xpos = n_bg + 1
+        self.rotZ_xpos = n_bg + 2
 
         # populate the x-array with initial values
         self._move_abc_init_to_x()
-        self.x[-4] = 0  # initial delta rotation
-        self.x[-3] = 0
-        self.x[-2] = 0
+        self.x[self.rotX_xpos] = 0  # initial delta rotation
+        self.x[self.rotY_xpos] = 0
+        self.x[self.rotZ_xpos] = 0
         self.x[-1] = 1  # initial scale factor
 
         # setup the diffBragg instance
@@ -99,9 +103,9 @@ class RefineRot(PixelRefinement):
         self.a = self.x[i_spot]
         self.b = self.x[self.n_spots + i_spot]
         self.c = self.x[self.n_spots*2 + i_spot]
-        self.thetaX = self.x[self.n_spots*3]
-        self.thetaY = self.x[self.n_spots*3+1]
-        self.thetaZ = self.x[self.n_spots*3+2]
+        self.thetaX = self.x[self.rotX_xpos]
+        self.thetaY = self.x[self.rotY_xpos]
+        self.thetaZ = self.x[self.rotZ_xpos]
         self.scale_fac = self.x[-1]
 
     def _evaluate_log_averageI(self):
@@ -147,9 +151,9 @@ class RefineRot(PixelRefinement):
                 #plt.pause(.2)
 
             # rotation derivative
-            g[self.n_spots*3] += (one_minus_k_over_Lambda * (self.dRotX)).sum()
-            g[self.n_spots*3+1] += (one_minus_k_over_Lambda * (self.dRotY)).sum()
-            g[self.n_spots*3+2] += (one_minus_k_over_Lambda * (self.dRotZ)).sum()
+            g[self.rotX_xpos] += (one_minus_k_over_Lambda * (self.dRotX)).sum()
+            g[self.rotY_xpos] += (one_minus_k_over_Lambda * (self.dRotY)).sum()
+            g[self.rotZ_xpos] += (one_minus_k_over_Lambda * (self.dRotZ)).sum()
 
             # scale factor derivative
             g[-1] += ((self.model_bragg_spots) * one_minus_k_over_Lambda).sum()
@@ -162,18 +166,19 @@ class RefineRot(PixelRefinement):
         print ("%s %10.4f" % (message, target),
                "[", " ".join(["%9.6f" % a for a in self.x]), "]")
 
-    def get_correction_misset(self, as_axis_angle_deg=False):
+    def get_correction_misset(self, as_axis_angle_deg=False, angles=None):
         """
         return the current state of the perturbation matrix
         :return: scitbx.matrix sqr
         """
-        angles = self.x[-4:-1]
+        if angles is None:
+            anglesXYZ = self.x[self.rotX_xpos], self.x[self.rotY_xpos], self.x[self.rotZ_xpos]
         x = col((-1, 0, 0))
         y = col((0, -1, 0))
         z = col((0, 0, -1))
-        RX = x.axis_and_angle_as_r3_rotation_matrix(angles[0], deg=False)
-        RY = y.axis_and_angle_as_r3_rotation_matrix(angles[1], deg=False)
-        RZ = z.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=False)
+        RX = x.axis_and_angle_as_r3_rotation_matrix(anglesXYZ[0], deg=False)
+        RY = y.axis_and_angle_as_r3_rotation_matrix(anglesXYZ[1], deg=False)
+        RZ = z.axis_and_angle_as_r3_rotation_matrix(anglesXYZ[2], deg=False)
         M = RX*RY*RZ
         if as_axis_angle_deg:
             q = M.r3_rotation_matrix_as_unit_quaternion()
