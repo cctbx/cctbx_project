@@ -20,6 +20,7 @@ from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from cctbx import uctbx
 from simtbx.diffBragg.sim_data2 import SimData
 from simtbx.diffBragg import utils
+from simtbx.diffBragg.refiners import crystal_systems
 from dxtbx.model.crystal import Crystal
 from IPython import embed
 
@@ -64,9 +65,9 @@ assert np.allclose(C.get_B(), B.reciprocal_matrix())
 print("OK!")
 
 if is_tet:
-    UcellMan = utils.TetragonalManager(a=ucell[0], c=ucell[2])
+    UcellMan = crystal_systems.TetragonalManager(a=ucell[0], c=ucell[2])
 else:
-    UcellMan = utils.MonoclinicManager(a=ucell[0], b=ucell[1],
+    UcellMan = crystal_systems.MonoclinicManager(a=ucell[0], b=ucell[1],
                                        c=ucell[2], beta=ucell[4]*np.pi/180)
 
 assert np.allclose(UcellMan.B_recipspace, C.get_B())
