@@ -2536,6 +2536,17 @@ class extract_box_around_model_and_map(object):
         n_tot=mask.size()
         mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
         self.map_box=self.map_box+(1-mask)*mean_in_box
+    elif (soft_mask):
+      assert soft_mask_radius is not None
+      assert resolution is not None
+      from cctbx.maptbx.segment_and_split_map import set_up_and_apply_soft_mask
+      self.map_box,smoothed_mask_data=\
+         set_up_and_apply_soft_mask(
+       map_data=self.map_box.deep_copy(),
+       shift_origin=False,
+       crystal_symmetry=cs,
+       resolution=resolution,
+       radius=soft_mask_radius,out=sys.stdout)
 
   def get_original_cs(self):
     return self.xray_structure.crystal_symmetry()
