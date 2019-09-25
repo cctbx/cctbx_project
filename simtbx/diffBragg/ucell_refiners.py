@@ -97,8 +97,11 @@ class RefineUcell(RefineRot):
                 plt.pause(.02)
 
             # unit cell derivative
-            g[self.n_spots*3] += (one_minus_k_over_Lambda * (self.ucell_derivatives[0])).sum()
-            g[self.n_spots*3+1] += (one_minus_k_over_Lambda * (self.ucell_derivatives[1])).sum()
+            for i_ucell_p in range(self.n_ucell_param):
+                g[self.n_spots*3+i_ucell_p] += (one_minus_k_over_Lambda * (self.ucell_derivatives[i_ucell_p])).sum()
+            #g[self.n_spots*3+1] += (one_minus_k_over_Lambda * (self.ucell_derivatives[1])).sum()
+            #g[self.n_spots*3+2] += (one_minus_k_over_Lambda * (self.ucell_derivatives[2])).sum()
+            #g[self.n_spots*3+3] += (one_minus_k_over_Lambda * (self.ucell_derivatives[3])).sum()
 
             # scale factor derivative
             g[-1] += (self.model_bragg_spots * one_minus_k_over_Lambda).sum()
@@ -107,5 +110,17 @@ class RefineUcell(RefineRot):
         self.print_step("LBFGS stp", f)
         return f, g
 
+    #def print_step(self, message, target):
+    #    #names = self.ucell_manager.nam
+    #    print ("unit cell a= %2.7g, c=%2.7g .. scale = %2.7g" % (self.x[-5], self.x[-4], self.x[-3], self.x[-2], self.x[-1]))
+    #    #print ("unit cell a= %2.7g, c=%2.7g .. scale = %2.7g" % (self.x[-5], self.x[-4], self.x[-3], self.x[-2], self.x[-1]))
+    #    #print ("unit cell a= %2.7g, c=%2.7g .. scale = %2.7g" % (self.x[-3], self.x[-2], self.x[-1]))
     def print_step(self, message, target):
-        print ("unit cell a= %2.7g, c=%2.7g .. scale = %2.7g" % (self.x[-3], self.x[-2], self.x[-1]))
+        names = self.ucell_manager.variable_names
+        vals = self.ucell_manager.variables
+        labels = []
+        for n, v in zip(names, vals):
+            #if "beta" in n or "gamma" in n or "alpha" in n:
+            #    v = v * 180 / np.pi
+            labels.append('%s=%2.7g' % (n, v))
+        print ", ".join(labels)

@@ -316,15 +316,15 @@ class TetragonalManager(CrystalSystemManager):
 
     @property
     def al(self):
-        return 90*np.pi/2.
+        return np.pi/2.
 
     @property
     def be(self):
-        return 90*np.pi/2
+        return np.pi/2
 
     @property
     def ga(self):
-        return 90*np.pi/2
+        return np.pi/2
 
     @property
     def variable_names(self):
@@ -371,7 +371,7 @@ class MonoclinicManager(CrystalSystemManager):
 
     @property
     def al(self):
-        return 90*np.pi/2
+        return np.pi/2
 
     @property
     def be(self):
@@ -379,7 +379,7 @@ class MonoclinicManager(CrystalSystemManager):
 
     @property
     def ga(self):
-        return 90*np.pi/2
+        return np.pi/2
 
     @property
     def variable_names(self):
