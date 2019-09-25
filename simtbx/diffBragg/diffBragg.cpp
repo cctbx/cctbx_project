@@ -160,14 +160,16 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
         else if (i==5)
             bb[8] = 1;
 
-        printf("Param %d\nbb_real:\n%11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n", i,
-            bb[0], bb[1], bb[2],
-            bb[3], bb[4], bb[5],
-            bb[6], bb[7], bb[8]);
+        if (verbose>5)
+            printf("Param %d\nbb_real:\n%11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n", i,
+                bb[0], bb[1], bb[2],
+                bb[3], bb[4], bb[5],
+                bb[6], bb[7], bb[8]);
         ucell_managers[i]->dB = bb;
         }
 
     init_raw_pixels_roi();
+    initialize_managers();
     }
 
 void diffBragg::init_raw_pixels_roi(){
