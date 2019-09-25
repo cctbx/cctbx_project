@@ -4,7 +4,6 @@ from simtbx.nanoBragg import shapetype, nanoBragg
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.nanoBragg_beam import nanoBragg_beam
 from simtbx.diffBragg import diffBragg
-from scitbx.matrix import sqr
 
 
 class SimData:
