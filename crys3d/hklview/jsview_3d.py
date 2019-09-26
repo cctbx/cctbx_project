@@ -1038,7 +1038,7 @@ var MakeHKL_Axis = function()
   stage.signals.hovered.add(
     function (pickingProxy)
     {
-      tooltip.style.display = "none";
+      //tooltip.style.display = "none";
       if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  ))
       {
         var cp = pickingProxy.canvasPosition;
@@ -1062,7 +1062,7 @@ var MakeHKL_Axis = function()
         }
         // tell python the id of the hkl and id number of the symmetry operator
         rightnow = timefunc();
-        if (rightnow - timenow > 250) 
+        if (rightnow - timenow > 250)
         { // only post every 250 milli second as not to overwhelm python
           WebsockSendMsg( 'tooltip_id: [' + String([sym_id, hkl_id, is_friedel_mate]) + ']' );
           timenow = timefunc();
@@ -1078,7 +1078,11 @@ var MakeHKL_Axis = function()
           tooltip.style.display = "block";
         }
       }
-      current_ttip = "";
+      else
+      {
+        tooltip.style.display = "none";
+        current_ttip = "";
+      }
     }
   );
 
@@ -1933,7 +1937,7 @@ mysocket.onmessage = function (e)
       if message != "":
         if "Orientation" in message:
           self.orientmessage = message
-          self.ProcessOrientationMessage() 
+          self.ProcessOrientationMessage()
         else:
           self.mprint( message, verbose=4)
         self.lastmsg = message
@@ -2209,20 +2213,20 @@ mysocket.onmessage = function (e)
       # uc.reciprocal_space_vector() only takes integer miller indices so compute
       # the cartesian coordinates for real valued miller indices with the transpose of the fractionalization matrix
       vec = list( vec * matrix.sqr(uc.fractionalization_matrix()).transpose())
-      svec = [vec[0]*self.scene.renderscale, 
-              vec[1]*self.scene.renderscale, 
-              vec[2]*self.scene.renderscale 
+      svec = [vec[0]*self.scene.renderscale,
+              vec[1]*self.scene.renderscale,
+              vec[2]*self.scene.renderscale
              ]
     else:
       recipparam = uc.reciprocal_parameters()
       vec = list( vec * matrix.sqr(uc.fractionalization_matrix()).transpose())
-      svec = [vec[0]*self.scene.renderscale/(recipparam[0]*recipparam[0]), 
-              vec[1]*self.scene.renderscale/(recipparam[1]*recipparam[1]), 
-              vec[2]*self.scene.renderscale/(recipparam[2]*recipparam[2]) 
+      svec = [vec[0]*self.scene.renderscale/(recipparam[0]*recipparam[0]),
+              vec[1]*self.scene.renderscale/(recipparam[1]*recipparam[1]),
+              vec[2]*self.scene.renderscale/(recipparam[2]*recipparam[2])
               ]
-      svec = [vec[0]*self.scene.renderscale, 
-              vec[1]*self.scene.renderscale, 
-              vec[2]*self.scene.renderscale 
+      svec = [vec[0]*self.scene.renderscale,
+              vec[1]*self.scene.renderscale,
+              vec[2]*self.scene.renderscale
               ]
 
     self.mprint("cartesian vector is: " + str(roundoff(svec)), verbose=1)
