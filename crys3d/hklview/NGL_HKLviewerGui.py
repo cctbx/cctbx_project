@@ -28,7 +28,7 @@ class MakeNewDataForm(QDialog):
   def __init__(self, parent=None):
     super(MakeNewDataForm, self).__init__(parent)
     self.setWindowTitle("Create New Reflection Data")
-    myGroupBox = QGroupBox("Stuff")
+    myGroupBox = QGroupBox("Python expression for newdata")
     layout = QGridLayout()
     layout.addWidget(parent.operationlabeltxt,     0, 0, 1, 2)
     layout.addWidget(parent.MillerLabel1,           1, 0, 1, 2)
@@ -171,7 +171,7 @@ class NGL_HKLViewer(QWidget):
     self.bufsize_labeltxt = QLabel()
     self.bufsize_labeltxt.setText("Text buffer size (bytes):")
 
-    self.ttipalpha = 0.75
+    self.ttipalpha = 0.85
     self.ttipalpha_spinBox = QDoubleSpinBox()
     self.ttipalpha_spinBox.setSingleStep(0.05)
     self.ttipalpha_spinBox.setRange(0.0, 1.0)
@@ -264,6 +264,7 @@ class NGL_HKLViewer(QWidget):
     self.spacegroups = []
     self.info = []
     self.infostr = ""
+    self.tncsvec = []
     self.fileisvalid = False
     self.NewFileLoaded = False
     self.NewMillerArray = False
@@ -380,6 +381,9 @@ class NGL_HKLViewer(QWidget):
           currentinfostr = ""
           if self.infodict.get("info"):
             currentinfostr = self.infodict.get("info",[])
+
+          if self.infodict.get("tncsvec"):
+            self.tncsvec = self.infodict.get("tncsvec",[])
 
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
@@ -763,7 +767,7 @@ class NGL_HKLViewer(QWidget):
     layout = QGridLayout()
     layout.addWidget(self.SpacegroupLabel,           0, 0)
     layout.addWidget(self.SpaceGroupComboBox,        0, 1)
-    #layout.addWidget(self.mergecheckbox,             1, 0)
+    #layout.addWidget(self.mergecheckbox,            1, 0)
     layout.addWidget(self.expandP1checkbox,          1, 0)
     layout.addWidget(self.expandAnomalouscheckbox,   1, 1)
     layout.addWidget(self.sysabsentcheckbox,         2, 0)
@@ -808,21 +812,25 @@ class NGL_HKLViewer(QWidget):
     layout2 = QGridLayout()
 
     self.recipvecBtn = QRadioButton(tab2)
-    self.recipvecBtn.setText("Vector is given as reciprocal space fractional values")
+    self.recipvecBtn.setText("as fractional values in reciprocal space")
     self.recipvecBtn.setChecked(False)
     self.recipvecBtn.clicked.connect(self.onClipPlaneChkBox)
     layout2.addWidget(self.recipvecBtn,       0, 0, 1, 2)
 
     self.realspacevecBtn = QRadioButton(tab2)
-    self.realspacevecBtn.setText("vector is given as real space fractional values")
+    self.realspacevecBtn.setText("as fractional values in real space")
     self.realspacevecBtn.setChecked(True)
     self.realspacevecBtn.clicked.connect(self.onClipPlaneChkBox)
     layout2.addWidget(self.realspacevecBtn,    1, 0, 1, 2)
 
+    self.clipTNCSBtn = QRadioButton(tab2)
+    self.clipTNCSBtn.setText("as tNCS vector")
+    self.clipTNCSBtn.setChecked(False)
+    self.clipTNCSBtn.clicked.connect(self.onClipPlaneChkBox)
+    layout2.addWidget(self.clipTNCSBtn,    1, 2, 1, 1)
 
     self.hvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
-    self.hvecval = 2.0
-    self.hvec_spinBox.setValue(self.hvecval)
+    self.hvec_spinBox.setValue(2.0)
     self.hvec_spinBox.setDecimals(6)
     #self.hvec_spinBox.setSingleStep(0.5)
     self.hvec_spinBox.setRange(-100.0, 100.0)
@@ -830,31 +838,29 @@ class NGL_HKLViewer(QWidget):
     self.hvec_Label = QLabel()
     self.hvec_Label.setText("R1")
     layout2.addWidget(self.hvec_Label,      2, 0, 1, 1)
-    layout2.addWidget(self.hvec_spinBox,    2, 1, 1, 1)
+    layout2.addWidget(self.hvec_spinBox,    3, 0, 1, 1)
 
     self.kvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
-    self.kvecval = 0.0
-    self.kvec_spinBox.setValue(self.kvecval)
+    self.kvec_spinBox.setValue(0.0)
     self.kvec_spinBox.setDecimals(6)
     self.kvec_spinBox.setSingleStep(0.5)
     self.kvec_spinBox.setRange(-100.0, 100.0)
     self.kvec_spinBox.valueChanged.connect(self.onKvecChanged)
     self.kvec_Label = QLabel()
     self.kvec_Label.setText("R2")
-    layout2.addWidget(self.kvec_Label,      3, 0, 1, 1)
+    layout2.addWidget(self.kvec_Label,      2, 1, 1, 1)
     layout2.addWidget(self.kvec_spinBox,    3, 1, 1, 1)
 
     self.lvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
-    self.lvecval = 0.0
-    self.lvec_spinBox.setValue(self.lvecval)
+    self.lvec_spinBox.setValue(0.0)
     self.lvec_spinBox.setDecimals(6)
     self.lvec_spinBox.setSingleStep(0.5)
     self.lvec_spinBox.setRange(-100.0, 100.0)
     self.lvec_spinBox.valueChanged.connect(self.onLvecChanged)
     self.lvec_Label = QLabel()
     self.lvec_Label.setText("R3")
-    layout2.addWidget(self.lvec_Label,      4, 0, 1, 1)
-    layout2.addWidget(self.lvec_spinBox,    4, 1, 1, 1)
+    layout2.addWidget(self.lvec_Label,      2, 2, 1, 1)
+    layout2.addWidget(self.lvec_spinBox,    3, 2, 1, 1)
 
     self.hkldist_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.hkldistval = 0.0
@@ -865,8 +871,8 @@ class NGL_HKLViewer(QWidget):
     self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
     self.hkldist_Label = QLabel()
     self.hkldist_Label.setText("Distance from Origin")
-    layout2.addWidget(self.hkldist_Label,      5, 0, 1, 1)
-    layout2.addWidget(self.hkldist_spinBox,    5, 1, 1, 1)
+    layout2.addWidget(self.hkldist_Label,      4, 0, 1, 1)
+    layout2.addWidget(self.hkldist_spinBox,    4, 1, 1, 1)
 
     self.clipwidth_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.clipwidthval = 0.5
@@ -877,10 +883,10 @@ class NGL_HKLViewer(QWidget):
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
     self.clipwidth_Label = QLabel()
     self.clipwidth_Label.setText("Clip Plane Width")
-    layout2.addWidget(self.clipwidth_Label,      6, 0, 1, 1)
-    layout2.addWidget(self.clipwidth_spinBox,    6, 1, 1, 1)
+    layout2.addWidget(self.clipwidth_Label,      5, 0, 1, 1)
+    layout2.addWidget(self.clipwidth_spinBox,    5, 1, 1, 1)
 
-    self.ClipBox = QGroupBox("Specify Vector")
+    self.ClipBox = QGroupBox("Specify vector components (R1,R2,R3)")
     self.ClipBox.setLayout(layout2)
 
     layout3 = QGridLayout()
@@ -890,13 +896,12 @@ class NGL_HKLViewer(QWidget):
     self.clipLabel = QLabel()
 
     self.clipParallelBtn = QRadioButton(tab2)
-    self.clipParallelBtn.setText("parallel to vector below.")
+    self.clipParallelBtn.setText("parallel to vector below")
     self.clipParallelBtn.setChecked(False)
     self.clipParallelBtn.clicked.connect(self.onClipPlaneChkBox)
 
-
     self.clipNormalBtn = QRadioButton(tab2)
-    self.clipNormalBtn.setText("perpendicular to vector below.")
+    self.clipNormalBtn.setText("perpendicular to vector below")
     self.clipNormalBtn.setChecked(True)
     self.clipNormalBtn.clicked.connect(self.onClipPlaneChkBox)
 
@@ -909,15 +914,18 @@ class NGL_HKLViewer(QWidget):
     self.sliceTabWidget.addTab(tab1, "Explicit Slicing")
     self.sliceTabWidget.addTab(tab2, "Clip Plane Slicing")
     self.ClipBox.setDisabled(True)
+    self.clipParallelBtn.setChecked(True)
     self.clipNormalBtn.setDisabled(True)
     self.clipParallelBtn.setDisabled(True)
 
 
   def onClipPlaneChkBox(self):
     if self.ClipPlaneChkBox.isChecked():
-      self.ClipBox.setDisabled(False)
       self.clipNormalBtn.setDisabled(False)
       self.clipParallelBtn.setDisabled(False)
+      self.ClipBox.setDisabled(False)
+      if len(self.tncsvec):
+        self.clipTNCSBtn.setDisabled(False)
       philstr = """NGL_HKLviewer.clip_plane {
   h = %s
   k = %s
@@ -928,15 +936,42 @@ class NGL_HKLViewer(QWidget):
   is_real_space_frac_vec = %s
 }
   NGL_HKLviewer.viewer.NGL.fixorientation = %s
-      """ %(self.hvecval, self.kvecval, self.lvecval, self.hkldistval, self.clipwidthval, \
-            str(self.clipParallelBtn.isChecked()), str(self.realspacevecBtn.isChecked()), \
-            str(self.fixedorientcheckbox.isChecked()) )
+        """ %(self.hvec_spinBox.value(), self.kvec_spinBox.value(), self.lvec_spinBox.value(),\
+              self.hkldistval, self.clipwidthval, \
+              str(self.clipParallelBtn.isChecked()), str(self.realspacevecBtn.isChecked()), \
+              str(self.fixedorientcheckbox.isChecked()) )
+        #self.NGL_HKL_command(philstr)
+      if self.clipTNCSBtn.isChecked():
+        self.hvec_spinBox.setValue(self.tncsvec[0])
+        self.kvec_spinBox.setValue(self.tncsvec[1])
+        self.lvec_spinBox.setValue(self.tncsvec[2])
+        self.hvec_spinBox.setDisabled(True)
+        self.kvec_spinBox.setDisabled(True)
+        self.lvec_spinBox.setDisabled(True)
+        philstr = """NGL_HKLviewer.clip_plane {
+  h = %s
+  k = %s
+  l = %s
+  hkldist = %s
+  clipwidth = %s
+  is_parallel = %s
+  is_real_space_frac_vec = True
+}
+  NGL_HKLviewer.viewer.NGL.fixorientation = %s
+        """ %(self.tncsvec[0], self.tncsvec[1], self.tncsvec[2], self.hkldistval, self.clipwidthval, \
+              str(self.clipParallelBtn.isChecked()), \
+              str(self.fixedorientcheckbox.isChecked()) )
+      else:
+        self.hvec_spinBox.setDisabled(False)
+        self.kvec_spinBox.setDisabled(False)
+        self.lvec_spinBox.setDisabled(False)
       self.NGL_HKL_command(philstr)
     else:
       self.ClipBox.setDisabled(True)
       self.clipNormalBtn.setDisabled(True)
       self.clipParallelBtn.setDisabled(True)
-      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.clipwidth = None")
+      self.clipTNCSBtn.setDisabled(True)
+      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.clipwidth = -1")
 
 
   def onClipwidthChanged(self, val):
@@ -950,18 +985,15 @@ class NGL_HKLViewer(QWidget):
 
 
   def onHvecChanged(self, val):
-    self.hvecval = val
-    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.h = %f" %self.hvecval)
+    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.h = %f" %self.hvec_spinBox.value())
 
 
   def onKvecChanged(self, val):
-    self.kvecval = val
-    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.k = %f" %self.kvecval)
+    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.k = %f" %self.kvec_spinBox.value())
 
 
   def onLvecChanged(self, val):
-    self.lvecval = val
-    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.l = %f" %self.lvecval)
+    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.l = %f" %self.lvec_spinBox.value())
 
 
   def onFixedorient(self):
