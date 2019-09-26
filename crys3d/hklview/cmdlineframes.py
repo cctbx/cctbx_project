@@ -993,8 +993,8 @@ class HKLViewFrame() :
 
   def ShowTNCSVectorParallel(self, parallel=True):
     if self.tncsvec:
-      self.ClipPlaneAndVector( self.tncsvec[0], self.tncsvec[1], self.tncsvec[2],  
-                              hkldist=0.0, clipwidth=4, fixorientation=True, 
+      self.ClipPlaneAndVector( self.tncsvec[0], self.tncsvec[1], self.tncsvec[2],
+                              hkldist=0.0, clipwidth=4, fixorientation=True,
                               is_parallel=parallel, is_real_space_frac_vec=True)
 
 
