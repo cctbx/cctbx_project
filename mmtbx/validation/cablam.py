@@ -594,6 +594,44 @@ class cablam_result(residue):
   #-----------------------------------------------------------------------------
   #}}}
 
+  #{{{ as_kinemage_wheel
+  #-----------------------------------------------------------------------------
+  def as_kinemage_wheel(self, cablam_contours, out=sys.stdout):
+    from scitbx.matrix import rotate_point_around_axis
+    category = self.contour_category()
+    CA_1 = self.prevres.get_atom(' CA ').xyz
+    O_1  = self.prevres.get_atom(' O  ').xyz
+    CA_2 = self.get_atom(' CA ').xyz
+    O_2  = self.get_atom(' O  ').xyz
+    CA_3 = self.nextres.get_atom(' CA ').xyz
+    if None in [CA_1, CA_2, CA_3, O_1, O_2]: return
+    angle = 0
+    prev_O_xyz = O_2
+    while angle <= 370:
+      new_xyz = rotate_point_around_axis(
+        axis_point_1 = CA_2,
+        axis_point_2 = CA_3,
+        point        = O_2,
+        angle        = angle,
+        deg          = True)
+      X1 = perptersect(CA_1,CA_2,O_1)
+      X2 = perptersect(CA_2,CA_3,new_xyz)
+      new_nu = geometry_restraints.dihedral(sites=[O_1,X1,X2,new_xyz],
+        angle_ideal=180, weight=1).angle_model
+      #new_nu = calculate_nu(CA_1,CA_2,CA_3,O_1,new_xyz)
+      cablam_point = [self.measures.mu_in,self.measures.mu_out, new_nu]
+      cablam = cablam_contours[category].valueAt(cablam_point)
+      if cablam < 0.05:
+        color = 'purple'
+        if cablam < 0.01: color = 'magenta'
+        out.write('\n{} P X %s %.3f %.3f %.3f' % (color,X2[0],X2[1],X2[2]))
+        out.write('\n{} %s %.3f %.3f %.3f' % (color,prev_O_xyz[0],prev_O_xyz[1],prev_O_xyz[2]))
+        out.write('\n{} %s %.3f %.3f %.3f' % (color,new_xyz[0],new_xyz[1],new_xyz[2]))
+      prev_O_xyz = new_xyz
+      angle += 10
+  #-----------------------------------------------------------------------------
+  #}}}
+
   #{{{ as_kinemage_point
   #-----------------------------------------------------------------------------
   def as_kinemage_point(self, out=sys.stdout):
@@ -1173,6 +1211,15 @@ class cablamalyze(validation):
         continue
       if result.feedback.c_alpha_geom_outlier:
         result.as_kinemage(mode="ca_geom", out=self.out)
+    ####----------------------------
+    ###self.out.write('\n@subgroup {cablam_wheels} dominant\n')
+    ###self.out.write('@trianglelist {cablam_wheels}')
+    ###for result in self.results:
+    ###  if not result.has_ca:
+    ###    continue
+    ###  if result.feedback.cablam_outlier:
+    ###    result.as_kinemage_wheel(cablam_contours=fetch_peptide_expectations(),out=self.out)
+    ####----------------------------
     self.out.write('\n')
   #-----------------------------------------------------------------------------
   #}}}
