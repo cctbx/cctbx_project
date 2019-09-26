@@ -18,7 +18,7 @@ from scitbx.matrix import sqr
 from scitbx.matrix import rec
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from cctbx import uctbx
-from simtbx.diffBragg.sim_data2 import SimData
+from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.refiners import crystal_systems
 from dxtbx.model.crystal import Crystal
