@@ -2,7 +2,7 @@
 def main():
 
     import numpy as np
-    from simtbx.diffBragg.utils import get_diffBragg_instance
+    from tst_diffBragg_rotXYZ import get_diffBragg_instance
 
     D = get_diffBragg_instance()
     D.spot_scale = 1e5
