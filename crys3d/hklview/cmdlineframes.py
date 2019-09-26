@@ -300,6 +300,8 @@ class HKLViewFrame() :
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
     self.infostr = ""
+    self.hklfile_history = []
+    self.tncsvec = None
     self.guiSocketPort=None
     self.new_miller_array_operations_lst = []
     if 'useGuiSocket' in kwds:
@@ -367,6 +369,7 @@ class HKLViewFrame() :
     self.viewer.HKLscenesdict = {}
     self.viewer.sceneisdirty = True
     if self.viewer.miller_array:
+      self.viewer.params.viewer.scene_id = 0
       self.viewer.DrawNGLJavaScript( blankscene=True)
     self.viewer.miller_array = None
 
@@ -406,7 +409,7 @@ class HKLViewFrame() :
   def update_settings(self, new_phil=None):
     try:
       if not new_phil:
-        self.params.NGL_HKLviewer = self.viewer.params
+        #self.params.NGL_HKLviewer = self.viewer.params
         new_phil = self.master_phil.format(python_object = self.params)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.currentphil, diff_phil = self.GetNewCurrentPhilFromPython(new_phil, self.currentphil)
@@ -724,11 +727,19 @@ class HKLViewFrame() :
       self.settings = display.settings()
       self.viewer.settings = self.params.NGL_HKLviewer.viewer
       self.viewer.mapcoef_fom_dict = {}
+      self.hklfile_history = []
+      self.tncsvec = None
       try :
         hkl_file = any_reflection_file(file_name)
         arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
           )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)
         #arrays = f.file_server.miller_arrays
+        if hkl_file._file_type == 'ccp4_mtz':
+          self.hklfile_history = list(hkl_file._file_content.history())
+          for e in self.hklfile_history:
+            if "TNCS NMOL" in e and "VECTOR" in e:
+              svec = e.split()[-3:]
+              self.tncsvec = [ float(svec[0]), float(svec[1]), float(svec[2]) ]
       except Exception as e :
         self.NewFileLoaded=False
         self.mprint(to_str(e))
@@ -767,6 +778,7 @@ class HKLViewFrame() :
                    "array_infotpls": self.viewer.array_infotpls,
                    "bin_infotpls": self.viewer.bin_infotpls,
                    "html_url": self.viewer.url,
+                   "tncsvec": self.tncsvec,
                    "merge_data": self.params.NGL_HKLviewer.merge_data,
                    "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
                    "NewFileLoaded": self.NewFileLoaded
@@ -977,6 +989,13 @@ class HKLViewFrame() :
     self.params.NGL_HKLviewer.viewer.NGL.fixorientation = fixorientation
     self.params.NGL_HKLviewer.clip_plane.is_real_space_frac_vec = is_real_space_frac_vec
     self.update_settings()
+
+
+  def ShowTNCSVectorParallel(self, parallel=True):
+    if self.tncsvec:
+      self.ClipPlaneAndVector( self.tncsvec[0], self.tncsvec[1], self.tncsvec[2],  
+                              hkldist=0.0, clipwidth=4, fixorientation=True, 
+                              is_parallel=parallel, is_real_space_frac_vec=True)
 
 
   def SetTrackBallRotateSpeed(self, trackspeed):

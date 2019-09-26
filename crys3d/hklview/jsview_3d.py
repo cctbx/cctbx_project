@@ -186,6 +186,8 @@ class hklview_3d:
     self.rot_recip_zvec = None
     self.rot_zvec = None
     self.meanradius = -1
+    self.past = time.time()
+    self.orientmessage = None
     self.high_quality = True
     if kwds.has_key('high_quality'):
       self.high_quality = kwds['high_quality']
@@ -370,7 +372,7 @@ class hklview_3d:
         if curphilparam.viewer.slice_axis=="h": hkl = [1,0,0]
         if curphilparam.viewer.slice_axis=="k": hkl = [0,1,0]
         if curphilparam.viewer.slice_axis=="l": hkl = [0,0,1]
-        self.clip_plane_normal_to_HKL_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
+        self.clip_plane_hkl_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
                          fixorientation = curphilparam.viewer.NGL.fixorientation)
     if self.settings.inbrowser and not curphilparam.viewer.slice_mode:
       msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
@@ -1059,7 +1061,13 @@ var MakeHKL_Axis = function()
             is_friedel_mate = 1;
         }
         // tell python the id of the hkl and id number of the symmetry operator
-        WebsockSendMsg( 'tooltip_id: [' + String([sym_id, hkl_id, is_friedel_mate]) + ']' );
+        rightnow = timefunc();
+        if (rightnow - timenow > 250) 
+        { // only post every 250 milli second as not to overwhelm python
+          WebsockSendMsg( 'tooltip_id: [' + String([sym_id, hkl_id, is_friedel_mate]) + ']' );
+          timenow = timefunc();
+        }
+
         if (current_ttip !== "" )
         {
           tooltip.innerText = current_ttip;
@@ -1076,7 +1084,7 @@ var MakeHKL_Axis = function()
 
 
   stage.mouseObserver.signals.dragged.add(
-    function ( deltaX, deltaY, lkj)
+    function ( deltaX, deltaY)
     {
       if (clipFixToCamPosZ === true)
       {
@@ -1369,6 +1377,17 @@ var origclipnear;
 var origclipfar;
 var origcameraZpos;
 var nbins = %s;
+
+function timefunc() {
+  var d = new Date();
+  var now = d.getTime();
+  return now
+}
+
+var timenow = timefunc();
+var rightnow = timefunc();
+
+
 
 ///var script=document.createElement('script');
 //script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
@@ -1913,45 +1932,8 @@ mysocket.onmessage = function (e)
     try:
       if message != "":
         if "Orientation" in message:
-          # The NGL.Matrix4 with the orientation is a list of floats.
-          self.viewmtrx = message[ message.find("\n") + 1: ]
-          lst = self.viewmtrx.split(",")
-          flst = [float(e) for e in lst]
-          ScaleRotMx = matrix.sqr( (flst[0], flst[4], flst[8],
-                               flst[1], flst[5], flst[9],
-                               flst[2], flst[6], flst[10]
-                               )
-          )
-          self.cameratranslation = (flst[12], flst[13], flst[14])
-          self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=3)
-          self.cameradist = math.pow(ScaleRotMx.determinant(), 1.0/3.0)
-          self.mprint("distance: %s" %roundoff(self.cameradist), verbose=3)
-          self.rotation_mx = ScaleRotMx/self.cameradist
-          rotlst = roundoff(self.rotation_mx.elems)
-          self.mprint("""Rotation matrix:
-  %s,  %s,  %s
-  %s,  %s,  %s
-  %s,  %s,  %s
-          """ %rotlst, verbose=3)
-
-          alllst = roundoff(flst)
-          self.mprint("""OrientationMatrix matrix:
-  %s,  %s,  %s,  %s
-  %s,  %s,  %s,  %s
-  %s,  %s,  %s,  %s
-  %s,  %s,  %s,  %s
-          """ %tuple(alllst), verbose=4)
-          self.params.mouse_moved = True
-          if self.rotation_mx.is_r3_rotation_matrix():
-            angles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
-            self.mprint("angles: %s" %str(roundoff(angles)), verbose=3)
-            z_vec = flex.vec3_double( [(0,0,1)])
-            self.rot_zvec = z_vec * self.rotation_mx
-            self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=3)
-            rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().fractionalization_matrix() )
-            self.rot_recip_zvec = self.rot_zvec * rfracmx
-            self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
-            self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=3)
+          self.orientmessage = message
+          self.ProcessOrientationMessage() 
         else:
           self.mprint( message, verbose=4)
         self.lastmsg = message
@@ -1962,6 +1944,7 @@ mysocket.onmessage = function (e)
         #sleep(0.2)
         self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
         if not self.isnewfile:
+          self.viewmtrx = self.orientmessage[ self.orientmessage.find("\n") + 1: ]
           #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
           self.msgqueue.append( ("ReOrient", self.viewmtrx) )
         self.isnewfile = False
@@ -2009,6 +1992,52 @@ mysocket.onmessage = function (e)
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
 
 
+  def ProcessOrientationMessage(self):
+    if self.orientmessage is None:
+      return
+
+    if self.orientmessage.find("NaN")>=0:
+      return
+
+    self.viewmtrx = self.orientmessage[ self.orientmessage.find("\n") + 1: ]
+    lst = self.viewmtrx.split(",")
+    flst = [float(e) for e in lst]
+    ScaleRotMx = matrix.sqr( (flst[0], flst[4], flst[8],
+                          flst[1], flst[5], flst[9],
+                          flst[2], flst[6], flst[10]
+                          )
+    )
+    self.cameratranslation = (flst[12], flst[13], flst[14])
+    self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=3)
+    self.cameradist = math.pow(ScaleRotMx.determinant(), 1.0/3.0)
+    self.mprint("distance: %s" %roundoff(self.cameradist), verbose=3)
+    self.rotation_mx = ScaleRotMx/self.cameradist
+    rotlst = roundoff(self.rotation_mx.elems)
+    self.mprint("""Rotation matrix:
+  %s,  %s,  %s
+  %s,  %s,  %s
+  %s,  %s,  %s
+    """ %rotlst, verbose=3)
+    alllst = roundoff(flst)
+    self.mprint("""OrientationMatrix matrix:
+  %s,  %s,  %s,  %s
+  %s,  %s,  %s,  %s
+  %s,  %s,  %s,  %s
+  %s,  %s,  %s,  %s
+    """ %tuple(alllst), verbose=4)
+    self.params.mouse_moved = True
+    if self.rotation_mx.is_r3_rotation_matrix():
+      angles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
+      self.mprint("angles: %s" %str(roundoff(angles)), verbose=3)
+      z_vec = flex.vec3_double( [(0,0,1)])
+      self.rot_zvec = z_vec * self.rotation_mx
+      self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=3)
+      rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().fractionalization_matrix() )
+      self.rot_recip_zvec = self.rot_zvec * rfracmx
+      self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
+      self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=3)
+
+
   def WaitforHandshake(self, sec):
     nwait = 0
     while not self.websockclient:
@@ -2024,6 +2053,9 @@ mysocket.onmessage = function (e)
       while True:
         nwait = 0.0
         sleep(self.sleeptime)
+        #if time.time() - self.past > 1.0:
+        #  self.ProcessOrientationMessage() # avoid doing too often as this is expensive
+        #self.past = time.time()
         if len(self.msgqueue):
           #print("self.msgqueue: " + str(self.msgqueue))
           pendingmessagetype, pendingmessage = self.msgqueue[0]
@@ -2170,14 +2202,29 @@ mysocket.onmessage = function (e)
 
 
   def AddVector(self, r1, r2, r3, isreciprocal=True):
-    vec = (r1, r2, r3)
-    svec = list(vec)
     uc = self.miller_array.unit_cell()
+    vec = (r1, r2, r3)
+    #svec = list(vec)
     if isreciprocal:
       # uc.reciprocal_space_vector() only takes integer miller indices so compute
       # the cartesian coordinates for real valued miller indices with the transpose of the fractionalization matrix
-      vec = list(vec*matrix.sqr(uc.fractionalization_matrix()).transpose())
-      svec = [vec[0]*self.scene.renderscale, vec[1]*self.scene.renderscale, vec[2]*self.scene.renderscale ]
+      vec = list( vec * matrix.sqr(uc.fractionalization_matrix()).transpose())
+      svec = [vec[0]*self.scene.renderscale, 
+              vec[1]*self.scene.renderscale, 
+              vec[2]*self.scene.renderscale 
+             ]
+    else:
+      recipparam = uc.reciprocal_parameters()
+      vec = list( vec * matrix.sqr(uc.fractionalization_matrix()).transpose())
+      svec = [vec[0]*self.scene.renderscale/(recipparam[0]*recipparam[0]), 
+              vec[1]*self.scene.renderscale/(recipparam[1]*recipparam[1]), 
+              vec[2]*self.scene.renderscale/(recipparam[2]*recipparam[2]) 
+              ]
+      svec = [vec[0]*self.scene.renderscale, 
+              vec[1]*self.scene.renderscale, 
+              vec[2]*self.scene.renderscale 
+              ]
+
     self.mprint("cartesian vector is: " + str(roundoff(svec)), verbose=1)
     xyvec = svec[:]
     xyvec[2] = 0.0 # projection vector of svec in the xy plane
@@ -2228,7 +2275,7 @@ mysocket.onmessage = function (e)
   def clip_plane_hkl_vector(self, h, k, l, hkldist=0.0,
              clipwidth=None, fixorientation=True, is_parallel=False):
     # create clip plane that is normal to the reciprocal hkl vector
-    if h==0.0 and k==0.0 and l==0.0 or clipwidth==None:
+    if h==0.0 and k==0.0 and l==0.0 or clipwidth <= 0.0:
       self.RemoveNormalVectorToClipPlane()
       return
     self.RemoveAllReciprocalVectors()
@@ -2254,12 +2301,13 @@ mysocket.onmessage = function (e)
   def clip_plane_abc_vector(self, a, b, c, hkldist=0.0,
              clipwidth=None, fixorientation=True, is_parallel=False):
     # create clip plane that is normal to the realspace fractional abc vector
-    if a==0.0 and b==0.0 and c==0.0 or clipwidth==None:
+    if a==0.0 and b==0.0 and c==0.0 or clipwidth <= 0.0:
       self.RemoveNormalVectorToClipPlane()
       return
     self.RemoveAllReciprocalVectors()
-    R = -c*self.normal_hk + a*self.normal_kl + b*self.normal_lh
-    self.AddVector(R[0][0], R[0][1], R[0][2])
+    #R = -c*self.normal_hk + a*self.normal_kl + b*self.normal_lh
+    #self.AddVector(R[0][0], R[0][1], R[0][2])
+    self.AddVector(a, b, c, isreciprocal=False)
     if fixorientation:
       self.DisableMouseRotation()
     else:
@@ -2274,7 +2322,8 @@ mysocket.onmessage = function (e)
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
     self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
-    self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
+    #self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
+    self.TranslateHKLpoints(a,b,c, hkldist)
 
 
   def clip_plane_to_HKL_vector(self, h, k, l, hkldist=0.0,
@@ -2385,6 +2434,12 @@ mysocket.onmessage = function (e)
     RotMx = scitbx.math.euler_angles_as_matrix(radangles)
     scaleRot = RotMx * self.cameradist
     ortrot = scaleRot.as_mat3()
+    if scaleRot.determinant() < 1.0:
+      self.mprint("Waiting for scaleRot determinant > 0")
+      return
+      sleep(1)
+      self.RotateStage(eulerangles)
+      return
     str_rot = str(ortrot)
     str_rot = str_rot.replace("(", "")
     str_rot = str_rot.replace(")", "")
@@ -2439,7 +2494,7 @@ ngl_philstr = """
     .type = float
   bin_opacities = ""
     .type = str
-  tooltip_alpha = 0.75
+  tooltip_alpha = 0.85
     .type = float
   fixorientation = False
     .type = bool
