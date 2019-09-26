@@ -15,7 +15,7 @@ from LS49.sim.step5_pad import data
 from LS49.sim.step4_pad import microcrystal
 
 from simtbx.diffBragg import helpers
-from simtbx.diffBragg.sim_data2 import SimData
+from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.nanoBragg_beam import nanoBragg_beam
 from simtbx.diffBragg.load_ls49 import process_ls49_image
