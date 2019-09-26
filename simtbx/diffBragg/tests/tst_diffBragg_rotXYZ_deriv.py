@@ -1,11 +1,15 @@
 
-from simtbx.diffBragg.tst_diffBragg_rotXYZ import args
+from argparse import ArgumentParser
+parser = ArgumentParser("diffBragg tests")
+parser.add_argument("--plot", action='store_true')
+args = parser.parse_args()
 
-from simtbx.diffBragg.tst_diffBragg_rotXYZ import  get_diffBragg_instance
 
 def main(rot_idx):
+    from simtbx.diffBragg.utils import get_diffBragg_instance
     import numpy as np
-    from scitbx.matrix import col, sqr
+    from scitbx.matrix import col
+    from scipy import stats
 
     vals = []
     theta_vals = [0.00001 * (2**i) for i in range(1, 25, 1)]
@@ -20,7 +24,6 @@ def main(rot_idx):
         img0 = D.raw_pixels_roi.as_numpy_array()
 
         # STEP 2: simulate the same crystal , directly perturbed by the rotation matrix in python
-
         if rot_idx == 0:
             rot_ax = col((-1, 0, 0))
         elif rot_idx == 1:
@@ -34,13 +37,6 @@ def main(rot_idx):
 
         # apply the rotation matrix to the crystal Amatrix:
         Umat_orig = D.Umatrix
-
-        #Arecip_orig = sqr(D.Amatrix)
-        #Areal = Arecip_orig.inverse()
-        #Areal = R * Areal
-        #Arecip = Areal.inverse()
-        ## put back in diffBragg:
-        #D.Amatrix = Arecip
 
         # simulate the scattering in the rotated crystal:
         D.raw_pixels_roi *= 0
@@ -56,7 +52,6 @@ def main(rot_idx):
         D.initialize_managers()
 
         D.Umatrix = Umat_orig
-        #D.zero_raw_pixel_rois()
         D.raw_pixels_roi *= 0
         D.set_value(rot_idx, 0)
         D.add_diffBragg_spots()
@@ -80,14 +75,12 @@ def main(rot_idx):
         print ("Theta = %.4f deg, Average discrepancy = %.3g" %
                 (theta*180 / np.pi, val.mean()))
 
-        #print  abs(ana_deriv.max()-finite_diff.max()) / (.5*ana_deriv.max() + .5*finite_diff.max())
         vals.append(val)
 
     # STEP6: for the smallest perturbation, assert finite difference
     # is equivalent to analytical derivative within 1e-6 units ( per pixel)
     assert np.all(vals[0] < 1e-3)
 
-    from scipy import stats
     x = theta_vals[:16]
     y = [v.mean() for v in vals][:16]
     slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
