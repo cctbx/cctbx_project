@@ -191,3 +191,73 @@ def upper_triangle(matrix_sqr):
     return [matrix_sqr[i] for i in [0, 1, 2, 4, 5, 8]]
 
 
+def get_diffBragg_instance():
+    """
+    Simple method to get a diffBRagg instance
+    USED IN TESTING
+    Returns an instance of diffBragg
+    """
+    from dxtbx.model.crystal import CrystalFactory
+    from dxtbx.model.detector import DetectorFactory
+    from dxtbx.model.beam import BeamFactory
+    from simtbx.nanoBragg.tst_nanoBragg_basic import fcalc_from_pdb
+    from simtbx.nanoBragg import shapetype
+    from simtbx.diffBragg import diffBragg
+
+    wavelen = 1.24
+    flux = 1e15
+    SHAPE = shapetype.Gauss
+
+    NCELLS_ABC = (15, 15, 15)
+
+    beam_descr = {'direction': (0.0, 0.0, 1.0),
+                  'divergence': 0.0,
+                  'flux': 5e11,
+                  'polarization_fraction': 1.,
+                  'polarization_normal': (0.0, 1.0, 0.0),
+                  'sigma_divergence': 0.0,
+                  'transmission': 1.0,
+                  'wavelength': wavelen}
+
+    cryst_descr = {'__id__': 'crystal',
+                   'real_space_a': (50, 0, 0),
+                   'real_space_b': (0, 60, 0),
+                   'real_space_c': (0, 0, 70),
+                   'space_group_hall_symbol': '-P 4 2'}
+
+    det_descr = {'panels':
+                     [{'fast_axis': (-1.0, 0.0, 0.0),
+                       'gain': 1.0,
+                       'identifier': '',
+                       'image_size': (196, 196),
+                       'mask': [],
+                       'material': '',
+                       'mu': 0.0,
+                       'name': 'Panel',
+                       'origin': (19.6, -19.6, -550),
+                       'pedestal': 0.0,
+                       'pixel_size': (0.1, 0.1),
+                       'px_mm_strategy': {'type': 'SimplePxMmStrategy'},
+                       'raw_image_offset': (0, 0),
+                       'slow_axis': (0.0, 1.0, 0.0),
+                       'thickness': 0.0,
+                       'trusted_range': (0.0, 65536.0),
+                       'type': ''}]}
+
+    DET = DetectorFactory.from_dict(det_descr)
+    BEAM = BeamFactory.from_dict(beam_descr)
+    crystal = CrystalFactory.from_dict(cryst_descr)
+
+    Fhkl = fcalc_from_pdb(resolution=4, algorithm="fft", wavelength=wavelen)
+
+    D = diffBragg(DET, BEAM, verbose=0, panel_id=0)
+    D.xtal_shape = SHAPE
+    D.Ncells_abc = NCELLS_ABC
+    D.wavelength_A = wavelen
+    D.flux = flux
+    D.mosaic_spread_deg = 0.01
+    D.mosaic_domains = 10
+    D.Fhkl = Fhkl
+    D.Bmatrix = crystal.get_B()
+    D.Umatrix = crystal.get_U()
+    return D
