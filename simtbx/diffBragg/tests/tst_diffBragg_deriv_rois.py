@@ -1,4 +1,4 @@
-from simtbx.diffBragg.utils import get_diffBragg_instance
+from simtbx.diffBragg.tst_diffBragg_rotXYZ import get_diffBragg_instance
 import numpy as np
 
 print "Instantiating diffBragg"

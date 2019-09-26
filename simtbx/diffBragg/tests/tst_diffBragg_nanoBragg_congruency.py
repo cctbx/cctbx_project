@@ -1,6 +1,6 @@
 
 def main():
-    from simtbx.diffBragg.sim_data import SimData
+    from sim_data import SimData
 
     S = SimData()
     S.instantiate_diffBragg()
