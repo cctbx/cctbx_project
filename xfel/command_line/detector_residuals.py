@@ -794,6 +794,8 @@ class ResidualsPlotter(object):
         reflections['xyzcal.mm'] = reflections['xyzcal.mm.%s'%dest]
         reflections['xyzcal.px'] = reflections['xyzcal.px.%s'%dest]
 
+    if 'xyzobs.mm.value' not in reflections:
+      reflections.centroid_px_to_mm(detector)
     reflections['difference_vector_norms'] = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value']).norms()
 
     n = len(reflections)
