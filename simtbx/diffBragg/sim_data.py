@@ -65,25 +65,19 @@ class SimData:
         self._seed = val
 
     @staticmethod
-    def Umats(mos_spread_deg, n_mos_doms, isotropic=True,
-              seed=777, norm_dist_seed=777):
+    def Umats(mos_spread_deg, n_mos_doms):
         import scitbx
         from scitbx.matrix import col
         import math
         UMAT_nm = flex.mat3_double()
-        mersenne_twister = flex.mersenne_twister(seed=seed)
-        scitbx.random.set_random_seed(norm_dist_seed)
+        mersenne_twister = flex.mersenne_twister(seed=0)
+        scitbx.random.set_random_seed(1234)
         rand_norm = scitbx.random.normal_distribution(mean=0, sigma=mos_spread_deg * math.pi / 180.)
         g = scitbx.random.variate(rand_norm)
         mosaic_rotation = g(n_mos_doms)
         for m in mosaic_rotation:
             site = col(mersenne_twister.random_double_point_on_sphere())
-            if mos_spread_deg > 0:
-                UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(m, deg=False))
-            else:
-                UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(0, deg=False))
-            if isotropic and mos_spread_deg > 0:
-                UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(-m, deg=False))
+            UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(m, deg=False))
         return UMAT_nm
 
     @property
@@ -144,34 +138,23 @@ class SimData:
     def include_noise(self, val):
         self._include_noise = val
 
-    def update_Fhkl_tuple(self):
-        if self.crystal.miller_array is not None:
-            if self.crystal.miller_is_complex:
-                print("USING COMPLEX ARRAY!")
-                Freal, Fimag = zip(*[(val.real, val.imag) for val in self.crystal.miller_array.data()])
-                Freal = flex.double(Freal)
-                Fimag = flex.double(Fimag)
-                self.D.Fhkl_tuple_complex = self.crystal.miller_array.indices(), Freal, Fimag
-            else:
-                self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data()
-
     def _crystal_properties(self):
         self.D.xtal_shape = self.crystal.xtal_shape
 
-        self.update_Fhkl_tuple()
+        if self.crystal.miller_array is not None:
+            self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data()
 
-        ## TODO: am I unnecessary?
-        #self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
+        # TODO: am I unnecessary?
+        self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
 
-        self.D.Omatrix = self.crystal.Omatrix
-        self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B() #
+        self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B()
         self.D.Umatrix = self.crystal.dxtbx_crystal.get_U()
 
-        if self.crystal.isotropic_ncells:
-            self.D.Ncells_abc = self.crystal.Ncells_abc[0]
-        else:
-            self.D.Ncells_abc_aniso = self.crystal.Ncells_abc
+        #astar, bstar, cstar = self.crystal.astar_bstar_cstar_misset
+        #self.D.Amatrix = sqr(astar + bstar + cstar)
 
+        #self.D.Amatrix = self.crystal.Amatrix_realspace.inverse().transpose()
+        self.D.Ncells_abc = self.crystal.Ncells_abc
         self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
         self.D.mosaic_domains = self.crystal.n_mos_domains
         self.D.set_mosaic_blocks(SimData.Umats(
@@ -179,7 +162,6 @@ class SimData:
 
     def _beam_properties(self):
         self.D.xray_beams = self.beam.xray_beams
-        # TODO: make me a circular size ?
         self.D.beamsize_mm = self.beam.size_mm
 
     def _seedlings(self):
@@ -201,8 +183,8 @@ class SimData:
     def instantiate_diffBragg(self, verbose=0, oversample=0, device_Id=0,
                               adc_offset=0, default_F=1e3, interpolate=0):
 
-        self.D = diffBragg(self.detector, self.beam.nanoBragg_constructor_beam,
-                           verbose=verbose, panel_id=int(self.panel_id))
+        self.D = diffBragg(self.detector, self.beam.xray_beams[0],
+                           verbose=verbose, panel_id=self.panel_id)
         self._seedlings()
         self.D.interpolate = interpolate
         self._crystal_properties()
@@ -219,9 +201,8 @@ class SimData:
 
         self.D.vectorize_umats()  # NOTE: dont forget me!
 
-    def generate_simulated_image(self, instantiate=False):
-        if instantiate:
-            self.instantiate_diffBragg()
+    def generate_simulated_image(self):
+        self.instantiate_diffBragg()
         print ("add spots")
         self._add_nanoBragg_spots()
         self._add_background()
@@ -253,7 +234,7 @@ class SimData:
             self.D.add_background(1, 0)
 
         if self.add_air:
-            print("add air %f mm" % self.air_path_mm)
+            print("add air %f mm"% self.air_path_mm)
             air_scatter = flex.vec2_double([(0, 14.1), (0.045, 13.5), (0.174, 8.35), (0.35, 4.78), (0.5, 4.22)])
             self.D.Fbg_vs_stol = air_scatter
             self.D.amorphous_sample_thick_mm = self.air_path_mm
@@ -288,5 +269,5 @@ class SimData:
 if __name__ == "__main__":
     S = SimData()
     img = S.generate_simulated_image()
-    print ("Maximum pixel value: %.3g" % img.max())
-    print ("Minimum pixel value: %.3g" % img.min())
+    print "Maximum pixel value: %.3g" % img.max()
+    print "Minimum pixel value: %.3g" % img.min()
