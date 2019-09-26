@@ -8,8 +8,7 @@ def process_simdata(plot=False, angles=None, perturb="rotXYZ"):
     import numpy as np
     from scitbx.matrix import sqr, col
     from simtbx.diffBragg import utils
-    #from simtbx.diffBragg.sim_data_for_tests import SimData
-    from simtbx.diffBragg.sim_data2 import SimData
+    from simtbx.diffBragg.sim_data import SimData
     if plot:
         import pylab as plt
 
