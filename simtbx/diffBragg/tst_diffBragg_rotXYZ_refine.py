@@ -1,6 +1,6 @@
 
 import numpy as np
-from simtbx.diffBragg.sim_data2 import SimData
+from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg.process_simdata import process_simdata
 from simtbx.diffBragg.refiners import RefineRot
 from dials.algorithms.indexing import compare_orientation_matrices
