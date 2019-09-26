@@ -15,7 +15,7 @@ from rstbx.symmetry.constraints import parameter_reduction
 from scitbx.matrix import sqr
 from scitbx.matrix import rec
 from cctbx import uctbx
-from simtbx.diffBragg.sim_data2 import SimData
+from simtbx.diffBragg.sim_data import SimData
 from dxtbx.model.crystal import Crystal
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
