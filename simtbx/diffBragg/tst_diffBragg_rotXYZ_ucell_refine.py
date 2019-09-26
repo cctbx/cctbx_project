@@ -11,7 +11,7 @@ from scipy.spatial.transform import Rotation
 import pylab as plt
 
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
-from simtbx.diffBragg.sim_data2 import SimData
+from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.refiners import RefineMissetAndUcell
 from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
@@ -144,6 +144,9 @@ SIM.crystal = nbcryst
 init_Umat_norm = np.abs(np.array(C2.get_U()) - np.array(C.get_U())).sum()
 init_Bmat_norm = np.abs(np.array(C2.get_B()) - np.array(C.get_B())).sum()
 
+from IPython import embed
+embed()
+
 RUC = RefineMissetAndUcell(
     spot_rois=spot_roi,
     abc_init=tilt_abc,
@@ -175,4 +178,16 @@ print("Perturbation axis =%+2.7g,%+2.7g,%+2.7g and angle=%+2.7g deg"
 print("Misset applied during refinement: axis=%+2.7g,%+2.7g,%+2.7g and angle=%+2.7g deg"
       % (ax[0], ax[1], ax[2], ang))
 
+# Simulate the perturbed image for comparison
+SIM.D.raw_pixels *= 0
+SIM.D.Bmatrix = C2.get_B()
+SIM.D.Umatrix = C2.get_U()
+SIM.D.add_diffBragg_spots()
+SIM._add_background()
+SIM._add_noise()
+# Perturbed image:
+img_ref = SIM.D.raw_pixels.as_numpy_array()
+SIM.D.raw_pixels *= 0
+
 print("OK")
+
