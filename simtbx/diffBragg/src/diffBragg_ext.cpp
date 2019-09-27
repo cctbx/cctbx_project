@@ -1,28 +1,12 @@
 #include <cctbx/boost_python/flex_fwd.h>
 #include <boost/python.hpp>
-#include <simtbx/diffBragg/src/diffBragg.h>
+#include <simtbx/diffBragg/diffBragg.h>
 //#include <boost/python/tuple.hpp>
 
 using namespace boost::python;
 namespace simtbx{
 namespace diffBragg{
 namespace boost_python { namespace {
-
-  static void  set_Nabc(simtbx::nanoBragg::diffBragg& diffBragg, double const& value) {
-      //diffBragg.Na = value;
-      //diffBragg.Nb = value;
-      //diffBragg.Nc = value;
-      ///* clear things that might override it */
-      //diffBragg.xtal_size_x = -1;
-      //diffBragg.xtal_size_y = -1;
-      //diffBragg.xtal_size_z = -1;
-      //diffBragg.update_oversample();
-      diffBragg.set_value(9, value); // FIXME 9 means Ncells parameter, fix this API
-  }
-
-  static double get_Nabc(simtbx::nanoBragg::diffBragg const& diffBragg) {
-      return diffBragg.Na;
-  }
 
   // change of basis operator see dxtbx.model.crystal.h
   static nanoBragg::mat3 get_O(simtbx::nanoBragg::diffBragg& diffBragg){
@@ -123,22 +107,12 @@ namespace boost_python { namespace {
 
       .def("set_ucell_derivative_matrix",  &simtbx::nanoBragg::diffBragg::set_ucell_derivative_matrix, "Boo-ya")
 
-      .def("set_ucell_second_derivative_matrix",  &simtbx::nanoBragg::diffBragg::set_ucell_second_derivative_matrix,
-            "Two-ya")
-
       //.def("get_ucell_derivative_matrix",  &simtbx::nanoBragg::diffBragg::get_ucell_derivative_matrix, "scooby snacks")
 
-      .def("get_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels,
-            "gets the manager raw image containing first derivatives")
-
-      .def("get_second_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_second_derivative_pixels,
-            "gets the manager raw image containing second derivatives")
+      .def("get_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels, "gets the manager raw image")
 
       .def("zero_raw_pixel_rois", &simtbx::nanoBragg::diffBragg::zero_raw_pixel_rois,
            "reallocate the raw image ROIs (they are usually tiny)")
-
-      .def("update_dxtbx_geoms", &simtbx::nanoBragg::diffBragg::update_dxtbx_geoms,
-           "update the geometries with new dxtbx models, number of pixels should remain constant")
 
       .add_property("region_of_interest",
              make_function(&get_roi,rbv()),
@@ -149,11 +123,6 @@ namespace boost_python { namespace {
                      make_getter(&simtbx::nanoBragg::diffBragg::raw_pixels_roi,rbv()),
                      make_setter(&simtbx::nanoBragg::diffBragg::raw_pixels_roi,dcp()),
                     "raw pixels from region of interest only")
-
-      .add_property("max_I_hkl",
-                     make_getter(&simtbx::nanoBragg::diffBragg::max_I_hkl,rbv()),
-                     make_setter(&simtbx::nanoBragg::diffBragg::max_I_hkl,dcp()),
-                    "HKL corresponding to the maximum simulated intensity in the ROI")
 
       .add_property("Umatrix",
              make_function(&get_U,rbv()),
@@ -169,17 +138,6 @@ namespace boost_python { namespace {
              make_function(&get_O,rbv()),
              make_function(&set_O,dcp()),
              "change of basis Omatrix")
-
-      .add_property("Ncells_abc",
-             make_function(&get_Nabc,rbv()),
-             make_function(&set_Nabc,dcp()),
-             "Get number of mosaic domains along an axis")
-
-      .add_property("update_oversample_during_refinement",
-                     make_getter(&simtbx::nanoBragg::diffBragg::update_oversample_during_refinement,rbv()),
-                     make_setter(&simtbx::nanoBragg::diffBragg::update_oversample_during_refinement,dcp()),
-                     "Allows oversample to change as Ncells abc changes")
-
 
     ; // end of diffBragg extention
 
