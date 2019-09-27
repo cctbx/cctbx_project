@@ -144,16 +144,13 @@ class SimData:
         if self.crystal.miller_array is not None:
             self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data()
 
-        # TODO: am I unnecessary?
-        self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
+        ## TODO: am I unnecessary?
+        #self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
 
-        self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B()
+        self.D.Omatrix = self.crystal.Omatrix
+        self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B()#
         self.D.Umatrix = self.crystal.dxtbx_crystal.get_U()
 
-        #astar, bstar, cstar = self.crystal.astar_bstar_cstar_misset
-        #self.D.Amatrix = sqr(astar + bstar + cstar)
-
-        #self.D.Amatrix = self.crystal.Amatrix_realspace.inverse().transpose()
         self.D.Ncells_abc = self.crystal.Ncells_abc
         self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
         self.D.mosaic_domains = self.crystal.n_mos_domains
@@ -183,7 +180,7 @@ class SimData:
     def instantiate_diffBragg(self, verbose=0, oversample=0, device_Id=0,
                               adc_offset=0, default_F=1e3, interpolate=0):
 
-        self.D = diffBragg(self.detector, self.beam.xray_beams[0],
+        self.D = diffBragg(self.detector, self.beam.nanoBragg_constructor_beam,
                            verbose=verbose, panel_id=self.panel_id)
         self._seedlings()
         self.D.interpolate = interpolate
@@ -234,7 +231,7 @@ class SimData:
             self.D.add_background(1, 0)
 
         if self.add_air:
-            print("add air %f mm"% self.air_path_mm)
+            print("add air %f mm" % self.air_path_mm)
             air_scatter = flex.vec2_double([(0, 14.1), (0.045, 13.5), (0.174, 8.35), (0.35, 4.78), (0.5, 4.22)])
             self.D.Fbg_vs_stol = air_scatter
             self.D.amorphous_sample_thick_mm = self.air_path_mm
