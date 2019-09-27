@@ -48,7 +48,7 @@ class ucell_manager: public derivative_manager{
     ucell_manager();
     virtual ~ucell_manager(){}
     void increment(
-        vec3 V, mat3 NABC, mat3 UR, vec3 q,
+        vec3 V, mat3 NABC, mat3 UR, vec3 q, mat3 Ot,
         double Hrad, double Fcell, double Flatt, double fudge,
         double source_I, double capture_fraction, double omega_pixel);
 
@@ -96,6 +96,7 @@ class diffBragg: public nanoBragg{
 
   mat3 Umatrix;
   mat3 Bmatrix;
+  mat3 Omatrix;
   mat3 Bmat_realspace, NABC;
   mat3 RXYZ;
   std::vector<mat3> RotMats;
