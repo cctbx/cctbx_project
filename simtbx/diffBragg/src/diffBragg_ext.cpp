@@ -1,6 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 #include <boost/python.hpp>
-#include <simtbx/diffBragg/diffBragg.h>
+#include <simtbx/diffBragg/src/diffBragg.h>
 //#include <boost/python/tuple.hpp>
 
 using namespace boost::python;
