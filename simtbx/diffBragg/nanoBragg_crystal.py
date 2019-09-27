@@ -20,13 +20,23 @@ class nanoBragg_crystal(object):
         self.missetting_matrix = sqr((1, 0, 0, 0, 1, 0, 0, 0, 1))
 
     @property
+    def Omatrix(self):
+        """
+        Change of basis operator
+        """
+        sgi = self.dxtbx_crystal.get_space_group().info()
+        to_p1 = sgi.change_of_basis_op_to_primitive_setting()
+        return sqr(to_p1.c_inv().r().transpose().as_double())
+
+    @property
     def dxtbx_crystal(self):
         return self._dxtbx_crystal
 
     @dxtbx_crystal.setter
     def dxtbx_crystal(self, val):
-        sginfo = val.get_space_group().info()
-        self._dxtbx_crystal = val.change_basis(sginfo.change_of_basis_op_to_primitive_setting())
+        #sginfo = val.get_space_group().info()
+        #self._dxtbx_crystal = val.change_basis(sginfo.change_of_basis_op_to_primitive_setting())
+        self._dxtbx_crystal = val
 
     @property
     def missetting_matrix(self):
@@ -144,7 +154,7 @@ class nanoBragg_crystal(object):
         return C
 
     @staticmethod
-    def abcstar_from_abc(a,b,c):
+    def abcstar_from_abc(a, b, c):
         Amat_star_row_vecs = sqr(tuple(a) + tuple(b) + tuple(c)).inverse()
         astar_rot, bstar_rot, cstar_rot = Amat_star_row_vecs.transpose().as_list_of_lists()
         return astar_rot, bstar_rot, cstar_rot
