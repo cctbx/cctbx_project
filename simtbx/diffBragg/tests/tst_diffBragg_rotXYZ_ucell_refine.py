@@ -78,59 +78,9 @@ SIM._add_noise()
 img_pet = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
 
-# NOTE: NEED TO DO SPOT FINDING AND WHAT NOT
-# spot_rois, abc_init, img, SimData_instance,
-# locate the strong spots and fit background planes
+# spot_rois, abc_init , these are inputs to the refiner
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
-spot_data = utils.get_spot_data(spots, thresh=19)
-ss_spot, fs_spot = map(np.array, zip(*spot_data["maxIpos"]))  # slow/fast  scan coords of strong spots
-num_spots = len(ss_spot)
-if args.plot:
-    plt.imshow(img, vmax=200)
-    plt.plot(fs_spot, ss_spot, 'o', mfc='none', mec='r')
-    plt.title("Simulated image with strong spots marked")
-    plt.show()
-
-is_bg_pixel = np.ones(img.shape, bool)
-for bb_ss, bb_fs in spot_data["bboxes"]:
-    is_bg_pixel[bb_ss, bb_fs] = False
-
-# now fit tilting planes
-shoebox_sz = 20
-tilt_abc = np.zeros((num_spots, 3))
-spot_roi = np.zeros((num_spots, 4), int)
-if args.plot:
-    patches = []
-img_shape = SIM.detector[0].get_image_size()
-for i_spot, (x_com, y_com) in enumerate(zip(fs_spot, ss_spot)):
-    i1 = int(max(x_com - shoebox_sz / 2., 0))
-    i2 = int(min(x_com + shoebox_sz / 2., img_shape[0]-1))
-    j1 = int(max(y_com - shoebox_sz / 2., 0))
-    j2 = int(min(y_com + shoebox_sz / 2., img_shape[1]-1))
-
-    shoebox_img = img[j1:j2, i1:i2]
-    shoebox_mask = is_bg_pixel[j1:j2, i1:i2]
-
-    tilt, bgmask, coeff = utils.tilting_plane(
-        shoebox_img,
-        mask=shoebox_mask,  # mask specifies which spots are bg pixels...
-        zscore=2)
-
-    tilt_abc[i_spot] = coeff[1], coeff[2], coeff[0]  # store as fast-scan coeff, slow-scan coeff, offset coeff
-
-    spot_roi[i_spot] = i1, i2, j1, j2
-    if args.plot:
-        R = plt.Rectangle(xy=(x_com-shoebox_sz/2, y_com-shoebox_sz/2.),
-                      width=shoebox_sz,
-                      height=shoebox_sz,
-                      fc='none', ec='r')
-        patches.append(R)
-
-if args.plot:
-    patch_coll = plt.mpl.collections.PatchCollection(patches, match_original=True)
-    plt.imshow(img, vmin=0, vmax=200)
-    plt.gca().add_collection(patch_coll)
-    plt.show()
+spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot)
 
 UcellMan = MonoclinicManager(
     a=ucell2[0],
@@ -153,6 +103,7 @@ RUC = RefineMissetAndUcell(
     ucell_manager=UcellMan)
 RUC.trad_conv = True
 RUC.trad_conv_eps = 1e-5
+RUC.max_calls = 2000
 RUC.run()
 
 ang, ax = RUC.get_correction_misset(as_axis_angle_deg=True)
@@ -162,29 +113,34 @@ C2.set_B(RUC.get_refined_Bmatrix())
 final_Umat_norm = np.abs(np.array(C2.get_U()) - np.array(C.get_U())).sum()
 final_Bmat_norm = np.abs(np.array(C2.get_B()) - np.array(C.get_B())).sum()
 
+# refined unit cell parameters
+ucell_ref = C2.get_unit_cell().parameters()
+
 print("Results!")
 print("Before refinement: Umatrix distance=%2.7g, Bmatrix distance=%2.7g" % (init_Umat_norm, init_Bmat_norm))
 print("After refinement: Umatrix distance=%2.7g, Bmatrix distance=%2.7g" % (final_Umat_norm, final_Bmat_norm))
 print("")
 print("ground truth unit cell: %2.7g,%2.7g,%2.7g,%2.7g,%2.7g,%2.7g" % ucell)
 print("unit cell passed to refinement: %2.7g,%2.7g,%2.7g,%2.7g,%2.7g,%2.7g" % ucell2)
-print("refined unit cell: %2.7g,%2.7g,%2.7g,%2.7g,%2.7g,%2.7g" % C2.get_unit_cell().parameters())
+print("refined unit cell: %2.7g,%2.7g,%2.7g,%2.7g,%2.7g,%2.7g" % ucell_ref)
 print("")
 print("Perturbation axis =%+2.7g,%+2.7g,%+2.7g and angle=%+2.7g deg"
       % (perturb_rot_axis[0], perturb_rot_axis[1], perturb_rot_axis[2], perturb_rot_ang))
 print("Misset applied during refinement: axis=%+2.7g,%+2.7g,%+2.7g and angle=%+2.7g deg"
       % (ax[0], ax[1], ax[2], ang))
 
-# Simulate the perturbed image for comparison
-SIM.D.raw_pixels *= 0
-SIM.D.Bmatrix = C2.get_B()
-SIM.D.Umatrix = C2.get_U()
-SIM.D.add_diffBragg_spots()
-SIM._add_background()
-SIM._add_noise()
-# Perturbed image:
-img_ref = SIM.D.raw_pixels.as_numpy_array()
-SIM.D.raw_pixels *= 0
+# error in initial unit cell parameters
+err_init = np.linalg.norm([abs(u-u_init)/u for u, u_init in zip(ucell, ucell2)])*100
+
+# error in refined unit cell parameters
+err_ref = np.linalg.norm([abs(u-u_ref)/u for u, u_ref in zip(ucell, ucell_ref)])*100
+
+assert err_ref < 1e-1 * err_init
+
+# Note, this test might change, e.g. angle could be negative and axis could be the same...
+assert np.round(ang, 1) == np.round(perturb_rot_ang, 1)
+assert np.linalg.norm(np.round(ax, 2) + np.round(perturb_rot_axis, 2)) < 0.075
+assert final_Umat_norm < 1e-1*init_Umat_norm
 
 print("OK")
 
