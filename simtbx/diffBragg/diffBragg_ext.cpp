@@ -8,6 +8,14 @@ namespace simtbx{
 namespace diffBragg{
 namespace boost_python { namespace {
 
+  // change of basis operator see dxtbx.model.crystal.h
+  static nanoBragg::mat3 get_O(simtbx::nanoBragg::diffBragg& diffBragg){
+    return diffBragg.Omatrix;
+  }
+
+  void set_O(simtbx::nanoBragg::diffBragg& diffBragg, nanoBragg::mat3 const& value){
+    diffBragg.Omatrix = value;
+  }
 
   static nanoBragg::mat3 get_U(simtbx::nanoBragg::diffBragg& diffBragg){
     return diffBragg.Umatrix;
@@ -125,6 +133,11 @@ namespace boost_python { namespace {
              make_function(&get_B,rbv()),
              make_function(&set_B,dcp()),
              "unit cell portion of Amatrix (dxtbx format; C.get_B())")
+
+      .add_property("Omatrix",
+             make_function(&get_O,rbv()),
+             make_function(&set_O,dcp()),
+             "change of basis Omatrix")
 
     ; // end of diffBragg extention
 

@@ -24,11 +24,11 @@ ucell_manager::ucell_manager(){}
 
 void ucell_manager::increment(
     vec3 V,
-    mat3 NABC, mat3 UR, vec3 q,
+    mat3 NABC, mat3 UR, vec3 q, mat3 Ot,
     double Hrad, double Fcell, double Flatt, double fudge,
     double source_I, double capture_fraction, double omega_pixel){
 
-  vec3 dV = NABC*(UR*dB).transpose() * q;
+  vec3 dV = NABC*(UR*dB*Ot).transpose() * q;
   double dHrad = V*dV + dV*V;
   double dFlatt = -1*Flatt / 0.63 * fudge * dHrad;
   dI += Fcell*Fcell*2*Flatt*source_I*capture_fraction*omega_pixel*dFlatt;
@@ -105,6 +105,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     {
 
     mat3 EYE = mat3(1,0,0,0,1,0,0,0,1);
+    Omatrix = mat3(1,0,0,0,1,0,0,0,1);
 
     RotMats.push_back(EYE);
     RotMats.push_back(EYE);
@@ -472,7 +473,7 @@ void diffBragg::add_diffBragg_spots()
                                 Bmat_realspace[8] = 1e10*cp_vec[2];
 
                                 /* construct fractional Miller indicies */
-                                vec3 H_vec = (UMATS_RXYZ[mos_tic] * Umatrix*Bmat_realspace).transpose() * q_vec;
+                                vec3 H_vec = (UMATS_RXYZ[mos_tic] * Umatrix*Bmat_realspace*(Omatrix.transpose())).transpose() * q_vec;
                                 //vec3 H_vec = (UMATS_RXYZ[mos_tic] * Bmat_realspace).transpose() * q_vec;
                                 h = H_vec[0];
                                 k = H_vec[1];
@@ -642,7 +643,8 @@ void diffBragg::add_diffBragg_spots()
                                         rot_managers[i_rot]->increment(
                                                             fudge,
                                                             R3[0], R3[1], R3[2],
-                                                            NABC, UMATS[mos_tic], Umatrix*Bmat_realspace,
+                                                            NABC, UMATS[mos_tic],
+                                                            Umatrix*Bmat_realspace*(Omatrix.transpose()),
                                                             q_vec, V,
                                                             hrad_sqr, F_cell, F_latt,
                                                             source_I[source], capture_fraction, omega_pixel);
@@ -654,6 +656,7 @@ void diffBragg::add_diffBragg_spots()
                                     if (ucell_managers[i_uc]->refine_me){
                                         ucell_managers[i_uc]->increment(
                                             V, NABC, UMATS_RXYZ[mos_tic]*Umatrix, q_vec,
+                                            Omatrix.transpose(),
                                             hrad_sqr, F_cell, F_latt, fudge,
                                             source_I[source], capture_fraction, omega_pixel);
                                     }
