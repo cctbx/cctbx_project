@@ -117,6 +117,43 @@ struct matrix_wrapper
     return m.permute_rows(p);
   }
 
+  struct SparseMatrixPickleSuite : boost::python::pickle_suite {
+
+    typedef vector<T, copy_semantic_vector_container> column_type;
+    typedef typename column_type::const_iterator const_row_iterator;
+    typedef typename column_type::index_type index_type;
+    typedef T value_type;
+
+    static boost::python::tuple getinitargs(const matrix<T> &obj){
+      return boost::python::make_tuple(
+        obj.n_rows(),
+        obj.n_cols());
+    }
+
+    static boost::python::list getstate(const matrix<T> &obj){
+      boost::python::list state;
+      /// state is given by (row_index, col_index, value) for nonzero elements
+      for (index_type j=0; j < obj.n_cols(); j++) {
+        for(const_row_iterator p = obj.col(j).begin(); p != obj.col(j).end(); p++) {
+          state.append(boost::python::make_tuple(p.index(), j, *p));
+        }
+      }
+      return state;
+    }
+
+    static void setstate(matrix<T>& obj, boost::python::list state){
+      boost::python::ssize_t n = boost::python::len(state);
+      for (boost::python::ssize_t i = 0; i<n; i++){
+        boost::python::object elem = state[i];
+        int row_idx = boost::python::extract<int>(elem[0]);
+        int col_idx = boost::python::extract<int>(elem[1]);
+        value_type value = boost::python::extract<value_type>(elem[2]);
+        obj(row_idx, col_idx) = value;
+      }
+      obj.compact();
+    }
+  };
+
   static void wrap() {
     using namespace boost::python;
     return_internal_reference<> rir;
@@ -170,6 +207,7 @@ struct matrix_wrapper
            &wt::this_times_diagonal_times_this_transpose)
       .def("__str__", str_)
       .def("__repr__", repr)
+      .def_pickle(SparseMatrixPickleSuite())
     ;
   }
 
