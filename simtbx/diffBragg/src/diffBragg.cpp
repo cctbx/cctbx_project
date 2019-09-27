@@ -1,4 +1,4 @@
-#include <simtbx/diffBragg/diffBragg.h>
+#include <simtbx/diffBragg/src/diffBragg.h>
 #include <assert.h>
 namespace simtbx {
 namespace nanoBragg {
