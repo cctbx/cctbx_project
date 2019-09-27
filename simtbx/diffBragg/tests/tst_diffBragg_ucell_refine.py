@@ -33,11 +33,10 @@ if is_tet:
     ucell = (55, 55, 77, 90, 90, 90)
     symbol = "P43212"
 else:  # args.crystalsystem == "monoclinic"
-    ucell = (55, 65, 75, 90, 95, 90)
-    symbol = "P121"
+    ucell = (70, 60, 50, 90.0, 110, 90.0)
+    symbol = "C121"
 
 a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
-#a_real, b_real, c_real = np.reshape(uctbx.unit_cell(ucell).orthogonalization_matrix(), (3,3)).T   #transpose().as_list_of_lists()
 C = Crystal(a_real, b_real, c_real, symbol)
 
 # random raotation
@@ -86,10 +85,11 @@ SIM = SimData()
 SIM.detector = SimData.simple_detector(298, 0.1, (700, 700))
 # FIXME: determine why setting detdist > 298 causes oversample to diverge...
 SIM.crystal = nbcryst
-SIM.instantiate_diffBragg(oversample=0)
+SIM.instantiate_diffBragg(oversample=0, verbose=0)
 # D is an instance of diffBragg with reasonable parameters
 # and our dxtbx crystal created above
 D = SIM.D
+D.progress_meter = True
 
 # STEP6:
 # initialize the derivative managers for the unit cell parameters
@@ -107,7 +107,9 @@ D.region_of_interest = roi
 
 # STEP7:
 # compute the scattering and its derivative
+print("Adding diffBragg spots")
 D.add_diffBragg_spots()
+print("Done!")
 img = D.raw_pixels_roi.as_numpy_array()
 # reset all pixel values
 D.raw_pixels *= 0
@@ -125,15 +127,10 @@ shifts = [1e-3 * (2**i) for i in range(1, 12, 2)]
 
 if not args.refine:
     for i_param in range(n_ucell_params):
-        #if i_param < 3:
-        #    continue
         analy_deriv = derivs[i_param]
         diffs = []
         for i_shift, param_shift in enumerate(shifts):
 
-            #uc2 = C2.get_unit_cell().parameters()
-            #Tet.a = a2_real[0]
-            #Tet.c = c2_real[2]
             if is_tet:
                 var = [ucell[0], ucell[2]]
             else:
@@ -201,7 +198,8 @@ if not args.refine:
 if is_tet:
     ucell2 = (55.5, 55.5, 76.1, 90, 90, 90)
 else:  # args.crystalsystem == "monoclinic"
-    ucell2 = (55.2, 66, 74, 90, 94.3, 90)
+    ucell2 = (71, 59, 51, 90.0, 111, 90.0)
+    #ucell2 = (69, 60, 52, 90.0, 112, 90.0)  # groudn truth
 
 a2_real, b2_real, c2_real = sqr(uctbx.unit_cell(ucell2).orthogonalization_matrix()).transpose().as_list_of_lists()
 #a_real, b_real, c_real = np.reshape(uctbx.unit_cell(ucell).orthogonalization_matrix(), (3,3)).T   #transpose().as_list_of_lists()
@@ -223,7 +221,7 @@ nbcryst.thick_mm = 0.5
 nbcryst.Ncells_abc = 12, 12, 12
 
 SIM = SimData()
-SIM.detector = SimData.simple_detector(150, 0.1, (512, 512))
+SIM.detector = SimData.simple_detector(150, 0.1, (1024, 1024))
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0)
 SIM.D.progress_meter = False
@@ -247,6 +245,7 @@ SIM._add_background()
 SIM._add_noise()
 img_pet = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
+
 
 # NOTE NEED TO DO SPOT FINDING AND WHAT NOT
 # spot_rois, abc_init, img, SimData_instance,
@@ -311,6 +310,9 @@ else:
 
 nbcryst.dxtbx_crystal = C2
 SIM.crystal = nbcryst
+SIM.D.Omatrix = nbcryst.Omatrix
+SIM.D.Bmatrix = C2.get_B()
+SIM.D.Umatrix = C2.get_U()
 
 RUC = RefineUcell(
     spot_rois=spot_roi,

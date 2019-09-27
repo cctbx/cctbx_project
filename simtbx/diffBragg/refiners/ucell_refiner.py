@@ -12,6 +12,7 @@ class RefineUcell(RefineRot):
         self.ucell_manager = ucell_manager
         self.n_ucell_param = len(self.ucell_manager.variables)
 
+
     def _setup(self):
         self._setup_lbfgs_x_array()
         self._move_abc_init_to_x()
@@ -83,14 +84,17 @@ class RefineUcell(RefineRot):
             g[self.n_spots + i_spot] += (yr * one_minus_k_over_Lambda).sum()
             g[self.n_spots*2 + i_spot] += one_minus_k_over_Lambda.sum()
             if self.plot_images:
-                plt.cla()
-                plt.subplot(121)
-                im = plt.imshow(self.model_Lambda)
-                plt.subplot(122)
-                im2 = plt.imshow(Imeas)
-                im.set_clim(im2.get_clim())
-                plt.suptitle("Spot %d / %d" % (i_spot+1, self.n_spots))
-                plt.draw()
+                m = Imeas[Imeas > 1e-9].mean()
+                s = Imeas[Imeas > 1e-9].std()
+                vmax = m+5*s
+                vmin = m-s
+                self.ax1.images[0].set_data(self.model_Lambda)
+                self.ax1.images[0].set_clim(vmin, vmax)
+                self.ax2.images[0].set_data(Imeas)
+                self.ax2.images[0].set_clim(vmin, vmax)
+                plt.suptitle("Iterations = %d, image %d / %d"
+                             % (self.iterations, i_spot+1, self.n_spots))
+                self.fig.canvas.draw()
                 plt.pause(.02)
 
             # unit cell derivative
@@ -102,6 +106,7 @@ class RefineUcell(RefineRot):
 
         self.D.raw_pixels *= 0
         self.print_step("LBFGS stp", f)
+        self.iterations += 1
         return f, g
 
     def print_step(self, message, target):

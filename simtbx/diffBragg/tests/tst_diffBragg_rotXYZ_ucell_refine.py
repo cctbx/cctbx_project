@@ -144,9 +144,6 @@ SIM.crystal = nbcryst
 init_Umat_norm = np.abs(np.array(C2.get_U()) - np.array(C.get_U())).sum()
 init_Bmat_norm = np.abs(np.array(C2.get_B()) - np.array(C.get_B())).sum()
 
-from IPython import embed
-embed()
-
 RUC = RefineMissetAndUcell(
     spot_rois=spot_roi,
     abc_init=tilt_abc,
