@@ -1,6 +1,5 @@
-
 from simtbx.diffBragg import sim_data
-from scitbx.matrix import sqr
+from scitbx.matrix import sqr, col
 from cctbx import uctbx
 from dxtbx.model import Crystal
 from simtbx.diffBragg import nanoBragg_crystal
