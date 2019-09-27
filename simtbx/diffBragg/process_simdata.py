@@ -1,4 +1,6 @@
 
+# NOTE: Used for testsing only
+
 def process_simdata(plot=False, angles=None, perturb="rotXYZ"):
     """
     returns data needed for refinement script as a 5-tuple:
