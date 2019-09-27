@@ -6,6 +6,7 @@ from libtbx.test_utils import approx_equal, Exception_expected
 import random
 import scitbx.random
 import itertools
+from six.moves import cPickle as pickle
 from six.moves import range
 
 def exercise_vector():
@@ -433,6 +434,17 @@ def exercise_block_assignment():
   assert a.is_structural_zero(2, 1)
   assert a.is_structural_zero(3, 2)
 
+def exercise_python_pickle():
+  m = sparse.matrix(6, 3,
+      elements_by_columns = [ { 0: 1, 3:2, 5:3 },
+                              { 1:-1, 3:3, 4:-2 },
+                              { 2:1, } ])
+  p = pickle.dumps(m)
+  b = pickle.loads(p)
+  assert m.non_zeroes == b.non_zeroes
+  assert list(b.as_dense_matrix()) == list(m.as_dense_matrix())
+
+
 def run():
   libtbx.utils.show_times_at_exit()
   exercise_block_assignment()
@@ -447,6 +459,7 @@ def run():
   exercise_matrix_x_matrix()
   exercise_a_tr_b_a()
   exercise_a_b_a_tr()
+  exercise_python_pickle()
 
 if __name__ == '__main__':
   run()
