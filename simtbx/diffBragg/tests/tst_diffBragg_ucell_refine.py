@@ -22,7 +22,7 @@ from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.refiners import crystal_systems
 from dxtbx.model.crystal import Crystal
-from IPython import embed
+from simtbx.diffBragg.refiners import RefineUcell
 
 #TODO parameters shifts should be percentages
 
@@ -46,28 +46,15 @@ rot_ang, rot_axis = Q.unit_quaternion_as_axis_and_angle()
 C.rotate_around_origin(rot_axis, rot_ang)
 a_rot, b_rot, c_rot = C.get_real_space_vectors()
 
-# make the parameter reduction manager
-point_group = sgtbx.space_group_info(symbol=symbol).group().build_derived_point_group()
-S = parameter_reduction.symmetrize_reduce_enlarge(point_group)
-S.set_orientation(np.hstack((a_real, b_real, c_real)), length_unit=1e-10)
-X = S.forward_independent_parameters()
-dX = S.forward_gradients()  # gradients in meters
-n_ucell_params = len(X)
-
-
-# STEP3: sanity check
-B = S.backward_orientation(independent=X)
-print("Number of parameters = %d" % n_ucell_params)
-print("Test congruency between parameter reduction module and dxtbx...")
-assert np.allclose(C.get_B(), B.reciprocal_matrix())
-#Bstar = B.reciprocal_matrix()
-print("OK!")
-
+# STEP3:
+# create the unit cell parameter manager
 if is_tet:
     UcellMan = crystal_systems.TetragonalManager(a=ucell[0], c=ucell[2])
 else:
     UcellMan = crystal_systems.MonoclinicManager(a=ucell[0], b=ucell[1],
                                        c=ucell[2], beta=ucell[4]*np.pi/180)
+
+n_ucell_params = len(UcellMan.variables)
 
 assert np.allclose(UcellMan.B_recipspace, C.get_B())
 
@@ -82,8 +69,7 @@ nbcryst.Ncells_abc = (7, 7, 7)
 # STEP5: make an instance of diffBRagg, use the simData wrapper
 SIM = SimData()
 # overwrite the default detector with a smaller pixels one
-SIM.detector = SimData.simple_detector(298, 0.1, (700, 700))
-# FIXME: determine why setting detdist > 298 causes oversample to diverge...
+SIM.detector = SimData.simple_detector(300, 0.1, (700, 700))
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0, verbose=0)
 # D is an instance of diffBragg with reasonable parameters
@@ -154,12 +140,10 @@ if not args.refine:
 
             finite_deriv = (img2-img) / param_shift
 
-            y = slice(340, 360)
-            x = slice(240, 260)
             bragg = img > 0.5
 
             ave_error = np.abs(finite_deriv[bragg] - analy_deriv[bragg]).mean()
-            print "\tAverage error=%f; parameter shift h=%f" % (ave_error, abs(param_shift))
+            print ("\tAverage error=%f; parameter shift h=%f" % (ave_error, abs(param_shift)))
 
             r = pearsonr(analy_deriv[bragg].ravel(), finite_deriv[bragg].ravel())[0]
             diffs.append(r)
@@ -194,15 +178,12 @@ if not args.refine:
         assert np.all(np.diff(zip(trend[:-1], trend[1:]), axis=1) <= 0)
     print("OK!")
 
-
 if is_tet:
     ucell2 = (55.5, 55.5, 76.1, 90, 90, 90)
 else:  # args.crystalsystem == "monoclinic"
     ucell2 = (71, 59, 51, 90.0, 111, 90.0)
-    #ucell2 = (69, 60, 52, 90.0, 112, 90.0)  # groudn truth
 
 a2_real, b2_real, c2_real = sqr(uctbx.unit_cell(ucell2).orthogonalization_matrix()).transpose().as_list_of_lists()
-#a_real, b_real, c_real = np.reshape(uctbx.unit_cell(ucell).orthogonalization_matrix(), (3,3)).T   #transpose().as_list_of_lists()
 C2 = Crystal(a2_real, b2_real, c2_real, symbol)
 
 print ("Ensure the U matrices are the same for the ground truth and perturbation")
@@ -211,7 +192,6 @@ axis = np.random.random(3)
 axis /= np.linalg.norm(axis)
 C2.rotate_around_origin(rot_axis, rot_ang)
 assert np.allclose(C.get_U(), C2.get_U())
-
 
 # Setup the simulation and create a realistic image
 # with background and noise
@@ -246,62 +226,11 @@ SIM._add_noise()
 img_pet = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
 
-
 # NOTE NEED TO DO SPOT FINDING AND WHAT NOT
 # spot_rois, abc_init, img, SimData_instance,
 # locate the strong spots and fit background planes
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
-spot_data = utils.get_spot_data(spots, thresh=19)
-ss_spot, fs_spot = map(np.array, zip(*spot_data["maxIpos"]))  # slow/fast  scan coords of strong spots
-num_spots = len(ss_spot)
-if args.plot:
-    plt.imshow(img, vmax=200)
-    plt.plot(fs_spot, ss_spot, 'o', mfc='none', mec='r')
-    plt.title("Simulated image with strong spots marked")
-    plt.show()
-
-is_bg_pixel = np.ones(img.shape, bool)
-for bb_ss, bb_fs in spot_data["bboxes"]:
-    is_bg_pixel[bb_ss, bb_fs] = False
-
-# now fit tilting planes
-shoebox_sz = 20
-tilt_abc = np.zeros((num_spots, 3))
-spot_roi = np.zeros((num_spots, 4), int)
-if args.plot:
-    patches = []
-img_shape = SIM.detector[0].get_image_size()
-for i_spot, (x_com, y_com) in enumerate(zip(fs_spot, ss_spot)):
-    i1 = int(max(x_com - shoebox_sz / 2., 0))
-    i2 = int(min(x_com + shoebox_sz / 2., img_shape[0]-1))
-    j1 = int(max(y_com - shoebox_sz / 2., 0))
-    j2 = int(min(y_com + shoebox_sz / 2., img_shape[1]-1))
-
-    shoebox_img = img[j1:j2, i1:i2]
-    shoebox_mask = is_bg_pixel[j1:j2, i1:i2]
-
-    tilt, bgmask, coeff = utils.tilting_plane(
-        shoebox_img,
-        mask=shoebox_mask,  # mask specifies which spots are bg pixels...
-        zscore=2)
-
-    tilt_abc[i_spot] = coeff[1], coeff[2], coeff[0]  # store as fast-scan coeff, slow-scan coeff, offset coeff
-
-    spot_roi[i_spot] = i1, i2, j1, j2
-    if args.plot:
-        R = plt.Rectangle(xy=(x_com-shoebox_sz/2, y_com-shoebox_sz/2.),
-                      width=shoebox_sz,
-                      height=shoebox_sz,
-                      fc='none', ec='r')
-        patches.append(R)
-
-if args.plot:
-    patch_coll = plt.mpl.collections.PatchCollection(patches, match_original=True)
-    plt.imshow(img, vmin=0, vmax=200)
-    plt.gca().add_collection(patch_coll)
-    plt.show()
-
-from simtbx.diffBragg.refiners import RefineUcell
+spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot)
 
 if is_tet:
     UcellMan.variables = [ucell2[0], ucell2[2]]
@@ -323,6 +252,32 @@ RUC = RefineUcell(
     ucell_manager=UcellMan)
 
 RUC.trad_conv = True
-RUC.trad_conv_eps = 1e-5
+RUC.trad_conv_eps = 1e-4
+RUC.max_calls = 150
 RUC.run()
 
+if is_tet:
+    a_init, _, c_init, _, _, _ = ucell2
+    a, _, c, _, beta, _ = ucell
+    a_ref, c_ref = RUC.ucell_manager.variables
+
+    err_init = np.linalg.norm((abs(a_init-a)/a, abs(c_init-c)/c))*100
+    err_ref = np.linalg.norm((abs(a_ref-a)/a, abs(c_ref-c)/c))*100
+
+    print ("Percent error in unit cell before refinement: %2.7g %%" % err_init)
+    print (" ''                ''      after refinement: %2.7g %%" % err_ref)
+    assert err_ref < 1e-2*err_init
+else:
+    a_init, b_init, c_init, _, beta_init, _ = ucell2
+    a, b, c, _, beta, _ = ucell
+    a_ref, b_ref, c_ref, beta_ref = RUC.ucell_manager.variables
+    beta_ref = beta_ref * 180 / np.pi
+
+    err_init = np.linalg.norm((abs(a_init-a)/a, abs(b_init-b)/b, abs(c_init-c)/c, abs(beta_init-beta)/beta))*100
+    err_ref = np.linalg.norm((abs(a_ref-a)/a, abs(b_ref-b)/b, abs(c_ref-c)/c, abs(beta_ref-beta)/beta))*100
+
+    print ("\nPercent error in unit cell before refinement: %2.7g %%" % err_init)
+    print (" ''                ''      after refinement: %2.7g %%\n" % err_ref)
+    assert err_ref < 1e-2*err_init
+
+print("OK!")
