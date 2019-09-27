@@ -1,7 +1,7 @@
 from scipy import ndimage
 from scitbx.matrix import sqr
 import numpy as np
-from abc import ABCMeta, abstractproperty
+import pylab as plt
 
 
 def get_spot_data(img, thresh=0, filter=None, **kwargs):
@@ -59,6 +59,7 @@ def x_y_to_q(x,y, detector, beam):
 
     return np.vstack(q_vecs)
 
+
 def is_outlier(points, thresh=3.5):
     """http://stackoverflow.com/a/22357811/2077270"""
     if len(points.shape) == 1:
@@ -72,6 +73,7 @@ def is_outlier(points, thresh=3.5):
 
     return modified_z_score > thresh
 
+
 def tilting_plane(img, mask=None, zscore=2 ):
     """
     :param img:  numpy image
@@ -80,7 +82,6 @@ def tilting_plane(img, mask=None, zscore=2 ):
     :param zscore: modified z-score for outlier detection, lower increases number of outliers
     :return: tilting plane, same shape as img
     """
-    from cxid9114 import utils
     Y, X = np.indices(img.shape)
     YY, XX = Y.ravel(), X.ravel()
 
@@ -91,14 +92,14 @@ def tilting_plane(img, mask=None, zscore=2 ):
     mask1d = mask.ravel()
 
     out1d = np.zeros(mask1d.shape, bool)
-    out1d[mask1d] = utils.is_outlier(img1d[mask1d].ravel(), zscore)
+    out1d[mask1d] = is_outlier(img1d[mask1d].ravel(), zscore)
     out2d = out1d.reshape(img.shape)
 
     fit_sel = np.logical_and(~out2d, mask)  # fit plane to these points, no outliers, no masked
     x, y, z = X[fit_sel], Y[fit_sel], img[fit_sel]
-    guess = np.array([np.ones_like(x), x, y ] ).T
-    coeff, r, rank, s = np.linalg.lstsq(guess, z)
-    ev = (coeff[0] + coeff[1]*XX + coeff[2]*YY )
+    guess = np.array([np.ones_like(x), x, y]).T
+    coeff, r, rank, s = np.linalg.lstsq(guess, z, rcond=-1)
+    ev = (coeff[0] + coeff[1]*XX + coeff[2]*YY)
     return ev.reshape(img.shape), out2d, coeff
 
 
@@ -261,3 +262,65 @@ def get_diffBragg_instance():
     D.Bmatrix = crystal.get_B()
     D.Umatrix = crystal.get_U()
     return D
+
+
+def process_simdata(spots, img, thresh=20, plot=False):
+    """
+    This is a helper function for some of the tests
+    :param spots:  simulated image without background/noise
+    :param img: simulated image with background/noise
+    :param thresh: spot threshold
+    :param plot: whether to make plots
+    :return: spot_rois as an Nx4 array and abc background planes as an Nx3 array
+    """
+    spot_data = get_spot_data(spots, thresh=thresh)
+    ss_spot, fs_spot = map(np.array, zip(*spot_data["maxIpos"]))  # slow/fast  scan coords of strong spots
+    num_spots = len(ss_spot)
+    if plot:
+        plt.imshow(img, vmax=200)
+        plt.plot(fs_spot, ss_spot, 'o', mfc='none', mec='r')
+        plt.title("Simulated image with strong spots marked")
+        plt.show()
+
+    is_bg_pixel = np.ones(img.shape, bool)
+    for bb_ss, bb_fs in spot_data["bboxes"]:
+        is_bg_pixel[bb_ss, bb_fs] = False
+
+    # now fit tilting planes
+    shoebox_sz = 20
+    tilt_abc = np.zeros((num_spots, 3))
+    spot_roi = np.zeros((num_spots, 4), int)
+    if plot:
+        patches = []
+    img_shape = img.shape  # TODO: verify fast slow scan
+    for i_spot, (x_com, y_com) in enumerate(zip(fs_spot, ss_spot)):
+        i1 = int(max(x_com - shoebox_sz / 2., 0))
+        i2 = int(min(x_com + shoebox_sz / 2., img_shape[0]-1))
+        j1 = int(max(y_com - shoebox_sz / 2., 0))
+        j2 = int(min(y_com + shoebox_sz / 2., img_shape[1]-1))
+
+        shoebox_img = img[j1:j2, i1:i2]
+        shoebox_mask = is_bg_pixel[j1:j2, i1:i2]
+
+        tilt, bgmask, coeff = tilting_plane(
+            shoebox_img,
+            mask=shoebox_mask,  # mask specifies which spots are bg pixels...
+            zscore=2)
+
+        tilt_abc[i_spot] = coeff[1], coeff[2], coeff[0]  # store as fast-scan coeff, slow-scan coeff, offset coeff
+
+        spot_roi[i_spot] = i1, i2, j1, j2
+        if plot:
+            R = plt.Rectangle(xy=(x_com-shoebox_sz/2, y_com-shoebox_sz/2.),
+                          width=shoebox_sz,
+                          height=shoebox_sz,
+                          fc='none', ec='r')
+            patches.append(R)
+
+    if plot:
+        patch_coll = plt.mpl.collections.PatchCollection(patches, match_original=True)
+        plt.imshow(img, vmin=0, vmax=200)
+        plt.gca().add_collection(patch_coll)
+        plt.show()
+    return spot_roi, tilt_abc
+
