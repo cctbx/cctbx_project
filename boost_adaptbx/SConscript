@@ -222,7 +222,9 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
     target="#lib/boost_adaptbx_python_streambuf_test_ext",
     source="tests/python_streambuf_test_ext.cpp")
   # Xcode 11 does not compile Boost.MPL
-  if sys.platform == 'darwin' and env_etc.clang_version[0] < 11:
+  if sys.platform == 'darwin' and env_etc.clang_version[0] >= 11:
+    pass
+  else:
     SConscript("graph/SConscript")
 
   env = env_base.Clone()
