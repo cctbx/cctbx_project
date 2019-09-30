@@ -91,9 +91,8 @@ class ratchet1_postrefinement(worker):
     # Now get the base crystal orientations and beam properties
     reflections["expt_idx"] = flex.size_t([experiments.find(reflections[refl_id]['exp_id']) for refl_id in range(len(reflections))])
     reflections["A_matrix"] = flex.mat3_double( [C.get_A() for C in experiments.crystals()] ).select(reflections["expt_idx"])
-    reflections["s0_vec"] = flex.vec3_double( [B.get_s0() for B in experiments.beams()] ).select(reflections["expt_idx"])
-    reflections["wavelength"] = flex.double( [B.get_wavelength() for B in experiments.beams()] ).select(reflections["expt_idx"])
-
+    reflections["s0_vec"] = flex.vec3_double( [e.beam.get_s0() for e in experiments] ).select(reflections["expt_idx"])
+    reflections["wavelength"] = flex.double( [e.beam.get_wavelength() for e in experiments] ).select(reflections["expt_idx"])
 
     # end of reference column deep dive, resuling in new columns for the reflection table
 
@@ -136,6 +135,10 @@ class ratchet1_postrefinement(worker):
 
     self.logger.log_step_time("POSTREFINEMENT", True)
 
+    # Do we have any data left?
+    from xfel.merging.application.utils.data_counter import data_counter
+    data_counter(self.params).count(new_experiments, new_reflections)
+
     return new_experiments, new_reflections
 
   def run_plain(self):
@@ -150,13 +153,20 @@ class ratchet1_postrefinement(worker):
       self.logger.log("\n" + out.getvalue())
 
   def apply_new_parameters(self, refinery_target):
-    partiality = refinery_target.get_partiality_array(RLP_model=refinery_target.RLP_model,
-                                                      refls=refinery_target.reflections)
+    reflections = refinery_target.reflections
 
     corrections = refinery_target.get_corrections()
-    refinery_target.reflections['intensity.sum.value'] /= corrections
-    sigmas = flex.sqrt(refinery_target.reflections['intensity.sum.variance'])
-    refinery_target.reflections['intensity.sum.variance'] = (sigmas/corrections)**2
+    bad_corrections = corrections <= 1e-2
+    self.logger.log("Removing %d reflections with unstable intensity corrections out of %d"%(bad_corrections.count(True), len(reflections)))
+    refinery_target.reflections = reflections = reflections.select(~bad_corrections)
+    corrections = corrections.select(~bad_corrections)
+
+    partiality = refinery_target.get_partiality_array(RLP_model=refinery_target.RLP_model,
+                                                      refls=reflections)
+
+    reflections['intensity.sum.value'] /= corrections
+    sigmas = flex.sqrt(reflections['intensity.sum.variance'])
+    reflections['intensity.sum.variance'] = (sigmas/corrections)**2
 
     assert self.params.postrefinement.algorithm == "ratchet1"
     fat_selection = partiality > 0.2
@@ -167,7 +177,7 @@ class ratchet1_postrefinement(worker):
     param_eta = refinery_target.parameter_managers[-2]
 
     for expt_idx, experiment in enumerate(refinery_target.experiments):
-      sel = refinery_target.reflections['expt_idx'] == 0
+      sel = reflections['expt_idx'] == expt_idx
       n_refl = sel.count(True)
       fat_count = (fat_selection & sel).count(True)
 
@@ -175,12 +185,13 @@ class ratchet1_postrefinement(worker):
       if fat_count < 3:
         if self.params.output.log_level == 1:
           self.logger.log("Rejected experiment %d, because: On total %5d the fat selection is %5d"%(expt_idx, n_refl, fat_count))
+          continue
 
       if self.params.output.log_level == 1:
         self.logger.log("Expt %d: On total %5d the fat selection is %5d"%(expt_idx, n_refl, fat_count))
 
       new_experiments.append(experiment)
-      refls = refinery_target.reflections.select(sel)
+      refls = reflections.select(fat_selection & sel)
       refls['expt_idx'] = flex.size_t(len(refls), len(new_experiments)-1)
       new_reflections.extend(refls)
 
