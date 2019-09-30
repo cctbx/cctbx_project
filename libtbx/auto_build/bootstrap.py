@@ -734,14 +734,18 @@ class cctbx_module(SourceModule):
                'https://github.com/cctbx/cctbx_project.git',
                'https://github.com/cctbx/cctbx_project/archive/master.zip']
 
+class amber_adaptbx_module(SourceModule):
+  module = 'amber_adaptbx'
+  anonymous = ['git',
+               'git@github.com:phenix-project/amber_adaptbx.git',
+               'https://github.com/phenix-project/amber_adaptbx.git',
+               ]
+
 class qrefine_module(SourceModule):
   module = 'qrefine'
   anonymous = ['git',
                'git@github.com:qrefine/qrefine.git',
                'https://github.com/qrefine/qrefine.git',
-               #'git@github.com:cctbx/cctbx_project.git',
-               #'https://github.com/cctbx/cctbx_project.git',
-               #'https://github.com/cctbx/cctbx_project/archive/master.zip']
                ]
 
 class mon_lib_module(SourceModule):
@@ -840,10 +844,6 @@ class chem_data_module(SourceModule):
 class elbow_module(SourceModule):
   module = 'elbow'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/elbow/trunk']
-
-class amber_adaptbx_module(SourceModule):
-  module = 'amber_adaptbx'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/amber_adaptbx/trunk']
 
 class ksdssp_module(SourceModule):
   module = 'ksdssp'
