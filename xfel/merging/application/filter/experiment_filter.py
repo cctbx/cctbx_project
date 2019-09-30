@@ -11,6 +11,12 @@ class experiment_filter(worker):
   def __init__(self, params, mpi_helper=None, mpi_logger=None):
     super(experiment_filter, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
 
+  def validate(self):
+    if 'unit_cell' not in self.params.filter.algorithm: # so far only "unit_cell" algorithm is supported
+      return
+    assert self.params.filter.unit_cell.value.target_space_group is not None, \
+      'Space group is required for unit cell filtering'
+
   def __repr__(self):
     return 'Filter experiments'
 
@@ -63,7 +69,13 @@ class experiment_filter(worker):
 
     # If the filter unit cell and/or space group params are Auto, use the corresponding scaling targets.
     if self.params.filter.unit_cell.value.target_unit_cell == Auto:
-      self.params.filter.unit_cell.value.target_unit_cell = self.params.scaling.unit_cell
+      if self.params.scaling.unit_cell is None:
+        try:
+          self.params.filter.unit_cell.value.target_unit_cell = self.params.statistics.average_unit_cell
+        except AttributeError:
+          pass
+      else:
+        self.params.filter.unit_cell.value.target_unit_cell = self.params.scaling.unit_cell
     if self.params.filter.unit_cell.value.target_space_group == Auto:
       self.params.filter.unit_cell.value.target_space_group = self.params.scaling.space_group
 
