@@ -23,7 +23,7 @@ Expectations for developers
 
 ## Long version
 
-# cctbx Developer Guidance
+## cctbx Developer Guidance
 The Computational Crystallography Toolbox (cctbx) is a large code base under active development by several groups worldwide. There are more than 1 million lines of code, 500 commits per month, and 20 active developers. It is therefore very important that all contributors follow some basic guidelines. Keep in mind that the intention is for the cctbx to provide a fully featured code base for crystallographic calculations while also remaining lightweight and straightforward to compile and install.
 
 1. No new dependencies without discussion with the other developers.
@@ -135,7 +135,7 @@ Note however that where cctbx deviates from PEP8, follow cctbx (for example usin
 
   * Any bug fix requires a regression test.
 
-# Guidance for Developing Tests
+## Guidance for Developing Tests
 
 The cctbx tests are to ensure the code base is always functional. Tests preserve designed functionality ensuring it always performs as expected. Also, tests are a great learning resource as they exemplify most of the available functionality. For many developers they substitute for documentation. Note: not all tests available in the code base are good examples to follow. When adding a new test please follow the guidelines below. Ask questions on the cctbx mailing list.
 
