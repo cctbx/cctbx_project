@@ -160,14 +160,14 @@ class updated_rs(legacy_rs):
   def result_for_cxi_merge(self, file_name, LS49_case=False):
     values = self.get_parameter_values()
     ts = os.path.basename(file_name)[6:23]
-    self.rs2_parameter_range_assertions(values, ts)
+    #self.rs2_parameter_range_assertions(values, ts)
     scaler = self.refinery.scaler_callable(self.parameterization_class(self.MINI.x))
 
     partiality_array = self.refinery.get_partiality_array(values)
     p_scaler = flex.pow(partiality_array,
                         0.5*self.params.postrefinement.merge_partiality_exponent)
 
-    fat_selection = (partiality_array > 0.15)
+    fat_selection = (partiality_array > 0.1)
     fat_count = fat_selection.count(True)
     scaler_s = scaler.select(fat_selection)
     p_scaler_s = p_scaler.select(fat_selection)
@@ -176,8 +176,8 @@ class updated_rs(legacy_rs):
     # in samosa, handle this at a higher level, but handle it somehow.
     if fat_count < 0:
       raise ValueError("< 0 near-fulls after refinement")
-    print("On totalality %5d the fat selection is %5d"%(
-      len(self.observations_pair1_selected.indices()), fat_count))
+    #print("On totalality %5d the fat selection is %5d"%(
+    #  len(self.observations_pair1_selected.indices()), fat_count))
     observations_original_index = \
       self.observations_original_index_pair1_selected.select(fat_selection)
 
@@ -198,8 +198,8 @@ class updated_rs(legacy_rs):
       I_invalid = flex.bool([self.i_model.sigmas()[pair[0]] < 0. for pair in matches.pairs()])
       I_weight.set_selected(I_invalid,0.)
       SWC = simple_weighted_correlation(I_weight, I_reference, observations.data())
-      print("CORR: NEW correlation is", SWC.corr, file=self.out)
-      print("ASTAR_FILE",file_name,tuple(self.refinery.get_eff_Astar(values)), file=self.out)
+      #print("CORR: NEW correlation is", SWC.corr, file=self.out)
+      #print("ASTAR_FILE",file_name,tuple(self.refinery.get_eff_Astar(values)), file=self.out)
       self.final_corr = SWC.corr
       self.refined_mini = self.MINI
       #another range assertion
@@ -345,7 +345,7 @@ class lbfgs_minimizer_derivatives(lbfgs_minimizer_base):
     self.g = flex.double(self.n)
     for ix in range(self.n):
       self.g[ix] = flex.sum(2. * self.refinery.WEIGHTS * self.func * jacobian[ix])
-    print("rms %10.3f"%math.sqrt(flex.sum(self.refinery.WEIGHTS*self.func*self.func)/
-                                              flex.sum(self.refinery.WEIGHTS)), end=' ', file=self.out)
+    #print("rms %10.3f"%math.sqrt(flex.sum(self.refinery.WEIGHTS*self.func*self.func)/
+    #                                          flex.sum(self.refinery.WEIGHTS)), end=' ', file=self.out)
     values.show(self.out)
     return self.f, self.g

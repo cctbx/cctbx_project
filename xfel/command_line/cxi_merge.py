@@ -1611,10 +1611,43 @@ class scaling_manager (intensity_data) :
         if flex.max(net_final_corr) > 0.2:
           consider_refl_final[flex.max_index(net_final_corr)]=False
         else:
-          for ii, entry in enumerate(net_fat_count):
-            if entry > 0:
-              consider_refl_final[ii]=False
-          #consider_refl_final[flex.max_index(net_fat_count)]=False
+        # Do a double loop if single loop fails to get good correlation coefficient
+          print ('TRYING_DOUBLE_LOOP_REJECTION')
+          net_fat_count=flex.int(n_obs*n_obs, -1)
+          net_final_corr=flex.double(n_obs*n_obs, -1.0)
+          for ii in range(n_obs-1):
+            for jj in range(ii+1, n_obs):
+              consider_refl=flex.bool(n_obs, True)
+              consider_refl[ii]=False
+              consider_refl[jj]=False
+              observations_original_index=copy_observations.select(consider_refl)
+              PF = factory(self.params)
+              postrefinement_algorithm = PF.postrefinement_algorithm()
+              if self.params.postrefinement.enable:
+                postx=postrefinement_algorithm(observations_original_index, self.params,
+                     self.i_model, self.miller_set, result, out)
+                try:
+                  postx.run_plain()
+                  observations_original_index,observations,matches, fat_count, final_corr = postx.result_for_cxi_merge(file_name, True)
+                except (AssertionError,ValueError,RuntimeError) as e:
+                  print ('Error in post-refinement_3')
+                  continue
+              net_fat_count[ii*n_obs+jj]=fat_count
+              net_final_corr[ii*n_obs+jj]=final_corr
+              net_fat_count[jj*n_obs+ii]=fat_count
+              net_final_corr[jj*n_obs+ii]=final_corr
+          print ('MAX_CORRELATION_DOUBLE_LOOP', flex.max(net_final_corr), ts)
+          # Now figure out those indices
+          max_indices = flex.sort_permutation(net_final_corr, reverse=True)
+          ii_max=max_indices[0]%n_obs
+          jj_max=max_indices[1]%n_obs
+          consider_refl_final[ii_max]=False
+          consider_refl_final[jj_max]=False
+            
+        #  for ii, entry in enumerate(net_fat_count):
+        #    if entry > 0:
+        #      consider_refl_final[ii]=False
+        #  #consider_refl_final[flex.max_index(net_fat_count)]=False
         observations_original_index=copy_observations.select(consider_refl_final)
         #for ii, entry in enumerate(consider_refl_final):
         #  if not entry:
