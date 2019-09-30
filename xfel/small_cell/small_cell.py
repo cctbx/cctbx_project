@@ -381,7 +381,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
   radial_sizes = flex.double()
   azimuthal_sizes = flex.double()
   s0_projs = flex.vec3_double()
-  for ref in reflections:
+  for ref in reflections.rows():
     # calculate reciprical space coordinates
     x, y, z = ref['xyzobs.px.value']
     panel = detector[ref['panel']]
@@ -442,7 +442,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
   reflections.map_centroids_to_reciprocal_space(detector, beam)
 
   all_spots = []
-  for i, ref in enumerate(reflections):
+  for i, ref in enumerate(reflections.rows()):
     all_spots.append(small_cell_spot(ref, i))
 
   # Unit cell calculated from indexed virtual powder diffraction
@@ -901,7 +901,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
       reflections = ref_predictor(reflections)
 
       indexed = []
-      for i, ref in enumerate(reflections):
+      for i, ref in enumerate(reflections.rows()):
         if ref['id'] < 0: continue
         spot = small_cell_spot(ref, i)
         spot.pred = ref['xyzcal.px'][0:2]

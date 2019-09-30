@@ -12,9 +12,9 @@ class reflection_table_utils(object):
       yield reflections
 
     i_begin = 0
-    hkl_ref = reflections[0].get('miller_index_asymmetric')
+    hkl_ref = reflections['miller_index_asymmetric'][0]
     for i in range(reflections.size()):
-      hkl = reflections[i].get('miller_index_asymmetric')
+      hkl = reflections['miller_index_asymmetric'][i]
       if hkl == hkl_ref:
         continue
       else:
@@ -28,7 +28,7 @@ class reflection_table_utils(object):
   def select_odd_experiment_reflections(reflections):
     'Select reflections from experiments with odd ids. An experiment id must be a string representing a hexadecimal number'
     sel = flex.bool()
-    for refl in reflections:
+    for refl in reflections.rows():
       sel.append(int(refl['exp_id'], 16)%2 != 0)
     return reflections.select(sel)
 
@@ -36,7 +36,7 @@ class reflection_table_utils(object):
   def select_even_experiment_reflections(reflections):
     'Select reflections from experiments with even ids. An experiment id must be a string representing a hexadecimal number'
     sel = flex.bool()
-    for refl in reflections:
+    for refl in reflections.rows():
       sel.append(int(refl['exp_id'], 16)%2 == 0)
     return reflections.select(sel)
 
@@ -83,7 +83,7 @@ class reflection_table_utils(object):
     '''Remove reflection table keys: either inclusive or exclusive'''
     if len(reflections) != 0:
       all_keys = list()
-      for key in reflections[0]:
+      for key in reflections.keys():
         all_keys.append(key)
       if keys_to_delete != None:
         for key in keys_to_delete:

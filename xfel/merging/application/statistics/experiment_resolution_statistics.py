@@ -89,7 +89,7 @@ class experiment_resolution_statistics(worker):
       hkl = refls[0]['miller_index_asymmetric']
       if hkl in self.hkl_resolution_bins:
         i_bin = self.hkl_resolution_bins[hkl]
-        for refl in refls:
+        for refl in refls.rows():
           experiments_per_resolution_bins[i_bin].add(refl['exp_id'])
 
     # For each bin, reduce the sets of unique experiment ids to their count
