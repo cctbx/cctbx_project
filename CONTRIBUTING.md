@@ -1,8 +1,12 @@
+# Contributing to the Computational Crystallography Toolbox (cctbx)
+
+## Short version
+
 As discussed at the Gordon Research Conference for Diffraction Methods in Structural Biology, 07/30/18, the following guidelines are agreed upon for developers wishing to contribute code to cctbx:
 
-* Cctbx is open source.
+* cctbx is open source.
 * We welcome third party contributions, but note that there is a cost for managing third party contributions.
-* Cctbx is not a free-for-all.
+* cctbx is not a free-for-all.
 * Contributors should be encouraged to review their plans for contributions before doing a large amount of work and submitting a pull request, but that shouldn't preclude users from submitting requests.
 * Interface changes and other breaking changes should be communicated to the bulletin boards (cctbxbb@phenix-online.org for example).
 
@@ -17,7 +21,7 @@ Expectations for developers
 * We can deny pull requests, but if we do so, we should do so with constructive feedback, following consistent rules.
 * The build meeting team will review tickets and pull requests to ensure regular feedback.
 
-See [[cctbx-Developer-Guidance]]  for more details.
+## Long version
 
 # cctbx Developer Guidance
 The Computational Crystallography Toolbox (cctbx) is a large code base under active development by several groups worldwide. There are more than 1 million lines of code, 500 commits per month, and 20 active developers. It is therefore very important that all contributors follow some basic guidelines. Keep in mind that the intention is for the cctbx to provide a fully featured code base for crystallographic calculations while also remaining lightweight and straightforward to compile and install.
@@ -49,7 +53,7 @@ Note however that where cctbx deviates from PEP8, follow cctbx (for example usin
 
   * Printing output
 
-    * Use `print >> log, bla` and not `print bla` .
+    * Use `print(bla, file=log)` and not `print(bla)`.
 
     * Use `show` function to print a summary or result of code execution instead of in-lining print statements directly into the code.
 
@@ -107,15 +111,13 @@ Note however that where cctbx deviates from PEP8, follow cctbx (for example usin
 
   * Periodically, unused code trees may be removed from the cctbx to minimize clutter.
 
-9. Developers are encouraged to subscribe to svn check-in alerts sent via email (code changes alerts) and review the diffs.
+9. Developers are encouraged to subscribe to git check-in alerts sent via email (code changes alerts) and review the diffs.
 
   * This will minimize surprises later when someone changes someone’s code.
 
   * Any inefficiencies or bugs spotted in diffs should be pointed out to a respective contributor or fixed by anyone who found them first.
 
 10. Python do’s and don’ts:
-
-  * Prefer `xrange()` and `xreadlines()` to `range()` and `readlines()` for performance reasons; especially for large lists & arrays.
 
   * Use inheritance to specialize classes whenever possible to avoid the duplication of code.
 
@@ -180,13 +182,15 @@ The cctbx tests are to ensure the code base is always functional. Tests preserve
 
   * Tests should be robust w.r.t. platform, compiler and rounding errors.
 
-  * Broken tests stop others from committing their code. Therefore fixing a failed test is
-the highest priority.
+  * Broken tests stop others from committing their code. Therefore fixing a failed test is the highest priority.
 
-    * Avoid using `libtbx.easy_run.fully_buffered` because it hides the output and the traceback. Use `libtbx.easy_run.call` instead. Print the command that is about to run to standard output.
+  * Avoid using `libtbx.easy_run.fully_buffered` because it hides the output and the traceback. Use `libtbx.easy_run.call` instead. Print the command that is about to run to standard output.
 
 ```
-from __future__ import division from libtbx.utils import format_cpu_times from libtbx.test_utils import approx_equal
+from __future__ import absolute_import, division, print_function
+from libtbx.utils import format_cpu_times
+from libtbx.test_utils import approx_equal
+
 def exercise():
   """ Make sure 2*2 is 4. """
   x=2.
@@ -194,7 +198,9 @@ def exercise():
   assert approx_equal(result, 4.)
 
 if(__name__ == "__main__"):
-  exercise() print format_cpu_times() print "OK"
+  exercise()
+  print(format_cpu_times())
+  print("OK")
 ```
 
   * Output actual values in a failed assert statement:
