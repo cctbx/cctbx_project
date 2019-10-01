@@ -5,6 +5,7 @@ parser.add_argument("--plot", action='store_true')
 parser.add_argument("--refine", action='store_true')
 parser.add_argument("--crystalsystem", default='tetragonal',
                     choices=["monoclinic", "tetragonal"])
+parser.add_argument("--curvatures", action='store_true')
 args = parser.parse_args()
 is_tet = args.crystalsystem == "tetragonal"
 import numpy as np
@@ -12,8 +13,6 @@ from scipy.spatial.transform import Rotation
 from scipy.stats import pearsonr
 import pylab as plt
 
-from cctbx import sgtbx
-from rstbx.symmetry.constraints import parameter_reduction
 from scitbx.matrix import sqr
 from scitbx.matrix import rec
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
@@ -84,6 +83,8 @@ for i_param in range(n_ucell_params):
 D.initialize_managers()
 for i in range(n_ucell_params):
     D.set_ucell_derivative_matrix(3+i, UcellMan.derivative_matrices[i])
+    if args.curvatures:
+        D.set_ucell_second_derivative_matrix(3 + i, UcellMan.second_derivative_matrices[i])
 D.initialize_managers()
 
 roi = ((0, 699), (0, 699))
@@ -102,9 +103,12 @@ D.raw_pixels *= 0
 D.raw_pixels_roi *= 0
 
 derivs = []
+second_derivs = []
 for i_param in range(n_ucell_params):
-    analy_deriv = SIM.D.get_derivative_pixels(3+i_param).as_numpy_array()
+    analy_deriv = D.get_derivative_pixels(3+i_param).as_numpy_array()
     derivs.append(analy_deriv)
+    if args.curvatures:
+        second_derivs.append(D.get_second_derivative_pixels(3+i_param).as_numpy_array())
 
 # STEP8
 # iterate over the parameters and do a finite difference test for each one
@@ -115,6 +119,7 @@ if not args.refine:
     for i_param in range(n_ucell_params):
         analy_deriv = derivs[i_param]
         diffs = []
+        diffs2 = []
         for i_shift, param_shift in enumerate(shifts):
 
             if is_tet:
@@ -132,21 +137,45 @@ if not args.refine:
             D.Bmatrix = UcellMan.B_recipspace
             D.add_diffBragg_spots()
 
-            img2 = D.raw_pixels_roi.as_numpy_array()
+            img_forward = D.raw_pixels_roi.as_numpy_array()
 
             # reset for next computation
             D.raw_pixels_roi *= 0
             D.raw_pixels *= 0
 
-            finite_deriv = (img2-img) / param_shift
+            if args.curvatures:
+                # estimate the second derivative
+                var[i_param] = var[i_param] - 2*param_shift  # do the backwards finite deriv
+                UcellMan.variables = var
+
+                D.Bmatrix = UcellMan.B_recipspace
+                D.add_diffBragg_spots()
+
+                img_backward = D.raw_pixels_roi.as_numpy_array()
+
+                # reset for next computation
+                D.raw_pixels_roi *= 0
+                D.raw_pixels *= 0
+
+            finite_deriv = (img_forward-img) / param_shift
+
+            if second_derivs:
+                finite_second_deriv = (img_forward - 2*img + img_backward) / param_shift / param_shift
 
             bragg = img > 0.5
 
             ave_error = np.abs(finite_deriv[bragg] - analy_deriv[bragg]).mean()
-            print ("\tAverage error=%f; parameter shift h=%f" % (ave_error, abs(param_shift)))
 
             r = pearsonr(analy_deriv[bragg].ravel(), finite_deriv[bragg].ravel())[0]
             diffs.append(r)
+
+            print ("\tAverage error=%f; parameter shift h=%f" % (ave_error, abs(param_shift)))
+            if args.curvatures:
+                ave_error2 = np.abs(finite_second_deriv[bragg] - second_derivs[i_param][bragg]).mean()
+                print("\tsecond derivative Average error=%f; parameter shift squared h^2=%f"
+                      % (ave_error2, abs(param_shift)**2))
+                r2 = pearsonr(second_derivs[i_param][bragg].ravel(), finite_second_deriv[bragg].ravel())[0]
+                diffs2.append(r2)
             if args.plot:
                 plt.subplot(121)
                 plt.imshow(finite_deriv)
@@ -158,15 +187,34 @@ if not args.refine:
                 plt.suptitle("Shift %d / %d"
                              % (i_shift+1, len(shifts)))
                 plt.pause(0.8)
+                if args.curvatures:
+                    plt.subplot(121)
+                    plt.imshow(finite_second_deriv)
+                    plt.title("finite second diff")
+                    plt.subplot(122)
+                    plt.imshow(second_derivs[i_param])
+                    plt.title("analytical")
+                    plt.draw()
+                    plt.suptitle("Shift %d / %d"
+                                 % (i_shift + 1, len(shifts)))
+                    plt.pause(0.8)
 
         if args.plot:
             plt.close()
             plt.plot(shifts, diffs, 'o')
             title = "Unit cell parameter %d / %d" % (i_param+1, n_ucell_params)
-            plt.title(title + "\nPearson corr between finite diff and analytical")
+            plt.title(title + "\nPearson corr between finite deriv and analytical")
             plt.xlabel("unit cell shifts")
             plt.ylabel("Pearson corr")
             plt.show()
+            if args.curvatures:
+                plt.close()
+                plt.plot(np.array(shifts)**2, diffs2, 'o')
+                title = "Unit cell parameter %d / %d" % (i_param + 1, n_ucell_params)
+                plt.title(title + "\nPearson corr between finite second deriv and analytical")
+                plt.xlabel("unit cell shifts")
+                plt.ylabel("Pearson corr")
+                plt.show()
 
         # verify a high correlation for the smallest parameter shift
         print("Check high pearson R between analytical and finite diff")
@@ -176,6 +224,8 @@ if not args.refine:
         print("Fit polynomial and check monotonic decrease")
         trend = np.polyval(np.polyfit(shifts, diffs, 2), shifts)
         assert np.all(np.diff(zip(trend[:-1], trend[1:]), axis=1) <= 0)
+        if args.curvatures:
+            assert (diffs2[0] > .99), "%f" % diffs2[0]
     print("OK!")
 
 if is_tet:
@@ -254,6 +304,7 @@ RUC = RefineUcell(
 RUC.trad_conv = True
 RUC.trad_conv_eps = 1e-4
 RUC.max_calls = 150
+RUC.use_curvatures = args.curvatures
 RUC.run()
 
 if is_tet:

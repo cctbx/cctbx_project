@@ -2,6 +2,7 @@
 #include <simtbx/nanoBragg/nanoBragg.h>
 #include <vector>
 #include <boost/ptr_container/ptr_vector.hpp>
+//#include <boost/python/numpy.hpp>
 
 namespace simtbx {
 namespace nanoBragg {
@@ -11,10 +12,13 @@ class derivative_manager{
     derivative_manager();
     void initialize(int sdim, int fdim);
     af::flex_double raw_pixels;
+    af::flex_double raw_pixels2;
     double value; // the value of the parameter
     double dI; // the incremental derivative
+    double dI2; // the incremental derivative
     bool refine_me;
-    void increment_image(int idx, double value);
+    bool second_derivatives;
+    void increment_image(int idx, double value, double value2);
 };
 
 
@@ -52,9 +56,7 @@ class ucell_manager: public derivative_manager{
         double Hrad, double Fcell, double Flatt, double fudge,
         double source_I, double capture_fraction, double omega_pixel);
 
-    mat3 dB;
-    //void set_dB(){
-    //}
+    mat3 dB, dB2;
 };
 
 class rotX_manager: public rot_manager{
@@ -85,6 +87,7 @@ class diffBragg: public nanoBragg{
   void init_raw_pixels_roi();
   void zero_raw_pixel_rois();
   void set_ucell_derivative_matrix(int refine_id, af::shared<double> const& value);
+  void set_ucell_second_derivative_matrix(int refine_id, af::shared<double> const& value);
   //void reset_derivative_pixels(int refine_id);
 
   /* methods for interacting with the derivative managers */
@@ -92,6 +95,7 @@ class diffBragg: public nanoBragg{
   void set_value( int refine_id, double value);
   double get_value( int refine_id);
   af::flex_double get_derivative_pixels(int refine_id);
+  af::flex_double get_second_derivative_pixels(int refine_id);
   af::flex_double get_raw_pixels_roi();
 
   mat3 Umatrix;

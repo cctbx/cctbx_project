@@ -12,7 +12,6 @@ class RefineUcell(RefineRot):
         self.ucell_manager = ucell_manager
         self.n_ucell_param = len(self.ucell_manager.variables)
 
-
     def _setup(self):
         self._setup_lbfgs_x_array()
         self._move_abc_init_to_x()
@@ -39,6 +38,9 @@ class RefineUcell(RefineRot):
             self.D.set_ucell_derivative_matrix(
                 i+3,
                 self.ucell_manager.derivative_matrices[i])
+            if self.use_curvatures:
+                self.D.set_ucell_second_derivative_matrix(
+                    i+3, self.ucell_manager.second_derivative_matrices[i])
 
     def _run_diffBragg_current(self, i_spot):
         self.D.region_of_interest = self.nanoBragg_rois[i_spot]
@@ -47,8 +49,11 @@ class RefineUcell(RefineRot):
 
     def _extract_pixel_data(self):
         self.ucell_derivatives = []
+        self.ucell_second_derivatives = []
         for i in range(self.n_ucell_param):
             self.ucell_derivatives.append(self.D.get_derivative_pixels(3+i).as_numpy_array())
+            if self.use_curvatures:
+                self.ucell_second_derivatives.append(self.D.get_second_derivative_pixels(3+i).as_numpy_array())
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
 
     def _unpack_bgplane_params(self, i_spot):
@@ -63,6 +68,8 @@ class RefineUcell(RefineRot):
     def compute_functional_and_gradients(self):
         f = 0
         g = flex.double(len(self.x))
+        if self.use_curvatures:
+            self.curv = flex.double(len(self.x))
         self._update_orientation()
         self.scale_fac = self.x[-1]
         for i_spot in range(self.n_spots):
@@ -75,14 +82,22 @@ class RefineUcell(RefineRot):
 
             Imeas = self.roi_img[i_spot]
             f += (self.model_Lambda - Imeas*self.log_Lambda).sum()
-            one_minus_k_over_Lambda = (1. - Imeas / self.model_Lambda)
+            one_over_Lambda = 1./self.model_Lambda
+            one_minus_k_over_Lambda = (1. - Imeas * one_over_Lambda)
+            if self.use_curvatures:
+                k_over_squared_Lambda = Imeas * one_over_Lambda * one_over_Lambda
 
             # compute gradients for background plane constants a,b,c
             xr = self.xrel[i_spot]  # fast scan pixels
             yr = self.yrel[i_spot]  # slow scan pixels
-            g[i_spot] += (xr * one_minus_k_over_Lambda).sum()  # from handwritten notes
-            g[self.n_spots + i_spot] += (yr * one_minus_k_over_Lambda).sum()
+            g[i_spot] += (xr*one_minus_k_over_Lambda).sum()  # from handwritten notes
+            g[self.n_spots + i_spot] += (yr*one_minus_k_over_Lambda).sum()
             g[self.n_spots*2 + i_spot] += one_minus_k_over_Lambda.sum()
+            if self.use_curvatures:
+                self.curv[i_spot] += (xr**2 * k_over_squared_Lambda).sum()
+                self.curv[self.n_spots + i_spot] += (yr**2 * k_over_squared_Lambda).sum()
+                self.curv[self.n_spots*2 + i_spot] += k_over_squared_Lambda.sum()
+
             if self.plot_images:
                 m = Imeas[Imeas > 1e-9].mean()
                 s = Imeas[Imeas > 1e-9].std()
@@ -99,10 +114,18 @@ class RefineUcell(RefineRot):
 
             # unit cell derivative
             for i_ucell_p in range(self.n_ucell_param):
-                g[self.n_spots*3+i_ucell_p] += (one_minus_k_over_Lambda * (self.ucell_derivatives[i_ucell_p])).sum()
+                x_idx = self.n_spots * 3 + i_ucell_p
+                d = self.ucell_derivatives[i_ucell_p]
+                g[x_idx] += (one_minus_k_over_Lambda * d).sum()
+
+                if self.use_curvatures:
+                    d2 = self.ucell_second_derivatives[i_ucell_p]
+                    self.curv[x_idx] += (d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda).sum()
 
             # scale factor derivative
             g[-1] += (self.model_bragg_spots * one_minus_k_over_Lambda).sum()
+            if self.use_curvatures:
+                self.curv[-1] += (self.model_bragg_spots * self.model_bragg_spots * k_over_squared_Lambda).sum()
 
         self.D.raw_pixels *= 0
         self.print_step("LBFGS stp", f)
@@ -116,6 +139,9 @@ class RefineUcell(RefineRot):
         for n, v in zip(names, vals):
             labels.append('%s=%2.7g' % (n, v))
         print ", ".join(labels)
+
+    def curvatures(self):
+        return self.curv
 
 
 # # FIXME ? Maybe not ?

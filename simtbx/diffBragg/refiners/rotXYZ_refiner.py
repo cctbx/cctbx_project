@@ -18,18 +18,12 @@ class RefineRot(PixelRefinement):
         :param SimData_instance:
         :param plot_images:
         """
+        super(RefineRot, self).__init__()
         self.plot_images = plot_images
         self.spot_rois = spot_rois
         self.abc_init = abc_init
         self.img = img
         self.S = SimData_instance
-        self.trad_conv = False
-        self.trad_conv_eps = 0.05
-        self.drop_conv_max_eps = 1e-5
-        self.mn_iter = None
-        self.mx_iter = None
-        self.max_calls = 1000
-        self.ignore_line_search = False
         self.refine_rotX = self.refine_rotY = self.refine_rotZ = True
         self.iterations = 0
         if self.plot_images:
@@ -76,6 +70,14 @@ class RefineRot(PixelRefinement):
     def x(self, val):
         self._x = val
 
+    @property
+    def n(self):
+        return self._n
+
+    @n.setter
+    def n(self, val):
+        self._n = val
+
     def _run_diffBragg_current(self, i_spot):
         self.D.region_of_interest = self.nanoBragg_rois[i_spot]
         self.D.set_value(0, self.thetaX)
@@ -116,6 +118,9 @@ class RefineRot(PixelRefinement):
     def _evaluate_log_averageI(self):
         # fix log(x<=0)
         self.log_Lambda = np.log(self.model_Lambda)
+        if any((self.model_Lambda <= 0).ravel()):
+            print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
+            #raise ValueError("model of Bragg spots cannot have negative intensities...")
         self.log_Lambda[self.model_Lambda <= 0] = 0
 
     def compute_functional_and_gradients(self):
