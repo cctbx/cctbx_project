@@ -2,9 +2,10 @@
 import scitbx
 import numpy as np
 from abc import ABCMeta, abstractproperty, abstractmethod
+from scitbx.lbfgs.tst_curvatures import lbfgs_with_curvatures_mix_in
 
 
-class PixelRefinement(object):
+class PixelRefinement(lbfgs_with_curvatures_mix_in):
     """
     This is the base class for pixel refinement based on
     ROI sub-images, where its understood that each sub-image
@@ -13,12 +14,30 @@ class PixelRefinement(object):
 
     __metaclass__ = ABCMeta
 
+    run_on_init = False
+
+    def __init__(self):
+        self.use_curvatures = False
+        self.plot_images = False
+        self.trad_conv = False
+        self.trad_conv_eps = 0.05
+        self.drop_conv_max_eps = 1e-5
+        self.mn_iter = None
+        self.mx_iter = None
+        self.max_calls = 1000
+        self.ignore_line_search = False
+        lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
+
     @abstractmethod
     def compute_functional_and_gradients(self):
         pass
 
     @abstractproperty
     def x(self):
+        pass
+
+    @abstractproperty
+    def n(self):
         pass
 
     @property
@@ -147,14 +166,27 @@ class PixelRefinement(object):
         """
         pass
 
-    def run(self):
+    def run(self, curvature_min_verbose=False):
         """runs the LBFGS minimizer"""
         self._setup()
         self._cache_roi_arrays()
-        self.minimizer = scitbx.lbfgs.run(
-            target_evaluator=self,
-            exception_handling_params=self._handler,
-            termination_params=self._terminator)
+        if self.use_curvatures:
+            #from IPython import embed
+            #embed()
+            self.minimizer = self.lbfgs_run(
+                target_evaluator=self,
+                min_iterations=self.mn_iter,
+                max_iterations=self.mx_iter,
+                traditional_convergence_test=self.trad_conv,
+                traditional_convergence_test_eps=self.trad_conv_eps,
+                use_curvatures=True,
+                verbose=curvature_min_verbose)
+
+        else:
+            self.minimizer = scitbx.lbfgs.run(
+                target_evaluator=self,
+                exception_handling_params=self._handler,
+                termination_params=self._terminator)
 
     def _cache_roi_arrays(self):
         """useful cache for iterative LBFGS step"""
@@ -206,3 +238,13 @@ class PixelRefinement(object):
     @yrel.setter
     def yrel(self, val):
         self._yrel = val
+
+    @property
+    def use_curvatures(self):
+        return self._use_curvatures
+
+    @use_curvatures.setter
+    def use_curvatures(self, val):
+        if not isinstance(val, bool):
+            raise ValueError("use_curvatures should be boolean")
+        self._use_curvatures = val
