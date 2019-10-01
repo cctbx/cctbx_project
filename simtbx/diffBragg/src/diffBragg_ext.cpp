@@ -107,9 +107,16 @@ namespace boost_python { namespace {
 
       .def("set_ucell_derivative_matrix",  &simtbx::nanoBragg::diffBragg::set_ucell_derivative_matrix, "Boo-ya")
 
+      .def("set_ucell_second_derivative_matrix",  &simtbx::nanoBragg::diffBragg::set_ucell_second_derivative_matrix,
+            "Two-ya")
+
       //.def("get_ucell_derivative_matrix",  &simtbx::nanoBragg::diffBragg::get_ucell_derivative_matrix, "scooby snacks")
 
-      .def("get_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels, "gets the manager raw image")
+      .def("get_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels,
+            "gets the manager raw image containing first derivatives")
+
+      .def("get_second_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_second_derivative_pixels,
+            "gets the manager raw image containing second derivatives")
 
       .def("zero_raw_pixel_rois", &simtbx::nanoBragg::diffBragg::zero_raw_pixel_rois,
            "reallocate the raw image ROIs (they are usually tiny)")
