@@ -502,6 +502,12 @@ class _():
         result.append(p)
     return result
 
+def resid_to_pymol(resid):
+  resid = resid.strip()
+  if resid.startswith('-'):
+    resid = '\\' + resid
+  return resid
+
 @boost.python.inject_into(shared_bond_simple_proxy)
 class _():
 
@@ -530,8 +536,8 @@ class _():
     result = ""
     for proxy, atom1, atom2 in self._generate_proxy_and_atom_labels(pdb_hierarchy):
       base_sele = """chain "%s" and resi %s and name %s and alt '%s'"""
-      sele1 = base_sele % (atom1.chain_id.strip(), atom1.resid(), atom1.name, atom1.altloc)
-      sele2 = base_sele % (atom2.chain_id.strip(), atom2.resid(), atom2.name, atom2.altloc)
+      sele1 = base_sele % (atom1.chain_id.strip(), resid_to_pymol(atom1.resid()), atom1.name, atom1.altloc)
+      sele2 = base_sele % (atom2.chain_id.strip(), resid_to_pymol(atom2.resid()), atom2.name, atom2.altloc)
       result += "dist %s, %s\n" % (sele1, sele2)
     return result
 
@@ -1151,9 +1157,9 @@ class _():
       atom2 = pdb_atoms[j_seq].fetch_labels()
       atom3 = pdb_atoms[k_seq].fetch_labels()
       base_sele = """chain "%s" and resi %s and name %s and alt '%s'"""
-      sele1 = base_sele % (atom1.chain_id.strip(), atom1.resid(), atom1.name, atom1.altloc)
-      sele2 = base_sele % (atom2.chain_id.strip(), atom2.resid(), atom2.name, atom2.altloc)
-      sele3 = base_sele % (atom3.chain_id.strip(), atom3.resid(), atom3.name, atom3.altloc)
+      sele1 = base_sele % (atom1.chain_id.strip(), resid_to_pymol(atom1.resid()), atom1.name, atom1.altloc)
+      sele2 = base_sele % (atom2.chain_id.strip(), resid_to_pymol(atom2.resid()), atom2.name, atom2.altloc)
+      sele3 = base_sele % (atom3.chain_id.strip(), resid_to_pymol(atom3.resid()), atom3.name, atom3.altloc)
       result += "angle a%d, %s, %s, %s\n" % (i, sele1, sele2, sele3)
       i += 1
     return result
