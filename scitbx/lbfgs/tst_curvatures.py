@@ -91,14 +91,18 @@ class lbfgs_with_curvatures_mix_in(object):
 
   def __init__(self, min_iterations=0, max_iterations=1000,
         traditional_convergence_test_eps=None,
-        use_curvatures=True):
-    self.n = len(self.x)
-    self.minimizer = lbfgs_run(
-        target_evaluator=self,
-        min_iterations=min_iterations,
-        max_iterations=max_iterations,
-        traditional_convergence_test_eps=traditional_convergence_test_eps,
-        use_curvatures=use_curvatures)
+        use_curvatures=True, run_on_init=True):
+
+    self.lbfgs_run = lbfgs_run
+
+    if run_on_init:
+      self.n = len(self.x)
+      self.minimizer = self.lbfgs_run(
+          target_evaluator=self,
+          min_iterations=min_iterations,
+          max_iterations=max_iterations,
+          traditional_convergence_test_eps=traditional_convergence_test_eps,
+          use_curvatures=use_curvatures)
 
   def __call__(self, requests_f_and_g, requests_diag):
     if (not requests_f_and_g and not requests_diag):
@@ -115,9 +119,16 @@ class lbfgs_with_curvatures_mix_in(object):
                                      # can indicate this to LBFGS by setting the gradient to zero.
                                      # Then we can set the curvature to an arbitrary positive value that
                                      # will be tested for positivity but otherwise ignored.
+
+      #try:
       assert self.d.select(sel).all_gt(0)
+      #except AssertionError:
+      #  from IPython import embed
+      #  embed()
       self.d = 1 / self.d
     return self.x, self.f, self.g, self.d
+
+
 
 
 class fit_xy_translation(lbfgs_with_curvatures_mix_in):
