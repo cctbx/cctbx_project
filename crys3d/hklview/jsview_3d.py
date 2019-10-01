@@ -803,6 +803,7 @@ class hklview_3d:
       axisfuncstr = "\nvar MakeHKL_Axis = function() { };\n"
     else:
       axisfuncstr = """
+var fontsize = %s;
 var MakeHKL_Axis = function()
 {
   // xyz arrows
@@ -814,13 +815,13 @@ var MakeHKL_Axis = function()
   //red-z
   shape.addArrow( %s, %s , [ 1, 0, 0 ], 0.1);
 
-  shape.addText( %s, [ 0, 0, 1 ], %s, 'h');
-  shape.addText( %s, [ 0, 1, 0 ], %s, 'k');
-  shape.addText( %s, [ 1, 0, 0 ], %s, 'l');
+  shape.addText( %s, [ 0, 0, 1 ], fontsize, 'h');
+  shape.addText( %s, [ 0, 1, 0 ], fontsize, 'k');
+  shape.addText( %s, [ 1, 0, 0 ], fontsize, 'l');
 };
-    """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
-          str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, fontsize,
-          Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
+    """ %(fontsize, str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart),
+          str(Kstararrowend), str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt,
+          Kstararrowtxt, Lstararrowtxt)
 
     # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
     mincolourscalar = self.HKLscenesMindata[self.colour_scene_id]
@@ -1729,12 +1730,23 @@ mysocket.onmessage = function (e)
     if (msgtype === "AddVector")
     {
       strs = datval[1].split("\\n");
-      var sm = new Float32Array(3);
+      var r1 = new Float32Array(3);
+      var r2 = new Float32Array(3);
+      var rgb = new Float32Array(3);
       var elmstrs = strs[0].split(",");
       for (j=0; j<3; j++)
-        sm[j] = parseFloat(elmstrs[j]);
+      {
+        r1[j] = parseFloat(elmstrs[j]);
+        r2[j] = parseFloat(elmstrs[j+3]);
+        rgb[j]= parseFloat(elmstrs[j+6]);
+      }
 
-      vectorshape.addArrow( [0.0, 0.0, 0.0], sm , [ 1, 1, 0 ], 0.3);
+      vectorshape.addArrow( r1, r2 , [rgb[0], rgb[1], rgb[2]], 0.15);
+      if (elmstrs[6] !== "") {
+        var txtR = [ r1[0] + r2[0], r1[1] + r2[1], r1[2] + r2[2] ];
+        vectorshape.addText( txtR, [rgb[0], rgb[1], rgb[2]], fontsize/2.0, elmstrs[9] );
+      }
+
       vectorshapeComps.push( stage.addComponentFromObject(vectorshape) );
       vectorreprs.push( vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vectorbuffer') );
       stage.viewer.requestRender();
@@ -2205,32 +2217,31 @@ mysocket.onmessage = function (e)
     return retmsg
 
 
-  def AddVector(self, r1, r2, r3, isreciprocal=True):
+  def AddVector(self, s1, s2, s3, t1, t2, t3, isreciprocal=True, label="", r=0, g=0, b=0):
+    """
+    place vector from {s1, s2, s3] to [t1, t2, t3] with colour r,g,b and label
+    """
     uc = self.miller_array.unit_cell()
-    vec = (r1, r2, r3)
+    vec1 = (s1*self.scene.renderscale, s2*self.scene.renderscale, s3*self.scene.renderscale)
+    vec2 = (t1*self.scene.renderscale, t2*self.scene.renderscale, t3*self.scene.renderscale)
     #svec = list(vec)
     if isreciprocal:
       # uc.reciprocal_space_vector() only takes integer miller indices so compute
       # the cartesian coordinates for real valued miller indices with the transpose of the fractionalization matrix
-      vec = list( vec * matrix.sqr(uc.fractionalization_matrix()).transpose())
-      svec = [vec[0]*self.scene.renderscale,
-              vec[1]*self.scene.renderscale,
-              vec[2]*self.scene.renderscale
-             ]
+      vec1 = list( vec1 * matrix.sqr(uc.fractionalization_matrix()).transpose() )
+      vec2 = list( vec2 * matrix.sqr(uc.fractionalization_matrix()).transpose() )
+      svec1 = [ vec1[0], vec1[1], vec1[2] ]
+      svec2 = [ vec2[0], vec2[1], vec2[2] ]
     else:
-      recipparam = uc.reciprocal_parameters()
-      vec = list( vec * matrix.sqr(uc.fractionalization_matrix()).transpose())
-      svec = [vec[0]*self.scene.renderscale/(recipparam[0]*recipparam[0]),
-              vec[1]*self.scene.renderscale/(recipparam[1]*recipparam[1]),
-              vec[2]*self.scene.renderscale/(recipparam[2]*recipparam[2])
-              ]
-      svec = [vec[0]*self.scene.renderscale,
-              vec[1]*self.scene.renderscale,
-              vec[2]*self.scene.renderscale
-              ]
-
-    self.mprint("cartesian vector is: " + str(roundoff(svec)), verbose=1)
-    xyvec = svec[:]
+      vec1 = list( vec1 * matrix.sqr(uc.orthogonalization_matrix()) )
+      vec2 = list( vec2 * matrix.sqr(uc.orthogonalization_matrix()) )
+      vscale = 200.0/uc.volume()
+      # TODO: find suitable scale factor for displaying real space vector together with reciprocal vectors
+      svec1 = [ vscale*vec1[0], vscale*vec1[1], vscale*vec1[2] ]
+      svec2 = [ vscale*vec2[0], vscale*vec2[1], vscale*vec2[2] ]
+    self.mprint("cartesian vector is: %s to %s" %(str(roundoff(svec1)), str(roundoff(svec2))), verbose=1)
+    svec = [svec2[0]-svec1[0], svec2[1]-svec1[1], svec2[2]-svec1[2] ]
+    xyvec = svec[:] # deep copying
     xyvec[2] = 0.0 # projection vector of svec in the xy plane
     xyvecnorm = math.sqrt( xyvec[0]*xyvec[0] + xyvec[1]*xyvec[1] )
     if xyvecnorm > 0.0:
@@ -2258,7 +2269,9 @@ mysocket.onmessage = function (e)
     self.mprint("angles in xy plane to x,y axis are: %s, %s" %(self.angle_x_xyvec, self.angle_y_xyvec), verbose=2)
     self.mprint("angles in yz plane to y,z axis are: %s, %s" %(self.angle_y_yzvec, self.angle_z_yzvec), verbose=2)
     self.mprint("angles to x,y,z axis are: %s, %s, %s" %(self.angle_x_svec, self.angle_y_svec, self.angle_z_svec ), verbose=2)
-    self.msgqueue.append( ("AddVector", "%s, %s, %s" %tuple(svec) ))
+
+    self.msgqueue.append( ("AddVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
+         %tuple(svec1 + svec2 + [r, g, b, label]) ))
 
 
   def PointVectorPerpendicularToClipPlane(self):
@@ -2267,6 +2280,37 @@ mysocket.onmessage = function (e)
 
   def PointVectorParallelToClipPlane(self):
     self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec+90.0, 90.0 ))
+
+
+  def DrawUnitCell(self):
+    self.AddVector(0,0,0, 1,0,0, False, label="200a/V", r=0.5, g=0.8, b=0.8)
+    self.AddVector(0,0,0, 0,1,0, False, label="200b/V", r=0.8, g=0.5, b=0.8)
+    self.AddVector(0,0,0, 0,0,1, False, label="200c/V", r=0.8, g=0.8, b=0.5)
+    self.AddVector(1,0,0, 1,1,0, False, r=0.8, g=0.5, b=0.8)
+    self.AddVector(0,1,0, 1,1,0, False, r=0.5, g=0.8, b=0.8)
+    self.AddVector(0,0,1, 1,0,1, False, r=0.5, g=0.8, b=0.8)
+    self.AddVector(0,0,1, 0,1,1, False, r=0.8, g=0.5, b=0.8)
+    self.AddVector(0,1,1, 1,1,1, False, r=0.5, g=0.8, b=0.8)
+    self.AddVector(1,0,1, 1,1,1, False, r=0.8, g=0.5, b=0.8)
+    self.AddVector(1,0,0, 1,0,1, False, r=0.8, g=0.8, b=0.5)
+    self.AddVector(0,1,0, 0,1,1, False, r=0.8, g=0.8, b=0.5)
+    self.AddVector(1,1,0, 1,1,1, False, r=0.8, g=0.8, b=0.5)
+
+
+  def DrawReciprocalUnitCell(self):
+    n=2
+    self.AddVector(0,0,0, n,0,0, label="2a*", r=0.5, g=0.3, b=0.3)
+    self.AddVector(0,0,0, 0,n,0, label="2b*", r=0.3, g=0.5, b=0.3)
+    self.AddVector(0,0,0, 0,0,n, label="2c*", r=0.3, g=0.3, b=0.5)
+    self.AddVector(n,0,0, n,n,0, r=0.3, g=0.5, b=0.3)
+    self.AddVector(0,n,0, n,n,0, r=0.5, g=0.3, b=0.3)
+    self.AddVector(0,0,n, n,0,n, r=0.5, g=0.3, b=0.3)
+    self.AddVector(0,0,n, 0,n,n, r=0.3, g=0.5, b=0.3)
+    self.AddVector(0,n,n, n,n,n, r=0.5, g=0.3, b=0.3)
+    self.AddVector(n,0,n, n,n,n, r=0.3, g=0.5, b=0.3)
+    self.AddVector(n,0,0, n,0,n, r=0.3, g=0.3, b=0.5)
+    self.AddVector(0,n,0, 0,n,n, r=0.3, g=0.3, b=0.5)
+    self.AddVector(n,n,0, n,n,n, r=0.3, g=0.3, b=0.5)
 
 
   def fix_orientation(self, val):
@@ -2284,7 +2328,7 @@ mysocket.onmessage = function (e)
       return
     self.RemoveAllReciprocalVectors()
     R = -l * self.normal_hk + h * self.normal_kl + k * self.normal_lh
-    self.AddVector(R[0][0], R[0][1], R[0][2], isreciprocal=False)
+    self.AddVector(0, 0, 0, R[0][0], R[0][1], R[0][2], isreciprocal=False)
     if fixorientation:
       self.DisableMouseRotation()
     else:
@@ -2300,6 +2344,8 @@ mysocket.onmessage = function (e)
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
     self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
     self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
+    self.DrawUnitCell()
+    self.DrawReciprocalUnitCell()
 
 
   def clip_plane_abc_vector(self, a, b, c, hkldist=0.0,
@@ -2309,9 +2355,7 @@ mysocket.onmessage = function (e)
       self.RemoveNormalVectorToClipPlane()
       return
     self.RemoveAllReciprocalVectors()
-    #R = -c*self.normal_hk + a*self.normal_kl + b*self.normal_lh
-    #self.AddVector(R[0][0], R[0][1], R[0][2])
-    self.AddVector(a, b, c, isreciprocal=False)
+    self.AddVector(0, 0, 0, a, b, c, isreciprocal=False)
     if fixorientation:
       self.DisableMouseRotation()
     else:
@@ -2326,8 +2370,9 @@ mysocket.onmessage = function (e)
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
     self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
-    #self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
     self.TranslateHKLpoints(a,b,c, hkldist)
+    self.DrawUnitCell()
+    self.DrawReciprocalUnitCell()
 
 
   def clip_plane_to_HKL_vector(self, h, k, l, hkldist=0.0,
@@ -2336,7 +2381,7 @@ mysocket.onmessage = function (e)
       self.RemoveNormalVectorToClipPlane()
       return
     self.RemoveAllReciprocalVectors()
-    self.AddVector(h, k, l, isreciprocal=False)
+    self.AddVector(0, 0, 0, h, k, l, isreciprocal=False)
     if fixorientation:
       self.DisableMouseRotation()
     else:

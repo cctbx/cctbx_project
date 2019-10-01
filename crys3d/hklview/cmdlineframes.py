@@ -991,11 +991,11 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def ShowTNCSVectorParallel(self, parallel=True):
+  def ShowTNCSModulation(self, vectorparallel=True, clipwidth=4):
     if self.tncsvec:
       self.ClipPlaneAndVector( self.tncsvec[0], self.tncsvec[1], self.tncsvec[2],
-                              hkldist=0.0, clipwidth=4, fixorientation=True,
-                              is_parallel=parallel, is_real_space_frac_vec=True)
+                              hkldist=0.0, clipwidth=clipwidth, fixorientation=True,
+                              is_parallel=vectorparallel, is_real_space_frac_vec=True)
 
 
   def SetTrackBallRotateSpeed(self, trackspeed):
