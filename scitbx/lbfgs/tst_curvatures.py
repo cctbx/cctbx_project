@@ -113,19 +113,22 @@ class lbfgs_with_curvatures_mix_in(object):
       self.d = None
     if (requests_diag):
       self.d = self.curvatures()
-      self._verify_diag()
+      #assert self.d.all_gt(0) # conceptually curvatures must be positive to be within convergence well
+      sel = (self.g != 0)
+      self.d.set_selected(~sel,1000) # however, if we've decided to not refine a certain parameter, we
+                                     # can indicate this to LBFGS by setting the gradient to zero.
+                                     # Then we can set the curvature to an arbitrary positive value that
+                                     # will be tested for positivity but otherwise ignored.
+
+      #try:
+      assert self.d.select(sel).all_gt(0)
+      #except AssertionError:
+      #  from IPython import embed
+      #  embed()
+      self.d = 1 / self.d
     return self.x, self.f, self.g, self.d
 
-  def _verify_diag(self):
-    # assert self.d.all_gt(0) # conceptually curvatures must be positive to be within convergence well
-    sel = (self.g != 0)
-    self.d.set_selected(~sel, 1000)  # however, if we've decided to not refine a certain parameter, we
-    # can indicate this to LBFGS by setting the gradient to zero.
-    # Then we can set the curvature to an arbitrary positive value that
-    # will be tested for positivity but otherwise ignored.
 
-    assert self.d.select(sel).all_gt(0)
-    self.d = 1 / self.d
 
 
 class fit_xy_translation(lbfgs_with_curvatures_mix_in):
