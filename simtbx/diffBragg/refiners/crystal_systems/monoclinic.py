@@ -21,6 +21,11 @@ class MonoclinicManager(CrystalSystemManager):
                 self._dB_dc_real, self._dB_dbeta_real]
 
     @property
+    def second_derivative_matrices(self):
+        return [self._d2B_da2_real, self._d2B_db2_real,
+                self._d2B_dc2_real, self._d2B_dbeta2_real]
+
+    @property
     def a(self):
         return self.variables[0]
 
@@ -56,9 +61,21 @@ class MonoclinicManager(CrystalSystemManager):
                     0, 0, 0))
 
     @property
+    def _d2B_da2_real(self):
+        return sqr((0, 0, 0,
+                    0, 0, 0,
+                    0, 0, 0))
+
+    @property
     def _dB_db_real(self):
         return sqr((0, 0, 0,
                     0, 1, 0,
+                    0, 0, 0))
+
+    @property
+    def _d2B_db2_real(self):
+        return sqr((0, 0, 0,
+                    0, 0, 0,
                     0, 0, 0))
 
     @property
@@ -68,7 +85,20 @@ class MonoclinicManager(CrystalSystemManager):
                     0, 0, np.sqrt(1-self.cbe**2)))
 
     @property
+    def _d2B_dc2_real(self):
+        return sqr((0, 0, 0,
+                    0, 0, 0,
+                    0, 0, 0))
+
+    @property
     def _dB_dbeta_real(self):
         return sqr((0, 0, -self.c*self.sbe,
                     0, 0, 0,
                     0, 0, self.c*self.cbe*self.sbe/np.sqrt(1-self.cbe**2)))
+
+    @property
+    def _d2B_dbeta2_real(self):
+        return sqr((0, 0, -self.c*self.cbe,
+                    0, 0, 0,
+                    0, 0, -self.c*np.sqrt(1-self.cbe**2)))
+

@@ -44,7 +44,7 @@ class rot_manager: public derivative_manager{
     //    double source_I, double capture_fraction, double omega_pixel);
 
     mat3 XYZ;
-    mat3 R, dR;
+    mat3 R, dR, dR2;
 }; // end of rot_manager
 
 class ucell_manager: public derivative_manager{
