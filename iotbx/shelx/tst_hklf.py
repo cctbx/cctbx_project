@@ -161,6 +161,13 @@ def exercise_miller_export_as_shelx_hklf():
    2  -3   99999999.    0.00
    0   0   0    0.00    0.00
 """)
+  # Test that setting the scale range works.
+  ma2.export_as_shelx_hklf(
+    sio,
+    scale_range=(-9999., 9999.),
+    normalise_if_format_overflow=True)
+  # Test that ignoring the scale range and normalising out-of-range values anyway works.
+  ma2.export_as_shelx_hklf(sio, full_dynamic_range=True)
 
 def run():
   exercise_hklf_reader()
