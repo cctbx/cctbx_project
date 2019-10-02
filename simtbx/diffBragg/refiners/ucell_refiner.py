@@ -2,6 +2,7 @@
 from simtbx.diffBragg.refiners import RefineRot
 from scitbx.array_family import flex
 import pylab as plt
+import numpy as np
 
 
 class RefineUcell(RefineRot):
@@ -57,9 +58,13 @@ class RefineUcell(RefineRot):
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
 
     def _unpack_bgplane_params(self, i_spot):
+        #self.a = np.exp(self.x[i_spot])
+        #self.b = np.exp(self.x[self.n_spots + i_spot])
+        #self.c = np.exp(self.x[self.n_spots*2 + i_spot])
         self.a = self.x[i_spot]
         self.b = self.x[self.n_spots + i_spot]
         self.c = self.x[self.n_spots*2 + i_spot]
+
 
     def _update_orientation(self):
         self.ucell_manager.variables = list(self.x[self.n_spots*3:self.n_spots*3+self.n_ucell_param])
@@ -81,6 +86,7 @@ class RefineUcell(RefineRot):
             self._evaluate_log_averageI()
 
             Imeas = self.roi_img[i_spot]
+            self.II = Imeas
             f += (self.model_Lambda - Imeas*self.log_Lambda).sum()
             one_over_Lambda = 1./self.model_Lambda
             one_minus_k_over_Lambda = (1. - Imeas * one_over_Lambda)
@@ -90,13 +96,32 @@ class RefineUcell(RefineRot):
             # compute gradients for background plane constants a,b,c
             xr = self.xrel[i_spot]  # fast scan pixels
             yr = self.yrel[i_spot]  # slow scan pixels
-            g[i_spot] += (xr*one_minus_k_over_Lambda).sum()  # from handwritten notes
-            g[self.n_spots + i_spot] += (yr*one_minus_k_over_Lambda).sum()
-            g[self.n_spots*2 + i_spot] += one_minus_k_over_Lambda.sum()
-            if self.use_curvatures:
-                self.curv[i_spot] += (xr**2 * k_over_squared_Lambda).sum()
-                self.curv[self.n_spots + i_spot] += (yr**2 * k_over_squared_Lambda).sum()
-                self.curv[self.n_spots*2 + i_spot] += k_over_squared_Lambda.sum()
+            #da = self.a*xr
+            #db = self.b*yr
+            #dc = self.c
+            da = xr
+            db = yr
+            dc = 1
+            if self.refine_background_planes:
+                g[i_spot] += (da*one_minus_k_over_Lambda).sum()
+                g[self.n_spots + i_spot] += (db*one_minus_k_over_Lambda).sum()
+                g[self.n_spots*2 + i_spot] += (dc*one_minus_k_over_Lambda).sum()
+            if self.use_curvatures and self.refine_background_planes:
+                #da2 = da
+                #db2 = db
+                #dc2 = dc
+                da2 = 0
+                db2 = 0
+                dc2 = 0
+                self.curv[i_spot] += \
+                    (da2*one_minus_k_over_Lambda + (da2**2) * k_over_squared_Lambda).sum()
+                self.curv[self.n_spots + i_spot] += \
+                    (db2*one_minus_k_over_Lambda + (db2**2) * k_over_squared_Lambda).sum()
+                self.curv[self.n_spots*2 + i_spot] += \
+                    (dc2*one_minus_k_over_Lambda + (dc2**2) * k_over_squared_Lambda).sum()
+                #if self.curv[i_spot] <= 0:
+                #    from IPython import embed
+                #    embed()
 
             if self.plot_images:
                 m = Imeas[Imeas > 1e-9].mean()
