@@ -68,9 +68,14 @@ void rot_manager::increment(
   vec3 dV = N*(U*XYZ*B).transpose() * q;
   double dHrad = V*dV + dV*V;
   double dFlatt = -1*Flatt / 0.63 * fudge * dHrad;
-  dI += Fcell*Fcell*2*Flatt*source_I*capture_fraction*omega_pixel*dFlatt;
+  double c = Fcell*Fcell*source_I*capture_fraction*omega_pixel;
+  dI += c*2*Flatt*dFlatt;
 
-  dI2 += 0;
+  vec3 dV2 = NABC*(UR*dB2*Ot).transpose() * q;
+  double dFlatt2 = -2*a*(dFlatt * V_dot_dV + Flatt*(dV*dV) + Flatt*(V*dV2));
+  dI2 += c*2*(dFlatt2*Flatt + dFlatt*dFlatt);
+
+  //dI2 += 0;
 }
 
 rotX_manager::rotX_manager(){
@@ -94,6 +99,11 @@ void rotX_manager::set_R(){
     dR= mat3(0,           0,           0,
              0,  -sin(value), cos(value),
              0, -cos(value), -sin(value));
+
+    dR2= mat3(0,           0,           0,
+              0,  -cos(value), -sin(value),
+              0,   sin(value), -cos(value));
+
 }
 void rotY_manager::set_R(){
     R= mat3(cos(value),0, -sin(value),
@@ -103,6 +113,10 @@ void rotY_manager::set_R(){
     dR= mat3(-sin(value),0, -cos(value),
                 0,          0,             0,
                 cos(value), 0, -sin(value));
+
+    dR2= mat3(-cos(value),0, sin(value),
+              0,          0,          0,
+             -sin(value), 0, -cos(value));
 }
 void rotZ_manager::set_R(){
     R = mat3(cos(value),  sin(value), 0,
@@ -112,6 +126,10 @@ void rotZ_manager::set_R(){
     dR = mat3(-sin(value),  cos(value), 0,
                -cos(value), -sin(value), 0,
                            0,           0, 0);
+
+    dR2= mat3(-cos(value), -sin(value), 0,
+               sin(value), -cos(value), 0,
+                        0,           0, 0);
 }
 // END rot manager
 
