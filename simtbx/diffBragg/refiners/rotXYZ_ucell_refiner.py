@@ -1,6 +1,7 @@
 from simtbx.diffBragg.refiners import RefineRot
 from scitbx.array_family import flex
 import pylab as plt
+import numpy as np
 
 
 class RefineMissetAndUcell(RefineRot):
@@ -22,6 +23,7 @@ class RefineMissetAndUcell(RefineRot):
         self.ucell_manager = ucell_manager
         self.n_ucell_param = len(self.ucell_manager.variables)
         self._init_scale = init_scale
+        self.best_image = np.zeros_like(self.img)
 
     def _setup(self):
         # total number of refinement parameters
@@ -110,6 +112,7 @@ class RefineMissetAndUcell(RefineRot):
     def compute_functional_and_gradients(self):
         f = 0
         g = flex.double(len(self.x))
+        self.best_image = np.zeros_like(self.img)
         self.scale_fac = self.x[-1]
         self._update_ucell()
         for i_spot in range(self.n_spots):
@@ -119,6 +122,8 @@ class RefineMissetAndUcell(RefineRot):
             self._extract_pixel_data()
             self._evaluate_averageI()
             self._evaluate_log_averageI()
+            x1, x2, y1, y2 = self.spot_rois[i_spot]
+            self.best_image[y1:y2+1, x1:x2+1] = self.model_Lambda
 
             Imeas = self.roi_img[i_spot]
             f += (self.model_Lambda - Imeas * self.log_Lambda).sum()
@@ -127,9 +132,10 @@ class RefineMissetAndUcell(RefineRot):
             # compute gradients for background plane constants a,b,c
             xr = self.xrel[i_spot]  # fast scan pixels
             yr = self.yrel[i_spot]  # slow scan pixels
-            g[i_spot] += (xr * one_minus_k_over_Lambda).sum()  # from handwritten notes
-            g[self.n_spots + i_spot] += (yr * one_minus_k_over_Lambda).sum()
-            g[self.n_spots * 2 + i_spot] += one_minus_k_over_Lambda.sum()
+            if self.refine_background_planes:
+                g[i_spot] += (xr * one_minus_k_over_Lambda).sum()  # from handwritten notes
+                g[self.n_spots + i_spot] += (yr * one_minus_k_over_Lambda).sum()
+                g[self.n_spots * 2 + i_spot] += one_minus_k_over_Lambda.sum()
             if self.plot_images:
                 m = Imeas[Imeas > 1e-9].mean()
                 s = Imeas[Imeas > 1e-9].std()
@@ -144,21 +150,23 @@ class RefineMissetAndUcell(RefineRot):
                 self.fig.canvas.draw()
                 plt.pause(.02)
 
-            # might not be necessary to have if statements # TODO : try taking out the if
-            if self.refine_rotX:
-                g[self.rotX_xpos] += (one_minus_k_over_Lambda * (self.rot_deriv[0])).sum()
-            if self.refine_rotY:
-                g[self.rotY_xpos] += (one_minus_k_over_Lambda * (self.rot_deriv[1])).sum()
-            if self.refine_rotZ:
-                g[self.rotZ_xpos] += (one_minus_k_over_Lambda * (self.rot_deriv[2])).sum()
+            if self.refine_Amatrix:
+                # might not be necessary to have if statements # TODO : try taking out the if
+                if self.refine_rotX:
+                    g[self.rotX_xpos] += (one_minus_k_over_Lambda * (self.rot_deriv[0])).sum()
+                if self.refine_rotY:
+                    g[self.rotY_xpos] += (one_minus_k_over_Lambda * (self.rot_deriv[1])).sum()
+                if self.refine_rotZ:
+                    g[self.rotZ_xpos] += (one_minus_k_over_Lambda * (self.rot_deriv[2])).sum()
 
-            # unit cell derivative
-            for i_ucell_p in range(self.n_ucell_param):
-                g[self.n_spots * 3 + self.n_rot_param + i_ucell_p] += (
-                            one_minus_k_over_Lambda * (self.ucell_deriv[i_ucell_p])).sum()
+                # unit cell derivative
+                for i_ucell_p in range(self.n_ucell_param):
+                    g[self.n_spots * 3 + self.n_rot_param + i_ucell_p] += (
+                                one_minus_k_over_Lambda * (self.ucell_deriv[i_ucell_p])).sum()
 
-            # scale factor derivative
-            g[-1] += (self.model_bragg_spots * one_minus_k_over_Lambda).sum()
+            if self.refine_crystal_scale:
+                # scale factor derivative
+                g[-1] += (2*self.scale_fac*self.model_bragg_spots * one_minus_k_over_Lambda).sum()
 
         self.D.raw_pixels *= 0
         self.print_step("LBFGS stp", f)
@@ -176,9 +184,10 @@ class RefineMissetAndUcell(RefineRot):
         rotY = self.x[self.rotY_xpos]
         rotZ = self.x[self.rotZ_xpos]
         rot_labels = ["rotX=%+2.7g" % rotX, "rotY=%+2.7g" % rotY, "rotZ=%+2.7g" % rotZ]
-        print ("Ucell: %s *** Missets: %s" %
+        print ("Ucell: %s *** Missets: %s ** s=%2.7g" %
                (", ".join(ucell_labels),
-                ", ".join(rot_labels)))
+                ", ".join(rot_labels),
+                self.x[-1]))
 
     def get_refined_Bmatrix(self):
         return self.ucell_manager.B_recipspace

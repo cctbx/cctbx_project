@@ -120,11 +120,11 @@ class lbfgs_with_curvatures_mix_in(object):
                                      # Then we can set the curvature to an arbitrary positive value that
                                      # will be tested for positivity but otherwise ignored.
 
-      #try:
-      assert self.d.select(sel).all_gt(0)
-      #except AssertionError:
-      #  from IPython import embed
-      #  embed()
+      try:
+        assert self.d.select(sel).all_gt(0)
+      except AssertionError:
+        from IPython import embed
+        embed()
       self.d = 1 / self.d
     return self.x, self.f, self.g, self.d
 
