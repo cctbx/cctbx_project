@@ -10,7 +10,7 @@ import iotbx.cif
 
 def get_array_by_label(miller_arrays, label):
   for ma in miller_arrays:
-    if label in ma.info().labels:
+    if label in list(ma.info().labels):
       return ma
 
 def exercise():
@@ -169,4 +169,3 @@ def run():
 
 if __name__ == '__main__':
   run()
-
