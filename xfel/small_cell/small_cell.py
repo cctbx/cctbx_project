@@ -438,8 +438,8 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
 
   from dials.algorithms.indexing.assign_indices import AssignIndicesGlobal
   reflections['imageset_id'] = reflections['id']
-  reflections.centroid_px_to_mm(detector)
-  reflections.map_centroids_to_reciprocal_space(detector, beam)
+  reflections.centroid_px_to_mm(experiments)
+  reflections.map_centroids_to_reciprocal_space(experiments)
 
   all_spots = []
   for i, ref in enumerate(reflections.rows()):
@@ -1100,7 +1100,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
         refls['s1'] = s1
         refls['bbox'] = bbox
 
-        refls.centroid_px_to_mm(detector)
+        refls.centroid_px_to_mm(experiments)
 
         refls.set_flags(flex.bool(len(refls), True), refls.flags.indexed)
         if write_output:
