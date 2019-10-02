@@ -2621,64 +2621,6 @@ def unpickle():
   env = pickle.load(libtbx_env)
   if (env.python_version_major_minor != sys.version_info[:2]):
     env.raise_python_version_incompatible()
-  # XXX backward compatibility 2009-04-06
-  if (not hasattr(env.build_options, "boost_python_bool_int_strict")):
-    env.build_options.boost_python_bool_int_strict = True
-  # XXX backward compatibility 2009-04-27
-  if( not hasattr(env.build_options, "use_environment_flags") ):
-    env.build_options.use_environment_flags = False
-    env.build_options.env_cxxflags = ""
-    env.build_options.env_cflags = ""
-    env.build_options.env_cppflags = ""
-    env.build_options.env_ldflags = ""
-  # XXX backward compatibility 2009-10-11
-  if (not hasattr(env.build_options, "force_32bit")):
-    env.build_options.force_32bit = False
-  # XXX backward compatibility 2009-10-13
-  if (not hasattr(env.build_options, "msvc_arch_flag")):
-    env.build_options.msvc_arch_flag = default_msvc_arch_flag
-  # XXX backward compatibility 2010-05-28
-  if (not hasattr(env.build_options, "precompile_headers")):
-    env.build_options.precompile_headers = False
-  # XXX backward compatibility 2011-04-01
-  if (not hasattr(env.build_options, "opt_resources")):
-    env.build_options.opt_resources = False
-  # XXX backward compatibility 2011-07-05
-  if (not hasattr(env.build_options, "enable_cuda")):
-    env.build_options.enable_cuda = False
-  # XXX backward incompatibility 2011-10
-  if not hasattr(env, 'relocatable'):
-    print ("Please re-configure from scratch your cctbx_build:"
-           "cd cctbx_build; "
-           "/your/path/to/python ../cctbx_project/libtbx/configure.py [options] [modules]")
-    sys.exit(1)
-  # XXX backward compatibility 2011-12-16
-  if (hasattr(env.build_path, "reset")): # future: unconditional
-    if (op.realpath(build_path) != op.realpath(abs(env.build_path))):
-      env.build_path.reset(build_path)
-  # XXX backward compatibility 2012-4-1: this is no April Fool ;-)
-  if not hasattr(env, 'no_bin_python'):
-    env.no_bin_python = False
-  # XXX backward compatibility 2012-8-14
-  try:
-    del env.enable_boost_threads
-  except AttributeError:
-    pass
-  # XXX backward compatibility 2013-08-20
-  if (not hasattr(env.build_options, "enable_cxx11")):
-    env.build_options.enable_cxx11 = False
-  # XXX backward compatibility 2015-07-02
-  if (not hasattr(env.build_options, "skip_phenix_dispatchers")):
-    env.build_options.skip_phenix_dispatchers = False
-  # XXX backward compatibility 2015-09-05
-  if not hasattr(env.build_options, "enable_boost_threads"):
-    env.build_options.enable_boost_threads = default_enable_boost_threads
-  # XXX backward compatibility 2016-01-08
-  if not hasattr(env, 'explicitly_requested_modules'):
-    env.explicitly_requested_modules = set()
-  # XXX backward compatibility 2016-06-06
-  if not hasattr(env, 'extra_command_line_locations'):
-    env.extra_command_line_locations = []
   # XXX backward compatibility 2017-11-03
   if not hasattr(env.build_options, "python3warn"):
     env.build_options.python3warn = 'none'
