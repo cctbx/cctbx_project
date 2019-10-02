@@ -104,7 +104,7 @@ class RefineRot(PixelRefinement):
 
     def _evaluate_averageI(self):
         """model_Lambda means expected intensity in the pixel"""
-        self.model_Lambda = self.tilt_plane + self.scale_fac * self.model_bragg_spots
+        self.model_Lambda = self.tilt_plane + self.scale_fac * self.scale_fac * self.model_bragg_spots
 
     def _unpack_params(self, i_spot):
         self.a = self.x[i_spot]
@@ -118,9 +118,9 @@ class RefineRot(PixelRefinement):
     def _evaluate_log_averageI(self):
         # fix log(x<=0)
         self.log_Lambda = np.log(self.model_Lambda)
-        if any((self.model_Lambda <= 0).ravel()):
-            print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
-            #raise ValueError("model of Bragg spots cannot have negative intensities...")
+        #if any((self.model_Lambda <= 0).ravel()):
+        #    print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
+        #    raise ValueError("model of Bragg spots cannot have negative intensities...")
         self.log_Lambda[self.model_Lambda <= 0] = 0
 
     def compute_functional_and_gradients(self):
@@ -167,7 +167,7 @@ class RefineRot(PixelRefinement):
             g[self.rotZ_xpos] += (one_minus_k_over_Lambda * (self.dRotZ)).sum()
 
             # scale factor derivative
-            g[-1] += ((self.model_bragg_spots) * one_minus_k_over_Lambda).sum()
+            g[-1] += (self.model_bragg_spots * one_minus_k_over_Lambda).sum()
 
         self.D.raw_pixels *= 0
         self.print_step("LBFGS stp", f)

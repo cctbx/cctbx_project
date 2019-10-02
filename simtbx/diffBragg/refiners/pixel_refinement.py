@@ -18,6 +18,9 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
     def __init__(self):
         self.use_curvatures = False
+        self.refine_background_planes = True
+        self.refine_Amatrix = True
+        self.refine_crystal_scale = True
         self.plot_images = False
         self.trad_conv = False
         self.trad_conv_eps = 0.05
@@ -171,8 +174,6 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self._setup()
         self._cache_roi_arrays()
         if self.use_curvatures:
-            #from IPython import embed
-            #embed()
             self.minimizer = self.lbfgs_run(
                 target_evaluator=self,
                 min_iterations=self.mn_iter,
@@ -248,3 +249,33 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         if not isinstance(val, bool):
             raise ValueError("use_curvatures should be boolean")
         self._use_curvatures = val
+
+    @property
+    def refine_background_planes(self):
+        return self._refine_background_planes
+
+    @refine_background_planes.setter
+    def refine_background_planes(self, val):
+        if not isinstance(val, bool):
+            raise ValueError("refine background planes should be a boolean")
+        self._refine_background_planes = val
+
+    @property
+    def refine_Amatrix(self):
+        return self._refine_Amatrix
+
+    @refine_Amatrix.setter
+    def refine_Amatrix(self, val):
+        if not isinstance(val, bool):
+            raise ValueError("refine background planes should be a boolean")
+        self._refine_Amatrix = val
+
+    @property
+    def refine_crystal_scale(self):
+        return self._refine_crystal_scale
+
+    @refine_crystal_scale.setter
+    def refine_crystal_scale(self, val):
+        if not isinstance(val, bool):
+            raise ValueError("refine background planes should be a boolean")
+        self._refine_crystal_scale = val
