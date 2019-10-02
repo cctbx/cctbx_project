@@ -140,7 +140,7 @@ electron density values/CC.
     # if readyset can be run as class, filename could be avoided
     ligand_manager = validate_ligands.manager(
       model = model,
-      model_fn = model_fn,
+#      model_fn = model_fn,
       fmodel = fmodel,
       params = self.params.validate_ligands,
       log   = self.logger)
