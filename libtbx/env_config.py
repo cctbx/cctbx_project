@@ -1714,7 +1714,10 @@ selfx:
     if not os.path.isdir(bin_directory):
       return # do not create console_scripts dispatchers, only point to them
 
-    base_bin_dispatchers = set(os.listdir(bin_directory))
+    base_bin_dispatchers = os.listdir(bin_directory)
+    if os.name == "nt":
+      base_bin_dispatchers = [os.path.splitext(f)[0] if os.path.splitext(f)[1] in ['.bat', '.exe'] else f for f in base_bin_dispatchers]
+    base_bin_dispatchers = set(base_bin_dispatchers)
     existing_dispatchers = filter(lambda f: f.startswith('libtbx.'), self.bin_path.listdir())
     existing_dispatchers = set([f[7:] for f in existing_dispatchers])
     entry_point_candidates = base_bin_dispatchers - existing_dispatchers
