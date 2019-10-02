@@ -825,7 +825,6 @@ Wait for the command to finish, then try again.""" % vars())
         force_32bit=command_line.options.force_32bit,
         msvc_arch_flag=command_line.options.msvc_arch_flag,
         enable_cxx11=command_line.options.enable_cxx11,
-        python3warn=command_line.options.python3warn,
         skip_phenix_dispatchers=command_line.options.skip_phenix_dispatchers)
       self.build_options.get_flags_from_environment()
       if (self.build_options.use_conda):
@@ -837,8 +836,6 @@ Wait for the command to finish, then try again.""" % vars())
     if (command_line.options.build_boost_python_extensions is not None):
       self.build_options.build_boost_python_extensions \
         = command_line.options.build_boost_python_extensions
-    if command_line.options.python3warn:
-      self.build_options.python3warn = command_line.options.python3warn
     self.reset_module_registry()
     module_names.insert(0, "libtbx")
     for module_name in module_names:
@@ -1176,18 +1173,6 @@ Wait for the command to finish, then try again.""" % vars())
     print('LIBTBX_PYEXE="%s"' % (
       self.python_exe.dirname() / "$LIBTBX_PYEXE_BASENAME").sh_value(), file=f)
     print('export LIBTBX_PYEXE', file=f)
-    if self.build_options.python3warn in ('warn', 'fail'):
-      # disable warnings for 3rd party modules
-      py3warn_ignores = ( # must specify each module exactly
-        'mock.mock', 'numpy.core', 'py._code.code', 'pytest_timeout',
-        '_pytest.capture', '_pytest.fixtures', '_pytest.python',
-        'wx._controls', 'wx._core', 'wx._gdi', 'wx._misc',
-        'mysql.connector.authentication', 'mysql.connector.catch23',
-        'mysql.connector.dbapi', 'mysql.connector.network',
-      )
-      print('PYTHONWARNINGS="{}"'.format(",".join(
-        'ignore::DeprecationWarning:' + module for module in py3warn_ignores)), file=f)
-      print('export PYTHONWARNINGS', file=f)
 
     # Since El Capitan, Apple Python does not allow relative rpath in shared
     # libraries. Thus any cctbx-based script will fail with an import error
@@ -1221,10 +1206,6 @@ Wait for the command to finish, then try again.""" % vars())
         qnew_tmp = qnew
         if self.python_version_major_minor[0] == 3:
           qnew_tmp = '' # -Q is gone in Python3.
-        if self.build_options.python3warn == 'warn':
-          qnew_tmp += " -3"
-        elif self.build_options.python3warn == 'fail':
-          qnew_tmp += " -3 -Werror::DeprecationWarning"
         cmd += ' %s"$LIBTBX_PYEXE"%s' % (pre_cmd(), qnew_tmp)
       start_python = False
       if (source_is_py):
@@ -1284,10 +1265,6 @@ Wait for the command to finish, then try again.""" % vars())
     qnew_tmp = qnew
     if self.python_version_major_minor[0] == 3:
       qnew_tmp = '' # -Q is gone in Python3.
-    if self.build_options.python3warn == 'warn':
-      qnew_tmp += " -3"
-    elif self.build_options.python3warn == 'fail':
-      qnew_tmp += " -3 -Werror::DeprecationWarning"
     if source_file.ext().lower() == '.py':
       print('@"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (
         qnew_tmp, source_file.bat_value()), file=f)
@@ -2204,7 +2181,6 @@ class build_options:
         force_32bit=False,
         msvc_arch_flag=default_msvc_arch_flag,
         enable_cxx11=default_enable_cxx11,
-        python3warn='none',
         skip_phenix_dispatchers=False):
 
     adopt_init_args(self, locals())
@@ -2265,7 +2241,6 @@ class build_options:
     print("Use opt_resources if available:", self.opt_resources, file=f)
     print("Use environment flags:", self.use_environment_flags, file=f)
     print("Enable C++11:", self.enable_cxx11, file=f)
-    print("Python3 migration warning policy:", self.python3warn, file=f)
     if( self.use_environment_flags ):
       print("  CXXFLAGS = ", self.env_cxxflags, file=f)
       print("  CFLAGS = ", self.env_cflags, file=f)
@@ -2484,11 +2459,6 @@ class pre_process_args:
       action="store_true",
       default=default_enable_cxx11,
       help="use C++11 standard")
-    parser.option(None, "--python3warn", action="store", default=None,
-      help="Python3 migration warnings. "
-           "'warn': print warnings when running code that may cause problems in Python 3. "
-           "'fail': stop execution on warnings. 'none': disable warnings (default)",
-      metavar="none|warn|fail")
     parser.option("--skip_phenix_dispatchers",
       action="store_true",
       default=False,
@@ -2621,9 +2591,6 @@ def unpickle():
   env = pickle.load(libtbx_env)
   if (env.python_version_major_minor != sys.version_info[:2]):
     env.raise_python_version_incompatible()
-  # XXX backward compatibility 2017-11-03
-  if not hasattr(env.build_options, "python3warn"):
-    env.build_options.python3warn = 'none'
   # XXX backward compatibility 2018-12-10
   if not hasattr(env.build_options, "use_conda"):
     env.build_options.use_conda = False
