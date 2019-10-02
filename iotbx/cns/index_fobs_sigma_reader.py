@@ -63,14 +63,17 @@ class reader(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=None):
     if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry()
     if (base_array_info is None):
       base_array_info = miller.array_info(source_type="cns_index_fobs_sigma")
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
-      indices=self.indices()).auto_anomalous()
+      indices=self.indices(), anomalous_flag=anomalous)
+    if anomalous is None:
+      miller_set = miller_set.auto_anomalous()
     return [miller.array(
       miller_set=miller_set,
       data=self.data(),

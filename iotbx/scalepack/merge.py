@@ -116,11 +116,12 @@ class reader(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
-    if (base_array_info is None):
+        base_array_info=None,
+        anomalous=None):
+    if base_array_info is None:
       base_array_info = miller.array_info(source_type="scalepack_merge")
     crystal_symmetry_from_file = self.crystal_symmetry()
-    if (self.anomalous):
+    if anomalous or self.anomalous:
       labels = ["I(+)", "SIGI(+)", "I(-)", "SIGI(-)"]
     else:
       labels = ["I", "SIGI"]
@@ -130,7 +131,7 @@ class reader(object):
           other_symmetry=crystal_symmetry,
           force=force_symmetry),
         indices=self.miller_indices,
-        anomalous_flag=self.anomalous),
+        anomalous_flag=anomalous or self.anomalous),
       data=self.i_obs,
       sigmas=self.sigmas)
       .set_info(base_array_info.customized_copy(
@@ -142,12 +143,15 @@ class reader(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=None):
     return [self.as_miller_array(
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
       merge_equivalents=merge_equivalents,
-      base_array_info=base_array_info)]
+      base_array_info=base_array_info,
+      anomalous=anomalous,
+    )]
 
 def format_f8_1_or_i8(h, label, value):
   if (value < 1.e6): return "%8.1f" % value

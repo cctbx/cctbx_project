@@ -62,7 +62,8 @@ class reader(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=None):
     if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry()
     if (base_array_info is None):
