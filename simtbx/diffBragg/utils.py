@@ -1,4 +1,5 @@
 from scipy import ndimage
+from scipy.optimize import minimize
 from scitbx.matrix import sqr
 import numpy as np
 import pylab as plt
@@ -100,7 +101,46 @@ def tilting_plane(img, mask=None, zscore=2 ):
     guess = np.array([np.ones_like(x), x, y]).T
     coeff, r, rank, s = np.linalg.lstsq(guess, z, rcond=-1)
     ev = (coeff[0] + coeff[1]*XX + coeff[2]*YY)
-    return ev.reshape(img.shape), out2d, coeff
+    return ev.reshape(img.shape), out2d, coeff, True
+
+
+def _positive_plane(x, xcoord, ycoord, data):
+    return np.sum((np.exp(x[0]) + np.exp(x[1])*xcoord + np.exp(x[2])*ycoord - data)**2)
+
+
+def positive_tilting_plane(img, mask=None, zscore=2):
+    """
+    :param img:  numpy image
+    :param mask:  boolean mask, same shape as img, True is good pixels
+        mask should include strong spot pixels and bad pixels, e.g. zingers
+    :param zscore: modified z-score for outlier detection, lower increases number of outliers
+    :return: tilting plane, same shape as img
+    """
+    Y, X = np.indices(img.shape)
+    YY, XX = Y.ravel(), X.ravel()
+
+    img1d = img.ravel()
+
+    if mask is None:
+        mask = np.ones(img.shape, bool)
+    mask1d = mask.ravel()
+
+    out1d = np.zeros(mask1d.shape, bool)
+    out1d[mask1d] = is_outlier(img1d[mask1d].ravel(), zscore)
+    out2d = out1d.reshape(img.shape)
+
+    fit_sel = np.logical_and(~out2d, mask)  # fit plane to these points, no outliers, no masked
+    x, y, z = X[fit_sel], Y[fit_sel], img[fit_sel]
+    out = minimize(
+        fun=_positive_plane,
+        x0=np.array([1e-2, 1e-2, 1e-2]),
+        args=(x, y, z),
+        method='Nelder-Mead')
+        # bounds=((0, 1e10), (0, 1e10), (0, 1e10)),
+        # method='L-BFGS-B')
+    coeff = out.x
+    ev = (np.exp(coeff[0]) + np.exp(coeff[1])*XX + np.exp(coeff[2])*YY)
+    return ev.reshape(img.shape), out2d, coeff, out.success
 
 
 def refine_model_from_angles(dxcryst, angles=(0, 0, 0)):
@@ -123,65 +163,6 @@ def refine_model_from_angles(dxcryst, angles=(0, 0, 0)):
     dxcryst_refined = C.dxtbx_crystal_with_missetting()
 
     return dxcryst_refined
-
-
-class TetragonalManagerOld(object):
-    """
-    helper class for derivatives of unit cells
-    Used in testing
-    """
-
-    def __init__(self, a=55, c=77):
-        self.a = a
-        self.c = c
-
-    @property
-    def a(self):
-        return self._a
-
-    @a.setter
-    def a(self, val):
-        self._a = val
-
-    @property
-    def b(self):
-        return self.a
-
-    @property
-    def c(self):
-        return self._c
-
-    @c.setter
-    def c(self, val):
-        self._c = val
-
-    @property
-    def alpha(self):
-        return 90
-
-    @property
-    def beta(self):
-        return 90
-
-    @property
-    def gamma(self):
-        return 90
-
-    @property
-    def B_realspace(self):
-        return sqr((self.a, 0, 0, 0, self.a, 0, 0, 0, self.c))
-
-    @property
-    def B_recipspace(self):
-        return self.B_realspace.inverse().transpose()
-
-    @property
-    def dB_da_real(self):
-        return sqr((1, 0, 0, 0, 1, 0, 0, 0, 0))
-
-    @property
-    def dB_dc_real(self):
-        return sqr((0, 0, 0, 0, 0, 0, 0, 0, 1))
 
 
 def lower_triangle(matrix_sqr):
@@ -293,6 +274,7 @@ def process_simdata(spots, img, thresh=20, plot=False):
     if plot:
         patches = []
     img_shape = img.shape  # TODO: verify fast slow scan
+    successes = []
     for i_spot, (x_com, y_com) in enumerate(zip(fs_spot, ss_spot)):
         i1 = int(max(x_com - shoebox_sz / 2., 0))
         i2 = int(min(x_com + shoebox_sz / 2., img_shape[0]-1))
@@ -302,10 +284,15 @@ def process_simdata(spots, img, thresh=20, plot=False):
         shoebox_img = img[j1:j2, i1:i2]
         shoebox_mask = is_bg_pixel[j1:j2, i1:i2]
 
-        tilt, bgmask, coeff = tilting_plane(
+        tilt, bgmask, coeff, success = tilting_plane(
             shoebox_img,
             mask=shoebox_mask,  # mask specifies which spots are bg pixels...
             zscore=2)
+        #tilt, bgmask, coeff, success = positive_tilting_plane(
+        #    shoebox_img,
+        #    mask=shoebox_mask,  # mask specifies which spots are bg pixels...
+        #    zscore=2)
+        successes.append(success)
 
         tilt_abc[i_spot] = coeff[1], coeff[2], coeff[0]  # store as fast-scan coeff, slow-scan coeff, offset coeff
 
@@ -322,5 +309,8 @@ def process_simdata(spots, img, thresh=20, plot=False):
         plt.imshow(img, vmin=0, vmax=200)
         plt.gca().add_collection(patch_coll)
         plt.show()
+
+    spot_roi = spot_roi[successes]
+    tilt_abc = tilt_abc[successes]
     return spot_roi, tilt_abc
 

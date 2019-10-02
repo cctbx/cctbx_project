@@ -113,23 +113,27 @@ for i_param in range(n_ucell_params):
 # STEP8
 # iterate over the parameters and do a finite difference test for each one
 # parameter shifts:
-shifts = [1e-3 * (2**i) for i in range(1, 12, 2)]
+shifts = [1e-4 * (2**i) for i in range(1, 12, 2)]
 
 if not args.refine:
     for i_param in range(n_ucell_params):
+        if i_param < 3:
+            continue
         analy_deriv = derivs[i_param]
         diffs = []
         diffs2 = []
-        for i_shift, param_shift in enumerate(shifts):
+        for i_shift, percent_shift in enumerate(shifts):
 
             if is_tet:
                 var = [ucell[0], ucell[2]]
             else:
                 var = [ucell[0], ucell[1], ucell[2], ucell[4]*np.pi/180]
 
-            name = UcellMan.variable_names[i_param]
-            if "alpha" in name or "beta" in name or "gamma" in name:
-                param_shift = param_shift * 1e-4  # rescale the radian parameters
+            #name = UcellMan.variable_names[i_param]
+            #if "alpha" in name or "beta" in name or "gamma" in name:
+            #    param_shift = param_shift * 1e-4  # rescale the radian parameters
+
+            param_shift = var[i_param] * percent_shift
 
             var[i_param] += param_shift
             UcellMan.variables = var
@@ -263,6 +267,9 @@ SIM.include_noise = True
 SIM.D.add_diffBragg_spots()
 spots = SIM.D.raw_pixels.as_numpy_array()
 SIM._add_background()
+bg_img = SIM.D.raw_pixels.as_numpy_array()
+
+SIM.D.readout_noise_adu = 0
 SIM._add_noise()
 # this is the ground truth image:
 img = SIM.D.raw_pixels.as_numpy_array()
@@ -301,6 +308,7 @@ RUC = RefineUcell(
     plot_images=args.plot,
     ucell_manager=UcellMan)
 
+RUC.refine_background_planes = False #True
 RUC.trad_conv = True
 RUC.trad_conv_eps = 1e-4
 RUC.max_calls = 150
