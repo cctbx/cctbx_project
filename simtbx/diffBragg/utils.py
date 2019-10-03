@@ -190,7 +190,7 @@ def get_diffBragg_instance():
     flux = 1e15
     SHAPE = shapetype.Gauss
 
-    NCELLS_ABC = (15, 15, 15)
+    NCELLS_ABC = 15  # means (15, 15, 15)
 
     beam_descr = {'direction': (0.0, 0.0, 1.0),
                   'divergence': 0.0,
@@ -288,6 +288,7 @@ def process_simdata(spots, img, thresh=20, plot=False):
             shoebox_img,
             mask=shoebox_mask,  # mask specifies which spots are bg pixels...
             zscore=2)
+        success = True
         #tilt, bgmask, coeff, success = positive_tilting_plane(
         #    shoebox_img,
         #    mask=shoebox_mask,  # mask specifies which spots are bg pixels...

@@ -117,8 +117,6 @@ shifts = [1e-4 * (2**i) for i in range(1, 12, 2)]
 
 if not args.refine:
     for i_param in range(n_ucell_params):
-        if i_param < 3:
-            continue
         analy_deriv = derivs[i_param]
         diffs = []
         diffs2 = []
@@ -241,9 +239,6 @@ a2_real, b2_real, c2_real = sqr(uctbx.unit_cell(ucell2).orthogonalization_matrix
 C2 = Crystal(a2_real, b2_real, c2_real, symbol)
 
 print ("Ensure the U matrices are the same for the ground truth and perturbation")
-np.random.seed(1)
-axis = np.random.random(3)
-axis /= np.linalg.norm(axis)
 C2.rotate_around_origin(rot_axis, rot_ang)
 assert np.allclose(C.get_U(), C2.get_U())
 
@@ -308,10 +303,10 @@ RUC = RefineUcell(
     plot_images=args.plot,
     ucell_manager=UcellMan)
 
-RUC.refine_background_planes = False #True
+RUC.refine_background_planes = True
 RUC.trad_conv = True
-RUC.trad_conv_eps = 1e-4
-RUC.max_calls = 150
+RUC.trad_conv_eps = 1e-5
+RUC.max_calls = 250
 RUC.use_curvatures = args.curvatures
 RUC.run()
 
