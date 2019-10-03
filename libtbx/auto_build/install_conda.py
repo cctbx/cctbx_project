@@ -156,7 +156,9 @@ class conda_manager(object):
                             platform=conda_platform[platform.system()])),
     'xfel': default_file,
     'labelit': default_file,
-    'dials': default_file,
+    'dials': os.path.join('dials', '.conda-envs',
+      default_format.format(builder='dials', version=version,
+                            platform=conda_platform[platform.system()])),
     'external': default_file,
     'molprobity': default_file,
     'qrefine': default_file,
@@ -606,6 +608,8 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       command_list.append('--copy')
     if offline and not yaml_format:
       command_list.append('--offline')
+    if builder == "dials":
+      command_list.append("-y")
     # RuntimeError is raised on failure
     print('{text} {builder} environment with:\n  {filename}'.format(
           text=text_messages[0], builder=builder, filename=filename),
