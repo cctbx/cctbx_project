@@ -305,8 +305,8 @@ RUC = RefineUcell(
 
 RUC.refine_background_planes = True
 RUC.trad_conv = True
-RUC.trad_conv_eps = 1e-5
-RUC.max_calls = 250
+RUC.trad_conv_eps = 1e-4
+RUC.max_calls = 150
 RUC.use_curvatures = args.curvatures
 RUC.run()
 
