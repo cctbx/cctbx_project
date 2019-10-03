@@ -1212,6 +1212,8 @@ class MainWindow(wx.Frame):
       if self.unitcell_sentinel is None or not self.unitcell_sentinel.active:
         self.start_unitcell_sentinel()
         self.run_window.unitcell_light.change_status('on')
+    elif name == self.run_window.datasets_tab.name:
+      self.run_window.datasets_tab.refresh_datasets()
     elif name == self.run_window.merge_tab.name:
       self.run_window.merge_tab.find_trials()
 
@@ -1263,6 +1265,7 @@ class RunWindow(wx.Panel):
     #self.spotfinder_tab = SpotfinderTab(self.main_nbook, main=self.parent) # Disabled
     self.runstats_tab = RunStatsTab(self.main_nbook, main=self.parent)
     self.unitcell_tab = UnitCellTab(self.main_nbook, main=self.parent)
+    self.datasets_tab = DatasetTab(self.main_nbook, main=self.parent)
     self.merge_tab = MergeTab(self.main_nbook, main=self.parent)
     self.main_nbook.AddPage(self.runs_tab, self.runs_tab.name)
     self.main_nbook.AddPage(self.trials_tab, self.trials_tab.name)
@@ -1270,6 +1273,7 @@ class RunWindow(wx.Panel):
     #self.main_nbook.AddPage(self.spotfinder_tab, self.spotfinder_tab.name) # Disabled
     self.main_nbook.AddPage(self.runstats_tab, self.runstats_tab.name)
     self.main_nbook.AddPage(self.unitcell_tab, self.unitcell_tab.name)
+    self.main_nbook.AddPage(self.datasets_tab, self.datasets_tab.name)
     self.main_nbook.AddPage(self.merge_tab, self.merge_tab.name)
 
     self.sentinel_box = wx.FlexGridSizer(1, 6, 0, 20)
@@ -2539,6 +2543,73 @@ class UnitCellTab(BaseTab):
       self.unit_cell_panel.SetSizer(self.unit_cell_sizer)
       self.unit_cell_panel.Layout()
 
+class DatasetTab(BaseTab):
+  def __init__(self, parent, main):
+    BaseTab.__init__(self, parent=parent)
+    self.name = 'Datasets'
+
+    self.main = main
+
+    self.show_active_only = False
+
+    self.dataset_panel = ScrolledPanel(self, size=(200, 200))
+    self.dataset_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.dataset_panel.SetSizer(self.dataset_sizer)
+
+    self.btn_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.btn_sizer.AddGrowableCol(0)
+    self.btn_add_dataset = wx.Button(self, label='New Dataset', size=(120, -1))
+    self.btn_active_only = wx.ToggleButton(self,
+                                           label='Show Only Active Datasets',
+                                    size=(180, self.btn_add_dataset.GetSize()[1]))
+    self.btn_sizer.Add(self.btn_active_only, flag=wx.ALIGN_RIGHT)
+    self.btn_sizer.Add(self.btn_add_dataset)
+
+    self.main_sizer.Add(self.dataset_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.btn_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Bindings
+    self.Bind(wx.EVT_BUTTON, self.onAddDataset, self.btn_add_dataset)
+    self.Bind(wx.EVT_TOGGLEBUTTON, self.onActiveOnly, self.btn_active_only)
+
+    #self.refresh_datasets()
+
+  def refresh_datasets(self):
+    self.dataset_sizer.Clear(deleteWindows=True)
+    self.all_datasets = self.main.db.get_all_datasets()
+    for dataset in self.all_datasets:
+      if self.show_active_only:
+        if dataset.active:
+          self.add_dataset(dataset=dataset)
+      else:
+        self.add_dataset(dataset=dataset)
+
+    self.dataset_panel.SetSizer(self.dataset_sizer)
+    self.dataset_sizer.Layout()
+    self.dataset_panel.SetupScrolling(scrollToTop=False)
+
+  def add_dataset(self, dataset):
+    new_dataset = DatasetPanel(self.dataset_panel,
+                           db=self.main.db,
+                           dataset=dataset,
+                           box_label='Dataset {} {}'.format(dataset.dataset_id,
+                             dataset.name[:min(len(dataset.name), 10)] if dataset.name is not None else ""))
+    new_dataset.chk_active.SetValue(dataset.active)
+    new_dataset.refresh_dataset()
+    self.dataset_sizer.Add(new_dataset, flag=wx.EXPAND | wx.ALL, border=10)
+
+  def onAddDataset(self, e):
+    new_dataset_dlg = dlg.DatasetDialog(self, db=self.main.db)
+    new_dataset_dlg.Fit()
+
+    if new_dataset_dlg.ShowModal() == wx.ID_OK:
+      self.refresh_datasets()
+
+  def onActiveOnly(self, e):
+    self.show_active_only = self.btn_active_only.GetValue()
+    self.refresh_datasets()
+
+
 class MergeTab(BaseTab):
 
   def __init__(self, parent, main, prefix='prime'):
@@ -3034,6 +3105,106 @@ class TrialPanel(wx.Panel):
     if (rblock_dlg.ShowModal() == wx.ID_OK):
       wx.CallAfter(self.refresh_trial)
     rblock_dlg.Destroy()
+
+class DatasetPanel(wx.Panel):
+  ''' A scrolled panel that contains dataset and task controls '''
+
+  def __init__(self, parent, db, dataset, box_label=None):
+    wx.Panel.__init__(self, parent=parent, size=(270, 200))
+
+    self.db = db
+    self.dataset = dataset
+    self.parent = parent
+
+    dataset_box = wx.StaticBox(self, label=box_label)
+    self.main_sizer = wx.StaticBoxSizer(dataset_box, wx.VERTICAL)
+
+    self.task_panel = ScrolledPanel(self, size=(150, 180))
+    self.task_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.task_panel.SetSizer(self.task_sizer)
+    self.one_task_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.add_panel = wx.Panel(self)
+    self.add_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.add_panel.SetSizer(self.add_sizer)
+
+    # Add "New task" button to a separate sizer (so it is always on bottom)
+    self.btn_add_task = wx.Button(self.add_panel, label='New Task',
+                                   size=(200, -1))
+    self.btn_select_tasks = wx.Button(self.add_panel, label='Select Tasks',
+                                       size=(200, -1))
+    self.chk_active = wx.CheckBox(self.add_panel, label='Active Dataset')
+    self.chk_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.chk_sizer.Add(self.chk_active, flag=wx.EXPAND)
+
+    self.add_sizer.Add(self.btn_add_task,
+                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
+                       border=10)
+    self.add_sizer.Add(self.btn_select_tasks,
+                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
+                       border=10)
+    self.add_sizer.Add(self.chk_sizer,
+                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_LEFT,
+                       border=10)
+
+    self.main_sizer.Add(self.task_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.add_panel, flag=wx.ALL | wx.ALIGN_BOTTOM, border=5)
+
+    # Bindings
+    self.Bind(wx.EVT_BUTTON, self.onAddTask, self.btn_add_task)
+    self.Bind(wx.EVT_BUTTON, self.onSelectTasks, self.btn_select_tasks)
+    self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
+
+    self.SetSizer(self.main_sizer)
+
+  def onToggleActivity(self, e):
+    if self.chk_active.GetValue():
+      self.dataset.active = True
+    else:
+      self.dataset.active = False
+
+  def onAddTask(self, e):
+    task_dlg = dlg.TaskDialog(self, dataset=self.dataset,
+                                    db=self.db)
+    task_dlg.Fit()
+
+    if (task_dlg.ShowModal() == wx.ID_OK):
+      self.refresh_dataset()
+    task_dlg.Destroy()
+
+  def onSelectTasks(self, e):
+    tasksel_dlg = dlg.SelectTasksDialog(self, dataset=self.dataset,
+                                           db=self.db)
+    tasksel_dlg.Fit()
+
+    if (tasksel_dlg.ShowModal() == wx.ID_OK):
+      self.refresh_dataset()
+    tasksel_dlg.Destroy()
+
+  def refresh_dataset(self):
+    self.task_sizer.DeleteWindows()
+    for task in self.dataset.tasks:
+      self.draw_task_button(task)
+    self.task_panel.Layout()
+    self.task_panel.SetupScrolling(scrollToTop=False)
+
+  def draw_task_button(self, task):
+    ''' Add new run block button '''
+    new_task = gctr.TaskCtrl(self.task_panel, task=task)
+    self.Bind(wx.EVT_BUTTON, self.onTaskOptions, new_task.new_task)
+    self.task_sizer.Add(new_task,
+                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
+                        border=5)
+
+  def onTaskOptions(self, e):
+    ''' Open dialog and change task options '''
+    task = e.GetEventObject().task
+    task_dlg = dlg.TaskDialog(self, task=task,
+                                    db=self.db)
+    task_dlg.Fit()
+
+    if (task_dlg.ShowModal() == wx.ID_OK):
+      wx.CallAfter(self.refresh_dataset)
+    task_dlg.Destroy()
 
 class RunEntry(wx.Panel):
   ''' Adds run row to table, with average and view buttons'''
