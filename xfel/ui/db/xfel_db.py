@@ -11,6 +11,8 @@ from xfel.ui.db.tag import Tag
 from xfel.ui.db.job import Job
 from xfel.ui.db.stats import Stats
 from xfel.ui.db.experiment import Cell, Bin, Isoform, Event
+from xfel.ui.db.dataset import Dataset
+from xfel.ui.db.task import Task
 
 from xfel.ui.db import get_db_connection
 from six.moves import range
@@ -22,7 +24,9 @@ from xfel.command_line.experiment_manager import initialize as initialize_base
 class initialize(initialize_base):
   expected_tables = ["run", "job", "rungroup", "trial", "tag", "run_tag", "event", "trial_rungroup",
                      "imageset", "imageset_event", "beam", "detector", "experiment",
-                     "crystal", "cell", "cell_bin", "bin", "isoform", "rungroup_run"]
+                     "crystal", "cell", "cell_bin", "bin", "isoform", "rungroup_run",
+                     "dataset", "dataset_version", "dataset_version_job", "dataset_tag",
+                     "dataset_task", "task"]
 
   def __getattr__(self, prop):
     if prop == "dbobj":
@@ -208,6 +212,8 @@ class db_application(object):
     self.dbobj = None
 
   def execute_query(self, query, commit = False):
+    from MySQLdb import OperationalError
+
     if self.params.db.verbose:
       from time import time
       st = time()
@@ -702,6 +708,25 @@ class xfel_db_application(db_application):
 
   def get_stats(self, **kwargs):
     return Stats(self, **kwargs)
+
+  def create_dataset(self, **kwargs):
+    return Dataset(self, **kwargs)
+
+  def get_all_datasets(self):
+    return self.get_all_x(Dataset, "dataset")
+
+  def get_dataset_tasks(self, dataset_id):
+    tag = self.params.experiment_tag
+    query = """SELECT d_t.task_id FROM `%s_dataset_task` d_t
+               WHERE d_t.dataset_id = %d""" % (tag, dataset_id)
+    cursor = self.execute_query(query)
+    task_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    if len(task_ids) == 0:
+      return []
+    return self.get_all_x(Task, "task", where = "WHERE task.id IN (%s)"%",".join(task_ids))
+
+  def create_task(self, **kwargs):
+    return Task(self, **kwargs)
 
 # Deprecated, but preserved here in case it proves useful later
 """
