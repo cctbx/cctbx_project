@@ -739,7 +739,11 @@ class HKLViewFrame() :
           for e in self.hklfile_history:
             if "TNCS NMOL" in e and "VECTOR" in e:
               svec = e.split()[-3:]
-              self.tncsvec = [ float(svec[0]), float(svec[1]), float(svec[2]) ]
+              t1 = float(svec[0])
+              t2 = float(svec[1])
+              t3 = float(svec[2])
+              if (t1*t1 + t2*t2 + t3*t3) > 0.0:
+                self.tncsvec = [ t1, t2, t3 ]
       except Exception as e :
         self.NewFileLoaded=False
         self.mprint(to_str(e))

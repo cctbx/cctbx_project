@@ -323,10 +323,7 @@ class hklview_3d:
      or has_phil_path(diff_phil, "merge_data") \
      or has_phil_path(diff_phil, "miller_array_operation") \
      or has_phil_path(diff_phil, "scene_id")  \
-     or has_phil_path(diff_phil, "nbins") \
      or has_phil_path(diff_phil, "camera_type") \
-     or has_phil_path(diff_phil, "bin_scene_label") \
-     or has_phil_path(diff_phil, "scene_bin_thresholds") \
      or has_phil_path(diff_phil, "spacegroup_choice") \
      or has_phil_path(diff_phil, "using_space_subgroup") \
      or has_phil_path(diff_phil, "viewer") \
@@ -352,8 +349,12 @@ class hklview_3d:
     msg = ""
     if has_phil_path(diff_phil, "show_missing") \
      or has_phil_path(diff_phil, "show_only_missing") \
-     or has_phil_path(diff_phil, "show_systematic_absences"):
+     or has_phil_path(diff_phil, "show_systematic_absences") \
+     or has_phil_path(diff_phil, "scene_bin_thresholds") \
+     or has_phil_path(diff_phil, "bin_scene_label") \
+     or has_phil_path(diff_phil, "nbins"):
       self.binvals = self.calc_bin_thresholds(curphilparam.bin_scene_label, curphilparam.nbins)
+      self.sceneisdirty = True
 
     if has_phil_path(diff_phil, "camera_type"):
       self.set_camera_type()
@@ -2099,9 +2100,13 @@ mysocket.onmessage = function (e)
     #print "self.websockclient: ",
     message = u"" + msgtype + self.msgdelim + str(msg)
     if self.websockclient:
+      nwait = 0.0
       while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
         or "CurrentViewOrientation" in self.lastmsg):
         sleep(self.sleeptime)
+        nwait += self.sleeptime
+        if nwait > self.handshakewait and self.browserisopen:
+          break
       self.server.send_message(self.websockclient, message )
     else:
       self.OpenBrowser()
