@@ -145,7 +145,7 @@ class RefineUcell(RefineRot):
                     self.curv[x_idx] += (d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda).sum()
 
             # scale factor derivative
-            g[-1] += (self.model_bragg_spots * one_minus_k_over_Lambda).sum()
+            g[-1] += (2*self.scale_fac*self.model_bragg_spots * one_minus_k_over_Lambda).sum()
             if self.use_curvatures:
                 self.curv[-1] += (self.model_bragg_spots * self.model_bragg_spots * k_over_squared_Lambda).sum()
 
