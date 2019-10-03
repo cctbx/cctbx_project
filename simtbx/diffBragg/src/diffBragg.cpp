@@ -30,17 +30,19 @@ void derivative_manager::increment_image(int idx, double value, double value2){
 Ncells_manager::Ncells_manager(){}
 
 void Ncells_manager::increment(
-    vec3 V, mat3 B, mat3 UR, vec3 q, mat3 Ot,
-    double Hrad, double Fcell, double Flatt, double fudge,
-    double source_I, double capture_fraction, double omega_pixel)
-    {
+        vec3 V, mat3 B, mat3 UR, vec3 q, mat3 Ot,
+        double Hrad, double Fcell, double Flatt, double fudge,
+        double source_I, double capture_fraction, double omega_pixel){
+
     vec3 dV = (UR*B*Ot).transpose()*q;
     double V_dot_dV = V*dV;
-    double dHrad = 2*V_dot_dV;
+    double dHrad = V*dV + dV*V;
     double a = 1 / 0.63 * fudge;
-    double dFlatt = -3*a*Flatt/value*dHrad;
+    double dFlatt = 3 * Flatt / value - a*Flatt*dHrad; // value in this case is Ncells_abc size
     double c = Fcell*Fcell*source_I*capture_fraction*omega_pixel;
     dI += c*2*Flatt*dFlatt;
+
+    dI2 += 0;
 };
 
 //END Ncells_abc manager
@@ -252,6 +254,8 @@ void diffBragg::initialize_managers()
         if (ucell_managers[i_uc]->refine_me)
             ucell_managers[i_uc]->initialize(sdim, fdim);
     }
+    if (Ncells_managers[0]->refine_me)
+        Ncells_managers[0]->initialize(sdim, fdim);
 }
 
 void diffBragg::vectorize_umats()
@@ -290,6 +294,10 @@ void diffBragg::refine(int refine_id){
         ucell_managers[refine_id-3]->refine_me=true;
         ucell_managers[refine_id-3]->initialize(sdim, fdim);
     }
+    else if (refine_id==9){
+        Ncells_managers[0]->refine_me=true;
+        Ncells_managers[0]->initialize(sdim, fdim);
+    }
 }
 
 void diffBragg::set_ucell_derivative_matrix(int refine_id, af::shared<double> const& value){
@@ -314,7 +322,9 @@ void diffBragg::set_ucell_second_derivative_matrix(int refine_id, af::shared<dou
                         value[6], value[7], value[8]);
 }
 
-// TODO : rename set_value and get_value because they done apply to ucell derivatives...
+/* Begin parameter set/get */
+
+// TODO : rename set_value and get_value because they dont apply to ucell derivatives...
 // this function will get exeedingly complicated because it will try to ensure all the dependent parameters get
 // adjusted when we update a given parameter that we are refining
 // For example updating Ncells_abc should also update oversample, and should also update xtal_size
@@ -336,21 +346,29 @@ void diffBragg::set_value( int refine_id, double value ){
 }
 
 double diffBragg::get_value(int refine_id){
-    return rot_managers[refine_id]->value;
+    double value;
+    if (refine_id < 3)
+        value = rot_managers[refine_id]->value;
+    else if (refine_id ==9)
+        value = Ncells_managers[0]->value;
+    return value;
 }
+/* End parameter set/get */
 
 af::flex_double diffBragg::get_derivative_pixels(int refine_id){
     if (refine_id>=0 and refine_id < 3){
         SCITBX_ASSERT(rot_managers[refine_id]->refine_me);
         return rot_managers[refine_id]->raw_pixels;
         }
-    else { //if(refine_id >=3 && refine_id < 9){
+    else if(refine_id >=3 && refine_id < 9){
         int i_uc = refine_id-3;
         SCITBX_ASSERT(i_uc >= 0);
         SCITBX_ASSERT(i_uc < 6);
         SCITBX_ASSERT(ucell_managers[i_uc]->refine_me);
         return ucell_managers[i_uc]->raw_pixels;
         }
+    else if (refine_id==9)
+        return Ncells_managers[0]->raw_pixels;
 }
 
 
@@ -862,6 +880,8 @@ void diffBragg::add_diffBragg_spots()
                     printf("Ucell managers refine status a.a=%d, b.b=%d, c.c=%d, a.b=%d, a.c=%d, b.c=%d\n",
                         ucell_managers[0]->refine_me, ucell_managers[1]->refine_me, ucell_managers[2]->refine_me,
                         ucell_managers[3]->refine_me, ucell_managers[4]->refine_me, ucell_managers[5]->refine_me);
+                    printf("Ncell managers refine status: %d, value=%f\n", Ncells_managers[0]->refine_me,
+                            Ncells_managers[0]->value);
                     printf("Bmatrix_real:\n%11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n",
                         Bmat_realspace[0]*1e10, Bmat_realspace[1]*1e10, Bmat_realspace[2]*1e10,
                         Bmat_realspace[3]*1e10, Bmat_realspace[4]*1e10, Bmat_realspace[5]*1e10,
