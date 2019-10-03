@@ -151,7 +151,7 @@ class SimData:
         self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B()#
         self.D.Umatrix = self.crystal.dxtbx_crystal.get_U()
 
-        self.D.Ncells_abc = self.crystal.Ncells_abc
+        self.D.Ncells_abc = self.crystal.Ncells_abc[0]
         self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
         self.D.mosaic_domains = self.crystal.n_mos_domains
         self.D.set_mosaic_blocks(SimData.Umats(
@@ -198,8 +198,9 @@ class SimData:
 
         self.D.vectorize_umats()  # NOTE: dont forget me!
 
-    def generate_simulated_image(self):
-        self.instantiate_diffBragg()
+    def generate_simulated_image(self, instantiate=False):
+        if instantiate:
+            self.instantiate_diffBragg()
         print ("add spots")
         self._add_nanoBragg_spots()
         self._add_background()
