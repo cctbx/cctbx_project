@@ -126,7 +126,7 @@ def process_simdata(plot=False, angles=None, perturb="rotXYZ"):
         shoebox_img = img[j1:j2, i1:i2]
         shoebox_mask = is_bg_pixel[j1:j2, i1:i2]
 
-        tilt, bgmask, coeff = utils.tilting_plane(
+        tilt, bgmask, coeff, _ = utils.tilting_plane(
             shoebox_img,
             mask=shoebox_mask,  # mask specifies which spots are bg pixels...
             zscore=2)
