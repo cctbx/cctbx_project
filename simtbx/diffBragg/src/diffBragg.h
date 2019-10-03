@@ -47,6 +47,17 @@ class rot_manager: public derivative_manager{
     mat3 R, dR, dR2;
 }; // end of rot_manager
 
+class Ncells_manager: public derivative_manager{
+  public:
+    Ncells_manager();
+    virtual ~Ncells_manager(){}
+    void increment(
+        vec3 V, mat3 B, mat3 UR, vec3 q, mat3 Ot,
+        double Hrad, double Fcell, double Flatt, double fudge,
+        double source_I, double capture_fraction, double omega_pixel);
+};
+
+
 class ucell_manager: public derivative_manager{
   public:
     ucell_manager();
@@ -119,6 +130,7 @@ class diffBragg: public nanoBragg{
   /* derivative managers */
   std::vector<boost::shared_ptr<rot_manager> > rot_managers;
   std::vector<boost::shared_ptr<ucell_manager> > ucell_managers;
+  std::vector<boost::shared_ptr<Ncells_manager> > Ncells_managers;
 
   double* floatimage_roi;
   af::flex_double raw_pixels_roi;
