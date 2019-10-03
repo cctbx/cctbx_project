@@ -119,9 +119,6 @@ class RefineUcell(RefineRot):
                     (db2*one_minus_k_over_Lambda + (db2**2) * k_over_squared_Lambda).sum()
                 self.curv[self.n_spots*2 + i_spot] += \
                     (dc2*one_minus_k_over_Lambda + (dc2**2) * k_over_squared_Lambda).sum()
-                #if self.curv[i_spot] <= 0:
-                #    from IPython import embed
-                #    embed()
 
             if self.plot_images:
                 m = Imeas[Imeas > 1e-9].mean()

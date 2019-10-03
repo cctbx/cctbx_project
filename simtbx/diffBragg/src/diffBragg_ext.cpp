@@ -8,6 +8,22 @@ namespace simtbx{
 namespace diffBragg{
 namespace boost_python { namespace {
 
+  static void  set_Nabc(simtbx::nanoBragg::diffBragg& diffBragg, double const& value) {
+      //diffBragg.Na = value;
+      //diffBragg.Nb = value;
+      //diffBragg.Nc = value;
+      ///* clear things that might override it */
+      //diffBragg.xtal_size_x = -1;
+      //diffBragg.xtal_size_y = -1;
+      //diffBragg.xtal_size_z = -1;
+      //diffBragg.update_oversample();
+      diffBragg.set_value(9, value); // FIXME 9 means Ncells parameter, fix this API
+  }
+
+  static double get_Nabc(simtbx::nanoBragg::diffBragg const& diffBragg) {
+      return diffBragg.Na;
+  }
+
   // change of basis operator see dxtbx.model.crystal.h
   static nanoBragg::mat3 get_O(simtbx::nanoBragg::diffBragg& diffBragg){
     return diffBragg.Omatrix;
@@ -145,6 +161,11 @@ namespace boost_python { namespace {
              make_function(&get_O,rbv()),
              make_function(&set_O,dcp()),
              "change of basis Omatrix")
+
+      .add_property("Ncells_abc",
+             make_function(&get_Nabc,rbv()),
+             make_function(&set_Nabc,dcp()),
+             "Get number of mosaic domains along an axis")
 
     ; // end of diffBragg extention
 
