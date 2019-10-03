@@ -1316,6 +1316,7 @@ Wait for the command to finish, then try again.""" % vars())
       elif (source_file.isfile()
             and (   not hasattr(os.path, "samefile")
                  or not reg.samefile(source_file))):
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         raise RuntimeError("Multiple sources for dispatcher:\n"
           + "  target file:\n"
           + "    %s\n" % show_string(abs(target_file))
@@ -2104,7 +2105,7 @@ class module:
   def command_line_directory_paths(self):
     result = []
     for dist_path in self.dist_paths_active():
-      for sub_dir in ["command_line", self.name+"/command_line"]+ \
+      for sub_dir in ["command_line", os.path.join(self.name, "command_line") ]+ \
         [os.path.join(a,"command_line") for a in getattr(self,"extra_command_line_locations",[])]:
         path = dist_path / sub_dir
         if path.isdir():
