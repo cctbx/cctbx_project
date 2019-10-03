@@ -271,6 +271,7 @@ class NGL_HKLViewer(QWidget):
     self.NewHKLscenes = False
     self.updatingNbins = False
     self.binstableitemchanges = False
+    self.binTableCheckState = None
     self.millertablemenu = QMenu(self)
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
 
@@ -353,6 +354,7 @@ class NGL_HKLViewer(QWidget):
                   item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
                   item.setCheckState(Qt.Checked)
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                item.setFlags(item.flags() ^ Qt.ItemIsSelectable )
                 self.binstable.setItem(row, col, item)
             if self.bin_opacities:
               self.update_table_opacities()
@@ -587,16 +589,20 @@ class NGL_HKLViewer(QWidget):
       bin = binopacity[1]  #int(binopacity.split(",")[1])
       item = QTableWidgetItem()
       item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
-      if alpha < 0.5:
+      if alpha == 0.0:
         item.setCheckState(Qt.Unchecked)
-      else:
+      if alpha > 0.0 and alpha < 1.0:
+        item.setCheckState(Qt.PartiallyChecked)
+      if alpha == 1.0:
         item.setCheckState(Qt.Checked)
+      item.setText(str(alpha))
       item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+      item.setFlags(item.flags() ^ Qt.ItemIsSelectable )
       self.binstable.setItem(bin, 3, item)
     self.binstable_isready = True
 
 
-  def SetOpaqueAll(self):
+  def SetAllOpaqueCheckboxes(self):
     if self.binstableitemchanges:
       return
     bin_opacitieslst = eval(self.bin_opacities)
@@ -612,31 +618,52 @@ class NGL_HKLViewer(QWidget):
       self.OpaqueAllCheckbox.setCheckState(Qt.PartiallyChecked)
 
 
+  def onBinsTableitemPressed(self, item):
+    #print( "in itemPressed %s,  %s" %(item.text(), str( item.checkState())) )
+    self.binTableCheckState = item.checkState()
+    self.bintableAlpha = float(item.text())
+
+
+  def onBinsTableitemClicked(self, item):
+    #print( "in itemClicked  %s,  %s" %(item.text(), str( item.checkState())) )
+    pass
+
+
   def onBinsTableItemChanged(self, item):
+    #print( "in itemChanged %s,  %s" %(item.text(), str( item.checkState())) )
     bin = item.row()
     column = item.column()
+    bin_opacitieslst = eval(self.bin_opacities)
     try:
-      if item.checkState()==Qt.Unchecked:
-        alpha = 0.0
-      else:
-        alpha = 1.0
+      alpha = max(0.0, min(1.0, float(item.text()) ) ) # between 0 and 1 only
+      try:
+        (oldalpha, bin) = bin_opacitieslst[bin]
+        if oldalpha == float(item.text()):
+          if item.checkState()==Qt.Unchecked:
+            alpha = 0.0
+          else:
+            alpha = 1.0
+      except Exception as e:
+        pass
+
       if column==3 and self.binstable_isready: # changing opacity
-        #assert (alpha <= 1.0 and alpha >= 0.0)
-        bin_opacitieslst = eval(self.bin_opacities)
         bin_opacitieslst[bin] = (alpha, bin)
         self.bin_opacities = str(bin_opacitieslst)
-        self.SetOpaqueAll()
+        self.SetAllOpaqueCheckboxes()
         self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
-      #self.binstable.currentItem().setText( self.currentSelectedBinsTableVal)
 
 
   def onBinsTableItemSelectionChanged(self):
-    row = self.binstable.currentItem().row()
-    column = self.binstable.currentItem().column()
-    self.currentSelectedBinsTableVal = self.binstable.currentItem().text()
-    #print( "in itemSelectionChanged " + self.currentSelectedBinsTableVal)
+    item = self.binstable.currentItem()
+    #print( "in SelectionChanged %s,  %s" %(item.text(), str( item.checkState())) )
+    row = item.row()
+    column = item.column()
+    try:
+      self.currentSelectedBinsTableVal = float(item.text())
+    except Exception as e:
+      pass
 
 
   def onOpaqueAll(self):
@@ -662,13 +689,6 @@ class NGL_HKLViewer(QWidget):
   def onLoadFinished(self, val):
     pass
     #print("web page finished loading now")
-
-
-  def onBinsTableitemActivated(self, item):
-    row = item.row()
-    column = item.column()
-    currentval = item.text()
-    #print( "in itemActivated " + currentval)
 
 
   def onBinsTableCellentered(self, row, col):
@@ -1158,6 +1178,8 @@ class NGL_HKLViewer(QWidget):
     self.OpaqueAllCheckbox.clicked.connect(self.onOpaqueAll)
 
     self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
+    self.binstable.itemClicked.connect(self.onBinsTableitemClicked  )
+    self.binstable.itemPressed.connect(self.onBinsTableitemPressed  )
     self.binstable.itemSelectionChanged.connect(self.onBinsTableItemSelectionChanged  )
 
     self.BinDataComboBox = QComboBox()
