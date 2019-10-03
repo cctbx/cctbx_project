@@ -39,8 +39,9 @@ def miller_array_export_as_shelx_hklf(
     max_val = max(abs(max_val),abs(min_val))
     if (max_val > max_abs):
       scale = max_abs / max_val
-  elif scale_range is None:
-    scale_range = (-999999., 9999999.)
+  else:
+    if scale_range is None:
+      scale_range = (-999999., 9999999.)
     if (min_val < scale_range[0]):
       if not normalise_if_format_overflow:
         raise_f8_overflow(min_val)
