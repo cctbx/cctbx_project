@@ -243,12 +243,12 @@ master_defaults_str = multiprocessing_str + striping_str + combining_str + filte
 # initialize a master scope from the multiprocessing phil string
 master_defaults_scope = parse(master_defaults_str, process_includes=True)
 # update master scope with customized and local phil scopes
-master_scope = master_defaults_scope.fetch(parse(postprocessing_override_str, process_includes=True))
-master_scope = master_scope.fetch(parse(reintegration_override_str, process_includes=True))
-master_scope = master_scope.fetch(parse(recompute_mosaicity_override_str, process_includes=True))
-master_scope = master_scope.fetch(parse(refinement_override_str, process_includes=True))
-master_scope = master_scope.fetch(parse(combining_override_str, process_includes=True))
-master_scope = master_scope.fetch(parse(multiprocessing_override_str, process_includes=True))
+phil_scope = master_defaults_scope.fetch(parse(postprocessing_override_str, process_includes=True))
+phil_scope = phil_scope.fetch(parse(reintegration_override_str, process_includes=True))
+phil_scope = phil_scope.fetch(parse(recompute_mosaicity_override_str, process_includes=True))
+phil_scope = phil_scope.fetch(parse(refinement_override_str, process_includes=True))
+phil_scope = phil_scope.fetch(parse(combining_override_str, process_includes=True))
+phil_scope = phil_scope.fetch(parse(multiprocessing_override_str, process_includes=True))
 
 helpstring = """cctbx.xfel.stripe_experiment: parallel processing of an XFEL UI-generated trial.
 
@@ -358,9 +358,9 @@ def allocate_chunks(results_dir,
         (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch])))
   return batch_chunks
 
-def parse_retaining_scope(args, master_scope=master_scope):
+def parse_retaining_scope(args, phil_scope=phil_scope):
   if "-c" in args:
-    master_scope.show(attributes_level=2)
+    phil_scope.show(attributes_level=2)
     return
   file_phil = []
   cmdl_phil = []
@@ -376,7 +376,7 @@ def parse_retaining_scope(args, master_scope=master_scope):
       except Exception as e:
         raise Sorry("Unrecognized argument: %s" % arg)
 
-  run_scope = master_scope.fetch(sources=file_phil)
+  run_scope = phil_scope.fetch(sources=file_phil)
   run_scope = run_scope.fetch(sources=cmdl_phil)
   return run_scope
 
@@ -560,9 +560,9 @@ if __name__ == "__main__":
   if "-c" in sys.argv[1:]:
     expert_level = int(sys.argv[sys.argv.index("-e") + 1]) if "-e" in sys.argv[1:] else 0
     attr_level = int(sys.argv[sys.argv.index("-a") + 1]) if "-a" in sys.argv[1:] else 0
-    master_scope.show(expert_level=expert_level, attributes_level=attr_level)
+    phil_scope.show(expert_level=expert_level, attributes_level=attr_level)
     with open("striping_defaults.phil", "wb") as defaults:
-      defaults.write(master_scope.as_str())
+      defaults.write(phil_scope.as_str())
     exit()
   try:
     script = Script()
