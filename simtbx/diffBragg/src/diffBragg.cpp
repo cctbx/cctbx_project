@@ -26,6 +26,22 @@ void derivative_manager::increment_image(int idx, double value, double value2){
 }
 // END derivative manager
 
+//BEGIN origin manager
+origin_manager::origin_manager(){}
+
+void origin_manager::increment(
+    vec3 V, mat3 NABC, mat3 UR, vec3 q, mat3 Ot,
+    double Hrad, double Fcell, double Flatt, double fudge,
+    double source_I, double capture_fraction, double omega_pixel,
+    double air_path){
+
+    dI += 0;
+    dI2 += 0;
+};
+
+
+//END origin manager
+
 // BEGIN Ncells_abc manager
 Ncells_manager::Ncells_manager(){}
 
@@ -187,6 +203,8 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
 
     boost::shared_ptr<Ncells_manager> nc = boost::shared_ptr<Ncells_manager>(new Ncells_manager());
 
+    boost::shared_ptr<origin_manager> orig0 = boost::shared_ptr<origin_manager>(new origin_manager());
+
     rotX->refine_me = false;
     rotY->refine_me = false;
     rotZ->refine_me = false;
@@ -198,6 +216,8 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     uc6->refine_me = false;
 
     nc->refine_me = false;
+
+    orig0->refine_me = false;
 
     rot_managers.push_back(rotX);
     rot_managers.push_back(rotY);
@@ -211,6 +231,8 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     ucell_managers.push_back(uc6);
 
     Ncells_managers.push_back(nc);
+
+    origin_managers.push_back(orig0);
 
     // set ucell gradients, Bmatrix is upper triangular in diffBragg?
     // note setting these derivatives is only useful for parameter reduction code where one computes chain rule
@@ -371,6 +393,9 @@ void diffBragg::initialize_managers()
     }
     if (Ncells_managers[0]->refine_me)
         Ncells_managers[0]->initialize(sdim, fdim);
+    if (origin_managers[0]->refine_me)
+        origin_managers[0]->initialize(sdim, fdim);
+
 }
 
 void diffBragg::vectorize_umats()
@@ -412,6 +437,10 @@ void diffBragg::refine(int refine_id){
     else if (refine_id==9){
         Ncells_managers[0]->refine_me=true;
         Ncells_managers[0]->initialize(sdim, fdim);
+    }
+    else if (refine_id==10){
+        origin_managers[0]->refine_me=true;
+        origin_managers[0]->initialize(sdim, fdim);
     }
 }
 
@@ -482,8 +511,10 @@ af::flex_double diffBragg::get_derivative_pixels(int refine_id){
         SCITBX_ASSERT(ucell_managers[i_uc]->refine_me);
         return ucell_managers[i_uc]->raw_pixels;
         }
-    else // if (refine_id==9)
+    else if (refine_id==9)
         return Ncells_managers[0]->raw_pixels;
+     else
+     return origin_managers[0]->raw_pixels;
 }
 
 
@@ -589,6 +620,11 @@ void diffBragg::add_diffBragg_spots()
             if (Ncells_managers[0]->refine_me){
                 Ncells_managers[0]->dI =0;
                 Ncells_managers[0]->dI2 =0;
+            }
+
+            if (origin_managers[0]->refine_me){
+                origin_managers[0]->dI=0;
+                origin_managers[0]->dI2=0;
             }
 
             /* loop over sub-pixels */
@@ -901,6 +937,7 @@ void diffBragg::add_diffBragg_spots()
                                             hrad_sqr, F_cell, F_latt, fudge,
                                             source_I[source], capture_fraction, omega_pixel);
                                     }
+                                }
 
                                 /* Checkpoint for Ncells manager */
                                 if (Ncells_managers[0]->refine_me){
@@ -908,8 +945,10 @@ void diffBragg::add_diffBragg_spots()
                                             V, H0_vec, H_vec,
                                             hrad_sqr, F_cell, F_latt, fudge,
                                             source_I[source], capture_fraction, omega_pixel);
-                                    }
                                 }
+
+
+
                             }
                             /* end of mosaic loop */
                         }
