@@ -62,6 +62,18 @@ class ucell_manager: public derivative_manager{
     mat3 dB, dB2;
 };
 
+class origin_manager: public derivative_manager{
+  public:
+    origin_manager();
+    virtual ~origin_manager(){}
+    void increment(
+        vec3 V, mat3 NABC, mat3 UR, vec3 q, mat3 Ot,
+        double Hrad, double Fcell, double Flatt, double fudge,
+        double source_I, double capture_fraction, double omega_pixel,
+        double air_path);
+    mat3 dk;
+};
+
 class rotX_manager: public rot_manager{
   public:
     rotX_manager();
@@ -96,7 +108,7 @@ class diffBragg: public nanoBragg{
   /* methods for interacting with the derivative managers */
   void refine(int refine_id);
   void update_dxtbx_geoms(const dxtbx::model::Detector& detector, const dxtbx::model::Beam& beam,
-    int panel_id);
+        int panel_id);
   void set_value( int refine_id, double value);
   double get_value( int refine_id);
   af::flex_double get_derivative_pixels(int refine_id);
@@ -125,6 +137,7 @@ class diffBragg: public nanoBragg{
   std::vector<boost::shared_ptr<rot_manager> > rot_managers;
   std::vector<boost::shared_ptr<ucell_manager> > ucell_managers;
   std::vector<boost::shared_ptr<Ncells_manager> > Ncells_managers;
+  std::vector<boost::shared_ptr<origin_manager> > origin_managers;
 
   double* floatimage_roi;
   af::flex_double raw_pixels_roi;
