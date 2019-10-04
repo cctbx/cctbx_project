@@ -67,11 +67,10 @@ class origin_manager: public derivative_manager{
     origin_manager();
     virtual ~origin_manager(){}
     void increment(
-        vec3 V, mat3 NABC, mat3 UR, vec3 q, mat3 Ot,
-        double Hrad, double Fcell, double Flatt, double fudge,
-        double source_I, double capture_fraction, double omega_pixel,
-        double air_path);
-    mat3 dk;
+        vec3 V, mat3 NUBO, vec3 k_diffracted,
+        double air_path, double Hrad, double Fcell, double Flatt, double fudge,
+        double source_I, double capture_fraction, double omega_pixel);
+    vec3 dk; /* derivative of the diffracted vector along this origin component */
 };
 
 class rotX_manager: public rot_manager{
@@ -118,12 +117,15 @@ class diffBragg: public nanoBragg{
   mat3 Umatrix;
   mat3 Bmatrix;
   mat3 Omatrix;
+  mat3 NUBO;
   mat3 Bmat_realspace, NABC;
   mat3 RXYZ;
   std::vector<mat3> RotMats;
   std::vector<mat3> dRotMats;
   std::vector<mat3> R3;
 
+  vec3 k_diffracted;
+  vec3 H_vec, H0_vec;
   vec3 a_vec, ap_vec;
   vec3 b_vec, bp_vec;
   vec3 c_vec, cp_vec;
