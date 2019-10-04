@@ -2104,7 +2104,7 @@ class module:
   def command_line_directory_paths(self):
     result = []
     for dist_path in self.dist_paths_active():
-      for sub_dir in ["command_line", self.name+"/command_line"]+ \
+      for sub_dir in ["command_line", os.path.join(self.name, "command_line") ]+ \
         [os.path.join(a,"command_line") for a in getattr(self,"extra_command_line_locations",[])]:
         path = dist_path / sub_dir
         if path.isdir():
