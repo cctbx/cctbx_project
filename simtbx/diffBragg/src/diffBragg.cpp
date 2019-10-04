@@ -236,6 +236,121 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     initialize_managers();
     }
 
+
+void diffBragg::update_dxtbx_geoms(
+    const dxtbx::model::Detector& detector,
+    const dxtbx::model::Beam& beam,
+    int panel_id){
+
+    /* BEAM properties first */
+
+    double temp;
+    vec3 xyz;
+    /* direction in 3-space of beam vector */
+    xyz = beam.get_unit_s0();
+    beam_vector[1] = xyz[0];
+    beam_vector[2] = xyz[1];
+    beam_vector[3] = xyz[2];
+    unitize(beam_vector,beam_vector);
+
+    /* central wavelength, in Angstrom */
+    lambda0 = beam.get_wavelength()*1e-10;
+
+    /* divergence, what are the DXTBX units? */
+    temp = beam.get_divergence();
+    if(temp>0.0) hdivrange = vdivrange = temp;
+
+    /* assume this is photons/s, unless it is zero */
+    temp = beam.get_flux();
+    if(temp>0.0) flux = temp;
+
+    /* assume this is Kahn polarization parameter */
+    temp = beam.get_polarization_fraction();
+    if(temp>=-1.0 && temp<=1.0) polarization = temp;
+
+    /* dxtbx polarization points down B vector, we want the E vector */
+    xyz = beam.get_polarization_normal();
+    vert_vector[1] = xyz[0];
+    vert_vector[2] = xyz[1];
+    vert_vector[3] = xyz[2];
+    unitize(vert_vector,vert_vector);
+    cross_product(beam_vector,vert_vector,polar_vector);
+    unitize(polar_vector,polar_vector);
+
+    /* DETECTOR properties */
+    /* size of the pixels in meters, this should not vary after instantiation */
+    SCITBX_ASSERT(pixel_size == detector[panel_id].get_pixel_size()[0]/1000.);
+
+    /* pixel count in short and fast-axis directions, should not change after instantiation */
+    SCITBX_ASSERT(spixels == detector[panel_id].get_image_size()[1]);
+    SCITBX_ASSERT( fpixels == detector[panel_id].get_image_size()[0]);
+
+    /* direction in 3-space of detector axes */
+    SCITBX_ASSERT (beam_convention == CUSTOM);
+
+    /* typically: 1 0 0 */
+    fdet_vector[1] = detector[panel_id].get_fast_axis()[0];
+    fdet_vector[2] = detector[panel_id].get_fast_axis()[1];
+    fdet_vector[3] = detector[panel_id].get_fast_axis()[2];
+    unitize(fdet_vector,fdet_vector);
+    /* typically: 0 -1 0 */
+    sdet_vector[1] = detector[panel_id].get_slow_axis()[0];
+    sdet_vector[2] = detector[panel_id].get_slow_axis()[1];
+    sdet_vector[3] = detector[panel_id].get_slow_axis()[2];
+    unitize(sdet_vector,sdet_vector);
+    /* set orthogonal vector to the detector pixel array */
+    cross_product(fdet_vector,sdet_vector,odet_vector);
+    unitize(odet_vector,odet_vector);
+
+    /* dxtbx origin is location of outer corner of the first pixel */
+    pix0_vector[1] = detector[panel_id].get_origin()[0]/1000.0;
+    pix0_vector[2] = detector[panel_id].get_origin()[1]/1000.0;
+    pix0_vector[3] = detector[panel_id].get_origin()[2]/1000.0;
+
+    Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
+    Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
+    close_distance = distance =  dot_product(pix0_vector,odet_vector);
+
+    /* set beam centre */
+    scitbx::vec2<double> dials_bc = detector[panel_id].get_beam_centre(beam.get_s0());
+    Xbeam = dials_bc[0]/1000.0;
+    Ybeam = dials_bc[1]/1000.0;
+
+    /* detector sensor layer properties */
+    detector_thick   = detector[panel_id].get_thickness();
+    temp = detector[panel_id].get_mu();        // is this really a mu? or mu/rho ?
+    if(temp>0.0) detector_attnlen = 1.0/temp;
+
+    /* quantum_gain = amp_gain * electrooptical_gain, does not include capture_fraction */
+    quantum_gain = detector[panel_id].get_gain();
+
+    //adc_offset = detector[panel_id].ADC_OFFSET;
+
+    /* SPINDLE properties */
+
+    /* By default align the rotation axis with the detector fast direction */
+    spindle_vector[1] = fdet_vector[1];
+    spindle_vector[2] = fdet_vector[2];
+    spindle_vector[3] = fdet_vector[3];
+    unitize(spindle_vector,spindle_vector);
+
+    /* OMG So important otherwise center walks */
+    ORGX=NAN;
+    ORGY=NAN;
+
+    init_beam();
+    init_beamcenter();
+    update_beamcenter();
+
+    //SCITBX_EXAMINE(Yclose);
+    //SCITBX_EXAMINE(Xclose);
+    //SCITBX_EXAMINE(Ybeam);
+    //SCITBX_EXAMINE(Xbeam);
+    //SCITBX_EXAMINE(distance);
+    //SCITBX_EXAMINE(close_distance);
+    //printf("Done updating!\n");
+    }
+
 void diffBragg::init_raw_pixels_roi(){
     int fdim = roi_xmax-roi_xmin+1;
     int sdim = roi_ymax-roi_ymin+1;

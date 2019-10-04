@@ -95,6 +95,8 @@ class diffBragg: public nanoBragg{
 
   /* methods for interacting with the derivative managers */
   void refine(int refine_id);
+  void update_dxtbx_geoms(const dxtbx::model::Detector& detector, const dxtbx::model::Beam& beam,
+    int panel_id);
   void set_value( int refine_id, double value);
   double get_value( int refine_id);
   af::flex_double get_derivative_pixels(int refine_id);
