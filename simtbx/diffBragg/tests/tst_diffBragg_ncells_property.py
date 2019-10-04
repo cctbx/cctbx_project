@@ -9,12 +9,12 @@ args = parser.parse_args()
 
 import numpy as np
 import pylab as plt
+from scipy.stats import linregress
+from scipy.spatial.transform import Rotation
 from simtbx.diffBragg import sim_data
-from IPython import embed
 from scitbx.matrix import sqr, rec
 from cctbx import uctbx
 from dxtbx.model import Crystal
-from scipy.spatial.transform import Rotation
 
 ucell = (70, 60, 50, 90.0, 110, 90.0)
 symbol = "C121"
@@ -32,7 +32,7 @@ C.rotate_around_origin(rot_axis, rot_ang)
 S = sim_data.SimData()
 S.crystal.dxtbx_crystal = C
 S.detector = sim_data.SimData.simple_detector(180, 0.1, (1024, 1024))
-S.instantiate_diffBragg(verbose=1)
+S.instantiate_diffBragg(verbose=0, oversample=0)
 S.D.spot_scale = 100000
 #S.D.oversample = 5
 
@@ -65,9 +65,12 @@ N = S.D.get_value(Ncells_id)
 
 perc = 0.001, 0.01, 0.1, 1, 10
 
+all_error = []
+shifts = []
 for i_shift, p in enumerate(perc):
     delta_N = N*p*0.01
     S.D.set_value(Ncells_id, N+delta_N)
+    shifts.append(delta_N)
 
     S.D.raw_pixels *= 0
     S.D.region_of_interest = ((0, 1023), (0, 1023))
@@ -76,10 +79,9 @@ for i_shift, p in enumerate(perc):
 
     fdiff = (img2 - img) / delta_N
 
-    embed()
-
     bragg = img > 1e-1
     error = np.abs(fdiff[bragg] - deriv[bragg]).mean()
+    all_error.append(error)
     print ("error=%f, step=%f" % (error, delta_N))
     if args.plot:
         plt.subplot(121)
@@ -93,3 +95,15 @@ for i_shift, p in enumerate(perc):
                      % (i_shift + 1, len(perc)))
         plt.pause(0.8)
 
+if args.plot:
+    plt.close()
+
+    plt.plot(shifts, all_error, 'o')
+    plt.show()
+
+l = linregress(shifts, all_error)
+assert l.rvalue > .9999  # this is definitely a line!
+assert l.slope > 0
+assert l.pvalue < 1e-6
+
+print("OK!")
