@@ -22,6 +22,7 @@ class RefineRot(PixelRefinement):
         self.plot_images = plot_images
         self.spot_rois = spot_rois
         self.abc_init = abc_init
+        self.gain_fac = 1
         self.img = img
         self.S = SimData_instance
         self.refine_rotX = self.refine_rotY = self.refine_rotZ = True
@@ -104,7 +105,8 @@ class RefineRot(PixelRefinement):
 
     def _evaluate_averageI(self):
         """model_Lambda means expected intensity in the pixel"""
-        self.model_Lambda = self.tilt_plane + self.scale_fac * self.scale_fac * self.model_bragg_spots
+        self.model_Lambda = \
+            self.gain_fac*self.gain_fac*(self.tilt_plane + self.scale_fac * self.scale_fac * self.model_bragg_spots)
 
     def _unpack_params(self, i_spot):
         self.a = self.x[i_spot]

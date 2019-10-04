@@ -30,15 +30,15 @@ void derivative_manager::increment_image(int idx, double value, double value2){
 Ncells_manager::Ncells_manager(){}
 
 void Ncells_manager::increment(
-        vec3 V, mat3 B, mat3 UR, vec3 q, mat3 Ot,
+        vec3 V, vec3 H0_vec, vec3 H_vec,
         double Hrad, double Fcell, double Flatt, double fudge,
         double source_I, double capture_fraction, double omega_pixel){
 
-    vec3 dV = (UR*B*Ot).transpose()*q;
+    vec3 dV = H_vec - H0_vec;
     double V_dot_dV = V*dV;
-    double dHrad = V*dV + dV*V;
+    double dHrad = 2*V_dot_dV;
     double a = 1 / 0.63 * fudge;
-    double dFlatt = 3 * Flatt / value - a*Flatt*dHrad; // value in this case is Ncells_abc size
+    double dFlatt = Flatt * (3/value - a*dHrad); // value in this case is Ncells_abc size
     double c = Fcell*Fcell*source_I*capture_fraction*omega_pixel;
     dI += c*2*Flatt*dFlatt;
 
@@ -346,7 +346,7 @@ void diffBragg::set_value( int refine_id, double value ){
 }
 
 double diffBragg::get_value(int refine_id){
-    double value;
+    double value(0);
     if (refine_id < 3)
         value = rot_managers[refine_id]->value;
     else if (refine_id ==9)
@@ -367,7 +367,7 @@ af::flex_double diffBragg::get_derivative_pixels(int refine_id){
         SCITBX_ASSERT(ucell_managers[i_uc]->refine_me);
         return ucell_managers[i_uc]->raw_pixels;
         }
-    else if (refine_id==9)
+    else // if (refine_id==9)
         return Ncells_managers[0]->raw_pixels;
 }
 
@@ -790,9 +790,7 @@ void diffBragg::add_diffBragg_spots()
                                 /* Checkpoint for Ncells manager */
                                 if (Ncells_managers[0]->refine_me){
                                     Ncells_managers[0]->increment(
-                                            V, Bmat_realspace,
-                                            UMATS_RXYZ[mos_tic]*Umatrix, q_vec,
-                                            Omatrix.transpose(),
+                                            V, H0_vec, H_vec,
                                             hrad_sqr, F_cell, F_latt, fudge,
                                             source_I[source], capture_fraction, omega_pixel);
                                     }
