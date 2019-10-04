@@ -137,6 +137,9 @@ namespace boost_python { namespace {
       .def("zero_raw_pixel_rois", &simtbx::nanoBragg::diffBragg::zero_raw_pixel_rois,
            "reallocate the raw image ROIs (they are usually tiny)")
 
+      .def("update_dxtbx_geoms", &simtbx::nanoBragg::diffBragg::update_dxtbx_geoms,
+           "update the geometries with new dxtbx models, number of pixels should remain constant")
+
       .add_property("region_of_interest",
              make_function(&get_roi,rbv()),
              make_function(&set_roi,dcp()),

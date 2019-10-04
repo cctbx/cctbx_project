@@ -32,7 +32,7 @@ C.rotate_around_origin(rot_axis, rot_ang)
 S = sim_data.SimData()
 S.crystal.dxtbx_crystal = C
 S.detector = sim_data.SimData.simple_detector(180, 0.1, (1024, 1024))
-S.instantiate_diffBragg()
+S.instantiate_diffBragg(verbose=1)
 S.D.spot_scale = 100000
 #S.D.oversample = 5
 
