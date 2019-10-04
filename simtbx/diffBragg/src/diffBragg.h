@@ -34,14 +34,6 @@ class rot_manager: public derivative_manager{
         vec3 q, vec3 V,
         double Hrad, double Fcell, double Flatt,
         double source_I, double capture_fraction, double omega_pixel);
-    //void increment(
-    //    int Na, int Nb, int Nc,
-    //    double hfrac, double kfrac, double lfrac,
-    //    double fudge,
-    //    mat3 U, mat3 A, mat3 B, mat3 C,
-    //    vec3 a, vec3 b, vec3 c,  vec3 q,
-    //    double Hrad, double Fcell, double Flatt,
-    //    double source_I, double capture_fraction, double omega_pixel);
 
     mat3 XYZ;
     mat3 R, dR, dR2;
@@ -52,7 +44,7 @@ class Ncells_manager: public derivative_manager{
     Ncells_manager();
     virtual ~Ncells_manager(){}
     void increment(
-        vec3 V, mat3 B, mat3 UR, vec3 q, mat3 Ot,
+        vec3 V, vec3 H0_vec, vec3 H_vec,
         double Hrad, double Fcell, double Flatt, double fudge,
         double source_I, double capture_fraction, double omega_pixel);
 };
