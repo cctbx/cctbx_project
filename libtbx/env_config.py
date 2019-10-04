@@ -1316,7 +1316,6 @@ Wait for the command to finish, then try again.""" % vars())
       elif (source_file.isfile()
             and (   not hasattr(os.path, "samefile")
                  or not reg.samefile(source_file))):
-        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         raise RuntimeError("Multiple sources for dispatcher:\n"
           + "  target file:\n"
           + "    %s\n" % show_string(abs(target_file))
