@@ -564,7 +564,7 @@ citation {
 }
 
 citation {
-  article_id = phenix
+  article_id = phenix2010
   authors = Adams PD, Afonine PV, Bunkoczi G, Chen VB, Davis IW, Echols N, Headd JJ, Hung LW, Kapral GJ, Grosse-Kunstleve RW, McCoy AJ, Moriarty NW, Oeffner R, Read RJ, Richardson DC, Richardson JS, Terwilliger TC, Zwart PH
   title = PHENIX: a comprehensive Python-based system for macromolecular structure solution
   year = 2010
@@ -573,6 +573,17 @@ citation {
   pages = 213-221
   pmid = 20124702
   doi_id = "10.1107/S0907444909052925"
+}
+
+citation {
+  article_id = phenix
+  authors = Liebschner D, Afonine PV, Baker ML, Bunkóczi G, Chen VB, Croll TI, Hintze B, Hung LW, Jain S, McCoy AJ, Moriarty NW, Oeffner RD, Poon BK, Prisant MG, Read RJ, Richardson JS, Richardson DC, Sammito MD, Sobolev OV, Stockwell DH, Terwilliger TC, Urzhumtsev AG, Videau LL, Williams CJ, Adams PD
+  title = Macromolecular structure determination using X-rays, neutrons and electrons: recent developments in Phenix
+  year = 2019
+  journal = Acta Cryst. D
+  volume = 75
+  pages = 861-877
+  doi_id = "10.1107/S2059798319011471"
 }
 
 citation {
