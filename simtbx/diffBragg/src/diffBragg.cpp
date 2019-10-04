@@ -30,16 +30,21 @@ void derivative_manager::increment_image(int idx, double value, double value2){
 origin_manager::origin_manager(){}
 
 void origin_manager::increment(
-    vec3 V, mat3 NABC, mat3 UR, vec3 q, mat3 Ot,
-    double Hrad, double Fcell, double Flatt, double fudge,
-    double source_I, double capture_fraction, double omega_pixel,
-    double air_path){
+        vec3 V, mat3 NUBO, vec3 k_diffracted, double air_path,
+        double Hrad, double Fcell, double Flatt, double fudge,
+        double source_I, double capture_fraction, double omega_pixel){
 
-    dI += 0;
+    vec3 dq = 1/air_path * ( dk - k_diffracted * (1/air_path/air_path)*(dk*k_diffracted));
+    vec3 dV = NUBO.transpose()*dq;
+    double V_dot_dV = V*dV;
+    double dHrad = 2*V_dot_dV;
+    double a = 1 / 0.63 * fudge;
+    double dFlatt = -1*a*Flatt*dHrad;
+    double c = Fcell*Fcell*source_I*capture_fraction*omega_pixel;
+    dI += c*2*Flatt*dFlatt;
+
     dI2 += 0;
 };
-
-
 //END origin manager
 
 // BEGIN Ncells_abc manager
@@ -218,6 +223,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     nc->refine_me = false;
 
     orig0->refine_me = false;
+    orig0->dk = vec3(0,0,1);
 
     rot_managers.push_back(rotX);
     rot_managers.push_back(rotY);
@@ -486,6 +492,9 @@ void diffBragg::set_value( int refine_id, double value ){
         xtal_size_y = -1;
         xtal_size_z = -1;
         update_oversample();
+        NABC[0] = value;
+        NABC[4] = value;
+        NABC[8] = value;
     }
 }
 
@@ -513,8 +522,8 @@ af::flex_double diffBragg::get_derivative_pixels(int refine_id){
         }
     else if (refine_id==9)
         return Ncells_managers[0]->raw_pixels;
-     else
-     return origin_managers[0]->raw_pixels;
+    else
+        return origin_managers[0]->raw_pixels;
 }
 
 
@@ -684,7 +693,8 @@ void diffBragg::add_diffBragg_spots()
                         incident[2] = -source_Y[source];
                         incident[3] = -source_Z[source];
                         lambda = source_lambda[source];
-                        vec3 incident_0 = vec3(incident[1], incident[2], incident[3]);
+                        //vec3 incident_0 = vec3(incident[1], incident[2], incident[3]);
+
                         /* construct the incident beam unit vector while recovering source distance */
                         source_path = unitize(incident,incident);
 
@@ -692,6 +702,10 @@ void diffBragg::add_diffBragg_spots()
                         scattering[1] = (diffracted[1]-incident[1])/lambda;
                         scattering[2] = (diffracted[2]-incident[2])/lambda;
                         scattering[3] = (diffracted[3]-incident[3])/lambda;
+
+                        k_diffracted[0] = diffracted[1];
+                        k_diffracted[1] = diffracted[2];
+                        k_diffracted[2] = diffracted[3];
 
                         /* sin(theta)/lambda is half the scattering vector length */
                         stol = 0.5*magnitude(scattering);
@@ -750,7 +764,8 @@ void diffBragg::add_diffBragg_spots()
                                 Bmat_realspace[8] = 1e10*cp_vec[2];
 
                                 /* construct fractional Miller indicies */
-                                vec3 H_vec = (UMATS_RXYZ[mos_tic] * Umatrix*Bmat_realspace*(Omatrix.transpose())).transpose() * q_vec;
+                                NUBO = (UMATS_RXYZ[mos_tic] * Umatrix*Bmat_realspace*(Omatrix.transpose())).transpose();
+                                H_vec = NUBO * q_vec;
                                 //vec3 H_vec = (UMATS_RXYZ[mos_tic] * Bmat_realspace).transpose() * q_vec;
                                 h = H_vec[0];
                                 k = H_vec[1];
@@ -761,7 +776,6 @@ void diffBragg::add_diffBragg_spots()
                                 k0 = static_cast<int>(ceil(k-0.5));
                                 l0 = static_cast<int>(ceil(l-0.5));
 
-                                vec3 H0_vec;
                                 H0_vec[0] = h0;
                                 H0_vec[1] = k0;
                                 H0_vec[2] = l0;
@@ -927,7 +941,8 @@ void diffBragg::add_diffBragg_spots()
                                                             source_I[source], capture_fraction, omega_pixel);
                                         R3[i_rot] = RotMats[i_rot];
                                     }
-                                }
+                                } //* end rotation manager deriv */
+
                                 /*Checkpoint for unit cell derivatives*/
                                 for(int i_uc=0; i_uc < 6; i_uc++ ){
                                     if (ucell_managers[i_uc]->refine_me){
@@ -937,7 +952,7 @@ void diffBragg::add_diffBragg_spots()
                                             hrad_sqr, F_cell, F_latt, fudge,
                                             source_I[source], capture_fraction, omega_pixel);
                                     }
-                                }
+                                } /*end ucell deriv */
 
                                 /* Checkpoint for Ncells manager */
                                 if (Ncells_managers[0]->refine_me){
@@ -945,9 +960,15 @@ void diffBragg::add_diffBragg_spots()
                                             V, H0_vec, H_vec,
                                             hrad_sqr, F_cell, F_latt, fudge,
                                             source_I[source], capture_fraction, omega_pixel);
-                                }
+                                } /* end Ncells manager deriv */
 
-
+                                /* Checkpoint for Origin manager */
+                                if (origin_managers[0]->refine_me){
+                                    origin_managers[0]->increment(
+                                        V, NUBO, k_diffracted, airpath,
+                                        hrad_sqr, F_cell, F_latt, fudge,
+                                        source_I[source], capture_fraction, omega_pixel);
+                                } /* end origin manager deriv */
 
                             }
                             /* end of mosaic loop */
@@ -980,7 +1001,7 @@ void diffBragg::add_diffBragg_spots()
                     double value2 = r_e_sqr*fluence*spot_scale*polar*rot_managers[i_rot]->dI2/steps;
                     rot_managers[i_rot]->increment_image(roi_i, value, value2);
                 }
-            }
+            } /* end rot deriv image increment */
 
             /*update the ucell derivative images*/
             for (int i_uc=0 ; i_uc < 6 ; i_uc++){
@@ -989,14 +1010,21 @@ void diffBragg::add_diffBragg_spots()
                     double value2 = r_e_sqr*fluence*spot_scale*polar*ucell_managers[i_uc]->dI2/steps;
                     ucell_managers[i_uc]->increment_image(roi_i, value, value2);
                 }
-            }
+            }/* end ucell deriv image increment */
 
             /*update the Ncells derivative image*/
             if (Ncells_managers[0]->refine_me){
                 double value = r_e_sqr*fluence*spot_scale*polar*Ncells_managers[0]->dI/steps;
                 double value2 = r_e_sqr*fluence*spot_scale*polar*Ncells_managers[0]->dI2/steps;
                 Ncells_managers[0]->increment_image(roi_i, value, value2);
-            }
+            }/* end Ncells deriv image increment */
+
+            /* update origin derivative image */
+            if (origin_managers[0]->refine_me){
+                double value = r_e_sqr*fluence*spot_scale*polar*origin_managers[0]->dI/steps;
+                double value2 = r_e_sqr*fluence*spot_scale*polar*origin_managers[0]->dI2/steps;
+                origin_managers[0]->increment_image(roi_i, value, value2);
+            } /*end origigin deriv image increment */
 
             if(floatimage[i] > max_I) {
                 max_I = floatimage[i];
@@ -1034,6 +1062,8 @@ void diffBragg::add_diffBragg_spots()
                         ucell_managers[3]->refine_me, ucell_managers[4]->refine_me, ucell_managers[5]->refine_me);
                     printf("Ncell managers refine status: %d, value=%f\n", Ncells_managers[0]->refine_me,
                             Ncells_managers[0]->value);
+                    printf("Origin managers refine status: %d, value=%f\n", origin_managers[0]->refine_me,
+                            origin_managers[0]->value);
                     printf("Bmatrix_real:\n%11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n",
                         Bmat_realspace[0]*1e10, Bmat_realspace[1]*1e10, Bmat_realspace[2]*1e10,
                         Bmat_realspace[3]*1e10, Bmat_realspace[4]*1e10, Bmat_realspace[5]*1e10,
