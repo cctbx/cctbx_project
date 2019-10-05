@@ -108,6 +108,12 @@ phil_str = '''
       .type = str
       .help = Locator file needed for cctbx.xfel.process and dials.stills_process to find \
               the XTC streams
+    task = None
+      .type = int
+      .help = Optional task number, meaning the dispatcher is working on previously \
+              processed data from this run. In this case, the trial folder is not \
+              created and task is used as a folder within the trial folder to save \
+              the output.
   }
   output {
     output_dir = "."
@@ -198,6 +204,69 @@ def copy_target(target, dest_dir, root_name):
       num_sub_targets += 1
     f.write(line)
 
+def get_trialdir(output_dir, run_num, trial = None, rungroup = None, task = None):
+    try:
+      rundir = os.path.join(output_dir, "r%04d"%int(run_num))
+    except ValueError:
+      rundir = os.path.join(output_dir, run_num)
+
+    if not os.path.exists(output_dir):
+       os.makedirs(output_dir)
+
+    if not os.path.exists(rundir):
+      os.mkdir(rundir)
+
+    # If a trial number wasn't included, find the next available, up to 999 trials
+    if trial is None:
+      found_one = False
+      for i in range(1000):
+        trialdir = os.path.join(rundir, "%03d"%i)
+        if rungroup is not None:
+          trialdir += "_rg%03d"%rungroup
+        if not os.path.exists(trialdir):
+          found_one = True
+          break
+      if found_one:
+        trial = i
+      else:
+        raise Sorry("All trial numbers in use")
+    else:
+      trialdir = os.path.join(rundir, "%03d"%trial)
+      if rungroup is not None:
+        trialdir += "_rg%03d"%rungroup
+      if os.path.exists(trialdir) and task is None:
+        raise Sorry("Trial %d already in use"%trial)
+
+    if not os.path.exists(trialdir):
+      os.mkdir(trialdir)
+
+    if task is not None:
+      trialdir = os.path.join(trialdir, "task%03d"%task)
+      if os.path.exists(trialdir):
+        raise Sorry("Task %d already exists"%task)
+      os.mkdir(trialdir)
+    return trial, trialdir
+
+def get_submission_id(result, method):
+  if method == "mpi" or method == "lsf":
+    submission_id = None
+    for line in result.stdout_lines:
+      # example for lsf: 'Job <XXXXXX> is submitted to queue <YYYYYYY>.'
+      if len(line.split()) < 2: continue
+      s = line.split()[1].lstrip('<').rstrip('>')
+      try:
+        s = int(s)
+      except ValueError:
+        pass
+      else:
+        submission_id = str(s)
+    print(submission_id)
+    return submission_id
+  elif params.mp.method == 'pbs':
+    submission_id = "".join(result.stdout_lines).strip()
+    print(submission_id)
+    return submission_id
+
 class Script(object):
   """ Script to submit XFEL data for processing"""
   def __init__(self):
@@ -237,43 +306,12 @@ class Script(object):
       # processing XTC streams at LCLS -- dispatcher will locate raw data
       assert params.input.experiment is not None or params.input.locator is not None
       print("Submitting run %d of experiment %s"%(int(params.input.run_num), params.input.experiment))
-      rundir = os.path.join(params.output.output_dir, "r%04d"%int(params.input.run_num))
     else:
       print("Submitting run %s"%(params.input.run_num))
-      try:
-        rundir = os.path.join(params.output.output_dir, "r%04d"%int(params.input.run_num))
-      except ValueError:
-        rundir = os.path.join(params.output.output_dir, params.input.run_num)
 
-    if not os.path.exists(params.output.output_dir):
-       os.makedirs(params.output.output_dir)
-
-    if not os.path.exists(rundir):
-      os.mkdir(rundir)
-
-    # If a trial number wasn't included, find the next available, up to 999 trials
-    if params.input.trial is None:
-      found_one = False
-      for i in range(1000):
-        trialdir = os.path.join(rundir, "%03d"%i)
-        if params.input.rungroup is not None:
-          trialdir += "_rg%03d"%params.input.rungroup
-        if not os.path.exists(trialdir):
-          found_one = True
-          break
-      if found_one:
-        params.input.trial = i
-      else:
-        raise Sorry("All trial numbers in use")
-    else:
-      trialdir = os.path.join(rundir, "%03d"%params.input.trial)
-      if params.input.rungroup is not None:
-        trialdir += "_rg%03d"%params.input.rungroup
-      if os.path.exists(trialdir):
-        raise Sorry("Trial %d already in use"%params.input.trial)
-
+    trial, trialdir = get_trialdir(params.input.output_dir, params.input.run_num, params.input.trial, params.input.rungroup, params.input.task)
+    params.input.trial = trial
     print("Using trial", params.input.trial)
-    os.mkdir(trialdir)
 
     # log file will live here
     stdoutdir = os.path.join(trialdir, "stdout")
@@ -405,25 +443,7 @@ class Script(object):
 
       print("Job submitted.  Output in", trialdir)
 
-      if params.mp.method == "mpi" or params.mp.method == "lsf":
-        submission_id = None
-        for line in result.stdout_lines:
-          # example for lsf: 'Job <XXXXXX> is submitted to queue <YYYYYYY>.'
-          if len(line.split()) < 2: continue
-          s = line.split()[1].lstrip('<').rstrip('>')
-          try:
-            s = int(s)
-          except ValueError:
-            pass
-          else:
-            submission_id = str(s)
-        print(submission_id)
-        return submission_id
-      elif params.mp.method == 'pbs':
-        submission_id = "".join(result.stdout_lines).strip()
-        print(submission_id)
-        return submission_id
-    return None
+      return get_submission_id(result, params.mp.method)
 
 if __name__ == "__main__":
   script = Script()
