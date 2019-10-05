@@ -2591,9 +2591,7 @@ class DatasetTab(BaseTab):
   def add_dataset(self, dataset):
     new_dataset = DatasetPanel(self.dataset_panel,
                            db=self.main.db,
-                           dataset=dataset,
-                           box_label='Dataset {} {}'.format(dataset.dataset_id,
-                             dataset.name[:min(len(dataset.name), 10)] if dataset.name is not None else ""))
+                           dataset=dataset)
     new_dataset.chk_active.SetValue(dataset.active)
     new_dataset.refresh_dataset()
     self.dataset_sizer.Add(new_dataset, flag=wx.EXPAND | wx.ALL, border=10)
@@ -3109,15 +3107,15 @@ class TrialPanel(wx.Panel):
 class DatasetPanel(wx.Panel):
   ''' A scrolled panel that contains dataset and task controls '''
 
-  def __init__(self, parent, db, dataset, box_label=None):
+  def __init__(self, parent, db, dataset, box_label=""):
     wx.Panel.__init__(self, parent=parent, size=(270, 200))
 
     self.db = db
     self.dataset = dataset
     self.parent = parent
 
-    dataset_box = wx.StaticBox(self, label=box_label)
-    self.main_sizer = wx.StaticBoxSizer(dataset_box, wx.VERTICAL)
+    self.dataset_box = wx.StaticBox(self, label=box_label)
+    self.main_sizer = wx.StaticBoxSizer(self.dataset_box, wx.VERTICAL)
 
     self.task_panel = ScrolledPanel(self, size=(150, 180))
     self.task_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -3132,8 +3130,11 @@ class DatasetPanel(wx.Panel):
                                    size=(200, -1))
     self.btn_select_tasks = wx.Button(self.add_panel, label='Select Tasks',
                                        size=(200, -1))
+    self.btn_edit_dataset = wx.BitmapButton(self.add_panel,
+                                            bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
     self.chk_active = wx.CheckBox(self.add_panel, label='Active Dataset')
     self.chk_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.chk_sizer.Add(self.btn_edit_dataset)
     self.chk_sizer.Add(self.chk_active, flag=wx.EXPAND)
 
     self.add_sizer.Add(self.btn_add_task,
@@ -3152,6 +3153,7 @@ class DatasetPanel(wx.Panel):
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onAddTask, self.btn_add_task)
     self.Bind(wx.EVT_BUTTON, self.onSelectTasks, self.btn_select_tasks)
+    self.Bind(wx.EVT_BUTTON, self.onEditDataset, self.btn_edit_dataset)
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
 
     self.SetSizer(self.main_sizer)
@@ -3181,7 +3183,19 @@ class DatasetPanel(wx.Panel):
     tasksel_dlg.Destroy()
 
   def refresh_dataset(self):
+    self.dataset_box.SetLabel('Dataset {} {}'.format(self.dataset.dataset_id,
+                               self.dataset.name[:min(len(self.dataset.name), 10)]
+                               if self.dataset.name is not None else ""))
     self.task_sizer.DeleteWindows()
+    tags = self.dataset.tags
+    if tags:
+      tags_text = "Tags: " + ",".join([t.name for t in tags])
+    else:
+      tags_text = "No tags selected"
+    label = wx.StaticText(self.task_panel, label = tags_text)
+    self.task_sizer.Add(label,
+                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
+                        border=5)
     for task in self.dataset.tasks:
       self.draw_task_button(task)
     self.task_panel.Layout()
@@ -3205,6 +3219,13 @@ class DatasetPanel(wx.Panel):
     if (task_dlg.ShowModal() == wx.ID_OK):
       wx.CallAfter(self.refresh_dataset)
     task_dlg.Destroy()
+
+  def onEditDataset(self, e):
+    new_dataset_dlg = dlg.DatasetDialog(self, db=self.db, dataset=self.dataset, new=False)
+    new_dataset_dlg.Fit()
+
+    if new_dataset_dlg.ShowModal() == wx.ID_OK:
+      self.refresh_dataset()
 
 class RunEntry(wx.Panel):
   ''' Adds run row to table, with average and view buttons'''

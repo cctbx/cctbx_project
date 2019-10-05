@@ -2351,10 +2351,7 @@ class DatasetDialog(BaseDialog):
                         border=10)
 
     # Dialog control
-    if self.new:
-      dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    else:
-      dialog_box = self.CreateSeparatedButtonSizer(wx.OK)
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
@@ -2366,17 +2363,20 @@ class DatasetDialog(BaseDialog):
 
     else:
       self.SetTitle('Dataset Settings')
-      self.name.ctr.SetValue(str(self.dataset.comment))
+      self.name.ctr.SetValue(str(self.dataset.name))
       self.comment.ctr.SetValue(str(self.dataset.comment))
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
     # Initialize tag list
-    self.tags = db.get_all_tags()
-    tag_names = [t.name for t in self.tags]
+    self.all_tags = db.get_all_tags()
+    tag_names = [t.name for t in self.all_tags]
+    self.dataset_tagnames = [t.name for t in self.dataset.tags] if self.dataset is not None else []
     if tag_names:
       self.tag_checklist.ctr.InsertItems(items=tag_names, pos=0)
+      checked = [tag_idx for tag_idx, tag_name in enumerate(tag_names) if tag_name in self.dataset_tagnames]
+      self.tag_checklist.ctr.SetChecked(checked)
 
   def onOK(self, e):
     name = self.name.ctr.GetValue()
@@ -2388,6 +2388,15 @@ class DatasetDialog(BaseDialog):
     else:
       self.dataset.name = name
       self.dataset.comment = comment
+
+    checked = self.tag_checklist.ctr.GetChecked()
+    for tag_idx, tag in enumerate(self.all_tags):
+      if tag_idx in checked:
+        if tag.name not in self.dataset_tagnames:
+          self.dataset.add_tag(tag)
+      else:
+        if tag.name in self.dataset_tagnames:
+          self.dataset.remove_tag(tag)
 
     e.Skip()
 

@@ -16,20 +16,21 @@ class JobStopper(object):
       % self.queueing_system)
 
   def stop_job(self, submission_id):
-    if self.queueing_system == 'local':
-      import psutil
-      try:
-        process = psutil.Process(int(submission_id))
-      except psutil.NoSuchProcess:
-        return
-      for child in process.children(recursive=True): child.kill()
-      process.kill()
-    else:
-      result = easy_run.fully_buffered(command=self.command%submission_id)
-      status = "\n".join(result.stdout_lines)
-      error = "\n".join(result.stderr_lines)
-      print(status)
-      print(error)
+    for sid in submission_id.split(','):
+      if self.queueing_system == 'local':
+        import psutil
+        try:
+          process = psutil.Process(int(sid))
+        except psutil.NoSuchProcess:
+          return
+        for child in process.children(recursive=True): child.kill()
+        process.kill()
+      else:
+        result = easy_run.fully_buffered(command=self.command%sid)
+        status = "\n".join(result.stdout_lines)
+        error = "\n".join(result.stderr_lines)
+        print(status)
+        print(error)
 
 class QueueInterrogator(object):
   """A queue monitor that returns the status of a given queued job, or ERR if the job cannot
@@ -102,13 +103,20 @@ class SubmissionTracker(object):
     self.interrogator = QueueInterrogator(self.queueing_system)
     self.reader = LogReader(self.queueing_system)
   def track(self, submission_id, log_path):
+    if submission_id is None:
+      return "UNKWN"
+    all_statuses = [self._track(sid, log_path) for sid in submission_id.split(',')]
+    if all_statuses and all([all_statuses[0] == s for s in all_statuses[1:]]):
+      return all_statuses[0]
+    else:
+      return "UNKWN"
+
+  def _track(self, submission_id, log_path):
     raise NotImplementedError("Override me!")
 
 class LSFSubmissionTracker(SubmissionTracker):
-  def track(self, submission_id, log_path):
+  def _track(self, submission_id, log_path):
     from xfel.ui.db.job import known_job_statuses
-    if submission_id is None:
-      return "UNKWN"
     status = self.interrogator.query(submission_id)
     if status == "ERR":
       log_status = self.reader.read_result(log_path)
@@ -122,9 +130,7 @@ class LSFSubmissionTracker(SubmissionTracker):
       print("Found an unknown status", status)
 
 class PBSSubmissionTracker(SubmissionTracker):
-  def track(self, submission_id, log_path):
-    if submission_id is None:
-      return "UNKWN"
+  def _track(self, submission_id, log_path):
     status = self.interrogator.query(submission_id)
     if status == "F":
       return "DONE"
@@ -136,9 +142,7 @@ class PBSSubmissionTracker(SubmissionTracker):
       print("Found an unknown status", status)
 
 class LocalSubmissionTracker(SubmissionTracker):
-  def track(self, submission_id, log_path):
-    if submission_id is None:
-      return "UNKWN"
+  def _track(self, submission_id, log_path):
     return self.interrogator.query(submission_id)
 
 class TrackerFactory(object):
