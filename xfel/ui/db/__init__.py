@@ -8,12 +8,15 @@ try:
 except ImportError as e:
   pass
 
-def get_run_path(rootpath, trial, rungroup, run):
+def get_run_path(rootpath, trial, rungroup, run, task=None):
   import os
   try:
-    return os.path.join(rootpath, "r%04d"%int(run.run), "%03d_rg%03d"%(trial.trial, rungroup.id))
+    p = os.path.join(rootpath, "r%04d"%int(run.run), "%03d_rg%03d"%(trial.trial, rungroup.id))
   except ValueError:
-    return os.path.join(rootpath, run.run, "%03d_rg%03d"%(trial.trial, rungroup.id))
+    p = os.path.join(rootpath, run.run, "%03d_rg%03d"%(trial.trial, rungroup.id))
+  if task is not None:
+    p = os.path.join(p, "task%03d"%task.id)
+  return p
 
 def get_db_connection(params, block=True):
   if params.db.password is None:

@@ -8,7 +8,7 @@ from xfel.ui.db.trial import Trial
 from xfel.ui.db.run import Run
 from xfel.ui.db.rungroup import Rungroup
 from xfel.ui.db.tag import Tag
-from xfel.ui.db.job import Job
+from xfel.ui.db.job import Job, JobFactory
 from xfel.ui.db.stats import Stats
 from xfel.ui.db.experiment import Cell, Bin, Isoform, Event
 from xfel.ui.db.dataset import Dataset
@@ -470,7 +470,7 @@ class xfel_db_application(db_application):
       sub_items = []
     sub_table_names = ["%s_%s"%(self.params.experiment_tag, i[1]) for i in sub_items]
     for i, sub_item in enumerate(sub_items):
-      scls, sname = sub_item
+      scls, sname, required = sub_item
       columns.extend(["%s.%s"%(sname, c) for c in self.columns_dict[sub_table_names[i]]])
       columns.append("%s.id"%sname)
 
@@ -480,8 +480,12 @@ class xfel_db_application(db_application):
 
     # Join statements to bring in the sub tables
     for i, sub_item in enumerate(sub_items):
-      scls, sname = sub_item
-      query += " JOIN `%s` %s ON %s.id = %s.%s_id"% (
+      scls, sname, required = sub_item
+      if required:
+        join = " JOIN "
+      else:
+        join = " LEFT OUTER JOIN " # allows nulls
+      query += join + "`%s` %s ON %s.id = %s.%s_id"% (
         sub_table_names[i], sname, sname, name, sname)
 
     if where is not None:
@@ -489,12 +493,14 @@ class xfel_db_application(db_application):
     cursor = self.execute_query(query)
 
     results = []
+    sub_ds = {sub_item[1]:(sub_item[0], {}) for sub_item in sub_items}
+    sub_reqds = {sub_item[1]:sub_item[2] for sub_item in sub_items}
+
     for row in cursor.fetchall():
       # Each row will be a complete item and sub items in column form. Assemble one
       # dictionary (d) for the main item and a dictionary of dictionaries (sub_ds)
       # for each of the sub items
       d = {}
-      sub_ds = {sub_item[1]:(sub_item[0], {}) for sub_item in sub_items}
       for key, value in zip(columns, row):
         n, c = key.split('.') # nickname n, column name c
         if n == name:
@@ -508,6 +514,9 @@ class xfel_db_application(db_application):
       results.append(cls(self, **d)) # instantiate the main class
       for sub_d_n, sub_d in six.iteritems(sub_ds):
         _id = sub_d[1].pop("id")
+        if _id is None:
+          assert not sub_reqds[sub_d_n]
+          continue
         sub_d[1]["%s_id"%sub_d_n] = _id
         setattr(results[-1], sub_d_n, sub_d[0](self, **sub_d[1])) # instantiate the sub items
     return results
@@ -649,18 +658,22 @@ class xfel_db_application(db_application):
 
     self.delete_x(tag, tag_id)
 
-  def create_job(self, **kwargs):
-    return Job(self, **kwargs)
+  # Replaced by JobFactory in job.py
+  #def create_job(self, **kwargs):
+  #  return Job(self, **kwargs)
 
   def get_job(self, job_id):
-    return Job(self, job_id)
+    return JobFactory.from_args(self, job_id)
 
   def get_all_jobs(self, active = False):
     if active:
       where = "WHERE trial.active = True AND rungroup.active = True"
     else:
       where = None
-    return self.get_all_x_with_subitems(Job, "job", sub_items = [(Trial, 'trial'), (Run, 'run'), (Rungroup, 'rungroup')], where = where)
+    return self.get_all_x_with_subitems(JobFactory.from_args, "job", sub_items = [(Trial, 'trial', True),
+                                                                                  (Run, 'run', True),
+                                                                                  (Rungroup, 'rungroup', True),
+                                                                                  (Task, 'task', False)], where = where)
 
   def delete_job(self, job = None, job_id = None):
     assert [job, job_id].count(None) == 1
@@ -725,8 +738,21 @@ class xfel_db_application(db_application):
       return []
     return self.get_all_x(Task, "task", where = "WHERE task.id IN (%s)"%",".join(task_ids))
 
+  def get_dataset_tags(self, dataset_id):
+    tag = self.params.experiment_tag
+    query = """SELECT d_t.tag_id FROM `%s_dataset_tag` d_t
+               WHERE d_t.dataset_id = %d""" % (tag, dataset_id)
+    cursor = self.execute_query(query)
+    tag_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    if len(tag_ids) == 0:
+      return []
+    return self.get_all_x(Tag, "tag", where = "WHERE tag.id IN (%s)"%",".join(tag_ids))
+
   def create_task(self, **kwargs):
     return Task(self, **kwargs)
+
+  def get_task(self, task_id):
+    return Task(self, task_id)
 
 # Deprecated, but preserved here in case it proves useful later
 """

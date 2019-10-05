@@ -309,7 +309,7 @@ class Script(object):
     else:
       print("Submitting run %s"%(params.input.run_num))
 
-    trial, trialdir = get_trialdir(params.input.output_dir, params.input.run_num, params.input.trial, params.input.rungroup, params.input.task)
+    trial, trialdir = get_trialdir(params.output.output_dir, params.input.run_num, params.input.trial, params.input.rungroup, params.input.task)
     params.input.trial = trial
     print("Using trial", params.input.trial)
 
