@@ -201,12 +201,12 @@ class hklview_3d:
     self.OrigClipNear = None
     self.OrigClipFar = None
     self.cameratranslation = ( 0,0,0 )
-    self.angle_x_svec = 0.0
-    self.angle_y_svec = 0.0
+    #self.angle_x_svec = 0.0
+    #self.angle_y_svec = 0.0
     self.angle_z_svec = 0.0
-    self.angle_z_yzvec = 0.0
-    self.angle_y_yzvec = 0.0
-    self.angle_y_xyvec = 0.0
+    #self.angle_z_yzvec = 0.0
+    #self.angle_y_yzvec = 0.0
+    #self.angle_y_xyvec = 0.0
     self.angle_x_xyvec = 0.0
     self.unit_h_axis = None
     self.unit_k_axis = None
@@ -1100,6 +1100,21 @@ var MakeHKL_Axis = function()
       }
       cvorient = stage.viewerControls.getOrientation().elements;
       msg = String(cvorient);
+      rightnow = timefunc();
+      if (rightnow - timenow > 250)
+      { // only post every 250 milli second as not to overwhelm python
+        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        timenow = timefunc();
+      }
+    }
+  );
+
+
+  stage.mouseObserver.signals.clicked.add(
+    function (x, y)
+    {
+      cvorient = stage.viewerControls.getOrientation().elements;
+      msg = String(cvorient);
       WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
   );
@@ -1116,7 +1131,12 @@ var MakeHKL_Axis = function()
       }
       cvorient = stage.viewerControls.getOrientation().elements;
       msg = String(cvorient);
-      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+      rightnow = timefunc();
+      if (rightnow - timenow > 250)
+      { // only post every 250 milli second as not to overwhelm python
+        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        timenow = timefunc();
+      }
     }
   );
 
@@ -1712,7 +1732,9 @@ mysocket.onmessage = function (e)
       );
       stage.viewerControls.orient(m4);
       stage.viewer.requestRender();
-
+      cvorient = stage.viewerControls.getOrientation().elements;
+      msg = String(cvorient);
+      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
 
     if (msgtype === "TranslateHKLpoints")
@@ -2250,33 +2272,32 @@ mysocket.onmessage = function (e)
     xyvec[2] = 0.0 # projection vector of svec in the xy plane
     xyvecnorm = math.sqrt( xyvec[0]*xyvec[0] + xyvec[1]*xyvec[1] )
     if xyvecnorm > 0.0:
-      self.angle_x_xyvec = math.acos( xyvec[0]/xyvecnorm )*180.0/math.pi
-      self.angle_y_xyvec = math.acos( xyvec[1]/xyvecnorm )*180.0/math.pi
+      angle_x_xyvec = math.acos( xyvec[0]/xyvecnorm )*180.0/math.pi
+      angle_y_xyvec = math.acos( xyvec[1]/xyvecnorm )*180.0/math.pi
     else:
-      self.angle_x_xyvec = 90.0
-      self.angle_y_xyvec = 90.0
+      angle_x_xyvec = 90.0
+      angle_y_xyvec = 90.0
     yzvec = svec[:]
     yzvec[0] = 0.0 # projection vector of svec in the yz plane
     yzvecnorm = math.sqrt( yzvec[1]*yzvec[1] + yzvec[2]*yzvec[2] )
     if yzvecnorm > 0.0:
-      self.angle_y_yzvec = math.acos( yzvec[1]/yzvecnorm )*180.0/math.pi
-      self.angle_z_yzvec = math.acos( yzvec[2]/yzvecnorm )*180.0/math.pi
+      angle_y_yzvec = math.acos( yzvec[1]/yzvecnorm )*180.0/math.pi
+      angle_z_yzvec = math.acos( yzvec[2]/yzvecnorm )*180.0/math.pi
     else:
-      self.angle_y_yzvec = 90.0
-      self.angle_z_yzvec = 90.0
+      angle_y_yzvec = 90.0
+      angle_z_yzvec = 90.0
     svecnorm = math.sqrt( svec[0]*svec[0] + svec[1]*svec[1] + svec[2]*svec[2] )
-    self.angle_x_svec = math.acos( svec[0]/svecnorm )*180.0/math.pi
-    self.angle_y_svec = math.acos( svec[1]/svecnorm )*180.0/math.pi
-    self.angle_z_svec = math.acos( svec[2]/svecnorm )*180.0/math.pi
-    if self.angle_y_svec > 90.0:
-      self.angle_x_xyvec = -self.angle_x_xyvec
-
-    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(self.angle_x_xyvec, self.angle_y_xyvec), verbose=2)
-    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(self.angle_y_yzvec, self.angle_z_yzvec), verbose=2)
-    self.mprint("angles to x,y,z axis are: %s, %s, %s" %(self.angle_x_svec, self.angle_y_svec, self.angle_z_svec ), verbose=2)
-
+    angle_x_svec = math.acos( svec[0]/svecnorm )*180.0/math.pi
+    angle_y_svec = math.acos( svec[1]/svecnorm )*180.0/math.pi
+    angle_z_svec = math.acos( svec[2]/svecnorm )*180.0/math.pi
+    if angle_y_svec > 90.0:
+      angle_x_xyvec = -angle_x_xyvec
+    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(angle_x_xyvec, angle_y_xyvec), verbose=2)
+    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(angle_y_yzvec, angle_z_yzvec), verbose=2)
+    self.mprint("angles to x,y,z axis are: %s, %s, %s" %(angle_x_svec, angle_y_svec, angle_z_svec ), verbose=2)
     self.msgqueue.append( ("AddVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
          %tuple(svec1 + svec2 + [r, g, b, label]) ))
+    return angle_x_xyvec, angle_z_svec
 
 
   def PointVectorPerpendicularToClipPlane(self):
@@ -2333,7 +2354,7 @@ mysocket.onmessage = function (e)
       return
     self.RemoveAllReciprocalVectors()
     R = -l * self.normal_hk + h * self.normal_kl + k * self.normal_lh
-    self.AddVector(0, 0, 0, R[0][0], R[0][1], R[0][2], isreciprocal=False)
+    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0, R[0][0], R[0][1], R[0][2], isreciprocal=False)
     if fixorientation:
       self.DisableMouseRotation()
     else:
@@ -2360,7 +2381,7 @@ mysocket.onmessage = function (e)
       self.RemoveNormalVectorToClipPlane()
       return
     self.RemoveAllReciprocalVectors()
-    self.AddVector(0, 0, 0, a, b, c, isreciprocal=False)
+    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0, a, b, c, isreciprocal=False)
     if fixorientation:
       self.DisableMouseRotation()
     else:
@@ -2386,7 +2407,7 @@ mysocket.onmessage = function (e)
       self.RemoveNormalVectorToClipPlane()
       return
     self.RemoveAllReciprocalVectors()
-    self.AddVector(0, 0, 0, h, k, l, isreciprocal=False)
+    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0, h, k, l, isreciprocal=False)
     if fixorientation:
       self.DisableMouseRotation()
     else:
