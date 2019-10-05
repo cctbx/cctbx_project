@@ -14,6 +14,7 @@ from libtbx import easy_run
 from xfel.util.dials_file_matcher import match_dials_files
 from xfel.util.mp import mp_phil_str as multiprocessing_str
 from xfel.util.mp import get_submit_command_chooser
+import sys
 
 import os, math
 import six
@@ -51,6 +52,12 @@ striping {
     .type = bool
     .help = "Enforce separation by rungroup at time of striping (default)."
             "Turn off to allow multiple rungroups to share a detector model."
+  dry_run = False
+    .type = bool
+    .help = "Only set up jobs but do not execute them"
+  output_folder = None
+    .type = path
+    .help = "Path for output data. If None, use current directory"
 }
 '''
 
@@ -417,12 +424,13 @@ done
 
 class Script(object):
 
-  def __init__(self):
+  def __init__(self, args = None):
     '''Initialise the script.'''
 
     # The script usage
     self.master_defaults_scope = master_defaults_scope
-    self.run_scope = parse_retaining_scope(sys.argv[1:])
+    if args is None: args = sys.argv[1:]
+    self.run_scope = parse_retaining_scope(args)
     self.diff_scope = self.master_defaults_scope.fetch_diff(self.run_scope)
     self.params = self.run_scope.extract()
 
@@ -449,7 +457,7 @@ class Script(object):
     diff_str = "\n".join(diff_parts)
     phil_filename = "%s_%s_CLUSTER.phil" % (self.filename, section_tag) if clustering else \
       "%s_%s.phil" % (self.filename, section_tag)
-    phil_path = os.path.join(self.cwd, self.intermediates, phil_filename)
+    phil_path = os.path.join(self.params.striping.output_folder, self.intermediates, phil_filename)
     if os.path.isfile(phil_path):
       os.remove(phil_path)
     with open(phil_path, "wb") as phil_outfile:
@@ -460,7 +468,7 @@ class Script(object):
         phil_filename,
         dispatcher_name,
         self.intermediates)
-      command = ". %s" % os.path.join(self.cwd, self.intermediates, script)
+      command = ". %s" % os.path.join(self.params.striping.output_folder, self.intermediates, script)
     else:
       command = "%s %s" % (dispatcher_name, phil_filename)
     self.command_sequence.append(command)
@@ -479,14 +487,16 @@ class Script(object):
                                    stripe=self.params.striping.stripe,
                                    max_size=self.params.striping.chunk_size,
                                    integrated=self.params.combine_experiments.keep_integrated)
-    self.dirname = "combine_experiments_t%03d" % self.params.striping.trial
+    self.dirname = os.path.join(self.params.striping.output_folder, "combine_experiments_t%03d" % self.params.striping.trial)
     self.intermediates = os.path.join(self.dirname, "intermediates")
     self.extracted = os.path.join(self.dirname, "final_extracted")
     for d in self.dirname, self.intermediates, self.extracted:
       if not os.path.isdir(d):
         os.mkdir(d)
-    self.cwd = os.getcwd()
+    if self.params.striping.output_folder is None:
+      self.params.striping.output_folder = os.getcwd()
     tag = "stripe" if self.params.striping.stripe else "chunk"
+    all_commands = []
     for batch, ch_list in six.iteritems(batch_chunks):
       for idx in range(len(ch_list)):
         chunk = ch_list[idx]
@@ -496,7 +506,7 @@ class Script(object):
         self.command_sequence = []
 
         # set up the file containing input expts and refls (logging)
-        chunk_path = os.path.join(self.cwd, self.intermediates, self.filename)
+        chunk_path = os.path.join(self.params.striping.output_folder, self.intermediates, self.filename)
         if os.path.isfile(chunk_path):
           os.remove(chunk_path)
         with open(chunk_path, "wb") as outfile:
@@ -540,20 +550,21 @@ class Script(object):
         if self.params.combine_experiments.clustering.dendrogram:
           easy_run.fully_buffered(command).raise_if_errors().show_stdout()
         else:
-          submit_path = os.path.join(self.cwd, self.intermediates, "combine_%s.sh" % self.filename)
+          submit_path = os.path.join(self.params.striping.output_folder, self.intermediates, "combine_%s.sh" % self.filename)
           submit_command = get_submit_command_chooser(command, submit_path, self.intermediates, self.params.mp,
             log_name=(submit_path.split(".sh")[0] + ".out"))
-          print("executing command: %s" % submit_command)
-          try:
-            easy_run.fully_buffered(submit_command).raise_if_errors().show_stdout()
-          except Exception as e:
-            if not "Warning: job being submitted without an AFS token." in str(e):
-              raise e
-        os.chdir(self.cwd)
+          all_commands.append(submit_command)
+          if not self.params.striping.dry_run:
+            print("executing command: %s" % submit_command)
+            try:
+              easy_run.fully_buffered(submit_command).raise_if_errors().show_stdout()
+            except Exception as e:
+              if not "Warning: job being submitted without an AFS token." in str(e):
+                raise e
+    return all_commands
 
 if __name__ == "__main__":
   from dials.util import halraiser
-  import sys
   if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
     print(helpstring)
     exit()
