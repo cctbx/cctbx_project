@@ -30,12 +30,13 @@ void derivative_manager::increment_image(int idx, double value, double value2){
 origin_manager::origin_manager(){}
 
 void origin_manager::increment(
-        vec3 V, mat3 NUBO, vec3 k_diffracted, double air_path,
+        vec3 V, mat3 N, mat3 UBO, vec3 k_diffracted, double air_path, double wavelen,
         double Hrad, double Fcell, double Flatt, double fudge,
         double source_I, double capture_fraction, double omega_pixel){
 
-    vec3 dq = 1/air_path * ( dk - k_diffracted * (1/air_path/air_path)*(dk*k_diffracted));
-    vec3 dV = NUBO.transpose()*dq;
+    vec3 dq = 1/air_path * (dk - k_diffracted*(1/air_path/air_path)*(dk*k_diffracted));
+    dq /= wavelen;
+    vec3 dV = N*(UBO*dq);
     double V_dot_dV = V*dV;
     double dHrad = 2*V_dot_dV;
     double a = 1 / 0.63 * fudge;
@@ -703,9 +704,9 @@ void diffBragg::add_diffBragg_spots()
                         scattering[2] = (diffracted[2]-incident[2])/lambda;
                         scattering[3] = (diffracted[3]-incident[3])/lambda;
 
-                        k_diffracted[0] = diffracted[1];
-                        k_diffracted[1] = diffracted[2];
-                        k_diffracted[2] = diffracted[3];
+                        k_diffracted[0] = pixel_pos[1];
+                        k_diffracted[1] = pixel_pos[2];
+                        k_diffracted[2] = pixel_pos[3];
 
                         /* sin(theta)/lambda is half the scattering vector length */
                         stol = 0.5*magnitude(scattering);
@@ -764,8 +765,8 @@ void diffBragg::add_diffBragg_spots()
                                 Bmat_realspace[8] = 1e10*cp_vec[2];
 
                                 /* construct fractional Miller indicies */
-                                NUBO = (UMATS_RXYZ[mos_tic] * Umatrix*Bmat_realspace*(Omatrix.transpose())).transpose();
-                                H_vec = NUBO * q_vec;
+                                UBO = (UMATS_RXYZ[mos_tic] * Umatrix*Bmat_realspace*(Omatrix.transpose())).transpose();
+                                H_vec = UBO * q_vec;
                                 //vec3 H_vec = (UMATS_RXYZ[mos_tic] * Bmat_realspace).transpose() * q_vec;
                                 h = H_vec[0];
                                 k = H_vec[1];
@@ -964,8 +965,67 @@ void diffBragg::add_diffBragg_spots()
 
                                 /* Checkpoint for Origin manager */
                                 if (origin_managers[0]->refine_me){
+                                    //if (spixel==51 && fpixel==425){
+
+                                    //    SCITBX_EXAMINE(diffracted[1]);
+                                    //    SCITBX_EXAMINE(diffracted[2]);
+                                    //    SCITBX_EXAMINE(diffracted[3]);
+                                    //    SCITBX_EXAMINE(incident[1]);
+                                    //    SCITBX_EXAMINE(incident[2]);
+                                    //    SCITBX_EXAMINE(incident[3]);
+
+                                    //    SCITBX_EXAMINE(k_diffracted[0]);
+                                    //    SCITBX_EXAMINE(k_diffracted[1]);
+                                    //    SCITBX_EXAMINE(k_diffracted[2]);
+                                    //    SCITBX_EXAMINE(lambda);
+                                    //    SCITBX_EXAMINE(F_latt);
+                                    //    SCITBX_EXAMINE(airpath);
+                                    //    SCITBX_EXAMINE(pixel_pos[1]);
+                                    //    SCITBX_EXAMINE(pixel_pos[2]);
+                                    //    SCITBX_EXAMINE(pixel_pos[3]);
+                                    //    SCITBX_EXAMINE(q_vec[0]);
+                                    //    SCITBX_EXAMINE(q_vec[1]);
+                                    //    SCITBX_EXAMINE(q_vec[2]);
+                                    //    vec3 dk = vec3(0,0,1);
+                                    //    vec3 dq = 1/airpath * (dk - k_diffracted*(1/airpath/airpath)*(dk*k_diffracted));
+                                    //    dq  = dq / (lambda*1e10);
+                                    //    SCITBX_EXAMINE(dq[0]);
+                                    //    SCITBX_EXAMINE(dq[1]);
+                                    //    SCITBX_EXAMINE(dq[2]);
+                                    //    SCITBX_EXAMINE(UBO[0]);
+                                    //    SCITBX_EXAMINE(UBO[1]);
+                                    //    SCITBX_EXAMINE(UBO[2]);
+                                    //    SCITBX_EXAMINE(UBO[3]);
+                                    //    SCITBX_EXAMINE(UBO[4]);
+                                    //    SCITBX_EXAMINE(UBO[5]);
+                                    //    SCITBX_EXAMINE(UBO[6]);
+                                    //    SCITBX_EXAMINE(UBO[7]);
+                                    //    SCITBX_EXAMINE(UBO[8]);
+
+                                    //    vec3 dV = NABC*(UBO*dq);
+                                    //    SCITBX_EXAMINE(dV[0]);
+                                    //    SCITBX_EXAMINE(dV[1]);
+                                    //    SCITBX_EXAMINE(dV[2]);
+                                    //    SCITBX_EXAMINE(H0_vec[0]);
+                                    //    SCITBX_EXAMINE(H0_vec[1]);
+                                    //    SCITBX_EXAMINE(H0_vec[2]);
+                                    //    //SCITBX_EXAMINE(NABC[0]);
+                                    //    double V_dot_dV = V*dV;
+                                    //    double dH = 2*V_dot_dV;
+                                    //    double dHrad = 2*V_dot_dV;
+                                    //    double a = 1 / 0.63 * fudge;
+                                    //    double dFlatt = -1*a*F_latt*dHrad;
+                                    //    double hh = V*V;
+                                    //    SCITBX_EXAMINE(dH);
+                                    //    SCITBX_EXAMINE(dFlatt);
+                                    //    SCITBX_EXAMINE(hh);
+                                    //    SCITBX_EXAMINE(hrad_sqr);
+                                    //    SCITBX_EXAMINE(V[0]);
+                                    //    SCITBX_EXAMINE(V[1]);
+                                    //    SCITBX_EXAMINE(V[2]);
+                                    //}
                                     origin_managers[0]->increment(
-                                        V, NUBO, k_diffracted, airpath,
+                                        V,  NABC, UBO, k_diffracted, airpath, lambda*1e10,
                                         hrad_sqr, F_cell, F_latt, fudge,
                                         source_I[source], capture_fraction, omega_pixel);
                                 } /* end origin manager deriv */
