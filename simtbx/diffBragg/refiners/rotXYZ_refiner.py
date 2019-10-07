@@ -1,5 +1,9 @@
 
 import pylab as plt
+from mpl_toolkits.mplot3d import axes3d
+
+fig = plt.figure()
+ax = fig.gca(projection='3d')
 import numpy as np
 
 from scitbx.array_family import flex
@@ -10,7 +14,7 @@ from simtbx.diffBragg.refiners import PixelRefinement
 class RefineRot(PixelRefinement):
 
     def __init__(self, spot_rois, abc_init, img, SimData_instance,
-                 plot_images=False):
+                 plot_images=False, plot_residuals=False):
         """
         :param spot_rois:
         :param abc_init:
@@ -20,6 +24,7 @@ class RefineRot(PixelRefinement):
         """
         super(RefineRot, self).__init__()
         self.plot_images = plot_images
+        self.plot_residuals = plot_residuals
         self.spot_rois = spot_rois
         self.abc_init = abc_init
         self.gain_fac = 1
@@ -28,9 +33,18 @@ class RefineRot(PixelRefinement):
         self.refine_rotX = self.refine_rotY = self.refine_rotZ = True
         self.iterations = 0
         if self.plot_images:
-            self.fig, (self.ax1, self.ax2) = plt.subplots(nrows=1, ncols=2)
-            self.ax1.imshow([[0, 1, 1], [0, 1, 2]])
-            self.ax2.imshow([[0, 1, 1], [0, 1, 2]])
+            if plot_residuals:
+                self.fig = plt.figure()
+                self.ax = self.fig.gca(projection='3d')
+                self.ax.set_yticklabels([])
+                self.ax.set_xticklabels([])
+                self.ax.set_zticklabels([])
+                self.ax.set_zlabel("model residual")
+                self.ax.set_facecolor("gray")
+            else:
+                self.fig, (self.ax1, self.ax2) = plt.subplots(nrows=1, ncols=2)
+                self.ax1.imshow([[0, 1, 1], [0, 1, 2]])
+                self.ax2.imshow([[0, 1, 1], [0, 1, 2]])
 
     def _setup(self):
         # total number of refinement parameters
