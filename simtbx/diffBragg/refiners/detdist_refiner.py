@@ -14,7 +14,6 @@ class RefineDetdist(RefineRot):
         :param args:
         :param kwargs:
         """
-        self.f_vals = []
 
         RefineRot.__init__(self, *args, **kwargs)
         self._init_scale = init_scale
@@ -26,16 +25,15 @@ class RefineDetdist(RefineRot):
 
     def _setup(self):
         # total number of refinement parameters
-        n_bg = 0 #3 * self.n_spots
+        n_bg = 3 * self.n_spots
         n_spotscale = 2
         n_origin = 1  # number of dxtbx detector model origin parameters (1 for det distance)
         self.n = n_bg + n_origin + n_spotscale
         self.x = flex.double(self.n)
 
         # populate the x-array with initial values
-        #self._move_abc_init_to_x()
-        from copy import deepcopy
-        self.x[-3] = deepcopy(self.S.detector[self._panel_id].get_origin()[2])
+        self._move_abc_init_to_x()
+        self.x[-3] = self.S.detector[self._panel_id].get_origin()[2]
         self.x[-2] = self._init_gain  # initial gain for experiment
         self.x[-1] = self._init_scale  # initial scale factor
 
@@ -45,15 +43,14 @@ class RefineDetdist(RefineRot):
         self.D.initialize_managers()
 
     def _update_dxtbx_detector(self):
-        from copy import deepcopy
-        self._mod_det = deepcopy(self.S.detector)
-        node = self._mod_det[self._panel_id]
+        det = self.S.detector
+        node = det[self._panel_id]
         node_d = node.to_dict()
         new_originZ = self.x[-3]
         node_d["origin"] = node_d["origin"][0], node_d["origin"][1], new_originZ
-        self._mod_det[self._panel_id] = Panel.from_dict(node_d)
-        #self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
-        self.D.update_dxtbx_geoms(self._mod_det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
+        det[self._panel_id] = Panel.from_dict(node_d)
+        self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
+        self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
 
     def _run_diffBragg_current(self, i_spot):
         """needs to be called each time the ROI is changed"""
@@ -65,10 +62,9 @@ class RefineDetdist(RefineRot):
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
 
     def _unpack_bgplane_params(self, i_spot):
-        self.a, self.b, self.c = self.abc_init[i_spot]
-        #self.a = self.x[i_spot]
-        #self.b = self.x[self.n_spots + i_spot]
-        #self.c = self.x[self.n_spots * 2 + i_spot]
+        self.a = self.x[i_spot]
+        self.b = self.x[self.n_spots + i_spot]
+        self.c = self.x[self.n_spots * 2 + i_spot]
 
     def _update_best_image(self, i_spot):
         x1, x2, y1, y2 = self.spot_rois[i_spot]
@@ -98,10 +94,10 @@ class RefineDetdist(RefineRot):
             # compute gradients for background plane constants a,b,c
             xr = self.xrel[i_spot]  # fast scan pixels
             yr = self.yrel[i_spot]  # slow scan pixels
-            #if self.refine_background_planes:
-            #    g[i_spot] += (xr * G2*one_minus_k_over_Lambda).sum()  # from handwritten notes
-            #    g[self.n_spots + i_spot] += (yr*G2*one_minus_k_over_Lambda).sum()
-            #    g[self.n_spots * 2 + i_spot] += (G2*one_minus_k_over_Lambda).sum()
+            if self.refine_background_planes:
+                g[i_spot] += (xr * G2*one_minus_k_over_Lambda).sum()  # from handwritten notes
+                g[self.n_spots + i_spot] += (yr*G2*one_minus_k_over_Lambda).sum()
+                g[self.n_spots * 2 + i_spot] += (G2*one_minus_k_over_Lambda).sum()
 
             if self.plot_images:
                 if self.plot_residuals:
@@ -154,7 +150,6 @@ class RefineDetdist(RefineRot):
         self.D.raw_pixels *= 0
         self.print_step("LBFGS stp", f)
         self.iterations += 1
-        self.f_vals.append(f)
         return f, g
 
     def print_step(self, message, target):
