@@ -673,7 +673,8 @@ class xfel_db_application(db_application):
     return self.get_all_x_with_subitems(JobFactory.from_args, "job", sub_items = [(Trial, 'trial', True),
                                                                                   (Run, 'run', True),
                                                                                   (Rungroup, 'rungroup', True),
-                                                                                  (Task, 'task', False)], where = where)
+                                                                                  (Task, 'task', False),
+                                                                                  (Dataset, 'dataset', False)], where = where)
 
   def delete_job(self, job = None, job_id = None):
     assert [job, job_id].count(None) == 1
