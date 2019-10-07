@@ -1103,6 +1103,7 @@ var MakeHKL_Axis = function()
       rightnow = timefunc();
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
+        postrotmxflag = true;
         WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
         timenow = timefunc();
       }
@@ -1140,6 +1141,19 @@ var MakeHKL_Axis = function()
     }
   );
 
+
+  stage.viewer.signals.rendered.add(
+    function()
+    {
+      if (postrotmxflag === true)
+      {
+        cvorient = stage.viewerControls.getOrientation().elements;
+        msg = String(cvorient);
+        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        postrotmxflag = false;
+      }
+    }
+  );
 
     """
 
@@ -1365,16 +1379,6 @@ mysocket.onerror = function(error)
 };
 
 
-window.addEventListener( 'resize',
-  function( event ){
-      stage.handleResize();
-  },
-  false
-);
-
-
-
-
 var stage;
 var shape;
 var shapeComp;
@@ -1397,12 +1401,14 @@ var radii = [];
 var shapebufs = [];
 var br_shapebufs = [];
 var nrots = 0;
+var postrotmxflag = false;
 var cvorient = new NGL.Matrix4();
 var clipFixToCamPosZ = false;
 var origclipnear;
 var origclipfar;
 var origcameraZpos;
 var nbins = %s;
+
 
 function timefunc() {
   var d = new Date();
@@ -1413,6 +1419,13 @@ function timefunc() {
 var timenow = timefunc();
 var rightnow = timefunc();
 
+
+window.addEventListener( 'resize',
+  function( event ){
+      stage.handleResize();
+  },
+  false
+);
 
 
 ///var script=document.createElement('script');
@@ -1731,10 +1744,11 @@ mysocket.onmessage = function (e)
               0.0,   0.0,   0.0,   1.0
       );
       stage.viewerControls.orient(m4);
+      postrotmxflag = true;
       stage.viewer.requestRender();
-      cvorient = stage.viewerControls.getOrientation().elements;
-      msg = String(cvorient);
-      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+      //cvorient = stage.viewerControls.getOrientation().elements;
+      //msg = String(cvorient);
+      //WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
 
     if (msgtype === "TranslateHKLpoints")
@@ -2507,14 +2521,18 @@ mysocket.onmessage = function (e)
     #ortrot = (OrtMx * RotMx * InvMx).as_mat3()
     radangles = [e*math.pi/180.0 for e in eulerangles1]
     RotMx = scitbx.math.euler_angles_as_matrix(radangles)
-    scaleRot = RotMx * self.cameradist
-    ortrot = scaleRot.as_mat3()
-    if scaleRot.determinant() < 1.0:
+    if RotMx.determinant() < 1.0:
       self.mprint("Waiting for scaleRot determinant > 0")
-      return
+      #return
       sleep(1)
       self.RotateStage(eulerangles)
       return
+    self.RotateMxStage(RotMx)
+
+
+  def RotateMxStage(self, rotmx):
+    scaleRot = rotmx * self.cameradist
+    ortrot = scaleRot.as_mat3()
     str_rot = str(ortrot)
     str_rot = str_rot.replace("(", "")
     str_rot = str_rot.replace(")", "")
