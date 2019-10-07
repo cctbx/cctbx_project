@@ -819,9 +819,6 @@ Residue classes
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
         links[key][-1]+=bond_i_seqs
-        print('self._cif')
-        self._cif.cif["link_%s" % key] = cif
-        assert 0
         continue
       elif link:
         origin_id = origin_ids['link_%s' % key]
