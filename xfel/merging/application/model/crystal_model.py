@@ -245,14 +245,20 @@ class crystal_model(worker):
       # N(i_model) >= N(miller_set) since it fills non-matches with invalid structure factors
       # However, if N(i_model) > N(miller_set), it's because this run of cxi.merge requested
       # a smaller resolution range.  Must prune off the reference model.
+
+      #RB 10/07/2019 The old cxi.merge comment regarding N(i_model) vs. N(miller_set) - see above - refers to pdb references only.
+      #Now applying the same approach to all cases when the reference is mtz.
+
       if self.purpose == "scaling":
-        if i_model.indices().size() > miller_set.indices().size():
+        is_mtz = str(self.params.scaling.model).endswith(".mtz")
+        if i_model.indices().size() > miller_set.indices().size() or is_mtz:
           matches = miller.match_indices(i_model.indices(), miller_set.indices())
           pairs = matches.pairs()
           i_model = i_model.select(pairs.column(0))
-
         matches = miller.match_indices(i_model.indices(), miller_set.indices())
-        #assert not matches.have_singles()
+        if is_mtz:
+          assert matches.pairs().size() >= self.params.scaling.mtz.minimum_common_hkls, "Number of common HKLs between mtz reference and data (%d) is less than required (%d)."\
+                 %(matches.pairs().size(), self.params.scaling.mtz.minimum_common_hkls)
         miller_set = miller_set.select(matches.permutation())
 
     return miller_set, i_model

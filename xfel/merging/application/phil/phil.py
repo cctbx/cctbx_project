@@ -224,6 +224,10 @@ scaling {
       .type = str
       .help = scaling reference column name containing reference structure factors. Can be
       .help = intensities or amplitudes
+    minimum_common_hkls = -1
+      .type = int
+      .help = minimum required number of common hkls between mtz reference and data
+      .help = used to validate mtz-based model. No validation with -1.
   }
   pdb {
     include_bulk_solvent = True
