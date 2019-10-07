@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
-from xfel.ui.db import db_proxy
+from xfel.ui import settings_dir
+from xfel.ui.db import db_proxy, get_run_path
+import os, shutil
 
 known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED"]
 finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN", "ERR", "SUBMIT_FAIL"]
@@ -30,15 +32,17 @@ class Job(db_proxy):
     self.job_id = self.id
 
   def get_log_path(self):
-    from xfel.ui.db import get_run_path
-    import os
-    run_path = str(get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run))
+    run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run)
     return os.path.join(run_path, "stdout", "log.out")
 
-  def submit(self):
+  def submit(self, previous_job = None):
     raise NotImplementedError("Override me!")
 
   def delete(self, output_only=False):
+    raise NotImplementedError("Override me!")
+
+  def get_output_files(self):
+    # Retrun folder and experiment and reflection table suffixes
     raise NotImplementedError("Override me!")
 
   def remove_from_db(self):
@@ -61,9 +65,12 @@ class Job(db_proxy):
         (self.app.params.experiment_tag, self.run.run, self.trial.trial, self.rungroup.id)
 
 class IndexingJob(Job):
-  def submit(self):
-    import os, libtbx.load_env
-    from xfel.ui import settings_dir
+  def get_output_files(self):
+    run_path = str(get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run))
+    return os.path.join(run_path, 'out'), '_integrated.expt', '_integrated.refl'
+
+  def submit(self, previous_job = None):
+    import libtbx.load_env
     configs_dir = os.path.join(settings_dir, "cfgs")
     if not os.path.exists(configs_dir):
       os.makedirs(configs_dir)
@@ -308,9 +315,6 @@ class IndexingJob(Job):
     return submit_script().run(args)
 
   def delete(self, output_only=False):
-    from xfel.ui.db import get_run_path
-    import os, shutil
-
     if self.status not in finished_job_statuses:
       print("Job is not finished (status = %s)"%self.status)
       return
@@ -456,16 +460,22 @@ class IndexingJob(Job):
 
 class EnsembleRefinementJob(Job):
   def delete(self, output_only=False):
-    print ("Cannot yet delete jobs of type %s"%self.task.type)
+    job_folder = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
+    if os.path.exists(job_folder):
+      print("Deleting job folder for job", self.id)
+      shutil.rmtree(job_folder)
+    else:
+      print("Cannot find job folder (%s)"%job_folder)
     self.status = "DELETED"
 
-  def submit(self):
+  def get_output_files(self):
+    run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
+    return os.path.join(run_path, 'combine_experiments_t%03d'%self.trial.trial, 'intermediates'), '_reintegrated.expt', '_reintegrated.refl'
+
+  def submit(self, previous_job = None):
     from xfel.command_line.striping import Script
-    from xfel.ui import settings_dir
     from xfel.command_line.cxi_mpi_submit import get_submission_id
-    from xfel.ui.db import get_run_path
     from libtbx import easy_run
-    import os
     configs_dir = os.path.join(settings_dir, "cfgs")
     identifier_string = self.get_identifier_string()
     target_phil_path = os.path.join(configs_dir, identifier_string + "_params.phil")
@@ -511,31 +521,109 @@ class EnsembleRefinementJob(Job):
 
 class ScalingJob(Job):
   def delete(self, output_only=False):
-    print ("Cannot yet delete jobs of type %s"%self.task.type)
+    job_folder = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
+    if os.path.exists(job_folder):
+      print("Deleting job folder for job", self.id)
+      shutil.rmtree(job_folder)
+    else:
+      print("Cannot find job folder (%s)"%job_folder)
     self.status = "DELETED"
 
+  def get_output_files(self):
+    run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
+    return os.path.join(run_path, 'out'), ".expt", ".refl"
+
+  def write_submit_phil(self, submit_phil_path, target_phil_path):
+    import libtbx.load_env
+    submit_root = libtbx.env.find_in_repositories("xfel/ui/db/cfgs")
+    d =  dict(
+      dry_run                   = self.app.params.dry_run,
+      dispatcher                = 'cctbx.xfel.merge',
+      run_num                   = self.run.run,
+      output_dir                = self.app.params.output_folder,
+      trial                     = self.trial.trial,
+      rungroup                  = self.rungroup.rungroup_id,
+      task                      = self.task.id,
+      nproc                     = self.app.params.mp.nproc,
+      nproc_per_node            = self.app.params.mp.nproc_per_node,
+      queue                     = self.app.params.mp.queue or None,
+      env_script                = self.app.params.mp.env_script[0] if len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
+      method                    = self.app.params.mp.method,
+      target                    = target_phil_path,
+      # always use mpi for 'lcls'
+      use_mpi                   = self.app.params.mp.method != 'local' or (app.params.mp.method == 'local' and app.params.facility.name == 'lcls')
+    )
+
+    with open(submit_phil_path, "w") as phil:
+      for line in open(os.path.join(submit_root, "submit_xfel_merge.phil")).readlines():
+        phil.write(line.format(**d))
+
+  def submit(self, previous_job = None):
+    from xfel.command_line.cxi_mpi_submit import Script as submit_script
+
+    output_path = os.path.join(get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task), 'out')
+
+    configs_dir = os.path.join(settings_dir, "cfgs")
+    if not os.path.exists(configs_dir):
+      os.makedirs(configs_dir)
+    identifier_string = self.get_identifier_string()
+    submit_phil_path = os.path.join(configs_dir, identifier_string + "_submit.phil")
+
+    target_phil_path = os.path.join(configs_dir, identifier_string + "_params.phil")
+    input_folder, expt_suffix, refl_suffix = previous_job.get_output_files()
+
+    with open(target_phil_path, 'w') as f:
+      f.write("input.path=%s\n"%input_folder)
+      f.write("input.experiments_suffix=%s\n"%expt_suffix)
+      f.write("input.reflections_suffix=%s\n"%refl_suffix)
+      f.write("output.output_dir=%s\n"%output_path)
+      f.write("output.prefix=%s\n"%self.dataset.name)
+      f.write(self.task.parameters)
+
+    self.write_submit_phil(submit_phil_path, target_phil_path)
+
+    args = [submit_phil_path]
+    if self.app.params.facility.name not in ['lcls']:
+      args.append(self.run.path)
+    return submit_script().run(args)
+
 class MergingJob(Job):
-  def delete(self, output_only=False):
-    print ("Cannot yet delete jobs of type %s"%self.task.type)
-    self.status = "DELETED"
+  pass
+  # def delete(self, output_only=False):
+  #   job_folder = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
+  #   if os.path.exists(job_folder):
+  #     print("Deleting job folder for job", self.id)
+  #     shutil.rmtree(job_folder)
+  #   else:
+  #     print("Cannot find job folder (%s)"%job_folder)
+  #   self.status = "DELETED"
+
+  # def get_output_files(self):
+    # run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
+    # return os.path.join(run_path, 'combine_experiments_t%03d'%self.trial.trial, 'intermediates'), '*integrated*'
 
 # Support classes and functions for job submission
 
 class _job(object):
   """Used to represent a job that may not have been submitted into the cluster or database yet"""
-  def __init__(self, trial, rungroup, run, task=None):
+  def __init__(self, trial, rungroup, run, task=None, dataset=None):
     self.trial = trial
     self.rungroup = rungroup
     self.run = run
     self.task = task
+    self.dataset = dataset
 
   def __eq__(self, other):
     ret =  self.trial.id == other.trial_id and \
            self.rungroup.id == other.rungroup_id and \
            self.run.id == other.run_id
     if self.task is None:
-      return other.task_id is None and ret
-    return ret and self.task.id == other.task_id
+      ret = other.task_id is None and ret
+    else:
+      ret = ret and self.task.id == other.task_id
+    if self.dataset is None:
+      return other.dataset_id is None and ret
+    return ret and self.dataset.id == other.dataset_id
 
 def submit_all_jobs(app):
   submitted_jobs = app.get_all_jobs()
@@ -602,11 +690,12 @@ def submit_all_jobs(app):
       submit_next_task = False
       last_task_status = ""
       tasks = dataset.tasks
+      previous_job = None
       for task_idx, task in enumerate(tasks):
         if task.type == 'indexing':
           job = _job(trial, rungroup, run)
         else:
-          job = _job(trial, rungroup, run, task)
+          job = _job(trial, rungroup, run, task, dataset)
         try:
           submitted_job = submitted_jobs[submitted_jobs.index(job)]
         except ValueError:
@@ -621,11 +710,12 @@ def submit_all_jobs(app):
             print ("Task %s waiting on job %d (%s) for trial %d, rungroup %d, run %s, task %d" % \
               (next_task.type, submitted_job.id, submitted_job.status, trial.trial, rungroup.id, run.run, next_task.id))
             break
-          if submitted_job.status != "EXIT":
+          if submitted_job.status not in ["DONE", "EXIT"]:
             print ("Task %s cannot start due to unexpected status for job %d (%s) for trial %d, rungroup %d, run %s, task %d" % \
               (next_task.type, submitted_job.id, submitted_job.status, trial.trial, rungroup.id, run.run, next_task.id))
             break
           submit_next_task = True
+          previous_job = submitted_job
           continue
 
         print("Submitting %s job: trial %d, rungroup %d, run %s, task %d"% \
@@ -636,14 +726,17 @@ def submit_all_jobs(app):
                                  rungroup_id = rungroup.id,
                                  run_id = run.id,
                                  task_id = task.id,
+                                 dataset_id = dataset.id,
                                  status = "SUBMITTED")
-        j.trial = job.trial; j.rungroup = job.rungroup; j.run = job.run; j.task = job.task
+        j.trial = job.trial; j.rungroup = job.rungroup; j.run = job.run; j.task = job.task; j.dataset = dataset
         try:
-          j.submission_id = j.submit()
+          j.submission_id = j.submit(previous_job)
         except Exception as e:
           print("Couldn't submit job:", str(e))
           j.status = "SUBMIT_FAIL"
           raise
+
+        previous_job = j
 
         if app.params.mp.method == 'local': # only run one job at a time
           return

@@ -382,15 +382,19 @@ class Script(object):
       locator_file = os.path.join(trialdir, "data.loc")
       shutil.copyfile(params.input.locator, locator_file)
       data_str += locator_file
+
+    from xfel.ui import known_dials_dispatchers
+    if params.input.dispatcher in known_dials_dispatchers:
+      import importlib
+      dispatcher_params = importlib.import_module(known_dials_dispatchers[params.input.dispatcher]).phil_scope.extract()
+    else:
+      dispatcher_params = None
+
     if params.input.experiment is None:
-      from xfel.ui import known_dials_dispatchers
-      if params.input.dispatcher in known_dials_dispatchers:
-        import importlib
-        dispatcher_params = importlib.import_module(known_dials_dispatchers[params.input.dispatcher]).phil_scope.extract()
-        if hasattr(dispatcher_params, 'input') and hasattr(dispatcher_params.input, 'trial'):
-          assert hasattr(dispatcher_params.input, 'run_num')
-          data_str += " input.trial=%s input.run_num=%s" % ( # pass along for logging
-            params.input.trial, params.input.run_num)
+      if hasattr(dispatcher_params, 'input') and hasattr(dispatcher_params.input, 'trial'):
+        assert hasattr(dispatcher_params.input, 'run_num')
+        data_str += " input.trial=%s input.run_num=%s" % ( # pass along for logging
+          params.input.trial, params.input.run_num)
     else:
       data_str += " input.trial=%s input.experiment=%s input.run_num=%s" % (
         params.input.trial, params.input.experiment, params.input.run_num)
@@ -401,7 +405,7 @@ class Script(object):
     if params.input.target is not None:
       extra_str += " %s" % params.input.target
 
-    if params.input.rungroup is not None:
+    if hasattr(dispatcher_params, 'input') and hasattr(dispatcher_params.input, 'rungroup') and params.input.rungroup is not None:
       data_str += " input.rungroup=%d" % params.input.rungroup
 
     command = "%s %s output.output_dir=%s %s %s" % (
