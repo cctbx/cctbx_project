@@ -11,6 +11,7 @@ from dxtbx.model import Panel
 from copy import deepcopy
 import numpy as np
 from scipy.spatial.transform import Rotation
+import pylab as plt
 
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
@@ -53,21 +54,18 @@ print "Ground truth originZ=%f" % (SIM.detector[0].get_origin()[2])
 # copy the detector and update the origin
 det2 = deepcopy(SIM.detector)
 # alter the detector distance by 2 mm
-node_d["origin"] = Origin[0], Origin[1], Origin[2]+3
+node_d["origin"] = Origin[0], Origin[1], Origin[2]+2
 det2[0] = Panel.from_dict(node_d)
 print ("Modified originZ=%f" % (det2[0].get_origin()[2]))
 
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0)
 SIM.D.progress_meter = False
-SIM.D.verbose = 0 #1
-SIM.D.nopolar = True
 SIM.water_path_mm = 0.005
 SIM.air_path_mm = 0.1
 SIM.add_air = True
 SIM.add_Water = True
 SIM.include_noise = True
-#SIM.D.spot_scale = 1e8
 SIM.D.add_diffBragg_spots()
 spots = SIM.D.raw_pixels.as_numpy_array()
 SIM._add_background()
@@ -90,12 +88,12 @@ SIM.D.raw_pixels *= 0
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
 spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot)
 n_spots = len(spot_roi)
+import numpy as np
 n_kept = 20
 np.random.seed(1)
 idx = np.random.permutation(n_spots)[:n_kept]
 spot_roi = spot_roi[idx]
 tilt_abc = tilt_abc[idx]
-print ("I got %d spots!" % tilt_abc.shape[0])
 
 RUC = RefineDetdist(
     spot_rois=spot_roi,
@@ -106,13 +104,7 @@ RUC = RefineDetdist(
     plot_residuals=True)
 
 RUC.trad_conv = True
-RUC.refine_background_planes = False
 RUC.trad_conv_eps = 1e-5
 RUC.max_calls = 200
 RUC.run()
 
-assert abs(RUC.x[-3] - distance) < 1e-2
-
-print det2[0].get_origin()[2]
-print RUC.x[-3]
-print("OK!")
