@@ -82,15 +82,19 @@ class Script(object):
 
     for i in range(len(experiments)):
       refls = reflections.select(reflections['id'] == i)
+      tmp = refls['id']
+      refls['id'] = flex.int(len(refls), 0)
       try:
         nv = NaveParameters(params = nvparams, experiments=experiments[i:i+1], reflections=refls, refinery=None, graph_verbose=False)
         crystal_model_nv = nv()[0]
       except Exception as e:
+        print("Error recomputing mosaicity for experiment %d: %s"%(i, str(e)))
         continue
       domain_size.append(experiments[i].crystal.get_domain_size_ang() - crystal_model_nv.get_domain_size_ang())
       mosaic_angle.append(experiments[i].crystal.get_half_mosaicity_deg() - crystal_model_nv.get_half_mosaicity_deg())
       experiments[i].crystal = crystal_model_nv
 
+      refls['id'] = tmp
       refls = refls.select(nv.nv_acceptance_flags)
       filtered_reflections.extend(refls)
 
