@@ -1,6 +1,5 @@
 from scipy import ndimage
 from scipy.optimize import minimize
-from scitbx.matrix import sqr
 import numpy as np
 import pylab as plt
 
@@ -261,6 +260,8 @@ def process_simdata(spots, img, thresh=20, plot=False):
         plt.imshow(img, vmax=200)
         plt.plot(fs_spot, ss_spot, 'o', mfc='none', mec='r')
         plt.title("Simulated image with strong spots marked")
+        plt.xlim(-.5, img.shape[1]-.5)
+        plt.ylim(img.shape[0]-.5, -.5)
         plt.show()
 
     is_bg_pixel = np.ones(img.shape, bool)
