@@ -813,11 +813,7 @@ class manager(object):
     result = StringIO()
     # outputting HELIX/SHEET records
     ss_records = ""
-    ss_ann = None
-    if self._ss_manager is not None:
-      ss_ann = self._ss_manager.actual_sec_str
-    elif self.get_ss_annotation() is not None:
-      ss_ann = self.get_ss_annotation()
+    ss_ann = self._get_ss_annotations_for_output()
     if ss_ann is not None:
       ss_records = ss_ann.as_pdb_str()
     if ss_records != "":
@@ -901,6 +897,17 @@ class manager(object):
           break
     return restraints
 
+  def _get_ss_annotations_for_output(self):
+    ss_ann = None
+    if self._ss_manager is not None:
+      ss_ann = self._ss_manager.actual_sec_str
+    elif self.get_ss_annotation() is not None:
+      ss_ann = self.get_ss_annotation()
+    if ss_ann is not None:
+      ss_ann.remove_empty_annotations(self.get_hierarchy(),
+          self.get_atom_selection_cache())
+    return ss_ann
+
   def model_as_mmcif(self,
       cif_block_name = "default",
       output_cs = True,
@@ -952,11 +959,7 @@ class manager(object):
       self.get_model_statistics_info()
     # outputting HELIX/SHEET records
     ss_cif_loops = []
-    ss_ann = None
-    if self._ss_manager is not None:
-      ss_ann = self._ss_manager.actual_sec_str
-    elif self.get_ss_annotation() is not None:
-      ss_ann = self.get_ss_annotation()
+    ss_ann = self._get_ss_annotations_for_output()
     if ss_ann is not None:
       ss_cif_loops = ss_ann.as_cif_loops()
     for loop in ss_cif_loops:
