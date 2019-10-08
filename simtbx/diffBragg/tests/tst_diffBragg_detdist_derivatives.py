@@ -181,6 +181,7 @@ for i_shift, p in enumerate(percs):
     error = np.abs(fdiff[bragg] - deriv[bragg]).mean()
     all_errors.append(error)
     all_shifts.append(delta_shift_meters)
+    embed()
     print("Error=%f shift=%f mm, distance=%f mm" % (error, delta_shift, D.distance_mm))
     if args.plot:
         y = slice(40, 65, 1)
