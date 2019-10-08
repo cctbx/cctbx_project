@@ -267,6 +267,40 @@ def get_submission_id(result, method):
     print(submission_id)
     return submission_id
 
+def do_submit(command, submit_path, stdoutdir, mp_params, job_name, dry_run=False):
+  submit_command = get_submit_command_chooser(command, submit_path, stdoutdir, mp_params, job_name=job_name)
+  if mp_params.method in ['lsf', 'sge', 'pbs']:
+    parts = submit_command.split(" ")
+    script = open(parts.pop(-1), "rb")
+    run_command = script.read().split("\n")[-2]
+    command = " ".join(parts + [run_command])
+  else:
+    command = submit_command
+  print(command)
+  submit_command = str(submit_command) # unicode workaround
+
+  if dry_run:
+    print("Dry run: job not submitted. Trial directory created here:", trialdir)
+    print("Execute this command to submit the job:")
+    print(submit_command)
+  elif mp_params.method == 'local':
+    submission_id = os.fork()
+    if submission_id > 0:
+      return submission_id
+    else:
+      stdout = os.open(os.path.join(stdoutdir, 'log.out'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stdout, 1)
+      stderr = os.open(os.path.join(stdoutdir, 'log.err'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stderr, 2)
+      os.execv(command.split()[0], command.split())
+  else:
+    try:
+      result = easy_run.fully_buffered(command=submit_command)
+      result.raise_if_errors()
+    except Exception as e:
+      if not "Warning: job being submitted without an AFS token." in str(e):
+        raise e
+
+    return get_submission_id(result, mp_params.method)
+
 class Script(object):
   """ Script to submit XFEL data for processing"""
   def __init__(self):
@@ -415,39 +449,9 @@ class Script(object):
 
     job_name = "r%s"%params.input.run_num
 
-    submit_command = get_submit_command_chooser(command, submit_path, stdoutdir, params.mp, job_name=job_name)
-    if params.mp.method in ['lsf', 'sge', 'pbs']:
-      parts = submit_command.split(" ")
-      script = open(parts.pop(-1), "rb")
-      run_command = script.read().split("\n")[-2]
-      command = " ".join(parts + [run_command])
-    else:
-      command = submit_command
-    print(command)
-
-    if params.dry_run:
-      print("Dry run: job not submitted. Trial directory created here:", trialdir)
-      print("Execute this command to submit the job:")
-      print(submit_command)
-    elif params.mp.method == 'local':
-      submission_id = os.fork()
-      if submission_id > 0:
-        return submission_id
-      else:
-        stdout = os.open(os.path.join(stdoutdir, 'log.out'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stdout, 1)
-        stderr = os.open(os.path.join(stdoutdir, 'log.err'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stderr, 2)
-        os.execv(command.split()[0], command.split())
-    else:
-      try:
-        result = easy_run.fully_buffered(command=submit_command)
-        result.raise_if_errors()
-      except Exception as e:
-        if not "Warning: job being submitted without an AFS token." in str(e):
-          raise e
-
-      print("Job submitted.  Output in", trialdir)
-
-      return get_submission_id(result, params.mp.method)
+    submission_id = do_submit(command, submit_path, stdoutdir, params.mp, job_name=job_name, dry_run=params.dry_run)
+    print("Job submitted.  Output in", trialdir)
+    return submission_id
 
 if __name__ == "__main__":
   script = Script()
