@@ -67,9 +67,9 @@ class origin_manager: public derivative_manager{
     origin_manager();
     virtual ~origin_manager(){}
     void increment(
-        vec3 V, mat3 N, mat3 UBO, vec3 k_diffracted,
+        vec3 V, mat3 N, mat3 UBO, vec3 k_diffracted, vec3 o_vec,
         double air_path, double wavelen, double Hrad, double Fcell, double Flatt, double fudge,
-        double source_I, double capture_fraction, double omega_pixel);
+        double source_I, double capture_fraction, double omega_pixel, double pixel_size);
     vec3 dk; /* derivative of the diffracted vector along this origin component */
 };
 
@@ -114,6 +114,14 @@ class diffBragg: public nanoBragg{
   af::flex_double get_second_derivative_pixels(int refine_id);
   af::flex_double get_raw_pixels_roi();
 
+  /* override to cache some of the polarization calc variables to use in derivatives*/
+  double polarization_factor(double kahn_factor, double *incident, double *diffracted, double *axis);
+
+  double psi;  /* for polarization correction */
+  double u;
+  double kEi;
+  double kBi;
+
   mat3 Umatrix;
   mat3 Bmatrix;
   mat3 Omatrix;
@@ -125,6 +133,8 @@ class diffBragg: public nanoBragg{
   std::vector<mat3> R3;
 
   vec3 k_diffracted;
+  vec3 o_vec;
+  vec3 Ei_vec, Bi_vec;
   vec3 H_vec, H0_vec;
   vec3 a_vec, ap_vec;
   vec3 b_vec, bp_vec;
