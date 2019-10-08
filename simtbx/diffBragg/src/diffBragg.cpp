@@ -30,9 +30,9 @@ void derivative_manager::increment_image(int idx, double value, double value2){
 origin_manager::origin_manager(){}
 
 void origin_manager::increment(
-        vec3 V, mat3 N, mat3 UBO, vec3 k_diffracted, double air_path, double wavelen,
+        vec3 V, mat3 N, mat3 UBO, vec3 k_diffracted, vec3 o_vec, double air_path, double wavelen,
         double Hrad, double Fcell, double Flatt, double fudge,
-        double source_I, double capture_fraction, double omega_pixel){
+        double source_I, double capture_fraction, double omega_pixel, double pixel_size){
 
     vec3 dq = 1/air_path * (dk - k_diffracted*(1/air_path/air_path)*(dk*k_diffracted));
     dq /= wavelen;
@@ -41,8 +41,14 @@ void origin_manager::increment(
     double dHrad = 2*V_dot_dV;
     double a = 1 / 0.63 * fudge;
     double dFlatt = -1*a*Flatt*dHrad;
-    double c = Fcell*Fcell*source_I*capture_fraction*omega_pixel;
-    dI += c*2*Flatt*dFlatt;
+    double c = Fcell*Fcell*source_I*capture_fraction;
+    dI += c*2*Flatt*dFlatt*omega_pixel;
+    // contribution from derivative of solid angle
+    double D = k_diffracted * o_vec;
+    double pp = pixel_size*pixel_size;
+    double domega  = -3*pp/pow(air_path,5)*(dk*k_diffracted)*D;
+    domega += pp/pow(air_path,3) * (o_vec * dk);
+    dI +=c*Flatt*Flatt* domega;
 
     dI2 += 0;
 };
@@ -183,6 +189,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
 
     mat3 EYE = mat3(1,0,0,0,1,0,0,0,1);
     Omatrix = mat3(1,0,0,0,1,0,0,0,1);
+    psi = 0;
 
     RotMats.push_back(EYE);
     RotMats.push_back(EYE);
@@ -547,6 +554,58 @@ void diffBragg::zero_raw_pixel_rois(){
     initialize_managers();
 }
 
+/* polarization factor */
+/* override this to store variables needed for derivatives */
+double diffBragg::polarization_factor(double kahn_factor, double *incident, double *diffracted, double *axis)
+{
+    double cos2theta,cos2theta_sqr,sin2theta_sqr;
+    //double psi=0.0;
+    double E_in[4];
+    double B_in[4];
+
+    unitize(incident,incident);
+    unitize(diffracted,diffracted);
+    unitize(axis,axis);
+
+    /* component of diffracted unit vector along incident beam unit vector */
+    cos2theta = dot_product(incident,diffracted);
+    cos2theta_sqr = cos2theta*cos2theta;
+    sin2theta_sqr = 1-cos2theta_sqr;
+    u = cos2theta_sqr;
+
+    if(kahn_factor != 0.0){
+        //SCITBX_EXAMINE(kahn_factor);
+        /* tricky bit here is deciding which direciton the E-vector lies in for each source
+           here we assume it is closest to the "axis" defined above */
+
+        /* cross product to get "vertical" axis that is orthogonal to the cannonical "polarization" */
+        cross_product(axis,incident,B_in);
+        /* make it a unit vector */
+        unitize(B_in,B_in);
+        Bi_vec[0] = B_in[0];
+        Bi_vec[1] = B_in[1];
+        Bi_vec[2] = B_in[2];
+
+        /* cross product with incident beam to get E-vector direction */
+        cross_product(incident,B_in,E_in);
+        /* make it a unit vector */
+        unitize(E_in,E_in);
+        Ei_vec[0] = E_in[1];
+        Ei_vec[1] = E_in[2];
+        Ei_vec[2] = E_in[3];
+
+        /* get components of diffracted ray projected onto the E-B plane */
+        kEi = dot_product(diffracted,E_in);
+        kBi = dot_product(diffracted,B_in);
+
+        /* compute the angle of the diffracted ray projected onto the incident E-B plane */
+        psi = -atan2(kBi,kEi);
+    }
+
+    /* correction for polarized incident beam */
+    return 0.5*(1.0 + cos2theta_sqr - kahn_factor*cos(2*psi)*sin2theta_sqr);
+}
+
 // BEGIN diffBragg_add_spots
 void diffBragg::add_diffBragg_spots()
 {
@@ -707,6 +766,9 @@ void diffBragg::add_diffBragg_spots()
                         k_diffracted[0] = pixel_pos[1];
                         k_diffracted[1] = pixel_pos[2];
                         k_diffracted[2] = pixel_pos[3];
+                        o_vec[0] = odet_vector[1];
+                        o_vec[1] = odet_vector[2];
+                        o_vec[2] = odet_vector[3];
 
                         /* sin(theta)/lambda is half the scattering vector length */
                         stol = 0.5*magnitude(scattering);
@@ -1025,9 +1087,9 @@ void diffBragg::add_diffBragg_spots()
                                     //    SCITBX_EXAMINE(V[2]);
                                     //}
                                     origin_managers[0]->increment(
-                                        V,  NABC, UBO, k_diffracted, airpath, lambda*1e10,
+                                        V,  NABC, UBO, k_diffracted, o_vec, airpath, lambda*1e10,
                                         hrad_sqr, F_cell, F_latt, fudge,
-                                        source_I[source], capture_fraction, omega_pixel);
+                                        source_I[source], capture_fraction, omega_pixel, pixel_size);
                                 } /* end origin manager deriv */
 
                             }
@@ -1081,7 +1143,18 @@ void diffBragg::add_diffBragg_spots()
 
             /* update origin derivative image */
             if (origin_managers[0]->refine_me){
-                double value = r_e_sqr*fluence*spot_scale*polar*origin_managers[0]->dI/steps;
+                double value = r_e_sqr*fluence*spot_scale*polar*  origin_managers[0]->dI  /steps;
+                vec3 dk = origin_managers[0]->dk;
+                double D = k_diffracted*o_vec; //origin_managers[0]->value; /* TODO check me */
+                double dD = dk * o_vec;
+                double du = 2*D/airpath*(dD/airpath - D/pow(airpath,3)*(dk*k_diffracted));
+                double dpsi = 0;
+                /* kahn factor is the variable called polarization */
+                if(polarization)
+                    dpsi = -1/(1+kBi*kBi/kEi/kEi) * ((dk*Bi_vec)/kEi - kBi/kEi/kEi*(dk*Ei_vec));
+                double dpolar = .5*(du*(1 + polarization * cos(2*psi)) + 2*dpsi*sin(2*psi)*(1-polarization*u));
+                value += r_e_sqr*fluence*spot_scale*  dpolar  *I/steps;
+
                 double value2 = r_e_sqr*fluence*spot_scale*polar*origin_managers[0]->dI2/steps;
                 origin_managers[0]->increment_image(roi_i, value, value2);
             } /*end origigin deriv image increment */

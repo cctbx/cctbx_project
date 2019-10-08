@@ -161,7 +161,7 @@ O = node_d["origin"][0], node_d["origin"][1], node_d["origin"][2]
 distance = O[2]
 
 # update the detector distance
-percs = [np.power(1e-1*i, 2) for i in range(1, 9)]
+percs = [np.power(1e-2*i, 2) for i in range(1, 30, 2)]
 all_shifts = []
 all_errors = []
 for i_shift, p in enumerate(percs):
@@ -181,7 +181,6 @@ for i_shift, p in enumerate(percs):
     error = np.abs(fdiff[bragg] - deriv[bragg]).mean()
     all_errors.append(error)
     all_shifts.append(delta_shift_meters)
-    embed()
     print("Error=%f shift=%f mm, distance=%f mm" % (error, delta_shift, D.distance_mm))
     if args.plot:
         y = slice(40, 65, 1)
@@ -195,7 +194,7 @@ for i_shift, p in enumerate(percs):
         plt.draw()
         plt.suptitle("Detdist=%f mm, delta=%f mm, Shift %d / %d"
                      % (distance+delta_shift, delta_shift, i_shift + 1, len(percs)))
-        plt.pause(0.8)
+        plt.pause(0.3)
 
 if args.plot:
     plt.close()
