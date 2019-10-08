@@ -11,7 +11,7 @@ from xfel.ui.db.tag import Tag
 from xfel.ui.db.job import Job, JobFactory
 from xfel.ui.db.stats import Stats
 from xfel.ui.db.experiment import Cell, Bin, Isoform, Event
-from xfel.ui.db.dataset import Dataset
+from xfel.ui.db.dataset import Dataset, DatasetVersion
 from xfel.ui.db.task import Task
 
 from xfel.ui.db import get_db_connection
@@ -665,14 +665,14 @@ class xfel_db_application(db_application):
   def get_job(self, job_id):
     return JobFactory.from_args(self, job_id)
 
-  def get_all_jobs(self, active = False):
+  def get_all_jobs(self, active = False, where = None):
     if active:
-      where = "WHERE trial.active = True AND rungroup.active = True"
-    else:
-      where = None
-    return self.get_all_x_with_subitems(JobFactory.from_args, "job", sub_items = [(Trial, 'trial', True),
-                                                                                  (Run, 'run', True),
-                                                                                  (Rungroup, 'rungroup', True),
+      if where is None:
+        where = ""
+      where += " WHERE trial.active = True AND rungroup.active = True"
+    return self.get_all_x_with_subitems(JobFactory.from_args, "job", sub_items = [(Trial, 'trial', False),
+                                                                                  (Run, 'run', False),
+                                                                                  (Rungroup, 'rungroup', False),
                                                                                   (Task, 'task', False),
                                                                                   (Dataset, 'dataset', False)], where = where)
 
@@ -738,6 +738,34 @@ class xfel_db_application(db_application):
     if len(task_ids) == 0:
       return []
     return self.get_all_x(Task, "task", where = "WHERE task.id IN (%s)"%",".join(task_ids))
+
+  def create_dataset_version(self, **kwargs):
+    return DatasetVersion(self, **kwargs)
+
+  def get_dataset_versions(self, dataset_id, latest = False):
+    tag = self.params.experiment_tag
+    if latest:
+      query = """SELECT MAX(dv.id) FROM `%s_dataset_version` dv
+                 WHERE dv.dataset_id = %d"""%(tag, dataset_id)
+      cursor = self.execute_query(query)
+      rows = cursor.fetchall()
+      if not rows: return []
+      if rows[0][0] is None: return []
+      dataset_version_ids = [i[0] for i in rows]
+      if not dataset_version_ids : return []
+      assert len(dataset_version_ids) == 1
+      return [DatasetVersion(self, dataset_version_id = dataset_version_ids[0])]
+    return self.get_all_x(DatasetVersion, "dataset_version", where = "WHERE dataset_version.dataset_id = %d"%dataset_id)
+
+  def get_dataset_version_jobs(self, dataset_version_id):
+    tag = self.params.experiment_tag
+    query = """SELECT dvj.job_id FROM `%s_dataset_version_job` dvj
+               WHERE dvj.dataset_version_id = %d""" % (tag, dataset_version_id)
+    cursor = self.execute_query(query)
+    job_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    if len(job_ids) == 0:
+      return []
+    return self.get_all_jobs(where = "WHERE job.id IN (%s)"%",".join(job_ids))
 
   def get_dataset_tags(self, dataset_id):
     tag = self.params.experiment_tag

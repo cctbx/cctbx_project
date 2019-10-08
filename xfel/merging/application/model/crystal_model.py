@@ -277,10 +277,11 @@ class crystal_model(worker):
     target_space_group = target_symmetry.space_group()
 
     # generate and add an asu hkl column
-    reflections['miller_index_asymmetric'] = copy.deepcopy(reflections['miller_index'])
-    miller.map_to_asu(target_space_group.type(),
-                      not self.params.merging.merge_anomalous,
-                      reflections['miller_index_asymmetric'])
+    if 'miller_index_asymmetric' not in reflections:
+      reflections['miller_index_asymmetric'] = copy.deepcopy(reflections['miller_index'])
+      miller.map_to_asu(target_space_group.type(),
+                        not self.params.merging.merge_anomalous,
+                        reflections['miller_index_asymmetric'])
   '''
   def get_min_max_experiment_unit_cell_volume(self, experiments):
 

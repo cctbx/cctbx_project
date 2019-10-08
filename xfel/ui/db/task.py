@@ -4,6 +4,7 @@ from xfel.ui import load_phil_scope_from_dispatcher
 
 task_types = ["indexing", "ensemble_refinement", "scaling", "merging"]
 task_dispatchers = [None, "cctbx.xfel.stripe_experiment", "cctbx.xfel.merge", "cctbx.xfel.merge"]
+task_scope = ["local", "local", "local", "global"]
 
 class Task(db_proxy):
   def __init__(self, app, task_id = None, **kwargs):
@@ -17,10 +18,13 @@ class Task(db_proxy):
       if self._trial is None and self.trial_id is not None:
         self._trial = self.app.get_trial(trial_id = self.trial_id)
       return self._trial
+    elif name == "scope":
+      return task_scope[task_types.index(self.type)]
     else:
       return super(Task, self).__getattr__(name)
 
   def __setattr__(self, name, value):
+    assert name not in ['scope']
     if name == 'trial':
       self.trial_id = value.trial_id
       self._trial = value
