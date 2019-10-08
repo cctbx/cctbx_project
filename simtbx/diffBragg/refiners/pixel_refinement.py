@@ -20,6 +20,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.use_curvatures = False
         self.refine_background_planes = True
         self.refine_gain_fac = False
+        self.refine_ncells = False
         self.refine_detdist = True
         self.refine_Amatrix = True
         self.refine_crystal_scale = True
@@ -301,4 +302,15 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         if not isinstance(val, bool):
             raise ValueError("refine background planes should be a boolean")
         self._refine_detdist = val
+
+    @property
+    def refine_ncells(self):
+        return self._refine_ncells
+
+    @refine_ncells.setter
+    def refine_ncells(self, val):
+        if not isinstance(val, bool):
+            raise ValueError("refine background planes should be a boolean")
+        self._refine_ncells = val
+
 
