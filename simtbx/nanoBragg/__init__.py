@@ -48,32 +48,44 @@ class _():
     else:
       outfile = open(fileout,"w");
 
-    outfile.write("{\nHEADER_BYTES=1024;\nDIM=2;\nBYTE_ORDER=%s;\nTYPE=unsigned_short;\n"%byte_order);
-    outfile.write("SIZE1=%d;\nSIZE2=%d;\nPIXEL_SIZE=%g;\nDISTANCE=%g;\n"%(
+    outfile.write(("{\nHEADER_BYTES=1024;\nDIM=2;\nBYTE_ORDER=%s;\nTYPE=unsigned_short;\n"%byte_order).encode());
+    outfile.write(b"SIZE1=%d;\nSIZE2=%d;\nPIXEL_SIZE=%g;\nDISTANCE=%g;\n"%(
       self.detpixels_fastslow[0],self.detpixels_fastslow[1],self.pixel_size_mm,self.distance_mm));
-    outfile.write("WAVELENGTH=%g;\n"%self.wavelength_A);
-    outfile.write("BEAM_CENTER_X=%g;\nBEAM_CENTER_Y=%g;\n"%self.beam_center_mm);
-    outfile.write("ADXV_CENTER_X=%g;\nADXV_CENTER_Y=%g;\n"%self.adxv_beam_center_mm);
-    outfile.write("MOSFLM_CENTER_X=%g;\nMOSFLM_CENTER_Y=%g;\n"%self.mosflm_beam_center_mm);
-    outfile.write("DENZO_X_BEAM=%g;\nDENZO_Y_BEAM=%g;\n"%self.denzo_beam_center_mm);
-    outfile.write("DIALS_ORIGIN=%g,%g,%g\n"%self.dials_origin_mm);
-    outfile.write("XDS_ORGX=%g;\nXDS_ORGY=%g;\n"%self.XDS_ORGXY);
-    outfile.write("CLOSE_DISTANCE=%g;\n"%self.close_distance_mm);
-    outfile.write("PHI=%g;\nOSC_START=%g;\nOSC_RANGE=%g;\n"%(self.phi_deg,self.phi_deg,self.osc_deg));
-    outfile.write("TIME=%g;\n"%self.exposure_s);
-    outfile.write("TWOTHETA=%g;\n"%self.detector_twotheta_deg);
-    outfile.write("DETECTOR_SN=000;\n");
-    outfile.write("ADC_OFFSET=%g;\n"%self.adc_offset_adu);
-    outfile.write("BEAMLINE=fake;\n");
+    outfile.write(b"WAVELENGTH=%g;\n"%self.wavelength_A);
+    outfile.write(b"BEAM_CENTER_X=%g;\nBEAM_CENTER_Y=%g;\n"%self.beam_center_mm);
+    outfile.write(b"ADXV_CENTER_X=%g;\nADXV_CENTER_Y=%g;\n"%self.adxv_beam_center_mm);
+    outfile.write(b"MOSFLM_CENTER_X=%g;\nMOSFLM_CENTER_Y=%g;\n"%self.mosflm_beam_center_mm);
+    outfile.write(b"DENZO_X_BEAM=%g;\nDENZO_Y_BEAM=%g;\n"%self.denzo_beam_center_mm);
+    outfile.write(b"DIALS_ORIGIN=%g,%g,%g\n"%self.dials_origin_mm);
+    outfile.write(b"XDS_ORGX=%g;\nXDS_ORGY=%g;\n"%self.XDS_ORGXY);
+    outfile.write(b"CLOSE_DISTANCE=%g;\n"%self.close_distance_mm);
+    outfile.write(b"PHI=%g;\nOSC_START=%g;\nOSC_RANGE=%g;\n"%(self.phi_deg,self.phi_deg,self.osc_deg));
+    outfile.write(b"TIME=%g;\n"%self.exposure_s);
+    outfile.write(b"TWOTHETA=%g;\n"%self.detector_twotheta_deg);
+    outfile.write(b"DETECTOR_SN=000;\n");
+    outfile.write(b"ADC_OFFSET=%g;\n"%self.adc_offset_adu);
+    outfile.write(b"BEAMLINE=fake;\n");
     if rotmat:
       from scitbx.matrix import sqr
       RSABC = sqr(self.Amatrix).inverse().transpose()
-      outfile.write("DIRECT_SPACE_ABC=%s;\n"%(",".join([repr(a) for a in RSABC.elems])))
+      outfile.write( ("DIRECT_SPACE_ABC=%s;\n"%(",".join([repr(a) for a in RSABC.elems]))).encode() )
     if extra is not None:
-      outfile.write(extra)
-    outfile.write("}\f");
+      outfile.write(extra.encode())
+    outfile.write(b"}\f");
     assert outfile.tell() < 1024, "SMV header too long, please edit this code and ask for more bytes."
-    while ( outfile.tell() < 1024 ): outfile.write(" ")
+    while ( outfile.tell() < 1024 ): outfile.write(b" ")
+    from six import PY3
+    if PY3:
+      # Python3-compatible method for populating the output buffer.
+      # Py2 implementation is more elegant in that the streambuf may be passed to C++,
+      #   and the data are gzipped in chunks (default 1024). Py3 will not accept this method
+      #   as it is PyString-based, with no converter mechanisms to bring data into PyBytes.
+      # The Py3 method brings the full data in one chunk into PyBytes and then populates
+      #   the output buffer in Python rather than C++.
+      image_bytes = self.raw_pixels_unsigned_short_as_python_bytes(intfile_scale,debug_x,debug_y)
+      outfile.write(image_bytes)
+      outfile.close();
+      return
     from boost.python import streambuf
     self.to_smv_format_streambuf(streambuf(outfile),intfile_scale,debug_x,debug_y)
 
