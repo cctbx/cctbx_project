@@ -208,6 +208,7 @@ class hklview_3d:
     #self.angle_y_yzvec = 0.0
     #self.angle_y_xyvec = 0.0
     self.angle_x_xyvec = 0.0
+    self.tncsrotmx = None
     self.unit_h_axis = None
     self.unit_k_axis = None
     self.unit_l_axis = None
@@ -2315,11 +2316,32 @@ mysocket.onmessage = function (e)
 
 
   def PointVectorPerpendicularToClipPlane(self):
-    self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
+    return self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
 
 
   def PointVectorParallelToClipPlane(self):
-    self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec+90.0, 90.0 ))
+    return self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec+90.0, 90.0 ))
+
+
+  def RotateAroundVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3)):
+    #  Rodrigues rotation formula for rotation by phi angle around a vector going through origo
+    #  See http://mathworld.wolfram.com/RodriguesRotationFormula.html
+    # \mathbf I+\left(\sin\,\varphi\right)\mathbf W+\left(2\sin^2\frac{\varphi}{2}\right)\mathbf W^2
+    cR = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
+    normR = math.sqrt(cR[0]*cR[0] + cR[1]*cR[1] + cR[2]*cR[2] )
+    ux = cR[0]/normR
+    uy = cR[1]/normR
+    uz = cR[2]/normR
+    phi = math.pi*phi/180
+    W = matrix.sqr([0, -uz, uy, uz, 0, -ux, -uy, ux, 0])
+    #W = matrix.sqr([0, uz, -uy, -uz, 0, ux, uy, -ux, 0])
+    I = matrix.identity(3)
+    sin2phi2 = math.sin(phi/2)
+    sin2phi2 *= sin2phi2
+    RotMx = I + math.sin(phi)*W + 2* sin2phi2 * W*W
+    RotMx = RotMx * prevrotmx # impose any other rotation already performed
+    self.RotateMxStage(RotMx)
+    #return RotMx
 
 
   def DrawUnitCell(self):
@@ -2401,7 +2423,7 @@ mysocket.onmessage = function (e)
     else:
       self.EnableMouseRotation()
     if is_parallel:
-      self.PointVectorParallelToClipPlane()
+      self.tncsrotmx = self.PointVectorParallelToClipPlane()
     else:
       self.PointVectorPerpendicularToClipPlane()
     halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
@@ -2528,6 +2550,7 @@ mysocket.onmessage = function (e)
       self.RotateStage(eulerangles)
       return
     self.RotateMxStage(RotMx)
+    return RotMx
 
 
   def RotateMxStage(self, rotmx):
