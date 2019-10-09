@@ -1002,6 +1002,12 @@ class HKLViewFrame() :
                               is_parallel=vectorparallel, is_real_space_frac_vec=True)
 
 
+  def SpinAnimateAroundTNCSVecParallel(self):
+    self.viewer.clip_plane_abc_vector( self.tncsvec[0], self.tncsvec[1], self.tncsvec[2],
+             hkldist=0.0, clipwidth=6, fixorientation=True, is_parallel=True)
+    self.viewer.SpinAnimate(0,1,0)
+
+
   def SetTrackBallRotateSpeed(self, trackspeed):
     self.params.NGL_HKLviewer.viewer.NGL.mouse_sensitivity = trackspeed
     self.update_settings()

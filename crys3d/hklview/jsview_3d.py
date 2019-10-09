@@ -1752,6 +1752,31 @@ mysocket.onmessage = function (e)
       //WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
 
+    if (msgtype === "SpinAnimate")
+    {
+      WebsockSendMsg( 'SpinAnimating ' + pagename );
+      strs = datval[1].split("\\n");
+      var r = new Float32Array(3);
+      var elmstrs = strs[0].split(",");
+      for (j=0; j<3; j++)
+        r[j] = parseFloat(elmstrs[j]);
+      if (r[0] == 0.0 && r[1] == 0.0 && r[2] == 0.0)
+      {
+        stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
+        stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
+        stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
+        stage.setSpin(false);
+      }
+      else
+      {
+        stage.spinAnimation.axis.set(r[0], r[1], r[2]);
+        stage.mouseControls.remove("drag-left");
+        stage.mouseControls.remove("scroll-ctrl");
+        stage.mouseControls.remove("scroll-shift");
+        stage.setSpin(true);
+      }
+    }
+
     if (msgtype === "TranslateHKLpoints")
     {
       WebsockSendMsg( 'Translating HKLs ' + pagename );
@@ -2316,22 +2341,32 @@ mysocket.onmessage = function (e)
 
 
   def PointVectorPerpendicularToClipPlane(self):
-    return self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
+    rotmx = self.Euler2RotMatrix(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
+    if rotmx.determinant() < 1.0:
+      self.mprint("Rotation determinant is less than 1")
+      return rotmx
+    self.RotateMxStage(rotmx)
+    return rotmx
 
 
   def PointVectorParallelToClipPlane(self):
-    return self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec+90.0, 90.0 ))
+    rotmx = self.Euler2RotMatrix(( self.angle_x_xyvec, self.angle_z_svec+90.0, 90.0 ))
+    if rotmx.determinant() < 1.0:
+      self.mprint("Rotation determinant is less than 1")
+      return rotmx
+    self.RotateMxStage(rotmx)
+    return rotmx
 
 
-  def RotateAroundVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3)):
+  def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3)):
     #  Rodrigues rotation formula for rotation by phi angle around a vector going through origo
     #  See http://mathworld.wolfram.com/RodriguesRotationFormula.html
     # \mathbf I+\left(\sin\,\varphi\right)\mathbf W+\left(2\sin^2\frac{\varphi}{2}\right)\mathbf W^2
-    cR = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
-    normR = math.sqrt(cR[0]*cR[0] + cR[1]*cR[1] + cR[2]*cR[2] )
-    ux = cR[0]/normR
-    uy = cR[1]/normR
-    uz = cR[2]/normR
+    cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
+    normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+    ux = cartvec[0]/normR
+    uy = cartvec[1]/normR
+    uz = cartvec[2]/normR
     phi = math.pi*phi/180
     W = matrix.sqr([0, -uz, uy, uz, 0, -ux, -uy, ux, 0])
     #W = matrix.sqr([0, uz, -uy, -uz, 0, ux, uy, -ux, 0])
@@ -2341,7 +2376,11 @@ mysocket.onmessage = function (e)
     RotMx = I + math.sin(phi)*W + 2* sin2phi2 * W*W
     RotMx = RotMx * prevrotmx # impose any other rotation already performed
     self.RotateMxStage(RotMx)
-    #return RotMx
+    return RotMx, [ux, uy, uz]
+
+
+  def SpinAnimate(self, r1, r2, r3):
+    self.msgqueue.append(("SpinAnimate", "%s, %s, %s" %(r1, r2, r3) ))
 
 
   def DrawUnitCell(self):
@@ -2534,22 +2573,10 @@ mysocket.onmessage = function (e)
     self.SendMsgToBrowser("EnableMouseRotation")
 
 
-  def RotateStage(self, eulerangles):
+  def Euler2RotMatrix(self, eulerangles):
     eulerangles1 = eulerangles
-    #uc = self.miller_array.unit_cell()
-    #OrtMx = matrix.sqr( uc.orthogonalization_matrix())
-    #InvMx = OrtMx.inverse()
-    #RotMx = matrix.sqr( (1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0 ) )
-    #ortrot = (OrtMx * RotMx * InvMx).as_mat3()
     radangles = [e*math.pi/180.0 for e in eulerangles1]
     RotMx = scitbx.math.euler_angles_as_matrix(radangles)
-    if RotMx.determinant() < 1.0:
-      self.mprint("Waiting for scaleRot determinant > 0")
-      #return
-      sleep(1)
-      self.RotateStage(eulerangles)
-      return
-    self.RotateMxStage(RotMx)
     return RotMx
 
 

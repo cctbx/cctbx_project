@@ -704,35 +704,33 @@ class NGL_HKLViewer(QWidget):
 
 
   def onRadiiScaleChanged(self, val):
-    self.radii_scale = val
     self.NGL_HKL_command("""
       NGL_HKLviewer.viewer {
         nth_power_scale_radii = %f
         scale = %f
       }
-      """ %(self.nth_power_scale, self.radii_scale)
+      """ %(self.power_scale_spinBox.value(), self.radii_scale_spinBox.value() )
     )
 
 
   def onPowerScaleChanged(self, val):
-    self.nth_power_scale = val
     self.NGL_HKL_command("""
       NGL_HKLviewer.viewer {
         nth_power_scale_radii = %f
         scale = %f
       }
-      """ %(self.nth_power_scale, self.radii_scale)
+      """ %(self.power_scale_spinBox.value(), self.radii_scale_spinBox.value() )
     )
 
 
   def onManualPowerScale(self):
     if self.ManualPowerScalecheckbox.isChecked():
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.nth_power_scale_radii = %f' %self.nth_power_scale)
+      self.NGL_HKL_command('NGL_HKLviewer.viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
       self.power_scale_spinBox.setEnabled(True)
     else:
       self.NGL_HKL_command('NGL_HKLviewer.viewer.nth_power_scale_radii = -1.0')
       self.power_scale_spinBox.setEnabled(False)
-      self.nth_power_scale = -1.0
+      #self.power_scale_spinBox.setValue(-1.0)
 
 
   def onOpenReflectionFile(self):
@@ -1125,8 +1123,7 @@ class NGL_HKLViewer(QWidget):
     self.ManualPowerScalecheckbox.clicked.connect(self.onManualPowerScale)
 
     self.power_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
-    self.nth_power_scale = 0.33
-    self.power_scale_spinBox.setValue(self.nth_power_scale)
+    self.power_scale_spinBox.setValue(0.33)
     self.power_scale_spinBox.setDecimals(2)
     self.power_scale_spinBox.setSingleStep(0.05)
     self.power_scale_spinBox.setRange(0.0, 1.0)
@@ -1136,8 +1133,7 @@ class NGL_HKLViewer(QWidget):
     self.powerscaleLabel.setText("Power scale Factor")
 
     self.radii_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
-    self.radii_scale = 1.5
-    self.radii_scale_spinBox.setValue(self.radii_scale)
+    self.radii_scale_spinBox.setValue(1.0)
     self.radii_scale_spinBox.setDecimals(1)
     self.radii_scale_spinBox.setSingleStep(0.1)
     self.radii_scale_spinBox.setRange(0.2, 2.0)
