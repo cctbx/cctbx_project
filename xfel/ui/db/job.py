@@ -30,6 +30,35 @@ class Job(db_proxy):
   def __init__(self, app, job_id = None, **kwargs):
     db_proxy.__init__(self, app, "%s_job" % app.params.experiment_tag, id = job_id, **kwargs)
     self.job_id = self.id
+    self._run = None
+    self._rungroup = None
+    self._trial = None
+    self._task = None
+    self._dataset = None
+    self._dataset_version = None
+
+  def __getattr__(self, name):
+    # Called only if the property cannot be found
+    if name in ["run", "rungroup", "trial", "task", "dataset", "dataset_version"]:
+      _name = "_" + name
+      name_id = name + "_id"
+      if getattr(self, _name) is None:
+        if name == "dataset_version":
+          if self.dataset_id is not None:
+            self._dataset_version = self.dataset.latest_version # todo bug fix: add this to get_all_jobs
+        elif getattr(self, name_id) is not None:
+          setattr(self, _name, getattr(self.app, "get_" + name)(**{name_id:self.trial_id}))
+      return getattr(self, _name)
+    elif name == "scope":
+      return task_scope[task_types.index(self.type)]
+    else:
+      return super(Job, self).__getattr__(name)
+
+  def __setattr__(self, name, value):
+    if name in ["run", "rungroup", "trial", "task", "dataset", "dataset_version"]:
+      setattr(self, "_"+name, value)
+    else:
+      super(Job, self).__setattr__(name, value)
 
   def get_log_path(self):
     run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run)
@@ -600,7 +629,7 @@ class MergingJob(Job):
     return "%s_%s%03d_v%03d"%(self.dataset.name, self.task.type, self.task.id, self.dataset_version.version)
 
   def delete(self, output_only=False):
-    job_folder = get_global_path()
+    job_folder = self.get_global_path()
     if os.path.exists(job_folder):
       print("Deleting job folder for job", self.id)
       shutil.rmtree(job_folder)

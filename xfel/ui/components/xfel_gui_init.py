@@ -175,18 +175,16 @@ class JobMonitor(Thread):
 
       trials = db.get_all_trials()
       jobs = db.get_all_jobs(active = self.only_active_jobs)
-      jobs = {t.trial:[j for j in jobs if j.trial.id == t.id] for t in trials}
 
-      for js in jobs.values():
-        for job in js:
-          if job.status in ['DONE', 'EXIT', 'SUBMIT_FAIL', 'DELETED']:
-            continue
-          new_status = tracker.track(job.submission_id, job.get_log_path())
-          # Handle the case where the job was submitted but no status is available yet
-          if job.status == "SUBMITTED" and new_status == "ERR":
-            pass
-          elif job.status != new_status:
-            job.status = new_status
+      for job in jobs:
+        if job.status in ['DONE', 'EXIT', 'SUBMIT_FAIL', 'DELETED']:
+          continue
+        new_status = tracker.track(job.submission_id, job.get_log_path())
+        # Handle the case where the job was submitted but no status is available yet
+        if job.status == "SUBMITTED" and new_status == "ERR":
+          pass
+        elif job.status != new_status:
+          job.status = new_status
 
       self.post_refresh(trials, jobs)
       self.parent.run_window.jmn_light.change_status('on')
@@ -228,7 +226,7 @@ class JobSentinel(Thread):
     while self.active:
       submit_all_jobs(db)
       self.post_refresh()
-      time.sleep(1)
+      time.sleep(2)
 
 # ----------------------------- Progress Sentinel ---------------------------- #
 
@@ -470,9 +468,14 @@ class RunStatsSentinel(Thread):
         t_id = trial_ids[idx]
         found_it = False
         for job in jobs:
-          if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
-            self.run_statuses.append(job.status)
-            found_it = True; break
+          try:
+            ok = job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id
+          except AttributeError:
+            pass
+          else:
+            if ok:
+              self.run_statuses.append(job.status)
+              found_it = True; break
         if not found_it: self.run_statuses.append('UNKWN')
     self.reorder()
     t2 = time.time()
@@ -1517,13 +1520,16 @@ class JobsTab(BaseTab):
     self.data = {}
 
     self.job_list = gctr.SortableListCtrl(self, style=wx.LC_REPORT|wx.BORDER_SUNKEN)
-    self.job_list.InsertColumn(0, "Trial")
-    self.job_list.InsertColumn(1, "Run")
-    self.job_list.InsertColumn(2, "Block")
-    self.job_list.InsertColumn(3, "Subm ID")
-    self.job_list.InsertColumn(4, "Status")
+    self.job_list.InsertColumn(0, "Job")
+    self.job_list.InsertColumn(1, "Type")
+    self.job_list.InsertColumn(2, "Dataset")
+    self.job_list.InsertColumn(3, "Trial")
+    self.job_list.InsertColumn(4, "Run")
+    self.job_list.InsertColumn(5, "Block")
+    self.job_list.InsertColumn(6, "Subm ID")
+    self.job_list.InsertColumn(7, "Status")
 
-    self.job_list_sort_flag = [0, 0, 0, 0, 0]
+    self.job_list_sort_flag = [0, 0, 0, 0, 0, 0, 0, 0]
     self.job_list_col = 0
 
     self.trial_choice = gctr.ChoiceCtrl(self,
@@ -1585,10 +1591,9 @@ class JobsTab(BaseTab):
 
     from xfel.ui.components.submission_tracker import JobStopper
     stopper = JobStopper(self.main.params.mp.method)
-    for trial in self.all_jobs:
-      for job in self.all_jobs[trial]:
-        if job.id in jobs_to_stop:
-          stopper.stop_job(job.submission_id)
+    for job in self.all_jobs:
+      if job.id in jobs_to_stop:
+        stopper.stop_job(job.submission_id)
 
   def onDeleteJob(self, e):
     if self.all_jobs is None:
@@ -1611,10 +1616,9 @@ class JobsTab(BaseTab):
     if (msg.ShowModal() == wx.ID_NO):
       return
 
-    for trial in self.all_jobs:
-      for job in self.all_jobs[trial]:
-        if job.id in jobs_to_delete:
-          job.delete()
+    for job in self.all_jobs:
+      if job.id in jobs_to_delete:
+        job.delete()
 
   def onRestartJob(self, e):
     if self.all_jobs is None:
@@ -1637,14 +1641,13 @@ class JobsTab(BaseTab):
     if (msg.ShowModal() == wx.ID_NO):
       return
 
-    for trial in self.all_jobs:
-      for job in self.all_jobs[trial]:
-        if job.id in jobs_to_restart:
-          job.delete()
-          if job.status != "DELETED":
-            print("Couldn't restart job", job.id, "job is not deleted")
-            continue
-          job.remove_from_db()
+    for job in self.all_jobs:
+      if job.id in jobs_to_restart:
+        job.delete()
+        if job.status != "DELETED":
+          print("Couldn't restart job", job.id, "job is not deleted")
+          continue
+        job.remove_from_db()
 
   def onMonitorJobs(self, e):
     # Find new trials
@@ -1658,7 +1661,7 @@ class JobsTab(BaseTab):
     if e.jobs is not None:
       self.all_jobs = e.jobs
       if str(self.filter).lower() == 'all jobs':
-        selected_trials = e.jobs.keys() # iterator OK in Py3
+        selected_trials = [int(t) for t in self.all_trials]
       else:
         selected_trials = [int(self.filter.split()[-1])]
 
@@ -1669,36 +1672,43 @@ class JobsTab(BaseTab):
         focused_job_id = None
 
       self.data = {} # reset contents of the table, with unique row ids
-      for selected_trial in selected_trials:
-        jobs = e.jobs[selected_trial]
-        for job in jobs:
-          short_status = str(job.status).strip("'")
-          if short_status == "SUBMIT_FAIL":
-            short_status = "S_FAIL"
-          elif short_status == "SUBMITTED":
-            short_status = "SUBMIT"
-          t = "t%03d" % job.trial.trial
-          try:
-            r = "r%04d" % int(job.run.run)
-          except ValueError:
-            r = "r%s" % job.run.run
-          rg = "rg%03d" % job.rungroup.id
-          sid = str(job.submission_id)
-          s = short_status
-          self.data[job.id] = [t, r, rg, sid, s]
-          found_it = False
-          # Look to see if item already in list
-          for i in range(self.job_list.GetItemCount()):
-            if self.job_list.GetItemData(i) == job.id:
-              self.job_list.SetStringItem(i, 3, sid)
-              self.job_list.SetStringItem(i, 4, s)
-              found_it = True
-              break
-          if found_it: continue
+      for job in e.jobs:
+        if job.trial is not None:
+          if job.trial.trial not in selected_trials: continue
 
-          # Item not present, so deposit the row in the table
-          local_job_id = self.job_list.Append([t, r, rg, sid, s])
-          self.job_list.SetItemData(local_job_id, job.id)
+        # Order: job, type, dataset, trial, run, rungroup, submission id, status
+        j = str(job.id)
+        jt = job.task.type if job.task is not None else "-"
+        ds = job.dataset.name if job.dataset is not None else "-"
+        t = "t%03d" % job.trial.trial if job.trial is not None else "-"
+        try:
+          r = "r%04d" % int(job.run.run) if job.run is not None else "-"
+        except ValueError:
+          r = "r%s" % job.run.run
+        rg = "rg%03d" % job.rungroup.id if job.rungroup is not None else "-"
+        sid = str(job.submission_id)
+
+        short_status = str(job.status).strip("'")
+        if short_status == "SUBMIT_FAIL":
+          short_status = "S_FAIL"
+        elif short_status == "SUBMITTED":
+          short_status = "SUBMIT"
+        s = short_status
+
+        self.data[job.id] = [j, jt, ds, t, r, rg, sid, s]
+        found_it = False
+        # Look to see if item already in list
+        for i in range(self.job_list.GetItemCount()):
+          if self.job_list.GetItemData(i) == job.id:
+            for k, item in enumerate(self.data[job.id]):
+              self.job_list.SetStringItem(i, k, item)
+            found_it = True
+            break
+        if found_it: continue
+
+        # Item not present, so deposit the row in the table
+        local_job_id = self.job_list.Append(self.data[job.id])
+        self.job_list.SetItemData(local_job_id, job.id)
 
       # Remove items not sent in the event or otherwise filtered out
       # Need to do it in reverse order to avoid list re-ordering when deleting items
