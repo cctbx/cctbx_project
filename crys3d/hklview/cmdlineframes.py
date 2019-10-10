@@ -240,7 +240,7 @@ from libtbx import group_args
 import libtbx
 from cctbx import miller
 import traceback
-import sys, zmq, threading,  time
+import sys, zmq, threading,  time, math
 
 from six.moves import input
 
@@ -450,6 +450,9 @@ class HKLViewFrame() :
 
       if view_3d.has_phil_path(diff_phil, "miller_array_operations"):
         self.make_new_miller_array()
+
+      if view_3d.has_phil_path(diff_phil, "angle_around_vector"):
+        self.rotate_around_vector(phl.clip_plane.angle_around_vector)
 
       if view_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
@@ -744,6 +747,7 @@ class HKLViewFrame() :
               t3 = float(svec[2])
               if (t1*t1 + t2*t2 + t3*t3) > 0.0:
                 self.tncsvec = [ t1, t2, t3 ]
+                self.mprint("tNCS vector found in header of mtz file: %s" %str(svec) )
       except Exception as e :
         self.NewFileLoaded=False
         self.mprint(to_str(e))
@@ -1008,6 +1012,22 @@ class HKLViewFrame() :
     self.viewer.SpinAnimate(0,1,0)
 
 
+  def rotate_around_vector(self, dgr):
+    phi = math.pi*dgr/180
+    if self.viewer.vecrotmx is not None:
+      self.viewer.RotateAroundFracVector(phi,
+                                       self.params.NGL_HKLviewer.clip_plane.h,
+                                       self.params.NGL_HKLviewer.clip_plane.k,
+                                       self.params.NGL_HKLviewer.clip_plane.l,
+                                       self.viewer.vecrotmx)
+    else:
+      self.mprint("First specify vector around which to rotate")
+
+
+  def RotateAroundVector(self, dgr):
+    self.params.NGL_HKLviewer.clip_plane.angle_around_vector = dgr
+
+
   def SetTrackBallRotateSpeed(self, trackspeed):
     self.params.NGL_HKLviewer.viewer.NGL.mouse_sensitivity = trackspeed
     self.update_settings()
@@ -1088,6 +1108,8 @@ NGL_HKLviewer {
     k = 0
       .type = float
     l = 0
+      .type = float
+    angle_around_vector = 0.0
       .type = float
     hkldist = 0.0
       .type = float

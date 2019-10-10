@@ -208,7 +208,7 @@ class hklview_3d:
     #self.angle_y_yzvec = 0.0
     #self.angle_y_xyvec = 0.0
     self.angle_x_xyvec = 0.0
-    self.tncsrotmx = None
+    self.vecrotmx = None
     self.unit_h_axis = None
     self.unit_k_axis = None
     self.unit_l_axis = None
@@ -380,7 +380,7 @@ class hklview_3d:
       msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
 
-    if curphilparam.clip_plane.clipwidth:
+    if curphilparam.clip_plane.clipwidth and not has_phil_path(diff_phil, "angle_around_vector"):
       if  curphilparam.clip_plane.is_real_space_frac_vec:
         self.clip_plane_abc_vector(curphilparam.clip_plane.h, curphilparam.clip_plane.k,
           curphilparam.clip_plane.l, curphilparam.clip_plane.hkldist,
@@ -806,20 +806,20 @@ class hklview_3d:
     else:
       axisfuncstr = """
 var fontsize = %s;
-var MakeHKL_Axis = function()
+function MakeHKL_Axis(mshape)
 {
   // xyz arrows
-  shape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origo');
+  mshape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origin');
   //blue-x
-  shape.addArrow( %s, %s , [ 0, 0, 1 ], 0.1);
+  mshape.addArrow( %s, %s , [ 0, 0, 1 ], 0.1);
   //green-y
-  shape.addArrow( %s, %s , [ 0, 1, 0 ], 0.1);
+  mshape.addArrow( %s, %s , [ 0, 1, 0 ], 0.1);
   //red-z
-  shape.addArrow( %s, %s , [ 1, 0, 0 ], 0.1);
+  mshape.addArrow( %s, %s , [ 1, 0, 0 ], 0.1);
 
-  shape.addText( %s, [ 0, 0, 1 ], fontsize, 'h');
-  shape.addText( %s, [ 0, 1, 0 ], fontsize, 'k');
-  shape.addText( %s, [ 1, 0, 0 ], fontsize, 'l');
+  mshape.addText( %s, [ 0, 0, 1 ], fontsize, 'h');
+  mshape.addText( %s, [ 0, 1, 0 ], fontsize, 'k');
+  mshape.addText( %s, [ 1, 0, 0 ], fontsize, 'l');
 };
     """ %(fontsize, str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart),
           str(Kstararrowend), str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt,
@@ -1451,7 +1451,7 @@ Object.assign(tooltip.style, {
 %s
 
 
-var hklscene = function()
+function HKLscene()
 {
   shape = new NGL.Shape('shape');
   vectorshape = new NGL.Shape('vectorshape');
@@ -1459,7 +1459,7 @@ var hklscene = function()
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
 
-  MakeHKL_Axis();
+  MakeHKL_Axis(shape);
 
   %s
 
@@ -1478,7 +1478,7 @@ var hklscene = function()
 
 try
 {
-  document.addEventListener('DOMContentLoaded', function() { hklscene() }, false );
+  document.addEventListener('DOMContentLoaded', function() { HKLscene() }, false );
 }
 catch(err)
 {
@@ -1686,7 +1686,7 @@ mysocket.onmessage = function (e)
           //        ', ' + String(window.performance.memory.totalJSHeapSize) );
         }
       }
-      MakeHKL_Axis();
+      MakeHKL_Axis(shape);
 
       shapeComp = stage.addComponentFromObject(shape);
       repr = shapeComp.addRepresentation('buffer');
@@ -1762,6 +1762,13 @@ mysocket.onmessage = function (e)
         r[j] = parseFloat(elmstrs[j]);
       if (r[0] == 0.0 && r[1] == 0.0 && r[2] == 0.0)
       {
+        // default bindings as per ngl\src\controls\mouse-actions.ts
+        stage.mouseControls.add("drag-ctrl-left", NGL.MouseActions.panDrag);
+        stage.mouseControls.add("drag-ctrl-right", NGL.MouseActions.focusScroll);
+        stage.mouseControls.add("drag-shift-left", NGL.MouseActions.zoomDrag);
+        stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomFocusDrag);
+        stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomFocusDrag);
+        stage.mouseControls.add("drag-right", NGL.MouseActions.panDrag);
         stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
         stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
         stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
@@ -1770,6 +1777,13 @@ mysocket.onmessage = function (e)
       else
       {
         stage.spinAnimation.axis.set(r[0], r[1], r[2]);
+
+        stage.mouseControls.remove("drag-ctrl-left");
+        stage.mouseControls.remove("drag-ctrl-right");
+        stage.mouseControls.remove("drag-shift-left");
+        stage.mouseControls.remove("drag-shift-right");
+        stage.mouseControls.remove("drag-middle");
+        stage.mouseControls.remove("drag-right");
         stage.mouseControls.remove("drag-left");
         stage.mouseControls.remove("scroll-ctrl");
         stage.mouseControls.remove("scroll-shift");
@@ -1949,7 +1963,7 @@ mysocket.onmessage = function (e)
       shape.addBuffer(shapebufs[0]);
       alphas.push(1.0);
 
-      MakeHKL_Axis();
+      MakeHKL_Axis(shape);
       shapeComp = stage.addComponentFromObject(shape);
       repr = shapeComp.addRepresentation('buffer');
       stage.viewer.requestRender();
@@ -2342,8 +2356,8 @@ mysocket.onmessage = function (e)
 
   def PointVectorPerpendicularToClipPlane(self):
     rotmx = self.Euler2RotMatrix(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
-    if rotmx.determinant() < 1.0:
-      self.mprint("Rotation determinant is less than 1")
+    if rotmx.determinant() < 0.99999:
+      self.mprint("Rotation matrix determinant is less than 1")
       return rotmx
     self.RotateMxStage(rotmx)
     return rotmx
@@ -2351,23 +2365,23 @@ mysocket.onmessage = function (e)
 
   def PointVectorParallelToClipPlane(self):
     rotmx = self.Euler2RotMatrix(( self.angle_x_xyvec, self.angle_z_svec+90.0, 90.0 ))
-    if rotmx.determinant() < 1.0:
-      self.mprint("Rotation determinant is less than 1")
+    if rotmx.determinant() < 0.99999:
+      self.mprint("Rotation matrix determinant is less than 1")
       return rotmx
     self.RotateMxStage(rotmx)
     return rotmx
 
 
   def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3)):
+    # Assuming vector is in real space fractional coordinates turn it into cartesian
+    cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
     #  Rodrigues rotation formula for rotation by phi angle around a vector going through origo
     #  See http://mathworld.wolfram.com/RodriguesRotationFormula.html
     # \mathbf I+\left(\sin\,\varphi\right)\mathbf W+\left(2\sin^2\frac{\varphi}{2}\right)\mathbf W^2
-    cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
     normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
     ux = cartvec[0]/normR
     uy = cartvec[1]/normR
     uz = cartvec[2]/normR
-    phi = math.pi*phi/180
     W = matrix.sqr([0, -uz, uy, uz, 0, -ux, -uy, ux, 0])
     #W = matrix.sqr([0, uz, -uy, -uz, 0, ux, uy, -ux, 0])
     I = matrix.identity(3)
@@ -2435,9 +2449,9 @@ mysocket.onmessage = function (e)
     else:
       self.EnableMouseRotation()
     if is_parallel:
-      self.PointVectorParallelToClipPlane()
+      self.vecrotmx = self.PointVectorParallelToClipPlane()
     else:
-      self.PointVectorPerpendicularToClipPlane()
+      self.vecrotmx = self.PointVectorPerpendicularToClipPlane()
     halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
     if clipwidth is None:
       clipwidth = self.meanradius
@@ -2462,9 +2476,9 @@ mysocket.onmessage = function (e)
     else:
       self.EnableMouseRotation()
     if is_parallel:
-      self.tncsrotmx = self.PointVectorParallelToClipPlane()
+      self.vecrotmx = self.PointVectorParallelToClipPlane()
     else:
-      self.PointVectorPerpendicularToClipPlane()
+      self.vecrotmx = self.PointVectorPerpendicularToClipPlane()
     halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
     if clipwidth is None:
       clipwidth = self.meanradius

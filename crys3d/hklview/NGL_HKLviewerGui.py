@@ -59,23 +59,16 @@ class SettingsForm(QDialog):
     layout.addWidget(parent.mousespeed_labeltxt,     0, 0, 1, 1)
     layout.addWidget(parent.mousemoveslider,         0, 1, 1, 3)
     layout.addWidget(parent.mousesensitxtbox,        0, 4, 1, 1)
-
     layout.addWidget(parent.Fontsize_labeltxt,       1, 0, 1, 1)
     layout.addWidget(parent.fontspinBox,             1, 4, 1, 1)
-
     layout.addWidget(parent.cameraPerspectCheckBox,  2, 0, 1, 1)
-
     layout.addWidget(parent.bufsize_labeltxt,        3, 0, 1, 1)
     layout.addWidget(parent.bufsizespinBox,          3, 4, 1, 1)
-
     layout.addWidget(parent.ttipalpha_labeltxt,      4, 0, 1, 1)
     layout.addWidget(parent.ttipalpha_spinBox,        4, 4, 1, 1)
-
-
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
     myGroupBox.setLayout(layout)
-
     mainLayout = QGridLayout()
     mainLayout.addWidget(myGroupBox,     0, 0)
     self.setLayout(mainLayout)
@@ -146,6 +139,7 @@ class NGL_HKLViewer(QWidget):
     self.mousemoveslider.valueChanged.connect(self.onMouseSensitivity)
     self.mousesensitxtbox = QLineEdit('')
     self.mousesensitxtbox.setReadOnly(True)
+
     self.fontspinBox = QDoubleSpinBox()
     self.fontspinBox.setSingleStep(1)
     self.fontspinBox.setRange(4, 50)
@@ -162,14 +156,12 @@ class NGL_HKLViewer(QWidget):
     self.cameraPerspectCheckBox.clicked.connect(self.onCameraPerspect)
     self.cameraPerspectCheckBox.setCheckState(Qt.Unchecked)
 
-    self.bufsize = 5000
     self.bufsizespinBox = QSpinBox()
-    self.bufsizespinBox.setSingleStep(500)
-    self.bufsizespinBox.setRange(500, 100000)
-    self.bufsizespinBox.setValue(self.bufsize)
-    self.bufsizespinBox.valueChanged.connect(self.onTextbuffersizeChanged)
+    self.bufsizespinBox.setSingleStep(1)
+    self.bufsizespinBox.setRange(1, 100)
+    self.bufsizespinBox.setValue(10)
     self.bufsize_labeltxt = QLabel()
-    self.bufsize_labeltxt.setText("Text buffer size (bytes):")
+    self.bufsize_labeltxt.setText("Text buffer size (Kbytes):")
 
     self.ttipalpha = 0.85
     self.ttipalpha_spinBox = QDoubleSpinBox()
@@ -403,7 +395,7 @@ class NGL_HKLViewer(QWidget):
             #print(currentinfostr)
             self.infostr += currentinfostr + "\n"
             # display no more than self.bufsize bytes of text
-            self.infostr = self.infostr[-self.bufsize:]
+            self.infostr = self.infostr[-1000*self.bufsizespinBox.value():]
             self.textInfo.setPlainText(self.infostr)
             self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
 
@@ -453,10 +445,6 @@ class NGL_HKLViewer(QWidget):
   def onMouseSensitivity(self):
     val = self.mousemoveslider.value()/100.0
     self.mousesensitxtbox.setText("%2.2f" %val )
-
-
-  def onTextbuffersizeChanged(self, val):
-    self.bufsize = val
 
 
   def onTooltipAlphaChanged(self, val):
@@ -903,6 +891,18 @@ class NGL_HKLViewer(QWidget):
     layout2.addWidget(self.clipwidth_Label,      5, 0, 1, 1)
     layout2.addWidget(self.clipwidth_spinBox,    5, 1, 1, 1)
 
+    self.rotavecangle_labeltxt = QLabel()
+    self.rotavecangle_labeltxt.setText("Angle rotated around vector: 0.0")
+    self.rotavecangle_slider = QSlider(Qt.Horizontal)
+    self.rotavecangle_slider.setMinimum(0)
+    self.rotavecangle_slider.setMaximum(360)
+    self.rotavecangle_slider.setValue(0)
+    self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
+    self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngle)
+    layout2.addWidget(self.rotavecangle_labeltxt,  6, 0, 1, 1)
+    layout2.addWidget(self.rotavecangle_slider,    6, 1, 1, 2)
+
+
     self.ClipBox = QGroupBox("Specify vector components (R1,R2,R3)")
     self.ClipBox.setLayout(layout2)
 
@@ -990,6 +990,17 @@ class NGL_HKLViewer(QWidget):
       self.clipParallelBtn.setDisabled(True)
       self.clipTNCSBtn.setDisabled(True)
       self.NGL_HKL_command("NGL_HKLviewer.clip_plane.clipwidth = -1")
+
+
+
+  def onFinalRotaVecAngle(self):
+    val = self.rotavecangle_slider.value()
+    self.NGL_HKL_command('NGL_HKLviewer.clip_plane.angle_around_vector = %f' %val)
+
+
+  def onRotaVecAngle(self):
+    val = self.rotavecangle_slider.value()
+    self.rotavecangle_labeltxt.setText("Angle rotated around vector: %2.1f" %val)
 
 
   def onClipwidthChanged(self, val):
