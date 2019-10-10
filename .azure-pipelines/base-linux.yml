@@ -1,4 +1,4 @@
-# Copy of azure-pipelines-linux.yml, but uses base
+# Copy of conda-linux.yml, but uses base
 # linux image descriptions
 # https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/linux/Ubuntu1604-README.md
 
