@@ -25,6 +25,10 @@ jobs:
       version: [7, 6, 1810]
   - template: ./azure-pipelines-linux.yml
     parameters:
+      distribution: centos
+      version: [8]
+  - template: ./azure-pipelines-linux.yml
+    parameters:
       distribution: ubuntu
       version: ['18', '04']
   - template: ./azure-pipelines-linux.yml
