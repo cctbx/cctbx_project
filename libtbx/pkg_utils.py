@@ -235,6 +235,28 @@ def define_entry_points(epdict, **kwargs):
   finally:
     os.chdir(curdir)
 
+  # With the entry points installed into build/lib check for any legacy entry
+  # point definitions in both build/ and base/ and remove them where possible.
+  # Code block can be removed April 2020
+  try:
+    legacy_path = abs(libtbx.env.build_path / 'libtbx.{}.egg-info'.format(caller))
+    if os.path.exists(legacy_path):
+      print("Removing legacy entry points from", legacy_path)
+      import shutil
+      shutil.rmtree(legacy_path)
+  except Exception as e:
+    print("Could not remove legacy entry points:", str(e))
+  try:
+    import site
+    for spp in site.getsitepackages():
+      legacy_path = os.path.join(spp, 'libtbx.{}.egg-link'.format(caller))
+      if os.path.exists(legacy_path):
+        print("Removing legacy entry points from", legacy_path)
+        os.remove(legacy_path)
+  except Exception as e:
+    print("Could not remove legacy entry points:", str(e))
+
+
 def _merge_requirements(requirements, new_req):
   # type: (List[packaging.requirements.Requirement], packaging.requirements.Requirement) -> None
   """Merge a new requirement with a list.
