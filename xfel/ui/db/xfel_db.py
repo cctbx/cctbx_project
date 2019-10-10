@@ -669,7 +669,7 @@ class xfel_db_application(db_application):
     if active:
       if where is None:
         where = ""
-      where += " WHERE trial.active = True AND rungroup.active = True"
+      where += " WHERE (trial.active = True AND rungroup.active = True) OR dataset.active = True"
     return self.get_all_x_with_subitems(JobFactory.from_args, "job", sub_items = [(Trial, 'trial', False),
                                                                                   (Run, 'run', False),
                                                                                   (Rungroup, 'rungroup', False),
@@ -726,6 +726,9 @@ class xfel_db_application(db_application):
   def create_dataset(self, **kwargs):
     return Dataset(self, **kwargs)
 
+  def get_dataset(self, dataset_id):
+    return Dataset(self, dataset_id)
+
   def get_all_datasets(self):
     return self.get_all_x(Dataset, "dataset")
 
@@ -741,6 +744,9 @@ class xfel_db_application(db_application):
 
   def create_dataset_version(self, **kwargs):
     return DatasetVersion(self, **kwargs)
+
+  def get_dataset(self, dataset_version_id):
+    return Dataset(self, dataset_version_id)
 
   def get_dataset_versions(self, dataset_id, latest = False):
     tag = self.params.experiment_tag
