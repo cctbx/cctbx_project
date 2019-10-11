@@ -11,6 +11,8 @@ class JobStopper(object):
       self.command = "qdel %s"
     elif self.queueing_system == 'local':
       pass
+    elif self.queueing_system == 'htcondor':
+      self.command = "condor_rm %s"
     else:
       raise NotImplementedError("job stopper not implemented for %s queueing system" \
       % self.queueing_system)
@@ -43,6 +45,9 @@ class QueueInterrogator(object):
       self.command = "qstat -H %s | tail -n 1 | awk '{ print $10 }'"
     elif self.queueing_system == 'local':
       pass
+    elif self.queueing_system == 'htcondor':
+      self.command1 = "condor_q %s -nobatch | grep -A 1 OWNER | tail -n 1"
+      self.command2 = "condor_history %s | grep -A 1 OWNER | tail -n 1"
     else:
       raise NotImplementedError(
       "queue interrogator not implemented for %s queueing system"%self.queueing_system)
@@ -65,6 +70,25 @@ class QueueInterrogator(object):
       # zombie jobs can be left because the GUI process that forked them is still running
       if len(statuses) == 1 and statuses[0] == 'zombie': return "DONE"
       return ", ".join(statuses)
+    elif self.queueing_system == 'htcondor':
+      # (copied from the man page)
+      # H = on hold, R = running, I = idle (waiting for a machine to execute on), C = completed,
+      # X = removed, S = suspended (execution of a running job temporarily suspended on execute node),
+      # < = transferring input (or queued to do so), and > = transferring output (or queued to do so).
+      statuses = {'H': 'HOLD',
+                  'R': 'RUN',
+                  'I': 'PEND',
+                  'C': 'DONE',
+                  'X': 'DONE',
+                  'S': 'SUSP',
+                  '<': 'RUN',
+                  '>': 'RUN'}
+      for c in [self.command1, self.command2]:
+        result = easy_run.fully_buffered(command=c%submission_id)
+        if len(result.stdout_lines) != 1 or len(result.stdout_lines[0]) == 0: continue
+        status = result.stdout_lines[0].split()[5]
+        return statuses[status] if status in statuses else 'UNKWN'
+      return 'ERR'
     status = "\n".join(result.stdout_lines)
     error = "\n".join(result.stderr_lines)
     if error != "" and not "Warning: job being submitted without an AFS token." in error:
@@ -82,6 +106,8 @@ class LogReader(object):
     self.queueing_system = queueing_system
     if self.queueing_system in ["mpi", "lsf", "pbs", "local"]:
       self.command = "tail -17 %s | head -1"
+    elif self.queueing_system == "htcondor":
+      pass # no log reader used for htcondor
     else:
       raise NotImplementedError(
       "queue interrogator not implemented for %s queueing system"%self.queueing_system)
@@ -141,6 +167,10 @@ class PBSSubmissionTracker(SubmissionTracker):
     else:
       print("Found an unknown status", status)
 
+class HTCondorSubmissionTracker(SubmissionTracker):
+  def _track(self, submission_id, log_path):
+    return self.interrogator.query(submission_id)
+
 class LocalSubmissionTracker(SubmissionTracker):
   def _track(self, submission_id, log_path):
     return self.interrogator.query(submission_id)
@@ -154,3 +184,5 @@ class TrackerFactory(object):
       return PBSSubmissionTracker(params)
     elif params.mp.method == 'local':
       return LocalSubmissionTracker(params)
+    elif params.mp.method == 'htcondor':
+      return HTCondorSubmissionTracker(params)

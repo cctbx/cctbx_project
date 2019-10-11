@@ -3,7 +3,7 @@ from xfel.ui import settings_dir
 from xfel.ui.db import db_proxy, get_run_path
 import os, shutil
 
-known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED"]
+known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED", "HOLD"]
 finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN", "ERR", "SUBMIT_FAIL"]
 
 class JobFactory(object):
@@ -87,11 +87,14 @@ class Job(db_proxy):
 
   def get_identifier_string(self):
     if self.app.params.facility.name == 'lcls':
-      return "%s_%s_r%04d_t%03d_rg%03d"% \
+      s =  "%s_%s_r%04d_t%03d_rg%03d"% \
         (self.app.params.facility.lcls.experiment, self.app.params.experiment_tag, int(self.run.run), self.trial.trial, self.rungroup.id)
     else:
-      return "%s_%s_t%03d_rg%03d"% \
+      s =  "%s_%s_t%03d_rg%03d"% \
         (self.app.params.experiment_tag, self.run.run, self.trial.trial, self.rungroup.id)
+    if self.task is not None:
+      s += "_task%03d"%self.task.id
+    return s
 
 class IndexingJob(Job):
   def get_output_files(self):
@@ -189,6 +192,7 @@ class IndexingJob(Job):
       queue                     = self.app.params.mp.queue or None,
       env_script                = self.app.params.mp.env_script[0] if len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
       method                    = self.app.params.mp.method,
+      htcondor_executable_path  = self.app.params.mp.htcondor.executable_path,
       target                    = target_phil_path,
       host                      = self.app.params.db.host,
       dbname                    = self.app.params.db.name,
@@ -517,17 +521,22 @@ class EnsembleRefinementJob(Job):
     arguments = """
     mp.queue={}
     mp.nproc={}
+    mp.method={}
+    {}
+    mp.use_mpi=False
     striping.results_dir={}
     striping.trial={}
-    striping.run_group={}
+    striping.rungroup={}
     striping.run={}
     {}
     striping.chunk_size=3000
     striping.stripe=False
     striping.dry_run=True
     striping.output_folder={}
-    """.format(self.app.params.mp.queue,
+    """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
                self.app.params.mp.nproc,
+               self.app.params.mp.method,
+               '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script]),
                self.app.params.output_folder,
                self.trial.trial,
                self.rungroup.id,
@@ -580,6 +589,7 @@ class ScalingJob(Job):
       queue                     = self.app.params.mp.queue or None,
       env_script                = self.app.params.mp.env_script[0] if len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
       method                    = self.app.params.mp.method,
+      htcondor_executable_path  = self.app.params.mp.htcondor.executable_path,
       target                    = target_phil_path,
       # always use mpi for 'lcls'
       use_mpi                   = self.app.params.mp.method != 'local' or (app.params.mp.method == 'local' and app.params.facility.name == 'lcls')

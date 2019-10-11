@@ -35,7 +35,7 @@ striping {
     .multiple = True
     .help = "Selected rungroups to stripe. If None, all rungroups are accepted."
   run = None
-    .type = int
+    .type = str
     .multiple = True
     .help = "Selected runs to stripe. If None, all runs are accepted."
   trial = None
@@ -282,8 +282,6 @@ def allocate_chunks(results_dir,
     rg_condition = lambda rg: True
   rgs = {} # rungroups and associated runs
   for run in os.listdir(results_dir):
-    if not (run.startswith("r") and run.split("r")[1].isdigit()):
-      continue
     if runs_selected and run not in runs_selected:
       continue
     trgs = [trg for trg in os.listdir(os.path.join(results_dir, run))
@@ -383,8 +381,12 @@ def parse_retaining_scope(args, phil_scope=phil_scope):
       except Exception as e:
         raise Sorry("Unrecognized argument: %s" % arg)
 
-  run_scope = phil_scope.fetch(sources=file_phil)
-  run_scope = run_scope.fetch(sources=cmdl_phil)
+  run_scope, unused1 = phil_scope.fetch(sources=file_phil, track_unused_definitions=True)
+  run_scope, unused2 = run_scope.fetch(sources=cmdl_phil, track_unused_definitions=True)
+  if any([unused1, unused2]):
+    msg = "\n".join([str(loc) for loc in unused1 + unused2])
+    raise Sorry("Unrecognized argument(s): " + msg)
+
   return run_scope
 
 def script_to_expand_over_clusters(clustered_json_name,
@@ -475,15 +477,16 @@ class Script(object):
 
   def run(self):
     '''Execute the script.'''
+    runs = ["r%04d" % r if isinstance(r, int) else r for r in self.params.striping.run]
     if self.params.striping.run:
-      print("processing runs " + ", ".join(["r%04d" % r for r in self.params.striping.run]))
+      print("processing runs " + ", ".join(runs))
     if self.params.striping.rungroup:
       print("processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.striping.rungroup]))
     batch_chunks = allocate_chunks(self.params.striping.results_dir,
                                    self.params.striping.trial,
                                    rgs_selected=["rg%03d" % rg for rg in self.params.striping.rungroup],
                                    respect_rungroup_barriers=self.params.striping.respect_rungroup_barriers,
-                                   runs_selected=["r%04d" % r for r in self.params.striping.run],
+                                   runs_selected=runs,
                                    stripe=self.params.striping.stripe,
                                    max_size=self.params.striping.chunk_size,
                                    integrated=self.params.combine_experiments.keep_integrated)
@@ -552,7 +555,8 @@ class Script(object):
         else:
           submit_path = os.path.join(self.params.striping.output_folder, self.intermediates, "combine_%s.sh" % self.filename)
           submit_command = get_submit_command_chooser(command, submit_path, self.intermediates, self.params.mp,
-            log_name=(submit_path.split(".sh")[0] + ".out"))
+            log_name=os.path.splitext(os.path.basename(submit_path))[0] + ".out",
+            err_name=os.path.splitext(os.path.basename(submit_path))[0] + ".err")
           all_commands.append(submit_command)
           if not self.params.striping.dry_run:
             print("executing command: %s" % submit_command)
