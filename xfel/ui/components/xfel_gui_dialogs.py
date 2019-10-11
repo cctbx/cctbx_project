@@ -187,7 +187,7 @@ class SettingsDialog(BaseDialog):
     self.main_sizer.Add(button_sizer,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
-    self.SetSizer(self.main_sizer)
+    self.SetSizerAndFit(self.main_sizer)
 
     self.Bind(wx.EVT_BUTTON, self.onDBCredentialsButton, id=self.db_cred.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onAdvanced, id=self.btn_op.GetId())
@@ -592,7 +592,7 @@ class AdvancedSettingsDialog(BaseDialog):
     mp_box = wx.StaticBox(self, label='Multiprocessing Options')
     self.mp_sizer = wx.StaticBoxSizer(mp_box, wx.VERTICAL)
 
-    choices = ['local', 'lsf', 'mpi', 'sge', 'pbs', 'custom']
+    choices = ['local', 'lsf', 'mpi', 'sge', 'pbs', 'htcondor', 'custom']
     self.mp_option = gctr.ChoiceCtrl(self,
                                      label='Multiprocessing:',
                                      label_size=(200, -1),
@@ -669,6 +669,22 @@ class AdvancedSettingsDialog(BaseDialog):
                                            params.mp.env_script[0] is not None else '')
     self.mp_sizer.Add(self.env_script, flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.htcondor_executable_path = gctr.TextButtonCtrl(self,
+                                                        label='MPI executable path (mp2script or openmpiscript):',
+                                                        label_style='bold',
+                                                        label_size=(200, -1),
+                                                        value=params.mp.htcondor.executable_path \
+                                                        if params.mp.htcondor.executable_path is not None else '')
+    self.mp_sizer.Add(self.htcondor_executable_path, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.htcondor_filesystemdomain = gctr.TextButtonCtrl(self,
+                                                        label='Shared filesystem domain:',
+                                                        label_style='bold',
+                                                        label_size=(200, -1),
+                                                        value=params.mp.htcondor.filesystemdomain \
+                                                        if params.mp.htcondor.filesystemdomain is not None else '')
+    self.mp_sizer.Add(self.htcondor_filesystemdomain, flag=wx.EXPAND | wx.ALL, border=10)
+
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Data analysis settings
@@ -735,10 +751,20 @@ class AdvancedSettingsDialog(BaseDialog):
       self.queue.Hide()
       self.nproc_per_node.Hide()
       self.env_script.Hide()
+      self.htcondor_executable_path.Hide()
+      self.htcondor_filesystemdomain.Hide()
+    elif self.mp_option.ctr.GetStringSelection() == 'htcondor':
+      self.queue.Hide()
+      self.nproc_per_node.Hide()
+      self.env_script.Show()
+      self.htcondor_executable_path.Show()
+      self.htcondor_filesystemdomain.Show()
     else:
       self.queue.Show()
       self.nproc_per_node.Show()
       self.env_script.Show()
+      self.htcondor_executable_path.Hide()
+      self.htcondor_filesystemdomain.Hide()
     self.Layout()
     self.Fit()
 
@@ -777,6 +803,10 @@ class AdvancedSettingsDialog(BaseDialog):
       self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
       self.params.mp.env_script = [self.env_script.ctr.GetValue()]
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())
+    self.params.mp.htcondor.executable_path = self.htcondor_executable_path.ctr.GetValue() \
+      if len(self.htcondor_executable_path.ctr.GetValue()) > 0 else None
+    self.params.mp.htcondor.filesystemdomain = self.htcondor_filesystemdomain.ctr.GetValue() \
+      if len(self.htcondor_filesystemdomain.ctr.GetValue()) > 0 else None
     e.Skip()
 
 class CalibrationDialog(BaseDialog):
@@ -1927,8 +1957,8 @@ class RunBlockDialog(BaseDialog):
     dlg = wx.FileDialog(self,
                              message="Load untrusted pixel mask",
                              defaultDir=os.curdir,
-                             defaultFile="*.pickle",
-                             wildcard="*.pickle",
+                             defaultFile="*.mask",
+                             wildcard="*.mask",
                              style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
                              )
 
@@ -2381,10 +2411,16 @@ class DatasetDialog(BaseDialog):
   def onOK(self, e):
     name = self.name.ctr.GetValue()
     comment = self.comment.ctr.GetValue()
+    if self.selection_type_radio.union.GetValue() == 1:
+      mode = 'union'
+    else:
+      mode = 'intersection'
 
     if self.new:
       self.dataset = self.db.create_dataset(name = name,
-                                            comment = comment)
+                                            comment = comment,
+                                            active = False,
+                                            tag_operator = mode)
     else:
       self.dataset.name = name
       self.dataset.comment = comment

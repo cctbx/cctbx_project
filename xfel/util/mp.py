@@ -8,7 +8,7 @@ import os
 
 mp_phil_str = '''
   mp {
-    method = local *lsf sge pbs shifter custom
+    method = local *lsf sge pbs shifter htcondor custom
       .type = choice
       .help = Computing environment
     use_mpi = True
@@ -79,6 +79,15 @@ mp_phil_str = '''
         .type = int
         .help = Number of processors (total) to request with srun -n <nproc>.
     }
+    htcondor {
+      executable_path = None
+        .type = path
+        .help = Path to executable script (should be openmpiscript or mp2script). \
+                See examples folder that comes with htcondor.
+      filesystemdomain = sdfarm.kr
+        .type = str
+        .help = Domain of shared filesystem (see htcondor docs)
+    }
     custom {
       submit_command_template = None
         .type = str
@@ -102,7 +111,8 @@ mp_phil_str = '''
     encapsulate_submit_script = True
       .type = bool
       .help = Encapsulate the submission command itself in another script containing \
-              the qsub or bsub job submission command.
+              the job submission command (e.g. qsub, bsub, condor_submit, sbatch \
+              etc.
   }
 '''
 
@@ -474,6 +484,92 @@ class get_shifter_submit_command(get_submit_command):
     self.generate_sbatch_script()
     self.generate_srun_script()
 
+class get_htcondor_submit_command(get_submit_command):
+  def __init__(self, *args, **kwargs):
+    super(get_htcondor_submit_command, self).__init__(*args, **kwargs)
+    self.destination = os.path.dirname(self.submit_path)
+    self.basename = os.path.splitext(os.path.basename(self.submit_path))[0]
+
+  def customize_for_method(self):
+    self.submit_head = "condor_submit"
+    if self.params.use_mpi:
+      self.command = "%s mp.method=mpi" % (self.command)
+
+  def generate_submit_command(self):
+    return "condor_submit " + os.path.join(self.destination, self.basename + "_condorparams")
+
+  def eval_params(self):
+    if self.params.use_mpi:
+      from libtbx import easy_run
+      d = dict(executable_path = self.params.htcondor.executable_path,
+               arguments       = self.submit_path,
+               nproc           = self.params.nproc,
+               working_folder  = self.destination,
+               log_path        = os.path.join(self.stdoutdir, self.basename + '_condor.log'),
+               output_path     = os.path.join(self.stdoutdir, self.log_name),
+               error_path      = os.path.join(self.stdoutdir, self.err_name),
+               requirements    = 'target.filesystemdomain == "%s"'% self.params.htcondor.filesystemdomain)
+
+      # Find if there is a continguous set of slots available on one node
+      r = easy_run.fully_buffered('condor_status | grep Unclaimed | grep %s'%self.params.htcondor.filesystemdomain)
+      machines = {}
+      for line in r.stdout_lines:
+        try:
+          machine = line.split()[0].split('@')[1]
+        except IndexError: continue
+        if machine not in machines:
+          machines[machine] = 0
+        machines[machine] += 1
+
+      for machine in machines:
+        if machines[machine] >= self.params.nproc:
+          d['requirements'] += ' && machine == "%s"'%machine
+          break
+
+      condor_params = """
+universe = parallel
+executable = {executable_path}
+arguments = {arguments}
+machine_count = {nproc}
+initialdir = {working_folder}
+when_to_transfer_output = on_exit
+log                     = {log_path}
+output                  = {output_path}
+error                   = {error_path}
+requirements = {requirements}
++ParallelShutdownPolicy = "WAIT_FOR_ALL"
+RunAsOwner = True
+queue
+"""
+    else:
+      assert self.params.htcondor.executable_path is None
+      d = dict(executable_path = self.submit_path,
+               working_folder  = self.destination,
+               log_path        = os.path.join(self.stdoutdir, self.basename + '_condor.log'),
+               output_path     = os.path.join(self.stdoutdir, self.log_name),
+               error_path      = os.path.join(self.stdoutdir, self.err_name),
+               filesystemdomain= self.params.htcondor.filesystemdomain)
+      condor_params = """
+universe = vanilla
+executable = {executable_path}
+initialdir = {working_folder}
+when_to_transfer_output = on_exit
+log                     = {log_path}
+output                  = {output_path}
+error                   = {error_path}
+requirements = target.filesystemdomain == "{filesystemdomain}"
+RunAsOwner = True
+queue
+"""
+
+    with open(os.path.join(self.destination, self.basename + "_condorparams"), 'w') as f:
+      f.write(condor_params.format(**d))
+
+    # source </path/to/env.sh> (optional)
+    for env in self.params.env_script:
+      env_str = "source %s\n" % env
+      self.source_env_scripts.append(env_str)
+
 class get_custom_submit_command(get_submit_command):
 
   def customize_for_method(self):
@@ -549,6 +645,8 @@ def get_submit_command_chooser(command, submit_path, stdoutdir, params,
     choice = get_pbs_submit_command
   elif params.method == "shifter":
     choice = get_shifter_submit_command
+  elif params.method == "htcondor":
+    choice = get_htcondor_submit_command
   elif params.method == "custom":
     choice = get_custom_submit_command
   else:

@@ -19,4 +19,7 @@ mp {{
   nproc_per_node = {nproc_per_node}
   queue = {queue}
   env_script = {env_script}
+  htcondor {{
+    executable_path = {htcondor_executable_path}
+  }}
 }}

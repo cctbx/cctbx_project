@@ -262,10 +262,12 @@ def get_submission_id(result, method):
         submission_id = str(s)
     print(submission_id)
     return submission_id
-  elif params.mp.method == 'pbs':
+  elif method == 'pbs':
     submission_id = "".join(result.stdout_lines).strip()
     print(submission_id)
     return submission_id
+  elif method == 'htcondor':
+    return result.stdout_lines[-1].split()[-1].rstrip('.')
 
 def do_submit(command, submit_path, stdoutdir, mp_params, job_name, dry_run=False):
   submit_command = get_submit_command_chooser(command, submit_path, stdoutdir, mp_params, job_name=job_name)
@@ -320,7 +322,9 @@ class Script(object):
     user_phil = []
     dispatcher_args = []
     for arg in argv:
-      if (os.path.isfile(arg)):
+      if arg.endswith(".h5"):
+        dispatcher_args.append(arg)
+      elif (os.path.isfile(arg)):
         try:
           user_phil.append(parse(file_name=arg))
         except Exception as e:
