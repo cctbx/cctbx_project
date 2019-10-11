@@ -380,7 +380,9 @@ class hklview_3d:
       msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
 
-    if curphilparam.clip_plane.clipwidth and not has_phil_path(diff_phil, "angle_around_vector"):
+    if curphilparam.clip_plane.clipwidth and not \
+      ( has_phil_path(diff_phil, "angle_around_vector") \
+      or has_phil_path(diff_phil, "bequiet") ):
       if  curphilparam.clip_plane.is_real_space_frac_vec:
         self.clip_plane_abc_vector(curphilparam.clip_plane.h, curphilparam.clip_plane.k,
           curphilparam.clip_plane.l, curphilparam.clip_plane.hkldist,
@@ -1745,7 +1747,8 @@ mysocket.onmessage = function (e)
               0.0,   0.0,   0.0,   1.0
       );
       stage.viewerControls.orient(m4);
-      postrotmxflag = true;
+      if (strs[9]=="verbose")
+        postrotmxflag = true;
       stage.viewer.requestRender();
       //cvorient = stage.viewerControls.getOrientation().elements;
       //msg = String(cvorient);
@@ -1824,20 +1827,44 @@ mysocket.onmessage = function (e)
         vectorshape.addText( txtR, [rgb[0], rgb[1], rgb[2]], fontsize/2.0, elmstrs[9] );
       }
 
-      vectorshapeComps.push( stage.addComponentFromObject(vectorshape) );
-      vectorreprs.push( vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vectorbuffer') );
-      stage.viewer.requestRender();
+      var reprname = elmstrs[10].trim();
+      if (reprname != "")
+      {
+        vectorshapeComps.push( stage.addComponentFromObject(vectorshape) );
+        vectorreprs.push(
+          vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vecbuf',
+                                                                      { name: reprname} )
+        );
+        stage.viewer.requestRender();
+      }
     }
 
     if (msgtype === "RemoveAllVectors")
     {
-      for (i=0; i<vectorshapeComps.length; i++)
+      strs = datval[1].split("\\n");
+      var elmstrs = strs[0].split(",");
+      var reprname = elmstrs[0].trim();
+      if (reprname != "")
       {
-        vectorshapeComps[i].removeRepresentation(vectorreprs[i]);
-        stage.removeComponent(vectorshapeComps[i]);
+        thisrepr = stage.getRepresentationsByName(reprname);
+        for (i=0; i<stage.compList.length; i++)
+          if (stage.compList[i].reprList[0].name == reprname)
+          {
+            thiscomp = stage.compList[i];
+            thiscomp.removeRepresentation(thisrepr);
+            stage.removeComponent(thiscomp);
+          }
       }
-      vectorshapeComps = [];
-      vectorreprs = [];
+      else
+      {
+        for (i=0; i<vectorshapeComps.length; i++)
+        {
+          vectorshapeComps[i].removeRepresentation(vectorreprs[i]);
+          stage.removeComponent(vectorshapeComps[i]);
+        }
+        vectorshapeComps = [];
+        vectorreprs = [];
+      }
       clipFixToCamPosZ = false;
       stage.viewer.requestRender();
     }
@@ -2146,11 +2173,7 @@ mysocket.onmessage = function (e)
       while True:
         nwait = 0.0
         sleep(self.sleeptime)
-        #if time.time() - self.past > 1.0:
-        #  self.ProcessOrientationMessage() # avoid doing too often as this is expensive
-        #self.past = time.time()
         if len(self.msgqueue):
-          #print("self.msgqueue: " + str(self.msgqueue))
           pendingmessagetype, pendingmessage = self.msgqueue[0]
           self.SendMsgToBrowser(pendingmessagetype, pendingmessage)
           while not (self.browserisopen and self.websockclient):
@@ -2298,9 +2321,12 @@ mysocket.onmessage = function (e)
     return retmsg
 
 
-  def AddVector(self, s1, s2, s3, t1, t2, t3, isreciprocal=True, label="", r=0, g=0, b=0):
+  def AddVector(self, s1, s2, s3, t1, t2, t3, isreciprocal=True, label="",
+                  r=0, g=0, b=0, name=""):
     """
-    place vector from {s1, s2, s3] to [t1, t2, t3] with colour r,g,b and label
+    Place vector from {s1, s2, s3] to [t1, t2, t3] with colour r,g,b and label
+    If name=="" creation is deferred until AddVector is eventually called with name != ""
+    These vectors are then joined in the same NGL representation
     """
     uc = self.miller_array.unit_cell()
     vec1 = (s1*self.scene.renderscale, s2*self.scene.renderscale, s3*self.scene.renderscale)
@@ -2349,8 +2375,8 @@ mysocket.onmessage = function (e)
     self.mprint("angles in xy plane to x,y axis are: %s, %s" %(angle_x_xyvec, angle_y_xyvec), verbose=2)
     self.mprint("angles in yz plane to y,z axis are: %s, %s" %(angle_y_yzvec, angle_z_yzvec), verbose=2)
     self.mprint("angles to x,y,z axis are: %s, %s, %s" %(angle_x_svec, angle_y_svec, angle_z_svec ), verbose=2)
-    self.msgqueue.append( ("AddVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
-         %tuple(svec1 + svec2 + [r, g, b, label]) ))
+    self.msgqueue.append( ("AddVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
+         %tuple(svec1 + svec2 + [r, g, b, label, name]) ))
     return angle_x_xyvec, angle_z_svec
 
 
@@ -2372,7 +2398,7 @@ mysocket.onmessage = function (e)
     return rotmx
 
 
-  def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3)):
+  def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), quietbrowser=True):
     # Assuming vector is in real space fractional coordinates turn it into cartesian
     cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
     #  Rodrigues rotation formula for rotation by phi angle around a vector going through origo
@@ -2389,7 +2415,7 @@ mysocket.onmessage = function (e)
     sin2phi2 *= sin2phi2
     RotMx = I + math.sin(phi)*W + 2* sin2phi2 * W*W
     RotMx = RotMx * prevrotmx # impose any other rotation already performed
-    self.RotateMxStage(RotMx)
+    self.RotateMxStage(RotMx, quietbrowser)
     return RotMx, [ux, uy, uz]
 
 
@@ -2409,7 +2435,7 @@ mysocket.onmessage = function (e)
     self.AddVector(1,0,1, 1,1,1, False, r=0.8, g=0.5, b=0.8)
     self.AddVector(1,0,0, 1,0,1, False, r=0.8, g=0.8, b=0.5)
     self.AddVector(0,1,0, 0,1,1, False, r=0.8, g=0.8, b=0.5)
-    self.AddVector(1,1,0, 1,1,1, False, r=0.8, g=0.8, b=0.5)
+    self.AddVector(1,1,0, 1,1,1, False, r=0.8, g=0.8, b=0.5, name="unitcell")
 
 
   def DrawReciprocalUnitCell(self):
@@ -2425,7 +2451,7 @@ mysocket.onmessage = function (e)
     self.AddVector(n,0,n, n,n,n, r=0.3, g=0.5, b=0.3)
     self.AddVector(n,0,0, n,0,n, r=0.3, g=0.3, b=0.5)
     self.AddVector(0,n,0, 0,n,n, r=0.3, g=0.3, b=0.5)
-    self.AddVector(n,n,0, n,n,n, r=0.3, g=0.3, b=0.5)
+    self.AddVector(n,n,0, n,n,n, r=0.3, g=0.3, b=0.5, name="reciprocal_unitcell")
 
 
   def fix_orientation(self, val):
@@ -2443,7 +2469,9 @@ mysocket.onmessage = function (e)
       return
     self.RemoveAllReciprocalVectors()
     R = -l * self.normal_hk + h * self.normal_kl + k * self.normal_lh
-    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0, R[0][0], R[0][1], R[0][2], isreciprocal=False)
+    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
+                      R[0][0], R[0][1], R[0][2], isreciprocal=False,
+                      name="HKL_vector")
     if fixorientation:
       self.DisableMouseRotation()
     else:
@@ -2470,7 +2498,8 @@ mysocket.onmessage = function (e)
       self.RemoveNormalVectorToClipPlane()
       return
     self.RemoveAllReciprocalVectors()
-    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0, a, b, c, isreciprocal=False)
+    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
+                            a, b, c, isreciprocal=False, name="ABC_vector")
     if fixorientation:
       self.DisableMouseRotation()
     else:
@@ -2496,7 +2525,9 @@ mysocket.onmessage = function (e)
       self.RemoveNormalVectorToClipPlane()
       return
     self.RemoveAllReciprocalVectors()
-    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0, h, k, l, isreciprocal=False)
+    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
+                               h, k, l, isreciprocal=False,
+                               name="HKL_vector")
     if fixorientation:
       self.DisableMouseRotation()
     else:
@@ -2575,6 +2606,10 @@ mysocket.onmessage = function (e)
     self.msgqueue.append( ("RemoveAllVectors", "" ))
 
 
+  def RemoveVectorsRepresentation(self, reprname):
+    self.msgqueue.append( ("RemoveAllVectors", reprname ))
+
+
   def TestNewFunction(self):
     self.SendMsgToBrowser("Testing")
 
@@ -2594,13 +2629,15 @@ mysocket.onmessage = function (e)
     return RotMx
 
 
-  def RotateMxStage(self, rotmx):
+  def RotateMxStage(self, rotmx, quietbrowser=True):
     scaleRot = rotmx * self.cameradist
     ortrot = scaleRot.as_mat3()
     str_rot = str(ortrot)
     str_rot = str_rot.replace("(", "")
     str_rot = str_rot.replace(")", "")
-    msg = str_rot + "\n"
+    msg = str_rot + ", quiet\n"
+    if not quietbrowser:
+      msg = str_rot + ", verbose\n"
     self.msgqueue.append( ("RotateStage", msg) )
 
 

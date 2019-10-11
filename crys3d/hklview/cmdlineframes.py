@@ -451,7 +451,8 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "miller_array_operations"):
         self.make_new_miller_array()
 
-      if view_3d.has_phil_path(diff_phil, "angle_around_vector"):
+      if view_3d.has_phil_path(diff_phil, "angle_around_vector") \
+       or view_3d.has_phil_path(diff_phil, "bequiet"):
         self.rotate_around_vector(phl.clip_plane.angle_around_vector)
 
       if view_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
@@ -1016,16 +1017,18 @@ class HKLViewFrame() :
     phi = math.pi*dgr/180
     if self.viewer.vecrotmx is not None:
       self.viewer.RotateAroundFracVector(phi,
-                                       self.params.NGL_HKLviewer.clip_plane.h,
-                                       self.params.NGL_HKLviewer.clip_plane.k,
-                                       self.params.NGL_HKLviewer.clip_plane.l,
-                                       self.viewer.vecrotmx)
+                  self.params.NGL_HKLviewer.clip_plane.h,
+                  self.params.NGL_HKLviewer.clip_plane.k,
+                  self.params.NGL_HKLviewer.clip_plane.l,
+                  self.viewer.vecrotmx,
+                  self.params.NGL_HKLviewer.clip_plane.bequiet)
     else:
       self.mprint("First specify vector around which to rotate")
 
 
-  def RotateAroundVector(self, dgr):
+  def RotateAroundVector(self, dgr, bequiet):
     self.params.NGL_HKLviewer.clip_plane.angle_around_vector = dgr
+    self.params.NGL_HKLviewer.clip_plane.bequiet = bequiet
 
 
   def SetTrackBallRotateSpeed(self, trackspeed):
@@ -1118,6 +1121,8 @@ NGL_HKLviewer {
     is_real_space_frac_vec = False
       .type = bool
     is_parallel = False
+      .type = bool
+    bequiet = False
       .type = bool
   }
   scene_bin_thresholds = None

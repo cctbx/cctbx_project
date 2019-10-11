@@ -621,8 +621,8 @@ class NGL_HKLViewer(QWidget):
     #print( "in itemChanged %s,  %s" %(item.text(), str( item.checkState())) )
     bin = item.row()
     column = item.column()
-    bin_opacitieslst = eval(self.bin_opacities)
     try:
+      bin_opacitieslst = eval(self.bin_opacities)
       alpha = max(0.0, min(1.0, float(item.text()) ) ) # between 0 and 1 only
       try:
         (oldalpha, bin) = bin_opacitieslst[bin]
@@ -892,7 +892,7 @@ class NGL_HKLViewer(QWidget):
     layout2.addWidget(self.clipwidth_spinBox,    5, 1, 1, 1)
 
     self.rotavecangle_labeltxt = QLabel()
-    self.rotavecangle_labeltxt.setText("Angle rotated around vector: 0.0")
+    self.rotavecangle_labeltxt.setText("Angle rotated: 0.0")
     self.rotavecangle_slider = QSlider(Qt.Horizontal)
     self.rotavecangle_slider.setMinimum(0)
     self.rotavecangle_slider.setMaximum(360)
@@ -995,12 +995,19 @@ class NGL_HKLViewer(QWidget):
 
   def onFinalRotaVecAngle(self):
     val = self.rotavecangle_slider.value()
-    self.NGL_HKL_command('NGL_HKLviewer.clip_plane.angle_around_vector = %f' %val)
+    self.NGL_HKL_command("""NGL_HKLviewer.clip_plane {
+    angle_around_vector = %f
+    bequiet = False
+}""" %val)
 
 
   def onRotaVecAngle(self):
     val = self.rotavecangle_slider.value()
-    self.rotavecangle_labeltxt.setText("Angle rotated around vector: %2.1f" %val)
+    self.rotavecangle_labeltxt.setText("Angle rotated: %2.f" %val)
+    self.NGL_HKL_command("""NGL_HKLviewer.clip_plane {
+    angle_around_vector = %f
+    bequiet = True
+}""" %val)
 
 
   def onClipwidthChanged(self, val):
@@ -1037,9 +1044,10 @@ class NGL_HKLViewer(QWidget):
 
   def MillerTableContextMenuHandler(self, pos, row):
     self.millertablemenu.clear()
-
+    # Tag menu items with data being int or a (string, int) tuple.
+    # These are being checked for in onMillerTableMenuAction() and appropriate
+    # action taken
     for i,scenelabel in enumerate(self.scenearraylabels):
-      #[e for e in self.millerarraylabels if e in scenelabel]
       if self.millerarraylabels[row] == scenelabel or self.millerarraylabels[row] + " + " in scenelabel:
         print(i, scenelabel)
         myqa = QAction("Display %s data" %scenelabel, self, triggered=self.testaction)
@@ -1057,24 +1065,28 @@ class NGL_HKLViewer(QWidget):
 
   def onMillerTableMenuAction(self, action):
     data = action.data()
+    # depending on what menu item the user clicked data is either an int or a (string, int) tuple
     if data is not None:
-      if type(data) is int: # as set above when matching millerarraylabels with scenearraylabels
+      if type(data) is int:
         idx = data
         self.NGL_HKL_command("NGL_HKLviewer.viewer.scene_id = %d" %idx)
         if self.fileisvalid:
           self.functionTabWidget.setEnabled(True)
           self.expandAnomalouscheckbox.setEnabled(True)
+          self.expandP1checkbox.setEnabled(True)
           # don' allow anomalous expansion for data that's already anomalous
-          for arrayinfo in self.array_infotpls:
-            isanomalous = arrayinfo[-1]
-            label = arrayinfo[0]
-            if isanomalous and label == self.MillerComboBox.currentText()[: len(label) ]:
-              self.expandAnomalouscheckbox.setDisabled(True)
+          arrayinfo = self.array_infotpls[idx]
+          isanomalous = arrayinfo[-1]
+          spacegroup = arrayinfo[2]
+          label = arrayinfo[0]
+          if isanomalous:
+            self.expandAnomalouscheckbox.setDisabled(True)
+          if spacegroup=='P 1 (No. 1)':
+            self.expandP1checkbox.setDisabled(True)
         else:
           self.functionTabWidget.setDisabled(True)
         self.SpaceGroupComboBox.clear()
         self.SpaceGroupComboBox.addItems( self.spacegroups )
-
       else:
         (strval, idx) = data
         self.operate_arrayidx1 = idx
@@ -1091,7 +1103,6 @@ class NGL_HKLViewer(QWidget):
           self.MillerLabel2.setEnabled(True)
           self.MillerComboBox.setEnabled(True)
           self.MillerLabel3.setText("Example: 'newdata = data1 + data2; newsigmas= sigmas1 - data2 / sigmas1' ")
-
         self.makenewdataform.show()
 
 
