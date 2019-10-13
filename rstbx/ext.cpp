@@ -15,6 +15,8 @@
 #include <rstbx/diffraction/partial_spot_position_partial_H.h>
 
 #include <scitbx/array_family/flex_types.h>
+#include <scitbx/array_family/sort.h>
+#include <scitbx/array_family/selections.h>
 #include <vector>
 #include <rstbx/backplane.h>
 
@@ -149,6 +151,47 @@ class SimpleSamplerTool {
     }
     return boost::python::make_tuple(vectors, function_values, SST_all_angles);
   } // coarse_grid_search end
+
+  boost::python::tuple fine_grid_search_cpp(flex_Direction SST_finegrained_angles,
+                            scitbx::af::shared <double> unique_cell_dimensions,
+                            scitbx::af::const_ref <scitbx::vec3<double> > reciprocal_lattice_vectors) {
+
+    //std::cout << "Wow I am in fine grid search" << std::endl;
+    scitbx::af::shared <scitbx::vec3 < double> > vectors;
+    scitbx::af::shared <double> function_values;
+    int top_n_values = 1; // Number of top scoring vectors to return in each coarse grid per unique dim
+    for (int i=0; i<n_entries_finegrained.size()-1; ++i) {
+      int start = n_entries_finegrained[i];
+      int end = n_entries_finegrained[i+1];
+      for (int j=0; j < unique_cell_dimensions.size(); ++j) {
+        scitbx::af::shared<scitbx::vec3<double> > tmp_vectors;
+        scitbx::af::shared<double> tmp_function_values;
+        for (int k=start; k<end; ++k) {
+          scitbx::vec3<double> v = scitbx::vec3<double>(SST_finegrained_angles[k].dvec[0]*unique_cell_dimensions[j],
+                                  SST_finegrained_angles[k].dvec[1]*unique_cell_dimensions[j],
+                                  SST_finegrained_angles[k].dvec[2]*unique_cell_dimensions[j]);
+          double multiplier = 2*scitbx::constants::pi;
+          scitbx::af::shared <double> two_pi_S_dot_v = dot_a_s(reciprocal_lattice_vectors,v,multiplier);
+          scitbx::af::shared <double > cosines = all_cos(two_pi_S_dot_v);
+          double f= sum(cosines); 
+          tmp_vectors.push_back(v);
+          tmp_function_values.push_back(f);
+        }
+        // Need to sort things here 
+        scitbx::af::shared <std::size_t> perm=scitbx::af::sort_permutation(tmp_function_values.const_ref(), true);
+        scitbx::af::const_ref<std::size_t> p = perm.const_ref();
+        tmp_vectors = scitbx::af::select(tmp_vectors.const_ref(), p);
+        tmp_function_values = scitbx::af::select(tmp_function_values.const_ref(), p);
+        for (int z=0; z<top_n_values; ++z) {
+          vectors.push_back(tmp_vectors[z]);
+          function_values.push_back(tmp_function_values[z]);
+        } //z
+      }// unique cell 
+    } // finegrained n_entries
+    return boost::python::make_tuple(vectors, function_values);
+
+  } // fine_grid_search end
+
 
   // Copying this function from flex_vec3_double.cpp because not sure how to take dot product in c++ for flex_vec3_doubles
   scitbx::af::shared<double>
@@ -392,6 +435,7 @@ namespace boost_python { namespace {
                                                    "@params SST_filter_angles: flex array of supplied psi/phi angles (flex.Direction) about which to do finegraining\n"
       )
       .def ("coarse_grid_search_cpp", &SimpleSamplerTool::coarse_grid_search_cpp)
+      .def ("fine_grid_search_cpp", &SimpleSamplerTool::fine_grid_search_cpp)
    ;
 
     class_<ewald_sphere_base_model>("ewald_sphere_base_model",
