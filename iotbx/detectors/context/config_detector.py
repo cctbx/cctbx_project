@@ -53,7 +53,8 @@ def als_beam_rules(iobj): #take an ADSC image object
           ('BEAM_CENTER_X','DENZO_XBEAM',float),
           ('BEAM_CENTER_Y','DENZO_YBEAM',float),
           ]:
-          pattern = re.compile(search+'='+r'(.*);')
+          bytes_encoded_search = (search+'='+r'(.*);').encode()
+          pattern = re.compile(bytes_encoded_search) # python3 compatible
           matches = pattern.findall(iobj.header)
           if len(matches)>0:
             beam_center_convention = 0

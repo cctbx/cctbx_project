@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
+import six
 import iotbx.cif
 import sys, email.parser, copy, hashlib, base64
 from cbflib_adaptbx import uncompress,assert_equal
@@ -11,7 +12,10 @@ class cif_binary_section:
   init_boundary = endline + pattern + endline
   final_boundary = endline + pattern + "--" + endline
   binary_string_separator=endline + endline
-  cbf_signature = chr(0x0C)+chr(0x1A)+chr(0x04)+chr(0xD5)
+  if six.PY2:
+    cbf_signature = chr(0x0C)+chr(0x1A)+chr(0x04)+chr(0xD5)
+  else:
+    cbf_signature = bytes([0x0C,0x1A,0x04,0xD5]) # Python 3 idiom
 
   def from_compressed_string(self,data,init,final):
     section_start = init + len(self.init_boundary)
@@ -20,11 +24,11 @@ class cif_binary_section:
     self.init = init
     self.final = final
 
-    divide = data.find(self.binary_string_separator,section_start,section_stop)
+    divide = data.find(self.binary_string_separator.encode(),section_start,section_stop)
     assert divide > 0 # binary section consists of a header and data
     header = data[section_start:divide]
 
-    self.header_dic = email.parser.Parser().parsestr(header)
+    self.header_dic = email.parser.Parser().parsestr(header.decode())
     assert self.header_dic["Content-Type"].find("x-CBF_BYTE_OFFSET")>0
 
     bin_start = divide + len(self.binary_string_separator)
@@ -35,7 +39,7 @@ class cif_binary_section:
     m = hashlib.md5()
     m.update(self.data)
     derived_digest = base64.b64encode(m.digest())
-    assert self.header_dic["Content-MD5"] == derived_digest
+    assert self.header_dic["Content-MD5"] == derived_digest.decode() # converts to str
 
     self.size_fast = int(self.header_dic["X-Binary-Size-Fastest-Dimension"])
     self.size_slow = int(self.header_dic["X-Binary-Size-Second-Dimension"])
@@ -65,11 +69,11 @@ def get_binary_sections(raw):
   oldfinal = 0
 
   while ptr < end:
-    init = raw.find(cif_binary_section.init_boundary, oldinit+1)
+    init = raw.find(cif_binary_section.init_boundary.encode(), oldinit+1)
     if init==-1: break
     assert init > oldfinal
 
-    final = raw.find(cif_binary_section.final_boundary, init)
+    final = raw.find(cif_binary_section.final_boundary.encode(), init)
     assert final > init
 
     return_sections.append(cif_binary_section().from_compressed_string(raw,init,final))
@@ -86,7 +90,11 @@ def get_header_sections(raw,binary_sections):
     last = (section.final+len(cif_binary_section.final_boundary),provisional_slices[i][1])
     provisional_slices[i]=first
     provisional_slices.append(last)
-  return cif_binary_section.endline.join([raw[s[0]:s[1]] for s in provisional_slices])
+
+  if six.PY2:
+    return cif_binary_section.endline.join([raw[s[0]:s[1]] for s in provisional_slices])
+  else:
+    return cif_binary_section.endline.join([raw[s[0]:s[1]].decode() for s in provisional_slices])
 
 class Goniometer:
   def __init__(self,model):
