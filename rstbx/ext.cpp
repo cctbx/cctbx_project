@@ -140,8 +140,9 @@ class SimpleSamplerTool {
 
         double multiplier = 2*scitbx::constants::pi;
         scitbx::af::shared <double> two_pi_S_dot_v = dot_a_s(reciprocal_lattice_vectors,v,multiplier);
-        scitbx::af::shared <double > cosines = all_cos(two_pi_S_dot_v);
-        double f= sum(cosines);
+        //scitbx::af::shared <double > cosines = all_cos(two_pi_S_dot_v);
+        //double f= sum(cosines);
+        double f = sum_of_all_cosines(two_pi_S_dot_v);
         vectors.push_back(v);
         function_values.push_back(f);
         SST_all_angles.push_back(SST_angles[i]);
@@ -172,8 +173,9 @@ class SimpleSamplerTool {
                                   SST_finegrained_angles[k].dvec[2]*unique_cell_dimensions[j]);
           double multiplier = 2*scitbx::constants::pi;
           scitbx::af::shared <double> two_pi_S_dot_v = dot_a_s(reciprocal_lattice_vectors,v,multiplier);
-          scitbx::af::shared <double > cosines = all_cos(two_pi_S_dot_v);
-          double f= sum(cosines); 
+          //scitbx::af::shared <double > cosines = all_cos(two_pi_S_dot_v);
+          //double f= sum(cosines); 
+          double f = sum_of_all_cosines(two_pi_S_dot_v);
           tmp_vectors.push_back(v);
           tmp_function_values.push_back(f);
         }
@@ -226,6 +228,15 @@ class SimpleSamplerTool {
       }
       return result;
     }
+
+  // Sum over values after taking their cosines
+  double sum_of_all_cosines(scitbx::af::shared<double> mylist) {
+    double result = 0.0;
+    for (std::size_t i=0; i<mylist.size(); ++i) {
+      result += std::cos(mylist[i]);
+    }
+    return result;
+  }
 
 };
 
