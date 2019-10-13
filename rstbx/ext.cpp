@@ -5,6 +5,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/tuple.hpp>
+#include <boost/python/list.hpp>
 #include <boost/python/enum.hpp>
 
 #include <cctbx/sgtbx/space_group.h>
@@ -120,6 +121,69 @@ class SimpleSamplerTool {
     }
     return finegrained_angles;
   }
+
+  // coarse grid search ported to c++ for speedup 
+  boost::python::tuple coarse_grid_search_cpp(flex_Direction SST_angles, 
+                          scitbx::af::shared <double> unique_cell_dimensions, 
+                          scitbx::af::const_ref<scitbx::vec3<double> > reciprocal_lattice_vectors) {
+    //std::cout << "Wow I am in coarse grid search" << std::endl;
+    scitbx::af::shared <scitbx::vec3 < double> > vectors;
+    scitbx::af::shared <double> function_values;
+    scitbx::af::shared <Direction> SST_all_angles;
+    for (int i=0; i < SST_angles.size(); ++i) {
+      for (int j=0; j < unique_cell_dimensions.size(); ++j)  {
+        scitbx::vec3<double> v = scitbx::vec3<double>(SST_angles[i].dvec[0]*unique_cell_dimensions[j],
+                                  SST_angles[i].dvec[1]*unique_cell_dimensions[j],
+                                  SST_angles[i].dvec[2]*unique_cell_dimensions[j]);
+
+        double multiplier = 2*scitbx::constants::pi;
+        scitbx::af::shared <double> two_pi_S_dot_v = dot_a_s(reciprocal_lattice_vectors,v,multiplier);
+        scitbx::af::shared <double > cosines = all_cos(two_pi_S_dot_v);
+        double f= sum(cosines);
+        vectors.push_back(v);
+        function_values.push_back(f);
+        SST_all_angles.push_back(SST_angles[i]);
+        //std::cout << SST_angles[i].dvec[0]  <<" " << v[0] <<" "<< two_pi_S_dot_v[0]<<" "<<unique_cell_dimensions[j] << std::endl;
+        //std::cout << SST_angles[i].dvec[0] << SST_angles[i].dvec[1] << SST_angles[i].dvec[2] << unique_cell_dimensions[j] << v[0]<<v[1]<<v[2]<<std::endl;
+      }
+    }
+    return boost::python::make_tuple(vectors, function_values, SST_all_angles);
+  } // coarse_grid_search end
+
+  // Copying this function from flex_vec3_double.cpp because not sure how to take dot product in c++ for flex_vec3_doubles
+  scitbx::af::shared<double>
+  dot_a_s(
+    scitbx::af::const_ref<scitbx::vec3<double> > const& lhs,
+    scitbx::vec3<double> rhs,
+    double multiplier)
+  {
+    scitbx::af::shared<double> result((scitbx::af::reserve(lhs.size())));
+    for(std::size_t i=0;i<lhs.size();i++) {
+      result.push_back(lhs[i] * rhs*multiplier);
+    }
+    return result;
+  }
+
+  // Copying this function since not sure how to take cosines for flex in c++
+  scitbx::af::shared <double> all_cos(scitbx::af::shared<double> mylist)
+  {
+    scitbx::af::shared<double> result((scitbx::af::reserve(mylist.size())));
+    for (std::size_t i=0;  i<mylist.size(); ++i) {
+      result.push_back(std::cos(mylist[i]));
+      }
+      return result;
+    }
+
+  // Sum over all elements in a list
+  double sum(scitbx::af::shared<double> mylist)
+  {
+    double result = 0.0;
+    for (std::size_t i=0;  i<mylist.size(); ++i) {
+      result +=mylist[i];
+      }
+      return result;
+    }
+
 };
 
 static boost::python::tuple
@@ -327,6 +391,7 @@ namespace boost_python { namespace {
                                                    "@params old_sampling : old grid value that was used for coarse-grained grid\n"
                                                    "@params SST_filter_angles: flex array of supplied psi/phi angles (flex.Direction) about which to do finegraining\n"
       )
+      .def ("coarse_grid_search_cpp", &SimpleSamplerTool::coarse_grid_search_cpp)
    ;
 
     class_<ewald_sphere_base_model>("ewald_sphere_base_model",
