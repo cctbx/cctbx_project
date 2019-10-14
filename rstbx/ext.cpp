@@ -270,6 +270,101 @@ class SimpleSamplerTool {
     return result;
   }
 
+
+  boost::python::tuple coarse_grid_search_openmp_cpp(flex_Direction SST_angles,
+                          scitbx::af::shared <double> unique_cell_dimensions,
+                          scitbx::af::const_ref<scitbx::vec3<double> > reciprocal_lattice_vectors) {
+
+    scitbx::af::shared <scitbx::vec3 < double> > vectors;
+    scitbx::af::shared <double> function_values;
+    scitbx::af::shared <Direction> SST_all_angles;
+    double multiplier = 2*scitbx::constants::pi;
+    // the number 4 is hardcoded for KNL --> 4 hyperthreads per physical core
+    #pragma omp parallel num_threads(4)
+    {
+      scitbx::af::shared <scitbx::vec3 < double> > vec_private;
+      scitbx::af::shared <double> function_values_private;
+      scitbx::af::shared <Direction> SST_all_angles_private;
+      //omp_set_num_threads(4);
+      #pragma omp for schedule(static) collapse (2) 
+      for (int i=0; i < SST_angles.size(); ++i) {
+        for (int j=0; j < unique_cell_dimensions.size(); ++j)  {
+
+          scitbx::vec3<double> v = scitbx::vec3<double>(SST_angles[i].dvec[0]*unique_cell_dimensions[j],
+                                    SST_angles[i].dvec[1]*unique_cell_dimensions[j],
+                                    SST_angles[i].dvec[2]*unique_cell_dimensions[j]);
+
+          double f = sum_all_cosines_of_dot_a_s(reciprocal_lattice_vectors, v, multiplier);
+          vec_private.push_back(v);
+          function_values_private.push_back(f);
+          SST_all_angles_private.push_back(SST_angles[i]);
+        }
+      }
+      #pragma omp for schedule(static) ordered
+      for(int i=0; i<omp_get_num_threads(); i++) {
+        #pragma omp ordered
+        vectors.insert(vectors.end(), vec_private.begin(), vec_private.end());
+        function_values.insert(function_values.end(), function_values_private.begin(), function_values_private.end());
+        SST_all_angles.insert(SST_all_angles.end(), SST_all_angles_private.begin(), SST_all_angles_private.end());
+      }
+    } // omp parallel for
+    return boost::python::make_tuple(vectors, function_values, SST_all_angles);
+  } // end coarse_grid_openmp
+
+
+  boost::python::tuple fine_grid_search_openmp_cpp(flex_Direction SST_finegrained_angles,
+                            scitbx::af::shared <double> unique_cell_dimensions,
+                            scitbx::af::const_ref <scitbx::vec3<double> > reciprocal_lattice_vectors) {
+
+    //std::cout << "Wow I am in fine grid search" << std::endl;
+    scitbx::af::shared <scitbx::vec3 < double> > vectors;
+    scitbx::af::shared <double> function_values;
+    double multiplier = 2*scitbx::constants::pi;
+    int top_n_values = 1; // Number of top scoring vectors to return in each coarse grid per unique dim
+    // the number 4 is hardcoded for KNL --> 4 hyperthreads per physical core
+    #pragma omp parallel num_threads(4)
+    {
+      scitbx::af::shared <scitbx::vec3 < double> > vec_private;
+      scitbx::af::shared <double> function_values_private;
+      #pragma omp for schedule(static)
+      for (int i=0; i<n_entries_finegrained.size()-1; ++i) {
+        int start = n_entries_finegrained[i];
+        int end = n_entries_finegrained[i+1];
+        for (int j=0; j < unique_cell_dimensions.size(); ++j) {
+          scitbx::af::shared<scitbx::vec3<double> > tmp_vectors;
+          scitbx::af::shared<double> tmp_function_values;
+          for (int k=start; k<end; ++k) {
+            scitbx::vec3<double> v = scitbx::vec3<double>(SST_finegrained_angles[k].dvec[0]*unique_cell_dimensions[j],
+                                    SST_finegrained_angles[k].dvec[1]*unique_cell_dimensions[j],
+                                    SST_finegrained_angles[k].dvec[2]*unique_cell_dimensions[j]);
+            double f = sum_all_cosines_of_dot_a_s(reciprocal_lattice_vectors, v, multiplier);
+            tmp_vectors.push_back(v);
+            tmp_function_values.push_back(f);
+          }
+          // Need to sort things here 
+          scitbx::af::shared <std::size_t> perm=scitbx::af::sort_permutation(tmp_function_values.const_ref(), true);
+          scitbx::af::const_ref<std::size_t> p = perm.const_ref();
+          tmp_vectors = scitbx::af::select(tmp_vectors.const_ref(), p);
+          tmp_function_values = scitbx::af::select(tmp_function_values.const_ref(), p);
+          for (int z=0; z<top_n_values; ++z) {
+            vec_private.push_back(tmp_vectors[z]);
+            function_values_private.push_back(tmp_function_values[z]);
+          } //z
+        }// unique cell 
+      } // finegrained n_entries
+      #pragma omp for schedule(static) ordered
+      for(int i=0; i<omp_get_num_threads(); i++) {
+        #pragma omp ordered
+        vectors.insert(vectors.end(), vec_private.begin(), vec_private.end());
+        function_values.insert(function_values.end(), function_values_private.begin(), function_values_private.end());
+      }
+    } // pragma omp parallel end
+    return boost::python::make_tuple(vectors, function_values);
+
+  } // fine_grid_search_openmp end
+
+
+
 };
 
 static boost::python::tuple
@@ -480,6 +575,8 @@ namespace boost_python { namespace {
       .def ("coarse_grid_search_cpp", &SimpleSamplerTool::coarse_grid_search_cpp)
       .def ("fine_grid_search_cpp", &SimpleSamplerTool::fine_grid_search_cpp)
       .def ("openmp_mpi_cpp",&SimpleSamplerTool::openmp_mpi_cpp)
+      .def ("coarse_grid_search_openmp_cpp", &SimpleSamplerTool::coarse_grid_search_openmp_cpp)
+      .def ("fine_grid_search_openmp_cpp", &SimpleSamplerTool::fine_grid_search_openmp_cpp)
    ;
 
     class_<ewald_sphere_base_model>("ewald_sphere_base_model",
