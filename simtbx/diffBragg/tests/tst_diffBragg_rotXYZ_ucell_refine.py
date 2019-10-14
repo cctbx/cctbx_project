@@ -18,7 +18,7 @@ from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
 
 ucell = (55, 65, 75, 90, 95, 90)
 ucell2 = (55.1, 65.2, 74.9, 90, 94.9, 90)
-ucell2 = (55.2, 66, 74, 90, 94.3, 90)
+#ucell2 = (55.05, 65.05, 74.05, 90, 95.05, 90)
 symbol = "P121"
 
 # generate a random raotation
@@ -30,7 +30,7 @@ rot_ang, rot_axis = Q.unit_quaternion_as_axis_and_angle()
 np.random.seed(1)
 perturb_rot_axis = np.random.random(3)
 perturb_rot_axis /= np.linalg.norm(perturb_rot_axis)
-perturb_rot_ang = 0.1  # 0.1 degree random perturbtation
+perturb_rot_ang = 0.05  # 0.1 degree random perturbtation
 
 # make the ground truth crystal:
 a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
@@ -64,6 +64,7 @@ SIM.include_noise = True
 SIM.D.add_diffBragg_spots()
 spots = SIM.D.raw_pixels.as_numpy_array()
 SIM._add_background()
+SIM.D.readout_noise_adu=0
 SIM._add_noise()
 # This is the ground truth image:
 img = SIM.D.raw_pixels.as_numpy_array()
@@ -104,8 +105,9 @@ RUC = RefineMissetAndUcell(
     ucell_manager=UcellMan)
 RUC.trad_conv = True
 RUC.refine_background_planes = False
+RUC.refine_Amatrix = True
 RUC.trad_conv_eps = 1e-7
-RUC.max_calls = 20000
+RUC.max_calls = 2000
 RUC.use_curvatures = args.curvatures
 RUC.run()
 
