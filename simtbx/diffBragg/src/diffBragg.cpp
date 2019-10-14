@@ -44,11 +44,12 @@ void origin_manager::increment(
     double c = Fcell*Fcell*source_I*capture_fraction;
     dI += c*2*Flatt*dFlatt*omega_pixel;
     // contribution from derivative of solid angle
+    //FIXME I mist be broken:
     double D = k_diffracted * o_vec;
     double pp = pixel_size*pixel_size;
     double domega  = -3*pp/pow(air_path,5)*(dk*k_diffracted)*D;
-    domega += pp/pow(air_path,3) * (o_vec * dk);
-    dI +=c*Flatt*Flatt* domega;
+    domega += pp/pow(air_path,3)* (o_vec * dk);
+    dI += c*Flatt*Flatt*domega;
 
     dI2 += 0;
 };
@@ -106,24 +107,26 @@ void rot_manager::set_R(){assert (false);}
 void rot_manager::increment(
         double fudge,
         mat3 X, mat3 Y, mat3 Z,
-        mat3 N, mat3 U, mat3 B,
+        mat3 X2, mat3 Y2, mat3 Z2,
+        mat3 N, mat3 U, mat3 UBOt,
         vec3 q, vec3 V,
         double Hrad, double Fcell, double Flatt,
         double source_I, double capture_fraction, double omega_pixel)
 {
   /* X,Y,Z will change depending on whether its RotX, RotY, or RotZ manager */
   XYZ = X*Y*Z;
-  vec3 dV = N*(U*XYZ*B).transpose() * q;
-  double dHrad = V*dV + dV*V;
-  double dFlatt = -1*Flatt / 0.63 * fudge * dHrad;
+  vec3 dV = N*(U*XYZ*UBOt).transpose() * q;
+  double V_dot_dV = V*dV;
+  double dHrad = 2*V_dot_dV;
+  double a = 1 / 0.63 * fudge;
+  double dFlatt = -1*a*Flatt*dHrad;
   double c = Fcell*Fcell*source_I*capture_fraction*omega_pixel;
   dI += c*2*Flatt*dFlatt;
 
-  //vec3 dV2 = NABC*(UR*dB2*Ot).transpose() * q;
-  //double dFlatt2 = -2*a*(dFlatt * V_dot_dV + Flatt*(dV*dV) + Flatt*(V*dV2));
-  //dI2 += c*2*(dFlatt2*Flatt + dFlatt*dFlatt);
-
-  dI2 += 0;
+  XYZ2 = X2*Y2*Z2;
+  vec3 dV2 = N*(U*XYZ2*UBOt).transpose() * q;
+  double dFlatt2 = -2*a*(dFlatt * V_dot_dV + Flatt*(dV*dV) + Flatt*(V*dV2));
+  dI2 += c*2*(dFlatt2*Flatt + dFlatt*dFlatt);
 }
 
 rotX_manager::rotX_manager(){
@@ -151,6 +154,16 @@ void rotX_manager::set_R(){
     dR2= mat3(0,           0,           0,
               0,  -cos(value), -sin(value),
               0,   sin(value), -cos(value));
+
+    //SCITBX_EXAMINE(dR2[0]);
+    //SCITBX_EXAMINE(dR2[1]);
+    //SCITBX_EXAMINE(dR2[2]);
+    //SCITBX_EXAMINE(dR2[3]);
+    //SCITBX_EXAMINE(dR2[4]);
+    //SCITBX_EXAMINE(dR2[5]);
+    //SCITBX_EXAMINE(dR2[6]);
+    //SCITBX_EXAMINE(dR2[7]);
+    //SCITBX_EXAMINE(dR2[8]);
 
 }
 void rotY_manager::set_R(){
@@ -198,10 +211,16 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     dRotMats.push_back(EYE);
     dRotMats.push_back(EYE);
     dRotMats.push_back(EYE);
+    d2RotMats.push_back(EYE);
+    d2RotMats.push_back(EYE);
+    d2RotMats.push_back(EYE);
 
     R3.push_back(EYE);
     R3.push_back(EYE);
     R3.push_back(EYE);
+    R3_2.push_back(EYE);
+    R3_2.push_back(EYE);
+    R3_2.push_back(EYE);
 
     boost::shared_ptr<rot_manager> rotX = boost::shared_ptr<rot_manager>(new rotX_manager());
     boost::shared_ptr<rot_manager> rotY = boost::shared_ptr<rot_manager>(new rotY_manager());
@@ -582,9 +601,9 @@ double diffBragg::polarization_factor(double kahn_factor, double *incident, doub
         cross_product(axis,incident,B_in);
         /* make it a unit vector */
         unitize(B_in,B_in);
-        Bi_vec[0] = B_in[0];
-        Bi_vec[1] = B_in[1];
-        Bi_vec[2] = B_in[2];
+        Bi_vec[0] = B_in[1];
+        Bi_vec[1] = B_in[2];
+        Bi_vec[2] = B_in[3];
 
         /* cross product with incident beam to get E-vector direction */
         cross_product(incident,B_in,E_in);
@@ -619,7 +638,10 @@ void diffBragg::add_diffBragg_spots()
         if (rot_managers[i_rot]->refine_me){
             RotMats[i_rot] = rot_managers[i_rot]->R;
             dRotMats[i_rot] = rot_managers[i_rot]->dR;
+            d2RotMats[i_rot] = rot_managers[i_rot]->dR2;
+
             R3[i_rot] = RotMats[i_rot];
+            R3_2[i_rot] = RotMats[i_rot];
         }
     }
 
@@ -731,6 +753,7 @@ void diffBragg::add_diffBragg_spots()
                         omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
                         /* option to turn off obliquity effect, inverse-square-law only */
                         if(point_pixel) omega_pixel = 1.0/airpath/airpath;
+                        //omega_pixel = 1e-6; // FIXME
                         omega_sum += omega_pixel;
 
                         /* now calculate detector thickness effects */
@@ -986,6 +1009,7 @@ void diffBragg::add_diffBragg_spots()
                                 {
                                     polar = 1.0;
                                 }
+                                //polar=1; //FIXME
 
                                 /* convert amplitudes into intensity (photons per steradian) */
                                 I += F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
@@ -994,15 +1018,18 @@ void diffBragg::add_diffBragg_spots()
                                 for (int i_rot =0 ; i_rot < 3 ; i_rot++){
                                     if (rot_managers[i_rot]->refine_me){
                                         R3[i_rot] = dRotMats[i_rot]; // TODO: design upgrade
+                                        R3_2[i_rot] = d2RotMats[i_rot]; // TODO: design upgrade
                                         rot_managers[i_rot]->increment(
                                                             fudge,
                                                             R3[0], R3[1], R3[2],
+                                                            R3_2[0], R3_2[1], R3_2[2],
                                                             NABC, UMATS[mos_tic],
                                                             Umatrix*Bmat_realspace*(Omatrix.transpose()),
                                                             q_vec, V,
                                                             hrad_sqr, F_cell, F_latt,
                                                             source_I[source], capture_fraction, omega_pixel);
                                         R3[i_rot] = RotMats[i_rot];
+                                        R3_2[i_rot] = RotMats[i_rot]; // TODO: design upgrade
                                     }
                                 } //* end rotation manager deriv */
 
@@ -1147,13 +1174,17 @@ void diffBragg::add_diffBragg_spots()
                 vec3 dk = origin_managers[0]->dk;
                 double D = k_diffracted*o_vec; //origin_managers[0]->value; /* TODO check me */
                 double dD = dk * o_vec;
+                //SCITBX_EXAMINE(dD);
+                //SCITBX_EXAMINE(dk*k_diffracted);
                 double du = 2*D/airpath*(dD/airpath - D/pow(airpath,3)*(dk*k_diffracted));
-                double dpsi = 0;
+                //double dpsi = 0;
                 /* kahn factor is the variable called polarization */
-                if(polarization)
-                    dpsi = -1/(1+kBi*kBi/kEi/kEi) * ((dk*Bi_vec)/kEi - kBi/kEi/kEi*(dk*Ei_vec));
-                double dpolar = .5*(du*(1 + polarization * cos(2*psi)) + 2*dpsi*sin(2*psi)*(1-polarization*u));
-                value += r_e_sqr*fluence*spot_scale*  dpolar  *I/steps;
+                //if(polarization)
+
+                double dpsi = -1/(1+kBi*kBi/kEi/kEi) * ((dk*Bi_vec)/kEi - kBi/kEi/kEi*(dk*Ei_vec));
+                double dpolar = .5*(du*(1 + polarization * cos(2*psi)) + 2*dpsi*sin(2*psi)*polarization*(1-u));
+                if (! nopolar)
+                    value += r_e_sqr*fluence*spot_scale*  dpolar  *I/steps;
 
                 double value2 = r_e_sqr*fluence*spot_scale*polar*origin_managers[0]->dI2/steps;
                 origin_managers[0]->increment_image(roi_i, value, value2);

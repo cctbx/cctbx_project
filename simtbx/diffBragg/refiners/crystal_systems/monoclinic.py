@@ -4,7 +4,7 @@ from scitbx.matrix import sqr
 
 class MonoclinicManager(CrystalSystemManager):
 
-    def __init__(self, a=55, b=65, c=77, beta=100*np.pi/2):
+    def __init__(self, a=55, b=65, c=77, beta=100*np.pi/180.):
         self.variables = [a, b, c, beta]
 
     @property

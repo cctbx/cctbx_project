@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--plot", action='store_true')
+parser.add_argument("--curvatures", action='store_true')
 args = parser.parse_args()
 
 from dxtbx.model.crystal import Crystal
@@ -8,7 +9,6 @@ from cctbx import uctbx
 from scitbx.matrix import sqr, rec, col
 import numpy as np
 from scipy.spatial.transform import Rotation
-import pylab as plt
 
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
@@ -17,6 +17,7 @@ from simtbx.diffBragg.refiners import RefineMissetAndUcell
 from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
 
 ucell = (55, 65, 75, 90, 95, 90)
+ucell2 = (55.1, 65.2, 74.9, 90, 94.9, 90)
 ucell2 = (55.2, 66, 74, 90, 94.3, 90)
 symbol = "P121"
 
@@ -80,7 +81,7 @@ SIM.D.raw_pixels *= 0
 
 # spot_rois, abc_init , these are inputs to the refiner
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
-spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot)
+spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot, edge_reflections=False)
 
 UcellMan = MonoclinicManager(
     a=ucell2[0],
@@ -102,8 +103,10 @@ RUC = RefineMissetAndUcell(
     plot_images=args.plot,
     ucell_manager=UcellMan)
 RUC.trad_conv = True
-RUC.trad_conv_eps = 1e-5
-RUC.max_calls = 2000
+RUC.refine_background_planes = False
+RUC.trad_conv_eps = 1e-7
+RUC.max_calls = 20000
+RUC.use_curvatures = args.curvatures
 RUC.run()
 
 ang, ax = RUC.get_correction_misset(as_axis_angle_deg=True)
