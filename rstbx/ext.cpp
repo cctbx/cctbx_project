@@ -19,6 +19,7 @@
 #include <scitbx/array_family/selections.h>
 #include <vector>
 #include <rstbx/backplane.h>
+#include "omp.h"
 
 using namespace boost::python;
 
@@ -124,6 +125,21 @@ class SimpleSamplerTool {
     return finegrained_angles;
   }
 
+  // Dummy function to test openmp+mpi on KNL
+  void openmp_mpi_cpp(int mpi_rank) {
+    int start = mpi_rank*100;
+    int end = start+100;
+    #pragma omp parallel for num_threads(4)
+    for (int i=start; i<end; ++i) {
+       for (int j=0; j < 10; ++j)
+      //int id = omp_get_thread_num();
+      //int data = id;
+      //int total = omp_get_num_threads();
+      //printf("Greetings from process %d out of %d with Data %d\n", id, total, data);
+         printf("i = %d, threadId = %d, total_threads = %d \n", i, omp_get_thread_num(), omp_get_num_threads());
+      //std::cout << "greetings openmp_mpi" << std::endl;
+    }
+  }
   // coarse grid search ported to c++ for speedup 
   boost::python::tuple coarse_grid_search_cpp(flex_Direction SST_angles, 
                           scitbx::af::shared <double> unique_cell_dimensions, 
@@ -132,17 +148,18 @@ class SimpleSamplerTool {
     scitbx::af::shared <scitbx::vec3 < double> > vectors;
     scitbx::af::shared <double> function_values;
     scitbx::af::shared <Direction> SST_all_angles;
+    double multiplier = 2*scitbx::constants::pi;
     for (int i=0; i < SST_angles.size(); ++i) {
       for (int j=0; j < unique_cell_dimensions.size(); ++j)  {
         scitbx::vec3<double> v = scitbx::vec3<double>(SST_angles[i].dvec[0]*unique_cell_dimensions[j],
                                   SST_angles[i].dvec[1]*unique_cell_dimensions[j],
                                   SST_angles[i].dvec[2]*unique_cell_dimensions[j]);
 
-        double multiplier = 2*scitbx::constants::pi;
-        scitbx::af::shared <double> two_pi_S_dot_v = dot_a_s(reciprocal_lattice_vectors,v,multiplier);
+        double f = sum_all_cosines_of_dot_a_s(reciprocal_lattice_vectors, v, multiplier);
+        //scitbx::af::shared <double> two_pi_S_dot_v = dot_a_s(reciprocal_lattice_vectors,v,multiplier);
         //scitbx::af::shared <double > cosines = all_cos(two_pi_S_dot_v);
         //double f= sum(cosines);
-        double f = sum_of_all_cosines(two_pi_S_dot_v);
+        //double f = sum_of_all_cosines(two_pi_S_dot_v);
         vectors.push_back(v);
         function_values.push_back(f);
         SST_all_angles.push_back(SST_angles[i]);
@@ -160,6 +177,7 @@ class SimpleSamplerTool {
     //std::cout << "Wow I am in fine grid search" << std::endl;
     scitbx::af::shared <scitbx::vec3 < double> > vectors;
     scitbx::af::shared <double> function_values;
+    double multiplier = 2*scitbx::constants::pi;
     int top_n_values = 1; // Number of top scoring vectors to return in each coarse grid per unique dim
     for (int i=0; i<n_entries_finegrained.size()-1; ++i) {
       int start = n_entries_finegrained[i];
@@ -171,11 +189,11 @@ class SimpleSamplerTool {
           scitbx::vec3<double> v = scitbx::vec3<double>(SST_finegrained_angles[k].dvec[0]*unique_cell_dimensions[j],
                                   SST_finegrained_angles[k].dvec[1]*unique_cell_dimensions[j],
                                   SST_finegrained_angles[k].dvec[2]*unique_cell_dimensions[j]);
-          double multiplier = 2*scitbx::constants::pi;
-          scitbx::af::shared <double> two_pi_S_dot_v = dot_a_s(reciprocal_lattice_vectors,v,multiplier);
+          double f = sum_all_cosines_of_dot_a_s(reciprocal_lattice_vectors, v, multiplier);
+          //scitbx::af::shared <double> two_pi_S_dot_v = dot_a_s(reciprocal_lattice_vectors,v,multiplier);
           //scitbx::af::shared <double > cosines = all_cos(two_pi_S_dot_v);
           //double f= sum(cosines); 
-          double f = sum_of_all_cosines(two_pi_S_dot_v);
+          //double f = sum_of_all_cosines(two_pi_S_dot_v);
           tmp_vectors.push_back(v);
           tmp_function_values.push_back(f);
         }
@@ -194,6 +212,20 @@ class SimpleSamplerTool {
 
   } // fine_grid_search end
 
+
+  // Summing up all cosines of dot products
+  // Basically condensing all steps into one to save iteration cost 
+  double sum_all_cosines_of_dot_a_s(
+    scitbx::af::const_ref<scitbx::vec3<double> > const& lhs,
+    scitbx::vec3<double> rhs,
+    double multiplier)
+  {
+    double result = 0.0;
+    for(std::size_t i=0;i<lhs.size();i++) {
+      result += std::cos(lhs[i] * rhs*multiplier);
+    }
+    return result;
+  }
 
   // Copying this function from flex_vec3_double.cpp because not sure how to take dot product in c++ for flex_vec3_doubles
   scitbx::af::shared<double>
@@ -447,6 +479,7 @@ namespace boost_python { namespace {
       )
       .def ("coarse_grid_search_cpp", &SimpleSamplerTool::coarse_grid_search_cpp)
       .def ("fine_grid_search_cpp", &SimpleSamplerTool::fine_grid_search_cpp)
+      .def ("openmp_mpi_cpp",&SimpleSamplerTool::openmp_mpi_cpp)
    ;
 
     class_<ewald_sphere_base_model>("ewald_sphere_base_model",
