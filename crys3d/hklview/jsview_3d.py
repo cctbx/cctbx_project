@@ -217,7 +217,7 @@ class hklview_3d:
     self.normal_lh = None
     self.isnewfile = False
     self.has_new_miller_array = False
-    self.sleeptime = 0.1
+    self.sleeptime = 0.025
     self.colstraliases = ""
     self.binvals = []
     self.binvalsboundaries = []
@@ -1826,7 +1826,9 @@ mysocket.onmessage = function (e)
         var txtR = [ r1[0] + r2[0], r1[1] + r2[1], r1[2] + r2[2] ];
         vectorshape.addText( txtR, [rgb[0], rgb[1], rgb[2]], fontsize/2.0, elmstrs[9] );
       }
-
+      // if reprname is supplied with a vector then make a representation named reprname
+      // of this and all pending vectors stored in vectorshape and render them.
+      // Otherwise just accummulate the new vector
       var reprname = elmstrs[10].trim();
       if (reprname != "")
       {
@@ -1839,11 +1841,12 @@ mysocket.onmessage = function (e)
       }
     }
 
-    if (msgtype === "RemoveAllVectors")
+    if (msgtype === "RemoveVectors")
     {
       strs = datval[1].split("\\n");
       var elmstrs = strs[0].split(",");
       var reprname = elmstrs[0].trim();
+      // if reprname is supplied only remove vectors with that name
       if (reprname != "")
       {
         thisrepr = stage.getRepresentationsByName(reprname);
@@ -1855,7 +1858,7 @@ mysocket.onmessage = function (e)
             stage.removeComponent(thiscomp);
           }
       }
-      else
+      else // otherwise remove all vectors
       {
         for (i=0; i<vectorshapeComps.length; i++)
         {
@@ -2465,13 +2468,13 @@ mysocket.onmessage = function (e)
              clipwidth=None, fixorientation=True, is_parallel=False):
     # create clip plane that is normal to the reciprocal hkl vector
     if h==0.0 and k==0.0 and l==0.0 or clipwidth <= 0.0:
-      self.RemoveNormalVectorToClipPlane()
+      self.RemoveVectorsNoClipPlane()
       return
-    self.RemoveAllReciprocalVectors()
+    self.RemoveVectors("clip_vector")
     R = -l * self.normal_hk + h * self.normal_kl + k * self.normal_lh
     self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
                       R[0][0], R[0][1], R[0][2], isreciprocal=False,
-                      name="HKL_vector")
+                      name="clip_vector")
     if fixorientation:
       self.DisableMouseRotation()
     else:
@@ -2495,11 +2498,11 @@ mysocket.onmessage = function (e)
              clipwidth=None, fixorientation=True, is_parallel=False):
     # create clip plane that is normal to the realspace fractional abc vector
     if a==0.0 and b==0.0 and c==0.0 or clipwidth <= 0.0:
-      self.RemoveNormalVectorToClipPlane()
+      self.RemoveVectorsNoClipPlane()
       return
-    self.RemoveAllReciprocalVectors()
+    self.RemoveVectors("clip_vector")
     self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
-                            a, b, c, isreciprocal=False, name="ABC_vector")
+                            a, b, c, isreciprocal=False, name="clip_vector")
     if fixorientation:
       self.DisableMouseRotation()
     else:
@@ -2514,7 +2517,6 @@ mysocket.onmessage = function (e)
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
     self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
-    self.TranslateHKLpoints(a,b,c, hkldist)
     self.DrawUnitCell()
     self.DrawReciprocalUnitCell()
 
@@ -2522,12 +2524,12 @@ mysocket.onmessage = function (e)
   def clip_plane_to_HKL_vector(self, h, k, l, hkldist=0.0,
              clipwidth=None, fixorientation=True):
     if h==0.0 and k==0.0 and l==0.0 or clipwidth==None:
-      self.RemoveNormalVectorToClipPlane()
+      self.RemoveVectorsNoClipPlane()
       return
-    self.RemoveAllReciprocalVectors()
+    self.RemoveVectors("clip_vector")
     self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
                                h, k, l, isreciprocal=False,
-                               name="HKL_vector")
+                               name="clip_vector")
     if fixorientation:
       self.DisableMouseRotation()
     else:
@@ -2542,9 +2544,9 @@ mysocket.onmessage = function (e)
     self.TranslateHKLpoints(h,k,l, hkldist)
 
 
-  def RemoveNormalVectorToClipPlane(self):
+  def RemoveVectorsNoClipPlane(self):
     self.EnableMouseRotation()
-    self.RemoveAllReciprocalVectors()
+    self.RemoveVectors()
     self.SetClipPlaneDistances(0, 0)
     self.TranslateHKLpoints(0, 0, 0, 0.0)
 
@@ -2602,12 +2604,8 @@ mysocket.onmessage = function (e)
     return (self.boundingX, self.boundingY, self.boundingZ)
 
 
-  def RemoveAllReciprocalVectors(self):
-    self.msgqueue.append( ("RemoveAllVectors", "" ))
-
-
-  def RemoveVectorsRepresentation(self, reprname):
-    self.msgqueue.append( ("RemoveAllVectors", reprname ))
+  def RemoveVectors(self, reprname=""):
+    self.msgqueue.append( ("RemoveVectors", reprname ))
 
 
   def TestNewFunction(self):

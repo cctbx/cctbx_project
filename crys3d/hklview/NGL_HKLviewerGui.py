@@ -1298,7 +1298,7 @@ if __name__ == '__main__':
     guiobj = NGL_HKLViewer()
 
     timer = QTimer()
-    timer.setInterval(20)
+    timer.setInterval(10)
     timer.timeout.connect(guiobj.update)
     timer.start()
 
