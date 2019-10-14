@@ -303,6 +303,5 @@ class RefineAll(RefineRot):
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
 
-
     def get_refined_Bmatrix(self):
         return self.ucell_manager.B_recipspace
