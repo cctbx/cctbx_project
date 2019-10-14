@@ -138,6 +138,8 @@ class conda_manager(object):
     environments.txt file in ${HOME}/.conda
   install_miniconda(prefix)
     Downloads and installs the latest version of miniconda3
+  update_conda()
+    Updates the current version of conda
   create_environment(builder, filename, copy)
     Uses the known conda installtion to create an environment
   """
@@ -394,6 +396,8 @@ common compilers provided by conda. Please update your version with
     ----------
     conda_env: str
       The path to the conda environment
+    check_file: bool
+      Used to override the check_file attribute
 
     Returns
     -------
@@ -521,6 +525,35 @@ common compilers provided by conda. Please update your version with
       print(output, file=self.log)
 
     return install_dir
+
+  # ---------------------------------------------------------------------------
+  def update_conda(self):
+    """
+    Update the version of conda, if possible. The defaults channel is
+    used because that is the default for a normal miniconda installation.
+
+    Parameters
+    ----------
+      None
+    """
+    command_list = [self.conda_exe, 'update', '-n', 'base', '-c', 'defaults',
+                    '-y', 'conda']
+    try:
+      output = check_output(command_list, env=self.env)
+    except Exception:
+      print("""
+*******************************************************************************
+There was a failure in updating your base conda installaion. To update
+manually, try running
+
+  conda update -n base -c defaults conda
+
+If you are using conda from a different channel, replace "defaults" with that
+channel
+*******************************************************************************
+""")
+    else:
+      print(output)
 
   # ---------------------------------------------------------------------------
   def create_environment(self, builder='cctbx', filename=None, python=None,
@@ -700,6 +733,12 @@ Example usage:
     help="""When set, conda will be automatically downloaded and installed
       regardless of an existing installation.""")
   parser.add_argument(
+    '--update_conda', action='store_true',
+    help="""When set, conda will try to update itself to the latest version.
+      This should only be used if your conda installation was installed by
+      this script or if your conda is writeable and uses the "defaults"
+      channel""")
+  parser.add_argument(
     '--install_env', default=None, type=str, nargs='?', const='',
     metavar='ENV_FILE',
     help="""When set, the environment for the builder will be installed. The
@@ -756,6 +795,11 @@ Example usage:
                     conda_env=namespace.conda_env, check_file=True,
                     verbose=namespace.verbose)
 
+  # if --update_conda is set, try to update now
+  if namespace.update_conda:
+    m.update_conda()
+
+  # if builder is available, construct environment
   if builder is not None:
     m.create_environment(builder=builder, filename=filename,
                          python=namespace.python,
