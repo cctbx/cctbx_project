@@ -30,7 +30,7 @@ rot_ang, rot_axis = Q.unit_quaternion_as_axis_and_angle()
 np.random.seed(1)
 perturb_rot_axis = np.random.random(3)
 perturb_rot_axis /= np.linalg.norm(perturb_rot_axis)
-perturb_rot_ang = 0.05  # 0.1 degree random perturbtation
+perturb_rot_ang = 0.15  # degree random perturbtation
 
 # make the ground truth crystal:
 a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
@@ -148,4 +148,5 @@ assert np.linalg.norm(np.round(ax, 2) + np.round(perturb_rot_axis, 2)) < 0.075
 assert final_Umat_norm < 1e-1*init_Umat_norm
 
 print("OK")
+
 
