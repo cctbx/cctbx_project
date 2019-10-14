@@ -120,6 +120,7 @@ if not args.refine:
         analy_deriv = derivs[i_param]
         diffs = []
         diffs2 = []
+        error2 = []
         for i_shift, percent_shift in enumerate(shifts):
 
             if is_tet:
@@ -177,6 +178,8 @@ if not args.refine:
                 print("\tsecond derivative Average error=%f; parameter shift squared h^2=%f"
                       % (ave_error2, abs(param_shift)**2))
                 r2 = pearsonr(second_derivs[i_param][bragg].ravel(), finite_second_deriv[bragg].ravel())[0]
+
+                error2.append(ave_error2)
                 diffs2.append(r2)
             if args.plot:
                 plt.subplot(121)
@@ -233,7 +236,7 @@ if not args.refine:
 if is_tet:
     ucell2 = (55.5, 55.5, 76.1, 90, 90, 90)
 else:  # args.crystalsystem == "monoclinic"
-    ucell2 = (71, 59, 51, 90.0, 111, 90.0)
+    ucell2 = (70.5, 60.1, 50.1, 90.0, 110.1, 90.0)
 
 a2_real, b2_real, c2_real = sqr(uctbx.unit_cell(ucell2).orthogonalization_matrix()).transpose().as_list_of_lists()
 C2 = Crystal(a2_real, b2_real, c2_real, symbol)
@@ -303,12 +306,40 @@ RUC = RefineUcell(
     plot_images=args.plot,
     ucell_manager=UcellMan)
 
-RUC.refine_background_planes = True
+RUC.refine_background_planes = False
+RUC.refine_crystal_scale = False
+RUC.refine_gain_fac = False
+RUC.refine_Amatrix = True
 RUC.trad_conv = True
 RUC.trad_conv_eps = 1e-4
 RUC.max_calls = 150
 RUC.use_curvatures = args.curvatures
+#RUC._setup()
+#RUC._cache_roi_arrays()
 RUC.run()
+
+#from scitbx.array_family import flex
+#
+#
+#def func(x, p0):
+#    p0.x = flex.double(x)
+#    f, g = p0.compute_functional_and_gradients()
+#    return f
+#
+#
+#def fprime(x, p0):
+#    p0.x = flex.double(x)
+#    f, g = p0.compute_functional_and_gradients()
+#    return g.as_numpy_array()
+#
+#
+#from scipy.optimize import fmin_l_bfgs_b
+#
+#print("GO!")
+#out = fmin_l_bfgs_b(func=func, x0=np.array(RUC.x), fprime=fprime, args=[RUC])
+#
+#
+#RUC.run()
 
 if is_tet:
     a_init, _, c_init, _, _, _ = ucell2

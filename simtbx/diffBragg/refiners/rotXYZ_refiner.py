@@ -72,10 +72,11 @@ class RefineRot(PixelRefinement):
         self.D.initialize_managers()
 
     def _move_abc_init_to_x(self):
-        for i in range(self.n_spots):
-            self.x[i] = self.abc_init[i, 0]
-            self.x[self.n_spots+i] = self.abc_init[i, 1]
-            self.x[2*self.n_spots+i] = self.abc_init[i, 2]
+        if self.refine_background_planes:
+            for i in range(self.n_spots):
+                self.x[i] = self.abc_init[i, 0]
+                self.x[self.n_spots+i] = self.abc_init[i, 1]
+                self.x[2*self.n_spots+i] = self.abc_init[i, 2]
 
     @property
     def x(self):
@@ -133,7 +134,10 @@ class RefineRot(PixelRefinement):
 
     def _evaluate_log_averageI(self):
         # fix log(x<=0)
-        self.log_Lambda = np.log(self.model_Lambda)
+        try:
+            self.log_Lambda = np.log(self.model_Lambda)
+        except FloatingPointError:
+            pass
         #if any((self.model_Lambda <= 0).ravel()):
         #    print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
         #    raise ValueError("model of Bragg spots cannot have negative intensities...")
