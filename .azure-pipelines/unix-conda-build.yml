@@ -26,6 +26,7 @@ steps:
 
 - script: |
     source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
+    conda activate base
     cd ../..
     python bootstrap.py hot update --builder=cctbx
   displayName: Download sources
