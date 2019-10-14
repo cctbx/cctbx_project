@@ -54,18 +54,21 @@ print "Ground truth originZ=%f" % (SIM.detector[0].get_origin()[2])
 # copy the detector and update the origin
 det2 = deepcopy(SIM.detector)
 # alter the detector distance by 2 mm
-node_d["origin"] = Origin[0], Origin[1], Origin[2]+2
+node_d["origin"] = Origin[0], Origin[1], Origin[2]+3
 det2[0] = Panel.from_dict(node_d)
 print ("Modified originZ=%f" % (det2[0].get_origin()[2]))
 
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0)
 SIM.D.progress_meter = False
+SIM.D.verbose = 0 #1
+SIM.D.nopolar = True
 SIM.water_path_mm = 0.005
 SIM.air_path_mm = 0.1
 SIM.add_air = True
 SIM.add_Water = True
 SIM.include_noise = True
+#SIM.D.spot_scale = 1e8
 SIM.D.add_diffBragg_spots()
 spots = SIM.D.raw_pixels.as_numpy_array()
 SIM._add_background()
@@ -94,6 +97,7 @@ np.random.seed(1)
 idx = np.random.permutation(n_spots)[:n_kept]
 spot_roi = spot_roi[idx]
 tilt_abc = tilt_abc[idx]
+print ("I got %d spots!" % tilt_abc.shape[0])
 
 RUC = RefineDetdist(
     spot_rois=spot_roi,
@@ -104,7 +108,35 @@ RUC = RefineDetdist(
     plot_residuals=True)
 
 RUC.trad_conv = True
+RUC.refine_background_planes = False
 RUC.trad_conv_eps = 1e-5
 RUC.max_calls = 200
-RUC.run()
+RUC._setup()
+RUC._cache_roi_arrays()
+#RUC.run()
+
+from scitbx.array_family import flex
+
+def func(x, RUC):
+    RUC.x = flex.double(x)
+    f, g = RUC.compute_functional_and_gradients()
+    return f
+
+
+def fprime(x, RUC):
+    RUC.x = flex.double(x)
+    f, g = RUC.compute_functional_and_gradients()
+    return g.as_numpy_array()
+
+
+from scipy.optimize import fmin_l_bfgs_b
+
+bounds = [(-np.inf, np.inf)]*RUC.n
+bounds[-3] = -170, -140
+
+
+print("GO!")
+out = fmin_l_bfgs_b(func=func, x0=np.array(RUC.x), fprime=fprime, args=[RUC], bounds=bounds)
+from IPython import embed
+embed()
 
