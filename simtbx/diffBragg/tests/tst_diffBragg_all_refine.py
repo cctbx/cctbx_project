@@ -7,6 +7,9 @@ parser.add_argument("--bmatrix", action='store_true')
 parser.add_argument("--umatrix", action='store_true')
 args = parser.parse_args()
 
+if args.detdist:
+    raise NotImplementedError("Not yet refining detdist for single shots")
+
 from dxtbx.model.crystal import Crystal
 from copy import deepcopy
 from dxtbx.model import Panel
@@ -14,8 +17,6 @@ from cctbx import uctbx
 from scitbx.matrix import sqr, rec, col
 import numpy as np
 from scipy.spatial.transform import Rotation
-from scitbx.array_family import flex
-from IPython import embed
 
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
@@ -26,12 +27,11 @@ from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
 ucell = (55, 65, 75, 90, 95, 90)
 ucell2 = (55, 65, 75, 90, 95, 90)
 if args.bmatrix:
-    #ucell2 = (55.05, 65.05, 75.02, 90, 94.9, 90)
-    ucell2 = (54.8, 65.2, 75.5, 90, 94.8, 90)
+    ucell2 = (55.1, 65.2, 74.9, 90, 94.9, 90)
 symbol = "P121"
 
 # generate a random raotation
-rotation = Rotation.random(num=1, random_state=1147+19)[0]
+rotation = Rotation.random(num=1, random_state=100)[0]
 Q = rec(rotation.as_quat(), n=(4, 1))
 rot_ang, rot_axis = Q.unit_quaternion_as_axis_and_angle()
 
@@ -41,7 +41,7 @@ perturb_rot_axis = np.random.random(3)
 perturb_rot_axis /= np.linalg.norm(perturb_rot_axis)
 perturb_rot_ang = 0
 if args.umatrix:
-    perturb_rot_ang = 0.03  # 0.1 degree random perturbtation
+    perturb_rot_ang = .15  # degrees
 
 # make the ground truth crystal:
 a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
@@ -60,11 +60,11 @@ C2.rotate_around_origin(col(perturb_rot_axis), perturb_rot_ang)
 nbcryst = nanoBragg_crystal()
 nbcryst.dxtbx_crystal = C   # simulate ground truth
 nbcryst.thick_mm = 0.1
-nbcryst.Ncells_abc = 20, 20, 20  # ground truth Ncells
+nbcryst.Ncells_abc = 12, 12, 12  # ground truth Ncells
 print("Ground truth ncells = %f" % (nbcryst.Ncells_abc[0]))
 
 SIM = SimData()
-SIM.detector = SimData.simple_detector(150, 0.1, (1024, 1024))
+SIM.detector = SimData.simple_detector(150, 0.1, (512, 512))
 
 # TODO get the detector model
 node = SIM.detector[0]
@@ -83,7 +83,7 @@ det2[0] = Panel.from_dict(node_d)
 
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0)
-SIM.D.nopolar = True
+SIM.D.nopolar = False
 SIM.D.progress_meter = False
 SIM.water_path_mm = 0.005
 SIM.air_path_mm = 0.1
@@ -112,9 +112,10 @@ SIM.D.Bmatrix = C2.get_B()
 SIM.D.Umatrix = C2.get_U()
 nbcryst.dxtbx_crystal = C2
 if args.ncells:
-    Ncells_abc2 = 18, 18, 18
+    Ncells_abc2 = 14, 14, 14
     nbcryst.Ncells_abc = Ncells_abc2
     SIM.D.set_value(9, Ncells_abc2[0])
+    print ("Modified Ncells=%f" % Ncells_abc2[0])
 
 SIM.crystal = nbcryst
 # perturbed Ncells
@@ -130,13 +131,13 @@ SIM.D.raw_pixels *= 0
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
 spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot, shoebox_sz=30)
 
-print("I got %s spots to process!" % spot_roi.shape[0])
-n_kept = 30
-np.random.seed(2)
-idx = np.random.permutation(spot_roi.shape[0])[:n_kept]
-spot_roi = spot_roi[idx]
-tilt_abc = tilt_abc[idx]
-print ("I kept %d spots!" % tilt_abc.shape[0])
+#print("I got %s spots to process!" % spot_roi.shape[0])
+#n_kept = 30
+#np.random.seed(2)
+#idx = np.random.permutation(spot_roi.shape[0])[:n_kept]
+#spot_roi = spot_roi[idx]
+#tilt_abc = tilt_abc[idx]
+#print ("I kept %d spots!" % tilt_abc.shape[0])
 
 
 UcellMan = MonoclinicManager(
@@ -245,13 +246,17 @@ err_init = np.linalg.norm([abs(u-u_init)/u for u, u_init in zip(ucell, ucell2)])
 # error in refined unit cell parameters
 err_ref = np.linalg.norm([abs(u-u_ref)/u for u, u_ref in zip(ucell, ucell_ref)])*100
 
-assert err_ref < 1e-1 * err_init
+if args.bmatrix:
+    assert err_ref < 1e-1 * err_init
 
-# Note, this test might change, e.g. angle could be negative and axis could be the same...
-assert np.round(ang, 1) == np.round(perturb_rot_ang, 1)
-assert np.linalg.norm(np.round(ax, 2) + np.round(perturb_rot_axis, 2)) < 0.075
-assert final_Umat_norm < 1e-1*init_Umat_norm
+# NOTE, this test might change, e.g. angle could be negative and axis could be the same...
+if args.umatrix:
+    assert np.round(ang, 1) == np.round(perturb_rot_ang, 1)
+    assert np.linalg.norm(np.round(ax, 2) + np.round(perturb_rot_axis, 2)) < 0.075
+    assert final_Umat_norm < 1e-1*init_Umat_norm
+
+if args.ncells:
+    assert round(np.exp(RUC.x[-4])) == Ncells_abc2[0]
 
 print("OK")
 
-embed()
