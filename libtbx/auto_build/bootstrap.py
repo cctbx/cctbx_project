@@ -688,8 +688,8 @@ class SourceModule(object):
 class ccp4io_module(SourceModule):
   module = 'ccp4io'
   anonymous = ['curl', [
-    'https://drive.google.com/uc?id=1EF6AqowSrVnse7pRtRmIsvhS6Q0dsSLT&export=download',
     'http://cci.lbl.gov/repositories/ccp4io.gz',
+    'https://drive.google.com/uc?id=1EF6AqowSrVnse7pRtRmIsvhS6Q0dsSLT&export=download',
   ]]
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'ccp4io.tar.gz', '/net/cci/auto_build/repositories/ccp4io']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
@@ -697,8 +697,8 @@ class ccp4io_module(SourceModule):
 class annlib_module(SourceModule):
   module = 'annlib'
   anonymous = ['curl', [
-    'https://drive.google.com/uc?id=1YD_KDXrfhJ5ryT97j4yxmbAPoecGLjg0&export=download',
     'http://cci.lbl.gov/repositories/annlib.gz',
+    'https://drive.google.com/uc?id=1YD_KDXrfhJ5ryT97j4yxmbAPoecGLjg0&export=download',
   ]]
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'annlib.tar.gz', '/net/cci/auto_build/repositories/annlib']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/']
@@ -706,8 +706,8 @@ class annlib_module(SourceModule):
 class scons_module(SourceModule):
   module = 'scons'
   anonymous = ['curl', [
-    'https://drive.google.com/uc?id=1hPd5cMbVcsN4j0P5qaPUV71XS_aifw-J&export=download',
     'http://cci.lbl.gov/repositories/scons.gz',
+    'https://drive.google.com/uc?id=1hPd5cMbVcsN4j0P5qaPUV71XS_aifw-J&export=download',
   ]]
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'scons.tar.gz', '/net/cci/auto_build/repositories/scons']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/']
@@ -787,8 +787,8 @@ class cbflib_module(SourceModule):
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
   anonymous = ['curl', [
-    'https://drive.google.com/uc?id=1X5kRE90KkV2yTEyF9zb-PHOjjRXjzYvx&export=download',
     'http://cci.lbl.gov/repositories/ccp4io_adaptbx.gz',
+    'https://drive.google.com/uc?id=1X5kRE90KkV2yTEyF9zb-PHOjjRXjzYvx&export=download',
     ]]
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ccp4io_adaptbx/trunk']
 
@@ -802,24 +802,24 @@ class annlib_adaptbx(SourceModule):
 class tntbx_module(SourceModule):
   module = 'tntbx'
   anonymous = ['curl', [
-    'https://drive.google.com/uc?id=1bDE_rF6iL0SeyplHSTNsfJyI1G1h7ZZv&export=download',
     'http://cci.lbl.gov/repositories/tntbx.gz',
+    'https://drive.google.com/uc?id=1bDE_rF6iL0SeyplHSTNsfJyI1G1h7ZZv&export=download',
     ]]
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/tntbx/trunk']
 
 class clipper_module(SourceModule):
   module = 'clipper'
   anonymous = ['curl', [
-    'https://drive.google.com/uc?id=1xWAj59zoyVn26EoIuBrw7KLNRyGjS5wC&export=download',
     'http://cci.lbl.gov/repositories/clipper.gz',
+    'https://drive.google.com/uc?id=1xWAj59zoyVn26EoIuBrw7KLNRyGjS5wC&export=download',
     ]]
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/clipper/trunk']
 
 class gui_resources_module(SourceModule):
   module = 'gui_resources'
   anonymous = ['curl', [
-    'https://drive.google.com/uc?id=1TTibOePamkUiIvwDJF-OMmdgX8jdgNUS&export=download',
     'http://cci.lbl.gov/repositories/gui_resources.gz',
+    'https://drive.google.com/uc?id=1TTibOePamkUiIvwDJF-OMmdgX8jdgNUS&export=download',
   ]]
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/gui_resources/trunk']
 
@@ -830,8 +830,8 @@ class opt_resources_module(SourceModule):
 class eigen_module(SourceModule):
   module = 'eigen'
   anonymous = ['curl', [
-    'https://drive.google.com/uc?id=138kErrF35WbnRRARqUczWaroao2w8p1A&export=download',
     'http://cci.lbl.gov/repositories/eigen.gz',
+    'https://drive.google.com/uc?id=138kErrF35WbnRRARqUczWaroao2w8p1A&export=download',
   ]]
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'eigen.tar.gz', '/net/cci/auto_build/repositories/eigen']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/eigen/']
