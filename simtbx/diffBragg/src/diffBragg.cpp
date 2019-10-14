@@ -71,7 +71,8 @@ void Ncells_manager::increment(
     double c = Fcell*Fcell*source_I*capture_fraction*omega_pixel;
     dI += c*2*Flatt*dFlatt;
 
-    dI2 += 0;
+    double dFlatt2 = 6*Flatt/value/value -6*a*Flatt/value*dHrad + a*a*Flatt*dHrad*dHrad;
+    dI2 += c*2*(dFlatt2*Flatt + dFlatt*dFlatt);
 };
 
 //END Ncells_abc manager
@@ -559,13 +560,17 @@ af::flex_double diffBragg::get_second_derivative_pixels(int refine_id){
         SCITBX_ASSERT(rot_managers[refine_id]->refine_me);
         return rot_managers[refine_id]->raw_pixels2;
         }
-    else { //if(refine_id >=3 && refine_id < 9){
+    else if(refine_id >=3 && refine_id < 9){
         int i_uc = refine_id-3;
         SCITBX_ASSERT(i_uc >= 0);
         SCITBX_ASSERT(i_uc < 6);
         SCITBX_ASSERT(ucell_managers[i_uc]->refine_me);
         return ucell_managers[i_uc]->raw_pixels2;
         }
+    else if (refine_id == 9)
+        return Ncells_managers[0]->raw_pixels2;
+    else
+        return origin_managers[0]->raw_pixels2;
 }
 
 void diffBragg::zero_raw_pixel_rois(){
