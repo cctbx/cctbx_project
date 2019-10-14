@@ -11,7 +11,6 @@ from dxtbx.model import Panel
 from copy import deepcopy
 import numpy as np
 from scipy.spatial.transform import Rotation
-import pylab as plt
 
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
@@ -91,7 +90,6 @@ SIM.D.raw_pixels *= 0
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
 spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot)
 n_spots = len(spot_roi)
-import numpy as np
 n_kept = 20
 np.random.seed(1)
 idx = np.random.permutation(n_spots)[:n_kept]
@@ -111,32 +109,10 @@ RUC.trad_conv = True
 RUC.refine_background_planes = False
 RUC.trad_conv_eps = 1e-5
 RUC.max_calls = 200
-RUC._setup()
-RUC._cache_roi_arrays()
-#RUC.run()
+RUC.run()
 
-from scitbx.array_family import flex
+assert abs(RUC.x[-3] - distance) < 1e-2
 
-def func(x, RUC):
-    RUC.x = flex.double(x)
-    f, g = RUC.compute_functional_and_gradients()
-    return f
-
-
-def fprime(x, RUC):
-    RUC.x = flex.double(x)
-    f, g = RUC.compute_functional_and_gradients()
-    return g.as_numpy_array()
-
-
-from scipy.optimize import fmin_l_bfgs_b
-
-bounds = [(-np.inf, np.inf)]*RUC.n
-bounds[-3] = -170, -140
-
-
-print("GO!")
-out = fmin_l_bfgs_b(func=func, x0=np.array(RUC.x), fprime=fprime, args=[RUC], bounds=bounds)
-from IPython import embed
-embed()
-
+print det2[0].get_origin()[2]
+print RUC.x[-3]
+print("OK!")
