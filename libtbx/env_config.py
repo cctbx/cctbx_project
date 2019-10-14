@@ -2594,6 +2594,8 @@ def unpickle():
   env = pickle.load(libtbx_env)
   if (env.python_version_major_minor != sys.version_info[:2]):
     env.raise_python_version_incompatible()
+  if (op.realpath(build_path) != op.realpath(abs(env.build_path))):
+    env.build_path.reset(build_path)
   # XXX backward compatibility 2018-12-10
   if not hasattr(env.build_options, "use_conda"):
     env.build_options.use_conda = False
