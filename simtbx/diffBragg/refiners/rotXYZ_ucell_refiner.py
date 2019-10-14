@@ -184,29 +184,22 @@ class RefineMissetAndUcell(RefineRot):
 
             if self.refine_Amatrix:
                 for ii, xpos in enumerate([self.rotX_xpos, self.rotY_xpos, self.rotZ_xpos]):
-                    d = self.rot_deriv[ii]
-                    g[xpos] += (one_minus_k_over_Lambda * S2*G2*d).sum()
+                    d = S2*G2*self.rot_deriv[ii]
+                    g[xpos] += (one_minus_k_over_Lambda * d).sum()
                     if self.use_curvatures:
-                        d2 = self.rot_second_deriv[ii]
-                        cc = S2*G2*(d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda)
-                        #if cc.sum() < 0:
-                        #    from IPython import embed
-                        #    embed()
+                        d2 = S2*G2*self.rot_second_deriv[ii]
+                        cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
                         self.curv[xpos] += cc.sum()
 
                 # unit cell derivative
                 for i_ucell_p in range(self.n_ucell_param):
                     xpos = self.ucell_xstart + i_ucell_p
-                    d = self.ucell_derivatives[i_ucell_p]
-                    g[xpos] += (S2 * G2 * one_minus_k_over_Lambda * d).sum()
+                    d = S2*G2*self.ucell_derivatives[i_ucell_p]
+                    g[xpos] += (one_minus_k_over_Lambda * d).sum()
 
                     if self.use_curvatures:
-                        d2 = self.ucell_second_derivatives[i_ucell_p]
-                        cc = S2 * G2 * (d2 * one_minus_k_over_Lambda + d * d * k_over_squared_Lambda)
-                        #if cc.sum() < 0:
-                        #    from IPython import embed
-                        #    embed()
-
+                        d2 = S2*G2*self.ucell_second_derivatives[i_ucell_p]
+                        cc = d2 * one_minus_k_over_Lambda + d * d * k_over_squared_Lambda
                         self.curv[xpos] += cc.sum()
 
             #if self.refine_gain_fac:

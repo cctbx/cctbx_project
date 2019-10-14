@@ -5,6 +5,7 @@ parser.add_argument("--detdist", action='store_true', help='perturb then refine 
 parser.add_argument("--ncells", action='store_true', help='perturb then refine the ncells')
 parser.add_argument("--bmatrix", action='store_true')
 parser.add_argument("--umatrix", action='store_true')
+parser.add_argument("--curvatures", action='store_true')
 args = parser.parse_args()
 
 if args.detdist:
@@ -60,7 +61,8 @@ C2.rotate_around_origin(col(perturb_rot_axis), perturb_rot_ang)
 nbcryst = nanoBragg_crystal()
 nbcryst.dxtbx_crystal = C   # simulate ground truth
 nbcryst.thick_mm = 0.1
-nbcryst.Ncells_abc = 12, 12, 12  # ground truth Ncells
+Ncells_gt = 12,12,12
+nbcryst.Ncells_abc = Ncells_gt  # ground truth Ncells
 print("Ground truth ncells = %f" % (nbcryst.Ncells_abc[0]))
 
 SIM = SimData()
@@ -152,7 +154,7 @@ init_Bmat_norm = np.abs(np.array(C2.get_B()) - np.array(C.get_B())).sum()
 RUC = RefineAll(
     spot_rois=spot_roi,
     abc_init=tilt_abc,
-    img=img,
+    img=1.1*img,
     SimData_instance=SIM,
     plot_images=args.plot,
     plot_residuals=True,
@@ -161,15 +163,18 @@ RUC = RefineAll(
 RUC.trad_conv = True
 RUC.refine_detdist = args.detdist
 RUC.refine_background_planes = False
-RUC.refine_Amatrix = args.umatrix or args.bmatrix
+RUC.refine_Umatrix = args.umatrix
+RUC.refine_Bmatrix = args.bmatrix
 RUC.refine_ncells = args.ncells
-RUC.refine_crystal_scale = False
-RUC.refine_gain_fac = False
-RUC.trad_conv_eps = 1e-6
-RUC.max_calls = 3000
+RUC.use_curvatures = args.curvatures
+RUC.refine_crystal_scale = True
+RUC.refine_gain_fac = True
+RUC.plot_stride = 10
+RUC.plot_residuals = args.plot
+RUC.trad_conv_eps = 1e-5
+RUC.max_calls = 300
 #RUC._setup()
 #RUC._cache_roi_arrays()
-
 RUC.run()
 
 
@@ -251,12 +256,13 @@ if args.bmatrix:
 
 # NOTE, this test might change, e.g. angle could be negative and axis could be the same...
 if args.umatrix:
-    assert np.round(ang, 1) == np.round(perturb_rot_ang, 1)
-    assert np.linalg.norm(np.round(ax, 2) + np.round(perturb_rot_axis, 2)) < 0.075
+    if ang > 0 and perturb_rot_ang > 0:
+        assert np.linalg.norm(np.round(ax, 2) + np.round(perturb_rot_axis, 2)) < 0.075
+        assert abs(ang - perturb_rot_ang) < 0.01
     assert final_Umat_norm < 1e-1*init_Umat_norm
 
 if args.ncells:
-    assert round(np.exp(RUC.x[-4])) == Ncells_abc2[0]
+    assert round(RUC.x[-4]) == Ncells_gt[0]
 
 print("OK")
 
