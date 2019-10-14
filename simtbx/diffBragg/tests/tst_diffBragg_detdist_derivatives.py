@@ -8,6 +8,7 @@ one to update those models for beam/detector post-instantiation
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--plot", action='store_true')
+parser.add_argument("--delta", type=float, default=1e-2)
 args = parser.parse_args()
 
 from scipy.stats import linregress
@@ -22,7 +23,6 @@ from scitbx.matrix import sqr, col
 # simple k_diffracted derivative
 fs = np.array([1, 0, 0])
 ss = np.array([0, -1, 0])
-k_incident = np.array([1, 0, 0])
 
 # FIXME:
 k_incident = np.array([0, 0, -1])
@@ -42,39 +42,65 @@ k *= unit  # convert to meters like the code
 
 # FIXME mod1
 k = np.array([.01685, .02055, -.15])
+h_vals = [1e-11*2**i for i in range(20)]
+h = args.delta * unit
+all_q_err = []
+all_uk_err = []
+for h in h_vals:
+    # derivative of k vector w.r.t. detdist
+    origin2_mm = np.array([-camera_size_mm[1]/2., camera_size_mm[0]/2., origin_z+h])
+    k2 = origin2_mm + fs*i*pixsize_mm + ss*j*pixsize_mm
+    k2 *= unit  # convert to meters
 
+    # FIXME mod1
+    k2 = np.array([.01685, .02055, -.15+h])
+    fdiff = (k2-k) / h  #/ unit
+    dk = (0, 0, 1)
 
-# derivative of k vector w.r.t. detdist
-h = .0115 * unit
-origin2_mm = np.array([-camera_size_mm[1]/2., camera_size_mm[0]/2., origin_z+h])
-k2 = origin2_mm + fs*i*pixsize_mm + ss*j*pixsize_mm
-k2 *= unit  # convert to meters
+    #print ("\ndiffracted vector:")
+    #print ("finite deriv", fdiff)
+    #print ("deriv", dk)
 
-# FIXME mod1
-k2 = np.array([.01685, .02055, -.15+h])
-fdiff = (k2-k) / h  #/ unit
-dk = (0, 0, 1)
+    # take derivative of unit diffracted vector
+    air_path = np.linalg.norm(k)
+    unit_k = k / air_path
 
-print ("\ndiffracted vector:")
-print ("finite deriv", fdiff)
-print ("deriv", dk)
+    air_path2 = np.linalg.norm(k2)
+    unit_k2 = k2 / air_path2
 
-# take derivative of unit diffracted vector
-air_path = np.linalg.norm(k)
-unit_k = k / air_path
+    fdiff = (unit_k2 - unit_k) / h  # / unit
 
-air_path2 = np.linalg.norm(k2)
-unit_k2 = k2 / air_path2
+    deriv = dk/air_path - k/np.power(air_path, 3)*(np.dot(k, dk))
+    d_unitk = deriv
+    #print ("\nunit diffracted vector:")
+    #print ("finite deriv", fdiff)
+    #print ("deriv", d_unitk)
+    err =np.abs(d_unitk-fdiff).mean()
+    #print("error = %2.7g, h=%2.7g" % (err, h))
+    all_uk_err.append(err)
+    #print("h=%2.7g" % h)
+    # now take derivative of q_vecor
 
-fdiff = (unit_k2 - unit_k) / h #/ unit
+    wavelen = 1.8
+    q = 1 / wavelen * (unit_k - k_incident)
+    q2 = 1 / wavelen * (unit_k2 - k_incident)
+    fdiff = (q2 - q) / h  # / unit
 
-deriv = dk/air_path - k/air_path/air_path/air_path*(np.dot(k, dk))
-d_unitk = deriv
-print ("\nunit diffracted vector:")
+    deriv = 1 / wavelen * d_unitk
+    dq = deriv
+    err = np.abs(dq-fdiff).mean()
+    print("error = %2.7g, h=%2.7g" % (err, h))
+    all_q_err.append(err)
+
+luk = linregress(h_vals, all_uk_err)
+lq = linregress(h_vals, all_q_err)
+
+print luk.rvalue, luk.slope
+print lq.rvalue, lq.slope
+
+print ("\nunit momentum transfer vector:")
 print ("finite deriv", fdiff)
 print ("deriv", deriv)
-print("error = %f" % np.abs(deriv-fdiff).mean())
-print("h=%f" % h)
 
 
 # now take derivative of q_vecor
@@ -144,6 +170,7 @@ B = SIM.beam.nanoBragg_constructor_beam
 SIM.detector = det
 SIM.instantiate_diffBragg()
 D = SIM.D
+#D.nopolar = True
 D.refine(orig_idx)
 D.initialize_managers()
 #D.region_of_interest = ((2070, 2130), (70, 150))
@@ -161,7 +188,8 @@ O = node_d["origin"][0], node_d["origin"][1], node_d["origin"][2]
 distance = O[2]
 
 # update the detector distance
-percs = [np.power(1e-2*i, 2) for i in range(1, 30, 2)]
+percs = [np.power(1e-3*i, 2) for i in range(1, 30, 2)]
+#percs = [np.power(1e-2*i, 2) for i in range(1, 30, 2)]
 all_shifts = []
 all_errors = []
 for i_shift, p in enumerate(percs):
@@ -178,10 +206,11 @@ for i_shift, p in enumerate(percs):
     delta_shift_meters = delta_shift*1e-3
     fdiff = (img2-img)/delta_shift_meters
     bragg = img > 1e-2
-    error = np.abs(fdiff[bragg] - deriv[bragg]).mean()
+    #error = (np.abs(fdiff[bragg] - deriv[bragg]) / deriv[bragg] ).mean()
+    error = (np.abs(fdiff[bragg] - deriv[bragg]) / 1 ).mean()
     all_errors.append(error)
     all_shifts.append(delta_shift_meters)
-    print("Error=%f shift=%f mm, distance=%f mm" % (error, delta_shift, D.distance_mm))
+    print("Error=%2.7g shift=%2.7g mm, distance=%2.7g mm" % (error, delta_shift, D.distance_mm))
     if args.plot:
         y = slice(40, 65, 1)
         x = slice(415, 437, 1)

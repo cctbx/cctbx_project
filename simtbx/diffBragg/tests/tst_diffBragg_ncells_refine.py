@@ -4,14 +4,9 @@ parser.add_argument("--plot", action='store_true')
 args = parser.parse_args()
 
 from dxtbx.model.crystal import Crystal
-from IPython import embed
 from cctbx import uctbx
 from scitbx.matrix import sqr, rec, col
-from dxtbx.model import Panel
-from copy import deepcopy
-import numpy as np
 from scipy.spatial.transform import Rotation
-import pylab as plt
 import numpy as np
 
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
@@ -92,10 +87,14 @@ RUC = RefineNcells(
     plot_images=args.plot,
     plot_residuals=True)
 
+RUC.refine_Amatrix = False
+RUC.refine_ncells = True
 RUC.refine_gain_fac = False
 RUC.refine_crystal_scale = False
 RUC.trad_conv = True
 RUC.trad_conv_eps = 1e-5
-RUC.max_calls = 200
+RUC.max_calls = 100
 RUC.run()
 
+assert round(np.exp(RUC.x[-3])) == 19
+print("OK.")
