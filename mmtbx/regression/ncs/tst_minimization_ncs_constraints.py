@@ -11,8 +11,7 @@ import mmtbx.f_model
 import mmtbx.utils
 import iotbx.pdb
 import mmtbx.model
-import random
-import sys
+import random, sys
 import os
 import iotbx.ncs
 from cctbx import adptbx

@@ -113,6 +113,8 @@ general_tests = [
   "$D/monomer_library/tst_geo_reduce_for_tardy.py",
   "$D/monomer_library/tst_chg.py",
   "$D/monomer_library/tst_neutron_distance.py",
+  '$D/monomer_library/tst_carbo_linking.py',
+  '$D/monomer_library/tst_paral_geo.py',
   #
   "$D/regression/tst_altloc_remediate.py",
   "$D/hydrogens/build_hydrogens.py",

@@ -1619,8 +1619,10 @@ class _():
           site_labels=site_labels,
           max_items=max_items,
           origin_id=origin_id)
-    print("Parallelity restraints: %d" % (self.size()), file=f)
+    if sorted_table is None: return
+    print("Parallelity restraints: %d" % (len(sorted_table)), file=f)
     if (self.size() == 0): return
+    if len(sorted_table)==0: return
     if (max_items is not None and max_items <= 0): return
     print("%sSorted by %s:" % (prefix, by_value), file=f)
     for info in sorted_table:
