@@ -82,7 +82,7 @@ SIM.D.raw_pixels *= 0
 
 # spot_rois, abc_init , these are inputs to the refiner
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
-spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot, edge_reflections=False)
+spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot) #, edge_reflections=False)
 
 UcellMan = MonoclinicManager(
     a=ucell2[0],
