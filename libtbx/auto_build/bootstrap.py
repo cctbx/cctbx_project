@@ -687,19 +687,28 @@ class SourceModule(object):
 # On Windows due to absence of rsync we use pscp from the Putty programs.
 class ccp4io_module(SourceModule):
   module = 'ccp4io'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/ccp4io.gz']
+  anonymous = ['curl', [
+    'https://drive.google.com/uc?id=1EF6AqowSrVnse7pRtRmIsvhS6Q0dsSLT&export=download',
+    'http://cci.lbl.gov/repositories/ccp4io.gz',
+  ]]
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'ccp4io.tar.gz', '/net/cci/auto_build/repositories/ccp4io']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
 
 class annlib_module(SourceModule):
   module = 'annlib'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/annlib.gz']
+  anonymous = ['curl', [
+    'https://drive.google.com/uc?id=1YD_KDXrfhJ5ryT97j4yxmbAPoecGLjg0&export=download',
+    'http://cci.lbl.gov/repositories/annlib.gz',
+  ]]
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'annlib.tar.gz', '/net/cci/auto_build/repositories/annlib']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/']
 
 class scons_module(SourceModule):
   module = 'scons'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/scons.gz']
+  anonymous = ['curl', [
+    'https://drive.google.com/uc?id=1hPd5cMbVcsN4j0P5qaPUV71XS_aifw-J&export=download',
+    'http://cci.lbl.gov/repositories/scons.gz',
+  ]]
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'scons.tar.gz', '/net/cci/auto_build/repositories/scons']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/']
 
@@ -777,7 +786,10 @@ class cbflib_module(SourceModule):
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/ccp4io_adaptbx.gz']
+  anonymous = ['curl', [
+    'https://drive.google.com/uc?id=1X5kRE90KkV2yTEyF9zb-PHOjjRXjzYvx&export=download',
+    'http://cci.lbl.gov/repositories/ccp4io_adaptbx.gz',
+    ]]
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ccp4io_adaptbx/trunk']
 
 class annlib_adaptbx(SourceModule):
@@ -789,17 +801,26 @@ class annlib_adaptbx(SourceModule):
 
 class tntbx_module(SourceModule):
   module = 'tntbx'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/tntbx.gz']
+  anonymous = ['curl', [
+    'https://drive.google.com/uc?id=1bDE_rF6iL0SeyplHSTNsfJyI1G1h7ZZv&export=download',
+    'http://cci.lbl.gov/repositories/tntbx.gz',
+    ]]
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/tntbx/trunk']
 
 class clipper_module(SourceModule):
   module = 'clipper'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/clipper.gz']
+  anonymous = ['curl', [
+    'https://drive.google.com/uc?id=1xWAj59zoyVn26EoIuBrw7KLNRyGjS5wC&export=download',
+    'http://cci.lbl.gov/repositories/clipper.gz',
+    ]]
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/clipper/trunk']
 
 class gui_resources_module(SourceModule):
   module = 'gui_resources'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/gui_resources.gz']
+  anonymous = ['curl', [
+    'https://drive.google.com/uc?id=1TTibOePamkUiIvwDJF-OMmdgX8jdgNUS&export=download',
+    'http://cci.lbl.gov/repositories/gui_resources.gz',
+  ]]
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/gui_resources/trunk']
 
 class opt_resources_module(SourceModule):
@@ -808,7 +829,10 @@ class opt_resources_module(SourceModule):
 
 class eigen_module(SourceModule):
   module = 'eigen'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/eigen.gz']
+  anonymous = ['curl', [
+    'https://drive.google.com/uc?id=138kErrF35WbnRRARqUczWaroao2w8p1A&export=download',
+    'http://cci.lbl.gov/repositories/eigen.gz',
+  ]]
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'eigen.tar.gz', '/net/cci/auto_build/repositories/eigen']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/eigen/']
 
@@ -1368,6 +1392,9 @@ class Builder(object):
       filename = urlparse(url[0])[2].split('/')[-1]
     else:
       filename = urlparse(url)[2].split('/')[-1]
+    # Google Drive URL does not contain the module name
+    if filename == 'uc':
+      filename = module + '.gz'
     self._add_download(url, os.path.join('modules', filename))
     self.add_step(self.shell(
       name="extracting files from %s" %filename,
