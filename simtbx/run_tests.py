@@ -10,7 +10,6 @@ tst_list = (
     "$D/nanoBragg/tst_nanoBragg_cbf_write.py",
     "$D/diffBragg/tests/tst_diffBragg_all_refine.py",
     "$D/diffBragg/tests/tst_diffBragg_change_of_basis.py",
-    "$D/diffBragg/tests/tst_diffBragg_update_dxtbx_geoms.py",
     "$D/diffBragg/tests/tst_diffBragg_deriv_rois.py",
     "$D/diffBragg/tests/tst_diffBragg_detdist_derivatives.py",
     "$D/diffBragg/tests/tst_diffBragg_nanoBragg_congruency.py",
@@ -21,11 +20,9 @@ tst_list = (
     "$D/diffBragg/tests/tst_diffBragg_rotXYZ.py",
     "$D/diffBragg/tests/tst_diffBragg_rotXYZ_deriv.py",
     "$D/diffBragg/tests/tst_diffBragg_rotXYZ_refine.py",
-    ["$D/diffBragg/tests/tst_diffBragg_rotXYZ_ucell_refine.py", "--curvatures"],
-    ["$D/diffBragg/tests/tst_diffBragg_all_refine.py", "--umatrix --bmatrix --ncells --curvatures"],
-    ["$D/diffBragg/tests/tst_diffBragg_ucell_refine.py", "--crystalsystem monoclinic --curvatures"],
-    ["$D/diffBragg/tests/tst_diffBragg_ucell_refine.py", "--crystalsystem tetragonal"],
-    ["$D/diffBragg/tests/tst_diffBragg_Fcell_deriv.py", "--curvatures"]
+    "$D/diffBragg/tests/tst_diffBragg_rotXYZ_ucell_refine.py",
+    "$D/diffBragg/tests/tst_diffBragg_ucell_refine.py",
+    "$D/diffBragg/tests/tst_diffBragg_update_dxtbx_geoms.py",
     )
 
 
