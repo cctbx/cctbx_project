@@ -189,9 +189,9 @@ class RefineMissetAndUcell(RefineRot):
                     if self.use_curvatures:
                         d2 = self.rot_second_deriv[ii]
                         cc = S2*G2*(d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda)
-                        if cc.sum() < 0:
-                            from IPython import embed
-                            embed()
+                        #if cc.sum() < 0:
+                        #    from IPython import embed
+                        #    embed()
                         self.curv[xpos] += cc.sum()
 
                 # unit cell derivative
@@ -204,9 +204,9 @@ class RefineMissetAndUcell(RefineRot):
                         d2 = self.ucell_second_derivatives[i_ucell_p]
                         cc = S2 * G2 * (d2 * one_minus_k_over_Lambda + d * d * k_over_squared_Lambda)
 
-                        if cc.sum() < 0:
-                            from IPython import embed
-                            embed()
+                        #if cc.sum() < 0:
+                        #    from IPython import embed
+                        #    embed()
 
                         self.curv[xpos] += cc.sum()
 

@@ -34,7 +34,8 @@ class RefineDetdist(RefineRot):
 
         # populate the x-array with initial values
         #self._move_abc_init_to_x()
-        self.x[-3] = self.S.detector[self._panel_id].get_origin()[2]
+        from copy import deepcopy
+        self.x[-3] = deepcopy(self.S.detector[self._panel_id].get_origin()[2])
         self.x[-2] = self._init_gain  # initial gain for experiment
         self.x[-1] = self._init_scale  # initial scale factor
 
@@ -44,14 +45,15 @@ class RefineDetdist(RefineRot):
         self.D.initialize_managers()
 
     def _update_dxtbx_detector(self):
-        det = self.S.detector
-        node = det[self._panel_id]
+        from copy import deepcopy
+        self._mod_det = deepcopy(self.S.detector)
+        node = self._mod_det[self._panel_id]
         node_d = node.to_dict()
         new_originZ = self.x[-3]
         node_d["origin"] = node_d["origin"][0], node_d["origin"][1], new_originZ
-        det[self._panel_id] = Panel.from_dict(node_d)
-        self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
-        self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
+        self._mod_det[self._panel_id] = Panel.from_dict(node_d)
+        #self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
+        self.D.update_dxtbx_geoms(self._mod_det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
 
     def _run_diffBragg_current(self, i_spot):
         """needs to be called each time the ROI is changed"""
