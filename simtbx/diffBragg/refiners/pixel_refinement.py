@@ -23,6 +23,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_ncells = False
         self.refine_detdist = True
         self.refine_Amatrix = True
+        self.refine_Bmatrix = True
+        self.refine_Umatrix = True
         self.refine_crystal_scale = True
         self.plot_images = False
         self.trad_conv = False
@@ -31,6 +33,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.mn_iter = None
         self.mx_iter = None
         self.max_calls = 1000
+        self.plot_stride = 10
         self.ignore_line_search = False
         lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
 
@@ -277,6 +280,26 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         if not isinstance(val, bool):
             raise ValueError("refine background planes should be a boolean")
         self._refine_Amatrix = val
+
+    @property
+    def refine_Umatrix(self):
+        return self._refine_Umatrix
+
+    @refine_Umatrix.setter
+    def refine_Umatrix(self, val):
+        if not isinstance(val, bool):
+            raise ValueError("refine background planes should be a boolean")
+        self._refine_Umatrix = val
+
+    @property
+    def refine_Bmatrix(self):
+        return self._refine_Bmatrix
+
+    @refine_Bmatrix.setter
+    def refine_Bmatrix(self, val):
+        if not isinstance(val, bool):
+            raise ValueError("refine background planes should be a boolean")
+        self._refine_Bmatrix = val
 
     @property
     def refine_crystal_scale(self):
