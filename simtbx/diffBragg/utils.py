@@ -244,7 +244,7 @@ def get_diffBragg_instance():
     return D
 
 
-def process_simdata(spots, img, thresh=20, plot=False):
+def process_simdata(spots, img, thresh=20, plot=False, shoebox_sz=20, edge_reflections=True):
     """
     This is a helper function for some of the tests
     :param spots:  simulated image without background/noise
@@ -269,9 +269,10 @@ def process_simdata(spots, img, thresh=20, plot=False):
         is_bg_pixel[bb_ss, bb_fs] = False
 
     # now fit tilting planes
-    shoebox_sz = 20
-    tilt_abc = np.zeros((num_spots, 3))
-    spot_roi = np.zeros((num_spots, 4), int)
+    #tilt_abc = np.zeros((num_spots, 3))
+    #spot_roi = np.zeros((num_spots, 4), int)
+    tilt_abc = []
+    spot_roi = []
     if plot:
         patches = []
     img_shape = img.shape  # TODO: verify fast slow scan
@@ -281,6 +282,10 @@ def process_simdata(spots, img, thresh=20, plot=False):
         i2 = int(min(x_com + shoebox_sz / 2., img_shape[0]-1))
         j1 = int(max(y_com - shoebox_sz / 2., 0))
         j2 = int(min(y_com + shoebox_sz / 2., img_shape[1]-1))
+
+        if i2-i1 < shoebox_sz-1 or j2-j1 < shoebox_sz-1 and not edge_reflections:
+            print("Moving on!")
+            continue
 
         shoebox_img = img[j1:j2, i1:i2]
         shoebox_mask = is_bg_pixel[j1:j2, i1:i2]
@@ -296,9 +301,11 @@ def process_simdata(spots, img, thresh=20, plot=False):
         #    zscore=2)
         successes.append(success)
 
-        tilt_abc[i_spot] = coeff[1], coeff[2], coeff[0]  # store as fast-scan coeff, slow-scan coeff, offset coeff
+        tilt_abc.append(( coeff[1], coeff[2], coeff[0]))  # store as fast-scan coeff, slow-scan coeff, offset coeff
+        #tilt_abc[i_spot] = coeff[1], coeff[2], coeff[0]  # store as fast-scan coeff, slow-scan coeff, offset coeff
 
-        spot_roi[i_spot] = i1, i2, j1, j2
+        spot_roi.append(( i1, i2, j1, j2))
+        #spot_roi[i_spot] = i1, i2, j1, j2
         if plot:
             R = plt.Rectangle(xy=(x_com-shoebox_sz/2, y_com-shoebox_sz/2.),
                           width=shoebox_sz,
@@ -312,6 +319,8 @@ def process_simdata(spots, img, thresh=20, plot=False):
         plt.gca().add_collection(patch_coll)
         plt.show()
 
+    spot_roi = np.array(spot_roi).astype(int)
+    tilt_abc = np.array(tilt_abc)
     spot_roi = spot_roi[successes]
     tilt_abc = tilt_abc[successes]
     return spot_roi, tilt_abc

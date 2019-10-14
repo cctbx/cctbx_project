@@ -30,12 +30,13 @@ class rot_manager: public derivative_manager{
     void increment(
         double fudge,
         mat3 X, mat3 Y, mat3 Z,
-        mat3 N, mat3 U, mat3 B,
+        mat3 X2, mat3 Y2, mat3 Z2,
+        mat3 N, mat3 U, mat3 UBOt,
         vec3 q, vec3 V,
         double Hrad, double Fcell, double Flatt,
         double source_I, double capture_fraction, double omega_pixel);
 
-    mat3 XYZ;
+    mat3 XYZ, XYZ2;
     mat3 R, dR, dR2;
 }; // end of rot_manager
 
@@ -129,8 +130,8 @@ class diffBragg: public nanoBragg{
   mat3 Bmat_realspace, NABC;
   mat3 RXYZ;
   std::vector<mat3> RotMats;
-  std::vector<mat3> dRotMats;
-  std::vector<mat3> R3;
+  std::vector<mat3> dRotMats, d2RotMats;
+  std::vector<mat3> R3, R3_2;
 
   vec3 k_diffracted;
   vec3 o_vec;

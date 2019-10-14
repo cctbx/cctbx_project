@@ -187,8 +187,13 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
                 verbose=curvature_min_verbose)
 
         else:
+
+            from scitbx.lbfgs import core_parameters
+            C = core_parameters()
+            C.gtol = 1
             self.minimizer = scitbx.lbfgs.run(
                 target_evaluator=self,
+                #core_params=C,
                 exception_handling_params=self._handler,
                 termination_params=self._terminator)
 
