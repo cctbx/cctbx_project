@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 
 small_pdb = '''
@@ -701,7 +701,7 @@ def test_geo(result, opposite=False):
     assert lines.find(result)==-1, 'found: %s' % result
   else:
     assert lines.find(result)>-1, 'not found: %s' % result
-  print 'OK'
+  print('OK')
 
 def main():
   write_and_run(large_pdb)

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 
 input_model = '''
@@ -145,7 +145,7 @@ def main():
   rc = easy_run.go(cmd)
   lines = '\n'.join(rc.stdout_lines)
   assert lines.find(result)>-1
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   main()
