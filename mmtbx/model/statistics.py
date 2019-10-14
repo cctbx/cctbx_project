@@ -558,7 +558,7 @@ class info(object):
         self.model.torsion_NCS_as_pdb()]:
       if len(info_pdb_str) > 0:
         print(prefix, file=out)
-        print(info_pdb_str, end=' ', file=out)
+        print(info_pdb_str, end='', file=out)
 
   def as_cif_block(self, cif_block=None):
     if cif_block is None:
