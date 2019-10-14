@@ -283,9 +283,10 @@ def process_simdata(spots, img, thresh=20, plot=False, shoebox_sz=20, edge_refle
         j1 = int(max(y_com - shoebox_sz / 2., 0))
         j2 = int(min(y_com + shoebox_sz / 2., img_shape[1]-1))
 
-        if i2-i1 < shoebox_sz-1 or j2-j1 < shoebox_sz-1 and not edge_reflections:
-            print("Moving on!")
-            continue
+        if not edge_reflections:
+            if i2-i1 < shoebox_sz-1 or j2-j1 < shoebox_sz-1:
+                print("Skipping reflection on the detector edge!")
+                continue
 
         shoebox_img = img[j1:j2, i1:i2]
         shoebox_mask = is_bg_pixel[j1:j2, i1:i2]
@@ -301,10 +302,10 @@ def process_simdata(spots, img, thresh=20, plot=False, shoebox_sz=20, edge_refle
         #    zscore=2)
         successes.append(success)
 
-        tilt_abc.append(( coeff[1], coeff[2], coeff[0]))  # store as fast-scan coeff, slow-scan coeff, offset coeff
+        tilt_abc.append((coeff[1], coeff[2], coeff[0]))  # store as fast-scan coeff, slow-scan coeff, offset coeff
         #tilt_abc[i_spot] = coeff[1], coeff[2], coeff[0]  # store as fast-scan coeff, slow-scan coeff, offset coeff
 
-        spot_roi.append(( i1, i2, j1, j2))
+        spot_roi.append((i1, i2, j1, j2))
         #spot_roi[i_spot] = i1, i2, j1, j2
         if plot:
             R = plt.Rectangle(xy=(x_com-shoebox_sz/2, y_com-shoebox_sz/2.),
