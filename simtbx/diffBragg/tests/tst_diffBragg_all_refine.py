@@ -6,6 +6,8 @@ parser.add_argument("--ncells", action='store_true', help='perturb then refine t
 parser.add_argument("--bmatrix", action='store_true')
 parser.add_argument("--umatrix", action='store_true')
 parser.add_argument("--curvatures", action='store_true')
+parser.add_argument("--psf", action='store_true')
+parser.add_argument("--gain", action='store_true')
 args = parser.parse_args()
 
 if args.detdist:
@@ -13,12 +15,15 @@ if args.detdist:
 
 from dxtbx.model.crystal import Crystal
 from copy import deepcopy
+
+from IPython import embed
 from dxtbx.model import Panel
 from cctbx import uctbx
 from scitbx.matrix import sqr, rec, col
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+from simtbx.nanoBragg import shapetype
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
@@ -42,7 +47,7 @@ perturb_rot_axis = np.random.random(3)
 perturb_rot_axis /= np.linalg.norm(perturb_rot_axis)
 perturb_rot_ang = 0
 if args.umatrix:
-    perturb_rot_ang = .15  # degrees
+    perturb_rot_ang = .05  # degrees
 
 # make the ground truth crystal:
 a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
@@ -66,7 +71,7 @@ nbcryst.Ncells_abc = Ncells_gt  # ground truth Ncells
 print("Ground truth ncells = %f" % (nbcryst.Ncells_abc[0]))
 
 SIM = SimData()
-SIM.detector = SimData.simple_detector(150, 0.1, (512, 512))
+SIM.detector = SimData.simple_detector(150, 0.177, (600, 600))
 
 # TODO get the detector model
 node = SIM.detector[0]
@@ -86,6 +91,7 @@ det2[0] = Panel.from_dict(node_d)
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0)
 SIM.D.nopolar = False
+SIM.D.default_F = 0
 SIM.D.progress_meter = False
 SIM.water_path_mm = 0.005
 SIM.air_path_mm = 0.1
@@ -97,11 +103,28 @@ spots = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.readout_noise_adu = 0
 SIM._add_background()
 SIM._add_noise()
-print SIM.D.oversample
+
+if args.psf:
+    img_pre_psf = SIM.D.raw_pixels.as_numpy_array()
+    v = SIM.D.verbose
+    SIM.D.verbose = 8
+    SIM.D.detector_psf_kernel_radius_pixels = 0
+    fwhm = 76 / 56
+    radius = 3
+    SIM.D.apply_psf(shapetype.Fiber, fwhm, radius)
+    SIM.D.verbose = v
+
+print "Using oversample %d" % SIM.D.oversample
 
 # This is the ground truth image:
 img = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
+embed()
+
+if args.psf:
+    y = slice(450, 480,1)
+    x = slice(650, 670, 1)
+    print "PSF max discrepancy: %f" % abs(img_pre_psf[y,x]- img[y,x]).max()
 
 # Simulate the perturbed image for comparison
 # perturbed detector:
@@ -129,6 +152,7 @@ SIM._add_noise()
 img_pet = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
 
+
 # spot_rois, abc_init , these are inputs to the refiner
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
 spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot, shoebox_sz=30)
@@ -151,10 +175,13 @@ UcellMan = MonoclinicManager(
 init_Umat_norm = np.abs(np.array(C2.get_U()) - np.array(C.get_U())).sum()
 init_Bmat_norm = np.abs(np.array(C2.get_B()) - np.array(C.get_B())).sum()
 
+if args.gain:
+    img = img*1.1
+
 RUC = RefineAll(
     spot_rois=spot_roi,
     abc_init=tilt_abc,
-    img=1.1*img,
+    img=img,
     SimData_instance=SIM,
     plot_images=args.plot,
     plot_residuals=True,
@@ -168,11 +195,11 @@ RUC.refine_Bmatrix = args.bmatrix
 RUC.refine_ncells = args.ncells
 RUC.use_curvatures = args.curvatures
 RUC.refine_crystal_scale = True
-RUC.refine_gain_fac = True
+RUC.refine_gain_fac = args.gain
 RUC.plot_stride = 10
 RUC.plot_residuals = args.plot
 RUC.trad_conv_eps = 1e-5
-RUC.max_calls = 300
+RUC.max_calls = 3000
 #RUC._setup()
 #RUC._cache_roi_arrays()
 RUC.run()
