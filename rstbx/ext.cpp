@@ -275,37 +275,37 @@ class SimpleSamplerTool {
                           scitbx::af::shared <double> unique_cell_dimensions,
                           scitbx::af::const_ref<scitbx::vec3<double> > reciprocal_lattice_vectors) {
 
-    scitbx::af::shared <scitbx::vec3 < double> > vectors;
-    scitbx::af::shared <double> function_values;
-    scitbx::af::shared <Direction> SST_all_angles;
+
+    int nsize = SST_angles.size()*unique_cell_dimensions.size();
+    int cell_size = unique_cell_dimensions.size();
+    scitbx::af::shared <scitbx::vec3 < double> > vectors(nsize);
+    scitbx::af::shared <double> function_values(nsize);
+    scitbx::af::shared <Direction> SST_all_angles(nsize);
     double multiplier = 2*scitbx::constants::pi;
+    scitbx::vec3 <double>  *pvec = &vectors[0];
+    double *pfunc = &function_values[0];
+    Direction *pSST = &SST_all_angles[0];
+    
+    // https://stackoverflow.com/questions/36336837/vector-filling-across-openmp-threads
+    // If you have openmp 4+ use merging as shown below
+    // https://stackoverflow.com/questions/18669296/c-openmp-parallel-for-loop-alternatives-to-stdvector/18671256#18671256
     // the number 4 is hardcoded for KNL --> 4 hyperthreads per physical core
     #pragma omp parallel num_threads(4)
     {
-      scitbx::af::shared <scitbx::vec3 < double> > vec_private;
-      scitbx::af::shared <double> function_values_private;
-      scitbx::af::shared <Direction> SST_all_angles_private;
-      //omp_set_num_threads(4);
-      #pragma omp for schedule(static) collapse (2) 
+      #pragma omp for schedule(static)
       for (int i=0; i < SST_angles.size(); ++i) {
         for (int j=0; j < unique_cell_dimensions.size(); ++j)  {
-
-          scitbx::vec3<double> v = scitbx::vec3<double>(SST_angles[i].dvec[0]*unique_cell_dimensions[j],
-                                    SST_angles[i].dvec[1]*unique_cell_dimensions[j],
-                                    SST_angles[i].dvec[2]*unique_cell_dimensions[j]);
+          Direction sst_angles_temp = SST_angles[i];
+          scitbx::vec3<double> v = scitbx::vec3<double>(sst_angles_temp.dvec[0]*unique_cell_dimensions[j],
+                                    sst_angles_temp.dvec[1]*unique_cell_dimensions[j],
+                                    sst_angles_temp.dvec[2]*unique_cell_dimensions[j]);
 
           double f = sum_all_cosines_of_dot_a_s(reciprocal_lattice_vectors, v, multiplier);
-          vec_private.push_back(v);
-          function_values_private.push_back(f);
-          SST_all_angles_private.push_back(SST_angles[i]);
+          int idx = i*cell_size+j;
+          *(pvec+idx)=v;
+          *(pfunc+idx)=f;
+          *(pSST+idx)=sst_angles_temp;
         }
-      }
-      #pragma omp for schedule(static) ordered
-      for(int i=0; i<omp_get_num_threads(); i++) {
-        #pragma omp ordered
-        vectors.insert(vectors.end(), vec_private.begin(), vec_private.end());
-        function_values.insert(function_values.end(), function_values_private.begin(), function_values_private.end());
-        SST_all_angles.insert(SST_all_angles.end(), SST_all_angles_private.begin(), SST_all_angles_private.end());
       }
     } // omp parallel for
     return boost::python::make_tuple(vectors, function_values, SST_all_angles);
