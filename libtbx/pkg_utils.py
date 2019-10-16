@@ -241,15 +241,16 @@ def define_entry_points(epdict, **kwargs):
   for ep in epdict:
     print("  {n} entries for entry point {ep}".format(ep=ep, n=len(epdict[ep])))
 
-  # Temporarily change to build/ directory. This is where a directory named
-  # libtbx.{caller}.egg-info will be created containing the entry point info.
+  # Temporarily change to {libtbx.env.build_path}/lib directory. This
+  # is where a directory named libtbx.{caller}.egg-info will be
+  # created containing the entry point info.
   try:
     curdir = os.getcwd()
-    os.chdir(abs(libtbx.env.build_path))
+    os.chdir(os.path.join(abs(libtbx.env.build_path), 'lib'))
     # Now trick setuptools into thinking it is in control here.
     try:
       argv_orig = sys.argv
-      sys.argv = ['setup.py', 'develop']
+      sys.argv = ['setup.py', 'egg_info']
       # And make it run quietly
       with _silence():
         setuptools.setup(
@@ -262,6 +263,28 @@ def define_entry_points(epdict, **kwargs):
       sys.argv = argv_orig
   finally:
     os.chdir(curdir)
+
+  # With the entry points installed into build/lib check for any legacy entry
+  # point definitions in both build/ and base/ and remove them where possible.
+  # Code block can be removed April 2020
+  try:
+    legacy_path = abs(libtbx.env.build_path / 'libtbx.{}.egg-info'.format(caller))
+    if os.path.exists(legacy_path):
+      print("Removing legacy entry points from", legacy_path)
+      import shutil
+      shutil.rmtree(legacy_path)
+  except Exception as e:
+    print("Could not remove legacy entry points:", str(e))
+  try:
+    import site
+    for spp in site.getsitepackages():
+      legacy_path = os.path.join(spp, 'libtbx.{}.egg-link'.format(caller))
+      if os.path.exists(legacy_path):
+        print("Removing legacy entry points from", legacy_path)
+        os.remove(legacy_path)
+  except Exception as e:
+    print("Could not remove legacy entry points:", str(e))
+
 
 def _merge_requirements(requirements, new_req):
   # type: (List[packaging.requirements.Requirement], packaging.requirements.Requirement) -> None
