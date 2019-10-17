@@ -1217,8 +1217,10 @@ class MainWindow(wx.Frame):
         self.run_window.unitcell_light.change_status('on')
     elif name == self.run_window.datasets_tab.name:
       self.run_window.datasets_tab.refresh_datasets()
-    elif name == self.run_window.merge_tab.name:
-      self.run_window.merge_tab.find_trials()
+    elif name == self.run_window.mergingstats_tab.name:
+      self.run_window.mergingstats_tab.refresh_datasets()
+    #elif name == self.run_window.merge_tab.name:
+    #  self.run_window.merge_tab.find_trials()
 
   def onLeavingTab(self, e):
     name = self.run_window.main_nbook.GetPageText((self.run_window.main_nbook.GetSelection()))
@@ -1269,7 +1271,8 @@ class RunWindow(wx.Panel):
     self.runstats_tab = RunStatsTab(self.main_nbook, main=self.parent)
     self.unitcell_tab = UnitCellTab(self.main_nbook, main=self.parent)
     self.datasets_tab = DatasetTab(self.main_nbook, main=self.parent)
-    self.merge_tab = MergeTab(self.main_nbook, main=self.parent)
+    #self.merge_tab = MergeTab(self.main_nbook, main=self.parent)
+    self.mergingstats_tab = MergingStatsTab(self.main_nbook, main=self.parent)
     self.main_nbook.AddPage(self.runs_tab, self.runs_tab.name)
     self.main_nbook.AddPage(self.trials_tab, self.trials_tab.name)
     self.main_nbook.AddPage(self.jobs_tab, self.jobs_tab.name)
@@ -1277,7 +1280,8 @@ class RunWindow(wx.Panel):
     self.main_nbook.AddPage(self.runstats_tab, self.runstats_tab.name)
     self.main_nbook.AddPage(self.unitcell_tab, self.unitcell_tab.name)
     self.main_nbook.AddPage(self.datasets_tab, self.datasets_tab.name)
-    self.main_nbook.AddPage(self.merge_tab, self.merge_tab.name)
+    #self.main_nbook.AddPage(self.merge_tab, self.merge_tab.name)
+    self.main_nbook.AddPage(self.mergingstats_tab, self.mergingstats_tab.name)
 
     self.sentinel_box = wx.FlexGridSizer(1, 6, 0, 20)
     self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
@@ -2336,7 +2340,6 @@ class RunStatsTab(SpotfinderTab):
           for p in image_paths]
         self.dump_timestamps(params, ts_list, shot_paths)
 
-
 class UnitCellTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
@@ -2617,6 +2620,86 @@ class DatasetTab(BaseTab):
     self.show_active_only = self.btn_active_only.GetValue()
     self.refresh_datasets()
 
+class MergingStatsTab(BaseTab):
+  def __init__(self, parent, main):
+    BaseTab.__init__(self, parent=parent)
+    self.name = 'Merging stats'
+
+    self.main = main
+    self.all_datasets = []
+
+    self.tab_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+    self.datasets_panel = wx.Panel(self, size=(230, 120))
+    self.datasets_box = wx.StaticBox(self.datasets_panel, label='Select dataset')
+    self.datasets_sizer = wx.StaticBoxSizer(self.datasets_box, wx.VERTICAL)
+    self.datasets_panel.SetSizer(self.datasets_sizer)
+
+    self.datasets = wx.ListBox(self.datasets_panel,
+                               size=(150, 100))
+    self.datasets_sizer.Add(self.datasets, flag=wx.EXPAND | wx.ALL, border = 5)
+
+    self.plots_panel = wx.Panel(self, size=(200, 120))
+    self.plots_box = wx.StaticBox(self.plots_panel, label='Statistics')
+    self.plots_sizer = wx.StaticBoxSizer(self.plots_box, wx.VERTICAL)
+    self.plots_panel.SetSizer(self.plots_sizer)
+
+    self.dataset_version = gctr.ChoiceCtrl(self.plots_panel,
+                                           label='Dataset version:',
+                                           label_size=(120, -1),
+                                           label_style='normal',
+                                           ctrl_size=(100, -1),
+                                           choices=[])
+    self.plots_sizer.Add(self.dataset_version, flag=wx.EXPAND | wx.ALL, border = 5)
+
+    self.tab_sizer.Add(self.datasets_panel, 0,
+                       flag=wx.ALIGN_LEFT | wx.EXPAND, border=10)
+    self.tab_sizer.Add(self.plots_panel, 1,
+                       flag=wx.EXPAND | wx.ALL, border=0)
+    self.main_sizer.Add(self.tab_sizer, 1,
+                        flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.Bind(wx.EVT_LISTBOX, self.onSelectDataset, self.datasets)
+    self.Bind(wx.EVT_CHOICE, self.onVersionChoice, self.dataset_version.ctr)
+
+  def refresh_datasets(self):
+    self.datasets.Clear()
+    self.all_datasets = self.main.db.get_all_datasets()
+    for dataset in self.all_datasets:
+      self.datasets.Append(dataset.name)
+    self.refresh_dataset()
+
+  def onVersionChoice(self, e):
+    self.refresh_stats()
+
+  def onSelectDataset(self, e):
+    self.refresh_dataset()
+
+  def refresh_dataset(self):
+    self.dataset_version.ctr.Clear()
+    sel = self.datasets.GetSelection()
+    if sel < 0: return
+    try:
+      dataset = self.all_datasets[sel]
+    except IndexError:
+      pass
+    else:
+      self.dataset_version.ctr.Append('All')
+      for version in dataset.versions:
+        self.dataset_version.ctr.Append(str(version.version))
+      self.dataset_version.ctr.SetSelection(0)
+      self.refresh_stats()
+
+  def refresh_stats(self):
+    sel = self.datasets.GetSelection()
+    dataset = self.all_datasets[sel]
+    if self.dataset_version.ctr.GetSelection() == 0:
+      pass # do all
+    else:
+      version = dataset.versions[self.dataset_version.ctr.GetSelection()-1]
+      version_path = version.output_path()
+      from xfel.ui.db.merging_log_scraper import Scraper
+      results = Scraper(version_path).scrape()
 
 class MergeTab(BaseTab):
 

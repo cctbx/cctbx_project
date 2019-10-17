@@ -10,7 +10,7 @@ class DialsProcessorWithLogging(Processor):
     super(DialsProcessorWithLogging, self).__init__(params, composite_tag, rank)
     self.tt_low = None
     self.tt_high = None
-    self.db_app = dxtbx_xfel_db_application(params)
+    self.db_app = dxtbx_xfel_db_application(params, cache_connection=True)
 
   def log_frame(self, experiments, reflections, run, n_strong, timestamp = None,
                 two_theta_low = None, two_theta_high = None, db_event = None):

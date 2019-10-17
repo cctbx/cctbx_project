@@ -282,7 +282,7 @@ def do_submit(command, submit_path, stdoutdir, mp_params, job_name, dry_run=Fals
   submit_command = str(submit_command) # unicode workaround
 
   if dry_run:
-    print("Dry run: job not submitted. Trial directory created here:", trialdir)
+    print("Dry run: job not submitted. Trial directory created here:", os.path.dirname(submit_path))
     print("Execute this command to submit the job:")
     print(submit_command)
   elif mp_params.method == 'local':
