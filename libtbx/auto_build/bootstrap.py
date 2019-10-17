@@ -904,11 +904,11 @@ class phaser_module(SourceModule):
                'git://git.uis.cam.ac.uk/cimr-phaser/phaser.git',
                'https://git.uis.cam.ac.uk/cimr-phaser/phaser.git']
 
-class phaser_tng_module(SourceModule):
-  module = 'phaser_tng'
+class phasertng_module(SourceModule):
+  module = 'phasertng'
   anonymous = ['git',
-               'git://git.uis.cam.ac.uk/cimr-phaser/phaser_tng.git',
-               'https://git.uis.cam.ac.uk/cimr-phaser/phaser_tng.git']
+               'git://git.uis.cam.ac.uk/cimr-phaser/phasertng.git',
+               'https://git.uis.cam.ac.uk/cimr-phaser/phasertng.git']
 
 class phaser_regression_module(SourceModule):
   module = 'phaser_regression'
@@ -1973,8 +1973,8 @@ class PhaserBuilder(CCIBuilder):
     return configlst
 
 class PhaserTNGBuilder(PhaserBuilder):
-  CODEBASES = PhaserBuilder.CODEBASES + ['phaser_tng']
-  LIBTBX = PhaserBuilder.LIBTBX + ['phaser_tng']
+  CODEBASES = PhaserBuilder.CODEBASES + ['phasertng']
+  LIBTBX = PhaserBuilder.LIBTBX + ['phasertng']
 
   def add_tests(self):
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
@@ -2477,10 +2477,10 @@ class QRBuilder(PhenixBuilder):
 
 class PhenixTNGBuilder(PhenixBuilder):
   '''
-  Phenix with phaser_tng and c++11
+  Phenix with phasertng and c++11
   '''
-  CODEBASES = PhenixBuilder.CODEBASES + ['phaser_tng']
-  LIBTBX = PhenixBuilder.LIBTBX + ['phaser_tng']
+  CODEBASES = PhenixBuilder.CODEBASES + ['phasertng']
+  LIBTBX = PhenixBuilder.LIBTBX + ['phasertng']
 
   def get_libtbx_configure(self):
     configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()
@@ -2500,7 +2500,7 @@ def run(root=None):
     'molprobity':MOLPROBITYBuilder,
     'qrefine': QRBuilder,
     'phaser': PhaserBuilder,
-    'phaser_tng': PhaserTNGBuilder
+    'phasertng': PhaserTNGBuilder
   }
 
   wrapper = textwrap.TextWrapper(width=80, initial_indent='  ',

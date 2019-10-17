@@ -165,7 +165,7 @@ class conda_manager(object):
     'molprobity': default_file,
     'qrefine': default_file,
     'phaser': default_file,
-    'phaser_tng': os.path.join('phaser', 'conda_envs',
+    'phasertng': os.path.join('phaser', 'conda_envs',
       default_format.format(builder='phaser_tng', version=version,
                             platform=conda_platform[platform.system()]))
   }
