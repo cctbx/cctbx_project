@@ -65,19 +65,22 @@ class SimData:
         self._seed = val
 
     @staticmethod
-    def Umats(mos_spread_deg, n_mos_doms):
+    def Umats(mos_spread_deg, n_mos_doms, isotropic=False,
+              seed=0, norm_dist_seed=1234):
         import scitbx
         from scitbx.matrix import col
         import math
         UMAT_nm = flex.mat3_double()
-        mersenne_twister = flex.mersenne_twister(seed=0)
-        scitbx.random.set_random_seed(1234)
+        mersenne_twister = flex.mersenne_twister(seed=seed)
+        scitbx.random.set_random_seed(norm_dist_seed)
         rand_norm = scitbx.random.normal_distribution(mean=0, sigma=mos_spread_deg * math.pi / 180.)
         g = scitbx.random.variate(rand_norm)
         mosaic_rotation = g(n_mos_doms)
         for m in mosaic_rotation:
             site = col(mersenne_twister.random_double_point_on_sphere())
             UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(m, deg=False))
+            if isotropic:
+                UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(-m, deg=False))
         return UMAT_nm
 
     @property
