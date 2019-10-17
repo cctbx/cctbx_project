@@ -30,7 +30,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_detdist = True
         self.refine_Amatrix = True
         self.refine_Bmatrix = True
-        self.use_curvatures_threshold = 5
+        self.use_curvatures_threshold = 3
         self.curv = None  # curvatures array
         self.refine_Umatrix = True
         self.verbose = True
@@ -185,10 +185,11 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         """
         pass
 
-    def run(self, curvature_min_verbose=False):
+    def run(self, curvature_min_verbose=False, setup=True):
         """runs the LBFGS minimizer"""
-        self._setup()
-        self._cache_roi_arrays()
+        if setup:
+            self._setup()
+            self._cache_roi_arrays()
         if self.use_curvatures:
             self.minimizer = self.lbfgs_run(
                 target_evaluator=self,
