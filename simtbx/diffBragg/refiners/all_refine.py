@@ -183,8 +183,12 @@ class RefineAll(RefineRot):
     def compute_functional_and_gradients(self):
         if self.calc_func:
             if self.verbose:
-                print("Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
-                      % (self.iterations+1, self.num_positive_curvatures))
+                if self.use_curvatures:
+                    print("Compute functional and gradients Iter %d (Using Curvatures)\n<><><><><><><><><><><><><>"
+                          % (self.iterations+1))
+                else:
+                    print("Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
+                          % (self.iterations+1, self.num_positive_curvatures))
             f = 0
             g = flex.double(self.n)
             if self.calc_curvatures:
@@ -304,16 +308,19 @@ class RefineAll(RefineRot):
                     self.num_positive_curvatures += 1
                 else:
                     self.num_positive_curvatures = 0
-                if self.num_positive_curvatures == self.use_curvatures_threshold:
-                    raise BreakToUseCurvatures
             self._f = f
             self._g = g
             self.D.raw_pixels *= 0
+            gnorm = np.linalg.norm(g)
             if self.verbose:
                 self.print_step("LBFGS stp", f)
-                self.print_step_grads("LBFGS GRADS", f)
+                self.print_step_grads("LBFGS GRADS", gnorm )
             self.iterations += 1
             self.f_vals.append(f)
+
+            if self.calc_curvatures and not self.use_curvatures:
+                if self.num_positive_curvatures == self.use_curvatures_threshold:
+                    raise BreakToUseCurvatures
 
         return self._f, self._g
 
@@ -339,13 +346,14 @@ class RefineAll(RefineRot):
         ucell_labels = []
         for i,(n, v) in enumerate(zip(names, vals)):
             grad = self._g[self.ucell_xstart+i]
-            ucell_labels.append('%s=%+2.7g' % (n, grad))
+            ucell_labels.append('G%s=%+2.7g' % (n, grad))
         rotX = self._g[self.rotX_xpos]
         rotY = self._g[self.rotY_xpos]
         rotZ = self._g[self.rotZ_xpos]
         rot_labels = ["GrotX=%+3.7g" % rotX, "GrotY=%+3.7g" % rotY, "GrotZ=%+3.4g" % rotZ]
-        print("%s: Gncells=%f, Gdetdist=%3.8g, Ggain=%3.4g, Gscale=%4.8g"
-              % (message, self._g[-4], self._g[-3], self._g[-2], self._g[-1]))
+        xnorm = np.linalg.norm(self.x)
+        print("%s: |x|=%f, |g|=%f, Gncells=%f, Gdetdist=%3.8g, Ggain=%3.4g, Gscale=%4.8g"
+              % (message, xnorm, target, self._g[-4], self._g[-3], self._g[-2], self._g[-1]))
         print ("GUcell: %s *** GMissets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
