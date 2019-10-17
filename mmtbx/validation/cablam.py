@@ -614,59 +614,63 @@ class cablam_result(residue):
     O_1 = ( (O_1[0]-X1[0])*scaling+X1[0], (O_1[1]-X1[1])*scaling+X1[1], (O_1[2]-X1[2])*scaling+X1[2])
     O_2 = ( (O_2[0]-X2[0])*scaling+X2[0], (O_2[1]-X2[1])*scaling+X2[1], (O_2[2]-X2[2])*scaling+X2[2])
     #-----------------------------
-    CA_1_2 = (CA_2[0]-CA_1[0], CA_2[1]-CA_1[1], CA_2[2]-CA_1[2])
-    CA_1_2_len = (CA_1_2[0]**2 + CA_1_2[1]**2 + CA_1_2[2]**2)**0.5
-    CA_1_2_unit = (CA_1_2[0]/CA_1_2_len*-0.15, CA_1_2[1]/CA_1_2_len*-0.15, CA_1_2[2]/CA_1_2_len*-0.15)
+    #markup wheels are offset from the carbonyl oxygen position for visual clarity
+    #offset is a move along the CA-CA line
+    #calculate unit vector alone CA-CA line, offset is some fraction of that
+    offset = 0.15
+    CA_2_1 = (CA_1[0]-CA_2[0], CA_1[1]-CA_2[1], CA_1[2]-CA_2[2])
+    CA_2_1_len = (CA_2_1[0]**2 + CA_2_1[1]**2 + CA_2_1[2]**2)**0.5
+    CA_2_1_offset = (CA_2_1[0]/CA_2_1_len*offset, CA_2_1[1]/CA_2_1_len*offset, CA_2_1[2]/CA_2_1_len*offset)
     CA_2_3 = (CA_3[0]-CA_2[0], CA_3[1]-CA_2[1], CA_3[2]-CA_2[2])
     CA_2_3_len = (CA_2_3[0]**2 + CA_2_3[1]**2 + CA_2_3[2]**2)**0.5
-    CA_2_3_unit = (CA_2_3[0]/CA_2_3_len*0.15, CA_2_3[1]/CA_2_3_len*0.15, CA_2_3[2]/CA_2_3_len*0.15)
+    CA_2_3_offset = (CA_2_3[0]/CA_2_3_len*offset, CA_2_3[1]/CA_2_3_len*offset, CA_2_3[2]/CA_2_3_len*offset)
+
+    #Each CaBLAM outlier is based on the relative positions of *two* peptide planes, represented by CO positions
+    #Test rotation of each peptide plane independently, and draw a wheel for each
+    #Starting with O_2 is arbitratry, but O_2 is the CO in the residue named as an outlier by CaBLAM convention
     angle = 0
     prev_O_2_xyz = O_2
-    while angle <= 370:
+    wheel_center = (X2[0]-CA_2_3_offset[0], X2[1]-CA_2_3_offset[1], X2[2]-CA_2_3_offset[2])
+    while angle <= 360:
       new_xyz = rotate_point_around_axis(
         axis_point_1 = CA_2,
         axis_point_2 = CA_3,
         point        = O_2,
         angle        = angle,
         deg          = True)
-      X1 = perptersect(CA_1,CA_2,O_1)
-      X2 = perptersect(CA_2,CA_3,new_xyz)
       new_nu = geometry_restraints.dihedral(sites=[O_1,X1,X2,new_xyz],
         angle_ideal=180, weight=1).angle_model
-      #new_nu = calculate_nu(CA_1,CA_2,CA_3,O_1,new_xyz)
       cablam_point = [self.measures.mu_in,self.measures.mu_out, new_nu]
       cablam = cablam_contours[category].valueAt(cablam_point)
       if cablam < 0.05:
         color = 'purple'
         if cablam < 0.01: color = 'magenta'
-        out.write('\n{} P X %s %.3f %.3f %.3f' % (color, X2[0]-CA_2_3_unit[0], X2[1]-CA_2_3_unit[1], X2[2]-CA_2_3_unit[2]))
-        out.write('\n{} %s %.3f %.3f %.3f' % (color,prev_O_2_xyz[0]-CA_2_3_unit[0],prev_O_2_xyz[1]-CA_2_3_unit[1],prev_O_2_xyz[2]-CA_2_3_unit[2]))
-        out.write('\n{} %s %.3f %.3f %.3f' % (color,new_xyz[0]-CA_2_3_unit[0],new_xyz[1]-CA_2_3_unit[1],new_xyz[2]-CA_2_3_unit[2]))
+        out.write('\n{} P X %s %.3f %.3f %.3f' % (color, wheel_center[0], wheel_center[1], wheel_center[2]))
+        out.write('\n{} %s %.3f %.3f %.3f' % (color,prev_O_2_xyz[0]-CA_2_3_offset[0],prev_O_2_xyz[1]-CA_2_3_offset[1],prev_O_2_xyz[2]-CA_2_3_offset[2]))
+        out.write('\n{} %s %.3f %.3f %.3f' % (color,new_xyz[0]-CA_2_3_offset[0],new_xyz[1]-CA_2_3_offset[1],new_xyz[2]-CA_2_3_offset[2]))
       prev_O_2_xyz = new_xyz
       angle += 10
 
     angle = 0
     prev_O_1_xyz = O_1
-    while angle <= 370:
+    wheel_center = (X1[0]-CA_2_1_offset[0], X1[1]-CA_2_1_offset[1], X1[2]-CA_2_1_offset[2])
+    while angle <= 360:
       new_xyz = rotate_point_around_axis(
         axis_point_1 = CA_1,
         axis_point_2 = CA_2,
         point        = O_1,
         angle        = angle,
         deg          = True)
-      X1 = perptersect(CA_1,CA_2,new_xyz)
-      X2 = perptersect(CA_2,CA_3,O_2)
       new_nu = geometry_restraints.dihedral(sites=[new_xyz,X1,X2,O_2],
         angle_ideal=180, weight=1).angle_model
-      #new_nu = calculate_nu(CA_1,CA_2,CA_3,O_1,new_xyz)
       cablam_point = [self.measures.mu_in,self.measures.mu_out, new_nu]
       cablam = cablam_contours[category].valueAt(cablam_point)
       if cablam < 0.05:
         color = 'purple'
         if cablam < 0.01: color = 'magenta'
-        out.write('\n{} P X %s %.3f %.3f %.3f' % (color, X1[0]-CA_1_2_unit[0], X1[1]-CA_1_2_unit[1], X1[2]-CA_1_2_unit[2]))
-        out.write('\n{} %s %.3f %.3f %.3f' % (color,prev_O_1_xyz[0]-CA_1_2_unit[0],prev_O_1_xyz[1]-CA_1_2_unit[1],prev_O_1_xyz[2]-CA_1_2_unit[2]))
-        out.write('\n{} %s %.3f %.3f %.3f' % (color,new_xyz[0]-CA_1_2_unit[0],new_xyz[1]-CA_1_2_unit[1],new_xyz[2]-CA_1_2_unit[2]))
+        out.write('\n{} P X %s %.3f %.3f %.3f' % (color, wheel_center[0], wheel_center[1], wheel_center[2]))
+        out.write('\n{} %s %.3f %.3f %.3f' % (color,prev_O_1_xyz[0]-CA_2_1_offset[0],prev_O_1_xyz[1]-CA_2_1_offset[1],prev_O_1_xyz[2]-CA_2_1_offset[2]))
+        out.write('\n{} %s %.3f %.3f %.3f' % (color,new_xyz[0]-CA_2_1_offset[0],new_xyz[1]-CA_2_1_offset[1],new_xyz[2]-CA_2_1_offset[2]))
       prev_O_1_xyz = new_xyz
       angle += 10
   #-----------------------------------------------------------------------------
