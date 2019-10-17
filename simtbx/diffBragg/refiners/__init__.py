@@ -1,5 +1,5 @@
 
-from .pixel_refinement import PixelRefinement
+from .pixel_refinement import PixelRefinement, BreakToUseCurvatures
 from .rotXYZ_refiner import RefineRot
 from .ucell_refiner import RefineUcell
 from .rotXYZ_ucell_refiner import RefineMissetAndUcell

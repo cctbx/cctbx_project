@@ -4,6 +4,7 @@ import numpy as np
 import pylab as plt
 
 
+
 def get_spot_data(img, thresh=0, filter=None, **kwargs):
     """
     Kwargs are passed to the filter used to smear the spots
