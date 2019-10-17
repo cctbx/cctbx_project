@@ -5,6 +5,11 @@ from abc import ABCMeta, abstractproperty, abstractmethod
 from scitbx.lbfgs.tst_curvatures import lbfgs_with_curvatures_mix_in
 
 
+# used in pixel refinement
+class BreakToUseCurvatures(Exception):
+    pass
+
+
 class PixelRefinement(lbfgs_with_curvatures_mix_in):
     """
     This is the base class for pixel refinement based on
@@ -21,13 +26,18 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_background_planes = True
         self.refine_gain_fac = False
         self.refine_ncells = False
+        self.hit_break_to_use_curvatures = False
         self.refine_detdist = True
         self.refine_Amatrix = True
         self.refine_Bmatrix = True
+        self.use_curvatures_threshold = 5
+        self.curv = None  # curvatures array
         self.refine_Umatrix = True
+        self.verbose = True
         self.refine_crystal_scale = True
         self.plot_images = False
         self.trad_conv = False
+        self.calc_curvatures = False
         self.trad_conv_eps = 0.05
         self.drop_conv_max_eps = 1e-5
         self.mn_iter = None
@@ -190,15 +200,18 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
                 verbose=curvature_min_verbose)
 
         else:
-
-            from scitbx.lbfgs import core_parameters
-            C = core_parameters()
-            C.gtol = 1
-            self.minimizer = scitbx.lbfgs.run(
-                target_evaluator=self,
-                #core_params=C,
-                exception_handling_params=self._handler,
-                termination_params=self._terminator)
+            try:
+                from scitbx.lbfgs import core_parameters
+                C = core_parameters()
+                C.gtol = 1
+                self.minimizer = scitbx.lbfgs.run(
+                    target_evaluator=self,
+                    #core_params=C,
+                    exception_handling_params=self._handler,
+                    termination_params=self._terminator)
+            except BreakToUseCurvatures:
+                self.hit_break_to_use_curvatures = True
+                pass
 
     def _cache_roi_arrays(self):
         """useful cache for iterative LBFGS step"""
@@ -259,6 +272,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     def use_curvatures(self, val):
         if not isinstance(val, bool):
             raise ValueError("use_curvatures should be boolean")
+        if val:
+            self.calc_curvatures = True
         self._use_curvatures = val
 
     @property
