@@ -47,6 +47,7 @@ class reflection_filter(worker):
 
     for experiment in experiments:
       exp_reflections = reflections.select(reflections['exp_id'] == experiment.identifier)
+      if not len(exp_reflections): continue
 
       N_obs_pre_filter = exp_reflections.size()
 
