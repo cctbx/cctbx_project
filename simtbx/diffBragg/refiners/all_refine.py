@@ -1,7 +1,8 @@
-from simtbx.diffBragg.refiners import RefineRot
+from simtbx.diffBragg.refiners import RefineRot, BreakToUseCurvatures
 from scitbx.array_family import flex
 import pylab as plt
 import numpy as np
+import sys
 from dxtbx.model import Panel
 
 
@@ -32,7 +33,7 @@ class RefineAll(RefineRot):
         self._init_gain = init_gain
         self._panel_id = panel_id
         self.best_image = np.zeros_like(self.img)
-        self.num_noneg_curvas = 0
+        self.num_positive_curvatures = 0
 
     def _setup(self):
         # total number of refinement parameters
@@ -96,7 +97,7 @@ class RefineAll(RefineRot):
             self.D.set_ucell_derivative_matrix(
                 i + 3,
                 self.ucell_manager.derivative_matrices[i])
-            if self.use_curvatures:
+            if self.calc_curvatures:
                 self.D.set_ucell_second_derivative_matrix(
                     i + 3, self.ucell_manager.second_derivative_matrices[i])
 
@@ -131,15 +132,15 @@ class RefineAll(RefineRot):
         if self.refine_Umatrix:
             if self.refine_rotX:
                 self.rot_deriv[0] = self.D.get_derivative_pixels(0).as_numpy_array()
-                if self.use_curvatures:
+                if self.calc_curvatures:
                     self.rot_second_deriv[0] = self.D.get_second_derivative_pixels(0).as_numpy_array()
             if self.refine_rotY:
                 self.rot_deriv[1] = self.D.get_derivative_pixels(1).as_numpy_array()
-                if self.use_curvatures:
+                if self.calc_curvatures:
                     self.rot_second_deriv[1] = self.D.get_second_derivative_pixels(1).as_numpy_array()
             if self.refine_rotZ:
                 self.rot_deriv[2] = self.D.get_derivative_pixels(2).as_numpy_array()
-                if self.use_curvatures:
+                if self.calc_curvatures:
                     self.rot_second_deriv[2] = self.D.get_second_derivative_pixels(2).as_numpy_array()
 
         self.ucell_derivatives = [0]*self.n_ucell_param
@@ -147,18 +148,18 @@ class RefineAll(RefineRot):
         if self.refine_Bmatrix:
             for i in range(self.n_ucell_param):
                 self.ucell_derivatives[i] = self.D.get_derivative_pixels(3 + i).as_numpy_array()
-                if self.use_curvatures:
+                if self.calc_curvatures:
                     self.ucell_second_derivatives[i] = self.D.get_second_derivative_pixels(3 + i).as_numpy_array()
 
         self.ncells_deriv = self.detdist_deriv = 0
         self.ncells_second_deriv = self.detdist_second_deriv = 0
         if self.refine_ncells:
             self.ncells_deriv = self.D.get_derivative_pixels(self._ncells_id).as_numpy_array()
-            if self.use_curvatures:
+            if self.calc_curvatures:
                 self.ncells_second_deriv = self.D.get_second_derivative_pixels(self._ncells_id).as_numpy_array()
         if self.refine_detdist:
             self.detdist_deriv = self.D.get_derivative_pixels(self._originZ_id).as_numpy_array()
-            if self.use_curvatures:
+            if self.calc_curvatures:
                 self.detdist_second_deriv = self.D.get_second_derivative_pixels(self._originZ_id).as_numpy_array()
 
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
@@ -181,9 +182,12 @@ class RefineAll(RefineRot):
 
     def compute_functional_and_gradients(self):
         if self.calc_func:
+            if self.verbose:
+                print("Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
+                      % (self.iterations+1, self.num_positive_curvatures))
             f = 0
             g = flex.double(self.n)
-            if self.use_curvatures:
+            if self.calc_curvatures:
                 self.curv = flex.double(self.n)
             self.best_image *= 0
             self.gain_fac = self.x[-2]
@@ -194,6 +198,9 @@ class RefineAll(RefineRot):
             self._update_ucell()
             self._update_ncells()
             for i_spot in range(self.n_spots):
+                if self.verbose:
+                    print "\rRunning diffBragg over spot %d/%d " % (i_spot+1, self.n_spots),
+                    sys.stdout.flush()
                 self._run_diffBragg_current(i_spot)
                 self._unpack_bgplane_params(i_spot)
                 self._set_background_plane(i_spot)
@@ -206,7 +213,7 @@ class RefineAll(RefineRot):
                 f += (self.model_Lambda - Imeas * self.log_Lambda).sum()
                 one_over_Lambda = 1. / self.model_Lambda
                 one_minus_k_over_Lambda = (1. - Imeas * one_over_Lambda)
-                if self.use_curvatures:
+                if self.calc_curvatures:
                     k_over_squared_Lambda = Imeas * one_over_Lambda * one_over_Lambda
 
                 # compute gradients for background plane constants a,b,c
@@ -249,7 +256,7 @@ class RefineAll(RefineRot):
                     for ii, xpos in enumerate([self.rotX_xpos, self.rotY_xpos, self.rotZ_xpos]):
                         d = S2*G2*self.rot_deriv[ii]
                         g[xpos] += (one_minus_k_over_Lambda * d).sum()
-                        if self.use_curvatures:
+                        if self.calc_curvatures:
                             d2 = S2*G2*self.rot_second_deriv[ii]
                             cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
                             self.curv[xpos] += cc.sum()
@@ -261,7 +268,7 @@ class RefineAll(RefineRot):
                         d = S2*G2*self.ucell_derivatives[i_ucell_p]
                         g[xpos] += (one_minus_k_over_Lambda * d).sum()
 
-                        if self.use_curvatures:
+                        if self.calc_curvatures:
                             d2 = S2*G2*self.ucell_second_derivatives[i_ucell_p]
                             cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
                             self.curv[xpos] += cc.sum()
@@ -269,35 +276,42 @@ class RefineAll(RefineRot):
                 if self.refine_ncells:
                     d = self.ncells_deriv
                     g[-4] += (S2*G2*d*one_minus_k_over_Lambda).sum()
-                    if self.use_curvatures:
+                    if self.calc_curvatures:
                         d2 = S2*G2*self.ncells_second_deriv
                         cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
                         self.curv[-4] += cc.sum()
 
                 if self.refine_detdist:
-                    if self.use_curvatures:
+                    if self.calc_curvatures:
                         raise NotImplementedError("Cannot use curvatures and refine detdist (yet...)")
                     g[-3] += (S2*G2*self.detdist_deriv*one_minus_k_over_Lambda).sum()
 
                 if self.refine_gain_fac:
                     d = 2*self.gain_fac*(self.tilt_plane + S2*self.model_bragg_spots)
                     g[-2] += (d*one_minus_k_over_Lambda).sum()
-                    if self.use_curvatures:
+                    if self.calc_curvatures:
                         d2 = d / self.gain_fac
                         self.curv[-2] += (d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda).sum()
 
                 if self.refine_crystal_scale:
                     d = G2*2*self.scale_fac*self.model_bragg_spots
                     g[-1] += (d*one_minus_k_over_Lambda).sum()
-                    if self.use_curvatures:
+                    if self.calc_curvatures:
                         d2 = d / self.scale_fac
                         self.curv[-1] += (d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda).sum()
-
+            if self.calc_curvatures and not self.use_curvatures:
+                if np.all(self.curv.as_numpy_array() >= 0):
+                    self.num_positive_curvatures += 1
+                else:
+                    self.num_positive_curvatures = 0
+                if self.num_positive_curvatures == self.use_curvatures_threshold:
+                    raise BreakToUseCurvatures
             self._f = f
             self._g = g
             self.D.raw_pixels *= 0
-            self.print_step("LBFGS stp", f)
-            self.print_step_grads("LBFGS GRADS", f)
+            if self.verbose:
+                self.print_step("LBFGS stp", f)
+                self.print_step_grads("LBFGS GRADS", f)
             self.iterations += 1
             self.f_vals.append(f)
 
@@ -330,8 +344,8 @@ class RefineAll(RefineRot):
         rotY = self._g[self.rotY_xpos]
         rotZ = self._g[self.rotZ_xpos]
         rot_labels = ["GrotX=%+3.7g" % rotX, "GrotY=%+3.7g" % rotY, "GrotZ=%+3.4g" % rotZ]
-        print("%s: Gresidual=%3.8g, Gncells=%f, Gdetdist=%3.8g, Ggain=%3.4g, Gscale=%4.8g"
-              % (message, target, self._g[-4], self._g[-3], self._g[-2], self._g[-1]))
+        print("%s: Gncells=%f, Gdetdist=%3.8g, Ggain=%3.4g, Gscale=%4.8g"
+              % (message, self._g[-4], self._g[-3], self._g[-2], self._g[-1]))
         print ("GUcell: %s *** GMissets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
