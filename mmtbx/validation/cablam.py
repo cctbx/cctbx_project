@@ -598,7 +598,6 @@ class cablam_result(residue):
   #-----------------------------------------------------------------------------
   def as_kinemage_wheel(self, cablam_contours, out=sys.stdout):
     from scitbx.matrix import rotate_point_around_axis
-    #from scitbx.matrix import rec
     category = self.contour_category()
     CA_1 = self.prevres.get_atom(' CA ').xyz
     O_1  = self.prevres.get_atom(' O  ').xyz
@@ -606,7 +605,15 @@ class cablam_result(residue):
     O_2  = self.get_atom(' O  ').xyz
     CA_3 = self.nextres.get_atom(' CA ').xyz
     if None in [CA_1, CA_2, CA_3, O_1, O_2]: return
-    #CA_1_2 = rec((CA_2[0]-CA_1[0], CA_2[2]-CA_1[2], CA_2[2]-CA_1[2]), (1,3))
+    #markup wheels should extend to less than the full CO length
+    #moving the used CO position is an easy way to propagate this across calculations
+    #along the X-O line used in the dihedral so as not to change the cablam results
+    scaling = 0.75
+    X1 = perptersect(CA_1,CA_2,O_1)
+    X2 = perptersect(CA_2,CA_3,O_2)
+    O_1 = ( (O_1[0]-X1[0])*scaling+X1[0], (O_1[1]-X1[1])*scaling+X1[1], (O_1[2]-X1[2])*scaling+X1[2])
+    O_2 = ( (O_2[0]-X2[0])*scaling+X2[0], (O_2[1]-X2[1])*scaling+X2[1], (O_2[2]-X2[2])*scaling+X2[2])
+    #-----------------------------
     CA_1_2 = (CA_2[0]-CA_1[0], CA_2[1]-CA_1[1], CA_2[2]-CA_1[2])
     CA_1_2_len = (CA_1_2[0]**2 + CA_1_2[1]**2 + CA_1_2[2]**2)**0.5
     CA_1_2_unit = (CA_1_2[0]/CA_1_2_len*-0.15, CA_1_2[1]/CA_1_2_len*-0.15, CA_1_2[2]/CA_1_2_len*-0.15)
@@ -1246,7 +1253,7 @@ class cablamalyze(validation):
         result.as_kinemage(mode="ca_geom", out=self.out)
     #----------------------------
     self.out.write('\n@subgroup {cablam_wheels} dominant\n')
-    self.out.write('@trianglelist {cablam_wheels}')
+    self.out.write('@trianglelist {cablam_wheels} alpha=0.75')
     for result in self.results:
       if not result.has_ca:
         continue
