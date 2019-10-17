@@ -630,7 +630,7 @@ class ScalingJob(Job):
 
 class MergingJob(Job):
   def get_global_path(self):
-    return os.path.join(self.app.params.output_folder, self.get_identifier_string())
+    return self.dataset_version.output_path()
 
   def get_log_path(self):
     return self.get_global_path()

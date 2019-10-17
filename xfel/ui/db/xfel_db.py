@@ -207,9 +207,10 @@ class initialize(initialize_base):
     return columns_dict
 
 class db_application(object):
-  def __init__(self, params):
+  def __init__(self, params, cache_connection = False):
     self.params = params
     self.dbobj = None
+    self.cache_connection = cache_connection
 
   def execute_query(self, query, commit = False):
     from MySQLdb import OperationalError
@@ -224,11 +225,10 @@ class db_application(object):
     sleep_time = 0.1
     while retry_count < retry_max:
       try:
-        if self.dbobj is None or not commit:
+        if self.dbobj is None or (not commit and not self.cache_connection):
           self.dbobj = dbobj = get_db_connection(self.params)
         else:
           dbobj = self.dbobj
-        dbobj = get_db_connection(self.params)
         cursor = dbobj.cursor()
         cursor.execute(query)
         if commit:
@@ -256,8 +256,8 @@ class db_application(object):
     raise Sorry("Couldn't execute MYSQL query. Too many reconnects. Query: %s"%query)
 
 class xfel_db_application(db_application):
-  def __init__(self, params, drop_tables = False, verify_tables = False):
-    super(xfel_db_application, self).__init__(params)
+  def __init__(self, params, drop_tables = False, verify_tables = False, cache_connection = False):
+    super(xfel_db_application, self).__init__(params, cache_connection)
     self.query_count = 0
     dbobj = get_db_connection(params)
     self.init_tables = initialize(params, dbobj) # only place where a connection is held
@@ -760,8 +760,10 @@ class xfel_db_application(db_application):
       dataset_version_ids = [i[0] for i in rows]
       if not dataset_version_ids : return []
       assert len(dataset_version_ids) == 1
-      return [DatasetVersion(self, dataset_version_id = dataset_version_ids[0])]
-    return self.get_all_x(DatasetVersion, "dataset_version", where = "WHERE dataset_version.dataset_id = %d"%dataset_id)
+      where = "WHERE dataset_version.id = %d"%dataset_version_ids[0]
+    else:
+      where = "WHERE dataset_version.dataset_id = %d"%dataset_id
+    return self.get_all_x_with_subitems(DatasetVersion, "dataset_version", where = where, sub_items=[(Dataset, "dataset", True)])
 
   def get_dataset_version_jobs(self, dataset_version_id):
     tag = self.params.experiment_tag
