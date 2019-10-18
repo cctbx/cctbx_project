@@ -2632,20 +2632,20 @@ class extract_box_around_model_and_map(object):
     from cctbx.maptbx.segment_and_split_map import get_iterated_solvent_fraction
     mask_data,solvent_fraction=get_iterated_solvent_fraction(
         crystal_symmetry=crystal_symmetry,
-        fraction_of_max_mask_threshold=0.05, # 
+        fraction_of_max_mask_threshold=0.05, #
         cell_cutoff_for_solvent_from_mask=1, # Use low-res method always
         mask_resolution=self.resolution,
         return_mask_and_solvent_fraction=True,
         verbose=False,
         map=self.map_data,
         out=null_out())
-    
+
     if solvent_fraction is None:
       raise Sorry("Unable to get solvent fraction in auto-masking")
 
     from cctbx.maptbx.segment_and_split_map import get_co
     co,sorted_by_volume,min_b,max_b=get_co(
-       map_data=mask_data,threshold=0.5,wrapping=False) 
+       map_data=mask_data,threshold=0.5,wrapping=False)
     if len(sorted_by_volume)<2:
       raise Sorry("No mask obtained...")
     masked_fraction=sorted_by_volume[1][0]/mask_data.size()
