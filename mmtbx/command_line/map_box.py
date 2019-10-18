@@ -109,6 +109,11 @@ master_phil = libtbx.phil.parse("""
             without the ".pdb" suffix.
     .short_caption = Output file name prefix
 
+  mask_select = False
+    .type = bool
+    .help = Select boundaries (min,max in x,y,z) based on auto-mask
+    .short_caption = Mask select
+
   density_select = False
     .type = bool
     .help = Select boundaries based on where density is located.
@@ -399,20 +404,21 @@ Parameters:"""%h
   if params.pdb_file and not inputs.pdb_file_names and not pdb_hierarchy:
     inputs.pdb_file_names=[params.pdb_file]
   if(len(inputs.pdb_file_names)!=1 and not params.density_select and not
+    params.mask_select and not
     pdb_hierarchy and not params.keep_map_size and not params.upper_bounds
      and not params.extract_unique):
     raise Sorry("PDB file is needed unless extract_unique, "+
-      "density_select, keep_map_size \nor bounds are set .")
+      "density_select, mask_select, keep_map_size \nor bounds are set .")
   if (len(inputs.pdb_file_names)!=1 and not pdb_hierarchy and \
        (params.mask_atoms )):
     raise Sorry("PDB file is needed for mask_atoms")
   if params.soft_mask and (not params.resolution) and \
         (len(inputs.pdb_file_names)!=1 and not pdb_hierarchy):
     raise Sorry("Need resolution for soft_mask without PDB file")
-  if (params.density_select and params.keep_map_size):
-    raise Sorry("Cannot set both density_select and keep_map_size")
-  if (params.density_select and params.upper_bounds):
-    raise Sorry("Cannot set both density_select and bounds")
+  if ((params.density_select or params.mask_select) and params.keep_map_size):
+    raise Sorry("Cannot set both density_select/mask_select and keep_map_size")
+  if ((params.density_select or params.mask_select) and params.upper_bounds):
+    raise Sorry("Cannot set both density_select/mask_select and bounds")
   if (params.keep_map_size and params.upper_bounds):
     raise Sorry("Cannot set both keep_map_size and bounds")
   if (params.upper_bounds and not params.lower_bounds):
@@ -643,7 +649,7 @@ Parameters:"""%h
         n_dna=0
       params.molecular_mass=n_ops*(n_protein*110+(n_rna+n_dna)*330)
       print("\nEstimate of molecular mass is %.0f " %(params.molecular_mass), file=log)
-  if params.density_select:
+  if params.density_select or params.mask_select:
     print_statistics.make_sub_header(
     "Extracting box around selected density and writing output files", out=log)
   else:
@@ -672,6 +678,7 @@ Parameters:"""%h
     map_data         = map_data.as_double(),
     box_cushion      = params.box_cushion,
     selection        = selection,
+    mask_select   = params.mask_select,
     density_select   = params.density_select,
     threshold        = params.density_select_threshold,
     get_half_height_width = params.get_half_height_width,

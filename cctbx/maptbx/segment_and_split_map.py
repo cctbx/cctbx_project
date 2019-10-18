@@ -8427,7 +8427,6 @@ def get_overall_mask(
     max_in_sd_map,
     mean_in_map,
     min_in_map), file=out)
-
   if fraction_of_max_mask_threshold:
     mask_threshold=fraction_of_max_mask_threshold*max_in_sd_map
     print("Using fraction of max as threshold: %.3f " %(
@@ -8677,6 +8676,7 @@ def get_iterated_solvent_fraction(map=None,
     fraction_of_max_mask_threshold=None,
     cell_cutoff_for_solvent_from_mask=None,
     mask_resolution=None,
+    return_mask_and_solvent_fraction=None,
     out=sys.stdout):
   if cell_cutoff_for_solvent_from_mask and \
    crystal_symmetry.unit_cell().volume() > cell_cutoff_for_solvent_from_mask**3:
@@ -8686,25 +8686,29 @@ def get_iterated_solvent_fraction(map=None,
       map_data=map.deep_copy(),
       mask_padding_fraction=mask_padding_fraction,
       fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+       return_mask_and_solvent_fraction=return_mask_and_solvent_fraction,
       mask_resolution=mask_resolution)
 
   try:
     from phenix.autosol.map_to_model import iterated_solvent_fraction
-    solvent_fraction=iterated_solvent_fraction(
+    solvent_fraction,overall_mask=iterated_solvent_fraction(
       crystal_symmetry=crystal_symmetry,
       map_as_double=map,
       verbose=verbose,
       resolve_size=resolve_size,
-      return_solvent_fraction=True,
       out=out)
     if solvent_fraction<=0.989:  # means that it was 0.99 which is hard limit
-      return solvent_fraction
+      if return_mask_and_solvent_fraction:
+        return overall_mask,solvent_fraction
+      else:
+        return solvent_fraction
     else:  # use backup method
       return get_solvent_fraction_from_low_res_mask(
         crystal_symmetry=crystal_symmetry,
         map_data=map.deep_copy(),
         mask_padding_fraction=mask_padding_fraction,
         fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+        return_mask_and_solvent_fraction=return_mask_and_solvent_fraction,
         mask_resolution=mask_resolution)
   except Exception as e:
     # catch case where map was not on proper grid
@@ -8721,19 +8725,20 @@ def get_iterated_solvent_fraction(map=None,
       raise Sorry(str(e)+
        "\nIt may be possible to go on by supplying solvent content"+
       "or molecular_mass")
-
     # Try to get solvent fraction with low_res mask
     return get_solvent_fraction_from_low_res_mask(
       crystal_symmetry=crystal_symmetry,
       map_data=map.deep_copy(),
       mask_padding_fraction=mask_padding_fraction,
       fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+      return_mask_and_solvent_fraction=return_mask_and_solvent_fraction,
       mask_resolution=mask_resolution)
 
 def get_solvent_fraction_from_low_res_mask(
       crystal_symmetry=None,map_data=None,
       fraction_of_max_mask_threshold=None,
       mask_padding_fraction=None,
+      return_mask_and_solvent_fraction=None,
       mask_resolution=None,
       out=sys.stdout):
 
@@ -8746,7 +8751,13 @@ def get_solvent_fraction_from_low_res_mask(
 
   solvent_fraction=overall_mask.count(False)/overall_mask.size()
   print("Solvent fraction from overall mask: %.3f " %(solvent_fraction), file=out)
-  return solvent_fraction
+  if return_mask_and_solvent_fraction:
+    mask_data=map_data.deep_copy()
+    mask_data.as_1d().set_selected(overall_mask.as_1d(),1)
+    mask_data.as_1d().set_selected(~overall_mask.as_1d(),0)
+    return mask_data,solvent_fraction
+  else:
+    return solvent_fraction
 
 
 def get_solvent_fraction_from_molecular_mass(

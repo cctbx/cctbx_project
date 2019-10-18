@@ -351,7 +351,7 @@ class _mtriage(object):
       self.radius_smooth = \
           self.params.resolution*self.params.radius_smooth_ratio
       return
-    if(self.xray_structure is None): 
+    if(self.xray_structure is None):
       if(self.resolution):  # resolution but no smooth ratio
         self.radius_smooth = self.resolution
       return
@@ -390,9 +390,9 @@ class _mtriage(object):
 
   def _compute_and_apply_mask(self):
     if(not self.params.mask_maps): return
-    if(self.xray_structure is None): 
+    if(self.xray_structure is None):
       self.mask_smooth=None
-      if self.params.auto_mask_if_no_model: 
+      if self.params.auto_mask_if_no_model:
         # generate mask from the density
         self.mask_smooth=self._compute_soft_mask_from_density()
       if not self.mask_smooth:  # failed or did not attempt
@@ -460,7 +460,7 @@ class _mtriage(object):
     if(self.map_data_1 is not None):
       bin_width=100
       if self.n_bins:
-        bin_width=max(bin_width,int(0.5+self.f_map_1.size()/self.n_bins)) 
+        bin_width=max(bin_width,int(0.5+self.f_map_1.size()/self.n_bins))
       self.fsc_curve = self.f_map_1.d_min_from_fsc(
         other = self.f_map_2, bin_width=bin_width, fsc_cutoff=0.143)
       self.d_fsc = self.fsc_curve.d_min
@@ -470,7 +470,7 @@ class _mtriage(object):
     if(self.xray_structure is not None):
       bin_width=100
       if self.n_bins:
-        bin_width=max(bin_width,int(0.5+self.f_calc.size()/self.n_bins)) 
+        bin_width=max(bin_width,int(0.5+self.f_calc.size()/self.n_bins))
       self.fsc_curve_model = self.f_calc.fsc(
         other=self.f_map, bin_width=bin_width)
 
