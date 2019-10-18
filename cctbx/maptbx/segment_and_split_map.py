@@ -8687,7 +8687,7 @@ def get_iterated_solvent_fraction(map=None,
       mask_padding_fraction=mask_padding_fraction,
       fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
        return_mask_and_solvent_fraction=return_mask_and_solvent_fraction,
-      mask_resolution=mask_resolution)
+      mask_resolution=mask_resolution,out=out)
 
   try:
     from phenix.autosol.map_to_model import iterated_solvent_fraction
@@ -8709,7 +8709,7 @@ def get_iterated_solvent_fraction(map=None,
         mask_padding_fraction=mask_padding_fraction,
         fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
         return_mask_and_solvent_fraction=return_mask_and_solvent_fraction,
-        mask_resolution=mask_resolution)
+        mask_resolution=mask_resolution,out=out)
   except Exception as e:
     # catch case where map was not on proper grid
     if str(e).find("sym equiv of a grid point must be a grid point")>-1:
@@ -8732,7 +8732,7 @@ def get_iterated_solvent_fraction(map=None,
       mask_padding_fraction=mask_padding_fraction,
       fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
       return_mask_and_solvent_fraction=return_mask_and_solvent_fraction,
-      mask_resolution=mask_resolution)
+      mask_resolution=mask_resolution,out=out)
 
 def get_solvent_fraction_from_low_res_mask(
       crystal_symmetry=None,map_data=None,

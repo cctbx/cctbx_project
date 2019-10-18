@@ -12,6 +12,7 @@ from scitbx.array_family import flex
 import time
 from libtbx import introspection
 from libtbx.str_utils import size_as_string_with_commas
+from libtbx.utils import null_out
 
 def show_process_info(out):
   print("\\/"*39, file=out)
@@ -369,21 +370,26 @@ class _mtriage(object):
       resolution       = self.resolution)
 
   def _compute_soft_mask_from_density(self):
-    from cctbx.maptbx.segment_and_split_map import \
-       get_and_apply_soft_mask_to_maps
-    from libtbx.utils import null_out
-    mask_data,map_data,half_map_data_list,\
-         solvent_fraction,smoothed_mask_data,original_map_data=\
-        get_and_apply_soft_mask_to_maps(
-        resolution=self.resolution,
-        buffer_radius=2.*self.radius_smooth,
+
+    from cctbx.maptbx.segment_and_split_map import get_iterated_solvent_fraction
+    mask_data,solvent_fraction=get_iterated_solvent_fraction(
+        crystal_symmetry=self.crystal_symmetry,
+        fraction_of_max_mask_threshold=0.05, # 
+        cell_cutoff_for_solvent_from_mask=1, # Use low-res method always
+        mask_resolution=self.resolution,
+        return_mask_and_solvent_fraction=True,
+        verbose=False,
+        map=self.map_data,
+        out=null_out())
+
+    if solvent_fraction:
+      from cctbx.maptbx.segment_and_split_map import apply_soft_mask
+      map_data,smoothed_mask_data=apply_soft_mask(map_data=self.map_data,
+        mask_data=mask_data.as_double(),
         rad_smooth=self.radius_smooth,
-        solvent_content_iterations=3,
-        solvent_content=None,
-        map_data=self.map_data,
         crystal_symmetry=self.crystal_symmetry,
         out=null_out())
-    if solvent_fraction:
+
       return smoothed_mask_data
     else:
       return None
