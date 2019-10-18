@@ -14,7 +14,7 @@ from simtbx.diffBragg.refiners import PixelRefinement
 class RefineRot(PixelRefinement):
 
     def __init__(self, spot_rois, abc_init, img, SimData_instance,
-                 plot_images=False, plot_residuals=False):
+                 plot_images=False, plot_residuals=False, panel_ids=None):
         """
         :param spot_rois:
         :param abc_init:
@@ -27,6 +27,12 @@ class RefineRot(PixelRefinement):
         self.plot_residuals = plot_residuals
         self.spot_rois = spot_rois
         self.abc_init = abc_init
+        if panel_ids is None:
+            self.panel_ids = np.zeros(len(self.spot_rois))
+        else:
+            self.panel_ids = np.array(panel_ids)
+            assert len(self.panel_ids.shape) == 1
+            assert self.panel_ids.shape[0] == len(self.panel_ids)
         self.gain_fac = 1
         self.img = img
         self.S = SimData_instance

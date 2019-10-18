@@ -25,12 +25,13 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.use_curvatures = False
         self.refine_background_planes = True
         self.refine_gain_fac = False
+        self.multi_panel = False
         self.refine_ncells = False
         self.hit_break_to_use_curvatures = False
         self.refine_detdist = True
         self.refine_Amatrix = True
         self.refine_Bmatrix = True
-        self.use_curvatures_threshold = 3
+        self.use_curvatures_threshold = 7
         self.curv = None  # curvatures array
         self.refine_Umatrix = True
         self.verbose = True
@@ -45,6 +46,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.max_calls = 1000
         self.plot_stride = 10
         self.ignore_line_search = False
+        self.panel_ids = None
         lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
 
     @abstractmethod
@@ -218,12 +220,17 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         """useful cache for iterative LBFGS step"""
         nanoBragg_rois = []  # special nanoBragg format
         xrel, yrel, roi_img = [], [], []
-        for x1, x2, y1, y2 in self.spot_rois:
+        for i_roi, (x1, x2, y1, y2) in enumerate(self.spot_rois):
             nanoBragg_rois.append(((x1, x2), (y1, y2)))
             yr, xr = np.indices((y2-y1+1, x2-x1+1))
             xrel.append(xr)
             yrel.append(yr)
-            roi_img.append(self.img[y1:y2+1, x1:x2+1])
+            if self.multi_panel:
+                pid = self.panel_ids[i_roi]
+                roi_img.append(self.img[pid, y1:y2 + 1, x1:x2 + 1])
+            else:
+                roi_img.append(self.img[y1:y2+1, x1:x2+1])
+
         self.nanoBragg_rois = nanoBragg_rois
         self.roi_img = roi_img
         self.xrel = xrel
