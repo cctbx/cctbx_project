@@ -91,7 +91,23 @@ def mpi_split_evaluator_run(target_evaluator,
           print ("%s %10.4f"%("MPI stp",f),"["," ".join(["%10.4f"%a for a in x]),"]")
         d = None
       else:
-        f, g, d = target_evaluator.compute_functional_gradients_diag()
+        f_term, g_term, c_term = target_evaluator.compute_functional_gradients_curvatures()
+        f_total = comm.reduce(f_term, MPI.SUM, 0)
+        g_total = comm.reduce(g_term, MPI.SUM, 0)
+        c_total = comm.reduce(c_term, MPI.SUM, 0)
+        transmit = None
+        if rank == 0:
+          transmit = f_total, g_total, c_total
+        f, g, curv = comm.bcast(transmit, root=0)
+
+        sel = (g != 0)
+        curv.set_selected(~sel, 1000)  # however, if we've decided to not refine a certain parameter, we
+        # can indicate this to LBFGS by setting the gradient to zero.
+        # Then we can set the curvature to an arbitrary positive value that
+        # will be tested for positivity but otherwise ignored.
+
+        assert curv.select(sel).all_gt(0)
+        d = 1 / curv
         if (diag_mode == "once"):
           diag_mode = None
       if (f_min is None):
