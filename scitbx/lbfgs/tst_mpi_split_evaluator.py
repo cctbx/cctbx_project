@@ -105,8 +105,7 @@ def mpi_split_evaluator_run(target_evaluator,
           print ("%s %10.4f"%("MPI stp",f),"["," ".join(["%10.4f"%a for a in x]),"]")
         d = None
       else:
-        f_term, g_term = target_evaluator.compute_functional_and_gradients()
-        c_term = target_evaluator.curvatures()
+        f_term, g_term, c_term = target_evaluator.compute_functional_gradients_curvatures()
         f_total = comm.reduce(f_term, MPI.SUM, 0)
         g_total = comm.reduce(g_term, MPI.SUM, 0)
         c_total = comm.reduce(c_term, MPI.SUM, 0)
@@ -120,7 +119,8 @@ def mpi_split_evaluator_run(target_evaluator,
         # can indicate this to LBFGS by setting the gradient to zero.
         # Then we can set the curvature to an arbitrary positive value that
         # will be tested for positivity but otherwise ignored.
-        assert curv.select(sel).all_gt(0)  # NOTE: what happens here in MPI WORLD if assert False?
+
+        assert curv.select(sel).all_gt(0)
         d = 1 / curv
         if (diag_mode == "once"):
           diag_mode = None
