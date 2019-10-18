@@ -6,3 +6,4 @@ from .rotXYZ_ucell_refiner import RefineMissetAndUcell
 from .detdist_refiner import RefineDetdist
 from .ncells_refiner import RefineNcells
 from .all_refine import RefineAll
+from .all_refine_multipanel import RefineAllMultiPanel
