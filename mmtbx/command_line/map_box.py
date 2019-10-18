@@ -59,7 +59,7 @@ master_phil = libtbx.phil.parse("""
     .help = If mask_atoms is False, a box of density will be cut out around\
             the input model (after selections are applied to the model). \
             The size of the box of density will be box_cushion bigger than \
-            the model.
+            the model.  Box cushion also applied if density_select is set.
     .short_caption = Box cushion
 
   mask_atoms=False
@@ -169,7 +169,7 @@ master_phil = libtbx.phil.parse("""
 
   box_buffer = 5
     .type = int
-    .help = Padding around unique region
+    .help = Padding around unique region in extract_unique
     .short_caption = Padding around unique region
 
   soft_mask_extract_unique = True
@@ -766,6 +766,7 @@ Parameters:"""%h
 
   print("\nBox cell dimensions: (%.2f, %.2f, %.2f) A" %(
       box.box_crystal_symmetry.unit_cell().parameters()[:3]), file=log)
+
   if box.shift_cart:
      print("Working origin moved from grid position of"+\
         ": (%d, %d, %d) to (0,0,0) " %(
@@ -804,6 +805,7 @@ Parameters:"""%h
       print("\nOutput files are in same location as original and origin "+\
         "is at (0,0,0)\n", file=log)
 
+  print("\nBox grid: (%s, %s, %s) " %(output_box.map_box.all()))
   ph_output_box_output_location = ph_box.deep_copy()
   if output_box.shift_cart:  # shift coordinates and NCS back by shift_cart
     # NOTE output_box.shift_cart could be different than box.shift_cart if

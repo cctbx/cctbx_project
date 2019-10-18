@@ -56,10 +56,23 @@ master_params_str = """
     .type = bool
     .help = Mask out region outside molecule
     .style = tribool
+  auto_mask_if_no_model = False
+    .type = bool
+    .help = If mask_maps is set and no model is present, mask based on density
+    .style = tribool
   radius_smooth = None
     .type = float
     .help = Mask smoothing radius
     .short_caption = Mask smoothing radius
+  radius_smooth_ratio = 2
+    .type = float
+    .help = If mask smoothing radius is not specified it will be \
+               radius_smooth_ratio times the resolution
+    .short_caption = Mask smoothing radius ratio
+  n_bins = 500
+    .type = int
+    .help = Number of bins for FSC curves
+    .short_caption = Bins for FSC
   nproc = 1
     .type = int
     .help = Number of processors to use
@@ -213,8 +226,6 @@ class mtriage(object):
         include_curves = self.params.include_curves,
         include_mask   = self.params.include_mask)
       # Masking
-      if(self.params.radius_smooth is None):
-        self.params.radius_smooth = self.results_unmasked.d99
       self.params.mask_maps = True
       self.results_masked = _mtriage(
         map_data         = self.map_data,
@@ -283,6 +294,7 @@ class _mtriage(object):
     self.fsc_curve_model  = None
     self.mask_smooth      = None
     self.radius_smooth    = self.params.radius_smooth
+    self.n_bins    = self.params.n_bins
     self.d_corner         = None
     self.d9999            = None
     # Info (results)
@@ -334,25 +346,62 @@ class _mtriage(object):
 
   def _compute_radius(self):
     if(not self.params.mask_maps): return
-    if(self.xray_structure is None): return
+    if(self.radius_smooth is not None): return
+    if self.resolution and self.params.radius_smooth_ratio:
+      self.radius_smooth = \
+          self.params.resolution*self.params.radius_smooth_ratio
+      return
+    if(self.xray_structure is None): 
+      if(self.resolution):  # resolution but no smooth ratio
+        self.radius_smooth = self.resolution
+      return
     if(self.xray_structure is not None and
        [self.radius_smooth, self.resolution].count(None)==2):
       f_map = miller.structure_factor_box_from_map(
         map              = self.map_data,
         crystal_symmetry = self.crystal_symmetry)
       self.radius_smooth = maptbx.d99(f_map = f_map).result.d99
+      if self.params.radius_smooth_ratio:
+        self.radius_smooth = self.radius_smooth *self.params.radius_smooth_ratio
     self.radius_smooth = get_atom_radius(
       xray_structure   = self.xray_structure,
       radius           = self.radius_smooth,
       resolution       = self.resolution)
 
+  def _compute_soft_mask_from_density(self):
+    from cctbx.maptbx.segment_and_split_map import \
+       get_and_apply_soft_mask_to_maps
+    from libtbx.utils import null_out
+    mask_data,map_data,half_map_data_list,\
+         solvent_fraction,smoothed_mask_data,original_map_data=\
+        get_and_apply_soft_mask_to_maps(
+        resolution=self.resolution,
+        buffer_radius=2.*self.radius_smooth,
+        rad_smooth=self.radius_smooth,
+        solvent_content_iterations=3,
+        solvent_content=None,
+        map_data=self.map_data,
+        crystal_symmetry=self.crystal_symmetry,
+        out=null_out())
+    if solvent_fraction:
+      return smoothed_mask_data
+    else:
+      return None
+
   def _compute_and_apply_mask(self):
     if(not self.params.mask_maps): return
-    if(self.xray_structure is None): return
-    self.mask_smooth = masks.smooth_mask(
-      xray_structure = self.xray_structure,
-      n_real         = self.map_data.all(),
-      rad_smooth     = self.radius_smooth).mask_smooth
+    if(self.xray_structure is None): 
+      self.mask_smooth=None
+      if self.params.auto_mask_if_no_model: 
+        # generate mask from the density
+        self.mask_smooth=self._compute_soft_mask_from_density()
+      if not self.mask_smooth:  # failed or did not attempt
+        return
+    else:
+      self.mask_smooth = masks.smooth_mask(
+        xray_structure = self.xray_structure,
+        n_real         = self.map_data.all(),
+        rad_smooth     = self.radius_smooth).mask_smooth
     self.map_data = self.map_data*self.mask_smooth
     if(self.map_data_1 is not None):
       self.map_data_1 = self.map_data_1*self.mask_smooth
@@ -409,15 +458,21 @@ class _mtriage(object):
 
   def _compute_half_map_fsc(self):
     if(self.map_data_1 is not None):
+      bin_width=100
+      if self.n_bins:
+        bin_width=max(bin_width,int(0.5+self.f_map_1.size()/self.n_bins)) 
       self.fsc_curve = self.f_map_1.d_min_from_fsc(
-        other = self.f_map_2, bin_width=100, fsc_cutoff=0.143)
+        other = self.f_map_2, bin_width=bin_width, fsc_cutoff=0.143)
       self.d_fsc = self.fsc_curve.d_min
 
   def _compute_fsc_curve_model(self):
     if(not self.params.compute.fsc_curve_model): return
     if(self.xray_structure is not None):
+      bin_width=100
+      if self.n_bins:
+        bin_width=max(bin_width,int(0.5+self.f_calc.size()/self.n_bins)) 
       self.fsc_curve_model = self.f_calc.fsc(
-        other=self.f_map, bin_width=100)
+        other=self.f_map, bin_width=bin_width)
 
   def _compute_f_fsc_model_0(self):
     if(not self.params.compute.d_fsc_model_0): return
