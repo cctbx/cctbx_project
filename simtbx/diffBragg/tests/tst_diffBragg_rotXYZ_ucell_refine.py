@@ -52,7 +52,7 @@ nbcryst.thick_mm = 0.1
 nbcryst.Ncells_abc = 12, 12, 12
 
 SIM = SimData()
-SIM.detector = SimData.simple_detector(150, 0.1, (512, 512))
+SIM.detector = SimData.simple_detector(150, 0.1, (513, 512))
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0)
 SIM.D.default_F = 0
