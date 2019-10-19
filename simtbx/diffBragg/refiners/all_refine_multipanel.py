@@ -50,6 +50,7 @@ class RefineAllMultiPanel(RefineRot):
         self.n = n_bg + self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params*n_panels + n_spotscale
         self.x = flex.double(self.n)
 
+
         self.rotX_xpos = n_bg
         self.rotY_xpos = n_bg + 1
         self.rotZ_xpos = n_bg + 2
@@ -65,7 +66,7 @@ class RefineAllMultiPanel(RefineRot):
             self.x[self.ucell_xstart + i_uc] = self.ucell_manager.variables[i_uc]
 
         # put in Ncells abc estimate
-        self.ncells_xpos = self.ucell_xstart + 1
+        self.ncells_xpos = self.ucell_xstart + self.n_ucell_param
         self.x[self.ncells_xpos] = self.S.crystal.Ncells_abc[0]
 
         # put in estimates for origin vectors
@@ -97,6 +98,10 @@ class RefineAllMultiPanel(RefineRot):
         if self.refine_detdist:
             self.D.refine(self._originZ_id)
         self.D.initialize_managers()
+        self.x_init = self.x.as_numpy_array()
+
+        from IPython import embed
+        embed()
 
     @property
     def x(self):
@@ -138,7 +143,7 @@ class RefineAllMultiPanel(RefineRot):
             self.D.set_value(2, self.x[self.rotZ_xpos])
 
     def _update_ncells(self):
-        self.D.set_value(self._ncells_id, self.x[-4])
+        self.D.set_value(self._ncells_id, self.x[self.ncells_xpos])
 
     def _update_dxtbx_detector(self):
         det = self.S.detector
@@ -149,10 +154,7 @@ class RefineAllMultiPanel(RefineRot):
         node_d["origin"] = node_d["origin"][0], node_d["origin"][1], new_originZ
         det[self._panel_id] = Panel.from_dict(node_d)
         self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
-        print("Updating!")
         self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
-        print("Done!")
-        exit()
 
     def _extract_pixel_data(self):
         self.rot_deriv = [0, 0, 0]
@@ -212,6 +214,7 @@ class RefineAllMultiPanel(RefineRot):
 
     def compute_functional_and_gradients(self):
         if self.calc_func:
+            #self.x = flex.double(self.x_init)
             if self.verbose:
                 if self.use_curvatures:
                     print("Compute functional and gradients Iter %d (Using Curvatures)\n<><><><><><><><><><><><><>"
@@ -238,10 +241,13 @@ class RefineAllMultiPanel(RefineRot):
                     sys.stdout.flush()
 
                 self._update_dxtbx_detector()  # TODO : chek that I wrk
-
+                #print("Upated dxtbx %d" % i_spot)
                 self._run_diffBragg_current(i_spot)
+                #print("Rawnn dxtbx diffBRagg")
                 self._unpack_bgplane_params(i_spot)
+                #print("UNpacked planes")
                 self._set_background_plane(i_spot)
+                #print("set planes")
                 self._extract_pixel_data()
                 self._evaluate_averageI()
                 self._evaluate_log_averageI()
