@@ -216,10 +216,27 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
                 self.hit_break_to_use_curvatures = True
                 pass
 
+    def _filter_spot_rois(self):
+        """
+        This is important to handle the edge case where an ROI occurs along
+        the boundary of an image. This arises because
+        NanoBragg assumes inclusive ROI bounds, but an exclusive raw_image
+        """
+        if self.multi_panel:
+            nslow, nfast = self.img[0].shape
+        else:
+            nslow, nfast = self.img.shape
+        for i, (_, x2, _, y2) in enumerate(self.spot_rois):
+            if x2 == nfast:
+                self.spot_rois[i, 1] = x2-1  # update roi_xmax
+            if y2 == nslow:
+                self.spot_rois[i, 3] = y2-1  # update roi_ymax
+
     def _cache_roi_arrays(self):
         """useful cache for iterative LBFGS step"""
         nanoBragg_rois = []  # special nanoBragg format
         xrel, yrel, roi_img = [], [], []
+        self._filter_spot_rois()
         for i_roi, (x1, x2, y1, y2) in enumerate(self.spot_rois):
             nanoBragg_rois.append(((x1, x2), (y1, y2)))
             yr, xr = np.indices((y2-y1+1, x2-x1+1))
