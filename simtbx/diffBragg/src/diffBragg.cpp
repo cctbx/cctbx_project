@@ -668,7 +668,8 @@ void diffBragg::add_diffBragg_spots()
 
     //int min_i= 10000000000;
     //int max_i= -1;
-    int roi_fdim = roi_xmax - roi_xmin;
+    int roi_fdim = roi_xmax - roi_xmin+1;
+    int roi_sdim = roi_ymax - roi_ymin+1;
 
     sum = sumsqr = 0.0;
     i = sumn = 0;
@@ -1141,7 +1142,7 @@ void diffBragg::add_diffBragg_spots()
 
             int roi_fs = i % fpixels - roi_xmin;
             int roi_ss = floor(i / fpixels) - roi_ymin ;
-            int roi_i =  roi_ss*(roi_fdim+1) + roi_fs ;
+            int roi_i =  roi_ss*roi_fdim + roi_fs ;
             //SCITBX_EXAMINE(i);
             //SCITBX_EXAMINE(fpixels);
             //SCITBX_EXAMINE(spixels);
@@ -1150,10 +1151,11 @@ void diffBragg::add_diffBragg_spots()
             //SCITBX_EXAMINE(roi_fs);
             //SCITBX_EXAMINE(roi_ss);
             //SCITBX_EXAMINE(roi_i);
-            SCITBX_ASSERT( roi_fs <= (roi_xmax - roi_xmin));
-            SCITBX_ASSERT( roi_ss <= (roi_ymax - roi_ymin));
+            SCITBX_ASSERT( roi_fs < roi_fdim);
+            SCITBX_ASSERT( roi_ss < roi_sdim);
             SCITBX_ASSERT(roi_i >= 0);
-            SCITBX_ASSERT(roi_i < (roi_xmax - roi_xmin + 1)*(roi_ymax - roi_ymin+1) ) ;
+            SCITBX_ASSERT(roi_i < (roi_fdim*roi_sdim) ) ;
+
             floatimage_roi[roi_i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
 
             /* udpate the rotation derivative images*/
