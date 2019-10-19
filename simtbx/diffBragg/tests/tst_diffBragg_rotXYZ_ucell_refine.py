@@ -144,9 +144,15 @@ err_ref = np.linalg.norm([abs(u-u_ref)/u for u, u_ref in zip(ucell, ucell_ref)])
 
 assert err_ref < 1e-1 * err_init
 
-# Note, this test might change, e.g. angle could be negative and axis could be the same...
-assert np.round(ang, 1) == np.round(perturb_rot_ang, 1)
-assert np.linalg.norm(np.round(ax, 2) + np.round(perturb_rot_axis, 2)) < 0.075
+# the initial perturbation matrix:
+R1 = rec(perturb_rot_axis, (3, 1)).axis_and_angle_as_r3_rotation_matrix(perturb_rot_ang, deg=True)
+# restoring purturbation applied after refinement:
+R2 = ax.axis_and_angle_as_r3_rotation_matrix(ang, deg=True)
+
+# the hope is that R2 cancels the effect of R1
+# hence, the product R1 and R2 should be ~ Identity
+I = np.reshape(R1*R2, (3, 3))
+assert np.all(np.round(I-np.eye(3), 3) == np.zeros((3, 3)))
 assert final_Umat_norm < 1e-1*init_Umat_norm
 
 print("OK")
