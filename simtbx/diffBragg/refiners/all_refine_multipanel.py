@@ -6,10 +6,9 @@ import sys
 from dxtbx.model import Panel
 
 
-class RefineAll(RefineRot):
+class RefineAllMultiPanel(RefineRot):
 
-    def __init__(self, ucell_manager, rotXYZ_refine=(True, True, True), init_gain=1, init_scale=1,
-                 panel_id=0, *args, **kwargs):
+    def __init__(self, ucell_manager, rotXYZ_refine=(True, True, True), init_gain=1, init_scale=1, *args, **kwargs):
         """
         :param ucell_manager:
         :param rotXYZ_refine:
@@ -19,6 +18,7 @@ class RefineAll(RefineRot):
 
         RefineRot.__init__(self, *args, **kwargs)
         self.calc_func = True
+        self.multi_panel = True
         self.f_vals = []
 
         self.refine_rotX = rotXYZ_refine[0]
@@ -31,34 +31,51 @@ class RefineAll(RefineRot):
         self.n_ucell_param = len(self.ucell_manager.variables)
         self._init_scale = init_scale
         self._init_gain = init_gain
-        self._panel_id = panel_id
         self.best_image = np.zeros_like(self.img)
         self.num_positive_curvatures = 0
+        self._panel_id = None
 
     def _setup(self):
         # total number of refinement parameters
         n_bg = 0  #3 * self.n_spots
-        n_spotscale = 2
-        n_origin_params = 1
+        n_spotscale = 2  # a crystal scsale and an overall scale (e.g. gain)
+        n_origin_params = 1  # Currently just the Z-component of the origin is being refined..
         n_ncells_params = 1
-        self.n = n_bg + self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params + n_spotscale
-        self.n = self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params + n_spotscale
+
+        # make a mapping of panel id to parameter index and backwards
+        self.pid_from_idx = {i: pid for i, pid in enumerate(np.unique(self.panel_ids))}
+        self.idx_from_pid = {pid: i for i, pid in enumerate(np.unique(self.panel_ids))}
+        n_panels = len(self.pid_from_idx)
+
+        self.n = n_bg + self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params*n_panels + n_spotscale
         self.x = flex.double(self.n)
+
 
         self.rotX_xpos = n_bg
         self.rotY_xpos = n_bg + 1
         self.rotZ_xpos = n_bg + 2
-
-        self.ucell_xstart = n_bg + self.n_rot_param
-        # populate the x-array with initial values
-        self._move_abc_init_to_x()
         self.x[self.rotX_xpos] = 0
         self.x[self.rotY_xpos] = 0
         self.x[self.rotZ_xpos] = 0
+
+        self._move_abc_init_to_x()
+
+        self.ucell_xstart = self.rotZ_xpos + 1
+        # populate the x-array with initial values
         for i_uc in range(self.n_ucell_param):
             self.x[self.ucell_xstart + i_uc] = self.ucell_manager.variables[i_uc]
-        self.x[-4] = self.S.crystal.Ncells_abc[0]
-        self.x[-3] = self.S.detector[self._panel_id].get_origin()[2]
+
+        # put in Ncells abc estimate
+        self.ncells_xpos = self.ucell_xstart + self.n_ucell_param
+        self.x[self.ncells_xpos] = self.S.crystal.Ncells_abc[0]
+
+        # put in estimates for origin vectors
+        self.origin_xstart = self.ncells_xpos + 1
+        for i_pan in range(n_panels):
+            pid = self.pid_from_idx[i_pan]
+            self.x[self.origin_xstart + i_pan] = self.S.detector[pid].get_origin()[2]
+
+        # lastly, the scale factors
         self.x[-2] = self._init_gain  # initial gain for experiment
         self.x[-1] = self._init_scale  # initial scale factor
 
@@ -81,6 +98,10 @@ class RefineAll(RefineRot):
         if self.refine_detdist:
             self.D.refine(self._originZ_id)
         self.D.initialize_managers()
+        self.x_init = self.x.as_numpy_array()
+
+        from IPython import embed
+        embed()
 
     @property
     def x(self):
@@ -104,23 +125,32 @@ class RefineAll(RefineRot):
     def _run_diffBragg_current(self, i_spot):
         """needs to be called each time the ROI is changed"""
         self.D.region_of_interest = self.nanoBragg_rois[i_spot]
+        #if self.refine_rotX:
+        #    self.D.set_value(0, self.x[self.rotX_xpos])
+        #if self.refine_rotY:
+        #    self.D.set_value(1, self.x[self.rotY_xpos])
+        #if self.refine_rotZ:
+        #    self.D.set_value(2, self.x[self.rotZ_xpos])
+        #self.D.Bmatrix = self.ucell_manager.B_recipspace
+        self.D.add_diffBragg_spots()
+
+    def _update_rotXYZ(self):
         if self.refine_rotX:
             self.D.set_value(0, self.x[self.rotX_xpos])
         if self.refine_rotY:
             self.D.set_value(1, self.x[self.rotY_xpos])
         if self.refine_rotZ:
             self.D.set_value(2, self.x[self.rotZ_xpos])
-        self.D.Bmatrix = self.ucell_manager.B_recipspace
-        self.D.add_diffBragg_spots()
 
     def _update_ncells(self):
-        self.D.set_value(self._ncells_id, self.x[-4])
+        self.D.set_value(self._ncells_id, self.x[self.ncells_xpos])
 
     def _update_dxtbx_detector(self):
         det = self.S.detector
         node = det[self._panel_id]
         node_d = node.to_dict()
-        new_originZ = self.x[-3]
+        xpos = self.origin_xstart + self.idx_from_pid[self._panel_id]
+        new_originZ = self.x[xpos]
         node_d["origin"] = node_d["origin"][0], node_d["origin"][1], new_originZ
         det[self._panel_id] = Panel.from_dict(node_d)
         self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
@@ -165,8 +195,9 @@ class RefineAll(RefineRot):
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
 
     def _update_best_image(self, i_spot):
+        pid = self.panel_ids[i_spot]
         x1, x2, y1, y2 = self.spot_rois[i_spot]
-        self.best_image[y1:y2 + 1, x1:x2 + 1] = self.model_Lambda
+        self.best_image[pid, y1:y2 + 1, x1:x2 + 1] = self.model_Lambda
 
     def _unpack_bgplane_params(self, i_spot):
         self.a, self.b, self.c = self.abc_init[i_spot]
@@ -179,9 +210,11 @@ class RefineAll(RefineRot):
         pars = list(self.x[_s])
         self.ucell_manager.variables = pars
         self._send_gradients_to_derivative_managers()
+        self.D.Bmatrix = self.ucell_manager.B_recipspace
 
     def compute_functional_and_gradients(self):
         if self.calc_func:
+            #self.x = flex.double(self.x_init)
             if self.verbose:
                 if self.use_curvatures:
                     print("Compute functional and gradients Iter %d (Using Curvatures)\n<><><><><><><><><><><><><>"
@@ -198,16 +231,23 @@ class RefineAll(RefineRot):
             self.scale_fac = self.x[-1]
             G2 = self.gain_fac**2
             S2 = self.scale_fac**2
-            self._update_dxtbx_detector()
             self._update_ucell()
             self._update_ncells()
+            self._update_rotXYZ()
             for i_spot in range(self.n_spots):
+                self._panel_id = self.panel_ids[i_spot]
                 if self.verbose:
-                    print "\rRunning diffBragg over spot %d/%d " % (i_spot+1, self.n_spots),
+                    print "\rRunning diffBragg over spot %d/%d on panel %d " % (i_spot+1, self.n_spots, self._panel_id),
                     sys.stdout.flush()
+
+                self._update_dxtbx_detector()  # TODO : chek that I wrk
+                #print("Upated dxtbx %d" % i_spot)
                 self._run_diffBragg_current(i_spot)
+                #print("Rawnn dxtbx diffBRagg")
                 self._unpack_bgplane_params(i_spot)
+                #print("UNpacked planes")
                 self._set_background_plane(i_spot)
+                #print("set planes")
                 self._extract_pixel_data()
                 self._evaluate_averageI()
                 self._evaluate_log_averageI()
@@ -279,16 +319,18 @@ class RefineAll(RefineRot):
 
                 if self.refine_ncells:
                     d = self.ncells_deriv
-                    g[-4] += (S2*G2*d*one_minus_k_over_Lambda).sum()
+                    g[self.ncells_xpos] += (S2*G2*d*one_minus_k_over_Lambda).sum()
                     if self.calc_curvatures:
                         d2 = S2*G2*self.ncells_second_deriv
                         cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
-                        self.curv[-4] += cc.sum()
+                        self.curv[self.ncells_xpos] += cc.sum()
 
                 if self.refine_detdist:
-                    if self.calc_curvatures:
-                        raise NotImplementedError("Cannot use curvatures and refine detdist (yet...)")
-                    g[-3] += (S2*G2*self.detdist_deriv*one_minus_k_over_Lambda).sum()
+                    raise NotImplementedError("Cannot refined detdist (yet...)")
+                    #if self.calc_curvatures:
+                    #    raise NotImplementedError("Cannot use curvatures and refine detdist (yet...)")
+                    #origin_xpos = self.origin_xstart + self.idx_from_pid[self._panel_id]
+                    #g[origin_xpos] += (S2*G2*self.detdist_deriv*one_minus_k_over_Lambda).sum()
 
                 if self.refine_gain_fac:
                     d = 2*self.gain_fac*(self.tilt_plane + S2*self.model_bragg_spots)
@@ -335,7 +377,7 @@ class RefineAll(RefineRot):
         rotZ = self.x[self.rotZ_xpos]
         rot_labels = ["rotX=%+3.7g" % rotX, "rotY=%+3.7g" % rotY, "rotZ=%+3.4g" % rotZ]
         print("%s: residual=%3.8g, ncells=%f, detdist=%3.8g, gain=%3.4g, scale=%4.8g"
-              % (message, target, self.x[-4], self.x[-3], self.x[-2]**2, self.x[-1]**2))
+              % (message, target, self.x[self.ncells_xpos], self.x[self.origin_xstart], self.x[-2]**2, self.x[-1]**2))
         print ("Ucell: %s *** Missets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
@@ -353,7 +395,7 @@ class RefineAll(RefineRot):
         rot_labels = ["GrotX=%+3.7g" % rotX, "GrotY=%+3.7g" % rotY, "GrotZ=%+3.4g" % rotZ]
         xnorm = np.linalg.norm(self.x)
         print("%s: |x|=%f, |g|=%f, Gncells=%f, Gdetdist=%3.8g, Ggain=%3.4g, Gscale=%4.8g"
-              % (message, xnorm, target, self._g[-4], self._g[-3], self._g[-2], self._g[-1]))
+              % (message, xnorm, target, self._g[self.ncells_xpos], self._g[self.origin_xstart], self._g[-2], self._g[-1]))
         print ("GUcell: %s *** GMissets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")

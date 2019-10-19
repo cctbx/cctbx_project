@@ -5,6 +5,11 @@ from abc import ABCMeta, abstractproperty, abstractmethod
 from scitbx.lbfgs.tst_curvatures import lbfgs_with_curvatures_mix_in
 
 
+# used in pixel refinement
+class BreakToUseCurvatures(Exception):
+    pass
+
+
 class PixelRefinement(lbfgs_with_curvatures_mix_in):
     """
     This is the base class for pixel refinement based on
@@ -20,14 +25,20 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.use_curvatures = False
         self.refine_background_planes = True
         self.refine_gain_fac = False
+        self.multi_panel = False
         self.refine_ncells = False
+        self.hit_break_to_use_curvatures = False
         self.refine_detdist = True
         self.refine_Amatrix = True
         self.refine_Bmatrix = True
+        self.use_curvatures_threshold = 7
+        self.curv = None  # curvatures array
         self.refine_Umatrix = True
+        self.verbose = True
         self.refine_crystal_scale = True
         self.plot_images = False
         self.trad_conv = False
+        self.calc_curvatures = False
         self.trad_conv_eps = 0.05
         self.drop_conv_max_eps = 1e-5
         self.mn_iter = None
@@ -35,6 +46,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.max_calls = 1000
         self.plot_stride = 10
         self.ignore_line_search = False
+        self.panel_ids = None
         lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
 
     @abstractmethod
@@ -175,10 +187,11 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         """
         pass
 
-    def run(self, curvature_min_verbose=False):
+    def run(self, curvature_min_verbose=False, setup=True):
         """runs the LBFGS minimizer"""
-        self._setup()
-        self._cache_roi_arrays()
+        if setup:
+            self._setup()
+            self._cache_roi_arrays()
         if self.use_curvatures:
             self.minimizer = self.lbfgs_run(
                 target_evaluator=self,
@@ -190,26 +203,51 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
                 verbose=curvature_min_verbose)
 
         else:
+            try:
+                from scitbx.lbfgs import core_parameters
+                C = core_parameters()
+                C.gtol = 1
+                self.minimizer = scitbx.lbfgs.run(
+                    target_evaluator=self,
+                    #core_params=C,
+                    exception_handling_params=self._handler,
+                    termination_params=self._terminator)
+            except BreakToUseCurvatures:
+                self.hit_break_to_use_curvatures = True
+                pass
 
-            from scitbx.lbfgs import core_parameters
-            C = core_parameters()
-            C.gtol = 1
-            self.minimizer = scitbx.lbfgs.run(
-                target_evaluator=self,
-                #core_params=C,
-                exception_handling_params=self._handler,
-                termination_params=self._terminator)
+    def _filter_spot_rois(self):
+        """
+        This is important to handle the edge case where an ROI occurs along
+        the boundary of an image. This arises because
+        NanoBragg assumes inclusive ROI bounds, but an exclusive raw_image
+        """
+        if self.multi_panel:
+            nslow, nfast = self.img[0].shape
+        else:
+            nslow, nfast = self.img.shape
+        for i, (_, x2, _, y2) in enumerate(self.spot_rois):
+            if x2 == nfast:
+                self.spot_rois[i, 1] = x2-1  # update roi_xmax
+            if y2 == nslow:
+                self.spot_rois[i, 3] = y2-1  # update roi_ymax
 
     def _cache_roi_arrays(self):
         """useful cache for iterative LBFGS step"""
         nanoBragg_rois = []  # special nanoBragg format
         xrel, yrel, roi_img = [], [], []
-        for x1, x2, y1, y2 in self.spot_rois:
+        self._filter_spot_rois()
+        for i_roi, (x1, x2, y1, y2) in enumerate(self.spot_rois):
             nanoBragg_rois.append(((x1, x2), (y1, y2)))
             yr, xr = np.indices((y2-y1+1, x2-x1+1))
             xrel.append(xr)
             yrel.append(yr)
-            roi_img.append(self.img[y1:y2+1, x1:x2+1])
+            if self.multi_panel:
+                pid = self.panel_ids[i_roi]
+                roi_img.append(self.img[pid, y1:y2 + 1, x1:x2 + 1])
+            else:
+                roi_img.append(self.img[y1:y2+1, x1:x2+1])
+
         self.nanoBragg_rois = nanoBragg_rois
         self.roi_img = roi_img
         self.xrel = xrel
@@ -259,6 +297,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     def use_curvatures(self, val):
         if not isinstance(val, bool):
             raise ValueError("use_curvatures should be boolean")
+        if val:
+            self.calc_curvatures = True
         self._use_curvatures = val
 
     @property
