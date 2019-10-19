@@ -374,7 +374,7 @@ class _mtriage(object):
     from cctbx.maptbx.segment_and_split_map import get_iterated_solvent_fraction
     mask_data,solvent_fraction=get_iterated_solvent_fraction(
         crystal_symmetry=self.crystal_symmetry,
-        fraction_of_max_mask_threshold=0.05, # 
+        fraction_of_max_mask_threshold=0.05, #
         cell_cutoff_for_solvent_from_mask=1, # Use low-res method always
         mask_resolution=self.resolution,
         return_mask_and_solvent_fraction=True,
