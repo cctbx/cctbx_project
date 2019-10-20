@@ -100,9 +100,6 @@ class RefineAllMultiPanel(RefineRot):
         self.D.initialize_managers()
         self.x_init = self.x.as_numpy_array()
 
-        from IPython import embed
-        embed()
-
     @property
     def x(self):
         """LBFGS parameter array"""
@@ -241,13 +238,9 @@ class RefineAllMultiPanel(RefineRot):
                     sys.stdout.flush()
 
                 self._update_dxtbx_detector()  # TODO : chek that I wrk
-                #print("Upated dxtbx %d" % i_spot)
                 self._run_diffBragg_current(i_spot)
-                #print("Rawnn dxtbx diffBRagg")
                 self._unpack_bgplane_params(i_spot)
-                #print("UNpacked planes")
                 self._set_background_plane(i_spot)
-                #print("set planes")
                 self._extract_pixel_data()
                 self._evaluate_averageI()
                 self._evaluate_log_averageI()
