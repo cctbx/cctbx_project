@@ -1151,10 +1151,10 @@ void diffBragg::add_diffBragg_spots()
             //SCITBX_EXAMINE(roi_fs);
             //SCITBX_EXAMINE(roi_ss);
             //SCITBX_EXAMINE(roi_i);
-            SCITBX_ASSERT( roi_fs < roi_fdim);
-            SCITBX_ASSERT( roi_ss < roi_sdim);
-            SCITBX_ASSERT(roi_i >= 0);
-            SCITBX_ASSERT(roi_i < (roi_fdim*roi_sdim) ) ;
+            //SCITBX_ASSERT( roi_fs < roi_fdim);
+            //SCITBX_ASSERT( roi_ss < roi_sdim);
+            //SCITBX_ASSERT(roi_i >= 0);
+            //SCITBX_ASSERT(roi_i < (roi_fdim*roi_sdim) ) ;
 
             floatimage_roi[roi_i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
 
