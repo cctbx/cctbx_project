@@ -32,13 +32,6 @@ def unit_cell_info(sub_clusters):
       groups = metric_subgroups(input_symmetry, 3.00,
         enforce_max_delta_for_generated_two_folds=True)
       group = groups.result_groups[0]
-      # suppress stdout output for now
-      from six.moves import StringIO
-      SS = StringIO()
-      import sys
-      sys.stdout = SS
-      group['best_subsym'].space_group_info().show_summary()
-      sys.stdout=sys.__stdout__
       print("                       Unit cell:", group['best_subsym'].unit_cell())
       uc_params_conv = group['best_subsym'].unit_cell().parameters()
 
@@ -62,7 +55,7 @@ def unit_cell_info(sub_clusters):
       out_str += ("\n{:>24}  {:<6.2f}{:<7} {:<6.2f}{:<7}"
                   " {:<6.2f}{:<7} {:<6.2f}{:<6} {:<6.2f}"
                   "{:<6} {:<6.2f}{:<6}  {:<6.2}").format(
-        SS.getvalue().strip()[13:],
+        group['best_subsym'].space_group_info().symbol_and_number(),
         uc_params_conv[0], "",
         uc_params_conv[1], "",
         uc_params_conv[2], "",
