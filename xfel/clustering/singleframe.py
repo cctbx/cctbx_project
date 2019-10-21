@@ -328,13 +328,10 @@ class SingleDialsFrameFromFiles(SingleFrame):
 
 class CellOnlyFrame(SingleFrame):
   def __init__(self, crystal_symmetry, path=None, name=None, lattice_id=None):
-    from six.moves import cStringIO as StringIO
-    f = StringIO()
     self.crystal_symmetry = crystal_symmetry
-    self.crystal_symmetry.show_summary(f=f)
     self.niggli_cell = self.crystal_symmetry.niggli_cell()
-    self.niggli_cell.show_summary(f=f, prefix="   niggli-->")
-    logger.info(f.getvalue())
+    logger.info(str(self.crystal_symmetry))
+    logger.info(self.niggli_cell.as_str(prefix="   niggli-->"))
     self.uc = self.niggli_cell.unit_cell().parameters()
     self.mm = self.niggli_cell.unit_cell().metrical_matrix()
     self.pg = "".join(self.crystal_symmetry.space_group().type().lookup_symbol().split())
