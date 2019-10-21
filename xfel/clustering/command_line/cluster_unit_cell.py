@@ -5,7 +5,7 @@ from xfel.clustering.cluster import Cluster
 from xfel.clustering.cluster_groups import unit_cell_info
 import matplotlib.pyplot as plt
 
-FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
+FORMAT = '%(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 
 def run(_args):
