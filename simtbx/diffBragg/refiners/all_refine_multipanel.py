@@ -3,6 +3,7 @@ from scitbx.array_family import flex
 import pylab as plt
 import numpy as np
 import sys
+from IPython import embed
 from dxtbx.model import Panel
 
 
@@ -144,11 +145,16 @@ class RefineAllMultiPanel(RefineRot):
 
     def _update_dxtbx_detector(self):
         det = self.S.detector
+        self.S.panel_id = self._panel_id
         node = det[self._panel_id]
         node_d = node.to_dict()
         xpos = self.origin_xstart + self.idx_from_pid[self._panel_id]
         new_originZ = self.x[xpos]
-        node_d["origin"] = node_d["origin"][0], node_d["origin"][1], new_originZ
+        orig = node.get_origin()
+        node_d["origin"] = orig[0], orig[1], new_originZ
+        node_d["fast_axis"] = node.get_fast_axis()
+        node_d["slow_axis"] = node.get_slow_axis()
+
         det[self._panel_id] = Panel.from_dict(node_d)
         self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
         self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
