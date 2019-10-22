@@ -20,7 +20,7 @@ from PySide2.QtWidgets import ( QAction, QApplication, QCheckBox, QComboBox, QDi
 
 from PySide2.QtGui import QColor, QFont, QCursor
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-import sys, zmq, subprocess, time, traceback, tempfile, os, shutil
+import sys, zmq, subprocess, time, traceback, tempfile, shutil
 
 
 
