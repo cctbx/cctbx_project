@@ -24,7 +24,19 @@ def mpi_split_evaluator_run(target_evaluator,
                     gradient_only=False,
                     line_search=True):
                     #<--- Insertion ends
-  """The supported scenario is that each MPI worker rank has a target evaluator
+  """
+  :param target_evaluator:
+    class with methods like compute functional and gradients
+    must have .x and .n attributes
+    optional callback_after_step method for convergence (recevied priority)
+  :param termination_params:  termination parameters instance, things like max steps
+  :param core_params: core parameters instance, things like gtol
+  :param exception_handling_params:
+  :param log: open file for logging ?? Or stdout
+  :param gradient_only:  Not sure
+  :param line_search:  Not sure, to do with lbfgs algorithm
+  :return:
+  The supported scenario is that each MPI worker rank has a target evaluator
   that has part of the data.  Each rank calculates a bit of the functional and
   gradients, but then mpi reduce is used to sum them all up.  There has been
   no low-level redesign to support MPI.  In particular, the ext.minimizer is
@@ -79,8 +91,10 @@ def mpi_split_evaluator_run(target_evaluator,
   f, g = None, None
   try:
     while 1:
+      print("<><><><><><><><><><>")
+      print("SPLIT EVALUATION!!!")
+      print("<><><><><><><><><><>")
       if (diag_mode is None):
-        #XXX Only the diag_mode==None case is currently implemented, just as example
         f_term, g_term = target_evaluator.compute_functional_and_gradients()
         f_total = comm.reduce(f_term, MPI.SUM, 0)
         g_total = comm.reduce(g_term, MPI.SUM, 0)
@@ -91,7 +105,8 @@ def mpi_split_evaluator_run(target_evaluator,
           print ("%s %10.4f"%("MPI stp",f),"["," ".join(["%10.4f"%a for a in x]),"]")
         d = None
       else:
-        f_term, g_term, c_term = target_evaluator.compute_functional_gradients_curvatures()
+        f_term, g_term = target_evaluator.compute_functional_and_gradients()
+        c_term = target_evaluator.curvatures()
         f_total = comm.reduce(f_term, MPI.SUM, 0)
         g_total = comm.reduce(g_term, MPI.SUM, 0)
         c_total = comm.reduce(c_term, MPI.SUM, 0)
@@ -105,8 +120,7 @@ def mpi_split_evaluator_run(target_evaluator,
         # can indicate this to LBFGS by setting the gradient to zero.
         # Then we can set the curvature to an arbitrary positive value that
         # will be tested for positivity but otherwise ignored.
-
-        assert curv.select(sel).all_gt(0)
+        assert curv.select(sel).all_gt(0)  # NOTE: what happens here in MPI WORLD if assert False?
         d = 1 / curv
         if (diag_mode == "once"):
           diag_mode = None
@@ -130,6 +144,9 @@ def mpi_split_evaluator_run(target_evaluator,
         #<--- Insertion ends
       if (log is not None):
         print("lbfgs minimizer step", file=log)
+
+      # DAM: just guessing, but it seems callback_after_step is a place holder for
+      # an application specific convergence test, that returns True at convergence
       if (callback_after_step is not None):
         if (callback_after_step(minimizer) is True):
           if (log is not None):
