@@ -610,15 +610,10 @@ else:
       SHLIBSUFFIX=env_etc.shlibsuffix,
     )
     env_etc.c_link = cc
-    env_etc.ccflags_base = ["-D_GLIBCXX_USE_CXX11_ABI=0", "-mtune=knl", "-march=knl",
-      "-ftree-vectorize",
-      "-fno-plt", "-Ofast",
+    env_etc.ccflags_base = [
       "-fPIC",
       "-fno-strict-aliasing"]
-    env_etc.cxxflags_base = ["-D_GLIBCXX_USE_CXX11_ABI=0", "-mtune=knl", "-march=knl",
-      "-std=c++11","-fvisibility-inlines-hidden",
-      "-ftree-vectorize", "-fPIC", "-fno-plt", "-Ofast"]
-    #
+    env_etc.cxxflags_base = []
     # XXX feature duplication, see env.build_options.enable_cxx11
     if (env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
       env_etc.cxxflags_base.append("-std=c++0x")
