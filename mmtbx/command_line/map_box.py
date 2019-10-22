@@ -713,6 +713,9 @@ Parameters:"""%h
   ph_box.adopt_xray_structure(box.xray_structure_box)
   box.hierarchy=ph_box
 
+  if params.mask_select:
+    print("\nSolvent content used in mask_select: %.3f " %(
+      box.get_solvent_content()),file=log)
   if (inputs and
     inputs.crystal_symmetry and inputs.ccp4_map and
     inputs.crystal_symmetry.unit_cell().parameters() and

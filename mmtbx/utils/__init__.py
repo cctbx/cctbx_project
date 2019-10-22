@@ -2556,6 +2556,9 @@ class extract_box_around_model_and_map(object):
        resolution=resolution,
        radius=soft_mask_radius,out=sys.stdout)
 
+  def get_solvent_content(self):
+    return self.solvent_content
+
   def get_original_cs(self):
     return self.xray_structure.crystal_symmetry()
 
