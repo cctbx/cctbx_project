@@ -8,7 +8,7 @@ import os
 
 mp_phil_str = '''
   mp {
-    method = local *lsf sge pbs shifter htcondor custom
+    method = local *lsf sge pbs slurm shifter htcondor custom
       .type = choice
       .help = Computing environment
     use_mpi = True
@@ -402,6 +402,85 @@ class get_pbs_submit_command(get_submit_command):
     for arg in self.params.extra_args:
       self.args.append(arg)
 
+class get_slurm_submit_command(get_submit_command):
+
+  def customize_for_method(self):
+    self.submit_head = "sbatch"
+    if (self.params.nnodes > 1) or (self.params.nproc_per_node > 1):
+      self.params.nproc = self.params.nnodes * self.params.nproc_per_node
+    if self.params.use_mpi:
+      self.command = "mpirun %s mp.method=mpi" % (self.command)
+
+  def eval_params(self):
+    if max(self.params.nproc, self.params.nproc_per_node, self.params.nnodes) > 1:
+      # If specified, nproc overrides procs_per_node and procs_per_node overrides
+      # nnodes. One process per node is requested if only nproc is specified.
+      if self.params.nproc > 1:
+        import math
+        if self.params.nproc <= self.params.nproc_per_node:
+          procs_per_node = self.params.nproc
+          nnodes = 1
+        elif self.params.nproc_per_node > 1:
+          procs_per_node = self.params.nproc_per_node
+          nnodes = int(math.ceil(self.params.nproc/procs_per_node))
+        elif self.params.nnodes > 1:
+          procs_per_node = int(math.ceil(self.params.nproc/self.params.nnodes))
+          nnodes = self.params.nnodes
+        else: # insufficient information; allocate 1 proc per node
+          procs_per_node = 1
+          nnodes = self.params.nproc
+      else:
+        procs_per_node = self.params.nproc_per_node
+        nnodes = self.params.nnodes
+      nproc_str = "#SBATCH --nodes %d\n#SBATCH --ntasks-per-node=%d" % (nnodes, procs_per_node)
+      self.options_inside_submit_script.append(nproc_str)
+
+    # -o <outfile>
+    out_str = "#SBATCH --output=%s.%%j" % os.path.join(self.stdoutdir, self.log_name)
+    self.options_inside_submit_script.append(out_str)
+
+    # [-j oe/-e <errfile>] (optional)
+    if self.err_name is not None:
+      err_str = "#SBATCH --error=%s.%%j" % os.path.join(self.stdoutdir, self.err_name)
+      self.options_inside_submit_script.append(err_str)
+
+    # -q <queue>
+    if self.params.queue is None:
+      raise Sorry("Queue not specified.")
+    queue_str = "#SBATCH --partition %s" % self.params.queue
+    self.options_inside_submit_script.append(queue_str)
+
+    # -l walltime=<wall_time_limit> (optional)
+    if self.params.wall_time is not None:
+      hours = self.params.wall_time // 60
+      minutes = self.params.wall_time % 60
+      wt_str = "#SBATCH --time=%2d:%02d:00" % (hours, minutes)
+      self.options_inside_submit_script.append(wt_str)
+
+    # -l mem_free=<memory_requested> (optional)
+    if self.params.memory is not None:
+      memory_str = "#SBATCH --mem=%dmb" % self.params.memory
+      self.options_inside_submit_script.append(memory_str)
+
+    # -N <job_name>
+    if self.job_name is not None:
+      name_str = "#SBATCH --job-name=%s" % self.job_name
+      self.options_inside_submit_script.append(name_str)
+
+    # <extra_options> (optional, preceding the command)
+    for cmd in self.params.extra_options:
+      cmd_str = "#SBATCH %s" % cmd
+      self.options_inside_submit_script.append(cmd_str)
+
+    # source </path/to/env.sh> (optional)
+    for env in self.params.env_script:
+      env_str = "source %s\n" % env
+      self.source_env_scripts.append(env_str)
+
+    # <args> (optional, following the command)
+    for arg in self.params.extra_args:
+      self.args.append(arg)
+
 class get_shifter_submit_command(get_submit_command):
 
   def customize_for_method(self):
@@ -643,6 +722,8 @@ def get_submit_command_chooser(command, submit_path, stdoutdir, params,
     choice = get_sge_submit_command
   elif params.method == "pbs":
     choice = get_pbs_submit_command
+  elif params.method == "slurm":
+    choice = get_slurm_submit_command
   elif params.method == "shifter":
     choice = get_shifter_submit_command
   elif params.method == "htcondor":
