@@ -25,7 +25,10 @@ try:
     pip = None
     pkg_resources = None
   if pip:
-    if pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('10.0.0'):
+    if pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('19.3.0'):
+      import pip._internal.main
+      pip_main = pip._internal.main.main
+    elif pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('10.0.0'):
       import pip._internal
       pip_main = pip._internal.main
     else:
