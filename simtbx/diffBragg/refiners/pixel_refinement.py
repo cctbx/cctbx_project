@@ -3,6 +3,7 @@ import scitbx
 import numpy as np
 from abc import ABCMeta, abstractproperty, abstractmethod
 from scitbx.lbfgs.tst_curvatures import lbfgs_with_curvatures_mix_in
+from scitbx.lbfgs.tst_mpi_split_evaluator import mpi_split_evaluator_run
 
 
 # used in pixel refinement
@@ -26,6 +27,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_background_planes = True
         self.refine_gain_fac = False
         self.multi_panel = False
+        self.split_evaluation = False
         self.refine_ncells = False
         self.hit_break_to_use_curvatures = False
         self.refine_detdist = True
@@ -189,32 +191,57 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
     def run(self, curvature_min_verbose=False, setup=True):
         """runs the LBFGS minimizer"""
+
         if setup:
             self._setup()
             self._cache_roi_arrays()
-        if self.use_curvatures:
-            self.minimizer = self.lbfgs_run(
-                target_evaluator=self,
-                min_iterations=self.mn_iter,
-                max_iterations=self.mx_iter,
-                traditional_convergence_test=self.trad_conv,
-                traditional_convergence_test_eps=self.trad_conv_eps,
-                use_curvatures=True,
-                verbose=curvature_min_verbose)
+
+        # if not working in MPI mode (MPI used in global refinement)
+        if not self.split_evaluation:
+            if self.use_curvatures:
+                self.minimizer = self.lbfgs_run(
+                    target_evaluator=self,
+                    min_iterations=self.mn_iter,
+                    max_iterations=self.mx_iter,
+                    traditional_convergence_test=self.trad_conv,
+                    traditional_convergence_test_eps=self.trad_conv_eps,
+                    use_curvatures=True,
+                    verbose=curvature_min_verbose)
+
+            else:
+                try:
+                    from scitbx.lbfgs import core_parameters
+                    C = core_parameters()
+                    C.gtol = 1
+                    self.minimizer = scitbx.lbfgs.run(
+                        target_evaluator=self,
+                        #core_params=C,
+                        exception_handling_params=self._handler,
+                        termination_params=self._terminator)
+                except BreakToUseCurvatures:
+                    self.hit_break_to_use_curvatures = True
+                    pass
 
         else:
-            try:
-                from scitbx.lbfgs import core_parameters
-                C = core_parameters()
-                C.gtol = 1
-                self.minimizer = scitbx.lbfgs.run(
+            if self.use_curvatures:
+                self.diag_mode = "always"
+                self.minimizer = mpi_split_evaluator_run(
                     target_evaluator=self,
-                    #core_params=C,
-                    exception_handling_params=self._handler,
-                    termination_params=self._terminator)
-            except BreakToUseCurvatures:
-                self.hit_break_to_use_curvatures = True
-                pass
+                    termination_params=self._terminator,
+                    core_params=None,
+                    exception_handling_params=None, log=None)
+            else:
+                try:
+                    self.diag_mode = None
+                    self.minimizer = mpi_split_evaluator_run(
+                        target_evaluator=self,
+                        termination_params=self._terminator,
+                        core_params=None,
+                        exception_handling_params=None, log=None)
+                    # NOTE: best to leave log=None, not sure what would happen to log in MPI mode
+                except BreakToUseCurvatures:
+                    self.hit_break_to_use_curvatures = True
+                    pass
 
     def _filter_spot_rois(self):
         """
