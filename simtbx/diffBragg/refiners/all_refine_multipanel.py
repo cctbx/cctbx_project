@@ -51,7 +51,6 @@ class RefineAllMultiPanel(RefineRot):
         self.n = n_bg + self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params*n_panels + n_spotscale
         self.x = flex.double(self.n)
 
-
         self.rotX_xpos = n_bg
         self.rotY_xpos = n_bg + 1
         self.rotZ_xpos = n_bg + 2
@@ -74,7 +73,7 @@ class RefineAllMultiPanel(RefineRot):
         self.origin_xstart = self.ncells_xpos + 1
         for i_pan in range(n_panels):
             pid = self.pid_from_idx[i_pan]
-            self.x[self.origin_xstart + i_pan] = self.S.detector[pid].get_origin()[2]
+            self.x[self.origin_xstart + i_pan] = self.S.detector[pid].get_local_origin()[2]
 
         # lastly, the scale factors
         self.x[-2] = self._init_gain  # initial gain for experiment
@@ -123,13 +122,6 @@ class RefineAllMultiPanel(RefineRot):
     def _run_diffBragg_current(self, i_spot):
         """needs to be called each time the ROI is changed"""
         self.D.region_of_interest = self.nanoBragg_rois[i_spot]
-        #if self.refine_rotX:
-        #    self.D.set_value(0, self.x[self.rotX_xpos])
-        #if self.refine_rotY:
-        #    self.D.set_value(1, self.x[self.rotY_xpos])
-        #if self.refine_rotZ:
-        #    self.D.set_value(2, self.x[self.rotZ_xpos])
-        #self.D.Bmatrix = self.ucell_manager.B_recipspace
         self.D.add_diffBragg_spots()
 
     def _update_rotXYZ(self):
@@ -144,18 +136,22 @@ class RefineAllMultiPanel(RefineRot):
         self.D.set_value(self._ncells_id, self.x[self.ncells_xpos])
 
     def _update_dxtbx_detector(self):
+
         det = self.S.detector
         self.S.panel_id = self._panel_id
+        # TODO: select hierarchy level at this point
+        # NOTE: what does fast-axis and slow-axis mean
+        # for the different hierarchy levels?
+        from IPython import embed
+        embed()
         node = det[self._panel_id]
-        node_d = node.to_dict()
+        orig = node.get_local_origin()
         xpos = self.origin_xstart + self.idx_from_pid[self._panel_id]
         new_originZ = self.x[xpos]
-        orig = node.get_origin()
-        node_d["origin"] = orig[0], orig[1], new_originZ
-        node_d["fast_axis"] = node.get_fast_axis()
-        node_d["slow_axis"] = node.get_slow_axis()
-
-        det[self._panel_id] = Panel.from_dict(node_d)
+        new_origin = orig[0], orig[1], new_originZ
+        node.set_local_frame(node.get_local_fast_axis(),
+                             node.get_local_slow_axis(),
+                             new_origin)
         self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
         self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
 
