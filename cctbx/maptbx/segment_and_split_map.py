@@ -5831,9 +5831,14 @@ def create_rna_dna(cns_dna_rna_residue_names):
 def get_solvent_content_from_seq_file(params,
     sequence=None,
     seq_file=None,
+    overall_chain_type=None,
     ncs_copies=None,
     map_volume=None,
     out=sys.stdout):
+
+  if params and not chain_type:
+     overall_chain_type=params.crystal_info.chain_type
+
   if not sequence and not os.path.isfile(seq_file):
     raise Sorry(
      "The sequence file '%s' is missing." %(seq_file))
@@ -5867,7 +5872,7 @@ def get_solvent_content_from_seq_file(params,
   chain_types_considered=[]
   for seq in all_unique_sequence:
     volume,nres,chain_type=get_volume_of_seq(seq,
-      chain_type=params.crystal_info.chain_type,out=out)
+      chain_type=overall_chain_type,out=out)
     if volume is None: continue
     volume_of_chains+=volume
     n_residues+=nres
@@ -5892,6 +5897,11 @@ def get_solvent_content_from_seq_file(params,
 
 def get_solvent_fraction(params,
      ncs_object=None,ncs_copies=None,
+     do_not_adjust_dalton_scale=None,
+     sequence=None,
+     seq_file=None,
+     molecular_mass=None,
+     solvent_content=None,
      crystal_symmetry=None,tracking_data=None,out=sys.stdout):
   if tracking_data and not crystal_symmetry:
     #crystal_symmetry=tracking_data.original_crystal_symmetry not used
@@ -5903,34 +5913,45 @@ def get_solvent_fraction(params,
   if not ncs_copies: ncs_copies=1
 
 
+  if params and not solvent_content:
+    solvent_content=params.crystal_info.solvent_content
+  if params and not molecular_mass:
+    molecular_mass=params.crystal_info.molecular_mass
+  if params and not seq_file:
+    seq_file=params.input_files.seq_file
+  if params and not sequence:
+    sequence=params.crystal_info.sequence
 
-  if params.input_files.seq_file or params.crystal_info.sequence:
+  if seq_file or sequence:
     solvent_content,n_residues,n_residues_times_ncs=\
          get_solvent_content_from_seq_file(
      params,
-     sequence=params.crystal_info.sequence,
-     seq_file=params.input_files.seq_file,
+     sequence=sequence,
+     seq_file=seq_file,
      ncs_copies=ncs_copies,
      map_volume=map_volume,
      out=out)
-    if not params.crystal_info.solvent_content:
+    if params and not params.crystal_info.solvent_content:
       params.crystal_info.solvent_content=solvent_content
       print("Solvent fraction from composition: %7.2f "%(
        params.crystal_info.solvent_content), file=out)
-    else:
+    elif params:
       print("Solvent content from parameters: %7.2f" %(
         params.crystal_info.solvent_content), file=out)
 
   else:
-    if params.crystal_info.solvent_content:
+    if params and params.crystal_info.solvent_content:
       print("Solvent content from parameters: %7.2f" %(
         params.crystal_info.solvent_content), file=out)
-    elif params.crystal_info.molecular_mass:
-       params.crystal_info.solvent_content=\
+    elif molecular_mass:
+       solvent_content=\
          get_solvent_fraction_from_molecular_mass(
         crystal_symmetry=crystal_symmetry,
-        molecular_mass=params.crystal_info.molecular_mass,
+        do_not_adjust_dalton_scale=do_not_adjust_dalton_scale,
+        molecular_mass=molecular_mass,
         out=out)
+       if params:
+         params.crystal_info.solvent_content=solvent_content
 
     else:
       print("Getting solvent content automatically.", file=out)
@@ -5947,7 +5968,7 @@ def get_solvent_fraction(params,
 
     return tracking_data
   else:
-    return params.crystal_info.solvent_content
+    return solvent_content
 
 def top_key(dd):
   if not dd:
@@ -8358,6 +8379,7 @@ def get_overall_mask(
     map_data=None,
     mask_threshold=None,
     fraction_of_max_mask_threshold=None,
+    use_solvent_content_for_threshold=None, # use instead of fraction_of
     mask_padding_fraction=None,
     solvent_fraction=None,
     crystal_symmetry=None,
@@ -8427,8 +8449,12 @@ def get_overall_mask(
     max_in_sd_map,
     mean_in_map,
     min_in_map), file=out)
-  if fraction_of_max_mask_threshold:
+  if fraction_of_max_mask_threshold and (
+        (not solvent_fraction) or (not use_solvent_content_for_threshold)):
     mask_threshold=fraction_of_max_mask_threshold*max_in_sd_map
+    print("ZZUsing fraction of max as threshold: %.3f " %(
+        fraction_of_max_mask_threshold), \
+        "which is threshold of %.3f" %(mask_threshold))
     print("Using fraction of max as threshold: %.3f " %(
         fraction_of_max_mask_threshold), \
         "which is threshold of %.3f" %(mask_threshold), file=out)
@@ -8447,6 +8473,7 @@ def get_overall_mask(
       mask_threshold=None
 
   if mask_threshold:
+    print("ZZCutoff for mask will be input threshold")
     print("Cutoff for mask will be input threshold", file=out)
     threshold=mask_threshold
   else:  # guess based on solvent_fraction
@@ -8674,6 +8701,8 @@ def get_iterated_solvent_fraction(map=None,
     crystal_symmetry=None,
     mask_padding_fraction=None,
     fraction_of_max_mask_threshold=None,
+    solvent_content=None,
+    use_solvent_content_for_threshold=None, # use instead of fraction_of_..
     cell_cutoff_for_solvent_from_mask=None,
     mask_resolution=None,
     return_mask_and_solvent_fraction=None,
@@ -8686,6 +8715,8 @@ def get_iterated_solvent_fraction(map=None,
       map_data=map.deep_copy(),
       mask_padding_fraction=mask_padding_fraction,
       fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+      solvent_content=solvent_content,
+      use_solvent_content_for_threshold=use_solvent_content_for_threshold,
        return_mask_and_solvent_fraction=return_mask_and_solvent_fraction,
       mask_resolution=mask_resolution,out=out)
 
@@ -8708,6 +8739,8 @@ def get_iterated_solvent_fraction(map=None,
         map_data=map.deep_copy(),
         mask_padding_fraction=mask_padding_fraction,
         fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+      solvent_content=solvent_content,
+       use_solvent_content_for_threshold=use_solvent_content_for_threshold,
         return_mask_and_solvent_fraction=return_mask_and_solvent_fraction,
         mask_resolution=mask_resolution,out=out)
   except Exception as e:
@@ -8731,12 +8764,16 @@ def get_iterated_solvent_fraction(map=None,
       map_data=map.deep_copy(),
       mask_padding_fraction=mask_padding_fraction,
       fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+      solvent_content=solvent_content,
+      use_solvent_content_for_threshold=use_solvent_content_for_threshold,
       return_mask_and_solvent_fraction=return_mask_and_solvent_fraction,
       mask_resolution=mask_resolution,out=out)
 
 def get_solvent_fraction_from_low_res_mask(
       crystal_symmetry=None,map_data=None,
       fraction_of_max_mask_threshold=None,
+      solvent_content=None,
+      use_solvent_content_for_threshold=None, # use instead of fraction_of
       mask_padding_fraction=None,
       return_mask_and_solvent_fraction=None,
       mask_resolution=None,
@@ -8744,7 +8781,9 @@ def get_solvent_fraction_from_low_res_mask(
 
   overall_mask,max_in_sd_map,sd_map=get_overall_mask(map_data=map_data,
     fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+    use_solvent_content_for_threshold=use_solvent_content_for_threshold,
     mask_padding_fraction=mask_padding_fraction,
+    solvent_fraction=solvent_content,  # note name change XXX
     crystal_symmetry=crystal_symmetry,
     resolution=mask_resolution,
     out=out)
@@ -8761,12 +8800,14 @@ def get_solvent_fraction_from_low_res_mask(
 
 
 def get_solvent_fraction_from_molecular_mass(
+        do_not_adjust_dalton_scale=None,
         crystal_symmetry=None,molecular_mass=None,out=sys.stdout):
      map_volume=crystal_symmetry.unit_cell().volume()
      density_factor=1000*1.23 # just protein density, close enough...
      mm=molecular_mass
      molecule_fraction= mm*density_factor/map_volume
-     if molecule_fraction > 1 and mm > 1000: mm=mm/1000  # was in Da
+     if do_not_adjust_dalton_scale or molecule_fraction > 1 and mm > 1000:
+        mm=mm/1000  # was in Da
 
      solvent_fraction=max(0.01,min(1.,1 - (
          mm*density_factor/map_volume)))

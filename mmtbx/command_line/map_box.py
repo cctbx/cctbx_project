@@ -147,21 +147,22 @@ master_phil = libtbx.phil.parse("""
   sequence_file = None
     .type = path
     .help = Sequence file (any standard format). Can be unique part or \
-            all copies.  Used in identification of unique part of map.
+            all copies.  Used in identification of unique part of map \
+            and in masking with mask_select
     .short_caption = Sequence file (optional)
 
   molecular_mass = None
     .type = float
     .help = Molecular mass of object in map in Da (i.e., 33000 for 33 Kd).\
               Used in identification \
-            of unique part of map.
+            of unique part of map and in masking by mask_select.
     .short_caption = Molecular mass (optional)
 
   solvent_content = None
     .type = float
     .help = Optional fraction of volume of map that is empty.  \
             Used in identification \
-            of unique part of map.
+            of unique part of map and in masking by mask_select
     .short_caption = Solvent content
 
   extract_unique = False
@@ -618,7 +619,7 @@ Parameters:"""%h
 
   # Get sequence if extract_unique is set
   sequence=None
-  if params.extract_unique:
+  if params.extract_unique or params.mask_select:
     if params.sequence_file:
       if n_ops > 1: # get unique part of sequence
         remove_duplicates=True
@@ -678,7 +679,7 @@ Parameters:"""%h
     map_data         = map_data.as_double(),
     box_cushion      = params.box_cushion,
     selection        = selection,
-    mask_select   = params.mask_select,
+    mask_select      = params.mask_select,
     density_select   = params.density_select,
     threshold        = params.density_select_threshold,
     get_half_height_width = params.get_half_height_width,

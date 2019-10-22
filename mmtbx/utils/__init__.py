@@ -2628,12 +2628,26 @@ class extract_box_around_model_and_map(object):
   def select_box_with_mask(self,crystal_symmetry=None):
     # auto-generate mask and use it to select box
 
-    # find solvent fraction and mask
-    from cctbx.maptbx.segment_and_split_map import get_iterated_solvent_fraction
+    # See if we can get solvent fraction accurately to start off:
+    if (self.molecular_mass or self.sequence ) and (
+        not self.solvent_content):
+      from cctbx.maptbx.segment_and_split_map import get_solvent_fraction
+      self.solvent_content=get_solvent_fraction(
+         params=None,
+         molecular_mass=self.molecular_mass,
+         sequence=self.sequence,
+         do_not_adjust_dalton_scale=True,
+         crystal_symmetry=self.crystal_symmetry,
+         out=null_out())
+
+    from cctbx.maptbx.segment_and_split_map import \
+        get_iterated_solvent_fraction
     mask_data,solvent_fraction=get_iterated_solvent_fraction(
         crystal_symmetry=crystal_symmetry,
         fraction_of_max_mask_threshold=0.05, #
+        solvent_content=self.solvent_content,
         cell_cutoff_for_solvent_from_mask=1, # Use low-res method always
+        use_solvent_content_for_threshold=True,
         mask_resolution=self.resolution,
         return_mask_and_solvent_fraction=True,
         verbose=False,
