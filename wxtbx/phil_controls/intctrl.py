@@ -7,20 +7,19 @@ from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 from libtbx.utils import Sorry
 from libtbx import Auto
 import wx
-import sys
 
 class IntCtrl(ValidatedTextCtrl):
   def __init__(self, *args, **kwds):
     super(IntCtrl, self).__init__(*args, **kwds)
-    self.min = -sys.maxsize
-    self.max = sys.maxsize
+    # Windows int and long are both 4 bytes
+    self.min = -2147483647
+    self.max = 2147483647
     self._spinner = None
 
   def AttachSpinner(self, spinner):
     self._spinner = spinner
     spinner.Bind(wx.EVT_SPIN_DOWN, self.OnSpinDown, spinner)
     spinner.Bind(wx.EVT_SPIN_UP, self.OnSpinUp, spinner)
-    # XXX sys.maxint breaks SetMax() on 64-bit Macs (wxPython 2.9)
     spinner.SetMax(2147483647)
     spinner.SetMin(-2147483647)
     try :

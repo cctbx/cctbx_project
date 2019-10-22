@@ -4,7 +4,6 @@ from libtbx import object_oriented_patterns as oop
 from libtbx.utils import to_unicode
 import wx.lib.colourselect
 import wx
-import sys
 
 UNICODE_BUILD = (wx.PlatformInfo[2] == 'unicode')
 
@@ -25,8 +24,8 @@ class SettingsToolBase(object):
                        setting,
                        label,
                        captions=None,
-                       min=-sys.maxsize,
-                       max=sys.maxsize):
+                       min=-2147483647,
+                       max=2147483647):
     panel = self.panel
     value = getattr(self.settings, setting)
     ctrls = []
