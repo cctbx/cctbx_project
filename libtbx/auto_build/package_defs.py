@@ -62,7 +62,7 @@ DEPENDENCIES_BASE = [
 ]
 OPENSSL_PKG = "openssl-1.0.2s.tar.gz"    # OpenSSL
 PYTHON3_PKG = "Python-3.7.2.tgz"
-PYTHON_PKG = "Python-2.7.16.tgz"
+PYTHON_PKG = "Python-2.7.17.tgz"
 
 # from CCI
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
@@ -74,7 +74,7 @@ IPYTHON_PKG = "ipython-5.8.0.tar.gz"     # IPython
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
-CYTHON_VERSION = "0.29.13"
+CYTHON_VERSION = "0.28.6"
 DOCUTILS_VERSION = "0.14"
 FUTURE_VERSION = "0.17.1"
 H5PY_VERSION = "2.10.0"
