@@ -164,6 +164,7 @@ class hklview_3d:
     self.settings = kwds.get("settings")
     self.ngl_settings = None #NGLsettings()
     self.viewerparams = None
+    self.params = None
     self.miller_array = None
     self.symops = []
     self.sg = None
@@ -185,6 +186,8 @@ class hklview_3d:
     self.rot_recip_zvec = None
     self.rot_zvec = None
     self.meanradius = -1
+    self.past = time.time()
+    self.orientmessage = None
     self.high_quality = True
     if kwds.has_key('high_quality'):
       self.high_quality = kwds['high_quality']
@@ -198,13 +201,14 @@ class hklview_3d:
     self.OrigClipNear = None
     self.OrigClipFar = None
     self.cameratranslation = ( 0,0,0 )
-    self.angle_x_svec = 0.0
-    self.angle_y_svec = 0.0
+    #self.angle_x_svec = 0.0
+    #self.angle_y_svec = 0.0
     self.angle_z_svec = 0.0
-    self.angle_z_yzvec = 0.0
-    self.angle_y_yzvec = 0.0
-    self.angle_y_xyvec = 0.0
+    #self.angle_z_yzvec = 0.0
+    #self.angle_y_yzvec = 0.0
+    #self.angle_y_xyvec = 0.0
     self.angle_x_xyvec = 0.0
+    self.vecrotmx = None
     self.unit_h_axis = None
     self.unit_k_axis = None
     self.unit_l_axis = None
@@ -212,7 +216,8 @@ class hklview_3d:
     self.normal_kl = None
     self.normal_lh = None
     self.isnewfile = False
-    self.sleeptime = 0.1
+    self.has_new_miller_array = False
+    self.sleeptime = 0.025
     self.colstraliases = ""
     self.binvals = []
     self.binvalsboundaries = []
@@ -279,6 +284,7 @@ class hklview_3d:
 
     """
     self.colourgradientvalues = []
+    self.isinjected = False
     self.UseOSBrowser = True
     if 'UseOSBrowser' in kwds:
       self.UseOSBrowser = kwds['UseOSBrowser']
@@ -312,14 +318,13 @@ class hklview_3d:
   def update_settings(self, diff_phil, curphilparam) :
     self.ngl_settings = curphilparam.viewer.NGL
     self.viewerparams = curphilparam.viewer
+    self.params = curphilparam
     if has_phil_path(diff_phil, "filename") \
      or has_phil_path(diff_phil, "spacegroup_choice") \
      or has_phil_path(diff_phil, "merge_data") \
+     or has_phil_path(diff_phil, "miller_array_operation") \
      or has_phil_path(diff_phil, "scene_id")  \
-     or has_phil_path(diff_phil, "nbins") \
      or has_phil_path(diff_phil, "camera_type") \
-     or has_phil_path(diff_phil, "bin_scene_label") \
-     or has_phil_path(diff_phil, "scene_bin_thresholds") \
      or has_phil_path(diff_phil, "spacegroup_choice") \
      or has_phil_path(diff_phil, "using_space_subgroup") \
      or has_phil_path(diff_phil, "viewer") \
@@ -345,36 +350,60 @@ class hklview_3d:
     msg = ""
     if has_phil_path(diff_phil, "show_missing") \
      or has_phil_path(diff_phil, "show_only_missing") \
-     or has_phil_path(diff_phil, "show_systematic_absences"):
+     or has_phil_path(diff_phil, "show_systematic_absences") \
+     or has_phil_path(diff_phil, "scene_bin_thresholds") \
+     or has_phil_path(diff_phil, "bin_scene_label") \
+     or has_phil_path(diff_phil, "nbins"):
       self.binvals = self.calc_bin_thresholds(curphilparam.bin_scene_label, curphilparam.nbins)
+      self.sceneisdirty = True
+
+    if has_phil_path(diff_phil, "camera_type"):
+      self.set_camera_type()
 
     if self.viewerparams.scene_id >=0:
-      self.scene = self.HKLscenes[self.viewerparams.scene_id]
+      if not self.isinjected:
+        self.scene = self.HKLscenes[self.viewerparams.scene_id]
       self.DrawNGLJavaScript()
       msg = "Rendered %d reflections\n" % self.scene.points.size()
+      if has_phil_path(diff_phil, "fixorientation"):
+        self.fix_orientation(curphilparam.viewer.NGL.fixorientation)
       if has_phil_path(diff_phil, "mouse_sensitivity"):
         self.SetTrackBallRotateSpeed(curphilparam.viewer.NGL.mouse_sensitivity)
-      if has_phil_path(diff_phil, "normal_clip_plane"):
-        self.clip_plane_normal_to_HKL_vector(curphilparam.normal_clip_plane.h, curphilparam.normal_clip_plane.k,
-            curphilparam.normal_clip_plane.l, curphilparam.normal_clip_plane.hkldist,
-            curphilparam.normal_clip_plane.clipwidth, curphilparam.viewer.NGL.fixorientation)
-      if curphilparam.viewer.slice_mode:
+
+      if curphilparam.viewer.slice_mode: # explicit slicing
         if curphilparam.viewer.slice_axis=="h": hkl = [1,0,0]
         if curphilparam.viewer.slice_axis=="k": hkl = [0,1,0]
         if curphilparam.viewer.slice_axis=="l": hkl = [0,0,1]
-        self.clip_plane_normal_to_HKL_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
+        self.clip_plane_hkl_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
                          fixorientation = curphilparam.viewer.NGL.fixorientation)
     if self.settings.inbrowser and not curphilparam.viewer.slice_mode:
       msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
+
+    if curphilparam.clip_plane.clipwidth and not \
+      ( has_phil_path(diff_phil, "angle_around_vector") \
+      or has_phil_path(diff_phil, "bequiet") ):
+      if  curphilparam.clip_plane.is_real_space_frac_vec:
+        self.clip_plane_abc_vector(curphilparam.clip_plane.h, curphilparam.clip_plane.k,
+          curphilparam.clip_plane.l, curphilparam.clip_plane.hkldist,
+          curphilparam.clip_plane.clipwidth, curphilparam.viewer.NGL.fixorientation,
+          curphilparam.clip_plane.is_parallel)
+      else:
+        self.clip_plane_hkl_vector(curphilparam.clip_plane.h, curphilparam.clip_plane.k,
+          curphilparam.clip_plane.l, curphilparam.clip_plane.hkldist,
+          curphilparam.clip_plane.clipwidth, curphilparam.viewer.NGL.fixorientation,
+          curphilparam.clip_plane.is_parallel)
+
     msg += self.SetOpacities(curphilparam.viewer.NGL.bin_opacities )
-      #self.mprint(curphilparam.viewer.NGL.bin_opacities )
+    if has_phil_path(diff_phil, "tooltip_alpha"):
+      self.set_tooltip_opacity()
     return msg, curphilparam
 
 
   def set_miller_array(self, scene_id=None, merge=None, details=""):
     if scene_id is not None:
       self.viewerparams.scene_id = scene_id
+      self.isinjected = False
     if self.viewerparams and self.viewerparams.scene_id >= 0 and self.HKLscenes:
       self.miller_array = self.HKLscenes[self.viewerparams.scene_id].miller_array
       self.scene = self.HKLscenes[self.viewerparams.scene_id]
@@ -499,7 +528,6 @@ class hklview_3d:
 
 
   def ConstructReciprocalSpace(self, curphilparam, merge=None):
-    self.mprint("Constructing HKL scenes", verbose=0)
     #self.miller_array = self.match_valarrays[self.scene_id]
     #self.miller_array = self.proc_arrays[self.scene_id]
     self.HKLscenesKey = (curphilparam.filename,
@@ -519,7 +547,7 @@ class hklview_3d:
                          self.settings.nth_power_scale_radii
                          )
 
-    if self.HKLscenesdict.has_key(self.HKLscenesKey):
+    if self.HKLscenesdict.has_key(self.HKLscenesKey) and not self.has_new_miller_array:
       (
         self.HKLscenes,
         self.tooltipstringsdict,
@@ -532,6 +560,7 @@ class hklview_3d:
       self.mprint("Scene key is already present", verbose=1)
       #self.sceneisdirty = False
       return True
+    self.mprint("Constructing HKL scenes", verbose=0)
 
     HKLscenes = []
     HKLscenesMaxdata = []
@@ -570,7 +599,7 @@ class hklview_3d:
         scenemindata, scenemaxsigmas,
          sceneminsigmas, scenearrayinfos
          ) = MakeHKLscene(argstuples[j][0], argstuples[j][1], argstuples[j][2], argstuples[j][3], argstuples[j][4], argstuples[j][5] )
-         #) = MakeHKLscene(proc_array, copy.deepcopy(self.settings), self.mapcoef_fom_dict, merge)
+         #) = MakeHKLscene(proc_array, j, copy.deepcopy(self.settings), self.mapcoef_fom_dict, None)
 
       HKLscenesMaxdata.extend(scenemaxdata)
       HKLscenesMindata.extend(scenemindata)
@@ -607,6 +636,7 @@ class hklview_3d:
       self.mprint("%d, %s" %(j, inf[0]), verbose=0)
     self.sceneisdirty = True
     self.SendInfoToGUI({ "hklscenes_arrays": self.hkl_scenes_info, "NewHKLscenes" : True })
+    self.has_new_miller_array = False
     return True
 
 
@@ -689,6 +719,50 @@ class hklview_3d:
     return flex.double(patched_binarraydata)
 
 
+  def OperateOn1MillerArray(self, millarr, operation):
+    # lets user specify a one line python expression operating on data, sigmas
+    data = millarr.data()
+    sigmas = millarr.sigmas()
+    dres = millarr.unit_cell().d( millarr.indices() )
+    newarray = millarr.deep_copy()
+    self.mprint("Creating new miller array through the operation: %s" %operation)
+    try:
+      newdata = None
+      newsigmas = None
+      exec(operation)
+      newarray._data = newdata
+      newarray._sigmas = newsigmas
+      return newarray
+    except Exception as e:
+      self.mprint( str(e), verbose=0)
+      return None
+
+
+  def OperateOn2MillerArrays(self, millarr1, millarr2, operation):
+    # lets user specify a one line python expression operating on data1 and data2
+    matchindices = miller.match_indices(millarr1.indices(), millarr2.indices() )
+    matcharr1 = millarr1.select( matchindices.pairs().column(0) )
+    matcharr2 = millarr2.select( matchindices.pairs().column(1) )
+    data1 = matcharr1.data()
+    data2 = matcharr2.data()
+    sigmas1 = matcharr1.sigmas()
+    sigmas2 = matcharr2.sigmas()
+    dres = matcharr1.unit_cell().d( matcharr1.indices() )
+    newarray = matcharr2.deep_copy()
+    newarray._sigmas = None
+    self.mprint("Creating new miller array through the operation: %s" %operation)
+    try:
+      newdata = None
+      newsigmas = None
+      exec(operation)
+      newarray._data = newdata
+      newarray._sigmas = newsigmas
+      return newarray
+    except Exception as e:
+      self.mprint( str(e), verbose=0)
+      return None
+
+
   def DrawNGLJavaScript(self, blankscene=False):
     if not self.scene or not self.sceneisdirty:
       return
@@ -703,9 +777,12 @@ class hklview_3d:
     self.unit_h_axis = 1.0/h_axis.norm() * h_axis
     self.unit_k_axis = 1.0/k_axis.norm() * k_axis
     self.unit_l_axis = 1.0/l_axis.norm() * l_axis
-    self.normal_hk = self.unit_h_axis.cross( self.unit_k_axis )
-    self.normal_kl = self.unit_k_axis.cross( self.unit_l_axis )
-    self.normal_lh = self.unit_l_axis.cross( self.unit_h_axis )
+    self.unit_normal_hk = self.unit_h_axis.cross( self.unit_k_axis )
+    self.unit_normal_kl = self.unit_k_axis.cross( self.unit_l_axis )
+    self.unit_normal_lh = self.unit_l_axis.cross( self.unit_h_axis )
+    self.normal_hk = h_axis.cross( k_axis )
+    self.normal_kl = k_axis.cross( l_axis )
+    self.normal_lh = l_axis.cross( h_axis )
 
     maxnorm = max(h_axis.norm(), max(k_axis.norm(), l_axis.norm()))
     l1 = self.scene.renderscale * maxnorm * 1.1
@@ -730,24 +807,25 @@ class hklview_3d:
       axisfuncstr = "\nvar MakeHKL_Axis = function() { };\n"
     else:
       axisfuncstr = """
-var MakeHKL_Axis = function()
+var fontsize = %s;
+function MakeHKL_Axis(mshape)
 {
   // xyz arrows
-  shape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origo');
+  mshape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origin');
   //blue-x
-  shape.addArrow( %s, %s , [ 0, 0, 1 ], 0.1);
+  mshape.addArrow( %s, %s , [ 0, 0, 1 ], 0.1);
   //green-y
-  shape.addArrow( %s, %s , [ 0, 1, 0 ], 0.1);
+  mshape.addArrow( %s, %s , [ 0, 1, 0 ], 0.1);
   //red-z
-  shape.addArrow( %s, %s , [ 1, 0, 0 ], 0.1);
+  mshape.addArrow( %s, %s , [ 1, 0, 0 ], 0.1);
 
-  shape.addText( %s, [ 0, 0, 1 ], %s, 'h');
-  shape.addText( %s, [ 0, 1, 0 ], %s, 'k');
-  shape.addText( %s, [ 1, 0, 0 ], %s, 'l');
+  mshape.addText( %s, [ 0, 0, 1 ], fontsize, 'h');
+  mshape.addText( %s, [ 0, 1, 0 ], fontsize, 'k');
+  mshape.addText( %s, [ 1, 0, 0 ], fontsize, 'l');
 };
-    """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
-          str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, fontsize,
-          Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
+    """ %(fontsize, str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart),
+          str(Kstararrowend), str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt,
+          Kstararrowtxt, Lstararrowtxt)
 
     # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
     mincolourscalar = self.HKLscenesMindata[self.colour_scene_id]
@@ -760,7 +838,7 @@ var MakeHKL_Axis = function()
     incr = span/ln
     colourgradarrays = []
     val = mincolourscalar
-    colourscalararray =flex.double()
+    colourscalararray = flex.double()
     colourscalararray.append( val )
     for j,sc in enumerate(range(ln)):
       val += incr
@@ -944,7 +1022,7 @@ var MakeHKL_Axis = function()
    ,    sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
   );
   """
-      spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n" %cntbin
+      spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n  alphas.push(1.0);\n" %cntbin
 
       if ibin <self.nbinvalsboundaries and self.binvalsboundaries[ibin] < 0.0:
         negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
@@ -954,7 +1032,8 @@ var MakeHKL_Axis = function()
     self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,
-                          "bin_data_label": colstr
+                          "bin_data_label": colstr,
+                          "tooltip_opacity": self.ngl_settings.tooltip_alpha
                          } )
 
     spherebufferstr += """
@@ -964,7 +1043,7 @@ var MakeHKL_Axis = function()
   stage.signals.hovered.add(
     function (pickingProxy)
     {
-      tooltip.style.display = "none";
+      //tooltip.style.display = "none";
       if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  ))
       {
         var cp = pickingProxy.canvasPosition;
@@ -987,7 +1066,13 @@ var MakeHKL_Axis = function()
             is_friedel_mate = 1;
         }
         // tell python the id of the hkl and id number of the symmetry operator
-        WebsockSendMsg( 'tooltip_id: [' + String([sym_id, hkl_id, is_friedel_mate]) + ']' );
+        rightnow = timefunc();
+        if (rightnow - timenow > 250)
+        { // only post every 250 milli second as not to overwhelm python
+          WebsockSendMsg( 'tooltip_id: [' + String([sym_id, hkl_id, is_friedel_mate]) + ']' );
+          timenow = timefunc();
+        }
+
         if (current_ttip !== "" )
         {
           tooltip.innerText = current_ttip;
@@ -998,13 +1083,17 @@ var MakeHKL_Axis = function()
           tooltip.style.display = "block";
         }
       }
-      current_ttip = "";
+      else
+      {
+        tooltip.style.display = "none";
+        current_ttip = "";
+      }
     }
   );
 
 
   stage.mouseObserver.signals.dragged.add(
-    function ( deltaX, deltaY, lkj)
+    function ( deltaX, deltaY)
     {
       if (clipFixToCamPosZ === true)
       {
@@ -1012,6 +1101,22 @@ var MakeHKL_Axis = function()
         stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos - stage.viewer.camera.position.z);
         stage.viewer.requestRender();
       }
+      cvorient = stage.viewerControls.getOrientation().elements;
+      msg = String(cvorient);
+      rightnow = timefunc();
+      if (rightnow - timenow > 250)
+      { // only post every 250 milli second as not to overwhelm python
+        postrotmxflag = true;
+        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        timenow = timefunc();
+      }
+    }
+  );
+
+
+  stage.mouseObserver.signals.clicked.add(
+    function (x, y)
+    {
       cvorient = stage.viewerControls.getOrientation().elements;
       msg = String(cvorient);
       WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
@@ -1030,10 +1135,28 @@ var MakeHKL_Axis = function()
       }
       cvorient = stage.viewerControls.getOrientation().elements;
       msg = String(cvorient);
-      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+      rightnow = timefunc();
+      if (rightnow - timenow > 250)
+      { // only post every 250 milli second as not to overwhelm python
+        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        timenow = timefunc();
+      }
     }
   );
 
+
+  stage.viewer.signals.rendered.add(
+    function()
+    {
+      if (postrotmxflag === true)
+      {
+        cvorient = stage.viewerControls.getOrientation().elements;
+        msg = String(cvorient);
+        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        postrotmxflag = false;
+      }
+    }
+  );
 
     """
 
@@ -1259,16 +1382,6 @@ mysocket.onerror = function(error)
 };
 
 
-window.addEventListener( 'resize',
-  function( event ){
-      stage.handleResize();
-  },
-  false
-);
-
-
-
-
 var stage;
 var shape;
 var shapeComp;
@@ -1286,15 +1399,36 @@ var br_colours = [];
 var br_radii = [];
 var br_ttips = [];
 var colours = [];
+var alphas = [];
 var radii = [];
 var shapebufs = [];
 var br_shapebufs = [];
 var nrots = 0;
+var postrotmxflag = false;
 var cvorient = new NGL.Matrix4();
 var clipFixToCamPosZ = false;
 var origclipnear;
 var origclipfar;
 var origcameraZpos;
+var nbins = %s;
+
+
+function timefunc() {
+  var d = new Date();
+  var now = d.getTime();
+  return now
+}
+
+var timenow = timefunc();
+var rightnow = timefunc();
+
+
+window.addEventListener( 'resize',
+  function( event ){
+      stage.handleResize();
+  },
+  false
+);
 
 
 ///var script=document.createElement('script');
@@ -1309,7 +1443,7 @@ Object.assign(tooltip.style, {
   position: "absolute",
   zIndex: 10,
   pointerEvents: "none",
-  backgroundColor: "rgba(255, 255, 255, 0.75)",
+  backgroundColor: "rgba(255, 255, 255, %s )",
   color: "black",
   padding: "0.1em",
   fontFamily: "sans-serif"
@@ -1319,7 +1453,7 @@ Object.assign(tooltip.style, {
 %s
 
 
-var hklscene = function()
+function HKLscene()
 {
   shape = new NGL.Shape('shape');
   vectorshape = new NGL.Shape('vectorshape');
@@ -1327,7 +1461,7 @@ var hklscene = function()
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
 
-  MakeHKL_Axis();
+  MakeHKL_Axis(shape);
 
   %s
 
@@ -1346,15 +1480,15 @@ var hklscene = function()
 
 try
 {
-  document.addEventListener('DOMContentLoaded', function() { hklscene() }, false );
+  document.addEventListener('DOMContentLoaded', function() { HKLscene() }, false );
 }
 catch(err)
 {
   WebsockSendMsg('JavaScriptError: ' + err.stack );
 }
 
-    """ % (self.websockport, self.__module__, self.__module__, axisfuncstr, \
-            self.camera_type, spherebufferstr, negativeradiistr, colourscriptstr)
+    """ % (self.websockport, self.__module__, self.__module__, cntbin, self.ngl_settings.tooltip_alpha, \
+            axisfuncstr, self.camera_type, spherebufferstr, negativeradiistr, colourscriptstr)
 
 
 
@@ -1362,7 +1496,6 @@ catch(err)
 mysocket.onmessage = function (e)
 {
   var c,
-  alpha,
   si;
   WebsockSendMsg('\\n    Browser: Got ' + e.data ); // tell server what it sent us
   try
@@ -1374,29 +1507,29 @@ mysocket.onmessage = function (e)
 
     if (msgtype === "alpha")
     {
-      ibin = parseInt(val[0]);
-      alpha = parseFloat(val[1]);
-      shapebufs[ibin].setParameters({opacity: alpha});
+      bin = parseInt(val[0]);
+      alphas[bin] = parseFloat(val[1]);
+      shapebufs[bin].setParameters({opacity: alphas[bin]});
       for (var g=0; g < nrots; g++ )
-        br_shapebufs[ibin][g].setParameters({opacity: alpha});
+        br_shapebufs[bin][g].setParameters({opacity: alphas[bin]});
       stage.viewer.requestRender();
     }
 
     if (msgtype === "colour")
     {
-      ibin = parseInt(val[0]);
+      bin = parseInt(val[0]);
       si =  parseInt(val[1]);
-      colours[ibin][3*si] = parseFloat(val[2]);
-      colours[ibin][3*si+1] = parseFloat(val[3]);
-      colours[ibin][3*si+2] = parseFloat(val[4]);
-      shapebufs[ibin].setAttributes({ color: colours[ibin] });
+      colours[bin][3*si] = parseFloat(val[2]);
+      colours[bin][3*si+1] = parseFloat(val[3]);
+      colours[bin][3*si+2] = parseFloat(val[4]);
+      shapebufs[bin].setAttributes({ color: colours[bin] });
 
       for (var g=0; g < nrots; g++ )
       {
-        br_colours[ibin][3*si] = parseFloat(val[2]);
-        br_colours[ibin][3*si+1] = parseFloat(val[3]);
-        br_colours[ibin][3*si+2] = parseFloat(val[4]);
-        br_shapebufs[ibin][g].setAttributes({ color: br_colours[ibin] });
+        br_colours[bin][3*si] = parseFloat(val[2]);
+        br_colours[bin][3*si+1] = parseFloat(val[3]);
+        br_colours[bin][3*si+2] = parseFloat(val[4]);
+        br_shapebufs[bin][g].setAttributes({ color: br_colours[bin] });
       }
       stage.viewer.requestRender();
     }
@@ -1451,15 +1584,16 @@ mysocket.onmessage = function (e)
       br_shapebufs = [];
 
       //alert('rotations:\\n' + val);
-      strs = datval[1].split("\\n");
-      nbins = %d;
+      // Rotation matrices are concatenated to a string of floats
+      // separated by line breaks between each roation matrix
+      rotationstrs = datval[1].split("\\n");
       var Rotmat = new NGL.Matrix3();
       var sm = new Float32Array(9);
       var r = new NGL.Vector3();
 
       for (var bin=0; bin<nbins; bin++)
       {
-        var nsize = positions[bin].length/3;
+        var nsize = positions[bin].length/3; // number of reflections in each bin
         var csize = nsize*3;
         var nsize3 = nsize*3;
         var anoexp = false;
@@ -1499,22 +1633,23 @@ mysocket.onmessage = function (e)
         }
 
         nrots = 0;
-        for (var g=0; g < strs.length; g++ )
+        // if there is only the identity matrix that means no P1 expansion
+        for (var rotmxidx=0; rotmxidx < rotationstrs.length; rotmxidx++ )
         {
-          if (strs[g] < 1 )
+          if (rotationstrs[rotmxidx] < 1 )
             continue;
           nrots++;
 
           br_positions[bin].push( [] );
           br_shapebufs[bin].push( [] );
           br_ttips[bin].push( [] );
-          br_ttips[bin][g] = ttips[bin].slice(); // deep copy with slice()
-          br_ttips[bin][g][0] = g;
-          br_positions[bin][g] = new Float32Array( csize );
+          br_ttips[bin][rotmxidx] = ttips[bin].slice(); // deep copy with slice()
+          br_ttips[bin][rotmxidx][0] = rotmxidx;
+          br_positions[bin][rotmxidx] = new Float32Array( csize );
 
-          var elmstrs = strs[g].split(",");
-          //alert('rot' + g + ': ' + elmstrs);
-
+          // convert string of rotation matrix elements into a Matrix3
+          var elmstrs = rotationstrs[rotmxidx].split(",");
+          //alert('rot' + rotmxidx + ': ' + elmstrs);
           for (j=0; j<9; j++)
             sm[j] = parseFloat(elmstrs[j]);
           Rotmat.fromArray(sm);
@@ -1528,37 +1663,43 @@ mysocket.onmessage = function (e)
 
             r.applyMatrix3(Rotmat)
 
-            br_positions[bin][g][idx] = r.x;
-            br_positions[bin][g][idx + 1] = r.y;
-            br_positions[bin][g][idx + 2] = r.z;
+            br_positions[bin][rotmxidx][idx] = r.x;
+            br_positions[bin][rotmxidx][idx + 1] = r.y;
+            br_positions[bin][rotmxidx][idx + 2] = r.z;
 
             if (anoexp)
             {
               r.negate(); // inversion for anomalous pair
-              br_positions[bin][g][nsize3 + idx] = r.x;
-              br_positions[bin][g][nsize3 + idx + 1] = r.y;
-              br_positions[bin][g][nsize3 + idx + 2] = r.z;
+              br_positions[bin][rotmxidx][nsize3 + idx] = r.x;
+              br_positions[bin][rotmxidx][nsize3 + idx + 1] = r.y;
+              br_positions[bin][rotmxidx][nsize3 + idx + 2] = r.z;
             }
-
           }
 
-          br_shapebufs[bin][g] = new NGL.SphereBuffer({
-              position: br_positions[bin][g],
+          br_shapebufs[bin][rotmxidx] = new NGL.SphereBuffer({
+              position: br_positions[bin][rotmxidx],
               color: br_colours[bin],
               radius: br_radii[bin],
-              // g works as the id number of the rotation of applied symmetry operator when creating tooltip for an hkl
-              picking: br_ttips[bin][g],
+              // rotmxidx works as the id of the rotation of applied symmetry operator when creating tooltip for an hkl
+              picking: br_ttips[bin][rotmxidx],
               } %s  );
-          shape.addBuffer(br_shapebufs[bin][g]);
+          shape.addBuffer(br_shapebufs[bin][rotmxidx]);
           //WebsockSendMsg( 'Memory usage: ' + String(window.performance.memory.totalJSHeapSize) +
           //        ', ' + String(window.performance.memory.totalJSHeapSize) );
         }
       }
-      MakeHKL_Axis();
+      MakeHKL_Axis(shape);
 
       shapeComp = stage.addComponentFromObject(shape);
-      repr = shapeComp.addRepresentation('buffer42');
-      repr.update();
+      repr = shapeComp.addRepresentation('buffer');
+
+      for (var bin=0; bin<nbins; bin++)
+      {
+        for (var rotmxidx=0; rotmxidx < nrots; rotmxidx++ )
+        {
+          br_shapebufs[bin][rotmxidx].setParameters({opacity: alphas[bin]});
+        }
+      }
 
       stage.viewer.requestRender();
       WebsockSendMsg( 'Expanded data' );
@@ -1606,8 +1747,51 @@ mysocket.onmessage = function (e)
               0.0,   0.0,   0.0,   1.0
       );
       stage.viewerControls.orient(m4);
+      if (strs[9]=="verbose")
+        postrotmxflag = true;
       stage.viewer.requestRender();
+      //cvorient = stage.viewerControls.getOrientation().elements;
+      //msg = String(cvorient);
+      //WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+    }
 
+    if (msgtype === "SpinAnimate")
+    {
+      WebsockSendMsg( 'SpinAnimating ' + pagename );
+      strs = datval[1].split("\\n");
+      var r = new Float32Array(3);
+      var elmstrs = strs[0].split(",");
+      for (j=0; j<3; j++)
+        r[j] = parseFloat(elmstrs[j]);
+      if (r[0] == 0.0 && r[1] == 0.0 && r[2] == 0.0)
+      {
+        // default bindings as per ngl\src\controls\mouse-actions.ts
+        stage.mouseControls.add("drag-ctrl-left", NGL.MouseActions.panDrag);
+        stage.mouseControls.add("drag-ctrl-right", NGL.MouseActions.focusScroll);
+        stage.mouseControls.add("drag-shift-left", NGL.MouseActions.zoomDrag);
+        stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomFocusDrag);
+        stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomFocusDrag);
+        stage.mouseControls.add("drag-right", NGL.MouseActions.panDrag);
+        stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
+        stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
+        stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
+        stage.setSpin(false);
+      }
+      else
+      {
+        stage.spinAnimation.axis.set(r[0], r[1], r[2]);
+
+        stage.mouseControls.remove("drag-ctrl-left");
+        stage.mouseControls.remove("drag-ctrl-right");
+        stage.mouseControls.remove("drag-shift-left");
+        stage.mouseControls.remove("drag-shift-right");
+        stage.mouseControls.remove("drag-middle");
+        stage.mouseControls.remove("drag-right");
+        stage.mouseControls.remove("drag-left");
+        stage.mouseControls.remove("scroll-ctrl");
+        stage.mouseControls.remove("scroll-shift");
+        stage.setSpin(true);
+      }
     }
 
     if (msgtype === "TranslateHKLpoints")
@@ -1626,28 +1810,75 @@ mysocket.onmessage = function (e)
     if (msgtype === "AddVector")
     {
       strs = datval[1].split("\\n");
-      var sm = new Float32Array(3);
+      var r1 = new Float32Array(3);
+      var r2 = new Float32Array(3);
+      var rgb = new Float32Array(3);
       var elmstrs = strs[0].split(",");
       for (j=0; j<3; j++)
-        sm[j] = parseFloat(elmstrs[j]);
+      {
+        r1[j] = parseFloat(elmstrs[j]);
+        r2[j] = parseFloat(elmstrs[j+3]);
+        rgb[j]= parseFloat(elmstrs[j+6]);
+      }
 
-      vectorshape.addArrow( [0.0, 0.0, 0.0], sm , [ 1, 1, 0 ], 0.3);
-      vectorshapeComps.push( stage.addComponentFromObject(vectorshape) );
-      vectorreprs.push( vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vectorbuffer') );
+      vectorshape.addArrow( r1, r2 , [rgb[0], rgb[1], rgb[2]], 0.15);
+      if (elmstrs[6] !== "") {
+        var txtR = [ r1[0] + r2[0], r1[1] + r2[1], r1[2] + r2[2] ];
+        vectorshape.addText( txtR, [rgb[0], rgb[1], rgb[2]], fontsize/2.0, elmstrs[9] );
+      }
+      // if reprname is supplied with a vector then make a representation named reprname
+      // of this and all pending vectors stored in vectorshape and render them.
+      // Otherwise just accummulate the new vector
+      var reprname = elmstrs[10].trim();
+      if (reprname != "")
+      {
+        vectorshapeComps.push( stage.addComponentFromObject(vectorshape) );
+        vectorreprs.push(
+          vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vecbuf',
+                                                                      { name: reprname} )
+        );
+        stage.viewer.requestRender();
+      }
+    }
+
+    if (msgtype === "RemoveVectors")
+    {
+      strs = datval[1].split("\\n");
+      var elmstrs = strs[0].split(",");
+      var reprname = elmstrs[0].trim();
+      // if reprname is supplied only remove vectors with that name
+      if (reprname != "")
+      {
+        thisrepr = stage.getRepresentationsByName(reprname);
+        for (i=0; i<stage.compList.length; i++)
+          if (stage.compList[i].reprList[0].name == reprname)
+          {
+            thiscomp = stage.compList[i];
+            thiscomp.removeRepresentation(thisrepr);
+            stage.removeComponent(thiscomp);
+          }
+      }
+      else // otherwise remove all vectors
+      {
+        for (i=0; i<vectorshapeComps.length; i++)
+        {
+          vectorshapeComps[i].removeRepresentation(vectorreprs[i]);
+          stage.removeComponent(vectorshapeComps[i]);
+        }
+        vectorshapeComps = [];
+        vectorreprs = [];
+      }
+      clipFixToCamPosZ = false;
       stage.viewer.requestRender();
     }
 
-    if (msgtype === "RemoveAllVectors")
+    if (msgtype === "TooltipOpacity")
     {
-      for (i=0; i<vectorshapeComps.length; i++)
-      {
-        vectorshapeComps[i].removeRepresentation(vectorreprs[i]);
-        stage.removeComponent(vectorshapeComps[i]);
-      }
-      vectorshapeComps = [];
-      vectorreprs = [];
-      clipFixToCamPosZ = false;
-      stage.viewer.requestRender();
+      strs = datval[1].split("\\n");
+      var elmstrs = strs[0].split(",");
+      Object.assign(tooltip.style, {
+        backgroundColor: "rgba(255, 255, 255, " + elmstrs[0] + " )",
+      });
     }
 
     if (msgtype === "SetTrackBallRotateSpeed")
@@ -1663,7 +1894,6 @@ mysocket.onmessage = function (e)
       WebsockSendMsg('ReturnTrackBallRotateSpeed:\\n' + msg );
     }
 
-
     if (msgtype === "SetClipPlaneDistances")
     {
       strs = datval[1].split("\\n");
@@ -1678,8 +1908,8 @@ mysocket.onmessage = function (e)
       { // default to no clipping if near >= far
         stage.viewer.parameters.clipMode = 'scene';
         stage.viewer.parameters.clipScale = 'relative';
-        near = 0;
-        far = 100;
+        near = -1000;
+        far = 1000;
       }
       stage.viewer.parameters.clipNear = near;
       stage.viewer.parameters.clipFar = far;
@@ -1707,6 +1937,69 @@ mysocket.onmessage = function (e)
       WebsockSendMsg('ReturnBoundingBox:\\n' + msg );
     }
 
+    if (msgtype === "InjectNewReflections")
+    {
+      WebsockSendMsg( 'Rendering new reflections ' + pagename );
+      var nrefl = parseInt(val.length/7);
+      if (nrefl !== val.length/7)
+      {
+        alert("Mismatch in array of reflections, colours and radii!")
+        return;
+      }
+
+      // delete the shapebufs[] that holds the positions[] arrays
+      shapeComp.removeRepresentation(repr);
+      // remove shapecomp from stage first
+      stage.removeComponent(shapeComp);
+
+      positions = [];
+      colours = [];
+      radii = [];
+      alphas = [];
+      shapebufs = [];
+      ttips = [];
+      shapebufs = [];
+      nbins = 1; // currently no binning when injecting reflections
+
+      positions_ = []; // dummy variables for conforming to binning scheme above
+      colours_ = [];   // as used when expanding reflections
+      radii_ = [];
+      ttips_ = [-1]
+
+      for (j=0; j<nrefl; j++)
+      {
+        positions_.push( parseFloat(val[7*j]) );
+        positions_.push( parseFloat(val[7*j+1]) );
+        positions_.push( parseFloat(val[7*j+2]) );
+        colours_.push( parseFloat(val[7*j+3]) );
+        colours_.push( parseFloat(val[7*j+4]) );
+        colours_.push( parseFloat(val[7*j+5]) );
+        radii_.push( parseFloat(val[7*j+6]) );
+        ttips_.push(j)
+      }
+
+      positions.push( new Float32Array( positions_ ));
+      colours.push( new Float32Array( colours_ ));
+      radii.push( new Float32Array( radii_ ));
+      ttips.push(ttips_);
+
+      shapebufs.push( new NGL.SphereBuffer({
+        position: positions[0],
+        color: colours[0],
+        radius: radii[0],
+        picking: ttips[0],
+        })
+      );
+      shape.addBuffer(shapebufs[0]);
+      alphas.push(1.0);
+
+      MakeHKL_Axis(shape);
+      shapeComp = stage.addComponentFromObject(shape);
+      repr = shapeComp.addRepresentation('buffer');
+      stage.viewer.requestRender();
+      WebsockSendMsg('Injected new reflections');
+    }
+
     if (msgtype === "Testing")
     {
       // test something new
@@ -1732,7 +2025,7 @@ mysocket.onmessage = function (e)
 
 };
 
-    """ %(cntbin, qualitystr)
+    """ %qualitystr
 
     self.NGLscriptstr += WebsockMsgHandlestr
     if self.jscriptfname:
@@ -1762,46 +2055,10 @@ mysocket.onmessage = function (e)
     try:
       if message != "":
         if "Orientation" in message:
-          # The NGL.Matrix4 with the orientation is a list of floats.
-          self.viewmtrx = message[ message.find("\n") + 1: ]
-          lst = self.viewmtrx.split(",")
-          flst = [float(e) for e in lst]
-          ScaleRotMx = matrix.sqr( (flst[0], flst[4], flst[8],
-                               flst[1], flst[5], flst[9],
-                               flst[2], flst[6], flst[10]
-                               )
-          )
-          self.cameratranslation = (flst[12], flst[13], flst[14])
-          self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=2 )
-          self.cameradist = math.pow(ScaleRotMx.determinant(), 1.0/3.0)
-          self.mprint("distance: %s" %roundoff(self.cameradist), verbose=2)
-          self.rotation_mx = ScaleRotMx/self.cameradist
-          rotlst = roundoff(self.rotation_mx.elems)
-          self.mprint("""Rotation matrix:
-  %s,  %s,  %s
-  %s,  %s,  %s
-  %s,  %s,  %s
-          """ %rotlst, verbose=2)
-
-          alllst = roundoff(flst)
-          self.mprint("""OrientationMatrix matrix:
-  %s,  %s,  %s,  %s
-  %s,  %s,  %s,  %s
-  %s,  %s,  %s,  %s
-  %s,  %s,  %s,  %s
-          """ %tuple(alllst), verbose=3)
-          if self.rotation_mx.is_r3_rotation_matrix():
-            angles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
-            self.mprint("angles: %s" %str(roundoff(angles)), verbose=2)
-            z_vec = flex.vec3_double( [(0,0,1)])
-            self.rot_zvec = z_vec * self.rotation_mx
-            self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=2)
-            rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().fractionalization_matrix() )
-            self.rot_recip_zvec = self.rot_zvec * rfracmx
-            self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
-            self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=2)
+          self.orientmessage = message
+          self.ProcessOrientationMessage()
         else:
-          self.mprint( message, verbose=3)
+          self.mprint( message, verbose=4)
         self.lastmsg = message
       if "JavaScriptError:" in message:
         self.mprint( message, verbose=0)
@@ -1810,6 +2067,7 @@ mysocket.onmessage = function (e)
         #sleep(0.2)
         self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
         if not self.isnewfile:
+          self.viewmtrx = self.orientmessage[ self.orientmessage.find("\n") + 1: ]
           #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
           self.msgqueue.append( ("ReOrient", self.viewmtrx) )
         self.isnewfile = False
@@ -1820,6 +2078,7 @@ mysocket.onmessage = function (e)
         self.clipNear = flst[0]
         self.clipFar = flst[1]
         self.cameraPosZ = flst[2]
+        self.params.clip_plane.clipwidth = None
       if "ReturnBoundingBox:" in message:
         datastr = message[ message.find("\n") + 1: ]
         lst = datastr.split(",")
@@ -1850,10 +2109,56 @@ mysocket.onmessage = function (e)
           ttip = "id: %d" %id
           #ttip = self.GetTooltipOnTheFly(hkls[id], rotmx, anomalous=True)
           ttip = self.GetTooltipOnTheFly(id, rotmx, anomalous=True)
-        self.SendWebSockMsg("ShowTooltip", ttip)
+        self.SendMsgToBrowser("ShowTooltip", ttip)
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     except Exception as e:
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
+
+
+  def ProcessOrientationMessage(self):
+    if self.orientmessage is None:
+      return
+
+    if self.orientmessage.find("NaN")>=0:
+      return
+
+    self.viewmtrx = self.orientmessage[ self.orientmessage.find("\n") + 1: ]
+    lst = self.viewmtrx.split(",")
+    flst = [float(e) for e in lst]
+    ScaleRotMx = matrix.sqr( (flst[0], flst[4], flst[8],
+                          flst[1], flst[5], flst[9],
+                          flst[2], flst[6], flst[10]
+                          )
+    )
+    self.cameratranslation = (flst[12], flst[13], flst[14])
+    self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=3)
+    self.cameradist = math.pow(ScaleRotMx.determinant(), 1.0/3.0)
+    self.mprint("distance: %s" %roundoff(self.cameradist), verbose=3)
+    self.rotation_mx = ScaleRotMx/self.cameradist
+    rotlst = roundoff(self.rotation_mx.elems)
+    self.mprint("""Rotation matrix:
+  %s,  %s,  %s
+  %s,  %s,  %s
+  %s,  %s,  %s
+    """ %rotlst, verbose=3)
+    alllst = roundoff(flst)
+    self.mprint("""OrientationMatrix matrix:
+  %s,  %s,  %s,  %s
+  %s,  %s,  %s,  %s
+  %s,  %s,  %s,  %s
+  %s,  %s,  %s,  %s
+    """ %tuple(alllst), verbose=4)
+    self.params.mouse_moved = True
+    if self.rotation_mx.is_r3_rotation_matrix():
+      angles = self.rotation_mx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
+      self.mprint("angles: %s" %str(roundoff(angles)), verbose=3)
+      z_vec = flex.vec3_double( [(0,0,1)])
+      self.rot_zvec = z_vec * self.rotation_mx
+      self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=3)
+      rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().fractionalization_matrix() )
+      self.rot_recip_zvec = self.rot_zvec * rfracmx
+      self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
+      self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=3)
 
 
   def WaitforHandshake(self, sec):
@@ -1872,9 +2177,8 @@ mysocket.onmessage = function (e)
         nwait = 0.0
         sleep(self.sleeptime)
         if len(self.msgqueue):
-          #print("self.msgqueue: " + str(self.msgqueue))
           pendingmessagetype, pendingmessage = self.msgqueue[0]
-          self.SendWebSockMsg(pendingmessagetype, pendingmessage)
+          self.SendMsgToBrowser(pendingmessagetype, pendingmessage)
           while not (self.browserisopen and self.websockclient):
             sleep(self.sleeptime)
             nwait += self.sleeptime
@@ -1892,15 +2196,19 @@ mysocket.onmessage = function (e)
       self.WebBrowserMsgQueue()
 
 
-  def SendWebSockMsg(self, msgtype, msg=""):
+  def SendMsgToBrowser(self, msgtype, msg=""):
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     #print "self.server.clients: ", self.server.clients
     #print "self.websockclient: ",
-    message = u"" + msgtype + self.msgdelim + msg
+    message = u"" + msgtype + self.msgdelim + str(msg)
     if self.websockclient:
+      nwait = 0.0
       while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
         or "CurrentViewOrientation" in self.lastmsg):
         sleep(self.sleeptime)
+        nwait += self.sleeptime
+        if nwait > self.handshakewait and self.browserisopen:
+          break
       self.server.send_message(self.websockclient, message )
     else:
       self.OpenBrowser()
@@ -1920,9 +2228,18 @@ mysocket.onmessage = function (e)
     self.msgqueuethrd.start()
 
 
+  def set_camera_type(self):
+    self.camera_type = self.ngl_settings.camera_type
+
+
+  def set_tooltip_opacity(self):
+    msg = "%f" %self.ngl_settings.tooltip_alpha
+    self.SendMsgToBrowser("TooltipOpacity", msg)
+
+
   def SetOpacities(self, bin_opacities_str):
     retstr = ""
-    if self.miller_array and bin_opacities_str:
+    if self.miller_array and bin_opacities_str and not self.isinjected:
       self.ngl_settings.bin_opacities = bin_opacities_str
       bin_opacitieslst = eval(self.ngl_settings.bin_opacities)
       for binopacity in bin_opacitieslst:
@@ -1937,18 +2254,18 @@ mysocket.onmessage = function (e)
     if bin > self.nbinvalsboundaries-1:
       return "There are only %d bins present\n" %self.nbinvalsboundaries
     msg = "%d, %f" %(bin, alpha)
-    self.SendWebSockMsg("alpha", msg)
+    self.SendMsgToBrowser("alpha", msg)
     return "Opacity %s set on bin[%s]\n" %(alpha, bin)
 
 
   def RedrawNGL(self):
-    #self.SendWebSockMsg("Redraw")
+    #self.SendMsgToBrowser("Redraw")
     self.msgqueue.append( ("Redraw", "") )
 
 
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
     self.mprint("Rendering JavaScript...", verbose=1)
-    #self.SendWebSockMsg("Reload")
+    #self.SendMsgToBrowser("Reload")
     self.msgqueue.append( ("Reload", "") )
 
 
@@ -1982,17 +2299,16 @@ mysocket.onmessage = function (e)
     unique_rot_ops = []
     if P1:
       msgtype += "P1"
-      unique_rot_ops = self.symops[ 0 : self.sg.order_p() ]
+      unique_rot_ops = self.symops[ 0 : self.sg.order_p() ] # avoid duplicate rotation matrices
       retmsg = "Expanding to P1 in browser\n"
       if not self.miller_array.is_unique_set_under_symmetry():
         retmsg += "Not all reflections are in the same asymmetric unit in reciprocal space.\n"
         retmsg += "Some reflections might be displayed on top of one another.\n"
     else:
-      unique_rot_ops = [ self.symops[0] ] # first one is the identity matrix
+      unique_rot_ops = [ self.symops[0] ] # No P1 expansion. So only submit the identity matrix
     if friedel_mate and not self.miller_array.anomalous_flag():
       msgtype += "Friedel"
       retmsg = "Expanding Friedel mates in browser\n"
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     for i, symop in enumerate(unique_rot_ops):
       RotMx = matrix.sqr( symop.r().as_double())
       ortrot = (OrtMx * RotMx * InvMx).as_mat3()
@@ -2003,64 +2319,170 @@ mysocket.onmessage = function (e)
       str_rot = str_rot.replace("(", "")
       str_rot = str_rot.replace(")", "")
       msg += str_rot + "\n"
-    #self.SendWebSockMsg(msgtype, msg)
     self.msgqueue.append( (msgtype, msg) )
     self.GetBoundingBox() # bounding box changes when the extent of the displayed lattice changes
     return retmsg
 
 
-  def AddVector(self, r1, r2, r3, isreciprocal=True):
-    vec = (r1, r2, r3)
-    svec = list(vec)
+  def AddVector(self, s1, s2, s3, t1, t2, t3, isreciprocal=True, label="",
+                  r=0, g=0, b=0, name=""):
+    """
+    Place vector from {s1, s2, s3] to [t1, t2, t3] with colour r,g,b and label
+    If name=="" creation is deferred until AddVector is eventually called with name != ""
+    These vectors are then joined in the same NGL representation
+    """
+    uc = self.miller_array.unit_cell()
+    vec1 = (s1*self.scene.renderscale, s2*self.scene.renderscale, s3*self.scene.renderscale)
+    vec2 = (t1*self.scene.renderscale, t2*self.scene.renderscale, t3*self.scene.renderscale)
+    #svec = list(vec)
     if isreciprocal:
-      vec = self.miller_array.unit_cell().reciprocal_space_vector((r1, r2, r3))
-      svec = [vec[0]*self.scene.renderscale, vec[1]*self.scene.renderscale, vec[2]*self.scene.renderscale ]
-    self.mprint("cartesian vector is: " + str(roundoff(svec)), verbose=1)
-    xyvec = svec[:]
+      # uc.reciprocal_space_vector() only takes integer miller indices so compute
+      # the cartesian coordinates for real valued miller indices with the transpose of the fractionalization matrix
+      vec1 = list( vec1 * matrix.sqr(uc.fractionalization_matrix()).transpose() )
+      vec2 = list( vec2 * matrix.sqr(uc.fractionalization_matrix()).transpose() )
+      svec1 = [ vec1[0], vec1[1], vec1[2] ]
+      svec2 = [ vec2[0], vec2[1], vec2[2] ]
+    else:
+      vec1 = list( vec1 * matrix.sqr(uc.orthogonalization_matrix()) )
+      vec2 = list( vec2 * matrix.sqr(uc.orthogonalization_matrix()) )
+      vscale = 200.0/uc.volume()
+      # TODO: find suitable scale factor for displaying real space vector together with reciprocal vectors
+      svec1 = [ vscale*vec1[0], vscale*vec1[1], vscale*vec1[2] ]
+      svec2 = [ vscale*vec2[0], vscale*vec2[1], vscale*vec2[2] ]
+    self.mprint("cartesian vector is: %s to %s" %(str(roundoff(svec1)), str(roundoff(svec2))), verbose=1)
+    svec = [svec2[0]-svec1[0], svec2[1]-svec1[1], svec2[2]-svec1[2] ]
+    xyvec = svec[:] # deep copying
     xyvec[2] = 0.0 # projection vector of svec in the xy plane
     xyvecnorm = math.sqrt( xyvec[0]*xyvec[0] + xyvec[1]*xyvec[1] )
     if xyvecnorm > 0.0:
-      self.angle_x_xyvec = math.acos( xyvec[0]/xyvecnorm )*180.0/math.pi
-      self.angle_y_xyvec = math.acos( xyvec[1]/xyvecnorm )*180.0/math.pi
+      angle_x_xyvec = math.acos( xyvec[0]/xyvecnorm )*180.0/math.pi
+      angle_y_xyvec = math.acos( xyvec[1]/xyvecnorm )*180.0/math.pi
     else:
-      self.angle_x_xyvec = 90.0
-      self.angle_y_xyvec = 90.0
-    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(self.angle_x_xyvec, self.angle_y_xyvec), verbose=2)
+      angle_x_xyvec = 90.0
+      angle_y_xyvec = 90.0
     yzvec = svec[:]
     yzvec[0] = 0.0 # projection vector of svec in the yz plane
     yzvecnorm = math.sqrt( yzvec[1]*yzvec[1] + yzvec[2]*yzvec[2] )
     if yzvecnorm > 0.0:
-      self.angle_y_yzvec = math.acos( yzvec[1]/yzvecnorm )*180.0/math.pi
-      self.angle_z_yzvec = math.acos( yzvec[2]/yzvecnorm )*180.0/math.pi
+      angle_y_yzvec = math.acos( yzvec[1]/yzvecnorm )*180.0/math.pi
+      angle_z_yzvec = math.acos( yzvec[2]/yzvecnorm )*180.0/math.pi
     else:
-      self.angle_y_yzvec = 90.0
-      self.angle_z_yzvec = 90.0
-    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(self.angle_y_yzvec, self.angle_z_yzvec), verbose=2)
+      angle_y_yzvec = 90.0
+      angle_z_yzvec = 90.0
     svecnorm = math.sqrt( svec[0]*svec[0] + svec[1]*svec[1] + svec[2]*svec[2] )
-    self.angle_x_svec = math.acos( svec[0]/svecnorm )*180.0/math.pi
-    self.angle_y_svec = math.acos( svec[1]/svecnorm )*180.0/math.pi
-    self.angle_z_svec = math.acos( svec[2]/svecnorm )*180.0/math.pi
-    self.mprint("angles to x,y,z axis are: %s, %s, %s" %(self.angle_x_svec, self.angle_y_svec, self.angle_z_svec ), verbose=2)
-    self.msgqueue.append( ("AddVector", "%s, %s, %s" %tuple(svec) ))
+    angle_x_svec = math.acos( svec[0]/svecnorm )*180.0/math.pi
+    angle_y_svec = math.acos( svec[1]/svecnorm )*180.0/math.pi
+    angle_z_svec = math.acos( svec[2]/svecnorm )*180.0/math.pi
+    if angle_y_svec > 90.0:
+      angle_x_xyvec = -angle_x_xyvec
+    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(angle_x_xyvec, angle_y_xyvec), verbose=2)
+    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(angle_y_yzvec, angle_z_yzvec), verbose=2)
+    self.mprint("angles to x,y,z axis are: %s, %s, %s" %(angle_x_svec, angle_y_svec, angle_z_svec ), verbose=2)
+    self.msgqueue.append( ("AddVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
+         %tuple(svec1 + svec2 + [r, g, b, label, name]) ))
+    return angle_x_xyvec, angle_z_svec
 
 
-  def PointVectorOut(self):
-    self.RotateStage(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
+  def PointVectorPerpendicularToClipPlane(self):
+    rotmx = self.Euler2RotMatrix(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
+    if rotmx.determinant() < 0.99999:
+      self.mprint("Rotation matrix determinant is less than 1")
+      return rotmx
+    self.RotateMxStage(rotmx)
+    return rotmx
 
 
-  def clip_plane_normal_to_HKL_vector(self, h, k, l, hkldist=0.0,
-             clipwidth=None, fixorientation=True):
-    if h==0.0 and k==0.0 and l==0.0 or clipwidth==None:
-      self.RemoveNormalVectorToClipPlane()
+  def PointVectorParallelToClipPlane(self):
+    rotmx = self.Euler2RotMatrix(( self.angle_x_xyvec, self.angle_z_svec+90.0, 90.0 ))
+    if rotmx.determinant() < 0.99999:
+      self.mprint("Rotation matrix determinant is less than 1")
+      return rotmx
+    self.RotateMxStage(rotmx)
+    return rotmx
+
+
+  def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), quietbrowser=True):
+    # Assuming vector is in real space fractional coordinates turn it into cartesian
+    cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
+    #  Rodrigues rotation formula for rotation by phi angle around a vector going through origo
+    #  See http://mathworld.wolfram.com/RodriguesRotationFormula.html
+    # \mathbf I+\left(\sin\,\varphi\right)\mathbf W+\left(2\sin^2\frac{\varphi}{2}\right)\mathbf W^2
+    normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+    ux = cartvec[0]/normR
+    uy = cartvec[1]/normR
+    uz = cartvec[2]/normR
+    W = matrix.sqr([0, -uz, uy, uz, 0, -ux, -uy, ux, 0])
+    #W = matrix.sqr([0, uz, -uy, -uz, 0, ux, uy, -ux, 0])
+    I = matrix.identity(3)
+    sin2phi2 = math.sin(phi/2)
+    sin2phi2 *= sin2phi2
+    RotMx = I + math.sin(phi)*W + 2* sin2phi2 * W*W
+    RotMx = RotMx * prevrotmx # impose any other rotation already performed
+    self.RotateMxStage(RotMx, quietbrowser)
+    return RotMx, [ux, uy, uz]
+
+
+  def SpinAnimate(self, r1, r2, r3):
+    self.msgqueue.append(("SpinAnimate", "%s, %s, %s" %(r1, r2, r3) ))
+
+
+  def DrawUnitCell(self):
+    self.AddVector(0,0,0, 1,0,0, False, label="200a/V", r=0.5, g=0.8, b=0.8)
+    self.AddVector(0,0,0, 0,1,0, False, label="200b/V", r=0.8, g=0.5, b=0.8)
+    self.AddVector(0,0,0, 0,0,1, False, label="200c/V", r=0.8, g=0.8, b=0.5)
+    self.AddVector(1,0,0, 1,1,0, False, r=0.8, g=0.5, b=0.8)
+    self.AddVector(0,1,0, 1,1,0, False, r=0.5, g=0.8, b=0.8)
+    self.AddVector(0,0,1, 1,0,1, False, r=0.5, g=0.8, b=0.8)
+    self.AddVector(0,0,1, 0,1,1, False, r=0.8, g=0.5, b=0.8)
+    self.AddVector(0,1,1, 1,1,1, False, r=0.5, g=0.8, b=0.8)
+    self.AddVector(1,0,1, 1,1,1, False, r=0.8, g=0.5, b=0.8)
+    self.AddVector(1,0,0, 1,0,1, False, r=0.8, g=0.8, b=0.5)
+    self.AddVector(0,1,0, 0,1,1, False, r=0.8, g=0.8, b=0.5)
+    self.AddVector(1,1,0, 1,1,1, False, r=0.8, g=0.8, b=0.5, name="unitcell")
+
+
+  def DrawReciprocalUnitCell(self):
+    n=2
+    self.AddVector(0,0,0, n,0,0, label="2a*", r=0.5, g=0.3, b=0.3)
+    self.AddVector(0,0,0, 0,n,0, label="2b*", r=0.3, g=0.5, b=0.3)
+    self.AddVector(0,0,0, 0,0,n, label="2c*", r=0.3, g=0.3, b=0.5)
+    self.AddVector(n,0,0, n,n,0, r=0.3, g=0.5, b=0.3)
+    self.AddVector(0,n,0, n,n,0, r=0.5, g=0.3, b=0.3)
+    self.AddVector(0,0,n, n,0,n, r=0.5, g=0.3, b=0.3)
+    self.AddVector(0,0,n, 0,n,n, r=0.3, g=0.5, b=0.3)
+    self.AddVector(0,n,n, n,n,n, r=0.5, g=0.3, b=0.3)
+    self.AddVector(n,0,n, n,n,n, r=0.3, g=0.5, b=0.3)
+    self.AddVector(n,0,0, n,0,n, r=0.3, g=0.3, b=0.5)
+    self.AddVector(0,n,0, 0,n,n, r=0.3, g=0.3, b=0.5)
+    self.AddVector(n,n,0, n,n,n, r=0.3, g=0.3, b=0.5, name="reciprocal_unitcell")
+
+
+  def fix_orientation(self, val):
+    if val:
+      self.DisableMouseRotation()
+    else:
+      self.EnableMouseRotation()
+
+
+  def clip_plane_hkl_vector(self, h, k, l, hkldist=0.0,
+             clipwidth=None, fixorientation=True, is_parallel=False):
+    # create clip plane that is normal to the reciprocal hkl vector
+    if h==0.0 and k==0.0 and l==0.0 or clipwidth <= 0.0:
+      self.RemoveVectorsNoClipPlane()
       return
-    self.RemoveAllReciprocalVectors()
+    self.RemoveVectors("clip_vector")
     R = -l * self.normal_hk + h * self.normal_kl + k * self.normal_lh
-    self.AddVector(R[0][0], R[0][1], R[0][2], isreciprocal=False)
+    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
+                      R[0][0], R[0][1], R[0][2], isreciprocal=False,
+                      name="clip_vector")
     if fixorientation:
       self.DisableMouseRotation()
     else:
       self.EnableMouseRotation()
-    self.PointVectorOut()
+    if is_parallel:
+      self.vecrotmx = self.PointVectorParallelToClipPlane()
+    else:
+      self.vecrotmx = self.PointVectorPerpendicularToClipPlane()
     halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
     if clipwidth is None:
       clipwidth = self.meanradius
@@ -2068,11 +2490,63 @@ mysocket.onmessage = function (e)
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
     self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
     self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
+    self.DrawUnitCell()
+    self.DrawReciprocalUnitCell()
 
 
-  def RemoveNormalVectorToClipPlane(self):
+  def clip_plane_abc_vector(self, a, b, c, hkldist=0.0,
+             clipwidth=None, fixorientation=True, is_parallel=False):
+    # create clip plane that is normal to the realspace fractional abc vector
+    if a==0.0 and b==0.0 and c==0.0 or clipwidth <= 0.0:
+      self.RemoveVectorsNoClipPlane()
+      return
+    self.RemoveVectors("clip_vector")
+    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
+                            a, b, c, isreciprocal=False, name="clip_vector")
+    if fixorientation:
+      self.DisableMouseRotation()
+    else:
+      self.EnableMouseRotation()
+    if is_parallel:
+      self.vecrotmx = self.PointVectorParallelToClipPlane()
+    else:
+      self.vecrotmx = self.PointVectorPerpendicularToClipPlane()
+    halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
+    if clipwidth is None:
+      clipwidth = self.meanradius
+    clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
+    clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
+    self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
+    self.DrawUnitCell()
+    self.DrawReciprocalUnitCell()
+
+
+  def clip_plane_to_HKL_vector(self, h, k, l, hkldist=0.0,
+             clipwidth=None, fixorientation=True):
+    if h==0.0 and k==0.0 and l==0.0 or clipwidth==None:
+      self.RemoveVectorsNoClipPlane()
+      return
+    self.RemoveVectors("clip_vector")
+    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
+                               h, k, l, isreciprocal=False,
+                               name="clip_vector")
+    if fixorientation:
+      self.DisableMouseRotation()
+    else:
+      self.EnableMouseRotation()
+    self.PointVectorPerpendicularToClipPlane()
+    halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
+    if clipwidth is None:
+      clipwidth = self.meanradius
+    clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
+    clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
+    self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
+    self.TranslateHKLpoints(h,k,l, hkldist)
+
+
+  def RemoveVectorsNoClipPlane(self):
     self.EnableMouseRotation()
-    self.RemoveAllReciprocalVectors()
+    self.RemoveVectors()
     self.SetClipPlaneDistances(0, 0)
     self.TranslateHKLpoints(0, 0, 0, 0.0)
 
@@ -2110,56 +2584,58 @@ mysocket.onmessage = function (e)
       while self.clipFar is None and nwait < 5:
         time.sleep(self.sleeptime)
         nwait += self.sleeptime
-      self.mprint("clipnear, clipfar, cameraPosZ: %2.2f, %2.2f %2.2f" \
+      self.mprint("clipnear, clipfar, cameraPosZ: %s, %s %s" \
                  %(self.clipNear, self.clipFar, self.cameraPosZ), 2)
     return (self.clipNear, self.clipFar, self.cameraPosZ)
 
 
   def GetBoundingBox(self):
-    self.boundingX = None
-    self.boundingY = None
-    self.boundingZ = None
+    self.boundingX = 0.0
+    self.boundingY = 0.0
+    self.boundingZ = 0.0
     self.msgqueue.append( ("GetBoundingBox", "") )
     if self.WaitforHandshake(5):
       nwait = 0
       while self.boundingX is None and nwait < 5:
         time.sleep(self.sleeptime)
         nwait += self.sleeptime
-      self.mprint("boundingXYZ: %2.2f %2.2f %2.2f" \
+      self.mprint("boundingXYZ: %s, %s %s" \
          %(self.boundingX, self.boundingY, self.boundingZ), verbose=2)
     return (self.boundingX, self.boundingY, self.boundingZ)
 
 
-  def RemoveAllReciprocalVectors(self):
-    self.msgqueue.append( ("RemoveAllVectors", "" ))
+  def RemoveVectors(self, reprname=""):
+    self.msgqueue.append( ("RemoveVectors", reprname ))
 
 
   def TestNewFunction(self):
-    self.SendWebSockMsg("Testing")
+    self.SendMsgToBrowser("Testing")
 
 
   def DisableMouseRotation(self): # disable rotating with the mouse
-    self.SendWebSockMsg("DisableMouseRotation")
+    self.SendMsgToBrowser("DisableMouseRotation")
 
 
   def EnableMouseRotation(self): # enable rotating with the mouse
-    self.SendWebSockMsg("EnableMouseRotation")
+    self.SendMsgToBrowser("EnableMouseRotation")
 
 
-  def RotateStage(self, eulerangles):
-    #uc = self.miller_array.unit_cell()
-    #OrtMx = matrix.sqr( uc.orthogonalization_matrix())
-    #InvMx = OrtMx.inverse()
-    #RotMx = matrix.sqr( (1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0 ) )
-    #ortrot = (OrtMx * RotMx * InvMx).as_mat3()
-    radangles = [e*math.pi/180.0 for e in eulerangles]
+  def Euler2RotMatrix(self, eulerangles):
+    eulerangles1 = eulerangles
+    radangles = [e*math.pi/180.0 for e in eulerangles1]
     RotMx = scitbx.math.euler_angles_as_matrix(radangles)
-    scaleRot = RotMx * self.cameradist
+    return RotMx
+
+
+  def RotateMxStage(self, rotmx, quietbrowser=True):
+    scaleRot = rotmx * self.cameradist
     ortrot = scaleRot.as_mat3()
     str_rot = str(ortrot)
     str_rot = str_rot.replace("(", "")
     str_rot = str_rot.replace(")", "")
-    msg = str_rot + "\n"
+    msg = str_rot + ", quiet\n"
+    if not quietbrowser:
+      msg = str_rot + ", verbose\n"
     self.msgqueue.append( ("RotateStage", msg) )
 
 
@@ -2185,6 +2661,23 @@ mysocket.onmessage = function (e)
     self.msgqueue.append( ("TranslateHKLpoints", msg) )
 
 
+  def InjectNewReflections(self, proc_array):
+    (hklscenes, scenemaxdata,
+      scenemindata, scenemaxsigmas,
+        sceneminsigmas, scenearrayinfos
+     ) = MakeHKLscene(proc_array, 0, copy.deepcopy(self.settings), { } , None)
+
+    strdata = ""
+    hklscene = hklscenes[0]
+    self.scene = hklscene
+
+    for i,radius in enumerate(hklscene.radii):
+      ftuple = (hklscene.points[i][0], hklscene.points[i][1], hklscene.points[i][2],
+               hklscene.colors[i][0], hklscene.colors[i][1], hklscene.colors[i][2], radius )
+      strdata += "%s,%s,%s,%s,%s,%s,%s," % roundoff(ftuple, 2)
+    strdata = strdata[:-1] # avoid the last comma
+    self.isinjected = True
+    self.msgqueue.append( ("InjectNewReflections", strdata) )
 
 
 
@@ -2193,8 +2686,12 @@ ngl_philstr = """
     .type = float
   bin_opacities = ""
     .type = str
+  tooltip_alpha = 0.85
+    .type = float
   fixorientation = False
     .type = bool
+  camera_type = *orthographic perspective
+    .type = choice
 """
 
 NGLmaster_phil = libtbx.phil.parse( ngl_philstr )

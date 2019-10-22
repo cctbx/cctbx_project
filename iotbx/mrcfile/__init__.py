@@ -381,7 +381,10 @@ class write_ccp4_map:
     mrc=mrcfile.new(file_name,overwrite=True)
 
     # Convert flex array to the numpy array required for mrcfile
-    numpy_data=new_map_data.as_float().as_numpy_array()
+    if hasattr(new_map_data,'as_float'):
+      numpy_data=new_map_data.as_float().as_numpy_array()
+    else: # was float
+      numpy_data=new_map_data.as_numpy_array()
 
     # This numpy_data array is always in the order (3,2,1): columns are Z,
     #  rows are Y, sections in X.  This comes from the shape of flex arrays.

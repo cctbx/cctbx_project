@@ -12,9 +12,9 @@ class reflection_table_utils(object):
       yield reflections
 
     i_begin = 0
-    hkl_ref = reflections[0].get('miller_index_asymmetric')
+    hkl_ref = reflections['miller_index_asymmetric'][0]
     for i in range(reflections.size()):
-      hkl = reflections[i].get('miller_index_asymmetric')
+      hkl = reflections['miller_index_asymmetric'][i]
       if hkl == hkl_ref:
         continue
       else:
@@ -28,7 +28,7 @@ class reflection_table_utils(object):
   def select_odd_experiment_reflections(reflections):
     'Select reflections from experiments with odd ids. An experiment id must be a string representing a hexadecimal number'
     sel = flex.bool()
-    for refl in reflections:
+    for refl in reflections.rows():
       sel.append(int(refl['exp_id'], 16)%2 != 0)
     return reflections.select(sel)
 
@@ -36,7 +36,7 @@ class reflection_table_utils(object):
   def select_even_experiment_reflections(reflections):
     'Select reflections from experiments with even ids. An experiment id must be a string representing a hexadecimal number'
     sel = flex.bool()
-    for refl in reflections:
+    for refl in reflections.rows():
       sel.append(int(refl['exp_id'], 16)%2 == 0)
     return reflections.select(sel)
 
@@ -52,7 +52,7 @@ class reflection_table_utils(object):
 
   @staticmethod
   def merge_reflections(reflections, min_multiplicity):
-    '''Merge intensities of multiply-measured symmetry-reduced HKLs'''
+    '''Merge intensities of multiply-measured symmetry-reduced HKLs. The input reflection table must be sorted by symmetry-reduced HKLs.'''
     merged_reflections = reflection_table_utils.merged_reflection_table()
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections):
       if refls.size() == 0:
@@ -77,3 +77,51 @@ class reflection_table_utils(object):
                                   'sigma' : standard_error_of_weighted_mean_intensity,
                                   'multiplicity' : refls.size()})
     return merged_reflections
+
+  @staticmethod
+  def prune_reflection_table_keys(reflections, keys_to_delete=None, keys_to_keep=None):
+    '''Remove reflection table keys: either inclusive or exclusive'''
+    if len(reflections) != 0:
+      all_keys = list()
+      for key in reflections.keys():
+        all_keys.append(key)
+      if keys_to_delete != None:
+        for key in keys_to_delete:
+          if key in all_keys:
+            del reflections[key]
+      elif keys_to_keep != None:
+        for key in all_keys:
+          if not key in keys_to_keep:
+            del reflections[key]
+    return reflections
+
+  @staticmethod
+  def get_next_reflection_table_slice(reflections, n_slices, reflection_table_stub):
+    '''Generate an exact number of slices from a reflection table. Make slices as even as possible. If not enough reflections, generate empty tables'''
+    assert n_slices >= 0
+
+    if n_slices == 1:
+      yield reflections
+    else:
+      import math
+
+      generated_slices = 0
+      count = len(reflections)
+
+      if count > 0:
+        # how many non-empty slices should we generate and with what stride?
+        nonempty_slices = min(count, n_slices)
+        stride = int(math.ceil(count / nonempty_slices))
+
+        # generate all non-empty slices
+        for i in range(0, count, stride):
+          generated_slices += 1
+          i2 = i + stride
+          if generated_slices == nonempty_slices:
+            i2 = count
+          yield reflections[i:i2]
+
+      # generate some empty slices if necessary
+      empty_slices = max(0, n_slices - generated_slices)
+      for i in range(empty_slices):
+        yield reflection_table_stub()

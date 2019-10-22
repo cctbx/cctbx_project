@@ -211,7 +211,7 @@ class ListManager(dict):
       dict.__delitem__(self,key)
 
   def keys(self):
-    builtin = dict.keys(self)
+    builtin = list(dict.keys(self)) # python 3 compatible
     for key in self.key.keys():
       builtin.append(key); builtin.append("N_"+key)
     return builtin

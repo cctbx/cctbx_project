@@ -201,6 +201,12 @@ class energies(scitbx.restraints.energies):
   def get_filtered_n_angle_proxies(self):
     return self.angle_proxies.proxy_select(origin_id=0).size()
 
+  def get_filtered_n_dihedral_proxies(self):
+    return self.dihedral_proxies.proxy_select(origin_id=0).size()
+
+  def get_filtered_n_planarity_proxies(self):
+    return self.planarity_proxies.proxy_select(origin_id=0).size()
+
   def bond_deviations_z(self):
     '''
     Calculate rmsz of bond deviations
@@ -339,11 +345,11 @@ class energies(scitbx.restraints.energies):
       return r_min, r_max, r_ave
 
   def dihedral_deviations(self):
-    # !!!XXX!!! Warning! this works wrong because it is not aware of origin_id!
     if(self.n_dihedral_proxies is not None):
+      covalent_dihedrals = self.dihedral_proxies.proxy_select(origin_id=0)
       dihedral_deltas = geometry_restraints.dihedral_deltas(
         sites_cart = self.sites_cart,
-        proxies    = self.dihedral_proxies)
+        proxies    = covalent_dihedrals)
       d_sq  = dihedral_deltas * dihedral_deltas
       d_ave = math.sqrt(flex.mean_default(d_sq, 0))
       d_max = math.sqrt(flex.max_default(d_sq, 0))
@@ -389,9 +395,10 @@ class energies(scitbx.restraints.energies):
     # XXX Need update, does not respect origin_id
     # assert 0, "Not counting for origin_id"
     if(self.n_planarity_proxies is not None):
+      covalent_plan = self.planarity_proxies.proxy_select(origin_id=0)
       planarity_deltas = geometry_restraints.planarity_deltas_rms(
         sites_cart = self.sites_cart,
-        proxies    = self.planarity_proxies)
+        proxies    = covalent_plan)
       p_sq  = planarity_deltas * planarity_deltas
       p_ave = math.sqrt(flex.mean_default(p_sq, 0))
       p_max = math.sqrt(flex.max_default(p_sq, 0))

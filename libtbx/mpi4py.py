@@ -10,9 +10,9 @@ class mpiCommEmulator(object):
     return 1
   def barrier(self):
     pass
-  def bcast(self, transmitted, root):
+  def bcast(self, transmitted, root=0):
     return transmitted
-  def reduce(self, data, operation, root):
+  def reduce(self, data, operation, root=0):
     if operation == mpiEmulator.SUM or operation == mpiEmulator.MAX or operation == mpiEmulator.MIN:
       return data
     else:
@@ -21,10 +21,15 @@ class mpiCommEmulator(object):
     return self.reduce(data, operation, 0)
   def alltoall(self, items):
     return items
+  def scatter(self, items):
+    return items
   def gather(self, item, root):
     items = []
     items.append(item)
     return items
+  def Abort(self,error):
+    import sys
+    sys.exit()
 
 class mpiEmulator(object):
   COMM_WORLD = mpiCommEmulator()

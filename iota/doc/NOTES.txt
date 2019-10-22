@@ -1,9 +1,10 @@
-IOTA v1.4.008 - bugfixes for command-line module
+IOTA v1.4.011 - logging and single-image bugfixes
 
-- dry run option exits gracefully rather than trying and failing to process
-- iota.run can now process up to 10 individual images introduced as command-line
- args (hacky solution; need a better one)
-- iota.single_image now works as intended
+- added processing time-stamp
+- if determine_sg_and_reindex is turned off, there's no longer an exception
+- DIALS log folder now works with multi-folder datasets
+- Debugged iota.single_image; it now works (without logging)
+- Made silent a failure to delete a temp folder
 
-08.05.2019
+09.20.2019
 # -- end

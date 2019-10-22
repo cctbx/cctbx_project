@@ -31,10 +31,16 @@ def roundoff(val, precision=3):
   recursively using round2() defined above as in:
   >>> math_utils.roundoff( [12.3454, 7.4843, ["foo", (35.3581, -0.3856, [4.2769, 3.2147] )] ])
   [12.345, 7.484, ['foo', (35.358, -0.386, [4.277, 3.215])]]
+  If value is less than the precision then return it with scientific notation
   '''
   if isinstance(val, float):
     if math.isnan(val):
       return float("nan")
+    if abs(val) < float("1e-%d" %precision):
+      fstr = "%" + "%d" %precision
+      fstr += ".%de" %precision
+      val2 = float(fstr %val)
+      return val2
     return round2(val, precision)
   if isinstance(val, list):
     for i,v in enumerate(val):

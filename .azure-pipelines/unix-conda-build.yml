@@ -26,10 +26,12 @@ steps:
 
 - script: |
     source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
-    conda activate $(PYTHON_VERSION)
+    conda activate base
     cd ../..
     python bootstrap.py hot update --builder=cctbx
   displayName: Download sources
+
+- template: ./download-artifacts.yml
 
 # create conda environment
 - script: |

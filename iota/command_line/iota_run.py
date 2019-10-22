@@ -4,9 +4,11 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 08/05/2019
+Last Changed: 09/20/2019
 Description : IOTA command-line module.
 '''
+import time
+import datetime
 
 import argparse
 from contextlib import contextmanager
@@ -102,6 +104,9 @@ class Process(ProcessingBase):
   def process(self):
     """ Run importer and/or processor """
 
+    start_time = time.time()
+
+    # Process images
     with prog_message('Processing {} images'.format(len(self.info.unprocessed)),
                       prog='PROCESSING', out_type=self.out_type):
       if self.out_type == 'progress':
@@ -109,7 +114,14 @@ class Process(ProcessingBase):
         self.gs_prog = cmd.ProgressBar(title='PROCESSING')
       img_objects = self.run_process(iterable=self.info.unprocessed)
 
+      proc_time = datetime.timedelta(seconds=int(time.time() - start_time))
+      hours, minutes, seconds = str(proc_time).split(':')
+      util.main_log(self.info.logfile,
+                    "Total processing time: {} hours, {} minutes, {} seconds"
+                    "".format(hours, minutes, seconds),
+                    print_tag=False)
 
+    # Run analysis if not in GUI mode
     if not 'gui' in self.out_type:
       with prog_message('Analyzing results', prog='ANALYSIS',
                         out_type=self.out_type):
@@ -123,6 +135,15 @@ class Process(ProcessingBase):
           print ('\n'.join(self.info.summary))
         else:
           print ('\n **** NO IMAGES INTEGRATED! ****')
+
+    # Determine total runtime
+    if not 'gui' in self.out_type:
+      runtime = datetime.timedelta(seconds=int(time.time() - start_time))
+      hours, minutes, seconds = str(runtime).split(':')
+      util.main_log(self.info.logfile,
+                    "Total run time: {} hours, {} minutes, {} seconds"
+                    "".format(hours, minutes, seconds),
+                    print_tag=True)
 
 
 # ============================================================================ #

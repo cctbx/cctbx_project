@@ -11,17 +11,43 @@ from __future__ import absolute_import, division, print_function
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from PySide2.QtCore import Qt, QTimer
-from PySide2.QtWidgets import ( QApplication, QCheckBox, QComboBox, QDialog,
+from PySide2.QtCore import Qt, QTimer, QEvent
+from PySide2.QtWidgets import ( QAction, QApplication, QCheckBox, QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-        QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
+        QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
-from PySide2.QtGui import QColor, QFont
+from PySide2.QtGui import QColor, QFont, QCursor
 from PySide2.QtWebEngineWidgets import QWebEngineView
 import sys, zmq, subprocess, time, traceback
 
+
+
+class MakeNewDataForm(QDialog):
+  def __init__(self, parent=None):
+    super(MakeNewDataForm, self).__init__(parent)
+    self.setWindowTitle("Create New Reflection Data")
+    myGroupBox = QGroupBox("Python expression for newdata")
+    layout = QGridLayout()
+    layout.addWidget(parent.operationlabeltxt,     0, 0, 1, 2)
+    layout.addWidget(parent.MillerLabel1,           1, 0, 1, 2)
+    layout.addWidget(parent.MillerComboBox,        2, 0, 1, 1)
+    layout.addWidget(parent.MillerLabel2,          2, 1, 1, 1)
+    layout.addWidget(parent.MillerLabel3,          3, 0, 1, 2)
+    layout.addWidget(parent.operationtxtbox,       4, 0, 1, 2)
+    layout.addWidget(parent.newlabelLabel,          5, 0, 1, 1)
+    layout.addWidget(parent.newlabeltxtbox,         5, 1, 1, 1)
+    layout.addWidget(parent.operationbutton,       6, 0, 1, 2)
+    layout.setRowStretch (0, 1)
+    layout.setRowStretch (1 ,0)
+    myGroupBox.setLayout(layout)
+    mainLayout = QGridLayout()
+    mainLayout.addWidget(myGroupBox,     0, 0)
+    self.setLayout(mainLayout)
+    m = self.fontMetrics().width( "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf")
+    self.setMinimumWidth(m)
+    #self.setFixedSize( self.sizeHint() )
 
 
 class SettingsForm(QDialog):
@@ -33,25 +59,36 @@ class SettingsForm(QDialog):
     layout.addWidget(parent.mousespeed_labeltxt,     0, 0, 1, 1)
     layout.addWidget(parent.mousemoveslider,         0, 1, 1, 3)
     layout.addWidget(parent.mousesensitxtbox,        0, 4, 1, 1)
-
     layout.addWidget(parent.Fontsize_labeltxt,       1, 0, 1, 1)
     layout.addWidget(parent.fontspinBox,             1, 4, 1, 1)
-
     layout.addWidget(parent.cameraPerspectCheckBox,  2, 0, 1, 1)
-
     layout.addWidget(parent.bufsize_labeltxt,        3, 0, 1, 1)
     layout.addWidget(parent.bufsizespinBox,          3, 4, 1, 1)
-
+    layout.addWidget(parent.ttipalpha_labeltxt,      4, 0, 1, 1)
+    layout.addWidget(parent.ttipalpha_spinBox,        4, 4, 1, 1)
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
     myGroupBox.setLayout(layout)
-
     mainLayout = QGridLayout()
     mainLayout.addWidget(myGroupBox,     0, 0)
     self.setLayout(mainLayout)
     self.setFixedSize( self.sizeHint() )
 
 
+class MyTableWidget(QTableWidget):
+  def __init__(self, *args, **kwargs):
+    QTableWidget.__init__(self, *args, **kwargs)
+    self.mousebutton = None
+
+  def mousePressEvent(self, event):
+    if event.type() == QEvent.MouseButtonPress:
+      self.mousebutton = None
+      if event.button() == Qt.RightButton:
+        print( "Right clicked")
+        self.mousebutton = Qt.RightButton
+      else:
+        print("Left clicked")
+    QTableWidget.mousePressEvent(self, event)
 
 
 class NGL_HKLViewer(QWidget):
@@ -96,12 +133,13 @@ class NGL_HKLViewer(QWidget):
     self.mousespeed_labeltxt.setText("Mouse speed:")
     self.mousemoveslider = QSlider(Qt.Horizontal)
     self.mousemoveslider.setMinimum(0)
-    self.mousemoveslider.setMaximum(300)
+    self.mousemoveslider.setMaximum(200)
     self.mousemoveslider.setValue(0)
     self.mousemoveslider.sliderReleased.connect(self.onFinalMouseSensitivity)
     self.mousemoveslider.valueChanged.connect(self.onMouseSensitivity)
     self.mousesensitxtbox = QLineEdit('')
     self.mousesensitxtbox.setReadOnly(True)
+
     self.fontspinBox = QDoubleSpinBox()
     self.fontspinBox.setSingleStep(1)
     self.fontspinBox.setRange(4, 50)
@@ -118,15 +156,21 @@ class NGL_HKLViewer(QWidget):
     self.cameraPerspectCheckBox.clicked.connect(self.onCameraPerspect)
     self.cameraPerspectCheckBox.setCheckState(Qt.Unchecked)
 
-    self.bufsize = 20000
     self.bufsizespinBox = QSpinBox()
-    self.bufsizespinBox.setSingleStep(1000)
-    self.bufsizespinBox.setRange(1000, 100000)
-    self.bufsizespinBox.setValue(self.bufsize)
-    self.bufsizespinBox.valueChanged.connect(self.onTextbuffersizeChanged)
+    self.bufsizespinBox.setSingleStep(1)
+    self.bufsizespinBox.setRange(1, 100)
+    self.bufsizespinBox.setValue(10)
     self.bufsize_labeltxt = QLabel()
-    self.bufsize_labeltxt.setText("Text buffer size (bytes):")
+    self.bufsize_labeltxt.setText("Text buffer size (Kbytes):")
 
+    self.ttipalpha = 0.85
+    self.ttipalpha_spinBox = QDoubleSpinBox()
+    self.ttipalpha_spinBox.setSingleStep(0.05)
+    self.ttipalpha_spinBox.setRange(0.0, 1.0)
+    self.ttipalpha_spinBox.setValue(self.ttipalpha)
+    self.ttipalpha_spinBox.valueChanged.connect(self.onTooltipAlphaChanged)
+    self.ttipalpha_labeltxt = QLabel()
+    self.ttipalpha_labeltxt.setText("Tooltip Opacity:")
 
     self.settingsform = SettingsForm(self)
 
@@ -134,8 +178,22 @@ class NGL_HKLViewer(QWidget):
     self.MillerComboBox.activated.connect(self.onMillerComboSelchange)
     #self.MillerComboBox.setSizeAdjustPolicy(QComboBox.AdjustToContents)
 
-    self.MillerLabel = QLabel()
-    self.MillerLabel.setText("Show the following reflection data")
+    self.MillerLabel1 = QLabel()
+    self.MillerLabel1.setText("and 'data2' and or 'sigma2' variable from the")
+    self.MillerLabel2 = QLabel()
+    self.MillerLabel2.setText("column")
+    self.MillerLabel3 = QLabel()
+    self.MillerLabel3.setText("Example: 'newdata=data/sigmas; newsigmas= -42*sigmas' ")
+    self.newlabelLabel = QLabel()
+    self.newlabelLabel.setText("Column label for new data:")
+    self.newlabeltxtbox = QLineEdit('')
+    self.operationlabeltxt = QLabel()
+    self.operationtxtbox = QLineEdit('')
+    self.operationbutton = QPushButton("OK")
+    self.operationbutton.clicked.connect(self.onMakeNewData)
+    self.makenewdataform = MakeNewDataForm(self)
+    self.makenewdataform.setModal(True)
+
 
     self.HKLnameedit = QLineEdit('')
     self.HKLnameedit.setReadOnly(True)
@@ -143,13 +201,15 @@ class NGL_HKLViewer(QWidget):
     self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
     self.textInfo.setReadOnly(True)
 
-    labels = ["Label", "Type", "Space group", "# HKLs", "Span of HKLs",
+    labels = ["Column label", "Type", "Space group", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
-    self.millertable = QTableWidget(0, len(labels))
+    self.millertable = MyTableWidget(0, len(labels))
     self.millertable.setHorizontalHeaderLabels(labels)
     self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     # don't allow editing this table
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
+    self.millertable.cellPressed.connect(self.onMillerTableCellPressed)
+    #self.millertable.installEventFilter(self)
 
     self.createExpansionBox()
     self.createFileInfoBox()
@@ -160,10 +220,8 @@ class NGL_HKLViewer(QWidget):
 
     mainLayout = QGridLayout()
     mainLayout.addWidget(self.FileInfoBox,         0, 0)
-    mainLayout.addWidget(self.MillerLabel,         1, 0)
-    mainLayout.addWidget(self.MillerComboBox,      2, 0)
-    mainLayout.addWidget(self.functionTabWidget,   3, 0)
-    mainLayout.addWidget(self.settingsbtn,         4, 0, 1, 1)
+    mainLayout.addWidget(self.functionTabWidget,   1, 0)
+    mainLayout.addWidget(self.settingsbtn,         2, 0, 1, 1)
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if self.UseOSbrowser==False:
@@ -177,7 +235,7 @@ class NGL_HKLViewer(QWidget):
     mainLayout.setRowStretch(0, 1)
     mainLayout.setRowStretch(1, 0)
     mainLayout.setRowStretch(2, 1)
-    mainLayout.setRowStretch(3, 1)
+    #mainLayout.setRowStretch(3, 0)
     mainLayout.setColumnStretch(4, 0)
     self.setLayout(mainLayout)
 
@@ -188,6 +246,8 @@ class NGL_HKLViewer(QWidget):
     self.err = None
     self.comboviewwidth = 0
     self.hklscenes_arrays = []
+    self.millerarraylabels = []
+    self.scenearraylabels = []
     self.array_infotpls = []
     self.matching_arrays = []
     self.bin_infotpls = None
@@ -196,17 +256,45 @@ class NGL_HKLViewer(QWidget):
     self.spacegroups = []
     self.info = []
     self.infostr = ""
+    self.tncsvec = []
     self.fileisvalid = False
     self.NewFileLoaded = False
+    self.NewMillerArray = False
     self.NewHKLscenes = False
     self.updatingNbins = False
     self.binstableitemchanges = False
+    self.binTableCheckState = None
+    self.millertablemenu = QMenu(self)
+    self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
 
     self.show()
 
 
   def SettingsDialog(self):
     self.settingsform.show()
+
+
+  """
+  def eventFilter(self, source, event):
+    if (event.type() == QEvent.MouseButtonPress and
+     source is self.millertable):
+      if event.button() == Qt.RightButton:
+        print("Right button clicked")
+    #return False
+
+    if (event.type() == QEvent.ContextMenu and
+     source is self.millertable):
+      self.CustomContextMenuHandler(event.pos())
+
+      #menu = QMenu()
+      #menu.addAction('Open Window')
+      #if menu.exec_(event.globalPos()):
+      #  item = source.itemAt(event.pos())
+      #  print(item.text())
+
+      return True
+    return super(NGL_HKLViewer, self).eventFilter(source, event)
+  """
 
 
   def update(self):
@@ -230,9 +318,11 @@ class NGL_HKLViewer(QWidget):
 
           if self.infodict.get("hklscenes_arrays"):
             self.hklscenes_arrays = self.infodict.get("hklscenes_arrays", [])
+            self.scenearraylabels = [ e[3] for e in self.hklscenes_arrays ]
 
           if self.infodict.get("array_infotpls"):
             self.array_infotpls = self.infodict.get("array_infotpls",[])
+            self.millerarraylabels = [ e[0] for e in self.array_infotpls ]
 
           if self.infodict.get("bin_data_label"):
             self.BinDataComboBox.setCurrentText(self.infodict["bin_data_label"])
@@ -256,6 +346,7 @@ class NGL_HKLViewer(QWidget):
                   item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
                   item.setCheckState(Qt.Checked)
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                item.setFlags(item.flags() ^ Qt.ItemIsSelectable )
                 self.binstable.setItem(row, col, item)
             if self.bin_opacities:
               self.update_table_opacities()
@@ -285,11 +376,17 @@ class NGL_HKLViewer(QWidget):
           if self.infodict.get("info"):
             currentinfostr = self.infodict.get("info",[])
 
+          if self.infodict.get("tncsvec"):
+            self.tncsvec = self.infodict.get("tncsvec",[])
+
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
 
           if self.infodict.get("NewHKLscenes"):
             self.NewHKLscenes = self.infodict.get("NewHKLscenes",False)
+
+          if self.infodict.get("NewMillerArray"):
+            self.NewMillerArray = self.infodict.get("NewMillerArray",False)
 
           self.fileisvalid = True
           #print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
@@ -298,27 +395,28 @@ class NGL_HKLViewer(QWidget):
             #print(currentinfostr)
             self.infostr += currentinfostr + "\n"
             # display no more than self.bufsize bytes of text
-            self.infostr = self.infostr[-self.bufsize:]
+            self.infostr = self.infostr[-1000*self.bufsizespinBox.value():]
             self.textInfo.setPlainText(self.infostr)
             self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
 
-          if self.NewFileLoaded and self.NewHKLscenes:
+          if (self.NewFileLoaded or self.NewMillerArray) and self.NewHKLscenes:
             #if self.mergedata == True : val = Qt.CheckState.Checked
             #if self.mergedata == None : val = Qt.CheckState.PartiallyChecked
             #if self.mergedata == False : val = Qt.CheckState.Unchecked
             #self.mergecheckbox.setCheckState(val )
             #print("got hklscenes: " + str(self.hklscenes_arrays))
+            self.NewMillerArray = False
 
             self.MillerComboBox.clear()
-            self.MillerComboBox.addItems( [ e[3] for e in self.hklscenes_arrays ] )
+            self.MillerComboBox.addItems( self.millerarraylabels )
             self.MillerComboBox.setCurrentIndex(-1) # unselect the first item in the list
             self.comboviewwidth = 0
-            for e in self.hklscenes_arrays:
-              self.comboviewwidth = max(self.comboviewwidth, self.MillerComboBox.fontMetrics().width( e[3]) )
+            for e in self.millerarraylabels:
+              self.comboviewwidth = max(self.comboviewwidth, self.MillerComboBox.fontMetrics().width( e) )
             self.MillerComboBox.view().setMinimumWidth(self.comboviewwidth)
 
             self.millertable.clearContents()
-            self.millertable.setRowCount(len(self.hklscenes_arrays))
+            self.millertable.setRowCount(len(self.array_infotpls))
             for n,millarr in enumerate(self.array_infotpls):
               for m,elm in enumerate(millarr):
                 self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
@@ -327,7 +425,7 @@ class NGL_HKLViewer(QWidget):
 
           if self.NewHKLscenes:
             self.BinDataComboBox.clear()
-            self.BinDataComboBox.addItems(["Resolution"] + [ e[3] for e in self.hklscenes_arrays ] )
+            self.BinDataComboBox.addItems(["Resolution"] + self.scenearraylabels )
             self.BinDataComboBox.view().setMinimumWidth(self.comboviewwidth)
             #self.BinDataComboBox.setCurrentIndex(-1) # unselect the first item in the list
             self.NewHKLscenes = False
@@ -349,8 +447,9 @@ class NGL_HKLViewer(QWidget):
     self.mousesensitxtbox.setText("%2.2f" %val )
 
 
-  def onTextbuffersizeChanged(self, val):
-    self.bufsize = val
+  def onTooltipAlphaChanged(self, val):
+    self.ttipalpha = val
+    self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.tooltip_alpha = %f' %val)
 
 
   def onFontsizeChanged(self, val):
@@ -362,9 +461,9 @@ class NGL_HKLViewer(QWidget):
 
   def onCameraPerspect(self,val):
     if self.cameraPerspectCheckBox.isChecked():
-      self.NGL_HKL_command("NGL_HKLviewer.camera_type = perspective")
+      self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.camera_type = perspective")
     else:
-      self.NGL_HKL_command("NGL_HKLviewer.camera_type = orthographic")
+      self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.camera_type = orthographic")
 
 
   def MergeData(self):
@@ -478,16 +577,20 @@ class NGL_HKLViewer(QWidget):
       bin = binopacity[1]  #int(binopacity.split(",")[1])
       item = QTableWidgetItem()
       item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
-      if alpha < 0.5:
+      if alpha == 0.0:
         item.setCheckState(Qt.Unchecked)
-      else:
+      if alpha > 0.0 and alpha < 1.0:
+        item.setCheckState(Qt.PartiallyChecked)
+      if alpha == 1.0:
         item.setCheckState(Qt.Checked)
+      item.setText(str(alpha))
       item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+      item.setFlags(item.flags() ^ Qt.ItemIsSelectable )
       self.binstable.setItem(bin, 3, item)
     self.binstable_isready = True
 
 
-  def SetOpaqueAll(self):
+  def SetAllOpaqueCheckboxes(self):
     if self.binstableitemchanges:
       return
     bin_opacitieslst = eval(self.bin_opacities)
@@ -503,31 +606,52 @@ class NGL_HKLViewer(QWidget):
       self.OpaqueAllCheckbox.setCheckState(Qt.PartiallyChecked)
 
 
+  def onBinsTableitemPressed(self, item):
+    #print( "in itemPressed %s,  %s" %(item.text(), str( item.checkState())) )
+    self.binTableCheckState = item.checkState()
+    self.bintableAlpha = float(item.text())
+
+
+  def onBinsTableitemClicked(self, item):
+    #print( "in itemClicked  %s,  %s" %(item.text(), str( item.checkState())) )
+    pass
+
+
   def onBinsTableItemChanged(self, item):
+    #print( "in itemChanged %s,  %s" %(item.text(), str( item.checkState())) )
     bin = item.row()
     column = item.column()
     try:
-      if item.checkState()==Qt.Unchecked:
-        alpha = 0.0
-      else:
-        alpha = 1.0
+      bin_opacitieslst = eval(self.bin_opacities)
+      alpha = max(0.0, min(1.0, float(item.text()) ) ) # between 0 and 1 only
+      try:
+        (oldalpha, bin) = bin_opacitieslst[bin]
+        if oldalpha == float(item.text()):
+          if item.checkState()==Qt.Unchecked:
+            alpha = 0.0
+          else:
+            alpha = 1.0
+      except Exception as e:
+        pass
+
       if column==3 and self.binstable_isready: # changing opacity
-        #assert (alpha <= 1.0 and alpha >= 0.0)
-        bin_opacitieslst = eval(self.bin_opacities)
         bin_opacitieslst[bin] = (alpha, bin)
         self.bin_opacities = str(bin_opacitieslst)
-        self.SetOpaqueAll()
+        self.SetAllOpaqueCheckboxes()
         self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
-      #self.binstable.currentItem().setText( self.currentSelectedBinsTableVal)
 
 
   def onBinsTableItemSelectionChanged(self):
-    row = self.binstable.currentItem().row()
-    column = self.binstable.currentItem().column()
-    self.currentSelectedBinsTableVal = self.binstable.currentItem().text()
-    #print( "in itemSelectionChanged " + self.currentSelectedBinsTableVal)
+    item = self.binstable.currentItem()
+    #print( "in SelectionChanged %s,  %s" %(item.text(), str( item.checkState())) )
+    row = item.row()
+    column = item.column()
+    try:
+      self.currentSelectedBinsTableVal = float(item.text())
+    except Exception as e:
+      pass
 
 
   def onOpaqueAll(self):
@@ -555,21 +679,10 @@ class NGL_HKLViewer(QWidget):
     #print("web page finished loading now")
 
 
-  def onBinsTableitemActivated(self, item):
-    row = item.row()
-    column = item.column()
-    currentval = item.text()
-    #print( "in itemActivated " + currentval)
-
-
   def onBinsTableCellentered(self, row, col):
     pass
     #print( "in Cellentered " + self.binstable.currentItem().text() )
 
-
-  def onBinsTableCellPressed(self, row, col):
-    pass
-    #print( "in CellPressed " + self.binstable.currentItem().text() )
   """
 
   def onNbinsChanged(self, val):
@@ -579,35 +692,33 @@ class NGL_HKLViewer(QWidget):
 
 
   def onRadiiScaleChanged(self, val):
-    self.radii_scale = val
     self.NGL_HKL_command("""
       NGL_HKLviewer.viewer {
         nth_power_scale_radii = %f
         scale = %f
       }
-      """ %(self.nth_power_scale, self.radii_scale)
+      """ %(self.power_scale_spinBox.value(), self.radii_scale_spinBox.value() )
     )
 
 
   def onPowerScaleChanged(self, val):
-    self.nth_power_scale = val
     self.NGL_HKL_command("""
       NGL_HKLviewer.viewer {
         nth_power_scale_radii = %f
         scale = %f
       }
-      """ %(self.nth_power_scale, self.radii_scale)
+      """ %(self.power_scale_spinBox.value(), self.radii_scale_spinBox.value() )
     )
 
 
   def onManualPowerScale(self):
     if self.ManualPowerScalecheckbox.isChecked():
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.nth_power_scale_radii = %f' %self.nth_power_scale)
+      self.NGL_HKL_command('NGL_HKLviewer.viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
       self.power_scale_spinBox.setEnabled(True)
     else:
       self.NGL_HKL_command('NGL_HKLviewer.viewer.nth_power_scale_radii = -1.0')
       self.power_scale_spinBox.setEnabled(False)
-      self.nth_power_scale = -1.0
+      #self.power_scale_spinBox.setValue(-1.0)
 
 
   def onOpenReflectionFile(self):
@@ -662,7 +773,7 @@ class NGL_HKLViewer(QWidget):
     layout = QGridLayout()
     layout.addWidget(self.SpacegroupLabel,           0, 0)
     layout.addWidget(self.SpaceGroupComboBox,        0, 1)
-    #layout.addWidget(self.mergecheckbox,             1, 0)
+    #layout.addWidget(self.mergecheckbox,            1, 0)
     layout.addWidget(self.expandP1checkbox,          1, 0)
     layout.addWidget(self.expandAnomalouscheckbox,   1, 1)
     layout.addWidget(self.sysabsentcheckbox,         2, 0)
@@ -706,124 +817,218 @@ class NGL_HKLViewer(QWidget):
     tab2 = QWidget()
     layout2 = QGridLayout()
 
+    self.recipvecBtn = QRadioButton(tab2)
+    self.recipvecBtn.setText("as fractional values in reciprocal space")
+    self.recipvecBtn.setChecked(False)
+    self.recipvecBtn.clicked.connect(self.onClipPlaneChkBox)
+    layout2.addWidget(self.recipvecBtn,       0, 0, 1, 2)
+
+    self.realspacevecBtn = QRadioButton(tab2)
+    self.realspacevecBtn.setText("as fractional values in real space")
+    self.realspacevecBtn.setChecked(True)
+    self.realspacevecBtn.clicked.connect(self.onClipPlaneChkBox)
+    layout2.addWidget(self.realspacevecBtn,    1, 0, 1, 2)
+
+    self.clipTNCSBtn = QRadioButton(tab2)
+    self.clipTNCSBtn.setText("as tNCS vector")
+    self.clipTNCSBtn.setChecked(False)
+    self.clipTNCSBtn.clicked.connect(self.onClipPlaneChkBox)
+    layout2.addWidget(self.clipTNCSBtn,    1, 2, 1, 1)
+
     self.hvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
-    self.hvecval = 2.0
-    self.hvec_spinBox.setValue(self.hvecval)
-    self.hvec_spinBox.setDecimals(2)
-    self.hvec_spinBox.setSingleStep(0.5)
-    self.hvec_spinBox.setRange(-100.0, 10.0)
+    self.hvec_spinBox.setValue(2.0)
+    self.hvec_spinBox.setDecimals(6)
+    #self.hvec_spinBox.setSingleStep(0.5)
+    self.hvec_spinBox.setRange(-100.0, 100.0)
     self.hvec_spinBox.valueChanged.connect(self.onHvecChanged)
     self.hvec_Label = QLabel()
-    self.hvec_Label.setText("H")
-    layout2.addWidget(self.hvec_Label,      0, 0, 1, 1)
-    layout2.addWidget(self.hvec_spinBox,    0, 1, 1, 1)
+    self.hvec_Label.setText("R1")
+    layout2.addWidget(self.hvec_Label,      2, 0, 1, 1)
+    layout2.addWidget(self.hvec_spinBox,    3, 0, 1, 1)
 
     self.kvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
-    self.kvecval = 0.0
-    self.kvec_spinBox.setValue(self.kvecval)
-    self.kvec_spinBox.setDecimals(2)
+    self.kvec_spinBox.setValue(0.0)
+    self.kvec_spinBox.setDecimals(6)
     self.kvec_spinBox.setSingleStep(0.5)
     self.kvec_spinBox.setRange(-100.0, 100.0)
     self.kvec_spinBox.valueChanged.connect(self.onKvecChanged)
     self.kvec_Label = QLabel()
-    self.kvec_Label.setText("K")
-    layout2.addWidget(self.kvec_Label,      1, 0, 1, 1)
-    layout2.addWidget(self.kvec_spinBox,    1, 1, 1, 1)
+    self.kvec_Label.setText("R2")
+    layout2.addWidget(self.kvec_Label,      2, 1, 1, 1)
+    layout2.addWidget(self.kvec_spinBox,    3, 1, 1, 1)
 
     self.lvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
-    self.lvecval = 0.0
-    self.lvec_spinBox.setValue(self.lvecval)
-    self.lvec_spinBox.setDecimals(2)
+    self.lvec_spinBox.setValue(0.0)
+    self.lvec_spinBox.setDecimals(6)
     self.lvec_spinBox.setSingleStep(0.5)
     self.lvec_spinBox.setRange(-100.0, 100.0)
     self.lvec_spinBox.valueChanged.connect(self.onLvecChanged)
     self.lvec_Label = QLabel()
-    self.lvec_Label.setText("L")
-    layout2.addWidget(self.lvec_Label,      2, 0, 1, 1)
-    layout2.addWidget(self.lvec_spinBox,    2, 1, 1, 1)
+    self.lvec_Label.setText("R3")
+    layout2.addWidget(self.lvec_Label,      2, 2, 1, 1)
+    layout2.addWidget(self.lvec_spinBox,    3, 2, 1, 1)
 
     self.hkldist_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.hkldistval = 0.0
     self.hkldist_spinBox.setValue(self.hkldistval)
-    self.hkldist_spinBox.setDecimals(2)
+    self.hkldist_spinBox.setDecimals(6)
     self.hkldist_spinBox.setSingleStep(0.5)
     self.hkldist_spinBox.setRange(-100.0, 100.0)
     self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
     self.hkldist_Label = QLabel()
     self.hkldist_Label.setText("Distance from Origin")
-    layout2.addWidget(self.hkldist_Label,      3, 0, 1, 1)
-    layout2.addWidget(self.hkldist_spinBox,    3, 1, 1, 1)
+    layout2.addWidget(self.hkldist_Label,      4, 0, 1, 1)
+    layout2.addWidget(self.hkldist_spinBox,    4, 1, 1, 1)
 
     self.clipwidth_spinBox = QDoubleSpinBox(self.sliceTabWidget)
-    self.clipwidthval = 0.5
-    self.clipwidth_spinBox.setValue(self.clipwidthval )
-    self.clipwidth_spinBox.setDecimals(2)
+    self.clipwidth_spinBox.setValue(0.5 )
+    self.clipwidth_spinBox.setDecimals(6)
     self.clipwidth_spinBox.setSingleStep(0.05)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
     self.clipwidth_Label = QLabel()
     self.clipwidth_Label.setText("Clip Plane Width")
-    layout2.addWidget(self.clipwidth_Label,      4, 0, 1, 1)
-    layout2.addWidget(self.clipwidth_spinBox,    4, 1, 1, 1)
+    layout2.addWidget(self.clipwidth_Label,      5, 0, 1, 1)
+    layout2.addWidget(self.clipwidth_spinBox,    5, 1, 1, 1)
 
-    self.ClipBox = QGroupBox("Normal Vector to Clip Plane")
+    self.rotavecangle_labeltxt = QLabel()
+    self.rotavecangle_labeltxt.setText("Angle rotated: 0.0")
+    self.rotavecangle_slider = QSlider(Qt.Horizontal)
+    self.rotavecangle_slider.setMinimum(0)
+    self.rotavecangle_slider.setMaximum(360)
+    self.rotavecangle_slider.setValue(0)
+    self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
+    self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngle)
+    layout2.addWidget(self.rotavecangle_labeltxt,  6, 0, 1, 1)
+    layout2.addWidget(self.rotavecangle_slider,    6, 1, 1, 2)
+
+
+    self.ClipBox = QGroupBox("Specify vector components (R1,R2,R3)")
     self.ClipBox.setLayout(layout2)
 
     layout3 = QGridLayout()
     self.ClipPlaneChkBox = QCheckBox(self.sliceTabWidget)
-    self.ClipPlaneChkBox.setText("Use clip plane normal to HKL vector pointing out")
+    self.ClipPlaneChkBox.setText("Slice reflections with a clip plane oriented")
     self.ClipPlaneChkBox.clicked.connect(self.onClipPlaneChkBox)
+    self.clipLabel = QLabel()
 
-    layout3.addWidget(self.ClipPlaneChkBox, 0, 0)
-    layout3.addWidget(self.ClipBox, 1, 0)
+    self.clipParallelBtn = QRadioButton(tab2)
+    self.clipParallelBtn.setText("parallel to vector below")
+    self.clipParallelBtn.setChecked(False)
+    self.clipParallelBtn.clicked.connect(self.onClipPlaneChkBox)
+
+    self.clipNormalBtn = QRadioButton(tab2)
+    self.clipNormalBtn.setText("perpendicular to vector below")
+    self.clipNormalBtn.setChecked(True)
+    self.clipNormalBtn.clicked.connect(self.onClipPlaneChkBox)
+
+    layout3.addWidget(self.ClipPlaneChkBox,  0, 0)
+    layout3.addWidget(self.clipParallelBtn,  1, 0)
+    layout3.addWidget(self.clipNormalBtn,    1, 1)
+    layout3.addWidget(self.ClipBox,          2, 0, 1, 2)
     tab2.setLayout(layout3)
+
     self.sliceTabWidget.addTab(tab1, "Explicit Slicing")
     self.sliceTabWidget.addTab(tab2, "Clip Plane Slicing")
     self.ClipBox.setDisabled(True)
+    self.clipParallelBtn.setChecked(True)
+    self.clipNormalBtn.setDisabled(True)
+    self.clipParallelBtn.setDisabled(True)
 
 
   def onClipPlaneChkBox(self):
     if self.ClipPlaneChkBox.isChecked():
+      self.clipNormalBtn.setDisabled(False)
+      self.clipParallelBtn.setDisabled(False)
       self.ClipBox.setDisabled(False)
-      philstr = """NGL_HKLviewer.normal_clip_plane {
+      if len(self.tncsvec):
+        self.clipTNCSBtn.setDisabled(False)
+        self.clipwidth_spinBox.setValue(4)
+      philstr = """NGL_HKLviewer.clip_plane {
   h = %s
   k = %s
   l = %s
   hkldist = %s
   clipwidth = %s
+  is_parallel = %s
+  is_real_space_frac_vec = %s
 }
   NGL_HKLviewer.viewer.NGL.fixorientation = %s
-      """ %(self.hvecval, self.kvecval, self.lvecval, self.hkldistval, self.clipwidthval, \
-                              str(self.fixedorientcheckbox.isChecked()) )
+        """ %(self.hvec_spinBox.value(), self.kvec_spinBox.value(), self.lvec_spinBox.value(),\
+              self.hkldistval, self.clipwidth_spinBox.value(), \
+              str(self.clipParallelBtn.isChecked()), str(self.realspacevecBtn.isChecked()), \
+              str(self.fixedorientcheckbox.isChecked()) )
+          #self.NGL_HKL_command(philstr)
+      if self.clipTNCSBtn.isChecked():
+        self.hvec_spinBox.setValue(self.tncsvec[0])
+        self.kvec_spinBox.setValue(self.tncsvec[1])
+        self.lvec_spinBox.setValue(self.tncsvec[2])
+        self.hvec_spinBox.setDisabled(True)
+        self.kvec_spinBox.setDisabled(True)
+        self.lvec_spinBox.setDisabled(True)
+        philstr = """NGL_HKLviewer.clip_plane {
+  h = %s
+  k = %s
+  l = %s
+  hkldist = %s
+  clipwidth = %s
+  is_parallel = %s
+  is_real_space_frac_vec = True
+}
+  NGL_HKLviewer.viewer.NGL.fixorientation = %s
+        """ %(self.tncsvec[0], self.tncsvec[1], self.tncsvec[2], self.hkldistval, self.clipwidth_spinBox.value(), \
+              str(self.clipParallelBtn.isChecked()), \
+              str(self.fixedorientcheckbox.isChecked()) )
+      else:
+        self.hvec_spinBox.setDisabled(False)
+        self.kvec_spinBox.setDisabled(False)
+        self.lvec_spinBox.setDisabled(False)
       self.NGL_HKL_command(philstr)
     else:
       self.ClipBox.setDisabled(True)
-      self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.clipwidth = None")
+      self.clipNormalBtn.setDisabled(True)
+      self.clipParallelBtn.setDisabled(True)
+      self.clipTNCSBtn.setDisabled(True)
+      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.clipwidth = -1")
+
+
+
+  def onFinalRotaVecAngle(self):
+    val = self.rotavecangle_slider.value()
+    self.NGL_HKL_command("""NGL_HKLviewer.clip_plane {
+    angle_around_vector = %f
+    bequiet = False
+}""" %val)
+
+
+  def onRotaVecAngle(self):
+    val = self.rotavecangle_slider.value()
+    self.rotavecangle_labeltxt.setText("Angle rotated: %2.f" %val)
+    self.NGL_HKL_command("""NGL_HKLviewer.clip_plane {
+    angle_around_vector = %f
+    bequiet = True
+}""" %val)
 
 
   def onClipwidthChanged(self, val):
-    self.clipwidthval = val
-    self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.clipwidth = %f" %self.clipwidthval)
+    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.clipwidth = %f" %self.clipwidth_spinBox.value())
 
 
   def onHKLdistChanged(self, val):
     self.hkldistval = val
-    self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.hkldist = %f" %self.hkldistval)
+    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.hkldist = %f" %self.hkldistval)
 
 
   def onHvecChanged(self, val):
-    self.hvecval = val
-    self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.h = %f" %self.hvecval)
+    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.h = %f" %self.hvec_spinBox.value())
 
 
   def onKvecChanged(self, val):
-    self.kvecval = val
-    self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.k = %f" %self.kvecval)
+    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.k = %f" %self.kvec_spinBox.value())
 
 
   def onLvecChanged(self, val):
-    self.lvecval = val
-    self.NGL_HKL_command("NGL_HKLviewer.normal_clip_plane.l = %f" %self.lvecval)
+    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.l = %f" %self.lvec_spinBox.value())
 
 
   def onFixedorient(self):
@@ -831,39 +1036,103 @@ class NGL_HKLViewer(QWidget):
                                     %str(self.fixedorientcheckbox.isChecked()))
 
 
-  def onMillerComboSelchange(self, i):
-    self.NGL_HKL_command("NGL_HKLviewer.viewer.scene_id = %d" %i)
-    #self.MillerComboBox.setCurrentIndex(i)
-    if self.MillerComboBox.currentText():
-      self.functionTabWidget.setEnabled(True)
-      self.expandAnomalouscheckbox.setEnabled(True)
-      # don' allow anomalous expansion for data that's already anomalous
-      for arrayinfo in self.array_infotpls:
-        isanomalous = arrayinfo[-1]
-        label = arrayinfo[0]
-        if isanomalous and label == self.MillerComboBox.currentText()[: len(label) ]:
-          self.expandAnomalouscheckbox.setDisabled(True)
-    else:
-      self.functionTabWidget.setDisabled(True)
+  def onMillerTableCellPressed(self, row, col):
+    #print( "in millertable CellPressed " + self.millertable.currentItem().text() )
+    if self.millertable.mousebutton == Qt.RightButton:
+      self.MillerTableContextMenuHandler(QCursor.pos(), row)
 
-    self.SpaceGroupComboBox.clear()
-    self.SpaceGroupComboBox.addItems( self.spacegroups )
-    # need to supply issymunique flag in infotuple
-    #if self.hklscenes_arrays[ i ][6] == 0:
-    #  self.mergecheckbox.setEnabled(True)
-    #else:
-    #  self.mergecheckbox.setEnabled(False)
+
+  def MillerTableContextMenuHandler(self, pos, row):
+    self.millertablemenu.clear()
+    # Tag menu items with data being int or a (string, int) tuple.
+    # These are being checked for in onMillerTableMenuAction() and appropriate
+    # action taken
+    for i,scenelabel in enumerate(self.scenearraylabels):
+      if self.millerarraylabels[row] == scenelabel or self.millerarraylabels[row] + " + " in scenelabel:
+        print(i, scenelabel)
+        myqa = QAction("Display %s data" %scenelabel, self, triggered=self.testaction)
+        myqa.setData(i)
+        self.millertablemenu.addAction(myqa)
+    myqa = QAction("Make new data as a function of this data...", self, triggered=self.testaction)
+    myqa.setData( ("newdata_1", row ))
+    self.millertablemenu.addAction(myqa)
+    myqa = QAction("Make new data as a function of this data and another data set...", self, triggered=self.testaction)
+    myqa.setData( ("newdata_2", row ))
+    self.millertablemenu.addAction(myqa)
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    self.millertablemenu.exec_(QCursor.pos())
+
+
+  def onMillerTableMenuAction(self, action):
+    data = action.data()
+    # depending on what menu item the user clicked data is either an int or a (string, int) tuple
+    if data is not None:
+      if type(data) is int:
+        idx = data
+        self.NGL_HKL_command("NGL_HKLviewer.viewer.scene_id = %d" %idx)
+        if self.fileisvalid:
+          self.functionTabWidget.setEnabled(True)
+          self.expandAnomalouscheckbox.setEnabled(True)
+          self.expandP1checkbox.setEnabled(True)
+          # don' allow anomalous expansion for data that's already anomalous
+          arrayinfo = self.array_infotpls[idx]
+          isanomalous = arrayinfo[-1]
+          spacegroup = arrayinfo[2]
+          label = arrayinfo[0]
+          if isanomalous:
+            self.expandAnomalouscheckbox.setDisabled(True)
+          if spacegroup=='P 1 (No. 1)':
+            self.expandP1checkbox.setDisabled(True)
+        else:
+          self.functionTabWidget.setDisabled(True)
+        self.SpaceGroupComboBox.clear()
+        self.SpaceGroupComboBox.addItems( self.spacegroups )
+      else:
+        (strval, idx) = data
+        self.operate_arrayidx1 = idx
+        if strval=="newdata_1":
+          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data' and or 'sigma' variable")
+          self.MillerLabel1.setDisabled(True)
+          self.MillerLabel2.setDisabled(True)
+          self.MillerComboBox.setDisabled(True)
+          self.MillerLabel3.setText("Example: 'newdata = data / sigmas; newsigmas= - 42*sigmas' ")
+          self.operate_arrayidx2 = None
+        else:
+          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigma1' variable")
+          self.MillerLabel1.setEnabled(True)
+          self.MillerLabel2.setEnabled(True)
+          self.MillerComboBox.setEnabled(True)
+          self.MillerLabel3.setText("Example: 'newdata = data1 + data2; newsigmas= sigmas1 - data2 / sigmas1' ")
+        self.makenewdataform.show()
+
+
+  def onMakeNewData(self):
+    mtpl = (self.operationtxtbox.text(), self.newlabeltxtbox.text() ,
+              self.operate_arrayidx1, self.operate_arrayidx2 )
+    self.NGL_HKL_command('NGL_HKLviewer.miller_array_operations = "[ %s ]"' %str(mtpl) )
+    self.makenewdataform.accept()
+
+
+  def onMillerComboSelchange(self, i):
+    self.operate_arrayidx2 = i
+
+
+  def testaction(self):
+    pass
 
 
   def createFileInfoBox(self):
+    self.datasetLabel = QLabel()
+    self.datasetLabel.setText("Data sets:")
     self.FileInfoBox = QGroupBox("Reflection File Information")
     layout = QGridLayout()
     layout.addWidget(self.openFileNameButton,     0, 0, 1, 2)
     if self.devmode:
       layout.addWidget(self.debugbutton,            0, 2, 1, 1)
     layout.addWidget(self.HKLnameedit,            1, 0, 1, 3)
-    layout.addWidget(self.millertable,            2, 0, 1, 3)
-    layout.addWidget(self.textInfo,               3, 0, 1, 3)
+    layout.addWidget(self.datasetLabel,           2, 0, 1, 3)
+    layout.addWidget(self.millertable,            3, 0, 1, 3)
+    layout.addWidget(self.textInfo,               4, 0, 1, 3)
     #layout.setColumnStretch(1, 2)
     self.FileInfoBox.setLayout(layout)
 
@@ -876,8 +1145,7 @@ class NGL_HKLViewer(QWidget):
     self.ManualPowerScalecheckbox.clicked.connect(self.onManualPowerScale)
 
     self.power_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
-    self.nth_power_scale = 0.33
-    self.power_scale_spinBox.setValue(self.nth_power_scale)
+    self.power_scale_spinBox.setValue(0.33)
     self.power_scale_spinBox.setDecimals(2)
     self.power_scale_spinBox.setSingleStep(0.05)
     self.power_scale_spinBox.setRange(0.0, 1.0)
@@ -887,8 +1155,7 @@ class NGL_HKLViewer(QWidget):
     self.powerscaleLabel.setText("Power scale Factor")
 
     self.radii_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
-    self.radii_scale = 1.5
-    self.radii_scale_spinBox.setValue(self.radii_scale)
+    self.radii_scale_spinBox.setValue(1.0)
     self.radii_scale_spinBox.setDecimals(1)
     self.radii_scale_spinBox.setSingleStep(0.1)
     self.radii_scale_spinBox.setRange(0.2, 2.0)
@@ -929,7 +1196,10 @@ class NGL_HKLViewer(QWidget):
     self.OpaqueAllCheckbox.clicked.connect(self.onOpaqueAll)
 
     self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
+    self.binstable.itemClicked.connect(self.onBinsTableitemClicked  )
+    self.binstable.itemPressed.connect(self.onBinsTableitemPressed  )
     self.binstable.itemSelectionChanged.connect(self.onBinsTableItemSelectionChanged  )
+
     self.BinDataComboBox = QComboBox()
     self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)
     self.BinsGroupBox = QGroupBox("Bins")
@@ -1028,7 +1298,7 @@ if __name__ == '__main__':
     guiobj = NGL_HKLViewer()
 
     timer = QTimer()
-    timer.setInterval(20)
+    timer.setInterval(10)
     timer.timeout.connect(guiobj.update)
     timer.start()
 

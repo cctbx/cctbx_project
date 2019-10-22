@@ -104,7 +104,7 @@ class geometry(object):
     outliers = 0
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.dihedral_deviations()
-      n = self.from_restraints.n_dihedral_proxies
+      n = self.from_restraints.get_filtered_n_dihedral_proxies()
       outliers = self.from_restraints.dihedral_proxies.get_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
         sigma_threshold=4)
@@ -114,7 +114,7 @@ class geometry(object):
     mi,ma,me,n = 0,0,0,0
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.planarity_deviations()
-      n = self.from_restraints.n_planarity_proxies
+      n = self.from_restraints.get_filtered_n_planarity_proxies()
     return group_args(min = mi, max = ma, mean = me, n = n)
 
   def parallelity(self):
@@ -558,7 +558,7 @@ class info(object):
         self.model.torsion_NCS_as_pdb()]:
       if len(info_pdb_str) > 0:
         print(prefix, file=out)
-        print(info_pdb_str, end=' ', file=out)
+        print(info_pdb_str, end='', file=out)
 
   def as_cif_block(self, cif_block=None):
     if cif_block is None:

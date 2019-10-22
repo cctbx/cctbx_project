@@ -485,7 +485,8 @@ class dataset_statistics(object):
     self.crystal_symmetry = crystal_symmetry
     i_obs = i_obs.customized_copy(
       crystal_symmetry=crystal_symmetry).set_info(info)
-    if (assert_is_not_unique_set_under_symmetry and i_obs.is_unique_set_under_symmetry()):
+    if (assert_is_not_unique_set_under_symmetry and
+        i_obs.as_anomalous_array().is_unique_set_under_symmetry()):
       raise Sorry(("The data in %s are already merged.  Only unmerged (but "+
         "scaled) data may be used in this program.")%
         i_obs.info().label_string())
@@ -919,13 +920,15 @@ class dataset_statistics(object):
     print("for refinement.", file=out)
 
 def select_data(file_name, data_labels, log=None,
-    assume_shelx_observation_type_is=None, allow_amplitudes=None):
+    assume_shelx_observation_type_is=None, allow_amplitudes=None, anomalous=None):
   if (log is None) : log = null_out()
   from iotbx import reflection_file_reader
   hkl_in = reflection_file_reader.any_reflection_file(file_name)
   print("Format:", hkl_in.file_type(), file=log)
   miller_arrays = hkl_in.as_miller_arrays(merge_equivalents=False,
-    assume_shelx_observation_type_is=assume_shelx_observation_type_is)
+    assume_shelx_observation_type_is=assume_shelx_observation_type_is,
+    anomalous=anomalous,
+  )
   if ((hkl_in.file_type() == "shelx_hklf") and (not "=" in file_name)
        and assume_shelx_observation_type_is is None):
     print("WARNING: SHELX file is assumed to contain intensities", file=log)

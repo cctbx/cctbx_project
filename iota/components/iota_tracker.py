@@ -57,8 +57,7 @@ elif (wx.Platform == '__WXMSW__'):
 ginp = InputFinder()
 user = os.getlogin()
 
-default_target = '\n'.join(['verbosity=10',
-                            'spotfinder {',
+default_target = '\n'.join(['spotfinder {',
                             '  threshold {',
                             '    dispersion {',
                             '      gain = 1',

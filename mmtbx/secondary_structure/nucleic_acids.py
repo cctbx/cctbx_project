@@ -513,10 +513,10 @@ def get_stacking_proxies(pdb_hierarchy, stacking_phil_params, grm,
       selected_atoms_1 = selection_cache.iselection(stacking_pair.base1)
       selected_atoms_2 = selection_cache.iselection(stacking_pair.base2)
       if len(selected_atoms_1) == 0:
-        raise Sorry("Selection %s in stacking_pair retusulted in 0 atoms." % (
+        raise Sorry("Selection %s in stacking_pair resulted in 0 atoms." % (
             stacking_pair.base1))
       if len(selected_atoms_2) == 0:
-        raise Sorry("Selection %s in stacking_pair retusulted in 0 atoms." % (
+        raise Sorry("Selection %s in stacking_pair resulted in 0 atoms." % (
             stacking_pair.base2))
       a1 = pdb_atoms[selected_atoms_1[0]]
       a2 = pdb_atoms[selected_atoms_2[0]]
@@ -535,7 +535,7 @@ def get_stacking_proxies(pdb_hierarchy, stacking_phil_params, grm,
             slack=0,
             top_out=False,
             limit=1,
-            origin_id=0) # special case default but not "covalent geometry"
+            origin_id=origin_ids.get_origin_id('basepair stacking'))
           result.append(proxy)
   return result
 
@@ -658,10 +658,10 @@ def get_basepair_proxies(
       selected_atoms_1 = selection_cache.iselection(base_pair.base1)
       selected_atoms_2 = selection_cache.iselection(base_pair.base2)
       if len(selected_atoms_1) == 0:
-        raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
+        raise Sorry("Selection %s in base_pair resulted in 0 atoms." % (
             base_pair.base1))
       if len(selected_atoms_2) == 0:
-        raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
+        raise Sorry("Selection %s in base_pair resulted in 0 atoms." % (
             base_pair.base2))
       a1 = pdb_atoms[selected_atoms_1[0]]
       a2 = pdb_atoms[selected_atoms_2[0]]
@@ -734,7 +734,7 @@ def get_bp_plan_proxies(a1, a2, base_pair, grm, mon_lib_srv, plane_cache):
           slack=0,
           top_out=False,
           limit=1,
-          origin_id=origin_ids.get_origin_id('hydrogen bonds'))
+          origin_id=origin_ids.get_origin_id('basepair parallelity'))
         result_parr_p.append(proxy)
       if base_pair.restrain_planarity:
         if base_pair.planarity_sigma < 1e-5:
@@ -743,6 +743,6 @@ def get_bp_plan_proxies(a1, a2, base_pair, grm, mon_lib_srv, plane_cache):
         proxy=geometry_restraints.planarity_proxy(
           i_seqs=flex.size_t(i_seqs+j_seqs),
           weights=[w]*len(i_seqs+j_seqs),
-          origin_id=origin_ids.get_origin_id('hydrogen bonds'))
+          origin_id=origin_ids.get_origin_id('basepair planarity'))
         result_plan_p.append(proxy)
   return result_plan_p, result_parr_p

@@ -247,6 +247,13 @@ _b 2
   f.close()
   miller_arrays = any_reflection_file(file_name=f.name).as_miller_arrays()
   assert len(miller_arrays) == 2
+  cs = crystal.symmetry(
+    space_group_info=sgtbx.space_group_info("P1")
+  )
+  miller_arrays = any_reflection_file(file_name=f.name).as_miller_arrays(
+    crystal_symmetry=cs, force_symmetry=True, anomalous=True)
+  assert miller_arrays[0].anomalous_flag() is True
+  assert miller_arrays[0].crystal_symmetry().space_group() == cs.space_group()
 
 def exercise_parser(reader, builder):
   cif_model = reader(

@@ -2,13 +2,12 @@ from __future__ import absolute_import, division, print_function
 from dials.array_family import flex
 from scitbx import matrix
 from xfel.merging.application.worker import worker
+from xfel.merging.application.utils.memory_usage import get_memory_usage
 
 class polarization(worker):
   """
   Computes the polarization correction as defined by Kahn 1982.
-
-  Modifies the intensity.sum.value and intensity.sum.variance columns
-  in place.
+  Modifies the intensity.sum.value and intensity.sum.variance columns in place.
   """
   def __init__(self, params, mpi_helper=None, mpi_logger=None):
     super(polarization, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
@@ -79,8 +78,15 @@ class polarization(worker):
       self.logger.log("Applied polarization correction. Mean intensity changed from %.2f to %.2f"%(flex.mean(reflections['intensity.sum.value']), flex.mean(result['intensity.sum.value'])))
 
     self.logger.log_step_time("POLARIZATION_CORRECTION", True)
+    self.logger.log("Memory usage: %d MB"%get_memory_usage())
 
-    return experiments, result
+    # Remove 's1' column from the reflection table
+    from xfel.merging.application.reflection_table_utils import reflection_table_utils
+    reflections = reflection_table_utils.prune_reflection_table_keys(reflections=result, keys_to_delete=['s1'])
+    self.logger.log("Pruned reflection table")
+    self.logger.log("Memory usage: %d MB"%get_memory_usage())
+
+    return experiments, reflections
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker

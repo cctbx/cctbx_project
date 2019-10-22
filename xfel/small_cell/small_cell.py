@@ -381,7 +381,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
   radial_sizes = flex.double()
   azimuthal_sizes = flex.double()
   s0_projs = flex.vec3_double()
-  for ref in reflections:
+  for ref in reflections.rows():
     # calculate reciprical space coordinates
     x, y, z = ref['xyzobs.px.value']
     panel = detector[ref['panel']]
@@ -438,11 +438,11 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
 
   from dials.algorithms.indexing.assign_indices import AssignIndicesGlobal
   reflections['imageset_id'] = reflections['id']
-  reflections.centroid_px_to_mm(detector)
-  reflections.map_centroids_to_reciprocal_space(detector, beam)
+  reflections.centroid_px_to_mm(experiments)
+  reflections.map_centroids_to_reciprocal_space(experiments)
 
   all_spots = []
-  for i, ref in enumerate(reflections):
+  for i, ref in enumerate(reflections.rows()):
     all_spots.append(small_cell_spot(ref, i))
 
   # Unit cell calculated from indexed virtual powder diffraction
@@ -901,7 +901,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
       reflections = ref_predictor(reflections)
 
       indexed = []
-      for i, ref in enumerate(reflections):
+      for i, ref in enumerate(reflections.rows()):
         if ref['id'] < 0: continue
         spot = small_cell_spot(ref, i)
         spot.pred = ref['xyzcal.px'][0:2]
@@ -1100,7 +1100,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
         refls['s1'] = s1
         refls['bbox'] = bbox
 
-        refls.centroid_px_to_mm(detector)
+        refls.centroid_px_to_mm(experiments)
 
         refls.set_flags(flex.bool(len(refls), True), refls.flags.indexed)
         if write_output:

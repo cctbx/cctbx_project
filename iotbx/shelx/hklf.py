@@ -39,8 +39,9 @@ def miller_array_export_as_shelx_hklf(
     max_val = max(abs(max_val),abs(min_val))
     if (max_val > max_abs):
       scale = max_abs / max_val
-  elif scale_range is None:
-    scale_range = (-999999., 9999999.)
+  else:
+    if scale_range is None:
+      scale_range = (-999999., 9999999.)
     if (min_val < scale_range[0]):
       if not normalise_if_format_overflow:
         raise_f8_overflow(min_val)
@@ -103,7 +104,8 @@ class reader(iotbx_shelx_ext.hklf_reader):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=None):
     from cctbx import miller
     from cctbx import crystal
     if (crystal_symmetry is None):
@@ -112,7 +114,9 @@ class reader(iotbx_shelx_ext.hklf_reader):
       base_array_info = miller.array_info(source_type="shelx_hklf")
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
-      indices=self.indices()).auto_anomalous()
+      indices=self.indices(), anomalous_flag=anomalous)
+    if anomalous is not None:
+      miller_set = miller_set.auto_anomalous()
     miller_arrays = []
     obs = (miller.array(
       miller_set=miller_set,

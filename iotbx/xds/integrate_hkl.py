@@ -191,7 +191,8 @@ class reader:
                        crystal_symmetry=None,
                        force_symmetry=False,
                        merge_equivalents=True,
-                       base_array_info=None):
+                       base_array_info=None,
+                       anomalous=None):
     if (base_array_info is None):
       base_array_info = miller.array_info(source_type="xds_integrate_hkl")
     from cctbx.array_family import flex
@@ -200,7 +201,7 @@ class reader:
       unit_cell=self.unit_cell,
       space_group_info=sgtbx.space_group_info(number=self.space_group))
     indices = flex.miller_index(self.hkl)
-    miller_set = miller.set(crystal_symmetry, indices)
+    miller_set = miller.set(crystal_symmetry, indices, anomalous_flag=anomalous)
     return (miller.array(
       miller_set, data=flex.double(self.iobs), sigmas=flex.double(self.sigma))
             .set_info(base_array_info.customized_copy(

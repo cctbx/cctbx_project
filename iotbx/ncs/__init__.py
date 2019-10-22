@@ -658,12 +658,20 @@ class input(object):
       print(out_str, file=log)
     elif format.lower() == 'spec':
       # Does not add prefix in SPEC format
-      out_str = self.show_search_parameters_values(prefix) + '/n'
+      out_str = self.show_search_parameters_values(prefix) + '\n'
       out_str += self.show_chains_info(prefix) + '\n'
       out_str += '\n' + prefix + 'NCS object "display_all"'
+      spec_obj = self.get_ncs_info_as_spec()
+      strio = StringIO()
+      spec_obj.display_all(log=strio)
+      out_str += strio.getvalue()
+      out_str += '\n\n' + prefix + 'NCS object "display_inverse"'
+      inv_spec_obj=spec_obj.deep_copy()
+      inv_spec_obj.invert_matrices()
+      strio = StringIO()
+      inv_spec_obj.display_all(log=strio)
+      out_str += strio.getvalue()
       print(out_str, file=log)
-      spec_obj = self.get_ncs_info_as_spec(write=False)
-      out_str += spec_obj.display_all(log=log)
     return out_str
 
   def show_phil_format(self,prefix='',header=True,group_prefix=''):

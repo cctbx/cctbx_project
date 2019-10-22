@@ -27,11 +27,12 @@ input {
   experiments_suffix = _integrated.expt
     .type = str
     .help = Find file names with this suffix for experiments
+
   parallel_file_load {
     method = *uniform node_memory
       .type = choice
-      .help = uniform: distribute input json/pickle files uniformly over all ranks
-      .help = node_memory: distribute input json/pickle files over the nodes according to the node memory limit, then uniformly over the ranks within each node
+      .help = uniform: distribute input experiments/reflections files uniformly over all ranks
+      .help = node_memory: assign input experiments/reflections files to as many nodes as necessary so that each node's memory limit is not exceeded. Then distribute the files uniformly over the ranks on each node.
     node_memory {
       architecture = "Cori KNL"
         .type = str
@@ -42,10 +43,20 @@ input {
       pickle_to_memory = 3.5
         .type = float
         .help = an empirical coefficient to convert pickle file size to anticipated run-time process memory required to load a file of that size
-      ranks_per_node = 68
-        .type = int
-        .help = number of ranks available per node
     }
+    ranks_per_node = 68
+        .type = int
+        .help = number of MPI ranks per node
+    balance = global per_node
+      .type = choice
+      .multiple = False
+      .help = balance the input file load by distributing experiments unformly over all available ranks (global) or over the ranks on each node
+    balance_mpi_alltoall_slices = 1
+      .type = int
+      .expert_level = 2
+      .help = memory reduction factor for MPI alltoall.
+      .help = Use mpi_alltoall_slices > 1, when available RAM memory is insufficient for doing MPI alltoall on all data at once.
+      .help = The data will then be split into mpi_alltoall_slices parts and, correspondingly, alltoall will be performed in mpi_alltoall_slices iterations.
   }
 }
 
@@ -85,6 +96,9 @@ filter
       .help = (key,value) dictionary where key is the filename of the integrated data pickle file (supplied
       .help = with the data phil parameter and value is the h,k,l reindexing operator that resolves the
       .help = indexing ambiguity.
+    sampling_number_of_lattices = 1000
+      .type = int
+      .help = Number of lattices to be gathered from all ranks to run the brehm-diederichs procedure
   }
   resolution {
     d_min = None
@@ -210,6 +224,10 @@ scaling {
       .type = str
       .help = scaling reference column name containing reference structure factors. Can be
       .help = intensities or amplitudes
+    minimum_common_hkls = -1
+      .type = int
+      .help = minimum required number of common hkls between mtz reference and data
+      .help = used to validate mtz-based model. No validation with -1.
   }
   pdb {
     include_bulk_solvent = True
@@ -364,7 +382,7 @@ output {
   do_timing = False
     .type = bool
     .help = When True, calculate and log elapsed time for execution steps
-  log_level = 0
+  log_level = 1
     .type = int
     .help = how much information to log. TODO: define it.
   save_experiments_and_reflections = False

@@ -20,6 +20,11 @@ class reflection_filter(worker):
   def run(self, experiments, reflections):
     if 'significance_filter' in self.params.select.algorithm:
       experiments, reflections = self.apply_significance_filter(experiments, reflections)
+
+    # Do we have any data left?
+    from xfel.merging.application.utils.data_counter import data_counter
+    data_counter(self.params).count(experiments, reflections)
+
     return experiments, reflections
 
   def apply_significance_filter(self, experiments, reflections):
@@ -29,13 +34,20 @@ class reflection_filter(worker):
     # Apply an I/sigma filter ... accept resolution bins only if they
     #   have significant signal; tends to screen out higher resolution observations
     #   if the integration model doesn't quite fit
-    target_symm = symmetry(unit_cell = self.params.scaling.unit_cell, space_group_info = self.params.scaling.space_group)
+    unit_cell = self.params.scaling.unit_cell
+    if unit_cell is None:
+      try:
+        unit_cell = self.params.statistics.average_unit_cell
+      except AttributeError:
+        pass
+    target_symm = symmetry(unit_cell = unit_cell, space_group_info = self.params.scaling.space_group)
 
     new_experiments = ExperimentList()
     new_reflections = flex.reflection_table()
 
     for experiment in experiments:
       exp_reflections = reflections.select(reflections['exp_id'] == experiment.identifier)
+      if not len(exp_reflections): continue
 
       N_obs_pre_filter = exp_reflections.size()
 
@@ -51,7 +63,7 @@ class reflection_filter(worker):
       #  print >> out, "Total preds %d to edge of detector"%indices_to_edge.size()
 
       # Build a miller array for the experiment reflections
-      exp_miller_indices = miller.set(target_symm, exp_reflections['miller_index_asymmetric'], True)
+      exp_miller_indices = miller.set(target_symm, exp_reflections['miller_index'], True)
       exp_observations = miller.array(exp_miller_indices, exp_reflections['intensity.sum.value'], flex.sqrt(exp_reflections['intensity.sum.variance']))
 
       assert exp_observations.size() == exp_reflections.size()

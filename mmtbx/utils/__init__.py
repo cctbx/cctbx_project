@@ -2367,6 +2367,7 @@ class extract_box_around_model_and_map(object):
                box_cushion,
                selection=None,
                density_select=None,
+               mask_select=None,
                threshold=None,
                get_half_height_width=None,
                soft_mask=False,
@@ -2437,10 +2438,17 @@ class extract_box_around_model_and_map(object):
       for kk in range(3):
         frac_min[kk]=max(0.,frac_min[kk])
         frac_max[kk]=min(1.-1./map_data.all()[kk], frac_max[kk])
-    elif(density_select):
-      frac_min,frac_max=self.select_box(
-        threshold = threshold, xrs = xray_structure_selected,
-        get_half_height_width=get_half_height_width)
+    elif(density_select or mask_select):
+      if mask_select:
+        self.pdb_outside_box_msg=""
+        frac_min,frac_max=self.select_box_with_mask(
+          crystal_symmetry=xray_structure_selected.crystal_symmetry())
+        if frac_min is None: # failed
+          raise Sorry("Unable to get mask with mask_select")
+      if density_select:
+        frac_min,frac_max=self.select_box(
+          threshold = threshold, xrs = xray_structure_selected,
+          get_half_height_width=get_half_height_width)
       frac_max = list(flex.double(frac_max)+cushion)
       frac_min = list(flex.double(frac_min)-cushion)
       for kk in range(3):
@@ -2536,6 +2544,17 @@ class extract_box_around_model_and_map(object):
         n_tot=mask.size()
         mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
         self.map_box=self.map_box+(1-mask)*mean_in_box
+    elif (soft_mask):
+      assert soft_mask_radius is not None
+      assert resolution is not None
+      from cctbx.maptbx.segment_and_split_map import set_up_and_apply_soft_mask
+      self.map_box,smoothed_mask_data=\
+         set_up_and_apply_soft_mask(
+       map_data=self.map_box.deep_copy(),
+       shift_origin=False,
+       crystal_symmetry=cs,
+       resolution=resolution,
+       radius=soft_mask_radius,out=sys.stdout)
 
   def get_original_cs(self):
     return self.xray_structure.crystal_symmetry()
@@ -2605,6 +2624,38 @@ class extract_box_around_model_and_map(object):
     ncs_au_crystal_symmetry=tracking_data.box_map_ncs_au_crystal_symmetry
     return ncs_au_map_data,ncs_au_crystal_symmetry,\
         box_map_ncs_au_half_map_data_list
+
+  def select_box_with_mask(self,crystal_symmetry=None):
+    # auto-generate mask and use it to select box
+
+    # find solvent fraction and mask
+    from cctbx.maptbx.segment_and_split_map import get_iterated_solvent_fraction
+    mask_data,solvent_fraction=get_iterated_solvent_fraction(
+        crystal_symmetry=crystal_symmetry,
+        fraction_of_max_mask_threshold=0.05, #
+        cell_cutoff_for_solvent_from_mask=1, # Use low-res method always
+        mask_resolution=self.resolution,
+        return_mask_and_solvent_fraction=True,
+        verbose=False,
+        map=self.map_data,
+        out=null_out())
+
+    if solvent_fraction is None:
+      raise Sorry("Unable to get solvent fraction in auto-masking")
+
+    from cctbx.maptbx.segment_and_split_map import get_co
+    co,sorted_by_volume,min_b,max_b=get_co(
+       map_data=mask_data,threshold=0.5,wrapping=False)
+    if len(sorted_by_volume)<2:
+      raise Sorry("No mask obtained...")
+    masked_fraction=sorted_by_volume[1][0]/mask_data.size()
+    minb1=min_b[1]
+    maxb1=max_b[1]
+    nx,ny,nz=self.map_data.all()
+    frac_min=(minb1[0]/nx,minb1[1]/ny,minb1[2]/nz)
+    frac_max=(maxb1[0]/nx,maxb1[1]/ny,maxb1[2]/nz)
+    return frac_min,frac_max
+
 
   def select_box(self,threshold,xrs=None,get_half_height_width=None):
     # Select box where data are positive (> threshold*max)

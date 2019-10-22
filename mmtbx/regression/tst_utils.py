@@ -382,7 +382,7 @@ END
   model = mmtbx.model.manager(model_input = pdb_inp, process_input=True,
     build_grm=True, log=null_out())
   residue = model.get_hierarchy().only_residue()
-  r = rotatable_bonds.axes_and_atoms_aa_specific(
+  r = mmtbx.utils.rotatable_bonds.axes_and_atoms_aa_specific(
       residue = residue, mon_lib_srv = model.get_mon_lib_srv(), log=null_out())
   assert r is None
 

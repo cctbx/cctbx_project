@@ -4086,6 +4086,8 @@ class array(set):
     d_inv, fsc = smoothing.savitzky_golay_filter(
       x=d_inv,  y=fsc,  half_window=half_window, degree=2)
     s = flex.sort_permutation(d_inv)
+    if fsc.size() != d.size(): # happens if bin width too big
+      return None
     return group_args(d=d.select(s), d_inv=d_inv.select(s), fsc=fsc.select(s))
 
   def d_min_from_fsc(self, other=None, fsc_curve=None, bin_width=1000,
@@ -4097,6 +4099,7 @@ class array(set):
     if(fsc_curve is None):
       assert other is not None
       fsc_curve = self.fsc(other=other, bin_width=bin_width)
+      if not fsc_curve: return group_args(fsc=None, d_min=None)
     else:
       assert other is None
     i_mid = None
@@ -4114,7 +4117,7 @@ class array(set):
         if i_min < 0:
           i_min = 0
         i_max = i_mid+6
-        if i_max > len(fsc_curve.fsc):
+        if i_max >= len(fsc_curve.fsc):
           i_max = len(fsc_curve.fsc) - 1
         on_slope=True
         if(fsc_cutoff>0.): # does not have to be on slope around fsc_cutoff=0
@@ -4462,7 +4465,8 @@ class array(set):
   def export_as_shelx_hklf(self,
         file_object=None,
         normalise_if_format_overflow=False,
-        full_dynamic_range=False):
+        full_dynamic_range=False,
+        scale_range=None):
     """
     Write reflections to a SHELX-format .hkl file.
     """
@@ -4471,7 +4475,8 @@ class array(set):
       miller_array=self,
       file_object=file_object,
       normalise_if_format_overflow=normalise_if_format_overflow,
-      full_dynamic_range=full_dynamic_range)
+      full_dynamic_range=full_dynamic_range,
+      scale_range=scale_range)
 
   def export_as_cns_hkl(self,
         file_object,

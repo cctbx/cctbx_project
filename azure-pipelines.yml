@@ -2,13 +2,13 @@
 # Based on approach from conda-forge
 
 jobs:
-  - template: ./.azure-pipelines/azure-pipelines-syntax.yml
-  - template: ./.azure-pipelines/azure-pipelines-win.yml
-  - template: ./.azure-pipelines/azure-pipelines-linux.yml
+  - template: ./.azure-pipelines/syntax.yml
+  - template: ./.azure-pipelines/conda-win.yml
+  - template: ./.azure-pipelines/conda-linux.yml
     parameters:
       distribution: centos
       version: [6, 10]
-  - template: ./.azure-pipelines/azure-pipelines-osx.yml
+  - template: ./.azure-pipelines/conda-osx.yml
     parameters:
       vmImage: [10, 14]
-      xcode_version: [10, 2, 1]
+      xcode_version: [10, 3]

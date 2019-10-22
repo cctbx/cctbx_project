@@ -679,12 +679,14 @@ master_phil = iotbx.phil.parse("""
 
      max_cc_for_rescale = 0.2
        .type = float
-       .short_caption = Max CC for rescaleMin reliable CC in half-maps
-       .help = Used along with cc_cut and scale_using_last to correct for \
+       .short_caption = Max CC for rescale
+       .help =  Min reliable CC in half-maps. \
+               Used along with cc_cut and scale_using_last to correct for \
                small errors in FSC estimation at high resolution.  If the \
                value of FSC near the high-resolution limit is above \
                max_cc_for_rescale, assume these values are correct and do not \
-               correct them.
+               correct them. To keep all original values use\
+               max_cc_for_rescale=1
 
      scale_using_last = 3
        .type = int
@@ -1204,7 +1206,7 @@ master_params = master_phil
 
 class map_and_b_object:
   def __init__(self,
-      map_data=None,
+       map_data=None,
       starting_b_iso=None,
       final_b_iso=None):
     from libtbx import adopt_init_args
@@ -4098,6 +4100,10 @@ def get_mask_around_molecule(map_data=None,
 
   co,sorted_by_volume,min_b,max_b=get_co(map_data=mask,
      threshold=0.5,wrapping=False)
+  if len(sorted_by_volume)<2:
+    print ("\nSkipping expansion as no space is available\n",file=out)
+    return None,None
+
   masked_fraction=sorted_by_volume[1][0]/mask.size()
 
   bool_region_mask = co.expand_mask(id_to_expand=sorted_by_volume[1][1],
@@ -4194,21 +4200,11 @@ def apply_soft_mask(map_data=None,
   # apply a soft mask based on mask_data to map_data.
   # set value outside mask==mean value inside mask or mean value outside mask
 
+  original_mask_data=mask_data.deep_copy()
 
-  s = mask_data > threshold  # s marks inside mask
-
-  # get mean inside or outside mask
-  if verbose:
-    print("\nStarting map values inside and outside mask:", file=out)
-  mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
-    verbose=verbose,map_data=map_data, out=out)
-
-  if verbose:
-    print("\nMask inside and outside values", file=out)
-  mask_mean_value_in,mask_mean_value_out,mask_fraction_in=get_mean_in_and_out(
-      sel=s,map_data=mask_data, verbose=verbose,out=out)
 
   # Smooth the mask in place. First make it a binary mask
+  s = mask_data > threshold  # s marks inside mask
   mask_data = mask_data.set_selected(~s, 0)  # outside mask==0
   mask_data = mask_data.set_selected( s, 1)
   if mask_data.count(1)  and mask_data.count(0): # something to do
@@ -4231,10 +4227,42 @@ def apply_soft_mask(map_data=None,
     if verbose:
       print("Not smoothing mask that is a constant...", file=out)
 
+  masked_map,smoothed_mask_data=apply_mask_to_map(mask_data=original_mask_data,
+     smoothed_mask_data=mask_data,map_data=map_data,
+     set_outside_to_mean_inside=set_outside_to_mean_inside,
+     set_mean_to_zero=set_mean_to_zero,
+     threshold=threshold,
+     verbose=verbose,
+     out=out)
+  return masked_map,smoothed_mask_data
+
+def apply_mask_to_map(mask_data=None,
+    smoothed_mask_data=None,
+    set_outside_to_mean_inside=None,
+    set_mean_to_zero=None,
+    map_data=None,
+    threshold=None,
+    verbose=None,
+    out=sys.stdout):
+
+  s = mask_data > threshold  # s marks inside mask
+
+  # get mean inside or outside mask
+  if verbose:
+    print("\nStarting map values inside and outside mask:", file=out)
+  mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
+    verbose=verbose,map_data=map_data, out=out)
+
+  if verbose:
+    print("\nMask inside and outside values", file=out)
+  mask_mean_value_in,mask_mean_value_out,mask_fraction_in=get_mean_in_and_out(
+      sel=s,map_data=mask_data, verbose=verbose,out=out)
+
   if verbose:
     print("\nSmoothed mask inside and outside values", file=out)
   smoothed_mean_value_in,smoothed_mean_value_out,smoothed_fraction_in=\
-     get_mean_in_and_out(sel=s,map_data=mask_data, verbose=verbose,out=out)
+     get_mean_in_and_out(sel=s,map_data=smoothed_mask_data,
+       verbose=verbose,out=out)
 
   # Now replace value outside mask with mean_value, value inside with current,
   #   smoothly going from one to the other based on mask_data
@@ -4254,7 +4282,7 @@ def apply_soft_mask(map_data=None,
   ss = set_to_mean > -1.e+30 # select everything
   set_to_mean.set_selected(ss, target_value_for_outside)
 
-  masked_map= (map_data * mask_data ) +  (set_to_mean * (1-mask_data))
+  masked_map= (map_data * smoothed_mask_data ) +  (set_to_mean * (1-smoothed_mask_data))
 
   if set_mean_to_zero:  # remove average
     masked_map=masked_map - masked_map.as_1d().min_max_mean().mean
@@ -4264,7 +4292,7 @@ def apply_soft_mask(map_data=None,
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
     map_data=masked_map, verbose=verbose,out=out)
 
-  return masked_map,mask_data
+  return masked_map,smoothed_mask_data
 
 def estimate_expand_size(
        crystal_symmetry=None,
@@ -5233,6 +5261,7 @@ def get_and_apply_soft_mask_to_maps(
     map_data=None,crystal_symmetry=None,
     solvent_content=None,
     solvent_content_iterations=None,
+    return_masked_fraction=True,
     rad_smooth=None,
     half_map_data_list=None,
     out=sys.stdout):
@@ -5259,14 +5288,22 @@ def get_and_apply_soft_mask_to_maps(
   cell_dims=crystal_symmetry.unit_cell().parameters()[:3]
   min_cell_dim=min(cell_dims)
   if wang_radius > 0.25 * min_cell_dim or buffer_radius > 0.25 * min_cell_dim:
-    raise Sorry("Cell is too small to get solvent fraction")
+    new_wang_radius=min(wang_radius,0.25 * min_cell_dim)
+    new_buffer_radius=min(buffer_radius,0.25 * min_cell_dim)
+    print ("Cell is too small to get solvent fraction ...resetting "+
+       "values of wang_radius \n"+
+      "(was %.3f A now %.3f A) and buffer_radius (was %.3f A now %.3f A)" %(
+       wang_radius,new_wang_radius,buffer_radius,new_buffer_radius),file=out)
+    wang_radius=new_wang_radius
+    buffer_radius=new_buffer_radius
+
   mask_data,solvent_fraction=get_mask_around_molecule(map_data=map_data,
     crystal_symmetry=crystal_symmetry,
     wang_radius=wang_radius,
     solvent_content=solvent_content,
     solvent_content_iterations=solvent_content_iterations,
     buffer_radius=buffer_radius,
-    return_masked_fraction=True,
+    return_masked_fraction=return_masked_fraction,
     out=out)
   if mask_data:
     map_data,smoothed_mask_data=apply_soft_mask(map_data=map_data,
@@ -8390,7 +8427,6 @@ def get_overall_mask(
     max_in_sd_map,
     mean_in_map,
     min_in_map), file=out)
-
   if fraction_of_max_mask_threshold:
     mask_threshold=fraction_of_max_mask_threshold*max_in_sd_map
     print("Using fraction of max as threshold: %.3f " %(
@@ -8640,6 +8676,7 @@ def get_iterated_solvent_fraction(map=None,
     fraction_of_max_mask_threshold=None,
     cell_cutoff_for_solvent_from_mask=None,
     mask_resolution=None,
+    return_mask_and_solvent_fraction=None,
     out=sys.stdout):
   if cell_cutoff_for_solvent_from_mask and \
    crystal_symmetry.unit_cell().volume() > cell_cutoff_for_solvent_from_mask**3:
@@ -8649,26 +8686,30 @@ def get_iterated_solvent_fraction(map=None,
       map_data=map.deep_copy(),
       mask_padding_fraction=mask_padding_fraction,
       fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
-      mask_resolution=mask_resolution)
+       return_mask_and_solvent_fraction=return_mask_and_solvent_fraction,
+      mask_resolution=mask_resolution,out=out)
 
   try:
     from phenix.autosol.map_to_model import iterated_solvent_fraction
-    solvent_fraction=iterated_solvent_fraction(
+    solvent_fraction,overall_mask=iterated_solvent_fraction(
       crystal_symmetry=crystal_symmetry,
       map_as_double=map,
       verbose=verbose,
       resolve_size=resolve_size,
-      return_solvent_fraction=True,
       out=out)
     if solvent_fraction<=0.989:  # means that it was 0.99 which is hard limit
-      return solvent_fraction
+      if return_mask_and_solvent_fraction:
+        return overall_mask,solvent_fraction
+      else:
+        return solvent_fraction
     else:  # use backup method
       return get_solvent_fraction_from_low_res_mask(
         crystal_symmetry=crystal_symmetry,
         map_data=map.deep_copy(),
         mask_padding_fraction=mask_padding_fraction,
         fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
-        mask_resolution=mask_resolution)
+        return_mask_and_solvent_fraction=return_mask_and_solvent_fraction,
+        mask_resolution=mask_resolution,out=out)
   except Exception as e:
     # catch case where map was not on proper grid
     if str(e).find("sym equiv of a grid point must be a grid point")>-1:
@@ -8684,19 +8725,20 @@ def get_iterated_solvent_fraction(map=None,
       raise Sorry(str(e)+
        "\nIt may be possible to go on by supplying solvent content"+
       "or molecular_mass")
-
     # Try to get solvent fraction with low_res mask
     return get_solvent_fraction_from_low_res_mask(
       crystal_symmetry=crystal_symmetry,
       map_data=map.deep_copy(),
       mask_padding_fraction=mask_padding_fraction,
       fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
-      mask_resolution=mask_resolution)
+      return_mask_and_solvent_fraction=return_mask_and_solvent_fraction,
+      mask_resolution=mask_resolution,out=out)
 
 def get_solvent_fraction_from_low_res_mask(
       crystal_symmetry=None,map_data=None,
       fraction_of_max_mask_threshold=None,
       mask_padding_fraction=None,
+      return_mask_and_solvent_fraction=None,
       mask_resolution=None,
       out=sys.stdout):
 
@@ -8709,7 +8751,13 @@ def get_solvent_fraction_from_low_res_mask(
 
   solvent_fraction=overall_mask.count(False)/overall_mask.size()
   print("Solvent fraction from overall mask: %.3f " %(solvent_fraction), file=out)
-  return solvent_fraction
+  if return_mask_and_solvent_fraction:
+    mask_data=map_data.deep_copy()
+    mask_data.as_1d().set_selected(overall_mask.as_1d(),1)
+    mask_data.as_1d().set_selected(~overall_mask.as_1d(),0)
+    return mask_data,solvent_fraction
+  else:
+    return solvent_fraction
 
 
 def get_solvent_fraction_from_molecular_mass(

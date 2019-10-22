@@ -119,7 +119,8 @@ class reflnlist(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=None):
     crystal_symmetry_from_file = self.crystal_symmetry()
     crystal_symmetry = crystal_symmetry_from_file.join_symmetry(
       other_symmetry=crystal_symmetry,

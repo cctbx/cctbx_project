@@ -2430,7 +2430,7 @@ pdb_interpretation.geometry_restraints.edits {
       distance_ideal = 2
       sigma = -1
       slack = 0
-    Total number of custom bonds: 2"""
+    Total number of added/changed bonds: 2"""
   log = log.getvalue().splitlines()
   found = 0
   for e in expected.splitlines():

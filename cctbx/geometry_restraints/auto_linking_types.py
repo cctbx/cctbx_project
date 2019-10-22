@@ -43,7 +43,7 @@ for link_info in [
     ['hydrogen bonds',
      'hydrogen bonds added both for protein SS and NA basepairs',
      '',
-     ['Bond-like', 'Secondary Structure restraints around h-bond', None],
+     ['Bond-like', 'Secondary Structure restraints around h-bond'],
      [0,1],
     ],
     ['metal coordination',
@@ -70,6 +70,24 @@ for link_info in [
      '',
      ['Custom Glycosidic']*5,
      [0,1,2,3,4],
+    ],
+    ['basepair stacking',
+     'Enforces parallel between two bases in the sequence',
+     'J. Appl. Cryst. 48, 1130-1141 (2015).',
+     [None, None, None, None, None, 'Stacking parallelity'],
+     [5],
+    ],
+    ['basepair parallelity',
+     'Enforces parallel between two base pairs in paired bases',
+     'J. Appl. Cryst. 48, 1130-1141 (2015).',
+     [None, None, None, None, None, 'Basepair parallelity'],
+     [5],
+    ],
+    ['basepair planarity',
+     'Enforces planrity of two base pairs in paired bases',
+     'J. Appl. Cryst. 48, 1130-1141 (2015).',
+     [None, None, None, 'xxx', 'Basepair planarity'],
+     [3],
     ],
     # ['trans peptide link',
     # 'Applying the standard TRANS peptide link to a non-standard peptide',
@@ -122,8 +140,6 @@ for scl in standard_cif_links:
 #     print key
 #     print item
 
-#assert 0
-
 if __name__=="__main__":
   print('-'*80)
   print(bond_origin_ids)
@@ -131,3 +147,5 @@ if __name__=="__main__":
   print(angle_origin_ids)
   print('-'*80)
   print(torsion_origin_ids)
+  print('-'*80)
+  print(parallelity_origin_ids)

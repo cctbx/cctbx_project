@@ -687,19 +687,28 @@ class SourceModule(object):
 # On Windows due to absence of rsync we use pscp from the Putty programs.
 class ccp4io_module(SourceModule):
   module = 'ccp4io'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/ccp4io.gz']
+  anonymous = ['curl', [
+    'http://cci.lbl.gov/repositories/ccp4io.gz',
+    'https://drive.google.com/uc?id=1EF6AqowSrVnse7pRtRmIsvhS6Q0dsSLT&export=download',
+  ]]
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'ccp4io.tar.gz', '/net/cci/auto_build/repositories/ccp4io']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
 
 class annlib_module(SourceModule):
   module = 'annlib'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/annlib.gz']
+  anonymous = ['curl', [
+    'http://cci.lbl.gov/repositories/annlib.gz',
+    'https://drive.google.com/uc?id=1YD_KDXrfhJ5ryT97j4yxmbAPoecGLjg0&export=download',
+  ]]
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'annlib.tar.gz', '/net/cci/auto_build/repositories/annlib']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/']
 
 class scons_module(SourceModule):
   module = 'scons'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/scons.gz']
+  anonymous = ['curl', [
+    'http://cci.lbl.gov/repositories/scons.gz',
+    'https://drive.google.com/uc?id=1hPd5cMbVcsN4j0P5qaPUV71XS_aifw-J&export=download',
+  ]]
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'scons.tar.gz', '/net/cci/auto_build/repositories/scons']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/']
 
@@ -734,14 +743,18 @@ class cctbx_module(SourceModule):
                'https://github.com/cctbx/cctbx_project.git',
                'https://github.com/cctbx/cctbx_project/archive/master.zip']
 
+class amber_adaptbx_module(SourceModule):
+  module = 'amber_adaptbx'
+  anonymous = ['git',
+               'git@github.com:phenix-project/amber_adaptbx.git',
+               'https://github.com/phenix-project/amber_adaptbx.git',
+               ]
+
 class qrefine_module(SourceModule):
   module = 'qrefine'
   anonymous = ['git',
                'git@github.com:qrefine/qrefine.git',
                'https://github.com/qrefine/qrefine.git',
-               #'git@github.com:cctbx/cctbx_project.git',
-               #'https://github.com/cctbx/cctbx_project.git',
-               #'https://github.com/cctbx/cctbx_project/archive/master.zip']
                ]
 
 class mon_lib_module(SourceModule):
@@ -773,7 +786,10 @@ class cbflib_module(SourceModule):
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/ccp4io_adaptbx.gz']
+  anonymous = ['curl', [
+    'http://cci.lbl.gov/repositories/ccp4io_adaptbx.gz',
+    'https://drive.google.com/uc?id=1X5kRE90KkV2yTEyF9zb-PHOjjRXjzYvx&export=download',
+    ]]
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ccp4io_adaptbx/trunk']
 
 class annlib_adaptbx(SourceModule):
@@ -785,17 +801,26 @@ class annlib_adaptbx(SourceModule):
 
 class tntbx_module(SourceModule):
   module = 'tntbx'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/tntbx.gz']
+  anonymous = ['curl', [
+    'http://cci.lbl.gov/repositories/tntbx.gz',
+    'https://drive.google.com/uc?id=1bDE_rF6iL0SeyplHSTNsfJyI1G1h7ZZv&export=download',
+    ]]
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/tntbx/trunk']
 
 class clipper_module(SourceModule):
   module = 'clipper'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/clipper.gz']
+  anonymous = ['curl', [
+    'http://cci.lbl.gov/repositories/clipper.gz',
+    'https://drive.google.com/uc?id=1xWAj59zoyVn26EoIuBrw7KLNRyGjS5wC&export=download',
+    ]]
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/clipper/trunk']
 
 class gui_resources_module(SourceModule):
   module = 'gui_resources'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/gui_resources.gz']
+  anonymous = ['curl', [
+    'http://cci.lbl.gov/repositories/gui_resources.gz',
+    'https://drive.google.com/uc?id=1TTibOePamkUiIvwDJF-OMmdgX8jdgNUS&export=download',
+  ]]
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/gui_resources/trunk']
 
 class opt_resources_module(SourceModule):
@@ -804,7 +829,10 @@ class opt_resources_module(SourceModule):
 
 class eigen_module(SourceModule):
   module = 'eigen'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/eigen.gz']
+  anonymous = ['curl', [
+    'http://cci.lbl.gov/repositories/eigen.gz',
+    'https://drive.google.com/uc?id=138kErrF35WbnRRARqUczWaroao2w8p1A&export=download',
+  ]]
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'eigen.tar.gz', '/net/cci/auto_build/repositories/eigen']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/eigen/']
 
@@ -841,10 +869,6 @@ class elbow_module(SourceModule):
   module = 'elbow'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/elbow/trunk']
 
-class amber_adaptbx_module(SourceModule):
-  module = 'amber_adaptbx'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/amber_adaptbx/trunk']
-
 class ksdssp_module(SourceModule):
   module = 'ksdssp'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ksdssp/trunk']
@@ -880,11 +904,11 @@ class phaser_module(SourceModule):
                'git://git.uis.cam.ac.uk/cimr-phaser/phaser.git',
                'https://git.uis.cam.ac.uk/cimr-phaser/phaser.git']
 
-class phaser_tng_module(SourceModule):
-  module = 'phaser_tng'
+class phasertng_module(SourceModule):
+  module = 'phasertng'
   anonymous = ['git',
-               'git://git.uis.cam.ac.uk/cimr-phaser/phaser_tng.git',
-               'https://git.uis.cam.ac.uk/cimr-phaser/phaser_tng.git']
+               'git://git.uis.cam.ac.uk/cimr-phaser/phasertng.git',
+               'https://git.uis.cam.ac.uk/cimr-phaser/phasertng.git']
 
 class phaser_regression_module(SourceModule):
   module = 'phaser_regression'
@@ -1368,6 +1392,9 @@ class Builder(object):
       filename = urlparse(url[0])[2].split('/')[-1]
     else:
       filename = urlparse(url)[2].split('/')[-1]
+    # Google Drive URL does not contain the module name
+    if filename == 'uc':
+      filename = module + '.gz'
     self._add_download(url, os.path.join('modules', filename))
     self.add_step(self.shell(
       name="extracting files from %s" %filename,
@@ -1946,8 +1973,8 @@ class PhaserBuilder(CCIBuilder):
     return configlst
 
 class PhaserTNGBuilder(PhaserBuilder):
-  CODEBASES = PhaserBuilder.CODEBASES + ['phaser_tng']
-  LIBTBX = PhaserBuilder.LIBTBX + ['phaser_tng']
+  CODEBASES = PhaserBuilder.CODEBASES + ['phasertng']
+  LIBTBX = PhaserBuilder.LIBTBX + ['phasertng']
 
   def add_tests(self):
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
@@ -2450,10 +2477,10 @@ class QRBuilder(PhenixBuilder):
 
 class PhenixTNGBuilder(PhenixBuilder):
   '''
-  Phenix with phaser_tng and c++11
+  Phenix with phasertng and c++11
   '''
-  CODEBASES = PhenixBuilder.CODEBASES + ['phaser_tng']
-  LIBTBX = PhenixBuilder.LIBTBX + ['phaser_tng']
+  CODEBASES = PhenixBuilder.CODEBASES + ['phasertng']
+  LIBTBX = PhenixBuilder.LIBTBX + ['phasertng']
 
   def get_libtbx_configure(self):
     configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()
@@ -2473,7 +2500,7 @@ def run(root=None):
     'molprobity':MOLPROBITYBuilder,
     'qrefine': QRBuilder,
     'phaser': PhaserBuilder,
-    'phaser_tng': PhaserTNGBuilder
+    'phasertng': PhaserTNGBuilder
   }
 
   wrapper = textwrap.TextWrapper(width=80, initial_indent='  ',

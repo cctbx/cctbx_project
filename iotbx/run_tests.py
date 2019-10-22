@@ -74,7 +74,6 @@ tst_list_base = [
   "$D/regression/tst_file_reader.py",
   "$D/regression/tst_bioinformatics.py",
   "$D/regression/tst_box_around_molecule.py",
-  "$D/regression/tst_mtz_as_cif.py",
   "$D/regression/tst_mmcif_segids.py",
   "$D/regression/tst_add_conformations.py",
   "$D/regression/tst_symmetry.py",
@@ -133,9 +132,20 @@ if ((sys.platform == 'darwin' or sys.platform.startswith('linux')) and
 else:
   tst_list_base += tst_list_unix_fail
 
+# unstable test on Python 3.6 (seems to be only on Azure Pipelines)
+tst_list_py3_unstable = [
+    "$D/regression/tst_mtz_as_cif.py",
+  ]
+tst_list_unstable = list()
+if sys.version_info > (3, 0):
+  tst_list_unstable += tst_list_py3_unstable
+else:
+  tst_list_base += tst_list_py3_unstable
+
 # final lists
 tst_list = tst_list_base
 tst_list_expected_failures = tst_list_fail
+tst_list_expected_unstable = tst_list_unstable
 
 def run():
   build_dir = libtbx.env.under_build("iotbx")

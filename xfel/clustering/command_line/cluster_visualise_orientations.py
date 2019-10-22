@@ -9,7 +9,7 @@ def run(_args):
     raise IOError("Must give at least one path to folder of pickles")
   import logging
   from xfel.clustering.cluster import Cluster
-  FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
+  FORMAT = '%(message)s'
   logging.basicConfig(level=logging.WARNING, format=FORMAT)
 
   cluster = Cluster.from_directories(_args.folders,

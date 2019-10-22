@@ -6,7 +6,7 @@ import logging
 from xfel.clustering.cluster import Cluster
 from matplotlib import pyplot as plt
 import matplotlib.gridspec as gridspec
-FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
+FORMAT = '%(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 
 

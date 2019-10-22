@@ -5,7 +5,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 08/01/2019
+Last Changed: 09/20/2019
 Description : IOTA GUI Windows / frames
 '''
 
@@ -319,8 +319,7 @@ class MainWindow(IOTABaseFrame):
       ('Advanced...',
        lambda evt: self.open_options_dialog(
          phil_index=self.bknd_index,
-         include=['verbosity', 'geometry', 'profile', 'prediction',
-                  'significance_filter'],
+         include=['geometry', 'profile', 'prediction', 'significance_filter'],
          title='Advanced Backend Options'))
     ]
     browse_menu = ct.Menu(self)
@@ -617,7 +616,14 @@ class MainWindow(IOTABaseFrame):
         import shutil
 
         try:
-          shutil.rmtree(self.proc_window.info.tmp_base)
+          # Clean up temp folders and files if necessary
+          if os.path.isdir(self.proc_window.info.tmp_base):
+            shutil.rmtree(self.proc_window.info.tmp_base)
+
+          dials_log_dir = os.path.join(self.proc_window.info.log_base,
+                                       'logs/dials_logs')
+          if os.path.isdir(dials_log_dir):
+            shutil.rmtree(dials_log_dir)
         except Exception:
           pass
         print('JOB TERMINATED!')
@@ -2498,6 +2504,7 @@ class ProcWindow(IOTABaseFrame):
 
       try:
         shutil.rmtree(self.info.tmp_base)
+        shutil.rmtree(self.info.dials_log_base)
       except Exception:
         pass
 
@@ -2512,7 +2519,6 @@ class ProcWindow(IOTABaseFrame):
     self.status_txt.SetLabel(end_msg)
 
     # Finish up
-    self.display_log()
     self.plot_integration(force_plot=True)
     self.plot_live_analysis(force_plot=True)
 
@@ -2521,11 +2527,13 @@ class ProcWindow(IOTABaseFrame):
     if start_time:
       import datetime
       runtime = datetime.timedelta(seconds=int(time.time() - start_time))
-
       hours, minutes, seconds = str(runtime).split(':')
+      ut.main_log(self.info.logfile,
+                  "Total run time: {} hours, {} minutes, {} seconds"
+                  "".format(hours, minutes, seconds),
+                  print_tag=True)
+    self.display_log()
 
-      print ("IOTA: Total run time: {} hours, {} minutes, {} seconds"
-             "".format(hours, minutes, seconds))
 
   # def OnClose(self, e):
   #   """ Make sure that all threads are killed if window is closed by user """

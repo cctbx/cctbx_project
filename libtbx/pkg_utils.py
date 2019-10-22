@@ -10,6 +10,7 @@ import os
 import sys
 
 import libtbx.load_env
+import libtbx.auto_build.install_conda
 
 try:
   import pip
@@ -24,7 +25,10 @@ try:
     pip = None
     pkg_resources = None
   if pip:
-    if pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('10.0.0'):
+    if pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('19.3.0'):
+      import pip._internal.main
+      pip_main = pip._internal.main.main
+    elif pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('10.0.0'):
       import pip._internal
       pip_main = pip._internal.main
     else:
@@ -146,6 +150,20 @@ def require(pkgname, version=None):
             package=pkgname, currentversion=currentversion, requirement=version, action=action)
     return False
 
+  if libtbx.env.build_options.use_conda:
+    if not os.getenv("LIBTBX_UPDATE_CONDA"):
+      _notice("    WARNING: Can not {action} package {package} automatically.", "",
+              "You are in a conda environment. Please {action} manually.",
+              package=pkgname, currentversion=currentversion, requirement=version, action=action)
+      return False
+    try:
+      return install_conda_package(package=pkgname, requirement=version, action=action)
+    except Exception:
+      _notice("    WARNING: Can not {action} package {package} automatically.", "",
+              "Please {action} manually in conda environment.",
+              package=pkgname, currentversion=currentversion, requirement=version, action=action)
+      raise
+
   print("attempting {action} of {package}...".format(action=action, package=pkgname))
   has_req_tracker = os.environ.get('PIP_REQ_TRACKER')
   exit_code = pip_main(['install', requirestring])
@@ -158,6 +176,20 @@ def require(pkgname, version=None):
   else:
     print("{action} failed. please check manually".format(action=action))
     return False
+
+def install_conda_package(package, requirement, action):
+    conda_manager = libtbx.auto_build.install_conda.conda_manager()
+    conda = conda_manager.get_conda_exe()
+    prefix = conda_manager.conda_env
+    if not prefix:
+        prefix = os.path.join(conda_manager.root_dir, "conda_base")
+    if not prefix or not os.path.exists(prefix):
+        raise RuntimeError("Could not find conda environment at " + repr(prefix))
+    command_list = [conda, action, '--prefix', prefix, package + requirement]
+    if conda_manager.system == 'Windows':
+      command_list = [os.path.join(conda_manager.conda_base, 'Scripts', 'activate'),
+                      'base', '&&'] + command_list
+    raise RuntimeError("Would run " + repr(command_list))
 
 @contextlib.contextmanager
 def _silence():
@@ -212,15 +244,16 @@ def define_entry_points(epdict, **kwargs):
   for ep in epdict:
     print("  {n} entries for entry point {ep}".format(ep=ep, n=len(epdict[ep])))
 
-  # Temporarily change to build/ directory. This is where a directory named
-  # libtbx.{caller}.egg-info will be created containing the entry point info.
+  # Temporarily change to {libtbx.env.build_path}/lib directory. This
+  # is where a directory named libtbx.{caller}.egg-info will be
+  # created containing the entry point info.
   try:
     curdir = os.getcwd()
-    os.chdir(abs(libtbx.env.build_path))
+    os.chdir(os.path.join(abs(libtbx.env.build_path), 'lib'))
     # Now trick setuptools into thinking it is in control here.
     try:
       argv_orig = sys.argv
-      sys.argv = ['setup.py', 'develop']
+      sys.argv = ['setup.py', 'egg_info']
       # And make it run quietly
       with _silence():
         setuptools.setup(
@@ -233,6 +266,28 @@ def define_entry_points(epdict, **kwargs):
       sys.argv = argv_orig
   finally:
     os.chdir(curdir)
+
+  # With the entry points installed into build/lib check for any legacy entry
+  # point definitions in both build/ and base/ and remove them where possible.
+  # Code block can be removed April 2020
+  try:
+    legacy_path = abs(libtbx.env.build_path / 'libtbx.{}.egg-info'.format(caller))
+    if os.path.exists(legacy_path):
+      print("Removing legacy entry points from", legacy_path)
+      import shutil
+      shutil.rmtree(legacy_path)
+  except Exception as e:
+    print("Could not remove legacy entry points:", str(e))
+  try:
+    import site
+    for spp in site.getsitepackages():
+      legacy_path = os.path.join(spp, 'libtbx.{}.egg-link'.format(caller))
+      if os.path.exists(legacy_path):
+        print("Removing legacy entry points from", legacy_path)
+        os.remove(legacy_path)
+  except Exception as e:
+    print("Could not remove legacy entry points:", str(e))
+
 
 def _merge_requirements(requirements, new_req):
   # type: (List[packaging.requirements.Requirement], packaging.requirements.Requirement) -> None

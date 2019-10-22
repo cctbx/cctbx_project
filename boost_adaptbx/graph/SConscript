@@ -1,3 +1,4 @@
+import sys
 Import( "env_etc" )
 
 if not env_etc.no_boost_python:
@@ -39,7 +40,12 @@ if not env_etc.no_boost_python:
     target="#lib/boost_adaptbx_graph_metric_ext",
     source="metric_ext.cpp",
     )
-  env.SharedLibrary(
-    target="#lib/boost_adaptbx_graph_clustering_algorithm_ext",
-    source="clustering_algorithm_ext.cpp",
-    )
+  # Xcode 11 wants forward iterators for std::max_element in Boost.Graph
+  # https://github.com/boostorg/graph/issues/175
+  if sys.platform == 'darwin' and env_etc.clang_version[0] >= 11:
+    pass
+  else:
+    env.SharedLibrary(
+      target="#lib/boost_adaptbx_graph_clustering_algorithm_ext",
+      source="clustering_algorithm_ext.cpp",
+      )

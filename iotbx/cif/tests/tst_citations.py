@@ -4,12 +4,12 @@ from iotbx.cif.citations import citations_as_cif_block
 from libtbx import citations
 
 def test_format():
-  article_ids = ['phenix', 'phenix.refine', 'phaser', 'molprobity']
+  article_ids = ['phenix2010', 'phenix.refine', 'phaser', 'molprobity']
   citation_list = [ citations.citations_db[article_id]
                     for article_id in article_ids ]
   cif_block = citations_as_cif_block(citation_list)
   assert list(cif_block['_citation.id']) == [
-    'phenix', 'phenix.refine', 'phaser', 'molprobity']
+    'phenix2010', 'phenix.refine', 'phaser', 'molprobity']
   assert list(cif_block['_citation.journal_id_CSD']) == [
     '0766', '0766', '0228', '?']
   assert list(cif_block['_citation.journal_volume']) == ['66', '68', '40', '27']

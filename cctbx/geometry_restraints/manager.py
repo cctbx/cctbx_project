@@ -922,12 +922,12 @@ class manager(Base_geometry):
     return len(self.angle_proxies.proxy_select(origin_id=specific_origin_id))
 
   def get_n_stacking_proxies(self):
-    specific_origin_id = origin_ids.get_origin_id('covalent geometry')
+    specific_origin_id = origin_ids.get_origin_id('basepair stacking')
     return len(self.parallelity_proxies.proxy_select(
       origin_id=specific_origin_id))
 
   def get_n_parallelity_bp_proxies(self):
-    specific_origin_id = origin_ids.get_origin_id('hydrogen bonds')
+    specific_origin_id = origin_ids.get_origin_id('basepair parallelity')
     return len(self.parallelity_proxies.proxy_select(
       origin_id=specific_origin_id))
 
@@ -937,7 +937,7 @@ class manager(Base_geometry):
       origin_id=specific_origin_id))
 
   def get_n_planarity_bp_proxies(self):
-    specific_origin_id = origin_ids.get_origin_id('hydrogen bonds')
+    specific_origin_id = origin_ids.get_origin_id('basepair planarity')
     return len(self.planarity_proxies.proxy_select(
       origin_id=specific_origin_id))
 
@@ -1677,22 +1677,23 @@ class manager(Base_geometry):
        'planes',
        '',
        origin_ids.get_plane_origin_id_labels(),
-       0),
+       10),
       ("Parallelity",
        self.parallelity_proxies,
        'parallelities',
        '',
        origin_ids.get_parallelity_origin_id_labels(),
-       0),
+       12),
       ]:
       if (proxies is not None):
-        proxies.show_sorted(
-          by_value="residual",
-          sites_cart=sites_cart,
-          site_labels=site_labels,
-          f=f,
-          origin_id=default_origin_id)
-        print(file=f)
+        if p_label not in ['Parallelity']: # not default origin for parallelity
+          proxies.show_sorted(
+            by_value="residual",
+            sites_cart=sites_cart,
+            site_labels=site_labels,
+            f=f,
+            origin_id=default_origin_id)
+          print(file=f)
         for key in keys: #origin_ids.get_dihedral_origin_id_labels():
           origin_id=origin_ids.get_origin_id(key)
           if origin_id==default_origin_id: continue

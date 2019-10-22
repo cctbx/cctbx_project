@@ -124,7 +124,7 @@ class density_props
     if(silva_type.compare("dori")==0) {
       silva *=(4.0 / (gradient*gradient*gradient));
       silva /=(1.0 + silva);
-      if(silva>=0.9) return true;
+      if(silva>=0.9) return true; // it is 0.8 in original Java version.
       else           return false;
     }
     else if(silva_type.compare("sedd")==0) {

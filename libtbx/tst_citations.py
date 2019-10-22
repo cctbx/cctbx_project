@@ -14,7 +14,7 @@ def test_phil():
   assert(journal.id_ASTM == 'NATUAS')
 
 def test_sort():
-  article_ids = ['phenix.polder', 'phenix', 'phenix.refine', 'phaser',
+  article_ids = ['phenix.polder', 'phenix2010', 'phenix.refine', 'phaser',
                  'molprobity']
   citation_list = [ citations.citations_db[article_id]
                     for article_id in article_ids ]
@@ -33,7 +33,7 @@ def test_format():
   assert(authors[0].count('B.K.') == 1)
 
   expected = """Adams PD, Afonine PV, Bunkoczi G, Chen VB, Davis IW, Echols N, Headd JJ, Hung LW, Kapral GJ, Grosse-Kunstleve RW, McCoy AJ, Moriarty NW, Oeffner R, Read RJ, Richardson DC, Richardson JS, Terwilliger TC, Zwart PH. (2010) PHENIX: a comprehensive Python-based system for macromolecular structure solution. Acta Cryst. D66:213-221."""
-  citation = citations.citations_db['phenix']
+  citation = citations.citations_db['phenix2010']
   actual = citations.format_citation(citation)
   assert not show_diff(actual, expected)
 

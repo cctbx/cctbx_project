@@ -18,8 +18,12 @@ class manager(object):
     self.site_labels = site_labels
     self.determine_parameterization()
 
-# for every H atom, determine the type of geometry
+#-------------------------------------------------------------------------------
+
   def determine_parameterization(self):
+    """
+    For every H atom, determine the type of geometry
+    """
     self.unk_list, self.unk_ideal_list = [], []
     self.h_parameterization = [None]*len(self.h_connectivity)
     for neighbors in self.h_connectivity:
@@ -46,6 +50,8 @@ class manager(object):
         self.unk_list.append(ih)
     #return self.h_parameterization
 
+#-------------------------------------------------------------------------------
+
   def process_1_neighbor(self, neighbors):
     ih = neighbors.ih
     i_a0 = neighbors.a0['iseq']
@@ -62,6 +68,8 @@ class manager(object):
     i_b1 = neighbors.b1['iseq']
     r1 = matrix.col(self.sites_cart[i_a1])
     rb1 = matrix.col(self.sites_cart[i_b1])
+    self.check_if_atoms_superposed(rh, r0, ih, i_a0)
+    self.check_if_atoms_superposed(r1, r0, i_a1, i_a0)
     uh0 = (rh - r0).normalize()
     u10 = (r1 - r0).normalize()
     dihedral = dihedral_angle(
@@ -77,6 +85,7 @@ class manager(object):
       phi = dihedral
     u1 = (r0 - r1).normalize()
     rb10 = rb1 - r1
+    # TODO check needed?
     u2 = (rb10 - ((rb10).dot(u1)) * u1).normalize()
     u3 = u1.cross(u2)
     if (neighbors.number_h_neighbors == 0):
@@ -115,9 +124,13 @@ class manager(object):
           disth = disth)
 #a0.dihedral : dihedral angle between angle ideal and actual position
 
-#    # alg1a: X-H2 planar groups, such as in ARG, ASN, GLN
-#    # requires that dihedral angle restraint exists for at least one H atom
+#-------------------------------------------------------------------------------
+
   def process_1_neighbor_type_arg(self, neighbors):
+    """
+      alg1a: X-H2 planar groups, such as in ARG, ASN, GLN
+      requires that dihedral angle restraint exists for at least one H atom
+    """
     ih = neighbors.ih
     i_h1 = neighbors.h1['iseq']
     i_a0 = neighbors.a0['iseq']
@@ -149,6 +162,8 @@ class manager(object):
       dihedral = dihedral_angle(
         sites=[self.sites_cart[i_b1], self.sites_cart[i_a1],
         self.sites_cart[i_a0], self.sites_cart[ih_dihedral]])
+      self.check_if_atoms_superposed(rh, r0, ih, i_a0)
+      self.check_if_atoms_superposed(r1, r0, i_a1, i_a0)
       uh0 = (rh - r0).normalize()
       u10 = (r1 - r0).normalize()
       if self.use_ideal_bonds_angles:
@@ -159,6 +174,7 @@ class manager(object):
         phi = dihedral
       u1 = (r0 - r1).normalize()
       rb10 = rb1 - r1
+      # TODO check needed?
       u2 = (rb10 - ((rb10).dot(u10)) * u10).normalize()
       u3 = u1.cross(u2)
       for ih_alg1a, phi_alg1a in zip(
@@ -233,6 +249,8 @@ class manager(object):
       n     = 0,
       disth = disth)
 
+#-------------------------------------------------------------------------------
+
   def process_3_neighbors(self, neighbors):
     ih = neighbors.ih
     i_a0 = neighbors.a0['iseq']
@@ -256,11 +274,15 @@ class manager(object):
       disth = disth,
       htype  = '3neigbs')
 
-# this function determines parameters for three cases:
-# 1. planar geometry
-# 2. two tetragonal CH2 geometry
-# 3. H out of plane of its 3 neighbors (should be rare and not in AA)
+#-------------------------------------------------------------------------------
+
   def get_coefficients(self, ih):
+    """
+    This function determines parameters for three cases:
+    1. planar geometry
+    2. two tetragonal CH2 geometry
+    3. H out of plane of its 3 neighbors (should be rare and not in AA)
+    """
     neighbors = self.h_connectivity[ih]
     if (neighbors.number_h_neighbors == 1):
       i_h1 = neighbors.h1['iseq']
@@ -273,6 +295,9 @@ class manager(object):
     r0 = matrix.col(self.sites_cart[i_a0])
     r1 = matrix.col(self.sites_cart[i_a1])
     r2 = matrix.col(self.sites_cart[i_a2])
+    self.check_if_atoms_superposed(rh, r0, ih, i_a0)
+    self.check_if_atoms_superposed(r1, r0, i_a1, i_a0)
+    self.check_if_atoms_superposed(r2, r0, i_a2, i_a0)
     uh0 = (rh - r0).normalize()
     u10 = (r1 - r0).normalize()
     u20 = (r2 - r0).normalize()
@@ -309,6 +334,8 @@ class manager(object):
       # two tetragonal geometry: e.g. CH2 group
       if (i_h1 is not None):
         rh2 = matrix.col(self.sites_cart[neighbors.h1['iseq']])
+        #print(i_h1, neighbors.h1['iseq'], i_a0)
+        self.check_if_atoms_superposed(rh2, r0, neighbors.h1['iseq'], i_a0)
         uh02 = (rh2 - r0).normalize()
         if self.use_ideal_bonds_angles:
           h = math.radians(neighbors.h1['angle_ideal']) * 0.5
@@ -334,9 +361,12 @@ class manager(object):
           h = -h
     return sumang, a, b, h, root
 
-#
-# obtain coefficients for tetragonal H (such as HA) using Cramer's rule
+#-------------------------------------------------------------------------------
+
   def get_coefficients_alg3(self, ih):
+    """
+    Obtain coefficients for tetragonal H (such as HA) using Cramer's rule
+    """
     neighbors = self.h_connectivity[ih]
     i_a0 = neighbors.a0['iseq']
     i_a1 = neighbors.a1['iseq']
@@ -347,6 +377,10 @@ class manager(object):
     r1 = matrix.col(self.sites_cart[i_a1])
     r2 = matrix.col(self.sites_cart[i_a2])
     r3 = matrix.col(self.sites_cart[i_a3])
+    self.check_if_atoms_superposed(rh, r0, ih, i_a0)
+    self.check_if_atoms_superposed(r1, r0, i_a1, i_a0)
+    self.check_if_atoms_superposed(r2, r0, i_a2, i_a0)
+    self.check_if_atoms_superposed(r3, r0, i_a3, i_a0)
     uh0 = (rh - r0).normalize()
     u10 = (r1 - r0).normalize()
     u20 = (r2 - r0).normalize()
@@ -395,6 +429,8 @@ class manager(object):
     c = matrix_z.determinant()/matrix_d.determinant()
     return a, b, c
 
+#-------------------------------------------------------------------------------
+
   def check_propeller_order(self, i_a0, i_a1, ih, i_h1, i_h2):
     rh = matrix.col(self.sites_cart[ih])
     rh_2 = matrix.col(self.sites_cart[i_h2])
@@ -404,6 +440,16 @@ class manager(object):
       return i_h1, i_h2
     else:
       return i_h2, i_h1
+
+#-------------------------------------------------------------------------------
+
+  def check_if_atoms_superposed(self,r1, r2, i1, i2):
+    if abs((r1-r2).length()) < 0.001:
+      sorry_str = '''Atoms %s and %s are superposed or very close.
+Fix your model before proceeding.''' % (self.site_labels[i1], self.site_labels[i2])
+      raise Sorry(sorry_str)
+
+#-------------------------------------------------------------------------------
 
   def broadcast_problem(self, ih, i_a0, msg=None,):
     default_msg = '''Please double check atom %s, bound to %s

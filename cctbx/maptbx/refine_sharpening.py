@@ -280,14 +280,14 @@ def fit_cc(cc_list=None,sthol_list=None,
       scale_using_last=scale_using_last)
 
 def get_fitted_cc(cc_list=None,sthol_list=None, cc_cut=None,
-   scale_using_last=None):
+   scale_using_last=None,keep_cutoff_point=False):
   # only do this if there is some value of s where cc is at least 2*cc_cut or
   #  (1-c_cut/2), whichever is smaller
   min_cc=min(2*cc_cut,1-0.5*cc_cut)
   if cc_list.min_max_mean().max < min_cc:
     return cc_list
   # find first point after point where cc>=min_cc that cc<=cc_cut
-  #   then back off by 1 point
+  #   then back off by 1 point  # 2019-10-12 don't back off if keep_cutoff_point
   found_high=False
   s_cut=None
   i_cut=0
@@ -300,6 +300,9 @@ def get_fitted_cc(cc_list=None,sthol_list=None, cc_cut=None,
     i_cut+=1
   if s_cut is None or i_cut==0:
     return cc_list
+
+  if keep_cutoff_point:
+    i_cut=max(1,i_cut-1)
 
   #Fit remainder
   sthol_remainder_list=sthol_list[i_cut:]
@@ -319,7 +322,8 @@ def get_fitted_cc(cc_list=None,sthol_list=None, cc_cut=None,
   return new_cc_list
 
 def estimate_cc_star(cc_list=None,sthol_list=None, cc_cut=None,
-    scale_using_last=None):
+    scale_using_last=None,
+    keep_cutoff_point=False):
   # cc ~ sqrt(2*half_dataset_cc/(1+half_dataset_cc))
   # however for small cc the errors are very big and we think cc decreases
   #  rapidly towards zero once cc is small
@@ -329,7 +333,8 @@ def estimate_cc_star(cc_list=None,sthol_list=None, cc_cut=None,
 
   fitted_cc=get_fitted_cc(
     cc_list=cc_list,sthol_list=sthol_list,cc_cut=cc_cut,
-    scale_using_last=scale_using_last)
+    scale_using_last=scale_using_last,
+    keep_cutoff_point=keep_cutoff_point)
 
   cc_star_list=flex.double()
   for cc in fitted_cc:
@@ -466,9 +471,16 @@ def calculate_fsc(si=None,
 
 
   original_cc_list=deepcopy(cc_list)
-  if not is_model_based:  # calculate cc* for half-dataset cc
+  if is_model_based: # jut smooth cc if nec
+    fitted_cc=get_fitted_cc(
+      cc_list=cc_list,sthol_list=sthol_list,cc_cut=cc_cut,
+      scale_using_last=scale_using_last)
+    cc_list=fitted_cc
+    text=" FIT "
+  else:
     cc_list=estimate_cc_star(cc_list=cc_list,sthol_list=sthol_list,
       cc_cut=cc_cut,scale_using_last=scale_using_last)
+    text=" CC* "
 
   if not max_possible_cc:
     max_possible_cc=0.01
@@ -529,12 +541,12 @@ def calculate_fsc(si=None,
   print("Note 1: CC* estimated from sqrt(2*CC/(1+CC))", file=out)
   print("Note 2: CC estimated by fitting (smoothing) for values < %s" %(cc_cut), file=out)
   print("Note 3: Scale = A  CC*  rmsFc/rmsFo (A is normalization)", file=out)
-  print("  d_min     rmsFo       rmsFc    CC       CC*   Scale", file=out)
+  print("  d_min     rmsFo       rmsFc    CC      %s  Scale" %(text), file=out)
 
   for sthol2,scale,rms_fo,cc,rms_fc,orig_cc in zip(
      target_sthol2,target_scale_factors,rms_fo_list,cc_list,rms_fc_list,
       original_cc_list):
-     print("%7.1f  %9.1f  %9.1f %7.3f  %7.3f  %5.2f" %(
+     print("%7.2f  %9.1f  %9.1f %7.3f  %7.3f  %5.2f" %(
        0.5/sthol2**0.5,rms_fo,rms_fc,orig_cc,cc,scale), file=out)
 
   si.target_scale_factors=target_scale_factors

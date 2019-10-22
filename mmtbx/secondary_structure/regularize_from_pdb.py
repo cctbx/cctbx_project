@@ -175,6 +175,11 @@ master_phil = iotbx.phil.parse("""
        .help = Cut up segments (make short segments of secondary structure)
        .short_caption = Cut up segments
 
+     extend_segments = False
+       .type = bool
+       .help = Try to extend segments in both directions one residue at a time
+       .short_caption = Extend segments
+
      write_helix_sheet_records = False
        .type = bool
        .help = Write HELIX and SHEET records
