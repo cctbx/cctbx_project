@@ -19,8 +19,8 @@ from PySide2.QtWidgets import ( QAction, QApplication, QCheckBox, QComboBox, QDi
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
 from PySide2.QtGui import QColor, QFont, QCursor
-from PySide2.QtWebEngineWidgets import QWebEngineView
-import sys, zmq, subprocess, time, traceback
+from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
+import sys, zmq, subprocess, time, traceback, tempfile, os, shutil
 
 
 
@@ -227,8 +227,15 @@ class NGL_HKLViewer(QWidget):
     if self.UseOSbrowser==False:
       self.BrowserBox = QWebEngineView()
       mainLayout.addWidget(self.BrowserBox,          0, 1, 5, 3)
-      self.BrowserBox.setUrl("https://cctbx.github.io/")
+      #self.BrowserBox.setUrl("https://cctbx.github.io/")
       #self.BrowserBox.setUrl("https://webglreport.com/")
+      self.storagename = "storage_" + next(tempfile._get_candidate_names())
+      self.webprofile = QWebEngineProfile(self.storagename, self.BrowserBox )
+      self.webpage = QWebEnginePage(self.webprofile, self.BrowserBox)
+      self.webpage.setUrl("https://cctbx.github.io/")
+      self.cpath = self.webprofile.cachePath()
+
+      self.BrowserBox.setPage(self.webpage)
       #self.BrowserBox.loadFinished.connect(self.onLoadFinished)
       mainLayout.setColumnStretch(2, 1)
 
@@ -266,8 +273,26 @@ class NGL_HKLViewer(QWidget):
     self.binTableCheckState = None
     self.millertablemenu = QMenu(self)
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
-
+    self.cpath = ""
     self.show()
+
+
+  def closeEvent(self, event):
+    self.webprofile.clearHttpCache()
+    self.webprofile. clearHttpCache()
+    #del self.BrowserBox
+    #del self.webpage
+    #del self.webprofile
+
+    #shutil.rmtree(cpath)
+    print("HKLviewer exiting now.")
+    """
+    if maybeSave():
+      writeSettings()
+      event.accept()
+    else:
+      event.ignore()
+    """
 
 
   def SettingsDialog(self):
@@ -1305,5 +1330,6 @@ if __name__ == '__main__':
     if guiobj.cctbxproc:
       guiobj.cctbxproc.terminate()
     sys.exit(app.exec_())
+    shutil.rmtree(guiobj.cpath)
   except Exception as e:
     print( str(e)  +  traceback.format_exc(limit=10) )
