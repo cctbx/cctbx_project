@@ -26,7 +26,6 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.use_curvatures = False
         self.refine_background_planes = True
         self.refine_gain_fac = False
-        self.shot_idx = 0  # place holder because global refinement is across multiple shots
         self.multi_panel = False
         self.split_evaluation = False
         self.refine_ncells = False
@@ -41,6 +40,11 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.verbose = True
         self.refine_crystal_scale = True
         self.plot_images = False
+        self.refine_rotX = True
+        self.iterations = 0
+        self.refine_rotY = True
+        self.refine_rotZ = True
+        self.plot_residuals = False
         self.trad_conv = False
         self.calc_curvatures = False
         self.trad_conv_eps = 0.05
@@ -51,6 +55,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.plot_stride = 10
         self.ignore_line_search = False
         self.panel_ids = None
+        self.shot_idx = 0  # place holder because global refinement is across multiple shots
+        self.shot_ids = None
         lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
 
     @abstractmethod
