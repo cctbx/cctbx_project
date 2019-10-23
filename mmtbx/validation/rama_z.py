@@ -18,7 +18,7 @@ rama_z {
 """
 
 class rama_z(object):
-  def __init__(self, model, params, log):
+  def __init__(self, model, log):
     db_path = libtbx.env.find_in_repositories(
         relative_path="chem_data/rama_z/top8000_rama_z_dict.pkl",
         test=os.path.isfile)
@@ -107,6 +107,12 @@ class rama_z(object):
 
   def get_z_scores(self):
     return self.z_score
+
+  def get_ss_selections(self):
+    self.loop_sel = flex.bool([True]*self.helix_sel.size())
+    self.loop_sel &= ~self.helix_sel
+    self.loop_sel &= ~self.sheet_sel
+    return self.helix_sel, self.sheet_sel, self.loop_sel
 
   def _figure_out_ss(self, three):
     iseq = three.get_phi_psi_atoms()[0][-1].i_seq
@@ -227,5 +233,3 @@ class rama_z(object):
         z[i][j] = grid[jj][ii]
     return interpolate.interp2d(x,y,z, kind='linear')
 
-  def evaluate(self, model, params):
-    pass
