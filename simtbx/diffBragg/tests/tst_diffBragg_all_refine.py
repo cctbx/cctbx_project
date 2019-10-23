@@ -119,7 +119,6 @@ print "Using oversample %d" % SIM.D.oversample
 # This is the ground truth image:
 img = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
-embed()
 
 if args.psf:
     y = slice(450, 480,1)
