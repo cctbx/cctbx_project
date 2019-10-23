@@ -26,6 +26,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.use_curvatures = False
         self.refine_background_planes = True
         self.refine_gain_fac = False
+        self.shot_idx = 0  # place holder because global refinement is across multiple shots
         self.multi_panel = False
         self.split_evaluation = False
         self.refine_ncells = False
@@ -33,6 +34,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_detdist = True
         self.refine_Amatrix = True
         self.refine_Bmatrix = True
+        self.pre_cached_roi_data = False
         self.use_curvatures_threshold = 7
         self.curv = None  # curvatures array
         self.refine_Umatrix = True
@@ -189,7 +191,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         """
         pass
 
-    def run(self, curvature_min_verbose=False, setup=True):
+    def run(self, curvature_min_verbose=False, setup=True, cache_roi=True):
         """runs the LBFGS minimizer"""
 
         if setup:
@@ -261,6 +263,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
     def _cache_roi_arrays(self):
         """useful cache for iterative LBFGS step"""
+        if self.has_pre_cached_roi_data:
+            return
         nanoBragg_rois = []  # special nanoBragg format
         xrel, yrel, roi_img = [], [], []
         self._filter_spot_rois()
