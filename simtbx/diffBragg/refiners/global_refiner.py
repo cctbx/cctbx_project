@@ -392,9 +392,9 @@ class FatRefiner(PixelRefinement):
                 for i_spot in range(n_spots):
                     self._panel_id = self.PANEL_IDS[self._i_shot][i_spot]
                     if self.verbose:
-                        print "diffBragg: img %d/%d; spot %d/%d; panel %d" \
-                              % (self._i_shot+1, self.n_shots, i_spot+1, n_spots, self._panel_id)
-                        #sys.stdout.flush()
+                        print "\rdiffBragg: img %d/%d; spot %d/%d; panel %d" \
+                              % (self._i_shot+1, self.n_shots, i_spot+1, n_spots, self._panel_id),
+                        sys.stdout.flush()
 
                     self._update_dxtbx_detector()
                     self._run_diffBragg_current(i_spot)
@@ -500,23 +500,14 @@ class FatRefiner(PixelRefinement):
                             d2 = d / self.gain_fac
                             self.curv[self.gain_xpos] += (d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda).sum()
 
-            #if self.verbose:
             print ("Rank %d Barrier" % comm.rank)
             comm.Barrier()
-            if self.verbose:
-                print ("Proceedind..")
             # reduce the broadcast summed results:
-            if self.verbose:
-                print("Redude f")
             f_t = comm.reduce(f, MPI.SUM, root=0)
             f = comm.bcast(f_t, root=0)
-            if self.verbose:
-                print("Redude G")
             g_t = comm.reduce(g, MPI.SUM, root=0)
             g = comm.bcast(g_t, root=0)
             if self.calc_curvatures:
-                if self.verbose:
-                    print("Redude C")
                 curv_t = comm.reduce(self.curv, MPI.SUM, root=0)
                 self.curv = comm.bcast(curv_t, root=0)
 
