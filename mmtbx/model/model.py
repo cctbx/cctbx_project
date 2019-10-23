@@ -448,7 +448,6 @@ class manager(object):
     pep_link_params.rama_potential = rama_potential
     ramachandran_restraints_manager = ramachandran.ramachandran_manager(
       pdb_hierarchy  = self.get_hierarchy(),
-      atom_selection = pep_link_params.rama_selection,
       params         = pep_link_params,
       log            = null_out())
     grm.set_ramachandran_restraints(manager = ramachandran_restraints_manager)
