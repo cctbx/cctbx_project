@@ -14,7 +14,6 @@ if rank == 0:
     from numpy import mean, unique, log
     from numpy import all as np_all
     from numpy.linalg import norm
-    from sys.stdout import flush as stdout_flush
 
     from simtbx.diffBragg.refiners import BreakToUseCurvatures
     from scitbx.array_family import flex
@@ -24,26 +23,32 @@ if rank == 0:
 
 else:
     mean = unique = log = np_all = norm = None
-    stdout_flush = None
+    #stdout_flush = None
     BreakToUseCurvatures = None
     flex_double = None
     col = None
     PixelRefinement = None
 
 if has_mpi:
-    mean = comm.broadcast(mean, root=0)
-    stdout_flush = comm.broadcast(stdout_flush)
-    BreakToUseCurvatures = comm.broadcast(BreakToUseCurvatures)
-    flex_double = comm.broadcast(flex_double)
-    col = comm.broadcast(col)
-    PixelRefinement = comm.broadcast(PixelRefinement)
+    mean = comm.bcast(mean, root=0)
+    unique =comm.bcast(unique, root=0)
+    log = comm.bcast(log, root=0)
+    norm = comm.bcast(norm, root=0)
+    np_all = comm.bcast(np_all, root=0)
+    #stdout_flush = comm.bcast(stdout_flush)
+    BreakToUseCurvatures = comm.bcast(BreakToUseCurvatures)
+    flex_double = comm.bcast(flex_double)
+    col = comm.bcast(col)
+    PixelRefinement = comm.bcast(PixelRefinement)
 
 if rank == 0:
     import pylab as plt
     from IPython import embed
 
+import sys
 
-class GlobalFat(PixelRefinement):
+
+class FatRefiner(PixelRefinement):
 
     def __init__(self, n_global_params, n_local_params, local_idx_start,
                  shot_ucell_managers, shot_rois, shot_nanoBragg_rois,
@@ -51,7 +56,8 @@ class GlobalFat(PixelRefinement):
                  shot_crystal_models, shot_xrel, shot_yrel, shot_abc_inits,
                  global_param_idx_start,
                  shot_panel_ids, init_gain=1, init_scale=1):
-        super(GlobalFat, self).__init__()
+        PixelRefinement.__init__(self)
+        #super(GlobalFat, self).__init__()
 
         # dictionaries whose keys are the shot indices
         self.UCELL_MAN = shot_ucell_managers
@@ -95,7 +101,7 @@ class GlobalFat(PixelRefinement):
         self.n_spot_scale_param = 1
         self.n_per_shot_params = self.n_rot_param + self.n_ucell_param + self.n_ncells_param + self.n_spot_scale_param
 
-        assert self.n_per_shot_params == self.n_local_params
+        assert self.n_per_shot_params*self.n_shots == self.n_local_params
 
         self._ncells_id = 9  # diffBragg specific
         self._originZ_id = 10  # diffBragg specific
@@ -104,15 +110,15 @@ class GlobalFat(PixelRefinement):
         self.num_positive_curvatures = 0
         self._panel_id = None
 
-        self.pid_from_idx = None
-        self.idx_from_pid = None
+        self.pid_from_idx = {}
+        self.idx_from_pid = {}
 
         # where the global parameters being , initially just gain and detector distance
         self.global_param_idx_start = global_param_idx_start
 
         self.a = self.b = self.c = None
 
-    def _setup_plots(self):
+    def setup_plots(self):
         if rank == 0:
             if self.plot_images:
                 if self.plot_residuals:
@@ -146,6 +152,7 @@ class GlobalFat(PixelRefinement):
         """checks that the dictionary keys are the same"""
         if not sorted(shot_dict.keys()) == self.shot_ids:
             raise KeyError("input data funky, check GlobalFat inputs")
+        return shot_dict
 
     def _evaluate_averageI(self):
         """model_Lambda means expected intensity in the pixel"""
@@ -187,18 +194,17 @@ class GlobalFat(PixelRefinement):
         self.n_panels = {}
 
         for i_shot in self.shot_ids:
-
-            self.pid_from_idx[i_shot] = {i: pid for i, pid in enumerate(unique(self.panel_ids))}
-            self.idx_from_pid[i_shot] = {pid: i for i, pid in enumerate(unique(self.panel_ids))}
-            self.n_panels[i_shot] = len(self.pid_from_idx)
+            self.pid_from_idx[i_shot] = {i: pid for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
+            self.idx_from_pid[i_shot] = {pid: i for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
+            self.n_panels[i_shot] = len(self.pid_from_idx[i_shot])
 
             self.rotX_xpos[i_shot] = self.local_idx_start + i_shot*self.n_per_shot_params
             self.rotY_xpos[i_shot] = self.rotX_xpos[i_shot] + 1
             self.rotZ_xpos[i_shot] = self.rotY_xpos[i_shot] + 1
 
-            self.x[self.rotX_xpos] = 0
-            self.x[self.rotY_xpos] = 0
-            self.x[self.rotZ_xpos] = 0
+            self.x[self.rotX_xpos[i_shot]] = 0
+            self.x[self.rotY_xpos[i_shot]] = 0
+            self.x[self.rotZ_xpos[i_shot]] = 0
 
             self.ucell_xstart[i_shot] = self.rotZ_xpos[i_shot] + 1
             # populate the x-array with initial values
@@ -219,7 +225,7 @@ class GlobalFat(PixelRefinement):
             # TODO: refine at the different hierarchy
             # get te first Z coordinate for now..
             self.x[self.originZ_xpos] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?
-            self.x[self.gain_pos] = self._init_gain  # gain factor
+            self.x[self.gain_xpos] = self._init_gain  # gain factor
 
             # TODO per panel gain corretion / pedestal correction?
             #n_panels = len(self.S.detector)
@@ -235,7 +241,7 @@ class GlobalFat(PixelRefinement):
         # reduce then broadcast self.x
         # TODO do I work properly ?
         self.x = comm.reduce(self.x, MPI.SUM, root=0)
-        self.x = comm.broadcast(self.x, root=0)
+        self.x = comm.bcast(self.x, root=0)
 
         # setup the diffBragg instance
         self.D = self.S.D
@@ -284,7 +290,7 @@ class GlobalFat(PixelRefinement):
         self.D.set_value(self._ncells_id, self.x[self.ncells_xpos[self._i_shot]])
 
     def _update_dxtbx_detector(self):
-
+        # TODO: verify that all panels have same local origin to start with..
         det = self.S.detector
         self.S.panel_id = self._panel_id
         # TODO: select hierarchy level at this point
@@ -344,9 +350,9 @@ class GlobalFat(PixelRefinement):
     def _update_ucell(self):
         _s = slice(self.ucell_xstart[self._i_shot], self.ucell_xstart[self._i_shot] + self.n_ucell_param, 1)
         pars = list(self.x[_s])
-        self.ucell_manager.variables = pars
+        self.UCELL_MAN[self._i_shot].variables = pars
         self._send_gradients_to_derivative_managers()
-        self.D.Bmatrix = self.ucell_manager.B_recipspace
+        self.D.Bmatrix = self.UCELL_MAN[self._i_shot].B_recipspace
 
     def _update_umatrix(self):
         self.D.Umatrix = self.CRYSTAL_MODELS[self._i_shot].get_U()
@@ -382,12 +388,13 @@ class GlobalFat(PixelRefinement):
                 self._update_ucell()
                 self._update_ncells()
                 self._update_rotXYZ()
-                for i_spot in range(self.n_spots):
+                n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
+                for i_spot in range(n_spots):
                     self._panel_id = self.PANEL_IDS[self._i_shot][i_spot]
                     if self.verbose:
-                        print "\rdiffBragg: img %d/%d; spot %d/%d; panel %d" \
-                              % (self._i_shot+1, self.n_shots, i_spot+1, self.n_spots, self._panel_id),
-                        stdout_flush()
+                        print "diffBragg: img %d/%d; spot %d/%d; panel %d" \
+                              % (self._i_shot+1, self.n_shots, i_spot+1, n_spots, self._panel_id)
+                        #sys.stdout.flush()
 
                     self._update_dxtbx_detector()
                     self._run_diffBragg_current(i_spot)
@@ -435,7 +442,7 @@ class GlobalFat(PixelRefinement):
                             self.ax2.images[0].set_data(Imeas)
                             self.ax2.images[0].set_clim(vmin, vmax)
                         plt.suptitle("Iterations = %d, image %d / %d"
-                                     % (self.iterations, i_spot+1, self.n_spots))
+                                     % (self.iterations, i_spot+1, n_spots))
                         self.fig.canvas.draw()
                         plt.pause(.02)
                     if self.refine_Umatrix:
@@ -493,14 +500,25 @@ class GlobalFat(PixelRefinement):
                             d2 = d / self.gain_fac
                             self.curv[self.gain_xpos] += (d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda).sum()
 
+            #if self.verbose:
+            print ("Rank %d Barrier" % comm.rank)
+            comm.Barrier()
+            if self.verbose:
+                print ("Proceedind..")
             # reduce the broadcast summed results:
-            f = comm.reduce(f, MPI.SUM, root=0)
-            f = comm.broadcast(f, root=0)
-            g = comm.reduce(g, MPI.SUM, root=0)
-            g = comm.broadcast(g, root=0)
+            if self.verbose:
+                print("Redude f")
+            f_t = comm.reduce(f, MPI.SUM, root=0)
+            f = comm.bcast(f_t, root=0)
+            if self.verbose:
+                print("Redude G")
+            g_t = comm.reduce(g, MPI.SUM, root=0)
+            g = comm.bcast(g_t, root=0)
             if self.calc_curvatures:
-                self.curv = comm.reduce(self.curv, MPI.SUM, root=0)
-                self.curv = comm.broadcast(self.curv, root=0)
+                if self.verbose:
+                    print("Redude C")
+                curv_t = comm.reduce(self.curv, MPI.SUM, root=0)
+                self.curv = comm.bcast(curv_t, root=0)
 
             if self.calc_curvatures and not self.use_curvatures:
                 if np_all(self.curv.as_numpy_array() >= 0):
@@ -527,39 +545,41 @@ class GlobalFat(PixelRefinement):
     def _mpi_reduce_broadcast(self, var):
         # TODO: try me out
         var = comm.reduce(var, MPI.SUM, root=0)
-        var = comm.broadcast(var, root=0)
+        var = comm.bcast(var, root=0)
         return var
 
     def print_step(self, message, target):
-        names = self.ucell_manager.variable_names
-        vals = self.ucell_manager.variables
+        names = self.UCELL_MAN[self._i_shot].variable_names
+        vals = self.UCELL_MAN[self._i_shot].variables
         ucell_labels = []
         for n, v in zip(names, vals):
             ucell_labels.append('%s=%+2.7g' % (n, v))
-        rotX = self.x[self.rotX_xpos]
-        rotY = self.x[self.rotY_xpos]
-        rotZ = self.x[self.rotZ_xpos]
+        rotX = self.x[self.rotX_xpos[self._i_shot]]
+        rotY = self.x[self.rotY_xpos[self._i_shot]]
+        rotZ = self.x[self.rotZ_xpos[self._i_shot]]
         rot_labels = ["rotX=%+3.7g" % rotX, "rotY=%+3.7g" % rotY, "rotZ=%+3.4g" % rotZ]
         print("%s: residual=%3.8g, ncells=%f, detdist=%3.8g, gain=%3.4g, scale=%4.8g"
-              % (message, target, self.x[self.ncells_xpos], self.x[self.origin_xstart], self.x[-2]**2, self.x[-1]**2))
+              % (message, target, self.x[self.ncells_xpos[self._i_shot]], self.x[self.originZ_xpos],
+                 self.x[self.gain_xpos]**2, self.x[self.spot_scale_xpos[self._i_shot]]**2))
         print ("Ucell: %s *** Missets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
 
     def print_step_grads(self, message, target):
-        names = self.ucell_manager.variable_names
-        vals = self.ucell_manager.variables
+        names = self.UCELL_MAN[self._i_shot].variable_names
+        vals = self.UCELL_MAN[self._i_shot].variables
         ucell_labels = []
-        for i,(n, v) in enumerate(zip(names, vals)):
-            grad = self._g[self.ucell_xstart+i]
+        for i, (n, v) in enumerate(zip(names, vals)):
+            grad = self._g[self.ucell_xstart[self._i_shot]+i]
             ucell_labels.append('G%s=%+2.7g' % (n, grad))
-        rotX = self._g[self.rotX_xpos]
-        rotY = self._g[self.rotY_xpos]
-        rotZ = self._g[self.rotZ_xpos]
+        rotX = self._g[self.rotX_xpos[self._i_shot]]
+        rotY = self._g[self.rotY_xpos[self._i_shot]]
+        rotZ = self._g[self.rotZ_xpos[self._i_shot]]
         rot_labels = ["GrotX=%+3.7g" % rotX, "GrotY=%+3.7g" % rotY, "GrotZ=%+3.4g" % rotZ]
         xnorm = norm(self.x)
         print("%s: |x|=%f, |g|=%f, Gncells=%f, Gdetdist=%3.8g, Ggain=%3.4g, Gscale=%4.8g"
-              % (message, xnorm, target, self._g[self.ncells_xpos], self._g[self.origin_xstart], self._g[-2], self._g[-1]))
+              % (message, xnorm, target, self._g[self.ncells_xpos[self._i_shot]], self._g[self.originZ_xpos],
+                 self._g[self.gain_xpos], self._g[self.spot_scale_xpos[self._i_shot]]))
         print ("GUcell: %s *** GMissets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
