@@ -93,7 +93,10 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
     @property
     def n_spots(self):
-        return len(self._spot_rois)
+        try:
+            return len(self._spot_rois)
+        except AttributeError:
+            return None
 
     @property
     def abc_init(self):
