@@ -5836,7 +5836,7 @@ def get_solvent_content_from_seq_file(params,
     map_volume=None,
     out=sys.stdout):
 
-  if params and not chain_type:
+  if params and not overall_chain_type:
      overall_chain_type=params.crystal_info.chain_type
 
   if not sequence and not os.path.isfile(seq_file):
