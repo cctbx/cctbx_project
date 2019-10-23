@@ -142,8 +142,6 @@ class RefineAllMultiPanel(RefineRot):
         # TODO: select hierarchy level at this point
         # NOTE: what does fast-axis and slow-axis mean
         # for the different hierarchy levels?
-        from IPython import embed
-        embed()
         node = det[self._panel_id]
         orig = node.get_local_origin()
         xpos = self.origin_xstart + self.idx_from_pid[self._panel_id]
