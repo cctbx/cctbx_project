@@ -4065,6 +4065,7 @@ def get_params_from_args(args):
 def get_mask_around_molecule(map_data=None,
         wang_radius=None,
         buffer_radius=None,
+        force_buffer_radius=None,
         return_masked_fraction=False,
         minimum_fraction_of_max=0.01,
         solvent_content=None,
@@ -4114,7 +4115,7 @@ def get_mask_around_molecule(map_data=None,
       file=out)
   print("\nLargest masked region after buffering: %7.2f" %(expanded_fraction),
      file=out)
-  if solvent_content:
+  if solvent_content and (not force_buffer_radius):
     delta_as_is=abs(solvent_content- (1-masked_fraction))
     delta_expanded=abs(solvent_content- (1-expanded_fraction))
     if delta_expanded > delta_as_is:
@@ -5258,6 +5259,7 @@ def get_and_apply_soft_mask_to_maps(
     resolution=None,  #params.crystal_info.resolution
     wang_radius=None, #params.crystal_info.wang_radius
     buffer_radius=None, #params.crystal_info.buffer_radius
+    force_buffer_radius=None, # apply buffer radius always
     map_data=None,crystal_symmetry=None,
     solvent_content=None,
     solvent_content_iterations=None,
@@ -5303,6 +5305,7 @@ def get_and_apply_soft_mask_to_maps(
     solvent_content=solvent_content,
     solvent_content_iterations=solvent_content_iterations,
     buffer_radius=buffer_radius,
+    force_buffer_radius=force_buffer_radius,
     return_masked_fraction=return_masked_fraction,
     out=out)
   if mask_data:
