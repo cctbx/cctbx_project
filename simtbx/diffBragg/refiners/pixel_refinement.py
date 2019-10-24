@@ -48,6 +48,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.trad_conv = False
         self.calc_curvatures = False
         self.trad_conv_eps = 0.05
+        self.plot_statistics = False
         self.drop_conv_max_eps = 1e-5
         self.mn_iter = None
         self.mx_iter = None
