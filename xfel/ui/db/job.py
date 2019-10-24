@@ -199,7 +199,7 @@ class IndexingJob(Job):
       user                      = self.app.params.db.user,
       port                      = self.app.params.db.port,
       # always use mpi for 'lcls'
-      use_mpi                   = self.app.params.mp.method != 'local' or (app.params.mp.method == 'local' and app.params.facility.name == 'lcls')
+      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls')
     )
     if self.app.params.db.password is not None and len(self.app.params.db.password) == 0:
       d['password'] = None
@@ -592,7 +592,7 @@ class ScalingJob(Job):
       htcondor_executable_path  = self.app.params.mp.htcondor.executable_path,
       target                    = target_phil_path,
       # always use mpi for 'lcls'
-      use_mpi                   = self.app.params.mp.method != 'local' or (app.params.mp.method == 'local' and app.params.facility.name == 'lcls')
+      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls')
     )
 
     with open(submit_phil_path, "w") as phil:
