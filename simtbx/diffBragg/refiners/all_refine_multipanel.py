@@ -109,6 +109,7 @@ class RefineAllMultiPanel(RefineRot):
     def x(self, val):
         self._x = val
 
+    #@profile
     def _send_gradients_to_derivative_managers(self):
         """Needs to be called once each time the orientation is updated"""
         for i in range(self.n_ucell_param):
@@ -119,11 +120,13 @@ class RefineAllMultiPanel(RefineRot):
                 self.D.set_ucell_second_derivative_matrix(
                     i + 3, self.ucell_manager.second_derivative_matrices[i])
 
+    #@profile
     def _run_diffBragg_current(self, i_spot):
         """needs to be called each time the ROI is changed"""
         self.D.region_of_interest = self.nanoBragg_rois[i_spot]
         self.D.add_diffBragg_spots()
 
+    #@profile
     def _update_rotXYZ(self):
         if self.refine_rotX:
             self.D.set_value(0, self.x[self.rotX_xpos])
@@ -132,9 +135,11 @@ class RefineAllMultiPanel(RefineRot):
         if self.refine_rotZ:
             self.D.set_value(2, self.x[self.rotZ_xpos])
 
+    #@profile
     def _update_ncells(self):
         self.D.set_value(self._ncells_id, self.x[self.ncells_xpos])
 
+    #@profile
     def _update_dxtbx_detector(self):
 
         det = self.S.detector
@@ -153,6 +158,7 @@ class RefineAllMultiPanel(RefineRot):
         self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
         self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
 
+    #@profile
     def _extract_pixel_data(self):
         self.rot_deriv = [0, 0, 0]
         self.rot_second_deriv = [0, 0, 0]
@@ -191,17 +197,20 @@ class RefineAllMultiPanel(RefineRot):
 
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
 
+    #@profile
     def _update_best_image(self, i_spot):
         pid = self.panel_ids[i_spot]
         x1, x2, y1, y2 = self.spot_rois[i_spot]
         self.best_image[pid, y1:y2 + 1, x1:x2 + 1] = self.model_Lambda
 
+    #@profile
     def _unpack_bgplane_params(self, i_spot):
         self.a, self.b, self.c = self.abc_init[i_spot]
         #self.a = self.x[i_spot]
         #self.b = self.x[self.n_spots + i_spot]
         #self.c = self.x[self.n_spots * 2 + i_spot]
 
+    #@profile
     def _update_ucell(self):
         _s = slice(self.ucell_xstart, self.ucell_xstart + self.n_ucell_param, 1)
         pars = list(self.x[_s])
@@ -209,6 +218,7 @@ class RefineAllMultiPanel(RefineRot):
         self._send_gradients_to_derivative_managers()
         self.D.Bmatrix = self.ucell_manager.B_recipspace
 
+    #@profile
     def compute_functional_and_gradients(self):
         if self.calc_func:
             #self.x = flex.double(self.x_init)
