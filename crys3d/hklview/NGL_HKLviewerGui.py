@@ -222,6 +222,7 @@ class NGL_HKLViewer(QWidget):
     mainLayout.addWidget(self.FileInfoBox,         0, 0)
     mainLayout.addWidget(self.functionTabWidget,   1, 0)
     mainLayout.addWidget(self.settingsbtn,         2, 0, 1, 1)
+    self.cpath = ""
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if self.UseOSbrowser==False:
@@ -229,7 +230,7 @@ class NGL_HKLViewer(QWidget):
       mainLayout.addWidget(self.BrowserBox,          0, 1, 5, 3)
       #self.BrowserBox.setUrl("https://cctbx.github.io/")
       #self.BrowserBox.setUrl("https://webglreport.com/")
-      self.storagename = "storage_" + next(tempfile._get_candidate_names())
+      self.storagename = "HKLviewer." + next(tempfile._get_candidate_names())
       self.webprofile = QWebEngineProfile(self.storagename, self.BrowserBox )
       self.webpage = QWebEnginePage(self.webprofile, self.BrowserBox)
       self.webpage.setUrl("https://cctbx.github.io/")
@@ -273,16 +274,16 @@ class NGL_HKLViewer(QWidget):
     self.binTableCheckState = None
     self.millertablemenu = QMenu(self)
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
-    self.cpath = ""
     self.show()
 
 
   def closeEvent(self, event):
+    self.NGL_HKL_command('NGL_HKLviewer.action = is_terminating')
+    time.sleep(1)
     self.webprofile.clearHttpCache()
-    self.webprofile. clearHttpCache()
-    #del self.BrowserBox
-    #del self.webpage
-    #del self.webprofile
+    del self.webpage
+    del self.BrowserBox
+    del self.webprofile
 
     #shutil.rmtree(cpath)
     print("HKLviewer exiting now.")
@@ -1329,7 +1330,19 @@ if __name__ == '__main__':
 
     if guiobj.cctbxproc:
       guiobj.cctbxproc.terminate()
-    sys.exit(app.exec_())
-    shutil.rmtree(guiobj.cpath)
+    ret = app.exec_()
+    #ret = app.exit(-1)
+    timer.stop()
+    del timer
+    present = True
+    while present:
+      present = False
+      try:
+        shutil.rmtree(guiobj.cpath)
+      except Exception as delerr:
+        time.sleep(0.2)
+        present = True
+
+    sys.exit(ret)
   except Exception as e:
     print( str(e)  +  traceback.format_exc(limit=10) )

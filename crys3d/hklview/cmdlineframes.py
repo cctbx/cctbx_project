@@ -321,6 +321,15 @@ class HKLViewFrame() :
     self.NewFileLoaded = False
 
 
+  def __exit__(self, exc_type=None, exc_value=0, traceback=None):
+    self.viewer.__exit__(exc_type, exc_value, traceback)
+    if self.guiSocketPort:
+      self.msgqueuethrd.join()
+    del self.viewer
+    self.mprint("Purging HKLViewFrame", 1)
+    del self
+
+
   def mprint(self, msg, verbose=0):
     if verbose <= self.verbose:
       if self.guiSocketPort:
@@ -350,7 +359,6 @@ class HKLViewFrame() :
         time.sleep(0.1)
       except Exception as e:
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
-
     del self.guisocket
     self.mprint( "Exiting zmq_listen() thread", 1)
 
@@ -460,6 +468,11 @@ class HKLViewFrame() :
 
       if view_3d.has_phil_path(diff_phil, "shape_primitive"):
         self.set_shape_primitive(phl.shape_primitive)
+
+      if view_3d.has_phil_path(diff_phil, "action"):
+        ret = self.set_action(phl.action)
+        if not ret:
+          return False
 
       if view_3d.has_phil_path(diff_phil, "tooltips_in_script"):
         self.viewer.script_has_tooltips = phl.tooltips_in_script
@@ -960,7 +973,16 @@ class HKLViewFrame() :
       self.viewer.primitivetype = "PointBuffer"
     else:
       self.viewer.primitivetype = "sphereBuffer"
-    #self.viewer.DrawNGLJavaScript()
+
+
+  def SetAction(self, val):
+    self.params.NGL_HKLviewer.action = val
+    self.update_settings()
+
+
+  def set_action(self, val):
+    if val == "is_terminating":
+      self.__exit__()
 
 
   def ShowTooltips(self, val):
@@ -1144,6 +1166,8 @@ NGL_HKLviewer {
       %s
     }
   }
+  action = *'is_running' 'is_terminating'
+    .type = choice
 }
 
 """ %(display.philstr, view_3d.ngl_philstr)

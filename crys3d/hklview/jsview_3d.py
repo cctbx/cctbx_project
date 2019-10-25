@@ -301,13 +301,18 @@ class hklview_3d:
     self.msgdelim = ":\n"
     self.msgqueuethrd = None
     self.StartWebsocket()
+    self.isterminating = False
 
 
   def __exit__(self, exc_type, exc_value, traceback):
     # not called unless instantiated with a "with hklview_3d ... " statement
+    self.CleanupNGL()
     self.server.shutdown()
+    self.isterminating = True
+    self.StopThreads()
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
+    self.mprint("Annihilating hklview_3d", 1)
 
 
   def SendInfoToGUI(self, mydict):
@@ -1385,14 +1390,14 @@ mysocket.onerror = function(error)
 var stage;
 var shape;
 var shapeComp;
-var vectorreprs = [];
 var vectorshape;
-var vectorshapeComps = [];
 var repr;
 var AA = String.fromCharCode(197); // short for angstrom
 var DGR = String.fromCharCode(176); // short for degree symbol
-var ttips = [];
 var current_ttip = "";
+var ttips = [];
+var vectorreprs = [];
+var vectorshapeComps = [];
 var positions = [];
 var br_positions = [];
 var br_colours = [];
@@ -1937,6 +1942,32 @@ mysocket.onmessage = function (e)
       WebsockSendMsg('ReturnBoundingBox:\\n' + msg );
     }
 
+    if (msgtype ==="Cleanup")
+    {
+      stage.removeAllComponents();
+      stage.mouseObserver.dispose();
+      ttips = [];
+      vectorreprs = [];
+      vectorshapeComps = [];
+      positions = [];
+      br_positions = [];
+      br_colours = [];
+      br_radii = [];
+      br_ttips = [];
+      colours = [];
+      alphas = [];
+      radii = [];
+      shapebufs = [];
+      br_shapebufs = [];
+      shape = null;
+      shapeComp = null;
+      vectorshape = null;
+      repr = null;
+      stage.dispose();
+      stage = null;
+      WebsockSendMsg('Cleanup:\\nDestroying JavaScript objects');
+    }
+
     if (msgtype === "InjectNewReflections")
     {
       WebsockSendMsg( 'Rendering new reflections ' + pagename );
@@ -2060,6 +2091,8 @@ mysocket.onmessage = function (e)
         else:
           self.mprint( message, verbose=4)
         self.lastmsg = message
+      if "Cleanup:" in message:
+        self.mprint( message, verbose=1)
       if "JavaScriptError:" in message:
         self.mprint( message, verbose=0)
         #raise Sorry(message)
@@ -2176,6 +2209,8 @@ mysocket.onmessage = function (e)
       while True:
         nwait = 0.0
         sleep(self.sleeptime)
+        if self.isterminating:
+          return
         if len(self.msgqueue):
           pendingmessagetype, pendingmessage = self.msgqueue[0]
           self.SendMsgToBrowser(pendingmessagetype, pendingmessage)
@@ -2228,6 +2263,11 @@ mysocket.onmessage = function (e)
     self.msgqueuethrd.start()
 
 
+  def StopThreads(self):
+    self.msgqueuethrd.join()
+    self.wst.join()
+
+
   def set_camera_type(self):
     self.camera_type = self.ngl_settings.camera_type
 
@@ -2267,6 +2307,10 @@ mysocket.onmessage = function (e)
     self.mprint("Rendering JavaScript...", verbose=1)
     #self.SendMsgToBrowser("Reload")
     self.msgqueue.append( ("Reload", "") )
+
+
+  def CleanupNGL(self):
+    self.msgqueue.append( ("Cleanup", "") )
 
 
   def OpenBrowser(self):
