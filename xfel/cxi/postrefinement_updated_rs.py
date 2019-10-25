@@ -110,7 +110,7 @@ class updated_rs(legacy_rs):
       SWC = simple_weighted_correlation(I_weight.select(~non_positive),
             I_reference.select(~non_positive), I_observed.select(~non_positive))
 
-    print("CORR: Old correlation is", SWC.corr, file=out)
+    #print("CORR: Old correlation is", SWC.corr, file=out)
     if params.postrefinement.algorithm=="rs2":
       Rhall = flex.double()
       for mill in MILLER:
@@ -131,7 +131,7 @@ class updated_rs(legacy_rs):
 
     func = refinery.fvec_callable(parameterization_class(current))
     functional = flex.sum(func*func)
-    print("functional",functional, file=out)
+    #print("functional",functional, file=out)
     self.current = current; self.parameterization_class = parameterization_class
     self.refinery = refinery; self.out=out; self.params = params;
     self.miller_set = miller_set
@@ -146,12 +146,13 @@ class updated_rs(legacy_rs):
     self.refined_mini = self.MINI
 
   def rs2_parameter_range_assertions(self,values, timestamp):
+    return
     # New range assertions for refined variables
     #if abs(180.0*values.thetax/math.pi) > 0.5:
     #  print ('THETA_X %s'%timestamp) 
     #if abs(180.0*values.thetay/math.pi) > 0.5:
     #  print ('THETA_Y %s'%timestamp) 
-    print ('THETA_XY %.4f %.4f %s'%(180.0*values.thetax/math.pi, 180.0*values.thetay/math.pi, timestamp))
+    #print ('THETA_XY %.4f %.4f %s'%(180.0*values.thetax/math.pi, 180.0*values.thetay/math.pi, timestamp))
     #assert 0 < values.G, "G-scale value out of range ( < 0 ) after rs2 refinement"
     #assert -25 < values.BFACTOR and values.BFACTOR < 25, "B-factor value out of range ( |B|>25 ) after rs2 refinement"
     #assert -0.5<180.*values.thetax/math.pi<0.5,"thetax value out of range ( |rotx|>.5 degrees ) after rs2 refinement"

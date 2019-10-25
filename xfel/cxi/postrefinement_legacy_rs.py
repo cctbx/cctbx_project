@@ -95,7 +95,7 @@ class legacy_rs(object):
       SWC = simple_weighted_correlation(I_weight.select(~non_positive),
             I_reference.select(~non_positive), I_observed.select(~non_positive))
 
-    print("Old correlation is", SWC.corr, file=out)
+    #print("Old correlation is", SWC.corr, file=out)
     if params.postrefinement.algorithm=="rs":
       Rhall = flex.double()
       for mill in MILLER:
@@ -124,7 +124,7 @@ class legacy_rs(object):
 
     func = refinery.fvec_callable(parameterization_class(current))
     functional = flex.sum(func*func)
-    print("functional",functional, file=out)
+    #print("functional",functional, file=out)
     self.current = current; self.parameterization_class = parameterization_class
     self.refinery = refinery; self.out=out; self.params = params;
     self.miller_set = miller_set
@@ -141,7 +141,7 @@ class legacy_rs(object):
     # New range assertions for refined variables
     values = self.get_parameter_values()
     ts = os.path.basename(file_name)[6:23]
-    print ('THETA_XY %.4f %.4f %s'%(180.0*values.thetax/math.pi, 180.0*values.thetay/math.pi, ts))
+    #print ('THETA_XY %.4f %.4f %s'%(180.0*values.thetax/math.pi, 180.0*values.thetay/math.pi, ts))
     #assert 0 < values.G, "G-scale value out of range ( < 0 ) after RS refinement"
     #assert -25 < values.BFACTOR and values.BFACTOR < 25, "B-factor value out of range ( |B|>25 ) after RS refinement"
     #assert -0.5<180.*values.thetax/math.pi<0.5,"thetax value out of range ( |rotx|>.5 degrees ) after RS refinement"
@@ -159,8 +159,8 @@ class legacy_rs(object):
     # in samosa, handle this at a higher level, but handle it somehow.
     if fat_count < 0:
       raise ValueError("< 0 near-fulls after refinement")
-    print ( self.out, "On total %5d the fat selection is %5d"%(
-      len(self.observations_pair1_selected.indices()), fat_count))
+    #print ( self.out, "On total %5d the fat selection is %5d"%(
+    #  len(self.observations_pair1_selected.indices()), fat_count))
     observations_original_index = \
       self.observations_original_index_pair1_selected.select(fat_selection)
 
@@ -293,6 +293,7 @@ class rs_parameterization(unpack_base):
     raise AttributeError(item)
 
   def show(YY, out):
+    return
     print("G2: %10.7f"%YY.G, end=' ', file=out)
     print("B2: %10.7f"%YY.BFACTOR, \
         "RS: %10.7f"%YY.RS, \
@@ -361,13 +362,13 @@ class lbfgs_minimizer_base:
       #calculate by finite_difference
       self.g.append( ( dfunctional-functional )/DELTA )
     self.g[2]=0.
-    print("rmsI %10.3f"%math.sqrt(flex.mean(self.func*self.func)), end=' ', file=self.out)
+    #print("rmsI %10.3f"%math.sqrt(flex.mean(self.func*self.func)), end=' ', file=self.out)
     values.show(self.out)
     #import pdb; pdb.set_trace()
     return self.f, self.g
 
   def __del__(self):
     values = self.parameterization(self.x)
-    print("FINALMODEL", end=' ', file=self.out)
-    print("rmsF %10.3f"%math.sqrt(flex.mean(self.func*self.func)), end=' ', file=self.out)
+    #print("FINALMODEL", end=' ', file=self.out)
+    #print("rmsF %10.3f"%math.sqrt(flex.mean(self.func*self.func)), end=' ', file=self.out)
     values.show(self.out)
