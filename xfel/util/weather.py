@@ -4,6 +4,8 @@ import sys,os
 from iotbx.detectors.cspad_detector_formats import reverse_timestamp
 from libtbx.phil import parse
 from libtbx.utils import Sorry
+from scitbx.array_family import flex
+from scitbx.math import five_number_summary
 
 message = ''' script to get a sense of the computational performance of every rank while processing data.
               End product is a plot of wall time vs MPI rank number with every data point being that of a frame
@@ -59,6 +61,7 @@ def run(params):
   reference = None
   root=params.input_path
   fig_object = plt.figure()
+  good_total = fail_total = 0
   for filename in os.listdir(root):
     if os.path.splitext(filename)[1] != '.txt': continue
     if 'debug' not in filename: continue
@@ -76,7 +79,7 @@ def run(params):
         sec, ms = reverse_timestamp(ts)
         reference = sec+ms*1e-3
 
-      if status in ['stop','done']:
+      if status in ['stop','done','fail']:
         sec, ms = reverse_timestamp(ts)
         if status == 'done':
           good_timepoints.append((sec + ms*1.e-3)-reference)
@@ -87,10 +90,18 @@ def run(params):
         ok = False
     plt.plot(fail_timepoints, [rank]*len(fail_timepoints), 'b.')
     plt.plot(good_timepoints, [rank]*len(good_timepoints), 'g.')
+    fail_total += len(fail_timepoints)
+    good_total += len(good_timepoints)
     if not ok:
       sec, ms = reverse_timestamp(ts)
       plt.plot([(sec+ms*1e-3) - reference], [rank], 'rx')
     #if counter > 100: break
+
+  fail_deltas = [fail_timepoints[i+1] - fail_timepoints[i] for i in range(len(fail_timepoints)-1)]
+  good_deltas = [good_timepoints[i+1] - good_timepoints[i] for i in range(len(good_timepoints)-1)]
+  if fail_deltas: print("Five number summary of %d fail image processing times:"%fail_total, five_number_summary(flex.double(fail_deltas)))
+  if good_deltas: print("Five number summary of %d good image processing times:"%good_total, five_number_summary(flex.double(good_deltas)))
+
   for i in range(params.num_nodes):
     plt.plot([0,params.wall_time], [i*params.num_cores_per_node-0.5, i*params.num_cores_per_node-0.5], 'r-')
   plt.xlabel('Wall time (sec)')
