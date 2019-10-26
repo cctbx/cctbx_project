@@ -267,9 +267,9 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
             nslow, nfast = self.img.shape
         for i, (_, x2, _, y2) in enumerate(self.spot_rois):
             if x2 == nfast:
-                self.spot_rois[i, 1] = x2-1  # update roi_xmax
+                self.spot_rois[i][1] = x2-1  # update roi_xmax
             if y2 == nslow:
-                self.spot_rois[i, 3] = y2-1  # update roi_ymax
+                self.spot_rois[i][3] = y2-1  # update roi_ymax
 
     def _cache_roi_arrays(self):
         """useful cache for iterative LBFGS step"""
