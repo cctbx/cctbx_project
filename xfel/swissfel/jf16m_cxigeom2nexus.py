@@ -6,14 +6,18 @@ import numpy as np
 from xfel.euxfel.read_geom import read_geom
 from libtbx.phil import parse
 import six
+from libtbx.utils import Sorry
 
 phil_scope = parse("""
   unassembled_file = None
-    .type = str
+    .type = path
     .help = hdf5 file used to read in image data.
   geom_file = None
-    .type = str
+    .type = path
     .help = geometry file to be read in for detector (.geom).
+  output_file = None
+    .type = path
+    .help = output file path
   detector_distance = None
     .type = float
     .help = Detector distance
@@ -30,6 +34,10 @@ phil_scope = parse("""
   trusted_range = None
     .type = floats(size=2)
     .help = Set the trusted range
+  raw = False
+    .type = bool
+    .help = Whether the data being analyzed is raw data from the JF16M or has \
+            been corrected and padded.
 """)
 
 
@@ -84,7 +92,7 @@ class jf16m_cxigeom2nexus(object):
       --> instrument
       --> sample
     '''
-    output_file_name = os.path.splitext(self.params.unassembled_file)[0]+'_master.h5'
+    output_file_name = self.params.output_file if self.params.output_file is not None else os.path.splitext(self.params.unassembled_file)[0]+'_master.h5'
     f = h5py.File(output_file_name, 'w')
     entry = f.create_group('entry')
     entry.attrs['NX_class'] = 'NXentry'
@@ -94,7 +102,10 @@ class jf16m_cxigeom2nexus(object):
     data = entry.create_group('data')
     data.attrs['NX_class'] = 'NXdata'
     data_key = 'data'
-    data[data_key] = h5py.ExternalLink(self.params.unassembled_file, "data/data")
+    if self.params.raw:
+      data[data_key] = h5py.ExternalLink(self.params.unassembled_file, "data/JF07T32V01/data")
+    else:
+      data[data_key] = h5py.ExternalLink(self.params.unassembled_file, "data/data")
     # --> sample
     sample = entry.create_group('sample')
     sample.attrs['NX_class'] = 'NXsample'
@@ -132,10 +143,13 @@ class jf16m_cxigeom2nexus(object):
     panels = []
     for q, quad in six.iteritems(self.hierarchy):
       panels.extend([quad[key] for key in quad])
-    fast = max([int(panel['max_fs']) for panel in panels])+1
-    slow = max([int(panel['max_ss']) for panel in panels])+1
     pixel_size = panels[0]['pixel_size']
     assert [pixel_size == panels[i+1]['pixel_size'] for i in range(len(panels)-1)].count(False) == 0
+    if self.params.raw:
+      fast = 1024; slow = 16384
+    else:
+      fast = max([int(panel['max_fs']) for panel in panels])+1
+      slow = max([int(panel['max_ss']) for panel in panels])+1
 
     quad_fast = fast
     quad_slow = slow // self.n_quads
@@ -144,9 +158,14 @@ class jf16m_cxigeom2nexus(object):
 
     if self.params.split_modules_into_asics:
       n_fast_asics = 4; n_slow_asics = 2
-      border = 1; gap = 2
-      asic_fast = (module_fast - (n_fast_asics-1)*gap) / n_fast_asics # includes border but not gap
-      asic_slow = (module_slow - (n_slow_asics-1)*gap) / n_slow_asics # includes border but not gap
+      if self.params.raw:
+        border = 1; data_gap = 0; real_gap = 2
+        asic_fast = (module_fast - (n_fast_asics-1)*data_gap) / n_fast_asics # includes border but not gap
+        asic_slow = (module_slow - (n_slow_asics-1)*data_gap) / n_slow_asics # includes border but not gap
+      else:
+        border = 1; gap = 2
+        asic_fast = (module_fast - (n_fast_asics-1)*gap) / n_fast_asics # includes border but not gap
+        asic_slow = (module_slow - (n_slow_asics-1)*gap) / n_slow_asics # includes border but not gap
 
     detector = instrument.create_group('ELE_D0')
     detector.attrs['NX_class']  = 'NXdetector'
@@ -194,15 +213,24 @@ class jf16m_cxigeom2nexus(object):
               # bXXXbggbXXXb The math below skips past the borders and gaps to the first real pixel.
               # bXXXbggbXXXb
               # bbbbbggbbbbb
-              asic_vector = -offset + (fast * pixel_size * (asic_fast * asic_fast_number + border + (asic_fast_number * gap))) + \
-                                      (slow * pixel_size * (asic_slow * asic_slow_number + border + (asic_slow_number * gap)))
+              if self.params.raw:
+                asic_vector = -offset + (fast * pixel_size * (asic_fast * asic_fast_number + border + (asic_fast_number * real_gap))) + \
+                                        (slow * pixel_size * (asic_slow * asic_slow_number + border + (asic_slow_number * real_gap)))
+              else:
+                asic_vector = -offset + (fast * pixel_size * (asic_fast * asic_fast_number + border + (asic_fast_number * gap))) + \
+                                        (slow * pixel_size * (asic_slow * asic_slow_number + border + (asic_slow_number * gap)))
+
               self.create_vector(transformations, a_name, 0.0, depends_on=m_name, equipment='detector', equipment_component='detector_asic',
                                  transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset = asic_vector.elems, offset_units = 'mm')
 
               asicmodule = detector.create_group(array_name+'Q%dM%dA%d'%(quad,module_num,asic_num))
               asicmodule.attrs['NX_class'] = 'NXdetector_module'
-              asicmodule.create_dataset('data_origin', (2,), data=[module_slow * module_num + asic_slow * asic_slow_number + border + gap*asic_slow_number,
-                                                                                              asic_fast * asic_fast_number + border + gap*asic_fast_number], dtype='i')
+              if self.params.raw:
+                asicmodule.create_dataset('data_origin', (2,), data=[module_slow * module_num + asic_slow * asic_slow_number + border + data_gap*asic_slow_number,
+                                                                                                asic_fast * asic_fast_number + border + data_gap*asic_fast_number], dtype='i')
+              else:
+                asicmodule.create_dataset('data_origin', (2,), data=[module_slow * module_num + asic_slow * asic_slow_number + border + gap*asic_slow_number,
+                                                                                                asic_fast * asic_fast_number + border + gap*asic_fast_number], dtype='i')
               asicmodule.create_dataset('data_size', (2,), data=[asic_slow - border*2, asic_fast - border*2], dtype='i')
 
               self.create_vector(asicmodule, 'fast_pixel_direction',pixel_size,
