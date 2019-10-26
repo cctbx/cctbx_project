@@ -939,6 +939,76 @@ class ClusteringWorker(Thread):
     evt = ClusteringResult(tp_EVT_CLUSTERING, -1, self.clusters)
     wx.PostEvent(self.parent, evt)
 
+# ----------------------------- Merging Stats Sentinel ---------------------------- #
+
+# Set up events for monitoring merging stats
+tp_EVT_MERGINGSTATS_REFRESH = wx.NewEventType()
+EVT_MERGINGSTATS_REFRESH = wx.PyEventBinder(tp_EVT_MERGINGSTATS_REFRESH, 1)
+
+class RefreshMergingStats(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+  def __init__(self, etype, eid, result=None):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+    self.result = result
+  def GetValue(self):
+    return self.result
+
+class MergingStatsSentinel(Thread):
+  ''' Worker thread for merging stats; generated so that the GUI does not lock up when
+      processing is running '''
+
+  def __init__(self,
+               parent,
+               active=True):
+    Thread.__init__(self)
+    self.parent = parent
+    self.active = active
+    self.output = self.parent.params.output_folder
+
+    # on initialization (and restart), make sure run stats drawn from scratch
+    self.parent.run_window.mergingstats_tab.redraw_windows = True
+
+  def post_refresh(self):
+    evt = RefreshMergingStats(tp_EVT_MERGINGSTATS_REFRESH, -1)
+    wx.PostEvent(self.parent.run_window.mergingstats_tab, evt)
+
+  def run(self):
+    # one time post for an initial update
+    self.post_refresh()
+    self.db = xfel_db_application(self.parent.params)
+
+    while self.active:
+      self.parent.run_window.mergingstats_light.change_status('idle')
+      self.plot_stats_static()
+      self.post_refresh()
+      self.parent.run_window.mergingstats_light.change_status('on')
+      time.sleep(5)
+
+  def plot_stats_static(self):
+    from xfel.ui.db.merging_log_scraper import Scraper
+
+    if not self.parent.run_window.mergingstats_tab.dataset_versions: return
+
+    sizex, sizey = self.parent.run_window.mergingstats_tab.mergingstats_panelsize
+    sizex = (sizex-25)/85
+    sizey = (sizey-25)/95
+
+    if len(self.parent.run_window.mergingstats_tab.dataset_versions) > 1:
+      all_results = []
+      for folder in self.parent.run_window.mergingstats_tab.dataset_versions:
+        scraper = Scraper(folder, '#')
+        all_results.append(scraper.scrape())
+      self.parent.run_window.mergingstats_tab.png = scraper.plot_many_results(all_results,
+                                                                              self.parent.run_window.mergingstats_tab.dataset_name,
+                                                                              sizex, sizey, interactive=False)
+    else:
+      scraper = Scraper(self.parent.run_window.mergingstats_tab.dataset_versions[0], '%')
+      results = scraper.scrape()
+      self.parent.run_window.mergingstats_tab.png = scraper.plot_single_results(results,
+                                                                                self.parent.run_window.mergingstats_tab.dataset_name,
+                                                                                sizex, sizey, interactive=False)
+    self.parent.run_window.mergingstats_tab.redraw_windows = True
+
 # ------------------------------- Main Window -------------------------------- #
 
 class MainWindow(wx.Frame):
@@ -952,6 +1022,7 @@ class MainWindow(wx.Frame):
     self.spotfinder_sentinel = None
     self.runstats_sentinel = None
     self.unitcell_sentinel = None
+    self.mergingstats_sentinel = None
 
     self.params = load_cached_settings()
     self.db = None
@@ -1044,9 +1115,10 @@ class MainWindow(wx.Frame):
     self.stop_run_sentinel()
     self.stop_job_sentinel()
     self.stop_job_monitor()
-    self.stop_spotfinder_sentinel()
+    #self.stop_spotfinder_sentinel()
     self.stop_runstats_sentinel()
     self.stop_unitcell_sentinel()
+    self.stop_mergingstats_sentinel()
 
   def start_run_sentinel(self):
     self.run_sentinel = RunSentinel(self, active=True)
@@ -1136,6 +1208,18 @@ class MainWindow(wx.Frame):
         self.unitcell_sentinel.join()
     self.run_window.unitcell_light.change_status('off')
 
+  def start_mergingstats_sentinel(self):
+    self.mergingstats_sentinel = MergingStatsSentinel(self, active=True)
+    self.mergingstats_sentinel.start()
+    self.run_window.mergingstats_light.change_status('on')
+
+  def stop_mergingstats_sentinel(self, block = True):
+    if self.mergingstats_sentinel is not None and self.mergingstats_sentinel.active:
+      self.mergingstats_sentinel.active = False
+      if block:
+        self.mergingstats_sentinel.join()
+    self.run_window.mergingstats_light.change_status('off')
+
   def OnAboutBox(self, e):
     ''' About dialog '''
     info = wx.AboutDialogInfo()
@@ -1219,6 +1303,9 @@ class MainWindow(wx.Frame):
       self.run_window.datasets_tab.refresh_datasets()
     elif name == self.run_window.mergingstats_tab.name:
       self.run_window.mergingstats_tab.refresh_datasets()
+      if self.mergingstats_sentinel is None or not self.mergingstats_sentinel.active:
+        self.start_mergingstats_sentinel()
+        self.run_window.mergingstats_light.change_status('on')
     #elif name == self.run_window.merge_tab.name:
     #  self.run_window.merge_tab.find_trials()
 
@@ -1247,6 +1334,10 @@ class MainWindow(wx.Frame):
       if self.unitcell_sentinel.active:
         self.stop_unitcell_sentinel(block = False)
         self.run_window.unitcell_light.change_status('off')
+    elif name == self.run_window.mergingstats_tab.name:
+      if self.mergingstats_sentinel.active:
+        self.stop_mergingstats_sentinel(block = False)
+        self.run_window.mergingstats_light.change_status('off')
 
 
   def onQuit(self, e):
@@ -1287,15 +1378,17 @@ class RunWindow(wx.Panel):
     self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
     self.job_light = gctr.SentinelStatus(self.main_panel, label='Job Sentinel')
     self.jmn_light = gctr.SentinelStatus(self.main_panel, label='Job Monitor')
-    self.spotfinder_light = gctr.SentinelStatus(self.main_panel, label='Spotfinder Sentinel')
+    #self.spotfinder_light = gctr.SentinelStatus(self.main_panel, label='Spotfinder Sentinel')
     self.runstats_light = gctr.SentinelStatus(self.main_panel, label='Run Stats Sentinel')
     self.unitcell_light = gctr.SentinelStatus(self.main_panel, label='Unit Cell Sentinel')
+    self.mergingstats_light = gctr.SentinelStatus(self.main_panel, label='Merging Stats Sentinel')
     self.sentinel_box.Add(self.run_light)
     self.sentinel_box.Add(self.job_light)
     self.sentinel_box.Add(self.jmn_light)
-    self.sentinel_box.Add(self.spotfinder_light)
+    #self.sentinel_box.Add(self.spotfinder_light)
     self.sentinel_box.Add(self.runstats_light)
     self.sentinel_box.Add(self.unitcell_light)
+    self.sentinel_box.Add(self.mergingstats_light)
 
     nb_sizer = wx.BoxSizer(wx.VERTICAL)
     nb_sizer.Add(self.main_nbook, 1, flag=wx.EXPAND | wx.ALL, border=3)
@@ -2627,30 +2720,39 @@ class MergingStatsTab(BaseTab):
 
     self.main = main
     self.all_datasets = []
+    self.dataset_versions = []
+    self.png = None
+    self.static_bitmap = None
+    self.redraw_windows = True
 
     self.tab_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
-    self.datasets_panel = wx.Panel(self, size=(230, 120))
+    self.datasets_panel = wx.Panel(self, size=(240, 120))
     self.datasets_box = wx.StaticBox(self.datasets_panel, label='Select dataset')
     self.datasets_sizer = wx.StaticBoxSizer(self.datasets_box, wx.VERTICAL)
     self.datasets_panel.SetSizer(self.datasets_sizer)
 
     self.datasets = wx.ListBox(self.datasets_panel,
-                               size=(150, 100))
+                               size=(220, 100))
     self.datasets_sizer.Add(self.datasets, flag=wx.EXPAND | wx.ALL, border = 5)
 
-    self.plots_panel = wx.Panel(self, size=(200, 120))
-    self.plots_box = wx.StaticBox(self.plots_panel, label='Statistics')
-    self.plots_sizer = wx.StaticBoxSizer(self.plots_box, wx.VERTICAL)
-    self.plots_panel.SetSizer(self.plots_sizer)
+    self.chk_active = wx.CheckBox(self.datasets_panel, label='Active only')
+    self.chk_active.SetValue(True)
+    self.datasets_sizer.Add(self.chk_active, flag=wx.EXPAND | wx.ALL, border = 5)
 
-    self.dataset_version = gctr.ChoiceCtrl(self.plots_panel,
+    self.dataset_version = gctr.ChoiceCtrl(self.datasets_panel,
                                            label='Dataset version:',
                                            label_size=(120, -1),
                                            label_style='normal',
                                            ctrl_size=(100, -1),
                                            choices=[])
-    self.plots_sizer.Add(self.dataset_version, flag=wx.EXPAND | wx.ALL, border = 5)
+    self.datasets_sizer.Add(self.dataset_version, flag=wx.EXPAND | wx.ALL, border = 5)
+
+    self.plots_panel = wx.Panel(self, size=(200, 120))
+    self.mergingstats_panelsize = self.plots_panel.GetSize()
+    self.plots_box = wx.StaticBox(self.plots_panel, label='Statistics')
+    self.plots_sizer = wx.StaticBoxSizer(self.plots_box, wx.VERTICAL)
+    self.plots_panel.SetSizer(self.plots_sizer)
 
     self.tab_sizer.Add(self.datasets_panel, 0,
                        flag=wx.ALIGN_LEFT | wx.EXPAND, border=10)
@@ -2661,12 +2763,23 @@ class MergingStatsTab(BaseTab):
 
     self.Bind(wx.EVT_LISTBOX, self.onSelectDataset, self.datasets)
     self.Bind(wx.EVT_CHOICE, self.onVersionChoice, self.dataset_version.ctr)
+    self.Bind(EVT_MERGINGSTATS_REFRESH, self.onRefresh)
+    self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
+    self.Bind(wx.EVT_SIZE, self.OnSize)
+
+  def OnSize(self, e):
+    self.mergingstats_panelsize = self.plots_panel.GetSize()
+    e.Skip()
+
+  def onToggleActivity(self, e):
+    self.refresh_datasets()
 
   def refresh_datasets(self):
     self.datasets.Clear()
     self.all_datasets = self.main.db.get_all_datasets()
     for dataset in self.all_datasets:
-      self.datasets.Append(dataset.name)
+      if not self.chk_active.GetValue() or dataset.active:
+        self.datasets.Append(dataset.name)
     self.refresh_dataset()
 
   def onVersionChoice(self, e):
@@ -2693,13 +2806,27 @@ class MergingStatsTab(BaseTab):
   def refresh_stats(self):
     sel = self.datasets.GetSelection()
     dataset = self.all_datasets[sel]
+    self.dataset_name = dataset.name
     if self.dataset_version.ctr.GetSelection() == 0:
-      pass # do all
+      self.dataset_versions = [version.output_path() for version in dataset.versions]
     else:
       version = dataset.versions[self.dataset_version.ctr.GetSelection()-1]
-      version_path = version.output_path()
-      from xfel.ui.db.merging_log_scraper import Scraper
-      results = Scraper(version_path).scrape()
+      self.dataset_name += " v%03d"%version.version
+      self.dataset_versions = [version.output_path()]
+
+  def onRefresh(self, e):
+    self.plot_merging_stats()
+
+  def plot_merging_stats(self):
+    if self.png is not None:
+      if self.static_bitmap is not None:
+        self.static_bitmap.Destroy()
+      img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
+      self.static_bitmap = wx.StaticBitmap(
+        self.plots_panel, wx.ID_ANY, wx.BitmapFromImage(img))
+      self.plots_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
+      self.plots_panel.SetSizer(self.plots_sizer)
+      self.plots_panel.Layout()
 
 class MergeTab(BaseTab):
 

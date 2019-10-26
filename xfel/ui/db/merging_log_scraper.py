@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import os, glob
+from matplotlib import pyplot as plt
 
 """
 Searches the cctbx.xfel.merge log files for statistics tables.
@@ -15,12 +16,16 @@ types = {
 }
 
 class Scraper(object):
-  def __init__(self, output_path):
+  def __init__(self, output_path, accepted):
     self.output_path = output_path
+    assert accepted in ['%','#']
+    self.accepted = accepted
 
   def scrape(self):
-    path = glob.glob(os.path.join(self.output_path, "*main*"))[0]
     results = {}
+    try:
+      path = glob.glob(os.path.join(self.output_path, "*main*"))[0]
+    except IndexError: return results
     lines = open(path).readlines()
     for i, line in enumerate(lines):
       for name in types:
@@ -47,8 +52,13 @@ class Scraper(object):
           if d_max < 0: d_max = 100
           parsed.append((bin_id, d_max, d_min, value))
       results[t] = parsed
-    self._num_to_percent(results, '% accepted')
-    return results
+    if '% accepted' in results:
+      if self.accepted == '%':
+        self._num_to_percent(results, '% accepted')
+      else:
+        results['# accepted'] = results['% accepted']
+        del results['% accepted']
+      return results
 
   def _num_to_percent(self, results, key):
     data = results[key]
@@ -64,11 +74,12 @@ class Scraper(object):
       new_data.append(line)
     results[key] = new_data
 
-  def plot_single_results(self, fig, results):
+  def plot_single_results(self, results, title, xsize=30, ysize=10, interactive = True):
     from matplotlib.ticker import FuncFormatter
     import numpy as np
     import math
-    ax1 = fig.gca()
+    fig = plt.figure()
+    ax = ax1 = fig.gca()
     ax2 = ax1.twinx()
 
     for name, c in zip(results, ['b', 'r', 'g']):
@@ -78,7 +89,6 @@ class Scraper(object):
         ax = ax1
 
       x = []; y = []
-      #x = np.array([]); y = np.array([])
       for data in results[name]:
         if data[0] == 'All':
           continue
@@ -97,27 +107,113 @@ class Scraper(object):
     ax1.set_ylabel('%')
     ax2.set_ylabel('Multiplicity')
     fig.legend(loc="upper right", bbox_to_anchor=(1,1), bbox_transform=ax.transAxes)
+    plt.title(title)
 
-  def plot_many_results(self, all_results):
-    pass
+    if interactive:
+      plt.show()
+    else:
+      fig.set_size_inches(xsize, ysize)
+      fig.savefig("datasets_tmp.png", bbox_inches='tight', dpi=100)
+      plt.close(fig)
+      return "datasets_tmp.png"
+
+  def plot_many_results(self, all_results, title, xsize=30, ysize=10, interactive = True):
+    from matplotlib.ticker import FuncFormatter
+    import numpy as np
+    import math
+    fig = plt.figure()
+    ax1a, ax2 = fig.subplots(2,1, sharex=True)
+    ax1b = ax1a.twinx()
+
+    xvals = []
+    overall_cc = []
+    overall_mult = []
+    cc_cutoff = []
+    mult_cutoff = []
+    for r in all_results:
+      if r is None or '# accepted' not in r or r['# accepted'] is None: continue
+      name, value = r['# accepted'][-1]
+      assert name == 'All'
+      #if xvals: assert value >= xvals[-1]
+      xvals.append(value)
+      for key, array in zip(['CC1/2', 'Multiplicity'], [overall_cc, overall_mult]):
+        if key in r:
+          name, value = r[key][-1]
+          assert name == 'All'
+          array.append(value)
+        else:
+          array.append(0)
+
+      if 'CC1/2' in r:
+        last = last_res = 0
+        for row in r['CC1/2']:
+          row_n, d_max, d_min, cc = row
+          if cc > 0 and not last:
+            last = cc; last_res = (d_max + d_min) / 2
+          elif cc > 0 and cc <= last:
+            last = cc; last_res = (d_max + d_min) / 2
+          else:
+            break
+        cc_cutoff.append(last_res)
+      else:
+        cc_cutoff.append(0)
+
+      if 'Multiplicity' in r:
+        last = last_res = 0
+        for row in r['Multiplicity']:
+          row_n, d_max, d_min, mult = row
+          if mult >= 10:
+            last = mult; last_res = (d_max + d_min) / 2
+          else:
+            break
+        mult_cutoff.append(last_res)
+      else:
+        mult_cutoff.append(0)
+
+    ax1a.plot(xvals, overall_cc, 'o-', color='blue')
+    ax1b.plot(xvals, overall_mult, 'o-', color='red')
+    ax2.plot(xvals, 1/(np.array(cc_cutoff)**2), 'o-', color='blue')
+    ax2.plot(xvals, 1/(np.array(mult_cutoff)**2), 'o-', color='red')
+
+    ax2.legend(["CC1/2", "Multiplicity"])
+
+    ax2.set_xlabel("N images")
+    ax1a.set_ylabel("Overall CC1/2 (%)")
+    ax1b.set_ylabel("Overall multiplicity")
+    ax2.set_ylabel(u"Resolution ($\AA$")
+    ax1a.set_title(title)
+
+    def resolution(y, pos):
+      if y <= 0:
+        return '-'
+      return "%.1f"%(1/math.sqrt(y))
+    formatter = FuncFormatter(resolution)
+    ax2.yaxis.set_major_formatter(formatter)
+
+    #ax1a.set_xlabel
+
+    if interactive:
+      plt.show()
+    else:
+      fig.set_size_inches(xsize, ysize)
+      fig.savefig("datasets_tmp.png", bbox_inches='tight', dpi=100)
+      plt.close(fig)
+      return "datasets_tmp.png"
 
 if __name__ == "__main__":
-  from matplotlib import pyplot as plt
   import sys
-  fig = plt.figure()
-
-  args = sys.argv[1:]
+  args = sys.argv[2:]
   if len(args) > 1:
     all_results = []
     for folder in args:
-      scraper = Scraper(arg])
-      all_results.append(scraper.scrape)
-    scraper.plot_many_results(all_results)
+      scraper = Scraper(folder, '#')
+      all_results.append(scraper.scrape())
+    scraper.plot_many_results(all_results, sys.argv[1])
   else:
+    scraper = Scraper(args[0], '%')
     results = scraper.scrape()
     for t in results:
       for j in results[t]:
         print (t, j)
 
-    scraper.plot_single_results(fig, results)
-  plt.show()
+    scraper.plot_single_results(results, sys.argv[1])
