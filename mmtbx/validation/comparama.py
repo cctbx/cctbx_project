@@ -16,6 +16,9 @@ master_phil_str = '''
 comparama {
   nproc = 1
     .type = int
+  show_labels = True
+    .type = bool
+    .help = show labels for outlier residues
   outlier_favored = lime
     .type = str
     .help = Color of outlier->favored arrows. None if not needed
@@ -184,7 +187,7 @@ class rcompare(object):
     if self.plots is not None:
       return self.plots
     self.plots = self.rama2.get_plots(
-        show_labels=True,
+        show_labels=self.params.show_labels,
         point_style='bo',
         markersize=3,
         markeredgecolor="black",
