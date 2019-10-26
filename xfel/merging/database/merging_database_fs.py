@@ -359,7 +359,8 @@ class manager (manager_base):
     stream.close()
     return frames
 
-class manager2 (manager_base):
+class manager2 (manager):
+#class manager2 (manager_base):
   # Worker threads collect their INSERT requests in a sequencer list but take no
   # other action until master (rank=0) gathers all the requests.
 

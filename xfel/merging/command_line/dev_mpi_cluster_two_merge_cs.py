@@ -185,7 +185,7 @@ class Script(base_Script):
           if idx == 'endrun':
             scaler_worker.finished_db_mgr = db_mgr
             break
-          if timing: print("~SCALER_WORKER START=%d RANK=%d TIME=%f;"%(idx, rank, tt()))
+          if timing: print("~SCALER_WORKER START=%d RANK=%d FILE=%s;"%(idx, rank, tar_file_names[idx]))
           scaler_worker._scale_all_serial([tar_file_names[idx],], db_mgr)
           if timing: print("~SCALER_WORKER END=%d RANK=%d TIME=%f;"%(idx, rank, tt()))
       if timing: print("~SCALER_WORKERS END RANK=%d TIME=%f;"%(rank, tt()))
