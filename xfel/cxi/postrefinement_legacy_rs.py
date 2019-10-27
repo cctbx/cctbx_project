@@ -136,7 +136,7 @@ class legacy_rs(object):
         parameterization = self.parameterization_class, refinery = self.refinery,
         out = self.out )
 
-  def result_for_cxi_merge(self, file_name, LS49_case=False):
+  def result_for_cxi_merge(self, file_name, LS49_case=False, double_loop=False, acceptable_corr=0.2):
     ####
     # New range assertions for refined variables
     values = self.get_parameter_values()
@@ -175,7 +175,7 @@ class legacy_rs(object):
     # Special code for LS49. Use this to verify that the selection is good?bad ?
     if LS49_case:
       if abs(180.0*values.thetax/math.pi) < 0.5 and abs(180.0*values.thetay/math.pi) < 0.5 \
-        and  abs(values.BFACTOR) < 25.0 and fat_count > 5:
+        and  abs(values.BFACTOR) < 25.0 and fat_count > 3:
         fat_count=fat_count
       else:
         fat_count=-1

@@ -392,6 +392,18 @@ lattice_rejection {
     .type = float
     .help = minimum resolution for lattices to be merged
 }
+LS49 {
+  LS49_case=True
+    .type = bool
+    .help = Whether to use LS49 specific processing code
+  double_loop = False
+    .type = bool
+    .help = Use double loop rejection of spots to increase correlation during PR
+  acceptable_corr = 0.2
+    .type = float
+    .help = Acceptable correlation to be used for LS49
+}
+
 """ + mysql_master_phil
 
 def get_observations (work_params):
@@ -1553,8 +1565,10 @@ class scaling_manager (intensity_data) :
     import copy
     copy_observations=copy.deepcopy(observations_original_index)
     n_obs=len(copy_observations.data())
-    LS49_case=True # Flag to do turn on post-refinement by dropping one reflection at a time
+    LS49_case=self.params.LS49.LS49_case # Flag to do turn on post-refinement by dropping one reflection at a time
     #              # Useful for problematic images where even a single misindexed refl leads to divergence
+    double_loop=self.params.LS49.double_loop
+    acceptable_corr=self.params.LS49.acceptable_corr
     # First do the zero case; consider all reflections and see if it works
     PF = factory(self.params)
     postrefinement_algorithm = PF.postrefinement_algorithm()
@@ -1563,11 +1577,11 @@ class scaling_manager (intensity_data) :
              self.i_model, self.miller_set, result, out) 
         try:
           postx.run_plain()
-          observations_original_index, observations, matches, fat_count, final_corr=postx.result_for_cxi_merge(file_name, LS49_case)
+          observations_original_index, observations, matches, fat_count, final_corr=postx.result_for_cxi_merge(file_name, LS49_case, double_loop, acceptable_corr)
         except (AssertionError,ValueError,RuntimeError) as e:
           return null_data(file_name=file_name, log_out=out.getvalue(), reason=e)
           #print ('Error in post-refinement')
-        if fat_count > 3 and final_corr>0.2:
+        if fat_count > 3 and final_corr>acceptable_corr:
           LS49_case=False
 
     if LS49_case:
@@ -1594,7 +1608,7 @@ class scaling_manager (intensity_data) :
                  self.i_model, self.miller_set, result, out)
             try:
               postx.run_plain()
-              observations_original_index,observations,matches, fat_count, final_corr = postx.result_for_cxi_merge(file_name, True)
+              observations_original_index,observations,matches, fat_count, final_corr = postx.result_for_cxi_merge(file_name, LS49_case, double_loop, acceptable_corr)
             except (AssertionError,ValueError,RuntimeError) as e:
               print ('Error in post-refinement_2')
               continue
@@ -1608,9 +1622,9 @@ class scaling_manager (intensity_data) :
           # Make decision here on how to do final postrefinement
         ts=os.path.basename(file_name)[6:23]
         print ('MAX_CORRELATION', flex.max(net_final_corr), ts)
-        if flex.max(net_final_corr) > 0.2:
+        if flex.max(net_final_corr) > acceptable_corr:
           consider_refl_final[flex.max_index(net_final_corr)]=False
-        else:
+        elif double_loop:
         # Do a double loop if single loop fails to get good correlation coefficient
           print ('TRYING_DOUBLE_LOOP_REJECTION')
           net_fat_count=flex.int(n_obs*n_obs, -1)
@@ -1628,7 +1642,7 @@ class scaling_manager (intensity_data) :
                      self.i_model, self.miller_set, result, out)
                 try:
                   postx.run_plain()
-                  observations_original_index,observations,matches, fat_count, final_corr = postx.result_for_cxi_merge(file_name, True)
+                  observations_original_index,observations,matches, fat_count, final_corr = postx.result_for_cxi_merge(file_name, LS49_case, double_loop, acceptable_corr)
                 except (AssertionError,ValueError,RuntimeError) as e:
                   print ('Error in post-refinement_3')
                   continue
@@ -1644,6 +1658,8 @@ class scaling_manager (intensity_data) :
           consider_refl_final[ii_max]=False
           consider_refl_final[jj_max]=False
             
+        else:
+          return null_data(file_name=file_name, log_out=out.getvalue(), reason=ValueError) 
         #  for ii, entry in enumerate(net_fat_count):
         #    if entry > 0:
         #      consider_refl_final[ii]=False
@@ -1662,6 +1678,8 @@ class scaling_manager (intensity_data) :
             postx.run_plain()
             observations_original_index,observations,matches, fat_count, final_corr = postx.result_for_cxi_merge(file_name, False)        
             #print ('FINAL_POSTREFINE_DONE', ts)
+            if final_corr < acceptable_corr:
+              return null_data(file_name=file_name, log_out=out.getvalue(), reason=ValueError) 
           except (AssertionError,ValueError,RuntimeError) as e:
             return null_data(file_name=file_name, log_out=out.getvalue(), reason=e)
 

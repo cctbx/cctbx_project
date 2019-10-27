@@ -158,7 +158,7 @@ class updated_rs(legacy_rs):
     #assert -0.5<180.*values.thetax/math.pi<0.5,"thetax value out of range ( |rotx|>.5 degrees ) after rs2 refinement"
     #assert -0.5<180.*values.thetay/math.pi<0.5,"thetay value out of range ( |roty|>.5 degrees ) after rs2 refinement"
 
-  def result_for_cxi_merge(self, file_name, LS49_case=False):
+  def result_for_cxi_merge(self, file_name, LS49_case=False, double_loop=False, acceptable_corr=0.2):
     values = self.get_parameter_values()
     ts = os.path.basename(file_name)[6:23]
     #self.rs2_parameter_range_assertions(values, ts)
@@ -208,7 +208,7 @@ class updated_rs(legacy_rs):
       print (e)
       self.final_corr=-1.0
     if not LS49_case:
-      assert self.final_corr > 0.2,"correlation coefficient out of range (<= 0.1) after rs2 refinement"
+      assert self.final_corr > acceptable_corr,"correlation coefficient out of range (<= 0.1) after rs2 refinement"
     if LS49_case:
       if abs(180.0*values.thetax/math.pi) < 0.5 and abs(180.0*values.thetay/math.pi) < 0.5 \
         and  abs(values.BFACTOR) < 25.0 and fat_count > 3:
