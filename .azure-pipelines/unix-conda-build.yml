@@ -7,44 +7,64 @@
 
 steps:
 
-# install miniconda
-- script: |
-    set -x -e
-    curl -o $(Build.StagingDirectory)/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-latest-$(CONDA)-x86_64.sh
-    bash $(Build.StagingDirectory)/miniconda.sh -b -u -p $(Build.StagingDirectory)/miniconda
-    export PATH=$(Build.StagingDirectory)/miniconda/bin:$PATH
-  displayName: Install miniconda
+# download components
+- checkout: none
 
-# checkout sources
-- checkout: self
-  path: ./modules/cctbx_project
+- task: DownloadPipelineArtifact@2
+  displayName: Download modules tarball
+  inputs:
+    source: 'current'
+    artifact: modules
+    path: $(Pipeline.Workspace)
 
 - script: |
-    cd ../..
+    cd $(Pipeline.Workspace)
+    tar -xf modules.tar
+  displayName: Extract modules tarball
+
+- script: |
+    cd $(Pipeline.Workspace)
     ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
   displayName: Link bootstrap.py
 
+# install miniconda
 - script: |
-    source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
-    conda activate base
-    cd ../..
-    python bootstrap.py hot update --builder=cctbx
-  displayName: Download sources
-
-- template: ./download-artifacts.yml
+    set -x -e
+    curl -o $(Pipeline.Workspace)/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-latest-$(CONDA)-x86_64.sh
+    bash $(Pipeline.Workspace)/miniconda.sh -b -u -p $(Pipeline.Workspace)/miniconda
+    export PATH=$(Pipeline.Workspace)/miniconda/bin:$PATH
+  displayName: Install miniconda
 
 # create conda environment
+- task: DownloadPipelineArtifact@2
+  displayName: Download conda packages
+  inputs:
+    source: 'current'
+    artifact: $(PYTHON_VERSION)_$(OS)
+    path: $(Pipeline.Workspace)/channel
+
 - script: |
-    source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
-    conda create -y -n $(PYTHON_VERSION) --file ./libtbx/auto_build/conda_envs/cctbx_$(PYTHON_VERSION)_$(OS).txt
+    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
+    conda install -y conda-build
+    cd $(Pipeline.Workspace)/channel
+    conda index .
+    echo @EXPLICIT > env.txt
+    for filename in `cat filenames.txt`; do
+      echo file://$(Pipeline.Workspace)/channel/${filename} >> env.txt
+    done
+  displayName: Build local channel
+
+- script: |
+    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
+    conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
   displayName: Create conda environment
 
 # build
 - script: |
-    source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
+    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
-    cd ../..
+    cd $(Pipeline.Workspace)
     python bootstrap.py build --builder=cctbx --use-conda=${CONDA_PREFIX} --nproc=4
     cd build
     source setpaths.sh
@@ -55,9 +75,9 @@ steps:
 
 # test
 - script: |
-    source $(Build.StagingDirectory)/miniconda/etc/profile.d/conda.sh
+    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
-    cd ../..
+    cd $(Pipeline.Workspace)
     source ./build/setpaths.sh
     mkdir tests
     cd tests
@@ -73,4 +93,4 @@ steps:
   condition: succeededOrFailed()
   inputs:
     testResultsFormat: 'JUnit'
-    testResultsFiles: '../../tests/output.xml'
+    testResultsFiles: '$(Pipeline.Workspace)/tests/output.xml'

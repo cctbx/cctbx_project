@@ -4,25 +4,29 @@
 
 steps:
 
-# checkout sources
-- checkout: self
-  path: ./modules/cctbx_project
+# download components
+- checkout: none
+
+- task: DownloadPipelineArtifact@2
+  displayName: Download modules tarball
+  inputs:
+    source: 'current'
+    artifact: modules
+    path: $(Pipeline.Workspace)
 
 - script: |
-    cd ../..
+    cd $(Pipeline.Workspace)
+    tar -xf modules.tar
+  displayName: Extract modules tarball
+
+- script: |
+    cd $(Pipeline.Workspace)
     ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
   displayName: Link bootstrap.py
 
-- script: |
-    cd ../..
-    python bootstrap.py hot update --builder=cctbx
-  displayName: Download sources
-
-- template: ./download-artifacts.yml
-
 # install base
 - script: |
-    cd ../..
+    cd $(Pipeline.Workspace)
     # SYSTEM environment variable breaks OpenSSL builds
     # https://developercommunity.visualstudio.com/content/problem/602584/openssl-build-error-when-using-pipelines.html
     unset SYSTEM
@@ -31,7 +35,7 @@ steps:
 
 # build
 - script: |
-    cd ../..
+    cd $(Pipeline.Workspace)
     python bootstrap.py build --builder=cctbx --nproc=4
     cd build
     source setpaths.sh
@@ -42,7 +46,7 @@ steps:
 
 # test
 - script: |
-    cd ../..
+    cd $(Pipeline.Workspace)
     source ./build/setpaths.sh
     mkdir tests
     cd tests
@@ -59,4 +63,4 @@ steps:
   condition: succeededOrFailed()
   inputs:
     testResultsFormat: 'JUnit'
-    testResultsFiles: '../../tests/output.xml'
+    testResultsFiles: '$(Pipeline.Workspace)/tests/output.xml'

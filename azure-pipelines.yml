@@ -1,14 +1,29 @@
 # Templates for linux, macOS, and Windows
 # Based on approach from conda-forge
 
-jobs:
-  - template: ./.azure-pipelines/syntax.yml
-  - template: ./.azure-pipelines/conda-win.yml
-  - template: ./.azure-pipelines/conda-linux.yml
-    parameters:
-      distribution: centos
-      version: [6, 10]
-  - template: ./.azure-pipelines/conda-osx.yml
-    parameters:
-      vmImage: [10, 14]
-      xcode_version: [10, 3]
+stages:
+- stage: Checks
+  displayName: Check
+  jobs:
+    - template: ./.azure-pipelines/syntax.yml
+
+- stage: Preparation
+  displayName: Download
+  dependsOn: Checks
+  jobs:
+    - template: ./.azure-pipelines/download-source.yml
+    - template: ./.azure-pipelines/download-conda.yml
+
+- stage: Build
+  displayName: Build and test
+  dependsOn: Preparation
+  jobs:
+    - template: ./.azure-pipelines/conda-win.yml
+    - template: ./.azure-pipelines/conda-linux.yml
+      parameters:
+        distribution: centos
+        version: [6, 10]
+    - template: ./.azure-pipelines/conda-osx.yml
+      parameters:
+        vmImage: [10, 14]
+        xcode_version: [10, 3]

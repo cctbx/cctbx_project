@@ -27,7 +27,7 @@ jobs:
 
   - script: |
       source activate py${PYTHON_VERSION}
-      cd ../..
+      cd $(Pipeline.Workspace)
       mkdir build
       cd build
       python ../modules/cctbx_project/libtbx/configure.py libtbx
@@ -36,12 +36,12 @@ jobs:
 
   - script: |
       source activate py${PYTHON_VERSION}
-      source ../../build/setpaths.sh
+      source $(Pipeline.Workspace)/build/setpaths.sh
       libtbx.py_compile_all -v .
     displayName: Check syntax
 
   - script: |
       source activate py${PYTHON_VERSION}
-      source ../../build/setpaths.sh
+      source $(Pipeline.Workspace)/build/setpaths.sh
       libtbx.find_clutter
     displayName: Check for clutter

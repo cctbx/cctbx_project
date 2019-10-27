@@ -8,7 +8,6 @@ jobs:
   pool:
     vmImage: ${{ format('macOS-{0}', join('.', parameters.vmImage)) }}
   timeoutInMinutes: 360
-  dependsOn: syntax
   strategy:
     maxParallel: 3
     matrix:

@@ -7,7 +7,6 @@ jobs:
   pool:
     vmImage: vs2017-win2016
   timeoutInMinutes: 360
-  dependsOn: syntax
   strategy:
     maxParallel: 3
     matrix:
@@ -46,29 +45,53 @@ jobs:
 
     displayName: Patch vs2008
 
-  - checkout: self
-    path: .\modules\cctbx_project
+  # download components
+  - checkout: none
+
+  - task: DownloadPipelineArtifact@2
+    displayName: Download modules tarball
+    inputs:
+      source: 'current'
+      artifact: modules
+      path: $(Pipeline.Workspace)
 
   - script: |
-      cd ..\..
+      cd $(Pipeline.Workspace)
+      tar -xf modules.tar
+    displayName: Extract modules tarball
+
+  - script: |
+      cd $(Pipeline.Workspace)
       copy modules\cctbx_project\libtbx\auto_build\bootstrap.py .
     displayName: Copy bootstrap.py
 
+  # create conda environment
+  - task: DownloadPipelineArtifact@2
+    displayName: Download conda packages
+    inputs:
+      source: 'current'
+      artifact: $(PYTHON_VERSION)_$(OS)
+      path: $(Pipeline.Workspace)/channel
+
   - script: |
-      cd ..\..
-      call %CONDA%\condabin\conda.bat create -y -n %PYTHON_VERSION%  --file .\modules\cctbx_project\libtbx\auto_build\conda_envs\cctbx_%PYTHON_VERSION%_%OS%.txt
-      call %CONDA%\condabin\conda.bat install -y -c conda-forge -n %PYTHON_VERSION% junit-xml
+      call %CONDA%\condabin\conda.bat install -y conda-build
+      cd $(Pipeline.Workspace)\channel
+      more filenames.txt
+      call %CONDA%\condabin\conda.bat index .
+      echo @EXPLICIT > env.txt
+      for /f "tokens=*" %%f in (filenames.txt) do echo file:///$(Pipeline.Workspace)\channel\%%f >> env.txt
+      more env.txt
+    displayName: Build local channel
+
+  - script: |
+      #call %CONDA%\condabin\conda.bat create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\channel\env.txt
+      call %CONDA%\condabin\conda.bat create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\modules\cctbx_project\libtbx\auto_build\conda_envs\cctbx_%PYTHON_VERSION%_%OS%.txt
+      call %CONDA%\condabin\conda.bat install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
     displayName: Create conda environment
 
+  # build
   - script: |
-      cd ..\..
-      python bootstrap.py hot update --builder=cctbx
-    displayName: Download sources
-
-  - template: ./download-artifacts.yml
-
-  - script: |
-      cd ..\..
+      cd $(Pipeline.Workspace)
       call "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat" amd64
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
       python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
@@ -79,8 +102,9 @@ jobs:
       call libtbx.scons -j 4
     displayName: Configure and Build
 
+  # test
   - script: |
-      cd ..\..
+      cd $(Pipeline.Workspace)
       call "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat" amd64
       call .\build\setpaths.bat
       mkdir tests
@@ -93,4 +117,4 @@ jobs:
     condition: succeededOrFailed()
     inputs:
       testResultsFormat: 'JUnit'
-      testResultsFiles: '..\..\tests\output.xml'
+      testResultsFiles: '$(Pipeline.Workspace)\tests\output.xml'
