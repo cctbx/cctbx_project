@@ -82,10 +82,15 @@ class lbfgs(object):
     self.x = flex.double(self.xray_structure.n_parameters(), 0)
     self.riding_h_manager = self.model.riding_h_manager
     self._scatterers_start = self.xray_structure.scatterers()
+    #lbfgs_core_params = scitbx.lbfgs.core_parameters(
+    #  stpmin = 1.e-9,
+    #  stpmax = adptbx.b_as_u(10))
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator          = self,
       termination_params        = lbfgs_termination_params,
       use_fortran               = use_fortran,
+    #  core_params = lbfgs_core_params,
+    #  gradient_only=True,
       exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
                          ignore_line_search_failed_step_at_lower_bound = True))
     self.apply_shifts()
@@ -112,7 +117,6 @@ class lbfgs(object):
         shifts    = self.x,
         min_value = self.u_min,
         max_value = self.u_max)
-    #
     if(self.riding_h_manager is not None and self.refine_xyz):
       # temporary array with zero shifts for all atoms
       tmp = flex.vec3_double(self._scatterers_start.size(), [0,0,0])
