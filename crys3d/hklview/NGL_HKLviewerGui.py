@@ -271,6 +271,7 @@ class NGL_HKLViewer(QWidget):
     self.NewHKLscenes = False
     self.updatingNbins = False
     self.binstableitemchanges = False
+    self.canexit = False
     self.binTableCheckState = None
     self.millertablemenu = QMenu(self)
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
@@ -279,21 +280,30 @@ class NGL_HKLViewer(QWidget):
 
   def closeEvent(self, event):
     self.NGL_HKL_command('NGL_HKLviewer.action = is_terminating')
-    time.sleep(1)
+    #while not self.canexit:
+    #  time.sleep(1)
+    #self.webprofile.clearHttpCache()
+    #del self.webpage
+    #del self.BrowserBox
+    #del self.webprofile
+
+    #shutil.rmtree(cpath)
+    print("HKLviewer exiting now.")
+    while not self.canexit:
+      time.sleep(0.2)
+      self.update()
+
+    print("accepting close.event")
+    self.cctbxproc.terminate()
+    self.out, self.err = self.cctbxproc.communicate()
+    #print( str(self.out) + "\n" + str(self.err) )
+    self.cctbxproc.wait()
     self.webprofile.clearHttpCache()
     del self.webpage
     del self.BrowserBox
     del self.webprofile
+    event.accept()
 
-    #shutil.rmtree(cpath)
-    print("HKLviewer exiting now.")
-    """
-    if maybeSave():
-      writeSettings()
-      event.accept()
-    else:
-      event.ignore()
-    """
 
 
   def SettingsDialog(self):
@@ -326,13 +336,14 @@ class NGL_HKLViewer(QWidget):
   def update(self):
     if self.cctbxproc:
       if self.cctbxproc.stdout:
-        print(self.cctbxproc.stdout.read().decode("utf-8"))
+        self.out = self.cctbxproc.stdout.read().decode("utf-8")
       if self.cctbxproc.stderr:
-        print(self.cctbxproc.stderr.read().decode("utf-8"))
+        self.err = self.cctbxproc.stderr.read().decode("utf-8")
     if self.out:
       print(self.out.decode("utf-8"))
     if self.err:
       print(self.err.decode("utf-8"))
+
     if self.zmq_context:
       try:
         msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
@@ -401,6 +412,9 @@ class NGL_HKLViewer(QWidget):
           currentinfostr = ""
           if self.infodict.get("info"):
             currentinfostr = self.infodict.get("info",[])
+
+            if "Purging HKLViewFrame" in currentinfostr:
+              self.canexit = True
 
           if self.infodict.get("tncsvec"):
             self.tncsvec = self.infodict.get("tncsvec",[])
@@ -1308,6 +1322,16 @@ class NGL_HKLViewer(QWidget):
      + ' verbose=%s, UseOSBrowser=%s, htmlfname=\'%s\', handshakewait=%s )"\n'\
        %(self.verbose, str(self.UseOSbrowser), self.hklfname, self.handshakewait)
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
+    """
+    input = 'from crys3d.hklview import cmdlineframes;' \
+     + ' myHKLview = cmdlineframes.HKLViewFrame(useGuiSocket=%s, high_quality=True,' %self.sockport \
+     + ' jscriptfname = \'%s\', ' %self.jscriptfname \
+     + ' verbose=%s, UseOSBrowser=%s, htmlfname=\'%s\', handshakewait=%s )\n'\
+       %(self.verbose, str(self.UseOSbrowser), self.hklfname, self.handshakewait)
+    self.cctbxproc = subprocess.Popen( 'cctbx.python.bat', shell=False, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
+    self.out, self.err = self.cctbxproc.communicate(bytes(input,"utf-8") )
+    """
+    #self.out, self.err = self.cctbxproc.communicate()
     #time.sleep(1)
 
 
@@ -1328,12 +1352,15 @@ if __name__ == '__main__':
     timer.timeout.connect(guiobj.update)
     timer.start()
 
-    if guiobj.cctbxproc:
-      guiobj.cctbxproc.terminate()
+    #if guiobj.cctbxproc:
+    #  guiobj.cctbxproc.terminate()
     ret = app.exec_()
     #ret = app.exit(-1)
     timer.stop()
     del timer
+    del guiobj
+    del app
+
     present = True
     while present:
       present = False

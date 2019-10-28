@@ -307,7 +307,6 @@ class hklview_3d:
   def __exit__(self, exc_type, exc_value, traceback):
     # not called unless instantiated with a "with hklview_3d ... " statement
     self.CleanupNGL()
-    self.server.shutdown()
     self.isterminating = True
     self.StopThreads()
     if os.path.isfile(self.hklfname):
@@ -2264,6 +2263,7 @@ mysocket.onmessage = function (e)
 
 
   def StopThreads(self):
+    self.server.shutdown()
     self.msgqueuethrd.join()
     self.wst.join()
 
