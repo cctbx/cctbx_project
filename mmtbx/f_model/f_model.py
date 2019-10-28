@@ -357,6 +357,7 @@ class manager(manager_mixin):
          _target_memory               = None,
          n_resolution_bins_output     = None,
          scale_method="combo"):
+    self.russ = None
     if(twin_law is not None): target_name = "twin_lsq_f"
     self.k_sol, self.b_sol, self.b_cart = k_sol, b_sol, b_cart
     self.bin_selections = bin_selections
@@ -1278,6 +1279,13 @@ class manager(manager_mixin):
     if(show_approx):
       print(f3, file=log)
       print(f4, file=log)
+    #
+    if(self.russ is not None):
+      if(self.russ.b_cart is not None):
+        b_cart = " ".join(["%6.4f"%b for b in self.russ.b_cart])
+        print("  k_sol: %6.4f"%self.russ.k_sol[0], file=log)
+        print("  b_sol: %6.4f"%self.russ.b_sol[0], file=log)
+        print("  b_cart:", b_cart, file=log)
 
   def remove_unreliable_atoms_and_update(self, min_map_value=0.5, min_cc=0.7):
     """
@@ -1490,6 +1498,7 @@ class manager(manager_mixin):
             fmodel=self, apply_back_trace = apply_back_trace,
             remove_outliers = remove_outliers, fast = fast,
             params = params, log = log, refine_hd_scattering=refine_hd_scattering)
+    self.russ = o.russ
     return o.russ
 
   def apply_scale_k1_to_f_obs(self, threshold=10):
