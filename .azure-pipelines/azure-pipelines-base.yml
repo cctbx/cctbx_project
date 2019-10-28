@@ -24,7 +24,6 @@ stages:
   dependsOn: Checks
   jobs:
     - template: ./download-source.yml
-    - template: ./download-conda.yml
 
 - stage: Build
   displayName: Build and test
