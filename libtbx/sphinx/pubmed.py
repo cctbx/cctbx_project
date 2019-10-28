@@ -1,7 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
 import docutils.parsers.rst
+import io
+import json
 import multiprocessing
+import os
 from Bio import Entrez
 
 _biolock = multiprocessing.Lock()
@@ -23,8 +26,20 @@ class PubMedDirective(docutils.parsers.rst.Directive):
     reprint_url = self.options.get('reprint-url', None)
     Entrez.email = 'cctbxbb@phenix-online.org'
     with _biolock:
-      handle = Entrez.efetch(db="pubmed", id=PMID, retmode="xml")
+      raw_cache = None
+      if os.getenv("BIOCACHE"):
+        cache_file = os.path.join(os.getenv("BIOCACHE"), str(PMID))
+        if os.path.exists(cache_file):
+          with open(cache_file, "rb") as fh:
+            raw_cache = fh.read()
+      if not raw_cache:
+        handle = Entrez.efetch(db="pubmed", id=PMID, retmode="xml")
+        raw_cache = handle.read()
+      handle = io.BytesIO(raw_cache)
       XML = Entrez.read(handle)['PubmedArticle']
+      if os.getenv("BIOCACHE") and not os.path.exists(cache_file):
+        with open(cache_file, "wb") as fh:
+          fh.write(raw_cache)
 
     def raw_html_link_new_tab(identifier, link_text, link):
       return '.. |%s| raw:: html\n\n' %identifier + \
