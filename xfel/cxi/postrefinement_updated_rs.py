@@ -205,7 +205,7 @@ class updated_rs(legacy_rs):
       self.refined_mini = self.MINI
       #another range assertion
     except Exception as e:
-      print (e)
+      #print (e)
       self.final_corr=-1.0
     if not LS49_case:
       assert self.final_corr > acceptable_corr,"correlation coefficient out of range (<= 0.1) after rs2 refinement"
