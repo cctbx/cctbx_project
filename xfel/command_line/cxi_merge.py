@@ -396,7 +396,7 @@ LS49 {
   LS49_case=True
     .type = bool
     .help = Whether to use LS49 specific processing code
-  double_loop = False
+  double_loop = True
     .type = bool
     .help = Use double loop rejection of spots to increase correlation during PR
   acceptable_corr = 0.2
@@ -1678,8 +1678,6 @@ class scaling_manager (intensity_data) :
             postx.run_plain()
             observations_original_index,observations,matches, fat_count, final_corr = postx.result_for_cxi_merge(file_name, False)        
             #print ('FINAL_POSTREFINE_DONE', ts)
-            if final_corr < acceptable_corr:
-              return null_data(file_name=file_name, log_out=out.getvalue(), reason=ValueError) 
           except (AssertionError,ValueError,RuntimeError) as e:
             return null_data(file_name=file_name, log_out=out.getvalue(), reason=e)
 
