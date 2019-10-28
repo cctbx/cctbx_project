@@ -202,6 +202,7 @@ unit_cell = None
   hkl_in = any_file(params.data, force_type="hkl")
   ma = hkl_in.file_server.miller_arrays[0]
   assert ma.is_xray_amplitude_array()
+  assert ma.anomalous_flag() is False
 
   open("tst_iotbx_phil.ncs", "w").write("""
 REMARK 350   BIOMT1   1  1.000000  0.000000  0.000000        0.00000

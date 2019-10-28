@@ -20,6 +20,7 @@ def exercise_hklf_reader():
   assert approx_equal(r.alphas(), [1, 2, 9999, -999, ])
   for ma in r.as_miller_arrays():
     assert ma.indices().all_eq(r.indices())
+    assert ma.anomalous_flag() is False
   ma = r.as_miller_arrays()[0]
   assert ma.data().all_approx_equal(r.data())
   assert ma.sigmas().all_approx_equal(r.sigmas())
@@ -120,6 +121,8 @@ def exercise_miller_export_as_shelx_hklf():
   assert approx_equal(ma.indices(), ma2.indices())
   assert approx_equal(ma.data(), ma2.data())
   assert approx_equal(ma.sigmas(), ma2.sigmas())
+  assert ma.anomalous_flag() is False
+  assert ma2.anomalous_flag() is False
   #
   ma = ma.select(flex.size_t([0]))
   def check(d, s, f):

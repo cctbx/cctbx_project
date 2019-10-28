@@ -115,7 +115,7 @@ class reader(iotbx_shelx_ext.hklf_reader):
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
       indices=self.indices(), anomalous_flag=anomalous)
-    if anomalous is not None:
+    if anomalous is None:
       miller_set = miller_set.auto_anomalous()
     miller_arrays = []
     obs = (miller.array(
