@@ -84,11 +84,14 @@ class MyTableWidget(QTableWidget):
     if event.type() == QEvent.MouseButtonPress:
       self.mousebutton = None
       if event.button() == Qt.RightButton:
-        print( "Right clicked")
         self.mousebutton = Qt.RightButton
-      else:
-        print("Left clicked")
     QTableWidget.mousePressEvent(self, event)
+
+  def mouseDoubleClickEvent(self, event):
+    if event.type() == QEvent.MouseButtonDblClick:
+      if event.button() == Qt.LeftButton:
+        self.mousebutton = QEvent.MouseButtonDblClick
+    QTableWidget.mouseDoubleClickEvent(self, event)
 
 
 class NGL_HKLViewer(QWidget):
@@ -209,6 +212,7 @@ class NGL_HKLViewer(QWidget):
     # don't allow editing this table
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
     self.millertable.cellPressed.connect(self.onMillerTableCellPressed)
+    self.millertable.cellDoubleClicked.connect(self.onMillerTableCellPressed)
     #self.millertable.installEventFilter(self)
 
     self.createExpansionBox()
@@ -232,6 +236,7 @@ class NGL_HKLViewer(QWidget):
       #self.BrowserBox.setUrl("https://webglreport.com/")
       self.storagename = "HKLviewer." + next(tempfile._get_candidate_names())
       self.webprofile = QWebEngineProfile(self.storagename, self.BrowserBox )
+      self.webprofile.setHttpCacheType( QWebEngineProfile.MemoryHttpCache )
       self.webpage = QWebEnginePage(self.webprofile, self.BrowserBox)
       self.webpage.setUrl("https://cctbx.github.io/")
       self.cpath = self.webprofile.cachePath()
@@ -302,35 +307,12 @@ class NGL_HKLViewer(QWidget):
     del self.webpage
     del self.BrowserBox
     del self.webprofile
+    self.webprofile = None
     event.accept()
-
 
 
   def SettingsDialog(self):
     self.settingsform.show()
-
-
-  """
-  def eventFilter(self, source, event):
-    if (event.type() == QEvent.MouseButtonPress and
-     source is self.millertable):
-      if event.button() == Qt.RightButton:
-        print("Right button clicked")
-    #return False
-
-    if (event.type() == QEvent.ContextMenu and
-     source is self.millertable):
-      self.CustomContextMenuHandler(event.pos())
-
-      #menu = QMenu()
-      #menu.addAction('Open Window')
-      #if menu.exec_(event.globalPos()):
-      #  item = source.itemAt(event.pos())
-      #  print(item.text())
-
-      return True
-    return super(NGL_HKLViewer, self).eventFilter(source, event)
-  """
 
 
   def update(self):
@@ -662,6 +644,8 @@ class NGL_HKLViewer(QWidget):
     bin = item.row()
     column = item.column()
     try:
+      if not self.bin_opacities:
+        return
       bin_opacitieslst = eval(self.bin_opacities)
       alpha = max(0.0, min(1.0, float(item.text()) ) ) # between 0 and 1 only
       try:
@@ -1080,6 +1064,11 @@ class NGL_HKLViewer(QWidget):
     #print( "in millertable CellPressed " + self.millertable.currentItem().text() )
     if self.millertable.mousebutton == Qt.RightButton:
       self.MillerTableContextMenuHandler(QCursor.pos(), row)
+    if self.millertable.mousebutton == QEvent.MouseButtonDblClick:
+      # quickly display data with a double click
+      for i,scenelabel in enumerate(self.scenearraylabels):
+        if self.millerarraylabels[row] == scenelabel:
+          self.DisplayData(i)
 
 
   def MillerTableContextMenuHandler(self, pos, row):
@@ -1089,7 +1078,7 @@ class NGL_HKLViewer(QWidget):
     # action taken
     for i,scenelabel in enumerate(self.scenearraylabels):
       if self.millerarraylabels[row] == scenelabel or self.millerarraylabels[row] + " + " in scenelabel:
-        print(i, scenelabel)
+        #print(i, scenelabel)
         myqa = QAction("Display %s data" %scenelabel, self, triggered=self.testaction)
         myqa.setData(i)
         self.millertablemenu.addAction(myqa)
@@ -1109,24 +1098,7 @@ class NGL_HKLViewer(QWidget):
     if data is not None:
       if type(data) is int:
         idx = data
-        self.NGL_HKL_command("NGL_HKLviewer.viewer.scene_id = %d" %idx)
-        if self.fileisvalid:
-          self.functionTabWidget.setEnabled(True)
-          self.expandAnomalouscheckbox.setEnabled(True)
-          self.expandP1checkbox.setEnabled(True)
-          # don' allow anomalous expansion for data that's already anomalous
-          arrayinfo = self.array_infotpls[idx]
-          isanomalous = arrayinfo[-1]
-          spacegroup = arrayinfo[2]
-          label = arrayinfo[0]
-          if isanomalous:
-            self.expandAnomalouscheckbox.setDisabled(True)
-          if spacegroup=='P 1 (No. 1)':
-            self.expandP1checkbox.setDisabled(True)
-        else:
-          self.functionTabWidget.setDisabled(True)
-        self.SpaceGroupComboBox.clear()
-        self.SpaceGroupComboBox.addItems( self.spacegroups )
+        self.DisplayData(idx)
       else:
         (strval, idx) = data
         self.operate_arrayidx1 = idx
@@ -1146,6 +1118,27 @@ class NGL_HKLViewer(QWidget):
         self.makenewdataform.show()
 
 
+  def DisplayData(self, idx):
+    self.NGL_HKL_command("NGL_HKLviewer.viewer.scene_id = %d" %idx)
+    if self.fileisvalid:
+      self.functionTabWidget.setEnabled(True)
+      self.expandAnomalouscheckbox.setEnabled(True)
+      self.expandP1checkbox.setEnabled(True)
+      # don' allow anomalous expansion for data that's already anomalous
+      arrayinfo = self.array_infotpls[idx]
+      isanomalous = arrayinfo[-1]
+      spacegroup = arrayinfo[2]
+      label = arrayinfo[0]
+      if isanomalous:
+        self.expandAnomalouscheckbox.setDisabled(True)
+      if spacegroup=='P 1 (No. 1)':
+        self.expandP1checkbox.setDisabled(True)
+    else:
+      self.functionTabWidget.setDisabled(True)
+    self.SpaceGroupComboBox.clear()
+    self.SpaceGroupComboBox.addItems( self.spacegroups )
+
+
   def onMakeNewData(self):
     mtpl = (self.operationtxtbox.text(), self.newlabeltxtbox.text() ,
               self.operate_arrayidx1, self.operate_arrayidx2 )
@@ -1163,7 +1156,7 @@ class NGL_HKLViewer(QWidget):
 
   def createFileInfoBox(self):
     self.datasetLabel = QLabel()
-    self.datasetLabel.setText("Data sets:")
+    self.datasetLabel.setText("Display a data set with a double-click or right-click it for more options.")
     self.FileInfoBox = QGroupBox("Reflection File Information")
     layout = QGridLayout()
     layout.addWidget(self.openFileNameButton,     0, 0, 1, 2)
@@ -1352,13 +1345,10 @@ if __name__ == '__main__':
     timer.timeout.connect(guiobj.update)
     timer.start()
 
-    #if guiobj.cctbxproc:
-    #  guiobj.cctbxproc.terminate()
     ret = app.exec_()
-    #ret = app.exit(-1)
     timer.stop()
     del timer
-    del guiobj
+    #guiobj = None
     del app
 
     present = True
