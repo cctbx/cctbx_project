@@ -158,6 +158,9 @@ if (sys.platform == "win32"):
 elif (sys.platform.startswith("darwin")):
   if (compiler == "default"):
     env_etc.compiler = "darwin_c++"
+  elif (compiler == "unix_conda"):
+    env_etc.compiler = "unix_conda"
+    compiler = None
   else:
     env_etc.compiler = "darwin_"+compiler
     compiler = None
@@ -764,14 +767,15 @@ int main() {
       env_base.Prepend(LINKFLAGS=["-Bstatic"])
       static_exe = None
   elif (env_etc.compiler == 'unix_conda'):
-    # default conda compilers (gcc 7.2)
-    conda_prefix = os.environ['CONDA_PREFIX']
-    bin_path = os.path.join(conda_prefix, 'bin')
-    cc = os.path.join(bin_path, 'x86_64-conda_cos6-linux-gnu-gcc')
-    cxx = os.path.join(bin_path, 'x86_64-conda_cos6-linux-gnu-g++')
-    if ( (not os.path.isfile(cc)) or
-         (not os.path.isfile(cxx)) ):
-      raise RuntimeError('conda compilers are not installed')
+    # get conda compilers from environment
+    cc = os.environ.get('CC', '')
+    cxx = os.environ.get('CXX', '')
+    if sys.platform.startswith("darwin"):
+      cc = os.environ.get('CLANG', '')
+      cxx = os.environ.get('CLANGXX', '')
+    if not os.path.isfile(cc) or not os.path.isfile(cxx):
+      raise RuntimeError('conda compilers are not installed.')
+
     # use environment flags
     env_etc.ccflags_base = []
     env_etc.cxxflags_base = []

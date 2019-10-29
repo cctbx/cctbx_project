@@ -47,7 +47,8 @@ if not env_etc.no_boost_python:
     target="#lib/boost_adaptbx_graph_clustering_algorithm_ext",
     source=clustering_obj,
     )
-  if sys.platform == 'darwin' and env_etc.clang_version[0] >= 11:
+  if env_etc.compiler == 'unix_conda' or (sys.platform == 'darwin' and
+    env_etc.clang_version[0] >= 11):
     import os
     from libtbx.auto_build.install_base_packages import installer
     filename = os.path.join(env_etc.boost_include, 'boost', 'graph',
