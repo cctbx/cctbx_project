@@ -60,9 +60,9 @@ DEPENDENCIES_BASE = [
   "https://github.com/dials/dependencies/raw/master",
   "https://gitcdn.xyz/repo/dials/dependencies/master",
 ]
-OPENSSL_PKG = "openssl-1.0.2r.tar.gz"    # OpenSSL
+OPENSSL_PKG = "openssl-1.0.2s.tar.gz"    # OpenSSL
 PYTHON3_PKG = "Python-3.7.2.tgz"
-PYTHON_PKG = "Python-2.7.16.tgz"
+PYTHON_PKG = "Python-2.7.17.tgz"
 
 # from CCI
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
@@ -88,8 +88,8 @@ ORDEREDSET_VERSION = "2.0.1"
 PILLOW_VERSION = "5.4.1"
 PROCRUNNER_VERSION = "1.0.2"
 PY2APP_VERSION="0.7.3"
-PYTEST_VERSION = "4.5.0"
-PYTEST_XDIST_VERSION = "1.28.0"
+PYTEST_VERSION = "4.6.5"
+PYTEST_XDIST_VERSION = "1.29.0"
 SCIKIT_LEARN_VERSION = "0.20.2"
 SCIPY_VERSION = "1.2.1"
 SEND2TRASH_VERSION = "1.5.0"
@@ -100,8 +100,8 @@ TQDM_VERSION = "4.23.4"
 PSUTIL_VERSION = "5.5.1"
 
 # HDF5
-BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/"
-HDF5_PKG = "hdf5-1.10.4.tar.bz2"
+BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.5/src/"
+HDF5_PKG = "hdf5-1.10.5.tar.bz2"
 
 # GUI dependencies
 LIBPNG_PKG = "libpng-1.6.36.tar.gz"
