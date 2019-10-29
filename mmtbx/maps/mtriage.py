@@ -86,9 +86,6 @@ master_params_str = """
   include_mask = True
     .type = bool
     .help = "Keep mask"
-  use_box = True
-    .type = bool
-    .help = Extract box from map and model and use it for calculations
 """
 
 def show_histogram(map_histograms, log):

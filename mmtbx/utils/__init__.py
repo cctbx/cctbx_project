@@ -2545,8 +2545,9 @@ class extract_box_around_model_and_map(object):
         mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
         self.map_box=self.map_box+(1-mask)*mean_in_box
     elif (soft_mask):
-      assert soft_mask_radius is not None
       assert resolution is not None
+      if soft_mask_radius is None:
+        soft_mask_radius=resolution
       from cctbx.maptbx.segment_and_split_map import set_up_and_apply_soft_mask
       self.map_box,smoothed_mask_data=\
          set_up_and_apply_soft_mask(
