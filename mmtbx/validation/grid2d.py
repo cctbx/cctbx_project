@@ -5,6 +5,7 @@ from mmtbx.validation.ramalyze import draw_ramachandran_plot
 import math
 from scipy import interpolate
 import numpy as np
+from copy import deepcopy
 
 def calculate_indexes(x, y, xmin, x_step, ymin, y_step):
   i = math.floor((x-xmin) / x_step)
@@ -14,38 +15,30 @@ def calculate_indexes(x, y, xmin, x_step, ymin, y_step):
 class Grid2D(object):
   def __init__(self, data, xmin, xmax, ymin, ymax):
     # data - list of lists [[],[],...[]], data[x][y]
-    self.g = data
+    self.g = deepcopy(data)
     self.xmax = xmax
     self.xmin = xmin
     self.ymax = ymax
     self.ymin = ymin
     n_x = len(data)
     n_y = len(data[0])
-
-
     self.x_step = (xmax-xmin)/n_x
     self.y_step = (ymax-ymin)/n_y
+    self.interpolation_f = None
 
-    # print("x y steps:", self.x_step, self.y_step)
-
-    # assert 360 % self.phi_step == 0
-    # assert 360 // self.phi_step % 2 == 0
-    # assert 360 % self.psi_step == 0
-    # assert 360 // self.psi_step % 2 == 0
-    # self.n_phi_half = 360 // self.phi_step // 2
-    # self.n_psi_half = 360 // self.psi_step // 2
-
-    # for i in range(360 // self.phi_step):
-    #   self.g.append([0]*(360 // self.psi_step))
-
-    # self.n_points = 0
-    # self.mean = None
-    # self.std = None
-    self.interpolation_f = self.set_interpolation_f()
+  def filter_out_less_populated_points(self, threshold=1):
+    n = 0
+    for x in range(len(self.g)):
+      for y in range(len(self.g[0])):
+        if self.g[x][y] <= threshold:
+          if self.g[x][y] != 0:
+            n += 1
+          self.g[x][y] = 0
+    return n
 
   @classmethod
   def make_Grid2d(cls, points, x_nbins, y_nbins,
-      xmin=None, xmax=None, ymin=None, ymax=None):
+      xmin=None, xmax=None, ymin=None, ymax=None, allow_outside=True):
     # points - list of tuples [(x,y), (x,y)...]
     if xmin is None:
       print ("xmin = ", min([x[0] for x in points]) )
@@ -66,11 +59,16 @@ class Grid2D(object):
     for i in range(x_nbins):
       data.append([0]*y_nbins)
     for p in points:
+      if (p[0]<xmin or p[0]>xmax) and allow_outside:
+        continue
+      if (p[1]<ymin or p[1]>ymax) and allow_outside:
+        continue
       i,j = calculate_indexes(p[0], p[1], xmin, x_step, ymin, y_step)
+      # print (p)
       data[i][j] += 1
     return cls(data, xmin, xmax, ymin, ymax)
 
-  def set_interpolation_f(self):
+  def set_interpolation_f(self, interpolation_type='linear'):
     x = []
     y = []
     for target_list, vmin, vmax, vstep in [(x, self.xmin, self.xmax, self.x_step),
@@ -80,40 +78,16 @@ class Grid2D(object):
         target_list.append(current_tick)
         current_tick += vstep
 
-    z = []
-    # print "x,y", x, y
-    for i in range(len(self.g[0])+2):
-      z.append([0] * (len(self.g)+2) )
-    for i in range(len(z)):
-      for j in range(len(z)):
-        # figure out where to get value
-        ii = i-1
-        jj = j-1
-        if i == 0:
-          ii = len(self.g)-1
-        if i == len(z) - 1:
-          ii = 0
-        if j == 0:
-          jj = len(self.g[0])-1
-        if j == len(z) - 1:
-          jj = 0
-        z[i][j] = self.g[jj][ii]
-    # print ("len(x)", len(x))
-    # print ("len(y)", len(y))
-    # print ("len(z)", len(z), len(z[0]))
-    # print ("x", x)
-    # print ("y", y)
-    self.interpolation_f = interpolate.interp2d(x,y,z, kind='linear')
+    z = np.array(self.g)
+    z = np.swapaxes(z, 0, 1)
+    z = np.pad(z,  pad_width=1, mode='wrap')
+
+    self.interpolation_f = interpolate.interp2d(x,y,z, kind=interpolation_type)
 
   def get_interpolated_score(self, x, y):
-    # i, j = self._calc_ij(x,y)
-    # return [self.g[i][j]]
     if self.interpolation_f is None:
-      self.set_interpolation_f()
-    # int_sc = self.interpolation_f([point[0]], [point[1]])
-    # print "Get interp score:", point, int_sc, self.g[i][j]
+      raise RuntimeError('function is not set yet')
     return self.interpolation_f([x],[y])[0]
-    # return [self.g[i][j], self.interpolation_f([point[0]], [point[1]])[0]]
 
   def plot_distribution(self, fname, title="Default title"):
     npz = np.array(self.g)
