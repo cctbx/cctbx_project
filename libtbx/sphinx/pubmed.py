@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 
 import docutils.parsers.rst
 import io
-import json
 import multiprocessing
 import os
 from Bio import Entrez
