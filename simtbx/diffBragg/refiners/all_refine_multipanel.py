@@ -4,7 +4,6 @@ import pylab as plt
 import numpy as np
 import sys
 from IPython import embed
-from dxtbx.model import Panel
 
 
 class RefineAllMultiPanel(RefineRot):
@@ -255,13 +254,13 @@ class RefineAllMultiPanel(RefineRot):
                 self._evaluate_averageI()
                 self._evaluate_log_averageI()
                 self._update_best_image(i_spot)
-
                 Imeas = self.roi_img[i_spot]
+
                 f += (self.model_Lambda - Imeas * self.log_Lambda).sum()
                 one_over_Lambda = 1. / self.model_Lambda
-                one_minus_k_over_Lambda = (1. - Imeas * one_over_Lambda)
+                self.one_minus_k_over_Lambda = (1. - Imeas * one_over_Lambda)
                 if self.calc_curvatures:
-                    k_over_squared_Lambda = Imeas * one_over_Lambda * one_over_Lambda
+                    self.k_over_squared_Lambda = Imeas * one_over_Lambda * one_over_Lambda
 
                 # compute gradients for background plane constants a,b,c
                 xr = self.xrel[i_spot]  # fast scan pixels
@@ -298,35 +297,32 @@ class RefineAllMultiPanel(RefineRot):
                     plt.suptitle("Iterations = %d, image %d / %d"
                                  % (self.iterations, i_spot+1, self.n_spots))
                     self.fig.canvas.draw()
-                    plt.pause(.02)
+                    plt.pause(0.5)
+
                 if self.refine_Umatrix:
                     for ii, xpos in enumerate([self.rotX_xpos, self.rotY_xpos, self.rotZ_xpos]):
                         d = S2*G2*self.rot_deriv[ii]
-                        g[xpos] += (one_minus_k_over_Lambda * d).sum()
+                        g[xpos] += self._poisson_d(d)
                         if self.calc_curvatures:
                             d2 = S2*G2*self.rot_second_deriv[ii]
-                            cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
-                            self.curv[xpos] += cc.sum()
+                            self.curv[xpos] += self._poisson_d2(d, d2)
 
                 if self.refine_Bmatrix:
                     # unit cell derivative
                     for i_ucell_p in range(self.n_ucell_param):
                         xpos = self.ucell_xstart + i_ucell_p
                         d = S2*G2*self.ucell_derivatives[i_ucell_p]
-                        g[xpos] += (one_minus_k_over_Lambda * d).sum()
-
+                        g[xpos] += self._poisson_d(d)
                         if self.calc_curvatures:
                             d2 = S2*G2*self.ucell_second_derivatives[i_ucell_p]
-                            cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
-                            self.curv[xpos] += cc.sum()
+                            self.curv[xpos] += self._poisson_d2(d, d2)
 
                 if self.refine_ncells:
-                    d = self.ncells_deriv
-                    g[self.ncells_xpos] += (S2*G2*d*one_minus_k_over_Lambda).sum()
+                    d = S2*G2*self.ncells_deriv
+                    g[self.ncells_xpos] += self._poisson_d(d)
                     if self.calc_curvatures:
                         d2 = S2*G2*self.ncells_second_deriv
-                        cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
-                        self.curv[self.ncells_xpos] += cc.sum()
+                        self.curv[self.ncells_xpos] += self._poisson_d2(d, d2)
 
                 if self.refine_detdist:
                     raise NotImplementedError("Cannot refined detdist (yet...)")
@@ -337,17 +333,17 @@ class RefineAllMultiPanel(RefineRot):
 
                 if self.refine_gain_fac:
                     d = 2*self.gain_fac*(self.tilt_plane + S2*self.model_bragg_spots)
-                    g[-2] += (d*one_minus_k_over_Lambda).sum()
+                    g[-2] += self._poisson_d(d)
                     if self.calc_curvatures:
                         d2 = d / self.gain_fac
-                        self.curv[-2] += (d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda).sum()
+                        self.curv[-2] += self._poisson_d2(d, d2)
 
                 if self.refine_crystal_scale:
                     d = G2*2*self.scale_fac*self.model_bragg_spots
-                    g[-1] += (d*one_minus_k_over_Lambda).sum()
+                    g[-1] += self._poisson_d(d)
                     if self.calc_curvatures:
                         d2 = d / self.scale_fac
-                        self.curv[-1] += (d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda).sum()
+                        self.curv[-1] += self._poisson_d2(d, d2)
             if self.calc_curvatures and not self.use_curvatures:
                 if np.all(self.curv.as_numpy_array() >= 0):
                     self.num_positive_curvatures += 1
@@ -368,6 +364,13 @@ class RefineAllMultiPanel(RefineRot):
                     raise BreakToUseCurvatures
 
         return self._f, self._g
+
+    def _poisson_d(self, d):
+        return (d*self.one_minus_k_over_Lambda).sum()
+
+    def _poisson_d2(self, d, d2):
+        cc = d2 * self.one_minus_k_over_Lambda + d*d*self.k_over_squared_Lambda
+        return cc.sum()
 
     def print_step(self, message, target):
         names = self.ucell_manager.variable_names
