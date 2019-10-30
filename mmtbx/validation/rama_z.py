@@ -88,7 +88,10 @@ class rama_z(object):
     for i in self.res_info:
       print(i, file=self.log)
 
+  def get_residue_counts(self):
+    return self.residue_counts
 
+  def get_z_scores(self):
     for k in ['H', 'S', 'L', 'W']:
       if k != 'W':
         element_points = [p for p in self.res_info if p[3] == k]
@@ -101,11 +104,6 @@ class rama_z(object):
         c = None
       if c is not None:
         self.z_score[k] = (c - self.calibration_values[k][0]) / self.calibration_values[k][1]
-
-  def get_residue_counts(self):
-    return self.residue_counts
-
-  def get_z_scores(self):
     return self.z_score
 
   def get_ss_selections(self):
