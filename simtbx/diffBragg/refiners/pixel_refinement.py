@@ -56,8 +56,11 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.plot_stride = 10
         self.ignore_line_search = False
         self.panel_ids = None
+        self.update_curvatures_every = 3  # every 3 consecutive all positive curvatures we will update them
         self.shot_idx = 0  # place holder because global refinement is across multiple shots
         self.shot_ids = None
+
+        self.request_diag_once = False  # property of the parent class
         lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
 
     @abstractmethod
