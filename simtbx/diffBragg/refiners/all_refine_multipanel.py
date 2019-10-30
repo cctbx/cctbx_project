@@ -220,7 +220,6 @@ class RefineAllMultiPanel(RefineRot):
     #@profile
     def compute_functional_and_gradients(self):
         if self.calc_func:
-            #self.x = flex.double(self.x_init)
             if self.verbose:
                 if self.use_curvatures:
                     print("Compute functional and gradients Iter %d (Using Curvatures)\n<><><><><><><><><><><><><>"
@@ -369,7 +368,7 @@ class RefineAllMultiPanel(RefineRot):
         return (d*self.one_minus_k_over_Lambda).sum()
 
     def _poisson_d2(self, d, d2):
-        cc = d2 * self.one_minus_k_over_Lambda + d*d*self.k_over_squared_Lambda
+        cc = d2*self.one_minus_k_over_Lambda + d*d*self.k_over_squared_Lambda
         return cc.sum()
 
     def print_step(self, message, target):
