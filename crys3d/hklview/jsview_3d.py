@@ -306,9 +306,12 @@ class hklview_3d:
 
   def __exit__(self, exc_type, exc_value, traceback):
     # not called unless instantiated with a "with hklview_3d ... " statement
-    self.CleanupNGL()
+    self.JavaScriptCleanUp()
+    nwait = 0
+    while not "JavaScriptCleanUp" in self.lastmsg and nwait < 5:
+      sleep(self.sleeptime)
+      nwait += self.sleeptime
     self.isterminating = True
-    self.StopThreads()
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
     self.mprint("Annihilating hklview_3d", 1)
@@ -1941,7 +1944,7 @@ mysocket.onmessage = function (e)
       WebsockSendMsg('ReturnBoundingBox:\\n' + msg );
     }
 
-    if (msgtype ==="Cleanup")
+    if (msgtype ==="JavaScriptCleanUp")
     {
       stage.removeAllComponents();
       stage.mouseObserver.dispose();
@@ -1964,7 +1967,8 @@ mysocket.onmessage = function (e)
       repr = null;
       stage.dispose();
       stage = null;
-      WebsockSendMsg('Cleanup:\\nDestroying JavaScript objects');
+      WebsockSendMsg('CleanUp:\\nDestroying JavaScript objects');
+      document = null;
     }
 
     if (msgtype === "InjectNewReflections")
@@ -2090,8 +2094,9 @@ mysocket.onmessage = function (e)
         else:
           self.mprint( message, verbose=4)
         self.lastmsg = message
-      if "Cleanup:" in message:
+      if "JavaScriptCleanUp:" in message:
         self.mprint( message, verbose=1)
+        self.StopThreads()
       if "JavaScriptError:" in message:
         self.mprint( message, verbose=0)
         #raise Sorry(message)
@@ -2309,8 +2314,8 @@ mysocket.onmessage = function (e)
     self.msgqueue.append( ("Reload", "") )
 
 
-  def CleanupNGL(self):
-    self.msgqueue.append( ("Cleanup", "") )
+  def JavaScriptCleanUp(self):
+    self.msgqueue.append( ("JavaScriptCleanUp", "") )
 
 
   def OpenBrowser(self):

@@ -20,7 +20,7 @@ from PySide2.QtWidgets import ( QAction, QApplication, QCheckBox, QComboBox, QDi
 
 from PySide2.QtGui import QColor, QFont, QCursor
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-import sys, zmq, subprocess, time, traceback, tempfile, shutil
+import sys, zmq, subprocess, time, traceback, shutil, os.path
 
 
 
@@ -197,7 +197,6 @@ class NGL_HKLViewer(QWidget):
     self.makenewdataform = MakeNewDataForm(self)
     self.makenewdataform.setModal(True)
 
-
     self.HKLnameedit = QLineEdit('')
     self.HKLnameedit.setReadOnly(True)
     self.textInfo = QTextEdit()
@@ -222,35 +221,34 @@ class NGL_HKLViewer(QWidget):
     self.createBinsBox()
     self.CreateFunctionTabs()
 
-    mainLayout = QGridLayout()
-    mainLayout.addWidget(self.FileInfoBox,         0, 0)
-    mainLayout.addWidget(self.functionTabWidget,   1, 0)
-    mainLayout.addWidget(self.settingsbtn,         2, 0, 1, 1)
+    self.mainLayout = QGridLayout()
+    self.mainLayout.addWidget(self.FileInfoBox,         0, 0)
+    self.mainLayout.addWidget(self.functionTabWidget,   1, 0)
+    self.mainLayout.addWidget(self.settingsbtn,         2, 0, 1, 1)
     self.cpath = ""
-
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if self.UseOSbrowser==False:
       self.BrowserBox = QWebEngineView()
-      mainLayout.addWidget(self.BrowserBox,          0, 1, 5, 3)
+      self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
       #self.BrowserBox.setUrl("https://cctbx.github.io/")
       #self.BrowserBox.setUrl("https://webglreport.com/")
-      self.storagename = "HKLviewer." + next(tempfile._get_candidate_names())
-      self.webprofile = QWebEngineProfile(self.storagename, self.BrowserBox )
-      self.webprofile.setHttpCacheType( QWebEngineProfile.MemoryHttpCache )
-      self.webpage = QWebEnginePage(self.webprofile, self.BrowserBox)
+      self.webprofile = QWebEngineProfile( )
+      #self.webprofile.setHttpCacheType( QWebEngineProfile.DiskHttpCache )
+      self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
       self.webpage.setUrl("https://cctbx.github.io/")
       self.cpath = self.webprofile.cachePath()
 
       self.BrowserBox.setPage(self.webpage)
       #self.BrowserBox.loadFinished.connect(self.onLoadFinished)
-      mainLayout.setColumnStretch(2, 1)
+      self.mainLayout.addWidget(self.BrowserBox,          0, 1, 5, 3)
+      self.mainLayout.setColumnStretch(2, 1)
 
-    mainLayout.setRowStretch(0, 1)
-    mainLayout.setRowStretch(1, 0)
-    mainLayout.setRowStretch(2, 1)
+    self.mainLayout.setRowStretch(0, 1)
+    self.mainLayout.setRowStretch(1, 0)
+    self.mainLayout.setRowStretch(2, 1)
     #mainLayout.setRowStretch(3, 0)
-    mainLayout.setColumnStretch(4, 0)
-    self.setLayout(mainLayout)
+    self.mainLayout.setColumnStretch(4, 0)
+    self.setLayout(self.mainLayout)
 
     self.setWindowTitle("HKL-Viewer")
     self.cctbxproc = None
@@ -294,7 +292,7 @@ class NGL_HKLViewer(QWidget):
 
     #shutil.rmtree(cpath)
     print("HKLviewer exiting now.")
-    while not self.canexit:
+    while not self.canexit: # until cctbx.python has finished
       time.sleep(0.2)
       self.update()
 
@@ -303,11 +301,17 @@ class NGL_HKLViewer(QWidget):
     self.out, self.err = self.cctbxproc.communicate()
     #print( str(self.out) + "\n" + str(self.err) )
     self.cctbxproc.wait()
+    #self.BrowserBox.close()
+    self.mainLayout.removeWidget(self.BrowserBox)
+    #self.BrowserBox.deleteLater()
+    #self.BrowserBox.destroy()
+
+    """
     self.webprofile.clearHttpCache()
-    del self.webpage
-    del self.BrowserBox
-    del self.webprofile
+    self.webpage = None
+    self.BrowserBox = None
     self.webprofile = None
+    """
     event.accept()
 
 
@@ -1336,9 +1340,11 @@ class NGL_HKLViewer(QWidget):
 
 if __name__ == '__main__':
   try:
+    #time.sleep(10)
     app = QApplication(sys.argv)
-
     guiobj = NGL_HKLViewer()
+    #w1 = QWidget()
+    #w1.show()
 
     timer = QTimer()
     timer.setInterval(10)
@@ -1346,16 +1352,28 @@ if __name__ == '__main__':
     timer.start()
 
     ret = app.exec_()
-    timer.stop()
-    del timer
+    #app.quit()
+    #timer.stop()
+    #del timer
+    #w1 = None
+    guiobj.webpage.deleteLater()
+    guiobj.webpage = None
+    guiobj.BrowserBox.deleteLater()
+    guiobj.BrowserBox.destroy()
+    guiobj.deleteLater()
+    guiobj.destroy()
     #guiobj = None
-    del app
+    #app = None
 
     present = True
     while present:
       present = False
       try:
-        shutil.rmtree(guiobj.cpath)
+        if os.path.exists(guiobj.cpath):
+          shutil.rmtree(guiobj.cpath)
+        cpath2 = guiobj.cpath.replace("cache/","")
+        if os.path.exists(cpath2):
+          shutil.rmtree(cpath2)
       except Exception as delerr:
         time.sleep(0.2)
         present = True
