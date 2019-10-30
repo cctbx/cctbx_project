@@ -278,8 +278,8 @@ class RefineAll(RefineRot):
                             self.curv[xpos] += cc.sum()
 
                 if self.refine_ncells:
-                    d = self.ncells_deriv
-                    g[-4] += (S2*G2*d*one_minus_k_over_Lambda).sum()
+                    d = S2*G2*self.ncells_deriv
+                    g[-4] += (d*one_minus_k_over_Lambda).sum()
                     if self.calc_curvatures:
                         d2 = S2*G2*self.ncells_second_deriv
                         cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
