@@ -23,45 +23,70 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     run_on_init = False
 
     def __init__(self):
-        self.use_curvatures = False
-        self.refine_background_planes = True
-        self.refine_gain_fac = False
-        self.multi_panel = False
-        self.split_evaluation = False
-        self.refine_ncells = False
-        self.hit_break_to_use_curvatures = False
-        self.refine_detdist = True
-        self.refine_Amatrix = True
-        self.refine_Bmatrix = True
-        self.has_pre_cached_roi_data = False
-        self.use_curvatures_threshold = 7
-        self.curv = None  # curvatures array
-        self.refine_Umatrix = True
-        self.verbose = True
-        self.refine_crystal_scale = True
-        self.plot_images = False
-        self.refine_rotX = True
-        self.iterations = 0
-        self.refine_rotY = True
-        self.refine_rotZ = True
-        self.plot_residuals = False
-        self.trad_conv = False
-        self.calc_curvatures = False
-        self.trad_conv_eps = 0.05
-        self.plot_statistics = False
-        self.drop_conv_max_eps = 1e-5
-        self.mn_iter = None
-        self.mx_iter = None
-        self.max_calls = 1000
-        self.plot_stride = 10
-        self.ignore_line_search = False
-        self.panel_ids = None
+        self.use_curvatures = False  # whether to use the curvatures
+        self.refine_background_planes = True  # whether to refine the background planes
+        self.refine_gain_fac = False  # whether to refine the gain factor
+        self.multi_panel = False  # whether the camera is multi panel or single panel
+        self.split_evaluation = False  # whether to use split evaluation run method
+        self.refine_ncells = False  # whether to refine Ncells abc
+        self.hit_break_to_use_curvatures = False  # internal flag if calculating curvatures
+        self.refine_detdist = False  # whether to refine the detdist
+        self.refine_Amatrix = True  # whether to refine the  Amatrix (deprecated)
+        self.refine_Bmatrix = True  # whether to refine the Bmatrx
+        self.has_pre_cached_roi_data = False  # only for use in global refinement mode
+        self.use_curvatures_threshold = 7   # how many positive curvature iterations required before breaking
+        self.curv = None  # curvatures array used internally
+        self.refine_Umatrix = True  # whether to refine the Umatrix
+        self.verbose = True  # whether to print during iterations
+        self.refine_crystal_scale = True  # whether to refine the crystal scale factor
+        self.plot_images = False  # whether to plot images
+        self.refine_rotX = True  # whether to refine the X rotation
+        self.iterations = 0  # iteration counter , used internally
+        self.refine_rotY = True  # whether to refine Y rotations
+        self.refine_rotZ = True  # whether to refine Z rotations
+        self.plot_residuals = False  # whether to plot residuals
+        self.trad_conv = False  # traditional convergenve
+        self.calc_curvatures = False  # whether to calc curvatures until a region of positive curvature is reached
+        self.trad_conv_eps = 0.05  # converges whern |g| <= max(|x|,1) * trad_conv_eps
+        self.plot_statistics = False  # whether to plot stats (global refinement mode)
+        self.drop_conv_max_eps = 1e-5  # not sure, used in the other scitbx lbfgs convergence test
+        self.mn_iter = None  # not sure used in lbfgs
+        self.mx_iter = None  # not sure used in lbfgs
+        self.max_calls = 1000  # how many overall iterations
+        self.plot_stride = 10  # update plots after this many iterations
+        self.ignore_line_search = False  # leave False, lbfgs
+        self.panel_ids = None  # list of panel_ids (same length as roi images, spot_rois, tilt_abc etc)
         self.update_curvatures_every = 3  # every 3 consecutive all positive curvatures we will update them
         self.shot_idx = 0  # place holder because global refinement is across multiple shots
-        self.shot_ids = None
+        self.shot_ids = None  # for global refinement ,
 
         self.request_diag_once = False  # property of the parent class
         lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
+
+        self.poisson_only = True  # use strictly Poissonian statistics
+        self.one_minus_k_over_Lambda = None
+
+    @property
+    def _GRAD(self):
+        if self.poisson_only:
+            return self._poisson_d
+
+    @property
+    def _CURV(self):
+        if self.poisson_only:
+            return self._poisson_d2
+
+    def _poisson_d(self):
+        pass
+
+    def _poisson_d2(self, d, d2):
+        pass
+
+    def _gaussian_d(self, d):
+        pass
+
+    def _gaussian_d2(self, d, d2):
+        pass
 
     @abstractmethod
     def compute_functional_and_gradients(self):
