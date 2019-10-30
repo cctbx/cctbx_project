@@ -158,7 +158,7 @@ if (sys.platform == "win32"):
 elif (sys.platform.startswith("darwin")):
   if (compiler == "default"):
     env_etc.compiler = "darwin_c++"
-  elif (compiler == "unix_conda"):
+  elif (compiler == "darwin_conda"):
     env_etc.compiler = "unix_conda"
     compiler = None
   else:
@@ -782,6 +782,10 @@ int main() {
     libtbx.env.build_options.use_environment_flags = True
     env_etc.shlinkflags = ["-shared"]
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
+    libtbx.env.build_options.env_cxxflags = \
+      libtbx.env.build_options.env_cxxflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
+    libtbx.env.build_options.env_cppflags = \
+      libtbx.env.build_options.env_cppflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
 
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
