@@ -170,6 +170,10 @@ namespace boost_python { namespace {
              make_function(&set_Nabc,dcp()),
              "Get number of mosaic domains along an axis")
 
+      .add_property("update_oversample_during_refinement",
+                     make_getter(&simtbx::nanoBragg::diffBragg::update_oversample_during_refinement,rbv()),
+                     make_setter(&simtbx::nanoBragg::diffBragg::update_oversample_during_refinement,dcp()),
+                     "Allows oversample to change as Ncells abc changes")
     ; // end of diffBragg extention
 
   } // end of diffBragg_init_module
