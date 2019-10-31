@@ -5,7 +5,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 09/20/2019
+Last Changed: 10/31/2019
 Description : IOTA GUI Windows / frames
 '''
 
@@ -163,11 +163,19 @@ class MainWindow(IOTABaseFrame):
                                     path_extras={
                                       "file_types": ['image pickle file',
                                                      'raw image file',
+                                                     'hdf5 image file',
+                                                     'image file',
+                                                     'hdf5 image list',
                                                      'raw image list',
-                                                     'image pickle list'],
-                                      "folder_types":['raw image folder',
-                                                       'image pickle folder'],
-                                      'data_types':['image']
+                                                     'image pickle list',
+                                                     'image list',
+                                                     'mixed input list'],
+                                      "folder_types": ['raw image folder',
+                                                       'image pickle folder',
+                                                       'hdf5 image folder',
+                                                       'mixed input folder',
+                                                       'image folder'],
+                                      'data_types': ['image']
                                     })
 
     # Front options panel
@@ -1063,24 +1071,23 @@ class ProcessingTab(IOTABasePanel):
       return
 
   def draw_plots(self):
-
     self.draw_integration_plots()
     self.draw_b_factors()
     self.draw_measured_indices()
 
   def draw_integration_plots(self):
-
     # Extract data and make arrays:
     try:
       if self.info.stats:
         idx = None
         filenames = None
+        img_idx = 0
         spt = None
         res = None
 
         # Strong reflections
         if self.info.stats['strong']['lst']:
-          idx, filenames, spt = zip(*self.info.stats['strong']['lst'])
+          idx, filenames, img_idx, spt = zip(*self.info.stats['strong']['lst'])
           self.nsref_x = np.append(self.nsref_x,
                                    np.array(idx).astype(np.double))
           self.nsref_y = np.append(self.nsref_y,
@@ -1088,13 +1095,13 @@ class ProcessingTab(IOTABasePanel):
 
         # Resolution
         if self.info.stats['res']['lst']:
-          idx, filenames, res = zip(*self.info.stats['res']['lst'])
+          idx, filenames, img_idx, res = zip(*self.info.stats['res']['lst'])
           self.res_x = np.append(self.res_x, np.array(idx).astype(np.double))
           self.res_y = np.append(self.res_y, np.array(res).astype(np.double))
 
         # Update arrays
         if (idx and filenames and spt and res):
-          self.processed.extend(zip(idx, filenames, spt, res))
+          self.processed.extend(zip(idx, filenames, img_idx, spt, res))
           res_median = np.median(self.res_y)
           nsref_median = np.median(self.nsref_y)
         else:
@@ -1285,10 +1292,11 @@ class ProcessingTab(IOTABasePanel):
         entry = [i for i in self.processed if i[0] == idx]
         if entry:
           search = False
-          img_idx, img, spt, res = entry[0]
+          point_idx, img, img_idx, spt, res = entry[0]
           self.info_txt.SetValue(img)
           self.pick['index'] = idx
           self.pick['image'] = img
+          self.pick['image_index'] = img_idx
           self.nsref_pick.set_data(idx, spt)
           self.res_pick.set_data(idx, res)
         else:
@@ -1305,7 +1313,7 @@ class ProcessingTab(IOTABasePanel):
     idx = int(round(event.mouseevent.xdata))
     entry = [i for i in self.processed if i[0] == idx]
     if entry:
-      img_idx, img, spt, res = entry[0]
+      point_idx, img, img_idx, spt, res = entry[0]
       self.pick['picked'] = True
       if event.mouseevent.inaxes == self.nsref_axes:
         self.pick['axis'] = 'nsref'
@@ -1313,17 +1321,15 @@ class ProcessingTab(IOTABasePanel):
         self.pick['axis'] = 'res'
       self.pick['image'] = img
       self.pick['index'] = idx
-      self.nsref_pick.set_data(img_idx, spt)
-      self.res_pick.set_data(img_idx, res)
-      self.toggle_pick(enabled=True, img=img)
+      self.pick['img_idx'] = img_idx
+      self.nsref_pick.set_data(point_idx, spt)
+      self.res_pick.set_data(point_idx, res)
+      txt = '{} ({})'.format(img, img_idx)
+      self.toggle_pick(enabled=True, txt=txt)
 
     self._update_canvas(canvas=self.int_canvas, draw_idle=False)
 
   def on_bar_pick(self, event):
-    # self.nsref_pick.set_visible(False)
-    # self.res_pick.set_visible(False)
-    # self._update_canvas(canvas=self.int_canvas, draw_idle=False)
-
     self.show_image_group(e=event.mouseevent)
 
   def show_image_group(self, e):
@@ -1335,10 +1341,10 @@ class ProcessingTab(IOTABasePanel):
       self.draw_summary()
     self.toggle_pick(enabled=False)
 
-  def toggle_pick(self, enabled=False, img=''):
+  def toggle_pick(self, enabled=False, txt=''):
     self.nsref_pick.set_visible(enabled)
     self.res_pick.set_visible(enabled)
-    self.info_txt.SetValue(img)
+    self.info_txt.SetValue(txt)
 
     if enabled:
       self.btn_left.Enable()
@@ -2476,12 +2482,10 @@ class ProcWindow(IOTABaseFrame):
       self.info.status = 'finished'
       self.set_tool_states([(self.tb_btn_abort, False),
                             (self.tb_btn_monitor, False, False)])
-
       successfully_processed = len(self.info.categories['integrated'][0])
       end_color = 'blue'
       if successfully_processed > 0:
         from iota.components.iota_analysis import Analyzer
-
         analyzer = Analyzer(info=self.info, params=self.gparams, gui_mode=True)
         self.info = analyzer.run_all(get_results=False)
         end_msg = 'DONE'
@@ -2501,7 +2505,6 @@ class ProcWindow(IOTABaseFrame):
       self.summary_tab.update()
 
       import shutil
-
       try:
         shutil.rmtree(self.info.tmp_base)
         shutil.rmtree(self.info.dials_log_base)
@@ -2533,22 +2536,5 @@ class ProcWindow(IOTABaseFrame):
                   "".format(hours, minutes, seconds),
                   print_tag=True)
     self.display_log()
-
-
-  # def OnClose(self, e):
-  #   """ Make sure that all threads are killed if window is closed by user """
-  #   try:
-  #     self.proc_thread.abort()
-  #     if self.running_cluster:
-  #       self.cluster_thread.abort()
-  #     if self.running_prime:
-  #       self.prime_thread.abort()
-  #   except AttributeError:
-  #     pass
-  #
-  #   self.proc_timer.Stop()
-  #   self.chart_timer.Stop()
-  #
-  #   e.Skip()
 
 # -- end

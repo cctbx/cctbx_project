@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 09/18/2019
+Last Changed: 10/31/2019
 Description : Runs spotfinding, indexing, refinement and integration using
               subclassed DIALS Stills Processor module. Selector class
               applies filters based on unit cell, space group, etc.
@@ -358,7 +358,6 @@ class IOTAImageProcessor(Processor):
     return img_object
 
   def process(self, img_object):
-
     # write out DIALS info (tied to self.write_pickle)
     if self.write_pickle:
       pfx = os.path.splitext(img_object.obj_file)[0]
@@ -384,9 +383,9 @@ class IOTAImageProcessor(Processor):
       if not os.path.isdir(img_object.int_path):
         os.makedirs(img_object.int_path)
 
-    if not img_object.experiments:
-      from dxtbx.model.experiment_list import ExperimentListFactory as exp
-      img_object.experiments = exp.from_filenames([img_object.img_path])[0]
+    # if not img_object.experiments:
+    #   from dxtbx.model.experiment_list import ExperimentListFactory as exp
+    #   img_object.experiments = exp.from_filenames([img_object.img_path])[0]
 
     # Auto-set threshold and gain (not saved for target.phil)
     if self.iparams.cctbx_xfel.auto_threshold:

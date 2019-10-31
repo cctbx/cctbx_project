@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 09/17/2019
+Last Changed: 10/31/2019
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected. PHILFixer can be used to ensure
               backwards compatibility with older param sets.
@@ -360,12 +360,13 @@ def process_input(args, phil_args, paramfile=None, gui=False,
   # Check for -n option and set number of processors override
   # (for parallel map only, for now)
   from multiprocessing import cpu_count
-  max_proc = cpu_count() - 2
-  if args.nproc > 0:
-    if args.nproc >= max_proc:
+  max_proc = int(cpu_count() * 3/4)
+  nproc = args.nproc[0] if isinstance(args.nproc, list) else args.nproc
+  if nproc != 0:
+    if nproc >= max_proc:
       params.mp.n_processors = max_proc
     else:
-      params.mp.n_processors = args.nproc[0]
+      params.mp.n_processors = nproc
   elif params.mp.method == 'multiprocessing':
     if (params.mp.n_processors >= max_proc or
             params.mp.n_processors == 0):

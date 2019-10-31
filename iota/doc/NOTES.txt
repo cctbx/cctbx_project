@@ -1,10 +1,19 @@
-IOTA v1.4.011 - logging and single-image bugfixes
+IOTA v1.4.012 - HDF5 handling
 
-- added processing time-stamp
-- if determine_sg_and_reindex is turned off, there's no longer an exception
-- DIALS log folder now works with multi-folder datasets
-- Debugged iota.single_image; it now works (without logging)
-- Made silent a failure to delete a temp folder
+- IOTA now reads HDF5 format
+    - each HDF5 file is expanded into individual imagesets, which are then
+      converted into separate ExperimentList objects (that's the hack for now)
+    - internal changes on result tracking so that HDF5 datasets can be handled
+      the same as one-image files
+    - NOTE: h5py has to be imported only where needed; importing it in a module
+      that itself is imported elsewhere seems to cause malloc errors.
 
-09.20.2019
+- Bugfixes:
+    - XTerm IOTA now accumulates "unplotted" results, which can then be plotted
+      when the run is recovered in GUI
+
+- Known issues:
+    - Comma-delimited file lists aren't read in properly
+
+10.31.2019
 # -- end

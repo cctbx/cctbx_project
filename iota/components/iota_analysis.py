@@ -5,7 +5,7 @@ from six.moves import range, zip
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 08/01/2019
+Last Changed: 10/31/2019
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -294,25 +294,24 @@ class Analyzer(object):
         return False
     final_objects = []
 
-    if self.gui_mode:
-      self.info.unplotted_stats = {}
-      for key in self.info.stats:
-        self.info.unplotted_stats[key] = dict(lst=[])
+    self.info.unplotted_stats = {}
+    for key in self.info.stats:
+      self.info.unplotted_stats[key] = dict(lst=[])
 
     for obj in finished_objects:
-      if len(self.info.unprocessed) > 0:
-        for item in self.info.unprocessed:
-          if item[0] == obj.img_index:
-            self.info.unprocessed.remove(item)
-            break
-
-      if len(self.info.categories['not_processed'][0]) > 0:
-        self.info.categories['not_processed'][0].remove(obj.img_path)
+      item = [obj.input_index, obj.img_path, obj.img_index]
+      if len(self.info.unprocessed) > 0 and item in self.info.unprocessed:
+        self.info.unprocessed.remove(item)
+      if (
+              len(self.info.categories['not_processed'][0]) > 0 and
+              item in self.info.categories['not_processed'][0]
+      ):
+        self.info.categories['not_processed'][0].remove(item)
 
       if obj.fail:
         key = obj.fail.replace(' ', '_')
         if key in self.info.categories:
-          self.info.categories[key][0].append(obj.img_path)
+          self.info.categories[key][0].append(item)
       else:
         self.info.categories['integrated'][0].append(obj.final['final'])
         self.info.final_objects.append(obj.obj_file)
@@ -335,13 +334,13 @@ class Analyzer(object):
       for obj in final_objects:
         for key in self.info.stats:
           if key in obj.final:
-            stat_tuple = (obj.img_index, obj.img_path, obj.final[key])
+            stat_tuple = (obj.input_index, obj.img_path,
+                          obj.img_index, obj.final[key])
             self.info.stats[key]['lst'].append(stat_tuple)
 
-            if self.gui_mode:
-              if key not in self.info.unplotted_stats:
-                self.info.unplotted_stats[key] = dict(lst=[])
-              self.info.unplotted_stats[key]['lst'].append(stat_tuple)
+            if key not in self.info.unplotted_stats:
+              self.info.unplotted_stats[key] = dict(lst=[])
+            self.info.unplotted_stats[key]['lst'].append(stat_tuple)
 
         # Unit cells and space groups (i.e. cluster iterable)
         self.info.cluster_iterable.append(
@@ -714,6 +713,8 @@ class Analyzer(object):
         summary.append('{: <20}: {}'.format('{} '.format(fail), len(lst)))
       with open(path, 'w') as cf:
         for item in lst:
+          if isinstance(item, tuple) or isinstance(item, list):
+            item = ', '.join([str(i) for i in item])
           cf.write('{}\n'.format(item))
       if cat == 'integrated' and write_files:
         if not hasattr(self, 'prime_data_path'):
@@ -826,7 +827,11 @@ class Analyzer(object):
       self.info.have_results = self.get_results()
 
     if self.info.have_results:
-      self.print_results()
+      try:
+        self.print_results()
+      except Exception as e:
+        error = 'IOTA PRINTING ERROR: ' + e
+        self.info.errors.append(error)
 
       try:  # Using try block because it can fail silently
         self.unit_cell_analysis()
@@ -834,7 +839,16 @@ class Analyzer(object):
         error = 'IOTA CLUSTERING ERROR: ' + e
         self.info.errors.append(error)
 
-      self.print_summary()
-      self.make_prime_input()
+      try:
+        self.print_summary()
+      except Exception as e:
+        error = 'IOTA SUMMARY ERROR: ' + e
+        self.info.errors.append(error)
+
+      try:
+        self.make_prime_input()
+      except Exception as e:
+        error = 'IOTA PRIME INPUT ERROR: ' + e
+        self.info.errors.append(error)
 
     return self.info

@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 07/17/2019
+Last Changed: 10/31/2019
 Description : IOTA GUI controls
 '''
 
@@ -1220,7 +1220,7 @@ class FileListCtrl(CustomListCtrl):
     # (this so far works for images ONLY)
     type_choices = ['[  SELECT INPUT TYPE  ]']
     preferred_selection = 0
-    inputs, input_type = ginp.get_input(path)
+    inputs, input_type, input_count = ginp.get_input(path)
     if os.path.isdir(path):
       type_choices.extend(self._folder_types)
       if input_type in type_choices:
@@ -1229,11 +1229,11 @@ class FileListCtrl(CustomListCtrl):
       type_choices.extend(self._file_types)
       if input_type in type_choices:
         preferred_selection = type_choices.index(input_type)
-    return inputs, type_choices, preferred_selection
+    return inputs, input_count, type_choices, preferred_selection
 
   def add_item(self, path):
     # Generate item
-    inputs, inp_choices, inp_sel = self.set_type_choices(path)
+    inputs, input_count, inp_choices, inp_sel = self.set_type_choices(path)
     type_choice = DataTypeChoice(self.ctr,
                                  choices=inp_choices)
     item = InputListItem(path=path,
@@ -1261,14 +1261,19 @@ class FileListCtrl(CustomListCtrl):
         self.window.btn_run.Enable()
       self.all_data_images[item.path] = inputs
 
-      # Calculate # of images and display w/ item
-      self.ctr.SetStringItem(idx, 0, str(len(inputs)))
+      # Display input type
+      input_type = item.type.type.GetString(inp_sel)
 
-      if "image" in item.type.type.GetString(inp_sel):
+      # Display image count
+      self.ctr.SetStringItem(idx, 0, str(input_count))
+
+      # Place a "view" button
+      if "image" in input_type:
         view_bmp = bitmaps.fetch_custom_icon_bitmap('hklview_2d',
                                                     scale=(16, 16))
         item.buttons.btn_mag.SetBitmapLabel(view_bmp)
     else:
+      n_images = 0
       warn_bmp = bitmaps.fetch_icon_bitmap('actions', 'status_unknown',
                                            size=16)
       item.buttons.btn_info.SetBitmapLabel(warn_bmp)
@@ -1293,8 +1298,8 @@ class FileListCtrl(CustomListCtrl):
     # Attach data object to item
     self.ctr.SetItemData(item.id, item)
 
-    if len(inputs) > 0:
-      self.image_count += len(inputs)
+    if input_count > 0:
+      self.image_count += input_count
       if self.image_count > 0:
         self.update_total_image_count()
 
@@ -1338,7 +1343,7 @@ class FileListCtrl(CustomListCtrl):
         wx.MessageBox('Unknown file format', 'Warning',
                       wx.OK | wx.ICON_EXCLAMATION)
     elif os.path.isdir(path):
-      file_list, input_type = ginp.get_input(path)
+      file_list, input_type, input_count = ginp.get_input(path)
       if 'image' in input_type:
         self.view_images(file_list, img_type=type)
       else:
