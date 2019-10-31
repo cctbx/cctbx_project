@@ -51,6 +51,16 @@ class Ncells_manager: public derivative_manager{
 };
 
 
+class Fcell_manager: public derivative_manager{
+  public:
+    Fcell_manager();
+    virtual ~Fcell_manager(){}
+    void increment(
+        double Hrad, double Fcell, double Flatt, double fudge,
+        double source_I, double capture_fraction, double omega_pixel);
+};
+
+
 class ucell_manager: public derivative_manager{
   public:
     ucell_manager();
@@ -152,6 +162,7 @@ class diffBragg: public nanoBragg{
   std::vector<boost::shared_ptr<Ncells_manager> > Ncells_managers;
   std::vector<boost::shared_ptr<origin_manager> > origin_managers;
 
+  boost::shared_ptr<Fcell_manager> fcell_man;
   double* floatimage_roi;
   af::flex_double raw_pixels_roi;
 
