@@ -77,6 +77,18 @@ void Ncells_manager::increment(
 
 //END Ncells_abc manager
 
+// Begin Fcell manager
+Fcell_manager::Fcell_manager(){}
+
+void Fcell_manager::increment(
+    double Hrad, double Fcell, double Flatt, double fudge,
+    double source_I, double capture_fraction, double omega_pixel){
+    double c = Flatt*Flatt*source_I*capture_fraction*omega_pixel;
+    dI += c*2*Fcell;
+    dI2 += c*2;
+};
+
+
 //BEGIN unit cell manager
 ucell_manager::ucell_manager(){}
 
@@ -238,6 +250,10 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
 
     boost::shared_ptr<origin_manager> orig0 = boost::shared_ptr<origin_manager>(new origin_manager());
 
+    //boost::shared_ptr<Fcell_manager> fcell_man = boost::shared_ptr<Fcell_manager>(new Fcell_manager());
+    fcell_man = boost::shared_ptr<Fcell_manager>(new Fcell_manager());
+    fcell_man->refine_me = false;
+
     rotX->refine_me = false;
     rotY->refine_me = false;
     rotZ->refine_me = false;
@@ -267,6 +283,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     Ncells_managers.push_back(nc);
 
     origin_managers.push_back(orig0);
+
 
     // set ucell gradients, Bmatrix is upper triangular in diffBragg?
     // note setting these derivatives is only useful for parameter reduction code where one computes chain rule
@@ -430,6 +447,8 @@ void diffBragg::initialize_managers()
     if (origin_managers[0]->refine_me)
         origin_managers[0]->initialize(sdim, fdim);
 
+    if (fcell_man->refine_me)
+        fcell_man->initialize(sdim, fdim);
 }
 
 void diffBragg::vectorize_umats()
@@ -476,6 +495,10 @@ void diffBragg::refine(int refine_id){
         origin_managers[0]->refine_me=true;
         origin_managers[0]->initialize(sdim, fdim);
     }
+    else if(refine_id==11){
+        fcell_man->refine_me=true;
+        fcell_man->initialize(sdim, fdim);
+    }
 }
 
 void diffBragg::set_ucell_derivative_matrix(int refine_id, af::shared<double> const& value){
@@ -519,6 +542,7 @@ void diffBragg::set_value( int refine_id, double value ){
         xtal_size_x = -1;
         xtal_size_y = -1;
         xtal_size_z = -1;
+        //TODO make me optional!
         update_oversample();
         NABC[0] = value;
         NABC[4] = value;
@@ -550,8 +574,10 @@ af::flex_double diffBragg::get_derivative_pixels(int refine_id){
         }
     else if (refine_id==9)
         return Ncells_managers[0]->raw_pixels;
-    else
+    else if (refine_id==10)
         return origin_managers[0]->raw_pixels;
+    else
+        return fcell_man->raw_pixels;
 }
 
 
@@ -569,8 +595,10 @@ af::flex_double diffBragg::get_second_derivative_pixels(int refine_id){
         }
     else if (refine_id == 9)
         return Ncells_managers[0]->raw_pixels2;
-    else
+    else if (refine_id==10)
         return origin_managers[0]->raw_pixels2;
+    else
+        return fcell_man->raw_pixels2;
 }
 
 void diffBragg::zero_raw_pixel_rois(){
@@ -722,6 +750,11 @@ void diffBragg::add_diffBragg_spots()
             if (origin_managers[0]->refine_me){
                 origin_managers[0]->dI=0;
                 origin_managers[0]->dI2=0;
+            }
+
+            if (fcell_man->refine_me){
+                fcell_man->dI = 0;
+                fcell_man->dI2 = 0;
             }
 
             /* loop over sub-pixels */
@@ -1060,70 +1093,18 @@ void diffBragg::add_diffBragg_spots()
 
                                 /* Checkpoint for Origin manager */
                                 if (origin_managers[0]->refine_me){
-                                    //if (spixel==51 && fpixel==425){
-
-                                    //    SCITBX_EXAMINE(diffracted[1]);
-                                    //    SCITBX_EXAMINE(diffracted[2]);
-                                    //    SCITBX_EXAMINE(diffracted[3]);
-                                    //    SCITBX_EXAMINE(incident[1]);
-                                    //    SCITBX_EXAMINE(incident[2]);
-                                    //    SCITBX_EXAMINE(incident[3]);
-
-                                    //    SCITBX_EXAMINE(k_diffracted[0]);
-                                    //    SCITBX_EXAMINE(k_diffracted[1]);
-                                    //    SCITBX_EXAMINE(k_diffracted[2]);
-                                    //    SCITBX_EXAMINE(lambda);
-                                    //    SCITBX_EXAMINE(F_latt);
-                                    //    SCITBX_EXAMINE(airpath);
-                                    //    SCITBX_EXAMINE(pixel_pos[1]);
-                                    //    SCITBX_EXAMINE(pixel_pos[2]);
-                                    //    SCITBX_EXAMINE(pixel_pos[3]);
-                                    //    SCITBX_EXAMINE(q_vec[0]);
-                                    //    SCITBX_EXAMINE(q_vec[1]);
-                                    //    SCITBX_EXAMINE(q_vec[2]);
-                                    //    vec3 dk = vec3(0,0,1);
-                                    //    vec3 dq = 1/airpath * (dk - k_diffracted*(1/airpath/airpath)*(dk*k_diffracted));
-                                    //    dq  = dq / (lambda*1e10);
-                                    //    SCITBX_EXAMINE(dq[0]);
-                                    //    SCITBX_EXAMINE(dq[1]);
-                                    //    SCITBX_EXAMINE(dq[2]);
-                                    //    SCITBX_EXAMINE(UBO[0]);
-                                    //    SCITBX_EXAMINE(UBO[1]);
-                                    //    SCITBX_EXAMINE(UBO[2]);
-                                    //    SCITBX_EXAMINE(UBO[3]);
-                                    //    SCITBX_EXAMINE(UBO[4]);
-                                    //    SCITBX_EXAMINE(UBO[5]);
-                                    //    SCITBX_EXAMINE(UBO[6]);
-                                    //    SCITBX_EXAMINE(UBO[7]);
-                                    //    SCITBX_EXAMINE(UBO[8]);
-
-                                    //    vec3 dV = NABC*(UBO*dq);
-                                    //    SCITBX_EXAMINE(dV[0]);
-                                    //    SCITBX_EXAMINE(dV[1]);
-                                    //    SCITBX_EXAMINE(dV[2]);
-                                    //    SCITBX_EXAMINE(H0_vec[0]);
-                                    //    SCITBX_EXAMINE(H0_vec[1]);
-                                    //    SCITBX_EXAMINE(H0_vec[2]);
-                                    //    //SCITBX_EXAMINE(NABC[0]);
-                                    //    double V_dot_dV = V*dV;
-                                    //    double dH = 2*V_dot_dV;
-                                    //    double dHrad = 2*V_dot_dV;
-                                    //    double a = 1 / 0.63 * fudge;
-                                    //    double dFlatt = -1*a*F_latt*dHrad;
-                                    //    double hh = V*V;
-                                    //    SCITBX_EXAMINE(dH);
-                                    //    SCITBX_EXAMINE(dFlatt);
-                                    //    SCITBX_EXAMINE(hh);
-                                    //    SCITBX_EXAMINE(hrad_sqr);
-                                    //    SCITBX_EXAMINE(V[0]);
-                                    //    SCITBX_EXAMINE(V[1]);
-                                    //    SCITBX_EXAMINE(V[2]);
-                                    //}
                                     origin_managers[0]->increment(
                                         V,  NABC, UBO, k_diffracted, o_vec, airpath, lambda*1e10,
                                         hrad_sqr, F_cell, F_latt, fudge,
                                         source_I[source], capture_fraction, omega_pixel, pixel_size);
                                 } /* end origin manager deriv */
+
+                                /* checkpoint for Fcell manager */
+                                if (fcell_man->refine_me){
+                                    fcell_man->increment(
+                                            hrad_sqr, F_cell, F_latt, fudge,
+                                            source_I[source], capture_fraction, omega_pixel);
+                                } /* end of fcell man deriv */
 
                             }
                             /* end of mosaic loop */
@@ -1183,6 +1164,13 @@ void diffBragg::add_diffBragg_spots()
                 Ncells_managers[0]->increment_image(roi_i, value, value2);
             }/* end Ncells deriv image increment */
 
+            /* update Fcell derivative image */
+            if(fcell_man->refine_me){
+                double value = r_e_sqr*fluence*spot_scale*polar*fcell_man->dI/steps;
+                double value2 = r_e_sqr*fluence*spot_scale*polar*fcell_man->dI2/steps;
+                Ncells_managers[0]->increment_image(roi_i, value, value2);
+            }/* end Fcell deriv image increment */
+
             /* update origin derivative image */
             if (origin_managers[0]->refine_me){
                 double value = r_e_sqr*fluence*spot_scale*polar*  origin_managers[0]->dI  /steps;
@@ -1241,6 +1229,7 @@ void diffBragg::add_diffBragg_spots()
                         ucell_managers[3]->refine_me, ucell_managers[4]->refine_me, ucell_managers[5]->refine_me);
                     printf("Ncell managers refine status: %d, value=%f\n", Ncells_managers[0]->refine_me,
                             Ncells_managers[0]->value);
+                    printf("Fcell manager refine status: %d\n", fcell_man->refine_me);
                     printf("Origin managers refine status: %d, value=%f\n", origin_managers[0]->refine_me,
                             origin_managers[0]->value);
                     printf("Bmatrix_real:\n%11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n",
