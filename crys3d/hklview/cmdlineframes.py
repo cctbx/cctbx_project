@@ -240,7 +240,7 @@ from libtbx import group_args
 import libtbx
 from cctbx import miller
 import traceback
-import sys, zmq, threading,  time, math
+import sys, zmq, threading,  time, math, zlib
 
 from six.moves import input
 
@@ -314,10 +314,11 @@ class HKLViewFrame() :
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen )
       self.msgqueuethrd.daemon = True
       self.msgqueuethrd.start()
-      kwds['guisocket'] = self.guisocket
+      kwds['send_info_to_gui'] = self.SendInfoToGUI
     kwds['websockport'] = self.find_free_port()
     self.viewer = view_3d.hklview_3d( **kwds )
     self.ResetPhilandViewer()
+    self.idx_data = None
     self.NewFileLoaded = False
 
 
@@ -427,6 +428,7 @@ class HKLViewFrame() :
       #diff = None
       self.params = self.currentphil.extract()
       phl = self.params.NGL_HKLviewer
+
       if len(diff_phil.all_definitions()) < 1 and not phl.mouse_moved:
         self.mprint( "Nothing's changed")
         return False
@@ -458,6 +460,10 @@ class HKLViewFrame() :
 
       if view_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
+
+      if view_3d.has_phil_path(diff_phil, "tabulate_miller_array_id"):
+        self.tabulate_miller_array(phl.tabulate_miller_array_id)
+        return True
 
       if view_3d.has_phil_path(diff_phil, "miller_array_operations"):
         self.make_new_miller_array()
@@ -728,8 +734,6 @@ class HKLViewFrame() :
       self.SendInfoToGUI(mydict)
 
 
-
-
   def load_reflections_file(self, file_name, set_array=True, data_only=False):
     file_name = to_str(file_name)
     if (file_name != ""):
@@ -813,8 +817,18 @@ class HKLViewFrame() :
 
 
   def LoadReflectionsFile(self, filename):
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.params.NGL_HKLviewer.filename = filename
+    self.update_settings()
+
+
+  def tabulate_miller_array(self, id):
+    self.idx_data = (list(self.valid_arrays[id].indices()), list(self.valid_arrays[id].data()))
+    mydict = { "tabulate_miller_array": self.idx_data }
+    self.SendInfoToGUI(mydict, binary=True)
+
+
+  def TabulateMillerArray(self, id):
+    self.params.NGL_HKLviewer.tabulate_miller_array_id = id
     self.update_settings()
 
 
@@ -1111,9 +1125,16 @@ class HKLViewFrame() :
     return self.viewer.binstrs
 
 
-  def SendInfoToGUI(self, infodict):
+  def SendInfoToGUI(self, infodict, binary=True):
     if self.guiSocketPort:
-      self.guisocket.send( str(infodict).encode("utf-8") )
+      if not binary:
+        self.guisocket.send( str(infodict).encode("utf-8") )
+      else:
+        bindict = zlib.compress( bytes(infodict) )
+        #bindict = zlib.compress( str(infodict).encode("utf-8") )
+        #for key,val in infodict.iteritems():
+        #  bindict[str(key).encode("utf-8")] = zlib.compress( str(val) )
+        self.guisocket.send( bindict )
 
 
 masterphilstr = """
@@ -1171,6 +1192,8 @@ NGL_HKLviewer {
   }
   action = *'is_running' 'is_terminating'
     .type = choice
+  tabulate_miller_array_id = None
+    .type = int
 }
 
 """ %(display.philstr, view_3d.ngl_philstr)

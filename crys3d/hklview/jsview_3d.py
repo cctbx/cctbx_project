@@ -259,9 +259,9 @@ class hklview_3d:
     self.websockport = 7894
     if 'websockport' in kwds:
       self.websockport = kwds['websockport']
-    self.guisocket = None
-    if 'guisocket' in kwds:
-      self.guisocket = kwds['guisocket']
+    self.send_info_to_gui = None
+    if 'send_info_to_gui' in kwds:
+      self.send_info_to_gui = kwds['send_info_to_gui']
     self.mprint('Output will be written to \"%s\"\n' \
       'including reference to NGL JavaScript \"%s\"' %(self.hklfname, self.jscriptfname))
     self.hklhtml = r"""
@@ -318,8 +318,8 @@ class hklview_3d:
 
 
   def SendInfoToGUI(self, mydict):
-    if self.guisocket:
-      self.guisocket.send( str(mydict).encode("utf-8") )
+    if self.send_info_to_gui:
+      self.send_info_to_gui( str(mydict).encode("utf-8") )
 
 
   def update_settings(self, diff_phil, curphilparam) :
@@ -1298,6 +1298,7 @@ function MakeHKL_Axis(mshape)
 
     self.NGLscriptstr = """
 
+
 function createElement(name, properties, style)
 {
 // utility function used in for loop over colourgradvalarray
@@ -1360,10 +1361,14 @@ function WebsockSendMsg(msg)
 {
   try
   {
-    mysocket.send(msg);
-    mysocket.send( 'Ready ' + pagename + '\\n' );
+    // Avoid "WebSocket is already in CLOSING or CLOSED state" errors when using QWebEngineView
+    // See https://stackoverflow.com/questions/48472977/how-to-catch-and-deal-with-websocket-is-already-in-closing-or-closed-state-in
+    if (mysocket.readyState === mysocket.OPEN)
+    {
+      mysocket.send(msg);
+      mysocket.send( 'Ready ' + pagename + '\\n' );
+    }
   }
-
   catch(err)
   {
     alert('JavaScriptError: ' + err.stack );
@@ -1377,10 +1382,12 @@ mysocket.onopen = function(e)
   WebsockSendMsg('%s now connected via websocket to ' + pagename + '\\n');
 };
 
+
 mysocket.onclose = function(e)
 {
   WebsockSendMsg('%s now disconnecting from websocket ' + pagename + '\\n');
 };
+
 
 // Log errors to debugger of your browser
 mysocket.onerror = function(error)
@@ -2075,14 +2082,6 @@ mysocket.onmessage = function (e)
     self.sceneisdirty = False
 
 
-  def OnConnectWebsocketClient(self, client, server):
-    #if not self.websockclient:
-    self.websockclient = client
-    self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
-    #else:
-    #  self.mprint( "Unexpected browser connection was rejected" )
-
-
   def OnWebsocketClientMessage(self, client, server, message):
     if self.viewerparams.scene_id is None or self.miller_array is None:
       return
@@ -2235,10 +2234,17 @@ mysocket.onmessage = function (e)
       self.WebBrowserMsgQueue()
 
 
+  def OnConnectWebsocketClient(self, client, server):
+    self.websockclient = client
+    self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
+
+
+  def OnDisconnectWebsocketClient(self, client, server):
+    self.websockclient = client
+    self.mprint( "Browser disconnected:" + str( self.websockclient ), verbose=1 )
+
+
   def SendMsgToBrowser(self, msgtype, msg=""):
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    #print "self.server.clients: ", self.server.clients
-    #print "self.websockclient: ",
     message = u"" + msgtype + self.msgdelim + str(msg)
     if self.websockclient:
       nwait = 0.0
@@ -2258,6 +2264,7 @@ mysocket.onmessage = function (e)
     if not self.server:
       raise Sorry("Could not connect to web browser")
     self.server.set_fn_new_client(self.OnConnectWebsocketClient)
+    self.server.set_fn_client_left(self.OnDisconnectWebsocketClient)
     self.server.set_fn_message_received(self.OnWebsocketClientMessage)
     self.wst = threading.Thread(target=self.server.run_forever)
     self.wst.daemon = True
@@ -2268,6 +2275,7 @@ mysocket.onmessage = function (e)
 
 
   def StopThreads(self):
+    self.websockclient['handler'].send_text(u"", opcode=0x8)
     self.server.shutdown()
     self.msgqueuethrd.join()
     self.wst.join()
@@ -2304,13 +2312,11 @@ mysocket.onmessage = function (e)
 
 
   def RedrawNGL(self):
-    #self.SendMsgToBrowser("Redraw")
     self.msgqueue.append( ("Redraw", "") )
 
 
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
     self.mprint("Rendering JavaScript...", verbose=1)
-    #self.SendMsgToBrowser("Reload")
     self.msgqueue.append( ("Reload", "") )
 
 

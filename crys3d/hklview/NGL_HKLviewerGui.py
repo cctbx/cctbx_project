@@ -20,7 +20,7 @@ from PySide2.QtWidgets import ( QAction, QApplication, QCheckBox, QComboBox, QDi
 
 from PySide2.QtGui import QColor, QFont, QCursor
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-import sys, zmq, subprocess, time, traceback, shutil, os.path
+import sys, zmq, subprocess, time, traceback, shutil, os.path, zlib
 
 
 
@@ -73,6 +73,19 @@ class SettingsForm(QDialog):
     mainLayout.addWidget(myGroupBox,     0, 0)
     self.setLayout(mainLayout)
     self.setFixedSize( self.sizeHint() )
+
+
+class MillerArrayTableForm(QDialog):
+  def __init__(self, parent=None):
+    super(MillerArrayTableForm, self).__init__(parent)
+    self.setWindowTitle("MillerArrayTableForm")
+    myGroupBox = QGroupBox("Stuff")
+    layout = QGridLayout()
+    layout.addWidget(parent.millerarraytable)
+    myGroupBox.setLayout(layout)
+    mainLayout = QGridLayout()
+    mainLayout.addWidget(myGroupBox,     0, 0)
+    self.setLayout(mainLayout)
 
 
 class MyTableWidget(QTableWidget):
@@ -214,6 +227,14 @@ class NGL_HKLViewer(QWidget):
     self.millertable.cellDoubleClicked.connect(self.onMillerTableCellPressed)
     #self.millertable.installEventFilter(self)
 
+    labels = ["H", "K", "L", "data", "sigma" ]
+    self.millerarraytable = MyTableWidget(0, len(labels))
+    self.millerarraytable.setEditTriggers(QTableWidget.NoEditTriggers)
+    self.millerarraytable.setHorizontalHeaderLabels(labels)
+    self.millerarraytable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
+
+    self.millerarraytableform = MillerArrayTableForm(self)
+
     self.createExpansionBox()
     self.createFileInfoBox()
     self.CreateSliceTabs()
@@ -230,16 +251,20 @@ class NGL_HKLViewer(QWidget):
     if self.UseOSbrowser==False:
       self.BrowserBox = QWebEngineView()
       self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
+
       #self.BrowserBox.setUrl("https://cctbx.github.io/")
       #self.BrowserBox.setUrl("https://webglreport.com/")
-      self.webprofile = QWebEngineProfile( )
+
+      #self.storagename = "HKLviewer." + next(tempfile._get_candidate_names())
+      #self.webprofile = QWebEngineProfile(self.storagename, self.BrowserBox )
       #self.webprofile.setHttpCacheType( QWebEngineProfile.DiskHttpCache )
+      # omitting name for QWebEngineProfile() means it is private/off-the-record with no cache files
+      self.webprofile = QWebEngineProfile(parent=self.BrowserBox)
       self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
       self.webpage.setUrl("https://cctbx.github.io/")
       self.cpath = self.webprofile.cachePath()
-
       self.BrowserBox.setPage(self.webpage)
-      #self.BrowserBox.loadFinished.connect(self.onLoadFinished)
+
       self.mainLayout.addWidget(self.BrowserBox,          0, 1, 5, 3)
       self.mainLayout.setColumnStretch(2, 1)
 
@@ -275,6 +300,7 @@ class NGL_HKLViewer(QWidget):
     self.updatingNbins = False
     self.binstableitemchanges = False
     self.canexit = False
+    self.tabulate_miller_array = None
     self.binTableCheckState = None
     self.millertablemenu = QMenu(self)
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
@@ -332,7 +358,8 @@ class NGL_HKLViewer(QWidget):
 
     if self.zmq_context:
       try:
-        msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
+        binmsg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
+        msg = zlib.decompress(binmsg)
         nan = float("nan") # workaround for "evaluating" any NaN values in the messages received
         msgstr = msg.decode()
         self.infodict = eval(msgstr)
@@ -394,6 +421,20 @@ class NGL_HKLViewer(QWidget):
 
           if self.infodict.get("merge_data"):
             self.mergedata = self.infodict["merge_data"]
+
+          if self.infodict.get("tabulate_miller_array"):
+            self.tabulate_miller_array = self.infodict["tabulate_miller_array"]
+            indices = self.tabulate_miller_array[0]
+            data = self.tabulate_miller_array[1]
+            self.millerarraytable.clearContents()
+            self.millerarraytable.setRowCount(len(indices))
+            for row,(h,k,l) in enumerate(indices):
+              self.millerarraytable.setItem(row, 0, QTableWidgetItem(str(h)))
+              self.millerarraytable.setItem(row, 1, QTableWidgetItem(str(k)))
+              self.millerarraytable.setItem(row, 2, QTableWidgetItem(str(l)))
+              self.millerarraytable.setItem(row, 3, QTableWidgetItem(str(data[row])))
+              self.millerarraytable.setItem(row, 4, QTableWidgetItem(str("")))
+            self.millerarraytableform.show()
 
           currentinfostr = ""
           if self.infodict.get("info"):
@@ -698,7 +739,6 @@ class NGL_HKLViewer(QWidget):
     self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
     self.binstableitemchanges = False
     self.binstable_isready = True
-
 
 
   """
@@ -1092,6 +1132,9 @@ class NGL_HKLViewer(QWidget):
     myqa = QAction("Make new data as a function of this data and another data set...", self, triggered=self.testaction)
     myqa.setData( ("newdata_2", row ))
     self.millertablemenu.addAction(myqa)
+    myqa = QAction("Show a table of this data set...", self, triggered=self.testaction)
+    myqa.setData( ("tabulate_data", row ))
+    self.millertablemenu.addAction(myqa)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.millertablemenu.exec_(QCursor.pos())
 
@@ -1113,13 +1156,18 @@ class NGL_HKLViewer(QWidget):
           self.MillerComboBox.setDisabled(True)
           self.MillerLabel3.setText("Example: 'newdata = data / sigmas; newsigmas= - 42*sigmas' ")
           self.operate_arrayidx2 = None
-        else:
+          self.makenewdataform.show()
+        if strval=="newdata_2":
           self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigma1' variable")
           self.MillerLabel1.setEnabled(True)
           self.MillerLabel2.setEnabled(True)
           self.MillerComboBox.setEnabled(True)
           self.MillerLabel3.setText("Example: 'newdata = data1 + data2; newsigmas= sigmas1 - data2 / sigmas1' ")
-        self.makenewdataform.show()
+          self.makenewdataform.show()
+        if strval=="tabulate_data":
+          print("wibble")
+          self.NGL_HKL_command("NGL_HKLviewer.tabulate_miller_array_id = %d" %idx)
+
 
 
   def DisplayData(self, idx):
@@ -1340,11 +1388,8 @@ class NGL_HKLViewer(QWidget):
 
 if __name__ == '__main__':
   try:
-    #time.sleep(10)
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer()
-    #w1 = QWidget()
-    #w1.show()
 
     timer = QTimer()
     timer.setInterval(10)
@@ -1353,17 +1398,26 @@ if __name__ == '__main__':
 
     ret = app.exec_()
     #app.quit()
-    #timer.stop()
-    #del timer
-    #w1 = None
+
+    """    # no need to delete cache for private/off-the-record profile
     guiobj.webpage.deleteLater()
     guiobj.webpage = None
+
     guiobj.BrowserBox.deleteLater()
     guiobj.BrowserBox.destroy()
     guiobj.deleteLater()
     guiobj.destroy()
-    #guiobj = None
-    #app = None
+
+    del QWebEngineView
+    del QWebEngineProfile
+    del QWebEnginePage
+    #del sys.modules["QWebEngineView"]
+    #del sys.modules["QWebEngineProfile"]
+    #del sys.modules["QWebEnginePage"]
+
+    del guiobj
+    del app
+    gc.collect()
 
     present = True
     while present:
@@ -1378,6 +1432,7 @@ if __name__ == '__main__':
         time.sleep(0.2)
         present = True
 
+    """
     sys.exit(ret)
   except Exception as e:
     print( str(e)  +  traceback.format_exc(limit=10) )
