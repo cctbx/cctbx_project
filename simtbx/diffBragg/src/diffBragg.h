@@ -166,6 +166,8 @@ class diffBragg: public nanoBragg{
   double* floatimage_roi;
   af::flex_double raw_pixels_roi;
 
+  bool update_oversample_during_refinement;
+
 }; // end of diffBragg
 
 } // end of namespace nanoBragg
