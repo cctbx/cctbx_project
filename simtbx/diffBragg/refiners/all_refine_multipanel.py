@@ -33,7 +33,6 @@ class RefineAllMultiPanel(RefineRot):
         self._init_gain = init_gain
         self.best_image = np.zeros_like(self.img)
         self.num_positive_curvatures = 0
-        self.log2pi = np.log(np.pi*2)
         self._panel_id = None
 
     def _setup(self):
@@ -257,23 +256,18 @@ class RefineAllMultiPanel(RefineRot):
                 else:
                     self._evaluate_log_averageI_plus_sigma_readout()
                 self._update_best_image(i_spot)
-                Imeas = self.roi_img[i_spot]
-
-
+                self.Imeas = self.roi_img[i_spot]
 
                 # helper terms for doing derivatives
                 one_over_Lambda = 1. / self.model_Lambda
-                self.one_minus_k_over_Lambda = (1. - Imeas * one_over_Lambda)
-                self.u = Imeas - self.model_Lambda
+                self.one_minus_k_over_Lambda = (1. - self.Imeas * one_over_Lambda)
+                self.k_over_squared_Lambda = self.Imeas * one_over_Lambda * one_over_Lambda
+
+                self.u = self.Imeas - self.model_Lambda
                 self.one_over_v = 1./(self.model_Lambda + self.sigma_r**2)
                 self.one_minus_2u_minus_u_squared_over_v = 1-2*self.u-self.u*self.u*self.one_over_v
-                #if self.calc_curvatures:
-                self.k_over_squared_Lambda = Imeas * one_over_Lambda * one_over_Lambda
 
-                if self.poisson_only:
-                    f += (self.model_Lambda - Imeas * self.log_Lambda).sum()
-                else:
-                    f += .5*(self.log2pi + self.log_Lambda_plus_sigma_readout + self.u*self.u*self.one_over_v).sum()
+                f += self._target_accumulate()
 
                 # compute gradients for background plane constants a,b,c
                 xr = self.xrel[i_spot]  # fast scan pixels
@@ -282,7 +276,7 @@ class RefineAllMultiPanel(RefineRot):
                 if self.plot_images and self.iterations % self.plot_stride == 0:
                     if self.plot_residuals:
                         self.ax.clear()
-                        residual = self.model_Lambda - Imeas
+                        residual = self.model_Lambda - self.Imeas
                         if i_spot == 0:
                             x = residual.max()
                         else:
@@ -297,15 +291,15 @@ class RefineAllMultiPanel(RefineRot):
                         self.ax.set_zlim(-x, x)
                         self.ax.set_title("residual (photons)")
                     else:
-                        m = Imeas[Imeas > 1e-9].mean()
-                        s = Imeas[Imeas > 1e-9].std()
+                        m = self.Imeas[self.Imeas > 1e-9].mean()
+                        s = self.Imeas[self.Imeas > 1e-9].std()
                         vmax = m+5*s
                         vmin = m-s
                         m2 = self.model_Lambda.mean()
                         s2 = self.model_Lambda.std()
                         self.ax1.images[0].set_data(self.model_Lambda)
                         self.ax1.images[0].set_clim(vmin, vmax)
-                        self.ax2.images[0].set_data(Imeas)
+                        self.ax2.images[0].set_data(self.Imeas)
                         self.ax2.images[0].set_clim(vmin, vmax)
                     plt.suptitle("Iterations = %d, image %d / %d"
                                  % (self.iterations, i_spot+1, self.n_spots))
@@ -378,6 +372,10 @@ class RefineAllMultiPanel(RefineRot):
 
         return self._f, self._g
 
+    def _poisson_target(self):
+        fterm = (self.model_Lambda - self.Imeas * self.log_Lambda).sum()
+        return fterm
+
     def _poisson_d(self, d):
         gterm = (d*self.one_minus_k_over_Lambda).sum()
         return gterm
@@ -385,6 +383,10 @@ class RefineAllMultiPanel(RefineRot):
     def _poisson_d2(self, d, d2):
         cterm = d2*self.one_minus_k_over_Lambda + d*d*self.k_over_squared_Lambda
         return cterm.sum()
+
+    def _gaussian_target(self):
+        fterm = .5 * (self.log2pi + self.log_Lambda_plus_sigma_readout + self.u * self.u * self.one_over_v).sum()
+        return fterm
 
     def _gaussian_d(self, d):
         gterm = .5*(d*self.one_over_v*self.one_minus_2u_minus_u_squared_over_v).sum()
@@ -399,7 +401,8 @@ class RefineAllMultiPanel(RefineRot):
 
     def _evaluate_log_averageI_plus_sigma_readout(self):
         L = self.model_Lambda + self.sigma_r**2
-        if np.any(L <= 0).ravel():
+        is_neg = (L <= 0).ravel()
+        if np.any(is_neg):
             print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
         #    raise ValueError("model of Bragg spots cannot have negative intensities...")
         self.log_Lambda_plus_sigma_readout = np.log(L)
