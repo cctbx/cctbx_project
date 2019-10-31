@@ -35,6 +35,10 @@ class RefineAllMultiPanel(RefineRot):
         self.num_positive_curvatures = 0
         self._panel_id = None
 
+        self.ave_ucell = [78.95, 38.12]
+        self.sig_ucell = [0.025, 0.025]
+        self.sig_rot = 0.01
+
     def _setup(self):
         # total number of refinement parameters
         n_bg = 0  #3 * self.n_spots
@@ -356,6 +360,30 @@ class RefineAllMultiPanel(RefineRot):
                     self.num_positive_curvatures += 1
                 else:
                     self.num_positive_curvatures = 0
+
+            # TODO add in the priors:
+            if self.use_ucell_priors and self.refine_Bmatrix:
+                for jj in range(self.n_ucell_param):
+                    xpos = self.ucell_xstart + jj
+                    ucell_p = self.x[xpos]
+                    sig_square = self.sig_ucell[jj]**2
+                    f += (ucell_p - self.ave_ucell[jj])**2 / 2 / sig_square
+                    g[xpos] += (ucell_p-self.ave_ucell[jj])/sig_square
+                    if self.calc_curvatures:
+                        self.curv[xpos] += 1/sig_square
+
+            if self.use_rot_priors and self.refine_Umatrix:
+                x_positions = [self.rotX_xpos,
+                               self.rotY_xpos,
+                               self.rotZ_xpos]
+                for xpos in x_positions:
+                    rot_p = self.x[xpos]
+                    sig_square = self.sig_rot**2
+                    f += rot_p**2 / 2 / sig_square
+                    g[xpos] += rot_p / sig_square
+                    if self.calc_curvatures:
+                        self.curv[xpos] += 1/sig_square
+
             self._f = f
             self._g = g
             self.D.raw_pixels *= 0
