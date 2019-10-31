@@ -111,7 +111,7 @@ class FatRefiner(PixelRefinement):
         self.n_ucell_param = len(self.UCELL_MAN[self._i_shot].variables)
         self.n_ncells_param = 1
         self.n_spot_scale_param = 1
-        self.n_per_shot_params = self.n_rot_param + self.n_ucell_param + self.n_ncells_param + self.n_spot_scale_param
+        self.n_per_shot_params = self.n_rot_param + self.n_ncells_param + self.n_spot_scale_param
 
         assert self.n_per_shot_params * self.n_shots == self.n_local_params
 
@@ -125,16 +125,20 @@ class FatRefiner(PixelRefinement):
         self.pid_from_idx = {}
         self.idx_from_pid = {}
 
+        self.ave_ucell = [78.95, 38.12]
+        self.sig_ucell = [0.025, 0.025]
+        self.sig_rot = 0.05
+
         # where the global parameters being , initially just gain and detector distance
         self.global_param_idx_start = global_param_idx_start
 
-        self.a = self.b = self.c = None
+        self.a = self.b = self.c = None  # tilt plan place holder
 
     def setup_plots(self):
         if rank == 0:
             if self.plot_statistics:
                 print ("plot_stats")
-                assert not self.plot_images # only one plot at a time for now
+                assert not self.plot_images  # only one plot at a time for now
                 self.fig, self.ax = plt.subplots(nrows=2, ncols=2)
                 self.ax1 = self.ax[0][0]
                 self.ax2 = self.ax[0][1]
@@ -156,7 +160,7 @@ class FatRefiner(PixelRefinement):
                     self.ax2.imshow([[0, 1, 1], [0, 1, 2]])
 
     def __call__(self, *args, **kwargs):
-        _,_=self.compute_functional_and_gradients()
+        _, _ = self.compute_functional_and_gradients()
         return self.x, self._f, self._g, self.d
 
     @property
@@ -232,25 +236,30 @@ class FatRefiner(PixelRefinement):
             self.x[self.rotY_xpos[i_shot]] = 0
             self.x[self.rotZ_xpos[i_shot]] = 0
 
-            self.ucell_xstart[i_shot] = self.rotZ_xpos[i_shot] + 1
-            # populate the x-array with initial values
-            for i_uc in range(self.n_ucell_param):
-                self.x[self.ucell_xstart[i_shot] + i_uc] = self.UCELL_MAN[i_shot].variables[i_uc]
+            #self.ucell_xstart[i_shot] = self.rotZ_xpos[i_shot] + 1
+            ## populate the x-array with initial values
+            #for i_uc in range(self.n_ucell_param):
+            #    self.x[self.ucell_xstart[i_shot] + i_uc] = self.UCELL_MAN[i_shot].variables[i_uc]
 
             # put in Ncells abc estimate
-            self.ncells_xpos[i_shot] = self.ucell_xstart[i_shot] + self.n_ucell_param
+            #self.ncells_xpos[i_shot] = self.ucell_xstart[i_shot] + self.n_ucell_param
+            self.ncells_xpos[i_shot] = self.rotZ_xpos[i_shot] + 1  #self.n_ucell_param
             self.x[self.ncells_xpos[i_shot]] = self.S.crystal.Ncells_abc[0]  # NOTE: each shot gets own starting Ncells
 
             self.spot_scale_xpos[i_shot] = self.ncells_xpos[i_shot] + 1
             self.x[self.spot_scale_xpos[i_shot]] = self._init_scale  # TODO: each shot gets own starting scale factor
 
-        self.originZ_xpos = self.global_param_idx_start
+            self.ucell_xstart[i_shot] = self.global_param_idx_start
+
+        self.originZ_xpos = self.global_param_idx_start + self.n_ucell_param
         self.gain_xpos = self.n_total_params - 1
         if rank == 0:
             # put in estimates for origin vectors
             # TODO: refine at the different hierarchy
             # get te first Z coordinate for now..
             # print("Setting origin: %f " % self.S.detector[0].get_local_origin()[2])
+            for i_cell in range(self.n_ucell_param):
+                self.x[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
             self.x[self.originZ_xpos] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?
             self.x[self.gain_xpos] = self._init_gain  # gain factor
 
@@ -278,6 +287,8 @@ class FatRefiner(PixelRefinement):
                            "rotx": rotx,
                            "roty": roty,
                            "rotz": rotz}
+            print list(a_vals)
+            print list(rotx)
             master_data = pandas.DataFrame(master_data)
 
             #print("Avals")
@@ -322,10 +333,15 @@ class FatRefiner(PixelRefinement):
         rotx = lst[:-self.n_global_params:self.n_per_shot_params]
         roty = lst[1:-self.n_global_params:self.n_per_shot_params]
         rotz = lst[2:-self.n_global_params:self.n_per_shot_params]
-        a_vals = lst[3:-self.n_global_params:self.n_per_shot_params]
-        c_vals = lst[4:-self.n_global_params:self.n_per_shot_params]
-        ncells_vals = lst[5:-self.n_global_params:self.n_per_shot_params]
-        scale_vals = lst[6:-self.n_global_params:self.n_per_shot_params]
+        #a_vals = lst[3:-self.n_global_params:self.n_per_shot_params]
+        #c_vals = lst[4:-self.n_global_params:self.n_per_shot_params]
+        ncells_vals = lst[3:-self.n_global_params:self.n_per_shot_params]
+        scale_vals = lst[4:-self.n_global_params:self.n_per_shot_params]
+
+        a, c = lst[self.ucell_xstart[0]:self.ucell_xstart[0] + self.n_ucell_param]
+        a_vals = [a]*self.n_shots*comm.size
+        c_vals = [c]*self.n_shots*comm.size
+
         return rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals
 
     def _send_gradients_to_derivative_managers(self):
@@ -571,6 +587,31 @@ class FatRefiner(PixelRefinement):
                         if self.calc_curvatures:
                             d2 = d / self.gain_fac
                             self.curv[self.gain_xpos] += self._curv_accumulate(d, d2)
+
+            # TODO add in the priors:
+            if self.use_ucell_priors and self.refine_Bmatrix:
+                for ii in range(self.n_shots):
+                    for jj in range(self.n_ucell_param):
+                        xpos = self.ucell_xstart[ii] + jj
+                        ucell_p = self.x[xpos]
+                        sig_square = self.sig_ucell[jj]**2
+                        f += (ucell_p - self.ave_ucell[jj])**2 / 2 / sig_square
+                        g[xpos] += (ucell_p-self.ave_ucell[jj])/sig_square
+                        if self.calc_curvatures:
+                            self.curv[xpos] += 1/sig_square
+
+            if self.use_rot_priors and self.refine_Umatrix:
+                for ii in range(self.n_shots):
+                    x_positions = [self.rotX_xpos[self._i_shot],
+                                   self.rotY_xpos[self._i_shot],
+                                   self.rotZ_xpos[self._i_shot]]
+                    for xpos in x_positions:
+                        rot_p = self.x[xpos]
+                        sig_square = self.sig_rot**2
+                        f += rot_p**2 / 2 / sig_square
+                        g[xpos] += rot_p / sig_square
+                        if self.calc_curvatures:
+                            self.curv[xpos] += 1/sig_square
 
             # reduce the broadcast summed results:
             f = self._mpi_reduce_broadcast(f)

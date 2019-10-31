@@ -64,6 +64,9 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.sigma_r = 3
         self.log2pi = np.log(np.pi*2)
 
+        self.use_ucell_priors = False  # whether to include priors for the unit cell constants
+        self.use_rot_priors = False  # whether to inc;ude priors for misset corrections
+
         self.request_diag_once = False  # property of the parent class
         lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
 
