@@ -287,8 +287,6 @@ class FatRefiner(PixelRefinement):
                            "rotx": rotx,
                            "roty": roty,
                            "rotz": rotz}
-            print list(a_vals)
-            print list(rotx)
             master_data = pandas.DataFrame(master_data)
 
             #print("Avals")
@@ -339,8 +337,8 @@ class FatRefiner(PixelRefinement):
         scale_vals = lst[4:-self.n_global_params:self.n_per_shot_params]
 
         a, c = lst[self.ucell_xstart[0]:self.ucell_xstart[0] + self.n_ucell_param]
-        a_vals = [a]*self.n_shots*comm.size
-        c_vals = [c]*self.n_shots*comm.size
+        a_vals = [a]*len(rotx)
+        c_vals = [c]*len(rotx)
 
         return rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals
 
@@ -452,7 +450,7 @@ class FatRefiner(PixelRefinement):
                 else:
                     print("Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
                           % (self.iterations + 1, self.num_positive_curvatures))
-            print("Rank=%d, Number of kludges: %d" % (comm.rank, self.num_kludge))
+            #print("Rank=%d, Number of kludges: %d" % (comm.rank, self.num_kludge))
             f = 0
             g = flex_double(self.n)
             if self.calc_curvatures:
