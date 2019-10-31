@@ -436,7 +436,7 @@ class FatRefiner(PixelRefinement):
                 else:
                     print("Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
                           % (self.iterations + 1, self.num_positive_curvatures))
-            print("Number of kludges: %d" % self.num_kludge)
+            print("Rank=%d, Number of kludges: %d" % (comm.rank, self.num_kludge))
             f = 0
             g = flex_double(self.n)
             if self.calc_curvatures:
@@ -468,21 +468,30 @@ class FatRefiner(PixelRefinement):
                     self._set_background_plane(i_spot)
                     self._extract_pixel_data()
                     self._evaluate_averageI()
-                    self._evaluate_log_averageI()
+                    if self.poisson_only:
+                        self._evaluate_log_averageI()
+                    else:
+                        self._evaluate_log_averageI_plus_sigma_readout()
 
-                    Imeas = self.ROI_IMGS[self._i_shot][i_spot]
-                    f += (self.model_Lambda - Imeas * self.log_Lambda).sum()
+                    self.Imeas = self.ROI_IMGS[self._i_shot][i_spot]
+
+                    # helper terms for doing derivatives
                     one_over_Lambda = 1. / self.model_Lambda
-                    one_minus_k_over_Lambda = (1. - Imeas * one_over_Lambda)
-                    if self.calc_curvatures:
-                        k_over_squared_Lambda = Imeas * one_over_Lambda * one_over_Lambda
+                    self.one_minus_k_over_Lambda = (1. - self.Imeas * one_over_Lambda)
+                    self.k_over_squared_Lambda = self.Imeas * one_over_Lambda * one_over_Lambda
+
+                    self.u = self.Imeas - self.model_Lambda
+                    self.one_over_v = 1. / (self.model_Lambda + self.sigma_r ** 2)
+                    self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u * self.u * self.one_over_v
+
+                    f += self._target_accumulate()
 
                     if self.plot_images and self.iterations % self.plot_stride == 0:
                         xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
                         yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
                         if self.plot_residuals:
                             self.ax.clear()
-                            residual = self.model_Lambda - Imeas
+                            residual = self.model_Lambda - self.Imeas
                             if i_spot == 0:
                                 x = residual.max()
                             else:
@@ -497,15 +506,15 @@ class FatRefiner(PixelRefinement):
                             self.ax.set_zlim(-x, x)
                             self.ax.set_title("residual (photons)")
                         else:
-                            m = Imeas[Imeas > 1e-9].mean()
-                            s = Imeas[Imeas > 1e-9].std()
+                            m = self.Imeas[self.Imeas > 1e-9].mean()
+                            s = self.Imeas[self.Imeas > 1e-9].std()
                             vmax = m + 5 * s
                             vmin = m - s
                             m2 = self.model_Lambda.mean()
                             s2 = self.model_Lambda.std()
                             self.ax1.images[0].set_data(self.model_Lambda)
                             self.ax1.images[0].set_clim(vmin, vmax)
-                            self.ax2.images[0].set_data(Imeas)
+                            self.ax2.images[0].set_data(self.Imeas)
                             self.ax2.images[0].set_clim(vmin, vmax)
                         plt.suptitle("Iterations = %d, image %d / %d"
                                      % (self.iterations, i_spot + 1, n_spots))
@@ -517,32 +526,29 @@ class FatRefiner(PixelRefinement):
                                        self.rotZ_xpos[self._i_shot]]
                         for ii, xpos in enumerate(x_positions):
                             d = S2 * G2 * self.rot_deriv[ii]
-                            g[xpos] += (one_minus_k_over_Lambda * d).sum()
+                            g[xpos] += self._grad_accumulate(d)
                             if self.calc_curvatures:
                                 d2 = S2 * G2 * self.rot_second_deriv[ii]
-                                cc = d2 * one_minus_k_over_Lambda + d * d * k_over_squared_Lambda
-                                self.curv[xpos] += cc.sum()
+                                self.curv[xpos] +=self._curv_accumulate(d, d2)
 
                     if self.refine_Bmatrix:
                         # unit cell derivative
                         for i_ucell_p in range(self.n_ucell_param):
                             xpos = self.ucell_xstart[self._i_shot] + i_ucell_p
                             d = S2 * G2 * self.ucell_derivatives[i_ucell_p]
-                            g[xpos] += (one_minus_k_over_Lambda * d).sum()
+                            g[xpos] += self._grad_accumulate(d)
 
                             if self.calc_curvatures:
                                 d2 = S2 * G2 * self.ucell_second_derivatives[i_ucell_p]
-                                cc = d2 * one_minus_k_over_Lambda + d * d * k_over_squared_Lambda
-                                self.curv[xpos] += cc.sum()
+                                self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_ncells:
                         d = S2*G2*self.ncells_deriv
                         xpos = self.ncells_xpos[self._i_shot]
-                        g[xpos] += (d * one_minus_k_over_Lambda).sum()
+                        g[xpos] += self._grad_accumulate(d)
                         if self.calc_curvatures:
                             d2 = S2 * G2 * self.ncells_second_deriv
-                            cc = d2 * one_minus_k_over_Lambda + d * d * k_over_squared_Lambda
-                            self.curv[xpos] += cc.sum()
+                            self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_detdist:
                         raise NotImplementedError("Cannot refined detdist (yet...)")
@@ -554,31 +560,23 @@ class FatRefiner(PixelRefinement):
                     if self.refine_crystal_scale:
                         d = G2 * 2 * self.scale_fac * self.model_bragg_spots
                         xpos = self.spot_scale_xpos[self._i_shot]
-                        g[xpos] += (d * one_minus_k_over_Lambda).sum()
+                        g[xpos] += self._grad_accumulate(d)
                         if self.calc_curvatures:
                             d2 = d / self.scale_fac
-                            self.curv[xpos] += (d2 * one_minus_k_over_Lambda + d * d * k_over_squared_Lambda).sum()
+                            self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_gain_fac:
                         d = 2 * self.gain_fac * (self.tilt_plane + S2 * self.model_bragg_spots)
-                        g[self.gain_xpos] += (d * one_minus_k_over_Lambda).sum()
+                        g[self.gain_xpos] += self._grad_accumulate(d)
                         if self.calc_curvatures:
                             d2 = d / self.gain_fac
-                            self.curv[self.gain_xpos] += (
-                                        d2 * one_minus_k_over_Lambda + d * d * k_over_squared_Lambda).sum()
+                            self.curv[self.gain_xpos] += self._curv_accumulate(d, d2)
 
             # reduce the broadcast summed results:
             f = self._mpi_reduce_broadcast(f)
             g = self._mpi_reduce_broadcast(g)
             if self.calc_curvatures:
                 self.curv = self._mpi_reduce_broadcast(self.curv)
-            # f = comm.reduce(f, MPI.SUM, root=0)
-            # f = comm.bcast(f, root=0)
-            # g = comm.reduce(g, MPI.SUM, root=0)
-            # g = comm.bcast(g, root=0)
-            # if self.calc_curvatures:
-            #    self.curv = comm.reduce(self.curv, MPI.SUM, root=0)
-            #    self.curv = comm.bcast(self.curv, root=0)
 
             if comm.rank == 0:
                 if self.plot_statistics:
@@ -700,6 +698,43 @@ class FatRefiner(PixelRefinement):
         var = comm.bcast(var, root=0)
         return var
 
+    def _poisson_target(self):
+        fterm = (self.model_Lambda - self.Imeas * self.log_Lambda).sum()
+        return fterm
+
+    def _poisson_d(self, d):
+        gterm = (d*self.one_minus_k_over_Lambda).sum()
+        return gterm
+
+    def _poisson_d2(self, d, d2):
+        cterm = d2*self.one_minus_k_over_Lambda + d*d*self.k_over_squared_Lambda
+        return cterm.sum()
+
+    def _gaussian_target(self):
+        fterm = .5 * (self.log2pi + self.log_Lambda_plus_sigma_readout + self.u * self.u * self.one_over_v).sum()
+        return fterm
+
+    def _gaussian_d(self, d):
+        gterm = .5*(d*self.one_over_v*self.one_minus_2u_minus_u_squared_over_v).sum()
+        return gterm
+
+    def _gaussian_d2(self, d, d2):
+        cterm = self.one_over_v*(d2*self.one_minus_2u_minus_u_squared_over_v -
+                                 d*d*(self.one_over_v*self.one_minus_2u_minus_u_squared_over_v -
+                                      (2+2*self.u*self.one_over_v + self.u*self.u*self.one_over_v*self.one_over_v)))
+        cterm = .5*cterm.sum()
+        return cterm
+
+    def _evaluate_log_averageI_plus_sigma_readout(self):
+        L = self.model_Lambda + self.sigma_r**2
+        L_is_neg = (L <= 0).ravel()
+        if any(L_is_neg):
+            self.num_kludge += 1
+            print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
+        #    raise ValueError("model of Bragg spots cannot have negative intensities...")
+        self.log_Lambda_plus_sigma_readout = np_log(L)
+        self.log_Lambda_plus_sigma_readout[L <= 0] = 0  # will I even ever kludge ?
+
     def print_step(self, message, target):
         names = self.UCELL_MAN[self._i_shot].variable_names
         vals = self.UCELL_MAN[self._i_shot].variables
@@ -712,29 +747,6 @@ class FatRefiner(PixelRefinement):
         rot_labels = ["rotX=%+3.7g" % rotX, "rotY=%+3.7g" % rotY, "rotZ=%+3.4g" % rotZ]
 
         rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
-        #for i, (x,y,z) in enumerate(zip(rotx, roty, rotz)):
-        #all_ang_off = []
-        #for i in range(self.n_shots):
-        #    Ctru = self.CRYSTAL_GT[i]
-        #    atru, btru, ctru = Ctru.get_real_space_vectors()
-        #    ang, ax = self.get_correction_misset(as_axis_angle_deg=True, i_shot=i)
-        #    B = self.RUC.get_refined_Bmatrix(i)
-        #    C = deepcopy(self.CRYSTAL_MODELS[i])
-        #    C.set_B(B)
-        #    C.rotate_around_origin(ax, ang)
-        #    try:
-        #        ang_off = compare_with_ground_truth(atru, btru, ctru,
-        #                                            [C],
-        #                                            symbol="P43212")[0]
-        #    except Exception:
-        #        ang_off = 9999
-        #    all_ang_off.append(ang_off)
-
-        #all_ang_off = comm.gather(all_ang_off, root=0)
-        #if rank==0:
-        #    print("Angs")
-        #    print (all_ang_off)
-        #comm.Barrier()
 
         master_data = {"a": a_vals, "c": c_vals,
                        "Ncells": ncells_vals,
@@ -747,13 +759,6 @@ class FatRefiner(PixelRefinement):
         master_data["gain"] = self.x[self.gain_xpos]
         print("\n")
         print(master_data.to_string(float_format="%2.6g"))
-
-        #print("%s: residual=%3.8g, ncells=%f, detdist=%3.8g, gain=%3.4g, scale=%4.8g"
-        #      % (message, target, self.x[self.ncells_xpos[self._i_shot]], self.x[self.originZ_xpos],
-        #         self.x[self.gain_xpos] ** 2, self.x[self.spot_scale_xpos[self._i_shot]] ** 2))
-        #print ("Ucell: %s *** Missets: %s" %
-        #       (", ".join(ucell_labels), ", ".join(rot_labels)))
-        #print("\n")
 
     def print_step_grads(self, message, target):
         names = self.UCELL_MAN[self._i_shot].variable_names
@@ -794,13 +799,6 @@ class FatRefiner(PixelRefinement):
             print(master_data.to_string(float_format="%.3g"))
         Xnorm = norm(self.x)
         print("\n\t|G|=%2.7g, eps*|X|=%2.7g" % (target, Xnorm*self.trad_conv_eps))
-
-
-        #print("%s: |x|=%f, |g|=%f, Gncells=%f, Gdetdist=%3.8g, Ggain=%3.4g, Gscale=%4.8g"
-        #      % (message, xnorm, target, self._g[self.ncells_xpos[self._i_shot]], self._g[self.originZ_xpos],
-        #         self._g[self.gain_xpos], self._g[self.spot_scale_xpos[self._i_shot]]))
-        #print ("GUcell: %s *** GMissets: %s" %
-        #       (", ".join(ucell_labels), ", ".join(rot_labels)))
         print("\n")
 
     def get_refined_Bmatrix(self, i_shot):
