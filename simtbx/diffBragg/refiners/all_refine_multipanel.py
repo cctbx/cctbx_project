@@ -33,6 +33,7 @@ class RefineAllMultiPanel(RefineRot):
         self._init_gain = init_gain
         self.best_image = np.zeros_like(self.img)
         self.num_positive_curvatures = 0
+        self.log2pi = np.log(np.pi*2)
         self._panel_id = None
 
     def _setup(self):
@@ -251,15 +252,28 @@ class RefineAllMultiPanel(RefineRot):
                 self._set_background_plane(i_spot)
                 self._extract_pixel_data()
                 self._evaluate_averageI()
-                self._evaluate_log_averageI()
+                if self.poisson_only:
+                    self._evaluate_log_averageI()
+                else:
+                    self._evaluate_log_averageI_plus_sigma_readout()
                 self._update_best_image(i_spot)
                 Imeas = self.roi_img[i_spot]
 
-                f += (self.model_Lambda - Imeas * self.log_Lambda).sum()
+
+
+                # helper terms for doing derivatives
                 one_over_Lambda = 1. / self.model_Lambda
                 self.one_minus_k_over_Lambda = (1. - Imeas * one_over_Lambda)
-                if self.calc_curvatures:
-                    self.k_over_squared_Lambda = Imeas * one_over_Lambda * one_over_Lambda
+                self.u = Imeas - self.model_Lambda
+                self.one_over_v = 1./(self.model_Lambda + self.sigma_r**2)
+                self.one_minus_2u_minus_u_squared_over_v = 1-2*self.u-self.u*self.u*self.one_over_v
+                #if self.calc_curvatures:
+                self.k_over_squared_Lambda = Imeas * one_over_Lambda * one_over_Lambda
+
+                if self.poisson_only:
+                    f += (self.model_Lambda - Imeas * self.log_Lambda).sum()
+                else:
+                    f += .5*(self.log2pi + self.log_Lambda_plus_sigma_readout + self.u*self.u*self.one_over_v).sum()
 
                 # compute gradients for background plane constants a,b,c
                 xr = self.xrel[i_spot]  # fast scan pixels
@@ -301,27 +315,27 @@ class RefineAllMultiPanel(RefineRot):
                 if self.refine_Umatrix:
                     for ii, xpos in enumerate([self.rotX_xpos, self.rotY_xpos, self.rotZ_xpos]):
                         d = S2*G2*self.rot_deriv[ii]
-                        g[xpos] += self._poisson_d(d)
+                        g[xpos] += self._grad_accumulate(d)
                         if self.calc_curvatures:
                             d2 = S2*G2*self.rot_second_deriv[ii]
-                            self.curv[xpos] += self._poisson_d2(d, d2)
+                            self.curv[xpos] += self._curv_accumulate(d, d2)
 
                 if self.refine_Bmatrix:
                     # unit cell derivative
                     for i_ucell_p in range(self.n_ucell_param):
                         xpos = self.ucell_xstart + i_ucell_p
                         d = S2*G2*self.ucell_derivatives[i_ucell_p]
-                        g[xpos] += self._poisson_d(d)
+                        g[xpos] += self._grad_accumulate(d)
                         if self.calc_curvatures:
                             d2 = S2*G2*self.ucell_second_derivatives[i_ucell_p]
-                            self.curv[xpos] += self._poisson_d2(d, d2)
+                            self.curv[xpos] += self._curv_accumulate(d, d2)
 
                 if self.refine_ncells:
                     d = S2*G2*self.ncells_deriv
-                    g[self.ncells_xpos] += self._poisson_d(d)
+                    g[self.ncells_xpos] += self._grad_accumulate(d)
                     if self.calc_curvatures:
                         d2 = S2*G2*self.ncells_second_deriv
-                        self.curv[self.ncells_xpos] += self._poisson_d2(d, d2)
+                        self.curv[self.ncells_xpos] += self._curv_accumulate(d, d2)
 
                 if self.refine_detdist:
                     raise NotImplementedError("Cannot refined detdist (yet...)")
@@ -332,17 +346,17 @@ class RefineAllMultiPanel(RefineRot):
 
                 if self.refine_gain_fac:
                     d = 2*self.gain_fac*(self.tilt_plane + S2*self.model_bragg_spots)
-                    g[-2] += self._poisson_d(d)
+                    g[-2] += self._grad_accumulate(d)
                     if self.calc_curvatures:
                         d2 = d / self.gain_fac
-                        self.curv[-2] += self._poisson_d2(d, d2)
+                        self.curv[-2] += self._curv_accumulate(d, d2)
 
                 if self.refine_crystal_scale:
                     d = G2*2*self.scale_fac*self.model_bragg_spots
-                    g[-1] += self._poisson_d(d)
+                    g[-1] += self._grad_accumulate(d)
                     if self.calc_curvatures:
                         d2 = d / self.scale_fac
-                        self.curv[-1] += self._poisson_d2(d, d2)
+                        self.curv[-1] += self._curv_accumulate(d, d2)
             if self.calc_curvatures and not self.use_curvatures:
                 if np.all(self.curv.as_numpy_array() >= 0):
                     self.num_positive_curvatures += 1
@@ -365,11 +379,31 @@ class RefineAllMultiPanel(RefineRot):
         return self._f, self._g
 
     def _poisson_d(self, d):
-        return (d*self.one_minus_k_over_Lambda).sum()
+        gterm = (d*self.one_minus_k_over_Lambda).sum()
+        return gterm
 
     def _poisson_d2(self, d, d2):
-        cc = d2*self.one_minus_k_over_Lambda + d*d*self.k_over_squared_Lambda
-        return cc.sum()
+        cterm = d2*self.one_minus_k_over_Lambda + d*d*self.k_over_squared_Lambda
+        return cterm.sum()
+
+    def _gaussian_d(self, d):
+        gterm = .5*(d*self.one_over_v*self.one_minus_2u_minus_u_squared_over_v).sum()
+        return gterm
+
+    def _gaussian_d2(self, d, d2):
+        cterm = self.one_over_v*(d2*self.one_minus_2u_minus_u_squared_over_v -
+                                 d*d*(self.one_over_v*self.one_minus_2u_minus_u_squared_over_v -
+                                      (2+2*self.u*self.one_over_v + self.u*self.u*self.one_over_v*self.one_over_v)))
+        cterm = .5*cterm.sum()
+        return cterm
+
+    def _evaluate_log_averageI_plus_sigma_readout(self):
+        L = self.model_Lambda + self.sigma_r**2
+        if np.any(L <= 0).ravel():
+            print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
+        #    raise ValueError("model of Bragg spots cannot have negative intensities...")
+        self.log_Lambda_plus_sigma_readout = np.log(L)
+        self.log_Lambda_plus_sigma_readout[L <= 0] = 0
 
     def print_step(self, message, target):
         names = self.ucell_manager.variable_names
