@@ -60,23 +60,28 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.shot_idx = 0  # place holder because global refinement is across multiple shots
         self.shot_ids = None  # for global refinement ,
 
+        self.poisson_only = True  # use strictly Poissonian statistics
+        self.sigma_r = 5
+
         self.request_diag_once = False  # property of the parent class
         lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
 
-        self.poisson_only = True  # use strictly Poissonian statistics
-        self.one_minus_k_over_Lambda = None
 
     @property
-    def _GRAD(self):
+    def _grad_accumulate(self):
         if self.poisson_only:
             return self._poisson_d
+        else:
+            return self._gaussian_d
 
     @property
-    def _CURV(self):
+    def _curv_accumulate(self):
         if self.poisson_only:
             return self._poisson_d2
+        else:
+            return self._gaussian_d2
 
-    def _poisson_d(self):
+    def _poisson_d(self, d):
         pass
 
     def _poisson_d2(self, d, d2):
