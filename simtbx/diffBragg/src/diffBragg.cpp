@@ -283,6 +283,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     Ncells_managers.push_back(nc);
 
     origin_managers.push_back(orig0);
+    update_oversample_during_refinement = true;
 
 
     // set ucell gradients, Bmatrix is upper triangular in diffBragg?
@@ -543,7 +544,8 @@ void diffBragg::set_value( int refine_id, double value ){
         xtal_size_y = -1;
         xtal_size_z = -1;
         //TODO make me optional!
-        update_oversample();
+        if (update_oversample_during_refinement)
+            update_oversample();
         NABC[0] = value;
         NABC[4] = value;
         NABC[8] = value;
