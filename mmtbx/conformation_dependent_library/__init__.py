@@ -266,6 +266,7 @@ def update_restraints(hierarchy,
                       current_geometry=None, # xray_structure!!
                       sites_cart=None,
                       cdl_proxies=None,
+                      use_cis_127=False,
                       ideal=True,
                       esd=True,
                       esd_factor=1.,
@@ -293,9 +294,12 @@ def update_restraints(hierarchy,
                                         #verbose=verbose,
                                         ):
     if threes.cis_group():
-      continue
-
-    restraint_values = get_restraint_values(threes, interpolate=interpolate)
+      if use_cis_127:
+        restraint_values = ['?', 0, 127.0, 3.0]
+      else:
+        continue
+    else:
+      restraint_values = get_restraint_values(threes, interpolate=interpolate)
 
     if restraint_values is None: continue
 

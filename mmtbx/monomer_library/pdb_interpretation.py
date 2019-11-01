@@ -135,6 +135,9 @@ restraints_library_str = """
       .help = Use Conformation Dependent Library (CDL) \
         for geometry restraints
       .style = bold
+    cis_c_n_ca = False
+      .type = bool
+      .style = hidden
     omega_cdl = False
       .type = bool
       .short_caption = Use Omega Conformation-Dependent Library
@@ -5253,6 +5256,7 @@ class build_all_chain_proxies(linking_mixins):
     self.time_building_geometry_restraints_manager = timer.elapsed()
     restraints_source = "GeoStd + Monomer Library"
     use_cdl = self.params.restraints_library.cdl
+    use_cis_127 = self.params.restraints_library.cis_c_n_ca
     if (use_cdl is Auto):
       use_cdl = self.pdb_inp.used_cdl_restraints()
       if (use_cdl):
@@ -5268,6 +5272,7 @@ class build_all_chain_proxies(linking_mixins):
         self.pdb_hierarchy,
         result,
         cdl_proxies=cdl_proxies,
+        use_cis_127=use_cis_127,
         log=log,
         verbose=True,
         )
