@@ -88,6 +88,14 @@ class MillerArrayTableForm(QDialog):
     self.setLayout(mainLayout)
 
 
+class NumericTableWidgetItem(QTableWidgetItem):
+  def __lt__(self, other):
+    return float(self.text()) < float(other.text())
+  def __gt__(self, other):
+    return float(self.text()) > float(other.text())
+    #return (self.data(Qt.UserRole).toLongLong() < other.data(Qt.UserRole).toLongLong())
+
+
 class MyTableWidget(QTableWidget):
   def __init__(self, *args, **kwargs):
     QTableWidget.__init__(self, *args, **kwargs)
@@ -232,7 +240,7 @@ class NGL_HKLViewer(QWidget):
     self.millerarraytable.setEditTriggers(QTableWidget.NoEditTriggers)
     self.millerarraytable.setHorizontalHeaderLabels(labels)
     self.millerarraytable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
-
+    self.millerarraytable.horizontalHeader().sectionDoubleClicked.connect(self.onMillerArrayTableHeaderSectionDoubleClicked)
     self.millerarraytableform = MillerArrayTableForm(self)
 
     self.createExpansionBox()
@@ -300,6 +308,9 @@ class NGL_HKLViewer(QWidget):
     self.updatingNbins = False
     self.binstableitemchanges = False
     self.canexit = False
+    self.closing = False
+    self.indices = None
+    self.data = None
     self.tabulate_miller_array = None
     self.binTableCheckState = None
     self.millertablemenu = QMenu(self)
@@ -309,6 +320,8 @@ class NGL_HKLViewer(QWidget):
 
   def closeEvent(self, event):
     self.NGL_HKL_command('NGL_HKLviewer.action = is_terminating')
+    self.closing = True
+
     #while not self.canexit:
     #  time.sleep(1)
     #self.webprofile.clearHttpCache()
@@ -363,7 +376,6 @@ class NGL_HKLViewer(QWidget):
         nan = float("nan") # workaround for "evaluating" any NaN values in the messages received
         msgstr = msg.decode()
         self.infodict = eval(msgstr)
-        #print("received from cctbx: " + str(self.infodict))
         if self.infodict:
 
           if self.infodict.get("hklscenes_arrays"):
@@ -424,21 +436,19 @@ class NGL_HKLViewer(QWidget):
 
           if self.infodict.get("tabulate_miller_array"):
             self.tabulate_miller_array = self.infodict["tabulate_miller_array"]
-            indices = self.tabulate_miller_array[0]
-            data = self.tabulate_miller_array[1]
+            self.indices = self.tabulate_miller_array[0]
+            self.data = self.tabulate_miller_array[1]
+            self.millerarraytable_sortorder = ["unsorted", "unsorted", "unsorted", "unsorted", "unsorted"]
             self.millerarraytable.clearContents()
-            self.millerarraytable.setRowCount(len(indices))
-            for row,(h,k,l) in enumerate(indices):
-              self.millerarraytable.setItem(row, 0, QTableWidgetItem(str(h)))
-              self.millerarraytable.setItem(row, 1, QTableWidgetItem(str(k)))
-              self.millerarraytable.setItem(row, 2, QTableWidgetItem(str(l)))
-              self.millerarraytable.setItem(row, 3, QTableWidgetItem(str(data[row])))
-              self.millerarraytable.setItem(row, 4, QTableWidgetItem(str("")))
+            self.millerarraytable.setRowCount(len(self.indices))
+            self.RefreshMillerArrayTable()
             self.millerarraytableform.show()
 
           currentinfostr = ""
           if self.infodict.get("info"):
             currentinfostr = self.infodict.get("info",[])
+            if self.closing:
+              print(currentinfostr)
 
             if "Purging HKLViewFrame" in currentinfostr:
               self.canexit = True
@@ -502,6 +512,30 @@ class NGL_HKLViewer(QWidget):
         if "Resource temporarily unavailable" not in errmsg:
           print( errmsg  +  traceback.format_exc(limit=10) )
         pass
+
+
+  def onMillerArrayTableHeaderSectionDoubleClicked(self, idx):
+    if self.millerarraytable_sortorder[idx] == Qt.SortOrder.AscendingOrder:
+      self.millerarraytable_sortorder[idx] = "unsorted"
+      self.RefreshMillerArrayTable()
+      return
+    if self.millerarraytable_sortorder[idx] == "unsorted":
+      self.millerarraytable_sortorder[idx] = Qt.SortOrder.DescendingOrder
+      self.millerarraytable.sortItems(idx, self.millerarraytable_sortorder[idx])
+      return
+    if self.millerarraytable_sortorder[idx] == Qt.SortOrder.DescendingOrder:
+      self.millerarraytable_sortorder[idx] = Qt.SortOrder.AscendingOrder
+      self.millerarraytable.sortItems(idx, self.millerarraytable_sortorder[idx])
+
+
+
+  def RefreshMillerArrayTable(self):
+    for row,(h,k,l) in enumerate(self.indices):
+      self.millerarraytable.setItem(row, 0, NumericTableWidgetItem(str(h)))
+      self.millerarraytable.setItem(row, 1, NumericTableWidgetItem(str(k)))
+      self.millerarraytable.setItem(row, 2, NumericTableWidgetItem(str(l)))
+      self.millerarraytable.setItem(row, 3, NumericTableWidgetItem(str(self.data[row])))
+      self.millerarraytable.setItem(row, 4, QTableWidgetItem(str("")))
 
 
   def onFinalMouseSensitivity(self):

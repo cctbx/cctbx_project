@@ -323,12 +323,13 @@ class HKLViewFrame() :
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
-    self.STOP = True
+    #self.STOP = True
     self.viewer.__exit__(exc_type, exc_value, traceback)
     #if self.guiSocketPort:
     #  self.msgqueuethrd.join()
     del self.viewer
     self.mprint("Purging HKLViewFrame", verbose=1)
+    self.STOP = True
     del self
 
 
