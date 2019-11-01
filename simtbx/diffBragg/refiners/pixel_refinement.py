@@ -59,6 +59,9 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.update_curvatures_every = 3  # every 3 consecutive all positive curvatures we will update them
         self.shot_idx = 0  # place holder because global refinement is across multiple shots
         self.shot_ids = None  # for global refinement ,
+        self.refine_global_unitcell = True
+
+        self.refine_Fcell = False
 
         self.poisson_only = True  # use strictly Poissonian statistics
         self.sigma_r = 3
@@ -69,7 +72,6 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
         self.request_diag_once = False  # property of the parent class
         lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
-
 
     @property
     def _grad_accumulate(self):
