@@ -213,9 +213,13 @@ class FatRefiner(PixelRefinement):
             raise ValueError("Need to supply a non empty idx from asu map")
 
         # get the Fhkl information from P1 array internal to nanoBragg
+        if comm.rank==0:
+            print ("Making the big ones")
         idx, data = self.S.D.Fhkl_tuple
-        self.idx_from_p1 = {h: i for i, h in zip(idx, data)}
-        self.p1_from_idx = {i: h for i, h in zip(idx, data)}
+        self.idx_from_p1 = {h: i for i, h in enumerate(idx)}
+        #self.p1_from_idx = {i: h for i, h in zip(idx, data)}
+        if comm.rank==0:
+            print("Done")
 
         # Make a mapping of panel id to parameter index and backwards
         self.pid_from_idx = {}
@@ -388,7 +392,6 @@ class FatRefiner(PixelRefinement):
         self.D.add_diffBragg_spots()
 
     def _update_Fcell(self):
-        # get the p1 table from nanoBragg
         idx, data = self.S.D.Fhkl_tuple
         for i_fcell in range(self.n_global_fcell):
             # get the asu index and its updated amplitude
@@ -408,9 +411,14 @@ class FatRefiner(PixelRefinement):
             equivs = [i.h() for i in miller.sym_equiv_indices(sg, hkl).indices()]
             for h_equiv in equivs:
                 # get the nanoBragg p1 miller table index corresponding to this hkl equivalent
-                p1_idx = self.idx_from_p1[h_equiv]  # TODO change name to be more specific
+                try:
+                    p1_idx = self.idx_from_p1[h_equiv]  # TODO change name to be more specific
+                except KeyError as err:
+                    continue
                 data[p1_idx] = new_Fcell  # set the data with the new value
         self.S.D.Fhkl_tuple = idx, data  # update nanoBragg again  # TODO: add flag to not re-allocate in nanoBragg!
+        #if comm.rank==0:
+        #    print("Done updating Fcell!")
 
     def _update_rotXYZ(self):
         if self.refine_rotX:
