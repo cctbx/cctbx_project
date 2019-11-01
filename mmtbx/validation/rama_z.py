@@ -81,7 +81,7 @@ class rama_z(object):
         rkey = three.get_ramalyze_key()
         resname = main_residue.resname
         ss_type = self._figure_out_ss(three)
-        self.res_info.append( ("", rkey, resname, ss_type, phi, psi) )
+        self.res_info.append( ["", rkey, resname, ss_type, phi, psi] )
         self.residue_counts[ss_type] += 1
         used_atoms.add(key)
     self.residue_counts["W"] = self.residue_counts["H"] + self.residue_counts["S"] + self.residue_counts["L"]
