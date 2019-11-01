@@ -24,7 +24,8 @@ tst_list = (
     ["$D/diffBragg/tests/tst_diffBragg_rotXYZ_ucell_refine.py", "--curvatures"],
     ["$D/diffBragg/tests/tst_diffBragg_all_refine.py", "--umatrix --bmatrix --ncells --curvatures"],
     ["$D/diffBragg/tests/tst_diffBragg_ucell_refine.py", "--crystalsystem monoclinic --curvatures"],
-    ["$D/diffBragg/tests/tst_diffBragg_ucell_refine.py", "--crystalsystem tetragonal"]
+    ["$D/diffBragg/tests/tst_diffBragg_ucell_refine.py", "--crystalsystem tetragonal"],
+    ["$D/diffBragg/tests/tst_diffBragg_Fcell_deriv.py", "--curvatures"]
     )
 
 
