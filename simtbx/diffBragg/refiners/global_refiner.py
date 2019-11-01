@@ -52,6 +52,7 @@ import sys
 import warnings
 from copy import deepcopy
 from cxid9114.helpers import compare_with_ground_truth
+from cctbx import miller, sgtbx
 
 warnings.filterwarnings("ignore")
 
@@ -61,7 +62,7 @@ class FatRefiner(PixelRefinement):
     def __init__(self, n_total_params, n_local_params, n_global_params, local_idx_start,
                  shot_ucell_managers, shot_rois, shot_nanoBragg_rois,
                  shot_roi_imgs, shot_spectra, shot_crystal_GTs,
-                 shot_crystal_models, shot_xrel, shot_yrel, shot_abc_inits,
+                 shot_crystal_models, shot_xrel, shot_yrel, shot_abc_inits, shot_asu,
                  global_param_idx_start,
                  shot_panel_ids, init_gain=1, init_scale=1):
         PixelRefinement.__init__(self)
@@ -77,6 +78,7 @@ class FatRefiner(PixelRefinement):
         assert len(self.shot_ids) == len(set(self.shot_ids))
 
         self.ROIS = self._check_keys(shot_rois)
+        self.ASU = self._check_keys(shot_asu)
         self.NANOBRAGG_ROIS = self._check_keys(shot_nanoBragg_rois)
         self.ROI_IMGS = self._check_keys(shot_roi_imgs)
         self.SPECTRA = self._check_keys(shot_spectra)
@@ -115,19 +117,25 @@ class FatRefiner(PixelRefinement):
 
         assert self.n_per_shot_params * self.n_shots == self.n_local_params
 
-        self._ncells_id = 9  # diffBragg specific
-        self._originZ_id = 10  # diffBragg specific
+        self._ncells_id = 9  # diffBragg internal index for Ncells derivative manager
+        self._originZ_id = 10  # diffBragg internal index for originZ derivative manager
+        self._fcell_id = 11  # diffBragg internal index for Fcell derivative manager
         self._init_scale = init_scale
         self._init_gain = init_gain
         self.num_positive_curvatures = 0
         self._panel_id = None
+        self.symbol = "P43212"
 
         self.pid_from_idx = {}
         self.idx_from_pid = {}
 
-        self.ave_ucell = [78.95, 38.12]
+        self.idx_from_asu = {}
+        self.asu_from_idx = {}
+
+        # For priors, use these ..  experimental
+        self.ave_ucell = [78.95, 38.12]  ## Angstrom
         self.sig_ucell = [0.025, 0.025]
-        self.sig_rot = 0.05
+        self.sig_rot = 0.01  # radian
 
         # where the global parameters being , initially just gain and detector distance
         self.global_param_idx_start = global_param_idx_start
@@ -169,6 +177,10 @@ class FatRefiner(PixelRefinement):
         return self.n_total_params
 
     @property
+    def n_global_fcell(self):
+        return len(self.idx_from_asu)
+
+    @property
     def x(self):
         """LBFGS parameter array"""
         return self._x
@@ -188,18 +200,6 @@ class FatRefiner(PixelRefinement):
         self.model_Lambda = \
             self.gain_fac * self.gain_fac * (self.tilt_plane + self.scale_fac * self.scale_fac * self.model_bragg_spots)
 
-    def _evaluate_log_averageI(self):
-        # fix log(x<=0)
-        try:
-            self.log_Lambda = np_log(self.model_Lambda)
-        except FloatingPointError:
-            pass
-        if any((self.model_Lambda <= 0).ravel()):
-            self.num_kludge += 1
-            #print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL (kludges=%d)!!!!!!!!!\n<><><><><><><><><>\n" % self.num_kludge)
-        #    raise ValueError("model of Bragg spots cannot have negative intensities...")
-        self.log_Lambda[self.model_Lambda <= 0] = 0  # FIXME with Gaussian model
-
     def _set_background_plane(self, i_spot):
         xr = self.XREL[self._i_shot][i_spot]
         yr = self.YREL[self._i_shot][i_spot]
@@ -207,6 +207,15 @@ class FatRefiner(PixelRefinement):
 
     def _setup(self):
         # Here we go!  https://youtu.be/7VvkXA6xpqI
+        if not self.asu_from_idx:
+            raise ValueError("Need to supply a non empty asu from idx map")
+        if not self.idx_from_asu:  # # TODO just derive from its inverse
+            raise ValueError("Need to supply a non empty idx from asu map")
+
+        # get the Fhkl information from P1 array internal to nanoBragg
+        idx, data = self.S.D.Fhkl_tuple
+        self.idx_from_p1 = {h: i for i, h in zip(idx, data)}
+        self.p1_from_idx = {i: h for i, h in zip(idx, data)}
 
         # Make a mapping of panel id to parameter index and backwards
         self.pid_from_idx = {}
@@ -236,31 +245,51 @@ class FatRefiner(PixelRefinement):
             self.x[self.rotY_xpos[i_shot]] = 0
             self.x[self.rotZ_xpos[i_shot]] = 0
 
-            #self.ucell_xstart[i_shot] = self.rotZ_xpos[i_shot] + 1
-            ## populate the x-array with initial values
-            #for i_uc in range(self.n_ucell_param):
-            #    self.x[self.ucell_xstart[i_shot] + i_uc] = self.UCELL_MAN[i_shot].variables[i_uc]
+            self.ucell_xstart[i_shot] = self.global_param_idx_start  # TODO: make global ucell params optional
+            self.ncells_xpos[i_shot] = self.rotZ_xpos[i_shot] + 1
 
-            # put in Ncells abc estimate
-            #self.ncells_xpos[i_shot] = self.ucell_xstart[i_shot] + self.n_ucell_param
-            self.ncells_xpos[i_shot] = self.rotZ_xpos[i_shot] + 1  #self.n_ucell_param
+            #if self.refine_global_unit_cell:
+            #    self.ucell_xstart[i_shot] = self.global_param_idx_start
+            #    self.ncells_xpos[i_shot] = self.rotZ_xpos[i_shot] + 1  # self.n_ucell_param
+
+            #else:
+            #    self.ucell_xstart[i_shot] = self.rotZ_xpos[i_shot] + 1
+            #    # populate the x-array with initial values
+            #    for i_uc in range(self.n_ucell_param):
+            #        self.x[self.ucell_xstart[i_shot] + i_uc] = self.UCELL_MAN[i_shot].variables[i_uc]
+
+            #    # put in Ncells abc estimate
+            #    self.ncells_xpos[i_shot] = self.ucell_xstart[i_shot] + self.n_ucell_param
+
             self.x[self.ncells_xpos[i_shot]] = self.S.crystal.Ncells_abc[0]  # NOTE: each shot gets own starting Ncells
 
             self.spot_scale_xpos[i_shot] = self.ncells_xpos[i_shot] + 1
             self.x[self.spot_scale_xpos[i_shot]] = self._init_scale  # TODO: each shot gets own starting scale factor
 
-            self.ucell_xstart[i_shot] = self.global_param_idx_start
-
-        self.originZ_xpos = self.global_param_idx_start + self.n_ucell_param
+        #if self.refine_global_unit_cell:
+        self.fcell_xstart = self.global_param_idx_start + self.n_ucell_param
+        #else:
+        #    self.fcell_xstart = self.global_param_idx_start
+        self.originZ_xpos = self.n_total_params - 2
         self.gain_xpos = self.n_total_params - 1
         if rank == 0:
             # put in estimates for origin vectors
             # TODO: refine at the different hierarchy
             # get te first Z coordinate for now..
             # print("Setting origin: %f " % self.S.detector[0].get_local_origin()[2])
+            # TODO if self.refine_global_unit_cell
             for i_cell in range(self.n_ucell_param):
                 self.x[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
+
+            F = self.S.D.Fhkl  # initial values, this table is the high symm table expanded to P1
+            # NOTE: dont ever set D.Fhkl property in the refinement setting, it tries to update the unit cell
+            for i_fcell in range(self.n_global_fcell):
+                asu_hkl = self.asu_from_idx[i_fcell]
+                self.x[self.fcell_xstart + i_fcell] = F.value_at_index(asu_hkl)
+
+            # set det dist
             self.x[self.originZ_xpos] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?
+            # set gain TODO: remove gain from all of this and never refine it
             self.x[self.gain_xpos] = self._init_gain  # gain factor
 
             # TODO per panel gain corretion / pedestal correction?
@@ -274,7 +303,6 @@ class FatRefiner(PixelRefinement):
             #    self.x[-1] = self._init_gain
             # self.x[-1] = self._init_scale  # initial scale factor
         # reduce then broadcast self.x
-        # TODO do I work properly ?
         self.x = self._mpi_reduce_broadcast(self.x)
         # self.x = comm.reduce(self.x, MPI.SUM, root=0)
         # self.x = comm.bcast(self.x, root=0)
@@ -323,6 +351,8 @@ class FatRefiner(PixelRefinement):
             self.D.refine(self._ncells_id)
         if self.refine_detdist:
             self.D.refine(self._originZ_id)
+        if self.refine_Fcell:
+            self.D.refine(self._fcell_id)
         self.D.initialize_managers()
 
     def _unpack_internal(self, lst):
@@ -356,6 +386,31 @@ class FatRefiner(PixelRefinement):
         """needs to be called each time the ROI is changed"""
         self.D.region_of_interest = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
         self.D.add_diffBragg_spots()
+
+    def _update_Fcell(self):
+        # get the p1 table from nanoBragg
+        idx, data = self.S.D.Fhkl_tuple
+        for i_fcell in range(self.n_global_fcell):
+            # get the asu index and its updated amplitude
+            hkl = self.asu_from_idx[i_fcell]
+            xpos = self.fcell_xstart + i_fcell
+            new_Fcell = self.x[xpos]  # new amplitude
+
+            #FIXME with a re-parameterization
+            if new_Fcell < 0:
+                self.x[xpos] = 0
+                new_Fcell = 0
+                self.num_kludge += 1
+
+            # now surgically update the p1 array in nanoBragg with the new amplitudes
+            # need to update each symmetry equivalent
+            sg = sgtbx.space_group(sgtbx.space_group_info(symbol=self.symbol).type().hall_symbol())
+            equivs = [i.h() for i in miller.sym_equiv_indices(sg, hkl).indices()]
+            for h_equiv in equivs:
+                # get the nanoBragg p1 miller table index corresponding to this hkl equivalent
+                p1_idx = self.idx_from_p1[h_equiv]  # TODO change name to be more specific
+                data[p1_idx] = new_Fcell  # set the data with the new value
+        self.S.D.Fhkl_tuple = idx, data  # update nanoBragg again  # TODO: add flag to not re-allocate in nanoBragg!
 
     def _update_rotXYZ(self):
         if self.refine_rotX:
@@ -410,8 +465,8 @@ class FatRefiner(PixelRefinement):
                 if self.calc_curvatures:
                     self.ucell_second_derivatives[i] = self.D.get_second_derivative_pixels(3 + i).as_numpy_array()
 
-        self.ncells_deriv = self.detdist_deriv = 0
-        self.ncells_second_deriv = self.detdist_second_deriv = 0
+        self.ncells_deriv = self.detdist_deriv = self.fcell_deriv = 0
+        self.ncells_second_deriv = self.detdist_second_deriv = self.fcell_second_deriv = 0
         if self.refine_ncells:
             self.ncells_deriv = self.D.get_derivative_pixels(self._ncells_id).as_numpy_array()
             if self.calc_curvatures:
@@ -420,6 +475,10 @@ class FatRefiner(PixelRefinement):
             self.detdist_deriv = self.D.get_derivative_pixels(self._originZ_id).as_numpy_array()
             if self.calc_curvatures:
                 self.detdist_second_deriv = self.D.get_second_derivative_pixels(self._originZ_id).as_numpy_array()
+        if self.refine_Fcell:
+            self.fcell_deriv = self.D.get_derivative_pixels(self._fcell_id).as_numpy_array()
+            if self.calc_curvatures:
+                self.fcell_second_deriv = self.D.get_second_derivative_pixels(self._fcell_id).as_numpy_array()
 
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
 
@@ -458,6 +517,7 @@ class FatRefiner(PixelRefinement):
 
             self.gain_fac = self.x[self.gain_xpos]
             G2 = self.gain_fac ** 2
+            self._update_Fcell()  # update the structure factor with the new x  # TODO do I work ?
 
             for self._i_shot in self.shot_ids:
                 self.scale_fac = self.x[self.spot_scale_xpos[self._i_shot]]
@@ -570,6 +630,14 @@ class FatRefiner(PixelRefinement):
                         #    raise NotImplementedError("Cannot use curvatures and refine detdist (yet...)")
                         # origin_xpos = self.origin_xstart + self.idx_from_pid[self._panel_id]
                         # g[origin_xpos] += (S2*G2*self.detdist_deriv*one_minus_k_over_Lambda).sum()
+
+                    if self.refine_Fcell:
+                        d = S2*G2*self.fcell_deriv
+                        xpos = self.fcell_xstart + self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
+                        g[xpos] += self._grad_accumulate(d)
+                        if self.calc_curvatures:
+                            d2 = S2*G2*self.fcell_second_deriv
+                            self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_crystal_scale:
                         d = G2 * 2 * self.scale_fac * self.model_bragg_spots
@@ -732,7 +800,6 @@ class FatRefiner(PixelRefinement):
         return self._f, self._g
 
     def _mpi_reduce_broadcast(self, var):
-        # TODO: try me out
         var = comm.reduce(var, MPI.SUM, root=0)
         var = comm.bcast(var, root=0)
         return var
@@ -763,6 +830,18 @@ class FatRefiner(PixelRefinement):
                                       (2+2*self.u*self.one_over_v + self.u*self.u*self.one_over_v*self.one_over_v)))
         cterm = .5*cterm.sum()
         return cterm
+
+    def _evaluate_log_averageI(self):  # for Poisson only stats
+        # fix log(x<=0)
+        try:
+            self.log_Lambda = np_log(self.model_Lambda)
+        except FloatingPointError:
+            pass
+        if any((self.model_Lambda <= 0).ravel()):
+            self.num_kludge += 1
+            #print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL (kludges=%d)!!!!!!!!!\n<><><><><><><><><>\n" % self.num_kludge)
+        #    raise ValueError("model of Bragg spots cannot have negative intensities...")
+        self.log_Lambda[self.model_Lambda <= 0] = 0  # FIXME with Gaussian model
 
     def _evaluate_log_averageI_plus_sigma_readout(self):
         L = self.model_Lambda + self.sigma_r**2
