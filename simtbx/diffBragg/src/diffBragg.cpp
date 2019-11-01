@@ -1170,7 +1170,7 @@ void diffBragg::add_diffBragg_spots()
             if(fcell_man->refine_me){
                 double value = r_e_sqr*fluence*spot_scale*polar*fcell_man->dI/steps;
                 double value2 = r_e_sqr*fluence*spot_scale*polar*fcell_man->dI2/steps;
-                Ncells_managers[0]->increment_image(roi_i, value, value2);
+                fcell_man->increment_image(roi_i, value, value2);
             }/* end Fcell deriv image increment */
 
             /* update origin derivative image */
