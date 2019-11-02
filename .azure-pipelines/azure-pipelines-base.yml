@@ -1,17 +1,15 @@
 # Nightly builds for updates to base
 
-# no continuous integration or pull request builds
+# no continuous integration builds
 trigger: none
-pr: none
 
-# only nightly builds
+# only nightly and pull request builds
 schedules:
 - cron: '0 3 * * *'
   displayName: Nightly base build
   branches:
     include:
     - master
-    - base_updates/*
 
 stages:
 - stage: Checks

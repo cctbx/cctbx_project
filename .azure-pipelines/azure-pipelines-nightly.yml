@@ -1,10 +1,9 @@
 # Nightly builds
 
-# no continuous integration or pull request builds
+# no continuous integration builds
 trigger: none
-pr: none
 
-# only nightly builds
+# only nightly and pull request builds
 schedules:
 - cron: '0 1 * * *'
   displayName: Nightly build
