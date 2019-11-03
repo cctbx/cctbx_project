@@ -64,11 +64,11 @@ class FatRefiner(PixelRefinement):
                  shot_roi_imgs, shot_spectra, shot_crystal_GTs,
                  shot_crystal_models, shot_xrel, shot_yrel, shot_abc_inits, shot_asu,
                  global_param_idx_start,
-                 shot_panel_ids, init_gain=1, init_scale=1):
+                 shot_panel_ids, init_gain=1, init_scale=1, perturb_fcell=True):
         PixelRefinement.__init__(self)
         # super(GlobalFat, self).__init__()
         self.num_kludge = 0
-
+        self.perturb_fcell = perturb_fcell
         # dictionaries whose keys are the shot indices
         self.UCELL_MAN = shot_ucell_managers
         # cache shot ids and make sure they are identical in all other input dicts
@@ -213,19 +213,19 @@ class FatRefiner(PixelRefinement):
             raise ValueError("Need to supply a non empty idx from asu map")
 
         # get the Fhkl information from P1 array internal to nanoBragg
-        if comm.rank==0:
+        if comm.rank == 0:
             print ("Making the big ones")
         idx, data = self.S.D.Fhkl_tuple
         self.idx_from_p1 = {h: i for i, h in enumerate(idx)}
         #self.p1_from_idx = {i: h for i, h in zip(idx, data)}
-        if comm.rank==0:
+        if comm.rank == 0:
             print("Done")
 
         # Make a mapping of panel id to parameter index and backwards
         self.pid_from_idx = {}
         self.idx_from_pid = {}
 
-        # Make te global sized parameter array, though here we only update the local portion
+        # Make the global sized parameter array, though here we only update the local portion
         self.x = flex_double(self.n_total_params)
 
         self.rotX_xpos = {}
@@ -286,10 +286,33 @@ class FatRefiner(PixelRefinement):
                 self.x[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
 
             F = self.S.D.Fhkl  # initial values, this table is the high symm table expanded to P1
-            # NOTE: dont ever set D.Fhkl property in the refinement setting, it tries to update the unit cell
-            for i_fcell in range(self.n_global_fcell):
-                asu_hkl = self.asu_from_idx[i_fcell]
-                self.x[self.fcell_xstart + i_fcell] = F.value_at_index(asu_hkl)
+
+            Fidx, Fdata = F.indices(), F.data()
+            Fdata = Fdata.as_numpy_array()
+            import numpy as np
+            #Fdata2 = [np.random.normal(fd, fd) if fd > 0 else 0 for fd in Fdata]
+            #Fdata2 = flex_double(Fdata2)
+            _p = 1
+            if self.perturb_fcell is not None:
+                _p = self.perturb_fcell
+                F_is_zero = Fdata == 0
+                Flog = np.log(Fdata)
+                Flog[F_is_zero] = 0
+                Fdata2 = np.exp(np.random.uniform(Flog - _p, Flog + _p))
+                Fdata2[F_is_zero] = 0
+                Fmap2 = {h: fd for h, fd in zip(Fidx, Fdata2)}
+                self.f_truth = []
+
+                # NOTE: dont ever set D.Fhkl property in the refinement setting, it tries to update the unit cell
+                for i_fcell in range(self.n_global_fcell):
+                    asu_hkl = self.asu_from_idx[i_fcell]
+                    self.x[self.fcell_xstart + i_fcell] = Fmap2[asu_hkl]  #F.value_at_index(asu_hkl)
+                    self.f_truth.append(F.value_at_index(asu_hkl))
+                ff = np.array(self.f_truth)
+                f_start = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
+                self.calc_R1 = lambda fobs: np.abs(fobs - ff).sum() / fobs.sum()
+                R1 = self.calc_R1(f_start)
+                print("Initial R1 = %.4f" % R1)
 
             # set det dist
             self.x[self.originZ_xpos] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?
@@ -788,10 +811,11 @@ class FatRefiner(PixelRefinement):
                                                         [C],
                                                         symbol="P43212")[0]
                 except Exception:
-                    ang_off = 9999
+                    ang_off = -1
                 all_ang_off.append(ang_off)
 
             all_ang_off = comm.gather(all_ang_off, root=0)
+
             if self.verbose:
                 print("\nMissets\n========")
                 all_ang_off = ["%.5f" % s for sl in all_ang_off for s in sl]
@@ -924,7 +948,11 @@ class FatRefiner(PixelRefinement):
             master_data["CUgain"] = self.curv[self.gain_xpos]
             print(master_data.to_string(float_format="%.3g"))
         Xnorm = norm(self.x)
-        print("\n\t|G|=%2.7g, eps*|X|=%2.7g" % (target, Xnorm*self.trad_conv_eps))
+        R1 = -1
+        if self.perturb_fcell is not None:
+            fobs = self.x[self.fcell_xstart: self.fcell_xstart + self.n_global_fcell].as_numpy_array()
+            R1 = self.calc_R1(fobs)
+        print("\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%.4f" % (target, Xnorm*self.trad_conv_eps, R1))
         print("\n")
 
     def get_refined_Bmatrix(self, i_shot):
