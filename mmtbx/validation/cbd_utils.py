@@ -85,7 +85,18 @@ def show_phi_psi_correction(residue, phi_psi, current, correction, rc, units=100
       plt.text(x, y,
                '%d' % (i+1),
                )
-  plt.title('%s (%5.1f, %5.1f)\n' %(residue.id_str(), phi_psi[0], phi_psi[1]))
+  key = (round_to_ten(phi_psi[0]), round_to_ten(phi_psi[1]))
+  plt.title('%s (%5.1f, %5.1f) (%4.0f, %4.0f)\n%s %s %s' %(
+    residue.id_str(),
+    phi_psi[0],
+    phi_psi[1],
+    key[0],
+    key[1],
+    current,
+    correction,
+    rc,
+   )
+  )
   plt.show()
 
 if __name__ == '__main__':
