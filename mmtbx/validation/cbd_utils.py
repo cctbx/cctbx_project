@@ -43,7 +43,11 @@ class radial_deviation:
     if self.r<other.r: return -1
     return 1
 
-def get_phi_psi_correction(result, residue, phi_psi, verbose=False):
+def get_phi_psi_correction(result,
+                           residue,
+                           phi_psi,
+                           display_phi_psi_correction=False,
+                           verbose=False):
   rc = None
   key = (round_to_ten(phi_psi[0]), round_to_ten(phi_psi[1]))
   if residue.resname=='PRO':
@@ -61,10 +65,28 @@ def get_phi_psi_correction(result, residue, phi_psi, verbose=False):
     if verbose:
       print('current %s is corrected with %s' % (current, correction)),
       print(' to give %s\n' % rc)
-      print(start, finish)
+    if display_phi_psi_correction and (start or finish):
+      show_phi_psi_correction(residue, phi_psi, current, correction, rc)
     return rc.r, rc.t/pi*180, start, finish
   else:
     return None
+
+def show_phi_psi_correction(residue, phi_psi, current, correction, rc, units=100):
+  import matplotlib.pyplot as plt
+
+  xs = [current.t, correction.t, rc.t]
+  ys = [current.r, correction.r, rc.r]
+
+  # ax = plt.subplot(2, 1, 2, projection='polar')
+
+  for i, (x, y) in enumerate(zip(xs, ys)):
+      y*=units
+      plt.polar(x, y, 'ro')
+      plt.text(x, y,
+               '%d' % (i+1),
+               )
+  plt.title('%s (%5.1f, %5.1f)\n' %(residue.id_str(), phi_psi[0], phi_psi[1]))
+  plt.show()
 
 if __name__ == '__main__':
   # tests

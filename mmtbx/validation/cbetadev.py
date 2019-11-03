@@ -92,6 +92,7 @@ class cbetadev(validation):
       out=sys.stdout,
       collect_ideal=False,
       apply_phi_psi_correction=False,
+      display_phi_psi_correction=False,
       quiet=False):
     validation.__init__(self)
     self._outlier_i_seqs = flex.size_t()
@@ -147,7 +148,12 @@ class cbetadev(validation):
                   id_str = '|%s:%s|' % (residue.id_str(), altchar)
                   phi_psi = phi_psi_angles.get(id_str, None)
                   if phi_psi:
-                    rc = cbd_utils.get_phi_psi_correction(result, residue, phi_psi)
+                    rc = cbd_utils.get_phi_psi_correction(
+                      result,
+                      residue,
+                      phi_psi,
+                      display_phi_psi_correction=display_phi_psi_correction,
+                      )
                     if rc:
                       dev, dihedralNABB, start, finish = rc
                       if start and not finish:

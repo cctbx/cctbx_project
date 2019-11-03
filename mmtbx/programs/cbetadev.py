@@ -34,6 +34,9 @@ Example:
       apply_phi_psi_correction = False
         .type = bool
         .help = XXX
+      display_phi_psi_correction = False
+        .type = bool
+        .help = XXX
       }
 """
   datatypes = ['model','phil']
@@ -49,6 +52,7 @@ Example:
       pdb_hierarchy=hierarchy,
       outliers_only=self.params.outliers_only,
       apply_phi_psi_correction=self.params.cbetadev.apply_phi_psi_correction,
+      display_phi_psi_correction=self.params.cbetadev.display_phi_psi_correction,
       out=self.logger,
       quiet=False)
     if self.params.cbetadev.output == "kin":
