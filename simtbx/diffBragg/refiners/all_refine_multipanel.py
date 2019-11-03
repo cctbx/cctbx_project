@@ -126,8 +126,14 @@ class RefineAllMultiPanel(RefineRot):
     #@profile
     def _run_diffBragg_current(self, i_spot):
         """needs to be called each time the ROI is changed"""
+        print("a")
         self.D.region_of_interest = self.nanoBragg_rois[i_spot]
+        print("b")
+        if self.iterations==18:
+            from IPython import embed
+            embed()
         self.D.add_diffBragg_spots()
+        print("c")
 
     #@profile
     def _update_rotXYZ(self):
