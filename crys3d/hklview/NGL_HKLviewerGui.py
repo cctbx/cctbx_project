@@ -13,7 +13,7 @@ from __future__ import absolute_import, division, print_function
 
 from PySide2.QtCore import Qt, QTimer, QEvent
 from PySide2.QtWidgets import ( QAction, QApplication, QCheckBox, QComboBox, QDialog,
-        QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
+        QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
@@ -79,33 +79,40 @@ class MillerArrayTableForm(QDialog):
   def __init__(self, parent=None):
     super(MillerArrayTableForm, self).__init__(parent)
     self.setWindowTitle("MillerArrayTableForm")
-    myGroupBox = QGroupBox("Stuff")
-    layout = QGridLayout()
-    layout.addWidget(parent.millerarraytable)
-    myGroupBox.setLayout(layout)
-    mainLayout = QGridLayout()
-    mainLayout.addWidget(myGroupBox,     0, 0)
-    self.setLayout(mainLayout)
+    self.myGroupBox = QGroupBox("Stuff")
+    self.layout = QGridLayout()
+    self.layout.addWidget(parent.millerarraytable,     0, 0)
+    #self.layout.setRowStretch (0, 0)
+    self.myGroupBox.setLayout(self.layout)
+    self.mainLayout = QGridLayout()
+    self.mainLayout.addWidget(self.myGroupBox,     0, 0)
+    #self.mainLayout.setRowStretch (0, 0)
+    self.setLayout(self.mainLayout)
+    #header = parent.millerarraytable.horizontalHeader();
+    #header.setSectionResizeMode(QHeaderView.Stretch);
 
 
 class NumericTableWidgetItem(QTableWidgetItem):
   def __lt__(self, other):
     return float(self.text()) < float(other.text())
   def __gt__(self, other):
-    return float(self.text()) > float(other.text())
-    #return (self.data(Qt.UserRole).toLongLong() < other.data(Qt.UserRole).toLongLong())
+    return float(self.text()) >= float(other.text())
+  def resizeEvent(self, event):
+    QTableWidget.resizeEvent(self, event)
 
 
 class MyTableWidget(QTableWidget):
   def __init__(self, *args, **kwargs):
     QTableWidget.__init__(self, *args, **kwargs)
     self.mousebutton = None
+    self.selectedrows = []
 
   def mousePressEvent(self, event):
     if event.type() == QEvent.MouseButtonPress:
       self.mousebutton = None
       if event.button() == Qt.RightButton:
         self.mousebutton = Qt.RightButton
+        #self.selectedrows = list(set([ e.row() for e in self.selectedItems() ]))
     QTableWidget.mousePressEvent(self, event)
 
   def mouseDoubleClickEvent(self, event):
@@ -233,12 +240,13 @@ class NGL_HKLViewer(QWidget):
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
     self.millertable.cellPressed.connect(self.onMillerTableCellPressed)
     self.millertable.cellDoubleClicked.connect(self.onMillerTableCellPressed)
+    self.millertable.itemSelectionChanged.connect(self.onMillerTableitemSelectionChanged)
     #self.millertable.installEventFilter(self)
 
-    labels = ["H", "K", "L", "data", "sigma" ]
+    #labels = ["H", "K", "L", "data", "sigma" ]
     self.millerarraytable = MyTableWidget(0, len(labels))
     self.millerarraytable.setEditTriggers(QTableWidget.NoEditTriggers)
-    self.millerarraytable.setHorizontalHeaderLabels(labels)
+    #self.millerarraytable.setHorizontalHeaderLabels(labels)
     self.millerarraytable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.millerarraytable.horizontalHeader().sectionDoubleClicked.connect(self.onMillerArrayTableHeaderSectionDoubleClicked)
     self.millerarraytableform = MillerArrayTableForm(self)
@@ -310,7 +318,7 @@ class NGL_HKLViewer(QWidget):
     self.canexit = False
     self.closing = False
     self.indices = None
-    self.data = None
+    self.datalst = []
     self.tabulate_miller_array = None
     self.binTableCheckState = None
     self.millertablemenu = QMenu(self)
@@ -325,24 +333,27 @@ class NGL_HKLViewer(QWidget):
     #while not self.canexit:
     #  time.sleep(1)
     #self.webprofile.clearHttpCache()
-    #del self.webpage
+    del self.webpage
     #del self.BrowserBox
     #del self.webprofile
 
     #shutil.rmtree(cpath)
     print("HKLviewer exiting now.")
-    while not self.canexit: # until cctbx.python has finished
-      time.sleep(0.2)
+    nc = 0
+    sleeptime = 0.2
+    while not self.canexit and nc < 10: # until cctbx.python has finished or after 10 sec
+      time.sleep(sleeptime)
       self.update()
+      nc += sleeptime
 
     print("accepting close.event")
     self.cctbxproc.terminate()
     self.out, self.err = self.cctbxproc.communicate()
     #print( str(self.out) + "\n" + str(self.err) )
     self.cctbxproc.wait()
-    #self.BrowserBox.close()
+    self.BrowserBox.close()
     self.mainLayout.removeWidget(self.BrowserBox)
-    #self.BrowserBox.deleteLater()
+    self.BrowserBox.deleteLater()
     #self.BrowserBox.destroy()
 
     """
@@ -437,11 +448,16 @@ class NGL_HKLViewer(QWidget):
           if self.infodict.get("tabulate_miller_array"):
             self.tabulate_miller_array = self.infodict["tabulate_miller_array"]
             self.indices = self.tabulate_miller_array[0]
-            self.data = self.tabulate_miller_array[1]
-            self.millerarraytable_sortorder = ["unsorted", "unsorted", "unsorted", "unsorted", "unsorted"]
+            self.datalst =  [ ld[1] for ld in self.tabulate_miller_array[1:] ]
+            labels = ["H", "K", "L"] + [ ld[0] for ld in self.tabulate_miller_array[1:] ]
+            self.millerarraytable_sortorder = ["unsorted"] * (len(self.datalst) + 3)
             self.millerarraytable.clearContents()
+            self.millerarraytable.setHorizontalHeaderLabels(labels)
             self.millerarraytable.setRowCount(len(self.indices))
             self.RefreshMillerArrayTable()
+            self.millerarraytable.resizeColumnsToContents()
+            self.millerarraytableform.layout.setRowStretch (0, 0)
+            self.millerarraytableform.mainLayout.setRowStretch (0, 0)
             self.millerarraytableform.show()
 
           currentinfostr = ""
@@ -534,8 +550,9 @@ class NGL_HKLViewer(QWidget):
       self.millerarraytable.setItem(row, 0, NumericTableWidgetItem(str(h)))
       self.millerarraytable.setItem(row, 1, NumericTableWidgetItem(str(k)))
       self.millerarraytable.setItem(row, 2, NumericTableWidgetItem(str(l)))
-      self.millerarraytable.setItem(row, 3, NumericTableWidgetItem(str(self.data[row])))
-      self.millerarraytable.setItem(row, 4, QTableWidgetItem(str("")))
+      for i,data in enumerate(self.datalst):
+        self.millerarraytable.setItem(row, i+3, NumericTableWidgetItem(str(data[row])))
+      #self.millerarraytable.setItem(row, 4, QTableWidgetItem(str("")))
 
 
   def onFinalMouseSensitivity(self):
@@ -1149,6 +1166,10 @@ class NGL_HKLViewer(QWidget):
           self.DisplayData(i)
 
 
+  def onMillerTableitemSelectionChanged(self):
+    self.millertable.selectedrows = list(set([ e.row() for e in self.millertable.selectedItems() ]))
+
+
   def MillerTableContextMenuHandler(self, pos, row):
     self.millertablemenu.clear()
     # Tag menu items with data being int or a (string, int) tuple.
@@ -1166,9 +1187,17 @@ class NGL_HKLViewer(QWidget):
     myqa = QAction("Make new data as a function of this data and another data set...", self, triggered=self.testaction)
     myqa.setData( ("newdata_2", row ))
     self.millertablemenu.addAction(myqa)
-    myqa = QAction("Show a table of this data set...", self, triggered=self.testaction)
-    myqa.setData( ("tabulate_data", row ))
-    self.millertablemenu.addAction(myqa)
+    #myqa = QAction("Show a table of this data set...", self, triggered=self.testaction)
+    #myqa.setData( ("tabulate_data", row ))
+    if len(self.millertable.selectedrows) > 0:
+      arraystr = ""
+      for i,r in enumerate(self.millertable.selectedrows):
+        arraystr += self.millerarraylabels[r]
+        if i < len(self.millertable.selectedrows)-1:
+          arraystr += " and "
+      myqa = QAction("Show a table of %s data ..." %arraystr, self, triggered=self.testaction)
+      myqa.setData( ("tabulate_data", self.millertable.selectedrows ))
+      self.millertablemenu.addAction(myqa)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.millertablemenu.exec_(QCursor.pos())
 
@@ -1200,7 +1229,7 @@ class NGL_HKLViewer(QWidget):
           self.makenewdataform.show()
         if strval=="tabulate_data":
           print("wibble")
-          self.NGL_HKL_command("NGL_HKLviewer.tabulate_miller_array_id = %d" %idx)
+          self.NGL_HKL_command('NGL_HKLviewer.tabulate_miller_array_ids = "%s"' %str(idx))
 
 
 

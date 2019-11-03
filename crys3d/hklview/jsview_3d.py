@@ -534,6 +534,65 @@ class hklview_3d:
     return self.hkl_scenes_info[idx][6], self.hkl_scenes_info[idx][7]
 
 
+  def superset_all_miller_arrays(self):
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    self.match_valarrays = []
+    # loop over all miller arrays to find the subsets of hkls common between currently selected
+    # miler array and the other arrays. hkls found in the currently selected miller array but
+    # missing in the subsets are populated populated with NaN values
+    # create miller indices being a superset of available indices in all arrays
+    self.mprint("Gathering superset of miller indices")
+    superset_array = self.proc_arrays[0]
+    for i,validarray in enumerate(self.proc_arrays):
+      if i==0:
+        continue
+      # first match indices in currently selected miller array with indices in the other miller arrays
+      matchindices = miller.match_indices(superset_array.indices(), validarray.indices() )
+      #print validarray.info().label_string()
+      valarray = validarray.select( matchindices.pairs().column(1) )
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      if valarray.anomalous_flag() and not superset_array.anomalous_flag():
+        # valarray gets its anomalous_flag from validarray. But it cannot have more HKLs than self.miller_array
+        # so set its anomalous_flag to False if self.miller_array is not anomalous data
+        valarray._anomalous_flag = False
+      if not valarray.anomalous_flag() and superset_array.anomalous_flag():
+        # temporarily expand other arrays to anomalous if self.miller_array is anomalous
+        valarray = valarray.generate_bijvoet_mates()
+      missing = superset_array.lone_set( valarray )
+      # insert NAN values for reflections in self.miller_array not found in validarray
+      valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices())
+      match_valindices = miller.match_indices(superset_array.indices(), valarray.indices() )
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      match_valarray = valarray.select( match_valindices.pairs().column(1) )
+      match_valarray.sort(by_value="packed_indices")
+      #match_valarray.set_info(validarray.info() )
+      superset_array = match_valarray
+      #print "supersetsize:", superset_array.size()
+    # now extend each miller array to contain any missing indices from the superset miller array
+    for i,validarray in enumerate(self.proc_arrays):
+      # first match indices in currently selected miller array with indices in the other miller arrays
+      matchindices = miller.match_indices(superset_array.indices(), validarray.indices() )
+      #print validarray.info().label_string()
+      valarray = validarray.select( matchindices.pairs().column(1) )
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      if valarray.anomalous_flag() and not superset_array.anomalous_flag():
+        # valarray gets its anomalous_flag from validarray. But it cannot have more HKLs than self.miller_array
+        # so set its anomalous_flag to False if self.miller_array is not anomalous data
+        valarray._anomalous_flag = False
+      if not valarray.anomalous_flag() and superset_array.anomalous_flag():
+        # temporarily expand other arrays to anomalous if self.miller_array is anomalous
+        valarray = valarray.generate_bijvoet_mates()
+      missing = superset_array.lone_set( valarray )
+      # insert NAN values for reflections in self.miller_array not found in validarray
+      valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices())
+      match_valindices = miller.match_indices(superset_array.indices(), valarray.indices() )
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      match_valarray = valarray.select( match_valindices.pairs().column(1) )
+      match_valarray.sort(by_value="packed_indices")
+      match_valarray.set_info(validarray.info() )
+      self.match_valarrays.append( match_valarray )
+
+
   def ConstructReciprocalSpace(self, curphilparam, merge=None):
     #self.miller_array = self.match_valarrays[self.scene_id]
     #self.miller_array = self.proc_arrays[self.scene_id]
@@ -2275,7 +2334,10 @@ mysocket.onmessage = function (e)
 
 
   def StopThreads(self):
-    self.websockclient['handler'].send_text(u"", opcode=0x8)
+    try:
+      self.websockclient['handler'].send_text(u"", opcode=0x8)
+    except Exception as e:
+      self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
     self.server.shutdown()
     self.msgqueuethrd.join()
     self.wst.join()

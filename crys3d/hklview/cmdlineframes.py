@@ -462,8 +462,8 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
 
-      if view_3d.has_phil_path(diff_phil, "tabulate_miller_array_id"):
-        self.tabulate_miller_array(phl.tabulate_miller_array_id)
+      if view_3d.has_phil_path(diff_phil, "tabulate_miller_array_ids"):
+        self.tabulate_miller_array(phl.tabulate_miller_array_ids)
         return True
 
       if view_3d.has_phil_path(diff_phil, "miller_array_operations"):
@@ -804,6 +804,7 @@ class HKLViewFrame() :
       elif (len(valid_arrays) >= 1):
         if (set_array):
           self.set_miller_array()
+          self.viewer.superset_all_miller_arrays()
         mydict = { "info": self.infostr,
                    "array_infotpls": self.viewer.array_infotpls,
                    "bin_infotpls": self.viewer.bin_infotpls,
@@ -822,14 +823,19 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def tabulate_miller_array(self, id):
-    self.idx_data = (list(self.valid_arrays[id].indices()), list(self.valid_arrays[id].data()))
+  def tabulate_miller_array(self, ids):
+    idlst = eval(ids)
+    hkls = [ list(self.viewer.match_valarrays[idlst[0]].indices()) ]
+    datalst = [ (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data()))
+                    for id in idlst ]
+    self.idx_data = hkls + datalst
+    #self.idx_data = (list(self.valid_arrays[id].indices()), list(self.valid_arrays[id].data()))
     mydict = { "tabulate_miller_array": self.idx_data }
     self.SendInfoToGUI(mydict, binary=True)
 
 
-  def TabulateMillerArray(self, id):
-    self.params.NGL_HKLviewer.tabulate_miller_array_id = id
+  def TabulateMillerArray(self, ids):
+    self.params.NGL_HKLviewer.tabulate_miller_array_ids = str(ids)
     self.update_settings()
 
 
@@ -1193,8 +1199,8 @@ NGL_HKLviewer {
   }
   action = *'is_running' 'is_terminating'
     .type = choice
-  tabulate_miller_array_id = None
-    .type = int
+  tabulate_miller_array_ids = "[]"
+    .type = str
 }
 
 """ %(display.philstr, view_3d.ngl_philstr)
