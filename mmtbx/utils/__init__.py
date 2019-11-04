@@ -2460,6 +2460,16 @@ class extract_box_around_model_and_map(object):
       frac_max = xray_structure_selected.sites_frac().max()
       frac_max = list(flex.double(frac_max)+cushion)
       frac_min = list(flex.double(frac_min)-cushion)
+      # Make sure box is not bigger than the map
+      new_frac_min=[]
+      new_frac_max=[]
+      for lb,ub in zip(frac_min,frac_max):
+        new_frac_min.append(max(0,lb))
+        new_frac_max.append(min(1,ub))
+      if new_frac_min != frac_min or new_frac_max != frac_max:
+        self.pdb_outside_box_msg="Warning: model is outside box"
+      frac_min=new_frac_min
+      frac_max=new_frac_max
     na = self.map_data.all()
     if lower_bounds and upper_bounds:
       self.gridding_first=lower_bounds
