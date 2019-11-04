@@ -23,6 +23,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     run_on_init = False
 
     def __init__(self):
+        self.plot_fcell = False
+        self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
         self.use_curvatures = False  # whether to use the curvatures
         self.refine_background_planes = True  # whether to refine the background planes
         self.refine_gain_fac = False  # whether to refine the gain factor
