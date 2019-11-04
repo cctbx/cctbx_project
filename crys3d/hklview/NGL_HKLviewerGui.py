@@ -78,27 +78,48 @@ class SettingsForm(QDialog):
 class MillerArrayTableForm(QDialog):
   def __init__(self, parent=None):
     super(MillerArrayTableForm, self).__init__(parent)
-    self.setWindowTitle("MillerArrayTableForm")
-    self.myGroupBox = QGroupBox("Stuff")
+    self.setWindowTitle("Tabulated Reflection Data")
+
+    self.precision_spinBox = QSpinBox()
+    self.precision_spinBox.setSingleStep(1)
+    self.precision_spinBox.setRange(1, 20)
+    self.precision_spinBox.setValue(3)
+    self.precision_spinBox.valueChanged.connect(parent.onPrecisionChanged)
+    precision_labeltxt = QLabel()
+    precision_labeltxt.setText("Precision:")
+
+    self.myGroupBox = QGroupBox("Double click columns to sort values in ascending or descending order")
     self.layout = QGridLayout()
-    self.layout.addWidget(parent.millerarraytable,     0, 0)
-    #self.layout.setRowStretch (0, 0)
+    self.layout.addWidget(precision_labeltxt,       0, 0, 1, 1)
+    self.layout.addWidget(self.precision_spinBox,   0, 1, 1, 1)
+    self.layout.addWidget(parent.millerarraytable,  1, 0, 1, 5)
+    self.layout.setColumnStretch (0 ,0)
+    self.layout.setColumnStretch (1 ,0)
+    self.layout.setColumnStretch (2 ,1)
+    self.layout.setColumnStretch (3 ,1)
+    self.layout.setColumnStretch (4 ,1)
     self.myGroupBox.setLayout(self.layout)
     self.mainLayout = QGridLayout()
     self.mainLayout.addWidget(self.myGroupBox,     0, 0)
-    #self.mainLayout.setRowStretch (0, 0)
     self.setLayout(self.mainLayout)
-    #header = parent.millerarraytable.horizontalHeader();
-    #header.setSectionResizeMode(QHeaderView.Stretch);
 
 
 class NumericTableWidgetItem(QTableWidgetItem):
+
   def __lt__(self, other):
+    if self.text() == "":
+      return True
+    if other.text() == "":
+      return False
+
+    try:
+      float(self.text())
+      float(other.text())
+    except Exception as e:
+      return True
+
     return float(self.text()) < float(other.text())
-  def __gt__(self, other):
-    return float(self.text()) >= float(other.text())
-  def resizeEvent(self, event):
-    QTableWidget.resizeEvent(self, event)
+
 
 
 class MyTableWidget(QTableWidget):
@@ -106,15 +127,12 @@ class MyTableWidget(QTableWidget):
     QTableWidget.__init__(self, *args, **kwargs)
     self.mousebutton = None
     self.selectedrows = []
-
   def mousePressEvent(self, event):
     if event.type() == QEvent.MouseButtonPress:
       self.mousebutton = None
       if event.button() == Qt.RightButton:
         self.mousebutton = Qt.RightButton
-        #self.selectedrows = list(set([ e.row() for e in self.selectedItems() ]))
     QTableWidget.mousePressEvent(self, event)
-
   def mouseDoubleClickEvent(self, event):
     if event.type() == QEvent.MouseButtonDblClick:
       if event.button() == Qt.LeftButton:
@@ -177,7 +195,6 @@ class NGL_HKLViewer(QWidget):
     self.font = QFont()
     self.font.setFamily(self.font.defaultFamily())
     self.fontspinBox.setValue(self.font.pointSize())
-    #self.fontspinBox.setValue(self.font.pixelSize())
     self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
     self.Fontsize_labeltxt = QLabel()
     self.Fontsize_labeltxt.setText("Font size:")
@@ -241,12 +258,9 @@ class NGL_HKLViewer(QWidget):
     self.millertable.cellPressed.connect(self.onMillerTableCellPressed)
     self.millertable.cellDoubleClicked.connect(self.onMillerTableCellPressed)
     self.millertable.itemSelectionChanged.connect(self.onMillerTableitemSelectionChanged)
-    #self.millertable.installEventFilter(self)
 
-    #labels = ["H", "K", "L", "data", "sigma" ]
     self.millerarraytable = MyTableWidget(0, len(labels))
-    self.millerarraytable.setEditTriggers(QTableWidget.NoEditTriggers)
-    #self.millerarraytable.setHorizontalHeaderLabels(labels)
+    #self.millerarraytable.setEditTriggers(QTableWidget.NoEditTriggers)
     self.millerarraytable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.millerarraytable.horizontalHeader().sectionDoubleClicked.connect(self.onMillerArrayTableHeaderSectionDoubleClicked)
     self.millerarraytableform = MillerArrayTableForm(self)
@@ -333,9 +347,9 @@ class NGL_HKLViewer(QWidget):
     #while not self.canexit:
     #  time.sleep(1)
     #self.webprofile.clearHttpCache()
+    del self.webprofile
     del self.webpage
     #del self.BrowserBox
-    #del self.webprofile
 
     #shutil.rmtree(cpath)
     print("HKLviewer exiting now.")
@@ -442,22 +456,25 @@ class NGL_HKLViewer(QWidget):
             self.SpaceGroupComboBox.clear()
             self.SpaceGroupComboBox.addItems( self.spacegroups )
 
-          if self.infodict.get("merge_data"):
-            self.mergedata = self.infodict["merge_data"]
-
           if self.infodict.get("tabulate_miller_array"):
+            print("receiving table")
             self.tabulate_miller_array = self.infodict["tabulate_miller_array"]
             self.indices = self.tabulate_miller_array[0]
             self.datalst =  [ ld[1] for ld in self.tabulate_miller_array[1:] ]
             labels = ["H", "K", "L"] + [ ld[0] for ld in self.tabulate_miller_array[1:] ]
             self.millerarraytable_sortorder = ["unsorted"] * (len(self.datalst) + 3)
-            self.millerarraytable.clearContents()
-            self.millerarraytable.setHorizontalHeaderLabels(labels)
+            self.millerarraytable.clear()
             self.millerarraytable.setRowCount(len(self.indices))
+            self.millerarraytable.setColumnCount(len(labels))
+            self.millerarraytable.setHorizontalHeaderLabels(labels)
             self.RefreshMillerArrayTable()
             self.millerarraytable.resizeColumnsToContents()
             self.millerarraytableform.layout.setRowStretch (0, 0)
             self.millerarraytableform.mainLayout.setRowStretch (0, 0)
+            tablewidth = 0
+            for e in range(self.millerarraytable.columnCount()):
+              tablewidth +=  self.millerarraytable.columnWidth(e)
+            self.millerarraytableform.resize(tablewidth, self.millerarraytableform.size().height())
             self.millerarraytableform.show()
 
           currentinfostr = ""
@@ -493,12 +510,9 @@ class NGL_HKLViewer(QWidget):
             self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
 
           if (self.NewFileLoaded or self.NewMillerArray) and self.NewHKLscenes:
-            #if self.mergedata == True : val = Qt.CheckState.Checked
-            #if self.mergedata == None : val = Qt.CheckState.PartiallyChecked
-            #if self.mergedata == False : val = Qt.CheckState.Unchecked
-            #self.mergecheckbox.setCheckState(val )
             #print("got hklscenes: " + str(self.hklscenes_arrays))
             self.NewMillerArray = False
+            self.millerarraytable.clear()
 
             self.MillerComboBox.clear()
             self.MillerComboBox.addItems( self.millerarraylabels )
@@ -544,15 +558,32 @@ class NGL_HKLViewer(QWidget):
       self.millerarraytable.sortItems(idx, self.millerarraytable_sortorder[idx])
 
 
-
   def RefreshMillerArrayTable(self):
+    nc = len(self.indices)
     for row,(h,k,l) in enumerate(self.indices):
       self.millerarraytable.setItem(row, 0, NumericTableWidgetItem(str(h)))
       self.millerarraytable.setItem(row, 1, NumericTableWidgetItem(str(k)))
       self.millerarraytable.setItem(row, 2, NumericTableWidgetItem(str(l)))
       for i,data in enumerate(self.datalst):
-        self.millerarraytable.setItem(row, i+3, NumericTableWidgetItem(str(data[row])))
-      #self.millerarraytable.setItem(row, 4, QTableWidgetItem(str("")))
+        d = str(data[row])
+        if d == "nan":
+          d = ""
+        else:
+          val = data[row]
+          prec = self.millerarraytableform.precision_spinBox.value()
+          if type(val) is complex:
+            d = str(round(val.real, prec)) + " + i*" + str(round(val.imag, prec))
+          else:
+            d = str(round(val, prec))
+        self.millerarraytable.setItem(row, i+3, NumericTableWidgetItem(d))
+      c = row*20
+      if (c % nc) == 0:
+        print(str(row*100/nc) + " %")
+
+
+  def onPrecisionChanged(self, val):
+    self.RefreshMillerArrayTable()
+    self.millerarraytable.resizeColumnsToContents()
 
 
   def onFinalMouseSensitivity(self):
@@ -582,15 +613,6 @@ class NGL_HKLViewer(QWidget):
       self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.camera_type = perspective")
     else:
       self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.camera_type = orthographic")
-
-
-  def MergeData(self):
-    if self.mergecheckbox.checkState()== Qt.CheckState.Checked:
-      self.NGL_HKL_command('NGL_HKLviewer.mergedata = True')
-    if self.mergecheckbox.checkState()== Qt.CheckState.PartiallyChecked:
-      self.NGL_HKL_command('NGL_HKLviewer.mergedata = None')
-    if self.mergecheckbox.checkState()== Qt.CheckState.Unchecked:
-      self.NGL_HKL_command('NGL_HKLviewer.mergedata = False')
 
 
   def ExpandToP1(self):
@@ -863,11 +885,6 @@ class NGL_HKLViewer(QWidget):
     self.SpacegroupLabel = QLabel()
     self.SpacegroupLabel.setText("Space Subgroups")
 
-    self.mergecheckbox = QCheckBox()
-    self.mergecheckbox.setText("Merge data")
-    #self.mergecheckbox.setTristate (True)
-    self.mergecheckbox.clicked.connect(self.MergeData)
-
     self.expandP1checkbox = QCheckBox()
     self.expandP1checkbox.setText("Expand to P1")
     self.expandP1checkbox.clicked.connect(self.ExpandToP1)
@@ -892,7 +909,6 @@ class NGL_HKLViewer(QWidget):
     layout = QGridLayout()
     layout.addWidget(self.SpacegroupLabel,           0, 0)
     layout.addWidget(self.SpaceGroupComboBox,        0, 1)
-    #layout.addWidget(self.mergecheckbox,            1, 0)
     layout.addWidget(self.expandP1checkbox,          1, 0)
     layout.addWidget(self.expandAnomalouscheckbox,   1, 1)
     layout.addWidget(self.sysabsentcheckbox,         2, 0)

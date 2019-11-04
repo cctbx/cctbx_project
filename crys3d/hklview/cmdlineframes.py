@@ -825,11 +825,27 @@ class HKLViewFrame() :
 
   def tabulate_miller_array(self, ids):
     idlst = eval(ids)
-    hkls = [ list(self.viewer.match_valarrays[idlst[0]].indices()) ]
-    datalst = [ (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data()))
-                    for id in idlst ]
-    self.idx_data = hkls + datalst
-    #self.idx_data = (list(self.valid_arrays[id].indices()), list(self.valid_arrays[id].data()))
+    indices = self.viewer.match_valarrays[idlst[0]].indices()
+    dres = self.viewer.match_valarrays[idlst[0]].unit_cell().d( indices )
+    dreslst = [("d_res", list(dres))]
+    hkls = [ list(indices) ]
+    #datalst = [ (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data()))
+    #                for id in idlst ]
+    datalst = []
+    for id in idlst:
+      if self.viewer.match_valarrays[id].is_complex_array():
+        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data())) )
+        ampls, phases = self.viewer.Complex2AmplitudesPhases(self.viewer.match_valarrays[id].data())
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(ampls)) )
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[1], list(phases)) )
+      elif self.viewer.match_valarrays[id].sigmas() is not None:
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(self.viewer.match_valarrays[id].data()))  )
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[1], list(self.viewer.match_valarrays[id].sigmas()))  )
+      else:
+        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data()))  )
+
+
+    self.idx_data = hkls + dreslst + datalst
     mydict = { "tabulate_miller_array": self.idx_data }
     self.SendInfoToGUI(mydict, binary=True)
 
@@ -1138,9 +1154,6 @@ class HKLViewFrame() :
         self.guisocket.send( str(infodict).encode("utf-8") )
       else:
         bindict = zlib.compress( bytes(infodict) )
-        #bindict = zlib.compress( str(infodict).encode("utf-8") )
-        #for key,val in infodict.iteritems():
-        #  bindict[str(key).encode("utf-8")] = zlib.compress( str(val) )
         self.guisocket.send( bindict )
 
 

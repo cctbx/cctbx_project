@@ -429,6 +429,17 @@ class hklview_3d:
       % (array_info.label_string(), details, self.miller_array.indices().size(), \
           self.miller_array.space_group_info(), uc), verbose=0 )
 
+  def Complex2AmplitudesPhases(self, data):
+    ampls = flex.abs(data)
+    phases = flex.arg(data) * 180.0/math.pi
+    # purge nan values from array to avoid crash in fmod_positive()
+    b = flex.bool([bool(math.isnan(e)) for e in phases])
+    # replace the nan values with an arbitrary float value
+    phases = phases.set_selected(b, 42.4242)
+    # Cast negative degrees to equivalent positive degrees
+    phases = flex.fmod_positive(phases, 360.0)
+    return ampls, phases
+
 
   def MakeToolTips(self, HKLscenes):
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -446,14 +457,7 @@ class hklview_3d:
         colstraliases = "\n  var st%d = '\\n%s: ';" %(j, hklscene.work_array.info().label_string() )
         ocolstr = hklscene.work_array.info().label_string()
         if hklscene.work_array.is_complex_array():
-          ampl = flex.abs(hklscene.data)
-          phases = flex.arg(hklscene.data) * 180.0/math.pi
-          # purge nan values from array to avoid crash in fmod_positive()
-          b = flex.bool([bool(math.isnan(e)) for e in phases])
-          # replace the nan values with an arbitrary float value
-          phases = phases.set_selected(b, 42.4242)
-          # Cast negative degrees to equivalent positive degrees
-          phases = flex.fmod_positive(phases, 360.0)
+          ampl, phases = self.Complex2AmplitudesPhases(hklscene.data)
         sigmas = hklscene.sigmas
         for i,datval in enumerate(hklscene.data):
           hkl = hklscene.indices[i]
