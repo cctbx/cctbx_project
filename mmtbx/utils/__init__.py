@@ -2223,6 +2223,13 @@ def equivalent_sigma_from_cumulative_histogram_match(
 
 # MARKED_FOR_DELETION_OLEG
 # REASON: not used, not tested.
+def limit_frac_min_frac_max(frac_min,frac_max):
+      new_frac_min=[]
+      new_frac_max=[]
+      for lb,ub in zip(frac_min,frac_max):
+        new_frac_min.append(max(0,lb))
+        new_frac_max.append(min(1,ub))
+      return new_frac_min,new_frac_max
 def optimize_h(fmodel, mon_lib_srv, pdb_hierarchy=None, model=None, log=None,
       verbose=True):
   assert 0
@@ -2458,18 +2465,15 @@ class extract_box_around_model_and_map(object):
       self.pdb_outside_box_msg=""
       frac_min = xray_structure_selected.sites_frac().min()
       frac_max = xray_structure_selected.sites_frac().max()
+      new_frac_min,new_frac_max=limit_frac_min_frac_max(frac_min,frac_max)
+      if list(new_frac_min) != list(frac_min) or \
+         list(new_frac_max) != list(frac_max):
+        self.pdb_outside_box_msg="Warning: model is outside box"
       frac_max = list(flex.double(frac_max)+cushion)
       frac_min = list(flex.double(frac_min)-cushion)
       # Make sure box is not bigger than the map
-      new_frac_min=[]
-      new_frac_max=[]
-      for lb,ub in zip(frac_min,frac_max):
-        new_frac_min.append(max(0,lb))
-        new_frac_max.append(min(1,ub))
-      if new_frac_min != frac_min or new_frac_max != frac_max:
-        self.pdb_outside_box_msg="Warning: model is outside box"
-      frac_min=new_frac_min
-      frac_max=new_frac_max
+      frac_min,frac_max=limit_frac_min_frac_max(frac_min,frac_max)
+
     na = self.map_data.all()
     if lower_bounds and upper_bounds:
       self.gridding_first=lower_bounds
