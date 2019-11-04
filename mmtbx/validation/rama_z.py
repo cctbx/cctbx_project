@@ -8,6 +8,8 @@ from mmtbx.secondary_structure import manager as ss_manager
 from mmtbx.secondary_structure import sec_str_master_phil_str
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from scipy import interpolate
+import numpy as np
+import copy
 import math
 import os
 
@@ -103,8 +105,28 @@ class rama_z(object):
       except ZeroDivisionError:
         c = None
       if c is not None:
-        self.z_score[k] = (c - self.calibration_values[k][0]) / self.calibration_values[k][1]
+        zs = (c - self.calibration_values[k][0]) / self.calibration_values[k][1]
+        zs_std = self._get_z_score_accuracy(element_points, k)
+        self.z_score[k] = (zs, zs_std)
     return self.z_score
+
+  def _get_z_score_accuracy(self, points, part, n_shuffles=50, percent_to_keep=50):
+    tmp = copy.deepcopy(points)
+    scores = []
+    n_res = int(len(tmp) * percent_to_keep / 100)
+    if n_res == len(tmp):
+      n_res -= 1
+    for i in range(n_shuffles):
+      np.random.shuffle(tmp)
+      c = self._get_z_score_points(tmp[:n_res])
+      if c is not None:
+        c = (c - self.calibration_values[part][0]) / self.calibration_values[part][1]
+        scores.append(c)
+      c = self._get_z_score_points(tmp[n_res:])
+      if c is not None:
+        c = (c - self.calibration_values[part][0]) / self.calibration_values[part][1]
+        scores.append(c)
+    return np.std(scores)
 
   def get_ss_selections(self):
     self.loop_sel = flex.bool([True]*self.helix_sel.size())
@@ -119,11 +141,14 @@ class rama_z(object):
     else: return "L"
 
   def _get_z_score_points(self, points):
-    if len(points) < 10:
-      return None
+    # if len(points) < 10:
+    #   return None
     score = 0
     for entry in points:
-      score += self._get_z_score_point(entry)
+      if len(entry) == 6:
+        sc = self._get_z_score_point(entry)
+        entry.append(sc)
+      score += entry[-1]
     return score/len(points)
 
   def _get_z_score_point(self, entry):

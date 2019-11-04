@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 from libtbx import easy_run
-from libtbx.test_utils import approx_equal, assert_lines_in_text
+from libtbx.test_utils import approx_equal
 import mmtbx.model
 from libtbx.utils import null_out
 import iotbx.pdb
@@ -25,7 +25,8 @@ def check_function():
   expeted_ss = {'H': 0, 'S': 63, 'L': 71, 'W': 134}
   for k in expected_z:
     if z_scores[k] is not None:
-      assert approx_equal( z_scores[k], expected_z[k] )
+      assert approx_equal( z_scores[k][0], expected_z[k])
+      assert 0.45 < z_scores[k][1] < 0.8
     if k != 'weighted_mean':
       assert approx_equal( ss_cont[k], expeted_ss[k] )
 
@@ -34,13 +35,14 @@ def check_cmd_line():
   r = easy_run.fully_buffered(cmd)
   stdout = r.stdout_lines
   # print ("\n".join(stdout))
-
-  assert_lines_in_text("\n".join(stdout), """\
-      z-score whole: -0.402, residues: 134
-      z-score helix: None, residues: 0
-      z-score sheet: -0.057, residues: 63
-      z-score loop : -0.359, residues: 71
-      """)
+  expected_strs = [
+      ["z-score whole: -0.402", "residues: 134"],
+      ["z-score helix: None, ", "residues: 0"],
+      ["z-score sheet: -0.057", "residues: 63"],
+      ["z-score loop : -0.359", "residues: 71"]]
+  for res, expected in zip(stdout[-9:-6], expected_strs):
+    for exp_l in expected:
+      assert res.find(exp_l) >= 0, "res: '%s', exp: '%s'" % (res, exp_l)
 
 if __name__ == '__main__':
   check_function()
