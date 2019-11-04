@@ -1578,13 +1578,15 @@ class scaling_manager (intensity_data) :
         try:
           postx.run_plain()
           observations_original_index, observations, matches, fat_count, final_corr=postx.result_for_cxi_merge(file_name, LS49_case, double_loop, acceptable_corr)
+          if fat_count > 3 and final_corr>acceptable_corr:
+            LS49_case=False
         except (AssertionError,ValueError,RuntimeError) as e:
-          return null_data(file_name=file_name, log_out=out.getvalue(), reason=e)
+          print ('NO_loop_Error')
+          #return null_data(file_name=file_name, log_out=out.getvalue(), reason=e)
           #print ('Error in post-refinement')
-        if fat_count > 3 and final_corr>acceptable_corr:
-          LS49_case=False
 
     if LS49_case:
+      single_loop_is_fine=False
       try:
         net_fat_count=flex.int(n_obs, -1)
         net_final_corr=flex.double(n_obs, -1.0)
@@ -1624,7 +1626,9 @@ class scaling_manager (intensity_data) :
         print ('MAX_CORRELATION', flex.max(net_final_corr), ts)
         if flex.max(net_final_corr) > acceptable_corr:
           consider_refl_final[flex.max_index(net_final_corr)]=False
-        elif double_loop:
+          single_loop_is_fine=True
+          print ('SINGLE_LOOP_OK')
+        elif double_loop and not single_loop_is_fine:
         # Do a double loop if single loop fails to get good correlation coefficient
           print ('TRYING_DOUBLE_LOOP_REJECTION')
           net_fat_count=flex.int(n_obs*n_obs, -1)

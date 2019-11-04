@@ -146,22 +146,28 @@ class updated_rs(legacy_rs):
     self.refined_mini = self.MINI
 
   def rs2_parameter_range_assertions(self,values, timestamp):
-    return
+    #return
     # New range assertions for refined variables
     #if abs(180.0*values.thetax/math.pi) > 0.5:
     #  print ('THETA_X %s'%timestamp) 
     #if abs(180.0*values.thetay/math.pi) > 0.5:
     #  print ('THETA_Y %s'%timestamp) 
     #print ('THETA_XY %.4f %.4f %s'%(180.0*values.thetax/math.pi, 180.0*values.thetay/math.pi, timestamp))
-    #assert 0 < values.G, "G-scale value out of range ( < 0 ) after rs2 refinement"
-    #assert -25 < values.BFACTOR and values.BFACTOR < 25, "B-factor value out of range ( |B|>25 ) after rs2 refinement"
-    #assert -0.5<180.*values.thetax/math.pi<0.5,"thetax value out of range ( |rotx|>.5 degrees ) after rs2 refinement"
-    #assert -0.5<180.*values.thetay/math.pi<0.5,"thetay value out of range ( |roty|>.5 degrees ) after rs2 refinement"
+    #if 0 < values.G: return -1
+    #if -25 < values.BFACTOR and values.BFACTOR < 25: return -1
+    #if -0.5<180.*values.thetax/math.pi<0.5: return -1
+    #if -0.5<180.*values.thetay/math.pi<0.5: return -1
+    #return 0
+    #
+    assert 0 < values.G, "G-scale value out of range ( < 0 ) after rs2 refinement"
+    assert -25 < values.BFACTOR and values.BFACTOR < 25, "B-factor value out of range ( |B|>25 ) after rs2 refinement"
+    assert -0.5<180.*values.thetax/math.pi<0.5,"thetax value out of range ( |rotx|>.5 degrees ) after rs2 refinement"
+    assert -0.5<180.*values.thetay/math.pi<0.5,"thetay value out of range ( |roty|>.5 degrees ) after rs2 refinement"
 
   def result_for_cxi_merge(self, file_name, LS49_case=False, double_loop=False, acceptable_corr=0.2):
     values = self.get_parameter_values()
     ts = os.path.basename(file_name)[6:23]
-    #self.rs2_parameter_range_assertions(values, ts)
+    self.rs2_parameter_range_assertions(values, ts)
     scaler = self.refinery.scaler_callable(self.parameterization_class(self.MINI.x))
 
     partiality_array = self.refinery.get_partiality_array(values)
