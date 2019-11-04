@@ -76,14 +76,13 @@ def show_phi_psi_correction(residue, phi_psi, current, correction, rc, units=100
 
   xs = [current.t, correction.t, rc.t]
   ys = [current.r, correction.r, rc.r]
-
-  # ax = plt.subplot(2, 1, 2, projection='polar')
+  labels = ['default', 'correction', 'result']
 
   for i, (x, y) in enumerate(zip(xs, ys)):
       y*=units
       plt.polar(x, y, 'ro')
       plt.text(x, y,
-               '%d' % (i+1),
+               '%s' % (labels[i]),
                )
   key = (round_to_ten(phi_psi[0]), round_to_ten(phi_psi[1]))
   plt.title('%s (%5.1f, %5.1f) (%4.0f, %4.0f)\n%s minus %s equals %s' %(
