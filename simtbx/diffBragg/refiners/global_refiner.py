@@ -244,7 +244,7 @@ class FatRefiner(PixelRefinement):
         self.ncells_xpos = {}
         self.spot_scale_xpos = {}
         self.n_panels = {}
-        if comm.rank==0:
+        if comm.rank == 0:
             print("--1 Setting up per shot parameters")
         for i_shot in self.shot_ids:
             self.pid_from_idx[i_shot] = {i: pid for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
@@ -338,7 +338,14 @@ class FatRefiner(PixelRefinement):
             else:
                 for i_fcell in range(self.n_global_fcell):
                     asu_hkl = self.asu_from_idx[i_fcell]
-                    self.x[self.fcell_xstart + i_fcell] = F.value_at_index(asu_hkl)
+                    val = F.value_at_index(asu_hkl)
+                    if val <0:
+                        raise ValueError("No Neg F")
+                    if self.log_fcells:
+                        if val == 0:  # TODO why does this ever happen?
+                            val = 1e-6
+                        val = np_log(val)
+                    self.x[self.fcell_xstart + i_fcell] = val
 
             # set det dist
             self.x[self.originZ_xpos] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?
@@ -358,6 +365,8 @@ class FatRefiner(PixelRefinement):
         if comm.rank == 0:
             print("--3 combining parameters across ranks")
         self.x = self._mpi_reduce_broadcast(self.x)
+        if comm.rank==0:
+            embed()
         if comm.rank == 0:
             print("--4 print initial stats")
             rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
@@ -739,6 +748,13 @@ class FatRefiner(PixelRefinement):
                 self.curv = self._mpi_reduce_broadcast(self.curv)
             self.tot_fcell_kludge = self._mpi_reduce_broadcast(self.num_Fcell_kludge)
             self.tot_neg_curv = sum(self.curv < 0)
+            n_tot_shots = (self.n_total_params - self.n_global_params )* self.n_per_shot_params
+            self.neg_curv_shots = []
+            for i in range( n_tot_shots):
+                _s = slice(i*self.n_per_shot_params, i*self.n_per_shot_params+1,1)
+                is_neg = [val < 0 for val in self.curv[_s]]
+                if any(is_neg):
+                    self.neg_curv_shots.append(i)
 
             if comm.rank == 0:
                 if self.plot_statistics:
@@ -993,8 +1009,9 @@ class FatRefiner(PixelRefinement):
                 fobs = np_exp(fobs)
             R1 = self.calc_R1(fobs)
             R1_i = self.init_R1
-        print("\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%.4f (R1 at start=%.4f), Fcell kludges=%d, Neg. Curv.: %d/%d"
-              % (target, Xnorm*self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, len(self.curv)))
+        print("\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%.4f (R1 at start=%.4f), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s"
+              % (target, Xnorm*self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, len(self.curv), \
+                 ", ".join(map(str, self.neg_curv_shots))))
         print("\n")
 
     def get_refined_Bmatrix(self, i_shot):
