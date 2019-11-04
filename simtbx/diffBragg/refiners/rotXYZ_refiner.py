@@ -1,9 +1,6 @@
 
 import pylab as plt
-from mpl_toolkits.mplot3d import axes3d
 
-fig = plt.figure()
-ax = fig.gca(projection='3d')
 import numpy as np
 
 from scitbx.array_family import flex
