@@ -218,6 +218,11 @@ master_phil = libtbx.phil.parse("""
     .help = Gaussian mask smoothing radius
     .short_caption = Soft mask radius
 
+  wrapping = False
+    .type = bool
+    .help = Allow use of map outside of (0,1)
+    .short_caption = Wrapping
+
   lower_bounds = None
     .type = ints
     .help = Lower bounds for cut out box. You can specify them directly.\
@@ -706,6 +711,7 @@ Parameters:"""%h
     resolution            = params.resolution,
     ncs_object            = ncs_object,
     symmetry              = params.symmetry,
+    wrapping              = params.wrapping,
     half_map_data_list    = half_map_data_list,
     )
 
