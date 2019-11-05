@@ -2678,11 +2678,20 @@ class extract_box_around_model_and_map(object):
     from cctbx.maptbx.segment_and_split_map import get_co
     co,sorted_by_volume,min_b,max_b=get_co(
        map_data=mask_data,threshold=0.5,wrapping=False)
+
+
+
     if len(sorted_by_volume)<2:
       raise Sorry("No mask obtained...")
+    original_id_from_id={}
+    for i in range(1,len(sorted_by_volume)):
+      v,id=sorted_by_volume[i]
+      original_id_from_id[i]=id
+    id=1
+    orig_id=original_id_from_id[id]
+    minb1=min_b[orig_id]
+    maxb1=max_b[orig_id]
     masked_fraction=sorted_by_volume[1][0]/mask_data.size()
-    minb1=min_b[1]
-    maxb1=max_b[1]
     nx,ny,nz=self.map_data.all()
     frac_min=(minb1[0]/nx,minb1[1]/ny,minb1[2]/nz)
     frac_max=(maxb1[0]/nx,maxb1[1]/ny,maxb1[2]/nz)

@@ -1324,7 +1324,7 @@ class map_info_object:
     lower_bounds=self.origin
     upper_bounds=[]
     for a,b in zip(self.origin,self.all):
-      upper_bounds.append(a+b)
+      upper_bounds.append(a+b-1) # 2019-11-05 upper bound is na-1
     return list(self.origin),list(upper_bounds)
 
 class info_object:
@@ -2844,13 +2844,13 @@ def find_symmetry_center(map_data,crystal_symmetry=None,out=sys.stdout):
     for i in range(0,all[ai]):
       if ai==0:
         start_tuple=tuple((i,0,0))
-        end_tuple=tuple((i,all[1],all[2]))
+        end_tuple=tuple((i,all[1]-1,all[2]-1))  #2019-11-05 not beyond na-1
       elif ai==1:
          start_tuple=tuple((0,i,0))
-         end_tuple=tuple((all[0],i,all[2]))
+         end_tuple=tuple((all[0]-1,i,all[2]-1))
       elif ai==2:
          start_tuple=tuple((0,0,i))
-         end_tuple=tuple((all[0],all[1],i))
+         end_tuple=tuple((all[0]-1,all[1]-1,i))
       new_map_data = maptbx.copy(map_data,
          start_tuple,end_tuple)
       mean_value=max(0.,new_map_data.as_1d().as_double().min_max_mean().mean)
@@ -7980,7 +7980,7 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
   na = map_data.all() # tuple with dimensions
   for i in range(3):
     assert min_point[i] >= 0
-    assert max_point[i] <= na[i]
+    assert max_point[i] < na[i]  # 2019-11-05 just na-1
   new_map_data = maptbx.copy(map_data, tuple(min_point), tuple(max_point))
   # NOTE: end point of map is max_point, so size of map (new all()) is
   #   (max_point-min_point+ (1,1,1))
@@ -8172,6 +8172,7 @@ def restore_pdb(params,tracking_data=None,out=sys.stdout):
 
 def find_threshold_in_map(target_points=None,
       map_data=None,
+      require_at_least_target_points=None,
       iter_max=10):
 
   map_1d=map_data.as_1d()
@@ -8183,18 +8184,29 @@ def find_threshold_in_map(target_points=None,
   low=map_min
   high=map_max
 
+  best_cutoff=None
+  best_score=None
   for iter in range(iter_max):
     s = (map_1d >cutoff)
     n_cutoff=s.count(True)
+    if (not require_at_least_target_points) or (n_cutoff >= target_points):
+      score=abs(n_cutoff-target_points)
+    else:
+      score=1.e+10 # allow it but anything above cutoff will be better
+
+    if best_score is None or score < best_score:
+      best_cutoff=cutoff
+      best_score=score
+
     if n_cutoff == target_points:
-      return cutoff
+      return best_cutoff
     elif n_cutoff < target_points: # lower it
       high=cutoff
       cutoff=0.5*(cutoff+low)
     else:  # raise it
       low=cutoff
       cutoff=0.5*(cutoff+high)
-  return cutoff
+  return best_cutoff
 
 
 def remove_points(mask,remove_points=None):
@@ -8455,9 +8467,6 @@ def get_overall_mask(
   if fraction_of_max_mask_threshold and (
         (not solvent_fraction) or (not use_solvent_content_for_threshold)):
     mask_threshold=fraction_of_max_mask_threshold*max_in_sd_map
-    print("ZZUsing fraction of max as threshold: %.3f " %(
-        fraction_of_max_mask_threshold), \
-        "which is threshold of %.3f" %(mask_threshold))
     print("Using fraction of max as threshold: %.3f " %(
         fraction_of_max_mask_threshold), \
         "which is threshold of %.3f" %(mask_threshold), file=out)
@@ -8476,7 +8485,6 @@ def get_overall_mask(
       mask_threshold=None
 
   if mask_threshold:
-    print("ZZCutoff for mask will be input threshold")
     print("Cutoff for mask will be input threshold", file=out)
     threshold=mask_threshold
   else:  # guess based on solvent_fraction
@@ -8663,7 +8671,7 @@ def put_bounds_in_range(
      box_size=None,
      n_buffer=None,
      n_real=None,out=sys.stdout):
-  # put lower and upper inside (0,n_real) and try to make size at least minimum
+  # put lower and upper inside (0,n_real-1) and try to make size at least minimum
 
   new_lb=[]
   new_ub=[]
@@ -8691,7 +8699,7 @@ def put_bounds_in_range(
        lb=lb-boundary
        ub=ub+boundary
     if lb<0: lb=0
-    if ub>nr: ub=nr
+    if ub>=nr: ub=nr-1  # 2019-11-05 cannot go beyond na-1
     new_lb.append(lb)
     new_ub.append(ub)
   print("New bounds ...(%s,%s,%s) to (%s,%s,%s)" %(
