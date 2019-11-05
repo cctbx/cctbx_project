@@ -402,6 +402,12 @@ LS49 {
   acceptable_corr = 0.2
     .type = float
     .help = Acceptable correlation to be used for LS49
+  single_loop_cutoff_seconds = 300 
+    .type = float
+    .help = maximum time to spend in double loop of postrefinement
+  double_loop_cutoff_seconds = 600 
+    .type = float
+    .help = maximum time to spend in double loop of postrefinement
 }
 
 """ + mysql_master_phil
@@ -1569,6 +1575,8 @@ class scaling_manager (intensity_data) :
     #              # Useful for problematic images where even a single misindexed refl leads to divergence
     double_loop=self.params.LS49.double_loop
     acceptable_corr=self.params.LS49.acceptable_corr
+    double_loop_cutoff_time=self.params.LS49.double_loop_cutoff_seconds
+    single_loop_cutoff_time=self.params.LS49.single_loop_cutoff_seconds
     # First do the zero case; consider all reflections and see if it works
     PF = factory(self.params)
     postrefinement_algorithm = PF.postrefinement_algorithm()
@@ -1593,7 +1601,11 @@ class scaling_manager (intensity_data) :
         # Put in loop here
         # variable below used at the very end to throw out all reflections that make postrefinement diverge
         consider_refl_final=flex.bool(n_obs, True) 
+        time1=time.time()
         for ii in range(n_obs):
+          time2=time.time()
+          if time2-time1 > single_loop_cutoff_time:
+            return null_data(file_name=file_name, log_out=out.getvalue(), reason=ValueError) 
           consider_refl=flex.bool(n_obs, True)
           consider_refl[ii]=False
           #print ('MILLER INDICES thrown out - ', copy_observations.indices()[ii])
@@ -1633,8 +1645,12 @@ class scaling_manager (intensity_data) :
           print ('TRYING_DOUBLE_LOOP_REJECTION')
           net_fat_count=flex.int(n_obs*n_obs, -1)
           net_final_corr=flex.double(n_obs*n_obs, -1.0)
+          time1=time.time()
           for ii in range(n_obs-1):
             for jj in range(ii+1, n_obs):
+              time2=time.time()
+              if time2-time1 > double_loop_cutoff_time:
+                return null_data(file_name=file_name, log_out=out.getvalue(), reason=ValueError) 
               consider_refl=flex.bool(n_obs, True)
               consider_refl[ii]=False
               consider_refl[jj]=False
