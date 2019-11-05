@@ -11,11 +11,11 @@ from __future__ import absolute_import, division, print_function
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from PySide2.QtCore import Qt, QTimer, QEvent
+from PySide2.QtCore import Qt, QAbstractTableModel, QModelIndex, QTimer, QEvent
 from PySide2.QtWidgets import ( QAction, QApplication, QCheckBox, QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
-        QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
+        QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableView, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
 from PySide2.QtGui import QColor, QFont, QCursor
@@ -140,6 +140,32 @@ class MyTableWidget(QTableWidget):
     QTableWidget.mouseDoubleClickEvent(self, event)
 
 
+class TableModel(QAbstractTableModel):
+  def __init__(self, data, headerdata, parent=None):
+    super(TableModel, self).__init__(parent)
+    self._data = data
+    self.headerdata = headerdata
+  def columnCount(self, parent=None):
+    return len(self._data)
+  def rowCount(self, parent=None):
+    return len(self._data[0]) if self.columnCount() else 0
+  def data(self, index, role=Qt.DisplayRole):
+    if role == Qt.DisplayRole:
+      row = index.row()
+      if 0 <= row < self.rowCount():
+        column = index.column()
+        if 0 <= column < self.columnCount():
+          return self._data[column][row]
+  def clear(self):
+    rows = self.rowCount()
+    self.beginRemoveRows(QModelIndex(), 0, rows-1 )
+    self.endRemoveRows()
+    del self._data
+  def headerData(self, col, orientation, role):
+    if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+      return self.headerdata[col]
+
+
 class NGL_HKLViewer(QWidget):
   def __init__(self, parent=None):
     super(NGL_HKLViewer, self).__init__(parent)
@@ -259,7 +285,9 @@ class NGL_HKLViewer(QWidget):
     self.millertable.cellDoubleClicked.connect(self.onMillerTableCellPressed)
     self.millertable.itemSelectionChanged.connect(self.onMillerTableitemSelectionChanged)
 
-    self.millerarraytable = MyTableWidget(0, len(labels))
+    self.millerarraytable = QTableView(self)
+
+    #self.millerarraytable = MyTableWidget(0, len(labels))
     #self.millerarraytable.setEditTriggers(QTableWidget.NoEditTriggers)
     self.millerarraytable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.millerarraytable.horizontalHeader().sectionDoubleClicked.connect(self.onMillerArrayTableHeaderSectionDoubleClicked)
@@ -457,22 +485,29 @@ class NGL_HKLViewer(QWidget):
             self.SpaceGroupComboBox.addItems( self.spacegroups )
 
           if self.infodict.get("tabulate_miller_array"):
-            print("receiving table")
+            print("received table")
             self.tabulate_miller_array = self.infodict["tabulate_miller_array"]
             self.indices = self.tabulate_miller_array[0]
-            self.datalst =  [ ld[1] for ld in self.tabulate_miller_array[1:] ]
-            labels = ["H", "K", "L"] + [ ld[0] for ld in self.tabulate_miller_array[1:] ]
+            #labels = ["H", "K", "L"] + [ ld[0] for ld in self.tabulate_miller_array[1:] ]
+            labels = [ ld[0] for ld in self.tabulate_miller_array ]
+            self.datalst =  [ ld[1] for ld in self.tabulate_miller_array ]
+
+            if self.millerarraytable.model():
+              self.millerarraytable.model().clear()
+            model = TableModel(self.datalst, labels, self.millerarraytable)
+            self.millerarraytable.setModel(model)
+
             self.millerarraytable_sortorder = ["unsorted"] * (len(self.datalst) + 3)
-            self.millerarraytable.clear()
-            self.millerarraytable.setRowCount(len(self.indices))
-            self.millerarraytable.setColumnCount(len(labels))
-            self.millerarraytable.setHorizontalHeaderLabels(labels)
-            self.RefreshMillerArrayTable()
+            #self.millerarraytable.clear()
+            #self.millerarraytable.setColumnCount(len(labels)) # set column count before row count for speed
+            #self.millerarraytable.setRowCount(len(self.indices))
+            #self.millerarraytable.setHorizontalHeaderLabels(labels)
+            #self.RefreshMillerArrayTable()
             self.millerarraytable.resizeColumnsToContents()
             self.millerarraytableform.layout.setRowStretch (0, 0)
             self.millerarraytableform.mainLayout.setRowStretch (0, 0)
             tablewidth = 0
-            for e in range(self.millerarraytable.columnCount()):
+            for e in range(model.columnCount()):
               tablewidth +=  self.millerarraytable.columnWidth(e)
             self.millerarraytableform.resize(tablewidth, self.millerarraytableform.size().height())
             self.millerarraytableform.show()
@@ -512,7 +547,7 @@ class NGL_HKLViewer(QWidget):
           if (self.NewFileLoaded or self.NewMillerArray) and self.NewHKLscenes:
             #print("got hklscenes: " + str(self.hklscenes_arrays))
             self.NewMillerArray = False
-            self.millerarraytable.clear()
+            #self.millerarraytable.clear()
 
             self.MillerComboBox.clear()
             self.MillerComboBox.addItems( self.millerarraylabels )
@@ -560,6 +595,8 @@ class NGL_HKLViewer(QWidget):
 
   def RefreshMillerArrayTable(self):
     nc = len(self.indices)
+    mc = int(nc/20) # print 20 percentages
+    prec = self.millerarraytableform.precision_spinBox.value()
     for row,(h,k,l) in enumerate(self.indices):
       self.millerarraytable.setItem(row, 0, NumericTableWidgetItem(str(h)))
       self.millerarraytable.setItem(row, 1, NumericTableWidgetItem(str(k)))
@@ -570,15 +607,13 @@ class NGL_HKLViewer(QWidget):
           d = ""
         else:
           val = data[row]
-          prec = self.millerarraytableform.precision_spinBox.value()
           if type(val) is complex:
-            d = str(round(val.real, prec)) + " + i*" + str(round(val.imag, prec))
+            d = str(round(val.real, prec)) + " + " + str(round(val.imag, prec)) + " * i"
           else:
             d = str(round(val, prec))
         self.millerarraytable.setItem(row, i+3, NumericTableWidgetItem(d))
-      c = row*20
-      if (c % nc) == 0:
-        print(str(row*100/nc) + " %")
+      if (row % mc) == 0:
+        print("%2.1f %%" %(row*100/nc))
 
 
   def onPrecisionChanged(self, val):
@@ -1244,7 +1279,6 @@ class NGL_HKLViewer(QWidget):
           self.MillerLabel3.setText("Example: 'newdata = data1 + data2; newsigmas= sigmas1 - data2 / sigmas1' ")
           self.makenewdataform.show()
         if strval=="tabulate_data":
-          print("wibble")
           self.NGL_HKL_command('NGL_HKLviewer.tabulate_miller_array_ids = "%s"' %str(idx))
 
 

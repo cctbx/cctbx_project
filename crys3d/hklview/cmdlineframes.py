@@ -240,7 +240,7 @@ from libtbx import group_args
 import libtbx
 from cctbx import miller
 import traceback
-import sys, zmq, threading,  time, math, zlib
+import sys, zmq, threading,  time, cmath, zlib
 
 from six.moves import input
 
@@ -828,24 +828,31 @@ class HKLViewFrame() :
     indices = self.viewer.match_valarrays[idlst[0]].indices()
     dres = self.viewer.match_valarrays[idlst[0]].unit_cell().d( indices )
     dreslst = [("d_res", list(dres))]
-    hkls = [ list(indices) ]
+    hkls = list(indices)
+    hkllst = [ ("H", [e[0] for e in hkls] ), ("K", [e[1] for e in hkls] ), ("L", [e[2] for e in hkls] )]
     #datalst = [ (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data()))
     #                for id in idlst ]
     datalst = []
     for id in idlst:
       if self.viewer.match_valarrays[id].is_complex_array():
-        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data())) )
+        no_nans = [ "%.4f + %.4f * i"%(e.real, e.imag)
+                    if not cmath.isnan(e) else "" for e in self.viewer.match_valarrays[id].data() ]
+        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), no_nans ) )
         ampls, phases = self.viewer.Complex2AmplitudesPhases(self.viewer.match_valarrays[id].data())
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(ampls)) )
+        no_nans = [ e if not cmath.isnan(e) else "" for e in ampls ]
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], no_nans ) )
         datalst.append( (self.viewer.match_valarrays[id].info().labels[1], list(phases)) )
       elif self.viewer.match_valarrays[id].sigmas() is not None:
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(self.viewer.match_valarrays[id].data()))  )
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[1], list(self.viewer.match_valarrays[id].sigmas()))  )
+        no_nans = [ e if not cmath.isnan(e) else "" for e in self.viewer.match_valarrays[id].data() ]
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], no_nans)  )
+        no_nans = [ e if not cmath.isnan(e) else "" for e in self.viewer.match_valarrays[id].sigmas() ]
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[1], no_nans)  )
       else:
-        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data()))  )
+        no_nans = [ e if not cmath.isnan(e) else "" for e in self.viewer.match_valarrays[id].data() ]
+        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), no_nans )  )
 
-
-    self.idx_data = hkls + dreslst + datalst
+    self.idx_data = hkllst + dreslst + datalst
+    self.mprint("Sending table data", verbose=1)
     mydict = { "tabulate_miller_array": self.idx_data }
     self.SendInfoToGUI(mydict, binary=True)
 
