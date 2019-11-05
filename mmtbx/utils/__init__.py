@@ -2400,7 +2400,6 @@ class extract_box_around_model_and_map(object):
                molecular_mass=None,
                ncs_object=None,
                symmetry=None,
-               wrapping=True,
                half_map_data_list=None,
                    ):
     adopt_init_args(self, locals())
@@ -2466,16 +2465,13 @@ class extract_box_around_model_and_map(object):
       self.pdb_outside_box_msg=""
       frac_min = xray_structure_selected.sites_frac().min()
       frac_max = xray_structure_selected.sites_frac().max()
-      if (not wrapping):
+      if (restrict_map_size):  # check but do not do anything yet
         new_frac_min,new_frac_max=limit_frac_min_frac_max(frac_min,frac_max)
         if list(new_frac_min) != list(frac_min) or \
            list(new_frac_max) != list(frac_max):
           self.pdb_outside_box_msg="Warning: model is outside box"
       frac_max = list(flex.double(frac_max)+cushion)
       frac_min = list(flex.double(frac_min)-cushion)
-      if (not wrapping):
-        # Make sure box is not bigger than the map
-        frac_min,frac_max=limit_frac_min_frac_max(frac_min,frac_max)
 
     na = self.map_data.all()
     if lower_bounds and upper_bounds:
