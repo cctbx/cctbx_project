@@ -346,10 +346,11 @@ class scene(object):
     elif isinstance(data, flex.complex_double):
       data_for_colors = self.radians
       foms_for_colours = self.foms
-      self.colourlabel = self.miller_array.info().labels[1]
+       # assuming last part of the labels indicates the phase label as in ["FCALC","PHICALC"]
+      self.colourlabel = self.miller_array.info().labels[-1]
     elif (settings.sigma_color) and sigmas is not None:
       data_for_colors = sigmas.as_double()
-      self.colourlabel = self.miller_array.info().labels[1]
+      self.colourlabel = self.miller_array.info().labels[-1]
     else :
       data_for_colors = flex.abs(data.deep_copy())
     uc = self.work_array.unit_cell()

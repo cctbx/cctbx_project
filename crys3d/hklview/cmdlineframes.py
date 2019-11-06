@@ -841,7 +841,7 @@ class HKLViewFrame() :
         ampls, phases = self.viewer.Complex2AmplitudesPhases(self.viewer.match_valarrays[id].data())
         no_nans = [ e if not cmath.isnan(e) else "" for e in ampls ]
         datalst.append( (self.viewer.match_valarrays[id].info().labels[0], no_nans ) )
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[1], list(phases)) )
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[-1] + u" \u00b0", list(phases)) )
       elif self.viewer.match_valarrays[id].sigmas() is not None:
         no_nans = [ e if not cmath.isnan(e) else "" for e in self.viewer.match_valarrays[id].data() ]
         datalst.append( (self.viewer.match_valarrays[id].info().labels[0], no_nans)  )

@@ -20,7 +20,7 @@ from PySide2.QtWidgets import ( QAction, QApplication, QCheckBox, QComboBox, QDi
 
 from PySide2.QtGui import QColor, QFont, QCursor
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-import sys, zmq, subprocess, time, traceback, shutil, os.path, zlib
+import sys, zmq, subprocess, time, traceback, shutil, os.path, zlib, math
 
 
 
@@ -140,11 +140,18 @@ class MyTableWidget(QTableWidget):
     QTableWidget.mouseDoubleClickEvent(self, event)
 
 
-class TableModel(QAbstractTableModel):
+class MillerArrayTableModel(QAbstractTableModel):
+  """
+  model used for QTableView for displaying miller arrays.
+  Since data from cmdlineframes.tabulate_miller_array()
+  is a list of miller arrays, i.e. row-column organised
+  we flip it to being column-row oriented
+  """
   def __init__(self, data, headerdata, parent=None):
-    super(TableModel, self).__init__(parent)
+    super(MillerArrayTableModel, self).__init__(parent)
     self._data = data
-    self.headerdata = headerdata
+    self.columnheaderdata = headerdata
+    self.precision = 4
   def columnCount(self, parent=None):
     return len(self._data)
   def rowCount(self, parent=None):
@@ -155,15 +162,36 @@ class TableModel(QAbstractTableModel):
       if 0 <= row < self.rowCount():
         column = index.column()
         if 0 <= column < self.columnCount():
-          return self._data[column][row]
+          val = self._data[column][row]
+          if not (type(val) is float or type(val) is int):
+            return val
+          if abs(val) < float("1e-%d" %self.precision):
+            fstr = "%" + "%d" %self.precision
+            fstr += ".%de" %self.precision
+            return float(fstr %val)
+          p = 10 ** self.precision
+          if val > 0:
+            return float(math.floor((val * p) + 0.5))/p
+          return float(math.ceil((val * p) - 0.5))/p
   def clear(self):
     rows = self.rowCount()
     self.beginRemoveRows(QModelIndex(), 0, rows-1 )
     self.endRemoveRows()
     del self._data
-  def headerData(self, col, orientation, role):
+  def headerData(self, index, orientation, role):
     if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-      return self.headerdata[col]
+      return self.columnheaderdata[index]
+    if orientation == Qt.Vertical and role == Qt.DisplayRole:
+      return index + 1 # just return the row number
+  def sort(self, col, order):
+    """Sort table by given column number.
+    """
+    self.layoutAboutToBeChanged.emit()
+    if order == Qt.AscendingOrder:
+      self._data = sorted(self._data, key= lambda self._data[col]: self._data[col])
+    if order == Qt.DescendingOrder:
+      self._data = sorted(self._data, key=self._data[col], reverse=True)
+    self.layoutChanged.emit()
 
 
 class NGL_HKLViewer(QWidget):
@@ -292,6 +320,7 @@ class NGL_HKLViewer(QWidget):
     self.millerarraytable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.millerarraytable.horizontalHeader().sectionDoubleClicked.connect(self.onMillerArrayTableHeaderSectionDoubleClicked)
     self.millerarraytableform = MillerArrayTableForm(self)
+    self.millerarraytablemodel = None
 
     self.createExpansionBox()
     self.createFileInfoBox()
@@ -494,20 +523,17 @@ class NGL_HKLViewer(QWidget):
 
             if self.millerarraytable.model():
               self.millerarraytable.model().clear()
-            model = TableModel(self.datalst, labels, self.millerarraytable)
-            self.millerarraytable.setModel(model)
+            self.millerarraytablemodel = MillerArrayTableModel(self.datalst, labels, self)
+            self.millerarraytable.setModel(self.millerarraytablemodel)
 
             self.millerarraytable_sortorder = ["unsorted"] * (len(self.datalst) + 3)
             #self.millerarraytable.clear()
-            #self.millerarraytable.setColumnCount(len(labels)) # set column count before row count for speed
-            #self.millerarraytable.setRowCount(len(self.indices))
-            #self.millerarraytable.setHorizontalHeaderLabels(labels)
             #self.RefreshMillerArrayTable()
             self.millerarraytable.resizeColumnsToContents()
             self.millerarraytableform.layout.setRowStretch (0, 0)
             self.millerarraytableform.mainLayout.setRowStretch (0, 0)
             tablewidth = 0
-            for e in range(model.columnCount()):
+            for e in range(self.millerarraytablemodel.columnCount()):
               tablewidth +=  self.millerarraytable.columnWidth(e)
             self.millerarraytableform.resize(tablewidth, self.millerarraytableform.size().height())
             self.millerarraytableform.show()
@@ -617,7 +643,8 @@ class NGL_HKLViewer(QWidget):
 
 
   def onPrecisionChanged(self, val):
-    self.RefreshMillerArrayTable()
+    self.millerarraytablemodel.precision = val
+    #self.RefreshMillerArrayTable()
     self.millerarraytable.resizeColumnsToContents()
 
 
