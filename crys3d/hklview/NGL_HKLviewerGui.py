@@ -187,10 +187,10 @@ class MillerArrayTableModel(QAbstractTableModel):
     """Sort table by given column number.
     """
     self.layoutAboutToBeChanged.emit()
-    if order == Qt.AscendingOrder:
-      self._data = sorted(self._data, key= lambda self._data[col]: self._data[col])
-    if order == Qt.DescendingOrder:
-      self._data = sorted(self._data, key=self._data[col], reverse=True)
+    #if order == Qt.AscendingOrder:
+    #  self._data = sorted(self._data, key= lambda self._data[col]: self._data[col])
+    #if order == Qt.DescendingOrder:
+    #  self._data = sorted(self._data, key=self._data[col], reverse=True)
     self.layoutChanged.emit()
 
 
