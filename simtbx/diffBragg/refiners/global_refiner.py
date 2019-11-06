@@ -130,6 +130,7 @@ class FatRefiner(PixelRefinement):
         self.num_positive_curvatures = 0
         self._panel_id = None
         self.symbol = "P43212"
+        self._hacked_fcells = [0, 1, 2, 4, 5, 6, 7]
 
         self.pid_from_idx = {}
         self.idx_from_pid = {}
@@ -216,7 +217,7 @@ class FatRefiner(PixelRefinement):
 
     def _setup(self):
         # Here we go!  https://youtu.be/7VvkXA6xpqI
-        if comm.rank==0:
+        if comm.rank == 0:
             print("Setup begins!")
         if not self.asu_from_idx:
             raise ValueError("Need to supply a non empty asu from idx map")
@@ -286,6 +287,14 @@ class FatRefiner(PixelRefinement):
         #    self.fcell_xstart = self.global_param_idx_start
         self.originZ_xpos = self.n_total_params - 2
         self.gain_xpos = self.n_total_params - 1
+
+        # tally up HKL multiplicity
+        hkl_totals = []
+        for i_shot in self.ASU:
+            for h in self.ASU[i_shot]:
+                hkl_totals.append(self.idx_from_asu[h])
+        hkl_totals = self._mpi_reduce_broadcast(hkl_totals)
+
         if rank == 0:
             print("--2 Setting up global parameters")
             # put in estimates for origin vectors
@@ -297,11 +306,14 @@ class FatRefiner(PixelRefinement):
                 self.x[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
 
             print("----loading fcell data")
-            F = self.S.D.Fhkl  # initial values, this table is the high symm table expanded to P1
+            from collections import Counter
+            self.hkl_frequency = Counter(hkl_totals)
 
+            F = self.S.D.Fhkl  # initial values, this table is the high symm table expanded to P1
             Fidx, Fdata = F.indices(), F.data()
             Fdata = Fdata.as_numpy_array()
             import numpy as np
+            np.random.seed(12345)
             if self.perturb_fcell is not None:
                 _p = self.perturb_fcell
                 F_is_zero = Fdata == 0
@@ -311,6 +323,7 @@ class FatRefiner(PixelRefinement):
                 Fdata2[F_is_zero] = 0
                 Fmap2 = {h: fd for h, fd in zip(Fidx, Fdata2)}
                 self.f_truth = []
+                self.f_start = {}
                 # NOTE: dont ever set D.Fhkl property in the refinement setting, it tries to update the unit cell
                 nbad = 0
                 for i_fcell in range(self.n_global_fcell):
@@ -326,6 +339,15 @@ class FatRefiner(PixelRefinement):
                             raise ValueError("No negative Fcells can be refined!")
                         u = np_log(fcell_val)
                         self.x[self.fcell_xstart + i_fcell] = u
+                    # NOTE begin hackage intentional perturbation of a single Fcell
+                    if i_fcell in self._hacked_fcells:
+                        u = self.x[self.fcell_xstart + i_fcell]
+                        v = np.random.uniform(4, 11)
+                        #v = np.random.uniform( max(1e-10,u-0.05*u), u+0.05*u)
+                        #v = np.random.randint(4, 11)
+                        self.x[self.fcell_xstart + i_fcell] = v
+                        self.f_start[i_fcell] = v
+                    # NOTE end hackage
                     self.f_truth.append(F.value_at_index(asu_hkl))
 
                 ff = np.array(self.f_truth)
@@ -339,7 +361,7 @@ class FatRefiner(PixelRefinement):
                 for i_fcell in range(self.n_global_fcell):
                     asu_hkl = self.asu_from_idx[i_fcell]
                     val = F.value_at_index(asu_hkl)
-                    if val <0:
+                    if val < 0:
                         raise ValueError("No Neg F")
                     if self.log_fcells:
                         if val == 0:  # TODO why does this ever happen?
@@ -365,8 +387,7 @@ class FatRefiner(PixelRefinement):
         if comm.rank == 0:
             print("--3 combining parameters across ranks")
         self.x = self._mpi_reduce_broadcast(self.x)
-        if comm.rank==0:
-            embed()
+
         if comm.rank == 0:
             print("--4 print initial stats")
             rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
@@ -445,14 +466,13 @@ class FatRefiner(PixelRefinement):
             if self.log_fcells:
                 new_Fcell = np_exp(new_Fcell)
 
-            #FIXME with a re-parameterization
-            if new_Fcell < 0:
+            if new_Fcell < 0:  # NOTE this easily happens without the log c.o.v.
                 self.x[xpos] = 0
                 new_Fcell = 0
                 self.num_Fcell_kludge += 1
 
             # now surgically update the p1 array in nanoBragg with the new amplitudes
-            # need to update each symmetry equivalent
+            # (need to update each symmetry equivalent)
             sg = sgtbx.space_group(sgtbx.space_group_info(symbol=self.symbol).type().hall_symbol())
             equivs = [i.h() for i in miller.sym_equiv_indices(sg, hkl).indices()]
             for h_equiv in equivs:
@@ -465,8 +485,6 @@ class FatRefiner(PixelRefinement):
                     continue
                 data[p1_idx] = new_Fcell  # set the data with the new value
         self.S.D.Fhkl_tuple = idx, data  # update nanoBragg again  # TODO: add flag to not re-allocate in nanoBragg!
-        #if comm.rank==0:
-        #    print("Done updating Fcell!")
 
     def _update_rotXYZ(self):
         if self.refine_rotX:
@@ -565,7 +583,6 @@ class FatRefiner(PixelRefinement):
                 else:
                     print("Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
                           % (self.iterations + 1, self.num_positive_curvatures))
-            #print("Rank=%d, Number of kludges: %d" % (comm.rank, self.num_kludge))
             f = 0
             g = flex_double(self.n)
             if self.calc_curvatures:
@@ -689,17 +706,19 @@ class FatRefiner(PixelRefinement):
 
                     if self.refine_Fcell:
                         xpos = self.fcell_xstart + self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
-                        fcell = self.x[xpos]
-                        d = S2*G2*self.fcell_deriv
-                        if self.log_fcells:
-                            d *= np_exp(fcell)
-                        g[xpos] += self._grad_accumulate(d)
-                        if self.calc_curvatures:
-                            d2 = S2*G2*self.fcell_second_deriv
+                        # NOTE hackage
+                        if xpos - self.fcell_xstart in self._hacked_fcells:
+                            fcell = self.x[xpos]
+                            d = S2*G2*self.fcell_deriv
                             if self.log_fcells:
-                                ex_fcell = np_exp(fcell)
-                                d2 = ex_fcell*d + ex_fcell*ex_fcell*d2
-                            self.curv[xpos] += self._curv_accumulate(d, d2)
+                                d *= np_exp(fcell)
+                            g[xpos] += self._grad_accumulate(d)
+                            if self.calc_curvatures:
+                                d2 = S2*G2*self.fcell_second_deriv
+                                if self.log_fcells:
+                                    ex_fcell = np_exp(fcell)
+                                    d2 = ex_fcell*d + ex_fcell*ex_fcell*d2
+                                self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_crystal_scale:
                         d = G2 * 2 * self.scale_fac * self.model_bragg_spots
@@ -747,14 +766,17 @@ class FatRefiner(PixelRefinement):
             if self.calc_curvatures:
                 self.curv = self._mpi_reduce_broadcast(self.curv)
             self.tot_fcell_kludge = self._mpi_reduce_broadcast(self.num_Fcell_kludge)
-            self.tot_neg_curv = sum(self.curv < 0)
-            n_tot_shots = (self.n_total_params - self.n_global_params )* self.n_per_shot_params
+            self.tot_neg_curv = 0
             self.neg_curv_shots = []
-            for i in range( n_tot_shots):
-                _s = slice(i*self.n_per_shot_params, i*self.n_per_shot_params+1,1)
-                is_neg = [val < 0 for val in self.curv[_s]]
-                if any(is_neg):
-                    self.neg_curv_shots.append(i)
+            if self.calc_curvatures:
+                self.tot_neg_curv = sum(self.curv < 0)
+                n_tot_shots = (self.n_total_params - self.n_global_params) / self.n_per_shot_params
+                n_tot_shots = int(n_tot_shots)
+                for i in range(n_tot_shots):
+                    _s = slice(i*self.n_per_shot_params, i*self.n_per_shot_params+1, 1)
+                    is_neg = [val < 0 for val in self.curv[_s]]
+                    if any(is_neg):
+                        self.neg_curv_shots.append(i)
 
             if comm.rank == 0:
                 if self.plot_statistics:
@@ -772,7 +794,7 @@ class FatRefiner(PixelRefinement):
                     self.ax3.hist(roty, bins='auto', histtype='step', label='y')
                     self.ax3.hist(rotz, bins='auto', histtype='step', label='z')
                     # plot grad norms per shot as a bar plot
-                    assert (self.n_total_params-2) % self.n_per_shot_params == 0
+                    assert (self.n_total_params-self.n_global_params) % self.n_per_shot_params == 0
                     total_shots = int((self.n_total_params - 2) / self.n_per_shot_params )
                     g_norm_per_shot = [norm(g[self.n_per_shot_params * i: self.n_per_shot_params * (i + 1)])
                                        for i in range(total_shots)]
@@ -926,7 +948,7 @@ class FatRefiner(PixelRefinement):
             self.num_kludge += 1
             #print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL (kludges=%d)!!!!!!!!!\n<><><><><><><><><>\n" % self.num_kludge)
         #    raise ValueError("model of Bragg spots cannot have negative intensities...")
-        self.log_Lambda[self.model_Lambda <= 0] = 0  # FIXME with Gaussian model
+        self.log_Lambda[self.model_Lambda <= 0] = 0
 
     def _evaluate_log_averageI_plus_sigma_readout(self):
         L = self.model_Lambda + self.sigma_r**2
@@ -949,19 +971,20 @@ class FatRefiner(PixelRefinement):
         rotZ = self.x[self.rotZ_xpos[self._i_shot]]
         rot_labels = ["rotX=%+3.7g" % rotX, "rotY=%+3.7g" % rotY, "rotZ=%+3.4g" % rotZ]
 
-        rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
-
-        master_data = {"a": a_vals, "c": c_vals,
-                       "Ncells": ncells_vals,
-                       "scale": scale_vals,
-                       "rotx": rotx,
-                       "roty": roty,
-                       "rotz": rotz}
-
-        master_data = pandas.DataFrame(master_data)
-        master_data["gain"] = self.x[self.gain_xpos]
         print("\n")
-        print(master_data.to_string(float_format="%2.6g"))
+        if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
+            rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
+
+            master_data = {"a": a_vals, "c": c_vals,
+                           "Ncells": ncells_vals,
+                           "scale": scale_vals,
+                           "rotx": rotx,
+                           "roty": roty,
+                           "rotz": rotz}
+
+            master_data = pandas.DataFrame(master_data)
+            master_data["gain"] = self.x[self.gain_xpos]
+            print(master_data.to_string(float_format="%2.6g"))
 
     def print_step_grads(self, message, target):
         names = self.UCELL_MAN[self._i_shot].variable_names
@@ -989,17 +1012,18 @@ class FatRefiner(PixelRefinement):
         print(master_data.to_string(float_format="%.3g"))
 
         if self.calc_curvatures:
-            rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.curv)
+            if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
+                rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.curv)
 
-            master_data = {"CUa": a_vals, "CUc": c_vals,
-                           "CUNcells": ncells_vals,
-                           "CUscale": scale_vals,
-                           "CUrotx": rotx,
-                           "CUroty": roty,
-                           "CUrotz": rotz}
-            master_data = pandas.DataFrame(master_data)
-            master_data["CUgain"] = self.curv[self.gain_xpos]
-            print(master_data.to_string(float_format="%.3g"))
+                master_data = {"CUa": a_vals, "CUc": c_vals,
+                               "CUNcells": ncells_vals,
+                               "CUscale": scale_vals,
+                               "CUrotx": rotx,
+                               "CUroty": roty,
+                               "CUrotz": rotz}
+                master_data = pandas.DataFrame(master_data)
+                master_data["CUgain"] = self.curv[self.gain_xpos]
+                print(master_data.to_string(float_format="%.3g"))
         Xnorm = norm(self.x)
         R1 = -1
         R1_i = -1
@@ -1009,9 +1033,34 @@ class FatRefiner(PixelRefinement):
                 fobs = np_exp(fobs)
             R1 = self.calc_R1(fobs)
             R1_i = self.init_R1
-        print("\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%.4f (R1 at start=%.4f), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s"
-              % (target, Xnorm*self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, len(self.curv), \
-                 ", ".join(map(str, self.neg_curv_shots))))
+
+        ncurv = 0
+        if self.calc_curvatures:
+            ncurv = len(self.curv)
+        from tabulate import tabulate
+
+        hacked_str = ""
+        headers = ["hkl", "obs", "truth", "init", "multiplicity", "Curv", "Grad", "idx"]
+        _data = []
+        for i in self._hacked_fcells:
+            xpos = self.fcell_xstart + i
+            truth = self.f_truth[i]
+            if self.log_fcells:
+                truth = np_log(truth)
+            obs = self.x[xpos]
+            _s = "%d %.4f (%.4f) %d<> " % (i, obs, truth, self.hkl_frequency[i])
+            hkl = self.asu_from_idx[i]
+            _curv = "N/A"
+            if self.calc_curvatures:
+                _curv = "%2.7g" % self.curv[xpos]
+            _grad = "%2.7g" % self._g[xpos]
+            _data.append(["%d,%d,%d" % tuple(hkl), "%.4f" % obs, "%.4f" % truth,  "%.4f" % self.f_start[i],
+                          "%d"%self.hkl_frequency[i], _curv, _grad, "%d"%i])
+            hacked_str += _s
+        hacked_str = tabulate(_data, headers=headers, tablefmt='orgtbl')
+        print("\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%.4f (R1 at start=%.4f), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s"
+              % (target, Xnorm*self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
+                 ", ".join(map(str, self.neg_curv_shots)), hacked_str))
         print("\n")
 
     def get_refined_Bmatrix(self, i_shot):
