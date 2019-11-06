@@ -10,7 +10,9 @@ try:
   # boost directory in cctbx_project is picked up by find_in_repositories
   if not os.path.isdir(boost_root) or 'cctbx_project' in boost_root:
     boost_root = os.path.join(sys.prefix, 'include')
-    if sys.platform == 'win32':
+    if sys.platform == 'darwin' and 'python.app' in boost_root:
+      boost_root = os.path.join(boost_root.split('python.app')[0], 'include')
+    elif sys.platform == 'win32':
       boost_root = os.path.join(sys.prefix, 'Library', 'include')
   version_pat = re.compile(r'^ \s* \#define \s+ BOOST_VERSION \s+ (\d+) \s* $',
                             re.X)
