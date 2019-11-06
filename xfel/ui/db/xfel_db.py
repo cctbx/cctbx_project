@@ -195,6 +195,50 @@ class initialize(initialize_base):
         for column_name, column_type in zip(column_names, column_types):
           query = "ALTER TABLE `%s_bin` MODIFY COLUMN %s %s"%(self.params.experiment_tag, column_name, column_type)
           cursor.execute(query)
+
+      # Maintain backwards compatibility with SQL tables v4: 11/06/19
+      query = "SHOW columns FROM `%s_job`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'dataset_id' not in column_names:
+        print("Upgrading to version 5 of mysql database schema")
+        query = "ALTER TABLE `%s_job` DROP PRIMARY KEY, ADD PRIMARY KEY (`id`)"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` MODIFY COLUMN run_id INT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` MODIFY COLUMN rungroup_id INT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` MODIFY COLUMN trial_id INT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` ADD COLUMN task_id INT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` ADD COLUMN dataset_id INT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = """
+        ALTER TABLE `%s_job`
+          ADD CONSTRAINT `fk_job_task1`
+            FOREIGN KEY (`task_id`)
+            REFERENCES `%s`.`%s_task` (`id`)
+            ON DELETE NO ACTION
+            ON UPDATE NO ACTION
+        """%(self.params.experiment_tag, self.params.db.name, self.params.experiment_tag)
+        cursor.execute(query)
+        query = """
+        ALTER TABLE `%s_job`
+          ADD CONSTRAINT `fk_job_dataset1`
+            FOREIGN KEY (`dataset_id`)
+            REFERENCES `%s`.`%s_dataset` (`id`)
+            ON DELETE NO ACTION
+            ON UPDATE NO ACTION
+        """%(self.params.experiment_tag, self.params.db.name, self.params.experiment_tag)
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` ADD INDEX `fk_job_task1_idx` (`task_id` ASC)"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` ADD INDEX `fk_job_dataset1_idx` (`dataset_id` ASC)"%self.params.experiment_tag
+        cursor.execute(query)
+
     return tables_ok
 
   def set_up_columns_dict(self, app):
