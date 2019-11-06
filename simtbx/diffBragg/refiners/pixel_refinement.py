@@ -47,6 +47,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_rotY = True  # whether to refine Y rotations
         self.refine_rotZ = True  # whether to refine Z rotations
         self.plot_residuals = False  # whether to plot residuals
+        self.debug = False  # for debug print statements
         self.trad_conv = False  # traditional convergenve
         self.calc_curvatures = False  # whether to calc curvatures until a region of positive curvature is reached
         self.trad_conv_eps = 0.05  # converges whern |g| <= max(|x|,1) * trad_conv_eps
