@@ -306,6 +306,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
         ucell_managers[i]->dB2 = mat3(0,0,0,0,0,0,0,0,0);
         }
 
+    max_I_hkl = vec3(0,0,0);
     init_raw_pixels_roi();
     initialize_managers();
     }
@@ -967,7 +968,6 @@ void diffBragg::add_diffBragg_spots()
                                     k0_flr = static_cast<int>(floor(k));
                                     l0_flr = static_cast<int>(floor(l));
 
-
                                     if ( ((h-h_min+3)>h_range) ||
                                          (h-2<h_min)           ||
                                          ((k-k_min+3)>k_range) ||
@@ -1054,6 +1054,10 @@ void diffBragg::add_diffBragg_spots()
 
                                 /* convert amplitudes into intensity (photons per steradian) */
                                 I += F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
+
+                                if(verbose > 3)
+                                    printf("hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", h,k,l,h0,k0,l0, F_cell);
+
 
                                 /* checkpoint for rotataion derivatives */
                                 for (int i_rot =0 ; i_rot < 3 ; i_rot++){
@@ -1199,6 +1203,12 @@ void diffBragg::add_diffBragg_spots()
                 max_I = floatimage[i];
                 max_I_x = Fdet;
                 max_I_y = Sdet;
+                max_I_hkl[0] = h0;
+                max_I_hkl[1] = k0;
+                max_I_hkl[2] = l0;
+                //max_I_h = h0;
+                //max_I_k = k0;
+                //max_I_l =l0;
             }
             sum += floatimage[i];
             sumsqr += floatimage[i]*floatimage[i];
