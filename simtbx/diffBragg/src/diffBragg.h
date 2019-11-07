@@ -167,6 +167,8 @@ class diffBragg: public nanoBragg{
   af::flex_double raw_pixels_roi;
 
   bool update_oversample_during_refinement;
+  vec3 max_I_hkl;// the hkl corresponding to the maximum intensity in the array (debug)
+  //int max_I_h, max_I_k, max_I_l;
 
 }; // end of diffBragg
 

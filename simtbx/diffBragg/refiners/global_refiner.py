@@ -225,11 +225,11 @@ class FatRefiner(PixelRefinement):
             raise ValueError("Need to supply a non empty idx from asu map")
 
         # get the Fhkl information from P1 array internal to nanoBragg
-        if comm.rank==0:
+        if comm.rank == 0:
             print("--0 create an Fcell mapping")
         idx, data = self.S.D.Fhkl_tuple
         self.idx_from_p1 = {h: i for i, h in enumerate(idx)}
-        #self.p1_from_idx = {i: h for i, h in zip(idx, data)}
+        # self.p1_from_idx = {i: h for i, h in zip(idx, data)}
 
         # Make a mapping of panel id to parameter index and backwards
         self.pid_from_idx = {}
@@ -263,11 +263,11 @@ class FatRefiner(PixelRefinement):
             self.ucell_xstart[i_shot] = self.global_param_idx_start  # TODO: make global ucell params optional
             self.ncells_xpos[i_shot] = self.rotZ_xpos[i_shot] + 1
 
-            #if self.refine_global_unit_cell:
+            # if self.refine_global_unit_cell:
             #    self.ucell_xstart[i_shot] = self.global_param_idx_start
             #    self.ncells_xpos[i_shot] = self.rotZ_xpos[i_shot] + 1  # self.n_ucell_param
 
-            #else:
+            # else:
             #    self.ucell_xstart[i_shot] = self.rotZ_xpos[i_shot] + 1
             #    # populate the x-array with initial values
             #    for i_uc in range(self.n_ucell_param):
@@ -281,20 +281,33 @@ class FatRefiner(PixelRefinement):
             self.spot_scale_xpos[i_shot] = self.ncells_xpos[i_shot] + 1
             self.x[self.spot_scale_xpos[i_shot]] = self._init_scale  # TODO: each shot gets own starting scale factor
 
-        #if self.refine_global_unit_cell:
+        # if self.refine_global_unit_cell:
         self.fcell_xstart = self.global_param_idx_start + self.n_ucell_param
-        #else:
+        # else:
         #    self.fcell_xstart = self.global_param_idx_start
         self.originZ_xpos = self.n_total_params - 2
         self.gain_xpos = self.n_total_params - 1
 
         # tally up HKL multiplicity
+        if comm.rank == 0:
+            print("REduction of global data layout")
         hkl_totals = []
+        fname_totals = []
+        panel_id_totals = []
+        roi_totals = []
+        # img_totals = []
         for i_shot in self.ASU:
-            for h in self.ASU[i_shot]:
+            for i_h, h in enumerate(self.ASU[i_shot]):
+                fname_totals.append(self.FNAMES[i_shot])
+                panel_id_totals.append(self.PANEL_IDS[i_shot][i_h])
                 hkl_totals.append(self.idx_from_asu[h])
+                roi_totals.append(self.ROIS[i_shot][i_h])
+                # img_totals.append(self.ROI_IMGS[i_shot][i_h])
         hkl_totals = self._mpi_reduce_broadcast(hkl_totals)
-
+        fname_totals2 = self._mpi_reduce_broadcast(fname_totals)
+        panel_id_totals = self._mpi_reduce_broadcast(panel_id_totals)
+        roi_totals = self._mpi_reduce_broadcast(roi_totals)
+        # img_totals = self._mpi_reduce_broadcast(img_totals)
         if rank == 0:
             print("--2 Setting up global parameters")
             # put in estimates for origin vectors
@@ -326,15 +339,19 @@ class FatRefiner(PixelRefinement):
                 self.f_start = {}
                 # NOTE: dont ever set D.Fhkl property in the refinement setting, it tries to update the unit cell
                 nbad = 0
+                self._fix_list = []
                 for i_fcell in range(self.n_global_fcell):
                     asu_hkl = self.asu_from_idx[i_fcell]
                     fcell_val = Fmap2[asu_hkl]
                     self.x[self.fcell_xstart + i_fcell] = Fmap2[asu_hkl]
+                    is_fixed = False
                     if self.log_fcells:
                         if fcell_val == 0:
                             fcell_val = 1e-20
                             print "WARNING trying to refine 0-valued Fhkl, why?", asu_hkl
                             nbad += 1
+                            self._fix_list.append(i_fcell)
+                            is_fixed = True
                         elif fcell_val < 0:
                             raise ValueError("No negative Fcells can be refined!")
                         u = np_log(fcell_val)
@@ -342,13 +359,17 @@ class FatRefiner(PixelRefinement):
                     # NOTE begin hackage intentional perturbation of a single Fcell
                     if i_fcell in self._hacked_fcells:
                         u = self.x[self.fcell_xstart + i_fcell]
+
                         v = np.random.uniform(4, 11)
-                        #v = np.random.uniform( max(1e-10,u-0.05*u), u+0.05*u)
-                        #v = np.random.randint(4, 11)
+                        if i_fcell in self._fix_list:
+                            v = u
+                        # v = np.random.uniform( max(1e-10,u-0.05*u), u+0.05*u)
+                        # v = np.random.randint(4, 11)
                         self.x[self.fcell_xstart + i_fcell] = v
                         self.f_start[i_fcell] = v
                     # NOTE end hackage
                     self.f_truth.append(F.value_at_index(asu_hkl))
+
 
                 ff = np.array(self.f_truth)
                 f_start = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
@@ -388,6 +409,10 @@ class FatRefiner(PixelRefinement):
             print("--3 combining parameters across ranks")
         self.x = self._mpi_reduce_broadcast(self.x)
 
+        if comm.rank != 0:
+            self._fix_list = None
+        self._fix_list = comm.bcast(self._fix_list)
+
         if comm.rank == 0:
             print("--4 print initial stats")
             rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
@@ -426,18 +451,18 @@ class FatRefiner(PixelRefinement):
 
     def _unpack_internal(self, lst):
         # NOTE: This is not a generalized method, only works in context of D9114 global refinement
-        #x = self..as_numpy_array()
+        # x = self..as_numpy_array()
         rotx = lst[:-self.n_global_params:self.n_per_shot_params]
         roty = lst[1:-self.n_global_params:self.n_per_shot_params]
         rotz = lst[2:-self.n_global_params:self.n_per_shot_params]
-        #a_vals = lst[3:-self.n_global_params:self.n_per_shot_params]
-        #c_vals = lst[4:-self.n_global_params:self.n_per_shot_params]
+        # a_vals = lst[3:-self.n_global_params:self.n_per_shot_params]
+        # c_vals = lst[4:-self.n_global_params:self.n_per_shot_params]
         ncells_vals = lst[3:-self.n_global_params:self.n_per_shot_params]
         scale_vals = lst[4:-self.n_global_params:self.n_per_shot_params]
 
         a, c = lst[self.ucell_xstart[0]:self.ucell_xstart[0] + self.n_ucell_param]
-        a_vals = [a]*len(rotx)
-        c_vals = [c]*len(rotx)
+        a_vals = [a] * len(rotx)
+        c_vals = [c] * len(rotx)
 
         return rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals
 
@@ -455,6 +480,7 @@ class FatRefiner(PixelRefinement):
         """needs to be called each time the ROI is changed"""
         self.D.region_of_interest = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
         self.D.add_diffBragg_spots()
+        #if not tuple(map(int, self.D.max_I_hkl)) == self.ASU[]
 
     def _update_Fcell(self):
         idx, data = self.S.D.Fhkl_tuple
@@ -603,6 +629,12 @@ class FatRefiner(PixelRefinement):
                 self._update_rotXYZ()
                 n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
                 for i_spot in range(n_spots):
+                    #if self.FNAMES[self._i_shot] == '/global/project/projectdirs/lcls/dermen/d9114_sims/sadpaint/job5/realer_rank5_data858_fluence10473.h5.npz':
+                    # continue
+                    mill_idx = self.ASU[self._i_shot][i_spot]
+                    if self.idx_from_asu[mill_idx] in self._fix_list:
+                        continue  #FIXME, not sure why this arises, possibly due to mis-indexing (check by running proc_mpi using ground truth)!
+
                     self._panel_id = self.PANEL_IDS[self._i_shot][i_spot]
                     if self.verbose:
                         print "\rdiffBragg: img %d/%d; spot %d/%d; panel %d" \
@@ -610,6 +642,15 @@ class FatRefiner(PixelRefinement):
                         sys.stdout.flush()
 
                     self._update_dxtbx_detector()
+
+                    self.Imeas = self.ROI_IMGS[self._i_shot][i_spot]
+
+                    #_h = 10, 3, 3
+                    #_h=-5, -4, -5
+                    #if self.ASU[self._i_shot][i_spot] == _h:
+                    #    _verbose = self.D.verbose
+                    #    self.D.verbose = 4
+
                     self._run_diffBragg_current(i_spot)
                     self._unpack_bgplane_params(i_spot)
                     self._set_background_plane(i_spot)
@@ -620,8 +661,10 @@ class FatRefiner(PixelRefinement):
                     else:
                         self._evaluate_log_averageI_plus_sigma_readout()
 
-                    self.Imeas = self.ROI_IMGS[self._i_shot][i_spot]
 
+                    #if self.ASU[self._i_shot][i_spot] == _h:
+                    #    embed()
+                    #    self.D.verbose = _verbose
                     # helper terms for doing derivatives
                     one_over_Lambda = 1. / self.model_Lambda
                     self.one_minus_k_over_Lambda = (1. - self.Imeas * one_over_Lambda)
@@ -634,6 +677,7 @@ class FatRefiner(PixelRefinement):
                     f += self._target_accumulate()
 
                     if self.plot_images and self.iterations % self.plot_stride == 0:
+
                         xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
                         yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
                         if self.plot_residuals:
@@ -690,7 +734,7 @@ class FatRefiner(PixelRefinement):
                                 self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_ncells:
-                        d = S2*G2*self.ncells_deriv
+                        d = S2 * G2 * self.ncells_deriv
                         xpos = self.ncells_xpos[self._i_shot]
                         g[xpos] += self._grad_accumulate(d)
                         if self.calc_curvatures:
@@ -707,18 +751,18 @@ class FatRefiner(PixelRefinement):
                     if self.refine_Fcell:
                         xpos = self.fcell_xstart + self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
                         # NOTE hackage
-                        if xpos - self.fcell_xstart in self._hacked_fcells:
-                            fcell = self.x[xpos]
-                            d = S2*G2*self.fcell_deriv
+                        #if xpos - self.fcell_xstart in self._hacked_fcells:
+                        fcell = self.x[xpos]
+                        d = S2 * G2 * self.fcell_deriv
+                        if self.log_fcells:
+                            d *= np_exp(fcell)
+                        g[xpos] += self._grad_accumulate(d)
+                        if self.calc_curvatures:
+                            d2 = S2 * G2 * self.fcell_second_deriv
                             if self.log_fcells:
-                                d *= np_exp(fcell)
-                            g[xpos] += self._grad_accumulate(d)
-                            if self.calc_curvatures:
-                                d2 = S2*G2*self.fcell_second_deriv
-                                if self.log_fcells:
-                                    ex_fcell = np_exp(fcell)
-                                    d2 = ex_fcell*d + ex_fcell*ex_fcell*d2
-                                self.curv[xpos] += self._curv_accumulate(d, d2)
+                                ex_fcell = np_exp(fcell)
+                                d2 = ex_fcell * d + ex_fcell * ex_fcell * d2
+                            self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_crystal_scale:
                         d = G2 * 2 * self.scale_fac * self.model_bragg_spots
@@ -741,11 +785,11 @@ class FatRefiner(PixelRefinement):
                     for jj in range(self.n_ucell_param):
                         xpos = self.ucell_xstart[ii] + jj
                         ucell_p = self.x[xpos]
-                        sig_square = self.sig_ucell[jj]**2
-                        f += (ucell_p - self.ave_ucell[jj])**2 / 2 / sig_square
-                        g[xpos] += (ucell_p-self.ave_ucell[jj])/sig_square
+                        sig_square = self.sig_ucell[jj] ** 2
+                        f += (ucell_p - self.ave_ucell[jj]) ** 2 / 2 / sig_square
+                        g[xpos] += (ucell_p - self.ave_ucell[jj]) / sig_square
                         if self.calc_curvatures:
-                            self.curv[xpos] += 1/sig_square
+                            self.curv[xpos] += 1 / sig_square
 
             if self.use_rot_priors and self.refine_Umatrix:
                 for ii in range(self.n_shots):
@@ -754,11 +798,11 @@ class FatRefiner(PixelRefinement):
                                    self.rotZ_xpos[self._i_shot]]
                     for xpos in x_positions:
                         rot_p = self.x[xpos]
-                        sig_square = self.sig_rot**2
-                        f += rot_p**2 / 2 / sig_square
+                        sig_square = self.sig_rot ** 2
+                        f += rot_p ** 2 / 2 / sig_square
                         g[xpos] += rot_p / sig_square
                         if self.calc_curvatures:
-                            self.curv[xpos] += 1/sig_square
+                            self.curv[xpos] += 1 / sig_square
 
             # reduce the broadcast summed results:
             f = self._mpi_reduce_broadcast(f)
@@ -773,7 +817,7 @@ class FatRefiner(PixelRefinement):
                 n_tot_shots = (self.n_total_params - self.n_global_params) / self.n_per_shot_params
                 n_tot_shots = int(n_tot_shots)
                 for i in range(n_tot_shots):
-                    _s = slice(i*self.n_per_shot_params, i*self.n_per_shot_params+1, 1)
+                    _s = slice(i * self.n_per_shot_params, i * self.n_per_shot_params + 1, 1)
                     is_neg = [val < 0 for val in self.curv[_s]]
                     if any(is_neg):
                         self.neg_curv_shots.append(i)
@@ -794,16 +838,16 @@ class FatRefiner(PixelRefinement):
                     self.ax3.hist(roty, bins='auto', histtype='step', label='y')
                     self.ax3.hist(rotz, bins='auto', histtype='step', label='z')
                     # plot grad norms per shot as a bar plot
-                    assert (self.n_total_params-self.n_global_params) % self.n_per_shot_params == 0
-                    total_shots = int((self.n_total_params - 2) / self.n_per_shot_params )
+                    assert (self.n_total_params - self.n_global_params) % self.n_per_shot_params == 0
+                    total_shots = int((self.n_total_params - 2) / self.n_per_shot_params)
                     g_norm_per_shot = [norm(g[self.n_per_shot_params * i: self.n_per_shot_params * (i + 1)])
                                        for i in range(total_shots)]
 
-                    curv_per_shot = [self.curv[self.n_per_shot_params*i: self.n_per_shot_params * (i + 1)]
-                                       for i in range(total_shots)]
+                    curv_per_shot = [self.curv[self.n_per_shot_params * i: self.n_per_shot_params * (i + 1)]
+                                     for i in range(total_shots)]
                     idx_all_pos, idx_has_neg = [], []
                     for i in range(total_shots):
-                        if not np_all(curv_per_shot[i].as_numpy_array() >=0 ):
+                        if not np_all(curv_per_shot[i].as_numpy_array() >= 0):
                             idx_has_neg.append(i)
                         else:
                             idx_all_pos.append(i)
@@ -836,15 +880,16 @@ class FatRefiner(PixelRefinement):
                     self.d = flex_double(self.curv.as_numpy_array())
                     self._verify_diag()
                 else:
-                    print("\n**************************************")
-                    print("**************************************")
-                    print("**************************************")
-                    print("**************************************")
-                    print("\tFIXING CURVA: ATTEMPTING DISASTER AVERSION")
-                    print("*nn***************************************")
-                    print("*nn***************************************")
-                    print("*nn***************************************")
-                    print("*nn***************************************")
+                    if self.debug:
+                        print("\n**************************************")
+                        print("**************************************")
+                        print("**************************************")
+                        print("**************************************")
+                        print("\tFIXING CURVA: ATTEMPTING DISASTER AVERSION")
+                        print("*nn***************************************")
+                        print("*nn***************************************")
+                        print("*nn***************************************")
+                        print("*nn***************************************")
             else:
                 self.d = None
 
@@ -879,9 +924,10 @@ class FatRefiner(PixelRefinement):
             all_ang_off = comm.gather(all_ang_off, root=0)
 
             if self.verbose:
-                print("\nMissets\n========")
-                all_ang_off = ["%.5f" % s for sl in all_ang_off for s in sl]
-                print(", ".join(all_ang_off))
+                if self.refine_Umatrix or self.refine_Bmatrix:
+                    print("\nMissets\n========")
+                    all_ang_off = ["%.5f" % s for sl in all_ang_off for s in sl]
+                    print(", ".join(all_ang_off))
                 self.print_step("LBFGS stp", f)
                 self.print_step_grads("LBFGS GRADS", gnorm)
             self.iterations += 1
@@ -890,7 +936,7 @@ class FatRefiner(PixelRefinement):
                 if self.perturb_fcell:
                     self.ax_fcell.clear()
 
-                    fcell_now = self.x[self.fcell_xstart:self.fcell_xstart+self.n_global_fcell]
+                    fcell_now = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell]
                     if self.log_fcells:
                         fcell_now = np_exp(fcell_now)
                     self.ax_fcell.plot(self.f_truth, fcell_now, '.')
@@ -898,7 +944,6 @@ class FatRefiner(PixelRefinement):
                     self.ax_fcell.set_xscale('log')
                     self.fig_fcell.canvas.draw()
                     plt.pause(0.1)
-
 
             if self.calc_curvatures and not self.use_curvatures:
                 if self.num_positive_curvatures == self.use_curvatures_threshold:
@@ -916,11 +961,11 @@ class FatRefiner(PixelRefinement):
         return fterm
 
     def _poisson_d(self, d):
-        gterm = (d*self.one_minus_k_over_Lambda).sum()
+        gterm = (d * self.one_minus_k_over_Lambda).sum()
         return gterm
 
     def _poisson_d2(self, d, d2):
-        cterm = d2*self.one_minus_k_over_Lambda + d*d*self.k_over_squared_Lambda
+        cterm = d2 * self.one_minus_k_over_Lambda + d * d * self.k_over_squared_Lambda
         return cterm.sum()
 
     def _gaussian_target(self):
@@ -928,14 +973,15 @@ class FatRefiner(PixelRefinement):
         return fterm
 
     def _gaussian_d(self, d):
-        gterm = .5*(d*self.one_over_v*self.one_minus_2u_minus_u_squared_over_v).sum()
+        gterm = .5 * (d * self.one_over_v * self.one_minus_2u_minus_u_squared_over_v).sum()
         return gterm
 
     def _gaussian_d2(self, d, d2):
-        cterm = self.one_over_v*(d2*self.one_minus_2u_minus_u_squared_over_v -
-                                 d*d*(self.one_over_v*self.one_minus_2u_minus_u_squared_over_v -
-                                      (2+2*self.u*self.one_over_v + self.u*self.u*self.one_over_v*self.one_over_v)))
-        cterm = .5*cterm.sum()
+        cterm = self.one_over_v * (d2 * self.one_minus_2u_minus_u_squared_over_v -
+                                   d * d * (self.one_over_v * self.one_minus_2u_minus_u_squared_over_v -
+                                            (
+                                                        2 + 2 * self.u * self.one_over_v + self.u * self.u * self.one_over_v * self.one_over_v)))
+        cterm = .5 * cterm.sum()
         return cterm
 
     def _evaluate_log_averageI(self):  # for Poisson only stats
@@ -946,12 +992,12 @@ class FatRefiner(PixelRefinement):
             pass
         if any((self.model_Lambda <= 0).ravel()):
             self.num_kludge += 1
-            #print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL (kludges=%d)!!!!!!!!!\n<><><><><><><><><>\n" % self.num_kludge)
+            # print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL (kludges=%d)!!!!!!!!!\n<><><><><><><><><>\n" % self.num_kludge)
         #    raise ValueError("model of Bragg spots cannot have negative intensities...")
         self.log_Lambda[self.model_Lambda <= 0] = 0
 
     def _evaluate_log_averageI_plus_sigma_readout(self):
-        L = self.model_Lambda + self.sigma_r**2
+        L = self.model_Lambda + self.sigma_r ** 2
         L_is_neg = (L <= 0).ravel()
         if any(L_is_neg):
             self.num_kludge += 1
@@ -999,17 +1045,18 @@ class FatRefiner(PixelRefinement):
         rot_labels = ["GrotX=%+3.7g" % rotX, "GrotY=%+3.7g" % rotY, "GrotZ=%+3.4g" % rotZ]
         xnorm = norm(self.x)
 
-        rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self._g)
+        if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
+            rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self._g)
 
-        master_data = {"Ga": a_vals, "Gc": c_vals,
-                       "GNcells": ncells_vals,
-                       "Gscale": scale_vals,
-                       "Grotx": rotx,
-                       "Groty": roty,
-                       "Grotz": rotz}
-        master_data = pandas.DataFrame(master_data)
-        master_data["Ggain"] = self._g[self.gain_xpos]
-        print(master_data.to_string(float_format="%.3g"))
+            master_data = {"Ga": a_vals, "Gc": c_vals,
+                           "GNcells": ncells_vals,
+                           "Gscale": scale_vals,
+                           "Grotx": rotx,
+                           "Groty": roty,
+                           "Grotz": rotz}
+            master_data = pandas.DataFrame(master_data)
+            master_data["Ggain"] = self._g[self.gain_xpos]
+            print(master_data.to_string(float_format="%.3g"))
 
         if self.calc_curvatures:
             if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
@@ -1054,13 +1101,14 @@ class FatRefiner(PixelRefinement):
             if self.calc_curvatures:
                 _curv = "%2.7g" % self.curv[xpos]
             _grad = "%2.7g" % self._g[xpos]
-            _data.append(["%d,%d,%d" % tuple(hkl), "%.4f" % obs, "%.4f" % truth,  "%.4f" % self.f_start[i],
-                          "%d"%self.hkl_frequency[i], _curv, _grad, "%d"%i])
+            _data.append(["%d,%d,%d" % tuple(hkl), "%.4f" % obs, "%.4f" % truth, "%.4f" % self.f_start[i],
+                          "%d" % self.hkl_frequency[i], _curv, _grad, "%d" % i])
             hacked_str += _s
         hacked_str = tabulate(_data, headers=headers, tablefmt='orgtbl')
-        print("\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%.4f (R1 at start=%.4f), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s"
-              % (target, Xnorm*self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
-                 ", ".join(map(str, self.neg_curv_shots)), hacked_str))
+        print(
+                    "\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%.4f (R1 at start=%.4f), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s"
+                    % (target, Xnorm * self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
+                       ", ".join(map(str, self.neg_curv_shots)), hacked_str))
         print("\n")
 
     def get_refined_Bmatrix(self, i_shot):
