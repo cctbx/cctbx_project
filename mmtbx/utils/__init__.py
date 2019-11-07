@@ -2606,9 +2606,9 @@ class extract_box_around_model_and_map(object):
       for o,a,f,l in zip(map_data.origin(),map_data.all(),
          self.gridding_first,self.gridding_last):
         lower_bounds.append(max(o,f)-f)  # lower, upper bounds after shifting
-        upper_bounds.append(min(l,o+a-1)-f) 
+        upper_bounds.append(min(l,o+a-1)-f)
         if f < o or l >= a+o:
-          outside_bounds=True 
+          outside_bounds=True
 
       if not outside_bounds: # usual
         return maptbx.copy(map_data,self.gridding_first, self.gridding_last)
@@ -2620,7 +2620,7 @@ class extract_box_around_model_and_map(object):
         map_copy=map_copy.shift_origin()  # put origin at (0,0,0)
         map_copy_all=map_copy.all() # save size of map
         # XXX work-around for set_box does not allow offset origin
-        
+
         map_copy_as_double=flex.double(map_copy.as_1d())
         map_copy_as_double.resize(flex.grid(map_copy_all))
         new_map=maptbx.set_box_copy_inside(0,  # puts 0 outside bounds
