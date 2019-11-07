@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 def str_ev(ev):
   return "[%d,%d,%d]" % ev
 
@@ -65,4 +65,4 @@ class literal_description:
           self.long_form())
 
   def select(self,format):
-    return apply(literal_description.__dict__[format],[self])
+    return literal_description.__dict__[format](*[self])

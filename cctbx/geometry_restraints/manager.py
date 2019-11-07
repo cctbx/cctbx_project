@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.flags
 import cctbx.geometry_restraints.energies
@@ -9,10 +9,13 @@ from libtbx import introspection
 from libtbx import adopt_init_args
 from libtbx import dict_with_default_0
 from libtbx.utils import Sorry
-import sys, math, StringIO
+import sys, math
+from six import StringIO
 import iotbx.pdb
 
 import boost.python
+from six.moves import range
+from six.moves import zip
 boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import reindexing_array
 
@@ -83,7 +86,7 @@ class manager(Base_geometry):
         plain_pairs_radius=None,
         max_reasonable_bond_distance=None,
         min_cubicle_edge=5,
-        log=StringIO.StringIO()):
+        log=StringIO()):
     super(manager, self).__init__()
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
@@ -108,7 +111,7 @@ class manager(Base_geometry):
   #   return state
 
   # def __setstate__(self, state):
-  #   state[ "log" ] = StringIO.StringIO( state[ "log" ] )
+  #   state[ "log" ] = StringIO( state[ "log" ] )
   #   self.__dict__.update( state )
 
   def reset_internals(self):
@@ -242,7 +245,7 @@ class manager(Base_geometry):
     reduced_dihedral_proxies = get()
     #
     if not include_den_restraints:
-      return manager(
+      result = manager(
         crystal_symmetry=self.crystal_symmetry,
         site_symmetry_table=self.site_symmetry_table,
         bond_params_table=self.bond_params_table,
@@ -251,7 +254,7 @@ class manager(Base_geometry):
         dihedral_proxies=reduced_dihedral_proxies,
         ncs_dihedral_manager=self.ncs_dihedral_manager)
     else:
-      return manager(
+      result = manager(
         crystal_symmetry=self.crystal_symmetry,
         site_symmetry_table=self.site_symmetry_table,
         bond_params_table=self.bond_params_table,
@@ -261,6 +264,8 @@ class manager(Base_geometry):
         ncs_dihedral_manager=self.ncs_dihedral_manager,
         den_manager=self.den_manager,
         ramachandran_manager=self.ramachandran_manager)
+    result.set_source(source = self.get_source())
+    return result
 
   def sites_cart_used_for_pair_proxies(self):
     return self._sites_cart_used_for_pair_proxies
@@ -304,7 +309,7 @@ class manager(Base_geometry):
       new_site_symmetry_table = self.site_symmetry_table.deep_copy()
       new_site_symmetry_table.reserve(new_site_symmetry_table.indices().size()
                                     + n_additional_sites)
-      for i_seq in xrange(n_additional_sites):
+      for i_seq in range(n_additional_sites):
         new_site_symmetry_table.process(site_symmetry_table.get(i_seq))
       site_symmetry_table = new_site_symmetry_table
     bond_params_table = None
@@ -329,7 +334,7 @@ class manager(Base_geometry):
       assert (nonbonded_charges.size() == n_additional_sites)
       nonbonded_charges = self.nonbonded_charges.concatenate(
         nonbonded_charges)
-    return manager(
+    result = manager(
       crystal_symmetry=self.crystal_symmetry,
       model_indices=model_indices,
       conformer_indices=conformer_indices,
@@ -355,6 +360,8 @@ class manager(Base_geometry):
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
       plain_pairs_radius=self.plain_pairs_radius)
+    result.set_source(source = self.get_source())
+    return result
 
   def select(self, selection=None, iselection=None):
     assert [selection, iselection].count(None) == 1
@@ -396,7 +403,7 @@ class manager(Base_geometry):
         raise RuntimeError("Cannot determine n_seq.")
       if (len(n_seqs) != 1):
         raise RuntimeError("Selection size mismatches: %s." % str(n_seqs))
-      return n_seqs.keys()[0]
+      return list(n_seqs.keys())[0]  # FIXME this might break py2/3 compat unless there is only 1 key
 
     n_seq = get_n_seq()
 
@@ -445,7 +452,7 @@ class manager(Base_geometry):
   def discard_symmetry(self, new_unit_cell):
     assert self.site_symmetry_table is not None #XXX lazy
     assert self.shell_sym_tables is not None #XXX lazy
-    return manager(
+    result = manager(
       crystal_symmetry=crystal.symmetry(
         unit_cell=new_unit_cell,
         space_group_symbol="P1"),
@@ -473,6 +480,8 @@ class manager(Base_geometry):
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
       plain_pairs_radius=self.plain_pairs_radius)
+    result.set_source(source = self.get_source())
+    return result
 
   def add_angles_in_place(self, additional_angle_proxies):
     self.angle_proxies.extend(additional_angle_proxies)
@@ -500,11 +509,13 @@ class manager(Base_geometry):
           origin_id=specific_origin_id)
     angles = self.angle_proxies.proxy_select(
       origin_id=specific_origin_id)
+    dihedrals = self.dihedral_proxies.proxy_select(
+      origin_id=specific_origin_id)
     planarity = self.planarity_proxies.proxy_select(
       origin_id=specific_origin_id)
     parallelity = self.parallelity_proxies.proxy_select(
       origin_id=specific_origin_id)
-    return bonds_simpe, bonds_asu, angles, planarity, parallelity
+    return bonds_simpe, bonds_asu, angles, dihedrals, planarity, parallelity
 
   def remove_user_supplied_restraints_in_place(self):
     """
@@ -532,6 +543,12 @@ class manager(Base_geometry):
     specific_origin_id = origin_ids.get_origin_id('edits')
     if self.angle_proxies is not None:
       return self.angle_proxies.proxy_remove(origin_id=specific_origin_id)
+    return None
+
+  def get_dihedral_proxies_without_user_supplied(self):
+    specific_origin_id = origin_ids.get_origin_id('edits')
+    if self.dihedral_proxies is not None:
+      return self.dihedral_proxies.proxy_remove(origin_id=specific_origin_id)
     return None
 
   def get_planarity_proxies_without_user_supplied(self):
@@ -905,12 +922,12 @@ class manager(Base_geometry):
     return len(self.angle_proxies.proxy_select(origin_id=specific_origin_id))
 
   def get_n_stacking_proxies(self):
-    specific_origin_id = origin_ids.get_origin_id('covalent geometry')
+    specific_origin_id = origin_ids.get_origin_id('basepair stacking')
     return len(self.parallelity_proxies.proxy_select(
       origin_id=specific_origin_id))
 
   def get_n_parallelity_bp_proxies(self):
-    specific_origin_id = origin_ids.get_origin_id('hydrogen bonds')
+    specific_origin_id = origin_ids.get_origin_id('basepair parallelity')
     return len(self.parallelity_proxies.proxy_select(
       origin_id=specific_origin_id))
 
@@ -920,7 +937,7 @@ class manager(Base_geometry):
       origin_id=specific_origin_id))
 
   def get_n_planarity_bp_proxies(self):
-    specific_origin_id = origin_ids.get_origin_id('hydrogen bonds')
+    specific_origin_id = origin_ids.get_origin_id('basepair planarity')
     return len(self.planarity_proxies.proxy_select(
       origin_id=specific_origin_id))
 
@@ -1004,6 +1021,7 @@ class manager(Base_geometry):
     new_grm.add_new_bond_restraints_in_place(proxies, sites_cart,
       max_distance_between_connecting_atoms=max_distance_between_connecting_atoms,
       skip_max_proxy_distance_calculation=skip_max_proxy_distance_calculation)
+    new_grm.set_source(source = self.get_source())
     return new_grm
 
   def add_new_hbond_restraints_in_place(self, proxies, sites_cart,
@@ -1592,7 +1610,7 @@ class manager(Base_geometry):
       outf_descriptor = file_descriptor
     else:
       outf_descriptor = open(file_name, "w")
-    print >> outf_descriptor, header
+    print(header, file=outf_descriptor)
     self.show_sorted(
       sites_cart=sites_cart,
       site_labels=site_labels,
@@ -1619,12 +1637,12 @@ class manager(Base_geometry):
           site_labels=site_labels,
           f=f,
           origin_id=default_origin_id)
-      print >> f
+      print(file=f)
       for key in origin_ids.get_bond_origin_id_labels():
         origin_id=origin_ids.get_origin_id(key)
         if origin_id==default_origin_id: continue
         label=origin_ids.get_geo_file_header(key)
-        tempbuffer = StringIO.StringIO()
+        tempbuffer = StringIO()
         pair_proxies.bond_proxies.show_sorted(
             by_value="residual",
             sites_cart=sites_cart,
@@ -1633,7 +1651,7 @@ class manager(Base_geometry):
             prefix="",
             origin_id=origin_id)
         if tempbuffer.getvalue().find(': 0')==-1:
-          print >> f, label, tempbuffer.getvalue()[5:]
+          print(label, tempbuffer.getvalue()[5:], file=f)
 
     for p_label, proxies, internals, i_label, keys, start in [
       ("Bond angle",
@@ -1659,29 +1677,30 @@ class manager(Base_geometry):
        'planes',
        '',
        origin_ids.get_plane_origin_id_labels(),
-       0),
+       10),
       ("Parallelity",
        self.parallelity_proxies,
        'parallelities',
        '',
        origin_ids.get_parallelity_origin_id_labels(),
-       0),
+       12),
       ]:
       if (proxies is not None):
-        proxies.show_sorted(
-          by_value="residual",
-          sites_cart=sites_cart,
-          site_labels=site_labels,
-          f=f,
-          origin_id=default_origin_id)
-        print >> f
+        if p_label not in ['Parallelity']: # not default origin for parallelity
+          proxies.show_sorted(
+            by_value="residual",
+            sites_cart=sites_cart,
+            site_labels=site_labels,
+            f=f,
+            origin_id=default_origin_id)
+          print(file=f)
         for key in keys: #origin_ids.get_dihedral_origin_id_labels():
           origin_id=origin_ids.get_origin_id(key)
           if origin_id==default_origin_id: continue
           label=origin_ids.get_geo_file_header(key, internals=internals)
           if label is None: continue
           if i_label: label = '%s %s' % (label, i_label)
-          tempbuffer = StringIO.StringIO()
+          tempbuffer = StringIO()
           proxies.show_sorted(
               by_value="residual",
               sites_cart=sites_cart,
@@ -1690,7 +1709,7 @@ class manager(Base_geometry):
               prefix="",
               origin_id=origin_id)
           if len(tempbuffer.getvalue()) and tempbuffer.getvalue().find(': 0')==-1:
-            print >> f, label, tempbuffer.getvalue()[start:]
+            print(label, tempbuffer.getvalue()[start:], file=f)
 
     for p_label, proxies in [
         ("Reference torsion angle", self.reference_dihedral_manager),
@@ -1712,26 +1731,27 @@ class manager(Base_geometry):
         by_value="delta",
         sites_cart=sites_cart, site_labels=site_labels, f=f,
         suppress_model_minus_vdw_greater_than=None)
-      print >> f
+      print(file=f)
 
-  def nb_overlaps_info(
-    self,
-    sites_cart,
-    hd_sel,
-    macro_mol_sel=None,
-    site_labels=None):
-    """ non-bonded overlaps information """
-    from cctbx.geometry_restraints.nonbonded_overlaps import info
-    if not macro_mol_sel:
-      from cctbx.geometry_restraints.nonbonded_overlaps import get_macro_mol_sel
-      macro_mol_sel = get_macro_mol_sel(pdb_processed_file=self)
-
-    return info(
-      geometry_restraints_manager=self,
-      macro_molecule_selection=macro_mol_sel,
-      sites_cart=sites_cart,
-      hd_sel=hd_sel,
-      site_labels=site_labels).result
+# This should be in model class?
+#  def nb_overlaps_info(
+#    self,
+#    sites_cart,
+#    hd_sel,
+#    macro_mol_sel=None,
+#    site_labels=None):
+#    """ non-bonded overlaps information """
+#    from cctbx.geometry_restraints.nonbonded_overlaps import info
+#    if not macro_mol_sel:
+#      from cctbx.geometry_restraints.nonbonded_overlaps import get_macro_mol_sel
+#      macro_mol_sel = get_macro_mol_sel(pdb_processed_file=self)
+#
+#    return info(
+#      geometry_restraints_manager=self,
+#      macro_molecule_selection=macro_mol_sel,
+#      sites_cart=sites_cart,
+#      hd_sel=hd_sel,
+#      site_labels=site_labels).result
 
   def _bond_generator(self):
     simple, asu = self.get_all_bond_proxies()
@@ -1741,22 +1761,56 @@ class manager(Base_geometry):
       yield bond
 
   def get_struct_conn_mmcif(self, atoms):
-    def _atom_info(atom):
-      return [atom.parent().resname,
-              atom.parent().parent().parent().id,
-              atom.parent().parent().resseq.strip(),
-              atom.name.strip(),
-             ]
+    from iotbx.pdb.utils import all_label_asym_ids
+    label_asym_ids = all_label_asym_ids()
+    def _atom_info(atom, use_label_asym_ids=False):
+      if use_label_asym_ids:
+        return [atom.parent().resname,
+                label_asym_ids[atom.tmp],
+                atom.parent().parent().resseq.strip(),
+                atom.name.strip(),
+               ]
+      else:
+        return [atom.parent().resname,
+                atom.parent().parent().parent().id,
+                atom.parent().parent().resseq.strip(),
+                atom.name.strip(),
+               ]
+    def _atom_info_grouped(bond):
+      row = []
+      if hasattr(bond, 'i_seqs'):
+        row += _atom_info(atoms[bond.i_seqs[0]])
+        row += _atom_info(atoms[bond.i_seqs[0]], use_label_asym_ids=True)
+        row.append('.')      # role
+        row += _atom_info(atoms[bond.i_seqs[1]])
+        row += _atom_info(atoms[bond.i_seqs[1]], use_label_asym_ids=True)
+      else:
+        row += _atom_info(atoms[bond.i_seq])
+        row += _atom_info(atoms[bond.i_seq], use_label_asym_ids=True)
+        row.append('.')      # role
+        row += _atom_info(atoms[bond.j_seq])
+        row += _atom_info(atoms[bond.j_seq], use_label_asym_ids=True)
+      row.append('.')      # role
+      #row.append('1_555') # symmetry!
+      return row
     from cctbx.geometry_restraints.auto_linking_types import origin_ids
     struct_conn_loop = iotbx.cif.model.loop(header=(
       '_struct_conn.id',
       '_struct_conn.conn_type_id',
+      '_struct_conn.ptnr1_auth_comp_id',
+      '_struct_conn.ptnr1_auth_asym_id',
+      '_struct_conn.ptnr1_auth_seq_id',
+      '_struct_conn.ptnr1_auth_atom_id',
       '_struct_conn.ptnr1_label_comp_id',
       '_struct_conn.ptnr1_label_asym_id',
       '_struct_conn.ptnr1_label_seq_id',
       '_struct_conn.ptnr1_label_atom_id',
       '_struct_conn.ptnr1_role',
       #'_struct_conn.ptnr1_symmetry',
+      '_struct_conn.ptnr2_auth_comp_id',
+      '_struct_conn.ptnr2_auth_asym_id',
+      '_struct_conn.ptnr2_auth_seq_id',
+      '_struct_conn.ptnr2_auth_atom_id',
       '_struct_conn.ptnr2_label_comp_id',
       '_struct_conn.ptnr2_label_asym_id',
       '_struct_conn.ptnr2_label_seq_id',
@@ -1772,14 +1826,7 @@ class manager(Base_geometry):
       if origin_id_info[0]=='SS BOND': row.append('disulf')
       elif origin_id_info[0]=='metal coordination': row.append('metalc')
       else: row.append('covale')
-      if hasattr(bond, 'i_seqs'): row += _atom_info(atoms[bond.i_seqs[0]])
-      else: row += _atom_info(atoms[bond.i_seq])
-      row.append('.')      # role
-      #row.append('1_555') # symmetry!
-      if hasattr(bond, 'i_seqs'): row += _atom_info(atoms[bond.i_seqs[1]])
-      else: row += _atom_info(atoms[bond.j_seq])
-      row.append('.')
-      #row.append('1_555')
+      row += _atom_info_grouped(bond)
       if len(origin_id_info)>2 and origin_id_info[2]:
         row.append(origin_id_info[2])
       elif origin_id_info[1]: row.append(origin_id_info[1])
@@ -1811,7 +1858,7 @@ class manager(Base_geometry):
         # not writing cif_link for various reasons like programatic links
         pass
       else:
-        print origin_id_info[0]
+        print(origin_id_info[0])
         assert 0
     return links
 
@@ -1857,7 +1904,7 @@ def construct_non_crystallographic_conserving_bonds_and_angles(
   nonbonded_params = geometry_restraints.nonbonded_params()
   nonbonded_params.distance_table.setdefault(
     "Default")["Default"] = vdw_distance
-  return box.sites_cart, manager(
+  new_grm = manager(
     crystal_symmetry=box.crystal_symmetry(),
     site_symmetry_table=asu_mappings.site_symmetry_table(),
     bond_params_table=bond_params_table,
@@ -1866,6 +1913,7 @@ def construct_non_crystallographic_conserving_bonds_and_angles(
     nonbonded_types=nonbonded_types,
     nonbonded_function=geometry_restraints.prolsq_repulsion_function(),
     max_reasonable_bond_distance=max_reasonable_bond_distance)
+  return box.sites_cart, new_grm
 
 def format_distances_for_error_message(
       pair_sym_table,

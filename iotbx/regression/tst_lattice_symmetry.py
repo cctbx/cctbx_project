@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import show_diff
 from libtbx import easy_run
 import sys
@@ -433,7 +433,7 @@ Symmetry in minimum-lengths cell: P -1 (No. 2)
 
 """)
   assert tst_instability_on_the_lepage_tolerance()
-  print "OK"
+  print("OK")
 
 def tst_instability_on_the_lepage_tolerance():
   """Basic idea:  we introduced the Lepage tolerance to solve the problem

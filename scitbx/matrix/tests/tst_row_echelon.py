@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 def exercise_rational():
   from scitbx.matrix import row_echelon
   from scitbx import matrix
@@ -39,14 +40,14 @@ def exercise_rational():
   def rr():
     return rational.int(rng.randrange(-5,6), rng.randrange(1,10))
   #
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     for nr in [1,2,3]:
       for nc in [1,2,3]:
         m = []
-        for ir in xrange(nr):
-          m.append([rr() for ic in xrange(nc)])
+        for ir in range(nr):
+          m.append([rr() for ic in range(nc)])
         m_orig = matrix.rec(flat_list(m), (nr,nc))
-        sol_orig = [rr() for ic in xrange(nc)]
+        sol_orig = [rr() for ic in range(nc)]
         t_orig = list(m_orig * matrix.col(sol_orig))
         t = list(t_orig)
         free_vars = row_echelon.form_rational(m, t)
@@ -62,7 +63,7 @@ def exercise_rational():
         assert sol is not None
         assert (m_orig * matrix.col(sol)).dot() == 0
   #
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     from itertools import count
     for i in count(10):
       a = matrix.col([rr(), rr(), rr()])
@@ -76,7 +77,7 @@ def exercise_rational():
     def check(a, b, c, expected_free_vars, expected_sol):
       m = []
       t = []
-      for i in xrange(3):
+      for i in range(3):
         m.append([a[i], b[i]])
         t.append(c[i])
       m_orig = matrix.rec(flat_list(m), (3,2))
@@ -96,7 +97,7 @@ def exercise_rational():
 def run(args):
   assert len(args) == 0
   exercise_rational()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

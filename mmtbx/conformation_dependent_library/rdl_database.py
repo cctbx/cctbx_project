@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 
 rdl_database = {
@@ -3636,8 +3636,10 @@ rdl_database = {
   },
 }
 
-def get_rdl_database(apply_unrestrained_dihedrals=False, verbose=False):
-  from investigate_rotamer_space import results
+def get_rdl_database(truncate_restaints_to_gamma=False, # chi1 angles & torsions
+                     apply_unrestrained_dihedrals=False,
+                     verbose=False):
+  from mmtbx.conformation_dependent_library.investigate_rotamer_space import results
   pdbs = []
   if apply_unrestrained_dihedrals:
     for resname, rotamers in results.items():
@@ -3648,7 +3650,7 @@ def get_rdl_database(apply_unrestrained_dihedrals=False, verbose=False):
         if action is None: continue
         for dihedral, restraint in action.items():
           rdl_d_r[dihedral] = restraint
-          if verbose: print "RDL update",resname, rotamer, dihedral, restraint
+          if verbose: print("RDL update",resname, rotamer, dihedral, restraint)
           pdbs.append("%s_%s.pdb" % (resname.lower(), rotamer))
     #print 'tar cvf rdls.tar ' + ' '.join(pdbs)
   # needed because rotalyze does not use atom names to get rotamer name so
@@ -3660,26 +3662,41 @@ def get_rdl_database(apply_unrestrained_dihedrals=False, verbose=False):
       for key, values in restraints.items():
         if len(key)!=4: continue
         values[-1]=2
+  if truncate_restaints_to_gamma:
+    for resname, rotamers in rdl_database.items():
+      for rotamer_name, restraints in rotamers.items():
+        if rotamer_name=='default': continue
+        remove=[]
+        for key, values in restraints.items():
+          if not (key[0]=='CA' and key[1]=='CB'):
+            remove.append(key)
+        if remove:
+          for key in remove:
+            del restraints[key]
   return rdl_database
 
 def run(args):
   assert len(args) == 0
   rdl_database = get_rdl_database()
-  print '='*80
-  print rdl_database["ARG"]["mtp85"][("N", "CA", "C")]
+  print('='*80)
+  print(rdl_database["ARG"]["mtp85"][("N", "CA", "C")])
+  for rotamer, item in rdl_database['TRP'].items():
+    print(rotamer)
+    #print item
+    print(item[ ('CB', 'CG', 'CD1')], item[('CA', 'CB', 'CG', 'CD1')])
   for resname, rotamer, key, period in [
-    ["ASP", 'p0',   ("CA", "CB", "CG", "OD1"), 36],
+    #["ASP", 'p0',   ("CA", "CB", "CG", "OD1"), 36],
     ["TYR", 'm-10', ("CA", "CB", "CG", "CD1"), 2],
     ["TYR", 'm-80', ("CA", "CB", "CG", "CD1"), 1],
     ["GLN", 'mp10', ("CB", "CG", "CD", "OE1"), 1],
     ]:
-    print resname, rotamer, key, rdl_database[resname][rotamer][key]
+    print(resname, rotamer, key, rdl_database[resname][rotamer][key])
     assert rdl_database[resname][rotamer][key][-1]==period, "%s != %s" % (
       rdl_database[resname][rotamer][key],
       period,
       )
   for res_type in sorted(rdl_database):
-    print res_type, len(rdl_database[res_type])
+    print(res_type, len(rdl_database[res_type]))
 
 if (__name__ == "__main__"):
   import sys

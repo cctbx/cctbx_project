@@ -1,5 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME cluster.visualize_orientations
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 __author__ = 'zeldin'
 #from libtbx.utils import multi_out
 
@@ -9,7 +9,7 @@ def run(_args):
     raise IOError("Must give at least one path to folder of pickles")
   import logging
   from xfel.clustering.cluster import Cluster
-  FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
+  FORMAT = '%(message)s'
   logging.basicConfig(level=logging.WARNING, format=FORMAT)
 
   cluster = Cluster.from_directories(_args.folders,

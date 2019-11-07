@@ -1,6 +1,6 @@
  # -*- coding: utf-8; py-indent-offset: 2 -*-
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import os
 from pickle import loads, dumps
@@ -87,7 +87,7 @@ def exercise():
   del fo_map
   del fofc_map
 
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   exercise()

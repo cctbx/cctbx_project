@@ -1,7 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.merging_statistics
 # LIBTBX_SET_DISPATCHER_NAME iotbx.merging_statistics
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.merging_statistics
 import iotbx.phil
 from libtbx.str_utils import format_value
@@ -91,7 +91,9 @@ already be on a common scale, but with individual observations unmerged.
     file_name=params.file_name,
     data_labels=params.labels,
     log=out,
-    assume_shelx_observation_type_is=assume_shelx_observation_type_is)
+    assume_shelx_observation_type_is=assume_shelx_observation_type_is,
+    anomalous=params.anomalous,
+  )
   params.labels = i_obs.info().label_string()
   validate_params(params)
   symm = sg = uc = None
@@ -146,12 +148,12 @@ already be on a common scale, but with individual observations unmerged.
     import iotbx.cif.model
     cif = iotbx.cif.model.cif()
     cif[params.mmcif.data_name] = result.as_cif_block()
-    with open(params.mmcif.file_name, 'wb') as f:
-      print >> f, cif
-  print >> out, ""
-  print >> out, "References:"
-  print >> out, citations_str
-  print >> out, ""
+    with open(params.mmcif.file_name, 'w') as f:
+      print(cif, file=f)
+  print("", file=out)
+  print("References:", file=out)
+  print(citations_str, file=out)
+  print("", file=out)
   return result
 
 #-----------------------------------------------------------------------

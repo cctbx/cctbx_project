@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import sys
 from cctbx import uctbx
@@ -29,12 +29,12 @@ def run(args):
   # Bad hack, never repeat. In fact, all the boxing functionality should
   # go into mmtbx.model.manager
   model._crystal_symmetry = box.crystal_symmetry()
-  print >> log, 'REMARK %s --buffer-layer=%.6g %s' % (
+  print('REMARK %s --buffer-layer=%.6g %s' % (
     libtbx.env.dispatcher_name,
     command_line.options.buffer_layer,
-    show_string(command_line.args[0]))
-  print >> log, 'REMARK %s' % date_and_time()
-  print >> log, model.model_as_pdb()
+    show_string(command_line.args[0])), file=log)
+  print('REMARK %s' % date_and_time(), file=log)
+  print(model.model_as_pdb(), file=log)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

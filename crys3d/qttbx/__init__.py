@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import adopt_optional_init_args
 import gltbx
 import gltbx.util
@@ -9,6 +9,7 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from scitbx import matrix as mat
 import math
+from six.moves import zip
 
 class widget_with_fp_exception_trapping_off_mixin(object):
 

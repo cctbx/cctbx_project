@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.utils import run_reduce_with_timeout
 from time import time
 from mmtbx.regression import model_1yjp
 import sys
+from six.moves import zip
 
 def exercise(prefix="tst_reduce_timeout_1"):
   fn = "%s.pdb" % prefix
@@ -51,7 +52,7 @@ def exercise(prefix="tst_reduce_timeout_1"):
   assert t1-t0 < 0.1
   assert rr.return_code == -15
 
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__" :
   if sys.platform != 'win32':

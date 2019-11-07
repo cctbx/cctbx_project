@@ -1,6 +1,7 @@
-from __future__ import division
-from cStringIO import StringIO
+from __future__ import absolute_import, division, print_function
+from six.moves import cStringIO as StringIO
 import os.path
+from six.moves import zip
 
 def exercise_model_only():
   from mmtbx.building import extend_sidechains
@@ -101,4 +102,4 @@ if (__name__ == "__main__"):
   exercise_model_only()
   exercise_correct_sequence()
   exercise_cmdline()
-  print "OK"
+  print("OK")

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import iotbx.pdb.amino_acid_codes
 
@@ -806,6 +806,94 @@ ATOM      7  OXT UNK A   1      10.213   6.660   5.218  1.00 20.00      A    O-1
 TER
 END
 """
+
+sec_h = '''
+CRYST1   14.413   13.247   13.703  90.00  90.00  90.00 P 1
+ATOM      1  N   SEC A   1       5.325   7.374   5.793  1.00 20.00      A    N
+ATOM      2  CA  SEC A   1       6.781   7.356   5.843  1.00 20.00      A    C
+ATOM      3  C   SEC A   1       7.326   6.134   5.114  1.00 20.00      A    C
+ATOM      4  O   SEC A   1       6.958   5.000   5.422  1.00 20.00      A    O
+ATOM      5  CB  SEC A   1       7.262   7.371   7.286  1.00 20.00      A    C
+ATOM      6 SE   SEC A   1       9.115   6.677   7.432  1.00 20.00      A   Se
+ATOM      7  H   SEC A   1       5.000   7.509   5.000  1.00 20.00      A    H
+ATOM      8  H2  SEC A   1       5.092   8.078   6.245  1.00 20.00      A    H
+ATOM      9  HA  SEC A   1       7.108   8.130   5.423  1.00 20.00      A    H
+ATOM     10  HB2 SEC A   1       6.720   6.820   7.820  1.00 20.00      A    H
+ATOM     11  HB3 SEC A   1       7.248   8.247   7.624  1.00 20.00      A    H
+ATOM     12  HE  SEC A   1       9.413   7.295   8.703  1.00 20.00      A    H
+'''
+
+sec = '''
+CRYST1   14.413   13.247   13.703  90.00  90.00  90.00 P 1
+ATOM      1  N   SEC A   1       5.325   7.374   5.793  1.00 20.00      A    N
+ATOM      2  CA  SEC A   1       6.781   7.356   5.843  1.00 20.00      A    C
+ATOM      3  C   SEC A   1       7.326   6.134   5.114  1.00 20.00      A    C
+ATOM      4  O   SEC A   1       6.958   5.000   5.422  1.00 20.00      A    O
+ATOM      5  CB  SEC A   1       7.262   7.371   7.286  1.00 20.00      A    C
+ATOM      6 SE   SEC A   1       9.115   6.677   7.432  1.00 20.00      A   Se
+'''
+
+pyl_h = '''
+CRYST1   17.576   16.310   22.096  90.00  90.00  90.00 P 1
+ATOM      1  N   PYL A   1      12.160   9.689   6.621  1.00 20.00      A    N
+ATOM      2  CA  PYL A   1      10.780   9.317   6.332  1.00 20.00      A    C
+ATOM      3  C   PYL A   1      10.215  10.184   5.213  1.00 20.00      A    C
+ATOM      4  O   PYL A   1      10.665  11.310   5.000  1.00 20.00      A    O
+ATOM      5  CB  PYL A   1       9.925   9.443   7.584  1.00 20.00      A    C
+ATOM      6  CB2 PYL A   1       5.397   6.017  14.824  1.00 20.00      A    C
+ATOM      7  CG  PYL A   1      10.064   8.268   8.550  1.00 20.00      A    C
+ATOM      8  CG2 PYL A   1       6.915   5.874  14.825  1.00 20.00      A    C
+ATOM      9  CD  PYL A   1       9.245   8.452   9.829  1.00 20.00      A    C
+ATOM     10  CD2 PYL A   1       7.555   5.757  16.221  1.00 20.00      A    C
+ATOM     11  CE  PYL A   1       9.375   7.279  10.794  1.00 20.00      A    C
+ATOM     12  CE2 PYL A   1       8.342   7.039  16.315  1.00 20.00      A    C
+ATOM     13  NZ  PYL A   1       8.584   7.519  11.993  1.00 20.00      A    N
+ATOM     14  C2  PYL A   1       8.548   6.671  13.020  1.00 20.00      A    C
+ATOM     15  CA2 PYL A   1       7.668   7.073  14.199  1.00 20.00      A    C
+ATOM     16  N2  PYL A   1       8.406   7.731  15.274  1.00 20.00      A    N
+ATOM     17  O2  PYL A   1       9.157   5.629  13.065  1.00 20.00      A    O
+ATOM     18  H   PYL A   1      12.576  10.034   5.952  1.00 20.00      A    H
+ATOM     19  H2  PYL A   1      12.574   8.911   6.743  1.00 20.00      A    H
+ATOM     20  HA  PYL A   1      10.759   8.389   6.051  1.00 20.00      A    H
+ATOM     21  HA2 PYL A   1       7.039   7.718  13.840  1.00 20.00      A    H
+ATOM     22 HB12 PYL A   1       5.037   5.890  13.932  1.00 20.00      A    H
+ATOM     23  HB2 PYL A   1      10.175  10.262   8.040  1.00 20.00      A    H
+ATOM     24 HB22 PYL A   1       5.000   5.356  15.413  1.00 20.00      A    H
+ATOM     25  HB3 PYL A   1       9.002   9.545   7.305  1.00 20.00      A    H
+ATOM     26 HB32 PYL A   1       5.132   6.899  15.128  1.00 20.00      A    H
+ATOM     27  HG2 PYL A   1       9.780   7.454   8.106  1.00 20.00      A    H
+ATOM     28 HG22 PYL A   1       7.146   5.082  14.314  1.00 20.00      A    H
+ATOM     29  HG3 PYL A   1      11.001   8.153   8.772  1.00 20.00      A    H
+ATOM     30  HD2 PYL A   1       9.529   9.263  10.279  1.00 20.00      A    H
+ATOM     31 HD22 PYL A   1       6.909   5.665  16.939  1.00 20.00      A    H
+ATOM     32  HD3 PYL A   1       8.309   8.574   9.603  1.00 20.00      A    H
+ATOM     33 HD32 PYL A   1       8.159   5.000  16.284  1.00 20.00      A    H
+ATOM     34  HE2 PYL A   1      10.302   7.145  11.044  1.00 20.00      A    H
+ATOM     35 HE22 PYL A   1       8.761   7.319  17.096  1.00 20.00      A    H
+ATOM     36  HE3 PYL A   1       9.075   6.458  10.373  1.00 20.00      A    H
+ATOM     37  HZ  PYL A   1       8.115   8.238  12.051  1.00 20.00      A    H
+'''
+
+pyl = '''
+CRYST1   17.576   16.310   22.096  90.00  90.00  90.00 P 1
+ATOM      1  N   PYL A   1      12.160   9.689   6.621  1.00 20.00      A    N
+ATOM      2  CA  PYL A   1      10.780   9.317   6.332  1.00 20.00      A    C
+ATOM      3  C   PYL A   1      10.215  10.184   5.213  1.00 20.00      A    C
+ATOM      4  O   PYL A   1      10.665  11.310   5.000  1.00 20.00      A    O
+ATOM      5  CB  PYL A   1       9.925   9.443   7.584  1.00 20.00      A    C
+ATOM      6  CB2 PYL A   1       5.397   6.017  14.824  1.00 20.00      A    C
+ATOM      7  CG  PYL A   1      10.064   8.268   8.550  1.00 20.00      A    C
+ATOM      8  CG2 PYL A   1       6.915   5.874  14.825  1.00 20.00      A    C
+ATOM      9  CD  PYL A   1       9.245   8.452   9.829  1.00 20.00      A    C
+ATOM     10  CD2 PYL A   1       7.555   5.757  16.221  1.00 20.00      A    C
+ATOM     11  CE  PYL A   1       9.375   7.279  10.794  1.00 20.00      A    C
+ATOM     12  CE2 PYL A   1       8.342   7.039  16.315  1.00 20.00      A    C
+ATOM     13  NZ  PYL A   1       8.584   7.519  11.993  1.00 20.00      A    N
+ATOM     14  C2  PYL A   1       8.548   6.671  13.020  1.00 20.00      A    C
+ATOM     15  CA2 PYL A   1       7.668   7.073  14.199  1.00 20.00      A    C
+ATOM     16  N2  PYL A   1       8.406   7.731  15.274  1.00 20.00      A    N
+ATOM     17  O2  PYL A   1       9.157   5.629  13.065  1.00 20.00      A    O
+'''
 
 def residue_dict():
   from mmtbx.monomer_library import idealized_aa as iaa

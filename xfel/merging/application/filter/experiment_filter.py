@@ -1,10 +1,24 @@
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
+from cctbx.crystal import symmetry
+from libtbx import Auto
 
 class experiment_filter(worker):
   '''Reject experiments based on various criteria'''
+
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(experiment_filter, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+
+  def validate(self):
+    if 'unit_cell' not in self.params.filter.algorithm: # so far only "unit_cell" algorithm is supported
+      return
+    assert self.params.filter.unit_cell.value.target_space_group is not None, \
+      'Space group is required for unit cell filtering'
+
+  def __repr__(self):
+    return 'Filter experiments'
 
   def check_unit_cell(self, experiment):
 
@@ -13,12 +27,9 @@ class experiment_filter(worker):
     is_ok = experiment_unit_cell.is_similar_to(self.params.filter.unit_cell.value.target_unit_cell,
                                                self.params.filter.unit_cell.value.relative_length_tolerance,
                                                self.params.filter.unit_cell.value.absolute_angle_tolerance)
-    return is_ok;
+    return is_ok
 
   def check_space_group(self, experiment):
-
-    from cctbx.crystal import symmetry
-
     # build patterson group from the target space group
     target_unit_cell = self.params.filter.unit_cell.value.target_unit_cell
     target_space_group_info = self.params.filter.unit_cell.value.target_space_group
@@ -32,45 +43,57 @@ class experiment_filter(worker):
 
     is_ok = (target_patterson_group_sn == experiment_patterson_group_sn)
 
-    return is_ok;
+    return is_ok
 
   @staticmethod
-  def remove_experiments(experiments, reflections, remove_experiment_ids):
+  def remove_experiments(experiments, reflections, experiment_ids_to_remove):
     '''Remove specified experiments from the experiment list. Remove corresponding reflections from the reflection table'''
 
     new_experiments = ExperimentList()
     new_reflections = flex.reflection_table()
 
-    for expt_id, experiment in enumerate(experiments):
-      if expt_id in remove_experiment_ids:
+    for experiment in experiments:
+      if experiment.identifier in experiment_ids_to_remove:
         continue
       new_experiments.append(experiment)
-      refls = reflections.select(reflections['id'] == expt_id)
-      refls['id'] = flex.int(len(refls), len(new_experiments)-1)
+      refls = reflections.select(reflections['exp_id'] == experiment.identifier)
       new_reflections.extend(refls)
-
-    if len(new_reflections) > 0:
-      assert max(new_reflections['id']) == len(new_experiments) - 1
 
     return new_experiments, new_reflections
 
   def run(self, experiments, reflections):
+    if 'unit_cell' not in self.params.filter.algorithm: # so far only "unit_cell" algorithm is supported
+      return experiments, reflections
 
     self.logger.log_step_time("FILTER_EXPERIMENTS")
 
-    remove_experiment_ids = []
+    # If the filter unit cell and/or space group params are Auto, use the corresponding scaling targets.
+    if self.params.filter.unit_cell.value.target_unit_cell == Auto:
+      if self.params.scaling.unit_cell is None:
+        try:
+          self.params.filter.unit_cell.value.target_unit_cell = self.params.statistics.average_unit_cell
+        except AttributeError:
+          pass
+      else:
+        self.params.filter.unit_cell.value.target_unit_cell = self.params.scaling.unit_cell
+    if self.params.filter.unit_cell.value.target_space_group == Auto:
+      self.params.filter.unit_cell.value.target_space_group = self.params.scaling.space_group
 
+    self.logger.log("Using filter target unit cell: %s"%str(self.params.filter.unit_cell.value.target_unit_cell))
+    self.logger.log("Using filter target space group: %s"%str(self.params.filter.unit_cell.value.target_space_group))
+
+    experiment_ids_to_remove = []
     removed_for_unit_cell = 0
     removed_for_space_group = 0
-    for experiment_id, experiment in enumerate(experiments):
+    for experiment in experiments:
       if not self.check_space_group(experiment):
-        remove_experiment_ids.append(experiment_id)
+        experiment_ids_to_remove.append(experiment.identifier)
         removed_for_space_group += 1
       elif not self.check_unit_cell(experiment):
-        remove_experiment_ids.append(experiment_id)
+        experiment_ids_to_remove.append(experiment.identifier)
         removed_for_unit_cell += 1
 
-    new_experiments, new_reflections = experiment_filter.remove_experiments(experiments, reflections, remove_experiment_ids)
+    new_experiments, new_reflections = experiment_filter.remove_experiments(experiments, reflections, experiment_ids_to_remove)
 
     removed_reflections = len(reflections) - len(new_reflections)
     assert removed_for_space_group + removed_for_unit_cell == len(experiments) - len(new_experiments)
@@ -94,4 +117,12 @@ class experiment_filter(worker):
 
     self.logger.log_step_time("FILTER_EXPERIMENTS", True)
 
+    # Do we have any data left?
+    from xfel.merging.application.utils.data_counter import data_counter
+    data_counter(self.params).count(new_experiments, new_reflections)
+
     return new_experiments, new_reflections
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(experiment_filter)

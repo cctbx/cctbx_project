@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.cif
 import iotbx.cif.validation
 import libtbx.load_env
 import sys, os
+import six
 op = os.path
 
 def run(args):
@@ -22,8 +23,8 @@ def run(args):
     sliced = raw[:i] + "\n" + raw[j:]
     cif = iotbx.cif.fast_reader(input_string=sliced)
     model = cif.model()
-    for k, v in model.iteritems():
-      print v["_array_data.data"]
+    for k, v in six.iteritems(model):
+      print(v["_array_data.data"])
     if (cif_dic is not None):
       model.validate(cif_dic)
 

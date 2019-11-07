@@ -1,6 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.show_connectivity
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, Usage
 import sys
 
@@ -49,9 +49,9 @@ Extracts the bondes specified by CONECT records and displays the atom IDs.""")
     if (not selection[i_seq]) : continue
     if (len(bonded) > 0):
       n_bonded += 1
-      print >> out, "%s:" % atoms[i_seq].id_str()
+      print("%s:" % atoms[i_seq].id_str(), file=out)
       for j_seq in bonded :
-        print >> out, "  %s" % atoms[j_seq].id_str()
+        print("  %s" % atoms[j_seq].id_str(), file=out)
   if (n_bonded == 0):
     raise Sorry("No atoms with CONECT records found in selection.")
 

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.rigid_body.essence import tardy
 from scitbx.graph import tardy_tree
 from scitbx.graph import test_cases_tardy_pdb
@@ -8,6 +8,8 @@ from libtbx.utils import null_out, show_times_at_exit
 from libtbx.test_utils import approx_equal, is_above_limit
 import random
 import sys
+from six.moves import range
+from six.moves import zip
 
 if (1):
   random.seed(0)
@@ -21,7 +23,7 @@ class tardy_model(tardy.model):
       gs = []
       j_orig = body.joint
       q_orig = list(j_orig.get_q())
-      for iq in xrange(j_orig.q_size):
+      for iq in range(j_orig.q_size):
         fs = []
         for signed_eps in [eps, -eps]:
           q_eps = list(q_orig)
@@ -41,9 +43,9 @@ class tardy_model(tardy.model):
     fin = O.d_e_pot_d_q_via_finite_differences()
     if (verbose):
       for a,f in zip(ana, fin):
-        print "fin:", f.elems
-        print "ana:", a.elems
-      print
+        print("fin:", f.elems)
+        print("ana:", a.elems)
+      print()
     assert approx_equal(ana, fin)
     assert approx_equal(O.qdd_array(), qdd_orig)
 
@@ -101,7 +103,7 @@ def exercise_qd_e_kin_scales(tardy_model):
       bj0 = body.joint
       qd0 = body.joint.qd_zero
       qd = list(qd0)
-      for iqd in xrange(len(qd)):
+      for iqd in range(len(qd)):
         qd[iqd] = qd0[iqd] + 1
         body.qd = matrix.col(qd)
         qd[iqd] = qd0[iqd]
@@ -133,8 +135,8 @@ def exercise_random_velocities(tardy_model):
 
 def exercise_accumulate_in_each_tree():
   def check(n_vertices, edge_list, clusters, nosiet, somiet):
-    sites = matrix.col_list([(i,i%2,0) for i in xrange(n_vertices)])
-    labels = [str(i) for i in xrange(n_vertices)]
+    sites = matrix.col_list([(i,i%2,0) for i in range(n_vertices)])
+    labels = [str(i) for i in range(n_vertices)]
     masses = [13, 7, 23, 19, 29, 11, 17][:n_vertices]
     assert len(masses) == n_vertices
     tt = tardy_tree.construct(sites=sites, edge_list=edge_list)
@@ -194,7 +196,7 @@ def exercise_near_singular_hinges():
   for i,j in edge_list:
     assert approx_equal(abs(sites[i]-sites[j]), 1)
   sites = build_sites(eps=1e-5)
-  labels = [str(i) for i in xrange(len(sites))]
+  labels = [str(i) for i in range(len(sites))]
   masses = [1] * len(sites)
   tt = tardy_tree.construct(n_vertices=len(sites), edge_list=edge_list)
   tt.build_tree()
@@ -278,7 +280,7 @@ def exercise_fixed_vertices_special_cases():
   edge_list = [(0,1),(1,2)]
   for i,j in edge_list:
     assert approx_equal(abs(sites[i]-sites[j]), 1)
-  labels = [str(i) for i in xrange(len(sites))]
+  labels = [str(i) for i in range(len(sites))]
   masses = [1] * len(sites)
   #
   tt = tardy_tree.construct(
@@ -345,27 +347,27 @@ def exercise_tardy_model(out, n_dynamics_steps, delta_t, tardy_model):
   tardy_model.check_d_e_pot_d_q()
   e_pots = flex.double([tardy_model.e_pot()])
   e_kins = flex.double([tardy_model.e_kin()])
-  for i_step in xrange(n_dynamics_steps):
+  for i_step in range(n_dynamics_steps):
     tardy_model.dynamics_step(delta_t=delta_t)
     e_pots.append(tardy_model.e_pot())
     e_kins.append(tardy_model.e_kin())
   e_tots = e_pots + e_kins
   tardy_model.check_d_e_pot_d_q()
-  print >> out, "degrees of freedom:", tardy_model.degrees_of_freedom
-  print >> out, "energy samples:", e_tots.size()
-  print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
-  print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
-  print >> out, "e_tot min, max:", min(e_tots), max(e_tots)
-  print >> out, "start e_tot:", e_tots[0]
-  print >> out, "final e_tot:", e_tots[-1]
+  print("degrees of freedom:", tardy_model.degrees_of_freedom, file=out)
+  print("energy samples:", e_tots.size(), file=out)
+  print("e_pot min, max:", min(e_pots), max(e_pots), file=out)
+  print("e_kin min, max:", min(e_kins), max(e_kins), file=out)
+  print("e_tot min, max:", min(e_tots), max(e_tots), file=out)
+  print("start e_tot:", e_tots[0], file=out)
+  print("final e_tot:", e_tots[-1], file=out)
   ave = flex.sum(e_tots) / e_tots.size()
-  range = flex.max(e_tots) - flex.min(e_tots)
+  range_ = flex.max(e_tots) - flex.min(e_tots)
   if (ave == 0): relative_range = 0
-  else:          relative_range = range / ave
-  print >> out, "ave:", ave
-  print >> out, "range:", range
-  print >> out, "relative range:", relative_range
-  print >> out
+  else:          relative_range = range_ / ave
+  print("ave:", ave, file=out)
+  print("range:", range_, file=out)
+  print("relative range:", relative_range, file=out)
+  print(file=out)
   out.flush()
   return relative_range
 
@@ -381,18 +383,18 @@ def exercise_dynamics_quick(
       assert relative_range < 1.e-5
     else:
       assert relative_range < 2.e-4
-  print >> out
+  print(file=out)
 
 def exercise_minimization_quick(out, tardy_model, max_iterations=5):
-  print >> out, "Minimization:"
-  print >> out, "  start e_pot:", tardy_model.e_pot()
+  print("Minimization:", file=out)
+  print("  start e_pot:", tardy_model.e_pot(), file=out)
   e_pot_start = tardy_model.e_pot()
   tardy_model.minimization(max_iterations=max_iterations)
-  print >> out, "  final e_pot:", tardy_model.e_pot()
+  print("  final e_pot:", tardy_model.e_pot(), file=out)
   e_pot_final = tardy_model.e_pot()
   if (out is not sys.stdout):
     assert e_pot_final < e_pot_start * 0.7
-  print >> out
+  print(file=out)
 
 def construct_tardy_model(
       labels,
@@ -464,16 +466,16 @@ def run(args):
   exercise_fixed_vertices_special_cases()
   #
   if (1):
-    for i in xrange(n_test_models):
-      print >> out, "test model index:", i
+    for i in range(n_test_models):
+      print("test model index:", i, file=out)
       tardy_model = get_test_model_by_index(i=i)
       exercise_with_tardy_model(
         out=out, tardy_model=tardy_model, n_dynamics_steps=n_dynamics_steps)
       if (i == 0):
         assert tardy_model.degrees_of_freedom == 3
         fixed_vertices = [0]
-        print >> out, "test model index:", i, \
-          "fixed_vertices:", fixed_vertices
+        print("test model index:", i, \
+          "fixed_vertices:", fixed_vertices, file=out)
         tardy_model = get_test_model_by_index(
           i=i, fixed_vertex_lists=[fixed_vertices])
         assert tardy_model.degrees_of_freedom == 0
@@ -481,8 +483,8 @@ def run(args):
         assert tardy_model.degrees_of_freedom == 11
         for fixed_vertices,expected_dof in \
               test_case_5_fixed_vertices_expected_dof:
-          print >> out, "test model index:", i, \
-            "fixed_vertices:", fixed_vertices
+          print("test model index:", i, \
+            "fixed_vertices:", fixed_vertices, file=out)
           tardy_model = get_test_model_by_index(
             i=i, fixed_vertex_lists=[fixed_vertices])
           assert tardy_model.degrees_of_freedom == expected_dof
@@ -491,7 +493,7 @@ def run(args):
             tardy_model=tardy_model,
             n_dynamics_steps=n_dynamics_steps)
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import miller
 from cctbx import crystal
 from cctbx import uctbx
@@ -12,8 +12,7 @@ class reader(object):
 
   def __init__(self, file_handle, header_only=False, allow_unmerged=True):
     "http://www.mpimf-heidelberg.mpg.de/~kabsch/xds/"
-    f = iter(file_handle)
-    flds = f.next().split()
+    flds = file_handle.readline().split()
     assert flds[0] == "!FORMAT=XDS_ASCII"
     assert (allow_unmerged) or (flds[1] == "MERGE=TRUE")
     self.unmerged_data = (flds[1] == "MERGE=FALSE")
@@ -22,7 +21,7 @@ class reader(object):
     elif (flds[2] == "FRIEDEL'S_LAW=TRUE"):
       self.anomalous_flag = self.unmerged_data
     else:
-      raise RuntimeError, "Expected FRIEDEL'S_LAW=FALSE|TRUE"
+      raise RuntimeError("Expected FRIEDEL'S_LAW=FALSE|TRUE")
     self.unit_cell = None
     self.space_group_number = None
     self.number_of_items_in_each_data_record = None
@@ -31,7 +30,7 @@ class reader(object):
     self.sigma_iobs_column = None
     self.zd_column = None
     self.wavelength = None
-    for line in f:
+    for line in file_handle:
       if (line.startswith("!SPACE_GROUP_NUMBER=")):
         self.space_group_number = int(get_rhs(line))
         assert 1 <= self.space_group_number <= 230
@@ -73,7 +72,7 @@ class reader(object):
       self.zd = None
       if (self.zd_column is not None):
         self.zd = flex.double()
-      for line in f:
+      for line in file_handle:
         if (line.startswith("!END_OF_DATA")):
           break
         data = line.split()
@@ -97,8 +96,11 @@ class reader(object):
 
   def miller_set(self,
         crystal_symmetry=None,
-        force_symmetry=False):
+        force_symmetry=False,
+        anomalous=None):
     crystal_symmetry_from_file = self.crystal_symmetry()
+    if anomalous is None:
+      anomalous = self.anomalous_flag
     return miller.set(
         crystal_symmetry=crystal_symmetry_from_file.join_symmetry(
           other_symmetry=crystal_symmetry,
@@ -110,14 +112,17 @@ class reader(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=None):
     if (base_array_info is None):
       base_array_info = miller.array_info(source_type="xds_ascii")
     crystal_symmetry_from_file = self.crystal_symmetry()
     array = (miller.array(
       miller_set=self.miller_set(
         crystal_symmetry=crystal_symmetry,
-        force_symmetry=force_symmetry),
+        force_symmetry=force_symmetry,
+        anomalous=anomalous,
+      ),
       data=self.iobs,
       sigmas=self.sigma_iobs)
       .set_info(base_array_info.customized_copy(
@@ -135,12 +140,15 @@ class reader(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=None):
     return [self.as_miller_array(
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
       merge_equivalents=merge_equivalents,
-      base_array_info=base_array_info)]
+      base_array_info=base_array_info,
+      anomalous=anomalous,
+    )]
 
   def batch_as_miller_array(self,
         crystal_symmetry=None,

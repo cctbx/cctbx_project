@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
 from cctbx import crystal
 from cctbx import adptbx
@@ -8,6 +8,8 @@ from cctbx import eltbx
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 import random
+from six.moves import range
+from six.moves import zip
 
 def random_modify_adp_and_adp_flags(scatterers,
                                     random_u_iso_scale = 0.3,
@@ -137,7 +139,7 @@ def random_site(special_position_settings,
                 grid=None,
                 t_centre_of_inversion=None,
                 max_trials=100):
-  for trial in xrange(max_trials):
+  for trial in range(max_trials):
     if (grid is None):
       site = (random.random(), random.random(), random.random())
     else:
@@ -177,9 +179,9 @@ def random_sites(special_position_settings,
   if (t_centre_of_inversion is not None):
     assert n_new % 2 == 0
     n_loop /= 2
-  for i_back_track in xrange(max_back_track):
+  for i_back_track in range(max_back_track):
     all_sites = existing_sites[:]
-    for i_new in xrange(n_loop):
+    for i_new in range(n_loop):
       site = random_site(special_position_settings,
                          all_sites,
                          min_hetero_distance,
@@ -195,7 +197,7 @@ def random_sites(special_position_settings,
         all_sites.extend(site)
     if (len(all_sites) == len(existing_sites) + n_new):
       return all_sites
-  raise RuntimeError, "Cannot find sites matching all constraints."
+  raise RuntimeError("Cannot find sites matching all constraints.")
 
 def random_modify_site(special_position_settings, site, gauss_sigma,
                        max_distance=0,
@@ -205,7 +207,7 @@ def random_modify_site(special_position_settings, site, gauss_sigma,
   assert site_symmetry.distance_moved() < 1.e-5
   unit_cell = special_position_settings.unit_cell()
   site_cart = list(unit_cell.orthogonalize(site))
-  for trial in xrange(max_trials):
+  for trial in range(max_trials):
     if (vary_z_only):
       modified_site_cart = site_cart[:2] \
                          + [random.gauss(site_cart[2], gauss_sigma)]
@@ -221,7 +223,7 @@ def random_modify_site(special_position_settings, site, gauss_sigma,
     if (modified_site_symmetry.special_op() != site_symmetry.special_op()):
       continue
     return modified_site
-  raise RuntimeError, "Cannot find suitable site."
+  raise RuntimeError("Cannot find suitable site.")
 
 def random_elements(size, choices=["O", "Mg", "Si", "Ca"]):
   return flex.select(
@@ -379,7 +381,7 @@ class xray_structure(xray.structure):
     assert len(all_sites) <= self.n_scatterers
     sf_dict = {}
     for element in elements:
-      if (not sf_dict.has_key(element)):
+      if (element not in sf_dict):
         sf_dict[element] = eltbx.xray_scattering.best_approximation(element)
     fp = 0
     fdp = 0
@@ -443,9 +445,9 @@ class xray_structure(xray.structure):
   def random_modify_u_star(self, u_star, gauss_sigma,
                                  max_relative_difference=1./3,
                                  max_trials=100):
-    for trial in xrange(max_trials):
+    for trial in range(max_trials):
       modified_u_star = []
-      for i in xrange(len(u_star)):
+      for i in range(len(u_star)):
         u = u_star[i]
         max_diff = u * max_relative_difference
         modified_u = random.gauss(u, gauss_sigma)
@@ -458,7 +460,7 @@ class xray_structure(xray.structure):
       eigenvalues = adptbx.eigenvalues(u_cart)
       if (min(eigenvalues) > 0.001):
         return modified_u_star
-    raise RuntimeError, "Cannot find suitable u_star."
+    raise RuntimeError("Cannot find suitable u_star.")
 
   def random_modify_occupancy(self, occupancy, gauss_sigma):
     return max(0.1, occupancy - abs(random.gauss(0, gauss_sigma)))
@@ -515,13 +517,13 @@ class wyckoff_pair_generator(object):
     self.wyckoff_table = space_group_info.wyckoff_table()
 
   def loop(self):
-    for i_position in xrange(self.wyckoff_table.size()):
+    for i_position in range(self.wyckoff_table.size()):
       site_symmetry_i = self.wyckoff_table.random_site_symmetry(
         special_position_settings=self.special_position_settings,
         i_position=i_position)
       equiv_sites_i = sgtbx.sym_equiv_sites(site_symmetry_i)
-      for j_position in xrange(self.wyckoff_table.size()):
-        for n_trial in xrange(self.max_trials_per_position):
+      for j_position in range(self.wyckoff_table.size()):
+        for n_trial in range(self.max_trials_per_position):
           site_j = self.wyckoff_table.random_site_symmetry(
             special_position_settings=self.special_position_settings,
             i_position=j_position).exact_site()

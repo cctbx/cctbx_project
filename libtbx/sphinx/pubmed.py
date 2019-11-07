@@ -1,13 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
-from builtins import range
 import docutils.parsers.rst
+import io
+import multiprocessing
+import os
+from Bio import Entrez
+
+_biolock = multiprocessing.Lock()
 
 def setup(app):
   app.add_directive('pubmed', PubMedDirective)
+  return {"parallel_read_safe": True}
 
 class PubMedDirective(docutils.parsers.rst.Directive):
-
   # this disables content in the directive
   has_content = False
   required_arguments = 1
@@ -18,11 +23,22 @@ class PubMedDirective(docutils.parsers.rst.Directive):
   def run(self):
     PMID = self.arguments[0]
     reprint_url = self.options.get('reprint-url', None)
-
-    from Bio import Entrez
     Entrez.email = 'cctbxbb@phenix-online.org'
-    handle = Entrez.efetch(db="pubmed", id=PMID, retmode="xml")
-    XML = Entrez.read(handle)['PubmedArticle']
+    with _biolock:
+      raw_cache = None
+      if os.getenv("BIOCACHE"):
+        cache_file = os.path.join(os.getenv("BIOCACHE"), str(PMID))
+        if os.path.exists(cache_file):
+          with open(cache_file, "rb") as fh:
+            raw_cache = fh.read()
+      if not raw_cache:
+        handle = Entrez.efetch(db="pubmed", id=PMID, retmode="xml")
+        raw_cache = handle.read()
+      handle = io.BytesIO(raw_cache)
+      XML = Entrez.read(handle)['PubmedArticle']
+      if os.getenv("BIOCACHE") and not os.path.exists(cache_file):
+        with open(cache_file, "wb") as fh:
+          fh.write(raw_cache)
 
     def raw_html_link_new_tab(identifier, link_text, link):
       return '.. |%s| raw:: html\n\n' %identifier + \
@@ -32,11 +48,11 @@ class PubMedDirective(docutils.parsers.rst.Directive):
     raw_directives = []
     text = []
 
-    for i in range(len(XML)):
+    for tag in XML:
       # Title/doi link:
-      possible_doi = [ idx for idx in XML[i]["PubmedData"]["ArticleIdList"]
+      possible_doi = [ idx for idx in tag["PubmedData"]["ArticleIdList"]
                        if idx.attributes["IdType"]=="doi" ]
-      article = XML[i]["MedlineCitation"]["Article"]
+      article = tag["MedlineCitation"]["Article"]
       # Remove trailing dot and all control characters, including newline chars, from title.
       get_title = ''.join(c for c in article['ArticleTitle'].rstrip('.') if ord(c) >= 32)
 
@@ -65,7 +81,7 @@ class PubMedDirective(docutils.parsers.rst.Directive):
       else:
         journal_text += " (%s)"%(date["Year"])
       journal_text += " [PMID:%s]"%PMID
-      possible_pmc = [ idx for idx in XML[i]["PubmedData"]["ArticleIdList"]
+      possible_pmc = [ idx for idx in tag["PubmedData"]["ArticleIdList"]
                        if idx.attributes["IdType"]=="pmc" ]
       if len(possible_pmc) > 0:
         journal_text += " [PMC reprint: |%s|]" %possible_pmc[0]

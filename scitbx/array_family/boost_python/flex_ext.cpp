@@ -29,9 +29,17 @@
 #include <boost/python/slice.hpp>
 #include <vector>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 namespace scitbx { namespace af { namespace boost_python {
 
+#ifdef IS_PY3K
+  int import_numpy_api_if_available();
+#else
   void import_numpy_api_if_available();
+#endif
   void wrap_flex_grid();
   void wrap_flex_bool();
   void wrap_flex_size_t();

@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from wxtbx import plots
 from mmtbx import polygon
 from libtbx.utils import Sorry
 from libtbx import group_args
 import wx
+from six.moves import zip
 
 STD_FLAGS = wx.ALL|wx.ALIGN_CENTER_VERTICAL
 
@@ -172,7 +173,7 @@ class ConfigFrame(wx.Frame):
     except ValueError :
       raise Sorry("Number of bins must be a decimal number.")
     data = []
-    print limits.h_min, limits.h_max
+    print(limits.h_min, limits.h_max)
     for (d_, v_) in zip(db['high_resolution'], db[h_key]):
       try :
         d_min = float(d_)

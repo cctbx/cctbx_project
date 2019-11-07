@@ -1,9 +1,22 @@
 from __future__ import absolute_import, division, print_function
+
 import os
 op = os.path
 
+import re
+
 from functools import cmp_to_key
 from past.builtins import cmp
+
+
+# Finds flake8-style ignore directives
+# Taken from flake8 source code
+RE_FLAKE8 = re.compile(
+    r"# noqa(?::[\s]?(?P<codes>([A-Z][0-9]+(?:[,\s]+)?)+))?",
+    re.IGNORECASE,
+)
+# re for flake8 to split a string on spaces, commas
+COMMA_SEPARATED_LIST_RE = re.compile(r"[,\s]")
 
 def inspect(py_lines):
   imports_to_ignore = set([
@@ -37,8 +50,24 @@ def inspect(py_lines):
         continue
       if (l.endswith(" # special import")):
         continue
+      # Look for a flake8-style noqa line
+      noqa = RE_FLAKE8.search(l)
+      if noqa:
+        if not noqa.group("codes"):
+          # We have a blanket noqa
+          continue
+        # Split the codes, find if we are ignoring F401
+        codes = [x.strip() for x in COMMA_SEPARATED_LIST_RE.split(noqa.group("codes"))]
+        if "F401" in codes:
+          continue
+        # Not a valid ignore, but still have a comment - remove from the
+        # import string so that we process correctly
+        l = l[:noqa.start()].strip()
       flds = split()
     elif (l.startswith("from ")):
+      # from _ import _ handling is rather broken, don't try to flake8 properly
+      if "noqa" in l:
+        continue
       if (l.startswith("from __future__ ")):
         continue
       flds = split()

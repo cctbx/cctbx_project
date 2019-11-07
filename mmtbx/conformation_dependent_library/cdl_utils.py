@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from scitbx.math import dihedral_angle
 from mmtbx.conformation_dependent_library.cdl_setup import \
   before_pro_groups, not_before_pro_groups
+from six.moves import range
 
 def distance2(a,b):
   d2 = 0
@@ -10,11 +11,13 @@ def distance2(a,b):
     d2 += (a.xyz[i]-b.xyz[i])**2
   return d2
 
-def get_c_ca_n(atom_group, return_subset=False):
+def get_c_ca_n(atom_group,
+               atom_name_list=[" C  ", " CA ", " N  "],
+               return_subset=False):
   assert atom_group
   tmp = []
   outl = []
-  for name in [" C  ", " CA ", " N  "]:
+  for name in atom_name_list:
     atom = atom_group.find_atom_by(name=name)
     if atom:
       tmp.append(atom)
@@ -61,7 +64,7 @@ def get_omega_value(residue1, residue2, verbose=False):
   ca2 = ccn2[1]
   omega_atoms = [ca1, n, c, ca2]
   if verbose:
-    for atom in omega_atoms: print atom.quote()
+    for atom in omega_atoms: print(atom.quote())
   if None in omega_atoms: return None
   omega = dihedral_angle(sites=[atom.xyz for atom in omega_atoms], deg=True)
   return omega
@@ -83,12 +86,12 @@ def get_phi_psi_atoms(residue1, residue2, residue3, verbose=False):
     backbone_i_plus_1[2],
     ]
   atoms = [phi_atoms, psi_atoms]
-  if len(filter(None, atoms[0]))!=4: return None
-  if len(filter(None, atoms[1]))!=4: return None
+  if len(list(filter(None, atoms[0])))!=4: return None
+  if len(list(filter(None, atoms[1])))!=4: return None
   if verbose:
-    print atoms
+    print(atoms)
     for group in atoms:
-      for atom in group: print atom.quote()
+      for atom in group: print(atom.quote())
   return atoms
 
 def get_phi_psi_angles(residues, verbose=False):
@@ -102,9 +105,9 @@ def get_phi_psi_angles(residues, verbose=False):
       phi_or_psi=dihedral_angle(sites=[atom.xyz for atom in dihedral], deg=True)
       dihedrals.append(phi_or_psi)
   if verbose:
-    print 'dihedrals'
+    print('dihedrals')
     for phi_or_psi in dihedrals:
-      print 'phi_or_psi',phi_or_psi
+      print('phi_or_psi',phi_or_psi)
   return dihedrals
 
 def get_ca_dihedrals(residues, verbose=False):
@@ -115,8 +118,8 @@ def get_ca_dihedrals(residues, verbose=False):
     atoms.append(residue.find_atom_by(name=' CA '))
     if len(atoms)==4:
       if verbose:
-        print 'CAs'
-        for atom in atoms: print atom.quote()
+        print('CAs')
+        for atom in atoms: print(atom.quote())
       dihedrals.append(dihedral_angle(sites=[atom.xyz for atom in atoms], deg=True))
       del atoms[0]
   return dihedrals

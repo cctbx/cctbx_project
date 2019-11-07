@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from math import sqrt,pi,sin,atan
 from scitbx.array_family import flex
@@ -19,8 +19,8 @@ def specific_libann_cluster(data,intensity_cutoff = 25,distance_cutoff=17):
   Sq_cut = distance_cutoff*distance_cutoff # distance < distance_cutoff => the two points are clustered
 
   all_pixels = flex.double()
-  all_keys = info.keys()
-  for key in info.keys():
+  all_keys = list(info.keys())
+  for key in all_keys:
     all_pixels.append(key[0]); all_pixels.append(key[1])
 
   distance_tree = AnnAdaptor(data=all_pixels,dim=2,k=Ktree)

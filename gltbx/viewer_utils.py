@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.array_family.flex # import dependency
 import time
 
@@ -43,5 +43,5 @@ class fps_monitor(object):
       t_curr = time.time()
       t_elapsed = t_curr - self._t_start
       self._t_start = t_curr
-      print "%.2f fps" % (10 / t_elapsed)
+      print("%.2f fps" % (10 / t_elapsed))
       self._n = 0

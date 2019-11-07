@@ -7,7 +7,7 @@ similar.  No longer contains actual tests (these have been moved to the
 sub-package mmtbx.building.alternate_conformations).
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.command_line import fmodel
 from mmtbx.validation import rotalyze
 from iotbx import file_reader

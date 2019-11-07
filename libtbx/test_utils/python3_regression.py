@@ -39,7 +39,7 @@ def find_new_python3_incompatible_code(module_under_test):
   module_path = module_under_test.__path__[0]
   try:
     import procrunner
-    result = procrunner.run(['python3', '-m', 'compileall', '-x', '\.git', '-q', module_path], environment_override=environ_override, print_stdout=False)
+    result = procrunner.run(['python3', '-m', 'compileall', '-x', r'\.git', '-q', module_path], environment_override=environ_override, print_stdout=False)
   except ImportError:
     return None
   except OSError as e:
@@ -53,7 +53,7 @@ def find_new_python3_incompatible_code(module_under_test):
   if not result['exitcode']: # No compilation errors
     return False
 
-  errors = map(lambda x: x.replace(module_path + os.path.sep, '').strip(), result['stdout'].split('***'))
+  errors = [x.replace(module_path + os.path.sep, '').strip() for x in result['stdout'].split('***')]
   errors = filter(lambda x: "'" in x, errors)
   broken_files = { error.split("'")[1]: error for error in errors }
 

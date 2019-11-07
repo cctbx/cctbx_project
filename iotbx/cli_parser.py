@@ -1,4 +1,5 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 '''
 Standard command-line parser for CCTBX programs
@@ -230,14 +231,14 @@ class CCTBXParser(ParserBase):
     # --show-defaults=n sets it to n and it can only be {0, 1, 2, 3}
     self.add_argument(
       '--show-defaults', '--show_defaults',
-      nargs='?', const=0, type=int, choices=range(0,4),
+      nargs='?', const=0, type=int, choices=list(range(0,4)),
       help='show default parameters with expert level (default=0)')
 
     # --attributes-level by itself is set to 1
     # --attributes-level=n sets it to n and it can only be {1, 2, 3}
     self.add_argument(
       '--attributes-level', '--attributes_level',
-      nargs='?', const=1, type=int, choices=range(0,4),
+      nargs='?', const=1, type=int, choices=list(range(0,4)),
       help='show parameters with attributes (default=0)'
     )
 
@@ -457,7 +458,7 @@ class CCTBXParser(ParserBase):
         sources=data_sources + sources, track_unused_definitions=True)
       unused_phil.extend(more_unused_phil)
     else:
-      self.working_phil = self.master_phil
+      self.working_phil = self.master_phil.fetch()
 
     # show unrecognized parameters and abort
     if (len(unused_phil) > 0):
@@ -513,8 +514,10 @@ class CCTBXParser(ParserBase):
     '''
     paths = list()
     if (phil_scope.is_definition):
-      if (phil_scope.has_attribute_with_name('type')):
-        if (phil_scope.type.phil_type == 'path'):
+      if (phil_scope.type.phil_type == 'path'):
+        if phil_scope.style is not None and 'new_file' in phil_scope.style:
+          pass
+        else:
           paths.append(phil_scope.extract())
     elif (phil_scope.is_scope):
       for phil_object in phil_scope.objects:
@@ -585,7 +588,8 @@ class CCTBXParser(ParserBase):
     if (self.namespace.write_data):
       if (data_is_different):
         self.data_manager.write_phil_file(
-          self.data_filename, self.data_manager.export_phil_scope().as_str(),
+          self.data_manager.export_phil_scope().as_str(),
+          filename=self.data_filename,
           overwrite=overwrite)
         print('  Input file PHIL written to %s.' % self.data_filename,
               file=self.logger)
@@ -596,7 +600,7 @@ class CCTBXParser(ParserBase):
     if (self.namespace.write_modified):
       if (phil_is_different):
         self.data_manager.write_phil_file(
-          self.modified_filename, phil_diff.as_str(),
+          phil_diff.as_str(), filename=self.modified_filename,
           overwrite=overwrite)
         print('  Modified PHIL parameters written to %s.' %
               self.modified_filename, file=self.logger)
@@ -608,7 +612,7 @@ class CCTBXParser(ParserBase):
       all_phil = self.data_manager.export_phil_scope().as_str()
       all_phil += self.working_phil.as_str(expert_level=3)
       self.data_manager.write_phil_file(
-        self.all_filename, all_phil, overwrite=overwrite)
+        all_phil, filename=self.all_filename, overwrite=overwrite)
       print('  All PHIL parameters written to %s.' % self.all_filename,
             file=self.logger)
 

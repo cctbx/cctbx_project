@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.command_line import rna_validate
 import mmtbx.validation.rna_validate
 from iotbx import file_reader
@@ -7,7 +7,7 @@ from libtbx.easy_pickle import loads, dumps
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
 
 # This actually tests expected output - the remaining tests guard against
@@ -18,7 +18,7 @@ def exercise_1():
     relative_path="phenix_regression/pdb/pdb2goz_refmac_tls.ent",
     test=os.path.isfile)
   if (regression_pdb is None):
-    print "Skipping exercise: input pdb (pdb2goz_refmac_tls.ent) not available"
+    print("Skipping exercise: input pdb (pdb2goz_refmac_tls.ent) not available")
     return
   rv = rna_validate.run(args=[regression_pdb], out=null_out())
   # chages in linking_mixins.py lead to some more bonds that happened to be
@@ -164,14 +164,13 @@ def pickle_unpickle(result):
 def run():
   verbose = "--verbose" in sys.argv[1:]
   if (not libtbx.env.has_module(name="suitename")):
-    print \
-      "Skipping exercise_rna_validate():" \
-      " phenix not available"
+    print("Skipping exercise_rna_validate():" \
+      " phenix not available")
   else:
     exercise_1()
     exercise_2()
     exercise_3()
-    print "OK"
+    print("OK")
 
 if (__name__ == "__main__"):
   run()

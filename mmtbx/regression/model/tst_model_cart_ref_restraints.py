@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.model
 import libtbx.load_env
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import approx_equal
 import iotbx.pdb
+from six.moves import range
 
 # 1yjp
 pdb_str = """\
@@ -349,12 +350,12 @@ def exercise_adopting_coord_restraints_water():
 
 def run():
   if (not libtbx.env.has_module("reduce")):
-    print "Reduce not installed."
+    print("Reduce not installed.")
     return
   exercise_adopting_coord_restraints()
   exercise_adopting_coord_restraints_water()
 
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

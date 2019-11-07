@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import null_out
 import os.path
 
@@ -14,7 +14,7 @@ def exercise():
   data = wwpdb_utils.find_data_arrays("3gqq.mtz", log=null_out())
   filter = wwpdb_utils.filter_pdb_file("3gqq.pdb", log=null_out())
   assert (filter.n_semet == 24) and (filter.n_unknown == 30)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

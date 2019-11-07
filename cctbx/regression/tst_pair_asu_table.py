@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.kriber import strudat
 from cctbx import geometry_restraints
 from cctbx import crystal
@@ -9,19 +9,21 @@ from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from libtbx import dict_with_default_0
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import math
 import sys, os
+from six.moves import range
+from six.moves import zip
 
 def exercise_icosahedron(max_level=2, verbose=0):
-  for level in xrange(0,max_level+1):
+  for level in range(0,max_level+1):
     if (0 or verbose):
-      print "level:", level
+      print("level:", level)
     icosahedron = scitbx.math.icosahedron(level=level)
     try:
       distance_cutoff = icosahedron.next_neighbors_distance()*(1+1.e-3)
       estimated_distance_cutoff = False
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == "next_neighbors_distance not known."
       distance_cutoff = 0.4/(2**(level-1))
       estimated_distance_cutoff = True
@@ -32,8 +34,8 @@ def exercise_icosahedron(max_level=2, verbose=0):
     if (0 or verbose):
       ps = pair_asu_table.show_distances(sites_cart=icosahedron.sites) \
         .distances_info
-      print "level", level, "min", flex.min(ps.distances)
-      print "     ", " ",   "max", flex.max(ps.distances)
+      print("level", level, "min", flex.min(ps.distances))
+      print("     ", " ",   "max", flex.max(ps.distances))
       assert ps.pair_counts.all_eq(pair_asu_table.pair_counts())
       if (level == 0):
         for d in ps.distances:
@@ -54,7 +56,7 @@ def exercise_icosahedron(max_level=2, verbose=0):
       asu_mappings=asu_mappings,
       distance_cutoff=distance_cutoff).max_distance_sq()**.5
     if (0 or verbose):
-      print "max_distance:", max_distance
+      print("max_distance:", max_distance)
     if (not estimated_distance_cutoff):
       assert approx_equal(max_distance, icosahedron.next_neighbors_distance())
       assert approx_equal(max_distance/icosahedron.next_neighbors_distance(),1)
@@ -122,7 +124,7 @@ def check_connectivities(bond_asu_table, connectivities, verbose=0):
       for j_sym_group in j_sym_groups:
         n += len(j_sym_group)
     if (0 or verbose):
-      print "n, connectivity:", n, connectivity
+      print("n, connectivity:", n, connectivity)
     assert n == connectivity
 
 def exercise_incremental_pairs(
@@ -232,9 +234,9 @@ def exercise(
       weak_check_sym_equiv=False,
       verbose=0):
   if (0 or verbose):
-    print "distance_cutoff:", distance_cutoff
+    print("distance_cutoff:", distance_cutoff)
   asu_mappings = structure.asu_mappings(buffer_thickness=distance_cutoff)
-  for i_pass in xrange(2):
+  for i_pass in range(2):
     if (i_pass == 0):
       bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
       bond_asu_table.add_all_pairs(
@@ -390,22 +392,22 @@ def exercise_bond_sorted_asu_proxies(
     assert proxies_1.asu.size() == proxies_2.asu.size()
     ctrl = {}
     for proxy in proxies_1.simple:
-      assert not ctrl.has_key(proxy.i_seqs)
+      assert proxy.i_seqs not in ctrl
       ctrl[proxy.i_seqs] = 0
     for proxy in proxies_2.simple:
-      assert ctrl.has_key(proxy.i_seqs)
+      assert proxy.i_seqs in ctrl
       ctrl[proxy.i_seqs] += 1
-    assert ctrl.values() == [1]*len(ctrl)
+    assert list(ctrl.values()) == [1]*len(ctrl)
     ctrl = {}
     for proxy in proxies_1.asu:
       key = proxy.i_seq,proxy.j_seq,proxy.j_sym
-      assert not ctrl.has_key(key)
+      assert key not in ctrl
       ctrl[key] = 0
     for proxy in proxies_2.asu:
       key = proxy.i_seq,proxy.j_seq,proxy.j_sym
-      assert ctrl.has_key(key)
+      assert key in ctrl
       ctrl[key] += 1
-    assert ctrl.values() == [1]*len(ctrl)
+    assert list(ctrl.values()) == [1]*len(ctrl)
   compare_proxies(proxies_1=proxies_fast, proxies_2=proxies_conservative)
   compare_proxies(proxies_1=proxies_fast, proxies_2=proxies_slow)
   sites_cart = structure.sites_cart()
@@ -435,10 +437,10 @@ def py_pair_asu_table_angle_pair_asu_table(self):
       for i_group,j_sym_group in enumerate(j_sym_groups):
         for j_sym in j_sym_group:
           pair_list.append((j_seq,j_sym))
-    for i_jj1 in xrange(0,len(pair_list)-1):
+    for i_jj1 in range(0,len(pair_list)-1):
       jj1 = pair_list[i_jj1]
       rt_mx_jj1_inv = asu_mappings.get_rt_mx(*jj1).inverse()
-      for i_jj2 in xrange(i_jj1+1,len(pair_list)):
+      for i_jj2 in range(i_jj1+1,len(pair_list)):
         jj2 = pair_list[i_jj2]
         result.add_pair(
           i_seq=jj1[0],
@@ -531,12 +533,12 @@ def exercise_all():
   default_distance_cutoff = 3.5
   regression_misc = libtbx.env.find_in_repositories("phenix_regression/misc")
   if (regression_misc is None):
-    print "Skipping exercise_all(): phenix_regression/misc not available"
+    print("Skipping exercise_all(): phenix_regression/misc not available")
     return
   def get_reference_dict(file_name):
     path = os.path.join(regression_misc, file_name)
     if (not os.path.isfile(path)):
-      print "Skipping some tests: reference file not available:", path
+      print("Skipping some tests: reference file not available:", path)
       return None
     result = {}
     for line in open(path).read().splitlines():
@@ -552,7 +554,7 @@ def exercise_all():
   for file_name in ["strudat_zeolite_atlas", "strudat_special_bonds"]:
     path = os.path.join(regression_misc, file_name)
     if (not os.path.isfile(path)):
-      print "Skipping %s test: input file not available" % file_name
+      print("Skipping %s test: input file not available" % file_name)
     else:
       file_names.append(path)
   for file_name in file_names:
@@ -562,7 +564,7 @@ def exercise_all():
           and not ("--full" in sys.argv[1:] or i_entry % 20 == 0)):
         continue
       if (0 or verbose):
-        print "strudat tag:", entry.tag
+        print("strudat tag:", entry.tag)
       structure = entry.as_xray_structure()
       if (0 or verbose):
         structure.show_summary().show_scatterers()
@@ -581,7 +583,7 @@ def exercise_all():
           weak_check_sym_equiv=weak_check_sym_equiv,
           verbose=verbose)
       if (0 or verbose):
-        print
+        print()
       if (file_name.endswith("strudat_zeolite_atlas")):
         exercise_bond_sorted_asu_proxies(
           structure=structure,
@@ -605,7 +607,7 @@ def exercise_all():
 
 def run():
   exercise_all()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 space_group_numbers = [
   # Output of: cctbx/examples/find_sys_abs_equiv_space_groups.py python
   # If you have to edit this table, please send email to: cctbx@cci.lbl.gov

@@ -1,4 +1,4 @@
-from __future__ import division, absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 import boost.python
 ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
 from smtbx_refinement_least_squares_ext import *
@@ -137,7 +137,8 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
         self.reduced_problem().add_equations(
           linearised_eqns.deltas,
           linearised_eqns.design_matrix * jacobian,
-          linearised_eqns.weights * self.restraints_normalisation_factor)
+          linearised_eqns.weights * self.restraints_normalisation_factor,
+          optimise_for_tall_matrix=False)
         self.n_restraints = linearised_eqns.n_restraints()
         self.chi_sq_data_and_restraints = self.chi_sq()
       if not objective_only:

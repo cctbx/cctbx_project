@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 #
 # cctbx sort-merge solution for Siena exercise given by George Sheldrick
 #
@@ -19,6 +19,7 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import miller
 import sys
+from six.moves import range
 
 def run(args):
   assert len(args) == 1
@@ -36,7 +37,7 @@ def run(args):
   miller_indices = flex.miller_index()
   data = flex.double()
   sigmas = flex.double()
-  for i_line in xrange(3+n_symops,len(lines)):
+  for i_line in range(3+n_symops,len(lines)):
     fields = lines[i_line].split()
     assert len(fields) == 5
     miller_indices.append([int(value) for value in fields[:3]])
@@ -49,16 +50,16 @@ def run(args):
   miller_array = miller_set.array(
     data=data,
     sigmas=sigmas).set_observation_type_xray_intensity()
-  print "Before merging:"
+  print("Before merging:")
   miller_array.show_summary()
-  print
+  print()
   merged = miller_array.merge_equivalents()
   merged.show_summary()
-  print
+  print()
   merged_array = merged.array()
-  print "After merging:"
+  print("After merging:")
   merged_array.show_comprehensive_summary()
-  print
+  print()
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

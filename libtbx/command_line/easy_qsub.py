@@ -22,6 +22,7 @@ import stat
 
 from libtbx import easy_run
 from libtbx.utils import Sorry
+from six.moves import range
 
 key_words = {
   "phenix_source"    : str,

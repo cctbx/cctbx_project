@@ -121,7 +121,9 @@ nanoBragg::nanoBragg(
     unitize(spindle_vector,spindle_vector);
 
     /* NOT IMPLEMENTED: read in any other stuff?  */
-    show_params();
+    /*TODO: consider reading in a crystal model as well, showing params without crystal model can be confusing*/
+    if (verbose)
+      show_params();
 
     /* sensible initialization of all unititialized values */
     reconcile_parameters();
@@ -269,6 +271,9 @@ nanoBragg::init_defaults()
     printout = 0;
     printout_spixel=printout_fpixel=-1;
     verbose = 1;
+#ifdef NANOBRAGG_HAVE_CUDA
+    device_Id = 0; // for running the CUDA code
+#endif
 
     /* default x-ray beam properties */
 //    double beam_vector[4] = {0,1,0,0};  this->beam_vector = beam_vector;
@@ -383,6 +388,7 @@ nanoBragg::init_defaults()
     /* use these to remember "user" inputs */
     user_beam = false;
     user_distance =false;
+    user_mosdomains = false;
 
     /* scattering vectors */
 //    double incident[4] = {0,0,0,0};
@@ -1993,7 +1999,7 @@ nanoBragg::init_sources()
         double flux_sum = 0.0, lambda_sum = 0.0, polar_sum = 0.0, div_sum = 0.0;
         for (i=0; i < sources; ++i)
         {
-            xyz = pythony_beams[i].get_direction();
+            xyz = pythony_beams[i].get_sample_to_source_direction();
             source_X[i] = xyz[0];
             source_Y[i] = xyz[1];
             source_Z[i] = xyz[2];
@@ -2230,6 +2236,9 @@ nanoBragg::init_mosaicity()
     /* temporary local seed */
     long mseed;
 
+    /* catch nks initialized values here? */
+    if(user_mosdomains) return;
+
     /* free any previous allocations */
     if(mosaic_umats!=NULL) free(mosaic_umats);
 
@@ -2305,12 +2314,15 @@ nanoBragg::set_mosaic_blocks(af::shared<mat3> umat_in) {
     /* free any previous allocations */
     if(mosaic_umats!=NULL) free(mosaic_umats);
 
+    /* flag to avoid over-writing with automatic random domains */
+    user_mosdomains=true;
+
     /* allocate enough space */
     mosaic_domains = umat_in.size();
     if(verbose>6) printf("allocating enough space for %d mosaic domain orientation matrices\n",mosaic_domains);
     mosaic_umats = (double *) calloc(mosaic_domains+10,9*sizeof(double));
 
-    /* now actually create the orientation of each domain */
+    /* now actually import the orientation of each domain */
     for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic) {
       int offset = 9 * mos_tic;
       mat3& domain = umat_in[mos_tic];
@@ -2319,9 +2331,9 @@ nanoBragg::set_mosaic_blocks(af::shared<mat3> umat_in) {
       mosaic_umats[6+offset]=domain[6];mosaic_umats[7+offset]=domain[7];mosaic_umats[8+offset]=domain[8];
    }
 
-    if(verbose) printf("  created a total of %d mosaic domains\n",mosaic_domains);
+    if(verbose) printf("  imported a total of %d mosaic domains\n",mosaic_domains);
 }
-// end of init_mosaicity()
+// end of set_mosaic_blocks()
 
 
 /* reconcile different conventions of beam center input and detector position */
@@ -2779,7 +2791,7 @@ nanoBragg::add_nanoBragg_spots()
                                 }
 
                                 /* convert amplitudes into intensity (photons per steradian) */
-                                    I += F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction;
+                                    I += F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
                             }
                             /* end of mosaic loop */
                         }
@@ -2794,7 +2806,7 @@ nanoBragg::add_nanoBragg_spots()
             /* end of sub-pixel x loop */
 
 
-            floatimage[i] += r_e_sqr*fluence*spot_scale*polar*I/steps*omega_pixel;
+            floatimage[i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
 //          floatimage[i] = test;
             if(floatimage[i] > max_I) {
                 max_I = floatimage[i];

@@ -2,12 +2,14 @@
 #
 # LIBTBX_SET_DISPATCHER_NAME cspad.cbf_metrology
 #
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import os, sys, random
 from iotbx.phil import parse
 from libtbx import easy_run
 from libtbx.utils import Sorry
+import six
+from six.moves import zip
 
 phil_scope = parse("""
   method = *hierarchical expanding
@@ -67,7 +69,7 @@ phil_scope = parse("""
     .type = choice
     .help = Algorithm to be used for choosing the n_subset images/experiments for \
             refinement.  n_refl chooses the set with the largest numbers of reflections \
-            listed in the pickle files, thus giving maximal coverage of the detector tiles \
+            listed in the reflection table files, thus giving maximal coverage of the detector tiles \
             with the fewest refineable parameters. Significance_filter chooses the subset of \
             images with maximum reflections above an I/sigI cutoff
   n_refl_panel_list = None
@@ -112,7 +114,7 @@ refine_scope = parse("""
 """, process_includes=True)
 
 def run(args):
-  print "Parsing input..."
+  print("Parsing input...")
   if "-c" in args or "-h" in args or "--help" in args:
     phil_scope.show(attributes_level=2)
     return
@@ -141,7 +143,7 @@ def run(args):
   if refine_phil_file is not None:
     merged_scope = merged_scope.fetch(parse(file_name = refine_phil_file))
 
-  print "Gathering file names..."
+  print("Gathering file names...")
   all_exp = []
   all_ref = []
 
@@ -178,15 +180,15 @@ def run(args):
       params.n_subset = base_n_subset
       full_combine_phil = write_combine_phil(params, odd_exp+even_exp, odd_ref+even_ref)
 
-      print "Refining full dataset using tag", params.tag
+      print("Refining full dataset using tag", params.tag)
       refine(params, merged_scope, full_combine_phil)
 
       params.tag = base_tag + "_1"
-      print "Refining odd numbered data using tag", params.tag
+      print("Refining odd numbered data using tag", params.tag)
       refine(params, merged_scope, odd_combine_phil)
 
       params.tag = base_tag + "_2"
-      print "Refining even numbered data using tag", params.tag
+      print("Refining even numbered data using tag", params.tag)
       refine(params, merged_scope, even_combine_phil)
     else:
       combine_phil = write_combine_phil(params, all_exp, all_ref)
@@ -194,7 +196,7 @@ def run(args):
   else:
     assert len(paths) == 0
     assert params.n_subset is None
-    print "Refining full dataset using tag", params.tag
+    print("Refining full dataset using tag", params.tag)
     refine(params, merged_scope, params.data_phil)
     if params.split_dataset:
 
@@ -232,11 +234,11 @@ def run(args):
       even_combine_phil = write_combine_phil(params, even_exp, even_ref)
 
       params.tag = base_tag + "_1"
-      print "Refining odd numbered data using tag", params.tag
+      print("Refining odd numbered data using tag", params.tag)
       refine(params, merged_scope, odd_combine_phil)
 
       params.tag = base_tag + "_2"
-      print "Refining even numbered data using tag", params.tag
+      print("Refining even numbered data using tag", params.tag)
       refine(params, merged_scope, even_combine_phil)
 
 def find_files(path, reflections):
@@ -244,9 +246,17 @@ def find_files(path, reflections):
   all_ref = []
   for filename in os.listdir(path):
     if reflections in filename:
-      exp_path = os.path.join(path, filename.rstrip("_%s.pickle"%reflections) + "_refined_experiments.json")
+      extension = os.path.splitext(filename)[1]
+      if extension not in ['.pickle', '.mpack', '.refl']: continue
+      if extension == ".pickle":
+        exp_path = os.path.join(path, filename.rstrip("_%s%s"%(reflections, extension)) + "_refined_experiments.json")
+      else:
+        exp_path = os.path.join(path, filename.rstrip("_%s%s"%(reflections, extension)) + "_refined.expt")
       if not os.path.exists(exp_path):
-        exp_path = os.path.join(path, filename.rstrip("_%s.pickle"%reflections) + "_experiments.json")
+        if extension == ".pickle":
+          exp_path = os.path.join(path, filename.rstrip("_%s%s"%(reflections, extension)) + "_experiments.json")
+        else:
+          exp_path = os.path.join(path, filename.rstrip("_%s%s"%(reflections, extension)) + "_indexed.expt")
         if not os.path.exists(exp_path): continue
       all_exp.append(exp_path)
       all_ref.append(os.path.join(path, filename))
@@ -265,8 +275,8 @@ def write_combine_phil(params, all_exp, all_ref):
   return combine_phil
 
 def refine(params, merged_scope, combine_phil):
-  print "Combining experiments..."
-  command = "dials.combine_experiments reference_from_experiment.average_detector=True reference_from_experiment.average_hierarchy_level=0 output.experiments_filename=%s_combined_experiments.json output.reflections_filename=%s_combined_reflections.pickle %s"%(params.tag, params.tag, combine_phil)
+  print("Combining experiments...")
+  command = "dials.combine_experiments reference_from_experiment.average_detector=True reference_from_experiment.average_hierarchy_level=0 output.experiments_filename=%s_combined.expt output.reflections_filename=%s_combined.refl %s"%(params.tag, params.tag, combine_phil)
   if params.n_subset is not None:
     command += " n_subset=%d n_subset_method=%s"%(params.n_subset, params.n_subset_method)
     if params.n_refl_panel_list is not None:
@@ -274,7 +284,7 @@ def refine(params, merged_scope, combine_phil):
 
   if params.refine_energy:
     command += " reference_from_experiment.beam=0"
-  print command
+  print(command)
   result = easy_run.fully_buffered(command=command).raise_if_errors()
   result.show_stdout()
 
@@ -286,8 +296,8 @@ def refine(params, merged_scope, combine_phil):
 def refine_hierarchical(params, merged_scope, combine_phil):
   if params.panel_filter is not None:
     from libtbx import easy_pickle
-    print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in params.panel_filter]))
-    combined_path = "%s_combined_reflections.pickle"%params.tag
+    print("Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in params.panel_filter])))
+    combined_path = "%s_combined.refl"%params.tag
     data = easy_pickle.load(combined_path)
     sel = None
     for panel_id in params.panel_filter:
@@ -295,7 +305,7 @@ def refine_hierarchical(params, merged_scope, combine_phil):
         sel = data['panel'] == panel_id
       else:
         sel |= data['panel'] == panel_id
-    print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
+    print("Retaining", len(data.select(sel)), "out of", len(data), "reflections")
     easy_pickle.dump(combined_path, data.select(sel))
 
   for i in range(params.start_at_hierarchy_level, params.refine_to_hierarchy_level+1):
@@ -310,17 +320,17 @@ def refine_hierarchical(params, merged_scope, combine_phil):
     if params.rmsd_filter.enable:
       command = "cctbx.xfel.filter_experiments_by_rmsd %s %s output.filtered_experiments=%s output.filtered_reflections=%s"
       if i == params.start_at_hierarchy_level:
-        command = command%("%s_combined_experiments.json"%params.tag, "%s_combined_reflections.pickle"%params.tag,
-                           "%s_filtered_experiments.json"%params.tag, "%s_filtered_reflections.pickle"%params.tag)
+        command = command%("%s_combined.expt"%params.tag, "%s_combined.refl"%params.tag,
+                           "%s_filtered.expt"%params.tag, "%s_filtered.refl"%params.tag)
       else:
-        command = command%("%s_refined_experiments_level%d.json"%(params.tag, i-1), "%s_refined_reflections_level%d.pickle"%(params.tag, i-1),
-                           "%s_filtered_experiments_level%d.json"%(params.tag, i-1), "%s_filtered_reflections_level%d.pickle"%(params.tag, i-1))
+        command = command%("%s_refined_level%d.expt"%(params.tag, i-1), "%s_refined_level%d.refl"%(params.tag, i-1),
+                           "%s_filtered_level%d.expt"%(params.tag, i-1), "%s_filtered_level%d.refl"%(params.tag, i-1))
       command += " iqr_multiplier=%f"%params.rmsd_filter.iqr_multiplier
-      print command
+      print(command)
       result = easy_run.fully_buffered(command=command).raise_if_errors()
       result.show_stdout()
 
-    print "Refining at hierarchy level", i
+    print("Refining at hierarchy level", i)
     refine_phil_file = "%s_refine_level%d.phil"%(params.tag, i)
     if i == 0:
       fix_list = ['Tau1'] # fix detector rotz
@@ -343,13 +353,13 @@ def refine_hierarchical(params, merged_scope, combine_phil):
         diff_phil = "refinement.parameterisation.detector.fix_list=Group1Tau1\n" # refine almost everything
 
     if i == params.start_at_hierarchy_level:
-      command = "dials.refine %s %s_%s_experiments.json %s_%s_reflections.pickle"%(refine_phil_file, params.tag, input_name, params.tag, input_name)
+      command = "dials.refine %s %s_%s.expt %s_%s.refl"%(refine_phil_file, params.tag, input_name, params.tag, input_name)
     else:
-      command = "dials.refine %s %s_%s_experiments_level%d.json %s_%s_reflections_level%d.pickle"%(refine_phil_file, params.tag, input_name, i-1, params.tag, input_name, i-1)
+      command = "dials.refine %s %s_%slevel%d.expt %s_%s_level%d.refl"%(refine_phil_file, params.tag, input_name, i-1, params.tag, input_name, i-1)
 
     diff_phil += "refinement.parameterisation.detector.hierarchy_level=%d\n"%i
 
-    command += " output.experiments=%s_refined_experiments_level%d.json output.reflections=%s_refined_reflections_level%d.pickle"%( \
+    command += " output.experiments=%s_refined_level%d.expt output.reflections=%s_refined_level%d.refl"%( \
       params.tag, i, params.tag, i)
 
     scope = merged_scope.fetch(parse(diff_phil))
@@ -357,7 +367,7 @@ def refine_hierarchical(params, merged_scope, combine_phil):
     f.write(refine_scope.fetch_diff(scope).as_str())
     f.close()
 
-    print command
+    print(command)
     result = easy_run.fully_buffered(command=command).raise_if_errors()
     result.show_stdout()
 
@@ -368,10 +378,10 @@ def refine_expanding(params, merged_scope, combine_phil):
   if params.rmsd_filter.enable:
     input_name = "filtered"
     command = "cctbx.xfel.filter_experiments_by_rmsd %s %s output.filtered_experiments=%s output.filtered_reflections=%s"
-    command = command%("%s_combined_experiments.json"%params.tag, "%s_combined_reflections.pickle"%params.tag,
-                       "%s_filtered_experiments.json"%params.tag, "%s_filtered_reflections.pickle"%params.tag)
+    command = command%("%s_combined.expt"%params.tag, "%s_combined.refl"%params.tag,
+                       "%s_filtered.expt"%params.tag, "%s_filtered.refl"%params.tag)
     command += " iqr_multiplier=%f"%params.rmsd_filter.iqr_multiplier
-    print command
+    print(command)
     result = easy_run.fully_buffered(command=command).raise_if_errors()
     result.show_stdout()
   else:
@@ -379,8 +389,8 @@ def refine_expanding(params, merged_scope, combine_phil):
   # --------------------------
   if params.panel_filter is not None:
     from libtbx import easy_pickle
-    print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in params.panel_filter]))
-    combined_path = "%s_combined_reflections.pickle"%params.tag
+    print("Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in params.panel_filter])))
+    combined_path = "%s_combined.refl"%params.tag
     data = easy_pickle.load(combined_path)
     sel = None
     for panel_id in params.panel_filter:
@@ -388,7 +398,7 @@ def refine_expanding(params, merged_scope, combine_phil):
         sel = data['panel'] == panel_id
       else:
         sel |= data['panel'] == panel_id
-    print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
+    print("Retaining", len(data.select(sel)), "out of", len(data), "reflections")
     easy_pickle.dump(combined_path, data.select(sel))
   # ----------------------------------
   # this is the order to refine the CSPAD in
@@ -402,7 +412,7 @@ def refine_expanding(params, merged_scope, combine_phil):
   steps[6] = steps[5] + [8, 9]
   steps[7] = steps[6] + [10, 11]
 
-  for s, panels in steps.iteritems():
+  for s, panels in six.iteritems(steps):
     rest = []
     for p in panels:
       rest.append(p+16)
@@ -417,9 +427,9 @@ def refine_expanding(params, merged_scope, combine_phil):
   previous_step_and_level = None
   for j in range(8):
     from libtbx import easy_pickle
-    print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in steps[j]]))
-    combined_path = "%s_%s_reflections.pickle"%(params.tag, input_name)
-    output_path = "%s_reflections_step%d.pickle"%(params.tag, j)
+    print("Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in steps[j]])))
+    combined_path = "%s_%s.refl"%(params.tag, input_name)
+    output_path = "%s_step%d.refl"%(params.tag, j)
     data = easy_pickle.load(combined_path)
     sel = None
     for panel_id in steps[j]:
@@ -427,11 +437,11 @@ def refine_expanding(params, merged_scope, combine_phil):
         sel = data['panel'] == panel_id
       else:
         sel |= data['panel'] == panel_id
-    print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
+    print("Retaining", len(data.select(sel)), "out of", len(data), "reflections")
     easy_pickle.dump(output_path, data.select(sel))
 
     for i in levels[j]:
-      print "Step", j , "refining at hierarchy level", i
+      print("Step", j , "refining at hierarchy level", i)
       refine_phil_file = "%s_refine_step%d_level%d.phil"%(params.tag, j, i)
       if i == 0:
         if params.refine_distance:
@@ -454,22 +464,22 @@ def refine_expanding(params, merged_scope, combine_phil):
           diff_phil = "refinement.parameterisation.detector.fix_list=Group1Tau1\n" # refine almost everything
 
       if previous_step_and_level is None:
-        command = "dials.refine %s %s_%s_experiments.json %s_reflections_step%d.pickle"%( \
+        command = "dials.refine %s %s_%s.expt %s_step%d.refl"%( \
           refine_phil_file, params.tag, input_name, params.tag, j)
       else:
         p_step, p_level = previous_step_and_level
         if p_step == j:
-          command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_refined_reflections_step%d_level%d.pickle"%( \
+          command = "dials.refine %s %s_refined_step%d_level%d.expt %s_refined_step%d_level%d.refl"%( \
             refine_phil_file, params.tag, p_step, p_level, params.tag, p_step, p_level)
         else:
-          command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_reflections_step%d.pickle"%( \
+          command = "dials.refine %s %s_refined_step%d_level%d.expt %s_step%d.refl"%( \
             refine_phil_file, params.tag, p_step, p_level, params.tag, j)
 
 
       diff_phil += "refinement.parameterisation.detector.hierarchy_level=%d\n"%i
 
-      output_experiments = "%s_refined_experiments_step%d_level%d.json"%(params.tag, j, i)
-      command += " output.experiments=%s output.reflections=%s_refined_reflections_step%d_level%d.pickle"%( \
+      output_experiments = "%s_refined_step%d_level%d.expt"%(params.tag, j, i)
+      command += " output.experiments=%s output.reflections=%s_refined_step%d_level%d.refl"%( \
         output_experiments, params.tag, j, i)
 
       scope = merged_scope.fetch(parse(diff_phil))
@@ -477,7 +487,7 @@ def refine_expanding(params, merged_scope, combine_phil):
       f.write(refine_scope.fetch_diff(scope).as_str())
       f.close()
 
-      print command
+      print(command)
       result = easy_run.fully_buffered(command=command).raise_if_errors()
       result.show_stdout()
 
@@ -509,7 +519,7 @@ def refine_expanding(params, merged_scope, combine_phil):
         # Even though the panels are constrained to move the same amount, there is a bit a variation.
         stats = flex.mean_and_variance(displacements)
         displacement = stats.mean()
-        print "Average displacement along normals: %f +/- %f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
+        print("Average displacement along normals: %f +/- %f"%(stats.mean(), stats.unweighted_sample_standard_deviation()))
 
         # Verify the variation isn't significant
         for k in range(1, len(displacements)):
@@ -548,32 +558,32 @@ def refine_expanding(params, merged_scope, combine_phil):
   output_geometry(params)
 
 def output_geometry(params):
-  print "Creating files to deploy to psana calibration directory..."
+  print("Creating files to deploy to psana calibration directory...")
   if params.refine_to_hierarchy_level > 2:
     deploy_level = 2
   else:
     deploy_level = params.refine_to_hierarchy_level
 
   if params.method == 'hierarchical':
-    command = "cxi.experiment_json_to_cbf_def %s_refined_experiments_level%d.json output_def_file=%s_refined_detector_level%d.def"%(params.tag, deploy_level, params.tag, deploy_level)
+    command = "cxi.experiment_json_to_cbf_def %s_refined_level%d.expt output_def_file=%s_refined_detector_level%d.def"%(params.tag, deploy_level, params.tag, deploy_level)
   elif params.method == 'expanding':
-    command = "cxi.experiment_json_to_cbf_def %s_refined_experiments_step7_level%d.json output_def_file=%s_refined_detector_level%d.def"%(params.tag, deploy_level, params.tag, deploy_level)
-  print command
+    command = "cxi.experiment_json_to_cbf_def %s_refined_step7_level%d.expt output_def_file=%s_refined_detector_level%d.def"%(params.tag, deploy_level, params.tag, deploy_level)
+  print(command)
   result = easy_run.fully_buffered(command=command).raise_if_errors()
   result.show_stdout()
 
   if params.output_lcls_geometry:
     command = "cxi.cbfheader2slaccalib cbf_header=%s_refined_detector_level%d.def out_metrology_file=0-end.data.%s"%(params.tag, deploy_level, params.tag)
-    print command
+    print(command)
     result = easy_run.fully_buffered(command=command)
     errmsg = "\n".join(result.stderr_lines)
     if "ImportError" in errmsg and "PSCalib.GeometryAccess" in errmsg:
-      print "Not converting to LCLS geometry as PSDM is not available"
-      print "Done."
+      print("Not converting to LCLS geometry as PSDM is not available")
+      print("Done.")
     else:
       result.raise_if_errors()
       result.show_stdout()
-      print "Done. Soft link 0-end.data.%s to 0-end.data in the geometry folder of your calibration folder for your experiment to deploy this metrology."%params.tag
+      print("Done. Soft link 0-end.data.%s to 0-end.data in the geometry folder of your calibration folder for your experiment to deploy this metrology."%params.tag)
 
 if __name__ == "__main__":
   run(sys.argv[1:])

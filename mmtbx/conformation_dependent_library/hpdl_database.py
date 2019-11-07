@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 
 hpdl_database = {
@@ -108,13 +108,13 @@ def get_hpdl_database(include_hydrogens=True,
 
 def run(args):
   assert len(args) == 0
-  print hpdl_database["Only ND1 protonated"]
+  print(hpdl_database["Only ND1 protonated"])
   for res_type in sorted(hpdl_database):
-    print res_type, len(hpdl_database[res_type])
+    print(res_type, len(hpdl_database[res_type]))
   geometric_hydrogens()
-  print hpdl_database["Only ND1 protonated"]
+  print(hpdl_database["Only ND1 protonated"])
   for res_type in sorted(hpdl_database):
-    print res_type, len(hpdl_database[res_type])
+    print(res_type, len(hpdl_database[res_type]))
 
 if (__name__ == "__main__"):
   import sys

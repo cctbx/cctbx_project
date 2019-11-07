@@ -6,7 +6,8 @@ import re
 import shutil
 import sys, os
 
-def copy_dist_files((exclude_from_binary_bundle, dist_copy), dirname, names):
+def copy_dist_files(bundle_options, dirname, names):
+  (exclude_from_binary_bundle, dist_copy) = bundle_options
   create_target_dir = True
   names_keep = []
   for file_name in names:

@@ -1,7 +1,7 @@
 
 from __future__ import absolute_import, division, print_function
-from builtins import range
 import inspect
+from six.moves import range
 
 class error(Exception):
   """ libtbx.python_frame error """
@@ -16,7 +16,7 @@ def named(name):
       from libtbx import pyframe
 
       def f(i):
-        for j in xrange(i):
+        for j in range(i):
           g(j)
 
       def g(j):

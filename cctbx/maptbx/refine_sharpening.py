@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import sys,os
 from libtbx.utils import Sorry
@@ -9,6 +9,8 @@ from cctbx.array_family import flex
 import scitbx.lbfgs
 import math
 from cctbx.maptbx.segment_and_split_map import map_and_b_object
+from six.moves import range
+from six.moves import zip
 
 def write_mtz(ma=None,phases=None,file_name=None):
   mtz_dataset=ma.as_mtz_dataset(column_root_label="FWT")
@@ -55,8 +57,8 @@ def quasi_normalize_structure_factors(ma, d_star_power=1, set_to_minimum=None,
     normalisations = amplitude_quasi_normalisations(ma, d_star_power,
        set_to_minimum=set_to_minimum,pseudo_likelihood=pseudo_likelihood)
     if pseudo_likelihood:
-      print "Norms:"
-      for n,d in zip(normalisations[:100],ma.data()[:100]): print n,d
+      print("Norms:")
+      for n,d in zip(normalisations[:100],ma.data()[:100]): print(n,d)
 
     q = ma.data() / normalisations.data()
     from cctbx.miller import array
@@ -64,7 +66,7 @@ def quasi_normalize_structure_factors(ma, d_star_power=1, set_to_minimum=None,
 
 def get_array(file_name=None,labels=None):
 
-  print "Reading from %s" %(file_name)
+  print("Reading from %s" %(file_name))
   from iotbx import reflection_file_reader
   reflection_file = reflection_file_reader.any_reflection_file(
        file_name=file_name)
@@ -87,14 +89,14 @@ def get_array(file_name=None,labels=None):
 
     raise Sorry("Cannot identify array to use...possibilities: %s" %(text))
 
-  print "Using the array %s" %(",".join(array_to_use.info().labels))
+  print("Using the array %s" %(",".join(array_to_use.info().labels)))
   return array_to_use
 
 
 def get_amplitudes(args):
   if not args or 'help' in args or '--help' in args:
-    print "\nsharpen.py"
-    print "Read in map coefficients or amplitudes and sharpen"
+    print("\nsharpen.py")
+    print("Read in map coefficients or amplitudes and sharpen")
     return
 
   new_args=[]
@@ -202,7 +204,7 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
       overall_b=si.get_target_b_iso()*si.target_b_iso_model_scale
     else:
       overall_b=0
-    print >>out,"Setting Wilson B = %5.1f A" %(overall_b)
+    print("Setting Wilson B = %5.1f A" %(overall_b), file=out)
 
   # create model map using same coeffs
   from cctbx.maptbx.segment_and_split_map import get_f_phases_from_model
@@ -221,8 +223,8 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
 
   # Set overall_b....
   final_b_iso=get_b_iso(model_f_array,d_min=resolution)
-  print >>out,"Effective b_iso of "+\
-     "adjusted model map:  %6.1f A**2" %(final_b_iso)
+  print("Effective b_iso of "+\
+     "adjusted model map:  %6.1f A**2" %(final_b_iso), file=out)
   model_map_coeffs_normalized=model_f_array.phase_transfer(
      phase_source=model_phases,deg=True)
   return model_map_coeffs_normalized
@@ -232,9 +234,8 @@ def get_b_eff(si=None,out=sys.stdout):
     b_eff=None
   else:
     b_eff=8*3.14159*si.rmsd**2
-    print >>out,\
-    "Setting b_eff for fall-off at %5.1f A**2 based on model error of %5.1f A" \
-       %( b_eff,si.rmsd)
+    print("Setting b_eff for fall-off at %5.1f A**2 based on model error of %5.1f A" \
+       %( b_eff,si.rmsd), file=out)
   return b_eff
 
 def cc_fit(sthol_list=None,scale=None,value_zero=None,baseline=None,
@@ -266,7 +267,7 @@ def fit_cc(cc_list=None,sthol_list=None,
 
   best_scale=None
   best_rms=None
-  for i in xrange(n_tries):
+  for i in range(n_tries):
     scale=scale_min+(scale_max-scale_min)*i/n_tries
     fit=cc_fit(sthol_list=sthol_list,scale=scale,value_zero=cc_list[0],
        scale_using_last=scale_using_last)
@@ -279,14 +280,14 @@ def fit_cc(cc_list=None,sthol_list=None,
       scale_using_last=scale_using_last)
 
 def get_fitted_cc(cc_list=None,sthol_list=None, cc_cut=None,
-   scale_using_last=None):
+   scale_using_last=None,keep_cutoff_point=False):
   # only do this if there is some value of s where cc is at least 2*cc_cut or
   #  (1-c_cut/2), whichever is smaller
   min_cc=min(2*cc_cut,1-0.5*cc_cut)
   if cc_list.min_max_mean().max < min_cc:
     return cc_list
   # find first point after point where cc>=min_cc that cc<=cc_cut
-  #   then back off by 1 point
+  #   then back off by 1 point  # 2019-10-12 don't back off if keep_cutoff_point
   found_high=False
   s_cut=None
   i_cut=0
@@ -299,6 +300,9 @@ def get_fitted_cc(cc_list=None,sthol_list=None, cc_cut=None,
     i_cut+=1
   if s_cut is None or i_cut==0:
     return cc_list
+
+  if keep_cutoff_point:
+    i_cut=max(1,i_cut-1)
 
   #Fit remainder
   sthol_remainder_list=sthol_list[i_cut:]
@@ -318,7 +322,8 @@ def get_fitted_cc(cc_list=None,sthol_list=None, cc_cut=None,
   return new_cc_list
 
 def estimate_cc_star(cc_list=None,sthol_list=None, cc_cut=None,
-    scale_using_last=None):
+    scale_using_last=None,
+    keep_cutoff_point=False):
   # cc ~ sqrt(2*half_dataset_cc/(1+half_dataset_cc))
   # however for small cc the errors are very big and we think cc decreases
   #  rapidly towards zero once cc is small
@@ -328,7 +333,8 @@ def estimate_cc_star(cc_list=None,sthol_list=None, cc_cut=None,
 
   fitted_cc=get_fitted_cc(
     cc_list=cc_list,sthol_list=sthol_list,cc_cut=cc_cut,
-    scale_using_last=scale_using_last)
+    scale_using_last=scale_using_last,
+    keep_cutoff_point=keep_cutoff_point)
 
   cc_star_list=flex.double()
   for cc in fitted_cc:
@@ -367,14 +373,15 @@ def calculate_fsc(si=None,
      scale_using_last=None,
      max_cc_for_rescale=None,
      pseudo_likelihood=False,
+     skip_scale_factor=False,
      verbose=None,
      out=sys.stdout):
 
   # calculate anticipated fall-off of model data with resolution
   if si.rmsd is None and is_model_based:
     si.rmsd=resolution*si.rmsd_resolution_factor
-    print >>out,"Setting rmsd to %5.1f A based on resolution of %5.1f A" %(
-       si.rmsd,resolution)
+    print("Setting rmsd to %5.1f A based on resolution of %5.1f A" %(
+       si.rmsd,resolution), file=out)
 
 
   # get f and model_f vs resolution and FSC vs resolution and apply
@@ -452,8 +459,8 @@ def calculate_fsc(si=None,
         max_cc_estimate > 0 and max_cc_estimate > max_possible_cc):
       max_possible_cc=max_cc_estimate
     if verbose:
-      print >>out,"d_min: %5.1f  FC: %7.1f  FOBS: %7.1f   CC: %5.2f" %(
-      d_avg,rms_fc,rms_fo,cc)
+      print("d_min: %5.1f  FC: %7.1f  FOBS: %7.1f   CC: %5.2f" %(
+      d_avg,rms_fc,rms_fo,cc), file=out)
 
   if scale_using_last: # rescale to give final value average==0
     cc_list,baseline=rescale_cc_list(
@@ -464,9 +471,16 @@ def calculate_fsc(si=None,
 
 
   original_cc_list=deepcopy(cc_list)
-  if not is_model_based:  # calculate cc* for half-dataset cc
+  if is_model_based: # jut smooth cc if nec
+    fitted_cc=get_fitted_cc(
+      cc_list=cc_list,sthol_list=sthol_list,cc_cut=cc_cut,
+      scale_using_last=scale_using_last)
+    cc_list=fitted_cc
+    text=" FIT "
+  else:
     cc_list=estimate_cc_star(cc_list=cc_list,sthol_list=sthol_list,
       cc_cut=cc_cut,scale_using_last=scale_using_last)
+    text=" CC* "
 
   if not max_possible_cc:
     max_possible_cc=0.01
@@ -483,11 +497,10 @@ def calculate_fsc(si=None,
     if fraction_complete is None:
       fraction_complete=max_possible_cc**2
 
-      print >>out,\
-        "Estimated fraction complete is %5.2f based on low_res CC of %5.2f" %(
-          fraction_complete,max_possible_cc)
+      print("Estimated fraction complete is %5.2f based on low_res CC of %5.2f" %(
+          fraction_complete,max_possible_cc), file=out)
     else:
-      print >>out,"Using fraction complete value of %5.2f "  %(fraction_complete)
+      print("Using fraction complete value of %5.2f "  %(fraction_complete), file=out)
       max_possible_cc=fraction_complete**0.5
 
   target_scale_factors=flex.double()
@@ -514,30 +527,32 @@ def calculate_fsc(si=None,
 
     target_scale_factors.append(scale_on_fo)
 
-  if not pseudo_likelihood: # normalize
+  if not pseudo_likelihood and not skip_scale_factor: # normalize
+    scale_factor=1./target_scale_factors.min_max_mean().max
     target_scale_factors=\
-      target_scale_factors/target_scale_factors.min_max_mean().max
-
+      target_scale_factors*scale_factor
+    print("Scale factor A: %.5f" %(scale_factor), file=out)
   if fraction_complete < min_fraction_complete:
-    print >>out,"\nFraction complete (%5.2f) is less than minimum (%5.2f)..." %(
-      fraction_complete,min_fraction_complete) + "\nSkipping scaling"
+    print("\nFraction complete (%5.2f) is less than minimum (%5.2f)..." %(
+      fraction_complete,min_fraction_complete) + "\nSkipping scaling", file=out)
     target_scale_factors=flex.double(target_scale_factors.size()*(1.0,))
-
-  print >>out,"\nScale factors vs resolution:"
-  print >>out,"Note 1: CC* estimated from sqrt(2*CC/(1+CC))"
-  print >>out,"Note 2: CC estimated by fitting (smoothing) for values < %s" %(cc_cut)
-  print >>out,"Note 3: Scale = A  CC*  rmsFc/rmsFo (A is normalization)"
-  print >>out,"  d_min     rmsFo       rmsFc    CC       CC*   Scale"
+  print ("\nAverage CC: %.3f" %(cc_list.min_max_mean().mean),file=out)
+  print("\nScale factors vs resolution:", file=out)
+  print("Note 1: CC* estimated from sqrt(2*CC/(1+CC))", file=out)
+  print("Note 2: CC estimated by fitting (smoothing) for values < %s" %(cc_cut), file=out)
+  print("Note 3: Scale = A  CC*  rmsFc/rmsFo (A is normalization)", file=out)
+  print("  d_min     rmsFo       rmsFc    CC      %s  Scale" %(text), file=out)
 
   for sthol2,scale,rms_fo,cc,rms_fc,orig_cc in zip(
      target_sthol2,target_scale_factors,rms_fo_list,cc_list,rms_fc_list,
       original_cc_list):
-     print >>out,"%7.1f  %9.1f  %9.1f %7.3f  %7.3f  %5.2f" %(
-       0.5/sthol2**0.5,rms_fo,rms_fc,orig_cc,cc,scale)
+     print("%7.2f  %9.1f  %9.1f %7.3f  %7.3f  %5.2f" %(
+       0.5/sthol2**0.5,rms_fo,rms_fc,orig_cc,cc,scale), file=out)
 
   si.target_scale_factors=target_scale_factors
   si.target_sthol2=target_sthol2
   si.d_min_list=d_min_list
+  si.cc_list=cc_list
 
   return si
 
@@ -568,8 +583,8 @@ def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
 
     if remove_aniso and aniso_obj and aniso_obj.b_cart:
       f_array=aniso_obj.apply_aniso_correction(f_array=f_array)
-      print >>out,"Removing anisotropy with b_cart=(%7.2f,%7.2f,%7.2f)\n" %(
-        aniso_obj.b_cart[:3])
+      print("Removing anisotropy with b_cart=(%7.2f,%7.2f,%7.2f)\n" %(
+        aniso_obj.b_cart[:3]), file=out)
     return f_array,aniso_obj
 
 def scale_amplitudes(model_map_coeffs=None,
@@ -617,7 +632,7 @@ def scale_amplitudes(model_map_coeffs=None,
     raise Sorry("Need resolution for model sharpening")
 
   obs_b_iso=get_b_iso(f_array,d_min=resolution)
-  print >>out,"\nEffective b_iso of observed data: %6.1f A**2" %(obs_b_iso)
+  print("\nEffective b_iso of observed data: %6.1f A**2" %(obs_b_iso), file=out)
 
   if not si.target_scale_factors: # get scale factors if don't already have them
     si=calculate_fsc(si=si,
@@ -641,14 +656,14 @@ def scale_amplitudes(model_map_coeffs=None,
   # Now create resolution-dependent coefficients from the scale factors
 
   if not si.target_scale_factors: # nothing to do
-    print >>out,"\nNo scaling applied"
+    print("\nNo scaling applied", file=out)
     map_data=calculate_map(map_coeffs=map_coeffs,n_real=si.n_real)
     return map_and_b_object(map_data=map_data)
   elif not map_calculation:
     return map_and_b_object()
   else:  # apply scaling
     if si.pseudo_likelihood:
-      print >>out,"Normalizing structure factors"
+      print("Normalizing structure factors", file=out)
       f_array=quasi_normalize_structure_factors(f_array,set_to_minimum=0.01,
         pseudo_likelihood=si.pseudo_likelihood)
       f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
@@ -661,17 +676,21 @@ def scale_amplitudes(model_map_coeffs=None,
 
 def apply_target_scale_factors(f_array=None,phases=None,
    resolution=None,target_scale_factors=None,
-   n_real=None,out=sys.stdout):
+   n_real=None,
+   return_map_coeffs=None,out=sys.stdout):
     from cctbx.maptbx.segment_and_split_map import get_b_iso
     f_array_b_iso=get_b_iso(f_array,d_min=resolution)
     scale_array=get_scale_factors(f_array,
         target_scale_factors=target_scale_factors)
     scaled_f_array=f_array.customized_copy(data=f_array.data()*scale_array)
     scaled_f_array_b_iso=get_b_iso(scaled_f_array,d_min=resolution)
-    print >>out,"\nInitial b_iso for "+\
+    print("\nInitial b_iso for "+\
       "map: %5.1f A**2     After applying scaling: %5.1f A**2" %(
-      f_array_b_iso,scaled_f_array_b_iso)
+      f_array_b_iso,scaled_f_array_b_iso), file=out)
     new_map_coeffs=scaled_f_array.phase_transfer(phase_source=phases,deg=True)
+    if return_map_coeffs:
+      return new_map_coeffs
+
     map_data=calculate_map(map_coeffs=new_map_coeffs,n_real=n_real)
     return map_and_b_object(map_data=map_data,starting_b_iso=f_array_b_iso,
       final_b_iso=scaled_f_array_b_iso)
@@ -699,8 +718,8 @@ def calculate_match(target_sthol2=None,target_scale_factors=None,b=None,resoluti
 
   if rmsd is None:
     rmsd=resolution/3.
-    print >>out,"Setting rmsd to %5.1f A based on resolution of %5.1f A" %(
-       rmsd,resolution)
+    print("Setting rmsd to %5.1f A based on resolution of %5.1f A" %(
+       rmsd,resolution), file=out)
 
   if rmsd is None:
     b_eff=None
@@ -887,8 +906,8 @@ class refinery:
 
     b=self.get_b()
     value = -1.*self.residual(b)
-    print >>out,"Result: b1 %7.2f b2 %7.2f b3 %7.2f resolution %7.2f %s: %7.3f" %(
-     b[0],b[1],b[2],self.resolution,self.residual_target,value)
+    print("Result: b1 %7.2f b2 %7.2f b3 %7.2f resolution %7.2f %s: %7.3f" %(
+     b[0],b[1],b[2],self.resolution,self.residual_target,value), file=out)
 
     if self.ma:
       self.sharpened_ma=adjust_amplitudes_linear(
@@ -942,7 +961,7 @@ class refinery:
   def gradients(self,b):
 
     result = flex.double()
-    for i in xrange(len(list(b))):
+    for i in range(len(list(b))):
       rs = []
       for signed_eps in [self.eps, -self.eps]:
         params_eps = deepcopy(b)
@@ -1033,8 +1052,8 @@ def run(map_coeffs=None,
 
   if rmsd is None:
     rmsd=resolution/3.
-    print >>out,"Setting rmsd to %5.1f A based on resolution of %5.1f A" %(
-       rmsd,resolution)
+    print("Setting rmsd to %5.1f A based on resolution of %5.1f A" %(
+       rmsd,resolution), file=out)
 
   if fraction_occupied is None: fraction_occupied=0.20
   if region_weight is None: region_weight=20.
@@ -1046,7 +1065,7 @@ def run(map_coeffs=None,
   # Get initial value
 
   best_b=b
-  print >>out,"Getting starting value ...",residual_target
+  print("Getting starting value ...",residual_target, file=out)
   refined = refinery(ma,phases,b,resolution,
     residual_target=residual_target,
     solvent_fraction=solvent_fraction,
@@ -1065,13 +1084,13 @@ def run(map_coeffs=None,
 
 
   starting_result=refined.show_result(out=out)
-  print >>out,"Starting value: %7.2f" %(starting_result)
+  print("Starting value: %7.2f" %(starting_result), file=out)
 
   if ma:
     (d_max,d_min)=ma.d_max_min()
     ma.setup_binner(n_bins=n_bins,d_max=d_max,d_min=d_min)
     if normalize_amplitudes_in_resdep:
-      print >>out,"Normalizing structure factors..."
+      print("Normalizing structure factors...", file=out)
       ma=quasi_normalize_structure_factors(ma,set_to_minimum=0.01)
   else:
     assert resolution is not None
@@ -1093,8 +1112,8 @@ def run(map_coeffs=None,
     eps=eps)
 
   starting_normalized_result=refined.show_result(out=out)
-  print >>out,"Starting value after normalization: %7.2f" %(
-     starting_normalized_result)
+  print("Starting value after normalization: %7.2f" %(
+     starting_normalized_result), file=out)
   best_sharpened_ma=ma
   best_result=starting_normalized_result
   best_b=refined.get_b()
@@ -1102,14 +1121,14 @@ def run(map_coeffs=None,
   refined.run()
 
   final_result=refined.show_result(out=out)
-  print >>out,"Final value: %7.2f" %(
-     final_result)
+  print("Final value: %7.2f" %(
+     final_result), file=out)
 
   if final_result>best_result:
     best_sharpened_ma=refined.sharpened_ma
     best_result=final_result
     best_b=refined.get_b()
-  print >>out,"Best overall result: %7.2f: " %(best_result)
+  print("Best overall result: %7.2f: " %(best_result), file=out)
 
   sharpening_info_obj.resolution_dependent_b=best_b
   return best_sharpened_ma,phases

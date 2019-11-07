@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex # for tuple mappings
 
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("cctbx_adptbx_ext")
 from cctbx_adptbx_ext import *
 
@@ -17,12 +18,12 @@ mtpss = mtps**2
 
 def random_rotate_ellipsoid(u_cart, r_min = 0, r_max = 360):
   c = scitbx.math.euler_angles_as_matrix(
-    [random.uniform(r_min,r_max) for i in xrange(3)], deg=True).elems
+    [random.uniform(r_min,r_max) for i in range(3)], deg=True).elems
   return c_u_c_transpose(c, u_cart)
 
 def random_u_cart(u_scale=1, u_min=0):
   return random_rotate_ellipsoid(u_cart=[random.random()*u_scale+u_min
-    for i in xrange(3)] + [0,0,0])
+    for i in range(3)] + [0,0,0])
 
 def debye_waller_factor_u_star_gradients(h, u_star):
   return flex.double(debye_waller_factor_u_star_gradient_coefficients(h=h)) \
@@ -59,7 +60,7 @@ def intersection(u_1, u_2, site_1, site_2, unit_cell):
   """
   from scitbx.matrix import col
   if (site_1 == site_2):
-    return sys.maxint
+    return sys.maxsize
   if isinstance(u_1, float):
     u_1 = u_iso_as_u_star(unit_cell, u_1)
   if isinstance(u_2, float):

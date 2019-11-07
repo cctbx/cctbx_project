@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import Auto, adopt_init_args
 from libtbx import easy_mp
 import os.path
@@ -197,7 +197,7 @@ note that no treatment of phase bias is performed.
       map_coeffs=[map_coeffs],
       map_types=[params.map_type],
       file_name=params.output.mtz_file)
-    print >> out, "Wrote map coefficients to %s" % params.output.mtz_file
+    print("Wrote map coefficients to %s" % params.output.mtz_file, file=out)
   if (params.output.ccp4_map is not None):
     map_driver.combine_maps(
       flatten_background=params.flatten_background,
@@ -209,7 +209,7 @@ note that no treatment of phase bias is performed.
       map_data=map_driver.composite_map,
       n_real=map_driver.composite_map.focus(),
       file_name=params.output.ccp4_map)
-    print >> out, "Wrote CCP4 map to %s" % params.output.ccp4_map
+    print("Wrote CCP4 map to %s" % params.output.ccp4_map, file=out)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

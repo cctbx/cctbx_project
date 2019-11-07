@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import miller
 from cctbx.array_family import flex
 from cctbx.development import random_structure
@@ -27,8 +27,8 @@ def exercise(
     random_occupancy=True)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
-    print "n_special_positions:", \
-          structure.special_position_indices().size()
+    print("n_special_positions:", \
+          structure.special_position_indices().size())
   structure_p1 = structure.expand_to_p1()
   assert structure_p1.scatterers()[0].label == "Se1"
   assert structure_p1.scatterers()[-1].label == ("Se%d" % n_elements)
@@ -55,7 +55,7 @@ def exercise(
   assert c.is_well_defined()
   assert c.n() > 20
   if (0 or verbose):
-    print "correlation:", c.coefficient()
+    print("correlation:", c.coefficient())
   assert c.coefficient() > 0.999
   for phase_deg in (False, True):
     phases = f_calc.arg(phase_deg)
@@ -71,7 +71,7 @@ def exercise(
   c = flex.linear_correlation(amplitudes_p1.data(), ctrl_amplitudes_p1.data())
   assert c.is_well_defined()
   if (0 or verbose):
-    print "correlation:", c.coefficient()
+    print("correlation:", c.coefficient())
   assert c.coefficient() > 0.999
 
 def run_call_back(flags, space_group_info):

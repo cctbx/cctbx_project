@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import miller
 import cctbx.xray.structure_factors
 from libtbx.utils import Sorry
@@ -6,6 +6,8 @@ import iotbx.phil
 from iotbx.pdb import xray_structure
 from mmtbx.scaling import fa_estimation, pair_analyses, relative_scaling
 import sys
+from six.moves import zip
+from six.moves import range
 
 master_params = iotbx.phil.parse("""
       task = *get_dano get_diso lsq_scale sfcalc custom None
@@ -128,7 +130,7 @@ master_params = iotbx.phil.parse("""
 
 def patch_miller_arrays_as_names( names ):
   result = []
-  for name, number in zip(names, range(len(names)) ):
+  for name, number in zip(names, range(len(names))):
     tmp_result = "%s =  miller_arrays[ %i ].deep_copy()"%(name,number)
     result.append( compile( tmp_result, '<string>', 'exec' )  )
 
@@ -142,7 +144,7 @@ def get_dano(names, miller_arrays, xray_structure, parameters, out ):
     if len(miller_arrays)==1:
       miller_array = miller_arrays[0]
   else:
-    if names.has_key( parameters.input_data ):
+    if parameters.input_data in names:
       miller_array = miller_arrays[ names[ parameters.input_data ] ]
     else:
       raise Sorry("Unknown data name.")
@@ -171,12 +173,12 @@ def get_diso(names, miller_arrays, xray_structure, parameters, out):
   native=None
   derivative=None
 
-  if names.has_key( parameters.native ):
+  if parameters.native in names:
     native = miller_arrays[ names[parameters.native] ].deep_copy()
   else:
     raise Sorry("Unknown data name: >>%s<<"%(parameters.native) )
 
-  if names.has_key( parameters.derivative ):
+  if parameters.derivative in names:
     derivative = miller_arrays[ names[parameters.derivative] ].deep_copy()
   else:
     raise Sorry("Unknown data name: >>%s<<"%(parameters.derivative) )
@@ -209,12 +211,12 @@ def lsq_scale(names, miller_arrays, xray_structure, parameters, out):
   input_data_1 = None
   input_data_2 = None
 
-  if names.has_key( parameters.input_data_1 ):
+  if parameters.input_data_1 in names:
     input_data_1 = miller_arrays[ names[parameters.input_data_1] ].deep_copy()
   else:
     raise Sorry("Unknown data name: >>%s<<"%(parameters.input_data_1) )
 
-  if names.has_key( parameters.input_data_2 ):
+  if parameters.input_data_2 in names:
     input_data_2 = miller_arrays[ names[parameters.input_data_2] ].deep_copy()
   else:
     raise Sorry("Unknown data name: >>%s<<"%(parameters.input_data_2) )
@@ -289,20 +291,20 @@ def sfcalc(names, miller_arrays, xray_structure, parameters, out):
 
 
 def show_restricted_custom_names(restricted_names, out):
-  print >> out, "Restricted data set names are:"
+  print("Restricted data set names are:", file=out)
   for rn in restricted_names:
-    print >> out, "    -   %s"%(rn)
+    print("    -   %s"%(rn), file=out)
 
 def print_custom_instructions(out):
-  print >> out, "The custom function in the manipulate miller task of xmanip allows one to submit a small (or large)"
-  print >> out, "snippet of python code, have it executed and have a single miller array returned and written to file."
-  print >> out, "If one is familiar with python and the cctbx in general, this function allows one to quickly perform"
-  print >> out, "complex tasks relating reflection files without having the overhead of writing a user interface."
-  print >> out, "Data set names given to the miller arrays in the main (user specified) input file, are actual variable names"
-  print >> out, "and are stored as a cctbx.miller.array object. A pdb file that was read in, is stored in the object named "
-  print >> out, "xray_structure. Note that not many safeguards are in place: make sure your code snippet is proper python!"
-  print >> out, "Please note that there are some restriction on variable names: the should not contains spaces or have the name"
-  print >> out, "of local variables or functions. By default, a variable named 'result' is returned"
+  print("The custom function in the manipulate miller task of xmanip allows one to submit a small (or large)", file=out)
+  print("snippet of python code, have it executed and have a single miller array returned and written to file.", file=out)
+  print("If one is familiar with python and the cctbx in general, this function allows one to quickly perform", file=out)
+  print("complex tasks relating reflection files without having the overhead of writing a user interface.", file=out)
+  print("Data set names given to the miller arrays in the main (user specified) input file, are actual variable names", file=out)
+  print("and are stored as a cctbx.miller.array object. A pdb file that was read in, is stored in the object named ", file=out)
+  print("xray_structure. Note that not many safeguards are in place: make sure your code snippet is proper python!", file=out)
+  print("Please note that there are some restriction on variable names: the should not contains spaces or have the name", file=out)
+  print("of local variables or functions. By default, a variable named 'result' is returned", file=out)
 
 
 
@@ -328,15 +330,15 @@ def custom(names, miller_arrays, xray_structure, params, out):
   #first make variables from the names please
   tmp_names = patch_miller_arrays_as_names(names)
   for instruction in tmp_names:
-    exec instruction
+    exec(instruction)
   result = None
   # now we have to evaulate the code
-  print >> out, "Trying to evaluate the code as shown below"
-  print >> out, "------------------------------------------"
-  print >> out, params.code
-  print >> out, "------------------------------------------"
+  print("Trying to evaluate the code as shown below", file=out)
+  print("------------------------------------------", file=out)
+  print(params.code, file=out)
+  print("------------------------------------------", file=out)
   user_code = compile( params.code, '<string>', 'exec' )
-  exec user_code
+  exec(user_code)
 
   return result
 
@@ -358,7 +360,7 @@ def manipulate_miller(names, miller_arrays, xray_structure, params, out=None):
   #these two lines allow me quickly lift the appropriate set of
   #parameters from the file scope without a lengthy set of if statements
   patch = compile("function_arguments = params.%s"%(params.task),'<string>','exec' )
-  exec patch
+  exec(patch)
   result = function_pointer[ params.task ]( names,
                                             miller_arrays,
                                             xray_structure,

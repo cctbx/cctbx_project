@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys, os
 from scitbx.matrix import col
 from libtbx.phil import parse
 from libtbx.utils import Sorry
+import six
 
 help_str = """Converts a CrystFEL file to DIALS json format."""
 
@@ -70,7 +71,7 @@ def read_geom(geom_file):
   # example of mapping entry: mapping['p0a0'] = {'asics': ('p0', 8), 'quadrants': ('q0', 32)}
   parents = {}
   for panel in panels:
-    parents[panel] = [mapping[panel][k][0] for k in sorted(mapping['p0a0'], key = lambda x: x[1], reverse = True)]
+    parents[panel] = [mapping[panel][k][0] for k in sorted(mapping[panel], key = lambda x: x[1], reverse = True)]
   # example of parents entry:  parents['p0a0'] = ['q0', 'p0']
   # IE parents are listed in reverse order of immediacy (p0 is the parent of p0a0 and q0 is the parent of p0)
 
@@ -89,13 +90,20 @@ def read_geom(geom_file):
   # hierarchy['q0']['p0']['p0a0'] = full panel dictionary
 
   def parse_vector(vector):
-    x, y = vector.split(" ")
-    return col((float(x.rstrip('x')),float(y.rstrip('y')), 0.0))
+    try:
+      x, y, z = vector.split(" ")
+    except ValueError:
+      x, y = vector.split(" ")
+      return col((float(x.rstrip('x')),float(y.rstrip('y')), 0.0))
+    else:
+      return col((float(x.rstrip('x')),float(y.rstrip('y')), float(z.rstrip('z'))))
 
   # set up panel vectors in lab space
   for panel in panels:
     panels[panel]['origin'] = col((float(panels[panel]['corner_x'])*pixel_size,
                                    float(panels[panel]['corner_y'])*pixel_size, 0.0))
+    if 'coffset' in panels[panel]:
+      panels[panel]['origin'] += col((0,0,1000*float(panels[panel]['coffset'])))
     panels[panel]['fast'] = panels[panel]['local_fast'] = parse_vector(panels[panel]['fs']).normalize()
     panels[panel]['slow'] = panels[panel]['local_slow'] = parse_vector(panels[panel]['ss']).normalize()
     center_fast = panels[panel]['fast'] * pixel_size * (int(panels[panel]['max_fs'])-int(panels[panel]['min_fs'])+1)/2.0
@@ -111,7 +119,7 @@ def read_geom(geom_file):
       return
 
     center = col((0.0, 0.0, 0.0))
-    for key, child in node.iteritems():
+    for key, child in six.iteritems(node):
       if isinstance(child, panel_group):
         if child.center is None:
           setup_centers(child)
@@ -126,7 +134,7 @@ def read_geom(geom_file):
     if not isinstance(node, panel_group):
       return
 
-    for key, child in node.iteritems():
+    for key, child in six.iteritems(node):
       if isinstance(child, panel_group):
         child.local_origin = child.center - node.center
         setup_local_frames(child)
@@ -138,7 +146,7 @@ def read_geom(geom_file):
 
 def run(args):
   if '-h' in args or '--help' in args or '-c' in args:
-    print help_str
+    print(help_str)
     phil_scope.show(attributes_level=2)
     return
 
@@ -155,18 +163,26 @@ def run(args):
 
   hierarchy = read_geom(params.geom_file)
 
-# Plot the detector model highlighting the hierarchical structure of the AGIPD detector
-  def plot_node(cummulative, node):
+  # Plot the detector model highlighting the hierarchical structure of the detector
+  def plot_node(cummulative, node, name):
     if isinstance(node, panel_group):
       plt.arrow(cummulative[0],cummulative[1],node.local_origin[0],node.local_origin[1])
-      for child in node.values():
-        plot_node(cummulative+node.local_origin, child)
+      for childname, child in six.iteritems(node):
+        plot_node(cummulative+node.local_origin, child, childname)
     else:
       plt.arrow(cummulative[0],cummulative[1],node['local_origin'][0],node['local_origin'][1])
 
+      ori = node['origin']
+      fast_at_zero = node['fast'] * node['pixel_size'] * (int(node['max_fs']) - int(node['min_fs']) + 1)
+      slow_at_zero = node['slow'] * node['pixel_size'] * (int(node['max_ss']) - int(node['min_ss']) + 1)
+      plt.arrow(ori[0], ori[1], fast_at_zero[0], fast_at_zero[1], color='blue')
+      plt.arrow(ori[0], ori[1], slow_at_zero[0], slow_at_zero[1], color='red')
+
+      plt.text(ori[0], ori[1], name)
+
   if params.show_plot:
     from matplotlib import pyplot as plt
-    plot_node(col((0,0,0)), hierarchy)
+    plot_node(col((0,0,0)), hierarchy, 'root')
     plt.xlim(-200,200)
     plt.ylim(200,-200)
 

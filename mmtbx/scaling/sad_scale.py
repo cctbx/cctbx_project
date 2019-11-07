@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from libtbx.utils import Sorry, date_and_time, multi_out
 import iotbx.phil
@@ -26,9 +26,9 @@ def run(args):
   if len(args)==0:
     master_params.show(expert_level=0)
   elif ( "--help" in args ):
-    print "no help available as yet"
+    print("no help available as yet")
   elif ( "--h" in args ):
-    print "no help availableas yet"
+    print("no help availableas yet")
   elif ( "--show_defaults" in args ):
     master_params.show(expert_level=0)
   elif ( "--show_defaults_all" in args ):
@@ -42,11 +42,11 @@ def run(args):
     log.register(label="log_buffer", file_object=string_buffer)
 
     log_plots = StringIO()
-    print >> log,"#phil __OFF__"
-    print >> log
-    print >> log, date_and_time()
-    print >> log
-    print >> log
+    print("#phil __OFF__", file=log)
+    print(file=log)
+    print(date_and_time(), file=log)
+    print(file=log)
+    print(file=log)
 
     phil_objects = []
     argument_interpreter = master_params.command_line_argument_interpreter(
@@ -87,10 +87,10 @@ def run(args):
         except Exception : pass
 
       if not arg_is_processed:
-        print >> log, "##----------------------------------------------##"
-        print >> log, "## Unknown phil-file or phil-command:", arg
-        print >> log, "##----------------------------------------------##"
-        print >> log
+        print("##----------------------------------------------##", file=log)
+        print("## Unknown phil-file or phil-command:", arg, file=log)
+        print("##----------------------------------------------##", file=log)
+        print(file=log)
         raise Sorry("Unknown file format or phil command: %s" % arg)
 
 
@@ -112,12 +112,12 @@ def run(args):
     if params.scaling.input.xray_data.space_group is None:
       params.scaling.input.xray_data.space_group =\
         crystal_symmetry_nat.space_group_info()
-      print >> log, "Using symmetry of native data"
+      print("Using symmetry of native data", file=log)
 
     if params.scaling.input.xray_data.unit_cell is None:
       params.scaling.input.xray_data.unit_cell =\
         crystal_symmetry_nat.unit_cell()
-      print >> log, "Using cell of native data"
+      print("Using cell of native data", file=log)
 
     ## Check if a unit cell is defined
     if params.scaling.input.xray_data.space_group is None:
@@ -134,12 +134,12 @@ def run(args):
 
     effective_params = master_params.fetch(sources=phil_objects)
     new_params = master_params.format(python_object=params)
-    print >> log, "Effective parameters"
-    print >> log, "#phil __ON__"
+    print("Effective parameters", file=log)
+    print("#phil __ON__", file=log)
     new_params.show(out=log,
                     expert_level=params.scaling.input.expert_level)
-    print >> log, "#phil __END__"
-    print >> log
+    print("#phil __END__", file=log)
+    print(file=log)
 
     ## define a xray data server
     xray_data_server =  reflection_file_utils.reflection_file_server(
@@ -171,11 +171,11 @@ def run(args):
 
 
     ## Print info
-    print >> log
-    print >> log, "Reference data"
-    print >> log, "=============="
+    print(file=log)
+    print("Reference data", file=log)
+    print("==============", file=log)
     miller_array_native.show_comprehensive_summary(f=log)
-    print >> log
+    print(file=log)
     native_pre_scale = pre_scale.pre_scaler(
       miller_array_native,
       params.scaling.input.scaling_strategy.pre_scaler_protocol,
@@ -191,17 +191,17 @@ def run(args):
     negative_miller = scaler.x1n.deep_copy()
 
 
-    print >> log
-    print >> log, "Making delta f's"
-    print >> log, "----------------"
-    print >> log
+    print(file=log)
+    print("Making delta f's", file=log)
+    print("----------------", file=log)
+    print(file=log)
 
     delta_gen = pair_analyses.delta_generator( positive_miller,
                                                negative_miller )
-    print >> log
-    print >> log, "writing mtz file"
-    print >> log, "----------------"
-    print >> log
+    print(file=log)
+    print("writing mtz file", file=log)
+    print("----------------", file=log)
+    print(file=log)
 
     ## some assertions to make sure nothing went weerd
     assert positive_miller.observation_type() is not None
@@ -216,10 +216,10 @@ def run(args):
       file_name=params.scaling.input.output.hklout)
 
     if params.scaling.input.omit.perform_omit:
-      print >> log
-      print >> log, "writing omit files"
-      print >> log, "------------------"
-      print >> log
+      print(file=log)
+      print("writing omit files", file=log)
+      print("------------------", file=log)
+      print(file=log)
       omit_object = random_omit.random_omit_data(
         delta_gen.abs_delta_f,
         params.scaling.input.omit )

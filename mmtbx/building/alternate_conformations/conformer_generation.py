@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.building import generate_sidechain_clusters
 from libtbx.str_utils import format_value
 from libtbx.math_utils import ifloor, iceil
@@ -66,10 +66,10 @@ class conformation(object):
     translation_str = ""
     if (self.translation is not None):
       translation_str = "%4.2f,%4.2f,%4.2f  " % tuple(self.translation)
-    print >> out, """%12s  %6s  %6s  %6s  %6.3f  %s%s%s""" % (
+    print("""%12s  %6s  %6s  %6s  %6.3f  %s%s%s""" % (
       self.residue.id_str(), format_value("%6.1f", self.backrub),
       format_value("%6.1f", self.shear),
-      self.rotamer, self.rmsd, translation_str, density_str, chi_angles)
+      self.rotamer, self.rmsd, translation_str, density_str, chi_angles), file=out)
 
   def set_translation(self, translation):
     self.translation = translation
@@ -240,7 +240,7 @@ def shear_rotate(
   if ((i_seqs_primary1 is None) or
       (i_seqs_primary2 is None) or
       (i_seqs_middle is None)):
-    print "TODO set shear_rotate i_seqs automatically if not provided"
+    print("TODO set shear_rotate i_seqs automatically if not provided")
     return
   # prep for second primary rotation axis
   sites_start = sites.deep_copy()

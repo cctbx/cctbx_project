@@ -4,6 +4,7 @@ from boost_adaptbx import graph
 from boost_adaptbx.graph import metric
 
 import unittest
+from six.moves import range
 
 
 class TestBrandesBetweennessCentrality(unittest.TestCase):

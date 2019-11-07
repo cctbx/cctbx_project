@@ -1,5 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
+from six.moves import zip
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.xtc_process
@@ -20,7 +21,7 @@ import libtbx.load_env
 from libtbx.utils import Sorry, Usage
 from dials.util.options import OptionParser
 from libtbx.phil import parse
-from dxtbx.datablock import DataBlockFactory
+from dxtbx.model.experiment_list import ExperimentListFactory
 from scitbx.array_family import flex
 import numpy as np
 from libtbx import easy_pickle
@@ -214,6 +215,9 @@ xtc_phil_str = '''
         per_pixel_gain = False
           .type = bool
           .help = If True, use a per pixel gain from the run's calib folder, if available
+        additional_gain_factor = None
+          .type = float
+          .help = If set, pixels counts are divided by this number after all other corrections.
         common_mode {
           algorithm = default custom
             .type = choice
@@ -286,22 +290,22 @@ xtc_phil_str = '''
     logging_dir = None
       .type = str
       .help = Directory output log files will be placed
-    datablock_filename = %s_datablock.json
+    experiments_filename = %s.expt
       .type = str
-      .help = The filename for output datablock
-    strong_filename = %s_strong.pickle
+      .help = The filename for output experiment list
+    strong_filename = %s_strong.refl
       .type = str
       .help = The filename for strong reflections from spot finder output.
-    indexed_filename = %s_indexed.pickle
+    indexed_filename = %s_indexed.refl
       .type = str
       .help = The filename for indexed reflections.
-    refined_experiments_filename = %s_refined_experiments.json
+    refined_experiments_filename = %s_refined.expt
       .type = str
       .help = The filename for saving refined experimental models
-    integrated_filename = %s_integrated.pickle
+    integrated_filename = %s_integrated.refl
       .type = str
       .help = The filename for final experimental modls
-    integrated_experiments_filename = %s_integrated_experiments.json
+    integrated_experiments_filename = %s_integrated.expt
       .type = str
       .help = The filename for final integrated reflections.
     profile_filename = None
@@ -310,7 +314,7 @@ xtc_phil_str = '''
     integration_pickle = int-%d-%s.pickle
       .type = str
       .help = Filename for cctbx.xfel-style integration pickle files
-    reindexedstrong_filename = %s_reindexedstrong.pickle
+    reindexedstrong_filename = %s_reindexedstrong.refl
       .type = str
       .help = The file name for re-indexed strong reflections
     tmp_output_dir = "(NONE)"
@@ -425,6 +429,8 @@ phil_scope = parse(xtc_phil_str + dials_phil_str + extra_dials_phil_str + db_phi
 
 from xfel.command_line.xfel_process import Script as DialsProcessScript
 from xfel.ui.db.frame_logging import DialsProcessorWithLogging
+from xfel.ui.db.dxtbx_db import dxtbx_xfel_db_application
+
 class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
   """ Script to process XFEL data at LCLS """
   def __init__(self):
@@ -457,6 +463,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     self.tt_low = None
     self.tt_high = None
+    self.db_app = None
 
   def debug_start(self, ts):
     self.debug_str = "%s,%s"%(socket.gethostname(), ts)
@@ -475,7 +482,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     debug_file_handle.close()
 
   def mpi_log_write(self, string):
-    print string
+    print(string)
     mpi_log_file_handle = open(self.mpi_log_file_path, 'a')
     mpi_log_file_handle.write(string)
     mpi_log_file_handle.close()
@@ -507,7 +514,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         deprecated_strs = ['%s','%s','common_mode.%s','common_mode.%s']
         for i in range(len(deprecated_params)):
           if deprecated_params[i] in str(e):
-            print "format.cbf.%s"%(deprecated_strs[i]%deprecated_params[i]), "has changed to format.cbf.cspad.%s"%(deprecated_strs[i]%deprecated_params[i])
+            print("format.cbf.%s"%(deprecated_strs[i]%deprecated_params[i]), "has changed to format.cbf.cspad.%s"%(deprecated_strs[i]%deprecated_params[i]))
       raise
 
     # Check inputs
@@ -608,7 +615,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       info_path = ''
       debug_path = ''
     elif params.output.logging_dir == 'DevNull':
-      print "Redirecting stdout, stderr and other DIALS logfiles to /dev/null"
+      print("Redirecting stdout, stderr and other DIALS logfiles to /dev/null")
       sys.stdout = open(os.devnull,'w', buffering=0)
       sys.stderr = open(os.devnull,'w',buffering=0)
       info_path = os.devnull
@@ -616,11 +623,11 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     else:
       log_path = os.path.join(params.output.logging_dir, "log_rank%04d.out"%rank)
       error_path = os.path.join(params.output.logging_dir, "error_rank%04d.out"%rank)
-      print "Redirecting stdout to %s"%log_path
-      print "Redirecting stderr to %s"%error_path
+      print("Redirecting stdout to %s"%log_path)
+      print("Redirecting stderr to %s"%error_path)
       sys.stdout = open(log_path,'a', buffering=0)
       sys.stderr = open(error_path,'a',buffering=0)
-      print "Should be redirected now"
+      print("Should be redirected now")
 
       info_path = os.path.join(params.output.logging_dir, "info_rank%04d.out"%rank)
       debug_path = os.path.join(params.output.logging_dir, "debug_rank%04d.out"%rank)
@@ -637,7 +644,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     assert os.path.exists(debug_dir)
 
     if params.debug.skip_processed_events or params.debug.skip_unprocessed_events or params.debug.skip_bad_events:
-      print "Reading debug files..."
+      print("Reading debug files...")
       self.known_events = {}
       for filename in os.listdir(debug_dir):
         # format: hostname,timestamp_event,timestamp_now,status,detail
@@ -666,7 +673,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     # FIXME MONA: psana 2 has pedestals and geometry hardcoded for cxid9114.
     # We can remove after return code when all interfaces are ready.
     if PSANA2_VERSION:
-        print("PSANA2_VERSION", PSANA2_VERSION)
+        print(("PSANA2_VERSION", PSANA2_VERSION))
         run_psana2(self, params, comm)
         return
 
@@ -707,9 +714,13 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     # set this to sys.maxint to analyze all events
     if params.dispatch.max_events is None:
-      max_events = sys.maxint
+      max_events = sys.maxsize
     else:
       max_events = params.dispatch.max_events
+
+    # Set up db connection if being used
+    if self.params.experiment_tag is not None:
+      self.db_app = dxtbx_xfel_db_application(params)
 
     for run in ds.runs():
       if params.format.file_format == "cbf":
@@ -770,7 +781,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         # process fractions only works in idx-striping mode
         if params.dispatch.process_percent:
           raise Sorry("Process percent only works in striping mode.")
-        print "Using MPI client server in rax mode"
+        print("Using MPI client server in rax mode")
         # use a client/server approach to be sure every process is busy as much as possible
         # only do this if there are more than 2 processes, as one process will be a server
         try:
@@ -798,31 +809,31 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
             # client process
             while True:
               # inform the server this process is ready for an event
-              print "Rank %d getting next task"%rank
+              print("Rank %d getting next task"%rank)
               comm.send(rank,dest=0)
-              print "Rank %d waiting for response"%rank
+              print("Rank %d waiting for response"%rank)
               offset = comm.recv(source=0)
               if offset == 'endrun':
-                print "Rank %d recieved endrun"%rank
+                print("Rank %d recieved endrun"%rank)
                 break
               evt = ds.jump(offset.filenames, offset.offsets, offset.lastBeginCalibCycleDgram)
-              print "Rank %d beginning processing"%rank
+              print("Rank %d beginning processing"%rank)
               try:
                 self.process_event(run, evt)
               except Exception as e:
-                print "Rank %d unhandled exception processing event"%rank, str(e)
-              print "Rank %d event processed"%rank
+                print("Rank %d unhandled exception processing event"%rank, str(e))
+              print("Rank %d event processed"%rank)
         except Exception as e:
-          print "Error caught in main loop"
-          print str(e)
-        print "Synchronizing rank %d"%rank
+          print("Error caught in main loop")
+          print(str(e))
+        print("Synchronizing rank %d"%rank)
         comm.Barrier()
-        print "Rank %d done with main loop"%rank
+        print("Rank %d done with main loop"%rank)
       else:
         import resource
         # chop the list into pieces, depending on rank.  This assigns each process
         # events such that the get every Nth event where N is the number of processes
-        print "Striping events"
+        print("Striping events")
 
         nevent = mem = first = last = 0
         if process_fractions:
@@ -847,14 +858,14 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
           if not first:
             first = mem
           last = mem
-        print 'Total memory leaked in %d cycles: %dkB' % (nevent+1-50, mem - first)
+        print('Total memory leaked in %d cycles: %dkB' % (nevent+1-50, mem - first))
 
-    print "Rank %d finalizing"%rank
+    print("Rank %d finalizing"%rank)
     try:
       self.finalize()
     except Exception as e:
-      print "Rank %d, exception caught in finalize"%rank
-      print str(e)
+      print("Rank %d, exception caught in finalize"%rank)
+      print(str(e))
 
     if params.format.file_format == "cbf" and params.output.tmp_output_dir == "(NONE)":
       try:
@@ -874,14 +885,14 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         experiment_jsons = []
         indexed_tables = []
         for filename in os.listdir(params.output.output_dir):
-          if not filename.endswith("_indexed.pickle"):
+          if not filename.endswith("_indexed.refl"):
             continue
-          experiment_jsons.append(os.path.join(params.output.output_dir, filename.split("_indexed.pickle")[0] + "_refined_experiments.json"))
+          experiment_jsons.append(os.path.join(params.output.output_dir, filename.split("_indexed.refl")[0] + "_refined.expt"))
           indexed_tables.append(os.path.join(params.output.output_dir, filename))
           if params.format.file_format == "cbf":
-            images.append(os.path.join(params.output.output_dir, filename.split("_indexed.pickle")[0] + ".cbf"))
+            images.append(os.path.join(params.output.output_dir, filename.split("_indexed.refl")[0] + ".cbf"))
           elif params.format.file_format == "pickle":
-            images.append(os.path.join(params.output.output_dir, filename.split("_indexed.pickle")[0] + ".pickle"))
+            images.append(os.path.join(params.output.output_dir, filename.split("_indexed.refl")[0] + ".pickle"))
 
         if len(images) < params.joint_reintegration.minimum_results:
           pass # print and return
@@ -896,18 +907,18 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
           f.write("}\n")
         f.close()
 
-        combined_experiments_file = os.path.join(reint_dir, "combined_experiments.json")
-        combined_reflections_file = os.path.join(reint_dir, "combined_reflections.pickle")
+        combined_experiments_file = os.path.join(reint_dir, "combined.expt")
+        combined_reflections_file = os.path.join(reint_dir, "combined.refl")
         command = "dials.combine_experiments reference_from_experiment.average_detector=True %s output.reflections=%s output.experiments=%s"% \
           (combo_input, combined_reflections_file, combined_experiments_file)
-        print command
+        print(command)
         from libtbx import easy_run
         easy_run.fully_buffered(command).raise_if_errors().show_stdout()
 
         from dxtbx.model.experiment_list import ExperimentListFactory
 
         combined_experiments = ExperimentListFactory.from_json_file(combined_experiments_file, check_format=False)
-        combined_reflections = easy_pickle.load(combined_reflections_file)
+        combined_reflections = flex.reflection_table.from_file(combined_reflections_file)
 
         from dials.algorithms.refinement import RefinerFactory
 
@@ -921,23 +932,23 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         from dxtbx.model.experiment_list import ExperimentListDumper
         from dxtbx.model import ExperimentList
         dump = ExperimentListDumper(experiments)
-        dump.as_json(os.path.join(reint_dir, "refined_experiments.json"))
-        reflections.as_pickle(os.path.join(reint_dir, "refined_reflections.pickle"))
+        dump.as_json(os.path.join(reint_dir, "refined.expt"))
+        reflections.as_pickle(os.path.join(reint_dir, "refined.refl"))
 
         for expt_id, (expt, img_file) in enumerate(zip(experiments, images)):
           try:
             refls = reflections.select(reflections['id'] == expt_id)
             refls['id'] = flex.int(len(refls), 0)
             base_name = os.path.splitext(os.path.basename(img_file))[0]
-            self.params.output.integrated_filename = os.path.join(reint_dir, base_name + "_integrated.pickle")
+            self.params.output.integrated_filename = os.path.join(reint_dir, base_name + "_integrated.refl")
 
             expts = ExperimentList([expt])
             self.integrate(expts, refls)
             dump = ExperimentListDumper(expts)
-            dump.as_json(os.path.join(reint_dir, base_name + "_refined_experiments.json"))
+            dump.as_json(os.path.join(reint_dir, base_name + "_refined.expt"))
           except Exception as e:
-            print "Couldn't reintegrate", img_file, str(e)
-    print "Rank %d signing off"%rank
+            print("Couldn't reintegrate", img_file, str(e))
+    print("Rank %d signing off"%rank)
 
   def get_run_and_timestamp(self, obj):
     # Used by database logger
@@ -960,7 +971,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     ts = cspad_tbx.evt_timestamp((sec,nsec/1e6))
     if ts is None:
-      print "No timestamp, skipping shot"
+      print("No timestamp, skipping shot")
       return
 
     if len(self.params_cache.debug.event_timestamp) > 0 and ts not in self.params_cache.debug.event_timestamp:
@@ -971,14 +982,14 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       if ts in self.known_events:
         if self.known_events[ts] not in ["stop", "done", "fail"]:
           if self.params_cache.debug.skip_bad_events:
-            print "Skipping event %s: possibly caused an unknown exception previously"%ts
+            print("Skipping event %s: possibly caused an unknown exception previously"%ts)
             return
         elif self.params_cache.debug.skip_processed_events:
-          print "Skipping event %s: processed successfully previously"%ts
+          print("Skipping event %s: processed successfully previously"%ts)
           return
       else:
         if self.params_cache.debug.skip_unprocessed_events:
-          print "Skipping event %s: not processed previously"%ts
+          print("Skipping event %s: not processed previously"%ts)
           return
 
     self.debug_start(ts)
@@ -986,11 +997,11 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     # FIXME MONA: below will be replaced with filter() callback
     if not PSANA2_VERSION:
       if evt.get("skip_event") or "skip_event" in [key.key() for key in evt.keys()]:
-        print "Skipping event",ts
+        print("Skipping event",ts)
         self.debug_write("psana_skip", "skip")
         return
 
-    print "Accepted", ts
+    print("Accepted", ts)
     self.params = copy.deepcopy(self.params_cache)
 
     # the data needs to have already been processed and put into the event by psana
@@ -1001,12 +1012,12 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
                                                     common_mode=self.common_mode,
                                                     apply_gain_mask=self.params.format.cbf.cspad.gain_mask_value is not None,
                                                     gain_mask_value=self.params.format.cbf.cspad.gain_mask_value,
-                                                    per_pixel_gain=self.params.format.cbf.cspad.per_pixel_gain)
-
+                                                    per_pixel_gain=self.params.format.cbf.cspad.per_pixel_gain,
+                                                    additional_gain_factor=self.params.format.cbf.cspad.additional_gain_factor)
       elif self.params.format.cbf.mode == "rayonix":
         data = rayonix_tbx.get_data_from_psana_event(evt, self.params.input.address)
       if data is None:
-        print "No data"
+        print("No data")
         self.debug_write("no_data", "skip")
         return
 
@@ -1016,7 +1027,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         elif self.params.format.cbf.mode == "rayonix":
           distance = self.params.format.cbf.detz_offset
         if distance is None:
-          print "No distance, skipping shot"
+          print("No distance, skipping shot")
           self.debug_write("no_distance", "skip")
           return
       else:
@@ -1028,7 +1039,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         else:
           wavelength = cspad_tbx.evt_wavelength(evt)
         if wavelength is None:
-          print "No wavelength, skipping shot"
+          print("No wavelength, skipping shot")
           self.debug_write("no_wavelength", "skip")
           return
       else:
@@ -1040,13 +1051,13 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     self.timestamp = timestamp = t = ts
     s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
-    print "Processing shot", s
+    print("Processing shot", s)
 
     def build_dxtbx_image():
       if self.params.format.file_format == 'cbf':
         # stitch together the header, data and metadata into the final dxtbx format object
         if self.params.format.cbf.mode == "cspad":
-          dxtbx_img = cspad_cbf_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
+          dxtbx_img = cspad_cbf_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address, round_to_int=False)
         elif self.params.format.cbf.mode == "rayonix":
           dxtbx_img = rayonix_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
 
@@ -1077,8 +1088,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     self.cache_ranges(dxtbx_img, self.params.input.override_spotfinding_trusted_min, self.params.input.override_spotfinding_trusted_max)
 
-    from dxtbx.imageset import ImageSet, ImageSetData, MemReader, MemMasker
-    imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), MemMasker([dxtbx_img])))
+    from dxtbx.imageset import ImageSet, ImageSetData, MemReader
+    imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), None))
     imgset.set_beam(dxtbx_img.get_beam())
     imgset.set_detector(dxtbx_img.get_detector())
 
@@ -1097,12 +1108,13 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     if self.params.radial_average.enable:
       if tt_low is not None or tt_high is not None:
-        print "Warning, mod_radial_average is being used while also using xtc_process radial averaging. mod_radial_averaging results will not be logged to the database."
+        print("Warning, mod_radial_average is being used while also using xtc_process radial averaging. mod_radial_averaging results will not be logged to the database.")
 
-    datablock = DataBlockFactory.from_imageset(imgset)[0]
+    from dxtbx.model.experiment_list import ExperimentListFactory
+    experiments = ExperimentListFactory.from_imageset_and_crystal(imgset, None)
 
     try:
-      self.pre_process(datablock)
+      self.pre_process(experiments)
     except Exception as e:
       self.debug_write("preprocess_exception", "fail")
       return
@@ -1127,11 +1139,11 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     if self.params.input.known_orientations_folder is not None:
       expected_orientation_path = os.path.join(self.params.input.known_orientations_folder, os.path.basename(self.params.output.refined_experiments_filename))
       if os.path.exists(expected_orientation_path):
-        print "Known orientation found"
+        print("Known orientation found")
         from dxtbx.model.experiment_list import ExperimentListFactory
         self.known_crystal_models = ExperimentListFactory.from_json_file(expected_orientation_path, check_format=False).crystals()
       else:
-        print "Image not previously indexed, skipping."
+        print("Image not previously indexed, skipping.")
         self.debug_write("not_previously_indexed", "stop")
         return
 
@@ -1148,22 +1160,22 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     self.debug_write("spotfind_start")
     try:
-      observed = self.find_spots(datablock)
+      observed = self.find_spots(experiments)
     except Exception as e:
       import traceback; traceback.print_exc()
-      print str(e), "event", timestamp
+      print(str(e), "event", timestamp)
       self.debug_write("spotfinding_exception", "fail")
       return
 
-    print "Found %d bright spots"%len(observed)
+    print("Found %d bright spots"%len(observed))
 
     if self.params.dispatch.hit_finder.enable and len(observed) < self.params.dispatch.hit_finder.minimum_number_of_reflections:
-      print "Not enough spots to index"
+      print("Not enough spots to index")
       self.debug_write("not_enough_spots_%d"%len(observed), "stop")
       return
     if self.params.dispatch.hit_finder.maximum_number_of_reflections is not None:
       if self.params.dispatch.hit_finder.enable and len(observed) > self.params.dispatch.hit_finder.maximum_number_of_reflections:
-        print "Too many spots to index - Possibly junk"
+        print("Too many spots to index - Possibly junk")
         self.debug_write("too_many_spots_%d"%len(observed), "stop")
         return
 
@@ -1196,17 +1208,16 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     # index and refine
     self.debug_write("index_start")
     try:
-      experiments, indexed = self.index(datablock, observed)
+      experiments, indexed = self.index(experiments, observed)
     except Exception as e:
       import traceback; traceback.print_exc()
-      print str(e), "event", timestamp
+      print(str(e), "event", timestamp)
       self.debug_write("indexing_failed_%d"%len(observed), "stop")
       return
 
     if self.params.dispatch.dump_indexed:
       img_path = self.save_image(dxtbx_img, self.params, os.path.join(self.params.output.output_dir, "idx-" + s))
-      datablock = DataBlockFactory.from_filenames([img_path])[0]
-      imgset = datablock.extract_imagesets()[0]
+      imgset = ExperimentListFactory.from_filenames([img_path]).imagesets()[0]
       assert len(experiments.detectors()) == 1;   imgset.set_detector(experiments[0].detector)
       assert len(experiments.beams()) == 1;       imgset.set_beam(experiments[0].beam)
       assert len(experiments.scans()) <= 1;       imgset.set_scan(experiments[0].scan)
@@ -1220,7 +1231,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       experiments, indexed = self.refine(experiments, indexed)
     except Exception as e:
       import traceback; traceback.print_exc()
-      print str(e), "event", timestamp
+      print(str(e), "event", timestamp)
       self.debug_write("refine_failed_%d"%len(indexed), "fail")
       return
 
@@ -1230,7 +1241,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         self.reindex_strong(experiments, observed)
       except Exception as e:
         import traceback; traceback.print_exc()
-        print str(e), "event", timestamp
+        print(str(e), "event", timestamp)
         self.debug_write("reindexstrong_failed_%d"%len(indexed), "fail")
         return
 
@@ -1244,7 +1255,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     if self.cached_ranges is not None:
       # Load a dials mask from the trusted range and psana mask
-      imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), MemMasker([dxtbx_img])))
+      imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), None))
       imgset.set_beam(dxtbx_img.get_beam())
       imgset.set_detector(dxtbx_img.get_detector())
       from dials.util.masking import MaskGenerator
@@ -1261,7 +1272,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       integrated = self.integrate(experiments, indexed)
     except Exception as e:
       import traceback; traceback.print_exc()
-      print str(e), "event", timestamp
+      print(str(e), "event", timestamp)
       self.debug_write("integrate_failed_%d"%len(indexed), "fail")
       return
     self.restore_ranges(dxtbx_img)
@@ -1287,7 +1298,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       elif params.format.file_format == 'pickle':
         easy_pickle.dump(dest_path, image._image_file)
     except Exception:
-      print "Warning, couldn't save image:", dest_path
+      print("Warning, couldn't save image:", dest_path)
 
     return dest_path
 
@@ -1324,12 +1335,12 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     self.cached_ranges = None
 
   def reindex_strong(self, experiments, strong):
-    print "Reindexing strong reflections using refined experimental models and no outlier rejection..."
-    from dials.algorithms.indexing.stills_indexer import stills_indexer_known_orientation
-    indexer = stills_indexer_known_orientation(strong, experiments.imagesets(), self.params, experiments.crystals())
+    print("Reindexing strong reflections using refined experimental models and no outlier rejection...")
+    from dials.algorithms.indexing.stills_indexer import StillsIndexerKnownOrientation
+    indexer = StillsIndexerKnownOrientation(strong, experiments.imagesets(), self.params, experiments.crystals())
     indexed_reflections = indexer.reflections.select(indexer.indexed_reflections)
 
-    print "Indexed %d strong reflections out of %d"%(len(indexed_reflections), len(strong))
+    print("Indexed %d strong reflections out of %d"%(len(indexed_reflections), len(strong)))
     self.save_reflections(indexed_reflections, self.params.output.reindexedstrong_filename)
 
   def finalize(self):

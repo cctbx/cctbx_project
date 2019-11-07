@@ -1,9 +1,10 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import libtbx.load_env
 
 tst_list = (
     "$D/nanoBragg/tst_nanoBragg_minimal.py",
+    "$D/nanoBragg/tst_nanoBragg_mosaic.py",
     "$D/nanoBragg/tst_gaussian_mosaicity.py",
     )
 

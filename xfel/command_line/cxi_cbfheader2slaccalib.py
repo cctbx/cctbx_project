@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.cbfheader2slaccalib
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -35,7 +35,7 @@ class GeometryAccessFromCspadCBF(GeometryAccess):
     """
     if path is not None : self.path = path
 
-    if self.pbits & 32 : print 'Load file: %s' % self.path
+    if self.pbits & 32 : print('Load file: %s' % self.path)
 
     img = dxtbx.load(self.path)
     cbf = img._cbf_handle
@@ -160,7 +160,7 @@ class GeometryAccessFromCspadCBF(GeometryAccess):
 
 def run(args):
   if ("--help" in args or "-h" in args) :
-    print "Write a SLAC metrology file from a CSPAD CBF. Parameters:"
+    print("Write a SLAC metrology file from a CSPAD CBF. Parameters:")
     master_phil.show(attributes_level=2)
     return
 
@@ -180,7 +180,7 @@ def run(args):
   if not os.path.exists(params.cbf_header):
     raise Sorry("File not found: %s"%params.cbf_header)
 
-  print "Converting", params.cbf_header, "to", params.out_metrology_file
+  print("Converting", params.cbf_header, "to", params.out_metrology_file)
 
   geometry = GeometryAccessFromCspadCBF(params.cbf_header)
 

@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, null_out
 from iotbx.pdb import common_residue_names_get_class
 from iotbx.pdb import input
 from cctbx.array_family import flex
 import math
 import sys
+from six.moves import zip
 
 def process_reference_files(
       reference_file_list,
@@ -57,7 +58,7 @@ def get_reference_dihedral_proxies(
 def get_complete_dihedral_proxies_2(
     model,
     log=None):
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   from cctbx.geometry_restraints import dihedral_proxy_registry
   from mmtbx.conformation_dependent_library import generate_protein_threes
   if log is None:

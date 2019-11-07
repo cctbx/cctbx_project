@@ -1,5 +1,5 @@
-from __future__ import division
-from StringIO import StringIO
+from __future__ import absolute_import, division, print_function
+from six.moves import cStringIO as StringIO
 from scitbx.math import superpose
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -7,6 +7,7 @@ import mmtbx.ncs.ncs_utils as nu
 import scitbx.rigid_body
 from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal
+from six.moves import zip
 
 class NCS_copy():
   def __init__(self,copy_iselection, rot, tran, str_selection=None, rmsd=999):
@@ -282,7 +283,7 @@ class class_ncs_restraints_group_list(list):
     for group in self:
       group.update_i_seqs(old_i_seqs)
 
-  def filter_ncs_restraints_group_list(self, whole_h):
+  def filter_ncs_restraints_group_list(self, whole_h, ncs_obj):
     """ Remove ncs groups where master or copy does not cover whole chain
     (some atoms are left behind).
     Reason for this - when big moves are likely (e.g. in real-space refine or
@@ -292,15 +293,9 @@ class class_ncs_restraints_group_list(list):
     def whole_chain_in_ncs(whole_h, master_iselection):
       m_c = whole_h.select(master_iselection)
       m_c_id = m_c.only_model().chains()[0].id
-      for chain in whole_h.only_model().chains():
+      for chain in ncs_obj.truncated_hierarchy.only_model().chains():
         if chain.id == m_c_id:
-          n_non_h_atoms = 0
-          for a in chain.atoms():
-            # print "'%s'" % a.element
-            if not a.element_is_hydrogen():
-              n_non_h_atoms += 1
-          # print "n_non_h_atoms, master_iselection.size()", n_non_h_atoms, master_iselection.size()
-          if n_non_h_atoms <= master_iselection.size():
+          if chain.atoms_size() <= master_iselection.size():
             return True
           else:
             return False
@@ -361,7 +356,7 @@ class class_ncs_restraints_group_list(list):
         rmsd = copy_xyz.rms_difference(xyz)
         nrgl_ok &= (rmsd <= chain_max_rmsd)
         if (rmsd > chain_max_rmsd):
-          print >>log,'Allowed rmsd : {}, rmsd: {}'.format(chain_max_rmsd,rmsd)
+          print('Allowed rmsd : {}, rmsd: {}'.format(chain_max_rmsd,rmsd), file=log)
     return nrgl_ok
 
   def shift_translation_to_center(self, shifts):
@@ -419,23 +414,23 @@ class class_ncs_restraints_group_list(list):
     """
     For debugging
     """
-    print "debugging output of ncs_restraints_group_list"
+    print("debugging output of ncs_restraints_group_list")
     for group in self:
-      print "Master str selection:", group.master_str_selection
+      print("Master str selection:", group.master_str_selection)
       if not brief:
-        print list(group.master_iselection)
+        print(list(group.master_iselection))
       if hierarchy is not None:
-        print hierarchy.select(group.master_iselection).as_pdb_string()
+        print(hierarchy.select(group.master_iselection).as_pdb_string())
       for c in group.copies:
-        print "Copy str selection:", c.str_selection
+        print("Copy str selection:", c.str_selection)
         if not brief:
-          print list(c.iselection)
+          print(list(c.iselection))
         # print "rot", list(c.r)
         # print "tran", list(c.t)
         if hierarchy is not None:
-          print hierarchy.select(c.iselection).as_pdb_string()
-      print "="*30
-    print "end debugging output of ncs_restraints_group_list"
+          print(hierarchy.select(c.iselection).as_pdb_string())
+      print("="*30)
+    print("end debugging output of ncs_restraints_group_list")
 
 
   def get_ncs_groups_centers(self, sites_cart):

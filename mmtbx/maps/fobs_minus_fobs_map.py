@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx import utils
 import mmtbx.f_model
 from iotbx.option_parser import iotbx_option_parser
@@ -17,10 +17,11 @@ from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
 from libtbx import runtime_utils
 import libtbx.callbacks # import dependency
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 import sys
 import mmtbx.model
+from six.moves import zip
 
 fo_minus_fo_master_params_str = """\
 f_obs_1_file_name = None
@@ -144,7 +145,7 @@ class compute_fo_minus_fo_map(object):
     fmodels = []
     for i_seq, d in enumerate(data_arrays):
       if(not silent):
-        print >> log, "Data set: %d"%i_seq
+        print("Data set: %d"%i_seq, file=log)
       if(d.anomalous_flag()) and (not anomalous):
         d = d.average_bijvoet_mates()
       elif (anomalous):
@@ -161,7 +162,7 @@ class compute_fo_minus_fo_map(object):
       fmodel.update_all_scales(log=None)
       if(not silent):
         fmodel.info().show_rfactors_targets_scales_overall(out=log)
-        print >> log
+        print(file=log)
       fmodels.append(fmodel)
     self.fmodel = fmodels[0]
     # prepare Fobs for map calculation (apply scaling):
@@ -190,9 +191,9 @@ class compute_fo_minus_fo_map(object):
     if multiscale:
       fobs_1 = fobs_2.multiscale(other = fobs_1, reflections_per_bin=250)
     if(not silent):
-      print >> log, ""
-      print >> log, "Fobs1_vs_Fobs2 statistics:"
-      print >> log, "Bin# Resolution range  Compl.  No.of refl. CC   R-factor"
+      print("", file=log)
+      print("Fobs1_vs_Fobs2 statistics:", file=log)
+      print("Bin# Resolution range  Compl.  No.of refl. CC   R-factor", file=log)
       fobs_1.setup_binner(reflections_per_bin = min(500, fobs_1.data().size()))
       fobs_2.use_binning_of(fobs_1)
       for i_bin in fobs_1.binner().range_used():
@@ -211,8 +212,8 @@ class compute_fo_minus_fo_map(object):
         d_range = fobs_1.binner().bin_legend(
                        i_bin = i_bin, show_bin_number = False, show_counts = False)
         fmt = "%3d: %-17s   %4.2f %6d         %5.3f  %6s"
-        print >> log, fmt % (i_bin, d_range, compl, n_ref, cc,
-          format_value("%6.4f", r))
+        print(fmt % (i_bin, d_range, compl, n_ref, cc,
+          format_value("%6.4f", r)), file=log)
     # overall statistics
     self.cc = flex.linear_correlation(
       x=fobs_1.data(),
@@ -340,9 +341,9 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     log = sys.stdout
   if(not command_line.options.silent):
     utils.print_header("phenix.fobs_minus_fobs_map", out = log)
-    print >> log, "Command line arguments: "
-    print >> log, args
-    print >> log
+    print("Command line arguments: ", file=log)
+    print(args, file=log)
+    print(file=log)
   #
   processed_args = utils.process_command_line_args(
     args=command_line.args,
@@ -354,9 +355,9 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     suppress_symmetry_related_errors=True)
   working_phil = processed_args.params
   if(not command_line.options.silent):
-    print >> log, "*** Parameters:"
+    print("*** Parameters:", file=log)
     working_phil.show(out = log)
-    print >> log
+    print(file=log)
   params = working_phil.extract()
   consensus_symmetry = None
   if (params.ignore_non_isomorphous_unit_cells):
@@ -459,9 +460,9 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     raise Sorry(" ".join(errors))
   if(not command_line.options.silent):
     for ifobs, fobs in enumerate(f_obss):
-      print >> log, "*** Summary for data set %d:"%ifobs
+      print("*** Summary for data set %d:"%ifobs, file=log)
       fobs.show_comprehensive_summary(f = log)
-      print >> log
+      print(file=log)
   pdb_combined = combine_unique_pdb_files(file_names = pdb_file_names)
   pdb_combined.report_non_unique(out = log)
   if(len(pdb_combined.unique_file_names) == 0):
@@ -485,17 +486,17 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
   #
   omit_sel = flex.bool(hierarchy.atoms_size(), False)
   if (params.advanced.omit_selection is not None):
-    print >> log, "Will omit selection from phasing model:"
-    print >> log, "  " + params.advanced.omit_selection
+    print("Will omit selection from phasing model:", file=log)
+    print("  " + params.advanced.omit_selection, file=log)
     omit_sel = hierarchy.atom_selection_cache().selection(
       params.advanced.omit_selection)
-    print >> log, "%d atoms selected for removal" % omit_sel.count(True)
+    print("%d atoms selected for removal" % omit_sel.count(True), file=log)
   del hierarchy
   xray_structure = xray_structure.select(~omit_sel)
   if(not command_line.options.silent):
-    print >> log, "*** Model summary:"
+    print("*** Model summary:", file=log)
     xray_structure.show_summary(f = log)
-    print >> log
+    print(file=log)
   info0 = f_obss[0].info()
   info1 = f_obss[1].info()
   f_obss[0] = f_obss[0].resolution_filter(d_min = params.high_resolution,

@@ -4,7 +4,7 @@
 ''' Filters shots from FEE spectrometer that are two color and flags xtc
     stream events as being a two color event or not.
 '''
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
@@ -160,48 +160,48 @@ class mod_spectrum_filter(object):
       int_right_region = np.sum(spectrum[peak_two_upper_limit:])/len(spectrum[:peak_two_upper_limit])
       # now to do the filtering
       if peak_one/peak_two < self.peak_ratio or peak_one/peak_two > 1/self.peak_ratio:
-        print "event(): too low"
+        print("event(): too low")
         evt.put(skip_event_flag(), "skip_event")
         return
       if weighted_peak_two_center_position < self.peak_two_position_min or weighted_peak_two_center_position > self.peak_two_position_max:
-        print "event(): out of range high energy peak"
+        print("event(): out of range high energy peak")
         evt.put(skip_event_flag(), "skip_event")
         return
       if weighted_peak_one_center_position < self.peak_one_position_min or weighted_peak_one_center_position > self.peak_one_position_max:
-        print "event(): out of range low energy peak"
+        print("event(): out of range low energy peak")
         evt.put(skip_event_flag(), "skip_event")
         return
       if not one_D and (int_left_region/int_peak_one > self.normalized_peak_to_noise_ratio):
-        print "event(): noisy left of low energy peak"
+        print("event(): noisy left of low energy peak")
         evt.put(skip_event_flag(), "skip_event")
         return
       if not one_D and (int_middle_region/int_peak_one > self.normalized_peak_to_noise_ratio):
-        print "event(): noisy middle"
+        print("event(): noisy middle")
         evt.put(skip_event_flag(), "skip_event")
         return
       if not one_D and (int_middle_region/int_peak_two > self.normalized_peak_to_noise_ratio):
-        print "event(): noisy middle"
+        print("event(): noisy middle")
         evt.put(skip_event_flag(), "skip_event")
         return
       if not one_D and (int_right_region/int_peak_two > self.normalized_peak_to_noise_ratio):
-        print "event(): noisy right of high energy peak"
+        print("event(): noisy right of high energy peak")
         evt.put(skip_event_flag(), "skip_event")
         return
       #iron edge at 738 pixels on FFE detetor
       if one_D and (spectrum[self.iron_edge_position]>=spectrum[weighted_peak_one_center_position]):
-        print "event(): peak at iron edge"
+        print("event(): peak at iron edge")
         evt.put(skip_event_flag(), "skip_event")
         return
 
       if one_D and (spectrum[self.iron_edge_position]>=spectrum[weighted_peak_two_center_position]):
-        print "event(): peak at iron edge"
+        print("event(): peak at iron edge")
         evt.put(skip_event_flag(), "skip_event")
         return
 
       #self.logger.info("TIMESTAMP %s accepted" %timestamp)
       self.naccepted += 1
       self.ntwo_color += 1
-      print "%d Two Color shots"  %self.ntwo_color
+      print("%d Two Color shots"  %self.ntwo_color)
 
   def endjob(self, obj1, obj2=None):
     """

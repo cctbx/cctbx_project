@@ -1,4 +1,4 @@
-from __future__ import division, absolute_import
+from __future__ import absolute_import, division, print_function
 import scitbx.math
 from scitbx.math import r3_rotation_vector_to_vector as vector_to_vector
 from scitbx.math import r3_rotation_vector_to_001 as vector_to_001
@@ -11,6 +11,7 @@ from libtbx.test_utils import Exception_expected, approx_equal
 import math
 import time
 import sys
+from six.moves import range
 
 def exercise_axis_and_angle(
       axis_range=2,
@@ -27,19 +28,19 @@ def exercise_axis_and_angle(
   assert approx_equal(from_matrix.angle(deg=False), math.pi/2)
   #
   angles = []
-  for d in xrange(1,angle_max_division+1):
+  for d in range(1,angle_max_division+1):
     angles.append(360/d)
     angles.append(-360/d)
-  for p in xrange(-angle_min_power+1):
+  for p in range(-angle_min_power+1):
     angles.append(10**(-p))
     angles.append(-10**(-p))
   hex_orth = matrix.sqr([
     8.7903631196301042, -4.3951815598150503, 0,
     0, 7.6126777700894994, 0,
     0, 0, 14.943617303371177])
-  for u in xrange(-axis_range, axis_range+1):
-    for v in xrange(-axis_range, axis_range+1):
-      for w in xrange(axis_range+1):
+  for u in range(-axis_range, axis_range+1):
+    for v in range(-axis_range, axis_range+1):
+      for w in range(axis_range+1):
         for axis in [(u,v,w), (hex_orth*matrix.col((u,v,w))).elems]:
           for angle in angles:
             try:
@@ -105,7 +106,7 @@ def exercise_axis_and_angle(
                   except RuntimeError: pass
                   else: raise Exception_expected
   #
-  for i_trial in xrange(100):
+  for i_trial in range(100):
     r = flex.random_double_r3_rotation_matrix()
     from_matrix = scitbx.math.r3_rotation_axis_and_angle_from_matrix(r=r)
     rr = from_matrix.as_matrix()
@@ -122,32 +123,32 @@ def unit_quaternion_matrix_timings(n_trials=50, n_repeats=500):
   cpp_um = scitbx.math.r3_rotation_unit_quaternion_as_matrix
   cpp_mu = scitbx.math.r3_rotation_matrix_as_unit_quaternion
   times = [0,0,0,0]
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     qm = matrix.col.random(n=4, a=-1, b=1).normalize()
     rm = qm.unit_quaternion_as_r3_rotation_matrix()
     q = qm.elems
     r = cpp_um(q=q)
     t0 = time.time()
-    for i_repeat in xrange(n_repeats):
+    for i_repeat in range(n_repeats):
       qm.unit_quaternion_as_r3_rotation_matrix()
     times[0] += time.time()-t0
     t0 = time.time()
-    for i_repeat in xrange(n_repeats):
+    for i_repeat in range(n_repeats):
       rm.r3_rotation_matrix_as_unit_quaternion()
     times[1] += time.time()-t0
     t0 = time.time()
-    for i_repeat in xrange(n_repeats):
+    for i_repeat in range(n_repeats):
       cpp_um(q=q)
     times[2] += time.time()-t0
     t0 = time.time()
-    for i_repeat in xrange(n_repeats):
+    for i_repeat in range(n_repeats):
       cpp_mu(r=r)
     times[3] += time.time()-t0
-  print "times unit quaternion <-> matrix"
-  print "     py: %.2f %.2f s" % (times[0], times[1])
-  print "    c++: %.2f %.2f s" % (times[2], times[3])
+  print("times unit quaternion <-> matrix")
+  print("     py: %.2f %.2f s" % (times[0], times[1]))
+  print("    c++: %.2f %.2f s" % (times[2], times[3]))
   if (times[2] != 0 and times[3] != 0):
-    print "  ratio: %.2f %.2f" % (times[0]/times[2], times[1]/times[3])
+    print("  ratio: %.2f %.2f" % (times[0]/times[2], times[1]/times[3]))
   sys.stdout.flush()
 
 def check_vector_to_vector(g, t):
@@ -180,7 +181,7 @@ def check_vector_to_100(g):
   assert approx_equal(r.determinant(), 1)
 
 def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
-  principal_vectors = [matrix.col(v) for v in (1,0,0), (0,1,0), (0,0,1)]
+  principal_vectors = [matrix.col(v) for v in ((1,0,0), (0,1,0), (0,0,1))]
   for g0 in principal_vectors:
     for t0 in principal_vectors:
       for g in [g0, -g0]:
@@ -194,7 +195,7 @@ def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
     for it,t0 in enumerate(principal_vectors):
       if (ig == it): continue
       axis = g0.cross(t0)
-      for e in xrange(0, max_exp, angle_exponent_step):
+      for e in range(0, max_exp, angle_exponent_step):
         angle = 10**(-e)
         for angle in [angle, -angle]:
           r = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
@@ -205,13 +206,13 @@ def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
               check_vector_to_vector(g, r*t)
               check_vector_to_vector(r*g, t)
               check_vector_to_vector(r*g, r*t)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     g = matrix.col(flex.random_double_point_on_sphere())
     check_vector_to_vector(g, g)
     check_vector_to_vector(g, -g)
     t = matrix.col(flex.random_double_point_on_sphere())
     check_vector_to_vector(g, t)
-    for e in xrange(0, max_exp, angle_exponent_step):
+    for e in range(0, max_exp, angle_exponent_step):
       angle = 10**(-e)
       for angle in [angle, -angle]:
         rt = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
@@ -222,7 +223,7 @@ def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
   #
   check_vector_to_001((0,0,1))
   check_vector_to_001((0,0,-1))
-  for e in xrange(0, max_exp, angle_exponent_step):
+  for e in range(0, max_exp, angle_exponent_step):
     angle = 10**(-e)
     for angle in [angle, -angle]:
       rg = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
@@ -230,13 +231,13 @@ def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
         angle=angle)) * matrix.col((0,0,1))
       check_vector_to_001(rg)
       check_vector_to_001(-rg)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     g = matrix.col(flex.random_double_point_on_sphere())
     check_vector_to_001(g)
   #
   check_vector_to_010((0,1,0))
   check_vector_to_010((0,-1,0))
-  for e in xrange(0, max_exp, angle_exponent_step):
+  for e in range(0, max_exp, angle_exponent_step):
     angle = 10**(-e)
     for angle in [angle, -angle]:
       rg = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
@@ -244,13 +245,13 @@ def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
         angle=angle)) * matrix.col((0,1,0))
       check_vector_to_010(rg)
       check_vector_to_010(-rg)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     g = matrix.col(flex.random_double_point_on_sphere())
     check_vector_to_010(g)
   #
   check_vector_to_100((1,0,0))
   check_vector_to_100((-1,0,0))
-  for e in xrange(0, max_exp, angle_exponent_step):
+  for e in range(0, max_exp, angle_exponent_step):
     angle = 10**(-e)
     for angle in [angle, -angle]:
       rg = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
@@ -258,7 +259,7 @@ def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
         angle=angle)) * matrix.col((1,0,0))
       check_vector_to_100(rg)
       check_vector_to_100(-rg)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     g = matrix.col(flex.random_double_point_on_sphere())
     check_vector_to_100(g)
   #
@@ -276,7 +277,7 @@ def exercise():
   exercise_axis_and_angle()
   unit_quaternion_matrix_timings()
   exercise_vector_to_vector()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise()

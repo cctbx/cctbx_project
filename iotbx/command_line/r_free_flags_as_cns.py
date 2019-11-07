@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import reflection_file_reader
 import iotbx.cns.miller_array
 import sys, os
@@ -16,7 +16,7 @@ def run(args):
   assert r_free_flags is not None
   file_name = os.path.splitext(os.path.basename(args[0]))[0]+".cns"
   assert not os.path.isfile(file_name)
-  print "Writing:", file_name
+  print("Writing:", file_name)
   r_free_flags.export_as_cns_hkl(
     file_object=open(file_name, "w"),
     array_names=["TEST"])

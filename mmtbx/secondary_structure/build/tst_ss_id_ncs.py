@@ -1,8 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
 import mmtbx.model
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from scitbx.math import superpose
 from libtbx.test_utils import approx_equal
 
@@ -270,7 +270,7 @@ def exercise():
   log_cont = log.getvalue()
   assert log_cont.find("skipping, not in NCS master") > 0
   # print log_cont
-  print "OK"
+  print("OK")
 
 
 if (__name__ == "__main__"):

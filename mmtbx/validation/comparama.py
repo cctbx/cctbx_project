@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import iotbx.phil
 from libtbx import group_args
@@ -8,11 +8,35 @@ from mmtbx.validation.ramalyze import ramalyze, find_region_max_value
 import math
 import numpy as np
 from collections import Counter
+from scitbx.array_family import flex
+import six
+from six.moves import zip
 
 master_phil_str = '''
 comparama {
   nproc = 1
     .type = int
+  show_labels = True
+    .type = bool
+    .help = show labels for outlier residues
+  outlier_favored = lime
+    .type = str
+    .help = Color of outlier->favored arrows. None if not needed
+  outlier_allowed = lime
+    .type = str
+    .help = Color of outlier->allowed arrows. None if not needed
+  allowed_outlier = red
+    .type = str
+    .help = Color of allowed->outlier arrows. None if not needed
+  allowed_favored = green
+    .type = str
+    .help = Color of allowed->favored arrows. None if not needed
+  favored_outlier = red
+    .type = str
+    .help = Color of favored->outlier arrows. None if not needed
+  favored_allowed = orange
+    .type = str
+    .help = Color of favored->allowed arrows. None if not needed
 }
 '''
 
@@ -120,10 +144,19 @@ class rcompare(object):
           self.skipped_2.append(r2)
     self.res_columns = None
     if len(self.results) > 0:
-      self.res_columns = zip(*self.get_results())
+      self.res_columns = list(zip(*self.get_results()))
 
   def get_results(self):
     return self.results
+
+  def get_results_as_vec3(self):
+    r1 = flex.vec3_double()
+    r2 = flex.vec3_double()
+    assert len(self.results) > 0
+    for r in self.results:
+      r1.append((r[2], r[3], 0))
+      r2.append((r[4], r[5], 0))
+    return r1, r2
 
   def get_ramalyze_objects(self):
     return self.rama1, self.rama2
@@ -154,26 +187,41 @@ class rcompare(object):
     if self.plots is not None:
       return self.plots
     self.plots = self.rama2.get_plots(
-        show_labels=True,
+        show_labels=self.params.show_labels,
         point_style='bo',
         markersize=3,
         markeredgecolor="black",
         dpi=300,
         markerfacecolor="white")
-    for pos, plot in self.plots.iteritems():
+    for pos, plot in six.iteritems(self.plots):
       # prepare data
-      got_outliers = [x for x in self.results if (x[-3]==pos and x[-4].find("-> OUTLIER") > 0)]#.sort(key=lambda x:x[1], reverse=True)
-      got_outliers.sort(key=lambda x:x[1], reverse=True)
-      # print("got_outliers:", len(got_outliers))
-      # for o in got_outliers:
-      #   self.show_single_result(o)
-      got_not_outliers = [x for x in self.results if (x[-3]==pos and x[-4] == "OUTLIER -> Favored")]#.sort(key=lambda x:x[1], reverse=True)
-      got_not_outliers.sort(key=lambda x:x[1], reverse=True)
-      # print("got_not_outliers:", len(got_not_outliers))
-      # for o in got_not_outliers:
-      #   self.show_single_result(o)
+      arrows_info = []
+      if self.params.allowed_outlier is not None:
+        arrs = [x for x in self.results if (x[-3]==pos and x[-4] == "Allowed -> OUTLIER")]
+        arrs.sort(key=lambda x:x[1], reverse=True)
+        arrows_info.append((arrs, self.params.allowed_outlier))
+      if self.params.allowed_favored is not None:
+        arrs = [x for x in self.results if (x[-3]==pos and x[-4] == "Allowed -> Favored")]
+        arrs.sort(key=lambda x:x[1], reverse=True)
+        arrows_info.append((arrs, self.params.allowed_favored))
+      if self.params.favored_outlier is not None:
+        arrs = [x for x in self.results if (x[-3]==pos and x[-4] == "Favored -> OUTLIER")]
+        arrs.sort(key=lambda x:x[1], reverse=True)
+        arrows_info.append((arrs, self.params.favored_outlier))
+      if self.params.favored_allowed is not None:
+        arrs = [x for x in self.results if (x[-3]==pos and x[-4] == "Favored -> Allowed")]
+        arrs.sort(key=lambda x:x[1], reverse=True)
+        arrows_info.append((arrs, self.params.favored_allowed))
+      if self.params.outlier_favored is not None:
+        arrs = [x for x in self.results if (x[-3]==pos and x[-4] == "OUTLIER -> Favored")]
+        arrs.sort(key=lambda x:x[1], reverse=True)
+        arrows_info.append((arrs, self.params.outlier_favored))
+      if self.params.outlier_allowed is not None:
+        arrs = [x for x in self.results if (x[-3]==pos and x[-4] == "OUTLIER -> Allowed")]
+        arrs.sort(key=lambda x:x[1], reverse=True)
+        arrows_info.append((arrs, self.params.outlier_allowed))
 
-      for data, color in [(got_outliers, "red"), (got_not_outliers, "lime")]:
+      for data, color in arrows_info:
         # print (len(data))
         if data and len(data) < 0: continue
         ad = [((x[2], x[3]),(x[4], x[5])) for x in data]

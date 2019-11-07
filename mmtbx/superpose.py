@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 import os
 import itertools
@@ -16,6 +16,8 @@ import scitbx.math
 import scitbx.math.superpose
 
 from libtbx.utils import Sorry
+from six.moves import zip
+from six.moves import map
 
 # Ideas:
 #   preset options: Ca, backbone, all atom
@@ -263,7 +265,7 @@ class SuperposePDB(object):
     """Log."""
     if self._quiet:
       return
-    print >> self._log, "%s: "%self.desc, " ".join(map(str, msg))
+    print("%s: "%self.desc, " ".join(map(str, msg)), file=self._log)
 
   def _print_rmsd(self, sites_moving, sites_fixed, desc=''):
     """Print statistics on the RMSD between sites_moving and sites_fixed."""
@@ -381,7 +383,7 @@ class SuperposePDB(object):
       # Yield the RMSD for this window.
       try:
         yield self.fit(xyz_moving, xyz_fixed)
-      except Exception, e:
+      except Exception as e:
         pass
         # self.log("Fitting error: %s"%e)
 
@@ -545,7 +547,7 @@ def run(args, command_name="phenix.superpose_pdbs", log=None):
   # Information.
   params.show(out=log)
 
-  print "\n===== Init ====="
+  print("\n===== Init =====")
   # The fixed model can only contain a single model.
   # It will raise an Exception if there is more than one!
   fixed = SuperposePDB(
@@ -567,13 +569,13 @@ def run(args, command_name="phenix.superpose_pdbs", log=None):
       quiet=quiet
   )
   for count, moving in enumerate(SuperposePDB.open_models(moving, **moving_args)):
-    print "\n===== Aligning %s to %s ====="%(moving.desc, fixed.desc)
+    print("\n===== Aligning %s to %s ====="%(moving.desc, fixed.desc))
     if not pe.selection_moving:
       moving.selectomatic(fixed)
     rmsd, lsq = moving.superpose(fixed)
     if output:
       filename = '%s-%s.pdb'%(output, count)
-      print "\n===== Writing %s output to %s ====="%(moving.desc, filename)
+      print("\n===== Writing %s output to %s ====="%(moving.desc, filename))
       moving.output(lsq, filename=filename)
 
 class launcher(libtbx.runtime_utils.target_with_save_result):

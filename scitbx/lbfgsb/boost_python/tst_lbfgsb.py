@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx import lbfgsb
 from scitbx.array_family import flex
 import scitbx.math
 from libtbx.test_utils import approx_equal, eps_eq, Exception_expected
 import sys
+from six.moves import range
 
 def exercise_minimizer_interface():
   n = 25
@@ -38,7 +39,7 @@ def exercise_minimizer_interface():
     if (not enable_stp_init):
       try:
         minimizer.requests_stp_init()
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert str(e).endswith(": SCITBX_ASSERT(enable_stp_init()) failure.")
       else: raise Exception_expected
     else:
@@ -82,15 +83,15 @@ def driver1(use_fortran_library=False):
     iprint = 1000
   else:
     iprint = -1
-  for i in xrange(0,n,2):
+  for i in range(0,n,2):
     nbd[i] = 2
     l[i] = 1.0e0
     u[i] = 1.0e2
-  for i in xrange(1,n,2):
+  for i in range(1,n,2):
     nbd[i] = 2
     l[i] = -1.0e2
     u[i] = 1.0e2
-  for i in xrange(n):
+  for i in range(n):
     x[i] = 3.0e0
   minimizer = lbfgsb.minimizer(
     n=n,
@@ -105,12 +106,12 @@ def driver1(use_fortran_library=False):
   while True:
     if (minimizer.process(x, f, g, use_fortran_library)):
       f=.25e0*(x[0]-1.e0)**2
-      for i in xrange(1,n):
+      for i in range(1,n):
         f=f+(x[i]-x[i-1]**2)**2
       f=4.e0*f
       t1=x[1]-x[0]**2
       g[0]=2.e0*(x[0]-1.e0)-1.6e1*x[0]*t1
-      for i in xrange(1,n-1):
+      for i in range(1,n-1):
         t2=t1
         t1=x[i+1]-x[i]**2
         g[i]=8.e0*t2-1.6e1*x[i]*t1
@@ -161,7 +162,7 @@ def driver1(use_fortran_library=False):
 def run():
   exercise_minimizer_interface()
   driver1(use_fortran_library=("--fortran" in sys.argv[1:]))
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # (jEdit options) :folding=explicit:collapseFolds=1:
 #This module contains the training/exploration components of cablam
 #It can be run stand-alone with many commandline options
@@ -323,7 +323,7 @@ phenix.cablam_training cablam=True b_max=30.0 prune=GLY probe_motifs=parallel_be
 #Will need to make distinction between main- and side-chain eventually
 #-------------------------------------------------------------------------------
 def stripB(resdata, bmax):
-  reslist = resdata.keys()
+  reslist = list(resdata.keys())
   for resid in reslist:
     deleted = False
     for alt in resdata[resid].alts:
@@ -347,7 +347,7 @@ def stripB(resdata, bmax):
 #  forthcoming, but will be separate.
 #-------------------------------------------------------------------------------
 def prune_alts(resdata):
-  reslist = resdata.keys()
+  reslist = list(resdata.keys())
   for resid in reslist:
     residue = resdata[resid]
     if len(residue.alts) > 1:
@@ -501,7 +501,7 @@ def make_probe_data(hierarchy):
 #-------------------------------------------------------------------------------
 def add_probe_data(resdata, open_probe_file):
   #print open_probe_file
-  reskeys = resdata.keys()
+  reskeys = list(resdata.keys())
   for line in open_probe_file:
     #Probe Unformatted Output:
     #name:pat:type:srcAtom:targAtom:min-gap:gap:spX:spY:spZ:spikeLen:score:stype:ttype:x:y:z:sBval:tBval
@@ -554,10 +554,10 @@ def add_probe_data(resdata, open_probe_file):
     # will be an object with chain, resnum, resname, and icode.
     # If src is not in resdata then we arn't interested.
     src_key = ' '.join(['', srcChain, '%04i' % srcNum, srcIns])
-    if src_key not in resdata.keys() : continue
+    if src_key not in list(resdata.keys()) : continue
     srcResidue = resdata[src_key]
     targ_key = ' '.join(['', trgChain, '%04i' % trgNum, trgIns])
-    if targ_key not in resdata.keys():
+    if targ_key not in list(resdata.keys()):
       continue
       #trgResidue = group_args(chain   = trgChain,
       #                        resnum  = trgNum,
@@ -572,7 +572,7 @@ def add_probe_data(resdata, open_probe_file):
                         dotcount = dotcount,
                         mingap   = mingap,
                         seqdist  = srcResidue.seq_dist(trgResidue))
-    if srcAtomname not in srcResidue.probe.keys():
+    if srcAtomname not in list(srcResidue.probe.keys()):
       srcResidue.probe[srcAtomname] = {}
     #####srcResidue = resdata[' '.join(['', srcChain, '%04i' % srcNum, srcIns])]
     #####trgResidue = resdata[' '.join(['', trgChain, '%04i' % trgNum, trgIns])]
@@ -646,7 +646,7 @@ def csv_header(kinorder, doconnections=False, writeto=sys.stdout):
 #  using the programs Silk and kin2Dcont/kin3Dcont from the Richardson Lab.
 def csv_print(protein, kinorder, skiplist=[], inclist=[],
   doconnections=False, cis_or_trans='both', writeto=sys.stdout):
-  reslist = protein.keys()
+  reslist = list(protein.keys())
   reslist.sort()
   for resid in reslist:
     if skipcheck(protein[resid], skiplist, inclist):
@@ -687,7 +687,7 @@ def kin_print(protein, kinorder, skiplist=[], inclist=[], cis_or_trans='both',
     sys.stderr.write('\nNo geometric measures (e.g. rama=True) specified')
     sys.stderr.write('\nExiting . . .\n')
     sys.exit()
-  reslist = protein.keys()
+  reslist = list(protein.keys())
   reslist.sort()
   for resid in reslist:
     if skipcheck(protein[resid], skiplist, inclist):
@@ -748,7 +748,7 @@ def kin_print_probe_annote(motif_instances, writeto=sys.stdout):
     if motif_instances[motif_name]:
       writeto.write('@group {'+motif_name+'}\n')
       ref_instance = motif_instances[motif_name][0]
-      indices = ref_instance.residues.keys()
+      indices = list(ref_instance.residues.keys())
       indices.sort()
       for index in indices:
         writeto.write('@balllist {'+ref_instance.names[index]+'}\n')
@@ -761,7 +761,7 @@ def kin_print_probe_annote(motif_instances, writeto=sys.stdout):
 
 #{{{
 def old_kin_print_probe_annote(resdata, motif_list, writeto=sys.stdout):
-  reskeys = resdata.keys()
+  reskeys = list(resdata.keys())
   reskeys.sort()
   motifs = cablam_fingerprints.fetch_fingerprints(motif_list)
   for motif in motifs:
@@ -812,7 +812,7 @@ def kin_print_by_instance(motif_instances, motif_list, kinorder, outfiles):
         sys.stderr.write(
           '  '+motif_name+' has incomplete measures, probably due to b_max\n')
         continue
-      indices = instance.names.keys()
+      indices = list(instance.names.keys())
       indices.sort()
       #print indices
       residue = instance.residues[indices[0]]
@@ -840,7 +840,7 @@ def res_seq_by_instance(motif_instances):
   'MLY':'K'}
   for motif_name in motif_instances:
     for instance in motif_instances[motif_name]:
-      indices = instance.residues.keys()
+      indices = list(instance.residues.keys())
       indices.sort()
       seq_string = []
       for index in indices:

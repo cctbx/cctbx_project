@@ -1,5 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import csv
+from six.moves import range
 
 class writer(object):
   def __init__(self,

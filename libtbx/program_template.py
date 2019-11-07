@@ -65,7 +65,8 @@ program {
 
   # text shown at the end of the command-line program
   epilog = '''
-For additional help, you can contact the developers at cctbx@cci.lbl.gov
+For additional help, you can contact the developers at cctbxbb@phenix-online.org
+or https://github.com/cctbx/cctbx_project
 
 '''
 
@@ -76,6 +77,15 @@ For additional help, you can contact the developers at cctbx@cci.lbl.gov
   # automatically added, so no need to redefine
   output_phil_str = '''
 output {
+  prefix = None
+    .type = str
+    .help = Prefix string added to automatically generated output filenames
+  suffix = None
+    .type = str
+    .help = Suffix string added to automatically generated output filenames
+  serial = 0
+    .type = int
+    .help = Serial number added to automatically generated output filenames
   overwrite = False
     .type = bool
     .help = Overwrite files when set to True
@@ -139,6 +149,16 @@ output {
 
     self.custom_init()
 
+    # set DataManager defaults
+    if self.data_manager is not None:
+      self.data_manager.set_default_output_filename(
+        self.get_default_output_filename())
+      try:
+        self.data_manager.set_overwrite(self.params.output.overwrite)
+      except AttributeError:
+        pass
+      self.data_manager.set_program(self)
+
   def header(self, text):
     print("-"*79, file=self.logger)
     print(text, file=self.logger)
@@ -193,5 +213,152 @@ output {
 
     '''
     return None
+
+  # ---------------------------------------------------------------------------
+  def get_program_phil(self, diff=False):
+    '''
+    Function for getting the PHIL extract of the Program
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: libtbx.phil.scope
+    '''
+    working_phil = self.master_phil.format(python_object=self.params)
+    if diff:
+      working_phil = self.master_phil.fetch_diff(working_phil)
+    return working_phil
+
+  # ---------------------------------------------------------------------------
+  def get_data_phil(self, diff=False):
+    '''
+    Function for getting the PHIL scope from the DataManager
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: libtbx.phil.scope
+    '''
+    if self.data_manager is None:
+      return libtbx.phil.parse('')
+    working_phil = self.data_manager.export_phil_scope()
+    if diff:
+      working_phil = self.data_manager.master_phil.fetch_diff(working_phil)
+    return working_phil
+
+  # ---------------------------------------------------------------------------
+  def get_program_extract(self, diff=False):
+    '''
+    Function for getting the PHIL extract of the Program
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: libtbx.phil.scope_extract
+    '''
+    return self.get_program_phil(diff=diff).extract()
+
+  # ---------------------------------------------------------------------------
+  def get_data_extract(self, diff=False):
+    '''
+    Function for getting the PHIL extract from the DataManager
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: libtbx.phil.scope_extract
+    '''
+    return self.get_data_phil(diff=diff).extract()
+
+  # ---------------------------------------------------------------------------
+  def get_program_phil_str(self, diff=False):
+    '''
+    Function for getting the PHIL string of the Program
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: str
+    '''
+    return self.get_program_phil(diff=diff).as_str()
+
+  # ---------------------------------------------------------------------------
+  def get_data_phil_str(self, diff=False):
+    '''
+    Function for getting the PHIL string from the DataManager
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: str
+    '''
+    return self.get_data_phil(diff=diff).as_str()
+
+  # ---------------------------------------------------------------------------
+  def get_full_phil_str(self, diff=False):
+    '''
+    Function for getting the full PHIL string of the DataManager and Program
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: str
+    '''
+    return self.get_data_phil_str(diff=diff) + self.get_program_phil_str(diff=diff)
+
+  # ---------------------------------------------------------------------------
+  def get_default_output_filename(self):
+    '''
+    Given the output.prefix, output.suffix, and output.serial PHIL parameters,
+    return the default output filename
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    filename: str
+      The default output filename without a file extension
+    '''
+
+    filename = 'cctbx_program'
+    if hasattr(self.params, 'output'):
+      if getattr(self.params.output, 'prefix', None) is not None:
+        filename = self.params.output.prefix
+      if getattr(self.params.output, 'suffix', None) is not None:
+        filename += '{suffix}'.format(suffix=self.params.output.suffix)
+      if getattr(self.params.output, 'serial', None) is not None:
+        filename += '_{serial:03d}'.format(serial=self.params.output.serial)
+
+    return filename
 
 # =============================================================================

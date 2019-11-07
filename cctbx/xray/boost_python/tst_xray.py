@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import adptbx
@@ -11,11 +11,10 @@ from cctbx.array_family import flex
 from scitbx.array_family import shared
 from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal, show_diff
-from cStringIO import StringIO
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import cStringIO as StringIO
+from six.moves import range
+from six.moves import zip
+from six.moves import cPickle as pickle
 
 def exercise_scatterer_flags():
   f = xray.scatterer_flags()
@@ -131,23 +130,23 @@ def exercise_scatterer_flags():
   assert f.use_u_aniso_only()
   f.set_use_u(iso=True, aniso=True)
   try: f.use_u_iso_only()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "scatterer.flags.u_iso_only(): u_iso and u_aniso both true.")
   else: raise Exception_expected
   try: f.use_u_aniso_only()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "scatterer.flags.u_aniso_only(): u_iso and u_aniso both true.")
   else: raise Exception_expected
   f.set_use_u(iso=False, aniso=False)
   try: f.use_u_iso_only()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "scatterer.flags.u_iso_only(): u_iso and u_aniso both false.")
   else: raise Exception_expected
   try: f.use_u_aniso_only()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "scatterer.flags.u_aniso_only(): u_iso and u_aniso both false.")
   else: raise Exception_expected
@@ -531,7 +530,7 @@ def exercise_xray_scatterer():
   x.flags.set_use_u_aniso(True)
   try:
     x.apply_symmetry(uc, sg.group(), u_star_tolerance=0.1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("is_compatible_u_star") > 0
   else:
     raise Exception_expected
@@ -717,7 +716,7 @@ Q  fdp=4.000000)""")
       assert approx_equal(xs.u_iso_or_equiv(unit_cell=None), expected)
     else:
       try: xs.u_iso_or_equiv(unit_cell=None)
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert str(e).startswith("cctbx Internal Error: ")
       else: raise Exception_expected
     results_u_cart_plus_u_iso.append(xs.u_cart_plus_u_iso(unit_cell=uc))
@@ -726,7 +725,7 @@ Q  fdp=4.000000)""")
         xs.u_cart_plus_u_iso(unit_cell=None), (u_iso,u_iso,u_iso,0,0,0))
     else:
       try: xs.u_cart_plus_u_iso(unit_cell=None)
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert str(e).startswith("cctbx Internal Error: ")
       else: raise Exception_expected
   assert approx_equal(results_u_cart_plus_u_iso, [
@@ -912,15 +911,15 @@ def exercise_scattering_type_registry():
     l.show(out=restored)
     assert not show_diff(restored.getvalue(), orig.getvalue())
   try: reg.unique_index("foo")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'scattering_type "foo" not in scattering_type_registry.'
   else: raise Exception_expected
   try: reg.gaussian_not_optional(scattering_type="custom")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'gaussian not defined for scattering_type "custom".'
   else: raise Exception_expected
   try: reg.unique_form_factors_at_d_star_sq(d_star_sq=0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'gaussian not defined for scattering_type "custom".'
   else: raise Exception_expected
 
@@ -1307,7 +1306,7 @@ def exercise_minimization_apply_shifts():
   shifts = flex.double(2, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
     uc, scatterers, shifts).shifted_scatterers
-  for i in xrange(2):
+  for i in range(2):
     assert approx_equal(shifted_scatterers[i].occupancy, -9)
   f = xray.ext.gradient_flags(
     False, False, False, False, True, False, False, False)
@@ -1325,7 +1324,7 @@ def exercise_minimization_apply_shifts():
     uc, scatterers, shifts).shifted_scatterers
   assert approx_equal(shifted_scatterers[0].fp, -11)
   assert shifted_scatterers[1].fp == -10
-  for i in xrange(2):
+  for i in range(2):
     assert shifted_scatterers[i].fdp == scatterers[i].fdp
   f = xray.ext.gradient_flags(
     False, False, False, False, False, True, False, False)
@@ -1348,14 +1347,14 @@ def exercise_minimization_apply_shifts():
   shifts = flex.double(1)
   try:
     xray.ext.minimization_apply_shifts(uc, scatterers, shifts)
-  except Exception, e:
+  except Exception as e:
     assert str(e) == "scitbx Error: Array of shifts is too small."
   else:
     raise Exception_expected
   shifts = flex.double(3)
   try:
     xray.ext.minimization_apply_shifts(uc, scatterers, shifts)
-  except Exception, e:
+  except Exception as e:
     assert str(e) == "cctbx Error: Array of shifts is too large."
   else:
     raise Exception_expected
@@ -1376,7 +1375,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(6))
+  xray_gradients = flex.double(range(6))
   geometry_restraints_site_gradients = flex.vec3_double([(1,-2,3),(-4,-5,6)])
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
@@ -1396,7 +1395,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(19))
+  xray_gradients = flex.double(range(19))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1415,7 +1414,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(13))
+  xray_gradients = flex.double(range(13))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1434,7 +1433,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(16))
+  xray_gradients = flex.double(range(16))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1477,7 +1476,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(19))
+  xray_gradients = flex.double(range(19))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1496,7 +1495,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(13))
+  xray_gradients = flex.double(range(13))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1515,7 +1514,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(11))
+  xray_gradients = flex.double(range(11))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1564,7 +1563,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(6))
+  xray_gradients = flex.double(range(6))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1584,7 +1583,7 @@ def exercise_minimization_add_gradients():
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
-  xray_gradients = flex.double(xrange(12))
+  xray_gradients = flex.double(range(12))
   xray.ext.minimization_add_gradients(
     scatterers=scatterers,
     xray_gradients=xray_gradients,
@@ -1930,9 +1929,8 @@ def exercise_twin_components():
   assert twin_a.grad == True
   twin_a.grad = False
   assert twin_a.grad == False
-  import cPickle
-  pickled_twin_a = cPickle.dumps(twin_a, cPickle.HIGHEST_PROTOCOL)
-  unpickled_twin_a = cPickle.loads(pickled_twin_a)
+  pickled_twin_a = pickle.dumps(twin_a, pickle.HIGHEST_PROTOCOL)
+  unpickled_twin_a = pickle.loads(pickled_twin_a)
   assert twin_a.value == unpickled_twin_a.value
   assert twin_a.twin_law == unpickled_twin_a.twin_law
   assert twin_a.grad == unpickled_twin_a.grad
@@ -2006,7 +2004,7 @@ def run():
   exercise_targets_common_results()
   exercise_targets_least_squares()
   exercise_maximum_likelihood_targets()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

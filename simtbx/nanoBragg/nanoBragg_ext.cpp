@@ -12,6 +12,9 @@
 
 #include <simtbx/nanoBragg/nanoBragg.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
 
 
 using namespace boost::python;
@@ -1047,8 +1050,8 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
   static void   set_mosaic_spread_deg(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.mosaic_spread = value/RTD;
       /* need to re-create mosaic domain table */
-      //nanoBragg.init_mosaicity();
-      //nanoBragg.init_steps();
+      nanoBragg.init_mosaicity();
+      nanoBragg.init_steps();
       //nanoBragg.show_mosaic_blocks();
   }
   /* number of discrete mosaic domains, default: 1 or 2 ; you will want more */
@@ -1058,8 +1061,8 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
   static void   set_mosaic_domains(nanoBragg& nanoBragg, int const& value) {
       nanoBragg.mosaic_domains = value;
       /* need to re-create mosaic domain table */
-      //nanoBragg.init_mosaicity();
-      //nanoBragg.init_steps();
+      nanoBragg.init_mosaicity();
+      nanoBragg.init_steps();
       //nanoBragg.show_mosaic_blocks();
   }
 
@@ -1238,6 +1241,71 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
   }
 
 
+  static PyObject*
+  raw_pixels_unsigned_short_as_python_bytes( nanoBragg const& nB,
+    double intfile_scale, int const&debug_x, int const& debug_y) {
+    std::basic_ostringstream<char> os;
+    const double* floatimage = nB.raw_pixels.begin();
+    double max_value = (double)std::numeric_limits<unsigned short int>::max();
+    double saturation = floor(max_value - 1 );
+    /* output as ints */
+
+    unsigned short int intimage;
+    double max_I = nB.max_I;
+    double max_I_x = nB.max_I_x;
+    double max_I_y = nB.max_I_y;
+    if(intfile_scale <= 0.0){
+        /* need to auto-scale */
+        int i=0;
+        for(int spixel=0;spixel<nB.spixels;++spixel)
+        {
+            for(int fpixel=0;fpixel<nB.fpixels;++fpixel)
+            {
+                if(fpixel==debug_x && spixel==debug_y) printf("DEBUG: pixel # %d at (%d,%d) has value %g\n",i,fpixel,spixel,floatimage[i]);
+                if(i==0 || max_I < floatimage[i])
+                {
+                    max_I = floatimage[i];
+                    max_I_x = fpixel;
+                    max_I_y = spixel;
+                }
+                ++i;
+            }
+        }
+        if(nB.verbose) printf("providing default scaling: max_I = %g @ (%g %g)\n",max_I,max_I_x,max_I_y);
+        intfile_scale = 1.0;
+        if(max_I>0.0) intfile_scale = 55000.0/(max_I);
+    }
+    if(nB.verbose) printf("scaling data by: intfile_scale = %g\n",intfile_scale);
+    double sum = 0.0;
+    max_I = 0.0;
+    int i = 0;
+    for(int spixel=0;spixel<nB.spixels;++spixel)
+    {
+        for(int fpixel=0;fpixel<nB.fpixels;++fpixel)
+        {
+            /* no noise, just use intfile_scale */
+            intimage = (unsigned short int) (std::min(saturation, floatimage[i]*intfile_scale ));
+            os.write((char *) &intimage, sizeof(unsigned short int));
+
+            if(nB.verbose>90) printf("DEBUG #%d %g -> %g -> %d\n",i,floatimage[i],floatimage[i]*intfile_scale,intimage);
+
+            if((double) intimage > max_I || i==0) {
+                max_I = (double) intimage;
+                max_I_x = fpixel;
+                max_I_y = spixel;
+            }
+            if(fpixel==debug_x && spixel==debug_y) printf("DEBUG: pixel # %d at (%d,%d) has int value %d\n",i,fpixel,spixel,intimage);
+
+            sum += intimage;
+            ++i;
+        }
+    }
+  #ifdef IS_PY3K
+    return PyBytes_FromStringAndSize(os.str().c_str(), os.str().size());
+  #else
+    return PyString_FromStringAndSize(os.str().c_str(), os.str().size());
+  #endif
+  }
 
 
   void
@@ -1677,7 +1745,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       .add_property("mosaic_spread_deg",
                      make_function(&get_mosaic_spread_deg,rbv()),
                      make_function(&set_mosaic_spread_deg,dcp()),
-                     "crystal mosaic spread spherical cap range, not radius (deg)")
+                     "crystal mosaic spread spherical cap radius, not range (deg)")
       /* number of discrete mosaic domains to generate, speed is inversely proportional to this */
       .add_property("mosaic_domains",
                      make_function(&get_mosaic_domains,rbv()),
@@ -1858,6 +1926,11 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
        "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, restricted options, plus OpenMP")
 
 #ifdef NANOBRAGG_HAVE_CUDA
+      .add_property("device_Id",
+                     make_getter(&nanoBragg::device_Id,rbv()),
+                     make_setter(&nanoBragg::device_Id,dcp()),
+                     "Which device to simulate on. ")
+
       /* actual run of the spot simulation, CUDA version */
       .def("add_nanoBragg_spots_cuda",&nanoBragg::add_nanoBragg_spots_cuda,
        "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, CUDA version")
@@ -1885,6 +1958,9 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       .def("to_smv_format",&nanoBragg::to_smv_format,
         (arg_("fileout"),arg_("intfile_scale")=0,arg_("debug_x")=-1,arg("debug_y")=-1),
         "interally produce an SMV-format image file on disk from the raw pixel array\nintfile_scale is applied before rounding off to integral pixel values")
+      .def("raw_pixels_unsigned_short_as_python_bytes",&raw_pixels_unsigned_short_as_python_bytes,
+        (arg_("intfile_scale")=0,arg_("debug_x")=-1,arg("debug_y")=-1),
+        "get the unsigned short raw pixels as a Python bytes object.  Intfile_scale is applied before rounding off to integral pixel values")
       .def("to_smv_format_streambuf",&nanoBragg::to_smv_format_streambuf,
         (arg_("output"),arg_("intfile_scale")=0,arg_("debug_x")=-1,arg("debug_y")=-1),
         "provide the integer buffer only to be used in Python for SMV-format output.  Intfile_scale is applied before rounding off to integral pixel values")

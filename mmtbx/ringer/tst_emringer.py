@@ -1,5 +1,5 @@
 
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 from mmtbx.ringer import em_scoring as score
 from mmtbx.programs import emringer
 from iotbx.file_reader import any_file
@@ -10,6 +10,7 @@ import libtbx.load_env
 import warnings
 import os.path
 from iotbx.cli_parser import run_program
+from six.moves import range
 
 def exercise_emringer_residue_scan():
   pdb_file = libtbx.env.find_in_repositories(

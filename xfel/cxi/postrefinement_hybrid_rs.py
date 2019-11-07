@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math
 from scitbx import matrix
 from cctbx import miller
@@ -98,7 +98,7 @@ class rs_hybrid(updated_rs):
       SWC = simple_weighted_correlation(I_weight.select(~non_positive),
             I_reference.select(~non_positive), I_observed.select(~non_positive))
 
-    print >> out, "Old correlation is", SWC.corr
+    print("Old correlation is", SWC.corr, file=out)
     assert params.postrefinement.algorithm=="rs_hybrid"
     Rhall = flex.double()
     for mill in MILLER:
@@ -140,7 +140,7 @@ class rs_hybrid(updated_rs):
     self.MINI2 = per_frame_helper( current_x = self.nave1_current,
         parameterization = self.nave1_parameterization_class, refinery = self.nave1_refinery,
         out = self.out )
-    print >>self.out, "Trying Lev-Mar2"
+    print("Trying Lev-Mar2", file=self.out)
     iterations = normal_eqns_solving.naive_iterations(non_linear_ls = self.MINI2,
         step_threshold = 0.0001,
         gradient_threshold = 1.E-10)
@@ -167,8 +167,8 @@ class rs_hybrid(updated_rs):
     # in samosa, handle this at a higher level, but handle it somehow.
     if fat_count < 3:
       raise ValueError("< 3 near-fulls after refinement")
-    print >> self.out, "On total %5d the fat selection is %5d"%(
-      len(self.observations_pair1_selected.indices()), fat_count)
+    print("On total %5d the fat selection is %5d"%(
+      len(self.observations_pair1_selected.indices()), fat_count), file=self.out)
     observations_original_index = \
       self.observations_original_index_pair1_selected.select(fat_selection)
 
@@ -186,8 +186,8 @@ class rs_hybrid(updated_rs):
     I_invalid = flex.bool([self.i_model.sigmas()[pair[0]] < 0. for pair in matches.pairs()])
     I_weight.set_selected(I_invalid,0.)
     SWC = simple_weighted_correlation(I_weight, I_reference, observations.data())
-    print >> self.out, "CORR: NEW correlation is", SWC.corr
-    print >> self.out, "ASTAR_FILE",file_name,tuple(self.nave1_refinery.get_eff_Astar(values))
+    print("CORR: NEW correlation is", SWC.corr, file=self.out)
+    print("ASTAR_FILE",file_name,tuple(self.nave1_refinery.get_eff_Astar(values)), file=self.out)
     self.final_corr = SWC.corr
     #another range assertion
     assert self.final_corr > 0.1,"correlation coefficient out of range (<= 0.1) after LevMar refinement"
@@ -301,5 +301,5 @@ class per_frame_helper(normal_eqns.non_linear_ls, normal_eqns.non_linear_ls_mixi
         jacobian.matrix_paste_column_in_place(der_r,j)
         #print >> pfh.out, "COL",j, list(der_r)
       pfh.add_equations(residuals, jacobian, weights=pfh.refinery.WEIGHTS)
-    print >> pfh.out, "rms %10.3f"%math.sqrt(flex.mean(pfh.refinery.WEIGHTS*residuals*residuals)),
+    print("rms %10.3f"%math.sqrt(flex.mean(pfh.refinery.WEIGHTS*residuals*residuals)), end=' ', file=pfh.out)
     values.show(pfh.out)

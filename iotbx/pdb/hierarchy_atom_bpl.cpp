@@ -200,7 +200,12 @@ namespace {
 #endif
         boost::python::throw_error_already_set();
       }
+#ifdef IS_PY3K
+      return boost::python::object(boost::python::handle<>(
+        PyUnicode_FromEncodedObject(str_obj, "ascii", "strict")));
+#else
       return boost::python::object(boost::python::handle<>(str_obj));
+#endif
     }
 
 #ifdef IS_PY3K
@@ -218,7 +223,8 @@ namespace {
       if (_PyBytes_Resize(&str_obj, static_cast<int>(str_len)) != 0) { \
         boost::python::throw_error_already_set(); \
       } \
-      return boost::python::object(boost::python::handle<>(str_obj)); \
+      return boost::python::object(boost::python::handle<>( \
+        PyUnicode_FromEncodedObject(str_obj, "ascii", "strict"))); \
     }
 
     IOTBX_LOC(sigatm)
@@ -279,7 +285,12 @@ namespace {
 #endif
         boost::python::throw_error_already_set();
       }
+#ifdef IS_PY3K
+      return boost::python::object(boost::python::handle<>(
+        PyUnicode_FromEncodedObject(str_obj, "ascii", "strict")));
+#else
       return boost::python::object(boost::python::handle<>(str_obj));
+#endif
     }
 
     // not inline to work around bug in

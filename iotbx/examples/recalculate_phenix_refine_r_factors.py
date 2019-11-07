@@ -6,7 +6,7 @@ for the entire dataset and for resolution shells.  This serves as an example
 both for processing MTZ files, and for cctbx.miller functionality.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.reflection_file_utils import get_r_free_flags_scores
 from iotbx.file_reader import any_file
 import sys
@@ -20,9 +20,9 @@ def compute_r_factors(fobs, fmodel, flags):
   fo_test = fobs.select(flags.data())
   r_work = fo_work.r1_factor(fc_work)
   r_free = fo_test.r1_factor(fc_test)
-  print "r_work = %.4f" % r_work
-  print "r_free = %.4f" % r_free
-  print ""
+  print("r_work = %.4f" % r_work)
+  print("r_free = %.4f" % r_free)
+  print("")
   flags.setup_binner(n_bins=20)
   fo_work.use_binning_of(flags)
   fc_work.use_binner_of(fo_work)
@@ -43,8 +43,8 @@ def compute_r_factors(fobs, fmodel, flags):
     cc_work_bin = fo_work_bin.correlation(fc_work_bin).coefficient()
     cc_free_bin = fo_test_bin.correlation(fc_test_bin).coefficient()
     legend = flags.binner().bin_legend(i_bin, show_counts=False)
-    print "%s  %8d %8d  %.4f %.4f  %.3f %.3f" % (legend, fo_work_bin.size(),
-      fo_test_bin.size(), r_work_bin, r_free_bin, cc_work_bin, cc_free_bin)
+    print("%s  %8d %8d  %.4f %.4f  %.3f %.3f" % (legend, fo_work_bin.size(),
+      fo_test_bin.size(), r_work_bin, r_free_bin, cc_work_bin, cc_free_bin))
 
 def run(args):
   mtz_in = any_file(args[0])

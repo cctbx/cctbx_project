@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import sys
 from iotbx.pdb import secondary_structure as ss
@@ -1936,7 +1936,7 @@ HELIX    9   9 PROa1  124  HISa1  133  1                                  10"""
   secstr = ss.annotation.from_records(records=lines)
   ss_out = secstr.as_pdb_str()
   assert not test_utils.show_diff(ss_out, two_char_chain_records)
-  print "OK"
+  print("OK")
 
 def tst_pdb_file():
   pdb_inp = iotbx.pdb.input(source_info=None,
@@ -1946,7 +1946,7 @@ def tst_pdb_file():
   new_ss = structure.as_pdb_str()
   old_ss = "\n".join(old_ss)
   assert not test_utils.show_diff(new_ss, old_ss)
-  print "OK"
+  print("OK")
 
 def tst_parsing_phil():
   phil_str = """\
@@ -2051,7 +2051,7 @@ secondary_structure.protein {
       pdb_lines=pdb_1ywf_sample_strings)
   ss_from_phil = annot.as_pdb_str()
   assert ss_from_file == ss_from_phil
-  print "OK"
+  print("OK")
 
 def get_annotation(phil_lines, pdb_lines):
   pdb_inp = iotbx.pdb.input(source_info=None,
@@ -2074,7 +2074,7 @@ def exercise_only_b_altloc():
   new_ss = structure.as_pdb_str()
   old_ss = "\n".join(old_ss)
   assert not test_utils.show_diff(new_ss, old_ss)
-  print "OK"
+  print("OK")
 
 def exercise_multiplication():
   from iotbx.pdb.utils import all_chain_ids
@@ -2110,7 +2110,7 @@ SHEET    2   A 5 LEU A  27  SER A  30 -1  O  ARG A  29   N  ARG A  13
       assert s.sheet_id == strand.sheet_id, "%s, %s" % (s.sheet_id, strand.sheet_id)
   assert ss_back.helices[0].serial == 'A5L'
   assert ss_back.sheets[0].sheet_id == 'AF7'
-  print "OK"
+  print("OK")
 
 def exercise(args):
   exercise_single()

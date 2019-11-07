@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import exceptions
 from libtbx.utils import Sorry
 
@@ -88,8 +88,8 @@ def select_best_combo_of(ai,better_than=0.36,candidates=20,basis=15,spot_sep=0.4
       continue
     except (RuntimeError) as f:
       if str(f).find("Iteration limit exceeded")>0: continue
-      print "Report this problem to DIALS developers:"
-      print "COMBO: (%d,%d,%d) rejected on C++ runtime error"%(combo[0],combo[1],combo[2])
+      print("Report this problem to DIALS developers:")
+      print("COMBO: (%d,%d,%d) rejected on C++ runtime error"%(combo[0],combo[1],combo[2]))
       #printcombo(ai,combo)
       continue
     except Exception:
@@ -145,7 +145,7 @@ def increase_mosaicity(pd,ai,verbose=1):
     new_mosaicity = ai.getMosaicity()
     if new_mosaicity>old_mosaicity:
       if verbose:
-        print 'input mosaicity %4.1f; new value %4.1f'%(old_mosaicity,new_mosaicity)
+        print('input mosaicity %4.1f; new value %4.1f'%(old_mosaicity,new_mosaicity))
       pd['mosaicity']='%f'%new_mosaicity
 
 

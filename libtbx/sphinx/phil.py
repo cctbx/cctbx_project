@@ -1,16 +1,22 @@
 from __future__ import absolute_import, division, print_function
 
-from six.moves import cStringIO as StringIO
 import docutils.nodes
+import iotbx.phil
+import libtbx.phil
+import libtbx.utils
 from docutils.parsers.rst import Directive
 from docutils.parsers.rst import directives
+from six import string_types
+from six.moves import cStringIO as StringIO
+from types import ModuleType
+
 
 def setup(app):
   app.add_directive('phil', PhilDirective)
+  return {"parallel_read_safe": True}
 
 
 class PhilDirective(Directive):
-
   # this disables content in the directive
   has_content = False
   required_arguments = 1
@@ -33,11 +39,6 @@ class PhilDirective(Directive):
     return [node]
 
   def _find_phil_scope(self, phil_include):
-    from types import ModuleType
-    import libtbx.utils
-    import libtbx.phil
-    import iotbx.phil
-
     # common phil variable names
     search = [
       "", "master_phil_scope", "master_params", "master_phil",
@@ -66,12 +67,10 @@ class PhilDirective(Directive):
     # Check if the module attribute is a string, a scope, ...
     if isinstance(master_params, libtbx.phil.scope):
       pass
-    elif isinstance(master_params, (str, unicode)):
+    elif isinstance(master_params, string_types):
       master_params = iotbx.phil.parse(master_params, process_includes=True)
     elif hasattr(master_params, '__call__'):
       master_params = master_params()
-    else:
-      pass
 
     if not master_params:
       raise Exception("No PHIL command found for %s." % phil_include)

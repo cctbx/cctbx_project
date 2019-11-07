@@ -1,7 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.xray.targets import r1
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from six.moves import range
+from six.moves import zip
 
 def exercise(mt, n_refl, log):
   f_obs = mt.random_double(size=n_refl)
@@ -14,7 +16,7 @@ def exercise(mt, n_refl, log):
     eps = 1e-6
     g_fin = flex.double()
     c_fin = flex.double()
-    for ih in xrange(f_calc_abs.size()):
+    for ih in range(f_calc_abs.size()):
       fs = []
       gs = []
       c_orig = f_calc_abs[ih]
@@ -26,17 +28,17 @@ def exercise(mt, n_refl, log):
       g_fin.append((fs[0]-fs[1])/(2*eps))
       c_fin.append((gs[0]-gs[1])/(2*eps))
       f_calc_abs[ih] = c_orig
-    print >> log, "g fin:", numstr(g_fin)
-    print >> log, "  ana:", numstr(trg.g)
+    print("g fin:", numstr(g_fin), file=log)
+    print("  ana:", numstr(trg.g), file=log)
     assert approx_equal(trg.g, g_fin)
-    print >> log, "c fin:", numstr(c_fin)
-    print >> log, "  ana:", numstr(trg.c)
+    print("c fin:", numstr(c_fin), file=log)
+    print("  ana:", numstr(trg.c), file=log)
     assert approx_equal(trg.c, c_fin)
   def check_f_calc_derivs():
     eps = 1e-6
     g_fin = flex.complex_double()
     c_fin = flex.vec3_double()
-    for ih in xrange(f_calc.size()):
+    for ih in range(f_calc.size()):
       c_orig = f_calc[ih]
       g_fin_ab = []
       c_fin_ab = []
@@ -59,13 +61,13 @@ def exercise(mt, n_refl, log):
       f_calc[ih] = c_orig
     for pn,f,a in zip(
           g_fin.part_names(), g_fin.parts(), trg.f_calc_gradients.parts()):
-      print >> log, "g fin %s:" % pn, numstr(f)
-      print >> log, "  ana %s:" % pn, numstr(a)
+      print("g fin %s:" % pn, numstr(f), file=log)
+      print("  ana %s:" % pn, numstr(a), file=log)
     assert approx_equal(trg.f_calc_gradients, g_fin)
     for pn,f,a in zip(
           ["aa", "bb", "ab"], c_fin.parts(), trg.f_calc_hessians.parts()):
-      print >> log, "c fin %s:" % pn, numstr(f)
-      print >> log, "  ana %s:" % pn, numstr(a)
+      print("c fin %s:" % pn, numstr(f), file=log)
+      print("  ana %s:" % pn, numstr(a), file=log)
     assert approx_equal(trg.f_calc_hessians, c_fin)
   check_f_calc_abs_derivs()
   check_f_calc_derivs()
@@ -90,9 +92,9 @@ def run(args):
     import sys
     log = sys.stdout
   mt = flex.mersenne_twister(seed=0)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     exercise(mt, n_refl, log)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

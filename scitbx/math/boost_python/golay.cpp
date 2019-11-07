@@ -30,6 +30,7 @@ namespace {
       class_<w_t>("golay_24_12_generator")
         .def("at_end", &w_t::at_end)
         .def("next", next)
+        .def("__next__", next)
         .def("__iter__", boost_python::pass_through)
       ;
     }

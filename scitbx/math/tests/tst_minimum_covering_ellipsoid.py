@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 def run(args):
   assert len(args) == 0
   n_trials = 100
@@ -53,13 +54,13 @@ def run(args):
     assert is_below_limit(value=min(rms), limit=1e-8, eps=0)
   mt = flex.mersenne_twister(seed=0)
   check((0,0,0), (1,2,3), (1,0,0,0,1,0,0,0,1))
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     center = list(mt.random_double(size=3)*8-4)
     radii = list(mt.random_double(size=3)*3+0.1)
     rotation = mt.random_double_r3_rotation_matrix()
     check(center, radii, rotation)
   from libtbx.utils import format_cpu_times
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   import sys

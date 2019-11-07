@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.maps.utils
 import iotbx.pdb
 from iotbx import crystal_symmetry_from_any
@@ -12,6 +12,8 @@ import libtbx.load_env
 from libtbx import easy_run
 from libtbx import adopt_init_args
 import sys, os
+from six.moves import zip
+from six.moves import range
 
 def mask_grid(xrs, buffer, map_data, n_real):
   # XXX move to C++
@@ -21,8 +23,8 @@ def mask_grid(xrs, buffer, map_data, n_real):
   gridding_last=[iceil(f*n) for f,n in zip(frac_max,n_real)]
   new_map = flex.double(flex.grid(n_real),0)
   for i in range(gridding_first[0], gridding_last[0]):
-    for j in xrange(gridding_first[1], gridding_last[1]):
-      for k in xrange(gridding_first[2], gridding_last[2]):
+    for j in range(gridding_first[1], gridding_last[1]):
+      for k in range(gridding_first[2], gridding_last[2]):
         if(i> 0 and i<n_real[0] and
            j> 0 and j<n_real[1] and
            k> 0 and k<n_real[2]):
@@ -41,7 +43,12 @@ def generate_p1_box(pdb_hierarchy, buffer=10.0):
   return symm
 
 class common_frame_of_reference(object):
-  def __init__(self, all_sites_cart, lsq_fits, buffer=10.0, log=sys.stdout):
+  def __init__(self,
+               all_sites_cart,
+               lsq_fits,
+               buffer=10.0,
+               move_to_frame_of_reference=True,
+               log=sys.stdout):
     fitted_sites = []
     original_sites = []
     minima = flex.vec3_double()
@@ -54,7 +61,10 @@ class common_frame_of_reference(object):
         old_sites = lsq_fit.r.inverse().elems * (sites_cart - lsq_fit.t.elems)
         original_sites.append(old_sites)
     xyz_min = minima.min()
-    dxyz = (buffer - xyz_min[0], buffer - xyz_min[1], buffer - xyz_min[2])
+    if move_to_frame_of_reference:
+      dxyz = (buffer - xyz_min[0], buffer - xyz_min[1], buffer - xyz_min[2])
+    else:
+      dxyz = (0,0,0)
     self.shifted_sites = []
     self.transformation_matrices = []
     for i, sites_cart in enumerate(fitted_sites):
@@ -120,7 +130,7 @@ def transform_map_by_lsq_fit(fft_map,
       n_real   = fake_map.n_real())
   if file_name is not None :
     if format == "xplor" :
-      print >> log, "    saving XPLOR map to %s" % file_name
+      print("    saving XPLOR map to %s" % file_name, file=log)
       mmtbx.maps.utils.write_xplor_map(
         sites_cart=xray_structure.sites_cart(),
         unit_cell=fake_symm.unit_cell(),
@@ -130,7 +140,7 @@ def transform_map_by_lsq_fit(fft_map,
         buffer=buffer)
     else :
       import iotbx.map_tools
-      print >> log, "    saving CCP4 map to %s" % file_name
+      print("    saving CCP4 map to %s" % file_name, file=log)
       iotbx.map_tools.write_ccp4_map(
         sites_cart=xray_structure.sites_cart(),
         unit_cell=fake_symm.unit_cell(),
@@ -228,7 +238,7 @@ def exercise():
   #  e2 = map_data_rt.eight_point_interpolation(sf2)
   #  print abs(e1-e2)
   #  assert abs(e1-e2) < 1.
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__" :
   exercise()

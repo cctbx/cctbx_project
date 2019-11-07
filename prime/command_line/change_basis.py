@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME prime.change_basis
 
 import argparse
@@ -17,7 +17,7 @@ def main(mtz, index_basis):
   hklout = os.path.splitext(mtz)[0]+'_modified.mtz'
   mtz_dataset = miller_array_new.as_mtz_dataset(column_root_label="IOBS")
   mtz_dataset.mtz_object().write(file_name=hklout)
-  print 'Output file saved to', hklout
+  print('Output file saved to', hklout)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
@@ -34,5 +34,5 @@ if __name__ == '__main__':
     help='New index basis operators'
   )
   args = parser.parse_args()
-  print 'Convert ', args.mtz, ' to ', args.index_basis.strip()
+  print('Convert ', args.mtz, ' to ', args.index_basis.strip())
   main(args.mtz, args.index_basis.strip())

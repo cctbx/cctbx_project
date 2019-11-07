@@ -2,7 +2,7 @@
 # LIBTBX_SET_DISPATCHER_NAME wxtbx.xtriage
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.xtriage_gui
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import wxtbx.xtriage
 import wxtbx.app
 import sys

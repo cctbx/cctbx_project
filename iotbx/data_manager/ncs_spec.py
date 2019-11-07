@@ -1,8 +1,9 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 '''
 '''
 
 from iotbx.data_manager import DataManagerBase
+from libtbx import Auto
 
 # =============================================================================
 class NcsSpecDataManager(DataManagerBase):
@@ -36,9 +37,17 @@ class NcsSpecDataManager(DataManagerBase):
   def process_ncs_spec_file(self, filename):
     return self._process_file(NcsSpecDataManager.datatype, filename)
 
-  def write_ncs_spec_file(self, filename, ncs_str, overwrite=False):
-    self._write_text(NcsSpecDataManager.datatype, filename,
-                     ncs_str, overwrite=overwrite)
+  def get_default_output_ncs_spec_filename(self):
+    filename = self.get_default_output_filename()
+    if not filename.endswith('.ncs_spec'):
+      filename += '.ncs_spec'
+    return filename
+
+  def write_ncs_spec_file(self, ncs_str, filename=Auto, overwrite=Auto):
+    if filename is Auto:
+      filename = self.get_default_output_ncs_spec_filename()
+    self._write_text(NcsSpecDataManager.datatype, ncs_str,
+                     filename=filename, overwrite=overwrite)
 
 # =============================================================================
 # end

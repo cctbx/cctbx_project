@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys, os, dxtbx
 from xfel.cxi.cspad_ana import cspad_tbx
 from libtbx import easy_pickle
 from libtbx import easy_mp
 from xfel.command_line.cxi_image2pickle import crop_image_pickle
+from six.moves import range
 
 # Jiffy script to dump SACLA data processed by Cheetah into image pickles.  Usage:
 # libtbx.python dump_sacla_data.py <path to h5 file> <destination directory for pickles>.
@@ -38,7 +39,7 @@ def do_work(img_no):
       break
     except (KeyError, ValueError):
       n_fails +=1
-      print "Fail to read, attempt number", n_fails
+      print("Fail to read, attempt number", n_fails)
       if n_fails > 100:
         raise Exception("Couldn't read the data")
     import time; time.sleep(n_fails * 0.1)
@@ -58,7 +59,7 @@ def do_work(img_no):
     preserve_active_areas_even_though_cropping_would_invalidate_them=True)
 
   dest_path = os.path.join(dest_dir, dest_base + "_%06d.pickle"%img_no)
-  print "Saving image", img_no, "to", dest_path
+  print("Saving image", img_no, "to", dest_path)
   easy_pickle.dump(dest_path, imgdict)
 
 easy_mp.pool_map(

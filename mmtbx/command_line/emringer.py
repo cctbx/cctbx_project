@@ -1,7 +1,8 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 from iotbx.cli_parser import run_program
 from mmtbx.programs import emringer
+from six.moves import range
 
 if __name__ == '__main__':
   run_program(program_class=emringer.Program)
@@ -30,7 +31,7 @@ References:
 
 # Any software that wants to use the pkl output of this tool
 # should import ringer_residue and ringer_chi from it.
-#from __future__ import division
+#from __future__ import absolute_import, division, print_function
 import libtbx.phil
 from libtbx import easy_pickle
 from libtbx.str_utils import make_header
@@ -110,14 +111,10 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
   validate_params(params)
   pdb_in = cmdline.get_file(params.model)
   pdb_in.check_file_type("pdb")
-
   pdb_inp = iotbx.pdb.input(file_name=params.model)
   model = mmtbx.model.manager(
     model_input      = pdb_inp)
   crystal_symmetry_model = model.crystal_symmetry()
-  if crystal_symmetry_model is not None:
-    crystal_symmetry_model.show_summary()
-
   hierarchy = model.get_hierarchy()
   map_coeffs = map_inp = None
   map_data, unit_cell = None, None
@@ -165,7 +162,6 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
     unit_cell = map_inp.grid_unit_cell()
 
   hierarchy.atoms().reset_i_seq()
-
   make_header("Iterating over residues", out=out)
   t1 = time.time()
   from mmtbx.ringer import iterate_over_residues

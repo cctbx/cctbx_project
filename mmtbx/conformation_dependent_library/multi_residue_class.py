@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import copy
 
 from mmtbx.conformation_dependent_library.cdl_utils import \
@@ -7,6 +7,8 @@ from mmtbx.conformation_dependent_library.cdl_utils import \
   distance2, get_omega_value, get_phi_psi_angles
 from mmtbx.conformation_dependent_library.cdl_utils import \
   get_ca_dihedrals
+from mmtbx.conformation_dependent_library.LinkedResidues import LinkedResidues
+from six.moves import range
 
 class RestraintsRegistry(dict):
   def __init__(self):
@@ -14,7 +16,7 @@ class RestraintsRegistry(dict):
 
   def __repr__(self):
     outl = "RestraintsRegistry"
-    outl += "\n  %s(%d)" % (self.keys(), len(self))
+    outl += "\n  %s(%d)" % (list(self.keys()), len(self))
     outl += "\n  %s" % self.n
     return outl
 
@@ -27,32 +29,19 @@ class RestraintsRegistry(dict):
     else:
       dict.__setitem__(self, key, item)
 
-class ProteinResidues(list):
+class ProteinResidues(LinkedResidues):
   def __init__(self,
                geometry,
                length=3, # CDL & other psi/phi apps
                registry=None,
                include_non_linked=False,
               ):
-    assert registry is not None
-    self.length = length
-    self.geometry = geometry
-    self.registry = registry
-    if geometry is None:
-      self.bond_params_table = None
-    else:
-      self.bond_params_table = geometry.bond_params_table
-    self.errors = []
-    self.start = None
-    self.end = None
-    self.include_non_linked = include_non_linked
-
-  def __repr__(self):
-    if 1: return self.show()
-    outl = ''
-    for residue in self:
-      outl += '%s ' % residue.resname
-    return '"%s"\n' % outl
+    LinkedResidues.__init__(self,
+                            geometry,
+                            length=length,
+                            registry=registry,
+                            include_non_linked=include_non_linked,
+                            )
 
   def show(self):
     outl = "%sProteinResidues" % self.length
@@ -71,11 +60,6 @@ class ProteinResidues(list):
       for atom in residue.atoms():
         outl += "\n%s" % atom.format_atom_record()
     return outl
-
-  def atoms(self):
-    for residue in self:
-      for atom in residue.atoms():
-        yield atom
 
   def get_omega_value(self): assert 0
 
@@ -101,7 +85,7 @@ class ProteinResidues(list):
     assert omegas
     def _is_cis(angle):
       return self._define_omega_a_la_duke_using_limit(angle, limit=limit)=='cis'
-    if filter(_is_cis, omegas): return True
+    if list(filter(_is_cis, omegas)): return True
     return False
     #if self._define_omega_a_la_duke_using_limit(omega, limit=limit)=='cis':
     #  cis_peptide_bond = True
@@ -113,17 +97,21 @@ class ProteinResidues(list):
     omegas = self.get_omega_values()
     def _is_cis_trans_twisted(angle):
       return self._define_omega_a_la_duke_using_limit(angle, limit=limit)
-    return map(_is_cis_trans_twisted, omegas)
-
-  def is_pure_main_conf(self):
-    tmp = [rg.is_pure_main_conf for rg in self]
-    return len(filter(None, tmp))==self.length
+    return [_is_cis_trans_twisted(o) for o in omegas]
 
   def are_linked(self,
                  return_value=False,
                  use_distance_always=False,
                  bond_cut_off=3., # Same as link_distance_cutoff of pdb_interpretation
+                 allow_poly_ca=False,
+                 poly_ca_cut_off=4.,
                  verbose=True):
+    '''
+    Need to add poly-Calpha chains
+      CA-CA 4.5 is use in CaBLAM, maybe shorter
+    '''
+    if allow_poly_ca:
+      assert 0
     d2 = None
     bond_cut_off *= bond_cut_off
     for i, residue in enumerate(self):
@@ -161,38 +149,7 @@ class ProteinResidues(list):
     if return_value: return d2
     return False
 
-  def append(self, residue):
-    list.append(self, residue)
-    while len(self)>self.length:
-      del self[0]
-    if self.include_non_linked: return
-    if len(self)>=self.length-1:
-      while not self.are_linked():
-        del self[0]
-        if len(self)==0: break
-
-  def get_i_seqs(self): assert 0
-
-  def get_resnames(self):
-    rc = []
-    for residue in self: rc.append(residue.resname)
-    return rc
-
   def get_phi_psi_angles(self): assert 0
-
-  def is_pure_main_conf(self):
-    for one in self:
-      if not one.is_pure_main_conf: return False
-    return True
-
-  def altloc(self):
-    if self.is_pure_main_conf(): return ' '
-    rc=[]
-    for one in self:
-      rc.append(self[0].parent().altloc)
-    rc = filter(None,rc)
-    assert rc
-    return rc[0]
 
   def get_omega_values(self, verbose=False):
     rc=[]
@@ -227,10 +184,10 @@ class ThreeProteinResidues(ProteinResidues):
       backbone_i_minus_1, junk = get_c_ca_n(self[0], return_subset=True)
       assert len(backbone_i_minus_1)==self.length
     backbone_i, junk = get_c_ca_n(self[1], return_subset=True)
-    if verbose: print backbone_i
+    if verbose: print(backbone_i)
     if None in backbone_i: return None
     backbone_i_plus_1, junk = get_c_ca_n(self[2], return_subset=True)
-    if verbose: print backbone_i_plus_1, junk
+    if verbose: print(backbone_i_plus_1, junk)
     if None in backbone_i_plus_1: return None
     assert len(backbone_i)==self.length
     assert len(backbone_i_plus_1)==self.length
@@ -247,7 +204,7 @@ class ThreeProteinResidues(ProteinResidues):
       backbone_i_plus_1[2],
       ]
     atoms = [phi_atoms, psi_atoms]
-    if verbose: print atoms
+    if verbose: print(atoms)
     if not only_psi_phi_pairs:
       if self.start:
         psi_atoms = [
@@ -267,15 +224,15 @@ class ThreeProteinResidues(ProteinResidues):
         atoms.append(phi_atoms)
     if verbose:
       for dihedral in atoms:
-        print '-'*80
+        print('-'*80)
         for atom in dihedral:
-          print atom.quote()
+          print(atom.quote())
     return atoms
 
   def get_phi_psi_angles(self, verbose=False):
     if verbose:
       for residue in self:
-        print residue.id_str()
+        print(residue.id_str())
     return get_phi_psi_angles(self, verbose=verbose)
 
   def get_ramalyze_key(self,
@@ -328,7 +285,7 @@ class FourProteinResidues(ThreeProteinResidues):
   def get_ca_dihedrals(self, verbose=False):
     if verbose:
       for residue in self:
-        print residue.id_str()
+        print(residue.id_str())
     return get_ca_dihedrals(self)
 
 class FiveProteinResidues(FourProteinResidues):
@@ -338,7 +295,7 @@ class FiveProteinResidues(FourProteinResidues):
 if __name__=="__main__":
   import sys
   from iotbx import pdb
-  from test_rdl import get_geometry_restraints_manager
+  from mmtbx.conformation_dependent_library.tst_rdl import get_geometry_restraints_manager
   filename=sys.argv[1]
   pdb_inp = pdb.input(filename)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
@@ -351,20 +308,20 @@ if __name__=="__main__":
                                              length=i,
                                              #verbose=verbose,
                                              ):
-      print threes
-      try: print '  omega   %5.1f' % threes.get_omega_value()
-      except: print '  omega is not valid' # intentional
-      print '  omegas  %s' % threes.get_omega_values()
-      try: print "  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30))
-      except: print '  cis? is not valid' # intentional
-      try: print "  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30))
-      except: print '  tran? is not valid' # intentional
-      print '  cis/trans/twisted? %s' % ' '.join(threes.cis_trans_twisted_list())
-      try: print "  rama    %s" % threes.get_ramalyze_key()
-      except: print '  rama not specified' # intentional
-      print '  conf    %s' % threes.is_pure_main_conf()
-      try: print '  phi/psi %s' % threes.get_phi_psi_angles()
-      except: print '  phi/psi not specified' # intentional
-      try: print '  CA dihedrals %s' % threes.get_ca_dihedrals()
-      except: print '  CA dihedrals not specified' # intentional
-    print "OK",i+2
+      print(threes)
+      try: print('  omega   %5.1f' % threes.get_omega_value())
+      except: print('  omega is not valid') # intentional
+      print('  omegas  %s' % threes.get_omega_values())
+      try: print("  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30)))
+      except: print('  cis? is not valid') # intentional
+      try: print("  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30)))
+      except: print('  tran? is not valid') # intentional
+      print('  cis/trans/twisted? %s' % ' '.join(threes.cis_trans_twisted_list()))
+      try: print("  rama    %s" % threes.get_ramalyze_key())
+      except: print('  rama not specified') # intentional
+      print('  conf    %s' % threes.is_pure_main_conf())
+      try: print('  phi/psi %s' % threes.get_phi_psi_angles())
+      except: print('  phi/psi not specified') # intentional
+      try: print('  CA dihedrals %s' % threes.get_ca_dihedrals())
+      except: print('  CA dihedrals not specified') # intentional
+    print("OK",i+2)

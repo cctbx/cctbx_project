@@ -3,11 +3,12 @@
 Analysis of model properties, independent of data.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation import atom, residue, validation, dummy_validation
 from libtbx import slots_getstate_setstate
 from libtbx.test_utils import approx_equal
 import sys
+from six.moves import zip
 
 class model_statistics(slots_getstate_setstate):
   """
@@ -36,7 +37,8 @@ class model_statistics(slots_getstate_setstate):
       ligand_selection=None):
     for name in self.__slots__ :
       setattr(self, name, None)
-    if isinstance(ligand_selection, basestring):
+    from six import string_types
+    if isinstance(ligand_selection, string_types):
       if (all_chain_proxies is not None):
         ligand_selection = all_chain_proxies.selection(ligand_selection)
       else :
@@ -106,17 +108,17 @@ class model_statistics(slots_getstate_setstate):
     #pdb_hierarchy.atoms().reset_i_seq()
 
   def show(self, out=sys.stdout, prefix=""):
-    print >> out, prefix+"Overall:"
+    print(prefix+"Overall:", file=out)
     self.all.show_summary(out=out, prefix=prefix+"  ")
     self.all.show_bad_occupancy(out=out, prefix=prefix+"  ")
     if (self.ligands) or (self.water):
       for label, props in zip(["Macromolecules", "Ligands", "Waters"],
           [self.macromolecules, self.ligands, self.water]):
         if (props):
-          print >> out, prefix+"%s:" % label
+          print(prefix+"%s:" % label, file=out)
           props.show_summary(out=out, prefix=prefix+"  ")
     if (self.ignore_hd) and (self.n_hydrogens > 0):
-      print >> out, prefix+"(Hydrogen atoms not included in overall counts.)"
+      print(prefix+"(Hydrogen atoms not included in overall counts.)", file=out)
 
   @property
   def macromolecules(self):
@@ -230,7 +232,7 @@ class xray_structure_statistics(validation):
     self.n_npd = xrs.is_positive_definite_u().count(False)
     self.n_zero_b = (u_isos == 0).count(True)
     self.n_zero_occ = (occ == 0).count(True)
-    u_cutoff_high = sys.maxint
+    u_cutoff_high = sys.maxsize
     u_cutoff_low = 0
     u_non_zero = u_isos.select(u_isos > 0)
     if (len(u_non_zero) > 1):
@@ -394,34 +396,34 @@ class xray_structure_statistics(validation):
               break
 
   def show_summary(self, out=sys.stdout, prefix=""):
-    print >> out, prefix + "Number of atoms = %d  (anisotropic = %d)" % \
-      (self.n_atoms, self.n_aniso)
-    print >> out, prefix + "B_iso: mean = %5.1f  max = %5.1f  min = %5.1f" % \
-      (self.b_mean, self.b_max, self.b_min)
+    print(prefix + "Number of atoms = %d  (anisotropic = %d)" % \
+      (self.n_atoms, self.n_aniso), file=out)
+    print(prefix + "B_iso: mean = %5.1f  max = %5.1f  min = %5.1f" % \
+      (self.b_mean, self.b_max, self.b_min), file=out)
     if (self.n_aniso_h > 0):
-      print >> out, prefix + "  warning: %d anisotropic hydrogen atoms" % \
-        self.n_aniso_h
+      print(prefix + "  warning: %d anisotropic hydrogen atoms" % \
+        self.n_aniso_h, file=out)
     if (self.o_min != 1.0):
-      print >> out, prefix + \
+      print(prefix + \
         "Occupancy: mean = %4.2f  max = %4.2f  min = %4.2f" % \
-        (self.o_mean, self.o_max, self.o_min)
+        (self.o_mean, self.o_max, self.o_min), file=out)
       if (self.n_zero_occ > 0):
-        print >> out, prefix + "  warning: %d atoms with zero occupancy" % \
-          self.n_zero_occ
+        print(prefix + "  warning: %d atoms with zero occupancy" % \
+          self.n_zero_occ, file=out)
     if (self.n_outliers > 0):
-      print >> out, prefix + \
+      print(prefix + \
         "%d total B-factor or occupancy problem(s) detected" % \
-        self.n_outliers
+        self.n_outliers, file=out)
 
   def show_bad_occupancy(self, out=sys.stdout, prefix=""):
     if (len(self.zero_occ) > 0):
-      print >> out, prefix + "Atoms or residues with zero occupancy:"
+      print(prefix + "Atoms or residues with zero occupancy:", file=out)
       for outlier in self.zero_occ :
-        print >> out, prefix + str(outlier)
+        print(prefix + str(outlier), file=out)
 
   def show_bfactors(self, out=sys.stdout, prefix=""):
-    print >> out, prefix + "B_iso: mean = %5.1f  max = %5.1f  min = %5.1f" % \
-      (self.b_mean, self.b_max, self.b_min)
+    print(prefix + "B_iso: mean = %5.1f  max = %5.1f  min = %5.1f" % \
+      (self.b_mean, self.b_max, self.b_min), file=out)
 
   def iter_results(self, property_type=None, outliers_only=True):
     if (property_type is None):

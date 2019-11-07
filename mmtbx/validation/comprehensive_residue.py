@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from mmtbx.validation import ramalyze
 from mmtbx.validation import rotalyze
 import boost.python
 import sys
+from six.moves import range
 
 ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
 
@@ -69,15 +70,15 @@ class ValidationResidue(object):
     if phi_psi_atoms :
       # FIXME you are adding non alts twice because threes method.
       self.set_rama_result(phi_psi_atoms)
-      print self.rama_result
+      print(self.rama_result)
     self.set_rota_result()
-    if self.resname not in ['GLY','ALA'] : print self.rota_result
+    if self.resname not in ['GLY','ALA'] : print(self.rota_result)
     if self.resname != "GLY" :
       self.set_cbeta_result()
-      print self.cbeta_result
+      print(self.cbeta_result)
     if self.index >= 1 :
       self.set_omega_result()
-      print self.omega_result.as_string()
+      print(self.omega_result.as_string())
 
   def get_start_kwargs(self):
     return {'chain_id':self.chain_id,
@@ -156,14 +157,14 @@ class ValidationResidue(object):
     except AttributeError :
       kwargs['incomplete'] = True
       result = rotamer(**kwargs)
-      print >> sys.stderr, '%s is missing some sidechain atoms'%result.id_str()
+      print('%s is missing some sidechain atoms'%result.id_str(), file=sys.stderr)
       self.rota_result = rotalyze.rotamer(**kwargs)
       return
     #print all_dict.get(self.altloc).keys()
     if None in chis :
       result = rotamer(**kwargs)
-      print >> sys.stderr, '%s may be missing some sidechain atoms' %\
-                               result.id_str()
+      print('%s may be missing some sidechain atoms' %\
+                               result.id_str(), file=sys.stderr)
       self.rota_result = rotalyze.rotamer(**kwargs)
       return
     cur_res = self.resname.lower().strip()
@@ -270,7 +271,7 @@ def run(args, out=sys.stdout, quiet=False):
   hierarchy = pdb_in.file_object.hierarchy
   hierarchy.atoms().reset_i_seq()
   result = ComprehensiveResidueValidation(pdb_hierarchy = hierarchy)
-  print "Elapsed time = %.5f" % (time.time() - start_time)
+  print("Elapsed time = %.5f" % (time.time() - start_time))
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

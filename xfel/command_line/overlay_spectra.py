@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 
 from matplotlib import pyplot
@@ -8,6 +8,7 @@ from scitbx.array_family import flex
 
 from scitbx import smoothing
 from xfel.command_line import smooth_spectrum
+from six.moves import zip
 
 master_phil_str = """\
 x_offsets = None
@@ -52,7 +53,7 @@ def run(args):
   else:
     x_min, x_max = (0, 385)
 
-  print bg_range_min, bg_range_max
+  print(bg_range_min, bg_range_max)
   if x_offsets is None:
     x_offsets = [0]*len(args)
   legend = work_params.legend
@@ -68,7 +69,7 @@ def run(args):
   #x_min, x_max = (200, 360)
 
   for i, filename in enumerate(args):
-    print filename
+    print(filename)
     f = open(filename, 'rb')
     x, y = zip(*[line.split() for line in f.readlines() if not line.startswith("#")])
     x = flex.double(flex.std_string(x))
@@ -98,12 +99,12 @@ def run(args):
     xy_pairs.append((x,y))
     min_background = min(min_background, flex.mean(y.select(bg_sel))/flex.max(y))
     y -= min_background
-    print "Peak maximum at: %i" %int(x[flex.max_index(y)])
+    print("Peak maximum at: %i" %int(x[flex.max_index(y)]))
   for i, filename in enumerate(args):
     if legend is None:
       label = filename
     else:
-      print legend
+      print(legend)
       assert len(legend) == len(args)
       label = legend[i]
     x, y = xy_pairs[i]
@@ -118,7 +119,7 @@ def run(args):
     y_min = flex.min(y.select(bg_sel))
     if i == -2:
       y += 0.2 * flex.max(y)
-    print "minimum at: %i" %int(x[flex.min_index(y)]), flex.min(y)
+    print("minimum at: %i" %int(x[flex.min_index(y)]), flex.min(y))
     #print "fwhm: %.2f" %full_width_half_max(x, y)
     y /= flex.max(y)
     if len(colours) > i:
@@ -187,7 +188,7 @@ def estimate_signal_to_noise(x, y):
       min_terms=2, max_terms=30,
       n_goes=20, n_free=20)
     #n_terms = 7
-    print "n_terms:", n_terms
+    print("n_terms:", n_terms)
     fit = chebyshev_lsq_fit.chebyshev_lsq_fit(n_terms, x_obs, y_obs, w_obs)
     fit_funct = chebyshev_polynome(
       n_terms, fit.low_limit, fit.high_limit, fit.coefs)

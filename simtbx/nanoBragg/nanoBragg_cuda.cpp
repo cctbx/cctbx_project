@@ -4,7 +4,7 @@
 
 // function declaration from nanoBraggCUDA.cu
 extern "C"
-void nanoBraggSpotsCUDA(int spixels, int fpixels, int roi_xmin, int roi_xmax,
+void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int roi_xmin, int roi_xmax,
                         int roi_ymin, int roi_ymax, int oversample,
                         int point_pixel, double pixel_size, double subpixel_size,
                         int steps, double detector_thickstep,
@@ -31,7 +31,7 @@ void nanoBraggSpotsCUDA(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                         float * floatimage /*out*/, double * omega_sum/*out*/,
                         int * sumn /*out*/, double * sum /*out*/,
                         double * sumsqr /*out*/, double * max_I/*out*/,
-                        double * max_I_x/*out*/, double * max_I_y /*out*/);
+                        double * max_I_x/*out*/, double * max_I_y /*out*/, double spot_scale);
 
 namespace simtbx {
 namespace nanoBragg {
@@ -58,7 +58,8 @@ nanoBragg::add_nanoBragg_spots_cuda()
   /* declare a float version of floatimage for output */
   float* float_floatimage = new float[raw_pixels.size()];
 #ifdef HAVE_NANOBRAGG_SPOTS_CUDA
-  nanoBraggSpotsCUDA(spixels, fpixels, roi_xmin, roi_xmax,
+
+  nanoBraggSpotsCUDA(device_Id, spixels, fpixels, roi_xmin, roi_xmax,
                      roi_ymin, roi_ymax, oversample,
                      point_pixel /* bool */, pixel_size, subpixel_size,
                      steps, detector_thickstep,
@@ -86,7 +87,7 @@ nanoBragg::add_nanoBragg_spots_cuda()
                      float_floatimage, &omega_sum,
                      &sumn, &sum,
                      &sumsqr, &max_I,
-                     &max_I_x, &max_I_y);
+                     &max_I_x, &max_I_y, spot_scale);
 #else
   throw SCITBX_ERROR("no CUDA implementation of nanoBragg_add_spots");
 #endif

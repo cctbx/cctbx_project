@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.mtz_as_cif
 
 import os
@@ -11,6 +11,7 @@ from iotbx import reflection_file_utils
 
 from iotbx.cif_mtz_data_labels import phenix_to_cif_labels_dict,\
   ccp4_to_cif_labels_dict
+from six.moves import zip
 # Probably we can align with what PDB choose to use
 # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v40.dic/Categories/refln.html
 # comply with newer version:
@@ -63,7 +64,7 @@ cif_labels = None
 """)
 
 def format_usage_message(log=sys.stdout):
-  print >> log, "-"*79
+  print("-"*79, file=log)
   msg = """\
 phenix.mtz_as_cif: Convert mtz to CIF format.
 The tool will automatically recognize most of the labels from Phenix and CCP4
@@ -80,9 +81,9 @@ Usage examples:
   phenix.mtz_as_cif data.mtz output_file=custom.cif mtz_labels="FOBS SIGFOBS"
       cif_labels="_refln.custom1 _refln.custom2"
 """
-  print >> log, msg
-  print >> log, "-"*79
-  print >> log, master_phil.show()
+  print(msg, file=log)
+  print("-"*79, file=log)
+  print(master_phil.show(), file=log)
 
 def run(args, params=None, out=sys.stdout):
   from iotbx import file_reader
@@ -113,7 +114,7 @@ def run(args, params=None, out=sys.stdout):
       custom_cif_labels_dict.setdefault(mtz_label, cif_label)
   output_files = []
   for mtz_file_name, mtz_object in zip(work_params.mtz_file, mtz_objects):
-    print >> out, "Converting %s" %mtz_file_name
+    print("Converting %s" %mtz_file_name, file=out)
     cif_blocks = mtz_as_cif_blocks(
       mtz_object, custom_cif_labels_dict=custom_cif_labels_dict).cif_blocks
 
@@ -124,7 +125,7 @@ def run(args, params=None, out=sys.stdout):
     cif_model = iotbx.cif.model.cif()
     # This is gross... refactor some time the whole thing.
     for key in cif_blocks.keys():
-      print key
+      print(key)
       if key == "xray" and cif_blocks["xray"] is not None:
         cif_model[prefix] = cif_blocks["xray"].cif_block
 
@@ -133,10 +134,10 @@ def run(args, params=None, out=sys.stdout):
 
       elif cif_blocks[key] is not None:
         cif_model[prefix+"_"+key] = cif_blocks[key].cif_block
-    with open(output_file, "wb") as f:
-      print >> out, "Writing data and map coefficients to CIF file:\n  %s" % \
-        (f.name)
-      print >> f, cif_model
+    with open(output_file, "w") as f:
+      print("Writing data and map coefficients to CIF file:\n  %s" % \
+        (f.name), file=out)
+      print(cif_model, file=f)
       output_files.append(output_file)
   return output_files
 
@@ -241,9 +242,9 @@ class mtz_as_cif_blocks(object):
           self.cif_blocks[data_type].add_miller_array(array, column_names=column_names)
 
     if len(unknown_mtz_labels):
-      print >> log, "Warning: Unknown mtz label%s: %s" %(
-        plural_s(len(unknown_mtz_labels))[1], ", ".join(unknown_mtz_labels))
-      print >> log, "  Use mtz_labels and cif_labels keywords to provide translation for custom labels."
+      print("Warning: Unknown mtz label%s: %s" %(
+        plural_s(len(unknown_mtz_labels))[1], ", ".join(unknown_mtz_labels)), file=log)
+      print("  Use mtz_labels and cif_labels keywords to provide translation for custom labels.", file=log)
 
     data_types = set(["xray"])
     if self.cif_blocks['neutron'] is not None:

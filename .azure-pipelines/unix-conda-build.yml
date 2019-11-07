@@ -1,0 +1,96 @@
+# Script for building CCTBX on linux and macOS
+#
+# Variables:
+#   CONDA: Linux, MacOSX
+#   OS: linux-64, osx-64
+#   PYTHON_VERSION: py27, py36
+
+steps:
+
+# download components
+- checkout: none
+
+- task: DownloadPipelineArtifact@2
+  displayName: Download modules tarball
+  inputs:
+    source: 'current'
+    artifact: modules
+    path: $(Pipeline.Workspace)
+
+- script: |
+    cd $(Pipeline.Workspace)
+    tar -xf modules.tar
+  displayName: Extract modules tarball
+
+- script: |
+    cd $(Pipeline.Workspace)
+    ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
+  displayName: Link bootstrap.py
+
+# install miniconda
+- script: |
+    set -x -e
+    curl -o $(Pipeline.Workspace)/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-latest-$(CONDA)-x86_64.sh
+    bash $(Pipeline.Workspace)/miniconda.sh -b -u -p $(Pipeline.Workspace)/miniconda
+    export PATH=$(Pipeline.Workspace)/miniconda/bin:$PATH
+  displayName: Install miniconda
+
+# create conda environment
+- task: DownloadPipelineArtifact@2
+  displayName: Download conda packages
+  inputs:
+    source: 'current'
+    artifact: $(PYTHON_VERSION)_$(OS)
+    path: $(Pipeline.Workspace)/channel
+
+- script: |
+    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
+    conda install -y conda-build
+    cd $(Pipeline.Workspace)/channel
+    conda index .
+    echo @EXPLICIT > env.txt
+    for filename in `cat filenames.txt`; do
+      echo file://$(Pipeline.Workspace)/channel/${filename} >> env.txt
+    done
+  displayName: Build local channel
+
+- script: |
+    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
+    conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
+    conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
+  displayName: Create conda environment
+
+# build
+- script: |
+    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
+    conda activate $(PYTHON_VERSION)
+    cd $(Pipeline.Workspace)
+    python bootstrap.py build --builder=cctbx --use-conda=${CONDA_PREFIX} --nproc=4
+    cd build
+    source setpaths.sh
+    libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx
+    make -j 4
+    make -j 4
+  displayName: Configure and Build
+
+# test
+- script: |
+    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
+    conda activate $(PYTHON_VERSION)
+    cd $(Pipeline.Workspace)
+    source ./build/setpaths.sh
+    mkdir tests
+    cd tests
+    libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es \
+      module=fable module=gltbx module=iotbx module=libtbx module=rstbx \
+      module=scitbx module=simtbx module=smtbx module=spotfinder \
+      module=annlib_adaptbx module=cbflib_adaptbx \
+      nproc=4
+  failOnStderr: false
+  displayName: Test
+
+- task: PublishTestResults@2
+  condition: succeededOrFailed()
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '$(Pipeline.Workspace)/tests/output.xml'

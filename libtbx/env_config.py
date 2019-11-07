@@ -8,10 +8,9 @@ from libtbx.utils import detect_binary_file
 from libtbx import adopt_init_args
 import platform
 import shutil
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import zip, map
+from six.moves import cPickle as pickle
+
 import os
 import re
 import site
@@ -60,25 +59,19 @@ def using_conda_python():
 
 def get_conda_prefix():
   '''
-  Return the root directory of the conda environment. Usually, this is defined
-  by the CONDA_PREFIX environment variable. This function will try to figure
-  out the root directory if the environment is not active. A special case
-  exists for macOS where the framework package (python.app) is used for GUI
-  programs.
+  Return the root directory of the conda environment. This function will
+  try to figure out the root directory if the environment is not active.
+  A special case exists for macOS where the framework package (python.app)
+  is used for GUI programs.
 
   A RuntimeError is raised if the root directory of the conda environment
   cannot be determined.
   '''
-  conda_prefix = None
+  conda_prefix = sys.prefix
   if (using_conda_python()):
-    conda_prefix = os.environ.get('CONDA_PREFIX')
-    if (conda_prefix is None):  # case where environment is not active
-      conda_prefix = sys.prefix
-      if (sys.platform == 'darwin'):  # case where python.app is used
-        if ('python.app' in conda_prefix):
-          conda_prefix = conda_prefix.split('python.app')[0]
-  if (conda_prefix is None):
-    raise RuntimeError('Unable to find conda environment.')
+    if (sys.platform == 'darwin'):  # case where python.app is used
+      if ('python.app' in conda_prefix):
+        conda_prefix = conda_prefix.split('python.app')[0]
   return conda_prefix
 
 def unique_paths(paths):
@@ -530,7 +523,10 @@ class environment:
     return abs(self.build_path / '..' / path)
 
   def under_base(self, path, return_relocatable_path=False):
-    return abs(self.build_path / '..' / 'base' / path)
+    if self.build_options.use_conda:
+      return abs(self.build_path / '..' / 'conda_base' / path)
+    else:
+      return abs(self.build_path / '..' / 'base' / path)
     # return abs(os.path.join(abs(self.build_path), '..', 'base', path))
 
   def under_build(self, path, return_relocatable_path=False):
@@ -829,7 +825,6 @@ Wait for the command to finish, then try again.""" % vars())
         force_32bit=command_line.options.force_32bit,
         msvc_arch_flag=command_line.options.msvc_arch_flag,
         enable_cxx11=command_line.options.enable_cxx11,
-        python3warn=command_line.options.python3warn,
         skip_phenix_dispatchers=command_line.options.skip_phenix_dispatchers)
       self.build_options.get_flags_from_environment()
       if (self.build_options.use_conda):
@@ -841,14 +836,20 @@ Wait for the command to finish, then try again.""" % vars())
     if (command_line.options.build_boost_python_extensions is not None):
       self.build_options.build_boost_python_extensions \
         = command_line.options.build_boost_python_extensions
-    if command_line.options.python3warn:
-      self.build_options.python3warn = command_line.options.python3warn
     self.reset_module_registry()
     module_names.insert(0, "libtbx")
     for module_name in module_names:
       self.process_module(
         dependent_module=None, module_name=module_name, optional=False)
     self.scons_dist_path = self.find_dist_path("scons", optional=True)
+    if self.scons_dist_path is None:
+      # try to use SCons in Python installation
+      try:
+        import SCons
+      except ImportError:
+        pass
+      else:
+        self.scons_dist_path = self.as_relocatable_path(sys.prefix)
     self.path_utility = self.under_dist(
       "libtbx", "command_line/path_utility.py",
       return_relocatable_path=True)
@@ -1115,17 +1116,19 @@ Wait for the command to finish, then try again.""" % vars())
       gdk_pixbuf_module_file = '{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache'
       gtk_path = '{conda_base}/lib/gtk-2.0/2.10.0'
       conda_base = get_conda_prefix()
-      if conda_base == abs(self.build_path / '..' / 'conda_base'):
-        conda_base = '$LIBTBX_BUILD/../conda_base'
-      print('unset GTK_MODULES', file=f)
-      print('unset GTK2_RC_FILES', file=f)
-      print('unset GTK_RC_FILES', file=f)
-      print('export FONTCONFIG_PATH=' +
-            fontconfig_path.format(conda_base=conda_base), file=f)
-      print('export FONTCONFIG_FILE=' + fontconfig_file, file=f)
-      print('export GDK_PIXBUF_MODULE_FILE=' +
-            gdk_pixbuf_module_file.format(conda_base=conda_base), file=f)
-      print('export GTK_PATH=' + gtk_path.format(conda_base=conda_base), file=f)
+      if (os.path.exists(fontconfig_path.format(conda_base=conda_base)) and
+          os.path.exists(gdk_pixbuf_module_file.format(conda_base=conda_base))):
+        if conda_base == abs(self.build_path / '..' / 'conda_base'):
+          conda_base = '$LIBTBX_BUILD/../conda_base'
+        print('unset GTK_MODULES', file=f)
+        print('unset GTK2_RC_FILES', file=f)
+        print('unset GTK_RC_FILES', file=f)
+        print('export FONTCONFIG_PATH=' +
+              fontconfig_path.format(conda_base=conda_base), file=f)
+        print('export FONTCONFIG_FILE=' + fontconfig_file, file=f)
+        print('export GDK_PIXBUF_MODULE_FILE=' +
+              gdk_pixbuf_module_file.format(conda_base=conda_base), file=f)
+        print('export GTK_PATH=' + gtk_path.format(conda_base=conda_base), file=f)
 
     for n,v in essentials:
       if (len(v) == 0): continue
@@ -1170,18 +1173,6 @@ Wait for the command to finish, then try again.""" % vars())
     print('LIBTBX_PYEXE="%s"' % (
       self.python_exe.dirname() / "$LIBTBX_PYEXE_BASENAME").sh_value(), file=f)
     print('export LIBTBX_PYEXE', file=f)
-    if self.build_options.python3warn in ('warn', 'fail'):
-      # disable warnings for 3rd party modules
-      py3warn_ignores = ( # must specify each module exactly
-        'mock.mock', 'numpy.core', 'py._code.code', 'pytest_timeout',
-        '_pytest.capture', '_pytest.fixtures', '_pytest.python',
-        'wx._controls', 'wx._core', 'wx._gdi', 'wx._misc',
-        'mysql.connector.authentication', 'mysql.connector.catch23',
-        'mysql.connector.dbapi', 'mysql.connector.network',
-      )
-      print('PYTHONWARNINGS="{}"'.format(",".join(
-        'ignore::DeprecationWarning:' + module for module in py3warn_ignores)), file=f)
-      print('export PYTHONWARNINGS', file=f)
 
     # Since El Capitan, Apple Python does not allow relative rpath in shared
     # libraries. Thus any cctbx-based script will fail with an import error
@@ -1196,13 +1187,13 @@ Wait for the command to finish, then try again.""" % vars())
         for $lib(<$ENV{LIBTBX_BUILD}/lib/*.so>) {
             open OTOOL, "-|", "otool", "-L", $lib;
             while(<OTOOL>) {
-                m{^\s+(lib\S+)} and $libs{$lib}{$1}++;
+                m{^\\s+(lib\\S+)} and $libs{$lib}{$1}++;
             }
         }
         while(($so, $relative_libs) = each %libs) {
             for $lib(keys %$relative_libs) {
                 system "install_name_tool",
-                       "-change", $lib, "\@loader_path/../$lib", $so;
+                       "-change", $lib, "\\@loader_path/../$lib", $so;
             }
         }
       """, file=f)
@@ -1215,10 +1206,6 @@ Wait for the command to finish, then try again.""" % vars())
         qnew_tmp = qnew
         if self.python_version_major_minor[0] == 3:
           qnew_tmp = '' # -Q is gone in Python3.
-        if self.build_options.python3warn == 'warn':
-          qnew_tmp += " -3"
-        elif self.build_options.python3warn == 'fail':
-          qnew_tmp += " -3 -Werror::DeprecationWarning"
         cmd += ' %s"$LIBTBX_PYEXE"%s' % (pre_cmd(), qnew_tmp)
       start_python = False
       if (source_is_py):
@@ -1278,10 +1265,6 @@ Wait for the command to finish, then try again.""" % vars())
     qnew_tmp = qnew
     if self.python_version_major_minor[0] == 3:
       qnew_tmp = '' # -Q is gone in Python3.
-    if self.build_options.python3warn == 'warn':
-      qnew_tmp += " -3"
-    elif self.build_options.python3warn == 'fail':
-      qnew_tmp += " -3 -Werror::DeprecationWarning"
     if source_file.ext().lower() == '.py':
       print('@"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (
         qnew_tmp, source_file.bat_value()), file=f)
@@ -1708,9 +1691,12 @@ selfx:
     if not os.path.isdir(bin_directory):
       return # do not create console_scripts dispatchers, only point to them
 
-    base_bin_dispatchers = set(os.listdir(bin_directory))
+    base_bin_dispatchers = os.listdir(bin_directory)
+    if os.name == "nt":
+      base_bin_dispatchers = [os.path.splitext(f)[0] if os.path.splitext(f)[1] in ['.bat', '.exe'] else f for f in base_bin_dispatchers]
+    base_bin_dispatchers = set(base_bin_dispatchers)
     existing_dispatchers = filter(lambda f: f.startswith('libtbx.'), self.bin_path.listdir())
-    existing_dispatchers = set(map(lambda f: f[7:], existing_dispatchers))
+    existing_dispatchers = set([f[7:] for f in existing_dispatchers])
     entry_point_candidates = base_bin_dispatchers - existing_dispatchers
 
     entry_points = pkg_resources.iter_entry_points('console_scripts')
@@ -1829,6 +1815,14 @@ selfx:
         source_is_python_exe=True)
     for module in self.module_list:
       module.process_command_line_directories()
+      # Reload the libtbx_config in case dependencies have changed
+      module.process_libtbx_config()
+
+    # Resolve python dependencies in advance of potential use in refresh scripts
+    # Lazy-load the import here as we might not have an environment before this
+    from . import pkg_utils
+    pkg_utils.resolve_module_python_dependencies(self.module_list)
+
     for path in self.pythonpath:
       sys.path.insert(0, abs(path))
     for module in self.module_list:
@@ -1847,8 +1841,10 @@ selfx:
         command = "{conda_base}/bin/gdk-pixbuf-query-loaders"
         loaders = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.so"
         cache = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
-        command = command + " " + loaders + " > " + cache
-        call(command.format(conda_base=conda_base))
+        if os.path.isfile(command.format(conda_base=conda_base)):
+          command = command + " " + loaders + " > " + cache
+          command = command.format(conda_base=conda_base)
+          call(command)
     else:
       regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
     self.pickle()
@@ -1862,7 +1858,11 @@ selfx:
     return result
 
 class module:
-
+  """
+  Attributes:
+    python_required (List[str]):
+      List of python package requirement specifiers. Should match PEP508-style.
+  """
   def __init__(self, env, name, dist_path=None, mate_suffix="adaptbx"):
     self.env = env
     self.mate_suffix = mate_suffix
@@ -1877,6 +1877,7 @@ class module:
       self.names = [name, name + mate_suffix]
       if (dist_path is not None):
         self.dist_paths = [dist_path, None]
+    self.python_required = []
 
   def names_active(self):
     for name,path in zip(self.names, self.dist_paths):
@@ -1911,6 +1912,7 @@ class module:
     self.exclude_from_binary_bundle = []
     dist_paths = []
     self.extra_command_line_locations = []
+    self.python_required = []
     for dist_path in self.dist_paths:
       if (dist_path is not None):
         while True:
@@ -1951,6 +1953,7 @@ class module:
             "modules_required_for_build", []))
           self.required_for_use.extend(config.get(
             "modules_required_for_use", []))
+          self.python_required.extend(config.get("python_required", []))
           self.optional.extend(config.get(
             "optional_modules", []))
           self.optional.extend(
@@ -2078,7 +2081,7 @@ class module:
   def command_line_directory_paths(self):
     result = []
     for dist_path in self.dist_paths_active():
-      for sub_dir in ["command_line", self.name+"/command_line"]+ \
+      for sub_dir in ["command_line", os.path.join(self.name, "command_line") ]+ \
         [os.path.join(a,"command_line") for a in getattr(self,"extra_command_line_locations",[])]:
         path = dist_path / sub_dir
         if path.isdir():
@@ -2129,12 +2132,11 @@ class module:
       custom_refresh = dist_path / "libtbx_refresh.py"
       if custom_refresh.isfile():
         print("Processing: %s" % show_string(abs(custom_refresh)))
+        global_vars = globals()
+        global_vars["__name__"] = dist_path.basename() + ".libtbx_refresh"
+        global_vars["self"] = self
         with open(abs(custom_refresh)) as fh:
-          exec(
-              fh.read(),
-              {"__name__": dist_path.basename() + ".libtbx_refresh"},
-              {"self": self},
-          )
+          exec(fh.read(), global_vars)
 
   def collect_test_scripts(self,
         file_names=["run_tests.py", "run_examples.py"]):
@@ -2182,7 +2184,6 @@ class build_options:
         force_32bit=False,
         msvc_arch_flag=default_msvc_arch_flag,
         enable_cxx11=default_enable_cxx11,
-        python3warn='none',
         skip_phenix_dispatchers=False):
 
     adopt_init_args(self, locals())
@@ -2243,7 +2244,6 @@ class build_options:
     print("Use opt_resources if available:", self.opt_resources, file=f)
     print("Use environment flags:", self.use_environment_flags, file=f)
     print("Enable C++11:", self.enable_cxx11, file=f)
-    print("Python3 migration warning policy:", self.python3warn, file=f)
     if( self.use_environment_flags ):
       print("  CXXFLAGS = ", self.env_cxxflags, file=f)
       print("  CFLAGS = ", self.env_cflags, file=f)
@@ -2462,11 +2462,6 @@ class pre_process_args:
       action="store_true",
       default=default_enable_cxx11,
       help="use C++11 standard")
-    parser.option(None, "--python3warn", action="store", default=None,
-      help="Python3 migration warnings. "
-           "'warn': print warnings when running code that may cause problems in Python 3. "
-           "'fail': stop execution on warnings. 'none': disable warnings (default)",
-      metavar="none|warn|fail")
     parser.option("--skip_phenix_dispatchers",
       action="store_true",
       default=False,
@@ -2510,7 +2505,7 @@ class pre_process_args:
 def set_preferred_sys_prefix_and_sys_executable(build_path):
   if (not hasattr(os.path, "samefile")): return
   dirname, basename = op.split(sys.prefix)
-  if (op.samefile(build_path, dirname)):
+  if (dirname and op.samefile(build_path, dirname)):
     new_prefix = op.join(build_path, basename)
     if (op.samefile(new_prefix, sys.prefix)):
       p = op.normpath(op.normcase(sys.prefix))
@@ -2599,67 +2594,8 @@ def unpickle():
   env = pickle.load(libtbx_env)
   if (env.python_version_major_minor != sys.version_info[:2]):
     env.raise_python_version_incompatible()
-  # XXX backward compatibility 2009-04-06
-  if (not hasattr(env.build_options, "boost_python_bool_int_strict")):
-    env.build_options.boost_python_bool_int_strict = True
-  # XXX backward compatibility 2009-04-27
-  if( not hasattr(env.build_options, "use_environment_flags") ):
-    env.build_options.use_environment_flags = False
-    env.build_options.env_cxxflags = ""
-    env.build_options.env_cflags = ""
-    env.build_options.env_cppflags = ""
-    env.build_options.env_ldflags = ""
-  # XXX backward compatibility 2009-10-11
-  if (not hasattr(env.build_options, "force_32bit")):
-    env.build_options.force_32bit = False
-  # XXX backward compatibility 2009-10-13
-  if (not hasattr(env.build_options, "msvc_arch_flag")):
-    env.build_options.msvc_arch_flag = default_msvc_arch_flag
-  # XXX backward compatibility 2010-05-28
-  if (not hasattr(env.build_options, "precompile_headers")):
-    env.build_options.precompile_headers = False
-  # XXX backward compatibility 2011-04-01
-  if (not hasattr(env.build_options, "opt_resources")):
-    env.build_options.opt_resources = False
-  # XXX backward compatibility 2011-07-05
-  if (not hasattr(env.build_options, "enable_cuda")):
-    env.build_options.enable_cuda = False
-  # XXX backward incompatibility 2011-10
-  if not hasattr(env, 'relocatable'):
-    print ("Please re-configure from scratch your cctbx_build:"
-           "cd cctbx_build; "
-           "/your/path/to/python ../cctbx_project/libtbx/configure.py [options] [modules]")
-    sys.exit(1)
-  # XXX backward compatibility 2011-12-16
-  if (hasattr(env.build_path, "reset")): # future: unconditional
-    if (op.realpath(build_path) != op.realpath(abs(env.build_path))):
-      env.build_path.reset(build_path)
-  # XXX backward compatibility 2012-4-1: this is no April Fool ;-)
-  if not hasattr(env, 'no_bin_python'):
-    env.no_bin_python = False
-  # XXX backward compatibility 2012-8-14
-  try:
-    del env.enable_boost_threads
-  except AttributeError:
-    pass
-  # XXX backward compatibility 2013-08-20
-  if (not hasattr(env.build_options, "enable_cxx11")):
-    env.build_options.enable_cxx11 = False
-  # XXX backward compatibility 2015-07-02
-  if (not hasattr(env.build_options, "skip_phenix_dispatchers")):
-    env.build_options.skip_phenix_dispatchers = False
-  # XXX backward compatibility 2015-09-05
-  if not hasattr(env.build_options, "enable_boost_threads"):
-    env.build_options.enable_boost_threads = default_enable_boost_threads
-  # XXX backward compatibility 2016-01-08
-  if not hasattr(env, 'explicitly_requested_modules'):
-    env.explicitly_requested_modules = set()
-  # XXX backward compatibility 2016-06-06
-  if not hasattr(env, 'extra_command_line_locations'):
-    env.extra_command_line_locations = []
-  # XXX backward compatibility 2017-11-03
-  if not hasattr(env.build_options, "python3warn"):
-    env.build_options.python3warn = 'none'
+  if (op.realpath(build_path) != op.realpath(abs(env.build_path))):
+    env.build_path.reset(build_path)
   # XXX backward compatibility 2018-12-10
   if not hasattr(env.build_options, "use_conda"):
     env.build_options.use_conda = False
@@ -2672,6 +2608,42 @@ def warm_start(args):
   if (pre_processed_args.command_line.options.clear_scons_memory):
     env.clear_scons_memory()
   env.refresh()
+
+def get_boost_library_with_python_version(name, libpath):
+  """
+  Standard Boost.Python libraries may have the Python version appended
+  as a suffix. This function returns the name with the current Python
+  version if there is a file with that name in LIBPATH. Otherwise, it
+  will return the original name. For example, libboost_python.so may be
+  named libboost_python27.so for Python 2.7.
+
+  Parameters
+  ----------
+  name: str
+    The base name for a library (e.g. "boost_python")
+  libpath: list
+    The paths to search for this library
+
+  Returns
+  -------
+  name: str
+    The input name modified with the current Python version, if available
+  """
+
+  version = str(sys.version_info.major) + str(sys.version_info.minor)
+  for p in libpath:
+    name_version = name + version
+    if sys.platform == 'win32':
+      full_name = os.path.join(p, name_version + '.dll')
+    else:
+      full_name = os.path.join(p, 'lib' + name_version)
+      if sys.platform == 'darwin':
+        full_name += '.dylib'
+      else:
+        full_name += '.so'
+    if os.path.isfile(full_name):
+      return name_version
+  return name
 
 if (__name__ == "__main__"):
   if (len(sys.argv) == 2 and sys.argv[1] == "__libtbx_refresh__"):

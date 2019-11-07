@@ -220,6 +220,11 @@ class SetupInstaller(object):
     shutil.copyfile(self.install_script, os.path.join(self.dest_dir, 'bin', 'install.py'))
     if sys.platform != "win32":
       # Write executable Bash script wrapping Python script
+      if self.base_dir == 'conda_base':
+        # avoid conflicts with active conda environment during installation
+        global INSTALL_SH
+        INSTALL_SH = INSTALL_SH.replace(
+          'fi\nfi\n$PYTHON_EXE','fi\nfi\nunset CONDA_PREFIX\n$PYTHON_EXE')
       with open(os.path.join(self.dest_dir, 'install'), 'w') as f:
         f.write(INSTALL_SH)
       st = os.stat(os.path.join(self.dest_dir, "install"))

@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import zip
 def run(args):
   assert len(args) == 0
   from cctbx import miller
@@ -51,7 +52,7 @@ def run(args):
     [4, 5, 3, 1, 0, 2],
     [5, 3, 4, 2, 1, 0]]
   from libtbx.test_utils import show_diff
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   sio = StringIO()
   assert ra.show_summary(out=sio, prefix=": ") is ra
   assert not show_diff(sio.getvalue(), """\
@@ -147,7 +148,7 @@ Indexing ambiguities:
     [4, 1, 5, 2, 0, 3],
     [5, 2, 4, 1, 3, 0]]
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

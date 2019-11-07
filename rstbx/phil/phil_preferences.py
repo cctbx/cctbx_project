@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.phil.command_line import argument_interpreter as model_argument_interpreter
 from libtbx.utils import Sorry
 from spotfinder.command_line.signal_strength import additional_spotfinder_phil_defs # implicit import

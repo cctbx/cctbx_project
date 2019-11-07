@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx import utils
 import iotbx.pdb
 from scitbx.array_family import flex
@@ -38,7 +38,7 @@ END
     sfp = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
     sfp.algorithm="direct"
     for target_name in ["ls_wunit_kunit", "ls_wunit_k1", "ml"]:
-      print "%s"%target_name, "-"*50
+      print("%s"%target_name, "-"*50)
       fmodel = mmtbx.f_model.manager(
         f_obs                        = f_obs,
         xray_structure               = xrs.deep_copy_scatterers(),
@@ -46,7 +46,7 @@ END
         sf_and_grads_accuracy_params = sfp)
       fmodel.update_all_scales(update_f_part1=update_f_part1)
       alpha_beta = fmodel.alpha_beta()
-      print "R-work: %6.4f"%fmodel.r_work()
+      print("R-work: %6.4f"%fmodel.r_work())
       #
       tg = mmtbx.utils.experimental_data_target_and_gradients(fmodel = fmodel,
         alpha_beta=alpha_beta)
@@ -67,7 +67,7 @@ END
         t2 = tg.target()
         #
         gfd = (t1-t2)/(2*eps)
-        print gfd, go[i]
+        print(gfd, go[i])
         assert approx_equal(go[i], gfd, 1.e-5)
       # sites_cart
       gc = tg.grad_sites_cart()
@@ -91,7 +91,7 @@ END
           t2 = tg.target()
           #
           gfd.append( (t1-t2)/(2*eps) )
-        print gfd, list(gc[i])
+        print(gfd, list(gc[i]))
         assert approx_equal(gc[i], gfd, 1.e-5)
 
 def exercise_d_data_target_d_atomic_params2():
@@ -207,12 +207,12 @@ TER
     pdb_hierarchy       = hierarchy,
     residues_per_window = 1)
   for r in result:
-    print "chainID_resseqs: %s occupancy_grad: %-15.6f"%tuple(r)
+    print("chainID_resseqs: %s occupancy_grad: %-15.6f"%tuple(r))
   # get group gradients using custom selections
   selections = [flex.size_t([0,1,2,3]), flex.size_t([4,5,6,7,8])]
   result = tg.group_occupancy_grads(selections = selections)
   for i, r in enumerate(result):
-    print "selection#: %s occupancy_grad: %-15.6f"%(str(i), r[1])
+    print("selection#: %s occupancy_grad: %-15.6f"%(str(i), r[1]))
 
 def exercise_get_atom_selections(verbose=False):
   pdb_in = """\
@@ -239,7 +239,7 @@ END"""
       model = model,
       selection_strings=["resseq 18:19", "resseq 19:20"],
       parameter_name="refine.occupancy")
-  except Sorry, s :
+  except Sorry as s :
     assert (str(s) == """\
 One or more overlapping selections for refine.occupancy:
 resseq 18:19
@@ -339,7 +339,7 @@ ATOM      3  C   GLY A  34     -73.114  11.306 -25.993  1.00  0.00           C
 ATOM      4  O   GLY A  34     -72.196  12.128 -25.997  1.00  0.00           O
 """
   of = open("tmp_exercise_corrupt_cryst1.pdb", "w")
-  print >> of, pdb_str
+  print(pdb_str, file=of)
   of.close()
   base_arg = ["tmp_exercise_corrupt_cryst1.pdb"]
   for extra_arg in [[], ["bla=bla"], ["bla"]]:
@@ -347,6 +347,44 @@ ATOM      4  O   GLY A  34     -72.196  12.128 -25.997  1.00  0.00           O
     assert o.crystal_symmetry is None, o.crystal_symmetry
     o = utils.process_command_line_args(args=extra_arg+base_arg)
     assert o.crystal_symmetry is None
+
+def exercise_rotatable_bonds():
+  pdb_str = """
+CRYST1  124.792  235.089   82.032  90.00  90.00  90.00 C 2 2 21
+ATOM      1  N   LYS C   1     -31.148 -19.390 -11.207  1.00  0.00           N
+ATOM      2  CA  LYS C   1     -31.030 -18.256 -10.299  1.00  0.00           C
+ATOM      3  C   LYS C   1     -31.972 -18.403  -9.110  1.00  0.00           C
+ATOM      4  O   LYS C   1     -31.567 -18.231  -7.960  1.00  0.00           O
+ATOM      5  CB  LYS C   1     -31.312 -16.946 -11.035  1.00  0.00           C
+ATOM      6  CG  LYS C   1     -31.183 -15.698 -10.172  1.00  0.00           C
+ATOM      7  CD  LYS C   1     -31.387 -14.435 -10.995  1.00  0.00           C
+ATOM      8  CE  LYS C   1     -31.277 -13.186 -10.131  1.00  0.00           C
+ATOM      9  NZ  LYS C   1     -31.474 -11.943 -10.922  1.00  0.00           N
+ATOM     10  HA  LYS C   1     -30.010 -18.227  -9.914  1.00  0.00           H
+ATOM     11  HB1 LYS C   1     -30.622 -16.845 -11.874  1.00  0.00           H
+ATOM     12  HB2 LYS C   1     -32.323 -16.968 -11.444  1.00  0.00           H
+ATOM     13  HG1 LYS C   1     -31.929 -15.728  -9.377  1.00  0.00           H
+ATOM     14  HG2 LYS C   1     -30.193 -15.670  -9.719  1.00  0.00           H
+ATOM     15  HD1 LYS C   1     -30.634 -14.388 -11.783  1.00  0.00           H
+ATOM     16  HD2 LYS C   1     -32.373 -14.458 -11.458  1.00  0.00           H
+ATOM     17  HE1 LYS C   1     -32.025 -13.224  -9.341  1.00  0.00           H
+ATOM     18  HE2 LYS C   1     -30.291 -13.153  -9.665  1.00  0.00           H
+ATOM     19  HZ1 LYS C   1     -31.393 -11.140 -10.314  1.00  0.00           H
+ATOM     20  HZ2 LYS C   1     -30.771 -11.889 -11.646  1.00  0.00           H
+ATOM     21  HZ3 LYS C   1     -32.391 -11.953 -11.344  1.00  0.00           H
+ATOM     22  H 1 LYS C   1     -30.521 -19.268 -11.976  1.00  0.00           H
+ATOM     23  H 2 LYS C   1     -30.920 -20.233 -10.720  1.00  0.00           H
+ATOM     24  H 3 LYS C   1     -32.087 -19.447 -11.549  1.00  0.00           H
+TER
+END
+"""
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  model = mmtbx.model.manager(model_input = pdb_inp, process_input=True,
+    build_grm=True, log=null_out())
+  residue = model.get_hierarchy().only_residue()
+  r = mmtbx.utils.rotatable_bonds.axes_and_atoms_aa_specific(
+      residue = residue, mon_lib_srv = model.get_mon_lib_srv(), log=null_out())
+  assert r is None
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
@@ -356,7 +394,8 @@ def run():
   exercise_get_atom_selections(verbose=verbose)
   exercise_f_000()
   exercise_detect_link_problems()
-  print format_cpu_times()
+  exercise_rotatable_bonds()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

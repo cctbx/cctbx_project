@@ -1,10 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import rstbx.utils
 from libtbx.math_utils import ifloor, iceil
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
 import math
+from six.moves import range
+from six import PY2
 
 pi_over_180 = math.pi / 180
 
@@ -225,7 +227,7 @@ class image(screen_params):
   def __init__(self, file_name):
     screen_params.__init__(self)
     # XXX major hack - Boost.Python doesn't really deal with Unicode strings
-    if isinstance(file_name, unicode):
+    if PY2 and isinstance(file_name, unicode):
       file_name = str(file_name)
     if isinstance(file_name, str) or isinstance(file_name, dict):
       self.file_name = file_name
@@ -273,8 +275,8 @@ class image(screen_params):
   def set_integration_results(self, integration):
     self._integration = integration
     mp = integration['mapped_predictions']
-    print "%d spot predictions loaded" % mp.size()
-    print "max. resolution is %g" % integration['resolution']
+    print("%d spot predictions loaded" % mp.size())
+    print("max. resolution is %g" % integration['resolution'])
 
   def set_spots(self, spots):
     self._spots = spots

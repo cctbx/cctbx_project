@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 from libtbx.program_template import ProgramTemplate
 
@@ -72,13 +72,13 @@ output {
           fname = fname_base+".pdb"
           print('Writing results: %s' % fname)
           self.data_manager.write_model_file(
-              fname, str_to_output, self.params.output.overwrite)
+              str_to_output, fname, self.params.output.overwrite)
         if 'mmcif' in self.params.output.format:
           str_to_output = model.model_as_mmcif()
           fname = fname_base+".cif"
           print('Writing results: %s' % fname)
           self.data_manager.write_model_file(
-              fname, str_to_output, self.params.output.overwrite)
+              str_to_output, fname, self.params.output.overwrite)
 
 
   # ---------------------------------------------------------------------------

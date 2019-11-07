@@ -58,6 +58,7 @@ namespace {
         .def("at_end", &w_t::at_end)
         .def("next_site_frac", next_site_frac)
         .def("next", next_site_frac)
+        .def("__next__", next_site_frac)
         .def("__iter__", scitbx::boost_python::pass_through)
         .def("all_sites_frac", &w_t::all_sites_frac)
         .def("restart", &w_t::restart)

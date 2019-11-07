@@ -1,10 +1,18 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_mp
 from libtbx import str_utils
 import libtbx.phil
 from libtbx.utils import Sorry
+from libtbx.test_utils import approx_equal_core
 from libtbx import adopt_init_args, Auto
 import sys
+
+import iotbx.cif.model
+from iotbx.pdb import modified_aa_names, modified_rna_dna_names
+from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter, \
+    three_letter_l_given_three_letter_d, three_letter_given_one_letter
+from six.moves import zip
+from six.moves import range
 
 master_phil = libtbx.phil.parse("""
   similarity_matrix =  blosum50  dayhoff *identity
@@ -159,7 +167,7 @@ class chain(object):
           xyz = atom.xyz
           break
       else :
-        print "WARNING: can't find center of residue %s" % resid
+        print("WARNING: can't find center of residue %s" % resid)
         xyz = residue_group.atoms()[0].xyz
       self._xyz.append(xyz)
       if (res_class is not None):
@@ -235,27 +243,27 @@ class chain(object):
       w = 0
       line = " ".join([ resid.strip() for resid in resids ])
       lines = str_utils.wordwrap(line, 60).split("\n")
-      print >> out,   "    residue IDs: %s" % lines[0]
+      print("    residue IDs: %s" % lines[0], file=out)
       for line in lines[1:] :
-        print >> out, "                 %s" % line
-    print >> out, "Chain '%s':" % self.chain_id
+        print("                 %s" % line, file=out)
+    print("Chain '%s':" % self.chain_id, file=out)
     if (self.alignment is None):
-      print >> out, "  No appropriate sequence match found!"
+      print("  No appropriate sequence match found!", file=out)
     else :
-      print >> out, "  best matching sequence: %s" % self.sequence_name
-      print >> out, "  sequence identity: %.2f%%" % (self.identity*100)
+      print("  best matching sequence: %s" % self.sequence_name, file=out)
+      print("  sequence identity: %.2f%%" % (self.identity*100), file=out)
       if (self.n_missing > 0):
-        print >> out, "  %d residue(s) missing from PDB chain (%d at start, %d at end)" % (self.n_missing, self.n_missing_start, self.n_missing_end)
+        print("  %d residue(s) missing from PDB chain (%d at start, %d at end)" % (self.n_missing, self.n_missing_start, self.n_missing_end), file=out)
       if (self.n_gaps > 0):
-        print >> out, "  %d gap(s) in chain" % self.n_gaps
+        print("  %d gap(s) in chain" % self.n_gaps, file=out)
       if (len(self.mismatch) > 0):
-        print >> out, "  %d mismatches to sequence" % len(self.mismatch)
+        print("  %d mismatches to sequence" % len(self.mismatch), file=out)
         print_resids(self.mismatch)
       if (len(self.extra) > 0):
-        print >> out, "  %d residues not found in sequence" % len(self.extra)
+        print("  %d residues not found in sequence" % len(self.extra), file=out)
         print_resids(self.extra)
       if (len(self.unknown) > 0):
-        print >> out, "  %d residues of unknown type" % len(self.unknown)
+        print("  %d residues of unknown type" % len(self.unknown), file=out)
         print_resids(self.unknown)
       if (verbose):
         self.alignment.pretty_print(out=out,
@@ -268,7 +276,7 @@ class validation(object):
   def __init__(self, pdb_hierarchy, sequences, params=None, log=None,
       nproc=Auto, include_secondary_structure=False,
       extract_coordinates=False, extract_residue_groups=False,
-      minimum_identity=0):
+      minimum_identity=0, custom_residues=[]):
     assert (len(sequences) > 0)
     for seq_object in sequences :
       assert (seq_object.sequence != "")
@@ -282,6 +290,9 @@ class validation(object):
     self.chains = []
     self.minimum_identity = minimum_identity
     self.sequences = sequences
+    self.custom_residues = custom_residues
+    if self.custom_residues is None:
+      self.custom_residues = list()
     self.sequence_mappings = [ None ] * len(sequences)
     for i_seq in range(1, len(sequences)):
       seq_obj1 = sequences[i_seq]
@@ -317,7 +328,7 @@ class validation(object):
         chain_type = PROTEIN
       else :
         self.n_other += 1
-        print >> log, "Skipping non-polymer chain '%s'" % chain_id
+        print("Skipping non-polymer chain '%s'" % chain_id, file=log)
         continue
       pad = True
       pad_at_start = False
@@ -353,16 +364,31 @@ class validation(object):
         args=range(len(self.chains)),
         processes=nproc)
     assert (len(alignments_and_names) == len(self.chains) == len(pdb_chains))
+    # Check that everything was aligned, otherwise show Sorry,
+    # because there is no way to produce mmCIF without alignment
+    no_alignment = []
+    for ch, a_and_names in zip(self.chains, alignments_and_names):
+      if a_and_names[0] is None:
+        no_alignment.append(ch.chain_id)
+    if len(no_alignment) > 0:
+      msg = "Could not find sequence for following chains:\n"
+      for c_id in no_alignment:
+        msg += "%s, " % c_id
+      msg += "\nPossible reasons:\n"
+      msg += "  - No sequence in sequence file.\n"
+      msg += "  - Too small amount of residues is modelled.\n"
+      msg += "  - Real sequence provided when model is poly-ALA.\n"
+      raise Sorry(msg)
     for i, c in enumerate(self.chains):
       alignment, seq_name, seq_id = alignments_and_names[i]
       if (alignment is None) : continue
       pdb_chain = pdb_chains[i]
       try :
         c.set_alignment(alignment, seq_name, seq_id)
-      except Exception, e :
-        print "Error processing chain %s" % c.chain_id
+      except Exception as e :
+        print("Error processing chain %s" % c.chain_id)
         raise
-        print e
+        print(e)
       else :
         if (extract_coordinates):
           c.extract_coordinates(pdb_chain)
@@ -377,22 +403,27 @@ class validation(object):
     best_sequence = None
     best_seq_id = None
     best_identity = self.minimum_identity
-    best_width = sys.maxint
+    best_width = sys.maxsize
+    best_length = sys.maxsize
     for i_seq, seq_object in enumerate(self.sequences):
       alignment = mmtbx.alignment.align(
         seq_a=chain.sequence,
         seq_b=seq_object.sequence).extract_alignment()
       identity = alignment.calculate_sequence_identity(skip_chars=['X'])
       # if the identities of two alignments are equal, then we prefer the
-      # alignment that has the narrowest range for the match
+      # alignment that has the narrowest range for the match and the
+      # shortest sequence
       width = alignment.match_codes.rfind('m') - alignment.match_codes.find('m')
+      length = len(seq_object.sequence)
       if ((identity > best_identity) or
-          (identity == best_identity and width < best_width)):
+          (approx_equal_core(identity, best_identity, 1.e-6, 1.e10, None, "")
+           and width <= best_width and length < best_length)):
         best_identity = identity
         best_alignment = alignment
         best_sequence = seq_object.name
         best_seq_id = i_seq
         best_width = width
+        best_length = length
     return best_alignment, best_sequence, best_seq_id
 
   def get_table_data(self):
@@ -444,87 +475,353 @@ class validation(object):
         counts_relative[i_seq] = counts[i_seq] / redundancies[i_seq]
     return counts_relative
 
-  def as_cif_block(self, cif_block=None):
-    import iotbx.cif.model
-    if cif_block is None:
-      cif_block = iotbx.cif.model.block()
+  def sequence_as_cif_block(self, custom_residues=None):
+    """
+    Export sequence information as mmCIF block
+    Version 5.0 of mmCIF/PDBx dictionary
 
+    Parameters
+    ----------
+    custom_residues: list of str
+      List of custom 3-letter residues to keep in pdbx_one_letter_sequence
+      The 3-letter residue must exist in the model. If None, the value
+      from self.custom_residues is used.
+
+    Returns
+    -------
+    cif_block: iotbx.cif.model.block
+    """
+
+    if custom_residues is None:
+      custom_residues = self.custom_residues
+
+    dna = set(['DA', 'DT', 'DC', 'DG', 'DI'])
+    rna = set(['A', 'U', 'C', 'G'])
+    rna_to_dna = {'A': 'DA', 'U': 'DT', 'T': 'DT', 'C': 'DC', 'G': 'DG',
+                  'I': 'DI'}
+    modified_dna = set()
+    modified_rna = set()
+    for key in modified_rna_dna_names.lookup.keys():
+      value = modified_rna_dna_names.lookup[key]
+      if value in dna:
+        modified_dna.add(key)
+      elif value in rna:
+        modified_rna.add(key)
+
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/entity.html
+    entity_loop = iotbx.cif.model.loop(header=(
+      '_entity.id',
+      '_entity.pdbx_description'
+    ))
+
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/entity_poly.html
+    entity_poly_loop = iotbx.cif.model.loop(header=(
+      '_entity_poly.entity_id',
+      '_entity_poly.nstd_linkage',
+      '_entity_poly.nstd_monomer',
+      '_entity_poly.pdbx_seq_one_letter_code',
+      '_entity_poly.pdbx_seq_one_letter_code_can',
+      '_entity_poly.pdbx_strand_id',
+      '_entity_poly.pdbx_target_identifier',
+      '_entity_poly.type',
+    ))
+
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/entity_poly_seq.html
+    entity_poly_seq_loop = iotbx.cif.model.loop(header=(
+      '_entity_poly_seq.entity_id',
+      '_entity_poly_seq.num',
+      '_entity_poly_seq.mon_id',
+      '_entity_poly_seq.hetero',
+    ))
+
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ref.html
     struct_ref_loop = iotbx.cif.model.loop(header=(
-      "_struct_ref.id",
-      "_struct_ref.db_name",
-      "_struct_ref.db_code",
-      "_struct_ref.pdbx_db_accession",
-      "_struct_ref.entity_id",
-      "_struct_ref.pdbx_seq_one_letter_code",
-      "_struct_ref.pdbx_align_begin",
-      "_struct_ref.biol_id",
-      #"_struct_ref.seq_align",
-      #"_struct_ref.seq_dif",
-      #"_struct_ref.details"
+      '_struct_ref.id',
+      '_struct_ref.db_code',
+      '_struct_ref.db_name',
+      '_struct_ref.entity_id',
+      '_struct_ref.pdbx_align_begin',
+      '_struct_ref.pdbx_db_accession',
+      '_struct_ref.pdbx_db_isoform',
+      '_struct_ref.pdbx_seq_one_letter_code',
     ))
 
-    # maybe we can find this information out somehow and pass it along?
-    db_name = ""
-    db_code = ""
-    db_accession = ""
-    for i_chain, chain in enumerate(self.chains):
-      struct_ref_loop.add_row((
-        i_chain+1, db_name, db_code, db_accession, "?",
-        chain.alignment.b, chain.n_missing_start+1, "" ))
-
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ref_seq.html
     struct_ref_seq_loop = iotbx.cif.model.loop(header=(
-      "_struct_ref_seq.align_id",
-      "_struct_ref_seq.ref_id",
-      "_struct_ref_seq.pdbx_PDB_id_code",
-      "_struct_ref_seq.pdbx_strand_id",
-      "_struct_ref_seq.seq_align_beg",
-      "_struct_ref_seq.pdbx_seq_align_beg_ins_code",
-      "_struct_ref_seq.seq_align_end",
-      "_struct_ref_seq.pdbx_seq_align_end_ins_code",
-      "_struct_ref_seq.pdbx_db_accession",
-      "_struct_ref_seq.db_align_beg",
-      "_struct_ref_seq.db_align_end",
-      "_struct_ref_seq.pdbx_auth_seq_align_beg",
-      "_struct_ref_seq.pdbx_auth_seq_align_end"
+      '_struct_ref_seq.align_id',
+      '_struct_ref_seq.db_align_beg',
+      '_struct_ref_seq.db_align_end',
+      '_struct_ref_seq.pdbx_PDB_id_code',
+      '_struct_ref_seq.pdbx_auth_seq_align_beg',
+      '_struct_ref_seq.pdbx_auth_seq_align_end',
+      '_struct_ref_seq.pdbx_db_accession',
+      '_struct_ref_seq.pdbx_db_align_beg_ins_code',
+      '_struct_ref_seq.pdbx_db_align_end_ins_code',
+      '_struct_ref_seq.pdbx_seq_align_beg_ins_code',
+      '_struct_ref_seq.pdbx_seq_align_end_ins_code',
+      '_struct_ref_seq.pdbx_strand_id',
+      '_struct_ref_seq.ref_id',
+      '_struct_ref_seq.seq_align_beg',
+      '_struct_ref_seq.seq_align_end',
     ))
 
-    import re
-    prog = re.compile("\d+")
+    entity_id = 0
+    # entity_poly
+    sequence_to_entity_id = dict()
+    nstd_linkage = dict()
+    nstd_monomer = dict()
+    seq_one_letter_code = dict()
+    seq_one_letter_code_can = dict()
+    strand_id = dict()
+    target_identifier = dict()
+    sequence_type = dict()
+    # entity_poly_seq
+    num = dict()
+    mon_id = dict()
+    hetero = dict()
+    # struct_ref (work in progress)
+    chain_id = dict()
+    db_code = '?'
+    db_name = '?'
+    align_begin = '?'
+    db_accession = '?'
+    db_isoform = '?'
+    # struct_ref_seq (work in progress)
+    db_align_beg = '?'
+    db_align_end = '?'
+    PDB_id_code = '?'
+    align_beg_ins_code = '?'
+    align_end_ins_code = '?'
 
-    def decode_resid(resid):
-      resid = resid.strip()
-      s = prog.search(resid)
-      assert s is not None
-      resseq = resid[s.start():s.end()]
-      ins_code = resid[s.end():]
-      if len(ins_code) == 0: ins_code = "?"
-      return resseq, ins_code
-
-    align_id = 1
     for i_chain, chain in enumerate(self.chains):
-      matches = chain.alignment.matches()
-      #i_range_begin = 0
-      i_range_end = -1
-      while True:
-        i_range_begin = matches.find("|", i_range_end+1)
-        if i_range_begin == -1: break
-        i_range_end = matches.find(" ", i_range_begin)
-        if i_range_end == -1:
-          i_range_end = len(matches)
-        i_range_end -= 1
-        i_a_range_begin = chain.alignment.i_seqs_a[i_range_begin]
-        i_a_range_end = chain.alignment.i_seqs_a[i_range_end]
-        i_b_range_begin = chain.alignment.i_seqs_b[i_range_begin]
-        i_b_range_end = chain.alignment.i_seqs_b[i_range_end]
-        resseq_begin, ins_code_begin = decode_resid(chain.resids[i_a_range_begin])
-        resseq_end, ins_code_end = decode_resid(chain.resids[i_a_range_end])
-        struct_ref_seq_loop.add_row((
-          align_id, i_chain+1, "?", chain.chain_id, i_a_range_begin+1, ins_code_begin,
-          i_a_range_end+1, ins_code_end, "?", i_b_range_begin+1, i_b_range_end+1,
-          resseq_begin, resseq_end
-        ))
-        align_id +=1
+      seq_can = chain.alignment.b
+      # entity_id
+      if seq_can not in sequence_to_entity_id:
+        entity_id += 1
+        sequence_to_entity_id[seq_can] = entity_id
+      else:
+        # subsequent matches just add strand_id
+        entity_id = sequence_to_entity_id[seq_can]
+        strand_id[entity_id].append(chain.chain_id)
+        continue
 
+      # entity_poly items
+      # nstd_linkage (work in progress)
+      if entity_id not in nstd_linkage:
+        nstd_linkage[entity_id] = 'no'
+      # nstd_monomer
+      if entity_id not in nstd_monomer:
+        nstd_monomer[entity_id] = 'no'
+      # pdbx_seq_one_letter_code
+      if entity_id not in seq_one_letter_code:
+        seq_one_letter_code[entity_id] = list()
+      # type (work in progress)
+      if entity_id not in sequence_type:
+        sequence_type[entity_id] = '?'
+      has_protein = False
+      has_rna = False
+      has_dna = False
+      has_sugar = False
+      is_d = False
+      # chain.alignment.a is the model
+      # chain.alignment.b is the sequence
+      for i_a, i_b in zip(chain.alignment.i_seqs_a, chain.alignment.i_seqs_b):
+        # sequence does not have residue in model
+        if i_b is None:
+          continue
+        # model does not have residue in sequence
+        if i_a is None or chain.resnames[i_a] is None:
+          letter = seq_can[i_b]
+        else:
+          resname = chain.resnames[i_a].strip()
+          # check for modified residues
+          if (resname in modified_aa_names.lookup or
+              resname in modified_rna_dna_names.lookup or
+              resname in custom_residues):
+            letter = '({resname})'.format(resname=resname)
+            nstd_monomer[entity_id] = 'yes'
+          elif resname in three_letter_l_given_three_letter_d:
+            letter = '({resname})'.format(resname=resname)
+            nstd_monomer[entity_id] = 'yes'
+          # check for nucleic acid
+          elif resname in dna:
+            letter = '({resname})'.format(resname=resname)
+          elif resname in rna:
+            letter = resname
+          # regular protein
+          else:
+            letter = one_letter_given_three_letter.get(resname)
+            if letter is None:
+              letter = 'X'
+
+          # check for protein
+          if (resname in one_letter_given_three_letter or
+              resname in modified_aa_names.lookup):
+            has_protein = True
+          # check for DNA
+          # hybrid protein/DNA/RNA chains are not allowed
+          if resname in dna or resname in modified_dna:
+            has_dna = True
+            has_protein = False
+          # check for RNA
+          # does not handle hybrid DNA/RNA chains
+          if resname in rna or resname in modified_rna:
+            has_rna = True
+            has_dna = False
+            has_protein = False
+          # check chirality
+          # hybrid D/L handed chains are not allowed
+          if resname in three_letter_l_given_three_letter_d:
+            is_d = True
+        # pdbx_seq_one_letter_code
+        seq_one_letter_code[entity_id].append(letter)
+
+      # pdbx_seq_one_letter_code_can
+      seq_one_letter_code_can[entity_id] = seq_can.replace('-', '')
+      # strand_id
+      if entity_id not in strand_id:
+        strand_id[entity_id] = list()
+      strand_id[entity_id].append(chain.chain_id)
+      # target_identifier (work in progress)
+      if entity_id not in target_identifier:
+        target_identifier[entity_id] = '?'
+      # type
+      #   polypeptide(L)
+      #   polypeptide(D)
+      #   polydeoxyribonucleotide,
+      #   polyribonucleotide
+      # missing
+      #   cyclic-psuedo-peptide
+      #   other
+      #   peptide nucleic acid
+      #   polydeoxyribonucleotide/polyribonucleotide
+      #   polysaccharide(D)
+      #   polysaccahride(L)
+      if has_protein:
+        choice = 'polypeptide'
+        if is_d:
+          choice += '(D)'
+        else:
+          choice += '(L)'
+      if has_dna:
+        choice = 'polydeoxyribonucleotide'
+      if has_rna:
+        choice = 'polyribonucleotide'
+      sequence_type[entity_id] = choice
+
+      # entity_poly_seq items
+      if entity_id not in mon_id:
+        mon_id[entity_id] = list()
+      if entity_id not in num:
+        num[entity_id] = list()
+      if entity_id not in hetero:
+        hetero[entity_id] = list()
+
+      # struct_ref items
+      if entity_id not in chain_id:
+        chain_id[entity_id] = i_chain + 1
+
+      for i_a, i_b in zip(chain.alignment.i_seqs_a, chain.alignment.i_seqs_b):
+        # sequence does not have residue in model
+        if i_b is None:
+          continue
+        seq_resname = None
+        if has_protein:
+          seq_resname = three_letter_given_one_letter.get(seq_can[i_b])
+        if has_dna:
+          seq_resname = rna_to_dna.get(seq_can[i_b])
+        if has_rna:
+          seq_resname = seq_can[i_b]
+        if seq_resname is None:
+          seq_resname = 'UNK'
+        # model does not have residue in sequence
+        if i_a is None or chain.resnames[i_a] is None:
+          resname = seq_resname
+        else:
+          resname = chain.resnames[i_a]
+        mon_id[entity_id].append(resname.strip())
+        if len(num[entity_id]) == 0:
+          num[entity_id].append(1)
+        else:
+          num[entity_id].append(num[entity_id][-1] + 1)
+        hetero[entity_id].append('no')
+
+    # build loops
+    ids = list(sequence_to_entity_id.values())
+    ids.sort()
+    align_id = 1
+    for entity_id in ids:
+      # construct entity_poly loop
+      if len(strand_id[entity_id]) == 1:
+        chains = strand_id[entity_id][0]
+      else:
+        chains = strand_id[entity_id]
+        #chains.sort()
+        chains = ','.join(chains)
+      entity_poly_loop.add_row((
+        entity_id,
+        nstd_linkage[entity_id],
+        nstd_monomer[entity_id],
+        ';' + ''.join(seq_one_letter_code[entity_id]) + '\n;',
+        ';' + seq_one_letter_code_can[entity_id] + '\n;',
+        chains,
+        target_identifier[entity_id],
+        sequence_type[entity_id]
+      ))
+
+      # construct entity loop
+      entity_loop.add_row((
+        entity_id,
+        'Chains: ' + chains
+      ))
+
+      # construct entity_poly_seq loop
+      chain_length = len(mon_id[entity_id])
+      for i in range(chain_length):
+        entity_poly_seq_loop.add_row((
+          entity_id,
+          num[entity_id][i],
+          mon_id[entity_id][i],
+          hetero[entity_id][i]
+        ))
+
+      # construct struct_ref loop
+      struct_ref_loop.add_row((
+        chain_id[entity_id],
+        db_code,
+        db_name,
+        entity_id,
+        align_begin,
+        db_accession,
+        db_isoform,
+        ';' + seq_one_letter_code_can[entity_id] + '\n;'
+      ))
+
+      # construct struct_ref_seq loop
+      for chain in strand_id[entity_id]:
+        struct_ref_seq_loop.add_row((
+          align_id,
+          db_align_beg,
+          db_align_end,
+          PDB_id_code,
+          '1',
+          len(seq_one_letter_code_can[entity_id]) - 1,
+          db_accession,
+          align_beg_ins_code,
+          align_end_ins_code,
+          align_beg_ins_code,
+          align_end_ins_code,
+          chain,
+          chain_id[entity_id],
+          '1',
+          len(seq_one_letter_code_can[entity_id]) - 1
+        ))
+
+    # construct block
+    cif_block = iotbx.cif.model.block()
+    cif_block.add_loop(entity_loop)
+    cif_block.add_loop(entity_poly_loop)
+    cif_block.add_loop(entity_poly_seq_loop)
     cif_block.add_loop(struct_ref_loop)
     cif_block.add_loop(struct_ref_seq_loop)
 
@@ -550,7 +847,7 @@ def get_sequence_n_copies(
   for instance, given a tetrameric search model, 2 copies in the ASU, and a
   monomer sequence file, the ASU contains 8 copies of the sequence(s).
   """
-  print >> out, "Guessing the number of copies of the sequence file in the ASU"
+  print("Guessing the number of copies of the sequence file in the ASU", file=out)
   v = validation(
     pdb_hierarchy=pdb_hierarchy,
     sequences=sequences,
@@ -571,7 +868,7 @@ def get_sequence_n_copies(
       "not accurately represent the contents of the crystal after adjusting ",
       "for copy number, molecular replacement and building may fail.", ]
     if (force_accept_composition):
-      print >> out, "WARNING: %s" % error
+      print("WARNING: %s" % error, file=out)
     else :
       raise_sorry(error)
   counts = v.get_relative_sequence_copy_number()
@@ -579,16 +876,16 @@ def get_sequence_n_copies(
   if (-1 in unique_counts) : unique_counts.remove(-1)
   if (0 in unique_counts):
     unique_counts.remove(0)
-    print >> out, "WARNING: %d sequence(s) not found in model.  This is not" %\
-      counts.count(0)
-    print >> out, "usually a problem, but it may indicate an incomplete model."
+    print("WARNING: %d sequence(s) not found in model.  This is not" %\
+      counts.count(0), file=out)
+    print("usually a problem, but it may indicate an incomplete model.", file=out)
   error = freq = None
   model_copies = copies_from_user
   if (model_copies is Auto):
     model_copies = copies_from_xtriage
   if (model_copies is None):
     model_copies = 1
-    print >> out, "WARNING: assuming 1 copy of model"
+    print("WARNING: assuming 1 copy of model", file=out)
   if (model_copies < 1):
     raise Sorry("Must have at least one copy of model.")
   if (len(unique_counts) == 0):
@@ -606,14 +903,14 @@ def get_sequence_n_copies(
     assert seq_freq > 0
     # 1-1 mapping between PDB hierarchy and sequence
     if (seq_freq == 1.0):
-      print >> out, "Assuming %d copies of sequence file (as well as model)" %\
-        model_copies
+      print("Assuming %d copies of sequence file (as well as model)" %\
+        model_copies, file=out)
       return model_copies
     elif (seq_freq > 1):
       # hierarchy contains N copies of sequence
       if is_integer(seq_freq):
         freq = int(seq_freq) * model_copies
-        print >> out, "Assuming %d copies of sequence file present" % freq
+        print("Assuming %d copies of sequence file present" % freq, file=out)
         return freq
       # hierarchy contains X.Y copies of sequence
       else :
@@ -635,12 +932,12 @@ def get_sequence_n_copies(
           if ((copies_from_user is Auto) and
               (copies_from_xtriage is not None) and
               (assume_xtriage_copies_from_sequence_file)):
-            print >> out, error
-            print >> out, ""
-            print >> out, "Since the number of copies was guessed by Xtriage"
-            print >> out, "based on the sequence file, it will be scaled"
-            print >> out, "by %g to be appropriate for the search model." % \
-              inverse_freq
+            print(error, file=out)
+            print("", file=out)
+            print("Since the number of copies was guessed by Xtriage", file=out)
+            print("based on the sequence file, it will be scaled", file=out)
+            print("by %g to be appropriate for the search model." % \
+              inverse_freq, file=out)
             return seq_freq
         # too much model
         # XXX is this actually possible the way I've written the function?
@@ -652,16 +949,16 @@ def get_sequence_n_copies(
             "number of copies is wrong."
         # model_copies times model contents matches sequence
         else :
-          print >> out, "Assuming only one copy of sequence file contents."
+          print("Assuming only one copy of sequence file contents.", file=out)
           return 1
       else :
         error = "The sequence file does not appear to contain a round "+\
           "number of copies of the model (%g)." % inverse_freq
   if (error is not None):
     if (force_accept_composition):
-      print >> out, "WARNING: " + error
-      print >> out, ""
-      print >> out, "Ambiguous input, defaulting to 1 copy of sequence file"
+      print("WARNING: " + error, file=out)
+      print("", file=out)
+      print("Ambiguous input, defaulting to 1 copy of sequence file", file=out)
       return 1
     else :
       raise_sorry(error)

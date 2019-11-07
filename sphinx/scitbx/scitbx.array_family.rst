@@ -80,7 +80,7 @@ Create a toy array::
 
 One way of looping over the array::
 
-  for i in xrange(a.size()):
+  for i in range(a.size()):
     print a[i]
 
 A better way of looping over the array::
@@ -95,7 +95,7 @@ Another good way of looping over the array::
 
 Modify the elements one-by-one::
 
-  for i in xrange(a.size()):
+  for i in range(a.size()):
     a[i] *= 10
   for ai in a:
     print ai

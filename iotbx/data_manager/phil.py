@@ -1,8 +1,9 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 '''
 '''
 
 from iotbx.data_manager import DataManagerBase
+from libtbx import Auto
 
 # =============================================================================
 class PhilDataManager(DataManagerBase):
@@ -36,10 +37,18 @@ class PhilDataManager(DataManagerBase):
   def process_phil_file(self, filename):
     return self._process_file(PhilDataManager.datatype, filename)
 
-  def write_phil_file(self, filename, phil_str, overwrite=False):
+  def get_default_output_phil_filename(self):
+    filename = self.get_default_output_filename()
+    if not filename.endswith('.eff'):
+      filename += '.eff'
+    return filename
+
+  def write_phil_file(self, phil_str, filename=Auto, overwrite=Auto):
     # use this instead of libtbx.phil.scope.show for consistent error messages
-    self._write_text(PhilDataManager.datatype, filename,
-                     phil_str, overwrite=overwrite)
+    if filename is Auto:
+      filename = self.get_default_output_phil_filename()
+    self._write_text(PhilDataManager.datatype, phil_str,
+                     filename=filename, overwrite=overwrite)
 
 # =============================================================================
 # end

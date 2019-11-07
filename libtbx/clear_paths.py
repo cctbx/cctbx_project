@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
 from distutils.dir_util import remove_tree
 import random
 import stat
 import os
 import os.path as op
+from six.moves import range
 
 def make_paths_writable_if_possible(paths):
   os_stat = os.stat

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 #!/usr/bin/env python
 import math
 
@@ -7,6 +7,7 @@ from scitbx import matrix
 from rstbx.diffraction import rotation_angles, reflection_prediction
 from rstbx.bpcx import sensor
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 # This script (provided by Graeme Winter) will take the quartz structure and
 # simulate a rotation around the 0 0 1 reflection and  1 0 1 reflection.
@@ -164,4 +165,4 @@ if __name__ == '__main__':
 
     scattering_prediction(indices, bmat, second_rotation_vector,
                           wavelength, resolution)
-    print "OK"
+    print("OK")

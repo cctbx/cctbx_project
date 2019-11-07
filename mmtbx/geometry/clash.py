@@ -1,9 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from cctbx import sgtbx # import dependency
 import mmtbx.geometry.shared_types # import dependency
 
 import boost.python
+from functools import reduce
+from six.moves import zip
 ext = boost.python.import_ext( "mmtbx_geometry_clash_ext" )
 from mmtbx_geometry_clash_ext import *
 
@@ -203,7 +205,7 @@ class Model(object):
 
   def atoms(self):
 
-    return self.atom_for.values()
+    return list(self.atom_for.values())
 
 
   def elements(self):
@@ -255,7 +257,7 @@ class Case(object):
   def voxelizer(self):
 
     vertices = self.symmetry.space_group_info().direct_space_asu().shape_vertices()
-    ( xs, ys, zs ) = zip( *vertices )
+    xs, ys, zs = zip( *vertices )
 
     centre = (
       ( min( xs ) + max( xs ) ) / 2.0,
@@ -407,13 +409,13 @@ class ASUContent(object):
 
   def clashing_with(self, sphere, tolerance):
 
-    return filter(
+    return list(filter(
       range = self.indexer.close_to( object = sphere ),
       predicate = overlap_interaction_predicate(
         object = sphere,
         tolerance = tolerance,
         ),
-      )
+      ))
 
 
   def descriptor_for(self, sphere):

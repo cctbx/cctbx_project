@@ -1,11 +1,10 @@
-from __future__ import division
-
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/12/2017
 Last Changed: 10/30/2018
 Description : SIMTBX (nanoBragg) GUI Initialization module
 '''
+from __future__ import absolute_import, division, print_function
 
 import os
 import wx
@@ -149,8 +148,7 @@ class InitAll(object):
     self.input_list = self.make_input_list()
 
     if self.input_list is not None:
-      for i in self.input_list: print i
+      for i in self.input_list: print(i)
       return True
     else:
       return False
-

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 class error(RuntimeError):
   def __init__(self, msg, line, *args):
     msg = "ShelX: " + msg % args

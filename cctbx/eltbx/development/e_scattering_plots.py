@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx import e_scattering
 import sys
+from six.moves import range
 
 def run(args):
   assert len(args) == 0
@@ -17,7 +18,7 @@ def run(args):
     def one_curv(g, code):
       x = flex.double()
       y = flex.double()
-      for i_stol in xrange(n_samples+1):
+      for i_stol in range(n_samples+1):
         stol = 6 * i_stol / n_samples
         x.append(stol)
         y.append(g.at_stol(stol))
@@ -30,7 +31,7 @@ def run(args):
       g.array_of_b()[:4]), "r-")
     all_pdf.savefig(fig, bbox_inches="tight")
   all_pdf.close()
-  print "plots written to file: all.pdf"
+  print("plots written to file: all.pdf")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

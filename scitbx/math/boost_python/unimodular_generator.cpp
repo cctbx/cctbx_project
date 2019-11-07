@@ -20,6 +20,7 @@ namespace {
         .def(init<int const&>((arg("range"))))
         .def("at_end", &w_t::at_end)
         .def("next", &w_t::next)
+        .def("__next__", &w_t::next)
         .def("count", &w_t::count)
       ;
     }

@@ -1,38 +1,38 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import absolute_import, division, print_function
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 01/30/2019
+Last Changed: 10/31/2019
 Description : Interprets command line arguments. Initializes all IOTA starting
               parameters. Starts main log. Options for a variety of running
               modes, including resuming an aborted run.
 '''
 
 import os
+import copy
 import time
 assert time
-from contextlib import contextmanager
-
-import dials.util.command_line as cmd
 
 import iota.components.iota_input as inp
 from iota.components import iota_utils as util
 from iota.components.iota_base import ProcInfo
 
+# from contextlib import contextmanager
+# import dials.util.command_line as cmd
+# @contextmanager    # Will print start / stop messages around some processes
+# def prog_message(msg, mode='xterm'):
+#   if mode == 'xterm':
+#     cmd.Command.start(msg)
+#     yield
+#     cmd.Command.end('{} -- DONE'.format(msg))
+#   elif mode == 'verbose':
+#     print ('IOTA: {}'.format(msg))
+#     yield
+#     print ('IOTA: {} -- DONE'.format(msg))
+#   else:
+#     yield
 
-@contextmanager    # Will print start / stop messages around some processes
-def prog_message(msg, mode='xterm'):
-  if mode == 'xterm':
-    cmd.Command.start(msg)
-    yield
-    cmd.Command.end('{} -- DONE'.format(msg))
-  elif mode == 'verbose':
-    print ('IOTA: {}'.format(msg))
-    yield
-    print ('IOTA: {} -- DONE'.format(msg))
-  else:
-    yield
 
 def initialize_interface(args, phil_args=None, gui=False):
   """ Read and process input, create PHIL """
@@ -68,6 +68,7 @@ def initialize_interface(args, phil_args=None, gui=False):
 
   return input_dict, iota_phil, msg
 
+
 def initialize_new_run(phil, input_dict=None, target_phil=None):
   ''' Create base integration folder; safe phil, input, and info to file '''
   try:
@@ -80,15 +81,31 @@ def initialize_new_run(phil, input_dict=None, target_phil=None):
 
     # Create input list file and populate param input line
     if input_dict:
-      if len(input_dict['imagepaths']) >= 10:
+      if len(input_dict['imagepaths']) >= 25:
         input_list_file = os.path.join(int_base, 'input.lst')
         with open(input_list_file, 'w') as lf:
           for f in input_dict['imagefiles']:
             lf.write('{}\n'.format(f))
           params.input = [input_list_file]
       else:
+        # If there are too many imagefiles, re-constitute the "glob" format
+        # by matching filepaths and replacing non-matching characters with
+        # asterisks
+        if len(input_dict['imagefiles']) >= 25:
+          input_paths = []
+          for path in input_dict['imagepaths']:
+            fileset = [os.path.basename(i) for i in input_dict['imagefiles'] if
+                       path in i]
+            zips = [list(set(i)) for i in zip(*fileset)]
+            chars = [i[0] if len(i) == 1 else '*' for i in zips]
+            fname = ''.join(chars)
+            while "*" * 2 in fname:
+              fname = fname.replace("*" * 2, "*")
+            input_paths.append(os.path.join(path, fname))
+          params.input = input_paths
+        else:
+          params.input = input_dict['imagefiles']
         input_list_file = None
-        params.input = input_dict['imagepaths']
     else:
       input_list_file = None
 
@@ -105,7 +122,7 @@ def initialize_new_run(phil, input_dict=None, target_phil=None):
                                      write_target_file=True)
       else:
         method = params.advanced.processing_backend
-        target_phil, _ = inp.write_defaults(method=method, write_target_file=True,
+        target_phil, _ = inp.write_defaults(method=method,
                                             write_param_file=False,
                                             filepath=target_fp)
     params.cctbx_xfel.target = target_fp
@@ -113,6 +130,7 @@ def initialize_new_run(phil, input_dict=None, target_phil=None):
     # Save PHIL for this run in base integration folder
     paramfile = os.path.join(int_base, 'iota_r{}.param'.format(run_no))
     phil = phil.format(python_object=params)
+
     with open(paramfile, 'w') as philf:
       philf.write(phil.as_str())
 
@@ -120,20 +138,27 @@ def initialize_new_run(phil, input_dict=None, target_phil=None):
     logfile = os.path.abspath(os.path.join(int_base, 'iota.log'))
 
     # Initialize proc.info object and save to file
-    info = ProcInfo.from_args(iota_phil=phil.as_str(),
-                              target_phil=target_phil.as_str(),
-                              int_base=int_base,
-                              input_list_file=input_list_file,
-                              info_file=os.path.join(int_base, 'proc.info'),
-                              cluster_info_file=os.path.join(int_base, 'cluster.info'),
-                              paramfile=paramfile,
-                              logfile=logfile,
-                              run_number=run_no,
-                              status='initialized',
-                              init_proc=False)
+    info = ProcInfo.from_args(
+      iota_phil=phil.as_str(),
+      target_phil=target_phil.as_str(),
+      int_base=int_base,
+      input_list_file=input_list_file,
+      info_file=os.path.join(int_base, 'proc.info'),
+      cluster_info_file=os.path.join(int_base, 'cluster.info'),
+      paramfile=paramfile,
+      logfile=logfile,
+      run_number=run_no,
+      description=params.description,
+      status='initialized',
+      have_results=False,
+      errors=[],
+      init_proc=False)
     info.export_json()
     return True, info, 'IOTA_XTERM_INIT: Initialization complete!'
   except Exception as e:
+    import traceback
+    traceback.print_exc()
+
     msg = 'IOTA_INIT_ERROR: Could not initialize run! {}'.format(e)
     return False, None, msg
 
@@ -165,8 +190,9 @@ def initialize_processing(paramfile, run_no):
   # Generate input list and input base
   if not hasattr(info, 'input_list'):
     info.generate_input_list(params=params)
+  filepath_list = zip(*info.input_list)[0]
   common_pfx = os.path.abspath(
-    os.path.dirname(os.path.commonprefix(info.input_list)))
+    os.path.dirname(os.path.commonprefix(filepath_list)))
 
   input_base = common_pfx
   if os.path.isdir(os.path.abspath(params.input[0])):
@@ -178,10 +204,13 @@ def initialize_processing(paramfile, run_no):
   paths = dict(obj_base=os.path.join(int_base, 'image_objects'),
                fin_base=os.path.join(int_base, 'final'),
                log_base=os.path.join(int_base, 'logs'),
+               dials_log_base=os.path.join(int_base, 'logs/dials_logs'),
                viz_base=os.path.join(int_base, 'visualization'),
                tmp_base=os.path.join(int_base, 'tmp'),
                input_base=input_base)
-  for bkey, bvalue in paths.items()[:-1]:
+  for bkey, bvalue in paths.items():
+    if bkey == "input_base":
+      continue
     if not os.path.isdir(bvalue):
       os.makedirs(bvalue)
   info.update(paths)
@@ -206,6 +235,7 @@ def initialize_processing(paramfile, run_no):
   info.export_json()
 
   return info, params
+
 
 def resume_processing(info):
   ''' Initialize run parameters for an existing run (e.g. for resuming a
@@ -234,7 +264,8 @@ def initialize_single_image(img, paramfile, output_file=None, output_dir=None,
 
   params.input = [img]
   params.mp.n_processors = 1
-  params.image_import.minimum_Bragg_peaks = min_bragg
+  params.data_selection.image_triage.minimum_Bragg_peaks = min_bragg
+  phil = phil.format(python_object=params)
 
   info = ProcInfo.from_args(iota_phil=phil.as_str(),
                             paramfile=paramfile)
@@ -275,7 +306,8 @@ def generate_stat_containers(info, params):
     best_uc=None,
     msg='',
     categories=dict(
-      total=(info.input_list, 'images read in', 'full_input.lst', None),
+      total=(copy.deepcopy(info.unprocessed), 'images read in',
+             'full_input.lst',  None),
       have_diffraction=([], 'have diffraction', 'have_diffraction.lst', None),
       failed_triage=([], 'failed triage', 'failed_triage.lst', '#d73027'),
       failed_spotfinding=([], 'failed spotfinding', 'failed_spotfinding.lst', '#f46d43'),
@@ -284,11 +316,13 @@ def generate_stat_containers(info, params):
       failed_integration=([], 'failed integration', 'failed_integration.lst', '#fee090'),
       failed_filter=([], 'failed filter', 'failed_filter.lst', '#ffffbf'),
       integrated=([], 'integrated', 'integrated.lst', '#4575b4'),
-      not_processed=(info.input_list, 'not processed', 'not_processed.lst', '#e0f3f8')),
+      not_processed=(copy.deepcopy(info.unprocessed), 'not processed',
+                     'not_processed.lst', '#e0f3f8')),
     stats={},
     pixel_size=None,
     status='processing',
-    init_proc=True
+    init_proc=True,
+    have_results=False
   )
 
   # Grid search stats dictionary (HA14 - deprecated)

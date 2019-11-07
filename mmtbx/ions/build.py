@@ -2,7 +2,7 @@
 Deals with modifying a structure to include unbuilt and misidentified ions.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
 from libtbx import Auto
@@ -10,7 +10,7 @@ import sys
 
 svm_params = ""
 try :
-  import svm     # import dependency
+  from mmtbx.ions import svm     # import dependency
   import svmutil # import dependency
 except ImportError :
   pass
@@ -187,16 +187,15 @@ def find_and_build_ions(
           other_atom = manager.pdb_atoms[other_i_seq]
           dxyz = atom.distance(other_atom)
           if (dxyz < params.max_distance_between_like_charges):
-            print >> out, \
-              "  %s (%s%+d) is only %.3fA from %s (%s%+d), skipping for now" %\
+            print("  %s (%s%+d) is only %.3fA from %s (%s%+d), skipping for now" %\
               (atom.id_str(), final_choice.element, final_choice.charge, dxyz,
-               other_atom.id_str(), other_ion.element, other_ion.charge)
+               other_atom.id_str(), other_ion.element, other_ion.charge), file=out)
             skipped.append(i_seq)
             skip = True
             break
       if (skip) : continue
-      print >> out, "  %s becomes %s%+d" % \
-          (atom.id_str(), final_choice.element, final_choice.charge)
+      print("  %s becomes %s%+d" % \
+          (atom.id_str(), final_choice.element, final_choice.charge), file=out)
       refine_adp = params.refine_ion_adp
       if (refine_adp == "Auto"):
         if (fmodel.f_obs().d_min() <= 1.5):
@@ -233,8 +232,8 @@ def find_and_build_ions(
             wavelength)
           scatterer.fp = fp_fdp_info.fp()
           scatterer.fdp = fp_fdp_info.fdp()
-          print >> out, "    setting f'=%g, f''=%g" % (scatterer.fp,
-            scatterer.fdp)
+          print("    setting f'=%g, f''=%g" % (scatterer.fp,
+            scatterer.fdp), file=out)
         group = xray.anomalous_scatterer_group(
           iselection=flex.size_t([i_seq]),
           f_prime=scatterer.fp,
@@ -276,9 +275,9 @@ def find_and_build_ions(
             model.get_anomalous_scatterer_groups()+anomalous_groups)
         refine_anomalous = False
     if (refine_occupancies) or (refine_anomalous):
-      print >> out, ""
-      print >> out, "  occupancy refinement (new ions only): start %s" % \
-        show_r_factors()
+      print("", file=out)
+      print("  occupancy refinement (new ions only): start %s" % \
+        show_r_factors(), file=out)
       fmodel.xray_structure.scatterers().flags_set_grads(state = False)
       fmodel.xray_structure.scatterers().flags_set_grad_occupancy(
         iselection = modified_iselection)
@@ -302,26 +301,26 @@ def find_and_build_ions(
       fmodel.update_xray_structure(
         update_f_calc=True,
         update_f_mask=True)
-      print >> out, "                                        final %s" % \
-        show_r_factors()
+      print("                                        final %s" % \
+        show_r_factors(), file=out)
       if (len(zero_occ) > 0):
-        print >> out, "  WARNING: occupancy dropped to zero for %d atoms:"
+        print("  WARNING: occupancy dropped to zero for %d atoms:", file=out)
         atoms = model.get_atoms()
         for i_seq in zero_occ :
-          print >> out, "    %s" % atoms[i_seq].id_str(suppress_segid=True)
-      print >> out, ""
+          print("    %s" % atoms[i_seq].id_str(suppress_segid=True), file=out)
+      print("", file=out)
     if (refine_anomalous):
       assert fmodel.f_obs().anomalous_flag()
-      print >> out, "  anomalous refinement (new ions only): start %s" % \
-        show_r_factors()
+      print("  anomalous refinement (new ions only): start %s" % \
+        show_r_factors(), file=out)
       fmodel.update(target_name="ls")
       anomalous_scatterer_groups.minimizer(
         fmodel=fmodel,
         groups=anomalous_groups)
       fmodel.update(target_name="ml")
-      print >> out, "                                        final %s" % \
-        show_r_factors()
-      print >> out, ""
+      print("                                        final %s" % \
+        show_r_factors(), file=out)
+      print("", file=out)
   return manager
 
 def clean_up_ions(fmodel, model, params, log=None, verbose=True):
@@ -346,7 +345,7 @@ def clean_up_ions(fmodel, model, params, log=None, verbose=True):
     "segid ION")
   ion_iselection = ion_selection.iselection()
   if (len(ion_iselection) == 0):
-    print >> log, "  No ions (segid=ION) found."
+    print("  No ions (segid=ION) found.", file=log)
     return model
   n_sites_start = model.get_number_of_atoms()
   new_model = model.select(~ion_selection)
@@ -378,9 +377,9 @@ def clean_up_ions(fmodel, model, params, log=None, verbose=True):
   new_selection = new_hierarchy.atom_selection_cache().selection("segid ION")
   ion_atoms = new_hierarchy.atoms().select(new_selection)
   if (verbose):
-    print >> log, "  Final list of ions:"
+    print("  Final list of ions:", file=log)
     for atom in ion_atoms :
-      print >> log, "    %s" % atom.id_str()
-    print >> log, ""
+      print("    %s" % atom.id_str(), file=log)
+    print("", file=log)
   fmodel.update_xray_structure(new_model.get_xray_structure())
   return new_model

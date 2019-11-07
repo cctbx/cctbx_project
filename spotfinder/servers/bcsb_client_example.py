@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import os,time
 import threading
@@ -9,9 +9,9 @@ def do_main_apache(filepath, host, port):
   base_url = "http://%s:%d/spotfinder/distl.signal_strength_bcsb?distl.image=%s"%(host,port,absfile)
   if len(DISTL_OPTIONS) > 0:
     base_url = base_url + "&" + "&".join(DISTL_OPTIONS)
-  import urllib2
+  from six.moves import urllib
   try:
-    Response = urllib2.urlopen(base_url)
+    Response = urllib.request.urlopen(base_url)
     log = Response.read()
     Response.close()
     return log
@@ -25,11 +25,11 @@ def single_thread(idx):
     if OUTPUT_FILE is not None:
       output_lock.acquire(blocking=True)
       outfile = open(OUTPUT_FILE,"ab")
-      print >>outfile, do_main_apache(filepath, host, port)
+      print(do_main_apache(filepath, host, port), file=outfile)
       outfile.close()
       output_lock.release()
     else:
-      print do_main_apache(filepath, host, port)
+      print(do_main_apache(filepath, host, port))
 
 def multi_thread():
   from multiprocessing import Pool

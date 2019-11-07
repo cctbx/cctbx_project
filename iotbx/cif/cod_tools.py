@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os, sys
 op = os.path
 
@@ -55,12 +55,12 @@ class build_hkl_cif(object):
         if (op.isfile(cif_path)):
           self.cif.setdefault(cod_id, cif_path)
         else:
-          print "Missing COD cif file:", cif_path
+          print("Missing COD cif file:", cif_path)
           n_missing += 1
         if (op.isfile(hkl_path)):
           self.hkl.setdefault(cod_id, hkl_path)
         else:
-          print "Missing COD hkl file:", hkl_path
+          print("Missing COD hkl file:", hkl_path)
           n_missing += 1
         if (n_missing == 0):
           self.hkl_cif_pairs.setdefault(cod_id, (hkl_path, cif_path))
@@ -71,8 +71,8 @@ class build_hkl_cif(object):
 
   def show_summary(self, out=None):
     if out is None: out = sys.stdout
-    print >> out, "Number of hkl without cif:", len(
-      set(self.hkl_cif_pairs.keys())-set(self.hkl.keys()))
-    print >> out, "Number of cif: ", len(self.cif)
-    print >> out, "Number of hkl: ", len(self.hkl)
-    print >> out, "Number of hkl+cif:", len(self.hkl_cif_pairs)
+    print("Number of hkl without cif:", len(
+      set(self.hkl_cif_pairs.keys())-set(self.hkl.keys())), file=out)
+    print("Number of cif: ", len(self.cif), file=out)
+    print("Number of hkl: ", len(self.hkl), file=out)
+    print("Number of hkl+cif:", len(self.hkl_cif_pairs), file=out)

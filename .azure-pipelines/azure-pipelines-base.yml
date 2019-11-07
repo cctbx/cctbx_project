@@ -1,0 +1,65 @@
+# Nightly builds for updates to base
+
+# no continuous integration builds
+trigger: none
+
+# only nightly and pull request builds
+schedules:
+- cron: '0 3 * * *'
+  displayName: Nightly base build
+  branches:
+    include:
+    - master
+
+stages:
+- stage: Checks
+  displayName: Check
+  jobs:
+    - template: ./syntax.yml
+
+- stage: Preparation
+  displayName: Download
+  dependsOn: Checks
+  jobs:
+    - template: ./download-source.yml
+
+- stage: Build
+  displayName: Build and test
+  dependsOn: Preparation
+  jobs:
+    - template: ./base-linux.yml
+      parameters:
+        distribution: centos
+        version: [6, 10]
+    - template: ./base-linux.yml
+      parameters:
+        distribution: centos
+        version: [7, 6, 1810]
+    - template: ./base-linux.yml
+      parameters:
+        distribution: ubuntu
+        version: ['16', '04']
+    - template: ./base-linux.yml
+      parameters:
+        distribution: ubuntu
+        version: ['14', '04']
+    - template: ./base-osx.yml
+      parameters:
+        vmImage: [10, 14]
+        xcode_version: [10, 3]
+    - template: ./base-osx.yml
+      parameters:
+        vmImage: [10, 14]
+        xcode_version: [10, 2, 1]
+    - template: ./base-osx.yml
+      parameters:
+        vmImage: [10, 13]
+        xcode_version: [10, 1]
+    - template: ./base-osx.yml
+      parameters:
+        vmImage: [10, 13]
+        xcode_version: [9, 4, 1]
+    - template: ./base-osx.yml
+      parameters:
+        vmImage: [10, 13]
+        xcode_version: [8, 3, 3]

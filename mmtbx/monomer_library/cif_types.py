@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb import rna_dna_detection
 from cctbx import geometry_restraints
 from cctbx import uctbx
@@ -7,6 +7,8 @@ from libtbx.utils import if_none
 from libtbx import slots_getstate_setstate
 import copy
 import sys
+from six.moves import zip
+from six.moves import range
 
 peptide_comp_groups = ("L-peptide", "D-peptide")
 dna_rna_comp_groups = ("DNA", "RNA")
@@ -65,15 +67,15 @@ class looped_data(object):
   def show(self, f=None):
     if (f is None): f = sys.stdout
     for key in self.cif_keywords():
-      print >> f, "_%s.%s: %s" % (
-        self.__class__.__name__, key, getattr(self, key))
+      print("_%s.%s: %s" % (
+        self.__class__.__name__, key, getattr(self, key)), file=f)
 
   def show_loop_header(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "loop_"
+    print("loop_", file=f)
     for key in self.cif_keywords():
-      print >> f, "_%s.%s" % (
-        self.__class__.__name__, key)
+      print("_%s.%s" % (
+        self.__class__.__name__, key), file=f)
 
   def generate_loop_data(self):
     rc = []
@@ -84,9 +86,7 @@ class looped_data(object):
 
   def show_loop_data(self, f=None):
     if (f is None): f = sys.stdout
-    for val in self.generate_loop_data():
-      print >> f, val,
-    print >> f
+    print(" ".join([str(val) for val in self.generate_loop_data()]), file=f)
 
   def as_cif_loop(self):
     import iotbx
@@ -106,7 +106,7 @@ def show_loop(data_list, f):
       first = False
     datum.show_loop_data(f=f)
   if (not first):
-    print >> f
+    print(file=f)
 
 def apply_chem_mod_list(label, mod_list, result_list):
   for mod in mod_list:
@@ -301,7 +301,7 @@ class comp_comp_id(slots_getstate_setstate):
     return None
 
   def i_atom_by_id(self, atom_id):
-    for i_atom in xrange(len(self.atom_list)):
+    for i_atom in range(len(self.atom_list)):
       if (self.atom_list[i_atom].atom_id == atom_id):
         return i_atom
       if (atom_id.find("'")>-1):
@@ -464,7 +464,7 @@ class comp_comp_id(slots_getstate_setstate):
       atom_dict=atom_dict, bond_list=self.bond_list)
 
   def test_for_water(self, atom_dict):
-    atom_list = atom_dict.keys()
+    atom_list = list(atom_dict.keys())
     atom_list.sort()
     if (atom_list == ["H1", "H2", "O"]):
       return "water"

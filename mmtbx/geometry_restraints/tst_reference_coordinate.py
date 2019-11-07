@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from libtbx.test_utils import approx_equal
 import iotbx.pdb
@@ -8,6 +8,7 @@ import random
 from mmtbx.geometry_restraints import reference
 from mmtbx.model import manager
 from libtbx.utils import null_out
+from six.moves import zip
 
 
 if(1):
@@ -198,7 +199,7 @@ def exercise_2():
           selection = selection)
     d1 = flex.mean(flex.sqrt((xrs2.sites_cart().select(selection) -
                               xrs3.sites_cart().select(selection)).dot()))
-    print "distance start (use_reference: %s): %6.4f"%(str(use_reference), d1)
+    print("distance start (use_reference: %s): %6.4f"%(str(use_reference), d1))
     assert d1>4.0
     assert approx_equal(
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
@@ -219,7 +220,7 @@ def exercise_2():
     xrs2.set_sites_cart(sites_cart = sites_cart)
     d2 = flex.mean(flex.sqrt((xrs2.sites_cart().select(selection) -
                               xrs3.sites_cart().select(selection)).dot()))
-    print "distance final (use_reference: %s): %6.4f"%(str(use_reference), d2)
+    print("distance final (use_reference: %s): %6.4f"%(str(use_reference), d2))
     if(use_reference): assert d2<0.005, "failed: %f<0.05" % d2
     else: assert d2>4.0, d2
     assert approx_equal(
@@ -283,7 +284,7 @@ def exercise_3():
           selection = selection)
     d1 = flex.mean(flex.sqrt((xrs2.sites_cart().select(min_selection) -
                               xrs3.sites_cart().select(min_selection)).dot()))
-    print "distance start (use_reference: %s): %6.4f"%(str(use_reference), d1)
+    print("distance start (use_reference: %s): %6.4f"%(str(use_reference), d1))
     assert d1>4.0
     assert approx_equal(
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
@@ -305,7 +306,7 @@ def exercise_3():
     xrs2.set_sites_cart(sites_cart = sites_cart)
     d2 = flex.mean(flex.sqrt((xrs2.sites_cart().select(min_selection) -
                               xrs3.sites_cart().select(min_selection)).dot()))
-    print "distance final (use_reference: %s): %6.4f"%(str(use_reference), d2)
+    print("distance final (use_reference: %s): %6.4f"%(str(use_reference), d2))
     if(use_reference in ['True', 'top_out']): assert d2<0.02, d2
     else: assert d2>4.0, d2
     assert approx_equal(
@@ -356,4 +357,4 @@ if (__name__ == "__main__"):
   exercise_1()
   exercise_2()
   exercise_3()
-  print "OK"
+  print("OK")

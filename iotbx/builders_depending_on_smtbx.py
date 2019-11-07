@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from smtbx.refinement import constraints, least_squares
 import smtbx.refinement.constraints.adp
@@ -8,6 +8,7 @@ import smtbx.refinement.constraints.occupancy
 from iotbx.builders import \
      crystal_structure_builder, \
      restrained_crystal_structure_builder
+from six.moves import range
 
 
 class constrained_crystal_structure_builder(crystal_structure_builder):
@@ -57,7 +58,7 @@ class constrained_crystal_structure_builder(crystal_structure_builder):
 
   def end_geometrical_constraint(self):
     last = len(self.structure.scatterers())
-    self.current.constrained_site_indices = tuple(xrange(self.first, last))
+    self.current.constrained_site_indices = tuple(range(self.first, last))
     self.constraints.append(self.current)
 
 

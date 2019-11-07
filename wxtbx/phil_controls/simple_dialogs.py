@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from wxtbx.phil_controls import intctrl, floatctrl, symop, strctrl, ints, choice
 from wxtbx.utils import std_sizer_flags, add_ok_cancel_buttons
 from libtbx.utils import Abort
 import wx
+from six.moves import range
 
 class SimpleInputDialog(wx.Dialog):
   def __init__(self,
@@ -278,19 +279,19 @@ if (__name__ == "__main__"):
     label="Bond sigma",
     value=None,
     caption="Please enter a sigma value (in Angstroms) for the selected bond.")
-  print value1
+  print(value1)
   value2 = get_integer_value(
     parent=None,
     title="Integer input",
     label="Number of cycles",
     value=5)
-  print value2
+  print(value2)
   dlg = SymopDialog(
     parent=None,
     title="Symmetry operator input",
     label="Symmetry operator",
     value=None)
-  print get_phil_value_from_dialog(dlg)
+  print(get_phil_value_from_dialog(dlg))
   dlg = RTDialog(
     parent=None,
     title="Rotation/translation operator",

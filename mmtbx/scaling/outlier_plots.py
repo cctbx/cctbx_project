@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.option_parser import option_parser
 from scitbx.array_family import flex
 import sys
@@ -6,6 +6,7 @@ from libtbx.utils import Sorry
 from mmtbx import scaling
 import math
 from iotbx import data_plots
+from six.moves import range
 
 
 def plotit(fobs,
@@ -35,34 +36,34 @@ def plotit(fobs,
     centric_a,
     alpha_a,
     beta_a)
-  print >> out
-  print >> out,"#Input parameters: "
-  print >> out,"#Title        : ", plot_title
-  print >> out,"#F-calc       : ", fcalc
-  print >> out,"#F-obs        : ", fobs
-  print >> out,"#epsilon      : ", epsilon
-  print >> out,"#alpha        : ", alpha
-  print >> out,"#beta         : ", beta
-  print >> out,"#centric      : ", centric
+  print(file=out)
+  print("#Input parameters: ", file=out)
+  print("#Title        : ", plot_title, file=out)
+  print("#F-calc       : ", fcalc, file=out)
+  print("#F-obs        : ", fobs, file=out)
+  print("#epsilon      : ", epsilon, file=out)
+  print("#alpha        : ", alpha, file=out)
+  print("#beta         : ", beta, file=out)
+  print("#centric      : ", centric, file=out)
   mode = p_calc.posterior_mode()[0]
 
   snd_der = math.sqrt(1.0/ math.fabs( p_calc.posterior_mode_snd_der()[0] )  )
-  print >> out,"#A Gaussian approximation of the likelihood function"
-  print >> out,"#could be constructed as follows with: "
-  print >> out,"# exp[-(fobs-mode)**2/(2*stdev**2)] /(sqrt(2 pi) stdev)"
-  print >> out,"#with"
-  print >> out,"#mode         = ", mode
-  print >> out,"#stdev        = ", snd_der
-  print >> out
-  print >> out,"#The log likelihood values for the mode and "
-  print >> out,"#observed values are"
-  print >> out,"#Log[P(fobs)] : ",  p_calc.log_likelihood()[0]
-  print >> out,"#Log[P(mode)] : ",  p_calc.posterior_mode_log_likelihood()[0]
-  print >> out,"#Their difference is:"
-  print >> out,"#delta        : ",  p_calc.log_likelihood()[0]-p_calc.posterior_mode_log_likelihood()[0]
-  print >> out,"#"
+  print("#A Gaussian approximation of the likelihood function", file=out)
+  print("#could be constructed as follows with: ", file=out)
+  print("# exp[-(fobs-mode)**2/(2*stdev**2)] /(sqrt(2 pi) stdev)", file=out)
+  print("#with", file=out)
+  print("#mode         = ", mode, file=out)
+  print("#stdev        = ", snd_der, file=out)
+  print(file=out)
+  print("#The log likelihood values for the mode and ", file=out)
+  print("#observed values are", file=out)
+  print("#Log[P(fobs)] : ",  p_calc.log_likelihood()[0], file=out)
+  print("#Log[P(mode)] : ",  p_calc.posterior_mode_log_likelihood()[0], file=out)
+  print("#Their difference is:", file=out)
+  print("#delta        : ",  p_calc.log_likelihood()[0]-p_calc.posterior_mode_log_likelihood()[0], file=out)
+  print("#", file=out)
   mean_fobs = p_calc.mean_fobs()
-  print >> out,"#mean f_obs   : ", mean_fobs[0], "   (first moment)"
+  print("#mean f_obs   : ", mean_fobs[0], "   (first moment)", file=out)
 
 
   low_limit = mode-snd_der*limit

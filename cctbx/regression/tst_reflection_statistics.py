@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -10,6 +10,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import random
 import sys
+from six.moves import range
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
@@ -94,7 +95,7 @@ def exercise(space_group_info, anomalous_flag, verbose):
     expected_correlation = "%.6f" % miller_array_sub_a.correlation(
       other=blurred_array).coefficient()
     if (verbose):
-      print "blurred_array expected_correlation:", expected_correlation
+      print("blurred_array expected_correlation:", expected_correlation)
     blurred_array_cb = blurred_array.change_basis(
         random.choice(list(subgroup_info.group())).as_xyz()).map_to_asu()
     self_ccs = {}
@@ -108,19 +109,19 @@ def exercise(space_group_info, anomalous_flag, verbose):
     repetitions = [len(v) for v in self_ccs.values()]
     failure = (max(repetitions) > 1)
     if (failure or verbose):
-      print subgroup_info
-      print "self_ccs ops:", self_ccs.values()
+      print(subgroup_info)
+      print("self_ccs ops:", list(self_ccs.values()))
     if (failure):
       for cc,ops in self_ccs.items():
         if (len(ops) > 1):
-          print cc, ops
+          print(cc, ops)
           for op in ops:
             ri = sgtbx.rt_mx(op).r().info()
-            print "   ", ri.type(), ri.sense(), ri.ev()
+            print("   ", ri.type(), ri.sense(), ri.ev())
       raise RuntimeError("max(repetitions) > 1")
   #
-  for i in xrange(len(coset_decompositions)):
-    for j in xrange(len(coset_decompositions)):
+  for i in range(len(coset_decompositions)):
+    for j in range(len(coset_decompositions)):
       exercise_double_coset_decomposition(
         crystal_symmetry_ri,
         lattice_group,
@@ -161,25 +162,25 @@ def exercise_double_coset_decomposition(
   double_coset_repetitions = [len(v) for v in double_coset_ccs.values()]
   failure = (max(double_coset_repetitions) > 1)
   if (failure or verbose):
-    print [str(sgtbx.space_group_info(group=g)) for g in (group_a, group_b)]
-    print "single_coset ops:", single_coset_ccs.values()
-    print "double_coset ops:", double_coset_ccs.values()
+    print([str(sgtbx.space_group_info(group=g)) for g in (group_a, group_b)])
+    print("single_coset ops:", list(single_coset_ccs.values()))
+    print("double_coset ops:", list(double_coset_ccs.values()))
   if (failure):
     for cc,ops in double_coset_ccs.items():
       if (len(ops) > 1):
-        print cc, ops
+        print(cc, ops)
         for op in ops:
           ri = sgtbx.rt_mx(op).r().info()
-          print "   ", ri.type(), ri.sense(), ri.ev()
+          print("   ", ri.type(), ri.sense(), ri.ev())
     raise RuntimeError("max(double_coset_repetitions) > 1")
-  single_coset_ccs = single_coset_ccs.keys()
-  double_coset_ccs = double_coset_ccs.keys()
+  single_coset_ccs = list(single_coset_ccs.keys())
+  double_coset_ccs = list(double_coset_ccs.keys())
   single_coset_ccs.sort()
   double_coset_ccs.sort()
   failure = (double_coset_ccs != single_coset_ccs)
   if (failure or verbose):
-    print "single_coset_ccs:", single_coset_ccs
-    print "double_coset_ccs:", double_coset_ccs
+    print("single_coset_ccs:", single_coset_ccs)
+    print("double_coset_ccs:", double_coset_ccs)
   if (failure):
     raise RuntimeError("double_coset_ccs != single_coset_ccs")
 
@@ -198,7 +199,7 @@ def run():
     space_group_info = sgtbx.space_group_info(symbol=symbol)
     for anomalous_flag in [False, True]:
       if (verbose):
-        print symbol, "anomalous_flag =", anomalous_flag
+        print(symbol, "anomalous_flag =", anomalous_flag)
       run_away_counter = 0
       while True:
         try:
@@ -206,14 +207,14 @@ def run():
             space_group_info=space_group_info,
             anomalous_flag=anomalous_flag,
             verbose=verbose)
-        except RuntimeError, e:
+        except RuntimeError as e:
           if (str(e) != "max(double_coset_repetitions) > 1"): raise
-          print e, "(ignored since it may happen by chance)"
+          print(e, "(ignored since it may happen by chance)")
           run_away_counter += 1
           assert run_away_counter < 10
         else:
           break
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

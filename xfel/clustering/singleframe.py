@@ -1,13 +1,14 @@
 """ Module for working with single images in a serial crystallography
 dataset"""
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_pickle
 import numpy as np
 import math
 import logging
 from cctbx.array_family import flex
 from six.moves import cPickle as pickle
-from api import InputFrame
+from .api import InputFrame
+from six.moves import zip
 logger = logging.getLogger('sf')
 
 class SingleFrame(InputFrame):
@@ -327,13 +328,10 @@ class SingleDialsFrameFromFiles(SingleFrame):
 
 class CellOnlyFrame(SingleFrame):
   def __init__(self, crystal_symmetry, path=None, name=None, lattice_id=None):
-    from six.moves import cStringIO as StringIO
-    f = StringIO()
     self.crystal_symmetry = crystal_symmetry
-    self.crystal_symmetry.show_summary(f=f)
     self.niggli_cell = self.crystal_symmetry.niggli_cell()
-    self.niggli_cell.show_summary(f=f, prefix="   niggli-->")
-    logger.info(f.getvalue())
+    logger.info(str(self.crystal_symmetry))
+    logger.info(self.niggli_cell.as_str(prefix="   niggli-->"))
     self.uc = self.niggli_cell.unit_cell().parameters()
     self.mm = self.niggli_cell.unit_cell().metrical_matrix()
     self.pg = "".join(self.crystal_symmetry.space_group().type().lookup_symbol().split())

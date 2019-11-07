@@ -305,7 +305,7 @@ class index(object):
     fields = search_text.split()
     for word in fields :
       # this allows matching of phil param paths
-      if re.search("[^a-zA-Z\.\_]", word) is not None :
+      if re.search(r"[^a-zA-Z\.\_]", word) is not None :
         raise Sorry("Invalid search string '%s'." % word)
     regex_list = [ re.compile(word, re.I) for word in fields ]
     matching_defs = []

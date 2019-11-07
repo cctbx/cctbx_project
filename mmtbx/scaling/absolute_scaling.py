@@ -1,7 +1,7 @@
 
 ## Peter Zwart, April 18, 2005
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx import scaling
 from cctbx.eltbx import xray_scattering
 from cctbx.array_family import flex
@@ -16,6 +16,7 @@ from libtbx.str_utils import format_value
 from libtbx import table_utils
 import math
 import sys
+from six.moves import range
 
 class gamma_protein(object):
   __slots__ = [
@@ -665,7 +666,7 @@ class ml_aniso_absolute_scaling(scaling.xtriage_analysis):
                                           self.u_star)
       #get eigenvalues of B-cart
       eigen = eigensystem.real_symmetric( self.b_cart )
-      self.eigen_values = eigen.values()
+      self.eigen_values = eigen.values()  # TODO verify that Im not a dictionary values method
       self.eigen_vectors = eigen.vectors()
 
       self.work_array  = work_array # i need this for further analyses

@@ -24,7 +24,7 @@ source, and in addition, the image is rotated 90 clockwise.  Therefore,
 the storage ring is nearest the top edge of the image, and the top edge
 of the detector is at the right edge of the image.
 '''
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 class spot_xy_convention:
   def __init__(self,W1,W2):

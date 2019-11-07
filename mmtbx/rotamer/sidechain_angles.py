@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.math
 from libtbx.utils import Sorry
 import libtbx.load_env
@@ -7,6 +7,8 @@ import iotbx.pdb
 from cctbx.array_family import flex
 import mmtbx.rotamer
 import sys, os
+from six.moves import zip
+from six.moves import range
 
 def find_source_dir(optional=False):
   result = libtbx.env.find_in_repositories(os.path.join("mmtbx", "rotamer"))
@@ -26,8 +28,8 @@ class PropertyFile:
   def process(self, fileLoc):
     try:
       f = open(fileLoc)
-    except ImportError, e:
-      print fileLoc+" file not found"
+    except ImportError as e:
+      print(fileLoc+" file not found")
       sys.exit()
     for line in f:
       if (line.startswith("#") or line == "\n"): continue
@@ -145,7 +147,7 @@ class SidechainAngles:
                           sites_cart=sites_cart))
         return values
       except KeyError:
-        if self.show_errors: print resName + " is an unknown residue type"
+        if self.show_errors: print(resName + " is an unknown residue type")
         return None
     else:
       return None

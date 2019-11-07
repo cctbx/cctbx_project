@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import mmtbx.f_model
 import mmtbx.refinement.targets
@@ -11,6 +11,8 @@ import random
 import sys
 from cctbx import xray
 from mmtbx import masks
+from six.moves import zip
+from six.moves import range
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -20,11 +22,11 @@ def finite_differences_site(target_functor, eps=1.e-5):
   structure = fmodel.xray_structure
   unit_cell = structure.unit_cell()
   gs = flex.double()
-  for i_scatterer in xrange(structure.scatterers().size()):
+  for i_scatterer in range(structure.scatterers().size()):
     sc = structure.scatterers()[i_scatterer]
     site_orig = sc.site
     d_target_d_site = []
-    for ix in xrange(3):
+    for ix in range(3):
       ts = []
       for signed_eps in [eps, -eps]:
         site_cart = list(unit_cell.orthogonalize(site_orig))
@@ -104,7 +106,7 @@ def exercise(space_group_info,
         if (target == "ml_sad"
               and (not anomalous_flag or mmtbx.refinement.targets.phaser is None)):
           continue
-        print "  ",target
+        print("  ",target)
         xray.set_scatterer_grad_flags(
           scatterers = xrs.scatterers(),
           site       = True)
@@ -138,11 +140,11 @@ def exercise(space_group_info,
         gfd = finite_differences_site(target_functor=t_f)
         cc = flex.linear_correlation(gs, gfd).coefficient()
         if (0 or verbose):
-          print "ana:", list(gs)
-          print "fin:", list(gfd)
-          print "rat:", [f/a for a,f in zip(gs,gfd)]
-          print target, "corr:", cc, space_group_info
-          print
+          print("ana:", list(gs))
+          print("fin:", list(gfd))
+          print("rat:", [f/a for a,f in zip(gs,gfd)])
+          print(target, "corr:", cc, space_group_info)
+          print()
         diff = gs - gfd
         diff /= max(1, flex.max(flex.abs(gfd)))
         tolerance = 1.2e-5

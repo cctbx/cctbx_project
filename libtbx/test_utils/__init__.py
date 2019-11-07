@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
 from libtbx.option_parser import option_parser
 from libtbx.utils import Sorry
 from libtbx.str_utils import show_string
@@ -14,6 +13,7 @@ import time
 import types
 
 import six
+from six.moves import range
 try:
   import threading
 except ImportError:
@@ -196,7 +196,7 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
     elif isinstance(tst, types.FunctionType): #adds ability to execute a function defined within run_tests.py
       cmd = "libtbx.python -c "
       base_module = os.path.basename(dist_dir)
-      cmd +="'from %s.run_tests import %s; %s()'"%(base_module,tst.__name__,tst.__name__)
+      cmd +='"from %s.run_tests import %s; %s()"'%(base_module,tst.__name__,tst.__name__)
       yield cmd
       continue
     elif (co is not None) and (co.verbose):
@@ -527,24 +527,28 @@ def contains_lines(lines, expected):
   return contains_substring(
     actual=lines, expected=expected, failure_prefix="contains_lines() ")
 
+def assert_lines_in_text(text, lines,
+    remove_white_spaces=True, remove_newline=True):
+  filtered_lines = lines
+  if remove_white_spaces:
+    text = text.replace(" ", "")
+    filtered_lines = filtered_lines.replace(" ", "")
+  if remove_newline:
+    text = text.replace(os.linesep,"")
+    filtered_lines = filtered_lines.replace(os.linesep,"")
+  assert text.find(filtered_lines) >= 0, \
+      "Lines:\n %s\n are not found" % (lines)
+
 def assert_lines_in_file(file_name, lines,
     remove_white_spaces=True, remove_newline=True):
   """
   lines here is a text, not a list of lines.
   """
-  import os
   f = open(file_name, "r")
   f_lines = f.read()
   f.close()
-  filtered_lines = lines
-  if remove_white_spaces:
-    f_lines = f_lines.replace(" ", "")
-    filtered_lines = filtered_lines.replace(" ", "")
-  if remove_newline:
-    f_lines = f_lines.replace(os.linesep,"")
-    filtered_lines = filtered_lines.replace(os.linesep,"")
-  assert f_lines.find(filtered_lines) >= 0, \
-      "Lines:\n %s\n are not in file %s" % (lines, file_name)
+  assert_lines_in_text(f_lines, lines=lines,
+      remove_white_spaces=remove_white_spaces, remove_newline=remove_newline)
 
 class RunCommandError(RuntimeError): pass
 
@@ -804,9 +808,8 @@ ERROR: is_above_limit(value=None, limit=-3, eps=1)
 ERROR: is_above_limit(value=None, limit=3, eps=1)
 """)
   #
-  import pickle
-  from six.moves import cPickle
-  for p in [pickle, cPickle]:
+  from six.moves import cPickle as pickle
+  for p in [pickle]:
     d = pickle_detector()
     assert d.unpickled_counter is None
     assert d.counter == 0

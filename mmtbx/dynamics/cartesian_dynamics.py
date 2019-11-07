@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx import dynamics
 from mmtbx.dynamics.constants import \
   boltzmann_constant_akma, \
@@ -12,6 +12,7 @@ import time
 import math
 import iotbx.phil
 from cctbx import maptbx
+from six.moves import range
 
 def random_velocities(
       masses,
@@ -278,7 +279,7 @@ class run(object):
     if(self.verbose >= 1):
       self.print_dynamics_stat(text="velocities rescaled")
     if(self.verbose >= 1):
-      print >> self.log, "integration starts"
+      print("integration starts", file=self.log)
     self.verlet_leapfrog_integration()
     self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.atomic_weights)
@@ -396,18 +397,18 @@ class run(object):
     timfac = akma_time_as_pico_seconds
     line_len = len("| "+text+"|")
     fill_len = 80 - line_len-1
-    print >> self.log, "| "+text+"-"*(fill_len)+"|"
-    print >> self.log, "| kin.energy = %10.3f            " \
-      "| information about center of free masses|"%(self.ekin)
-    print >> self.log, "| start temperature = %7.3f        " \
+    print("| "+text+"-"*(fill_len)+"|", file=self.log)
+    print("| kin.energy = %10.3f            " \
+      "| information about center of free masses|"%(self.ekin), file=self.log)
+    print("| start temperature = %7.3f        " \
       "| position=%8.3f%8.3f%8.3f      |"% (
-      self.temperature,self.rcm[0],self.rcm[1],self.rcm[2])
-    print >> self.log, "| curr. temperature = %7.3f        " \
+      self.temperature,self.rcm[0],self.rcm[1],self.rcm[2]), file=self.log)
+    print("| curr. temperature = %7.3f        " \
       "| velocity=%8.4f%8.4f%8.4f      |"% (self.current_temperature,
-      self.vcm[0][0]/timfac,self.vcm[0][1]/timfac,self.vcm[0][2]/timfac)
-    print >> self.log, "| number of integration steps = %4d " \
+      self.vcm[0][0]/timfac,self.vcm[0][1]/timfac,self.vcm[0][2]/timfac), file=self.log)
+    print("| number of integration steps = %4d " \
       "| ang.mom.=%10.2f%10.2f%10.2f|"% (self.n_steps,
-      self.acm[0][0]/timfac,self.acm[0][1]/timfac,self.acm[0][2]/timfac)
-    print >> self.log, "| time step = %6.4f                 | kin.ener.=%8.3f                     |"% (
-      self.time_step,self.ekcm)
-    print >> self.log, "|"+"-"*77+"|"
+      self.acm[0][0]/timfac,self.acm[0][1]/timfac,self.acm[0][2]/timfac), file=self.log)
+    print("| time step = %6.4f                 | kin.ener.=%8.3f                     |"% (
+      self.time_step,self.ekcm), file=self.log)
+    print("|"+"-"*77+"|", file=self.log)

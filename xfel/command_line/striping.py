@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -16,6 +16,7 @@ from xfel.util.mp import mp_phil_str as multiprocessing_str
 from xfel.util.mp import get_submit_command_chooser
 
 import os, math
+import six
 
 multiprocessing_override_str = '''
 mp {
@@ -63,9 +64,9 @@ combine_experiments {
     }
   keep_integrated = False
     .type = bool
-    .help = "Combine refined_experiments.json and integrated.pickle files."
-    .help = "If False, ignore integrated.pickle files in favor of"
-    .help = "indexed.pickle files in preparation for reintegrating."
+    .help = "Combine refined.expt and integrated.refl files."
+    .help = "If False, ignore integrated.refl files in favor of"
+    .help = "indexed.refl files in preparation for reintegrating."
   include scope dials.command_line.combine_experiments.phil_scope
 }
 '''
@@ -73,8 +74,8 @@ combine_experiments {
 combining_override_str = '''
 combine_experiments {
   output {
-    experiments_filename = FILENAME_combined_experiments.json
-    reflections_filename = FILENAME_combined_reflections.pickle
+    experiments_filename = FILENAME_combined.expt
+    reflections_filename = FILENAME_combined.refl
     delete_shoeboxes = False
   }
   reference_from_experiment {
@@ -106,8 +107,8 @@ refinement {
 refinement_override_str = '''
 refinement {
   output {
-    experiments = FILENAME_refined_experiments_CLUSTER.json
-    reflections = FILENAME_refined_reflections_CLUSTER.pickle
+    experiments = FILENAME_refined_CLUSTER.expt
+    reflections = FILENAME_refined_CLUSTER.refl
     include_unused_reflections = False
     log = FILENAME_refine_CLUSTER.log
     debug_log = FILENAME_refine_CLUSTER.debug.log
@@ -134,8 +135,8 @@ refinement {
     }
   }
   input {
-    experiments = FILENAME_combined_experiments_CLUSTER.json
-    reflections = FILENAME_combined_reflections_CLUSTER.pickle
+    experiments = FILENAME_combined_CLUSTER.expt
+    reflections = FILENAME_combined_CLUSTER.refl
   }
 }
 '''
@@ -153,12 +154,12 @@ recompute_mosaicity {
 recompute_mosaicity_override_str = '''
 recompute_mosaicity {
   input {
-    experiments = FILENAME_refined_experiments_CLUSTER.json
-    reflections = FILENAME_refined_reflections_CLUSTER.pickle
+    experiments = FILENAME_refined_CLUSTER.expt
+    reflections = FILENAME_refined_CLUSTER.refl
   }
   output {
-    experiments = FILENAME_refined_experiments_CLUSTER.json
-    reflections = FILENAME_refined_reflections_CLUSTER.pickle
+    experiments = FILENAME_refined_CLUSTER.expt
+    reflections = FILENAME_refined_CLUSTER.refl
   }
 }
 '''
@@ -179,8 +180,8 @@ reintegration {
 reintegration_override_str = '''
 reintegration{
   output {
-    experiments = FILENAME_reintegrated_experiments_CLUSTER.json
-    reflections = FILENAME_reintegrated_reflections_CLUSTER.pickle
+    experiments = FILENAME_reintegrated_CLUSTER.expt
+    reflections = FILENAME_reintegrated_CLUSTER.refl
     log = FILENAME_reintegrate_CLUSTER.log
     debug_log = FILENAME_reintegrate_CLUSTER.debug.log
   }
@@ -209,8 +210,8 @@ reintegration{
     }
   }
   input {
-    experiments = FILENAME_refined_experiments_CLUSTER.json
-    reflections = FILENAME_refined_reflections_CLUSTER.pickle
+    experiments = FILENAME_refined_CLUSTER.expt
+    reflections = FILENAME_refined_CLUSTER.refl
   }
 }
 '''
@@ -226,11 +227,11 @@ postprocessing {
 postprocessing_override_str = """
 postprocessing {
   input {
-    experiments = FILENAME_reintegrated_experiments_CLUSTER.json
-    reflections = FILENAME_reintegrated_reflections_CLUSTER.pickle
+    experiments = FILENAME_reintegrated_CLUSTER.expt
+    reflections = FILENAME_reintegrated_CLUSTER.refl
   }
   output {
-    filename = FILENAME_CLUSTER_ITER_extracted.pickle
+    filename = FILENAME_CLUSTER_ITER_extracted.refl
     dirname = %s
   }
 }
@@ -264,10 +265,10 @@ def allocate_chunks(results_dir,
                     stripe=False,
                     max_size=1000,
                     integrated=False):
-  refl_ending = "_integrated.pickle" if integrated else "_indexed.pickle"
-  expt_ending = "_refined_experiments.json"
+  refl_ending = "_integrated" if integrated else "_indexed"
+  expt_ending = "_refined.expt"
   trial = "%03d" % trial_no
-  print "processing trial %s" % trial
+  print("processing trial %s" % trial)
   if rgs_selected:
     rg_condition = lambda rg: rg in rgs_selected
   else:
@@ -282,41 +283,49 @@ def allocate_chunks(results_dir,
             if (trg[:6] == trial + "_rg") and rg_condition(trg[-5:])]
     if not trgs:
       continue
-    rungroups = set(map(lambda n: n.split("_")[1], trgs))
+    rungroups = set([n.split("_")[1] for n in trgs])
     for rg in rungroups:
-      if rg not in rgs.keys():
+      if rg not in rgs:
         rgs[rg] = [run]
       else:
         rgs[rg].append(run)
   batch_chunk_nums_sizes = {}
   batch_contents = {}
   if respect_rungroup_barriers:
-    batchable = {rg:{rg:runs} for rg, runs in rgs.iteritems()}
+    batchable = {rg:{rg:runs} for rg, runs in six.iteritems(rgs)}
   else:
     batchable = {"all":rgs}
   # for either grouping, iterate over the top level keys in batchable and
   # distribute the events within those "batches" in stripes or chunks
-  for batch, rungroups in batchable.iteritems():
+  extension = None
+  for batch, rungroups in six.iteritems(batchable):
     rg_by_run = {}
-    for rungroup, runs in rungroups.iteritems():
+    for rungroup, runs in six.iteritems(rungroups):
       for run in runs:
         rg_by_run[run] = rungroup
     n_img = 0
     batch_contents[batch] = []
-    for run, rg in rg_by_run.iteritems():
+    for run, rg in six.iteritems(rg_by_run):
       try:
         trg = trial + "_" + rg
         contents = sorted(os.listdir(os.path.join(results_dir, run, trg, "out")))
       except OSError:
-        print "skipping run %s missing out directory" % run
+        print("skipping run %s missing out directory" % run)
         continue
       abs_contents = [os.path.join(results_dir, run, trg, "out", c)
                       for c in contents]
       batch_contents[batch].extend(abs_contents)
       expts = [c for c in contents if c.endswith(expt_ending)]
       n_img += len(expts)
+      if extension is None:
+        if any(c.endswith(".mpack") for c in contents):
+          extension = ".mpack"
+        elif any(c.endswith(".refl") for c in contents):
+          extension = ".refl"
+        else:
+         extension = ".pickle"
     if n_img == 0:
-      print "no images found for %s" % batch
+      print("no images found for %s" % batch)
       del batch_contents[batch]
       continue
     n_chunks = int(math.ceil(n_img/max_size))
@@ -324,8 +333,9 @@ def allocate_chunks(results_dir,
     batch_chunk_nums_sizes[batch] = (n_chunks, chunk_size)
   if len(batch_contents) == 0:
     raise Sorry("no DIALS integration results found.")
+  refl_ending += extension
   batch_chunks = {}
-  for batch, num_size_tuple in batch_chunk_nums_sizes.iteritems():
+  for batch, num_size_tuple in six.iteritems(batch_chunk_nums_sizes):
     num, size = num_size_tuple
     batch_chunks[batch] = []
     contents = batch_contents[batch]
@@ -337,15 +347,15 @@ def allocate_chunks(results_dir,
         expts_stripe = expts[i::num]
         refls_stripe = refls[i::num]
         batch_chunks[batch].append((expts_stripe, refls_stripe))
-      print "striped %d experiments in %s with %d experiments per stripe and %d stripes" % \
-        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch]))
+      print("striped %d experiments in %s with %d experiments per stripe and %d stripes" % \
+        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch])))
     else:
       for i in range(num):
         expts_chunk = expts[i*size:(i+1)*size]
         refls_chunk = refls[i*size:(i+1)*size]
         batch_chunks[batch].append((expts_chunk, refls_chunk))
-      print "chunked %d experiments in %s with %d experiments per chunk and %d chunks" % \
-        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch]))
+      print("chunked %d experiments in %s with %d experiments per chunk and %d chunks" % \
+        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch])))
   return batch_chunks
 
 def parse_retaining_scope(args, master_scope=master_scope):
@@ -375,8 +385,8 @@ def script_to_expand_over_clusters(clustered_json_name,
   """
   Write a bash script to find results of a clustering step and produce customized
   phils and commands to run with each of them. For example, run the command
-  dials.refine ...cluster8.json ...cluster8.pickle ...cluster8.phil followed by
-  dials.refine ...cluster9.json ...cluster9.pickle ...cluster9.phil.
+  dials.refine ...cluster8.expt ...cluster8.refl ...cluster8.phil followed by
+  dials.refine ...cluster9.expt ...cluster9.refl ...cluster9.phil.
   clustered_json_name, clustered_refl_name and phil_template_name must each
   contain an asterisk, and substitution in phil_template itself will occur at
   each instance of CLUSTER.
@@ -458,9 +468,9 @@ class Script(object):
   def run(self):
     '''Execute the script.'''
     if self.params.striping.run:
-      print "processing runs " + ", ".join(["r%04d" % r for r in self.params.striping.run])
+      print("processing runs " + ", ".join(["r%04d" % r for r in self.params.striping.run]))
     if self.params.striping.rungroup:
-      print "processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.striping.rungroup])
+      print("processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.striping.rungroup]))
     batch_chunks = allocate_chunks(self.params.striping.results_dir,
                                    self.params.striping.trial,
                                    rgs_selected=["rg%03d" % rg for rg in self.params.striping.rungroup],
@@ -477,7 +487,7 @@ class Script(object):
         os.mkdir(d)
     self.cwd = os.getcwd()
     tag = "stripe" if self.params.striping.stripe else "chunk"
-    for batch, ch_list in batch_chunks.iteritems():
+    for batch, ch_list in six.iteritems(batch_chunks):
       for idx in range(len(ch_list)):
         chunk = ch_list[idx]
 
@@ -533,7 +543,7 @@ class Script(object):
           submit_path = os.path.join(self.cwd, self.intermediates, "combine_%s.sh" % self.filename)
           submit_command = get_submit_command_chooser(command, submit_path, self.intermediates, self.params.mp,
             log_name=(submit_path.split(".sh")[0] + ".out"))
-          print "executing command: %s" % submit_command
+          print("executing command: %s" % submit_command)
           try:
             easy_run.fully_buffered(submit_command).raise_if_errors().show_stdout()
           except Exception as e:
@@ -545,7 +555,7 @@ if __name__ == "__main__":
   from dials.util import halraiser
   import sys
   if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
-    print helpstring
+    print(helpstring)
     exit()
   if "-c" in sys.argv[1:]:
     expert_level = int(sys.argv[sys.argv.index("-e") + 1]) if "-e" in sys.argv[1:] else 0

@@ -1,7 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.cif_as_mtz
 # LIBTBX_SET_DISPATCHER_NAME iotbx.cif_as_mtz
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.option_parser import iotbx_option_parser
 from iotbx import crystal_symmetry_from_any
 import iotbx.phil
@@ -16,6 +16,7 @@ import string
 import re
 import os
 import sys
+import six
 
 """
 Notes on CIF (source: http://www.ccp4.ac.uk/html/mtz2various.html)
@@ -99,19 +100,19 @@ def run(args, command_name = "phenix.cif_as_mtz", out=sys.stdout,
           help="Extend R-free flags to cover all reflections if necessary.")
 
     ).process(args=args)
-  except Exception, e:
-    if(str(e) != "0"): print str(e)
+  except Exception as e:
+    if(str(e) != "0"): print(str(e))
     sys.exit(0)
   crystal_symmetry = command_line.symmetry
   if(len(command_line.args) > 1):
-    print >> out, "%d arguments are given from the command line:"% \
-      len(command_line.args), command_line.args
+    print("%d arguments are given from the command line:"% \
+      len(command_line.args), command_line.args, file=out)
     raise Sorry("Please specify one reflection cif file.")
   file_name = command_line.args[0]
   if(not os.path.isfile(file_name)):
     raise Sorry("File is not found: %s"%file_name)
   output_r_free_label = command_line.options.output_r_free_label
-  if ((not output_r_free_label[0] in string.uppercase) or
+  if ((not output_r_free_label[0] in string.ascii_uppercase) or
       (re.search("[^a-zA-Z0-9_\-]", output_r_free_label))):
     raise Sorry(("%s is not a suitable column label.  MTZ format requires "+
       "an uppercase letter as the first character, and only alphanumeric "+
@@ -254,16 +255,17 @@ def extract(file_name,
   column_labels = set()
   if (extend_flags):
     map_to_asu = True
-  for (data_name, miller_arrays) in all_miller_arrays.iteritems():
+  # TODO: is all_mille_arrays a dict ? If not change back
+  for (data_name, miller_arrays) in six.iteritems(all_miller_arrays):
     for ma in miller_arrays.values():
       other_symmetry = crystal_symmetry
       try:
         crystal_symmetry = other_symmetry.join_symmetry(
           other_symmetry=ma.crystal_symmetry(),
           force=True)
-      except AssertionError, e:
+      except AssertionError as e:
         str_e = str(e)
-        from cStringIO import StringIO
+        from six.moves import cStringIO as StringIO
         s = StringIO()
         if "Space group is incompatible with unit cell parameters." in str_e:
           other_symmetry.show_summary(f=s)
@@ -286,21 +288,21 @@ def extract(file_name,
   # generate list of all reflections (for checking R-free flags)
   from iotbx.reflection_file_utils import make_joined_set
   all_arrays = []
-  for (data_name, miller_arrays) in all_miller_arrays.iteritems():
+  for (data_name, miller_arrays) in six.iteritems(all_miller_arrays):
     for ma in miller_arrays.values():
       all_arrays.append(ma)
   complete_set = make_joined_set(all_arrays)
   if return_as_miller_arrays:
     miller_array_list=[]
-  for i, (data_name, miller_arrays) in enumerate(all_miller_arrays.iteritems()):
+  for i, (data_name, miller_arrays) in enumerate(six.iteritems(all_miller_arrays)):
     for ma in miller_arrays.values():
       ma = ma.customized_copy(
         crystal_symmetry=crystal_symmetry).set_info(ma.info())
       labels = ma.info().labels
       label = get_label(miller_array=ma, output_r_free_label=output_r_free_label)
       if label is None:
-        print >> log, "Can't determine output label for %s - skipping." % \
-          ma.info().label_string()
+        print("Can't determine output label for %s - skipping." % \
+          ma.info().label_string(), file=log)
         continue
       elif label.startswith(output_r_free_label):
         ma, _ = cif_status_flags_as_int_r_free_flags(
@@ -350,7 +352,7 @@ def extract(file_name,
       # if all sigmas for an array are set to zero either raise an error, or set sigmas to None
       if ma.sigmas() is not None and (ma.sigmas() == 0).count(False) == 0:
         if ignore_bad_sigmas:
-          print >> log, "Warning: bad sigmas, setting sigmas to None."
+          print("Warning: bad sigmas, setting sigmas to None.", file=log)
           ma.set_sigmas(None)
         else:
           raise Sorry(
@@ -358,20 +360,19 @@ def extract(file_name,
   Add --ignore_bad_sigmas to command arguments to leave out sigmas from mtz file.""")
       if not ma.is_unique_set_under_symmetry():
         if merge_non_unique_under_symmetry:
-          print >> log, "Warning: merging non-unique data"
+          print("Warning: merging non-unique data", file=log)
           if (label.startswith(output_r_free_label)
               and incompatible_flags_to_work_set):
             merging = ma.merge_equivalents(
               incompatible_flags_replacement=0)
             if merging.n_incompatible_flags > 0:
-              print >> log, \
-                    "Warning: %i reflections were placed in the working set " \
+              print("Warning: %i reflections were placed in the working set " \
                     "because of incompatible flags between equivalents." %(
-                      merging.n_incompatible_flags)
+                      merging.n_incompatible_flags), file=log)
           else:
             try:
               merging = ma.merge_equivalents()
-            except Sorry, e:
+            except Sorry as e:
               if ("merge_equivalents_exact: incompatible" in str(e)):
                 raise Sorry(str(e) + " for %s" %ma.info().labels[-1] + "\n" +
                   "Add --incompatible_flags_to_work_set to command line "
@@ -392,7 +393,7 @@ def extract(file_name,
             "(%d redundant indices out of %d)" % (n_all-n_uus, n_all) +
             "Add --merge to command arguments to force merging data.")
           if (show_details_if_error):
-            print msg
+            print(msg)
             ma.show_comprehensive_summary(prefix="  ")
             ma.map_to_asu().sort().show_array(prefix="  ")
           raise Sorry(msg)
@@ -407,7 +408,7 @@ def extract(file_name,
             from cctbx import r_free_utils
             # determine flag values
             fvals = list(set(ma.data()))
-            print "fvals", fvals
+            print("fvals", fvals)
             fval = None
             if(len(fvals)==1):
               fval = fvals[0]
@@ -581,7 +582,7 @@ def run2(args,
         try :
           user_phil = iotbx.phil.parse(file_name=arg)
         except RuntimeError :
-          print "Unrecognizable file format for %s" % arg
+          print("Unrecognizable file format for %s" % arg)
         else :
           sources.append(user_phil)
     else :
@@ -591,7 +592,7 @@ def run2(args,
         user_phil = parameter_interpreter.process(arg=arg)
         sources.append(user_phil)
       except RuntimeError :
-        print "Unrecognizable parameter %s" % arg
+        print("Unrecognizable parameter %s" % arg)
   if (params is None):
     params = master_phil.fetch(sources=sources).extract()
   symm = None
@@ -643,7 +644,7 @@ def validate_params(params):
     import iotbx.pdb.fetch
     try :
       iotbx.pdb.fetch.validate_pdb_id(params.input.pdb_id)
-    except RuntimeError, e :
+    except RuntimeError as e :
       raise Sorry(str(e))
   else :
     if ((params.crystal_symmetry.space_group is None) or

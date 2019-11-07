@@ -1,3 +1,3 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
-from f_model import *
+from mmtbx.f_model.f_model import *

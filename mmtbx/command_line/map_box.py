@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_box
 
 import mmtbx.utils
@@ -7,11 +7,12 @@ from mmtbx.refinement import print_statistics
 import iotbx.pdb
 import libtbx.phil
 from libtbx.utils import Sorry
-import os, sys, time
+import os, sys
 from iotbx import reflection_file_utils
 from iotbx.file_reader import any_file
 from cctbx import maptbx
 from scitbx.matrix import col
+from six.moves import zip
 
 master_phil = libtbx.phil.parse("""
   include scope libtbx.phil.interface.tracking_params
@@ -34,6 +35,15 @@ master_phil = libtbx.phil.parse("""
     .help = Input map file (CCP4/mrc format).
     .short_caption = Input map file
     .type = str
+  target_ncs_au_file = None
+    .help = File with model indicating which au to choose in extract_unique
+    .short_caption = Input target ncs au file
+    .type = str
+  half_map_list = None
+    .type = strings
+    .help = Half maps (extract_unique only). Supply file names \
+              separated by spaces
+    .short_caption = Half maps (extract_unique only)
   selection = all
     .type = str
     .help = Atom selection to be applied to input PDB file
@@ -49,7 +59,7 @@ master_phil = libtbx.phil.parse("""
     .help = If mask_atoms is False, a box of density will be cut out around\
             the input model (after selections are applied to the model). \
             The size of the box of density will be box_cushion bigger than \
-            the model.
+            the model.  Box cushion also applied if density_select is set.
     .short_caption = Box cushion
 
   mask_atoms=False
@@ -99,6 +109,11 @@ master_phil = libtbx.phil.parse("""
             without the ".pdb" suffix.
     .short_caption = Output file name prefix
 
+  mask_select = False
+    .type = bool
+    .help = Select boundaries (min,max in x,y,z) based on auto-mask
+    .short_caption = Mask select
+
   density_select = False
     .type = bool
     .help = Select boundaries based on where density is located.
@@ -111,7 +126,8 @@ master_phil = libtbx.phil.parse("""
 
   get_half_height_width = True
     .type = bool
-    .help = Use 4 times half-width at half-height as estimate of max size
+    .help = Use 4 times half-width at half-height as estimate of max size \
+              in density_select
     .short_caption = Use half-height width
 
   symmetry = None
@@ -131,21 +147,22 @@ master_phil = libtbx.phil.parse("""
   sequence_file = None
     .type = path
     .help = Sequence file (any standard format). Can be unique part or \
-            all copies.  Used in identification of unique part of map.
+            all copies.  Used in identification of unique part of map \
+            and in masking with mask_select
     .short_caption = Sequence file (optional)
 
   molecular_mass = None
     .type = float
     .help = Molecular mass of object in map in Da (i.e., 33000 for 33 Kd).\
               Used in identification \
-            of unique part of map.
+            of unique part of map and in masking by mask_select.
     .short_caption = Molecular mass (optional)
 
   solvent_content = None
     .type = float
     .help = Optional fraction of volume of map that is empty.  \
             Used in identification \
-            of unique part of map.
+            of unique part of map and in masking by mask_select
     .short_caption = Solvent content
 
   extract_unique = False
@@ -158,7 +175,7 @@ master_phil = libtbx.phil.parse("""
 
   box_buffer = 5
     .type = int
-    .help = Padding around unique region
+    .help = Padding around unique region in extract_unique
     .short_caption = Padding around unique region
 
   soft_mask_extract_unique = True
@@ -193,7 +210,7 @@ master_phil = libtbx.phil.parse("""
 
   soft_mask = False
     .type=bool
-    .help = Use Gaussian mask in mask_atoms
+    .help = Use Gaussian mask in mask_atoms and on outside surface of box
     .short_caption = Soft mask
 
   soft_mask_radius=3
@@ -205,16 +222,31 @@ master_phil = libtbx.phil.parse("""
     .type = ints
     .help = Lower bounds for cut out box. You can specify them directly.\
             NOTE: lower and upper bounds refer to grid points after shifting \
-            the map to place the origin at (0,0,0).
+            the map to place the origin at (0,0,0). To refer to absolute \
+            values specify bounds_are_absolute=True.
     .short_caption = Lower bounds
 
   upper_bounds = None
     .type = ints
     .help = Upper bounds for cut out box.  You can specify them directly.\
             NOTE: lower and upper bounds refer to grid points after shifting \
-            the map to place the origin at (0,0,0).
+            the map to place the origin at (0,0,0). To refer to absolute \
+            values specify bounds_are_absolute=True.
     .short_caption = Upper bounds
 
+  bounds_are_absolute = False
+    .type = bool
+    .help = Define lower and upper bounds as absolute. \
+            NOTE: lower and upper bounds refer to grid points after shifting \
+            the map to place the origin at (0,0,0). To refer to absolute \
+            values specify bounds_are_absolute=True.
+    .short_caption = Bounds are absolute
+
+  zero_outside_original_map = False
+    .type = bool
+    .help = If bounds for new map are outside original map, zero all points\
+             outside of original map
+    .short_caption = Zero outside original map
   keep_map_size = False
     .type=bool
     .help = Keep original map gridding (do not cut anything out). \
@@ -273,6 +305,12 @@ master_phil = libtbx.phil.parse("""
     .help = As output_origin_grid_units, but use origin from this file
     .short_caption = File with origin info
 
+  bounds_match_this_file = None
+    .type = path
+    .help = Take the lower and upper bounds from this map file and apply them \
+             to the input map file.
+    .short_caption = File with bounds to match
+
   output_external_origin = None
     .type = floats
     .help = Write ORIGIN record to map file (this is an external origin \
@@ -328,6 +366,8 @@ def run(args, crystal_symmetry=None,
      ncs_object=None,
      pdb_hierarchy=None,
      map_data=None,
+     half_map_data_list=None,
+     half_map_labels_list=None,
      lower_bounds=None,
      upper_bounds=None,
      write_output_files=True,
@@ -348,7 +388,7 @@ or
 
 Parameters:"""%h
   if(len(args) == 0 and not pdb_hierarchy):
-    print default_message
+    print(default_message)
     master_phil.show(prefix="  ")
     return
 
@@ -367,7 +407,7 @@ Parameters:"""%h
       cmd_cs=crystal_symmetry,
       master_params = master_phil,
       suppress_symmetry_related_errors=params.ignore_symmetry_conflicts)
-  except Exception,e:
+  except Exception as e:
     if str(e).find("symmetry mismatch ")>1:
       raise Sorry(str(e)+"\nTry 'ignore_symmetry_conflicts=True'")
     else:
@@ -386,17 +426,21 @@ Parameters:"""%h
   if params.pdb_file and not inputs.pdb_file_names and not pdb_hierarchy:
     inputs.pdb_file_names=[params.pdb_file]
   if(len(inputs.pdb_file_names)!=1 and not params.density_select and not
+    params.mask_select and not
     pdb_hierarchy and not params.keep_map_size and not params.upper_bounds
-     and not params.extract_unique):
+     and not params.extract_unique and not params.bounds_match_this_file):
     raise Sorry("PDB file is needed unless extract_unique, "+
-      "density_select, keep_map_size \nor bounds are set .")
+      "density_select, mask_select, keep_map_size \nor bounds are set .")
   if (len(inputs.pdb_file_names)!=1 and not pdb_hierarchy and \
-       (params.mask_atoms or params.soft_mask )):
-    raise Sorry("PDB file is needed for mask_atoms or soft_mask")
-  if (params.density_select and params.keep_map_size):
-    raise Sorry("Cannot set both density_select and keep_map_size")
-  if (params.density_select and params.upper_bounds):
-    raise Sorry("Cannot set both density_select and bounds")
+       (params.mask_atoms )):
+    raise Sorry("PDB file is needed for mask_atoms")
+  if params.soft_mask and (not params.resolution) and \
+        (len(inputs.pdb_file_names)!=1 and not pdb_hierarchy):
+    raise Sorry("Need resolution for soft_mask without PDB file")
+  if ((params.density_select or params.mask_select) and params.keep_map_size):
+    raise Sorry("Cannot set both density_select/mask_select and keep_map_size")
+  if ((params.density_select or params.mask_select) and params.upper_bounds):
+    raise Sorry("Cannot set both density_select/mask_select and bounds")
   if (params.keep_map_size and params.upper_bounds):
     raise Sorry("Cannot set both keep_map_size and bounds")
   if (params.upper_bounds and not params.lower_bounds):
@@ -422,31 +466,52 @@ Parameters:"""%h
 
   if (write_output_files) and ("mtz" in params.output_format) and (
        (params.keep_origin) and (not params.keep_map_size)):
-    print "\nNOTE: Skipping write of mtz file as keep_origin=True and \n"+\
-       "keep_map_size is False\n"
+    print("\nNOTE: Skipping write of mtz file as keep_origin=True and \n"+\
+       "keep_map_size is False\n")
     params.output_format=remove_element(params.output_format,element='mtz')
 
   if (write_output_files) and ("mtz" in params.output_format) and (
        (params.extract_unique)):
-    print "\nNOTE: Skipping write of mtz file as extract_unique=True\n"
+    print("\nNOTE: Skipping write of mtz file as extract_unique=True\n")
     params.output_format=remove_element(params.output_format,element='mtz')
 
 
-  if params.output_origin_match_this_file:
-
-    af = any_file(params.output_origin_match_this_file)
-    if (af.file_type == 'ccp4_map'):
-      origin=af.file_content.data.origin()
-      params.output_origin_grid_units=origin
-      print "Origin of (%s,%s,%s) taken from %s" %(
-         origin[0],origin[1],origin[2],params.output_origin_match_this_file)
+  if params.output_origin_match_this_file or params.bounds_match_this_file:
+    if params.output_origin_match_this_file:
+      fn=params.output_origin_match_this_file
+      if params.bounds_match_this_file:
+        raise Sorry("Cannot match origin and bounds at same time")
+    else:
+      fn=params.bounds_match_this_file
     if not params.ccp4_map_file:
       raise Sorry(
-       "Need to specify ccp4_map_file=xxx if you use "+
-           "output_origin_match_this_file=xxxx")
+       "Need to specify your input file with ccp4_map_file=xxx if you use "+
+        "output_origin_match_this_file=xxxx or bounds_match_this_file=xxxx")
+
+    af = any_file(fn)
+    if (af.file_type == 'ccp4_map'):
+      origin=af.file_content.data.origin()
+      if params.output_origin_match_this_file:
+        params.output_origin_grid_units=origin
+        print("Origin of (%s,%s,%s) taken from %s" %(
+           origin[0],origin[1],origin[2],fn))
+      else:
+        all=af.file_content.data.all()
+        params.lower_bounds=origin
+        print("Lower bounds of (%s,%s,%s) taken from %s" %(
+           params.lower_bounds[0],params.lower_bounds[1],
+             params.lower_bounds[2],fn))
+        params.upper_bounds=list(col(origin)+col(all)-col((1,1,1)))
+        print("upper bounds of (%s,%s,%s) taken from %s" %(
+           params.upper_bounds[0],params.upper_bounds[1],
+            params.upper_bounds[2],fn))
+        params.bounds_are_absolute=True
+    else:
+      raise Sorry("Unable to interpret %s as map file" %(fn))
+
   if params.output_origin_grid_units is not None and params.keep_origin:
     params.keep_origin=False
-    print "Setting keep_origin=False as output_origin_grid_units is set"
+    print("Setting keep_origin=False as output_origin_grid_units is set")
   print_statistics.make_sub_header("pdb model", out=log)
   if len(inputs.pdb_file_names)>0:
     pdb_inp = iotbx.pdb.input(file_name=inputs.pdb_file_names[0])
@@ -508,9 +573,25 @@ Parameters:"""%h
   else: # have map_data
     map_or_map_coeffs_prefix=None
 
+  if params.half_map_list and (not half_map_data_list):
+    if not params.extract_unique:
+      raise Sorry("Can only use half_map_with extract_unique")
+    print ("Reading half-maps",params.half_map_list)
+    half_map_data_list=[]
+    half_map_labels_list=[]
+    for fn in params.half_map_list:
+      print("Reading half map from %s" %(fn),file=log)
+      af = any_file(fn)
+      print_statistics.make_sub_header("CCP4 map", out=log)
+      h_ccp4_map = af.file_content
+      h_ccp4_map.show_summary(prefix="  ",out=log)
+      h_map_data = h_ccp4_map.data
+      half_map_data_list.append(h_map_data)
+      half_map_labels_list.append(h_ccp4_map.get_labels())
+
   if params.map_scale_factor:
-    print "Applying scale factor of %s to map data on read-in" %(
-       params.map_scale_factor)
+    print("Applying scale factor of %s to map data on read-in" %(
+       params.map_scale_factor))
     map_data=map_data*params.map_scale_factor
 
   if params.output_origin_grid_units is not None:
@@ -556,10 +637,9 @@ Parameters:"""%h
     string = params.selection)
   if selection.size():
     print_statistics.make_sub_header("atom selection", out=log)
-    print >> log, "Selection string: selection='%s'"%params.selection
-    print >> log, \
-        "  selects %d atoms from total %d atoms."%(selection.count(True),
-        selection.size())
+    print("Selection string: selection='%s'"%params.selection, file=log)
+    print("  selects %d atoms from total %d atoms."%(selection.count(True),
+        selection.size()), file=log)
   sites_cart_all = xray_structure.sites_cart()
   sites_cart = sites_cart_all.select(selection)
   selection = xray_structure.selection_within(
@@ -571,9 +651,9 @@ Parameters:"""%h
     ncs_object=ncs()
     if params.symmetry_file:
       ncs_object.read_ncs(params.symmetry_file,log=log)
-      print >>log,"Total of %s operators read" %(ncs_object.max_operators())
+      print("Total of %s operators read" %(ncs_object.max_operators()), file=log)
   if not ncs_object or ncs_object.max_operators()<1:
-      print >>log,"No symmetry available"
+      print("No symmetry available", file=log)
   if ncs_object:
     n_ops=max(1,ncs_object.max_operators())
   else:
@@ -581,7 +661,7 @@ Parameters:"""%h
 
   # Get sequence if extract_unique is set
   sequence=None
-  if params.extract_unique:
+  if params.extract_unique or params.mask_select:
     if params.sequence_file:
       if n_ops > 1: # get unique part of sequence
         remove_duplicates=True
@@ -611,8 +691,8 @@ Parameters:"""%h
       else:
         n_dna=0
       params.molecular_mass=n_ops*(n_protein*110+(n_rna+n_dna)*330)
-      print >>log,"\nEstimate of molecular mass is %.0f " %(params.molecular_mass)
-  if params.density_select:
+      print("\nEstimate of molecular mass is %.0f " %(params.molecular_mass), file=log)
+  if params.density_select or params.mask_select:
     print_statistics.make_sub_header(
     "Extracting box around selected density and writing output files", out=log)
   else:
@@ -620,24 +700,28 @@ Parameters:"""%h
     "Extracting box around selected atoms and writing output files", out=log)
   #
   if params.value_outside_atoms=='mean':
-    print >>log,"\nValue outside atoms mask will be set to mean inside mask"
+    print("\nValue outside atoms mask will be set to mean inside mask", file=log)
   if params.get_half_height_width and params.density_select:
-    print >>log,"\nHalf width at half height will be used to id boundaries"
+    print("\nHalf width at half height will be used to id boundaries", file=log)
+
   if params.soft_mask and sites_cart_all.size()>0:
-    print >>log,"\nSoft mask will be applied to model-based mask"
+    print("\nSoft mask will be applied to model-based mask", file=log)
+  elif params.soft_mask:
+    print ("\nSoft mask will be applied to outside of map box",file=log)
   if params.keep_map_size:
-    print >>log,"\nEntire map will be kept (not cutting out region)"
+    print("\nEntire map will be kept (not cutting out region)", file=log)
   if params.restrict_map_size:
-    print >>log,"\nOutput map will be within input map"
+    print("\nOutput map will be within input map", file=log)
   if params.lower_bounds and params.upper_bounds:
-    print >>log,"Bounds for cut out map are (%s,%s,%s) to (%s,%s,%s)" %(
-     tuple(list(params.lower_bounds)+list(params.upper_bounds)))
+    print("Bounds for cut out map are (%s,%s,%s) to (%s,%s,%s)" %(
+     tuple(list(params.lower_bounds)+list(params.upper_bounds))), file=log)
 
   box = mmtbx.utils.extract_box_around_model_and_map(
     xray_structure   = xray_structure,
     map_data         = map_data.as_double(),
     box_cushion      = params.box_cushion,
     selection        = selection,
+    mask_select      = params.mask_select,
     density_select   = params.density_select,
     threshold        = params.density_select_threshold,
     get_half_height_width = params.get_half_height_width,
@@ -650,7 +734,10 @@ Parameters:"""%h
     restrict_map_size     = params.restrict_map_size,
     lower_bounds          = params.lower_bounds,
     upper_bounds          = params.upper_bounds,
+    bounds_are_absolute   = params.bounds_are_absolute,
+    zero_outside_original_map   = params.zero_outside_original_map,
     extract_unique        = params.extract_unique,
+    target_ncs_au_file    = params.target_ncs_au_file,
     regions_to_keep       = params.regions_to_keep,
     box_buffer            = params.box_buffer,
     soft_mask_extract_unique = params.soft_mask_extract_unique,
@@ -663,30 +750,33 @@ Parameters:"""%h
     resolution            = params.resolution,
     ncs_object            = ncs_object,
     symmetry              = params.symmetry,
-
+    half_map_data_list    = half_map_data_list,
     )
 
   ph_box = pdb_hierarchy.select(selection)
   ph_box.adopt_xray_structure(box.xray_structure_box)
   box.hierarchy=ph_box
 
+  if params.mask_select:
+    print("\nSolvent content used in mask_select: %.3f " %(
+      box.get_solvent_content()),file=log)
   if (inputs and
     inputs.crystal_symmetry and inputs.ccp4_map and
     inputs.crystal_symmetry.unit_cell().parameters() and
      inputs.ccp4_map.unit_cell_parameters  ) and (
        inputs.crystal_symmetry.unit_cell().parameters() !=
        inputs.ccp4_map.unit_cell_parameters):
-    print >>log,"\nNOTE: Input CCP4 map is only part of unit cell:"
-    print >>log,"Full unit cell ('unit cell parameters'): "+\
+    print("\nNOTE: Input CCP4 map is only part of unit cell:", file=log)
+    print("Full unit cell ('unit cell parameters'): "+\
       "(%.1f, %.1f, %.1f, %.1f, %.1f, %.1f) A" %tuple(
-        inputs.ccp4_map.unit_cell_parameters)
-    print >>log,"Size of CCP4 map 'map unit cell':        "+\
+        inputs.ccp4_map.unit_cell_parameters), file=log)
+    print("Size of CCP4 map 'map unit cell':        "+\
       "(%.1f, %.1f, %.1f, %.1f, %.1f, %.1f) A" %tuple(
-       inputs.crystal_symmetry.unit_cell().parameters())
-    print >>log,"Full unit cell as grid units: (%s, %s, %s)" %(
-      inputs.ccp4_map.unit_cell_grid)
-    print >>log,"Map unit cell as grid units:  (%s, %s, %s)" %(
-      map_data.all())
+       inputs.crystal_symmetry.unit_cell().parameters()), file=log)
+    print("Full unit cell as grid units: (%s, %s, %s)" %(
+      inputs.ccp4_map.unit_cell_grid), file=log)
+    print("Map unit cell as grid units:  (%s, %s, %s)" %(
+      map_data.all()), file=log)
 
     box.unit_cell_parameters_from_ccp4_map=inputs.ccp4_map.unit_cell_parameters
     box.unit_cell_parameters_deduced_from_map_grid=\
@@ -699,7 +789,7 @@ Parameters:"""%h
 
 
   if box.pdb_outside_box_msg:
-    print >> log, box.pdb_outside_box_msg
+    print(box.pdb_outside_box_msg, file=log)
 
   # NOTE: box object is always shifted to place origin at (0,0,0)
 
@@ -729,49 +819,48 @@ Parameters:"""%h
   output_box=deepcopy(box)  # won't use box below here except to return it
 
 
-  print >>log,"\nBox cell dimensions: (%.2f, %.2f, %.2f) A" %(
-      box.box_crystal_symmetry.unit_cell().parameters()[:3])
+  print("\nBox cell dimensions: (%.2f, %.2f, %.2f) A" %(
+      box.box_crystal_symmetry.unit_cell().parameters()[:3]), file=log)
+
   if box.shift_cart:
-     print>>log,"Working origin moved from grid position of"+\
+     print("Working origin moved from grid position of"+\
         ": (%d, %d, %d) to (0,0,0) " %(
-        tuple(box.origin_shift_grid_units(reverse=True)))
-     print>>log,"Working origin moved from  coordinates of:"+\
+        tuple(box.origin_shift_grid_units(reverse=True))), file=log)
+     print("Working origin moved from  coordinates of:"+\
         " (%.2f, %.2f, %.2f) A to (0,0,0)\n" %(
-         tuple(-col(box.shift_cart)))
+         tuple(-col(box.shift_cart))), file=log)
 
   if (params.keep_origin):
-    print >>log,"\nRestoring original position for output files"
-    print >>log,"Origin will be at grid position of"+\
+    print("\nRestoring original position for output files", file=log)
+    print("Origin will be at grid position of"+\
         ": (%d, %d, %d) " %(
-        tuple(box.origin_shift_grid_units(reverse=True)))
-    print >>log,\
-       "\nOutput files will be in same location as original",
+        tuple(box.origin_shift_grid_units(reverse=True))), file=log)
+    print("\nOutput files will be in same location as original", end=' ', file=log)
     if not params.keep_map_size:
-      print >>log,"just cut out."
+      print("just cut out.", file=log)
     else:
-      print >>log,"keeping entire map"
-    print >>log,"Note that output maps are only valid in the cut out region.\n"
+      print("keeping entire map", file=log)
+    print("Note that output maps are only valid in the cut out region.\n", file=log)
 
   else:
     if origin_to_match:
       output_box.shift_cart=shift_cart_for_origin_to_match
       if params.output_origin_grid_units:
-        print >>log,"Output map origin to be shifted to match target"
-      print >>log, "Placing origin at grid point (%s, %s, %s)" %(
+        print("Output map origin to be shifted to match target", file=log)
+      print("Placing origin at grid point (%s, %s, %s)" %(
         origin_to_match)+"\n"+ \
         "Final coordinate shift for output files: (%.2f,%.2f,%.2f) A\n" %(
-        tuple(col(output_box.shift_cart)-col(box.shift_cart)))
+        tuple(col(output_box.shift_cart)-col(box.shift_cart))), file=log)
     elif box.shift_cart:
       output_box.shift_cart=(0,0,0) # not shifting back
-      print >>log,"Final origin will be at (0,0,0)"
-      print >>log,\
-        "Final coordinate shift for output files: (%.2f,%.2f,%.2f) A\n" %(
-        tuple(col(output_box.shift_cart)-col(box.shift_cart)))
+      print("Final origin will be at (0,0,0)", file=log)
+      print("Final coordinate shift for output files: (%.2f,%.2f,%.2f) A\n" %(
+        tuple(col(output_box.shift_cart)-col(box.shift_cart))), file=log)
     else:
-      print >>log,\
-       "\nOutput files are in same location as original and origin "+\
-        "is at (0,0,0)\n"
+      print("\nOutput files are in same location as original and origin "+\
+        "is at (0,0,0)\n", file=log)
 
+  print("\nBox grid: (%s, %s, %s) " %(output_box.map_box.all()))
   ph_output_box_output_location = ph_box.deep_copy()
   if output_box.shift_cart:  # shift coordinates and NCS back by shift_cart
     # NOTE output_box.shift_cart could be different than box.shift_cart if
@@ -796,17 +885,16 @@ Parameters:"""%h
        (input_unit_cell is not None):
     params.output_unit_cell=input_unit_cell
     params.output_unit_cell_grid=input_unit_cell_grid
-    print >>log,"Setting output unit cell parameters and unit cell grid to"+\
-      " match\ninput map file"
+    print("Setting output unit cell parameters and unit cell grid to"+\
+      " match\ninput map file", file=log)
 
   if params.output_unit_cell: # Set output unit cell parameters
     from cctbx import crystal
     output_crystal_symmetry=crystal.symmetry(
       unit_cell=params.output_unit_cell, space_group="P1")
     output_unit_cell=output_crystal_symmetry.unit_cell()
-    print >>log,\
-       "Output unit cell set to: %.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %tuple(
-        output_crystal_symmetry.unit_cell().parameters())
+    print("Output unit cell set to: %.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %tuple(
+        output_crystal_symmetry.unit_cell().parameters()), file=log)
   else:
     output_crystal_symmetry=None
 
@@ -816,9 +904,8 @@ Parameters:"""%h
       output_unit_cell_grid=params.output_unit_cell_grid
     else:
       output_unit_cell_grid=output_box.map_box.all()
-    print >>log,\
-       "Output unit cell grid set to: (%s, %s, %s)" %tuple(
-        output_unit_cell_grid)
+    print("Output unit cell grid set to: (%s, %s, %s)" %tuple(
+        output_unit_cell_grid), file=log)
 
     expected_output_abc=[]
     box_spacing=[]
@@ -847,19 +934,18 @@ Parameters:"""%h
       r2=expected_output_abc[2]/output_abc[2]
       from libtbx.test_utils import approx_equal
       if not approx_equal(r0,r1,eps=0.001) or not approx_equal(r0,r2,eps=0.001):
-        print >>log,"WARNING: output_unit_cell and cell_grid will "+\
+        print("WARNING: output_unit_cell and cell_grid will "+\
           "change ratio of grid spacing.\nOld spacings: "+\
          "(%.2f, %.2f, %.2f) A " %(tuple(box_spacing))+\
-        "\nNew spacings:  (%.2f, %.2f, %.2f) A \n" %(tuple(output_spacing))
+        "\nNew spacings:  (%.2f, %.2f, %.2f) A \n" %(tuple(output_spacing)), file=log)
     else:
       output_abc=expected_output_abc
 
     from cctbx import crystal
     output_crystal_symmetry=crystal.symmetry(
           unit_cell=list(output_abc)+[90,90,90], space_group="P1")
-    print >>log, \
-      "Output unit cell will be:  (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)\n"%(
-       tuple(output_crystal_symmetry.unit_cell().parameters()))
+    print("Output unit cell will be:  (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)\n"%(
+       tuple(output_crystal_symmetry.unit_cell().parameters())), file=log)
 
   else:
     output_unit_cell_grid = output_box.map_box.all()
@@ -875,8 +961,8 @@ Parameters:"""%h
       else: file_name = "%s.pdb"%params.output_file_name_prefix
       ph_output_box_output_location.write_pdb_file(file_name=file_name,
           crystal_symmetry = output_crystal_symmetry)
-      print >> log, "Writing boxed PDB with box unit cell to %s" %(
-          file_name)
+      print("Writing boxed PDB with box unit cell to %s" %(
+          file_name), file=log)
 
     # Write NCS file if NCS
     if output_box.ncs_object and output_box.ncs_object.max_operators()>0:
@@ -887,7 +973,7 @@ Parameters:"""%h
       output_box.ncs_object.format_all_for_group_specification(
           file_name=output_symmetry_file)
 
-      print >>log,"\nWriting symmetry to %s" %( output_symmetry_file)
+      print("\nWriting symmetry to %s" %( output_symmetry_file), file=log)
 
     # Write ccp4 map.
     if("ccp4" in params.output_format):
@@ -905,8 +991,7 @@ Parameters:"""%h
        input_file_name=inputs.ccp4_map_file_name,
        input_labels=input_map_labels,
        limitations=limitations,
-       output_labels=None)
-
+       output_labels=params.output_map_labels)
      output_box.write_ccp4_map(file_name=file_name,
        output_crystal_symmetry=output_crystal_symmetry,
        output_mean=params.output_ccp4_map_mean,
@@ -915,8 +1000,34 @@ Parameters:"""%h
        shift_back=shift_back,
        output_map_labels=labels,
        output_external_origin=params.output_external_origin)
-     print >> log, "Writing boxed map "+\
-          "to CCP4 formatted file:   %s"%file_name
+     print("Writing boxed map "+\
+          "to CCP4 formatted file:   %s"%file_name, file=log)
+     if not params.half_map_list:
+        params.half_map_list=[]
+     if not output_box.map_box_half_map_list:
+       output_box.map_box_half_map_list=[]
+     if not half_map_labels_list:
+       half_map_labels_list=len(output_box.map_box_half_map_list)*[None]
+     for hm,labels,fn in zip(
+       output_box.map_box_half_map_list,
+       half_map_labels_list,
+       params.half_map_list):  # half maps matching
+       labels=create_output_labels(program_name=program_name,
+         input_file_name=fn,
+         input_labels=labels,
+         limitations=limitations,
+         output_labels=params.output_map_labels)
+       hm_fn="%s_box.ccp4" %( ".".join(os.path.basename(fn).split(".")[:-1]))
+       output_box.write_ccp4_map(file_name=hm_fn,
+         map_data=hm,
+         output_crystal_symmetry=output_crystal_symmetry,
+         output_mean=params.output_ccp4_map_mean,
+         output_sd=params.output_ccp4_map_sd,
+         output_unit_cell_grid=output_unit_cell_grid,
+         shift_back=shift_back,
+         output_map_labels=labels,
+         output_external_origin=params.output_external_origin)
+       print ("Writing boxed half map to: %s " %(hm_fn),file=log)
 
     # Write xplor map.  Shift back if keep_origin=True
     if("xplor" in params.output_format):
@@ -927,8 +1038,8 @@ Parameters:"""%h
          output_crystal_symmetry=output_crystal_symmetry,
          output_unit_cell_grid=output_unit_cell_grid,
          shift_back=shift_back,)
-     print >> log, "Writing boxed map "+\
-         "to X-plor formatted file: %s"%file_name
+     print("Writing boxed map "+\
+         "to X-plor formatted file: %s"%file_name, file=log)
 
     # Write mtz map coeffs.  Shift back if keep_origin=True
     if("mtz" in params.output_format):
@@ -936,8 +1047,8 @@ Parameters:"""%h
        file_name = "%s_box.mtz"%output_prefix
      else: file_name = "%s.mtz"%params.output_file_name_prefix
 
-     print >> log, "Writing map coefficients "+\
-         "to MTZ file: %s"%file_name
+     print("Writing map coefficients "+\
+         "to MTZ file: %s"%file_name, file=log)
      if(map_coeff is not None):
        d_min = map_coeff.d_min()
      elif params.resolution is not None:
@@ -950,7 +1061,7 @@ Parameters:"""%h
        resolution_factor=params.resolution_factor, file_name=file_name,
        shift_back=shift_back)
 
-  print >> log
+  print(file=log)
   return box
 
 # =============================================================================

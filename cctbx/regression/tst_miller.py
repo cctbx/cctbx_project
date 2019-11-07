@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from cctbx import miller
 from cctbx import xray
@@ -15,12 +15,11 @@ from libtbx.test_utils import \
   approx_equal, not_approx_equal, show_diff, Exception_expected
 from libtbx.utils import Sorry, Keep, null_out
 from libtbx import Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import warnings
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import range
+from six.moves import zip
+from six.moves import cPickle as pickle
 import random
 import math
 import sys
@@ -255,7 +254,7 @@ def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
         space_group_symbol="P 21 21 21"),
       anomalous_flag=anomalous_flag,
       d_min=8)
-    for i_trial in xrange(10):
+    for i_trial in range(10):
       if (i_trial == 0):
         trial_set = miller_set
       else:
@@ -276,8 +275,8 @@ def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
         accu = flags.r_free_flags_accumulation()
         assert accu.reflection_counts.size() == accu.free_fractions.size()
         if (verbose):
-          print "r_free_flags_accumulation:", \
-            zip(accu.reflection_counts, accu.free_fractions)
+          print("r_free_flags_accumulation:", \
+            list(zip(accu.reflection_counts, accu.free_fractions)))
       if (not anomalous_flag):
         if (i_trial < 5):
           assert flags.indices().size() == 145
@@ -484,11 +483,11 @@ unused: 10.0715 -         [0/0]
     [0,1,1,1,1,0], [0,2,2,0], [0,4,0], [0,4,0], [0,4,0], [0,4,0],
     [0,1,1,1,1,1,0], [0,2,1,2,0], [0,3,2,0], [0,5,0], [0,5,0], [0,5,0], [0,5,0]
   ])
-  for n in xrange(1,6):
-    set2 = set1.select(flex.size_t(xrange(n)))
-    for reflections_per_bin in range(1,n+1) + [n+1, n*10]:
+  for n in range(1,6):
+    set2 = set1.select(flex.size_t(range(n)))
+    for reflections_per_bin in list(range(1,n+1)) + [n+1, n*10]:
       set2.setup_binner_counting_sorted(reflections_per_bin=reflections_per_bin)
-      assert list(set2.binner().counts()) == expected_counts.next()
+      assert list(set2.binner().counts()) == next(expected_counts)
   set1.setup_binner_counting_sorted(
     d_max=16,
     d_min=11,
@@ -504,11 +503,11 @@ unused: 10.0715 -         [0/0]
     [0,1,1,1,1,1,1,0], [0,1,1,2,1,1,0], [0,2,1,2,1,0], [0,2,2,2,0], [0,3,3,0], [0,6,0],
     [0,1,1,1,1,1,1,1,0], [0,1,1,2,1,1,1,0], [0,1,2,1,2,1,0], [0,2,2,1,2,0], [0,2,3,2,0], [0,4,3,0], [0,7,0]
   ])
-  for n in xrange(1,8):
-    set2 = set1.select(flex.size_t(xrange(n)))
+  for n in range(1,8):
+    set2 = set1.select(flex.size_t(range(n)))
     for n_bins in range(n, 0, -1):
       set2.setup_binner_counting_sorted(n_bins=n_bins)
-      assert list(set2.binner().counts()) == expected_counts.next()
+      assert list(set2.binner().counts()) == next(expected_counts)
   set1.setup_binner_counting_sorted(
     d_max=16,
     d_min=11,
@@ -778,7 +777,7 @@ def exercise_array():
   indices=flex.miller_index(((0,0,1),))
   try:
     sa = ma2.select_indices(indices=indices)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(
       str(e),
       ("cctbx.miller.array.select_indices(): "
@@ -1034,7 +1033,7 @@ unused: 1.0000 -        [ 0/0 ]  0 0.0000
     d_min=3)
   ma = miller.array(
     miller_set=ms,
-    data=flex.double(xrange(ms.indices().size())))
+    data=flex.double(range(ms.indices().size())))
   assert ma.remove_cone(fraction_percent=10).data().size() == 43
   ma.set_observation_type_xray_amplitude()
   assert ma.select_acentric().data().size() == 48
@@ -1399,10 +1398,10 @@ def exercise_array_2(space_group_info):
   xs = space_group_info.any_compatible_crystal_symmetry(volume=60)
   for anomalous_flag in (False, True):
     st = miller.build_set(xs, anomalous_flag, d_min=1)
-    for sigmas in (None, flex.double(xrange(1,st.indices().size()+1))):
+    for sigmas in (None, flex.double(range(1,st.indices().size()+1))):
       sg = miller.array(
         st,
-        data=flex.double(xrange(st.indices().size())),
+        data=flex.double(range(st.indices().size())),
         sigmas=sigmas)
       p1 = sg.expand_to_p1()
       ps = miller.array(
@@ -1572,7 +1571,7 @@ def exercise_squaring_and_patterson_map(space_group_info,
   grid_resolution_factor = 1/3.
   u_base = xray.calc_u_base(d_min, grid_resolution_factor)
   if (0 or verbose):
-    print "u_base:", u_base
+    print("u_base:", u_base)
   d_star_sq = e.unit_cell().d_star_sq(e.indices())
   dw = flex.exp(d_star_sq*2*(math.pi**2)*u_base)
   eb = miller.array(miller_set=e, data=e.data()/dw)
@@ -1586,7 +1585,7 @@ def exercise_squaring_and_patterson_map(space_group_info,
   mpe = f_calc.mean_phase_error(f_calc.phases())
   assert approx_equal(mpe, 0.0)
   if (0 or verbose):
-    print "mean_weighted_phase_error: %.2f" % mwpe
+    print("mean_weighted_phase_error: %.2f" % mwpe)
   assert mwpe < 2
   for sharpening in (False, True):
     for origin_peak_removal in (False, True):
@@ -1614,7 +1613,7 @@ def exercise_local_overlap_map():
   xyzf = flex.vec3_double()
   from cctbx.eltbx import van_der_waals_radii
   a,b,c,_,_,_ = symmetry.unit_cell().parameters()
-  for k in xrange(10):
+  for k in range(10):
     scatterer = xray.scatterer(
       site=(0, 0.1*math.sin(math.pi*4*k/b), k/b),
       scattering_type="S",
@@ -1670,7 +1669,7 @@ def exercise_lsd_map():
   xyzf = flex.vec3_double()
   from cctbx.eltbx import van_der_waals_radii
   a,b,c,_,_,_ = symmetry.unit_cell().parameters()
-  for k in xrange(10):
+  for k in range(10):
     scatterer = xray.scatterer(
       site=(0, 0.1*math.sin(math.pi*4*k/b), k/b),
       scattering_type="S",
@@ -1735,7 +1734,8 @@ def exercise_phased_translation_coeff(d_min = 1.0,
     expected_shift = [1.-(0.7/5), 1.-(1.2/5), 1.-(1.4/5)]
     assert approx_equal(expected_shift, cluster_analysis.sites()[0], eps=1e-2)
 
-def exercise_common_set((a, b), permutation_only):
+def exercise_common_set(arrays, permutation_only):
+  (a, b) = arrays
   ab = a.common_set(b)
   ba = b.common_set(a)
   if (permutation_only):
@@ -1753,7 +1753,7 @@ def exercise_array_correlation(space_group_info,
                                d_min=2,
                                verbose=0):
   arrays = []
-  for i in xrange(2):
+  for i in range(2):
     structure = random_structure.xray_structure(
       space_group_info,
       elements=["const"]*n_scatterers)
@@ -1839,7 +1839,7 @@ def generate_random_hl(miller_set, coeff_range=5, max_centric_multiplier=None, s
         max_figure_of_merit=1-1.e-6))
     else:
       f = 2 * coeff_range * random.random()
-      coefs = [one_random_hl(f) for i in xrange(4)]
+      coefs = [one_random_hl(f) for i in range(4)]
       if set_a is not None:
         coefs[0] = set_a
       hl.append(coefs)
@@ -1877,17 +1877,17 @@ def exercise_phase_integrals(space_group_info):
       if (is_centric(h)):
         if (scitbx.math.phase_error(complex_math.arg(pi_p1),
                                     complex_math.arg(pi_p1_sg)) > 1.e-6):
-          print "Error:", h, pi_p1, pi_p1_sg
-          print "arg(pi_p1):", complex_math.arg(pi_p1)
-          print "arg(pi_p1_sg):", complex_math.arg(pi_p1_sg)
+          print("Error:", h, pi_p1, pi_p1_sg)
+          print("arg(pi_p1):", complex_math.arg(pi_p1))
+          print("arg(pi_p1_sg):", complex_math.arg(pi_p1_sg))
           raise AssertionError
         if (not (0.5 < abs(pi_p1)/abs(pi_p1_sg) < 0.75)):
-          print "Error:", h, pi_p1, pi_p1_sg
-          print "abs(pi_p1):", abs(pi_p1)
-          print "abs(pi_p1_sg):", abs(pi_p1_sg)
+          print("Error:", h, pi_p1, pi_p1_sg)
+          print("abs(pi_p1):", abs(pi_p1))
+          print("abs(pi_p1_sg):", abs(pi_p1_sg))
           raise AssertionError
       elif (abs(pi_p1 - pi_p1_sg) > 1.e-6):
-        print "Error:", h, pi_p1, pi_p1_sg
+        print("Error:", h, pi_p1, pi_p1_sg)
         raise AssertionError
     #
     amplitude_array = miller.array(
@@ -2167,7 +2167,7 @@ def exercise_structure_factors_from_map():
     space_group_info=sgtbx.space_group_info(number=19),
     elements=["C"]*10)
   fc1 = xrs.structure_factors(d_min=1.5, algorithm="direct").f_calc()
-  for cntr in xrange(10):
+  for cntr in range(10):
     fft_map = fc1.fft_map(resolution_factor=0.1)
     fft_map.apply_volume_scaling()
     map_data = fft_map.real_map_unpadded()
@@ -2207,13 +2207,13 @@ def exercise_log_binning():
   fc = xrs.structure_factors(d_min=1.0).f_calc()
   lb = fc.log_binning()
   r = flex.double()
-  for i in xrange(len(lb)):
+  for i in range(len(lb)):
     if(i!=0 and i+1<len(lb)-1):
       r.append(lb[i+1].count(True)/lb[i].count(True))
   assert r.size() == 7
   assert approx_equal(flex.mean(r), 2.0, 0.01)
   #
-  for i in xrange(2,10):
+  for i in range(2,10):
     lb = fc.log_binning(max_number_of_bins=i)
     assert i == len(lb)
   #
@@ -2282,7 +2282,7 @@ def exercise_randomize_amplitude_and_phase(space_group_info,
     return (r, fc.mean_phase_error(phase_source=fc_))
   #
   assert approx_equal(run(0,0), (0,0))
-  for v in list(xrange(0,91, 10)):
+  for v in range(0,91, 10):
     r = run(v/100.,v)
     assert approx_equal(r[0], v/100., 0.05)
     assert approx_equal(r[1], v, 5)
@@ -2525,7 +2525,7 @@ def run(args):
   exercise_merge_equivalents_special_cases()
   exercise_permute()
   debug_utils.parse_options_loop_space_groups(args, run_call_back)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   flex.set_random_seed(1)

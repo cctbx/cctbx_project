@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import geometry_restraints
 import libtbx.load_env
+from six.moves import zip
 
 if (not libtbx.env.has_module("conformation_dependent_geometry")):
   conformation_dependent_geometry = None
@@ -96,9 +97,9 @@ class conformation_dependent_restraints(object):
 
     # Shows real dihedral value
     if phi is not None:
-      print >> log, 'phi', phi.angle_model, phi.delta
+      print('phi', phi.angle_model, phi.delta, file=log)
     if psi is not None:
-      print >> log, 'psi', psi.angle_model, psi.delta
+      print('psi', psi.angle_model, psi.delta, file=log)
 
     if phi is not None and psi is not None:
 
@@ -141,8 +142,8 @@ class conformation_dependent_restraints(object):
 
           # Show that we actually did update the proxy
           proxy = angle_proxies[i_proxy]
-          print >> log, self.residue_name, self.next_residue_name,
-          print >> log, angle_name, proxy.i_seqs, proxy.angle_ideal, proxy.weight
+          print(self.residue_name, self.next_residue_name, end=' ', file=log)
+          print(angle_name, proxy.i_seqs, proxy.angle_ideal, proxy.weight, file=log)
 
       # grab dihedrals from our database
       # using zip() on i_dynamic_dihedrals and our values
@@ -179,8 +180,8 @@ class conformation_dependent_restraints(object):
 
           # Show that we actually did update the proxy
           proxy = dihedral_proxies[i_proxy]
-          print >> log, self.residue_name, self.next_residue_name,
-          print >> log, dihedral_name, proxy.i_seqs, proxy.angle_ideal, proxy.weight
+          print(self.residue_name, self.next_residue_name, end=' ', file=log)
+          print(dihedral_name, proxy.i_seqs, proxy.angle_ideal, proxy.weight, file=log)
 
 def build_conformation_dependent_angle_proxies(
       angle_proxy_registry,

@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 def exercise():
   from iotbx import file_reader
@@ -84,7 +84,7 @@ def exercise():
   args.append("use_weights=True")
   result = easy_run.fully_buffered("%s %s" % (cmd, " ".join(args)))
   assert (result.return_code == 1)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

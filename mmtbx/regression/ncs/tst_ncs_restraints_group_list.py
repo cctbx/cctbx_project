@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -8,6 +8,7 @@ from iotbx.ncs import ncs_group_master_phil
 import iotbx.phil
 from time import time
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 
 test_pdb_str = '''\
@@ -305,4 +306,4 @@ def run_tests():
 if __name__=='__main__':
   t0 = time()
   run_tests()
-  print "OK. Time: %8.3f"%(time()-t0)
+  print("OK. Time: %8.3f"%(time()-t0))

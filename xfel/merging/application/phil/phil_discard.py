@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 from xfel.merging.database.merging_database import mysql_master_phil
 master_phil="""

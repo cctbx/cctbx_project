@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.cif import cod_tools
 import iotbx.cif
 from iotbx.cif.builders import CifBuilderError
@@ -66,18 +66,18 @@ def run(args, command_name):
           skip_file = True
           skipped.add(cod_id)
           if verbose:
-            print "SKIPPING: _cod_error_flag %s: %s" % (value, cod_id)
+            print("SKIPPING: _cod_error_flag %s: %s" % (value, cod_id))
         elif (len(set([
           "_space_group_symop_ssg_operation_algebraic",
           "_space_group_ssg_name"]).intersection(keys)) != 0):
           skipped.add(cod_id)
           if verbose:
-            print "SKIPPING: COD entry with super-space group:", cod_id
+            print("SKIPPING: COD entry with super-space group:", cod_id)
         elif (len(set([
               "_refln_index_m",
               "_refln_index_m_1"]).intersection(keys)) != 0):
           if verbose:
-            print "SKIPPING: COD entry with _refln_index_m:", cod_id
+            print("SKIPPING: COD entry with _refln_index_m:", cod_id)
           skipped.add(cod_id)
       if skip_file: continue
       if path.endswith('.cif'):
@@ -87,9 +87,9 @@ def run(args, command_name):
       else:
         iotbx.cif.cctbx_data_structures_from_cif(cif_model=cif_obj.model())
     except KeyboardInterrupt:
-      print "CAUGHT EXCEPTION: KeyboardInterrupt"
+      print("CAUGHT EXCEPTION: KeyboardInterrupt")
       return
-    except CifBuilderError, e:
+    except CifBuilderError as e:
       e_str = str(e)
       if not verbose and (
         e_str.startswith("No atomic coordinates could be found") or
@@ -98,42 +98,39 @@ def run(args, command_name):
         ignored_errors.setdefault(cod_id, e_str)
         continue
       sys.stdout.flush()
-      print >> sys.stderr, \
-        "CAUGHT EXCEPTION: %s: %s: %s" % (command_name, cod_id, str(e))
+      print("CAUGHT EXCEPTION: %s: %s: %s" % (command_name, cod_id, str(e)), file=sys.stderr)
       if verbose:
         traceback.print_exc()
-        print >> sys.stderr
+        print(file=sys.stderr)
       build_errors.setdefault(cod_id, e_str)
       sys.stderr.flush()
-    except CifParserError, e:
+    except CifParserError as e:
       sys.stdout.flush()
       e_str = str(e)
       parsing_errors.setdefault(cod_id, e_str)
-      print >> sys.stderr, \
-        "PARSING ERROR: %s: %s: %s" % (command_name, cod_id, e_str)
+      print("PARSING ERROR: %s: %s: %s" % (command_name, cod_id, e_str), file=sys.stderr)
       if verbose:
         traceback.print_exc()
-        print >> sys.stderr
+        print(file=sys.stderr)
       sys.stderr.flush()
-    except Exception, e:
+    except Exception as e:
       sys.stdout.flush()
       e_str = str(e)
       build_errors.setdefault(cod_id, e_str)
-      print >> sys.stderr, \
-        "CAUGHT EXCEPTION: %s: %s: %s" % (command_name, cod_id, e_str)
+      print("CAUGHT EXCEPTION: %s: %s: %s" % (command_name, cod_id, e_str), file=sys.stderr)
       if verbose:
         traceback.print_exc()
-        print >> sys.stderr
+        print(file=sys.stderr)
       sys.stderr.flush()
-  print
+  print()
 
-  print "Number successfully parsed: %i/%i" \
-        % (n_total-len(parsing_errors),n_total)
+  print("Number successfully parsed: %i/%i" \
+        % (n_total-len(parsing_errors),n_total))
   if not parse_only:
-    print "Number skipped:", len(skipped)
-    print "Number of exceptions caught:", len(build_errors)
-    print "Number of exceptions ignored:", len(ignored_errors)
-  print
+    print("Number skipped:", len(skipped))
+    print("Number of exceptions caught:", len(build_errors))
+    print("Number of exceptions ignored:", len(ignored_errors))
+  print()
   #
   show_times()
   result = group_args(
@@ -145,7 +142,7 @@ def run(args, command_name):
     ignored_errors=ignored_errors,
     skipped=skipped)
   easy_pickle.dump("result_%03i.pickle" %command_line.chunk.i, result)
-  print
+  print()
 
 if __name__ == '__main__':
   import libtbx.load_env

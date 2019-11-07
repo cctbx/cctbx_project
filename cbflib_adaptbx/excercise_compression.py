@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from scitbx.array_family import flex
 from cbflib_adaptbx import uncompress,compress,assert_equal
@@ -24,9 +24,9 @@ def basic_tests(verbose=True):
 
   if verbose: P=Profiler("compress")
   array_shape = initial_intdata.focus()
-  if verbose: print array_shape
+  if verbose: print(array_shape)
   compressed = compress(initial_intdata)
-  if verbose: print len(compressed)
+  if verbose: print(len(compressed))
   if verbose: P=Profiler("uncompress")
   decompressed_dat = uncompress(packed=compressed, fast=array_shape[1], slow=array_shape[0])
 
@@ -35,4 +35,4 @@ def basic_tests(verbose=True):
 
 if __name__=="__main__":
   basic_tests(False)
-  print "OK"
+  print("OK")

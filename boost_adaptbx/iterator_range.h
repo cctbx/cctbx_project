@@ -31,6 +31,7 @@ namespace boost_adaptbx {
       class_<wt>(name, no_init)
         .def("__iter__", pass_through)
         .def("next", next, return_internal_reference<>())
+        .def("__next__", next, return_internal_reference<>())
         ;
     }
   };

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from crys3d import wx_tools
 from crys3d.wx_selection_editor import selection_editor_mixin
@@ -15,6 +15,8 @@ from libtbx import adopt_init_args
 import wx
 import os
 import sys
+import six
+from six.moves import zip
 
 viewer_phil = iotbx.phil.parse("""
   include scope crys3d.wx_selection_editor.viewer_phil
@@ -293,7 +295,7 @@ class map_viewer_mixin (wxGLWindow) :
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
     glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST)
-    for map_id, scene in self.map_scenes.iteritems() :
+    for map_id, scene in six.iteritems(self.map_scenes) :
       if self.show_object[map_id] :
         scene.draw_mesh()
 

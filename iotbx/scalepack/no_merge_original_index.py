@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -8,6 +8,7 @@ import warnings
 import sys, os
 
 import boost.python
+from six.moves import range
 scalepack_ext = boost.python.import_ext("iotbx_scalepack_ext")
 
 # scalepack manual, edition 5, page 132
@@ -113,13 +114,13 @@ class reader(object):
     assert n_sym_ops_from_file > 0
     self.space_group_symbol = line[6:].strip()
     self.space_group_from_ops = sgtbx.space_group()
-    for i in xrange(n_sym_ops_from_file):
+    for i in range(n_sym_ops_from_file):
       line = f.readline().rstrip()
       assert len(line) == 27
-      r = sgtbx.rot_mx([int(line[j*3:(j+1)*3]) for j in xrange(9)], 1)
+      r = sgtbx.rot_mx([int(line[j*3:(j+1)*3]) for j in range(9)], 1)
       line = f.readline().rstrip()
       assert len(line) == 9
-      t = sgtbx.tr_vec([int(line[j*3:(j+1)*3]) for j in xrange(3)], 12)
+      t = sgtbx.tr_vec([int(line[j*3:(j+1)*3]) for j in range(3)], 12)
       self.space_group_from_ops.expand_smx(sgtbx.rt_mx(r, t))
     f.close()
     if (header_only):
@@ -143,9 +144,9 @@ class reader(object):
 
   def show_summary(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    print >> out, prefix + "File name:", show_string(self.file_name)
-    print >> out, prefix + "Space group symbol:", \
-      show_string(self.space_group_symbol)
+    print(prefix + "File name:", show_string(self.file_name), file=out)
+    print(prefix + "Space group symbol:", \
+      show_string(self.space_group_symbol), file=out)
     try: space_group_info = self.space_group_info()
     except KeyboardInterrupt: raise
     except Exception: pass
@@ -153,15 +154,20 @@ class reader(object):
       space_group_info.show_summary(
         f=out, prefix=prefix+"Space group from operations: ")
     if (self.original_indices is not None):
-      print >> out, prefix + "Number of original indices:", \
-        self.original_indices.size()
+      print(prefix + "Number of original indices:", \
+        self.original_indices.size(), file=out)
 
   def crystal_symmetry(self):
     return crystal.symmetry(
       unit_cell=None,
       space_group_info=self.space_group_info())
 
-  def unmerged_miller_set(self, crystal_symmetry=None, force_symmetry=False):
+  def unmerged_miller_set(self,
+                          crystal_symmetry=None,
+                          force_symmetry=False,
+                          anomalous=True):
+    if anomalous is None:
+      anomalous = True
     if (not force_symmetry
         or crystal_symmetry is None
         or crystal_symmetry.space_group_info() is None):
@@ -173,13 +179,14 @@ class reader(object):
         other_symmetry=crystal_symmetry,
         force=force_symmetry),
       indices=self.original_indices,
-      anomalous_flag=True)
+      anomalous_flag=anomalous)
 
   def as_miller_array(self,
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=True):
     if (base_array_info is None):
       base_array_info = miller.array_info(
         source_type="scalepack_no_merge_original_index")
@@ -190,7 +197,8 @@ class reader(object):
     result = miller.array(
       miller_set=self.unmerged_miller_set(
         crystal_symmetry=crystal_symmetry,
-        force_symmetry=True),
+        force_symmetry=True,
+        anomalous=anomalous),
       data=self.i_obs,
       sigmas=self.sigmas)
     if (merge_equivalents):
@@ -206,22 +214,29 @@ class reader(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
-    return [self.as_miller_array(
-      crystal_symmetry=crystal_symmetry,
-      force_symmetry=force_symmetry,
-      merge_equivalents=merge_equivalents,
-      base_array_info=base_array_info),
-            self.batch_as_miller_array(
-      crystal_symmetry=crystal_symmetry,
-      force_symmetry=force_symmetry,
-      base_array_info=base_array_info),
-            ]
+        base_array_info=None,
+        anomalous=True):
+    return [
+      self.as_miller_array(
+        crystal_symmetry=crystal_symmetry,
+        force_symmetry=force_symmetry,
+        merge_equivalents=merge_equivalents,
+        base_array_info=base_array_info,
+        anomalous=anomalous,
+      ),
+      self.batch_as_miller_array(
+        crystal_symmetry=crystal_symmetry,
+        force_symmetry=force_symmetry,
+        base_array_info=base_array_info,
+        anomalous=anomalous,
+      ),
+    ]
 
   def batch_as_miller_array(self,
         crystal_symmetry=None,
         force_symmetry=False,
-        base_array_info=None):
+        base_array_info=None,
+        anomalous=True):
     if (base_array_info is None):
       base_array_info = miller.array_info(
         source_type="scalepack_no_merge_original_index")
@@ -232,7 +247,8 @@ class reader(object):
     return miller.array(
       miller_set=self.unmerged_miller_set(
         crystal_symmetry=crystal_symmetry,
-        force_symmetry=True),
+        force_symmetry=True,
+        anomalous=anomalous),
       data=self.batch_numbers).set_info(
         base_array_info.customized_copy(
           labels=["BATCH"],
@@ -323,30 +339,30 @@ def quick_test(file_name):
   from libtbx.utils import user_plus_sys_time
   t = user_plus_sys_time()
   s = reader(file_name)
-  print "Time read:", t.delta()
+  print("Time read:", t.delta())
   s.show_summary()
-  print tuple(s.original_indices[:3])
-  print tuple(s.unique_indices[:3])
-  print tuple(s.batch_numbers[:3])
-  print tuple(s.centric_tags[:3])
-  print tuple(s.spindle_flags[:3])
-  print tuple(s.asymmetric_unit_indices[:3])
-  print tuple(s.i_obs[:3])
-  print tuple(s.sigmas[:3])
-  print tuple(s.original_indices[-3:])
-  print tuple(s.unique_indices[-3:])
-  print tuple(s.batch_numbers[-3:])
-  print tuple(s.centric_tags[-3:])
-  print tuple(s.spindle_flags[-3:])
-  print tuple(s.asymmetric_unit_indices[-3:])
-  print tuple(s.i_obs[-3:])
-  print tuple(s.sigmas[-3:])
+  print(tuple(s.original_indices[:3]))
+  print(tuple(s.unique_indices[:3]))
+  print(tuple(s.batch_numbers[:3]))
+  print(tuple(s.centric_tags[:3]))
+  print(tuple(s.spindle_flags[:3]))
+  print(tuple(s.asymmetric_unit_indices[:3]))
+  print(tuple(s.i_obs[:3]))
+  print(tuple(s.sigmas[:3]))
+  print(tuple(s.original_indices[-3:]))
+  print(tuple(s.unique_indices[-3:]))
+  print(tuple(s.batch_numbers[-3:]))
+  print(tuple(s.centric_tags[-3:]))
+  print(tuple(s.spindle_flags[-3:]))
+  print(tuple(s.asymmetric_unit_indices[-3:]))
+  print(tuple(s.i_obs[-3:]))
+  print(tuple(s.sigmas[-3:]))
   m = s.as_miller_array(merge_equivalents=False).merge_equivalents()
-  print "min redundancies:", flex.min(m.redundancies().data())
-  print "max redundancies:", flex.max(m.redundancies().data())
-  print "mean redundancies:", flex.mean(m.redundancies().data().as_double())
+  print("min redundancies:", flex.min(m.redundancies().data()))
+  print("max redundancies:", flex.max(m.redundancies().data()))
+  print("mean redundancies:", flex.mean(m.redundancies().data().as_double()))
   s.as_miller_arrays()[0].show_summary()
-  print
+  print()
 
 def run(args):
   exercise_combine_symops_and_symbol()
@@ -368,9 +384,9 @@ vmp/high.sca""".split()
     for root_dir in args:
       fn = root_dir + "/" + file_name
       if (os.path.isfile(fn)):
-        print "File name:", fn
+        print("File name:", fn)
         quick_test(fn)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

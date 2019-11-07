@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from xfel.merging.algorithms.error_model.sdfac_refine_lbfgs import sdfac_refinery, sdfac_refine_refltable_lbfgs, lbfgs_minimizer
 from xfel.merging.algorithms.error_model.sdfac_propagate import sdfac_propagate, error_terms, r2d
@@ -6,6 +6,7 @@ from scitbx.array_family import flex
 import math
 
 from xfel.cxi.postrefinement_legacy_rs import unpack_base
+from six.moves import zip
 class sdfac_propagate_parameterization(unpack_base):
   def __getattr__(YY,item):
     if item=="SDFAC" : return YY.reference[0]
@@ -24,16 +25,16 @@ class sdfac_propagate_parameterization(unpack_base):
     raise AttributeError(item)
 
   def show(YY, out):
-    print >> out, "sdfac: %20.10f, sdb: %20.10f, sdadd: %20.10f"%(YY.SDFAC, YY.SDB, YY.SDADD)
+    print("sdfac: %20.10f, sdb: %20.10f, sdadd: %20.10f"%(YY.SDFAC, YY.SDB, YY.SDADD), file=out)
     for item in "sigma_thetax", "sigma_thetay", "sigma_lambda", "sigma_deff":
       if 'theta' in item:
-        print >> out, "%s: %20.10f"%(item, r2d(getattr(YY, item))),
+        print("%s: %20.10f"%(item, r2d(getattr(YY, item))), end=' ', file=out)
       else:
-        print >> out, "%s: %20.10f"%(item, getattr(YY, item)),
-    print >> out
+        print("%s: %20.10f"%(item, getattr(YY, item)), end=' ', file=out)
+    print(file=out)
     for v_id, v in enumerate(YY.sigma_gstar):
-      print >> out, "sigma_gstar_%d: %20.10f * 1e-5"%(v_id, v*1e5),
-    print >> out
+      print("sigma_gstar_%d: %20.10f * 1e-5"%(v_id, v*1e5), end=' ', file=out)
+    print(file=out)
 
 class sdfac_propagate_refinery(sdfac_refinery):
   def __init__(self, scaler, modeler, indices, bins, log):
@@ -94,13 +95,13 @@ class sdfac_propagate_and_refine(sdfac_refine_refltable_lbfgs):
       show_finite_differences = self.scaler.params.raw_data.error_models.sdfac_refine.show_finite_differences)
 
   def adjust_errors(self):
-    print >> self.log, "Starting adjust_errors"
+    print("Starting adjust_errors", file=self.log)
 
     # Save original sigmas
     refls = self.scaler.ISIGI
     refls['original_sigmas'] = refls['scaled_intensity']/refls['isigi']
 
-    print >> self.log, "Computing initial estimates of parameters"
+    print("Computing initial estimates of parameters", file=self.log)
     propagator = sdfac_propagate(self.scaler, verbose=False)
     propagator.initial_estimates()
     propagator.adjust_errors(compute_sums=False)
@@ -108,16 +109,16 @@ class sdfac_propagate_and_refine(sdfac_refine_refltable_lbfgs):
     init_params.extend(propagator.error_terms.to_x())
     values = self.parameterization(init_params)
 
-    print >> self.log, "Initial estimates:",
+    print("Initial estimates:", end=' ', file=self.log)
     values.show(self.log)
-    print >> self.log, "Refining error correction parameters"
+    print("Refining error correction parameters", file=self.log)
     sels, binned_intensities = self.get_binned_intensities()
     minimizer = self.run_minimzer(values, sels)
     values = minimizer.get_refined_params()
-    print >> self.log, "Final",
+    print("Final", end=' ', file=self.log)
     values.show(self.log)
 
-    print >> self.log, "Applying sdfac/sdb/sdadd 1"
+    print("Applying sdfac/sdb/sdadd 1", file=self.log)
     # Restore original sigmas
     refls['isigi'] = refls['scaled_intensity']/refls['original_sigmas']
 
@@ -129,7 +130,7 @@ class sdfac_propagate_and_refine(sdfac_refine_refltable_lbfgs):
     self.scaler.summed_weight= flex.double(self.scaler.n_refl, 0.)
     self.scaler.summed_wt_I  = flex.double(self.scaler.n_refl, 0.)
 
-    print >> self.log, "Applying sdfac/sdb/sdadd 2"
+    print("Applying sdfac/sdb/sdadd 2", file=self.log)
     for i in range(len(self.scaler.ISIGI)):
       hkl_id = self.scaler.ISIGI['miller_id'][i]
       Intensity = self.scaler.ISIGI['scaled_intensity'][i] # scaled intensity
@@ -153,7 +154,7 @@ class sdfac_propagate_and_refine(sdfac_refine_refltable_lbfgs):
 
     if False:
       # validate using http://ccp4wiki.org/~ccp4wiki/wiki/index.php?title=Symmetry%2C_Scale%2C_Merge#Analysis_of_Standard_Deviations
-      print >> self.log, "Validating"
+      print("Validating", file=self.log)
       from matplotlib import pyplot as plt
       all_sigmas_normalized = self.compute_normalized_deviations(self.scaler.ISIGI, self.scaler.miller_set.indices())
       plt.hist(all_sigmas_normalized, bins=100)

@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 
 from dials.array_family import flex
 from matplotlib import pyplot as plt
 from xfel.ui.components.timeit import duration
 import time
+from six.moves import map
 
 # get_hitrate_stats takes a tuple (run, trial, rungroup, d_min)
 # and returns a tuple of flex arrays as follows:
@@ -69,7 +70,7 @@ def get_string_from_timestamp(ts, long_form=False):
 def get_strings_from_timestamps(timestamps, long_form=False):
   import os
   get_strings = lambda ts: get_string_from_timestamp(ts, long_form=long_form)
-  names = map(get_strings, timestamps)
+  names = [get_strings(ts) for ts in  timestamps]
   return names
 
 def get_paths_from_timestamps(timestamps,
@@ -104,11 +105,11 @@ def get_run_stats(timestamps,
                    i_sigi_cutoff=1,
                    d_min=2,
                    ):
-  print ""
-  print "%d shots" % len(timestamps)
-  print "%d first lattices" % (n_lattices >= 1).count(True)
-  print "%d multiple lattices" % (n_lattices >= 2).count(True)
-  print "%d total lattices" % (flex.sum(n_lattices))
+  print("")
+  print("%d shots" % len(timestamps))
+  print("%d first lattices" % (n_lattices >= 1).count(True))
+  print("%d multiple lattices" % (n_lattices >= 2).count(True))
+  print("%d total lattices" % (flex.sum(n_lattices)))
   iterator = range(len(resolutions))
   # hit rate of drops (observe solvent) or crystals (observe strong spots)
   # since -1 is used as a flag for "did not store this value", and we want a quotient,
@@ -202,7 +203,7 @@ def plot_run_stats(stats,
   if len(run_statuses) != n_runs:
     run_statuses = [None for i in range(n_runs)]
   if minimalist:
-    print "Minimalist mode activated."
+    print("Minimalist mode activated.")
     f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
     axset = (ax1, ax2, ax3)
   else:
@@ -214,15 +215,15 @@ def plot_run_stats(stats,
   ax1.scatter(t.select(indexed_sel), n_strong.select(indexed_sel), edgecolors="none", color='blue', s=spot_ratio)
   ax1.set_ylim(ymin=0)
   ax1.axis('tight')
-  ax1.set_ylabel("strong spots\nblue: indexed\ngray: did not index", fontsize=text_ratio)
+  ax1.set_ylabel("strong spots\nblue: idx\ngray: did not idx", fontsize=text_ratio)
   ax2.plot(t, idx_rate*100)
   ax2.plot(t, multiples_rate*100, color='magenta')
   ax2_twin = ax2.twinx()
   ax2_twin.plot(t, drop_hit_rate*100, color='green')
   ax2_twin.set_ylim(ymin=0)
   ax2.axis('tight')
-  ax2.set_ylabel("blue:%% indexed\npink:%% %d lattices" % n_multiples, fontsize=text_ratio)
-  ax2_twin.set_ylabel("green: % solvent", fontsize=text_ratio)
+  ax2.set_ylabel("blue:%% idx\npink:%% %d lattices" % n_multiples, fontsize=text_ratio)
+  ax2_twin.set_ylabel("green:\n% solvent", fontsize=text_ratio)
   gtz = resolutions > 0 # no indexing solution stored as resolution of 0
   # ax3.semilogy()
   ax3.invert_yaxis()
@@ -231,8 +232,8 @@ def plot_run_stats(stats,
   ax3_twin.plot(t, hq_rate*100, color='orange')
   ax3_twin.set_ylim(ymin=0)
   ax3.axis('tight')
-  ax3.set_ylabel("high resolution\nbin (Ang)", fontsize=text_ratio)
-  ax3_twin.set_ylabel("line:%% <= %.2f Ang" % d_min, fontsize=text_ratio)
+  ax3.set_ylabel("high res\nbin (Ang)", fontsize=text_ratio)
+  ax3_twin.set_ylabel("line:%% <=\n%.2f Ang" % d_min, fontsize=text_ratio)
   axset_with_twins = list(axset) + [ax2_twin, ax3_twin]
   for a in axset_with_twins:
     xlab = a.get_xticklabels()
@@ -298,7 +299,7 @@ def plot_run_stats(stats,
       ts = event.xdata
       diffs = flex.abs(t - ts)
       ts = t[flex.first_index(diffs, flex.min(diffs))]
-      print get_paths_from_timestamps([ts], tag="shot", ext=ext)[0]
+      print(get_paths_from_timestamps([ts], tag="shot", ext=ext)[0])
 
     f.canvas.mpl_connect('button_press_event', onclick)
     plt.show()

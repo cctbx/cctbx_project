@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.python_utils import graph_tools as gt
 
 def tst_graph():
@@ -82,11 +82,10 @@ def tst_graph():
   b_paths = [['b', 'c', 'd']]
   e_paths = [['e', 'd', 'c'], ['e', 'd', 'b']]
   d_paths = [['d', 'b', 'c']]
-  assert kk.find_paths_of_length( 'a' , 3 ) ==  a_paths
-  assert kk.find_paths_of_length( 'b' , 3 ) ==  b_paths
-  assert kk.find_paths_of_length( 'c' , 3 ) ==  c_paths
-  assert kk.find_paths_of_length( 'd' , 3 ) ==  d_paths
-  assert kk.find_paths_of_length( 'e' , 3 ) ==  e_paths
+  for ps, solution in [('a', a_paths), ('b', b_paths), ('c', c_paths),
+                       ('d', d_paths), ('e', e_paths)]:
+    for p in kk.find_paths_of_length(ps, 3):
+      assert p in solution
 
 
 
@@ -94,7 +93,7 @@ def run():
   tst_graph()
 
 
-  print 'OK'
+  print('OK')
 
 if (__name__ == "__main__"):
   run()

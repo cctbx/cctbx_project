@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import math
 from xfel.merging.application.worker import worker
@@ -11,12 +11,23 @@ from scitbx import matrix
 from scitbx.math.tests.tst_weighted_correlation import simple_weighted_correlation
 from cctbx.crystal_orientation import crystal_orientation, basis_type
 from six.moves import cStringIO as StringIO
+import six
 
 class postrefinement(worker):
 
-  def run(self, experiments, reflections):
+  def __init__(self, params, mpi_helper=None, mpi_logger=None):
+    super(postrefinement, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
 
+  def __repr__(self):
+    return 'Postrefinement'
+
+  def run(self, experiments, reflections):
     self.logger.log_step_time("POSTREFINEMENT")
+    if (not self.params.postrefinement.enable) or (self.params.scaling.algorithm != "mark0"): # mark1 implies no scaling/post-refinement
+      self.logger.log("No post-refinement was done")
+      if self.mpi_helper.rank == 0:
+        self.logger.main_log("No post-refinement was done")
+      return experiments, reflections
 
     target_symm = symmetry(unit_cell = self.params.scaling.unit_cell, space_group_info = self.params.scaling.space_group)
     i_model = self.params.scaling.i_model
@@ -37,12 +48,12 @@ class postrefinement(worker):
 
     experiments_rejected_by_reason = {} # reason:how_many_rejected
 
-    for exp_id, experiment in enumerate(experiments):
+    for experiment in experiments:
 
-      exp_reflections = reflections.select(reflections['id'] == exp_id)
+      exp_reflections = reflections.select(reflections['exp_id'] == experiment.identifier)
 
       # Build a miller array for the experiment reflections with original miller indexes
-      exp_miller_indices_original = miller.set(target_symm, exp_reflections['miller_index'], True)
+      exp_miller_indices_original = miller.set(target_symm, exp_reflections['miller_index'], not self.params.merging.merge_anomalous)
       observations_original_index = miller.array(exp_miller_indices_original,
                                                  exp_reflections['intensity.sum.value'],
                                                  flex.double(flex.sqrt(exp_reflections['intensity.sum.variance'])))
@@ -185,12 +196,12 @@ class postrefinement(worker):
         new_exp_reflections['miller_index_asymmetric']  = flex.miller_index(result_observations.indices())
         new_exp_reflections['intensity.sum.value']      = flex.double(result_observations.data())
         new_exp_reflections['intensity.sum.variance']   = flex.double(flex.pow(result_observations.sigmas(),2))
-        new_exp_reflections['id']                       = flex.int(len(new_exp_reflections), len(new_experiments)-1)
+        new_exp_reflections['exp_id']                   = flex.std_string(len(new_exp_reflections), experiment.identifier)
         new_reflections.extend(new_exp_reflections)
       '''
       # debugging
       elif reason.startswith("ValueError"):
-        self.logger.log("Rejected b/c of value error exp id: %d; unit cell: %s"%(exp_id, str(experiment.crystal.get_unit_cell())) )
+        self.logger.log("Rejected b/c of value error exp id: %s; unit cell: %s"%(exp_id, str(experiment.crystal.get_unit_cell())) )
       '''
 
     # report rejected experiments, reflections
@@ -201,7 +212,7 @@ class postrefinement(worker):
     self.logger.log("Reflections rejected by post-refinement: %d"%reflections_rejected_by_postrefinement)
 
     all_reasons = []
-    for reason, count in experiments_rejected_by_reason.iteritems():
+    for reason, count in six.iteritems(experiments_rejected_by_reason):
       self.logger.log("Experiments rejected due to %s: %d"%(reason,count))
       all_reasons.append(reason)
 
@@ -209,7 +220,7 @@ class postrefinement(worker):
     MPI = self.mpi_helper.MPI
 
     # Collect all rejection reasons from all ranks. Use allreduce to let each rank have all reasons.
-    all_reasons  = comm.allreduce(all_reasons)
+    all_reasons  = comm.allreduce(all_reasons, MPI.SUM)
     all_reasons = set(all_reasons)
 
     # Now that each rank has all reasons from all ranks, we can treat the reasons in a uniform way.
@@ -222,19 +233,29 @@ class postrefinement(worker):
 
     total_accepted_experiment_count = comm.reduce(len(new_experiments), MPI.SUM, 0)
 
+    # how many reflections have we rejected due to post-refinement?
+    rejected_reflections = len(reflections) - len(new_reflections);
+    total_rejected_reflections = self.mpi_helper.sum(rejected_reflections)
+
     if self.mpi_helper.rank == 0:
-      for reason, count in total_experiments_rejected_by_reason.iteritems():
+      for reason, count in six.iteritems(total_experiments_rejected_by_reason):
         self.logger.main_log("Total experiments rejected due to %s: %d"%(reason,count))
       self.logger.main_log("Total experiments accepted: %d"%total_accepted_experiment_count)
+      self.logger.main_log("Total reflections rejected due to post-refinement: %d"%total_rejected_reflections)
 
     self.logger.log_step_time("POSTREFINEMENT", True)
+
+    # Do we have any data left?
+    from xfel.merging.application.utils.data_counter import data_counter
+    data_counter(self.params).count(new_experiments, new_reflections)
 
     return new_experiments, new_reflections
 
   def run_plain(self):
 
     out = StringIO()
-    self.MINI = lbfgs_minimizer_base(current_x = self.current,
+    self.MINI = lbfgs_minimizer_base(self.params,
+                                     current_x = self.current,
                                      parameterization = self.parameterization_class,
                                      refinery = self.refinery,
                                      out = out)
@@ -303,12 +324,11 @@ class refinery_base(group_args):
     """Refinery class takes reference and observations, and implements target
     functions and derivatives for a particular model paradigm."""
     def get_Rh_array(self, values):
-      Rh = flex.double()
       eff_Astar = self.get_eff_Astar(values)
-      for mill in self.MILLER:
-        x = eff_Astar * matrix.col(mill)
-        Svec = x + self.BEAM
-        Rh.append(Svec.length() - (1./self.WAVE))
+      h = self.MILLER.as_vec3_double()
+      x = flex.mat3_double(len(self.MILLER), eff_Astar) * h
+      Svec = x + self.BEAM
+      Rh = Svec.norms() - (1./self.WAVE)
       return Rh
 
     def get_s1_array(self, values):
@@ -379,19 +399,18 @@ class unpack_base(object):
   "abstract interface"
   def __init__(YY,values):
     YY.reference = values # simply the flex double list of parameters
+    YY.keys = None # override
   def __getattr__(YY,item):
-    raise NotImplementedError
+    if item not in YY.keys:
+      raise AttributeError(item)
+    return YY.reference[YY.keys.index(item)]
   def show(values,out):
     raise NotImplementedError
 
 class rs_parameterization(unpack_base):
-  def __getattr__(YY,item):
-    if item=="thetax" : return YY.reference[3]
-    if item=="thetay" : return YY.reference[4]
-    if item=="G" :      return YY.reference[0]
-    if item=="BFACTOR": return YY.reference[1]
-    if item=="RS":      return YY.reference[2]
-    raise AttributeError(item)
+  def __init__(YY,values):
+    super(rs_parameterization, YY).__init__(values)
+    YY.keys = ['G', 'BFACTOR','RS','thetax','thetay']
 
   def show(YY, out):
     print ("G: %10.7f; B: %10.7f; RS: %10.7f; THETAX: %7.3f deg; THETAY: %7.3f deg"\
@@ -399,15 +418,9 @@ class rs_parameterization(unpack_base):
           , file=out)
 
 class eta_deff_parameterization(unpack_base):
-  def __getattr__(YY,item):
-    if item=="thetax" : return YY.reference[3]
-    if item=="thetay" : return YY.reference[4]
-    if item=="G" :      return YY.reference[0]
-    if item=="BFACTOR": return YY.reference[1]
-    if item=="ETA":      return YY.reference[2]
-    if item=="DEFF":      return YY.reference[5]
-    raise AttributeError(item)
-
+  def __init__(YY,values):
+    super(eta_deff_parameterization, YY).__init__(values)
+    YY.keys = ['G', 'BFACTOR','ETA','thetax','thetay','DEFF']
 
   def show(YY, out):
     print ("G: %10.7f; B: %10.7f; eta: %10.7f; Deff %10.2f; THETAX: %7.3f deg; THETAY: %7.3f deg"\
@@ -416,7 +429,7 @@ class eta_deff_parameterization(unpack_base):
 
 class lbfgs_minimizer_base:
 
-  def __init__(self, current_x=None, parameterization=None, refinery=None, out=None,
+  def __init__(self, params, current_x=None, parameterization=None, refinery=None, out=None,
                min_iterations=0, max_calls=1000, max_drop_eps=1.e-5):
     adopt_init_args(self, locals())
     self.n = current_x.size()
@@ -456,7 +469,10 @@ class lbfgs_minimizer_base:
       dfunctional = flex.sum(dfunc*dfunc)
       #calculate by finite_difference
       self.g.append( ( dfunctional-functional )/DELTA )
-    self.g[2]=0.
+
+    if self.params.postrefinement.algorithm == 'rs':
+      for p in self.params.postrefinement.rs.fix:
+        self.g[values.keys.index(p)] = 0
 
     print ("rms %10.3f; "%math.sqrt(flex.mean(self.func*self.func)), file=self.out, end='')
     values.show(self.out)
@@ -468,3 +484,7 @@ class lbfgs_minimizer_base:
     print ("FINALMODEL", file=self.out)
     print ("rms %10.3f; "%math.sqrt(flex.mean(self.func*self.func)), file=self.out, end='')
     values.show(self.out)
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(postrefinement)

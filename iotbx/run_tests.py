@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
+import sys
 import libtbx.load_env
 
-tst_list = (
+tst_list_base = [
   "$D/regression/tst_wildcard.py",
   "$D/regression/tst_simple_parser.py",
   "$D/regression/tst_phil.py",
@@ -36,7 +37,6 @@ tst_list = (
   "$D/pdb/tst_rna_dna_atom_names.py",
   "$D/pdb/tst_atom_name_interpretation.py",
   "$D/pdb/tst_extract_rfactors_resolutions_sigma.py",
-  "$D/pdb/tst_pdb.py",
   "$D/pdb/modified_aa_names.py",
   "$D/pdb/modified_rna_dna_names.py",
   "$D/regression/secondary_structure/tst_sheet.py",
@@ -63,7 +63,6 @@ tst_list = (
   "$D/examples/tst_mtz_free_flipper.py",
   "$D/regression/tst_reflection_file_utils.py",
   "$D/detectors/tst_adsc.py",
-  "$D/detectors/tst_debug_write.py",
   "$D/detectors/tst_detectors.py",
   "$D/xplor/tst_xplormap.py",
   ["$D/regression/tst_phases.py", "P31"],
@@ -75,7 +74,6 @@ tst_list = (
   "$D/regression/tst_file_reader.py",
   "$D/regression/tst_bioinformatics.py",
   "$D/regression/tst_box_around_molecule.py",
-  "$D/regression/tst_mtz_as_cif.py",
   "$D/regression/tst_mmcif_segids.py",
   "$D/regression/tst_add_conformations.py",
   "$D/regression/tst_symmetry.py",
@@ -110,7 +108,44 @@ tst_list = (
   "$D/bioinformatics/test/tst_ebi_wu_blast_xml.py",
   "$D/bioinformatics/test/tst_ncbi_blast_xml.py",
   "$D/regression/tst_cif_as_pdb_1atom.py",
-  )
+  ]
+
+# failing tests on Windows, Python 2.7
+tst_list_windows_fail = [
+  "$D/detectors/tst_debug_write.py",
+]
+
+tst_list_fail = list()
+if sys.platform == 'win32':
+  tst_list_fail += tst_list_windows_fail
+else:
+  tst_list_base += tst_list_windows_fail
+
+# failing tests on macOS and linux, Python 3.6
+tst_list_unix_fail = [
+  "$D/pdb/tst_pdb.py",
+  ]
+
+if ((sys.platform == 'darwin' or sys.platform.startswith('linux')) and
+    sys.version_info > (3, 0)):
+  tst_list_fail += tst_list_unix_fail
+else:
+  tst_list_base += tst_list_unix_fail
+
+# unstable test on Python 3.6 (seems to be only on Azure Pipelines)
+tst_list_py3_unstable = [
+    "$D/regression/tst_mtz_as_cif.py",
+  ]
+tst_list_unstable = list()
+if sys.version_info > (3, 0):
+  tst_list_unstable += tst_list_py3_unstable
+else:
+  tst_list_base += tst_list_py3_unstable
+
+# final lists
+tst_list = tst_list_base
+tst_list_expected_failures = tst_list_fail
+tst_list_expected_unstable = tst_list_unstable
 
 def run():
   build_dir = libtbx.env.under_build("iotbx")

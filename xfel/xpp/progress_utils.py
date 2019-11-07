@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 
 from cctbx.miller import set as mset
@@ -27,7 +27,7 @@ def application(params, loop = True):
     cursor = dbobj.cursor()
 
     results = {}
-    print "Looking for data..."
+    print("Looking for data...")
 
     for tag in params.run_tags.split(','):
       for isoform in isoforms:
@@ -54,9 +54,9 @@ def application(params, loop = True):
             d_range     = miller_set.binner().bin_legend(
                    i_bin = i_bin, show_bin_number = False, show_counts = True)
             fmt = "%3d: %-24s %4.2f %6d mult=%4.2f"
-            print fmt % (i_bin,d_range,compl,n_ref,
-                          multiplicity)
-        print
+            print(fmt % (i_bin,d_range,compl,n_ref,
+                          multiplicity))
+        print()
         if len(tag) > 0:
           key = "%s %s"%(tag, isoform)
         else:
@@ -145,7 +145,7 @@ class progress_manager(manager):
         all_tags.extend(tags.split(','))
     self.params.run_tags = ','.join(set(all_tags))
 
-    print "Found these run tags:", self.params.run_tags
+    print("Found these run tags:", self.params.run_tags)
 
   def get_HKL(self,cursor,isoform,run_tags):
     name = self.db_experiment_tag
@@ -178,9 +178,9 @@ class progress_manager(manager):
 
     #print query
     if len(run_tags) > 0:
-      print "%s, isoform %s"%(run_tags, isoform)
+      print("%s, isoform %s"%(run_tags, isoform))
     else:
-      print "isoform %s"%isoform
+      print("isoform %s"%isoform)
     T = Timer("Reading db...")
     cursor.execute(query)
     del T
@@ -191,7 +191,7 @@ class progress_manager(manager):
     indices = flex.miller_index([(a[0],a[1],a[2]) for a in ALL])
     del T
 
-    print "ISOFORM %s:"%(isoform),len(indices),"result"
+    print("ISOFORM %s:"%(isoform),len(indices),"result")
     return indices
 
   def connection(self):

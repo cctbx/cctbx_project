@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 class parse_options(object):
 
   def __init__(self, argv, keywords, case_sensitive=True):

@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.utils
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
@@ -14,9 +14,10 @@ from libtbx import group_args
 from mmtbx.command_line.map_comparison import get_mtz_labels, get_d_min,\
   get_crystal_symmetry
 from cctbx.sgtbx import space_group_info
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 import sys
+from six.moves import range
 
 core_params_str = """\
 atom_radius = None
@@ -90,7 +91,7 @@ map_2
 }
 pdb_file_name = None
   .type = str
-  .help = PDB file name.
+  .help = PDB/mmCIF file name.
 reflection_file_name = None
   .type = str
   .help = File with experimental data (most of formats: CNS, SHELX, MTZ, etc).
@@ -161,12 +162,16 @@ def compute_map_from_model(high_resolution, low_resolution, xray_structure,
 
 def extract_input_pdb(pdb_file, params):
   fn1, fn2 = None,None
-  if(pdb_file is not None and iotbx.pdb.is_pdb_file(pdb_file.file_name)):
+  if(pdb_file is not None and (
+      iotbx.pdb.is_pdb_file(pdb_file.file_name) or
+      iotbx.pdb.is_pdb_mmcif_file(pdb_file.file_name))):
     fn1 = pdb_file.file_name
-  if(params.pdb_file_name is not None and iotbx.pdb.is_pdb_file(params.pdb_file_name)):
+  if(params.pdb_file_name is not None and (
+      iotbx.pdb.is_pdb_file(params.pdb_file_name) or
+      iotbx.pdb.is_pdb_mmcif_file(params.pdb_file_name))):
     fn2 = params.pdb_file_name
   if([fn1, fn2].count(None)!=1):
-    raise Sorry("PDB file must be provided.")
+    raise Sorry("PDB/mmCIF file must be provided.")
   result = None
   if(fn1 is not None): result = fn1
   else: result = fn2
@@ -232,9 +237,9 @@ def check_map_file(map_file, params):
     params.map_file_name = map_file.file_name
 
 def broadcast(m, log):
-  print >> log, "-"*79
-  print >> log, m
-  print >> log, "*"*len(m)
+  print("-"*79, file=log)
+  print(m, file=log)
+  print("*"*len(m), file=log)
 
 def cmd_run(args, command_name, log=None):
   if(log is None): log = sys.stdout
@@ -257,7 +262,7 @@ Examples:
   phenix.real_space_correlation m.pdb d.ccp4
 """
   if(len(args) == 0) or (args == ["--help"]) or (args == ["--options"]):
-    print >> log, msg
+    print(msg, file=log)
     broadcast(m="Default parameters:", log = log)
     master_params().show(out = log, prefix="  ")
     return
@@ -282,7 +287,7 @@ Examples:
       else:
         try:
           phil_objects.append(iotbx.phil.parse(arg))
-        except RuntimeError, e:
+        except RuntimeError as e:
           raise Sorry("Unrecognized parameter or command-line argument '%s'." %
             arg)
     if (n_files > 2):
@@ -291,7 +296,7 @@ Examples:
       track_unused_definitions=True)
     if(len(unused)>0):
       for u in unused:
-        print str(u)
+        print(str(u))
       raise Sorry("Unused parameters: see above.")
     params = working_phil.extract()
 
@@ -320,12 +325,12 @@ Examples:
     if (map_name is not None):
       map_handle = any_file(map_name)
       broadcast(m='Input map file name: %s' % map_name, log=log)
-      print >> log, '  Map type: ',
+      print('  Map type: ', end=' ', file=log)
       if (map_handle.file_type == 'hkl'):
-        print >> log, 'map coefficients'
-        print >> log, '  Map labels:', params.map_coefficients_label
+        print('map coefficients', file=log)
+        print('  Map labels:', params.map_coefficients_label, file=log)
       else:
-        print >> log, 'CCP4-format'
+        print('CCP4-format', file=log)
 
       # check crystal symmetry
       cs1 = pdbo.xray_structure.crystal_symmetry()
@@ -434,7 +439,7 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
       map_data=map_2, pdb_hierarchy=pdb_hierarchy,
       crystal_symmetry=map_handle.crystal_symmetry())
     if (shift_manager.shift_cart is not None):
-      print >>log, "Map origin is not at (0,0,0): shifting the map and model."
+      print("Map origin is not at (0,0,0): shifting the map and model.", file=log)
     pdb_hierarchy = shift_manager.pdb_hierarchy
     map_2 = shift_manager.map_data
     # -------------------------------------------------------------------------
@@ -453,8 +458,8 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
   broadcast(m="Map correlation and map values", log=log)
   overall_cc = flex.linear_correlation(x = map_1.as_1d(),
     y = map_2.as_1d()).coefficient()
-  print >> log, "  Overall map cc(%s,%s): %6.4f"%(params.map_1.type,
-    params.map_2.type, overall_cc)
+  print("  Overall map cc(%s,%s): %6.4f"%(params.map_1.type,
+    params.map_2.type, overall_cc), file=log)
   detail, atom_radius = params.detail, params.atom_radius
   detail, atom_radius = set_detail_level_and_radius(
     detail=detail, atom_radius=atom_radius, d_min=d_min)
@@ -489,17 +494,17 @@ def show(log, results, detail, params=None, map_1_name=None, map_2_name=None):
   assert params is not None or [map_1_name,map_2_name].count(None)==0
   if([map_1_name,map_2_name].count(None)==2):
     map_1_name,map_2_name = params.map_1.type, params.map_2.type
-  print >> log
-  print >> log, "Rho1 = %s, Rho2 = %s"%(map_1_name, map_2_name)
-  print >> log
+  print(file=log)
+  print("Rho1 = %s, Rho2 = %s"%(map_1_name, map_2_name), file=log)
+  print(file=log)
   if(detail == "atom"):
-    print >> log, " <----id string---->  occ     ADP      CC   Rho1   Rho2"
+    print(" <----id string---->  occ     ADP      CC   Rho1   Rho2", file=log)
   else:
-    print >> log, "  <id string>    occ     ADP      CC   Rho1   Rho2"
+    print("  <id string>    occ     ADP      CC   Rho1   Rho2", file=log)
   fmt = "%s %4.2f %7.2f %7.4f %6.2f %6.2f"
   for r in results:
-    print >> log, fmt%(r.id_str, r.occupancy, r.b, r.cc, r.map_value_1,
-      r.map_value_2)
+    print(fmt%(r.id_str, r.occupancy, r.b, r.cc, r.map_value_1,
+      r.map_value_2), file=log)
 
 def compute(pdb_hierarchy,
             unit_cell,
@@ -812,11 +817,11 @@ def find_suspicious_residues(
             atom_group.resname, chain.id, residue_group.resid())
           xyz_mean = atoms.extract_xyz().mean()
           outliers.append((residue_info, xyz_mean))
-          print >> log, "Suspicious residue: %s" % residue_info
-          print >> log, "  Overall CC to 2mFo-DFc map = %.2f" % map_stats.cc
-          print >> log, "  Fraction of atoms where 2mFo-DFc < %.2f = %.2f" % \
-            (min_acceptable_2fofc, frac_below_min)
-          print >> log, "  Mean 2mFo-DFc value = %.2f" % map_mean
+          print("Suspicious residue: %s" % residue_info, file=log)
+          print("  Overall CC to 2mFo-DFc map = %.2f" % map_stats.cc, file=log)
+          print("  Fraction of atoms where 2mFo-DFc < %.2f = %.2f" % \
+            (min_acceptable_2fofc, frac_below_min), file=log)
+          print("  Mean 2mFo-DFc value = %.2f" % map_mean, file=log)
   return outliers
 
 def extract_map_stats_for_single_atoms(xray_structure, pdb_atoms, fmodel,
@@ -868,8 +873,8 @@ def extract_map_stats_for_single_atoms(xray_structure, pdb_atoms, fmodel,
   # use maps
   if ( (fmodel is None) and (fc_map is not None) and
        (two_fofc_map is not None) ):
-    fofc = [ 0.0 for i in xrange(len(pdb_atoms)) ]
-    anom = [ None for i in xrange(len(pdb_atoms)) ]
+    fofc = [ 0.0 for i in range(len(pdb_atoms)) ]
+    anom = [ None for i in range(len(pdb_atoms)) ]
     two_fofc, two_fofc_sel = collect_map_values(
       two_fofc_map, get_selections=True)
     f_model_val, f_model_sel = collect_map_values(

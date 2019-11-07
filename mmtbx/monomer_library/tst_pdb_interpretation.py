@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
@@ -8,10 +8,11 @@ from libtbx.test_utils import Exception_expected, block_show_diff, approx_equal
 import libtbx.load_env
 import iotbx.phil
 from libtbx import Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 import sys
 from cctbx.array_family import flex
+from six.moves import zip
 
 def exercise_handle_case_insensitive(mon_lib_srv, ener_lib):
   def check(a, r, e):
@@ -880,7 +881,7 @@ def exercise_rna(
     relative_path="phenix_regression/pdb/"+file_name,
     test=os.path.isfile)
   if (file_path is None):
-    print 'Skipping exercise_rna("%s"): input file not available' % file_name
+    print('Skipping exercise_rna("%s"): input file not available' % file_name)
     return
   log = StringIO()
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -1010,8 +1011,8 @@ def exercise_hydrogen_deuterium_aliases():
       relative_path="phenix_regression/pdb/"+file_name,
       test=os.path.isfile)
     if (file_path is None):
-      print "Skipping exercise_hydrogen_deuterium_aliases():", \
-        "input file not available:", file_name
+      print("Skipping exercise_hydrogen_deuterium_aliases():", \
+        "input file not available:", file_name)
       return
     file_paths.append(file_path)
   log = StringIO()
@@ -1034,14 +1035,14 @@ def exercise_corrupt_cif_link():
       relative_path="phenix_regression/misc/"+file_name,
       test=os.path.isfile)
     if (file_path is None):
-      print "Skipping exercise_corrupt_cif_link():", \
-        "input file not available:", file_name
+      print("Skipping exercise_corrupt_cif_link():", \
+        "input file not available:", file_name)
       return
     file_paths.append(file_path)
   log = StringIO()
   try:
     monomer_library.pdb_interpretation.run(args=file_paths, log=log)
-  except Sorry, e:
+  except Sorry as e:
     assert str(e).startswith("Corrupt CIF link definition:")
   else: raise Exception_expected
 
@@ -1054,8 +1055,8 @@ def exercise_dna_cns_cy5_th6():
       relative_path="phenix_regression/misc/"+file_name,
       test=os.path.isfile)
     if (file_path is None):
-      print "Skipping exercise_dna_cns_cy5_th6():", \
-        "input file not available:", file_name
+      print("Skipping exercise_dna_cns_cy5_th6():", \
+        "input file not available:", file_name)
       return
     file_paths.append(file_path)
   log = StringIO()
@@ -1075,8 +1076,8 @@ def exercise_sym_excl_indices(mon_lib_srv, ener_lib):
     relative_path="phenix_regression/pdb/"+file_name,
     test=os.path.isfile)
   if (file_path is None):
-    print "Skipping exercise_sym_excl_indices():", \
-      "input file not available:", file_name
+    print("Skipping exercise_sym_excl_indices():", \
+      "input file not available:", file_name)
     return
   log = StringIO()
   pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
@@ -1114,8 +1115,8 @@ def exercise_auto_alias_h_h1():
       relative_path="phenix_regression/pdb/"+file_name,
       test=os.path.isfile)
     if (file_path is None):
-      print "Skipping exercise_auto_alias_h_h1():", \
-        "input file not available:", file_name
+      print("Skipping exercise_auto_alias_h_h1():", \
+        "input file not available:", file_name)
       return
     file_paths.append(file_path)
   log = StringIO()
@@ -1129,8 +1130,8 @@ def exercise_d_aa_resnames():
     relative_path="phenix_regression/pdb/dpn.pdb",
     test=os.path.isfile)
   if (file_path is None):
-    print "Skipping exercise_d_aa_resnames():", \
-      "input file not available: dpn.pdb"
+    print("Skipping exercise_d_aa_resnames():", \
+      "input file not available: dpn.pdb")
     return
   log = StringIO()
   processed_pdb_file = monomer_library.pdb_interpretation.run(
@@ -1144,8 +1145,8 @@ def exercise_d_amino_acid_chain_perfect_in_box_peptide_plane():
     relative_path="phenix_regression/pdb/d_amino_acid_chain_perfect_in_box.pdb",
     test=os.path.isfile)
   if (file_path is None):
-    print "Skipping exercise_d_aa_resnames():", \
-      "input file not available: d_amino_acid_chain_perfect_in_box.pdb"
+    print("Skipping exercise_d_aa_resnames():", \
+      "input file not available: d_amino_acid_chain_perfect_in_box.pdb")
     return
   log = StringIO()
   pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
@@ -1163,8 +1164,8 @@ def exercise_d_amino_acid_chain_perfect_in_box():
     relative_path="phenix_regression/pdb/d_amino_acid_chain_perfect_in_box.pdb",
     test=os.path.isfile)
   if (file_path is None):
-    print "Skipping exercise_d_aa_resnames():", \
-      "input file not available: d_amino_acid_chain_perfect_in_box.pdb"
+    print("Skipping exercise_d_aa_resnames():", \
+      "input file not available: d_amino_acid_chain_perfect_in_box.pdb")
     return
   log = StringIO()
   pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
@@ -1242,8 +1243,8 @@ def exercise_asp_glu_acid():
       relative_path="phenix_regression/pdb/"+file_name,
       test=os.path.isfile)
     if (file_path is None):
-      print "Skipping exercise_asp_glu_acid():", \
-        "input file not available:", file_name
+      print("Skipping exercise_asp_glu_acid():", \
+        "input file not available:", file_name)
     else:
       log = StringIO()
       processed_pdb_file = monomer_library.pdb_interpretation.run(
@@ -1266,7 +1267,7 @@ def exercise_rna_dna_synonyms():
     relative_path="phenix_regression/cif_files/PGP.cif",
     test=os.path.isfile)
   if (None in [pdb_file, cif_file]):
-    print "Skipping exercise_rna_dna_synonyms() - input file(s) unavailable."
+    print("Skipping exercise_rna_dna_synonyms() - input file(s) unavailable.")
   else :
     log = StringIO()
     processed_pdb_file = monomer_library.pdb_interpretation.run(
@@ -1829,7 +1830,7 @@ ATOM     10  CA  VAL A  10      50.711  63.858  50.117  1.00  0.00           C
       file_name=None,
       raw_records=raw_records,
       force_symmetry=True)
-  except Sorry, e:
+  except Sorry as e:
     assert str(e).startswith(
       "Unit cell volume is incompatible with number of atoms")
   else: raise Exception_expected
@@ -2269,93 +2270,6 @@ pdb_interpretation.geometry_restraints {
   assert approx_equal(udp.distance_ideal, 3, eps=1e-4)
   assert approx_equal(udp.weight, 100, eps=1e-4)
 
-def exercise_angle_edits_change(mon_lib_srv, ener_lib):
-  from cctbx.geometry_restraints.linking_class import linking_class
-  origin_ids = linking_class()
-
-  raw_records = """\
-CRYST1   17.963   15.643   19.171  90.00  90.00  90.00 P 1
-SCALE1      0.055670  0.000000  0.000000        0.00000
-SCALE2      0.000000  0.063926  0.000000        0.00000
-SCALE3      0.000000  0.000000  0.052162        0.00000
-HETATM    1  N   ALA A   1      12.431   5.924  12.511  1.00 20.00      A    N
-HETATM    2  CA  ALA A   1      11.018   6.145  12.230  1.00 20.00      A    C
-HETATM    3  C   ALA A   1      10.790   7.554  11.693  1.00 20.00      A    C
-HETATM    4  O   ALA A   1      11.665   8.411  11.803  1.00 20.00      A    O
-HETATM    5  CB  ALA A   1      10.187   5.914  13.482  1.00 20.00      A    C
-HETATM   13  N   ALA A   2       9.597   7.776  11.142  1.00 20.00      A    N
-HETATM   14  CA  ALA A   2       9.208   9.039  10.514  1.00 20.00      A    C
-HETATM   15  C   ALA A   2       8.148   8.584   9.515  1.00 20.00      A    C
-HETATM   16  O   ALA A   2       7.467   7.584   9.741  1.00 20.00      A    O
-HETATM   17  CB  ALA A   2      10.376   9.748   9.832  1.00 20.00      A    C
-HETATM   23  N   ALA A   3       8.007   9.313   8.411  1.00 20.00      A    N
-HETATM   24  CA  ALA A   3       7.032   8.963   7.385  1.00 20.00      A    C
-HETATM   25  C   ALA A   3       7.369   9.651   6.067  1.00 20.00      A    C
-HETATM   26  O   ALA A   3       8.098  10.643   6.037  1.00 20.00      A    O
-HETATM   27  CB  ALA A   3       5.630   9.338   7.836  1.00 20.00      A    C
-HETATM   28  OXT ALA A   3       6.921   9.231   5.000  1.00 20.00      A    O1-
-""".splitlines()
-  edits = """\
-refinement.geometry_restraints.edits {
-  n_2_selection = chain A and resname ALA and resid 2 and name N
-  ca_2_selection = chain A and resname ALA and resid 2 and name CA
-  c_2_selection = chain A and resname ALA and resid 2 and name C
-  angle {
-    action = *change
-    atom_selection_1 = $n_2_selection
-    atom_selection_2 = $ca_2_selection
-    atom_selection_3 = $c_2_selection
-    angle_ideal = 100.00
-    sigma = 5
-  }
-}"""
-  gm_phil = iotbx.phil.parse(
-      monomer_library.pdb_interpretation.grand_master_phil_str,
-      process_includes=True)
-  edits_phil = iotbx.phil.parse(edits)
-  working_phil = gm_phil.fetch(edits_phil)
-  params = working_phil.extract()
-  # print params.geometry_restraints.edits.parallelity[0].atom_selection_1
-  assert params.geometry_restraints.edits.angle[0].atom_selection_1.find("name N")
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      file_name=None,
-      raw_records=raw_records,
-      params = params.pdb_interpretation,
-      log=None)
-  grm = processed_pdb_file.geometry_restraints_manager(
-      params_edits=params.geometry_restraints.edits,
-      params_remove=params.geometry_restraints.remove)
-  assert grm.angle_proxies.size() == 20
-  user_defined = grm.angle_proxies.proxy_select(origin_id=origin_ids.get_origin_id('edits'))
-  assert user_defined.size() == 1
-  udp = user_defined[0]
-  assert list(udp.i_seqs) == [5,6,7]
-  # assert approx_equal(udp.angle_ideal, 100, eps=1e-4)
-
-  from libtbx.test_utils import open_tmp_file
-  from libtbx import easy_run
-  pdb_file = open_tmp_file(suffix="aaa.pdb")
-  pdb_file.write('\n'.join(raw_records))
-  pdb_file.close()
-  edits_file = open_tmp_file(suffix="tau.edits")
-  edits_file.write(edits)
-  edits_file.close()
-  cmd = "phenix.pdb_interpretation \"%s\" \"%s\" write_geo_files=True" %(
-    pdb_file.name, edits_file.name)
-  result = easy_run.fully_buffered(cmd).raise_if_errors()
-  geo_file = open(pdb_file.name+'.geo', "rb")
-  # geo_file = open(pdb_file.name.replace(".pdb", '_minimized.geo'), "rb")
-  geo_file_str = geo_file.read()
-  assert '''User supplied angle restraints: 1
-Sorted by residual:
-angle pdb=" N   ALA A   2 " segid="A   "
-      pdb=" CA  ALA A   2 " segid="A   "
-      pdb=" C   ALA A   2 " segid="A   "
-    ideal   model   delta    sigma   weight residual
-   100.00''' in geo_file_str
-
 def exercise_bad_custom_bonds(mon_lib_srv, ener_lib):
   raw_records = """
 CRYST1   21.213   24.878   21.468  90.00  90.00  90.00 P 1
@@ -2516,18 +2430,76 @@ pdb_interpretation.geometry_restraints.edits {
       distance_ideal = 2
       sigma = -1
       slack = 0
-    Total number of custom bonds: 2"""
+    Total number of added/changed bonds: 2"""
   log = log.getvalue().splitlines()
   found = 0
   for e in expected.splitlines():
     if(e in log): found += 1
   assert found > 39, found
 
+def exercise_allow_polymer_cross_special_position(mon_lib_srv, ener_lib):
+  raw_records = """\
+CRYST1  257.160  257.160  125.289  90.00  90.00  90.00 P 42 21 2
+ATOM   6125  N   GLU B 219       2.256  -0.004  52.800  1.00556.70      B    N
+ATOM   6126  CA  GLU B 219       2.976  -0.009  54.101  1.00553.07      B    C
+ATOM   6127  C   GLU B 219       2.020  -0.291  55.269  1.00548.53      B    C
+ATOM   6128  O   GLU B 219       2.412  -1.087  56.152  1.00563.96      B    O
+ATOM   6129  CB  GLU B 219       3.635   1.353  54.312  1.00549.67      B    C
+ATOM   6130  N   VAL B 220       0.817   0.295  55.291  1.00579.40      B    N
+ATOM   6131  CA  VAL B 220      -0.101  -0.076  56.415  1.00536.12      B    C
+ATOM   6132  C   VAL B 220      -0.931  -1.312  56.040  1.00595.15      B    C
+ATOM   6133  O   VAL B 220      -1.615  -1.845  56.941  1.00560.98      B    O
+ATOM   6134  CB  VAL B 220      -0.969   1.109  56.872  1.00506.94      B    C
+ATOM   6135  CG1 VAL B 220      -1.904   0.713  58.004  1.00516.72      B    C
+ATOM   6136  CG2 VAL B 220      -0.110   2.296  57.278  1.00493.38      B    C
+ATOM   6137  N   GLN B 221      -0.855  -1.759  54.781  1.00618.59      B    N
+ATOM   6138  CA  GLN B 221      -1.583  -2.967  54.295  1.00643.31      B    C
+ATOM   6139  C   GLN B 221      -0.837  -4.237  54.735  1.00659.80      B    C
+ATOM   6140  O   GLN B 221      -1.504  -5.170  55.254  1.00664.86      B    O
+ATOM   6141  CB  GLN B 221      -1.633  -2.914  52.766  1.00632.59      B    C
+ATOM   6142  CG  GLN B 221      -2.226  -4.158  52.118  1.00628.14      B    C
+ATOM   6143  CD  GLN B 221      -3.524  -3.878  51.400  1.00607.81      B    C
+ATOM   6144  OE1 GLN B 221      -3.819  -2.746  51.025  1.00587.02      B    O
+ATOM   6145  NE2 GLN B 221      -4.309  -4.921  51.188  1.00611.94      B    N
+END
+  """.splitlines()
+  params = iotbx.phil.parse(
+    monomer_library.pdb_interpretation.grand_master_phil_str,
+    process_includes=True).extract()
+  exp_lines = [
+    "Polymer crosses special position element:",
+    "ATOM      7  CA  VAL B 220       0.000  -0.000  56.415  1.00536.12      B    C",
+    "Use 'allow_polymer_cross_special_position=True' to keep going."]
+  cntr=0
+  try:
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      file_name=None,
+      raw_records=raw_records,
+      params = params.pdb_interpretation,
+      log=None).xray_structure()
+  except KeyboardInterrupt: raise
+  except Exception as e:
+    for line in str(e).splitlines():
+      if(line.strip() in exp_lines):
+        cntr+=1
+  assert cntr>=2
+  #
+  params.pdb_interpretation.allow_polymer_cross_special_position=True
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    params = params.pdb_interpretation,
+    log=None).xray_structure()
+
 def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
-  exercise_angle_edits_change(mon_lib_srv, ener_lib)
+  exercise_allow_polymer_cross_special_position(mon_lib_srv, ener_lib)
   exercise_bad_custom_bonds(mon_lib_srv, ener_lib)
   exercise_bad_water(mon_lib_srv, ener_lib)
   exercise_unk_and_cys(mon_lib_srv, ener_lib)
@@ -2557,7 +2529,7 @@ def run(args):
   exercise_edits_parallelity(mon_lib_srv, ener_lib)
   exercise_edits_planarity(mon_lib_srv, ener_lib)
   exercise_edits_bond(mon_lib_srv, ener_lib)
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   import sys

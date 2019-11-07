@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from cctbx import crystal
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import miller
 import sys
+from six.moves import range
 
 def run(args):
   assert len(args) == 1
@@ -22,7 +23,7 @@ def run(args):
   miller_indices = flex.miller_index()
   data = flex.double()
   sigmas = flex.double()
-  for i_line in xrange(3+n_symops,len(lines)):
+  for i_line in range(3+n_symops,len(lines)):
     fields = lines[i_line].split()
     assert len(fields) == 5
     miller_indices.append([int(value) for value in fields[:3]])
@@ -35,13 +36,13 @@ def run(args):
   miller_array = miller_set.array(
     data=data,
     sigmas=sigmas).set_observation_type_xray_intensity()
-  print "Before merging:"
+  print("Before merging:")
   miller_array.show_summary()
-  print
+  print()
   merged = miller_array.merge_equivalents().array().sort(by_value="data")
-  print "After merging:"
+  print("After merging:")
   merged.show_comprehensive_summary().show_array()
-  print
+  print()
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

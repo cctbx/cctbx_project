@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.uctbx import reduction_base
 from cctbx.uctbx import krivy_gruber_1976
 from cctbx.uctbx import gruber_1973
@@ -12,6 +12,7 @@ from libtbx.test_utils import Exception_expected, approx_equal
 import math
 import random
 import sys
+from six.moves import range
 
 class check_is_niggli_cell(reduction_base.gruber_parameterization):
 
@@ -161,18 +162,18 @@ def do_reduce(inp):
       red0 = reduction_with_tracking(inp)
     if (red0.iteration_limit_exceeded):
       n = 20
-      print inp
-      print "red0.action_log:", red0.action_log[-n:]
-      print "red0.type_log:", red0.type_log[-n:]
-      print "red0.meets_primary_conditions_log:", \
-             red0.meets_primary_conditions_log[-n:]
-      print "red0.meets_main_conditions_log:", \
-             red0.meets_main_conditions_log[-n:]
-      print "red0.is_niggli_cell_log:", red0.is_niggli_cell_log[-n:]
+      print(inp)
+      print("red0.action_log:", red0.action_log[-n:])
+      print("red0.type_log:", red0.type_log[-n:])
+      print("red0.meets_primary_conditions_log:", \
+             red0.meets_primary_conditions_log[-n:])
+      print("red0.meets_main_conditions_log:", \
+             red0.meets_main_conditions_log[-n:])
+      print("red0.is_niggli_cell_log:", red0.is_niggli_cell_log[-n:])
       if (1):
         for cell in red0.cell_log[-n:]:
-          print cell
-        print
+          print(cell)
+        print()
       sys.stdout.flush()
   return red
 
@@ -180,10 +181,11 @@ def reduce(inp):
   try:
     return do_reduce(inp)
   except Exception:
-    print "Problem parameters:", inp.parameters()
+    print("Problem parameters:", inp.parameters())
     raise
 
-def ucgmx((a,b,c,d,e,f)): # unit cell given Gruber matrix
+def ucgmx(gruber_matrix): # unit cell given Gruber matrix
+  (a,b,c,d,e,f) = gruber_matrix
   return uctbx.unit_cell(metrical_matrix=(a,b,c,f/2.,e/2.,d/2.))
 
 def exercise_gruber_1973_example():
@@ -295,7 +297,7 @@ def exercise_grid(quick=False, verbose=0):
               n_trials += 1
               reduce(unit_cell)
   if (0 or verbose):
-    print "exercise_grid n_trials:", n_trials
+    print("exercise_grid n_trials:", n_trials)
 
 class random_unimodular_integer_matrix_generator(object):
 
@@ -351,7 +353,7 @@ class random_abcpq(object):
       self.c = self.b
       if (rr(0,2)): self.c += rr(10,101)
     else:
-      raise RuntimeError, "Unknown ck_type."
+      raise RuntimeError("Unknown ck_type.")
 
   def eval_defks(self, defks):
     a,b,c,p,q = tuple([float(x) for x in (self.a,self.b,self.c,self.p,self.q)])
@@ -369,37 +371,37 @@ def exercise_gruber_types(n_trials_per_type, dump=0, verbose=0):
   type_conditions = gruber_1973_table_1.get_type_conditions()
   random_unimodular = random_unimodular_integer_matrix_generator()
   have_errors = False
-  for k in xrange(1,29):
+  for k in range(1,29):
     set = mk2_sets[k]
     tc = type_conditions[k]
     if (0 or verbose):
-      print " ", tc.ck_types, tc.defks
+      print(" ", tc.ck_types, tc.defks)
     n_errors = 0
-    for i_trial in xrange(n_trials_per_type):
+    for i_trial in range(n_trials_per_type):
       gruber_matrix = random_gruber_matrix(tc)
       type_cell = ucgmx(gruber_matrix)
       if (0 or verbose):
-        print " ", gruber_matrix
-        print " ", type_cell
+        print(" ", gruber_matrix)
+        print(" ", type_cell)
       red = reduction_base.gruber_parameterization(type_cell)
       assert red.is_niggli_cell()
       n_different_cells = 0
       for m in set:
         other_cell = type_cell.change_basis(m.inverse().transpose().elems, 1)
         if (0 or verbose):
-          print " ", m.elems, m.determinant()
-          print " ", other_cell
+          print(" ", m.elems, m.determinant())
+          print(" ", other_cell)
         red = reduction_base.gruber_parameterization(other_cell)
         if (not red.is_buerger_cell()):
-          print "  Error: Transformed cell is not a Buerger cell."
-          print "  gruber_matrix:", gruber_matrix
+          print("  Error: Transformed cell is not a Buerger cell.")
+          print("  gruber_matrix:", gruber_matrix)
           n_errors += 1
         else:
           n_different_cells += 1
           if (red.is_niggli_cell()):
             if (not other_cell.is_similar_to(type_cell)):
-              print "  Error: Transformed cell is a Niggli cell."
-              print "  gruber_matrix:", gruber_matrix
+              print("  Error: Transformed cell is a Niggli cell.")
+              print("  gruber_matrix:", gruber_matrix)
               n_errors += 1
           else:
             krivy_cell = reduce(type_cell).as_unit_cell()
@@ -409,26 +411,26 @@ def exercise_gruber_types(n_trials_per_type, dump=0, verbose=0):
             r_inv = random_unimodular.next().elems
             random_cell = type_cell.change_basis(r_inv, 1)
             if (0 or verbose):
-              print "  Random:", random_cell, r_inv
+              print("  Random:", random_cell, r_inv)
             red = reduce(random_cell)
             krivy_cell = red.as_unit_cell()
             if (dump):
-              print "type_cell:", type_cell
-              print "random_cell:", random_cell
-              print "krivy_cell:", krivy_cell
-              print
+              print("type_cell:", type_cell)
+              print("random_cell:", random_cell)
+              print("krivy_cell:", krivy_cell)
+              print()
             if (not krivy_cell.is_similar_to(type_cell)):
-              print "  Error: Random cell recovery."
-              print "  gruber_matrix:", gruber_matrix
-              print "  r_inv:", r_inv
-              print "  red.as_gruber_matrix():", red.as_gruber_matrix()
+              print("  Error: Random cell recovery.")
+              print("  gruber_matrix:", gruber_matrix)
+              print("  r_inv:", r_inv)
+              print("  red.as_gruber_matrix():", red.as_gruber_matrix())
               n_errors += 1
       if (n_different_cells == 0):
-        print "  Error: Transformation does not yield different cells."
+        print("  Error: Transformation does not yield different cells.")
         n_errors += 1
         raise RuntimeError
     if ((0 or verbose) and n_errors != 0):
-      print "Errors for type %d:" % k, n_errors
+      print("Errors for type %d:" % k, n_errors)
     if (n_errors != 0):
       have_errors = True
   assert not have_errors
@@ -521,19 +523,19 @@ def exercise_one_pass(show_times=False):
   exercise_gruber_types(n_trials_per_type, verbose=verbose)
   exercise_real_world_examples()
   if (0 or verbose or show_times):
-    print time_krivy_gruber_1976.report()
-    print time_gruber_1973.report()
-    print time_krivy_gruber_1976_minimum.report()
-    print time_gruber_1973_minimum.report()
-    print time_gruber_1973_fast_minimum.report()
-    print time_uctbx_fast_minimum.report()
+    print(time_krivy_gruber_1976.report())
+    print(time_gruber_1973.report())
+    print(time_krivy_gruber_1976_minimum.report())
+    print(time_gruber_1973_minimum.report())
+    print(time_gruber_1973_fast_minimum.report())
+    print(time_uctbx_fast_minimum.report())
     if (time_uctbx_fast_minimum.accumulation != 0):
-      print "fast_minimum Python/C++: %.3g" % (
+      print("fast_minimum Python/C++: %.3g" % (
           time_gruber_1973_fast_minimum.accumulation
-        / time_uctbx_fast_minimum.accumulation)
-    print "fast_minimum_reduction_max_n_iterations:", \
-           fast_minimum_reduction_max_n_iterations
-  print "OK"
+        / time_uctbx_fast_minimum.accumulation))
+    print("fast_minimum_reduction_max_n_iterations:", \
+           fast_minimum_reduction_max_n_iterations)
+  print("OK")
 
 def exercise():
   forever = "--Forever" in sys.argv[1:]

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.flags
 import cctbx.geometry_restraints.manager
@@ -13,6 +13,7 @@ import scitbx.lbfgs
 from libtbx.str_utils import format_value
 from itertools import count
 import sys
+from six.moves import range
 
 if (1):
   flex.set_random_seed(0)
@@ -44,7 +45,7 @@ def setup_bond_params_table(structure, bond_sym_table):
         params = restraint_parameters_o_si_o
       else:
         raise AssertionError("Unknown scattering type pair.")
-      if (not t[i_seq].has_key(j_seq)):
+      if (j_seq not in t[i_seq]):
         t[i_seq][j_seq] = geometry_restraints.bond_params(
           distance_ideal=params.distance_ideal,
           weight=params.weight)
@@ -78,7 +79,7 @@ class add_oxygen(object):
           bond_center = (site_frac_i + site_frac_ji) / 2
           i_seq_o = self.structure.scatterers().size()
           self.structure.add_scatterer(xray.scatterer(
-            label="O%d"%i_oxygen.next(),
+            label="O%d"%next(i_oxygen),
             site=bond_center))
           bond_sym_table[i_seq].setdefault(i_seq_o).append(
             sgtbx.rt_mx(1,1))
@@ -100,11 +101,11 @@ def make_o_si_o_sym_table(si_o_structure, si_o_bond_sym_table):
       if (scatterers[j_seq].scattering_type != "O"): continue
       for rt_mx_ji in sym_ops:
         jr_list.append((j_seq,rt_mx_ji))
-    for i_jj1 in xrange(0,len(jr_list)-1):
+    for i_jj1 in range(0,len(jr_list)-1):
       jr1 = jr_list[i_jj1]
       i_seq = jr1[0]
       rt_mx_jr1_inv = jr1[1].inverse()
-      for i_jj2 in xrange(i_jj1+1,len(jr_list)):
+      for i_jj2 in range(i_jj1+1,len(jr_list)):
         jr2 = jr_list[i_jj2]
         j_seq = jr2[0]
         rt_mx_jr21 = rt_mx_jr1_inv.multiply(jr2[1])
@@ -136,7 +137,7 @@ class distance_and_repulsion_least_squares:
     assert max_exceptions_handled >= 0
     if (out is None): out = sys.stdout
     si_structure.show_summary(f=out).show_scatterers(f=out)
-    print >> out
+    print(file=out)
     out.flush()
     def get_si_si_sym_table():
       si_asu_mappings = si_structure.asu_mappings(
@@ -149,7 +150,7 @@ class distance_and_repulsion_least_squares:
         out=out)
       if (connectivities is not None):
         assert list(si_pair_counts) == connectivities
-      print >> out
+      print(file=out)
       return si_si_sym_table, si_pair_counts
     si_si_sym_table, si_pair_counts = get_si_si_sym_table()
     out.flush()
@@ -158,7 +159,7 @@ class distance_and_repulsion_least_squares:
       si_si_sym_table=si_si_sym_table)
     si_o.structure.show_summary(f=out).show_scatterers(f=out)
     si_o_sst = si_o.structure.site_symmetry_table()
-    print >> out
+    print(file=out)
     out.flush()
     si_o_pair_counts = si_o.structure.pair_sym_table_show_distances(
       pair_sym_table=si_o.bond_sym_table,
@@ -167,7 +168,7 @@ class distance_and_repulsion_least_squares:
     n_si_o = si_o_pair_counts.size()
     assert si_o_pair_counts[:n_si].all_eq(si_pair_counts)
     assert si_o_pair_counts[n_si:].count(2) == n_si_o-n_si
-    print >> out
+    print(file=out)
     out.flush()
     o_si_o_sym_table = make_o_si_o_sym_table(
       si_o_structure=si_o.structure,
@@ -178,7 +179,7 @@ class distance_and_repulsion_least_squares:
     assert o_si_o_pair_counts[:n_si].all_eq(0)
     if (si_pair_counts.count(4) == n_si):
       assert o_si_o_pair_counts[n_si:].all_eq(6)
-    print >> out
+    print(file=out)
     out.flush()
     shell_sym_tables = crystal.coordination_sequences.shell_sym_tables(
       full_pair_sym_table=si_o.bond_sym_table.full_connectivity(
@@ -222,8 +223,8 @@ class distance_and_repulsion_least_squares:
       nonbonded_buffer=nonbonded_buffer,
       max_reasonable_bond_distance=100)
     minimized = None
-    for i_trial in xrange(n_trials):
-      for i_exceptions_handled in xrange(max_exceptions_handled+1):
+    for i_trial in range(n_trials):
+      for i_exceptions_handled in range(max_exceptions_handled+1):
         trial_structure = si_o.structure.deep_copy_scatterers()
         if (i_trial > 0):
           n_scatterers = trial_structure.scatterers().size()
@@ -232,7 +233,7 @@ class distance_and_repulsion_least_squares:
           trial_structure.apply_symmetry_sites()
         trial_minimized = []
         trial_sites_cart = None
-        for i_macro_cycle in xrange(n_macro_cycles):
+        for i_macro_cycle in range(n_macro_cycles):
           if (trial_sites_cart is not None):
             trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
             trial_structure = trial_structure.random_shift_sites(
@@ -254,7 +255,7 @@ class distance_and_repulsion_least_squares:
                 lbfgs_exception_handling_params=
                   scitbx.lbfgs.exception_handling_parameters(
                     ignore_line_search_failed_step_at_lower_bound=True))
-            except RuntimeError, lbfgs_error:
+            except RuntimeError as lbfgs_error:
               if (i_trial == 0): raise
               if (not str(lbfgs_error).startswith(
                     "Bond distance > max_reasonable_bond_distance: ")): raise
@@ -287,12 +288,11 @@ class distance_and_repulsion_least_squares:
       min_nonbonded_distance = flex.min_default(
         pair_proxies.nonbonded_proxies.deltas(sites_cart=trial_sites_cart),
         None)
-      print >> out, \
-        "i_trial, bond, nonbonded, min distance: %d, %.6g, %.6g, %s" % (
+      print("i_trial, bond, nonbonded, min distance: %d, %.6g, %.6g, %s" % (
           i_trial,
           ftr.bond_residual_sum,
           ftr.nonbonded_residual_sum,
-          format_value(format="%.4g", value=min_nonbonded_distance))
+          format_value(format="%.4g", value=min_nonbonded_distance)), file=out)
       out.flush()
       if (minimized is None or       minimized[-1].final_target_result.target
                              > trial_minimized[-1].final_target_result.target):
@@ -301,23 +301,23 @@ class distance_and_repulsion_least_squares:
         best_i_trial = i_trial
     assert minimized is not None
     for im,m in enumerate(minimized):
-      print >> out
-      print >> out, "Energies at start of %d. minimization:" % (im+1)
+      print(file=out)
+      print("Energies at start of %d. minimization:" % (im+1), file=out)
       m.first_target_result.show(f=out)
-      print >> out
-      print >> out, "Energies at end of %d. minimization:" % (im+1)
+      print(file=out)
+      print("Energies at end of %d. minimization:" % (im+1), file=out)
       m.final_target_result.show(f=out)
-    print >> out
-    print >> out, "Final target value (i_trial=%d): %.6g" % (
-      best_i_trial, minimized[-1].final_target_result.target)
+    print(file=out)
+    print("Final target value (i_trial=%d): %.6g" % (
+      best_i_trial, minimized[-1].final_target_result.target), file=out)
     if (minimized[-1].final_target_result.target > 0.1):
-      print >> out, "WARNING: LARGE final target value: %.6g" % (
-        minimized[-1].final_target_result.target)
-    print >> out
+      print("WARNING: LARGE final target value: %.6g" % (
+        minimized[-1].final_target_result.target), file=out)
+    print(file=out)
     minimized_structure.pair_sym_table_show_distances(
       pair_sym_table=shell_sym_tables[0],
       out=out)
-    print >> out
+    print(file=out)
     sites_cart = minimized_structure.sites_cart()
     pair_proxies = geometry_restraints_manager.pair_proxies(
       sites_cart=sites_cart)
@@ -327,11 +327,11 @@ class distance_and_repulsion_least_squares:
       site_labels=[scatterer.label
         for scatterer in minimized_structure.scatterers()],
       f=out)
-    print >> out
+    print(file=out)
     pair_proxies.nonbonded_proxies.show_histogram_of_model_distances(
       sites_cart=sites_cart,
       f=out)
-    print >> out
+    print(file=out)
     out.flush()
     self.geometry_restraints_manager = geometry_restraints_manager
     self.start_structure = si_o.structure
@@ -348,13 +348,13 @@ class dev_target_result(object):
 
   def show(O, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix+"target: %.6g" % O.target
+    print(prefix+"target: %.6g" % O.target, file=f)
     if (O.n_bond_proxies is not None):
-      print >> f, prefix+"  bond_residual_sum (n=%d): %.6g" % (
-        O.n_bond_proxies, O.bond_residual_sum)
+      print(prefix+"  bond_residual_sum (n=%d): %.6g" % (
+        O.n_bond_proxies, O.bond_residual_sum), file=f)
     if (O.n_nonbonded_proxies is not None):
-      print >> f, prefix+"  nonbonded_residual_sum (n=%d): %.6g" % (
-        O.n_nonbonded_proxies, O.nonbonded_residual_sum)
+      print(prefix+"  nonbonded_residual_sum (n=%d): %.6g" % (
+        O.n_nonbonded_proxies, O.nonbonded_residual_sum), file=f)
 
 class dev_lbfgs(object):
 

@@ -1,0 +1,39 @@
+# Copy of azure-pipelies-osx.yml, but uses base
+# macOS image descriptions
+# https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/macos/macos-10.14-Readme.md
+# https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/macos/macos-10.13-Readme.md
+
+jobs:
+- job: ${{ format('{0}_{1}', format('macOS_{0}', join('_', parameters.vmImage)), format('xcode_{0}', join('_', parameters.xcode_version)) ) }}
+  pool:
+    vmImage: ${{ format('macOS-{0}', join('.', parameters.vmImage)) }}
+  timeoutInMinutes: 360
+  strategy:
+    maxParallel: 3
+    matrix:
+      python2.7:
+        CONDA: MacOSX
+        OS: osx-64
+        PYTHON_VERSION: py27
+
+  steps:
+  - script: |
+      echo "Selecting Xcode version ${{ join('.', parameters.xcode_version) }}"
+      sudo xcode-select --switch /Applications/Xcode_${{ join('.', parameters.xcode_version) }}.app/Contents/Developer
+    displayName: Select Xcode version
+
+  - script: |
+      sudo installer -allowUntrusted -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -target /
+    displayName: Install headers for macOS 10.14
+    condition: eq('${{ parameters.vmImage[1] }}', '14')
+
+  - script: |
+      echo "Removing homebrew from Azure to avoid conflicts."
+      curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall > ~/uninstall_homebrew
+      chmod +x ~/uninstall_homebrew
+      ~/uninstall_homebrew -fq
+      rm ~/uninstall_homebrew
+    displayName: Remove homebrew
+
+  # build
+  - template: ./unix-base-build.yml

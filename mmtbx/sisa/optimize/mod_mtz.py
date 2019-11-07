@@ -1,15 +1,16 @@
-from __future__ import division
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 12/1/2014
 Description : Handling mtz file.
 '''
+from __future__ import absolute_import, division, print_function
 import sys
 import numpy as np
 from iotbx import reflection_file_reader
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import crystal
+from six.moves import range
 
 class mtz_handler(object):
   '''
@@ -85,12 +86,12 @@ class mtz_handler(object):
       flag_fom_found = 1
 
     if flag_fp_found==0 or flag_phib_found==0 or flag_fom_found==0 or flag_hl_found==0:
-      print "couldn't find all required columns"
+      print("couldn't find all required columns")
       sys.exit()
 
     miller_indices_sel = miller_arrays[ind_miller_array_fp].indices()
-    print 'No. reflections for read-in miller arrays - indices:%6.0f fp:%6.0f phib:%6.0f fom:%6.0f HL:%6.0f)'%( \
-          len(miller_indices_sel), len(flex_fp_all), len(flex_phib_all), len(flex_fom_all), len(flex_hl_all))
+    print('No. reflections for read-in miller arrays - indices:%6.0f fp:%6.0f phib:%6.0f fom:%6.0f HL:%6.0f)'%( \
+          len(miller_indices_sel), len(flex_fp_all), len(flex_phib_all), len(flex_fom_all), len(flex_hl_all)))
 
     miller_indices = flex.miller_index()
     flex_fp = flex.double()
@@ -141,8 +142,8 @@ class mtz_handler(object):
 
 
 
-    print 'No. reflections after format - indices:%6.0f fp:%6.0f phib:%6.0f fom:%6.0f HL:%6.0f)'%( \
-          len(miller_indices), len(flex_fp), len(flex_phib), len(flex_fom), len(flex_hl))
+    print('No. reflections after format - indices:%6.0f fp:%6.0f phib:%6.0f fom:%6.0f HL:%6.0f)'%( \
+          len(miller_indices), len(flex_fp), len(flex_phib), len(flex_fom), len(flex_hl)))
 
     flex_hla = flex.double()
     flex_hlb = flex.double()
@@ -206,13 +207,13 @@ class mtz_handler(object):
         result = xtriage.run(args=xtriage_args, out=null_out())
         ws = result.wilson_scaling
 
-        print 'Wilson K=%6.2f B=%6.2f'%(ws.iso_p_scale, ws.iso_b_wilson)
+        print('Wilson K=%6.2f B=%6.2f'%(ws.iso_p_scale, ws.iso_b_wilson))
         sin_theta_over_lambda_sq = miller_array_out.two_theta(wavelength=iparams.wavelength) \
                                     .sin_theta_over_lambda_sq().data()
         wilson_expect = flex.exp(-2 * ws.iso_b_wilson * sin_theta_over_lambda_sq)
         flex_fp_for_sort = wilson_expect * flex_fp
       except Exception:
-        print 'Error calculating Wilson scale factors. Continue without applying B-factor.'
+        print('Error calculating Wilson scale factors. Continue without applying B-factor.')
 
 
     flex_d_spacings = miller_array_out.d_spacings().data()

@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 import glob
 from scitbx.array_family import flex # import dependency
 
 from libtbx import easy_pickle
+import six
 
 class histogram_finalise(object):
 
@@ -34,7 +35,7 @@ class histogram_finalise(object):
     pickle_path = os.path.join(output_dirname, "hist.pickle")
     easy_pickle.dump(pickle_path, self.histogram)
 
-    print "Total number of images used from %i runs: %i" %(i_run+1, self.nmemb)
+    print("Total number of images used from %i runs: %i" %(i_run+1, self.nmemb))
 
 class finalise_one_run(object):
 
@@ -48,29 +49,29 @@ class finalise_one_run(object):
     else:
       path_pattern = "%s/%s/%ss[0-9][0-9]-*.pickle" %(
         scratch_dir, pickle_dirname, pickle_basename)
-    print path_pattern
+    print(path_pattern)
     g = glob.glob(path_pattern)
     if len(g) == 0:
-      print "No matches found for pattern: %s" %path_pattern
+      print("No matches found for pattern: %s" %path_pattern)
       return
     for path in g:
       try:
         d = easy_pickle.load(file_name=path)
       except EOFError:
-        print "EOFError: skipping %s:" %path
+        print("EOFError: skipping %s:" %path)
         continue
-      if len(d["histogram"].keys()) == 0: continue
+      if len(d["histogram"]) == 0: continue
       if self.histogram is None:
         self.histogram = d["histogram"]
       else:
         self.histogram = update_histograms(self.histogram, d["histogram"])
       self.nmemb += d["nmemb"]
-      print "Read %d images from %s" % (d["nmemb"], path)
+      print("Read %d images from %s" % (d["nmemb"], path))
 
-    print "Number of images used: %i" %self.nmemb
+    print("Number of images used: %i" %self.nmemb)
     #assert self.nmemb > 0
 
 def update_histograms(hist_dict1, hist_dict2):
-  for key, value in hist_dict1.iteritems():
+  for key, value in six.iteritems(hist_dict1):
     value.update(hist_dict2[key])
   return hist_dict1

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 from libtbx.test_utils import assert_lines_in_file
 
@@ -117,7 +117,7 @@ def tst_1(prefix="tst_ref_model_ligands_1"):
       "reference_model.enabled=True",
       "reference_model.file=%s.pdb" % prefix,
       ">%s.log" % prefix])
-  print cmd
+  print(cmd)
   assert not easy_run.call(cmd)
   assert_lines_in_file(
       file_name="%s.log" % prefix,

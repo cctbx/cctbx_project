@@ -1,5 +1,5 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate
 
 import os.path
@@ -38,12 +38,12 @@ class server(object):
         The information associated with that screen.
     """
     screen_name = screen_name.lower().replace(" ", "_")
-    keys = self._cif_model.keys()
     data = None
-    if screen_name in keys:
+    # NOTE: I assumed cif_model is a dict
+    if screen_name in self._cif_model:
       data = self._cif_model[screen_name]
     else :
-      for other_key in keys :
+      for other_key in self._cif_model :
         other_data = self._cif_model[other_key]
         for name in other_data["_xtal_screen.name"]:
           if name == screen_name:

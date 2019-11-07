@@ -1,0 +1,75 @@
+# Nightly builds
+
+# no continuous integration builds
+trigger: none
+
+# only nightly and pull request builds
+schedules:
+- cron: '0 1 * * *'
+  displayName: Nightly build
+  branches:
+    include:
+    - master
+
+stages:
+- stage: Checks
+  displayName: Check
+  jobs:
+    - template: ./syntax.yml
+
+- stage: Preparation
+  displayName: Download
+  dependsOn: Checks
+  jobs:
+    - template: ./download-source.yml
+    - template: ./download-conda.yml
+
+- stage: Build
+  displayName: Build and test
+  dependsOn: Preparation
+  jobs:
+    - template: ./conda-win.yml
+    - template: ./conda-linux.yml
+      parameters:
+        distribution: centos
+        version: [6, 10]
+    - template: ./conda-linux.yml
+      parameters:
+        distribution: centos
+        version: [7, 6, 1810]
+    - template: ./conda-linux.yml
+      parameters:
+        distribution: centos
+        version: [8]
+    - template: ./conda-linux.yml
+      parameters:
+        distribution: ubuntu
+        version: ['18', '04']
+    - template: ./conda-linux.yml
+      parameters:
+        distribution: ubuntu
+        version: ['16', '04']
+    - template: ./conda-linux.yml
+      parameters:
+        distribution: ubuntu
+        version: ['14', '04']
+    - template: ./conda-osx.yml
+      parameters:
+        vmImage: [10, 14]
+        xcode_version: [11, 1]
+    - template: ./conda-osx.yml
+      parameters:
+        vmImage: [10, 14]
+        xcode_version: [10, 3]
+    - template: ./conda-osx.yml
+      parameters:
+        vmImage: [10, 14]
+        xcode_version: [10, 2, 1]
+    - template: ./conda-osx.yml
+      parameters:
+        vmImage: [10, 13]
+        xcode_version: [9, 4, 1]
+    - template: ./conda-osx.yml
+      parameters:
+        vmImage: [10, 13]
+        xcode_version: [8, 3, 3]

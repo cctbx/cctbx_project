@@ -1,9 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.shelx import hklf
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.test_utils import Exception_expected, show_diff
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def exercise_hklf_reader():
   s = ('   1   2  -1  -23.34    4.56   1\n'
@@ -20,6 +20,7 @@ def exercise_hklf_reader():
   assert approx_equal(r.alphas(), [1, 2, 9999, -999, ])
   for ma in r.as_miller_arrays():
     assert ma.indices().all_eq(r.indices())
+    assert ma.anomalous_flag() is False
   ma = r.as_miller_arrays()[0]
   assert ma.data().all_approx_equal(r.data())
   assert ma.sigmas().all_approx_equal(r.sigmas())
@@ -120,6 +121,8 @@ def exercise_miller_export_as_shelx_hklf():
   assert approx_equal(ma.indices(), ma2.indices())
   assert approx_equal(ma.data(), ma2.data())
   assert approx_equal(ma.sigmas(), ma2.sigmas())
+  assert ma.anomalous_flag() is False
+  assert ma2.anomalous_flag() is False
   #
   ma = ma.select(flex.size_t([0]))
   def check(d, s, f):
@@ -161,11 +164,18 @@ def exercise_miller_export_as_shelx_hklf():
    2  -3   99999999.    0.00
    0   0   0    0.00    0.00
 """)
+  # Test that setting the scale range works.
+  ma2.export_as_shelx_hklf(
+    sio,
+    scale_range=(-9999., 9999.),
+    normalise_if_format_overflow=True)
+  # Test that ignoring the scale range and normalising out-of-range values anyway works.
+  ma2.export_as_shelx_hklf(sio, full_dynamic_range=True)
 
 def run():
   exercise_hklf_reader()
   exercise_miller_export_as_shelx_hklf()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

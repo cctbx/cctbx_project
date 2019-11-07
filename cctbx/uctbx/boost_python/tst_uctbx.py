@@ -1,11 +1,13 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from math import pi, sin, cos, asin, sqrt
+from six.moves import range
+from six.moves import zip
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 from cctbx.array_family import flex
-from cctbx import uctbx
+from cctbx import sgtbx, uctbx
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, not_approx_equal, show_diff
 import random
@@ -101,7 +103,7 @@ def exercise_basic():
   assert approx_equal(u.longest_vector_sq(), 3)
   assert approx_equal(u.shortest_vector_sq(), 1)
   p = (2,3,4,80,100,110)
-  for i in xrange(7):
+  for i in range(7):
     u = uctbx.unit_cell(p[:i])
     assert u.parameters() == p[:i] + d[i:]
     v = uctbx.unit_cell(p[:i])
@@ -145,9 +147,9 @@ def exercise_basic():
     u.d_volume_d_params(),
     (11.020033123326023, 7.3466887488840156, 5.5100165616630115,
      0.051324088220620838, -0.051324088220620769, -0.13367230402431379))
-  for alpha in xrange(70,121,10):
-    for beta in xrange(70,121,10):
-      for gamma in xrange(70,121,10):
+  for alpha in range(70,121,10):
+    for beta in range(70,121,10):
+      for gamma in range(70,121,10):
         u = uctbx.unit_cell([7,11,13,alpha, beta, gamma])
         v = uctbx.unit_cell(
           orthogonalization_matrix=u.orthogonalization_matrix())
@@ -156,9 +158,9 @@ def exercise_basic():
 def exercise_unit_cell_angles_are_feasible():
   n = 0
   n15 = 0
-  for a in xrange(0,180+10,10):
-    for b in xrange(0,180+10,10):
-      for g in xrange(0,180+10,10):
+  for a in range(0,180+10,10):
+    for b in range(0,180+10,10):
+      for g in range(0,180+10,10):
         f = uctbx.unit_cell_angles_are_feasible(values_deg=(a,b,g))
         if (f):
           n += 1
@@ -235,7 +237,6 @@ def exercise_frac_orth():
     assert approx_equal(om*matrix.col(fi), ci)
     assert approx_equal(fm*matrix.col(ci), fi)
   #
-  from cctbx import sgtbx
   s = sgtbx.rt_mx("-x,-x+y,-x+z", r_den=12)
   assert approx_equal(u.matrix_cart(rot_mx=s.r()), [
     -0.3622586, -0.1191822, -0.5137527,
@@ -290,7 +291,6 @@ def exercise_change_basis():
     u.change_basis((0,1,0, 0,0,1, 1,0,0)).parameters(),
     (5,2,3,90,90,90))
   #
-  from cctbx import sgtbx
   cb_op = sgtbx.change_of_basis_op("y,z,x").inverse()
   assert approx_equal(
     u.change_basis(cb_op=cb_op).parameters(),
@@ -396,13 +396,13 @@ def exercise_debye_waller_factor():
   dw(h, b_iso=-250, exp_arg_limit=60)
   dw(h, b_iso=-250, truncate_exp_arg=True)
   try: dw(h, b_iso=-250)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "cctbx::adptbx::debye_waller_factor_exp:"
       " arg_limit exceeded (isotropic): arg = 51.8763 arg_limit = 50")
   else: raise Exception_expected
   try: dw(h, b_cart=[-240,-240,-240,0,0,0], exp_arg_limit=40)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "cctbx::adptbx::debye_waller_factor_exp:"
       " arg_limit exceeded (anisotropic): arg = 49.8013 arg_limit = 40")
@@ -467,29 +467,29 @@ def exercise_pickle():
 
 def exercise_exceptions():
   if ("--skip" in sys.argv[1:]):
-    print "SKIPPING: exercise_exceptions"
+    print("SKIPPING: exercise_exceptions")
     return
   try:
     u = uctbx.unit_cell((0,0,0,0,0,0))
-  except ValueError, e:
+  except ValueError as e:
     assert str(e) == "Unit cell parameter is zero or negative.",\
       str(e)
   else:
-    raise AssertionError, 'exception expected'
+    raise AssertionError('exception expected')
   try:
     u = uctbx.unit_cell(metrical_matrix=(0,0,0,0,0,0))
-  except ValueError, e:
+  except ValueError as e:
     assert str(e) == "Corrupt metrical matrix.", str(e)
   else:
-    raise AssertionError, 'exception expected'
+    raise AssertionError('exception expected')
   u = uctbx.unit_cell((2,3,5,80,100,110))
   try:
     u.two_theta((-3,4,-5), 1.5)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(sin_theta <= 1.0) failure."), \
       str(e)
   else:
-    raise AssertionError, 'exception expected'
+    raise AssertionError('exception expected')
 
 def exercise_fast_minimum_reduction():
   mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((1,1,1,90,90,90)))
@@ -522,10 +522,10 @@ def exercise_fast_minimum_reduction():
   assert not mr.termination_due_to_significant_change_test()
   try:
     uctbx.fast_minimum_reduction(uctbx.unit_cell((5,3,2,50,120,130)), 2, 7)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: Iteration limit exceeded."
   else:
-    raise AssertionError, 'exception expected'
+    raise AssertionError('exception expected')
   try:
     u = uctbx.unit_cell((2,3,5,70,120,50))
   except Exception:
@@ -533,9 +533,9 @@ def exercise_fast_minimum_reduction():
   else:
     try:
       uctbx.fast_minimum_reduction(u)
-    except RuntimeError, e:
+    except RuntimeError as e:
       if ("--Verbose" in sys.argv[1:]):
-        print "Expected:", e
+        print("Expected:", e)
 
 class exercise_is_degenerate(object):
 
@@ -557,9 +557,9 @@ class exercise_is_degenerate(object):
     rnd = random.random
     while 1:
       lengths = [rnd(), rnd(), rnd()]
-      for alpha in xrange(10,180,10):
-        for beta in xrange(10,180,10):
-          for gamma in xrange(10,180,10):
+      for alpha in range(10,180,10):
+        for beta in range(10,180,10):
+          for gamma in range(10,180,10):
             try:
               u = uctbx.unit_cell((2,3,5,alpha,beta,gamma))
             except Exception:
@@ -569,7 +569,7 @@ class exercise_is_degenerate(object):
               try:
                 uctbx.fast_minimum_reduction(u)
                 self.n_stable[int(is_degenerate)] += 1
-              except RuntimeError, e:
+              except RuntimeError as e:
                 assert is_degenerate
                 self.n_unstable += 1
               i_iteration += 1
@@ -577,11 +577,11 @@ class exercise_is_degenerate(object):
                 return
 
   def report(self):
-    print "exercise_is_degenerate:"
+    print("exercise_is_degenerate:")
     s = self.n_stable[0] + self.n_stable[1]
     n = self.n_iterations*0.01
-    print "  n_stable:", s, self.n_stable, "= %.3g%%" % (s/n)
-    print "  n_unstable:", self.n_unstable, "= %.3g%%" % (self.n_unstable/n)
+    print("  n_stable:", s, self.n_stable, "= %.3g%%" % (s/n))
+    print("  n_unstable:", self.n_unstable, "= %.3g%%" % (self.n_unstable/n))
 
 def exercise_similarity_transformations():
   reference = uctbx.unit_cell(
@@ -702,7 +702,7 @@ def exercise_non_crystallographic_unit_cell_with_the_sites_in_its_center():
 def exercise_tensor_rank_2_orth_and_frac_linear_maps():
   from cctbx import adptbx, sgtbx
   p1 = sgtbx.space_group_info('P1')
-  for i in xrange(100):
+  for i in range(100):
     uc = p1.any_compatible_unit_cell(27)
     u_star = matrix.col.random(n=6, a=0, b=1)
     u_iso_ref = adptbx.u_star_as_u_iso(uc, u_star)
@@ -731,7 +731,6 @@ def exercise_d_metrical_matrix_d_params():
     grads = flex.double(grads)
     grads.resize(flex.grid((6,6)))
     return grads.matrix_transpose()
-  from cctbx import sgtbx
   p1 = sgtbx.space_group_info('P1')
   uc = p1.any_compatible_unit_cell(27)
   grads = uc.d_metrical_matrix_d_params()
@@ -756,7 +755,6 @@ def exercise_downstream_methods():
       assert ms.indices().size() == 26
 
 def exercise_unit_cell_format():
-  from cctbx import sgtbx
   sgi = sgtbx.space_group_info('P1')
   uc = sgi.any_compatible_unit_cell(volume=1000)
   s = str(uc)
@@ -764,7 +762,14 @@ def exercise_unit_cell_format():
   s = format(uc, '{:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f}')
   assert s == '8.53 11.08 14.49 83.00 109.00 129.00', s
 
+def exercise_unit_cell_repr():
+  sgi = sgtbx.space_group_info('P1')
+  uc = sgi.any_compatible_unit_cell(volume=1000)
+  assert eval(repr(uc)).is_similar_to(uc, 1e-8, 1e-3)
+
+
 def run():
+  exercise_unit_cell_repr()
   exercise_unit_cell_format()
   exercise_d_metrical_matrix_d_params()
   exercise_tensor_rank_2_orth_and_frac_linear_maps()
@@ -789,7 +794,7 @@ def run():
   e = exercise_is_degenerate()
   if (e.n_iterations > 100):
     e.report()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

@@ -1,11 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.experiment_json_to_cbf_def
 
 # Script to convert the output from a joint refinement using dials.refine to a CSPAD
 # cbf header file. Note hardcoded distance of 100 isn't relevant for just a cbf header
 
 from dials.util.options import OptionParser
-from dials.util.options import flatten_datablocks, flatten_experiments
+from dials.util.options import flatten_experiments
 from xfel.cftbx.detector.cspad_cbf_tbx import write_cspad_cbf, map_detector_to_basis_dict
 from libtbx import phil
 
@@ -21,24 +21,19 @@ class Script(object):
     # Create the parser
     self.parser = OptionParser(
       phil = phil_scope,
-      read_datablocks = True,
       read_experiments = True,
       check_format = False)
 
   def run(self):
     params, options = self.parser.parse_args(show_diff_phil=True)
-    datablocks = flatten_datablocks(params.input.datablock)
     experiments = flatten_experiments(params.input.experiments)
 
-    if len(datablocks) > 0:
-      detector = datablocks[0].unique_detectors()[0]
-    else:
-      detector = experiments[0].detector
+    detector = experiments[0].detector
 
     metro = map_detector_to_basis_dict(detector)
     write_cspad_cbf(None, metro, 'cbf', None, params.output_def_file, None, detector.hierarchy().get_distance(), header_only=True)
 
-    print "Done"
+    print("Done")
 
 if __name__ == '__main__':
   from dials.util import halraiser

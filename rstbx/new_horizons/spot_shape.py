@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math
 from scitbx.array_family import flex
 
@@ -50,10 +50,10 @@ def spot_shape_verbose(rawdata,beam_center_pix,indexed_pairs,spotfinder_observat
       if not overloaded:
         # print out some properties:
         # first, simple model where all photon energy is assigned to the middle of the pixel
-        print "%5d Johan radial %6.2f px, Johan azimuthal %6.2f px"%(ipidx, radial, azimuthal),
+        print("%5d Johan radial %6.2f px, Johan azimuthal %6.2f px"%(ipidx, radial, azimuthal), end=' ')
         Miller = hkllist[item["pred"]]
         resolution = unit_cell.d(Miller)
-        print "resolution %6.2f Miller %s"%(resolution,str(Miller))
+        print("resolution %6.2f Miller %s"%(resolution,str(Miller)))
 
         fwhm_azi = AZIMUT.fwhm_pix()
         #small angle approximation
@@ -68,12 +68,12 @@ def spot_shape_verbose(rawdata,beam_center_pix,indexed_pairs,spotfinder_observat
         else:
           scherrer_domain_size = 0.
 
-        print "      FWHM  radial %6.2f px, FWHM  azimuthal %6.2f px"%(RADIAL.fwhm_pix(), fwhm_azi)
+        print("      FWHM  radial %6.2f px, FWHM  azimuthal %6.2f px"%(RADIAL.fwhm_pix(), fwhm_azi))
 
-        print "      Scherrer diffracted ray divergence FWHM %7.3f deg. Domain size %8.0f Angstrom"%(
-          scherrer_fwhm_deg,scherrer_domain_size)
+        print("      Scherrer diffracted ray divergence FWHM %7.3f deg. Domain size %8.0f Angstrom"%(
+          scherrer_fwhm_deg,scherrer_domain_size))
 
-        print "          isotropic rotational FWHM mosaicity %7.3f deg"%rotational_mosaicity_deg
+        print("          isotropic rotational FWHM mosaicity %7.3f deg"%rotational_mosaicity_deg)
 
         spot_vec_mm = spot_vec_px.length() * mm_per_pixel
         radial_hwhm_mm = (RADIAL.fwhm_pix() * mm_per_pixel)/2.
@@ -84,32 +84,32 @@ def spot_shape_verbose(rawdata,beam_center_pix,indexed_pairs,spotfinder_observat
         Elow_Ehigh_ratio = math.sin( two_theta_high/2. ) / math.sin ( two_theta_low/2. )
         bandpass_fwhm = 1. - Elow_Ehigh_ratio
 
-        print "     radial divergence implied FWHM mosaicity %7.3f deg bandpass FWHM = %8.5f"%(
-          mosaicity_fwhm_rad * 180/math.pi, bandpass_fwhm)
+        print("     radial divergence implied FWHM mosaicity %7.3f deg bandpass FWHM = %8.5f"%(
+          mosaicity_fwhm_rad * 180/math.pi, bandpass_fwhm))
 
 
         Delta_a_over_a = scherrer_fwhm_rad * resolution / wavelength_ang
 
-        print "    diffracted ray divergence FWHM (delta a)/a %8.5f"%( Delta_a_over_a )
+        print("    diffracted ray divergence FWHM (delta a)/a %8.5f"%( Delta_a_over_a ))
 
         if resolution < 4.0:
           rot_mosaicities_deg.append(rotational_mosaicity_deg)
           implied_mosaicities_deg.append(mosaicity_fwhm_rad * 180/math.pi)
           bandpasses.append(bandpass_fwhm)
           unit_cell_deltas.append(Delta_a_over_a)
-        print
+        print()
 
     if len(domain_sizes) > 10:
-      print "  IMAGE      Scherrer domain size, lower bound = %8.0F Angstrom"%flex.min(domain_sizes)
+      print("  IMAGE      Scherrer domain size, lower bound = %8.0F Angstrom"%flex.min(domain_sizes))
     if len(rot_mosaicities_deg) > 10:
-      print "  IMAGE rotational FWHM mosaicity, upper bound = %7.3f deg. mean = %7.3f deg."%(
-        flex.max(rot_mosaicities_deg), flex.mean(rot_mosaicities_deg))
-      print "  IMAGE    implied FWHM mosaicity, upper bound = %7.3f deg. mean = %7.3f deg."%(
-        flex.max(implied_mosaicities_deg), flex.mean(implied_mosaicities_deg))
-      print "  IMAGE             FWHM bandpass, upper bound =  %8.5f"%(
-        flex.max(bandpasses))
-      print "  IMAGE   azimuthal FWHM deltaa/a, upper bound =  %8.5f from radial: %8.5f"%(
-        flex.max(unit_cell_deltas), flex.max(implied_mosaicities_deg)*math.pi/180.)
+      print("  IMAGE rotational FWHM mosaicity, upper bound = %7.3f deg. mean = %7.3f deg."%(
+        flex.max(rot_mosaicities_deg), flex.mean(rot_mosaicities_deg)))
+      print("  IMAGE    implied FWHM mosaicity, upper bound = %7.3f deg. mean = %7.3f deg."%(
+        flex.max(implied_mosaicities_deg), flex.mean(implied_mosaicities_deg)))
+      print("  IMAGE             FWHM bandpass, upper bound =  %8.5f"%(
+        flex.max(bandpasses)))
+      print("  IMAGE   azimuthal FWHM deltaa/a, upper bound =  %8.5f from radial: %8.5f"%(
+        flex.max(unit_cell_deltas), flex.max(implied_mosaicities_deg)*math.pi/180.))
 
 
     #-------------------- done with spot shape

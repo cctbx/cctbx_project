@@ -23,12 +23,14 @@ class Status(IntEnum):
   OK = 0
   WARNING = 1
   FAIL = 2
+  EXPECTED_FAIL = 3
+  EXPECTED_UNSTABLE = 4
 
 QUIET = 0
 DEFAULT_VERBOSITY = 1
 EXTRA_VERBOSE = 2 # for nightly builds
 
-def get_module_tests(module_name, valgrind=False, slow_tests=False):
+def get_test_list(module_name, test_type='tst_list', valgrind=False):
   dist_path = libtbx.env.dist_path(module_name)
   if dist_path is None:
     raise Sorry("'%s' is not a valid CCTBX module." % module_name)
@@ -36,29 +38,14 @@ def get_module_tests(module_name, valgrind=False, slow_tests=False):
   # derived modules - dist_path can be either the sys.path entry or the actual
   # module contents.  If the file is missing the import below will fail, which
   # is okay for testing purposes.
-  tst_list = import_python_object(
-    import_path="%s.run_tests.tst_list" % module_name,
-    error_prefix="",
-    target_must_be="",
-    where_str="").object
-  assert (isinstance(tst_list, tuple) or isinstance(tst_list, list))
-  if slow_tests:
-    try:
-      tst_list_slow = import_python_object(
-        import_path="%s.run_tests.tst_list_slow" % module_name,
-        error_prefix="",
-        target_must_be="",
-        where_str="").object
-    except AttributeError:
-      pass
-    else:
-      assert (isinstance(tst_list_slow, tuple) or isinstance(tst_list_slow, list))
-      if isinstance(tst_list, tuple):
-        tst_list = list(tst_list)
-        tst.list.extend(tst_list_slow)
-        tst_list = tuple(tst_list)
-      else:
-        tst_list.extend(tst_list_slow)
+  try:
+    tst_list = list(import_python_object(
+      import_path="%s.run_tests.%s" % (module_name, test_type),
+      error_prefix="",
+      target_must_be="",
+      where_str="").object)
+  except AttributeError:
+    tst_list = list()
   build_path = libtbx.env.under_build(module_name)
   assert (build_path is not None) and (dist_path is not None)
   commands = []
@@ -73,6 +60,19 @@ def get_module_tests(module_name, valgrind=False, slow_tests=False):
       tst_list=tst_list):
     commands.append(cmd)
   return commands
+
+def get_module_tests(module_name, valgrind=False, slow_tests=False):
+  tst_list = get_test_list(module_name, valgrind=valgrind)
+  if slow_tests:
+    tst_list.extend(get_test_list(module_name, test_type='tst_list_slow',
+                    valgrind=valgrind))
+  return tst_list
+
+def get_module_expected_test_failures(module_name):
+  return get_test_list(module_name, test_type='tst_list_expected_failures')
+
+def get_module_expected_unstable_tests(module_name):
+  return get_test_list(module_name, test_type='tst_list_expected_unstable')
 
 def find_tests(dir_name):
   if not os.path.isdir(dir_name):
@@ -179,6 +179,10 @@ def write_JUnit_XML(results, output_filename="output.xml"):
         # find first line including word 'skip' and use it as message
         skipline = re.search('^((.*)skip(.*))$', output, re.IGNORECASE | re.MULTILINE).group(1)
         tc.add_skipped_info(skipline)
+    elif result.alert_status == Status.EXPECTED_FAIL:
+      tc.add_skipped_info("Expected test failure")
+    elif result.alert_status == Status.EXPECTED_UNSTABLE:
+      tc.add_skipped_info("Expected test instability")
     else:
       # Test failed. Extract error message and stack trace if possible
       error_message = 'exit code %d' % result.return_code
@@ -191,12 +195,13 @@ def write_JUnit_XML(results, output_filename="output.xml"):
     test_cases.append(tc)
   ts = junit_xml.TestSuite("libtbx.run_tests_parallel", test_cases=test_cases)
   with codecs.open(output_filename, "w", encoding="utf-8") as f:
-  #with open(output_filename, 'w') as f:
     ts.to_file(f, [ts], prettyprint=True, encoding="utf-8")
 
 class run_command_list(object):
   def __init__(self,
                 cmd_list,
+                expected_failure_list=None,
+                expected_unstable_list=None,
                 nprocs=1,
                 out=sys.stdout,
                 log=None,
@@ -211,6 +216,13 @@ class run_command_list(object):
     self.quiet = (verbosity == 0)
     self.results = []
     self.pool = None
+
+    self.expected_failure_list = expected_failure_list
+    if self.expected_failure_list is None:
+      self.expected_failure_list = list()
+    self.expected_unstable_list = expected_unstable_list
+    if self.expected_unstable_list is None:
+      self.expected_unstable_list = list()
 
     # Filter cmd list for duplicates.
     self.cmd_list = []
@@ -274,9 +286,13 @@ class run_command_list(object):
     longjobs = [result for result in self.results if result.wall_time > max_time]
     warnings = [result for result in self.results if result.alert_status == Status.WARNING]
     failures = [result for result in self.results if result.alert_status == Status.FAIL]
+    expected_failures = [result for result in self.results if result.alert_status == Status.EXPECTED_FAIL]
+    expected_unstable = [result for result in self.results if result.alert_status == Status.EXPECTED_UNSTABLE]
     self.finished = len(self.results)
     self.failure = len(failures)
     self.warning = len(warnings)
+    self.expected_failures = len(expected_failures)
+    self.expected_unstable = len(expected_unstable)
 
     # Try writing the XML result file
     write_JUnit_XML(self.results, "output.xml")
@@ -327,6 +343,10 @@ class run_command_list(object):
     print("  Tests run                    :",self.finished, file=self.out)
     print("  Failures                     :",self.failure, file=self.out)
     print("  Warnings (possible failures) :",self.warning, file=self.out)
+    print("  Known Failures (% 3d)         :" % len(self.expected_failure_list),
+      self.expected_failures, file=self.out)
+    print("  Known Unstable (% 3d)         :" % len(self.expected_unstable_list),
+      self.expected_unstable, file=self.out)
     print("  Stderr output (discouraged)  :",extra_stderr, file=self.out)
     if (self.finished != len(self.cmd_list)):
       print("*" * 80, file=self.out)
@@ -350,6 +370,10 @@ class run_command_list(object):
         print(result.return_code, file=self.out)
         print("RETURN CODE -END- "*5, file=self.out)
       alert = Status.FAIL
+      if result.command in self.expected_failure_list:
+        alert = Status.EXPECTED_FAIL
+      elif result.command in self.expected_unstable_list:
+        alert = Status.EXPECTED_UNSTABLE
     return alert
 
   def save_result(self, result):
@@ -399,7 +423,9 @@ class run_command_list(object):
     )
 
   def display_result(self, result, alert, out=None, log_return=True, log_stderr=True, log_stdout=False):
-    status = {Status.OK: 'OK', Status.WARNING: 'WARNING', Status.FAIL: 'FAIL'}
+    status = {Status.OK: 'OK', Status.WARNING: 'WARNING', Status.FAIL: 'FAIL',
+              Status.EXPECTED_FAIL: 'EXPECTED FAIL',
+              Status.EXPECTED_UNSTABLE: 'EXPECTED UNSTABLE'}
     if out:
       print("%s [%s] %.1fs"%(result.command, status[alert], result.wall_time), file=out)
       out.flush()
@@ -454,7 +480,7 @@ Please enable execution of these to continue.""" % "\n  ".join(non_executable))
   return commands
 
 def exercise():
-  log=file("test_utils_parallel_zlog", "wb")
+  log=open("test_utils_parallel_zlog", "wb")
   f0 = open("test_parallel.csh", "wb")
   f0.write("""\
 #!/bin/csh

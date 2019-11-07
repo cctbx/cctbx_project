@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.data_plots import simple_matplotlib_plot
 
 class rotarama_plot_mixin(object):
@@ -30,7 +30,7 @@ class rotarama_plot_mixin(object):
       extent = self.extent
     else :
       assert (len(extent) == 4)
-    print extent
+    print(extent)
     self.plot.imshow(stats, origin="lower", cmap=cm, extent=extent)
     if (contours is not None):
       self.plot.contour(stats, contours,

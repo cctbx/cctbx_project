@@ -3,7 +3,7 @@
 Various convenience dialogs (and associated wrapper functions).
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from wxtbx.utils import add_ok_cancel_buttons
 import wx
 from libtbx.utils import Abort
@@ -106,4 +106,4 @@ def get_shelx_file_data_type(file_name):
 
 if (__name__ == "__main__"):
   app = wx.App(0)
-  print get_shelx_file_data_type("data.hkl")
+  print(get_shelx_file_data_type("data.hkl"))

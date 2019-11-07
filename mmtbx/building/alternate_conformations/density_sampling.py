@@ -1,8 +1,11 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.phil
 import time
 import sys
+from past.builtins import cmp
+from functools import cmp_to_key
+from six.moves import range
 
 sidechain_density_params = """
   min_2fofc = 0.8
@@ -126,7 +129,8 @@ def screen_residue(
       if (good_maps) : #and (conf_trans.rmsd > params.rmsd_min):
         translations.append(conf_trans)
     if (len(translations) > 0):
-      translations.sort(lambda a,b: cmp(b.mean_fofc, a.mean_fofc))
+      cmp_fn = lambda a,b: cmp(b.mean_fofc, a.mean_fofc)
+      translations.sort(key=cmp_to_key(cmp_fn))
       good_confs.append(translations[0])
   if (n_confs > 1) and (len(good_confs) != 0):
     for conf in good_confs :
@@ -134,7 +138,7 @@ def screen_residue(
   xrs.set_occupancies(occ_start)
   t_end = time.time()
   if (verbose):
-    print >> out, "time to sample residue: %.2fs" % (t_end - t_start)
+    print("time to sample residue: %.2fs" % (t_end - t_start), file=out)
   return good_confs
 
 def score_density(self, two_fofc_map, fofc_map, unit_cell, params,
@@ -145,9 +149,9 @@ def score_density(self, two_fofc_map, fofc_map, unit_cell, params,
   if (sidechain_only):
     sum_fofc = 0
     sum_2fofc = 0
-    min_fofc = sys.maxint
-    min_2fofc = sys.maxint
-    min_cbeta_2fofc = sys.maxint
+    min_fofc = sys.maxsize
+    min_2fofc = sys.maxsize
+    min_cbeta_2fofc = sys.maxsize
     min_2fofc_atom_name = None
     n_atoms = 0
     for atom in self.residue.atoms():

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.plot_run_stats_from_experiments
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -7,9 +7,8 @@ from libtbx.phil import parse
 from libtbx.utils import Sorry
 from xfel.ui.components.run_stats_plotter import plot_multirun_stats
 import sys, os
-from scitbx.array_family import flex
+from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentListFactory
-from libtbx import easy_pickle
 from dials.algorithms.integration.stills_significance_filter import SignificanceFilter, phil_scope as sf_scope
 
 """
@@ -68,7 +67,7 @@ def run(args):
   def get_paths(dirname):
     absolute = lambda name: os.path.join(dirname, name)
     names = os.listdir(dirname)
-    return map(absolute, names)
+    return [absolute(n) for n in names]
 
   files_dict = {dirname:get_paths(dirname) for dirname in input_dirs}
   if params.run_tags_from_filenames:
@@ -90,7 +89,8 @@ def run(args):
   runs = []
 
   # iterate through grouped file paths and look for processing results
-  for run, files in files_dict.iteritems():
+  for run in sorted(files_dict):
+    files = files_dict[run]
     if len(files) == 0: continue
     runs.append(run)
     timestamps = flex.double()
@@ -103,19 +103,20 @@ def run(args):
     for i, path in enumerate(sorted(files)):
       root = os.path.dirname(path)
       filename = os.path.basename(path)
+      extension = os.path.splitext(filename)[1]
       split_fn = filename.split('_')
-      if len(split_fn) <= 0 or split_fn[-1] != "datablock.json":
+      if extension not in ['.refl', '.pickle', '.mpack'] or len(split_fn) <= 0 or not split_fn[-1].startswith('strong'):
         continue
       base = os.path.join(root, "_".join(split_fn[:-1]))
-      print filename
-      strong_name = base + "_strong.pickle"
+      print(filename)
+      strong_name = base + "_strong%s"%extension
       if not os.path.exists(strong_name):
-        print "Couldn't log %s, strong pickle not found"%filename
+        print("Couldn't log %s, strong%s not found"%(filename, exension))
         continue
 
       # Read the spotfinding results
-      strong = easy_pickle.load(strong_name)
-      print "N strong reflections: %d"%len(strong)
+      strong = flex.reflection_table.from_file(strong_name)
+      print("N strong reflections: %d"%len(strong))
 
       timestamps.append(i)
       n_strong.append(len(strong))
@@ -123,17 +124,21 @@ def run(args):
       two_theta_high.append(0)
 
       # Read indexing results if possible
-      experiments_name = base + "_integrated_experiments.json"
-      indexed_name = base + "_integrated.pickle"
+      experiments_name = base + "_integrated"
+      if extension == ".refl":
+        experiments_name += ".expt"
+      else:
+        experiments_name += "_experiments.json"
+      indexed_name = base + "_integrated%s"%extension
       if not os.path.exists(experiments_name) or not os.path.exists(indexed_name):
-        print "Frame didn't index"
+        print("Frame didn't index")
         resolutions.append(0)
         n_lattices.append(0)
         continue
 
       experiments = ExperimentListFactory.from_json_file(experiments_name, check_format=False)
       n_lattices.append(len(experiments))
-      reflections = easy_pickle.load(indexed_name)
+      reflections = flex.reflection_table.from_file(indexed_name)
       reflections = reflections.select(reflections['intensity.sum.value'] > 0) # positive reflections only
       best_d_min = None
       for expt_id, experiment in enumerate(experiments):

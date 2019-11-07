@@ -1,5 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME samosa.join
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 
 if (__name__ == "__main__"):

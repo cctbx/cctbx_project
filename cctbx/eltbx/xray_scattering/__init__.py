@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.math.gaussian # base class for gaussian
 
 import boost.python
+from six.moves import zip
 ext = boost.python.import_ext("cctbx_eltbx_xray_scattering_ext")
 from cctbx_eltbx_xray_scattering_ext import *
 
@@ -24,14 +25,18 @@ def get_element_and_charge_symbols(scattering_type, exact=True):
     return sl[:-2], sl[-2:]
   return sl, ""
 
-class _(boost.python.injector, ext.gaussian):
+boost.python.inject(ext.it1992_iterator, boost.python.py3_make_iterator)
+boost.python.inject(ext.wk1995_iterator, boost.python.py3_make_iterator)
+
+@boost.python.inject_into(ext.gaussian)
+class _():
 
   def show(self, f=None, format=None):
     if (f is None): f = sys.stdout
     if (format is None): format = "%.8g"
     for l,v in (("a:", self.array_of_a()), ("b:", self.array_of_b())):
-      print >> f, l, " ".join([format % x for x in v])
-    print >> f, "c:", format % self.c()
+      print(l, " ".join([format % x for x in v]), file=f)
+    print("c:", format % self.c(), file=f)
     return self
 
   def electron_density(self, r, b_iso):
@@ -120,5 +125,5 @@ class fitted_gaussian(gaussian):
       e = ""
     else:
       e = ", max_error: %.4f" % self.max_error
-    print >> f, "stol: %.2f # d_min: %.2f%s" % (self.stol, 1/(2*self.stol), e)
+    print("stol: %.2f # d_min: %.2f%s" % (self.stol, 1/(2*self.stol), e), file=f)
     return gaussian.show(self, f, format)

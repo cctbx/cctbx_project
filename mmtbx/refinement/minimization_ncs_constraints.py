@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import maptbx
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
 import mmtbx.ncs.ncs_utils as nu
 from cctbx import xray
 import scitbx.lbfgs
+from six.moves import zip
 
 def grads_asu_to_one_ncs(
       ncs_restraints_group_list,

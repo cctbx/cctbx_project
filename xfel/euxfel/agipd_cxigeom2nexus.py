@@ -1,10 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import os
 import h5py
 import numpy as np
 from .read_geom import read_geom
 from libtbx.phil import parse
+from libtbx.utils import Sorry
+import six
 
 phil_scope = parse("""
   cxi_file = None
@@ -16,6 +18,14 @@ phil_scope = parse("""
   detector_distance = None
     .type = float
     .help = AGIPD Detector distance
+  wavelength = None
+    .type = float
+    .help = AGIPD wavelength override
+  mode = vds cxi
+    .type = choice
+    .optional = False
+    .help = Input data file format. VDS: virtual data set. CXI: \
+            Cheetah file format.
 """)
 
 
@@ -57,7 +67,7 @@ class agipd_cxigeom2nexus(object):
 
   def create_vector(self,handle, name, value, **attributes):
     handle.create_dataset(name, (1,), data = [value], dtype='f')
-    for key,attribute in attributes.iteritems():
+    for key,attribute in six.iteritems(attributes):
       handle[name].attrs[key] = attribute
 
   def create_nexus_master_file(self):
@@ -87,8 +97,11 @@ class agipd_cxigeom2nexus(object):
     sample.attrs['NX_class'] = 'NXsample'
     beam = sample.create_group('beam')
     beam.attrs['NX_class'] = 'NXbeam'
-    wavelengths = h5py.File(self.params.cxi_file, 'r')['instrument/photon_wavelength_A']
-    beam.create_dataset('incident_wavelength', (1,), data=np.mean(wavelengths),dtype='f8')
+    if self.params.wavelength is None:
+      wavelengths = h5py.File(self.params.cxi_file, 'r')['instrument/photon_wavelength_A']
+      beam.create_dataset('incident_wavelength', (1,), data=np.mean(wavelengths),dtype='f8')
+    else:
+      beam.create_dataset('incident_wavelength', (1,), data=self.params.wavelength,dtype='f8') # 9150
     beam['incident_wavelength'].attrs['units'] = 'angstrom'
     # --> instrument
     instrument = entry.create_group('instrument')
@@ -114,23 +127,34 @@ class agipd_cxigeom2nexus(object):
     #     (+y)
 
     panels = []
-    for q, quad in self.hierarchy.iteritems():
-      for m, module in quad.iteritems():
+    for q, quad in six.iteritems(self.hierarchy):
+      for m, module in six.iteritems(quad):
         panels.extend([module[key] for key in module])
     fast = max([int(panel['max_fs']) for panel in panels])+1
     slow = max([int(panel['max_ss']) for panel in panels])+1
     pixel_size = panels[0]['pixel_size']
     assert [pixel_size == panels[i+1]['pixel_size'] for i in range(len(panels)-1)].count(False) == 0
 
-    quad_fast = fast
-    quad_slow = slow // self.n_quads
-    module_fast = quad_fast
-    module_slow = quad_slow // self.n_modules
-    asic_fast = module_fast
-    asic_slow = module_slow // self.n_asics
+    if self.params.mode == 'vds':
+      quad_fast = fast
+      quad_slow = slow * self.n_quads
+      module_fast = quad_fast
+      module_slow = quad_slow // self.n_quads
+      asic_fast = module_fast
+      asic_slow = module_slow // self.n_asics
+    elif self.params.mode == 'cxi':
+      quad_fast = fast
+      quad_slow = slow // self.n_quads
+      module_fast = quad_fast
+      module_slow = quad_slow // self.n_modules
+      asic_fast = module_fast
+      asic_slow = module_slow // self.n_asics
 
     detector = instrument.create_group('ELE_D0')
     detector.attrs['NX_class']  = 'NXdetector'
+    if 'mask' in h5py.File(self.params.cxi_file, 'r')['entry_1/data_1']:
+      detector.create_dataset('pixel_mask_applied', (1,), data=[True], dtype='uint32')
+      detector['pixel_mask'] = h5py.ExternalLink(self.params.cxi_file, "entry_1/data_1/mask")
     array_name = 'ARRAY_D0'
 
     alias = 'data'
@@ -156,10 +180,13 @@ class agipd_cxigeom2nexus(object):
 
           asicmodule = detector.create_group(array_name+'Q%dM%dA%d'%(quad,module_num,asic_num))
           asicmodule.attrs['NX_class'] = 'NXdetector_module'
-          asicmodule.create_dataset('data_origin', (2,), data=[0,
-                                                               asic_slow*((quad*self.n_modules*self.n_asics) + (module_num*self.n_asics) + asic_num)],
-                                                           dtype='i')
-          asicmodule.create_dataset('data_size', (2,), data=[asic_fast, asic_slow], dtype='i')
+          if self.params.mode == 'vds':
+            asicmodule.create_dataset('data_origin', (3,), data=[(quad*self.n_modules)+module_num, asic_slow*asic_num, 0], dtype='i')
+            asicmodule.create_dataset('data_size', (3,), data=[1, asic_slow, asic_fast], dtype='i')
+          elif self.params.mode == 'cxi':
+            asicmodule.create_dataset('data_origin', (2,), data=[asic_slow*((quad*self.n_modules*self.n_asics) + (module_num*self.n_asics) + asic_num), 0],
+                                                             dtype='i')
+            asicmodule.create_dataset('data_size', (2,), data=[asic_slow, asic_fast], dtype='i')
 
           fast = self.hierarchy[q_key][m_key][a_key]['local_fast'].elems
           slow = self.hierarchy[q_key][m_key][a_key]['local_slow'].elems

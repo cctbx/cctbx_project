@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 import cctbx.crystal.direct_space_asu
 from cctbx import xray
@@ -15,14 +15,16 @@ from boost import rational
 import random
 import copy
 import sys
+from six.moves import range
+from six.moves import zip
 
 def exercise_reference_table():
-  for space_group_number in xrange(1,230+1):
+  for space_group_number in range(1,230+1):
     space_group_info = sgtbx.space_group_info(number=space_group_number)
     asu = reference_table.get_asu(space_group_number)
     assert sgtbx.space_group(asu.hall_symbol) == space_group_info.group()
   #
-  for space_group_number in xrange(1,230+1):
+  for space_group_number in range(1,230+1):
     asu = reference_table.get_asu(space_group_number)
     n_long_cuts = 0
     for cut in asu.cuts:
@@ -162,7 +164,7 @@ def exercise_asu_mappings(space_group_info, n_elements=10):
 def exercise_neighbors_pair_generators(structure, verbose=0):
   if (0 or verbose):
     structure.show_summary().show_scatterers()
-    print
+    print()
   for buffer_thickness in [1.e-5, 2, 4]:
     asu_mappings = crystal.direct_space_asu.asu_mappings(
       space_group=structure.space_group(),
@@ -174,22 +176,22 @@ def exercise_neighbors_pair_generators(structure, verbose=0):
     array_of_array_of_mappings = asu_mappings.mappings()
     for minimal in [False, True]:
       pair_list = []
-      for i_seq in xrange(array_of_array_of_mappings.size()):
+      for i_seq in range(array_of_array_of_mappings.size()):
         array_of_mappings_i = array_of_array_of_mappings[i_seq]
         site_0 = matrix.col(array_of_mappings_i[0].mapped_site())
-        for j_seq in xrange(i_seq, array_of_array_of_mappings.size()):
+        for j_seq in range(i_seq, array_of_array_of_mappings.size()):
           array_of_mappings_j = array_of_array_of_mappings[j_seq]
           if (i_seq == j_seq):
             j_sym_start = 1
           else:
             j_sym_start = 0
-          for j_sym in xrange(j_sym_start, len(array_of_mappings_j)):
+          for j_sym in range(j_sym_start, len(array_of_mappings_j)):
             site_1 = matrix.col(array_of_mappings_j[j_sym].mapped_site())
             dist_sq = (site_1-site_0).norm_sq()
             pair_list.append((i_seq,j_seq,j_sym,dist_sq))
           if (not minimal and i_seq != j_seq):
             site_1 = matrix.col(array_of_mappings_j[0].mapped_site())
-            for i_sym in xrange(1, len(array_of_mappings_i)):
+            for i_sym in range(1, len(array_of_mappings_i)):
               site_2 = matrix.col(array_of_mappings_i[i_sym].mapped_site())
               dist_sq = (site_2-site_1).norm_sq()
               pair_list.append((j_seq,i_seq,i_sym,dist_sq))
@@ -287,11 +289,11 @@ def exercise_non_crystallographic_asu_mappings():
   asu_mappings = crystal.direct_space_asu.non_crystallographic_asu_mappings(
     sites_cart=flex.vec3_double([(2,-3,4)]))
   assert approx_equal(asu_mappings.unit_cell().parameters(), (1,1,1,90,90,90))
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     offs = random.uniform(-100,100)
     sites_cart = flex.vec3_double()
-    for i_site in xrange(10):
-      sites_cart.append([random.uniform(-10+offs,10+offs) for i in xrange(3)])
+    for i_site in range(10):
+      sites_cart.append([random.uniform(-10+offs,10+offs) for i in range(3)])
     asu_mappings = crystal.direct_space_asu.non_crystallographic_asu_mappings(
       sites_cart=sites_cart)
     for site,asu_mapping in zip(sites_cart,asu_mappings.mappings()):
@@ -321,14 +323,14 @@ def run_call_back(flags, space_group_info):
 
 def run():
   exercise_reference_table()
-  for space_group_number in xrange(1,230+1):
+  for space_group_number in range(1,230+1):
     asu = reference_table.get_asu(space_group_number)
     exercise_shape_vertices(asu=asu, unit_cell=None)
   debug_utils.parse_options_loop_space_groups(
     sys.argv[1:], run_call_back, show_cpu_times=False)
   exercise_is_simple_interaction()
   exercise_non_crystallographic_asu_mappings()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

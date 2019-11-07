@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME distl.find_active_area
 import os, sys
@@ -38,7 +38,7 @@ def run_one(path, display):
       sources.append((PC[x],PC[x+1]))
     else:
       sinks.append((-PC[x],-PC[x+1]))
-  print len(sources),len(sinks)
+  print(len(sources),len(sinks))
   assert len(sources)==len(sinks)
   graph = {}
   final_graph = {}
@@ -48,12 +48,12 @@ def run_one(path, display):
 
   G = graph_tracker()
   while G.has_one(graph):
-    print G.key, G.item_sink
+    print(G.key, G.item_sink)
     final_graph[G.key]=G.item_sink
     del graph[G.key]
     G.prune(graph)
 
-  assert len(graph.keys())==0
+  assert len(graph)==0
 
 if __name__ == "__main__":
   for arg in sys.argv[1:]:

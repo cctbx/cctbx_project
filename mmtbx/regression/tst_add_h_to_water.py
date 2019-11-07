@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.hydrogens import find as find_hydrogens
 import mmtbx.model
 import iotbx.pdb
@@ -6,7 +6,8 @@ from cctbx import miller
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import format_cpu_times
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
+from six.moves import zip
 
 input_model = """\
 CRYST1   15.000   15.000   15.000  80.00  70.00 100.00 P 1
@@ -86,7 +87,7 @@ END
 def exercise_01():
   import libtbx.load_env
   if (not libtbx.env.has_module("reduce")):
-    print "Reduce not installed, needed for model.add_hydrogens(). skipping"
+    print("Reduce not installed, needed for model.add_hydrogens(). skipping")
     return
 
   pdb_file_name = "add_h_to_hoh.pdb"
@@ -120,16 +121,16 @@ def exercise_01():
       as_pdb_string().split("\n"):
     if(r2.startswith("ATOM") or r2.startswith("HETATM")): result2.append(r2)
   assert len(result1) == len(result2)
-  print "\n".join(result1)
-  print "==="*30
-  print "\n".join(result2)
-  print "==="*30
+  print("\n".join(result1))
+  print("==="*30)
+  print("\n".join(result2))
+  print("==="*30)
   for r1, r2 in zip(result1, result2):
     r1 = r1[:30] + r1[60:]
     r2 = r2[:30] + r2[60:]
-    print "r1", r1
-    print "r2", r2
-    print
+    print("r1", r1)
+    print("r2", r2)
+    print()
     # assert not show_diff(r1, r2)
     show_diff(r1, r2)
     # XXX It is not clear why H1 should have Bfactor=2 and not H2.
@@ -284,4 +285,4 @@ def exercise_02():
 if (__name__ == "__main__"):
   exercise_01()
   exercise_02()
-  print format_cpu_times()
+  print(format_cpu_times())

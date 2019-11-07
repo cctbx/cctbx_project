@@ -11,6 +11,9 @@ namespace omptbx { namespace boost_python { namespace {
   set_num_threads(int num_threads) { omp_set_num_threads(num_threads); }
 
   int
+  get_num_threads() { return omp_get_num_threads(); }
+
+  int
   get_max_threads() { return omp_get_max_threads(); }
 
   int
@@ -28,6 +31,14 @@ namespace omptbx { namespace boost_python { namespace {
   void
   set_nested(int nested) { omp_set_nested(nested); }
 
+  void
+  tst_parallel(){
+    #pragma omp parallel for
+    for (int ix = 0; ix<omp_get_num_threads(); ++ix){
+        int tid = omp_get_thread_num();
+        printf("Hello world from omp thread %d of %d\n", tid, omp_get_num_threads());
+    }
+  }
   boost::python::tuple
   tst_environment()
   {
@@ -99,6 +110,7 @@ namespace omptbx { namespace boost_python { namespace {
 #endif
 
     def("omp_set_num_threads", set_num_threads);
+    def("omp_get_num_threads", get_num_threads);
     def("omp_get_max_threads", get_max_threads);
     def("omp_get_num_procs", get_num_procs);
     def("omp_get_dynamic", get_dynamic);
@@ -107,6 +119,7 @@ namespace omptbx { namespace boost_python { namespace {
     def("omp_set_nested", set_nested);
 
     def("tst_environment", &tst_environment);
+    def("tst_parallel", &tst_parallel);
   }
 
 }}} // namespace omptbx::boost_python::<anonymous>

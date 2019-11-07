@@ -1,9 +1,10 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 '''
 '''
 import os
 
 from iotbx.data_manager import DataManagerBase
+from libtbx import Auto
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
 
@@ -39,10 +40,24 @@ class RealMapDataManager(DataManagerBase):
   def process_real_map_file(self, filename):
     return self._process_file(RealMapDataManager.datatype, filename)
 
-  def write_real_map_file(self, filename, unit_cell, space_group,
-                          map_data, labels, overwrite=False):
+  def get_default_output_real_map_filename(self):
+    filename = self.get_default_output_filename()
+    if not filename.endswith('.mrc'):
+      filename += '.mrc'
+    return filename
+
+  def write_real_map_file(self, unit_cell, space_group, map_data, labels,
+                          filename=Auto, overwrite=Auto):
     # WAS: wrapper for iotbx.ccp4_map.write_ccp4_map
     # NOW: moved to mrcfile (https://github.com/ccpem/mrcfile)
+
+    # default options
+    if (filename is Auto):
+      filename = self.get_default_output_real_map_filename()
+    if (overwrite is Auto):
+      overwrite = self._overwrite
+
+    # check arguments
     if (os.path.isfile(filename) and (not overwrite)):
       raise Sorry('%s already exists and overwrite is set to %s.' %
                   (filename, overwrite))

@@ -1,5 +1,5 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from collections import defaultdict
 from math import cos, pi, sin, sqrt
@@ -12,6 +12,8 @@ from libtbx.utils import null_out, xfrange
 from mmtbx.ions import server
 from scitbx.array_family import flex
 from scitbx.math import gaussian_fit_1d_analytical
+from six.moves import zip
+from six.moves import range
 
 def anonymize_ions(pdb_hierarchy, log=sys.stdout):
   """
@@ -63,8 +65,8 @@ def anonymize_ions(pdb_hierarchy, log=sys.stdout):
               atom.b = atom.b * (10 / atomic_number)
             atom_group.resname = "HOH"
             for atom, id_str in zip(atoms, id_strs):
-              print >> log, "%s --> %s, B-iso = %.2f" % (id_str, atom.id_str(),
-                atom.b)
+              print("%s --> %s, B-iso = %.2f" % (id_str, atom.id_str(),
+                atom.b), file=log)
               n_converted += 1
   return pdb_hierarchy, n_converted
 
@@ -195,7 +197,7 @@ def compare_ions(hierarchy, reference_hierarchy, reference_xrs,
   for i_seq, ref_i_seqs in enumerate(ion_ref_i_seqs):
     ion = ions[i_seq]
     if len(ref_i_seqs) == 0:
-      print >> log, "No match for %s" % ion.id_str()
+      print("No match for %s" % ion.id_str(), file=log)
       missing.append(ion.id_str())
     else:
       ref_ions = []
@@ -206,14 +208,14 @@ def compare_ions(hierarchy, reference_hierarchy, reference_xrs,
       if len(ref_ions) >= 1:
         matched.append(ion.id_str())
         if len(ref_ions) > 1:
-          print >> log, "Multiple matches for %s:" % ion.id_str()
+          print("Multiple matches for %s:" % ion.id_str(), file=log)
           for ref_ion in ref_ions:
-            print >> log, "  %s" % ref_ion
+            print("  %s" % ref_ion, file=log)
         else:
-          print >> log, "Ion %s matches %s" % (ion.id_str(),
-            ref_ions[0])
+          print("Ion %s matches %s" % (ion.id_str(),
+            ref_ions[0]), file=log)
       else:
-        print >> log, "No match for %s" % ion.id_str()
+        print("No match for %s" % ion.id_str(), file=log)
         missing.append(ion.id_str())
   return matched, missing
 
@@ -302,7 +304,7 @@ def fit_gaussian(unit_cell, site_cart, real_map, radius=1.6):
   try:
     fit = gaussian_fit_1d_analytical(x=x, y=y)
   except RuntimeError as err:
-    print err
+    print(err)
     return 0., 0.
   else:
     return fit.a, fit.b

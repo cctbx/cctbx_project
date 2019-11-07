@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from mmtbx.validation.ramalyze import ramalyze, find_region_max_value, get_favored_peaks, \
     RAMALYZE_FAVORED, res_types
@@ -6,6 +6,7 @@ from libtbx.utils import null_out
 from mmtbx.rotamer import ramachandran_eval
 import numpy as np
 from libtbx import easy_mp
+from six.moves import range
 
 
 master_phil_str = """\
@@ -47,7 +48,7 @@ class square(object):
     return inside
 
   def _show(self):
-    print self.low_left, self.high_right, self.probability, self.n_points, self.prob_points
+    print(self.low_left, self.high_right, self.probability, self.n_points, self.prob_points)
 
 
 class grid(list):
@@ -67,7 +68,7 @@ class grid(list):
   def add_points(self, points, stop_on_outsiders=True):
     """ points: [(xy),(xy)...] """
     self.total_points = len(points)
-    print "    Using", self.total_points, "points"
+    print("    Using", self.total_points, "points")
 
     self.not_placed_points = 0
     for p in points:
@@ -83,7 +84,7 @@ class grid(list):
       if not placed and not stop_on_outsiders:
         assert 0, "point was not placed in any square (%f, %f)" % (p[0], p[1])
     self.total_points -= self.not_placed_points
-    print "    Total residues placed:", self.total_points
+    print("    Total residues placed:", self.total_points)
     if self.total_points > 0:
       for x in self:
         x.prob_points = x.n_points/self.total_points
@@ -99,7 +100,7 @@ class grid(list):
     if self.total_points < 30:
       return None
     corr = np.corrcoef(a,b)
-    print "    Correlation", corr[0,1]
+    print("    Correlation", corr[0,1])
     return corr
 
   def get_total_points(self):
@@ -134,7 +135,7 @@ class grid_over_favored(object):
         if n_inside >= corners_inside:
           v = self.r.evaluate(rama_type, [x+0.5*grid_size, y+0.5*grid_size])
           self.grid.append(square((x,y), (x+grid_size, y+grid_size), v))
-    print "    Number of grid cells", len(self.grid)
+    print("    Number of grid cells", len(self.grid))
 
     self.grid.scale_to_1()
 
@@ -182,9 +183,9 @@ class eval(object):
 
     self.results = {}
     for rama_type in range(5):
-      print "Working with", res_types[rama_type], "plot"
+      print("Working with", res_types[rama_type], "plot")
       for peak in get_favored_peaks(rama_type):
-        print "  Working with peak:", peak
+        print("  Working with peak:", peak)
         start_point = peak[0] if self.params.grid_center_on_peak else (0,0)
         gof = grid_over_favored(
             rama_type=rama_type,

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import mmtbx.f_model
 
@@ -58,8 +58,8 @@ def run():
     r_free_flags   = r_free_flags,
     xray_structure = xray_structure)
   # now we can caclualte R-factors and show some statistics
-  print "r_work:", fmodel.r_work()
-  print "r_free:", fmodel.r_free()
+  print("r_work:", fmodel.r_work())
+  print("r_free:", fmodel.r_free())
   fmodel.show()
   # we can get get 3d array of map values
   fft_map = fmodel.electron_density_map().fft_map(map_type = "mFobs-DFmodel")
@@ -85,4 +85,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  print "OK"
+  print("OK")

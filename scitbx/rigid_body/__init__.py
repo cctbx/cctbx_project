@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.array_family.flex # import dependency
 
 import boost.python
@@ -9,7 +9,8 @@ from scitbx import matrix
 
 class pickle_import_trigger(object): pass
 
-class _(boost.python.injector, ext.tardy_model):
+@boost.python.inject_into(ext.tardy_model)
+class _():
 
   def __getinitargs__(O):
     return (

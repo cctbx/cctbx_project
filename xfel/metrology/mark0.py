@@ -5,7 +5,7 @@
    ...now do a detailed metrology refinement to simultaneously optimize
    metrology and crystal orientation.
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from cctbx.array_family import flex
 import iotbx.phil
@@ -17,6 +17,7 @@ from xfel import correction_vector_store
 from libtbx.development.timers import Timer
 
 from xfel.merging.database.merging_database import mysql_master_phil
+from six.moves import zip
 master_phil="""
 bravais_setting_id = None
   .type = int
@@ -46,20 +47,20 @@ def consistency_controls(DATA,params,annotate=False):#DATA is an instance of cor
     selection = (DATA.frame_id == frame)
     match_count = selection.count(True)
     if match_count>0:
-      print frame, DATA.frame_id.select(selection)[0], # frame number
+      print(frame, DATA.frame_id.select(selection)[0], end=' ') # frame number
       frame_beam_x = DATA.FRAMES["beam_x"][iframe]
       obs_beam_x = DATA.refined_cntr_x.select(selection)[0] * PIXEL_SZ
-      print "%7.3f"%(frame_beam_x - obs_beam_x), # agreement of beam_x in mm
+      print("%7.3f"%(frame_beam_x - obs_beam_x), end=' ') # agreement of beam_x in mm
       frame_beam_y = DATA.FRAMES["beam_y"][iframe]
       obs_beam_y = DATA.refined_cntr_y.select(selection)[0] * PIXEL_SZ
-      print "%7.3f"%(frame_beam_y - obs_beam_y), # agreement of beam_y in mm
+      print("%7.3f"%(frame_beam_y - obs_beam_y), end=' ') # agreement of beam_y in mm
       #...The labelit-refined direct beam position agrees with CV_listing logfile output
 
       file_name = DATA.FRAMES["unique_file_name"][iframe]
 
       cursor.execute("SELECT COUNT(*) FROM %s_observation WHERE frame_id_0_base=%d-1;"%(params.mysql.runtag,frame))
       integrated_observations = cursor.fetchall()[0][0]
-      print "%4d <? %4d"%(match_count,integrated_observations),file_name,
+      print("%4d <? %4d"%(match_count,integrated_observations),file_name, end=' ')
 
       cursor.execute(
         """SELECT t1.detector_x, t1.detector_y, t1.original_h, t1.original_k, t1.original_l
@@ -89,11 +90,11 @@ def consistency_controls(DATA,params,annotate=False):#DATA is an instance of cor
         except ValueError: pass
         sq_cv.append( (spotcx[icalc]-spotfx[icalc])**2 + (spotcy[icalc]-spotfy[icalc])**2 )
       if len(sq_displace) > 2:
-        print "rmsd=%7.3f"%math.sqrt(flex.mean(sq_displace)),
+        print("rmsd=%7.3f"%math.sqrt(flex.mean(sq_displace)), end=' ')
       else:
-        print "rmsd    None",
+        print("rmsd    None", end=' ')
       rmsd_cv = math.sqrt(flex.mean(sq_cv))
-      print "cv%7.3f"%rmsd_cv
+      print("cv%7.3f"%rmsd_cv)
 
       if params.show_plots is True:
         import os
@@ -135,7 +136,7 @@ class correction_vectors(correction_vector_store):
    cursor = db.cursor()
    cursor.execute("SELECT DISTINCT frame_id FROM %s_spotfinder;"%params.mysql.runtag)
    AAA = cursor.fetchall()
-   print "From the CV log file text output there are %d distinct frames with spotfinder spots"%len(AAA)
+   print("From the CV log file text output there are %d distinct frames with spotfinder spots"%len(AAA))
 
    if params.max_frames==0:
      cursor.execute("SELECT * FROM %s_spotfinder;"%params.mysql.runtag)
@@ -189,7 +190,7 @@ class correction_vectors(correction_vector_store):
     distance = (d['distance'])
     orientation = (d['current_orientation'][0])
 
-    print "testing frame....................",entry
+    print("testing frame....................",entry)
 
     for cv in d['correction_vectors'][0]:
 
@@ -230,7 +231,7 @@ class correction_vectors(correction_vector_store):
                    ucbp3_prediction[0][1] - cv['predspot'][0])
 
       if diff > cutoff:
-        print "Correction vector too long: %6.2f pixels; ignore image or increase diff_cutoff (current value=%5.1f)"%(diff,cutoff)
+        print("Correction vector too long: %6.2f pixels; ignore image or increase diff_cutoff (current value=%5.1f)"%(diff,cutoff))
         return False
 
       # For some reason, the setting_id is recorded for each
@@ -260,7 +261,7 @@ class correction_vectors(correction_vector_store):
       correction_vector_y = spotcy - spotfy
       length = hypot(correction_vector_x, correction_vector_y)
       if length > 8:
-        print "LENGTH SLIPUP",length
+        print("LENGTH SLIPUP",length)
         return False
 
     return True
@@ -380,7 +381,7 @@ class correction_vectors(correction_vector_store):
     self.FRAMES['domain_size_ang'].append(5000) # XXX FICTION
     self.FRAMES['unique_file_name'].append(path.join(directory, entry))
 
-    print "added frame", self.FRAMES['frame_id'][-1],entry
+    print("added frame", self.FRAMES['frame_id'][-1],entry)
 
 
     for cv in d['correction_vectors'][0]:
@@ -430,7 +431,7 @@ class correction_vectors(correction_vector_store):
                    ucbp3_prediction[0][1] - cv['predspot'][0])
 
       if diff > self.params.diff_cutoff:
-        print "HATTNE INDEXING SLIPUP"
+        print("HATTNE INDEXING SLIPUP")
         continue
 
       # For some reason, the setting_id is recorded for each
@@ -566,10 +567,10 @@ STATS FOR TILE 14
   for x in range(len(self.tiles) // 4):
     self.master_weights.set_selected( self.selections[x], self.tile_weight(x))
 
-  print "AFTER read     cx,     cy", flex.mean(self.spotcx), flex.mean(self.spotcy)
-  print "AFTER read     fx,     fy", flex.mean(self.spotfx), flex.mean(self.spotfy)
-  print "AFTER read rmsd_x, rmsd_y", math.sqrt(flex.mean(flex.pow(self.spotcx - self.spotfx, 2))), \
-                                     math.sqrt(flex.mean(flex.pow(self.spotcy - self.spotfy, 2)))
+  print("AFTER read     cx,     cy", flex.mean(self.spotcx), flex.mean(self.spotcy))
+  print("AFTER read     fx,     fy", flex.mean(self.spotfx), flex.mean(self.spotfy))
+  print("AFTER read rmsd_x, rmsd_y", math.sqrt(flex.mean(flex.pow(self.spotcx - self.spotfx, 2))), \
+                                     math.sqrt(flex.mean(flex.pow(self.spotcy - self.spotfy, 2))))
 
   return
 
@@ -635,8 +636,8 @@ STATS FOR TILE 14
       format_value("%6.2f", tstats.mean()),
     ])
 
-  print
-  print table_utils.format(table_data,has_header=1,justify='center',delim=" ")
+  print()
+  print(table_utils.format(table_data,has_header=1,justify='center',delim=" "))
 
 #-----------------------------------------------------------------------
 def get_phil(args):

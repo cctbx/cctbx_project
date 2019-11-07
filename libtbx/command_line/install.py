@@ -7,21 +7,40 @@ import os
 import shutil
 import sys
 from optparse import SUPPRESS_HELP, OptionParser
+from six.moves import range
 
-import procrunner
+try:
+  import procrunner
+except ImportError:
+  try:
+    import libtbx.pkg_utils
+    libtbx.pkg_utils.require("procrunner")
+    import procrunner
+  except Exception:
+    sys.exit("libtbx.install requires procrunner. Please run: libtbx.python -m pip install procrunner")
 
 import libtbx.load_env
 from libtbx.auto_build.bootstrap import Toolbox
 
 # Basically 'pip' for selected libtbx/cctbx modules.
 
+class EpilogParser(OptionParser):
+  """Simple, small OptionParser subclass to not strip epilog"""
+  def format_epilog(self, formatter):
+    """Don't strip newlines from this"""
+    return self.epilog
 
 def is_source_repository(path):
   return (path / '.git').isdir() or (path / '.svn').isdir()
 
 def run(args):
-  parser = OptionParser(usage="libtbx.install [package]",
-                        description="Installs an additional cctbx package")
+  # Generate an epilog message
+  possible_installs = "\nAvailable Packages:\n    " + "\n    ".join(
+    x for x in sorted(warehouse.keys())
+  ) + "\n"
+  parser = EpilogParser(usage="libtbx.install [package]",
+                        description="Installs an additional cctbx package.",
+                        epilog=possible_installs)
   parser.add_option("-?", action="help", help=SUPPRESS_HELP)
   options, args = parser.parse_args(args)
 
@@ -193,7 +212,12 @@ warehouse = {
     'http-zip': { 'url': 'https://github.com/dials/dials_scratch/archive/master.zip', 'trim': 1 },
   },
   'dlstbx': {
-    'git-auth': 'dascgitolite@dasc-git.diamond.ac.uk:/dials/dlstbx.git',
+    'git-auth': 'git@gitlab.diamond.ac.uk:scisoft/mx/dlstbx.git',
+  },
+  'dxtbx': {
+    'git-auth': 'git@github.com:cctbx/dxtbx',
+    'git-anon': 'https://github.com/cctbx/dxtbx.git',
+    'http-zip': { 'url': 'https://github.com/cctbx/dxtbx/archive/master.zip', 'trim': 1 },
   },
   'fast_dp': {
     'pip-auth': 'git@github.com:/DiamondLightSource/fast_dp',
@@ -201,10 +225,11 @@ warehouse = {
     'configure': False,
     'force-configure': True,
   },
-  'i19': {
-    'git-auth': 'git@github.com:/xia2/i19',
-    'git-anon': 'https://github.com/xia2/i19.git',
-    'http-zip': { 'url': 'https://github.com/xia2/i19/archive/master.zip', 'trim': 1 },
+  'screen19': {
+    'pip-auth': 'git@github.com:/xia2/screen19',
+    'pip-anon': 'https://github.com/xia2/screen19.git',
+    'configure': False,
+    'force-configure': True,
   },
   'msgpack': {
     'http-tgz': { 'url': 'https://gitcdn.link/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz', 'trim': 1 },

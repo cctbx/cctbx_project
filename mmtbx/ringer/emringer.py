@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from libtbx import group_args
 from libtbx.utils import Sorry

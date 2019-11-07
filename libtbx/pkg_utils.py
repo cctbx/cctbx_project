@@ -5,10 +5,12 @@
 from __future__ import absolute_import, division, print_function
 
 import contextlib
+import itertools
 import os
 import sys
 
 import libtbx.load_env
+import libtbx.auto_build.install_conda
 
 try:
   import pip
@@ -23,7 +25,10 @@ try:
     pip = None
     pkg_resources = None
   if pip:
-    if pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('10.0.0'):
+    if pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('19.3.0'):
+      import pip._internal.main
+      pip_main = pip._internal.main.main
+    elif pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('10.0.0'):
       import pip._internal
       pip_main = pip._internal.main
     else:
@@ -31,6 +36,20 @@ try:
 except ImportError:
   pip = None
   pkg_resources = None
+
+# Try to find packaging. This is normally(?) installed by setuptools but
+# otherwise pip keeps a copy.
+try:
+  import packaging
+  from packaging.requirements import Requirement
+except ImportError:
+  try:
+    import pip._vendor.packaging as packaging
+    from pip._vendor.packaging.requirements import Requirement
+  except ImportError:
+    # If all else fails then we need the symbol to check
+    Requirement = None
+    packaging = None
 
 try:
   import setuptools
@@ -69,11 +88,20 @@ def require(pkgname, version=None):
   if not version:
     version = ''
 
-  # package name without feature specification
-  basepkgname = pkgname.split('[')[0]
+  requirement = Requirement(pkgname+version)
 
-  requirestring = pkgname + version
-  baserequirestring = basepkgname + version
+  # Check if we have an environment marker in the request
+  if requirement.marker and not requirement.marker.evaluate():
+    # We skip dependencies that don't match our current environment
+    return True
+  # Erase the marker from any further output
+  requirement.marker = None
+
+  # package name without feature specification
+  basepkgname = requirement.name
+
+  requirestring = str(requirement)
+  baserequirestring = requirement.name + str(requirement.specifier)
   try:
     try:
       print("requires %s, has %s" % (requirestring, pkg_resources.require(requirestring)[0].version))
@@ -122,14 +150,46 @@ def require(pkgname, version=None):
             package=pkgname, currentversion=currentversion, requirement=version, action=action)
     return False
 
+  if libtbx.env.build_options.use_conda:
+    if not os.getenv("LIBTBX_UPDATE_CONDA"):
+      _notice("    WARNING: Can not {action} package {package} automatically.", "",
+              "You are in a conda environment. Please {action} manually.",
+              package=pkgname, currentversion=currentversion, requirement=version, action=action)
+      return False
+    try:
+      return install_conda_package(package=pkgname, requirement=version, action=action)
+    except Exception:
+      _notice("    WARNING: Can not {action} package {package} automatically.", "",
+              "Please {action} manually in conda environment.",
+              package=pkgname, currentversion=currentversion, requirement=version, action=action)
+      raise
+
   print("attempting {action} of {package}...".format(action=action, package=pkgname))
+  has_req_tracker = os.environ.get('PIP_REQ_TRACKER')
   exit_code = pip_main(['install', requirestring])
+  if not has_req_tracker:
+    # clean up environment after pip call for next invocation
+    os.environ.pop('PIP_REQ_TRACKER', None)
   if exit_code == 0:
     print("{action} successful".format(action=action))
     return True
   else:
     print("{action} failed. please check manually".format(action=action))
     return False
+
+def install_conda_package(package, requirement, action):
+    conda_manager = libtbx.auto_build.install_conda.conda_manager()
+    conda = conda_manager.get_conda_exe()
+    prefix = conda_manager.conda_env
+    if not prefix:
+        prefix = os.path.join(conda_manager.root_dir, "conda_base")
+    if not prefix or not os.path.exists(prefix):
+        raise RuntimeError("Could not find conda environment at " + repr(prefix))
+    command_list = [conda, action, '--prefix', prefix, package + requirement]
+    if conda_manager.system == 'Windows':
+      command_list = [os.path.join(conda_manager.conda_base, 'Scripts', 'activate'),
+                      'base', '&&'] + command_list
+    raise RuntimeError("Would run " + repr(command_list))
 
 @contextlib.contextmanager
 def _silence():
@@ -184,15 +244,16 @@ def define_entry_points(epdict, **kwargs):
   for ep in epdict:
     print("  {n} entries for entry point {ep}".format(ep=ep, n=len(epdict[ep])))
 
-  # Temporarily change to build/ directory. This is where a directory named
-  # libtbx.{caller}.egg-info will be created containing the entry point info.
+  # Temporarily change to {libtbx.env.build_path}/lib directory. This
+  # is where a directory named libtbx.{caller}.egg-info will be
+  # created containing the entry point info.
   try:
     curdir = os.getcwd()
-    os.chdir(abs(libtbx.env.build_path))
+    os.chdir(os.path.join(abs(libtbx.env.build_path), 'lib'))
     # Now trick setuptools into thinking it is in control here.
     try:
       argv_orig = sys.argv
-      sys.argv = ['setup.py', 'develop']
+      sys.argv = ['setup.py', 'egg_info']
       # And make it run quietly
       with _silence():
         setuptools.setup(
@@ -205,3 +266,103 @@ def define_entry_points(epdict, **kwargs):
       sys.argv = argv_orig
   finally:
     os.chdir(curdir)
+
+  # With the entry points installed into build/lib check for any legacy entry
+  # point definitions in both build/ and base/ and remove them where possible.
+  # Code block can be removed April 2020
+  try:
+    legacy_path = abs(libtbx.env.build_path / 'libtbx.{}.egg-info'.format(caller))
+    if os.path.exists(legacy_path):
+      print("Removing legacy entry points from", legacy_path)
+      import shutil
+      shutil.rmtree(legacy_path)
+  except Exception as e:
+    print("Could not remove legacy entry points:", str(e))
+  try:
+    import site
+    for spp in site.getsitepackages():
+      legacy_path = os.path.join(spp, 'libtbx.{}.egg-link'.format(caller))
+      if os.path.exists(legacy_path):
+        print("Removing legacy entry points from", legacy_path)
+        os.remove(legacy_path)
+  except Exception as e:
+    print("Could not remove legacy entry points:", str(e))
+
+
+def _merge_requirements(requirements, new_req):
+  # type: (List[packaging.requirements.Requirement], packaging.requirements.Requirement) -> None
+  """Merge a new requirement with a list.
+
+  If it exists in an identical form (name, marker) then the
+  specifiers and extras will be merged, otherwise it will be added.
+
+  If the environment markers are different it will assume that they
+  are mutually exclusive - entries will only be merged if identical, which
+  could cause problems with duplicate requirement entries if not filtered
+  by pass status later.
+
+  URL field is also not handled, as unsure how to merge these if they differ.
+
+  Args:
+    requirements (List[packaging.requirements.Requirement]): Existing.
+    new_req (packaging.requirements.Requirement): New requirement
+  """
+  assert new_req.url is None, "URL requirement fields not handled/tested"
+  matches = [
+    x
+    for x in requirements
+    if x.name == new_req.name
+    and x.marker == new_req.marker
+  ]
+  if len(matches) > 0:
+    if len(matches) > 1:
+      print("Warning: More than one match for requirement", new_req, ": ", matches)
+    match = matches[0]
+  else:
+    match = None
+
+  if match:
+    match.specifier = match.specifier & new_req.specifier
+    match.modules = match.modules | new_req.modules
+    match.extras = match.extras | new_req.extras
+  else:
+    requirements.append(new_req)
+
+def collate_python_requirements(modules):
+  # type: (List[libtbx.env_config.module]) -> List[packaging.requirements.Requirement]
+  """Combine python requirements from a module list.
+
+  An attempt will be made to merge any joint requirements. The requirement
+  objects will have an added property 'modules', which is a set of module
+  names that formed the requirement.
+
+  Attr:
+      modules (Iterable[libtbx.env_config.module]): The module list
+
+  Returns:
+      List[packaging.requirements.Requirement]: The merged requirements
+  """
+  requirements = []
+  for module, spec in itertools.chain(*[[(x.name, y) for y in x.python_required] for x in modules if hasattr(x, "python_required")]):
+    requirement = Requirement(spec)
+    # Track where dependencies came from
+    requirement.modules = {module}
+    # Attempt to merge this with any other requirements to avoid double-specifying
+    _merge_requirements(requirements, requirement)
+  return requirements
+
+def resolve_module_python_dependencies(modules):
+  # type: (List[libtbx.env_config.module]) -> None
+  """Resolve all python dependencies from the list of modules"""
+  # Check we can do anything here
+  if Requirement is None:
+    _notice("  WARNING: Can not find package requirements tools - pip/setuptools out of date?",
+            "  Please update pip and setuptools by running:", "",
+            "    libtbx.python -m pip install pip setuptools --upgrade", "",
+            "  or following the instructions at https://pip.pypa.io/en/stable/installing/")
+    return
+  requirements = collate_python_requirements(modules)
+  # Now we should have an unduplicated set of requirements
+  for requirement in requirements:
+    # Pass everything as the requirement string rather than trying to reconstruct
+    result = require(str(requirement), "")

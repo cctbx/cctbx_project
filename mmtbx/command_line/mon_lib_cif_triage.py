@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import cif_triage
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, Usage
@@ -12,7 +12,7 @@ def run(args, command_name=libtbx.env.dispatcher_name):
     obj_count = cif_triage.check_comp(file_name=file_name)
     if (obj_count == 0):
       raise Sorry("No data found in file: %s" % show_string(file_name))
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

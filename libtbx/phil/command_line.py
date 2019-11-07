@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import libtbx.phil
 from libtbx.utils import Sorry, format_exception
 import os
+from six.moves import zip
 op = os.path
 
 class argument_interpreter(object):

@@ -1,9 +1,9 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import absolute_import, division, print_function
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 03/06/2019
+Last Changed: 10/31/2019
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -151,7 +151,7 @@ class ObjectReader():
     finished_objects = info.get_finished_objects_from_file()
     if finished_objects:
       analyzer = Analyzer(info=info, gui_mode=True)
-      stats_OK = analyzer.get_results(finished_objects=finished_objects)
+      stats_OK = analyzer.run_get_results(finished_objects=finished_objects)
       if stats_OK:
         return analyzer.info
     return None
@@ -197,11 +197,12 @@ class ImageFinderThread(Thread):
   def run(self):
     # Poll filesystem and determine which files are new (if any)
 
-    ext_file_list = ginp.make_input_list(self.input,
-                                         filter=True,
+    ext_file_list, _ = ginp.make_input_list(self.input,
+                                         filter_results=True,
                                          filter_type='image',
                                          min_back=self.min_back,
-                                         last=self.last_file)
+                                         last=self.last_file,
+                                         expand_multiple=True)
     new_input_list = list(set(ext_file_list) - set(self.input_list))
 
     if self.back_to_thread:
@@ -229,9 +230,9 @@ class ObjectFinderThread(Thread):
       last = self.last_object.obj_file
     else:
       last = None
-    object_files = ginp.get_file_list(self.object_folder,
-                                      ext_only='int',
-                                      last=last)
+    object_files, _ = ginp.get_input_from_folder(self.object_folder,
+                                              ext_only='int',
+                                              last=last)
     new_objects = [self.read_object_file(i) for i in object_files]
     new_finished_objects = [i for i in new_objects if i is not None]
 
@@ -305,7 +306,7 @@ class PRIMEThread(Thread):
       self.best_uc = [float(i) for i in uc_params]
 
     # Only run PRIME if both pg and uc are provided
-    if (self.best_pg and self.best_uc):
+    if self.best_pg and self.best_uc:
       from iota.components.iota_analysis import Analyzer
 
       # Create a file with list of integrated pickles (overwrite old file)
@@ -315,10 +316,9 @@ class PRIMEThread(Thread):
 
       # Create PRIME input file
       analyzer = Analyzer(info=self.info, params=self.params)
-
       analyzer.prime_data_path = int_pickles_file
-      analyzer.cons_pg = self.best_pg
-      analyzer.cons_uc = self.best_uc
+      analyzer.best_pg = self.best_pg
+      analyzer.best_uc = self.best_uc
 
       prime_phil = analyzer.make_prime_input(filename='live_prime.phil',
                                              run_zero=True)
@@ -373,7 +373,6 @@ class PRIMEThread(Thread):
 
     return prime_info
 
-
   def abort(self):
     # TODO: put in an LSF kill command
     if hasattr(self, 'job'):
@@ -404,9 +403,6 @@ class PRIMEThread(Thread):
         self.job.run()
         prime_info = self.get_prime_stats()
       except Exception as e:
-        import traceback
-        traceback.print_exc()
-
         print ("LIVE PRIME ERROR: ", e)
         prime_info = None
 
@@ -913,7 +909,7 @@ class InterceptorThread(Thread):
             info_line = [float(i) for i in uc]
             info_line.append(item[3])
             input.append(info_line)
-          except ValueError, e:
+          except ValueError as e:
             print ('CLUSTER ERROR: ', e)
             pass
 
@@ -923,11 +919,12 @@ class InterceptorThread(Thread):
         self.cluster_info = cluster_thread.run(iterable=input)
 
   def find_new_images(self, min_back=None, last_file=None):
-    found_files = ginp.make_input_list([self.data_folder],
-                                       filter=True,
+    found_files, _ = ginp.make_input_list([self.data_folder],
+                                       filter_results=True,
                                        filter_type='image',
                                        last=last_file,
-                                       min_back=min_back)
+                                       min_back=min_back,
+                                       expand_multiple=True)
 
     # Sometimes duplicate files are found anyway; clean that up
     found_files = list(set(found_files) - set(self.data_list))
@@ -981,12 +978,15 @@ class ClusterWorkThread():
   def run(self, iterable):
 
     # with Capturing() as junk_output:
+    errors = []
     try:
       ucs = Cluster.from_iterable(iterable=iterable)
       clusters, _ = ucs.ab_cluster(5000, log=False, write_file_lists=False,
                                    schnell=True, doplot=False)
-    except Exception:
+    except Exception as e:
+      print ('IOTA ERROR (CLUSTERING): ', e)
       clusters = []
+      errors.append(str(e))
 
     info = []
     if clusters:
@@ -1007,7 +1007,8 @@ class ClusterWorkThread():
                         'uc': uc_no_stdev}
         info.append(cluster_info)
 
-    return info
+    return info, errors
+
 
 class ClusterThread(Thread):
   """ Basic spotfinder (with defaults) that could be used to rapidly analyze
@@ -1024,11 +1025,11 @@ class ClusterThread(Thread):
     self.clustering.abort = True
 
   def run(self):
-    clusters = self.clustering.run(iterable=self.iterable)
+    clusters, errors = self.clustering.run(iterable=self.iterable)
 
     if clusters:
       clusters = sorted(clusters, key=lambda i: i['number'], reverse=True)
-    evt = SpotFinderOneDone(tp_EVT_CLUSTERDONE, -1, info=clusters)
+    evt = SpotFinderOneDone(tp_EVT_CLUSTERDONE, -1, info=[clusters, errors])
     wx.PostEvent(self.parent, evt)
 
 

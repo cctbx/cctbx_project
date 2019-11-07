@@ -1,10 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 
@@ -46,4 +46,4 @@ def test_spacegroup_tidy_pickling():
 
 if (__name__ == "__main__"):
   test_spacegroup_tidy_pickling()
-  print "OK"
+  print("OK")

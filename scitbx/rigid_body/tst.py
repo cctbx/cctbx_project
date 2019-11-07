@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.rigid_body.essence
 from scitbx.rigid_body.essence import tst_tardy
 from scitbx.graph import test_cases_tardy_pdb
@@ -7,8 +7,9 @@ from scitbx import matrix
 from libtbx.test_utils import \
   approx_equal, is_above_limit, is_below_limit, Exception_expected
 from libtbx.utils import format_cpu_times
+from six.moves import range
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 import random
@@ -32,7 +33,7 @@ def exercise_joint_lib_six_dof_aja_simplified():
   assert len(tm.bodies) == 1
   assert tm.q_packed_size == 7
   mt = flex.mersenne_twister(seed=0)
-  for i_trial in xrange(3):
+  for i_trial in range(3):
     q = mt.random_double(size=tm.q_packed_size)*2-1
     tm.unpack_q(q_packed=q)
     sm = tm.sites_moved()
@@ -179,7 +180,7 @@ def compare_essence_and_fast_tardy_models(
   assert approx_equal(e, f)
   try:
     ftm.reset_e_kin(e_kin_target=1, e_kin_epsilon=0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("e_kin_epsilon > 0") > 0
   else: raise Exception_expected
   etm.assign_zero_velocities()
@@ -204,7 +205,7 @@ def compare_essence_and_fast_tardy_models(
     tau_rand_array.append(matrix.col(
       mt.random_double(size=body.joint.degrees_of_freedom)*2-1))
   f_ext_rand_array = []
-  for ib in xrange(len(etm.bodies)):
+  for ib in range(len(etm.bodies)):
     f_ext_rand_array.append(matrix.col(
       mt.random_double(size=6)*2-1))
   grav_accn_rand = matrix.col(mt.random_double(size=6)*2-1)
@@ -460,7 +461,7 @@ def exercise_pickle():
     result.unpack_q(etm.pack_q())
     result.unpack_qd(etm.pack_qd())
     return result
-  for protocol in xrange(pickle.HIGHEST_PROTOCOL):
+  for protocol in range(pickle.HIGHEST_PROTOCOL):
     ftm1 = etm_as_ftm_with_q_qd()
     s = pickle.dumps(etm_as_ftm_with_q_qd(), protocol)
     ftm2 = pickle.loads(s)
@@ -478,7 +479,7 @@ def run(args):
   exercise_with_test_cases_tardy_pdb()
   exercise_fixed_vertices()
   exercise_pickle()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

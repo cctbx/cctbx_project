@@ -1,5 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
+import six
+from six.moves import zip
 
 try:
   import MySQLdb
@@ -30,9 +32,9 @@ def get_db_connection(params, block=True):
       retry_count += 1
       if not block: raise e
       if "Too many connections" in str(e):
-        print "Too many connections, retry", retry_count
+        print("Too many connections, retry", retry_count)
       elif  "Can't connect to MySQL server" in str(e):
-        print "Couldn't connect to MYSQL, retry", retry_count
+        print("Couldn't connect to MYSQL, retry", retry_count)
       else:
         raise e
       import time
@@ -52,7 +54,7 @@ class db_proxy(object):
       query = "INSERT INTO `%s` " % self.table_name
       keys = []
       vals = []
-      for key, value in kwargs.iteritems():
+      for key, value in six.iteritems(kwargs):
         assert key in app.columns_dict[table_name]
         keys.append(key)
         self._db_dict[key] = value
@@ -88,7 +90,7 @@ class db_proxy(object):
     # Called if the property is not found
     assert hasattr(self, '_db_dict')
     if key not in self._db_dict:
-      print self.table_name, key, 'error!', self._db_dict
+      print(self.table_name, key, 'error!', self._db_dict)
       raise AttributeError(key)
 
     return self._db_dict[key]

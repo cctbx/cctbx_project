@@ -1,7 +1,6 @@
-from __future__ import division
-import exceptions
+from __future__ import absolute_import, division, print_function
 
-class SmallUnitCellVolume(exceptions.Exception): pass
+class SmallUnitCellVolume(Exception): pass
 
 # cutoff=25.0 Angstrom-cubed is the smallest conceivable unit cell for any
 # crystal.  Cells with smaller volume are assumed to have two parallel

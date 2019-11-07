@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from cctbx import miller
@@ -12,7 +12,7 @@ def show(histogram):
   s_1 = enumerate(histogram.slots())
   for (i_1,n_1) in s_1:
     hc_1 = h_1.data_min() + h_1.slot_width() * (i_1+1)
-    print "%8.3f - %8.3f: %5d" % (lc_1,hc_1,n_1)
+    print("%8.3f - %8.3f: %5d" % (lc_1,hc_1,n_1))
     lc_1 = hc_1
 
 class target_and_gradients(object):

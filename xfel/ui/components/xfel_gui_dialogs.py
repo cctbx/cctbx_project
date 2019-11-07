@@ -1,5 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
+import six
 
 '''
 Author      : Lyubimov, A.Y.
@@ -139,12 +140,15 @@ class SettingsDialog(BaseDialog):
     self.main_sizer.Add(self.facility_sizer, flag=wx.EXPAND | wx.ALL)
 
     # Experiment name control
+    experiment = None
+    if self.params.facility.name == 'lcls': experiment = self.params.facility.lcls.experiment
+    if experiment is None: experiment = ''
     self.experiment = gctr.TextButtonCtrl(self,
                                           label='Experiment',
                                           label_style='bold',
                                           label_size=(150, -1),
                                           big_button_size=(130, -1),
-                                          value=self.params.facility.lcls.experiment)
+                                          value=experiment)
     self.main_sizer.Add(self.experiment,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
@@ -206,7 +210,7 @@ class SettingsDialog(BaseDialog):
     self.setup_facility_options()
 
   def setup_facility_options(self):
-    if self.params.facility.name == 'lcls':
+    if self.params.facility.name in ['lcls']:
       self.experiment.Enable()
     else:
       self.experiment.Disable()
@@ -245,12 +249,12 @@ class SettingsDialog(BaseDialog):
 
       self.drop_tables = creds.chk_drop_tables.GetValue()
 
-
   def onOK(self, e):
     self.params.facility.name = self.facility.ctr.GetStringSelection().lower()
     self.params.experiment_tag = self.db_cred.ctr.GetValue()
-    self.params.facility.lcls.experiment = self.experiment.ctr.GetValue()
     self.params.output_folder = self.output.ctr.GetValue()
+    if self.params.facility.name == 'lcls':
+      self.params.facility.lcls.experiment = self.experiment.ctr.GetValue()
     e.Skip()
 
 
@@ -448,7 +452,7 @@ class StandaloneOptions(BaseDialog):
 
     self.SetSizer(self.main_sizer)
 
-    # Raw image option
+    # Raw image options
     self.monitor_for = gctr.RadioCtrl(self,
                                       label='Monitor for',
                                       label_style='bold',
@@ -460,11 +464,43 @@ class StandaloneOptions(BaseDialog):
 
     self.main_sizer.Add(self.monitor_for, flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.folders_options = gctr.RadioCtrl(self,
+                                          label='Run complete criteria',
+                                          label_style='bold',
+                                          label_size=(-1, -1),
+                                          direction='horizontal',
+                                          items={'status_file':'Status file',
+                                            'n_files':'Number of files'})
+    getattr(self.folders_options, self.params.facility.standalone.folders.method).SetValue(1)
+
+    self.main_sizer.Add(self.folders_options, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.n_files_needed = gctr.TextButtonCtrl(self,
+                                              label='Number of files per run',
+                                              label_style='normal',
+                                              label_size=(-1, -1),
+                                              value=str(self.params.facility.standalone.folders.n_files_needed))
+    self.main_sizer.Add(self.n_files_needed, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.last_modified = gctr.TextButtonCtrl(self,
+                                             label='Minimum time since last modified\n(in seconds)',
+                                             label_style='normal',
+                                             label_size=(-1, -1),
+                                             value=str(self.params.facility.standalone.files.last_modified))
+    self.main_sizer.Add(self.last_modified, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.minimum_file_size = gctr.TextButtonCtrl(self,
+                                             label='Minimum file size\n(in bytes)',
+                                             label_style='normal',
+                                             label_size=(-1, -1),
+                                             value=str(self.params.facility.standalone.files.minimum_file_size))
+    self.main_sizer.Add(self.minimum_file_size, flag=wx.EXPAND | wx.ALL, border=10)
+
     # File matching template control
     if self.params.facility.standalone.template is None:
       self.params.facility.standalone.template = ''
     self.template = gctr.TextButtonCtrl(self,
-                                          label='File matching template (example *.h5)',
+                                          label='File matching template\n(example *.h5)',
                                           label_style='bold',
                                           label_size=(300, -1),
                                           value=self.params.facility.standalone.template)
@@ -490,13 +526,26 @@ class StandaloneOptions(BaseDialog):
 
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
     self.Bind(wx.EVT_BUTTON, self.onBrowse, id=self.data_dir.btn_big.GetId())
+    self.Bind(wx.EVT_RADIOBUTTON, self.onOptionsChanged, self.monitor_for.files)
+    self.Bind(wx.EVT_RADIOBUTTON, self.onOptionsChanged, self.monitor_for.folders)
+    self.Bind(wx.EVT_RADIOBUTTON, self.onOptionsChanged, self.folders_options.status_file)
+    self.Bind(wx.EVT_RADIOBUTTON, self.onOptionsChanged, self.folders_options.n_files)
+    self.Bind(wx.EVT_CHECKBOX, self.onOptionsChanged, self.chk_composite)
+    self.update_options()
 
   def onOK(self, e):
     self.params.facility.standalone.data_dir = self.data_dir.ctr.GetValue()
     if self.monitor_for.files.GetValue():
       self.params.facility.standalone.monitor_for = 'files'
+      self.params.facility.standalone.files.last_modified = float(self.last_modified.ctr.GetValue())
+      self.params.facility.standalone.files.minimum_file_size = int(self.minimum_file_size.ctr.GetValue())
     else:
       self.params.facility.standalone.monitor_for = 'folders'
+    if self.folders_options.status_file.GetValue():
+      self.params.facility.standalone.folders.method = 'status_file'
+    elif self.folders_options.n_files.GetValue():
+      self.params.facility.standalone.folders.method = 'n_files'
+      self.params.facility.standalone.folders.n_files_needed = int(self.n_files_needed.ctr.GetValue())
     self.params.facility.standalone.template = self.template.ctr.GetValue()
     self.params.facility.standalone.composite_files = self.chk_composite.GetValue()
     e.Skip()
@@ -508,6 +557,24 @@ class StandaloneOptions(BaseDialog):
     if dlg.ShowModal() == wx.ID_OK:
       self.data_dir.ctr.SetValue(dlg.GetPath())
     dlg.Destroy()
+
+  def onOptionsChanged(self, e):
+    self.update_options()
+
+  def update_options(self):
+    if self.monitor_for.files.GetValue():
+      self.folders_options.Disable()
+      self.n_files_needed.Disable()
+      self.last_modified.Enable()
+      self.minimum_file_size.Enable()
+    else:
+      self.folders_options.Enable()
+      if self.folders_options.status_file.GetValue():
+        self.n_files_needed.Disable()
+      else:
+        self.n_files_needed.Enable()
+      self.last_modified.Disable()
+      self.minimum_file_size.Disable()
 
 class AdvancedSettingsDialog(BaseDialog):
   ''' Advanced settings for the cctbx.xfel front end '''
@@ -524,7 +591,7 @@ class AdvancedSettingsDialog(BaseDialog):
     mp_box = wx.StaticBox(self, label='Multiprocessing Options')
     self.mp_sizer = wx.StaticBoxSizer(mp_box, wx.VERTICAL)
 
-    choices = ['python', 'lsf', 'mpi', 'sge', 'pbs', 'custom']
+    choices = ['local', 'lsf', 'mpi', 'sge', 'pbs', 'custom']
     self.mp_option = gctr.ChoiceCtrl(self,
                                      label='Multiprocessing:',
                                      label_size=(200, -1),
@@ -535,6 +602,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.mp_option.ctr.SetSelection(choices.index(params.mp.method))
     except ValueError:
       pass
+    self.Bind(wx.EVT_CHOICE, self.onMultiprocessingChoice, self.mp_option.ctr)
 
     if params.facility.name == 'lcls':
       # Queue
@@ -580,23 +648,25 @@ class AdvancedSettingsDialog(BaseDialog):
                                  ctrl_min=1,
                                  ctrl_max=1000)
       self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
-      self.nproc_per_node = gctr.SpinCtrl(self,
-                                          label='Number of processors per node:',
-                                          label_size=(240, -1),
-                                          label_style='normal',
-                                          ctrl_size=(100, -1),
-                                          ctrl_value='%d'%params.mp.nproc_per_node,
-                                          ctrl_min=1,
-                                          ctrl_max=1000)
-      self.mp_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
 
-      self.env_script = gctr.TextButtonCtrl(self,
-                                       label='Environment setup script:',
-                                       label_style='bold',
-                                       label_size=(200, -1),
-                                       value=self.params.mp.env_script[0] \
-                                             if len(params.mp.env_script) > 0 else '')
-      self.mp_sizer.Add(self.env_script, flag=wx.EXPAND | wx.ALL, border=10)
+    self.nproc_per_node = gctr.SpinCtrl(self,
+                                        label='Number of processors per node:',
+                                        label_size=(240, -1),
+                                        label_style='normal',
+                                        ctrl_size=(100, -1),
+                                        ctrl_value='%d'%params.mp.nproc_per_node,
+                                        ctrl_min=1,
+                                        ctrl_max=1000)
+    self.mp_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.env_script = gctr.TextButtonCtrl(self,
+                                     label='Environment setup script:',
+                                     label_style='bold',
+                                     label_size=(200, -1),
+                                     value=params.mp.env_script[0] \
+                                           if len(params.mp.env_script) > 0 and \
+                                           params.mp.env_script[0] is not None else '')
+    self.mp_sizer.Add(self.env_script, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -606,22 +676,22 @@ class AdvancedSettingsDialog(BaseDialog):
 
     # Processing back-ends
     self.dispatchers_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.back_ends = ['cctbx.xfel (XTC+CBF mode)', 'cctbx.xfel (XTC mode)', 'Ha14', 'Small cell', 'custom']
+    self.back_ends = ['cctbx.xfel (LCLS mode)', 'cctbx.xfel (standalone mode)', 'Ha14', 'Small cell', 'custom']
     self.dispatchers = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'cxi.xtc_process', 'cctbx.xfel.small_cell_process', 'custom']
     self.dispatcher_descriptions = [
-      'Process the data according to Brewster 2018, using DIALS for indexing, refinement and integration, with stills-specific defaults. Converts XTC into CBF in memory and optionally provides dumping of CBFs',
-      'Process the data according to Brewster 2018, using DIALS for indexing, refinement and integration, with stills-specific defaults. Reads XTC directly.',
+      'Process the data according to Brewster 2018, using DIALS for indexing, refinement and integration, with stills-specific defaults. Converts XTC into CBF in memory and optionally provides dumping of CBFs.',
+      'Process the data according to Brewster 2018, using DIALS for indexing, refinement and integration, with stills-specific defaults. Reads image files directly.',
       'Process the data according to Hattne 2014, using LABELIT for initial indexing and stills-specific refinement and integration code implemented in the package cctbx.rstbx.',
       'Process the data according to Brewster 2015, using small cell for initial indexing and using DIALS for refinement and integration, with stills-specific defaults.',
       'Provide a custom program. See authors for details.']
 
     self.back_end = gctr.ChoiceCtrl(self,
                                     label='Processing back end:',
-                                    label_size=(180, -1),
+                                    label_size=(240, -1),
                                     label_style='bold',
-                                    ctrl_size=(220, -1),
+                                    ctrl_size=(-1, -1),
                                     choices=self.back_ends)
-    self.Bind(wx.EVT_CHOICE, self.onBackendChoice)
+    self.Bind(wx.EVT_CHOICE, self.onBackendChoice, self.back_end.ctr)
     self.dispatchers_sizer.Add(self.back_end, flag=wx.ALIGN_LEFT)
 
     self.custom_dispatcher = gctr.TextCtrl(self,
@@ -642,20 +712,6 @@ class AdvancedSettingsDialog(BaseDialog):
     self.dispatcher_help.Wrap(600)
     self.analysis_sizer.Add(self.dispatcher_help, flag=wx.EXPAND | wx.ALL, border=10)
 
-    img_types = ['corrected', 'raw']
-    self.avg_img_type = gctr.ChoiceCtrl(self,
-                                        label='Avg. Image Type:',
-                                        label_size=(200, -1),
-                                        label_style='bold',
-                                        ctrl_size=(200, -1),
-                                        choices=img_types)
-    if params.average_raw_data:
-      i = img_types.index('raw')
-    else:
-      i = img_types.index('corrected')
-    self.avg_img_type.ctr.SetSelection(i)
-
-    self.analysis_sizer.Add(self.avg_img_type, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.analysis_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
@@ -667,6 +723,23 @@ class AdvancedSettingsDialog(BaseDialog):
     self.SetTitle('Advanced Settings')
 
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+    self.updateMultiprocessing()
+
+  def onMultiprocessingChoice(self, e):
+    self.updateMultiprocessing()
+
+  def updateMultiprocessing(self):
+    if self.mp_option.ctr.GetStringSelection() == 'local':
+      self.queue.Hide()
+      self.nproc_per_node.Hide()
+      self.env_script.Hide()
+    else:
+      self.queue.Show()
+      self.nproc_per_node.Show()
+      self.env_script.Show()
+    self.Layout()
+    self.Fit()
 
   def onQueueChoice(self, e):
     queue = self.queue.ctr.GetString(self.queue.ctr.GetSelection())
@@ -703,7 +776,6 @@ class AdvancedSettingsDialog(BaseDialog):
       self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
       self.params.mp.env_script = [self.env_script.ctr.GetValue()]
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())
-    self.params.average_raw_data = self.avg_img_type.ctr.GetStringSelection() == 'raw'
     e.Skip()
 
 class CalibrationDialog(BaseDialog):
@@ -868,8 +940,8 @@ class CalibrationDialog(BaseDialog):
     os.makedirs(working_dir)
     os.chdir(working_dir)
 
-    print "Submitting metrology refinement. Command:"
-    print command
+    print("Submitting metrology refinement. Command:")
+    print(command)
     try:
       results = easy_run.fully_buffered(command=command)
       results.show_stdout()
@@ -879,7 +951,7 @@ class CalibrationDialog(BaseDialog):
       if not "Warning: job being submitted without an AFS token." in str(exc):
         raise exc
     os.chdir(cwd)
-    print "Output will be in", working_dir
+    print("Output will be in", working_dir)
 
     e.Skip()
 
@@ -952,7 +1024,7 @@ class AveragingDialog(BaseDialog):
     from libtbx import easy_run
     raw = self.raw_toggle.raw.GetValue() == 1
     average_command = AveragingCommand(self.run, self.params, raw)()
-    print "executing", average_command
+    print("executing", average_command)
     result = easy_run.fully_buffered(command=average_command)
     result.show_stdout()
     e.Skip()
@@ -1141,7 +1213,7 @@ class MultiRunTagDialog(BaseDialog):
       if r.run in run_numbers_selected:
         self.selected[r.run] = [r]
     for b in self.parent.all_tag_buttons:
-      if b.run.run in self.selected.keys():
+      if b.run.run in self.selected:
         self.selected[b.run.run].append(b)
 
   def onSortDefault(self, e):
@@ -1332,7 +1404,7 @@ class TagDialog(BaseDialog):
             self.db.create_tag(name=item[1].m_text, comment=item[2].m_text)
 
     except Exception as exception:
-      print str(exception)
+      print(str(exception))
 
     e.Skip()
 
@@ -1351,7 +1423,8 @@ class RunBlockDialog(BaseDialog):
     self.block = block
     self.all_blocks = []
     self.db = db
-    self.use_ids = db.params.facility.name != 'lcls'
+    self.use_ids = db.params.facility.name not in ['lcls']
+    self.is_lcls = db.params.facility.name == 'lcls'
 
     all_runs = db.get_all_runs()
     if self.use_ids:
@@ -1423,10 +1496,11 @@ class RunBlockDialog(BaseDialog):
 
     # Run block start / end points (choice widgets)
 
-    self.config_panel = wx.Panel(self)
-    config_box = wx.StaticBox(self.config_panel, label='Configuration')
-    self.config_sizer = wx.StaticBoxSizer(config_box)
-    self.config_panel.SetSizer(self.config_sizer)
+    if self.is_lcls:
+      self.config_panel = wx.Panel(self)
+      config_box = wx.StaticBox(self.config_panel, label='Configuration')
+      self.config_sizer = wx.StaticBoxSizer(config_box)
+      self.config_panel.SetSizer(self.config_sizer)
 
     self.phil_panel = wx.Panel(self)
     phil_box = wx.StaticBox(self.phil_panel, label='Extra phil parameters')
@@ -1439,16 +1513,17 @@ class RunBlockDialog(BaseDialog):
     self.runblock_sizer = wx.BoxSizer(wx.VERTICAL)
     self.runblock_panel.SetSizer(self.runblock_sizer)
 
-    # Configuration text ctrl (user can put in anything they want)
-    self.config = gctr.PHILBox(self.config_panel,
-                               btn_import=True,
-                               btn_import_label='Import Config',
-                               btn_export=False,
-                               btn_default=True,
-                               btn_default_label='Default Config',
-                               ctr_size=(-1, 100),
-                               ctr_value=str(block.config_str))
-    self.config_sizer.Add(self.config, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    if self.is_lcls:
+      # Configuration text ctrl (user can put in anything they want)
+      self.config = gctr.PHILBox(self.config_panel,
+                                 btn_import=True,
+                                 btn_import_label='Import Config',
+                                 btn_export=False,
+                                 btn_default=True,
+                                 btn_default_label='Default Config',
+                                 ctr_size=(-1, 100),
+                                 ctr_value=str(block.config_str))
+      self.config_sizer.Add(self.config, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Extra phil
     self.phil = gctr.PHILBox(self.phil_panel,
@@ -1462,20 +1537,21 @@ class RunBlockDialog(BaseDialog):
     self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Image format choice
-    if self.parent.trial.app.params.dispatcher == "cxi.xtc_process":
-      image_choices = ['pickle']
-    else:
-      image_choices = ['cbf','pickle']
-    self.img_format = gctr.ChoiceCtrl(self.runblock_panel,
-                                      label='Image Format:',
-                                      label_size=(100, -1),
-                                      ctrl_size=(150, -1),
-                                      choices=image_choices)
-    try:
-      self.img_format.ctr.SetSelection(image_choices.index(block.format))
-    except Exception:
-      pass #in case of selecting an unavailable default
-    self.runblock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
+    if self.is_lcls:
+      if self.parent.trial.app.params.dispatcher == "cxi.xtc_process":
+        image_choices = ['pickle']
+      else:
+        image_choices = ['cbf','pickle']
+      self.img_format = gctr.ChoiceCtrl(self.runblock_panel,
+                                        label='Image Format:',
+                                        label_size=(100, -1),
+                                        ctrl_size=(150, -1),
+                                        choices=image_choices)
+      try:
+        self.img_format.ctr.SetSelection(image_choices.index(block.format))
+      except Exception:
+        pass #in case of selecting an unavailable default
+      self.runblock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
 
     self.start_stop_sizer = wx.FlexGridSizer(1, 3, 60, 20)
 
@@ -1505,33 +1581,41 @@ class RunBlockDialog(BaseDialog):
                                    (self.end_type)])
     self.runblock_sizer.Add(self.start_stop_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
-    # Detector address
-    self.address = gctr.TextButtonCtrl(self.runblock_panel,
-                                       label='Detector Address:',
-                                       label_style='bold',
-                                       label_size=(100, -1),
-                                       value=block.detector_address)
-    self.runblock_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
+    if self.is_lcls:
+      # Detector address
+      self.address = gctr.TextButtonCtrl(self.runblock_panel,
+                                         label='Detector Address:',
+                                         label_style='bold',
+                                         label_size=(100, -1),
+                                         value=block.detector_address)
+      self.runblock_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
 
 
-    # Beam XYZ (X, Y - pickle only)
-    self.beam_xyz = gctr.OptionCtrl(self.runblock_panel,
-                                    label='Beam:',
-                                    label_style='bold',
-                                    label_size=(100, -1),
-                                    ctrl_size=(60, -1),
-                                    items=[('X', block.beamx),
-                                           ('Y', block.beamy),
-                                           ('DetZ', block.detz_parameter)])
-    self.runblock_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
+      # Beam XYZ (X, Y - pickle only)
+      self.beam_xyz = gctr.OptionCtrl(self.runblock_panel,
+                                      label='Beam:',
+                                      label_style='bold',
+                                      label_size=(100, -1),
+                                      ctrl_size=(60, -1),
+                                      items=[('X', block.beamx),
+                                             ('Y', block.beamy),
+                                             ('DetZ', block.detz_parameter)])
+      self.runblock_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Binning, energy, gain mask level
-    self.bin_nrg_gain = gctr.OptionCtrl(self.runblock_panel,
-                                        ctrl_size=(80, -1),
-                                        items=[('binning', block.binning),
-                                               ('energy', block.energy),
-                                               ('gain_mask_level', block.gain_mask_level)])
-    self.runblock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
+    if self.is_lcls:
+      self.bin_nrg_gain = gctr.OptionCtrl(self.runblock_panel,
+                                          ctrl_size=(80, -1),
+                                          items=[('binning', block.binning),
+                                                 ('energy', block.energy),
+                                                 ('gain_mask_level', block.gain_mask_level)])
+      self.runblock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
+    else:
+      self.energy = gctr.TextButtonCtrl(self.runblock_panel,
+                                        label='Energy override',
+                                        label_size=(150, -1))
+      self.energy.ctr.SetValue(str(block.energy))
+      self.runblock_sizer.Add(self.energy, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Two theta values for droplet hit finding
     self.two_thetas = gctr.OptionCtrl(self.runblock_panel,
@@ -1545,51 +1629,52 @@ class RunBlockDialog(BaseDialog):
     self.untrusted_path = gctr.TextButtonCtrl(self.runblock_panel,
                                               label='Untrusted Pixel Mask:',
                                               label_style='normal',
-                                              label_size=(100, -1),
+                                              label_size=(180, -1),
                                               big_button=True,
                                               value=str(block.untrusted_pixel_mask_path))
     self.runblock_sizer.Add(self.untrusted_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
-    # Calibration folder
-    self.calib_dir = gctr.TextButtonCtrl(self.runblock_panel,
-                                         label='Calibration:',
-                                         label_style='normal',
-                                         label_size=(100, -1),
-                                         big_button=True,
-                                         value=str(block.calib_dir))
-    self.runblock_sizer.Add(self.calib_dir, flag=wx.EXPAND | wx.ALL,
-                            border=10)
+    if self.is_lcls:
+      # Calibration folder
+      self.calib_dir = gctr.TextButtonCtrl(self.runblock_panel,
+                                           label='Calibration:',
+                                           label_style='normal',
+                                           label_size=(100, -1),
+                                           big_button=True,
+                                           value=str(block.calib_dir))
+      self.runblock_sizer.Add(self.calib_dir, flag=wx.EXPAND | wx.ALL,
+                              border=10)
 
-    # Dark average path (pickle only)
-    self.dark_avg_path = gctr.TextButtonCtrl(self.runblock_panel,
-                                             label='Dark Average:',
-                                             label_style='normal',
-                                             label_size=(100, -1),
-                                             big_button=True,
-                                             value=str(block.dark_avg_path))
-    self.runblock_sizer.Add(self.dark_avg_path, flag=wx.EXPAND | wx.ALL,
-                            border=10)
+      # Dark average path (pickle only)
+      self.dark_avg_path = gctr.TextButtonCtrl(self.runblock_panel,
+                                               label='Dark Average:',
+                                               label_style='normal',
+                                               label_size=(100, -1),
+                                               big_button=True,
+                                               value=str(block.dark_avg_path))
+      self.runblock_sizer.Add(self.dark_avg_path, flag=wx.EXPAND | wx.ALL,
+                              border=10)
 
-    # Dark stddev path (pickle only)
-    self.dark_stddev_path = gctr.TextButtonCtrl(self.runblock_panel,
-                                                label='Dark StdDev:',
-                                                label_style='normal',
-                                                label_size=(100, -1),
-                                                big_button=True,
-                                                value=str(block.dark_stddev_path))
-    self.runblock_sizer.Add(self.dark_stddev_path, flag=wx.EXPAND | wx.ALL,
-                            border=10)
+      # Dark stddev path (pickle only)
+      self.dark_stddev_path = gctr.TextButtonCtrl(self.runblock_panel,
+                                                  label='Dark StdDev:',
+                                                  label_style='normal',
+                                                  label_size=(100, -1),
+                                                  big_button=True,
+                                                  value=str(block.dark_stddev_path))
+      self.runblock_sizer.Add(self.dark_stddev_path, flag=wx.EXPAND | wx.ALL,
+                              border=10)
 
-    # Dark map path (pickle only)
-    self.gain_map_path = gctr.TextButtonCtrl(self.runblock_panel,
-                                             label='Gain Map:',
-                                             label_style='normal',
-                                             label_size=(100, -1),
-                                             big_button=True,
-                                             value=str(block.gain_map_path))
-    self.runblock_sizer.Add(self.gain_map_path, flag=wx.EXPAND | wx.ALL,
-                            border=10)
+      # Dark map path (pickle only)
+      self.gain_map_path = gctr.TextButtonCtrl(self.runblock_panel,
+                                               label='Gain Map:',
+                                               label_style='normal',
+                                               label_size=(100, -1),
+                                               big_button=True,
+                                               value=str(block.gain_map_path))
+      self.runblock_sizer.Add(self.gain_map_path, flag=wx.EXPAND | wx.ALL,
+                              border=10)
 
     # Comment
     self.comment = gctr.TextButtonCtrl(self.runblock_panel,
@@ -1601,7 +1686,8 @@ class RunBlockDialog(BaseDialog):
                             border=10)
 
     self.main_sizer.Add(self.phil_panel, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.config_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    if self.is_lcls:
+      self.main_sizer.Add(self.config_panel, flag=wx.EXPAND | wx.ALL, border=10)
     self.runblock_box_sizer.Add(self.runblock_panel)
     self.main_sizer.Add(self.runblock_box_sizer, flag=wx.EXPAND | wx.ALL,
                         border=10)
@@ -1614,26 +1700,27 @@ class RunBlockDialog(BaseDialog):
 
     self.Bind(wx.EVT_RADIOBUTTON, self.onAutoEnd, self.end_type.auto)
     self.Bind(wx.EVT_RADIOBUTTON, self.onSpecifyEnd, self.end_type.specify)
-    self.Bind(wx.EVT_BUTTON, self.onDarkAvgBrowse,
-              id=self.dark_avg_path.btn_big.GetId())
-    self.Bind(wx.EVT_BUTTON, self.onImportConfig, self.config.btn_import)
-    self.Bind(wx.EVT_BUTTON, self.onDefaultConfig, self.config.btn_default)
     self.Bind(wx.EVT_BUTTON, self.onImportPhil, self.phil.btn_import)
-    self.Bind(wx.EVT_BUTTON, self.onDarkMapBrowse,
-              id=self.gain_map_path.btn_big.GetId())
-    self.Bind(wx.EVT_BUTTON, self.onDarkStdBrowse,
-              id=self.dark_stddev_path.btn_big.GetId())
-    self.Bind(wx.EVT_BUTTON, self.onCalibDirBrowse,
-              id=self.calib_dir.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onUntrustedBrowse,
               id=self.untrusted_path.btn_big.GetId())
-    self.Bind(wx.EVT_CHOICE, self.onImageFormat, id=self.img_format.ctr.GetId())
+    if self.is_lcls:
+      self.Bind(wx.EVT_BUTTON, self.onDarkAvgBrowse,
+                id=self.dark_avg_path.btn_big.GetId())
+      self.Bind(wx.EVT_BUTTON, self.onImportConfig, self.config.btn_import)
+      self.Bind(wx.EVT_BUTTON, self.onDefaultConfig, self.config.btn_default)
+      self.Bind(wx.EVT_BUTTON, self.onDarkMapBrowse,
+                id=self.gain_map_path.btn_big.GetId())
+      self.Bind(wx.EVT_BUTTON, self.onDarkStdBrowse,
+                id=self.dark_stddev_path.btn_big.GetId())
+      self.Bind(wx.EVT_BUTTON, self.onCalibDirBrowse,
+                id=self.calib_dir.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
 
     self.fill_in_fields()
     self.configure_controls()
     self.Layout()
+    self.runblock_panel.SetupScrolling()
     self.SetTitle('Run Block Settings')
 
   def onAutoEnd(self, e):
@@ -1683,7 +1770,7 @@ class RunBlockDialog(BaseDialog):
       assert first > 0 and first >= self.first_avail
       self.first_run = first
     except (ValueError, AssertionError) as e:
-      print "Please select a run between %d and %d." % (self.first_avail, self.last_avail)
+      print("Please select a run between %d and %d." % (self.first_avail, self.last_avail))
       raise e
     if self.end_type.specify.GetValue() == 1:
       try:
@@ -1691,7 +1778,7 @@ class RunBlockDialog(BaseDialog):
         assert last > 0 and last <= self.last_avail and last >= first
         self.last_run = last
       except (ValueError, AssertionError) as e:
-        print "Please select a run between %d and %d." % (self.first_run, self.last_avail)
+        print("Please select a run between %d and %d." % (self.first_run, self.last_avail))
         raise e
     elif self.end_type.specify.GetValue() == 0:
       self.last_run = None
@@ -1701,25 +1788,30 @@ class RunBlockDialog(BaseDialog):
 
     rg_dict = dict(active=True,
                    open=rg_open,
-                   format=self.img_format.ctr.GetStringSelection(),
-                   config_str=self.config.ctr.GetValue(),
                    extra_phil_str=self.phil.ctr.GetValue(),
-                   detector_address=self.address.ctr.GetValue(),
-                   detz_parameter=self.beam_xyz.DetZ.GetValue(),
-                   beamx=self.beam_xyz.X.GetValue(),
-                   beamy=self.beam_xyz.Y.GetValue(),
-                   binning=self.bin_nrg_gain.binning.GetValue(),
-                   energy=self.bin_nrg_gain.energy.GetValue(),
                    untrusted_pixel_mask_path=self.untrusted_path.ctr.GetValue(),
-                   dark_avg_path=self.dark_avg_path.ctr.GetValue(),
-                   dark_stddev_path=self.dark_stddev_path.ctr.GetValue(),
-                   gain_map_path=self.gain_map_path.ctr.GetValue(),
-                   gain_mask_level=self.bin_nrg_gain.gain_mask_level.GetValue(),
-                   calib_dir=self.calib_dir.ctr.GetValue(),
                    two_theta_low=self.two_thetas.two_theta_low.GetValue(),
                    two_theta_high=self.two_thetas.two_theta_high.GetValue(),
                    comment=self.comment.ctr.GetValue())
-    for key, value in rg_dict.iteritems():
+
+    if self.is_lcls:
+      rg_dict['detz_parameter']=self.beam_xyz.DetZ.GetValue()
+      rg_dict['beamx']=self.beam_xyz.X.GetValue()
+      rg_dict['beamy']=self.beam_xyz.Y.GetValue()
+      rg_dict['format']=self.img_format.ctr.GetStringSelection()
+      rg_dict['energy']=self.bin_nrg_gain.energy.GetValue()
+      rg_dict['dark_avg_path']=self.dark_avg_path.ctr.GetValue()
+      rg_dict['dark_stddev_path']=self.dark_stddev_path.ctr.GetValue()
+      rg_dict['gain_map_path']=self.gain_map_path.ctr.GetValue()
+      rg_dict['gain_mask_level']=self.bin_nrg_gain.gain_mask_level.GetValue()
+      rg_dict['calib_dir']=self.calib_dir.ctr.GetValue()
+      rg_dict['binning']=self.bin_nrg_gain.binning.GetValue()
+      rg_dict['detector_address']=self.address.ctr.GetValue()
+      rg_dict['config_str']=self.config.ctr.GetValue()
+    else:
+      rg_dict['energy']=self.energy.ctr.GetValue()
+
+    for key, value in six.iteritems(rg_dict):
       if str(value) == 'None' or str(value) == '':
         rg_dict[key] = None
       elif type(value) == bool:
@@ -1764,50 +1856,26 @@ class RunBlockDialog(BaseDialog):
     ''' If previous rungroups exist in trial, fill in fields in nascent block '''
     if len(self.all_blocks) > 0:
       last = self.all_blocks[-1]
-      self.config.ctr.SetValue(str(last.config_str))
       self.phil.ctr.SetValue(str(last.extra_phil_str))
-      self.address.ctr.SetValue(str(last.detector_address))
-      self.beam_xyz.DetZ.SetValue(str(last.detz_parameter))
-      self.beam_xyz.X.SetValue(str(last.beamx))
-      self.beam_xyz.Y.SetValue(str(last.beamy))
-      self.bin_nrg_gain.binning.SetValue(str(last.binning))
-      self.bin_nrg_gain.energy.SetValue(str(last.energy))
-      self.bin_nrg_gain.gain_mask_level.SetValue(str(last.gain_mask_level))
+      if self.is_lcls:
+        self.address.ctr.SetValue(str(last.detector_address))
+        self.config.ctr.SetValue(str(last.config_str))
+        self.beam_xyz.DetZ.SetValue(str(last.detz_parameter))
+        self.beam_xyz.X.SetValue(str(last.beamx))
+        self.beam_xyz.Y.SetValue(str(last.beamy))
+        self.bin_nrg_gain.binning.SetValue(str(last.binning))
+        self.bin_nrg_gain.energy.SetValue(str(last.energy))
+        self.bin_nrg_gain.gain_mask_level.SetValue(str(last.gain_mask_level))
+        self.dark_avg_path.ctr.SetValue(str(last.dark_avg_path))
+        self.dark_stddev_path.ctr.SetValue(str(last.dark_stddev_path))
+        self.gain_map_path.ctr.SetValue(str(last.gain_map_path))
+        self.calib_dir.ctr.SetValue(str(last.calib_dir))
       self.two_thetas.two_theta_low.SetValue(str(last.two_theta_low))
       self.two_thetas.two_theta_high.SetValue(str(last.two_theta_high))
       self.untrusted_path.ctr.SetValue(str(last.untrusted_pixel_mask_path))
-      self.dark_avg_path.ctr.SetValue(str(last.dark_avg_path))
-      self.dark_stddev_path.ctr.SetValue(str(last.dark_stddev_path))
-      self.gain_map_path.ctr.SetValue(str(last.gain_map_path))
-      self.calib_dir.ctr.SetValue(str(last.calib_dir))
       self.comment.ctr.SetValue(str(last.comment))
 
-  def onImageFormat(self, e):
-    sel= self.img_format.ctr.GetString(self.img_format.ctr.GetSelection())
-    if 'cbf' in sel:
-      #self.beam_xyz.X.Disable()
-      #self.beam_xyz.Y.Disable()
-      #self.bin_nrg_gain.binning.Disable()
-      #self.two_thetas.two_theta_low.Disable()
-      #self.two_thetas.two_theta_high.Disable()
-      #self.dark_avg_path.Hide()
-      #self.dark_stddev_path.Hide()
-      #self.gain_map_path.Hide()
-      self.runblock_panel.SetupScrolling()
-    elif 'pickle' in sel:
-      #self.beam_xyz.X.Enable()
-      #self.beam_xyz.Y.Enable()
-      #self.bin_nrg_gain.binning.Enable()
-      #self.two_thetas.two_theta_low.Enable()
-      #self.two_thetas.two_theta_high.Enable()
-      #self.dark_avg_path.Show()
-      #self.dark_stddev_path.Show()
-      #self.gain_map_path.Show()
-      self.runblock_panel.Layout()
-      self.runblock_panel.SetupScrolling()
-
   def configure_controls(self):
-    self.onImageFormat(None)
     if self.last_run is None:
       self.runblocks_end.Disable()
       self.end_type.auto.SetValue(1)

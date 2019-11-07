@@ -9,7 +9,9 @@ used only if compactness is not affected. The scitbx/math module
 provides faster C++ alternatives to some algorithms included here.
 """
 
-from __future__ import division, absolute_import
+from __future__ import absolute_import, division, print_function
+from six.moves import range
+from six.moves import zip
 
 _flex_imported = False
 def flex_proxy():
@@ -69,13 +71,13 @@ class rec(object):
     assert self.n == other.n
     a = self.elems
     b = other.elems
-    return rec([a[i] + b[i] for i in xrange(len(a))], self.n)
+    return rec([a[i] + b[i] for i in range(len(a))], self.n)
 
   def __sub__(self, other):
     assert self.n == other.n
     a = self.elems
     b = other.elems
-    return rec([a[i] - b[i] for i in xrange(len(a))], self.n)
+    return rec([a[i] - b[i] for i in range(len(a))], self.n)
 
   def __mul__(self, other):
     if (not hasattr(other, "elems")):
@@ -96,10 +98,10 @@ class rec(object):
       # Roy Featherstone, Springer, New York, 2007, p. 53 footnote
       return rec((0,)*(ar*bc), (ar,bc))
     result = []
-    for i in xrange(ar):
-      for k in xrange(bc):
+    for i in range(ar):
+      for k in range(bc):
         s = 0
-        for j in xrange(ac):
+        for j in range(ac):
           s += a[i * ac + j] * b[j * bc + k]
         result.append(s)
     if (ar == bc):
@@ -119,10 +121,10 @@ class rec(object):
     if (other is None):
       result = [0] * (ac * ac)
       jac = 0
-      for j in xrange(ar):
+      for j in range(ar):
         ik = 0
-        for i in xrange(ac):
-          for k in xrange(ac):
+        for i in range(ac):
+          for k in range(ac):
             result[ik] += a[jac + i] * a[jac + k]
             ik += 1
         jac += ac
@@ -133,10 +135,10 @@ class rec(object):
     result = [0] * (ac * bc)
     jac = 0
     jbc = 0
-    for j in xrange(ar):
+    for j in range(ar):
       ik = 0
-      for i in xrange(ac):
-        for k in xrange(bc):
+      for i in range(ac):
+        for k in range(bc):
           result[ik] += a[jac + i] * b[jbc + k]
           ik += 1
       jac += ac
@@ -212,14 +214,14 @@ class rec(object):
 
   def min_index(self):
     result = None
-    for i in xrange(len(self.elems)):
+    for i in range(len(self.elems)):
       if (result is None or self.elems[result] > self.elems[i]):
         result = i
     return result
 
   def max_index(self):
     result = None
-    for i in xrange(len(self.elems)):
+    for i in range(len(self.elems)):
       if (result is None or self.elems[result] < self.elems[i]):
         result = i
     return result
@@ -240,7 +242,7 @@ class rec(object):
     assert self.n_rows() == self.n_columns()
     n = self.n_rows()
     result = 0
-    for i in xrange(n):
+    for i in range(n):
       result += self.elems[i*n+i]
     return result
 
@@ -267,13 +269,13 @@ class rec(object):
     result = 0
     a = self.elems
     if (other is None):
-      for i in xrange(len(a)):
+      for i in range(len(a)):
         v = a[i]
         result += v * v
     else:
       assert len(self.elems) == len(other.elems)
       b = other.elems
-      for i in xrange(len(a)):
+      for i in range(len(a)):
         result += a[i] * b[i]
     return result
 
@@ -648,8 +650,8 @@ class rec(object):
 
   def transpose(self):
     elems = []
-    for j in xrange(self.n_columns()):
-      for i in xrange(self.n_rows()):
+    for j in range(self.n_columns()):
+      for i in range(self.n_rows()):
         elems.append(self(i,j))
     return rec(elems, (self.n_columns(), self.n_rows()))
 
@@ -669,9 +671,9 @@ class rec(object):
       indent += " " * (len(label) + 1)
     s += outer_open
     if (nc != 0):
-      for ir in xrange(nr):
+      for ir in range(nr):
         s += inner_open
-        for ic in xrange(nc):
+        for ic in range(nc):
           if (format is None):
             s += str(self(ir, ic))
           else:
@@ -731,7 +733,7 @@ class rec(object):
   def as_list_of_lists(self):
     result = []
     nr,nc = self.n
-    for ir in xrange(nr):
+    for ir in range(nr):
       result.append(list(self.elems[ir*nc:(ir+1)*nc]))
     return result
 
@@ -777,8 +779,8 @@ class rec(object):
     if other is None: return False
     if issubclass(type(other), rec):
       return self.elems == other.elems
-    for ir in xrange(self.n_rows()):
-      for ic in xrange(self.n_columns()):
+    for ir in range(self.n_rows()):
+      for ic in range(self.n_columns()):
         if self(ir,ic) != other[ir,ic]: return False
     return True
 
@@ -788,33 +790,33 @@ class rec(object):
   def resolve_partitions(self):
     nr,nc = self.n
     result_nr = 0
-    for ir in xrange(nr):
+    for ir in range(nr):
       part_nr = 0
-      for ic in xrange(nc):
+      for ic in range(nc):
         part = self(ir,ic)
         assert isinstance(part, rec)
         if (ic == 0): part_nr = part.n[0]
         else: assert part.n[0] == part_nr
       result_nr += part_nr
     result_nc = 0
-    for ic in xrange(nc):
+    for ic in range(nc):
       part_nc = 0
-      for ir in xrange(nr):
+      for ir in range(nr):
         part = self(ir,ic)
         if (ir == 0): part_nc = part.n[1]
         else: assert part.n[1] == part_nc
       result_nc += part_nc
     result_elems = [0] * (result_nr * result_nc)
     result_ir = 0
-    for ir in xrange(nr):
+    for ir in range(nr):
       result_ic = 0
-      for ic in xrange(nc):
+      for ic in range(nc):
         part = self(ir,ic)
         part_nr,part_nc = part.n
         i_part = 0
-        for part_ir in xrange(part_nr):
+        for part_ir in range(part_nr):
           i_result = (result_ir + part_ir) * result_nc + result_ic
-          for part_ic in xrange(part_nc):
+          for part_ic in range(part_nc):
             result_elems[i_result + part_ic] = part[i_part]
             i_part += 1
         result_ic += part_nc
@@ -844,7 +846,7 @@ class col_mixin(object):
 
   def random(cls, n, a, b):
     uniform = random.uniform
-    return cls([ uniform(a,b) for i in xrange(n) ])
+    return cls([ uniform(a,b) for i in range(n) ])
   random = classmethod(random)
 
 class col(col_mixin, rec):
@@ -876,8 +878,8 @@ class diag(rec):
 
   def __init__(self, diag_elems):
     n = len(diag_elems)
-    elems = [0 for i in xrange(n*n)]
-    for i in xrange(n):
+    elems = [0 for i in range(n*n)]
+    for i in range(n):
       elems[i*(n+1)] = diag_elems[i]
     rec.__init__(self, elems, (n,n))
 
@@ -917,18 +919,19 @@ def mutable_zeros(n):
 def sum(iterable):
   """ The sum of the given sequence of matrices """
   sequence = iter(iterable)
-  result = sequence.next()
+  result = next(sequence)
   for m in sequence:
     result += m
   return result
 
-def cross_product_matrix((v0, v1, v2)):
+def cross_product_matrix(vvv):
   """\
 Matrix associated with vector cross product:
   a.cross(b) is equivalent to cross_product_matrix(a) * b
 Useful for simplification of equations. Used frequently in
 robotics and classical mechanics literature.
 """
+  (v0, v1, v2) = vvv
   return sqr((
       0, -v2,  v1,
      v2,   0, -v0,
@@ -1189,7 +1192,7 @@ class rt(object):
     assert self.r.n_rows() == self.r.n_columns()
     n = self.r.n_rows()
     result = []
-    for i_row in xrange(n):
+    for i_row in range(n):
       result.extend(self.r.elems[i_row*n:(i_row+1)*n])
       result.append(self.t[i_row])
     result.extend([0]*n)
@@ -1204,9 +1207,9 @@ def lu_decomposition_in_place(a, n, raise_if_singular=True):
   assert len(a) == n*n
   vv = [0.] * n
   pivot_indices = [0] * (n+1)
-  for i in xrange(n):
+  for i in range(n):
     big = 0.
-    for j in xrange(n):
+    for j in range(n):
       dum = a[i*n+j]
       if (dum < 0.): dum = -dum
       if (dum > big): big = dum
@@ -1216,15 +1219,15 @@ def lu_decomposition_in_place(a, n, raise_if_singular=True):
       return None
     vv[i] = 1. / big
   imax = 0
-  for j in xrange(n):
-    for i in xrange(j):
+  for j in range(n):
+    for i in range(j):
       sum = a[i*n+j]
-      for k in xrange(i): sum -= a[i*n+k] * a[k*n+j]
+      for k in range(i): sum -= a[i*n+k] * a[k*n+j]
       a[i*n+j] = sum
     big = 0.
-    for i in xrange(j,n):
+    for i in range(j,n):
       sum = a[i*n+j]
-      for k in xrange(j): sum -= a[i*n+k] * a[k*n+j]
+      for k in range(j): sum -= a[i*n+k] * a[k*n+j]
       a[i*n+j] = sum
       if (sum < 0.): sum = -sum
       dum = vv[i] * sum
@@ -1232,7 +1235,7 @@ def lu_decomposition_in_place(a, n, raise_if_singular=True):
         big = dum
         imax = i
     if (j != imax):
-      for k in xrange(n):
+      for k in range(n):
         ik, jk = imax*n+k, j*n+k
         a[ik], a[jk] = a[jk], a[ik]
       pivot_indices[n] += 1
@@ -1244,14 +1247,14 @@ def lu_decomposition_in_place(a, n, raise_if_singular=True):
       return None
     if (j+1 < n):
       dum = 1 / a[j*n+j]
-      for i in xrange(j+1,n):
+      for i in range(j+1,n):
         a[i*n+j] *= dum
   return pivot_indices
 
 def lu_back_substitution(a, n, pivot_indices, b, raise_if_singular=True):
   assert len(a) == n*n
   ii = n
-  for i in xrange(n):
+  for i in range(n):
     pivot_indices_i = pivot_indices[i]
     if (pivot_indices_i >= n):
       if (raise_if_singular):
@@ -1261,13 +1264,13 @@ def lu_back_substitution(a, n, pivot_indices, b, raise_if_singular=True):
     sum = b[pivot_indices_i]
     b[pivot_indices_i] = b[i]
     if (ii != n):
-      for j in xrange(ii,i): sum -= a[i*n+j] * b[j]
+      for j in range(ii,i): sum -= a[i*n+j] * b[j]
     elif (sum):
       ii = i
     b[i] = sum
-  for i in xrange(n-1,-1,-1):
+  for i in range(n-1,-1,-1):
     sum = b[i]
-    for j in xrange(i+1, n): sum -= a[i*n+j] * b[j]
+    for j in range(i+1, n): sum -= a[i*n+j] * b[j]
     b[i] = sum / a[i*n+i]
   return True
 
@@ -1278,11 +1281,11 @@ def inverse_via_lu(m):
   a = list(m.elems)
   pivot_indices = lu_decomposition_in_place(a=a, n=n)
   r = [0] * (n*n)
-  for j in xrange(n):
+  for j in range(n):
     b = [0.] * n
     b[j] = 1.
     lu_back_substitution(a=a, n=n, pivot_indices=pivot_indices, b=b)
-    for i in xrange(n):
+    for i in range(n):
       r[i*n+j] = b[i]
   return sqr(r)
 
@@ -1295,7 +1298,7 @@ def determinant_via_lu(m):
   if (pivot_indices is None):
     return 0
   result = 1
-  for i in xrange(n):
+  for i in range(n):
     result *= a[i*n+i]
   if (pivot_indices[-1] % 2):
     result = -result
@@ -1305,7 +1308,7 @@ def exercise_1():
   try:
     from libtbx import test_utils
   except ImportError:
-    print "INFO: libtbx not available: some tests disabled."
+    print("INFO: libtbx not available: some tests disabled.")
     test_utils = None
     def approx_equal(a, b): return True
     Exception_expected = RuntimeError
@@ -1339,14 +1342,14 @@ def exercise_1():
     a = rec((),n)
     assert a.mathematica_form() == "{}"
     assert a.matlab_form() == "[]"
-  a = rec(range(1,7), (3,2))
+  a = rec(list(range(1,7)), (3,2))
   assert len(a) == 6
   assert a[1] == 2
   assert (a*3).mathematica_form() == "{{3, 6}, {9, 12}, {15, 18}}"
   assert (-2*a).mathematica_form() == "{{-2, -4}, {-6, -8}, {-10, -12}}"
   for seq in [(2,-3), [2,-3]]:
     assert (a*seq).elems == (a*col((2,-3))).elems
-  b = rec(range(1,7), (2,3))
+  b = rec(list(range(1,7)), (2,3))
   assert a.dot(b) == 91
   assert col((3,4)).dot() == 25
   c = a * b
@@ -1390,18 +1393,18 @@ def exercise_1():
   assert a.extract_block(start=(1,0),stop=(4,3),step=(2,1)).mathematica_form()\
       == "{{-19, -26, -33}, {0, 0, 0}}"
   #
-  for ar in xrange(3):
-    for bc in xrange(3):
+  for ar in range(3):
+    for bc in range(3):
       a = rec([], (ar,0))
       b = rec([], (0,bc))
       c = a * b
       assert c.elems == tuple([0] * (ar*bc))
       assert c.n == (ar,bc)
   #
-  ar = range(1,10)
-  at = range(1,4)
-  br = range(11,20)
-  bt = range(4,7)
+  ar = list(range(1,10))
+  at = list(range(1,4))
+  br = list(range(11,20))
+  bt = list(range(4,7))
   g = rt((ar,at)) * rt((br,bt))
   assert g.r.mathematica_form() == \
     "{{90, 96, 102}, {216, 231, 246}, {342, 366, 390}}"
@@ -1473,18 +1476,18 @@ def exercise_1():
   gt = g * t.elems
   assert gt == g.r * t + g.t
   try: g * col([1])
-  except ValueError, e:
+  except ValueError as e:
     assert str(e).startswith("cannot multiply ")
     assert str(e).endswith(": incompatible number of rows or columns")
   else: raise Exception_expected
   try: g * [1]
-  except ValueError, e:
+  except ValueError as e:
     assert str(e).startswith("cannot multiply ")
     assert str(e).endswith(": incompatible number of elements")
   else: raise Exception_expected
   flex = flex_proxy()
   if (flex is None):
-    print "INFO: scitbx.array_family.flex not available."
+    print("INFO: scitbx.array_family.flex not available.")
   else:
     gv = g * flex.vec3_double([(-1,2,3),(2,-3,4)])
     assert isinstance(gv, flex.vec3_double)
@@ -1536,8 +1539,8 @@ def exercise_1():
   assert r.mathematica_form(one_row_per_line=True, prefix="&$") == """\
 &${{1}}"""
   #
-  a = rec(range(1,6+1), (3,2))
-  b = rec(range(1,15+1), (3,5))
+  a = rec(list(range(1,6+1)), (3,2))
+  b = rec(list(range(1,15+1)), (3,5))
   assert approx_equal(a.transpose_multiply(b), a.transpose() * b)
   assert approx_equal(a.transpose_multiply(a), a.transpose() * a)
   assert approx_equal(a.transpose_multiply(), a.transpose() * a)
@@ -1549,16 +1552,16 @@ def exercise_1():
   assert a.outer_product(b).as_list_of_lists() == [[10,20],[20,40],[30,60]]
   assert a.outer_product().as_list_of_lists() == [[1,2,3],[2,4,6],[3,6,9]]
   #
-  a = sym(sym_mat3=range(6))
+  a = sym(sym_mat3=list(range(6)))
   assert a.as_list_of_lists() == [[0, 3, 4], [3, 1, 5], [4, 5, 2]]
-  assert approx_equal(a.as_sym_mat3(), range(6))
+  assert approx_equal(a.as_sym_mat3(), list(range(6)))
   assert a.as_mat3() == (0,3,4,3,1,5,4,5,2)
   if (flex is not None):
     f = a.as_flex_double_matrix()
     assert f.all() == a.n
     assert approx_equal(f, a, eps=1.e-12)
   #
-  for i in xrange(3):
+  for i in range(3):
     x = rec([], n=(0,i))
     assert repr(x) == "matrix.rec(elems=(), n=(0,%d))" % i
     assert str(x) == "{}"
@@ -1618,12 +1621,12 @@ def exercise_1():
     assert a == c
   #
   a = identity(4)
-  for ir in xrange(4):
-    for ic in xrange(4):
+  for ir in range(4):
+    for ic in range(4):
       assert (ir == ic and a(ir,ic) == 1) or (ir != ic and a(ir,ic) == 0)
   a = inversion(4)
-  for ir in xrange(4):
-    for ic in xrange(4):
+  for ir in range(4):
+    for ic in range(4):
       assert (ir == ic and a(ir,ic) == -1) or (ir != ic and a(ir,ic) == 0)
   #
   x = col((3/2+0.01, 5/4-0.02, 11/8+0.001))
@@ -1799,7 +1802,7 @@ def exercise_1():
   uqr = r.r3_rotation_matrix_as_unit_quaternion()
   assert approx_equal(uqr, uq)
   #
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     uq1 = col.random(n=4, a=-1, b=1).normalize()
     uq2 = col.random(n=4, a=-1, b=1).normalize()
     r1 = uq1.unit_quaternion_as_r3_rotation_matrix()
@@ -1881,13 +1884,13 @@ def exercise_1():
   #
   numpy = numpy_proxy()
   if (numpy is None):
-    print "INFO: numpy not available."
+    print("INFO: numpy not available.")
   else:
-    m = rec(elems=range(6), n=(2,3))
+    m = rec(elems=list(range(6)), n=(2,3))
     n = m.as_numpy_array()
     assert n.tolist() == [[0, 1, 2], [3, 4, 5]]
   #
-  print "OK"
+  print("OK")
 
 def exercise_2():
   points = \

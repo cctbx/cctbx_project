@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 import numpy
+from six.moves import range
 
 
 ##########################################################################
@@ -951,26 +952,26 @@ def ADD(SEARCH1, SEARCH2):
 #LIST3 = control
 def SEQUENTIAL_READOUT(LIST1, LIST2, LIST3, print_control, line2):
     control_control = 1 #Initializing. This variable signals the presence of bases with possible multiple contacts
-    print "\n##################################################\n##### SEQUENTIAL OUTPUT READOUT        BEGINNING"
+    print("\n##################################################\n##### SEQUENTIAL OUTPUT READOUT        BEGINNING")
     if print_control == 0: #Controls how much SEQUENTIAL READOUT is outputed
-        print "##### LINES CARRYING POSSIBLE BASEPAIR INFORMATION",
-        print line2
+        print("##### LINES CARRYING POSSIBLE BASEPAIR INFORMATION", end=' ')
+        print(line2)
         for i in range (len(LIST1)):
             line1 = "Basepairing scheme: " + LIST2[i]
-            print line1
+            print(line1)
             for k in range (len(LIST1[i])):
                 line1 = ''
                 for l in range (len(LIST1[i][k])):
                     a = str(LIST1[i][k][l])
                     line1 = line1 + a + ' '
-                print line1
-        print "#####LINES CARRYING POSSIBLE BASEPAIR INFORMATION",
-        print line2
-        print "##################################################"
+                print(line1)
+        print("#####LINES CARRYING POSSIBLE BASEPAIR INFORMATION", end=' ')
+        print(line2)
+        print("##################################################")
 #OUTPUT regarding MULTIPLE CONTACTS
-    print "#################################################"
-    print "####LIST OF BASES WITH MULTIPLE POSSIBLE CONTACTS",
-    print line2
+    print("#################################################")
+    print("####LIST OF BASES WITH MULTIPLE POSSIBLE CONTACTS", end=' ')
+    print(line2)
     count1 = 0
     if LIST3 != []:
         line3 = ''
@@ -1000,15 +1001,15 @@ def SEQUENTIAL_READOUT(LIST1, LIST2, LIST3, print_control, line2):
         line3 = ""
     if count1 == 0:
         line1 = "NO BASES DETECTED WITH MULTIPLE POSSIBLE CONTACTS\n#################################################"
-        print line1
+        print(line1)
         control_control = 0 #Bases with multiple contacts = 0. This will avoid unnecessary runs of ELIMINATION
     else:
-        print "##### GROUPS OF BASES DETECTED WITH MULTIPLE POSSIBLE CONTACTS = ", count1
+        print("##### GROUPS OF BASES DETECTED WITH MULTIPLE POSSIBLE CONTACTS = ", count1)
         for i in range (len(list1)):
-            print "GROUP", i + 1, "  ",
-            print list1[i]
-        print "####LIST OF BASES WITH MULTIPLE POSSIBLE CONTACTS\n#################################################"
-    print "##################################################\n###### SEQUENTIAL OUTPUT READOUT          END\n##################################################\n"
+            print("GROUP", i + 1, "  ", end=' ')
+            print(list1[i])
+        print("####LIST OF BASES WITH MULTIPLE POSSIBLE CONTACTS\n#################################################")
+    print("##################################################\n###### SEQUENTIAL OUTPUT READOUT          END\n##################################################\n")
 
     return control_control
 #    import sys
@@ -1129,7 +1130,7 @@ def C1_C1_DISTANCE(LIST1, LIST2, A0, A1, A2, A3):
 #A1 = convert[1]
 #A2 = convert[2]
 #A3 = convert[3]
-    print "\n...using the C1\'-C1\' distance criterion"
+    print("\n...using the C1\'-C1\' distance criterion")
     if LIST1[16] != []:
        diffP_P = LIST1[16] - LIST2[9]
     else:
@@ -1137,10 +1138,10 @@ def C1_C1_DISTANCE(LIST1, LIST2, A0, A1, A2, A3):
        diffP_P = "NA"
     diffC1_C1 = LIST1[17] - LIST2[11]
     line = "The basepair formed by residues " + A0 + A1 + ":" + A2 + A3 + " displays a " + LIST1[0] + " geometry with a P-P distance of " + str(LIST1[16]) + " and a C1\'-C1\' distance of " + str(LIST1[17]) + ".\n     Empirically determined average C1\'-C1\' distance for this geometry = " + str(LIST2[11]) + " + SD = " + str(LIST2[12]) + "\n     Empirically determined average P-P distance for this geometry = " + str(LIST2[9]) + " + SD = " + str(LIST2[10])
-    print line
+    print(line)
     if abs(diffC1_C1) > 3 * LIST2[12]:
         LIST1.append('REMOVED')
-        print "The C1\'-C1\' distance for this candidate basepair is more than 3 times the recorded standard deviation for this geometry. The basepair will be prevented from further processing by apending it as 'REMOVED'"
+        print("The C1\'-C1\' distance for this candidate basepair is more than 3 times the recorded standard deviation for this geometry. The basepair will be prevented from further processing by apending it as 'REMOVED'")
     LIST1[18:18] = [abs(diffC1_C1)]
     return LIST1
 ################################################
@@ -1177,7 +1178,7 @@ def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF, positions):
         count_found = 0 #Needs to be reinitialized at every run of the loop. Will keep track of all basepairs found by first part of the loop.
         run_str = to_string(run)
         line1 = "##################################\n\"Attempting to find additional basepairs by the CONTINUITY OF HELICITY CRITERION\"       Attempt # " + run_str + "\n##################################"
-        print line1
+        print(line1)
         transient = []
         #First the positions of adjacent basepairs to those involved in MULTIPLE CONTACTS, are calculated and outputed
         for i in range (len(MASTER_Basepairs_summary)):
@@ -1197,7 +1198,7 @@ def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF, positions):
                         convert = CONVERT(list)
                         add = ADD(SEARCH1, SEARCH2)
                         line1 = "\nBasepair tagged for its involvement in MULTIPLE CONTACTS has been detected!!!!!!.\n  The basepair is formed by residues " + convert[0] + convert[1] + " and " + convert[2] + convert[3] + "\n    Attempting to determine whether it could be used to expand the length of an identified helical segment.\n      Searching for the following possible basepair candidates: " + add[0] + " and " + add[1] + " or " + add[2] + " and " + add[3]
-                        print line1
+                        print(line1)
 
 #Second, the whole MASTER_Basepairs_summary is searched for the existence of either one of the adjacent basepairs calculated above. Done in FUNCTION HELICITY
                         where_from = 'Loop' #Used in SECTION HELICITY to determine what to do whether the program is coming from 'Loop' or 'CONTINUITY_HELICITY_CRITERION', or from '    print "AFTER LIST1", LIST1REMOVAL'
@@ -1213,7 +1214,7 @@ def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF, positions):
                                 if count_helicity == 1: #One of the 2 possible adjacent basepairs is found. This is enought to assign the basepair whose assignemnt is in question by 'MH' criterion
                                     count_found = count_found + 1 #Will keep tract of how many basepairs are found. Serves also to keep the loop going
                                     line1  = "     #####\n     !!!!Found an adjacent basepair to residues " + convert[0] + convert[1] + " and "  + convert[2] + convert[3] +  "\n     This basepair is formed by residues " + helicity[t][0] + " and " +  helicity[t][1] + "\n     #####\n    Assigning " + convert[0] + convert[1] + " and "  + convert[2] + convert[3] + " as a legitimate basepair by the CONTINUITY OF HELICITY CRITERION\n"
-                                    print line1
+                                    print(line1)
                                     MASTER_Basepairs_summary[i][j].append('yes')
                                     MASTER_Basepairs_summary[i][j].append('MH')  #'MH'Maximization of Helicity TAG
                                     transient = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][4]]
@@ -1222,19 +1223,19 @@ def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF, positions):
                                     MASTER_Basepairs_summary[i][j].append(CUTOFF_str[0:3])
                                 if count_helicity == 2: #The second adjacent basepair has been found. The basepair whose assignemnt is in question has already bee assigned when 'count_helicity == 1'. The program will only output the new finding
                                     line1  = "     #####\n     !!!!Found a second adjacent basepair to residues " + convert[0] + convert[1] + " and "  + convert[2] + convert[3] +  "\n     This basepair is formed by residues " + helicity[t][0] + " and " +  helicity[t][1] + "\n     #####\n"
-                                    print line1
+                                    print(line1)
 
 #Neither one of the possible adjacent basepairs was found by the CONTINUITY OF HELICITY CRITERION
                         if count_helicity == 0:
                             line1  = "                     Neither basepair was found!!!!!"
-                            print line1
+                            print(line1)
 
 #Time to recap
         a = str(count_found)
         b = str(run_str )
         total_count = total_count + count_found
         line1 = "###### Number of basepairs identified by the CONTINUITY OF HELICITY CRITERION = " + a + "      Attempt # " + run_str
-        print line1
+        print(line1)
 
 #Second part of LOOP
         #Attempting to find additional basepairs by the 'ELIMINATION' criterion. running REMOVAL in 'semi-bulk' mode by using a terminal 'MH' as a tag.
@@ -1242,19 +1243,19 @@ def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF, positions):
         if (total_count > 0):
             mode_removal = 1 #"Run FUNCTION REMOVAL" in 'semi-bulk' mode
             CUTOFF_str = str(CUTOFF)
-            print "\n##############################\n REMOVING the newly identified basepairs from the list of bases with possible mutliple contacts.", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3], "\n##############################\n "
+            print("\n##############################\n REMOVING the newly identified basepairs from the list of bases with possible mutliple contacts.", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3], "\n##############################\n ")
             removal = REMOVAL(MASTER_Basepairs_summary, control, convert[0], convert[2], CUTOFF, mode_removal, positions)
             MASTER_Basepairs_summary = removal[0]
             control = removal[1]
             new_basepairs = removal[2]
             count_found = new_basepairs #If additional basepairs have been assigned by 'ELIMINATION' the Loop should run again
             line1 = "\n\n##### Semi-Bulk Removal"
-            print line1
+            print(line1)
             a = str(new_basepairs)
             line1 = a + " additional basepairs have been identified by ELIMINATION"
-            print line1
+            print(line1)
             line1 = "##### Semi-Bulk Removal"
-            print line1
+            print(line1)
 
         a = ''
 
@@ -1349,7 +1350,7 @@ def REMOVAL(LIST1, LIST2, base_a, base_b, CUTOFF, mode_removal, positions):
                    LIST2[control_removed[i][4]] = []
                    convert = CONVERT(control_removed[i])
                    line1 = "\n#####\nFound a lone pair of bases after removing newly identified basepairs. Bases are:\n" + convert[0] + convert[1] + " and " + convert[2] + convert[3] + "\nMatching against basepair list\n##### "
-                   print line1
+                   print(line1)
                    where_from = 'REMOVAL' #Used in SECTION HELICITY to determine what to do whether the program is coming from 'Loop' or 'CONTINUITY_HELICITY_CRITERION', or from 'REMOVAL'
                    a = "iiiiiiii" #Just to fill up the list of 'HELICITY''s arguments
                    b = "iiiiiiii" #Just to fill up the list of 'HELICITY''s arguments
@@ -1368,8 +1369,8 @@ def REMOVAL(LIST1, LIST2, base_a, base_b, CUTOFF, mode_removal, positions):
                        line1 = "     #####\n     Found!!! A basepair between residues " + convert[0] + convert[1] + " and " + convert[2] + convert[3] + " has been identified by the 'ELIMINATION' criterion\n     #####\n"
                    else:
                        line1 = "No basepair was identified"
-                   print line1
-                   print line
+                   print(line1)
+                   print(line)
             return [LIST1, LIST2, new_basepairs]
 
 ################################################
@@ -1415,7 +1416,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
 #FUNCTION "Program". Section: First sorting of basepair candidates          BEGINNING
 #####################################
     line1 = "####################################\nFirst sorting of basepair candidates: Run # " + run_number_str + " Distance Cutoff = " + CUTOFF_str[0:3] + "\n#####################################"
-    print line1
+    print(line1)
     collect = []
     for i in range (1, len(First_List)):
 #FOLLOW A LINE
@@ -1488,7 +1489,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                 #position 16: "Phosphate-to-phosphate 'P-to-P' distance". Carried in 'First_List_P' and collected in 'FUNCTION Program. Section: LOOKING FOR BASES WITH POSSIBLE MULTIPLE CONTACTS'
                 #position 17: "C1'-to-C1'" distance". Carried in 'First_List_C1' and collected in 'FUNCTION Program. Section: LOOKING FOR BASES WITH POSSIBLE MULTIPLE CONTACTS'
     line1 = "####################################\nSecond sorting of basepair candidates: Run # " + run_number_str + " Distance Cutoff = " + CUTOFF_str[0:3] + "\n#####################################"
-    print line1
+    print(line1)
     for i in range(len(MASTER_Basepairs)): #'i' will correspond to the same level in both MASTER_Basepairs and MASTER_Basepairs_summary, the level of basepair scheme
         if len(MASTER_Basepairs[i]) > 0:
             for j in range (len(MASTER_Basepairs[i])):
@@ -1567,7 +1568,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
    #In addition to the code contained in this section, function 'CONTROL' is in charge of performing this search. The list of bases involved in MULTIPLE CONTACTS will be loaded into 'control' by function 'CONTROL'.
 
 
-    print   "#####################################\nSearching for bases with possible MULTIPLE CONTACTS Run #", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3], "\n#####################################"
+    print("#####################################\nSearching for bases with possible MULTIPLE CONTACTS Run #", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3], "\n#####################################")
     for i in range (len(MASTER_Basepairs_summary)):
         if len(MASTER_Basepairs_summary[i]) > 0:
             for j in range (len(MASTER_Basepairs_summary[i])):
@@ -1670,14 +1671,14 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
 
     convert = []
     new_basepairs = 0
-    print   "##############################\n##### Initial Basepair Assignment. Run #", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3], "PREV_CUTOFF", PREV_CUTOFF, "\n##############################"
+    print("##############################\n##### Initial Basepair Assignment. Run #", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3], "PREV_CUTOFF", PREV_CUTOFF, "\n##############################")
     transient = []
     if (MAX_CUTOFF_str[0:3] in CUTOFF_str[0:3]):
-        print "MAX_CUTOFF_str[0:3] ", MAX_CUTOFF_str[0:3], "CUTOFF_str[0:3] ", CUTOFF_str[0:3]
+        print("MAX_CUTOFF_str[0:3] ", MAX_CUTOFF_str[0:3], "CUTOFF_str[0:3] ", CUTOFF_str[0:3])
     if CUTOFF_str[0:3] in MAX_CUTOFF_str[0:3]:
-        print "CUTOFF_str[0:3] ", CUTOFF_str[0:3], "MAX_CUTOFF_str[0:3] ", MAX_CUTOFF_str[0:3]
+        print("CUTOFF_str[0:3] ", CUTOFF_str[0:3], "MAX_CUTOFF_str[0:3] ", MAX_CUTOFF_str[0:3])
     for i in range (len(MASTER_Basepairs_summary)):
-        print "Basepairing scheme:", MASTER_Basepairs_schemes[i]
+        print("Basepairing scheme:", MASTER_Basepairs_schemes[i])
         for j in range (len(MASTER_Basepairs_summary[i])):
                 if (len(MASTER_Basepairs_summary[i]) > 0) and ('D' not in MASTER_Basepairs_summary[i][j]) and ('MH' not in MASTER_Basepairs_summary[i][j]) and ('ELI' not in MASTER_Basepairs_summary[i][j]) and ('REMOVED' not in MASTER_Basepairs_summary[i][j]):
 
@@ -1686,7 +1687,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                         #if (('D' not in MASTER_Basepairs_summary[i][j]) and ('MH' not in MASTER_Basepairs_summary[i][j]) and ('ELI' not in MASTER_Basepairs_summary[i][j]) and ('REMOVED' not in MASTER_Basepairs_summary[i][j])):
                             list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5]]
                             convert = CONVERT(list)
-                            print  "----->High confidence 3-bond basepair formed by residues " + convert[1] + convert[0] + " and " + convert[3] + convert[2]
+                            print("----->High confidence 3-bond basepair formed by residues " + convert[1] + convert[0] + " and " + convert[3] + convert[2])
                             length_1 = len(MASTER_Basepairs_summary[i][j]) - 1
                             MASTER_Basepairs_summary[i][j].append('D') #Distance 'D' TAG
                             MASTER_Basepairs_summary[i][j].append(CUTOFF_str[0:3])
@@ -1695,7 +1696,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                             new_basepairs = new_basepairs + 1
 
                             if ('no' in MASTER_Basepairs_summary[i][j]):
-                                print "    The bases in this basepair may be participating in an interaction with other bases. However, the detection of 3 bonds, makes its assignment as a 3-bond basepair highly probable."
+                                print("    The bases in this basepair may be participating in an interaction with other bases. However, the detection of 3 bonds, makes its assignment as a 3-bond basepair highly probable.")
 
 #basepairs with 3 bonds for which only 2 bonds were identified
                     elif ((MASTER_Basepairs_summary[i][j][1] == 3) and (MASTER_Basepairs_summary[i][j][6] == 2) and (MAX_CUTOFF_str[0:3] in CUTOFF_str[0:3])):
@@ -1703,7 +1704,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                         if ('yes' in  MASTER_Basepairs_summary[i][j]):
                             list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5]]
                             convert = CONVERT(list)
-                            print "----->At least 2 bonds identified out of 3 expected for the base pair formed by residues " + convert[1] + convert[0] + " and " + convert[3] + convert[2]
+                            print("----->At least 2 bonds identified out of 3 expected for the base pair formed by residues " + convert[1] + convert[0] + " and " + convert[3] + convert[2])
                             MASTER_Basepairs_summary[i][j].append('D') #Distance 'D' TAG
                             MASTER_Basepairs_summary[i][j].append(CUTOFF_str[0:3])
                             transient = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][4]]
@@ -1716,17 +1717,17 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                             if ('yes' in  MASTER_Basepairs_summary[i][j]):
                                 list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5]]
                                 convert = CONVERT(list)
-                                print "----->2-bond basepair identified formed by residues " + convert[1] + convert[0] + " and " + convert[3] + convert[2]
+                                print("----->2-bond basepair identified formed by residues " + convert[1] + convert[0] + " and " + convert[3] + convert[2])
                                 MASTER_Basepairs_summary[i][j].append('D') #Distance 'D' TAG
                                 MASTER_Basepairs_summary[i][j].append(CUTOFF_str[0:3])
                                 transient = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][4]]
                                 positions.append(transient)
                                 new_basepairs = new_basepairs + 1
-    print   "##### END of Initial Basepair Assignment. Run #", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3], "\n##############################"
+    print("##### END of Initial Basepair Assignment. Run #", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3], "\n##############################")
 
 #The newly identified basepairs should be removed from 'control' (list of bases involved in MULTIPLE CONTACTS)
     if new_basepairs > 0 and control_control == 1:
-        print "\n##############################\n##### Searching for additional basepairs by the ELIMINATION criterion. Run # ", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3]
+        print("\n##############################\n##### Searching for additional basepairs by the ELIMINATION criterion. Run # ", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3])
         mode_removal = 0
         removal = REMOVAL(MASTER_Basepairs_summary, control, convert[0], convert[2], CUTOFF, mode_removal, positions)
         MASTER_Basepairs_summary = removal[0]
@@ -1736,17 +1737,17 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
 #Printing output.
         a = str(new_basepairs)
         line1 = "##### Number of additional basepairs identified by ELIMINATION = " + a + "  Run # " + run_number_str +  " Distance Cutoff = " + CUTOFF_str[0:3]
-        print line1
-        print "############################## "
+        print(line1)
+        print("############################## ")
         line2 = "AFTER Bulk Removal: Run # " + run_number_str + " Distance Cutoff = " + CUTOFF_str[0:3] #This line will be outputed in FUNCTION "SEQUENTIAL_READOUT"
         print_control = 0
         SEQUENTIAL_READOUT(MASTER_Basepairs_summary, MASTER_Basepairs_schemes, control, print_control, line2)
     elif new_basepairs == 0 and control_control == 1:
-        print "##############################\n NO newly identified basepairs to be removed from the list BASES WITH POSSIBLE MULTIPLE CONTACTS.\n ", "Run # ", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3]
-        print "############################## "
+        print("##############################\n NO newly identified basepairs to be removed from the list BASES WITH POSSIBLE MULTIPLE CONTACTS.\n ", "Run # ", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3])
+        print("############################## ")
     else:
-        print "##############################\n NO BASES WITH POSSIBLE MULTIPLE CONTACTS have been identified.\nAssignement of furhter additional basepairs by the ELIMINATION criterion not possible\n ", "Run # ", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3]
-        print "############################## "
+        print("##############################\n NO BASES WITH POSSIBLE MULTIPLE CONTACTS have been identified.\nAssignement of furhter additional basepairs by the ELIMINATION criterion not possible\n ", "Run # ", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3])
+        print("############################## ")
 
 ######SUBSECTION Initial Assignment
 
@@ -1757,7 +1758,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
 #FIRST LOOP RUN, searching for basepairs that would increase helicity
 
     if control_control == 1:
-        print "\n##############################\n##### SEARCHING FOR ADDITIONAL BASEPAIRS BY USING THE CONTINUITY OF HELICITY CRITERIUM /nRun #", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3]
+        print("\n##############################\n##### SEARCHING FOR ADDITIONAL BASEPAIRS BY USING THE CONTINUITY OF HELICITY CRITERIUM /nRun #", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3])
 
         loop_output = []
         loop_control = 1 #Allow multiple runs of the loop
@@ -1770,9 +1771,9 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
         line2 = "AFTER SEARCHING FOR ADDITIONAL BASEPAIRS BY USING THE CONTINUITY OF HELICITY CRITERIUM: Run # " + run_number_str + " Distance Cutoff = " + CUTOFF_str[0:3]
         print_control = 0
         SEQUENTIAL_READOUT(MASTER_Basepairs_summary, MASTER_Basepairs_schemes, control, print_control, line2)
-        print "\n##############################"
+        print("\n##############################")
     else:
-        print "\n##############################\nBYPASSING THE SEARCH FOR ADDITIONAL BASEPAIRS BY USING THE CONTINUITY OF HELICITY CRITERIUM /nRun #", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3], "\n##############################"
+        print("\n##############################\nBYPASSING THE SEARCH FOR ADDITIONAL BASEPAIRS BY USING THE CONTINUITY OF HELICITY CRITERIUM /nRun #", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3], "\n##############################")
 
 ################################################
 #       FUNCTION "Program". Section: Final assignment of Basepairs       END
@@ -1808,7 +1809,7 @@ def HELICITY(LIST, a0, a1, a2, a3, where_from):
                         a3 = str(a3)
                         line1 = "            Searching for possible basepairs between residues " + a0 + " and " +  a1
 
-                        print line1
+                        print(line1)
                         if ('iiiiiiiiiiiiiii' in a2) and ('iiiiiiiiiiiiiii' in a3):
                               line1 = line1 + a2 + " and " + a3 + "\n"
 
@@ -1919,7 +1920,7 @@ while CUTOFF < MAX_CUTOFF:
 #    else:
     control = [] #The list of bases involved in MULTIPLE CONTACTS will be loaded into 'control' by function 'CONTROL'. See FUNCTION Section: LOOKING FOR BASES INVOLVED IN MULTIPLE CONTACTS:
 
-    print "\n############################################################################################\n############################################################################################\n###### Run # ", run_number, "DISTANCE CUTOFF = ", CUTOFF, "\n############################################################################################\n############################################################################################\n"
+    print("\n############################################################################################\n############################################################################################\n###### Run # ", run_number, "DISTANCE CUTOFF = ", CUTOFF, "\n############################################################################################\n############################################################################################\n")
     run_number_str = to_string(run_number)
     MAX_CUTOFF_str = str(MAX_CUTOFF) #Converts 'float' to 'str'
 
@@ -1994,9 +1995,9 @@ def CONTINUITY_HELICITY_CRITERION(MASTER_Basepairs_summary_line, MASTER_Basepair
                         convert = CONVERT(list)
                         add = ADD(SEARCH1, SEARCH2)
                         line = "\n...using the CONTINUITY OF HELICITY CRITERION criterion for " + convert[0] + convert[1] + " and " + convert[2] + convert[3]
-                        print line
+                        print(line)
                         line1 = "\nChecking whether the basepair formed by residues " + convert[0] + convert[1] + " and " + convert[2] + convert[3] + " could be involved in a helical element\n    Searching for the following possible basepair candidates: " + add[0] + " and " + add[1] + " or " + add[2] + " and " + add[3]
-                        print line1
+                        print(line1)
 
 #the whole MASTER_Basepairs_summary is searched for the existence of either one of the adjacent basepairs calculated above. Done in FUNCTION HELICITY
                         where_from = 'Loop' #Used in SECTION HELICITY to determine what to do whether the program is coming from 'Loop' or 'CONTINUITY_HELICITY_CRITERION', or from 'REMOVAL'
@@ -2013,14 +2014,14 @@ def CONTINUITY_HELICITY_CRITERION(MASTER_Basepairs_summary_line, MASTER_Basepair
                                 if count_helicity == 1: #One of the 2 possible adjacent basepairs is found. This is enought to assign the basepair whose assignemnt is in question by 'MH' criterion
 #                                    MASTER_Basepairs_summary_line.append('MH')  #'MH'Maximization of Helicity TAG
                                     line1  = "     #####\n     !!!!Found an adjacent basepair to residues " + convert[0] + convert[1] + " and "  + convert[2] + convert[3] +  "\n     This basepair is formed by residues " + helicity[t][0] + " and " +  helicity[t][1] + "\n     #####\n"
-                                    print line1
+                                    print(line1)
                                 if count_helicity == 2: #The second adjacent basepair has been found. The basepair whose assignemnt is in question has already bee assigned when 'count_helicity == 1'. The program will only output the new finding
                                     line1  = "     #####\n     !!!!Found a second adjacent basepair to residues " + convert[0] + convert[1] + " and "  + convert[2] + convert[3] +  "\n     This basepair is formed by residues " + helicity[t][0] + " and " +  helicity[t][1] + "     \n     #####\n"
-                                    print line1
+                                    print(line1)
 #Neither one of the possible adjacent basepairs was found by the CONTINUITY OF HELICITY CRITERION
                         if count_helicity == 0:
                             line1  = "                     Neither basepair was found!!!!!"
-                            print line1
+                            print(line1)
                         return [MASTER_Basepairs_summary_line, count_helicity]
 #####SECTION FUNCTION "CONTINUITY_HELICITY_CRITERION"                END
 #################################
@@ -2040,24 +2041,24 @@ def CUTOFF_CRITERION(LIST1, LIST2, A0, A1, A2, A3, A4, A5, A6, A7):
 #A6 = convert[6]
 #A7 = convert[7]
     score = [0, 0]
-    print "\n...using the CUTOFF criterion"
+    print("\n...using the CUTOFF criterion")
     #The CUTOFF string has to be converted back into an 'float' number
     float_1 = float(LIST1[len(LIST1) - 1][0]) + float(LIST1[len(LIST1) - 1][2])/10
     float_2 = float(LIST2[len(LIST2) - 1][0]) + float(LIST2[len(LIST2) - 1][2])/10
     line = "\n     The basepair formed by residues " + A0 + A1 + ":" + A2 + A3 + " and with a " + LIST1[0] + " geometry was assigned at a CUTOFF value of " + LIST1[len(LIST1) - 1]  + " whereas the basepair formed by residues " + A4 + A5 + ":" + A6 + A7 + "and with a " + LIST2[0] + " geometry was assigned at a CUTOFF value of " + LIST2[len(LIST2) - 1]
     if float_1 < float_2:
-        print line
+        print(line)
         line1 = "          therefore the " + A0 + A1 + ":" + A2 + A3 + " basepair, with a " + LIST1[0] + " geometry, fares better than the " + A4 + A5 + ":" + A6 + A7 + " basepair, with a " +  LIST2[0] + " geometry by the CUTOFF criterion"
-        print line1
+        print(line1)
         score = [2, 0]
 
     elif float_1 > float_2:
-        print line
+        print(line)
         line1 = "          therefore the " + A4 + A5 + ":" + A6 + A7 + " basepair, with a " + LIST2[0] + " geometry, fares better than the " + A0 + A1 + ":" + A2 + A3 + " basepair, with a " +  LIST1[0] + " geometry by the CUTOFF criterion"
-        print line1
+        print(line1)
         score = [0 , 2]
     else:
-        print "\n     Both basepairs have been assigned at the same CUTOFF value of " + LIST2[len(LIST2) - 1]
+        print("\n     Both basepairs have been assigned at the same CUTOFF value of " + LIST2[len(LIST2) - 1])
 
     return score
 
@@ -2079,7 +2080,7 @@ def BOND_CRITERION(LIST1, LIST2, A0, A1, A2, A3, A4, A5, A6, A7):
 #A7 = convert[7]
      score = [0, 0]
                 #number of bonds criterion. The larger this number, the more chances that the basepair is correctly assigned
-     print "\n...using the BOND criterion"
+     print("\n...using the BOND criterion")
      if LIST1[6] > LIST2[6]:
          line = "     therefore the " + A0 + A1 + ":" + A2 + A3 + " basepair fares better under the 'NUMBER-OF-BONDS CRITERION' than the " + A4 + A5 + ":" + A6 + A7 + "basepair."
          score[0] = 1
@@ -2093,8 +2094,8 @@ def BOND_CRITERION(LIST1, LIST2, A0, A1, A2, A3, A4, A5, A6, A7):
      A = str(LIST1[6])
      B = str(LIST2[6])
      line1 = A + " bonds have been identified for the " + A0 + A1 + ":" + A2 + A3 + " basepair and " + B + " bonds have been identified for the " + A4 + A5 + ":" + A6 + A7 + " basepair."
-     print line1
-     print line
+     print(line1)
+     print(line)
 
      return score
 
@@ -2120,15 +2121,15 @@ def DECISSION(LIST1, LIST2, A0, A1, A2, A3, A4, A5, A6, A7, removed, undetermine
         else:
            line = "The basepair formed by residues " + A4 + A5 + ":" + A6 + A7 + " and with geometry " + LIST2[0] + " will be assigned as 'WRONG'. Please inspect this basepair and its surroundings for the presence of additional misassigned basepairs"
            LIST2.append('WRONG')
-        print line
+        print(line)
         line = "The basepair formed by residues " + A0 + A1 + ":" + A2 + A3 + " and with geometry " + LIST1[0] + " will be assigned as 'LEGITIMATE'"
-        print line
-        print "################"
+        print(line)
+        print("################")
         LIST1[19:19] = ['LEGITIMATE']
     else:
         line = "\nBasepairs, " + convert[0] + convert[1] + ":" + convert[2] + convert[3] + " with geometry " + MASTER_Basepairs_summary[i][j][0] + " and " + convert[4] + convert[5] + ":" + convert[6] + convert[7] +  " with geometry " + MASTER_Basepairs_summary[l][m][0] + " cannot be deconvoluted. Their assignment as legitimate basepairs remains 'UNDETERMINED'"
-        print line
-        print "################"
+        print(line)
+        print("################")
         LIST1.append('UNDETERMINED')
         LIST2.append('UNDETERMINED')
     removed = removed + 1
@@ -2140,7 +2141,7 @@ def DECISSION(LIST1, LIST2, A0, A1, A2, A3, A4, A5, A6, A7, removed, undetermine
 ######################################################
 #####MAIN part of SECTION DETECTION OF FALSE BASEPAIRS
 #MASTER_Basepairs_summary_bak = MASTER_Basepairs_summary
-print "SEARCHING FOR ERRONEOUSLY ASSIGNED BASEPAIRS"
+print("SEARCHING FOR ERRONEOUSLY ASSIGNED BASEPAIRS")
 
 CONTINUITY_HELICITY_CRITERION_output = [] #Will collect the output of 'FUNCTION CONTINUITY_HELICITY_CRITERION'
 while_control = 'y' #Will end the next 'while' loop when == 'n'
@@ -2160,7 +2161,7 @@ while while_control == 'y':
        run_while = 1
     else:
        line = "deconvoluting candidate basepairs sharing one base\n"
-    print "#######################################################\n#####SEARCHING FOR ERRONEOUSLY ASSIGNED BASEPAIRS: STRINGENCY ", stringency, " Run =", run_while, "\nMODE =", MODE, "\n#######################################################\n"
+    print("#######################################################\n#####SEARCHING FOR ERRONEOUSLY ASSIGNED BASEPAIRS: STRINGENCY ", stringency, " Run =", run_while, "\nMODE =", MODE, "\n#######################################################\n")
 #, line, "\nremoved", removed, " while_control", while_control, " two_base_shared", two_base_shared, " single_base_shared", single_base_shared, " stringency", stringency
     for i in range (len(MASTER_Basepairs_summary)):
         if (len(MASTER_Basepairs_summary[i]) > 0):
@@ -2188,7 +2189,7 @@ while while_control == 'y':
 #In this case there are three criteria that could be used to sort out which of the two is 'LEGITIMATE' and which one is 'FALSE'.
                                      if single_base_shared == 'y':
                                         line = "\n################\nBasepair, " + convert[0] + convert[1] + ":" + convert[2] + convert[3] + " with geometry " + MASTER_Basepairs_summary[i][j][0] + " and basepair " + convert[4] + convert[5] + ":" + convert[6] + convert[7] + " with geometry " + MASTER_Basepairs_summary[l][m][0] + " share one base!!!!!!\nAttempting to deconvolute these two basepairs with " + stringency + " stringency by"
-                                        print line
+                                        print(line)
 
         #CRITERION #1: CONTINUITY_HELICITY_CRITERION: Checking helicity of the basepair. This is done in 'FUNCTION CONTINUITY_HELICITY_CRITERION', where the basepair will be assigned a number between '0' and '2' depending on the number of helical elements that are continuous with it. HIGHEST PRIORITY!!
                                         CONTINUITY_HELICITY_CRITERION_output = CONTINUITY_HELICITY_CRITERION(MASTER_Basepairs_summary[i][j], MASTER_Basepairs_summary, CUTOFF)
@@ -2197,8 +2198,8 @@ while while_control == 'y':
                                         CONTINUITY_HELICITY_CRITERION_output = CONTINUITY_HELICITY_CRITERION(MASTER_Basepairs_summary[l][m], MASTER_Basepairs_summary, CUTOFF)
                                         MASTER_Basepairs_summary[l][m] = CONTINUITY_HELICITY_CRITERION_output[0]
                                         SCORE[0].append(CONTINUITY_HELICITY_CRITERION_output[1] * 4)
-                                        print "Number of helical elements continuous with basepair, ", convert[0], convert[1], ":", convert[2], convert[3], " = ", int(SCORE[0][0]/4)
-                                        print "Number of helical elements continuous with basepair, ", convert[4], convert[5], ":", convert[6], convert[7], " = ", int(SCORE[0][1]/4)
+                                        print("Number of helical elements continuous with basepair, ", convert[0], convert[1], ":", convert[2], convert[3], " = ", int(SCORE[0][0]/4))
+                                        print("Number of helical elements continuous with basepair, ", convert[4], convert[5], ":", convert[6], convert[7], " = ", int(SCORE[0][1]/4))
 
 #                                        print "AFTER CONTINUITY_HELICITY_CRITERION SCORE", SCORE, "\nscore", score
         #CRITERION #2: CUTOFF_CRITERION: the smaller the CUTOFF value, the more chances that the basepair is correctly assigned. MEDIUM PRIORITY.
@@ -2217,7 +2218,7 @@ while while_control == 'y':
                                    #The cutoff string is at MASTER_Basepairs_summary[i][j][len(MASTER_Basepairs_summary[i][j]) - 1] and MASTER_Basepairs_summary[l][m][len(MASTER_Basepairs_summary[l][m]) - 1]
 #                                         print "MASTER_Basepairs_summary[i][j]", MASTER_Basepairs_summary[i][j], "/nMASTER_Basepairs_summary[l][m]", MASTER_Basepairs_summary[l][m]
                                          line = "\n################\nTwo possible geometries for the basepair formed by " + convert[0] + convert[1] + ":" + convert[2] + convert[3] + ", i.e.: " + MASTER_Basepairs_summary[i][j][0] + " and " + MASTER_Basepairs_summary[l][m][0]
-                                         print line
+                                         print(line)
                                          SCORE[1] = CUTOFF_CRITERION(MASTER_Basepairs_summary[i][j], MASTER_Basepairs_summary[l][m], convert[0], convert[1], convert[2], convert[3], convert[4], convert[5], convert[6], convert[7])
         #CRITERION #2: BOND_CRITERION: The larger the number of bonds between two bases, the more chances that the basepair is correctly assigned. Should have the lowest priority
                                          SCORE[2] = BOND_CRITERION(MASTER_Basepairs_summary[i][j], MASTER_Basepairs_summary[l][m], convert[0], convert[1], convert[2], convert[3], convert[4], convert[5], convert[6], convert[7])
@@ -2228,10 +2229,10 @@ while while_control == 'y':
         #Therefore, to be assigned as LEGITIMATE and FALSE, one of the debated basepairs must have a score of '3' and the other a score of '0'
                                      if SCORE != [[],[],[]]:
 #                                         print "\nENTERING DECISSIONS removed", removed, " while_control", while_control, " two_base_shared", two_base_shared, " single_base_shared", single_base_shared, " stringency", stringency, "score", score
-                                         print "CALCULATING SCORE", SCORE,
+                                         print("CALCULATING SCORE", SCORE, end=' ')
                                          score[0] = SCORE[0][0] + SCORE[1][0] + SCORE[2][0]
                                          score[1] = SCORE[0][1] + SCORE[1][1] + SCORE[2][1]
-                                         print "CALCULATING score", score
+                                         print("CALCULATING score", score)
                                          decission = []
                                          if (stringency == 'HIGH'):
                                              undetermined = 'n'
@@ -2261,7 +2262,7 @@ while while_control == 'y':
 
 
 #Loop control:
-    print "Number of succesful deconvolutions =", removed
+    print("Number of succesful deconvolutions =", removed)
     if two_base_shared == 'y':
        while_control = 'n' #Ends the 'while' loop
     if stringency == 'LOW' and removed == 0:
@@ -2301,7 +2302,7 @@ SEQUENTIAL_READOUT(MASTER_Basepairs_summary, MASTER_Basepairs_schemes, control, 
 ##########################################################################
 ##########################################################################
 
-print "\n##########################################################################\nORDERING OUTPUT\n##########################################################################\n"
+print("\n##########################################################################\nORDERING OUTPUT\n##########################################################################\n")
 new_list_end = [] #Will collect all legitimate basepairs from MASTER_Basepairs_summary, from largest first residue to smallest
 max = []
 yes_count = 1 #This will allow to enter the next 'while'where it will be made '0'
@@ -2331,7 +2332,7 @@ while (yes_count > 0):
             MASTER_Basepairs_summary[max[1]][max[2]] = []
 
 for i in range (len(new_list_end)):
-   print new_list_end[i]
+   print(new_list_end[i])
 ##########################################################################
 ##########################################################################
 ##########################################################################
@@ -2398,9 +2399,9 @@ def DIFF_CALC(ARR1, ARR2, LIST1, LIST2):
         LIST1[12] = LIST1[12] + ' '
     if len(LIST1[15]) == 5:
         LIST1[15] = LIST1[15] + ' '
-    print LIST1[0], "", LIST1[2], " ", LIST1[3], " ", LIST1[4], " ", LIST1[5], "    ", LIST1[1], "    ", LIST1[6], "  ", LIST1[7], " ", LIST1[8], LIST1[9], list[0], LIST1[16], list[3], LIST1[17], list[4]
-    print "                                                     ", LIST1[10], " ", LIST1[11], LIST1[12], list[1]
-    print "                                                     ", LIST1[13], " ", LIST1[14], LIST1[15], list[2]
+    print(LIST1[0], "", LIST1[2], " ", LIST1[3], " ", LIST1[4], " ", LIST1[5], "    ", LIST1[1], "    ", LIST1[6], "  ", LIST1[7], " ", LIST1[8], LIST1[9], list[0], LIST1[16], list[3], LIST1[17], list[4])
+    print("                                                     ", LIST1[10], " ", LIST1[11], LIST1[12], list[1])
+    print("                                                     ", LIST1[13], " ", LIST1[14], LIST1[15], list[2])
 
     return list
 #####SECTION FUNCTION "DIFF_CALC"
@@ -2451,8 +2452,8 @@ key.append(3)
 key.append(3)
 
 ###########################FORMATTING 'new_list_end'############################################
-print "######################################\n##########ORDERED RAW OUTPUT##########        BEGINNING\n######################################"
-print "############### '*' notes bonds with length larger tan maximum distance cutoff ###############"
+print("######################################\n##########ORDERED RAW OUTPUT##########        BEGINNING\n######################################")
+print("############### '*' notes bonds with length larger tan maximum distance cutoff ###############")
 list = []
 count_for = len(new_list_end) - 1 #Controld the next 'while'
 new_list_end_floats = numpy.zeros(5 * len(new_list_end)).reshape(len(new_list_end), 5) #Will have as many lines as 'new_list_end', so it can be accessed just like 'new_list_end, but will carry only the bond- and P-distances as float, so they can be used in statistical operations
@@ -2464,7 +2465,7 @@ while count_for > -1:
            missing = []
            if (new_list_end[count_for][1] == 3) and (new_list_end[count_for][6] == 2):
 # and ('FALSE' not in new_list_end[count_for]) and ('UNDETERMINED' not in new_list_end[count_for]):
-               print "Basepair formed by residues", new_list_end[count_for][2], " and", new_list_end[count_for][4], "is missing one bond. Searching for missing bond"
+               print("Basepair formed by residues", new_list_end[count_for][2], " and", new_list_end[count_for][4], "is missing one bond. Searching for missing bond")
                missing_control = "0"
 #               print "new_list_end[count_for]", new_list_end[count_for]
           #Let's first find the basepair scheme
@@ -2519,13 +2520,13 @@ while count_for > -1:
 #           print "count_for", count_for, "new_list_end_floats[count_for]", new_list_end_floats[count_for]
            if "11" != new_list_end[count_for][15] and "11" != new_list_end[count_for][12] and "11" != new_list_end[count_for][9]:
                if new_list_end[count_for][13] == []: #Basepairs with only 2 bonds
-                   print "new_list_end[count_for]", new_list_end[count_for]
+                   print("new_list_end[count_for]", new_list_end[count_for])
                    new_list_end[count_for][13] = '0'
                    new_list_end[count_for][14] = '0'
                    new_list_end[count_for][15] = '00'
                    new_list_end_floats[count_for,:] = new_list_end_floats[count_for,:] + [new_list_end[count_for][9], new_list_end[count_for][12], 0, new_list_end[count_for][16], new_list_end[count_for][17]]
                else:
-                   print "new_list_end[count_for]", new_list_end[count_for]
+                   print("new_list_end[count_for]", new_list_end[count_for])
                    new_list_end_floats[count_for,:] = new_list_end_floats[count_for,:] + [new_list_end[count_for][9], new_list_end[count_for][12], new_list_end[count_for][15], new_list_end[count_for][16], new_list_end[count_for][17]]
                    a3 = str(new_list_end[count_for][15])
                    new_list_end[count_for][15] = a3[:5]
@@ -2615,11 +2616,11 @@ while count_for > -1:
                   a = 'YES'
                new_list_end[count_for].append(ADD_SPACES(a, key[16]))
            line1 = line1 + new_list_end[count_for][len(new_list_end[count_for])-1] + ending
-           print line1
+           print(line1)
 #           print new_list_end[count_for]
            count_for = count_for - 1
-print "############### '*' notes bonds with length larger tan maximum distance cutoff ###############"
-print "######################################\n##########ORDERED RAW OUTPUT##########       END\n######################################"
+print("############### '*' notes bonds with length larger tan maximum distance cutoff ###############")
+print("######################################\n##########ORDERED RAW OUTPUT##########       END\n######################################")
 #ADDING DESIRED SPACES
 
 #print "AFTER loading new_list_end_floats \nlen(new_list_end)", len(new_list_end), "new_list_end_floats.ndim", new_list_end_floats.ndim, "new_list_end_floats.shape", new_list_end_floats.shape, "count_for", count_for
@@ -2677,16 +2678,16 @@ CLOSE(file)
 
 #########################
 ########STATISTICS OUTPUT              BEGINNING
-print "\n\n#######################################################\n##################### STATISTICS ######################\n#######################################################\n"
-print "###### A total of", basepair_count, "basepairs has been identified"
+print("\n\n#######################################################\n##################### STATISTICS ######################\n#######################################################\n")
+print("###### A total of", basepair_count, "basepairs has been identified")
 ##### 1) PRINTING OUTPUT BY CUTOFF    BEGINNING
 file = [[], []]
 for h in range (len(run_cutoff)/2):
-   print "\n\nBASEPAIRS FULLY IDENTIFIED AT DISTANCE CUTOFF = ", run_cutoff[h*2 + 1]
-   print           "==============================================================================="
-   print "   Scheme   Resid  Base  Resid  Base Expect. Found ATOM ATOM  DIST. Method M.I."
-   print           "             #1     #1    #2     #2   Bonds  Bonds  #1   #2"
-   print           "==============================================================================="
+   print("\n\nBASEPAIRS FULLY IDENTIFIED AT DISTANCE CUTOFF = ", run_cutoff[h*2 + 1])
+   print("===============================================================================")
+   print("   Scheme   Resid  Base  Resid  Base Expect. Found ATOM ATOM  DIST. Method M.I.")
+   print("             #1     #1    #2     #2   Bonds  Bonds  #1   #2")
+   print("===============================================================================")
 
    #For PYMOL output
    pymol1 = dir + "/" + pdb_file_main + "_basepairs-at-cutoff_" + run_cutoff[h*2 + 1] + "_PYMOL" + "_script.pml"
@@ -2699,12 +2700,12 @@ for h in range (len(run_cutoff)/2):
 
       PYMOL_OUTPUT(run_cutoff_LISTS[h][a], a, pdb_file_main, From, file)
 
-      print run_cutoff_LISTS[h][a][0], "", run_cutoff_LISTS[h][a][2], " ", run_cutoff_LISTS[h][a][3], " ", run_cutoff_LISTS[h][a][4], " ", run_cutoff_LISTS[h][a][5], "    ", run_cutoff_LISTS[h][a][1], "    ", run_cutoff_LISTS[h][a][6], "  ", run_cutoff_LISTS[h][a][7], " ", run_cutoff_LISTS[h][a][8], run_cutoff_LISTS[h][a][9], "  ", run_cutoff_LISTS[h][a][len(run_cutoff_LISTS[h][a])-3], run_cutoff_LISTS[h][a][len(run_cutoff_LISTS[h][a])-1]
-      print "                                                     ", run_cutoff_LISTS[h][a][10], " ", run_cutoff_LISTS[h][a][11], run_cutoff_LISTS[h][a][12]
-      print "                                                     ", run_cutoff_LISTS[h][a][13], " ", run_cutoff_LISTS[h][a][14], run_cutoff_LISTS[h][a][15]
-   print           "==============================================================================="
-   print "Number of basepairs identified at CUTOFF =", run_cutoff[h*2 + 1], "is", len(run_cutoff_LISTS[h])
-print "############### notes bonds with length larger tan maximum distance cutoff ###############"
+      print(run_cutoff_LISTS[h][a][0], "", run_cutoff_LISTS[h][a][2], " ", run_cutoff_LISTS[h][a][3], " ", run_cutoff_LISTS[h][a][4], " ", run_cutoff_LISTS[h][a][5], "    ", run_cutoff_LISTS[h][a][1], "    ", run_cutoff_LISTS[h][a][6], "  ", run_cutoff_LISTS[h][a][7], " ", run_cutoff_LISTS[h][a][8], run_cutoff_LISTS[h][a][9], "  ", run_cutoff_LISTS[h][a][len(run_cutoff_LISTS[h][a])-3], run_cutoff_LISTS[h][a][len(run_cutoff_LISTS[h][a])-1])
+      print("                                                     ", run_cutoff_LISTS[h][a][10], " ", run_cutoff_LISTS[h][a][11], run_cutoff_LISTS[h][a][12])
+      print("                                                     ", run_cutoff_LISTS[h][a][13], " ", run_cutoff_LISTS[h][a][14], run_cutoff_LISTS[h][a][15])
+   print("===============================================================================")
+   print("Number of basepairs identified at CUTOFF =", run_cutoff[h*2 + 1], "is", len(run_cutoff_LISTS[h]))
+print("############### notes bonds with length larger tan maximum distance cutoff ###############")
 CLOSE(file)
 ##### 1) PRINTING OUTPUT BY CUTOFF    END
 
@@ -2718,19 +2719,19 @@ if LEGITIMATE_tagged != []:
     color = 'RED'
     From = ''
 
-    print "\n\nLIST OF LEGITIMATE BASEPAIRS FOUND TO SHARE BASES WITH FALSELY ASSIGNED BASEPAIRS"
-    print           "==============================================================================="
-    print "   Scheme   Resid  Base  Resid  Base Expect. Found ATOM ATOM  DIST. Method M.I."
-    print           "             #1     #1    #2     #2   Bonds  Bonds  #1   #2"
-    print           "==============================================================================="
+    print("\n\nLIST OF LEGITIMATE BASEPAIRS FOUND TO SHARE BASES WITH FALSELY ASSIGNED BASEPAIRS")
+    print("===============================================================================")
+    print("   Scheme   Resid  Base  Resid  Base Expect. Found ATOM ATOM  DIST. Method M.I.")
+    print("             #1     #1    #2     #2   Bonds  Bonds  #1   #2")
+    print("===============================================================================")
     for h in range (len(LEGITIMATE_tagged)):
        PYMOL_OUTPUT(LEGITIMATE_tagged[h], h, pdb_file_main, From, file)
-       print LEGITIMATE_tagged[h][0], "", LEGITIMATE_tagged[h][2], " ", LEGITIMATE_tagged[h][3], " ", LEGITIMATE_tagged[h][4], " ", LEGITIMATE_tagged[h][5], "    ", LEGITIMATE_tagged[h][1], "    ", LEGITIMATE_tagged[h][6], "  ", LEGITIMATE_tagged[h][7], " ", LEGITIMATE_tagged[h][8], LEGITIMATE_tagged[h][9], "  ", LEGITIMATE_tagged[h][len(LEGITIMATE_tagged[h])-4], LEGITIMATE_tagged[h][len(LEGITIMATE_tagged[h])-2]
-       print "                                                     ", LEGITIMATE_tagged[h][10], " ", LEGITIMATE_tagged[h][11], LEGITIMATE_tagged[h][12]
-       print "                                                     ", LEGITIMATE_tagged[h][13], " ", LEGITIMATE_tagged[h][14], LEGITIMATE_tagged[h][15]
-    print           "==============================================================================="
-    print "############### '*' notes bonds with length larger tan maximum distance cutoff ###############"
-    print "Number of LEGITIMATE BASEPAIRS FOUND TO SHARE BASES WITH FALSELY ASSIGNED BASEPAIRS =", len(LEGITIMATE_tagged)
+       print(LEGITIMATE_tagged[h][0], "", LEGITIMATE_tagged[h][2], " ", LEGITIMATE_tagged[h][3], " ", LEGITIMATE_tagged[h][4], " ", LEGITIMATE_tagged[h][5], "    ", LEGITIMATE_tagged[h][1], "    ", LEGITIMATE_tagged[h][6], "  ", LEGITIMATE_tagged[h][7], " ", LEGITIMATE_tagged[h][8], LEGITIMATE_tagged[h][9], "  ", LEGITIMATE_tagged[h][len(LEGITIMATE_tagged[h])-4], LEGITIMATE_tagged[h][len(LEGITIMATE_tagged[h])-2])
+       print("                                                     ", LEGITIMATE_tagged[h][10], " ", LEGITIMATE_tagged[h][11], LEGITIMATE_tagged[h][12])
+       print("                                                     ", LEGITIMATE_tagged[h][13], " ", LEGITIMATE_tagged[h][14], LEGITIMATE_tagged[h][15])
+    print("===============================================================================")
+    print("############### '*' notes bonds with length larger tan maximum distance cutoff ###############")
+    print("Number of LEGITIMATE BASEPAIRS FOUND TO SHARE BASES WITH FALSELY ASSIGNED BASEPAIRS =", len(LEGITIMATE_tagged))
     CLOSE(file)
 
 ##### 3) LIST OF FALSE BASEPAIRS
@@ -2743,19 +2744,19 @@ if falsely_assigned != []:
     color = 'RED'
     From = ''
 
-    print "\n\nLIST OF FALSE BASEPAIRS"
-    print           "==============================================================================="
-    print "   Scheme   Resid  Base  Resid  Base Expect. Found ATOM ATOM  DIST. Method M.I."
-    print           "             #1     #1    #2     #2   Bonds  Bonds  #1   #2"
-    print           "==============================================================================="
+    print("\n\nLIST OF FALSE BASEPAIRS")
+    print("===============================================================================")
+    print("   Scheme   Resid  Base  Resid  Base Expect. Found ATOM ATOM  DIST. Method M.I.")
+    print("             #1     #1    #2     #2   Bonds  Bonds  #1   #2")
+    print("===============================================================================")
     for h in range (len(falsely_assigned)):
        PYMOL_OUTPUT(falsely_assigned[h], h, pdb_file_main, From, file)
-       print falsely_assigned[h][0], "", falsely_assigned[h][2], " ", falsely_assigned[h][3], " ", falsely_assigned[h][4], " ", falsely_assigned[h][5], "    ", falsely_assigned[h][1], "    ", falsely_assigned[h][6], "  ", falsely_assigned[h][7], " ", falsely_assigned[h][8], falsely_assigned[h][9], "  ", falsely_assigned[h][len(falsely_assigned[h])-5], falsely_assigned[h][len(falsely_assigned[h])-2]
-       print "                                                     ", falsely_assigned[h][10], " ", falsely_assigned[h][11], falsely_assigned[h][12]
-       print "                                                     ", falsely_assigned[h][13], " ", falsely_assigned[h][14], falsely_assigned[h][15]
-    print           "==============================================================================="
-    print "############### '*' notes bonds with length larger tan maximum distance cutoff ###############"
-    print "Number of FALSELY ASSIGNED BASEPAIRS =", len(falsely_assigned)
+       print(falsely_assigned[h][0], "", falsely_assigned[h][2], " ", falsely_assigned[h][3], " ", falsely_assigned[h][4], " ", falsely_assigned[h][5], "    ", falsely_assigned[h][1], "    ", falsely_assigned[h][6], "  ", falsely_assigned[h][7], " ", falsely_assigned[h][8], falsely_assigned[h][9], "  ", falsely_assigned[h][len(falsely_assigned[h])-5], falsely_assigned[h][len(falsely_assigned[h])-2])
+       print("                                                     ", falsely_assigned[h][10], " ", falsely_assigned[h][11], falsely_assigned[h][12])
+       print("                                                     ", falsely_assigned[h][13], " ", falsely_assigned[h][14], falsely_assigned[h][15])
+    print("===============================================================================")
+    print("############### '*' notes bonds with length larger tan maximum distance cutoff ###############")
+    print("Number of FALSELY ASSIGNED BASEPAIRS =", len(falsely_assigned))
     CLOSE(file)
 
 ##### 4) LIST OF BASEPAIRS WITH WRONG GEOMETRY
@@ -2768,19 +2769,19 @@ if wrongly_assigned != []:
     color = 'RED'
     From = ''
 
-    print "\n\nLIST OF BASEPAIRS WITH WRONG GEOMETRY"
-    print           "==============================================================================="
-    print "   Scheme   Resid  Base  Resid  Base Expect. Found ATOM ATOM  DIST. Method M.I."
-    print           "             #1     #1    #2     #2   Bonds  Bonds  #1   #2"
-    print           "==============================================================================="
+    print("\n\nLIST OF BASEPAIRS WITH WRONG GEOMETRY")
+    print("===============================================================================")
+    print("   Scheme   Resid  Base  Resid  Base Expect. Found ATOM ATOM  DIST. Method M.I.")
+    print("             #1     #1    #2     #2   Bonds  Bonds  #1   #2")
+    print("===============================================================================")
     for h in range (len(wrongly_assigned)):
        PYMOL_OUTPUT(wrongly_assigned[h], h, pdb_file_main, From, file)
-       print wrongly_assigned[h][0], "", wrongly_assigned[h][2], " ", wrongly_assigned[h][3], " ", wrongly_assigned[h][4], " ", wrongly_assigned[h][5], "    ", wrongly_assigned[h][1], "    ", wrongly_assigned[h][6], "  ", wrongly_assigned[h][7], " ", wrongly_assigned[h][8], wrongly_assigned[h][9], "  ", wrongly_assigned[h][len(wrongly_assigned[h])-5], wrongly_assigned[h][len(wrongly_assigned[h])-2]
-       print "                                                     ", wrongly_assigned[h][10], " ", wrongly_assigned[h][11], wrongly_assigned[h][12]
-       print "                                                     ", wrongly_assigned[h][13], " ", wrongly_assigned[h][14], wrongly_assigned[h][15]
-    print           "==============================================================================="
-    print "############### '*' notes bonds with length larger tan maximum distance cutoff ###############"
-    print "Number of BASEPAIRS WITH WRONG GEOMETRY =", len(wrongly_assigned)
+       print(wrongly_assigned[h][0], "", wrongly_assigned[h][2], " ", wrongly_assigned[h][3], " ", wrongly_assigned[h][4], " ", wrongly_assigned[h][5], "    ", wrongly_assigned[h][1], "    ", wrongly_assigned[h][6], "  ", wrongly_assigned[h][7], " ", wrongly_assigned[h][8], wrongly_assigned[h][9], "  ", wrongly_assigned[h][len(wrongly_assigned[h])-5], wrongly_assigned[h][len(wrongly_assigned[h])-2])
+       print("                                                     ", wrongly_assigned[h][10], " ", wrongly_assigned[h][11], wrongly_assigned[h][12])
+       print("                                                     ", wrongly_assigned[h][13], " ", wrongly_assigned[h][14], wrongly_assigned[h][15])
+    print("===============================================================================")
+    print("############### '*' notes bonds with length larger tan maximum distance cutoff ###############")
+    print("Number of BASEPAIRS WITH WRONG GEOMETRY =", len(wrongly_assigned))
     CLOSE(file)
 
 
@@ -2793,19 +2794,19 @@ if undetermined != []:
     file[1].write(line1)
     color = 'RED'
     From = ''
-    print "\n\nLIST OF BASE-SHARING BASEPAIRS THAT CANNOT BE DECONVOLUTED"
-    print           "==============================================================================="
-    print "   Scheme   Resid  Base  Resid  Base Expect. Found ATOM ATOM  DIST. Method M.I."
-    print           "             #1     #1    #2     #2   Bonds  Bonds  #1   #2"
-    print           "==============================================================================="
+    print("\n\nLIST OF BASE-SHARING BASEPAIRS THAT CANNOT BE DECONVOLUTED")
+    print("===============================================================================")
+    print("   Scheme   Resid  Base  Resid  Base Expect. Found ATOM ATOM  DIST. Method M.I.")
+    print("             #1     #1    #2     #2   Bonds  Bonds  #1   #2")
+    print("===============================================================================")
     for h in range (len(undetermined)):
       PYMOL_OUTPUT(undetermined[h], h, pdb_file_main, From, file)
-      print undetermined[h][0], "", undetermined[h][2], " ", undetermined[h][3], " ", undetermined[h][4], " ", undetermined[h][5], "    ", undetermined[h][1], "    ", undetermined[h][6], "  ", undetermined[h][7], " ", undetermined[h][8], undetermined[h][9], "  ", undetermined[h][len(undetermined[h])-4], undetermined[h][len(undetermined[h])-1]
-      print "                                                     ", undetermined[h][10], " ", undetermined[h][11], undetermined[h][12]
-      print "                                                     ", undetermined[h][13], " ", undetermined[h][14], undetermined[h][15]
-    print           "==============================================================================="
-    print "Number of BASE-SHARING BASEPAIRS THAT CANNOT BE DECONVOLUTED =", len(undetermined)
-    print "############### '*' notes bonds with length larger tan maximum distance cutoff ###############"
+      print(undetermined[h][0], "", undetermined[h][2], " ", undetermined[h][3], " ", undetermined[h][4], " ", undetermined[h][5], "    ", undetermined[h][1], "    ", undetermined[h][6], "  ", undetermined[h][7], " ", undetermined[h][8], undetermined[h][9], "  ", undetermined[h][len(undetermined[h])-4], undetermined[h][len(undetermined[h])-1])
+      print("                                                     ", undetermined[h][10], " ", undetermined[h][11], undetermined[h][12])
+      print("                                                     ", undetermined[h][13], " ", undetermined[h][14], undetermined[h][15])
+    print("===============================================================================")
+    print("Number of BASE-SHARING BASEPAIRS THAT CANNOT BE DECONVOLUTED =", len(undetermined))
+    print("############### '*' notes bonds with length larger tan maximum distance cutoff ###############")
     CLOSE(file)
 ##### 5) LIST OF UNDETERMINED BASEPAIRS END
 
@@ -2818,19 +2819,19 @@ if missing_bond != []:
     file[1].write(line1)
     color = 'RED'
     From = ''
-    print "\n\nLIST OF MISSING-BOND BASEPAIRS"
-    print           "==============================================================================="
-    print "   Scheme   Resid  Base  Resid  Base Expect. Found ATOM ATOM  DIST. Method M.I."
-    print           "             #1     #1    #2     #2   Bonds  Bonds  #1   #2"
-    print           "==============================================================================="
+    print("\n\nLIST OF MISSING-BOND BASEPAIRS")
+    print("===============================================================================")
+    print("   Scheme   Resid  Base  Resid  Base Expect. Found ATOM ATOM  DIST. Method M.I.")
+    print("             #1     #1    #2     #2   Bonds  Bonds  #1   #2")
+    print("===============================================================================")
     for h in range (len(missing_bond)):
       PYMOL_OUTPUT(missing_bond[h], h, pdb_file_main, From, file)
-      print missing_bond[h][0], "", missing_bond[h][2], " ", missing_bond[h][3], " ", missing_bond[h][4], " ", missing_bond[h][5], "    ", missing_bond[h][1], "    ", missing_bond[h][6], "  ", missing_bond[h][7], " ", missing_bond[h][8], missing_bond[h][9], "  ", missing_bond[h][len(missing_bond[h])-4], missing_bond[h][len(missing_bond[h])-1]
-      print "                                                     ", missing_bond[h][10], " ", missing_bond[h][11], missing_bond[h][12]
-      print "                                                     ", missing_bond[h][13], " ", missing_bond[h][14], missing_bond[h][15]
-    print           "==============================================================================="
-    print "Number of MISSING-BOND BASEPAIRS =", len(missing_bond)
-    print "############### 'NF' notes Not-found bond ###############"
+      print(missing_bond[h][0], "", missing_bond[h][2], " ", missing_bond[h][3], " ", missing_bond[h][4], " ", missing_bond[h][5], "    ", missing_bond[h][1], "    ", missing_bond[h][6], "  ", missing_bond[h][7], " ", missing_bond[h][8], missing_bond[h][9], "  ", missing_bond[h][len(missing_bond[h])-4], missing_bond[h][len(missing_bond[h])-1])
+      print("                                                     ", missing_bond[h][10], " ", missing_bond[h][11], missing_bond[h][12])
+      print("                                                     ", missing_bond[h][13], " ", missing_bond[h][14], missing_bond[h][15])
+    print("===============================================================================")
+    print("Number of MISSING-BOND BASEPAIRS =", len(missing_bond))
+    print("############### 'NF' notes Not-found bond ###############")
     CLOSE(file)
 ##### 6) LIST OF MISSING-BOND BASEPAIRS END
 
@@ -2870,19 +2871,19 @@ for a in range (len(MASTER_Basepairs_schemes)):
         STATS[a,] = [numpy.mean(SUM[:,0]), numpy.std(SUM[:,0]), numpy.mean(SUM[:,1]), numpy.std(SUM[:,1]), numpy.mean(SUM[:,2]), numpy.std(SUM[:,2]), numpy.mean(SUM[:,3]), numpy.std(SUM[:,3]), numpy.mean(SUM[:,4]), numpy.std(SUM[:,4]), SUM.shape[0]]
 
 #SUMMARY STATISTICS BY BASEPAIR
-print "n\n"
+print("n\n")
 for a in range (len(MASTER_Basepairs_schemes)):
-    print MASTER_Basepairs_schemes[a],
+    print(MASTER_Basepairs_schemes[a], end=' ')
     list = [str(STATS[a,0]), str(STATS[a,1]), str(STATS[a,2]), str(STATS[a,3]), str(STATS[a,4]), str(STATS[a,5]), str(STATS[a,6]), str(STATS[a,7]), str(STATS[a,8]), str(STATS[a,9]), str(STATS[a,10])]
     if list[0] != '0.0':
-        print "STATISTICAL VALUES CALCULATED WITHIN STRUCTURE"
-        print "Bond1: MEAN =", list[0][:5], "SD =", list[1][:5], "Bond2: MEAN = ", list[2][:5], "SD =", list[3][:5], "Bond3: MEAN =", list[4][:5], "SD =", list[5][:5], "P-to-P distance =", list[6][:5], "SD =", list[7][:5], "C1\'-to-C1\' distance =", list[8][:5], "SD =", list[9][:5], "No Basepairs =", list[7][:1]
+        print("STATISTICAL VALUES CALCULATED WITHIN STRUCTURE")
+        print("Bond1: MEAN =", list[0][:5], "SD =", list[1][:5], "Bond2: MEAN = ", list[2][:5], "SD =", list[3][:5], "Bond3: MEAN =", list[4][:5], "SD =", list[5][:5], "P-to-P distance =", list[6][:5], "SD =", list[7][:5], "C1\'-to-C1\' distance =", list[8][:5], "SD =", list[9][:5], "No Basepairs =", list[7][:1])
     else:
-        print "No basepairs of this geometry were found"
+        print("No basepairs of this geometry were found")
 
 #WHOLE LIST
 list = []
-print "\n\nLIST OF BASEPAIRS ORDERED BY GEOMETRY"
+print("\n\nLIST OF BASEPAIRS ORDERED BY GEOMETRY")
 for c in range (len(MASTER_Basepairs_schemes)):
     geometry_counter = 0 #Will count all basepairs within 'new_list_end[b]' with 'MASTER_Basepairs_schemes[c]' geometry
     geometry_counter_real = 0 #Will count only non-FALSE, non-UNDETERMINED basepairs within 'new_list_end[b]' with 'MASTER_Basepairs_schemes[c]' geometry
@@ -2893,51 +2894,51 @@ for c in range (len(MASTER_Basepairs_schemes)):
         if MASTER_Basepairs_schemes[c] == scheme:
            geometry_counter = geometry_counter + 1
            if geometry_counter == 1:
-              print           "======================================================================================================="
-              print "   Scheme   Resid  Base  Resid  Base Expect. Found  ATOM ATOM  DIST.  DIFF.  DIST   DIFF.  DIST   DIFF."
-              print           "             #1     #1    #2     #2   Bonds  Bonds   #1   #2    BOND         P-P          C1'-C1'"
-              print           "======================================================================================================="
+              print("=======================================================================================================")
+              print("   Scheme   Resid  Base  Resid  Base Expect. Found  ATOM ATOM  DIST.  DIFF.  DIST   DIFF.  DIST   DIFF.")
+              print("             #1     #1    #2     #2   Bonds  Bonds   #1   #2    BOND         P-P          C1'-C1'")
+              print("=======================================================================================================")
            if 'REMOVED' not in new_list_end[b] and 'FALSE' not in new_list_end[b] and 'WRONG' not in new_list_end[b] and 'UNDETERMINED' not in new_list_end[b]:
                geometry_counter_real = geometry_counter_real + 1
                list = DIFF_CALC(new_list_end_floats[b,:], STATS[c,:], new_list_end[b], MASTER_Basepairs_bonds[c])
 
     if geometry_counter_real > 0 and 'REMOVED' not in new_list_end[b] and 'FALSE' not in new_list_end[b] and 'WRONG' not in new_list_end[b] and 'UNDETERMINED' not in new_list_end[b]:
          list = [str(STATS[c,0]), str(STATS[c,1]), str(STATS[c,2]), str(STATS[c,3]), str(STATS[c,4]), str(STATS[c,5]), str(STATS[c,6]), str(STATS[c,7]), str(STATS[c,8]), str(STATS[c,9])]
-         print "PRECALCULATED STATISTICAL DATA:", "\nP-to-P distance =", MASTER_Basepairs_bonds[c][9], " SD =", MASTER_Basepairs_bonds[c][10], "\nC1\'-to-C1\' distance =", MASTER_Basepairs_bonds[c][11], " SD =", MASTER_Basepairs_bonds[c][12]
-         print "STATISTICAL DATA FROM CURRENT STRUCTURE:", "\nBond1: MEAN =", list[0][:5], "SD =", list[1][:5], "\nBond2: MEAN =", list[2][:5], " SD =", list[3][:5], "\nBond3: MEAN =", list[4][:5], " SD =", list[5][:5], "\nP-to-P distance =", list[6][:5], " SD =", list[7][:5], "\nC1\'-to-C1\' distance =", list[8][:5], " SD =", list[9][:5]
-         print "NUMBER OF BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", geometry_counter_real, "\n"
+         print("PRECALCULATED STATISTICAL DATA:", "\nP-to-P distance =", MASTER_Basepairs_bonds[c][9], " SD =", MASTER_Basepairs_bonds[c][10], "\nC1\'-to-C1\' distance =", MASTER_Basepairs_bonds[c][11], " SD =", MASTER_Basepairs_bonds[c][12])
+         print("STATISTICAL DATA FROM CURRENT STRUCTURE:", "\nBond1: MEAN =", list[0][:5], "SD =", list[1][:5], "\nBond2: MEAN =", list[2][:5], " SD =", list[3][:5], "\nBond3: MEAN =", list[4][:5], " SD =", list[5][:5], "\nP-to-P distance =", list[6][:5], " SD =", list[7][:5], "\nC1\'-to-C1\' distance =", list[8][:5], " SD =", list[9][:5])
+         print("NUMBER OF BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", geometry_counter_real, "\n")
 
 #FALSE BASEPAIRS
     false_counter = 0
     for b in range (len(falsely_assigned)):
         if MASTER_Basepairs_schemes[c] in falsely_assigned[b][0]:
             if b == 0:
-               print "LIST FALSE BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry:"
+               print("LIST FALSE BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry:")
             false_counter = false_counter + 1
             list = DIFF_CALC(new_list_end_floats[falsely_assigned[b][len(falsely_assigned[b])-1],:], STATS[c,:], falsely_assigned[b], MASTER_Basepairs_bonds[c])
     if false_counter > 0:
-        print "NUMBER OF FALSE BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", false_counter, "\n"
+        print("NUMBER OF FALSE BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", false_counter, "\n")
 
 #UNDETERMINED BASEPAIRS
     undetermined_counter = 0
     for b in range (len(undetermined)):
         if MASTER_Basepairs_schemes[c] in undetermined[b][0]:
             if b == 0:
-                print "LIST OF UNDETERMINED BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry:"
+                print("LIST OF UNDETERMINED BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry:")
             undetermined_counter = undetermined_counter + 1
             list = DIFF_CALC(new_list_end_floats[undetermined[b][len(undetermined[b])-1],:], STATS[c,:], undetermined[b], MASTER_Basepairs_bonds[c])
     if undetermined_counter > 0:
-        print "NUMBER OF UNDETERMINED BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", undetermined_counter, "\n"
+        print("NUMBER OF UNDETERMINED BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", undetermined_counter, "\n")
 
 
 
-print           "==============================================================================="
+print("===============================================================================")
 #### 7) LIST OF BASEPAIRS BY GEOMETRY END
 
 
 
 
-print "\n\n#######################################################\n##################### STATISTICS ######################\n#######################################################\n"
+print("\n\n#######################################################\n##################### STATISTICS ######################\n#######################################################\n")
 #########################################################################
 ##########################################################################
 ##########################################################################
@@ -2988,7 +2989,7 @@ for i in range (len(control)):
            line1.append(list[v*2] + list[(v*2)+1])
 
 
-print "########################################################\n#################### END OF PROGRAM ####################\n########################################################"
+print("########################################################\n#################### END OF PROGRAM ####################\n########################################################")
 
 import sys
 sys.exit()

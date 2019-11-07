@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.phil
 import sys
 
@@ -38,10 +38,10 @@ def run(args, out=sys.stdout):
     set_b_iso=True,
     convert_to_isotropic=True)
   if (n_modified == 0):
-    print >> out, "No residues modified."
+    print("No residues modified.", file=out)
   else :
     open("rejoined.pdb", "w").write(hierarchy.as_pdb_string())
-    print >> out, "wrote rejoined.pdb"
+    print("wrote rejoined.pdb", file=out)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

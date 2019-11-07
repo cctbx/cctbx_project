@@ -1,6 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from dials.command_line.stills_process import Processor
+from xfel.ui.db.dxtbx_db import log_frame, dxtbx_xfel_db_application
 
 class DialsProcessorWithLogging(Processor):
   '''Overrides for steps of dials processing of stills with XFEL GUI database logging.'''
@@ -9,23 +10,20 @@ class DialsProcessorWithLogging(Processor):
     super(DialsProcessorWithLogging, self).__init__(params, composite_tag, rank)
     self.tt_low = None
     self.tt_high = None
+    self.db_app = dxtbx_xfel_db_application(params)
 
   def log_frame(self, experiments, reflections, run, n_strong, timestamp = None,
                 two_theta_low = None, two_theta_high = None, db_event = None):
     # update an existing db_event if db_event is not None
     if self.params.experiment_tag is None:
       return
-    from xfel.ui.db.dxtbx_db import log_frame
     db_event = log_frame(experiments, reflections, self.params, run, n_strong, timestamp = timestamp,
                          two_theta_low = two_theta_low, two_theta_high = two_theta_high,
-                         db_event = db_event)
+                         db_event = db_event, app = self.db_app)
     return db_event
 
   def get_run_and_timestamp(self, obj):
-    try:
-      sets = obj.extract_imagesets()
-    except AttributeError:
-      sets = obj.imagesets()
+    sets = obj.imagesets()
     assert len(sets) == 1
     imageset = sets[0]
     assert len(imageset) == 1
@@ -36,16 +34,16 @@ class DialsProcessorWithLogging(Processor):
       return run.run(), timestamp
     except AttributeError: # General version
       run = self.params.input.run_num
-      timestamp = str(imageset.indices()[0])
+      timestamp = self.tag
       return run, timestamp
 
-  def pre_process(self, datablock):
-    super(DialsProcessorWithLogging, self).pre_process(datablock)
+  def pre_process(self, experiments):
+    super(DialsProcessorWithLogging, self).pre_process(experiments)
 
     if self.params.radial_average.enable:
       from dxtbx.command_line.radial_average import run as radial_run
       from scitbx.array_family import flex
-      imageset = datablock.extract_imagesets()[0]
+      imageset = experiments.imagesets()[0]
       two_thetas, radial_average_values = radial_run(self.params.radial_average, imageset = imageset)
 
       def get_closest_idx(data, val):
@@ -58,15 +56,15 @@ class DialsProcessorWithLogging(Processor):
       if self.params.radial_average.two_theta_high is not None:
         self.tt_high = radial_average_values[get_closest_idx(two_thetas, self.params.radial_average.two_theta_high)]
 
-  def find_spots(self, datablock):
-    observed = super(DialsProcessorWithLogging, self).find_spots(datablock)
-    run, timestamp = self.get_run_and_timestamp(datablock)
+  def find_spots(self, experiments):
+    observed = super(DialsProcessorWithLogging, self).find_spots(experiments)
+    run, timestamp = self.get_run_and_timestamp(experiments)
     self.db_event = self.log_frame(None, None, run, len(observed), timestamp = timestamp,
                                    two_theta_low = self.tt_low, two_theta_high = self.tt_high)
     return observed
 
-  def index(self, datablock, reflections):
-    experiments, indexed = super(DialsProcessorWithLogging, self).index(datablock, reflections)
+  def index(self, experiments, reflections):
+    experiments, indexed = super(DialsProcessorWithLogging, self).index(experiments, reflections)
 
     if not(self.params.dispatch.integrate):
       run, timestamp = self.get_run_and_timestamp(experiments)

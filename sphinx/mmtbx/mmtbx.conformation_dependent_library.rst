@@ -44,10 +44,10 @@ mmtbx.conformation_dependent_library.rotamers module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.conformation_dependent_library.test_cdl module
+mmtbx.conformation_dependent_library.tst_cdl module
 ----------------------------------------------------
 
-.. automodule:: mmtbx.conformation_dependent_library.test_cdl
+.. automodule:: mmtbx.conformation_dependent_library.tst_cdl
     :members:
     :undoc-members:
     :show-inheritance:
@@ -60,10 +60,10 @@ mmtbx.conformation_dependent_library.test_interpolation module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.conformation_dependent_library.test_rdl module
+mmtbx.conformation_dependent_library.tst_rdl module
 ----------------------------------------------------
 
-.. automodule:: mmtbx.conformation_dependent_library.test_rdl
+.. automodule:: mmtbx.conformation_dependent_library.tst_rdl
     :members:
     :undoc-members:
     :show-inheritance:

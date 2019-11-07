@@ -12,11 +12,12 @@ Reference:
   20499387
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import adopt_init_args, Auto
 from libtbx.utils import Sorry
 from libtbx import easy_mp
 import sys
+from six.moves import range
 
 ringer_phil_str = """
 sampling_angle = 5
@@ -284,7 +285,7 @@ class iterate_over_residues(object):
       results_ = easy_mp.pool_map(
         processes=params.nproc,
         fixed_func=self.__sample_density,
-        args=range(len(self.residue_groups)))
+        args=list(range(len(self.residue_groups))))
       # now flatten it out
       self.results = []
       for result_list in results_ : self.results.extend(result_list)
@@ -326,17 +327,17 @@ class iterate_over_residues(object):
           n_chi=n_chi,
           xyz=xyz)
         if (verbose):
-          print >> self.log, "  %s:" % residue.id_str()
+          print("  %s:" % residue.id_str(), file=self.log)
         for i in range(1, min(self.n_chi_max+1, n_chi+1)):
           try :
             atoms = self.angle_lookup.extract_chi_atoms("chi%d" % i, residue)
           except AttributeError as e :
-            print >> self.log, "Warning: Could not load chi {} atoms".format(i)
+            print("Warning: Could not load chi {} atoms".format(i), file=self.log)
             pass
           else :
             try :
               if (atoms is None):
-                print >> self.log, "Warning: No side chain atoms detected in model"
+                print("Warning: No side chain atoms detected in model", file=self.log)
                 break
               i_seqs = [ atom.i_seq for atom in atoms ]
               sites_chi = [ self.sites_cart[i_seq] for i_seq in i_seqs ]
@@ -346,7 +347,7 @@ class iterate_over_residues(object):
                 angle_ideal=0,
                 weight=0)
               if (verbose):
-                print >> self.log, "    chi%d = %.1f" % (i, chi.angle_model)
+                print("    chi%d = %.1f" % (i, chi.angle_model), file=self.log)
               densities, fofc_densities = sample_angle(
                 i_seqs=i_seqs,
                 sites_cart=sites_chi,

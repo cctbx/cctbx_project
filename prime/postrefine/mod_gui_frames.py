@@ -1,73 +1,87 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
+from past.builtins import range
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 10/21/2018
+Last Changed: 07/17/2019
 Description : PRIME GUI frames module
 '''
 
 import os
-import wx
+import numpy as np
 import multiprocessing
+
+import wx
 from wxtbx import bitmaps
 
-from libtbx import easy_run
-from libtbx import easy_pickle as ep
-from libtbx.utils import to_str
-import numpy as np
+from iotbx import phil as ip
+from libtbx import easy_run, easy_pickle as ep
+from libtbx.utils import Sorry
 
+import matplotlib as mpl
 import matplotlib.gridspec as gridspec
-from matplotlib import pyplot as plt
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 import iota.components.iota_utils as util
-import iota.components.iota_ui_controls as ct
-from iota.components.iota_ui_base import IOTABasePanel, IOTABaseFrame
+import iota.components.gui.controls as ct
+import iota.components.gui.phil_controls as pct
+from iota.components.gui import make_phil_index
+from iota.components.gui.base import IOTABasePanel, IOTABaseFrame, \
+  IOTABaseScrolledPanel
+from iota.components.gui.plotter import PlotWindow
 
+from prime import prime_license, prime_description
 import prime.postrefine.mod_gui_dialogs as dlg
 import prime.postrefine.mod_threads as thr
 from prime.postrefine.mod_input import master_phil
-from prime.postrefine.mod_plotter import Plotter, PlotWindow
+from prime.postrefine.mod_plotter import Plotter
 
+user = os.getlogin()
 ginp = util.InputFinder()
+f = util.WxFlags()
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
 if wx.Platform == '__WXGTK__':
-  norm_font_size = 10
-  button_font_size = 12
-  LABEL_SIZE = 14
-  CAPTION_SIZE = 12
+  plot_font_size = 9
+  norm_font_size = 9
+  button_font_size = 10
+  big_button_font_size = 12
+  LABEL_SIZE = 12
+  CAPTION_SIZE = 10
   python = 'python'
 elif wx.Platform == '__WXMAC__':
+  plot_font_size = 9
   norm_font_size = 12
   button_font_size = 14
+  big_button_font_size = 16
   LABEL_SIZE = 14
   CAPTION_SIZE = 12
   python = "Python"
-elif (wx.Platform == '__WXMSW__'):
+elif wx.Platform == '__WXMSW__':
+  plot_font_size = 9
   norm_font_size = 9
   button_font_size = 11
+  big_button_font_size = 15
   LABEL_SIZE = 11
   CAPTION_SIZE = 9
+  python = "Python"  # TODO: make sure it's right!
 
-user = os.getlogin()
-icons = os.path.join(os.path.dirname(os.path.abspath(ct.__file__)), 'icons/')
-
-f = util.WxFlags()
-
-def str_split(string, delimiters=(' ', ','), maxsplit=0):
-  import re
-  rexp = '|'.join(map(re.escape, delimiters))
-  return re.split(rexp, string, maxsplit)
+# def str_split(string, delimiters=(' ', ','), maxsplit=0):
+#   import re
+#   rexp = '|'.join(map(re.escape, delimiters))
+#   return re.split(rexp, string, maxsplit)
 
 
 # -------------------------------  Main Window ------------------------------  #
 
 class PRIMEInputWindow(IOTABasePanel):
-  ''' Main PRIME Window panel '''
+  ''' Main PRIME Window panel
+
+      DEPRECATED! (Keeping it around while other apps still use it.)
+  '''
 
   def __init__(self, parent, phil=None):
     IOTABasePanel.__init__(self, parent=parent)
@@ -198,11 +212,448 @@ class PRIMEInputWindow(IOTABasePanel):
     for one_output in txt_output:
       self.phil_string += one_output + '\n'
 
+
+class InputWindow(pct.PHILDialogPanel):
+  """ This window will enable all input handling """
+  def __init__(self, parent, scope, *args, **kwargs):
+    super(InputWindow, self).__init__(parent, scope, *args, **kwargs)
+
+
+class PRIMEWindow(IOTABaseFrame):
+  """ Main launch window for PRIME """
+
+  def __init__(self, parent, id, title, prefix='prime'):
+    IOTABaseFrame.__init__(self, parent, id, title, size=(800, 500))
+
+    self.parent = parent
+    self.prime_filename = '{}.phil'.format(prefix)
+
+    # Toolbar
+    self.initialize_toolbar()
+    self.tb_btn_quit = self.add_tool(label='Quit',
+                                     bitmap=('actions', 'exit'),
+                                     shortHelp='Exit PRIME')
+
+    self.tb_btn_prefs = self.add_tool(label='Preferences',
+                                      bitmap=('apps', 'advancedsettings'),
+                                      shortHelp='PRIME GUI Settings')
+    self.add_toolbar_separator()
+    self.tb_btn_load = self.add_tool(label='Load Script',
+                                     bitmap=('actions', 'open'),
+                                     shortHelp='Load PRIME Script')
+    self.tb_btn_save = self.add_tool(label='Save Script',
+                                     bitmap=('actions', 'save'),
+                                     shortHelp='Save PRIME Script')
+    self.tb_btn_reset = self.add_tool(label='Reset',
+                                      bitmap=('actions', 'reload'),
+                                      shortHelp='Reset Settings')
+    self.toolbar.AddSeparator()
+    self.tb_btn_analysis = self.add_tool(label='Recover',
+                                         bitmap=('actions', 'list'),
+                                         shortHelp='Recover PRIME run')
+    self.realize_toolbar()
+
+    # Toolbar button bindings
+    self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
+    self.Bind(wx.EVT_TOOL, self.onPreferences, self.tb_btn_prefs)
+    self.Bind(wx.EVT_TOOL, self.onRecovery, self.tb_btn_analysis)
+    self.Bind(wx.EVT_TOOL, self.onLoadScript, self.tb_btn_load)
+    self.Bind(wx.EVT_TOOL, self.onSaveScript, self.tb_btn_save)
+    self.Bind(wx.EVT_TOOL, self.onReset, self.tb_btn_reset)
+
+    # Add panels (make separate FlexGridSizer to make sure the sizing works)
+    self.panel_sizer = wx.FlexGridSizer(2, 1, 0, 0)
+    self.panel_sizer.AddGrowableRow(0)
+    self.panel_sizer.AddGrowableCol(0)
+
+    # Initialize PHIL index
+    self.initialize_PRIME_index()
+
+    # Define scopes
+    self.main_window_scopes = ['title', 'run_no', 'data']
+    self.pref_scopes = ['n_processors', 'queue']
+    self.pr_scopes = ['scale', 'merge', 'postref']
+    self.opt_scopes = ['target_space_group', 'target_unit_cell',
+                       'target_anomalous_flag', 'n_residues', 'pixel_size_mm']
+
+    # Instantiate input window
+    input_scope = self.prime_index.get_scopes(include=self.main_window_scopes)
+    self.input_window = InputWindow(self, size=(600, -1),
+                                    scope=input_scope,
+                                    phil_index=self.prime_index,
+                                    path_extras={
+                                      "file_types":['processed pickle',
+                                                    'reference MTZ',
+                                                    'sequence',
+                                                    'processed pickle list'],
+                                      "folder_types":['processed pickle '
+                                                      'folder'],
+                                      "data_types":['processed pickle']
+                                    })
+
+    # Front options panel
+    self.bottom_sizer = wx.GridBagSizer(5, 5)
+    line = wx.StaticLine(self, style=wx.LI_HORIZONTAL, size=(-1, -1))
+    self.bottom_sizer.Add(line, pos=(0, 0), span=(1, 3),
+                          flag=wx.EXPAND | wx.TOP | wx.BOTTOM, border=5)
+
+    opt_scope = self.prime_index.get_scopes(include=self.opt_scopes)
+    self.option_panel = pct.PHILDialogPanel(self, scope=opt_scope,
+                                            phil_index=self.prime_index)
+    self.bottom_sizer.Add(self.option_panel, pos=(1, 0), span=(2, 1),
+                          flag=wx.EXPAND)
+    line = wx.StaticLine(self, style=wx.LI_VERTICAL, size=(-1, -1))
+    self.bottom_sizer.Add(line, pos=(1, 1), span=(2, 1),
+                          flag=wx.EXPAND | wx.RIGHT | wx.LEFT, border=15)
+    self.bottom_sizer.AddGrowableCol(0)
+    self.bottom_sizer.AddGrowableRow(0)
+
+    # Front options
+    btn_box = wx.StaticBox(self, label='')
+    btn_sizer = wx.StaticBoxSizer(btn_box, wx.VERTICAL)
+    self.opt_btn_prm = wx.Button(self, label='Post-refinement...')
+    self.opt_btn_adv = wx.Button(self, label='Advanced Options...')
+    btn_sizer.Add(self.opt_btn_prm, flag=wx.EXPAND | wx.ALL, border=5)
+    btn_sizer.Add(self.opt_btn_adv, flag=wx.EXPAND | wx.ALL, border=5)
+    self.bottom_sizer.Add(btn_sizer, pos=(1, 2), flag=wx.EXPAND)
+
+    run_bmp = bitmaps.fetch_icon_bitmap('actions', 'run')
+    self.btn_run = ct.GradButton(self,
+                                 size=(180, 40),
+                                 start_color=(161, 217, 155),
+                                 highlight_color=(199, 233, 192),
+                                 gradient_percent=-25,
+                                 bmp=run_bmp,
+                                 label='   RUN PRIME',
+                                 label_size=big_button_font_size)
+    self.bottom_sizer.Add(self.btn_run, pos=(2, 2),
+                          flag=wx.SHAPED | wx.ALIGN_BOTTOM)
+    self.btn_run.Disable()
+
+    # Option button bindings
+    self.Bind(wx.EVT_BUTTON, self.onPostRefOptions, self.opt_btn_prm)
+    self.Bind(wx.EVT_BUTTON, self.onAdvancedOptions, self.opt_btn_adv)
+    self.Bind(wx.EVT_BUTTON, self.onRun, self.btn_run)
+
+    # Add panels to sizers and lay out the window
+    self.panel_sizer.Add(self.input_window, 1, flag=wx.EXPAND)
+    self.panel_sizer.Add(self.bottom_sizer, flag=wx.EXPAND)
+    self.main_sizer.Add(self.panel_sizer, 1, flag=wx.EXPAND | wx.ALL, border=15)
+    self.Fit()
+    self.Layout()
+
+  def OnAboutBox(self, e):
+    ''' About dialog '''
+    info = wx.AboutDialogInfo()
+    info.SetName('PRIME')
+    info.SetWebSite('http://cci.lbl.gov/xfel')
+    info.SetLicense(prime_license)
+    info.SetDescription(prime_description)
+    info.AddDeveloper('Monarin Uervirojnangkoorn')
+    info.AddDeveloper('Axel Brunger')
+    wx.AboutBox(info)
+
+  def open_options_dialog(self, phil_index, include=None, name=None,
+                          exclude=None):
+    if not name:
+      if isinstance(include, list):
+        name = include[0]
+      else:
+        name = include
+      if not name or name.isspace():
+        name = 'options'
+
+    phil_scope = phil_index.get_scopes(include=include,
+                                       exclude=exclude)
+    phil_dlg = pct.PHILDialog(self,
+                              scope=phil_scope,
+                              phil_index=phil_index,
+                              name=name)
+
+    if phil_dlg.ShowModal() == wx.ID_OK:
+      OK = True
+    else:
+      OK = False
+
+    phil_dlg.Destroy()
+    return OK
+
+  def onPreferences(self, e):
+    self.open_options_dialog(phil_index=self.prime_index,
+                             include=self.pref_scopes)
+
+  def onPostRefOptions(self, e):
+    self.open_options_dialog(phil_index=self.prime_index,
+                             include=self.pr_scopes)
+
+  def onAdvancedOptions(self, e):
+    not_adv = (self.main_window_scopes +
+               self.opt_scopes +
+               self.pref_scopes +
+               self.pr_scopes)
+    self.open_options_dialog(phil_index=self.prime_index,
+                             exclude=not_adv)
+
+  def onInput(self, e):
+    if self.input_window.inp_box.ctr.GetValue() != '':
+      self.set_tool_state(self.tb_btn_run, enable=True)
+    else:
+      self.set_tool_state(self.tb_btn_run, enable=False)
+
+  def initialize_PRIME_index(self):
+    self.prime_index = make_phil_index(master_phil=master_phil)
+    self.pparams = self.prime_index.get_python_object(make_copy=True)
+    self.out_dir = os.path.dirname(self.pparams.run_no) if \
+      self.pparams.run_no else os.curdir
+    self.update_PRIME_index()
+
+  def update_PRIME_index(self, phil=None, update_run_no=True):
+    # update from existing PHIL
+    if phil:
+      if not isinstance(phil, str):
+        try:
+          phil = phil.as_str()
+        except Exception as e:
+          raise Sorry('PRIME GUI ERROR: Cannot read PHIL object! ', e)
+      self.prime_index.update_phil(phil_string=phil)
+    self.pparams = self.prime_index.get_python_object(make_copy=True)
+
+    # update n_processors
+    if self.pparams.n_processors <= 1:
+      self.pparams.n_processors = int(multiprocessing.cpu_count() * 0.5)
+
+    # update output folder
+    if update_run_no:
+      if self.pparams.run_no is None:
+        self.pparams.run_no = util.set_base_dir()
+      else:
+        self.out_dir = os.path.dirname(self.pparams.run_no)
+        self.pparams.run_no = util.set_base_dir(out_dir=self.out_dir)
+
+    # Update index and PHIL from params
+    self.prime_index.update_from_python(python_object=self.pparams)
+
+
+  def reset_PRIME_index(self):
+    self.prime_index.reset_phil(reindex=True)
+
+  def sanity_check(self):
+    '''
+    Goes through and checks that the key parameters are populated; pops
+    up an error message if they are not
+    :return: True if satisfied, False if not
+    '''
+
+    errors = self.option_panel.collect_errors()
+    if errors:
+      wx.MessageBox(caption='Errors in Settings!',
+                    message='Correct errors in the following settings: {}'
+                            ''.format('\n'.join(errors.keys())),
+                    style=wx.OK|wx.ICON_EXCLAMATION)
+
+    return True
+
+  def onRecovery(self, e):
+
+    # Change current directory to the parent directory of run_no (which may
+    # be changed by user)
+    run_no = self.input_window.get_value('run_no')
+    curdir = os.path.dirname(run_no)
+    if curdir:
+      if curdir.endswith('/prime'):
+        curdir = os.path.dirname(curdir)
+      os.chdir(curdir)
+
+    # Find finished runs and display results
+    p_folder = os.path.abspath('{}/prime'.format(os.curdir))
+
+    if not os.path.isdir(p_folder):
+      open_dlg = wx.DirDialog(self, "Choose the integration run:",
+                              style=wx.DD_DEFAULT_STYLE|
+                                    wx.DD_CHANGE_DIR)
+      if open_dlg.ShowModal() == wx.ID_OK:
+        p_folder = open_dlg.GetPath()
+        open_dlg.Destroy()
+      else:
+        open_dlg.Destroy()
+        return
+
+    paths = [os.path.join(p_folder, p) for p in os.listdir(p_folder)]
+    paths = [p for p in paths if (os.path.isdir(p) and
+                                  os.path.basename(p).isdigit())]
+
+    path_dlg = dlg.RecoveryDialog(self)
+    path_dlg.insert_paths(paths)
+
+    if path_dlg.ShowModal() == wx.ID_OK:
+      selected = path_dlg.selected
+      recovery = path_dlg.recovery_mode
+      prime_path = selected[1]
+      prime_status = selected[0]
+      settings_file = os.path.join(prime_path, 'settings.phil')
+
+      # If neither log-file nor stat file are found, terminate; otherwise
+      # import settings
+      if not os.path.isfile(settings_file):
+        wx.MessageBox('Cannot Import This Run \n(No Files Found!)',
+                      'Info', wx.OK | wx.ICON_ERROR)
+        return
+      else:
+        with open(settings_file, 'r') as sf:
+          phil_string = sf.read()
+        read_phil = ip.parse(phil_string)
+
+        self.update_PRIME_index(phil=read_phil, update_run_no=False)
+        self.update_input_window()
+
+      # If any cycles (or full run) were completed, show results
+      if prime_status == 'Unknown':
+        return
+
+      if recovery == 0:
+        self.prime_run_window = PRIMERunWindow(self, -1,
+                                               title='PRIME Output',
+                                               params=self.pparams,
+                                               prime_file=settings_file,
+                                               recover=True)
+        self.prime_run_window.place_and_size(set_by='parent')
+        self.prime_run_window.Show(True)
+        self.prime_run_window.recover()
+
+  def init_settings(self):
+    # Automatically advance run_no
+    old_run_no = self.input_window.get_value('run_no')
+    if os.path.isdir(old_run_no):
+      new_run_no = util.set_base_dir(dirname=os.path.dirname(old_run_no))
+      self.input_window.change_value('run_no', new_run_no)
+
+    input_phil_string = self.input_window.GetPHIL(expand=True)
+    sel_phil_string = self.option_panel.GetPHIL(expand=True)
+    phil_string = input_phil_string + '\n' + sel_phil_string
+
+    self.prime_index.update_phil(phil_string=phil_string)
+    self.pparams = self.prime_index.get_python_object(make_copy=True)
+    self.prime_phil = self.prime_index.working_phil
+
+    return self.sanity_check()
+
+  def onRun(self, e):
+    # Run full processing
+
+    if self.init_settings():
+      source_dir = os.path.dirname(self.pparams.run_no)
+      if not os.path.isdir(source_dir):
+        try:
+          os.makedirs(source_dir)
+        except IOError as e:
+          raise Sorry('PRIME ERROR: Could not create folder {}: {}'
+                      ''.format(source_dir, e))
+      prime_file = os.path.join(source_dir, self.prime_filename)
+      with open(prime_file, 'w') as pf:
+        pf.write(self.prime_phil.as_str())
+
+      self.prime_run_window = PRIMERunWindow(self, -1,
+                                             title='PRIME Output',
+                                             params=self.pparams,
+                                             prime_file=prime_file)
+      self.prime_run_window.prev_pids = easy_run.fully_buffered('pgrep -u {} {}'
+                                        ''.format(user, python)).stdout_lines
+      self.prime_run_window.place_and_size(set_by='parent')
+      self.prime_run_window.Show(True)
+
+  def onSequence(self, e):
+    pass
+
+  def onSaveScript(self, e):
+    self.init_settings()
+
+    # Generate text of params
+    final_phil = master_phil.format(python_object=self.pparams)
+    with util.Capturing() as txt_output:
+      final_phil.show()
+    txt_out = ''
+    for one_output in txt_output:
+      txt_out += one_output + '\n'
+
+    # Save param file
+    save_dlg = wx.FileDialog(self,
+                             message="Save PRIME Script",
+                             defaultDir=os.curdir,
+                             defaultFile="*.phil",
+                             wildcard="*.phil",
+                             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
+                             )
+    if save_dlg.ShowModal() == wx.ID_OK:
+      with open(save_dlg.GetPath(), 'w') as savefile:
+        savefile.write(txt_out)
+
+    save_dlg.Destroy()
+
+  def onLoadScript(self, e):
+    # Extract params from file
+    load_dlg = wx.FileDialog(self,
+                             message="Load script file",
+                             defaultDir=os.curdir,
+                             defaultFile="*.phil",
+                             wildcard="*.phil",
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+                             )
+    if load_dlg.ShowModal() == wx.ID_OK:
+      script = load_dlg.GetPaths()[0]
+      out_dir = os.path.dirname(script)
+      self.prime_filename=os.path.basename(script)
+      self.load_script(out_dir=out_dir)
+    load_dlg.Destroy()
+
+  def onReset(self, e):
+    self.reset_settings()
+
+  def load_script(self, out_dir):
+    ''' Loads PRIME script '''
+    script = os.path.join(out_dir, self.prime_filename)
+    with open(script, 'r') as sf:
+      phil_string = sf.read()
+
+    self.update_PRIME_index(phil=phil_string)
+    self.update_input_window()
+
+  def update_input_window(self, reset=False):
+    ''' Update input window with current (or default) params'''
+    self.input_window.redraw_panel(reset=reset)
+    self.option_panel.redraw_panel(reset=reset)
+
+  def reset_settings(self):
+    self.prime_phil = master_phil
+    self.initialize_PRIME_index()
+    self.update_input_window(reset=True)
+
+  def onQuit(self, e):
+
+    # Check if proc_thread exists
+    try:
+      if hasattr(self, 'prime_run_window'):
+        if hasattr(self.prime_run_window, 'prime_process'):
+
+          # Check if proc_thread is running
+          if self.prime_run_window.prime_process.is_alive():
+            self.prime_run_window.abort_run(verbose=False)
+
+            # Close window only when thread is dead
+            while self.prime_run_window.prime_process.is_alive():
+              print ('THREAD ALIVE? ',
+                     self.prime_run_window.prime_process.is_alive())
+              continue
+    except Exception:
+      pass
+
+    self.Close()
+
 # ----------------------------  Processing Window ---------------------------  #
 
-class LogTab(wx.Panel):
-  def __init__(self, parent):
-    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
+
+class LogTab(IOTABasePanel):
+  def __init__(self, parent, *args, **kwargs):
+    super(LogTab, self).__init__(parent=parent, *args, **kwargs)
 
     self.log_sizer = wx.BoxSizer(wx.VERTICAL)
     self.log_window = wx.TextCtrl(self,
@@ -211,17 +662,30 @@ class LogTab(wx.Panel):
     self.log_sizer.Add(self.log_window, proportion=1, flag= wx.EXPAND | wx.ALL, border=10)
     self.SetSizer(self.log_sizer)
 
-class RuntimeTab(wx.Panel):
-  def __init__(self, parent, params=None):
-    wx.Panel.__init__(self, parent)
+
+class RuntimeTab(IOTABasePanel):
+  def __init__(self, parent, params=None, *args, **kwargs):
+    super(RuntimeTab, self).__init__(parent=parent, *args, **kwargs)
     self.pparams = params
 
+    # For some reason MatPlotLib 2.2.3 on GTK 6 does not create transparent
+    # patches (tried set_visible(False), set_facecolor("none"), set_alpha(0),
+    # to no avail). Thus, for GTK only, setting facecolor to background
+    # color; otherwide to 'none'. This may change if other tests reveal the
+    # same problem in other systems.
+    if wx.Platform == '__WXGTK__':
+      bg_color = [i/255 for i in self.GetBackgroundColour()]
+    else:
+      bg_color = 'none'
+
+    mpl.rc('font', family='sans-serif', size=10)
+    mpl.rc('mathtext', default='regular')
+
+    # Create figure
     self.prime_sizer = wx.BoxSizer(wx.VERTICAL)
     self.prime_figure = Figure()
-    self.prime_figure.patch.set_alpha(0)
-
-    plt.rc('font', family='sans-serif', size=10)
-    plt.rc('mathtext', default='regular')
+    # self.prime_figure.patch.set_alpha(0)
+    self.prime_figure.patch.set_facecolor(color=bg_color)
 
     # Create nested GridSpec
     gsp = gridspec.GridSpec(2, 2, height_ratios=[2, 3])
@@ -253,10 +717,19 @@ class RuntimeTab(wx.Panel):
     self.cc_axes.set_title(r'$CC_{1/2}$', fontsize=12)
     self.cc_axes.set_xlabel('Cycle')
     self.cc_axes.set_ylabel(r'$CC_{1/2}$ (%)')
+    self.cc_axes.ticklabel_format(axis='y', style='plain')
+    self.cc_axes.set_xticks([tick for tick in self.cc_axes.get_xticks()
+                             if tick % 1 == 0])
+
     self.comp_axes.set_title('Completeness / Multiplicity', fontsize=12)
     self.comp_axes.set_xlabel('Cycle')
     self.comp_axes.set_ylabel('Completeness (%)')
     self.mult_axes.set_ylabel('# of Observations')
+    self.comp_axes.ticklabel_format(axis='y', style='plain')
+    self.mult_axes.ticklabel_format(axis='y', style='plain')
+    self.comp_axes.set_xticks([tick for tick in self.comp_axes.get_xticks()
+                               if tick % 1 == 0])
+
     self.bcc_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.bcc_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
 
@@ -264,17 +737,17 @@ class RuntimeTab(wx.Panel):
       self.bcc_axes.set_ylabel(r'$CC_{1/2}$ anom (%)')
     else:
       self.bcc_axes.set_ylabel(r'$CC_{1/2}$ (%)')
-    plt.setp(self.bcc_axes.get_xticklabels(), visible=False)
+    # plt.setp(self.bcc_axes.get_xticklabels(), visible=False)
+    self.bcc_axes.set_xticklabels([])
     self.bcomp_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.bcomp_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
     self.bcomp_axes.set_ylabel("Comp (%)")
-    plt.setp(self.bcomp_axes.get_xticklabels(), visible=False)
+    # plt.setp(self.bcomp_axes.get_xticklabels(), visible=False)
+    self.bcomp_axes.set_xticklabels([])
     self.bmult_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.bmult_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
     self.bmult_axes.set_xlabel("Resolution ($\AA$)")
     self.bmult_axes.set_ylabel("# of Obs")
-
-    self.prime_sizer.Layout()
 
   def draw_plots(self, info, total_cycles):
 
@@ -284,7 +757,6 @@ class RuntimeTab(wx.Panel):
     self.cc_axes.clear()
     self.cc_axes.set_xlim(0, total_cycles)
     self.cc_axes.set_ylim(0, 100)
-    self.cc_axes.ticklabel_format(axis='y', style='plain')
     self.cc_axes.plot(cycles, meanCC, 'o', c='#2b8cbe', ls='-', lw=3)
 
     # Plot mean completeness and multiplicity
@@ -296,8 +768,6 @@ class RuntimeTab(wx.Panel):
     self.comp_axes.set_xlim(0, total_cycles)
     self.comp_axes.set_ylim(0, 100)
     self.mult_axes.set_xlim(0, total_cycles)
-    self.comp_axes.ticklabel_format(axis='y', style='plain')
-    self.mult_axes.ticklabel_format(axis='y', style='plain')
     self.comp_axes.plot(cycles, mean_comp, c='#f03b20', ls='-', lw=2)
     comp = self.comp_axes.scatter(cycles, mean_comp, marker='o', s=25,
                                   edgecolors='black', color='#f03b20')
@@ -324,8 +794,7 @@ class RuntimeTab(wx.Panel):
 
     self.bcc_axes.bar(bins, binned_cc, color='#2b8cbe',
                       alpha=0.5, width=1, lw=0)
-    self.bcc_axes.step(bins, binned_cc, color='blue',
-                       where='mid')
+    self.bcc_axes.step(bins, binned_cc, color='blue', where='mid')
     self.bcomp_axes.clear()
     self.bcomp_axes.bar(bins, info['binned_completeness'][-1],
                         alpha=0.5, color='#f03b20', width=1, lw=0)
@@ -371,22 +840,19 @@ class RuntimeTab(wx.Panel):
                                   va='top')
 
     # Redraw canvas
-    self.canvas.draw()
+    self.canvas.draw_idle()
+    self.canvas.Refresh()
 
-class SummaryTab(wx.Panel):
+class SummaryTab(IOTABaseScrolledPanel):
   def __init__(self,
                parent,
                pparams,
-               info):
-    wx.Panel.__init__(self, parent)
+               info,
+               *args, **kwargs):
+    super(SummaryTab, self).__init__(parent=parent, *args, **kwargs)
 
     self.info = info
     self.pparams = pparams
-
-    self.plot_window = PlotWindow(None, -1, title='PRIME Statistics')
-    self.plot = Plotter(self.plot_window, info=self.info,
-                        anomalous_flag=self.pparams.target_anomalous_flag)
-    self.plot_window.plot_panel = self.plot
 
     self.summary_sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -415,46 +881,70 @@ class SummaryTab(wx.Panel):
     run_box_sizer.Add(run_box_grid, flag=wx.EXPAND | wx.ALL, border=10)
     self.summary_sizer.Add(run_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
-    # Table 1
+    # Merging statistics box
     tb1_box = wx.StaticBox(self, label='Merging Statistics')
     tb1_box.SetFont(sfont)
-    tb1_box_sizer = wx.StaticBoxSizer(tb1_box, wx.HORIZONTAL)
+    tb1_box_sizer = wx.StaticBoxSizer(tb1_box, wx.VERTICAL)
+    self.tb1_box_grid = wx.GridBagSizer(5, 20)
 
-    self.tb1_labels, self.tb1_data = self.plot.table_one()
-    self.tb1 = ct.TableCtrl(self,
-                            rlabels=self.tb1_labels,
-                            contents=self.tb1_data,
-                            label_style='bold')
+    # Table 1
+    self.tb1_table = Plotter(self, info=self.info)
+    self.tb1_table.initialize_figure(figsize=(0.1, 0.1))
+    self.tb1_box_grid.Add(self.tb1_table, pos=(0, 0), span=(3, 1),
+                          flag=wx.EXPAND)
+    self.tb1_box_grid.AddGrowableCol(0)
+    self.tb1_box_grid.AddGrowableRow(2)
 
-    # Buttons (placeholder for now)
-    btn_box_sizer = wx.BoxSizer(wx.VERTICAL)
+    # Buttons
     line_bmp = bitmaps.fetch_custom_icon_bitmap('line_graph24')
     self.btn_stats = ct.GradButton(self,
                                    bmp=line_bmp,
-                                   label=' Statistical charts', size=(250, -1))
+                                   label=' Statistical charts')
     txt_bmp = bitmaps.fetch_icon_bitmap('mimetypes', 'txt', scale=(24, 24))
     self.btn_table1 = ct.GradButton(self,
                                     bmp=txt_bmp,
-                                    label=' Output Table 1', size=(250, -1))
+                                    label=' Output Table 1')
+    self.tb1_box_grid.Add(self.btn_stats, pos=(0, 1), flag=wx.ALIGN_RIGHT)
+    self.tb1_box_grid.Add(self.btn_table1, pos=(1, 1), flag=wx.ALIGN_RIGHT)
 
-    btn_box_sizer.Add(self.btn_stats)
-    btn_box_sizer.Add(self.btn_table1, flag=wx.TOP, border=5)
-    tb1_box_sizer.Add(self.tb1, flag=wx.EXPAND | wx.ALL, border=10)
-    tb1_box_sizer.AddStretchSpacer()
-    tb1_box_sizer.Add(btn_box_sizer, flag=wx.ALIGN_RIGHT | wx.ALL, border=10)
-    self.summary_sizer.Add(tb1_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    # Insert into sizers
+    tb1_box_sizer.Add(self.tb1_box_grid, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.summary_sizer.Add(tb1_box_sizer, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.summary_sizer.Add((10, -1), flag=wx.EXPAND)
 
     # Button bindings
     self.Bind(wx.EVT_BUTTON, self.onPlotStats, self.btn_stats)
     self.Bind(wx.EVT_BUTTON, self.onWriteTableOne, self.btn_table1)
 
     self.SetSizer(self.summary_sizer)
+    self.Refresh()
+    self.Layout()
+    self.SetupScrolling()
+
+
+  def update(self):
+    # Table 1
+    self.tb1_table.table_one_figure()
+    self.tb1_table.Layout()
+    self.SetupScrolling()
+
+  def initialize_standalone_plot(self, figsize=(8, 8)):
+    self.plot_window = PlotWindow(self, -1, title='PRIME Statistics')
+    self.plot = Plotter(self.plot_window, info=self.info,
+                        anomalous_flag=self.pparams.target_anomalous_flag)
+    self.plot_window.plot_panel = self.plot
+    self.plot.initialize_figure(figsize=figsize)
+
+  def show_plot(self):
+    self.plot_window.add_plot_to_window()
+    self.plot_window.place_and_size(set_by='parent', set_size=True,
+                                    position=(25, 25))
+    self.plot_window.Show()
 
   def onPlotStats(self, e):
-    self.plot.initialize_figure(figsize=(9, 9))
+    self.initialize_standalone_plot()
     self.plot.stat_charts()
-    self.plot_window.plot()
-    self.plot_window.Show(True)
+    self.show_plot()
 
   def onWriteTableOne(self, e):
     ''' Write Table 1 to a file '''
@@ -468,10 +958,9 @@ class SummaryTab(wx.Panel):
                              )
     if save_dlg.ShowModal() == wx.ID_OK:
       with open(save_dlg.GetPath(), 'a') as tb1_file:
-       for i in range(len(self.tb1_data)):
-          line = u'{:<25} {:<40}\n'.format(self.tb1_labels[i],
-                                           self.tb1_data[i][0])
-          tb1_file.write(to_str(line))
+        tb1_text = self.tb1_table.table_one_text()
+        tb1_file.write(tb1_text)
+
 
 class PRIMERunWindow(IOTABaseFrame):
   ''' New frame that will show processing info '''
@@ -530,7 +1019,6 @@ class PRIMERunWindow(IOTABaseFrame):
     self.main_sizer.Add(self.prime_panel, 1, flag=wx.EXPAND | wx.ALL, border=3)
 
     #Processing status bar
-    self.sb = self.CreateStatusBar()
     self.sb.SetFieldsCount(2)
     self.sb.SetStatusWidths([-1, -2])
 
@@ -565,15 +1053,17 @@ class PRIMERunWindow(IOTABaseFrame):
     self.status_txt.SetForegroundColour('red')
     self.status_txt.SetLabel('Aborting...')
     self.toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
+    self.abort_run()
 
+  def abort_run(self, verbose=True):
     if self.mp_method == 'python':
       self.pids = easy_run.fully_buffered('pgrep -u {} {}'
                                           ''.format(user, python)).stdout_lines
       self.pids = [i for i in self.pids if i not in self.prev_pids]
       for i in self.pids:
         easy_run.fully_buffered('kill -9 {}'.format(i))
-        print 'killing PID {}'.format(i)
-
+        if verbose:
+         print ('killing PID {}'.format(i))
     self.aborted = True
 
   def run(self):
@@ -581,9 +1071,13 @@ class PRIMERunWindow(IOTABaseFrame):
     self.status_txt.SetLabel('Running...')
     self.gauge_prime.SetRange(self.pparams.n_postref_cycle)
 
-    prime_process = thr.PRIMEThread(self, self.prime_file, self.out_file,
-                                    command=self.command)
-    prime_process.start()
+    self.prime_process = thr.PRIMEThread(self,
+                                         self.prime_file,
+                                         self.out_file,
+                                         command=self.command,
+                                         verbose=True,
+                                         debug=True)
+    self.prime_process.start()
     self.timer.Start(5000)
 
   def recover(self):
@@ -655,6 +1149,7 @@ class PRIMERunWindow(IOTABaseFrame):
 
     self.summary_tab.title_txt.SetLabel(self.pparams.title)
     self.summary_tab.folder_txt.SetLabel(self.pparams.run_no)
+    self.summary_tab.update()
 
     # Update log
     self.display_log()
@@ -731,6 +1226,8 @@ class PRIMERunWindow(IOTABaseFrame):
       # Make the folder
       fin_folder = "merged_dataset_{}".format(os.path.basename(self.pparams.run_no))
       dst_dir = os.path.abspath(os.path.join(os.curdir, fin_folder))
+      if os.path.isdir(fin_folder):   # Just delete it, sheesh
+        shutil.rmtree(fin_folder)
       os.makedirs(dst_dir)
 
       # Copy files
@@ -805,7 +1302,7 @@ class FileListCtrl(ct.CustomListCtrl):
         file_string = ' '.join(file_list)
         easy_run.fully_buffered('cctbx.image_viewer {}'.format(file_string))
       except Exception as e:
-        print e
+        print (e)
 
     else:
       wx.MessageBox('No data found', 'Error', wx.OK | wx.ICON_ERROR)
@@ -939,7 +1436,6 @@ class FileListCtrl(ct.CustomListCtrl):
                                           False)
     e.Skip()
 
-
   def onMagButton(self, e):
     idx = e.GetEventObject().GetParent().index
     item_obj = self.ctr.GetItemData(idx)
@@ -957,7 +1453,7 @@ class FileListCtrl(ct.CustomListCtrl):
       #   wx.MessageBox('Unknown file type', 'Warning',
       #                 wx.OK | wx.ICON_EXCLAMATION)
     elif os.path.isdir(path):
-      inputs, _ = ginp.get_input(path, filter=False)
+      inputs, _ = ginp.get_input(path, filter_results=False)
       file_list = '\n'.join(inputs)
       filelistview = dlg.TextFileView(self, title=path, contents=file_list)
       filelistview.ShowModal()

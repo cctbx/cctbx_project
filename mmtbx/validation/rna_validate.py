@@ -1,7 +1,7 @@
 
 # TODO reduce to one outlier per residue
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.validation import utils
@@ -121,9 +121,9 @@ class rna_suite(validation.residue):
 class rna_geometry(validation.validation):
   def show(self, out=sys.stdout, prefix="  ", verbose=True):
     if (len(self.results) > 0):
-      print >> out, prefix + self.get_result_class().header()
+      print(prefix + self.get_result_class().header(), file=out)
       for result in self.results :
-        print >> out, result.as_string(prefix=prefix)
+        print(result.as_string(prefix=prefix), file=out)
     self.show_summary(out=out, prefix=prefix)
 
 # analysis objects
@@ -175,12 +175,12 @@ class rna_bonds(rna_geometry):
 
   def show_summary(self, out=sys.stdout, prefix=""):
     if (self.n_total == 0):
-      print >> out, prefix + "No RNA backbone atoms found."
+      print(prefix + "No RNA backbone atoms found.", file=out)
     elif (self.n_outliers == 0):
-      print >> out, prefix + "All bonds within 4.0 sigma of ideal values."
+      print(prefix + "All bonds within 4.0 sigma of ideal values.", file=out)
     else :
-      print >> out, prefix + "%d/%d bond outliers present" % (self.n_outliers,
-        self.n_total)
+      print(prefix + "%d/%d bond outliers present" % (self.n_outliers,
+        self.n_total), file=out)
 
 class rna_angles(rna_geometry):
   output_header = "#residue:atom_1:atom_2:atom_3:num_sigmas"
@@ -229,12 +229,12 @@ class rna_angles(rna_geometry):
 
   def show_summary(self, out=sys.stdout, prefix=""):
     if (self.n_total == 0):
-      print >> out, prefix + "No RNA backbone atoms found."
+      print(prefix + "No RNA backbone atoms found.", file=out)
     elif (self.n_outliers == 0):
-      print >> out, prefix + "All angles within 4.0 sigma of ideal values."
+      print(prefix + "All angles within 4.0 sigma of ideal values.", file=out)
     else :
-      print >> out, prefix + "%d/%d angle outliers present" % (self.n_outliers,
-        self.n_total)
+      print(prefix + "%d/%d angle outliers present" % (self.n_outliers,
+        self.n_total), file=out)
 
 class rna_puckers(rna_geometry):
   __slots__ = rna_geometry.__slots__ + [
@@ -310,12 +310,12 @@ class rna_puckers(rna_geometry):
 
   def show_summary(self, out=sys.stdout, prefix=""):
     if (self.n_total == 0):
-      print >> out, prefix + "No RNA sugar groups found."
+      print(prefix + "No RNA sugar groups found.", file=out)
     elif (self.n_outliers == 0):
-      print >> out, prefix + "All puckers have reasonable geometry."
+      print(prefix + "All puckers have reasonable geometry.", file=out)
     else :
-      print >> out, prefix + "%d/%d pucker outliers present" % (self.n_outliers,
-        self.n_total)
+      print(prefix + "%d/%d pucker outliers present" % (self.n_outliers,
+        self.n_total), file=out)
 
 class rna_suites(rna_geometry):
   output_header = "#suiteID:suite:suiteness:triaged_angle"
@@ -384,20 +384,20 @@ class rna_suites(rna_geometry):
 
   def show_summary(self, out=sys.stdout, prefix=""):
     if (self.n_total == 0):
-      print >> out, prefix + "No RNA suites found."
+      print(prefix + "No RNA suites found.", file=out)
     else :
       if hasattr(self, "n_triaged"):
-        print >> out, prefix + \
+        print(prefix + \
           "%d suites triaged and %d incomplete leaving %d suites" %\
-          (self.n_triaged, self.n_incomplete, self.n_suites)
+          (self.n_triaged, self.n_incomplete, self.n_suites), file=out)
       if (self.n_outliers == 0):
-        print >> out, prefix + "All RNA torsion suites are reasonable."
+        print(prefix + "All RNA torsion suites are reasonable.", file=out)
       else :
-        print >> out, prefix + "%d/%d suite outliers present" % \
-          (self.n_outliers, self.n_total)
+        print(prefix + "%d/%d suite outliers present" % \
+          (self.n_outliers, self.n_total), file=out)
       if hasattr(self, "average_suiteness"):
-        print >> out, prefix + "Average suiteness: %s" % format_value("%.3f",
-          self.average_suiteness)
+        print(prefix + "Average suiteness: %s" % format_value("%.3f",
+          self.average_suiteness), file=out)
 
 class rna_validation(slots_getstate_setstate):
   __slots__ = ["bonds", "angles", "puckers", "suites"]

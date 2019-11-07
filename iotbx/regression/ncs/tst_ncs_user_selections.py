@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import time
 from iotbx.ncs import ncs_group_master_phil
 import iotbx.phil
@@ -1226,5 +1226,5 @@ if (__name__ == "__main__"):
   exercise_11()
   exercise_12()
 
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")

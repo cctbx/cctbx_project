@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 def process(work_params, pixels, show_spots=True):
   from spotfinder import core_toolbox
   import time
@@ -29,15 +29,15 @@ def process(work_params, pixels, show_spots=True):
   dobj.search_spots()
   dobj.search_overloadpatches()
   dobj.finish_analysis()
-  print "Time spot finding: %.2f" % (time.time()-t0)
-  print "Number of spots:", dobj.spots.size()
+  print("Time spot finding: %.2f" % (time.time()-t0))
+  print("Number of spots:", dobj.spots.size())
   if (show_spots):
-    print "        Pixel"
-    print "   Center of mass     Weight"
+    print("        Pixel")
+    print("   Center of mass     Weight")
     for spot in dobj.spots:
-      print "(%8.3f, %8.3f)  %8.2e" % (
-        spot.ctr_mass_x(), spot.ctr_mass_y(), spot.total_mass)
-  print
+      print("(%8.3f, %8.3f)  %8.2e" % (
+        spot.ctr_mass_x(), spot.ctr_mass_y(), spot.total_mass))
+  print()
   return dobj.spots
 
 def process_args(args, extra_phil_str=""):

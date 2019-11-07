@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.validation.clashscore import check_and_add_hydrogen
 import libtbx.load_env
 import iotbx.pdb
 import unittest
 import os
+from six.moves import map
 
 __author__ = 'Youval'
 
@@ -227,7 +228,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   tests = ['test_something']
-  suite = unittest.TestSuite(map(MyTestCase, tests))
+  suite = unittest.TestSuite(list(map(MyTestCase, tests)))
   return suite
 
 

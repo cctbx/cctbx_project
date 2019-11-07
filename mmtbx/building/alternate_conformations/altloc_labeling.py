@@ -1,8 +1,11 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate, \
     slots_getstate_setstate_default_initializer
 import sys
+from functools import cmp_to_key
+from past.builtins import cmp
+from six.moves import zip
 
 class conformer(slots_getstate_setstate):
   __slots__ = ["atom_groups", "label", "selection"]
@@ -35,8 +38,8 @@ class nb_clash(slots_getstate_setstate_default_initializer):
   __slots__ = ["i_seq", "j_seq", "id_str_i", "id_str_j", "overlap"]
 
   def show(self, out=sys.stdout, prefix=""):
-    print >> out, prefix+"%s  %s  : %.3f" % (self.id_str_i, self.id_str_j,
-      self.overlap)
+    print(prefix+"%s  %s  : %.3f" % (self.id_str_i, self.id_str_j,
+      self.overlap), file=out)
 
 def get_sorted_clashes(
     pdb_atoms,
@@ -66,7 +69,8 @@ def get_sorted_clashes(
         id_str_j=site_labels[proxy.j_seq], #pdb_atoms[proxy.j_seq].id_str(),
         overlap=overlap)
       clashes.append(clash)
-  clashes.sort(lambda a,b: cmp(b.overlap, a.overlap))
+  cmp_fn = lambda a,b: cmp(b.overlap, a.overlap)
+  clashes.sort(key=cmp_to_key(cmp_fn))
   return clashes
 
 def show_altloc_clashes(
@@ -85,7 +89,7 @@ def show_altloc_clashes(
     clash_min=clash_min,
     out=out)
   if (len(clashes) > 0):
-    print >> out, "Clashing atoms in alternate conformations:"
+    print("Clashing atoms in alternate conformations:", file=out)
     for clash in clashes :
       clash.show(out=out, prefix="  ")
   return clashes

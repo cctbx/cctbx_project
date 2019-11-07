@@ -5,6 +5,7 @@ import libtbx.load_env
 import libtbx.path
 import os
 import sys
+from six.moves import range
 
 this = "gltbx.generate_functions_bpl"
 

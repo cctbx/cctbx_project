@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.model
 from libtbx.utils import Sorry
 from cctbx import maptbx
@@ -54,6 +54,7 @@ class input(object):
                map_data         = None, # whole_map_input would be a better name?
                map_data_1       = None, # half_map_input_1 would be a better name?
                map_data_2       = None, # half_map_input_2 would be a better name?
+               map_data_list    = None,  # optional list of any map data files
                model            = None,
                # where this CS is supposed to come from? After agreing on picking
                # CS here, the only thing it could be useful - to pass CS
@@ -61,6 +62,8 @@ class input(object):
                # renaming parameter accordingly.
                crystal_symmetry = None,
                box              = True,
+               soft_mask        = None,
+               resolution       = None, # required for soft_mask
                ignore_symmetry_conflicts = False):
     #
     # We should be able to work without symmetry at all. Why not just box
@@ -84,6 +87,7 @@ class input(object):
     # clear that they are changed in place. Therefore getter functions
     # at the bottom are useless and confusing.
     self._map_data         = map_data
+    self._map_data_list    = map_data_list
     self._half_map_data_1  = map_data_1
     self._half_map_data_2  = map_data_2
     self._model            = model
@@ -111,6 +115,8 @@ class input(object):
       map_data         = self._map_data,
       sites_cart       = sites_cart,
       crystal_symmetry = crystal_symmetry)
+    self._original_origin_cart=self.soin.original_origin_cart
+    self._original_origin_grid_units=self.soin.original_origin_grid_units
     self.box = None
     self._map_data = self.soin.map_data
     if(self._model is not None):
@@ -124,6 +130,15 @@ class input(object):
         map_data         = self._half_map_data_2,
         sites_cart       = None,
         crystal_symmetry = None).map_data
+    if self._map_data_list:
+      new_list=[]
+      for x in self._map_data_list:
+        new_x = maptbx.shift_origin_if_needed(
+          map_data         = x,
+          sites_cart       = None,
+          crystal_symmetry = None).map_data
+        new_list.append(new_x)
+      self._map_data_list=new_list
     # Box
     if(self._model is not None and box):
       xrs = self._model.get_xray_structure()
@@ -131,20 +146,45 @@ class input(object):
         self._half_map_data_1 = mmtbx.utils.extract_box_around_model_and_map(
           xray_structure = xrs,
           map_data       = self._half_map_data_1,
+          soft_mask      = soft_mask,
+          resolution      = resolution,
           box_cushion    = 5.0).map_box
         self._half_map_data_2 = mmtbx.utils.extract_box_around_model_and_map(
           xray_structure = xrs,
           map_data       = self._half_map_data_2,
+          soft_mask      = soft_mask,
+          resolution      = resolution,
           box_cushion    = 5.0).map_box
+      if self._map_data_list:
+        new_list=[]
+        for x in self._map_data_list:
+          new_x = mmtbx.utils.extract_box_around_model_and_map(
+            xray_structure = xrs,
+            map_data       = x,
+            soft_mask      = soft_mask,
+            resolution      = resolution,
+            box_cushion    = 5.0).map_box
+          new_list.append(new_x)
+        self._map_data_list=new_list
       self.box = mmtbx.utils.extract_box_around_model_and_map(
         xray_structure = xrs,
         map_data       = self._map_data,
+        soft_mask      = soft_mask,
+        resolution      = resolution,
         box_cushion    = 5.0)
       # This should be changed to call model.set_shift_manager(shift_manager=box)
       # For now just call _model.unset_restraints_manager() afterwards.
       self._model.set_xray_structure(xray_structure = self.box.xray_structure_box)
       self._crystal_symmetry = self._model.crystal_symmetry()
       self._map_data = self.box.map_box
+
+  def original_origin_cart(self):
+    assert self._original_origin_cart is not None
+    return self._original_origin_cart
+
+  def original_origin_grid_units(self):
+    assert self._original_origin_grid_units is not None
+    return self._original_origin_grid_units
 
   def counts(self): return self._counts
 
@@ -155,6 +195,8 @@ class input(object):
   def map_data_1(self): return self._half_map_data_1
 
   def map_data_2(self): return self._half_map_data_2
+
+  def map_data_list(self): return self._map_data_list
 
   def model(self): return self._model
 

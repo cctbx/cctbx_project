@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import xray
 from crys3d.qttbx import xray_structure_viewer
 try:
@@ -14,6 +14,6 @@ if os.path.exists(filename):
 elif durham_structures:
   xs = durham_structures.some([name]).next().xray_structure
 else:
-  print "%s not found" % name
+  print("%s not found" % name)
   sys.exit(1)
 xray_structure_viewer.display(xray_structure=xs, name=name)

@@ -35,7 +35,8 @@ namespace boost_python {
         .def("add_equations",
              &wt::add_equations,
              (arg("right_hand_side"), arg("design_matrix"), arg("weights"),
-              arg("negate_right_hand_side")=false))
+              arg("negate_right_hand_side")=false,
+              arg("optimise_for_tall_matrix")=true))
         .def("reset", &wt::reset)
         .def("solve", &wt::solve)
         .add_property("solved", &wt::solved)
@@ -69,7 +70,8 @@ namespace boost_python {
         = &wt::add_equations;
       void (wt::*add_sparse_eqns)(af::const_ref<scalar_t> const &,
                                   sparse::matrix<scalar_t> const &,
-                                  af::const_ref<scalar_t> const &)
+                                  af::const_ref<scalar_t> const &,
+                                  bool, bool)
         = &wt::add_equations;
 
       class_<wt>(name, no_init)
@@ -99,7 +101,8 @@ namespace boost_python {
              (arg("residuals"), arg("jacobian"), arg("weights")))
         .def("add_equations",
              add_sparse_eqns,
-             (arg("residuals"), arg("jacobian"), arg("weights")))
+             (arg("residuals"), arg("jacobian"), arg("weights"),
+             arg("negate_right_hand_side")=true, arg("optimise_for_tall_matrix")=true))
         .def("reset", &wt::reset)
         /* We use 'def' instead of add_property for those to stay consistent
            with the other wrappers in this module which can't use properties

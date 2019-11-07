@@ -1,9 +1,12 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 import time
 from mmtbx.validation import validate_ligands
+from mmtbx.validation.validate_ligands import master_params_str
 import mmtbx.model
 import iotbx.pdb
 from libtbx.utils import null_out
+from libtbx.test_utils import approx_equal
+from six.moves import zip
 
 pdb_str_1 = """
 CRYST1   26.971   23.398   30.626  90.00  90.00  90.00 P 1
@@ -207,15 +210,10 @@ ANISOU   44  N1 BBEN A   2      572    654    702    -27     32   -187       N
 HETATM   45  N2 BBEN A   2      -2.983 -15.074 -19.170  0.44  5.46           N
 ANISOU   45  N2 BBEN A   2      770    521    785    -11   -172   -163       N
 HETATM   46  O1  SO4 A   3      -1.816 -12.816 -11.138  0.65  8.54           O
-ANISOU   46  O1  SO4 A   3      577    854   1812     52   -140    120       O
 HETATM   47  O2  SO4 A   3      -0.023 -11.767 -10.034  0.65 11.23           O
-ANISOU   47  O2  SO4 A   3      699   1434   2132    281   -146   -607       O
 HETATM   48  O3  SO4 A   3      -2.003 -10.425 -10.555  0.65 10.57           O
-ANISOU   48  O3  SO4 A   3     1191    970   1855    440    276    179       O
 HETATM   49  O4  SO4 A   3      -0.441 -11.129 -12.259  0.65 13.14           O
-ANISOU   49  O4  SO4 A   3     2197    974   1822   -551    837   -383       O
 HETATM   50  S   SO4 A   3      -1.151 -11.482 -11.029  0.65  7.42           S
-ANISOU   50  S   SO4 A   3      727    833   1259    153    -11   -257       S
 HETATM   51  O1  SO4 A   4      13.061 -11.888 -31.472  0.48 14.55           O
 ANISOU   51  O1  SO4 A   4     1714   1932   1884    366    830    561       O
 HETATM   52  O2  SO4 A   4      11.726 -13.037 -29.761  0.48 10.45           O
@@ -226,18 +224,12 @@ HETATM   54  O4  SO4 A   4      12.579 -10.820 -29.293  0.48 14.33           O
 ANISOU   54  O4  SO4 A   4     2083   1487   1874     52     33    388       O
 HETATM   55  S   SO4 A   4      12.076 -11.776 -30.446  0.48 12.03           S
 ANISOU   55  S   SO4 A   4     1400   1230   1939    310    477    589       S
-HETATM   56  C1  GOL A   5      22.489  -3.691  -9.702  0.67  8.70           C
-ANISOU   56  C1  GOL A   5     1282   1151    873    106   -115    143       C
-HETATM   57  C2  GOL A   5      21.482  -4.248 -10.663  0.67 10.35           C
-ANISOU   57  C2  GOL A   5     1415   1245   1272     19   -150      5       C
-HETATM   58  C3  GOL A   5      20.064  -4.076 -10.144  0.67 11.50           C
-ANISOU   58  C3  GOL A   5     1167   1506   1697    -11   -152    350       C
-HETATM   59  O1  GOL A   5      23.893  -3.768 -10.129  0.67  9.94           O
-ANISOU   59  O1  GOL A   5     1294   1726    755    417   -306    131       O
-HETATM   60  O2  GOL A   5      21.641  -3.526 -11.889  0.67 14.91           O
-ANISOU   60  O2  GOL A   5     1534   3188    942    -65   -295    407       O
-HETATM   61  O3  GOL A   5      19.180  -4.727 -11.061  0.67 16.14           O
-ANISOU   61  O3  GOL A   5     1357   2681   2096     52   -361    -14       O
+HETATM   56  C1  GOL A   5      22.489  -3.691  -9.702  0.67 58.70           C
+HETATM   57  C2  GOL A   5      21.482  -4.248 -10.663  0.67110.35           C
+HETATM   58  C3  GOL A   5      20.064  -4.076 -10.144  0.67111.50           C
+HETATM   59  O1  GOL A   5      23.893  -3.768 -10.129  0.67 99.94           O
+HETATM   60  O2  GOL A   5      21.641  -3.526 -11.889  0.67114.91           O
+HETATM   61  O3  GOL A   5      19.180  -4.727 -11.061  0.67 86.14           O
 HETATM   62  O   HOH A   6      -9.233 -22.998   4.376  0.98  5.96           O
 ANISOU   62  O   HOH A   6      791    803    669    -21     61   -177       O
 HETATM   63  O   HOH A   7     -10.079 -26.946   2.058  0.97  5.27           O
@@ -248,36 +240,139 @@ HETATM   65  O   HOH A   9      11.300 -16.164 -16.305  0.98  5.35           O
 ANISOU   65  O   HOH A   9      793    561    680     46    -95    -87       O
 END
 '''
+filenames = ['test_1.pdb', 'test_2.pdb']
+pdb_strings = [pdb_str_1, pdb_str_2]
 
 
-# ---------------------------------------------------------------------------
+def write_model_files(filenames, pdb_strings):
+  for filename, pdb_str in zip(filenames, pdb_strings):
+    f = open("%s" % filename, "w")
+    f.write(pdb_str)
+    f.close()
 
-def tst_get_ligands():
+
+def tst_get_adps(vl_manager):
+  '''
+  Test getting ADPs of ligands and surrounding atoms
+  '''
+  n_iso_answer = (0,0,0,0,0)
+  n_aniso_answer = (9,9,5,5,6)
+  #print(vl_manager)
+  for id_tuple, ligand_dict in vl_manager.items():
+    #print(ligand_dict)
+    for altloc, lr in ligand_dict.items():
+      adps = lr.get_adps()
+      id_str = lr.id_str
+      if (id_str.strip() == 'A BEN    2 A'):
+        assert(adps.n_iso == 0)
+        assert(adps.n_aniso == 9)
+        assert(adps.n_above_100 == 0)
+        assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
+          [4.7, 8.1, 6.0], eps=0.1)
+        assert(approx_equal(
+          [adps.b_min_within, adps.b_max_within, adps.b_mean_within],
+          [6.1,12.9,7.8], eps=0.1))
+      if (id_str.strip() == 'A BEN    2 B'):
+        assert(adps.n_iso == 0)
+        assert(adps.n_aniso == 9)
+        assert(adps.n_above_100 == 0)
+        assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
+          [5.1, 8.2, 6.4], eps=0.1)
+        assert(approx_equal(
+          [adps.b_min_within, adps.b_max_within, adps.b_mean_within],
+          [6.1,12.9,7.8], eps=0.1))
+      if (id_str.strip() == 'A SO4    3'):
+        assert(adps.n_iso == 5)
+        assert(adps.n_aniso == 0)
+        assert(adps.n_above_100 == 0)
+        assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
+          [7.4,13.1,10.2], eps=0.1)
+        assert(approx_equal(
+          [adps.b_min_within, adps.b_max_within, adps.b_mean_within],
+          [6.3, 11.1, 7.8], eps=0.1))
+      if (id_str.strip() == 'A SO4    4'):
+        assert(adps.n_iso == 0)
+        assert(adps.n_aniso == 5)
+        assert(adps.b_min_within is None)
+        assert(adps.n_above_100 == 0)
+        assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
+          [10.3,14.6,12.3], eps=0.1)
+      if (id_str.strip() == 'A GOL    5'):
+        assert(adps.n_iso == 6)
+        assert(adps.n_aniso == 0)
+        assert(adps.b_min_within is None)
+        assert(adps.n_above_100 == 3)
+        assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
+          [58.7,114.9,96.9], eps=0.1)
+
+
+def run_test1():
+  '''
+  Test if iselection for ligand PG5 (chain A resseq 201) is correct.
+  '''
   pdb_inp = iotbx.pdb.input(lines=pdb_str_1.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
+  model.set_log(null_out())
 
-  vl_manager = validate_ligands.manager(model = model, log=null_out)
+  params = iotbx.phil.parse(
+    input_string=master_params_str, process_includes=True).extract()
+  # do not place H atoms for this test
+  #params.validate_ligands.place_hydrogens = False
+
+  vl_manager = validate_ligands.manager(
+    model = model,
+    fmodel = None,
+    params = params.validate_ligands,
+    log   = null_out())
   vl_manager.run()
 
+  tst_get_ligands(vl_manager = vl_manager)
+  tst_get_overlaps(vl_manager = vl_manager)
+
+
+def tst_get_ligands(vl_manager):
+  '''
+  Test finding ligand
+  '''
   assert (len(vl_manager) == 1)
+  # test iselection
   for id_tuple, ligand_dict in vl_manager.items():
     assert (id_tuple == ('', 'A', ' 201'))
     lr = ligand_dict['']
     assert (list(lr.isel) == [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95])
 
-# ---------------------------------------------------------------------------
 
-def tst_get_occupancies():
-  pdb_inp = iotbx.pdb.input(lines=pdb_str_2.split("\n"), source_info=None)
-  model = mmtbx.model.manager(model_input = pdb_inp)
+def tst_get_overlaps(vl_manager):
+  '''
+  Test nonbonded overlaps
+  '''
+  for id_tuple, ligand_dict in vl_manager.items():
+    for altloc, lr in ligand_dict.items():
+      clashes_result = lr.get_overlaps()
+      assert(clashes_result.n_clashes == 5)
+      assert approx_equal(clashes_result.clashscore, 31.6, eps=1.0)
+# anaconda
+#(['pdb=" HE3 MET A 107 "', 'pdb=" H81 PG5 A 201 "'], 17, 54, 2.0370952358689647, 2.44, '', None),
+#(['pdb=" CE  MET A 107 "', 'pdb=" C8  PG5 A 201 "'], 15, 34, 2.946989989803154, 3.4, '', None),
+#(['pdb=" CE  MET A 107 "', 'pdb=" H83 PG5 A 201 "'], 15, 56, 2.4839921497460486, 2.92, '', None)
+#
+# MAC
+#(['pdb=" CE  MET A 107 "', 'pdb=" C8  PG5 A 201 "'], 16, 35, 2.946989989803154, 3.4, '', None),
+#(['pdb=" HE3 MET A 107 "', 'pdb=" H83 PG5 A 201 "'], 18, 57, 2.026073542594147, 2.44, '', None),
+#(['pdb=" CE  MET A 107 "', 'pdb=" H81 PG5 A 201 "'], 16, 55, 2.4973179613337146, 2.92, '', None)
+#
+# Readyset gives different names to H atoms.
 
-  vl_manager = validate_ligands.manager(model = model, log=null_out)
-  vl_manager.run()
 
+def tst_get_occupancies(vl_manager):
+  '''
+  Test occupancy determination
+  '''
   assert (len(vl_manager) == 4)
   id_tuple_answer = [('', 'A', '   2'), ('', 'A', '   3'), ('', 'A', '   4'), ('', 'A', '   5')]
   ligand_dict_length_answer = [2, 1, 1, 1]
   occupancy_answer = []
+  # TODO six zip me
   for id_tuple, id_tuple_answer, length_answer in zip(vl_manager.keys(), id_tuple_answer, ligand_dict_length_answer):
     ligand_dict = vl_manager[id_tuple]
     assert (id_tuple == id_tuple_answer)
@@ -285,22 +380,46 @@ def tst_get_occupancies():
     for altloc, lr in ligand_dict.items():
       occs = lr.get_occupancies()
       id_str = lr.id_str
-      if (id_str.strip() == 'A   2' and altloc == 'A'):
+      if (id_str.strip() == 'A BEN    2 A'):
         assert(occs.occ_mean == 0.56)
-      if (id_str.strip() == 'A   2' and altloc == 'B'):
+      if (id_str.strip() == 'A BEN    2 B'):
         assert(occs.occ_mean == 0.44)
-      if (id_str.strip() == 'A   3'):
+      if (id_str.strip() == 'A SO4    3'):
         assert(occs.occ_mean == 0.65)
-      if (id_str.strip() == 'A   4'):
+      if (id_str.strip() == 'A SO4    4'):
         assert(occs.occ_mean == 0.48)
-      if (id_str.strip() == 'A   5'):
+      if (id_str.strip() == 'A GOL    5'):
         assert(occs.occ_mean == 0.67)
 
-# ---------------------------------------------------------------------------
+
+def run_test2():
+  '''
+  Test
+  - occupancy determination for ligands
+  - adp determination for ligands and neighbors
+  Tests are combined to decrease computing time (restraints manager is slow).
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_2.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input = pdb_inp)
+  model.set_log(null_out())
+  params = iotbx.phil.parse(
+    input_string=master_params_str, process_includes=True).extract()
+  vl_manager = validate_ligands.manager(
+    model = model,
+    fmodel = None,
+    params = params.validate_ligands,
+    log   = null_out)
+  vl_manager.run()
+
+  tst_get_occupancies(vl_manager = vl_manager)
+  tst_get_adps(vl_manager = vl_manager)
+
 
 def run():
-  tst_get_ligands()
-  tst_get_occupancies()
+  write_model_files(filenames = filenames, pdb_strings = pdb_strings)
+  run_test1()
+  run_test2()
+
 
 if (__name__ == "__main__"):
   t0 = time.time()

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from mmtbx.geometry_restraints import ramachandran
 import mmtbx.geometry_restraints
@@ -13,11 +13,13 @@ import boost.python
 from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from libtbx import group_args
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import mmtbx.model
 from libtbx.utils import null_out
 import sys
 import os
+from six.moves import zip
+from six.moves import range
 
 def exercise_basic():
   t = ramachandran.load_tables()["ala"]
@@ -178,7 +180,7 @@ def exercise_lbfgs_simple(mon_lib_srv, ener_lib, verbose=False):
     # print "comparing", residual_an
     assert approx_equal(residual_an, residuals[i], eps=0.001)
   if verbose :
-    print ""
+    print("")
   for i, peptide in enumerate([pdb1, pdb2, pdb3]):
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
@@ -190,21 +192,21 @@ def exercise_lbfgs_simple(mon_lib_srv, ener_lib, verbose=False):
     r1 = o.r1.results[0].score
     r2 = o.r2.results[0].score
     if verbose :
-      print "peptide %d" % (i+1)
-      print " before: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b0,o.a0)
-      print "         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi0, psi0, r0)
-      print " simple: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b1,o.a1)
-      print "         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi1, psi1, r1)
-      print " + Rama: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b2,o.a2)
-      print "         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi2, psi2, r2)
-      print ""
+      print("peptide %d" % (i+1))
+      print(" before: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b0,o.a0))
+      print("         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi0, psi0, r0))
+      print(" simple: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b1,o.a1))
+      print("         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi1, psi1, r1))
+      print(" + Rama: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b2,o.a2))
+      print("         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi2, psi2, r2))
+      print("")
 
 def exercise_lbfgs_big(verbose=False):
   file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3mku.pdb",
     test=os.path.isfile)
   if (file_name is None):
-    print "Skipping big test."
+    print("Skipping big test.")
     return
   pdb_in = iotbx.pdb.input(source_info="peptide",
     file_name=file_name)
@@ -213,14 +215,14 @@ def exercise_lbfgs_big(verbose=False):
     show_results(o, "3mhk")
 
 def show_results(o, structure_name):
-  print structure_name
-  print " before: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
-    % (o.b0, o.a0, o.r0.percent_outliers, o.r0.percent_favored)
-  print " simple: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
-    % (o.b1, o.a1, o.r1.percent_outliers, o.r1.percent_favored)
-  print " + Rama: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
-    % (o.b2, o.a2, o.r2.percent_outliers, o.r2.percent_favored)
-  print ""
+  print(structure_name)
+  print(" before: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
+    % (o.b0, o.a0, o.r0.percent_outliers, o.r0.percent_favored))
+  print(" simple: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
+    % (o.b1, o.a1, o.r1.percent_outliers, o.r1.percent_favored))
+  print(" + Rama: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
+    % (o.b2, o.a2, o.r2.percent_outliers, o.r2.percent_favored))
+  print("")
 
 def benchmark_structure(pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0):
   log = StringIO()
@@ -279,8 +281,7 @@ def benchmark_structure(pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0):
     r1=r1,
     r2=r2)
 
-def exercise_geo_output(mon_lib_srv, ener_lib):
-  pdb_str = """\
+pdb_str = """\
 CRYST1   18.879   16.714   25.616  90.00  90.00  90.00 P 1
 ATOM      1  N   ALA     1      13.515   7.809  20.095  1.00  0.00           N
 ATOM      2  CA  ALA     1      13.087   6.532  19.536  1.00  0.00           C
@@ -335,6 +336,8 @@ ATOM     50  CB  ALA    10       5.966  10.246   7.995  1.00  0.00           C
 TER
 END
 """
+
+def exercise_geo_output(mon_lib_srv, ener_lib):
   pdb_inp = iotbx.pdb.input(source_info="peptide",lines=flex.split_lines(pdb_str))
   hierarchy = pdb_inp.construct_hierarchy()
   atoms = hierarchy.atoms()
@@ -476,6 +479,77 @@ Sorted by residual:
 
 """)
 
+def exercise_manager_selection(mon_lib_srv, ener_lib):
+  pdb_inp = iotbx.pdb.input(source_info="peptide",lines=flex.split_lines(pdb_str))
+  hierarchy = pdb_inp.construct_hierarchy()
+  atoms = hierarchy.atoms()
+  sites_cart = atoms.extract_xyz()
+  params = ramachandran.master_phil.fetch().extract()
+  params.rama_potential = "emsley"
+  rama_manager = ramachandran.ramachandran_manager(
+      hierarchy, params, StringIO())
+  out = StringIO()
+  s_out = StringIO()
+  rama_manager.show_sorted(
+      by_value="residual",
+      sites_cart=sites_cart,
+      site_labels=[a.id_str() for a in atoms],
+      f=out)
+  selected_m = rama_manager.proxy_select(
+      n_seq=hierarchy.atoms_size(),
+      iselection=flex.size_t(range(40)))
+  selected_m.show_sorted(
+      by_value="residual",
+      sites_cart=sites_cart,
+      site_labels=[a.id_str() for a in atoms],
+      f=s_out)
+  assert not show_diff(s_out.getvalue(), """\
+Ramachandran plot restraints (Oldfield): 0
+Sorted by residual:
+
+Ramachandran plot restraints (Emsley): 6
+Sorted by residual:
+phi-psi angles formed by             residual
+    pdb=" C   ALA     1 "            1.52e+01
+    pdb=" N   ALA     2 "
+    pdb=" CA  ALA     2 "
+    pdb=" C   ALA     2 "
+    pdb=" N   ALA     3 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     6 "            1.20e+01
+    pdb=" N   ALA     7 "
+    pdb=" CA  ALA     7 "
+    pdb=" C   ALA     7 "
+    pdb=" N   ALA     8 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     2 "            1.14e+01
+    pdb=" N   ALA     3 "
+    pdb=" CA  ALA     3 "
+    pdb=" C   ALA     3 "
+    pdb=" N   ALA     4 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     4 "            1.06e+01
+    pdb=" N   ALA     5 "
+    pdb=" CA  ALA     5 "
+    pdb=" C   ALA     5 "
+    pdb=" N   ALA     6 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     3 "            1.03e+01
+    pdb=" N   ALA     4 "
+    pdb=" CA  ALA     4 "
+    pdb=" C   ALA     4 "
+    pdb=" N   ALA     5 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     5 "            7.58e+00
+    pdb=" N   ALA     6 "
+    pdb=" CA  ALA     6 "
+    pdb=" C   ALA     6 "
+    pdb=" N   ALA     7 "
+
+""")
+
+
+
 def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   # Just check overall rama proxies
   file_name = libtbx.env.find_in_repositories(
@@ -483,7 +557,7 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
     relative_path="phenix_regression/pdb/fab_a_cut.pdb",
     test=os.path.isfile)
   if (file_name is None):
-    print "Skipping test."
+    print("Skipping test.")
     return
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.peptide_link.ramachandran_restraints = True
@@ -517,7 +591,7 @@ def exercise_allowed_outliers():
     relative_path="phenix_regression/pdb/3ifk.pdb",
     test=os.path.isfile)
   if (file_name is None):
-    print "Skipping test."
+    print("Skipping test.")
     return
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.peptide_link.ramachandran_restraints = True
@@ -597,7 +671,7 @@ def exercise_allowed_outliers_emsley_filling():
     relative_path="phenix_regression/pdb/3ifk.pdb",
     test=os.path.isfile)
   if (file_name is None):
-    print "Skipping test."
+    print("Skipping test.")
     return
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.peptide_link.ramachandran_restraints = True
@@ -736,6 +810,7 @@ if __name__ == "__main__" :
         ("--verbose" in sys.argv) or ("-v" in sys.argv))
   t3 = time.time()
   exercise_geo_output(mon_lib_srv, ener_lib)
+  exercise_manager_selection(mon_lib_srv, ener_lib)
   t4 = time.time()
   exercise_ramachandran_selections(mon_lib_srv, ener_lib)
   t5 = time.time()
@@ -745,6 +820,6 @@ if __name__ == "__main__" :
   t7 = time.time()
   exercise_acs(mon_lib_srv, ener_lib)
   t8 = time.time()
-  print "Times: %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f. Total: %.3f" % (
-      t1-t0, t2-t1, t3-t2, t4-t3, t5-t4, t6-t5, t7-t6, t8-t7, t8-t0)
-  print "OK"
+  print("Times: %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f. Total: %.3f" % (
+      t1-t0, t2-t1, t3-t2, t4-t3, t5-t4, t6-t5, t7-t6, t8-t7, t8-t0))
+  print("OK")

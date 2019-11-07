@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.cns.crystal_symmetry_utils import \
   re_sg_uc, crystal_symmetry_from_re_match
 from cctbx import crystal
@@ -12,6 +12,7 @@ from libtbx import adopt_init_args
 from libtbx import easy_pickle
 import re
 import os
+from six.moves import range
 
 class sdb_site(object):
 
@@ -106,7 +107,7 @@ class raw_parameters(object):
     assert len(self.q) == len(self.action)
     assert len(self.g) == len(self.action)
     sites = []
-    for i in xrange(len(self.x)):
+    for i in range(len(self.x)):
       sites.append(sdb_site(
         self.action[i], self.segid[i], self.type[i],
         self.x[i], self.y[i], self.z[i],
@@ -197,20 +198,20 @@ def run(args):
     for sdb in sdb_files:
       if (unit_cell is not None): sdb.unit_cell = unit_cell
       if (space_group_info is not None): sdb.space_group_info=space_group_info
-      print "file:", sdb.file_name
+      print("file:", sdb.file_name)
       if (sdb.unit_cell is not None):
-        print "unit cell:", sdb.unit_cell.parameters()
+        print("unit cell:", sdb.unit_cell.parameters())
       if (sdb.space_group_info is not None):
-        print "space group:", sdb.space_group_info
+        print("space group:", sdb.space_group_info)
       if (show_raw):
         for site in sdb.sites:
-          print site.action, site.segid, site.type, site.g
-          print " ", site.x, site.y, site.z, site.b, site.q
+          print(site.action, site.segid, site.type, site.g)
+          print(" ", site.x, site.y, site.z, site.b, site.q)
       else:
         xray_structure = sdb.as_xray_structure()
         xray_structure.show_summary().show_scatterers()
         if (write_pickle):
           file_name_pickle = os.path.split(sdb.file_name)[1] + ".pickle"
-          print "Writing:", file_name_pickle
+          print("Writing:", file_name_pickle)
           easy_pickle.dump(file_name_pickle, xray_structure)
-      print
+      print()

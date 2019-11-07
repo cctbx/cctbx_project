@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx import adptbx
@@ -84,7 +84,7 @@ def run():
   adp_constraints = site_symmetry.adp_constraints()
   # use adp_constraints as before
 
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

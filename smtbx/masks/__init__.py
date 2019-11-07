@@ -1,6 +1,4 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 
 import sys
 
@@ -9,6 +7,7 @@ from cctbx import maptbx, miller, sgtbx, xray
 from cctbx.array_family import flex
 from scitbx.math import approx_equal_relatively
 from libtbx.utils import xfrange
+from six.moves import range
 
 
 class solvent_accessible_volume(object):

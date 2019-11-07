@@ -2,7 +2,7 @@
 Updated example from IUCr Computing Commission Newsletter No. 1:
 http://cci.lbl.gov/publications/download/iucrcompcomm_jan2003.pdf
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from cctbx import xray
 from cctbx import crystal
@@ -33,13 +33,13 @@ def run():
   quartz_structure = easy_pickle.load("beach")
 
   for scatterer in quartz_structure.scatterers():
-    print "%s:" % scatterer.label, "%8.4f %8.4f %8.4f" % scatterer.site
+    print("%s:" % scatterer.label, "%8.4f %8.4f %8.4f" % scatterer.site)
     site_symmetry = quartz_structure.site_symmetry(scatterer.site)
-    print "  point group type:", site_symmetry.point_group_type()
-    print "  special position operator:", site_symmetry.special_op_simplified()
+    print("  point group type:", site_symmetry.point_group_type())
+    print("  special position operator:", site_symmetry.special_op_simplified())
 
   for table in ["xray", "electron"]:
-    print "Scattering type table:", table
+    print("Scattering type table:", table)
 
     reg = quartz_structure.scattering_type_registry(table=table)
     reg.show_summary()
@@ -52,7 +52,7 @@ def run():
     low_resolution_only = f_calc.select(f_calc.d_spacings().data() > 2.5)
     low_resolution_only.show_array()
 
-    print
+    print()
 
 if (__name__ == "__main__"):
   run()

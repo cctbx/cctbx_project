@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import libtbx.load_env
 
@@ -19,8 +19,6 @@ tst_list = (
   "$B/array_family/tst_accessors",
   "$B/array_family/tst_optional_copy",
   "$B/array_family/tst_rectangular_full_packed",
-  "$B/array_family/tst_pmr",
-  "$B/array_family/tst_pmr_2",
   "$D/array_family/boost_python/tst_flex_argument_passing.py",
   "$B/serialization/tst_base_256",
   "$D/math/tests/tst_minimum_covering_ellipsoid.py",

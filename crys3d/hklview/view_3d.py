@@ -2,7 +2,7 @@
 # TODO:
 #  - cached scenes
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from crys3d import hklview
 #from crys3d.leapmotion import wxGLWindowLeapEnabled as wxGLWindow
 from gltbx.wx_viewer import wxGLWindow
@@ -137,7 +137,7 @@ class hklview_3d (wxGLWindow) :
       self.spheres_display_list = gltbx.gl_managed.display_list()
       self.spheres_display_list.compile()
       colors = self.scene.colors
-      radii = self.scene.radii * self.settings.scale
+      radii = self.scene.radii
       points = self.scene.points
       sphere = self.proto_sphere
       max_radius = self.scene.max_radius

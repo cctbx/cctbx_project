@@ -6,8 +6,9 @@
 
 XXX Better named cspad_base?
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
+from six.moves import zip
 
 __version__ = "$Revision$"
 
@@ -551,9 +552,9 @@ class common_mode_correction(mod_event_info):
       env = obj2
 
     if 0 and self._dark_path is not None and self.nmemb > 1:
-      print self.sum_common_mode, self.sumsq_common_mode
+      print(self.sum_common_mode, self.sumsq_common_mode)
       self.mean_common_mode = self.sum_common_mode / self.nmemb
-      print self.mean_common_mode
+      print(self.mean_common_mode)
       self.stddev_commond_mode = math.sqrt((self.sumsq_common_mode
         - self.sum_common_mode * self.mean_common_mode) / (self.nmemb - 1))
 
@@ -578,7 +579,7 @@ class common_mode_correction(mod_event_info):
     if 0: # for debugging
       from matplotlib import pyplot
       hist_min, hist_max = flex.min(flex_cspad_img_sel.as_double()), flex.max(flex_cspad_img_sel.as_double())
-      print hist_min, hist_max
+      print(hist_min, hist_max)
       n_slots = 100
       n, bins, patches = pyplot.hist(flex_cspad_img_sel.as_1d().as_numpy_array(), bins=n_slots, range=(hist_min, hist_max))
       pyplot.show()

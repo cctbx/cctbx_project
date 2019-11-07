@@ -1,21 +1,17 @@
-from __future__ import division, print_function, absolute_import
-from past.builtins import range
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/18/2018
-Last Changed: 03/06/2019
+Last Changed: 10/31/2019
 Description : IOTA base classes
 '''
 
 import os
 import json
-try:  # for Py3 compatibility
-    import itertools.ifilter as filter
-except ImportError:
-    pass
 
-from dxtbx.model import experiment_list as exp
+from dxtbx.model.experiment_list import ExperimentListFactory as ExLF
 from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
 
@@ -24,11 +20,12 @@ import iota.components.iota_utils as util
 
 # -------------------------------- Image Base -------------------------------- #
 
-class SingleImageBase(object):
-  ''' Base class for containing all info (including data) for single image;
-  can also save to file if necessary or perform conversion if necessary '''
 
-  def __init__(self, imgpath, idx=None):
+class SingleImageBase(object):
+  """ Base class for containing all info (including data) for single image;
+  can also save to file if necessary or perform conversion if necessary """
+
+  def __init__(self, imgpath, idx=None, img_idx=0, is_multi_image=False):
     self.img_path = imgpath
     self.obj_path = None
     self.obj_file = None
@@ -37,12 +34,16 @@ class SingleImageBase(object):
     self.viz_path = None
     self.int_log = None
     self.experiments = None
+    self.is_multi_image = is_multi_image
 
+    # Image index (img_index) refers to the ranking index of the image
+    # within a multi-image file (e.g. HDF5); input index (input_index) refers
+    # to the ranking index of the image within the full input list.
+    self.img_index = img_idx
     if idx:
-      self.img_index = idx
+      self.input_index = idx
     else:
-      self.img_index = 0
-
+      self.input_index = 0
 
     # Processing properties
     self.status = None
@@ -52,6 +53,7 @@ class SingleImageBase(object):
 
     # Final statistics (may add stuff to dictionary later, as needed)
     self.final = {'img': None,                        # Image filepath
+                  'img_idx':0,                        # Image index
                   'final': None,                      # Integrated pickle
                   'observations':None,                # Miller array
                   'info': '',                         # Information (general)
@@ -72,12 +74,13 @@ class SingleImageBase(object):
                   'gain':0                            # Detector gain
                   }
 
+
 class ImageImporterBase():
-  ''' Base class for image importer, which will:
+  """ Base class for image importer, which will:
         1. read an image file and extract data and info
         2. apply any modifications if requested / necessary
         3. output an experiment list or file for processing
-  '''
+  """
 
   def __init__(self, init=None, info=None, write_output=True):
 
@@ -90,32 +93,36 @@ class ImageImporterBase():
     self.modify = False
     self.write_output = write_output
 
-  def instantiate_image_object(self, filepath, idx=None):
-    ''' Override to instantiate a SingleImage object for current backend
+  def instantiate_image_object(self, filepath, idx=None, img_idx=0,
+                               is_multi_image=False):
+    """ Override to instantiate a SingleImage object for current backend
     :param filepath: path to image file
+    :param idx: input index (ranking index for image in full input list)
+    :param img_idx: image index (index of image in multi-image file)
     :return: an image object
-    '''
-    self.img_object = SingleImageBase(imgpath=filepath, idx=idx)
+    """
+    self.img_object = SingleImageBase(imgpath=filepath,
+                                      idx=idx,
+                                      img_idx=img_idx,
+                                      is_multi_image=is_multi_image)
 
-  def load_image_file(self, filepath):
-    ''' Loads experiment list and populates image information dictionary (can
+  def load_image_file(self, filepath, experiments=None):
+    """ Loads experiment list and populates image information dictionary (can
     override to load images for old-timey HA14 processing)
-
     :param filepath: path to raw diffraction image (or pickle!)
+    :param experiments: an ExperimentList object can be passed to this function
     :return: experiment list, error message (if any)
-    '''
-    # Create experiment list from file
-    try:
-      experiments = exp.ExperimentListFactory.from_filenames(filenames=[filepath])
-    except Exception as e:
-      error = 'IOTA IMPORTER ERROR: Import failed! {}'.format(e)
-      print (error)
-      return None, error
+    """
+    if not experiments:
+      try:
+        experiments = ExLF.from_filenames(filenames=[filepath])
+      except Exception as e:
+        error = 'IOTA IMPORTER ERROR: Import failed! {}'.format(e)
+        print (error)
+        return None, error
 
-    # Load image information from experiment list
+    # Load image information from experiment object
     try:
-      print ('DEBUG: ', filepath, experiments)
-
       imgset = experiments.imagesets()[0]
       beam = imgset.get_beam()
       s0 = beam.get_s0()
@@ -176,37 +183,63 @@ class ImageImporterBase():
     obj_base = self.info.obj_base if self.info else self.init.obj_base
     fin_base = self.info.fin_base if self.info else self.init.fin_base
     log_base = self.info.log_base if self.info else self.init.log_base
+    dials_log_base = self.info.dials_log_base if self.info else None
     viz_base = self.info.viz_base if self.info else self.init.viz_base
+
+    # Set prefix (image index in multi-image files, or None otherwise)
+    if self.img_object.is_multi_image:
+      image_index = self.img_object.img_index
+    else:
+      image_index = None
 
     # Object path (may not need)
     self.img_object.obj_path = util.make_image_path(self.img_object.img_path,
                                                     input_base, obj_base)
-    fname = util.make_filename(self.img_object.img_path, new_ext='int')
+    fname = util.make_filename(prefix=image_index,
+                               path=self.img_object.img_path,
+                               new_ext='int')
     self.img_object.obj_file = os.path.join(self.img_object.obj_path, fname)
 
     # Final integration pickle path
     self.img_object.int_path = util.make_image_path(self.img_object.img_path,
                                                     input_base, fin_base)
-    fname = util.make_filename(self.img_object.img_path, prefix='int',
+    fname = util.make_filename(path=self.img_object.img_path,
+                               prefix='int',
+                               suffix=image_index,
                                new_ext='pickle')
     self.img_object.int_file = os.path.join(self.img_object.int_path, fname)
 
     # Processing log path for image
     self.img_object.log_path = util.make_image_path(self.img_object.img_path,
                                                     input_base, log_base)
-    fname = util.make_filename(self.img_object.img_path, new_ext='log')
+    fname = util.make_filename(prefix=image_index,
+                               path=self.img_object.img_path,
+                               new_ext='log')
     self.img_object.int_log = os.path.join(self.img_object.log_path, fname)
+
+    # DIALS log path for image
+    if dials_log_base:
+      self.img_object.dials_log_path = util.make_image_path(
+        self.img_object.img_path, input_base, dials_log_base)
+      fname = util.make_filename(prefix=image_index,
+                                 path=self.img_object.img_path,
+                                 new_ext='log')
+      self.img_object.dials_log = os.path.join(
+        self.img_object.dials_log_path, fname)
 
     # Visualization path (may need to deprecate)
     self.img_object.viz_path = util.make_image_path(self.img_object.img_path,
                                                     input_base, viz_base)
-    fname = util.make_filename(self.img_object.img_path, prefix='int',
+    fname = util.make_filename(prefix='int',
+                               suffix=image_index,
+                               path=self.img_object.img_path,
                                new_ext='png')
     self.viz_file = os.path.join(self.img_object.viz_path, fname)
 
     # Make paths if they don't exist already
     for path in [self.img_object.obj_path, self.img_object.int_path,
-                 self.img_object.log_path, self.img_object.viz_path]:
+                 self.img_object.log_path, self.img_object.viz_path,
+                 self.img_object.dials_log_path]:
       try:
         os.makedirs(path)
       except OSError:
@@ -222,25 +255,34 @@ class ImageImporterBase():
     '''
 
     # Interpret input
+    expr = None
+    is_multi_image = False
     if type(input_entry) in (list, tuple):
       idx      = int(input_entry[0])
       filepath = str(input_entry[1])
+      img_idx  = int(input_entry[2])
+      if len(input_entry) == 4:
+        expr = input_entry[3]
+        is_multi_image = True
     elif type(input_entry) == str:
-      idx = None
+      idx      = None
       filepath = input_entry
+      img_idx  = 0
     else:
       raise util.InputError('IOTA IMPORT ERROR: Unrecognized input -- {}'
                             ''.format(input_entry))
 
     # Instantiate image object
-    self.instantiate_image_object(filepath=filepath, idx=idx)
+    self.instantiate_image_object(filepath, idx, img_idx,
+                                  is_multi_image=is_multi_image)
 
     # Generate output paths
     if self.write_output:
       self.prep_output()
 
     # Load image (default is experiment list, override for HA14-style pickling)
-    self.experiments, error = self.load_image_file(filepath=filepath)
+    self.experiments, error = self.load_image_file(filepath=filepath,
+                                                   experiments=expr)
 
     # Log initial image information
     self.img_object.log_info.append('\n{:-^100}\n'.format(filepath))
@@ -268,12 +310,12 @@ class ImageImporterBase():
     # Finalize and output
     self.img_object.experiments = self.experiments
     self.img_object.status = 'imported'
+
     return self.img_object, None
 
   def make_image_object(self, input_entry):
     '''Run image importer (override as needed)'''
     img_object, error = self.import_image(input_entry=input_entry)
-
     if error:
       print(error)
     return img_object
@@ -289,7 +331,7 @@ class ProcessingBase(Thread):
 
     # Set attributes from remaining kwargs
     for key, value in kwargs.items():
-      setattr(self, name=key, value=value)
+      setattr(self, key, value)
 
   def create_iterable(self, input_list):
     return [[i, len(input_list) + 1, str(j)] for i, j in enumerate(input_list, 1)]
@@ -297,7 +339,8 @@ class ProcessingBase(Thread):
   def import_and_process(self, input_entry):
     img_object = self.importer.run(input_entry)
     if img_object.status == 'imported':
-      img_object = self.integrator.run(img_object)
+      with util.Capturing() as junk_output:
+        img_object = self.integrator.run(img_object)
 
     # Update main log
     if hasattr(self.info, 'logfile'):
@@ -314,10 +357,36 @@ class ProcessingBase(Thread):
     return result
 
   def run_process(self, iterable):
-    img_objects = parallel_map(iterable=iterable,
+    # Create ExperimentList objects from image paths (doing it in the processor
+    # because I can't have Python objects in the INFO JSON file)
+    adj_iterable = []
+    imageseq = None
+    crystal = None
+    for entry in iterable:
+      path = str(entry[1])
+      if path.endswith('.h5'):
+        exp_idx = entry[0]
+        img_idx = entry[2]
+        if imageseq is None:
+          exps = ExLF.from_filenames(filenames=[path])
+          imageseq = exps.imagesets()[0]
+          crystal = exps[0].crystal
+        one_image = imageseq.partial_set(img_idx, img_idx + 1)
+        one_exp = ExLF.from_imageset_and_crystal(imageset=one_image,
+                                                 crystal=crystal)
+        adj_iterable.append([exp_idx, path, img_idx, one_exp])
+      else:
+        # Create ExperimentList object from CBF
+        expr = ExLF.from_filenames(filenames=[path])
+        exp_entry = [entry[0], entry[1], 0, expr]
+        adj_iterable.append(exp_entry)
+
+    # Run a multiprocessing job
+    img_objects = parallel_map(iterable=adj_iterable,
                                func=self.import_and_process,
                                callback=self.callback,
                                processes=self.params.mp.n_processors)
+
     return img_objects
 
   def run_analysis(self):
@@ -329,7 +398,6 @@ class ProcessingBase(Thread):
 
   def process(self):
     """ Run importer and/or processor """
-
     img_objects = self.run_process(iterable=self.info.unprocessed)
     self.info.finished_objects = img_objects
     self.run_analysis()
@@ -399,6 +467,11 @@ class ProcInfo(object):
     '''
 
     if info_dict:
+
+      # Convert all unicode values to strings
+      info_dict = self._convert_unicode_to_string(info_dict)
+
+      # update with values from dictionary
       self.update(info_dict)
 
   def update(self, info_dict=None, **kwargs):
@@ -475,8 +548,7 @@ class ProcInfo(object):
       input_filepath = None
 
     if input_filepath:
-      with open(input_filepath, 'r') as inpf:
-        input_list = [i.replace('\n', '') for i in inpf.readlines()]
+      inputs = [input_filepath]
     else:
       if 'input' in kw:
         inputs = kw['input']
@@ -485,38 +557,59 @@ class ProcInfo(object):
       else:
         inputs = None
 
-      if inputs:
-        input_list = util.ginp.make_input_list(inputs, filter=True,
-                                                 filter_type='image')
+    if inputs:
+      input_list, _ = util.ginp.make_input_list(inputs,
+                                                filter_results=True,
+                                                filter_type='image',
+                                                expand_multiple=True)
 
+    # Select random subsets and/or ranges of images
     if prm and input_list:
-      if prm.advanced.image_range.flag_on:
-        input_list = self._select_image_range(input_list,
-                                              prm.advanced.image_range.range)
-      if prm.advanced.random_sample.flag_on:
-        input_list = self._select_random_subset(input_list,
-                                              prm.advanced.random_sample.number)
+      if prm.data_selection.image_range.flag_on:
+        input_list = self._select_image_range(
+          input_list,
+          prm.data_selection.image_range.range)
+      if prm.data_selection.random_sample.flag_on:
+        input_list = self._select_random_subset(
+          input_list,
+          prm.data_selection.random_sample.number)
 
-    return [str(i) for i in input_list]
+    return sorted(input_list)
 
   def generate_input_list(self, **kw):
     assert not hasattr(self, 'input_list')
     self.input_list = self.flatten_input(**kw)
-    self.n_input_images = len(self.input_list)
-    self.unprocessed = list(enumerate(self.input_list, 1))
+    self.unprocessed = []
+    for i in self.input_list:
+      idx = self.input_list.index(i) + 1
+      if isinstance(i, str):
+        path = i
+        img_index = 0
+      else:
+        path, img_index = i
+      self.unprocessed.append([idx, path, img_index])
+    self.n_input_images = len(self.unprocessed)
 
   def update_input_list(self, new_input=None):
     assert hasattr(self, 'input_list') and hasattr(self, 'categories')
     if new_input:
-      self.input_list = [str(i) for i in new_input]
-      self.unprocessed = list(enumerate(self.input_list, self.n_input_images + 1))
-      self.categories['not_processed'][0].extend(new_input)
-      self.categories['total'][0].extend(new_input)
-      self.n_input_images += len(new_input)
+      self.input_list = new_input
+      self.unprocessed = []
+      for i in self.input_list:
+        idx = self.input_list.index(i)
+        if isinstance(i, str):
+          path = i
+          img_index = 0
+        else:
+          path, img_index = i
+        self.unprocessed.append([idx, path, img_index])
+      self.categories['not_processed'][0].extend(self.unprocessed)
+      self.categories['total'][0].extend(self.unprocessed)
+      self.n_input_images += len(self.unprocessed)
 
   def reset_input_list(self):
     assert hasattr(self, 'input_list') and hasattr(self, 'categories')
-    self.input_list = [str(i[1]) for i in self.unprocessed]
+    self.input_list = [(str(i[1]), i[2]) for i in self.unprocessed]
 
   def get_finished_objects(self):
     if hasattr(self, 'finished_objects') and self.finished_objects:
@@ -632,6 +725,17 @@ class ProcInfo(object):
     except TypeError as e:
       raise Exception('IOTA JSON ERROR: {}'.format(e))
 
+  def _convert_unicode_to_string(self, info_dict):
+    import collections
+    if isinstance(info_dict, basestring):
+      return str(info_dict)
+    elif isinstance(info_dict, collections.Mapping):
+      return dict(map(self._convert_unicode_to_string, info_dict.iteritems()))
+    elif isinstance(info_dict, collections.Iterable):
+      return type(info_dict)(map(self._convert_unicode_to_string, info_dict))
+    else:
+      return info_dict
+
   @classmethod
   def from_json(cls, filepath, **kwargs):
     ''' Generate INFO object from a JSON file'''
@@ -663,10 +767,9 @@ class ProcInfo(object):
     return cls(kwargs)
 
   @classmethod
-  def from_folder(cls, path, **kwargs):
+  def from_folder(cls, path):
     ''' Generate INFO object from an integration folder
     :param path: path to folder with integration results
-    :param kwargs: additional keyword args
     :return: ProcInfo class generated with attributes
     '''
 
@@ -703,7 +806,7 @@ class ProcInfo(object):
       return None
 
     # Look for the IOTA paramfile
-    prm_list = util.ginp.get_file_list(path=path, ext_only='param')
+    prm_list = util.ginp.get_input_from_folder(path=path, ext_only='param')
     if prm_list:                             # Read from paramfile
       with open(prm_list[0], 'r') as prmf:
         info_dict['iota_phil'] = prmf.read()
@@ -746,6 +849,6 @@ class ProcInfo(object):
 
     # Generate object list
     if os.path.isdir(obj_base):
-      info_dict['finished_objects'] = util.ginp.get_file_list(path, ext_only='int')
+      info_dict['finished_objects'] = util.ginp.get_input_from_folder(path, ext_only='int')
 
     return cls(info_dict)

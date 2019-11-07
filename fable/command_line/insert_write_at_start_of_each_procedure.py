@@ -1,5 +1,5 @@
 "Minimalistic, pragmatic implementation. Absolutely no bells and whistles."
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 def run(args):
   assert args[0] == "--yes-i-know-this-overwrites-the-original-files"

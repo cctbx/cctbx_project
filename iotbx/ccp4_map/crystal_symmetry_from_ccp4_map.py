@@ -1,6 +1,4 @@
-from __future__ import division
-from cctbx import crystal
-import sys, os
+from __future__ import absolute_import, division, print_function
 
 def extract_from(file_name):
 

@@ -6,7 +6,7 @@ attributes stored in a PDB file, scattering information, and geometry
 restraints.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry, user_plus_sys_time, null_out
@@ -49,7 +49,15 @@ from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 
+from iotbx.bioinformatics import sequence
+from mmtbx.validation.sequence import master_phil as sequence_master_phil
+from mmtbx.validation.sequence import validation as sequence_validation
+
 import boost.python
+import six
+from six.moves import zip
+from six.moves import range
+
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.rotamer.rotamer_eval import RotamerEval
@@ -60,7 +68,7 @@ from mmtbx.geometry_restraints import ramachandran
 ext2 = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
 
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 from copy import deepcopy
 import sys
 import math
@@ -242,6 +250,9 @@ class manager(object):
     self._ss_manager = None
     self._site_symmetry_table = None
 
+    # sequence data objects
+    self._sequence_validation = None
+
     # here we start to extract and fill appropriate field one by one
     # depending on what's available.
     if self._model_input is not None:
@@ -364,6 +375,12 @@ class manager(object):
   def set_log(self, log):
     self.log = log
 
+  def set_stop_for_unknowns(self, value):
+    self._stop_for_unknowns=value
+
+  def get_stop_for_unknowns(self):
+    return self._stop_for_unknowns
+
   def set_shift_manager(self, shift_manager):
     self._shift_manager = shift_manager
     if shift_manager is not None:
@@ -431,7 +448,6 @@ class manager(object):
     pep_link_params.rama_potential = rama_potential
     ramachandran_restraints_manager = ramachandran.ramachandran_manager(
       pdb_hierarchy  = self.get_hierarchy(),
-      atom_selection = pep_link_params.rama_selection,
       params         = pep_link_params,
       log            = null_out())
     grm.set_ramachandran_restraints(manager = ramachandran_restraints_manager)
@@ -508,6 +524,9 @@ class manager(object):
 
   def get_sites_cart(self):
     return self.get_xray_structure().sites_cart()
+
+  def get_sites_frac(self):
+    return self.get_xray_structure().sites_frac()
 
   def get_atom_selection_cache(self):
     if self._atom_selection_cache is None:
@@ -588,9 +607,9 @@ class manager(object):
           isel = sel_cache.selection(group.selection_string).iselection()
           assert (len(isel) == len(group.iselection))
           if (not isel.all_eq(group.iselection)):
-            print >> out, "Updating %d atom(s) in anomalous group %d" % \
-              (len(isel), i_group+1)
-            print >> out, "  selection string: %s" % group.selection_string
+            print("Updating %d atom(s) in anomalous group %d" % \
+              (len(isel), i_group+1), file=out)
+            print("  selection string: %s" % group.selection_string, file=out)
             group.iselection = isel
             modified = True
       return modified
@@ -599,21 +618,21 @@ class manager(object):
     out = StringIO()
     if self.have_anomalous_scatterer_groups():
       pr = "REMARK   3  "
-      print >> out, pr+"ANOMALOUS SCATTERER GROUPS DETAILS."
-      print >> out, pr+" NUMBER OF ANOMALOUS SCATTERER GROUPS : %-6d"%\
-        len(self._anomalous_scatterer_groups)
+      print(pr+"ANOMALOUS SCATTERER GROUPS DETAILS.", file=out)
+      print(pr+" NUMBER OF ANOMALOUS SCATTERER GROUPS : %-6d"%\
+        len(self._anomalous_scatterer_groups), file=out)
       counter = 0
       for group in self._anomalous_scatterer_groups:
         counter += 1
-        print >>out,pr+" ANOMALOUS SCATTERER GROUP : %-6d"%counter
+        print(pr+" ANOMALOUS SCATTERER GROUP : %-6d"%counter, file=out)
         lines = str_utils.line_breaker(group.selection_string, width=45)
         for i_line, line in enumerate(lines):
           if(i_line == 0):
-            print >> out, pr+"  SELECTION: %s"%line
+            print(pr+"  SELECTION: %s"%line, file=out)
           else:
-            print >> out, pr+"           : %s"%line
-        print >>out,pr+"  fp  : %-15.4f"%group.f_prime
-        print >>out,pr+"  fdp : %-15.4f"%group.f_double_prime
+            print(pr+"           : %s"%line, file=out)
+        print(pr+"  fp  : %-15.4f"%group.f_prime, file=out)
+        print(pr+"  fdp : %-15.4f"%group.f_double_prime, file=out)
     return out.getvalue()
 
   def restraints_manager_available(self):
@@ -759,13 +778,32 @@ class manager(object):
     return hierarchy_to_output
 
 
+  def shift_origin(self, origin_shift_cart=None):
+    if not origin_shift_cart or origin_shift_cart==(0,0,0):
+      return self.deep_copy()
+    else:
+      new_model=self.deep_copy()
+      sites_cart=new_model.get_hierarchy().atoms().extract_xyz()
+      sites_cart+=origin_shift_cart
+      new_model.set_sites_cart(sites_cart)
+      return new_model
+
   def model_as_pdb(self,
       output_cs = True,
       atoms_reset_serial_first_value=None,
-      do_not_shift_back = False):
+      do_not_shift_back = False,
+      origin_shift_cart=None):
     """
     move all the writing here later.
     """
+
+    if origin_shift_cart:
+      return self.shift_origin(
+        origin_shift_cart=origin_shift_cart).model_as_pdb(output_cs=output_cs,
+        atoms_reset_serial_first_value=atoms_reset_serial_first_value,
+        do_not_shift_back=do_not_shift_back,
+        origin_shift_cart=None)
+
     if do_not_shift_back and self._shift_manager is None:
       do_not_shift_back = False
     cs_to_output = self._figure_out_cs_to_output(
@@ -774,11 +812,7 @@ class manager(object):
     result = StringIO()
     # outputting HELIX/SHEET records
     ss_records = ""
-    ss_ann = None
-    if self._ss_manager is not None:
-      ss_ann = self._ss_manager.actual_sec_str
-    elif self.get_ss_annotation() is not None:
-      ss_ann = self.get_ss_annotation()
+    ss_ann = self._get_ss_annotations_for_output()
     if ss_ann is not None:
       ss_records = ss_ann.as_pdb_str()
     if ss_records != "":
@@ -808,7 +842,7 @@ class manager(object):
     mon_lib_srv = self.get_mon_lib_srv()
     ph = self.get_hierarchy()
     if skip_residues is None:
-      skip_residues = one_letter_given_three_letter.keys() + ['HOH']
+      skip_residues = list(one_letter_given_three_letter.keys()) + ['HOH']
     done = []
     chem_comps = []
     for ag in ph.atom_groups():
@@ -831,11 +865,12 @@ class manager(object):
       chem_comp_loops.append(cc.as_cif_loop())
     for key, block in restraints.items():
       for loop in block.iterloops():
+        if loop is None: continue
         if '_chem_comp_plane_atom.comp_id' in loop.keys():
           # plane atom - add plane
           plane_ids = []
           comp_id = loop.get('_chem_comp_plane_atom.comp_id')[0]
-          for k, item in loop.iteritems():
+          for k, item in six.iteritems(loop):
             if k=='_chem_comp_plane_atom.plane_id':
               for plane_id in item:
                 if plane_id not in plane_ids: plane_ids.append(plane_id)
@@ -861,12 +896,37 @@ class manager(object):
           break
     return restraints
 
+  def _get_ss_annotations_for_output(self):
+    ss_ann = None
+    if self._ss_manager is not None:
+      ss_ann = self._ss_manager.actual_sec_str
+    elif self.get_ss_annotation() is not None:
+      ss_ann = self.get_ss_annotation()
+    if ss_ann is not None:
+      ss_ann.remove_empty_annotations(self.get_hierarchy(),
+          self.get_atom_selection_cache())
+    return ss_ann
+
   def model_as_mmcif(self,
       cif_block_name = "default",
       output_cs = True,
       additional_blocks = None,
       align_columns = False,
-      do_not_shift_back = False):
+      origin_shift_cart = None,
+      do_not_shift_back = False,
+      keep_original_loops = False):
+
+    if origin_shift_cart:
+      return self.shift_origin(
+        origin_shift_cart=origin_shift_cart).model_as_mmcif(
+        cif_block_name=cif_block_name,
+        output_cs=output_cs,
+        additional_blocks=additional_blocks,
+        align_columns=align_columns,
+        do_not_shift_back=do_not_shift_back,
+        origin_shift_cart=None,
+        keep_original_loops=keep_original_loops)
+
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None
@@ -886,7 +946,8 @@ class manager(object):
     if self.restraints_manager_available():
       ias_selection = self.get_ias_selection()
       sites_cart = self.get_sites_cart()
-      atoms = self.get_atoms()
+      # using the output hierarchy because xyz not used in struct_conn loop
+      atoms = hierarchy_to_output.atoms()
       if ias_selection and ias_selection.count(True) > 0:
         sites_cart = sites_cart.select(~ias_selection)
         atoms = atoms.select(~ias_selection)
@@ -894,19 +955,19 @@ class manager(object):
       grm_geometry.pair_proxies(sites_cart)
       struct_conn_loop = grm_geometry.get_struct_conn_mmcif(atoms)
       cif_block.add_loop(struct_conn_loop)
+      self.get_model_statistics_info()
     # outputting HELIX/SHEET records
     ss_cif_loops = []
-    ss_ann = None
-    if self._ss_manager is not None:
-      ss_ann = self._ss_manager.actual_sec_str
-    elif self.get_ss_annotation() is not None:
-      ss_ann = self.get_ss_annotation()
+    ss_ann = self._get_ss_annotations_for_output()
     if ss_ann is not None:
       ss_cif_loops = ss_ann.as_cif_loops()
     for loop in ss_cif_loops:
       cif_block.add_loop(loop)
 
-    # self.get_model_statistics_info()
+    # add sequence information
+    if self._sequence_validation is not None:
+      cif_block.update(self._sequence_validation.sequence_as_cif_block())
+
     if self.model_statistics_info is not None:
       cif_block.update(self.model_statistics_info.as_cif_block())
     if additional_blocks is not None:
@@ -921,6 +982,23 @@ class manager(object):
     if self.restraints_manager_available():
       links = grm_geometry.get_cif_link_entries(self.get_mon_lib_srv())
       cif.update(links)
+
+    # preserve original loops if available
+    if keep_original_loops:
+      if hasattr(self._model_input, 'cif_model'):
+        # FIXME: ordering of dict values changes depending on py2/3 this could break
+        original_cif_model = list(self._model_input.cif_model.values())[0]
+        for key in original_cif_model.loop_keys():
+          if key not in cif_block.loop_keys():
+            loop = original_cif_model.get_loop(key)
+            if loop is not None:
+              cif_block.add_loop(loop)
+        for key in original_cif_model.item_keys():
+          if key not in cif_block.item_keys():
+            item = original_cif_model.get_single_item(key)
+            if item is not None:
+              cif_block.add_data_item(key, item)
+      cif_block.sort(key=category_sort_function)
 
     cif.show(out=out, align_columns=align_columns)
     return out.getvalue()
@@ -1014,7 +1092,7 @@ class manager(object):
     return self._has_hd
 
   def _update_has_hd(self):
-    sctr_keys = self.get_xray_structure().scattering_type_registry().type_count_dict().keys()
+    sctr_keys = self.get_xray_structure().scattering_type_registry().type_count_dict()
     self._has_hd = "H" in sctr_keys or "D" in sctr_keys
     if not self._has_hd:
       self.unset_riding_h_manager()
@@ -1038,7 +1116,8 @@ class manager(object):
     self._processed_pdb_file = None
 
   def raise_clash_guard(self):
-    err_msg = self._processed_pdb_file.clash_guard()
+    # This is done for phenix.refine when run with shaking coordinates
+    err_msg = self._processed_pdb_file.clash_guard(new_sites_cart=self.get_sites_cart())
     if err_msg is not None:
       raise Sorry(err_msg)
 
@@ -1195,7 +1274,7 @@ class manager(object):
     if ncs_obj is None: return
     geometry = self.get_restraints_manager().geometry
     if ncs_obj.number_of_ncs_groups > 0:
-      print >> log, "\n"
+      print("\n", file=log)
       geometry.ncs_dihedral_manager = torsion_ncs(
           model              = self,
           fmodel             = fmodel,
@@ -1263,7 +1342,8 @@ class manager(object):
       if filter_groups:
         # set up new groups for refinements
         self._ncs_groups = self._ncs_groups.filter_ncs_restraints_group_list(
-            self.get_hierarchy())
+            whole_h=self.get_hierarchy(),
+            ncs_obj=self.get_ncs_obj())
       self.get_ncs_obj().set_ncs_restraints_group_list(self._ncs_groups)
     self._update_master_sel()
 
@@ -1307,10 +1387,10 @@ class manager(object):
       assert rm is not None
       rm.cartesian_ncs_manager = cartesian_ncs
     else:
-      print >> self.log, "No NCS restraint groups specified."
-      print >> self.log
+      print("No NCS restraint groups specified.", file=self.log)
+      print(file=self.log)
 
-  def get_vdw_radii(self):
+  def get_vdw_radii(self, vdw_radius_default = 1.0):
     """
     Return van-der-Waals radii for known atom names.
     """
@@ -1318,10 +1398,16 @@ class manager(object):
     e = self.get_ener_lib()
     e_lib_atom_keys = e.lib_atom.keys()
     result = {}
-    for k0,v0 in zip(m.comp_comp_id_dict.keys(), m.comp_comp_id_dict.values()):
-      for k1,v1 in zip(v0.atom_dict().keys(), v0.atom_dict().values()):
+    for k0,v0 in six.iteritems( m.comp_comp_id_dict):
+      for k1,v1 in six.iteritems(v0.atom_dict()):
         if(v1.type_energy in e_lib_atom_keys):
-          result[k1]=e.lib_atom[v1.type_energy].vdw_radius
+          vdw_radius = e.lib_atom[v1.type_energy].vdw_radius
+          if(vdw_radius is None):
+            vdw_radius = vdw_radius_default
+            if(self.log is not None):
+              msg = "WARNING: vdw radius undefined for: (%s %s); setting to: %s"
+              print(msg%(k1, v1.type_energy, vdw_radius_default), file=self.log)
+          result[k1] = vdw_radius
     return result
 
   def get_n_excessive_site_distances_cartesian_ncs(self, excessive_distance_limit=1.5):
@@ -1451,7 +1537,7 @@ class manager(object):
       "n_gaussian", "wk1995", "it1992", "electron", "neutron"]
     if(not (scattering_table in known_scattering_tables)):
       raise Sorry("Unknown scattering_table: %s\n%s"%
-        (show_string(scattering_table),
+        (str_utils.show_string(scattering_table),
         "Possible choices are: %s"%" ".join(known_scattering_tables)))
     if(scattering_table in ["n_gaussian", "wk1995", "it1992", "electron"]):
       self._xray_structure.scattering_type_registry(
@@ -1469,7 +1555,7 @@ class manager(object):
       try :
         self.neutron_scattering_dict = \
           self._xray_structure.switch_to_neutron_scattering_dictionary()
-      except ValueError, e :
+      except ValueError as e :
         raise Sorry("Error setting up neutron scattering dictionary: %s"%str(e))
       if(log is not None):
         print_statistics.make_sub_header(
@@ -1490,7 +1576,7 @@ class manager(object):
             " the scattering type.\n"
           "    - Provide custom monomer definitions for the affected residues.")
       if(log is not None):
-        print >> log
+        print(file=log)
     if set_inelastic_form_factors is not None and iff_wavelength is not None:
       self._xray_structure.set_inelastic_form_factors(
           photon=iff_wavelength,
@@ -1556,32 +1642,32 @@ class manager(object):
     if(pdb_inp_tls and pdb_inp_tls.tls_present):
       print_statistics.make_header(
         "TLS group selections from PDB file header", out=self.log)
-      print >> self.log, "TLS group selections:"
+      print("TLS group selections:", file=self.log)
       atom_counts = []
       for t in pdb_inp_tls.tls_params:
         try :
           n_atoms = self.iselection(t.selection_string).size()
-        except AtomSelectionError, e :
-          print >> self.log, "AtomSelectionError:"
-          print >> self.log, str(e)
-          print >> self.log, "Ignoring PDB header TLS groups"
+        except AtomSelectionError as e :
+          print("AtomSelectionError:", file=self.log)
+          print(str(e), file=self.log)
+          print("Ignoring PDB header TLS groups", file=self.log)
           self.input_tls_selections = []
           return
-        print >> self.log, "  selection string:"
-        print >> self.log, "    %s"%t.selection_string
-        print >> self.log, "    selects %d atoms"%n_atoms
+        print("  selection string:", file=self.log)
+        print("    %s"%t.selection_string, file=self.log)
+        print("    selects %d atoms"%n_atoms, file=self.log)
         self.input_tls_selections.append(t.selection_string)
         atom_counts.append(n_atoms)
       if(pdb_inp_tls.tls_present):
         if(pdb_inp_tls.error_string is not None):
-          print >> self.log, "  %s"%pdb_inp_tls.error_string
+          print("  %s"%pdb_inp_tls.error_string, file=self.log)
           self.input_tls_selections = []
       if(0 in atom_counts):
         msg="""
   One of TLS selections is an empty selection: skipping TLS infromation found in
   PDB file header.
 """
-        print >> self.log, msg
+        print(msg, file=self.log)
 
   def get_riding_h_manager(self, idealize=True, force=False):
     """
@@ -1652,6 +1738,10 @@ class manager(object):
 
   def set_b_iso(self, b_iso):
     self.get_xray_structure().set_b_iso(values = b_iso)
+    self.set_sites_cart_from_xrs()
+
+  def set_occupancies(self, value, selection=None):
+    self.get_xray_structure().set_occupancies(value=value, selection=selection)
     self.set_sites_cart_from_xrs()
 
   def set_sites_cart(self, sites_cart, update_grm=False):
@@ -1727,8 +1817,9 @@ class manager(object):
     for bp in self.restraints_manager.geometry.bond_params_table:
       for i, k in enumerate(bp.keys()):
         if(k in h_i_seqs):
-          self.original_xh_lengths.append(bp.values()[i].distance_ideal)
-          bp.values()[i].distance_ideal = value
+          # FIXME, if bp is a dictionary this will prpobably break py2/3 funcionality
+          self.original_xh_lengths.append(list(bp.values())[i].distance_ideal)
+          list(bp.values())[i].distance_ideal = value
 
   def restore_xh_bonds(self):
     if(self.restraints_manager is None): return
@@ -1743,7 +1834,8 @@ class manager(object):
     for bp in self.restraints_manager.geometry.bond_params_table:
       for i, k in enumerate(bp.keys()):
         if(k in h_i_seqs):
-          bp.values()[i].distance_ideal = self.original_xh_lengths[counter]
+          # FIXME: python2/3 breakage if bp is a dict
+          list(bp.values())[i].distance_ideal = self.original_xh_lengths[counter]
           counter += 1
     self.original_xh_lengths = None
     self.idealize_h_minimization(show=False)
@@ -1876,14 +1968,14 @@ class manager(object):
 
   def show_h_counts(self, prefix=""):
     hc = self.h_counts()
-    print >> self.log, "%sTotal:"%prefix
-    print >> self.log, "%s  count: %d"%(prefix, hc.h_count)
-    print >> self.log, "%s  occupancy sum: %6.2f (%s of total atoms %6.2f)"%(
-      prefix, hc.h_occ_sum, "%", hc.h_fraction_of_total)
-    print >> self.log, "%sRotatable:"%prefix
-    print >> self.log, "%s  count: %d"%(prefix, hc.hrot_count)
-    print >> self.log, "%s  occupancy sum: %6.2f (%s of total atoms %6.2f)"%(
-      prefix, hc.hrot_occ_sum, "%", hc.hrot_fraction_of_total)
+    print("%sTotal:"%prefix, file=self.log)
+    print("%s  count: %d"%(prefix, hc.h_count), file=self.log)
+    print("%s  occupancy sum: %6.2f (%s of total atoms %6.2f)"%(
+      prefix, hc.h_occ_sum, "%", hc.h_fraction_of_total), file=self.log)
+    print("%sRotatable:"%prefix, file=self.log)
+    print("%s  count: %d"%(prefix, hc.hrot_count), file=self.log)
+    print("%s  occupancy sum: %6.2f (%s of total atoms %6.2f)"%(
+      prefix, hc.hrot_occ_sum, "%", hc.hrot_fraction_of_total), file=self.log)
 
   def scattering_types_counts_and_occupancy_sums(self, prefix=""):
     out = StringIO()
@@ -1892,12 +1984,12 @@ class manager(object):
     atoms_occupancy_sum = \
         flex.sum(self.get_xray_structure().scatterers().extract_occupancies())
     fmt = "   %5s               %10d        %8.2f"
-    print >> out, prefix+"MODEL CONTENT."
-    print >> out, prefix+" ELEMENT        ATOM RECORD COUNT   OCCUPANCY SUM"
+    print(prefix+"MODEL CONTENT.", file=out)
+    print(prefix+" ELEMENT        ATOM RECORD COUNT   OCCUPANCY SUM", file=out)
     for item in st_counts_and_occupancy_sums:
-      print >> out, prefix+fmt % (item.scattering_type, item.count,
-        item.occupancy_sum)
-    print >> out,prefix+fmt%("TOTAL",self.get_number_of_atoms(),atoms_occupancy_sum)
+      print(prefix+fmt % (item.scattering_type, item.count,
+        item.occupancy_sum), file=out)
+    print(prefix+fmt%("TOTAL",self.get_number_of_atoms(),atoms_occupancy_sum), file=out)
     return out.getvalue()
 
   def neutralize_scatterers(self):
@@ -1937,9 +2029,8 @@ class manager(object):
         if(hd_selection[t[1]]):
           xhd.append(abs(t[-1]-t[-2]))
       if(show):
-        print >> self.log, \
-        "X-H deviation from ideal before regularization (bond): mean=%6.3f max=%6.3f"%\
-        (flex.mean(xhd), flex.max(xhd))
+        print("X-H deviation from ideal before regularization (bond): mean=%6.3f max=%6.3f"%\
+        (flex.mean(xhd), flex.max(xhd)), file=self.log)
       for sel_pair in [(mac_hd, False), (sol_hd, True)]*2:
         if(sel_pair[0].count(True) > 0):
           sel = sel_pair[0]
@@ -1982,9 +2073,8 @@ class manager(object):
         if(hd_selection[t[1]]):
           xhd.append(abs(t[-1]-t[-2]))
       if(show):
-        print >> self.log,\
-        "X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
-        (flex.mean(xhd), flex.max(xhd))
+        print("X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
+        (flex.mean(xhd), flex.max(xhd)), file=self.log)
 
   def extract_water_residue_groups(self):
     result = []
@@ -2021,9 +2111,9 @@ class manager(object):
               for e in elements:
                 if(e.strip().upper() == 'O'): o_found += 1
               if(o_found == 0):
-                print >> self.log
+                print(file=self.log)
                 for a in r.atoms():
-                  print >> self.log, a.format_atom_record()
+                  print(a.format_atom_record(), file=self.log)
                 raise Sorry(
                   "The above waters in input PDB file do not have O atom.")
     return result
@@ -2136,7 +2226,7 @@ class manager(object):
             element=element)
     if(neutron):
       xs.switch_to_neutron_scattering_dictionary()
-    print >> self.log, "Number of H added:", len(next_to_i_seqs)
+    print("Number of H added:", len(next_to_i_seqs), file=self.log)
     if (len(next_to_i_seqs) == 0): return
     if (self.refinement_flags is not None):
       self.refinement_flags.add(
@@ -2239,7 +2329,7 @@ class manager(object):
        self.remove_ias()
        fmodel.update_xray_structure(xray_structure = self._xray_structure,
                                     update_f_calc = True)
-    print >> self.log, ">>> Adding IAS.........."
+    print(">>> Adding IAS..........", file=self.log)
     self.old_refinement_flags = None
     if not build_only: self.use_ias = True
     self.ias_manager = ias.manager(
@@ -2255,7 +2345,7 @@ class manager(object):
       ias_xray_structure = self.ias_manager.ias_xray_structure
       ias_selection = self.get_ias_selection()
       self._xray_structure.concatenate_inplace(other = ias_xray_structure)
-      print >> self.log, "Scattering dictionary for combined xray_structure:"
+      print("Scattering dictionary for combined xray_structure:", file=self.log)
       self._xray_structure.scattering_type_registry().show(out=self.log)
       if(self.refinement_flags is not None):
          self.old_refinement_flags = self.refinement_flags.deep_copy()
@@ -2311,7 +2401,7 @@ class manager(object):
       )
 
   def remove_ias(self):
-    print >> self.log, ">>> Removing IAS..............."
+    print(">>> Removing IAS...............", file=self.log)
     self.use_ias = False
     ias_selection = self.get_ias_selection()
     if(self.ias_manager is not None):
@@ -2356,12 +2446,12 @@ class manager(object):
           if (use_id_str):
             name_i = atom_i.id_str()
             name_j = atom_j.id_str()
-          print >> out, "%s%s %s %10.3f"%(prefix, name_i, name_j, rbt_value)
+          print("%s%s %s %10.3f"%(prefix, name_i, name_j, rbt_value), file=out)
     if (rbt_array.size() != 0):
-      print >> out, "%sRBT values (*10000):" % prefix
-      print >> out, "%s  mean = %.3f" % (prefix, flex.mean(rbt_array))
-      print >> out, "%s  max  = %.3f" % (prefix, flex.max(rbt_array))
-      print >> out, "%s  min  = %.3f" % (prefix, flex.min(rbt_array))
+      print("%sRBT values (*10000):" % prefix, file=out)
+      print("%s  mean = %.3f" % (prefix, flex.mean(rbt_array)), file=out)
+      print("%s  max  = %.3f" % (prefix, flex.max(rbt_array)), file=out)
+      print("%s  min  = %.3f" % (prefix, flex.min(rbt_array)), file=out)
 
   def restraints_manager_energies_sites(self,
         geometry_flags=None,
@@ -2414,6 +2504,7 @@ class manager(object):
       hd_sel                      = self.selection("element H or element D"))
 
   def percent_of_single_atom_residues(self, macro_molecule_only=True):
+    # XXX Should be a method of pdb.hierarchy
     sizes = flex.int()
     h = self.get_hierarchy()
     if(macro_molecule_only):
@@ -2451,6 +2542,9 @@ class manager(object):
     new_riding_h_manager = None
     if self.riding_h_manager is not None:
       new_riding_h_manager = self.riding_h_manager.select(selection)
+    xrs_new = None
+    if(self._xray_structure is not None):
+      xrs_new = self.get_xray_structure().select(selection)
     new = manager(
       model_input                = self._model_input, # any selection here?
       crystal_symmetry           = self._crystal_symmetry,
@@ -2458,7 +2552,7 @@ class manager(object):
       monomer_parameters         = self._monomer_parameters,
       restraints_manager         = new_restraints_manager,
       expand_with_mtrix          = False,
-      xray_structure             = self.get_xray_structure().select(selection),
+      xray_structure             = xrs_new,
       pdb_hierarchy              = new_pdb_hierarchy,
       pdb_interpretation_params  = self._pdb_interpretation_params,
       tls_groups                 = self.tls_groups, # XXX not selected, potential bug
@@ -2504,16 +2598,16 @@ class manager(object):
                                  self.refinement_flags.adp_tls is None): return
     assert selections is not None
     if (out is None): out = sys.stdout
-    print >> out
+    print(file=out)
     line_len = len("| "+text+"|")
     fill_len = 80 - line_len-1
     upper_line = "|-"+text+"-"*(fill_len)+"|"
-    print >> out, upper_line
+    print(upper_line, file=out)
     next = "| Total number of atoms = %-6d  Number of rigid groups = %-3d                |"
     natoms_total = self._xray_structure.scatterers().size()
-    print >> out, next % (natoms_total, len(selections))
-    print >> out, "| group: start point:                        end point:                       |"
-    print >> out, "|               x      B  atom  residue  <>        x      B  atom  residue    |"
+    print(next % (natoms_total, len(selections)), file=out)
+    print("| group: start point:                        end point:                       |", file=out)
+    print("|               x      B  atom  residue  <>        x      B  atom  residue    |", file=out)
     next = "| %5d: %8.3f %6.2f %5s %3s %5s <> %8.3f %6.2f %5s %3s %5s   |"
     sites = self._xray_structure.sites_cart()
     b_isos = self._xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
@@ -2530,13 +2624,13 @@ class manager(object):
       first_rg = first_ag.parent()
       last_ag = last.parent()
       last_rg = last_ag.parent()
-      print >> out, next % (i_seq+1,
+      print(next % (i_seq+1,
         sites[start][0], b_isos[start],
           first.name, first_ag.resname, first_rg.resid(),
         sites[final][0], b_isos[final],
-          last.name, last_ag.resname, last_rg.resid())
-    print >> out, "|"+"-"*77+"|"
-    print >> out
+          last.name, last_ag.resname, last_rg.resid()), file=out)
+    print("|"+"-"*77+"|", file=out)
+    print(file=out)
     out.flush()
     time_model_show += timer.elapsed()
 
@@ -2572,7 +2666,7 @@ class manager(object):
     timer = user_plus_sys_time()
     # XXX make this more complete and smart
     if(out is None): out = sys.stdout
-    print >> out, "|-"+text+"-"*(80 - len("| "+text+"|") - 1)+"|"
+    print("|-"+text+"-"*(80 - len("| "+text+"|") - 1)+"|", file=out)
     occ = self._xray_structure.scatterers().extract_occupancies()
     # this needs to stay the same size - mask out HD selection
     less_than_zero = (occ < 0.0)
@@ -2582,16 +2676,16 @@ class manager(object):
     percent_small = n_zeros * 100. / occ.size()
     n_large = (occ > 2.0).count(True)
     if(percent_small > 30.0):
-       print >> out, "| *** WARNING: more than 30 % of atoms with small occupancy (< 0.1)       *** |"
+       print("| *** WARNING: more than 30 % of atoms with small occupancy (< 0.1)       *** |", file=out)
     if(n_large > 0):
-       print >> out, "| *** WARNING: there are some atoms with large occupancy (> 2.0) ***          |"
+       print("| *** WARNING: there are some atoms with large occupancy (> 2.0) ***          |", file=out)
     if(abs(occ_max-occ_min) >= 0.01):
-       print >> out, "| occupancies: max = %-6.2f min = %-6.2f number of "\
-                     "occupancies < 0.1 = %-6d |"%(occ_max,occ_min,n_zeros)
+       print("| occupancies: max = %-6.2f min = %-6.2f number of "\
+                     "occupancies < 0.1 = %-6d |"%(occ_max,occ_min,n_zeros), file=out)
     else:
-       print >> out, "| occupancies: max = %-6.2f min = %-6.2f number of "\
-                     "occupancies < 0.1 = %-6d |"%(occ_max,occ_min,n_zeros)
-    print >> out, "|"+"-"*77+"|"
+       print("| occupancies: max = %-6.2f min = %-6.2f number of "\
+                     "occupancies < 0.1 = %-6d |"%(occ_max,occ_min,n_zeros), file=out)
+    print("|"+"-"*77+"|", file=out)
     out.flush()
     time_model_show += timer.elapsed()
 
@@ -2941,7 +3035,7 @@ class manager(object):
       rm = rm.select(not_hd_sel)
     if(use_hydrogens is None):
       if(self.riding_h_manager is not None or
-         scattering_table in ["n_gaussian","wk1995", "it1992"]):
+         scattering_table in ["n_gaussian","wk1995", "it1992", "electron"]):
         not_hd_sel = ~hd_selection
         ph = ph.select(not_hd_sel)
         rm = rm.select(not_hd_sel)
@@ -3119,7 +3213,7 @@ class manager(object):
     for rt in roots:
       result.transfer_chains_from_other(other=rt)
     #validation
-    vals = chain_ids_match_dict.values()
+    vals = list(chain_ids_match_dict.values())
     for v in vals:
       assert len(vals[0]) == len(v), chain_ids_match_dict
     result.reset_i_seq_if_necessary()
@@ -3192,3 +3286,52 @@ class manager(object):
     if not self._biomt_mtrix_container_is_good(biomt_records_container):
       return
     self._expand_symm_helper(biomt_records_container)
+
+  def set_sequences(self, sequences, custom_residues=None,
+                    similarity_matrix=None, min_allowable_identity=None,
+                    minimum_identity=0.5):
+    """
+    Set the canonical sequence for the model. This should be all the
+    protein and nucleic acid residues expected in the crystal, not just
+    the ones in the modeled structure.
+
+    Parameters
+    ----------
+    sequences: list of sequences
+      list of iotbx.bioinformatics.sequence objects. The output from the
+      get_sequence function of the DataManager will work.
+    custom_residues: list of str
+      List of custom 3-letter residues to keep in pdbx_one_letter_sequence
+      The 3-letter residue must exist in the model
+    similarity_matrix: blosum50 dayhoff *identity
+      choice from mmtbx.validation.sequence.master_phil
+    min_allowable_identity: float
+      parameter from mmtbx.validation.sequence.master_phil
+    minimum_identity: float
+      parameter from mmtbx.validation.sequence.validation
+      minimum identity to match
+
+    Returns
+    -------
+    Nothing
+    """
+    if isinstance(sequences, sequence):
+      sequences = [sequences]
+    for seq in sequences:
+      if not isinstance(seq, sequence):
+        raise Sorry("A non-sequence object was found.")
+
+    # match sequence with chain
+    params = sequence_master_phil.extract()
+    if similarity_matrix is not None:
+      params.similarity_matrix = similarity_matrix
+    if min_allowable_identity is not None:
+      params.min_allowable_identity = min_allowable_identity
+    self._sequence_validation = sequence_validation(
+      pdb_hierarchy=self._pdb_hierarchy,
+      sequences=sequences,
+      custom_residues=custom_residues,
+      params=params,
+      log=self.log,
+      minimum_identity=minimum_identity
+    )

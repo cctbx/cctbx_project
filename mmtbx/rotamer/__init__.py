@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 def iterator(mon_lib_srv, residue, atom_selection_bool):
   atoms = residue.atoms()

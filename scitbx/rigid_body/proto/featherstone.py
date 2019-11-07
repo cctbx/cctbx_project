@@ -17,7 +17,8 @@ See also:
   Springer, New York, 2007.
   ISBN-10: 0387743146
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 try:
   import scitbx
@@ -211,7 +212,7 @@ class autoTree(object):
     self.Xtree = []
     self.I = []
     len_ = []
-    for i in xrange(nb):
+    for i in range(nb):
       self.parent[i] = ifloor((i-1+math.ceil(bf))/bf)-1
       if (self.parent[i] == -1):
         self.Xtree.append(Xtrans([0,0,0]))
@@ -274,7 +275,7 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
   v = [None] * model.NB
   a = [None] * model.NB
   f = [None] * model.NB
-  for i in xrange(model.NB):
+  for i in range(model.NB):
     XJ, S[i] = jcalc( model.pitch[i], q[i] )
     if (S[i] is None):
       vJ = qd[i]
@@ -294,7 +295,7 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
       f[i] = f[i] - f_ext[i]
 
   tau = [None] * model.NB
-  for i in xrange(model.NB-1,-1,-1):
+  for i in range(model.NB-1,-1,-1):
     if (S[i] is None):
       tau[i] = f[i]
     else:
@@ -329,7 +330,7 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
   c = [None] * model.NB
   IA = [None] * model.NB
   pA = [None] * model.NB
-  for i in xrange(model.NB):
+  for i in range(model.NB):
     XJ, S[i] = jcalc( model.pitch[i], q[i] )
     if (S[i] is None):
       vJ = qd[i]
@@ -355,7 +356,7 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
   U = [None] * model.NB
   d_inv = [None] * model.NB
   u = [None] * model.NB
-  for i in xrange(model.NB-1,-1,-1):
+  for i in range(model.NB-1,-1,-1):
     if (S[i] is None):
       U[i] = IA[i]
       d = U[i]
@@ -381,7 +382,7 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
 
   a = [None] * model.NB
   qdd = [None] * model.NB
-  for i in xrange(model.NB):
+  for i in range(model.NB):
     if model.parent[i] == -1:
       a[i] = Xup[i] * -a_grav + c[i]
     else:

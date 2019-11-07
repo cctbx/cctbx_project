@@ -1,6 +1,6 @@
 
-from __future__ import division
-from cStringIO import StringIO
+from __future__ import absolute_import, division, print_function
+from six.moves import cStringIO as StringIO
 from libtbx.test_utils import show_diff
 from libtbx.utils import null_out
 from libtbx import easy_pickle
@@ -41,4 +41,4 @@ def exercise_heavy():
 
 if (__name__ == "__main__"):
   exercise_heavy()
-  print "OK"
+  print("OK")

@@ -6,12 +6,12 @@
     hybrid_36.py Python prototype/reference implementation.
     See the Python script for more information.
 
-    This file is unrestricted Open Source (cctbx.sf.net).
+    This file is unrestricted Open Source (https://github.com/cctbx/cctbx_project).
     Please send corrections and enhancements to cctbx@cci.lbl.gov .
 
     See also: http://cci.lbl.gov/hybrid_36/
-    svn master at:
-    http://sourceforge.net/p/cctbx/code/HEAD/tree/trunk/iotbx/pdb/Hy36.java
+    git version at:
+    https://github.com/cctbx/cctbx_project/blob/master/iotbx/pdb/Hy36.java
 
     Ralf W. Grosse-Kunstleve, Vincent B. Chen, Jeff J. Headd, Sep 2007.
  */

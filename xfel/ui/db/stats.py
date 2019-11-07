@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from scitbx.array_family import flex
 
@@ -136,13 +136,13 @@ class HitrateStats(object):
     two_theta_low = flex.double()
     two_theta_high = flex.double()
     tag = self.app.params.experiment_tag
-    timestamps = flex.double()
+    timestamps, timestamps_s = flex.double(), []
     n_strong = flex.int()
     n_lattices = flex.int()
     if len(high_res_bin_ids) > 0:
 
       # Get the stats in one query.
-      query = """SELECT event.timestamp, event.n_strong, MIN(bin.d_min), event.two_theta_low, event.two_theta_high, COUNT(crystal.id)
+      query = """SELECT event.timestamp, event.n_strong, MIN(bin.d_min), event.two_theta_low, event.two_theta_high, COUNT(DISTINCT crystal.id)
                  FROM `%s_event` event
                  JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
                  JOIN `%s_imageset` imgset ON imgset.id = is_e.imageset_id
@@ -158,6 +158,9 @@ class HitrateStats(object):
       cursor = self.app.execute_query(query)
       sample = -1
       for row in cursor.fetchall():
+        sample += 1
+        if sample % self.sampling != 0:
+          continue
         ts, n_s, d_min, tt_low, tt_high, n_xtal = row
         try:
           d_min = float(d_min)
@@ -165,18 +168,20 @@ class HitrateStats(object):
           d_min = None
         try:
           rts = reverse_timestamp(ts)
-          rts = rts[0] + (rts[1]/1000)
+          timestamps.append(rts[0] + (rts[1]/1000))
         except ValueError:
-          rts = float(ts)
-        sample += 1
-        if sample % self.sampling != 0:
-          continue
-        timestamps.append(rts)
+          try:
+            timestamps.append(float(ts))
+          except ValueError:
+            timestamps_s.append(ts)
         n_strong.append(n_s)
         two_theta_low.append(tt_low or -1)
         two_theta_high.append(tt_high or -1)
         resolutions.append(d_min or 0)
         n_lattices.append(n_xtal or 0)
+
+    # only get results that are strings or ints, not a mix of both
+    assert not (len(timestamps) > 0 and len(timestamps_s) > 0)
 
     # This left join query finds the events with no imageset, meaning they failed to index
     query = """SELECT event.timestamp, event.n_strong, event.two_theta_low, event.two_theta_high
@@ -193,16 +198,24 @@ class HitrateStats(object):
         rts = reverse_timestamp(ts)
         timestamps.append(rts[0] + (rts[1]/1000))
       except ValueError:
-        rts = float(ts)
-        timestamps.append(rts)
+        try:
+          rts = float(ts)
+          timestamps.append(rts)
+        except ValueError:
+          timestamps_s.append(ts)
       n_strong.append(n_s)
       two_theta_low.append(tt_low or -1)
       two_theta_high.append(tt_high or -1)
       resolutions.append(0)
       n_lattices.append(0)
 
-    order = flex.sort_permutation(timestamps)
-    timestamps = timestamps.select(order)
+    if len(timestamps_s) > 0:
+      timestamps = flex.double([i[0] for i in sorted(enumerate(timestamps_s), key=lambda x:x[1])])
+      order = flex.size_t([i for i in timestamps.iround()])
+      timestamps = flex.sorted(timestamps)
+    else:
+      order = flex.sort_permutation(timestamps)
+      timestamps = timestamps.select(order)
     n_strong = n_strong.select(order)
     two_theta_low = two_theta_low.select(order)
     two_theta_high = two_theta_high.select(order)

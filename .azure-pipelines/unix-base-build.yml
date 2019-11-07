@@ -1,0 +1,66 @@
+# Script for installing base and building
+#
+# The source must have already been checked out
+
+steps:
+
+# download components
+- checkout: none
+
+- task: DownloadPipelineArtifact@2
+  displayName: Download modules tarball
+  inputs:
+    source: 'current'
+    artifact: modules
+    path: $(Pipeline.Workspace)
+
+- script: |
+    cd $(Pipeline.Workspace)
+    tar -xf modules.tar
+  displayName: Extract modules tarball
+
+- script: |
+    cd $(Pipeline.Workspace)
+    ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
+  displayName: Link bootstrap.py
+
+# install base
+- script: |
+    cd $(Pipeline.Workspace)
+    # SYSTEM environment variable breaks OpenSSL builds
+    # https://developercommunity.visualstudio.com/content/problem/602584/openssl-build-error-when-using-pipelines.html
+    unset SYSTEM
+    python bootstrap.py base --builder=cctbx --nproc=4
+  displayName: Install base dependencies
+
+# build
+- script: |
+    cd $(Pipeline.Workspace)
+    python bootstrap.py build --builder=cctbx --nproc=4
+    cd build
+    source setpaths.sh
+    libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx
+    make -j 4
+    make -j 4
+  displayName: Configure and Build
+
+# test
+- script: |
+    cd $(Pipeline.Workspace)
+    source ./build/setpaths.sh
+    mkdir tests
+    cd tests
+    libtbx.pip install junit-xml
+    libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es \
+      module=fable module=gltbx module=iotbx module=libtbx module=rstbx \
+      module=scitbx module=simtbx module=smtbx module=spotfinder \
+      module=annlib_adaptbx module=cbflib_adaptbx \
+      nproc=4
+  failOnStderr: false
+  displayName: Test
+
+- task: PublishTestResults@2
+  condition: succeededOrFailed()
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '$(Pipeline.Workspace)/tests/output.xml'

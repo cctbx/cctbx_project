@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.r_factor_statistics
 
 import os,sys
@@ -13,7 +13,7 @@ def show_histogram(data, n_slots):
   s_1 = enumerate(hm.slots())
   for (i_1,n_1) in s_1:
     hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
-    print "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
+    print("%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1))
     lc_1 = hc_1
 
 help_message = """\
@@ -39,7 +39,7 @@ def run(args, left_offset=0.1, right_offset=0.1, n_bins=10):
         need_help_msg = True
         break
   if(need_help_msg):
-    print help_message
+    print(help_message)
   #
   def get_value(x):
     result = None
@@ -69,7 +69,7 @@ def run(args, left_offset=0.1, right_offset=0.1, n_bins=10):
       format_value("%6.3f",left_offset).strip(),
       format_value("%6.3f",right_offset).strip(),
       format_value("%d",n_bins).strip())
-    print "Command used:\n\n%s\n\n"%cmd
+    print("Command used:\n\n%s\n\n"%cmd)
     dl = d_min-left_offset
     dr = d_min+right_offset
   file = libtbx.env.find_in_repositories(relative_path=
@@ -108,13 +108,13 @@ def run(args, left_offset=0.1, right_offset=0.1, n_bins=10):
   d_min      = d_min.select(sel)
   diff = diff.select(sel)
   #
-  print "Histogram of Rwork for models in PDB at resolution %4.2f-%4.2f A:"%(dl,dr)
+  print("Histogram of Rwork for models in PDB at resolution %4.2f-%4.2f A:"%(dl,dr))
   show_histogram(data = r_work_pdb, n_slots=n_bins)
-  print "Histogram of Rfree for models in PDB at resolution %4.2f-%4.2f A:"%(dl,dr)
+  print("Histogram of Rfree for models in PDB at resolution %4.2f-%4.2f A:"%(dl,dr))
   show_histogram(data = r_free_pdb, n_slots=n_bins)
-  print "Histogram of Rfree-Rwork for all model in PDB at resolution %4.2f-%4.2f A:"%(dl,dr)
+  print("Histogram of Rfree-Rwork for all model in PDB at resolution %4.2f-%4.2f A:"%(dl,dr))
   show_histogram(data = diff, n_slots=n_bins)
-  print "Number of structures considered:", diff.size()
+  print("Number of structures considered:", diff.size())
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

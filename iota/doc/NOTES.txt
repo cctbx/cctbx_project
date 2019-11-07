@@ -1,5 +1,19 @@
-IOTA v1.3.004 - updated for experiment list changes
+IOTA v1.4.012 - HDF5 handling
 
-- Replaced references to datablock with appropriate references to experiments,
-DataBlockFactory to ExperimentListFactory, and DataBlockDumper to
-ExperimentListDumper
+- IOTA now reads HDF5 format
+    - each HDF5 file is expanded into individual imagesets, which are then
+      converted into separate ExperimentList objects (that's the hack for now)
+    - internal changes on result tracking so that HDF5 datasets can be handled
+      the same as one-image files
+    - NOTE: h5py has to be imported only where needed; importing it in a module
+      that itself is imported elsewhere seems to cause malloc errors.
+
+- Bugfixes:
+    - XTerm IOTA now accumulates "unplotted" results, which can then be plotted
+      when the run is recovered in GUI
+
+- Known issues:
+    - Comma-delimited file lists aren't read in properly
+
+10.31.2019
+# -- end

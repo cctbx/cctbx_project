@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 import struct
 
@@ -82,51 +82,47 @@ class Raxis(object):
         self.F.read(item[1])
       elif item[2]=='s':
         self.head[item[0]]=self.F.read(item[1])[0:item[1]]
-        if verbose:print item[0],self.head[item[0]]
+        if verbose:print(item[0],self.head[item[0]])
       elif len(item[2])>2:
         rawdata = self.F.read(item[1])
         assert len(rawdata)==struct.calcsize(item[2])
         self.head[item[0]] = struct.unpack(item[2],rawdata)
-        if verbose:print item[0],self.head[item[0]]
+        if verbose:print(item[0],self.head[item[0]])
       else:
         rawdata = self.F.read(item[1])
         assert len(rawdata)==struct.calcsize(item[2])
         self.head[item[0]] = struct.unpack(item[2],rawdata)[0]
-        if verbose:print item[0],self.head[item[0]]
+        if verbose:print(item[0],self.head[item[0]])
       seek+=item[1]
 
   def data(self):
-    self.F.seek(self.head['record_length'])
-
     Dim0 = self.head['nFast'] #number of fast pixels
     ToRead = self.head['record_length']
     ReadLines = self.head['number_records']
 
+    self.F.seek(ToRead)
+    raw_data = self.F.read(ToRead * ReadLines)
+
+    # For a normal image, there should be no padding per line
     # Each line might be padded, so figure this out
-
     BytesPerLine = Dim0 * 2;
-    Pad          = ToRead - BytesPerLine;
+    if BytesPerLine < ToRead:
+      # Remove all padding bytes
+      raw_data = b"".join(
+        raw_data[record * ToRead : record * ToRead + BytesPerLine]
+        for record in range(ReadLines)
+      )
 
-    if 0>=Pad :
-       #For a normal image, there should be no padding per line
-       #No padding, use single fast read
-
-       ToRead = ToRead * ReadLines
-       self.CharTemp = self.F.read(ToRead)
-    else:
-       ToRead = ToRead * ReadLines
-       temporary = self.F.read(ToRead)
-       from iotbx.detectors import unpad_raxis
-       self.CharTemp = unpad_raxis(temporary,self.head['record_length'],Pad)
+    self.CharTemp = raw_data
 
   def dump(self):
     ptr = 0
     for x in range(0,len(CharTemp),2):
       unsigned_int = struct.unpack( "!H",self.CharTemp[x:x+2] )[0]
       if unsigned_int <= 32767:
-        print float(unsigned_int)
+        print(float(unsigned_int))
       else:
-        print ( float(unsigned_int)+32768.0 ) * self.head['Ratio']
+        print(( float(unsigned_int)+32768.0 ) * self.head['Ratio'])
 
 if __name__=='__main__':
   R = Raxis('H-x071_0001.osc')

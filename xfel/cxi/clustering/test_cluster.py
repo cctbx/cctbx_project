@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from .Cluster import Cluster
 
 import logging
@@ -17,5 +17,5 @@ big_cluster = max(clust, key=lambda x: len(x.members))
 
 best_data = big_cluster.total_intensity_filter(res=8, completeness_threshold=0.5, plot=False)
 
-print best_data.info
+print(best_data.info)
 best_data.dump_file_list()

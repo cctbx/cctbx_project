@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import adopt_init_args
 import sys
 
@@ -16,7 +16,7 @@ class flags(object):
 
   def show(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "adp_restraints.manager.flags:"
-    print >> f, "  adp_similarity:", self.adp_similarity
-    print >> f, "  rigid_bond:", self.rigid_bond
-    print >> f, "  isotropic_adp:", self.isotropic_adp
+    print("adp_restraints.manager.flags:", file=f)
+    print("  adp_similarity:", self.adp_similarity, file=f)
+    print("  rigid_bond:", self.rigid_bond, file=f)
+    print("  isotropic_adp:", self.isotropic_adp, file=f)

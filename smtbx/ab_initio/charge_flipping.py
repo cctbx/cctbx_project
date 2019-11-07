@@ -33,9 +33,7 @@ flipping method has converged.
 Cryst. A64:123-134, 2008
 """
 
-from __future__ import division, generators
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 
 from libtbx import object_oriented_patterns as oop
 from libtbx import adopt_optional_init_args
@@ -55,6 +53,7 @@ import scitbx.math
 import itertools
 import sys
 import math
+from six.moves import range
 
 class _array_extension(oop.injector, miller.array):
 
@@ -165,7 +164,7 @@ class density_modification_iterator(object):
   def __iter__(self):
     return self
 
-  def next(self):
+  def __next__(self):
     """ perform one cycle and return itself """
     self.modify_electron_density()
     self.compute_structure_factors()
@@ -173,6 +172,11 @@ class density_modification_iterator(object):
     self.f_000 = self._g_000
     self.compute_electron_density_map()
     return self # iterator-is-its-own-state trick
+
+  ## Python 2 compatibility ##
+  if sys.hexversion < 0x03000000:
+    next = __next__
+    del __next__
 
   def compute_electron_density_map(self):
     """ Compute the electron density from the structure factors self.f_calc
@@ -467,7 +471,7 @@ class solving_iterator(object):
     while True:
       self.f_calc_solutions = []
       sigmas = flex.double()
-      for i in xrange(self.max_delta_guessing_iterations):
+      for i in range(self.max_delta_guessing_iterations):
         sigma = self.flipping_iterator.rho_map.sigma()
         sigmas.append(sigma)
         self.flipping_iterator.delta = self.delta_over_sigma * sigma
@@ -522,7 +526,7 @@ class solving_iterator(object):
         # before polishing improves map quality.
         self.flipping_iterator.denormalise(self.normalisations)
         skewness = flex.double()
-        for i in xrange(self.extra_iterations_on_f_after_phase_transition):
+        for i in range(self.extra_iterations_on_f_after_phase_transition):
           next(self.flipping_iterator)
           skewness.append(self.flipping_iterator.rho_map.skewness())
           if i < 3: continue
@@ -534,7 +538,7 @@ class solving_iterator(object):
       low_density_elimination.start(f_obs=self.flipping_iterator.f_obs,
                                     phases=self.flipping_iterator.f_calc,
                                     f_000=0)
-      for i in xrange(self.polishing_iterations):
+      for i in range(self.polishing_iterations):
         next(low_density_elimination)
       yield self.evaluating
 

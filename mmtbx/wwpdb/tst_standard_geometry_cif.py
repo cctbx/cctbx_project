@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.wwpdb import standard_geometry_cif
 import libtbx.load_env
 import sys, os
@@ -13,7 +13,7 @@ def exercise(args):
   chem_comp = std_comps["LEU"]
   assert chem_comp.comp_id == "LEU"
   assert len(chem_comp.atoms) == 24
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

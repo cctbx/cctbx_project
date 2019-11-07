@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import miller
@@ -6,8 +6,10 @@ from cctbx.array_family import flex
 import scitbx.math
 from libtbx.complex_math import polar
 from libtbx.test_utils import Exception_expected, approx_equal
+from six.moves import range
+from six.moves import zip
 try:
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
 except ImportError:
   import pickle
 import random
@@ -52,7 +54,7 @@ def exercise_sym_equiv():
     assert approx_equal(c.real, 1)
     assert approx_equal(c.imag, 2)
     h = m.hendrickson_lattman_in(m.hendrickson_lattman_eq((1,2,3,4)))
-    for j in xrange(4):
+    for j in range(4):
       assert approx_equal(h[j], j+1)
   r = e.phase_restriction()
   assert not r.sys_abs_was_tested()
@@ -63,7 +65,7 @@ def exercise_sym_equiv():
   assert e.f_mates(False) == 2
   assert e.f_mates(True) == 1
   assert e.epsilon() == 1
-  for j in xrange(e.multiplicity(False)):
+  for j in range(e.multiplicity(False)):
     if (j < e.multiplicity(True)):
       assert e(j).h() == e.indices()[j].h()
     else:
@@ -98,10 +100,10 @@ def exercise_map_to_asu(sg_symbol):
     a = flex.double()
     p = flex.double()
     c = flex.hendrickson_lattman()
-    for i in xrange(m.size()):
+    for i in range(m.size()):
       a.append(random.random())
       p.append(random.random() * 2)
-      c.append([random.random() for j in xrange(4)])
+      c.append([random.random() for j in range(4)])
     f = flex.polar(a, p)
     p = [p, p*(180/math.pi)]
   m_random = flex.miller_index()
@@ -147,7 +149,7 @@ def exercise_map_to_asu(sg_symbol):
   for i,h_asym in enumerate(m):
     assert h_asym == m_random_copy[i]
   for i,c_asym in enumerate(c):
-    for j in xrange(4):
+    for j in range(4):
       assert abs(c_asym[j] - c_random[i][j]) < 1.e-5
 
 def exercise_asu():
@@ -156,7 +158,7 @@ def exercise_asu():
   miller_indices = flex.miller_index(((1,2,3), (3,5,0)))
   for h in miller_indices:
     h_eq = miller.sym_equiv_indices(sg_type.group(), h)
-    for i_eq in xrange(h_eq.multiplicity(False)):
+    for i_eq in range(h_eq.multiplicity(False)):
       h_i = h_eq(i_eq)
       for anomalous_flag in (False,True):
         a = miller.asym_index(sg_type.group(), asu, h_i.h())
@@ -206,7 +208,7 @@ def exercise_bins():
   d_min = 1
   m = miller.index_generator(uc, sg_type, anomalous_flag, d_min).to_array()
   f = flex.double()
-  for i in xrange(m.size()): f.append(random.random())
+  for i in range(m.size()): f.append(random.random())
   n_bins = 10
   b = miller.binning(uc, n_bins, 0, d_min)
   b = miller.binning(uc, n_bins, 0, d_min, 1.e-6)
@@ -246,8 +248,8 @@ def exercise_bins():
   for i_bin in binner1.range_all():
     assert binner1.count(i_bin) == counts[i_bin]
     assert binner1.selection(i_bin).count(True) == counts[i_bin]
-  assert list(binner1.range_all()) == range(binner1.n_bins_all())
-  assert list(binner1.range_used()) == range(1, binner1.n_bins_used()+1)
+  assert list(binner1.range_all()) == list(range(binner1.n_bins_all()))
+  assert list(binner1.range_used()) == list(range(1, binner1.n_bins_used()+1))
   binning2 = miller.binning(uc, n_bins - 2,
     binning1.bin_d_min(2),
     binning1.bin_d_min(n_bins))
@@ -272,7 +274,7 @@ def exercise_bins():
   assert approx_equal(b.bin_centers(3),
     (0.050000075, 0.15000023, 0.25000038, 0.35000053, 0.45000068,
      0.55000083, 0.65000098, 0.75000113, 0.85000128, 0.95000143))
-  v = flex.double(xrange(b.n_bins_used()))
+  v = flex.double(range(b.n_bins_used()))
   i = b.interpolate(v, 0)
   for i_bin in b.range_used():
     assert i.select(b.selection(i_bin)).all_eq(v[i_bin-1])
@@ -368,7 +370,7 @@ def exercise_index_generator():
     assert mig.space_group_type().group() == sg_type.group()
     assert mig.anomalous_flag() == anomalous_flag
     assert mig.asu().reference_as_string() == "h>=k and k>=0 and (k>0 or l>=0)"
-    assert mig.next() == (0,0,1)
+    assert next(mig) == (0,0,1)
     if (not anomalous_flag):
       assert tuple(mig.to_array()) == ((1, 0, 0),)
     else:
@@ -391,7 +393,7 @@ def exercise_index_generator():
             if (sg.is_sys_absent(h) or h == [0,0,0]): continue
             h_eq = miller.sym_equiv_indices(sg, h)
             found_h_asu = 0
-            for i_eq in xrange(h_eq.multiplicity(anomalous_flag)):
+            for i_eq in range(h_eq.multiplicity(anomalous_flag)):
               h_i = h_eq(i_eq).h()
               if (h_i in miller_dict):
                 assert found_h_asu == 0
@@ -446,7 +448,7 @@ def exercise_match_indices():
   d1 = flex.double((10,20,30,40))
   mi = miller.match_indices(h0, h0)
   assert mi.have_singles() == 0
-  assert list(mi.pairs()) == zip(range(5), range(5))
+  assert list(mi.pairs()) == list(zip(range(5), range(5)))
   mi = miller.match_indices(h0, h1)
   assert tuple(mi.singles(0)) == (4,)
   assert tuple(mi.singles(1)) == ()
@@ -474,8 +476,8 @@ def exercise_match_indices():
   p = miller.match_indices(h0, h1).permutation()
   assert tuple(p) == (2,4,1,0,3)
   assert tuple(h1.select(p)) == tuple(h0)
-  cd0 = [ complex(a,b) for (a,b) in (1,1),(2,0),(3.5,-1.5),(5, -3),(-8,5.4) ]
-  cd1 = [ complex(a,b) for (a,b) in (1,-1),(2,1),(0.5,1.5),(-1, -8),(10,0) ]
+  cd0 = [ complex(a,b) for (a,b) in ((1,1),(2,0),(3.5,-1.5),(5, -3),(-8,5.4)) ]
+  cd1 = [ complex(a,b) for (a,b) in ((1,-1),(2,1),(0.5,1.5),(-1, -8),(10,0)) ]
   cd2 = flex.complex_double(cd0)
   cd3 = flex.complex_double(cd1)
   mi = miller.match_indices(h0, h0)
@@ -489,7 +491,7 @@ def exercise_match_multi_indices():
   d1 = flex.double((10,20,30,40))
   mi = miller.match_multi_indices(h0, h0)
   assert mi.have_singles() == 0
-  assert list(mi.pairs()) == zip(range(5), range(5))
+  assert list(mi.pairs()) == list(zip(range(5), range(5)))
   mi = miller.match_multi_indices(h0, h1)
   assert tuple(mi.singles(0)) == (1,4,)
   assert tuple(mi.singles(1)) == ()
@@ -509,7 +511,7 @@ def exercise_match_multi_indices():
   assert l1 == l2
   try:
     miller.match_multi_indices(h1, h0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     pass
   else:
     raise Exception_expected
@@ -575,7 +577,7 @@ def exercise_merge_equivalents():
   assert tuple(m.redundancies) == (2,3,1)
   d = flex.bool((True,True,False,True,False,True))
   try: m = miller.ext.merge_equivalents_exact_bool(i, d)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: merge_equivalents_exact:"\
       " incompatible flags for hkl = (3, 0, 3)"
   else: raise Exception_expected
@@ -615,7 +617,7 @@ def exercise_phase_transfer():
   a = flex.complex_double((3.6,4.6))
   try:
     miller.phase_transfer(sg, i, a, p)
-  except Exception, e:
+  except Exception as e:
     if (str(e.__class__).find("Boost.Python.ArgumentError") < 0):
       raise RuntimeError("Unexpected exception: %s" % str(e))
   else:
@@ -688,7 +690,7 @@ def run(args):
   exercise_phase_transfer()
   exercise_union_of_indices()
   exercise_slices()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

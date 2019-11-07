@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.detectors import adsc
 from libtbx.test_utils import approx_equal
 import os
@@ -15,7 +15,7 @@ adsc_file_bz2 = os.path.join(os.path.dirname(os.path.realpath(__file__)), adsc_f
 def exercise_adscread():
   if (not os.path.isfile(adsc_file)):
     if (not os.path.isfile(adsc_file_bz2)):
-      print "Skipping exercise_adscread(): input file not available"
+      print("Skipping exercise_adscread(): input file not available")
       return
     with open(adsc_file, 'wb') as orig, bz2.BZ2File(adsc_file_bz2, 'rb') as comp:
       for data in iter(lambda : comp.read(100 * 1024), b''):
@@ -32,7 +32,7 @@ def exercise_adscread():
 
 def run():
   exercise_adscread()
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   run()

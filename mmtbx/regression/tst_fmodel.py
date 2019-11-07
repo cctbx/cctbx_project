@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import mmtbx.f_model
 from cctbx.development import random_structure
@@ -210,7 +210,7 @@ def exercise_1():
   n_elements = 70
   sgs = ["P 1", "P 4", "C 1 2/c 1"]
   for sg in sgs:
-    print sg
+    print(sg)
     xray_structure = random_structure.xray_structure(
            space_group_info       = sgtbx.space_group_info(sg),
            elements               =(("O","N","C")*(n_elements//3+1))[:n_elements],
@@ -479,12 +479,12 @@ def exercise_6_instantiate_consistency(symbol = "C 2"):
                 f_mask        = zero)
               r2 = fmodel_dc.r_work()
               if(0):
-                print "r1=%8.6f r2=%8.6f fp1=%6.3f fp2=%6.3f fc=%6.3f"%(r1, r2,
+                print("r1=%8.6f r2=%8.6f fp1=%6.3f fp2=%6.3f fc=%6.3f"%(r1, r2,
                   flex.mean(abs(fmodel.f_part1()).data()), \
                   flex.mean(abs(fmodel.f_part2()).data()), \
                   flex.mean(abs(fmodel.f_calc()).data())), \
                   "set_h_occ_to_zero=", set_h_occ_to_zero,\
-                  "update_f_part1=", update_f_part1
+                  "update_f_part1=", update_f_part1)
               assert approx_equal(r1, r2), [r1, r2]
 
 def run():
@@ -496,7 +496,7 @@ def run():
   exercise_1()
   exercise_2()
   exercise_4_f_hydrogens()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

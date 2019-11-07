@@ -1,15 +1,16 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import approx_equal
 from libtbx import easy_pickle
 import libtbx.load_env
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
+from six.moves import range
 
 def exercise():
   for module in ["reduce", "probe", "phenix_regression"] :
     if (not libtbx.env.has_module(module)):
-      print "%s not available, skipping" % module
+      print("%s not available, skipping" % module)
       return
   from mmtbx.command_line import validation_summary
   from iotbx import file_reader
@@ -39,7 +40,7 @@ def exercise():
   summary = validation_summary.run(args=["tst_validation_summary.pdb"],
     out=out2)
   assert (type(summary).__name__ == 'ensemble')
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

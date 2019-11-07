@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.ncs.ncs_search import mmtbx_res_alignment
 from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
@@ -6,6 +6,7 @@ import iotbx.ncs as ncs
 import iotbx.pdb
 import unittest
 from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
+from six.moves import map
 
 __author__ = 'Youval'
 
@@ -86,7 +87,8 @@ class TestSimpleAlignment(unittest.TestCase):
       ph=no_water_h,
       chain_similarity_threshold=0.7)
 
-    chain_a_id, chain_b_id = match_dict.keys()[0]
+    # FIXME indexing keys breaks py2/3 compatibility, this could be broken if more than 1 key
+    chain_a_id, chain_b_id = list(match_dict.keys())[0]
     sel_a,sel_b,r1,r2,_,_,_ = match_dict[chain_a_id, chain_b_id]
     #
     self.assertEqual(chain_a_id,'A')
@@ -1350,7 +1352,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   tests = ['test_correct_transform_selection']
-  suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
+  suite = unittest.TestSuite(list(map(TestSimpleAlignment,tests)))
   return suite
 
 if __name__=='__main__':

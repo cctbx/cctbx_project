@@ -14,8 +14,7 @@ Currently it features:
 * The plot can be saved to a file from the file menu
 
 '''
-from __future__ import division
-from six.moves import range
+from __future__ import absolute_import, division, print_function
 import os
 import wx
 import numpy as np
@@ -202,14 +201,14 @@ class BarsFrame(wx.Frame):
         if len(stats) == 0:
           return
 
-        print stats
+        print(stats)
         res = self.restextbox.GetValue()
         trial = self.textbox.GetValue()
         self.mult_highest = [stats[key]['multiplicity_highest'] for key in stats.keys()]
         self.mult = [stats[key]['multiplicity'] for key in stats.keys()]
         plot_max = max(max(self.mult), max(self.mult_highest)) + 1
         pos = np.arange(len(self.mult))+0.5 # the bar centers on the y-axis
-        labels = [stats.keys()[i] for i in range(len(stats.keys()))]
+        labels = list(stats.keys())
         n = len(labels)
         # clear the axes and redraw the plot anew
         #

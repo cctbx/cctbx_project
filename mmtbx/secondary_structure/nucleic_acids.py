@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb import common_residue_names_get_class
 import sys
 from scitbx.array_family import flex
@@ -7,6 +7,9 @@ from iotbx.pdb import get_one_letter_rna_dna_name
 from libtbx.utils import Sorry
 from cctbx import geometry_restraints
 import iotbx.phil
+
+import six
+from six.moves import range
 
 origin_ids = geometry_restraints.linking_class.linking_class()
 
@@ -23,6 +26,12 @@ angle_between_bond_and_nucleobase_cutoff = 35.0
   .help = If angle between supposed hydrogen bond and \
     basepair plane (defined by C4, C5, C6 atoms) is less than this \
     value (in degrees), the bond will not be established.
+scale_bonds_sigma = 1.
+  .type = float
+  .short_caption = Scale h-bond sigma
+  .help = All sigmas for h-bond length will be multiplied \
+    by this number. The smaller number is tighter restraints.
+  .expert_level = 3
 
 base_pair
   .multiple = True
@@ -152,7 +161,7 @@ def make_phil_stacking_pair_record(residue1, residue2, params=None,
     actual_params = master_phil.format(params)
     w_phil = master_phil.fetch_diff(actual_params).extract()
     if hasattr(w_phil, 'stacking_pair'):
-      for k, v in w_phil.stacking_pair[0].__dict__.iteritems():
+      for k, v in six.iteritems(w_phil.stacking_pair[0].__dict__):
         if not k.startswith('_'):
           res += "%s%s = %s\n" % ("  "*(nesting_depth+1), k, str(v))
   res += "%s}\n" % ("  "*nesting_depth)
@@ -173,7 +182,7 @@ def make_phil_base_pair_record(residue1, residue2, params=None,
     actual_params = master_phil.format(params)
     w_phil = master_phil.fetch_diff(actual_params).extract()
     if hasattr(w_phil, 'base_pair'):
-      for k, v in w_phil.base_pair[0].__dict__.iteritems():
+      for k, v in six.iteritems(w_phil.base_pair[0].__dict__):
         if not k.startswith('_'):
           res += "%s%s = %s\n" % ("  "*(nesting_depth+1), k, str(v))
   res += "%s}\n" % ("  "*nesting_depth)
@@ -251,7 +260,7 @@ def get_h_bonds_for_basepair(a1, a2, distance_cutoff=100, log=sys.stdout, verbos
   best_possible_link_list = []
   best_score = 100.
   best_class_number = None
-  for class_number, data in bondlength_defaults.basepairs_lengths.iteritems():
+  for class_number, data in six.iteritems(bondlength_defaults.basepairs_lengths):
     d1 = 0
     if (r1n, r2n) == data[0]:
       for l in data[1:]:
@@ -264,14 +273,14 @@ def get_h_bonds_for_basepair(a1, a2, distance_cutoff=100, log=sys.stdout, verbos
         if a1 is None or a2 is None:
           missing_atom = l[0] if a1 is None else l[1]
           missing_res = r1 if a1 is None else r2
-          print >> log, "Warning! %s atom is missing from residue %s " % (
-              missing_atom, missing_res.id_str())
+          print("Warning! %s atom is missing from residue %s " % (
+              missing_atom, missing_res.id_str()), file=log)
           if verbose > 1:
-            print >> log, "Atoms present in the residue:"
+            print("Atoms present in the residue:", file=log)
             for a in missing_res.atoms():
-              print >> log, a.id_str()
-          print >> log, "  Was trying to link: %s%s with %s%s, Saenger class: %d" % (
-              r1.id_str(), l[0], r2.id_str(), l[1], class_number)
+              print(a.id_str(), file=log)
+          print("  Was trying to link: %s%s with %s%s, Saenger class: %d" % (
+              r1.id_str(), l[0], r2.id_str(), l[1], class_number), file=log)
           a1_id = a1.id_str() if a1 is not None else "None"
           a2_id = a2.id_str() if a2 is not None else "None"
           # msg = "Something is wrong in .pdb file around '%s' or '%s'.\n" % (
@@ -286,7 +295,7 @@ def get_h_bonds_for_basepair(a1, a2, distance_cutoff=100, log=sys.stdout, verbos
         raise Sorry("Corrupted dictionary in bondlength_defaults.py")
       d1 /=n_links_in_data
       if verbose > 2:
-        print >> log, "  Class %d penalty=%.3f" % (class_number, d1)
+        print("  Class %d penalty=%.3f" % (class_number, d1), file=log)
       if best_score > d1:
         best_possible_link_list = [(x[:2]) for x in data[1:]]
         best_score = d1
@@ -295,8 +304,8 @@ def get_h_bonds_for_basepair(a1, a2, distance_cutoff=100, log=sys.stdout, verbos
     a1 = r1.get_atom(n1)
     a2 = r2.get_atom(n2)
     if verbose > 2:
-      print >> log, "    %s --> %s distance = %.3f" % (
-          a1.id_str(), a2.id_str(), a1.distance(a2))
+      print("    %s --> %s distance = %.3f" % (
+          a1.id_str(), a2.id_str(), a1.distance(a2)), file=log)
     if a1 is not None and a2 is not None and a1.distance(a2)<distance_cutoff:
       new_hbonds.append(tuple([a1, a2] if a1.i_seq<a2.i_seq else [a2, a1]))
       # new_hbonds.append(tuple(sorted([a1.i_seq, a2.i_seq])))
@@ -363,7 +372,7 @@ def get_phil_base_pairs(pdb_hierarchy, nonbonded_proxies,
   pairs = []
   for hb in hbonds:
     if verbose > 1:
-      print >> log, "Making pair with", atoms[hb[0]].id_str(), atoms[hb[1]].id_str()
+      print("Making pair with", atoms[hb[0]].id_str(), atoms[hb[1]].id_str(), file=log)
     new_hbonds, class_number = get_h_bonds_for_basepair(
         atoms[hb[0]],
         atoms[hb[1]],
@@ -371,12 +380,12 @@ def get_phil_base_pairs(pdb_hierarchy, nonbonded_proxies,
         log=log,
         verbose=verbose)
     if verbose > 1:
-      print >> log, "  Picked class: %d, number of h-bonds under cutoff:%d" % (class_number, len(new_hbonds)),
+      print("  Picked class: %d, number of h-bonds under cutoff:%d" % (class_number, len(new_hbonds)), end=' ', file=log)
     if len(new_hbonds) > 1:
       p = make_phil_base_pair_record(atoms[hb[0]].parent(), atoms[hb[1]].parent(),
           params, saenger_class=class_number, add_segid=add_segid)
       if verbose > 1:
-        print >> log, "  OK"
+        print("  OK", file=log)
       pairs.append(p)
     else:
       if verbose > 0:
@@ -384,7 +393,7 @@ def get_phil_base_pairs(pdb_hierarchy, nonbonded_proxies,
             atoms[hb[0]].id_str()[10:-1], atoms[hb[1]].id_str()[10:-1]),
           "was rejected because only 1 h-bond was found"])
         if verbose > 1:
-          print >> log, "Rejected"
+          print("Rejected", file=log)
 
   phil_str = ""
   # print "N basepairs:", len(pairs)
@@ -414,7 +423,7 @@ def get_plane_i_seqs_from_residues(r1, r2, grm,mon_lib_srv, plane_cache):
     # print resname
     # print r.resname
     # print new_res.resname.strip()
-    print "Warning, Cannot make NA restraints for %s residue" % resname
+    print("Warning, Cannot make NA restraints for %s residue" % resname)
   i_seqs = []
   result = []
   r1_i_seqs = {}
@@ -471,15 +480,15 @@ def get_plane_i_seqs_from_residues(r1, r2, grm,mon_lib_srv, plane_cache):
   if len(r1_i_seqs) == 1:
     if len(r2_i_seqs) == 1:
       if (('' in r1_i_seqs or '' in r2_i_seqs)
-          or (r1_i_seqs.keys()[0] == r2_i_seqs.keys()[0])):
-        result.append((r1_i_seqs[r1_i_seqs.keys()[0]],
-                       r2_i_seqs[r2_i_seqs.keys()[0]]))
+          or (list(r1_i_seqs.keys())[0] == list(r2_i_seqs.keys())[0])):  # FIXME: indexing keys breaks compat py2/3 if more than 1 key
+        result.append((r1_i_seqs[list(r1_i_seqs.keys())[0]],
+                       r2_i_seqs[list(r2_i_seqs.keys())[0]]))
     else:
       if ('' in r1_i_seqs):
-        for k,v in r2_i_seqs.iteritems():
+        for k,v in six.iteritems(r2_i_seqs):
           result.append((r1_i_seqs[''], v))
   else:
-    for k, v in r1_i_seqs.iteritems():
+    for k, v in six.iteritems(r1_i_seqs):
       if k in r2_i_seqs:
         result.append((v, r2_i_seqs[k]))
   # check whether sets of iseqs are different
@@ -504,10 +513,10 @@ def get_stacking_proxies(pdb_hierarchy, stacking_phil_params, grm,
       selected_atoms_1 = selection_cache.iselection(stacking_pair.base1)
       selected_atoms_2 = selection_cache.iselection(stacking_pair.base2)
       if len(selected_atoms_1) == 0:
-        raise Sorry("Selection %s in stacking_pair retusulted in 0 atoms." % (
+        raise Sorry("Selection %s in stacking_pair resulted in 0 atoms." % (
             stacking_pair.base1))
       if len(selected_atoms_2) == 0:
-        raise Sorry("Selection %s in stacking_pair retusulted in 0 atoms." % (
+        raise Sorry("Selection %s in stacking_pair resulted in 0 atoms." % (
             stacking_pair.base2))
       a1 = pdb_atoms[selected_atoms_1[0]]
       a2 = pdb_atoms[selected_atoms_2[0]]
@@ -526,7 +535,7 @@ def get_stacking_proxies(pdb_hierarchy, stacking_phil_params, grm,
             slack=0,
             top_out=False,
             limit=1,
-            origin_id=0) # special case default but not "covalent geometry"
+            origin_id=origin_ids.get_origin_id('basepair stacking'))
           result.append(proxy)
   return result
 
@@ -614,8 +623,8 @@ def get_h_bonds_for_particular_basepair(atoms, saenger_class=0):
       atoms[0].parent(), atoms[1].parent())
   from mmtbx.monomer_library import bondlength_defaults
   if bondlength_defaults.basepairs_lengths[saenger_class][0] != (r1n, r2n):
-    print bondlength_defaults.basepairs_lengths[saenger_class][0], r1n, r2n,saenger_class
-    print r1.id_str(), r2.id_str()
+    print(bondlength_defaults.basepairs_lengths[saenger_class][0], r1n, r2n,saenger_class)
+    print(r1.id_str(), r2.id_str())
     raise Sorry("Saenger class does not match residue names")
   hbonds = []
   for b in bondlength_defaults.basepairs_lengths[saenger_class][1:]:
@@ -630,7 +639,8 @@ def get_basepair_proxies(
     grm,
     mon_lib_srv,
     plane_cache,
-    hbond_distance_cutoff=3.4):
+    hbond_distance_cutoff=3.4,
+    scale_bonds_sigma=1.):
   assert pdb_hierarchy is not None
   bond_proxies_result = []
   angle_proxies_result = []
@@ -648,16 +658,16 @@ def get_basepair_proxies(
       selected_atoms_1 = selection_cache.iselection(base_pair.base1)
       selected_atoms_2 = selection_cache.iselection(base_pair.base2)
       if len(selected_atoms_1) == 0:
-        raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
+        raise Sorry("Selection %s in base_pair resulted in 0 atoms." % (
             base_pair.base1))
       if len(selected_atoms_2) == 0:
-        raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
+        raise Sorry("Selection %s in base_pair resulted in 0 atoms." % (
             base_pair.base2))
       a1 = pdb_atoms[selected_atoms_1[0]]
       a2 = pdb_atoms[selected_atoms_2[0]]
       # get hbonds
       bp_proxies, ap_proxies = get_bp_hbond_proxies(
-          a1, a2, base_pair, hbond_distance_cutoff)
+          a1, a2, base_pair, hbond_distance_cutoff, scale_bonds_sigma)
       bond_proxies_result += bp_proxies
       angle_proxies_result += ap_proxies
       # get planarity/parallelity
@@ -667,7 +677,8 @@ def get_basepair_proxies(
       result_parallelities += parr_p
   return bond_proxies_result, angle_proxies_result, result_planarities, result_parallelities
 
-def get_bp_hbond_proxies(a1, a2, base_pair, hbond_distance_cutoff):
+def get_bp_hbond_proxies(a1, a2, base_pair, hbond_distance_cutoff,
+    scale_bonds_sigma):
   bp_result = []
   ap_result = []
   if base_pair.saenger_class == 0:
@@ -678,7 +689,7 @@ def get_bp_hbond_proxies(a1, a2, base_pair, hbond_distance_cutoff):
   hbonds = get_h_bonds_for_particular_basepair((a1, a2), base_pair.saenger_class)
   for hb in hbonds:
     if hb[0] is None or hb[1] is None:
-      print "NA hbond rejected because one of the atoms is absent"
+      print("NA hbond rejected because one of the atoms is absent")
       continue
     dist = hb[0].distance(hb[1])
     if dist < hbond_distance_cutoff:
@@ -687,7 +698,7 @@ def get_bp_hbond_proxies(a1, a2, base_pair, hbond_distance_cutoff):
         p = geometry_restraints.bond_simple_proxy(
           i_seqs=[hb[0].i_seq, hb[1].i_seq],
           distance_ideal=hb_target,
-          weight=1.0/hb_sigma**2,
+          weight=1.0/(hb_sigma*scale_bonds_sigma)**2,
           slack=0,
           top_out=False,
           limit=1,
@@ -702,7 +713,7 @@ def get_bp_hbond_proxies(a1, a2, base_pair, hbond_distance_cutoff):
       if base_pair.restrain_hb_angles:
         ap_result += get_angle_proxies_for_bond(hb)
     else:
-      print "NA hbond rejected:",hb[0].id_str(), hb[1].id_str(), "distance=%.2f" % dist
+      print("NA hbond rejected:",hb[0].id_str(), hb[1].id_str(), "distance=%.2f" % dist)
   return bp_result, ap_result
 
 def get_bp_plan_proxies(a1, a2, base_pair, grm, mon_lib_srv, plane_cache):
@@ -723,7 +734,7 @@ def get_bp_plan_proxies(a1, a2, base_pair, grm, mon_lib_srv, plane_cache):
           slack=0,
           top_out=False,
           limit=1,
-          origin_id=origin_ids.get_origin_id('hydrogen bonds'))
+          origin_id=origin_ids.get_origin_id('basepair parallelity'))
         result_parr_p.append(proxy)
       if base_pair.restrain_planarity:
         if base_pair.planarity_sigma < 1e-5:
@@ -732,6 +743,6 @@ def get_bp_plan_proxies(a1, a2, base_pair, grm, mon_lib_srv, plane_cache):
         proxy=geometry_restraints.planarity_proxy(
           i_seqs=flex.size_t(i_seqs+j_seqs),
           weights=[w]*len(i_seqs+j_seqs),
-          origin_id=origin_ids.get_origin_id('hydrogen bonds'))
+          origin_id=origin_ids.get_origin_id('basepair planarity'))
         result_plan_p.append(proxy)
   return result_plan_p, result_parr_p

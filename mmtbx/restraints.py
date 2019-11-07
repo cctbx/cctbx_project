@@ -4,7 +4,7 @@ Wrapper module for computing targets and gradients for restraints (or other
 energy functions) on coordinates and B-factors; used in phenix.refine.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import cctbx.adp_restraints
 import math
 from cctbx.array_family import flex
@@ -52,10 +52,10 @@ class manager(object):
         sites_cart = pdb_hierarchy.atoms().extract_xyz()
         compute_gradients=False
         make_header("Initializing AMBER", out=log)
-        print >> log, "  topology    : %s" % params.amber.topology_file_name
-        print >> log, "  atom order  : %s" % params.amber.order_file_name
+        print("  topology    : %s" % params.amber.topology_file_name, file=log)
+        print("  atom order  : %s" % params.amber.order_file_name, file=log)
         if params.amber.coordinate_file_name:
-          print >> log, "  coordinates : %s" % params.amber.coordinate_file_name
+          print("  coordinates : %s" % params.amber.coordinate_file_name, file=log)
         from amber_adaptbx import interface
         self.amber_structs, sander = interface.get_amber_struct_object(params)
         self.sander=sander # used for cleanup
@@ -111,7 +111,7 @@ class manager(object):
             pdb_hierarchy,
             params.afitt.ff,
             params.afitt.scale)
-        print >> log, afitt_object
+        print(afitt_object, file=log)
         afitt_object.check_covalent(self.geometry)
         # afitt log output
         afitt_object.initial_energies = afitt.get_afitt_energy(
@@ -376,7 +376,7 @@ class manager(object):
       if (out is None): out = sys.stdout
       if (header_lines is not None):
         for line in header_lines:
-          print >> out, prefix+line
+          print(prefix+line, file=out)
       sub_hierarchy = hierarchy.select(atom_selection=selection)
       s = sub_hierarchy.as_pdb_string()
       if (len(s) == 0 and header_lines is not None):
@@ -385,7 +385,7 @@ class manager(object):
         out.write(s)
       else:
         for line in s.splitlines():
-          print >> out, prefix+line
+          print(prefix+line, file=out)
 
     outf_descriptor = None
     if file_name is None:
@@ -408,12 +408,12 @@ class manager(object):
           site_labels=site_labels,
           excessive_distance_limit=excessive_distance_limit,
           out=outf_descriptor)
-      print >> outf_descriptor
+      print(file=outf_descriptor)
       self.cartesian_ncs_manager.show_adp_iso_differences_to_average(
           u_isos=xray_structure.extract_u_iso_or_u_equiv(),
           site_labels=site_labels,
           out=outf_descriptor)
-      print >> outf_descriptor
+      print(file=outf_descriptor)
       # show_atoms_without_ncs_restraints
       show_selected_atoms(
           selection = ~self.cartesian_ncs_manager.selection_restrained(
@@ -421,6 +421,6 @@ class manager(object):
           hierarchy = hierarchy,
           header_lines = ["Atoms without NCS restraints:"],
           out = outf_descriptor)
-      print >> outf_descriptor
+      print(file=outf_descriptor)
     if file_name is not None:
       outf_descriptor.close()

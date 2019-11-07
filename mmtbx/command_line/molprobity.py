@@ -2,7 +2,7 @@
 # LIBTBX_SET_DISPATCHER_NAME molprobity.molprobity
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.program_utils.result import program_result
 from libtbx.utils import Sorry, multi_out
 from libtbx import Auto, easy_pickle, runtime_utils
@@ -224,8 +224,8 @@ def run(args,
       outliers_only=params.molprobity.outliers_only,
       show_percentiles=params.output.percentiles)
     f.close()
-    print >> out, ""
-    print >> out, "Results written to %s.out" % params.output.prefix
+    print("", file=out)
+    print("Results written to %s.out" % params.output.prefix, file=out)
     if (params.output.kinemage):
       if (cmdline.pdb_hierarchy.models_size() == 1):
         assert (probe_file is not None)
@@ -244,18 +244,18 @@ def run(args,
         f.write(kin_out)
         f.close()
         if (not params.output.quiet):
-          print >> out, "Wrote kinemage to %s" % kin_file
+          print("Wrote kinemage to %s" % kin_file, file=out)
       else :
-        print >> out, "Kinemage output not available for multiple MODELs."
+        print("Kinemage output not available for multiple MODELs.", file=out)
     if (params.output.pickle):
       easy_pickle.dump("%s.pkl" % params.output.prefix, validation)
       if (not params.output.quiet):
-        print >> out, "Saved result to %s.pkl" % params.output.prefix
+        print("Saved result to %s.pkl" % params.output.prefix, file=out)
     if (params.output.coot):
       coot_file = "%s_coot.py" % params.output.prefix
       validation.write_coot_script(coot_file)
       if (not params.output.quiet):
-        print >> out, "Wrote script for Coot: %s" % coot_file
+        print("Wrote script for Coot: %s" % coot_file, file=out)
     if (params.output.maps == True):
       import mmtbx.maps.utils
       import iotbx.map_tools
@@ -273,14 +273,14 @@ def run(args,
         fwt_coeffs=two_fofc_map,
         delfwt_coeffs=fofc_map,
         anom_coeffs=anom_map)
-      print >> out, "Wrote map coefficients to %s" % map_file
+      print("Wrote map coefficients to %s" % map_file, file=out)
   else :
-    print >> out, ""
+    print("", file=out)
     validation.show_summary(out=out, show_percentiles=params.output.percentiles)
   if (params.output.wxplots):
     try :
       import wxtbx.app
-    except ImportError, e :
+    except ImportError as e :
       raise Sorry("wxPython not available.")
     else :
       app = wxtbx.app.CCTBXApp(0)

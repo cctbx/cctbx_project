@@ -1,6 +1,6 @@
  # -*- coding: utf-8; py-indent-offset: 2 -*-
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.ions.environment import ChemicalEnvironment
 import mmtbx.ions.identify
 from mmtbx import ions
@@ -14,11 +14,13 @@ import libtbx.load_env
 from collections import OrderedDict, Counter
 import os
 import sys
+from six.moves import zip
+from six.moves import range
 
 
 def exercise():
   if not libtbx.env.has_module("phenix_regression"):
-    print "Skipping {}".format(os.path.split(__file__)[1])
+    print("Skipping {}".format(os.path.split(__file__)[1]))
     return
 
   models = OrderedDict([
@@ -196,19 +198,19 @@ def exercise():
     assert len(metals) == len(expected_environments)
 
     for index, metal, expected_environment in \
-      zip(xrange(len(metals)), metals, expected_environments):
+      zip(range(len(metals)), metals, expected_environments):
       env = ChemicalEnvironment(
         metal,
         manager.find_nearby_atoms(metal, filter_by_two_fofc = False),
         manager
         )
       if env.chemistry != expected_environment:
-        print "Problem detecting chemistry environment in", model, index
-        print "Found:    ", env.chemistry
-        print "Should be:", expected_environment
+        print("Problem detecting chemistry environment in", model, index)
+        print("Found:    ", env.chemistry)
+        print("Should be:", expected_environment)
         sys.exit()
 
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   exercise()

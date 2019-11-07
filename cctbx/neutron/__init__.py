@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx.neutron import neutron_news_1992_table
 from cctbx import miller
 from cctbx import crystal
@@ -7,6 +7,7 @@ from cctbx import adptbx
 from scitbx.array_family import flex
 import math
 import sys
+from six.moves import range
 
 class scatterer(object):
 
@@ -106,11 +107,11 @@ class structure(crystal.special_position_settings):
     self.apply_symmetry(i)
 
   def add_scatterers(self, scatterers):
-    for i in xrange(len(scatterers)):
+    for i in range(len(scatterers)):
       self.add_scatterer(scatterers[i])
 
   def structure_factors(self, d_min):
-    print "WARNING: RESULTS NOT VERIFIED" # XXX
+    print("WARNING: RESULTS NOT VERIFIED") # XXX
     miller_set = miller.build_set(
       crystal_symmetry=self,
       anomalous_flag=True, # XXX always True?
@@ -124,7 +125,7 @@ class structure(crystal.special_position_settings):
         sum_exp_j_two_pi_hx = 0j
         for i_symop,x in enumerate(equiv_sites.coordinates()):
           sum_hx = 0
-          for i in xrange(3):
+          for i in range(3):
             sum_hx += h[i] * x[i]
           phase = 2 * math.pi * sum_hx
           exp_j_two_pi_hx = complex(math.cos(phase), math.sin(phase))
@@ -148,23 +149,23 @@ class structure(crystal.special_position_settings):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "Number of scatterers:", len(self.scatterers())
-    print >> f, "At special positions:", len(self.special_position_indices())
+    print("Number of scatterers:", len(self.scatterers()), file=f)
+    print("At special positions:", len(self.special_position_indices()), file=f)
     crystal.symmetry.show_summary(self, f)
     return self
 
   def show_scatterers(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "Label  M  Coordinates            Occ  Uiso or Ucart"
+    print("Label  M  Coordinates            Occ  Uiso or Ucart", file=f)
     for scatterer in self.scatterers():
-      print >> f, "%-4s" % (scatterer.label,),
-      print >> f, "%3d" % (scatterer.multiplicity(),),
-      print >> f, "%7.4f %7.4f %7.4f" % scatterer.site,
-      print >> f, "%4.2f" % (scatterer.occupancy,),
+      print("%-4s" % (scatterer.label,), end=' ', file=f)
+      print("%3d" % (scatterer.multiplicity(),), end=' ', file=f)
+      print("%7.4f %7.4f %7.4f" % scatterer.site, end=' ', file=f)
+      print("%4.2f" % (scatterer.occupancy,), end=' ', file=f)
       if (not scatterer.anisotropic_flag):
-        print >> f, "%6.4f" % (scatterer.u_iso,),
+        print("%6.4f" % (scatterer.u_iso,), end=' ', file=f)
       else:
-        print >> f, ("%6.3f " * 5 + "%6.3f") % adptbx.u_star_as_u_cart(
-          self.unit_cell(), scatterer.u_star),
-      print >> f
+        print(("%6.3f " * 5 + "%6.3f") % adptbx.u_star_as_u_cart(
+          self.unit_cell(), scatterer.u_star), end=' ', file=f)
+      print(file=f)
     return self

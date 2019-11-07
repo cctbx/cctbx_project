@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.image_viewer
@@ -95,12 +95,10 @@ def run(argv=None):
 
     # from dxtbx.imageset import ImageSetFactory
     # sets = ImageSetFactory.new(paths)
-    from dxtbx.datablock import DataBlockFactory
+    from dxtbx.model.experiment_list import ExperimentListFactory
     from rstbx.slip_viewer.frame import chooser_wrapper
-    db = DataBlockFactory.from_filenames(paths)
-    sets = []
-    for d in db:
-      sets.extend(d.extract_imagesets())
+    experiments = ExperimentListFactory.from_filenames(paths)
+    sets = experiments.imagesets()
 
     for imgset in sets:
       for idx in imgset.indices():

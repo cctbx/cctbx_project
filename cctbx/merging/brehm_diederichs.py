@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
 
 from cctbx.array_family import flex
@@ -6,6 +6,7 @@ from libtbx.development.timers import Profiler
 from cctbx import miller as miller_ext
 import math
 from cctbx.merging import update_wij_rij
+from six.moves import range
 """
 This module implements algorithm 2 from "Breaking the indexing ambiguity in
 serial crystallography", Wolfgang Brehm & Kay Diederichs, Acta Cryst. D70 (2014)
@@ -34,7 +35,7 @@ class algorithm2:
 
     # construct a lookup for the separate lattices
     last_id = -1; self.lattices = flex.int()
-    for n in xrange(len(self.lattice_id)):
+    for n in range(len(self.lattice_id)):
       if self.lattice_id[n] != last_id:
         last_id = self.lattice_id[n]
         self.lattices.append(n)
@@ -46,7 +47,7 @@ class algorithm2:
       from libtbx.utils import Sorry
       raise Sorry("No twin laws are possible for this crystal lattice.")
     for twin_law in TL.operators:
-      if self.verbose: print twin_law.operator.r().as_hkl()
+      if self.verbose: print(twin_law.operator.r().as_hkl())
     return TL.operators
 
   def generate_reindex_sets(self):
@@ -64,9 +65,9 @@ class algorithm2:
     if nproc<4:
       return [self.lattices>-1]
     result = []
-    for n in xrange(nproc):
+    for n in range(nproc):
       array = flex.bool()
-      for LL in xrange(len(self.lattices)):
+      for LL in range(len(self.lattices)):
         array.append((LL-n)%nproc < 3)
       result.append(array)
     return result
@@ -90,29 +91,29 @@ class algorithm2:
     # construct rij matrix
     NN = group.count(True)
 
-    if self.verbose: print "IN RUN CORE",group, alternates, use_weights, asymmetric,"Group of %d"%NN
+    if self.verbose: print("IN RUN CORE",group, alternates, use_weights, asymmetric,"Group of %d"%NN)
     index_selected = group.iselection()
     rij = []
     wij = []
     slices = {}
-    for coset in ['h,k,l']+alternates.keys():
+    for coset in ['h,k,l']+list(alternates.keys()):
       slices[coset] = {}
       twin_data = alternates.get(coset, self.data) # i.e., for 'h,k,l' the twin data is self.data
-      for itr in xrange(NN):
+      for itr in range(NN):
         slices[coset][itr] = self.one_lattice_slice(indices = twin_data.indices(), lattice_id=index_selected[itr])
 
     for twin_law in alternates.keys():
       twin_data = alternates[twin_law]
       rij_ = flex.double(flex.grid(NN,NN),0.)
       wij_ = flex.double(flex.grid(NN,NN),0.)
-      for i in xrange(NN):
+      for i in range(NN):
         wij_[(i,i)] = 0.0
         indices_i     = slices["h,k,l"][i]
         indices_i_rev = slices[twin_law][i]
         i_start = self.lattices[index_selected[i]]
 
         # this would be a good compromise point for a detail call to C++ to speed things up XXX
-        for j in xrange(i+1,NN):
+        for j in range(i+1,NN):
           indices_j = slices["h,k,l"][j]
           j_start = self.lattices[index_selected[j]]
 
@@ -158,11 +159,11 @@ class algorithm2:
       focus = wij_.focus()
       flat_wij = wij_.as_1d()
       selection = (flat_wij>1)
-      print "w_ij is a %dx%d matrix with %d/%d >1 elements with average value %4.1f"%(
-        focus[0],focus[1],selection.count(True),len(wij_), flex.mean(flat_wij.select(selection)))
+      print("w_ij is a %dx%d matrix with %d/%d >1 elements with average value %4.1f"%(
+        focus[0],focus[1],selection.count(True),len(wij_), flex.mean(flat_wij.select(selection))))
       rij.append(rij_)
       wij.append(wij_)
-    if self.verbose: print "CONSTRUCTED RIJ"
+    if self.verbose: print("CONSTRUCTED RIJ")
     xcoord = flex.random_double (NN)
     ycoord = flex.random_double (NN)
     M = minimize(xcoord,ycoord,rij[0],wij[0],self.verbose)
@@ -195,14 +196,16 @@ class algorithm2:
 
     return group_args(reindexing_sets={
       "h,k,l":set(grouped_lattice_ids.select(selection)),
-      alternates.keys()[0]:set(grouped_lattice_ids.select(~selection))},
+      # FIXME: order of .keys() changes depending on py2/3 , might break if len(key) > 1
+      list(alternates.keys())[0]:set(grouped_lattice_ids.select(~selection))},
                       rij=rij,
                       wij=wij,
                       coord_x=coord_x,
                       coord_y=coord_y)
 
+    # FIXME: verify len( keys) > 1 or else keys()[0] might break py2/3 compat
     return {"h,k,l":set(grouped_lattice_ids.select(selection)),
-            alternates.keys()[0]:set(grouped_lattice_ids.select(~selection))}
+            list(alternates.keys())[0]:set(grouped_lattice_ids.select(~selection))}
     # Values in the return sets are indexes into the self.data data array (or the self.lattice_id array)
     # corresponding to the start of data for a particular lattice.  Need a different function call
     # to actually get the lattice ids.
@@ -225,12 +228,13 @@ class algorithm2:
         input_queue.task_done()
         return igroup,result
 
-    except Exception, e :
-      print "Exception within __call__",e
+    except Exception as e :
+      print("Exception within __call__",e)
       return None
 
   def report(self,millerlookups):
-     result = millerlookups.fromkeys(millerlookups.keys())
+     # TODO: verify what millerlookups is - is it a dict ?
+     result = millerlookups.fromkeys(list(millerlookups.keys()))
      for key in result:
        result[key]=[]
        for item in millerlookups[key]:
@@ -238,8 +242,8 @@ class algorithm2:
      for key in result:
        result[key].sort()
      if self.verbose:
-       print "REPORT"
-       print result
+       print("REPORT")
+       print(result)
      return result
 
 from scitbx.lbfgs.tst_curvatures import lbfgs_with_curvatures_mix_in
@@ -250,7 +254,7 @@ class minimize(lbfgs_with_curvatures_mix_in):
     self.NN = len(xcoord)
     self.rij_matrix = rij_matrix
     self.wij_matrix = wij_matrix
-    if self.verbose:print len(self.x)
+    if self.verbose:print(len(self.x))
     lbfgs_with_curvatures_mix_in.__init__(self,
       min_iterations=0,
       max_iterations=1000,
@@ -286,7 +290,7 @@ class minimize(lbfgs_with_curvatures_mix_in):
     term_3 = term_3x.concatenate(term_3y)
     grad = -2.* ( term_1 - term_2 - term_3 )
 
-    if self.verbose: print "Functional",f
+    if self.verbose: print("Functional",f)
     #from matplotlib import pyplot as plt
     #plt.plot(coord_x,coord_y,"r.")
     #plt.axes().set_aspect("equal")
@@ -301,7 +305,7 @@ class minimize_divide(lbfgs_with_curvatures_mix_in):
     from scitbx.matrix import col
     self.center_of_mass = col((flex.mean(self.xcoord), flex.mean(self.ycoord)))
 
-    grid = [ self.functional_only(t*math.pi/180.) for t in xrange(0,180,5) ]
+    grid = [ self.functional_only(t*math.pi/180.) for t in range(0,180,5) ]
 
     minvalue = min(grid)
     self.x = flex.double([5*grid.index(minvalue)*math.pi/180.])
@@ -318,7 +322,7 @@ class minimize_divide(lbfgs_with_curvatures_mix_in):
     from scitbx.matrix import col
     Bvec = col((math.cos(theta), math.sin(theta)))
     func = 0.
-    for p in xrange(len(self.xcoord)):
+    for p in range(len(self.xcoord)):
       Avec = col((self.xcoord[p], self.ycoord[p]))-self.center_of_mass
       AdotB = Avec.dot(Bvec)
       Pvec = Avec - AdotB*Bvec # distance vector to dividing line
@@ -331,7 +335,7 @@ class minimize_divide(lbfgs_with_curvatures_mix_in):
     Bvec = col((math.cos(self.x[0]), math.sin(self.x[0])))
     func = 0.
     grad = 0.
-    for p in xrange(len(self.xcoord)):
+    for p in range(len(self.xcoord)):
       Avec = col((self.xcoord[p], self.ycoord[p]))-self.center_of_mass
       AdotB = Avec.dot(Bvec)
       Pvec = Avec - AdotB*Bvec # distance vector to dividing line
@@ -347,7 +351,7 @@ class minimize_divide(lbfgs_with_curvatures_mix_in):
     result = flex.bool()
     Bvec = col((math.cos(self.x[0]), math.sin(self.x[0]))) # dividing plane
     Nvec = Bvec.rotate_2d(90.,deg=True)
-    for p in xrange(len(self.xcoord)):
+    for p in range(len(self.xcoord)):
       Avec = (col((self.xcoord[p], self.ycoord[p]))-self.center_of_mass).normalize()
       theta = math.acos(Nvec.dot(Avec))
       result.append(theta>=math.pi/2.)
@@ -355,10 +359,11 @@ class minimize_divide(lbfgs_with_curvatures_mix_in):
 
 def reassemble(patchwork,verbose=False):
   resorted = [patchwork[0]]
+  # TODO what is resorted[0] ? Is it a dictionary, if not fix the code
   refkeys = resorted[0].keys()
-  for ip in xrange(1,len(patchwork)):
+  for ip in range(1,len(patchwork)):
     reference = resorted[-1]
-    refkeys = reference.keys()
+    refkeys = list(reference.keys())
     test = patchwork[ip]
     newdict = {}
     for testkey in test.keys():
@@ -378,7 +383,7 @@ def reassemble(patchwork,verbose=False):
         voted[item][lookup[key]] += 1
   if verbose:
     for key in voted.keys():
-      print "vote",key, voted[key]
+      print("vote",key, voted[key])
   # The votes are tallied, now report them
   result = {}
   for key in refkeys: result[key]=[]
@@ -413,8 +418,8 @@ def run_multiprocess(L, asymmetric=3, nproc=20, verbose=False, show_plot=True,
                      save_plot=False):
   try :
       import multiprocessing
-  except ImportError, e :
-      print "multiprocessing module not available (requires Python >= 2.6)"; exit()
+  except ImportError as e :
+      print("multiprocessing module not available (requires Python >= 2.6)"); exit()
   algo2 = algorithm2(data = L[0],lattice_id = L[1], resort=True, verbose = verbose)
   alternates = algo2.generate_reindex_sets()
   #import libtbx.introspection
@@ -423,7 +428,7 @@ def run_multiprocess(L, asymmetric=3, nproc=20, verbose=False, show_plot=True,
   result_sets = []
   def _mpcallback(result_set):
     import libtbx
-    if verbose: print "IN MPCALLBACK with",result_set
+    if verbose: print("IN MPCALLBACK with",result_set)
     if type(result_set)==type(()) and type(result_set[1])==libtbx.group_args:
       #result_sets.append(result_set.reindexing_sets)
       result_sets.append((result_set[0], result_set[1].reindexing_sets))
@@ -435,7 +440,7 @@ def run_multiprocess(L, asymmetric=3, nproc=20, verbose=False, show_plot=True,
   # Each process accumulates its own statistics in serial, and the
   # grand total is eventually collected by the main process'
   #  _mpcallback
-  for i in xrange(nproc-1):
+  for i in range(nproc-1):
     pool.apply_async(
       func=algo2,
       args=[input_queue, alternates, True],
@@ -458,7 +463,7 @@ def test_reassembly():
   result = reassemble(testdata,verbose=False)
   assert len(result["h,k,l"])==392
   assert len(result["h,-h-k,-l"])==368
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   test_reassembly()

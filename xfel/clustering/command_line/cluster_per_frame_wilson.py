@@ -1,12 +1,12 @@
 # LIBTBX_SET_DISPATCHER_NAME cluster.individual_frame_intensity
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 __author__ = 'zeldin'
 
 import logging
 from xfel.clustering.cluster import Cluster
 import matplotlib.pyplot as plt
 
-FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
+FORMAT = '%(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 
 class Key_event:

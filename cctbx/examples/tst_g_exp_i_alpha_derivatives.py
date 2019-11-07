@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.examples.g_exp_i_alpha_derivatives \
   import parameters, gradients, pack_gradients, g_exp_i_alpha_sum
 from cctbx.examples.exp_i_alpha_derivatives import least_squares
@@ -6,17 +6,19 @@ from libtbx.test_utils import approx_equal
 import random
 import math
 import copy
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
+from six.moves import range
+from six.moves import zip
 
 random.seed(0)
 
 def d_target_d_params_finite(obs, params, eps=1.e-8):
   result = []
   params_eps = copy.deepcopy(params)
-  for i_param in xrange(len(params)):
+  for i_param in range(len(params)):
     dx = []
-    for ix in xrange(4):
+    for ix in range(4):
       ts = []
       for signed_eps in [eps, -eps]:
         pi_eps = params[i_param].as_list()
@@ -33,8 +35,8 @@ def d_target_d_params_finite(obs, params, eps=1.e-8):
 def d2_target_d_params_finite(obs, params, eps=1.e-8):
   result = []
   params_eps = copy.deepcopy(params)
-  for i_param in xrange(len(params)):
-    for ix in xrange(4):
+  for i_param in range(len(params)):
+    for ix in range(4):
       gs = []
       for signed_eps in [eps, -eps]:
         pi_eps = params[i_param].as_list()
@@ -50,18 +52,18 @@ def d2_target_d_params_finite(obs, params, eps=1.e-8):
 
 def compare_analytical_and_finite(obs, params, out):
   grads_fin = d_target_d_params_finite(obs=obs, params=params)
-  print >> out, "grads_fin:", pack_gradients(grads_fin)
+  print("grads_fin:", pack_gradients(grads_fin), file=out)
   exp_sum = g_exp_i_alpha_sum(params=params)
   target = least_squares(obs=obs, calc=exp_sum.f())
   grads_ana = exp_sum.d_target_d_params(target=target)
-  print >> out, "grads_ana:", pack_gradients(grads_ana)
+  print("grads_ana:", pack_gradients(grads_ana), file=out)
   assert approx_equal(pack_gradients(grads_ana), pack_gradients(grads_fin))
   curvs_fin = d2_target_d_params_finite(obs=obs, params=params)
-  print >> out, "curvs_fin:", curvs_fin
+  print("curvs_fin:", curvs_fin, file=out)
   curvs_ana = list(exp_sum.d2_target_d_params(target=target))
-  print >> out, "curvs_ana:", curvs_ana
+  print("curvs_ana:", curvs_ana, file=out)
   assert approx_equal(curvs_ana, curvs_fin)
-  print >> out
+  print(file=out)
 
 def exercise(args):
   verbose =  "--verbose" in args
@@ -69,10 +71,10 @@ def exercise(args):
     out = StringIO()
   else:
     out = sys.stdout
-  for n_params in xrange(2,5):
-    for i_trial in xrange(5):
+  for n_params in range(2,5):
+    for i_trial in range(5):
       params = []
-      for i in xrange(n_params):
+      for i in range(n_params):
         params.append(parameters(
           g=(random.random()-0.5)*2,
           ffp=(random.random()-0.5)*2,
@@ -88,7 +90,7 @@ def exercise(args):
         obs=obs*(random.random()+0.5),
         params=params,
         out=out)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

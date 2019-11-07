@@ -1,9 +1,10 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 '''
 '''
 
 from iotbx.file_reader import any_file
 from iotbx.data_manager import DataManagerBase
+from libtbx import Auto
 
 # =============================================================================
 class RestraintDataManager(DataManagerBase):
@@ -42,9 +43,17 @@ class RestraintDataManager(DataManagerBase):
       else:
         self.add_restraint(filename, a.file_object.model())
 
-  def write_restraint_file(self, filename, restraint_str, overwrite=False):
-    self._write_text(RestraintDataManager.datatype, filename,
-                     restraint_str, overwrite=overwrite)
+  def get_default_output_restraint_filename(self):
+    filename = self.get_default_output_filename()
+    if not filename.endswith('.cif'):
+      filename += '.cif'
+    return filename
+
+  def write_restraint_file(self, restraint_str, filename=Auto, overwrite=Auto):
+    if filename is Auto:
+      filename = self.get_default_output_restraint_filename()
+    self._write_text(RestraintDataManager.datatype, restraint_str,
+                     filename=filename, overwrite=overwrite)
 
 # =============================================================================
 # end

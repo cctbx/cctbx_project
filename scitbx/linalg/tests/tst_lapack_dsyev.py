@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 def exercise(use_fortran):
   from scitbx.linalg import lapack_dsyev
   from scitbx.array_family import flex
@@ -8,10 +9,10 @@ def exercise(use_fortran):
   random.seed(0)
   #
   for diag in [0, 1]:
-    for n in xrange(1, 11):
+    for n in range(1, 11):
       for uplo in ["U", "L"]:
         a = flex.double(flex.grid(n,n), 0)
-        for i in xrange(n):
+        for i in range(n):
           a[(i,i)] = diag
         w = flex.double(n, -1e100)
         a_inp = a.deep_copy()
@@ -19,19 +20,19 @@ def exercise(use_fortran):
           jobz="V", uplo=uplo, a=a, w=w, use_fortran=use_fortran)
         if (info == 99):
           if (not use_fortran):
-            print "Skipping tests: lapack_dsyev not available."
+            print("Skipping tests: lapack_dsyev not available.")
           return
         assert info == 0
         assert approx_equal(w, [diag]*n)
         if (diag != 0):
           assert approx_equal(a, a_inp)
   #
-  for i_trial in xrange(10):
-    for n in xrange(1, 11):
+  for i_trial in range(10):
+    for n in range(1, 11):
       for uplo in ["U", "L"]:
         a = flex.double(flex.grid(n,n))
-        for i in xrange(n):
-          for j in xrange(i,n):
+        for i in range(n):
+          for j in range(i,n):
             a[i*n+j] = random.random() - 0.5
             if (i != j):
               a[j*n+i] = a[i*n+j]
@@ -40,9 +41,9 @@ def exercise(use_fortran):
         info = lapack_dsyev(
           jobz="V", uplo=uplo, a=a, w=w, use_fortran=use_fortran)
         assert info == 0
-        for i in xrange(1,n):
+        for i in range(1,n):
           assert w[i-1] <= w[i]
-        for i in xrange(n):
+        for i in range(n):
           l = w[i]
           x = a[i*n:i*n+n]
           ax = matrix_mul(a_inp, n, n, x, n, 1)
@@ -67,7 +68,7 @@ def run(args):
   assert len(args) == 0
   for use_fortran in [False, True]:
     exercise(use_fortran=use_fortran)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

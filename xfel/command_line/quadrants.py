@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cspad.quadrants
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -36,7 +36,7 @@ if (__name__ == "__main__"):
     spotfinder/applications/xfel/cxi_phil.py are applied first, and increments
     are determined ON TOP OF those values.  Output is given in the form of
     a new quad_translation array."""%file
-    print message
+    print(message)
     phil_params = view_raw_image(file, *arguments, **({'display':True}))
     image = ImageFactory(file)
     image.show_header()
@@ -71,14 +71,14 @@ if (__name__ == "__main__"):
     from xfel.metrology.quadrant import one_sensor
     for isensor,sensor in enumerate(key_sensors):
       Q = one_sensor(image,sensor,M)
-      print Q.coordmax[0], Q.coordmax[1]
+      print(Q.coordmax[0], Q.coordmax[1])
       new_quad_trans[isensor*2]-=Q.coordmax[0]
       new_quad_trans[isensor*2 + 1]-=Q.coordmax[1]
 
-    print "The OLD QUAD translations are:",list(old_quad_trans)
-    print "\nThe NEW QUAD translations are:",list(new_quad_trans)
-    print """These should be pasted into spotfinder/applications/xfel/cxi_phil.py
-    with NEW replacing the OLD."""
+    print("The OLD QUAD translations are:",list(old_quad_trans))
+    print("\nThe NEW QUAD translations are:",list(new_quad_trans))
+    print("""These should be pasted into spotfinder/applications/xfel/cxi_phil.py
+    with NEW replacing the OLD.""")
 
 
 #cspad.quadrants /reg/d/psdm/cxi/cxie1414/ftc/brewster/averages/r0006/000/out/max-Ds2-r0006.pickle

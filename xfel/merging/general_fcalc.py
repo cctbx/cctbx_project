@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.command_line.fmodel
 import mmtbx.utils
 from iotbx import file_reader
@@ -94,7 +94,7 @@ def random_structure (params) :
     1 + params.unit_cell_length_tolerance, 1 / 3)
   params2.output.type = "real"
   if (params.include_bulk_solvent) :
-    print "Sorry, can't include bulk solvent for randomly-generated sites."
+    print("Sorry, can't include bulk solvent for randomly-generated sites.")
   f_model = mmtbx.utils.fmodel_from_xray_structure(
     xray_structure = xs,
     f_obs          = None,

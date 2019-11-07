@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from cctbx.array_family import flex
 from cctbx.miller import match_multi_indices
@@ -6,6 +6,7 @@ from cctbx.miller import set as mset
 from scitbx import matrix
 
 from xfel.merging.database.merging_database import manager
+from six.moves import zip
 class progress_manager(manager):
   def __init__(self,params,db_experiment_tag,trial,rungroup_id,run):
     self.params = params
@@ -61,7 +62,7 @@ class progress_manager(manager):
     # pixel size at minimum, and full detector geometry in general.  The optimal
     # redesign would be to apply the polarization correction just after the integration
     # step in the integration code.
-    print "Step 3. Correct for polarization."
+    print("Step 3. Correct for polarization.")
     observations = result["observations"][0]
     indexed_cell = observations.unit_cell()
 
@@ -82,14 +83,14 @@ class progress_manager(manager):
     #  crystal_symmetry=self.miller_set.crystal_symmetry()
     #  )
     observations = observations.customized_copy(anomalous_flag=False).map_to_asu()
-    print "Step 4. Filter on global resolution and map to asu"
+    print("Step 4. Filter on global resolution and map to asu")
 
     #observations.show_summary(f=out, prefix="  ")
     from rstbx.dials_core.integration_core import show_observations
     show_observations(observations)
 
 
-    print "Step 6.  Match to reference intensities, filter by correlation, filter out negative intensities."
+    print("Step 6.  Match to reference intensities, filter by correlation, filter out negative intensities.")
     assert len(observations_original_index.indices()) \
       ==   len(observations.indices())
 
@@ -109,11 +110,11 @@ class progress_manager(manager):
     slope = 1.0
     offset = 0.0
 
-    print result.get("sa_parameters")[0]
+    print(result.get("sa_parameters")[0])
     have_sa_params = ( type(result.get("sa_parameters")[0]) == type(dict()) )
 
     observations_original_index_indices = observations_original_index.indices()
-    print result.keys()
+    print(list(result.keys()))
     kwargs = {'wavelength': wavelength,
               'beam_x': result['xbeam'],
               'beam_y': result['ybeam'],
@@ -151,8 +152,8 @@ class progress_manager(manager):
     sql, parameters = self._insert(
       table='`%s_frames`' % self.db_experiment_tag,
       **kwargs)
-    print sql
-    print parameters
+    print(sql)
+    print(parameters)
     results = {'frame':[sql, parameters, kwargs]}
     if do_inserts:
       cursor.execute(sql, parameters[0])
@@ -189,7 +190,7 @@ class progress_manager(manager):
 
       print cursor.fetchall()[0]
     '''
-    print "Adding %d observations for this frame"%(len(sel_observations))
+    print("Adding %d observations for this frame"%(len(sel_observations)))
     kwargs = {'hkls_id': self.miller_set_id.select(flex.size_t([pair[0] for pair in matches.pairs()])),
               'i': observations.data().select(sel_observations),
               'sigi': observations.sigmas().select(sel_observations),
@@ -211,12 +212,12 @@ class progress_manager(manager):
       #
       # See also merging_database_sqlite3._insert()
       query = ("INSERT INTO `%s_observations` (" % self.db_experiment_tag) \
-              + ", ".join(kwargs.keys()) + ") values (" \
-              + ", ".join(["%s"] * len(kwargs.keys())) + ")"
+              + ", ".join(kwargs) + ") values (" \
+              + ", ".join(["%s"] * len(kwargs)) + ")"
       try:
-        parameters = zip(*kwargs.values())
+        parameters = list(zip(*list(kwargs.values())))
       except TypeError:
-        parameters = [kwargs.values()]
+        parameters = [list(kwargs.values())]
       cursor.executemany(query, parameters)
       #print "done execute many"
       #print cursor._last_executed

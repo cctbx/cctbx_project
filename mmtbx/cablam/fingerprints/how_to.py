@@ -1,8 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.cablam import cablam_fingerprints
 #How to write and format a motif fingerprint for cablam
 
-#Put "from __future__ import division" at the top of file (see above)
+#Put "from __future__ import absolute_import, division, print_function
 #Import the cablam_fingerprints module (see above)
 
 #Write a short description of the motif being coded.

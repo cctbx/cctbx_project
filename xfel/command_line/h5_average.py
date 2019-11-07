@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.h5_average
 
@@ -8,6 +8,7 @@ import iotbx.phil
 import libtbx.load_env
 from dials.util.options import OptionParser
 import sys, os
+from six.moves import range
 
 phil_scope = iotbx.phil.parse("""
   average = True
@@ -46,7 +47,7 @@ class Processh5(object):
   def process(self, func):
     # process and write everything to a new avg (or other) file
     writefile, writefile_name, arr = self.prepare_writefile_and_array(func)
-    for ii in xrange(self.length-1):
+    for ii in range(self.length-1):
       arr[ii][:][:] = np.asarray(self.readfile.values()[ii+1].values()[0].value)
     func_lookup = {
       "avg":np.mean,
@@ -60,14 +61,14 @@ class Processh5(object):
     val = writefile.values()[0].values()[0]
     val.write_direct(res)
     writefile.close()
-    print "Wrote", writefile_name
+    print("Wrote", writefile_name)
 
   def cleanup(self):
     self.readfile.close()
 
 def run(args):
   if ("--help" in args) or ("-h" in args) or (len(args) == 0):
-    print "Usage: %s r25792.h5" % libtbx.env.dispatcher_name
+    print("Usage: %s r25792.h5" % libtbx.env.dispatcher_name)
     return
   elif ("--config" in args) or ("-c" in args):
     iotbx.phil.parse(phil_scope).show(attributes_level=2)
@@ -80,7 +81,7 @@ def run(args):
   parser = OptionParser(phil=phil_scope)
   params, options = parser.parse_args(show_diff_phil=True)
   for h5 in h5s:
-    print "Processing image %s..." % h5
+    print("Processing image %s..." % h5)
     processor = Processh5(h5)
     if params.average:
       processor.process("avg")

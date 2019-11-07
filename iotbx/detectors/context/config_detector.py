@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import re,time,copy
 
 #------------------ALS-----------------------
@@ -53,7 +53,8 @@ def als_beam_rules(iobj): #take an ADSC image object
           ('BEAM_CENTER_X','DENZO_XBEAM',float),
           ('BEAM_CENTER_Y','DENZO_YBEAM',float),
           ]:
-          pattern = re.compile(search+'='+r'(.*);')
+          bytes_encoded_search = (search+'='+r'(.*);').encode()
+          pattern = re.compile(bytes_encoded_search) # python3 compatible
           matches = pattern.findall(iobj.header)
           if len(matches)>0:
             beam_center_convention = 0
@@ -167,7 +168,7 @@ def other_beamlines(iobj,passthru_convention):
   elif ADSC910_at_BioCARS(iobj):
     beam_center_convention = 0
   elif iobj.serial_number not in alld:
-    print "WARNING (possibly fatal): new beamline; coordinate system unknown. Please contact the authors"
+    print("WARNING (possibly fatal): new beamline; coordinate system unknown. Please contact the authors")
     beam_center_convention = passthru_convention
   else:
     beam_center_convention = passthru_convention

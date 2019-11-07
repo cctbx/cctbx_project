@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.math import principal_axes_of_inertia
 from scitbx.array_family import flex
 
@@ -18,11 +18,11 @@ def run():
     ( 3.766,  0.589, 10.291),
     (11.358,  2.999,  7.612)])
   pai = principal_axes_of_inertia(points=points)
-  print pai.center_of_mass()
-  print pai.inertia_tensor()
+  print(pai.center_of_mass())
+  print(pai.inertia_tensor())
   es = pai.eigensystem()
-  print list(es.values())
-  print list(es.vectors())
+  print(list(es.values()))
+  print(list(es.vectors()))
 
 if (__name__ == "__main__"):
   run()

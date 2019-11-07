@@ -1,12 +1,12 @@
 # LIBTBX_SET_DISPATCHER_NAME cluster.intensity_statistics
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 __author__ = 'zeldin'
 
 import logging
 from xfel.clustering.cluster import Cluster
 from matplotlib import pyplot as plt
 import matplotlib.gridspec as gridspec
-FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
+FORMAT = '%(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 
 

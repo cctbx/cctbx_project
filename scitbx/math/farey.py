@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # James Farey was an English surveyor/geologist/writer (ca. 1816)
 # he was fascinated by fractions and their decimal equivalents
 # distances were measured with rods and chains and the poor man

@@ -4,7 +4,7 @@ Utilities for re-refining (or otherwise working with) structures downloaded
 directly from the PDB.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 from libtbx.utils import null_out, Sorry
 import os
@@ -92,7 +92,7 @@ def find_data_arrays(mtz_file, log=None, merge_anomalous=False,
     else :
       raise Sorry("Can't find label string '%s'!" % preferred_labels)
   else :
-    print >> log, "Defaulting to using %s" % data.info().label_string()
+    print("Defaulting to using %s" % data.info().label_string(), file=log)
   hl_arrays = hkl_server.get_experimental_phases(
     file_name               = None,
     labels                  = None,
@@ -165,8 +165,8 @@ def combine_split_structure(
       combined_ids.append(other_id)
     if (len(pdb_files) > 1):
       pdb_all = os.path.join(base_dir, "%s_new.pdb" % pdb_id)
-      print >> log, "Joining multi-part structure: %s %s" % (pdb_id,
-        " ".join(other_ids))
+      print("Joining multi-part structure: %s %s" % (pdb_id,
+        " ".join(other_ids)), file=log)
       easy_run.call("iotbx.pdb.join_fragment_files %s > %s" %
         (" ".join(pdb_files), pdb_all))
       os.remove(pdb_file)
@@ -216,34 +216,34 @@ class filter_pdb_file(object):
       if (output_file is None):
         output_file = pdb_file
     if (self.n_unknown > 0) and (not quiet):
-      print >> log, "Warning: %d unknown atoms or ligands removed:" % \
-        self.n_unknown
+      print("Warning: %d unknown atoms or ligands removed:" % \
+        self.n_unknown, file=log)
       for i_seq in (~known_sel).iselection():
-        print >> log, "  %s" % all_atoms[i_seq].id_str()
+        print("  %s" % all_atoms[i_seq].id_str(), file=log)
     if (self.n_zero_occ > 0):
       msg = "Warning: %d atoms with zero occupancy present in structure:"
       if (remove_atoms_with_zero_occupancy):
         msg = "Warning: %d atoms with zero occupancy removed:"
         keep_sel &= ~zero_occ_sel
       if (not quiet):
-        print >> log, msg % self.n_zero_occ
+        print(msg % self.n_zero_occ, file=log)
         for i_seq in zero_occ_sel.iselection():
-          print >> log, "  %s" % all_atoms[i_seq].id_str()
+          print("  %s" % all_atoms[i_seq].id_str(), file=log)
     hierarchy_filtered = hierarchy.select(keep_sel)
     if (self.n_semet > 0) and (set_se_occ):
       for atom in hierarchy_filtered.atoms():
         if (atom.element == "SE") and (atom.fetch_labels().resname == "MSE"):
           if (atom.occ == 1.0):
             if (not quiet):
-              print >> log, "Set occupancy of %s to 0.99" % atom.id_str()
+              print("Set occupancy of %s to 0.99" % atom.id_str(), file=log)
             atom.occ = 0.99 # just enough to trigger occupancy refinement
     if (modified):
       f = open(output_file, "w")
       # if the input file is actually from the PDB, we need to preserve the
       # header information for downstream code.
-      print >> f, "\n".join(pdb_in.file_object.input.title_section())
-      print >> f, "\n".join(pdb_in.file_object.input.remark_section())
-      print >> f, iotbx.pdb.format_cryst1_record(
-        crystal_symmetry=pdb_in.file_object.crystal_symmetry())
-      print >> f, hierarchy_filtered.as_pdb_string()
+      print("\n".join(pdb_in.file_object.input.title_section()), file=f)
+      print("\n".join(pdb_in.file_object.input.remark_section()), file=f)
+      print(iotbx.pdb.format_cryst1_record(
+        crystal_symmetry=pdb_in.file_object.crystal_symmetry()), file=f)
+      print(hierarchy_filtered.as_pdb_string(), file=f)
       f.close()

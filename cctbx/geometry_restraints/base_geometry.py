@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 class Base_geometry(object):
   """
@@ -13,7 +13,7 @@ class Base_geometry(object):
     self._source = None
 
   def set_source(self, source):
-    assert self._source is None
+    assert self._source is None or self._source == source
     self._source = source
 
   def get_source(self):

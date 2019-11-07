@@ -4,7 +4,7 @@ RNA sugar ring, performing geometry minimization starting with
 random coordinates, how many configurations are found?
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import cctbx.geometry_restraints.manager
 import cctbx.geometry_restraints.lbfgs
 from cctbx.array_family import flex
@@ -15,13 +15,15 @@ from libtbx.utils import null_out
 import libtbx.load_env
 import math
 import sys
+from six.moves import range
+from six.moves import zip
 
 def pentagon_sites_cart(start_vector=(0,1.5,0), normal=(0,0,1)):
   result = flex.vec3_double([(0,0,0)])
   start_vector = matrix.col(start_vector)
   prev_point = matrix.col((0,0,0))
   axis = matrix.col(normal)
-  for i in xrange(4):
+  for i in range(4):
     r = axis.axis_and_angle_as_r3_rotation_matrix(angle=72*i, deg=True)
     point = prev_point + r * start_vector
     result.append(point)
@@ -95,7 +97,7 @@ def run(args):
   geo_manager.show_sorted(
     site_labels=atom_names, sites_cart=sites_cart, f=cout)
   def lbfgs(sites_cart):
-    for i_lbfgs_restart in xrange(3):
+    for i_lbfgs_restart in range(3):
       minimized = cctbx.geometry_restraints.lbfgs.lbfgs(
         sites_cart=sites_cart,
         geometry_restraints_manager=geo_manager)
@@ -106,13 +108,13 @@ def run(args):
   conformer_counts = [0] * 4
   sites_cart = sites_cart.deep_copy()
   mt = flex.mersenne_twister(seed=0)
-  for i_trial in xrange(20):
+  for i_trial in range(20):
     while True:
-      for i in xrange(sites_cart.size()):
+      for i in range(sites_cart.size()):
         sites_cart[i] = mt.random_double_point_on_sphere()
       try:
         lbfgs(sites_cart=sites_cart)
-      except RuntimeError, e:
+      except RuntimeError as e:
         if (not str(e).startswith(
               "Bond distance > max_reasonable_bond_distance: ")):
           raise
@@ -130,10 +132,10 @@ def run(args):
       rmsd = reference_sites.rms_difference(sup.other_sites_best_fit())
       rmsd_list.append(rmsd)
     oline = " ".join(["%.3f" % rmsd for rmsd in rmsd_list])
-    print >> cout, oline
+    print(oline, file=cout)
     assert is_below_limit(min(rmsd_list), 1e-3)
     conformer_counts[flex.min_index(rmsd_list)] += 1
-  print "conformer_counts:", conformer_counts
+  print("conformer_counts:", conformer_counts)
   #
   if (libtbx.env.has_module("iotbx")):
     import iotbx.pdb.hierarchy
@@ -169,7 +171,7 @@ def run(args):
     hierarchy.atoms().reset_serial()
     pdb_str = hierarchy.as_pdb_string(append_end=True)
     file_name = "puckers.pdb"
-    print "Writing file:", file_name
+    print("Writing file:", file_name)
     open(file_name, "w").write("""\
 REMARK random_puckers.py
 REMARK 1 = 3'
@@ -178,7 +180,7 @@ REMARK 3 = A
 REMARK 4 = B
 """ + pdb_str)
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

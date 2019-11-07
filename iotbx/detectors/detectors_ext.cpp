@@ -202,22 +202,6 @@ af::flex_int ReadDIP(const std::string& filename,
   return z;
 }
 
-std::string
-unpad_raxis(const std::string& in, const int& recordlength, const int& pad){
-  int number_records = in.size()/recordlength;
-  int outlength = (recordlength-pad)*number_records;
-  std::vector<char> out;
-  out.reserve(outlength);
-  std::string::const_iterator inptr=in.begin();
-  for (int irec=0; irec<number_records; ++irec){
-    for (int y=0; y<(recordlength-pad); ++y,++inptr) {
-      out.push_back(*inptr);
-    }
-    inptr+=pad;
-  }
-  return std::string(out.begin(),out.end());
-}
-
 af::flex_int MakeSquareRAXIS(const int& np,
                              const int& extra,
                              const int& oldnslow,
@@ -398,6 +382,7 @@ struct flex_image_wrapper {
       .def("circle_overlay", &w_t::circle_overlay)
       .def("prep_string",&w_t::prep_string)
       .def("prep_string_monochrome",&w_t::prep_string_monochrome)
+      .def("as_bytes",&w_t::as_bytes)
       .def_readonly("export_string",&w_t::export_s)
       .def_readonly("supports_rotated_tiles_antialiasing_recommended",&w_t::supports_rotated_tiles_antialiasing_recommended)
     ;
@@ -427,7 +412,6 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
    def("ReadMAR", ReadMAR);
    def("ReadRAXIS", ReadRAXIS);
    def("ReadDIP", ReadDIP);
-   def("unpad_raxis", unpad_raxis);
    def("MakeSquareRAXIS", MakeSquareRAXIS);
    def("Bin2_by_2", Bin2_by_2);
    def("ReadDTrek", ReadDTrek,

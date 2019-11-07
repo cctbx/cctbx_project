@@ -7,6 +7,8 @@ import re
 import subprocess
 import sys
 
+import six
+
 # This code is partially derived from a similar module I wrote
 # for EMAN2, previously released under a BSD-like license.
 
@@ -92,6 +94,8 @@ class FixLinuxRpath(object):
   def find_deps(self, filename):
     ret = []
     p = check_output(['ldd', filename])
+    if six.PY3:
+      p = p.decode("latin-1")
     for line in p.split("\n"):
       fields = line.partition("=>")
       try:

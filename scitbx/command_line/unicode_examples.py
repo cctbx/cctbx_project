@@ -1,5 +1,5 @@
 "Please help adding characters commonly used in science."
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import sys
 
@@ -64,7 +64,7 @@ def run(args):
 \u03C4 GREEK SMALL LETTER TAU
 \u03C5 GREEK SMALL LETTER UPSILON
 """
-  print unicode_text.encode("utf-8", "strict")
+  print(unicode_text.encode("utf-8", "strict"))
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

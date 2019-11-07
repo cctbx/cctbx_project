@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import mmtbx.monomer_library
 from scitbx.array_family import flex
 import iotbx.pdb
@@ -126,7 +126,7 @@ def run(pdb_str, expected_ids):
       for residue in conformer.residues():
         sites_cart = residue.atoms().extract_xyz()
         rotamer_name = rotamer_manager.evaluate_residue(residue=residue)
-        print residue.resname, residue.resseq, rotamer_name
+        print(residue.resname, residue.resseq, rotamer_name)
         result_ids.append(rotamer_name)
         if(get_class(residue.resname) == "common_amino_acid"):
           rotamer_iterator = mon_lib_srv.rotamer_iterator(

@@ -1,12 +1,12 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 from libtbx import easy_run
 import time
 
 def exercise():
   # FIXME
-  print "Temporarily disabled, skipping"
+  print("Temporarily disabled, skipping")
   return
   from mmtbx.regression.make_fake_anomalous_data import generate_potassium_inputs
   base = "tst_pick_k"
@@ -24,7 +24,7 @@ def exercise():
   os.remove(mtz_file)
   # "zn_frag_hoh.pdb" => "zn_frag_fmodel.eff"
   os.remove(os.path.splitext(pdb_file)[0][:-4] + "_fmodel.eff")
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

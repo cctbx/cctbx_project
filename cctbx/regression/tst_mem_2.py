@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import libtbx.load_env
 from libtbx import easy_run
@@ -28,6 +28,6 @@ END
 if __name__ == "__main__" :
   if libtbx.env.has_module("phenix"):
     run()
-    print "OK"
+    print("OK")
   else:
-    print "Skipping test: phenix not available"
+    print("Skipping test: phenix not available")

@@ -1,12 +1,13 @@
 
 # TODO trim sidechains one atom at a time
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.str_utils import make_header
 from libtbx.utils import multi_out
 from libtbx import group_args
 import os
 import sys
+from six.moves import range
 
 model_prune_master_phil = """
   resolution_factor = 1/4.
@@ -94,10 +95,10 @@ class residue_summary(object):
     id_str = "%3s %s%4s%s" % (self.resname, self.chain_id, self.resseq,
       self.icode)
     if (self.score is not None):
-      print >> out, "%s : %s %s %s = %.2f" % (id_str, self.atoms_type,
-        self.map_type, self.score_type, self.score)
+      print("%s : %s %s %s = %.2f" % (id_str, self.atoms_type,
+        self.map_type, self.score_type, self.score), file=out)
     else :
-      print >> out, "%s : not part of a continuous chain" % id_str
+      print("%s : not part of a continuous chain" % id_str, file=out)
 
 class prune_model(object):
   def __init__(self,
@@ -184,7 +185,7 @@ class prune_model(object):
       residue_id_hash = {}
       removed_resseqs = []
       if (len(chain.conformers()) > 1):
-        print >> out, "WARNING: chain '%s' has multiple conformers" % chain.id
+        print("WARNING: chain '%s' has multiple conformers" % chain.id, file=out)
       for j_seq, residue_group in enumerate(chain.residue_groups()):
         n_res_protein += 1
         residue_id_hash[residue_group.resid()] = j_seq
@@ -309,7 +310,7 @@ class prune_model(object):
           resseq = residue_group.resseq_as_int()
           remove = False
           if (resseq - 1 in removed_resseqs) or (j_seq == 0):
-            print "candidate:", resseq
+            print("candidate:", resseq)
             for k in range(1, self.params.min_fragment_size+1):
               if (resseq + k in removed_resseqs):
                 remove = True
@@ -328,8 +329,8 @@ class prune_model(object):
             n_res_removed += 1
     for outlier in pruned :
       outlier.show(out)
-    print >> out, "Removed %d residues and %d sidechains" % (n_res_removed,
-      n_sc_removed)
+    print("Removed %d residues and %d sidechains" % (n_res_removed,
+      n_sc_removed), file=out)
     return group_args(
       n_res_protein=n_res_protein,
       n_res_removed=n_res_removed,
@@ -446,7 +447,7 @@ correction) to remove spurious loops and sidechains.
     crystal_symmetry=fmodel.xray_structure))
   f.close()
   log.close()
-  print >> out, "Wrote %s" % params.output.file_name
+  print("Wrote %s" % params.output.file_name, file=out)
   return params.output.file_name
 
 if (__name__ == "__main__"):

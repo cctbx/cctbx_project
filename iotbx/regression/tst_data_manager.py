@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 
@@ -8,8 +8,10 @@ import libtbx.phil
 import mmtbx.model
 
 from cctbx import crystal
+from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
 from iotbx.data_manager import DataManager
+from six.moves import zip
 
 # -----------------------------------------------------------------------------
 def test_data_manager():
@@ -96,9 +98,9 @@ data_manager {
   a.add_phil('c','d')
   a.add_sequence('e','f')
 
-  a.write_model_file('a.dat', a.get_model(), overwrite=True)
-  a.write_phil_file('c.dat', a.get_phil(), overwrite=True)
-  a.write_sequence_file('e.dat', a.get_sequence(), overwrite=True)
+  a.write_model_file(a.get_model(), filename='a.dat', overwrite=True)
+  a.write_phil_file(a.get_phil(), filename='c.dat', overwrite=True)
+  a.write_sequence_file(a.get_sequence(), filename='e.dat', overwrite=True)
 
   with open('a.dat', 'r') as f:
     lines = f.readlines()
@@ -202,8 +204,14 @@ END
   test_eff = 'model.eff'
   dm = DataManager(['model'])
   dm.process_model_str(test_filename, model_str)
-  dm.write_model_file(test_filename, model_str, True)
+  dm.write_model_file(model_str, filename=test_filename, overwrite=True)
   assert(test_filename in dm.get_model_names())
+  m = dm.get_model(test_filename)
+  dm.write_model_file(m, overwrite=True)
+  pdb_filename = 'cctbx_program.pdb'
+  assert(os.path.exists(pdb_filename))
+  dm.process_model_file(pdb_filename)
+  assert(not dm.get_model(pdb_filename).input_format_was_cif())
 
   # test type
   assert(dm.get_model_type() == 'x_ray')
@@ -235,11 +243,19 @@ END
 
   # test reading/writing CIF
   test_filename = 'test_model_datatype.cif'
-  dm.write_model_file(test_filename,
-                      dm.get_model().model_as_mmcif(), overwrite=True)
+  dm.write_model_file(dm.get_model().model_as_mmcif(),
+                      filename=test_filename, overwrite=True)
   dm.process_model_file(test_filename)
   os.remove(test_filename)
   assert(test_filename in dm.get_model_names())
+  m = dm.get_model(test_filename)
+  dm.write_model_file(m, overwrite=True)
+  cif_filename = 'cctbx_program.cif'
+  assert(os.path.exists(cif_filename))
+  dm.process_model_file(cif_filename)
+  assert(dm.get_model(cif_filename).input_format_was_cif())
+  os.remove(pdb_filename)
+  os.remove(cif_filename)
 
   # test pdb_interpretation
   extract = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -366,8 +382,9 @@ URE plan-1  HN22   0.020
   restraint_filename = 'ure.cif'
 
   dm = DataManager(['model', 'restraint'])
-  dm.write_model_file(model_filename, model_str, overwrite=True)
-  dm.write_restraint_file(restraint_filename, restraint_str, overwrite=True)
+  dm.write_model_file(model_str, filename=model_filename, overwrite=True)
+  dm.write_restraint_file(restraint_str, filename=restraint_filename,
+                          overwrite=True)
 
   # fails because no restraints are loaded
   dm.process_model_file(model_filename)
@@ -434,7 +451,8 @@ def test_miller_array_datatype():
   assert(label == new_label)
 
   # test custom PHIL
-  dm.write_phil_file('test.phil', dm.export_phil_scope().as_str(), True)
+  dm.write_phil_file(dm.export_phil_scope().as_str(),
+                     filename='test.phil', overwrite=True)
   loaded_phil = iotbx.phil.parse(file_name='test.phil')
   new_dm = DataManager(['miller_array', 'phil'])
   new_dm.load_phil_scope(loaded_phil)
@@ -449,7 +467,8 @@ def test_miller_array_datatype():
   label = labels[3]
   dm.set_miller_array_type(data_mtz, label, 'electron')
   assert(dm.get_miller_array_type(label=label) == 'electron')
-  dm.write_phil_file('test_phil', dm.export_phil_scope().as_str(), True)
+  dm.write_phil_file(dm.export_phil_scope().as_str(),
+                     filename='test_phil', overwrite=True)
   loaded_phil = iotbx.phil.parse(file_name='test_phil')
   new_dm.load_phil_scope(loaded_phil)
   assert(new_dm.get_miller_array_type(label=label) == 'electron')
@@ -463,6 +482,19 @@ def test_miller_array_datatype():
   assert(new_dm.get_miller_array_type(label=label) == 'neutron')
 
   os.remove('test_phil')
+
+  # test writing file
+  arrays = dm.get_miller_arrays()
+  dataset = arrays[2].as_mtz_dataset(column_root_label='label1')
+  dataset.add_miller_array(miller_array=arrays[3], column_root_label='label2')
+  mtz_object = dataset.mtz_object()
+  dm.write_miller_array_file(mtz_object, filename='test.mtz', overwrite=True)
+  dm.process_miller_array_file('test.mtz')
+  new_labels = dm.get_miller_array_labels('test.mtz')
+  assert('label1,SIGlabel1' in new_labels)
+  assert('label2,SIGlabel2' in new_labels)
+
+  os.remove('test.mtz')
 
   # test file server
   fs1 = dm.get_reflection_file_server()
@@ -506,7 +538,8 @@ def test_miller_array_datatype():
   dm._miller_array_labels[data_mtz] = label_subset
   dm.set_miller_array_type(label=label_subset[2], array_type='electron')
   assert(dm.get_miller_array_type(label=label_subset[2]) == 'electron')
-  dm.write_phil_file('test.phil', dm.export_phil_scope().as_str(), True)
+  dm.write_phil_file(dm.export_phil_scope().as_str(), filename='test.phil',
+                     overwrite=True)
   loaded_phil = iotbx.phil.parse(file_name='test.phil')
   new_dm = DataManager(['miller_array', 'phil'])
   new_dm.load_phil_scope(loaded_phil)
@@ -521,7 +554,8 @@ def test_miller_array_datatype():
   dm = DataManager(['miller_array',  'phil'])
   dm.process_miller_array_file(data_mtz)
   dm._miller_array_labels[data_mtz] = label_subset
-  dm.write_phil_file('test.phil', dm.export_phil_scope().as_str(), True)
+  dm.write_phil_file(dm.export_phil_scope().as_str(), filename='test.phil',
+                     overwrite=True)
   loaded_phil = iotbx.phil.parse(file_name='test.phil')
   new_dm = DataManager(['miller_array', 'phil'])
   new_dm.load_phil_scope(loaded_phil)
@@ -532,12 +566,60 @@ def test_miller_array_datatype():
   os.remove('test.phil')
 
 # -----------------------------------------------------------------------------
+def test_default_filenames():
+  datatypes = ['model', 'ncs_spec', 'phil', 'real_map', 'restraint', 'sequence']
+  extensions = ['cif', 'ncs_spec', 'eff', 'mrc', 'cif', 'seq']
+  dm = DataManager(datatypes)
+  for datatype, extension in zip(datatypes, extensions):
+    filename = getattr(dm, 'get_default_output_{datatype}_filename'.
+                       format(datatype=datatype))()
+    assert filename == 'cctbx_program.' + extension
+
+  filename = dm.get_default_output_model_filename(extension='.abc')
+  assert filename == 'cctbx_program.abc'
+
+  class TestProgram(ProgramTemplate):
+    master_phil_str = """
+output {
+  serial = 0
+    .type = int
+}
+"""
+  master_phil = iotbx.phil.parse(TestProgram.master_phil_str)
+  working_phil = iotbx.phil.parse(ProgramTemplate.master_phil_str)
+  params = master_phil.fetch(working_phil).extract()
+  p = ProgramTemplate(dm, params, master_phil)
+  assert dm.get_default_output_filename() == 'cctbx_program_000'
+  dm.set_overwrite(True)
+  dm.write_model_file('abc')    # cctbx_program_000.cif
+  dm.write_phil_file('123')     # cctbx_program_000.eff
+  dm.write_phil_file('456')     # cctbx_program_001.eff
+  dm.write_model_file('def')    # cctbx_program_001.cif
+  assert dm.get_default_output_filename() == 'cctbx_program_001'
+  dm.write_sequence_file('ghi') # cctbx_program_001.seq
+  dm.write_sequence_file('hkl') # cctbx_program_002.seq
+  assert dm.get_default_output_filename() == 'cctbx_program_002'
+  assert os.path.isfile('cctbx_program_000.cif')
+  assert os.path.isfile('cctbx_program_001.cif')
+  assert os.path.isfile('cctbx_program_000.eff')
+  assert os.path.isfile('cctbx_program_001.eff')
+  assert os.path.isfile('cctbx_program_001.seq')
+  assert os.path.isfile('cctbx_program_002.seq')
+  os.remove('cctbx_program_000.cif')
+  os.remove('cctbx_program_001.cif')
+  os.remove('cctbx_program_000.eff')
+  os.remove('cctbx_program_001.eff')
+  os.remove('cctbx_program_001.seq')
+  os.remove('cctbx_program_002.seq')
+
+# -----------------------------------------------------------------------------
 if (__name__ == '__main__'):
 
   test_data_manager()
   test_model_datatype()
   test_sequence_datatype()
   test_miller_array_datatype()
+  test_default_filenames()
 
   if (libtbx.env.find_in_repositories(relative_path='chem_data') is not None):
     test_model_and_restraint()

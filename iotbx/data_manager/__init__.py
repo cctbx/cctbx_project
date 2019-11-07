@@ -1,4 +1,5 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 '''
 '''
 
@@ -10,6 +11,7 @@ from collections import OrderedDict
 import libtbx.phil
 
 from iotbx.file_reader import any_file
+from libtbx import Auto
 from libtbx.utils import multi_out, Sorry
 
 # =============================================================================
@@ -34,7 +36,7 @@ data_manager_type['hkl'] = 'miller_array'   # map hkl to parent, miller_array
 # e.g. iotbx/data_manager/model.py
 supported_datatypes = os.listdir(os.path.dirname(__file__))
 re_search = re.compile('.py$')
-supported_datatypes = filter(re_search.search, supported_datatypes)
+supported_datatypes = list(filter(re_search.search, supported_datatypes))
 supported_datatypes.remove('__init__.py')
 supported_datatypes.sort()
 for i in range(len(supported_datatypes)):
@@ -193,14 +195,22 @@ class DataManagerBase(object):
     self._output_files = list()
     self._output_types = list()
 
-    # load information from phil
-    if (phil is not None):
-      self.load_phil_scope(phil)
+    # set defaults
+    self._default_output_filename = 'cctbx_program'
+    self._overwrite = False
+    self._used_output_ext = set()
+
+    # set program
+    self._program = None
 
     # logger (currently used for models)
     self.logger = logger
     if (self.logger is None):
       self.logger = multi_out()
+
+    # load information from phil
+    if (phil is not None):
+      self.load_phil_scope(phil)
 
   # ---------------------------------------------------------------------------
   def export_phil_scope(self):
@@ -257,6 +267,12 @@ class DataManagerBase(object):
           # checks if file is already in DataManager
           getattr(self, 'process_%s_file' % datatype)(filename)
 
+    # other options
+    self._default_output_filename = getattr(
+      phil_extract.data_manager, 'default_output_filename', None)
+    self._overwrite = getattr(
+      phil_extract.data_manager, 'overwrite', False)
+
   # ---------------------------------------------------------------------------
   def supports(self, datatype):
     '''
@@ -264,6 +280,28 @@ class DataManagerBase(object):
     datatype
     '''
     return (datatype in self.datatypes)
+
+  # ---------------------------------------------------------------------------
+  def set_default_output_filename(self, filename):
+    self._default_output_filename = filename
+
+  def get_default_output_filename(self):
+    return self._default_output_filename
+
+  # ---------------------------------------------------------------------------
+  def set_overwrite(self, overwrite):
+    self._overwrite = overwrite
+
+  def get_overwrite(self, overwrite):
+    return self._overwrite
+
+  # ---------------------------------------------------------------------------
+  def set_program(self, program):
+    '''
+    Function for linking the program to the DataManager. This allows the
+    DataManager to update values in the program if necessary.
+    '''
+    self._program = program
 
   # ---------------------------------------------------------------------------
   # Generic functions for manipulating data
@@ -326,7 +364,7 @@ class DataManagerBase(object):
 
   def _get_names(self, datatype):
     self._set_datatype(datatype)
-    return self._get_current_storage().keys()
+    return list(self._get_current_storage().keys())
 
   def _get_default_name(self, datatype):
     self._set_datatype(datatype)
@@ -345,10 +383,9 @@ class DataManagerBase(object):
                 raise_sorry=False):
     self._set_datatype(datatype)
     actual_n = len(self._get_names(datatype))
-    v = cmp(actual_n, expected_n)
     if (exact_count):
       # exact count required
-      if (v != 0):
+      if (actual_n != expected_n):
         if (raise_sorry):
           raise Sorry('%i %s(s) found. Expected exactly %i.' %
                       (actual_n, datatype, expected_n))
@@ -358,10 +395,10 @@ class DataManagerBase(object):
         return True
     else:
       if (raise_sorry):
-        if (v < 0):
+        if (actual_n < expected_n):
           raise Sorry('%i %s(s) found. Expected at least %i.' %
                       (actual_n, datatype, expected_n))
-      return (v >= 0)
+      return (actual_n >= expected_n)
 
   def _process_file(self, datatype, filename):
     if (filename not in self._get_names(datatype)):
@@ -371,10 +408,53 @@ class DataManagerBase(object):
       else:
         self._add(datatype, filename, a.file_object)
 
-  def _write_text(self, datatype, filename, text_str, overwrite=False):
+  def _update_default_output_filename(self, filename):
+    '''
+    Increments program.params.serial by 1 and sets new default output
+    filename
+
+    Parameters
+    ----------
+    filename: str
+      The filename to be updated. This will only be done when the
+      filename follows the default output format.
+
+    Returns
+    -------
+    filename: str
+      The updated filename if it has been updated, otherwise the original
+      filename
+    '''
+    basename, ext = os.path.splitext(filename)
+    if basename == self._default_output_filename:
+      if ext in self._used_output_ext:
+        if (self._program is not None and
+            self._program.params.output.serial is not None):
+          self._program.params.output.serial += 1
+          self.set_default_output_filename(
+            self._program.get_default_output_filename())
+          basename = self.get_default_output_filename()
+          self._used_output_ext = set()
+      else:
+        self._used_output_ext.add(ext)
+      filename = basename + ext
+    return filename
+
+  def _write_text(self, datatype, text_str, filename=Auto, overwrite=Auto):
     '''
     Convenience function for writing text to file
     '''
+
+    # default options
+    if (filename is Auto):
+      filename = self._default_output_filename
+    if (overwrite is Auto):
+      overwrite = self._overwrite
+
+    # update default output filename, if necessary
+    filename = self._update_default_output_filename(filename)
+
+    # check arguments
     if (os.path.isfile(filename) and (not overwrite)):
       raise Sorry('%s already exists and overwrite is set to %s.' %
                   (filename, overwrite))

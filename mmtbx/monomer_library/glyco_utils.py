@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from string import digits
 from cctbx import geometry_restraints
 from libtbx.utils import Sorry
+from six.moves import range
 
 beta_1_4 = """
 data_link_BETA1-4
@@ -126,7 +127,7 @@ class glyco_link_class:
         for attr in attrs:
           atom = getattr(self, attr)
           if atom: atom = atom.quote()
-          print '  %-15s : %s' % (attr, atom)
+          print('  %-15s : %s' % (attr, atom))
       return False
     return True
 
@@ -402,10 +403,10 @@ def get_anomeric_hydrogen(anomeric_carbon, bonds):
 
 def get_link_oxygen(anomeric_carbon, bonds, verbose=False):
   if verbose:
-    print anomeric_carbon.quote()
-    print bonds.get(anomeric_carbon.i_seq)
+    print(anomeric_carbon.quote())
+    print(bonds.get(anomeric_carbon.i_seq))
   for ba in bonds.get(anomeric_carbon.i_seq, []):
-    if verbose: print ba.quote()
+    if verbose: print(ba.quote())
     if ba.element.strip() not in ["O"]: continue
     if ba.parent().id_str() != anomeric_carbon.parent().id_str():
       return ba
@@ -496,13 +497,13 @@ def get_glyco_link_atoms(atom_group1,
   if anomeric_carbon is None:
     assert 0
     return None
-  if verbose: print 'anomeric_carbon',anomeric_carbon.quote()
+  if verbose: print('anomeric_carbon',anomeric_carbon.quote())
   ring_oxygen = get_ring_oxygen(anomeric_carbon, bonds)
-  if verbose: print 'ring_oxygen',ring_oxygen.quote()
+  if verbose: print('ring_oxygen',ring_oxygen.quote())
   ring_carbon = get_ring_carbon(anomeric_carbon, bonds)
-  if verbose: print 'ring_carbon',ring_carbon.quote()
+  if verbose: print('ring_carbon',ring_carbon.quote())
   anomeric_hydrogen = get_anomeric_hydrogen(anomeric_carbon, bonds)
-  if verbose: print 'anomeric_hydrogen',anomeric_hydrogen
+  if verbose: print('anomeric_hydrogen',anomeric_hydrogen)
   link_oxygen = get_link_oxygen(anomeric_carbon, bonds, verbose=verbose)
   if link_oxygen is None:
     link_oxygen = get_link_oxygen_on_distance(anomeric_carbon,
@@ -510,7 +511,7 @@ def get_glyco_link_atoms(atom_group1,
                                               atom_group2)
   if link_oxygen is None:
     return None
-  if verbose: print 'link_oxygen',link_oxygen.quote()
+  if verbose: print('link_oxygen',link_oxygen.quote())
   link_carbon = get_link_carbon(anomeric_carbon, link_oxygen, bonds)
   if link_carbon is None and link_carbon_dist:
     link_carbon = get_link_carbon_on_distance(anomeric_carbon,
@@ -518,13 +519,13 @@ def get_glyco_link_atoms(atom_group1,
                                               atom_group2,
       )
   if verbose:
-    try: print 'link_carbon',link_carbon.quote()
-    except Exception: print
+    try: print('link_carbon',link_carbon.quote())
+    except Exception: print()
 
   link_phi_carbon = get_link_phi_carbon(link_carbon, bonds)
   if verbose:
-    try: print 'link_phi_carbon',link_phi_carbon.quote(), link_phi_carbon.name, ba.element.strip()
-    except Exception: print
+    try: print('link_phi_carbon',link_phi_carbon.quote(), link_phi_carbon.name, ba.element.strip())
+    except Exception: print()
 
   gla = glyco_link_class(anomeric_carbon,
                          ring_oxygen,

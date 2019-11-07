@@ -1,5 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.ssm_rmsd_for_chains
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 from mmtbx.geometry_restraints.torsion_restraints import utils
 from libtbx.utils import Sorry
@@ -27,13 +27,13 @@ def run(args):
         continue
       chains2.append(chain_i)
 
-  print "### SSM RMSD for chains"
-  print
-  print "PDB_1 = %s" % file1
-  print "PDB_2 = %s" % file2
-  print
-  print "PDB_1 chainID     PDB_2 chainID     SSM RMSD"
-  print "--------------------------------------------"
+  print("### SSM RMSD for chains")
+  print()
+  print("PDB_1 = %s" % file1)
+  print("PDB_2 = %s" % file2)
+  print()
+  print("PDB_1 chainID     PDB_2 chainID     SSM RMSD")
+  print("--------------------------------------------")
   for i, chain_i in enumerate(chains1):
     for j, chain_j in enumerate(chains2):
       ssm = None
@@ -41,14 +41,14 @@ def run(args):
         ssm, ssm_align = utils._ssm_align(
                            reference_chain = chain_i,
                            moving_chain = chain_j)
-      except RuntimeError, e:
+      except RuntimeError as e:
         if (str(e) != "can't make graph for first structure" and \
             str(e) != "secondary structure does not match"):
           raise e
       if ssm is not None:
-        print "%13s"%chain_i.id, "%17s"%chain_j.id, "%12.3f"%ssm.ssm.rmsd
+        print("%13s"%chain_i.id, "%17s"%chain_j.id, "%12.3f"%ssm.ssm.rmsd)
       else:
-        print "%13s"%chain_i.id, "%17s"%chain_j.id, "%12s"% ("None")
+        print("%13s"%chain_i.id, "%17s"%chain_j.id, "%12s"% ("None"))
 
 if __name__ == "__main__":
   run(args=sys.argv[1:])

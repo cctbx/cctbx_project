@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import libtbx.load_env
 from libtbx import easy_run
@@ -21,6 +21,8 @@ general_tests = [
   # TLS
   "$D/regression/tls/tst_tls.py",
   "$D/regression/tls/tst_tls_analysis.py",
+  "$D/regression/tls/tst_tls_utils.py",
+  "$D/regression/tls/tst_tls_optimise_amplitudes.py",
   "$D/regression/tls/tst_get_t_scheme.py",
   ["$D/regression/tls/tst_tls_refinement_fft.py", "--comprehensive", "--random_seed=2679941"],
   "$D/regression/tls/tst_u_tls_vs_u_ens_00.py",
@@ -111,6 +113,8 @@ general_tests = [
   "$D/monomer_library/tst_geo_reduce_for_tardy.py",
   "$D/monomer_library/tst_chg.py",
   "$D/monomer_library/tst_neutron_distance.py",
+  '$D/monomer_library/tst_carbo_linking.py',
+  '$D/monomer_library/tst_paral_geo.py',
   #
   "$D/regression/tst_altloc_remediate.py",
   "$D/hydrogens/build_hydrogens.py",
@@ -161,10 +165,11 @@ general_tests = [
   "$D/geometry_restraints/tst_reference_coordinate2.py",
   "$D/geometry_restraints/tst_c_beta_restraints.py",
   "$D/geometry_restraints/torsion_restraints/tst_torsion_ncs.py",
-  "$D/conformation_dependent_library/test_cdl.py",
-  "$D/conformation_dependent_library/test_cdl_esd.py",
-  "$D/conformation_dependent_library/test_rdl.py",
-  "$D/conformation_dependent_library/test_hpdl.py",
+  "$D/conformation_dependent_library/tst_cdl.py",
+  "$D/conformation_dependent_library/tst_cdl_esd.py",
+  "$D/conformation_dependent_library/tst_rdl.py",
+  "$D/conformation_dependent_library/tst_hpdl.py",
+  "$D/conformation_dependent_library/tst_cis_c_n_ca.py",
   "$D/conformation_dependent_library/tst_pH_mechanism.py",
   "$D/regression/tst_find_ss_structure.py",
   "$D/regression/tst_fix_rotamer_outliers.py",
@@ -290,11 +295,9 @@ general_tests = [
   # automatic linking
   "$D/monomer_library/tst_superpose_ideal.py",
   #
-  "$D/ions/tst_pick_ca_svm.py",
   "$D/scaling/tst_plan_sad_experiment.py",
   #
   "$D/regression/tst_models_to_from_chains.py",
-  "$D/regression/tst_helix_sheet_recs_as_pdb_files.py",
   # tNCS
   "$D/regression/tncs/tst_pair.py",
   "$D/regression/tncs/tst_epsfac_and_radius.py",
@@ -328,6 +331,7 @@ general_tests = [
   "$D/geometry/tests/tst_sphere_surface_sampling.py",
   "$D/geometry/tests/tst_topology.py",
   #
+  "$D/nci/tst_hbond.py",
   "$D/wwpdb/tst_rcsb_web_services.py",
   "$D/wwpdb/tst_utils.py",
   "$D/monomer_library/tst_all_cif_files.py",
@@ -350,7 +354,7 @@ general_tests = [
   "$D/building/tst_make_library.py",
   "$D/regression/real_space_refine_chain/tst_00.py",
   "$D/regression/real_space_refine_chain/tst_01.py",
-  "$D/conformation_dependent_library/test_omega_cdl.py",
+  "$D/conformation_dependent_library/tst_omega_cdl.py",
   "$D/regression/fix_cablam/tst_basic_cl_operations.py",
   "$D/regression/fix_cablam/tst_single_outliers_surroundings.py",
   "$D/regression/fix_cablam/tst_one_resid_rotation.py",
@@ -360,6 +364,9 @@ general_tests = [
   ]
 
 probe_tests = [
+  "$D/regression/tst_rama_z_01.py",
+  "$D/regression/pdb_interpretation/tst_edits.py",
+  "$D/regression/pdb_interpretation/tst_edits_actions.py",
   "$D/regression/tst_add_arrows_on_plot.py",
   "$D/regression/model/tst_model.py",
   "$D/regression/tst_reduce_timeout.py",
@@ -417,7 +424,7 @@ probe_tests = [
 if libtbx.env.has_module(name="probe"):
   tst_list = tuple(general_tests + probe_tests)
 else:
-  print "Skipping %d probe tests: probe not configured"%len(probe_tests)
+  print("Skipping %d probe tests: probe not configured"%len(probe_tests))
   tst_list = tuple(general_tests)
 
 def run():

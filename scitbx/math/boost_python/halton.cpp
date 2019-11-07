@@ -41,6 +41,7 @@ namespace {
                                arg("low_y"),
                                arg("high_y") )))
          .def("next", &w_t::next )
+         .def("__next__", &w_t::next )
          .def("start", &w_t::start )
          .def("state", &w_t::state )
          .def("set_state", &w_t::set_state )

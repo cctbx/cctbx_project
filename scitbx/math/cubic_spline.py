@@ -3,7 +3,8 @@ Inspired by Press, Teukolsky, Vetterling, Flannery (1992).
 Numerical Recipes in C.  Cambridge University Press.
 Chapter 3.3.  Cubic Spline Interpolation.
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from six.moves import range
 
 class cubic_spline:  #Should be re-implemented in C++/Boost Python
   def __init__(self,xarr,yarr,lo_deriv1=None,hi_deriv1=None):
@@ -18,7 +19,7 @@ class cubic_spline:  #Should be re-implemented in C++/Boost Python
       self.deriv2[0] = -0.5;
       tempu[0] = (3./(xarr[1]-xarr[0]))*((yarr[1]-yarr[0])/(xarr[1]-xarr[0])-lo_deriv1)
 
-    for i in xrange(1,len(xarr)-1):
+    for i in range(1,len(xarr)-1):
       sig = (xarr[i]-xarr[i-1])/(xarr[i+1]-xarr[i-1])
       p = sig*self.deriv2[i-1]+2.0
       self.deriv2[i] = (sig-1.0)/p
@@ -35,7 +36,7 @@ class cubic_spline:  #Should be re-implemented in C++/Boost Python
            (hi_deriv1-(yarr[NX-1]-yarr[NX-2])/(xarr[NX-1]-xarr[NX-2]))
 
     self.deriv2[NX-1] = (un-qn*tempu[NX-2])/(qn*self.deriv2[NX-2]+1.0)
-    for k in xrange(NX-2,-1,-1):
+    for k in range(NX-2,-1,-1):
       self.deriv2[k]=self.deriv2[k]*self.deriv2[k+1]+tempu[k]
     self.xarr = xarr
     self.yarr = yarr
@@ -56,10 +57,10 @@ class cubic_spline:  #Should be re-implemented in C++/Boost Python
 
 def test_case_1(plt):
   import math
-  xarr = xrange(0,11)
+  xarr = range(0,11)
   yarr = [math.sin(x) for x in xarr]
   CS = cubic_spline(xarr,yarr)
-  xsam = [(x+.5)/10. for x in xrange(-1,101)]
+  xsam = [(x+.5)/10. for x in range(-1,101)]
   ysam = [CS.get_y(x) for x in xsam]
   plt.plot(xarr,yarr,"r+")
   plt.plot(xsam,ysam,"g.")
@@ -67,10 +68,10 @@ def test_case_1(plt):
 
 def test_case_2(plt):
   import math
-  xarr = xrange(-4,5)
+  xarr = range(-4,5)
   yarr = [0., 0.15, 1.12, 2.36, 2.36, 1.46, .49, .06, 0.]
   CS = cubic_spline(xarr,yarr,lo_deriv1=0.,hi_deriv1=0.)
-  xsam = [(x+.5)/10. for x in xrange(-41,41)]
+  xsam = [(x+.5)/10. for x in range(-41,41)]
   ysam = [CS.get_y(x) for x in xsam]
   plt.plot(xarr,yarr,"r+")
   plt.plot(xsam,ysam,"g.")

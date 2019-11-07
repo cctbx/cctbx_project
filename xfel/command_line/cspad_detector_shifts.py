@@ -11,7 +11,7 @@
 #
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_shifts
 #
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 from scitbx.array_family import flex
 from scitbx.matrix import col
@@ -19,13 +19,14 @@ from libtbx.phil import parse
 from libtbx.utils import Sorry
 from xfel.command_line.cspad_detector_congruence import get_center
 import libtbx.load_env
+from six.moves import zip
 
 help_message = '''
 
 This program is used to show differences between a reference and a moving set of detectors
 Example:
 
-  %s experiment1.json experiment2.json reflections1.pickle reflections2.pickle
+  %s experiment1.expt experiment2.expt reflections1.refl reflections2.refl
 ''' % libtbx.env.dispatcher_name
 
 # Create the phil parameters
@@ -47,38 +48,32 @@ class Script(ParentScript):
     import libtbx.load_env
 
     # Create the option parser
-    usage = "usage: %s experiment1.json experiment2.json reflections1.pickle reflections2.pickle" % libtbx.env.dispatcher_name
+    usage = "usage: %s experiment1.expt experiment2.expt reflections1.refl reflections2.refl" % libtbx.env.dispatcher_name
     self.parser = OptionParser(
       usage=usage,
       sort_options=True,
       phil=phil_scope,
       read_experiments=True,
-      read_datablocks=True,
       read_reflections=True,
       check_format=False,
       epilog=help_message)
 
   def run(self):
     ''' Parse the options. '''
-    from dials.util.options import flatten_experiments, flatten_datablocks, flatten_reflections
+    from dials.util.options import flatten_experiments, flatten_reflections
     # Parse the command line arguments
     params, options = self.parser.parse_args(show_diff_phil=True)
     self.params = params
     experiments = flatten_experiments(params.input.experiments)
-    datablocks = flatten_datablocks(params.input.datablock)
     reflections = flatten_reflections(params.input.reflections)
 
     # Find all detector objects
     detectors = []
     detectors.extend(experiments.detectors())
-    dbs = []
-    for datablock in datablocks:
-      dbs.extend(datablock.unique_detectors())
-    detectors.extend(dbs)
 
     # Verify inputs
     if len(detectors) != 2:
-      raise Sorry("Please provide a reference and a moving set of experiments and or datablocks")
+      raise Sorry("Please provide a reference and a moving set of experiments")
 
     reflections = reflections[1]
     detector = detectors[1]
@@ -92,7 +87,7 @@ class Script(ParentScript):
       while root.is_group():
         root = root[0]
         params.max_hierarchy_level += 1
-      print "Found", params.max_hierarchy_level+1, "hierarchy levels"
+      print("Found", params.max_hierarchy_level+1, "hierarchy levels")
 
     reference_root = detectors[0].hierarchy()
     moving_root = detector.hierarchy()
@@ -271,14 +266,14 @@ class Script(ParentScript):
       table_data.append(ws_row)
 
       from libtbx import table_utils
-      print "Hierarchy level %d Detector shifts"%level
-      print table_utils.format(table_data,has_header=2,justify='center',delim=" ")
+      print("Hierarchy level %d Detector shifts"%level)
+      print(table_utils.format(table_data,has_header=2,justify='center',delim=" "))
 
-    print "Detector shifts summary"
-    print table_utils.format(summary_table_data,has_header=3,justify='center',delim=" ")
+    print("Detector shifts summary")
+    print(table_utils.format(summary_table_data,has_header=3,justify='center',delim=" "))
 
-    print
-    print """
+    print()
+    print("""
 For each hierarchy level, the average shifts in are computed among objects at that level, weighted by the number of reflections recorded on each object. For example, for a four quadrant detector, the average Z shift will be the average of the four quadrant Z values, each weighted by the number of reflections on that quadrant.
 
 -------------------
@@ -297,7 +292,7 @@ Z offsets: relative shifts in the local frame in the local Z direction.
 R, T Norm: angle between normal vectors in lab space, projected onto the radial or transverse plane.
 Local dNorm: local relative angle between normal vectors.
 Rot Z: rotation around detector normal in lab space
-"""
+""")
 
 if __name__ == '__main__':
   from dials.util import halraiser

@@ -1,9 +1,9 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import absolute_import, division, print_function
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 03/06/2019
+Last Changed: 10/31/2019
 Description : Subclasses image object and image importer from base classes.
 '''
 
@@ -16,11 +16,13 @@ import iota.components.iota_utils as util
 from iota.components.iota_base import SingleImageBase, ImageImporterBase
 
 class SingleImage(SingleImageBase):    # For current cctbx.xfel
-  def __init__(self, imgpath, idx=None):
-    SingleImageBase.__init__(self, imgpath=imgpath, idx=idx)
-    self.center_int = None
+  def __init__(self, imgpath, idx=None, img_idx=0, is_multi_image=False):
+    SingleImageBase.__init__(self, imgpath=imgpath, idx=idx, img_idx=img_idx)
+    self.center_int = 0
     self.gain = 1.0
-    self.img_index = idx
+    self.input_index = idx
+    self.img_index = img_idx
+    self.is_multi_image = is_multi_image
 
 class ImageImporter(ImageImporterBase):
   def __init__(self, **kwargs):
@@ -28,12 +30,6 @@ class ImageImporter(ImageImporterBase):
 
     self.auto_threshold = kwargs['threshold'] if 'threshold' in kwargs else False
     self.estimate_gain = kwargs['gain'] if 'gain' in kwargs else False
-
-  def instantiate_image_object(self, filepath, idx=None):
-    ''' Instantiate a SingleImage object for current backend
-    :param filepath: path to image file
-    '''
-    self.img_object = SingleImage(imgpath=filepath, idx=idx)
 
   def calculate_parameters(self, experiments=None):
     ''' Image modification for current cctbx.xfel '''

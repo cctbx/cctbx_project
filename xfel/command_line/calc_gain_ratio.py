@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -9,6 +9,7 @@ from libtbx import phil
 from libtbx.utils import Sorry
 import psana
 from scitbx.array_family import flex
+from six.moves import zip
 
 help_message = """
 Program to compute the gain ratio for the CSPAD detector in mixed gain mode. For each pair of adjacent pixels, if one is in high gain mode and the other in low gain mode, then the ratio between them is computed. These ratios are averaged for each panel and the average over the whole detector is reported.
@@ -38,7 +39,7 @@ phil_scope = phil.parse(phil_str)
 
 def run(args):
   if "-c" in args or "-h" in args or "--help" in args:
-    print help_message
+    print(help_message)
   user_phil = []
   for arg in args :
     try :
@@ -50,7 +51,7 @@ def run(args):
   img = dxtbx.load(params.average)
   dataset_name = "exp=%s:run=%s:idx"%(params.experiment,params.run)
   ds = psana.DataSource(dataset_name)
-  run = ds.runs().next()
+  run = next(ds.runs())
 
   psana_det = psana.Detector(params.address, ds.env())
   psana_gain_mask = psana_det.gain_mask()
@@ -86,16 +87,16 @@ def run(args):
       ratio = panel_sum/panel_count
       ratios.append(ratio)
       counts.append(panel_count)
-      print "Panel", panel_id, "ratio:", ratio, "N pairs", panel_count
+      print("Panel", panel_id, "ratio:", ratio, "N pairs", panel_count)
 
   if len(ratios) <= 1:
     return
-  print "Mean:", flex.mean(ratios)
-  print "Standard deviation", flex.mean_and_variance(ratios).unweighted_sample_standard_deviation()
+  print("Mean:", flex.mean(ratios))
+  print("Standard deviation", flex.mean_and_variance(ratios).unweighted_sample_standard_deviation())
 
   stats = flex.mean_and_variance(ratios, counts.as_double())
-  print "Weighted mean:", stats.mean()
-  print "Weighted standard deviation", stats.gsl_stats_wsd()
+  print("Weighted mean:", stats.mean())
+  print("Weighted standard deviation", stats.gsl_stats_wsd())
 
 if __name__ == "__main__":
   run(sys.argv[1:])

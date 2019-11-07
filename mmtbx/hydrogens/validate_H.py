@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 from iotbx.pdb import common_residue_names_get_class
 from libtbx import group_args
 from libtbx.str_utils import make_sub_header
@@ -6,6 +6,7 @@ from mmtbx.validation import restraints
 from mmtbx.validation.molprobity import mp_geo
 #from libtbx.utils import Sorry
 from mmtbx.rotamer import rotamer_eval
+from six.moves import zip
 
 protein = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
   "modified_rna_dna", "ccp4_mon_lib_rna_dna"]
@@ -115,18 +116,29 @@ class validate_H(object):
           if (atom_name == 'H' and
             ('H1' in atom_name_list and 'H2' in atom_name_list and 'H3' in atom_name_list)):
             continue
-          atom_temp = atom_name.replace("*", "'")
+          if (atom_name.endswith('*')):
+            atom_temp = atom_name.replace("*", "'")
+          elif (atom_name.endswith('*1')):
+            atom_temp = atom_name.replace("*1", "'")
+          elif (atom_name.endswith('*2')):
+            atom_temp = atom_name.replace("*2", "''")
+          else:
+            atom_temp = atom_name
+
 #          if atom_name.upper() == "O1P":
 #            atom_temp = "OP1"
 #          elif atom_name.upper() == "O2P":
 #            atom_temp = "OP2"
           if atom_temp not in atom_name_list:
-            missing.append(atom_name)
+            if atom_temp.endswith("'"):
+              missing.append(atom_temp)
+            else:
+              missing.append(atom_name)
     return ca_xyz, missing
 
   def missing_hydrogens(self):
     missing_HD_atoms = []
-    from mmtbx.rotamer import rotamer_eval
+    #from mmtbx.rotamer import rotamer_eval
     get_class = common_residue_names_get_class
     for model in self.pdb_hierarchy.models():
       for chain in model.chains():

@@ -4,6 +4,7 @@ from boost_adaptbx import graph
 from boost_adaptbx.graph import clustering_algorithm
 
 import unittest
+from six.moves import range
 
 
 class TestBetweennessCentralityClustering(unittest.TestCase):

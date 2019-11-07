@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
 from libtbx.utils import Sorry
@@ -111,7 +111,7 @@ def exercise():
   exercise_presence_of_h()
   exercise_ca_absent()
   exercise_some_atoms_are_absent()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

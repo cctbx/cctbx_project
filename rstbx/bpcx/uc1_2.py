@@ -1,5 +1,5 @@
-from __future__ import division
-from six.moves import range
+from __future__ import absolute_import, division, print_function
+from six.moves import range, zip
 #!/usr/bin/env cctbx.python
 #
 # Biostruct-X Data Reduction Use Case 1.2:
@@ -67,7 +67,7 @@ def Py_remove_absent_indices(indices, space_group_number):
 def parse_xds_xparm_scan_info(xparm_file):
     '''Read an XDS XPARM file, get the scan information.'''
 
-    values = map(float, open(xparm_file).read().split())
+    values = [float(x) for x in open(xparm_file).read().split()]
 
     assert(len(values) == 42)
 
@@ -242,10 +242,10 @@ def test(configuration_file, img_range, dmin = None):
       s = obs_slow[iobs]
       angle = obs_angle[iobs]
 
-      print '%5d %5d %5d' % hkl, '%11.4f %11.4f %9.2f' % (
+      print('%5d %5d %5d' % hkl, '%11.4f %11.4f %9.2f' % (
             f / mp.pixel_size_fast, s / mp.pixel_size_slow,
             (mp.img_start - 1) + ((angle * r2d) - mp.osc_start) / \
-             mp.osc_range)
+             mp.osc_range))
 
 if __name__ == '__main__':
     if len(sys.argv) < 4:

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.phil
 from libtbx.utils import Sorry
 import sys, os, re
@@ -49,7 +49,7 @@ def run(args=(), params=None, out=sys.stdout):
     f.write("\n".join(fasta_seqs))
     f.close()
   else :
-    print "\n".join(fasta_seqs)
+    print("\n".join(fasta_seqs))
   return params.output_file
 
 def validate_params(params):

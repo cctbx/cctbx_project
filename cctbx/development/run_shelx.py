@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import adptbx
 from cctbx import eltbx
 import cctbx.eltbx.xray_scattering
@@ -9,8 +9,9 @@ from iotbx.shelx.write_ins import LATT_SYMM
 from scitbx.python_utils import dicts
 import libtbx.path
 from libtbx import easy_run
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys, os
+from six.moves import range
 
 def calculate_cell_content(xray_structure):
   result = dicts.with_default_value(0)
@@ -24,7 +25,7 @@ def SFAC_DISP_UNIT(xray_structure, short_sfac):
   UNIT = []
   if (short_sfac):
     celcon = calculate_cell_content(xray_structure)
-    l("SFAC " + " ".join(celcon.keys()))
+    l("SFAC " + " ".join(celcon))
     for sf in celcon.keys():
       l("DISP %s 0 0 0" % (sf,))
       UNIT.append(str(max(1, int(celcon[sf] + 0.5))))
@@ -58,7 +59,7 @@ def FIX(x):
 
 def atoms(xray_structure, short_sfac):
   if (short_sfac):
-    celcon = calculate_cell_content(xray_structure).keys()
+    celcon = list(calculate_cell_content(xray_structure).keys())
   lines = []
   l = lines.append
   i = 0
@@ -99,14 +100,14 @@ def HKLF(lapp, f_calc, skip_zeros=False):
 def pre_check(xray_structure):
   if (len(xray_structure.scatterers()) > 99):
     # SHELX WPDB will mess up atom labels.
-    raise RuntimeError, "Cannot handle more than 99 scatterer."
+    raise RuntimeError("Cannot handle more than 99 scatterer.")
   for scatterer in xray_structure.scatterers():
     if (scatterer.occupancy > 1.1):
-      raise RuntimeError, "Error: occupancy too large: %s: %.6g" % (
-        scatterer.label, scatterer.occupancy)
+      raise RuntimeError("Error: occupancy too large: %s: %.6g" % (
+        scatterer.label, scatterer.occupancy))
     if (scatterer.u_iso > 1.0):
-      raise RuntimeError, "Error: u_iso too large: %s: %.6g" % (
-        scatterer.label, scatterer.u_iso)
+      raise RuntimeError("Error: u_iso too large: %s: %.6g" % (
+        scatterer.label, scatterer.u_iso))
 
 def check_r1(miller_set, shelx_lst, verbose):
   for l in shelx_lst:
@@ -115,13 +116,13 @@ def check_r1(miller_set, shelx_lst, verbose):
       R1 = float(flds[9])
       n_data = int(flds[12])
       if (len(miller_set.indices()) != n_data):
-        raise RuntimeError, "Shelx lost Miller indices."
+        raise RuntimeError("Shelx lost Miller indices.")
       if (0 or verbose):
-        print "R1", R1, miller_set.space_group_info()
+        print("R1", R1, miller_set.space_group_info())
       if (R1 > 0.01):
-        raise RuntimeError, "Error: " + l[:-1]
+        raise RuntimeError("Error: " + l[:-1])
       return
-  raise RuntimeError, "R1 not found in Shelx .lst file."
+  raise RuntimeError("R1 not found in Shelx .lst file.")
 
 def check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose):
   # SHELXL WPDB does not include H atoms. Therefore we
@@ -146,20 +147,20 @@ def check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose):
         xray_structure.unit_cell(), xray_structure.scatterers()[i].u_star)
       mismatch = 0
       s = ""
-      for i in xrange(6):
+      for i in range(6):
         u_shelx = int(u[i*7:(i+1)*7])
         u_adptbx = int(round(u_cart[i] * 1.e+4,))
         s += "%7d" % u_adptbx
         if (abs(u_shelx - u_adptbx) > 1): mismatch = 1
       if (mismatch != 0):
-        print l[:-1]
-        print u
-        print s
-        print "Error: ANISOU mismatch."
+        print(l[:-1])
+        print(u)
+        print(s)
+        print("Error: ANISOU mismatch.")
         TotalMismatches += 1
   if (0 or verbose or TotalMismatches > 0):
-    print shelx_titl + (": ANISOU mismatches: %d of %d" % (
-      TotalMismatches, TotalANISOU))
+    print(shelx_titl + (": ANISOU mismatches: %d of %d" % (
+      TotalMismatches, TotalANISOU)))
   assert TotalMismatches == 0
 
 def run_shelx(shelx_titl, structure_factors, short_sfac=False, verbose=0):
@@ -186,7 +187,7 @@ def run_shelx(shelx_titl, structure_factors, short_sfac=False, verbose=0):
   HKLF(l, f_calc)
   with open("tmp%02d.ins" % run_shelx.counter, "w") as f:
     for l in lines:
-      if (0 or verbose): print l
+      if (0 or verbose): print(l)
       f.write(l + "\n")
   sys.stdout.flush()
   sys.stderr.flush()
@@ -197,14 +198,14 @@ def run_shelx(shelx_titl, structure_factors, short_sfac=False, verbose=0):
     .raise_if_errors() \
     .stdout_lines
   if (0 or verbose):
-    for l in shelxl_out: print l
+    for l in shelxl_out: print(l)
   sys.stderr.flush()
   with open("tmp%02d.lst" % run_shelx.counter, "r") as f:
     shelx_lst = f.readlines()
   with open("tmp%02d.pdb" % run_shelx.counter, "r") as f:
     shelx_pdb = f.readlines()
   if (0 or verbose):
-    for l in shelx_lst: print l[:-1]
+    for l in shelx_lst: print(l[:-1])
   sys.stdout.flush()
   check_r1(f_calc, shelx_lst, verbose)
   check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose)
@@ -236,7 +237,7 @@ def exercise(space_group_info,
 def run_call_back(flags, space_group_info):
   sg = space_group_info.group()
   if (sg.is_centric() and not sg.is_origin_centric()):
-    print "Skipping space group: centre of inversion is not at origin."
+    print("Skipping space group: centre of inversion is not at origin.")
     return
   for anomalous_flag in (False, True):
     for use_u_aniso in (False, True):
@@ -245,7 +246,7 @@ def run_call_back(flags, space_group_info):
 
 def run(args):
   if (libtbx.path.full_command_path(command="shelxl") is None):
-    print "shelxl not available."
+    print("shelxl not available.")
     return
   debug_utils.parse_options_loop_space_groups(args, run_call_back)
 

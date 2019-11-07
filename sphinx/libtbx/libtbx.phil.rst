@@ -1328,7 +1328,7 @@ but all information is preserved with the usually much less verbose
     }
     """)
 
-  for attributes_level in xrange(4):
+  for attributes_level in range(4):
     master_phil.show(attributes_level=attributes_level)
 
   ## extract code end

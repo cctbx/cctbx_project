@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import omz
 import cctbx.omz.dev
 from cctbx.array_family import flex
@@ -8,9 +8,11 @@ from libtbx import easy_pickle
 from libtbx.utils import date_and_time, user_plus_sys_time
 import libtbx.load_env
 from libtbx import Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import traceback
 import sys, os
+from six.moves import range
+from six.moves import zip
 op = os.path
 
 def get_master_phil(
@@ -125,7 +127,7 @@ def show_cc_r1(
   cc = corr.coefficient()
   r1 = f_obs.r1_factor(
     other=fc_abs, scale_factor=scale_factor, assume_index_matching=True)
-  print "%-12s cc, r1: %.4f %.4f" % (label, cc, r1)
+  print("%-12s cc, r1: %.4f %.4f" % (label, cc, r1))
   sys.stdout.flush()
   return fc_abs, cc, r1
 
@@ -149,14 +151,14 @@ def run_smtbx_ls(mode, cod_id, i_obs, f_obs, xray_structure, params):
     weighting_scheme=smtbx.refinement.least_squares.unit_weighting())
   ls = rm.least_squares()
   if (mode == "simple"):
-    for i_cycle in xrange(params.ls_simple_iterations):
+    for i_cycle in range(params.ls_simple_iterations):
       ls.build_up()
       try:
         ls.solve_and_step_forward()
-      except RuntimeError, e:
+      except RuntimeError as e:
         if (str(e).find("cholesky.failure") <= 0): raise
-        print 'Aborting run_smtbx_ls("simple"): cholesky.failure: %s' \
-          % cod_id
+        print('Aborting run_smtbx_ls("simple"): cholesky.failure: %s' \
+          % cod_id)
         break
       for sc in xray_structure.scatterers():
         if (sc.u_iso <= 0 or sc.u_iso > 1):
@@ -172,12 +174,12 @@ def run_smtbx_ls(mode, cod_id, i_obs, f_obs, xray_structure, params):
         gradient_threshold=thresh,
         step_threshold=thresh,
         tau=1e-7)
-    except RuntimeError, e:
+    except RuntimeError as e:
       if (not str(e).startswith(
             "cctbx::adptbx::debye_waller_factor_exp: arg_limit exceeded")):
         raise
-      print 'Aborting run_smtbx_ls("lm"):' \
-        ' debye_waller_factor_exp failure: %s' % cod_id
+      print('Aborting run_smtbx_ls("lm"):' \
+        ' debye_waller_factor_exp failure: %s' % cod_id)
     show_cc_r1(params, "smtbx_lm", f_obs, xray_structure)
     tm.show_elapsed(prefix="time levenberg_marquardt_iterations: ")
   else:
@@ -249,7 +251,7 @@ def run_shelxl(
     for line in buffers.stdout_lines:
       if (line.find("** REFINEMENT UNSTABLE **") >= 0):
         refinement_unstable = True
-        print "Aborted: shelxl %s refinement unstable: %s" % (mode, cod_id)
+        print("Aborted: shelxl %s refinement unstable: %s" % (mode, cod_id))
         break
     res = open("tmp.res").read()
     try:
@@ -257,11 +259,11 @@ def run_shelxl(
         file=StringIO(res),
         min_distance_sym_equiv=0,
         strictly_shelxl=False)
-    except iotbx.shelx.error, e:
+    except iotbx.shelx.error as e:
       if (str(e).find("scatterer parameter") < 0):
         raise
-      print "Aborted: shelxl %s refinement apparently unstable: %s" % (
-        mode, cod_id)
+      print("Aborted: shelxl %s refinement apparently unstable: %s" % (
+        mode, cod_id))
       refined = None
     if (refined is not None):
       assert refined.crystal_symmetry().is_similar_symmetry(
@@ -281,11 +283,11 @@ def run_shelxl(
           site_special = site_symmetry.special_op() * sc.site
           d = uc.mod_short_distance(sc.site, site_special)
           if (d > 1e-3):
-            print "site moved off special position:"
-            print "  %s" % sc.label
-            print "    shelxl res: %11.6f %11.6f %11.6f" % sc.site
-            print "    special_op: %11.6f %11.6f %11.6f" % site_special
-            print "    distance moved: %.3f" % d
+            print("site moved off special position:")
+            print("  %s" % sc.label)
+            print("    shelxl res: %11.6f %11.6f %11.6f" % sc.site)
+            print("    special_op: %11.6f %11.6f %11.6f" % site_special)
+            print("    distance moved: %.3f" % d)
             result = False
         return result
       assert check_special_positions()
@@ -334,8 +336,8 @@ def run_shelxl(
             if (sg_symbol in ["P 63 m c", "P 63 c m"]):
               assert n_caos == 1
               assert res_n_restraints == 0
-              print "INFO: SHELXL restraint count incorrect? code_code:", \
-                cod_id
+              print("INFO: SHELXL restraint count incorrect? code_code:", \
+                cod_id)
             else:
               raise_unexpected_restraints(n_caos)
         elif (mode == "cg"):
@@ -347,13 +349,13 @@ def run_shelxl(
         fc_abs, _, r1_fvar = show_cc_r1(
           params, "fvar_"+mode, f_obs, xray_structure, scale_factor=res_osf)
         r1_diff = r1_fvar - res_r1
-        print "R1 recomputed - shelxl_%s.res: %.4f - %.4f = %.4f %s" % (
-          mode, r1_fvar, res_r1, r1_diff, cod_id)
+        print("R1 recomputed - shelxl_%s.res: %.4f - %.4f = %.4f %s" % (
+          mode, r1_fvar, res_r1, r1_diff, cod_id))
         if (abs(r1_diff) > 0.01):
           raise RuntimeError("R1 MISMATCH %s" % cod_id)
         _, _, r1_auto = show_cc_r1(
           params, "shelxl_"+mode, f_obs, fc_abs=fc_abs)
-        print "R1 FVAR-Auto %s: %.4f" % (cod_id, r1_fvar - r1_auto)
+        print("R1 FVAR-Auto %s: %.4f" % (cod_id, r1_fvar - r1_auto))
         #
         lst_r1 = None
         lst_wr2 = None
@@ -385,8 +387,8 @@ def run_shelxl(
           info = " significantly different"
         else:
           info = ""
-        print "wR2 recomputed - shelxl_%s.lst: %.4f - %.4f = %.4f %s%s" % (
-          mode, wr2, lst_wr2, wr2_diff, cod_id, info)
+        print("wR2 recomputed - shelxl_%s.lst: %.4f - %.4f = %.4f %s%s" % (
+          mode, wr2, lst_wr2, wr2_diff, cod_id, info))
         if (abs(wr2_diff) / max(lst_wr2, wr2) > 0.2):
           raise RuntimeError("wR2 MISMATCH %s" % cod_id)
     if (not params.keep_tmp_files):
@@ -440,18 +442,18 @@ def run_shelx76(
     for line in lst:
       l = line.lstrip()
       if (l.startswith("R = ")):
-        print l
+        print(l)
         flds = l.split()
         assert len(flds) == 12
         if (flds[2].lower() == "nan"):
-          print "Aborted: shelx76 refinement apparently unstable: %s" % (
-            cod_id)
+          print("Aborted: shelx76 refinement apparently unstable: %s" % (
+            cod_id))
           r_from_lst = "nan"
           break
         r_from_lst = float(flds[2])
     assert r_from_lst is not None
     if (r_from_lst != "nan"):
-      print "%-12s cc, r1: None %.4f" % ("shelx76", r_from_lst)
+      print("%-12s cc, r1: None %.4f" % ("shelx76", r_from_lst))
       if (not params.keep_tmp_files):
         remove_tmp_files(tmp_file_names)
         remove_wdir = wdir_is_new
@@ -463,7 +465,7 @@ def run_shelx76(
 
 def process(params, pickle_file_name):
   cod_id = op.basename(pickle_file_name).split(".",1)[0]
-  print "cod_id:", cod_id
+  print("cod_id:", cod_id)
   c_obs, structure_prep, edge_list = easy_pickle.load(
     file_name=pickle_file_name)
   changes = structure_prep.make_scatterer_labels_shelx_compatible_in_place()
@@ -476,13 +478,13 @@ def process(params, pickle_file_name):
   structure_prep.show_summary().show_scatterers()
   if (len(changes) != 0):
     from libtbx.utils import plural_s
-    print "INFO: %d atom name%s changed for compatibility with SHELXL:" \
-      % plural_s(len(changes))
+    print("INFO: %d atom name%s changed for compatibility with SHELXL:" \
+      % plural_s(len(changes)))
     for change in changes:
-      print '  changed: "%s" -> "%s"' % change
+      print('  changed: "%s" -> "%s"' % change)
   structure_prep.scattering_type_registry(table="it1992").show()
   fvar_encoding.dev_build_shelx76_fvars(structure_prep) # only an exercise
-  print "."*79
+  print("."*79)
   #
   if (len(params.optimizers) == 0):
     return
@@ -511,20 +513,20 @@ def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
   n_outliers = sel.count(True)
   if (n_outliers != 0):
     action = params.f_obs_f_calc_fan_outliers
-    print "INFO: f_obs_f_calc_fan_outliers = %s: %d" % (action, n_outliers)
+    print("INFO: f_obs_f_calc_fan_outliers = %s: %d" % (action, n_outliers))
     if (action == "remove"):
       i_obs = i_obs.select(~sel)
       f_obs = f_obs.select(~sel)
   if (f_obs.anomalous_flag()):
-    print "INFO: converting anomalous i+f_obs to non-anomalous."
+    print("INFO: converting anomalous i+f_obs to non-anomalous.")
     i_obs = i_obs.average_bijvoet_mates()
     f_obs = f_obs.average_bijvoet_mates()
   sel = ((i_obs.data() == 0) & (i_obs.sigmas() == 0)) \
       | ((f_obs.data() == 0) & (f_obs.sigmas() == 0))
   n_zero_d_and_s = sel.count(True)
   if (n_zero_d_and_s != 0):
-    print "INFO: removing reflections with i+f_obs=0 and sigma=0:", \
-      n_zero_d_and_s
+    print("INFO: removing reflections with i+f_obs=0 and sigma=0:", \
+      n_zero_d_and_s)
     i_obs = i_obs.select(~sel)
     f_obs = f_obs.select(~sel)
   p = params.f_calc_options
@@ -533,7 +535,7 @@ def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
     algorithm=p.algorithm,
     cos_sin_table=p.cos_sin_table).f_calc()
   if (params.use_f_calc_as_f_obs):
-    print "INFO: using f_calc as i+f_obs"
+    print("INFO: using f_calc as i+f_obs")
     i_obs = f_calc.intensities().customized_copy(
       sigmas=flex.double(f_calc.indices().size(), 0.01))
     f_obs = f_calc.amplitudes().customized_copy(
@@ -545,48 +547,48 @@ def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
     k = f_obs.scale_factor(f_calc=f_calc)
     assert k != 0
     s = 1/k**2
-    print "INFO: scaling i_obs to f_calc by multiplying i_obs with: %.6g" % s
+    print("INFO: scaling i_obs to f_calc by multiplying i_obs with: %.6g" % s)
     i_obs = i_obs.apply_scaling(factor=s)
     s = 1/k
-    print "INFO: scaling f_obs to f_calc by multiplying f_obs with: %.6g" % s
+    print("INFO: scaling f_obs to f_calc by multiplying f_obs with: %.6g" % s)
     f_obs = f_obs.apply_scaling(factor=s)
   def show(obs):
     obs.show_comprehensive_summary()
-    from cif_refine import \
+    from cctbx.omz.cif_refine import \
       report_fraction_of_negative_observations_if_any as _
     _(cod_id, obs)
   if (c_obs.is_xray_intensity_array()):
     show(i_obs)
   else:
     show(f_obs)
-  print "."*79
+  print("."*79)
   #
   structure_work = structure_prep.deep_copy_scatterers()
   sel = structure_work.hd_selection()
-  print "Removing hydrogen atoms:", sel.count(True)
+  print("Removing hydrogen atoms:", sel.count(True))
   structure_work = structure_work.select(selection=~sel)
   sdt = params.show_distances_threshold
   if (sdt > 0):
-    print "Distances smaller than %.6g A:" % sdt
+    print("Distances smaller than %.6g A:" % sdt)
     structure_work.show_distances(distance_cutoff=sdt)
-    print "."*79
+    print("."*79)
   #
   if (params.tardy_samples.iq is not None):
     from cctbx.omz import tardy_adaptor
-    print
+    print()
     tardy_adaptor.sample_e_pot(
       id_code=cod_id,
       f_obs=f_obs,
       xray_structure=structure_prep,
       edge_list=edge_list,
       params=params.tardy_samples)
-    print
+    print()
     return
   #
   from iotbx.shelx import fvar_encoding
   fvars, encoded_sites = fvar_encoding.dev_build_shelx76_fvars(structure_work)
-  print "Number of FVARs for special position constraints:", len(fvars)-1
-  print "."*79
+  print("Number of FVARs for special position constraints:", len(fvars)-1)
+  print("."*79)
   #
   show_cc_r1(params, "prep", f_obs, structure_prep)
   def cc_r1(label):
@@ -604,15 +606,15 @@ def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
     structure_work.shift_sites_in_place(
       shift_length=params.shake_sites_rmsd,
       mersenne_twister=mt)
-    print "rms difference after shift_sites_in_place: %.3f" \
-      % structure_iso.rms_difference(structure_work)
+    print("rms difference after shift_sites_in_place: %.3f" \
+      % structure_iso.rms_difference(structure_work))
     cc_r1("shift_xyz")
   #
   if (params.max_atoms is not None):
     n = structure_work.scatterers().size()
     if (n > params.max_atoms):
-      print "Skipping refinement of large model: %d atoms COD %s" % (
-        n, cod_id)
+      print("Skipping refinement of large model: %d atoms COD %s" % (
+        n, cod_id))
       return
   #
   structure_work.scatterers().flags_set_grads(state=False)
@@ -622,7 +624,7 @@ def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
     sc.flags.set_grad_u_iso(True)
   n_refinable_parameters = structure_work.n_parameters(
     considering_site_symmetry_constraints=True)
-  print "Number of refinable parameters:", n_refinable_parameters
+  print("Number of refinable parameters:", n_refinable_parameters)
   #
   if (params.iteration_limit < 1):
     return
@@ -649,17 +651,17 @@ def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
       easy_pickle.dump(
         file_name=op.join(params.pickle_refined_dir, cod_id+".pickle"),
         obj=(c_obs, structure_dev, None))
-      print >> open("%s/qi_%s" % (params.pickle_refined_dir, cod_id), "w"), (
+      print((
         structure_dev.scatterers().size(),
         c_obs.space_group().order_p(),
         c_obs.indices().size(),
-        c_obs.d_min())
+        c_obs.d_min()), file=open("%s/qi_%s" % (params.pickle_refined_dir, cod_id), "w"))
   #
   def use_smtbx_ls(mode):
     if ("ls_"+mode not in params.optimizers):
       return None
     if (not libtbx.env.has_module(name="smtbx")):
-      print "INFO: smtbx not available: refinement skipped."
+      print("INFO: smtbx not available: refinement skipped.")
       return None
     result = structure_work.deep_copy_scatterers()
     run_smtbx_ls(
@@ -728,8 +730,8 @@ def run(args):
     return
   co = command_line.options
   #
-  print "TIME BEGIN cod_refine:", date_and_time()
-  print
+  print("TIME BEGIN cod_refine:", date_and_time())
+  print()
   #
   master_phil = get_master_phil()
   argument_interpreter = master_phil.command_line_argument_interpreter()
@@ -742,7 +744,7 @@ def run(args):
       remaining_args.append(arg)
   work_phil = master_phil.fetch(sources=phil_objects)
   work_phil.show()
-  print
+  print()
   params = work_phil.extract()
   #
   qi_dict = {}
@@ -763,11 +765,11 @@ def run(args):
       all_pickles.append(arg)
     else:
       raise RuntimeError("Not a file or directory: %s" % arg)
-  print "Number of pickle files:", len(all_pickles)
-  print "Number of quick_infos:", len(qi_dict)
+  print("Number of pickle files:", len(all_pickles))
+  print("Number of quick_infos:", len(qi_dict))
   sort_choice = params.sorting_of_pickle_files
   if (len(qi_dict) != 0 and sort_choice is not None):
-    print "Sorting pickle files by n_atoms * n_refl:", sort_choice
+    print("Sorting pickle files by n_atoms * n_refl:", sort_choice)
     assert sort_choice in ["down", "up"]
     def sort_pickle_files():
       if (sort_choice == "down"): i_sign = -1
@@ -787,18 +789,18 @@ def run(args):
         result.append(elem[-1])
       return result
     all_pickles = sort_pickle_files()
-  print
+  print()
   #
   rss = params.random_subset.size
   if (rss is not None and rss > 0):
     seed = params.random_subset.seed
-    print "Selecting subset of %d pickle files using random seed %d" % (
-      rss, seed)
+    print("Selecting subset of %d pickle files using random seed %d" % (
+      rss, seed))
     mt = flex.mersenne_twister(seed=seed)
     perm = mt.random_permutation(size=len(all_pickles))[:rss]
     flags = flex.bool(len(all_pickles), False).set_selected(perm, True)
     all_pickles = flex.select(all_pickles, permutation=flags.iselection())
-    print
+    print()
   #
   from libtbx.path import makedirs_race
   if (params.wdir_root is not None):
@@ -813,28 +815,28 @@ def run(args):
     try:
       process(params, pickle_file_name)
     except KeyboardInterrupt:
-      print >> sys.stderr, "CAUGHT EXCEPTION: KeyboardInterrupt"
+      print("CAUGHT EXCEPTION: KeyboardInterrupt", file=sys.stderr)
       traceback.print_exc()
-      print >> sys.stderr
+      print(file=sys.stderr)
       sys.stderr.flush()
       return
     except Exception:
       sys.stdout.flush()
-      print >> sys.stderr, "CAUGHT EXCEPTION: %s" % pickle_file_name
+      print("CAUGHT EXCEPTION: %s" % pickle_file_name, file=sys.stderr)
       traceback.print_exc()
-      print >> sys.stderr
+      print(file=sys.stderr)
       sys.stderr.flush()
       n_caught += 1
     else:
-      print "done_with: %s (%.2f seconds)" % (pickle_file_name, tm.elapsed())
-      print
+      print("done_with: %s (%.2f seconds)" % (pickle_file_name, tm.elapsed()))
+      print()
       sys.stdout.flush()
-  print
-  print "Number of exceptions caught:", n_caught
+  print()
+  print("Number of exceptions caught:", n_caught)
   #
   show_times()
-  print
-  print "TIME END cod_refine:", date_and_time()
+  print()
+  print("TIME END cod_refine:", date_and_time())
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

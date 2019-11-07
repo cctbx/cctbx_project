@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.add_conformations
 
 import libtbx.phil
@@ -8,6 +8,8 @@ import libtbx.load_env # import dependency
 import string
 import os
 import sys
+from six.moves import range
+from six.moves import zip
 
 master_phil = libtbx.phil.parse("""
 add_conformations
@@ -73,7 +75,7 @@ def run(args=(), params=None, out=sys.stdout):
       else :
         try :
           arg_phil = interpreter.process(arg=arg)
-        except RuntimeError, e :
+        except RuntimeError as e :
           raise Sorry("Error parsing '%s': %s" % (arg, str(e)))
         else :
           user_phil.append(arg_phil)
@@ -86,7 +88,7 @@ def run(args=(), params=None, out=sys.stdout):
     pdb_in = f.file_object
   if (params.new_occ is None):
     params.new_occ = 1.0 / params.n_confs
-    print >> out, "Setting new occupancy to %.2f" % params.new_occ
+    print("Setting new occupancy to %.2f" % params.new_occ, file=out)
   from scitbx.array_family import flex
   hierarchy = pdb_in.construct_hierarchy()
   all_atoms = hierarchy.atoms()
@@ -142,8 +144,8 @@ def run(args=(), params=None, out=sys.stdout):
                 for old_atom, new_atom in zip(old_atoms, new_group.atoms()):
                   old_occ = old_atom.occ - params.new_occ
                   if (old_occ == 0):
-                    print >> out, "WARNING: zero-occupancy atom:"
-                    print >> out, old_atom.format_atom_record()
+                    print("WARNING: zero-occupancy atom:", file=out)
+                    print(old_atom.format_atom_record(), file=out)
                   elif (old_occ < 0):
                     raise Sorry("Atom occupancy dropped below zero:\n" +
                       old_atom.format_atom_record() + "\nnew_occ may be set "+
@@ -165,16 +167,16 @@ def run(args=(), params=None, out=sys.stdout):
   f.write("\n".join(pdb_in.input.crystallographic_section()) + "\n")
   f.write(hierarchy.as_pdb_string())
   f.close()
-  print >> out, "Old model: %d atoms" % n_atoms
-  print >> out, "Modified model: %d atoms" % n_atoms_new
-  print >> out, "Wrote %s" % params.output
+  print("Old model: %d atoms" % n_atoms, file=out)
+  print("Modified model: %d atoms" % n_atoms_new, file=out)
+  print("Wrote %s" % params.output, file=out)
   return params.output
 
 def increment_altloc(altloc):
   if altloc.isupper():
-    letters = string.uppercase
+    letters = string.ascii_uppercase
   elif altloc.islower():
-    letters = string.lowercase
+    letters = string.ascii_lowercase
   elif altloc.isdigit():
     letters = string.digits
   else :

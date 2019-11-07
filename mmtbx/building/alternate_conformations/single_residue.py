@@ -11,7 +11,7 @@ replaced (using an idealized copy) and its placement optimized by a grid
 search that also allows for backbone flexibility.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from mmtbx.building import extend_sidechains
 from mmtbx.building import alternate_conformations as alt_confs
 from mmtbx import building
@@ -19,9 +19,11 @@ from libtbx import adopt_init_args, Auto, slots_getstate_setstate
 from libtbx.str_utils import make_header, make_sub_header, format_value
 from libtbx.utils import null_out
 from libtbx import easy_mp
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import time
 import sys
+from six.moves import zip
+from six.moves import range
 
 build_params_str = """
   expected_occupancy = None
@@ -360,14 +362,14 @@ class residue_trial(slots_getstate_setstate):
     flag = ""
     if (reject):
       flag = " !!!"
-    print >> log, prefix+\
+    print(prefix+\
       "occupancy=%.2f rotamer=%s 2Fo-Fc(sc)=%s  Fo-Fc(sc)=%s%s" % \
       (self.occupancy, self.rotamer,
        format_value("%5f", self.sc_two_fofc_mean),
        format_value("%5f", self.sc_fofc_mean),
-       flag)
+       flag), file=log)
     if (bad_mc_two_fofc_msg is not None):
-      print >> log, prefix+"  %s" % bad_mc_two_fofc_msg
+      print(prefix+"  %s" % bad_mc_two_fofc_msg, file=log)
     return (not reject)
 
 def find_alternate_residue(residue,
@@ -446,8 +448,8 @@ def find_alternate_residue(residue,
   assert sites_start_1d.all_eq(sites_end_1d)
   t2 = time.time()
   if (debug > 1):
-    print >> log, "  %d build trials (%s): %.3fs" % (len(occupancies),
-      residue.id_str(), t2 - t1)
+    print("  %d build trials (%s): %.3fs" % (len(occupancies),
+      residue.id_str(), t2 - t1), file=log)
   return trials
 
 class find_all_alternates(object):
@@ -466,14 +468,14 @@ class find_all_alternates(object):
       log=sys.stdout):
     adopt_init_args(self, locals())
     nproc = easy_mp.get_processes(nproc)
-    print >> log, ""
+    print("", file=log)
     if (nproc == 1):
-      print >> log, "  running all residues serially"
+      print("  running all residues serially", file=log)
       self.results = []
       for i_res in range(len(residues)):
         self.results.append(self.__call__(i_res, log=log))
     else :
-      print >> log, "  will use %d processes" % nproc
+      print("  will use %d processes" % nproc, file=log)
       self.results = easy_mp.pool_map(
         fixed_func=self,
         iterable=range(len(residues)),
@@ -533,12 +535,12 @@ def process_results(
   rot_eval = rotamer_eval.RotamerEval(data_version="8000")
   for main_conf, trials in zip(residues_in, building_trials):
     if (trials is None):
-      print >> log, "WARNING: error building %s" % main_conf.id_str()
+      print("WARNING: error building %s" % main_conf.id_str(), file=log)
       continue
     if (len(trials) == 0):
       continue
     res_log = StringIO()
-    print >> res_log, "  %s:" % main_conf.id_str()
+    print("  %s:" % main_conf.id_str(), file=res_log)
     main_rotamer = alt_rotamer = None
     if (not main_conf.resname in ["GLY","PRO","ALA"]):
       main_rotamer = rot_eval.evaluate_residue(main_conf)
@@ -561,8 +563,8 @@ def process_results(
         (stats.max_dev < params.rmsd_min) and
         (not changed_rotamer)):
       skip = True
-    print >> res_log, "    selected conformer (occ=%.2f):" % \
-      best_trial.occupancy
+    print("    selected conformer (occ=%.2f):" % \
+      best_trial.occupancy, file=res_log)
     res_log2 = StringIO()
     density_quality = building.residue_density_quality(
       atom_group=new_conf,
@@ -592,17 +594,16 @@ def process_results(
       skip = True
     if (not skip) and (verbose):
       flag = " ***"
-    print >> res_log, \
-      "      RMSD=%5.3f  max. change=%.2f  max(Fo-Fc)=%.1f%s" \
-      % (stats.rmsd, stats.max_dev, fofc_max, flag)
+    print("      RMSD=%5.3f  max. change=%.2f  max(Fo-Fc)=%.1f%s" \
+      % (stats.rmsd, stats.max_dev, fofc_max, flag), file=res_log)
     if (changed_rotamer):
-      print >> res_log, "      starting rotamer=%s  new rotamer=%s" % \
-        (main_rotamer, best_trial.rotamer)
+      print("      starting rotamer=%s  new rotamer=%s" % \
+        (main_rotamer, best_trial.rotamer), file=res_log)
     if (n_atoms_outside_density != 0):
-      print >> res_log, "      atoms outside density:"
-      print >> res_log, res_log2.getvalue()
+      print("      atoms outside density:", file=res_log)
+      print(res_log2.getvalue(), file=res_log)
     else :
-      print >> res_log, ""
+      print("", file=res_log)
     if (not skip) or (verbose):
       log.write(res_log.getvalue())
     if (skip) : continue
@@ -677,7 +678,7 @@ def real_space_refine(
   from scitbx.array_family import flex
   i_cycle = 0
   while (i_cycle < max_cycles):
-    print >> out, "  Cycle %d:" % (i_cycle+1)
+    print("  Cycle %d:" % (i_cycle+1), file=out)
     # this keeps track of which residues were split in the previous cycle -
     # we only refine segments that have had residues added
     rebuilt_flags = pdb_hierarchy.atoms().extract_tmp_as_size_t()
@@ -745,15 +746,15 @@ def real_space_refine(
       for atom in pdb_hierarchy.atoms():
         if (atom.segid == alt_confs.SEGID_NEW_SPLIT):
           atom.segid = alt_confs.SEGID_NEW_REBUILT
-      print >> out, "    checking for conformational strain..."
+      print("    checking for conformational strain...", file=out)
       n_split = alt_confs.spread_alternates(
         pdb_hierarchy=pdb_hierarchy,
         new_occupancy=params.residue_fitting.expected_occupancy,
         split_all_adjacent=False,
         selection=alt_confs.SELECTION_NEW_REBUILT)
       if (n_split > 0):
-        print >> out, "    split another %d residue(s) - will re-run RSR" % \
-          n_split
+        print("    split another %d residue(s) - will re-run RSR" % \
+          n_split, file=out)
       else :
         break
     i_cycle += 1
@@ -783,7 +784,7 @@ def build_cycle(pdb_hierarchy,
   hd_sel = fmodel.xray_structure.hd_selection()
   n_hydrogen = hd_sel.count(True)
   if (n_hydrogen > 0) and (True) : #params.building.delete_hydrogens):
-    print >> out, "WARNING: %d hydrogen atoms will be removed!" % n_hydrogen
+    print("WARNING: %d hydrogen atoms will be removed!" % n_hydrogen, file=out)
     non_hd_sel = ~hd_sel
     # XXX it's better to do this in-place for the hierarchy, because calling
     # pdb_hierarchy.select(non_hd_sel) will not remove parent-child
@@ -797,7 +798,7 @@ def build_cycle(pdb_hierarchy,
   pdb_atoms = pdb_hierarchy.atoms()
   segids = pdb_atoms.extract_segid().strip()
   if (not segids.all_eq("")):
-    print >> out, "WARNING: resetting segids to blank"
+    print("WARNING: resetting segids to blank", file=out)
     for i_seq, atom in enumerate(pdb_atoms):
       atom.segid = ""
       sc = fmodel.xray_structure.scatterers()[i_seq]
@@ -825,7 +826,7 @@ def build_cycle(pdb_hierarchy,
     verbose=verbose,
     log=out)
   t1 = time.time()
-  print >> out, "filtering: %.3fs" % (t1-t_start)
+  print("filtering: %.3fs" % (t1-t_start), file=out)
   restraints_manager = restraints.manager(
     geometry=geometry_restraints_manager,
     normalization=True)
@@ -841,7 +842,7 @@ def build_cycle(pdb_hierarchy,
     debug=debug,
     log=out).results
   t2 = time.time()
-  print >> out, "  building: %.3fs" % (t2-t1)
+  print("  building: %.3fs" % (t2-t1), file=out)
   make_sub_header("Scoring and assembling alternates", out=out)
   n_alternates = process_results(
     pdb_hierarchy=pdb_hierarchy,
@@ -852,26 +853,26 @@ def build_cycle(pdb_hierarchy,
     verbose=verbose,
     log=out)
   if (n_alternates > 0):
-    print >> out, ""
-    print >> out, "  %d disordered residues built" % n_alternates
+    print("", file=out)
+    print("  %d disordered residues built" % n_alternates, file=out)
     n_split = alt_confs.spread_alternates(pdb_hierarchy,
       new_occupancy=params.residue_fitting.expected_occupancy,
       split_all_adjacent=True,
       log=out)
     assert (n_split > 0)
-    print >> out, "  %d adjacent residues split" % n_split
+    print("  %d adjacent residues split" % n_split, file=out)
   else :
-    print >> out, "No alternates built this round."
+    print("No alternates built this round.", file=out)
   t3 = time.time()
-  print >> out, "  assembly: %.3fs" % (t3-t2)
+  print("  assembly: %.3fs" % (t3-t2), file=out)
   if (not params.cleanup.rsr_after_build):
     if (n_alternates > 0):
-      print >> out, "Skipping final RSR step (rsr_after_build=False)."
+      print("Skipping final RSR step (rsr_after_build=False).", file=out)
     else :
-      print >> out, "No refinement needs to be performed."
+      print("No refinement needs to be performed.", file=out)
   else :
     make_sub_header("Real-space refinement", out=out)
-    print >> out, ""
+    print("", file=out)
     pdb_hierarchy = real_space_refine(
       pdb_hierarchy=pdb_hierarchy,
       fmodel=fmodel,
@@ -881,8 +882,8 @@ def build_cycle(pdb_hierarchy,
       remediate=True,
       out=out)
     t4 = time.time()
-    print >> out, ""
-    print >> out, "RSR: %.3fs" % (t4-t3)
+    print("", file=out)
+    print("RSR: %.3fs" % (t4-t3), file=out)
   fmodel.info().show_targets(out=out, text="Rebuilt model")
   t_end = time.time()
   alt_confs.finalize_model(
@@ -893,5 +894,5 @@ def build_cycle(pdb_hierarchy,
     convert_to_isotropic=params.cleanup.convert_to_isotropic,
     selection="altloc A or altloc B")
   t_end = time.time()
-  print >> out, "Total runtime for cycle: %.3fs" % (t_end-t_start)
+  print("Total runtime for cycle: %.3fs" % (t_end-t_start), file=out)
   return pdb_hierarchy, n_alternates

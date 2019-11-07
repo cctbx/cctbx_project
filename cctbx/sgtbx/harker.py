@@ -1,16 +1,17 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from cctbx import sgtbx
 from boost import rational
 import math
 import sys
+from six.moves import range
 
 def dot3(a, b):
   return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]
 
 def mod_positive3(x_frac):
   result = [math.fmod(x, 1.) for x in x_frac]
-  for i in xrange(3):
+  for i in range(3):
     while (result[i] <  0.): result[i] += 1.
     while (result[i] >= 1.): result[i] -= 1.
   return tuple(result)
@@ -33,14 +34,14 @@ class plane_fractional(object):
     r = op.r().num()
     d = op.r().den()
     signs = [None,None,None]
-    for j in xrange(3):
-      for i in xrange(3):
+    for j in range(3):
+      for i in range(3):
         rij = r[i*3+j]
         if (signs[i] is None and rij != 0):
           if (rij < 0): signs[i] = -1
           else: signs[i] = 1
     m = list(sgtbx.rot_mx(d, d).num())
-    for i in xrange(3):
+    for i in range(3):
       if (signs[i] == -1): m[i*4] *= -1
     return str(sgtbx.rt_mx(op.r().multiply(sgtbx.rot_mx(m,d)), op.t()))
 
@@ -50,7 +51,7 @@ class planes_fractional(object):
     self.space_group = space_group
     nc_dict = {}
     self.list = []
-    for i_smx in xrange(space_group.order_p()):
+    for i_smx in range(space_group.order_p()):
       s = space_group(i_smx)
       r_info = s.r().info()
       if (r_info.type() < 2): continue
@@ -59,7 +60,7 @@ class planes_fractional(object):
       p = s.t().mod_positive()
       assert p.den() == space_group.t_den()
       c = -dot3(n, p.num())
-      if (not nc_dict.has_key((n,c))):
+      if ((n,c) not in nc_dict):
         nc_dict[(n,c)] = 0
         self.list.append(
           plane_fractional(s=s, n=n, p=p, c=rational.int(c,p.den())))
@@ -109,7 +110,7 @@ class planes_cartesian(crystal.symmetry):
 def test_call_back(flags, space_group_info):
   planes = planes_fractional(space_group_info.group())
   for plane in planes.list:
-    print plane.s, plane.algebraic(), plane.n, plane.c, plane.p
+    print(plane.s, plane.algebraic(), plane.n, plane.c, plane.p)
 
 def test():
   from cctbx.development import debug_utils

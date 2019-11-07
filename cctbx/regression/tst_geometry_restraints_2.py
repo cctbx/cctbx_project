@@ -1,16 +1,17 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import geometry_restraints
 from cctbx.geometry_restraints.distance_least_squares \
   import distance_and_repulsion_least_squares
 import cctbx.geometry_restraints.manager
 from cctbx import crystal
 from cctbx.array_family import flex
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import libtbx.utils
 from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 import sys, os
 from mmtbx.monomer_library import pdb_interpretation
+from six.moves import range
 
 # ============================================================
 # Edit notes: show_interactions function is obsolete and removed from GRM
@@ -19,14 +20,14 @@ from mmtbx.monomer_library import pdb_interpretation
 
 def exercise_with_zeolite(verbose):
   if (not libtbx.env.has_module("iotbx")):
-    print "Skipping exercise_with_zeolite(): iotbx not available"
+    print("Skipping exercise_with_zeolite(): iotbx not available")
     return
   from iotbx.kriber import strudat
   atlas_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/misc/strudat_zeolite_atlas",
     test=os.path.isfile)
   if (atlas_file is None):
-    print "Skipping exercise_with_zeolite(): input file not available"
+    print("Skipping exercise_with_zeolite(): input file not available")
     return
   strudat_contents = strudat.read_all_entries(open(atlas_file))
   strudat_entry = strudat_contents.get("YUG")
@@ -201,7 +202,7 @@ def exercise_with_zeolite(verbose):
       asu_mappings=asu_mappings)
     while (not pair_generator.at_end()):
       p = geometry_restraints.nonbonded_asu_proxy(
-        pair=pair_generator.next(),
+        pair=next(pair_generator),
         vdw_distance=3)
       sorted_asu_proxies.process(p)
     out = StringIO()
@@ -320,11 +321,11 @@ END
 
 def exercise_with_pdb(verbose):
   if (not libtbx.env.has_module(name="mmtbx")):
-    print "Skipping exercise_with_pdb():", \
-      "mmtbx.monomer_library.pdb_interpretation not available"
+    print("Skipping exercise_with_pdb():", \
+      "mmtbx.monomer_library.pdb_interpretation not available")
     return
   if (libtbx.env.find_in_repositories(relative_path="chem_data") is None):
-    print "Skipping exercise_with_pdb(): chem_data directory not available"
+    print("Skipping exercise_with_pdb(): chem_data directory not available")
     return
   if (verbose):
     out = sys.stdout
@@ -451,8 +452,8 @@ nonbonded 1
 def exercise_na_restraints_output_to_geo(verbose=False):
   for dependency in ("chem_data", "ksdssp"):
     if not libtbx.env.has_module(dependency):
-      print "Skipping exercise_na_restraints_output_to_geo(): %s not available" %(
-        dependency)
+      print("Skipping exercise_na_restraints_output_to_geo(): %s not available" %(
+        dependency))
       return
   pdb_str_1dpl_cutted="""\
 CRYST1   24.627   42.717   46.906  90.00  90.00  90.00 P 21 21 21    8
@@ -564,8 +565,8 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
       strict_conflict_handling=False,
       log=out1)
   except MonomerLibraryServerError:
-    print "Skipping exercise_na_restraints_output_to_geo(): Encountered MonomerLibraryServerError.\n"
-    print "Is the CCP4 monomer library installed and made available through environment variables MMTBX_CCP4_MONOMER_LIB or CLIBD_MON?"
+    print("Skipping exercise_na_restraints_output_to_geo(): Encountered MonomerLibraryServerError.\n")
+    print("Is the CCP4 monomer library installed and made available through environment variables MMTBX_CCP4_MONOMER_LIB or CLIBD_MON?")
     return
   geo1 = processed_pdb_file.geometry_restraints_manager()
   hbp = geo1.get_n_hbond_proxies()
@@ -591,7 +592,7 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
   for v in [v_out1, v_out2]:
     for portion in identical_portions:
       if not v.find(portion) > 0:
-        print "This portion was not found:\n%s\n=====End of portion." % portion
+        print("This portion was not found:\n%s\n=====End of portion." % portion)
         assert 0, "the portion above does not match expected portion."
   # check .geo output
   geo_identical_portions = ["Bond restraints: 87",
@@ -600,12 +601,13 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
       "Planarity restraints: 4"]
   ss_geo_portions = ["Bond-like restraints: 6",
       'Secondary Structure restraints around h-bond angle restraints: 12',
-      "Parallelity restraints: 4",
+      "Stacking parallelity restraints: 2",
+      'Basepair parallelity restraints: 2',
       "Nonbonded interactions: 504"]
   non_ss_geo_portions = [
       #"Bond-like restraints: 0",
       #'Secondary Structure restraints around h-bond angle restraints: 0',
-      "Parallelity restraints: 0",
+      # "Parallelity restraints: 0", removed because zero
       "Nonbonded interactions: 526"]
   acp = processed_pdb_file.all_chain_proxies
   sites_cart = acp.sites_cart_exact()
@@ -617,9 +619,13 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
   v_geo_out_noss = geo_out1.getvalue()
   v_geo_out_ss = geo_out2.getvalue()
   for portion in geo_identical_portions+ss_geo_portions:
-    assert v_geo_out_ss.find(portion) >= 0
+    assert v_geo_out_ss.find(portion) >= 0, 'did not find %s\n in \n%s' % (
+      portion,
+      v_geo_out_ss)
   for portion in geo_identical_portions+non_ss_geo_portions:
-    assert v_geo_out_noss.find(portion) >= 0
+    assert v_geo_out_noss.find(portion) >= 0, 'did not find %s\n in \n%s' % (
+      portion,
+      v_geo_out_noss)
 
 def exercise_all(args):
   verbose = "--verbose" in args
@@ -627,7 +633,7 @@ def exercise_all(args):
   exercise_with_pdb(verbose=verbose)
   exercise_non_crystallographic_conserving_bonds_and_angles()
   exercise_na_restraints_output_to_geo(verbose=verbose)
-  print libtbx.utils.format_cpu_times()
+  print(libtbx.utils.format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise_all(sys.argv[1:])

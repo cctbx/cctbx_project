@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.ui_server
 
 from libtbx.phil import parse
@@ -123,7 +123,7 @@ def run(args):
     app = db_application(params)
 
   print ("Raising max connections")
-  app.execute_query("SET GLOBAL max_connections=10000")
+  app.execute_query("SET GLOBAL max_connections=50000")
 
   try:
     while True:
@@ -133,7 +133,7 @@ def run(args):
       time.sleep(1)
   except KeyboardInterrupt:
     print ("Shutting down")
-  except Exception, e:
+  except Exception as e:
     print ("Unhandled exception, shutting down")
     print (str(e))
 

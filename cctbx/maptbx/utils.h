@@ -11,6 +11,8 @@
 #include <scitbx/random.h>
 #include <scitbx/math/linear_correlation.h>
 
+#include <cctbx/uctbx.h>
+
 #include <cctbx/maptbx/interpolation.h> //indirect import?
 
 namespace cctbx { namespace maptbx {
@@ -294,6 +296,37 @@ DataType map_sum_at_sites_frac(
 }
 
 template <typename DataType>
+af::versa<DataType, af::c_grid<3> > set_box_copy_inside(
+  DataType const& value,
+  af::ref<DataType, af::c_grid<3> > map_data_to,
+  af::tiny<int, 3> const& start,
+  af::tiny<int, 3> const& end)
+{
+  af::c_grid<3> a = map_data_to.accessor();
+  for(int i = 0; i < 3; i++) {
+    CCTBX_ASSERT(start[i]>=0 && start[i]<=a[i]);
+    CCTBX_ASSERT(end[i]>=0   && end[i]<=a[i]);
+  }
+  // like set_box_copy except copies inside and sets value outside
+  af::versa<DataType, af::c_grid<3> > result_map(a,
+    af::init_functor_null<DataType>());
+  af::ref<DataType, af::c_grid<3> > result_map_ref = result_map.ref();
+  for(int i = 0; i < a[0]; i++) {
+    for(int j = 0; j < a[1]; j++) {
+      for(int k = 0; k < a[2]; k++) {
+        if(i>=start[0]&&i<end[0] &&
+           j>=start[1]&&j<end[1] &&
+           k>=start[2]&&k<end[2]) {
+          result_map_ref(i,j,k) = map_data_to(i,j,k);
+        }
+        else {
+          result_map_ref(i,j,k) = value;
+        }
+  }}}
+  return result_map;
+}
+
+template <typename DataType>
 af::versa<DataType, af::c_grid<3> > set_box_copy(
   DataType const& value,
   af::ref<DataType, af::c_grid<3> > map_data_to,
@@ -489,7 +522,36 @@ void set_box(
       }
     }
   }
+}
 
+template <typename DataType>
+void set_box(
+  af::const_ref<DataType, af::c_grid<3> > const& map_data_from,
+  af::ref<DataType, af::c_grid<3> > map_data_to,
+  af::tiny<int, 3> const& start,
+  af::tiny<int, 3> const& end)
+{
+  af::c_grid<3> a = map_data_to.accessor();
+  //
+  // PVA: I need to find out why this occasionally crashes here:
+  //
+  //for(int i = 0; i < 3; i++) {
+  //  CCTBX_ASSERT((end[i] - start[i]) <= a[i]);
+  //  CCTBX_ASSERT(end[i] > start[i]);
+  //}
+  for (int i = start[0]; i < end[0]; i++) {
+    int ii = scitbx::math::mod_positive(i, static_cast<int>(a[0]));
+    for (int j = start[1]; j < end[1]; j++) {
+      int jj = scitbx::math::mod_positive(j, static_cast<int>(a[1]));
+      for (int k = start[2]; k < end[2]; k++) {
+        int kk = scitbx::math::mod_positive(k, static_cast<int>(a[2]));
+        int p = i-start[0];
+        int q = j-start[1];
+        int r = k-start[2];
+        map_data_to(ii,jj,kk) = map_data_from(p,q,r);
+      }
+    }
+  }
 }
 
 template <typename DataType>
@@ -516,30 +578,128 @@ void copy_box(
 }
 
 template <typename DataType>
-void set_box(
+DataType
+_one_map_box_average(
+  af::ref<DataType, af::c_grid<3> > map_data,
+  int const& index_span,
+  int const& lx,
+  int const& ly,
+  int const& lz)
+{
+  af::c_grid<3> a = map_data.accessor();
+  DataType rho = 0.0;
+  int counter = 0;
+  for (int i = lx-index_span; i <= lx+index_span; i++) {
+    int mx = i;
+    if(i<0 || i>=a[0]) {
+      mx = scitbx::math::mod_positive(i, static_cast<int>(a[0]));
+    }
+    for (int j = ly-index_span; j <= ly+index_span; j++) {
+      int my = j;
+      if(j<0 || j>=a[1]) {
+        my = scitbx::math::mod_positive(j, static_cast<int>(a[1]));
+      }
+      for (int k = lz-index_span; k <= lz+index_span; k++) {
+        int mz = k;
+        if(k<0 || k>=a[2]) {
+          mz = scitbx::math::mod_positive(k, static_cast<int>(a[2]));
+        }
+        rho += map_data(mx,my,mz);
+        counter += 1;
+  }}}
+  return rho / counter;
+}
+
+template <typename DataType>
+void
+map_box_average(
+  af::ref<DataType, af::c_grid<3> > map_data,
+  int const& index_span)
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  for (int lx = 0; lx < nx; lx++) {
+    for (int ly = 0; ly < ny; ly++) {
+      for (int lz = 0; lz < nz; lz++) {
+        map_data(lx,ly,lz) = _one_map_box_average(
+          map_data, index_span, lx, ly, lz);
+  }}}
+}
+
+template <typename DataType>
+void
+map_box_average(
+  af::ref<DataType, af::c_grid<3> > map_data,
+  int const& index_span,
+  DataType const& threshold)
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  for (int lx = 0; lx < nx; lx++) {
+    for (int ly = 0; ly < ny; ly++) {
+      for (int lz = 0; lz < nz; lz++) {
+        if(std::abs(map_data(lx,ly,lz))<threshold) {
+          map_data(lx,ly,lz) = _one_map_box_average(
+            map_data, index_span, lx, ly, lz);
+        }
+  }}}
+}
+
+template <typename DataType>
+void set_box_with_symmetry(
   af::const_ref<DataType, af::c_grid<3> > const& map_data_from,
   af::ref<DataType, af::c_grid<3> > map_data_to,
   af::tiny<int, 3> const& start,
-  af::tiny<int, 3> const& end)
+  af::tiny<int, 3> const& end,
+  cctbx::uctbx::unit_cell const& unit_cell,
+  af::shared<scitbx::mat3<double> > const& rotation_matrices,
+  af::shared<scitbx::vec3<double> > const& translation_vectors)
 {
+  /*
+  This is a specialized function. It takes two maps: a larger empty map
+  (map_data_to) and smaller map (map_data_from).
+  Parameter start are the coordinates of the origin of map_data_from wrt origin
+  of map_data_to.
+  Parameters start, end, unit_cell are related to map_data_to.
+  */
   af::c_grid<3> a = map_data_to.accessor();
-  for(int i = 0; i < 3; i++) {
-    CCTBX_ASSERT(start[i]>=0 && start[i]<=a[i]);
-    CCTBX_ASSERT(end[i]>=0   && end[i]<=a[i]);
-  }
-  int ii=0;
-  for (int i = start[0]; i < end[0]; i++) {
-    int jj=0;
-    for (int j = start[1]; j < end[1]; j++) {
-      int kk=0;
-      for (int k = start[2]; k < end[2]; k++) {
-        map_data_to(i,j,k) = map_data_from(ii,jj,kk);
-        kk+=1;
+  for (int i = start[0]; i <= end[0]; i++) {
+    for (int j = start[1]; j <= end[1]; j++) {
+      for (int k = start[2]; k <= end[2]; k++) {
+        // position in map_data_from
+        int p = i-start[0];
+        int q = j-start[1];
+        int r = k-start[2];
+        // fractional coordinates of i,j,k
+        cctbx::fractional<> grid_node_frac = cctbx::fractional<>(
+          i/static_cast<double>(a[0]),
+          j/static_cast<double>(a[1]),
+          k/static_cast<double>(a[2]));
+        for (int o = 0; o < rotation_matrices.size(); o++) {
+          scitbx::mat3<double> rm = rotation_matrices[o];
+          scitbx::vec3<double> tv = translation_vectors[o];
+          cctbx::fractional<> grid_node_frac_rt = rm * grid_node_frac + tv;
+          // position of rotated+translated point in original map
+          int ii = scitbx::math::mod_positive(
+            static_cast<int>(grid_node_frac_rt[0]*a[0]), static_cast<int>(a[0]));
+          int jj = scitbx::math::mod_positive(
+            static_cast<int>(grid_node_frac_rt[1]*a[1]), static_cast<int>(a[1]));
+          int kk = scitbx::math::mod_positive(
+            static_cast<int>(grid_node_frac_rt[2]*a[2]), static_cast<int>(a[2]));
+          // Using max avoids overwriting set non-zero values with zeros from the box
+
+          //if(std::abs(map_data_to(ii,jj,kk)) < 0.1 && std::abs(map_data_to(ii,jj,kk))>0.1 ) {
+          //  map_data_to(ii,jj,kk) = map_data_from(p,q,r);
+          //}
+          map_data_to(ii,jj,kk) = std::max(
+            map_data_from(p,q,r), map_data_to(ii,jj,kk));
+        }
       }
-      jj+=1;
     }
-    ii+=1;
   }
+  map_box_average(map_data_to, 1, 0.1); // This doesn't seem to do much
 }
 
 template <typename DataType1, typename DataType2>
@@ -921,36 +1081,6 @@ map_box_average(
               counter += 1;
         }}}
         map_data(lx,ly,lz) = rho / counter;
-  }}}
-}
-
-template <typename DataType>
-void
-map_box_average(
-  af::ref<DataType, af::c_grid<3> > map_data,
-  int const& index_span)
-{
-  int nx = map_data.accessor()[0];
-  int ny = map_data.accessor()[1];
-  int nz = map_data.accessor()[2];
-  for (int lx = 0; lx < nx; lx++) {
-    for (int ly = 0; ly < ny; ly++) {
-      for (int lz = 0; lz < nz; lz++) {
-          DataType rho = 0.0;
-          int counter = 0;
-          for (int i = lx-index_span; i <= lx+index_span; i++) {
-            int mx = i;
-            if(i<0 || i>=nx) mx = scitbx::math::mod_positive(i, nx);
-            for (int j = ly-index_span; j <= ly+index_span; j++) {
-              int my = j;
-              if(j<0 || j>=ny) my = scitbx::math::mod_positive(j, ny);
-              for (int k = lz-index_span; k <= lz+index_span; k++) {
-                int mz = k;
-                if(k<0 || k>=nz) mz = scitbx::math::mod_positive(k, nz);
-                rho += map_data(mx,my,mz);
-                counter += 1;
-          }}}
-          map_data(lx,ly,lz) = rho / counter;
   }}}
 }
 

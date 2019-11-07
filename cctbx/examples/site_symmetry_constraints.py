@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from cctbx.array_family import flex
 
@@ -26,8 +26,8 @@ def run():
   # (almost) on 3-fold axis.
   #
   site_symmetry = special_position_settings.site_symmetry(site=(0.33,0.67,0))
-  print "special position operator:", site_symmetry.special_op()
-  print "exact location of special position:", site_symmetry.exact_site()
+  print("special position operator:", site_symmetry.special_op())
+  print("exact location of special position:", site_symmetry.exact_site())
 
   #
   # The site_symmetry object caches the site constraints, which
@@ -40,7 +40,7 @@ def run():
   # Number of independent coordinates.
   #
   n_indep = site_constraints.n_independent_params()
-  print "n_indep:", n_indep
+  print("n_indep:", n_indep)
 
   #
   # For refinement we need only the independent parameters.
@@ -61,7 +61,7 @@ def run():
   #
   site_shifted = site_constraints.all_params(
     independent_params=site_indep_shifted)
-  print "site_shifted:", site_shifted
+  print("site_shifted:", site_shifted)
 
   #
   # During refinement gradients are calculated.
@@ -72,7 +72,7 @@ def run():
   #
   independent_gradients = site_constraints.independent_gradients(
     all_gradients=flex.double([-0.01, 0.03, 0.02]))
-  print "independent_gradients:", independent_gradients
+  print("independent_gradients:", independent_gradients)
 
   #
   # Refinement with second derivatives (curvatures) is supported
@@ -84,7 +84,7 @@ def run():
   #
   independent_curvatures = site_constraints.independent_curvatures(
     all_curvatures=flex.double([-1, 2, -3, 4, -5, 6]))
-  print "independent_curvatures:", independent_curvatures
+  print("independent_curvatures:", independent_curvatures)
 
   #
   # See also the comprehensive unit test exercising the
@@ -92,7 +92,7 @@ def run():
   #   cctbx/regression/tst_sgtbx_site_constraints.py
   #
 
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

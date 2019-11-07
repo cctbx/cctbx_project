@@ -1,8 +1,8 @@
-from __future__ import division
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint
 from math import pi
+from six.moves import range
 
 class u_iso_proportional_to_pivot_u_eq(object):
   """ u_iso of some scatterer constrained to be proportional to
@@ -65,14 +65,14 @@ class shared_u(object):
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
     src_uses_u = scatterers[self.indices[0]].flags.use_u_aniso()
-    for i in xrange(1, len(self.indices)):
+    for i in range(1, len(self.indices)):
       if scatterers[self.indices[i]].flags.use_u_aniso() != src_uses_u:
         raise InvalidConstraint(
           "mixing isotropic and anisotropic atoms is not allowed for shared ADP")
 
     u_c = reparametrisation.add_new_thermal_displacement_parameter(
       self.indices[0])
-    for i in xrange(1, len(self.indices)):
+    for i in range(1, len(self.indices)):
       if src_uses_u:
         param = reparametrisation.add(
           _.shared_u_star,

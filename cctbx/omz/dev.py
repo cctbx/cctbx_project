@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx.omz import bfgs
 from cctbx import xray
 import cctbx.xray.targets
@@ -9,6 +9,8 @@ from libtbx import Auto, group_args
 from itertools import count
 from math import pi, atan2
 import sys
+from six.moves import range
+from six.moves import zip
 
 def delta_estimation_minus_cos(limit, grad, curv):
   return limit/pi * atan2(pi/limit*grad, curv)
@@ -96,7 +98,7 @@ class xfgc_info(object):
     gl = l.grads
     decr_cond = (fl <= fk + c1 * ak * gk.dot(pk))
     curv_cond = (abs(gl.dot(pk)) <= c2 * abs(gk.dot(pk)))
-    if (0): print "CHECK Wolfe decr curv", decr_cond, curv_cond
+    if (0): print("CHECK Wolfe decr curv", decr_cond, curv_cond)
     if (1): # verify that curv cond can be reformulated using sk
       sk = l.x - k.x
       curv_cond_sk = (abs(gl.dot(sk)) <= c2 * abs(gk.dot(sk)))
@@ -134,7 +136,7 @@ class refinement(object):
       O.pack_variables(xray_structure=O.reference_structure)
       O.x_reference = O.x
     O.pack_variables()
-    print "Number of variables:", O.x.size()
+    print("Number of variables:", O.x.size())
     if (expected_n_refinable_parameters is not None):
       assert O.x.size() == expected_n_refinable_parameters
     #
@@ -186,8 +188,8 @@ class refinement(object):
       O.lbfgs_emulation()
     else:
       O.developmental_algorithms()
-    print "Number of iterations, evaluations: %d %d%s" % (
-      O.i_step+1, len(O.xfgc_infos), O.termination_remark)
+    print("Number of iterations, evaluations: %d %d%s" % (
+      O.i_step+1, len(O.xfgc_infos), O.termination_remark))
     #
     O.plot_samples("final")
 
@@ -198,13 +200,14 @@ class refinement(object):
     if (p.ix is not None):
       O.plot_samples_ix(stage, p.ix)
     elif (p.ix_auto == "all"):
-      for ix in xrange(O.x.size()):
+      for ix in range(O.x.size()):
         O.plot_samples_ix(stage, ix)
     elif (p.ix_auto == "random"):
       assert p.ix_random.samples_each_scattering_type is not None
       assert p.ix_random.samples_each_scattering_type > 0
       assert p.ix_random.random_seed is not None
       mt = flex.mersenne_twister(seed=p.ix_random.random_seed)
+      # TODO: verify this values is not a dictionary method
       i_seqs_grouped = O.xray_structure.scatterers() \
         .extract_scattering_types().i_seqs_by_value().values()
       i_seqs_selected = flex.bool(O.x.size(), False)
@@ -251,7 +254,7 @@ class refinement(object):
         ss.special_op_simplified(),
         x_type)
     info_str = build_info_str()
-    print "plot_samples:", info_str
+    print("plot_samples:", info_str)
     sys.stdout.flush()
     ys = []
     def ys_append():
@@ -268,7 +271,7 @@ class refinement(object):
     if (x_type == "u"):
       assert p.u_min < p.u_max
       assert p.u_steps > 0
-      for i_step in xrange(p.u_steps+1):
+      for i_step in range(p.u_steps+1):
         u = p.u_min + i_step / p.u_steps * (p.u_max - p.u_min)
         sc.u_iso = u
         y = ys_append()
@@ -292,7 +295,7 @@ class refinement(object):
       dist = xs.unit_cell().distance(sc.site, site_inp)
       assert dist != 0
       x_scale = p.x_radius / dist
-      for i_step in xrange(-p.x_steps//2, p.x_steps//2+1):
+      for i_step in range(-p.x_steps//2, p.x_steps//2+1):
         x = i_step / p.x_steps * 2 * x_scale
         indep[ss_ip] = i_inp + x
         sc.site = ss_constr.all_params(independent_params=indep)
@@ -305,11 +308,11 @@ class refinement(object):
     def write_xyv():
       if (p.file_prefix is None): return
       f = open(base_name_plot_files+".xy", "w")
-      print >> f, "# %s" % info_str
-      print >> f, "# %s" % str(xs.unit_cell())
-      print >> f, "# %s" % str(xs.space_group_info().symbol_and_number())
+      print("# %s" % info_str, file=f)
+      print("# %s" % str(xs.unit_cell()), file=f)
+      print("# %s" % str(xs.space_group_info().symbol_and_number()), file=f)
       for x,y,v in xyv:
-        print >> f, x, y, v
+        print(x, y, v, file=f)
     write_xyv()
     if (len(p.pyplot) != 0):
       from libtbx import pyplot
@@ -344,12 +347,12 @@ class refinement(object):
     if (O.params.plot_samples.target.type == "ml"):
       O.epsilons = O.f_obs.epsilons()
       O.centric_flags = O.f_obs.centric_flags()
-      print "INFO: generating R-free flags for plot_samples.target.type = ml"
+      print("INFO: generating R-free flags for plot_samples.target.type = ml")
       O.r_free_flags = O.f_obs.generate_r_free_flags(
         fraction=0.05,
         max_free=None,
         use_lattice_symmetry=True)
-    print "Computing bulk-solvent model and anisotropic scaling correction ...",
+    print("Computing bulk-solvent model and anisotropic scaling correction ...", end=' ')
     sys.stdout.flush()
     import mmtbx.f_model
     fmm = mmtbx.f_model.manager(
@@ -358,23 +361,23 @@ class refinement(object):
       xray_structure=O.xray_structure)
     fmm.update_all_scales()
     fmm.optimize_mask()
-    print "done."
+    print("done.")
     sys.stdout.flush()
-    print "bulk-solvent correction:"
-    print "  k_sols:", numstr(fmm.k_sols())
-    print "  b_sol: %.6g" % fmm.b_sol()
-    print "  b_cart:", numstr(fmm.b_cart(), zero_threshold=1e-6)
+    print("bulk-solvent correction:")
+    print("  k_sols:", numstr(fmm.k_sols()))
+    print("  b_sol: %.6g" % fmm.b_sol())
+    print("  b_cart:", numstr(fmm.b_cart(), zero_threshold=1e-6))
     O.f_bulk = fmm.f_bulk()
     O.fb_cart = O.f_obs.customized_copy(data=fmm.fb_cart())
-    print "  mean of f_bulk.amplitudes():"
+    print("  mean of f_bulk.amplitudes():")
     bulk_ampl = O.f_bulk.amplitudes()
     bulk_ampl.setup_binner(n_bins=8)
     bulk_ampl.mean(use_binning=True).show(prefix="    ")
     if (O.r_free_flags is not None):
-      print "Computing alpha-beta for ml target ...",
+      print("Computing alpha-beta for ml target ...", end=' ')
       sys.stdout.flush()
       O.alpha_beta = fmm.alpha_beta()
-      print "done."
+      print("done.")
     sys.stdout.flush()
 
   def classic_lbfgs(O):
@@ -388,7 +391,7 @@ class refinement(object):
 
   def callback_after_step(O, minimizer):
     O.update_fgc(is_iterate=True)
-    print "%4d: %s" % (O.i_step+1, O.format_rms_info())
+    print("%4d: %s" % (O.i_step+1, O.format_rms_info()))
     sys.stdout.flush()
     if (O.grads_mean_sq < O.params.grads_mean_sq_threshold):
       O.termination_remark = ""
@@ -400,7 +403,7 @@ class refinement(object):
 
   def lbfgs_emulation(O, memory_range=5):
     assert len(O.xfgc_infos) == 1
-    for O.i_step in xrange(O.params.iteration_limit):
+    for O.i_step in range(O.params.iteration_limit):
       if (O.i_step == 0):
         dests = -O.grads
         stp = 1 / O.grads.norm()
@@ -423,7 +426,7 @@ class refinement(object):
       stp = O.line_search(dests, stp=stp)
       assert stp is not None
       O.update_fgc(is_iterate=True)
-      print "%4d: %s" % (O.i_step+1, O.format_rms_info())
+      print("%4d: %s" % (O.i_step+1, O.format_rms_info()))
       sys.stdout.flush()
       if (O.grads_mean_sq < O.params.grads_mean_sq_threshold):
         O.termination_remark = ""
@@ -432,12 +435,12 @@ class refinement(object):
       O.termination_remark = " (iteration limit reached)"
 
   def developmental_algorithms(O):
-    for O.i_step in xrange(O.params.iteration_limit):
+    for O.i_step in range(O.params.iteration_limit):
       O.compute_step()
       s = "%4d: %s" % (O.i_step+1, O.format_rms_info())
       if (O.aq_sel_size is not None):
         s += " aq(%d, %d)" % (O.aq_sel_size, O.aq_n_used)
-      print s
+      print(s)
       sys.stdout.flush()
       if (O.grads_mean_sq < O.params.grads_mean_sq_threshold):
         O.termination_remark = ""
@@ -470,10 +473,10 @@ class refinement(object):
         l = site_symmetry.site_constraints().independent_params(
           all_params=site_limits)
       O.x.extend(flex.double(p))
-      O.x_info.extend([(i_sc,"xyz"[i]) for i in xrange(len(p))])
+      O.x_info.extend([(i_sc,"xyz"[i]) for i in range(len(p))])
       O.dynamic_shift_limits.extend(
         [dynamic_shift_limit_site(width=width) for width in l])
-      for i in xrange(len(p)):
+      for i in range(len(p)):
         O.gact_indices.append(i_all)
         i_all += 1
       #
@@ -518,7 +521,7 @@ class refinement(object):
         ix += np
       vals.append(dests[ix])
       ix += 1
-      print " ".join([format_value("%15.6f", v) for v in vals])
+      print(" ".join([format_value("%15.6f", v) for v in vals]))
     assert ix == O.x.size()
 
   def get_f_calc(O):
@@ -675,7 +678,7 @@ class refinement(object):
 
   def build_bfgs_memory(O, active_infos):
     result = []
-    for iinfo in xrange(len(active_infos)-1):
+    for iinfo in range(len(active_infos)-1):
       k = active_infos[iinfo]
       l = active_infos[iinfo+1]
       m = bfgs.memory_element(s=l.x-k.x, y=l.grads-k.grads)
@@ -692,7 +695,7 @@ class refinement(object):
     aq_sel = flex.size_t()
     aq_sel_size_start = 0
     iinfo_active = []
-    for iinfo in xrange(len(O.xfgc_infos)-1,-1,-1):
+    for iinfo in range(len(O.xfgc_infos)-1,-1,-1):
       info = O.xfgc_infos[iinfo]
       if (info.is_iterate):
         if (aq_sel_size_start == 0):
@@ -733,7 +736,7 @@ class refinement(object):
       if (not wolfe_curv_cond):
         return
       if (m.rho is None):
-        print "Warning: rho <= 0"
+        print("Warning: rho <= 0")
         return
       memory.append(m)
     aq_dests = -bfgs.hg_two_loop_recursion(
@@ -755,7 +758,7 @@ class refinement(object):
         shift *= -1
       assert shift != 0
       shifts.append(shift)
-    if (0): print "shifts:", list(shifts)
+    if (0): print("shifts:", list(shifts))
     grads_z = O.grads
     O.x = x_on_entry + shifts
     O.update_fgc()
@@ -770,8 +773,8 @@ class refinement(object):
     O.xfgc_infos.pop()
     apprx = (grads_p - grads_m) / (2*shifts)
     if (0):
-      print "curvs:", list(O.curvs)
-      print "apprx:", list(apprx)
+      print("curvs:", list(O.curvs))
+      print("apprx:", list(apprx))
       flex.linear_correlation(O.curvs, apprx).show_summary()
     O.curvs = apprx
 
@@ -811,11 +814,11 @@ class refinement(object):
           memory=memory, hk0=hk0, gk=inp_info.grads)
         madl = flex.max(flex.abs(dests / limits))
         if (madl > 1):
-          print "madl:", madl
+          print("madl:", madl)
           dests *= (1/madl)
         assert flex.abs(dests).all_le(limits*(1+1e-6))
     dest_adj = O.line_search(dests, stpmax=2.0)
-    print "dest_adj:", dest_adj
+    print("dest_adj:", dest_adj)
     if (dest_adj is not None):
       dests *= dest_adj
     elif (O.pseudo_curvs is not None):
@@ -870,7 +873,7 @@ class refinement(object):
     O.x_before_line_search = O.xfgc_infos[-1].x
     if (O.params.use_line_search):
       dest_adj = O.line_search(dests, stpmax=1.0)
-      print "dest_adj:", dest_adj
+      print("dest_adj:", dest_adj)
       if (dest_adj is not None and dest_adj < 1):
         dests *= dest_adj
     if (O.params.show_dests): O.show_dests(dests)
@@ -893,7 +896,7 @@ class refinement(object):
         gradients=O.grads,
         search_direction=dests,
         initial_estimate_of_satisfactory_step_length=stp)
-    except RuntimeError, e:
+    except RuntimeError as e:
       if (str(e) != "Search direction not descent."):
         raise
       return None
@@ -945,9 +948,9 @@ class refinement(object):
     O.urmsd = flex.mean_sq(ud)**0.5
     if (O.params.show_distances_to_reference_structure):
       for sc, a, u in zip(xs.scatterers(), omx * ad, ud):
-        print "    %-10s" % sc.label, \
+        print("    %-10s" % sc.label, \
           " ".join(["%6.3f" % v for v in a]), \
-          "%6.3f" % u
+          "%6.3f" % u)
     return (O.crmsd, O.armsd, O.urmsd)
 
   def format_rms_info(O):
@@ -964,8 +967,8 @@ class refinement(object):
   def show_rms_info(O):
     s = O.format_rms_info()
     if (len(s) != 0):
-       print " cRMSD aRMSD uRMSD"
-       print s
+       print(" cRMSD aRMSD uRMSD")
+       print(s)
        sys.stdout.flush()
 
 def run_refinement(
@@ -975,20 +978,20 @@ def run_refinement(
       i_obs=None,
       f_obs=None):
   assert (i_obs is None) == (f_obs is None)
-  print "Ideal structure:"
+  print("Ideal structure:")
   structure_ideal.show_summary().show_scatterers()
-  print
-  print "Modified structure:"
+  print()
+  print("Modified structure:")
   structure_shake.show_summary().show_scatterers()
-  print
-  print "rms difference:", \
-    structure_ideal.rms_difference(other=structure_shake)
-  print
+  print()
+  print("rms difference:", \
+    structure_ideal.rms_difference(other=structure_shake))
+  print()
   sdt = params.show_distances_threshold
   if (sdt > 0):
-    print "structure_shake inter-atomic distances:"
+    print("structure_shake inter-atomic distances:")
     structure_shake.show_distances(distance_cutoff=sdt)
-    print
+    print()
   if (f_obs is None):
     i_obs = structure_ideal.structure_factors(
       anomalous_flag=False,

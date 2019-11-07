@@ -1,0 +1,52 @@
+# Copy of conda-linux.yml, but uses base
+# linux image descriptions
+# https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/linux/Ubuntu1604-README.md
+
+jobs:
+- job: ${{ format('{0}_{1}', parameters.distribution, join('_', parameters.version) ) }}
+  pool:
+    vmImage: ubuntu-16.04
+  timeoutInMinutes: 360
+  strategy:
+    maxParallel: 3
+    matrix:
+      python2.7:
+        CONDA: Linux
+        OS: linux-64
+        PYTHON_VERSION: py27
+  container:
+    image: ${{ parameters.distribution }}:${{ join('.', parameters.version) }}
+    options: "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
+
+  steps:
+  # https://github.com/ApexAI/performance_test/blob/master/azure-pipelines.yml#L9-L17
+
+  # centos setup
+  - script: |
+      /tmp/docker exec -t -u 0 ci-container \
+      sh -c "yum install -y sudo"
+    displayName: Set up sudo for CentOS
+    condition: eq('${{ parameters.distribution }}', 'centos')
+
+  - script: |
+      sudo yum groupinstall -y 'Development Tools'
+      sudo yum install -y python-argparse mesa-libGLU-devel mesa-libGL-devel zlib-devel perl python2-bz2file bzip2-devel
+    displayName: Install dependencies for CentOS
+    condition: eq('${{ parameters.distribution }}', 'centos')
+
+  # ubuntu setup
+  - script: |
+      /tmp/docker exec -t -u 0 ci-container \
+      sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confold" -y install sudo"
+    displayName: Set up sudo for Ubuntu
+    condition: eq('${{ parameters.distribution }}', 'ubuntu')
+
+  - script: |
+      sudo apt-get install -y build-essential curl git libgl1-mesa-dev libglu1-mesa-dev locales subversion perl zlib1g-dev libbz2-dev python pkg-config
+      sudo locale-gen en_US.UTF-8
+      sudo update-locale
+    displayName: Install dependencies for Ubuntu
+    condition: eq('${{ parameters.distribution }}', 'ubuntu')
+
+  # build
+  - template: ./unix-base-build.yml

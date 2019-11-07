@@ -1,6 +1,6 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from cctbx.eltbx import wavelengths
+from six.moves import range
 
 def _make_phase_block(phase, number=1, name="", scale_down=1.0):
   """Create a pcr phase block skelleton with placeholder strings for different
@@ -208,7 +208,7 @@ def _set_ref_flags(inputstring, freeparams=[]):
             varcount += 1
           ret = __replace_match(ret, m , param_to_var[m.group(0)])
       else:
-        raise(ValueError("unknown parameter type: '{0}'".format(param)))
+        raise ValueError("unknown parameter type: '{0}'".format(param))
   # fix all still unhandled flags
   for m in re.finditer('##_.*?_##', ret):
     ret = ret[:m.start()] + "0.00".rjust(len(m.group(0))) + ret[m.end():]

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -8,7 +8,8 @@ from cctbx.crystal.find_best_cell import alternative_find_best_cell as fbc
 from cctbx import miller
 from cctbx.sgtbx import pointgroup_tools as pt
 from libtbx.test_utils import approx_equal
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
+from six.moves import range
 
 def tst_pgtools():
   unit_cell = uctbx.unit_cell('40, 40, 60, 90.0, 90.0, 90.0')
@@ -42,7 +43,7 @@ def tst_pgtools():
   pgtree.remove_point_group_and_its_super_groups_from_graph(
     str(sgtbx.space_group_info(16)))
   assert len(pgtree.graph.node_objects)==1
-  assert pgtree.graph.node_objects.has_key ( 'P 1 2 1' )
+  assert 'P 1 2 1' in pgtree.graph.node_objects
 
 
 def tst_sg_tools():
@@ -95,7 +96,7 @@ def tst_sg_tools():
   for xs in p222:
     comp_string = (str(xs[0].unit_cell().parameters())
                    + " " + str(xs[0].space_group_info()))
-    assert p222_dict.has_key(comp_string)
+    assert comp_string in p222_dict
 
 
 
@@ -143,10 +144,10 @@ def test_extensively( this_chunk ):
     # -----------
     queue = []
     if sg_in_ref_setting.is_chiral():
-      print "Testing : ",\
+      print("Testing : ",\
             sgtbx.space_group_info(group=group),\
             "( or ", sgtbx.space_group_info(group=sg_in_ref_setting),\
-            " in reference setting)"
+            " in reference setting)")
       for s in sg_min:
         new_sg = sgtbx.space_group()
         new_sg.expand_smx(s)
@@ -188,7 +189,7 @@ def test_extensively( this_chunk ):
           #print sgtbx.space_group_info( group=sg_and_uc[0] ), \
           #      sg_and_uc[1].parameters()
         if not found_it:
-          print "FAILURE: ", sg.hall()
+          print("FAILURE: ", sg.hall())
           assert found_it
 
 
@@ -215,8 +216,8 @@ def test_reference_setting_choices():
         xs_new = best_cell_finder.return_best_xs()
         tmp_array.append(xs_new)
       count = 0
-      for tmp_xs1 in xrange(len(tmp_array)):
-        for tmp_xs2 in xrange(len(tmp_array)):
+      for tmp_xs1 in range(len(tmp_array)):
+        for tmp_xs2 in range(len(tmp_array)):
 
           if (tmp_xs1 != tmp_xs2):
             assert (tmp_array[tmp_xs1].space_group()
@@ -283,7 +284,7 @@ def run():
   tst_pgtools()
   tst_sg_tools()
   test_reference_setting_choices()
-  print "OK"
+  print("OK")
 
 
 if (__name__ == "__main__"):
@@ -292,6 +293,6 @@ if (__name__ == "__main__"):
       run()
       test_extensively(0) # Should take not more then 45 minutes
                           #on a reasonable machine
-      print "OK"
+      print("OK")
   else:
     run()

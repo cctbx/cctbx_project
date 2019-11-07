@@ -1,7 +1,7 @@
 
 # TODO more comprehensive tests
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from wxtbx.process_control import *
 
 def exercise():
@@ -52,7 +52,7 @@ def exercise():
     message="Running test function as separate process...",
     callback=None)
   wx.Yield()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

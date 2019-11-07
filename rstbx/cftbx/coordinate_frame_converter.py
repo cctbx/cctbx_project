@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import math
 import sys
 
@@ -264,10 +264,10 @@ if __name__ == '__main__':
 
     cfc = coordinate_frame_converter(configuration_file)
 
-    print 'Maximum resolution: %.2f' % cfc.derive_detector_highest_resolution()
+    print('Maximum resolution: %.2f' % cfc.derive_detector_highest_resolution())
 
     mosflm_matrix = matrix.sqr(
-        map(float, open(sys.argv[2]).read().split()[:9]))
+        [float(_x) for _x in open(sys.argv[2]).read().split()[:9]])
 
     u, b = cfc.get_u_b(convention = cfc.MOSFLM)
 
@@ -277,5 +277,5 @@ if __name__ == '__main__':
 
     matrix_format = '%8.5f %8.5f %8.5f\n%8.5f %8.5f %8.5f\n%8.5f %8.5f %8.5f'
 
-    print matrix_format % mosflm_matrix.elems
-    print matrix_format % (u * b).elems
+    print(matrix_format % mosflm_matrix.elems)
+    print(matrix_format % (u * b).elems)

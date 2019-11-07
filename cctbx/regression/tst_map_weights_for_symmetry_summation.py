@@ -7,7 +7,7 @@ the asu have to be weighted by site-multiplicity/order_z.
 As an aside, this script also exercises space_group.multiplicity(site).
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import maptbx
 from cctbx import miller
 from cctbx import sgtbx
@@ -19,6 +19,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import n_dim_index_from_one_dim
 import boost.rational
 import random
+from six.moves import zip
 
 def exercise(space_group_info, redundancy_counter=0):
   n_real = (12,12,12)

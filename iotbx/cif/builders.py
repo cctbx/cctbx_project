@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from cctbx import adptbx, crystal, miller, sgtbx, uctbx, xray
 from cctbx.array_family import flex
 import iotbx.cif
@@ -6,6 +6,10 @@ from iotbx.cif import model
 from libtbx.utils import Sorry
 from libtbx.containers import OrderedDict, OrderedSet
 import warnings
+from six import string_types
+from six.moves import range
+import six
+from six.moves import zip
 
 class CifBuilderError(Sorry):
   __module__ = Exception.__module__
@@ -112,19 +116,19 @@ class crystal_symmetry_builder(builder_base):
     sym_op_ids = self.get_cif_item('_space_group_symop_id')
     space_group = None
     if sym_ops is not None:
-      if isinstance(sym_ops, basestring):
+      if isinstance(sym_ops, string_types):
         sym_ops = flex.std_string([sym_ops])
       if sym_op_ids is not None:
-        if isinstance(sym_op_ids, basestring):
+        if isinstance(sym_op_ids, string_types):
           sym_op_ids = flex.std_string([sym_op_ids])
         assert len(sym_op_ids) == len(sym_ops)
       self.sym_ops = {}
       space_group = sgtbx.space_group()
-      if isinstance(sym_ops, basestring): sym_ops = [sym_ops]
+      if isinstance(sym_ops, string_types): sym_ops = [sym_ops]
       for i, op in enumerate(sym_ops):
         try:
           s = sgtbx.rt_mx(op)
-        except RuntimeError, e:
+        except RuntimeError as e:
           str_e = str(e)
           if "Parse error: " in str_e:
             raise CifBuilderError("Error interpreting symmetry operator: %s" %(
@@ -136,7 +140,7 @@ class crystal_symmetry_builder(builder_base):
         else:
           try:
             sym_op_id = int(sym_op_ids[i])
-          except ValueError, e:
+          except ValueError as e:
             raise CifBuilderError("Error interpreting symmetry operator id: %s" %(
               str(e)))
         self.sym_ops[sym_op_id] = s
@@ -184,7 +188,7 @@ class crystal_symmetry_builder(builder_base):
         raise CifBuilderError("Invalid unit cell parameters are given")
       try:
         unit_cell = uctbx.unit_cell(vals)
-      except RuntimeError, e:
+      except RuntimeError as e:
         if "cctbx Error: Unit cell" in str(e):
           raise CifBuilderError(e)
         else:
@@ -213,10 +217,11 @@ class crystal_structure_builder(crystal_symmetry_builder):
   def __init__(self, cif_block):
     # XXX To do: interpret _atom_site_refinement_flags
     crystal_symmetry_builder.__init__(self, cif_block, strict=True)
-    atom_sites_frac = [as_double_or_none_if_all_question_marks(
-      _, column_name='_atom_site_fract_%s' %axis)
-                       for _ in [cif_block.get('_atom_site_fract_%s' %axis)
-                                 for axis in ('x','y','z')]]
+    atom_sites_frac = [
+      as_double_or_none_if_all_question_marks(
+        _, column_name='_atom_site_fract_%s' %axis)
+      for _, axis in [(cif_block.get('_atom_site_fract_%s' %axis), axis)
+                      for axis in ('x','y','z')]]
     if atom_sites_frac.count(None) == 3:
       atom_sites_cart = [as_double_or_none_if_all_question_marks(
         _, column_name='_atom_site_Cartn_%s' %axis)
@@ -272,7 +277,7 @@ class crystal_structure_builder(crystal_symmetry_builder):
         atom_site_aniso_label = atom_site_aniso_label.select(sel)
         try:
           adps = [flex.double(adp.select(sel)) for adp in adps]
-        except ValueError, e:
+        except ValueError as e:
           raise CifBuilderError("Error interpreting ADPs: " + str(e))
         adps = flex.sym_mat3_double(*adps)
     for i in range(len(atom_sites_frac)):
@@ -329,7 +334,7 @@ class miller_array_builder(crystal_symmetry_builder):
       wavelength_ids = [None]
       crystal_ids = [None]
       scale_groups = [None]
-      for key, value in refln_loop.iteritems():
+      for key, value in six.iteritems(refln_loop):
         # need to get these arrays first
         if (key.endswith('wavelength_id') or
             key.endswith('crystal_id') or
@@ -339,19 +344,19 @@ class miller_array_builder(crystal_symmetry_builder):
             continue
           counts = data.counts()
           if key.endswith('wavelength_id'):
-            wavelength_ids = counts.keys()
+            wavelength_ids = list(counts.keys())
           if len(counts) == 1: continue
           array = miller.array(
             miller.set(self.crystal_symmetry, self.indices).auto_anomalous(), data)
           if key.endswith('wavelength_id'):
             self.wavelength_id_array = array
-            wavelength_ids = counts.keys()
+            wavelength_ids = list(counts.keys())
           elif key.endswith('crystal_id'):
             self.crystal_id_array = array
-            crystal_ids = counts.keys()
+            crystal_ids = list(counts.keys())
           elif key.endswith('scale_group_code'):
             self.scale_group_array = array
-            scale_groups = counts.keys()
+            scale_groups = list(counts.keys())
       for label, value in sorted(refln_loop.items()):
         for w_id in wavelength_ids:
           for crys_id in crystal_ids:
@@ -520,7 +525,7 @@ class miller_array_builder(crystal_symmetry_builder):
                 info = array.info()
                 array.set_info(info.customized_copy(wavelength=wavelength))
               self._arrays.setdefault(key, array)
-    for key, array in self._arrays.copy().iteritems():
+    for key, array in six.iteritems(self._arrays.copy()):
       if (   key.endswith('_minus') or '_minus_' in key
           or key.endswith('_plus') or '_plus_' in key):
         if '_minus' in key:
@@ -560,7 +565,7 @@ class miller_array_builder(crystal_symmetry_builder):
         for i,h_str in enumerate(hkl_str):
           try:
             h_int = flex.int(h_str)
-          except ValueError, e:
+          except ValueError as e:
             raise CifBuilderError(
               "Invalid item for Miller index %s: %s" % ("HKL"[i], str(e)))
           hkl_int.append(h_int)
@@ -618,7 +623,7 @@ def as_flex_double(array, key):
   else:
     try:
       flex.double(array.data())
-    except ValueError, e:
+    except ValueError as e:
       e_str = str(e)
       if e_str.startswith("Invalid floating-point value: "):
         i = e_str.find(":") + 2
@@ -646,7 +651,7 @@ def as_int_or_none_if_all_question_marks(cif_block_item, column_name=None):
   if (strings is None): return None
   try:
     return flex.int(strings)
-  except ValueError, e:
+  except ValueError as e:
     # better error message if column_name is given
     e_str = str(e)
     if column_name is not None and e_str.startswith(
@@ -662,7 +667,7 @@ def as_double_or_none_if_all_question_marks(cif_block_item, column_name=None):
   if (strings is None): return None
   try:
     return flex.double(strings)
-  except ValueError, e:
+  except ValueError as e:
     # better error message if column_name is given
     e_str = str(e)
     if column_name is not None and e_str.startswith(
@@ -676,7 +681,7 @@ def as_double_or_none_if_all_question_marks(cif_block_item, column_name=None):
 def flex_double(flex_std_string):
   try:
     return flex.double(flex_std_string)
-  except ValueError, e:
+  except ValueError as e:
     raise CifBuilderError(str(e))
 
 def flex_double_else_none(cif_block_item):

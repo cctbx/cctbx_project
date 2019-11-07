@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import iotbx.pdb
 import mmtbx.model
@@ -155,6 +155,6 @@ def exercise_insertions(prefix="tst_cablam_insertions"):
 
 if __name__ == '__main__':
   if (not libtbx.env.has_module(name="probe")):
-    print "Skipping: probe not configured"
+    print("Skipping: probe not configured")
   else:
     exercise_insertions()

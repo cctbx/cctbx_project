@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 """read PRIME input"""
 #Define exceptions
@@ -20,20 +20,27 @@ data = None
   .multiple = True
   .help = Directory containing integrated data in pickle format.  Repeat to \
     specify additional directories.
+  .style = input_list
 run_no = None
-  .type = str
+  .type = path
   .help = Run no. is used as folder name that stores output files.
   .optional = False
+  .alias = Output folder
+  .style = path:folder
 title = None
   .type = str
   .help = Title of the run.
   .multiple = False
+  .alias = Description
 icering
   .help = "Allowing exclusion of icering."
+  .alias = Exclude ice rings
+  .style = grid:auto has_scope_switch
 {
   flag_on = False
     .type = bool
     .help = Turn this flag on to allow exclusion of icering.
+    .style = scope_switch
   d_upper = 3.9
     .type = float
     .help = Minimum resolution.
@@ -43,169 +50,234 @@ icering
 }
 scale
   .help = "Parameters used to generate mean-intensity scaled reference set."
+  .alias = Initial Scaling Parameters
 {
   d_min = 0.1
     .type = float
     .help = Minimum resolution.
+    .alias = High resolution limit
   d_max = 99
     .type = float
     .help = Maximum resolution.
+    .alias = Low resolution limit
   sigma_min = 1.5
     .type = float
     .help = Minimum I/sigI cutoff.
+    .alias = Minimum I/sigI
 }
 postref
   .help = Post-refinement parameters
+  .alias = Post-refinement Parameters
 {
   residual_threshold = 5
     .type = float
     .help = Percent increase in residual allowed during microcycle.
+    .alias = Residual threshold
   residual_threshold_xy = 5
     .type = float
     .help = Percent increase in residual (xy) allowed during microcycle.
+    .alias = Residual XY threshold
   scale
     .help = Scale factors
+    .style = grid:auto
+    .alias = Scale factors
   {
     d_min = 0.1
       .type = float
       .help = Minimum resolution.
+      .alias = High resolution limit
     d_max = 99
       .type = float
       .help = Maximum resolution.
+      .alias = Low resolution limit
     sigma_min = 1.5
       .type = float
       .help = Minimum I/sigI cutoff.
+      .alias = Minimum I/sigI
     partiality_min = 0.1
       .type = float
       .help = Minimum partiality cutoff.
+      .alias = Minimum partiality
   }
   crystal_orientation
     .help = Crystal orientations
+    .alias = Crystal Orientation
+    .style = grid:auto has_scope_switch
+    .expert_level = 1
   {
     flag_on = True
       .type = bool
       .help = Set to False to turn post-refinement in this section off.
+      .alias = Refine crystal orientation
+      .style = scope_switch
     d_min = 0.1
       .type = float
       .help = Minimum resolution.
+      .alias = High resolution limit
     d_max = 99
       .type = float
       .help = Maximum resolution.
+      .alias = Low resolution limit
     sigma_min = 1.5
       .type = float
       .help = Minimum I/sigI cutoff.
+      .alias = Minimum I/sigI
     partiality_min = 0.1
       .type = float
       .help = Minimum partiality cutoff.
+      .alias = Minimum partiality
   }
   reflecting_range
     .help = Reflecting range
+    .alias = Reflecting Range
+    .style = grid:auto has_scope_switch
+    .expert_level = 1
   {
     flag_on = True
       .type = bool
       .help = Set to False to turn post-refinement in this section off.
+      .alias = Refine reflecting range
+      .style = scope_switch
     d_min = 0.1
       .type = float
       .help = Minimum resolution.
+      .alias = High resolution limit
     d_max = 99
       .type = float
       .help = Maximum resolution.
+      .alias = Low resolution limit
     sigma_min = 1.5
       .type = float
       .help = Minimum I/sigI cutoff.
+      .alias = Minimum I/sigI
     partiality_min = 0.1
       .type = float
       .help = Minimum partiality cutoff.
+      .alias = Minimum partiality
   }
   unit_cell
     .help = Unit-cell dimensions
+    .alias = Unit Cell Dimensions
+    .style = grid:auto has_scope_switch
+    .expert_level = 1
   {
     flag_on = True
       .type = bool
       .help = Set to False to turn post-refinement in this section off.
+      .style = scope_switch
     d_min = 0.1
       .type = float
       .help = Minimum resolution.
+      .alias = High resolution limit
     d_max = 99
       .type = float
       .help = Maximum resolution.
+      .alias = Low resolution limit
     sigma_min = 1.5
       .type = float
       .help = Minimum I/sigI cutoff.
+      .alias = Minimum I/sigI
     partiality_min = 0.1
       .type = float
       .help = Minimum partiality cutoff.
+      .alias = Minimum partiality
     uc_tolerance = 5
       .type = float
       .help = Unit-cell tolerance in percent.
+      .alias = Unit cell tolerance (%)
   }
   allparams
     .help = All parameters
+    .alias = Refine All Parameters
+    .style = grid:auto has_scope_switch
+    .expert_level = 1
   {
     flag_on = True
       .type = bool
       .help = Set to True to refine all parameters together.
+      .style = scope_switch
     d_min = 0.1
       .type = float
       .help = Minimum resolution.
+      .alias = High resolution limit
     d_max = 99
       .type = float
       .help = Maximum resolution.
+      .alias = Low resolution limit
     sigma_min = 1.5
       .type = float
       .help = Minimum I/sigI cutoff.
+      .alias = Minimum I/sigI
     partiality_min = 0.1
       .type = float
       .help = Minimum partiality cutoff.
+      .alias = Minimum partiality
     uc_tolerance = 5
       .type = float
       .help = Unit-cell tolerance in percent.
+      .alias = Unit cell tolerance (%)
   }
 }
 merge
   .help = "Parameters used in merging"
+  .alias = Merging Parameters
 {
   d_min = 0.1
     .type = float
     .help = Minimum resolution.
+    .alias = High resolution limit
   d_max = 99
     .type = float
     .help = Maximum resolution.
+    .alias = Low resolution limit
   sigma_min = -3.0
     .type = float
     .help = Minimum I/sigI cutoff.
+    .help = Minimum I/sigI
   partiality_min = 0.1
     .type = float
     .help = Minimum partiality cutoff.
+    .alias = Minimum partiality
   uc_tolerance = 5
     .type = float
     .help = Unit-cell tolerance in percent.
+    .alias = Unit cell tolerance (%)
+  match_resolution = True
+    .type = bool
+    .help = GUI only: when True, merging resolution limits will be applied to \
+            all post-refinement operations
+    .alias = Use general resolution limits
 }
 target_unit_cell = None
   .type = unit_cell
   .help = Target unit-cell parameters are used to discard outlier cells.
   .optional = False
+  .alias = Target Unit Cell
 flag_override_unit_cell = False
   .type = bool
   .help = Set to True to overide unit cell in observations with the target cell.
 target_space_group = None
-  .type = str
+  .type = space_group
   .help = Target space group.
   .optional = False
+  .alias = Target Space Group
 target_anomalous_flag = False
   .type = bool
   .help = Target anomalous flag (False = Not anomalous data)
   .optional = False
+  .alias = Anomalous
 flag_weak_anomalous = False
   .type = bool
   .help = Set to True to indicate that you have weak anomalous signal.
-target_crystal_system = None
-  .type = str
+target_crystal_system = None Triclinic Monoclinic Orthorhombic Tetragonal Trigonal Hexagonal Cubic
+  .type = choice
   .help = Target crystal system
   .optional = True
+  .alias = Crystal System
 n_residues = None
   .type = int
   .help = No. of amino acid residues.
+  .alias = No. residues
 indexing_ambiguity
   .help = "Parameters used in resolving indexing ambiguity"
 {
@@ -241,24 +313,30 @@ hklisoin = None
 hklrefin = None
   .type = path
   .help = Mtz file used as a reference in post-refinement.
+  .expert_level = 1
 flag_plot = False
   .type = bool
   .help = Normal plots.
+  .expert_level = 1
 flag_plot_expert = False
   .type = bool
   .help = Expert plots.
+  .expert_level = 2
 n_postref_cycle = 3
   .type = int
   .help = No. of cycles for post-refinement.
 n_postref_sub_cycle = 1
   .type = int
   .help = No. of cycles for the least-squares minimization in post-refinement.
+  .expert_level = 1
 n_rejection_cycle = 1
   .type = int
   .help = No. of cycles for the outlier rejection.
+  .expert_level = 1
 sigma_rejection = 5
   .type = float
   .help = Sigma level for outlier rejection.
+  .expert_level = 1
 n_bins = 20
   .type = int
   .help = No. of bins used to report statistics.
@@ -266,63 +344,83 @@ pixel_size_mm = None
   .type = float
   .help = Pixel size in mm. (MAR = 0.079346)
   .optional = False
+  .alias = Pixel Size
 frame_accept_min_cc = 0.25
   .type = float
   .help = CC cut-off for the rejection of frames before merging.
 flag_apply_b_by_frame = True
   .type = bool
   .help = Set to False to dismiss B-factor checking.
+  .expert_level = 2
 flag_monte_carlo = False
   .type = bool
   .help = Set to True to turn on Monte-Carlo merge w/o partiality correction. Use n_postref_cycle=0 to output the merged mtz file without post-refinement and partiality correction.
+  .expert_level = 2
 b_refine_d_min = 99
   .type = float
   .help = Minimum resolution.
+  .expert_level = 2
 partiality_model = Lorentzian
   .type = str
   .help = Your choice of partiality model: Lorentzian (default), Voigt (in beta test), Lognormal (in beta test).
+  .expert_level = 2
 flag_LP_correction = True
   .type = bool
   .help = Do polarization correction.
+  .expert_level = 2
 flag_volume_correction = True
   .type = bool
   .help = Do volume correction.
+  .expert_level = 2
 flag_beam_divergence = False
   .type = bool
   .help = Default is not to refine beam divergence. Set to True to allow gammaX and gammaY refinement.
+  .expert_level = 2
 n_processors = 32
   .type = int
   .help = No. of processing units
   .optional = True
+  .alias = No. processors
 gamma_e = 0.003
   .type = float
   .help = Initial spread of the energy spectrum (1/Angstrom).
+  .expert_level = 2
 voigt_nu = 0.5
   .type = float
   .help = If select Voigt for partiality model, the voigt_nu parameter determines the Lorentzian and Gaussian component of the function (0.0 [Lorentzian]<= voigt_nu <= 1.0 [Gaussian]). The default value is 0.5 and will be refined in the run.
+  .expert_level = 2
 polarization_horizontal_fraction = 1.0
   .type = float
   .help = Polarization fraction in horizontal direction.
+  .expert_level = 2
 flag_output_verbose = False
   .type = bool
   .help = Output full detail of the refinement results.
+  .expert_level = 1
 flag_replace_sigI = False
   .type = bool
   .help = Replace to experimental errors I with sqrt(I).
+  .expert_level = 2
 percent_cone_fraction = 5.0
   .type = float
   .help = Perent used to select reflections inside a cone centering on each crystal axis.
+  .expert_level = 2
 isoform_name = None
   .type = str
   .help = Use this isoform.
+  .expert_level = 1
 flag_hush = False
   .type = bool
   .help = Set to true to hush all the disc and elaboarated stats. operations.
+  .expert_level = 1
 timeout_seconds = 300
   .type = int
   .help = Time limits used when queing system is activated.
+  .expert_level = 1
+  .alias = Queue timeout (sec)
 queue
   .help = "Parameters used for submitting jobs to queuing system."
+  .alias = Multiprocessing options
 {
   mode = None
     .type = str
@@ -330,35 +428,45 @@ queue
   qname = psanaq
     .type = str
     .help = For system with queue name, specify your queue name here. For LCLS users, primary queue is the default value while high priority queue at NEH and FEH are psnehhiprioq and psfehhiprioq.
+    .alias = Queue
   n_nodes = 12
     .type = int
     .help = No. of nodes used.
+    .alias = No. of nodes
 }
 isoform_cluster
   .help = "Parameters used in clustering isoform"
+  .alias = Isoform Clustering
 {
   n_clusters = 2
     .type = int
     .help = No. of expected isoforms.
+    .alias = No of isoforms
   isorefin = None
     .multiple = True
     .type = path
     .help = Specify list of mtz files for identifying isoform clusters. Note that n_clusters will be replaced with no. of items in this list.
+    .alias = Reference data (MTZ)
   d_min = 3.0
     .type = float
     .help = High resolution limit used in the calculation of r_metric.
+    .alias = High resolution limit
   d_max = 10.0
     .type = float
     .help = Low resolution limit used in the calculation of r_metric.
+    .alias = Low resolution limit
   sigma_min = 1.5
     .type = float
     .help = Minimum I/sigI cutoff.
+    .alias = Minimum I/sigI
   n_sample_frames = 300
     .type = int
     .help = No. of frames used in scoring r_matrix. Images (n_selected_frames) with the highest score will be used in the Brehm & Diederichs algorithm.
+    .alias = No. of sample frames
   n_selected_frames = 100
     .type = int
     .help = No. of frames used in Auto solution mode. The rest of the frame data will be determined against this merged dataset.
+    .alias = No. of selected frames
 }
 rejections = None
   .type = str
@@ -399,7 +507,7 @@ def process_input(argv=None, flag_mkdir=True):
         user_phil.append(iotbx.phil.parse("""data=\"%s\" """ % arg))
       else :
         if arg == '--help' or arg == '-h':
-          print txt_help
+          print (txt_help)
           master_phil.show(attributes_level=1)
           raise Usage("Run prime.run to generate a list of initial parameters.")
         else:
@@ -431,7 +539,7 @@ def process_input(argv=None, flag_mkdir=True):
       frame_0 = frame_files[0]
       int_pickle = read_frame(frame_0)
       params.pixel_size_mm = int_pickle['pixel_size']
-      print 'Info: Found pixel size in the integration pickles (override pixel_size_mm=%10.8f)'%(params.pixel_size_mm)
+      print ('Info: Found pixel size in the integration pickles (override pixel_size_mm=%10.8f)'%(params.pixel_size_mm))
     except Exception:
       raise InvalidPixelSize("Error: Pixel size in millimeter is required. Use cctbx.image_viewer to view one of your images and note down the value (e.g. for marccd, set pixel_size_mm=0.079346).")
 
@@ -448,7 +556,7 @@ def process_input(argv=None, flag_mkdir=True):
     if all_runs: new_run_no = max([int(run_no.split('_')[-1]) for run_no in all_runs])+1
     params.run_no = default_run+str(new_run_no)
   elif os.path.exists(params.run_no):
-    print "Warning: run number %s already exists."%(params.run_no)
+    print ("Warning: run number %s already exists."%(params.run_no))
     run_overwrite = raw_input('Overwrite?: N/Y (Enter for default)')
     if run_overwrite == 'Y':
       shutil.rmtree(params.run_no)
@@ -523,9 +631,9 @@ def read_frame(frame_file):
       tar_member = tarf.extractfile(member=tarf.getmembers()[int(tar_index)])
       observations_pickle = pickle.load(tar_member)
   except Exception:
-    print "Warning: unable to read %s"%(frame_file)
+    print ("Warning: unable to read %s"%(frame_file))
     pass
   if any([len(obs.data()) == 0 for obs in observations_pickle['observations']]):
-    print "Empty file %s"%(frame_file)
+    print ("Empty file %s"%(frame_file))
     return
   return observations_pickle

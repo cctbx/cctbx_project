@@ -1,5 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME cluster.42
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 __author__ = 'zeldin'
 
 import logging
@@ -8,7 +8,7 @@ from xfel.clustering.cluster_groups import unit_cell_info
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
+FORMAT = '%(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 
 def run(_args):
@@ -38,7 +38,7 @@ def run(_args):
   #plt.text("cluster.42 Plot Everything!")
   plt.tight_layout()
 
-  print unit_cell_info(clusters)
+  print(unit_cell_info(clusters))
   plt.show()
 
 if __name__ == "__main__":

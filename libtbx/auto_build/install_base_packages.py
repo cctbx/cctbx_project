@@ -210,6 +210,12 @@ class installer(object):
     if self.python3: python_executable = 'python3'
     self.wxpython4 = options.wxpython4 # or self.python3 # Python3 should imply wxpython4, but
                                                          # wait until we can actually build it
+    if (not self.wxpython4 and
+        self.flag_is_mac and
+        get_os_version().startswith('10.') and
+        int(get_os_version().split('.')[1]) >= 14):
+      print("Setting wxpython4=True as Mac OS X version >= 10.14", file=self.log)
+      self.wxpython4 = True
     if os.path.exists(os.path.join(self.build_dir, 'base', 'bin', python_executable)):
       self.python_exe = os.path.join(self.build_dir, 'base', 'bin', python_executable)
     elif options.with_python:
@@ -793,6 +799,8 @@ Installation of Python packages may fail.
 
     if self.flag_is_mac and not op.exists('/usr/include/zlib.h'):
       print("zlib.h missing -- try running 'xcode-select --install' first", file=self.log)
+      if get_os_version().startswith('10.') and int(get_os_version().split('.')[1]) >= 14:
+        print("followed by 'sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -target /", file=self.log)
       sys.exit(1)
     log = self.start_building_package("Python")
     os.chdir(self.tmp_dir)
@@ -1119,14 +1127,6 @@ _replace_sysconfig_paths(build_time_vars)
       package_name='msgpack',
       package_version=MSGPACK_VERSION,
       confirm_import_module="msgpack",
-    )
-    # can't guarantee that platforms we distribute to have AVX2 support
-    # RHEL/CentOS 6 gcc does not support AVX2
-    os.environ["DISABLE_BLOSC_AVX2"] = "1"
-    self.build_python_module_pip(
-      package_name='blosc',
-      package_version=BLOSC_VERSION,
-      confirm_import_module="blosc",
     )
 
   def build_pillow(self):
@@ -1632,13 +1632,12 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name=PYRTF_PKG,
       pkg_name_label="PyRTF",
       confirm_import_module="PyRTF")
-    # TODO we are patching the source to force it to use the correct backend.
-    # I'm not sure if this is truly necessary or if there's a cleaner way...
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=SEND2TRASH_PKG,
-      pkg_name_label="send2trash",
-      )#confirm_import_module="send2trash")
+      # TODO we are patching the source to force it to use the correct backend.
+      # I'm not sure if this is truly necessary or if there's a cleaner way...
+
+    self.build_python_module_pip(
+      "send2trash", package_version=SEND2TRASH_VERSION,
+    )
 
   # TODO
   def write_dispatcher_include(self):

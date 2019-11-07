@@ -1,6 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex as flex# import dependency
-import os,sys,time
+import os,time
 from libtbx.utils import Sorry
 from iotbx.ccp4_map import utils  # utilities in common with ccp4_map
 import mrcfile
@@ -8,6 +8,8 @@ import warnings
 from scitbx.array_family.flex import grid
 from cctbx import maptbx
 import numpy as np
+from six.moves import range
+from six.moves import zip
 
 #  mrcfile
 
@@ -78,7 +80,7 @@ class map_reader(utils):
          text="\n  NOTE: WARNING message for the file '%s':\n  '%s'\n " %(
             file_name,war.message)
          if print_warning_messages:
-           print text
+           print(text)
 
          if ignore_all_errors:
            pass
@@ -120,7 +122,7 @@ class map_reader(utils):
 
     # Labels
     self.labels=[]
-    for i in xrange(mrc.header.nlabl):
+    for i in range(mrc.header.nlabl):
       text=mrc.header.label[i].strip()
       if text:
         self.labels.append(mrc.header.label[i])
@@ -237,6 +239,7 @@ class write_ccp4_map:
 
   def __init__(self,
       file_name=None,
+      crystal_symmetry=None,
       unit_cell=None,
       space_group=None,
       map_data=None,
@@ -244,7 +247,8 @@ class write_ccp4_map:
       gridding_first=None,
       gridding_last=None,
       unit_cell_grid=None,
-      external_origin=None,
+      origin_shift_grid_units=None,  # origin shift (grid units) to be applied
+      external_origin=None, # Do not use this unless required
       output_axis_order=INTERNAL_STANDARD_ORDER,
       internal_standard_order=INTERNAL_STANDARD_ORDER,
       verbose=None,
@@ -252,10 +256,16 @@ class write_ccp4_map:
 
     #  The parameter map_data should be a flex array (normally flex double)
 
-    #  Options:  specify unit_cell_grid, or gridding_first and gridding_last,
-    #     or take grid values from map_data.
+    #  Options:
 
+    #  Specify unit_cell_grid, or gridding_first and gridding_last,
+    #     or take grid values from map_data.
     #  If gridding_first and last supplied, input map origin must be at (0,0,0)
+
+    #  Specify crystal_symmetry or unit_cell and space_group
+
+    #  Specify labels (80-character information lines) or not.  Normally
+    #   these should be specified to retain information from previous maps.
 
     #  Notes on grid values:
 
@@ -293,6 +303,22 @@ class write_ccp4_map:
     if map_data.is_padded(): # copied from cctbx/miller/__init__.py
       map_data=maptbx.copy(map_data, flex.grid(map_data.focus()))
 
+    # Get unit_cell and space_group if crystal_symmetry is supplied:
+    if unit_cell is None:
+      assert crystal_symmetry is not None
+      unit_cell=crystal_symmetry.unit_cell()
+
+    if space_group is None:  # use P1 if not supplied
+      if crystal_symmetry is not None:
+        space_group=crystal_symmetry.space_group()
+      else:
+        from cctbx import sgtbx
+        space_group=sgtbx.space_group_info("P1").group()
+
+    # Get empty labels if not supplied
+    if not labels:
+      labels=create_output_labels()
+
 
     if gridding_first is not None and gridding_last is not None:
 
@@ -316,26 +342,34 @@ class write_ccp4_map:
 
       new_map_data=new_map_data.shift_origin() # this is the map we will pass in
 
-    elif unit_cell_grid is not None:
-      # This is the recommended way to use this writer
-      # Uses supplied unit_cell_grid, allowing writing just a part of
-      #   a map to a file, but retaining information on size of whole map
-      # Takes origin and size of map to write from the map_data array
+    else:
 
-      assert len(unit_cell_grid)==3
+      # This is the recommended way to use this writer
+      # Optionally uses supplied unit_cell_grid.
+      # Allows writing just a part of a map to a file, but retaining
+      #   information on size of whole map if unit_cell_grid is supplied.
+      # Takes origin and size of map from the map_data array
+      # Optionally shifts origin based on input "origin_shift_grid_units"
+
       assert gridding_first is None and gridding_last is None
 
-      nxyz_start=map_data.origin()
-      nxyz_end=map_data.last(False)  # last points where data is present
-      new_map_data=map_data.deep_copy().shift_origin()
+      if unit_cell_grid is None:
+        # Assumes map_data.all() is the entire unit cell
+        unit_cell_grid=map_data.all()
+        # Note: if map_data.origin()!=(0,0,0) this grid corresponds to the
+        #  box of density that is present.
+      else:
+        assert len(unit_cell_grid)==3
+        # Assumes unit_cell_grid is the entire unit cell
 
-    else: # common case, but not recommended as unit_cell_grid not supplied
-      # Use information from map_data
-      # Assumes entire map is the entire unit cell but does not shift it
-      unit_cell_grid=map_data.all()
-      nxyz_start=map_data.origin()
-      nxyz_end=map_data.last(False) # last points where data is present
-      new_map_data=map_data.deep_copy().shift_origin()
+      if origin_shift_grid_units:  # Supplied non-zero origin. Input map must be
+        #   at (0,0,0).  Use supplied origin_shift_grid_units as origin
+        assert map_data.origin()==(0,0,0)
+        nxyz_start=origin_shift_grid_units
+        new_map_data=map_data
+      else:
+        nxyz_start=map_data.origin()
+        new_map_data=map_data.deep_copy().shift_origin()
 
     # Ready to write the map
 
@@ -347,7 +381,10 @@ class write_ccp4_map:
     mrc=mrcfile.new(file_name,overwrite=True)
 
     # Convert flex array to the numpy array required for mrcfile
-    numpy_data=new_map_data.as_float().as_numpy_array()
+    if hasattr(new_map_data,'as_float'):
+      numpy_data=new_map_data.as_float().as_numpy_array()
+    else: # was float
+      numpy_data=new_map_data.as_numpy_array()
 
     # This numpy_data array is always in the order (3,2,1): columns are Z,
     #  rows are Y, sections in X.  This comes from the shape of flex arrays.
@@ -372,7 +409,7 @@ class write_ccp4_map:
     output_labels=select_output_labels(labels)
 
     mrc.header.nlabl=len(output_labels)
-    for i in xrange(min(10,len(output_labels))):
+    for i in range(min(10,len(output_labels))):
       mrc.header.label[i]=output_labels[i]
     mrc.update_header_from_data() # don't move this later as we overwrite values
 
@@ -407,6 +444,10 @@ class write_ccp4_map:
     mrc.header.mz=unit_cell_grid[2]
 
     # External origin
+    # NOTE: External origin should rarely be used.  It is a poorly-defined
+    #   element that refers to the position of a non-defined external model
+    #   (PDB file).   For origin purposes use instead "origin".
+
     if external_origin is None:
       external_origin=(0.,0.,0.,)
     # This also is ALWAYS along X,Y,Z regardless of the sectioning of the map
@@ -422,6 +463,13 @@ class write_ccp4_map:
 
     # Write the file
     mrc.close()
+
+def apply_origin_shift(map_data=None,origin_shift=None):
+  from scitbx.matrix import col
+  new_last=list(col(map_data.all())+col(origin_shift))
+  new_map_data=map_data.deep_copy()
+  new_map_data.resize(flex.grid(origin_shift,new_last))
+  return new_map_data
 
 def create_output_labels(
     program_name=None,  # e.g., auto_sharpen
@@ -446,10 +494,10 @@ def create_output_labels(
   # any specific limitations
   if limitations:
     for limitation in limitations:
-      if not limitation in STANDARD_LIMITATIONS_DICT.keys():
-        print "The limitation '%s' is not in STANDARD_LIMITATIONS_DICT: '%s'" %(
-       limitation,str(STANDARD_LIMITATIONS_DICT.keys()))
-      assert limitation in STANDARD_LIMITATIONS_DICT.keys()
+      if not limitation in STANDARD_LIMITATIONS_DICT:
+        print("The limitation '%s' is not in STANDARD_LIMITATIONS_DICT: '%s'" %(
+       limitation,str(list(STANDARD_LIMITATIONS_DICT))))
+      assert limitation in STANDARD_LIMITATIONS_DICT
       output_map_labels.append(limitation)
 
   # any specific labels given
@@ -472,7 +520,7 @@ def select_output_labels(labels,max_labels=10):
   n_limitations=0
   used_labels=[]
   for label in labels:
-    if label in STANDARD_LIMITATIONS_DICT.keys() and not label in used_labels:
+    if label in STANDARD_LIMITATIONS_DICT and not label in used_labels:
       n_limitations+=1
       used_labels.append(label)
   output_labels=[]
@@ -482,7 +530,7 @@ def select_output_labels(labels,max_labels=10):
     if label in output_labels: continue
     if len(output_labels)>=max_labels:
       continue
-    if label in STANDARD_LIMITATIONS_DICT.keys():
+    if label in STANDARD_LIMITATIONS_DICT:
       output_labels.append(label)
     elif n_general < n_available:
       n_general+=1
@@ -570,7 +618,7 @@ def get_standard_order(mapc,mapr,maps,internal_standard_order=None,
 
   if not reverse:
     assert i_order.count(None)==0
-    for i in xrange(3):
+    for i in range(3):
       assert i_order.count(i)==1
     return i_order
   else:
@@ -578,10 +626,10 @@ def get_standard_order(mapc,mapr,maps,internal_standard_order=None,
     #   if standard is: input axis 0 -> output 2 :i0=2
     #   then reversed:  input 2 -> output 0      :i2=0
     i_order_reverse=[None,None,None]
-    for i in xrange(3):
+    for i in range(3):
       i_order_reverse[i_order[i]]=i
     assert i_order_reverse.count(None)==0
-    for i in xrange(3):
+    for i in range(3):
       assert i_order_reverse.count(i)==1
     return i_order_reverse
 
@@ -605,7 +653,7 @@ def origin_as_crs(origin=None,mapc=None,mapr=None,maps=None):
   #   is the origin along Z
 
   nxstart_nystart_nzstart=[None,None,None]
-  for i in xrange(3):
+  for i in range(3):
     nxstart_nystart_nzstart[order[i]]=origin[i]
   return nxstart_nystart_nzstart
 
@@ -629,7 +677,7 @@ def origin_as_xyz(nxstart_nystart_nzstart=None,mapc=None,mapr=None,maps=None):
   #   is the origin along Z
 
   origin=[None,None,None]
-  for i in xrange(3):
+  for i in range(3):
     origin[order[i]]=nxstart_nystart_nzstart[i]
   return origin
 

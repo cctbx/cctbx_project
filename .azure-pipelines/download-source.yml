@@ -1,0 +1,62 @@
+# Script for checking out sources and storing it as an artifact
+# The artifact name is "modules"
+
+jobs:
+- job: modules
+  pool:
+    vmImage: ubuntu-16.04
+  timeoutInMinutes: 360
+
+  steps:
+
+  # download sources
+  - checkout: self
+    path: ./modules/cctbx_project
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
+    displayName: Link bootstrap.py
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      python bootstrap.py hot update --builder=cctbx
+    displayName: Download sources
+
+  # download test data
+  # - task: DownloadPipelineArtifact@2
+  #   inputs:
+  #     source: 'specific'
+  #     project: '$(System.TeamProjectId)'
+  #     pipeline: 4
+  #     artifact: 'chem_data'
+  #     path: $(Pipeline.Workspace)/modules/chem_data
+  #   displayName: Download chem_data
+
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: 4
+      artifact: 'phenix_regression'
+      path: $(Pipeline.Workspace)/modules/phenix_regression
+    displayName: Download phenix_regression
+
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: 4
+      artifact: 'phenix_examples'
+      path: $(Pipeline.Workspace)/modules/phenix_examples
+    displayName: Download phenix_examples
+
+  # preserve permissions
+  - script: |
+      cd $(Pipeline.Workspace)
+      tar -cf modules.tar modules
+    displayName: Build tarball
+
+  # publish artifact
+  - publish: $(Pipeline.Workspace)/modules.tar
+    artifact: modules

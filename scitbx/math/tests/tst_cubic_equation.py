@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import scitbx.math
 from scitbx.array_family import flex
 import math, time, random
 from libtbx.test_utils import approx_equal
+from six.moves import range
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -29,12 +30,12 @@ def sol(x, a,b,c,d, check_roots, eps=1.e-6):
   for ri in r.residual():
     assert approx_equal(ri, 0.0, eps)
   if(check_roots):
-    for i in xrange(3):
+    for i in range(3):
       assert approx_equal(answer[i], solution[i], eps)
 
 def exercise1(n_trials):
   v = 1000
-  for i in xrange(n_trials):
+  for i in range(n_trials):
     for scale in [0.0000001, 0.0001, 1.]:
       ri1 = random.randint(-v,v)*scale
       ri2 = random.randint(-v,v)*scale
@@ -98,7 +99,7 @@ def exercise5(n_trials):
       assert approx_equal(residual(a=a,b=b,c=c,d=d,x=x), 0)
   for x1,x2,x3 in flex.nested_loop([-2]*3, [2]*3, open_range=False):
     check()
-  for i in xrange(n_trials):
+  for i in range(n_trials):
     x1 = random.randint(-10,10)
     x2 = random.randint(-10,10)
     x3 = random.randint(-10,10)
@@ -108,14 +109,14 @@ def run(args):
   assert len(args) == 0
   n_trials = 100
   t0 = time.time()
-  for i in xrange(1):
+  for i in range(1):
     exercise1(n_trials)
     exercise2()
     exercise3()
     exercise4()
     exercise5(n_trials)
   from libtbx.utils import format_cpu_times
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   import sys

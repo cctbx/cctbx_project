@@ -1,5 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import boost.python
+from six.moves import range
 ext = boost.python.import_ext("boost_rational_ext")
 from boost_rational_ext import *
 
@@ -18,7 +19,7 @@ def vector(numerators, denominators):
   else:
     assert len(numerators) == len(denominators)
   result = []
-  for i in xrange(len(numerators)):
+  for i in range(len(numerators)):
     result.append(int(numerators[i], denominators[i]))
   return result
 
