@@ -9,7 +9,7 @@ from mmtbx.validation.rama_z import rama_z
 import os
 
 fname = libtbx.env.find_in_repositories(
-    relative_path="cctbx_project/mmtbx/regression/pdbs/p9.pdb",
+    relative_path="cctbx_project/mmtbx/secondary_structure/regularize_from_pdb_lib/lib8.pdb",
     test=os.path.isfile)
 
 def check_function():
@@ -20,13 +20,13 @@ def check_function():
   ss_cont = zs.get_residue_counts()
   # print (z_scores)
   # print (ss_cont)
-  expected_z =  {'H': None, 'S': -0.057428666470734, 'L': -0.3588028726184504,
-      'W': -0.4019606027769244}
-  expeted_ss = {'H': 0, 'S': 63, 'L': 71, 'W': 134}
+  expected_z =  {'H': -2.7111077448509953, 'S': None, 'L': -0.7253113914835396, 'W': -1.0306993840276084}
+  expeted_ss = {'H': 277, 'S': 0, 'L': 15041, 'W': 15318}
   for k in expected_z:
     if z_scores[k] is not None:
       assert approx_equal( z_scores[k][0], expected_z[k])
-      assert 0.45 < z_scores[k][1] < 0.8
+      if k == 'W':
+        assert 0.01 < z_scores[k][1] < 0.1, z_scores[k][1]
     if k != 'weighted_mean':
       assert approx_equal( ss_cont[k], expeted_ss[k] )
 
@@ -36,10 +36,10 @@ def check_cmd_line():
   stdout = r.stdout_lines
   # print ("\n".join(stdout))
   expected_strs = [
-      ["z-score whole: -0.402", "residues: 134"],
-      ["z-score helix: None, ", "residues: 0"],
-      ["z-score sheet: -0.057", "residues: 63"],
-      ["z-score loop : -0.359", "residues: 71"]]
+      ["z-score whole: -1.031", "residues: 15318"],
+      ["z-score helix: -2.711", "residues: 277"],
+      ["z-score sheet: None,", "residues: 0"],
+      ["z-score loop : -0.725", "residues: 15041"]]
   for res, expected in zip(stdout[-9:-6], expected_strs):
     for exp_l in expected:
       assert res.find(exp_l) >= 0, "res: '%s', exp: '%s'" % (res, exp_l)
