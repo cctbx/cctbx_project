@@ -150,6 +150,11 @@ namespace boost_python { namespace {
                      make_setter(&simtbx::nanoBragg::diffBragg::raw_pixels_roi,dcp()),
                     "raw pixels from region of interest only")
 
+      .add_property("max_I_hkl",
+                     make_getter(&simtbx::nanoBragg::diffBragg::max_I_hkl,rbv()),
+                     make_setter(&simtbx::nanoBragg::diffBragg::max_I_hkl,dcp()),
+                    "HKL corresponding to the maximum simulated intensity in the ROI")
+
       .add_property("Umatrix",
              make_function(&get_U,rbv()),
              make_function(&set_U,dcp()),
@@ -174,6 +179,8 @@ namespace boost_python { namespace {
                      make_getter(&simtbx::nanoBragg::diffBragg::update_oversample_during_refinement,rbv()),
                      make_setter(&simtbx::nanoBragg::diffBragg::update_oversample_during_refinement,dcp()),
                      "Allows oversample to change as Ncells abc changes")
+
+
     ; // end of diffBragg extention
 
   } // end of diffBragg_init_module
