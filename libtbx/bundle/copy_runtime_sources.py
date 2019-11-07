@@ -59,8 +59,9 @@ def run(target_root):
         print("Warning - could not locate: %s, skipping" %dist_path)
         continue
       os.chdir(dist_path)
-      os.path.walk(
-        ".", copy_dist_files, (module.exclude_from_binary_bundle, dist_copy))
+      options = (module.exclude_from_binary_bundle, dist_copy)
+      for root, dirs, files in os.walk("."):
+        copy_dist_files(options, root, files)
   libtbx.bundle.utils.write_bundle_info(abs_target_root)
   os.chdir(cwd)
 

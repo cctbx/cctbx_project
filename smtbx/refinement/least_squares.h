@@ -69,7 +69,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
               one_miller_index_fcalc_ptr_t;
 
       // Accumulate equations Fo(h) ~ Fc(h)
-      SMTBX_ASSERT(!(reflections.has_twin_components() && f_mask.size()));
       SMTBX_ASSERT((!f_mask.size() || f_mask.size() == reflections.size()))
                   (f_mask.size())(reflections.size());
       reflections.update_prime_fraction();
