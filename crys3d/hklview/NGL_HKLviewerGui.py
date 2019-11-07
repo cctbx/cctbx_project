@@ -12,7 +12,8 @@ from __future__ import absolute_import, division, print_function
 #-------------------------------------------------------------------------------
 
 from PySide2.QtCore import Qt, QAbstractTableModel, QModelIndex, QTimer, QEvent
-from PySide2.QtWidgets import ( QAction, QApplication, QCheckBox, QComboBox, QDialog,
+from PySide2.QtWidgets import ( QAbstractItemView, QAction, QApplication, QCheckBox,
+        QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableView, QTableWidget,
@@ -141,30 +142,28 @@ class MyTableWidget(QTableWidget):
 
 
 class MillerArrayTableModel(QAbstractTableModel):
-  """
-  model used for QTableView for displaying miller arrays.
-  Since data from cmdlineframes.tabulate_miller_array()
-  is a list of miller arrays, i.e. row-column organised
-  we flip it to being column-row oriented
-  """
   def __init__(self, data, headerdata, parent=None):
     super(MillerArrayTableModel, self).__init__(parent)
-    self._data = data
+    #self._data = data
+    # transpose the data
+    self._data = list(zip(*data))
     self.columnheaderdata = headerdata
     self.precision = 4
-  def columnCount(self, parent=None):
-    return len(self._data)
   def rowCount(self, parent=None):
-    return len(self._data[0]) if self.columnCount() else 0
+    return len(self._data)
+  def columnCount(self, parent=None):
+    return len(self._data[0]) if self.rowCount() else 0
   def data(self, index, role=Qt.DisplayRole):
     if role == Qt.DisplayRole:
       row = index.row()
       if 0 <= row < self.rowCount():
         column = index.column()
         if 0 <= column < self.columnCount():
-          val = self._data[column][row]
+          val = self._data[row][column]
           if not (type(val) is float or type(val) is int):
             return val
+          if math.isnan(val):
+            return None
           if abs(val) < float("1e-%d" %self.precision):
             fstr = "%" + "%d" %self.precision
             fstr += ".%de" %self.precision
@@ -177,7 +176,9 @@ class MillerArrayTableModel(QAbstractTableModel):
     rows = self.rowCount()
     self.beginRemoveRows(QModelIndex(), 0, rows-1 )
     self.endRemoveRows()
-    del self._data
+    cols = self.columnCount()
+    self.beginRemoveColumns(QModelIndex(), 0, cols-1 )
+    self.endRemoveColumns()
   def headerData(self, index, orientation, role):
     if orientation == Qt.Horizontal and role == Qt.DisplayRole:
       return self.columnheaderdata[index]
@@ -187,10 +188,12 @@ class MillerArrayTableModel(QAbstractTableModel):
     """Sort table by given column number.
     """
     self.layoutAboutToBeChanged.emit()
-    #if order == Qt.AscendingOrder:
-    #  self._data = sorted(self._data, key= lambda self._data[col]: self._data[col])
-    #if order == Qt.DescendingOrder:
-    #  self._data = sorted(self._data, key=self._data[col], reverse=True)
+    if order == Qt.AscendingOrder:
+      print(self.columnheaderdata[col] + " sort AscendingOrder")
+      self._data = sorted(self._data, key= lambda data: data[col])
+    if order == Qt.DescendingOrder:
+      print(self.columnheaderdata[col] + " sort DescendingOrder")
+      self._data = sorted(self._data, key= lambda data: data[col], reverse=True)
     self.layoutChanged.emit()
 
 
@@ -314,11 +317,13 @@ class NGL_HKLViewer(QWidget):
     self.millertable.itemSelectionChanged.connect(self.onMillerTableitemSelectionChanged)
 
     self.millerarraytable = QTableView(self)
+    self.millerarraytable.setSortingEnabled(False)
 
     #self.millerarraytable = MyTableWidget(0, len(labels))
     #self.millerarraytable.setEditTriggers(QTableWidget.NoEditTriggers)
     self.millerarraytable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.millerarraytable.horizontalHeader().sectionDoubleClicked.connect(self.onMillerArrayTableHeaderSectionDoubleClicked)
+    self.millerarraytable.setSelectionMode( QAbstractItemView.NoSelection )
     self.millerarraytableform = MillerArrayTableForm(self)
     self.millerarraytablemodel = None
 
@@ -436,6 +441,22 @@ class NGL_HKLViewer(QWidget):
     event.accept()
 
 
+  def onOpenReflectionFile(self):
+    options = QFileDialog.Options()
+    fileName, filtr = QFileDialog.getOpenFileName(self,
+            "Load reflections file",
+            "",
+            "All Files (*);;MTZ Files (*.mtz);;CIF (*.cif)", "", options)
+    if fileName:
+      self.HKLnameedit.setText(fileName)
+      #self.infostr = ""
+      self.textInfo.setPlainText("")
+      self.fileisvalid = False
+      self.NGL_HKL_command('NGL_HKLviewer.filename = "%s"' %fileName )
+      self.MillerComboBox.clear()
+      self.BinDataComboBox.clear()
+
+
   def SettingsDialog(self):
     self.settingsform.show()
 
@@ -525,6 +546,8 @@ class NGL_HKLViewer(QWidget):
               self.millerarraytable.model().clear()
             self.millerarraytablemodel = MillerArrayTableModel(self.datalst, labels, self)
             self.millerarraytable.setModel(self.millerarraytablemodel)
+            self.millerarraytable.horizontalHeader().setHighlightSections(False)
+            self.millerarraytable.setSortingEnabled(False)
 
             self.millerarraytable_sortorder = ["unsorted"] * (len(self.datalst) + 3)
             #self.millerarraytable.clear()
@@ -573,7 +596,9 @@ class NGL_HKLViewer(QWidget):
           if (self.NewFileLoaded or self.NewMillerArray) and self.NewHKLscenes:
             #print("got hklscenes: " + str(self.hklscenes_arrays))
             self.NewMillerArray = False
-            #self.millerarraytable.clear()
+            if self.millerarraytablemodel:
+              self.millerarraytablemodel.clear()
+              self.millerarraytablemodel = MillerArrayTableModel([[]], [], self)
 
             self.MillerComboBox.clear()
             self.MillerComboBox.addItems( self.millerarraylabels )
@@ -608,15 +633,22 @@ class NGL_HKLViewer(QWidget):
   def onMillerArrayTableHeaderSectionDoubleClicked(self, idx):
     if self.millerarraytable_sortorder[idx] == Qt.SortOrder.AscendingOrder:
       self.millerarraytable_sortorder[idx] = "unsorted"
-      self.RefreshMillerArrayTable()
+      #self.RefreshMillerArrayTable()
+      labels = [ ld[0] for ld in self.tabulate_miller_array ]
+      self.datalst =  [ ld[1] for ld in self.tabulate_miller_array ]
+      if self.millerarraytable.model():
+        self.millerarraytable.model().clear()
+      self.millerarraytablemodel = MillerArrayTableModel(self.datalst, labels, self)
+      self.millerarraytable.setModel(self.millerarraytablemodel)
+
       return
     if self.millerarraytable_sortorder[idx] == "unsorted":
       self.millerarraytable_sortorder[idx] = Qt.SortOrder.DescendingOrder
-      self.millerarraytable.sortItems(idx, self.millerarraytable_sortorder[idx])
+      self.millerarraytable.sortByColumn(idx, self.millerarraytable_sortorder[idx])
       return
     if self.millerarraytable_sortorder[idx] == Qt.SortOrder.DescendingOrder:
       self.millerarraytable_sortorder[idx] = Qt.SortOrder.AscendingOrder
-      self.millerarraytable.sortItems(idx, self.millerarraytable_sortorder[idx])
+      self.millerarraytable.sortByColumn(idx, self.millerarraytable_sortorder[idx])
 
 
   def RefreshMillerArrayTable(self):
@@ -922,22 +954,6 @@ class NGL_HKLViewer(QWidget):
       self.NGL_HKL_command('NGL_HKLviewer.viewer.nth_power_scale_radii = -1.0')
       self.power_scale_spinBox.setEnabled(False)
       #self.power_scale_spinBox.setValue(-1.0)
-
-
-  def onOpenReflectionFile(self):
-    options = QFileDialog.Options()
-    fileName, filtr = QFileDialog.getOpenFileName(self,
-            "Load reflections file",
-            "",
-            "All Files (*);;MTZ Files (*.mtz);;CIF (*.cif)", "", options)
-    if fileName:
-      self.HKLnameedit.setText(fileName)
-      #self.infostr = ""
-      self.textInfo.setPlainText("")
-      self.fileisvalid = False
-      self.NGL_HKL_command('NGL_HKLviewer.filename = "%s"' %fileName )
-      self.MillerComboBox.clear()
-      self.BinDataComboBox.clear()
 
 
   def createExpansionBox(self):
