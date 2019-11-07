@@ -45,6 +45,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_rotX = True  # whether to refine the X rotation
         self.iterations = 0  # iteration counter , used internally
         self.refine_rotY = True  # whether to refine Y rotations
+        self.FNAMES = {}  # place holder for fnames dictionary so refinement understands layout of the data
         self.refine_rotZ = True  # whether to refine Z rotations
         self.plot_residuals = False  # whether to plot residuals
         self.debug = False  # for debug print statements
