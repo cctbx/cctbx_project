@@ -4,7 +4,7 @@ Import("env_base", "env_etc")
 Import("env_scitbx_boost_python_ext")
 
 env = env_base.Clone(
-  SHLINKFLAGS=env_etc.shlinkflags)
+  SHLINKFLAGS=env_etc.shlinkflags + env_etc.shlinkflags_bpl)
 env_etc.enable_more_warnings(env=env)
 env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)

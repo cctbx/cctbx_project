@@ -158,9 +158,6 @@ if (sys.platform == "win32"):
 elif (sys.platform.startswith("darwin")):
   if (compiler == "default"):
     env_etc.compiler = "darwin_c++"
-  elif (compiler == "darwin_conda"):
-    env_etc.compiler = "unix_conda"
-    compiler = None
   else:
     env_etc.compiler = "darwin_"+compiler
     compiler = None
@@ -175,6 +172,7 @@ if (compiler not in ("default", None)):
   raise RuntimeError("Compiler not supported on this platform: %s" % compiler)
 supported_compilers = (
   "unix_conda",
+  "darwin_conda",
   "win32_cl",
   "win32_icc",
   "win32_mingw",
@@ -766,7 +764,7 @@ int main() {
     if (static_exe):
       env_base.Prepend(LINKFLAGS=["-Bstatic"])
       static_exe = None
-  elif (env_etc.compiler == 'unix_conda'):
+  elif (env_etc.compiler == 'unix_conda' or env_etc.compiler == 'darwin_conda'):
     # get conda compilers from environment
     cc = os.environ.get('CC', '')
     cxx = os.environ.get('CXX', '')
@@ -780,8 +778,10 @@ int main() {
     env_etc.ccflags_base = []
     env_etc.cxxflags_base = []
     libtbx.env.build_options.use_environment_flags = True
-    env_etc.shlinkflags = ["-shared"]
-    env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
+    env_etc.shlinkflags = ['-shared']
+    env_etc.shlinkflags_bpl = env_etc.shlinkflags
+    if sys.platform.startswith('darwin'):
+      env_etc.shlinkflags_bpl += ['-undefined', 'dynamic_lookup']
     libtbx.env.build_options.env_cxxflags = \
       libtbx.env.build_options.env_cxxflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
     libtbx.env.build_options.env_cppflags = \
