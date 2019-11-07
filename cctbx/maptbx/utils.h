@@ -296,6 +296,37 @@ DataType map_sum_at_sites_frac(
 }
 
 template <typename DataType>
+af::versa<DataType, af::c_grid<3> > set_box_copy_inside(
+  DataType const& value,
+  af::ref<DataType, af::c_grid<3> > map_data_to,
+  af::tiny<int, 3> const& start,
+  af::tiny<int, 3> const& end)
+{
+  af::c_grid<3> a = map_data_to.accessor();
+  for(int i = 0; i < 3; i++) {
+    CCTBX_ASSERT(start[i]>=0 && start[i]<=a[i]);
+    CCTBX_ASSERT(end[i]>=0   && end[i]<=a[i]);
+  }
+  // like set_box_copy except copies inside and sets value outside
+  af::versa<DataType, af::c_grid<3> > result_map(a,
+    af::init_functor_null<DataType>());
+  af::ref<DataType, af::c_grid<3> > result_map_ref = result_map.ref();
+  for(int i = 0; i < a[0]; i++) {
+    for(int j = 0; j < a[1]; j++) {
+      for(int k = 0; k < a[2]; k++) {
+        if(i>=start[0]&&i<end[0] &&
+           j>=start[1]&&j<end[1] &&
+           k>=start[2]&&k<end[2]) {
+          result_map_ref(i,j,k) = map_data_to(i,j,k);
+        }
+        else {
+          result_map_ref(i,j,k) = value;
+        }
+  }}}
+  return result_map;
+}
+
+template <typename DataType>
 af::versa<DataType, af::c_grid<3> > set_box_copy(
   DataType const& value,
   af::ref<DataType, af::c_grid<3> > map_data_to,

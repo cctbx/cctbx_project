@@ -986,6 +986,17 @@ namespace {
       arg("start"),
       arg("end")));
 
+    def("set_box_copy_inside",
+      (af::versa<double, af::c_grid<3> >(*)
+        (double const&,
+         af::ref<double, af::c_grid<3> >,
+         af::tiny<int, 3> const&,
+         af::tiny<int, 3> const&)) set_box_copy_inside, (
+      arg("value"),
+      arg("map_data_to"),
+      arg("start"),
+      arg("end")));
+
     def("set_box",
       (void(*)
         (double const&,
