@@ -1238,7 +1238,7 @@ class ProcessingTab(IOTABasePanel):
     self._update_canvas(canvas=self.hkl_canvas)
 
   def onImageView(self, e):
-    filepath = self.info_txt.GetValue()
+    filepath = self.info_txt.GetValue().split(' ')[0]
     viewer = self.gparams.gui.image_viewer
     if os.path.isfile(filepath):
       viewer = thr.ImageViewerThread(self,
@@ -1266,6 +1266,10 @@ class ProcessingTab(IOTABasePanel):
               filenames.append(self.proc_fnames[int(n)])
     elif 0 < len(self.proc_fnames) <= 5:
       filenames = self.proc_fnames
+
+    # handle filepath tuples
+    if isinstance(filenames, list) or isinstance(filenames, tuple):
+      filenames = zip(*filenames)[1]
 
     if filenames:
       file_string = ' '.join(filenames)
@@ -1962,6 +1966,7 @@ class ProcWindow(IOTABaseFrame):
     self.monitor_mode_timeout = None
     self.timeout_start = None
     self.find_new_images = self.monitor_mode
+    self.finding_images = False
     self.start_object_finder = True
     self.plotter_time = []
     self.obj_reader_time = []
@@ -2387,17 +2392,20 @@ class ProcWindow(IOTABaseFrame):
     if self.monitor_mode:
       self.get_images_from_filesystem()
 
-      # if self.find_new_images:
-      #   self.get_images_from_filesystem()
-      # else:
-      #   self.find_new_images = (not self.new_images)
-
       if self.new_images:
         self.status_txt.SetLabel(
           'Found {} new images'.format(len(self.new_images)))
         self.timeout_start = None
         self.state = 'new images'
         self.info.update_input_list(new_input=self.new_images)
+
+        print ('\n*** debug: FOUND NEW IMAGES! ***')
+        print ('debug: new images: ')
+        for i in self.new_images: print (i)
+        print
+        print ('debug: unproc: ')
+        for i in self.info.unprocessed: print (i)
+
         self.info.export_json()
         self.process_images()
       else:
@@ -2429,13 +2437,17 @@ class ProcWindow(IOTABaseFrame):
       self.finish_process()
 
   def get_images_from_filesystem(self):
-    img_finder = thr.ImageFinderThread(self,
-                                       input=self.gparams.input,
-                                       input_list=self.info.categories['total'][
-                                         0])
+    self.finding_images = True
+    self.status_txt.SetLabel('Looking for new images in {}'
+                             ''.format(self.gparams.input))
+    img_finder = thr.ImageFinderThread(
+      self,
+      input=self.gparams.input,
+      input_list=self.info.categories['total'][0])
     img_finder.start()
 
   def onFinishedProcess(self, e):
+    self.finding_images = False
     if not self.monitor_mode:
       self.finish_process()
     else:

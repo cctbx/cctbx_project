@@ -596,7 +596,7 @@ class ProcInfo(object):
       self.input_list = new_input
       self.unprocessed = []
       for i in self.input_list:
-        idx = self.input_list.index(i)
+        idx = self.input_list.index(i) + 1
         if isinstance(i, str):
           path = i
           img_index = 0
