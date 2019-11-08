@@ -89,15 +89,27 @@ class MillerArrayTableForm(QDialog):
     precision_labeltxt = QLabel()
     precision_labeltxt.setText("Precision:")
 
+    self.SortComboBox = QComboBox()
+    self.SortComboBox.activated.connect(parent.onSortComboBoxSelchange)
+    sort_labeltxt = QLabel()
+    sort_labeltxt.setText("Sort according to:")
+    self.sortChkbox = QCheckBox()
+    self.sortChkbox.setCheckState(Qt.Unchecked)
+    self.sortChkbox.setText("Ascending order")
+    self.sortChkbox.clicked.connect(parent.onSortChkbox)
+
     self.myGroupBox = QGroupBox("Double click columns to sort values in ascending or descending order")
     self.layout = QGridLayout()
     self.layout.addWidget(precision_labeltxt,       0, 0, 1, 1)
     self.layout.addWidget(self.precision_spinBox,   0, 1, 1, 1)
+    self.layout.addWidget(sort_labeltxt,            0, 2, 1, 1)
+    self.layout.addWidget(self.SortComboBox,        0, 3, 1, 1)
+    self.layout.addWidget(self.sortChkbox,          0, 4, 1, 1)
     self.layout.addWidget(parent.millerarraytable,  1, 0, 1, 5)
     self.layout.setColumnStretch (0 ,0)
     self.layout.setColumnStretch (1 ,0)
-    self.layout.setColumnStretch (2 ,1)
-    self.layout.setColumnStretch (3 ,1)
+    self.layout.setColumnStretch (2 ,0)
+    self.layout.setColumnStretch (3 ,0)
     self.layout.setColumnStretch (4 ,1)
     self.myGroupBox.setLayout(self.layout)
     self.mainLayout = QGridLayout()
@@ -322,8 +334,8 @@ class NGL_HKLViewer(QWidget):
     #self.millerarraytable = MyTableWidget(0, len(labels))
     #self.millerarraytable.setEditTriggers(QTableWidget.NoEditTriggers)
     self.millerarraytable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
-    self.millerarraytable.horizontalHeader().sectionDoubleClicked.connect(self.onMillerArrayTableHeaderSectionDoubleClicked)
-    self.millerarraytable.setSelectionMode( QAbstractItemView.NoSelection )
+    #self.millerarraytable.horizontalHeader().sectionDoubleClicked.connect(self.onMillerArrayTableHeaderSectionDoubleClicked)
+    #self.millerarraytable.setSelectionMode( QAbstractItemView.NoSelection )
     self.millerarraytableform = MillerArrayTableForm(self)
     self.millerarraytablemodel = None
 
@@ -558,6 +570,10 @@ class NGL_HKLViewer(QWidget):
             tablewidth = 0
             for e in range(self.millerarraytablemodel.columnCount()):
               tablewidth +=  self.millerarraytable.columnWidth(e)
+
+            self.millerarraytableform.SortComboBox.clear()
+            self.millerarraytableform.SortComboBox.addItems(["unsorted"] + labels )
+            self.millerarraytableform.SortComboBox.view().setMinimumWidth(self.comboviewwidth)
             self.millerarraytableform.resize(tablewidth, self.millerarraytableform.size().height())
             self.millerarraytableform.show()
 
@@ -630,27 +646,6 @@ class NGL_HKLViewer(QWidget):
         pass
 
 
-  def onMillerArrayTableHeaderSectionDoubleClicked(self, idx):
-    if self.millerarraytable_sortorder[idx] == Qt.SortOrder.AscendingOrder:
-      self.millerarraytable_sortorder[idx] = "unsorted"
-      #self.RefreshMillerArrayTable()
-      labels = [ ld[0] for ld in self.tabulate_miller_array ]
-      self.datalst =  [ ld[1] for ld in self.tabulate_miller_array ]
-      if self.millerarraytable.model():
-        self.millerarraytable.model().clear()
-      self.millerarraytablemodel = MillerArrayTableModel(self.datalst, labels, self)
-      self.millerarraytable.setModel(self.millerarraytablemodel)
-
-      return
-    if self.millerarraytable_sortorder[idx] == "unsorted":
-      self.millerarraytable_sortorder[idx] = Qt.SortOrder.DescendingOrder
-      self.millerarraytable.sortByColumn(idx, self.millerarraytable_sortorder[idx])
-      return
-    if self.millerarraytable_sortorder[idx] == Qt.SortOrder.DescendingOrder:
-      self.millerarraytable_sortorder[idx] = Qt.SortOrder.AscendingOrder
-      self.millerarraytable.sortByColumn(idx, self.millerarraytable_sortorder[idx])
-
-
   def RefreshMillerArrayTable(self):
     nc = len(self.indices)
     mc = int(nc/20) # print 20 percentages
@@ -672,6 +667,26 @@ class NGL_HKLViewer(QWidget):
         self.millerarraytable.setItem(row, i+3, NumericTableWidgetItem(d))
       if (row % mc) == 0:
         print("%2.1f %%" %(row*100/nc))
+
+
+  def onSortComboBoxSelchange(self, i):
+    if i==0: # i.e. unsorted
+      labels = [ ld[0] for ld in self.tabulate_miller_array ]
+      self.datalst =  [ ld[1] for ld in self.tabulate_miller_array ]
+      if self.millerarraytable.model():
+        self.millerarraytable.model().clear()
+      self.millerarraytablemodel = MillerArrayTableModel(self.datalst, labels, self)
+      self.millerarraytable.setModel(self.millerarraytablemodel)
+      return
+    idx = i-1
+    if self.millerarraytableform.sortChkbox.checkState() == Qt.Unchecked:
+      self.millerarraytable.sortByColumn(idx, Qt.SortOrder.DescendingOrder)
+    else:
+      self.millerarraytable.sortByColumn(idx, Qt.SortOrder.AscendingOrder)
+
+
+  def onSortChkbox(self):
+    self.onSortComboBoxSelchange(self.millerarraytableform.SortComboBox.currentIndex() )
 
 
   def onPrecisionChanged(self, val):
