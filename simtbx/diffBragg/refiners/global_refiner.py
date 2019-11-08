@@ -11,6 +11,7 @@ except ImportError:
     has_mpi = False
 
 if rank == 0:
+    import os
     import pandas
     from numpy import mean, unique
     from numpy import log as np_log
@@ -24,6 +25,8 @@ if rank == 0:
     flex_double = flex.double
     from scitbx.matrix import col
     from simtbx.diffBragg.refiners import PixelRefinement
+
+    import numpy as np
 
 else:
     mean = unique = np_log = np_exp = np_all = norm = None
@@ -130,7 +133,7 @@ class FatRefiner(PixelRefinement):
         self.num_positive_curvatures = 0
         self._panel_id = None
         self.symbol = "P43212"
-        self._hacked_fcells = [0, 1, 2, 4, 5, 6, 7]
+        self._hacked_fcells = []
 
         self.pid_from_idx = {}
         self.idx_from_pid = {}
@@ -325,7 +328,6 @@ class FatRefiner(PixelRefinement):
             F = self.S.D.Fhkl  # initial values, this table is the high symm table expanded to P1
             Fidx, Fdata = F.indices(), F.data()
             Fdata = Fdata.as_numpy_array()
-            import numpy as np
             np.random.seed(12345)
             if self.perturb_fcell is not None:
                 _p = self.perturb_fcell
@@ -359,10 +361,12 @@ class FatRefiner(PixelRefinement):
                     # NOTE begin hackage intentional perturbation of a single Fcell
                     if i_fcell in self._hacked_fcells:
                         u = self.x[self.fcell_xstart + i_fcell]
-
-                        v = np.random.uniform(4, 11)
+                        #v = np.random.uniform(4, 11)
+                        v = np.random.uniform(max(1e-10,u-0.1*u), u+0.1*u)
                         if i_fcell in self._fix_list:
                             v = u
+                        if not self.log_fcells:
+                            v = np_exp(v)
                         # v = np.random.uniform( max(1e-10,u-0.05*u), u+0.05*u)
                         # v = np.random.randint(4, 11)
                         self.x[self.fcell_xstart + i_fcell] = v
@@ -370,6 +374,8 @@ class FatRefiner(PixelRefinement):
                     # NOTE end hackage
                     self.f_truth.append(F.value_at_index(asu_hkl))
 
+                if self.output_dir is not None:
+                    np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)
 
                 ff = np.array(self.f_truth)
                 f_start = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
@@ -500,6 +506,7 @@ class FatRefiner(PixelRefinement):
             # now surgically update the p1 array in nanoBragg with the new amplitudes
             # (need to update each symmetry equivalent)
             sg = sgtbx.space_group(sgtbx.space_group_info(symbol=self.symbol).type().hall_symbol())
+            self._sg = sg
             equivs = [i.h() for i in miller.sym_equiv_indices(sg, hkl).indices()]
             for h_equiv in equivs:
                 # get the nanoBragg p1 miller table index corresponding to this hkl equivalent
@@ -609,6 +616,11 @@ class FatRefiner(PixelRefinement):
                 else:
                     print("Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
                           % (self.iterations + 1, self.num_positive_curvatures))
+            if comm.rank==0 and self.output_dir is not None:
+                outf = os.path.join(self.output_dir, "_fcell_iter%d" % self.iterations)
+                fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
+                np.save(outf, fvals)
+
             f = 0
             g = flex_double(self.n)
             if self.calc_curvatures:
@@ -632,8 +644,8 @@ class FatRefiner(PixelRefinement):
                     #if self.FNAMES[self._i_shot] == '/global/project/projectdirs/lcls/dermen/d9114_sims/sadpaint/job5/realer_rank5_data858_fluence10473.h5.npz':
                     # continue
                     mill_idx = self.ASU[self._i_shot][i_spot]
-                    if self.idx_from_asu[mill_idx] in self._fix_list:
-                        continue  #FIXME, not sure why this arises, possibly due to mis-indexing (check by running proc_mpi using ground truth)!
+                    #if self.idx_from_asu[mill_idx] in self._fix_list:
+                    #    continue  #FIXME, not sure why this arises, possibly due to mis-indexing (check by running proc_mpi using ground truth)!
 
                     self._panel_id = self.PANEL_IDS[self._i_shot][i_spot]
                     if self.verbose:
@@ -645,6 +657,7 @@ class FatRefiner(PixelRefinement):
 
                     self.Imeas = self.ROI_IMGS[self._i_shot][i_spot]
 
+                    _h = -8, -7, -3
                     #_h = 10, 3, 3
                     #_h=-5, -4, -5
                     #if self.ASU[self._i_shot][i_spot] == _h:
@@ -661,7 +674,12 @@ class FatRefiner(PixelRefinement):
                     else:
                         self._evaluate_log_averageI_plus_sigma_readout()
 
-
+                    max_h = tuple(map(int, self.D.max_I_hkl))
+                    sg = sgtbx.space_group(sgtbx.space_group_info(self.symbol).type().hall_symbol())
+                    refinement_h = self.ASU[self._i_shot][i_spot]
+                    equivs = [i.h() for i in miller.sym_equiv_indices(sg, refinement_h).indices()]
+                    if not max_h in equivs:  # FIXME indexing error
+                        comm.Abort()
                     #if self.ASU[self._i_shot][i_spot] == _h:
                     #    embed()
                     #    self.D.verbose = _verbose
@@ -751,7 +769,7 @@ class FatRefiner(PixelRefinement):
                     if self.refine_Fcell:
                         xpos = self.fcell_xstart + self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
                         # NOTE hackage
-                        #if xpos - self.fcell_xstart in self._hacked_fcells:
+                        #if xpos - self.fcell_xstart in self._hacked_fcells and xpos not in self._fix_list:
                         fcell = self.x[xpos]
                         d = S2 * G2 * self.fcell_deriv
                         if self.log_fcells:
