@@ -70,9 +70,10 @@ master_params_str = """
     .help = If mask smoothing radius is not specified it will be \
                radius_smooth_ratio times the resolution
     .short_caption = Mask smoothing radius ratio
-  n_bins = 500
+  n_bins = None
     .type = int
-    .help = Number of bins for FSC curves
+    .help = Number of bins for FSC curves. Suggested number is 5000. \
+           Alternative is default (None) which gives bins of width 100.
     .short_caption = Bins for FSC
   nproc = 1
     .type = int
