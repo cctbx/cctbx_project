@@ -238,7 +238,6 @@ from cctbx.array_family import flex
 from libtbx.utils import Sorry, to_str
 from libtbx import group_args
 import libtbx
-from cctbx import miller
 import traceback
 import sys, zmq, threading,  time, cmath, zlib
 

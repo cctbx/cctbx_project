@@ -12,16 +12,16 @@ from __future__ import absolute_import, division, print_function
 #-------------------------------------------------------------------------------
 
 from PySide2.QtCore import Qt, QAbstractTableModel, QModelIndex, QTimer, QEvent
-from PySide2.QtWidgets import ( QAbstractItemView, QAction, QApplication, QCheckBox,
+from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
         QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableView, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
-from PySide2.QtGui import QColor, QFont, QCursor
+from PySide2.QtGui import QColor, QFont, QCursor, QKeySequence
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-import sys, zmq, subprocess, time, traceback, shutil, os.path, zlib, math
+import sys, zmq, subprocess, time, traceback, shutil, os.path, zlib, math, csv, io
 
 
 
@@ -80,7 +80,6 @@ class MillerArrayTableForm(QDialog):
   def __init__(self, parent=None):
     super(MillerArrayTableForm, self).__init__(parent)
     self.setWindowTitle("Tabulated Reflection Data")
-
     self.precision_spinBox = QSpinBox()
     self.precision_spinBox.setSingleStep(1)
     self.precision_spinBox.setRange(1, 20)
@@ -88,7 +87,6 @@ class MillerArrayTableForm(QDialog):
     self.precision_spinBox.valueChanged.connect(parent.onPrecisionChanged)
     precision_labeltxt = QLabel()
     precision_labeltxt.setText("Precision:")
-
     self.SortComboBox = QComboBox()
     self.SortComboBox.activated.connect(parent.onSortComboBoxSelchange)
     sort_labeltxt = QLabel()
@@ -97,8 +95,7 @@ class MillerArrayTableForm(QDialog):
     self.sortChkbox.setCheckState(Qt.Unchecked)
     self.sortChkbox.setText("Ascending order")
     self.sortChkbox.clicked.connect(parent.onSortChkbox)
-
-    self.myGroupBox = QGroupBox("Double click columns to sort values in ascending or descending order")
+    self.myGroupBox = QGroupBox()
     self.layout = QGridLayout()
     self.layout.addWidget(precision_labeltxt,       0, 0, 1, 1)
     self.layout.addWidget(self.precision_spinBox,   0, 1, 1, 1)
@@ -115,24 +112,61 @@ class MillerArrayTableForm(QDialog):
     self.mainLayout = QGridLayout()
     self.mainLayout.addWidget(self.myGroupBox,     0, 0)
     self.setLayout(self.mainLayout)
+  def eventFilter(self, source, event):
+    if (event.type() == QEvent.KeyPress and
+      event.matches(QKeySequence.Copy)):
+      self.parent().millerarraytable.copySelection()
+      return True
+    return super(MillerArrayTableForm, self).eventFilter(source, event)
 
 
 class NumericTableWidgetItem(QTableWidgetItem):
-
   def __lt__(self, other):
     if self.text() == "":
       return True
     if other.text() == "":
       return False
-
     try:
       float(self.text())
       float(other.text())
     except Exception as e:
       return True
-
     return float(self.text()) < float(other.text())
 
+
+class MyTableView(QTableView):
+  def __init__(self, *args, **kwargs):
+    QTableView.__init__(self, *args, **kwargs)
+    myqa = QAction("Copy selected cells...", self)
+    myqa.setData( ("Copying selection" ))
+    self.tablemenu = QMenu(self)
+    self.tablemenu.addAction(myqa)
+    self.tablemenu.triggered.connect(self.onTableMenuAction)
+    self.setContextMenuPolicy(Qt.CustomContextMenu)
+    self.customContextMenuRequested.connect(self.onRightClick)
+  def onRightClick(self, QPos=None):
+    parent=self.sender()
+    self.tablemenu.move(QCursor.pos())
+    self.tablemenu.show()
+  def onTableMenuAction(self, action):
+    data = action.data()
+    if data == "Copying selection":
+      self.copySelection()
+  def copySelection(self):
+    selection = self.selectedIndexes()
+    if selection:
+      rows = sorted(index.row() for index in selection)
+      columns = sorted(index.column() for index in selection)
+      rowcount = rows[-1] - rows[0] + 1
+      colcount = columns[-1] - columns[0] + 1
+      table = [[''] * colcount for _ in range(rowcount)]
+      for index in selection:
+        row = index.row() - rows[0]
+        column = index.column() - columns[0]
+        table[row][column] = index.data()
+      stream = io.StringIO()
+      csv.writer(stream, delimiter='\t').writerows(table)
+      app.clipboard().setText(stream.getvalue())
 
 
 class MyTableWidget(QTableWidget):
@@ -156,8 +190,7 @@ class MyTableWidget(QTableWidget):
 class MillerArrayTableModel(QAbstractTableModel):
   def __init__(self, data, headerdata, parent=None):
     super(MillerArrayTableModel, self).__init__(parent)
-    #self._data = data
-    # transpose the data
+    # transpose data from a list of columns data to rows of individual data values
     self._data = list(zip(*data))
     self.columnheaderdata = headerdata
     self.precision = 4
@@ -328,16 +361,12 @@ class NGL_HKLViewer(QWidget):
     self.millertable.cellDoubleClicked.connect(self.onMillerTableCellPressed)
     self.millertable.itemSelectionChanged.connect(self.onMillerTableitemSelectionChanged)
 
-    self.millerarraytable = QTableView(self)
+    self.millerarraytable = MyTableView(self)
     self.millerarraytable.setSortingEnabled(False)
-
-    #self.millerarraytable = MyTableWidget(0, len(labels))
-    #self.millerarraytable.setEditTriggers(QTableWidget.NoEditTriggers)
     self.millerarraytable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
-    #self.millerarraytable.horizontalHeader().sectionDoubleClicked.connect(self.onMillerArrayTableHeaderSectionDoubleClicked)
-    #self.millerarraytable.setSelectionMode( QAbstractItemView.NoSelection )
     self.millerarraytableform = MillerArrayTableForm(self)
     self.millerarraytablemodel = None
+    self.millerarraytable.installEventFilter(self.millerarraytableform) # for keyboard copying to clipboard
 
     self.createExpansionBox()
     self.createFileInfoBox()
@@ -1338,7 +1367,6 @@ class NGL_HKLViewer(QWidget):
           self.makenewdataform.show()
         if strval=="tabulate_data":
           self.NGL_HKL_command('NGL_HKLviewer.tabulate_miller_array_ids = "%s"' %str(idx))
-
 
 
   def DisplayData(self, idx):
