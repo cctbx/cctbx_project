@@ -2777,9 +2777,10 @@ class MergingStatsTab(BaseTab):
   def refresh_datasets(self):
     self.datasets.Clear()
     self.all_datasets = self.main.db.get_all_datasets()
+    if self.chk_active.GetValue():
+      self.all_datasets = [d for d in self.all_datasets if d.active]
     for dataset in self.all_datasets:
-      if not self.chk_active.GetValue() or dataset.active:
-        self.datasets.Append(dataset.name)
+      self.datasets.Append(dataset.name)
     self.refresh_dataset()
 
   def onVersionChoice(self, e):
