@@ -1259,6 +1259,14 @@ class cablamalyze(validation):
   #-----------------------------------------------------------------------------
   #}}}
 
+  def cablam_wheel_triangle(self, wheel_center, wedge):
+    self.out.write('\n{} P X %.3f %.3f %.3f' % (wheel_center[0], wheel_center[1], wheel_center[2]))
+    self.out.write('\n{} %.3f %.3f %.3f' % (wedge.start[0], wedge.start[1], wedge.start[2]))
+    self.out.write('\n{} %.3f %.3f %.3f' % (wedge.end[0], wedge.end[1], wedge.end[2]))
+
+  def cablam_wheel_edge(self, wheel_center, wedge, prevwedge):
+    pass
+
   #{{{ as_kinemage
   #-----------------------------------------------------------------------------
   def as_kinemage(self):
@@ -1307,9 +1315,10 @@ class cablamalyze(validation):
           color = 'magenta'
         else:
           color = 'purple'
-        self.out.write('\n{} P X %s %.3f %.3f %.3f' % (color, wheel_center[0], wheel_center[1], wheel_center[2]))
-        self.out.write('\n{} %s %.3f %.3f %.3f' % (color, wedge.start[0], wedge.start[1], wedge.start[2]))
-        self.out.write('\n{} %s %.3f %.3f %.3f' % (color, wedge.end[0], wedge.end[1], wedge.end[2]))
+        self.cablam_wheel_triangle(wheel_center, wedge)
+        #self.out.write('\n{} P X %s %.3f %.3f %.3f' % (color, wheel_center[0], wheel_center[1], wheel_center[2]))
+        #self.out.write('\n{} %s %.3f %.3f %.3f' % (color, wedge.start[0], wedge.start[1], wedge.start[2]))
+        #self.out.write('\n{} %s %.3f %.3f %.3f' % (color, wedge.end[0], wedge.end[1], wedge.end[2]))
     #a thin black line outlining the wheel greatly aids visual interpretation
     self.out.write('\n@vectorlist {cablam_wheels_lines} color=deadblack width= 1 alpha=0.75')
     for cablam_wheel in wheels_list:
