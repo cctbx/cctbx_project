@@ -408,6 +408,9 @@ LS49 {
   double_loop_cutoff_seconds = 600 
     .type = float
     .help = maximum time to spend in double loop of postrefinement
+  force_atleast_single_loop=False
+    .type=bool
+    .help = if set to True, atleast tries the single loop and increase correlation value 
 }
 
 """ + mysql_master_phil
@@ -1586,7 +1589,7 @@ class scaling_manager (intensity_data) :
         try:
           postx.run_plain()
           observations_original_index, observations, matches, fat_count, final_corr=postx.result_for_cxi_merge(file_name, LS49_case, double_loop, acceptable_corr)
-          if fat_count > 3 and final_corr>acceptable_corr:
+          if fat_count > 3 and final_corr>acceptable_corr and not self.params.LS49.force_atleast_single_loop:
             LS49_case=False
         except (AssertionError,ValueError,RuntimeError) as e:
           print ('NO_loop_Error')
