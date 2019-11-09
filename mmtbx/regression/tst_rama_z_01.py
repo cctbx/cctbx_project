@@ -29,6 +29,13 @@ def check_function():
         assert 0.01 < z_scores[k][1] < 0.1, z_scores[k][1]
     if k != 'weighted_mean':
       assert approx_equal( ss_cont[k], expeted_ss[k] )
+  # check how separate scores translate to whole
+  h_score = (z_scores['H'][0] * zs.calibration_values['H'][1] + zs.calibration_values['H'][0]) * ss_cont['H']
+  l_score = (z_scores['L'][0] * zs.calibration_values['L'][1] + zs.calibration_values['L'][0]) * ss_cont['L']
+  w_score = ((h_score + l_score)/(ss_cont['H']+ss_cont['L']) - zs.calibration_values['W'][0]) / zs.calibration_values['W'][1]
+  # print ("reconstructed:", w_score, z_scores['W'][0])
+  assert approx_equal(w_score, z_scores['W'][0])
+
 
 def check_cmd_line():
   cmd = "mmtbx.rama_z %s" % fname
