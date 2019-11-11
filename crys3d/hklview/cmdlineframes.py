@@ -78,35 +78,27 @@ from cctbx import miller
 from cctbx import crystal
 
 xs = crystal.symmetry(unit_cell=(50,50,40, 90,90,120), space_group_symbol="P3 1")
-mi = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
-                        (1, 0, 2), (-1, 1, -2), (2, -2, -2),
-                        (-2, 1, 0) , (1, 0, -2), (0, 0, 2) ]
-)
-
+mi = flex.miller_index([
+  (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2), (1, 0, 2), (-1, 1, -2), (2, -2, -2), (-2, 1, 0) , (1, 0, -2), (0, 0, 2)
+])
 ma = miller.array( miller.set(xs, mi) )
-
-ma1 = miller.array( miller.set(xs, mi), flex.double( [11.205, 6.353, 26.167, 14.94, 2.42, 24.921, 16.185, 11.798, 21.183, 4.98] ),
-                   sigmas=flex.double( [13.695, 6.353, 24.921, 6.225, 11.193, 26.167, 8.715, 4.538, 27.413, 21.165] )
-                   ).set_observation_type( observation_types.intensity() )
+ma1 = miller.array( miller.set(xs, mi), flex.double( [
+ 11.205, 6.353, 26.167, 14.94, 2.42, 24.921, 16.185, 11.798, 21.183, 4.98
+] ),
+  sigmas=flex.double( [
+  13.695, 6.353, 24.921, 6.225, 11.193, 26.167, 8.715, 4.538, 27.413, 21.165
+] )
+).set_observation_type( observation_types.intensity() )
 ma1.set_info(miller.array_info(source="artificial file", labels=["MyI", "SigMyI"]))
 
-mi2 = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
-                        (1, 0, 2), (-1, 1, -2), (2, -2, -2),
-                        (-2, 1, 0) , (0, 0, 2),  ]
-                        )
+mi2 = flex.miller_index([
+ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2), (1, 0, 2), (-1, 1, -2), (2, -2, -2), (-2, 1, 0) , (0, 0, 2)
+] )
 
 ma2 = miller.array(miller.set(xs, mi2),
-                    flex.complex_double( [
-                                -1.0 + 0.0j,
-                                 -1.5 + 2.598075j,
-                                 0.0 + 0.8j,
-                                 1.0 + 1.7320508j,
-                                 4.0 + 0.0j,
-                                 0.5 - 0.866025j,
-                                 0.0 - 1.0j,
-                                 -2.5 - 4.330127j,
-                                 -4.24264 + 4.24264j
-                                 ] ) )
+  flex.complex_double( [
+ -1.0 + 0.0j, -1.5 + 2.598075j, 0.0 + 0.8j, 1.0 + 1.7320508j, 4.0 + 0.0j, 0.5 - 0.866025j, 0.0 - 1.0j, -2.5 - 4.330127j, -4.24264 + 4.24264j
+] ) )
 
 ma2.set_info(miller.array_info(source="artificial file", labels=["MyMap", "PhiMyMap"]))
 
@@ -730,8 +722,10 @@ class HKLViewFrame() :
       self.viewer.has_new_miller_array = True
       self.viewer.array_infostrs.append( ArrayInfo(procarray, self.mprint).infostr )
       self.viewer.array_infotpls.append( ArrayInfo(procarray, self.mprint).infotpl )
+      self.viewer.superset_all_miller_arrays()
       mydict = { "array_infotpls": self.viewer.array_infotpls, "NewHKLscenes" : True, "NewMillerArray" : True}
       self.SendInfoToGUI(mydict)
+      self.viewer.superset_all_miller_arrays()
 
 
   def load_reflections_file(self, file_name, set_array=True, data_only=False):
@@ -848,14 +842,13 @@ class HKLViewFrame() :
         datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(ampls) ) )
         datalst.append( (self.viewer.match_valarrays[id].info().labels[-1] + u" \u00b0", list(phases)) )
       elif self.viewer.match_valarrays[id].sigmas() is not None:
-        no_nans = [ e if not cmath.isnan(e) else "" for e in self.viewer.match_valarrays[id].data() ]
-        #datalst.append( (self.viewer.match_valarrays[id].info().labels[0], no_nans)  )
-
         datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(self.viewer.match_valarrays[id].data()))  )
-
         no_nans = [ e if not cmath.isnan(e) else "" for e in self.viewer.match_valarrays[id].sigmas() ]
         #datalst.append( (self.viewer.match_valarrays[id].info().labels[-1], no_nans)  )
         datalst.append( (self.viewer.match_valarrays[id].info().labels[-1], list(self.viewer.match_valarrays[id].sigmas()))  )
+      elif self.viewer.match_valarrays[id].is_integer_array() or self.viewer.match_valarrays[id].is_bool_array():
+        no_nans = [ e if not e==display.inanval else "" for e in self.viewer.match_valarrays[id].data() ]
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], no_nans)  )
       else:
         no_nans = [ e if not cmath.isnan(e) else "" for e in self.viewer.match_valarrays[id].data() ]
         #datalst.append( (self.viewer.match_valarrays[id].info().label_string(), no_nans )  )

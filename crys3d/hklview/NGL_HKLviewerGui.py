@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, print_function
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from PySide2.QtCore import Qt, QAbstractTableModel, QModelIndex, QTimer, QEvent
+from PySide2.QtCore import Qt, QAbstractTableModel, QEvent, QModelIndex, QSize, QTimer
 from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
         QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
@@ -153,6 +153,7 @@ class MyTableView(QTableView):
     if data == "Copying selection":
       self.copySelection()
   def copySelection(self):
+    # from https://stackoverflow.com/questions/40225270/copy-paste-multiple-items-from-qtableview-in-pyqt4
     selection = self.selectedIndexes()
     if selection:
       rows = sorted(index.row() for index in selection)
@@ -344,12 +345,6 @@ class NGL_HKLViewer(QWidget):
     self.makenewdataform = MakeNewDataForm(self)
     self.makenewdataform.setModal(True)
 
-    self.HKLnameedit = QLineEdit('')
-    self.HKLnameedit.setReadOnly(True)
-    self.textInfo = QTextEdit()
-    self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
-    self.textInfo.setReadOnly(True)
-
     labels = ["Column label", "Type", "Space group", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
     self.millertable = MyTableWidget(0, len(labels))
@@ -440,6 +435,7 @@ class NGL_HKLViewer(QWidget):
     self.binTableCheckState = None
     self.millertablemenu = QMenu(self)
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
+    self.resize(QSize(self.FileInfoBox.size().width()*2, self.size().height() ))
     self.show()
 
 
@@ -1355,7 +1351,7 @@ class NGL_HKLViewer(QWidget):
           self.MillerLabel1.setDisabled(True)
           self.MillerLabel2.setDisabled(True)
           self.MillerComboBox.setDisabled(True)
-          self.MillerLabel3.setText("Example: 'newdata = data / sigmas; newsigmas= - 42*sigmas' ")
+          self.MillerLabel3.setText("Example: 'newdata = data / flex.sqrt(sigmas); newsigmas= - 42*sigmas' ")
           self.operate_arrayidx2 = None
           self.makenewdataform.show()
         if strval=="newdata_2":
@@ -1363,7 +1359,7 @@ class NGL_HKLViewer(QWidget):
           self.MillerLabel1.setEnabled(True)
           self.MillerLabel2.setEnabled(True)
           self.MillerComboBox.setEnabled(True)
-          self.MillerLabel3.setText("Example: 'newdata = data1 + data2; newsigmas= sigmas1 - data2 / sigmas1' ")
+          self.MillerLabel3.setText("Example: 'newdata = data1 - flex.pow(data2); newsigmas= sigmas1 - data2 / sigmas1' ")
           self.makenewdataform.show()
         if strval=="tabulate_data":
           self.NGL_HKL_command('NGL_HKLviewer.tabulate_miller_array_ids = "%s"' %str(idx))
@@ -1409,6 +1405,11 @@ class NGL_HKLViewer(QWidget):
     self.datasetLabel = QLabel()
     self.datasetLabel.setText("Display a data set with a double-click or right-click it for more options.")
     self.FileInfoBox = QGroupBox("Reflection File Information")
+    self.HKLnameedit = QLineEdit('')
+    self.HKLnameedit.setReadOnly(True)
+    self.textInfo = QTextEdit()
+    self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
+    self.textInfo.setReadOnly(True)
     layout = QGridLayout()
     layout.addWidget(self.openFileNameButton,     0, 0, 1, 2)
     if self.devmode:
@@ -1580,8 +1581,10 @@ class NGL_HKLViewer(QWidget):
 
 
   def NGL_HKL_command(self, cmdstr):
-    #print("sending:\n" + cmdstr)
-    self.socket.send(bytes(cmdstr,"utf-8"))
+    if sys.version_info.major==3:
+      self.socket.send(bytes(cmdstr,"utf-8"))
+    else:
+      self.socket.send(bytes(cmdstr))
 
 
 
