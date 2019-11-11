@@ -22,6 +22,10 @@ if not os.path.isdir(env_etc.boost_dist) or 'cctbx_project' in env_etc.boost_dis
   if libtbx.env.build_options.use_conda:
     env_etc.boost_dist = env_etc.conda_prefix
     env_etc.boost_include = env_etc.conda_cpppath[0]
+    for p in env_etc.conda_cpppath:
+      if os.path.isdir(os.path.join(p, 'boost')):
+        env_etc.boost_include = p
+        break
     for p in env_etc.conda_libpath:
       if p not in env_base['LIBPATH']:
         env_base.Prepend(LIBPATH=env_etc.conda_libpath)
