@@ -1221,15 +1221,20 @@ class manager(object):
     # Use Schrodinger force field if requested
     params = self._pdb_interpretation_params
     if params.amber.use_amber:
-      from amber_adaptbx.geometry_restraints_manager import manager as amber_manager
+      from amber_adaptbx.manager import manager as amber_manager
       geometry = amber_manager(self._pdb_hierarchy,
+                               geometry.crystal_symmetry,
                                params,
                                # cleanup=True,
-                               geometry,
+                               # geometry,
+                               log=self.log,
                                )
     elif hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
       from phenix_schrodinger import schrodinger_manager
-      geometry = schrodinger_manager(self._pdb_hierarchy, params, cleanup=True, grm=geometry)
+      geometry = schrodinger_manager(self._pdb_hierarchy,
+                                     params,
+                                     cleanup=True,
+                                     grm=geometry)
 
     restraints_manager = mmtbx.restraints.manager(
       geometry      = geometry,

@@ -133,6 +133,7 @@ class manager(object):
       result.geometry = None
     else:
       if (self.use_amber and not force_restraints_model):
+        assert 0
         geometry_energy = self.geometry.energies_sites(
           sites_cart=sites_cart,
           flags=geometry_flags,
