@@ -9,10 +9,16 @@ origin_ids = geometry_restraints.linking_class.linking_class()
 sf4_coordination = {
   ("FE", "S")      : [  2.268, 0.017*2],
   ("S", "FE", "S") : [114.24,  5.75*2],
-                    }
+}
+# fes_coordination = {
+#   ("FE", "S")      : [  2.204, 0.013*2],
+#   ("S", "FE", "S") : [114.24,  5.75*2],
+# }
 
 phil_str = '''
 '''
+
+sf_clusters = set(['SF4', 'F3S', 'FES'])
 
 def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
                                          nonbonded_proxies,
@@ -37,33 +43,37 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
   i = 0
   while i < n_nonb and sorted_nonb[i][3] < coordination_distance_cutoff:
     (labels, i_seq, j_seq, dist, vdw_distance, sym_op_j, rt_mx) = sorted_nonb[i]
+    i += 1
     a1 = atoms[i_seq]
     ag1 = a1.parent()
     a2 = atoms[j_seq]
     ag2 = a2.parent()
-    for resname in ['SF4', 'F3S']:
-      if (ag1.resname==resname and ag2.resname==resname):
-        if ag1.id_str()!=ag2.id_str():
-          print('Two %(resname)s residues are close enough to coordinate! ODD!' % locals(), file=log)
-      elif (ag1.resname==resname or ag2.resname==resname):
-        sf4=a2
+    current = set([ag1.resname, ag2.resname])
+    intersection = sf_clusters.intersection(current)
+    if len(intersection)==2:
+      if ag1.id_str()!=ag2.id_str():
+        print('Two residues (%s, %s) are close enough to coordinate! ODD!' % (
+          ag1.id_str(),
+          ag2.id_str()), file=log)
+    elif len(intersection)==1:
+      resname = intersection.pop()
+      sf4=a2
+      sf4g=ag2
+      aa=a1
+      aag=ag1
+      if ag1.resname==resname:
+        sf4=a1
         sf4g=ag2
-        aa=a1
-        aag=ag1
-        if ag1.resname==resname:
-          sf4=a1
-          sf4g=ag2
-          aa=a2
-          aag=ag2
-        if aa.element.strip() in ['H', 'D']: continue
-        if aa.element.strip() in ['CA', 'C', 'O', 'N']: continue
-        if verbose: print('%s-aa' % resname,sf4.quote(),aa.quote(),dist)
-        if sf4.element.lower()=="fe":
-          if aag.id_str() not in done_aa:
-            #coordination.append((i_seq, j_seq))
-            coordination.append((sf4, aa))
-            done_aa.append(aag.id_str())
-    i += 1
+        aa=a2
+        aag=ag2
+      if aa.element.strip() in ['H', 'D']: continue
+      if aa.element.strip() in ['CA', 'C', 'O', 'N']: continue
+      if verbose: print('%s-aa' % resname,sf4.quote(),aa.quote(),dist)
+      if sf4.element.lower()=="fe":
+        if aag.id_str() not in done_aa:
+          #coordination.append((i_seq, j_seq))
+          coordination.append((sf4, aa))
+          done_aa.append(aag.id_str())
   return coordination
 
 def get_bond_proxies(coordination):
@@ -93,7 +103,7 @@ def get_angle_proxies_for_bond(coordination):
   if coordination is None: return angles
   for a1, a2 in coordination:
     assert a1.name.find("FE")>-1
-    if a1.parent().resname in ['F3S']: break
+    if a1.parent().resname in ['F3S', 'FES']: break
     assert a1.parent().resname in ['SF4']
     ii=int(a1.name.strip()[-1])
     for i in range(1,5):
@@ -110,7 +120,7 @@ def get_angle_proxies_for_bond(coordination):
       angles.append(p)
   return angles
 
-def get_all_proxies(coordination):
+def get_all_proxies(coordination, resname=None):
   return get_bond_proxies(coordination), \
       get_angle_proxies_for_bond(coordination)
 

@@ -516,7 +516,7 @@ class linking_mixins(object):
       #  - ZN-CYS-HIS
       #
       if link_metals:
-        moved = ['SF4', 'F3S']
+        moved = ['SF4', 'F3S', 'FES']
         if ( atom1.parent().resname in moved or
              atom2.parent().resname in moved
              ): continue

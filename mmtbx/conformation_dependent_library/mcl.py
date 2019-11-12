@@ -103,8 +103,8 @@ def update(grm,
     )
     grm.add_angles_in_place(aproxies)
   if outl:
-    print >> log, '  Dynamic metal coordination'
-    print >> log, outl
+    print('  Dynamic metal coordination', file=log)
+    print(outl, file=log)
 
 def _extract_sites_cart(ag, element=None):
   selection = []
