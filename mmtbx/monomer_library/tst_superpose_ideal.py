@@ -46,6 +46,51 @@ HETATM 9504  S2  SF4 X1001      40.249   1.068  24.522  1.00  6.06           S
 HETATM 9505  S3  SF4 X1001      43.249   0.748  22.278  1.00  6.36           S
 HETATM 9506  S4  SF4 X1001      39.895   0.913  20.872  1.00  6.51           S
   ''',
+  '4u9h_f3s_cys.pdb' : '''
+CRYST1   66.530   97.950  125.850  90.00  90.00  90.00 P 21 21 21
+SCALE1      0.015031  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.010209  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.007946        0.00000
+ATOM      1  N   CYS S 231     -40.840  -6.337  14.851  1.00  5.51           N
+ATOM      2  CA  CYS S 231     -40.013  -5.494  14.018  1.00  5.50           C
+ATOM      3  C   CYS S 231     -40.789  -4.444  13.235  1.00  5.59           C
+ATOM      4  O   CYS S 231     -40.377  -3.294  13.181  1.00  6.08           O
+ATOM      5  CB  CYS S 231     -39.137  -6.330  13.077  1.00  5.85           C
+ATOM      6  SG  CYS S 231     -38.302  -7.647  14.022  1.00  5.36           S
+ATOM      7  H   CYS S 231     -40.715  -7.176  14.722  1.00  8.43           H
+ATOM      8  HA  CYS S 231     -39.406  -5.011  14.590  1.00  4.25           H
+ATOM      9  HB2 CYS S 231     -39.693  -6.723  12.387  1.00  8.29           H
+ATOM     10  HB3 CYS S 231     -38.460  -5.757  12.678  1.00  6.29           H
+ATOM     11  N   CYS S 249     -36.838 -10.889   5.704  1.00  5.29           N
+ATOM     12  CA  CYS S 249     -36.582 -11.388   7.062  1.00  5.34           C
+ATOM     13  C   CYS S 249     -35.867 -12.738   6.948  1.00  5.19           C
+ATOM     14  O   CYS S 249     -36.217 -13.566   6.098  1.00  5.72           O
+ATOM     15  CB  CYS S 249     -37.959 -11.517   7.758  1.00  5.35           C
+ATOM     16  SG  CYS S 249     -37.935 -12.287   9.420  1.00  5.03           S
+ATOM     17  H   CYS S 249     -37.663 -10.835   5.492  1.00  6.38           H
+ATOM     18  HA  CYS S 249     -36.025 -10.764   7.557  1.00  6.71           H
+ATOM     19  HB2 CYS S 249     -38.359 -10.636   7.819  1.00  7.35           H
+ATOM     20  HB3 CYS S 249     -38.524 -12.071   7.205  1.00  6.05           H
+ATOM     40  N   CYS S 252     -34.737 -14.293  12.518  1.00  5.11           N
+ATOM     41  CA  CYS S 252     -33.673 -14.292  13.509  1.00  4.88           C
+ATOM     42  C   CYS S 252     -34.097 -14.398  14.968  1.00  5.08           C
+ATOM     43  O   CYS S 252     -33.221 -14.580  15.827  1.00  5.63           O
+ATOM     44  CB  CYS S 252     -32.706 -13.130  13.306  1.00  5.00           C
+ATOM     45  SG  CYS S 252     -33.261 -11.513  13.953  1.00  5.02           S
+ATOM     46  H   CYS S 252     -34.873 -13.554  12.121  1.00  4.62           H
+ATOM     47  HA  CYS S 252     -33.162 -15.093  13.343  0.99  4.06           H
+ATOM     48  HB2 CYS S 252     -31.880 -13.344  13.777  1.00  5.77           H
+ATOM     49  HB3 CYS S 252     -32.490 -13.045  12.358  1.00  4.19           H
+TER
+HETATM   50  S1  F3S S1003     -37.373  -8.610  10.393  1.00  5.80           S
+HETATM   51  S2  F3S S1003     -34.483 -11.028  10.412  1.00  5.12           S
+HETATM   52  S3  F3S S1003     -37.067 -11.059  12.944  1.00  5.03           S
+HETATM   53  S4  F3S S1003     -34.752  -8.309  13.065  1.00  5.36           S
+HETATM   54 FE1  F3S S1003     -36.744 -10.733  10.683  1.00  4.93          Fe2+
+HETATM   55 FE3  F3S S1003     -36.932  -8.794  12.568  1.00  5.27          Fe2+
+HETATM   56 FE4  F3S S1003     -34.843 -10.514  12.587  1.00  4.74          Fe2+
+END
+'''
 }
 
 results = {'4udx_sf4.pdb' : [[655, 9675, 12002, 8287],
@@ -105,26 +150,35 @@ def run():
           results[fn][i][3],
           )
 
+  from libtbx.test_utils import assert_lines_in_file
   fn = '4udx_sf4_cys.pdb'
   f=open(fn, 'w')
   f.write(pdbs[fn])
   f.close()
-  # lines = '''
-  # SF4/F3S coordination
-  #    SF4 X1001
-  #      pdb="FE1  SF4 X1001 " - pdb=" SG  CYS X  51 "
-  #      pdb="FE2  SF4 X1001 " - pdb=" SG  CYS X  48 "
-  #      pdb="FE3  SF4 X1001 " - pdb=" SG  CYS X  56 "
-  #      pdb="FE4  SF4 X1001 " - pdb=" SG  CYS X  70 "'''
-
-  from libtbx.test_utils import assert_lines_in_file
   lines = [
-    'SF4/F3S coordination',
+    'Iron sulfur cluster coordination',
     'SF4 X1001',
     'pdb="FE1  SF4 X1001 " - pdb=" SG  CYS X  51 "',
     'pdb="FE4  SF4 X1001 " - pdb=" SG  CYS X  70 "',
     'pdb="FE3  SF4 X1001 " - pdb=" SG  CYS X  56 "',
     'pdb="FE2  SF4 X1001 " - pdb=" SG  CYS X  48 "',
+    ]
+  cmd = 'phenix.pdb_interpretation %s link_all=True > %s.log' % (fn, fn)
+  print(cmd)
+  assert not easy_run.call(cmd)
+  for line in lines:
+    print(line)
+    assert_lines_in_file(file_name='%s.log' % fn, lines=line)
+  fn = '4u9h_f3s_cys.pdb'
+  f=file(fn, 'wb')
+  f.write(pdbs[fn])
+  f.close()
+  lines = [
+    'Iron sulfur cluster coordination',
+    'F3S S1003',
+    'pdb="FE1  F3S S1003 " - pdb=" SG  CYS S 249 "',
+    'pdb="FE3  F3S S1003 " - pdb=" SG  CYS S 231 "',
+    'pdb="FE4  F3S S1003 " - pdb=" SG  CYS S 252 "',
     ]
   cmd = 'phenix.pdb_interpretation %s link_all=True > %s.log' % (fn, fn)
   print(cmd)

@@ -53,7 +53,7 @@ def update(grm,
   # if link_records is None: link_records={}
   # link_records.setdefault('LINK', [])
   hooks = [
-    ["Iron sulfure cluster coordination",
+    ["Iron sulfur cluster coordination",
      mcl_sf4_coordination.get_sulfur_iron_cluster_coordination,
      mcl_sf4_coordination.get_all_proxies,
       ],
@@ -106,6 +106,8 @@ def update(grm,
       for r in remove:
         del aproxies[r]
     #
+    if aproxies:
+      outl += '%s%s' % (' '*6, 'Number of angles added : %d' % len(aproxies))
     grm.add_angles_in_place(aproxies)
   if outl:
     print('  Dynamic metal coordination', file=log)

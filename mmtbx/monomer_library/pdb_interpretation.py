@@ -135,6 +135,12 @@ restraints_library_str = """
       .help = Use Conformation Dependent Library (CDL) \
         for geometry restraints
       .style = bold
+    mcl = True
+      .type = bool
+      .short_caption = Use Metal Coordination Library (MCL)
+      .help = Use Metal Coordination Library (MCL) \
+        for tetrahedral Zn++ and iron-sulfur clusters SF4, FES, F3S, ...
+      .style = bold
     cis_c_n_ca = False
       .type = bool
       .style = hidden
@@ -5562,7 +5568,7 @@ class process(object):
 
       # improved metal coordination
       automatic_linking = self.all_chain_proxies.params.automatic_linking
-      if automatic_linking.link_metals:
+      if self.all_chain_proxies.params.restraints_library.mcl:
         from mmtbx.conformation_dependent_library import mcl
         mcl.update(self._geometry_restraints_manager,
                    self.all_chain_proxies.pdb_hierarchy,
