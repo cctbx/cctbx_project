@@ -1087,23 +1087,26 @@ map_box_average(
 class fit_point_3d_grid_search {
 public:
   bool has_peak_;
+  double map_best_, map_start_;
   cctbx::cartesian<> site_cart_moved_;
   fit_point_3d_grid_search(
     cctbx::cartesian<> const& site_cart,
     af::const_ref<double, af::c_grid<3> > const& map_data,
-    double const& map_min,
+    double const& map_min, // TODO remove unused.
     cctbx::uctbx::unit_cell const& unit_cell,
     double const& amplitude,
     double const& increment)
   :
-  has_peak_(true), site_cart_moved_(site_cart)
+  has_peak_(true), site_cart_moved_(site_cart), map_best_(0), map_start_(0)
   {
     CCTBX_ASSERT(amplitude > 0.0 && increment > 0.0);
     double eps = 1.e-5;
     double x = site_cart[0];
     double y = site_cart[1];
     double z = site_cart[2];
-    double map_best = map_min;
+    map_best_ = tricubic_interpolation(
+      map_data, unit_cell.fractionalize(site_cart));
+    map_start_ = map_best_;
     double x_shift = -amplitude;
     while(x_shift < amplitude) {
       x_shift += increment;
@@ -1119,8 +1122,8 @@ public:
             x_shifted, y_shifted, z+z_shift);
           cctbx::fractional<> site_frac = unit_cell.fractionalize(site_cart_);
           double map_value = tricubic_interpolation(map_data, site_frac);
-          if(map_value > map_best) {
-            map_best = map_value;
+          if(map_value > map_best_) {
+            map_best_ = map_value;
             site_cart_moved_ = site_cart_;
           }}}}
     double shift_x = std::abs(site_cart_moved_[0]-x);
@@ -1135,6 +1138,8 @@ public:
   }
 
   bool has_peak()                       {return has_peak_;}
+  double map_best()                     {return map_best_;}
+  double map_start()                    {return map_start_;}
   cctbx::cartesian<> site_cart_moved()  {return site_cart_moved_;}
 
 };

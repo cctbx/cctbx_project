@@ -388,6 +388,8 @@ namespace {
                      arg("amplitude"),
                      arg("increment"))))
         .def("has_peak",        &w_t::has_peak)
+        .def("map_best",        &w_t::map_best)
+        .def("map_start",       &w_t::map_start)
         .def("site_cart_moved", &w_t::site_cart_moved)
       ;
     }
