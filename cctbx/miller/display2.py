@@ -73,8 +73,8 @@ def ExtendMillerArray(miller_array, nsize, indices=None ):
 
 def ExtendAnyData(data, nsize):
   if isinstance(data, flex.bool):
-    data.extend( flex.bool(nsize, False) )
-  # insert NAN values as default values for real and integer values
+    # flex.bool cannot be extended with NaN so cast the data to ints and extend with inanval instead
+    data = data.as_int().extend( flex.int(nsize, inanval) )
   if isinstance(data, flex.hendrickson_lattman):
     data.extend( flex.hendrickson_lattman(nsize, (nanval, nanval, nanval, nanval)) )
   if isinstance(data, flex.int) or isinstance(data, flex.long) \

@@ -515,6 +515,9 @@ class HKLViewFrame() :
       test_flag_value = score_array.test_flag_values[0]
       array = array.customized_copy(data=(array.data() == test_flag_value))
       array.set_info(info)
+      #array = array.deep_copy()
+      array._data = array.data().as_int()
+      #return intarray
     return array
 
 
@@ -722,10 +725,10 @@ class HKLViewFrame() :
       self.viewer.has_new_miller_array = True
       self.viewer.array_infostrs.append( ArrayInfo(procarray, self.mprint).infostr )
       self.viewer.array_infotpls.append( ArrayInfo(procarray, self.mprint).infotpl )
-      self.viewer.superset_all_miller_arrays()
+      self.viewer.SupersetMillerArrays()
       mydict = { "array_infotpls": self.viewer.array_infotpls, "NewHKLscenes" : True, "NewMillerArray" : True}
       self.SendInfoToGUI(mydict)
-      self.viewer.superset_all_miller_arrays()
+      #self.viewer.SupersetMillerArrays()
 
 
   def load_reflections_file(self, file_name, set_array=True, data_only=False):
@@ -797,7 +800,7 @@ class HKLViewFrame() :
       elif (len(valid_arrays) >= 1):
         if (set_array):
           self.set_miller_array()
-          self.viewer.superset_all_miller_arrays()
+          self.viewer.SupersetMillerArrays()
         mydict = { "info": self.infostr,
                    "array_infotpls": self.viewer.array_infotpls,
                    "bin_infotpls": self.viewer.bin_infotpls,
@@ -823,35 +826,25 @@ class HKLViewFrame() :
     dreslst = [("d_res", list(dres))]
     hkls = list(indices)
     hkllst = [ ("H", [e[0] for e in hkls] ), ("K", [e[1] for e in hkls] ), ("L", [e[2] for e in hkls] )]
-    #datalst = [ (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data()))
-    #                for id in idlst ]
     datalst = []
+    # any NaN value is converted to a None value in NGL_HKLviewerGui.MillerArrayTableModel()
     for id in idlst:
       if self.viewer.match_valarrays[id].is_complex_array():
-        no_nans = [ "%.4f + %.4f * i"%(e.real, e.imag)
-                    if not cmath.isnan(e) else "" for e in self.viewer.match_valarrays[id].data() ]
-        #datalst.append( (self.viewer.match_valarrays[id].info().label_string(), no_nans ) )
         ampls, phases = self.viewer.Complex2AmplitudesPhases(self.viewer.match_valarrays[id].data())
-        no_nans = [ e if not cmath.isnan(e) else "" for e in ampls ]
-        #datalst.append( (self.viewer.match_valarrays[id].info().labels[0], no_nans ) )
-        #datalst.append( (self.viewer.match_valarrays[id].info().labels[-1] + u" \u00b0", list(phases)) )
         cmplxlst = [ "%.4f + %.4f * i"%(e.real, e.imag)
-                     if not cmath.isnan(e) else "" for e in self.viewer.match_valarrays[id].data() ]
-
+                     if not cmath.isnan(e) else display.nanval for e in self.viewer.match_valarrays[id].data() ]
         datalst.append( (self.viewer.match_valarrays[id].info().label_string(), cmplxlst) )
         datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(ampls) ) )
         datalst.append( (self.viewer.match_valarrays[id].info().labels[-1] + u" \u00b0", list(phases)) )
       elif self.viewer.match_valarrays[id].sigmas() is not None:
         datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(self.viewer.match_valarrays[id].data()))  )
-        no_nans = [ e if not cmath.isnan(e) else "" for e in self.viewer.match_valarrays[id].sigmas() ]
-        #datalst.append( (self.viewer.match_valarrays[id].info().labels[-1], no_nans)  )
         datalst.append( (self.viewer.match_valarrays[id].info().labels[-1], list(self.viewer.match_valarrays[id].sigmas()))  )
-      elif self.viewer.match_valarrays[id].is_integer_array() or self.viewer.match_valarrays[id].is_bool_array():
-        no_nans = [ e if not e==display.inanval else "" for e in self.viewer.match_valarrays[id].data() ]
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], no_nans)  )
+      elif self.viewer.match_valarrays[id].is_integer_array():
+        list_with_nans = [ e if not e==display.inanval else display.nanval for e in self.viewer.match_valarrays[id].data() ]
+        if self.viewer.array_infotpls[id][0] == 'FreeR_flag': # want True or False back
+          list_with_nans = [ 1==e if not cmath.isnan(e) else display.nanval for e in list_with_nans ]
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list_with_nans)  )
       else:
-        no_nans = [ e if not cmath.isnan(e) else "" for e in self.viewer.match_valarrays[id].data() ]
-        #datalst.append( (self.viewer.match_valarrays[id].info().label_string(), no_nans )  )
         datalst.append( (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data()))  )
 
     self.idx_data = hkllst + dreslst + datalst
@@ -1086,7 +1079,7 @@ class HKLViewFrame() :
 
 
   def rotate_around_vector(self, dgr):
-    phi = math.pi*dgr/180
+    phi = cmath.pi*dgr/180
     if self.viewer.vecrotmx is not None:
       self.viewer.RotateAroundFracVector(phi,
                   self.params.NGL_HKLviewer.clip_plane.h,

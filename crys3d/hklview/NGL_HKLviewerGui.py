@@ -191,7 +191,9 @@ class MyTableWidget(QTableWidget):
 class MillerArrayTableModel(QAbstractTableModel):
   def __init__(self, data, headerdata, parent=None):
     super(MillerArrayTableModel, self).__init__(parent)
-    # transpose data from a list of columns data to rows of individual data values
+    # input data are a list of column arrays organised as:
+    # [[list of H], [list of K], [list of L], [list of millerdata1], [list of millersigmas1], [list of millerdata2]... ]
+    # We use zip to transpose it from a list of columns data to matching rows of data values for the table
     self._data = list(zip(*data))
     self.columnheaderdata = headerdata
     self.precision = 4
@@ -1590,6 +1592,10 @@ class NGL_HKLViewer(QWidget):
 
 if __name__ == '__main__':
   try:
+    """
+    If chromium webgl error on MacOS try using commandline arguments:
+    --enable-webgl-software-rendering and --ignore-gpu-blacklist
+    """
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer()
 
