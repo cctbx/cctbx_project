@@ -15,6 +15,10 @@ fes_coordination = {
   ("S", "FE", "S")   : [111.20,  4.05*2],
   ('SG', 'FE', 'SG') : [107.77,  4.08*2],
 }
+f3s_coordination = {
+  ('FE', 'S')      : [  2.318, 0.008*2],
+  ('S', 'FE', 'S') : [112.23,  6.03*2],
+}
 
 phil_str = '''
 '''
@@ -35,7 +39,8 @@ def get_distance_ideal_and_weight(a1, a2):
     distance_ideal=sf4_coordination[('FE', 'S')][0]
     weight=1.0/sf4_coordination[('FE', 'S')][1]**2
   elif resname=='F3S':
-    assert 0
+    distance_ideal=f3s_coordination[('FE', 'S')][0]
+    weight=1.0/f3s_coordination[('FE', 'S')][1]**2
   elif resname=='FES':
     distance_ideal=fes_coordination[('FE', 'S')][0]
     weight=1.0/fes_coordination[('FE', 'S')][1]**2
@@ -47,7 +52,8 @@ def get_angle_ideal_and_weight(a1,a2,a3):
     angle_ideal = sf4_coordination[('S', 'FE', 'S')][0]
     weight = sf4_coordination[('S', 'FE', 'S')][1]
   elif resname=='F3S':
-    assert 0
+    angle_ideal = f3s_coordination[('S', 'FE', 'S')][0]
+    weight = f3s_coordination[('S', 'FE', 'S')][1]
   elif resname=='FES':
     if a1.parent().resname=='CYS' and a3.parent().resname=='CYS':
       angle_ideal=fes_coordination[('SG', 'FE', 'SG')][0]
@@ -115,8 +121,6 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
 
 def get_bond_proxies(coordination):
   #
-  # works for SF4, F3S
-  #
   bonds = []
   if coordination is None: return bonds
   for a1, a2 in coordination:
@@ -133,9 +137,6 @@ def get_bond_proxies(coordination):
   return bonds
 
 def get_angle_proxies_for_bond(coordination):
-  #
-  # works for SF4
-  # does not work for F3S
   #
   def _get_angle_atoms(a1, a2, resname, second_residues):
     atoms = []
@@ -161,9 +162,7 @@ def get_angle_proxies_for_bond(coordination):
   for a1, a2 in coordination:
     assert a1.name.find("FE")>-1
     resname = get_cluster_name(a1, a2)
-    if a1.parent().resname in ['F3S']: break
-    assert a1.parent().resname in ['SF4', 'FES']
-    if resname in ['SF4', 'FES']:
+    if resname in ['SF4', 'FES', 'F3S']:
       atoms = _get_angle_atoms(a1, a2, resname, second_residues)
       for a3 in atoms:
         angle_ideal, weight = get_angle_ideal_and_weight(a3, a1, a2)
@@ -173,10 +172,6 @@ def get_angle_proxies_for_bond(coordination):
           weight=1./weight**2,
           origin_id=origin_ids.get_origin_id('metal coordination'))
         angles.append(p)
-    elif resname=='F3S':
-      pass
-    elif resname=='FES':
-      assert 0
   return angles
 
 def get_all_proxies(coordination, resname=None):

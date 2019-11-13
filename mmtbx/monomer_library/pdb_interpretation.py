@@ -5566,7 +5566,7 @@ class process(object):
         from mmtbx.conformation_dependent_library import mcl
         mcl.update(self._geometry_restraints_manager,
                    self.all_chain_proxies.pdb_hierarchy,
-                   self.all_chain_proxies.pdb_link_records,
+                   log=self.log,
                   )
 
       # Here we are going to add another needed restraints.
