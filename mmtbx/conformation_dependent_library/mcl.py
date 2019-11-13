@@ -46,12 +46,12 @@ def get_pdb_hierarchy_from_restraints(code):
 
 def update(grm,
            pdb_hierarchy,
-           link_records=None,
+           # link_records=None,
            log=sys.stdout,
            verbose=False,
            ):
-  if link_records is None: link_records={}
-  link_records.setdefault('LINK', [])
+  # if link_records is None: link_records={}
+  # link_records.setdefault('LINK', [])
   hooks = [
     ["SF4 coordination",
      mcl_sf4_coordination.get_sulfur_iron_cluster_coordination, #(
@@ -91,8 +91,8 @@ def update(grm,
         sf4_coordination.setdefault(sf4_ag.id_str(), [])
         sf4_coordination[sf4_ag.id_str()].append((atoms[bp.i_seqs[0]],
                                                   atoms[bp.i_seqs[1]]))
-        link = (atoms[bp.i_seqs[0]], atoms[bp.i_seqs[1]], 'x,y,z')
-        if link not in link_records: link_records['LINK'].append(link)
+        # link = (atoms[bp.i_seqs[0]], atoms[bp.i_seqs[1]], 'x,y,z')
+        # if link not in link_records: link_records['LINK'].append(link)
       for sf4, aas in sorted(sf4_coordination.items()):
         outl += '%spdb="%s"\n' % (' '*6, sf4)
         for aa in sorted(aas):
@@ -101,6 +101,21 @@ def update(grm,
       proxies=bproxies,
       sites_cart=pdb_hierarchy.atoms().extract_xyz(),
     )
+    #
+    done = []
+    remove = []
+    for i, angle in enumerate(aproxies):
+      i_seqs = list(angle.i_seqs)
+      i_seqs.sort()
+      if i_seqs in done:
+        remove.append(i)
+      else:
+        done.append(i_seqs)
+    if remove:
+      remove.reverse()
+      for r in remove:
+        del aproxies[r]
+    #
     grm.add_angles_in_place(aproxies)
   if outl:
     print('  Dynamic metal coordination', file=log)

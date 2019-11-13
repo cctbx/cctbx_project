@@ -146,14 +146,9 @@ def get_angle_proxies_for_bond(coordination):
       a3 = a1.parent().get_atom(name)
       if a3: atoms.append(a3)
     if resname in ['FES']:
-      print(a1.quote(), a2.quote())
       for ag in second_residues:
         if ag.id_str()==a2.parent().id_str(): continue
         sg = ag.get_atom('SG')
-        print(sg.quote())
-        print(ag.id_str())
-        print(sg.xyz, dir(sg.xyz))
-        print(sg.distance(a1))
         if sg and sg.distance(a1)<3.5:
           atoms.append(sg)
     return atoms
