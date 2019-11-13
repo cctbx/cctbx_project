@@ -27,6 +27,7 @@ stages:
   displayName: Build and test
   dependsOn: Preparation
   jobs:
+    - template: ./base-win.yml
     - template: ./base-linux.yml
       parameters:
         distribution: centos
