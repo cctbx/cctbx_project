@@ -10,15 +10,52 @@ sf4_coordination = {
   ("FE", "S")      : [  2.268, 0.017*2],
   ("S", "FE", "S") : [114.24,  5.75*2],
 }
-# fes_coordination = {
-#   ("FE", "S")      : [  2.204, 0.013*2],
-#   ("S", "FE", "S") : [114.24,  5.75*2],
-# }
+fes_coordination = {
+  ("FE", "S")        : [  2.305, 0.022*2],
+  ("S", "FE", "S")   : [111.20,  4.05*2],
+  ('SG', 'FE', 'SG') : [107.77,  4.08*2],
+}
 
 phil_str = '''
 '''
 
 sf_clusters = set(['SF4', 'F3S', 'FES'])
+
+def get_cluster_name(a1, a2, a3=None):
+  resname = [a1.parent().resname,a2.parent().resname]
+  if a3: resname.append(a3.parent().resname)
+  resname = sf_clusters.intersection(set(resname))
+  if len(resname)==1: resname = resname.pop()
+  else: assert 0
+  return resname
+
+def get_distance_ideal_and_weight(a1, a2):
+  resname = get_cluster_name(a1, a2)
+  if resname=='SF4':
+    distance_ideal=sf4_coordination[('FE', 'S')][0]
+    weight=1.0/sf4_coordination[('FE', 'S')][1]**2
+  elif resname=='F3S':
+    assert 0
+  elif resname=='FES':
+    distance_ideal=fes_coordination[('FE', 'S')][0]
+    weight=1.0/fes_coordination[('FE', 'S')][1]**2
+  return distance_ideal, weight
+
+def get_angle_ideal_and_weight(a1,a2,a3):
+  resname = get_cluster_name(a1, a2, a3)
+  if resname=='SF4':
+    angle_ideal = sf4_coordination[('S', 'FE', 'S')][0]
+    weight = sf4_coordination[('S', 'FE', 'S')][1]
+  elif resname=='F3S':
+    assert 0
+  elif resname=='FES':
+    if a1.parent().resname=='CYS' and a3.parent().resname=='CYS':
+      angle_ideal=fes_coordination[('SG', 'FE', 'SG')][0]
+      weight=1.0/fes_coordination[('SG', 'FE', 'SG')][1]**2
+    else:
+      angle_ideal=fes_coordination[('S', 'FE', 'S')][0]
+      weight=1.0/fes_coordination[('S', 'FE', 'S')][1]**2
+  return angle_ideal, weight
 
 def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
                                          nonbonded_proxies,
@@ -83,10 +120,11 @@ def get_bond_proxies(coordination):
   bonds = []
   if coordination is None: return bonds
   for a1, a2 in coordination:
+    distance_ideal, weight = get_distance_ideal_and_weight(a1, a2)
     p = geometry_restraints.bond_simple_proxy(
       i_seqs=[a1.i_seq, a2.i_seq],
-      distance_ideal=sf4_coordination[('FE', 'S')][0],
-      weight=1.0/sf4_coordination[('FE', 'S')][1]**2,
+      distance_ideal=distance_ideal,
+      weight=weight,
       slack=0,
       top_out=False,
       limit=1,
@@ -99,25 +137,51 @@ def get_angle_proxies_for_bond(coordination):
   # works for SF4
   # does not work for F3S
   #
-  angles = []
-  if coordination is None: return angles
-  for a1, a2 in coordination:
-    assert a1.name.find("FE")>-1
-    if a1.parent().resname in ['F3S', 'FES']: break
-    assert a1.parent().resname in ['SF4']
+  def _get_angle_atoms(a1, a2, resname, second_residues):
+    atoms = []
     ii=int(a1.name.strip()[-1])
     for i in range(1,5):
       if i==ii: continue
       name = 'S%d' % i
       a3 = a1.parent().get_atom(name)
-      angle_ideal = sf4_coordination[('S', 'FE', 'S')][0]
-      weight = sf4_coordination[('S', 'FE', 'S')][1]
-      p = geometry_restraints.angle_proxy(
-        i_seqs=[a3.i_seq, a1.i_seq, a2.i_seq],
-        angle_ideal=angle_ideal,
-        weight=1./weight**2,
-        origin_id=origin_ids.get_origin_id('metal coordination'))
-      angles.append(p)
+      if a3: atoms.append(a3)
+    if resname in ['FES']:
+      print(a1.quote(), a2.quote())
+      for ag in second_residues:
+        if ag.id_str()==a2.parent().id_str(): continue
+        sg = ag.get_atom('SG')
+        print(sg.quote())
+        print(ag.id_str())
+        print(sg.xyz, dir(sg.xyz))
+        print(sg.distance(a1))
+        if sg and sg.distance(a1)<3.5:
+          atoms.append(sg)
+    return atoms
+  #
+  angles = []
+  if coordination is None: return angles
+  second_residues = []
+  for a1, a2 in coordination:
+    second_residues.append(a2.parent())
+  for a1, a2 in coordination:
+    assert a1.name.find("FE")>-1
+    resname = get_cluster_name(a1, a2)
+    if a1.parent().resname in ['F3S']: break
+    assert a1.parent().resname in ['SF4', 'FES']
+    if resname in ['SF4', 'FES']:
+      atoms = _get_angle_atoms(a1, a2, resname, second_residues)
+      for a3 in atoms:
+        angle_ideal, weight = get_angle_ideal_and_weight(a3, a1, a2)
+        p = geometry_restraints.angle_proxy(
+          i_seqs=[a3.i_seq, a1.i_seq, a2.i_seq],
+          angle_ideal=angle_ideal,
+          weight=1./weight**2,
+          origin_id=origin_ids.get_origin_id('metal coordination'))
+        angles.append(p)
+    elif resname=='F3S':
+      pass
+    elif resname=='FES':
+      assert 0
   return angles
 
 def get_all_proxies(coordination, resname=None):
