@@ -68,6 +68,7 @@ def get_cluster_name(a1, a2, a3=None, other=False):
   return resname
 
 def get_lookup(a1, a2, a3=None):
+  from mmtbx.monomer_library import bondlength_defaults
   resname = get_cluster_name(a1, a2, a3)
   ligand = get_cluster_name(a1, a2, a3, other=True)
   cluster_lookup = coordination_defaults.get(resname, None)
@@ -75,45 +76,33 @@ def get_lookup(a1, a2, a3=None):
   ligand_lookup = cluster_lookup.get(ligand, None)
   if ligand_lookup is None:
     ligand_lookup = cluster_lookup.get('CYS', None)
-  assert ligand_lookup
+  if ligand_lookup is None:
+    ans = bondlength_defaults.run(a1, a2)
+    ligand_lookup = {}
+    ligand_lookup[(a1.element.strip().upper(), a2.element.strip().upper())]=[ans, 0.1]
   return ligand_lookup
 
 def get_distance_ideal_and_weight(a1, a2):
   ligand_lookup = get_lookup(a1, a2)
-  distance_ideal=ligand_lookup[('FE', 'S')][0]
-  weight=1.0/ligand_lookup[('FE', 'S')][1]**2
-  # if resname=='SF4':
-  #   distance_ideal=sf4_coordination[('FE', 'S')][0]
-  #   weight=1.0/sf4_coordination[('FE', 'S')][1]**2
-  # elif resname=='F3S':
-  #   distance_ideal=f3s_coordination[('FE', 'S')][0]
-  #   weight=1.0/f3s_coordination[('FE', 'S')][1]**2
-  # elif resname=='FES':
-  #   distance_ideal=fes_coordination[('FE', 'S')][0]
-  #   weight=1.0/fes_coordination[('FE', 'S')][1]**2
+  key = (a1.element.strip().upper(), a2.element.strip().upper())
+  assert key in ligand_lookup
+  distance_ideal=ligand_lookup[key][0]
+  weight=1.0/ligand_lookup[key][1]**2
   return distance_ideal, weight
 
 def get_angle_ideal_and_weight(a1,a2,a3):
   ligand_lookup = get_lookup(a1, a2, a3)
+  key = (a1.element.strip().upper(),
+         a2.element.strip().upper(),
+         a3.element.strip().upper(),
+         )
+  assert key in ligand_lookup
   if a1.parent().resname=='CYS' and a3.parent().resname=='CYS':
     angle_ideal=ligand_lookup[('SG', 'FE', 'SG')][0]
     weight=1.0/ligand_lookup[('SG', 'FE', 'SG')][1]**2
   else:
-    angle_ideal = ligand_lookup[('S', 'FE', 'S')][0]
-    weight = ligand_lookup[('S', 'FE', 'S')][1]
-  # if resname=='SF4':
-  #   angle_ideal = sf4_coordination[('S', 'FE', 'S')][0]
-  #   weight = sf4_coordination[('S', 'FE', 'S')][1]
-  # elif resname=='F3S':
-  #   angle_ideal = f3s_coordination[('S', 'FE', 'S')][0]
-  #   weight = f3s_coordination[('S', 'FE', 'S')][1]
-  # elif resname=='FES':
-  #   if a1.parent().resname=='CYS' and a3.parent().resname=='CYS':
-  #     angle_ideal=fes_coordination[('SG', 'FE', 'SG')][0]
-  #     weight=1.0/fes_coordination[('SG', 'FE', 'SG')][1]**2
-  #   else:
-  #     angle_ideal=fes_coordination[('S', 'FE', 'S')][0]
-  #     weight=1.0/fes_coordination[('S', 'FE', 'S')][1]**2
+    angle_ideal = ligand_lookup[key][0]
+    weight = ligand_lookup[key][1]
   return angle_ideal, weight
 
 def get_sulfur_iron_cluster_coordination(pdb_hierarchy,

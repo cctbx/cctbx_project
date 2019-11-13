@@ -37,11 +37,6 @@ database = {'Zn2+ tetrahedral': {
   }
 database['ZN'] = database['Zn2+ tetrahedral']
 
-# in code already
-#database["SF4"] = { 
-#    (('FEn', 'SF4'), ('SG', 'CYS')) : (2.3, 0.03, -1),
-#  }
-
 for nums, restraints in database['Zn2+ tetrahedral'].items():
   for atoms, values in restraints.items():
     if 'ND1' in atoms:
