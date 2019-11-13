@@ -20,47 +20,100 @@ f3s_coordination = {
   ('S', 'FE', 'S') : [112.23,  6.03*2],
 }
 
+# defaults to CYS
+sf4_coordination = {
+  'CYS' : {
+    ("FE", "S")      : [  2.268, 0.017*2],
+    ("S", "FE", "S") : [114.24,  5.75*2],
+          },
+  'MET' : {
+    ("FE", "S")      : [  2.311, 0.006*2],
+    ("S", "FE", "S") : [113.97,  8.764*2],
+          },
+                    }
+fes_coordination = {
+  'CYS' : {
+    ("FE", "S")        : [  2.305, 0.022*2],
+    ("S", "FE", "S")   : [111.20,  4.05*2],
+    ('SG', 'FE', 'SG') : [107.77,  4.08*2],
+  }
+}
+f3s_coordination = {
+  'CYS' : {
+    ('FE', 'S')      : [  2.318, 0.008*2],
+    ('S', 'FE', 'S') : [112.23,  6.03*2],
+          },
+}
+coordination_defaults = {
+  'SF4' : sf4_coordination,
+  'F3S' : f3s_coordination,
+  'FES' : fes_coordination,
+}
+
 phil_str = '''
 '''
 
 sf_clusters = set(['SF4', 'F3S', 'FES'])
 
-def get_cluster_name(a1, a2, a3=None):
+def get_cluster_name(a1, a2, a3=None, other=False):
   resname = [a1.parent().resname,a2.parent().resname]
   if a3: resname.append(a3.parent().resname)
-  resname = sf_clusters.intersection(set(resname))
+  resname = set(resname)
+  if other:
+    resname = resname.difference(set(sf_clusters))
+  else:
+    resname = sf_clusters.intersection(set(resname))
   if len(resname)==1: resname = resname.pop()
   else: assert 0
   return resname
 
+def get_lookup(a1, a2, a3=None):
+  resname = get_cluster_name(a1, a2, a3)
+  ligand = get_cluster_name(a1, a2, a3, other=True)
+  cluster_lookup = coordination_defaults.get(resname, None)
+  assert cluster_lookup, 'library for %s not found' % (resname)
+  ligand_lookup = cluster_lookup.get(ligand, None)
+  if ligand_lookup is None:
+    ligand_lookup = cluster_lookup.get('CYS', None)
+  assert ligand_lookup
+  return ligand_lookup
+
 def get_distance_ideal_and_weight(a1, a2):
-  resname = get_cluster_name(a1, a2)
-  if resname=='SF4':
-    distance_ideal=sf4_coordination[('FE', 'S')][0]
-    weight=1.0/sf4_coordination[('FE', 'S')][1]**2
-  elif resname=='F3S':
-    distance_ideal=f3s_coordination[('FE', 'S')][0]
-    weight=1.0/f3s_coordination[('FE', 'S')][1]**2
-  elif resname=='FES':
-    distance_ideal=fes_coordination[('FE', 'S')][0]
-    weight=1.0/fes_coordination[('FE', 'S')][1]**2
+  ligand_lookup = get_lookup(a1, a2)
+  distance_ideal=ligand_lookup[('FE', 'S')][0]
+  weight=1.0/ligand_lookup[('FE', 'S')][1]**2
+  # if resname=='SF4':
+  #   distance_ideal=sf4_coordination[('FE', 'S')][0]
+  #   weight=1.0/sf4_coordination[('FE', 'S')][1]**2
+  # elif resname=='F3S':
+  #   distance_ideal=f3s_coordination[('FE', 'S')][0]
+  #   weight=1.0/f3s_coordination[('FE', 'S')][1]**2
+  # elif resname=='FES':
+  #   distance_ideal=fes_coordination[('FE', 'S')][0]
+  #   weight=1.0/fes_coordination[('FE', 'S')][1]**2
   return distance_ideal, weight
 
 def get_angle_ideal_and_weight(a1,a2,a3):
-  resname = get_cluster_name(a1, a2, a3)
-  if resname=='SF4':
-    angle_ideal = sf4_coordination[('S', 'FE', 'S')][0]
-    weight = sf4_coordination[('S', 'FE', 'S')][1]
-  elif resname=='F3S':
-    angle_ideal = f3s_coordination[('S', 'FE', 'S')][0]
-    weight = f3s_coordination[('S', 'FE', 'S')][1]
-  elif resname=='FES':
-    if a1.parent().resname=='CYS' and a3.parent().resname=='CYS':
-      angle_ideal=fes_coordination[('SG', 'FE', 'SG')][0]
-      weight=1.0/fes_coordination[('SG', 'FE', 'SG')][1]**2
-    else:
-      angle_ideal=fes_coordination[('S', 'FE', 'S')][0]
-      weight=1.0/fes_coordination[('S', 'FE', 'S')][1]**2
+  ligand_lookup = get_lookup(a1, a2, a3)
+  if a1.parent().resname=='CYS' and a3.parent().resname=='CYS':
+    angle_ideal=ligand_lookup[('SG', 'FE', 'SG')][0]
+    weight=1.0/ligand_lookup[('SG', 'FE', 'SG')][1]**2
+  else:
+    angle_ideal = ligand_lookup[('S', 'FE', 'S')][0]
+    weight = ligand_lookup[('S', 'FE', 'S')][1]
+  # if resname=='SF4':
+  #   angle_ideal = sf4_coordination[('S', 'FE', 'S')][0]
+  #   weight = sf4_coordination[('S', 'FE', 'S')][1]
+  # elif resname=='F3S':
+  #   angle_ideal = f3s_coordination[('S', 'FE', 'S')][0]
+  #   weight = f3s_coordination[('S', 'FE', 'S')][1]
+  # elif resname=='FES':
+  #   if a1.parent().resname=='CYS' and a3.parent().resname=='CYS':
+  #     angle_ideal=fes_coordination[('SG', 'FE', 'SG')][0]
+  #     weight=1.0/fes_coordination[('SG', 'FE', 'SG')][1]**2
+  #   else:
+  #     angle_ideal=fes_coordination[('S', 'FE', 'S')][0]
+  #     weight=1.0/fes_coordination[('S', 'FE', 'S')][1]**2
   return angle_ideal, weight
 
 def get_sulfur_iron_cluster_coordination(pdb_hierarchy,

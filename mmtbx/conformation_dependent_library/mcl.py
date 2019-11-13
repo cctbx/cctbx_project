@@ -53,22 +53,12 @@ def update(grm,
   # if link_records is None: link_records={}
   # link_records.setdefault('LINK', [])
   hooks = [
-    ["SF4 coordination",
-     mcl_sf4_coordination.get_sulfur_iron_cluster_coordination, #(
-       #pdb_hierarchy=pdb_hierarchy,
-       #nonbonded_proxies=grm.pair_proxies(
-       #  sites_cart=pdb_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
-       #verbose=verbose,
-     #),
+    ["Iron sulfure cluster coordination",
+     mcl_sf4_coordination.get_sulfur_iron_cluster_coordination,
      mcl_sf4_coordination.get_all_proxies,
       ],
-    ['Zn2+ tetrahedral',
-     metal_coordination_library.get_metal_coordination_proxies, #(
-       #pdb_hierarchy=pdb_hierarchy,
-       #nonbonded_proxies=grm.pair_proxies(
-       #  sites_cart=pdb_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
-       #verbose=verbose,
-     #),
+    ['Zn2+ tetrahedral coordination',
+     metal_coordination_library.get_metal_coordination_proxies,
      metal_coordination_library.get_proxies,
       ],
     ]
