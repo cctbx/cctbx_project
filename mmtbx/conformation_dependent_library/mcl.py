@@ -87,10 +87,11 @@ def update(grm,
         outl += '%spdb="%s"\n' % (' '*6, sf4)
         for aa in sorted(aas):
           outl += '%s%s - %s\n' % (' '*8, aa[0].id_str(), aa[1].id_str())
-    grm.add_new_bond_restraints_in_place(
-      proxies=bproxies,
-      sites_cart=pdb_hierarchy.atoms().extract_xyz(),
-    )
+    if bproxies:
+      grm.add_new_bond_restraints_in_place(
+        proxies=bproxies,
+        sites_cart=pdb_hierarchy.atoms().extract_xyz(),
+      )
     #
     done = []
     remove = []

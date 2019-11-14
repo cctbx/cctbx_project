@@ -294,7 +294,7 @@ general_tests = [
   "$D/monomer_library/tst_correct_hydrogens.py",
   # automatic linking
   "$D/monomer_library/tst_superpose_ideal.py",
-  '$D/mmtbx/monomer_library/tst_iron_sulfur_clusters.py',
+  '$D/monomer_library/tst_iron_sulfur_clusters.py',
   #
   "$D/scaling/tst_plan_sad_experiment.py",
   #
