@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 from libtbx import easy_run
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, assert_lines_in_text
 import mmtbx.model
 from libtbx.utils import null_out
 import iotbx.pdb
@@ -9,7 +9,7 @@ from mmtbx.validation.rama_z import rama_z
 import os
 
 fname = libtbx.env.find_in_repositories(
-    relative_path="cctbx_project/mmtbx/secondary_structure/regularize_from_pdb_lib/lib8.pdb",
+    relative_path="cctbx_project/mmtbx/regression/pdbs/p9.pdb",
     test=os.path.isfile)
 
 def check_function():
@@ -20,36 +20,31 @@ def check_function():
   ss_cont = zs.get_residue_counts()
   # print (z_scores)
   # print (ss_cont)
-  expected_z =  {'H': -2.7111077448509953, 'S': None, 'L': -0.7253113914835396, 'W': -1.0306993840276084}
-  expeted_ss = {'H': 277, 'S': 0, 'L': 15041, 'W': 15318}
+  expected_z =  {'H': None, 'S': (-0.057428666470734, 0.6658791164520348),
+      'L': (-0.3588028726184504, 0.6320340431586435),
+      'W': (-0.4019606027769244, 0.45853802351647416)}
+  expeted_ss = {'H': 0, 'S': 63, 'L': 71, 'W': 134}
   for k in expected_z:
     if z_scores[k] is not None:
-      assert approx_equal( z_scores[k][0], expected_z[k])
-      if k == 'W':
-        assert 0.01 < z_scores[k][1] < 0.1, z_scores[k][1]
-    if k != 'weighted_mean':
+      assert approx_equal( z_scores[k], expected_z[k], eps=1e-5)
       assert approx_equal( ss_cont[k], expeted_ss[k] )
   # check how separate scores translate to whole
-  h_score = (z_scores['H'][0] * zs.calibration_values['H'][1] + zs.calibration_values['H'][0]) * ss_cont['H']
+  s_score = (z_scores['S'][0] * zs.calibration_values['S'][1] + zs.calibration_values['S'][0]) * ss_cont['S']
   l_score = (z_scores['L'][0] * zs.calibration_values['L'][1] + zs.calibration_values['L'][0]) * ss_cont['L']
-  w_score = ((h_score + l_score)/(ss_cont['H']+ss_cont['L']) - zs.calibration_values['W'][0]) / zs.calibration_values['W'][1]
+  w_score = ((s_score + l_score)/(ss_cont['S']+ss_cont['L']) - zs.calibration_values['W'][0]) / zs.calibration_values['W'][1]
   # print ("reconstructed:", w_score, z_scores['W'][0])
   assert approx_equal(w_score, z_scores['W'][0])
-
 
 def check_cmd_line():
   cmd = "mmtbx.rama_z %s" % fname
   r = easy_run.fully_buffered(cmd)
   stdout = r.stdout_lines
   # print ("\n".join(stdout))
-  expected_strs = [
-      ["z-score whole: -1.031", "residues: 15318"],
-      ["z-score helix: -2.711", "residues: 277"],
-      ["z-score sheet: None,", "residues: 0"],
-      ["z-score loop : -0.725", "residues: 15041"]]
-  for res, expected in zip(stdout[-9:-6], expected_strs):
-    for exp_l in expected:
-      assert res.find(exp_l) >= 0, "res: '%s', exp: '%s'" % (res, exp_l)
+  assert_lines_in_text("\n".join(stdout), """\
+      z-score whole: -0.40 (0.46), residues: 134
+      z-score helix: None, residues: 0
+      z-score sheet: -0.06 (0.67), residues: 63
+      z-score loop : -0.36 (0.63), residues: 71""")
 
 if __name__ == '__main__':
   check_function()

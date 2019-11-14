@@ -72,7 +72,7 @@ Usage examples:
         if v is None:
           print("z-score %-5s: None, residues: %d" % (k, result['residue_counts'][rc]), file=self.logger)
         else:
-          print("z-score %-5s: %6.3f (%5.3f), residues: %d" % (k, v[0], v[1], result['residue_counts'][rc]), file=self.logger)
+          print("z-score %-5s: %5.2f (%4.2f), residues: %d" % (k, v[0], v[1], result['residue_counts'][rc]), file=self.logger)
 
   # ---------------------------------------------------------------------------
   def get_results(self):
