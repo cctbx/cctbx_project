@@ -429,6 +429,7 @@ class hklview_3d:
       % (array_info.label_string(), details, self.miller_array.indices().size(), \
           self.miller_array.space_group_info(), uc), verbose=0 )
 
+
   def Complex2AmplitudesPhases(self, data):
     ampls = flex.abs(data)
     phases = flex.arg(data) * 180.0/math.pi
@@ -541,7 +542,7 @@ class hklview_3d:
   def SupersetMillerArrays(self):
     self.match_valarrays = []
     # First loop over all miller arrays to make a superset of hkls of all
-    # miller arrays. Then loop over all miller arrays and extend them with NaNs 
+    # miller arrays. Then loop over all miller arrays and extend them with NaNs
     # as to contain the same hkls as the superset
     self.mprint("Gathering superset of miller indices")
     superset_array = self.proc_arrays[0].deep_copy()

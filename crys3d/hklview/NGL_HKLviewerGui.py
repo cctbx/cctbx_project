@@ -120,20 +120,6 @@ class MillerArrayTableForm(QDialog):
     return super(MillerArrayTableForm, self).eventFilter(source, event)
 
 
-class NumericTableWidgetItem(QTableWidgetItem):
-  def __lt__(self, other):
-    if self.text() == "":
-      return True
-    if other.text() == "":
-      return False
-    try:
-      float(self.text())
-      float(other.text())
-    except Exception as e:
-      return True
-    return float(self.text()) < float(other.text())
-
-
 class MyTableView(QTableView):
   def __init__(self, *args, **kwargs):
     QTableView.__init__(self, *args, **kwargs)
@@ -259,10 +245,10 @@ class NGL_HKLViewer(QWidget):
       if "verbose" in e:
         self.verbose = e.split("verbose=")[1]
       if "UseOSbrowser" in e:
-        self.UseOSbrowser = e.split("UseOSbrowser=")[1]
+        self.UseOSbrowser = True
       if "jscriptfname" in e:
         self.jscriptfname = e.split("jscriptfname=")[1]
-      if "devmode" in e:
+      if "devmode" in e or "debug" in e:
         self.devmode = True
       if 'htmlfname' in e:
         self.hklfname = e.split("htmlfname=")[1]
@@ -273,7 +259,7 @@ class NGL_HKLViewer(QWidget):
 
     self.originalPalette = QApplication.palette()
 
-    self.openFileNameButton = QPushButton("Load reflection file")
+    self.openFileNameButton = QPushButton("Open reflection file")
     self.openFileNameButton.setDefault(True)
     self.openFileNameButton.clicked.connect(self.onOpenReflectionFile)
 
@@ -391,7 +377,10 @@ class NGL_HKLViewer(QWidget):
       # omitting name for QWebEngineProfile() means it is private/off-the-record with no cache files
       self.webprofile = QWebEngineProfile(parent=self.BrowserBox)
       self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
-      self.webpage.setUrl("https://cctbx.github.io/")
+      if self.devmode:
+        self.webpage.setUrl("https://webglreport.com/")
+      else:
+        self.webpage.setUrl("https://cctbx.github.io/")
       self.cpath = self.webprofile.cachePath()
       self.BrowserBox.setPage(self.webpage)
 
@@ -411,6 +400,7 @@ class NGL_HKLViewer(QWidget):
     self.out = None
     self.err = None
     self.comboviewwidth = 0
+    self.currentphilstringdict = {}
     self.hklscenes_arrays = []
     self.millerarraylabels = []
     self.scenearraylabels = []
@@ -419,7 +409,7 @@ class NGL_HKLViewer(QWidget):
     self.bin_infotpls = None
     self.bin_opacities= None
     self.html_url = ""
-    self.spacegroups = []
+    self.spacegroups = {}
     self.info = []
     self.infostr = ""
     self.tncsvec = []
@@ -483,11 +473,11 @@ class NGL_HKLViewer(QWidget):
   def onOpenReflectionFile(self):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getOpenFileName(self,
-            "Load reflections file",
-            "",
+            "Open a reflection file", "",
             "All Files (*);;MTZ Files (*.mtz);;CIF (*.cif)", "", options)
     if fileName:
       self.HKLnameedit.setText(fileName)
+      self.setWindowTitle("HKL-viewer: " + fileName)
       #self.infostr = ""
       self.textInfo.setPlainText("")
       self.fileisvalid = False
@@ -500,7 +490,10 @@ class NGL_HKLViewer(QWidget):
     self.settingsform.show()
 
 
-  def update(self):
+  def ProcessMessages(self):
+    """
+    Deal with the messages posted to this GUI by cmdlineframes.py
+    """
     if self.cctbxproc:
       if self.cctbxproc.stdout:
         self.out = self.cctbxproc.stdout.read().decode("utf-8")
@@ -519,6 +512,14 @@ class NGL_HKLViewer(QWidget):
         msgstr = msg.decode()
         self.infodict = eval(msgstr)
         if self.infodict:
+          if self.infodict.get("current_ phil_ strings"):
+            philstringdict = self.infodict.get("current_ phil_ strings", {})
+            for k, v in philstringdict.items():
+              try:
+                self.currentphilstringdict[k] = eval(v)
+              except Exception as e:
+                self.currentphilstringdict[k] = v
+            self.UpdateGUI()
 
           if self.infodict.get("hklscenes_arrays"):
             self.hklscenes_arrays = self.infodict.get("hklscenes_arrays", [])
@@ -569,9 +570,10 @@ class NGL_HKLViewer(QWidget):
               self.BrowserBox.page().setBackgroundColor(QColor(255, 255, 255, 0.0) )
 
           if self.infodict.get("spacegroups"):
-            self.spacegroups = self.infodict.get("spacegroups",[])
+            spgs = self.infodict.get("spacegroups",[])
+            self.spacegroups = { e:i for i,e in enumerate(spgs) }
             self.SpaceGroupComboBox.clear()
-            self.SpaceGroupComboBox.addItems( self.spacegroups )
+            self.SpaceGroupComboBox.addItems( list(self.spacegroups.keys()) )
 
           if self.infodict.get("tabulate_miller_array"):
             print("received table")
@@ -589,8 +591,6 @@ class NGL_HKLViewer(QWidget):
             self.millerarraytable.setSortingEnabled(False)
 
             self.millerarraytable_sortorder = ["unsorted"] * (len(self.datalst) + 3)
-            #self.millerarraytable.clear()
-            #self.RefreshMillerArrayTable()
             self.millerarraytable.resizeColumnsToContents()
             self.millerarraytableform.layout.setRowStretch (0, 0)
             self.millerarraytableform.mainLayout.setRowStretch (0, 0)
@@ -673,27 +673,97 @@ class NGL_HKLViewer(QWidget):
         pass
 
 
-  def RefreshMillerArrayTable(self):
-    nc = len(self.indices)
-    mc = int(nc/20) # print 20 percentages
-    prec = self.millerarraytableform.precision_spinBox.value()
-    for row,(h,k,l) in enumerate(self.indices):
-      self.millerarraytable.setItem(row, 0, NumericTableWidgetItem(str(h)))
-      self.millerarraytable.setItem(row, 1, NumericTableWidgetItem(str(k)))
-      self.millerarraytable.setItem(row, 2, NumericTableWidgetItem(str(l)))
-      for i,data in enumerate(self.datalst):
-        d = str(data[row])
-        if d == "nan":
-          d = ""
-        else:
-          val = data[row]
-          if type(val) is complex:
-            d = str(round(val.real, prec)) + " + " + str(round(val.imag, prec)) + " * i"
-          else:
-            d = str(round(val, prec))
-        self.millerarraytable.setItem(row, i+3, NumericTableWidgetItem(d))
-      if (row % mc) == 0:
-        print("%2.1f %%" %(row*100/nc))
+  def UpdateGUI(self):
+    """
+    NGL_HKLviewer.viewer.scale_colors_multiplicity, False
+    #NGL_HKLviewer.viewer.nth_power_scale_radii, -1
+    #NGL_HKLviewer.viewer.slice_mode, False
+    NGL_HKLviewer.viewer.uniform_size, False
+    NGL_HKLviewer.tabulate_miller_array_ids, []
+    #NGL_HKLviewer.clip_plane.l, 0
+    #NGL_HKLviewer.viewer.expand_to_p1, False
+    #NGL_HKLviewer.clip_plane.h, 2
+    NGL_HKLviewer.viewer.sigma_radius, False
+    NGL_HKLviewer.viewer.map_to_asu, False
+    #NGL_HKLviewer.clip_plane.k, 0
+    #NGL_HKLviewer.viewer.show_systematic_absences, False
+    #NGL_HKLviewer.viewer.NGL.tooltip_alpha, 0.85
+    NGL_HKLviewer.viewer.d_min, None
+    NGL_HKLviewer.tooltips_in_script, False
+    NGL_HKLviewer.using_space_subgroup, False
+    #NGL_HKLviewer.viewer.expand_anomalous, False
+    #NGL_HKLviewer.viewer.scale, 1
+    #NGL_HKLviewer.filename, C:/Users/oeffner/Buser/NGL_HKLviewer/mymtz.mtz
+    NGL_HKLviewer.viewer.scale_radii_multiplicity, False
+    NGL_HKLviewer.viewer.data, None
+    #NGL_HKLviewer.viewer.NGL.mouse_sensitivity, 0.2
+    NGL_HKLviewer.action, *'is_running'
+    #NGL_HKLviewer.clip_plane.angle_around_vector, 0
+    #NGL_HKLviewer.viewer.slice_index, 0
+    NGL_HKLviewer.shape_primitive, *'spheres'
+    #NGL_HKLviewer.nbins, 6
+    #NGL_HKLviewer.clip_plane.hkldist, 0
+    NGL_HKLviewer.viewer.phase_color, False
+    NGL_HKLviewer.viewer.show_labels, True
+    NGL_HKLviewer.viewer.labels, None
+    NGL_HKLviewer.viewer.show_anomalous_pairs, False
+    NGL_HKLviewer.miller_array_operations,
+    NGL_HKLviewer.viewer.symmetry_file, None
+    #NGL_HKLviewer.spacegroup_choice, None
+    #NGL_HKLviewer.clip_plane.is_parallel, False
+    NGL_HKLviewer.scene_bin_thresholds, None
+    NGL_HKLviewer.viewer.scene_id, 3
+    NGL_HKLviewer.viewer.color_scheme, *rainbow
+    NGL_HKLviewer.viewer.black_background, True
+    NGL_HKLviewer.viewer.show_axes, True
+    NGL_HKLviewer.bin_scene_label, Resolution
+    NGL_HKLviewer.merge_data, False
+    NGL_HKLviewer.mouse_moved, True
+    #NGL_HKLviewer.viewer.show_missing, False
+    NGL_HKLviewer.viewer.slice_axis, *h
+    NGL_HKLviewer.viewer.keep_constant_scale, True
+    NGL_HKLviewer.viewer.show_data_over_sigma, False
+    NGL_HKLviewer.viewer.NGL.camera_type, *orthographic
+    NGL_HKLviewer.clip_plane.clipwidth, None
+    NGL_HKLviewer.viewer.sqrt_scale_colors, False
+    NGL_HKLviewer.viewer.sigma_color, False
+    NGL_HKLviewer.clip_plane.is_real_space_frac_vec, False
+    NGL_HKLviewer.viewer.NGL.fixorientation, False
+    NGL_HKLviewer.viewer.inbrowser, True
+    NGL_HKLviewer.viewer.show_only_missing, False
+    NGL_HKLviewer.viewer.NGL.bin_opacities, [(1.0, 0), (1.0, 1), (1.0, 2)]
+    NGL_HKLviewer.clip_plane.bequiet, False
+    """
+    self.power_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'])
+    self.radii_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.scale'])
+    self.showslicecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_mode'])
+    self.hvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.h'])
+    self.kvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.k'])
+    self.lvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.l'])
+    self.expandP1checkbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.expand_to_p1'])
+    self.expandAnomalouscheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.expand_anomalous'])
+    self.sysabsentcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_systematic_absences'])
+    self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.tooltip_alpha'])
+    self.HKLnameedit.setText( self.currentphilstringdict['NGL_HKLviewer.filename'])
+    self.setWindowTitle("HKL-viewer: " + self.currentphilstringdict['NGL_HKLviewer.filename'])
+    self.mousemoveslider.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.mouse_sensitivity'])
+    self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
+    self.sliceindexspinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_index'])
+    self.Nbins_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
+    self.hkldist_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
+    self.SpaceGroupComboBox.setCurrentIndex( self.spacegroups[ self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice']] )
+    self.clipParallelBtn.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.is_parallel'])
+    self.missingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_missing'])
+    self.SliceLabelComboBox.setCurrentIndex( self.sliceaxis[self.currentphilstringdict['NGL_HKLviewer.viewer.slice_axis']] )
+    self.cameraPerspectCheckBox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.camera_type'])
+    self.clipwidth_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'])
+    self.realspacevecBtn.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.is_real_space_frac_vec'])
+    self.fixedorientcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.fixorientation'])
+    self.onlymissingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_only_missing'])
+
+
+    pass
+
 
 
   def onSortComboBoxSelchange(self, i):
@@ -718,7 +788,6 @@ class NGL_HKLViewer(QWidget):
 
   def onPrecisionChanged(self, val):
     self.millerarraytablemodel.precision = val
-    #self.RefreshMillerArrayTable()
     self.millerarraytable.resizeColumnsToContents()
 
 
@@ -818,7 +887,7 @@ class NGL_HKLViewer(QWidget):
     rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][4][0][i]
     rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][4][1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
-    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
+    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis.keys()[i] )
 
 
   def onSliceIndexChanged(self, val):
@@ -1056,8 +1125,8 @@ class NGL_HKLViewer(QWidget):
 
     self.SliceLabelComboBox = QComboBox()
     self.SliceLabelComboBox.activated.connect(self.onSliceComboSelchange)
-    self.sliceaxis = [ "h", "k", "l" ]
-    self.SliceLabelComboBox.addItems( self.sliceaxis )
+    self.sliceaxis = { "h":0, "k":1, "l":2 }
+    self.SliceLabelComboBox.addItems( list( self.sliceaxis.keys()) )
     self.SliceLabelComboBox.setDisabled(True)
     self.sliceindexspinBox.setDisabled(True)
 
@@ -1385,7 +1454,7 @@ class NGL_HKLViewer(QWidget):
     else:
       self.functionTabWidget.setDisabled(True)
     self.SpaceGroupComboBox.clear()
-    self.SpaceGroupComboBox.addItems( self.spacegroups )
+    self.SpaceGroupComboBox.addItems( list(self.spacegroups.keys() ))
 
 
   def onMakeNewData(self):
@@ -1601,7 +1670,7 @@ if __name__ == '__main__':
 
     timer = QTimer()
     timer.setInterval(10)
-    timer.timeout.connect(guiobj.update)
+    timer.timeout.connect(guiobj.ProcessMessages)
     timer.start()
 
     ret = app.exec_()

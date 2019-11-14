@@ -376,6 +376,7 @@ class HKLViewFrame() :
       self.viewer.params.viewer.scene_id = 0
       self.viewer.DrawNGLJavaScript( blankscene=True)
     self.viewer.miller_array = None
+    return self.viewer.params
 
 
   def GetNewCurrentPhilFromString(self, philstr, oldcurrentphil):
@@ -432,9 +433,11 @@ class HKLViewFrame() :
       #phl = self.params.NGL_HKLviewer
 
       if view_3d.has_phil_path(diff_phil, "filename"):
-        self.ResetPhilandViewer(diff_phil)
+        phl = self.ResetPhilandViewer(self.currentphil)
         if not self.load_reflections_file(phl.filename):
           return False
+        #else:
+        #  self.ResetPhilandViewer(diff_phil)
 
       if view_3d.has_phil_path(diff_phil, "scene_id") \
        or view_3d.has_phil_path(diff_phil, "merge_data") \
@@ -489,6 +492,7 @@ class HKLViewFrame() :
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.NewFileLoaded = False
       phl.mouse_moved = False
+      self.SendCurrentPhilValues()
       if (self.viewer.miller_array is None) :
         self.mprint( NOREFLDATA, True)
         return False
@@ -846,11 +850,10 @@ class HKLViewFrame() :
         datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list_with_nans)  )
       else:
         datalst.append( (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data()))  )
-
     self.idx_data = hkllst + dreslst + datalst
     self.mprint("Sending table data", verbose=1)
     mydict = { "tabulate_miller_array": self.idx_data }
-    self.SendInfoToGUI(mydict, binary=True)
+    self.SendInfoToGUI(mydict)
 
 
   def TabulateMillerArray(self, ids):
@@ -1117,6 +1120,14 @@ class HKLViewFrame() :
     if self.spacegroup_choices:
       return [e.symbol_and_number() for e in self.spacegroup_choices]
     return []
+
+
+  def SendCurrentPhilValues(self):
+    philstrvalsdict = {}
+    for e in self.currentphil.all_definitions():
+      philstrvalsdict[e.path] = e.object.words[0].value
+    mydict = { "current_ phil_ strings": philstrvalsdict }
+    self.SendInfoToGUI(mydict)
 
 
   def GetHtmlURL(self):
