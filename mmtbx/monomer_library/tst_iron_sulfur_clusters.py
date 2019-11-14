@@ -89,6 +89,7 @@ END
 }
 
 from libtbx import easy_run
+from libtbx.test_utils import assert_lines_in_file
 
 def main():
   for code, item in pdbs.items():
@@ -101,10 +102,9 @@ def main():
     print(cmd)
     easy_run.go(cmd)
     print item[1]
-    f=file('%s.log' % pf, 'rb')
-    lines = f.read()
-    del f
-    assert lines.find(item[1])>-1, 'lines not found\n\n%s' % item[1]
+    for line in item[1].split('\n'):
+      print(line)
+      assert_lines_in_file(file_name='%s.log' % pf, lines=line)
 
 if __name__ == '__main__':
   main()
