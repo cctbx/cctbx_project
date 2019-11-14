@@ -1,3 +1,4 @@
+from __future__ import division
 import os, sys
 
 from cctbx import geometry_restraints
@@ -13,26 +14,26 @@ headers = ['Zn-SG (A)',
 database = {'Zn2+ tetrahedral': {
     (4,0) : {
         ('ZN', 'SG') : (2.330, 0.029, 1033),
-	('SG', 'ZN', 'SG') : (109.45, 5.46, 1553),
-	}, # n/a	n/a	Cys4
+        ('SG', 'ZN', 'SG') : (109.45, 5.46, 1553),
+        }, # n/a        n/a     Cys4
     (3,1) : {
         ('ZN', 'SG') : (2.318, 0.027, 912),
-	('SG', 'ZN', 'SG') : (112.15, 3.96, 912),
+        ('SG', 'ZN', 'SG') : (112.15, 3.96, 912),
         ('ZN', 'ND1') : (2.074, 0.056, 303),
-	}, #n/a	Cys3His1
+        }, #n/a Cys3His1
     (2,2) : {
         ('ZN', 'SG') : (2.306, 0.029, 76),
-	('SG', 'ZN', 'SG') : (116.23, 4.58, 38),
+        ('SG', 'ZN', 'SG') : (116.23, 4.58, 38),
         ('ZN', 'ND1') : (2.040, 0.050, 65),
         ('ND1', 'ZN', 'ND1') : (102.38, 5.44, 38),
-        }, #	Cys2His2
+        }, #    Cys2His2
     (1,3) : {
         ('ZN', 'SG') : (2.298, 0.017, 12),
         ('ZN', 'ND1') : (2.002, 0.045, 36),
         ('ND1', 'ZN', 'ND1') : (107.23, 4.78, 36),
-        }, #	Cys1His3
+        }, #    Cys1His3
     (0,4) : {
-        }, #n/a	n/a	Insufficient data	Insufficient data	His4
+        }, #n/a n/a     Insufficient data       Insufficient data       His4
     }
   }
 database['ZN'] = database['Zn2+ tetrahedral']
