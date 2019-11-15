@@ -66,7 +66,7 @@ class SimData:
 
     @staticmethod
     def Umats(mos_spread_deg, n_mos_doms, isotropic=False,
-              seed=0, norm_dist_seed=1234):
+              seed=777, norm_dist_seed=777):
         import scitbx
         from scitbx.matrix import col
         import math
@@ -151,7 +151,7 @@ class SimData:
         #self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
 
         self.D.Omatrix = self.crystal.Omatrix
-        self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B()#
+        self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B() #
         self.D.Umatrix = self.crystal.dxtbx_crystal.get_U()
 
         self.D.Ncells_abc = self.crystal.Ncells_abc[0]
