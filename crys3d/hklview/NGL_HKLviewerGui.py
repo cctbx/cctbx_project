@@ -256,6 +256,7 @@ class NGL_HKLViewer(QWidget):
         self.handshakewait = e.split('handshakewait=')[1]
 
     self.zmq_context = None
+    self.unfeedback = False
 
     self.originalPalette = QApplication.palette()
 
@@ -363,30 +364,21 @@ class NGL_HKLViewer(QWidget):
     self.mainLayout.addWidget(self.functionTabWidget,   1, 0)
     self.mainLayout.addWidget(self.settingsbtn,         2, 0, 1, 1)
     self.cpath = ""
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if self.UseOSbrowser==False:
       self.BrowserBox = QWebEngineView()
       self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
-
-      #self.BrowserBox.setUrl("https://cctbx.github.io/")
-      #self.BrowserBox.setUrl("https://webglreport.com/")
-
-      #self.storagename = "HKLviewer." + next(tempfile._get_candidate_names())
-      #self.webprofile = QWebEngineProfile(self.storagename, self.BrowserBox )
-      #self.webprofile.setHttpCacheType( QWebEngineProfile.DiskHttpCache )
       # omitting name for QWebEngineProfile() means it is private/off-the-record with no cache files
       self.webprofile = QWebEngineProfile(parent=self.BrowserBox)
       self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
       if self.devmode:
-        self.webpage.setUrl("https://webglreport.com/")
+        #self.webpage.setUrl("https://webglreport.com/")
+        self.webpage.setUrl("chrome://gpu")
       else:
         self.webpage.setUrl("https://cctbx.github.io/")
       self.cpath = self.webprofile.cachePath()
       self.BrowserBox.setPage(self.webpage)
-
       self.mainLayout.addWidget(self.BrowserBox,          0, 1, 5, 3)
       self.mainLayout.setColumnStretch(2, 1)
-
     self.mainLayout.setRowStretch(0, 1)
     self.mainLayout.setRowStretch(1, 0)
     self.mainLayout.setRowStretch(2, 1)
@@ -571,9 +563,9 @@ class NGL_HKLViewer(QWidget):
 
           if self.infodict.get("spacegroups"):
             spgs = self.infodict.get("spacegroups",[])
-            self.spacegroups = { e:i for i,e in enumerate(spgs) }
+            self.spacegroups = { i : e for i,e in enumerate(spgs) }
             self.SpaceGroupComboBox.clear()
-            self.SpaceGroupComboBox.addItems( list(self.spacegroups.keys()) )
+            self.SpaceGroupComboBox.addItems( list(self.spacegroups.values()) )
 
           if self.infodict.get("tabulate_miller_array"):
             print("received table")
@@ -734,6 +726,7 @@ class NGL_HKLViewer(QWidget):
     NGL_HKLviewer.viewer.NGL.bin_opacities, [(1.0, 0), (1.0, 1), (1.0, 2)]
     NGL_HKLviewer.clip_plane.bequiet, False
     """
+    self.unfeedback = True
     self.power_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'])
     self.radii_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.scale'])
     self.showslicecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_mode'])
@@ -746,21 +739,28 @@ class NGL_HKLViewer(QWidget):
     self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.tooltip_alpha'])
     self.HKLnameedit.setText( self.currentphilstringdict['NGL_HKLviewer.filename'])
     self.setWindowTitle("HKL-viewer: " + self.currentphilstringdict['NGL_HKLviewer.filename'])
-    self.mousemoveslider.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.mouse_sensitivity'])
+    self.mousemoveslider.setValue( 100*self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.mouse_sensitivity'])
     self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
     self.sliceindexspinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_index'])
     self.Nbins_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
     self.hkldist_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
-    self.SpaceGroupComboBox.setCurrentIndex( self.spacegroups[ self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice']] )
+    if self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice']:
+      self.SpaceGroupComboBox.setCurrentIndex( self.spacegroups[ self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice']] )
     self.clipParallelBtn.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.is_parallel'])
     self.missingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_missing'])
-    self.SliceLabelComboBox.setCurrentIndex( self.sliceaxis[self.currentphilstringdict['NGL_HKLviewer.viewer.slice_axis']] )
-    self.cameraPerspectCheckBox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.camera_type'])
-    self.clipwidth_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'])
+    axidx = -1
+    for axidx,c in enumerate(self.sliceaxis.values()):
+      if c in self.currentphilstringdict['NGL_HKLviewer.viewer.slice_axis']:
+        break
+
+    self.SliceLabelComboBox.setCurrentIndex( axidx )
+    self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.camera_type'])
+    if self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth']:
+      self.clipwidth_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'])
     self.realspacevecBtn.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.is_real_space_frac_vec'])
     self.fixedorientcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.fixorientation'])
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_only_missing'])
-
+    self.unfeedback = False
 
     pass
 
@@ -887,7 +887,7 @@ class NGL_HKLViewer(QWidget):
     rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][4][0][i]
     rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][4][1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
-    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis.keys()[i] )
+    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis.values()[i] )
 
 
   def onSliceIndexChanged(self, val):
@@ -989,17 +989,15 @@ class NGL_HKLViewer(QWidget):
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 
-
+  """
   def onBinsTableItemSelectionChanged(self):
     item = self.binstable.currentItem()
     #print( "in SelectionChanged %s,  %s" %(item.text(), str( item.checkState())) )
-    row = item.row()
-    column = item.column()
     try:
       self.currentSelectedBinsTableVal = float(item.text())
     except Exception as e:
       pass
-
+  """
 
   def onOpaqueAll(self):
     self.binstableitemchanges = True
@@ -1038,6 +1036,8 @@ class NGL_HKLViewer(QWidget):
 
 
   def onRadiiScaleChanged(self, val):
+    if self.unfeedback:
+      return
     self.NGL_HKL_command("""
       NGL_HKLviewer.viewer {
         nth_power_scale_radii = %f
@@ -1048,6 +1048,8 @@ class NGL_HKLViewer(QWidget):
 
 
   def onPowerScaleChanged(self, val):
+    if self.unfeedback:
+      return
     self.NGL_HKL_command("""
       NGL_HKLviewer.viewer {
         nth_power_scale_radii = %f
@@ -1125,8 +1127,8 @@ class NGL_HKLViewer(QWidget):
 
     self.SliceLabelComboBox = QComboBox()
     self.SliceLabelComboBox.activated.connect(self.onSliceComboSelchange)
-    self.sliceaxis = { "h":0, "k":1, "l":2 }
-    self.SliceLabelComboBox.addItems( list( self.sliceaxis.keys()) )
+    self.sliceaxis = { 0:"h", 1:"k", 2:"l" }
+    self.SliceLabelComboBox.addItems( list( self.sliceaxis.values()) )
     self.SliceLabelComboBox.setDisabled(True)
     self.sliceindexspinBox.setDisabled(True)
 
@@ -1454,7 +1456,7 @@ class NGL_HKLViewer(QWidget):
     else:
       self.functionTabWidget.setDisabled(True)
     self.SpaceGroupComboBox.clear()
-    self.SpaceGroupComboBox.addItems( list(self.spacegroups.keys() ))
+    self.SpaceGroupComboBox.addItems( list(self.spacegroups.values() ))
 
 
   def onMakeNewData(self):
@@ -1554,7 +1556,7 @@ class NGL_HKLViewer(QWidget):
     self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
     self.binstable.itemClicked.connect(self.onBinsTableitemClicked  )
     self.binstable.itemPressed.connect(self.onBinsTableitemPressed  )
-    self.binstable.itemSelectionChanged.connect(self.onBinsTableItemSelectionChanged  )
+    #self.binstable.itemSelectionChanged.connect(self.onBinsTableItemSelectionChanged  )
 
     self.BinDataComboBox = QComboBox()
     self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)
@@ -1665,6 +1667,13 @@ if __name__ == '__main__':
     If chromium webgl error on MacOS try using commandline arguments:
     --enable-webgl-software-rendering and --ignore-gpu-blacklist
     """
+    debugtrue = False
+    for e in sys.argv:
+      if "devmode" in e or "debug" in e:
+        debugtrue = True
+    if debugtrue:
+      sys.argv.append("--remote-debugging-port=9742")
+
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer()
 

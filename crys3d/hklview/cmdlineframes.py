@@ -307,6 +307,7 @@ class HKLViewFrame() :
       self.msgqueuethrd.start()
       kwds['send_info_to_gui'] = self.SendInfoToGUI
     kwds['websockport'] = self.find_free_port()
+    kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
     self.ResetPhilandViewer()
     self.idx_data = None

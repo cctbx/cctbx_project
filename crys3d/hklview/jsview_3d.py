@@ -237,6 +237,9 @@ class hklview_3d:
     self.binstrs = []
     self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
+    self.parent = None
+    if kwds.has_key('parent'):
+      self.parent = kwds['parent']
     self.verbose = 0
     if kwds.has_key('verbose'):
       self.verbose = kwds['verbose']
@@ -1512,6 +1515,14 @@ function HKLscene()
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
 
+
+  canvas = stage.viewer.renderer.domElement;
+  const ctx = canvas.getContext('webgl', {
+    desynchronized: true,
+    preserveDrawingBuffer: true
+  });
+
+
   MakeHKL_Axis(shape);
 
   %s
@@ -1526,6 +1537,7 @@ function HKLscene()
 
   %s
   stage.viewer.requestRender();
+  console.log("Waffle wibble");
 }
 
 
@@ -1753,7 +1765,7 @@ mysocket.onmessage = function (e)
       }
 
       stage.viewer.requestRender();
-      WebsockSendMsg( 'Expanded data' );
+      WebsockSendMsg( 'Done ' + msgtype );
     }
 
     if (msgtype === "DisableMouseRotation")
@@ -2135,6 +2147,8 @@ mysocket.onmessage = function (e)
         self.StopThreads()
       if "JavaScriptError:" in message:
         self.mprint( message, verbose=0)
+      if "Expand" in message:
+        self.mprint( message, verbose=0)
         #raise Sorry(message)
       if "OrientationBeforeReload:" in message:
         #sleep(0.2)
@@ -2191,10 +2205,8 @@ mysocket.onmessage = function (e)
   def ProcessOrientationMessage(self):
     if self.orientmessage is None:
       return
-
     if self.orientmessage.find("NaN")>=0:
       return
-
     self.viewmtrx = self.orientmessage[ self.orientmessage.find("\n") + 1: ]
     lst = self.viewmtrx.split(",")
     flst = [float(e) for e in lst]
@@ -2274,6 +2286,9 @@ mysocket.onmessage = function (e)
   def OnConnectWebsocketClient(self, client, server):
     self.websockclient = client
     self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
+    # reinstate volatile variables if accidentally being disconnected by a mouse drag or whatever
+    if self.parent:
+      self.parent.update_settings()
 
 
   def OnDisconnectWebsocketClient(self, client, server):
