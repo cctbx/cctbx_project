@@ -318,8 +318,8 @@ def small_cell_index(path, horiz_phil):
   print("Loading %s"%path)
 
   # load the image
-  from dxtbx.format.Registry import Registry
-  format_class = Registry.find(path)
+  import dxtbx.format.Registry
+  format_class = dxtbx.format.Registry.get_format_class_for_file(path)
   img = format_class(path)
   imageset = img.get_imageset([path])
   raw_data = img.get_raw_data()

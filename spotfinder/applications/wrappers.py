@@ -44,8 +44,8 @@ def spotfinder_factory(absrundir,frames,phil_params):
 
 def dxtbx_spotfinder_factory(phil_params):
 
-  from dxtbx.format.Registry import Registry
-  reader = Registry.find(phil_params.distl.image[0])
+  import dxtbx.format.Registry
+  reader = dxtbx.format.Registry.get_format_class_for_file(phil_params.distl.image[0])
   from spotfinder.dxtbx_toolbox.practical_heuristics import heuristics_base
   Spotfinder = heuristics_base(phil_params)
   return Spotfinder

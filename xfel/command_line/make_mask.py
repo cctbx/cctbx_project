@@ -16,7 +16,7 @@ from six.moves import range
 # to mask_pix_val.
 #
 
-from dxtbx.format.Registry import Registry
+import dxtbx.format.Registry
 from xfel.cxi.cspad_ana.cspad_tbx import dpack, dwritef2
 from scitbx.array_family import flex
 import sys
@@ -145,7 +145,7 @@ def run(argv=None):
   max_path    = paths[2]
 
   # load the three images
-  format_class = Registry.find(avg_path)
+  format_class = dxtbx.format.Registry.get_format_class_for_file(avg_path)
   avg_f = format_class(avg_path)
   avg_i = avg_f.get_detectorbase()
   avg_d = avg_i.get_raw_data()
