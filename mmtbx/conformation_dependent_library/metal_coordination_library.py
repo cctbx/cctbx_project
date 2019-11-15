@@ -48,13 +48,13 @@ for nums, restraints in database['Zn2+ tetrahedral'].items():
           restraints[tuple(key)]=values
 
 def print_restraints(db):
-  print '-'*80
+  print('-'*80)
   for coordination, library in sorted(db.items()):
-    print coordination
+    print(coordination)
     for nums, restraints in sorted(library.items()):
-      print '  %s' % str(nums)
+      print('  %s' % str(nums))
       for atoms, values in sorted(restraints.items()):
-        print '    ',atoms, values
+        print('    ',atoms, values)
 
 def check_other_in_database(metal, other):
   sub = database.get(metal.name.strip(), None)
@@ -111,9 +111,9 @@ def get_metal_coordination_proxies(pdb_hierarchy,
       for label, l in item.items():
         if type(l)==type([]):
           for atom in l:
-            print '  ',atom.quote()
+            print('  ',atom.quote())
         else:
-          print l.quote()
+          print(l.quote())
   return mbonds
 
 def get_proxies(coordination):
@@ -200,7 +200,7 @@ def run(model_filename=None):
                                         pair_proxies.nonbonded_proxies,
     )
     bonds, angles = get_proxies(rc)
-    print '\n\tbonds, angles : %d, %d\n\n' % (len(bonds), len(angles))
+    print('\n\tbonds, angles : %d, %d\n\n' % (len(bonds), len(angles)))
 
 
 if __name__=="__main__":

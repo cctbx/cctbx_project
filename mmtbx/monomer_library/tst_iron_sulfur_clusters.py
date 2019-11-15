@@ -94,7 +94,7 @@ from libtbx.test_utils import assert_lines_in_file
 
 def main():
   for code, item in pdbs.items():
-    print code
+    print(code)
     pf = 'tst_fe_s_%s.pdb' % code
     f=file(pf, 'wb')
     f.write(item[0])
@@ -102,7 +102,7 @@ def main():
     cmd = 'phenix.pdb_interpretation %(pf)s > %(pf)s.log' % locals()
     print(cmd)
     easy_run.go(cmd)
-    print item[1]
+    print(item[1])
     for line in item[1].split('\n'):
       print(line)
       assert_lines_in_file(file_name='%s.log' % pf, lines=line)
