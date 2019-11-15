@@ -1,5 +1,5 @@
 from __future__ import division
-import os, sys
+import sys
 
 from cctbx import geometry_restraints
 from cctbx.geometry_restraints import linking_class
