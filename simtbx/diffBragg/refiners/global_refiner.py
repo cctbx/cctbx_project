@@ -329,6 +329,7 @@ class FatRefiner(PixelRefinement):
             Fidx, Fdata = F.indices(), F.data()
             Fdata = Fdata.as_numpy_array()
             np.random.seed(12345)
+            self._fix_list = []
             if self.perturb_fcell is not None:
                 _p = self.perturb_fcell
                 F_is_zero = Fdata == 0
@@ -341,7 +342,6 @@ class FatRefiner(PixelRefinement):
                 self.f_start = {}
                 # NOTE: dont ever set D.Fhkl property in the refinement setting, it tries to update the unit cell
                 nbad = 0
-                self._fix_list = []
                 for i_fcell in range(self.n_global_fcell):
                     asu_hkl = self.asu_from_idx[i_fcell]
                     fcell_val = Fmap2[asu_hkl]
@@ -659,7 +659,7 @@ class FatRefiner(PixelRefinement):
 
                     _h = -8, -7, -3
                     #_h = 10, 3, 3
-                    #_h=-5, -4, -5
+                    #_h = -5, -4, -5
                     #if self.ASU[self._i_shot][i_spot] == _h:
                     #    _verbose = self.D.verbose
                     #    self.D.verbose = 4
@@ -678,8 +678,12 @@ class FatRefiner(PixelRefinement):
                     sg = sgtbx.space_group(sgtbx.space_group_info(self.symbol).type().hall_symbol())
                     refinement_h = self.ASU[self._i_shot][i_spot]
                     equivs = [i.h() for i in miller.sym_equiv_indices(sg, refinement_h).indices()]
-                    if not max_h in equivs:  # FIXME indexing error
-                        comm.Abort()
+
+                    #if not max_h in equivs:  # TODO understand this more, how does this effect things
+                    #    #
+                    #    #print("Warning max_h  mismatch!!!!!!")
+                    #    #comm.Abort()
+
                     #if self.ASU[self._i_shot][i_spot] == _h:
                     #    embed()
                     #    self.D.verbose = _verbose
@@ -729,6 +733,21 @@ class FatRefiner(PixelRefinement):
                                      % (self.iterations, i_spot + 1, n_spots))
                         self.fig.canvas.draw()
                         plt.pause(.02)
+
+                    #if self.refine_background_planes:
+                    #    xr = self.xrel[i_spot]  # fast scan pixels
+                    #    yr = self.yrel[i_spot]  # slow scan pixels
+                    #    bg_deriv = [xr*G2, yr*G2, G2]
+                    #    bg_second_deriv = [0, 0, 0]
+
+                    #    x_positions = 0,0,0  # FIXME
+                    #    for ii, xpos in enumerate(x_positions):
+                    #        d = bg_deriv[ii]
+                    #        g[xpos] += self._grad_accumulate(d)
+                    #        if self.calc_curvatures:
+                    #            d2 = bg_second_deriv[ii]
+                    #            self.curv[xpos] += self._curv_accumulate(d, d2)
+
                     if self.refine_Umatrix:
                         x_positions = [self.rotX_xpos[self._i_shot],
                                        self.rotY_xpos[self._i_shot],
@@ -769,18 +788,18 @@ class FatRefiner(PixelRefinement):
                     if self.refine_Fcell:
                         xpos = self.fcell_xstart + self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
                         # NOTE hackage
-                        #if xpos - self.fcell_xstart in self._hacked_fcells and xpos not in self._fix_list:
-                        fcell = self.x[xpos]
-                        d = S2 * G2 * self.fcell_deriv
-                        if self.log_fcells:
-                            d *= np_exp(fcell)
-                        g[xpos] += self._grad_accumulate(d)
-                        if self.calc_curvatures:
-                            d2 = S2 * G2 * self.fcell_second_deriv
+                        if xpos - self.fcell_xstart in self._hacked_fcells and xpos not in self._fix_list:
+                            fcell = self.x[xpos]
+                            d = S2 * G2 * self.fcell_deriv
                             if self.log_fcells:
-                                ex_fcell = np_exp(fcell)
-                                d2 = ex_fcell * d + ex_fcell * ex_fcell * d2
-                            self.curv[xpos] += self._curv_accumulate(d, d2)
+                                d *= np_exp(fcell)
+                            g[xpos] += self._grad_accumulate(d)
+                            if self.calc_curvatures:
+                                d2 = S2 * G2 * self.fcell_second_deriv
+                                if self.log_fcells:
+                                    ex_fcell = np_exp(fcell)
+                                    d2 = ex_fcell * d + ex_fcell * ex_fcell * d2
+                                self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_crystal_scale:
                         d = G2 * 2 * self.scale_fac * self.model_bragg_spots
