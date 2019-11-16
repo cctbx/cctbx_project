@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 10/31/2019
+Last Changed: 11/15/2019
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -213,6 +213,7 @@ class ImageFinderThread(Thread):
       expand_multiple=True)
 
     new_input_list = list(set(ext_file_list) - set(self.input_list))
+    new_input_list = sorted(new_input_list)
 
     if self.back_to_thread:
       wx.CallAfter(self.parent.onImageFinderDone, new_input_list)
