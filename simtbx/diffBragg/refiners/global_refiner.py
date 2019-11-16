@@ -123,7 +123,8 @@ class FatRefiner(PixelRefinement):
         self.n_spot_scale_param = 1
         self.n_per_shot_params = self.n_rot_param + self.n_ncells_param + self.n_spot_scale_param
 
-        assert self.n_per_shot_params * self.n_shots == self.n_local_params
+        # NOTE this does not work in normal situation
+        #assert self.n_per_shot_params * self.n_shots == self.n_local_params
 
         self._ncells_id = 9  # diffBragg internal index for Ncells derivative manager
         self._originZ_id = 10  # diffBragg internal index for originZ derivative manager
@@ -216,6 +217,9 @@ class FatRefiner(PixelRefinement):
     def _set_background_plane(self, i_spot):
         xr = self.XREL[self._i_shot][i_spot]
         yr = self.YREL[self._i_shot][i_spot]
+        self.a = self.x[self.bg_a_xstart[self._i_shot][i_spot]]
+        self.b = self.x[self.bg_b_xstart[self._i_shot][i_spot]]
+        self.c = self.x[self.bg_c_xstart[self._i_shot][i_spot]]
         self.tilt_plane = xr * self.a + yr * self.b + self.c
 
     def _setup(self):
@@ -241,6 +245,7 @@ class FatRefiner(PixelRefinement):
         # Make the global sized parameter array, though here we only update the local portion
         self.x = flex_double(self.n_total_params)
 
+        # store the starting positions in the parameter array for this shot
         self.rotX_xpos = {}
         self.rotY_xpos = {}
         self.rotZ_xpos = {}
@@ -248,14 +253,35 @@ class FatRefiner(PixelRefinement):
         self.ncells_xpos = {}
         self.spot_scale_xpos = {}
         self.n_panels = {}
+        self.bg_a_xstart = {}
+        self.bg_b_xstart = {}
+        self.bg_c_xstart = {}
         if comm.rank == 0:
             print("--1 Setting up per shot parameters")
+        _x_start = self.local_idx_start  # NOTE bg
         for i_shot in self.shot_ids:
             self.pid_from_idx[i_shot] = {i: pid for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
             self.idx_from_pid[i_shot] = {pid: i for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
             self.n_panels[i_shot] = len(self.pid_from_idx[i_shot])
 
-            self.rotX_xpos[i_shot] = self.local_idx_start + i_shot * self.n_per_shot_params
+            n_spots = len(self.NANOBRAGG_ROIS[i_shot])# NOTE bg
+            self.bg_a_xstart[i_shot] = []# NOTE bg
+            self.bg_b_xstart[i_shot] = []# NOTE bg
+            self.bg_c_xstart[i_shot] = []# NOTE bg
+            _spot_start = _x_start  # NOTE bg
+            for i_spot in range(n_spots):# NOTE bg
+                self.bg_a_xstart[i_shot].append(_spot_start)  # NOTE bg
+                self.bg_b_xstart[i_shot].append(self.bg_a_xstart[i_shot][i_spot] + 1)  # NOTE bg
+                self.bg_c_xstart[i_shot].append(self.bg_b_xstart[i_shot][i_spot] + 1) # NOTE bg
+
+                a, b, c = self.ABC_INIT[i_shot][i_spot]
+                self.x[self.bg_a_xstart[i_shot][i_spot]] = float(a)
+                self.x[self.bg_b_xstart[i_shot][i_spot]] = float(b)
+                self.x[self.bg_c_xstart[i_shot][i_spot]] = float(c)
+                _spot_start += 3
+
+            self.rotX_xpos[i_shot] = self.bg_c_xstart[i_shot][-1] + 1  # NOTE bg
+            #self.rotX_xpos[i_shot] = self.local_idx_start + i_shot * self.n_per_shot_params # NOTE bg
             self.rotY_xpos[i_shot] = self.rotX_xpos[i_shot] + 1
             self.rotZ_xpos[i_shot] = self.rotY_xpos[i_shot] + 1
 
@@ -283,6 +309,8 @@ class FatRefiner(PixelRefinement):
 
             self.spot_scale_xpos[i_shot] = self.ncells_xpos[i_shot] + 1
             self.x[self.spot_scale_xpos[i_shot]] = self._init_scale  # TODO: each shot gets own starting scale factor
+
+            _x_start = self.spot_scale_xpos[i_shot] + 1  # NOTE bg
 
         # if self.refine_global_unit_cell:
         self.fcell_xstart = self.global_param_idx_start + self.n_ucell_param
@@ -383,6 +411,38 @@ class FatRefiner(PixelRefinement):
                     f_start = np_exp(f_start)
                 self.calc_R1 = lambda fobs: np.abs(fobs - ff).sum() / fobs.sum()
                 self.init_R1 = self.calc_R1(f_start)
+
+                def calc_R1_reso_bins(fobs):
+                    hi, ki, li = zip(*[self.asu_from_idx[i_fcell] for i_fcell in range(self.n_global_fcell)])
+                    hi = np.array(hi)
+                    ki = np.array(ki)
+                    li = np.array(li)
+                    # FIXME: no hardcoded unit cell parameters!
+                    reso = 1 / np.sqrt((hi ** 2 + ki ** 2) / 79. / 79. + li ** 2 / 38. / 38.)
+                    bins = [999, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3.5, 3, 2.5, 2.25, 2, 0]
+                    digs = np.digitize(reso, bins)-1
+                    n_bins = len(bins)-1
+                    fobs = np.array(fobs)
+                    r1_bins = []
+                    CC_bins = []
+                    from scipy.stats import linregress
+                    for i in range(n_bins):
+                        pos = digs == i
+                        if not any(pos):
+                            r1_bins.append(-1)
+                            CC_bins.append(-2)
+                            continue
+                        r1 = np.abs(fobs[pos] - ff[pos]).sum() / fobs[pos].sum()
+                        r1_bins.append(r1)
+                        l = linregress(fobs[pos], ff[pos])
+                        CC_bins.append(l.rvalue)
+
+                    bin_names = ["%.3f - %.3f" % (b1,b2) for b1, b2 in zip(bins[:-1], bins[1:])]
+                    return bin_names, r1_bins, CC_bins
+
+                self.calc_R1_reso_bins = calc_R1_reso_bins
+                from IPython import embed
+                embed()
                 print("Initial R1 = %.4f" % self.init_R1)
             else:
                 for i_fcell in range(self.n_global_fcell):
@@ -419,9 +479,9 @@ class FatRefiner(PixelRefinement):
             self._fix_list = None
         self._fix_list = comm.bcast(self._fix_list)
 
+        rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
         if comm.rank == 0:
             print("--4 print initial stats")
-            rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
 
             master_data = {"a": a_vals, "c": c_vals,
                            "Ncells": ncells_vals,
@@ -434,6 +494,7 @@ class FatRefiner(PixelRefinement):
             master_data["originZ"] = self.x[self.originZ_xpos]
             print(master_data.to_string())
         # setup the diffBragg instance
+
         self.D = self.S.D
 
         if self.refine_Umatrix:
@@ -458,17 +519,33 @@ class FatRefiner(PixelRefinement):
     def _unpack_internal(self, lst):
         # NOTE: This is not a generalized method, only works in context of D9114 global refinement
         # x = self..as_numpy_array()
-        rotx = lst[:-self.n_global_params:self.n_per_shot_params]
-        roty = lst[1:-self.n_global_params:self.n_per_shot_params]
-        rotz = lst[2:-self.n_global_params:self.n_per_shot_params]
+        # note n_shots should be specific for this rank
+        rotx = [lst[self.rotX_xpos[i_shot]] for i_shot in range(self.n_shots)]
+        roty = [lst[self.rotY_xpos[i_shot]] for i_shot in range(self.n_shots)]
+        rotz = [lst[self.rotZ_xpos[i_shot]] for i_shot in range(self.n_shots)]
+        ncells_vals = [lst[self.ncells_xpos[i_shot]] for i_shot in range(self.n_shots)]
+        scale_vals = [lst[self.spot_scale_xpos[i_shot]] for i_shot in range(self.n_shots)]
+
+        #rotx = lst[:-self.n_global_params:self.n_per_shot_params]
+        #roty = lst[1:-self.n_global_params:self.n_per_shot_params]
+        #rotz = lst[2:-self.n_global_params:self.n_per_shot_params]
         # a_vals = lst[3:-self.n_global_params:self.n_per_shot_params]
         # c_vals = lst[4:-self.n_global_params:self.n_per_shot_params]
-        ncells_vals = lst[3:-self.n_global_params:self.n_per_shot_params]
-        scale_vals = lst[4:-self.n_global_params:self.n_per_shot_params]
+
+        #ncells_vals = lst[3:-self.n_global_params:self.n_per_shot_params]
+        #scale_vals = lst[4:-self.n_global_params:self.n_per_shot_params]
 
         a, c = lst[self.ucell_xstart[0]:self.ucell_xstart[0] + self.n_ucell_param]
         a_vals = [a] * len(rotx)
         c_vals = [c] * len(rotx)
+
+        rotx = self._mpi_reduce_broadcast(rotx)
+        roty = self._mpi_reduce_broadcast(roty)
+        rotz = self._mpi_reduce_broadcast(rotz)
+        ncells_vals = self._mpi_reduce_broadcast(ncells_vals)
+        scale_vals = self._mpi_reduce_broadcast(scale_vals)
+        a_vals = self._mpi_reduce_broadcast(a_vals)
+        c_vals = self._mpi_reduce_broadcast(c_vals)
 
         return rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals
 
@@ -589,8 +666,8 @@ class FatRefiner(PixelRefinement):
 
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
 
-    def _unpack_bgplane_params(self, i_spot):
-        self.a, self.b, self.c = self.ABC_INIT[self._i_shot][i_spot]
+    #def _unpack_bgplane_params(self, i_spot):
+    #    self.a, self.b, self.c = self.ABC_INIT[self._i_shot][i_spot]
 
     def _update_ucell(self):
         _s = slice(self.ucell_xstart[self._i_shot], self.ucell_xstart[self._i_shot] + self.n_ucell_param, 1)
@@ -665,8 +742,11 @@ class FatRefiner(PixelRefinement):
                     #    self.D.verbose = 4
 
                     self._run_diffBragg_current(i_spot)
-                    self._unpack_bgplane_params(i_spot)
+                    #self._unpack_bgplane_params(i_spot)  # NOTE now Im done in set_background_plane
+                    #try:
                     self._set_background_plane(i_spot)
+                    #except IndexError:
+                    #    embed()
                     self._extract_pixel_data()
                     self._evaluate_averageI()
                     if self.poisson_only:
@@ -734,19 +814,22 @@ class FatRefiner(PixelRefinement):
                         self.fig.canvas.draw()
                         plt.pause(.02)
 
-                    #if self.refine_background_planes:
-                    #    xr = self.xrel[i_spot]  # fast scan pixels
-                    #    yr = self.yrel[i_spot]  # slow scan pixels
-                    #    bg_deriv = [xr*G2, yr*G2, G2]
-                    #    bg_second_deriv = [0, 0, 0]
+                    if self.refine_background_planes:
+                        xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
+                        yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
+                        bg_deriv = [xr*G2, yr*G2, G2]
+                        bg_second_deriv = [0, 0, 0]
 
-                    #    x_positions = 0,0,0  # FIXME
-                    #    for ii, xpos in enumerate(x_positions):
-                    #        d = bg_deriv[ii]
-                    #        g[xpos] += self._grad_accumulate(d)
-                    #        if self.calc_curvatures:
-                    #            d2 = bg_second_deriv[ii]
-                    #            self.curv[xpos] += self._curv_accumulate(d, d2)
+                        x_positions = [self.bg_a_xstart[self._i_shot][i_spot],
+                                       self.bg_b_xstart[self._i_shot][i_spot],
+                                       self.bg_c_xstart[self._i_shot][i_spot]]
+
+                        for ii, xpos in enumerate(x_positions):
+                            d = bg_deriv[ii]
+                            g[xpos] += self._grad_accumulate(d)
+                            if self.calc_curvatures:
+                                d2 = bg_second_deriv[ii]
+                                self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_Umatrix:
                         x_positions = [self.rotX_xpos[self._i_shot],
@@ -788,18 +871,18 @@ class FatRefiner(PixelRefinement):
                     if self.refine_Fcell:
                         xpos = self.fcell_xstart + self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
                         # NOTE hackage
-                        if xpos - self.fcell_xstart in self._hacked_fcells and xpos not in self._fix_list:
-                            fcell = self.x[xpos]
-                            d = S2 * G2 * self.fcell_deriv
+                        #if xpos - self.fcell_xstart in self._hacked_fcells and xpos not in self._fix_list:
+                        fcell = self.x[xpos]
+                        d = S2 * G2 * self.fcell_deriv
+                        if self.log_fcells:
+                            d *= np_exp(fcell)
+                        g[xpos] += self._grad_accumulate(d)
+                        if self.calc_curvatures:
+                            d2 = S2 * G2 * self.fcell_second_deriv
                             if self.log_fcells:
-                                d *= np_exp(fcell)
-                            g[xpos] += self._grad_accumulate(d)
-                            if self.calc_curvatures:
-                                d2 = S2 * G2 * self.fcell_second_deriv
-                                if self.log_fcells:
-                                    ex_fcell = np_exp(fcell)
-                                    d2 = ex_fcell * d + ex_fcell * ex_fcell * d2
-                                self.curv[xpos] += self._curv_accumulate(d, d2)
+                                ex_fcell = np_exp(fcell)
+                                d2 = ex_fcell * d + ex_fcell * ex_fcell * d2
+                            self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_crystal_scale:
                         d = G2 * 2 * self.scale_fac * self.model_bragg_spots
@@ -844,24 +927,30 @@ class FatRefiner(PixelRefinement):
             # reduce the broadcast summed results:
             f = self._mpi_reduce_broadcast(f)
             g = self._mpi_reduce_broadcast(g)
+            self.rotx, self.roty, self.rotz, self.a_vals, self.c_vals, self.ncells_vals, self.scale_vals = \
+                self._unpack_internal(self.x)
+            self.Grotx, self.Groty, self.Grotz, self.Ga_vals, self.Gc_vals, self.Gncells_vals, self.Gscale_vals = \
+                self._unpack_internal(g)
             if self.calc_curvatures:
                 self.curv = self._mpi_reduce_broadcast(self.curv)
+                self.CUrotx, self.CUroty, self.CUrotz, self.CUa_vals, self.CUc_vals, self.CUncells_vals, self.CUscale_vals = \
+                    self._unpack_internal(self.curv)
             self.tot_fcell_kludge = self._mpi_reduce_broadcast(self.num_Fcell_kludge)
             self.tot_neg_curv = 0
             self.neg_curv_shots = []
-            if self.calc_curvatures:
-                self.tot_neg_curv = sum(self.curv < 0)
-                n_tot_shots = (self.n_total_params - self.n_global_params) / self.n_per_shot_params
-                n_tot_shots = int(n_tot_shots)
-                for i in range(n_tot_shots):
-                    _s = slice(i * self.n_per_shot_params, i * self.n_per_shot_params + 1, 1)
-                    is_neg = [val < 0 for val in self.curv[_s]]
-                    if any(is_neg):
-                        self.neg_curv_shots.append(i)
+            #if self.calc_curvatures:
+            #    self.tot_neg_curv = sum(self.curv < 0)
+            #    n_tot_shots = (self.n_total_params - self.n_global_params) / self.n_per_shot_params
+            #    n_tot_shots = int(n_tot_shots)
+            #    for i in range(n_tot_shots):
+            #        _s = slice(i * self.n_per_shot_params, i * self.n_per_shot_params + 1, 1)
+            #        is_neg = [val < 0 for val in self.curv[_s]]
+            #        if any(is_neg):
+            #            self.neg_curv_shots.append(i)
 
             if comm.rank == 0:
                 if self.plot_statistics:
-                    rotx, roty, rotz, a, c, _, _ = self._unpack_internal(self.x)
+
                     self.ax1.clear()
                     self.ax2.clear()
                     self.ax3.clear()
@@ -960,6 +1049,8 @@ class FatRefiner(PixelRefinement):
 
             all_ang_off = comm.gather(all_ang_off, root=0)
 
+
+
             if self.verbose:
                 if self.refine_Umatrix or self.refine_Bmatrix:
                     print("\nMissets\n========")
@@ -1056,14 +1147,14 @@ class FatRefiner(PixelRefinement):
 
         print("\n")
         if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
-            rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
+            #rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
 
-            master_data = {"a": a_vals, "c": c_vals,
-                           "Ncells": ncells_vals,
-                           "scale": scale_vals,
-                           "rotx": rotx,
-                           "roty": roty,
-                           "rotz": rotz}
+            master_data = {"a": self.a_vals, "c": self.c_vals,
+                           "Ncells": self.ncells_vals,
+                           "scale": self.scale_vals,
+                           "rotx": self.rotx,
+                           "roty": self.roty,
+                           "rotz": self.rotz}
 
             master_data = pandas.DataFrame(master_data)
             master_data["gain"] = self.x[self.gain_xpos]
@@ -1083,31 +1174,33 @@ class FatRefiner(PixelRefinement):
         xnorm = norm(self.x)
 
         if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
-            rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self._g)
+            #rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self._g)
 
-            master_data = {"Ga": a_vals, "Gc": c_vals,
-                           "GNcells": ncells_vals,
-                           "Gscale": scale_vals,
-                           "Grotx": rotx,
-                           "Groty": roty,
-                           "Grotz": rotz}
+            master_data = {"Ga": self.Ga_vals, "Gc": self.Gc_vals,
+                           "GNcells": self.Gncells_vals,
+                           "Gscale": self.Gscale_vals,
+                           "Grotx": self.Grotx,
+                           "Groty": self.Groty,
+                           "Grotz": self.Grotz}
             master_data = pandas.DataFrame(master_data)
             master_data["Ggain"] = self._g[self.gain_xpos]
             print(master_data.to_string(float_format="%.3g"))
 
         if self.calc_curvatures:
             if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
-                rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.curv)
+                #rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.curv)
 
-                master_data = {"CUa": a_vals, "CUc": c_vals,
-                               "CUNcells": ncells_vals,
-                               "CUscale": scale_vals,
-                               "CUrotx": rotx,
-                               "CUroty": roty,
-                               "CUrotz": rotz}
+                master_data = {"CUa": self.CUa_vals, "CUc": self.CUc_vals,
+                               "CUNcells": self.CUncells_vals,
+                               "CUscale": self.CUscale_vals,
+                               "CUrotx": self.CUrotx,
+                               "CUroty": self.CUroty,
+                               "CUrotz": self.CUrotz}
                 master_data = pandas.DataFrame(master_data)
                 master_data["CUgain"] = self.curv[self.gain_xpos]
                 print(master_data.to_string(float_format="%.3g"))
+
+        from tabulate import tabulate
         Xnorm = norm(self.x)
         R1 = -1
         R1_i = -1
@@ -1116,12 +1209,15 @@ class FatRefiner(PixelRefinement):
             if self.log_fcells:
                 fobs = np_exp(fobs)
             R1 = self.calc_R1(fobs)
+            bin_names, Rbins, CCbins = self.calc_R1_reso_bins(fobs)
             R1_i = self.init_R1
-
+            stat_bins_str = tabulate(zip(bin_names, Rbins, CCbins), headers=["reso (Ang)", "R1", "pearsonR"],
+                                 tablefmt="orgtbl")
+        else:
+            stat_bins_str = "----STATS-------"
         ncurv = 0
         if self.calc_curvatures:
             ncurv = len(self.curv)
-        from tabulate import tabulate
 
         hacked_str = ""
         headers = ["hkl", "obs", "truth", "init", "multiplicity", "Curv", "Grad", "idx"]
@@ -1142,10 +1238,12 @@ class FatRefiner(PixelRefinement):
                           "%d" % self.hkl_frequency[i], _curv, _grad, "%d" % i])
             hacked_str += _s
         hacked_str = tabulate(_data, headers=headers, tablefmt='orgtbl')
+
+
         print(
-                    "\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%.4f (R1 at start=%.4f), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s"
+                    "\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s\n%s"
                     % (target, Xnorm * self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
-                       ", ".join(map(str, self.neg_curv_shots)), hacked_str))
+                       ", ".join(map(str, self.neg_curv_shots)), stat_bins_str, hacked_str))
         print("\n")
 
     def get_refined_Bmatrix(self, i_shot):
