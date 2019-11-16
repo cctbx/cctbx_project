@@ -543,6 +543,7 @@ class find(object):
       fmt="%8s %7.3f %7.3f %7.3f %7.3f"
       print(fmt%(prefix, o.mean, o.sd, o.skew, o.kurtosis), file=log)
     c = self.get_counts()
+    if(c.theta_1 is None): return
     print("Total:       %d"%c.n,     file=log)
     print("Symmetry:    %d"%c.n_sym, file=log)
     print("Per residue: %7.4f"%c.bpr,   file=log)

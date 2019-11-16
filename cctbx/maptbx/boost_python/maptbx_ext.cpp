@@ -372,6 +372,29 @@ namespace {
     }
 
     {
+      typedef fit_point_3d_grid_search w_t;
+
+      class_<w_t>("fit_point_3d_grid_search", no_init)
+        .def(init<cctbx::cartesian<> const&,
+                  af::const_ref<double, af::c_grid<3> > const&,
+                  double const&,
+                  cctbx::uctbx::unit_cell const&,
+                  double const&,
+                  double const& >(
+                    (arg("site_cart"),
+                     arg("map_data"),
+                     arg("map_min"),
+                     arg("unit_cell"),
+                     arg("amplitude"),
+                     arg("increment"))))
+        .def("has_peak",        &w_t::has_peak)
+        .def("map_best",        &w_t::map_best)
+        .def("map_start",       &w_t::map_start)
+        .def("site_cart_moved", &w_t::site_cart_moved)
+      ;
+    }
+
+    {
       typedef volume_scale w_t;
 
       class_<w_t>("volume_scale", no_init)
@@ -624,19 +647,6 @@ namespace {
       arg("map_data"),
       arg("unit_cell"),
       arg("cutoff")));
-
-    def("fit_point_3d_grid_search",
-      (cctbx::cartesian<>(*)
-        (cctbx::cartesian<> const&,
-         af::const_ref<double, af::c_grid<3> > const&,
-         uctbx::unit_cell const&,
-         double const&,
-         double const&)) fit_point_3d_grid_search, (
-      arg("site_cart"),
-      arg("map_data"),
-      arg("unit_cell"),
-      arg("amplitude"),
-      arg("increment")));
 
     def("sharpen",
       (void(*)
@@ -981,6 +991,17 @@ namespace {
          af::ref<double, af::c_grid<3> >,
          af::tiny<int, 3> const&,
          af::tiny<int, 3> const&)) set_box_copy, (
+      arg("value"),
+      arg("map_data_to"),
+      arg("start"),
+      arg("end")));
+
+    def("set_box_copy_inside",
+      (af::versa<double, af::c_grid<3> >(*)
+        (double const&,
+         af::ref<double, af::c_grid<3> >,
+         af::tiny<int, 3> const&,
+         af::tiny<int, 3> const&)) set_box_copy_inside, (
       arg("value"),
       arg("map_data_to"),
       arg("start"),

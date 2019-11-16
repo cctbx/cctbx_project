@@ -78,35 +78,27 @@ from cctbx import miller
 from cctbx import crystal
 
 xs = crystal.symmetry(unit_cell=(50,50,40, 90,90,120), space_group_symbol="P3 1")
-mi = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
-                        (1, 0, 2), (-1, 1, -2), (2, -2, -2),
-                        (-2, 1, 0) , (1, 0, -2), (0, 0, 2) ]
-)
-
+mi = flex.miller_index([
+  (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2), (1, 0, 2), (-1, 1, -2), (2, -2, -2), (-2, 1, 0) , (1, 0, -2), (0, 0, 2)
+])
 ma = miller.array( miller.set(xs, mi) )
-
-ma1 = miller.array( miller.set(xs, mi), flex.double( [11.205, 6.353, 26.167, 14.94, 2.42, 24.921, 16.185, 11.798, 21.183, 4.98] ),
-                   sigmas=flex.double( [13.695, 6.353, 24.921, 6.225, 11.193, 26.167, 8.715, 4.538, 27.413, 21.165] )
-                   ).set_observation_type( observation_types.intensity() )
+ma1 = miller.array( miller.set(xs, mi), flex.double( [
+ 11.205, 6.353, 26.167, 14.94, 2.42, 24.921, 16.185, 11.798, 21.183, 4.98
+] ),
+  sigmas=flex.double( [
+  13.695, 6.353, 24.921, 6.225, 11.193, 26.167, 8.715, 4.538, 27.413, 21.165
+] )
+).set_observation_type( observation_types.intensity() )
 ma1.set_info(miller.array_info(source="artificial file", labels=["MyI", "SigMyI"]))
 
-mi2 = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
-                        (1, 0, 2), (-1, 1, -2), (2, -2, -2),
-                        (-2, 1, 0) , (0, 0, 2),  ]
-                        )
+mi2 = flex.miller_index([
+ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2), (1, 0, 2), (-1, 1, -2), (2, -2, -2), (-2, 1, 0) , (0, 0, 2)
+] )
 
 ma2 = miller.array(miller.set(xs, mi2),
-                    flex.complex_double( [
-                                -1.0 + 0.0j,
-                                 -1.5 + 2.598075j,
-                                 0.0 + 0.8j,
-                                 1.0 + 1.7320508j,
-                                 4.0 + 0.0j,
-                                 0.5 - 0.866025j,
-                                 0.0 - 1.0j,
-                                 -2.5 - 4.330127j,
-                                 -4.24264 + 4.24264j
-                                 ] ) )
+  flex.complex_double( [
+ -1.0 + 0.0j, -1.5 + 2.598075j, 0.0 + 0.8j, 1.0 + 1.7320508j, 4.0 + 0.0j, 0.5 - 0.866025j, 0.0 - 1.0j, -2.5 - 4.330127j, -4.24264 + 4.24264j
+] ) )
 
 ma2.set_info(miller.array_info(source="artificial file", labels=["MyMap", "PhiMyMap"]))
 
@@ -238,9 +230,8 @@ from cctbx.array_family import flex
 from libtbx.utils import Sorry, to_str
 from libtbx import group_args
 import libtbx
-from cctbx import miller
 import traceback
-import sys, zmq, threading,  time, math, zlib
+import sys, zmq, threading,  time, cmath, zlib
 
 from six.moves import input
 
@@ -316,6 +307,7 @@ class HKLViewFrame() :
       self.msgqueuethrd.start()
       kwds['send_info_to_gui'] = self.SendInfoToGUI
     kwds['websockport'] = self.find_free_port()
+    kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
     self.ResetPhilandViewer()
     self.idx_data = None
@@ -385,6 +377,7 @@ class HKLViewFrame() :
       self.viewer.params.viewer.scene_id = 0
       self.viewer.DrawNGLJavaScript( blankscene=True)
     self.viewer.miller_array = None
+    return self.viewer.params
 
 
   def GetNewCurrentPhilFromString(self, philstr, oldcurrentphil):
@@ -441,9 +434,11 @@ class HKLViewFrame() :
       #phl = self.params.NGL_HKLviewer
 
       if view_3d.has_phil_path(diff_phil, "filename"):
-        self.ResetPhilandViewer(diff_phil)
+        phl = self.ResetPhilandViewer(self.currentphil)
         if not self.load_reflections_file(phl.filename):
           return False
+        #else:
+        #  self.ResetPhilandViewer(diff_phil)
 
       if view_3d.has_phil_path(diff_phil, "scene_id") \
        or view_3d.has_phil_path(diff_phil, "merge_data") \
@@ -462,8 +457,8 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
 
-      if view_3d.has_phil_path(diff_phil, "tabulate_miller_array_id"):
-        self.tabulate_miller_array(phl.tabulate_miller_array_id)
+      if view_3d.has_phil_path(diff_phil, "tabulate_miller_array_ids"):
+        self.tabulate_miller_array(phl.tabulate_miller_array_ids)
         return True
 
       if view_3d.has_phil_path(diff_phil, "miller_array_operations"):
@@ -498,6 +493,7 @@ class HKLViewFrame() :
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.NewFileLoaded = False
       phl.mouse_moved = False
+      self.SendCurrentPhilValues()
       if (self.viewer.miller_array is None) :
         self.mprint( NOREFLDATA, True)
         return False
@@ -524,6 +520,9 @@ class HKLViewFrame() :
       test_flag_value = score_array.test_flag_values[0]
       array = array.customized_copy(data=(array.data() == test_flag_value))
       array.set_info(info)
+      #array = array.deep_copy()
+      array._data = array.data().as_int()
+      #return intarray
     return array
 
 
@@ -731,8 +730,10 @@ class HKLViewFrame() :
       self.viewer.has_new_miller_array = True
       self.viewer.array_infostrs.append( ArrayInfo(procarray, self.mprint).infostr )
       self.viewer.array_infotpls.append( ArrayInfo(procarray, self.mprint).infotpl )
+      self.viewer.SupersetMillerArrays()
       mydict = { "array_infotpls": self.viewer.array_infotpls, "NewHKLscenes" : True, "NewMillerArray" : True}
       self.SendInfoToGUI(mydict)
+      #self.viewer.SupersetMillerArrays()
 
 
   def load_reflections_file(self, file_name, set_array=True, data_only=False):
@@ -804,6 +805,7 @@ class HKLViewFrame() :
       elif (len(valid_arrays) >= 1):
         if (set_array):
           self.set_miller_array()
+          self.viewer.SupersetMillerArrays()
         mydict = { "info": self.infostr,
                    "array_infotpls": self.viewer.array_infotpls,
                    "bin_infotpls": self.viewer.bin_infotpls,
@@ -822,14 +824,41 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def tabulate_miller_array(self, id):
-    self.idx_data = (list(self.valid_arrays[id].indices()), list(self.valid_arrays[id].data()))
+  def tabulate_miller_array(self, ids):
+    idlst = eval(ids)
+    indices = self.viewer.match_valarrays[idlst[0]].indices()
+    dres = self.viewer.match_valarrays[idlst[0]].unit_cell().d( indices )
+    dreslst = [("d_res", list(dres))]
+    hkls = list(indices)
+    hkllst = [ ("H", [e[0] for e in hkls] ), ("K", [e[1] for e in hkls] ), ("L", [e[2] for e in hkls] )]
+    datalst = []
+    # any NaN value is converted to a None value in NGL_HKLviewerGui.MillerArrayTableModel()
+    for id in idlst:
+      if self.viewer.match_valarrays[id].is_complex_array():
+        ampls, phases = self.viewer.Complex2AmplitudesPhases(self.viewer.match_valarrays[id].data())
+        cmplxlst = [ "%.4f + %.4f * i"%(e.real, e.imag)
+                     if not cmath.isnan(e) else display.nanval for e in self.viewer.match_valarrays[id].data() ]
+        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), cmplxlst) )
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(ampls) ) )
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[-1] + u" \u00b0", list(phases)) )
+      elif self.viewer.match_valarrays[id].sigmas() is not None:
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(self.viewer.match_valarrays[id].data()))  )
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[-1], list(self.viewer.match_valarrays[id].sigmas()))  )
+      elif self.viewer.match_valarrays[id].is_integer_array():
+        list_with_nans = [ e if not e==display.inanval else display.nanval for e in self.viewer.match_valarrays[id].data() ]
+        if self.viewer.array_infotpls[id][0] == 'FreeR_flag': # want True or False back
+          list_with_nans = [ 1==e if not cmath.isnan(e) else display.nanval for e in list_with_nans ]
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list_with_nans)  )
+      else:
+        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data()))  )
+    self.idx_data = hkllst + dreslst + datalst
+    self.mprint("Sending table data", verbose=1)
     mydict = { "tabulate_miller_array": self.idx_data }
-    self.SendInfoToGUI(mydict, binary=True)
+    self.SendInfoToGUI(mydict)
 
 
-  def TabulateMillerArray(self, id):
-    self.params.NGL_HKLviewer.tabulate_miller_array_id = id
+  def TabulateMillerArray(self, ids):
+    self.params.NGL_HKLviewer.tabulate_miller_array_ids = str(ids)
     self.update_settings()
 
 
@@ -1054,7 +1083,7 @@ class HKLViewFrame() :
 
 
   def rotate_around_vector(self, dgr):
-    phi = math.pi*dgr/180
+    phi = cmath.pi*dgr/180
     if self.viewer.vecrotmx is not None:
       self.viewer.RotateAroundFracVector(phi,
                   self.params.NGL_HKLviewer.clip_plane.h,
@@ -1092,6 +1121,14 @@ class HKLViewFrame() :
     if self.spacegroup_choices:
       return [e.symbol_and_number() for e in self.spacegroup_choices]
     return []
+
+
+  def SendCurrentPhilValues(self):
+    philstrvalsdict = {}
+    for e in self.currentphil.all_definitions():
+      philstrvalsdict[e.path] = e.object.words[0].value
+    mydict = { "current_ phil_ strings": philstrvalsdict }
+    self.SendInfoToGUI(mydict)
 
 
   def GetHtmlURL(self):
@@ -1132,9 +1169,6 @@ class HKLViewFrame() :
         self.guisocket.send( str(infodict).encode("utf-8") )
       else:
         bindict = zlib.compress( bytes(infodict) )
-        #bindict = zlib.compress( str(infodict).encode("utf-8") )
-        #for key,val in infodict.iteritems():
-        #  bindict[str(key).encode("utf-8")] = zlib.compress( str(val) )
         self.guisocket.send( bindict )
 
 
@@ -1193,8 +1227,8 @@ NGL_HKLviewer {
   }
   action = *'is_running' 'is_terminating'
     .type = choice
-  tabulate_miller_array_id = None
-    .type = int
+  tabulate_miller_array_ids = "[]"
+    .type = str
 }
 
 """ %(display.philstr, view_3d.ngl_philstr)

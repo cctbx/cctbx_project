@@ -23,7 +23,7 @@ def run(argv=None):
 
   from libtbx import option_parser
   from scitbx.array_family import flex
-  from dxtbx.format.Registry import Registry
+  import dxtbx.format.Registry
   from xfel.cftbx.detector.cspad_cbf_tbx import cbf_file_to_basis_dict, write_cspad_cbf
 #  from xfel.cxi.cspad_ana import cspad_tbx
 #  from iotbx.detectors.cspad_detector_formats import reverse_timestamp
@@ -80,7 +80,7 @@ def run(argv=None):
       # up.  Note that discrepancies regarding the image size are
       # fatal.
       if not 'reader' in locals():
-        reader = Registry.find(path)
+        reader = dxtbx.format.Registry.get_format_class_for_file(path)
       img = reader(path)
       if 'detector' in locals():
         test_detector = img.get_detector()

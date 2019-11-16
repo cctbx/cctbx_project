@@ -2223,6 +2223,13 @@ def equivalent_sigma_from_cumulative_histogram_match(
 
 # MARKED_FOR_DELETION_OLEG
 # REASON: not used, not tested.
+def limit_frac_min_frac_max(frac_min,frac_max):
+      new_frac_min=[]
+      new_frac_max=[]
+      for lb,ub in zip(frac_min,frac_max):
+        new_frac_min.append(max(0,lb))
+        new_frac_max.append(min(1,ub))
+      return new_frac_min,new_frac_max
 def optimize_h(fmodel, mon_lib_srv, pdb_hierarchy=None, model=None, log=None,
       verbose=True):
   assert 0
@@ -2379,6 +2386,8 @@ class extract_box_around_model_and_map(object):
                restrict_map_size=False,
                lower_bounds=None,
                upper_bounds=None,
+               bounds_are_absolute=None,
+               zero_outside_original_map=None,
                extract_unique=None,
                target_ncs_au_file=None,
                regions_to_keep=None,
@@ -2397,6 +2406,7 @@ class extract_box_around_model_and_map(object):
                    ):
     adopt_init_args(self, locals())
     cs = xray_structure.crystal_symmetry()
+    origin_as_input=self.map_data.origin()
     soo = shift_origin(map_data=self.map_data,
       xray_structure=self.xray_structure,
       ncs_object=self.ncs_object)
@@ -2458,18 +2468,30 @@ class extract_box_around_model_and_map(object):
       self.pdb_outside_box_msg=""
       frac_min = xray_structure_selected.sites_frac().min()
       frac_max = xray_structure_selected.sites_frac().max()
+      if (restrict_map_size):  # check but do not do anything yet
+        new_frac_min,new_frac_max=limit_frac_min_frac_max(frac_min,frac_max)
+        if list(new_frac_min) != list(frac_min) or \
+           list(new_frac_max) != list(frac_max):
+          self.pdb_outside_box_msg="Warning: model is outside box"
       frac_max = list(flex.double(frac_max)+cushion)
       frac_min = list(flex.double(frac_min)-cushion)
+
     na = self.map_data.all()
     if lower_bounds and upper_bounds:
-      self.gridding_first=lower_bounds
-      self.gridding_last=upper_bounds
+      if (not bounds_are_absolute): #usual
+        self.gridding_first=lower_bounds
+        self.gridding_last=upper_bounds
+      else:  # shift lower and upper bounds by origin shift
+        from scitbx.matrix import col
+        self.gridding_first=list(col(lower_bounds)-col(origin_as_input))
+        self.gridding_last=list(col(upper_bounds)-col(origin_as_input))
     else:
       self.gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
       self.gridding_last =[iceil(f*n) for f,n in zip(frac_max,na)]
       if restrict_map_size:
         self.gridding_first=[max(0,g) for g in self.gridding_first]
-        self.gridding_last=[max(gf,min(n,g)) for gf,n,g in zip(self.gridding_first,na,self.gridding_last)]
+        # do not go beyond map_data.all()-(1,1,1) which is end of map
+        self.gridding_last=[max(gf,min(n-1,g)) for gf,n,g in zip(self.gridding_first,na,self.gridding_last)]
     self.map_box = self.cut_and_copy_map(map_data=self.map_data)
     secondary_shift_frac = [
       -self.map_box.origin()[i]/self.map_data.all()[i] for i in range(3)]
@@ -2574,7 +2596,41 @@ class extract_box_around_model_and_map(object):
     pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
 
   def cut_and_copy_map(self,map_data=None):
-    return maptbx.copy(map_data,self.gridding_first, self.gridding_last)
+    if (not self.zero_outside_original_map): # usual
+      return maptbx.copy(map_data,self.gridding_first, self.gridding_last)
+    else:
+      # figure out if the new map is outside original
+      lower_bounds=[]
+      upper_bounds=[]
+      outside_bounds=False
+      for o,a,f,l in zip(map_data.origin(),map_data.all(),
+         self.gridding_first,self.gridding_last):
+        lower_bounds.append(max(o,f)-f)  # lower, upper bounds after shifting
+        upper_bounds.append(min(l,o+a-1)-f)
+        if f < o or l >= a+o:
+          outside_bounds=True
+
+      if not outside_bounds: # usual
+        return maptbx.copy(map_data,self.gridding_first, self.gridding_last)
+      else:
+        # zero outside valid region
+        map_copy=maptbx.copy(map_data,self.gridding_first, self.gridding_last)
+        # Now the origin of map_copy is at self.gridding_first and goes to last
+        acc=map_copy.accessor() # save where the origin is
+        map_copy=map_copy.shift_origin()  # put origin at (0,0,0)
+        map_copy_all=map_copy.all() # save size of map
+        # XXX work-around for set_box does not allow offset origin
+
+        map_copy_as_double=flex.double(map_copy.as_1d())
+        map_copy_as_double.resize(flex.grid(map_copy_all))
+        new_map=maptbx.set_box_copy_inside(0,  # puts 0 outside bounds
+          map_data_to   = map_copy_as_double,
+          start         = tuple(lower_bounds),
+          end           = tuple(upper_bounds))
+        # XXX and shift map back
+        new_map=new_map.as_1d()
+        new_map.reshape(acc)
+        return new_map
 
   def get_map_from_segment_and_split(self,regions_to_keep=None):
     from cctbx.maptbx.segment_and_split_map import run as segment_and_split_map
@@ -2664,11 +2720,20 @@ class extract_box_around_model_and_map(object):
     from cctbx.maptbx.segment_and_split_map import get_co
     co,sorted_by_volume,min_b,max_b=get_co(
        map_data=mask_data,threshold=0.5,wrapping=False)
+
+
+
     if len(sorted_by_volume)<2:
       raise Sorry("No mask obtained...")
+    original_id_from_id={}
+    for i in range(1,len(sorted_by_volume)):
+      v,id=sorted_by_volume[i]
+      original_id_from_id[i]=id
+    id=1
+    orig_id=original_id_from_id[id]
+    minb1=min_b[orig_id]
+    maxb1=max_b[orig_id]
     masked_fraction=sorted_by_volume[1][0]/mask_data.size()
-    minb1=min_b[1]
-    maxb1=max_b[1]
     nx,ny,nz=self.map_data.all()
     frac_min=(minb1[0]/nx,minb1[1]/ny,minb1[2]/nz)
     frac_max=(maxb1[0]/nx,maxb1[1]/ny,maxb1[2]/nz)

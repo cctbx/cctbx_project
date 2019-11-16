@@ -42,10 +42,10 @@ if (__name__ == "__main__") :
 
   if os.path.isfile(params.metrology):
     # Try dxtbx first to see if this is a regular diffraction image
-    from dxtbx.format.Registry import Registry
+    import dxtbx.format.Registry
     try:
       # Read the detector object using dxtbx
-      reader = Registry.find(params.metrology)
+      reader = dxtbx.format.Registry.get_format_class_for_file(params.metrology)
       detector = reader(params.metrology).get_detector()
     except IOError:
       # See if it's a json file

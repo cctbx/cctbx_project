@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, print_function
 # The result is a dials-style pickle file containing a list of flex.bool objects.
 #
 
-from dxtbx.format.Registry import Registry
+import dxtbx.format.Registry
 from scitbx.array_family import flex
 import sys
 from libtbx import easy_pickle
@@ -68,7 +68,7 @@ def run(argv=None):
   max_path    = paths[2]
 
   # load the three images
-  format_class = Registry.find(avg_path)
+  format_class = dxtbx.format.Registry.get_format_class_for_file(avg_path)
   avg_f = format_class(avg_path)
   avg_d = avg_f.get_raw_data()
   if not isinstance(avg_d, tuple):

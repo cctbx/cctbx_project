@@ -169,6 +169,7 @@ general_tests = [
   "$D/conformation_dependent_library/tst_cdl_esd.py",
   "$D/conformation_dependent_library/tst_rdl.py",
   "$D/conformation_dependent_library/tst_hpdl.py",
+  "$D/conformation_dependent_library/tst_cis_c_n_ca.py",
   "$D/conformation_dependent_library/tst_pH_mechanism.py",
   "$D/regression/tst_find_ss_structure.py",
   "$D/regression/tst_fix_rotamer_outliers.py",
@@ -293,6 +294,7 @@ general_tests = [
   "$D/monomer_library/tst_correct_hydrogens.py",
   # automatic linking
   "$D/monomer_library/tst_superpose_ideal.py",
+  '$D/monomer_library/tst_iron_sulfur_clusters.py',
   #
   "$D/scaling/tst_plan_sad_experiment.py",
   #

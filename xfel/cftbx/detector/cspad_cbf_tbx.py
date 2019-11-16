@@ -637,8 +637,8 @@ def cbf_file_to_basis_dict(path):
   """ Maps a cbf file to a dictionary of tuples and basis objects, in the same form as the above from
   read_optical_metrology_from_flat_file
   @param path cbf file path """
-  from dxtbx.format.Registry import Registry
-  reader = Registry.find(path)
+  import dxtbx.format.Registry
+  reader = dxtbx.format.Registry.get_format_class_for_file(path)
   instance = reader(path)
   return map_detector_to_basis_dict(instance.get_detector())
 

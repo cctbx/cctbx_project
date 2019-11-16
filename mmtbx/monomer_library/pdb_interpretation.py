@@ -135,6 +135,15 @@ restraints_library_str = """
       .help = Use Conformation Dependent Library (CDL) \
         for geometry restraints
       .style = bold
+    mcl = True
+      .type = bool
+      .short_caption = Use Metal Coordination Library (MCL)
+      .help = Use Metal Coordination Library (MCL) \
+        for tetrahedral Zn++ and iron-sulfur clusters SF4, FES, F3S, ...
+      .style = bold
+    cis_c_n_ca = False
+      .type = bool
+      .style = hidden
     omega_cdl = False
       .type = bool
       .short_caption = Use Omega Conformation-Dependent Library
@@ -158,7 +167,7 @@ master_params_str = """\
     .short_caption = Sort atoms in input pdb so they would be in the same order
   superpose_ideal_ligand = *None all %(ideal_ligands_str)s
     .type = choice(multi=True)
-    .short_caption = Substitute correctly oriented F3S metal cluster
+    .short_caption = Substitute correctly oriented SF4 metal cluster
   flip_symmetric_amino_acids = False
     .type = bool
     .short_caption = Flip symmetric amino acids to conform to IUPAC convention
@@ -5253,6 +5262,7 @@ class build_all_chain_proxies(linking_mixins):
     self.time_building_geometry_restraints_manager = timer.elapsed()
     restraints_source = "GeoStd + Monomer Library"
     use_cdl = self.params.restraints_library.cdl
+    use_cis_127 = self.params.restraints_library.cis_c_n_ca
     if (use_cdl is Auto):
       use_cdl = self.pdb_inp.used_cdl_restraints()
       if (use_cdl):
@@ -5268,6 +5278,7 @@ class build_all_chain_proxies(linking_mixins):
         self.pdb_hierarchy,
         result,
         cdl_proxies=cdl_proxies,
+        use_cis_127=use_cis_127,
         log=log,
         verbose=True,
         )
@@ -5557,11 +5568,11 @@ class process(object):
 
       # improved metal coordination
       automatic_linking = self.all_chain_proxies.params.automatic_linking
-      if automatic_linking.link_metals:
+      if self.all_chain_proxies.params.restraints_library.mcl:
         from mmtbx.conformation_dependent_library import mcl
         mcl.update(self._geometry_restraints_manager,
                    self.all_chain_proxies.pdb_hierarchy,
-                   self.all_chain_proxies.pdb_link_records,
+                   log=self.log,
                   )
 
       # Here we are going to add another needed restraints.

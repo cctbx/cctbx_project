@@ -97,7 +97,7 @@ secondary_structure
        established
     remove_outliers = True
       .type = bool
-      .short_caption = Filter bond outliers
+      .short_caption = Filter out h-bond outliers in SS
       .style = tribool
       .help = If true, h-bonds exceeding distance_cut_n_o length will not be \
        established

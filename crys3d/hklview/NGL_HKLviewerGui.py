@@ -11,16 +11,17 @@ from __future__ import absolute_import, division, print_function
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from PySide2.QtCore import Qt, QTimer, QEvent
-from PySide2.QtWidgets import ( QAction, QApplication, QCheckBox, QComboBox, QDialog,
-        QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
+from PySide2.QtCore import Qt, QAbstractTableModel, QEvent, QModelIndex, QSize, QTimer
+from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
+        QComboBox, QDialog,
+        QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
-        QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableWidget,
+        QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableView, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
-from PySide2.QtGui import QColor, QFont, QCursor
+from PySide2.QtGui import QColor, QFont, QCursor, QKeySequence
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-import sys, zmq, subprocess, time, traceback, shutil, os.path, zlib
+import sys, zmq, subprocess, time, traceback, shutil, os.path, zlib, math, csv, io
 
 
 
@@ -78,41 +79,156 @@ class SettingsForm(QDialog):
 class MillerArrayTableForm(QDialog):
   def __init__(self, parent=None):
     super(MillerArrayTableForm, self).__init__(parent)
-    self.setWindowTitle("MillerArrayTableForm")
-    myGroupBox = QGroupBox("Stuff")
-    layout = QGridLayout()
-    layout.addWidget(parent.millerarraytable)
-    myGroupBox.setLayout(layout)
-    mainLayout = QGridLayout()
-    mainLayout.addWidget(myGroupBox,     0, 0)
-    self.setLayout(mainLayout)
+    self.setWindowTitle("Tabulated Reflection Data")
+    self.precision_spinBox = QSpinBox()
+    self.precision_spinBox.setSingleStep(1)
+    self.precision_spinBox.setRange(1, 20)
+    self.precision_spinBox.setValue(3)
+    self.precision_spinBox.valueChanged.connect(parent.onPrecisionChanged)
+    precision_labeltxt = QLabel()
+    precision_labeltxt.setText("Precision:")
+    self.SortComboBox = QComboBox()
+    self.SortComboBox.activated.connect(parent.onSortComboBoxSelchange)
+    sort_labeltxt = QLabel()
+    sort_labeltxt.setText("Sort according to:")
+    self.sortChkbox = QCheckBox()
+    self.sortChkbox.setCheckState(Qt.Unchecked)
+    self.sortChkbox.setText("Ascending order")
+    self.sortChkbox.clicked.connect(parent.onSortChkbox)
+    self.myGroupBox = QGroupBox()
+    self.layout = QGridLayout()
+    self.layout.addWidget(precision_labeltxt,       0, 0, 1, 1)
+    self.layout.addWidget(self.precision_spinBox,   0, 1, 1, 1)
+    self.layout.addWidget(sort_labeltxt,            0, 2, 1, 1)
+    self.layout.addWidget(self.SortComboBox,        0, 3, 1, 1)
+    self.layout.addWidget(self.sortChkbox,          0, 4, 1, 1)
+    self.layout.addWidget(parent.millerarraytable,  1, 0, 1, 5)
+    self.layout.setColumnStretch (0 ,0)
+    self.layout.setColumnStretch (1 ,0)
+    self.layout.setColumnStretch (2 ,0)
+    self.layout.setColumnStretch (3 ,0)
+    self.layout.setColumnStretch (4 ,1)
+    self.myGroupBox.setLayout(self.layout)
+    self.mainLayout = QGridLayout()
+    self.mainLayout.addWidget(self.myGroupBox,     0, 0)
+    self.setLayout(self.mainLayout)
+  def eventFilter(self, source, event):
+    if (event.type() == QEvent.KeyPress and
+      event.matches(QKeySequence.Copy)):
+      self.parent().millerarraytable.copySelection()
+      return True
+    return super(MillerArrayTableForm, self).eventFilter(source, event)
 
 
-class NumericTableWidgetItem(QTableWidgetItem):
-  def __lt__(self, other):
-    return float(self.text()) < float(other.text())
-  def __gt__(self, other):
-    return float(self.text()) > float(other.text())
-    #return (self.data(Qt.UserRole).toLongLong() < other.data(Qt.UserRole).toLongLong())
+class MyTableView(QTableView):
+  def __init__(self, *args, **kwargs):
+    QTableView.__init__(self, *args, **kwargs)
+    myqa = QAction("Copy selected cells...", self)
+    myqa.setData( ("Copying selection" ))
+    self.tablemenu = QMenu(self)
+    self.tablemenu.addAction(myqa)
+    self.tablemenu.triggered.connect(self.onTableMenuAction)
+    self.setContextMenuPolicy(Qt.CustomContextMenu)
+    self.customContextMenuRequested.connect(self.onRightClick)
+  def onRightClick(self, QPos=None):
+    parent=self.sender()
+    self.tablemenu.move(QCursor.pos())
+    self.tablemenu.show()
+  def onTableMenuAction(self, action):
+    data = action.data()
+    if data == "Copying selection":
+      self.copySelection()
+  def copySelection(self):
+    # from https://stackoverflow.com/questions/40225270/copy-paste-multiple-items-from-qtableview-in-pyqt4
+    selection = self.selectedIndexes()
+    if selection:
+      rows = sorted(index.row() for index in selection)
+      columns = sorted(index.column() for index in selection)
+      rowcount = rows[-1] - rows[0] + 1
+      colcount = columns[-1] - columns[0] + 1
+      table = [[''] * colcount for _ in range(rowcount)]
+      for index in selection:
+        row = index.row() - rows[0]
+        column = index.column() - columns[0]
+        table[row][column] = index.data()
+      stream = io.StringIO()
+      csv.writer(stream, delimiter='\t').writerows(table)
+      app.clipboard().setText(stream.getvalue())
 
 
 class MyTableWidget(QTableWidget):
   def __init__(self, *args, **kwargs):
     QTableWidget.__init__(self, *args, **kwargs)
     self.mousebutton = None
-
+    self.selectedrows = []
   def mousePressEvent(self, event):
     if event.type() == QEvent.MouseButtonPress:
       self.mousebutton = None
       if event.button() == Qt.RightButton:
         self.mousebutton = Qt.RightButton
     QTableWidget.mousePressEvent(self, event)
-
   def mouseDoubleClickEvent(self, event):
     if event.type() == QEvent.MouseButtonDblClick:
       if event.button() == Qt.LeftButton:
         self.mousebutton = QEvent.MouseButtonDblClick
     QTableWidget.mouseDoubleClickEvent(self, event)
+
+
+class MillerArrayTableModel(QAbstractTableModel):
+  def __init__(self, data, headerdata, parent=None):
+    super(MillerArrayTableModel, self).__init__(parent)
+    # input data are a list of column arrays organised as:
+    # [[list of H], [list of K], [list of L], [list of millerdata1], [list of millersigmas1], [list of millerdata2]... ]
+    # We use zip to transpose it from a list of columns data to matching rows of data values for the table
+    self._data = list(zip(*data))
+    self.columnheaderdata = headerdata
+    self.precision = 4
+  def rowCount(self, parent=None):
+    return len(self._data)
+  def columnCount(self, parent=None):
+    return len(self._data[0]) if self.rowCount() else 0
+  def data(self, index, role=Qt.DisplayRole):
+    if role == Qt.DisplayRole:
+      row = index.row()
+      if 0 <= row < self.rowCount():
+        column = index.column()
+        if 0 <= column < self.columnCount():
+          val = self._data[row][column]
+          if not (type(val) is float or type(val) is int):
+            return val
+          if math.isnan(val):
+            return None
+          if abs(val) < float("1e-%d" %self.precision):
+            fstr = "%" + "%d" %self.precision
+            fstr += ".%de" %self.precision
+            return float(fstr %val)
+          p = 10 ** self.precision
+          if val > 0:
+            return float(math.floor((val * p) + 0.5))/p
+          return float(math.ceil((val * p) - 0.5))/p
+  def clear(self):
+    rows = self.rowCount()
+    self.beginRemoveRows(QModelIndex(), 0, rows-1 )
+    self.endRemoveRows()
+    cols = self.columnCount()
+    self.beginRemoveColumns(QModelIndex(), 0, cols-1 )
+    self.endRemoveColumns()
+  def headerData(self, index, orientation, role):
+    if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+      return self.columnheaderdata[index]
+    if orientation == Qt.Vertical and role == Qt.DisplayRole:
+      return index + 1 # just return the row number
+  def sort(self, col, order):
+    """Sort table by given column number.
+    """
+    self.layoutAboutToBeChanged.emit()
+    if order == Qt.AscendingOrder:
+      print(self.columnheaderdata[col] + " sort AscendingOrder")
+      self._data = sorted(self._data, key= lambda data: data[col])
+    if order == Qt.DescendingOrder:
+      print(self.columnheaderdata[col] + " sort DescendingOrder")
+      self._data = sorted(self._data, key= lambda data: data[col], reverse=True)
+    self.layoutChanged.emit()
 
 
 class NGL_HKLViewer(QWidget):
@@ -129,10 +245,10 @@ class NGL_HKLViewer(QWidget):
       if "verbose" in e:
         self.verbose = e.split("verbose=")[1]
       if "UseOSbrowser" in e:
-        self.UseOSbrowser = e.split("UseOSbrowser=")[1]
+        self.UseOSbrowser = True
       if "jscriptfname" in e:
         self.jscriptfname = e.split("jscriptfname=")[1]
-      if "devmode" in e:
+      if "devmode" in e or "debug" in e:
         self.devmode = True
       if 'htmlfname' in e:
         self.hklfname = e.split("htmlfname=")[1]
@@ -140,10 +256,11 @@ class NGL_HKLViewer(QWidget):
         self.handshakewait = e.split('handshakewait=')[1]
 
     self.zmq_context = None
+    self.unfeedback = False
 
     self.originalPalette = QApplication.palette()
 
-    self.openFileNameButton = QPushButton("Load reflection file")
+    self.openFileNameButton = QPushButton("Open reflection file")
     self.openFileNameButton.setDefault(True)
     self.openFileNameButton.clicked.connect(self.onOpenReflectionFile)
 
@@ -170,7 +287,6 @@ class NGL_HKLViewer(QWidget):
     self.font = QFont()
     self.font.setFamily(self.font.defaultFamily())
     self.fontspinBox.setValue(self.font.pointSize())
-    #self.fontspinBox.setValue(self.font.pixelSize())
     self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
     self.Fontsize_labeltxt = QLabel()
     self.Fontsize_labeltxt.setText("Font size:")
@@ -218,12 +334,6 @@ class NGL_HKLViewer(QWidget):
     self.makenewdataform = MakeNewDataForm(self)
     self.makenewdataform.setModal(True)
 
-    self.HKLnameedit = QLineEdit('')
-    self.HKLnameedit.setReadOnly(True)
-    self.textInfo = QTextEdit()
-    self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
-    self.textInfo.setReadOnly(True)
-
     labels = ["Column label", "Type", "Space group", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
     self.millertable = MyTableWidget(0, len(labels))
@@ -233,15 +343,14 @@ class NGL_HKLViewer(QWidget):
     self.millertable.setEditTriggers(QTableWidget.NoEditTriggers)
     self.millertable.cellPressed.connect(self.onMillerTableCellPressed)
     self.millertable.cellDoubleClicked.connect(self.onMillerTableCellPressed)
-    #self.millertable.installEventFilter(self)
+    self.millertable.itemSelectionChanged.connect(self.onMillerTableitemSelectionChanged)
 
-    labels = ["H", "K", "L", "data", "sigma" ]
-    self.millerarraytable = MyTableWidget(0, len(labels))
-    self.millerarraytable.setEditTriggers(QTableWidget.NoEditTriggers)
-    self.millerarraytable.setHorizontalHeaderLabels(labels)
+    self.millerarraytable = MyTableView(self)
+    self.millerarraytable.setSortingEnabled(False)
     self.millerarraytable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
-    self.millerarraytable.horizontalHeader().sectionDoubleClicked.connect(self.onMillerArrayTableHeaderSectionDoubleClicked)
     self.millerarraytableform = MillerArrayTableForm(self)
+    self.millerarraytablemodel = None
+    self.millerarraytable.installEventFilter(self.millerarraytableform) # for keyboard copying to clipboard
 
     self.createExpansionBox()
     self.createFileInfoBox()
@@ -255,27 +364,21 @@ class NGL_HKLViewer(QWidget):
     self.mainLayout.addWidget(self.functionTabWidget,   1, 0)
     self.mainLayout.addWidget(self.settingsbtn,         2, 0, 1, 1)
     self.cpath = ""
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if self.UseOSbrowser==False:
       self.BrowserBox = QWebEngineView()
       self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
-
-      #self.BrowserBox.setUrl("https://cctbx.github.io/")
-      #self.BrowserBox.setUrl("https://webglreport.com/")
-
-      #self.storagename = "HKLviewer." + next(tempfile._get_candidate_names())
-      #self.webprofile = QWebEngineProfile(self.storagename, self.BrowserBox )
-      #self.webprofile.setHttpCacheType( QWebEngineProfile.DiskHttpCache )
       # omitting name for QWebEngineProfile() means it is private/off-the-record with no cache files
       self.webprofile = QWebEngineProfile(parent=self.BrowserBox)
       self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
-      self.webpage.setUrl("https://cctbx.github.io/")
+      if self.devmode:
+        #self.webpage.setUrl("https://webglreport.com/")
+        self.webpage.setUrl("chrome://gpu")
+      else:
+        self.webpage.setUrl("https://cctbx.github.io/")
       self.cpath = self.webprofile.cachePath()
       self.BrowserBox.setPage(self.webpage)
-
       self.mainLayout.addWidget(self.BrowserBox,          0, 1, 5, 3)
       self.mainLayout.setColumnStretch(2, 1)
-
     self.mainLayout.setRowStretch(0, 1)
     self.mainLayout.setRowStretch(1, 0)
     self.mainLayout.setRowStretch(2, 1)
@@ -289,6 +392,7 @@ class NGL_HKLViewer(QWidget):
     self.out = None
     self.err = None
     self.comboviewwidth = 0
+    self.currentphilstringdict = {}
     self.hklscenes_arrays = []
     self.millerarraylabels = []
     self.scenearraylabels = []
@@ -297,7 +401,7 @@ class NGL_HKLViewer(QWidget):
     self.bin_infotpls = None
     self.bin_opacities= None
     self.html_url = ""
-    self.spacegroups = []
+    self.spacegroups = {}
     self.info = []
     self.infostr = ""
     self.tncsvec = []
@@ -310,11 +414,12 @@ class NGL_HKLViewer(QWidget):
     self.canexit = False
     self.closing = False
     self.indices = None
-    self.data = None
+    self.datalst = []
     self.tabulate_miller_array = None
     self.binTableCheckState = None
     self.millertablemenu = QMenu(self)
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
+    self.resize(QSize(self.FileInfoBox.size().width()*2, self.size().height() ))
     self.show()
 
 
@@ -325,24 +430,27 @@ class NGL_HKLViewer(QWidget):
     #while not self.canexit:
     #  time.sleep(1)
     #self.webprofile.clearHttpCache()
-    #del self.webpage
+    del self.webprofile
+    del self.webpage
     #del self.BrowserBox
-    #del self.webprofile
 
     #shutil.rmtree(cpath)
     print("HKLviewer exiting now.")
-    while not self.canexit: # until cctbx.python has finished
-      time.sleep(0.2)
+    nc = 0
+    sleeptime = 0.2
+    while not self.canexit and nc < 10: # until cctbx.python has finished or after 10 sec
+      time.sleep(sleeptime)
       self.update()
+      nc += sleeptime
 
     print("accepting close.event")
     self.cctbxproc.terminate()
     self.out, self.err = self.cctbxproc.communicate()
     #print( str(self.out) + "\n" + str(self.err) )
     self.cctbxproc.wait()
-    #self.BrowserBox.close()
+    self.BrowserBox.close()
     self.mainLayout.removeWidget(self.BrowserBox)
-    #self.BrowserBox.deleteLater()
+    self.BrowserBox.deleteLater()
     #self.BrowserBox.destroy()
 
     """
@@ -354,11 +462,30 @@ class NGL_HKLViewer(QWidget):
     event.accept()
 
 
+  def onOpenReflectionFile(self):
+    options = QFileDialog.Options()
+    fileName, filtr = QFileDialog.getOpenFileName(self,
+            "Open a reflection file", "",
+            "All Files (*);;MTZ Files (*.mtz);;CIF (*.cif)", "", options)
+    if fileName:
+      self.HKLnameedit.setText(fileName)
+      self.setWindowTitle("HKL-viewer: " + fileName)
+      #self.infostr = ""
+      self.textInfo.setPlainText("")
+      self.fileisvalid = False
+      self.NGL_HKL_command('NGL_HKLviewer.filename = "%s"' %fileName )
+      self.MillerComboBox.clear()
+      self.BinDataComboBox.clear()
+
+
   def SettingsDialog(self):
     self.settingsform.show()
 
 
-  def update(self):
+  def ProcessMessages(self):
+    """
+    Deal with the messages posted to this GUI by cmdlineframes.py
+    """
     if self.cctbxproc:
       if self.cctbxproc.stdout:
         self.out = self.cctbxproc.stdout.read().decode("utf-8")
@@ -377,6 +504,14 @@ class NGL_HKLViewer(QWidget):
         msgstr = msg.decode()
         self.infodict = eval(msgstr)
         if self.infodict:
+          if self.infodict.get("current_ phil_ strings"):
+            philstringdict = self.infodict.get("current_ phil_ strings", {})
+            for k, v in philstringdict.items():
+              try:
+                self.currentphilstringdict[k] = eval(v)
+              except Exception as e:
+                self.currentphilstringdict[k] = v
+            self.UpdateGUI()
 
           if self.infodict.get("hklscenes_arrays"):
             self.hklscenes_arrays = self.infodict.get("hklscenes_arrays", [])
@@ -427,21 +562,38 @@ class NGL_HKLViewer(QWidget):
               self.BrowserBox.page().setBackgroundColor(QColor(255, 255, 255, 0.0) )
 
           if self.infodict.get("spacegroups"):
-            self.spacegroups = self.infodict.get("spacegroups",[])
+            spgs = self.infodict.get("spacegroups",[])
+            self.spacegroups = { i : e for i,e in enumerate(spgs) }
             self.SpaceGroupComboBox.clear()
-            self.SpaceGroupComboBox.addItems( self.spacegroups )
-
-          if self.infodict.get("merge_data"):
-            self.mergedata = self.infodict["merge_data"]
+            self.SpaceGroupComboBox.addItems( list(self.spacegroups.values()) )
 
           if self.infodict.get("tabulate_miller_array"):
+            print("received table")
             self.tabulate_miller_array = self.infodict["tabulate_miller_array"]
             self.indices = self.tabulate_miller_array[0]
-            self.data = self.tabulate_miller_array[1]
-            self.millerarraytable_sortorder = ["unsorted", "unsorted", "unsorted", "unsorted", "unsorted"]
-            self.millerarraytable.clearContents()
-            self.millerarraytable.setRowCount(len(self.indices))
-            self.RefreshMillerArrayTable()
+            #labels = ["H", "K", "L"] + [ ld[0] for ld in self.tabulate_miller_array[1:] ]
+            labels = [ ld[0] for ld in self.tabulate_miller_array ]
+            self.datalst =  [ ld[1] for ld in self.tabulate_miller_array ]
+
+            if self.millerarraytable.model():
+              self.millerarraytable.model().clear()
+            self.millerarraytablemodel = MillerArrayTableModel(self.datalst, labels, self)
+            self.millerarraytable.setModel(self.millerarraytablemodel)
+            self.millerarraytable.horizontalHeader().setHighlightSections(False)
+            self.millerarraytable.setSortingEnabled(False)
+
+            self.millerarraytable_sortorder = ["unsorted"] * (len(self.datalst) + 3)
+            self.millerarraytable.resizeColumnsToContents()
+            self.millerarraytableform.layout.setRowStretch (0, 0)
+            self.millerarraytableform.mainLayout.setRowStretch (0, 0)
+            tablewidth = 0
+            for e in range(self.millerarraytablemodel.columnCount()):
+              tablewidth +=  self.millerarraytable.columnWidth(e)
+
+            self.millerarraytableform.SortComboBox.clear()
+            self.millerarraytableform.SortComboBox.addItems(["unsorted"] + labels )
+            self.millerarraytableform.SortComboBox.view().setMinimumWidth(self.comboviewwidth)
+            self.millerarraytableform.resize(tablewidth, self.millerarraytableform.size().height())
             self.millerarraytableform.show()
 
           currentinfostr = ""
@@ -477,12 +629,11 @@ class NGL_HKLViewer(QWidget):
             self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
 
           if (self.NewFileLoaded or self.NewMillerArray) and self.NewHKLscenes:
-            #if self.mergedata == True : val = Qt.CheckState.Checked
-            #if self.mergedata == None : val = Qt.CheckState.PartiallyChecked
-            #if self.mergedata == False : val = Qt.CheckState.Unchecked
-            #self.mergecheckbox.setCheckState(val )
             #print("got hklscenes: " + str(self.hklscenes_arrays))
             self.NewMillerArray = False
+            if self.millerarraytablemodel:
+              self.millerarraytablemodel.clear()
+              self.millerarraytablemodel = MillerArrayTableModel([[]], [], self)
 
             self.MillerComboBox.clear()
             self.MillerComboBox.addItems( self.millerarraylabels )
@@ -514,28 +665,130 @@ class NGL_HKLViewer(QWidget):
         pass
 
 
-  def onMillerArrayTableHeaderSectionDoubleClicked(self, idx):
-    if self.millerarraytable_sortorder[idx] == Qt.SortOrder.AscendingOrder:
-      self.millerarraytable_sortorder[idx] = "unsorted"
-      self.RefreshMillerArrayTable()
+  def UpdateGUI(self):
+    """
+    NGL_HKLviewer.viewer.scale_colors_multiplicity, False
+    #NGL_HKLviewer.viewer.nth_power_scale_radii, -1
+    #NGL_HKLviewer.viewer.slice_mode, False
+    NGL_HKLviewer.viewer.uniform_size, False
+    NGL_HKLviewer.tabulate_miller_array_ids, []
+    #NGL_HKLviewer.clip_plane.l, 0
+    #NGL_HKLviewer.viewer.expand_to_p1, False
+    #NGL_HKLviewer.clip_plane.h, 2
+    NGL_HKLviewer.viewer.sigma_radius, False
+    NGL_HKLviewer.viewer.map_to_asu, False
+    #NGL_HKLviewer.clip_plane.k, 0
+    #NGL_HKLviewer.viewer.show_systematic_absences, False
+    #NGL_HKLviewer.viewer.NGL.tooltip_alpha, 0.85
+    NGL_HKLviewer.viewer.d_min, None
+    NGL_HKLviewer.tooltips_in_script, False
+    NGL_HKLviewer.using_space_subgroup, False
+    #NGL_HKLviewer.viewer.expand_anomalous, False
+    #NGL_HKLviewer.viewer.scale, 1
+    #NGL_HKLviewer.filename, C:/Users/oeffner/Buser/NGL_HKLviewer/mymtz.mtz
+    NGL_HKLviewer.viewer.scale_radii_multiplicity, False
+    NGL_HKLviewer.viewer.data, None
+    #NGL_HKLviewer.viewer.NGL.mouse_sensitivity, 0.2
+    NGL_HKLviewer.action, *'is_running'
+    #NGL_HKLviewer.clip_plane.angle_around_vector, 0
+    #NGL_HKLviewer.viewer.slice_index, 0
+    NGL_HKLviewer.shape_primitive, *'spheres'
+    #NGL_HKLviewer.nbins, 6
+    #NGL_HKLviewer.clip_plane.hkldist, 0
+    NGL_HKLviewer.viewer.phase_color, False
+    NGL_HKLviewer.viewer.show_labels, True
+    NGL_HKLviewer.viewer.labels, None
+    NGL_HKLviewer.viewer.show_anomalous_pairs, False
+    NGL_HKLviewer.miller_array_operations,
+    NGL_HKLviewer.viewer.symmetry_file, None
+    #NGL_HKLviewer.spacegroup_choice, None
+    #NGL_HKLviewer.clip_plane.is_parallel, False
+    NGL_HKLviewer.scene_bin_thresholds, None
+    NGL_HKLviewer.viewer.scene_id, 3
+    NGL_HKLviewer.viewer.color_scheme, *rainbow
+    NGL_HKLviewer.viewer.black_background, True
+    NGL_HKLviewer.viewer.show_axes, True
+    NGL_HKLviewer.bin_scene_label, Resolution
+    NGL_HKLviewer.merge_data, False
+    NGL_HKLviewer.mouse_moved, True
+    #NGL_HKLviewer.viewer.show_missing, False
+    NGL_HKLviewer.viewer.slice_axis, *h
+    NGL_HKLviewer.viewer.keep_constant_scale, True
+    NGL_HKLviewer.viewer.show_data_over_sigma, False
+    NGL_HKLviewer.viewer.NGL.camera_type, *orthographic
+    NGL_HKLviewer.clip_plane.clipwidth, None
+    NGL_HKLviewer.viewer.sqrt_scale_colors, False
+    NGL_HKLviewer.viewer.sigma_color, False
+    NGL_HKLviewer.clip_plane.is_real_space_frac_vec, False
+    NGL_HKLviewer.viewer.NGL.fixorientation, False
+    NGL_HKLviewer.viewer.inbrowser, True
+    NGL_HKLviewer.viewer.show_only_missing, False
+    NGL_HKLviewer.viewer.NGL.bin_opacities, [(1.0, 0), (1.0, 1), (1.0, 2)]
+    NGL_HKLviewer.clip_plane.bequiet, False
+    """
+    self.unfeedback = True
+    self.power_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'])
+    self.radii_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.scale'])
+    self.showslicecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_mode'])
+    self.hvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.h'])
+    self.kvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.k'])
+    self.lvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.l'])
+    self.expandP1checkbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.expand_to_p1'])
+    self.expandAnomalouscheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.expand_anomalous'])
+    self.sysabsentcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_systematic_absences'])
+    self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.tooltip_alpha'])
+    self.HKLnameedit.setText( self.currentphilstringdict['NGL_HKLviewer.filename'])
+    self.setWindowTitle("HKL-viewer: " + self.currentphilstringdict['NGL_HKLviewer.filename'])
+    self.mousemoveslider.setValue( 100*self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.mouse_sensitivity'])
+    self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
+    self.sliceindexspinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_index'])
+    self.Nbins_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
+    self.hkldist_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
+    if self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice']:
+      self.SpaceGroupComboBox.setCurrentIndex( self.spacegroups[ self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice']] )
+    self.clipParallelBtn.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.is_parallel'])
+    self.missingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_missing'])
+    axidx = -1
+    for axidx,c in enumerate(self.sliceaxis.values()):
+      if c in self.currentphilstringdict['NGL_HKLviewer.viewer.slice_axis']:
+        break
+
+    self.SliceLabelComboBox.setCurrentIndex( axidx )
+    self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.camera_type'])
+    if self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth']:
+      self.clipwidth_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'])
+    self.realspacevecBtn.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.is_real_space_frac_vec'])
+    self.fixedorientcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.fixorientation'])
+    self.onlymissingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_only_missing'])
+    self.unfeedback = False
+
+    pass
+
+
+
+  def onSortComboBoxSelchange(self, i):
+    if i==0: # i.e. unsorted
+      labels = [ ld[0] for ld in self.tabulate_miller_array ]
+      self.datalst =  [ ld[1] for ld in self.tabulate_miller_array ]
+      if self.millerarraytable.model():
+        self.millerarraytable.model().clear()
+      self.millerarraytablemodel = MillerArrayTableModel(self.datalst, labels, self)
+      self.millerarraytable.setModel(self.millerarraytablemodel)
       return
-    if self.millerarraytable_sortorder[idx] == "unsorted":
-      self.millerarraytable_sortorder[idx] = Qt.SortOrder.DescendingOrder
-      self.millerarraytable.sortItems(idx, self.millerarraytable_sortorder[idx])
-      return
-    if self.millerarraytable_sortorder[idx] == Qt.SortOrder.DescendingOrder:
-      self.millerarraytable_sortorder[idx] = Qt.SortOrder.AscendingOrder
-      self.millerarraytable.sortItems(idx, self.millerarraytable_sortorder[idx])
+    idx = i-1
+    if self.millerarraytableform.sortChkbox.checkState() == Qt.Unchecked:
+      self.millerarraytable.sortByColumn(idx, Qt.SortOrder.DescendingOrder)
+    else:
+      self.millerarraytable.sortByColumn(idx, Qt.SortOrder.AscendingOrder)
 
 
+  def onSortChkbox(self):
+    self.onSortComboBoxSelchange(self.millerarraytableform.SortComboBox.currentIndex() )
 
-  def RefreshMillerArrayTable(self):
-    for row,(h,k,l) in enumerate(self.indices):
-      self.millerarraytable.setItem(row, 0, NumericTableWidgetItem(str(h)))
-      self.millerarraytable.setItem(row, 1, NumericTableWidgetItem(str(k)))
-      self.millerarraytable.setItem(row, 2, NumericTableWidgetItem(str(l)))
-      self.millerarraytable.setItem(row, 3, NumericTableWidgetItem(str(self.data[row])))
-      self.millerarraytable.setItem(row, 4, QTableWidgetItem(str("")))
+
+  def onPrecisionChanged(self, val):
+    self.millerarraytablemodel.precision = val
+    self.millerarraytable.resizeColumnsToContents()
 
 
   def onFinalMouseSensitivity(self):
@@ -565,15 +818,6 @@ class NGL_HKLViewer(QWidget):
       self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.camera_type = perspective")
     else:
       self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.camera_type = orthographic")
-
-
-  def MergeData(self):
-    if self.mergecheckbox.checkState()== Qt.CheckState.Checked:
-      self.NGL_HKL_command('NGL_HKLviewer.mergedata = True')
-    if self.mergecheckbox.checkState()== Qt.CheckState.PartiallyChecked:
-      self.NGL_HKL_command('NGL_HKLviewer.mergedata = None')
-    if self.mergecheckbox.checkState()== Qt.CheckState.Unchecked:
-      self.NGL_HKL_command('NGL_HKLviewer.mergedata = False')
 
 
   def ExpandToP1(self):
@@ -643,7 +887,7 @@ class NGL_HKLViewer(QWidget):
     rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][4][0][i]
     rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][4][1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
-    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
+    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis.values()[i] )
 
 
   def onSliceIndexChanged(self, val):
@@ -745,17 +989,15 @@ class NGL_HKLViewer(QWidget):
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 
-
+  """
   def onBinsTableItemSelectionChanged(self):
     item = self.binstable.currentItem()
     #print( "in SelectionChanged %s,  %s" %(item.text(), str( item.checkState())) )
-    row = item.row()
-    column = item.column()
     try:
       self.currentSelectedBinsTableVal = float(item.text())
     except Exception as e:
       pass
-
+  """
 
   def onOpaqueAll(self):
     self.binstableitemchanges = True
@@ -794,6 +1036,8 @@ class NGL_HKLViewer(QWidget):
 
 
   def onRadiiScaleChanged(self, val):
+    if self.unfeedback:
+      return
     self.NGL_HKL_command("""
       NGL_HKLviewer.viewer {
         nth_power_scale_radii = %f
@@ -804,6 +1048,8 @@ class NGL_HKLViewer(QWidget):
 
 
   def onPowerScaleChanged(self, val):
+    if self.unfeedback:
+      return
     self.NGL_HKL_command("""
       NGL_HKLviewer.viewer {
         nth_power_scale_radii = %f
@@ -823,33 +1069,12 @@ class NGL_HKLViewer(QWidget):
       #self.power_scale_spinBox.setValue(-1.0)
 
 
-  def onOpenReflectionFile(self):
-    options = QFileDialog.Options()
-    fileName, filtr = QFileDialog.getOpenFileName(self,
-            "Load reflections file",
-            "",
-            "All Files (*);;MTZ Files (*.mtz);;CIF (*.cif)", "", options)
-    if fileName:
-      self.HKLnameedit.setText(fileName)
-      #self.infostr = ""
-      self.textInfo.setPlainText("")
-      self.fileisvalid = False
-      self.NGL_HKL_command('NGL_HKLviewer.filename = "%s"' %fileName )
-      self.MillerComboBox.clear()
-      self.BinDataComboBox.clear()
-
-
   def createExpansionBox(self):
     self.SpaceGroupComboBox = QComboBox()
     self.SpaceGroupComboBox.activated.connect(self.SpacegroupSelchange)
 
     self.SpacegroupLabel = QLabel()
     self.SpacegroupLabel.setText("Space Subgroups")
-
-    self.mergecheckbox = QCheckBox()
-    self.mergecheckbox.setText("Merge data")
-    #self.mergecheckbox.setTristate (True)
-    self.mergecheckbox.clicked.connect(self.MergeData)
 
     self.expandP1checkbox = QCheckBox()
     self.expandP1checkbox.setText("Expand to P1")
@@ -875,7 +1100,6 @@ class NGL_HKLViewer(QWidget):
     layout = QGridLayout()
     layout.addWidget(self.SpacegroupLabel,           0, 0)
     layout.addWidget(self.SpaceGroupComboBox,        0, 1)
-    #layout.addWidget(self.mergecheckbox,            1, 0)
     layout.addWidget(self.expandP1checkbox,          1, 0)
     layout.addWidget(self.expandAnomalouscheckbox,   1, 1)
     layout.addWidget(self.sysabsentcheckbox,         2, 0)
@@ -903,8 +1127,8 @@ class NGL_HKLViewer(QWidget):
 
     self.SliceLabelComboBox = QComboBox()
     self.SliceLabelComboBox.activated.connect(self.onSliceComboSelchange)
-    self.sliceaxis = [ "h", "k", "l" ]
-    self.SliceLabelComboBox.addItems( self.sliceaxis )
+    self.sliceaxis = { 0:"h", 1:"k", 2:"l" }
+    self.SliceLabelComboBox.addItems( list( self.sliceaxis.values()) )
     self.SliceLabelComboBox.setDisabled(True)
     self.sliceindexspinBox.setDisabled(True)
 
@@ -1149,6 +1373,10 @@ class NGL_HKLViewer(QWidget):
           self.DisplayData(i)
 
 
+  def onMillerTableitemSelectionChanged(self):
+    self.millertable.selectedrows = list(set([ e.row() for e in self.millertable.selectedItems() ]))
+
+
   def MillerTableContextMenuHandler(self, pos, row):
     self.millertablemenu.clear()
     # Tag menu items with data being int or a (string, int) tuple.
@@ -1166,9 +1394,17 @@ class NGL_HKLViewer(QWidget):
     myqa = QAction("Make new data as a function of this data and another data set...", self, triggered=self.testaction)
     myqa.setData( ("newdata_2", row ))
     self.millertablemenu.addAction(myqa)
-    myqa = QAction("Show a table of this data set...", self, triggered=self.testaction)
-    myqa.setData( ("tabulate_data", row ))
-    self.millertablemenu.addAction(myqa)
+    #myqa = QAction("Show a table of this data set...", self, triggered=self.testaction)
+    #myqa.setData( ("tabulate_data", row ))
+    if len(self.millertable.selectedrows) > 0:
+      arraystr = ""
+      for i,r in enumerate(self.millertable.selectedrows):
+        arraystr += self.millerarraylabels[r]
+        if i < len(self.millertable.selectedrows)-1:
+          arraystr += " and "
+      myqa = QAction("Show a table of %s data ..." %arraystr, self, triggered=self.testaction)
+      myqa.setData( ("tabulate_data", self.millertable.selectedrows ))
+      self.millertablemenu.addAction(myqa)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.millertablemenu.exec_(QCursor.pos())
 
@@ -1188,7 +1424,7 @@ class NGL_HKLViewer(QWidget):
           self.MillerLabel1.setDisabled(True)
           self.MillerLabel2.setDisabled(True)
           self.MillerComboBox.setDisabled(True)
-          self.MillerLabel3.setText("Example: 'newdata = data / sigmas; newsigmas= - 42*sigmas' ")
+          self.MillerLabel3.setText("Example: 'newdata = data / flex.sqrt(sigmas); newsigmas= - 42*sigmas' ")
           self.operate_arrayidx2 = None
           self.makenewdataform.show()
         if strval=="newdata_2":
@@ -1196,12 +1432,10 @@ class NGL_HKLViewer(QWidget):
           self.MillerLabel1.setEnabled(True)
           self.MillerLabel2.setEnabled(True)
           self.MillerComboBox.setEnabled(True)
-          self.MillerLabel3.setText("Example: 'newdata = data1 + data2; newsigmas= sigmas1 - data2 / sigmas1' ")
+          self.MillerLabel3.setText("Example: 'newdata = data1 - flex.pow(data2); newsigmas= sigmas1 - data2 / sigmas1' ")
           self.makenewdataform.show()
         if strval=="tabulate_data":
-          print("wibble")
-          self.NGL_HKL_command("NGL_HKLviewer.tabulate_miller_array_id = %d" %idx)
-
+          self.NGL_HKL_command('NGL_HKLviewer.tabulate_miller_array_ids = "%s"' %str(idx))
 
 
   def DisplayData(self, idx):
@@ -1222,7 +1456,7 @@ class NGL_HKLViewer(QWidget):
     else:
       self.functionTabWidget.setDisabled(True)
     self.SpaceGroupComboBox.clear()
-    self.SpaceGroupComboBox.addItems( self.spacegroups )
+    self.SpaceGroupComboBox.addItems( list(self.spacegroups.values() ))
 
 
   def onMakeNewData(self):
@@ -1244,6 +1478,11 @@ class NGL_HKLViewer(QWidget):
     self.datasetLabel = QLabel()
     self.datasetLabel.setText("Display a data set with a double-click or right-click it for more options.")
     self.FileInfoBox = QGroupBox("Reflection File Information")
+    self.HKLnameedit = QLineEdit('')
+    self.HKLnameedit.setReadOnly(True)
+    self.textInfo = QTextEdit()
+    self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
+    self.textInfo.setReadOnly(True)
     layout = QGridLayout()
     layout.addWidget(self.openFileNameButton,     0, 0, 1, 2)
     if self.devmode:
@@ -1317,7 +1556,7 @@ class NGL_HKLViewer(QWidget):
     self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
     self.binstable.itemClicked.connect(self.onBinsTableitemClicked  )
     self.binstable.itemPressed.connect(self.onBinsTableitemPressed  )
-    self.binstable.itemSelectionChanged.connect(self.onBinsTableItemSelectionChanged  )
+    #self.binstable.itemSelectionChanged.connect(self.onBinsTableItemSelectionChanged  )
 
     self.BinDataComboBox = QComboBox()
     self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)
@@ -1415,19 +1654,32 @@ class NGL_HKLViewer(QWidget):
 
 
   def NGL_HKL_command(self, cmdstr):
-    #print("sending:\n" + cmdstr)
-    self.socket.send(bytes(cmdstr,"utf-8"))
+    if sys.version_info.major==3:
+      self.socket.send(bytes(cmdstr,"utf-8"))
+    else:
+      self.socket.send(bytes(cmdstr))
 
 
 
 if __name__ == '__main__':
   try:
+    """
+    If chromium webgl error on MacOS try using commandline arguments:
+    --enable-webgl-software-rendering and --ignore-gpu-blacklist
+    """
+    debugtrue = False
+    for e in sys.argv:
+      if "devmode" in e or "debug" in e:
+        debugtrue = True
+    if debugtrue:
+      sys.argv.append("--remote-debugging-port=9742")
+
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer()
 
     timer = QTimer()
     timer.setInterval(10)
-    timer.timeout.connect(guiobj.update)
+    timer.timeout.connect(guiobj.ProcessMessages)
     timer.start()
 
     ret = app.exec_()

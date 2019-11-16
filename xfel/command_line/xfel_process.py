@@ -10,6 +10,7 @@ See dials.stills_process. This version adds mysql database logging for each even
 
 '''
 
+from dials.util import show_mail_on_error
 from libtbx.phil import parse
 control_phil_str = '''
   input {
@@ -88,9 +89,6 @@ if __name__ == '__main__':
   import dials.command_line.stills_process
   dials.command_line.stills_process.Processor = DialsProcessorWithLogging
 
-  from dials.util import halraiser
-  try:
+  with show_mail_on_error():
     script = Script()
     script.run()
-  except Exception as e:
-    halraiser(e)

@@ -73,8 +73,8 @@ def ExtendMillerArray(miller_array, nsize, indices=None ):
 
 def ExtendAnyData(data, nsize):
   if isinstance(data, flex.bool):
-    data.extend( flex.bool(nsize, False) )
-  # insert NAN values as default values for real and integer values
+    # flex.bool cannot be extended with NaN so cast the data to ints and extend with inanval instead
+    data = data.as_int().extend( flex.int(nsize, inanval) )
   if isinstance(data, flex.hendrickson_lattman):
     data.extend( flex.hendrickson_lattman(nsize, (nanval, nanval, nanval, nanval)) )
   if isinstance(data, flex.int) or isinstance(data, flex.long) \
@@ -346,10 +346,11 @@ class scene(object):
     elif isinstance(data, flex.complex_double):
       data_for_colors = self.radians
       foms_for_colours = self.foms
-      self.colourlabel = self.miller_array.info().labels[1]
+       # assuming last part of the labels indicates the phase label as in ["FCALC","PHICALC"]
+      self.colourlabel = self.miller_array.info().labels[-1]
     elif (settings.sigma_color) and sigmas is not None:
       data_for_colors = sigmas.as_double()
-      self.colourlabel = self.miller_array.info().labels[1]
+      self.colourlabel = self.miller_array.info().labels[-1]
     else :
       data_for_colors = flex.abs(data.deep_copy())
     uc = self.work_array.unit_cell()

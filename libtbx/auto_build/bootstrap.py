@@ -1534,6 +1534,8 @@ class Builder(object):
       if self.use_conda == '' or os.path.isfile(self.use_conda):
         conda_python = self.op.join('..', 'conda_base',
                                     m_get_conda_python(self))
+        if self.isPlatformWindows():
+          conda_python = self.op.join(os.getcwd(), 'conda_base', m_get_conda_python(self))
       # (case 2)
       # use path provided to --use-conda
       elif os.path.isdir(self.use_conda):
@@ -1712,7 +1714,7 @@ environment exists in or is defined by {conda_env}.
       ]
     else:
       # default
-      base_dir = '../conda_base'
+      base_dir = self.op.join('..', 'conda_base')
       # use path from --use-conda flag
       # error-checking done in _get_conda_python function
       if os.path.isdir(self.use_conda):

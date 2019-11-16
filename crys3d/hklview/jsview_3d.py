@@ -237,6 +237,9 @@ class hklview_3d:
     self.binstrs = []
     self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
+    self.parent = None
+    if kwds.has_key('parent'):
+      self.parent = kwds['parent']
     self.verbose = 0
     if kwds.has_key('verbose'):
       self.verbose = kwds['verbose']
@@ -430,6 +433,18 @@ class hklview_3d:
           self.miller_array.space_group_info(), uc), verbose=0 )
 
 
+  def Complex2AmplitudesPhases(self, data):
+    ampls = flex.abs(data)
+    phases = flex.arg(data) * 180.0/math.pi
+    # purge nan values from array to avoid crash in fmod_positive()
+    b = flex.bool([bool(math.isnan(e)) for e in phases])
+    # replace the nan values with an arbitrary float value
+    phases = phases.set_selected(b, 42.4242)
+    # Cast negative degrees to equivalent positive degrees
+    phases = flex.fmod_positive(phases, 360.0)
+    return ampls, phases
+
+
   def MakeToolTips(self, HKLscenes):
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     allcolstraliases = "var hk = \'H,K,L: \';\n"
@@ -446,14 +461,7 @@ class hklview_3d:
         colstraliases = "\n  var st%d = '\\n%s: ';" %(j, hklscene.work_array.info().label_string() )
         ocolstr = hklscene.work_array.info().label_string()
         if hklscene.work_array.is_complex_array():
-          ampl = flex.abs(hklscene.data)
-          phases = flex.arg(hklscene.data) * 180.0/math.pi
-          # purge nan values from array to avoid crash in fmod_positive()
-          b = flex.bool([bool(math.isnan(e)) for e in phases])
-          # replace the nan values with an arbitrary float value
-          phases = phases.set_selected(b, 42.4242)
-          # Cast negative degrees to equivalent positive degrees
-          phases = flex.fmod_positive(phases, 360.0)
+          ampl, phases = self.Complex2AmplitudesPhases(hklscene.data)
         sigmas = hklscene.sigmas
         for i,datval in enumerate(hklscene.data):
           hkl = hklscene.indices[i]
@@ -505,7 +513,7 @@ class hklview_3d:
         if id >= hklscene.data.size():
           continue
         datval = hklscene.data[id]
-      if datval and (not (math.isnan( abs(datval) ) or datval == display.inanval)):
+      if datval is not None and (not (math.isnan( abs(datval) ) or datval == display.inanval)):
         if hklscene.work_array.is_complex_array():
           ampl = abs(datval)
           phase = cmath.phase(datval) * 180.0/math.pi
@@ -534,9 +542,41 @@ class hklview_3d:
     return self.hkl_scenes_info[idx][6], self.hkl_scenes_info[idx][7]
 
 
+  def SupersetMillerArrays(self):
+    self.match_valarrays = []
+    # First loop over all miller arrays to make a superset of hkls of all
+    # miller arrays. Then loop over all miller arrays and extend them with NaNs
+    # as to contain the same hkls as the superset
+    self.mprint("Gathering superset of miller indices")
+    superset_array = self.proc_arrays[0].deep_copy()
+    for i,procarray in enumerate(self.proc_arrays):
+      if i==0:
+        continue
+      # first match indices in currently selected miller array with indices in the other miller arrays
+      matchindices = miller.match_indices(superset_array.indices(), procarray.indices() )
+      valarray = procarray.select( matchindices.pairs().column(1) )
+      if valarray.anomalous_flag() != superset_array.anomalous_flag():
+        superset_array._anomalous_flag = valarray._anomalous_flag
+      missing = procarray.lone_set( superset_array )
+      superset_array = display.ExtendMillerArray(superset_array, missing.size(), missing.indices())
+    self.mprint("Extending miller arrays to match superset of miller indices")
+    for i,procarray in enumerate(self.proc_arrays):
+      # first match indices in currently selected miller array with indices in the other miller arrays
+      matchindices = miller.match_indices(superset_array.indices(), procarray.indices() )
+      valarray = procarray.select( matchindices.pairs().column(1) )
+      if valarray.anomalous_flag() != superset_array.anomalous_flag():
+        superset_array._anomalous_flag = valarray._anomalous_flag
+      missing = superset_array.lone_set( valarray )
+      # insert NAN values for reflections in self.miller_array not found in procarray
+      valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices())
+      match_valindices = miller.match_indices(superset_array.indices(), valarray.indices() )
+      match_valarray = valarray.select( match_valindices.pairs().column(1) )
+      match_valarray.sort(by_value="packed_indices")
+      match_valarray.set_info(procarray.info() )
+      self.match_valarrays.append( match_valarray )
+
+
   def ConstructReciprocalSpace(self, curphilparam, merge=None):
-    #self.miller_array = self.match_valarrays[self.scene_id]
-    #self.miller_array = self.proc_arrays[self.scene_id]
     self.HKLscenesKey = (curphilparam.filename,
                          curphilparam.spacegroup_choice,
                          curphilparam.using_space_subgroup,
@@ -1475,6 +1515,14 @@ function HKLscene()
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
 
+
+  canvas = stage.viewer.renderer.domElement;
+  const ctx = canvas.getContext('webgl', {
+    desynchronized: true,
+    preserveDrawingBuffer: true
+  });
+
+
   MakeHKL_Axis(shape);
 
   %s
@@ -1489,6 +1537,7 @@ function HKLscene()
 
   %s
   stage.viewer.requestRender();
+  console.log("Waffle wibble");
 }
 
 
@@ -1716,7 +1765,7 @@ mysocket.onmessage = function (e)
       }
 
       stage.viewer.requestRender();
-      WebsockSendMsg( 'Expanded data' );
+      WebsockSendMsg( 'Done ' + msgtype );
     }
 
     if (msgtype === "DisableMouseRotation")
@@ -2098,6 +2147,8 @@ mysocket.onmessage = function (e)
         self.StopThreads()
       if "JavaScriptError:" in message:
         self.mprint( message, verbose=0)
+      if "Expand" in message:
+        self.mprint( message, verbose=0)
         #raise Sorry(message)
       if "OrientationBeforeReload:" in message:
         #sleep(0.2)
@@ -2154,10 +2205,8 @@ mysocket.onmessage = function (e)
   def ProcessOrientationMessage(self):
     if self.orientmessage is None:
       return
-
     if self.orientmessage.find("NaN")>=0:
       return
-
     self.viewmtrx = self.orientmessage[ self.orientmessage.find("\n") + 1: ]
     lst = self.viewmtrx.split(",")
     flst = [float(e) for e in lst]
@@ -2237,6 +2286,9 @@ mysocket.onmessage = function (e)
   def OnConnectWebsocketClient(self, client, server):
     self.websockclient = client
     self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
+    # reinstate volatile variables if accidentally being disconnected by a mouse drag or whatever
+    if self.parent:
+      self.parent.update_settings()
 
 
   def OnDisconnectWebsocketClient(self, client, server):
@@ -2275,7 +2327,10 @@ mysocket.onmessage = function (e)
 
 
   def StopThreads(self):
-    self.websockclient['handler'].send_text(u"", opcode=0x8)
+    try:
+      self.websockclient['handler'].send_text(u"", opcode=0x8)
+    except Exception as e:
+      self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
     self.server.shutdown()
     self.msgqueuethrd.join()
     self.wst.join()

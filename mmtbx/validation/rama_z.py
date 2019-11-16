@@ -8,6 +8,8 @@ from mmtbx.secondary_structure import manager as ss_manager
 from mmtbx.secondary_structure import sec_str_master_phil_str
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from scipy import interpolate
+import numpy as np
+import copy
 import math
 import os
 
@@ -22,9 +24,13 @@ class rama_z(object):
     db_path = libtbx.env.find_in_repositories(
         relative_path="chem_data/rama_z/top8000_rama_z_dict.pkl",
         test=os.path.isfile)
-    # this takes ~0.15 seconds, so I don't see a need to cache it somehow.
+    rmsd_path = libtbx.env.find_in_repositories(
+        relative_path="chem_data/rama_z/rmsd.pkl",
+        test=os.path.isfile)
     self.log = log
+    # this takes ~0.15 seconds, so I don't see a need to cache it somehow.
     self.db = easy_pickle.load(db_path)
+    self.rmsd_estimator = easy_pickle.load(rmsd_path)
     self.calibration_values = {
         'H': (-0.045355950779513175, 0.1951165524439217),
         'S': (-0.0425581278436754, 0.20068584887814633),
@@ -81,7 +87,7 @@ class rama_z(object):
         rkey = three.get_ramalyze_key()
         resname = main_residue.resname
         ss_type = self._figure_out_ss(three)
-        self.res_info.append( ("", rkey, resname, ss_type, phi, psi) )
+        self.res_info.append( ["", rkey, resname, ss_type, phi, psi] )
         self.residue_counts[ss_type] += 1
         used_atoms.add(key)
     self.residue_counts["W"] = self.residue_counts["H"] + self.residue_counts["S"] + self.residue_counts["L"]
@@ -103,8 +109,29 @@ class rama_z(object):
       except ZeroDivisionError:
         c = None
       if c is not None:
-        self.z_score[k] = (c - self.calibration_values[k][0]) / self.calibration_values[k][1]
+        zs = (c - self.calibration_values[k][0]) / self.calibration_values[k][1]
+        zs_std = self._get_z_score_accuracy(element_points, k)
+        self.z_score[k] = (zs, zs_std)
     return self.z_score
+
+  def _get_z_score_accuracy(self, points, part, n_shuffles=50, percent_to_keep=50):
+    return np.interp(len(points), self.rmsd_estimator[0], self.rmsd_estimator[1])
+    # tmp = copy.deepcopy(points)
+    # scores = []
+    # n_res = int(len(tmp) * percent_to_keep / 100)
+    # if n_res == len(tmp):
+    #   n_res -= 1
+    # for i in range(n_shuffles):
+    #   np.random.shuffle(tmp)
+    #   c = self._get_z_score_points(tmp[:n_res])
+    #   if c is not None:
+    #     c = (c - self.calibration_values[part][0]) / self.calibration_values[part][1]
+    #     scores.append(c)
+    #   c = self._get_z_score_points(tmp[n_res:])
+    #   if c is not None:
+    #     c = (c - self.calibration_values[part][0]) / self.calibration_values[part][1]
+    #     scores.append(c)
+    # return np.std(scores)
 
   def get_ss_selections(self):
     self.loop_sel = flex.bool([True]*self.helix_sel.size())
@@ -119,11 +146,14 @@ class rama_z(object):
     else: return "L"
 
   def _get_z_score_points(self, points):
-    if len(points) < 10:
-      return None
+    # if len(points) < 10:
+    #   return None
     score = 0
     for entry in points:
-      score += self._get_z_score_point(entry)
+      if len(entry) == 6:
+        sc = self._get_z_score_point(entry)
+        entry.append(sc)
+      score += entry[-1]
     return score/len(points)
 
   def _get_z_score_point(self, entry):

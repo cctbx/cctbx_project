@@ -296,6 +296,37 @@ DataType map_sum_at_sites_frac(
 }
 
 template <typename DataType>
+af::versa<DataType, af::c_grid<3> > set_box_copy_inside(
+  DataType const& value,
+  af::ref<DataType, af::c_grid<3> > map_data_to,
+  af::tiny<int, 3> const& start,
+  af::tiny<int, 3> const& end)
+{
+  af::c_grid<3> a = map_data_to.accessor();
+  for(int i = 0; i < 3; i++) {
+    CCTBX_ASSERT(start[i]>=0 && start[i]<=a[i]);
+    CCTBX_ASSERT(end[i]>=0   && end[i]<=a[i]);
+  }
+  // like set_box_copy except copies inside and sets value outside
+  af::versa<DataType, af::c_grid<3> > result_map(a,
+    af::init_functor_null<DataType>());
+  af::ref<DataType, af::c_grid<3> > result_map_ref = result_map.ref();
+  for(int i = 0; i < a[0]; i++) {
+    for(int j = 0; j < a[1]; j++) {
+      for(int k = 0; k < a[2]; k++) {
+        if(i>=start[0]&&i<end[0] &&
+           j>=start[1]&&j<end[1] &&
+           k>=start[2]&&k<end[2]) {
+          result_map_ref(i,j,k) = map_data_to(i,j,k);
+        }
+        else {
+          result_map_ref(i,j,k) = value;
+        }
+  }}}
+  return result_map;
+}
+
+template <typename DataType>
 af::versa<DataType, af::c_grid<3> > set_box_copy(
   DataType const& value,
   af::ref<DataType, af::c_grid<3> > map_data_to,
@@ -1053,46 +1084,65 @@ map_box_average(
   }}}
 }
 
-template <typename FloatType>
-cctbx::cartesian<>
-fit_point_3d_grid_search(
-  cctbx::cartesian<> const& site_cart,
-  af::const_ref<FloatType, af::c_grid<3> > const& map_data,
-  cctbx::uctbx::unit_cell const& unit_cell,
-  FloatType const& amplitude,
-  FloatType const& increment)
-{
-  FloatType x = site_cart[0];
-  FloatType y = site_cart[1];
-  FloatType z = site_cart[2];
-  FloatType map_best = -9999;
-  FloatType x_shift = -amplitude;
-  cctbx::cartesian<> site_cart_result = site_cart;
-  while(x_shift < amplitude) {
-    x_shift += increment;
-    FloatType y_shift = -amplitude;
-    FloatType x_shifted = x+x_shift;
-    while(y_shift < amplitude) {
-      y_shift += increment;
-      FloatType y_shifted = y+y_shift;
-      FloatType z_shift = -amplitude;
-      while(z_shift < amplitude) {
-        z_shift += increment;
-        cctbx::cartesian<> site_cart_ = cctbx::cartesian<>(
-          x_shifted, y_shifted, z+z_shift);
-        cctbx::fractional<> site_frac = unit_cell.fractionalize(site_cart_);
-        FloatType map_value = tricubic_interpolation(map_data, site_frac);
-        if(map_value > map_best) {
-          map_best = map_value;
-          site_cart_result = site_cart_;
-        }}}}
-  if(std::abs(std::abs(site_cart_result[0]-x)-std::abs(amplitude))<1.e-4 ||
-     std::abs(std::abs(site_cart_result[1]-y)-std::abs(amplitude))<1.e-4 ||
-     std::abs(std::abs(site_cart_result[2]-z)-std::abs(amplitude))<1.e-4) {
-    site_cart_result = site_cart;
+class fit_point_3d_grid_search {
+public:
+  bool has_peak_;
+  double map_best_, map_start_;
+  cctbx::cartesian<> site_cart_moved_;
+  fit_point_3d_grid_search(
+    cctbx::cartesian<> const& site_cart,
+    af::const_ref<double, af::c_grid<3> > const& map_data,
+    double const& map_min, // TODO remove unused.
+    cctbx::uctbx::unit_cell const& unit_cell,
+    double const& amplitude,
+    double const& increment)
+  :
+  has_peak_(true), site_cart_moved_(site_cart), map_best_(0), map_start_(0)
+  {
+    CCTBX_ASSERT(amplitude > 0.0 && increment > 0.0);
+    double eps = 1.e-5;
+    double x = site_cart[0];
+    double y = site_cart[1];
+    double z = site_cart[2];
+    map_best_ = tricubic_interpolation(
+      map_data, unit_cell.fractionalize(site_cart));
+    map_start_ = map_best_;
+    double x_shift = -amplitude;
+    while(x_shift < amplitude) {
+      x_shift += increment;
+      double y_shift = -amplitude;
+      double x_shifted = x+x_shift;
+      while(y_shift < amplitude) {
+        y_shift += increment;
+        double y_shifted = y+y_shift;
+        double z_shift = -amplitude;
+        while(z_shift < amplitude) {
+          z_shift += increment;
+          cctbx::cartesian<> site_cart_ = cctbx::cartesian<>(
+            x_shifted, y_shifted, z+z_shift);
+          cctbx::fractional<> site_frac = unit_cell.fractionalize(site_cart_);
+          double map_value = tricubic_interpolation(map_data, site_frac);
+          if(map_value > map_best_) {
+            map_best_ = map_value;
+            site_cart_moved_ = site_cart_;
+          }}}}
+    double shift_x = std::abs(site_cart_moved_[0]-x);
+    double shift_y = std::abs(site_cart_moved_[1]-y);
+    double shift_z = std::abs(site_cart_moved_[2]-z);
+    if(shift_x>amplitude || std::abs(shift_x-amplitude)<eps ||
+       shift_y>amplitude || std::abs(shift_y-amplitude)<eps ||
+       shift_z>amplitude || std::abs(shift_z-amplitude)<eps) {
+      site_cart_moved_ = site_cart;
+      has_peak_ = false;
+    }
   }
-  return site_cart_result;
-}
+
+  bool has_peak()                       {return has_peak_;}
+  double map_best()                     {return map_best_;}
+  double map_start()                    {return map_start_;}
+  cctbx::cartesian<> site_cart_moved()  {return site_cart_moved_;}
+
+};
 
 template <typename DataType>
 void

@@ -175,18 +175,16 @@ class JobMonitor(Thread):
 
       trials = db.get_all_trials()
       jobs = db.get_all_jobs(active = self.only_active_jobs)
-      jobs = {t.trial:[j for j in jobs if j.trial.id == t.id] for t in trials}
 
-      for js in jobs.values():
-        for job in js:
-          if job.status in ['DONE', 'EXIT', 'SUBMIT_FAIL', 'DELETED']:
-            continue
-          new_status = tracker.track(job.submission_id, job.get_log_path())
-          # Handle the case where the job was submitted but no status is available yet
-          if job.status == "SUBMITTED" and new_status == "ERR":
-            pass
-          elif job.status != new_status:
-            job.status = new_status
+      for job in jobs:
+        if job.status in ['DONE', 'EXIT', 'SUBMIT_FAIL', 'DELETED']:
+          continue
+        new_status = tracker.track(job.submission_id, job.get_log_path())
+        # Handle the case where the job was submitted but no status is available yet
+        if job.status == "SUBMITTED" and new_status == "ERR":
+          pass
+        elif job.status != new_status:
+          job.status = new_status
 
       self.post_refresh(trials, jobs)
       self.parent.run_window.jmn_light.change_status('on')
@@ -228,7 +226,7 @@ class JobSentinel(Thread):
     while self.active:
       submit_all_jobs(db)
       self.post_refresh()
-      time.sleep(1)
+      time.sleep(2)
 
 # ----------------------------- Progress Sentinel ---------------------------- #
 
@@ -470,9 +468,14 @@ class RunStatsSentinel(Thread):
         t_id = trial_ids[idx]
         found_it = False
         for job in jobs:
-          if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
-            self.run_statuses.append(job.status)
-            found_it = True; break
+          try:
+            ok = job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id
+          except AttributeError:
+            pass
+          else:
+            if ok:
+              self.run_statuses.append(job.status)
+              found_it = True; break
         if not found_it: self.run_statuses.append('UNKWN')
     self.reorder()
     t2 = time.time()
@@ -936,6 +939,76 @@ class ClusteringWorker(Thread):
     evt = ClusteringResult(tp_EVT_CLUSTERING, -1, self.clusters)
     wx.PostEvent(self.parent, evt)
 
+# ----------------------------- Merging Stats Sentinel ---------------------------- #
+
+# Set up events for monitoring merging stats
+tp_EVT_MERGINGSTATS_REFRESH = wx.NewEventType()
+EVT_MERGINGSTATS_REFRESH = wx.PyEventBinder(tp_EVT_MERGINGSTATS_REFRESH, 1)
+
+class RefreshMergingStats(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+  def __init__(self, etype, eid, result=None):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+    self.result = result
+  def GetValue(self):
+    return self.result
+
+class MergingStatsSentinel(Thread):
+  ''' Worker thread for merging stats; generated so that the GUI does not lock up when
+      processing is running '''
+
+  def __init__(self,
+               parent,
+               active=True):
+    Thread.__init__(self)
+    self.parent = parent
+    self.active = active
+    self.output = self.parent.params.output_folder
+
+    # on initialization (and restart), make sure run stats drawn from scratch
+    self.parent.run_window.mergingstats_tab.redraw_windows = True
+
+  def post_refresh(self):
+    evt = RefreshMergingStats(tp_EVT_MERGINGSTATS_REFRESH, -1)
+    wx.PostEvent(self.parent.run_window.mergingstats_tab, evt)
+
+  def run(self):
+    # one time post for an initial update
+    self.post_refresh()
+    self.db = xfel_db_application(self.parent.params)
+
+    while self.active:
+      self.parent.run_window.mergingstats_light.change_status('idle')
+      self.plot_stats_static()
+      self.post_refresh()
+      self.parent.run_window.mergingstats_light.change_status('on')
+      time.sleep(5)
+
+  def plot_stats_static(self):
+    from xfel.ui.db.merging_log_scraper import Scraper
+
+    if not self.parent.run_window.mergingstats_tab.dataset_versions: return
+
+    sizex, sizey = self.parent.run_window.mergingstats_tab.mergingstats_panelsize
+    sizex = (sizex-25)/85
+    sizey = (sizey-25)/95
+
+    if len(self.parent.run_window.mergingstats_tab.dataset_versions) > 1:
+      all_results = []
+      for folder in self.parent.run_window.mergingstats_tab.dataset_versions:
+        scraper = Scraper(folder, '#')
+        all_results.append(scraper.scrape())
+      self.parent.run_window.mergingstats_tab.png = scraper.plot_many_results(all_results,
+                                                                              self.parent.run_window.mergingstats_tab.dataset_name,
+                                                                              sizex, sizey, interactive=False)
+    else:
+      scraper = Scraper(self.parent.run_window.mergingstats_tab.dataset_versions[0], '%')
+      results = scraper.scrape()
+      self.parent.run_window.mergingstats_tab.png = scraper.plot_single_results(results,
+                                                                                self.parent.run_window.mergingstats_tab.dataset_name,
+                                                                                sizex, sizey, interactive=False)
+    self.parent.run_window.mergingstats_tab.redraw_windows = True
+
 # ------------------------------- Main Window -------------------------------- #
 
 class MainWindow(wx.Frame):
@@ -949,6 +1022,7 @@ class MainWindow(wx.Frame):
     self.spotfinder_sentinel = None
     self.runstats_sentinel = None
     self.unitcell_sentinel = None
+    self.mergingstats_sentinel = None
 
     self.params = load_cached_settings()
     self.db = None
@@ -1041,9 +1115,10 @@ class MainWindow(wx.Frame):
     self.stop_run_sentinel()
     self.stop_job_sentinel()
     self.stop_job_monitor()
-    self.stop_spotfinder_sentinel()
+    #self.stop_spotfinder_sentinel()
     self.stop_runstats_sentinel()
     self.stop_unitcell_sentinel()
+    self.stop_mergingstats_sentinel()
 
   def start_run_sentinel(self):
     self.run_sentinel = RunSentinel(self, active=True)
@@ -1133,6 +1208,18 @@ class MainWindow(wx.Frame):
         self.unitcell_sentinel.join()
     self.run_window.unitcell_light.change_status('off')
 
+  def start_mergingstats_sentinel(self):
+    self.mergingstats_sentinel = MergingStatsSentinel(self, active=True)
+    self.mergingstats_sentinel.start()
+    self.run_window.mergingstats_light.change_status('on')
+
+  def stop_mergingstats_sentinel(self, block = True):
+    if self.mergingstats_sentinel is not None and self.mergingstats_sentinel.active:
+      self.mergingstats_sentinel.active = False
+      if block:
+        self.mergingstats_sentinel.join()
+    self.run_window.mergingstats_light.change_status('off')
+
   def OnAboutBox(self, e):
     ''' About dialog '''
     info = wx.AboutDialogInfo()
@@ -1212,8 +1299,15 @@ class MainWindow(wx.Frame):
       if self.unitcell_sentinel is None or not self.unitcell_sentinel.active:
         self.start_unitcell_sentinel()
         self.run_window.unitcell_light.change_status('on')
-    elif name == self.run_window.merge_tab.name:
-      self.run_window.merge_tab.find_trials()
+    elif name == self.run_window.datasets_tab.name:
+      self.run_window.datasets_tab.refresh_datasets()
+    elif name == self.run_window.mergingstats_tab.name:
+      self.run_window.mergingstats_tab.refresh_datasets()
+      if self.mergingstats_sentinel is None or not self.mergingstats_sentinel.active:
+        self.start_mergingstats_sentinel()
+        self.run_window.mergingstats_light.change_status('on')
+    #elif name == self.run_window.merge_tab.name:
+    #  self.run_window.merge_tab.find_trials()
 
   def onLeavingTab(self, e):
     name = self.run_window.main_nbook.GetPageText((self.run_window.main_nbook.GetSelection()))
@@ -1240,6 +1334,10 @@ class MainWindow(wx.Frame):
       if self.unitcell_sentinel.active:
         self.stop_unitcell_sentinel(block = False)
         self.run_window.unitcell_light.change_status('off')
+    elif name == self.run_window.mergingstats_tab.name:
+      if self.mergingstats_sentinel.active:
+        self.stop_mergingstats_sentinel(block = False)
+        self.run_window.mergingstats_light.change_status('off')
 
 
   def onQuit(self, e):
@@ -1263,28 +1361,34 @@ class RunWindow(wx.Panel):
     #self.spotfinder_tab = SpotfinderTab(self.main_nbook, main=self.parent) # Disabled
     self.runstats_tab = RunStatsTab(self.main_nbook, main=self.parent)
     self.unitcell_tab = UnitCellTab(self.main_nbook, main=self.parent)
-    self.merge_tab = MergeTab(self.main_nbook, main=self.parent)
+    self.datasets_tab = DatasetTab(self.main_nbook, main=self.parent)
+    #self.merge_tab = MergeTab(self.main_nbook, main=self.parent)
+    self.mergingstats_tab = MergingStatsTab(self.main_nbook, main=self.parent)
     self.main_nbook.AddPage(self.runs_tab, self.runs_tab.name)
     self.main_nbook.AddPage(self.trials_tab, self.trials_tab.name)
     self.main_nbook.AddPage(self.jobs_tab, self.jobs_tab.name)
     #self.main_nbook.AddPage(self.spotfinder_tab, self.spotfinder_tab.name) # Disabled
     self.main_nbook.AddPage(self.runstats_tab, self.runstats_tab.name)
     self.main_nbook.AddPage(self.unitcell_tab, self.unitcell_tab.name)
-    self.main_nbook.AddPage(self.merge_tab, self.merge_tab.name)
+    self.main_nbook.AddPage(self.datasets_tab, self.datasets_tab.name)
+    #self.main_nbook.AddPage(self.merge_tab, self.merge_tab.name)
+    self.main_nbook.AddPage(self.mergingstats_tab, self.mergingstats_tab.name)
 
     self.sentinel_box = wx.FlexGridSizer(1, 6, 0, 20)
     self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
     self.job_light = gctr.SentinelStatus(self.main_panel, label='Job Sentinel')
     self.jmn_light = gctr.SentinelStatus(self.main_panel, label='Job Monitor')
-    self.spotfinder_light = gctr.SentinelStatus(self.main_panel, label='Spotfinder Sentinel')
+    #self.spotfinder_light = gctr.SentinelStatus(self.main_panel, label='Spotfinder Sentinel')
     self.runstats_light = gctr.SentinelStatus(self.main_panel, label='Run Stats Sentinel')
     self.unitcell_light = gctr.SentinelStatus(self.main_panel, label='Unit Cell Sentinel')
+    self.mergingstats_light = gctr.SentinelStatus(self.main_panel, label='Merging Stats Sentinel')
     self.sentinel_box.Add(self.run_light)
     self.sentinel_box.Add(self.job_light)
     self.sentinel_box.Add(self.jmn_light)
-    self.sentinel_box.Add(self.spotfinder_light)
+    #self.sentinel_box.Add(self.spotfinder_light)
     self.sentinel_box.Add(self.runstats_light)
     self.sentinel_box.Add(self.unitcell_light)
+    self.sentinel_box.Add(self.mergingstats_light)
 
     nb_sizer = wx.BoxSizer(wx.VERTICAL)
     nb_sizer.Add(self.main_nbook, 1, flag=wx.EXPAND | wx.ALL, border=3)
@@ -1513,13 +1617,16 @@ class JobsTab(BaseTab):
     self.data = {}
 
     self.job_list = gctr.SortableListCtrl(self, style=wx.LC_REPORT|wx.BORDER_SUNKEN)
-    self.job_list.InsertColumn(0, "Trial")
-    self.job_list.InsertColumn(1, "Run")
-    self.job_list.InsertColumn(2, "Block")
-    self.job_list.InsertColumn(3, "Subm ID")
-    self.job_list.InsertColumn(4, "Status")
+    self.job_list.InsertColumn(0, "Job")
+    self.job_list.InsertColumn(1, "Type")
+    self.job_list.InsertColumn(2, "Dataset")
+    self.job_list.InsertColumn(3, "Trial")
+    self.job_list.InsertColumn(4, "Run")
+    self.job_list.InsertColumn(5, "Block")
+    self.job_list.InsertColumn(6, "Subm ID")
+    self.job_list.InsertColumn(7, "Status")
 
-    self.job_list_sort_flag = [0, 0, 0, 0, 0]
+    self.job_list_sort_flag = [0, 0, 0, 0, 0, 0, 0, 0]
     self.job_list_col = 0
 
     self.trial_choice = gctr.ChoiceCtrl(self,
@@ -1581,10 +1688,9 @@ class JobsTab(BaseTab):
 
     from xfel.ui.components.submission_tracker import JobStopper
     stopper = JobStopper(self.main.params.mp.method)
-    for trial in self.all_jobs:
-      for job in self.all_jobs[trial]:
-        if job.id in jobs_to_stop:
-          stopper.stop_job(job.submission_id)
+    for job in self.all_jobs:
+      if job.id in jobs_to_stop:
+        stopper.stop_job(job.submission_id)
 
   def onDeleteJob(self, e):
     if self.all_jobs is None:
@@ -1607,10 +1713,9 @@ class JobsTab(BaseTab):
     if (msg.ShowModal() == wx.ID_NO):
       return
 
-    for trial in self.all_jobs:
-      for job in self.all_jobs[trial]:
-        if job.id in jobs_to_delete:
-          job.delete()
+    for job in self.all_jobs:
+      if job.id in jobs_to_delete:
+        job.delete()
 
   def onRestartJob(self, e):
     if self.all_jobs is None:
@@ -1633,14 +1738,13 @@ class JobsTab(BaseTab):
     if (msg.ShowModal() == wx.ID_NO):
       return
 
-    for trial in self.all_jobs:
-      for job in self.all_jobs[trial]:
-        if job.id in jobs_to_restart:
-          job.delete()
-          if job.status != "DELETED":
-            print("Couldn't restart job", job.id, "job is not deleted")
-            continue
-          job.remove_from_db()
+    for job in self.all_jobs:
+      if job.id in jobs_to_restart:
+        job.delete()
+        if job.status != "DELETED":
+          print("Couldn't restart job", job.id, "job is not deleted")
+          continue
+        job.remove_from_db()
 
   def onMonitorJobs(self, e):
     # Find new trials
@@ -1654,7 +1758,7 @@ class JobsTab(BaseTab):
     if e.jobs is not None:
       self.all_jobs = e.jobs
       if str(self.filter).lower() == 'all jobs':
-        selected_trials = e.jobs.keys() # iterator OK in Py3
+        selected_trials = [int(t) for t in self.all_trials]
       else:
         selected_trials = [int(self.filter.split()[-1])]
 
@@ -1665,36 +1769,43 @@ class JobsTab(BaseTab):
         focused_job_id = None
 
       self.data = {} # reset contents of the table, with unique row ids
-      for selected_trial in selected_trials:
-        jobs = e.jobs[selected_trial]
-        for job in jobs:
-          short_status = str(job.status).strip("'")
-          if short_status == "SUBMIT_FAIL":
-            short_status = "S_FAIL"
-          elif short_status == "SUBMITTED":
-            short_status = "SUBMIT"
-          t = "t%03d" % job.trial.trial
-          try:
-            r = "r%04d" % int(job.run.run)
-          except ValueError:
-            r = "r%s" % job.run.run
-          rg = "rg%03d" % job.rungroup.id
-          sid = str(job.submission_id)
-          s = short_status
-          self.data[job.id] = [t, r, rg, sid, s]
-          found_it = False
-          # Look to see if item already in list
-          for i in range(self.job_list.GetItemCount()):
-            if self.job_list.GetItemData(i) == job.id:
-              self.job_list.SetStringItem(i, 3, sid)
-              self.job_list.SetStringItem(i, 4, s)
-              found_it = True
-              break
-          if found_it: continue
+      for job in e.jobs:
+        if job.trial is not None:
+          if job.trial.trial not in selected_trials: continue
 
-          # Item not present, so deposit the row in the table
-          local_job_id = self.job_list.Append([t, r, rg, sid, s])
-          self.job_list.SetItemData(local_job_id, job.id)
+        # Order: job, type, dataset, trial, run, rungroup, submission id, status
+        j = str(job.id)
+        jt = job.task.type if job.task is not None else "-"
+        ds = job.dataset.name if job.dataset is not None else "-"
+        t = "t%03d" % job.trial.trial if job.trial is not None else "-"
+        try:
+          r = "r%04d" % int(job.run.run) if job.run is not None else "-"
+        except ValueError:
+          r = "r%s" % job.run.run
+        rg = "rg%03d" % job.rungroup.id if job.rungroup is not None else "-"
+        sid = str(job.submission_id)
+
+        short_status = str(job.status).strip("'")
+        if short_status == "SUBMIT_FAIL":
+          short_status = "S_FAIL"
+        elif short_status == "SUBMITTED":
+          short_status = "SUBMIT"
+        s = short_status
+
+        self.data[job.id] = [j, jt, ds, t, r, rg, sid, s]
+        found_it = False
+        # Look to see if item already in list
+        for i in range(self.job_list.GetItemCount()):
+          if self.job_list.GetItemData(i) == job.id:
+            for k, item in enumerate(self.data[job.id]):
+              self.job_list.SetStringItem(i, k, item)
+            found_it = True
+            break
+        if found_it: continue
+
+        # Item not present, so deposit the row in the table
+        local_job_id = self.job_list.Append(self.data[job.id])
+        self.job_list.SetItemData(local_job_id, job.id)
 
       # Remove items not sent in the event or otherwise filtered out
       # Need to do it in reverse order to avoid list re-ordering when deleting items
@@ -2322,7 +2433,6 @@ class RunStatsTab(SpotfinderTab):
           for p in image_paths]
         self.dump_timestamps(params, ts_list, shot_paths)
 
-
 class UnitCellTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
@@ -2538,6 +2648,186 @@ class UnitCellTab(BaseTab):
       self.unit_cell_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
       self.unit_cell_panel.SetSizer(self.unit_cell_sizer)
       self.unit_cell_panel.Layout()
+
+class DatasetTab(BaseTab):
+  def __init__(self, parent, main):
+    BaseTab.__init__(self, parent=parent)
+    self.name = 'Datasets'
+
+    self.main = main
+
+    self.show_active_only = False
+
+    self.dataset_panel = ScrolledPanel(self, size=(200, 200))
+    self.dataset_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.dataset_panel.SetSizer(self.dataset_sizer)
+
+    self.btn_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.btn_sizer.AddGrowableCol(0)
+    self.btn_add_dataset = wx.Button(self, label='New Dataset', size=(120, -1))
+    self.btn_active_only = wx.ToggleButton(self,
+                                           label='Show Only Active Datasets',
+                                    size=(180, self.btn_add_dataset.GetSize()[1]))
+    self.btn_sizer.Add(self.btn_active_only, flag=wx.ALIGN_RIGHT)
+    self.btn_sizer.Add(self.btn_add_dataset)
+
+    self.main_sizer.Add(self.dataset_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.btn_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Bindings
+    self.Bind(wx.EVT_BUTTON, self.onAddDataset, self.btn_add_dataset)
+    self.Bind(wx.EVT_TOGGLEBUTTON, self.onActiveOnly, self.btn_active_only)
+
+    #self.refresh_datasets()
+
+  def refresh_datasets(self):
+    self.dataset_sizer.Clear(deleteWindows=True)
+    self.all_datasets = self.main.db.get_all_datasets()
+    for dataset in self.all_datasets:
+      if self.show_active_only:
+        if dataset.active:
+          self.add_dataset(dataset=dataset)
+      else:
+        self.add_dataset(dataset=dataset)
+
+    self.dataset_panel.SetSizer(self.dataset_sizer)
+    self.dataset_sizer.Layout()
+    self.dataset_panel.SetupScrolling(scrollToTop=False)
+
+  def add_dataset(self, dataset):
+    new_dataset = DatasetPanel(self.dataset_panel,
+                           db=self.main.db,
+                           dataset=dataset)
+    new_dataset.chk_active.SetValue(dataset.active)
+    new_dataset.refresh_dataset()
+    self.dataset_sizer.Add(new_dataset, flag=wx.EXPAND | wx.ALL, border=10)
+
+  def onAddDataset(self, e):
+    new_dataset_dlg = dlg.DatasetDialog(self, db=self.main.db)
+    new_dataset_dlg.Fit()
+
+    if new_dataset_dlg.ShowModal() == wx.ID_OK:
+      self.refresh_datasets()
+
+  def onActiveOnly(self, e):
+    self.show_active_only = self.btn_active_only.GetValue()
+    self.refresh_datasets()
+
+class MergingStatsTab(BaseTab):
+  def __init__(self, parent, main):
+    BaseTab.__init__(self, parent=parent)
+    self.name = 'Merging stats'
+
+    self.main = main
+    self.all_datasets = []
+    self.dataset_versions = []
+    self.png = None
+    self.static_bitmap = None
+    self.redraw_windows = True
+
+    self.tab_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+    self.datasets_panel = wx.Panel(self, size=(240, 120))
+    self.datasets_box = wx.StaticBox(self.datasets_panel, label='Select dataset')
+    self.datasets_sizer = wx.StaticBoxSizer(self.datasets_box, wx.VERTICAL)
+    self.datasets_panel.SetSizer(self.datasets_sizer)
+
+    self.datasets = wx.ListBox(self.datasets_panel,
+                               size=(220, 100))
+    self.datasets_sizer.Add(self.datasets, flag=wx.EXPAND | wx.ALL, border = 5)
+
+    self.chk_active = wx.CheckBox(self.datasets_panel, label='Active only')
+    self.chk_active.SetValue(True)
+    self.datasets_sizer.Add(self.chk_active, flag=wx.EXPAND | wx.ALL, border = 5)
+
+    self.dataset_version = gctr.ChoiceCtrl(self.datasets_panel,
+                                           label='Dataset version:',
+                                           label_size=(120, -1),
+                                           label_style='normal',
+                                           ctrl_size=(100, -1),
+                                           choices=[])
+    self.datasets_sizer.Add(self.dataset_version, flag=wx.EXPAND | wx.ALL, border = 5)
+
+    self.plots_panel = wx.Panel(self, size=(200, 120))
+    self.mergingstats_panelsize = self.plots_panel.GetSize()
+    self.plots_box = wx.StaticBox(self.plots_panel, label='Statistics')
+    self.plots_sizer = wx.StaticBoxSizer(self.plots_box, wx.VERTICAL)
+    self.plots_panel.SetSizer(self.plots_sizer)
+
+    self.tab_sizer.Add(self.datasets_panel, 0,
+                       flag=wx.ALIGN_LEFT | wx.EXPAND, border=10)
+    self.tab_sizer.Add(self.plots_panel, 1,
+                       flag=wx.EXPAND | wx.ALL, border=0)
+    self.main_sizer.Add(self.tab_sizer, 1,
+                        flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.Bind(wx.EVT_LISTBOX, self.onSelectDataset, self.datasets)
+    self.Bind(wx.EVT_CHOICE, self.onVersionChoice, self.dataset_version.ctr)
+    self.Bind(EVT_MERGINGSTATS_REFRESH, self.onRefresh)
+    self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
+    self.Bind(wx.EVT_SIZE, self.OnSize)
+
+  def OnSize(self, e):
+    self.mergingstats_panelsize = self.plots_panel.GetSize()
+    e.Skip()
+
+  def onToggleActivity(self, e):
+    self.refresh_datasets()
+
+  def refresh_datasets(self):
+    self.datasets.Clear()
+    self.all_datasets = self.main.db.get_all_datasets()
+    if self.chk_active.GetValue():
+      self.all_datasets = [d for d in self.all_datasets if d.active]
+    for dataset in self.all_datasets:
+      self.datasets.Append(dataset.name)
+    self.refresh_dataset()
+
+  def onVersionChoice(self, e):
+    self.refresh_stats()
+
+  def onSelectDataset(self, e):
+    self.refresh_dataset()
+
+  def refresh_dataset(self):
+    self.dataset_version.ctr.Clear()
+    sel = self.datasets.GetSelection()
+    if sel < 0: return
+    try:
+      dataset = self.all_datasets[sel]
+    except IndexError:
+      pass
+    else:
+      self.dataset_version.ctr.Append('All')
+      for version in dataset.versions:
+        self.dataset_version.ctr.Append(str(version.version))
+      self.dataset_version.ctr.SetSelection(0)
+      self.refresh_stats()
+
+  def refresh_stats(self):
+    sel = self.datasets.GetSelection()
+    dataset = self.all_datasets[sel]
+    self.dataset_name = dataset.name
+    if self.dataset_version.ctr.GetSelection() == 0:
+      self.dataset_versions = [version.output_path() for version in dataset.versions]
+    else:
+      version = dataset.versions[self.dataset_version.ctr.GetSelection()-1]
+      self.dataset_name += " v%03d"%version.version
+      self.dataset_versions = [version.output_path()]
+
+  def onRefresh(self, e):
+    self.plot_merging_stats()
+
+  def plot_merging_stats(self):
+    if self.png is not None:
+      if self.static_bitmap is not None:
+        self.static_bitmap.Destroy()
+      img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
+      self.static_bitmap = wx.StaticBitmap(
+        self.plots_panel, wx.ID_ANY, wx.BitmapFromImage(img))
+      self.plots_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
+      self.plots_panel.SetSizer(self.plots_sizer)
+      self.plots_panel.Layout()
 
 class MergeTab(BaseTab):
 
@@ -3034,6 +3324,129 @@ class TrialPanel(wx.Panel):
     if (rblock_dlg.ShowModal() == wx.ID_OK):
       wx.CallAfter(self.refresh_trial)
     rblock_dlg.Destroy()
+
+class DatasetPanel(wx.Panel):
+  ''' A scrolled panel that contains dataset and task controls '''
+
+  def __init__(self, parent, db, dataset, box_label=""):
+    wx.Panel.__init__(self, parent=parent, size=(270, 200))
+
+    self.db = db
+    self.dataset = dataset
+    self.parent = parent
+
+    self.dataset_box = wx.StaticBox(self, label=box_label)
+    self.main_sizer = wx.StaticBoxSizer(self.dataset_box, wx.VERTICAL)
+
+    self.task_panel = ScrolledPanel(self, size=(150, 180))
+    self.task_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.task_panel.SetSizer(self.task_sizer)
+    self.one_task_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.add_panel = wx.Panel(self)
+    self.add_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.add_panel.SetSizer(self.add_sizer)
+
+    # Add "New task" button to a separate sizer (so it is always on bottom)
+    self.btn_add_task = wx.Button(self.add_panel, label='New Task',
+                                   size=(200, -1))
+    self.btn_select_tasks = wx.Button(self.add_panel, label='Select Tasks',
+                                       size=(200, -1))
+    self.btn_edit_dataset = wx.BitmapButton(self.add_panel,
+                                            bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
+    self.chk_active = wx.CheckBox(self.add_panel, label='Active Dataset')
+    self.chk_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.chk_sizer.Add(self.btn_edit_dataset)
+    self.chk_sizer.Add(self.chk_active, flag=wx.EXPAND)
+
+    self.add_sizer.Add(self.btn_add_task,
+                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
+                       border=10)
+    self.add_sizer.Add(self.btn_select_tasks,
+                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
+                       border=10)
+    self.add_sizer.Add(self.chk_sizer,
+                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_LEFT,
+                       border=10)
+
+    self.main_sizer.Add(self.task_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.add_panel, flag=wx.ALL | wx.ALIGN_BOTTOM, border=5)
+
+    # Bindings
+    self.Bind(wx.EVT_BUTTON, self.onAddTask, self.btn_add_task)
+    self.Bind(wx.EVT_BUTTON, self.onSelectTasks, self.btn_select_tasks)
+    self.Bind(wx.EVT_BUTTON, self.onEditDataset, self.btn_edit_dataset)
+    self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
+
+    self.SetSizer(self.main_sizer)
+
+  def onToggleActivity(self, e):
+    if self.chk_active.GetValue():
+      self.dataset.active = True
+    else:
+      self.dataset.active = False
+
+  def onAddTask(self, e):
+    task_dlg = dlg.TaskDialog(self, dataset=self.dataset,
+                                    db=self.db)
+    task_dlg.Fit()
+
+    if (task_dlg.ShowModal() == wx.ID_OK):
+      self.refresh_dataset()
+    task_dlg.Destroy()
+
+  def onSelectTasks(self, e):
+    tasksel_dlg = dlg.SelectTasksDialog(self, dataset=self.dataset,
+                                           db=self.db)
+    tasksel_dlg.Fit()
+
+    if (tasksel_dlg.ShowModal() == wx.ID_OK):
+      self.refresh_dataset()
+    tasksel_dlg.Destroy()
+
+  def refresh_dataset(self):
+    self.dataset_box.SetLabel('Dataset {} {}'.format(self.dataset.dataset_id,
+                               self.dataset.name[:min(len(self.dataset.name), 10)]
+                               if self.dataset.name is not None else ""))
+    self.task_sizer.DeleteWindows()
+    tags = self.dataset.tags
+    if tags:
+      tags_text = "Tags: " + ",".join([t.name for t in tags])
+    else:
+      tags_text = "No tags selected"
+    label = wx.StaticText(self.task_panel, label = tags_text)
+    self.task_sizer.Add(label,
+                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
+                        border=5)
+    for task in self.dataset.tasks:
+      self.draw_task_button(task)
+    self.task_panel.Layout()
+    self.task_panel.SetupScrolling(scrollToTop=False)
+
+  def draw_task_button(self, task):
+    ''' Add new run block button '''
+    new_task = gctr.TaskCtrl(self.task_panel, task=task)
+    self.Bind(wx.EVT_BUTTON, self.onTaskOptions, new_task.new_task)
+    self.task_sizer.Add(new_task,
+                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
+                        border=5)
+
+  def onTaskOptions(self, e):
+    ''' Open dialog and change task options '''
+    task = e.GetEventObject().task
+    task_dlg = dlg.TaskDialog(self, task=task,
+                                    db=self.db)
+    task_dlg.Fit()
+
+    if (task_dlg.ShowModal() == wx.ID_OK):
+      wx.CallAfter(self.refresh_dataset)
+    task_dlg.Destroy()
+
+  def onEditDataset(self, e):
+    new_dataset_dlg = dlg.DatasetDialog(self, db=self.db, dataset=self.dataset, new=False)
+    new_dataset_dlg.Fit()
+
+    if new_dataset_dlg.ShowModal() == wx.ID_OK:
+      self.refresh_dataset()
 
 class RunEntry(wx.Panel):
   ''' Adds run row to table, with average and view buttons'''

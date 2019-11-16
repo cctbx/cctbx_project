@@ -60,6 +60,12 @@ input {
   }
 }
 
+mp {
+  method = *mpi
+    .type = choice
+    .help = Muliprocessing method (only mpi at present)
+}
+
 filter
   .help = The filter section defines criteria to accept or reject whole experiments
   .help = or to modify the entire experiment by a reindexing operator

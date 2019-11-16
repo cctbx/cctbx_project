@@ -193,8 +193,7 @@ class construct_reflection_table_and_experiment_list(object):
     name = os.path.basename(self.pickle).split(".pickle")[0]
     expt_name = int_pickle_to_filename(name, "idx-", ".expt")
     experiments = os.path.join(loc, expt_name)
-    dumper = experiment_list.ExperimentListDumper(self.experiment_list)
-    dumper.as_json(experiments)
+    self.experiment_list.as_file(experiments)
 
   # construct the reflection table
   def refl_table_maker(self):

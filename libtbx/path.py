@@ -42,8 +42,11 @@ def posix_relpath(
   return op.join(*rel_list)
 
 def nt_is_true_abs(path):
-  prefix, _ = op.splitunc(path)
-  if (bool(prefix)): return True
+  try: # splitunc is removed in Python 3.7,
+    prefix, _ = op.splitunc(path)
+    if (bool(prefix)): return True
+  except AttributeError:
+    pass
   prefix, _ = op.splitdrive(path)
   return bool(prefix)
 
@@ -62,8 +65,11 @@ def nt_relpath(
   start_abs = abs_norm(start)
   path_abs = abs_norm(path)
   def _abspath_split(abs):
-    prefix, rest = op.splitunc(abs)
-    is_unc = bool(prefix)
+    try: # splitunc is removed in Python 3.7
+      prefix, rest = op.splitunc(abs)
+      is_unc = bool(prefix)
+    except AttributeError:
+      is_unc = False
     if not is_unc:
       prefix, rest = op.splitdrive(abs)
     rest_list = []

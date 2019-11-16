@@ -8,9 +8,11 @@ from xfel.ui.db.trial import Trial
 from xfel.ui.db.run import Run
 from xfel.ui.db.rungroup import Rungroup
 from xfel.ui.db.tag import Tag
-from xfel.ui.db.job import Job
+from xfel.ui.db.job import Job, JobFactory
 from xfel.ui.db.stats import Stats
 from xfel.ui.db.experiment import Cell, Bin, Isoform, Event
+from xfel.ui.db.dataset import Dataset, DatasetVersion
+from xfel.ui.db.task import Task
 
 from xfel.ui.db import get_db_connection
 from six.moves import range
@@ -22,7 +24,9 @@ from xfel.command_line.experiment_manager import initialize as initialize_base
 class initialize(initialize_base):
   expected_tables = ["run", "job", "rungroup", "trial", "tag", "run_tag", "event", "trial_rungroup",
                      "imageset", "imageset_event", "beam", "detector", "experiment",
-                     "crystal", "cell", "cell_bin", "bin", "isoform", "rungroup_run"]
+                     "crystal", "cell", "cell_bin", "bin", "isoform", "rungroup_run",
+                     "dataset", "dataset_version", "dataset_version_job", "dataset_tag",
+                     "dataset_task", "task"]
 
   def __getattr__(self, prop):
     if prop == "dbobj":
@@ -191,6 +195,50 @@ class initialize(initialize_base):
         for column_name, column_type in zip(column_names, column_types):
           query = "ALTER TABLE `%s_bin` MODIFY COLUMN %s %s"%(self.params.experiment_tag, column_name, column_type)
           cursor.execute(query)
+
+      # Maintain backwards compatibility with SQL tables v4: 11/06/19
+      query = "SHOW columns FROM `%s_job`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'dataset_id' not in column_names:
+        print("Upgrading to version 5 of mysql database schema")
+        query = "ALTER TABLE `%s_job` DROP PRIMARY KEY, ADD PRIMARY KEY (`id`)"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` MODIFY COLUMN run_id INT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` MODIFY COLUMN rungroup_id INT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` MODIFY COLUMN trial_id INT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` ADD COLUMN task_id INT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` ADD COLUMN dataset_id INT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = """
+        ALTER TABLE `%s_job`
+          ADD CONSTRAINT `fk_job_task1`
+            FOREIGN KEY (`task_id`)
+            REFERENCES `%s`.`%s_task` (`id`)
+            ON DELETE NO ACTION
+            ON UPDATE NO ACTION
+        """%(self.params.experiment_tag, self.params.db.name, self.params.experiment_tag)
+        cursor.execute(query)
+        query = """
+        ALTER TABLE `%s_job`
+          ADD CONSTRAINT `fk_job_dataset1`
+            FOREIGN KEY (`dataset_id`)
+            REFERENCES `%s`.`%s_dataset` (`id`)
+            ON DELETE NO ACTION
+            ON UPDATE NO ACTION
+        """%(self.params.experiment_tag, self.params.db.name, self.params.experiment_tag)
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` ADD INDEX `fk_job_task1_idx` (`task_id` ASC)"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` ADD INDEX `fk_job_dataset1_idx` (`dataset_id` ASC)"%self.params.experiment_tag
+        cursor.execute(query)
+
     return tables_ok
 
   def set_up_columns_dict(self, app):
@@ -203,11 +251,14 @@ class initialize(initialize_base):
     return columns_dict
 
 class db_application(object):
-  def __init__(self, params):
+  def __init__(self, params, cache_connection = False):
     self.params = params
     self.dbobj = None
+    self.cache_connection = cache_connection
 
   def execute_query(self, query, commit = False):
+    from MySQLdb import OperationalError
+
     if self.params.db.verbose:
       from time import time
       st = time()
@@ -218,11 +269,10 @@ class db_application(object):
     sleep_time = 0.1
     while retry_count < retry_max:
       try:
-        if self.dbobj is None or not commit:
+        if self.dbobj is None or (not commit and not self.cache_connection):
           self.dbobj = dbobj = get_db_connection(self.params)
         else:
           dbobj = self.dbobj
-        dbobj = get_db_connection(self.params)
         cursor = dbobj.cursor()
         cursor.execute(query)
         if commit:
@@ -250,8 +300,8 @@ class db_application(object):
     raise Sorry("Couldn't execute MYSQL query. Too many reconnects. Query: %s"%query)
 
 class xfel_db_application(db_application):
-  def __init__(self, params, drop_tables = False, verify_tables = False):
-    super(xfel_db_application, self).__init__(params)
+  def __init__(self, params, drop_tables = False, verify_tables = False, cache_connection = False):
+    super(xfel_db_application, self).__init__(params, cache_connection)
     self.query_count = 0
     dbobj = get_db_connection(params)
     self.init_tables = initialize(params, dbobj) # only place where a connection is held
@@ -464,7 +514,7 @@ class xfel_db_application(db_application):
       sub_items = []
     sub_table_names = ["%s_%s"%(self.params.experiment_tag, i[1]) for i in sub_items]
     for i, sub_item in enumerate(sub_items):
-      scls, sname = sub_item
+      scls, sname, required = sub_item
       columns.extend(["%s.%s"%(sname, c) for c in self.columns_dict[sub_table_names[i]]])
       columns.append("%s.id"%sname)
 
@@ -474,8 +524,12 @@ class xfel_db_application(db_application):
 
     # Join statements to bring in the sub tables
     for i, sub_item in enumerate(sub_items):
-      scls, sname = sub_item
-      query += " JOIN `%s` %s ON %s.id = %s.%s_id"% (
+      scls, sname, required = sub_item
+      if required:
+        join = " JOIN "
+      else:
+        join = " LEFT OUTER JOIN " # allows nulls
+      query += join + "`%s` %s ON %s.id = %s.%s_id"% (
         sub_table_names[i], sname, sname, name, sname)
 
     if where is not None:
@@ -483,12 +537,14 @@ class xfel_db_application(db_application):
     cursor = self.execute_query(query)
 
     results = []
+    sub_ds = {sub_item[1]:(sub_item[0], {}) for sub_item in sub_items}
+    sub_reqds = {sub_item[1]:sub_item[2] for sub_item in sub_items}
+
     for row in cursor.fetchall():
       # Each row will be a complete item and sub items in column form. Assemble one
       # dictionary (d) for the main item and a dictionary of dictionaries (sub_ds)
       # for each of the sub items
       d = {}
-      sub_ds = {sub_item[1]:(sub_item[0], {}) for sub_item in sub_items}
       for key, value in zip(columns, row):
         n, c = key.split('.') # nickname n, column name c
         if n == name:
@@ -502,6 +558,9 @@ class xfel_db_application(db_application):
       results.append(cls(self, **d)) # instantiate the main class
       for sub_d_n, sub_d in six.iteritems(sub_ds):
         _id = sub_d[1].pop("id")
+        if _id is None:
+          assert not sub_reqds[sub_d_n]
+          continue
         sub_d[1]["%s_id"%sub_d_n] = _id
         setattr(results[-1], sub_d_n, sub_d[0](self, **sub_d[1])) # instantiate the sub items
     return results
@@ -643,18 +702,23 @@ class xfel_db_application(db_application):
 
     self.delete_x(tag, tag_id)
 
-  def create_job(self, **kwargs):
-    return Job(self, **kwargs)
+  # Replaced by JobFactory in job.py
+  #def create_job(self, **kwargs):
+  #  return Job(self, **kwargs)
 
   def get_job(self, job_id):
-    return Job(self, job_id)
+    return JobFactory.from_args(self, job_id)
 
-  def get_all_jobs(self, active = False):
+  def get_all_jobs(self, active = False, where = None):
     if active:
-      where = "WHERE trial.active = True AND rungroup.active = True"
-    else:
-      where = None
-    return self.get_all_x_with_subitems(Job, "job", sub_items = [(Trial, 'trial'), (Run, 'run'), (Rungroup, 'rungroup')], where = where)
+      if where is None:
+        where = ""
+      where += " WHERE (trial.active = True AND rungroup.active = True) OR dataset.active = True"
+    return self.get_all_x_with_subitems(JobFactory.from_args, "job", sub_items = [(Trial, 'trial', False),
+                                                                                  (Run, 'run', False),
+                                                                                  (Rungroup, 'rungroup', False),
+                                                                                  (Task, 'task', False),
+                                                                                  (Dataset, 'dataset', False)], where = where)
 
   def delete_job(self, job = None, job_id = None):
     assert [job, job_id].count(None) == 1
@@ -702,6 +766,74 @@ class xfel_db_application(db_application):
 
   def get_stats(self, **kwargs):
     return Stats(self, **kwargs)
+
+  def create_dataset(self, **kwargs):
+    return Dataset(self, **kwargs)
+
+  def get_dataset(self, dataset_id):
+    return Dataset(self, dataset_id)
+
+  def get_all_datasets(self):
+    return self.get_all_x(Dataset, "dataset")
+
+  def get_dataset_tasks(self, dataset_id):
+    tag = self.params.experiment_tag
+    query = """SELECT d_t.task_id FROM `%s_dataset_task` d_t
+               WHERE d_t.dataset_id = %d""" % (tag, dataset_id)
+    cursor = self.execute_query(query)
+    task_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    if len(task_ids) == 0:
+      return []
+    return self.get_all_x(Task, "task", where = "WHERE task.id IN (%s)"%",".join(task_ids))
+
+  def create_dataset_version(self, **kwargs):
+    return DatasetVersion(self, **kwargs)
+
+  def get_dataset(self, dataset_version_id):
+    return Dataset(self, dataset_version_id)
+
+  def get_dataset_versions(self, dataset_id, latest = False):
+    tag = self.params.experiment_tag
+    if latest:
+      query = """SELECT MAX(dv.id) FROM `%s_dataset_version` dv
+                 WHERE dv.dataset_id = %d"""%(tag, dataset_id)
+      cursor = self.execute_query(query)
+      rows = cursor.fetchall()
+      if not rows: return []
+      if rows[0][0] is None: return []
+      dataset_version_ids = [i[0] for i in rows]
+      if not dataset_version_ids : return []
+      assert len(dataset_version_ids) == 1
+      where = "WHERE dataset_version.id = %d"%dataset_version_ids[0]
+    else:
+      where = "WHERE dataset_version.dataset_id = %d"%dataset_id
+    return self.get_all_x_with_subitems(DatasetVersion, "dataset_version", where = where, sub_items=[(Dataset, "dataset", True)])
+
+  def get_dataset_version_jobs(self, dataset_version_id):
+    tag = self.params.experiment_tag
+    query = """SELECT dvj.job_id FROM `%s_dataset_version_job` dvj
+               WHERE dvj.dataset_version_id = %d""" % (tag, dataset_version_id)
+    cursor = self.execute_query(query)
+    job_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    if len(job_ids) == 0:
+      return []
+    return self.get_all_jobs(where = "WHERE job.id IN (%s)"%",".join(job_ids))
+
+  def get_dataset_tags(self, dataset_id):
+    tag = self.params.experiment_tag
+    query = """SELECT d_t.tag_id FROM `%s_dataset_tag` d_t
+               WHERE d_t.dataset_id = %d""" % (tag, dataset_id)
+    cursor = self.execute_query(query)
+    tag_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    if len(tag_ids) == 0:
+      return []
+    return self.get_all_x(Tag, "tag", where = "WHERE tag.id IN (%s)"%",".join(tag_ids))
+
+  def create_task(self, **kwargs):
+    return Task(self, **kwargs)
+
+  def get_task(self, task_id):
+    return Task(self, task_id)
 
 # Deprecated, but preserved here in case it proves useful later
 """

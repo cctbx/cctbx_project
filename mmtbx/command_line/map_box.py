@@ -222,16 +222,31 @@ master_phil = libtbx.phil.parse("""
     .type = ints
     .help = Lower bounds for cut out box. You can specify them directly.\
             NOTE: lower and upper bounds refer to grid points after shifting \
-            the map to place the origin at (0,0,0).
+            the map to place the origin at (0,0,0). To refer to absolute \
+            values specify bounds_are_absolute=True.
     .short_caption = Lower bounds
 
   upper_bounds = None
     .type = ints
     .help = Upper bounds for cut out box.  You can specify them directly.\
             NOTE: lower and upper bounds refer to grid points after shifting \
-            the map to place the origin at (0,0,0).
+            the map to place the origin at (0,0,0). To refer to absolute \
+            values specify bounds_are_absolute=True.
     .short_caption = Upper bounds
 
+  bounds_are_absolute = False
+    .type = bool
+    .help = Define lower and upper bounds as absolute. \
+            NOTE: lower and upper bounds refer to grid points after shifting \
+            the map to place the origin at (0,0,0). To refer to absolute \
+            values specify bounds_are_absolute=True.
+    .short_caption = Bounds are absolute
+
+  zero_outside_original_map = False
+    .type = bool
+    .help = If bounds for new map are outside original map, zero all points\
+             outside of original map
+    .short_caption = Zero outside original map
   keep_map_size = False
     .type=bool
     .help = Keep original map gridding (do not cut anything out). \
@@ -289,6 +304,12 @@ master_phil = libtbx.phil.parse("""
     .type = path
     .help = As output_origin_grid_units, but use origin from this file
     .short_caption = File with origin info
+
+  bounds_match_this_file = None
+    .type = path
+    .help = Take the lower and upper bounds from this map file and apply them \
+             to the input map file.
+    .short_caption = File with bounds to match
 
   output_external_origin = None
     .type = floats
@@ -407,7 +428,7 @@ Parameters:"""%h
   if(len(inputs.pdb_file_names)!=1 and not params.density_select and not
     params.mask_select and not
     pdb_hierarchy and not params.keep_map_size and not params.upper_bounds
-     and not params.extract_unique):
+     and not params.extract_unique and not params.bounds_match_this_file):
     raise Sorry("PDB file is needed unless extract_unique, "+
       "density_select, mask_select, keep_map_size \nor bounds are set .")
   if (len(inputs.pdb_file_names)!=1 and not pdb_hierarchy and \
@@ -455,18 +476,39 @@ Parameters:"""%h
     params.output_format=remove_element(params.output_format,element='mtz')
 
 
-  if params.output_origin_match_this_file:
-
-    af = any_file(params.output_origin_match_this_file)
-    if (af.file_type == 'ccp4_map'):
-      origin=af.file_content.data.origin()
-      params.output_origin_grid_units=origin
-      print("Origin of (%s,%s,%s) taken from %s" %(
-         origin[0],origin[1],origin[2],params.output_origin_match_this_file))
+  if params.output_origin_match_this_file or params.bounds_match_this_file:
+    if params.output_origin_match_this_file:
+      fn=params.output_origin_match_this_file
+      if params.bounds_match_this_file:
+        raise Sorry("Cannot match origin and bounds at same time")
+    else:
+      fn=params.bounds_match_this_file
     if not params.ccp4_map_file:
       raise Sorry(
-       "Need to specify ccp4_map_file=xxx if you use "+
-           "output_origin_match_this_file=xxxx")
+       "Need to specify your input file with ccp4_map_file=xxx if you use "+
+        "output_origin_match_this_file=xxxx or bounds_match_this_file=xxxx")
+
+    af = any_file(fn)
+    if (af.file_type == 'ccp4_map'):
+      origin=af.file_content.data.origin()
+      if params.output_origin_match_this_file:
+        params.output_origin_grid_units=origin
+        print("Origin of (%s,%s,%s) taken from %s" %(
+           origin[0],origin[1],origin[2],fn))
+      else:
+        all=af.file_content.data.all()
+        params.lower_bounds=origin
+        print("Lower bounds of (%s,%s,%s) taken from %s" %(
+           params.lower_bounds[0],params.lower_bounds[1],
+             params.lower_bounds[2],fn))
+        params.upper_bounds=list(col(origin)+col(all)-col((1,1,1)))
+        print("upper bounds of (%s,%s,%s) taken from %s" %(
+           params.upper_bounds[0],params.upper_bounds[1],
+            params.upper_bounds[2],fn))
+        params.bounds_are_absolute=True
+    else:
+      raise Sorry("Unable to interpret %s as map file" %(fn))
+
   if params.output_origin_grid_units is not None and params.keep_origin:
     params.keep_origin=False
     print("Setting keep_origin=False as output_origin_grid_units is set")
@@ -692,6 +734,8 @@ Parameters:"""%h
     restrict_map_size     = params.restrict_map_size,
     lower_bounds          = params.lower_bounds,
     upper_bounds          = params.upper_bounds,
+    bounds_are_absolute   = params.bounds_are_absolute,
+    zero_outside_original_map   = params.zero_outside_original_map,
     extract_unique        = params.extract_unique,
     target_ncs_au_file    = params.target_ncs_au_file,
     regions_to_keep       = params.regions_to_keep,

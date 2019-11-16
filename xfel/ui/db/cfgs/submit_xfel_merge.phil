@@ -1,16 +1,16 @@
 # Phil template for experiment manager
-dry_run = {dry_run}
+dry_run = False
 input {{
   run_num = {run_num}
   trial = {trial}
   rungroup = {rungroup}
+  task = {task}
   dispatcher = {dispatcher}
   target = {target}
-  locator = {locator}
 }}
 output {{
   output_dir = {output_dir}
-  split_logs = True
+  split_logs = False
 }}
 mp {{
   method = {method}
@@ -22,12 +22,4 @@ mp {{
   htcondor {{
     executable_path = {htcondor_executable_path}
   }}
-}}
-experiment_tag = {experiment_tag}
-db {{
-  host = {host}
-  name = {dbname}
-  user = {user}
-  password = {password}
-  port = {port}
 }}

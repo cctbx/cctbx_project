@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-import os
 from libtbx import easy_run
 from six.moves import range
 
@@ -85,8 +84,8 @@ HETATM   18 FE4  SF4 A  84       2.046  10.381   7.746  1.00  3.04          Fe
         }
 
 links = {
-  'linking_test_F3S.pdb' : [0,3], # 3 bonds from F3S to SGs
-  'linking_test_SF4.pdb' : [0,4],
+  'linking_test_F3S.pdb' : [3,3], # 3 bonds from F3S to SGs
+  'linking_test_SF4.pdb' : [4,4],
   }
 
 def run_and_test(cmd, pdb, i):

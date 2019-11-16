@@ -6,6 +6,7 @@ from cctbx.array_family import flex
 from scitbx.math import superpose
 from mmtbx.conformation_dependent_library import mcl_sf4_coordination
 from six.moves import range
+from mmtbx.conformation_dependent_library import metal_coordination_library
 
 def get_pdb_hierarchy_from_restraints(code):
   from mmtbx.monomer_library import server
@@ -45,41 +46,73 @@ def get_pdb_hierarchy_from_restraints(code):
 
 def update(grm,
            pdb_hierarchy,
-           link_records=None,
+           # link_records=None,
            log=sys.stdout,
            verbose=False,
            ):
-  # SF4
-  rc = mcl_sf4_coordination.get_sulfur_iron_cluster_coordination(
-    pdb_hierarchy=pdb_hierarchy,
-    nonbonded_proxies=grm.pair_proxies(
-      sites_cart=pdb_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
-    verbose=verbose,
-  )
-  if link_records is None: link_records={}
-  link_records.setdefault('LINK', [])
-  bproxies, aproxies = mcl_sf4_coordination.get_all_proxies(rc)
-  if len(bproxies):
-    print("  SF4/F3S coordination", file=log)
-    atoms = pdb_hierarchy.atoms()
-    sf4_coordination = {}
-    for bp in bproxies:
-      sf4_ag = atoms[bp.i_seqs[0]].parent()
-      sf4_coordination.setdefault(sf4_ag.id_str(), [])
-      sf4_coordination[sf4_ag.id_str()].append((atoms[bp.i_seqs[0]],
-                                                atoms[bp.i_seqs[1]]))
-      link = (atoms[bp.i_seqs[0]], atoms[bp.i_seqs[1]], 'x,y,z')
-      if link not in link_records: link_records['LINK'].append(link)
-    for sf4, aas in sorted(sf4_coordination.items()):
-      print('    %s' % sf4, file=log)
-      for aa in sorted(aas):
-        print('       %s - %s' % (aa[0].id_str(), aa[1].id_str()), file=log)
-    print(file=log)
-  grm.add_new_bond_restraints_in_place(
-    proxies=bproxies,
-    sites_cart=pdb_hierarchy.atoms().extract_xyz(),
-  )
-  grm.add_angles_in_place(aproxies)
+  # if link_records is None: link_records={}
+  # link_records.setdefault('LINK', [])
+  hooks = [
+    ["Iron sulfur cluster coordination",
+     mcl_sf4_coordination.get_sulfur_iron_cluster_coordination,
+     mcl_sf4_coordination.get_all_proxies,
+      ],
+    ['Zn2+ tetrahedral coordination',
+     metal_coordination_library.get_metal_coordination_proxies,
+     metal_coordination_library.get_proxies,
+      ],
+    ]
+  outl = ''
+  for label, get_coordination, get_all_proxies in hooks:
+    rc = get_coordination(
+      pdb_hierarchy=pdb_hierarchy,
+      nonbonded_proxies=grm.pair_proxies(
+        sites_cart=pdb_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
+      verbose=verbose,
+    )
+    bproxies, aproxies = get_all_proxies(rc)
+    if bproxies is None: continue
+    if len(bproxies):
+      outl += '    %s\n' % label
+      atoms = pdb_hierarchy.atoms()
+      sf4_coordination = {}
+      for bp in bproxies:
+        sf4_ag = atoms[bp.i_seqs[0]].parent()
+        sf4_coordination.setdefault(sf4_ag.id_str(), [])
+        sf4_coordination[sf4_ag.id_str()].append((atoms[bp.i_seqs[0]],
+                                                  atoms[bp.i_seqs[1]]))
+        # link = (atoms[bp.i_seqs[0]], atoms[bp.i_seqs[1]], 'x,y,z')
+        # if link not in link_records: link_records['LINK'].append(link)
+      for sf4, aas in sorted(sf4_coordination.items()):
+        outl += '%spdb="%s"\n' % (' '*6, sf4)
+        for aa in sorted(aas):
+          outl += '%s%s - %s\n' % (' '*8, aa[0].id_str(), aa[1].id_str())
+    if bproxies:
+      grm.add_new_bond_restraints_in_place(
+        proxies=bproxies,
+        sites_cart=pdb_hierarchy.atoms().extract_xyz(),
+      )
+    #
+    done = []
+    remove = []
+    for i, angle in enumerate(aproxies):
+      i_seqs = list(angle.i_seqs)
+      i_seqs.sort()
+      if i_seqs in done:
+        remove.append(i)
+      else:
+        done.append(i_seqs)
+    if remove:
+      remove.reverse()
+      for r in remove:
+        del aproxies[r]
+    #
+    if aproxies:
+      outl += '%s%s' % (' '*6, 'Number of angles added : %d' % len(aproxies))
+    grm.add_angles_in_place(aproxies)
+  if outl:
+    print('  Dynamic metal coordination', file=log)
+    print(outl, file=log)
 
 def _extract_sites_cart(ag, element=None):
   selection = []

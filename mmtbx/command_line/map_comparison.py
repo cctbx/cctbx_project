@@ -53,6 +53,15 @@ options
     .type = float
     .short_caption = Resolution gridding factor
     .help = Determines grid spacing in map
+  shift_origin = False
+    .type = bool
+    .short_caption = Shift origin(s) to (0,0,0)
+    .help = Shift origin if necessary
+  contour_to_match = None
+    .type = float
+    .short_caption = Contour to match
+    .help = Contour level in map1 to match in map2 by volume equalization.
+
 }
 """, process_includes=True)
 
@@ -83,6 +92,19 @@ def show_citation(out=sys.stdout):
   A. Urzhumtsev, P. V. Afonine, V. Y. Lunin, T. C. Terwilliger and P. D. Adams"""
   print(msg, file=out)
   print("-"*79, file=out)
+def match_contour_level(m1=None,m2=None,
+       contour_to_match=None,results=None):
+  # just find map value in m2 that is bigger than same number of grid points
+  #   as contour_to_match is for m1
+  s=(m1>=contour_to_match)
+  from cctbx.maptbx.segment_and_split_map import find_threshold_in_map
+  contour_in_map_2=find_threshold_in_map(target_points=s.count(True),
+         map_data=m2)
+  s2=(m2>=contour_in_map_2)
+  results['matching_contour']=contour_in_map_2
+  results['v1']=s.count(True)/s.size()
+  results['v2']=s2.count(True)/s2.size()
+  return results
 
 # =============================================================================
 def run(args, out=sys.stdout, validated=False):
@@ -211,11 +233,32 @@ def run(args, out=sys.stdout, validated=False):
   else:
     m1 = maps[0].file_object.map_data()
     m2 = maps[1].file_object.map_data()
+    if params.options.shift_origin:
+      m1.shift_origin()
+      m2.shift_origin()
 
   # ---------------------------------------------------------------------------
   # analyze maps
   assert ( (m1 is not None) and (m2 is not None) )
+  results=dict()
+  results['map_files'] = None
+  results['map_statistics'] = None
+  results['cc_input_maps'] = None
+  results['cc_quantile'] = None
+  results['cc_peaks'] = None
+  results['discrepancies'] = None
+  results['map_histograms'] = None
 
+  if params.options.contour_to_match:
+    match_contour_level(m1=m1,m2=m2,
+       contour_to_match=params.options.contour_to_match,
+        results=results)
+    print ("Contour level map 1: %.4f (fractional volume of %.3f ) " %(
+       params.options.contour_to_match,results['v1']),\
+       "\nmatches enclosed volume of "+\
+       "contour level map 2 of : %.4f (volume %.3f )" %(
+       results['matching_contour'],results['v2']),file=out)
+    return results
   # show general statistics
   s1 = maptbx.more_statistics(m1)
   s2 = maptbx.more_statistics(m2)

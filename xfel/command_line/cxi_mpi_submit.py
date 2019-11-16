@@ -108,6 +108,12 @@ phil_str = '''
       .type = str
       .help = Locator file needed for cctbx.xfel.process and dials.stills_process to find \
               the XTC streams
+    task = None
+      .type = int
+      .help = Optional task number, meaning the dispatcher is working on previously \
+              processed data from this run. In this case, the trial folder is not \
+              created and task is used as a folder within the trial folder to save \
+              the output.
   }
   output {
     output_dir = "."
@@ -198,6 +204,107 @@ def copy_target(target, dest_dir, root_name):
       num_sub_targets += 1
     f.write(line)
 
+def get_trialdir(output_dir, run_num, trial = None, rungroup = None, task = None):
+    try:
+      rundir = os.path.join(output_dir, "r%04d"%int(run_num))
+    except ValueError:
+      rundir = os.path.join(output_dir, run_num)
+
+    if not os.path.exists(output_dir):
+       os.makedirs(output_dir)
+
+    if not os.path.exists(rundir):
+      os.mkdir(rundir)
+
+    # If a trial number wasn't included, find the next available, up to 999 trials
+    if trial is None:
+      found_one = False
+      for i in range(1000):
+        trialdir = os.path.join(rundir, "%03d"%i)
+        if rungroup is not None:
+          trialdir += "_rg%03d"%rungroup
+        if not os.path.exists(trialdir):
+          found_one = True
+          break
+      if found_one:
+        trial = i
+      else:
+        raise Sorry("All trial numbers in use")
+    else:
+      trialdir = os.path.join(rundir, "%03d"%trial)
+      if rungroup is not None:
+        trialdir += "_rg%03d"%rungroup
+      if os.path.exists(trialdir) and task is None:
+        raise Sorry("Trial %d already in use"%trial)
+
+    if not os.path.exists(trialdir):
+      os.mkdir(trialdir)
+
+    if task is not None:
+      trialdir = os.path.join(trialdir, "task%03d"%task)
+      if os.path.exists(trialdir):
+        raise Sorry("Task %d already exists"%task)
+      os.mkdir(trialdir)
+    return trial, trialdir
+
+def get_submission_id(result, method):
+  if method == "mpi" or method == "lsf":
+    submission_id = None
+    for line in result.stdout_lines:
+      # example for lsf: 'Job <XXXXXX> is submitted to queue <YYYYYYY>.'
+      if len(line.split()) < 2: continue
+      s = line.split()[1].lstrip('<').rstrip('>')
+      try:
+        s = int(s)
+      except ValueError:
+        pass
+      else:
+        submission_id = str(s)
+    print(submission_id)
+    return submission_id
+  elif method == 'pbs':
+    submission_id = "".join(result.stdout_lines).strip()
+    print(submission_id)
+    return submission_id
+  elif method == 'slurm':
+    return result.stdout_lines[0].split()[-1].strip()
+  elif method == 'htcondor':
+    return result.stdout_lines[-1].split()[-1].rstrip('.')
+
+def do_submit(command, submit_path, stdoutdir, mp_params, job_name, dry_run=False):
+  submit_command = get_submit_command_chooser(command, submit_path, stdoutdir, mp_params, job_name=job_name)
+  if mp_params.method in ['lsf', 'sge', 'pbs']:
+    parts = submit_command.split(" ")
+    script = open(parts.pop(-1), "rb")
+    run_command = script.read().split("\n")[-2]
+    command = " ".join(parts + [run_command])
+  else:
+    command = submit_command
+  print(command)
+  submit_command = str(submit_command) # unicode workaround
+
+  if dry_run:
+    print("Dry run: job not submitted. Trial directory created here:", os.path.dirname(submit_path))
+    print("Execute this command to submit the job:")
+    print(submit_command)
+  elif mp_params.method == 'local':
+    submission_id = os.fork()
+    if submission_id > 0:
+      return submission_id
+    else:
+      stdout = os.open(os.path.join(stdoutdir, 'log.out'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stdout, 1)
+      stderr = os.open(os.path.join(stdoutdir, 'log.err'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stderr, 2)
+      os.execv(command.split()[0], command.split())
+  else:
+    try:
+      result = easy_run.fully_buffered(command=submit_command)
+      result.raise_if_errors()
+    except Exception as e:
+      if not "Warning: job being submitted without an AFS token." in str(e):
+        raise e
+
+    return get_submission_id(result, mp_params.method)
+
 class Script(object):
   """ Script to submit XFEL data for processing"""
   def __init__(self):
@@ -217,7 +324,9 @@ class Script(object):
     user_phil = []
     dispatcher_args = []
     for arg in argv:
-      if (os.path.isfile(arg)):
+      if arg.endswith(".h5"):
+        dispatcher_args.append(arg)
+      elif (os.path.isfile(arg)):
         try:
           user_phil.append(parse(file_name=arg))
         except Exception as e:
@@ -237,43 +346,12 @@ class Script(object):
       # processing XTC streams at LCLS -- dispatcher will locate raw data
       assert params.input.experiment is not None or params.input.locator is not None
       print("Submitting run %d of experiment %s"%(int(params.input.run_num), params.input.experiment))
-      rundir = os.path.join(params.output.output_dir, "r%04d"%int(params.input.run_num))
     else:
       print("Submitting run %s"%(params.input.run_num))
-      try:
-        rundir = os.path.join(params.output.output_dir, "r%04d"%int(params.input.run_num))
-      except ValueError:
-        rundir = os.path.join(params.output.output_dir, params.input.run_num)
 
-    if not os.path.exists(params.output.output_dir):
-       os.makedirs(params.output.output_dir)
-
-    if not os.path.exists(rundir):
-      os.mkdir(rundir)
-
-    # If a trial number wasn't included, find the next available, up to 999 trials
-    if params.input.trial is None:
-      found_one = False
-      for i in range(1000):
-        trialdir = os.path.join(rundir, "%03d"%i)
-        if params.input.rungroup is not None:
-          trialdir += "_rg%03d"%params.input.rungroup
-        if not os.path.exists(trialdir):
-          found_one = True
-          break
-      if found_one:
-        params.input.trial = i
-      else:
-        raise Sorry("All trial numbers in use")
-    else:
-      trialdir = os.path.join(rundir, "%03d"%params.input.trial)
-      if params.input.rungroup is not None:
-        trialdir += "_rg%03d"%params.input.rungroup
-      if os.path.exists(trialdir):
-        raise Sorry("Trial %d already in use"%params.input.trial)
-
+    trial, trialdir = get_trialdir(params.output.output_dir, params.input.run_num, params.input.trial, params.input.rungroup, params.input.task)
+    params.input.trial = trial
     print("Using trial", params.input.trial)
-    os.mkdir(trialdir)
 
     # log file will live here
     stdoutdir = os.path.join(trialdir, "stdout")
@@ -344,15 +422,19 @@ class Script(object):
       locator_file = os.path.join(trialdir, "data.loc")
       shutil.copyfile(params.input.locator, locator_file)
       data_str += locator_file
+
+    from xfel.ui import known_dials_dispatchers
+    if params.input.dispatcher in known_dials_dispatchers:
+      import importlib
+      dispatcher_params = importlib.import_module(known_dials_dispatchers[params.input.dispatcher]).phil_scope.extract()
+    else:
+      dispatcher_params = None
+
     if params.input.experiment is None:
-      from xfel.ui import known_dials_dispatchers
-      if params.input.dispatcher in known_dials_dispatchers:
-        import importlib
-        dispatcher_params = importlib.import_module(known_dials_dispatchers[params.input.dispatcher]).phil_scope.extract()
-        if hasattr(dispatcher_params, 'input') and hasattr(dispatcher_params.input, 'trial'):
-          assert hasattr(dispatcher_params.input, 'run_num')
-          data_str += " input.trial=%s input.run_num=%s" % ( # pass along for logging
-            params.input.trial, params.input.run_num)
+      if hasattr(dispatcher_params, 'input') and hasattr(dispatcher_params.input, 'trial'):
+        assert hasattr(dispatcher_params.input, 'run_num')
+        data_str += " input.trial=%s input.run_num=%s" % ( # pass along for logging
+          params.input.trial, params.input.run_num)
     else:
       data_str += " input.trial=%s input.experiment=%s input.run_num=%s" % (
         params.input.trial, params.input.experiment, params.input.run_num)
@@ -363,7 +445,7 @@ class Script(object):
     if params.input.target is not None:
       extra_str += " %s" % params.input.target
 
-    if params.input.rungroup is not None:
+    if hasattr(dispatcher_params, 'input') and hasattr(dispatcher_params.input, 'rungroup') and params.input.rungroup is not None:
       data_str += " input.rungroup=%d" % params.input.rungroup
 
     command = "%s %s output.output_dir=%s %s %s" % (
@@ -373,57 +455,9 @@ class Script(object):
 
     job_name = "r%s"%params.input.run_num
 
-    submit_command = get_submit_command_chooser(command, submit_path, stdoutdir, params.mp, job_name=job_name)
-    if params.mp.method in ['lsf', 'sge', 'pbs']:
-      parts = submit_command.split(" ")
-      script = open(parts.pop(-1), "rb")
-      run_command = script.read().split("\n")[-2]
-      command = " ".join(parts + [run_command])
-    else:
-      command = submit_command
-    print(command)
-
-    if params.dry_run:
-      print("Dry run: job not submitted. Trial directory created here:", trialdir)
-      print("Execute this command to submit the job:")
-      print(submit_command)
-    elif params.mp.method == 'local':
-      submission_id = os.fork()
-      if submission_id > 0:
-        return submission_id
-      else:
-        stdout = os.open(os.path.join(stdoutdir, 'log.out'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stdout, 1)
-        stderr = os.open(os.path.join(stdoutdir, 'log.err'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stderr, 2)
-        os.execv(command.split()[0], command.split())
-    else:
-      try:
-        result = easy_run.fully_buffered(command=submit_command)
-        result.raise_if_errors()
-      except Exception as e:
-        if not "Warning: job being submitted without an AFS token." in str(e):
-          raise e
-
-      print("Job submitted.  Output in", trialdir)
-
-      if params.mp.method == "mpi" or params.mp.method == "lsf":
-        submission_id = None
-        for line in result.stdout_lines:
-          # example for lsf: 'Job <XXXXXX> is submitted to queue <YYYYYYY>.'
-          if len(line.split()) < 2: continue
-          s = line.split()[1].lstrip('<').rstrip('>')
-          try:
-            s = int(s)
-          except ValueError:
-            pass
-          else:
-            submission_id = str(s)
-        print(submission_id)
-        return submission_id
-      elif params.mp.method == 'pbs':
-        submission_id = "".join(result.stdout_lines).strip()
-        print(submission_id)
-        return submission_id
-    return None
+    submission_id = do_submit(command, submit_path, stdoutdir, params.mp, job_name=job_name, dry_run=params.dry_run)
+    print("Job submitted.  Output in", trialdir)
+    return submission_id
 
 if __name__ == "__main__":
   script = Script()

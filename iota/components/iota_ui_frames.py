@@ -2441,6 +2441,7 @@ class ProcWindow(IOTABaseFrame):
     img_finder.start()
 
   def onFinishedProcess(self, e):
+    self.finding_images = False
     if not self.monitor_mode:
       self.finish_process()
 

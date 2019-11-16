@@ -4,12 +4,14 @@ from six.moves import range
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.xtc_dump
 #
+import errno
 import psana
 from xfel.cftbx.detector import cspad_cbf_tbx
 from xfel.cxi.cspad_ana import cspad_tbx, rayonix_tbx
 import os, sys
 import libtbx.load_env
 from libtbx.utils import Sorry, Usage
+from dials.util import show_mail_on_error
 from dials.util.options import OptionParser
 from libtbx.phil import parse
 from libtbx import easy_pickle
@@ -141,11 +143,13 @@ class Script(object):
       else:
         tmp_dir = os.path.join(params.output.tmp_output_dir, '.tmp')
       if not os.path.exists(tmp_dir):
-        try:
-          os.makedirs(tmp_dir)
-        except Exception as e:
-          if not os.path.exists(tmp_dir):
-            halraiser(e)
+        with show_mail_on_error():
+          try:
+            os.makedirs(tmp_dir)
+            # Can fail if running multiprocessed - that's OK if the folder was created
+          except OSError as e:  # In Python 2, a FileExistsError is just an OSError
+            if e.errno != errno.EEXIST:  # If this OSError is not a FileExistsError
+              raise
       os.environ['CBF_TMP_DIR'] = tmp_dir
 
     # Save the paramters
@@ -278,9 +282,6 @@ class Script(object):
     ds.end()
 
 if __name__ == "__main__":
-  from dials.util import halraiser
-  try:
+  with show_mail_on_error():
     script = Script()
     script.run()
-  except Exception as e:
-    halraiser(e)

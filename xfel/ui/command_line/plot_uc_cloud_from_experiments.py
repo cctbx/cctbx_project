@@ -4,6 +4,7 @@ from six.moves import range
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
+from dials.util import show_mail_on_error
 from libtbx.phil import parse
 
 help_message = """
@@ -121,9 +122,6 @@ class Script(object):
     plotter.plt.show()
 
 if __name__ == '__main__':
-  from dials.util import halraiser
-  try:
+  with show_mail_on_error():
     script = Script()
     script.run()
-  except Exception as e:
-    halraiser(e)

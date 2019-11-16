@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 # Script to convert the output from a joint refinement using dials.refine to a CSPAD
 # cbf header file. Note hardcoded distance of 100 isn't relevant for just a cbf header
 
+from dials.util import show_mail_on_error
 from dials.util.options import OptionParser
 from dials.util.options import flatten_experiments
 from xfel.cftbx.detector.cspad_cbf_tbx import write_cspad_cbf, map_detector_to_basis_dict
@@ -36,10 +37,7 @@ class Script(object):
     print("Done")
 
 if __name__ == '__main__':
-  from dials.util import halraiser
-  try:
+  with show_mail_on_error():
     script = Script()
     script.run()
-  except Exception as e:
-    halraiser(e)
 
