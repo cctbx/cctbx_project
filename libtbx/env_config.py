@@ -1258,7 +1258,10 @@ Wait for the command to finish, then try again.""" % vars())
     write_dispatcher_include(where="at_start")
     essentials = [("PYTHONPATH", self.pythonpath)]
     essentials.append((self.ld_library_path_var_name(), [self.lib_path]))
-    essentials.append(("PATH", [self.bin_path]))
+    bin_path = [self.bin_path]
+    if self.build_options.use_conda:
+      bin_path.append(self.as_relocatable_path(get_conda_prefix()) / 'Library' / 'bin')
+    essentials.append(("PATH", bin_path))
     for n,v in essentials:
       if (len(v) == 0): continue
       v = ';'.join([ op.join('%LIBTBX_BUILD%', p.relocatable) for p in v ])
@@ -2645,15 +2648,18 @@ def get_boost_library_with_python_version(name, libpath):
   for p in libpath:
     name_version = name + version
     if sys.platform == 'win32':
-      full_name = os.path.join(p, name_version + '.dll')
+      full_names = [os.path.join(p, name_version + '.dll'),
+                    os.path.join(p, name_version + '.lib')]
     else:
       full_name = os.path.join(p, 'lib' + name_version)
       if sys.platform == 'darwin':
         full_name += '.dylib'
       else:
         full_name += '.so'
-    if os.path.isfile(full_name):
-      return name_version
+      full_names = [full_name]
+    for full_name in full_names:
+      if os.path.isfile(full_name):
+        return name_version
   return name
 
 if (__name__ == "__main__"):
