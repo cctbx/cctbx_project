@@ -5,7 +5,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 10/31/2019
+Last Changed: 11/15/2019
 Description : IOTA GUI Windows / frames
 '''
 
@@ -1965,7 +1965,7 @@ class ProcWindow(IOTABaseFrame):
     self.monitor_mode = False
     self.monitor_mode_timeout = None
     self.timeout_start = None
-    self.find_new_images = self.monitor_mode
+    self.find_new_images = False
     self.finding_images = False
     self.start_object_finder = True
     self.plotter_time = []
@@ -2076,6 +2076,7 @@ class ProcWindow(IOTABaseFrame):
     if self.gparams.gui.monitor_mode:
       self.toolbar.ToggleTool(self.tb_btn_monitor.GetId(), True)
       self.monitor_mode = True
+      self.find_new_images = True
       if self.gparams.gui.monitor_mode_timeout:
         if self.gparams.gui.monitor_mode_timeout_length is None:
           self.monitor_mode_timeout = 30
@@ -2390,22 +2391,13 @@ class ProcWindow(IOTABaseFrame):
   def monitor_filesystem(self):
     # Check if all images have been looked at; if yes, finish process
     if self.monitor_mode:
-      self.get_images_from_filesystem()
-
       if self.new_images:
         self.status_txt.SetLabel(
           'Found {} new images'.format(len(self.new_images)))
         self.timeout_start = None
         self.state = 'new images'
         self.info.update_input_list(new_input=self.new_images)
-
-        print ('\n*** debug: FOUND NEW IMAGES! ***')
-        print ('debug: new images: ')
-        for i in self.new_images: print (i)
-        print
-        print ('debug: unproc: ')
-        for i in self.info.unprocessed: print (i)
-
+        self.new_images = []
         self.info.export_json()
         self.process_images()
       else:
@@ -2418,12 +2410,16 @@ class ProcWindow(IOTABaseFrame):
               self.status_txt.SetLabel('Timed out. Finishing...')
               self.finish_process()
             else:
-              timeout_msg = 'No images found! Timing out in {} seconds' \
+              timeout_msg = 'No new images found! Timing out in {} seconds' \
                             ''.format(
                 int(self.monitor_mode_timeout - interval))
               self.status_txt.SetLabel(timeout_msg)
         else:
           self.status_txt.SetLabel('No new images found! Waiting ...')
+
+        if self.find_new_images:
+          self.get_images_from_filesystem()
+
     else:
       self.status_txt.SetLabel('Wrapping up ...')
       # interrupt long-running PRIME thread
@@ -2437,9 +2433,7 @@ class ProcWindow(IOTABaseFrame):
       self.finish_process()
 
   def get_images_from_filesystem(self):
-    self.finding_images = True
-    self.status_txt.SetLabel('Looking for new images in {}'
-                             ''.format(self.gparams.input))
+    self.find_new_images = False
     img_finder = thr.ImageFinderThread(
       self,
       input=self.gparams.input,
@@ -2450,11 +2444,10 @@ class ProcWindow(IOTABaseFrame):
     self.finding_images = False
     if not self.monitor_mode:
       self.finish_process()
-    else:
-      self.find_new_images = True
 
   def onFinishedImageFinder(self, e):
     self.new_images = e.GetValue()
+    self.find_new_images = True
 
   def onFinishedObjectReader(self, info):
     # Read info object

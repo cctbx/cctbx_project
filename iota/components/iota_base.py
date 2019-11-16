@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/18/2018
-Last Changed: 10/31/2019
+Last Changed: 11/15/2019
 Description : IOTA base classes
 '''
 
@@ -593,10 +593,10 @@ class ProcInfo(object):
   def update_input_list(self, new_input=None):
     assert hasattr(self, 'input_list') and hasattr(self, 'categories')
     if new_input:
-      self.input_list = new_input
+      self.input_list += new_input
       self.unprocessed = []
-      for i in self.input_list:
-        idx = self.input_list.index(i) + 1
+      for i in new_input:
+        idx = new_input.index(i) + self.n_input_images
         if isinstance(i, str):
           path = i
           img_index = 0
