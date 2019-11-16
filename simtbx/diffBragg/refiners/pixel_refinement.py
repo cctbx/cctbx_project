@@ -24,6 +24,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
     def __init__(self):
         self.output_dir = None  # place to dump files
+        self.min_multiplicity = 3
         self.plot_fcell = False
         self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
         self.use_curvatures = False  # whether to use the curvatures

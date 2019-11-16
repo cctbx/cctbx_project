@@ -58,6 +58,7 @@ import warnings
 from copy import deepcopy
 from cxid9114.helpers import compare_with_ground_truth
 from cctbx import miller, sgtbx
+from cctbx.crystal import symmetry
 from IPython import embed
 
 warnings.filterwarnings("ignore")
@@ -134,6 +135,30 @@ class FatRefiner(PixelRefinement):
         self.num_positive_curvatures = 0
         self._panel_id = None
         self.symbol = "P43212"
+
+        sgi = sgtbx.space_group_info(self.symbol)
+        # FIXME: no hard coded unit cells!!!!
+        symm = symmetry(unit_cell=(79.1, 79.1, 38.4, 90, 90, 90), space_group_info=sgi)
+        miller_set = symm.build_miller_set(anomalous_flag=True, d_min=1.5, d_max=999)
+        self.binner = miller_set.setup_binner(d_max=999, d_min=2, n_bins=10)
+        bin_rng = list(self.binner.range_used())
+        self.res_bins = [self.binner.bin_d_min(i)
+                         for i in bin_rng]
+        _counts = self.binner.counts()
+        self.max_hkl_in_bin = [_counts[i] for i in bin_rng]
+
+        #hkl_resolution_bins = {}  # hkl vs resolution bin number
+        #hkls_with_assigned_bin = 0
+        #for i_bin in binner.range_used():
+        #    bin_hkl_selection = binner.selection(i_bin)
+        #    bin_hkls = miller_set.select(bin_hkl_selection)
+        #    for hkl in bin_hkls.indices():
+        #        assert not hkl in hkl_resolution_bins  # each hkl should be assigned a bin number only once
+        #        hkl_resolution_bins[hkl] = i_bin
+        #        hkls_with_assigned_bin += 1
+        #self.hkl_resolution_bins =
+        #embed()
+
         self._hacked_fcells = []
 
         self.pid_from_idx = {}
@@ -351,6 +376,7 @@ class FatRefiner(PixelRefinement):
 
             print("----loading fcell data")
             from collections import Counter
+            # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index
             self.hkl_frequency = Counter(hkl_totals)
 
             F = self.S.D.Fhkl  # initial values, this table is the high symm table expanded to P1
@@ -358,6 +384,7 @@ class FatRefiner(PixelRefinement):
             Fdata = Fdata.as_numpy_array()
             np.random.seed(12345)
             self._fix_list = []
+            self.watch_me_hkl = []
             if self.perturb_fcell is not None:
                 _p = self.perturb_fcell
                 F_is_zero = Fdata == 0
@@ -372,7 +399,11 @@ class FatRefiner(PixelRefinement):
                 nbad = 0
                 for i_fcell in range(self.n_global_fcell):
                     asu_hkl = self.asu_from_idx[i_fcell]
-                    fcell_val = Fmap2[asu_hkl]
+                    # if the min multiplicity is too low, leave as truth and dont refine..
+                    if self.hkl_frequency[i_fcell] < self.min_multiplicity:
+                        fcell_val = F.value_at_index(asu_hkl)
+                    else:
+                        fcell_val = Fmap2[asu_hkl]
                     self.x[self.fcell_xstart + i_fcell] = Fmap2[asu_hkl]
                     is_fixed = False
                     if self.log_fcells:
@@ -386,21 +417,31 @@ class FatRefiner(PixelRefinement):
                             raise ValueError("No negative Fcells can be refined!")
                         u = np_log(fcell_val)
                         self.x[self.fcell_xstart + i_fcell] = u
-                    # NOTE begin hackage intentional perturbation of a single Fcell
-                    if i_fcell in self._hacked_fcells:
-                        u = self.x[self.fcell_xstart + i_fcell]
-                        #v = np.random.uniform(4, 11)
-                        v = np.random.uniform(max(1e-10,u-0.1*u), u+0.1*u)
-                        if i_fcell in self._fix_list:
-                            v = u
-                        if not self.log_fcells:
-                            v = np_exp(v)
-                        # v = np.random.uniform( max(1e-10,u-0.05*u), u+0.05*u)
-                        # v = np.random.randint(4, 11)
-                        self.x[self.fcell_xstart + i_fcell] = v
-                        self.f_start[i_fcell] = v
-                    # NOTE end hackage
                     self.f_truth.append(F.value_at_index(asu_hkl))
+
+                # NOTE begin hackage intentional perturbation of a single Fcell
+                # choose a few hkls and perturb them extra and watch them refine...  (mostly for debugging)
+                n_watch = len(self._hacked_fcells)
+                i_fcell = -1
+                n_grabbed = 0
+                while n_grabbed < n_watch:
+                    i_fcell += 1
+                    if self.hkl_frequency[i_fcell] < self.min_multiplicity:
+                        continue
+                    n_grabbed += 1
+                    self.watch_me_hkl.append(i_fcell)
+                    u = self.x[self.fcell_xstart + i_fcell]
+                    #v = np.random.uniform(4, 11)
+                    v = np.random.uniform(max(1e-10,u-0.1*u), u+0.1*u)
+                    if i_fcell in self._fix_list:
+                        v = u
+                    if not self.log_fcells:
+                        v = np_exp(v)
+                    # v = np.random.uniform( max(1e-10,u-0.05*u), u+0.05*u)
+                    # v = np.random.randint(4, 11)
+                    self.x[self.fcell_xstart + i_fcell] = v
+                    self.f_start[i_fcell] = v
+                    # NOTE end hackage
 
                 if self.output_dir is not None:
                     np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)
@@ -419,31 +460,44 @@ class FatRefiner(PixelRefinement):
                     li = np.array(li)
                     # FIXME: no hardcoded unit cell parameters!
                     reso = 1 / np.sqrt((hi ** 2 + ki ** 2) / 79. / 79. + li ** 2 / 38. / 38.)
-                    bins = [999, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3.5, 3, 2.5, 2.25, 2, 0]
+                    #bins = [999, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3.5, 3, 2.5, 2.25, 2, 0]
+                    bins = self.res_bins
                     digs = np.digitize(reso, bins)-1
+                    assert self.n_global_fcell == len(digs)
                     n_bins = len(bins)-1
                     fobs = np.array(fobs)
                     r1_bins = []
                     CC_bins = []
+                    n_seen = []
+                    n_obs = []
+                    max_per = []
                     from scipy.stats import linregress
-                    for i in range(n_bins):
-                        pos = digs == i
+                    for i_bin in range(n_bins):
+                        max_per.append(self.max_hkl_in_bin[i_bin])
+                        pos = digs == i_bin
+                        above_multi = np.array([self.hkl_frequency[i_hkl] > self.min_multiplicity
+                                        for i_hkl in range(self.n_global_fcell)])
+                        pos = np.logical_and(pos, above_multi)
                         if not any(pos):
                             r1_bins.append(-1)
                             CC_bins.append(-2)
+                            n_seen.append(0)
+                            n_obs.append(0)
                             continue
+                        tot_obs = sum([self.hkl_frequency[i_pos] for i_pos, p in enumerate(pos) if p])
+                        n_obs.append(tot_obs)
+                        n_seen.append(sum(pos))
                         r1 = np.abs(fobs[pos] - ff[pos]).sum() / fobs[pos].sum()
                         r1_bins.append(r1)
                         l = linregress(fobs[pos], ff[pos])
                         CC_bins.append(l.rvalue)
 
                     bin_names = ["%.3f - %.3f" % (b1,b2) for b1, b2 in zip(bins[:-1], bins[1:])]
-                    return bin_names, r1_bins, CC_bins
+                    return bin_names, r1_bins, CC_bins, n_seen, n_obs, max_per
 
                 self.calc_R1_reso_bins = calc_R1_reso_bins
-                from IPython import embed
-                embed()
                 print("Initial R1 = %.4f" % self.init_R1)
+
             else:
                 for i_fcell in range(self.n_global_fcell):
                     asu_hkl = self.asu_from_idx[i_fcell]
@@ -477,7 +531,11 @@ class FatRefiner(PixelRefinement):
 
         if comm.rank != 0:
             self._fix_list = None
+            self.hkl_frequency= None
+            self.watch_me_hkl = None
         self._fix_list = comm.bcast(self._fix_list)
+        self.hkl_frequency = comm.bcast(self.hkl_frequency)
+        self.watch_me_hkl = comm.bcast(self.watch_me_hkl)
 
         rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
         if comm.rank == 0:
@@ -721,6 +779,8 @@ class FatRefiner(PixelRefinement):
                     #if self.FNAMES[self._i_shot] == '/global/project/projectdirs/lcls/dermen/d9114_sims/sadpaint/job5/realer_rank5_data858_fluence10473.h5.npz':
                     # continue
                     mill_idx = self.ASU[self._i_shot][i_spot]
+                    # Only refine me if Im above the threshold multiplicity
+                    multi = self.hkl_frequency[self.idx_from_asu[mill_idx]]
                     #if self.idx_from_asu[mill_idx] in self._fix_list:
                     #    continue  #FIXME, not sure why this arises, possibly due to mis-indexing (check by running proc_mpi using ground truth)!
 
@@ -868,21 +928,22 @@ class FatRefiner(PixelRefinement):
                         # origin_xpos = self.origin_xstart + self.idx_from_pid[self._panel_id]
                         # g[origin_xpos] += (S2*G2*self.detdist_deriv*one_minus_k_over_Lambda).sum()
 
-                    if self.refine_Fcell:
+                    if self.refine_Fcell and multi >= self.min_multiplicity:
+
                         xpos = self.fcell_xstart + self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
                         # NOTE hackage
-                        #if xpos - self.fcell_xstart in self._hacked_fcells and xpos not in self._fix_list:
-                        fcell = self.x[xpos]
-                        d = S2 * G2 * self.fcell_deriv
-                        if self.log_fcells:
-                            d *= np_exp(fcell)
-                        g[xpos] += self._grad_accumulate(d)
-                        if self.calc_curvatures:
-                            d2 = S2 * G2 * self.fcell_second_deriv
+                        if xpos - self.fcell_xstart in self.watch_me_hkl and xpos-self.fcell_xstart not in self._fix_list:
+                            fcell = self.x[xpos]
+                            d = S2 * G2 * self.fcell_deriv
                             if self.log_fcells:
-                                ex_fcell = np_exp(fcell)
-                                d2 = ex_fcell * d + ex_fcell * ex_fcell * d2
-                            self.curv[xpos] += self._curv_accumulate(d, d2)
+                                d *= np_exp(fcell)
+                            g[xpos] += self._grad_accumulate(d)
+                            if self.calc_curvatures:
+                                d2 = S2 * G2 * self.fcell_second_deriv
+                                if self.log_fcells:
+                                    ex_fcell = np_exp(fcell)
+                                    d2 = ex_fcell * d + ex_fcell * ex_fcell * d2
+                                self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_crystal_scale:
                         d = G2 * 2 * self.scale_fac * self.model_bragg_spots
@@ -938,8 +999,8 @@ class FatRefiner(PixelRefinement):
             self.tot_fcell_kludge = self._mpi_reduce_broadcast(self.num_Fcell_kludge)
             self.tot_neg_curv = 0
             self.neg_curv_shots = []
-            #if self.calc_curvatures:
-            #    self.tot_neg_curv = sum(self.curv < 0)
+            if self.calc_curvatures:
+                self.tot_neg_curv = sum(self.curv < 0)
             #    n_tot_shots = (self.n_total_params - self.n_global_params) / self.n_per_shot_params
             #    n_tot_shots = int(n_tot_shots)
             #    for i in range(n_tot_shots):
@@ -1209,9 +1270,11 @@ class FatRefiner(PixelRefinement):
             if self.log_fcells:
                 fobs = np_exp(fobs)
             R1 = self.calc_R1(fobs)
-            bin_names, Rbins, CCbins = self.calc_R1_reso_bins(fobs)
+            bin_names, Rbins, CCbins, seen_per, n_obs, max_per = self.calc_R1_reso_bins(fobs)
             R1_i = self.init_R1
-            stat_bins_str = tabulate(zip(bin_names, Rbins, CCbins), headers=["reso (Ang)", "R1", "pearsonR"],
+            ave = np.array(n_obs) / np.array(seen_per)
+            stat_bins_str = tabulate(zip(bin_names, Rbins, CCbins, seen_per, n_obs, max_per, ave),
+                    headers=["reso (Ang)", "R1", "pearsonR", "Refined hkl", "N spots", "Max hkl", "ave multiplicity"],
                                  tablefmt="orgtbl")
         else:
             stat_bins_str = "----STATS-------"
@@ -1222,7 +1285,7 @@ class FatRefiner(PixelRefinement):
         hacked_str = ""
         headers = ["hkl", "obs", "truth", "init", "multiplicity", "Curv", "Grad", "idx"]
         _data = []
-        for i in self._hacked_fcells:
+        for i in self.watch_me_hkl:  # self._hacked_fcells:
             xpos = self.fcell_xstart + i
             truth = self.f_truth[i]
             if self.log_fcells:
