@@ -2706,6 +2706,7 @@ def apply_sharpening(map_coeffs=None,
     target_scale_factors=None,
     f_array=None,phases=None,d_min=None,k_sharpen=None,
     b_blur_hires=None,
+    include_sharpened_map_coeffs=False,
     out=sys.stdout):
     if map_coeffs and f_array is None and phases is None:
       f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
@@ -2802,6 +2803,8 @@ def apply_sharpening(map_coeffs=None,
       crystal_symmetry=crystal_symmetry,
        n_real=n_real)
     mb=map_and_b_object(map_data=map_data,final_b_iso=actual_b_iso)
+    if include_sharpened_map_coeffs:
+      mb.sharpened_map_coeffs=sharpened_map_coeffs
     return mb
 
 def get_map_from_map_coeffs(map_coeffs=None,crystal_symmetry=None,
