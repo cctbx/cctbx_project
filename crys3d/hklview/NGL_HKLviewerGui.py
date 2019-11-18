@@ -1672,7 +1672,9 @@ if __name__ == '__main__':
       if "devmode" in e or "debug" in e:
         debugtrue = True
     if debugtrue:
+      # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
       sys.argv.append("--remote-debugging-port=9742")
+      sys.argv.append("--single-process")
 
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer()

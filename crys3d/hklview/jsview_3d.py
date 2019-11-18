@@ -237,6 +237,7 @@ class hklview_3d:
     self.binstrs = []
     self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
+    self.was_disconnected = False
     self.parent = None
     if kwds.has_key('parent'):
       self.parent = kwds['parent']
@@ -375,39 +376,40 @@ class hklview_3d:
         self.scene = self.HKLscenes[self.viewerparams.scene_id]
       self.DrawNGLJavaScript()
       msg = "Rendered %d reflections\n" % self.scene.points.size()
-      if has_phil_path(diff_phil, "fixorientation"):
-        self.fix_orientation(curphilparam.viewer.NGL.fixorientation)
-      if has_phil_path(diff_phil, "mouse_sensitivity"):
-        self.SetTrackBallRotateSpeed(curphilparam.viewer.NGL.mouse_sensitivity)
+      msg += self.set_volatile_params()
+    return msg, curphilparam
 
-      if curphilparam.viewer.slice_mode: # explicit slicing
-        if curphilparam.viewer.slice_axis=="h": hkl = [1,0,0]
-        if curphilparam.viewer.slice_axis=="k": hkl = [0,1,0]
-        if curphilparam.viewer.slice_axis=="l": hkl = [0,0,1]
+
+  def set_volatile_params(self):
+    msg = ""
+    if self.params.viewer.scene_id >=0:
+      self.fix_orientation(self.params.viewer.NGL.fixorientation)
+      self.SetTrackBallRotateSpeed(self.params.viewer.NGL.mouse_sensitivity)
+      if self.params.viewer.slice_mode: # explicit slicing
+        if self.params.viewer.slice_axis=="h": hkl = [1,0,0]
+        if self.params.viewer.slice_axis=="k": hkl = [0,1,0]
+        if self.params.viewer.slice_axis=="l": hkl = [0,0,1]
         self.clip_plane_hkl_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
-                         fixorientation = curphilparam.viewer.NGL.fixorientation)
-    if self.settings.inbrowser and not curphilparam.viewer.slice_mode:
+                         fixorientation = self.params.viewer.NGL.fixorientation)
+    if self.settings.inbrowser and not self.params.viewer.slice_mode:
       msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
                             friedel_mate= self.settings.expand_anomalous)
-
-    if curphilparam.clip_plane.clipwidth and not \
-      ( has_phil_path(diff_phil, "angle_around_vector") \
-      or has_phil_path(diff_phil, "bequiet") ):
-      if  curphilparam.clip_plane.is_real_space_frac_vec:
-        self.clip_plane_abc_vector(curphilparam.clip_plane.h, curphilparam.clip_plane.k,
-          curphilparam.clip_plane.l, curphilparam.clip_plane.hkldist,
-          curphilparam.clip_plane.clipwidth, curphilparam.viewer.NGL.fixorientation,
-          curphilparam.clip_plane.is_parallel)
+    if self.params.clip_plane.clipwidth and not \
+       self.params.clip_plane.angle_around_vector \
+      or self.params.clip_plane.bequiet:
+      if  self.params.clip_plane.is_real_space_frac_vec:
+        self.clip_plane_abc_vector(self.params.clip_plane.h, self.params.clip_plane.k,
+          self.params.clip_plane.l, self.params.clip_plane.hkldist,
+          self.params.clip_plane.clipwidth, self.params.viewer.NGL.fixorientation,
+          self.params.clip_plane.is_parallel)
       else:
-        self.clip_plane_hkl_vector(curphilparam.clip_plane.h, curphilparam.clip_plane.k,
-          curphilparam.clip_plane.l, curphilparam.clip_plane.hkldist,
-          curphilparam.clip_plane.clipwidth, curphilparam.viewer.NGL.fixorientation,
-          curphilparam.clip_plane.is_parallel)
-
-    msg += self.SetOpacities(curphilparam.viewer.NGL.bin_opacities )
-    if has_phil_path(diff_phil, "tooltip_alpha"):
-      self.set_tooltip_opacity()
-    return msg, curphilparam
+        self.clip_plane_hkl_vector(self.params.clip_plane.h, self.params.clip_plane.k,
+          self.params.clip_plane.l, self.params.clip_plane.hkldist,
+          self.params.clip_plane.clipwidth, self.params.viewer.NGL.fixorientation,
+          self.params.clip_plane.is_parallel)
+    msg += self.SetOpacities(self.params.viewer.NGL.bin_opacities )
+    self.set_tooltip_opacity()
+    return msg
 
 
   def set_miller_array(self, scene_id=None, merge=None, details=""):
@@ -1394,7 +1396,18 @@ function addDivBox(txt, t, l, w, h, bgcolour='rgba(255.0, 255.0, 255.0, 0.0)')
 // to enable websocket connection
 
 var pagename = location.pathname.substring(1);
-var mysocket = new WebSocket('ws://127.0.0.1:%s/');
+var mysocket;
+
+try
+{
+  mysocket = new WebSocket('ws://127.0.0.1:%s/');
+}
+catch(err)
+{
+  alert('JavaScriptError: ' + err.stack );
+  addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100.0, 100.0, 100.0, 0.0));
+}
+
 
 
 function WebsockSendMsg(msg)
@@ -1420,6 +1433,8 @@ function WebsockSendMsg(msg)
 mysocket.onopen = function(e)
 {
   WebsockSendMsg('%s now connected via websocket to ' + pagename + '\\n');
+  rerendered = false;
+  ReRender();
 };
 
 
@@ -1427,6 +1442,22 @@ mysocket.onclose = function(e)
 {
   WebsockSendMsg('%s now disconnecting from websocket ' + pagename + '\\n');
 };
+
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function ReRender()
+{
+  await sleep(500);
+  if (shapeComp != null && rerendered==false) // workaround for QTWebEngine bug sometimes failing to render scene
+  {
+    shapeComp.autoView();
+    rerendered = true;
+    //WebsockSendMsg( 'AutoViewSet ' + pagename );
+  }
+}
 
 
 // Log errors to debugger of your browser
@@ -1465,6 +1496,7 @@ var origclipnear;
 var origclipfar;
 var origcameraZpos;
 var nbins = %s;
+var rerendered = false;
 
 
 function timefunc() {
@@ -1567,6 +1599,8 @@ mysocket.onmessage = function (e)
     //alert('received2:\\n' + datval);
     var msgtype = datval[0];
     var val = datval[1].split(",");
+    //ReRender();
+    //shapeComp.autoView();
 
     if (msgtype === "alpha")
     {
@@ -1630,6 +1664,7 @@ mysocket.onmessage = function (e)
       WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
       WebsockSendMsg( 'Refreshing ' + pagename );
       window.location.reload(true);
+      // Now we are gone. A new javascript file has been loaded in the browser
     }
 
     if (msgtype.includes("Expand") )
@@ -1797,13 +1832,7 @@ mysocket.onmessage = function (e)
       for (j=0; j<9; j++)
         sm[j] = parseFloat(elmstrs[j]);
 
-      /* GL matrices are the transpose of the conventional rotation matrices
-      m4.set( sm[0], sm[1], sm[2], 0.0,
-              sm[3], sm[4], sm[5], 0.0,
-              sm[6], sm[7], sm[8], 0.0,
-              0.0,   0.0,   0.0,   1.0
-      );
-      */
+      // GL matrices are the transpose of the conventional rotation matrices
       m4.set( sm[0], sm[3], sm[6], 0.0,
               sm[1], sm[4], sm[7], 0.0,
               sm[2], sm[5], sm[8], 0.0,
@@ -2090,10 +2119,16 @@ mysocket.onmessage = function (e)
       WebsockSendMsg('Injected new reflections');
     }
 
+    if (msgtype === "SetAutoView")
+    {
+      if (shapeComp != null) // workaround for QTWebEngine bug sometimes failing to render scene
+        shapeComp.autoView();
+      WebsockSendMsg( 'AutoViewSet ' + pagename );
+    }
+
     if (msgtype === "Testing")
     {
       // test something new
-      WebsockSendMsg( 'Testing something new ' + pagename );
       /*
       var newradii = radii[0].map(function(element) {
         return element*1.5;
@@ -2142,6 +2177,10 @@ mysocket.onmessage = function (e)
         else:
           self.mprint( message, verbose=4)
         self.lastmsg = message
+      if "websocket" in message:
+        self.mprint( message, verbose=1)
+      if "AutoViewSet" in message:
+        self.set_volatile_params()
       if "JavaScriptCleanUp:" in message:
         self.mprint( message, verbose=1)
         self.StopThreads()
@@ -2177,7 +2216,8 @@ mysocket.onmessage = function (e)
         datastr = message[ message.find("\n") + 1: ]
         lst = datastr.split(",")
         flst = [float(e) for e in lst]
-        self.ngl_settings.mouse_sensitivity = flst[0]
+        if flst[0] is not None and not cmath.isnan(flst[0]):
+          self.ngl_settings.mouse_sensitivity = flst[0]
       if "tooltip_id:" in message:
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         sym_id = eval(message.split("tooltip_id:")[1])[0]
@@ -2287,13 +2327,15 @@ mysocket.onmessage = function (e)
     self.websockclient = client
     self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
     # reinstate volatile variables if accidentally being disconnected by a mouse drag or whatever
-    if self.parent:
-      self.parent.update_settings()
+    if self.was_disconnected:
+      #self.SetAutoView()
+      self.was_disconnected = False
 
 
   def OnDisconnectWebsocketClient(self, client, server):
-    self.websockclient = client
-    self.mprint( "Browser disconnected:" + str( self.websockclient ), verbose=1 )
+    #self.websockclient = None
+    self.mprint( "Browser disconnected:" + str( client ), verbose=1 )
+    self.was_disconnected = True
 
 
   def SendMsgToBrowser(self, msgtype, msg=""):
@@ -2664,7 +2706,7 @@ mysocket.onmessage = function (e)
   def SetTrackBallRotateSpeed(self, trackspeed):
     msg = str(trackspeed)
     self.msgqueue.append( ("SetTrackBallRotateSpeed", msg) )
-    self.GetTrackBallRotateSpeed()
+    #self.GetTrackBallRotateSpeed() # TODO: fix wait time
 
 
   def GetTrackBallRotateSpeed(self):
@@ -2718,8 +2760,13 @@ mysocket.onmessage = function (e)
     self.msgqueue.append( ("RemoveVectors", reprname ))
 
 
+  def SetAutoView(self):
+    self.msgqueue.append( ("SetAutoView", "" ))
+
+
   def TestNewFunction(self):
-    self.SendMsgToBrowser("Testing")
+    self.msgqueue.append( ("Testing", "" ))
+    #self.parent.update_settings()
 
 
   def DisableMouseRotation(self): # disable rotating with the mouse
