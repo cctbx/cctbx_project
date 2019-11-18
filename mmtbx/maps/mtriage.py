@@ -12,7 +12,7 @@ from scitbx.array_family import flex
 import time
 from libtbx import introspection
 from libtbx.str_utils import size_as_string_with_commas
-from libtbx.utils import null_out
+from libtbx.utils import null_out,Sorry
 
 def show_process_info(out):
   print("\\/"*39, file=out)
@@ -397,6 +397,8 @@ class _mtriage(object):
     if(self.xray_structure is None):
       self.mask_smooth=None
       if self.params.auto_mask_if_no_model:
+        if not self.params.resolution:
+          raise Sorry("Need approximate resolution for auto_mask_if_no_model")
         # generate mask from the density
         self.mask_smooth=self._compute_soft_mask_from_density()
       if not self.mask_smooth:  # failed or did not attempt
