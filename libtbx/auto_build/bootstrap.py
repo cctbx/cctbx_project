@@ -1781,6 +1781,12 @@ environment exists in or is defined by {conda_env}.
         self.python_base, # default to using our python rather than system python
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
         ] + self.get_libtbx_configure() + self.config_flags
+    if self.isPlatformWindows() and sys.hexversion >= 0x03060000:
+      # new windows console in python >= 3.6 does not work with os.dup2
+      # https://bugs.python.org/issue30555
+      env = {
+        'PYTHONLEGACYWINDOWSSTDIO': '1'
+      }
     self.add_step(self.shell(command=configcmd, workdir=[_BUILD_DIR],
       description="run configure.py", env=env))
     # Prepare saving configure.py command to file should user want to manually recompile Phenix
