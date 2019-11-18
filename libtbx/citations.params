@@ -1267,6 +1267,17 @@ citation {
 }
 
 citation {
+  article_id = resolve_cryo_em 
+  authors = Terwilliger TC, Ludtke SJ, Read RJ, Adams PD, Afonine
+  title = Improvement of cryo-EM maps by density modification
+  year = 2019
+  journal = bioRxiv
+  volume = None
+  pages = None
+  pmid = None
+  doi_id = 10.1101/845032
+}
+citation {
   article_id = autosharpen
   authors = Terwilliger TC, Afonine PV, Sobolev, OV, Adams PD
   title = Automated map sharpening by maximization of detail and connectivity
