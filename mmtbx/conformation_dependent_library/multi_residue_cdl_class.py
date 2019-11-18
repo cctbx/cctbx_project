@@ -25,7 +25,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
         atom = self[0].find_atom_by(name=name)
         if atom: atoms["%s_minus_1" % name.strip()] = atom
     # i
-    for name in [" N  ", " CA ", " CB ", " C  ", " O  ", ' H  ', ' CD ']:
+    for name in [" N  ", " CA ", " CB ", " C  ", " O  ", ' H  ', ' CD ', ' CG ']:
       atom = self[1].find_atom_by(name=name)
       if atom: atoms["%s_i" % name.strip()] = atom
     # i+1
@@ -221,6 +221,13 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
       elif code=="CO":  names = ["C_i",  "O_i" ]
       # needed for cis_127
       elif code=='CND': names = ['C_minus_1', 'N_i', 'CD_i']
+      elif code=='AND': names = ['CA_i', 'N_i', 'CD_i']
+      elif code=='NDG': names = ['N_i', 'CD_i', 'CG_i']
+      elif code=='ABG': names = ['CA_i','CB_i', 'CG_i']
+      elif code=='BGD': names = ['CB_i','CG_i', 'CD_i']
+      elif code=='BG':  names = ['CB_i','CG_i']
+      elif code=='GD':  names = ['CG_i','CD_i']
+      elif code=='ND':  names = ['N_i', 'CD_i']
       # not all amino acids have a CB
       if "CB_i" in names and not "CB_i" in atoms: continue
       # sometimes the O is not in the model
@@ -277,7 +284,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
         if esd: bond.weight = esd_factor * 1/restraint_values[i+1]**2
         assert restraint_values[i+1]<.1, 'CDL bond restraint larger than 0.1'
       else:
-        assert 0
+        assert 0, 'names %s not found' % names
     # adjust X-N-H angles to obtain planar
     nh_atoms = {}
     error_atoms = []

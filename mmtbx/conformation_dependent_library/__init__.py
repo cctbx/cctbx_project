@@ -49,6 +49,38 @@ def get_restraint_values(threes, interpolate=False):
     threes[2].resname,
   )
   if res_type_group is None: return None
+  #
+  if threes.cis_group():
+    resnames = threes.get_resnames()
+    if resnames[1]=='PRO':
+      # cis-PRO
+      restraint_values = ['?', 0, 127.0, 2.4] # CNA
+      restraint_values += [102.6, 1.1, # NAB
+                           112.1, 2.6, # NAC
+                           112.0, 2.5, # BAC
+                           120.2, 2.4, # ACO
+                           117.1, 2.8, # ACN
+                           121.1, 1.9, # OCN
+                           1.338, 0.019, # CN
+                           1.468, 0.017, # NA
+                           1.533, 0.018, # AB
+                           1.524, 0.020, # AC
+                           1.228, 0.020, # CO
+      ]
+      restraint_values += [120.6, 2.2, # CND
+                           111.5, 1.4, # AND
+                           103.8, 1.2, # NDG
+                           104.0, 1.9, # ABG
+                           105.4, 2.3, # BGD
+                           1.506, 0.039, # BG
+                           1.512, 0.027, # GD
+                           1.474, 0.014, # ND
+      ]
+    else:
+      # cis-NonPRO
+      restraint_values = ['?', 0, 123.0, 3.0]
+    return restraint_values
+  #
   if interpolate:
     restraint_values = ["2", -1]
     key = threes.get_cdl_key(exact=interpolate)
@@ -294,18 +326,12 @@ def update_restraints(hierarchy,
     hierarchy,
     geometry,
     cdl_class=True,
-    retain_selection="name ca or name c or name n or name o or name cb or name h or name cd",
+    retain_selection="name ca or name c or name n or name o or name cb or name h or name cd or name cg",
     #verbose=verbose,
     ):
     if threes.cis_group():
       if use_cis_127:
-        resnames = threes.get_resnames()
-        if resnames[1]=='PRO':
-          restraint_values = ['?', 0, 127.0, 3.0]
-          restraint_values += [None, None]*11
-          restraint_values += [121.0, 3.0]
-        else:
-          restraint_values = ['?', 0, 124.0, 3.0]
+        restraint_values = get_restraint_values(threes, interpolate=interpolate)
       else:
         continue
     else:
