@@ -82,6 +82,8 @@ class FatRefiner(PixelRefinement):
         self.UCELL_MAN = shot_ucell_managers
         # cache shot ids and make sure they are identical in all other input dicts
         self.shot_ids = sorted(shot_ucell_managers.keys())
+        self.big_dump = False
+        self.show_watched = False
         self.n_shots = len(self.shot_ids)
         # sanity check: no repeats of the same shot
         assert len(self.shot_ids) == len(set(self.shot_ids))
@@ -405,7 +407,6 @@ class FatRefiner(PixelRefinement):
                     else:
                         fcell_val = Fmap2[asu_hkl]
                     self.x[self.fcell_xstart + i_fcell] = Fmap2[asu_hkl]
-                    is_fixed = False
                     if self.log_fcells:
                         if fcell_val == 0:
                             fcell_val = 1e-20
@@ -426,19 +427,20 @@ class FatRefiner(PixelRefinement):
                 n_grabbed = 0
                 while n_grabbed < n_watch:
                     i_fcell += 1
+                    if i_fcell == self.n_global_fcell:
+                        # reached the limit
+                        print("You wanted to refine %d hkls but there are not enough!" % n_watch)
+                        break
                     if self.hkl_frequency[i_fcell] < self.min_multiplicity:
                         continue
                     n_grabbed += 1
                     self.watch_me_hkl.append(i_fcell)
                     u = self.x[self.fcell_xstart + i_fcell]
-                    #v = np.random.uniform(4, 11)
                     v = np.random.uniform(max(1e-10,u-0.1*u), u+0.1*u)
                     if i_fcell in self._fix_list:
                         v = u
                     if not self.log_fcells:
                         v = np_exp(v)
-                    # v = np.random.uniform( max(1e-10,u-0.05*u), u+0.05*u)
-                    # v = np.random.randint(4, 11)
                     self.x[self.fcell_xstart + i_fcell] = v
                     self.f_start[i_fcell] = v
                     # NOTE end hackage
@@ -450,6 +452,7 @@ class FatRefiner(PixelRefinement):
                 f_start = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
                 if self.log_fcells:
                     f_start = np_exp(f_start)
+                # FIXME calc_R1 should ignore bad or fix list
                 self.calc_R1 = lambda fobs: np.abs(fobs - ff).sum() / fobs.sum()
                 self.init_R1 = self.calc_R1(f_start)
 
@@ -1219,7 +1222,8 @@ class FatRefiner(PixelRefinement):
 
             master_data = pandas.DataFrame(master_data)
             master_data["gain"] = self.x[self.gain_xpos]
-            print(master_data.to_string(float_format="%2.6g"))
+            if self.big_dump:
+                print(master_data.to_string(float_format="%2.6g"))
 
     def print_step_grads(self, message, target):
         names = self.UCELL_MAN[self._i_shot].variable_names
@@ -1245,7 +1249,8 @@ class FatRefiner(PixelRefinement):
                            "Grotz": self.Grotz}
             master_data = pandas.DataFrame(master_data)
             master_data["Ggain"] = self._g[self.gain_xpos]
-            print(master_data.to_string(float_format="%.3g"))
+            if self.big_dump:
+                print(master_data.to_string(float_format="%.3g"))
 
         if self.calc_curvatures:
             if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
@@ -1259,7 +1264,8 @@ class FatRefiner(PixelRefinement):
                                "CUrotz": self.CUrotz}
                 master_data = pandas.DataFrame(master_data)
                 master_data["CUgain"] = self.curv[self.gain_xpos]
-                print(master_data.to_string(float_format="%.3g"))
+                if self.big_dump:
+                    print(master_data.to_string(float_format="%.3g"))
 
         from tabulate import tabulate
         Xnorm = norm(self.x)
@@ -1300,8 +1306,10 @@ class FatRefiner(PixelRefinement):
             _data.append(["%d,%d,%d" % tuple(hkl), "%.4f" % obs, "%.4f" % truth, "%.4f" % self.f_start[i],
                           "%d" % self.hkl_frequency[i], _curv, _grad, "%d" % i])
             hacked_str += _s
-        hacked_str = tabulate(_data, headers=headers, tablefmt='orgtbl')
-
+        if self.show_watched:
+            hacked_str = tabulate(_data, headers=headers, tablefmt='orgtbl')
+        else:
+            hacked_str = ""
 
         print(
                     "\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s\n%s"
