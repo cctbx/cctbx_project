@@ -413,7 +413,6 @@ class FatRefiner(PixelRefinement):
                             print "WARNING trying to refine 0-valued Fhkl, why?", asu_hkl
                             nbad += 1
                             self._fix_list.append(i_fcell)
-                            is_fixed = True
                         elif fcell_val < 0:
                             raise ValueError("No negative Fcells can be refined!")
                         u = np_log(fcell_val)
@@ -455,6 +454,56 @@ class FatRefiner(PixelRefinement):
                 # FIXME calc_R1 should ignore bad or fix list
                 self.calc_R1 = lambda fobs: np.abs(fobs - ff).sum() / fobs.sum()
                 self.init_R1 = self.calc_R1(f_start)
+
+                def calc_R1_intensity_bins(fobs, n_bins=10):
+                    order = np.argsort(self.f_truth)
+                    bin_values = np.array_split(order, n_bins+1)
+                    bin_names = []
+                    #bins = []
+                    for bv in bin_values:
+                        low = self.f_truth[bv[0]]
+                        high = self.f_truth[bv[-1]]
+                        bin_names.append("%.3f - %.3f" % (low, high))
+                        #bins.append(low)
+                    #bins.append(high)
+                    #assert len(bins) == n_bins+1
+                    #digs = np.digitize(self.f_truth, bins)-1
+
+                    fobs = np.array(fobs)
+                    r1_bins = []
+                    CC_bins = []
+                    n_seen = []
+                    n_obs = []
+                    max_per = []
+                    from scipy.stats import linregress
+                    #for i_bin in range(n_bins):
+                    for indices in bin_values:
+                        pos = np.zeros(self.n_global_fcell).astype(bool)
+                        pos[indices] = True
+
+                        max_per.append(-1)
+
+                        above_multi = np.array([self.hkl_frequency[i_hkl] > self.min_multiplicity
+                                                for i_hkl in range(self.n_global_fcell)])
+                        pos = np.logical_and(pos, above_multi)
+                        if not any(pos):
+                            r1_bins.append(-1)
+                            CC_bins.append(-2)
+                            n_seen.append(0)
+                            n_obs.append(0)
+                            continue
+                        tot_obs = sum([self.hkl_frequency[i_pos] for i_pos, p in enumerate(pos) if p])
+                        n_obs.append(tot_obs)
+                        n_seen.append(sum(pos))
+                        r1 = np.abs(fobs[pos] - ff[pos]).sum() / fobs[pos].sum()
+                        r1_bins.append(r1)
+                        l = linregress(fobs[pos], ff[pos])
+                        CC_bins.append(l.rvalue)
+
+                    #bin_names = ["%.3f - %.3f" % (b1, b2) for b1, b2 in zip(bins[:-1], bins[1:])]
+                    return bin_names, r1_bins, CC_bins, n_seen, n_obs, max_per
+
+                self.calc_R1_intensity_bins = calc_R1_intensity_bins
 
                 def calc_R1_reso_bins(fobs):
                     hi, ki, li = zip(*[self.asu_from_idx[i_fcell] for i_fcell in range(self.n_global_fcell)])
@@ -1277,11 +1326,17 @@ class FatRefiner(PixelRefinement):
                 fobs = np_exp(fobs)
             R1 = self.calc_R1(fobs)
             bin_names, Rbins, CCbins, seen_per, n_obs, max_per = self.calc_R1_reso_bins(fobs)
+            bin_namesI, RbinsI, CCbinsI, seen_perI, n_obsI, max_perI = self.calc_R1_intensity_bins(fobs)
             R1_i = self.init_R1
             ave = np.array(n_obs) / np.array(seen_per)
             stat_bins_str = tabulate(zip(bin_names, Rbins, CCbins, seen_per, n_obs, max_per, ave),
                     headers=["reso (Ang)", "R1", "pearsonR", "Refined hkl", "N spots", "Max hkl", "ave multiplicity"],
                                  tablefmt="orgtbl")
+            aveI = np.array(n_obsI) / np.array(seen_perI)
+            Istat_bins_str = tabulate(zip(bin_namesI, RbinsI, CCbinsI, seen_perI, n_obsI, max_perI, aveI),
+                                     headers=["|Fhkl|", "R1", "pearsonR", "Refined hkl", "N spots", "Max hkl",
+                                              "ave multiplicity"],
+                                     tablefmt="orgtbl")
         else:
             stat_bins_str = "----STATS-------"
         ncurv = 0
@@ -1312,9 +1367,9 @@ class FatRefiner(PixelRefinement):
             hacked_str = ""
 
         print(
-                    "\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s\n%s"
+                    "\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s\n%s\n%s"
                     % (target, Xnorm * self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
-                       ", ".join(map(str, self.neg_curv_shots)), stat_bins_str, hacked_str))
+                       ", ".join(map(str, self.neg_curv_shots)), stat_bins_str,  Istat_bins_str, hacked_str))
         print("\n")
 
     def get_refined_Bmatrix(self, i_shot):
