@@ -25,7 +25,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
         atom = self[0].find_atom_by(name=name)
         if atom: atoms["%s_minus_1" % name.strip()] = atom
     # i
-    for name in [" N  ", " CA ", " CB ", " C  ", " O  ", ' H  ']:
+    for name in [" N  ", " CA ", " CB ", " C  ", " O  ", ' H  ', ' CD ']:
       atom = self[1].find_atom_by(name=name)
       if atom: atoms["%s_i" % name.strip()] = atom
     # i+1
@@ -204,6 +204,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
     for i, value in enumerate(restraint_values):
       if i<2: continue
       if columns[i][0]=="s": continue
+      if restraint_values[i] is None: continue
       code = columns[i][1:]
       names = []
       if code=="CNA":   names = ["C_minus_1", "N_i",  "CA_i"      ]
@@ -218,6 +219,8 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
       elif code=="AB":  names = ["CA_i", "CB_i" ]
       elif code=="AC":  names = ["CA_i", "C_i" ]
       elif code=="CO":  names = ["C_i",  "O_i" ]
+      # needed for cis_127
+      elif code=='CND': names = ['C_minus_1', 'N_i', 'CD_i']
       # not all amino acids have a CB
       if "CB_i" in names and not "CB_i" in atoms: continue
       # sometimes the O is not in the model

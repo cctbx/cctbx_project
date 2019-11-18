@@ -59,6 +59,11 @@ columns = [
   "sAC",
   "mCO",  # CO    C(0)  - O(0)
   "sCO",
+  # needed for cis_127
+  'mCND', # C(-1) - N(0) - Cd(0)
+  'sCND',
+  'mAND', # Ca(0) - N(0) - Cd(0)
+  'sAND',
   ]
 headers = [
   "statistical type",       # 0

@@ -177,7 +177,7 @@ def generate_protein_tuples(hierarchy,
                             cdl_class=False,
                             omega_cdl=False,
                             #
-                            retain_selection="name ca or name c or name n or name o or name cb or name h",
+                            retain_selection="name ca or name c or name n or name o or name cb or name h or name cd",
                             verbose=False,
                             ):
   for item in generate_residue_tuples(hierarchy,
@@ -295,7 +295,13 @@ def update_restraints(hierarchy,
                                         ):
     if threes.cis_group():
       if use_cis_127:
-        restraint_values = ['?', 0, 127.0, 3.0]
+        resnames = threes.get_resnames()
+        if resnames[1]=='PRO':
+          restraint_values = ['?', 0, 127.0, 3.0]
+          restraint_values += [None, None]*11
+          restraint_values += [121.0, 3.0]
+        else:
+          restraint_values = ['?', 0, 124.0, 3.0]
       else:
         continue
     else:
