@@ -157,6 +157,7 @@ class conda_manager(object):
       default_format.format(builder='phenix', version=version,
                             platform=conda_platform[platform.system()])),
     'xfel': default_file,
+    'xfellegacy': default_file,
     'labelit': default_file,
     'dials': os.path.join('dials', '.conda-envs',
       default_format.format(builder='dials', version=version,

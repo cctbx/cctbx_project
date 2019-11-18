@@ -986,6 +986,12 @@ class molprobity_moodule(SourceModule):
   module = 'molprobity'
   anonymous = ['svn', 'https://github.com/rlabduke/MolProbity.git/trunk']
 
+class uc_metrics_module(SourceModule):
+  module = 'uc_metrics'
+  anonymous = ['git',
+               'git@gitlab.com:cctbx/uc_metrics.git',
+               'https://gitlab.com/cctbx/uc_metrics.git']
+
 MODULES = SourceModule()
 
 ###################################
@@ -2089,7 +2095,7 @@ class LABELITBuilder(CCIBuilder):
   def rebuild_docs(self):
     pass
 
-class XFELBuilder(CCIBuilder):
+class XFELLegacyBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'dials',
     'labelit',
@@ -2106,11 +2112,39 @@ class XFELBuilder(CCIBuilder):
   HOT_EXTRA = ['msgpack']
 
   def add_base(self, extra_opts=[]):
-    super(XFELBuilder, self).add_base(
+    super(XFELLegacyBuilder, self).add_base(
       extra_opts=['--labelit', '--dials'] + extra_opts)
 
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
+
+  def add_dispatchers(self):
+    pass
+
+  def rebuild_docs(self):
+    pass
+
+class XFELBuilder(CCIBuilder):
+  CODEBASES_EXTRA = [
+    'dials',
+    'uc_metrics',
+  ]
+  LIBTBX_EXTRA = [
+    'dials',
+    'xfel',
+    'prime',
+    'iota',
+    'uc_metrics',
+  ]
+  HOT_EXTRA = ['msgpack']
+
+  def add_base(self, extra_opts=[]):
+    super(XFELBuilder, self).add_base(
+      extra_opts=['--dials'] + extra_opts)
+
+  def add_tests(self):
+    self.add_test_command('cctbx_regression.test_nightly')
+    self.add_test_parallel(module='uc_metrics')
 
   def add_dispatchers(self):
     pass
@@ -2495,6 +2529,7 @@ def run(root=None):
     'cctbx': CCTBXBuilder,
     'phenix': PhenixBuilder,
     'phenix_tng': PhenixTNGBuilder,
+    'xfellegacy': XFELLegacyBuilder,
     'xfel': XFELBuilder,
     'labelit': LABELITBuilder,
     'dials': DIALSBuilder,
