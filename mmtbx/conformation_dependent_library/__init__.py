@@ -177,7 +177,7 @@ def generate_protein_tuples(hierarchy,
                             cdl_class=False,
                             omega_cdl=False,
                             #
-                            retain_selection="name ca or name c or name n or name o or name cb or name h or name cd",
+                            retain_selection="name ca or name c or name n or name o or name cb or name h",
                             verbose=False,
                             ):
   for item in generate_residue_tuples(hierarchy,
@@ -204,6 +204,7 @@ def generate_protein_threes(hierarchy,
                             # CDL specific
                             cdl_class=False,
                             omega_cdl=False,
+                            retain_selection="name ca or name c or name n or name o or name cb or name h",
                             verbose=False,
                             ):
   for threes in generate_protein_tuples(
@@ -214,6 +215,7 @@ def generate_protein_threes(hierarchy,
     include_non_standard_peptides=include_non_standard_peptides,
     cdl_class=cdl_class,
     omega_cdl=omega_cdl,
+    retain_selection=retain_selection,
     length=3,
     ):
     yield threes
@@ -262,7 +264,7 @@ def generate_dna_rna_fragments(hierarchy,
     yield item
 
 def update_restraints(hierarchy,
-                      geometry, # restraints_manager,
+                      geometry,
                       current_geometry=None, # xray_structure!!
                       sites_cart=None,
                       cdl_proxies=None,
@@ -288,11 +290,13 @@ def update_restraints(hierarchy,
   threes = None
   average_updates = 0
   total_updates = 0
-  for threes in generate_protein_threes(hierarchy,
-                                        geometry, #restraints_manager,
-                                        cdl_class=True,
-                                        #verbose=verbose,
-                                        ):
+  for threes in generate_protein_threes(
+    hierarchy,
+    geometry,
+    cdl_class=True,
+    retain_selection="name ca or name c or name n or name o or name cb or name h or name cd",
+    #verbose=verbose,
+    ):
     if threes.cis_group():
       if use_cis_127:
         resnames = threes.get_resnames()
