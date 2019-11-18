@@ -2522,3 +2522,27 @@ def mangle(name, klass):
     klass = klass[:MANGLE_LEN-tlen]
 
   return "_%s%s" % (klass, name)
+
+def path_is_git_lfs_pointer(path):
+  '''
+  Test if a file is a git lfs pointer. See
+  https://github.com/git-lfs/git-lfs/blob/master/docs/spec.md
+  '''
+  with open(path, 'rb') as f:
+    return f.read(12) == b'version http'
+
+def check_git_lfs_pointer_is_loaded(path):
+  '''
+  Prints a skip if the lfs pointer hasn't been loaded
+  '''
+  test = path_is_git_lfs_pointer(path)
+  if test:
+    print ("""
+Skipping. %s hasn't been loaded from git
+Run these commands to load the data:
+cd <repository name>
+git lfs install --local
+git lsf pull
+"""%path)
+  return not test
+
