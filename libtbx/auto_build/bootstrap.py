@@ -992,6 +992,13 @@ class uc_metrics_module(SourceModule):
                'git@gitlab.com:cctbx/uc_metrics.git',
                'https://gitlab.com/cctbx/uc_metrics.git']
 
+class ncdist_module(SourceModule):
+  module = 'ncdist'
+  anonymous = ['git',
+               'git@github.com:yayahjb/ncdist.git',
+               'https://github.com/yayahjb/ncdist.git',
+               'https://github.com/yayahjb/ncdist/archive/master.zip']
+
 MODULES = SourceModule()
 
 ###################################
@@ -2128,6 +2135,7 @@ class XFELBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'dials',
     'uc_metrics',
+    'ncdist',
   ]
   LIBTBX_EXTRA = [
     'dials',
