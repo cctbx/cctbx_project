@@ -23,6 +23,13 @@ jobs:
       python bootstrap.py hot update --builder=xfel
     displayName: Download sources
 
+  - script: |
+      cd $(Pipeline.Workspace)
+      cd modules/uc_metrics
+      git lfs install --local
+      git lsf pull
+    displayName: Download LFS files
+
   # preserve permissions
   - script: |
       cd $(Pipeline.Workspace)
