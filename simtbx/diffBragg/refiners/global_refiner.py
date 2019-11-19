@@ -140,7 +140,9 @@ class FatRefiner(PixelRefinement):
 
         sgi = sgtbx.space_group_info(self.symbol)
         # FIXME: no hard coded unit cells!!!!
-        symm = symmetry(unit_cell=(79.1, 79.1, 38.4, 90, 90, 90), space_group_info=sgi)
+        a = self.UCELL_MAN[0].a
+        c = self.UCELL_MAN[0].c
+        symm = symmetry(unit_cell=(a, a, c, 90, 90, 90), space_group_info=sgi)
         miller_set = symm.build_miller_set(anomalous_flag=True, d_min=1.5, d_max=999)
         self.binner = miller_set.setup_binner(d_max=999, d_min=2, n_bins=10)
         bin_rng = list(self.binner.range_used())
@@ -511,7 +513,9 @@ class FatRefiner(PixelRefinement):
                     ki = np.array(ki)
                     li = np.array(li)
                     # FIXME: no hardcoded unit cell parameters!
-                    reso = 1 / np.sqrt((hi ** 2 + ki ** 2) / 79. / 79. + li ** 2 / 38. / 38.)
+                    a = self.UCELL_MAN[0].a
+                    c = self.UCELL_MAN[0].c
+                    reso = 1 / np.sqrt((hi ** 2 + ki ** 2) / a / a + li ** 2 / c / c)
                     #bins = [999, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3.5, 3, 2.5, 2.25, 2, 0]
                     bins = self.res_bins
                     digs = np.digitize(reso, bins)-1
