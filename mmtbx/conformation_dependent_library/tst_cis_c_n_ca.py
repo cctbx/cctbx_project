@@ -111,7 +111,7 @@ def main():
       pdb=" N   PRO A  74 "
       pdb=" CA  PRO A  74 "
     ideal   model   delta    sigma   weight residual
-   127.00  124.91    2.09 3.00e+00 1.11e-01 4.84e-01'''
+   127.00  124.91    2.09 2.40e+00 1.74e-01 7.57e-01'''
   assert lines.find(find)>-1
 
 if __name__ == '__main__':
