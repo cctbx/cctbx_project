@@ -6,13 +6,12 @@ stages:
   displayName: Download
   jobs:
     - template: ./download-source.yml
-    - template: ../download-conda.yml
+    - template: ./download-conda.yml
 
 - stage: Build
   displayName: Build and test
   dependsOn: Preparation
   jobs:
-    - template: ./conda-win.yml
     - template: ./conda-linux.yml
       parameters:
         distribution: centos

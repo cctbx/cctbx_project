@@ -1,0 +1,57 @@
+# Script for downloading conda packages
+# This lowers the chances of network failures by consolidating downloads.
+# Also, wget will automatically retry downloads.
+#
+# Variables:
+#   OS: linux-64, osx-64
+#   PYTHON_VERSION: py27, py36
+
+jobs:
+- job: conda_packages
+  pool:
+    vmImage: ubuntu-16.04
+  timeoutInMinutes: 360
+  strategy:
+    maxParallel: 3
+    matrix:
+      linux_py27:
+        OS: linux-64
+        PYTHON_VERSION: py27
+      linux_py36:
+        OS: linux-64
+        PYTHON_VERSION: py36
+      macos_py27:
+        OS: osx-64
+        PYTHON_VERSION: py27
+      macos_py36:
+        OS: osx-64
+        PYTHON_VERSION: py36
+
+  steps:
+
+  - checkout: self
+    path: ./modules/cctbx_project
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      mkdir $(PYTHON_VERSION)_$(OS)
+      cd $(PYTHON_VERSION)_$(OS)
+      for url in `grep https $(Pipeline.Workspace)/modules/cctbx_project/libtbx/auto_build/conda_envs/cctbx_$(PYTHON_VERSION)_$(OS).txt`; do
+        filename=${url##*/}
+        filename=${filename%#*}
+        directory=`echo ${url} | cut -f5 -d"/"`
+        mkdir -p ${directory}
+        cd ${directory}
+        echo Downloading ${filename} to ${directory}
+        wget ${url}
+        cd ..
+        if [ "$(OS)" = "win-64" ]; then
+          echo ${directory}\\${filename} >> filenames.txt
+        else
+          echo ${directory}/${filename} >> filenames.txt
+        fi
+      done
+    displayName: Download conda packages
+
+  - publish: $(Pipeline.Workspace)/$(PYTHON_VERSION)_$(OS)
+    artifact: $(PYTHON_VERSION)_$(OS)
