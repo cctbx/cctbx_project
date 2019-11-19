@@ -4,13 +4,14 @@ from libtbx.auto_build import regenerate_module_files
 from libtbx.auto_build.installer_utils import call
 from libtbx.path import relocatable_path, absolute_path
 from libtbx.str_utils import show_string
-from libtbx.utils import detect_binary_file
+from libtbx.utils import detect_binary_file, to_str
 from libtbx import adopt_init_args
 import platform
 import shutil
 from six.moves import zip, map
 from six.moves import cPickle as pickle
 
+import io
 import os
 import re
 import site
@@ -228,7 +229,9 @@ def highlight_dispatcher_include_lines(lines):
   lines.append(lines[0])
 
 def source_specific_dispatcher_include(pattern, source_file):
-  try: source_lines = source_file.open().read().splitlines()
+  try:
+    with io.open(abs(source_file), encoding='utf-8', errors='ignore') as fh:
+      source_lines = to_str(fh.read()).splitlines()
   except IOError: return []
   if (os.name == "nt"):
     lines = ["@REM lines marked " + pattern]
@@ -2043,7 +2046,9 @@ class module:
       check_for_hash_bang = True
     target_files = []
     if (read_size != 0):
-      try: source_text = source_file.open().read(read_size)
+      try:
+        with io.open(abs(source_file), encoding='utf-8', errors='ignore') as fh:
+          source_text = to_str(fh.read(read_size))
       except IOError:
         raise RuntimeError('Cannot read file: "%s"' % source_file)
       if (check_for_hash_bang and not source_text.startswith("#!")):
@@ -2135,8 +2140,8 @@ class module:
         global_vars = globals()
         global_vars["__name__"] = dist_path.basename() + ".libtbx_refresh"
         global_vars["self"] = self
-        with open(abs(custom_refresh)) as fh:
-          exec(fh.read(), global_vars)
+        with io.open(abs(custom_refresh), encoding='utf-8', errors='ignore') as fh:
+          exec(to_str(fh.read()), global_vars)
 
   def collect_test_scripts(self,
         file_names=["run_tests.py", "run_examples.py"]):
