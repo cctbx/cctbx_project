@@ -4,7 +4,6 @@
 stages:
 - stage: Preparation
   displayName: Download
-  dependsOn: Checks
   jobs:
     - template: ./download-source.yml
     - template: ../download-conda.yml
