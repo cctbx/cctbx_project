@@ -607,6 +607,8 @@ class NGL_HKLViewer(QWidget):
 
           if self.infodict.get("tncsvec"):
             self.tncsvec = self.infodict.get("tncsvec",[])
+            if len(self.tncsvec) == 0:
+              self.clipTNCSBtn.setDisabled(True)
 
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
@@ -757,7 +759,9 @@ class NGL_HKLViewer(QWidget):
     self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.camera_type'])
     if self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'])
-    self.realspacevecBtn.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.is_real_space_frac_vec'])
+    self.realspacevecBtn.setChecked( "realspace" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
+    self.recipvecBtn.setChecked( "reciprocal" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
+    self.clipTNCSBtn.setChecked( "tncs" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
     self.fixedorientcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.fixorientation'])
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_only_missing'])
     self.unfeedback = False
@@ -1263,6 +1267,8 @@ class NGL_HKLViewer(QWidget):
 
 
   def onClipPlaneChkBox(self):
+    if self.unfeedback:
+      return
     if self.ClipPlaneChkBox.isChecked():
       self.clipNormalBtn.setDisabled(False)
       self.clipParallelBtn.setDisabled(False)
@@ -1270,6 +1276,9 @@ class NGL_HKLViewer(QWidget):
       if len(self.tncsvec):
         self.clipTNCSBtn.setDisabled(False)
         self.clipwidth_spinBox.setValue(4)
+      if self.realspacevecBtn.isChecked(): fracvectype = "*realspace"
+      if self.recipvecBtn.isChecked(): fracvectype = "*reciprocal"
+      if self.clipTNCSBtn.isChecked(): fracvectype = "*tncs"
       philstr = """NGL_HKLviewer.clip_plane {
   h = %s
   k = %s
@@ -1277,15 +1286,15 @@ class NGL_HKLViewer(QWidget):
   hkldist = %s
   clipwidth = %s
   is_parallel = %s
-  is_real_space_frac_vec = %s
+  fractional_vector = %s
 }
   NGL_HKLviewer.viewer.NGL.fixorientation = %s
         """ %(self.hvec_spinBox.value(), self.kvec_spinBox.value(), self.lvec_spinBox.value(),\
               self.hkldistval, self.clipwidth_spinBox.value(), \
-              str(self.clipParallelBtn.isChecked()), str(self.realspacevecBtn.isChecked()), \
+              str(self.clipParallelBtn.isChecked()), fracvectype, \
               str(self.fixedorientcheckbox.isChecked()) )
           #self.NGL_HKL_command(philstr)
-      if self.clipTNCSBtn.isChecked():
+      if self.clipTNCSBtn.isChecked() and len(self.tncsvec):
         self.hvec_spinBox.setValue(self.tncsvec[0])
         self.kvec_spinBox.setValue(self.tncsvec[1])
         self.lvec_spinBox.setValue(self.tncsvec[2])
@@ -1299,7 +1308,7 @@ class NGL_HKLViewer(QWidget):
   hkldist = %s
   clipwidth = %s
   is_parallel = %s
-  is_real_space_frac_vec = True
+  fractional_vector = *realspace
 }
   NGL_HKLviewer.viewer.NGL.fixorientation = %s
         """ %(self.tncsvec[0], self.tncsvec[1], self.tncsvec[2], self.hkldistval, self.clipwidth_spinBox.value(), \
@@ -1337,28 +1346,34 @@ class NGL_HKLViewer(QWidget):
 
 
   def onClipwidthChanged(self, val):
-    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.clipwidth = %f" %self.clipwidth_spinBox.value())
+    if not self.unfeedback:
+      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.clipwidth = %f" %self.clipwidth_spinBox.value())
 
 
   def onHKLdistChanged(self, val):
     self.hkldistval = val
-    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.hkldist = %f" %self.hkldistval)
+    if not self.unfeedback:
+      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.hkldist = %f" %self.hkldistval)
 
 
   def onHvecChanged(self, val):
-    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.h = %f" %self.hvec_spinBox.value())
+    if not self.unfeedback:
+      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.h = %f" %self.hvec_spinBox.value())
 
 
   def onKvecChanged(self, val):
-    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.k = %f" %self.kvec_spinBox.value())
+    if not self.unfeedback:
+      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.k = %f" %self.kvec_spinBox.value())
 
 
   def onLvecChanged(self, val):
-    self.NGL_HKL_command("NGL_HKLviewer.clip_plane.l = %f" %self.lvec_spinBox.value())
+    if not self.unfeedback:
+      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.l = %f" %self.lvec_spinBox.value())
 
 
   def onFixedorient(self):
-    self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.fixorientation = %s' \
+    if not self.unfeedback:
+      self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.fixorientation = %s' \
                                     %str(self.fixedorientcheckbox.isChecked()))
 
 

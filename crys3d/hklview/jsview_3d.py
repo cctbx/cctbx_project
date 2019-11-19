@@ -376,7 +376,9 @@ class hklview_3d:
         self.scene = self.HKLscenes[self.viewerparams.scene_id]
       self.DrawNGLJavaScript()
       msg = "Rendered %d reflections\n" % self.scene.points.size()
-      msg += self.set_volatile_params()
+      if not has_phil_path(diff_phil, "scene_id"):
+# set_volatile_params() is already called when we receive the AutoViewSet message when loading a new scene
+        msg += self.set_volatile_params()
     return msg, curphilparam
 
 
@@ -397,7 +399,7 @@ class hklview_3d:
     if self.params.clip_plane.clipwidth and not \
        self.params.clip_plane.angle_around_vector \
       or self.params.clip_plane.bequiet:
-      if  self.params.clip_plane.is_real_space_frac_vec:
+      if  self.params.clip_plane.fractional_vector == "realspace":
         self.clip_plane_abc_vector(self.params.clip_plane.h, self.params.clip_plane.k,
           self.params.clip_plane.l, self.params.clip_plane.hkldist,
           self.params.clip_plane.clipwidth, self.params.viewer.NGL.fixorientation,
@@ -407,8 +409,12 @@ class hklview_3d:
           self.params.clip_plane.l, self.params.clip_plane.hkldist,
           self.params.clip_plane.clipwidth, self.params.viewer.NGL.fixorientation,
           self.params.clip_plane.is_parallel)
+    else:
+      self.ReOrientStage()
+
     msg += self.SetOpacities(self.params.viewer.NGL.bin_opacities )
     self.set_tooltip_opacity()
+    #self.SetAutoView()
     return msg
 
 
@@ -1453,9 +1459,9 @@ async function ReRender()
   await sleep(500);
   if (shapeComp != null && rerendered==false) // workaround for QTWebEngine bug sometimes failing to render scene
   {
-    shapeComp.autoView();
+    //shapeComp.autoView();
     rerendered = true;
-    //WebsockSendMsg( 'AutoViewSet ' + pagename );
+    WebsockSendMsg( 'AutoViewSet ' + pagename );
   }
 }
 
@@ -1547,13 +1553,13 @@ function HKLscene()
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
 
-
+  /*
   canvas = stage.viewer.renderer.domElement;
   const ctx = canvas.getContext('webgl', {
     desynchronized: true,
     preserveDrawingBuffer: true
   });
-
+  */
 
   MakeHKL_Axis(shape);
 
@@ -1647,12 +1653,16 @@ mysocket.onmessage = function (e)
       sm = new Float32Array(16);
       //alert('ReOrienting: ' + val)
       for (j=0; j<16; j++)
+      {
         sm[j] = parseFloat(val[j]);
+        if (isNaN( sm[j] ))
+          return; // do nothing just in case
+      }
 
       var m = new NGL.Matrix4();
       m.fromArray(sm);
       stage.viewerControls.orient(m);
-      stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
+      //stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
       stage.viewer.requestRender();
     }
 
@@ -1842,9 +1852,9 @@ mysocket.onmessage = function (e)
       if (strs[9]=="verbose")
         postrotmxflag = true;
       stage.viewer.requestRender();
-      //cvorient = stage.viewerControls.getOrientation().elements;
-      //msg = String(cvorient);
-      //WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+      cvorient = stage.viewerControls.getOrientation().elements;
+      msg = String(cvorient);
+      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
 
     if (msgtype === "SpinAnimate")
@@ -2328,7 +2338,7 @@ mysocket.onmessage = function (e)
     self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
     # reinstate volatile variables if accidentally being disconnected by a mouse drag or whatever
     if self.was_disconnected:
-      #self.SetAutoView()
+      #self.set_volatile_params()
       self.was_disconnected = False
 
 
@@ -2343,7 +2353,7 @@ mysocket.onmessage = function (e)
     if self.websockclient:
       nwait = 0.0
       while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
-        or "CurrentViewOrientation" in self.lastmsg):
+        or "CurrentViewOrientation" in self.lastmsg or "AutoViewSet" in self.lastmsg or "ReOrient" in self.lastmsg):
         sleep(self.sleeptime)
         nwait += self.sleeptime
         if nwait > self.handshakewait and self.browserisopen:
@@ -2761,7 +2771,9 @@ mysocket.onmessage = function (e)
 
 
   def SetAutoView(self):
-    self.msgqueue.append( ("SetAutoView", "" ))
+    #self.msgqueue.append( ("SetAutoView", "" ))
+    self.SendMsgToBrowser("SetAutoView")
+    self.ReOrientStage()
 
 
   def TestNewFunction(self):
@@ -2775,6 +2787,11 @@ mysocket.onmessage = function (e)
 
   def EnableMouseRotation(self): # enable rotating with the mouse
     self.SendMsgToBrowser("EnableMouseRotation")
+
+
+  def ReOrientStage(self):
+    if self.viewmtrx:
+      self.SendMsgToBrowser("ReOrient", self.viewmtrx)
 
 
   def Euler2RotMatrix(self, eulerangles):

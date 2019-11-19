@@ -1056,7 +1056,7 @@ class HKLViewFrame() :
 
 
   def ClipPlaneAndVector(self, h, k, l, hkldist=0.0, clipwidth=None,
-   fixorientation=True, is_real_space_frac_vec = False, is_parallel=False):
+   fixorientation=True, fractional_vector = "reciprocal", is_parallel=False):
     # clip planes are removed if h,k,l = 0,0,0
     self.params.NGL_HKLviewer.clip_plane.h = h
     self.params.NGL_HKLviewer.clip_plane.k = k
@@ -1065,7 +1065,7 @@ class HKLViewFrame() :
     self.params.NGL_HKLviewer.clip_plane.clipwidth = clipwidth
     self.params.NGL_HKLviewer.clip_plane.is_parallel = is_parallel
     self.params.NGL_HKLviewer.viewer.NGL.fixorientation = fixorientation
-    self.params.NGL_HKLviewer.clip_plane.is_real_space_frac_vec = is_real_space_frac_vec
+    self.params.NGL_HKLviewer.clip_plane.fractional_vector = fractional_vector
     self.update_settings()
 
 
@@ -1073,7 +1073,7 @@ class HKLViewFrame() :
     if self.tncsvec:
       self.ClipPlaneAndVector( self.tncsvec[0], self.tncsvec[1], self.tncsvec[2],
                               hkldist=0.0, clipwidth=clipwidth, fixorientation=True,
-                              is_parallel=vectorparallel, is_real_space_frac_vec=True)
+                              is_parallel=vectorparallel, fractional_vector = "realspace")
 
 
   def SpinAnimateAroundTNCSVecParallel(self):
@@ -1199,8 +1199,8 @@ NGL_HKLviewer {
       .type = float
     clipwidth = None
       .type = float
-    is_real_space_frac_vec = False
-      .type = bool
+    fractional_vector = *reciprocal realspace tncs
+      .type = choice
     is_parallel = False
       .type = bool
     bequiet = False
