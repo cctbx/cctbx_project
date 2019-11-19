@@ -1267,7 +1267,7 @@ citation {
 }
 
 citation {
-  article_id = resolve_cryo_em 
+  article_id = resolve_cryo_em
   authors = Terwilliger TC, Ludtke SJ, Read RJ, Adams PD, Afonine
   title = Improvement of cryo-EM maps by density modification
   year = 2019
