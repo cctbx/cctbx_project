@@ -27,7 +27,7 @@ jobs:
       cd $(Pipeline.Workspace)
       cd modules/uc_metrics
       git lfs install --local
-      git lsf pull
+      git lfs pull
     displayName: Download LFS files
 
   # preserve permissions
