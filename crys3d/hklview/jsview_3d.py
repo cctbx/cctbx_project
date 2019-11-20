@@ -163,7 +163,8 @@ class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
     self.ngl_settings = None #NGLsettings()
-    self.viewerparams = None
+    self.viewerparams = kwds.get("settings")
+    self.diff_phil = None
     self.params = None
     self.miller_array = None
     self.symops = []
@@ -294,7 +295,7 @@ class hklview_3d:
       self.UseOSBrowser = kwds['UseOSBrowser']
     self.viewmtrx = None
     self.HKLscenesKey = ( 0, False,
-                          self.settings.expand_anomalous, self.settings.expand_to_p1  )
+                          self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
     self.msgqueue = []
     self.websockclient = None
     self.handshakewait = 5
@@ -330,6 +331,7 @@ class hklview_3d:
     self.ngl_settings = curphilparam.viewer.NGL
     self.viewerparams = curphilparam.viewer
     self.params = curphilparam
+    self.diff_phil = diff_phil
     if has_phil_path(diff_phil, "filename") \
      or has_phil_path(diff_phil, "spacegroup_choice") \
      or has_phil_path(diff_phil, "merge_data") \
@@ -349,13 +351,13 @@ class hklview_3d:
      or has_phil_path(diff_phil, "slice_index") \
      or has_phil_path(diff_phil, "scale") \
      or has_phil_path(diff_phil, "nth_power_scale_radii") \
-     or self.settings.inbrowser==False and \
+     or self.viewerparams.inbrowser==False and \
                ( has_phil_path(diff_phil, "expand_anomalous") or \
                 has_phil_path(diff_phil, "expand_to_p1") )\
      or has_phil_path(diff_phil, "show_anomalous_pairs") \
       ):
-        if curphilparam.viewer.slice_mode and self.settings.inbrowser:
-          self.settings.inbrowser = False
+        if curphilparam.viewer.slice_mode and self.viewerparams.inbrowser:
+          self.viewerparams.inbrowser = False
         self.sceneisdirty = True
         self.ConstructReciprocalSpace(curphilparam, merge=self.merge)
     msg = ""
@@ -384,35 +386,33 @@ class hklview_3d:
 
   def set_volatile_params(self):
     msg = ""
-    if self.params.viewer.scene_id >=0:
-      self.fix_orientation(self.params.viewer.NGL.fixorientation)
-      self.SetTrackBallRotateSpeed(self.params.viewer.NGL.mouse_sensitivity)
-      if self.params.viewer.slice_mode: # explicit slicing
-        if self.params.viewer.slice_axis=="h": hkl = [1,0,0]
-        if self.params.viewer.slice_axis=="k": hkl = [0,1,0]
-        if self.params.viewer.slice_axis=="l": hkl = [0,0,1]
+    if self.viewerparams.scene_id >=0:
+      self.fix_orientation(self.viewerparams.NGL.fixorientation)
+      self.SetTrackBallRotateSpeed(self.viewerparams.NGL.mouse_sensitivity)
+      if self.viewerparams.slice_mode: # explicit slicing
+        if self.viewerparams.slice_axis=="h": hkl = [1,0,0]
+        if self.viewerparams.slice_axis=="k": hkl = [0,1,0]
+        if self.viewerparams.slice_axis=="l": hkl = [0,0,1]
         self.clip_plane_hkl_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
-                         fixorientation = self.params.viewer.NGL.fixorientation)
-    if self.settings.inbrowser and not self.params.viewer.slice_mode:
-      msg += self.ExpandInBrowser(P1= self.settings.expand_to_p1,
-                            friedel_mate= self.settings.expand_anomalous)
-    if self.params.clip_plane.clipwidth and not \
-       self.params.clip_plane.angle_around_vector \
-      or self.params.clip_plane.bequiet:
-      if  self.params.clip_plane.fractional_vector == "realspace":
-        self.clip_plane_abc_vector(self.params.clip_plane.h, self.params.clip_plane.k,
-          self.params.clip_plane.l, self.params.clip_plane.hkldist,
-          self.params.clip_plane.clipwidth, self.params.viewer.NGL.fixorientation,
-          self.params.clip_plane.is_parallel)
-      else:
-        self.clip_plane_hkl_vector(self.params.clip_plane.h, self.params.clip_plane.k,
-          self.params.clip_plane.l, self.params.clip_plane.hkldist,
-          self.params.clip_plane.clipwidth, self.params.viewer.NGL.fixorientation,
-          self.params.clip_plane.is_parallel)
+                         fixorientation = self.viewerparams.NGL.fixorientation)
+    if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
+      msg += self.ExpandInBrowser(P1= self.viewerparams.expand_to_p1,
+                            friedel_mate= self.viewerparams.expand_anomalous)
+    if self.params.clip_plane.clipwidth and not self.params.clip_plane.angle_around_vector:
+      if self.params.clip_plane.fractional_vector == "realspace" or self.params.clip_plane.fractional_vector == "tncs":
+        R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
+      elif self.params.clip_plane.fractional_vector == "reciprocal":
+        R = self.params.clip_plane.h * self.normal_kl \
+          + self.params.clip_plane.k * self.normal_lh \
+          - self.params.clip_plane.l * self.normal_hk
+
+      self.clip_plane_vector(R[0][0], R[0][1], R[0][2], self.params.clip_plane.hkldist,
+        self.params.clip_plane.clipwidth, self.viewerparams.NGL.fixorientation,
+        self.params.clip_plane.is_parallel)
     else:
       self.ReOrientStage()
 
-    msg += self.SetOpacities(self.params.viewer.NGL.bin_opacities )
+    msg += self.SetOpacities(self.viewerparams.NGL.bin_opacities )
     self.set_tooltip_opacity()
     #self.SetAutoView()
     return msg
@@ -589,17 +589,17 @@ class hklview_3d:
                          curphilparam.spacegroup_choice,
                          curphilparam.using_space_subgroup,
                          curphilparam.merge_data,
-                         self.settings.expand_anomalous,
-                         self.settings.expand_to_p1,
-                         self.settings.inbrowser,
-                         self.settings.slice_axis,
-                         self.settings.slice_mode,
-                         self.settings.slice_index,
-                         self.settings.show_missing,
-                         self.settings.show_only_missing,
-                         self.settings.show_systematic_absences,
-                         self.settings.scale,
-                         self.settings.nth_power_scale_radii
+                         self.viewerparams.expand_anomalous,
+                         self.viewerparams.expand_to_p1,
+                         self.viewerparams.inbrowser,
+                         self.viewerparams.slice_axis,
+                         self.viewerparams.slice_mode,
+                         self.viewerparams.slice_index,
+                         self.viewerparams.show_missing,
+                         self.viewerparams.show_only_missing,
+                         self.viewerparams.show_systematic_absences,
+                         self.viewerparams.scale,
+                         self.viewerparams.nth_power_scale_radii
                          )
 
     if self.HKLscenesdict.has_key(self.HKLscenesKey) and not self.has_new_miller_array:
@@ -627,7 +627,7 @@ class hklview_3d:
     i = 0
     # arguments tuple for multi_core_run
     assert(self.proc_arrays)
-    argstuples = [ (e.deep_copy(), idx, copy.deepcopy(self.settings), self.mapcoef_fom_dict, merge, self.mprint) \
+    argstuples = [ (e.deep_copy(), idx, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, merge, self.mprint) \
                      for (idx,e) in enumerate(self.proc_arrays)]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     """
@@ -654,7 +654,7 @@ class hklview_3d:
         scenemindata, scenemaxsigmas,
          sceneminsigmas, scenearrayinfos
          ) = MakeHKLscene(argstuples[j][0], argstuples[j][1], argstuples[j][2], argstuples[j][3], argstuples[j][4], argstuples[j][5] )
-         #) = MakeHKLscene(proc_array, j, copy.deepcopy(self.settings), self.mapcoef_fom_dict, None)
+         #) = MakeHKLscene(proc_array, j, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, None)
 
       HKLscenesMaxdata.extend(scenemaxdata)
       HKLscenesMindata.extend(scenemindata)
@@ -885,7 +885,7 @@ function MakeHKL_Axis(mshape)
     # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
     mincolourscalar = self.HKLscenesMindata[self.colour_scene_id]
     maxcolourscalar = self.HKLscenesMaxdata[self.colour_scene_id]
-    if self.settings.sigma_color:
+    if self.viewerparams.sigma_color:
       mincolourscalar = self.HKLscenesMinsigmas[self.colour_scene_id]
       maxcolourscalar = self.HKLscenesMaxsigmas[self.colour_scene_id]
     span = maxcolourscalar - mincolourscalar
@@ -931,7 +931,7 @@ function MakeHKL_Axis(mshape)
         properties= flex.double(colourscalararray),
         selection=flex.bool( len(colourscalararray), True),
         color_all=False,
-        gradient_type= self.settings.color_scheme) * 255.0)
+        gradient_type= self.viewerparams.color_scheme) * 255.0)
 
     colors = self.HKLscenes[self.colour_scene_id].colors
     radii = self.HKLscenes[self.radii_scene_id].radii
@@ -1064,7 +1064,7 @@ function MakeHKL_Axis(mshape)
         spherebufferstr += "\n    radius: radii[%d]," %cntbin
       spherebufferstr += "\n    picking: ttips[%d]," %cntbin
       if self.primitivetype == "PointBuffer":
-        spherebufferstr += "\n  }, {pointSize: %1.2f})\n" %self.settings.scale
+        spherebufferstr += "\n  }, {pointSize: %1.2f})\n" %self.viewerparams.scale
       else:
         if self.high_quality:
           spherebufferstr += """
@@ -1459,7 +1459,7 @@ async function ReRender()
   await sleep(500);
   if (shapeComp != null && rerendered==false) // workaround for QTWebEngine bug sometimes failing to render scene
   {
-    //shapeComp.autoView();
+    shapeComp.autoView();
     rerendered = true;
     WebsockSendMsg( 'AutoViewSet ' + pagename );
   }
@@ -2511,7 +2511,7 @@ mysocket.onmessage = function (e)
       # TODO: find suitable scale factor for displaying real space vector together with reciprocal vectors
       svec1 = [ vscale*vec1[0], vscale*vec1[1], vscale*vec1[2] ]
       svec2 = [ vscale*vec2[0], vscale*vec2[1], vscale*vec2[2] ]
-    self.mprint("cartesian vector is: %s to %s" %(str(roundoff(svec1)), str(roundoff(svec2))), verbose=1)
+    self.mprint("cartesian vector is: %s to %s" %(str(roundoff(svec1)), str(roundoff(svec2))), verbose=2)
     svec = [svec2[0]-svec1[0], svec2[1]-svec1[1], svec2[2]-svec1[2] ]
     xyvec = svec[:] # deep copying
     xyvec[2] = 0.0 # projection vector of svec in the xy plane
@@ -2626,39 +2626,9 @@ mysocket.onmessage = function (e)
       self.EnableMouseRotation()
 
 
-  def clip_plane_hkl_vector(self, h, k, l, hkldist=0.0,
+  def clip_plane_vector(self, a, b, c, hkldist=0.0,
              clipwidth=None, fixorientation=True, is_parallel=False):
-    # create clip plane that is normal to the reciprocal hkl vector
-    if h==0.0 and k==0.0 and l==0.0 or clipwidth <= 0.0:
-      self.RemoveVectorsNoClipPlane()
-      return
-    self.RemoveVectors("clip_vector")
-    R = -l * self.normal_hk + h * self.normal_kl + k * self.normal_lh
-    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
-                      R[0][0], R[0][1], R[0][2], isreciprocal=False,
-                      name="clip_vector")
-    if fixorientation:
-      self.DisableMouseRotation()
-    else:
-      self.EnableMouseRotation()
-    if is_parallel:
-      self.vecrotmx = self.PointVectorParallelToClipPlane()
-    else:
-      self.vecrotmx = self.PointVectorPerpendicularToClipPlane()
-    halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
-    if clipwidth is None:
-      clipwidth = self.meanradius
-    clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
-    clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
-    self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
-    self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
-    self.DrawUnitCell()
-    self.DrawReciprocalUnitCell()
-
-
-  def clip_plane_abc_vector(self, a, b, c, hkldist=0.0,
-             clipwidth=None, fixorientation=True, is_parallel=False):
-    # create clip plane that is normal to the realspace fractional abc vector
+    # create clip plane oriented parallel or perpendicular to abc vector
     if a==0.0 and b==0.0 and c==0.0 or clipwidth <= 0.0:
       self.RemoveVectorsNoClipPlane()
       return
@@ -2679,31 +2649,9 @@ mysocket.onmessage = function (e)
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
     self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
+    #self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
     self.DrawUnitCell()
     self.DrawReciprocalUnitCell()
-
-
-  def clip_plane_to_HKL_vector(self, h, k, l, hkldist=0.0,
-             clipwidth=None, fixorientation=True):
-    if h==0.0 and k==0.0 and l==0.0 or clipwidth==None:
-      self.RemoveVectorsNoClipPlane()
-      return
-    self.RemoveVectors("clip_vector")
-    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
-                               h, k, l, isreciprocal=False,
-                               name="clip_vector")
-    if fixorientation:
-      self.DisableMouseRotation()
-    else:
-      self.EnableMouseRotation()
-    self.PointVectorPerpendicularToClipPlane()
-    halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
-    if clipwidth is None:
-      clipwidth = self.meanradius
-    clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
-    clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
-    self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
-    self.TranslateHKLpoints(h,k,l, hkldist)
 
 
   def RemoveVectorsNoClipPlane(self):
@@ -2839,7 +2787,7 @@ mysocket.onmessage = function (e)
     (hklscenes, scenemaxdata,
       scenemindata, scenemaxsigmas,
         sceneminsigmas, scenearrayinfos
-     ) = MakeHKLscene(proc_array, 0, copy.deepcopy(self.settings), { } , None)
+     ) = MakeHKLscene(proc_array, 0, copy.deepcopy(self.viewerparams), { } , None)
 
     strdata = ""
     hklscene = hklscenes[0]

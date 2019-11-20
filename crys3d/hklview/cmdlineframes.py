@@ -1030,6 +1030,9 @@ class HKLViewFrame() :
   def set_action(self, val):
     if val == "is_terminating":
       self.__exit__()
+      return False
+    return True
+
 
 
   def ShowTooltips(self, val):
@@ -1126,7 +1129,7 @@ class HKLViewFrame() :
   def SendCurrentPhilValues(self):
     philstrvalsdict = {}
     for e in self.currentphil.all_definitions():
-      philstrvalsdict[e.path] = e.object.words[0].value
+      philstrvalsdict[e.path] = e.object.extract()
     mydict = { "current_ phil_ strings": philstrvalsdict }
     self.SendInfoToGUI(mydict)
 

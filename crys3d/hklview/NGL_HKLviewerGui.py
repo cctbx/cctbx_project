@@ -607,8 +607,8 @@ class NGL_HKLViewer(QWidget):
 
           if self.infodict.get("tncsvec"):
             self.tncsvec = self.infodict.get("tncsvec",[])
-            if len(self.tncsvec) == 0:
-              self.clipTNCSBtn.setDisabled(True)
+          if len(self.tncsvec) == 0:
+            self.clipTNCSBtn.setDisabled(True)
 
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
@@ -1276,9 +1276,21 @@ class NGL_HKLViewer(QWidget):
       if len(self.tncsvec):
         self.clipTNCSBtn.setDisabled(False)
         self.clipwidth_spinBox.setValue(4)
-      if self.realspacevecBtn.isChecked(): fracvectype = "*realspace"
-      if self.recipvecBtn.isChecked(): fracvectype = "*reciprocal"
-      if self.clipTNCSBtn.isChecked(): fracvectype = "*tncs"
+      if self.realspacevecBtn.isChecked(): fracvectype = "realspace"
+      if self.recipvecBtn.isChecked(): fracvectype = "reciprocal"
+      if self.clipTNCSBtn.isChecked(): fracvectype = "tncs"
+      if self.clipTNCSBtn.isChecked() and len(self.tncsvec):
+        fracvectype = "tncs"
+        self.hvec_spinBox.setValue(self.tncsvec[0])
+        self.kvec_spinBox.setValue(self.tncsvec[1])
+        self.lvec_spinBox.setValue(self.tncsvec[2])
+        self.hvec_spinBox.setDisabled(True)
+        self.kvec_spinBox.setDisabled(True)
+        self.lvec_spinBox.setDisabled(True)
+      else:
+        self.hvec_spinBox.setDisabled(False)
+        self.kvec_spinBox.setDisabled(False)
+        self.lvec_spinBox.setDisabled(False)
       philstr = """NGL_HKLviewer.clip_plane {
   h = %s
   k = %s
@@ -1293,31 +1305,7 @@ class NGL_HKLViewer(QWidget):
               self.hkldistval, self.clipwidth_spinBox.value(), \
               str(self.clipParallelBtn.isChecked()), fracvectype, \
               str(self.fixedorientcheckbox.isChecked()) )
-          #self.NGL_HKL_command(philstr)
-      if self.clipTNCSBtn.isChecked() and len(self.tncsvec):
-        self.hvec_spinBox.setValue(self.tncsvec[0])
-        self.kvec_spinBox.setValue(self.tncsvec[1])
-        self.lvec_spinBox.setValue(self.tncsvec[2])
-        self.hvec_spinBox.setDisabled(True)
-        self.kvec_spinBox.setDisabled(True)
-        self.lvec_spinBox.setDisabled(True)
-        philstr = """NGL_HKLviewer.clip_plane {
-  h = %s
-  k = %s
-  l = %s
-  hkldist = %s
-  clipwidth = %s
-  is_parallel = %s
-  fractional_vector = *realspace
-}
-  NGL_HKLviewer.viewer.NGL.fixorientation = %s
-        """ %(self.tncsvec[0], self.tncsvec[1], self.tncsvec[2], self.hkldistval, self.clipwidth_spinBox.value(), \
-              str(self.clipParallelBtn.isChecked()), \
-              str(self.fixedorientcheckbox.isChecked()) )
-      else:
-        self.hvec_spinBox.setDisabled(False)
-        self.kvec_spinBox.setDisabled(False)
-        self.lvec_spinBox.setDisabled(False)
+
       self.NGL_HKL_command(philstr)
     else:
       self.ClipBox.setDisabled(True)
@@ -1329,6 +1317,8 @@ class NGL_HKLViewer(QWidget):
 
 
   def onFinalRotaVecAngle(self):
+    if self.unfeedback:
+      return
     val = self.rotavecangle_slider.value()
     self.NGL_HKL_command("""NGL_HKLviewer.clip_plane {
     angle_around_vector = %f
@@ -1337,6 +1327,8 @@ class NGL_HKLViewer(QWidget):
 
 
   def onRotaVecAngle(self):
+    if self.unfeedback:
+      return
     val = self.rotavecangle_slider.value()
     self.rotavecangle_labeltxt.setText("Angle rotated: %2.f" %val)
     self.NGL_HKL_command("""NGL_HKLviewer.clip_plane {
