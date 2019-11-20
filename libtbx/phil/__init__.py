@@ -2158,7 +2158,8 @@ def parse(
   assert source_info is None or file_name is None
   if (input_string is None):
     assert file_name is not None
-    input_string = to_str(io.open(file_name, encoding='utf-8', errors='ignore').read())
+    with io.open(file_name, encoding='utf-8', errors='ignore') as f:
+      input_string = to_str(f.read())
   if (converter_registry is None):
     converter_registry = default_converter_registry
   result = scope(name="", primary_id=0)
