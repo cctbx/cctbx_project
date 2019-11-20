@@ -7,6 +7,7 @@ from mmtbx.ligands.ready_set_utils import generate_atom_group_atom_names
 def add_side_chain_acid_hydrogens_to_atom_group(atom_group,
                                                 anchors=None,
                                                 configuration_index=0,
+                                                bond_length=0.95,
                                                 ):
   """Add hydrogen atoms to side-chain acid in place
 
@@ -25,10 +26,12 @@ def add_side_chain_acid_hydrogens_to_atom_group(atom_group,
     o1 = o2
     o2 = tmp
     configuration_index=configuration_index%2
-  bond_length=1.
   if o2.name==' OD2':
     atom_name = ' HD2'
     atom = atom_group.get_atom('CB')
+  elif o2.name==' OE2':
+    atom_name = ' HE2'
+    atom = atom_group.get_atom('CG')
   else: assert 0
   atom_element='H'
   dihedral = dihedral_angle(sites=[atom.xyz,
@@ -67,7 +70,9 @@ def add_side_chain_acid_hydrogens_to_residue_group(residue_group,
   def _get_atom_names(residue_group):
     assert len(residue_group.atom_groups())==1
     atom_group = residue_group.atom_groups()[0]
-    lookup = {'ASP' : ['CG', 'OD1', 'OD2']}
+    lookup = {'ASP' : ['CG', 'OD1', 'OD2'],
+              'GLU' : ['CD', 'OE1', 'OE2'],
+    }
     return lookup.get(atom_group.resname, [])
   #
   atoms = _get_atom_names(residue_group)
@@ -95,7 +100,7 @@ def add_side_chain_acid_hydrogens(hierarchy,
   """
   for rg in hierarchy.residue_groups():
     for ag in rg.atom_groups():
-      if ag.resname in ['ASP']:
+      if ag.resname in ['ASP', 'GLU']:
         add_side_chain_acid_hydrogens_to_residue_group(
           rg,
           configuration_index=configuration_index,
