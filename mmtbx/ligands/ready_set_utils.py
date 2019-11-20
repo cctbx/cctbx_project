@@ -40,8 +40,12 @@ def generate_atom_group_atom_names(rg, names):
           atoms.append(atom)
           break
       else:
-        assert 0
-    yield atoms[0].parent(), atoms
+        print('not all atoms found. missing %s from %s' % (name, names))
+        break
+    if len(atoms)!=len(names):
+      yield None, None
+    else:
+      yield atoms[0].parent(), atoms
 
 def _add_hydrogens_to_atom_group_using_bad(ag,
                                            atom_name,
@@ -491,3 +495,4 @@ def add_terminal_hydrogens(hierarchy,
 #     if three.start: yield three[0], three.start, False
 #     yield three[1], False, False
 #     if three.end: yield three[2], False, three.end
+
