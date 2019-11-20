@@ -96,7 +96,11 @@ def add_side_chain_acid_hydrogens(hierarchy,
   Args:
       hierarchy (TYPE): Model hierarchy
       configuration_index (int, optional): Defaults to zero. Determines which
-        of the four configurations the added hydrogen will be.
+        of the four configurations the added hydrogen will be:
+          0 - Current Ox2 gets Hx2 (x=D,E) pointing out
+          1 - Current Ox2 gets Hx2 (x=D,E) pointing in
+          2 - Current Ox1 gets swapped with Ox2, gets Hx2 (x=D,E) pointing out
+          3 - Current Ox1 gets swapped with Ox2, gets Hx2 (x=D,E) pointing in
   """
   for rg in hierarchy.residue_groups():
     for ag in rg.atom_groups():
