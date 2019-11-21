@@ -607,7 +607,7 @@ class FatRefiner(PixelRefinement):
 
         # See if restarting from save state
         if self.restart_file is not None:
-            self.x = flex.double(np_load(self.restart_file)["x"])
+            self.x = flex_double(np_load(self.restart_file)["x"])
 
         rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
         if comm.rank == 0:
