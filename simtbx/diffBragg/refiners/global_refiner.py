@@ -16,6 +16,7 @@ if rank == 0:
     from numpy import mean, unique
     from numpy import log as np_log
     from numpy import exp as np_exp
+    from numpy import load as np_load
     from numpy import all as np_all
     from numpy.linalg import norm
 
@@ -30,6 +31,7 @@ if rank == 0:
 
 else:
     mean = unique = np_log = np_exp = np_all = norm = None
+    np_load = None
     # stdout_flush = None
     BreakToUseCurvatures = None
     flex_double = None
@@ -39,6 +41,7 @@ else:
 if has_mpi:
     mean = comm.bcast(mean, root=0)
     unique = comm.bcast(unique, root=0)
+    np_load = comm.bcast(np_load, root=0)
     np_log = comm.bcast(np_log, root=0)
     np_exp = comm.bcast(np_exp, root=0)
     norm = comm.bcast(norm, root=0)
@@ -51,7 +54,6 @@ if has_mpi:
 
 if rank == 0:
     import pylab as plt
-    from IPython import embed
 
 import sys
 import warnings
@@ -603,6 +605,10 @@ class FatRefiner(PixelRefinement):
         self.hkl_frequency = comm.bcast(self.hkl_frequency)
         self.watch_me_hkl = comm.bcast(self.watch_me_hkl)
 
+        # See if restarting from save state
+        if self.restart_file is not None:
+            self.x = flex.double(np_load(self.restart_file)["x"])
+
         rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
         if comm.rank == 0:
             print("--4 print initial stats")
@@ -617,8 +623,9 @@ class FatRefiner(PixelRefinement):
             master_data["gain"] = self.x[self.gain_xpos]
             master_data["originZ"] = self.x[self.originZ_xpos]
             print(master_data.to_string())
-        # setup the diffBragg instance
 
+
+        # setup the diffBragg instance
         self.D = self.S.D
 
         if self.refine_Umatrix:
@@ -817,7 +824,7 @@ class FatRefiner(PixelRefinement):
                 else:
                     print("Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
                           % (self.iterations + 1, self.num_positive_curvatures))
-            if comm.rank==0 and self.output_dir is not None:
+            if comm.rank == 0 and self.output_dir is not None:
                 outf = os.path.join(self.output_dir, "_fcell_iter%d" % self.iterations)
                 fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
                 np.savez(outf, fvals=fvals, x=self.x.as_numpy_array())
