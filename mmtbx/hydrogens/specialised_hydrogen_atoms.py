@@ -3,6 +3,7 @@ from scitbx.math import dihedral_angle
 import iotbx
 from mmtbx.ligands.ready_set_utils import construct_xyz
 from mmtbx.ligands.ready_set_utils import generate_atom_group_atom_names
+from mmtbx.ligands.ready_set_utils import new_atom_with_inheritance
 
 def add_side_chain_acid_hydrogens_to_atom_group(atom_group,
                                                 anchors=None,
@@ -27,13 +28,13 @@ def add_side_chain_acid_hydrogens_to_atom_group(atom_group,
     o2 = tmp
     configuration_index=configuration_index%2
   if o2.name==' OD2':
-    atom_name = ' HD2'
+    name = ' HD2'
     atom = atom_group.get_atom('CB')
   elif o2.name==' OE2':
-    atom_name = ' HE2'
+    name = ' HE2'
     atom = atom_group.get_atom('CG')
   else: assert 0
-  atom_element='H'
+  element='H'
   dihedral = dihedral_angle(sites=[atom.xyz,
                                    c.xyz,
                                    o1.xyz,
@@ -46,17 +47,11 @@ def add_side_chain_acid_hydrogens_to_atom_group(atom_group,
                       period=2,
                      )
   i = configuration_index
-  atom = atom_group.get_atom(atom_name.strip())
+  atom = atom_group.get_atom(name.strip())
   if atom:
     pass #atom.xyz = ro2[i]
   else:
-    atom = iotbx.pdb.hierarchy.atom()
-    atom.name = atom_name
-    atom.element = atom_element
-    atom.occ = c.occ
-    atom.b = c.b
-    atom.segid = ' '*4
-    atom.xyz = ro2[i]
+    atom = new_atom_with_inheritance(name, element, ro2[i], o2)
     atom_group.append_atom(atom)
 
 def add_side_chain_acid_hydrogens_to_residue_group(residue_group,

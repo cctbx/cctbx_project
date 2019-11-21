@@ -63,6 +63,16 @@ def _new_atom(name, element, xyz, occ, b, hetero, segid=' '*4):
   atom.segid = segid
   return atom
 
+def new_atom_with_inheritance(name, element, xyz, parent=None):
+  occ=1
+  b=20
+  hetero=False
+  if parent:
+    occ=parent.occ
+    b=parent.b
+    hetero=parent.hetero
+  return _new_atom(name, element, xyz, occ, b, hetero)
+
 def _add_atom_to_chain(atom, ag):
   rg = _add_atom_to_residue_group(atom, ag)
   chain = ag.parent().parent()
@@ -113,7 +123,7 @@ def _add_hydrogens_to_atom_group_using_bad(ag,
   if ag.get_atom(atom_name.strip()): return []
   if type(bond_atom)==type(''):
     ba = ag.get_atom(bond_atom.strip())
-    #print bond_atom,ba.quote()
+    # bond_atom,ba.quote()
     if ba is None: return
   else: ba = bond_atom
   if type(angle_atom)==type(''):
@@ -132,15 +142,6 @@ def _add_hydrogens_to_atom_group_using_bad(ag,
                       period=1,
                      )
   atom = _new_atom(atom_name, atom_element, ro2[0], ba.occ, ba.b, ba.hetero)
-  # atom = iotbx.pdb.hierarchy.atom()
-  # atom.name = atom_name
-  # atom.element = atom_element
-  # atom.occ = ba.occ
-  # atom.b = ba.b
-  # # altloc???
-  # atom.hetero = ba.hetero
-  # atom.segid = ' '*4
-  # atom.xyz = ro2[0]
   if append_to_end_of_model:
     chain = _add_atom_to_chain(atom, ag)
     rc.append(chain)
@@ -455,9 +456,9 @@ def add_main_chain_atoms_to_protein_three(three):
                                                           ['C', 'CA', 'N', 'O'],
                                                           return_Nones=True,
                                                           ):
-    print ag.id_str()
-    try: print c.quote(),ca.quote(),n.quote(),o.quote()
-    except: print c,ca,n,o
+    print(ag.id_str())
+    try: print(c.quote(),ca.quote(),n.quote(),o.quote())
+    except: print(c,ca,n,o)
     if o is None:
       add_main_chain_o_to_atom_group(ag,
                                      c_ca_n = [c, ca, n],
@@ -722,7 +723,7 @@ def add_main_chain_atoms(hierarchy,
                                        geometry_restraints_manager,
                                        verbose=verbose,
                                        ):
-    print three
+    print(three)
     add_main_chain_atoms_to_protein_three(three)
   assert 0
 
