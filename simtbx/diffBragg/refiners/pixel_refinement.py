@@ -25,6 +25,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     def __init__(self):
         self.output_dir = None  # place to dump files
         self.min_multiplicity = 3
+        self.restart_file = None
         self.binner_dmin = 2
         self.binner_dmax = 999
         self.binner_nbin = 10
