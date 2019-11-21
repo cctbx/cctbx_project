@@ -1,6 +1,5 @@
 from __future__ import division
 from scitbx.math import dihedral_angle
-import iotbx
 from mmtbx.ligands.ready_set_utils import construct_xyz
 from mmtbx.ligands.ready_set_utils import generate_atom_group_atom_names
 from mmtbx.ligands.ready_set_utils import new_atom_with_inheritance
