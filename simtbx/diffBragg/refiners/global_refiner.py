@@ -138,18 +138,8 @@ class FatRefiner(PixelRefinement):
         self._panel_id = None
         self.symbol = "P43212"
 
-        sgi = sgtbx.space_group_info(self.symbol)
         # FIXME: no hard coded unit cells!!!!
-        a = self.UCELL_MAN[0].a
-        c = self.UCELL_MAN[0].c
-        symm = symmetry(unit_cell=(a, a, c, 90, 90, 90), space_group_info=sgi)
-        miller_set = symm.build_miller_set(anomalous_flag=True, d_min=1.5, d_max=999)
-        self.binner = miller_set.setup_binner(d_max=999, d_min=2, n_bins=10)
-        bin_rng = list(self.binner.range_used())
-        self.res_bins = [self.binner.bin_d_min(i)
-                         for i in bin_rng]
-        _counts = self.binner.counts()
-        self.max_hkl_in_bin = [_counts[i] for i in bin_rng]
+
 
         #hkl_resolution_bins = {}  # hkl vs resolution bin number
         #hkls_with_assigned_bin = 0
@@ -180,6 +170,19 @@ class FatRefiner(PixelRefinement):
         self.global_param_idx_start = global_param_idx_start
 
         self.a = self.b = self.c = None  # tilt plan place holder
+
+    def _setup_reoslution_binner(self):
+        a = self.UCELL_MAN[0].a
+        c = self.UCELL_MAN[0].c
+        sgi = sgtbx.space_group_info(self.symbol)
+        symm = symmetry(unit_cell=(a, a, c, 90, 90, 90), space_group_info=sgi)
+        miller_set = symm.build_miller_set(anomalous_flag=True, d_min=1.5, d_max=999)
+        self.binner = miller_set.setup_binner(d_max=self.binner_dmax, d_min=self.binner_dmin, n_bins=self.binner_nbin)
+        bin_rng = list(self.binner.range_used())
+        self.res_bins = [self.binner.bin_d_min(i)
+                         for i in bin_rng]
+        _counts = self.binner.counts()
+        self.max_hkl_in_bin = [_counts[i] for i in bin_rng]
 
     def setup_plots(self):
         if rank == 0:
@@ -259,6 +262,8 @@ class FatRefiner(PixelRefinement):
             raise ValueError("Need to supply a non empty asu from idx map")
         if not self.idx_from_asu:  # # TODO just derive from its inverse
             raise ValueError("Need to supply a non empty idx from asu map")
+
+        self._setup_reoslution_binner()
 
         # get the Fhkl information from P1 array internal to nanoBragg
         if comm.rank == 0:
@@ -381,6 +386,7 @@ class FatRefiner(PixelRefinement):
             print("----loading fcell data")
             from collections import Counter
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index
+            print("---- -- counting hkl totes")
             self.hkl_frequency = Counter(hkl_totals)
 
             F = self.S.D.Fhkl  # initial values, this table is the high symm table expanded to P1
@@ -390,6 +396,7 @@ class FatRefiner(PixelRefinement):
             self._fix_list = []
             self.watch_me_hkl = []
             if self.perturb_fcell is not None:
+                print("---- -- perturbing")
                 _p = self.perturb_fcell
                 F_is_zero = Fdata == 0
                 Flog = np_log(Fdata)
@@ -402,6 +409,8 @@ class FatRefiner(PixelRefinement):
                 # NOTE: dont ever set D.Fhkl property in the refinement setting, it tries to update the unit cell
                 nbad = 0
                 for i_fcell in range(self.n_global_fcell):
+                    if i_fcell % 20 == 0:
+                        print("---- -- perturbing %d /%d" % (i_fcell+1, self.n_global_fcell))
                     asu_hkl = self.asu_from_idx[i_fcell]
                     # if the min multiplicity is too low, leave as truth and dont refine..
                     if self.hkl_frequency[i_fcell] < self.min_multiplicity:
@@ -448,6 +457,7 @@ class FatRefiner(PixelRefinement):
 
                 if self.output_dir is not None:
                     np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)
+                    np.save(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
 
                 ff = np.array(self.f_truth)
                 f_start = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
