@@ -820,7 +820,7 @@ class FatRefiner(PixelRefinement):
             if comm.rank==0 and self.output_dir is not None:
                 outf = os.path.join(self.output_dir, "_fcell_iter%d" % self.iterations)
                 fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
-                np.save(outf, fvals)
+                np.savez(outf, fvals=fvals, x=self.x.as_numpy_array())
 
             f = 0
             g = flex_double(self.n)
