@@ -448,7 +448,7 @@ class FatRefiner(PixelRefinement):
                     n_grabbed += 1
                     self.watch_me_hkl.append(i_fcell)
                     u = self.x[self.fcell_xstart + i_fcell]
-                    v = np.random.uniform(max(1e-10,u-0.1*u), u+0.1*u)
+                    v = np.random.uniform(max(1e-10, u-self.fcell_bump*u), u+self.fcell_bump*u)
                     if i_fcell in self._fix_list:
                         v = u
                     if not self.log_fcells:
