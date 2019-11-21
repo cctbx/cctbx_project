@@ -2,7 +2,7 @@ from scipy import ndimage
 from scipy.optimize import minimize
 import numpy as np
 import pylab as plt
-
+from scipy.interpolate import SmoothBivariateSpline
 
 
 def get_spot_data(img, thresh=0, filter=None, **kwargs):
@@ -75,7 +75,7 @@ def is_outlier(points, thresh=3.5):
     return modified_z_score > thresh
 
 
-def tilting_plane(img, mask=None, zscore=2 ):
+def tilting_plane(img, mask=None, zscore=2, spline=False ):
     """
     :param img:  numpy image
     :param mask:  boolean mask, same shape as img, True is good pixels
@@ -98,10 +98,16 @@ def tilting_plane(img, mask=None, zscore=2 ):
 
     fit_sel = np.logical_and(~out2d, mask)  # fit plane to these points, no outliers, no masked
     x, y, z = X[fit_sel], Y[fit_sel], img[fit_sel]
+
     guess = np.array([np.ones_like(x), x, y]).T
     coeff, r, rank, s = np.linalg.lstsq(guess, z, rcond=-1)
     ev = (coeff[0] + coeff[1]*XX + coeff[2]*YY)
-    return ev.reshape(img.shape), out2d, coeff, True
+    if spline:
+        sp = SmoothBivariateSpline(x, y, z, kx=1, ky=1)
+        tilt = sp.ev(XX, YY).reshape(img.shape)
+    else:
+        tilt = ev.reshape(img.shape)
+    return tilt, out2d, coeff, True
 
 
 def _positive_plane(x, xcoord, ycoord, data):
