@@ -20,7 +20,7 @@ def create_experiment_identifier(experiment, experiment_file_path, experiment_id
                        str(experiment.crystal) + \
                        str(experiment.detector) + \
                        ''.join(experiment.imageset.paths())
-  hash_obj = hashlib.md5(exp_identifier_str)
+  hash_obj = hashlib.md5(exp_identifier_str.encode('utf-8'))
   return hash_obj.hexdigest()
 
 #for integration pickles:
@@ -35,7 +35,7 @@ allowable_basename_endings = ["_00000.pickle",
 def is_odd_numbered(file_name, use_hash = False):
   if use_hash:
     import hashlib
-    hash_object = hashlib.md5(file_name)
+    hash_object = hashlib.md5(file_name.encode('utf-8'))
     return int(hash_object.hexdigest(), 16) % 2 == 0
   for allowable in allowable_basename_endings:
     if (file_name.endswith(allowable)):
