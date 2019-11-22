@@ -1202,7 +1202,7 @@ NGL_HKLviewer {
       .type = float
     clipwidth = None
       .type = float
-    fractional_vector = *reciprocal realspace tncs
+    fractional_vector = reciprocal *realspace tncs
       .type = choice
     is_parallel = False
       .type = bool

@@ -476,6 +476,14 @@ class NGL_HKLViewer(QWidget):
       self.NGL_HKL_command('NGL_HKLviewer.filename = "%s"' %fileName )
       self.MillerComboBox.clear()
       self.BinDataComboBox.clear()
+      self.tncsvec = []
+      self.ClipPlaneChkBox.setChecked(False)
+      self.expandP1checkbox.setChecked(False)
+      self.expandAnomalouscheckbox.setChecked(False)
+      self.sysabsentcheckbox.setChecked(False)
+      self.missingcheckbox.setChecked(False)
+      self.onlymissingcheckbox.setChecked(False)
+      self.showslicecheckbox.setChecked(False)
 
 
   def SettingsDialog(self):
@@ -730,6 +738,10 @@ class NGL_HKLViewer(QWidget):
     """
     self.unfeedback = True
     self.power_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'])
+
+    self.ManualPowerScalecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] == -1 )
+
+
     self.radii_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.scale'])
     self.showslicecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_mode'])
     self.hvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.h'])
@@ -745,7 +757,6 @@ class NGL_HKLViewer(QWidget):
     self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
     self.sliceindexspinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_index'])
     self.Nbins_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
-    self.hkldist_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
     if self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice']:
       self.SpaceGroupComboBox.setCurrentIndex( self.spacegroups[ self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice']] )
     self.clipParallelBtn.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.is_parallel'])
@@ -759,6 +770,7 @@ class NGL_HKLViewer(QWidget):
     self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.camera_type'])
     if self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'])
+    self.hkldist_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.hkldist'])
     self.realspacevecBtn.setChecked( "realspace" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
     self.recipvecBtn.setChecked( "reciprocal" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
     self.clipTNCSBtn.setChecked( "tncs" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
@@ -1167,7 +1179,7 @@ class NGL_HKLViewer(QWidget):
 
     self.hvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.hvec_spinBox.setValue(2.0)
-    self.hvec_spinBox.setDecimals(6)
+    self.hvec_spinBox.setDecimals(3)
     #self.hvec_spinBox.setSingleStep(0.5)
     self.hvec_spinBox.setRange(-100.0, 100.0)
     self.hvec_spinBox.valueChanged.connect(self.onHvecChanged)
@@ -1178,7 +1190,7 @@ class NGL_HKLViewer(QWidget):
 
     self.kvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.kvec_spinBox.setValue(0.0)
-    self.kvec_spinBox.setDecimals(6)
+    self.kvec_spinBox.setDecimals(3)
     self.kvec_spinBox.setSingleStep(0.5)
     self.kvec_spinBox.setRange(-100.0, 100.0)
     self.kvec_spinBox.valueChanged.connect(self.onKvecChanged)
@@ -1189,7 +1201,7 @@ class NGL_HKLViewer(QWidget):
 
     self.lvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.lvec_spinBox.setValue(0.0)
-    self.lvec_spinBox.setDecimals(6)
+    self.lvec_spinBox.setDecimals(3)
     self.lvec_spinBox.setSingleStep(0.5)
     self.lvec_spinBox.setRange(-100.0, 100.0)
     self.lvec_spinBox.valueChanged.connect(self.onLvecChanged)
@@ -1201,7 +1213,7 @@ class NGL_HKLViewer(QWidget):
     self.hkldist_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.hkldistval = 0.0
     self.hkldist_spinBox.setValue(self.hkldistval)
-    self.hkldist_spinBox.setDecimals(6)
+    self.hkldist_spinBox.setDecimals(3)
     self.hkldist_spinBox.setSingleStep(0.5)
     self.hkldist_spinBox.setRange(-100.0, 100.0)
     self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
@@ -1212,7 +1224,7 @@ class NGL_HKLViewer(QWidget):
 
     self.clipwidth_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.clipwidth_spinBox.setValue(0.5 )
-    self.clipwidth_spinBox.setDecimals(6)
+    self.clipwidth_spinBox.setDecimals(3)
     self.clipwidth_spinBox.setSingleStep(0.05)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
@@ -1312,7 +1324,7 @@ class NGL_HKLViewer(QWidget):
       self.clipNormalBtn.setDisabled(True)
       self.clipParallelBtn.setDisabled(True)
       self.clipTNCSBtn.setDisabled(True)
-      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.clipwidth = -1")
+      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.clipwidth = 0")
 
 
 
@@ -1682,6 +1694,7 @@ if __name__ == '__main__':
       # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
       sys.argv.append("--remote-debugging-port=9742")
       sys.argv.append("--single-process")
+      sys.argv.append("--js-flags='--expose_gc'")
 
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer()

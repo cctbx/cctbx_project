@@ -389,32 +389,46 @@ class hklview_3d:
     if self.viewerparams.scene_id >=0:
       self.fix_orientation(self.viewerparams.NGL.fixorientation)
       self.SetTrackBallRotateSpeed(self.viewerparams.NGL.mouse_sensitivity)
+      R = flex.vec3_double( [(0,0,0)])
+      hkldist = -1
+      clipwidth = 0
       if self.viewerparams.slice_mode: # explicit slicing
         if self.viewerparams.slice_axis=="h": hkl = [1,0,0]
         if self.viewerparams.slice_axis=="k": hkl = [0,1,0]
         if self.viewerparams.slice_axis=="l": hkl = [0,0,1]
-        self.clip_plane_hkl_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
-                         fixorientation = self.viewerparams.NGL.fixorientation)
-    if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
-      msg += self.ExpandInBrowser(P1= self.viewerparams.expand_to_p1,
-                            friedel_mate= self.viewerparams.expand_anomalous)
-    if self.params.clip_plane.clipwidth and not self.params.clip_plane.angle_around_vector:
-      if self.params.clip_plane.fractional_vector == "realspace" or self.params.clip_plane.fractional_vector == "tncs":
-        R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
-      elif self.params.clip_plane.fractional_vector == "reciprocal":
-        R = self.params.clip_plane.h * self.normal_kl \
-          + self.params.clip_plane.k * self.normal_lh \
-          - self.params.clip_plane.l * self.normal_hk
+        R = hkl[0] * self.normal_kl + hkl[1] * self.normal_lh - hkl[2] * self.normal_hk
+        clipwidth = 200
+        #self.clip_plane_hkl_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
+        #                 fixorientation = self.viewerparams.NGL.fixorientation)
+      if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
+        msg += self.ExpandInBrowser(P1= self.viewerparams.expand_to_p1,
+                              friedel_mate= self.viewerparams.expand_anomalous)
+      if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
+        return msg
+      if self.params.clip_plane.clipwidth:
+        clipwidth = self.params.clip_plane.clipwidth
+        hkldist = self.params.clip_plane.hkldist
+        if self.params.clip_plane.fractional_vector == "realspace" or self.params.clip_plane.fractional_vector == "tncs":
+          R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
+        elif self.params.clip_plane.fractional_vector == "reciprocal":
+          R = self.params.clip_plane.h * self.normal_kl \
+            + self.params.clip_plane.k * self.normal_lh \
+            - self.params.clip_plane.l * self.normal_hk
 
-      self.clip_plane_vector(R[0][0], R[0][1], R[0][2], self.params.clip_plane.hkldist,
-        self.params.clip_plane.clipwidth, self.viewerparams.NGL.fixorientation,
-        self.params.clip_plane.is_parallel)
-    else:
-      self.ReOrientStage()
+      self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
+        clipwidth, self.viewerparams.NGL.fixorientation, self.params.clip_plane.is_parallel)
+      if self.params.clip_plane.fractional_vector == "reciprocal":
+        if hkldist == -1:
+          self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], 0.0)
+        else:
+          self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
 
-    msg += self.SetOpacities(self.viewerparams.NGL.bin_opacities )
-    self.set_tooltip_opacity()
-    #self.SetAutoView()
+      #if clipwidth==0.0 or ( R[0][0]==0.0 and R[0][1]==0.0 and R[0][2]==0.0 ) or self.params.clip_plane.angle_around_vector == 0.0:
+      #  self.ReOrientStage()
+
+      msg += self.SetOpacities(self.viewerparams.NGL.bin_opacities )
+      self.set_tooltip_opacity()
+      #self.SetAutoView()
     return msg
 
 
@@ -1156,8 +1170,9 @@ function MakeHKL_Axis(mshape)
         stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos - stage.viewer.camera.position.z);
         stage.viewer.requestRender();
       }
-      cvorient = stage.viewerControls.getOrientation().elements;
-      msg = String(cvorient);
+      //cvorient = stage.viewerControls.getOrientation().elements;
+      //msg = String(cvorient);
+      msg = getOrientMsg();
       rightnow = timefunc();
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
@@ -1172,8 +1187,9 @@ function MakeHKL_Axis(mshape)
   stage.mouseObserver.signals.clicked.add(
     function (x, y)
     {
-      cvorient = stage.viewerControls.getOrientation().elements;
-      msg = String(cvorient);
+      //cvorient = stage.viewerControls.getOrientation().elements;
+      //msg = String(cvorient);
+      msg = getOrientMsg();
       WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
   );
@@ -1188,8 +1204,9 @@ function MakeHKL_Axis(mshape)
         stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos - stage.viewer.camera.position.z);
         stage.viewer.requestRender();
       }
-      cvorient = stage.viewerControls.getOrientation().elements;
-      msg = String(cvorient);
+      //cvorient = stage.viewerControls.getOrientation().elements;
+      //msg = String(cvorient);
+      msg = getOrientMsg();
       rightnow = timefunc();
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
@@ -1205,8 +1222,9 @@ function MakeHKL_Axis(mshape)
     {
       if (postrotmxflag === true)
       {
-        cvorient = stage.viewerControls.getOrientation().elements;
-        msg = String(cvorient);
+        //cvorient = stage.viewerControls.getOrientation().elements;
+        //msg = String(cvorient);
+        msg = getOrientMsg();
         WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
         postrotmxflag = false;
       }
@@ -1476,7 +1494,7 @@ mysocket.onerror = function(error)
 var stage;
 var shape;
 var shapeComp;
-var vectorshape;
+var vectorshape = null;
 var repr;
 var AA = String.fromCharCode(197); // short for angstrom
 var DGR = String.fromCharCode(176); // short for degree symbol
@@ -1545,10 +1563,23 @@ Object.assign(tooltip.style, {
 %s
 
 
+function getOrientMsg()
+{
+  cvorient = stage.viewerControls.getOrientation().elements;
+  //if (cvorient[14] == 0) // appears to occasionally happens first time stage is rendered
+  //  cvorient[14] = stage.viewer.cDist
+  cvorient[14] = stage.viewer.cDist
+  msg = String(cvorient);
+  return msg;
+}
+
+
+
+
 function HKLscene()
 {
   shape = new NGL.Shape('shape');
-  vectorshape = new NGL.Shape('vectorshape');
+  //vectorshape = new NGL.Shape('vectorshape');
   stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false,
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
@@ -1669,8 +1700,9 @@ mysocket.onmessage = function (e)
     if (msgtype === "Reload")
     {
     // refresh browser with the javascript file
-      cvorient = stage.viewerControls.getOrientation().elements;
-      msg = String(cvorient);
+      //cvorient = stage.viewerControls.getOrientation().elements;
+      //msg = String(cvorient);
+      msg = getOrientMsg();
       WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
       WebsockSendMsg( 'Refreshing ' + pagename );
       window.location.reload(true);
@@ -1851,9 +1883,11 @@ mysocket.onmessage = function (e)
       stage.viewerControls.orient(m4);
       if (strs[9]=="verbose")
         postrotmxflag = true;
+      ReRender();
       stage.viewer.requestRender();
-      cvorient = stage.viewerControls.getOrientation().elements;
-      msg = String(cvorient);
+      //cvorient = stage.viewerControls.getOrientation().elements;
+      //msg = String(cvorient);
+      msg = getOrientMsg();
       WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
 
@@ -1907,7 +1941,21 @@ mysocket.onmessage = function (e)
         sm[j] = parseFloat(elmstrs[j]);
       shapeComp.setPosition([ sm[0], sm[1], sm[2] ])
       stage.viewer.requestRender();
+      msg = getOrientMsg();
+      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
+
+    function DeleteVectors(reprname)
+    {
+      thisrepr = stage.getRepresentationsByName(reprname);
+      for (i=0; i<stage.compList.length; i++)
+        if (stage.compList[i].reprList[0].name == reprname)
+        {
+          thiscomp = stage.compList[i];
+          thiscomp.removeRepresentation(thisrepr);
+          stage.removeComponent(thiscomp);
+        }
+    };
 
     if (msgtype === "AddVector")
     {
@@ -1923,6 +1971,9 @@ mysocket.onmessage = function (e)
         rgb[j]= parseFloat(elmstrs[j+6]);
       }
 
+      if (vectorshape == null)
+        vectorshape = new NGL.Shape('vectorshape');
+
       vectorshape.addArrow( r1, r2 , [rgb[0], rgb[1], rgb[2]], 0.15);
       if (elmstrs[6] !== "") {
         var txtR = [ r1[0] + r2[0], r1[1] + r2[1], r1[2] + r2[2] ];
@@ -1934,11 +1985,13 @@ mysocket.onmessage = function (e)
       var reprname = elmstrs[10].trim();
       if (reprname != "")
       {
+        DeleteVectors(reprname); // delete any existing vectors with the same name
         vectorshapeComps.push( stage.addComponentFromObject(vectorshape) );
         vectorreprs.push(
           vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vecbuf',
                                                                       { name: reprname} )
         );
+        vectorshape = null;
         stage.viewer.requestRender();
       }
     }
@@ -1948,27 +2001,15 @@ mysocket.onmessage = function (e)
       strs = datval[1].split("\\n");
       var elmstrs = strs[0].split(",");
       var reprname = elmstrs[0].trim();
+
       // if reprname is supplied only remove vectors with that name
       if (reprname != "")
-      {
-        thisrepr = stage.getRepresentationsByName(reprname);
-        for (i=0; i<stage.compList.length; i++)
-          if (stage.compList[i].reprList[0].name == reprname)
-          {
-            thiscomp = stage.compList[i];
-            thiscomp.removeRepresentation(thisrepr);
-            stage.removeComponent(thiscomp);
-          }
-      }
+        DeleteVectors(reprname);
       else // otherwise remove all vectors
       {
-        for (i=0; i<vectorshapeComps.length; i++)
-        {
-          vectorshapeComps[i].removeRepresentation(vectorreprs[i]);
-          stage.removeComponent(vectorshapeComps[i]);
-        }
-        vectorshapeComps = [];
-        vectorreprs = [];
+        DeleteVectors("clip_vector");
+        DeleteVectors("unitcell");
+        DeleteVectors("reciprocal_unitcell");
       }
       clipFixToCamPosZ = false;
       stage.viewer.requestRender();
@@ -2268,6 +2309,8 @@ mysocket.onmessage = function (e)
     self.cameratranslation = (flst[12], flst[13], flst[14])
     self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=3)
     self.cameradist = math.pow(ScaleRotMx.determinant(), 1.0/3.0)
+    if self.cameradist <= 0.0:
+      self.cameradist = flst[14] # javascript backup of distance in case of invalid matrix
     self.mprint("distance: %s" %roundoff(self.cameradist), verbose=3)
     self.rotation_mx = ScaleRotMx/self.cameradist
     rotlst = roundoff(self.rotation_mx.elems)
@@ -2540,6 +2583,7 @@ mysocket.onmessage = function (e)
     self.mprint("angles in xy plane to x,y axis are: %s, %s" %(angle_x_xyvec, angle_y_xyvec), verbose=2)
     self.mprint("angles in yz plane to y,z axis are: %s, %s" %(angle_y_yzvec, angle_z_yzvec), verbose=2)
     self.mprint("angles to x,y,z axis are: %s, %s, %s" %(angle_x_svec, angle_y_svec, angle_z_svec ), verbose=2)
+    self.mprint("deferred rendering vector from (%s, %s, %s) to (%s, %s, %s)" %(s1, s2, s3, t1, t2, t3), verbose=2)
     self.msgqueue.append( ("AddVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
          %tuple(svec1 + svec2 + [r, g, b, label, name]) ))
     return angle_x_xyvec, angle_z_svec
@@ -2649,7 +2693,8 @@ mysocket.onmessage = function (e)
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
     self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
-    #self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
+    #if hkldist < 0.0:
+    #  self.TranslateHKLpoints(a, b, c, hkldist)
     self.DrawUnitCell()
     self.DrawReciprocalUnitCell()
 
