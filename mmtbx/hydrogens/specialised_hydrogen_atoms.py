@@ -3,6 +3,10 @@ from scitbx.math import dihedral_angle
 from mmtbx.ligands.ready_set_utils import construct_xyz
 from mmtbx.ligands.ready_set_utils import generate_atom_group_atom_names
 from mmtbx.ligands.ready_set_utils import new_atom_with_inheritance
+from mmtbx.ligands.ready_set_utils import _add_hydrogens_to_atom_group_using_bad
+
+from cctbx.geometry_restraints.linking_class import linking_class
+origin_ids = linking_class()
 
 def add_side_chain_acid_hydrogens_to_atom_group(atom_group,
                                                 anchors=None,
@@ -104,3 +108,90 @@ def add_side_chain_acid_hydrogens(hierarchy,
           configuration_index=configuration_index,
           )
 
+#
+# isolated CYS need HG
+#
+def add_cys_hg_to_atom_group(ag,
+                             append_to_end_of_model=False,
+                             ):
+  """Adds hydrogen to CYS
+
+  Args:
+      ag (TYPE): atom_group in hirarchy
+      append_to_end_of_model (bool, optional): Some programs like the additional
+        atoms added at end of PDB
+
+  Returns:
+      TYPE: New chains, if any
+  """
+  rc = _add_hydrogens_to_atom_group_using_bad(
+    ag,
+    ' HG ',
+    'H',
+    'SG',
+    'CB',
+    'CA',
+    1.2,
+    120.,
+    160.,
+    append_to_end_of_model=append_to_end_of_model,
+   )
+  return rc
+
+def add_cys_hg_to_residue_group(rg,
+                                append_to_end_of_model=False,
+                               ):
+  rc=[]
+  for ag in rg.atom_groups():
+    if ag.resname not in ['CYS']: continue
+    rc += add_cys_hg_to_atom_group(
+      ag,
+      append_to_end_of_model=append_to_end_of_model,
+    )
+  return rc
+
+def conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
+                                         rg,
+                                         ):
+  """Adds HG atom to CYS if no disulfur bridge
+
+  Args:
+      geometry_restraints_manager (TYPE): GRM
+      rg (TYPE): CYS residue group
+  """
+  # could be more general to include other disulphide amino acids
+  resnames = []
+  for ag in rg.atom_groups():
+    resnames.append(ag.resname)
+  if 'CYS' not in resnames: return -1
+  sgs = []
+  for atom in rg.atoms():
+    if atom.name.strip()=='SG' and atom.parent().resname=='CYS':
+      sgs.append(atom.i_seq)
+  assert len(sgs) in [0, 1]
+  sg_bonds = []
+  if sgs:
+    ss_bond = origin_ids.get_origin_id('SS BOND')
+    for bond in geometry_restraints_manager.get_all_bond_proxies():
+      if not hasattr(bond, 'get_proxies_with_origin_id'): continue
+      for p in bond.get_proxies_with_origin_id(ss_bond):
+        assert p.origin_id==ss_bond
+        if sgs[0] in p.i_seqs:
+          sg_bonds.append(p.i_seqs)
+  rc = []
+  if len(sg_bonds)==0:
+    rc += add_cys_hg_to_residue_group(rg)
+    assert not rc
+  return rc
+
+def add_disulfur_hydrogen_atoms(geometry_restraints_manager, hierarchy):
+  """Example of usage
+
+  """
+  for residue_group in hierarchy.residue_groups():
+    resnames=[]
+    for atom_group in residue_group.atom_groups():
+      resnames.append(atom_group.resname)
+    if 'CYS' in resnames:
+      rc = conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
+                                                residue_group)

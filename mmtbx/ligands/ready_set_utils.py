@@ -123,18 +123,15 @@ def _add_hydrogens_to_atom_group_using_bad(ag,
   if ag.get_atom(atom_name.strip()): return []
   if type(bond_atom)==type(''):
     ba = ag.get_atom(bond_atom.strip())
-    # bond_atom,ba.quote()
-    if ba is None: return
+    if ba is None: return []
   else: ba = bond_atom
   if type(angle_atom)==type(''):
     aa = ag.get_atom(angle_atom.strip())
-    #print angle_atom,aa.quote()
-    if aa is None: return
+    if aa is None: return []
   else: aa = angle_atom
   if type(dihedral_atom)==type(''):
     da = ag.get_atom(dihedral_atom.strip())
-    #print dihedral_atom, da.quote()
-    if da is None: return
+    if da is None: return []
   else: da = dihedral_atom
   ro2 = construct_xyz(ba, bond_length,
                       aa, angle,
@@ -148,63 +145,6 @@ def _add_hydrogens_to_atom_group_using_bad(ag,
   else:
     ag.append_atom(atom)
   return rc
-
-def add_cys_hg_to_atom_group(ag,
-                             append_to_end_of_model=False,
-                            ):
-  #
-  # do we need ANISOU
-  #
-  rc = _add_hydrogens_to_atom_group_using_bad(
-    ag,
-    ' HG ',
-    'H',
-    'SG',
-    'CB',
-    'CA',
-    1.2,
-    120.,
-    160.,
-    append_to_end_of_model=append_to_end_of_model,
-   )
-  return rc
-
-def add_cys_hg_to_residue_group(rg,
-                                append_to_end_of_model=False,
-                               ):
-  rc=[]
-  for ag in rg.atom_groups():
-    if ag.resname not in ['CYS']: continue
-    rc += add_cys_hg_to_atom_group(
-      ag,
-      append_to_end_of_model=append_to_end_of_model,
-    )
-  return rc
-
-def conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
-                                         rg,
-                                         ):
-  # could be more general to include other disulphide amino acids
-  resnames = []
-  for ag in rg.atom_groups():
-    resnames.append(ag.resname)
-  if 'CYS' not in resnames: return -1
-  sgs = []
-  for atom in rg.atoms():
-    if atom.name.strip()=='SG' and atom.parent().resname=='CYS':
-      sgs.append(atom.i_seq)
-  assert len(sgs) in [0, 1]
-  sg_bonds = []
-  if sgs:
-    for bond in geometry_restraints_manager.get_all_bond_proxies():
-      if not hasattr(bond, 'get_proxies_with_origin_id'): continue
-      for p in bond.get_proxies_with_origin_id():
-        assert p.origin_id==0
-        if sgs[0] in p.i_seqs:
-          sg_bonds.append(p.i_seqs)
-  if len(sg_bonds)==1:
-    rc = add_cys_hg_to_residue_group(rg)
-    assert not rc
 
 def add_n_terminal_hydrogens_to_atom_group(ag,
                                            bonds=None,
@@ -457,8 +397,6 @@ def add_main_chain_atoms_to_protein_three(three):
                                                           return_Nones=True,
                                                           ):
     print(ag.id_str())
-    try: print(c.quote(),ca.quote(),n.quote(),o.quote())
-    except: print(c,ca,n,o)
     if o is None:
       add_main_chain_o_to_atom_group(ag,
                                      c_ca_n = [c, ca, n],

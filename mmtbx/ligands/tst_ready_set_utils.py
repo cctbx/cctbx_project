@@ -2,8 +2,10 @@ from __future__ import division
 import sys
 from libtbx import easy_run
 from libtbx.test_utils import assert_lines_in_file
+from iotbx.pdb import pdb_input
 
 from mmtbx.hydrogens.specialised_hydrogen_atoms import add_side_chain_acid_hydrogens
+from mmtbx.hydrogens.specialised_hydrogen_atoms import add_disulfur_hydrogen_atoms
 
 pdb_strings = {'ASP' :'''
 CRYST1  112.354   50.667   75.061  90.00 127.09  90.00 C 1 2 1
@@ -61,6 +63,43 @@ TER
 HETATM   49  O5  CIT A 500     -11.052  16.238  62.773  0.75 26.13           O
 HETATM   52  O   HOH A 512     -14.767  12.104  68.190  1.00 29.69           O
 ''',
+  'CYS_1' : '''
+CRYST1   61.314   37.470   44.915  90.00  94.55  90.00 P 1 21 1
+SCALE1      0.016309  0.000000  0.001298        0.00000
+SCALE2      0.000000  0.026688  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.022335        0.00000
+ATOM      8  N   CYS A  26      21.129  -6.109  34.429  1.00  4.21           N
+ATOM      9  CA  CYS A  26      20.061  -5.459  33.689  1.00  4.17           C
+ATOM     10  C   CYS A  26      18.827  -6.331  33.559  1.00  4.48           C
+ATOM     11  O   CYS A  26      17.694  -5.822  33.620  1.00  4.91           O
+ATOM     12  CB  CYS A  26      20.554  -5.076  32.290  1.00  4.37           C
+ATOM     13  SG  CYS A  26      21.811  -3.780  32.291  1.00  4.75           S
+ATOM     14  H   CYS A  26      21.889  -6.315  34.036  1.00  5.05           H
+ATOM     15  HA  CYS A  26      19.806  -4.622  34.173  1.00  5.01           H
+ATOM     16  HB2 CYS A  26      20.927  -5.881  31.852  1.00  5.24           H
+ATOM     17  HB3 CYS A  26      19.782  -4.771  31.752  1.00  5.24           H
+ATOM     18  N   ASN A  27      19.008  -7.633  33.365  1.00  4.35           N
+ATOM     19  CA  ASN A  27      17.845  -8.529  33.284  1.00  4.69           C
+ATOM     20  C   ASN A  27      16.993  -8.399  34.537  1.00  5.07           C
+ATOM     28  CB  CYS A  84      20.151  -1.930  30.554  1.00  5.45           C
+ATOM     29  SG  CYS A  84      20.664  -2.084  32.297  1.00  5.40           S
+''',
+  'CYS_2' : '''
+CRYST1   61.314   37.470   44.915  90.00  94.55  90.00 P 1 21 1
+SCALE1      0.016309  0.000000  0.001298        0.00000
+SCALE2      0.000000  0.026688  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.022335        0.00000
+ATOM      8  N   CYS A  26      21.129  -6.109  34.429  1.00  4.21           N
+ATOM      9  CA  CYS A  26      20.061  -5.459  33.689  1.00  4.17           C
+ATOM     10  C   CYS A  26      18.827  -6.331  33.559  1.00  4.48           C
+ATOM     11  O   CYS A  26      17.694  -5.822  33.620  1.00  4.91           O
+ATOM     12  CB  CYS A  26      20.554  -5.076  32.290  1.00  4.37           C
+ATOM     13  SG  CYS A  26      21.811  -3.780  32.291  1.00  4.75           S
+ATOM     14  H   CYS A  26      21.889  -6.315  34.036  1.00  5.05           H
+ATOM     15  HA  CYS A  26      19.806  -4.622  34.173  1.00  5.01           H
+ATOM     16  HB2 CYS A  26      20.927  -5.881  31.852  1.00  5.24           H
+ATOM     17  HB3 CYS A  26      19.782  -4.771  31.752  1.00  5.24           H
+''',
 }
 geo_strings = {'ASP' :
   {0 : '''nonbonded pdb=" OD2 ASP A 258 "
@@ -98,11 +137,14 @@ geo_strings = {'ASP' :
           pdb=" O5  CIT A 500 "
    model   vdw
    4.592 1.970''',
-  }
+  },
+               'CYS_2' : '''bond pdb=" SG  CYS A  26 "
+     pdb=" HG  CYS A  26 "
+  ideal  model  delta    sigma   weight residual
+  1.200  1.200  0.000 2.00e-02 2.50e+03 3.33e-04''',
 }
 
 def tst_adding_side_chain_acid_hydrogen_atoms(switch):
-  from iotbx.pdb import pdb_input
   for i in range(4):
     fn = 'tst_ready_hydrogens_%s_%d.pdb' % (switch, i)
     f=file(fn, 'wb')
@@ -115,21 +157,44 @@ def tst_adding_side_chain_acid_hydrogen_atoms(switch):
     cmd='phenix.pdb_interpretation %s write_geo=True' % fn.replace('.pdb', '_updated.pdb')
     print(cmd)
     easy_run.go(cmd)
-    # print('%s.geo' % fn.replace('.pdb', '_updated.pdb'))
-    # print(geo_strings[switch][i])
     assert_lines_in_file(file_name='%s.geo' % fn.replace('.pdb', '_updated.pdb'),
                          lines = geo_strings[switch][i])
+
+def tst_adding_disulfur_hydrogen_atoms(switch):
+  fn = 'tst_ready_hydrogens_%s.pdb' % (switch)
+  f=file(fn, 'wb')
+  f.write(pdb_strings[switch])
+  del f
+  pdb_inp = pdb_input(fn)
+  hierarchy = pdb_inp.construct_hierarchy()
+  from mmtbx.conformation_dependent_library.testing_utils import get_geometry_restraints_manager
+  grm = get_geometry_restraints_manager(pdb_filename=fn)
+  add_disulfur_hydrogen_atoms(grm, hierarchy)
+  hierarchy.write_pdb_file(fn.replace('.pdb', '_updated.pdb'))
+  if switch=='CYS_1':
+    f=file(fn.replace('.pdb', '_updated.pdb'), 'rb')
+    lines = f.read()
+    del f
+    assert lines.find('HG')==-1
+  else:
+    cmd='phenix.pdb_interpretation %s write_geo=True' % fn.replace('.pdb', '_updated.pdb')
+    print(cmd)
+    easy_run.go(cmd)
+    assert_lines_in_file(file_name='%s.geo' % fn.replace('.pdb', '_updated.pdb'),
+                         lines = geo_strings[switch])
 
 def switcher(switch):
   if switch in ['ASP', 'GLU']:
     tst_adding_side_chain_acid_hydrogen_atoms(switch)
+  elif switch in ['CYS_1', 'CYS_2']:
+    tst_adding_disulfur_hydrogen_atoms(switch)
 
 def main(switch=None):
   if switch is None:
-    for switch in ['ASP', 'GLU']:
-      tst_adding_side_chain_acid_hydrogen_atoms(switch)
+    for switch in ['ASP', 'GLU', 'CYS_1', 'CYS_2']:
+      switcher(switch)
   else:
-    tst_adding_side_chain_acid_hydrogen_atoms(switch)
+    switcher(switch)
 
 if __name__ == '__main__':
   main(*tuple(sys.argv[1:]))
