@@ -5,7 +5,8 @@ Import ("env_etc")
 ncdist_resource_flags=[]
 env_etc.ncdist_resource_common_includes = []
 
-env_etc.ncdist_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../ncdist"))
+# Find the modules/ncdist folder, using modules/cctbx_project/cctbx as a starting point
+env_etc.ncdist_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("cctbx"), "..", "..", "ncdist"))
 if os.path.isdir(env_etc.ncdist_dist):
     # only get here if the repo is checked out in the modules directory:
     # git clone git@github.com:yayahjb/ncdist.git
