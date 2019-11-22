@@ -5277,8 +5277,9 @@ def get_and_apply_soft_mask_to_maps(
   if not rad_smooth:
     rad_smooth=resolution
 
-  print("\nApplying soft mask with smoothing radius of %s\n" %(
-    rad_smooth), file=out)
+  if rad_smooth:
+    print("\nApplying soft mask with smoothing radius of %.2f A\n" %(
+      rad_smooth), file=out)
   if wang_radius:
     wang_radius=wang_radius
   else:
