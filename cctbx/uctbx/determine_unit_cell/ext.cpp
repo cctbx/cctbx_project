@@ -75,12 +75,22 @@ namespace cctbx { namespace uctbx {
 # if HAVE_NCDIST
 namespace ncdist2017 {
 #include <NCDist.h>
+#include <CS6Dist.h>
 }
 
 namespace cctbx { namespace uctbx {
 
   double NCDist2017_wrapper(af::tiny<double,6> mm1,af::tiny<double,6> mm2){
     return ncdist2017::NCDist(&mm1[0],&mm2[0]);
+  }
+
+  double CS6Dist_wrapper(af::tiny<double,6> mm1,af::tiny<double,6> mm2){
+    return ncdist2017::CS6Dist(&mm1[0],&mm2[0]);
+  }
+
+  af::tiny<double,6> S6Dist_reduce_wrapper(af::tiny<double,6> mm1, std::string centering_symbol) {
+    // stub
+    return mm1;
   }
 
 }}
@@ -93,5 +103,7 @@ BOOST_PYTHON_MODULE(determine_unit_cell_ext)
   def ("NCDist_flatten",&cctbx::uctbx::NCDist_flatten);
 # if HAVE_NCDIST
   def ("NCDist2017",&cctbx::uctbx::NCDist2017_wrapper);
+  def ("CS6Dist",&cctbx::uctbx::CS6Dist_wrapper);
+  def ("S6_reduce",&cctbx::uctbx::S6Dist_reduce_wrapper);
 # endif // HAVE_NCDIST
 }
