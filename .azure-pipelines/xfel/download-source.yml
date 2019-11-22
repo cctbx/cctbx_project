@@ -21,8 +21,6 @@ jobs:
   - script: |
       cd $(Pipeline.Workspace)
       python bootstrap.py hot update --builder=xfel
-      cd modules/dials
-      git checkout locale_fix
     displayName: Download sources
 
   - script: |
