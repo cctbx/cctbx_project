@@ -5,7 +5,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 11/15/2019
+Last Changed: 11/21/2019
 Description : IOTA GUI Windows / frames
 '''
 
@@ -558,6 +558,16 @@ class MainWindow(IOTABaseFrame):
 
     # Update gparams here, to include new stuff from PHIL
     self.gparams = self.iota_index.get_python_object(make_copy=True)
+
+    # Pass input from IOTA PHIL through Input Finder to resolve wildcards, etc.
+    if self.gparams.input is not None:
+      inputs = [
+        self.gparams.input.pop(i) for i in range(len(self.gparams.input))]
+      phil_input_dict = ut.ginp.process_mixed_input(paths=inputs)
+      if input_dict:
+        input_dict.update(phil_input_dict)
+      else:
+        input_dict = phil_input_dict
 
     # Read input OR update from window params
     if input_dict:

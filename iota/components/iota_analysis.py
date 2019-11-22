@@ -5,7 +5,7 @@ from six.moves import range, zip
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 10/31/2019
+Last Changed: 11/21/2019
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -396,7 +396,7 @@ class Analyzer(object):
 
       # Calculate dataset stats
       for k in self.info.stats:
-        stat_list = list(zip(*self.info.stats[k]['lst']))[2]
+        stat_list = list(zip(*self.info.stats[k]['lst']))[3]
         stats = dict(lst=self.info.stats[k]['lst'],
                      median=np.median(stat_list),
                      mean=np.mean(stat_list),

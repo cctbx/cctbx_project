@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 10/31/2019
+Last Changed: 11/21/2019
 Description : Interprets command line arguments. Initializes all IOTA starting
               parameters. Starts main log. Options for a variety of running
               modes, including resuming an aborted run.
@@ -17,21 +17,6 @@ assert time
 import iota.components.iota_input as inp
 from iota.components import iota_utils as util
 from iota.components.iota_base import ProcInfo
-
-# from contextlib import contextmanager
-# import dials.util.command_line as cmd
-# @contextmanager    # Will print start / stop messages around some processes
-# def prog_message(msg, mode='xterm'):
-#   if mode == 'xterm':
-#     cmd.Command.start(msg)
-#     yield
-#     cmd.Command.end('{} -- DONE'.format(msg))
-#   elif mode == 'verbose':
-#     print ('IOTA: {}'.format(msg))
-#     yield
-#     print ('IOTA: {} -- DONE'.format(msg))
-#   else:
-#     yield
 
 
 def initialize_interface(args, phil_args=None, gui=False):
@@ -190,7 +175,15 @@ def initialize_processing(paramfile, run_no):
   # Generate input list and input base
   if not hasattr(info, 'input_list'):
     info.generate_input_list(params=params)
-  filepath_list = zip(*info.input_list)[0]
+  filepath_list = []
+  for item in info.input_list:
+    if isinstance(item, list) or isinstance(item, tuple):
+      fp = [i for i in item if os.path.exists(str(i))]
+      if fp and len(fp) == 1:
+        filepath_list.append(fp[0])
+    else:
+      if os.path.exists(item):
+        filepath_list.append(item)
   common_pfx = os.path.abspath(
     os.path.dirname(os.path.commonprefix(filepath_list)))
 
@@ -312,6 +305,8 @@ def generate_stat_containers(info, params):
       failed_triage=([], 'failed triage', 'failed_triage.lst', '#d73027'),
       failed_spotfinding=([], 'failed spotfinding', 'failed_spotfinding.lst', '#f46d43'),
       failed_indexing=([], 'failed indexing', 'failed_indexing.lst', '#fdae61'),
+      failed_refinement=([], 'failed refinement', 'failed_refinement.lst',
+                         '#fdae6b'),
       failed_grid_search=([], 'failed grid search', 'failed_integration.lst', '#fee090'),
       failed_integration=([], 'failed integration', 'failed_integration.lst', '#fee090'),
       failed_filter=([], 'failed filter', 'failed_filter.lst', '#ffffbf'),
