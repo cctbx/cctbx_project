@@ -4,7 +4,7 @@ from six.moves import range, zip
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 10/31/2019
+Last Changed: 11/21/2019
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -19,7 +19,7 @@ assert miller
 from libtbx import easy_pickle as ep, easy_run
 
 # for Py3 compatibility
-from io import BytesIO
+from six.moves import StringIO   # This, not io.BytesIO, works with DIALS logger
 
 # For testing
 import time
@@ -87,13 +87,18 @@ class Capturing(list):
   def __enter__(self):
     self._stdout = sys.stdout
     self._stderr = sys.stderr
-    sys.stdout = self._stringio_stdout = BytesIO()
-    sys.stderr = self._stringio_stderr = BytesIO()
+    sys.stdout = self._io_stdout = StringIO()
+    sys.stderr = self._io_stderr = StringIO()
     return self
   def __exit__(self, *args):
-    self.extend(self._stringio_stdout.getvalue().splitlines())
+    bytes_str = self._io_stdout.getvalue()
+    stdout_lines = bytes_str.decode('UTF-8').splitlines()
+    self.extend(stdout_lines)
     sys.stdout = self._stdout
-    self.extend(self._stringio_stderr.getvalue().splitlines())
+
+    bytes_str = self._io_stderr.getvalue()
+    stderr_lines = bytes_str.decode('UTF-8').splitlines()
+    self.extend(stderr_lines)
     sys.stderr = self._stderr
 
 
@@ -104,11 +109,8 @@ def convert_phil_to_text(phil, phil_file=None, att_level=0):
   :param phil_file: absolute filepath for text file with parameters
   :return: PHIL text string
   """
-  with Capturing() as output:
-    phil.show(attributes_level=att_level)
-  txt_out = ''
-  for one_output in output:
-    txt_out += one_output + '\n'
+
+  txt_out = phil.as_str(attributes_level=att_level)
 
   if phil_file:
     with open(phil_file, 'w') as pf:
@@ -317,12 +319,10 @@ class InputFinder(object):
     return filetype
 
   def test_extension(self, filepath):
-
     # Check extensions
     filetype = 'unidentified'
     filename = os.path.basename(filepath)
     ext = filename.split(os.extsep)[1:]  # NOTE: may get multiple extensions
-
     for e in ext:
       e = e.lower().replace(' ', '')
       if e in self.images or e.isdigit():
@@ -346,9 +346,10 @@ class InputFinder(object):
         filetype = 'data (HKL)'
       elif e == 'pdb':
         filetype = 'coordinates'
+      elif e in ['png', 'tif', 'tiff', 'jpg', 'jpeg', 'raw', 'bmp']:
+        filetype = 'picture'
       else:
         filetype = 'unidentified'
-
     return filetype
 
   def test_file(self, filepath):
@@ -367,13 +368,16 @@ class InputFinder(object):
       filetype = 'raw image'
       self.images.append('.'.join(ext))
     elif 'data' in raw_type.lower():
-      img_format = self.test_multi_image(filepath)
-      if img_format is not None:
-        filetype = '{} image'.format(img_format)
-        self.multi_image.append('.'.join(ext))
-      else:
-        filetype = 'raw image'
-        self.images.append('.'.join(ext))
+      try:
+        img_format = self.test_multi_image(filepath)
+        if img_format is not None:
+          filetype = '{} image'.format(img_format)
+          self.multi_image.append('.'.join(ext))
+        else:
+          filetype = 'raw image'
+          self.images.append('.'.join(ext))
+      except Exception:
+        filetype = 'binary'
     elif 'text' in raw_type.lower():
       filetype = 'text'
       self.texts.append('.'.join(ext))
@@ -807,7 +811,7 @@ class InputFinder(object):
     if not expand_multiple and as_tuple:
       input_list = [(i, 0) for i in input_list]
 
-    return input_list, total_count
+    return sorted(input_list), total_count
 
   def process_mixed_input(self, paths):
     input_dict = dict(paramfile=None,
@@ -816,7 +820,13 @@ class InputFinder(object):
                       neither=[], badpaths=[])
 
     if type(paths) == str:
-      paths = glob(paths)
+      raw_paths = [paths]
+    elif isinstance(paths, list) or isinstance(paths, tuple):
+      raw_paths = paths
+
+    paths = []
+    for path in raw_paths:
+      paths.extend(glob(path))
 
     for path in paths:
       path = os.path.abspath(path)
@@ -832,7 +842,7 @@ class InputFinder(object):
           input_dict['imagefiles'].extend(self.make_input_list(prm.input)[0])
           input_dict['imagepaths'].extend(prm.input)
         else:
-          contents, ctype = self.get_input(path, filter_type='self')
+          contents, ctype, _ = self.get_input(path, filter_type='self')
           if not contents:
             continue
           if ctype is None:

@@ -5,7 +5,7 @@ from six.moves import range, zip
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 06/07/2019
+Last Changed: 11/21/2019
 Description : IOTA Plotter module. Exists to provide custom MatPlotLib plots
               that are dynamic, fast-updating, interactive, and keep up with
               local wxPython upgrades.
@@ -172,8 +172,8 @@ class Plotter(IOTABasePanel):
   def plot_res_histogram(self):
 
     # Get resolution values
-    hres = list(zip(*self.info.stats['res']['lst']))[2]
-    lres = list(zip(*self.info.stats['lres']['lst']))[2]
+    hres = list(zip(*self.info.stats['res']['lst']))[3]
+    lres = list(zip(*self.info.stats['lres']['lst']))[3]
 
     # Plot figure
     gsp = gridspec.GridSpec(2, 1)
@@ -181,7 +181,7 @@ class Plotter(IOTABasePanel):
     hr_n, hr_bins, hr_patches = hr.hist(hres, 20, facecolor='b', alpha=0.75,
                                          histtype='stepfilled')
     hr_height = (np.max(hr_n) + 9) // 10 * 10
-    hr.axis([np.min(hres), np.max(hres), 0, hr_height])
+    hr.axis([0, np.max(hres), 0, hr_height])
     reslim = 'High Resolution Limit ({})'.format(r'$\AA$')
     hr.set_xlabel(reslim, fontsize=15)
     hr.set_ylabel('No. of frames', fontsize=15)
@@ -190,7 +190,7 @@ class Plotter(IOTABasePanel):
     lr_n, lr_bins, lr_patches = lr.hist(lres, 20, facecolor='b', alpha=0.75,
                                          histtype='stepfilled')
     lr_height = (np.max(lr_n) + 9) // 10 * 10
-    lr.axis([np.min(lres), np.max(lres), 0, lr_height])
+    lr.axis([0, np.max(lres), 0, lr_height])
     reslim = 'Low Resolution Limit ({})'.format(r'$\AA$')
     lr.set_xlabel(reslim, fontsize=15)
     lr.set_ylabel('No. of frames', fontsize=15)
@@ -239,16 +239,16 @@ class Plotter(IOTABasePanel):
 
     self.draw(tight_layout=False)
 
-  def plot_beam_xy(self, write_files=False, return_values=False, threeD=False):
+  def plot_beam_xy(self, threeD=False):
     """ Plot beam center coordinates and a histogram of distances from the median
         of beam center coordinates to each set of coordinates. Superpose a
         predicted mis-indexing shift by L +/- 1 (calculated for each axis).
     """
 
     # Calculate beam center coordinates and distances
-    beamX = list(zip(*self.info.stats['beamX']['lst']))[2]
-    beamY = list(zip(*self.info.stats['beamY']['lst']))[2]
-    beamZ = list(zip(*self.info.stats['distance']['lst']))[2]
+    beamX = list(zip(*self.info.stats['beamX']['lst']))[3]
+    beamY = list(zip(*self.info.stats['beamY']['lst']))[3]
+    beamZ = list(zip(*self.info.stats['distance']['lst']))[3]
     beamXY = list(zip(beamX, beamY))
 
     beam_dist = [math.hypot(i[0] - np.median(beamX), i[1] - np.median(beamY))
@@ -274,7 +274,6 @@ class Plotter(IOTABasePanel):
     aD = det_distance * math.tan(2 * math.asin(wavelength / (2 * a)))
     bD = det_distance * math.tan(2 * math.asin(wavelength / (2 * b)))
     cD = det_distance * math.tan(2 * math.asin(wavelength / (2 * c)))
-
 
     # Plot figure
     if threeD:
