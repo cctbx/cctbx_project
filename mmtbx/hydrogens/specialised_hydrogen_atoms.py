@@ -12,6 +12,7 @@ def add_side_chain_acid_hydrogens_to_atom_group(atom_group,
                                                 anchors=None,
                                                 configuration_index=0,
                                                 bond_length=0.95,
+                                                element='H',
                                                 ):
   """Add hydrogen atoms to side-chain acid in place
 
@@ -37,7 +38,6 @@ def add_side_chain_acid_hydrogens_to_atom_group(atom_group,
     name = ' HE2'
     atom = atom_group.get_atom('CG')
   else: assert 0
-  element='H'
   dihedral = dihedral_angle(sites=[atom.xyz,
                                    c.xyz,
                                    o1.xyz,
