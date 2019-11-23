@@ -2555,7 +2555,7 @@ class extract_box_around_model_and_map(object):
         maptbx.unpad_in_place(map=mask)
         mask = maptbx.smooth_map(
           map              = mask,
-          crystal_symmetry = cs,
+          crystal_symmetry = self.box_crystal_symmetry,
           rad_smooth       = soft_mask_radius)
       self.map_box = self.map_box*mask
       if(value_outside_atoms is not None):
@@ -2576,9 +2576,11 @@ class extract_box_around_model_and_map(object):
          set_up_and_apply_soft_mask(
        map_data=self.map_box.deep_copy(),
        shift_origin=False,
-       crystal_symmetry=cs,
+       crystal_symmetry=self.box_crystal_symmetry,
        resolution=resolution,
-       radius=soft_mask_radius,out=sys.stdout)
+       grid_units_for_boundary=1, # boundary of 1 grid unit plus edge all around
+       radius=soft_mask_radius,
+       out=sys.stdout)
 
   def get_solvent_content(self):
     return self.solvent_content

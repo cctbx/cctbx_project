@@ -8023,6 +8023,7 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
 
 def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
   crystal_symmetry=None,resolution=None,
+  grid_units_for_boundary=None,
   radius=None,out=sys.stdout):
 
     acc=map_data.accessor()
@@ -8031,9 +8032,13 @@ def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
 
     # Add soft boundary to mean around outside of mask
     # grid_units is how many grid units are about equal to soft_mask_radius
-    grid_units=get_grid_units(map_data=map_data,
-      crystal_symmetry=crystal_symmetry,radius=radius,out=out)
-    grid_units=int(0.5+0.5*grid_units)
+    if grid_units_for_boundary is None:
+      grid_units=get_grid_units(map_data=map_data,
+        crystal_symmetry=crystal_symmetry,radius=radius,out=out)
+      grid_units=int(0.5+0.5*grid_units)
+    else:
+      grid_units=grid_units_for_boundary
+
     from cctbx import maptbx
     zero_boundary_map=maptbx.zero_boundary_box_map(
        map_data,grid_units).result()
@@ -8406,6 +8411,7 @@ def get_overall_mask(
     resolution=None,
     d_max=100000.,
     out=sys.stdout):
+
 
   # Make a local SD map from our map-data
   from cctbx.maptbx import crystal_gridding
@@ -8793,7 +8799,6 @@ def get_solvent_fraction_from_low_res_mask(
       return_mask_and_solvent_fraction=None,
       mask_resolution=None,
       out=sys.stdout):
-
   overall_mask,max_in_sd_map,sd_map=get_overall_mask(map_data=map_data,
     fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
     use_solvent_content_for_threshold=use_solvent_content_for_threshold,
