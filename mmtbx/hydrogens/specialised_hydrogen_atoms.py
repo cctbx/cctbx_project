@@ -22,6 +22,7 @@ def add_side_chain_acid_hydrogens_to_atom_group(atom_group,
       configuration_index (int, optional): Configuration to return
 
   """
+  assert element in ['H', 'D']
   c, o1, o2 = anchors
   if configuration_index>=2:
     tmp = o1.name
@@ -38,6 +39,7 @@ def add_side_chain_acid_hydrogens_to_atom_group(atom_group,
     name = ' HE2'
     atom = atom_group.get_atom('CG')
   else: assert 0
+  if element=='D': name = name.replace('H', 'D')
   dihedral = dihedral_angle(sites=[atom.xyz,
                                    c.xyz,
                                    o1.xyz,
@@ -59,6 +61,7 @@ def add_side_chain_acid_hydrogens_to_atom_group(atom_group,
 
 def add_side_chain_acid_hydrogens_to_residue_group(residue_group,
                                                    configuration_index=0,
+                                                   element='H',
                                                    ):
   """Adds hydrogen atoms to side-chain acid.
 
@@ -73,20 +76,26 @@ def add_side_chain_acid_hydrogens_to_residue_group(residue_group,
     }
     return lookup.get(atom_group.resname, [])
   #
+  if element=='H': bond_length=0.95
+  elif element=='D': bond_length=1.00
+  else: assert 0
   atoms = _get_atom_names(residue_group)
-  for ag, atoms in generate_atom_group_atom_names(residue_group,
-                                                  atoms,
-                                                  ):
-    if ag is None: continue
+  for atom_group, atoms in generate_atom_group_atom_names(residue_group,
+                                                          atoms,
+                                                          ):
+    if atom_group is None: continue
     tmp = add_side_chain_acid_hydrogens_to_atom_group(
-      ag,
+      atom_group,
       # append_to_end_of_model=append_to_end_of_model,
       anchors = atoms,
       configuration_index=configuration_index,
+      bond_length=bond_length,
+      element=element,
     )
 
 def add_side_chain_acid_hydrogens(hierarchy,
                                   configuration_index=0,
+                                  element='H',
                                   ):
   """Add hydrogen atoms to every side-chain acid (ASP and GLU). Not very
   useful as adding to a single residue group (below) would be more prectical.
@@ -100,34 +109,37 @@ def add_side_chain_acid_hydrogens(hierarchy,
           2 - Current Ox1 gets swapped with Ox2, gets Hx2 (x=D,E) pointing out
           3 - Current Ox1 gets swapped with Ox2, gets Hx2 (x=D,E) pointing in
   """
-  for rg in hierarchy.residue_groups():
-    for ag in rg.atom_groups():
-      if ag.resname in ['ASP', 'GLU']:
+  for residue_group in hierarchy.residue_groups():
+    for atom_group in residue_group.atom_groups():
+      if atom_group.resname in ['ASP', 'GLU']:
         add_side_chain_acid_hydrogens_to_residue_group(
-          rg,
+          residue_group,
           configuration_index=configuration_index,
+          element=element,
           )
 
 #
 # isolated CYS need HG
 #
-def add_cys_hg_to_atom_group(ag,
+def add_cys_hg_to_atom_group(atom_group,
                              append_to_end_of_model=False,
+                             element='H',
                              ):
   """Adds hydrogen to CYS
 
   Args:
-      ag (TYPE): atom_group in hirarchy
+      atom_group (TYPE): atom_group in hirarchy
       append_to_end_of_model (bool, optional): Some programs like the additional
         atoms added at end of PDB
 
   Returns:
       TYPE: New chains, if any
   """
+  assert element in ['H', 'D']
   rc = _add_hydrogens_to_atom_group_using_bad(
-    ag,
-    ' HG ',
-    'H',
+    atom_group,
+    ' HG '.replace('H', element),
+    element,
     'SG',
     'CB',
     'CA',
@@ -138,34 +150,37 @@ def add_cys_hg_to_atom_group(ag,
    )
   return rc
 
-def add_cys_hg_to_residue_group(rg,
+def add_cys_hg_to_residue_group(residue_group,
                                 append_to_end_of_model=False,
+                                element='H',
                                ):
   rc=[]
-  for ag in rg.atom_groups():
-    if ag.resname not in ['CYS']: continue
+  for atom_group in residue_group.atom_groups():
+    if atom_group.resname not in ['CYS']: continue
     rc += add_cys_hg_to_atom_group(
-      ag,
+      atom_group,
       append_to_end_of_model=append_to_end_of_model,
+      element=element,
     )
   return rc
 
 def conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
-                                         rg,
+                                         residue_group,
+                                         element='H',
                                          ):
   """Adds HG atom to CYS if no disulfur bridge
 
   Args:
       geometry_restraints_manager (TYPE): GRM
-      rg (TYPE): CYS residue group
+      residue_group (TYPE): CYS residue group
   """
   # could be more general to include other disulphide amino acids
   resnames = []
-  for ag in rg.atom_groups():
-    resnames.append(ag.resname)
+  for atom_group in residue_group.atom_groups():
+    resnames.append(atom_group.resname)
   if 'CYS' not in resnames: return -1
   sgs = []
-  for atom in rg.atoms():
+  for atom in residue_group.atoms():
     if atom.name.strip()=='SG' and atom.parent().resname=='CYS':
       sgs.append(atom.i_seq)
   assert len(sgs) in [0, 1]
@@ -180,11 +195,14 @@ def conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
           sg_bonds.append(p.i_seqs)
   rc = []
   if len(sg_bonds)==0:
-    rc += add_cys_hg_to_residue_group(rg)
+    rc += add_cys_hg_to_residue_group(residue_group, element=element)
     assert not rc
   return rc
 
-def add_disulfur_hydrogen_atoms(geometry_restraints_manager, hierarchy):
+def add_disulfur_hydrogen_atoms(geometry_restraints_manager,
+                                hierarchy,
+                                element='H',
+                                ):
   """Example of usage
 
   """
@@ -194,4 +212,6 @@ def add_disulfur_hydrogen_atoms(geometry_restraints_manager, hierarchy):
       resnames.append(atom_group.resname)
     if 'CYS' in resnames:
       rc = conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
-                                                residue_group)
+                                                residue_group,
+                                                element=element,
+                                                )
