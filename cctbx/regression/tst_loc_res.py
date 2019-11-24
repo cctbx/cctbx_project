@@ -422,15 +422,15 @@ def tst_0():
   b_values,occs=get_b_and_occ(hierarchy=pdb_hierarchy_new,
      atom_selection="name CA and (resid 5 or resid 15)")
   print("\nBvalues (resolutions): for %s: %s" %(method,str(b_values)))
-  assert  approx_equal(b_values,[2.46, 2.14],eps=.05)
+  assert  approx_equal(b_values,[2.72, 2.27],eps=.05)
 
 
 def tst_1():
 
   for set_b_iso,expected_b_values,expected_occs in zip(
      [-200,0,200],
-     [[200.0, 200.0],[-40.0, -20.0],[-160.0, -180.0]],
-     [[3.0, 3.0],[3.5, 3.0],[3.0, 3.0]]   ):
+     [[200.0, 200.0],[-20.0, -20.0],[-160.0, -180.0]],
+     [[3.0, 3.0],[3.4, 3.0],[3.2, 3.1]]   ):
 
     ph,map_data,crystal_symmetry=make_map_from_pdb(raw_records=raw_records_2,
      set_b_iso=set_b_iso)
