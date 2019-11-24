@@ -2578,7 +2578,7 @@ class extract_box_around_model_and_map(object):
        shift_origin=False,
        crystal_symmetry=self.box_crystal_symmetry,
        resolution=resolution,
-       grid_units_for_boundary=1, # boundary of 1 grid unit plus edge all around
+       grid_units_for_boundary=None,
        radius=soft_mask_radius,
        out=sys.stdout)
 
