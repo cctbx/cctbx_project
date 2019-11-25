@@ -42,10 +42,35 @@ if not env_etc.no_boost_python:
     )
   # Xcode 11 wants forward iterators for std::max_element in Boost.Graph
   # https://github.com/boostorg/graph/issues/175
+  clustering = env.SharedLibrary(
+    target="#lib/boost_adaptbx_graph_clustering_algorithm_ext",
+    source="clustering_algorithm_ext.cpp",
+    )
   if sys.platform == 'darwin' and env_etc.clang_version[0] >= 11:
-    pass
-  else:
-    env.SharedLibrary(
-      target="#lib/boost_adaptbx_graph_clustering_algorithm_ext",
-      source="clustering_algorithm_ext.cpp",
-      )
+    import os
+    from libtbx.auto_build.install_base_packages import installer
+    filename = os.path.join(env_etc.boost_include, 'boost', 'graph',
+                            'bc_clustering.hpp')
+    def patch_bc_clustering(target=None, source=None, env=None):
+      from libtbx.auto_build.install_base_packages import installer
+      if os.path.isfile(filename):
+        installer.patch_src(
+          filename,
+          "#include <algorithm>",
+          "#include <boost/algorithm/minmax_element.hpp>")
+        installer.patch_src(
+          filename,
+          "= *max_element(edges_iters.first, edges_iters.second, cmp);",
+          "= *boost::first_max_element(edges_iters.first, edges_iters.second, cmp);")
+    def unpatch_bc_clustering(target=None, source=None, env=None):
+      if os.path.isfile(filename):
+        installer.patch_src(
+          filename,
+          "#include <boost/algorithm/minmax_element.hpp>",
+          "#include <algorithm>")
+        installer.patch_src(
+          filename,
+          "= *boost::first_max_element(edges_iters.first, edges_iters.second, cmp);",
+          "= *max_element(edges_iters.first, edges_iters.second, cmp);")
+    patch_bc_clustering()
+    env.AddPostAction(clustering, unpatch_bc_clustering)
