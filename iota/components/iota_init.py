@@ -314,6 +314,7 @@ def generate_stat_containers(info, params):
       not_processed=(copy.deepcopy(info.unprocessed), 'not processed',
                      'not_processed.lst', '#e0f3f8')),
     stats={},
+    pointers={},
     pixel_size=None,
     status='processing',
     init_proc=True,

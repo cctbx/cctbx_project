@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 11/15/2019
+Last Changed: 11/25/2019
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -271,9 +271,14 @@ class ImageViewerThread(Thread):
     self.file_string = file_string
     self.viewer = viewer
     self.img_type = img_type
+    self.options = 'show_ctr_mass=False ' \
+                   'show_max_pix=False ' \
+                   'show_all_pix=False ' \
+                   'show_predictions=False ' \
+                   'show_basis_vectors=False'
 
   def run(self):
-    command = '{} {}'.format(self.viewer, self.file_string)
+    command = '{} {} {}'.format(self.viewer, self.file_string, self.options)
     easy_run.fully_buffered(command)
 
 # ---------------------------------- PRIME ----------------------------------- #
