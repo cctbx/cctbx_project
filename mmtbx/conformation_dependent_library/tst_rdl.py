@@ -8,6 +8,8 @@ from iotbx import pdb
 
 import libtbx.load_env
 
+from mmtbx.conformation_dependent_library.testing_utils import get_geometry_restraints_manager
+
 pdbs = {
   "3sgs" : """
 CRYST1    4.821   19.500   21.004  90.00  94.23  90.00 P 1 21 1      2
