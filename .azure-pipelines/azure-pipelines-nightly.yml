@@ -36,7 +36,7 @@ stages:
     - template: ./conda-linux.yml
       parameters:
         distribution: centos
-        version: [7, 6, 1810]
+        version: [7, 7, 1908]
     - template: ./conda-linux.yml
       parameters:
         distribution: centos
