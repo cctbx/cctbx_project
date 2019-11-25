@@ -2581,6 +2581,7 @@ class manager(object):
     new._update_master_sel()
     new._mon_lib_srv = self._mon_lib_srv
     new._ener_lib = self._ener_lib
+    new._original_model_format = self._original_model_format
     return new
 
   def number_of_ordered_solvent_molecules(self):
