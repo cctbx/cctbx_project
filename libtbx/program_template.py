@@ -29,7 +29,7 @@ from __future__ import absolute_import, division, print_function
 
 import libtbx.phil
 
-from libtbx import citations
+from libtbx import Auto, citations
 from libtbx.utils import multi_out
 
 # =============================================================================
@@ -335,14 +335,25 @@ output {
     return self.get_data_phil_str(diff=diff) + self.get_program_phil_str(diff=diff)
 
   # ---------------------------------------------------------------------------
-  def get_default_output_filename(self):
+  def get_default_output_filename(self, prefix=Auto, suffix=Auto, serial=Auto):
     '''
     Given the output.prefix, output.suffix, and output.serial PHIL parameters,
-    return the default output filename
+    return the default output filename. The filename is constructe as
+
+      {prefix}{suffix}_{serial:03d}
 
     Parameters
     ----------
-    None
+    prefix: str
+      The prefix for the name, if set to Auto, the value from output.serial
+      is used.
+    suffix: str
+      The suffix for the name, if set to Auto, the value from output.suffix
+      is used.
+    serial: int
+      The serial number for the name, if set to Auto, the value from
+      output.serial is used. Leading zeroes will be added so that the
+      number uses 3 spaces.
 
     Returns
     -------
@@ -350,14 +361,33 @@ output {
       The default output filename without a file extension
     '''
 
-    filename = 'cctbx_program'
+    # set defaults
+    output = None
     if hasattr(self.params, 'output'):
-      if getattr(self.params.output, 'prefix', None) is not None:
-        filename = self.params.output.prefix
-      if getattr(self.params.output, 'suffix', None) is not None:
-        filename += '{suffix}'.format(suffix=self.params.output.suffix)
-      if getattr(self.params.output, 'serial', None) is not None:
-        filename += '_{serial:03d}'.format(serial=self.params.output.serial)
+      output = self.params.output
+
+    if prefix is Auto:
+      prefix = 'cctbx_program'
+      if output and getattr(output, 'prefix', None) is not None:
+        prefix = output.prefix
+    if suffix is Auto:
+      suffix = None
+      if output and getattr(output, 'suffix', None) is not None:
+        suffix = output.suffix
+    if serial is Auto:
+      serial is None
+      if output and getattr(output, 'serial', None) is not None:
+        serial = self.params.output.serial
+    else:
+      if not isinstance(serial, int):
+        raise ValueError('The serial argument should be an integer.')
+
+    # create filename
+    filename = prefix
+    if suffix is not None:
+      filename += suffix
+    if serial is not None:
+      filename += '_{serial:03d}'.format(serial=serial)
 
     return filename
 
