@@ -1228,7 +1228,7 @@ NGL_HKLviewer {
       %s
     }
   }
-  action = *'is_running' 'is_terminating'
+  action = *is_running is_terminating
     .type = choice
   tabulate_miller_array_ids = "[]"
     .type = str

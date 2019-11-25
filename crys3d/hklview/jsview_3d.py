@@ -387,6 +387,8 @@ class hklview_3d:
   def set_volatile_params(self):
     msg = ""
     if self.viewerparams.scene_id >=0:
+      if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
+        return msg
       self.fix_orientation(self.viewerparams.NGL.fixorientation)
       self.SetTrackBallRotateSpeed(self.viewerparams.NGL.mouse_sensitivity)
       R = flex.vec3_double( [(0,0,0)])
@@ -403,8 +405,6 @@ class hklview_3d:
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
         msg += self.ExpandInBrowser(P1= self.viewerparams.expand_to_p1,
                               friedel_mate= self.viewerparams.expand_anomalous)
-      if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
-        return msg
       if self.params.clip_plane.clipwidth:
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = self.params.clip_plane.hkldist
@@ -415,8 +415,9 @@ class hklview_3d:
             + self.params.clip_plane.k * self.normal_lh \
             - self.params.clip_plane.l * self.normal_hk
 
+      #if has_phil_path(self.diff_phil, "clipwidth"):
       self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
-        clipwidth, self.viewerparams.NGL.fixorientation, self.params.clip_plane.is_parallel)
+          clipwidth, self.viewerparams.NGL.fixorientation, self.params.clip_plane.is_parallel)
       if self.params.clip_plane.fractional_vector == "reciprocal":
         if hkldist == -1:
           self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], 0.0)
@@ -1566,9 +1567,11 @@ Object.assign(tooltip.style, {
 function getOrientMsg()
 {
   cvorient = stage.viewerControls.getOrientation().elements;
-  //if (cvorient[14] == 0) // appears to occasionally happens first time stage is rendered
-  //  cvorient[14] = stage.viewer.cDist
-  cvorient[14] = stage.viewer.cDist
+  //if (cvorient[14] == 0) // appears to occasionally happen first time stage is rendered
+  //  cvorient[14] = stage.viewer.camera.position.length();
+  //else
+  //cvorient[14] = stage.viewer.cDist;
+  cvorient.push( -stage.viewer.camera.position.z); // store distance explicitly as a last element
   msg = String(cvorient);
   return msg;
 }
@@ -1625,6 +1628,17 @@ catch(err)
 
 
     WebsockMsgHandlestr = """
+
+function ReturnClipPlaneDistances()
+{
+  msg = String( [stage.viewer.parameters.clipNear,
+                  stage.viewer.parameters.clipFar,
+                  stage.viewer.camera.position.z ] )
+                  //stage.viewer.camera.position.length()] )
+  WebsockSendMsg('ReturnClipPlaneDistances:\\n' + msg );
+}
+
+
 mysocket.onmessage = function (e)
 {
   var c,
@@ -1883,10 +1897,9 @@ mysocket.onmessage = function (e)
       stage.viewerControls.orient(m4);
       if (strs[9]=="verbose")
         postrotmxflag = true;
+      ReturnClipPlaneDistances();
       ReRender();
       stage.viewer.requestRender();
-      //cvorient = stage.viewerControls.getOrientation().elements;
-      //msg = String(cvorient);
       msg = getOrientMsg();
       WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
@@ -2064,12 +2077,7 @@ mysocket.onmessage = function (e)
     }
 
     if (msgtype === "GetClipPlaneDistances")
-    {
-      msg = String( [stage.viewer.parameters.clipNear,
-                     stage.viewer.parameters.clipFar,
-                     stage.viewer.camera.position.z] )
-      WebsockSendMsg('ReturnClipPlaneDistances:\\n' + msg );
-    }
+      ReturnClipPlaneDistances();
 
     if (msgtype === "GetBoundingBox")
     {
@@ -2308,10 +2316,13 @@ mysocket.onmessage = function (e)
     )
     self.cameratranslation = (flst[12], flst[13], flst[14])
     self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=3)
-    self.cameradist = math.pow(ScaleRotMx.determinant(), 1.0/3.0)
-    if self.cameradist <= 0.0:
-      self.cameradist = flst[14] # javascript backup of distance in case of invalid matrix
-    self.mprint("distance: %s" %roundoff(self.cameradist), verbose=3)
+    rotdet = ScaleRotMx.determinant()
+    if rotdet <= 0.0:
+      self.mprint("Negative rot determinant!", verbose=2)
+      self.cameradist = flst[16] # javascript backup of distance in case of invalid matrix
+    else:
+      self.cameradist = math.pow(rotdet, 1.0/3.0)
+    self.mprint("Scale distance: %s" %roundoff(self.cameradist), verbose=3)
     self.rotation_mx = ScaleRotMx/self.cameradist
     rotlst = roundoff(self.rotation_mx.elems)
     self.mprint("""Rotation matrix:
@@ -2325,6 +2336,7 @@ mysocket.onmessage = function (e)
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
+Distance: %s
     """ %tuple(alllst), verbose=4)
     self.params.mouse_moved = True
     if self.rotation_mx.is_r3_rotation_matrix():

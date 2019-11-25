@@ -426,6 +426,7 @@ class NGL_HKLViewer(QWidget):
   def closeEvent(self, event):
     self.NGL_HKL_command('NGL_HKLviewer.action = is_terminating')
     self.closing = True
+    self.setVisible(False)
 
     #while not self.canexit:
     #  time.sleep(1)
@@ -438,9 +439,9 @@ class NGL_HKLViewer(QWidget):
     print("HKLviewer exiting now.")
     nc = 0
     sleeptime = 0.2
-    while not self.canexit and nc < 10: # until cctbx.python has finished or after 10 sec
+    while not self.canexit and nc < 5: # until cctbx.python has finished or after 5 sec
       time.sleep(sleeptime)
-      self.update()
+      self.ProcessMessages()
       nc += sleeptime
 
     print("accepting close.event")
@@ -1239,6 +1240,7 @@ class NGL_HKLViewer(QWidget):
     self.rotavecangle_slider.setMinimum(0)
     self.rotavecangle_slider.setMaximum(360)
     self.rotavecangle_slider.setValue(0)
+    self.rotavecangle_slider.setSingleStep(5)
     self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
     self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngle)
     layout2.addWidget(self.rotavecangle_labeltxt,  6, 0, 1, 1)
