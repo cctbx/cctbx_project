@@ -456,7 +456,7 @@ class symmetry(object):
         result.append(self.unit_cell().orthogonalize(m3.elems*site_frac+t)[0])
     return result
 
-  def is_nonsence(self):
+  def is_nonsense(self):
     uc = self.unit_cell()
     if uc is None:
       return False
@@ -496,11 +496,11 @@ def select_crystal_symmetry(
     while cs0 is None and i<len(tmp):
       cs0 = tmp[i]
       if cs0 is not None:
-        if cs0.is_nonsence() or cs0.is_empty():
+        if cs0.is_nonsense() or cs0.is_empty():
           cs0 = None
       i += 1
     for cs in tmp[i:]:
-      if cs and not cs.is_nonsence() and not cs.is_empty():
+      if cs and not cs.is_nonsense() and not cs.is_empty():
         is_similar_cs = cs0.is_similar_symmetry(cs,
            absolute_angle_tolerance=absolute_angle_tolerance,
            absolute_length_tolerance=absolute_angle_tolerance)
@@ -543,7 +543,7 @@ def select_crystal_symmetry(
           space_group_info=space_group_info,
           assert_is_compatible_unit_cell=False)
         break
-  if result.is_nonsence():
+  if result.is_nonsense():
     return None
   if result.is_empty():
     return None

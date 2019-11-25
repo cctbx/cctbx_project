@@ -70,7 +70,7 @@ def get_inputs(args, log, master_params):
   crystal_symmetry = pdb_inp.crystal_symmetry()
   if(crystal_symmetry is None or
      crystal_symmetry.is_empty() or
-     crystal_symmetry.is_nonsence()):
+     crystal_symmetry.is_nonsense()):
     fake_crystal_symmetry = True
     from cctbx import uctbx
     crystal_symmetry = \
