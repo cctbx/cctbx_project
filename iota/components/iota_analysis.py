@@ -338,6 +338,16 @@ class Analyzer(object):
                           obj.img_index, obj.final[key])
             self.info.stats[key]['lst'].append(stat_tuple)
 
+            # add proc filepath info to 'pointers'
+            pointer_dict = {
+              'img_file'   : obj.img_path,
+              'obj_file'   : obj.obj_file,
+              'img_index'  : obj.img_index,
+              'experiments': obj.eint_path,
+              'reflections': obj.rint_path
+            }
+            self.info.pointers[str(obj.input_index)] = pointer_dict
+
             if key not in self.info.unplotted_stats:
               self.info.unplotted_stats[key] = dict(lst=[])
             self.info.unplotted_stats[key]['lst'].append(stat_tuple)

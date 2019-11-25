@@ -1,14 +1,15 @@
-IOTA v1.4.015 - bugfixes
+IOTA v1.4.016 - image view shows processing results
 
-- fixed output path structure bug (integrated files, logs, etc. no longer
-  include pre-pended absolute path)
-- input list is now sorted by filename (and then by image index if a multi-image
-  file)
-- stdout capture no longer returns a "'unicode' does not have the buffer
-  interface" TypeError
-- fixed plotting to account for an extra parameter (image index) when
-  calculating stats
-- add picture file extensions (e.g. png, tiff, etc.) to image file tests
+Features:
+- Instead of just the image, individual image view from processing also shows
+  integration shoeboxes; user can then view other results (e.g orientation
+  vector, centers of mass, indexed spots positions, ice rings, etc.)
 
-11.20.2019
+Known issues:
+- This does not (yet) work for images viewed by double-clicking the progress bar
+- This also works poorly with HDF5 images: for some reason loading the .expt
+  file shows the *first* image in the sequence, regardless of which of the
+  images the .expt file is derived from.
+
+11.25.2019
 # -- end

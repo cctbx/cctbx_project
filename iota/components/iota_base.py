@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/18/2018
-Last Changed: 11/15/2019
+Last Changed: 11/25/2019
 Description : IOTA base classes
 '''
 
@@ -199,6 +199,58 @@ class ImageImporterBase():
                                path=self.img_object.img_path,
                                new_ext='int')
     self.img_object.obj_file = os.path.join(self.img_object.obj_path, fname)
+
+    # DIALS process filepaths
+    # Indexed reflections
+    ridx_path = util.make_filename(
+      prefix=image_index,
+      path=self.img_object.img_path,
+      suffix='indexed',
+      new_ext='refl'
+    )
+    self.img_object.ridx_path = os.path.join(self.img_object.obj_path,
+                                             ridx_path)
+
+    # Spotfinding (strong) reflections
+    rspf_path = util.make_filename(
+      prefix=image_index,
+      path=self.img_object.img_path,
+      suffix='strong',
+      new_ext='refl'
+    )
+    self.img_object.rspf_path = os.path.join(self.img_object.obj_path,
+                                             rspf_path)
+
+    # Refined experiments
+    eref_path = util.make_filename(
+      prefix=image_index,
+      path=self.img_object.img_path,
+      suffix='refined',
+      new_ext='expt'
+    )
+    self.img_object.eref_path = os.path.join(self.img_object.obj_path,
+                                             eref_path)
+
+    # Integrated experiments
+    eint_path = util.make_filename(
+      prefix=image_index,
+      path=self.img_object.img_path,
+      suffix='integrated',
+      new_ext='expt'
+    )
+    self.img_object.eint_path = os.path.join(self.img_object.obj_path,
+                                             eint_path)
+
+    # Integrated reflections
+    rint_path = util.make_filename(
+      prefix=image_index,
+      path=self.img_object.img_path,
+      suffix='integrated',
+      new_ext='refl'
+    )
+    self.img_object.rint_path = os.path.join(self.img_object.obj_path,
+                                             rint_path)
+
 
     # Final integration pickle path
     self.img_object.int_path = util.make_image_path(self.img_object.img_path,

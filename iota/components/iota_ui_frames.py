@@ -5,7 +5,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 11/21/2019
+Last Changed: 11/25/2019
 Description : IOTA GUI Windows / frames
 '''
 
@@ -1248,12 +1248,22 @@ class ProcessingTab(IOTABasePanel):
     self._update_canvas(canvas=self.hkl_canvas)
 
   def onImageView(self, e):
-    filepath = self.info_txt.GetValue().split(' ')[0]
-    viewer = self.gparams.gui.image_viewer
-    if os.path.isfile(filepath):
+    # filepath = self.info_txt.GetValue().split(' ')[0]
+    # viewer = self.gparams.gui.image_viewer
+    # if os.path.isfile(filepath):
+    #   viewer = thr.ImageViewerThread(self,
+    #                                  viewer=viewer,
+    #                                  file_string=filepath)
+    #   viewer.start()
+
+    idx = str(self.pick['index'])
+    exp = self.info.pointers[idx]['experiments']
+    ref = self.info.pointers[idx]['reflections']
+    file_string = 'experiments={} reflections={}'.format(exp, ref)
+    if os.path.isfile(exp) and os.path.isfile(ref):
       viewer = thr.ImageViewerThread(self,
-                                     viewer=viewer,
-                                     file_string=filepath)
+                                     viewer=self.gparams.gui.image_viewer,
+                                     file_string=file_string)
       viewer.start()
 
   def view_proc_images(self):

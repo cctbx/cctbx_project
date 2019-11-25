@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 11/21/2019
+Last Changed: 11/25/2019
 Description : Runs spotfinding, indexing, refinement and integration using
               subclassed DIALS Stills Processor module. Selector class
               applies filters based on unit cell, space group, etc.
@@ -374,14 +374,11 @@ class IOTAImageProcessor(Processor):
   def process(self, img_object):
     # write out DIALS info (tied to self.write_pickle)
     if self.write_pickle:
-      pfx = os.path.splitext(img_object.obj_file)[0]
-      self.params.output.experiments_filename = pfx + '_imported.expt'
-      self.params.output.indexed_filename = pfx + '_indexed.refl'
-      self.params.output.strong_filename = pfx + '_strong.refl'
-      self.params.output.refined_experiments_filename = pfx + '_refined.expt'
-      self.params.output.integrated_experiments_filename = pfx + \
-                                                           '_integrated.expt'
-      self.params.output.integrated_filename = pfx + '_integrated.refl'
+      self.params.output.indexed_filename = img_object.ridx_path
+      self.params.output.strong_filename = img_object.rspf_path
+      self.params.output.refined_experiments_filename = img_object.eref_path
+      self.params.output.integrated_experiments_filename = img_object.eint_path
+      self.params.output.integrated_filename = img_object.rint_path
 
     # Set up integration pickle path and logfile
     self.params.output.integration_pickle = img_object.int_file
@@ -396,10 +393,6 @@ class IOTAImageProcessor(Processor):
     if self.write_pickle:
       if not os.path.isdir(img_object.int_path):
         os.makedirs(img_object.int_path)
-
-    # if not img_object.experiments:
-    #   from dxtbx.model.experiment_list import ExperimentListFactory as exp
-    #   img_object.experiments = exp.from_filenames([img_object.img_path])[0]
 
     # Auto-set threshold and gain (not saved for target.phil)
     if self.iparams.cctbx_xfel.auto_threshold:
