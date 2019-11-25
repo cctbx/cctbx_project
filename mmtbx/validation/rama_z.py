@@ -7,6 +7,7 @@ import iotbx.phil
 from mmtbx.secondary_structure import manager as ss_manager
 from mmtbx.secondary_structure import sec_str_master_phil_str
 from mmtbx.conformation_dependent_library import generate_protein_threes
+from scitbx.array_family import flex
 from scipy import interpolate
 import numpy as np
 import copy
