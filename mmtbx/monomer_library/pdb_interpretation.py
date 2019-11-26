@@ -150,9 +150,9 @@ restraints_library_str = """
       .help = Use Omega Conformation Dependent Library (omega-CDL) \
         for geometry restraints
       .style = hidden
-    cdl_cis_svl = False
+    cdl_svl = False
       .type = bool
-      .short_caption = Use improved SVL values for cis-peptides
+      .short_caption = Use improved SVL values for CDL classes
       .style = hidden
     rdl = False
       .type = bool
@@ -5283,7 +5283,7 @@ class build_all_chain_proxies(linking_mixins):
         result,
         cdl_proxies=cdl_proxies,
         use_cis_127=use_cis_127,
-        cdl_cis_svl=self.params.restraints_library.cdl_cis_svl,
+        cdl_svl=self.params.restraints_library.cdl_svl,
         log=log,
         verbose=True,
         )

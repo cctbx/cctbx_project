@@ -43,7 +43,8 @@ def restraints_show(restraints_values):
         )
   return outl
 
-def get_restraint_values(threes, interpolate=False):
+def get_restraint_values(threes,
+                         interpolate=False):
   from mmtbx.conformation_dependent_library import utils
   res_type_group = cdl_utils.get_res_type_group(
     threes[1].resname,
@@ -315,7 +316,7 @@ def update_restraints(hierarchy,
                       sites_cart=None,
                       cdl_proxies=None,
                       use_cis_127=False, # use EH99 for cis-PRO
-                      cdl_cis_svl=False, # use CDL-SVL for cis-peptides
+                      cdl_svl=False, # use CDL-SVL
                       ideal=True,
                       esd=True,
                       esd_factor=1.,
@@ -347,8 +348,6 @@ def update_restraints(hierarchy,
     if threes.cis_group():
       if use_cis_127:
         restraint_values = get_restraint_values(threes, interpolate=interpolate)
-      elif cdl_cis_svl:
-        assert 0
       else:
         continue
     else:
