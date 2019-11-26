@@ -1032,6 +1032,7 @@ class cablamalyze(validation):
       is_residue = 1
       if result.scores.cablam is None:
         is_residue = 0
+        continue
       if result.sorting_id() != prev_result_id:
         #new residue; update counts
         residue_count    += is_residue
