@@ -318,7 +318,7 @@ def update_restraints(hierarchy,
                       current_geometry=None, # xray_structure!!
                       sites_cart=None,
                       cdl_proxies=None,
-                      use_cis_127=False, # use EH99 for cis-PRO
+                      cis_pro_eh99=False, # use EH99 for cis-PRO
                       cdl_svl=False, # use CDL-SVL
                       ideal=True,
                       esd=True,
@@ -352,18 +352,18 @@ def update_restraints(hierarchy,
       restraint_values = get_restraint_values(threes,
                                               cdl_svl=cdl_svl,
                                               interpolate=interpolate)
-      print('cdl_svl %s %s' % (threes,restraint_values))
+      # print('cdl_svl %s %s' % (threes,restraint_values))
     else:
       if threes.cis_group():
-        if use_cis_127:
+        if cis_pro_eh99:
           # returns cis-PRO EH99 values if asked
           restraint_values = get_restraint_values(threes, interpolate=interpolate)
-          print('cis-PRO EH99', restraint_values)
+          # print('cis-PRO EH99  %s %s' % (threes, restraint_values))
         else:
           continue
       else:
         restraint_values = get_restraint_values(threes, interpolate=interpolate)
-        print('CDL', restraint_values)
+        # print('CDL %s %s' % (threes, restraint_values))
 
     if restraint_values is None: continue
 

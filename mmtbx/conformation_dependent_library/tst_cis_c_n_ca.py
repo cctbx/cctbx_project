@@ -101,7 +101,7 @@ def main():
     ideal   model   delta    sigma   weight residual
    122.60  124.91   -2.31 5.00e+00 4.00e-02 2.14e-01'''
   assert lines.find(find)>-1
-  cmd = 'phenix.pdb_interpretation write_geo=True cis_c_n_ca=True %s' % tf
+  cmd = 'phenix.pdb_interpretation write_geo=True cis_pro_eh99=True %s' % tf
   print(cmd)
   easy_run.go(cmd)
   f=file('%s.geo' % tf, 'rb')

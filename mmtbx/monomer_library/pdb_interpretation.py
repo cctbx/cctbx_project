@@ -141,7 +141,7 @@ restraints_library_str = """
       .help = Use Metal Coordination Library (MCL) \
         for tetrahedral Zn++ and iron-sulfur clusters SF4, FES, F3S, ...
       .style = bold
-    cis_c_n_ca = False
+    cis_pro_eh99 = False
       .type = bool
       .style = hidden
     omega_cdl = False
@@ -5266,7 +5266,7 @@ class build_all_chain_proxies(linking_mixins):
     self.time_building_geometry_restraints_manager = timer.elapsed()
     restraints_source = "GeoStd + Monomer Library"
     use_cdl = self.params.restraints_library.cdl
-    use_cis_127 = self.params.restraints_library.cis_c_n_ca
+    cis_pro_eh99 = self.params.restraints_library.cis_pro_eh99
     if (use_cdl is Auto):
       use_cdl = self.pdb_inp.used_cdl_restraints()
       if (use_cdl):
@@ -5282,7 +5282,7 @@ class build_all_chain_proxies(linking_mixins):
         self.pdb_hierarchy,
         result,
         cdl_proxies=cdl_proxies,
-        use_cis_127=use_cis_127,
+        cis_pro_eh99=cis_pro_eh99,
         cdl_svl=self.params.restraints_library.cdl_svl,
         log=log,
         verbose=True,
