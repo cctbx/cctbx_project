@@ -461,7 +461,7 @@ class cablam_result(residue):
     resname = self.resname.upper()
     if resname == "GLY": return "gly"
     elif resname == "PRO":
-      if self.measures.omega < 90 and self.measures.omega > -90:
+      if self.measures.omega is not None and self.measures.omega < 90 and self.measures.omega > -90:
         return "cispro"
       else: return "transpro"
     else: return "general"
@@ -1032,7 +1032,6 @@ class cablamalyze(validation):
       is_residue = 1
       if result.scores.cablam is None:
         is_residue = 0
-        continue
       if result.sorting_id() != prev_result_id:
         #new residue; update counts
         residue_count    += is_residue
@@ -1051,13 +1050,13 @@ class cablamalyze(validation):
         correctable_helix_count += is_correctable_helix
         correctable_beta_count += is_correctable_beta
         is_correctable_helix, is_correctable_beta = 0,0
-      if result.scores.cablam < CABLAM_OUTLIER_CUTOFF and is_residue:
+      if result.scores.cablam is not None and result.scores.cablam < CABLAM_OUTLIER_CUTOFF and is_residue:
         is_cablam_outlier    = 1
         if result.feedback.alpha or result.feedback.threeten:
           is_correctable_helix = 1
         elif result.feedback.beta:
           is_correctable_beta = 1
-      if result.scores.cablam < CABLAM_DISFAVORED_CUTOFF and is_residue:
+      if result.scores.cablam is not None and result.scores.cablam < CABLAM_DISFAVORED_CUTOFF and is_residue:
         is_cablam_disfavored = 1
       if result.scores.c_alpha_geom is not None and result.scores.c_alpha_geom < CA_GEOM_CUTOFF:
         is_ca_geom_outlier = 1
