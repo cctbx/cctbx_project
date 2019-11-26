@@ -713,14 +713,20 @@ class _():
       element, charge = sc.element_and_charge_symbols()
       a.set_element(element)
       a.set_charge(charge)
+    def get_id(l):
+      r = [pos for pos, char in enumerate(l) if char == '"']
+      if(len(r)<2): return None
+      i,j = r[-2:]
+      r = "".join(l[i:j+1].replace('"',"").replace('"',"").split())
+      return r
     for sc, a in zip(scatterers, awl):
       id_str = a.id_str()
       resname_from_sc = id_str[10:13]
       cl1 = gc(resname_from_sc)
       cl2 = gc(a.resname)
       if assert_identical_id_str:
-        l1 = sc.label.replace("pdb=","").replace(" ","")
-        l2 = a.id_str().replace("pdb=","").replace(" ","")
+        l1 = get_id(sc.label)
+        l2 = get_id(a.id_str())
         if(l1 != l2):
           raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
       set_attr(sc=sc, a=a)
