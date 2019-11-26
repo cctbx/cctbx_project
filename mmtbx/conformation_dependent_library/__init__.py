@@ -44,6 +44,7 @@ def restraints_show(restraints_values):
   return outl
 
 def get_restraint_values(threes,
+                         cdl_svl=False,
                          interpolate=False):
   from mmtbx.conformation_dependent_library import utils
   res_type_group = cdl_utils.get_res_type_group(
@@ -51,6 +52,15 @@ def get_restraint_values(threes,
     threes[2].resname,
   )
   if res_type_group is None: return None
+  #
+  if cdl_svl:
+    assert not interpolate
+    key = '%s/%s' % (['trans', 'cis'][threes.cis_group()],
+                     ['trans', 'cis'][threes.cis_group(omega_cdl=True)])
+    assert cdl_svl_database.get(key, None)
+    current = cdl_svl_database[key]
+    restraint_values = current[res_type_group]
+    return restraint_values
   #
   if threes.cis_group():
     resnames = threes.get_resnames()
@@ -92,16 +102,9 @@ def get_restraint_values(threes,
       r = utils.interpolate_2d(grid, index)
       restraint_values.append(r)
   else:
-    if threes.cis_group():
-      key = '%s/%s' % (['trans', 'cis'][threes.cis_group()],
-                       ['trans', 'cis'][threes.cis_group(omega_cdl=True)])
-      assert cdl_svl_database.get(key, None)
-      current = cdl_svl_database[key]
-      restraint_values = current[res_type_group]
-    else:
-      key = threes.get_cdl_key()
-      if key is None: return None
-      restraint_values = cdl_database[res_type_group][key]
+    key = threes.get_cdl_key()
+    if key is None: return None
+    restraint_values = cdl_database[res_type_group][key]
   return restraint_values
 
 def generate_residue_tuples(hierarchy,
@@ -345,13 +348,22 @@ def update_restraints(hierarchy,
     retain_selection="name ca or name c or name n or name o or name cb or name h or name cd or name cg",
     #verbose=verbose,
     ):
-    if threes.cis_group():
-      if use_cis_127:
-        restraint_values = get_restraint_values(threes, interpolate=interpolate)
-      else:
-        continue
+    if cdl_svl:
+      restraint_values = get_restraint_values(threes,
+                                              cdl_svl=cdl_svl,
+                                              interpolate=interpolate)
+      print('cdl_svl %s %s' % (threes,restraint_values))
     else:
-      restraint_values = get_restraint_values(threes, interpolate=interpolate)
+      if threes.cis_group():
+        if use_cis_127:
+          # returns cis-PRO EH99 values if asked
+          restraint_values = get_restraint_values(threes, interpolate=interpolate)
+          print('cis-PRO EH99', restraint_values)
+        else:
+          continue
+      else:
+        restraint_values = get_restraint_values(threes, interpolate=interpolate)
+        print('CDL', restraint_values)
 
     if restraint_values is None: continue
 
