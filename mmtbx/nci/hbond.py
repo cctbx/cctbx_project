@@ -64,10 +64,11 @@ def get_stats(data):
   kurtosis=(x**4).min_max_mean().mean/sd**4
   return group_args(mean=mean, sd=sd, skew=skew, kurtosis=kurtosis)
 
-# XXX None at the moment
 master_phil_str = '''
 hbond {
-
+  output_pymol_files = True
+    .type = bool
+    .short_caption = Output useful PyMOL files for visualisation
 }
 '''
 
