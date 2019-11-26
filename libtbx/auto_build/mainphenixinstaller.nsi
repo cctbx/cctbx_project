@@ -142,7 +142,7 @@ Section "VC++ 2008 Redistributable" SEC03
 ; hack for ExecWait not being able to launch programs requiring UAC elevation.
 ; Use start from a cmd script file to that effect.
   FileOpen $0 "redistwait.cmd" "w"
-  FileWrite $0 "start /wait $INSTDIR\${SOURCEDIR}\${VCREDIST}"
+  FileWrite $0 'start "" /wait "$INSTDIR\${SOURCEDIR}\${VCREDIST}"'
   FileClose $0
 ; Use non-UNC path to not confuse cmd.exe
   SetOutPath "$INSTDIR\${SOURCEDIR}"
@@ -159,7 +159,6 @@ Section "Basic components" SEC01
   SetOverwrite off
   File /r /x *.cpp /x *.cc /x *.h /x *.hh /x *.hpp /x *.c /x *.f /x .svn ${COPYDIR}\*
 
-  #ExecWait '"\\?\$INSTDIR\${SOURCEDIR}\base\bin\python\python" -c $\"import compileall; compileall.compile_dir($\'\\\?\$INSTDIR\${SOURCEDIR}\modules$\', 100)$\"'
   ExecWait '"\\?\$INSTDIR\${SOURCEDIR}\base\bin\python\python" -c $\"import compileall; compileall.compile_dir($\'\\?\$INSTDIR\${SOURCEDIR}\modules$\', 100)$\"'
   SetAutoClose false
   ; Shortcuts
