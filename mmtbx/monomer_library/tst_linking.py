@@ -2377,7 +2377,7 @@ def run_and_test(cmd, pdb, i, skip_links=False):
     raise RuntimeError("Missing expected log output")
   print("OK")
   # test .geo
-  f=open(pdb.replace(".pdb", "_minimized.geo"), "rb")
+  f=open(pdb.replace(".pdb", "_minimized.geo"), "r")
   lines = f.read()
   f.close()
   bonds = 0
@@ -2414,7 +2414,7 @@ def run_and_test(cmd, pdb, i, skip_links=False):
   #  return
   number_of_links=0
   fname = pdb.replace(".pdb", "_minimized.pdb")
-  f=open(fname, "rb")
+  f=open(fname, "r")
   lines = f.readlines()
   f.close()
   for line in lines:

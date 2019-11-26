@@ -39,7 +39,7 @@ database = {'Zn2+ tetrahedral': {
 database['ZN'] = database['Zn2+ tetrahedral']
 
 for nums, restraints in database['Zn2+ tetrahedral'].items():
-  for atoms, values in restraints.items():
+  for atoms, values in list(restraints.items()):
     if 'ND1' in atoms:
       key = list(atoms)
       for i, atom in enumerate(key):

@@ -11,7 +11,7 @@ from six.moves import range
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 def set_rama_angles(moving_h, angles, direction_forward=True, check_omega=False):
   """

@@ -732,7 +732,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
 
   def _used_what_restraints(self, what):
     rc = False
-    for cif_key, cif_block in self.cif_model.iteritems():
+    for cif_key, cif_block in self.cif_model.items():
       target = cif_block.get("_refine.pdbx_stereochemistry_target_values")
       if (target is not None) and (what in target):
         rc = True
