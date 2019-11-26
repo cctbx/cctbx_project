@@ -1,3 +1,4 @@
+from __future__ import division
 cdl_svl_database = {
   "trans/trans" : {
     "Gly_nonxpro" : ['?', -1, 121.4, 1.7, 113.3, 2.3, 120.6, 1.6, 116.7, 1.9, 122.7, 1.3],
@@ -42,7 +43,7 @@ cdl_svl_database = {
 }
 
 if __name__=='__main__':
-  print cdl_svl_database.keys()
-  print cdl_svl_database['cis/trans']
-  print cdl_svl_database['cis/trans']['Pro_xpro']
+  print(cdl_svl_database.keys())
+  print(cdl_svl_database['cis/trans'])
+  print(cdl_svl_database['cis/trans']['Pro_xpro'])
   assert cdl_svl_database['cis/trans']['Pro_xpro'] == ['?', -1, 127.3, 1.8, 102.7, 1.0, 111.1, 1.7, 110.6, 1.5, 120.5, 1.0, 117.2, 1.2, 122.4, 1.1]
