@@ -118,13 +118,13 @@ This will also bring in a lot of downloads.
 One can auto-build with the bootstrap script. Typically, after the conda environment is setup as described above, one can
 
 ```
-./bootstrap.py build --use_conda ./conda_base --build-dir ompbuild --nproc 8
+./bootstrap.py build --use_conda ./conda_base --build-dir ompbuild --nproc 8 --builder=dials
 ```
 
 This should compile the code in a build folder with the default configuration for your current OS. It is useful to have multiple build folders, for example a CUDA-compatible build. In such a case one needs the NVCC configuration flags, so one would
 
 ```
-./bootstrap.py build --use_conda ./conda_base --build-dir cudabuild --config-flags="--enable_cuda" --nproc 8
+./bootstrap.py build --use_conda ./conda_base --build-dir cudabuild --config-flags="--enable_cuda" --nproc 8 --builder=dials
 ```
 
 In order to use run cctbx scripts, one should always source the setpaths.sh script in the desired build folder.
