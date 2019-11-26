@@ -839,6 +839,8 @@ class FatRefiner(PixelRefinement):
             self._update_Fcell()  # update the structure factor with the new x  # TODO do I work ?
 
             for self._i_shot in self.shot_ids:
+                if self._i_shot in self.bad_shot_list:
+                    continue
                 self.scale_fac = self.x[self.spot_scale_xpos[self._i_shot]]
                 S2 = self.scale_fac ** 2
                 # TODO: Omatrix update? All crystal models here should have the same to_primitive operation, ideally
@@ -1179,17 +1181,19 @@ class FatRefiner(PixelRefinement):
                                                         symbol="P43212")[0]
                 except Exception:
                     ang_off = -1
+                if ang_off == -1 or ang_off > 0.015:
+                    self.bad_shot_list.append(i)
                 all_ang_off.append(ang_off)
-
+            self.n_bad_shots = len(self.bad_shot_list)
+            self.n_bad_shots = comm.bcast(self.n_bad_shots)
             all_ang_off = comm.gather(all_ang_off, root=0)
-
-
 
             if self.verbose:
                 if self.refine_Umatrix or self.refine_Bmatrix:
                     print("\nMissets\n========")
                     all_ang_off = ["%.5f" % s for sl in all_ang_off for s in sl]
                     print(", ".join(all_ang_off))
+                    print ("N shots deemed bad from missets: %d" % self.n_bad_shots)
                 self.print_step("LBFGS stp", f)
                 self.print_step_grads("LBFGS GRADS", gnorm)
             self.iterations += 1
