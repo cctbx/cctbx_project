@@ -173,7 +173,8 @@ class overall_counts(object):
         "common_water": "   common water",
         "common_small_molecule": "   common small molecule",
         "common_element": "   common element",
-        "other": "   other"
+        "other": "   other",
+        'd_amino_acid' : '   D-amino acid',
       }
       show_sorted_by_counts(c.items(), out=out, prefix=prefix+"  ",
         annotations=[
