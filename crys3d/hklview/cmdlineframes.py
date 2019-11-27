@@ -1103,13 +1103,13 @@ class HKLViewFrame() :
     self.params.NGL_HKLviewer.clip_plane.bequiet = bequiet
 
 
-  def SetTrackBallRotateSpeed(self, trackspeed):
+  def SetMouseSpeed(self, trackspeed):
     self.params.NGL_HKLviewer.viewer.NGL.mouse_sensitivity = trackspeed
     self.update_settings()
 
 
-  def GetTrackBallRotateSpeed(self):
-    self.viewer.GetTrackBallRotateSpeed()
+  def GetMouseSpeed(self):
+    self.viewer.GetMouseSpeed()
     while self.params.viewer.NGL.mouse_sensitivity is None:
       time.sleep(0.1)
     return self.params.viewer.NGL.mouse_sensitivity

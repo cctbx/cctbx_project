@@ -754,7 +754,7 @@ class NGL_HKLViewer(QWidget):
     self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.tooltip_alpha'])
     self.HKLnameedit.setText( self.currentphilstringdict['NGL_HKLviewer.filename'])
     self.setWindowTitle("HKL-viewer: " + self.currentphilstringdict['NGL_HKLviewer.filename'])
-    self.mousemoveslider.setValue( 100*self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.mouse_sensitivity'])
+    self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.mouse_sensitivity'])
     self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
     self.sliceindexspinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_index'])
     self.Nbins_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
@@ -809,12 +809,12 @@ class NGL_HKLViewer(QWidget):
 
 
   def onFinalMouseSensitivity(self):
-    val = self.mousemoveslider.value()/100.0
+    val = self.mousemoveslider.value()/2000.0
     self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.mouse_sensitivity = %f' %val)
 
 
   def onMouseSensitivity(self):
-    val = self.mousemoveslider.value()/100.0
+    val = self.mousemoveslider.value()/2000.0
     self.mousesensitxtbox.setText("%2.2f" %val )
 
 
