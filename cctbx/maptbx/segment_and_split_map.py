@@ -835,7 +835,8 @@ master_phil = iotbx.phil.parse("""
        .type = str
        .short_caption = Overall sharpening target
        .help = Overall target for sharpening.  Can be kurtosis or adjusted_sa \
-          (adjusted surface area).  Used to decide which sharpening approach \
+          (adjusted surface area) or adjusted_path_length.  \
+            Used to decide which sharpening approach \
           is used. Note that during optimization, residual_target is used \
           (they can be the same.)
 
@@ -1930,7 +1931,7 @@ class sharpening_info:
       buffer_radius=None,
       pseudo_likelihood=None,
       preliminary_sharpening_done=False,
-
+      adjusted_path_length=None,
         ):
 
     from libtbx import adopt_init_args
@@ -2184,6 +2185,7 @@ class sharpening_info:
 
     target_summary_dict={
        'adjusted_sa':"Adjusted surface area",
+       'adjusted_path_length':"Adjusted path length",
        'kurtosis':"Map kurtosis",
        'model':"Map-model CC",
       }
@@ -2253,6 +2255,9 @@ class sharpening_info:
       print("Final adjusted map surface area:  %7.2f" %(self.adjusted_sa), file=out)
     if self.kurtosis is not None:
       print("Final map kurtosis:               %7.2f" %(self.kurtosis), file=out)
+    if self.adjusted_path_length is not None:
+      print("Final adjusted path length:        %7.2f A" %(
+         self.adjusted_path_length), file=out)
 
     print(file=out)
 
@@ -2415,6 +2420,11 @@ class ncs_group_object:
   def set_map_files_written(self,map_files_written):
     self.map_files_written=deepcopy(map_files_written)
 
+def zero_if_none(x):
+  if not x:
+    return 0
+  else:
+    return x
 def scale_map(map,scale_rms=1.0,out=sys.stdout):
     sd=map.as_double().as_1d().sample_standard_deviation()
     if (sd > 1.e-10):
@@ -4724,7 +4734,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
      params.map_modification.sharpening_target=='adjusted_sa') and \
      (params.map_modification.box_in_auto_sharpen or
        params.map_modification.density_select_in_auto_sharpen):
-    print("Checking to make sure we can use adjusted_sa as target...", end=' ', file=out)
+    print("Checking to make sure we can use adjusted_sa as target...",
+        end=' ', file=out)
     try:
       from phenix.autosol.map_to_model import iterated_solvent_fraction
     except Exception as e:
@@ -8600,11 +8611,50 @@ def score_map(map_data=None,
     sharpening_info_obj.normalized_regions=normalized_regions
 
   sharpening_info_obj.kurtosis=get_kurtosis(map_data.as_1d())
+
+  if sharpening_info_obj.sharpening_target=='adjusted_path_length':
+    sharpening_info_obj.adjusted_path_length=get_adjusted_path_length(
+      map_data=map_data,
+      resolution=sharpening_info_obj.resolution,
+      crystal_symmetry=sharpening_info_obj.crystal_symmetry,
+      out=out)
+  else:
+    sharpening_info_obj.adjusted_path_length=None
+
   if sharpening_info_obj.sharpening_target=='kurtosis':
     sharpening_info_obj.score=sharpening_info_obj.kurtosis
+  if sharpening_info_obj.sharpening_target=='adjusted_path_length':
+    sharpening_info_obj.score=sharpening_info_obj.adjusted_path_length
   else:
     sharpening_info_obj.score=sharpening_info_obj.adjusted_sa
+
   return sharpening_info_obj
+
+def get_adjusted_path_length(
+    map_data=None,
+    crystal_symmetry=None,
+    resolution=None,
+    out=sys.stdout):
+  from phenix.autosol.trace_and_build import trace_and_build
+  from phenix.programs.trace_and_build import master_phil_str
+  import iotbx.phil
+  tnb_params=iotbx.phil.parse(master_phil_str).extract()
+  tnb_params.crystal_info.resolution=resolution
+  tnb_params.strategy.retry_long_branches=False
+  tnb_params.strategy.correct_segments=False
+  tnb_params.strategy.split_and_join=False
+  tnb_params.strategy.vary_sharpening=[]
+  tnb_params.strategy.get_path_length_only=True
+  tnb_params.trace_and_build.find_helices_strands=False
+  tnb=trace_and_build(
+      params=tnb_params,
+      map_data=map_data,
+      crystal_symmetry=crystal_symmetry,
+      origin_cart=(0,0,0),
+      origin=(0,0,0),
+      log=out)
+  tnb.run()
+  return tnb.adjusted_path_length
 
 def sharpen_map_with_si(sharpening_info_obj=None,
      f_array_normalized=None,
@@ -10281,8 +10331,9 @@ def optimize_b_blur_or_d_cut_or_b_iso(
               local_si.b_sharpen,local_si.b_iso,
                local_si.b_blur_hires,
                local_si.adjusted_sa,local_si.kurtosis) + \
-              "  %7.3f         %7.3f   %7.3f %7.3f " %(
-               local_si.sa_ratio,local_si.normalized_regions,
+              "  %7.1f         %7.3f   %7.3f %7.3f " %(
+               zero_if_none(local_si.adjusted_path_length), #local_si.sa_ratio,
+               local_si.normalized_regions,
                test_d_cut,
                test_b_blur_hires
                 ), file=out)
@@ -10703,7 +10754,7 @@ def run_auto_sharpen(
           pass # print out later
         else:
           print("\nB-sharpen   B-iso   k_sharpen   SA   "+\
-             "Kurtosis  sa_ratio  Normalized regions", file=out)
+             "Kurtosis  Path len  Normalized regions", file=out)
       # ------------------------
       # ------------------------
       else:  #  ['b_iso','b_iso_to_d_cut']:
@@ -10725,7 +10776,7 @@ def run_auto_sharpen(
           k_sharpen=si.k_sharpen
 
         print("\nB-sharpen   B-iso   k_sharpen   SA   "+\
-             "Kurtosis  sa_ratio  Normalized regions", file=out)
+             "Kurtosis  Path len  Normalized regions", file=out)
       # ------------------------
       local_best_map_and_b=map_and_b_object()
       local_best_si=deepcopy(si).update_with_box_sharpening_info(
@@ -11022,15 +11073,16 @@ def run_sharpen_and_score(f_array=None,
            "\nb[0]   b[1]   b[2]   SA   Kurtosis   sa_ratio  Normalized regions"
           text+="\n"+\
             "\nB-sharpen   B-iso   k_sharpen   SA   "+\
-             "Kurtosis  sa_ratio  Normalized regions"
+             "Kurtosis  Path len  Normalized regions"
           text+="\n"+" %6.2f  %6.2f  %6.2f  " %(
               local_si.resolution_dependent_b[0],
               local_si.resolution_dependent_b[1],
               local_si.resolution_dependent_b[2]) +\
             "  %7.3f  %7.3f  " %(
                 local_si.adjusted_sa,local_si.kurtosis)+\
-            " %7.3f  %7.3f" %(
-             local_si.sa_ratio,local_si.normalized_regions)
+            " %7.1f  %7.3f" %(
+             zero_if_none(local_si.adjusted_path_length), #local_si.sa_ratio,
+             local_si.normalized_regions)
         elif local_si.b_sharpen is not None and local_si.b_iso is not None and\
            local_si.k_sharpen is not None and local_si.kurtosis is not None \
            and local_si.adjusted_sa is not None:
@@ -11038,8 +11090,9 @@ def run_sharpen_and_score(f_array=None,
            " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
             local_si.b_sharpen,local_si.b_iso,
              local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
-            "  %7.3f         %7.3f" %(
-             local_si.sa_ratio,local_si.normalized_regions)
+            "  %7.1f         %7.3f" %(
+             zero_if_none(local_si.adjusted_path_length), #local_si.sa_ratio,
+             local_si.normalized_regions)
         else:
           text=""
 

@@ -864,7 +864,7 @@ Parameters:"""%h
       print("\nOutput files are in same location as original and origin "+\
         "is at (0,0,0)\n", file=log)
 
-  print("\nBox grid: (%s, %s, %s) " %(output_box.map_box.all()))
+  print("\nBox grid: (%s, %s, %s) " %(output_box.map_box.all()),file=log)
   ph_output_box_output_location = ph_box.deep_copy()
   if output_box.shift_cart:  # shift coordinates and NCS back by shift_cart
     # NOTE output_box.shift_cart could be different than box.shift_cart if
