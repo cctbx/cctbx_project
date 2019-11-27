@@ -17,12 +17,14 @@ from itertools import count
 import sys
 from libtbx.str_utils import line_breaker
 from mmtbx.ncs.ncs_params import global_ncs_params
+from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list
 
 class cartesian_ncs_manager(object):
   def __init__(self, model, ncs_params, ext_groups=None):
     # create bunch of group objects
     self.ncs_params = ncs_params
     self.n_excessive_site_distances = None
+    self.ncs_restraints_group_list = class_ncs_restraints_group_list()
     if self.ncs_params is None:
       self.ncs_params = global_ncs_params.extract().ncs
     if ext_groups is not None:
@@ -30,9 +32,9 @@ class cartesian_ncs_manager(object):
     else:
       self.groups_list = []
       ncs_obj = model.get_ncs_obj()
-      ncs_restraints_group_list = ncs_obj.get_ncs_restraints_group_list()
-      ncs_groups_selection_string_list = ncs_restraints_group_list.get_array_of_str_selections()
-      for i_gr, gr in enumerate(ncs_restraints_group_list):
+      self.ncs_restraints_group_list = ncs_obj.get_ncs_restraints_group_list()
+      ncs_groups_selection_string_list = self.ncs_restraints_group_list.get_array_of_str_selections()
+      for i_gr, gr in enumerate(self.ncs_restraints_group_list):
         n_copies = gr.get_number_of_copies()
         registry = pair_registry(n_seq=model.get_number_of_atoms(), n_ncs=n_copies+1)
         for i_copy, c in enumerate(gr.copies):
@@ -53,14 +55,19 @@ class cartesian_ncs_manager(object):
             u_average_min=1.e-6,)
         self.groups_list.append(g)
 
-  def select(self, iselection):
+  def select(self, selection):
+    assert isinstance(selection, flex.bool)
+    iselection = selection.iselection()
     ext_groups = []
     for group in self.groups_list:
       ext_groups.append(group.select(iselection))
-    return cartesian_ncs_manager(
+    new_manager = cartesian_ncs_manager(
         model=None,
         ncs_params=self.ncs_params,
         ext_groups=ext_groups)
+    new_manager.ncs_restraints_group_list = \
+        self.ncs_restraints_group_list.select(selection)
+    return new_manager
 
   def energies_adp_iso(self,
         u_isos,

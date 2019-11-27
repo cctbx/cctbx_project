@@ -134,9 +134,7 @@ class manager(object):
     if (self.cartesian_ncs_manager is None):
       cartesian_ncs_manager = None
     else:
-      if(not isinstance(selection, flex.size_t)):
-        selection = selection.iselection()
-      cartesian_ncs_manager = self.cartesian_ncs_manager.select(iselection=selection)
+      cartesian_ncs_manager = self.cartesian_ncs_manager.select(selection=selection)
 
     return manager(
       geometry=geometry,
