@@ -705,10 +705,8 @@ class annlib_module(SourceModule):
 
 class scons_module(SourceModule):
   module = 'scons'
-  anonymous = ['git', '-b 3.0.5',
-               'git@github.com:SCons/scons.git',
-               'https://github.com/SCons/scons.git',
-               'https://github.com/SCons/scons/archive/3.0.5.zip']
+  anonymous = ['git', '-b 3.1.1',
+               'https://github.com/SCons/scons/archive/3.1.1.zip']
 
 # external modules
 class rosetta_class(SourceModule):
