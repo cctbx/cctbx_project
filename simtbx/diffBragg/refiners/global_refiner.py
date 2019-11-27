@@ -838,6 +838,31 @@ class FatRefiner(PixelRefinement):
             G2 = self.gain_fac ** 2
             self._update_Fcell()  # update the structure factor with the new x  # TODO do I work ?
 
+            all_ang_off = []
+            for i in range(self.n_shots):
+                try:
+                    Ctru = self.CRYSTAL_GT[i]
+                    atru, btru, ctru = Ctru.get_real_space_vectors()
+                    ang, ax = self.get_correction_misset(as_axis_angle_deg=True, i_shot=i)
+                    B = self.get_refined_Bmatrix(i)
+                    C = deepcopy(self.CRYSTAL_MODELS[i])
+                    C.set_B(B)
+                    C.rotate_around_origin(ax, ang)
+                    ang_off = compare_with_ground_truth(atru, btru, ctru,
+                                                        [C],
+                                                        symbol="P43212")[0]
+                except Exception:
+                    ang_off = -1
+                if self.filter_bad_shots and self.iterations==0:
+                    if ang_off == -1 or ang_off > 0.015:
+                        self.bad_shot_list.append(i)
+
+                all_ang_off.append(ang_off)
+            self.bad_shot_list = list(set(self.bad_shot_list))
+            all_ang_off = comm.gather(all_ang_off, root=0)
+            self.n_bad_shots = len(self.bad_shot_list)
+            self.n_bad_shots = comm.bcast(self.n_bad_shots)
+
             for self._i_shot in self.shot_ids:
                 if self._i_shot in self.bad_shot_list:
                     continue
@@ -1166,27 +1191,7 @@ class FatRefiner(PixelRefinement):
 
             self.D.raw_pixels *= 0
             gnorm = norm(g)
-            all_ang_off = []
-            for i in range(self.n_shots):
-                try:
-                    Ctru = self.CRYSTAL_GT[i]
-                    atru, btru, ctru = Ctru.get_real_space_vectors()
-                    ang, ax = self.get_correction_misset(as_axis_angle_deg=True, i_shot=i)
-                    B = self.get_refined_Bmatrix(i)
-                    C = deepcopy(self.CRYSTAL_MODELS[i])
-                    C.set_B(B)
-                    C.rotate_around_origin(ax, ang)
-                    ang_off = compare_with_ground_truth(atru, btru, ctru,
-                                                        [C],
-                                                        symbol="P43212")[0]
-                except Exception:
-                    ang_off = -1
-                if ang_off == -1 or ang_off > 0.015:
-                    self.bad_shot_list.append(i)
-                all_ang_off.append(ang_off)
-            self.n_bad_shots = len(self.bad_shot_list)
-            self.n_bad_shots = comm.bcast(self.n_bad_shots)
-            all_ang_off = comm.gather(all_ang_off, root=0)
+
 
             if self.verbose:
                 if self.refine_Umatrix or self.refine_Bmatrix:
