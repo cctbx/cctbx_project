@@ -29,6 +29,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.binner_dmin = 2
         self.bad_shot_list = []
         self.fcell_bump = 0.1
+        self.filter_bad_shots = False
         self.binner_dmax = 999
         self.binner_nbin = 10
         self.plot_fcell = False
