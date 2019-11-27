@@ -1454,6 +1454,12 @@ alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
                                    return_relocatable_path=True))
     write_do_not_edit(f=f)
     print('SConsignFile()', file=f)
+    if os.getenv("SCONS_CACHE"):
+      cache_dir = os.getenv("SCONS_CACHE")
+      print("Using build cache in %s" % cache_dir)
+      print("CacheDir(%r)" % cache_dir, file=f)
+      assert os.path.exists(cache_dir) and os.path.isdir(cache_dir), \
+        "Specified build cache dir does not exist"
     for path in self.repository_paths:
       print('Repository(r"%s")' % abs(path), file=f)
     for module in self.module_list:
