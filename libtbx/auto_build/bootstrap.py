@@ -705,12 +705,8 @@ class annlib_module(SourceModule):
 
 class scons_module(SourceModule):
   module = 'scons'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/scons.gz',
-    'https://drive.google.com/uc?id=1hPd5cMbVcsN4j0P5qaPUV71XS_aifw-J&export=download',
-  ]]
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'scons.tar.gz', '/net/cci/auto_build/repositories/scons']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/']
+  anonymous = ['git', '-b 3.1.1',
+               'https://github.com/SCons/scons/archive/3.1.1.zip']
 
 # external modules
 class rosetta_class(SourceModule):
