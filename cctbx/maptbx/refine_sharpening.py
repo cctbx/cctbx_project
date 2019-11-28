@@ -363,6 +363,7 @@ def calculate_fsc(si=None,
      f_array=None,  # just used for binner
      map_coeffs=None,
      model_map_coeffs=None,
+     external_map_coeffs=None,
      first_half_map_coeffs=None,
      second_half_map_coeffs=None,
      resolution=None,
@@ -383,8 +384,10 @@ def calculate_fsc(si=None,
     print("Setting rmsd to %5.1f A based on resolution of %5.1f A" %(
        si.rmsd,resolution), file=out)
 
-
   # get f and model_f vs resolution and FSC vs resolution and apply
+
+  # If external_map_coeffs then simply scale f to external_map_coeffs
+
   # scale to f_array and return sharpened map
   dsd = f_array.d_spacings().data()
   from cctbx.maptbx.segment_and_split_map import map_coeffs_to_fp
@@ -395,6 +398,13 @@ def calculate_fsc(si=None,
     fo_map=map_coeffs # scale map_coeffs to model_map_coeffs*FSC
     fc_map=model_map_coeffs
     b_eff=get_b_eff(si=si,out=out)
+  elif external_map_coeffs:
+    mc1=map_coeffs
+    mc2=external_map_coeffs
+    fo_map=map_coeffs # scale map_coeffs to external_map_coeffs
+    fc_map=external_map_coeffs
+    b_eff=None
+
   else: # half_dataset
     mc1=first_half_map_coeffs
     mc2=second_half_map_coeffs
@@ -425,6 +435,8 @@ def calculate_fsc(si=None,
     m2        = mc2.select(sel)
     cc        = m1.map_correlation(other = m2)
 
+    if external_map_coeffs:
+      cc=1.
 
     if fo_map:
       fo        = fo_map.select(sel)
@@ -589,6 +601,7 @@ def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
 
 def scale_amplitudes(model_map_coeffs=None,
     map_coeffs=None,
+    external_map_coeffs=None,
     first_half_map_coeffs=None,
     second_half_map_coeffs=None,
     si=None,resolution=None,overall_b=None,
@@ -608,7 +621,8 @@ def scale_amplitudes(model_map_coeffs=None,
     is_model_based=True
   else:
     assert si.target_scale_factors or (
-       first_half_map_coeffs and second_half_map_coeffs)
+       first_half_map_coeffs and second_half_map_coeffs) or (
+        external_map_coeffs)
     is_model_based=False
 
   if si.verbose and not verbose:
@@ -641,6 +655,7 @@ def scale_amplitudes(model_map_coeffs=None,
       model_map_coeffs=model_map_coeffs,
       first_half_map_coeffs=first_half_map_coeffs,
       second_half_map_coeffs=second_half_map_coeffs,
+      external_map_coeffs=external_map_coeffs,
       resolution=resolution,
       fraction_complete=fraction_complete,
       min_fraction_complete=min_fraction_complete,

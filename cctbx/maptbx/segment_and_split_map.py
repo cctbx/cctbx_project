@@ -2310,6 +2310,8 @@ class sharpening_info:
        return False
     if self.is_half_map_sharpening():
        return False
+    if self.is_external_map_sharpening():
+       return False
     return True
 
   def is_resolution_dependent_sharpening(self):
@@ -2320,6 +2322,12 @@ class sharpening_info:
 
   def is_model_sharpening(self):
     if self.sharpening_method=='model_sharpening':
+       return True
+    else:
+       return False
+
+  def is_external_map_sharpening(self):
+    if self.sharpening_method=='external_map_sharpening':
        return True
     else:
        return False
@@ -4120,14 +4128,33 @@ def get_mask_around_molecule(map_data=None,
 
   masked_fraction=sorted_by_volume[1][0]/mask.size()
 
+  # Try to get expanded fraction < 0.5*(masked_fraction+1)
+  upper_limit=0.5*(masked_fraction+1)
+
   bool_region_mask = co.expand_mask(id_to_expand=sorted_by_volume[1][1],
        expand_size=expand_size)
   s=(bool_region_mask==True)
   expanded_fraction=s.count(True)/s.size()
+  if expanded_fraction>upper_limit:
+    amount_too_big=max(1.e-10,expanded_fraction-upper_limit)/max(1.e-10,
+       expanded_fraction-masked_fraction)**0.667
+    # cut back
+    expand_size=int(0.5+expand_size*amount_too_big)
+    print ("\nCutting back expand size to try and get "+
+       "fraction < about %.2f . New expand_size: %s" %(
+      upper_limit,expand_size),file=out)
+    bool_region_mask = co.expand_mask(id_to_expand=sorted_by_volume[1][1],
+       expand_size=expand_size)
+    s=(bool_region_mask==True)
+    expanded_fraction=s.count(True)/s.size()
+    if expanded_fraction > 0.999:
+      print ("\nSkipping expansion as no space is available\n",file=out)
+      return None,None
   print("\nLargest masked region before buffering: %7.2f" %(masked_fraction),
       file=out)
   print("\nLargest masked region after buffering: %7.2f" %(expanded_fraction),
      file=out)
+
   if solvent_content and (not force_buffer_radius):
     delta_as_is=abs(solvent_content- (1-masked_fraction))
     delta_expanded=abs(solvent_content- (1-expanded_fraction))
@@ -5333,6 +5360,7 @@ def get_and_apply_soft_mask_to_maps(
     new_half_map_data_list=[]
     if not half_map_data_list: half_map_data_list=[]
     for half_map in half_map_data_list:
+      assert half_map.size()==mask_data.size()
       half_map,smoothed_mask_data=apply_soft_mask(map_data=half_map,
         mask_data=mask_data.as_double(),
         rad_smooth=rad_smooth,
@@ -10068,7 +10096,8 @@ def auto_sharpen_map_or_map_coeffs(
 
     # Determine if we are running model_sharpening
     if half_map_data_list and len(half_map_data_list)==2:
-      auto_sharpen_methods=['half_map_sharpening']
+      if auto_sharpen_methods != ['external_map_sharpening']:
+        auto_sharpen_methods=['half_map_sharpening']
     elif pdb_inp:
       auto_sharpen_methods=['model_sharpening']
     if not si:
@@ -10731,6 +10760,8 @@ def run_auto_sharpen(
       print("\nSetting up model sharpening", file=out)
     elif best_si.is_half_map_sharpening():
       print("\nSetting up half-map sharpening", file=out)
+    elif best_si.is_external_map_sharpening():
+      print("\nSetting up external map sharpening", file=out)
     else:
       print("\nTesting sharpening methods with target of %s" %(
         best_si.sharpening_target), file=out)
@@ -10739,7 +10770,8 @@ def run_auto_sharpen(
     for m in auto_sharpen_methods:
       # ------------------------
       if m in ['no_sharpening','resolution_dependent','model_sharpening',
-          'half_map_sharpening','target_b_iso_to_d_cut']:
+          'half_map_sharpening','target_b_iso_to_d_cut',
+           'external_map_sharpening']:
         if m=='target_b_iso_to_d_cut':
           b_min=si.get_target_b_iso()
           b_max=si.get_target_b_iso()
@@ -10750,7 +10782,7 @@ def run_auto_sharpen(
         k_sharpen=0.
         delta_b=0
         if m in ['resolution_dependent','model_sharpening',
-           'half_map_sharpening']:
+           'half_map_sharpening','external_map_sharpening']:
           pass # print out later
         else:
           print("\nB-sharpen   B-iso   k_sharpen   SA   "+\
@@ -10839,6 +10871,19 @@ def run_auto_sharpen(
             map_coeffs=map_coeffs,
             first_half_map_coeffs=first_half_map_coeffs,
             second_half_map_coeffs=second_half_map_coeffs,
+            si=local_si,out=out)
+          # local_si contains target_scale_factors now
+          local_f_array=f_array
+          local_phases=phases
+        elif m=='external_map_sharpening':
+          print("\nUsing external-map-based sharpening", file=out)
+          local_si.b_sharpen=0
+          local_si.b_iso=original_b_iso
+          from cctbx.maptbx.refine_sharpening import scale_amplitudes
+          scale_amplitudes(
+            model_map_coeffs=model_map_coeffs,
+            map_coeffs=map_coeffs,
+            external_map_coeffs=first_half_map_coeffs,
             si=local_si,out=out)
           # local_si contains target_scale_factors now
           local_f_array=f_array

@@ -23,6 +23,13 @@ master_phil = iotbx.phil.parse("""
       .help = Half map (two should be supplied) for FSC calculation. Must \
                have grid identical to map_file
 
+    external_map_file = None
+      .type = path
+      .short_caption = External map
+      .style = file_type:ccp4_map bold input_file
+      .help = External map to be used to scale map_file (power vs resolution\
+              will be matched)
+
     map_coeffs_file = None
       .type = path
       .help = Optional file with map coefficients
@@ -271,7 +278,8 @@ master_phil = iotbx.phil.parse("""
 
      auto_sharpen_methods = no_sharpening b_iso *b_iso_to_d_cut \
                             resolution_dependent model_sharpening \
-                            half_map_sharpening target_b_iso_to_d_cut None
+                            half_map_sharpening target_b_iso_to_d_cut \
+                            external_map_sharpening None
 
        .type = choice(multi=True)
        .short_caption = Sharpening methods
@@ -842,6 +850,34 @@ def get_map_and_model(params=None,
           params.crystal_info.resolution), file=out)
   else:
     raise Sorry("Need ccp4 map or map_coeffs")
+
+  if params.input_files.external_map_file and not \
+      params.map_modification.auto_sharpen_methods==['external_map_sharpening']:
+    raise Sorry("Please specify external_map_file and "+
+        "auto_sharpen_methods=external_map_sharpening or"+
+         " neither")
+
+
+  if params.map_modification.auto_sharpen_methods==['external_map_sharpening']:
+    if not params.input_files.external_map_file:
+      raise Sorry("Need external_map_file for external_map")
+    if params.input_files.half_map_file:
+      raise Sorry("Cannot use half_map_file with external_map")
+    half_map_data_list=[]
+    file_name=params.input_files.external_map_file
+    print("\nReading external map from %s\n" %(file_name), file=out)
+    half_map_data,half_map_space_group,half_map_unit_cell,\
+        half_map_crystal_symmetry,half_map_origin_frac,half_map_acc,\
+         half_map_original_crystal_symmetry,half_map_original_unit_cell_grid=\
+        get_map_object(file_name=file_name,out=out)
+    half_map_data=half_map_data.as_double()
+    assert half_map_crystal_symmetry.is_similar_symmetry(crystal_symmetry)
+    half_map_data_list.append(half_map_data) # save it in half_map_data_list
+    # and add another just so we have two..
+    half_map_data_list.append(half_map_data.deep_copy())
+    if map_data and half_map_data.size()!=map_data.size():
+      raise Sorry("Map data and external_map_file data must be the same size")
+
 
   if params.input_files.half_map_file:
     if len(params.input_files.half_map_file) != 2:
