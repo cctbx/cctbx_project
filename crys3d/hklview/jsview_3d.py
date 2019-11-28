@@ -885,7 +885,7 @@ var fontsize = %s;
 function MakeHKL_Axis(mshape)
 {
   // xyz arrows
-  mshape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origin');
+  // mshape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origin');
   //blue-x
   mshape.addArrow( %s, %s , [ 0, 0, 1 ], 0.1);
   //green-y
@@ -1948,7 +1948,7 @@ mysocket.onmessage = function (e)
       //alert('trans: ' + elmstrs);
       for (j=0; j<3; j++)
         sm[j] = parseFloat(elmstrs[j]);
-      shapeComp.setPosition([ sm[0], sm[1], sm[2] ])
+      shapeComp.setPosition([ sm[0], sm[1], sm[2] ]);
       stage.viewer.requestRender();
       msg = getOrientMsg();
       WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
@@ -2067,11 +2067,12 @@ mysocket.onmessage = function (e)
         near = 0;
         far = 100;
       }
+      else
+        stage.viewer.camera.position.z = origcameraZpos;
       stage.viewer.parameters.clipNear = near;
       stage.viewer.parameters.clipFar = far;
       origclipnear = near;
       origclipfar = far;
-      stage.viewer.camera.position.z = origcameraZpos;
       stage.viewer.requestRender();
     }
 
@@ -2321,7 +2322,9 @@ mysocket.onmessage = function (e)
     else:
       self.cameradist = math.pow(rotdet, 1.0/3.0)
     self.mprint("Scale distance: %s" %roundoff(self.cameradist), verbose=3)
-    self.currentRotmx = ScaleRotMx/self.cameradist
+    self.currentRotmx = matrix.identity(3)
+    if self.cameradist >  0.0:
+      self.currentRotmx = ScaleRotMx/self.cameradist
     rotlst = roundoff(self.currentRotmx.elems)
     self.mprint("""Rotation matrix:
   %s,  %s,  %s
@@ -2647,35 +2650,34 @@ Distance: %s
     self.msgqueue.append(("SpinAnimate", "%s, %s, %s" %(r1, r2, r3) ))
 
 
-  def DrawUnitCell(self):
-    self.AddVector(0,0,0, 1,0,0, False, label="200a/V", r=0.5, g=0.8, b=0.8)
-    self.AddVector(0,0,0, 0,1,0, False, label="200b/V", r=0.8, g=0.5, b=0.8)
-    self.AddVector(0,0,0, 0,0,1, False, label="200c/V", r=0.8, g=0.8, b=0.5)
-    self.AddVector(1,0,0, 1,1,0, False, r=0.8, g=0.5, b=0.8)
-    self.AddVector(0,1,0, 1,1,0, False, r=0.5, g=0.8, b=0.8)
-    self.AddVector(0,0,1, 1,0,1, False, r=0.5, g=0.8, b=0.8)
-    self.AddVector(0,0,1, 0,1,1, False, r=0.8, g=0.5, b=0.8)
-    self.AddVector(0,1,1, 1,1,1, False, r=0.5, g=0.8, b=0.8)
-    self.AddVector(1,0,1, 1,1,1, False, r=0.8, g=0.5, b=0.8)
-    self.AddVector(1,0,0, 1,0,1, False, r=0.8, g=0.8, b=0.5)
-    self.AddVector(0,1,0, 0,1,1, False, r=0.8, g=0.8, b=0.5)
-    self.AddVector(1,1,0, 1,1,1, False, r=0.8, g=0.8, b=0.5, name="unitcell")
+  def DrawUnitCell(self, scale=1):
+    self.AddVector(0,0,0, scale,0,0, False, label="a", r=0.5, g=0.8, b=0.8)
+    self.AddVector(0,0,0, 0,scale,0, False, label="b", r=0.8, g=0.5, b=0.8)
+    self.AddVector(0,0,0, 0,0,scale, False, label="c", r=0.8, g=0.8, b=0.5)
+    self.AddVector(scale,0,0, scale,scale,0, False, r=0.8, g=0.5, b=0.8)
+    self.AddVector(0,scale,0, scale,scale,0, False, r=0.5, g=0.8, b=0.8)
+    self.AddVector(0,0,scale, scale,0,scale, False, r=0.5, g=0.8, b=0.8)
+    self.AddVector(0,0,scale, 0,scale,scale, False, r=0.8, g=0.5, b=0.8)
+    self.AddVector(0,scale,scale, scale,scale,scale, False, r=0.5, g=0.8, b=0.8)
+    self.AddVector(scale,0,scale, scale,scale,scale, False, r=0.8, g=0.5, b=0.8)
+    self.AddVector(scale,0,0, scale,0,scale, False, r=0.8, g=0.8, b=0.5)
+    self.AddVector(0,scale,0, 0,scale,scale, False, r=0.8, g=0.8, b=0.5)
+    self.AddVector(scale,scale,0, scale,scale,scale, False, r=0.8, g=0.8, b=0.5, name="unitcell")
 
 
-  def DrawReciprocalUnitCell(self):
-    n=2
-    self.AddVector(0,0,0, n,0,0, label="2a*", r=0.5, g=0.3, b=0.3)
-    self.AddVector(0,0,0, 0,n,0, label="2b*", r=0.3, g=0.5, b=0.3)
-    self.AddVector(0,0,0, 0,0,n, label="2c*", r=0.3, g=0.3, b=0.5)
-    self.AddVector(n,0,0, n,n,0, r=0.3, g=0.5, b=0.3)
-    self.AddVector(0,n,0, n,n,0, r=0.5, g=0.3, b=0.3)
-    self.AddVector(0,0,n, n,0,n, r=0.5, g=0.3, b=0.3)
-    self.AddVector(0,0,n, 0,n,n, r=0.3, g=0.5, b=0.3)
-    self.AddVector(0,n,n, n,n,n, r=0.5, g=0.3, b=0.3)
-    self.AddVector(n,0,n, n,n,n, r=0.3, g=0.5, b=0.3)
-    self.AddVector(n,0,0, n,0,n, r=0.3, g=0.3, b=0.5)
-    self.AddVector(0,n,0, 0,n,n, r=0.3, g=0.3, b=0.5)
-    self.AddVector(n,n,0, n,n,n, r=0.3, g=0.3, b=0.5, name="reciprocal_unitcell")
+  def DrawReciprocalUnitCell(self, scale=1):
+    self.AddVector(0,0,0, scale,0,0, label="a*", r=0.5, g=0.3, b=0.3)
+    self.AddVector(0,0,0, 0,scale,0, label="b*", r=0.3, g=0.5, b=0.3)
+    self.AddVector(0,0,0, 0,0,scale, label="c*", r=0.3, g=0.3, b=0.5)
+    self.AddVector(scale,0,0, scale,scale,0, r=0.3, g=0.5, b=0.3)
+    self.AddVector(0,scale,0, scale,scale,0, r=0.5, g=0.3, b=0.3)
+    self.AddVector(0,0,scale, scale,0,scale, r=0.5, g=0.3, b=0.3)
+    self.AddVector(0,0,scale, 0,scale,scale, r=0.3, g=0.5, b=0.3)
+    self.AddVector(0,scale,scale, scale,scale,scale, r=0.5, g=0.3, b=0.3)
+    self.AddVector(scale,0,scale, scale,scale,scale, r=0.3, g=0.5, b=0.3)
+    self.AddVector(scale,0,0, scale,0,scale, r=0.3, g=0.3, b=0.5)
+    self.AddVector(0,scale,0, 0,scale,scale, r=0.3, g=0.3, b=0.5)
+    self.AddVector(scale,scale,0, scale,scale,scale, r=0.3, g=0.3, b=0.5, name="reciprocal_unitcell")
 
 
   def fix_orientation(self, val):
@@ -2687,6 +2689,7 @@ Distance: %s
 
   def clip_plane_vector(self, a, b, c, hkldist=0.0,
              clipwidth=None, fixorientation=True, is_parallel=False):
+    self.GetClipPlaneDistances()
     # create clip plane oriented parallel or perpendicular to abc vector
     if a==0.0 and b==0.0 and c==0.0 or clipwidth <= 0.0:
       self.RemoveVectorsNoClipPlane()
@@ -2710,8 +2713,9 @@ Distance: %s
     self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
     #if hkldist < 0.0:
     #  self.TranslateHKLpoints(a, b, c, hkldist)
-    self.DrawUnitCell()
-    self.DrawReciprocalUnitCell()
+    scale = max(self.miller_array.index_span().max())/10
+    #self.DrawUnitCell(scale)
+    #self.DrawReciprocalUnitCell(scale)
     #self.RotateMxStage(self.currentRotmx, True)
 
 

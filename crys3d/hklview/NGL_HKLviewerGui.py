@@ -619,6 +619,10 @@ class NGL_HKLViewer(QWidget):
           if len(self.tncsvec) == 0:
             self.clipTNCSBtn.setDisabled(True)
 
+          if self.infodict.get("file_name"):
+            self.HKLnameedit.setText( self.infodict.get("file_name", "") )
+            self.setWindowTitle("HKL-viewer: " + self.infodict.get("file_name", "") )
+
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
 
@@ -741,8 +745,6 @@ class NGL_HKLViewer(QWidget):
     self.power_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'])
 
     self.ManualPowerScalecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] == -1 )
-
-
     self.radii_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.scale'])
     self.showslicecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_mode'])
     self.hvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.h'])
@@ -752,14 +754,16 @@ class NGL_HKLViewer(QWidget):
     self.expandAnomalouscheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.expand_anomalous'])
     self.sysabsentcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_systematic_absences'])
     self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.tooltip_alpha'])
-    self.HKLnameedit.setText( self.currentphilstringdict['NGL_HKLviewer.filename'])
-    self.setWindowTitle("HKL-viewer: " + self.currentphilstringdict['NGL_HKLviewer.filename'])
+    #self.HKLnameedit.setText( self.currentphilstringdict['NGL_HKLviewer.filename'])
+    #self.setWindowTitle("HKL-viewer: " + self.currentphilstringdict['NGL_HKLviewer.filename'])
     self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.mouse_sensitivity'])
-    self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
+    #self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
+    self.rotavecangle_labeltxt.setText("Angle rotated: %2.f" %self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
+
     self.sliceindexspinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_index'])
     self.Nbins_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
     if self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice']:
-      self.SpaceGroupComboBox.setCurrentIndex( self.spacegroups[ self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice']] )
+      self.SpaceGroupComboBox.setCurrentIndex(  self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice'] )
     self.clipParallelBtn.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.is_parallel'])
     self.missingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_missing'])
     axidx = -1
@@ -1077,6 +1081,8 @@ class NGL_HKLViewer(QWidget):
 
 
   def onManualPowerScale(self):
+    if self.unfeedback:
+      return
     if self.ManualPowerScalecheckbox.isChecked():
       self.NGL_HKL_command('NGL_HKLviewer.viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
       self.power_scale_spinBox.setEnabled(True)
@@ -1344,7 +1350,6 @@ class NGL_HKLViewer(QWidget):
     if self.unfeedback:
       return
     val = self.rotavecangle_slider.value()
-    self.rotavecangle_labeltxt.setText("Angle rotated: %2.f" %val)
     self.NGL_HKL_command("""NGL_HKLviewer.clip_plane {
     angle_around_vector = %f
     bequiet = True
