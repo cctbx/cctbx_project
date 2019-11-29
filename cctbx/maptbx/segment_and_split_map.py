@@ -42,6 +42,13 @@ master_phil = iotbx.phil.parse("""
       .help = Half map (two should be supplied) for FSC calculation. Must \
                have grid identical to map_file
 
+    external_map_file = None
+      .type = path
+      .short_caption = External map
+      .style = file_type:ccp4_map bold input_file
+      .help = External map to be used to scale map_file (power vs resolution\
+              will be matched). Not used in segment_and_split_map
+
     ncs_file = None
       .type = path
       .help = File with symmetry information (typically point-group NCS with \
