@@ -4139,17 +4139,20 @@ def get_mask_around_molecule(map_data=None,
     amount_too_big=max(1.e-10,expanded_fraction-upper_limit)/max(1.e-10,
        expanded_fraction-masked_fraction)**0.667
     # cut back
+    original_expand_size=expand_size
     expand_size=max(1,int(0.5+expand_size*amount_too_big))
-    print ("\nCutting back expand size to try and get "+
-       "fraction < about %.2f . New expand_size: %s" %(
-      upper_limit,expand_size),file=out)
-    bool_region_mask = co.expand_mask(id_to_expand=sorted_by_volume[1][1],
-       expand_size=expand_size)
-    s=(bool_region_mask==True)
-    expanded_fraction=s.count(True)/s.size()
-    if expanded_fraction > 0.999:
-      print ("\nSkipping expansion as no space is available\n",file=out)
-      return None,None
+    if expand_size != original_expand_size:
+   
+      print ("\nCutting back expand size to try and get "+
+         "fraction < about %.2f . New expand_size: %s" %(
+        upper_limit,expand_size),file=out)
+      bool_region_mask = co.expand_mask(id_to_expand=sorted_by_volume[1][1],
+         expand_size=expand_size)
+      s=(bool_region_mask==True)
+      expanded_fraction=s.count(True)/s.size()
+  if expanded_fraction > 0.9999:
+        print ("\nSkipping expansion as no space is available\n",file=out)
+        return None,None
   print("\nLargest masked region before buffering: %7.2f" %(masked_fraction),
       file=out)
   print("\nLargest masked region after buffering: %7.2f" %(expanded_fraction),
