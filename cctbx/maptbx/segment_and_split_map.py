@@ -4139,7 +4139,7 @@ def get_mask_around_molecule(map_data=None,
     amount_too_big=max(1.e-10,expanded_fraction-upper_limit)/max(1.e-10,
        expanded_fraction-masked_fraction)**0.667
     # cut back
-    expand_size=int(0.5+expand_size*amount_too_big)
+    expand_size=max(1,int(0.5+expand_size*amount_too_big))
     print ("\nCutting back expand size to try and get "+
        "fraction < about %.2f . New expand_size: %s" %(
       upper_limit,expand_size),file=out)
