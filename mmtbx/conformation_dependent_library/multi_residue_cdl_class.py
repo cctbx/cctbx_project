@@ -247,7 +247,8 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
 
   Check:%s""" % outl)
         if verbose:
-          print(" i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
+          print(" %s i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
+            code,
             angle_proxy.i_seqs,
             angle_proxy.angle_ideal,
             angle_proxy.weight,

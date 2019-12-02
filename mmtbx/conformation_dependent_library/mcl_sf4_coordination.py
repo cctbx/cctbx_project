@@ -130,6 +130,7 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
   while i < n_nonb and sorted_nonb[i][3] < coordination_distance_cutoff:
     (labels, i_seq, j_seq, dist, vdw_distance, sym_op_j, rt_mx) = sorted_nonb[i]
     i += 1
+    if rt_mx: continue
     a1 = atoms[i_seq]
     ag1 = a1.parent()
     a2 = atoms[j_seq]
