@@ -612,14 +612,12 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     # Configure the logging
     if params.output.logging_dir is None:
-      info_path = ''
-      debug_path = ''
+      logfile = ''
     elif params.output.logging_dir == 'DevNull':
       print("Redirecting stdout, stderr and other DIALS logfiles to /dev/null")
       sys.stdout = open(os.devnull,'w', buffering=0)
       sys.stderr = open(os.devnull,'w',buffering=0)
-      info_path = os.devnull
-      debug_path = os.devnull
+      logfile = os.devnull
     else:
       log_path = os.path.join(params.output.logging_dir, "log_rank%04d.out"%rank)
       error_path = os.path.join(params.output.logging_dir, "error_rank%04d.out"%rank)
@@ -629,11 +627,10 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       sys.stderr = open(error_path,'a',buffering=0)
       print("Should be redirected now")
 
-      info_path = os.path.join(params.output.logging_dir, "info_rank%04d.out"%rank)
-      debug_path = os.path.join(params.output.logging_dir, "debug_rank%04d.out"%rank)
+      logfile = os.path.join(params.output.logging_dir, "info_rank%04d.out"%rank)
 
     from dials.util import log
-    log.config(options.verbose, info=info_path, debug=debug_path)
+    log.config(options.verbose, logfile=logfile)
 
     debug_dir = os.path.join(params.output.output_dir, "debug")
     if not os.path.exists(debug_dir):
