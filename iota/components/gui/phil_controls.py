@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/02/2019
-Last Changed: 08/01/2019
+Last Changed: 12/02/2019
 Description : IOTA GUI controls for PHIL-formatted settings
 '''
 
@@ -1840,6 +1840,7 @@ class PHILFileListCtrl(ct.FileListCtrl, gui.IOTADefinitionCtrl):
       file_types = extras.get('file_types', None)
       folder_types = extras.get('folder_types', None)
       data_types = extras.get('data_types', None)
+      input_filter = extras.get('input_filter', None)
     else:
       file_types = folder_types = data_types = None
 
@@ -1847,7 +1848,9 @@ class PHILFileListCtrl(ct.FileListCtrl, gui.IOTADefinitionCtrl):
                              size=(600, 300),
                              file_types=file_types,
                              folder_types=folder_types,
-                             data_types=data_types)
+                             data_types=data_types,
+                             input_filter=input_filter
+                             )
     gui.IOTADefinitionCtrl.__init__(self, phil_object=phil_object)
     self.multi_definition = False
     self.SetValue(value)

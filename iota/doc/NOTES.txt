@@ -1,15 +1,8 @@
-IOTA v1.4.016 - image view shows processing results
+IOTA v1.4.017 - input finder bugfix
 
-Features:
-- Instead of just the image, individual image view from processing also shows
-  integration shoeboxes; user can then view other results (e.g orientation
-  vector, centers of mass, indexed spots positions, ice rings, etc.)
+- Fixed bug where input finder rejects all found processed pickles because they
+  are not raw images (and get filtered out)
+- The fix affects IOTA and PRIME input windows.
 
-Known issues:
-- This does not (yet) work for images viewed by double-clicking the progress bar
-- This also works poorly with HDF5 images: for some reason loading the .expt
-  file shows the *first* image in the sequence, regardless of which of the
-  images the .expt file is derived from.
-
-11.25.2019
+12.02.2019
 # -- end

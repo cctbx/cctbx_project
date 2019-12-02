@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 10/31/2019
+Last Changed: 12/02/2019
 Description : IOTA GUI controls
 '''
 
@@ -1093,8 +1093,11 @@ class FileListCtrl(CustomListCtrl):
   ]
   _data_types = ['file', 'folder']
 
+  _input_filter = None
+
   def __init__(self, parent, size=(-1, 400), file_types=None,
-               folder_types=None, data_types=None, *args, **kwargs):
+               folder_types=None, data_types=None, input_filter=None,
+               *args, **kwargs):
     CustomListCtrl.__init__(self, parent=parent, size=size,
                             style=ulc.ULC_STICKY_HIGHLIGHT |
                                   ulc.ULC_STICKY_NOSELEVENT |
@@ -1116,9 +1119,10 @@ class FileListCtrl(CustomListCtrl):
       self._file_types = file_types
     if folder_types:
       self._folder_types = folder_types
-
     if data_types:
       self._data_types = data_types
+    if input_filter:
+      self._input_filter = input_filter
 
     # Generate columns
     self.ctr.InsertColumn(0, "")
@@ -1217,10 +1221,12 @@ class FileListCtrl(CustomListCtrl):
 
   def set_type_choices(self, path):
     # Determine what type of input this is and present user with choices
-    # (this so far works for images ONLY)
     type_choices = ['[  SELECT INPUT TYPE  ]']
     preferred_selection = 0
-    inputs, input_type, input_count = ginp.get_input(path)
+    inputs, input_type, input_count = ginp.get_input(
+      path,
+      filter_results=(self._input_filter is not None),
+      filter_type=self._input_filter)
     if os.path.isdir(path):
       type_choices.extend(self._folder_types)
       if input_type in type_choices:

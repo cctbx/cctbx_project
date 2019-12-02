@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 07/17/2019
+Last Changed: 12/02/2019
 Description : PRIME GUI frames module
 '''
 
@@ -278,18 +278,20 @@ class PRIMEWindow(IOTABaseFrame):
 
     # Instantiate input window
     input_scope = self.prime_index.get_scopes(include=self.main_window_scopes)
-    self.input_window = InputWindow(self, size=(600, -1),
-                                    scope=input_scope,
-                                    phil_index=self.prime_index,
-                                    path_extras={
-                                      "file_types":['processed pickle',
-                                                    'reference MTZ',
-                                                    'sequence',
-                                                    'processed pickle list'],
-                                      "folder_types":['processed pickle '
-                                                      'folder'],
-                                      "data_types":['processed pickle']
-                                    })
+    self.input_window = InputWindow(
+      self,
+      size=(600, -1),
+      scope=input_scope,
+      phil_index=self.prime_index,
+      path_extras={
+        "file_types": ['processed pickle',
+                       'reference MTZ',
+                       'sequence',
+                       'processed pickle list'],
+        "folder_types": ['processed pickle folder'],
+        "data_types": ['processed pickle'],
+        "input_filter": "processed"
+      })
 
     # Front options panel
     self.bottom_sizer = wx.GridBagSizer(5, 5)
