@@ -7,8 +7,9 @@ from six.moves import zip
 #
 PSANA2_VERSION = 0
 try:
-  import psana
-  PSANA2_VERSION = psana.__version__
+  import os, psana
+  PSANA2_VERSION = os.environ.get('PSANA2_VERSION', 0)
+
 except ImportError:
   pass # for running at home without psdm build
 except AttributeError:
@@ -27,6 +28,8 @@ from dxtbx.model.experiment_list import ExperimentListFactory
 from scitbx.array_family import flex
 import numpy as np
 from libtbx import easy_pickle
+
+import io # fix buffering py2/3
 
 xtc_phil_str = '''
   dispatch {
@@ -383,12 +386,12 @@ def run_psana2(ims, params, comm):
     ims: InMemScript (cctbx driver class)
     params: input parameters
     comm: mpi comm for broadcasting per run calibration files"""
-    ds = psana.DataSource("exp=%s:run=%s:dir=%s" \
-        %(params.input.experiment, params.input.run_num, params.input.xtc_dir), \
-        filter=filter, max_events=params.dispatch.max_events, det_name=params.input.address)
+    ds = psana.DataSource(exp=params.input.experiment, run=params.input.run_num, \
+            dir=params.input.xtc_dir, max_events=params.dispatch.max_events, \
+            det_name=params.input.address)
 
     for run in ds.runs():
-      det = ds.Detector(ds.det_name)
+      det = run.Detector(ds.det_name)
       # broadcast cctbx per run calibration
       if comm.Get_rank() == 0:
         PS_CALIB_DIR = os.environ.get('PS_CALIB_DIR')
@@ -615,16 +618,32 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       logfile = ''
     elif params.output.logging_dir == 'DevNull':
       print("Redirecting stdout, stderr and other DIALS logfiles to /dev/null")
-      sys.stdout = open(os.devnull,'w', buffering=0)
-      sys.stderr = open(os.devnull,'w',buffering=0)
       logfile = os.devnull
+      try:
+        # Python 3
+        sys.stdout = io.TextIOWrapper(open(os.devnull,'wb', 0), write_through=True)
+        sys.stderr = io.TextIOWrapper(open(os.devnull,'wb', 0), write_through=True)
+      except TypeError:
+        # Python 2
+        sys.stdout = open(os.devnull,'w', buffering=0)
+        sys.stderr = open(os.devnull,'w',buffering=0)
+	
+      info_path = os.devnull
+      debug_path = os.devnull
     else:
       log_path = os.path.join(params.output.logging_dir, "log_rank%04d.out"%rank)
       error_path = os.path.join(params.output.logging_dir, "error_rank%04d.out"%rank)
       print("Redirecting stdout to %s"%log_path)
       print("Redirecting stderr to %s"%error_path)
-      sys.stdout = open(log_path,'a', buffering=0)
-      sys.stderr = open(error_path,'a',buffering=0)
+      try:
+        # Python 3
+        sys.stdout = io.TextIOWrapper(open(log_path,'ab', 0), write_through=True)
+        sys.stderr = io.TextIOWrapper(open(error_path,'ab', 0), write_through=True)
+      except TypeError:  
+        # Python 2
+        sys.stdout = open(log_path,'a', buffering=0)
+        sys.stderr = open(error_path,'a',buffering=0)
+
       print("Should be redirected now")
 
       logfile = os.path.join(params.output.logging_dir, "info_rank%04d.out"%rank)
@@ -955,8 +974,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     @param timestamp psana timestamp object
     """
     if PSANA2_VERSION:
-      sec  = evt.seconds
-      nsec = evt.nanoseconds
+      sec  = evt._seconds
+      nsec = evt._nanoseconds
     else:
       time = evt.get(psana.EventId).time()
       fid = evt.get(psana.EventId).fiducials()
@@ -1002,7 +1021,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     if self.params.format.file_format == 'cbf':
       if self.params.format.cbf.mode == "cspad":
         # get numpy array, 32x185x388
-        data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
+        data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=True, dark=True,
                                                     common_mode=self.common_mode,
                                                     apply_gain_mask=self.params.format.cbf.cspad.gain_mask_value is not None,
                                                     gain_mask_value=self.params.format.cbf.cspad.gain_mask_value,
@@ -1029,7 +1048,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
       if self.params.format.cbf.override_energy is None:
         if PSANA2_VERSION:
-          wavelength = 12398.4187/self.psana_det.photonEnergy(evt)
+          wavelength = 12398.4187/self.psana_det.raw.photonEnergy(evt)
         else:
           wavelength = cspad_tbx.evt_wavelength(evt)
         if wavelength is None:
