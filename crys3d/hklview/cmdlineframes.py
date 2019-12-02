@@ -365,6 +365,12 @@ class HKLViewFrame() :
     self.currentphil = self.master_phil
     if extraphil:
       self.currentphil = self.currentphil.fetch(source = extraphil)
+      # Don't retain clip plane values as these are specific to each crystal
+      # so use clip plane parameters from the master phil
+      default_clipphil = self.master_phil.fetch().extract().NGL_HKLviewer.clip_plane
+      currentparms = self.currentphil.extract()
+      currentparms.NGL_HKLviewer.clip_plane = default_clipphil
+      self.currentphil = self.master_phil.format(python_object = currentparms)
     self.params = self.currentphil.fetch().extract()
     self.viewer.viewerparams = self.params.NGL_HKLviewer.viewer
     self.viewer.params = self.params.NGL_HKLviewer

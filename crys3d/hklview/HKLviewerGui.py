@@ -618,6 +618,8 @@ class NGL_HKLViewer(QWidget):
             self.tncsvec = self.infodict.get("tncsvec",[])
           if len(self.tncsvec) == 0:
             self.clipTNCSBtn.setDisabled(True)
+          else:
+            self.clipTNCSBtn.setEnabled(True)
 
           if self.infodict.get("file_name"):
             self.HKLnameedit.setText( self.infodict.get("file_name", "") )
@@ -773,6 +775,7 @@ class NGL_HKLViewer(QWidget):
 
     self.SliceLabelComboBox.setCurrentIndex( axidx )
     self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.camera_type'])
+    self.ClipPlaneChkBox.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'] != None )
     if self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'])
     self.hkldist_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.hkldist'])
@@ -1259,7 +1262,8 @@ class NGL_HKLViewer(QWidget):
     layout3 = QGridLayout()
     self.ClipPlaneChkBox = QCheckBox(self.sliceTabWidget)
     self.ClipPlaneChkBox.setText("Slice reflections with a clip plane oriented")
-    self.ClipPlaneChkBox.clicked.connect(self.onClipPlaneChkBox)
+    #self.ClipPlaneChkBox.clicked.connect(self.onClipPlaneChkBox)
+    self.ClipPlaneChkBox.stateChanged.connect(self.onClipPlaneChkBox)
     self.clipLabel = QLabel()
 
     self.clipParallelBtn = QRadioButton(tab2)
@@ -1332,7 +1336,7 @@ class NGL_HKLViewer(QWidget):
       self.clipNormalBtn.setDisabled(True)
       self.clipParallelBtn.setDisabled(True)
       self.clipTNCSBtn.setDisabled(True)
-      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.clipwidth = 0")
+      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.clipwidth = None")
 
 
 

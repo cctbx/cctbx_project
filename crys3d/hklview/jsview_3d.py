@@ -394,7 +394,7 @@ class hklview_3d:
       self.SetMouseSpeed(self.viewerparams.NGL.mouse_sensitivity)
       R = flex.vec3_double( [(0,0,0)])
       hkldist = -1
-      clipwidth = 0
+      clipwidth = None
       if self.viewerparams.slice_mode: # explicit slicing
         if self.viewerparams.slice_axis=="h": hkl = [1,0,0]
         if self.viewerparams.slice_axis=="k": hkl = [0,1,0]
@@ -2691,7 +2691,7 @@ Distance: %s
              clipwidth=None, fixorientation=True, is_parallel=False):
     self.GetClipPlaneDistances()
     # create clip plane oriented parallel or perpendicular to abc vector
-    if a==0.0 and b==0.0 and c==0.0 or clipwidth <= 0.0:
+    if a==0.0 and b==0.0 and c==0.0 or clipwidth is None:
       self.RemoveVectorsNoClipPlane()
       return
     self.RemoveVectors("clip_vector")
@@ -2706,7 +2706,7 @@ Distance: %s
     else:
       self.vecrotmx = self.PointVectorPerpendicularToClipPlane()
     halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
-    if clipwidth is None:
+    if clipwidth == 0.0:
       clipwidth = self.meanradius
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
