@@ -65,7 +65,7 @@ def get_cluster_name(a1, a2, a3=None, other=False):
     resname = sf_clusters.intersection(set(resname))
   if len(resname)==1: resname = resname.pop()
   elif len(resname)>1: resname = None
-  else: assert 0
+  else: resname = None
   return resname
 
 def get_lookup(a1, a2, a3=None):
