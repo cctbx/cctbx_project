@@ -17,6 +17,9 @@ asic_dimension = (194,185)
 asic_gap = 3
 pixel_size = 0.10992
 from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value, cspad_min_trusted_value
+  
+# check version of psana  
+from xfel.command_line.xtc_process import PSANA2_VERSION
 
 def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, common_mode=None, apply_gain_mask=True,
                              gain_mask_value=None, per_pixel_gain=False, gain_mask=None, additional_gain_factor=None):
@@ -40,6 +43,12 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
   # order is pedestals, then common mode, then gain mask, then per pixel gain
   import numpy as np
   run = evt.run()
+
+  if PSANA2_VERSION:
+      # in psana2, data are stored as raw, fex, etc so the selection
+      # has to be given here when the detector interface is used.
+      # for now, assumes cctbx uses "raw".
+      psana_det = psana_det.raw
 
   if use_default:
     return psana_det.calib(evt)  # applies psana's complex run-dependent calibrations
@@ -103,6 +112,43 @@ class cbf_wrapper(dxtbx_cbf_wrapper):
                   basis.equipment_component])
 
     axis_settings.append([basis.axis_name, "FRAME1", str(angle), "0"])
+
+  # MONA: py2/3 compatability with encode
+  def _want_bytes(self, arg):
+      if isinstance(arg, str):
+          # py3 sees this as unicode
+          return arg.encode()
+      else:
+          return arg
+
+  def _want_unicode(self, arg):
+      if isinstance(arg, bytes):
+          # py3 sees this as bytes 
+          return arg.decode('utf-8')
+      else:
+          # py2 
+          return arg
+  
+  """ Override the parent's class to ensure that arg is passed on as bytes"""
+  def new_datablock(self, arg):
+    arg_safe = self._want_bytes(arg)
+    return super(cbf_wrapper, self).new_datablock(arg_safe)
+  
+  def find_category(self, arg):
+    arg_safe = self._want_bytes(arg)
+    return super(cbf_wrapper, self).find_category(arg_safe)
+
+  def set_datablockname(self, arg):
+    arg_safe = self._want_bytes(arg)
+    return super(cbf_wrapper, self).set_datablockname(arg_safe)
+
+  def column_name(self):
+    col_name = super(cbf_wrapper, self).column_name()
+    return self._want_unicode(col_name)
+
+  def get_value(self):
+    val = super(cbf_wrapper, self).get_value()
+    return self._want_unicode(val)
 
 def angle_and_axis(basis):
   """Normalize a quaternion and return the angle and axis
@@ -328,10 +374,9 @@ def env_dxtbx_from_slac_metrology(run, address):
       @param env psana run object
       @param address address string for a detector
   """
-  from xfel.command_line.xtc_process import PSANA2_VERSION
   if PSANA2_VERSION:
-    det = run.ds.Detector(address)
-    geometry = det.geometry(run)
+    det = run.Detector(address)
+    geometry = det.raw.geometry(run)
   else:
     from psana import Detector
     try:

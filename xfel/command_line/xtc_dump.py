@@ -247,6 +247,7 @@ class Script(object):
                                                           apply_gain_mask=params.format.cbf.cspad.gain_mask_value is not None,
                                                           gain_mask_value=params.format.cbf.cspad.gain_mask_value,
                                                           per_pixel_gain=False)
+            print('xxx', data.shape)
 
             distance = cspad_tbx.env_distance(params.input.address, run.env(), params.format.cbf.detz_offset)
           elif params.format.cbf.mode == "rayonix":
