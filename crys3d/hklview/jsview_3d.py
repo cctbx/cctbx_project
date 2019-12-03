@@ -192,7 +192,6 @@ class hklview_3d:
     self.high_quality = True
     if kwds.has_key('high_quality'):
       self.high_quality = kwds['high_quality']
-    self.cameradist = 0.0
     self.clipNear = None
     self.clipFar = None
     self.cameraPosZ = None
@@ -1567,11 +1566,18 @@ Object.assign(tooltip.style, {
 function getOrientMsg()
 {
   cvorient = stage.viewerControls.getOrientation().elements;
-  if (stage.viewer.camera.position.z != 0)
-    cvorient.push( -stage.viewer.camera.position.z); // store distance explicitly as a last element
+
+  if (stage.viewer.cDist != 0
+       && stage.viewer.parameters.clipFar > stage.viewer.cDist
+       && stage.viewer.cDist > stage.viewer.parameters.clipNear)
+    cameradist = stage.viewer.cDist;
+  else if (stage.viewer.camera.position.z != 0
+       && stage.viewer.parameters.clipFar > -stage.viewer.camera.position.z
+       && -stage.viewer.camera.position.z > stage.viewer.parameters.clipNear)
+    cameradist = -stage.viewer.camera.position.z;
   else
-    //cvorient.push( stage.viewer.cDist); // fall back if stage.viewer.camera.position.z is corrupted
-    cvorient.push( cvorient[14]);
+    cameradist = cvorient[14]; // fall back if stage.viewer.camera.position.z is corrupted
+  cvorient.push( cameradist );
   msg = String(cvorient);
   return msg;
 }
@@ -1609,9 +1615,19 @@ function HKLscene()
 }
 
 
+function OnUpdateOrientation()
+{
+  msg = getOrientMsg();
+  WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+}
+
+
 try
 {
   document.addEventListener('DOMContentLoaded', function() { HKLscene() }, false );
+  document.addEventListener('mouseup', function() { OnUpdateOrientation() }, false );
+  document.addEventListener('wheel', function(e) { OnUpdateOrientation() }, false );
+  document.addEventListener('scroll', function(e) { OnUpdateOrientation() }, false );
 }
 catch(err)
 {
@@ -1627,15 +1643,27 @@ catch(err)
 
 function ReturnClipPlaneDistances()
 {
+  if (stage.viewer.parameters.clipScale == 'relative')
+    cameradist = stage.viewer.cDist;
+  if (stage.viewer.parameters.clipScale == 'absolute')
+    if (stage.viewer.cDist != 0
+         && stage.viewer.parameters.clipFar > stage.viewer.cDist
+         && stage.viewer.cDist > stage.viewer.parameters.clipNear)
+      cameradist = stage.viewer.cDist;
+    else if (stage.viewer.camera.position.z != 0
+         && stage.viewer.parameters.clipFar > -stage.viewer.camera.position.z
+         && -stage.viewer.camera.position.z > stage.viewer.parameters.clipNear)
+      cameradist = stage.viewer.camera.position.z;
+
   msg = String( [stage.viewer.parameters.clipNear,
                   stage.viewer.parameters.clipFar,
-                  stage.viewer.camera.position.z ] )
+                  cameradist ] )
                   //stage.viewer.camera.position.length()] )
   WebsockSendMsg('ReturnClipPlaneDistances:\\n' + msg );
 }
 
 
-mysocket.onmessage = function (e)
+mysocket.onmessage = function(e)
 {
   var c,
   si;
@@ -2318,13 +2346,14 @@ mysocket.onmessage = function (e)
     rotdet = ScaleRotMx.determinant()
     if rotdet <= 0.0:
       self.mprint("Negative rot determinant!", verbose=2)
-      self.cameradist = flst[16] # javascript backup of distance in case of invalid matrix
+      cameradist = flst[16] # javascript backup of distance in case of invalid matrix
     else:
-      self.cameradist = math.pow(rotdet, 1.0/3.0)
-    self.mprint("Scale distance: %s" %roundoff(self.cameradist), verbose=3)
+      cameradist = math.pow(rotdet, 1.0/3.0)
+    self.mprint("Scale distance: %s" %roundoff(cameradist), verbose=3)
     self.currentRotmx = matrix.identity(3)
-    if self.cameradist >  0.0:
-      self.currentRotmx = ScaleRotMx/self.cameradist
+    if cameradist > 0.0:
+      self.currentRotmx = ScaleRotMx/cameradist
+      self.cameraPosZ = cameradist
     rotlst = roundoff(self.currentRotmx.elems)
     self.mprint("""Rotation matrix:
   %s,  %s,  %s
@@ -2356,7 +2385,7 @@ Distance: %s
       self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=3)
 
 
-  def WaitforHandshake(self, sec):
+  def WaitforHandshake(self, sec=5):
     nwait = 0
     while not self.websockclient:
       time.sleep(self.sleeptime)
@@ -2705,12 +2734,12 @@ Distance: %s
       self.vecrotmx = self.PointVectorParallelToClipPlane()
     else:
       self.vecrotmx = self.PointVectorPerpendicularToClipPlane()
-    halfdist = -self.cameraPosZ  - hkldist # self.viewer.boundingZ*0.5
+    halfdist = self.cameraPosZ  + hkldist # self.viewer.boundingZ*0.5
     if clipwidth == 0.0:
       clipwidth = self.meanradius
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
-    self.SetClipPlaneDistances(clipNear, clipFar, self.cameraPosZ)
+    self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ)
     #if hkldist < 0.0:
     #  self.TranslateHKLpoints(a, b, c, hkldist)
     scale = max(self.miller_array.index_span().max())/10
@@ -2735,7 +2764,7 @@ Distance: %s
   def GetMouseSpeed(self):
     self.ngl_settings.mouse_sensitivity = None
     self.msgqueue.append( ("GetMouseSpeed", "") )
-    if self.WaitforHandshake(5):
+    if self.WaitforHandshake():
       nwait = 0
       while self.ngl_settings.mouse_sensitivity is None and nwait < 5:
         time.sleep(self.sleeptime)
@@ -2754,9 +2783,9 @@ Distance: %s
     self.clipFar = None
     self.cameraPosZ = None
     self.msgqueue.append( ("GetClipPlaneDistances", "") )
-    if self.WaitforHandshake(5):
+    if self.WaitforHandshake():
       nwait = 0
-      while self.clipFar is None and nwait < 5:
+      while self.clipFar is None and nwait < self.handshakewait:
         time.sleep(self.sleeptime)
         nwait += self.sleeptime
       self.mprint("clipnear, clipfar, cameraPosZ: %s, %s %s" \
@@ -2769,9 +2798,9 @@ Distance: %s
     self.boundingY = 0.0
     self.boundingZ = 0.0
     self.msgqueue.append( ("GetBoundingBox", "") )
-    if self.WaitforHandshake(5):
+    if self.WaitforHandshake():
       nwait = 0
-      while self.boundingX is None and nwait < 5:
+      while self.boundingX is None and nwait < self.handshakewait:
         time.sleep(self.sleeptime)
         nwait += self.sleeptime
       self.mprint("boundingXYZ: %s, %s %s" \
@@ -2815,7 +2844,7 @@ Distance: %s
 
 
   def RotateMxStage(self, rotmx, quietbrowser=True):
-    scaleRot = rotmx * self.cameradist
+    scaleRot = rotmx * self.cameraPosZ
     ortrot = scaleRot.as_mat3()
     str_rot = str(ortrot)
     str_rot = str_rot.replace("(", "")
