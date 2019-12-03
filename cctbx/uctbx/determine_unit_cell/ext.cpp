@@ -88,6 +88,10 @@ namespace cctbx { namespace uctbx {
     return ncdist2017::CS6Dist(&mm1[0],&mm2[0]);
   }
 
+  double CS6Dist_in_G6_wrapper(af::tiny<double,6> mm1,af::tiny<double,6> mm2){
+    return ncdist2017::CS6Dist_in_G6(&mm1[0],&mm2[0]);
+  }
+
   af::tiny<double,6> S6Dist_reduce_wrapper(af::tiny<double,6> mm1, std::string centering_symbol) {
     // stub
     return mm1;
@@ -104,6 +108,10 @@ BOOST_PYTHON_MODULE(determine_unit_cell_ext)
 # if HAVE_NCDIST
   def ("NCDist2017",&cctbx::uctbx::NCDist2017_wrapper);
   def ("CS6Dist",&cctbx::uctbx::CS6Dist_wrapper);
+  def ("CS6Dist_in_G6",&cctbx::uctbx::CS6Dist_in_G6_wrapper,(arg("G6cell1"),arg("G6cell2")),
+"Use this in place of the NCDist wrapper when working with G6 arguments\n"
+"A G6 argument is [a.a, b.b, c.c, 2*b.c, 2*a.c, 2*a.b]\n"
+"It is assumed the arguments are primitive, Niggli reduced\n");
   def ("S6_reduce",&cctbx::uctbx::S6Dist_reduce_wrapper);
 # endif // HAVE_NCDIST
 }
