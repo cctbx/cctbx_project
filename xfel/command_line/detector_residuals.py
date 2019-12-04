@@ -1121,17 +1121,57 @@ class ResidualsPlotter(object):
         plt.plot(two_thetas, -tan_outer_deg, "g.")
 
       if params.plots.ewald_offset_plot:
-        expt_id = min(set(reflections['id']))
-        refls = reflections.select(reflections['id'] == expt_id)
-        s1 = refls['s1']
-        s0 = flex.vec3_double(len(refls), experiments[expt_id].beam.get_s0())
-        q = experiments[expt_id].crystal.get_A() * refls['miller_index'].as_vec3_double()
-        wavelength = experiments[expt_id].beam.get_wavelength()
-        offset = (q+s0).norms() - (1/wavelength)
-        two_thetas = refls['two_theta_cal']
+        n_bins = 10
+        all_offsets = flex.double()
+        all_twothetas = flex.double()
+
+        binned_offsets = [flex.double() for _ in range(n_bins)]
+        binned_isigi = [flex.double() for _ in range(n_bins)]
+        for expt_id in range(len(experiments)):
+          refls = reflections.select(reflections['id'] == expt_id)
+          s1 = refls['s1']
+          s0 = flex.vec3_double(len(refls), experiments[expt_id].beam.get_s0())
+          q = experiments[expt_id].crystal.get_A() * refls['miller_index'].as_vec3_double()
+          wavelength = experiments[expt_id].beam.get_wavelength()
+          offset = (q+s0).norms() - (1/wavelength)
+          two_thetas = refls['two_theta_cal']
+          if expt_id == 0:
+            fig = plt.figure()
+            plt.scatter(two_thetas, offset)
+            plt.title(u"%d: Ewald offset ($\AA^{-1}$) vs $2\\theta$ on %d spots"%(expt_id, len(two_thetas)))
+            plt.xlabel(u"$2\\theta (\circ)$")
+            plt.ylabel(u"Ewald offset ($\AA^{-1}$)")
+
+          array = refls.as_miller_array(experiments[expt_id])
+          binner = array.setup_binner(d_min=2.0, n_bins=n_bins)
+          isigi = refls['intensity.sum.value']/flex.sqrt(refls['intensity.sum.variance'])
+          for bin_id, bin_number in enumerate(binner.range_used()):
+            sel = binner.selection(bin_number)
+            offsetsel = offset.select(sel)
+            all_offsets.extend(offsetsel)
+            all_twothetas.extend(two_thetas.select(sel))
+            binned_offsets[bin_id].extend(offsetsel)
+            binned_isigi[bin_id].extend(isigi.select(sel))
+
         fig = plt.figure()
-        plt.scatter(two_thetas, offset)
-        plt.title("%d: Ewald offset (A^-1) vs two theta on %d spots"%(expt_id, len(two_thetas)))
+        legend = []
+        h = flex.histogram(all_offsets, n_slots=20)
+        for bin_id, bin_number in enumerate(binner.range_used()):
+          legend.append("%5.2f-%5.2f"%binner.bin_d_range(bin_number))
+          x, y = [], []
+          for slot_id, slot in enumerate(h.slot_infos()):
+            sel = (binned_offsets[bin_id] >= slot.low_cutoff) & (binned_offsets[bin_id] <= slot.high_cutoff)
+            x.append(slot.center())
+            y.append(flex.median(binned_isigi[bin_id].select(sel)) if sel.count(True) else 0)
+            print (bin_id, binner.bin_d_range(bin_number), sel.count(True), x[-1], y[-1])
+          plt.plot(x, y, '-')
+        plt.legend(legend)
+        plt.title(u"Binned $I/\sigma_I$ vs. Ewald offset")
+        plt.xlabel(u"Ewald offset ($\AA^{-1}$)")
+        plt.ylabel(u"Median $I/\sigma_I$")
+
+        plt.figure()
+        plt.hist2d(all_twothetas.as_numpy_array(), all_offsets.as_numpy_array(), bins=100)
 
       if self.params.save_pdf:
         pp = PdfPages('residuals_%s.pdf'%(tag.strip()))
