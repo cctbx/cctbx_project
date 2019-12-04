@@ -110,6 +110,11 @@ class simple_file_loader(worker):
         experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
         reflections = flex.reflection_table.from_file(reflections_filename)
 
+        if 'intensity.sum.value' in reflections:
+          reflections['intensity.sum.value.unmodified'] = reflections['intensity.sum.value'] * 1
+        if 'intensity.sum.variance' in reflections:
+          reflections['intensity.sum.variance.unmodified'] = reflections['intensity.sum.variance'] * 1
+
         for experiment_id, experiment in enumerate(experiments):
           if experiment.identifier is None or len(experiment.identifier) == 0:
             experiment.identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
@@ -132,7 +137,7 @@ class simple_file_loader(worker):
     self.logger.log("Memory usage: %d MB"%get_memory_usage())
 
     from xfel.merging.application.reflection_table_utils import reflection_table_utils
-    all_reflections = reflection_table_utils.prune_reflection_table_keys(reflections=all_reflections, keys_to_keep=['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', 'exp_id', 's1'])
+    all_reflections = reflection_table_utils.prune_reflection_table_keys(reflections=all_reflections, keys_to_keep=['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', 'exp_id', 's1', 'intensity.sum.value.unmodified', 'intensity.sum.variance.unmodified'])
     self.logger.log("Pruned reflection table")
     self.logger.log("Memory usage: %d MB"%get_memory_usage())
 

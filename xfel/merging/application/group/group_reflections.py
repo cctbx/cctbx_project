@@ -20,6 +20,8 @@ class hkl_group(worker):
     table['miller_index_asymmetric']  = flex.miller_index()
     table['intensity.sum.value']      = flex.double()
     table['intensity.sum.variance']   = flex.double()
+    table['intensity.sum.value.unmodified']      = flex.double()
+    table['intensity.sum.variance.unmodified']   = flex.double()
     table['exp_id']                   = flex.std_string()
     return table
 

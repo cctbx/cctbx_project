@@ -10,6 +10,7 @@ from xfel.merging.application.reflection_table_utils import reflection_table_uti
 from six.moves import cStringIO as StringIO
 from cctbx.crystal import symmetry
 from cctbx import miller
+from scitbx.math import basic_statistics
 
 class intensity_table_bin(object):
   '''Storage class for parameters of a resolution bin used by the hkl intensity statistics table'''
@@ -28,7 +29,10 @@ class intensity_table_bin(object):
                predictions=None,
                mean_I=None,
                mean_I_sigI=None,
-               sigmaa=None):
+               sigmaa=None,
+               unmerged_meanIsig=None,
+               unmerged_stddevIsig=None,
+               unmerged_skewIsig=None):
     adopt_init_args(self, locals())
 
 class intensity_table(object):
@@ -44,13 +48,13 @@ class intensity_table(object):
 
   def get_table_text(self):
     '''Produce formatted table text'''
-    table_header = ["","","","","<asu","<obs","<pred","","","","",""]
+    table_header = ["","","","","<asu","<obs","<pred","","","","Merged","Merged","Unmerged","Unmerged","Unmerged"]
     table_header2 = ["Bin","Resolution Range","Completeness","%","multi>","multi>","multi>",
-                      "n_meas", "asu_m_meas", "n_pred","<I>","<I/sig(I)>"]
+                      "n_meas", "asu_m_meas", "n_pred","<I>","<I/sig(I)>", "mean(I/sig(I))", "stddev(I/sig(I))", "skew(I/sig(I))"]
 
     use_preds = False # TODO?
 
-    include_columns = [True, True, True, True, True, True, use_preds, True, True, use_preds, True, True]
+    include_columns = [True, True, True, True, True, True, use_preds, True, True, use_preds, True, True, True, True, True]
 
     table_data = []
     table_data.append(table_header)
@@ -70,6 +74,9 @@ class intensity_table(object):
       table_row.append("%6d" % (0)) # if redundancy_to_edge is None else flex.sum(bin.predictions)))
       table_row.append("%8.0f" % bin.mean_I)
       table_row.append("%8.3f" % bin.mean_I_sigI)
+      table_row.append("%8.3f" % bin.unmerged_meanIsig)
+      table_row.append("%8.3f" % bin.unmerged_stddevIsig)
+      table_row.append("%8.3f" % bin.unmerged_skewIsig)
       table_data.append(table_row)
 
     if len(table_data) <= 2:
@@ -89,6 +96,9 @@ class intensity_table(object):
 
     total_mean_I = 0
     total_mean_Isigma = 0
+    total_unmerged_mean_Isigma = 0
+    total_unmerged_stddev_Isigma = 0
+    total_unmerged_skew_Isigma = 0
     if self.cumulative_multiply_observed_asu_count > 0:
       total_mean_I        = self.cumulative_I / self.cumulative_multiply_observed_asu_count
       total_mean_Isigma   = self.cumulative_Isigma / self.cumulative_multiply_observed_asu_count
@@ -106,6 +116,9 @@ class intensity_table(object):
         format_value("%6d",   (0)), #if redundancy_to_edge is None else flex.sum(redundancy_to_edge))),
         format_value("%8.0f", total_mean_I),
         format_value("%8.3f", total_mean_Isigma),
+        format_value("%8.3f", total_unmerged_mean_Isigma),
+        format_value("%8.3f", total_unmerged_stddev_Isigma),
+        format_value("%8.3f", total_unmerged_skew_Isigma),
     ])
     table_data = table_utils.manage_columns(table_data, include_columns)
 
@@ -309,6 +322,7 @@ class intensity_resolution_statistics(worker):
     # To enable MPI all-rank reduction, every rank must initialize statistics array(s), even if the rank doesn't have any reflections.
     self.I_sum      = flex.double(n_bins, 0.0) # a sum of the weighted mean intensities from all asu HKLs
     self.Isig_sum   = flex.double(n_bins, 0.0) # a sum of I/sigma from all asu HKLs
+    self.Isig_list  = [flex.double() for _ in range(n_bins)]
     self.n_sum      = flex.int(n_bins, 0) # number of theoretically prediced asu hkls
     self.m_sum      = flex.int(n_bins, 0) # number of observed asu hkls
     self.mm_sum     = flex.int(n_bins, 0) # number of observed asu hkls with multiplicity > 1
@@ -321,7 +335,10 @@ class intensity_resolution_statistics(worker):
                                                 Isig_sum = self.Isig_sum,
                                                 n_sum = self.n_sum,
                                                 m_sum = self.m_sum,
-                                                mm_sum = self.mm_sum)
+                                                mm_sum = self.mm_sum,
+                                                unmerged_meanIsig = None,
+                                                unmerged_stddevIsig = None,
+                                                unmerged_skewIsig = None)
     if self.params.output.log_level == 0:
       self.logger.log(Intensity_Table.get_table_text(), rank_prepend=False)
 
@@ -332,14 +349,31 @@ class intensity_resolution_statistics(worker):
     all_ranks_m_sum       = self.mpi_helper.cumulative_flex(self.m_sum, flex.int)
     all_ranks_mm_sum      = self.mpi_helper.cumulative_flex(self.mm_sum, flex.int)
 
+    all_ranks_unmerged_meanIsig = []
+    all_ranks_unmerged_stddevIsig = []
+    all_ranks_unmerged_skewIsig = []
+    for bin_id in xrange(n_bins):
+      all_ranks_isigi_list = self.mpi_helper.comm.gather(self.Isig_list[bin_id], 0)
+      if self.mpi_helper.rank == 0:
+        all_isigi = flex.double()
+        for ranklist in all_ranks_isigi_list:
+          all_isigi.extend(ranklist)
+        stats = basic_statistics(all_isigi)
+        all_ranks_unmerged_meanIsig.append(stats.mean)
+        all_ranks_unmerged_stddevIsig.append(stats.bias_corrected_standard_deviation)
+        all_ranks_unmerged_skewIsig.append(stats.skew)
+
     # Calculate, format and output all-rank total statistics
     if self.mpi_helper.rank == 0:
       Intensity_Table = self.build_intensity_table(
-                                                  I_sum    = all_ranks_I_sum,
-                                                  Isig_sum  = all_ranks_Isig_sum,
-                                                  n_sum     = all_ranks_n_sum,
-                                                  m_sum     = all_ranks_m_sum,
-                                                  mm_sum    = all_ranks_mm_sum)
+                                                  I_sum      = all_ranks_I_sum,
+                                                  Isig_sum   = all_ranks_Isig_sum,
+                                                  n_sum      = all_ranks_n_sum,
+                                                  m_sum      = all_ranks_m_sum,
+                                                  mm_sum     = all_ranks_mm_sum,
+                                                  unmerged_meanIsig   = all_ranks_unmerged_meanIsig,
+                                                  unmerged_stddevIsig = all_ranks_unmerged_stddevIsig,
+                                                  unmerged_skewIsig   = all_ranks_unmerged_skewIsig)
       self.logger.main_log(Intensity_Table.get_table_text())
       if self.last_bin_incomplete:
         self.logger.main_log("Warning: the last resolution shell is incomplete. If your data was integrated to that resolution,\nconsider using scaling.resolution_scalar=%f or lower."%self.suggested_resolution_scalar)
@@ -389,6 +423,7 @@ class intensity_resolution_statistics(worker):
             weights_array = flex.double(refls.size(), 1.0) / refls['intensity.sum.variance']
             self.I_sum[i_bin]     += flex.sum(weighted_intensity_array) / flex.sum(weights_array)
             self.Isig_sum[i_bin]  += flex.sum(weighted_intensity_array) / math.sqrt(flex.sum(weights_array))
+            self.Isig_list[i_bin].extend(refls['intensity.sum.value.unmodified']/flex.sqrt(refls['intensity.sum.variance.unmodified']))
             #used_reflections.extend(refls)
 
     self.logger.log_step_time("INTENSITY_HISTOGRAM")
@@ -424,7 +459,10 @@ class intensity_resolution_statistics(worker):
                             m_sum,
                             mm_sum,
                             I_sum,
-                            Isig_sum):
+                            Isig_sum,
+                            unmerged_meanIsig,
+                            unmerged_stddevIsig,
+                            unmerged_skewIsig):
     '''Produce a table with hkl intensity statistics for resolution bins'''
     Intensity_Table = intensity_table()
 
@@ -454,7 +492,10 @@ class intensity_resolution_statistics(worker):
                                   multiply_measured_asu     = multiply_observed_asu_count,
                                   predictions               = None, # TODO
                                   mean_I                    = mean_I,
-                                  mean_I_sigI               = mean_Isig)
+                                  mean_I_sigI               = mean_Isig,
+                                  unmerged_meanIsig         = unmerged_meanIsig[i_bin] if unmerged_meanIsig is not None else 0,
+                                  unmerged_stddevIsig       = unmerged_stddevIsig[i_bin] if unmerged_stddevIsig is not None else 0,
+                                  unmerged_skewIsig         = unmerged_skewIsig[i_bin] if unmerged_skewIsig is not None else 0)
 
         Intensity_Table.table.append(res_bin)
 
