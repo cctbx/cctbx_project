@@ -587,7 +587,13 @@ class info(object):
     # It is not clear why we dump cartesian NCS first, and if it is absent,
     # Torsion NCS next. What about NCS constraints?
     if self.model.cartesian_NCS_present():
-      self.model.cartesian_NCS_as_cif_block(cif_block=cif_block)
+      # self.model.cartesian_NCS_as_cif_block(cif_block=cif_block)
+      self.model.get_restraints_manager().cartesian_ncs_manager.\
+          ncs_restraints_group_list.as_cif_block(
+              cif_block=cif_block,
+              hierarchy=self.model.get_hierarchy(),
+              scattering_type=pdbx_refine_id,
+              ncs_type='cartesian NCS')
     elif self.model.torsion_NCS_present():
       self.model.torsion_NCS_as_cif_block(cif_block=cif_block)
     return cif_block
