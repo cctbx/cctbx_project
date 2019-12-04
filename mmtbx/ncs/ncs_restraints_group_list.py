@@ -786,8 +786,8 @@ class class_ncs_restraints_group_list(list):
             "_struct_ncs_ens_gen.ens_id":struct_ncs_ens_id,
             "_struct_ncs_ens_gen.oper_id":oper_id})
         row = [oper_id, 'given']
-        row.extend(ncs_copy.r)
-        row.extend(ncs_copy.t)
+        row.extend(ncs_copy.r.transpose())
+        row.extend(-ncs_copy.t)
         row.append('?')
         ncs_oper_loop.add_row(row)
 
