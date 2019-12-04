@@ -230,6 +230,10 @@ plots {
   trumpet_plot = False
     .type = bool
     .help = Show trumpet plot from Sauter 2014 for the first experiment
+  ewald_offset_plot = False
+    .type = bool
+    .help = Show trumpet plot equivalent but using the Ewald offset for Y \
+            (I.E. the reflection distance from the Ewald sphere)
 }
 
 save_pdf = False
@@ -1115,6 +1119,19 @@ class ResidualsPlotter(object):
         plt.plot(two_thetas, -tan_phi_deg, "r.")
         plt.plot(two_thetas, tan_outer_deg, "g.")
         plt.plot(two_thetas, -tan_outer_deg, "g.")
+
+      if params.plots.ewald_offset_plot:
+        expt_id = min(set(reflections['id']))
+        refls = reflections.select(reflections['id'] == expt_id)
+        s1 = refls['s1']
+        s0 = flex.vec3_double(len(refls), experiments[expt_id].beam.get_s0())
+        q = experiments[expt_id].crystal.get_A() * refls['miller_index'].as_vec3_double()
+        wavelength = experiments[expt_id].beam.get_wavelength()
+        offset = (q+s0).norms() - (1/wavelength)
+        two_thetas = refls['two_theta_cal']
+        fig = plt.figure()
+        plt.scatter(two_thetas, offset)
+        plt.title("%d: Ewald offset (A^-1) vs two theta on %d spots"%(expt_id, len(two_thetas)))
 
       if self.params.save_pdf:
         pp = PdfPages('residuals_%s.pdf'%(tag.strip()))
