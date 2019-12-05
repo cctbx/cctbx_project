@@ -138,6 +138,19 @@ master_phil = iotbx.phil.parse("""
       .type = bool
       .help = Remove alternate conformers before analysis. This is normally \
                required to align correctly.
+
+    residue_groups = "VGASCTI P LDNEQM KR FHY W"
+      .type = str
+      .help = Optional groups of residues to score together
+      .short_caption = Residue groups
+      .expert_level = 3
+
+    score_by_residue_groups = False
+      .type = bool
+      .help = Use residue groups in sequence alignment 
+      .short_caption = Score by residue groups
+      .expert_level = 3
+
   }
   control {
       verbose = False
@@ -373,14 +386,40 @@ def get_seq_from_lines(lines):
       seq.append(res.resname)
   return seq
 
-def get_match_percent(seq1,seq2):
+def get_match_percent(seq1,seq2,params=None):
   assert len(seq1)==len(seq2)
   assert len(seq1)>0
+  if params and params.comparison.score_by_residue_groups and \
+       params.crystal_info.chain_type=="PROTEIN":
+     seq1=convert_to_reduced_set(seq1,params=params)
+     seq2=convert_to_reduced_set(seq2,params=params)
   match_n=0
   for a,b in zip(seq1,seq2):
     if a.replace(" ","")==b.replace(" ",""): match_n+=1
   match_percent=100.*match_n/len(seq1)
   return match_n,match_percent
+
+def get_one_letter_seq(sequence):
+   # only applies to protein
+   from iotbx.pdb import amino_acid_codes
+   seq_one_letter=""
+   for resn in sequence:
+     seq_one_letter+= amino_acid_codes.one_letter_given_three_letter[resn] 
+   return seq_one_letter
+  
+def convert_to_reduced_set(sequence,params=None):
+    sequence=get_one_letter_seq(sequence)
+
+    residue_groups = params.comparison.residue_groups.upper().split()
+    residue_dict={}
+    for g in residue_groups:
+        for x in g:
+          residue_dict[x]=g[0]
+    text=""
+    for x in sequence.upper():
+      text+=residue_dict.get(x,'V')
+    return text
+
 
 def apply_atom_selection(atom_selection,hierarchy=None):
   asc=hierarchy.atom_selection_cache()
@@ -1525,7 +1564,8 @@ def run(args=None,
          print("SEQ1:",seq_chain_ca,len(lines_chain_ca))
          print("SEQ2:",seq_target_xyz,len(lines_target_xyz))
 
-      match_n,match_percent=get_match_percent(seq_chain_ca,seq_target_xyz)
+      match_n,match_percent=get_match_percent(seq_chain_ca,seq_target_xyz,
+        params=params)
       rv.add_match_percent(id='close',match_percent=match_percent)
 
       percent_close=rv.get_close_to_target_percent('close')
