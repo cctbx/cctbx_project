@@ -889,7 +889,8 @@ class _():
       siguij=siguij,
       )
 
-  def _label_asym_id_lookup(self, chain, residue_group, atom_group):
+  def get_label_asym_id(self, atom_group):
+    chain = atom_group.parent().parent()
     if not hasattr(self, 'label_asym_ids'):
       self.number_label_asym_id = -1
       self.label_asym_ids = all_label_asym_ids()
@@ -1050,10 +1051,7 @@ class _():
           icode = residue_group.icode
           if icode == ' ' or icode == '': icode = '?'
           for atom_group in residue_group.atom_groups():
-            label_asym_i, label_asym_id = self._label_asym_id_lookup(
-              chain,
-              residue_group,
-              atom_group)
+            label_asym_i, label_asym_id = self.get_label_asym_id(atom_group)
             alt_id = atom_group.altloc
             if alt_id == '': alt_id = '.'
             comp_id = atom_group.resname.strip()
