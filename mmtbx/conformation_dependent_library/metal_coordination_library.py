@@ -130,12 +130,27 @@ def get_proxies(coordination):
      for j, a2 in enumerate(atoms['others']):
        if i==j: break
        yield a1, atoms['metal'], a2
+  def _default_bonds(atoms):
+    tmp = []
+    for a1, a2 in _bond_generator(atoms):
+      p = geometry_restraints.bond_simple_proxy(
+        i_seqs=[a1.i_seq, a2.i_seq],
+        distance_ideal=2.3,
+        weight=1.0/0.03**2,
+        slack=0,
+        top_out=False,
+        limit=1,
+        origin_id=origin_ids.get_origin_id('metal coordination'))
+      tmp.append(p)
+    return tmp
   bonds = []
   angles = []
   if coordination is None: return bonds, angles
   atoms = None
   for metal_i_seq, atoms in coordination.items():
-    if len(atoms['others'])<4: continue
+    if len(atoms['others'])<4:
+      bonds += _default_bonds(atoms)
+      continue
     cyss = []
     hiss = []
     for atom in atoms['others']:

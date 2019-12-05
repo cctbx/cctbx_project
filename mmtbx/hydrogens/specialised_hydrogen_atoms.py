@@ -8,6 +8,12 @@ from mmtbx.ligands.ready_set_utils import _add_hydrogens_to_atom_group_using_bad
 from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
 
+def _generate_bonds_with_origin_ids_in_list(bond_proxies, specific_origin_ids=None):
+  assert specific_origin_ids
+  for specific_origin_id in specific_origin_ids:
+    for p in bond_proxies.get_proxies_with_origin_id(specific_origin_id):
+      yield p
+
 def add_side_chain_acid_hydrogens_to_atom_group(atom_group,
                                                 anchors=None,
                                                 configuration_index=0,
@@ -186,11 +192,13 @@ def conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
   assert len(sgs) in [0, 1]
   sg_bonds = []
   if sgs:
-    ss_bond = origin_ids.get_origin_id('SS BOND')
+    specific_origin_ids = [origin_ids.get_origin_id('SS BOND'),
+                           origin_ids.get_origin_id('metal coordination'),
+      ]
     for bond in geometry_restraints_manager.get_all_bond_proxies():
       if not hasattr(bond, 'get_proxies_with_origin_id'): continue
-      for p in bond.get_proxies_with_origin_id(ss_bond):
-        assert p.origin_id==ss_bond
+      for p in _generate_bonds_with_origin_ids_in_list(bond, specific_origin_ids):
+        assert p.origin_id in specific_origin_ids
         if sgs[0] in p.i_seqs:
           sg_bonds.append(p.i_seqs)
   rc = []
