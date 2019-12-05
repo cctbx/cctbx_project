@@ -889,6 +889,10 @@ class _():
       siguij=siguij,
       )
 
+  def get_label_asym_id_iseq(self, iseq):
+    assert self.atoms_size() > iseq
+    return self.get_label_asym_id(self.atoms()[iseq].parent())
+
   def get_label_asym_id(self, atom_group):
     chain = atom_group.parent().parent()
     if not hasattr(self, 'label_asym_ids'):

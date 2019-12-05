@@ -697,7 +697,21 @@ class class_ncs_restraints_group_list(list):
     parts of model.
     """
     #
-    # self._show()
+    def _consecutive_ranges(isel, hierarchy):
+      '''
+      Split selection into consecutive ranges that can be represented
+      by ncs_dom_lim. Maybe useful elsewwere.
+      '''
+      result = []
+      beg = isel[0]
+      cur_index = 1
+      while (isel[cur_index]-isel[cur_index-1] == 1 and
+        # chain is the same
+        # resid number is same or consecutive
+
+
+
+
     ncs_ens_loop = iotbx.cif.model.loop(header=(
       "_struct_ncs_ens.id",
       "_struct_ncs_ens.details"))
@@ -708,13 +722,16 @@ class class_ncs_restraints_group_list(list):
     ncs_dom_lim_loop = iotbx.cif.model.loop(header=(
       "_struct_ncs_dom_lim.pdbx_ens_id",
       "_struct_ncs_dom_lim.dom_id",
-      #"_struct_ncs_dom_lim.pdbx_component_id",
-      #"_struct_ncs_dom_lim.pdbx_refine_code",
-      "_struct_ncs_dom_lim.beg_auth_asym_id",
-      "_struct_ncs_dom_lim.beg_auth_seq_id",
-      "_struct_ncs_dom_lim.end_auth_asym_id",
-      "_struct_ncs_dom_lim.end_auth_seq_id",
-      "_struct_ncs_dom_lim.selection_details"))
+      "_struct_ncs_dom_lim.pdbx_component_id",
+      #"_struct_ncs_dom_lim.pdbx_refine_code", # no need, from CCP4
+      "_struct_ncs_dom_lim.beg_label_alt_id",
+      "_struct_ncs_dom_lim.beg_label_asym_id",
+      "_struct_ncs_dom_lim.beg_label_comp_id",
+      "_struct_ncs_dom_lim.beg_label_seq_id",
+      "_struct_ncs_dom_lim.end_label_alt_id",
+      "_struct_ncs_dom_lim.end_label_asym_id",
+      "_struct_ncs_dom_lim.end_label_comp_id",
+      "_struct_ncs_dom_lim.end_label_seq_id",))
 
     ncs_oper_loop = iotbx.cif.model.loop(header=(
       "_struct_ncs_oper.id",
@@ -776,6 +793,10 @@ class class_ncs_restraints_group_list(list):
             "_struct_ncs_dom.pdbx_ens_id":struct_ncs_ens_id,
             "_struct_ncs_dom.id":copy_dom_id,
             "_struct_ncs_dom.details":'%s' % ncs_copy.str_selection})
+
+
+
+
         ncs_dom_lim_loop.add_row({ # not clear on selections yet
             "_struct_ncs_dom_lim.pdbx_ens_id":struct_ncs_ens_id,
             "_struct_ncs_dom_lim.dom_id":copy_dom_id})
@@ -796,7 +817,7 @@ class class_ncs_restraints_group_list(list):
             "_refine_ls_restr_ncs.dom_id": copy_dom_id,
             "_refine_ls_restr_ncs.pdbx_refine_id": scattering_type,
             "_refine_ls_restr_ncs.pdbx_ens_id": struct_ncs_ens_id,
-            "_refine_ls_restr_ncs.pdbx_asym_id": '?', # chain id of master !!!!
+            "_refine_ls_restr_ncs.pdbx_asym_id": hierarchy.get_label_asym_id_iseq(group.master_iselection[0]),
             "_refine_ls_restr_ncs.pdbx_type": ncs_type,
             "_refine_ls_restr_ncs.weight_position": '?', # weight_position
             "_refine_ls_restr_ncs.weight_B_iso": '?', # weight_B_iso
