@@ -147,7 +147,7 @@ master_phil = iotbx.phil.parse("""
 
     score_by_residue_groups = False
       .type = bool
-      .help = Use residue groups in sequence alignment 
+      .help = Use residue groups in sequence alignment
       .short_caption = Score by residue groups
       .expert_level = 3
 
@@ -404,9 +404,9 @@ def get_one_letter_seq(sequence):
    from iotbx.pdb import amino_acid_codes
    seq_one_letter=""
    for resn in sequence:
-     seq_one_letter+= amino_acid_codes.one_letter_given_three_letter[resn] 
+     seq_one_letter+= amino_acid_codes.one_letter_given_three_letter[resn]
    return seq_one_letter
-  
+
 def convert_to_reduced_set(sequence,params=None):
     sequence=get_one_letter_seq(sequence)
 
