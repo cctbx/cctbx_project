@@ -394,6 +394,7 @@ class hklview_3d:
       R = flex.vec3_double( [(0,0,0)])
       hkldist = -1
       clipwidth = None
+      isreciprocal = True
       if self.viewerparams.slice_mode: # explicit slicing
         if self.viewerparams.slice_axis=="h": hkl = [1,0,0]
         if self.viewerparams.slice_axis=="k": hkl = [0,1,0]
@@ -408,24 +409,27 @@ class hklview_3d:
       if self.params.clip_plane.clipwidth:
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = self.params.clip_plane.hkldist
+        R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
         if self.params.clip_plane.fractional_vector == "realspace" or self.params.clip_plane.fractional_vector == "tncs":
-          R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
-        elif self.params.clip_plane.fractional_vector == "reciprocal":
-          R = self.params.clip_plane.h * self.normal_kl \
-            + self.params.clip_plane.k * self.normal_lh \
-            - self.params.clip_plane.l * self.normal_hk
+          isreciprocal = False
+        #elif self.params.clip_plane.fractional_vector == "reciprocal":
+        #  R = self.params.clip_plane.h * self.normal_kl \
+        #    + self.params.clip_plane.k * self.normal_lh \
+        #    - self.params.clip_plane.l * self.normal_hk
 
-      if has_phil_path(self.diff_phil, "clipwidth") or \
+      if has_phil_path(self.diff_phil, "clip_plane") or \
+       has_phil_path(self.diff_phil, "hkldist") or \
        has_phil_path(self.diff_phil, "fixorientation") or \
        has_phil_path(self.diff_phil, "is_parallel") or \
        has_phil_path(self.diff_phil, "fractional_vector"):
         self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
-            clipwidth, self.viewerparams.NGL.fixorientation, self.params.clip_plane.is_parallel)
-        if self.params.clip_plane.fractional_vector == "reciprocal":
-          if hkldist == -1:
-            self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], 0.0)
-          else:
-            self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
+            clipwidth, self.viewerparams.NGL.fixorientation, self.params.clip_plane.is_parallel,
+            isreciprocal)
+        #if self.params.clip_plane.fractional_vector == "reciprocal":
+        #  if hkldist == -1:
+        #    self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], 0.0)
+        #  else:
+        #    self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
 
       #if clipwidth==0.0 or ( R[0][0]==0.0 and R[0][1]==0.0 and R[0][2]==0.0 ) or self.params.clip_plane.angle_around_vector == 0.0:
       #  self.ReOrientStage()
@@ -1170,8 +1174,8 @@ function MakeHKL_Axis(mshape)
     {
       if (clipFixToCamPosZ === true)
       {
-        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos - stage.viewer.camera.position.z);
-        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos - stage.viewer.camera.position.z);
+        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos -stage.viewer.camera.position.z);
+        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos -stage.viewer.camera.position.z);
         stage.viewer.requestRender();
       }
       msg = getOrientMsg();
@@ -1180,6 +1184,10 @@ function MakeHKL_Axis(mshape)
       { // only post every 250 milli second as not to overwhelm python
         postrotmxflag = true;
         WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        //sleep(100).then(()=> { // workaround stage.viewer.requestRender() race condition
+        //    ReturnClipPlaneDistances();
+        //  }
+        //);
         timenow = timefunc();
       }
     }
@@ -1193,6 +1201,10 @@ function MakeHKL_Axis(mshape)
       //msg = String(cvorient);
       msg = getOrientMsg();
       WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+      //sleep(100).then(()=> {
+      //    ReturnClipPlaneDistances();
+      //  }
+      //);
     }
   );
 
@@ -1202,8 +1214,8 @@ function MakeHKL_Axis(mshape)
     {
       if (clipFixToCamPosZ === true)
       {
-        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos - stage.viewer.camera.position.z);
-        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos - stage.viewer.camera.position.z);
+        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos -stage.viewer.camera.position.z);
+        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos -stage.viewer.camera.position.z);
         stage.viewer.requestRender();
       }
       msg = getOrientMsg();
@@ -1211,6 +1223,10 @@ function MakeHKL_Axis(mshape)
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
         WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        //sleep(100).then(()=> {
+        //    ReturnClipPlaneDistances();
+        //  }
+        //);
         timenow = timefunc();
       }
     }
@@ -1227,6 +1243,25 @@ function MakeHKL_Axis(mshape)
         msg = getOrientMsg();
         WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
         postrotmxflag = false;
+      }
+    }
+  );
+
+
+  stage.viewerControls.signals.changed.add(
+    function()
+    {
+      msg = getOrientMsg();
+      rightnow = timefunc();
+      if (rightnow - timenow > 250)
+      { // only post every 250 milli second as not to overwhelm python
+        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        //ReturnClipPlaneDistances();
+        sleep(250).then(()=> {
+            ReturnClipPlaneDistances();
+          }
+        );
+        timenow = timefunc();
       }
     }
   );
@@ -1515,6 +1550,7 @@ var br_shapebufs = [];
 var nrots = 0;
 var postrotmxflag = false;
 var cvorient = new NGL.Matrix4();
+var oldmsg = "";
 var clipFixToCamPosZ = false;
 var origclipnear;
 var origclipfar;
@@ -1565,20 +1601,30 @@ Object.assign(tooltip.style, {
 
 function getOrientMsg()
 {
-  cvorient = stage.viewerControls.getOrientation().elements;
+  cvorientmx = stage.viewerControls.getOrientation();
+  if (cvorientmx.determinant() == 0)
+      return oldmsg; // don't return invalid matrix
+
+  cvorient = cvorientmx.elements;
+  for (j=0; j<16; j++)
+  {
+    if (Number.isNaN( cvorient[j]) )
+      return oldmsg; // don't return invalid matrix
+  }
 
   if (stage.viewer.cDist != 0
-       && stage.viewer.parameters.clipFar > stage.viewer.cDist
-       && stage.viewer.cDist > stage.viewer.parameters.clipNear)
+        && stage.viewer.parameters.clipFar > stage.viewer.cDist
+        && stage.viewer.cDist > stage.viewer.parameters.clipNear)
     cameradist = stage.viewer.cDist;
   else if (stage.viewer.camera.position.z != 0
-       && stage.viewer.parameters.clipFar > -stage.viewer.camera.position.z
-       && -stage.viewer.camera.position.z > stage.viewer.parameters.clipNear)
+        && stage.viewer.parameters.clipFar > -stage.viewer.camera.position.z
+        && -stage.viewer.camera.position.z > stage.viewer.parameters.clipNear)
     cameradist = -stage.viewer.camera.position.z;
   else
     cameradist = cvorient[14]; // fall back if stage.viewer.camera.position.z is corrupted
   cvorient.push( cameradist );
   msg = String(cvorient);
+  oldmsg = msg;
   return msg;
 }
 
@@ -1608,9 +1654,17 @@ function HKLscene()
   shapeComp.autoView();
   repr.update();
 
+
   // if some radii are negative draw them with wireframe
   %s
   %s
+
+  // avoid NGL zoomFocus messing up clipplanes positions. So reassign those signals to zoomDrag
+  stage.mouseControls.remove("drag-shift-right");
+  stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomDrag);
+  stage.mouseControls.remove("drag-middle");
+  stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
+
   stage.viewer.requestRender();
 }
 
@@ -1654,11 +1708,14 @@ function ReturnClipPlaneDistances()
          && stage.viewer.parameters.clipFar > -stage.viewer.camera.position.z
          && -stage.viewer.camera.position.z > stage.viewer.parameters.clipNear)
       cameradist = stage.viewer.camera.position.z;
+    else if (stage.viewer.camera.position.z == -stage.viewer.cDist)
+      cameradist = stage.viewer.cDist;
+    else
+      return;
 
   msg = String( [stage.viewer.parameters.clipNear,
                   stage.viewer.parameters.clipFar,
                   cameradist ] )
-                  //stage.viewer.camera.position.length()] )
   WebsockSendMsg('ReturnClipPlaneDistances:\\n' + msg );
 }
 
@@ -1922,10 +1979,13 @@ mysocket.onmessage = function(e)
       if (strs[9]=="verbose")
         postrotmxflag = true;
       ReturnClipPlaneDistances();
-      ReRender();
+      //ReRender();
       stage.viewer.requestRender();
-      msg = getOrientMsg();
-      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+      sleep(100).then(()=> {
+          msg = getOrientMsg();
+          WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        }
+      );
     }
 
     if (msgtype === "SpinAnimate")
@@ -1942,8 +2002,8 @@ mysocket.onmessage = function(e)
         stage.mouseControls.add("drag-ctrl-left", NGL.MouseActions.panDrag);
         stage.mouseControls.add("drag-ctrl-right", NGL.MouseActions.focusScroll);
         stage.mouseControls.add("drag-shift-left", NGL.MouseActions.zoomDrag);
-        stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomFocusDrag);
-        stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomFocusDrag);
+        stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomDrag);
+        stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
         stage.mouseControls.add("drag-right", NGL.MouseActions.panDrag);
         stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
         stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
@@ -1978,8 +2038,12 @@ mysocket.onmessage = function(e)
         sm[j] = parseFloat(elmstrs[j]);
       shapeComp.setPosition([ sm[0], sm[1], sm[2] ]);
       stage.viewer.requestRender();
-      msg = getOrientMsg();
-      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+      sleep(100).then(()=> {
+          msg = getOrientMsg();
+          WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        }
+      );
+
     }
 
     function DeleteVectors(reprname)
@@ -2331,7 +2395,7 @@ mysocket.onmessage = function(e)
   def ProcessOrientationMessage(self):
     if self.orientmessage is None:
       return
-    if self.orientmessage.find("NaN")>=0:
+    if self.orientmessage.find("NaN")>=0 or self.orientmessage.find("undefined")>=0:
       return
     self.viewmtrx = self.orientmessage[ self.orientmessage.find("\n") + 1: ]
     lst = self.viewmtrx.split(",")
@@ -2345,8 +2409,9 @@ mysocket.onmessage = function(e)
     self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=3)
     rotdet = ScaleRotMx.determinant()
     if rotdet <= 0.0:
-      self.mprint("Negative rot determinant!", verbose=2)
-      cameradist = flst[16] # javascript backup of distance in case of invalid matrix
+      self.mprint("Negative orientation matrix determinant!!", verbose=1)
+      return
+      #cameradist = flst[16] # javascript backup of distance in case of invalid matrix
     else:
       cameradist = math.pow(rotdet, 1.0/3.0)
     self.mprint("Scale distance: %s" %roundoff(cameradist), verbose=3)
@@ -2657,6 +2722,8 @@ Distance: %s
   def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), quietbrowser=True):
     # Assuming vector is in real space fractional coordinates turn it into cartesian
     cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
+    if self.params.clip_plane.fractional_vector == "reciprocal":
+      cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().fractionalization_matrix()).transpose() )
     #  Rodrigues rotation formula for rotation by phi angle around a vector going through origo
     #  See http://mathworld.wolfram.com/RodriguesRotationFormula.html
     # \mathbf I+\left(\sin\,\varphi\right)\mathbf W+\left(2\sin^2\frac{\varphi}{2}\right)\mathbf W^2
@@ -2717,7 +2784,7 @@ Distance: %s
 
 
   def clip_plane_vector(self, a, b, c, hkldist=0.0,
-             clipwidth=None, fixorientation=True, is_parallel=False):
+             clipwidth=None, fixorientation=True, is_parallel=False, isreciprocal=False):
     self.GetClipPlaneDistances()
     # create clip plane oriented parallel or perpendicular to abc vector
     if a==0.0 and b==0.0 and c==0.0 or clipwidth is None:
@@ -2725,7 +2792,7 @@ Distance: %s
       return
     self.RemoveVectors("clip_vector")
     self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
-                            a, b, c, isreciprocal=False, name="clip_vector")
+                            a, b, c, isreciprocal=isreciprocal, name="clip_vector")
     if fixorientation:
       self.DisableMouseRotation()
     else:

@@ -1097,12 +1097,13 @@ class HKLViewFrame() :
   def rotate_around_vector(self, dgr):
     phi = cmath.pi*dgr/180
     if self.viewer.vecrotmx is not None:
-      self.viewer.RotateAroundFracVector(phi,
-                  self.params.NGL_HKLviewer.clip_plane.h,
-                  self.params.NGL_HKLviewer.clip_plane.k,
-                  self.params.NGL_HKLviewer.clip_plane.l,
-                  self.viewer.vecrotmx,
-                  self.params.NGL_HKLviewer.clip_plane.bequiet)
+      R = flex.vec3_double( [(self.params.NGL_HKLviewer.clip_plane.h, self.params.NGL_HKLviewer.clip_plane.k, self.params.NGL_HKLviewer.clip_plane.l)])
+      #if self.params.NGL_HKLviewer.clip_plane.fractional_vector == "reciprocal":
+      #  R = self.params.NGL_HKLviewer.clip_plane.h * self.viewer.normal_kl \
+      #    + self.params.NGL_HKLviewer.clip_plane.k * self.viewer.normal_lh \
+      #    - self.params.NGL_HKLviewer.clip_plane.l * self.viewer.normal_hk
+      self.viewer.RotateAroundFracVector(phi, R[0][0], R[0][1], R[0][2],
+                  self.viewer.vecrotmx, self.params.NGL_HKLviewer.clip_plane.bequiet)
     else:
       self.mprint("First specify vector around which to rotate")
 
@@ -1223,7 +1224,7 @@ NGL_HKLviewer {
     .multiple = True
   bin_scene_label = 'Resolution'
     .type = str
-  nbins = 6
+  nbins = 1
     .type = int
   shape_primitive = *'spheres' 'points'
     .type = choice
