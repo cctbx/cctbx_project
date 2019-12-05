@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <limits>
 #include <boost/python.hpp>
 #include <boost/shared_ptr.hpp>
 
@@ -197,7 +198,7 @@ public:
 
       af::versa<int, af::c_grid<2> > z(raw.accessor());
 
-      bool has_pilatus_inactive_flag = show_untrusted;
+      bool has_pilatus_inactive_flag = false;
       ptr_area detector_location = ptr_area(new ActiveAreaDefault());
       if (vendortype=="Pilatus-6M") {
         detector_location = ptr_area(new ActiveAreaPilatus6M());
@@ -236,6 +237,14 @@ public:
             if (has_pilatus_inactive_flag && raw[idx_ij]==-2){
               //an ad hoc flag to aimed at coloring red the inactive pixels (-2) on Pilatus
               z[idx_ij]=1000;  //flag value used is out of range of the 256-pt grey scale but in range int datatype.
+              continue;
+            } else if (raw[idx_ij]== std::numeric_limits<int>::min()){
+              //flag value for explicitly-masked pixels
+              z[idx_ij]=1000;
+              if (has_pilatus_inactive_flag){
+                //to avoid confusion, reset flagged pixels for Pilatus-like detectors to -2
+                raw[idx_ij]=-2;
+              }
               continue;
             } else if (raw[idx_ij]>saturation){
               z[idx_ij]=2000;  //an ad hoc flag to aimed at coloring yellow the saturated pixels
