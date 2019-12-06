@@ -2262,7 +2262,8 @@ class sharpening_info:
       print("Final adjusted map surface area:  %7.2f" %(self.adjusted_sa), file=out)
     if self.kurtosis is not None:
       print("Final map kurtosis:               %7.2f" %(self.kurtosis), file=out)
-    if self.adjusted_path_length is not None:
+    if hasattr(self,'adjusted_path_length') and \
+         self.adjusted_path_length is not None:
       print("Final adjusted path length:        %7.2f A" %(
          self.adjusted_path_length), file=out)
 
