@@ -75,7 +75,9 @@ def is_outlier(points, thresh=3.5):
     return modified_z_score > thresh
 
 
-def tilting_plane(img, mask=None, zscore=2, spline=False, return_resid=False):
+def tilting_plane(img, mask=None, zscore=np.inf, spline=False, 
+                old_style=True, return_resid=False, return_error=False,
+                integration=False, sigma_readout=0):
     """
     :param img:  numpy image
     :param mask:  boolean mask, same shape as img, True is good pixels
@@ -98,18 +100,38 @@ def tilting_plane(img, mask=None, zscore=2, spline=False, return_resid=False):
 
     fit_sel = np.logical_and(~out2d, mask)  # fit plane to these points, no outliers, no masked
     x, y, z = X[fit_sel], Y[fit_sel], img[fit_sel]
-
     guess = np.array([np.ones_like(x), x, y]).T
-    coeff, r, rank, s = np.linalg.lstsq(guess, z, rcond=-1)
-    ev = (coeff[0] + coeff[1]*XX + coeff[2]*YY)
-    if spline:
-        sp = SmoothBivariateSpline(x, y, z, kx=1, ky=1)
-        tilt = sp.ev(XX, YY).reshape(img.shape)
+    if old_style:
+        coeff, r, rank, s = np.linalg.lstsq(guess, z, rcond=-1)
+        ev = (coeff[0] + coeff[1]*XX + coeff[2]*YY)
+        coeff_errors = None,None,None
+        if spline:
+            sp = SmoothBivariateSpline(x, y, z, kx=1, ky=1)
+            tilt = sp.ev(XX, YY).reshape(img.shape)
+        else:
+            tilt = ev.reshape(img.shape)
     else:
-        tilt = ev.reshape(img.shape)
+        rho = z
+        W = np.diag(1/( sigma_readout**2 + rho))
+        A = guess
+        AWA = np.dot(A.T, np.dot(W, A))
+        AWA_inv = np.linalg.inv(AWA)
+        AtW = np.dot( A.T,W)
+        a,b,c = np.dot(np.dot(AWA_inv, AtW), rho)
+        coeff = (a,b,c) 
+        tilt = (XX*b + YY*c + a).reshape(img.shape)
+        
+        # vector of residuals
+        r = y-np.dot(A,(a,b,c))
+        r_fact = np.dot(r.T,np.dot( W,r)) / (len(rho)-3)
+        error = AWA_inv * r_fact
+        coeff_errors = np.sqrt(error[0][0]), np.sqrt(error[1][1]), np.sqrt(error[2][2])
+
     return_packet = [tilt, out2d, coeff, True]
     if return_resid:
         return_packet.append(r)
+    if return_error:
+        return_packet.append(coeff_errors)
     return return_packet
 
 
