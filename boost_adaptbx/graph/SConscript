@@ -72,5 +72,5 @@ if not env_etc.no_boost_python:
           filename,
           "= *boost::first_max_element(edges_iters.first, edges_iters.second, cmp);",
           "= *max_element(edges_iters.first, edges_iters.second, cmp);")
-    patch_bc_clustering()
+    env.AddPreAction(clustering, patch_bc_clustering)
     env.AddPostAction(clustering, unpatch_bc_clustering)
