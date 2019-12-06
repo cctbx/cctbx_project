@@ -760,7 +760,7 @@ class NGL_HKLViewer(QWidget):
     #self.setWindowTitle("HKL-viewer: " + self.currentphilstringdict['NGL_HKLviewer.filename'])
     self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.mouse_sensitivity'])
     #self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
-    self.rotavecangle_labeltxt.setText("Angle rotated: %2.f" %self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
+    self.rotavecangle_labeltxt.setText("Angle rotated: %2.f°" %self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
 
     self.sliceindexspinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_index'])
     self.Nbins_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
@@ -1187,9 +1187,10 @@ class NGL_HKLViewer(QWidget):
     self.clipTNCSBtn.clicked.connect(self.onClipPlaneChkBox)
     layout2.addWidget(self.clipTNCSBtn,    1, 2, 1, 1)
 
+    vprec = 2
     self.hvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.hvec_spinBox.setValue(2.0)
-    self.hvec_spinBox.setDecimals(3)
+    self.hvec_spinBox.setDecimals(vprec)
     #self.hvec_spinBox.setSingleStep(0.5)
     self.hvec_spinBox.setRange(-100.0, 100.0)
     self.hvec_spinBox.valueChanged.connect(self.onHvecChanged)
@@ -1200,7 +1201,7 @@ class NGL_HKLViewer(QWidget):
 
     self.kvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.kvec_spinBox.setValue(0.0)
-    self.kvec_spinBox.setDecimals(3)
+    self.kvec_spinBox.setDecimals(vprec)
     self.kvec_spinBox.setSingleStep(0.5)
     self.kvec_spinBox.setRange(-100.0, 100.0)
     self.kvec_spinBox.valueChanged.connect(self.onKvecChanged)
@@ -1211,7 +1212,7 @@ class NGL_HKLViewer(QWidget):
 
     self.lvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.lvec_spinBox.setValue(0.0)
-    self.lvec_spinBox.setDecimals(3)
+    self.lvec_spinBox.setDecimals(vprec)
     self.lvec_spinBox.setSingleStep(0.5)
     self.lvec_spinBox.setRange(-100.0, 100.0)
     self.lvec_spinBox.valueChanged.connect(self.onLvecChanged)
@@ -1223,7 +1224,7 @@ class NGL_HKLViewer(QWidget):
     self.hkldist_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.hkldistval = 0.0
     self.hkldist_spinBox.setValue(self.hkldistval)
-    self.hkldist_spinBox.setDecimals(3)
+    self.hkldist_spinBox.setDecimals(vprec)
     self.hkldist_spinBox.setSingleStep(0.5)
     self.hkldist_spinBox.setRange(-100.0, 100.0)
     self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
@@ -1234,7 +1235,7 @@ class NGL_HKLViewer(QWidget):
 
     self.clipwidth_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.clipwidth_spinBox.setValue(0.5 )
-    self.clipwidth_spinBox.setDecimals(3)
+    self.clipwidth_spinBox.setDecimals(vprec)
     self.clipwidth_spinBox.setSingleStep(0.05)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
@@ -1244,7 +1245,7 @@ class NGL_HKLViewer(QWidget):
     layout2.addWidget(self.clipwidth_spinBox,    5, 1, 1, 1)
 
     self.rotavecangle_labeltxt = QLabel()
-    self.rotavecangle_labeltxt.setText("Angle rotated: 0.0")
+    self.rotavecangle_labeltxt.setText("Angle rotated: 0°")
     self.rotavecangle_slider = QSlider(Qt.Horizontal)
     self.rotavecangle_slider.setMinimum(0)
     self.rotavecangle_slider.setMaximum(360)

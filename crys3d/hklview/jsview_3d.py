@@ -519,9 +519,13 @@ class hklview_3d:
     return alltooltipstringsdict, allcolstraliases
 
 
-  def GetTooltipOnTheFly(self, id, rotmx=None, anomalous=False):
+  def GetTooltipOnTheFly(self, id, sym_id, anomalous=False):
     hkl = self.scene.indices[id]
     hklvec = flex.vec3_double( [(hkl[0], hkl[1], hkl[2])])
+    rotmx=None
+    if sym_id >= 0 and sym_id < len(self.symops):
+      rotmx = self.symops[sym_id].r()
+
     Rhkl = hklvec[0]
     if rotmx:
       Rhkl = hklvec[0] * rotmx
@@ -562,6 +566,7 @@ class hklview_3d:
           spbufttip += str(roundoff(datval, 2)) + ", " + str(roundoff(sigma, 2))
         else:
           spbufttip += str(roundoff(datval, 2))
+    spbufttip += '\\n\\n%d,%d,%d' %(id, sym_id, anomalous) # compared by the javascript
     spbufttip += '\''
     return spbufttip
 
@@ -1132,7 +1137,8 @@ function MakeHKL_Axis(mshape)
     else:
       spherebufferstr += """
         var sym_id = -1;
-        var hkl_id = -1
+        var hkl_id = -1;
+        var ttipid = "";
         if (pickingProxy.picker.length > 0)
         { // get stored id number of symmetry operator applied to this hkl
           sym_id = pickingProxy.picker[0];
@@ -1144,13 +1150,14 @@ function MakeHKL_Axis(mshape)
         }
         // tell python the id of the hkl and id number of the symmetry operator
         rightnow = timefunc();
-        if (rightnow - timenow > 250)
-        { // only post every 250 milli second as not to overwhelm python
-          WebsockSendMsg( 'tooltip_id: [' + String([sym_id, hkl_id, is_friedel_mate]) + ']' );
+        if (rightnow - timenow > 50)
+        { // only post every 50 milli second as not to overwhelm python
+          ttipid = String([hkl_id, sym_id, is_friedel_mate]);
+          WebsockSendMsg( 'tooltip_id: [' + ttipid + ']' );
           timenow = timefunc();
         }
 
-        if (current_ttip !== "" )
+        if (current_ttip !== "" && current_ttip_ids == ttipid )
         {
           tooltip.innerText = current_ttip;
     """
@@ -1765,7 +1772,9 @@ mysocket.onmessage = function(e)
 
     if (msgtype === "ShowTooltip")
     {
-      current_ttip = eval( String(val));
+      //current_ttip = eval( String(val[0]));
+      current_ttip = eval(datval[1]).split("\\n\\n")[0];
+      current_ttip_ids = eval(datval[1]).split("\\n\\n")[1];
     }
 
     if (msgtype === "Redraw")
@@ -1960,14 +1969,14 @@ mysocket.onmessage = function(e)
     {
       WebsockSendMsg( 'Rotating stage ' + pagename );
 
-      strs = datval[1].split("\\n");
+      //strs = datval[1].split("\\n");
       var sm = new Float32Array(9);
       var m4 = new NGL.Matrix4();
-      var elmstrs = strs[0].split(",");
+      //var elmstrs = strs[0].split(",");
       //alert('rot: ' + elmstrs);
 
       for (j=0; j<9; j++)
-        sm[j] = parseFloat(elmstrs[j]);
+        sm[j] = parseFloat(val[j]);
 
       // GL matrices are the transpose of conventional rotation matrices
       m4.set( sm[0], sm[3], sm[6], 0.0,
@@ -1976,7 +1985,7 @@ mysocket.onmessage = function(e)
               0.0,   0.0,   0.0,   1.0
       );
       stage.viewerControls.orient(m4);
-      if (strs[9]=="verbose")
+      if (val[9]=="verbose")
         postrotmxflag = true;
       ReturnClipPlaneDistances();
       //ReRender();
@@ -1991,11 +2000,11 @@ mysocket.onmessage = function(e)
     if (msgtype === "SpinAnimate")
     {
       WebsockSendMsg( 'SpinAnimating ' + pagename );
-      strs = datval[1].split("\\n");
+      //strs = datval[1].split("\\n");
       var r = new Float32Array(3);
-      var elmstrs = strs[0].split(",");
+      //var elmstrs = strs[0].split(",");
       for (j=0; j<3; j++)
-        r[j] = parseFloat(elmstrs[j]);
+        r[j] = parseFloat(val[j]);
       if (r[0] == 0.0 && r[1] == 0.0 && r[2] == 0.0)
       {
         // default bindings as per ngl\src\controls\mouse-actions.ts
@@ -2060,30 +2069,28 @@ mysocket.onmessage = function(e)
 
     if (msgtype === "AddVector")
     {
-      strs = datval[1].split("\\n");
       var r1 = new Float32Array(3);
       var r2 = new Float32Array(3);
       var rgb = new Float32Array(3);
-      var elmstrs = strs[0].split(",");
       for (j=0; j<3; j++)
       {
-        r1[j] = parseFloat(elmstrs[j]);
-        r2[j] = parseFloat(elmstrs[j+3]);
-        rgb[j]= parseFloat(elmstrs[j+6]);
+        r1[j] = parseFloat(val[j]);
+        r2[j] = parseFloat(val[j+3]);
+        rgb[j]= parseFloat(val[j+6]);
       }
 
       if (vectorshape == null)
         vectorshape = new NGL.Shape('vectorshape');
 
       vectorshape.addArrow( r1, r2 , [rgb[0], rgb[1], rgb[2]], 0.15);
-      if (elmstrs[6] !== "") {
+      if (val[6] !== "") {
         var txtR = [ r1[0] + r2[0], r1[1] + r2[1], r1[2] + r2[2] ];
-        vectorshape.addText( txtR, [rgb[0], rgb[1], rgb[2]], fontsize/2.0, elmstrs[9] );
+        vectorshape.addText( txtR, [rgb[0], rgb[1], rgb[2]], fontsize/2.0, val[9] );
       }
       // if reprname is supplied with a vector then make a representation named reprname
       // of this and all pending vectors stored in vectorshape and render them.
       // Otherwise just accummulate the new vector
-      var reprname = elmstrs[10].trim();
+      var reprname = val[10].trim();
       if (reprname != "")
       {
         DeleteVectors(reprname); // delete any existing vectors with the same name
@@ -2099,9 +2106,9 @@ mysocket.onmessage = function(e)
 
     if (msgtype === "RemoveVectors")
     {
-      strs = datval[1].split("\\n");
-      var elmstrs = strs[0].split(",");
-      var reprname = elmstrs[0].trim();
+      //strs = datval[1].split("\\n");
+      //var elmstrs = strs[0].split(",");
+      var reprname = val[0].trim(); // elmstrs[0].trim();
 
       // if reprname is supplied only remove vectors with that name
       if (reprname != "")
@@ -2118,18 +2125,18 @@ mysocket.onmessage = function(e)
 
     if (msgtype === "TooltipOpacity")
     {
-      strs = datval[1].split("\\n");
-      var elmstrs = strs[0].split(",");
+      //strs = datval[1].split("\\n");
+      //var elmstrs = val; //strs[0].split(",");
       Object.assign(tooltip.style, {
-        backgroundColor: "rgba(255, 255, 255, " + elmstrs[0] + " )",
+        backgroundColor: "rgba(255, 255, 255, " + val[0] + " )",
       });
     }
 
     if (msgtype === "SetMouseSpeed")
     {
-      strs = datval[1].split("\\n");
-      var elmstrs = strs[0].split(",");
-      stage.trackballControls.rotateSpeed = parseFloat(elmstrs[0]);
+      //strs = datval[1].split("\\n");
+      //var elmstrs = strs[0].split(",");
+      stage.trackballControls.rotateSpeed = parseFloat(val[0]);
     }
 
     if (msgtype === "GetMouseSpeed")
@@ -2140,11 +2147,11 @@ mysocket.onmessage = function(e)
 
     if (msgtype === "SetClipPlaneDistances")
     {
-      strs = datval[1].split("\\n");
-      var elmstrs = strs[0].split(",");
-      var near = parseFloat(elmstrs[0]);
-      var far = parseFloat(elmstrs[1]);
-      origcameraZpos = parseFloat(elmstrs[2]);
+      //strs = datval[1].split("\\n");
+      //var elmstrs = strs[0].split(",");
+      var near = parseFloat(val[0]);
+      var far = parseFloat(val[1]);
+      origcameraZpos = parseFloat(val[2]);
       stage.viewer.parameters.clipMode = 'camera';
       // clipScale = 'absolute' means clip planes are using scene dimensions
       stage.viewer.parameters.clipScale = 'absolute';
@@ -2369,25 +2376,19 @@ mysocket.onmessage = function(e)
         if flst[0] is not None and not cmath.isnan(flst[0]):
           self.ngl_settings.mouse_sensitivity = flst[0]
       if "tooltip_id:" in message:
-        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-        sym_id = eval(message.split("tooltip_id:")[1])[0]
-        id = eval(message.split("tooltip_id:")[1])[1]
+        ttipids = message.split("tooltip_id:")[1]
+
+        hklid = eval(message.split("tooltip_id:")[1])[0]
+        sym_id = eval(message.split("tooltip_id:")[1])[1]
         is_friedel_mate = eval(message.split("tooltip_id:")[1])[2]
         rotmx = None
-        if sym_id >= 0 and sym_id < len(self.symops):
-          rotmx = self.symops[sym_id].r()
         hkls = self.scene.indices
         if not is_friedel_mate:
-          ttip = self.GetTooltipOnTheFly(id, rotmx)
+          ttip = self.GetTooltipOnTheFly(hklid, sym_id)
         else:
-          # if id > len(hkls) then these hkls are added as the friedel mates during the
-          # "if (anoexp)" condition in the javascript code
-          id = id % len(hkls)
-          ttip = "id: %d" %id
-          #ttip = self.GetTooltipOnTheFly(hkls[id], rotmx, anomalous=True)
-          ttip = self.GetTooltipOnTheFly(id, rotmx, anomalous=True)
+          hklid = hklid % len(hkls)
+          ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
         self.SendMsgToBrowser("ShowTooltip", ttip)
-        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     except Exception as e:
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
 
@@ -2633,7 +2634,7 @@ Distance: %s
       str_rot = str(ortrot)
       str_rot = str_rot.replace("(", "")
       str_rot = str_rot.replace(")", "")
-      msg += str_rot + "\n"
+      msg += str_rot + "\n" # add rotation matrix to end of message string
     self.msgqueue.append( (msgtype, msg) )
     self.GetBoundingBox() # bounding box changes when the extent of the displayed lattice changes
     return retmsg
@@ -2719,11 +2720,13 @@ Distance: %s
     return rotmx
 
 
-  def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), quietbrowser=True):
-    # Assuming vector is in real space fractional coordinates turn it into cartesian
-    cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
-    if self.params.clip_plane.fractional_vector == "reciprocal":
+  def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), isreciprocal=False, quietbrowser=True):
+    if isreciprocal:
+    # Assuming vector is in reciprocal space coordinates turn it into cartesian
       cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().fractionalization_matrix()).transpose() )
+    else:
+      # Assuming vector is in real space fractional coordinates turn it into cartesian
+      cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
     #  Rodrigues rotation formula for rotation by phi angle around a vector going through origo
     #  See http://mathworld.wolfram.com/RodriguesRotationFormula.html
     # \mathbf I+\left(\sin\,\varphi\right)\mathbf W+\left(2\sin^2\frac{\varphi}{2}\right)\mathbf W^2
@@ -2732,7 +2735,6 @@ Distance: %s
     uy = cartvec[1]/normR
     uz = cartvec[2]/normR
     W = matrix.sqr([0, -uz, uy, uz, 0, -ux, -uy, ux, 0])
-    #W = matrix.sqr([0, uz, -uy, -uz, 0, ux, uy, -ux, 0])
     I = matrix.identity(3)
     sin2phi2 = math.sin(phi/2)
     sin2phi2 *= sin2phi2
