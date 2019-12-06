@@ -889,9 +889,16 @@ class _():
       siguij=siguij,
       )
 
+  def get_label_alt_id_iseq(self, iseq):
+    assert self.atoms_size() > iseq
+    alt_id = self.atoms()[iseq].parent().altloc
+    if alt_id == '': alt_id = '.'
+    return alt_id
+
+
   def get_label_asym_id_iseq(self, iseq):
     assert self.atoms_size() > iseq
-    return self.get_label_asym_id(self.atoms()[iseq].parent())
+    return self.get_label_asym_id(self.atoms()[iseq].parent())[1]
 
   def get_label_asym_id(self, atom_group):
     chain = atom_group.parent().parent()
@@ -1056,8 +1063,6 @@ class _():
           if icode == ' ' or icode == '': icode = '?'
           for atom_group in residue_group.atom_groups():
             label_asym_i, label_asym_id = self.get_label_asym_id(atom_group)
-            alt_id = atom_group.altloc
-            if alt_id == '': alt_id = '.'
             comp_id = atom_group.resname.strip()
             entity_id = '?' # XXX how do we determine this?
             gc = get_class(comp_id)
@@ -1087,7 +1092,7 @@ class _():
               atom_site_label_atom_id.append(atom.name.strip())
               if atom.name.strip() not in chem_comp_atom_ids:
                 chem_comp_atom_ids.append(atom.name.strip())
-              atom_site_label_alt_id.append(alt_id)
+              atom_site_label_alt_id.append(self.get_label_alt_id_iseq(atom.i_seq))
               atom_site_label_comp_id.append(comp_id)
               if comp_id not in chem_comp_ids: chem_comp_ids.append(comp_id)
               atom_site_auth_asym_id.append(auth_asym_id)
@@ -1117,7 +1122,7 @@ class _():
                 atom_site_anisotrop_id.append(
                   str(hy36decode(width=5, s=atom.serial)))
                 atom_site_anisotrop_pdbx_auth_atom_id.append(atom.name.strip())
-                atom_site_anisotrop_pdbx_label_alt_id.append(alt_id)
+                atom_site_anisotrop_pdbx_label_alt_id.append(self.get_label_alt_id_iseq(atom.i_seq))
                 atom_site_anisotrop_pdbx_auth_comp_id.append(comp_id)
                 atom_site_anisotrop_pdbx_auth_asym_id.append(auth_asym_id)
                 atom_site_anisotrop_pdbx_auth_seq_id.append(seq_id)
