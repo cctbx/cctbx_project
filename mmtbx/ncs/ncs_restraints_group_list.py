@@ -697,19 +697,45 @@ class class_ncs_restraints_group_list(list):
     parts of model.
     """
     #
-    def _consecutive_ranges(isel, hierarchy):
+    def _consecutive_ranges(isel):
       '''
       Split selection into consecutive ranges that can be represented
       by ncs_dom_lim. Maybe useful elsewwere.
       '''
       result = []
-      beg = isel[0]
+      start_index = 0
       cur_index = 1
-      while (isel[cur_index]-isel[cur_index-1] == 1 and
-        # chain is the same
-        # resid number is same or consecutive
+      atoms = hierarchy.atoms()
+      while cur_index < len(isel):
+        while (cur_index < len(isel)
+            and isel[cur_index]-isel[cur_index-1] == 1
+            and hierarchy.get_label_asym_id_iseq(isel[cur_index]) != \
+                hierarchy.get_label_asym_id_iseq(isel[cur_index-1])):
+          cur_index += 1
+        if (hierarchy.get_label_asym_id_iseq(isel[cur_index]) != \
+                hierarchy.get_label_asym_id_iseq(isel[cur_index-1])
+            or abs(atoms[isel[cur_index]].parent().parent().resseq_as_int() -\
+                   atoms[isel[cur_index-1]].parent().parent().resseq_as_int()) > 1):
+          # splitting:
+          result.append(isel[start_index:cur_index-1])
+          start_index = cur_index
+        cur_index += 1
+      result.append(isel[start_index:cur_index-1])
+      return result
 
-
+    def _get_struct_ncs_dom_lim_row(dom_id, comp_id, r):
+      return {
+            "_struct_ncs_dom_lim.pdbx_ens_id": struct_ncs_ens_id,
+            "_struct_ncs_dom_lim.dom_id": dom_id,
+            "_struct_ncs_dom_lim.pdbx_component_id": comp_id,
+            "_struct_ncs_dom_lim.beg_label_alt_id": hierarchy.get_label_alt_id_iseq(r[0]),
+            "_struct_ncs_dom_lim.beg_label_asym_id": hierarchy.get_label_asym_id_iseq(r[0]),
+            "_struct_ncs_dom_lim.beg_label_comp_id": hierarchy.atoms()[r[0]].parent().resname.strip(),
+            "_struct_ncs_dom_lim.beg_label_seq_id": '?',
+            "_struct_ncs_dom_lim.end_label_alt_id": hierarchy.get_label_alt_id_iseq(r[-1]),
+            "_struct_ncs_dom_lim.end_label_asym_id": hierarchy.get_label_asym_id_iseq(r[-1]),
+            "_struct_ncs_dom_lim.end_label_comp_id": hierarchy.atoms()[r[-1]].parent().resname.strip(),
+            "_struct_ncs_dom_lim.end_label_seq_id": '?'}
 
 
     ncs_ens_loop = iotbx.cif.model.loop(header=(
@@ -782,33 +808,33 @@ class class_ncs_restraints_group_list(list):
       ncs_dom_loop.add_row({
           "_struct_ncs_dom.pdbx_ens_id":struct_ncs_ens_id,
           "_struct_ncs_dom.id":master_dom_id,
-          "_struct_ncs_dom.details":"%s" % group.master_str_selection})
-      ncs_dom_lim_loop.add_row({ # not clear on selections yet
-          "_struct_ncs_dom_lim.pdbx_ens_id":struct_ncs_ens_id,
-          "_struct_ncs_dom_lim.dom_id":master_dom_id})
+          "_struct_ncs_dom.details":"%s" % group.master_str_selection.replace("'", '"')})
+      ranges = _consecutive_ranges(group.master_iselection)
+      # print ('ranges', ranges)
+      # for r in ranges:
+      #   print(list(r))
+      for i_r, r in enumerate(ranges):
+        ncs_dom_lim_loop.add_row(_get_struct_ncs_dom_lim_row(master_dom_id, i_r+1, r))
       # now get to copies
       for i_ncs_copy, ncs_copy in enumerate(group.copies):
         copy_dom_id = 'd_%d' % (i_ncs_copy+2) # no 0, 1-master
         ncs_dom_loop.add_row({
             "_struct_ncs_dom.pdbx_ens_id":struct_ncs_ens_id,
             "_struct_ncs_dom.id":copy_dom_id,
-            "_struct_ncs_dom.details":'%s' % ncs_copy.str_selection})
+            "_struct_ncs_dom.details":'%s' % ncs_copy.str_selection.replace("'", '"')})
 
-
-
-
-        ncs_dom_lim_loop.add_row({ # not clear on selections yet
-            "_struct_ncs_dom_lim.pdbx_ens_id":struct_ncs_ens_id,
-            "_struct_ncs_dom_lim.dom_id":copy_dom_id})
+        ranges = _consecutive_ranges(ncs_copy.iselection)
+        for i_r, r in enumerate(ranges):
+          ncs_dom_lim_loop.add_row(_get_struct_ncs_dom_lim_row(copy_dom_id, i_r+1, r))
         oper_id = 'op_%d' % (i_ncs_copy + 1)
         ncs_ens_gen_loop.add_row({
-            "_struct_ncs_ens_gen.dom_id_1":master_dom_id,
-            "_struct_ncs_ens_gen.dom_id_2":copy_dom_id,
+            "_struct_ncs_ens_gen.dom_id_1":copy_dom_id,
+            "_struct_ncs_ens_gen.dom_id_2":master_dom_id,
             "_struct_ncs_ens_gen.ens_id":struct_ncs_ens_id,
             "_struct_ncs_ens_gen.oper_id":oper_id})
         row = [oper_id, 'given']
-        row.extend(ncs_copy.r.transpose())
-        row.extend(-ncs_copy.t)
+        row.extend(ncs_copy.r)
+        row.extend(ncs_copy.t)
         row.append('?')
         ncs_oper_loop.add_row(row)
 
@@ -817,7 +843,7 @@ class class_ncs_restraints_group_list(list):
             "_refine_ls_restr_ncs.dom_id": copy_dom_id,
             "_refine_ls_restr_ncs.pdbx_refine_id": scattering_type,
             "_refine_ls_restr_ncs.pdbx_ens_id": struct_ncs_ens_id,
-            "_refine_ls_restr_ncs.pdbx_asym_id": hierarchy.get_label_asym_id_iseq(group.master_iselection[0]),
+            "_refine_ls_restr_ncs.pdbx_asym_id": "'%s'" % hierarchy.get_label_asym_id_iseq(group.master_iselection[0]),
             "_refine_ls_restr_ncs.pdbx_type": ncs_type,
             "_refine_ls_restr_ncs.weight_position": '?', # weight_position
             "_refine_ls_restr_ncs.weight_B_iso": '?', # weight_B_iso
