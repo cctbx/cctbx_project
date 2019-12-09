@@ -417,11 +417,12 @@ class hklview_3d:
         #    + self.params.clip_plane.k * self.normal_lh \
         #    - self.params.clip_plane.l * self.normal_hk
 
-      if has_phil_path(self.diff_phil, "clip_plane") or \
+      if ( has_phil_path(self.diff_phil, "clip_plane") or \
        has_phil_path(self.diff_phil, "hkldist") or \
        has_phil_path(self.diff_phil, "fixorientation") or \
        has_phil_path(self.diff_phil, "is_parallel") or \
-       has_phil_path(self.diff_phil, "fractional_vector"):
+       has_phil_path(self.diff_phil, "fractional_vector") ) and not \
+       ( has_phil_path(self.diff_phil, "bequiet") and len(self.diff_phil.all_definitions()) == 1 ):
         self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
             clipwidth, self.viewerparams.NGL.fixorientation, self.params.clip_plane.is_parallel,
             isreciprocal)
@@ -1564,6 +1565,7 @@ var origclipfar;
 var origcameraZpos;
 var nbins = %s;
 var rerendered = false;
+var expstate = "";
 
 
 function timefunc() {
@@ -1816,6 +1818,19 @@ mysocket.onmessage = function(e)
     if (msgtype.includes("Expand") )
     {
       WebsockSendMsg( 'Expanding data...' );
+
+      if (msgtype == "Expand" && expstate == "")
+        return;
+
+      if (msgtype == "ExpandP1" && expstate == "isP1Expanded")
+        return;
+
+      if (msgtype == "ExpandFriedel" && expstate == "isFriedelExpanded")
+        return;
+
+      if (msgtype == "ExpandP1Friedel" && expstate == "isP1FriedelExpanded")
+        return;
+
       // delete the shapebufs[] that holds the positions[] arrays
       shapeComp.removeRepresentation(repr);
       // remove shapecomp from stage first
@@ -1826,14 +1841,28 @@ mysocket.onmessage = function(e)
       br_radii = [];
       br_ttips = [];
       br_shapebufs = [];
+      var nexpandrefls = 0;
 
       //alert('rotations:\\n' + val);
       // Rotation matrices are concatenated to a string of floats
       // separated by line breaks between each roation matrix
       rotationstrs = datval[1].split("\\n");
-      var Rotmat = new NGL.Matrix3();
-      var sm = new Float32Array(9);
+      var Rotmats = [];
       var r = new NGL.Vector3();
+
+      for (var rotmxidx=0; rotmxidx < rotationstrs.length; rotmxidx++ )
+      {
+        Rotmats.push( new NGL.Matrix3() );
+        // convert string of rotation matrix elements into a Matrix3
+        var elmstrs = rotationstrs[rotmxidx].split(",");
+        for (j=0; j<9; j++)
+          Rotmats[rotmxidx].elements[j] = parseFloat(elmstrs[j]);
+      }
+
+      var Imx = new NGL.Matrix3();
+      Imx.identity(); // for testing
+      if ( !(msgtype.includes("P1")) && rotationstrs.length == 1 && Rotmats[0].equals(Imx) )
+        throw "Only the identity matrix is provided. That means no P1 expansion of reflections!";
 
       for (var bin=0; bin<nbins; bin++)
       {
@@ -1877,10 +1906,10 @@ mysocket.onmessage = function(e)
         }
 
         nrots = 0;
-        // if there is only the identity matrix that means no P1 expansion
+        nexpandrefls = 0;
         for (var rotmxidx=0; rotmxidx < rotationstrs.length; rotmxidx++ )
         {
-          if (rotationstrs[rotmxidx] < 1 )
+          if (rotationstrs[rotmxidx].length < 1 )
             continue;
           nrots++;
 
@@ -1890,13 +1919,7 @@ mysocket.onmessage = function(e)
           br_ttips[bin][rotmxidx] = ttips[bin].slice(); // deep copy with slice()
           br_ttips[bin][rotmxidx][0] = rotmxidx;
           br_positions[bin][rotmxidx] = new Float32Array( csize );
-
-          // convert string of rotation matrix elements into a Matrix3
-          var elmstrs = rotationstrs[rotmxidx].split(",");
-          //alert('rot' + rotmxidx + ': ' + elmstrs);
-          for (j=0; j<9; j++)
-            sm[j] = parseFloat(elmstrs[j]);
-          Rotmat.fromArray(sm);
+          nexpandrefls += csize;
 
           for (var i=0; i<nsize; i++)
           {
@@ -1905,7 +1928,7 @@ mysocket.onmessage = function(e)
             r.y = positions[bin][idx+1];
             r.z = positions[bin][idx+2];
 
-            r.applyMatrix3(Rotmat)
+            r.applyMatrix3(Rotmats[rotmxidx])
 
             br_positions[bin][rotmxidx][idx] = r.x;
             br_positions[bin][rotmxidx][idx + 1] = r.y;
@@ -1931,6 +1954,14 @@ mysocket.onmessage = function(e)
           //WebsockSendMsg( 'Memory usage: ' + String(window.performance.memory.totalJSHeapSize) +
           //        ', ' + String(window.performance.memory.totalJSHeapSize) );
         }
+        if (nexpandrefls == nsize*3)
+          expstate = "";
+        if (nexpandrefls == nsize*6)
+          expstate = "isFriedelExpanded";
+        if (nexpandrefls == nsize*3*nrots && nrots > 1)
+          expstate = "isP1Expanded";
+        if (nexpandrefls == nsize*6*nrots && nrots > 1)
+          expstate = "isP1FriedelExpanded";
       }
       MakeHKL_Axis(shape);
 
