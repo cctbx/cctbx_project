@@ -108,7 +108,7 @@ def update(grm,
         del aproxies[r]
     #
     if aproxies:
-      outl += '%s%s' % (' '*6, 'Number of angles added : %d' % len(aproxies))
+      outl += '%s%s' % (' '*6, 'Number of angles added : %d\n' % len(aproxies))
     grm.add_angles_in_place(aproxies)
   if outl:
     print('  Dynamic metal coordination', file=log)
