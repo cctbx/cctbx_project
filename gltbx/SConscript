@@ -55,7 +55,7 @@ if (not env_etc.no_boost_python):
 int main() { std::cout << GL_POINT << std::endl; return 0; }
 """, extension=".cpp")
   conf.Finish()
-  if (flag and len(output.strip()) != 0):
+  if (flag and len(output.strip()) != 0) or libtbx.env.build_options.use_conda:
     conf = env.Configure()
     if (conf.TryCompile("""
 #include <gltbx/include_opengl.h>
