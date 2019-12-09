@@ -891,7 +891,7 @@ class _():
 
   def get_label_alt_id_iseq(self, iseq):
     assert self.atoms_size() > iseq
-    return get_label_alt_id_atom(self.atoms()[iseq])
+    return self.get_label_alt_id_atom(self.atoms()[iseq])
 
   def get_label_alt_id_atom(self, atom):
     alt_id = atom.parent().altloc
@@ -923,16 +923,35 @@ class _():
     self.number_label_asym_id+=1
     return self.number_label_asym_id, self.label_asym_ids[self.number_label_asym_id]
 
+  def get_label_seq_id_iseq(self, iseq):
+    assert self.atoms_size() > iseq
+    return self.get_label_seq_id(self.atoms()[iseq].parent())
+
+  def get_label_seq_id(self, atom_group):
+    import iotbx.pdb
+    get_class = iotbx.pdb.common_residue_names_get_class
+    if not hasattr(self, '_label_seq_id_dict'):
+      # make it
+      self._label_seq_id_dict = {}
+      for chain in self.models()[0].chains():
+        label_seq_id = 0
+        for rg in chain.residue_groups():
+          for ag in rg.atom_groups():
+            label_seq_id += 1
+            label_seq_id_str='.'
+            comp_id = ag.resname.strip()
+            gc = get_class(comp_id)
+            if gc in ['common_amino_acid', 'modified_amino_acid']:
+              label_seq_id_str = str(label_seq_id)
+            self._label_seq_id_dict[ag.memory_id()] = label_seq_id_str
+    return self._label_seq_id_dict[atom_group.memory_id()]
+
   def as_cif_block(self,
       crystal_symmetry=None,
       coordinate_precision=5,
       occupancy_precision=3,
       b_iso_precision=5,
       u_aniso_precision=5):
-    # from iotbx.pdb.mmcif import pdb_hierarchy_as_cif_block
-    import iotbx.pdb
-    get_class = iotbx.pdb.common_residue_names_get_class
-
     if crystal_symmetry is None:
       crystal_symmetry = crystal.symmetry()
     import iotbx.cif
@@ -1053,24 +1072,18 @@ class _():
       model_id = model.id
       if model_id == '': model_id = '1'
       for chain in model.chains():
-        label_seq_id = 0
         auth_asym_id = chain.id
         if chain.atoms()[0].segid.strip() != '':
           auth_asym_id = chain.atoms()[0].segid.strip()
         if auth_asym_id.strip() == '': auth_asym_id = '.'
         for residue_group in chain.residue_groups():
           seq_id = residue_group.resseq.strip()
-          label_seq_id += 1
           icode = residue_group.icode
           if icode == ' ' or icode == '': icode = '?'
           for atom_group in residue_group.atom_groups():
             label_asym_i, label_asym_id = self.get_label_asym_id(atom_group)
             comp_id = atom_group.resname.strip()
             entity_id = '?' # XXX how do we determine this?
-            gc = get_class(comp_id)
-            label_seq_id_str='.'
-            if gc in ['common_amino_acid', 'modified_amino_acid']:
-              label_seq_id_str = str(label_seq_id)
             for atom in atom_group.atoms():
               atom.tmp = label_asym_i
               group_pdb = "ATOM"
@@ -1113,7 +1126,7 @@ class _():
               if label_asym_id.strip() not in struct_asym_ids:
                 struct_asym_ids.append(label_asym_id.strip())
               atom_site_label_entity_id.append(entity_id)
-              atom_site_label_seq_id.append(label_seq_id_str)
+              atom_site_label_seq_id.append(self.get_label_seq_id(atom_group))
               #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
               #atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
               atom_site_pdbx_PDB_model_num.append(model_id.strip())
