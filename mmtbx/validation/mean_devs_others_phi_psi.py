@@ -485,4 +485,3 @@ mean_devs = {
 if __name__ == '__main__':
   for phi_psi in [(0,0), (-60,-60)]:
     print(phi_psi, mean_devs.get(phi_psi, None))
-    

@@ -1,7 +1,7 @@
 from __future__ import division
 from math import pi, sin, cos, atan2, sqrt
 
-from mmtbx.conformation_dependent_library.cdl_utils import round_to_ten, round_to_int
+from mmtbx.conformation_dependent_library.cdl_utils import round_to_ten
 from mmtbx.validation.mean_devs_PRO_phi_psi import mean_devs as PRO_phi_psi
 from mmtbx.validation.mean_devs_others_phi_psi import mean_devs as others_phi_psi
 from mmtbx.validation.mean_devs_VAL_THR_ILE_phi_psi import mean_devs as VAL_THR_ILE_phi_psi
