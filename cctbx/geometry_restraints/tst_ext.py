@@ -226,7 +226,7 @@ def exercise_bond():
       weight=1, slack=0, limit=-1, top_out=False, origin_id=0):
     assert p.i_seqs == i_seqs
     if p.rt_mx_ji is not None:
-      assert p.rt_mx_ji.as_double_array == sym_op.as_double_array
+      assert approx_equal(p.rt_mx_ji.as_double_array(), sym_op.as_double_array())
     else:
       assert sym_op is None
     assert approx_equal(p.distance_ideal, distance_ideal)
@@ -1206,7 +1206,7 @@ def exercise_angle():
     assert p.i_seqs == i_seqs
     if p.sym_ops is not None:
       for i in range(len(sym_ops)):
-        assert p.sym_ops[i].as_double_array == sym_ops[i].as_double_array
+        assert approx_equal(p.sym_ops[i].as_double_array(), sym_ops[i].as_double_array())
     else:
       assert sym_ops is None # while p.sym_ops IS None
     assert approx_equal(p.angle_ideal, angle_ideal)
@@ -1509,7 +1509,7 @@ def exercise_dihedral():
       assert p.i_seqs == i_seqs
       if p.sym_ops is not None:
         for i in range(len(p.sym_ops)):
-          assert p.sym_ops[i].as_double_array == sym_ops[i].as_double_array
+          assert approx_equal(p.sym_ops[i].as_double_array(), sym_ops[i].as_double_array())
       else:
         assert sym_ops is None # while p.sym_ops IS None
     else:
@@ -2098,7 +2098,7 @@ def exercise_planarity():
       approx_equal(p.i_seqs, i_seqs)
       if p.sym_ops is not None:
         for i in range(len(p.sym_ops)):
-          assert p.sym_ops[i].as_double_array == sym_ops[i].as_double_array
+          assert approx_equal(p.sym_ops[i].as_double_array(), sym_ops[i].as_double_array())
       else:
         assert sym_ops is None # while p.sym_ops IS None
 
