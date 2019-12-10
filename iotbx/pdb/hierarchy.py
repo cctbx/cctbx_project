@@ -924,7 +924,7 @@ class _():
     return self.number_label_asym_id, self.label_asym_ids[self.number_label_asym_id]
 
   def get_label_seq_id_iseq(self, iseq):
-    assert self.atoms_size() > iseq
+    assert self.atoms_size() > iseq, "%d, %d" % (self.atoms_size(), iseq)
     return self.get_label_seq_id(self.atoms()[iseq].parent())
 
   def get_label_seq_id(self, atom_group):

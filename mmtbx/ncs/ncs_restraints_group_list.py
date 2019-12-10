@@ -714,9 +714,8 @@ class class_ncs_restraints_group_list(list):
           cur_index += 1
         if (hierarchy.get_label_asym_id_iseq(isel[cur_index]) != \
                 hierarchy.get_label_asym_id_iseq(isel[cur_index-1])
-            or abs(atoms[isel[cur_index]].parent().parent().resseq_as_int() -\
-                   atoms[isel[cur_index-1]].parent().parent().resseq_as_int()) > 1):
-          # splitting:
+            or abs(int(hierarchy.get_label_seq_id_iseq(isel[cur_index])) -\
+                   int(hierarchy.get_label_seq_id_iseq(isel[cur_index-1]))) > 1):
           result.append(isel[start_index:cur_index-1])
           start_index = cur_index
         cur_index += 1
@@ -725,18 +724,17 @@ class class_ncs_restraints_group_list(list):
 
     def _get_struct_ncs_dom_lim_row(dom_id, comp_id, r):
       return {
-            "_struct_ncs_dom_lim.pdbx_ens_id": struct_ncs_ens_id,
-            "_struct_ncs_dom_lim.dom_id": dom_id,
-            "_struct_ncs_dom_lim.pdbx_component_id": comp_id,
-            "_struct_ncs_dom_lim.beg_label_alt_id": hierarchy.get_label_alt_id_iseq(r[0]),
-            "_struct_ncs_dom_lim.beg_label_asym_id": hierarchy.get_label_asym_id_iseq(r[0]),
-            "_struct_ncs_dom_lim.beg_label_comp_id": hierarchy.atoms()[r[0]].parent().resname.strip(),
-            "_struct_ncs_dom_lim.beg_label_seq_id": '?',
-            "_struct_ncs_dom_lim.end_label_alt_id": hierarchy.get_label_alt_id_iseq(r[-1]),
-            "_struct_ncs_dom_lim.end_label_asym_id": hierarchy.get_label_asym_id_iseq(r[-1]),
-            "_struct_ncs_dom_lim.end_label_comp_id": hierarchy.atoms()[r[-1]].parent().resname.strip(),
-            "_struct_ncs_dom_lim.end_label_seq_id": '?'}
-
+          "_struct_ncs_dom_lim.pdbx_ens_id": struct_ncs_ens_id,
+          "_struct_ncs_dom_lim.dom_id": dom_id,
+          "_struct_ncs_dom_lim.pdbx_component_id": comp_id,
+          "_struct_ncs_dom_lim.beg_label_alt_id": hierarchy.get_label_alt_id_iseq(r[0]),
+          "_struct_ncs_dom_lim.beg_label_asym_id": hierarchy.get_label_asym_id_iseq(r[0]),
+          "_struct_ncs_dom_lim.beg_label_comp_id": hierarchy.atoms()[r[0]].parent().resname.strip(),
+          "_struct_ncs_dom_lim.beg_label_seq_id": hierarchy.get_label_seq_id_iseq(r[0]),
+          "_struct_ncs_dom_lim.end_label_alt_id": hierarchy.get_label_alt_id_iseq(r[-1]),
+          "_struct_ncs_dom_lim.end_label_asym_id": hierarchy.get_label_asym_id_iseq(r[-1]),
+          "_struct_ncs_dom_lim.end_label_comp_id": hierarchy.atoms()[r[-1]].parent().resname.strip(),
+          "_struct_ncs_dom_lim.end_label_seq_id": hierarchy.get_label_seq_id_iseq(r[-1])}
 
     ncs_ens_loop = iotbx.cif.model.loop(header=(
       "_struct_ncs_ens.id",
@@ -795,6 +793,7 @@ class class_ncs_restraints_group_list(list):
       "_refine_ls_restr_ncs.rms_dev_B_iso",
       "_refine_ls_restr_ncs.ncs_model_details"))
 
+    self.update_str_selections_if_needed(hierarchy)
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
     if len(self) == 0:
