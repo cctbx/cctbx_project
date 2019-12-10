@@ -533,6 +533,15 @@ class info(object):
         free_reflections_per_bin = ref_par.alpha_beta.free_reflections_per_bin,
         max_number_of_bins       = ref_par.main.max_number_of_resolution_bins)
 
+    self._pdbx_refine_id = ''
+    if self.data_x is not None:
+      self._pdbx_refine_id = 'X-RAY DIFFRACTION'
+    if self.data_n is not None:
+      # !!! Warning: "X-ray+Neutron" is not compliant with mmCIF dictionary:
+      # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_exptl.method.html
+      self._pdbx_refine_id = 'NEUTRON DIFFRACTION' if self.data_x is None else 'X-ray+Neutron'
+
+
   def show_remark_3(self, out = None):
     prefix = "REMARK   3  "
     if(out is None): out = sys.stdout
@@ -560,40 +569,21 @@ class info(object):
         print(prefix, file=out)
         print(info_pdb_str, end='', file=out)
 
+  def get_pdbx_refine_id(self):
+    return self._pdbx_refine_id
+
   def as_cif_block(self, cif_block=None):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
-    pdbx_refine_id = ''
     if self.data_x is not None:
-      pdbx_refine_id = 'X-RAY DIFFRACTION'
-    if self.data_n is not None:
-      # !!! Warning: "X-ray+Neutron" is not compliant with mmCIF dictionary:
-      # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_exptl.method.html
-      pdbx_refine_id = 'NEUTRON DIFFRACTION' if self.data_x is None else 'X-ray+Neutron'
-    if self.data_x is not None:
-      cif_block = self.data_x.as_cif_block(cif_block=cif_block, scattering_type=pdbx_refine_id)
+      cif_block = self.data_x.as_cif_block(cif_block=cif_block, scattering_type=self._pdbx_refine_id)
     # XXX Neutron data?
-
     if self.geometry is not None:
-      cif_block = self.geometry.as_cif_block(cif_block=cif_block, pdbx_refine_id=pdbx_refine_id)
+      cif_block = self.geometry.as_cif_block(cif_block=cif_block, pdbx_refine_id=self._pdbx_refine_id)
     if self.adp is not None:
       cif_block = self.adp.as_cif_block(cif_block=cif_block)
       cif_block["_reflns.B_iso_Wilson_estimate"] = round_2_for_cif(self.wilson_b)
     cif_block = self.model.tls_groups_as_cif_block(cif_block=cif_block)
 
     # What about anomalous_scatterer_groups here?
-
-    # adding NCS information.
-    # It is not clear why we dump cartesian NCS first, and if it is absent,
-    # Torsion NCS next. What about NCS constraints?
-    if self.model.cartesian_NCS_present():
-      # self.model.cartesian_NCS_as_cif_block(cif_block=cif_block)
-      self.model.get_restraints_manager().cartesian_ncs_manager.\
-          ncs_restraints_group_list.as_cif_block(
-              cif_block=cif_block,
-              hierarchy=self.model.get_hierarchy(),
-              scattering_type=pdbx_refine_id,
-              ncs_type='cartesian NCS')
-    elif self.model.torsion_NCS_present():
-      self.model.torsion_NCS_as_cif_block(cif_block=cif_block)
     return cif_block

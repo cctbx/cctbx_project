@@ -194,40 +194,12 @@ class cartesian_ncs_manager(object):
         print(pr+"   RMSD               : %-10.3f" % rms, file=result)
     return result.getvalue()
 
-  def as_cif_block(self, loops, cif_block, sites_cart):
-    if cif_block is None:
-      cif_block = iotbx.cif.model.block()
-    (ncs_ens_loop, ncs_dom_loop, ncs_dom_lim_loop, ncs_oper_loop,
-        ncs_ens_gen_loop) = loops
-
-    oper_id = 0
-    if self.get_n_groups > 0:
-      for i_group, group in enumerate(self.groups_list):
-        ncs_ens_loop.add_row((i_group+1, "?"))
-        selection_strings = group.selection_strings
-        matrices = group.matrices
-        rms = group.rms
-        pair_count = len(group.selection_pairs[0])
-        for i_domain, domain_selection in enumerate(selection_strings):
-          ncs_dom_loop.add_row((i_domain+1, i_group+1, "?"))
-          # XXX TODO: export individual sequence ranges from selection
-          ncs_dom_lim_loop.add_row(
-            (i_group+1, i_domain+1, "?", "?", "?", "?", domain_selection))
-          if i_domain > 0:
-            rt_mx = group.matrices[i_domain-1]
-            oper_id += 1
-            row = [oper_id, "given"]
-            row.extend(rt_mx.r)
-            row.extend(rt_mx.t)
-            row.append("?")
-            ncs_oper_loop.add_row(row)
-            ncs_ens_gen_loop.add_row((1, i_domain+1, i_group+1, oper_id))
-    cif_block.add_loop(ncs_ens_loop)
-    cif_block.add_loop(ncs_dom_loop)
-    cif_block.add_loop(ncs_dom_lim_loop)
-    if self.get_n_groups > 0:
-      cif_block.add_loop(ncs_oper_loop)
-      cif_block.add_loop(ncs_ens_gen_loop)
+  def as_cif_block(self, cif_block, hierarchy, scattering_type):
+    self.ncs_restraints_group_list.as_cif_block(
+        cif_block=cif_block,
+        hierarchy=hierarchy,
+        scattering_type=scattering_type,
+        ncs_type='cartesian NCS')
     return cif_block
 
   def get_n_excessive_sites_distances(self):

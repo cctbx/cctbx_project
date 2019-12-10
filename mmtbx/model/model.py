@@ -970,6 +970,18 @@ class manager(object):
 
     if self.model_statistics_info is not None:
       cif_block.update(self.model_statistics_info.as_cif_block())
+      # adding NCS information.
+      # It is not clear why we dump cartesian NCS first, and if it is absent,
+      # Torsion NCS next. What about NCS constraints?
+      if self.cartesian_NCS_present():
+        cif_block.update(self.get_restraints_manager().cartesian_ncs_manager.\
+            as_cif_block(
+                cif_block=cif_block,
+                hierarchy=self.get_hierarchy(),
+                scattering_type=self.model_statistics_info.get_pdbx_refine_id()))
+      elif self.torsion_NCS_present():
+        cif_block.update(self.torsion_NCS_as_cif_block(cif_block=cif_block))
+
     if additional_blocks is not None:
       for ab in additional_blocks:
         cif_block.update(ab)
@@ -1505,19 +1517,6 @@ class manager(object):
     if self.get_restraints_manager() is not None:
       return self.get_restraints_manager().cartesian_ncs_manager
     return None
-
-  def cartesian_NCS_as_cif_block(self, cif_block=None):
-    if not self.cartesian_NCS_present():
-      return cif_block
-    loops = manager._get_NCS_cif_loops()
-    if cif_block is None:
-      cif_block = iotbx.cif.model.block()
-    if (self.get_restraints_manager() is not None and
-        self.get_restraints_manager().cartesian_ncs_manager is not None):
-      cif_block = self.get_restraints_manager().cartesian_ncs_manager.as_cif_block(
-          loops=loops, cif_block=cif_block, sites_cart=self.get_sites_cart())
-    return cif_block
-
 
   def setup_scattering_dictionaries(self,
       scattering_table,
