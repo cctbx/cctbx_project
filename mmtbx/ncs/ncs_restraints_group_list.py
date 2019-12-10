@@ -799,6 +799,7 @@ class class_ncs_restraints_group_list(list):
     if len(self) == 0:
       return cif_block
     refine_ls_restr_ncs_pdbx_ordinal = 1
+    n_oper = 1
     for i_group, group in enumerate(self):
       struct_ncs_ens_id = 'ens_%d' % (i_group+1)
       ncs_ens_loop.add_row({"_struct_ncs_ens.id" : struct_ncs_ens_id})
@@ -825,7 +826,8 @@ class class_ncs_restraints_group_list(list):
         ranges = _consecutive_ranges(ncs_copy.iselection)
         for i_r, r in enumerate(ranges):
           ncs_dom_lim_loop.add_row(_get_struct_ncs_dom_lim_row(copy_dom_id, i_r+1, r))
-        oper_id = 'op_%d' % (i_ncs_copy + 1)
+        oper_id = 'op_%d' % n_oper
+        n_oper += 1
         ncs_ens_gen_loop.add_row({
             "_struct_ncs_ens_gen.dom_id_1":copy_dom_id,
             "_struct_ncs_ens_gen.dom_id_2":master_dom_id,
