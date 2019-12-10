@@ -65,8 +65,9 @@ class SettingsForm(QDialog):
     layout.addWidget(parent.cameraPerspectCheckBox,  2, 0, 1, 1)
     layout.addWidget(parent.bufsize_labeltxt,        3, 0, 1, 1)
     layout.addWidget(parent.bufsizespinBox,          3, 4, 1, 1)
-    layout.addWidget(parent.ttipalpha_labeltxt,      4, 0, 1, 1)
-    layout.addWidget(parent.ttipalpha_spinBox,        4, 4, 1, 1)
+    layout.addWidget(parent.ttipCheckBox,            4, 0, 1, 1)
+    layout.addWidget(parent.ttipalpha_labeltxt,      4, 1, 1, 1)
+    layout.addWidget(parent.ttipalpha_spinBox,       4, 4, 1, 1)
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
     myGroupBox.setLayout(layout)
@@ -302,6 +303,12 @@ class NGL_HKLViewer(QWidget):
     self.bufsizespinBox.setValue(10)
     self.bufsize_labeltxt = QLabel()
     self.bufsize_labeltxt.setText("Text buffer size (Kbytes):")
+
+
+    self.ttipCheckBox = QCheckBox()
+    self.ttipCheckBox.setText("Show tooltips")
+    self.ttipCheckBox.clicked.connect(self.onShowTooltips)
+    self.ttipCheckBox.setCheckState(Qt.Checked)
 
     self.ttipalpha = 0.85
     self.ttipalpha_spinBox = QDoubleSpinBox()
@@ -773,7 +780,7 @@ class NGL_HKLViewer(QWidget):
       if c in self.currentphilstringdict['NGL_HKLviewer.viewer.slice_axis']:
         break
 
-    self.SliceLabelComboBox.setCurrentIndex( axidx )
+    #self.SliceLabelComboBox.setCurrentIndex( axidx )
     self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.camera_type'])
     self.ClipPlaneChkBox.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'] != None )
     if self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth']:
@@ -826,8 +833,17 @@ class NGL_HKLViewer(QWidget):
 
 
   def onTooltipAlphaChanged(self, val):
+    if self.unfeedback:
+      return
     self.ttipalpha = val
     self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.tooltip_alpha = %f' %val)
+
+
+  def onShowTooltips(self,val):
+    if self.ttipCheckBox.isChecked():
+      self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.show_tooltips = True")
+    else:
+      self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.show_tooltips = False")
 
 
   def onFontsizeChanged(self, val):
@@ -907,11 +923,13 @@ class NGL_HKLViewer(QWidget):
 
 
   def onSliceComboSelchange(self,i):
+    if self.unfeedback:
+      return
     # 4th element in each table row is the min-max span of hkls.
     rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][4][0][i]
     rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][4][1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
-    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis.values()[i] )
+    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
 
 
   def onSliceIndexChanged(self, val):

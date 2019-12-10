@@ -412,10 +412,6 @@ class hklview_3d:
         R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
         if self.params.clip_plane.fractional_vector == "realspace" or self.params.clip_plane.fractional_vector == "tncs":
           isreciprocal = False
-        #elif self.params.clip_plane.fractional_vector == "reciprocal":
-        #  R = self.params.clip_plane.h * self.normal_kl \
-        #    + self.params.clip_plane.k * self.normal_lh \
-        #    - self.params.clip_plane.l * self.normal_hk
 
       if ( has_phil_path(self.diff_phil, "clip_plane") or \
        has_phil_path(self.diff_phil, "hkldist") or \
@@ -437,6 +433,7 @@ class hklview_3d:
 
       msg += self.SetOpacities(self.viewerparams.NGL.bin_opacities )
       self.set_tooltip_opacity()
+      self.set_show_tooltips()
       #self.SetAutoView()
     return msg
 
@@ -1126,8 +1123,9 @@ function MakeHKL_Axis(mshape)
   stage.signals.hovered.add(
     function (pickingProxy)
     {
-      //tooltip.style.display = "none";
-      if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  ))
+      if (pickingProxy
+           && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]' )
+           && displaytooltips )
       {
         var cp = pickingProxy.canvasPosition;
     """
@@ -1151,13 +1149,15 @@ function MakeHKL_Axis(mshape)
         }
         // tell python the id of the hkl and id number of the symmetry operator
         rightnow = timefunc();
-        if (rightnow - timenow > 50)
+        if (rightnow - timenow > tdelay)
         { // only post every 50 milli second as not to overwhelm python
           ttipid = String([hkl_id, sym_id, is_friedel_mate]);
           WebsockSendMsg( 'tooltip_id: [' + ttipid + ']' );
           timenow = timefunc();
         }
 
+        if (isdebug)
+          console.log( "current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid) );
         if (current_ttip !== "" && current_ttip_ids == ttipid )
         {
           tooltip.innerText = current_ttip;
@@ -1566,7 +1566,10 @@ var origcameraZpos;
 var nbins = %s;
 var rerendered = false;
 var expstate = "";
-
+var current_ttip_ids;
+var isdebug = %s;
+var tdelay = 200;
+var displaytooltips = true;
 
 function timefunc() {
   var d = new Date();
@@ -1697,8 +1700,9 @@ catch(err)
   WebsockSendMsg('JavaScriptError: ' + err.stack );
 }
 
-    """ % (self.websockport, self.__module__, self.__module__, cntbin, self.ngl_settings.tooltip_alpha, \
-            axisfuncstr, self.camera_type, spherebufferstr, negativeradiistr, colourscriptstr)
+    """ % (self.websockport, self.__module__, self.__module__, cntbin, str(self.verbose>=2).lower(), \
+           self.ngl_settings.tooltip_alpha, axisfuncstr, self.camera_type, spherebufferstr, \
+           negativeradiistr, colourscriptstr)
 
 
 
@@ -1772,11 +1776,22 @@ mysocket.onmessage = function(e)
       stage.viewer.requestRender();
     }
 
-    if (msgtype === "ShowTooltip")
+    if (msgtype === "DisplayTooltips")
     {
-      //current_ttip = eval( String(val[0]));
+      displaytooltips = ( parseInt(val[0]) == 1);
+    }
+
+    if (msgtype === "ShowThisTooltip")
+    {
       current_ttip = eval(datval[1]).split("\\n\\n")[0];
       current_ttip_ids = eval(datval[1]).split("\\n\\n")[1];
+    }
+
+    if (msgtype === "TooltipOpacity")
+    {
+      Object.assign(tooltip.style, {
+        backgroundColor: "rgba(255, 255, 255, " + val[0] + " )",
+      });
     }
 
     if (msgtype === "Redraw")
@@ -2154,15 +2169,6 @@ mysocket.onmessage = function(e)
       stage.viewer.requestRender();
     }
 
-    if (msgtype === "TooltipOpacity")
-    {
-      //strs = datval[1].split("\\n");
-      //var elmstrs = val; //strs[0].split(",");
-      Object.assign(tooltip.style, {
-        backgroundColor: "rgba(255, 255, 255, " + val[0] + " )",
-      });
-    }
-
     if (msgtype === "SetMouseSpeed")
     {
       //strs = datval[1].split("\\n");
@@ -2419,7 +2425,7 @@ mysocket.onmessage = function(e)
         else:
           hklid = hklid % len(hkls)
           ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
-        self.SendMsgToBrowser("ShowTooltip", ttip)
+        self.SendMsgToBrowser("ShowThisTooltip", ttip)
     except Exception as e:
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
 
@@ -2576,6 +2582,11 @@ Distance: %s
 
   def set_camera_type(self):
     self.camera_type = self.ngl_settings.camera_type
+
+
+  def set_show_tooltips(self):
+    msg = "%d" %int(self.ngl_settings.show_tooltips)
+    self.SendMsgToBrowser("DisplayTooltips", msg)
 
 
   def set_tooltip_opacity(self):
@@ -3004,6 +3015,8 @@ ngl_philstr = """
     .type = str
   tooltip_alpha = 0.85
     .type = float
+  show_tooltips = True
+    .type = bool
   fixorientation = False
     .type = bool
   camera_type = *orthographic perspective
