@@ -35,7 +35,7 @@ stages:
     - template: ./base-linux.yml
       parameters:
         distribution: centos
-        version: [7, 6, 1810]
+        version: [7, 7, 1810]
     - template: ./base-linux.yml
       parameters:
         distribution: ubuntu
