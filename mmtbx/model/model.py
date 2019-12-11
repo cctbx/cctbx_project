@@ -980,7 +980,11 @@ class manager(object):
                 hierarchy=self.get_hierarchy(),
                 scattering_type=self.model_statistics_info.get_pdbx_refine_id()))
       elif self.torsion_NCS_present():
-        cif_block.update(self.torsion_NCS_as_cif_block(cif_block=cif_block))
+        cif_block.update(self.get_restraints_manager().geometry.ncs_dihedral_manager.\
+            as_cif_block(
+                cif_block=cif_block,
+                hierarchy=self.get_hierarchy(),
+                scattering_type=self.model_statistics_info.get_pdbx_refine_id()))
 
     if additional_blocks is not None:
       for ab in additional_blocks:
@@ -1312,16 +1316,6 @@ class manager(object):
           out=result)
     return result.getvalue()
 
-  def torsion_NCS_as_cif_block(self, cif_block):
-    if not self.torsion_NCS_present():
-      return cif_block
-    loops = manager._get_NCS_cif_loops()
-    if cif_block is None:
-      cif_block = iotbx.cif.model.block()
-    cif_block = self.get_restraints_manager().geometry.ncs_dihedral_manager.as_cif_block(
-        loops=loops, cif_block=cif_block)
-    return cif_block
-
   def torsion_ncs_restraints_update(self, log=None):
     if self.get_restraints_manager() is not None:
       self.get_restraints_manager().geometry.update_dihedral_ncs_restraints(
@@ -1461,51 +1455,6 @@ class manager(object):
           sites_cart=self.get_sites_cart(),
           out=result)
     return result.getvalue()
-
-  @staticmethod
-  def _get_NCS_cif_loops():
-    ncs_ens_loop = iotbx.cif.model.loop(header=(
-      "_struct_ncs_ens.id",
-      "_struct_ncs_ens.details"))
-    ncs_dom_loop = iotbx.cif.model.loop(header=(
-      "_struct_ncs_dom.id",
-      "_struct_ncs_dom.pdbx_ens_id",
-      "_struct_ncs_dom.details"))
-    ncs_dom_lim_loop = iotbx.cif.model.loop(header=(
-      "_struct_ncs_dom_lim.pdbx_ens_id",
-      "_struct_ncs_dom_lim.dom_id",
-      #"_struct_ncs_dom_lim.pdbx_component_id",
-      #"_struct_ncs_dom_lim.pdbx_refine_code",
-      "_struct_ncs_dom_lim.beg_auth_asym_id",
-      "_struct_ncs_dom_lim.beg_auth_seq_id",
-      "_struct_ncs_dom_lim.end_auth_asym_id",
-      "_struct_ncs_dom_lim.end_auth_seq_id",
-      "_struct_ncs_dom_lim.selection_details"))
-
-    ncs_oper_loop = iotbx.cif.model.loop(header=(
-      "_struct_ncs_oper.id",
-      "_struct_ncs_oper.code",
-      "_struct_ncs_oper.matrix[1][1]",
-      "_struct_ncs_oper.matrix[1][2]",
-      "_struct_ncs_oper.matrix[1][3]",
-      "_struct_ncs_oper.matrix[2][1]",
-      "_struct_ncs_oper.matrix[2][2]",
-      "_struct_ncs_oper.matrix[2][3]",
-      "_struct_ncs_oper.matrix[3][1]",
-      "_struct_ncs_oper.matrix[3][2]",
-      "_struct_ncs_oper.matrix[3][3]",
-      "_struct_ncs_oper.vector[1]",
-      "_struct_ncs_oper.vector[2]",
-      "_struct_ncs_oper.vector[3]",
-      "_struct_ncs_oper.details"))
-
-    ncs_ens_gen_loop = iotbx.cif.model.loop(header=(
-      "_struct_ncs_ens_gen.dom_id_1",
-      "_struct_ncs_ens_gen.dom_id_2",
-      "_struct_ncs_ens_gen.ens_id",
-      "_struct_ncs_ens_gen.oper_id"))
-
-    return ncs_ens_loop, ncs_dom_loop, ncs_dom_lim_loop, ncs_oper_loop, ncs_ens_gen_loop
 
   def cartesian_NCS_present(self):
     c_ncs = self.get_cartesian_NCS_manager()
