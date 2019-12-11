@@ -142,7 +142,7 @@ BOOST_PYTHON_MODULE(determine_unit_cell_ext)
       "It is assumed the arguments are primitive, Niggli reduced\n");
   def ("CS6Dist_in_G6_flatten",&cctbx::uctbx::CS6Dist_in_G6_flatten,(arg("G6")),
       "Obtain an NxN flex versa <double> containing S6 metrics from a list of N G6 vectors.\n"
-      "The resulting matrix is symmetric.\n" 
+      "The resulting matrix is symmetric.\n"
       "The G6 vectors [a.a, b.b, c.c, 2*b.c, 2*a.c, 2*a.b]\n"
       "are to be passed in as a flex.double containing 6*N elements.\n"
       "It is assumed the a,b,c vectors are primitive, Niggli reduced\n");
