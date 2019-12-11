@@ -334,6 +334,7 @@ class class_ncs_restraints_group_list(list):
             other_sites     = asu_site_cart.select(m_sel))
         cp.r = lsq_fit_obj.r
         cp.t = lsq_fit_obj.t
+        cp.rmsd = asu_site_cart.select(c_sel).rms_difference(lsq_fit_obj.other_sites_best_fit())
 
   def check_for_max_rmsd(self,
       sites_cart,
@@ -798,6 +799,7 @@ class class_ncs_restraints_group_list(list):
       "_refine_ls_restr_ncs.ncs_model_details"))
 
     self.update_str_selections_if_needed(hierarchy)
+    self.recalculate_ncs_transforms(hierarchy.atoms().extract_xyz())
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
     if len(self) == 0:
