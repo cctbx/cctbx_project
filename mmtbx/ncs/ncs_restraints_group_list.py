@@ -700,7 +700,7 @@ class class_ncs_restraints_group_list(list):
     def _consecutive_ranges(isel):
       '''
       Split selection into consecutive ranges that can be represented
-      by ncs_dom_lim. Maybe useful elsewwere.
+      by ncs_dom_lim. Maybe useful elsewhere.
       '''
       result = []
       start_index = 0
@@ -712,13 +712,17 @@ class class_ncs_restraints_group_list(list):
             and hierarchy.get_label_asym_id_iseq(isel[cur_index]) != \
                 hierarchy.get_label_asym_id_iseq(isel[cur_index-1])):
           cur_index += 1
-        if (hierarchy.get_label_asym_id_iseq(isel[cur_index]) != \
-                hierarchy.get_label_asym_id_iseq(isel[cur_index-1])
-            or abs(int(hierarchy.get_label_seq_id_iseq(isel[cur_index])) -\
-                   int(hierarchy.get_label_seq_id_iseq(isel[cur_index-1]))) > 1):
-          result.append(isel[start_index:cur_index-1])
-          start_index = cur_index
-        cur_index += 1
+        if cur_index < len(isel):
+          seq_id = hierarchy.get_label_seq_id_iseq(isel[cur_index])
+          seq_id_1 = hierarchy.get_label_seq_id_iseq(isel[cur_index-1])
+          seq_id = int(seq_id) if seq_id !='.' else 0
+          seq_id_1 = int(seq_id_1) if seq_id_1 !='.' else 0
+          if (hierarchy.get_label_asym_id_iseq(isel[cur_index]) != \
+                  hierarchy.get_label_asym_id_iseq(isel[cur_index-1])
+              or abs(seq_id - seq_id_1) > 1):
+            result.append(isel[start_index:cur_index-1])
+            start_index = cur_index
+          cur_index += 1
       result.append(isel[start_index:cur_index-1])
       return result
 

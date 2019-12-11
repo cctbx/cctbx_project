@@ -540,6 +540,10 @@ class info(object):
       # !!! Warning: "X-ray+Neutron" is not compliant with mmCIF dictionary:
       # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_exptl.method.html
       self._pdbx_refine_id = 'NEUTRON DIFFRACTION' if self.data_x is None else 'X-ray+Neutron'
+    if self._pdbx_refine_id == '':
+      # most likely electron microscopy, but checking scattering table anyway
+      if self.model.get_xray_structure().scattering_type_registry().last_table() == "electron":
+        self._pdbx_refine_id = 'ELECTRON MICROSCOPY'
 
 
   def show_remark_3(self, out = None):

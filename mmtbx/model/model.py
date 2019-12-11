@@ -973,7 +973,13 @@ class manager(object):
       # adding NCS information.
       # It is not clear why we dump cartesian NCS first, and if it is absent,
       # Torsion NCS next. What about NCS constraints?
-      if self.cartesian_NCS_present():
+      if self.ncs_constraints_present():
+        cif_block.update(self.get_ncs_groups().as_cif_block(
+            cif_block=cif_block,
+            hierarchy=self.get_hierarchy(),
+            scattering_type=self.model_statistics_info.get_pdbx_refine_id(),
+            ncs_type="NCS constraints"))
+      elif self.cartesian_NCS_present():
         cif_block.update(self.get_restraints_manager().cartesian_ncs_manager.\
             as_cif_block(
                 cif_block=cif_block,
