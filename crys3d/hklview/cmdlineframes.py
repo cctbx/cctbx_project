@@ -374,6 +374,7 @@ class HKLViewFrame() :
     self.params = self.currentphil.fetch().extract()
     self.viewer.viewerparams = self.params.NGL_HKLviewer.viewer
     self.viewer.params = self.params.NGL_HKLviewer
+    self.params.NGL_HKLviewer.bin_scene_label = 'Resolution'
     self.viewer.symops = []
     self.viewer.sg = None
     self.viewer.proc_arrays = []
@@ -396,7 +397,6 @@ class HKLViewFrame() :
   def GetNewCurrentPhilFromPython(self, pyphilobj, oldcurrentphil):
     newcurrentphil = oldcurrentphil.fetch(source = pyphilobj)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
-
     oldcolbintrshld = oldcurrentphil.extract().NGL_HKLviewer.scene_bin_thresholds
     newcolbintrshld = oldcolbintrshld
     if hasattr(pyphilobj.extract().NGL_HKLviewer, "scene_bin_thresholds"):
@@ -920,8 +920,8 @@ class HKLViewFrame() :
     if binvals:
       binvals = list( 1.0/flex.double(binvals) )
     else:
-      binvals = self.viewer.calc_bin_thresholds(bin_scene_label, nbins)
-    self.viewer.UpdateBinValues( binvals )
+      binvals, nuniquevalues = self.viewer.calc_bin_thresholds(bin_scene_label, nbins)
+    self.viewer.UpdateBinValues( binvals, nuniquevalues )
 
 
   def SetSceneBinLabel(self, bin_scene_label="Resolution"):

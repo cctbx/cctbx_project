@@ -431,7 +431,7 @@ class NGL_HKLViewer(QWidget):
 
 
   def closeEvent(self, event):
-    self.NGL_HKL_command('NGL_HKLviewer.action = is_terminating')
+    self.PhilToJsRender('NGL_HKLviewer.action = is_terminating')
     self.closing = True
     self.setVisible(False)
 
@@ -481,7 +481,7 @@ class NGL_HKLViewer(QWidget):
       #self.infostr = ""
       self.textInfo.setPlainText("")
       self.fileisvalid = False
-      self.NGL_HKL_command('NGL_HKLviewer.filename = "%s"' %fileName )
+      self.PhilToJsRender('NGL_HKLviewer.filename = "%s"' %fileName )
       self.MillerComboBox.clear()
       self.BinDataComboBox.clear()
       self.tncsvec = []
@@ -824,7 +824,7 @@ class NGL_HKLViewer(QWidget):
 
   def onFinalMouseSensitivity(self):
     val = self.mousemoveslider.value()/2000.0
-    self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.mouse_sensitivity = %f' %val)
+    self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.mouse_sensitivity = %f' %val)
 
 
   def onMouseSensitivity(self):
@@ -836,14 +836,14 @@ class NGL_HKLViewer(QWidget):
     if self.unfeedback:
       return
     self.ttipalpha = val
-    self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.tooltip_alpha = %f' %val)
+    self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.tooltip_alpha = %f' %val)
 
 
   def onShowTooltips(self,val):
     if self.ttipCheckBox.isChecked():
-      self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.show_tooltips = True")
+      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = True")
     else:
-      self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.show_tooltips = False")
+      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = False")
 
 
   def onFontsizeChanged(self, val):
@@ -855,57 +855,57 @@ class NGL_HKLViewer(QWidget):
 
   def onCameraPerspect(self,val):
     if self.cameraPerspectCheckBox.isChecked():
-      self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.camera_type = perspective")
+      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.camera_type = perspective")
     else:
-      self.NGL_HKL_command("NGL_HKLviewer.viewer.NGL.camera_type = orthographic")
+      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.camera_type = orthographic")
 
 
   def ExpandToP1(self):
     if self.expandP1checkbox.isChecked():
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.expand_to_p1 = True')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_to_p1 = True')
     else:
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.expand_to_p1 = False')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_to_p1 = False')
 
 
   def ExpandAnomalous(self):
     if self.expandAnomalouscheckbox.isChecked():
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.expand_anomalous = True')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_anomalous = True')
     else:
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.expand_anomalous = False')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_anomalous = False')
 
 
   def showSysAbsent(self):
     if self.sysabsentcheckbox.isChecked():
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.show_systematic_absences = True')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.show_systematic_absences = True')
     else:
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.show_systematic_absences = False')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.show_systematic_absences = False')
 
 
   def showMissing(self):
     if self.missingcheckbox.isChecked():
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.show_missing = True')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.show_missing = True')
     else:
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.show_missing = False')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.show_missing = False')
 
 
   def showOnlyMissing(self):
     if self.onlymissingcheckbox.isChecked():
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.show_only_missing = True')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.show_only_missing = True')
     else:
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.show_only_missing = False')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.show_only_missing = False')
 
 
   def showSlice(self):
     if self.showslicecheckbox.isChecked():
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.slice_mode = True')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.slice_mode = True')
       if self.expandP1checkbox.isChecked():
-        self.NGL_HKL_command("""NGL_HKLviewer.viewer {
+        self.PhilToJsRender("""NGL_HKLviewer.viewer {
                                                        expand_to_p1 = True
                                                        inbrowser = False
                                                     }
                              """)
       if self.expandAnomalouscheckbox.isChecked():
-        self.NGL_HKL_command("""NGL_HKLviewer.viewer {
+        self.PhilToJsRender("""NGL_HKLviewer.viewer {
                                                        expand_anomalous = True
                                                        inbrowser = False
                                                      }
@@ -913,7 +913,7 @@ class NGL_HKLViewer(QWidget):
       self.SliceLabelComboBox.setEnabled(True)
       self.sliceindexspinBox.setEnabled(True)
     else:
-      self.NGL_HKL_command("""NGL_HKLviewer.viewer {
+      self.PhilToJsRender("""NGL_HKLviewer.viewer {
                                                       slice_mode = False
                                                       inbrowser = True
                                                     }
@@ -929,12 +929,12 @@ class NGL_HKLViewer(QWidget):
     rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][4][0][i]
     rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][4][1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
-    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
+    self.PhilToJsRender("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
 
 
   def onSliceIndexChanged(self, val):
     self.sliceindex = val
-    self.NGL_HKL_command("NGL_HKLviewer.viewer.slice_index = %d" %self.sliceindex)
+    self.PhilToJsRender("NGL_HKLviewer.viewer.slice_index = %d" %self.sliceindex)
 
 
   def onBindataComboSelchange(self,i):
@@ -943,14 +943,14 @@ class NGL_HKLViewer(QWidget):
         bin_scene_label = str(self.BinDataComboBox.currentIndex()-1)
       else:
         bin_scene_label = "Resolution"
-      self.NGL_HKL_command("NGL_HKLviewer.bin_scene_label = %s" % bin_scene_label )
+      self.PhilToJsRender("NGL_HKLviewer.bin_scene_label = %s" % bin_scene_label )
       bin_opacitieslst = []
       for i in range(self.nbins):
         bin_opacitieslst.append((1.0, i)) #   ("1.0, %d" %i)
       self.bin_opacities = str(bin_opacitieslst)
       self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
       #self.OpaqueAllCheckbox.setTristate(false)
-      #self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
+      #self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
 
 
   def update_table_opacities(self, allalpha=None):
@@ -1027,7 +1027,7 @@ class NGL_HKLViewer(QWidget):
         bin_opacitieslst[bin] = (alpha, bin)
         self.bin_opacities = str(bin_opacitieslst)
         self.SetAllOpaqueCheckboxes()
-        self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
+        self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 
@@ -1054,7 +1054,7 @@ class NGL_HKLViewer(QWidget):
       for i in range(nbins):
         bin_opacitieslst.append((0.0, i))  #   ("0.0, %d" %i)
     self.bin_opacities = str(bin_opacitieslst)
-    self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
+    self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
     self.binstableitemchanges = False
     self.binstable_isready = True
 
@@ -1074,13 +1074,13 @@ class NGL_HKLViewer(QWidget):
   def onNbinsChanged(self, val):
     self.nbins = val
     if not self.updatingNbins: # avoid possible endless loop to cctbx
-      self.NGL_HKL_command("NGL_HKLviewer.nbins = %d" %self.nbins)
+      self.PhilToJsRender("NGL_HKLviewer.nbins = %d" %self.nbins)
 
 
   def onRadiiScaleChanged(self, val):
     if self.unfeedback:
       return
-    self.NGL_HKL_command("""
+    self.PhilToJsRender("""
       NGL_HKLviewer.viewer {
         nth_power_scale_radii = %f
         scale = %f
@@ -1092,7 +1092,7 @@ class NGL_HKLViewer(QWidget):
   def onPowerScaleChanged(self, val):
     if self.unfeedback:
       return
-    self.NGL_HKL_command("""
+    self.PhilToJsRender("""
       NGL_HKLviewer.viewer {
         nth_power_scale_radii = %f
         scale = %f
@@ -1105,10 +1105,10 @@ class NGL_HKLViewer(QWidget):
     if self.unfeedback:
       return
     if self.ManualPowerScalecheckbox.isChecked():
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
+      self.PhilToJsRender('NGL_HKLviewer.viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
       self.power_scale_spinBox.setEnabled(True)
     else:
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.nth_power_scale_radii = -1.0')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.nth_power_scale_radii = -1.0')
       self.power_scale_spinBox.setEnabled(False)
       #self.power_scale_spinBox.setValue(-1.0)
 
@@ -1349,13 +1349,13 @@ class NGL_HKLViewer(QWidget):
               str(self.clipParallelBtn.isChecked()), fracvectype, \
               str(self.fixedorientcheckbox.isChecked()) )
 
-      self.NGL_HKL_command(philstr)
+      self.PhilToJsRender(philstr)
     else:
       self.ClipBox.setDisabled(True)
       self.clipNormalBtn.setDisabled(True)
       self.clipParallelBtn.setDisabled(True)
       self.clipTNCSBtn.setDisabled(True)
-      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.clipwidth = None")
+      self.PhilToJsRender("NGL_HKLviewer.clip_plane.clipwidth = None")
 
 
 
@@ -1363,7 +1363,7 @@ class NGL_HKLViewer(QWidget):
     if self.unfeedback:
       return
     val = self.rotavecangle_slider.value()
-    self.NGL_HKL_command("""NGL_HKLviewer.clip_plane {
+    self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
     angle_around_vector = %f
     bequiet = False
 }""" %val)
@@ -1373,7 +1373,7 @@ class NGL_HKLViewer(QWidget):
     if self.unfeedback:
       return
     val = self.rotavecangle_slider.value()
-    self.NGL_HKL_command("""NGL_HKLviewer.clip_plane {
+    self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
     angle_around_vector = %f
     bequiet = True
 }""" %val)
@@ -1381,33 +1381,33 @@ class NGL_HKLViewer(QWidget):
 
   def onClipwidthChanged(self, val):
     if not self.unfeedback:
-      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.clipwidth = %f" %self.clipwidth_spinBox.value())
+      self.PhilToJsRender("NGL_HKLviewer.clip_plane.clipwidth = %f" %self.clipwidth_spinBox.value())
 
 
   def onHKLdistChanged(self, val):
     self.hkldistval = val
     if not self.unfeedback:
-      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.hkldist = %f" %self.hkldistval)
+      self.PhilToJsRender("NGL_HKLviewer.clip_plane.hkldist = %f" %self.hkldistval)
 
 
   def onHvecChanged(self, val):
     if not self.unfeedback:
-      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.h = %f" %self.hvec_spinBox.value())
+      self.PhilToJsRender("NGL_HKLviewer.clip_plane.h = %f" %self.hvec_spinBox.value())
 
 
   def onKvecChanged(self, val):
     if not self.unfeedback:
-      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.k = %f" %self.kvec_spinBox.value())
+      self.PhilToJsRender("NGL_HKLviewer.clip_plane.k = %f" %self.kvec_spinBox.value())
 
 
   def onLvecChanged(self, val):
     if not self.unfeedback:
-      self.NGL_HKL_command("NGL_HKLviewer.clip_plane.l = %f" %self.lvec_spinBox.value())
+      self.PhilToJsRender("NGL_HKLviewer.clip_plane.l = %f" %self.lvec_spinBox.value())
 
 
   def onFixedorient(self):
     if not self.unfeedback:
-      self.NGL_HKL_command('NGL_HKLviewer.viewer.NGL.fixorientation = %s' \
+      self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.fixorientation = %s' \
                                     %str(self.fixedorientcheckbox.isChecked()))
 
 
@@ -1484,11 +1484,11 @@ class NGL_HKLViewer(QWidget):
           self.MillerLabel3.setText("Example: 'newdata = data1 - flex.pow(data2); newsigmas= sigmas1 - data2 / sigmas1' ")
           self.makenewdataform.show()
         if strval=="tabulate_data":
-          self.NGL_HKL_command('NGL_HKLviewer.tabulate_miller_array_ids = "%s"' %str(idx))
+          self.PhilToJsRender('NGL_HKLviewer.tabulate_miller_array_ids = "%s"' %str(idx))
 
 
   def DisplayData(self, idx):
-    self.NGL_HKL_command("NGL_HKLviewer.viewer.scene_id = %d" %idx)
+    self.PhilToJsRender("NGL_HKLviewer.viewer.scene_id = %d" %idx)
     if self.fileisvalid:
       self.functionTabWidget.setEnabled(True)
       self.expandAnomalouscheckbox.setEnabled(True)
@@ -1511,7 +1511,7 @@ class NGL_HKLViewer(QWidget):
   def onMakeNewData(self):
     mtpl = (self.operationtxtbox.text(), self.newlabeltxtbox.text() ,
               self.operate_arrayidx1, self.operate_arrayidx2 )
-    self.NGL_HKL_command('NGL_HKLviewer.miller_array_operations = "[ %s ]"' %str(mtpl) )
+    self.PhilToJsRender('NGL_HKLviewer.miller_array_operations = "[ %s ]"' %str(mtpl) )
     self.makenewdataform.accept()
 
 
@@ -1597,7 +1597,6 @@ class NGL_HKLViewer(QWidget):
     self.Nbins_labeltxt.setText("Number of bins:")
 
     self.OpaqueAllCheckbox = QCheckBox()
-    #self.OpaqueAllCheckbox.setTristate()
     self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
     self.OpaqueAllCheckbox.setText("Show all data in bins")
     self.OpaqueAllCheckbox.clicked.connect(self.onOpaqueAll)
@@ -1664,7 +1663,7 @@ class NGL_HKLViewer(QWidget):
 
 
   def SpacegroupSelchange(self,i):
-    self.NGL_HKL_command("NGL_HKLviewer.spacegroup_choice = %d" %i)
+    self.PhilToJsRender("NGL_HKLviewer.spacegroup_choice = %d" %i)
 
 
   def find_free_port(self):
@@ -1702,7 +1701,7 @@ class NGL_HKLViewer(QWidget):
     #time.sleep(1)
 
 
-  def NGL_HKL_command(self, cmdstr):
+  def PhilToJsRender(self, cmdstr):
     if sys.version_info.major==3:
       self.socket.send(bytes(cmdstr,"utf-8"))
     else:

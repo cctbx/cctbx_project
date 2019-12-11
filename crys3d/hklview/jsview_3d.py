@@ -235,6 +235,7 @@ class hklview_3d:
     self.array_infostrs = []
     self.array_infotpls = []
     self.binstrs = []
+    self.nuniqueval = 0
     self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
     self.was_disconnected = False
@@ -367,7 +368,7 @@ class hklview_3d:
      or has_phil_path(diff_phil, "scene_bin_thresholds") \
      or has_phil_path(diff_phil, "bin_scene_label") \
      or has_phil_path(diff_phil, "nbins"):
-      self.binvals = self.calc_bin_thresholds(curphilparam.bin_scene_label, curphilparam.nbins)
+      self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.bin_scene_label, curphilparam.nbins)
       self.sceneisdirty = True
 
     if has_phil_path(diff_phil, "camera_type"):
@@ -744,9 +745,10 @@ class hklview_3d:
       uc = warray.unit_cell()
       indices = self.HKLscenes[int(self.viewerparams.scene_id)].indices
       binning = miller.binning( uc, nbins, indices, max(dres), min(dres) )
-      binvals = [ binning.bin_d_range(n)[0]  for n in binning.range_all() ]
+      binvals = [ binning.bin_d_range(n)[0] for n in binning.range_all() ]
       binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
       binvals = list( 1.0/flex.double(binvals) )
+      nuniquevalues = len(set(list(dres)))
     else:
       bindata = self.HKLscenes[int(self.binscenelabel)].data.deep_copy()
       selection = flex.sort_permutation( bindata )
@@ -756,17 +758,19 @@ class hklview_3d:
       for i,e in enumerate(bindata_sorted):
         idiv = int(nbins*float(i)/len(bindata_sorted))
         binvals[idiv] = e
+      nuniquevalues = len(set(list(bindata)))
     binvals.sort()
-    return binvals
+    return binvals, nuniquevalues
 
 
-  def UpdateBinValues(self, binvals = [] ):
+  def UpdateBinValues(self, binvals = [], nuniquevalues = 0):
     if binvals:
       binvals.sort()
       self.binvals = binvals
     else: # ensure default resolution interval includes all data by avoiding rounding errors
       self.binvals = [ 1.0/(self.miller_array.d_max_min()[0]*1.001),
                        1.0/(self.miller_array.d_max_min()[1]*0.999) ]
+    self.nuniqueval = nuniquevalues
 
 
   def MatchBinArrayToSceneArray(self, ibinarray):
@@ -1005,8 +1009,8 @@ function MakeHKL_Axis(mshape)
         self.bindata = self.HKLscenes[ibinarray].ampl
 
     self.nbinvalsboundaries = len(self.binvalsboundaries)
-    # Un-binnable data is scene data values where the bin array has no corresponding miller index
-    # Just put these in a separate bin and pay attention to the book keeping!
+    # Un-binnable data is scene data values where there's no matching reflection in the bin data
+    # Put these in a separate bin and be diligent with the book keeping!
     for ibin in range(self.nbinvalsboundaries+1): # adding the extra bin for un-binnable data
       colours.append([]) # colours and positions are 3 x size of data()
       positions.append([])
@@ -1021,8 +1025,14 @@ function MakeHKL_Axis(mshape)
           return ibin
         if d > binval and d <= self.binvalsboundaries[ibin+1]:
           return ibin
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       raise Sorry("Should never get here")
+
+    def getprecision(v1,v2):
+      diff = abs(v1-v2); precision = 1; e = 1
+      while diff*e < 1.0:
+        e *= 10
+        precision += 1
+      return precision
 
     if nrefls > 0 and self.bindata.size() != points.size():
       raise Sorry("Not the same number of reflections in bin-data and displayed data")
@@ -1045,6 +1055,8 @@ function MakeHKL_Axis(mshape)
     cntbin = 0
     self.binstrs = []
     self.bin_infotpls = []
+    if self.nuniqueval < self.params.nbins:
+      self.mprint("%d bins was requested but %s data has only %d unique value(s)!" %(self.params.nbins, colstr, self.nuniqueval), 0)
     for ibin in range(self.nbinvalsboundaries+1):
       mstr =""
       nreflsinbin = len(radii2[ibin])
@@ -1052,17 +1064,31 @@ function MakeHKL_Axis(mshape)
         continue
       bin2 = float("nan"); bin1= float("nan") # indicates un-binned data
       if ibin == self.nbinvalsboundaries:
-        mstr= "bin[%d] has %d un-matching reflections with %s in ]%2.3f; %2.3f]" %(cntbin, nreflsinbin, \
-                colstr, bin1, bin2)
+        mstr= "bin[%d] has %d reflections with no %s values (assigned to %2.3f)" %(cntbin, nreflsinbin, \
+                colstr, bin1)
+      precision = 3
       if ibin < (self.nbinvalsboundaries-1):
-        bin1= self.binvalsboundaries[ibin]
-        bin2= self.binvalsboundaries[ibin+1]
+        bin1 = self.binvalsboundaries[ibin]
+        bin2 = self.binvalsboundaries[ibin+1]
+        bin3 = bin2
+        if ibin < (self.nbinvalsboundaries-2):
+          bin3= self.binvalsboundaries[ibin+2]
         if colstr=="dres":
           bin1= 1.0/self.binvalsboundaries[ibin]
           bin2= 1.0/self.binvalsboundaries[ibin+1]
-        mstr= "bin[%d] has %d reflections with %s in ]%2.3f; %2.3f]" %(cntbin, nreflsinbin, \
-                colstr, bin1, bin2)
-      self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 )) )
+          if ibin < (self.nbinvalsboundaries-2):
+            bin3= 1.0/self.binvalsboundaries[ibin+2]
+        #calculate precision by comparing a bin value with bin value below and above it
+        prec1 = getprecision(bin1, bin2)
+        prec2 = prec1
+        if bin2 != bin3:
+          prec2 = getprecision(bin3, bin2)
+        precision = max(prec1, prec2)
+        # format bin values string with necessary decimal places (precision)
+        binformatstr = "]%2." + str(precision) + "f; %2." + str(precision) + "f]"
+        mstr= "bin[%d] has %d reflections with %s in " %(cntbin, nreflsinbin, colstr)
+        mstr += binformatstr %(bin1, bin2)
+      self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 ), precision) )
       self.binstrs.append(mstr)
       self.mprint(mstr, verbose=0)
 
@@ -2351,8 +2377,19 @@ mysocket.onmessage = function(e)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
+    lastviewmtrx = self.viewmtrx
     self.ReloadNGL()
     if not blankscene:
+
+      if self.WaitforHandshake():
+        time.sleep(0.2)
+        nwait = 0
+        while lastviewmtrx == self.viewmtrx and self.was_disconnected and nwait < self.handshakewait:
+          time.sleep(self.sleeptime)
+          nwait += self.sleeptime
+        self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
+        self.SendMsgToBrowser("ReOrient", lastviewmtrx)
+
       self.GetClipPlaneDistances()
       self.GetBoundingBox()
       self.OrigClipFar = self.clipFar
@@ -2386,11 +2423,10 @@ mysocket.onmessage = function(e)
         #raise Sorry(message)
       if "OrientationBeforeReload:" in message:
         #sleep(0.2)
-        self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
         if not self.isnewfile:
           self.viewmtrx = self.orientmessage[ self.orientmessage.find("\n") + 1: ]
           #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-          self.msgqueue.append( ("ReOrient", self.viewmtrx) )
+          #self.msgqueue.append( ("ReOrient", self.viewmtrx) )
         self.isnewfile = False
       if "ReturnClipPlaneDistances:" in message:
         datastr = message[ message.find("\n") + 1: ]
@@ -2490,7 +2526,7 @@ Distance: %s
 
   def WaitforHandshake(self, sec=5):
     nwait = 0
-    while not self.websockclient:
+    while not self.websockclient :
       time.sleep(self.sleeptime)
       nwait += self.sleeptime
       if nwait > sec:
@@ -2528,14 +2564,11 @@ Distance: %s
   def OnConnectWebsocketClient(self, client, server):
     self.websockclient = client
     self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
-    # reinstate volatile variables if accidentally being disconnected by a mouse drag or whatever
     if self.was_disconnected:
-      #self.set_volatile_params()
       self.was_disconnected = False
 
 
   def OnDisconnectWebsocketClient(self, client, server):
-    #self.websockclient = None
     self.mprint( "Browser disconnected:" + str( client ), verbose=1 )
     self.was_disconnected = True
 
