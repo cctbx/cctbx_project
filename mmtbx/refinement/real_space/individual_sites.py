@@ -24,6 +24,7 @@ class easy(object):
         geometry_restraints_manager,
         gradients_method="fd",
         selection=None,
+        selection_real_space=None,
         rms_bonds_limit=0.015,
         rms_angles_limit=2.0,
         max_iterations=150,
@@ -53,6 +54,7 @@ class easy(object):
     refine_object = simple(
       target_map                  = map_data,
       selection                   = selection,
+      selection_real_space        = selection_real_space,
       max_iterations              = max_iterations,
       geometry_restraints_manager = geometry_restraints_manager.geometry,
       states_accumulator          = states_accumulator,
