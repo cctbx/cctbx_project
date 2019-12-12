@@ -294,6 +294,7 @@ class hklview_3d:
     if 'UseOSBrowser' in kwds:
       self.UseOSBrowser = kwds['UseOSBrowser']
     self.viewmtrx = None
+    self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
     self.HKLscenesKey = ( 0, False,
                           self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
@@ -1842,6 +1843,8 @@ mysocket.onmessage = function(e)
       stage.viewerControls.orient(m);
       //stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
       stage.viewer.requestRender();
+      msg = getOrientMsg();
+      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
 
     if (msgtype === "Reload")
@@ -2377,18 +2380,17 @@ mysocket.onmessage = function(e)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
-    lastviewmtrx = self.viewmtrx
+    self.lastviewmtrx = self.viewmtrx
     self.ReloadNGL()
     if not blankscene:
-
       if self.WaitforHandshake():
         time.sleep(0.2)
         nwait = 0
-        while lastviewmtrx == self.viewmtrx and self.was_disconnected and nwait < self.handshakewait:
+        while self.lastviewmtrx == self.viewmtrx and nwait < self.handshakewait:
           time.sleep(self.sleeptime)
           nwait += self.sleeptime
-        self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
-        self.SendMsgToBrowser("ReOrient", lastviewmtrx)
+      #self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
+      #self.AddToBrowserMsgQueue("ReOrient", self.lastviewmtrx)
 
       self.GetClipPlaneDistances()
       self.GetBoundingBox()
@@ -2426,7 +2428,7 @@ mysocket.onmessage = function(e)
         if not self.isnewfile:
           self.viewmtrx = self.orientmessage[ self.orientmessage.find("\n") + 1: ]
           #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-          #self.msgqueue.append( ("ReOrient", self.viewmtrx) )
+          #self.AddToBrowserMsgQueue ("ReOrient", self.viewmtrx)
         self.isnewfile = False
       if "ReturnClipPlaneDistances:" in message:
         datastr = message[ message.find("\n") + 1: ]
@@ -2461,7 +2463,7 @@ mysocket.onmessage = function(e)
         else:
           hklid = hklid % len(hkls)
           ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
-        self.SendMsgToBrowser("ShowThisTooltip", ttip)
+        self.send_msg_to_browser("ShowThisTooltip", ttip)
     except Exception as e:
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
 
@@ -2526,12 +2528,17 @@ Distance: %s
 
   def WaitforHandshake(self, sec=5):
     nwait = 0
-    while not self.websockclient :
+    #while not self.websockclient :
+    while not self.browserisopen :
       time.sleep(self.sleeptime)
       nwait += self.sleeptime
       if nwait > sec:
         return False
     return True
+
+
+  def AddToBrowserMsgQueue(self, msgtype, msg=""):
+    self.msgqueue.append( (msgtype, msg) )
 
 
   def WebBrowserMsgQueue(self):
@@ -2543,12 +2550,11 @@ Distance: %s
           return
         if len(self.msgqueue):
           pendingmessagetype, pendingmessage = self.msgqueue[0]
-          self.SendMsgToBrowser(pendingmessagetype, pendingmessage)
-          while not (self.browserisopen and self.websockclient):
+          self.send_msg_to_browser(pendingmessagetype, pendingmessage)
+          while not self.browserisopen:  #self.websockclient:
             sleep(self.sleeptime)
             nwait += self.sleeptime
-            if nwait > self.handshakewait and self.browserisopen:
-              self.mprint("ERROR: No handshake from browser! Security settings may have to be adapted", verbose=0 )
+            if nwait > self.handshakewait:
               return
               #break
           self.msgqueue.remove( self.msgqueue[0] )
@@ -2558,6 +2564,7 @@ Distance: %s
     except Exception as e:
       self.mprint( str(e) + ", Restarting WebBrowserMsgQueue\n" \
                          + traceback.format_exc(limit=10), verbose=2)
+      self.websockclient = None
       self.WebBrowserMsgQueue()
 
 
@@ -2566,26 +2573,51 @@ Distance: %s
     self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
     if self.was_disconnected:
       self.was_disconnected = False
+    if self.lastviewmtrx:
+      self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
+      self.AddToBrowserMsgQueue("ReOrient", self.lastviewmtrx)
 
 
   def OnDisconnectWebsocketClient(self, client, server):
     self.mprint( "Browser disconnected:" + str( client ), verbose=1 )
     self.was_disconnected = True
+    #self.websockclient = None
 
 
-  def SendMsgToBrowser(self, msgtype, msg=""):
+  def send_msg_to_browser(self, msgtype, msg=""):
     message = u"" + msgtype + self.msgdelim + str(msg)
     if self.websockclient:
+    #if self.browserisopen:
       nwait = 0.0
       while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
         or "CurrentViewOrientation" in self.lastmsg or "AutoViewSet" in self.lastmsg or "ReOrient" in self.lastmsg):
         sleep(self.sleeptime)
         nwait += self.sleeptime
         if nwait > self.handshakewait and self.browserisopen:
+          self.mprint("ERROR: No handshake from browser! Security settings may have to be adapted", verbose=0 )
+          #return
           break
       self.server.send_message(self.websockclient, message )
     else:
       self.OpenBrowser()
+
+
+  def OpenBrowser(self):
+    #if not self.browserisopen:
+    if not (self.websockclient or self.browserisopen):
+      NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
+      htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
+      htmlstr += self.htmldiv
+      with open(self.hklfname, "w") as f:
+        f.write( htmlstr )
+      self.url = "file:///" + os.path.abspath( self.hklfname )
+      self.url = self.url.replace("\\", "/")
+      self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
+      if self.UseOSBrowser:
+        webbrowser.open(self.url, new=1)
+      self.SendInfoToGUI({ "html_url": self.url } )
+      self.isnewfile = False
+      self.browserisopen = True
 
 
   def StartWebsocket(self):
@@ -2595,6 +2627,7 @@ Distance: %s
     self.server.set_fn_new_client(self.OnConnectWebsocketClient)
     self.server.set_fn_client_left(self.OnDisconnectWebsocketClient)
     self.server.set_fn_message_received(self.OnWebsocketClientMessage)
+
     self.wst = threading.Thread(target=self.server.run_forever)
     self.wst.daemon = True
     self.wst.start()
@@ -2619,12 +2652,12 @@ Distance: %s
 
   def set_show_tooltips(self):
     msg = "%d" %int(self.ngl_settings.show_tooltips)
-    self.SendMsgToBrowser("DisplayTooltips", msg)
+    self.send_msg_to_browser("DisplayTooltips", msg)
 
 
   def set_tooltip_opacity(self):
     msg = "%f" %self.ngl_settings.tooltip_alpha
-    self.SendMsgToBrowser("TooltipOpacity", msg)
+    self.send_msg_to_browser("TooltipOpacity", msg)
 
 
   def SetOpacities(self, bin_opacities_str):
@@ -2644,38 +2677,21 @@ Distance: %s
     if bin > self.nbinvalsboundaries-1:
       return "There are only %d bins present\n" %self.nbinvalsboundaries
     msg = "%d, %f" %(bin, alpha)
-    self.SendMsgToBrowser("alpha", msg)
+    self.send_msg_to_browser("alpha", msg)
     return "Opacity %s set on bin[%s]\n" %(alpha, bin)
 
 
   def RedrawNGL(self):
-    self.msgqueue.append( ("Redraw", "") )
+    self.AddToBrowserMsgQueue("Redraw")
 
 
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
     self.mprint("Rendering JavaScript...", verbose=1)
-    self.msgqueue.append( ("Reload", "") )
+    self.AddToBrowserMsgQueue("Reload")
 
 
   def JavaScriptCleanUp(self):
-    self.msgqueue.append( ("JavaScriptCleanUp", "") )
-
-
-  def OpenBrowser(self):
-    if not self.browserisopen:
-      NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
-      htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
-      htmlstr += self.htmldiv
-      with open(self.hklfname, "w") as f:
-        f.write( htmlstr )
-      self.url = "file:///" + os.path.abspath( self.hklfname )
-      self.url = self.url.replace("\\", "/")
-      self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
-      if self.UseOSBrowser:
-        webbrowser.open(self.url, new=1)
-      self.SendInfoToGUI({ "html_url": self.url } )
-      self.isnewfile = False
-      self.browserisopen = True
+    self.AddToBrowserMsgQueue("JavaScriptCleanUp")
 
 
   def ExpandInBrowser(self, P1=True, friedel_mate=True):
@@ -2710,7 +2726,7 @@ Distance: %s
       str_rot = str_rot.replace("(", "")
       str_rot = str_rot.replace(")", "")
       msg += str_rot + "\n" # add rotation matrix to end of message string
-    self.msgqueue.append( (msgtype, msg) )
+    self.AddToBrowserMsgQueue(msgtype, msg)
     self.GetBoundingBox() # bounding box changes when the extent of the displayed lattice changes
     return retmsg
 
@@ -2770,8 +2786,8 @@ Distance: %s
     self.mprint("angles in yz plane to y,z axis are: %s, %s" %(angle_y_yzvec, angle_z_yzvec), verbose=2)
     self.mprint("angles to x,y,z axis are: %s, %s, %s" %(angle_x_svec, angle_y_svec, angle_z_svec ), verbose=2)
     self.mprint("deferred rendering vector from (%s, %s, %s) to (%s, %s, %s)" %(s1, s2, s3, t1, t2, t3), verbose=2)
-    self.msgqueue.append( ("AddVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
-         %tuple(svec1 + svec2 + [r, g, b, label, name]) ))
+    self.AddToBrowserMsgQueue("AddVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
+         %tuple(svec1 + svec2 + [r, g, b, label, name]) )
     return angle_x_xyvec, angle_z_svec
 
 
@@ -2820,7 +2836,7 @@ Distance: %s
 
 
   def SpinAnimate(self, r1, r2, r3):
-    self.msgqueue.append(("SpinAnimate", "%s, %s, %s" %(r1, r2, r3) ))
+    self.AddToBrowserMsgQueue("SpinAnimate", "%s, %s, %s" %(r1, r2, r3) )
 
 
   def DrawUnitCell(self, scale=1):
@@ -2901,13 +2917,13 @@ Distance: %s
 
   def SetMouseSpeed(self, trackspeed):
     msg = str(trackspeed)
-    self.msgqueue.append( ("SetMouseSpeed", msg) )
+    self.AddToBrowserMsgQueue("SetMouseSpeed", msg)
     #self.GetMouseSpeed() # TODO: fix wait time
 
 
   def GetMouseSpeed(self):
     self.ngl_settings.mouse_sensitivity = None
-    self.msgqueue.append( ("GetMouseSpeed", "") )
+    self.AddToBrowserMsgQueue("GetMouseSpeed", "")
     if self.WaitforHandshake():
       nwait = 0
       while self.ngl_settings.mouse_sensitivity is None and nwait < 5:
@@ -2919,14 +2935,14 @@ Distance: %s
     if cameraPosZ is None:
       cameraPosZ = self.cameraPosZ
     msg = str(near) + ", " + str(far) + ", " + str(cameraPosZ)
-    self.msgqueue.append( ("SetClipPlaneDistances", msg) )
+    self.AddToBrowserMsgQueue("SetClipPlaneDistances", msg)
 
 
   def GetClipPlaneDistances(self):
     self.clipNear = None
     self.clipFar = None
     self.cameraPosZ = None
-    self.msgqueue.append( ("GetClipPlaneDistances", "") )
+    self.AddToBrowserMsgQueue("GetClipPlaneDistances", "")
     if self.WaitforHandshake():
       nwait = 0
       while self.clipFar is None and nwait < self.handshakewait:
@@ -2941,7 +2957,7 @@ Distance: %s
     self.boundingX = 0.0
     self.boundingY = 0.0
     self.boundingZ = 0.0
-    self.msgqueue.append( ("GetBoundingBox", "") )
+    self.AddToBrowserMsgQueue("GetBoundingBox", "")
     if self.WaitforHandshake():
       nwait = 0
       while self.boundingX is None and nwait < self.handshakewait:
@@ -2953,31 +2969,31 @@ Distance: %s
 
 
   def RemoveVectors(self, reprname=""):
-    self.msgqueue.append( ("RemoveVectors", reprname ))
+    self.AddToBrowserMsgQueue("RemoveVectors", reprname )
 
 
   def SetAutoView(self):
-    #self.msgqueue.append( ("SetAutoView", "" ))
-    self.SendMsgToBrowser("SetAutoView")
+    #self.AddToBrowserMsgQueue("SetAutoView" )
+    self.send_msg_to_browser("SetAutoView")
     self.ReOrientStage()
 
 
   def TestNewFunction(self):
-    self.msgqueue.append( ("Testing", "" ))
+    self.AddToBrowserMsgQueue("Testing")
     #self.parent.update_settings()
 
 
   def DisableMouseRotation(self): # disable rotating with the mouse
-    self.SendMsgToBrowser("DisableMouseRotation")
+    self.send_msg_to_browser("DisableMouseRotation")
 
 
   def EnableMouseRotation(self): # enable rotating with the mouse
-    self.SendMsgToBrowser("EnableMouseRotation")
+    self.send_msg_to_browser("EnableMouseRotation")
 
 
   def ReOrientStage(self):
     if self.viewmtrx:
-      self.SendMsgToBrowser("ReOrient", self.viewmtrx)
+      self.send_msg_to_browser("ReOrient", self.viewmtrx)
 
 
   def Euler2RotMatrix(self, eulerangles):
@@ -2996,7 +3012,7 @@ Distance: %s
     msg = str_rot + ", quiet\n"
     if not quietbrowser:
       msg = str_rot + ", verbose\n"
-    self.msgqueue.append( ("RotateStage", msg) )
+    self.AddToBrowserMsgQueue("RotateStage", msg)
 
 
   def TranslateHKLpoints(self, h, k, l, mag):
@@ -3018,7 +3034,7 @@ Distance: %s
     str_vec = str_vec.replace("(", "")
     str_vec = str_vec.replace(")", "")
     msg = str_vec + "\n"
-    self.msgqueue.append( ("TranslateHKLpoints", msg) )
+    self.AddToBrowserMsgQueue("TranslateHKLpoints", msg)
 
 
   def InjectNewReflections(self, proc_array):
@@ -3037,7 +3053,7 @@ Distance: %s
       strdata += "%s,%s,%s,%s,%s,%s,%s," % roundoff(ftuple, 2)
     strdata = strdata[:-1] # avoid the last comma
     self.isinjected = True
-    self.msgqueue.append( ("InjectNewReflections", strdata) )
+    self.AddToBrowserMsgQueue("InjectNewReflections", strdata)
 
 
 
