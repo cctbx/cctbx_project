@@ -1281,7 +1281,7 @@ class manager(manager_mixin):
       print(f4, file=log)
     #
     if(self.russ is not None):
-      if(self.russ.b_cart is not None):
+      if(self.russ.b_cart is not None and self.twin_law is None):
         b_cart = " ".join(["%6.4f"%b for b in self.russ.b_cart])
         print("  k_sol: %6.4f"%self.russ.k_sol[0], file=log)
         print("  b_sol: %6.4f"%self.russ.b_sol[0], file=log)
