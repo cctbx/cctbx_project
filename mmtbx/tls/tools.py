@@ -110,8 +110,74 @@ def show_times(out = None):
   return total
 
 class tls_groups(object):
-  def __init__(self, tlsos = None, selection_strings = None):
-    self.tlsos, self.selection_strings = tlsos, selection_strings
+  def __init__(self, tlsos = None, selection_strings = None, iselections=None):
+    self.tlsos = tlsos
+    self.selection_strings = selection_strings
+    self.iselections = iselections
+
+  def as_cif_block(self, hierarchy, cif_block=None):
+    import iotbx.cif.model
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+
+    if (len(self.selection_strings) == 0):
+      assert len(self.tlsos) == 1
+      self.selection_strings = ["all"]
+    else:
+      assert len(self.tlsos) == len(self.selection_strings), "%d, %d" % (
+            len(self.tlsos), len(self.selection_strings))
+      # assert len(self.selection_strings) == len(self.iselections)
+
+    tls_loop = iotbx.cif.model.loop(header=(
+      #"_pdbx_refine_tls.pdbx_refine_id",
+      "_pdbx_refine_tls.id",
+      "_pdbx_refine_tls.details",
+      "_pdbx_refine_tls.method",
+      "_pdbx_refine_tls.origin_x",
+      "_pdbx_refine_tls.origin_y",
+      "_pdbx_refine_tls.origin_z",
+      "_pdbx_refine_tls.T[1][1]",
+      "_pdbx_refine_tls.T[2][2]",
+      "_pdbx_refine_tls.T[3][3]",
+      "_pdbx_refine_tls.T[1][2]",
+      "_pdbx_refine_tls.T[1][3]",
+      "_pdbx_refine_tls.T[2][3]",
+      "_pdbx_refine_tls.L[1][1]",
+      "_pdbx_refine_tls.L[2][2]",
+      "_pdbx_refine_tls.L[3][3]",
+      "_pdbx_refine_tls.L[1][2]",
+      "_pdbx_refine_tls.L[1][3]",
+      "_pdbx_refine_tls.L[2][3]",
+      "_pdbx_refine_tls.S[1][1]",
+      "_pdbx_refine_tls.S[1][2]",
+      "_pdbx_refine_tls.S[1][3]",
+      "_pdbx_refine_tls.S[2][1]",
+      "_pdbx_refine_tls.S[2][2]",
+      "_pdbx_refine_tls.S[2][3]",
+      "_pdbx_refine_tls.S[3][1]",
+      "_pdbx_refine_tls.S[3][2]",
+      "_pdbx_refine_tls.S[3][3]",
+    ))
+
+    tls_group_loop = iotbx.cif.model.loop(header=(
+      #_pdbx_refine_tls_group.pdbx_refine_id
+      "_pdbx_refine_tls_group.id",
+      "_pdbx_refine_tls_group.refine_tls_id",
+      "_pdbx_refine_tls_group.selection",
+      "_pdbx_refine_tls_group.selection_details",
+    ))
+    for i_tls, (tlso, selection_string) in enumerate(zip(self.tlsos, self.selection_strings)):
+      tls_row = [i_tls+1, "?", "refined"]
+      tls_row.extend(list(tlso.origin))
+      tls_row.extend(list(tlso.t))
+      tls_row.extend(list(tlso.l))
+      tls_row.extend(list(tlso.s))
+      tls_loop.add_row(tls_row)
+      tls_group_loop.add_row((i_tls+1, i_tls+1, "?", selection_string))
+
+    cif_block.add_loop(tls_loop)
+    cif_block.add_loop(tls_group_loop)
+    return cif_block
 
 def remark_3_tls(tlsos, selection_strings, out = None):
   if(out is None): out = sys.stdout

@@ -19,7 +19,6 @@ from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 from iotbx.pdb.atom_selection import AtomSelectionError
 from iotbx.pdb.misc_records_output import link_record_output
 from iotbx.cif import category_sort_function
-from iotbx.pdb.mmcif import tls_as_cif_block
 
 from cctbx.array_family import flex
 from cctbx import xray
@@ -1559,12 +1558,13 @@ class manager(object):
   def determine_tls_groups(self, selection_strings, generate_tlsos):
     self.tls_groups = tls_tools.tls_groups(selection_strings = selection_strings)
     if generate_tlsos is not None:
-
+      # generate_tlsos here are actually [isel, isel, ..., isel]
       tlsos = tls_tools.generate_tlsos(
         selections     = generate_tlsos,
         xray_structure = self._xray_structure,
         value          = 0.0)
       self.tls_groups.tlsos = tlsos
+      self.tls_groups.iselections = generate_tlsos
 
   def tls_groups_as_pdb(self):
     out = StringIO()
@@ -1577,9 +1577,11 @@ class manager(object):
 
   def tls_groups_as_cif_block(self, cif_block=None):
     if self.tls_groups is not None:
-      cif_block = tls_as_cif_block(
-        tlsos=self.tls_groups.tlsos,
-        selection_strings=self.tls_groups.selection_strings,
+      # print (self.tls_groups, dir(self.tls_groups))
+      # print (self.tls_groups.tlsos, dir(self.tls_groups.tlsos[0]))
+      # STOP()
+      cif_block = self.tls_groups.as_cif_block(
+        hierarchy=self.get_hierarchy(),
         cif_block=cif_block)
     return cif_block
 
