@@ -36,7 +36,11 @@ def compare_derivs(out, ana, fin, expect_failure, eps=1.e-6):
   if (not expect_failure):
     assert approx_equal(ana*s, fin*s, eps=eps)
   else:
-    approx_equal(ana*s, fin*s, eps=eps)
+    # This is to suppress output because it confuses testing functionality.
+    # Apparently, it was never working and development was stopped long time ago.
+    # To continue development/debugging - uncomment approx_equal
+    pass
+    # approx_equal(ana*s, fin*s, eps=eps)
   print(file=out)
 
 def check_derivs(out, a, expect_failure=False):
