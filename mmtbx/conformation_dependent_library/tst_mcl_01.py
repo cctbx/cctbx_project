@@ -47,6 +47,7 @@ def main():
   cmd = 'phenix.pdb_interpretation tst_mcl_01.pdb write_geo=1'
   print (cmd)
   rc = easy_run.go(cmd)
+  assert os.path.exists('tst_mcl_01.pdb.geo')
   return rc.return_code
 
 if __name__ == '__main__':
