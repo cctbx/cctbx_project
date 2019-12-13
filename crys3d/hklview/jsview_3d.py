@@ -173,6 +173,7 @@ class hklview_3d:
     self.tooltipstringsdict = {}
     self.d_min = None
     self.scene = None
+    self.lastscene_id = None
     self.merge = False
     self.NGLscriptstr = ""
     self.camera_type = "orthographic"
@@ -1485,6 +1486,25 @@ function addDivBox(txt, t, l, w, h, bgcolour='rgba(255.0, 255.0, 255.0, 0.0)')
   addElement(divbox);
 }
 
+var dbgmsg = "";
+// debug message window
+var debugmessage = document.createElement("div");
+Object.assign(debugmessage.style, {
+  position: "absolute",
+  zIndex: 10,
+  pointerEvents: "none",
+  backgroundColor: "rgba(255, 255, 255, 0.8 )",
+  color: "black",
+  padding: "0.1em",
+  fontFamily: "sans-serif",
+  bottom: "10px",
+  left: "10px",
+  fontSize: "smaller",
+  display: "block"
+});
+
+
+
 // Microsoft Edge users follow instructions on
 // https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
 // to enable websocket connection
@@ -1526,15 +1546,19 @@ function WebsockSendMsg(msg)
 
 mysocket.onopen = function(e)
 {
-  WebsockSendMsg('%s now connected via websocket to ' + pagename + '\\n');
+  msg = '%s now connected via websocket to ' + pagename + '\\n';
+  WebsockSendMsg(msg);
+  dbgmsg =msg;
   rerendered = false;
-  ReRender();
+  //ReRender();
 };
 
 
 mysocket.onclose = function(e)
 {
-  WebsockSendMsg('%s now disconnecting from websocket ' + pagename + '\\n');
+  msg = '%s now disconnecting from websocket ' + pagename + '\\n';
+  WebsockSendMsg(msg);
+  dbgmsg =msg;
 };
 
 
@@ -1553,11 +1577,11 @@ async function ReRender()
   }
 }
 
-
 // Log errors to debugger of your browser
 mysocket.onerror = function(error)
 {
   console.log('WebSocket Error ' + error);
+  debugmessage.innerText = 'WebSocket Error ' + error;
 };
 
 
@@ -1616,9 +1640,10 @@ window.addEventListener( 'resize',
 );
 
 
-///var script=document.createElement('script');
-//script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
-//document.head.appendChild(script);
+var script=document.createElement('script');
+script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
+document.head.appendChild(script);
+
 
 
 // define tooltip element
@@ -1672,7 +1697,8 @@ function HKLscene()
 {
   shape = new NGL.Shape('shape');
   //vectorshape = new NGL.Shape('vectorshape');
-  stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false,
+  stage = new NGL.Stage('viewport', { backgroundColor: "grey",
+                                      tooltip:false, // create our own tooltip from a div element
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
 
@@ -1693,10 +1719,11 @@ function HKLscene()
   shapeComp.autoView();
   repr.update();
 
-
   // if some radii are negative draw them with wireframe
   %s
   %s
+
+  stage.viewer.container.appendChild(debugmessage);
 
   // avoid NGL zoomFocus messing up clipplanes positions. So reassign those signals to zoomDrag
   stage.mouseControls.remove("drag-shift-right");
@@ -1705,6 +1732,7 @@ function HKLscene()
   stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
 
   stage.viewer.requestRender();
+  debugmessage.innerText = dbgmsg;
 }
 
 
@@ -2347,7 +2375,7 @@ mysocket.onmessage = function(e)
     {
       if (shapeComp != null) // workaround for QTWebEngine bug sometimes failing to render scene
         shapeComp.autoView();
-      WebsockSendMsg( 'AutoViewSet ' + pagename );
+      WebsockSendMsg('AutoViewSet ' + pagename);
     }
 
     if (msgtype === "Testing")
@@ -2364,7 +2392,8 @@ mysocket.onmessage = function(e)
       stage.viewer.requestRender();
       */
     }
-
+    WebsockSendMsg('Received message: ' + msgtype );
+    debugmessage.innerText = dbgmsg;
   }
 
   catch(err)
@@ -2380,17 +2409,15 @@ mysocket.onmessage = function(e)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
-    self.lastviewmtrx = self.viewmtrx
+    #self.lastviewmtrx = self.viewmtrx
     self.ReloadNGL()
     if not blankscene:
       if self.WaitforHandshake():
-        time.sleep(0.2)
+        #time.sleep(0.2)
         nwait = 0
         while self.lastviewmtrx == self.viewmtrx and nwait < self.handshakewait:
           time.sleep(self.sleeptime)
           nwait += self.sleeptime
-      #self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
-      #self.AddToBrowserMsgQueue("ReOrient", self.lastviewmtrx)
 
       self.GetClipPlaneDistances()
       self.GetBoundingBox()
@@ -2398,6 +2425,7 @@ mysocket.onmessage = function(e)
       self.OrigClipNear = self.clipNear
       self.SetMouseSpeed( self.ngl_settings.mouse_sensitivity )
     self.sceneisdirty = False
+    self.lastscene_id = self.viewerparams.scene_id
 
 
   def OnWebsocketClientMessage(self, client, server, message):
@@ -2406,74 +2434,74 @@ mysocket.onmessage = function(e)
     try:
       if message != "":
         if "Orientation" in message:
-          self.orientmessage = message
-          self.ProcessOrientationMessage()
+          self.ProcessOrientationMessage(message)
+        elif 'Received message:' in message:
+          self.mprint( message, verbose=2)
+        elif "websocket" in message:
+          self.mprint( message, verbose=1)
+        elif "AutoViewSet" in message:
+          self.set_volatile_params()
+        elif "JavaScriptCleanUp:" in message:
+          self.mprint( message, verbose=1)
+          self.StopThreads()
+        elif "JavaScriptError:" in message:
+          self.mprint( message, verbose=0)
+        elif "Expand" in message:
+          self.mprint( message, verbose=0)
+          #raise Sorry(message)
+        elif "ReturnClipPlaneDistances:" in message:
+          datastr = message[ message.find("\n") + 1: ]
+          lst = datastr.split(",")
+          flst = [float(e) for e in lst]
+          self.clipNear = flst[0]
+          self.clipFar = flst[1]
+          self.cameraPosZ = flst[2]
+        elif "ReturnBoundingBox:" in message:
+          datastr = message[ message.find("\n") + 1: ]
+          lst = datastr.split(",")
+          flst = [float(e) for e in lst]
+          self.boundingX = flst[0]
+          self.boundingY = flst[1]
+          self.boundingZ = flst[2]
+        elif "ReturnMouseSpeed" in message:
+          datastr = message[ message.find("\n") + 1: ]
+          lst = datastr.split(",")
+          flst = [float(e) for e in lst]
+          if flst[0] is not None and not cmath.isnan(flst[0]):
+            self.ngl_settings.mouse_sensitivity = flst[0]
+        elif "tooltip_id:" in message:
+          ttipids = message.split("tooltip_id:")[1]
+          hklid = eval(message.split("tooltip_id:")[1])[0]
+          sym_id = eval(message.split("tooltip_id:")[1])[1]
+          is_friedel_mate = eval(message.split("tooltip_id:")[1])[2]
+          rotmx = None
+          hkls = self.scene.indices
+          if not is_friedel_mate:
+            ttip = self.GetTooltipOnTheFly(hklid, sym_id)
+          else:
+            hklid = hklid % len(hkls)
+            ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
+          self.send_msg_to_browser("ShowThisTooltip", ttip)
         else:
-          self.mprint( message, verbose=4)
+          if "Ready " in message:
+            self.mprint( message, verbose=5)
         self.lastmsg = message
-      if "websocket" in message:
-        self.mprint( message, verbose=1)
-      if "AutoViewSet" in message:
-        self.set_volatile_params()
-      if "JavaScriptCleanUp:" in message:
-        self.mprint( message, verbose=1)
-        self.StopThreads()
-      if "JavaScriptError:" in message:
-        self.mprint( message, verbose=0)
-      if "Expand" in message:
-        self.mprint( message, verbose=0)
-        #raise Sorry(message)
-      if "OrientationBeforeReload:" in message:
-        #sleep(0.2)
-        if not self.isnewfile:
-          self.viewmtrx = self.orientmessage[ self.orientmessage.find("\n") + 1: ]
-          #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-          #self.AddToBrowserMsgQueue ("ReOrient", self.viewmtrx)
-        self.isnewfile = False
-      if "ReturnClipPlaneDistances:" in message:
-        datastr = message[ message.find("\n") + 1: ]
-        lst = datastr.split(",")
-        flst = [float(e) for e in lst]
-        self.clipNear = flst[0]
-        self.clipFar = flst[1]
-        self.cameraPosZ = flst[2]
-      if "ReturnBoundingBox:" in message:
-        datastr = message[ message.find("\n") + 1: ]
-        lst = datastr.split(",")
-        flst = [float(e) for e in lst]
-        self.boundingX = flst[0]
-        self.boundingY = flst[1]
-        self.boundingZ = flst[2]
-      if "ReturnMouseSpeed" in message:
-        datastr = message[ message.find("\n") + 1: ]
-        lst = datastr.split(",")
-        flst = [float(e) for e in lst]
-        if flst[0] is not None and not cmath.isnan(flst[0]):
-          self.ngl_settings.mouse_sensitivity = flst[0]
-      if "tooltip_id:" in message:
-        ttipids = message.split("tooltip_id:")[1]
-
-        hklid = eval(message.split("tooltip_id:")[1])[0]
-        sym_id = eval(message.split("tooltip_id:")[1])[1]
-        is_friedel_mate = eval(message.split("tooltip_id:")[1])[2]
-        rotmx = None
-        hkls = self.scene.indices
-        if not is_friedel_mate:
-          ttip = self.GetTooltipOnTheFly(hklid, sym_id)
-        else:
-          hklid = hklid % len(hkls)
-          ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
-        self.send_msg_to_browser("ShowThisTooltip", ttip)
     except Exception as e:
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
 
 
-  def ProcessOrientationMessage(self):
-    if self.orientmessage is None:
+  def ProcessOrientationMessage(self, message):
+    if message.find("NaN")>=0 or message.find("undefined")>=0:
       return
-    if self.orientmessage.find("NaN")>=0 or self.orientmessage.find("undefined")>=0:
-      return
-    self.viewmtrx = self.orientmessage[ self.orientmessage.find("\n") + 1: ]
+    if "OrientationBeforeReload:" in message:
+      #sleep(0.2)
+      if not self.isnewfile:
+        self.viewmtrx = message[ message.find("\n") + 1: ]
+        self.lastviewmtrx = self.viewmtrx
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+        #self.AddToBrowserMsgQueue ("ReOrient", self.viewmtrx)
+      self.isnewfile = False
+    self.viewmtrx = message[ message.find("\n") + 1: ]
     lst = self.viewmtrx.split(",")
     flst = [float(e) for e in lst]
     ScaleRotMx = matrix.sqr( (flst[0], flst[4], flst[8],
@@ -2573,7 +2601,7 @@ Distance: %s
     self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
     if self.was_disconnected:
       self.was_disconnected = False
-    if self.lastviewmtrx:
+    if self.lastviewmtrx: # and self.lastscene_id:
       self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
       self.AddToBrowserMsgQueue("ReOrient", self.lastviewmtrx)
 
@@ -2616,8 +2644,8 @@ Distance: %s
       if self.UseOSBrowser:
         webbrowser.open(self.url, new=1)
       self.SendInfoToGUI({ "html_url": self.url } )
-      self.isnewfile = False
       self.browserisopen = True
+      self.isnewfile = False
 
 
   def StartWebsocket(self):

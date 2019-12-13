@@ -384,6 +384,8 @@ class HKLViewFrame() :
       self.viewer.params.viewer.scene_id = 0
       self.viewer.DrawNGLJavaScript( blankscene=True)
     self.viewer.miller_array = None
+    self.viewer.isnewfile = True
+    self.viewer.lastviewmtrx = None
     return self.viewer.params
 
 
@@ -443,8 +445,7 @@ class HKLViewFrame() :
         phl = self.ResetPhilandViewer(self.currentphil)
         if not self.load_reflections_file(phl.filename):
           return False
-        #else:
-        #  self.ResetPhilandViewer(diff_phil)
+        self.viewer.lastscene_id = phl.viewer.scene_id
 
       if view_3d.has_phil_path(diff_phil, "scene_id") \
        or view_3d.has_phil_path(diff_phil, "merge_data") \
