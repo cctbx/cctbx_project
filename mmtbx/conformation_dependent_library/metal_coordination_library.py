@@ -71,6 +71,13 @@ def get_metal_coordination_proxies(pdb_hierarchy,
                                    log=sys.stdout,
                                    add_segid=None,
                                    verbose=False):
+  def is_residue_already_linked_to_metal(linked, atom):
+    for link in linked:
+      if link.parent().id_str()==atom.parent().id_str():
+        break
+    else:
+      return False
+    return True
   hbond_distance_cutoff = 3
   if params is not None:
     hbond_distance_cutoff = params.hbond_distance_cutoff
@@ -103,7 +110,10 @@ def get_metal_coordination_proxies(pdb_hierarchy,
         mbonds.setdefault(metal.i_seq, {})
         mbonds[metal.i_seq]['metal'] = metal
         mbonds[metal.i_seq].setdefault('others', [])
-        mbonds[metal.i_seq]['others'].append(other)
+        if not is_residue_already_linked_to_metal(mbonds[metal.i_seq]['others'],
+                                                  other,
+                                                  ):
+          mbonds[metal.i_seq]['others'].append(other)
     i += 1
   pairs = []
   if verbose:
@@ -160,6 +170,7 @@ def get_proxies(coordination):
         hiss.append(atom)
     key = (len(cyss), len(hiss))
     metal_name = atoms['metal'].name.strip()
+    # if key not in database[metal_name]: continue
     ideals = database[metal_name][key]
     if not atoms: continue #return None, None
     for a1, a2 in _bond_generator(atoms):
