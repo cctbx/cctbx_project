@@ -898,6 +898,17 @@ class _():
     if alt_id == '': alt_id = '.'
     return alt_id
 
+  def get_auth_asym_id_iseq(self, iseq):
+    assert self.atoms_size() > iseq, "%d, %d" % (self.atoms_size(), iseq)
+    return self.get_auth_asym_id(self.atoms()[iseq].parent().parent().parent())
+
+  def get_auth_asym_id(self, chain):
+    auth_asym_id = chain.id
+    if chain.atoms()[0].segid.strip() != '':
+      auth_asym_id = chain.atoms()[0].segid.strip()
+    if auth_asym_id.strip() == '': auth_asym_id = '.'
+    return auth_asym_id
+
   def get_label_asym_id_iseq(self, iseq):
     assert self.atoms_size() > iseq
     return self.get_label_asym_id(self.atoms()[iseq].parent())[1]
@@ -922,6 +933,13 @@ class _():
       return self._lai_lookup[cmi], self.label_asym_ids[self._lai_lookup[cmi]]
     self.number_label_asym_id+=1
     return self.number_label_asym_id, self.label_asym_ids[self.number_label_asym_id]
+
+  def get_auth_seq_id_iseq(self, iseq):
+    assert self.atoms_size() > iseq
+    return self.get_auth_seq_id(self.atoms()[iseq].parent().parent())
+
+  def get_auth_seq_id(self, rg):
+    return rg.resseq.strip()
 
   def get_label_seq_id_iseq(self, iseq):
     assert self.atoms_size() > iseq, "%d, %d" % (self.atoms_size(), iseq)
@@ -1072,12 +1090,9 @@ class _():
       model_id = model.id
       if model_id == '': model_id = '1'
       for chain in model.chains():
-        auth_asym_id = chain.id
-        if chain.atoms()[0].segid.strip() != '':
-          auth_asym_id = chain.atoms()[0].segid.strip()
-        if auth_asym_id.strip() == '': auth_asym_id = '.'
+        auth_asym_id = self.get_auth_asym_id(chain)
         for residue_group in chain.residue_groups():
-          seq_id = residue_group.resseq.strip()
+          seq_id = self.get_auth_seq_id(residue_group)
           icode = residue_group.icode
           if icode == ' ' or icode == '': icode = '?'
           for atom_group in residue_group.atom_groups():
