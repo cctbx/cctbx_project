@@ -113,9 +113,9 @@ implementation should cover most practical situations.
       child_stdin, child_stdout, child_stderr = os.popen3(command,"t",bufsize)
     if (stdin_lines is not None):
       if (not isinstance(stdin_lines, str)):
-        stdin_lines = os.linesep.join(stdin_lines)
+        stdin_lines = '\n'.join(stdin_lines)
         if (len(stdin_lines) != 0):
-          stdin_lines += os.linesep
+          stdin_lines += '\n'
       child_stdin.write(stdin_lines)
     child_stdin.close()
     if (stdout_splitlines):
@@ -159,9 +159,9 @@ class fully_buffered_subprocess(fully_buffered_base):
       command = ('%s exec ' % macos_dyld()) + command
     if (stdin_lines is not None):
       if (not isinstance(stdin_lines, str)):
-        stdin_lines = os.linesep.join(stdin_lines)
+        stdin_lines = '\n'.join(stdin_lines)
         if (len(stdin_lines) != 0):
-          stdin_lines += os.linesep
+          stdin_lines += '\n'
     if (join_stdout_stderr):
       stderr = subprocess.STDOUT
     else:
@@ -345,7 +345,7 @@ def exercise(args=None):
   if verbose: print(result.stdout_lines)
   assert result.stdout_lines == ["7"]
   command = command = pyexe \
-    + ' -c "import sys; print(len(sys.stdin.read().splitlines()))"'
+    + ' -c "import sys; print(len(list(filter(bool, sys.stdin.read().splitlines()))))"'
   result = fb(command=command).raise_if_errors()
   if verbose: print(result.stdout_lines)
   assert result.stdout_lines == ["0"]
@@ -401,6 +401,7 @@ def exercise(args=None):
   result = fb(
     command=command, stdin_lines=[str(i) for i in range(n_lines_o)]) \
     .raise_if_errors()
+  result.stdout_lines = list(filter(bool, result.stdout_lines))
   if verbose: print(result.stdout_lines[:5], result.stdout_lines[-5:])
   assert len(result.stdout_lines) == n_lines_o
   assert result.stdout_lines[:5] == ["0","1","2","3","4"]
@@ -411,6 +412,7 @@ def exercise(args=None):
   result = fb(
     command=command, stdin_lines=[str(i) for i in range(n_lines_e,0,-1)])
   assert len(result.stdout_lines) == 0
+  result.stderr_lines = list(filter(bool, result.stderr_lines))
   if verbose: print(result.stderr_lines[:5], result.stderr_lines[-5:])
   assert len(result.stderr_lines) == n_lines_e
   assert result.stderr_lines[:5] == [str(s)
@@ -421,13 +423,15 @@ import sys, os
 lines = sys.stdin.read()
 sys.stdout.write(lines)
 sys.stdout.flush()
-lines = lines.splitlines()[:%d]
+lines = list(filter(bool, lines.splitlines()))[:%d]
 lines.reverse()
 nl = chr(%d)
 sys.stderr.write(nl.join(lines)+nl)
 sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
   result = fb(
     command=command, stdin_lines=[str(i) for i in range(n_lines_o)])
+  result.stdout_lines = list(filter(bool, result.stdout_lines))
+  result.stderr_lines = list(filter(bool, result.stderr_lines))
   if verbose: print(result.stdout_lines[:5], result.stdout_lines[-5:])
   if verbose: print(result.stderr_lines[:5], result.stderr_lines[-5:])
   assert len(result.stdout_lines) == n_lines_o
@@ -440,6 +444,7 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
   assert result.stderr_lines[-5:] == ["4","3","2","1","0"]
   result = go(
     command=command, stdin_lines=[str(i) for i in range(n_lines_o)])
+  result.stdout_lines = list(filter(bool, result.stdout_lines))
   if verbose: print(result.stdout_lines[:5], result.stdout_lines[-5:])
   assert len(result.stdout_lines) == n_lines_o + n_lines_e
   assert result.stdout_lines[:5] == ["0","1","2","3","4"]
