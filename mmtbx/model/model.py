@@ -1577,12 +1577,10 @@ class manager(object):
 
   def tls_groups_as_cif_block(self, cif_block=None):
     if self.tls_groups is not None:
-      # print (self.tls_groups, dir(self.tls_groups))
-      # print (self.tls_groups.tlsos, dir(self.tls_groups.tlsos[0]))
-      # STOP()
       cif_block = self.tls_groups.as_cif_block(
         hierarchy=self.get_hierarchy(),
-        cif_block=cif_block)
+        cif_block=cif_block,
+        scattering_type=self.model_statistics_info.get_pdbx_refine_id())
     return cif_block
 
   def extract_tls_selections_from_input(self):
@@ -2501,6 +2499,9 @@ class manager(object):
     xrs_new = None
     if(self._xray_structure is not None):
       xrs_new = self.get_xray_structure().select(selection)
+    sel_tls = self.tls_groups
+    if self.tls_groups is not None:
+      sel_tls = self.tls_groups.select(selection, self.get_number_of_atoms())
     new = manager(
       model_input                = self._model_input, # any selection here?
       crystal_symmetry           = self._crystal_symmetry,
@@ -2511,7 +2512,7 @@ class manager(object):
       xray_structure             = xrs_new,
       pdb_hierarchy              = new_pdb_hierarchy,
       pdb_interpretation_params  = self._pdb_interpretation_params,
-      tls_groups                 = self.tls_groups, # XXX not selected, potential bug
+      tls_groups                 = sel_tls,
       log                        = self.log)
     if new_riding_h_manager is not None:
       new.riding_h_manager = new_riding_h_manager

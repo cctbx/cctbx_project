@@ -113,9 +113,25 @@ class tls_groups(object):
   def __init__(self, tlsos = None, selection_strings = None, iselections=None):
     self.tlsos = tlsos
     self.selection_strings = selection_strings
+    # These selections are used to produce mmCIF file. They are not
+    # used in refinement
     self.iselections = iselections
 
-  def as_cif_block(self, hierarchy, cif_block=None):
+  def select(self, selection, n_atoms):
+    # only select self.iselections
+    selected_isels = []
+    if self.iselections is not None:
+      for isel in self.iselections:
+        bsel = flex.bool(n_atoms, isel)
+        selected_isels.append((bsel&selection).iselection())
+    else:
+      selected_isels = None
+    return tls_groups(
+        tlsos=self.tlsos,
+        selection_strings=self.selection_strings,
+        iselections=selected_isels)
+
+  def as_cif_block(self, hierarchy, cif_block=None, scattering_type=None):
     import iotbx.cif.model
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
@@ -126,12 +142,20 @@ class tls_groups(object):
     else:
       assert len(self.tlsos) == len(self.selection_strings), "%d, %d" % (
             len(self.tlsos), len(self.selection_strings))
-      # assert len(self.selection_strings) == len(self.iselections)
+    if self.iselections is None or len(self.selection_strings) != len(self.iselections):
+      # unfortunate event we have to regenerate iselections
+      asc = hierarchy.atom_selection_cache()
+      self.iselections = []
+      for str_sel in self.selection_strings:
+        self.iselections.append(asc.iselection(str_sel))
+
+    if scattering_type is None:
+      scattering_type = '?'
 
     tls_loop = iotbx.cif.model.loop(header=(
-      #"_pdbx_refine_tls.pdbx_refine_id",
       "_pdbx_refine_tls.id",
       "_pdbx_refine_tls.details",
+      "_pdbx_refine_tls.pdbx_refine_id",
       "_pdbx_refine_tls.method",
       "_pdbx_refine_tls.origin_x",
       "_pdbx_refine_tls.origin_y",
@@ -160,21 +184,43 @@ class tls_groups(object):
     ))
 
     tls_group_loop = iotbx.cif.model.loop(header=(
-      #_pdbx_refine_tls_group.pdbx_refine_id
-      "_pdbx_refine_tls_group.id",
-      "_pdbx_refine_tls_group.refine_tls_id",
-      "_pdbx_refine_tls_group.selection",
-      "_pdbx_refine_tls_group.selection_details",
+        "_pdbx_refine_tls_group.id",
+        "_pdbx_refine_tls_group.refine_tls_id",
+        "_pdbx_refine_tls_group.pdbx_refine_id",
+        "_pdbx_refine_tls_group.beg_auth_asym_id",
+        "_pdbx_refine_tls_group.beg_auth_seq_id",
+        "_pdbx_refine_tls_group.beg_label_asym_id",
+        "_pdbx_refine_tls_group.beg_label_seq_id",
+        "_pdbx_refine_tls_group.end_auth_asym_id",
+        "_pdbx_refine_tls_group.end_auth_seq_id",
+        "_pdbx_refine_tls_group.end_label_asym_id",
+        "_pdbx_refine_tls_group.end_label_seq_id",
+        "_pdbx_refine_tls_group.selection",
+        "_pdbx_refine_tls_group.selection_details",
     ))
-    for i_tls, (tlso, selection_string) in enumerate(zip(self.tlsos, self.selection_strings)):
-      tls_row = [i_tls+1, "?", "refined"]
+    for i_tls, (tlso, selection_string, isel) in enumerate(
+        zip(self.tlsos, self.selection_strings, self.iselections)):
+      tls_row = [i_tls+1, "?", scattering_type, "refined"]
       tls_row.extend(list(tlso.origin))
       tls_row.extend(list(tlso.t))
       tls_row.extend(list(tlso.l))
       tls_row.extend(list(tlso.s))
       tls_loop.add_row(tls_row)
-      tls_group_loop.add_row((i_tls+1, i_tls+1, "?", selection_string))
-
+      tls_group_loop.add_row({
+          "_pdbx_refine_tls_group.id" : i_tls+1,
+          "_pdbx_refine_tls_group.refine_tls_id" : i_tls+1,
+          "_pdbx_refine_tls_group.pdbx_refine_id" : scattering_type,
+          "_pdbx_refine_tls_group.beg_auth_asym_id" : hierarchy.get_auth_asym_id_iseq(isel[0]),
+          "_pdbx_refine_tls_group.beg_auth_seq_id" : hierarchy.get_auth_seq_id_iseq(isel[0]),
+          "_pdbx_refine_tls_group.beg_label_asym_id" : hierarchy.get_label_asym_id_iseq(isel[0]),
+          "_pdbx_refine_tls_group.beg_label_seq_id" : hierarchy.get_label_seq_id_iseq(isel[0]),
+          "_pdbx_refine_tls_group.end_auth_asym_id" : hierarchy.get_auth_asym_id_iseq(isel[-1]),
+          "_pdbx_refine_tls_group.end_auth_seq_id" : hierarchy.get_auth_seq_id_iseq(isel[-1]),
+          "_pdbx_refine_tls_group.end_label_asym_id" : hierarchy.get_label_asym_id_iseq(isel[-1]),
+          "_pdbx_refine_tls_group.end_label_seq_id" : hierarchy.get_label_seq_id_iseq(isel[-1]),
+          "_pdbx_refine_tls_group.selection" : '.', # Some ccp4 stuff
+          "_pdbx_refine_tls_group.selection_details" : selection_string,
+      })
     cif_block.add_loop(tls_loop)
     cif_block.add_loop(tls_group_loop)
     return cif_block
