@@ -13,13 +13,14 @@ except ImportError:
 if rank == 0:
     import os
     import pandas
-    from numpy import mean, unique
+    from numpy import mean, median, unique, std
+    from tabulate import tabulate
+    from scipy.stats import linregress
     from numpy import log as np_log
     from numpy import exp as np_exp
     from numpy import load as np_load
     from numpy import all as np_all
     from numpy.linalg import norm
-
     from simtbx.diffBragg.refiners import BreakToUseCurvatures
     from scitbx.array_family import flex
 
@@ -27,11 +28,15 @@ if rank == 0:
     from scitbx.matrix import col
     from simtbx.diffBragg.refiners import PixelRefinement
 
+    from collections import Counter
     import numpy as np
 
 else:
-    mean = unique = np_log = np_exp = np_all = norm = None
+    mean = unique = np_log = np_exp = np_all = norm = median = std = None
+    tabulate = None
     np_load = None
+    linregress = None
+    Counter = None
     # stdout_flush = None
     BreakToUseCurvatures = None
     flex_double = None
@@ -40,6 +45,11 @@ else:
 
 if has_mpi:
     mean = comm.bcast(mean, root=0)
+    Counter = comm.bcast(Counter, root=0)
+    linregress = comm.bcast(linregress, root=0)
+    tabulate = comm.bcast(tabulate, root=0)
+    std = comm.bcast(std, root=0)
+    median = comm.bcast(median, root=0)
     unique = comm.bcast(unique, root=0)
     np_load = comm.bcast(np_load, root=0)
     np_log = comm.bcast(np_log, root=0)
@@ -55,6 +65,7 @@ if has_mpi:
 if rank == 0:
     import pylab as plt
 
+# TODO move me to broadcasts
 import sys
 import warnings
 from copy import deepcopy
@@ -65,7 +76,6 @@ from IPython import embed
 
 warnings.filterwarnings("ignore")
 
-
 class FatRefiner(PixelRefinement):
 
     def __init__(self, n_total_params, n_local_params, n_global_params, local_idx_start,
@@ -73,7 +83,8 @@ class FatRefiner(PixelRefinement):
                  shot_roi_imgs, shot_spectra, shot_crystal_GTs,
                  shot_crystal_models, shot_xrel, shot_yrel, shot_abc_inits, shot_asu,
                  global_param_idx_start,
-                 shot_panel_ids, init_gain=1, init_scale=1, perturb_fcell=True):
+                 shot_panel_ids, 
+                 all_crystal_scales=None, init_gain=1, init_scale=1, perturb_fcell=True):
         PixelRefinement.__init__(self)
         # super(GlobalFat, self).__init__()
         self.num_kludge = 0
@@ -82,6 +93,7 @@ class FatRefiner(PixelRefinement):
         self.perturb_fcell = perturb_fcell
         # dictionaries whose keys are the shot indices
         self.UCELL_MAN = shot_ucell_managers
+        self.CRYSTAL_SCALE_TRUTH = all_crystal_scales  # ground truth of crystal scale factors.. 
         # cache shot ids and make sure they are identical in all other input dicts
         self.shot_ids = sorted(shot_ucell_managers.keys())
         self.big_dump = False
@@ -141,7 +153,6 @@ class FatRefiner(PixelRefinement):
         self.symbol = "P43212"
 
         # FIXME: no hard coded unit cells!!!!
-
 
         #hkl_resolution_bins = {}  # hkl vs resolution bin number
         #hkls_with_assigned_bin = 0
@@ -386,7 +397,6 @@ class FatRefiner(PixelRefinement):
                 self.x[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
 
             print("----loading fcell data")
-            from collections import Counter
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index
             print("---- -- counting hkl totes")
             self.hkl_frequency = Counter(hkl_totals)
@@ -489,7 +499,6 @@ class FatRefiner(PixelRefinement):
                     n_seen = []
                     n_obs = []
                     max_per = []
-                    from scipy.stats import linregress
                     #for i_bin in range(n_bins):
                     for indices in bin_values:
                         pos = np.zeros(self.n_global_fcell).astype(bool)
@@ -539,7 +548,6 @@ class FatRefiner(PixelRefinement):
                     n_seen = []
                     n_obs = []
                     max_per = []
-                    from scipy.stats import linregress
                     for i_bin in range(n_bins):
                         max_per.append(self.max_hkl_in_bin[i_bin])
                         pos = digs == i_bin
@@ -609,7 +617,7 @@ class FatRefiner(PixelRefinement):
         if self.restart_file is not None:
             self.x = flex_double(np_load(self.restart_file)["x"])
 
-        rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals = self._unpack_internal(self.x)
+        rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals, _ = self._unpack_internal(self.x)
         if comm.rank == 0:
             print("--4 print initial stats")
 
@@ -656,7 +664,12 @@ class FatRefiner(PixelRefinement):
         rotz = [lst[self.rotZ_xpos[i_shot]] for i_shot in range(self.n_shots)]
         ncells_vals = [lst[self.ncells_xpos[i_shot]] for i_shot in range(self.n_shots)]
         scale_vals = [lst[self.spot_scale_xpos[i_shot]] for i_shot in range(self.n_shots)]
-
+        
+        # this can be used to compare directly
+        if self.CRYSTAL_SCALE_TRUTH is not None:
+            scale_vals_truths = [self.CRYSTAL_SCALE_TRUTH[i_shot] for i_shot in range(self.n_shots)]
+        else:
+            scale_vals_truths = None
         #rotx = lst[:-self.n_global_params:self.n_per_shot_params]
         #roty = lst[1:-self.n_global_params:self.n_per_shot_params]
         #rotz = lst[2:-self.n_global_params:self.n_per_shot_params]
@@ -677,8 +690,10 @@ class FatRefiner(PixelRefinement):
         scale_vals = self._mpi_reduce_broadcast(scale_vals)
         a_vals = self._mpi_reduce_broadcast(a_vals)
         c_vals = self._mpi_reduce_broadcast(c_vals)
+        if scale_vals_truths is not None:
+            scale_vals_truths = self._mpi_reduce_broadcast(scale_vals_truths)
 
-        return rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals
+        return rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals, scale_vals_truths
 
     def _send_gradients_to_derivative_managers(self):
         """Needs to be called once each time the orientation is updated"""
@@ -836,7 +851,7 @@ class FatRefiner(PixelRefinement):
 
             self.gain_fac = self.x[self.gain_xpos]
             G2 = self.gain_fac ** 2
-            self._update_Fcell()  # update the structure factor with the new x  # TODO do I work ?
+            self._update_Fcell()  # update the structure factor with the new x  
 
             all_ang_off = []
             for i in range(self.n_shots):
@@ -1088,13 +1103,13 @@ class FatRefiner(PixelRefinement):
             # reduce the broadcast summed results:
             f = self._mpi_reduce_broadcast(f)
             g = self._mpi_reduce_broadcast(g)
-            self.rotx, self.roty, self.rotz, self.a_vals, self.c_vals, self.ncells_vals, self.scale_vals = \
+            self.rotx, self.roty, self.rotz, self.a_vals, self.c_vals, self.ncells_vals, self.scale_vals, self.scale_vals_truths = \
                 self._unpack_internal(self.x)
-            self.Grotx, self.Groty, self.Grotz, self.Ga_vals, self.Gc_vals, self.Gncells_vals, self.Gscale_vals = \
+            self.Grotx, self.Groty, self.Grotz, self.Ga_vals, self.Gc_vals, self.Gncells_vals, self.Gscale_vals, _ = \
                 self._unpack_internal(g)
             if self.calc_curvatures:
                 self.curv = self._mpi_reduce_broadcast(self.curv)
-                self.CUrotx, self.CUroty, self.CUrotz, self.CUa_vals, self.CUc_vals, self.CUncells_vals, self.CUscale_vals = \
+                self.CUrotx, self.CUroty, self.CUrotz, self.CUa_vals, self.CUc_vals, self.CUncells_vals, self.CUscale_vals, _ = \
                     self._unpack_internal(self.curv)
             self.tot_fcell_kludge = self._mpi_reduce_broadcast(self.num_Fcell_kludge)
             self.tot_neg_curv = 0
@@ -1194,11 +1209,17 @@ class FatRefiner(PixelRefinement):
 
 
             if self.verbose:
+                all_ang_off = [s for sl in all_ang_off for s in sl]  # flatten the gathered array
+                n_broken_misset = sum([ 1 for aa in all_ang_off if aa == -1])
+                n_bad_misset = sum([ 1 for aa in all_ang_off if aa > 0.1])
+                n_misset = len(all_ang_off)
+                misset_median = median([aa for aa in all_ang_off if aa > 0])
                 if self.refine_Umatrix or self.refine_Bmatrix:
                     print("\nMissets\n========")
-                    all_ang_off = ["%.5f" % s for sl in all_ang_off for s in sl]
+                    all_ang_off = ["%.5f" % aa for aa in all_ang_off]
                     print(", ".join(all_ang_off))
                     print ("N shots deemed bad from missets: %d" % self.n_bad_shots)
+                print("MISSETTING median: %.4f; num > .1 deg: %d/%d; num broken=%d" % (misset_median,n_bad_misset, n_misset, n_broken_misset)) 
                 self.print_step("LBFGS stp", f)
                 self.print_step_grads("LBFGS GRADS", gnorm)
             self.iterations += 1
@@ -1346,7 +1367,21 @@ class FatRefiner(PixelRefinement):
                 if self.big_dump:
                     print(master_data.to_string(float_format="%.3g"))
 
-        from tabulate import tabulate
+        # Compute the mean, min, max, variance  and median crystal scale
+      
+        _sv = [self.D.spot_scale*(s**2) for s in self.scale_vals] 
+        stats = (median(_sv), 
+            mean(_sv),
+            min(_sv),
+            max(_sv),
+            std(_sv))
+        scale_stat_names =["median", "mean", "min", "max", "sigma"]
+        scale_stats = ["%s=%.4f"%name_stat for name_stat in zip(scale_stat_names, stats)]
+        scale_stats_string = "SCALE FACTOR STATS: " + ", ".join(scale_stats)
+        if self.scale_vals_truths is not None:
+            scale_resid = [ np.abs(s-stru) for s,stru in zip(_sv, self.scale_vals_truths)]
+            scale_stats_string += ", truth_resid=%.4f" % np.median(scale_resid)
+
         Xnorm = norm(self.x)
         R1 = -1
         R1_i = -1
@@ -1397,9 +1432,9 @@ class FatRefiner(PixelRefinement):
             hacked_str = ""
 
         print(
-                    "\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s\n%s\n%s"
-                    % (target, Xnorm * self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
-                       ", ".join(map(str, self.neg_curv_shots)), stat_bins_str,  Istat_bins_str, hacked_str))
+                    "\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s\n%s\n%s\n%s"
+                    % (target, Xnorm * self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv, 
+                       ", ".join(map(str, self.neg_curv_shots)), scale_stats_string, stat_bins_str,  Istat_bins_str, hacked_str))
         print("\n")
 
     def get_refined_Bmatrix(self, i_shot):
