@@ -376,7 +376,7 @@ class hklview_3d:
     if has_phil_path(diff_phil, "camera_type"):
       self.set_camera_type()
 
-    if self.viewerparams.scene_id >=0:
+    if self.viewerparams.scene_id is not None:
       if not self.isinjected:
         self.scene = self.HKLscenes[self.viewerparams.scene_id]
       self.DrawNGLJavaScript()
@@ -389,7 +389,7 @@ class hklview_3d:
 
   def set_volatile_params(self):
     msg = ""
-    if self.viewerparams.scene_id >=0:
+    if self.viewerparams.scene_id is not None:
       if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
         return msg
       self.fix_orientation(self.viewerparams.NGL.fixorientation)
@@ -1580,8 +1580,9 @@ async function ReRender()
 // Log errors to debugger of your browser
 mysocket.onerror = function(error)
 {
-  console.log('WebSocket Error ' + error);
-  debugmessage.innerText = 'WebSocket Error ' + error;
+  msg = 'WebSocket Error ' + error;
+  console.log(msg);
+  dbgmsg =msg;
 };
 
 
@@ -1640,10 +1641,12 @@ window.addEventListener( 'resize',
 );
 
 
-var script=document.createElement('script');
-script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
-document.head.appendChild(script);
-
+if (isdebug)
+{
+  var script=document.createElement('script');
+  script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
+  document.head.appendChild(script);
+}
 
 
 // define tooltip element
@@ -1723,7 +1726,8 @@ function HKLscene()
   %s
   %s
 
-  stage.viewer.container.appendChild(debugmessage);
+  if (isdebug)
+    stage.viewer.container.appendChild(debugmessage);
 
   // avoid NGL zoomFocus messing up clipplanes positions. So reassign those signals to zoomDrag
   stage.mouseControls.remove("drag-shift-right");
@@ -1732,7 +1736,8 @@ function HKLscene()
   stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
 
   stage.viewer.requestRender();
-  debugmessage.innerText = dbgmsg;
+  if (isdebug)
+    debugmessage.innerText = dbgmsg;
 }
 
 
@@ -2393,7 +2398,8 @@ mysocket.onmessage = function(e)
       */
     }
     WebsockSendMsg('Received message: ' + msgtype );
-    debugmessage.innerText = dbgmsg;
+    if (isdebug)
+      debugmessage.innerText = dbgmsg;
   }
 
   catch(err)
@@ -2601,9 +2607,12 @@ Distance: %s
     self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
     if self.was_disconnected:
       self.was_disconnected = False
-    if self.lastviewmtrx: # and self.lastscene_id:
+    if self.lastviewmtrx and self.viewerparams.scene_id is not None:
+      self.set_volatile_params()
       self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
       self.AddToBrowserMsgQueue("ReOrient", self.lastviewmtrx)
+    else:
+      self.SetAutoView()
 
 
   def OnDisconnectWebsocketClient(self, client, server):
@@ -3001,9 +3010,9 @@ Distance: %s
 
 
   def SetAutoView(self):
-    #self.AddToBrowserMsgQueue("SetAutoView" )
-    self.send_msg_to_browser("SetAutoView")
-    self.ReOrientStage()
+    self.AddToBrowserMsgQueue("SetAutoView" )
+    #self.send_msg_to_browser("SetAutoView")
+    #self.ReOrientStage()
 
 
   def TestNewFunction(self):
@@ -3021,7 +3030,9 @@ Distance: %s
 
   def ReOrientStage(self):
     if self.viewmtrx:
-      self.send_msg_to_browser("ReOrient", self.viewmtrx)
+      #self.send_msg_to_browser("ReOrient", self.viewmtrx)
+      self.AddToBrowserMsgQueue("SetAutoView", self.viewmtrx)
+
 
 
   def Euler2RotMatrix(self, eulerangles):

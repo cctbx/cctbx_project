@@ -1727,49 +1727,12 @@ if __name__ == '__main__':
 
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer()
-
     timer = QTimer()
     timer.setInterval(10)
     timer.timeout.connect(guiobj.ProcessMessages)
     timer.start()
-
     ret = app.exec_()
     #app.quit()
-
-    """    # no need to delete cache for private/off-the-record profile
-    guiobj.webpage.deleteLater()
-    guiobj.webpage = None
-
-    guiobj.BrowserBox.deleteLater()
-    guiobj.BrowserBox.destroy()
-    guiobj.deleteLater()
-    guiobj.destroy()
-
-    del QWebEngineView
-    del QWebEngineProfile
-    del QWebEnginePage
-    #del sys.modules["QWebEngineView"]
-    #del sys.modules["QWebEngineProfile"]
-    #del sys.modules["QWebEnginePage"]
-
-    del guiobj
-    del app
-    gc.collect()
-
-    present = True
-    while present:
-      present = False
-      try:
-        if os.path.exists(guiobj.cpath):
-          shutil.rmtree(guiobj.cpath)
-        cpath2 = guiobj.cpath.replace("cache/","")
-        if os.path.exists(cpath2):
-          shutil.rmtree(cpath2)
-      except Exception as delerr:
-        time.sleep(0.2)
-        present = True
-
-    """
     sys.exit(ret)
   except Exception as e:
     print( str(e)  +  traceback.format_exc(limit=10) )

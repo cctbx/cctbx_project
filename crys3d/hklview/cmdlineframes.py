@@ -381,7 +381,7 @@ class HKLViewFrame() :
     self.viewer.HKLscenesdict = {}
     self.viewer.sceneisdirty = True
     if self.viewer.miller_array:
-      self.viewer.params.viewer.scene_id = 0
+      self.viewer.params.viewer.scene_id = None
       self.viewer.DrawNGLJavaScript( blankscene=True)
     self.viewer.miller_array = None
     self.viewer.isnewfile = True
