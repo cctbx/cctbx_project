@@ -197,6 +197,16 @@ class postrefinement(worker):
         new_exp_reflections['intensity.sum.value']      = flex.double(result_observations.data())
         new_exp_reflections['intensity.sum.variance']   = flex.double(flex.pow(result_observations.sigmas(),2))
         new_exp_reflections['exp_id']                   = flex.std_string(len(new_exp_reflections), experiment.identifier)
+
+        new_exp_reflections['intensity.sum.value.unmodified'] = flex.double(len(new_exp_reflections), -999)
+        new_exp_reflections['intensity.sum.variance.unmodified'] = flex.double(len(new_exp_reflections), -999)
+
+        for ii,entry_1 in enumerate(new_exp_reflections.rows()):
+          for jj, entry_2 in enumerate(exp_reflections.rows()):
+            if entry_1['miller_index_asymmetric'] == entry_2['miller_index_asymmetric']:
+              new_exp_reflections['intensity.sum.value.unmodified'][ii] = entry_2['intensity.sum.value.unmodified']
+              new_exp_reflections['intensity.sum.variance.unmodified'][ii] = entry_2['intensity.sum.variance.unmodified']
+        
         new_reflections.extend(new_exp_reflections)
       '''
       # debugging
