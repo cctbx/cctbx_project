@@ -31,8 +31,8 @@ class error_modifier_ev11(worker):
   def calculate_intensity_bin_limits(self):
     '''Calculate the minimum and maximum values of the mean intensities for each HKL'''
     count = self.work_table.size()
-    mean_intensity_min = flex.min(self.work_table['mean']) if count > 0 else float('inf')
-    mean_intensity_max = flex.max(self.work_table['mean']) if count > 0 else float('-inf')
+    mean_intensity_min = flex.min(self.work_table['biased_mean']) if count > 0 else float('inf')
+    mean_intensity_max = flex.max(self.work_table['biased_mean']) if count > 0 else float('-inf')
     if count > 0:
       self.logger.log("Using %d multiply-measured HKLs; mean intensity (min,max): (%f,%f)"%(count, mean_intensity_min, mean_intensity_max))
     else:
@@ -56,23 +56,30 @@ class error_modifier_ev11(worker):
     self.work_table['mean']          = flex.double()
     self.work_table['biased_mean']          = flex.double()
     self.work_table['var']           = flex.double()
+    biased_mean_array = flex.double()
+
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
       number_of_measurements = refls.size()
       if number_of_measurements == 0: # if the returned "refls" list is empty, it's the end of the input "reflections" list
         break
+      biased_mean = flex.mean(refls['intensity.sum.value'])
+      biased_mean_array.extend(flex.double([biased_mean]*len(refls))) 
+
       if number_of_measurements > self.params.merging.minimum_multiplicity:
-        biased_mean = flex.mean(refls['intensity.sum.value'])
         nn_factor_sqrt = math.sqrt((number_of_measurements - 1) / number_of_measurements)
         for i, refl in enumerate(refls.rows()):
           mask = flex.bool(number_of_measurements, True); mask[i] = False
           refls_without_ith_refl = refls.select(mask)
           mean = flex.mean(refls_without_ith_refl['intensity.sum.value'])
           var = refl['intensity.sum.variance']
-          delta = nn_factor_sqrt * (refl['intensity.sum.value'] - flex.mean(refls_without_ith_refl['intensity.sum.value'])) / math.sqrt(var)
+          delta = nn_factor_sqrt * (refl['intensity.sum.value'] - flex.mean(refls_without_ith_refl['intensity.sum.value']))
           delta_sq = delta**2
-          self.deltas.append(delta)
+          self.deltas.append(delta/math.sqrt(var)) # Please be careful about where to put the var
           self.work_table.append({'biased_mean':biased_mean, 'mean':mean,'delta_sq':delta_sq, 'var':var})
+
+    reflections['biased_mean'] = biased_mean_array
     self.logger.log("Number of work reflections selected: %d"%self.deltas.size())
+    return reflections
 
   def calculate_functional_ev11(self):
     # Results of calculation (on rank 0):
@@ -104,14 +111,13 @@ class error_modifier_ev11(worker):
           var_ev11_der_over_sb   = self.sfac**2 * 2*self.sb   * mean_intensity
           var_ev11_der_over_sadd = self.sfac**2 * 2*self.sadd * mean_intensity**2
 
-          sum_of_delta_squared_in_bin += refl['delta_sq']**2 / var_ev11
+          sum_of_delta_squared_in_bin += refl['delta_sq'] / var_ev11
 
-          #print(index, refl['delta_squared'])
           index += 1
 
-          sum_of_der_wrt_sfac_in_bin  -= refl['delta_sq']**2 / var_ev11**2 * var_ev11_der_over_sfac
-          sum_of_der_wrt_sb_in_bin    -= refl['delta_sq']**2 / var_ev11**2 * var_ev11_der_over_sb
-          sum_of_der_wrt_sadd_in_bin  -= refl['delta_sq']**2 / var_ev11**2 * var_ev11_der_over_sadd
+          sum_of_der_wrt_sfac_in_bin  -= refl['delta_sq'] / var_ev11**2 * var_ev11_der_over_sfac
+          sum_of_der_wrt_sb_in_bin    -= refl['delta_sq'] / var_ev11**2 * var_ev11_der_over_sb
+          sum_of_der_wrt_sadd_in_bin  -= refl['delta_sq'] / var_ev11**2 * var_ev11_der_over_sadd
 
       global_number_of_reflections_in_bin   = comm.reduce(number_of_reflections_in_bin, MPI.SUM, root=0)
       global_sum_of_delta_squared_in_bin    = comm.reduce(sum_of_delta_squared_in_bin,  MPI.SUM, root=0)
@@ -390,7 +396,7 @@ class error_modifier_ev11(worker):
     size = self.mpi_helper.size
     self.n = 3
     self.x = flex.double([self.sfac, self.sb, self.sadd])
-    print ('Initial Estimates = ', self.sfac, self.sb, self.sadd)
+    self.logger.main_log('Initial Parameter Estimates = sdfac: %.2f  sdb: %.2f  sdadd: %.2f'%(self.sfac, self.sb, self.sadd))
     if True:
       from scitbx import lbfgsb
       l = flex.double(self.n, 1e-8)
@@ -408,21 +414,10 @@ class error_modifier_ev11(worker):
         )
       while True:
         self.compute_functional_and_gradients()
-       
-        # Works but every rank has to do the minimization, terrible idea 
-        #if self.minimizer.process(self.x, self.f, self.g):
-        #  self.sfac = self.x[0]
-        #  self.sb = self.x[1]
-        #  self.sadd = self.x[2]
-        #  pass
-        #elif self.minimizer.is_terminated():
-        #  break
-        #comm.barrier()
         status=-1 
         if self.mpi_helper.rank == 0: 
           if self.minimizer.process(self.x, self.f, self.g):
-            print ('running compute_functional_and_gradients')
-            #print ('gradients and functionals = ', list(self.x), self.f, list(self.g))
+            self.logger.main_log('intermediate minimization results = functional: %.2f  sdfac: %.2f sdb: %.2f sdadd: %.2f' %(self.f,self.x[0],self.x[1], self.x[2])) 
             status=1
             self.sfac = self.x[0]
             self.sb = self.x[1]
@@ -439,8 +434,9 @@ class error_modifier_ev11(worker):
           pass
         if status==0:
           break
+    if self.mpi_helper.rank == 0:
+      self.logger.main_log('FINAL SDFAC VALUES = functional: %.2f  sdfac: %.2f sdb: %.2f sdadd: %.2f' %(self.f,self.x[0],self.x[1], self.x[2])) 
             
-
   def compute_functional_and_gradients(self):
     self.calculate_functional_ev11()
     self.f = self.functional
@@ -449,28 +445,20 @@ class error_modifier_ev11(worker):
 
   def modify_errors(self, reflections):
 
-    print ('Modifying errors')
-    self.setup_work_arrays(reflections)
+    reflections = self.setup_work_arrays(reflections)
     self.calculate_delta_statistics()
     self.calculate_delta_bin_limits()
     self.distribute_deltas_over_bins()
     self.distribute_deltas_over_ranks()
     self.calculate_delta_rankits()
     self.calculate_initial_ev11_parameters()
-
-
     self.calculate_intensity_bin_limits()
     self.distribute_reflections_over_intensity_bins()
-    #self.calculate_functional_ev11()
-
-    # Asmit edits 
     self.run_minimizer()
-    from IPython import embed; embed(); exit()
-    #self.apply_sd_error_params()
+    reflections['intensity.sum.variance'] = (self.sfac**2)*(reflections['intensity.sum.variance'] +
+                                                            self.sb*self.sb*reflections['biased_mean'] +
+                                                            self.sadd*self.sadd*reflections['biased_mean']**2)
 
-
-
-    '''TODO'''
 
     return reflections
 
