@@ -63,7 +63,7 @@ class error_modifier_ev11(worker):
       if number_of_measurements == 0: # if the returned "refls" list is empty, it's the end of the input "reflections" list
         break
       biased_mean = flex.mean(refls['intensity.sum.value'])
-      biased_mean_array.extend(flex.double([biased_mean]*len(refls))) 
+      biased_mean_array.extend(flex.double([biased_mean]*len(refls)))
 
       if number_of_measurements > self.params.merging.minimum_multiplicity:
         nn_factor_sqrt = math.sqrt((number_of_measurements - 1) / number_of_measurements)
@@ -147,8 +147,8 @@ class error_modifier_ev11(worker):
     #  self.der_wrt_sfac = der_wrt_sfac
     #  self.der_wrt_sb = der_wrt_sb
     #  self.der_wrt_sadd = der_wrt_sadd
-    
-    # Broadcast these derivates and functional values to all ranks 
+
+    # Broadcast these derivates and functional values to all ranks
     self.functional = comm.bcast(func, root=0)
     self.der_wrt_sfac = comm.bcast(der_wrt_sfac, root=0)
     self.der_wrt_sb = comm.bcast(der_wrt_sb, root=0)
@@ -414,10 +414,10 @@ class error_modifier_ev11(worker):
         )
       while True:
         self.compute_functional_and_gradients()
-        status=-1 
-        if self.mpi_helper.rank == 0: 
+        status=-1
+        if self.mpi_helper.rank == 0:
           if self.minimizer.process(self.x, self.f, self.g):
-            self.logger.main_log('intermediate minimization results = functional: %.2f  sdfac: %.2f sdb: %.2f sdadd: %.2f' %(self.f,self.x[0],self.x[1], self.x[2])) 
+            self.logger.main_log('intermediate minimization results = functional: %.2f  sdfac: %.2f sdb: %.2f sdadd: %.2f' %(self.f,self.x[0],self.x[1], self.x[2]))
             status=1
             self.sfac = self.x[0]
             self.sb = self.x[1]
@@ -435,8 +435,8 @@ class error_modifier_ev11(worker):
         if status==0:
           break
     if self.mpi_helper.rank == 0:
-      self.logger.main_log('FINAL SDFAC VALUES = functional: %.2f  sdfac: %.2f sdb: %.2f sdadd: %.2f' %(self.f,self.x[0],self.x[1], self.x[2])) 
-            
+      self.logger.main_log('FINAL SDFAC VALUES = functional: %.2f  sdfac: %.2f sdb: %.2f sdadd: %.2f' %(self.f,self.x[0],self.x[1], self.x[2]))
+
   def compute_functional_and_gradients(self):
     self.calculate_functional_ev11()
     self.f = self.functional
