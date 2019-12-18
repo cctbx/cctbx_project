@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import sys,os
 from libtbx.utils import Sorry
+from libtbx import group_args
 from cctbx.array_family import flex
 from copy import deepcopy
 
@@ -195,8 +196,15 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
    f_array=None,
    overall_b=None,
    resolution=None,
+   n_bins=None,
+   target_b_iso_model_scale=0,
    out=sys.stdout):
   if not pdb_inp: return None
+  if not si:
+    from cctbx.maptbx.segment_and_split_map import sharpening_info
+    si=sharpening_info(resolution=resolution,
+     target_b_iso_model_scale=0,
+     n_bins=n_bins)
 
   # define Wilson B for the model
   if overall_b is None:
@@ -280,11 +288,11 @@ def fit_cc(cc_list=None,sthol_list=None,
       scale_using_last=scale_using_last)
 
 def get_fitted_cc(cc_list=None,sthol_list=None, cc_cut=None,
-   scale_using_last=None,keep_cutoff_point=False):
+   scale_using_last=None,keep_cutoff_point=False,force_scale_using_last=False):
   # only do this if there is some value of s where cc is at least 2*cc_cut or
   #  (1-c_cut/2), whichever is smaller
   min_cc=min(2*cc_cut,1-0.5*cc_cut)
-  if cc_list.min_max_mean().max < min_cc:
+  if cc_list.min_max_mean().max < min_cc and (not force_scale_using_last):
     return cc_list
   # find first point after point where cc>=min_cc that cc<=cc_cut
   #   then back off by 1 point  # 2019-10-12 don't back off if keep_cutoff_point
@@ -298,6 +306,10 @@ def get_fitted_cc(cc_list=None,sthol_list=None, cc_cut=None,
       s_cut=s
       break
     i_cut+=1
+  if force_scale_using_last:
+    scale_using_last=True
+    s_cut=sthol_list[0]
+    i_cut=1
   if s_cut is None or i_cut==0:
     return cc_list
 

@@ -4228,9 +4228,11 @@ def get_mean_in_or_out(sel=None,
     map_data=None,
     out=sys.stdout):
   masked_map=map_data.deep_copy()
-  masked_map.set_selected(~sel,0)
+  if sel.count(False) !=0:
+    masked_map.as_1d().set_selected(~sel.as_1d(),0)
   mean_after_zeroing_in_or_out=masked_map.as_1d().min_max_mean().mean
-  masked_map.set_selected(sel,1)
+  if sel.count(True) != 0:
+    masked_map.as_1d().set_selected(sel.as_1d(),1)
   fraction_in_or_out=masked_map.as_1d().min_max_mean().mean
   if fraction_in_or_out >1.e-10:
     mean_value=mean_after_zeroing_in_or_out/fraction_in_or_out
@@ -4298,7 +4300,6 @@ def apply_mask_to_map(mask_data=None,
     out=sys.stdout):
 
   s = mask_data > threshold  # s marks inside mask
-
   # get mean inside or outside mask
   if verbose:
     print("\nStarting map values inside and outside mask:", file=out)

@@ -245,6 +245,12 @@ class group_args(object):
   def __call__(self):
     return self.__dict__
 
+  def get(self,kw):
+    return self.__dict__.get(kw)
+
+  def keys(self):
+    return self.__dict__.keys()
+
   def __repr__(self):
     outl = "group_args"
     for attr in sorted(self.__dict__.keys()):
@@ -259,6 +265,9 @@ class group_args(object):
     """ To merge other group_args into self.
     Overwrites matching fields!!!"""
     self.__dict__.update(other.__dict__)
+
+  def add(self,key=None,value=None):
+    self.__dict__[key]=value
 
 if os.environ.get("LIBTBX_PRINT_TRACE"):
   import libtbx.start_print_trace
