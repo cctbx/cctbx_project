@@ -315,10 +315,7 @@ class HKLViewFrame() :
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
-    #self.STOP = True
     self.viewer.__exit__(exc_type, exc_value, traceback)
-    #if self.guiSocketPort:
-    #  self.msgqueuethrd.join()
     del self.viewer
     self.mprint("Purging HKLViewFrame", verbose=1)
     self.STOP = True
@@ -350,14 +347,12 @@ class HKLViewFrame() :
         self.mprint("Received phil string:\n" + philstr, verbose=1)
         new_phil = libtbx.phil.parse(philstr)
         self.update_settings(new_phil)
-        #print( "in zmq listen")
         time.sleep(0.1)
       except Exception as e:
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
     self.mprint( "Exiting zmq_listen() thread", 1)
     del self.guisocket
     self.guiSocketPort=None
-    #del self
 
 
   def ResetPhilandViewer(self, extraphil=None):

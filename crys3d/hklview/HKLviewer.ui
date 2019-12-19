@@ -39,6 +39,15 @@
           <layout class="QGridLayout" name="gridLayout_4">
            <item row="0" column="0">
             <widget class="QSplitter" name="splitter_2">
+             <property name="frameShape">
+              <enum>QFrame::NoFrame</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Plain</enum>
+             </property>
+             <property name="midLineWidth">
+              <number>0</number>
+             </property>
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>
@@ -67,7 +76,7 @@
                 </widget>
                </item>
                <item row="1" column="0">
-                <widget class="QTableWidget" name="millerarraytable">
+                <widget class="QTableWidget" name="millertable">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                    <horstretch>0</horstretch>
@@ -101,106 +110,96 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
                 <verstretch>1</verstretch>
                </sizepolicy>
               </property>
               <property name="currentIndex">
-               <number>3</number>
+               <number>1</number>
               </property>
               <widget class="QWidget" name="tab">
                <attribute name="title">
                 <string>Expansion</string>
                </attribute>
-               <widget class="QLabel" name="SpacegroupLabel">
-                <property name="geometry">
-                 <rect>
-                  <x>10</x>
-                  <y>90</y>
-                  <width>71</width>
-                  <height>16</height>
-                 </rect>
-                </property>
-                <property name="text">
-                 <string>Space Subgroups</string>
-                </property>
-               </widget>
-               <widget class="QComboBox" name="SpaceGroupComboBox">
-                <property name="geometry">
-                 <rect>
-                  <x>90</x>
-                  <y>90</y>
-                  <width>161</width>
-                  <height>22</height>
-                 </rect>
-                </property>
-               </widget>
-               <widget class="QCheckBox" name="expandP1checkbox">
-                <property name="geometry">
-                 <rect>
-                  <x>10</x>
-                  <y>10</y>
-                  <width>71</width>
-                  <height>16</height>
-                 </rect>
-                </property>
-                <property name="text">
-                 <string>Expand to P1</string>
-                </property>
-               </widget>
-               <widget class="QCheckBox" name="expandAnomalouscheckbox">
-                <property name="geometry">
-                 <rect>
-                  <x>140</x>
-                  <y>10</y>
-                  <width>91</width>
-                  <height>16</height>
-                 </rect>
-                </property>
-                <property name="text">
-                 <string>Show Friedel pairs</string>
-                </property>
-               </widget>
-               <widget class="QCheckBox" name="sysabsentcheckbox">
-                <property name="geometry">
-                 <rect>
-                  <x>10</x>
-                  <y>40</y>
-                  <width>111</width>
-                  <height>16</height>
-                 </rect>
-                </property>
-                <property name="text">
-                 <string>Show Systematic Absences</string>
-                </property>
-               </widget>
-               <widget class="QCheckBox" name="missingcheckbox">
-                <property name="geometry">
-                 <rect>
-                  <x>140</x>
-                  <y>40</y>
-                  <width>111</width>
-                  <height>16</height>
-                 </rect>
-                </property>
-                <property name="text">
-                 <string>Show Missing Reflections</string>
-                </property>
-               </widget>
-               <widget class="QCheckBox" name="onlymissingcheckbox">
-                <property name="geometry">
-                 <rect>
-                  <x>150</x>
-                  <y>60</y>
-                  <width>51</width>
-                  <height>16</height>
-                 </rect>
-                </property>
-                <property name="text">
-                 <string>Only</string>
-                </property>
-               </widget>
+               <layout class="QGridLayout" name="gridLayout_20">
+                <item row="0" column="0" colspan="3">
+                 <widget class="QGroupBox" name="ExpandRefls">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="title">
+                   <string>Expand reflections</string>
+                  </property>
+                  <property name="checkable">
+                   <bool>true</bool>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_3">
+                   <item row="0" column="0">
+                    <widget class="QCheckBox" name="expandP1checkbox">
+                     <property name="text">
+                      <string>Expand to P1</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QCheckBox" name="expandAnomalouscheckbox">
+                     <property name="text">
+                      <string>Show Friedel pairs</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="1" column="0" colspan="2">
+                 <widget class="QCheckBox" name="sysabsentcheckbox">
+                  <property name="text">
+                   <string>Show Systematic Absences</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QCheckBox" name="missingcheckbox">
+                  <property name="text">
+                   <string>Show Missing Reflections</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QCheckBox" name="onlymissingcheckbox">
+                  <property name="text">
+                   <string>Only</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLabel" name="SpacegroupLabel">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>2</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="text">
+                   <string>Space Subgroups</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1" colspan="2">
+                 <widget class="QComboBox" name="SpaceGroupComboBox">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>2</verstretch>
+                   </sizepolicy>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </widget>
               <widget class="QWidget" name="tab_2">
                <attribute name="title">
@@ -209,13 +208,32 @@
                <layout class="QGridLayout" name="gridLayout_9">
                 <item row="0" column="0">
                  <widget class="QCheckBox" name="showslicecheckbox">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                    <horstretch>1</horstretch>
+                    <verstretch>10</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="text">
                    <string>Slice Reflections</string>
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="0">
-                 <widget class="QGroupBox" name="groupBox">
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="fixedorientcheckbox">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                    <horstretch>3</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="text">
+                   <string>Fix orientation but allow zoom and translation</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0" colspan="2">
+                 <widget class="QGroupBox" name="ClipPlaneChkGroupBox">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                     <horstretch>0</horstretch>
@@ -601,7 +619,7 @@
                           <number>0</number>
                          </property>
                          <item row="0" column="0">
-                          <widget class="QLabel" name="label_16">
+                          <widget class="QLabel" name="rotavecangle_labeltxt">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                              <horstretch>0</horstretch>
@@ -635,7 +653,7 @@
                   </layout>
                  </widget>
                 </item>
-                <item row="2" column="0">
+                <item row="2" column="0" colspan="2">
                  <widget class="QGroupBox" name="groupBox_4">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
@@ -686,6 +704,12 @@
                      <property name="text">
                       <string>equal to</string>
                      </property>
+                     <property name="alignment">
+                      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                     </property>
+                     <property name="indent">
+                      <number>1</number>
+                     </property>
                     </widget>
                    </item>
                    <item row="0" column="2">
@@ -713,7 +737,7 @@
                   <x>6</x>
                   <y>6</y>
                   <width>241</width>
-                  <height>61</height>
+                  <height>71</height>
                  </rect>
                 </property>
                 <property name="sizePolicy">
@@ -729,29 +753,6 @@
                  <bool>false</bool>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_10">
-                 <item row="0" column="2">
-                  <widget class="QLabel" name="label_10">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                   <property name="text">
-                    <string>Exponent</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="0" colspan="2">
-                  <widget class="QCheckBox" name="ManualPowerScalecheckbox">
-                   <property name="text">
-                    <string>Exponential scaling of spheres</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="1">
-                  <widget class="QDoubleSpinBox" name="radii_scale_spinBox"/>
-                 </item>
                  <item row="1" column="0">
                   <widget class="QLabel" name="label_11">
                    <property name="sizePolicy">
@@ -762,6 +763,29 @@
                    </property>
                    <property name="text">
                     <string>Linea scale factor</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QDoubleSpinBox" name="radii_scale_spinBox"/>
+                 </item>
+                 <item row="0" column="0" colspan="2">
+                  <widget class="QCheckBox" name="ManualPowerScalecheckbox">
+                   <property name="text">
+                    <string>Exponential scaling of spheres</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QLabel" name="label_10">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>Exponent</string>
                    </property>
                   </widget>
                  </item>
@@ -814,6 +838,18 @@
                    </sizepolicy>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_12">
+                   <property name="leftMargin">
+                    <number>3</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>3</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>3</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>3</number>
+                   </property>
                    <item row="0" column="0">
                     <widget class="QCheckBox" name="OpaqueAllCheckbox">
                      <property name="text">
@@ -949,6 +985,7 @@
     </property>
     <addaction name="actionOpen_reflection_file"/>
     <addaction name="actionSettings"/>
+    <addaction name="actiondebug"/>
    </widget>
    <addaction name="menuFile"/>
   </widget>
@@ -963,7 +1000,13 @@
     <string>Settings</string>
    </property>
   </action>
+  <action name="actiondebug">
+   <property name="text">
+    <string>debug</string>
+   </property>
+  </action>
  </widget>
+ <layoutdefault spacing="4" margin="3"/>
  <customwidgets>
   <customwidget>
    <class>QWebEngineView</class>
@@ -974,4 +1017,21 @@
  </customwidgets>
  <resources/>
  <connections/>
+ <designerdata>
+  <property name="gridDeltaX">
+   <number>5</number>
+  </property>
+  <property name="gridDeltaY">
+   <number>5</number>
+  </property>
+  <property name="gridSnapX">
+   <bool>true</bool>
+  </property>
+  <property name="gridSnapY">
+   <bool>true</bool>
+  </property>
+  <property name="gridVisible">
+   <bool>true</bool>
+  </property>
+ </designerdata>
 </ui>
