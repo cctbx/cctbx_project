@@ -3,6 +3,7 @@ from scitbx.array_family import flex
 import pylab as plt
 import numpy as np
 import sys
+import math
 from dxtbx.model import Panel
 
 
@@ -34,6 +35,9 @@ class RefineAll(RefineRot):
         self._panel_id = panel_id
         self.best_image = np.zeros_like(self.img)
         self.num_positive_curvatures = 0
+        # LS49 specific stuff 
+        self.harmonic_const = 1.e6
+        self.ucell_restraints = [63.6,28.8,35.6,math.radians(106.5)]
 
     def _setup(self):
         # total number of refinement parameters
@@ -215,6 +219,9 @@ class RefineAll(RefineRot):
 
                 Imeas = self.roi_img[i_spot]
                 f += (self.model_Lambda - Imeas * self.log_Lambda).sum()
+                if self.refine_with_restraints:
+                  for i_uc in range(self.n_ucell_param):
+                    f += self.harmonic_const*(self.ucell_manager.variables[i_uc] - self.ucell_restraints[i_uc])**2
                 one_over_Lambda = 1. / self.model_Lambda
                 one_minus_k_over_Lambda = (1. - Imeas * one_over_Lambda)
                 if self.calc_curvatures:
@@ -271,6 +278,9 @@ class RefineAll(RefineRot):
                         xpos = self.ucell_xstart + i_ucell_p
                         d = S2*G2*self.ucell_derivatives[i_ucell_p]
                         g[xpos] += (one_minus_k_over_Lambda * d).sum()
+                        if self.refine_with_restraints:
+                          for i_uc in range(self.n_ucell_param):
+                            g[xpos] += -2*self.harmonic_const*(self.ucell_manager.variables[i_uc] - self.ucell_restraints[i_uc])
 
                         if self.calc_curvatures:
                             d2 = S2*G2*self.ucell_second_derivatives[i_ucell_p]

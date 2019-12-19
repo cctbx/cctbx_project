@@ -33,6 +33,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_detdist = True
         self.refine_Amatrix = True
         self.refine_Bmatrix = True
+        self.refine_with_restraints = False
         self.has_pre_cached_roi_data = False
         self.use_curvatures_threshold = 7
         self.curv = None  # curvatures array
