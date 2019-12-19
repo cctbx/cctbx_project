@@ -21,7 +21,7 @@ from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
 
 from PySide2.QtGui import QColor, QFont, QCursor, QKeySequence
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-import sys, zmq, subprocess, time, traceback, shutil, os.path, zlib, math, csv, io
+import sys, zmq, subprocess, time, traceback, shutil, zlib, math, csv, io
 
 
 

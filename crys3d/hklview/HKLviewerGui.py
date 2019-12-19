@@ -1,3 +1,4 @@
+from __future__ import division
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'HKLviewer.ui',
@@ -8,7 +9,7 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide2 import QtCore, QtWidgets
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
