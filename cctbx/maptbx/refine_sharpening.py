@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 
 import sys,os
 from libtbx.utils import Sorry
-from libtbx import group_args
 from cctbx.array_family import flex
 from copy import deepcopy
 
