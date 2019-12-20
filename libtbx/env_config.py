@@ -1005,6 +1005,131 @@ Wait for the command to finish, then try again.""" % vars())
         result.append(self.as_relocatable_path(p))
     return result
 
+  def write_conda_dispatcher(self, source_file, target_file,
+                             source_is_python_exe=False):
+    '''
+    Simplified dispatcher for conda package since many of the environment
+    variables are no longer necessray.
+    '''
+    with target_file.open('w') as f:
+      if (source_file is not None):
+        print('#! /bin/sh', file=f)
+        print('# LIBTBX_DISPATCHER DO NOT EDIT', file=f)
+      else:
+        print('# LIBTBX_DISPATCHER_HEAD DO NOT EDIT', file=f)
+        print('#', file=f)
+        print('# This file is intended to be sourced from other scripts.', file=f)
+        print('# It is like the dispatcher scripts in the bin directory,', file=f)
+        print('# but only sets up the environment without calling a', file=f)
+        print('# command at the end.', file=f)
+      print('#', file=f)
+      write_do_not_edit(f=f)
+      print('# To customize this auto-generated script create', file=f)
+      print('#', file=f)
+      print('#   dispatcher_include*.sh', file=f)
+      print('#', file=f)
+      print('# files in %s and run' % show_string(abs(self.build_path)), file=f)
+      print('#', file=f)
+      print('#   libtbx.refresh', file=f)
+      print('#', file=f)
+      print('# to re-generate the dispatchers (libtbx.refresh is a subset', file=f)
+      print('# of the functionality of the libtbx/configure.py command).', file=f)
+      print('#', file=f)
+      print('# See also:', file=f)
+      print('#   %s' \
+        % show_string(self.under_build("dispatcher_include_template.sh")), file=f)
+      print('#', file=f)
+      print(_SHELLREALPATH_CODE, file=f)
+      print('unset PYTHONHOME', file=f)
+      print('LIBTBX_BUILD="$(shellrealpath "$0" && cd "$(dirname "$RESULT")/.." && pwd)"', file=f)
+      print('export LIBTBX_BUILD', file=f)
+      print('LIBTBX_PYEXE_BASENAME="%s"' % self.python_exe.basename(), file=f)
+      print('export LIBTBX_PYEXE_BASENAME', file=f)
+      source_is_py = False
+      if (source_file is not None):
+        dispatcher_name = target_file.basename()
+        if (dispatcher_name.find('"') >= 0):
+          raise RuntimeError(
+            "Dispatcher target file name contains double-quote: %s\n"
+              % dispatcher_name
+            + "  source file: %s" % source_file)
+        print('LIBTBX_DISPATCHER_NAME="%s"' % target_file.basename(), file=f)
+        print('export LIBTBX_DISPATCHER_NAME', file=f)
+        if source_file.ext().lower() == ".py":
+          source_is_py = True
+        else:
+          with open(abs(source_file), 'rb') as fh:
+            first_line = fh.readline()
+          if first_line.startswith(b'#!') and b'python' in first_line.lower():
+            source_is_py = True
+      for line in self.dispatcher_include(where="at_start"):
+        print(line, file=f)
+
+      precall_commands = self.dispatcher_precall_commands()
+      if (precall_commands is not None):
+        for line in precall_commands:
+          print(line, file=f)
+      if (source_is_py):
+        scan_for_dispatcher_includes = True
+      elif source_file is None or not source_file.isfile():
+        scan_for_dispatcher_includes = False
+      else:
+        scan_for_dispatcher_includes = not detect_binary_file.from_initial_block(
+          file_name=abs(source_file))
+      if (scan_for_dispatcher_includes):
+        for line in source_specific_dispatcher_include(
+                      pattern="LIBTBX_PRE_DISPATCHER_INCLUDE_SH",
+                      source_file=source_file):
+          print(line, file=f)
+      for line in self.dispatcher_include(where="before_command"):
+        print(line, file=f)
+      if (scan_for_dispatcher_includes):
+        for line in source_specific_dispatcher_include(
+                      pattern="LIBTBX_POST_DISPATCHER_INCLUDE_SH",
+                      source_file=source_file):
+          print(line, file=f)
+      if (self.build_options.opt_resources):
+        ldpl = self.opt_resources_ld_preload()
+        if (ldpl is not None):
+          print('if [ "${LIBTBX_NO_LD_PRELOAD-UNSET}" == UNSET ]; then', file=f)
+          print('  LD_PRELOAD="%s"' % ldpl, file=f)
+          print('  export LD_PRELOAD', file=f)
+          print('fi', file=f)
+      print('LIBTBX_PYEXE="%s"' % (
+        self.python_exe.dirname() / "$LIBTBX_PYEXE_BASENAME").sh_value(), file=f)
+      print('export LIBTBX_PYEXE', file=f)
+
+      if (source_file is not None):
+        cmd = ""
+        if (source_is_py or source_is_python_exe):
+          qnew_tmp = qnew
+          if self.python_version_major_minor[0] == 3:
+            qnew_tmp = '' # -Q is gone in Python3.
+          cmd += ' "$LIBTBX_PYEXE"%s' % qnew_tmp
+        start_python = False
+        if (source_is_py):
+          if (len(source_specific_dispatcher_include(
+                    pattern="LIBTBX_START_PYTHON",
+                    source_file=source_file)) > 3):
+            start_python = True
+        if (not start_python and not source_is_python_exe):
+          cmd += ' "%s"' % source_file.sh_value()
+        print('if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then', file=f)
+        print("  exec $LIBTBX_VALGRIND"+cmd, '"$@"', file=f)
+        tmp_reloc = os.path.basename(source_file.relocatable)
+        if tmp_reloc.endswith('.py') and cmd.find('-Qnew')>-1:
+          print('elif [ -n "$LIBTBX__CPROFILE_FLAG__" ]; then', file=f)
+          print('  exec %s "$@"' % cmd.replace(
+            '-Qnew',
+            '-Qnew -m cProfile -o %s.profile' % os.path.basename(target_file.relocatable),
+            ), file=f)
+        print("elif [ $# -eq 0 ]; then", file=f)
+        print("  exec"+cmd, file=f)
+        print("else", file=f)
+        print("  exec"+cmd, '"$@"', file=f)
+        print("fi", file=f)
+    target_file.chmod(0o755)
+
   def write_bin_sh_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
 
@@ -1316,6 +1441,9 @@ Wait for the command to finish, then try again.""" % vars())
           + "   =%s" % source_file)
     if (os.name == "nt"):
       action = self.write_win32_dispatcher
+    elif (self.build_path == sys.prefix and
+          self.build_options.compiler == 'conda'):
+      action = self.write_conda_dispatcher
     else:
       action = self.write_bin_sh_dispatcher
     target_file_ext = target_file
