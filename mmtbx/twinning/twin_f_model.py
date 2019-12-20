@@ -1026,9 +1026,6 @@ the percentage of R-free reflections).
 
   def _get_step(self, update_f_ordered_solvent = False):
     step = self.f_obs().d_min()/self.mask_params.grid_step_factor
-    if(step < 0.3): step = 0.3
-    step = min(0.8, step)
-    if(update_f_ordered_solvent): step = 0.3
     return step
 
   def _update_f_mask_flag(self, xray_structure, mean_shift):
