@@ -53,8 +53,8 @@ class error_modifier_ev11(worker):
     self.deltas                      = flex.double()
     self.work_table                  = flex.reflection_table()
     self.work_table['delta_sq']      = flex.double()
-    self.work_table['mean']          = flex.double()
-    self.work_table['biased_mean']          = flex.double()
+    self.work_table['mean']          = flex.double() # mean = <I'_hj>
+    self.work_table['biased_mean']   = flex.double() # biased_mean = <I_h>, so dont leave out any reflection
     self.work_table['var']           = flex.double()
     biased_mean_array = flex.double()
 
@@ -187,7 +187,9 @@ class error_modifier_ev11(worker):
       self.logger.main_log("Global delta statistics (count,min,max,mean,stddev): (%d,%f,%f,%f,%f)"%(self.global_delta_count, self.global_delta_min, self.global_delta_max, self.global_delta_mean, self.global_delta_stddev))
 
   def calculate_delta_bin_limits(self):
-    '''Divide the delta (min,max) range into "number of ranks" bins. For a balanced rank load, bin limits should be chosen so that the bins are equally populated by the deltas. Assuming the normal distribution of deltas, we use the probability density function for the bin calculations.'''
+    '''Divide the delta (min,max) range into "number of ranks" bins. For a balanced rank load, bin limits should be
+       chosen so that the bins are equally populated by the deltas. Assuming the normal distribution of deltas,
+       we use the probability density function for the bin calculations.'''
     from scipy.stats import norm
     import numpy as np
     cdf_min = norm.cdf(self.global_delta_min, loc=self.global_delta_mean, scale=self.global_delta_stddev)
@@ -234,13 +236,16 @@ class error_modifier_ev11(worker):
     base_delta_index = sum(delta_count_per_rank[0:self.mpi_helper.rank])
     self.logger.log("Delta base index: %d"%base_delta_index)
 
-    from scipy.stats import norm
+    from scitbx.math import distributions
+    import numpy as np
+    norm = distributions.normal_distribution()
+
     a = 3./8. if self.global_delta_count < 10. else 0.5
 
     self.rankits = flex.double()
     for i in range(self.deltas.size()):
       global_delta_index = base_delta_index + i
-      rankit = norm.ppf( (global_delta_index + 1 - a) / (self.global_delta_count + 1 - 2 * a) )
+      rankit = norm.quantile((global_delta_index+1-a)/(self.global_delta_count+1-(2*a)))
       self.rankits.append(rankit)
 
     for rankit in self.rankits:
@@ -445,16 +450,26 @@ class error_modifier_ev11(worker):
 
   def modify_errors(self, reflections):
 
+    # First set up a reflection table to do work downstream. Needed to calculate delta_sq and bin reflections
     reflections = self.setup_work_arrays(reflections)
+    # Make sure every rank knows the global mean/stdev for deltas and use them to get the bin limits
     self.calculate_delta_statistics()
     self.calculate_delta_bin_limits()
+    # assign deltas for each reflection to appropriate bin
     self.distribute_deltas_over_bins()
+    # Each rank gets its own bin. Make sure all deltas in that bin are on that rank and sorted.
     self.distribute_deltas_over_ranks()
+    # calculate rankits, each rank does its own rankits calculation
     self.calculate_delta_rankits()
+    # initial ev11 params using slope and offset of fit to rankits
     self.calculate_initial_ev11_parameters()
+    # Now moving to intensities, find the bin limits using global min/max of the means of each reflection
     self.calculate_intensity_bin_limits()
+    # Once bin limits are determined, assign intensities on each rank to appropriate bin limits
     self.distribute_reflections_over_intensity_bins()
+    # Run LBFGSB minimizer -- only rank0 does minimization but gradients/functionals are calculated using all rank
     self.run_minimizer()
+    # Finally update the variances of each reflection as per Eq (10) in Brewster et. al (2019)
     reflections['intensity.sum.variance'] = (self.sfac**2)*(reflections['intensity.sum.variance'] +
                                                             self.sb*self.sb*reflections['biased_mean'] +
                                                             self.sadd*self.sadd*reflections['biased_mean']**2)
