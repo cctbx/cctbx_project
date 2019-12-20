@@ -789,6 +789,8 @@ Wait for the command to finish, then try again.""" % vars())
             '  resulting target = "%s"' % (
               module_name, redirection, dist_path))
         self.command_line_redirections[module_name] = dist_path
+      # remove any trailing dir separators
+      module_name = module_name.rstrip("/\\")
       module_names.append(module_name)
     if (pre_processed_args.warm_start):
       self.explicitly_requested_modules |= set(module_names)
