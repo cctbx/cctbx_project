@@ -175,6 +175,7 @@ class overall_counts(object):
         "common_element": "   common element",
         "other": "   other",
         'd_amino_acid' : '   D-amino acid',
+        'common_saccharide' : '  common saccharide',
       }
       show_sorted_by_counts(c.items(), out=out, prefix=prefix+"  ",
         annotations=[
