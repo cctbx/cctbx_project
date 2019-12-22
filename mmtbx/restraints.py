@@ -84,7 +84,6 @@ class manager(object):
         self.afitt_object = afitt_object
 
   def select(self, selection):
-    print('manager select')
     if (self.geometry is None):
       geometry = None
     else:
