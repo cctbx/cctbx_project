@@ -1039,6 +1039,10 @@ class HKLViewFrame() :
     return True
 
 
+  def ShowUnitCell(self, val):
+    self.params.NGL_HKLviewer.show_unit_cell = val
+    self.update_settings()
+
 
   def ShowTooltips(self, val):
     self.params.NGL_HKLviewer.tooltips_in_script  = val
@@ -1193,6 +1197,10 @@ NGL_HKLviewer {
     .type = bool
   mouse_moved = False
     .type = bool
+  show_real_space_unit_cell = None
+    .type = float
+  show_reciprocal_unit_cell = None
+    .type = float
   clip_plane {
     h = 2.0
       .type = float

@@ -121,7 +121,7 @@ class MillerArrayTableForm(QDialog):
     return super(MillerArrayTableForm, self).eventFilter(source, event)
 
 
-class MyTableView(QTableView):
+class MillerArrayTableView(QTableView):
   def __init__(self, *args, **kwargs):
     QTableView.__init__(self, *args, **kwargs)
     myqa = QAction("Copy selected cells...", self)
@@ -157,7 +157,7 @@ class MyTableView(QTableView):
       app.clipboard().setText(stream.getvalue())
 
 
-class MyTableWidget(QTableWidget):
+class HeaderDataTableWidget(QTableWidget):
   def __init__(self, *args, **kwargs):
     QTableWidget.__init__(self, *args, **kwargs)
     self.mousebutton = None
@@ -177,10 +177,10 @@ class MyTableWidget(QTableWidget):
 
 class MillerArrayTableModel(QAbstractTableModel):
   def __init__(self, data, headerdata, parent=None):
-    super(MillerArrayTableModel, self).__init__(parent)
+    super(MillerArrayTableModel, self).__init__(parent.window)
     # input data are a list of column arrays organised as:
     # [[list of H], [list of K], [list of L], [list of millerdata1], [list of millersigmas1], [list of millerdata2]... ]
-    # We use zip to transpose it from a list of columns data to matching rows of data values for the table
+    # Use zip to transpose it from a list of columns data to matching rows of data values for the table
     self._data = list(zip(*data))
     self.columnheaderdata = headerdata
     self.precision = 4
@@ -347,18 +347,19 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.makenewdataform = MakeNewDataForm(self)
     self.makenewdataform.setModal(True)
 
-    self.millerarraytable = MyTableView(self.window)
+    self.millerarraytable = MillerArrayTableView(self.window)
     self.millerarraytable.setSortingEnabled(False)
     self.millerarraytable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.millerarraytableform = MillerArrayTableForm(self)
     self.millerarraytablemodel = None
     self.millerarraytable.installEventFilter(self.millerarraytableform) # for keyboard copying to clipboard
 
-    #self.createExpansionBox()
-    #self.createFileInfoBox()
+    self.createExpansionBox()
+    self.createFileInfoBox()
     self.CreateSliceTabs()
-    #self.createRadiiScaleGroupBox()
-    #self.createBinsBox()
+    self.createRadiiScaleGroupBox()
+    self.createBinsBox()
+    self.CreateOtherBox()
     #self.CreateFunctionTabs()
 
     self.cpath = ""
@@ -1097,46 +1098,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def createExpansionBox(self):
-    self.SpaceGroupComboBox = QComboBox()
     self.SpaceGroupComboBox.activated.connect(self.SpacegroupSelchange)
-
-    self.SpacegroupLabel = QLabel()
-    self.SpacegroupLabel.setText("Space Subgroups")
-
-    self.expandP1checkbox = QCheckBox()
-    self.expandP1checkbox.setText("Expand to P1")
     self.expandP1checkbox.clicked.connect(self.ExpandToP1)
-
-    self.expandAnomalouscheckbox = QCheckBox()
-    self.expandAnomalouscheckbox.setText("Show Friedel pairs")
     self.expandAnomalouscheckbox.clicked.connect(self.ExpandAnomalous)
-
-    self.sysabsentcheckbox = QCheckBox()
-    self.sysabsentcheckbox.setText("Show Systematic Absences")
     self.sysabsentcheckbox.clicked.connect(self.showSysAbsent)
-
-    self.missingcheckbox = QCheckBox()
-    self.missingcheckbox.setText("Show Missing")
     self.missingcheckbox.clicked.connect(self.showMissing)
-
-    self.onlymissingcheckbox = QCheckBox()
-    self.onlymissingcheckbox.setText("Only Show Missing")
     self.onlymissingcheckbox.clicked.connect(self.showOnlyMissing)
-
-    self.ExpansionBox = QGroupBox("Expansions")
-    layout = QGridLayout()
-    layout.addWidget(self.SpacegroupLabel,           0, 0)
-    layout.addWidget(self.SpaceGroupComboBox,        0, 1)
-    layout.addWidget(self.expandP1checkbox,          1, 0)
-    layout.addWidget(self.expandAnomalouscheckbox,   1, 1)
-    layout.addWidget(self.sysabsentcheckbox,         2, 0)
-    layout.addWidget(self.missingcheckbox,           3, 0)
-    layout.addWidget(self.onlymissingcheckbox,       3, 1)
-    layout.setRowStretch(0,0)
-    layout.setRowStretch(1,0)
-    layout.setRowStretch(2,0)
-    layout.setRowStretch(3,1)
-    self.ExpansionBox.setLayout(layout)
 
 
   def CreateSliceTabs(self):
@@ -1394,6 +1361,20 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
                                     %str(self.fixedorientcheckbox.isChecked()))
 
 
+  def onDrawReciprocUnitCellBoxClick(self):
+    if self.DrawReciprocUnitCellBox.isChecked():
+      self.PhilToJsRender("NGL_HKLviewer.show_reciprocal_unit_cell = %f" %self.reciprocunitcellslider.value())
+    else:
+      self.PhilToJsRender("NGL_HKLviewer.show_reciprocal_unit_cell = None")
+
+
+  def onDrawUnitCellBoxClick(self):
+    if self.DrawRealUnitCellBox.isChecked():
+      self.PhilToJsRender("NGL_HKLviewer.show_real_space_unit_cell = %f" %self.unitcellslider.value())
+    else:
+      self.PhilToJsRender("NGL_HKLviewer.show_real_space_unit_cell = None")
+
+
   def onMillerTableCellPressed(self, row, col):
     #print( "in millertable CellPressed " + self.millertable.currentItem().text() )
     if self.millertable.mousebutton == Qt.RightButton:
@@ -1417,13 +1398,13 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     for i,scenelabel in enumerate(self.scenearraylabels):
       if self.millerarraylabels[row] == scenelabel or self.millerarraylabels[row] + " + " in scenelabel:
         #print(i, scenelabel)
-        myqa = QAction("Display %s data" %scenelabel, self, triggered=self.testaction)
+        myqa = QAction("Display %s data" %scenelabel, self.window, triggered=self.testaction)
         myqa.setData(i)
         self.millertablemenu.addAction(myqa)
-    myqa = QAction("Make new data as a function of this data...", self, triggered=self.testaction)
+    myqa = QAction("Make new data as a function of this data...", self.window, triggered=self.testaction)
     myqa.setData( ("newdata_1", row ))
     self.millertablemenu.addAction(myqa)
-    myqa = QAction("Make new data as a function of this data and another data set...", self, triggered=self.testaction)
+    myqa = QAction("Make new data as a function of this data and another data set...", self.window, triggered=self.testaction)
     myqa.setData( ("newdata_2", row ))
     self.millertablemenu.addAction(myqa)
     #myqa = QAction("Show a table of this data set...", self, triggered=self.testaction)
@@ -1434,7 +1415,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         arraystr += self.millerarraylabels[r]
         if i < len(self.millertable.selectedrows)-1:
           arraystr += " and "
-      myqa = QAction("Show a table of %s data ..." %arraystr, self, triggered=self.testaction)
+      myqa = QAction("Show a table of %s data ..." %arraystr, self.window, triggered=self.testaction)
       myqa.setData( ("tabulate_data", self.millertable.selectedrows ))
       self.millertablemenu.addAction(myqa)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -1509,7 +1490,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def createFileInfoBox(self):
     labels = ["Column label", "Type", "Space group", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
-    self.millertable = MyTableWidget(0, len(labels))
+    #self.millertable = MillerTableWidget(0, len(labels))
     self.millertable.setHorizontalHeaderLabels(labels)
     self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     # don't allow editing this table
@@ -1518,81 +1499,81 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.millertable.cellDoubleClicked.connect(self.onMillerTableCellPressed)
     self.millertable.itemSelectionChanged.connect(self.onMillerTableitemSelectionChanged)
 
-    self.datasetLabel = QLabel()
-    self.datasetLabel.setText("Display a data set with a double-click or right-click it for more options.")
-    self.FileInfoBox = QGroupBox("Reflection File Information")
-    self.HKLnameedit = QLineEdit('')
-    self.HKLnameedit.setReadOnly(True)
-    self.textInfo = QTextEdit()
-    self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
-    self.textInfo.setReadOnly(True)
-    layout = QGridLayout()
-    layout.addWidget(self.openFileNameButton,     0, 0, 1, 2)
-    if self.devmode:
-      layout.addWidget(self.debugbutton,            0, 2, 1, 1)
-    layout.addWidget(self.HKLnameedit,            1, 0, 1, 3)
-    layout.addWidget(self.datasetLabel,           2, 0, 1, 3)
-    layout.addWidget(self.millertable,            3, 0, 1, 3)
-    layout.addWidget(self.textInfo,               4, 0, 1, 3)
+    #self.datasetLabel = QLabel()
+    #self.datasetLabel.setText("Display a data set with a double-click or right-click it for more options.")
+    #self.FileInfoBox = QGroupBox("Reflection File Information")
+    #self.HKLnameedit = QLineEdit('')
+    #self.HKLnameedit.setReadOnly(True)
+    #self.textInfo = QTextEdit()
+    #self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
+    #self.textInfo.setReadOnly(True)
+    #layout = QGridLayout()
+    #layout.addWidget(self.openFileNameButton,     0, 0, 1, 2)
+    #if self.devmode:
+    #  layout.addWidget(self.debugbutton,            0, 2, 1, 1)
+    #layout.addWidget(self.HKLnameedit,            1, 0, 1, 3)
+    #layout.addWidget(self.datasetLabel,           2, 0, 1, 3)
+    #layout.addWidget(self.millertable,            3, 0, 1, 3)
+    #layout.addWidget(self.textInfo,               4, 0, 1, 3)
     #layout.setColumnStretch(1, 2)
-    self.FileInfoBox.setLayout(layout)
+    #self.FileInfoBox.setLayout(layout)
 
 
   def createRadiiScaleGroupBox(self):
-    self.RadiiScaleGroupBox = QGroupBox("Radii Size of HKL Spheres")
+    #self.RadiiScaleGroupBox = QGroupBox("Radii Size of HKL Spheres")
 
-    self.ManualPowerScalecheckbox = QCheckBox()
-    self.ManualPowerScalecheckbox.setText("Manual Power Scaling of Sphere Radii")
-    self.ManualPowerScalecheckbox.clicked.connect(self.onManualPowerScale)
+    #self.ManualPowerScalecheckbox = QCheckBox()
+    #self.ManualPowerScalecheckbox.setText("Manual Power Scaling of Sphere Radii")
+    #self.ManualPowerScalecheckbox.clicked.connect(self.onManualPowerScale)
 
-    self.power_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
-    self.power_scale_spinBox.setValue(0.33)
-    self.power_scale_spinBox.setDecimals(2)
-    self.power_scale_spinBox.setSingleStep(0.05)
-    self.power_scale_spinBox.setRange(0.0, 1.0)
+    #self.power_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
+    #self.power_scale_spinBox.setValue(0.33)
+    #self.power_scale_spinBox.setDecimals(2)
+    #self.power_scale_spinBox.setSingleStep(0.05)
+    #self.power_scale_spinBox.setRange(0.0, 1.0)
     self.power_scale_spinBox.valueChanged.connect(self.onPowerScaleChanged)
-    self.power_scale_spinBox.setEnabled(False)
-    self.powerscaleLabel = QLabel()
-    self.powerscaleLabel.setText("Power scale Factor")
+    #self.power_scale_spinBox.setEnabled(False)
+    #self.powerscaleLabel = QLabel()
+    #self.powerscaleLabel.setText("Power scale Factor")
 
-    self.radii_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
-    self.radii_scale_spinBox.setValue(1.0)
-    self.radii_scale_spinBox.setDecimals(1)
-    self.radii_scale_spinBox.setSingleStep(0.1)
-    self.radii_scale_spinBox.setRange(0.2, 2.0)
+    #self.radii_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
+    #self.radii_scale_spinBox.setValue(1.0)
+    #self.radii_scale_spinBox.setDecimals(1)
+    #self.radii_scale_spinBox.setSingleStep(0.1)
+    #self.radii_scale_spinBox.setRange(0.2, 2.0)
     self.radii_scale_spinBox.valueChanged.connect(self.onRadiiScaleChanged)
-    self.radiiscaleLabel = QLabel()
-    self.radiiscaleLabel.setText("Linear Scale Factor")
+    #self.radiiscaleLabel = QLabel()
+    #self.radiiscaleLabel.setText("Linear Scale Factor")
 
-    layout = QGridLayout()
-    layout.addWidget(self.ManualPowerScalecheckbox, 1, 0, 1, 2)
-    layout.addWidget(self.powerscaleLabel,          2, 0, 1, 2)
-    layout.addWidget(self.power_scale_spinBox,      2, 1, 1, 2)
-    layout.addWidget(self.radiiscaleLabel,          3, 0, 1, 2)
-    layout.addWidget(self.radii_scale_spinBox,      3, 1, 1, 2)
-    layout.setColumnStretch (0, 1)
-    layout.setColumnStretch (1 ,0)
-    self.RadiiScaleGroupBox.setLayout(layout)
+    #layout = QGridLayout()
+    #layout.addWidget(self.ManualPowerScalecheckbox, 1, 0, 1, 2)
+    #layout.addWidget(self.powerscaleLabel,          2, 0, 1, 2)
+    #layout.addWidget(self.power_scale_spinBox,      2, 1, 1, 2)
+    #layout.addWidget(self.radiiscaleLabel,          3, 0, 1, 2)
+    #layout.addWidget(self.radii_scale_spinBox,      3, 1, 1, 2)
+    #layout.setColumnStretch (0, 1)
+    #layout.setColumnStretch (1 ,0)
+    #self.RadiiScaleGroupBox.setLayout(layout)
 
 
   def createBinsBox(self):
-    self.binstable = QTableWidget(0, 4)
+    #self.binstable = QTableWidget(0, 4)
     self.binstable_isready = False
     labels = ["no. of HKLs", "lower bin value", "upper bin value", "opacity"]
     self.binstable.setHorizontalHeaderLabels(labels)
     self.binstable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
-    self.bindata_labeltxt = QLabel()
-    self.bindata_labeltxt.setText("Binning according to:")
-    self.Nbins_spinBox = QSpinBox()
-    self.Nbins_spinBox.setSingleStep(1)
-    self.Nbins_spinBox.setRange(1, 40)
+    #self.bindata_labeltxt = QLabel()
+    #self.bindata_labeltxt.setText("Binning according to:")
+    #self.Nbins_spinBox = QSpinBox()
+    #self.Nbins_spinBox.setSingleStep(1)
+    #self.Nbins_spinBox.setRange(1, 40)
     self.Nbins_spinBox.valueChanged.connect(self.onNbinsChanged)
-    self.Nbins_labeltxt = QLabel()
-    self.Nbins_labeltxt.setText("Number of bins:")
+    #self.Nbins_labeltxt = QLabel()
+    #self.Nbins_labeltxt.setText("Number of bins:")
 
-    self.OpaqueAllCheckbox = QCheckBox()
-    self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
-    self.OpaqueAllCheckbox.setText("Show all data in bins")
+    #self.OpaqueAllCheckbox = QCheckBox()
+    #self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
+    #self.OpaqueAllCheckbox.setText("Show all data in bins")
     self.OpaqueAllCheckbox.clicked.connect(self.onOpaqueAll)
 
     self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
@@ -1600,20 +1581,39 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.binstable.itemPressed.connect(self.onBinsTableitemPressed  )
     #self.binstable.itemSelectionChanged.connect(self.onBinsTableItemSelectionChanged  )
 
-    self.BinDataComboBox = QComboBox()
+    #self.BinDataComboBox = QComboBox()
     self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)
-    self.BinsGroupBox = QGroupBox("Bins")
-    layout = QGridLayout()
-    layout.addWidget(self.bindata_labeltxt, 0, 0)
-    layout.addWidget(self.BinDataComboBox, 0, 1)
-    layout.addWidget(self.Nbins_labeltxt, 0, 2)
-    layout.addWidget(self.Nbins_spinBox, 0, 3)
-    layout.addWidget(self.OpaqueAllCheckbox, 1, 2)
-    layout.addWidget(self.binstable, 2, 0, 1, 4)
-    layout.setColumnStretch(0, 0)
-    layout.setColumnStretch(1, 2)
-    layout.setColumnStretch(3, 1)
-    self.BinsGroupBox.setLayout(layout)
+    #self.BinsGroupBox = QGroupBox("Bins")
+    #layout = QGridLayout()
+    #layout.addWidget(self.bindata_labeltxt, 0, 0)
+    #layout.addWidget(self.BinDataComboBox, 0, 1)
+    #layout.addWidget(self.Nbins_labeltxt, 0, 2)
+    #layout.addWidget(self.Nbins_spinBox, 0, 3)
+    #layout.addWidget(self.OpaqueAllCheckbox, 1, 2)
+    #layout.addWidget(self.binstable, 2, 0, 1, 4)
+    #layout.setColumnStretch(0, 0)
+    #layout.setColumnStretch(1, 2)
+    #layout.setColumnStretch(3, 1)
+    #self.BinsGroupBox.setLayout(layout)
+
+
+  def CreateOtherBox(self):
+    self.DrawRealUnitCellBox.clicked.connect(self.onDrawUnitCellBoxClick)
+    self.DrawReciprocUnitCellBox.clicked.connect(self.onDrawReciprocUnitCellBoxClick)
+    self.unitcellslider.valueChanged.connect(self.onUnitcellScale)
+    self.reciprocunitcellslider.valueChanged.connect(self.onReciprocUnitcellScale)
+
+
+  def onUnitcellScale(self):
+    if self.unfeedback:
+      return
+    self.PhilToJsRender("NGL_HKLviewer.show_real_space_unit_cell = %f" %self.unitcellslider.value())
+
+
+  def onReciprocUnitcellScale(self):
+    if self.unfeedback:
+      return
+    self.PhilToJsRender("NGL_HKLviewer.show_reciprocal_unit_cell = %f" %self.reciprocunitcellslider.value())
 
 
   def DebugInteractively(self):

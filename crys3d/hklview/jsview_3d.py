@@ -230,6 +230,8 @@ class hklview_3d:
     self.HKLscenesMaxsigmas = []
     self.HKLscenesMinsigmas = []
     self.bindata = None
+    self.reciproc_scale = 1.0
+    self.realspace_scale = 1.0
     self.sceneisdirty = True
     self.hkl_scenes_info = []
     self.match_valarrays = []
@@ -364,12 +366,13 @@ class hklview_3d:
         self.sceneisdirty = True
         self.ConstructReciprocalSpace(curphilparam, merge=self.merge)
     msg = ""
-    if has_phil_path(diff_phil, "show_missing") \
+    if self.viewerparams.scene_id is not None and \
+      ( has_phil_path(diff_phil, "show_missing") \
      or has_phil_path(diff_phil, "show_only_missing") \
      or has_phil_path(diff_phil, "show_systematic_absences") \
      or has_phil_path(diff_phil, "scene_bin_thresholds") \
      or has_phil_path(diff_phil, "bin_scene_label") \
-     or has_phil_path(diff_phil, "nbins"):
+     or has_phil_path(diff_phil, "nbins") ):
       self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.bin_scene_label, curphilparam.nbins)
       self.sceneisdirty = True
 
@@ -435,6 +438,18 @@ class hklview_3d:
       #  self.ReOrientStage()
 
       msg += self.SetOpacities(self.viewerparams.NGL.bin_opacities )
+      if has_phil_path(self.diff_phil, "show_real_space_unit_cell" ):
+        if self.params.show_real_space_unit_cell is None:
+           scale = None
+        else:
+          scale = (self.realspace_scale - 1.0)*self.params.show_real_space_unit_cell/100 + 1.0
+        self.DrawUnitCell(scale )
+      if has_phil_path(self.diff_phil, "show_reciprocal_unit_cell" ):
+        if self.params.show_reciprocal_unit_cell is None:
+          scale = None
+        else:
+          scale = (self.reciproc_scale - 1.0)*self.params.show_reciprocal_unit_cell/100 + 1.0
+        self.DrawReciprocalUnitCell(scale )
       self.set_tooltip_opacity()
       self.set_show_tooltips()
       #self.SetAutoView()
@@ -452,6 +467,7 @@ class hklview_3d:
     if (self.miller_array is None):
       return
     self.identify_suitable_fomsarrays()
+    self.GetUnitcellScales()
     self.d_min = self.miller_array.d_min()
     array_info = self.miller_array.info()
     self.sg = self.miller_array.space_group()
@@ -2789,7 +2805,7 @@ Distance: %s
     else:
       vec1 = list( vec1 * matrix.sqr(uc.orthogonalization_matrix()) )
       vec2 = list( vec2 * matrix.sqr(uc.orthogonalization_matrix()) )
-      vscale = 200.0/uc.volume()
+      vscale = 1.0 #200.0/uc.volume()
       # TODO: find suitable scale factor for displaying real space vector together with reciprocal vectors
       svec1 = [ vscale*vec1[0], vscale*vec1[1], vscale*vec1[2] ]
       svec2 = [ vscale*vec2[0], vscale*vec2[1], vscale*vec2[2] ]
@@ -2877,6 +2893,9 @@ Distance: %s
 
 
   def DrawUnitCell(self, scale=1):
+    if scale is None:
+      self.RemoveVectors("unitcell")
+      return
     self.AddVector(0,0,0, scale,0,0, False, label="a", r=0.5, g=0.8, b=0.8)
     self.AddVector(0,0,0, 0,scale,0, False, label="b", r=0.8, g=0.5, b=0.8)
     self.AddVector(0,0,0, 0,0,scale, False, label="c", r=0.8, g=0.8, b=0.5)
@@ -2892,6 +2911,9 @@ Distance: %s
 
 
   def DrawReciprocalUnitCell(self, scale=1):
+    if scale is None:
+      self.RemoveVectors("reciprocal_unitcell")
+      return
     self.AddVector(0,0,0, scale,0,0, label="a*", r=0.5, g=0.3, b=0.3)
     self.AddVector(0,0,0, 0,scale,0, label="b*", r=0.3, g=0.5, b=0.3)
     self.AddVector(0,0,0, 0,0,scale, label="c*", r=0.3, g=0.3, b=0.5)
@@ -2904,6 +2926,25 @@ Distance: %s
     self.AddVector(scale,0,0, scale,0,scale, r=0.3, g=0.3, b=0.5)
     self.AddVector(0,scale,0, 0,scale,scale, r=0.3, g=0.3, b=0.5)
     self.AddVector(scale,scale,0, scale,scale,scale, r=0.3, g=0.3, b=0.5, name="reciprocal_unitcell")
+
+
+  def GetUnitcellScales(self):
+    spanmin, spanmax = ( self.miller_array.index_span().min(), self.miller_array.index_span().max())
+    uc = self.miller_array.unit_cell()
+    vec =(1.0, 1.0, 1.0)
+    # uc.reciprocal_space_vector() only takes integer miller indices so compute
+    # the cartesian coordinates for real valued miller indices with the transpose of the fractionalization matrix
+    vec1 = vec * matrix.sqr(uc.fractionalization_matrix()).transpose()
+    reciproc_bodydiagonal_length = vec1.length()
+    reciprocspanmaxvec = spanmax * matrix.sqr(uc.fractionalization_matrix()).transpose()
+    reciproc_spanmax_length = reciprocspanmaxvec.length()
+    self.reciproc_scale = reciproc_spanmax_length / reciproc_bodydiagonal_length
+    # for real space vector
+    vec2 = vec * matrix.sqr(uc.orthogonalization_matrix())
+    bodydiagonal_length = vec2.length()
+    spanmaxvec = spanmax * matrix.sqr(uc.orthogonalization_matrix())
+    spanmax_length = spanmaxvec.length()
+    self.realspace_scale = reciproc_spanmax_length / bodydiagonal_length
 
 
   def fix_orientation(self, val):

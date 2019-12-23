@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>760</width>
+    <width>1066</width>
     <height>830</height>
    </rect>
   </property>
@@ -76,7 +76,7 @@
                 </widget>
                </item>
                <item row="1" column="0">
-                <widget class="QTableWidget" name="millertable">
+                <widget class="HeaderDataTableWidget" name="millertable">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                    <horstretch>0</horstretch>
@@ -108,7 +108,7 @@
                </item>
               </layout>
              </widget>
-             <widget class="QTabWidget" name="tabWidget">
+             <widget class="QTabWidget" name="functionTabWidget">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
@@ -116,7 +116,7 @@
                </sizepolicy>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>4</number>
               </property>
               <widget class="QWidget" name="tab">
                <attribute name="title">
@@ -248,7 +248,7 @@
                   </property>
                   <layout class="QGridLayout" name="gridLayout_7">
                    <property name="leftMargin">
-                    <number>3</number>
+                    <number>6</number>
                    </property>
                    <property name="topMargin">
                     <number>3</number>
@@ -257,7 +257,7 @@
                     <number>3</number>
                    </property>
                    <property name="bottomMargin">
-                    <number>3</number>
+                    <number>6</number>
                    </property>
                    <item row="0" column="1">
                     <widget class="QRadioButton" name="clipNormalBtn">
@@ -288,7 +288,7 @@
                    <item row="1" column="0" colspan="3">
                     <widget class="QGroupBox" name="groupBox_2">
                      <property name="title">
-                      <string>Vector Components (r1, r2, r3) specified</string>
+                      <string>Vector Components (r1, r2, r3) are specified</string>
                      </property>
                      <layout class="QGridLayout" name="gridLayout_19">
                       <property name="leftMargin">
@@ -540,7 +540,7 @@
                          <item row="0" column="0">
                           <widget class="QLabel" name="label_14">
                            <property name="text">
-                            <string>Distance from origin</string>
+                            <string>Distance from origin:</string>
                            </property>
                           </widget>
                          </item>
@@ -580,7 +580,10 @@
                             </sizepolicy>
                            </property>
                            <property name="text">
-                            <string>Clip Plane Width</string>
+                            <string>Clip Plane Width:</string>
+                           </property>
+                           <property name="alignment">
+                            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                            </property>
                           </widget>
                          </item>
@@ -736,8 +739,8 @@
                  <rect>
                   <x>6</x>
                   <y>6</y>
-                  <width>241</width>
-                  <height>71</height>
+                  <width>316</width>
+                  <height>81</height>
                  </rect>
                 </property>
                 <property name="sizePolicy">
@@ -753,6 +756,28 @@
                  <bool>false</bool>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_10">
+                 <item row="1" column="1">
+                  <widget class="QDoubleSpinBox" name="radii_scale_spinBox"/>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QLabel" name="label_10">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>Exponent:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="indent">
+                    <number>1</number>
+                   </property>
+                  </widget>
+                 </item>
                  <item row="1" column="0">
                   <widget class="QLabel" name="label_11">
                    <property name="sizePolicy">
@@ -766,9 +791,6 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
-                  <widget class="QDoubleSpinBox" name="radii_scale_spinBox"/>
-                 </item>
                  <item row="0" column="0" colspan="2">
                   <widget class="QCheckBox" name="ManualPowerScalecheckbox">
                    <property name="text">
@@ -776,21 +798,18 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="2">
-                  <widget class="QLabel" name="label_10">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
+                 <item row="0" column="3">
+                  <widget class="QDoubleSpinBox" name="power_scale_spinBox">
+                   <property name="maximum">
+                    <double>1.000000000000000</double>
                    </property>
-                   <property name="text">
-                    <string>Exponent</string>
+                   <property name="singleStep">
+                    <double>0.050000000000000</double>
+                   </property>
+                   <property name="stepType">
+                    <enum>QAbstractSpinBox::DefaultStepType</enum>
                    </property>
                   </widget>
-                 </item>
-                 <item row="0" column="3">
-                  <widget class="QDoubleSpinBox" name="power_scale_spinBox"/>
                  </item>
                 </layout>
                </widget>
@@ -903,32 +922,142 @@
                   <property name="title">
                    <string>Geometry</string>
                   </property>
-                  <widget class="QCheckBox" name="checkBox_9">
-                   <property name="geometry">
-                    <rect>
-                     <x>10</x>
-                     <y>20</y>
-                     <width>171</width>
-                     <height>16</height>
-                    </rect>
+                  <layout class="QGridLayout" name="gridLayout_21">
+                   <property name="leftMargin">
+                    <number>3</number>
                    </property>
-                   <property name="text">
-                    <string>Show reciprocal Unit Cell</string>
+                   <property name="topMargin">
+                    <number>3</number>
                    </property>
-                  </widget>
-                  <widget class="QCheckBox" name="checkBox_10">
-                   <property name="geometry">
-                    <rect>
-                     <x>10</x>
-                     <y>40</y>
-                     <width>171</width>
-                     <height>16</height>
-                    </rect>
+                   <property name="rightMargin">
+                    <number>3</number>
                    </property>
-                   <property name="text">
-                    <string>Show Real Space Unit Cell</string>
+                   <property name="bottomMargin">
+                    <number>3</number>
                    </property>
-                  </widget>
+                   <item row="0" column="0">
+                    <widget class="QGroupBox" name="DrawReciprocUnitCellBox">
+                     <property name="title">
+                      <string>Show Reciprocal Unit Cell</string>
+                     </property>
+                     <property name="checkable">
+                      <bool>true</bool>
+                     </property>
+                     <property name="checked">
+                      <bool>false</bool>
+                     </property>
+                     <widget class="QLabel" name="label_4">
+                      <property name="geometry">
+                       <rect>
+                        <x>230</x>
+                        <y>25</y>
+                        <width>101</width>
+                        <height>36</height>
+                       </rect>
+                      </property>
+                      <property name="text">
+                       <string>Twice the size of sphere of reflections</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                     <widget class="QSlider" name="reciprocunitcellslider">
+                      <property name="geometry">
+                       <rect>
+                        <x>75</x>
+                        <y>35</y>
+                        <width>151</width>
+                        <height>22</height>
+                       </rect>
+                      </property>
+                      <property name="minimum">
+                       <number>0</number>
+                      </property>
+                      <property name="maximum">
+                       <number>100</number>
+                      </property>
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                     </widget>
+                     <widget class="QLabel" name="label_2">
+                      <property name="geometry">
+                       <rect>
+                        <x>5</x>
+                        <y>35</y>
+                        <width>71</width>
+                        <height>16</height>
+                       </rect>
+                      </property>
+                      <property name="text">
+                       <string>True to Scale</string>
+                      </property>
+                     </widget>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QGroupBox" name="DrawRealUnitCellBox">
+                     <property name="title">
+                      <string>Show Real Space Unit Cell</string>
+                     </property>
+                     <property name="checkable">
+                      <bool>true</bool>
+                     </property>
+                     <property name="checked">
+                      <bool>false</bool>
+                     </property>
+                     <widget class="QLabel" name="label_5">
+                      <property name="geometry">
+                       <rect>
+                        <x>230</x>
+                        <y>25</y>
+                        <width>101</width>
+                        <height>36</height>
+                       </rect>
+                      </property>
+                      <property name="text">
+                       <string>Twice the size of sphere of reflections</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                     <widget class="QSlider" name="unitcellslider">
+                      <property name="geometry">
+                       <rect>
+                        <x>75</x>
+                        <y>35</y>
+                        <width>151</width>
+                        <height>22</height>
+                       </rect>
+                      </property>
+                      <property name="minimum">
+                       <number>0</number>
+                      </property>
+                      <property name="maximum">
+                       <number>99</number>
+                      </property>
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                     </widget>
+                     <widget class="QLabel" name="label_6">
+                      <property name="geometry">
+                       <rect>
+                        <x>5</x>
+                        <y>35</y>
+                        <width>71</width>
+                        <height>16</height>
+                       </rect>
+                      </property>
+                      <property name="text">
+                       <string>True to Scale</string>
+                      </property>
+                     </widget>
+                    </widget>
+                   </item>
+                  </layout>
                  </widget>
                 </item>
                </layout>
@@ -975,8 +1104,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>760</width>
-     <height>18</height>
+     <width>1066</width>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1013,6 +1142,11 @@
    <extends>QWidget</extends>
    <header>qwebengineview.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>HeaderDataTableWidget</class>
+   <extends>QTableWidget</extends>
+   <header>headerdatatablewidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
