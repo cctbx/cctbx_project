@@ -7691,7 +7691,6 @@ def write_output_files(params,
   mask=mask.set_selected(~s,0)
   if params.map_modification.soft_mask:
     # buffer and smooth the mask
-    print("Smoothing mask")
     map_data_ncs_au,smoothed_mask_data=apply_soft_mask(map_data=map_data_ncs_au,
       mask_data=mask.as_double(),
       rad_smooth=tracking_data.params.crystal_info.resolution,
