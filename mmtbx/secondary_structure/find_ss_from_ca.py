@@ -150,6 +150,11 @@ master_phil = iotbx.phil.parse("""
        .help = Write SHEET records that contain a single strand
        .short_caption = Write single strands
 
+     remove_missing_atom_annotation = False
+       .type = bool
+       .help = Remove annotation that refers to atoms that are not present
+       .short_caption = Remove missing atom annotation
+
      max_h_bond_length = 3.5
        .type = float
        .help = Maximum H-bond length to include in secondary structure
@@ -547,7 +552,7 @@ def get_atom_from_residue(residue=None,
     return None,None
   # just make sure that atom_name is there
   for atom in residue.atoms():
-    if atom.name.replace(" ","")==atom_name.replace(" ",""):
+    if atom.name.replace(" ","")==atom_name.replace(" ",""): # ZZZ HERE
       if skip_n_for_pro and atom.name.replace(" ","")=='N' and \
          residue.resname.replace(" ","").upper()=="PRO":
         return None,None
@@ -3449,6 +3454,15 @@ class find_secondary_structure: # class to look for secondary structure
         print(working_annotation.as_pdb_str(), file=out)
 
 
+    #  Remove annotation that does not match model
+    if params.find_ss_structure.remove_missing_atom_annotation:
+      working_annotation=remove_bad_annotation(
+        working_annotation,
+        hierarchy=hierarchy,
+        max_h_bond_length=params.find_ss_structure.max_h_bond_length,
+        remove_overlaps=False, # XXX Required to prevent recursion
+        out=out)
+
     # Now get final values of H-bonds etc with our final annotation
 
     if params.find_ss_structure.require_h_bonds:
@@ -3750,7 +3764,6 @@ class find_secondary_structure: # class to look for secondary structure
     else:
       print("\nThis secondary structure annotation will be modified if necessary\n", file=out)
       remove_overlaps=True
-
     # Remove any parts of this annotation that do not exist in the hierarchy
     user_annotation=remove_bad_annotation(
         user_annotation,

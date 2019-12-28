@@ -195,6 +195,11 @@ master_phil = iotbx.phil.parse("""
        .help = Write SHEET records that contain a single strand
        .short_caption = Write single strands
 
+     remove_missing_atom_annotation = False
+       .type = bool
+       .help = Remove annotation that refers to atoms that are not present
+       .short_caption = Remove missing atom annotation
+
      max_h_bond_length = 3.5
        .type = float
        .help = Maximum H-bond length to include in secondary structure
