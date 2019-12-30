@@ -4148,7 +4148,8 @@ def get_mask_around_molecule(map_data=None,
        expanded_fraction-masked_fraction)**0.667
     # cut back
     original_expand_size=expand_size
-    expand_size=max(1,int(0.5+expand_size*amount_too_big))
+    #expand_size=max(1,int(0.5+expand_size*amount_too_big)) # XXX fix
+    expand_size=max(1,int(0.5+expand_size * min(1,max(0,(1-amount_too_big)))))
     if expand_size != original_expand_size:
 
       print ("\nCutting back expand size to try and get "+
