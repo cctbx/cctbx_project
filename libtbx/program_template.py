@@ -375,7 +375,7 @@ output {
       if output and getattr(output, 'suffix', None) is not None:
         suffix = output.suffix
     if serial is Auto:
-      serial is None
+      serial = None
       if output and getattr(output, 'serial', None) is not None:
         serial = self.params.output.serial
     else:
