@@ -96,9 +96,8 @@ def main():
   for code, item in pdbs.items():
     print(code)
     pf = 'tst_fe_s_%s.pdb' % code
-    f=file(pf, 'wb')
-    f.write(item[0])
-    del f
+    with open(pf, 'w') as f:
+      f.write(item[0])
     cmd = 'phenix.pdb_interpretation %(pf)s > %(pf)s.log' % locals()
     print(cmd)
     easy_run.go(cmd)

@@ -170,9 +170,8 @@ def run():
     print(line)
     assert_lines_in_file(file_name='%s.log' % fn, lines=line)
   fn = '4u9h_f3s_cys.pdb'
-  f=file(fn, 'wb')
-  f.write(pdbs[fn])
-  f.close()
+  with open(fn, 'w') as f:
+    f.write(pdbs[fn])
   lines = [
     'Iron sulfur cluster coordination',
     'F3S S1003',

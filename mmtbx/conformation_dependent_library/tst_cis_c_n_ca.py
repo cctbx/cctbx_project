@@ -86,15 +86,13 @@ from libtbx import easy_run
 
 def main():
   tf = 'test_cis_127.pdb'
-  f=file(tf, 'wb')
-  f.write(pdb_lines)
-  del f
+  with open(tf, 'w') as f:
+    f.write(pdb_lines)
   cmd = 'phenix.pdb_interpretation write_geo=True %s' % tf
   print(cmd)
   easy_run.go(cmd)
-  f=file('%s.geo' % tf, 'rb')
-  lines = f.read()
-  del f
+  with open('%s.geo' % tf, 'r') as f:
+    lines = f.read()
   find = '''angle pdb=" C   GLY A  73 "
       pdb=" N   PRO A  74 "
       pdb=" CA  PRO A  74 "
@@ -104,9 +102,8 @@ def main():
   cmd = 'phenix.pdb_interpretation write_geo=True cis_pro_eh99=True %s' % tf
   print(cmd)
   easy_run.go(cmd)
-  f=file('%s.geo' % tf, 'rb')
-  lines = f.read()
-  del f
+  with open('%s.geo' % tf, 'r') as f:
+    lines = f.read()
   find = '''angle pdb=" C   GLY A  73 "
       pdb=" N   PRO A  74 "
       pdb=" CA  PRO A  74 "

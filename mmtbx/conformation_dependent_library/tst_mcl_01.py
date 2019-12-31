@@ -41,9 +41,8 @@ END
 '''
 
 def main():
-  f=file('tst_mcl_01.pdb', 'wb')
-  f.write(pdb_string)
-  del f
+  with open('tst_mcl_01.pdb', 'w') as f:
+    f.write(pdb_string)
   cmd = 'phenix.pdb_interpretation tst_mcl_01.pdb write_geo=1'
   print (cmd)
   rc = easy_run.go(cmd)

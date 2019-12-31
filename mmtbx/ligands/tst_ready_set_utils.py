@@ -101,7 +101,7 @@ ATOM     16  HB2 CYS A  26      20.927  -5.881  31.852  1.00  5.24           H
 ATOM     17  HB3 CYS A  26      19.782  -4.771  31.752  1.00  5.24           H
 ''',
 }
-for key, item in pdb_strings.items():
+for key, item in list(pdb_strings.items()):
   pdb_strings[key+'_D'] = item
 geo_strings = {'ASP' :
   {0 : '''nonbonded pdb=" OD2 ASP A 258 "
@@ -174,9 +174,8 @@ def tst_adding_side_chain_acid_hydrogen_atoms(switch):
   if switch.endswith('_D'): element='D'
   for i in range(4):
     fn = 'tst_ready_hydrogens_%s_%d.pdb' % (switch, i)
-    f=file(fn, 'wb')
-    f.write(pdb_strings[switch])
-    del f
+    with open(fn, 'w') as f:
+      f.write(pdb_strings[switch])
     pdb_inp = pdb_input(fn)
     hierarchy = pdb_inp.construct_hierarchy()
     add_side_chain_acid_hydrogens(hierarchy, configuration_index=i, element=element)
@@ -191,9 +190,8 @@ def tst_adding_disulfur_hydrogen_atoms(switch):
   element='H'
   if switch.endswith('_D'): element='D'
   fn = 'tst_ready_hydrogens_%s.pdb' % (switch)
-  f=file(fn, 'wb')
-  f.write(pdb_strings[switch])
-  del f
+  with open(fn, 'w') as f:
+    f.write(pdb_strings[switch])
   pdb_inp = pdb_input(fn)
   hierarchy = pdb_inp.construct_hierarchy()
   from mmtbx.conformation_dependent_library.testing_utils import get_geometry_restraints_manager
@@ -201,9 +199,8 @@ def tst_adding_disulfur_hydrogen_atoms(switch):
   add_disulfur_hydrogen_atoms(grm, hierarchy, element=element)
   hierarchy.write_pdb_file(fn.replace('.pdb', '_updated.pdb'))
   if switch=='CYS_1':
-    f=file(fn.replace('.pdb', '_updated.pdb'), 'rb')
-    lines = f.read()
-    del f
+    with open(fn.replace('.pdb', '_updated.pdb'), 'r') as f:
+      lines = f.read()
     assert lines.find('HG')==-1
   else:
     cmd='phenix.pdb_interpretation %s write_geo=True' % fn.replace('.pdb', '_updated.pdb')

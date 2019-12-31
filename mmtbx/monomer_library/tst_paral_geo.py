@@ -675,9 +675,8 @@ END
 
 def write_and_run(pdb_name):
   input_model_filename = 'paral_geo_output.pdb'
-  f=file(input_model_filename, 'wb')
-  f.write(pdb_name)
-  del f
+  with open(input_model_filename, 'w') as f:
+    f.write(pdb_name)
   cmd = 'phenix.fmodel %s high_resolution=3' % input_model_filename
   print('\n~> %s\n' % cmd)
   rc = easy_run.go(cmd)
@@ -690,9 +689,8 @@ def write_and_run(pdb_name):
 
 def test_geo(result, opposite=False):
   input_model_filename = 'paral_geo_output.pdb'
-  f=file('%s_initial.geo' % input_model_filename.replace('.pdb', ''))
-  lines = f.read()
-  del f
+  with open('%s_initial.geo' % input_model_filename.replace('.pdb', '')) as f:
+    lines = f.read()
   if 0:
     print(lines)
     for i in range(len(result)):
