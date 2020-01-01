@@ -162,6 +162,7 @@ class SimData:
 
     def _beam_properties(self):
         self.D.xray_beams = self.beam.xray_beams
+        # TODO: make me a circular size ?
         self.D.beamsize_mm = self.beam.size_mm
 
     def _seedlings(self):
