@@ -3,6 +3,8 @@ from scipy.optimize import minimize
 import numpy as np
 import pylab as plt
 from scipy.interpolate import SmoothBivariateSpline
+from cctbx import miller
+from cctbx.array_family import flex
 
 
 def get_spot_data(img, thresh=0, filter=None, **kwargs):
@@ -357,4 +359,29 @@ def process_simdata(spots, img, thresh=20, plot=False, shoebox_sz=20, edge_refle
     spot_roi = spot_roi[successes]
     tilt_abc = tilt_abc[successes]
     return spot_roi, tilt_abc
+
+
+def perturb_miller_array(F, factor, perturb_log_vals=True):
+    if not F.is_xray_amplitude_array():
+        F = F.amplitudes()
+    Fdat = np.array( F.data())
+
+    if perturb_log_vals:
+        Fdat = np.log(Fdat)
+
+    try:
+        Fdat = np.random.uniform(Fdat-factor, Fdat+factor)
+    except OverflowError:
+        from IPython import embed
+        embed()
+        return
+    if perturb_log_vals:
+        Fdat = np.exp(Fdat)
+
+    Fdat = flex.double(np.ascontiguousarray(Fdat))
+
+    mset = miller.set(F.crystal_symmetry(), indices=F.indices(), anomalous_flag=True)
+    return miller.array(miller_set=mset, data=Fdat).set_observation_type_xray_amplitude()
+
+
 
