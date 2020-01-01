@@ -101,7 +101,7 @@ def cis_trans_specification():
       out = StringIO()
       ero.show_stdout(out=out)
 
-      lines = open("%(preamble)s_minimized.geo" % locals(), "rb").read()
+      lines = open("%(preamble)s_minimized.geo" % locals(), "r").read()
       geo_spec=geo_specs[i]
       print(geo_spec % results[0])
       if lines.find(geo_spec % results[0])==1:
@@ -119,7 +119,7 @@ def trans_only_specification():
       out = StringIO()
       ero.show_stdout(out=out)
 
-      lines = open("%(preamble)s_minimized_minimized.geo" % locals(), "rb").read()
+      lines = open("%(preamble)s_minimized_minimized.geo" % locals(), "r").read()
       geo_spec=geo_specs[i]
       print(geo_spec % results[0])
       if lines.find(geo_spec % results[0])==1:

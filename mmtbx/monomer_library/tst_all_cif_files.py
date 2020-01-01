@@ -59,7 +59,7 @@ def exercise():
   missing_angle_definitions_counts = dict_with_default_0()
   missing_bond_values_counts = dict_with_default_0()
   missing_angle_values_counts = dict_with_default_0()
-  for first_char in string.lowercase+string.digits:
+  for first_char in string.ascii_lowercase+string.digits:
     sub_dir = os.path.join(srv.root_path, first_char)
     if (not os.path.isdir(sub_dir)): continue
     for node in os.listdir(sub_dir):

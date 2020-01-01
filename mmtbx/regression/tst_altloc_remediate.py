@@ -569,7 +569,7 @@ def run():
     cmd = "mmtbx.altloc_remediate %s" % "%s.pdb" % preamble
     print(cmd)
     easy_run.call(cmd)
-    f=open("%s_correct.pdb" % preamble, "rb")
+    f=open("%s_correct.pdb" % preamble, "r")
     lines = f.read()
     f.close()
     print(lines)

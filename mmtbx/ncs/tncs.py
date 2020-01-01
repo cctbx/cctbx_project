@@ -127,7 +127,7 @@ class groups(object):
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       maxorder = 1
       vectors = []
-      previous_id = itertools.combinations(chains,2).next()[0].id
+      previous_id = next(itertools.combinations(chains,2))[0].id
       for pair in itertools.combinations(chains,2):
         sup = result[frozenset(pair)][1]
         ncs_pair = ext.pair(
