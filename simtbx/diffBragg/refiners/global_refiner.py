@@ -84,7 +84,7 @@ class FatRefiner(PixelRefinement):
                  shot_crystal_models, shot_xrel, shot_yrel, shot_abc_inits, shot_asu,
                  global_param_idx_start,
                  shot_panel_ids, 
-                 all_crystal_scales=None, init_gain=1, init_scale=1, perturb_fcell=True):
+                 all_crystal_scales=None, init_gain=1, init_scale=1, perturb_fcell=False):
         PixelRefinement.__init__(self)
         # super(GlobalFat, self).__init__()
         self.num_kludge = 0
@@ -382,9 +382,6 @@ class FatRefiner(PixelRefinement):
                 roi_totals.append(self.ROIS[i_shot][i_h])
                 # img_totals.append(self.ROI_IMGS[i_shot][i_h])
         hkl_totals = self._mpi_reduce_broadcast(hkl_totals)
-        fname_totals2 = self._mpi_reduce_broadcast(fname_totals)
-        panel_id_totals = self._mpi_reduce_broadcast(panel_id_totals)
-        roi_totals = self._mpi_reduce_broadcast(roi_totals)
         # img_totals = self._mpi_reduce_broadcast(img_totals)
         if rank == 0:
             print("--2 Setting up global parameters")
@@ -396,201 +393,118 @@ class FatRefiner(PixelRefinement):
             for i_cell in range(self.n_ucell_param):
                 self.x[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
 
+
             print("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index
             print("---- -- counting hkl totes")
             self.hkl_frequency = Counter(hkl_totals)
+            # <><><><><><><><><><><><><><><><><><><><><>
+            #  NOTE: MAKE ME BETTER
+            #<><><><><><><><><><><><><><><><><><><><><><>
+           #F = self.S.D.Fhkl  # initial values, this table is the high symm table expanded to P1
+           #Fidx, Fdata = F.indices(), F.data()
+           #Fdata = Fdata.as_numpy_array()
+           #np.random.seed(12345)
+           #self._fix_list = []
+           #self.watch_me_hkl = []
+           #if self.perturb_fcell is not None:
+           #    print("---- -- perturbing")
+           #    _p = self.perturb_fcell
+           #    F_is_zero = Fdata == 0
+           #    Flog = np_log(Fdata)
+           #    Flog[F_is_zero] = 0
+           #    Fdata2 = np_exp(np.random.uniform(Flog - _p, Flog + _p))
+           #    Fdata2[F_is_zero] = 0
+           #    Fmap2 = {h: fd for h, fd in zip(Fidx, Fdata2)}
+           #    self.f_truth = []
+           #    self.f_start = {}
+           #    # NOTE: dont ever set D.Fhkl property in the refinement setting, it tries to update the unit cell
+           #    nbad = 0
+           #    for i_fcell in range(self.n_global_fcell):
+           #        if i_fcell % 20 == 0:
+           #            print("---- -- perturbing %d /%d" % (i_fcell+1, self.n_global_fcell))
+           #        asu_hkl = self.asu_from_idx[i_fcell]
+           #        # if the min multiplicity is too low, leave as truth and dont refine..
+           #        if self.hkl_frequency[i_fcell] < self.min_multiplicity:
+           #            fcell_val = F.value_at_index(asu_hkl)
+           #        else:
+           #            fcell_val = Fmap2[asu_hkl]
+           #        self.x[self.fcell_xstart + i_fcell] = Fmap2[asu_hkl]
+           #        if self.log_fcells:
+           #            if fcell_val == 0:
+           #                fcell_val = 1e-20
+           #                print "WARNING trying to refine 0-valued Fhkl, why?", asu_hkl
+           #                nbad += 1
+           #                self._fix_list.append(i_fcell)
+           #            elif fcell_val < 0:
+           #                raise ValueError("No negative Fcells can be refined!")
+           #            u = np_log(fcell_val)
+           #            self.x[self.fcell_xstart + i_fcell] = u
+           #        self.f_truth.append(F.value_at_index(asu_hkl))
 
-            F = self.S.D.Fhkl  # initial values, this table is the high symm table expanded to P1
-            Fidx, Fdata = F.indices(), F.data()
-            Fdata = Fdata.as_numpy_array()
-            np.random.seed(12345)
-            self._fix_list = []
-            self.watch_me_hkl = []
-            if self.perturb_fcell is not None:
-                print("---- -- perturbing")
-                _p = self.perturb_fcell
-                F_is_zero = Fdata == 0
-                Flog = np_log(Fdata)
-                Flog[F_is_zero] = 0
-                Fdata2 = np_exp(np.random.uniform(Flog - _p, Flog + _p))
-                Fdata2[F_is_zero] = 0
-                Fmap2 = {h: fd for h, fd in zip(Fidx, Fdata2)}
-                self.f_truth = []
-                self.f_start = {}
-                # NOTE: dont ever set D.Fhkl property in the refinement setting, it tries to update the unit cell
-                nbad = 0
-                for i_fcell in range(self.n_global_fcell):
-                    if i_fcell % 20 == 0:
-                        print("---- -- perturbing %d /%d" % (i_fcell+1, self.n_global_fcell))
-                    asu_hkl = self.asu_from_idx[i_fcell]
-                    # if the min multiplicity is too low, leave as truth and dont refine..
-                    if self.hkl_frequency[i_fcell] < self.min_multiplicity:
-                        fcell_val = F.value_at_index(asu_hkl)
-                    else:
-                        fcell_val = Fmap2[asu_hkl]
-                    self.x[self.fcell_xstart + i_fcell] = Fmap2[asu_hkl]
-                    if self.log_fcells:
-                        if fcell_val == 0:
-                            fcell_val = 1e-20
-                            print "WARNING trying to refine 0-valued Fhkl, why?", asu_hkl
-                            nbad += 1
-                            self._fix_list.append(i_fcell)
-                        elif fcell_val < 0:
-                            raise ValueError("No negative Fcells can be refined!")
-                        u = np_log(fcell_val)
-                        self.x[self.fcell_xstart + i_fcell] = u
-                    self.f_truth.append(F.value_at_index(asu_hkl))
+           #    # NOTE begin hackage intentional perturbation of a single Fcell
+           #    # choose a few hkls and perturb them extra and watch them refine...  (mostly for debugging)
+           #    n_watch = len(self._hacked_fcells)
+           #    i_fcell = -1
+           #    n_grabbed = 0
+           #    while n_grabbed < n_watch:
+           #        i_fcell += 1
+           #        if i_fcell == self.n_global_fcell:
+           #            # reached the limit
+           #            print("You wanted to refine %d hkls but there are not enough!" % n_watch)
+           #            break
+           #        if self.hkl_frequency[i_fcell] < self.min_multiplicity:
+           #            continue
+           #        n_grabbed += 1
+           #        self.watch_me_hkl.append(i_fcell)
+           #        u = self.x[self.fcell_xstart + i_fcell]
+           #        v = np.random.uniform(max(1e-10, u-self.fcell_bump*u), u+self.fcell_bump*u)
+           #        #if i_fcell in self._fix_list:
+           #        #    v = u
+           #        if not self.log_fcells:
+           #            v = np_exp(v)
+           #        self.x[self.fcell_xstart + i_fcell] = v
+           #        self.f_start[i_fcell] = v
+           #        # NOTE end hackage
 
-                # NOTE begin hackage intentional perturbation of a single Fcell
-                # choose a few hkls and perturb them extra and watch them refine...  (mostly for debugging)
-                n_watch = len(self._hacked_fcells)
-                i_fcell = -1
-                n_grabbed = 0
-                while n_grabbed < n_watch:
-                    i_fcell += 1
-                    if i_fcell == self.n_global_fcell:
-                        # reached the limit
-                        print("You wanted to refine %d hkls but there are not enough!" % n_watch)
-                        break
-                    if self.hkl_frequency[i_fcell] < self.min_multiplicity:
-                        continue
-                    n_grabbed += 1
-                    self.watch_me_hkl.append(i_fcell)
-                    u = self.x[self.fcell_xstart + i_fcell]
-                    v = np.random.uniform(max(1e-10, u-self.fcell_bump*u), u+self.fcell_bump*u)
-                    if i_fcell in self._fix_list:
-                        v = u
-                    if not self.log_fcells:
-                        v = np_exp(v)
-                    self.x[self.fcell_xstart + i_fcell] = v
-                    self.f_start[i_fcell] = v
-                    # NOTE end hackage
 
-                if self.output_dir is not None:
-                    np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)
-                    np.save(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
+            # <><><><><><><><><><><><><><><><><><><><><>
+            #  NOTE: END MAKE ME BETTER
+            #<><><><><><><><><><><><><><><><><><><><><><>
 
-                ff = np.array(self.f_truth)
-                f_start = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
+            # initialize the Fhkl global values
+            print("--- --- --- inserting the Fhkl array in the parameter array... ")
+            for i_fcell in range(self.n_global_fcell):
+                asu_hkl = self.asu_from_idx[i_fcell]
+                val = self.S.D.Fhkl.value_at_index(asu_hkl)
+                if val <= 0:
+                    raise ValueError("No F<=0  T_T ")
                 if self.log_fcells:
-                    f_start = np_exp(f_start)
-                # FIXME calc_R1 should ignore bad or fix list
-                self.calc_R1 = lambda fobs: np.abs(fobs - ff).sum() / fobs.sum()
-                self.init_R1 = self.calc_R1(f_start)
+                    ##if val == 0:  # TODO why does this ever happen?
+                    #    val = 1e-10
+                    val = np_log(val)
+                self.x[self.fcell_xstart + i_fcell] = val
+                if i_fcell % 200 == 0:
+                    print ("--- --- --- --- Fhkl %d /%d" % (i_fcell+1, self.n_global_fcell))
 
-                def calc_R1_intensity_bins(fobs, n_bins=10):
-                    order = np.argsort(self.f_truth)
-                    bin_values = np.array_split(order, n_bins+1)
-                    bin_names = []
-                    #bins = []
-                    for bv in bin_values:
-                        low = self.f_truth[bv[0]]
-                        high = self.f_truth[bv[-1]]
-                        bin_names.append("%.3f - %.3f" % (low, high))
-                        #bins.append(low)
-                    #bins.append(high)
-                    #assert len(bins) == n_bins+1
-                    #digs = np.digitize(self.f_truth, bins)-1
+            # TODO allow optiponal reference, only do if using optional reference
+            if self.Fref is not None:
+                obs = self.x[self.fcell_xstart: self.fcell_xstart+self.n_global_fcell]
+                if self.log_fcells:
+                    obs = np.exp(obs)
 
-                    fobs = np.array(fobs)
-                    r1_bins = []
-                    CC_bins = []
-                    n_seen = []
-                    n_obs = []
-                    max_per = []
-                    #for i_bin in range(n_bins):
-                    for indices in bin_values:
-                        pos = np.zeros(self.n_global_fcell).astype(bool)
-                        pos[indices] = True
-
-                        max_per.append(-1)
-
-                        above_multi = np.array([self.hkl_frequency[i_hkl] > self.min_multiplicity
-                                                for i_hkl in range(self.n_global_fcell)])
-                        pos = np.logical_and(pos, above_multi)
-                        if not any(pos):
-                            r1_bins.append(-1)
-                            CC_bins.append(-2)
-                            n_seen.append(0)
-                            n_obs.append(0)
-                            continue
-                        tot_obs = sum([self.hkl_frequency[i_pos] for i_pos, p in enumerate(pos) if p])
-                        n_obs.append(tot_obs)
-                        n_seen.append(sum(pos))
-                        r1 = np.abs(fobs[pos] - ff[pos]).sum() / fobs[pos].sum()
-                        r1_bins.append(r1)
-                        l = linregress(fobs[pos], ff[pos])
-                        CC_bins.append(l.rvalue)
-
-                    #bin_names = ["%.3f - %.3f" % (b1, b2) for b1, b2 in zip(bins[:-1], bins[1:])]
-                    return bin_names, r1_bins, CC_bins, n_seen, n_obs, max_per
-
-                self.calc_R1_intensity_bins = calc_R1_intensity_bins
-
-                def calc_R1_reso_bins(fobs):
-                    hi, ki, li = zip(*[self.asu_from_idx[i_fcell] for i_fcell in range(self.n_global_fcell)])
-                    hi = np.array(hi)
-                    ki = np.array(ki)
-                    li = np.array(li)
-                    # FIXME: no hardcoded unit cell parameters!
-                    a = self.UCELL_MAN[0].a
-                    c = self.UCELL_MAN[0].c
-                    reso = 1 / np.sqrt((hi ** 2 + ki ** 2) / a / a + li ** 2 / c / c)
-                    #bins = [999, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3.5, 3, 2.5, 2.25, 2, 0]
-                    bins = self.res_bins
-                    digs = np.digitize(reso, bins)-1
-                    assert self.n_global_fcell == len(digs)
-                    n_bins = len(bins)-1
-                    fobs = np.array(fobs)
-                    r1_bins = []
-                    CC_bins = []
-                    n_seen = []
-                    n_obs = []
-                    max_per = []
-                    for i_bin in range(n_bins):
-                        max_per.append(self.max_hkl_in_bin[i_bin])
-                        pos = digs == i_bin
-                        above_multi = np.array([self.hkl_frequency[i_hkl] > self.min_multiplicity
-                                        for i_hkl in range(self.n_global_fcell)])
-                        pos = np.logical_and(pos, above_multi)
-                        if not any(pos):
-                            r1_bins.append(-1)
-                            CC_bins.append(-2)
-                            n_seen.append(0)
-                            n_obs.append(0)
-                            continue
-                        tot_obs = sum([self.hkl_frequency[i_pos] for i_pos, p in enumerate(pos) if p])
-                        n_obs.append(tot_obs)
-                        n_seen.append(sum(pos))
-                        r1 = np.abs(fobs[pos] - ff[pos]).sum() / fobs[pos].sum()
-                        r1_bins.append(r1)
-                        l = linregress(fobs[pos], ff[pos])
-                        CC_bins.append(l.rvalue)
-
-                    bin_names = ["%.3f - %.3f" % (b1,b2) for b1, b2 in zip(bins[:-1], bins[1:])]
-                    return bin_names, r1_bins, CC_bins, n_seen, n_obs, max_per
-
-                self.calc_R1_reso_bins = calc_R1_reso_bins
+                self.init_R1 = self.Fobs.r1_factor(self.Fref)
                 print("Initial R1 = %.4f" % self.init_R1)
 
-            else:
-                for i_fcell in range(self.n_global_fcell):
-                    asu_hkl = self.asu_from_idx[i_fcell]
-                    val = F.value_at_index(asu_hkl)
-                    if val < 0:
-                        raise ValueError("No Neg F")
-                    if self.log_fcells:
-                        if val == 0:  # TODO why does this ever happen?
-                            val = 1e-6
-                        val = np_log(val)
-                    self.x[self.fcell_xstart + i_fcell] = val
+            # FIXME
+            if self.output_dir is not None:
+                np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)
+                np.save(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
 
             # set det dist
             self.x[self.originZ_xpos] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?
             # set gain TODO: remove gain from all of this and never refine it
             self.x[self.gain_xpos] = self._init_gain  # gain factor
-
             # n_panels = len(self.S.detector)
             # self.origin_xstart = self.global_param_idx_start
             # for i_pan in range(n_panels):
@@ -600,16 +514,15 @@ class FatRefiner(PixelRefinement):
             # for i_pan in range(n_panels):
             #    self.x[-1] = self._init_gain
             # self.x[-1] = self._init_scale  # initial scale factor
+
         # reduce then broadcast self.x
         if comm.rank == 0:
             print("--3 combining parameters across ranks")
         self.x = self._mpi_reduce_broadcast(self.x)
 
         if comm.rank != 0:
-            self._fix_list = None
             self.hkl_frequency= None
             self.watch_me_hkl = None
-        self._fix_list = comm.bcast(self._fix_list)
         self.hkl_frequency = comm.bcast(self.hkl_frequency)
         self.watch_me_hkl = comm.bcast(self.watch_me_hkl)
 
@@ -617,9 +530,9 @@ class FatRefiner(PixelRefinement):
         if self.restart_file is not None:
             self.x = flex_double(np_load(self.restart_file)["x"])
 
-        rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals, _ = self._unpack_internal(self.x)
         if comm.rank == 0:
             print("--4 print initial stats")
+            rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals, _ = self._unpack_internal(self.x)
 
             master_data = {"a": a_vals, "c": c_vals,
                            "Ncells": ncells_vals,
@@ -631,7 +544,6 @@ class FatRefiner(PixelRefinement):
             master_data["gain"] = self.x[self.gain_xpos]
             master_data["originZ"] = self.x[self.originZ_xpos]
             print(master_data.to_string())
-
 
         # setup the diffBragg instance
         self.D = self.S.D
@@ -654,6 +566,103 @@ class FatRefiner(PixelRefinement):
         if self.refine_Fcell:
             self.D.refine(self._fcell_id)
         self.D.initialize_managers()
+
+    #def calc_R1(self, fobs, fref):
+    #    a = np.array(fobs)
+    #    b = np.array(fref)
+    #    return np.abs(a-b).sum() / a.sum()
+
+    ## FIXME
+    #def calc_R1_intensity_bins(self, fobs, n_bins=10):
+    #    order = np.argsort(self.f_truth)
+    #    bin_values = np.array_split(order, n_bins + 1)
+    #    bin_names = []
+    #    # bins = []
+    #    for bv in bin_values:
+    #        low = self.f_truth[bv[0]]
+    #        high = self.f_truth[bv[-1]]
+    #        bin_names.append("%.3f - %.3f" % (low, high))
+    #        # bins.append(low)
+    #    # bins.append(high)
+    #    # assert len(bins) == n_bins+1
+    #    # digs = np.digitize(self.f_truth, bins)-1
+
+    #    fobs = np.array(fobs)
+    #    r1_bins = []
+    #    CC_bins = []
+    #    n_seen = []
+    #    n_obs = []
+    #    max_per = []
+    #    # for i_bin in range(n_bins):
+    #    for indices in bin_values:
+    #        pos = np.zeros(self.n_global_fcell).astype(bool)
+    #        pos[indices] = True
+
+    #        max_per.append(-1)
+
+    #        above_multi = np.array([self.hkl_frequency[i_hkl] > self.min_multiplicity
+    #                                for i_hkl in range(self.n_global_fcell)])
+    #        pos = np.logical_and(pos, above_multi)
+    #        if not any(pos):
+    #            r1_bins.append(-1)
+    #            CC_bins.append(-2)
+    #            n_seen.append(0)
+    #            n_obs.append(0)
+    #            continue
+    #        tot_obs = sum([self.hkl_frequency[i_pos] for i_pos, p in enumerate(pos) if p])
+    #        n_obs.append(tot_obs)
+    #        n_seen.append(sum(pos))
+    #        r1 = np.abs(fobs[pos] - ff[pos]).sum() / fobs[pos].sum()
+    #        r1_bins.append(r1)
+    #        l = linregress(fobs[pos], ff[pos])
+    #        CC_bins.append(l.rvalue)
+
+    #    # bin_names = ["%.3f - %.3f" % (b1, b2) for b1, b2 in zip(bins[:-1], bins[1:])]
+    #    return bin_names, r1_bins, CC_bins, n_seen, n_obs, max_per
+
+    ## FIXME
+    #def calc_R1_reso_bins(self, fobs):
+    #    hi, ki, li = zip(*[self.asu_from_idx[i_fcell] for i_fcell in range(self.n_global_fcell)])
+    #    hi = np.array(hi)
+    #    ki = np.array(ki)
+    #    li = np.array(li)
+    #    # FIXME: no hardcoded unit cell parameters!
+    #    a = self.UCELL_MAN[0].a
+    #    c = self.UCELL_MAN[0].c
+    #    reso = 1 / np.sqrt((hi ** 2 + ki ** 2) / a / a + li ** 2 / c / c)
+    #    # bins = [999, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3.5, 3, 2.5, 2.25, 2, 0]
+    #    bins = self.res_bins
+    #    digs = np.digitize(reso, bins) - 1
+    #    assert self.n_global_fcell == len(digs)
+    #    n_bins = len(bins) - 1
+    #    fobs = np.array(fobs)
+    #    r1_bins = []
+    #    CC_bins = []
+    #    n_seen = []
+    #    n_obs = []
+    #    max_per = []
+    #    for i_bin in range(n_bins):
+    #        max_per.append(self.max_hkl_in_bin[i_bin])
+    #        pos = digs == i_bin
+    #        above_multi = np.array([self.hkl_frequency[i_hkl] > self.min_multiplicity
+    #                                for i_hkl in range(self.n_global_fcell)])
+    #        pos = np.logical_and(pos, above_multi)
+    #        if not any(pos):
+    #            r1_bins.append(-1)
+    #            CC_bins.append(-2)
+    #            n_seen.append(0)
+    #            n_obs.append(0)
+    #            continue
+    #        tot_obs = sum([self.hkl_frequency[i_pos] for i_pos, p in enumerate(pos) if p])
+    #        n_obs.append(tot_obs)
+    #        n_seen.append(sum(pos))
+    #        r1 = np.abs(fobs[pos] - ff[pos]).sum() / fobs[pos].sum()
+    #        r1_bins.append(r1)
+    #        l = linregress(fobs[pos], ff[pos])
+    #        CC_bins.append(l.rvalue)
+
+    #    bin_names = ["%.3f - %.3f" % (b1, b2) for b1, b2 in zip(bins[:-1], bins[1:])]
+    #    return bin_names, r1_bins, CC_bins, n_seen, n_obs, max_per
 
     def _unpack_internal(self, lst):
         # NOTE: This is not a generalized method, only works in context of D9114 global refinement
@@ -1225,7 +1234,7 @@ class FatRefiner(PixelRefinement):
             self.iterations += 1
             self.f_vals.append(f)
             if self.plot_fcell:
-                if self.perturb_fcell:
+                if self.perturb_fcell:  # this is should be False, deprecated
                     self.ax_fcell.clear()
 
                     fcell_now = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell]
@@ -1379,35 +1388,38 @@ class FatRefiner(PixelRefinement):
         scale_stats = ["%s=%.4f"%name_stat for name_stat in zip(scale_stat_names, stats)]
         scale_stats_string = "SCALE FACTOR STATS: " + ", ".join(scale_stats)
         if self.scale_vals_truths is not None:
-            scale_resid = [ np.abs(s-stru) for s,stru in zip(_sv, self.scale_vals_truths)]
+            scale_resid = [np.abs(s-stru) for s, stru in zip(_sv, self.scale_vals_truths)]
             scale_stats_string += ", truth_resid=%.4f" % np.median(scale_resid)
 
         Xnorm = norm(self.x)
         R1 = -1
         R1_i = -1
-        if self.perturb_fcell is not None:
-            fobs = self.x[self.fcell_xstart: self.fcell_xstart + self.n_global_fcell].as_numpy_array()
-            if self.log_fcells:
-                fobs = np_exp(fobs)
-            R1 = self.calc_R1(fobs)
-            bin_names, Rbins, CCbins, seen_per, n_obs, max_per = self.calc_R1_reso_bins(fobs)
-            bin_namesI, RbinsI, CCbinsI, seen_perI, n_obsI, max_perI = self.calc_R1_intensity_bins(fobs)
-            R1_i = self.init_R1
-            ave = np.array(n_obs) / np.array(seen_per)
-            stat_bins_str = tabulate(zip(bin_names, Rbins, CCbins, seen_per, n_obs, max_per, ave),
-                    headers=["reso (Ang)", "R1", "pearsonR", "Refined hkl", "N spots", "Max hkl", "ave multiplicity"],
-                                 tablefmt="orgtbl")
-            aveI = np.array(n_obsI) / np.array(seen_perI)
-            Istat_bins_str = tabulate(zip(bin_namesI, RbinsI, CCbinsI, seen_perI, n_obsI, max_perI, aveI),
-                                     headers=["|Fhkl|", "R1", "pearsonR", "Refined hkl", "N spots", "Max hkl",
-                                              "ave multiplicity"],
-                                     tablefmt="orgtbl")
-        else:
-            stat_bins_str = "----STATS-------"
+        #if self.perturb_fcell is not None:
+        #    fobs = self.x[self.fcell_xstart: self.fcell_xstart + self.n_global_fcell].as_numpy_array()
+        #    if self.log_fcells:
+        #        fobs = np_exp(fobs)
+        #    R1 = self.calc_R1(fobs)
+        #    bin_names, Rbins, CCbins, seen_per, n_obs, max_per = self.calc_R1_reso_bins(fobs)
+        #    bin_namesI, RbinsI, CCbinsI, seen_perI, n_obsI, max_perI = self.calc_R1_intensity_bins(fobs)
+        #    R1_i = self.init_R1
+        #    ave = np.array(n_obs) / np.array(seen_per)
+        #    stat_bins_str = tabulate(zip(bin_names, Rbins, CCbins, seen_per, n_obs, max_per, ave),
+        #            headers=["reso (Ang)", "R1", "pearsonR", "Refined hkl", "N spots", "Max hkl", "ave multiplicity"],
+        #                         tablefmt="orgtbl")
+        #    aveI = np.array(n_obsI) / np.array(seen_perI)
+        #    Istat_bins_str = tabulate(zip(bin_namesI, RbinsI, CCbinsI, seen_perI, n_obsI, max_perI, aveI),
+        #                             headers=["|Fhkl|", "R1", "pearsonR", "Refined hkl", "N spots", "Max hkl",
+        #                                      "ave multiplicity"],
+        #                             tablefmt="orgtbl")
+        #else:
+        #    stat_bins_str = "----STATS-------"
         ncurv = 0
         if self.calc_curvatures:
             ncurv = len(self.curv)
 
+        # Begin HACKED FHKL
+        # this block of code is for formatting the table for
+        # observing a specific subset of FHKL to see how they are refining. Its old and not used anymore
         hacked_str = ""
         headers = ["hkl", "obs", "truth", "init", "multiplicity", "Curv", "Grad", "idx"]
         _data = []
@@ -1430,11 +1442,20 @@ class FatRefiner(PixelRefinement):
             hacked_str = tabulate(_data, headers=headers, tablefmt='orgtbl')
         else:
             hacked_str = ""
+        # END HACKED FHKL, hacked_str should be an empty string in most cases
 
+        stat_bins_str = ""
+        Istat_bins_str = ""
         print(
                     "\n\t|G|=%2.7g, eps*|X|=%2.7g, R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s\n%s\n%s\n%s"
                     % (target, Xnorm * self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv, 
                        ", ".join(map(str, self.neg_curv_shots)), scale_stats_string, stat_bins_str,  Istat_bins_str, hacked_str))
+
+        print("\n")
+        print("R-factor:")
+        print self.Fobs.r1_factor(self.Fref, use_binning=True)
+        print("CC:")
+        print self.Fobs.correlation(self.Fref, use_binning=True)
         print("\n")
 
     def get_refined_Bmatrix(self, i_shot):
