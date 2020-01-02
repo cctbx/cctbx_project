@@ -372,9 +372,8 @@ def perturb_miller_array(F, factor, perturb_log_vals=True):
     try:
         Fdat = np.random.uniform(Fdat-factor, Fdat+factor)
     except OverflowError:
-        from IPython import embed
-        embed()
-        return
+        print 'You suck'
+        return None
     if perturb_log_vals:
         Fdat = np.exp(Fdat)
 
@@ -382,6 +381,3 @@ def perturb_miller_array(F, factor, perturb_log_vals=True):
 
     mset = miller.set(F.crystal_symmetry(), indices=F.indices(), anomalous_flag=True)
     return miller.array(miller_set=mset, data=Fdat).set_observation_type_xray_amplitude()
-
-
-

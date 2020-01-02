@@ -184,18 +184,20 @@ class FatRefiner(PixelRefinement):
 
         self.a = self.b = self.c = None  # tilt plan place holder
 
-    def _setup_reoslution_binner(self):
-        a = self.UCELL_MAN[0].a
-        c = self.UCELL_MAN[0].c
-        sgi = sgtbx.space_group_info(self.symbol)
-        symm = symmetry(unit_cell=(a, a, c, 90, 90, 90), space_group_info=sgi)
-        miller_set = symm.build_miller_set(anomalous_flag=True, d_min=1.5, d_max=999)
-        self.binner = miller_set.setup_binner(d_max=self.binner_dmax, d_min=self.binner_dmin, n_bins=self.binner_nbin)
-        bin_rng = list(self.binner.range_used())
-        self.res_bins = [self.binner.bin_d_min(i)
-                         for i in bin_rng]
-        _counts = self.binner.counts()
-        self.max_hkl_in_bin = [_counts[i] for i in bin_rng]
+    def _setup_resolution_binner(self):
+        if self.Fref is not None:
+            _=self.Fref.setup_binner(d_max=self.binner_dmax, d_min=self.binner_dmin, n_bins=self.binner_nbins)
+        #a = self.UCELL_MAN[0].a
+        #c = self.UCELL_MAN[0].c
+        #sgi = sgtbx.space_group_info(self.symbol)
+        #symm = symmetry(unit_cell=(a, a, c, 90, 90, 90), space_group_info=sgi)
+        #miller_set = symm.build_miller_set(anomalous_flag=True, d_min=1.5, d_max=999)
+        #self.binner = miller_set.setup_binner(d_max=self.binner_dmax, d_min=self.binner_dmin, n_bins=self.binner_nbin)
+        #bin_rng = list(self.binner.range_used())
+        #self.res_bins = [self.binner.bin_d_min(i)
+        #                 for i in bin_rng]
+        #_counts = self.binner.counts()
+        #self.max_hkl_in_bin = [_counts[i] for i in bin_rng]
 
     def setup_plots(self):
         if rank == 0:
@@ -276,7 +278,7 @@ class FatRefiner(PixelRefinement):
         if not self.idx_from_asu:  # # TODO just derive from its inverse
             raise ValueError("Need to supply a non empty idx from asu map")
 
-        self._setup_reoslution_binner()
+        self._setup_resolution_binner()
 
         # get the Fhkl information from P1 array internal to nanoBragg
         if comm.rank == 0:
@@ -471,34 +473,40 @@ class FatRefiner(PixelRefinement):
             # <><><><><><><><><><><><><><><><><><><><><>
             #  NOTE: END MAKE ME BETTER
             #<><><><><><><><><><><><><><><><><><><><><><>
-
             # initialize the Fhkl global values
             print("--- --- --- inserting the Fhkl array in the parameter array... ")
+            asu_idx = [self.asu_from_idx[idx] for idx in range(self.n_global_fcell)]
+            Findices, Fdata = self.S.D.Fhkl_tuple
+            vals = [Fdata[self.idx_from_p1[h]] for h in asu_idx]  # TODO am I correct/
+            if self.log_fcells:
+                vals = np_log(vals)
+            #embed()
+            #self.x[self.fcell_xstart:self.fcell_xstart+self.n_global_fcell] = flex.double(vals)
             for i_fcell in range(self.n_global_fcell):
-                asu_hkl = self.asu_from_idx[i_fcell]
-                val = self.S.D.Fhkl.value_at_index(asu_hkl)
-                if val <= 0:
-                    raise ValueError("No F<=0  T_T ")
-                if self.log_fcells:
-                    ##if val == 0:  # TODO why does this ever happen?
-                    #    val = 1e-10
-                    val = np_log(val)
-                self.x[self.fcell_xstart + i_fcell] = val
-                if i_fcell % 200 == 0:
-                    print ("--- --- --- --- Fhkl %d /%d" % (i_fcell+1, self.n_global_fcell))
+                self.x[self.fcell_xstart + i_fcell] = vals[i_fcell]
 
-            # TODO allow optiponal reference, only do if using optional reference
+            #for i_fcell in range(self.n_global_fcell):
+            #    asu_hkl = self.asu_from_idx[i_fcell]
+            #    val = self.S.D.Fhkl.value_at_index(asu_hkl)
+            #    if val <= 0:
+            #        raise ValueError("No F<=0  T_T ")
+            #    if self.log_fcells:
+            #        ##if val == 0:  # TODO why does this ever happen?
+            #        #    val = 1e-10
+            #        val = np_log(val)
+            #    self.x[self.fcell_xstart + i_fcell] = val
+            #    if i_fcell % 200 == 0:
+            #        print ("--- --- --- --- Fhkl %d /%d" % (i_fcell+1, self.n_global_fcell))
+
             if self.Fref is not None:
-                obs = self.x[self.fcell_xstart: self.fcell_xstart+self.n_global_fcell]
-                if self.log_fcells:
-                    obs = np.exp(obs)
-
-                self.init_R1 = self.Fobs.r1_factor(self.Fref)
+                #obs = self.x[self.fcell_xstart: self.fcell_xstart+self.n_global_fcell]
+                #if self.log_fcells:
+                #    obs = np.exp(obs)
+                self.init_R1 = self.Fref.r1_factor(self.Fobs)
                 print("Initial R1 = %.4f" % self.init_R1)
 
-            # FIXME
             if self.output_dir is not None:
-                np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)
+                #np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)  #FIXME by adding in the correct truth from Fref
                 np.save(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
 
             # set det dist
@@ -521,10 +529,10 @@ class FatRefiner(PixelRefinement):
         self.x = self._mpi_reduce_broadcast(self.x)
 
         if comm.rank != 0:
-            self.hkl_frequency= None
-            self.watch_me_hkl = None
+            self.hkl_frequency = None
+            #self.watch_me_hkl = None
         self.hkl_frequency = comm.bcast(self.hkl_frequency)
-        self.watch_me_hkl = comm.bcast(self.watch_me_hkl)
+        #self.watch_me_hkl = comm.bcast(self.watch_me_hkl)
 
         # See if restarting from save state
         if self.restart_file is not None:
@@ -532,17 +540,21 @@ class FatRefiner(PixelRefinement):
 
         if comm.rank == 0:
             print("--4 print initial stats")
-            rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals, _ = self._unpack_internal(self.x)
-
+            print ("unpack")
+        rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals, _ = self._unpack_internal(self.x)
+        if comm.rank == 0:
+            print("making frame")
             master_data = {"a": a_vals, "c": c_vals,
                            "Ncells": ncells_vals,
                            "scale": scale_vals,
                            "rotx": rotx,
                            "roty": roty,
                            "rotz": rotz}
+            print ("frmae")
             master_data = pandas.DataFrame(master_data)
             master_data["gain"] = self.x[self.gain_xpos]
             master_data["originZ"] = self.x[self.originZ_xpos]
+            print('convert to string')
             print(master_data.to_string())
 
         # setup the diffBragg instance
@@ -701,7 +713,6 @@ class FatRefiner(PixelRefinement):
         c_vals = self._mpi_reduce_broadcast(c_vals)
         if scale_vals_truths is not None:
             scale_vals_truths = self._mpi_reduce_broadcast(scale_vals_truths)
-
         return rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals, scale_vals_truths
 
     def _send_gradients_to_derivative_managers(self):
@@ -1053,21 +1064,18 @@ class FatRefiner(PixelRefinement):
                         # g[origin_xpos] += (S2*G2*self.detdist_deriv*one_minus_k_over_Lambda).sum()
 
                     if self.refine_Fcell and multi >= self.min_multiplicity:
-
                         xpos = self.fcell_xstart + self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
-                        # NOTE hackage
-                        if xpos - self.fcell_xstart in self.watch_me_hkl and xpos-self.fcell_xstart not in self._fix_list:
-                            fcell = self.x[xpos]
-                            d = S2 * G2 * self.fcell_deriv
+                        fcell = self.x[xpos]
+                        d = S2 * G2 * self.fcell_deriv
+                        if self.log_fcells:
+                            d *= np_exp(fcell)
+                        g[xpos] += self._grad_accumulate(d)
+                        if self.calc_curvatures:
+                            d2 = S2 * G2 * self.fcell_second_deriv
                             if self.log_fcells:
-                                d *= np_exp(fcell)
-                            g[xpos] += self._grad_accumulate(d)
-                            if self.calc_curvatures:
-                                d2 = S2 * G2 * self.fcell_second_deriv
-                                if self.log_fcells:
-                                    ex_fcell = np_exp(fcell)
-                                    d2 = ex_fcell * d + ex_fcell * ex_fcell * d2
-                                self.curv[xpos] += self._curv_accumulate(d, d2)
+                                ex_fcell = np_exp(fcell)
+                                d2 = ex_fcell * d + ex_fcell * ex_fcell * d2
+                            self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_crystal_scale:
                         d = G2 * 2 * self.scale_fac * self.model_bragg_spots
@@ -1421,28 +1429,28 @@ class FatRefiner(PixelRefinement):
         # this block of code is for formatting the table for
         # observing a specific subset of FHKL to see how they are refining. Its old and not used anymore
         hacked_str = ""
-        headers = ["hkl", "obs", "truth", "init", "multiplicity", "Curv", "Grad", "idx"]
-        _data = []
-        for i in self.watch_me_hkl:  # self._hacked_fcells:
-            xpos = self.fcell_xstart + i
-            truth = self.f_truth[i]
-            if self.log_fcells:
-                truth = np_log(truth)
-            obs = self.x[xpos]
-            _s = "%d %.4f (%.4f) %d<> " % (i, obs, truth, self.hkl_frequency[i])
-            hkl = self.asu_from_idx[i]
-            _curv = "N/A"
-            if self.calc_curvatures:
-                _curv = "%2.7g" % self.curv[xpos]
-            _grad = "%2.7g" % self._g[xpos]
-            _data.append(["%d,%d,%d" % tuple(hkl), "%.4f" % obs, "%.4f" % truth, "%.4f" % self.f_start[i],
-                          "%d" % self.hkl_frequency[i], _curv, _grad, "%d" % i])
-            hacked_str += _s
-        if self.show_watched:
-            hacked_str = tabulate(_data, headers=headers, tablefmt='orgtbl')
-        else:
-            hacked_str = ""
-        # END HACKED FHKL, hacked_str should be an empty string in most cases
+        #headers = ["hkl", "obs", "truth", "init", "multiplicity", "Curv", "Grad", "idx"]
+        #_data = []
+        #for i in self.watch_me_hkl:  # self._hacked_fcells:
+        #    xpos = self.fcell_xstart + i
+        #    truth = self.f_truth[i]
+        #    if self.log_fcells:
+        #        truth = np_log(truth)
+        #    obs = self.x[xpos]
+        #    _s = "%d %.4f (%.4f) %d<> " % (i, obs, truth, self.hkl_frequency[i])
+        #    hkl = self.asu_from_idx[i]
+        #    _curv = "N/A"
+        #    if self.calc_curvatures:
+        #        _curv = "%2.7g" % self.curv[xpos]
+        #    _grad = "%2.7g" % self._g[xpos]
+        #    _data.append(["%d,%d,%d" % tuple(hkl), "%.4f" % obs, "%.4f" % truth, "%.4f" % self.f_start[i],
+        #                  "%d" % self.hkl_frequency[i], _curv, _grad, "%d" % i])
+        #    hacked_str += _s
+        #if self.show_watched:
+        #    hacked_str = tabulate(_data, headers=headers, tablefmt='orgtbl')
+        #else:
+        #    hacked_str = ""
+        ## END HACKED FHKL, hacked_str should be an empty string in most cases
 
         stat_bins_str = ""
         Istat_bins_str = ""
@@ -1452,11 +1460,16 @@ class FatRefiner(PixelRefinement):
                        ", ".join(map(str, self.neg_curv_shots)), scale_stats_string, stat_bins_str,  Istat_bins_str, hacked_str))
 
         print("\n")
-        print("R-factor:")
-        print self.Fobs.r1_factor(self.Fref, use_binning=True)
-        print("CC:")
-        print self.Fobs.correlation(self.Fref, use_binning=True)
-        print("\n")
+        if self.Fref is not None:
+            print("R-factor overall:")
+            print self.Fref.r1_factor(self.Fobs)
+            print("R-factor (shells):")
+            self.Fref.r1_factor(self.Fobs, use_binning=True).show()  # NOTE: is this slow ??
+            print("CC overall:")
+            print self.Fref.correlation(self.Fobs)
+            print("CC:")
+            self.Fref.correlation(self.Fobs, use_binning=True).show()
+            print("\n")
 
     def get_refined_Bmatrix(self, i_shot):
         return self.UCELL_MAN[i_shot].B_recipspace
