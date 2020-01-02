@@ -10943,7 +10943,7 @@ def run_auto_sharpen(
         local_si=result.local_si
         local_map_and_b=result.local_map_and_b
         if result.text:
-          print(result.text)
+          print(result.text,file=out)
         # Run through all result to get these
         if local_si.b_sharpen is not None and local_si.b_iso is not None and\
            local_si.k_sharpen is not None and local_si.kurtosis is not None \
