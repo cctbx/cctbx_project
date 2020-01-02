@@ -4,6 +4,8 @@ import numpy as np
 from abc import ABCMeta, abstractproperty, abstractmethod
 from scitbx.lbfgs.tst_curvatures import lbfgs_with_curvatures_mix_in
 from scitbx.lbfgs.tst_mpi_split_evaluator import mpi_split_evaluator_run
+from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
+from cctbx import miller
 
 
 # used in pixel refinement
@@ -32,7 +34,6 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.filter_bad_shots = False
         self.binner_dmax = 999
         self.binner_nbin = 10
-        self.Fobs = None
         self.Fref = None
         self.plot_fcell = False
         self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
@@ -87,6 +88,41 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
         self.request_diag_once = False  # property of the parent class
         lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
+
+    @property
+    def Fref(self):
+        """this is a miller array"""
+        return self._Fref
+
+    @Fref.setter
+    def Fref(self, val):
+        if val is not None:
+            C = nanoBragg_crystal()
+            C.miller_array = val  # NOTE: this takes care of expansion to P1
+            val = C.miller_array
+            val = val.sort()
+        self._Fref = val
+
+    @property
+    def Fobs(self):
+        """
+        global refiner updates the Fhkl tuple directly during refinement, therefore
+        if we want an Fobs array we have to manually create it.. This is used for computing
+        R factors and CC with the Fhkl reference array, these values are important diagnostics
+        when determining how well a refinement is working
+        """
+        if self.S is not None and self.Fref is not None:
+            indices, amp_data = self.S.D.Fhkl_tuple
+            mset = miller.set(self.Fref.crystal_symmetry(),
+                              indices=indices, anomalous_flag=True)
+            marray = miller.array(miller_set=mset, data=amp_data).set_observation_type_xray_amplitude()
+            marray = marray.expand_to_p1()
+            marray = marray.generate_bijvoet_mates()
+            marray = marray.select_indices(self.Fref.indices())  # Note this is useful for computing the R-factors
+            #  ... because nanoBragg_ext.get_Fhkl_tuple returns all possible miller indices on a grid...
+            return marray.sort()
+        else:
+            return None
 
     @property
     def _grad_accumulate(self):
@@ -268,7 +304,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         """
         pass
 
-    def run(self, curvature_min_verbose=False, setup=True, cache_roi=True):
+    def run(self, curvature_min_verbose=False, setup=True):
         """runs the LBFGS minimizer"""
 
         if setup:
@@ -488,5 +524,3 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         if not isinstance(val, bool):
             raise ValueError("refine background planes should be a boolean")
         self._refine_ncells = val
-
-
