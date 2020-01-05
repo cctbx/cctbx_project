@@ -8493,8 +8493,8 @@ def get_overall_mask(
          return_as_miller_arrays=True,nohl=True,out=null_out())
   if not map_coeffs:
     raise Sorry("No map coeffs obtained")
-  map_coeffs=map_coeffs.resolution_filter(d_min=resolution,d_max=d_max)
 
+  map_coeffs=map_coeffs.resolution_filter(d_min=resolution,d_max=d_max)
   complete_set = map_coeffs.complete_set()
   stol = flex.sqrt(complete_set.sin_theta_over_lambda_sq().data())
   import math
@@ -8506,9 +8506,24 @@ def get_overall_mask(
       flex.pow2(map_data-map_data.as_1d().min_max_mean().mean))
   except Exception as e:
     print(e, file=out)
-    raise Sorry("The sampling of the map appears to be too low for a "+
-      "\nresolution of %s. Try using a larger value for resolution" %(
+    print ("The sampling of the map appears to be too low for a "+
+      "\nresolution of %s. Using a larger value for resolution" %(
        resolution))
+    from cctbx.maptbx import d_min_from_map
+    resolution=d_min_from_map(
+      map_data,crystal_symmetry.unit_cell(), resolution_factor=1./4.)
+    print("\nEstimated resolution of map: %6.1f A\n" %(
+     resolution), file=out)
+    map_coeffs=map_coeffs.resolution_filter(d_min=resolution,d_max=d_max)
+    complete_set = map_coeffs.complete_set()
+    stol = flex.sqrt(complete_set.sin_theta_over_lambda_sq().data())
+    import math
+    w = 4 * stol * math.pi * smoothing_radius
+    sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
+    temp = complete_set.structure_factors_from_map(
+      flex.pow2(map_data-map_data.as_1d().min_max_mean().mean))
+
+
   fourier_coeff=complete_set.array(data=temp.data()*sphere_reciprocal)
   sd_map=fourier_coeff.fft_map(
       crystal_gridding=cg,
