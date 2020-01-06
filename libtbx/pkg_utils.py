@@ -194,6 +194,10 @@ def install_conda_package(package, requirement, action):
 @contextlib.contextmanager
 def _silence():
   '''Helper context which shuts up stdout.'''
+  if os.name == "nt":
+    # Can't silence using this method on Windows. Just leave it.
+    yield
+    return
   sys.stdout.flush()
   try:
     oldstdout = os.dup(sys.stdout.fileno())
