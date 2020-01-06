@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, print_function
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from PySide2.QtCore import Qt, QAbstractTableModel, QEvent, QModelIndex, QSignalBlocker, QSize, QTimer
+from PySide2.QtCore import Qt, QAbstractTableModel, QEvent, QModelIndex, QSize, QTimer
 from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
         QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
