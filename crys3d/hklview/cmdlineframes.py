@@ -1040,7 +1040,12 @@ class HKLViewFrame() :
 
 
   def ShowUnitCell(self, val):
-    self.params.NGL_HKLviewer.show_unit_cell = val
+    self.params.NGL_HKLviewer.show_real_space_unit_cell = val
+    self.update_settings()
+
+
+  def ShowReciprocalUnitCell(self, val):
+    self.params.NGL_HKLviewer.show_reciprocal_unit_cell = val
     self.update_settings()
 
 

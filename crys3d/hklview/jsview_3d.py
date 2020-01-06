@@ -418,7 +418,6 @@ class hklview_3d:
         R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
         if self.params.clip_plane.fractional_vector == "realspace" or self.params.clip_plane.fractional_vector == "tncs":
           isreciprocal = False
-
       if ( has_phil_path(self.diff_phil, "clip_plane") or \
        has_phil_path(self.diff_phil, "hkldist") or \
        has_phil_path(self.diff_phil, "fixorientation") or \
@@ -436,20 +435,19 @@ class hklview_3d:
 
       #if clipwidth==0.0 or ( R[0][0]==0.0 and R[0][1]==0.0 and R[0][2]==0.0 ) or self.params.clip_plane.angle_around_vector == 0.0:
       #  self.ReOrientStage()
-
       msg += self.SetOpacities(self.viewerparams.NGL.bin_opacities )
-      if has_phil_path(self.diff_phil, "show_real_space_unit_cell" ):
-        if self.params.show_real_space_unit_cell is None:
-           scale = None
-        else:
-          scale = (self.realspace_scale - 1.0)*self.params.show_real_space_unit_cell/100 + 1.0
-        self.DrawUnitCell(scale )
-      if has_phil_path(self.diff_phil, "show_reciprocal_unit_cell" ):
-        if self.params.show_reciprocal_unit_cell is None:
+      #if has_phil_path(self.diff_phil, "show_real_space_unit_cell" ):
+      if self.params.show_real_space_unit_cell is None:
           scale = None
-        else:
-          scale = (self.reciproc_scale - 1.0)*self.params.show_reciprocal_unit_cell/100 + 1.0
-        self.DrawReciprocalUnitCell(scale )
+      else:
+        scale = (self.realspace_scale - 1.0)*self.params.show_real_space_unit_cell/100 + 1.0
+      msg += self.DrawUnitCell(scale )
+      #if has_phil_path(self.diff_phil, "show_reciprocal_unit_cell" ):
+      if self.params.show_reciprocal_unit_cell is None:
+        scale = None
+      else:
+        scale = (self.reciproc_scale - 1.0)*self.params.show_reciprocal_unit_cell/100 + 1.0
+      msg += self.DrawReciprocalUnitCell(scale )
       self.set_tooltip_opacity()
       self.set_show_tooltips()
       #self.SetAutoView()
@@ -1236,10 +1234,6 @@ function MakeHKL_Axis(mshape)
       { // only post every 250 milli second as not to overwhelm python
         postrotmxflag = true;
         WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
-        //sleep(100).then(()=> { // workaround stage.viewer.requestRender() race condition
-        //    ReturnClipPlaneDistances();
-        //  }
-        //);
         timenow = timefunc();
       }
     }
@@ -1249,14 +1243,8 @@ function MakeHKL_Axis(mshape)
   stage.mouseObserver.signals.clicked.add(
     function (x, y)
     {
-      //cvorient = stage.viewerControls.getOrientation().elements;
-      //msg = String(cvorient);
       msg = getOrientMsg();
       WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
-      //sleep(100).then(()=> {
-      //    ReturnClipPlaneDistances();
-      //  }
-      //);
     }
   );
 
@@ -1275,10 +1263,6 @@ function MakeHKL_Axis(mshape)
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
         WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
-        //sleep(100).then(()=> {
-        //    ReturnClipPlaneDistances();
-        //  }
-        //);
         timenow = timefunc();
       }
     }
@@ -1290,8 +1274,6 @@ function MakeHKL_Axis(mshape)
     {
       if (postrotmxflag === true)
       {
-        //cvorient = stage.viewerControls.getOrientation().elements;
-        //msg = String(cvorient);
         msg = getOrientMsg();
         WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
         postrotmxflag = false;
@@ -1817,11 +1799,8 @@ mysocket.onmessage = function(e)
   try
   {
     var datval = e.data.split(":\\n");
-    //alert('received2:\\n' + datval);
     var msgtype = datval[0];
     var val = datval[1].split(",");
-    //ReRender();
-    //shapeComp.autoView();
 
     if (msgtype === "alpha")
     {
@@ -1879,7 +1858,6 @@ mysocket.onmessage = function(e)
     {
       WebsockSendMsg( 'Reorienting ' + pagename );
       sm = new Float32Array(16);
-      //alert('ReOrienting: ' + val)
       for (j=0; j<16; j++)
       {
         sm[j] = parseFloat(val[j]);
@@ -1899,8 +1877,6 @@ mysocket.onmessage = function(e)
     if (msgtype === "Reload")
     {
     // refresh browser with the javascript file
-      //cvorient = stage.viewerControls.getOrientation().elements;
-      //msg = String(cvorient);
       msg = getOrientMsg();
       WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
       WebsockSendMsg( 'Refreshing ' + pagename );
@@ -2093,11 +2069,8 @@ mysocket.onmessage = function(e)
     {
       WebsockSendMsg( 'Rotating stage ' + pagename );
 
-      //strs = datval[1].split("\\n");
       var sm = new Float32Array(9);
       var m4 = new NGL.Matrix4();
-      //var elmstrs = strs[0].split(",");
-      //alert('rot: ' + elmstrs);
 
       for (j=0; j<9; j++)
         sm[j] = parseFloat(val[j]);
@@ -2166,7 +2139,6 @@ mysocket.onmessage = function(e)
       strs = datval[1].split("\\n");
       var sm = new Float32Array(3);
       var elmstrs = strs[0].split(",");
-      //alert('trans: ' + elmstrs);
       for (j=0; j<3; j++)
         sm[j] = parseFloat(elmstrs[j]);
       shapeComp.setPosition([ sm[0], sm[1], sm[2] ]);
@@ -2176,7 +2148,6 @@ mysocket.onmessage = function(e)
           WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
         }
       );
-
     }
 
     function DeleteVectors(reprname)
@@ -2202,14 +2173,15 @@ mysocket.onmessage = function(e)
         r2[j] = parseFloat(val[j+3]);
         rgb[j]= parseFloat(val[j+6]);
       }
+      radius = parseFloat(val[11]);
 
       if (vectorshape == null)
         vectorshape = new NGL.Shape('vectorshape');
 
-      vectorshape.addArrow( r1, r2 , [rgb[0], rgb[1], rgb[2]], 0.15);
+      vectorshape.addArrow( r1, r2 , [rgb[0], rgb[1], rgb[2]], radius);
       if (val[6] !== "") {
-        var txtR = [ r1[0] + r2[0], r1[1] + r2[1], r1[2] + r2[2] ];
-        vectorshape.addText( txtR, [rgb[0], rgb[1], rgb[2]], fontsize/2.0, val[9] );
+        var txtR = [ (r1[0] + r2[0])/2.0, (r1[1] + r2[1])/2.0, (r1[2] + r2[2])/2.0 ];
+        vectorshape.addText( txtR, [rgb[0], rgb[1], rgb[2]], fontsize, val[9] );
       }
       // if reprname is supplied with a vector then make a representation named reprname
       // of this and all pending vectors stored in vectorshape and render them.
@@ -2230,10 +2202,7 @@ mysocket.onmessage = function(e)
 
     if (msgtype === "RemoveVectors")
     {
-      //strs = datval[1].split("\\n");
-      //var elmstrs = strs[0].split(",");
       var reprname = val[0].trim(); // elmstrs[0].trim();
-
       // if reprname is supplied only remove vectors with that name
       if (reprname != "")
         DeleteVectors(reprname);
@@ -2243,14 +2212,11 @@ mysocket.onmessage = function(e)
         DeleteVectors("unitcell");
         DeleteVectors("reciprocal_unitcell");
       }
-      clipFixToCamPosZ = false;
       stage.viewer.requestRender();
     }
 
     if (msgtype === "SetMouseSpeed")
     {
-      //strs = datval[1].split("\\n");
-      //var elmstrs = strs[0].split(",");
       stage.trackballControls.rotateSpeed = parseFloat(val[0]);
     }
 
@@ -2262,12 +2228,10 @@ mysocket.onmessage = function(e)
 
     if (msgtype === "SetClipPlaneDistances")
     {
-      //strs = datval[1].split("\\n");
-      //var elmstrs = strs[0].split(",");
       var near = parseFloat(val[0]);
       var far = parseFloat(val[1]);
       origcameraZpos = parseFloat(val[2]);
-      stage.viewer.parameters.clipMode = 'camera';
+      stage.viewer.parameters.clipMode =  'camera';
       // clipScale = 'absolute' means clip planes are using scene dimensions
       stage.viewer.parameters.clipScale = 'absolute';
       clipFixToCamPosZ = true;
@@ -2785,7 +2749,7 @@ Distance: %s
 
 
   def AddVector(self, s1, s2, s3, t1, t2, t3, isreciprocal=True, label="",
-                  r=0, g=0, b=0, name=""):
+                  r=0, g=0, b=0, name="", radius = 0.15):
     """
     Place vector from {s1, s2, s3] to [t1, t2, t3] with colour r,g,b and label
     If name=="" creation is deferred until AddVector is eventually called with name != ""
@@ -2805,7 +2769,7 @@ Distance: %s
     else:
       vec1 = list( vec1 * matrix.sqr(uc.orthogonalization_matrix()) )
       vec2 = list( vec2 * matrix.sqr(uc.orthogonalization_matrix()) )
-      vscale = 1.0 #200.0/uc.volume()
+      vscale =  1.0/self.scene.renderscale
       # TODO: find suitable scale factor for displaying real space vector together with reciprocal vectors
       svec1 = [ vscale*vec1[0], vscale*vec1[1], vscale*vec1[2] ]
       svec2 = [ vscale*vec2[0], vscale*vec2[1], vscale*vec2[2] ]
@@ -2839,8 +2803,8 @@ Distance: %s
     self.mprint("angles in yz plane to y,z axis are: %s, %s" %(angle_y_yzvec, angle_z_yzvec), verbose=2)
     self.mprint("angles to x,y,z axis are: %s, %s, %s" %(angle_x_svec, angle_y_svec, angle_z_svec ), verbose=2)
     self.mprint("deferred rendering vector from (%s, %s, %s) to (%s, %s, %s)" %(s1, s2, s3, t1, t2, t3), verbose=2)
-    self.AddToBrowserMsgQueue("AddVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
-         %tuple(svec1 + svec2 + [r, g, b, label, name]) )
+    self.AddToBrowserMsgQueue("AddVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
+         %tuple(svec1 + svec2 + [r, g, b, label, name, radius]) )
     return angle_x_xyvec, angle_z_svec
 
 
@@ -2895,56 +2859,62 @@ Distance: %s
   def DrawUnitCell(self, scale=1):
     if scale is None:
       self.RemoveVectors("unitcell")
-      return
-    self.AddVector(0,0,0, scale,0,0, False, label="a", r=0.5, g=0.8, b=0.8)
-    self.AddVector(0,0,0, 0,scale,0, False, label="b", r=0.8, g=0.5, b=0.8)
-    self.AddVector(0,0,0, 0,0,scale, False, label="c", r=0.8, g=0.8, b=0.5)
-    self.AddVector(scale,0,0, scale,scale,0, False, r=0.8, g=0.5, b=0.8)
-    self.AddVector(0,scale,0, scale,scale,0, False, r=0.5, g=0.8, b=0.8)
-    self.AddVector(0,0,scale, scale,0,scale, False, r=0.5, g=0.8, b=0.8)
-    self.AddVector(0,0,scale, 0,scale,scale, False, r=0.8, g=0.5, b=0.8)
-    self.AddVector(0,scale,scale, scale,scale,scale, False, r=0.5, g=0.8, b=0.8)
-    self.AddVector(scale,0,scale, scale,scale,scale, False, r=0.8, g=0.5, b=0.8)
-    self.AddVector(scale,0,0, scale,0,scale, False, r=0.8, g=0.8, b=0.5)
-    self.AddVector(0,scale,0, 0,scale,scale, False, r=0.8, g=0.8, b=0.5)
-    self.AddVector(scale,scale,0, scale,scale,scale, False, r=0.8, g=0.8, b=0.5, name="unitcell")
+      return "Removing real space unit cell\n"
+    uc = self.miller_array.unit_cell()
+    rad = 0.2 # scale # * 0.05 #  1000/ uc.volume()
+    self.AddVector(0,0,0, scale,0,0, False, label="a", r=0.5, g=0.8, b=0.8, radius=rad)
+    self.AddVector(0,0,0, 0,scale,0, False, label="b", r=0.8, g=0.5, b=0.8, radius=rad)
+    self.AddVector(0,0,0, 0,0,scale, False, label="c", r=0.8, g=0.8, b=0.5, radius=rad)
+    self.AddVector(scale,0,0, scale,scale,0, False, r=0.8, g=0.5, b=0.8, radius=rad)
+    self.AddVector(0,scale,0, scale,scale,0, False, r=0.5, g=0.8, b=0.8, radius=rad)
+    self.AddVector(0,0,scale, scale,0,scale, False, r=0.5, g=0.8, b=0.8, radius=rad)
+    self.AddVector(0,0,scale, 0,scale,scale, False, r=0.8, g=0.5, b=0.8, radius=rad)
+    self.AddVector(0,scale,scale, scale,scale,scale, False, r=0.5, g=0.8, b=0.8, radius=rad)
+    self.AddVector(scale,0,scale, scale,scale,scale, False, r=0.8, g=0.5, b=0.8, radius=rad)
+    self.AddVector(scale,0,0, scale,0,scale, False, r=0.8, g=0.8, b=0.5, radius=rad)
+    self.AddVector(0,scale,0, 0,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad)
+    self.AddVector(scale,scale,0, scale,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad, name="unitcell")
+    return "Adding real space unit cell\n"
 
 
   def DrawReciprocalUnitCell(self, scale=1):
     if scale is None:
       self.RemoveVectors("reciprocal_unitcell")
-      return
-    self.AddVector(0,0,0, scale,0,0, label="a*", r=0.5, g=0.3, b=0.3)
-    self.AddVector(0,0,0, 0,scale,0, label="b*", r=0.3, g=0.5, b=0.3)
-    self.AddVector(0,0,0, 0,0,scale, label="c*", r=0.3, g=0.3, b=0.5)
-    self.AddVector(scale,0,0, scale,scale,0, r=0.3, g=0.5, b=0.3)
-    self.AddVector(0,scale,0, scale,scale,0, r=0.5, g=0.3, b=0.3)
-    self.AddVector(0,0,scale, scale,0,scale, r=0.5, g=0.3, b=0.3)
-    self.AddVector(0,0,scale, 0,scale,scale, r=0.3, g=0.5, b=0.3)
-    self.AddVector(0,scale,scale, scale,scale,scale, r=0.5, g=0.3, b=0.3)
-    self.AddVector(scale,0,scale, scale,scale,scale, r=0.3, g=0.5, b=0.3)
-    self.AddVector(scale,0,0, scale,0,scale, r=0.3, g=0.3, b=0.5)
-    self.AddVector(0,scale,0, 0,scale,scale, r=0.3, g=0.3, b=0.5)
-    self.AddVector(scale,scale,0, scale,scale,scale, r=0.3, g=0.3, b=0.5, name="reciprocal_unitcell")
+      return "Removing reciprocal unit cell\n"
+    rad = 0.2 # 0.05 * scale
+    self.AddVector(0,0,0, scale,0,0, label="a*", r=0.5, g=0.3, b=0.3, radius=rad)
+    self.AddVector(0,0,0, 0,scale,0, label="b*", r=0.3, g=0.5, b=0.3, radius=rad)
+    self.AddVector(0,0,0, 0,0,scale, label="c*", r=0.3, g=0.3, b=0.5, radius=rad)
+    self.AddVector(scale,0,0, scale,scale,0, r=0.3, g=0.5, b=0.3, radius=rad)
+    self.AddVector(0,scale,0, scale,scale,0, r=0.5, g=0.3, b=0.3, radius=rad)
+    self.AddVector(0,0,scale, scale,0,scale, r=0.5, g=0.3, b=0.3, radius=rad)
+    self.AddVector(0,0,scale, 0,scale,scale, r=0.3, g=0.5, b=0.3, radius=rad)
+    self.AddVector(0,scale,scale, scale,scale,scale, r=0.5, g=0.3, b=0.3, radius=rad)
+    self.AddVector(scale,0,scale, scale,scale,scale, r=0.3, g=0.5, b=0.3, radius=rad)
+    self.AddVector(scale,0,0, scale,0,scale, r=0.3, g=0.3, b=0.5, radius=rad)
+    self.AddVector(0,scale,0, 0,scale,scale, r=0.3, g=0.3, b=0.5, radius=rad)
+    self.AddVector(scale,scale,0, scale,scale,scale, r=0.3, g=0.3, b=0.5, radius=rad, name="reciprocal_unitcell")
+    return "Adding reciprocal unit cell\n"
 
 
   def GetUnitcellScales(self):
     spanmin, spanmax = ( self.miller_array.index_span().min(), self.miller_array.index_span().max())
     uc = self.miller_array.unit_cell()
-    vec =(1.0, 1.0, 1.0)
+    vec = (1.0, 1.0, 1.0)
     # uc.reciprocal_space_vector() only takes integer miller indices so compute
     # the cartesian coordinates for real valued miller indices with the transpose of the fractionalization matrix
     vec1 = vec * matrix.sqr(uc.fractionalization_matrix()).transpose()
     reciproc_bodydiagonal_length = vec1.length()
     reciprocspanmaxvec = spanmax * matrix.sqr(uc.fractionalization_matrix()).transpose()
     reciproc_spanmax_length = reciprocspanmaxvec.length()
-    self.reciproc_scale = reciproc_spanmax_length / reciproc_bodydiagonal_length
+    reciprocspanminvec = spanmax * matrix.sqr(uc.fractionalization_matrix()).transpose()
+    reciproc_spanmin_length = reciprocspanminvec.length()
+    reciprocspan_length = max(reciproc_spanmax_length, reciproc_spanmin_length)
+    self.reciproc_scale = reciprocspan_length / reciproc_bodydiagonal_length
     # for real space vector
     vec2 = vec * matrix.sqr(uc.orthogonalization_matrix())
-    bodydiagonal_length = vec2.length()
-    spanmaxvec = spanmax * matrix.sqr(uc.orthogonalization_matrix())
-    spanmax_length = spanmaxvec.length()
-    self.realspace_scale = reciproc_spanmax_length / bodydiagonal_length
+    bodydiagonal_length =  vec2.length()
+    self.realspace_scale = self.scene.renderscale * reciprocspan_length / bodydiagonal_length
 
 
   def fix_orientation(self, val):

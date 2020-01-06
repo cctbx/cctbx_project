@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, print_function
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from PySide2.QtCore import Qt, QAbstractTableModel, QEvent, QModelIndex, QSize, QTimer
+from PySide2.QtCore import Qt, QAbstractTableModel, QEvent, QModelIndex, QSignalBlocker, QSize, QTimer
 from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
         QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
@@ -241,6 +241,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     #self.ui.setupUi(self.window)
     self.setupUi(self.window)
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
+    self.actiondebug.triggered.connect(self.DebugInteractively)
+    self.actiondebug.triggered.connect(self.SettingsDialog)
 
     self.verbose = 0
     self.UseOSbrowser = False
@@ -266,17 +268,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.unfeedback = False
 
     self.originalPalette = QApplication.palette()
-
-    self.openFileNameButton = QPushButton("Open reflection file")
-    self.openFileNameButton.setDefault(True)
-    self.openFileNameButton.clicked.connect(self.onOpenReflectionFile)
-
-    self.debugbutton = QPushButton("Debug")
-    self.debugbutton.clicked.connect(self.DebugInteractively)
-
-    self.settingsbtn = QPushButton("Settings")
-    self.settingsbtn.clicked.connect(self.SettingsDialog)
-
     self.mousespeed_labeltxt = QLabel()
     self.mousespeed_labeltxt.setText("Mouse speed:")
     self.mousemoveslider = QSlider(Qt.Horizontal)
@@ -412,6 +403,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.millertablemenu = QMenu(self.window)
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
     #self.resize(QSize(self.FileInfoBox.size().width()*2, self.size().height() ))
+    self.functionTabWidget.setDisabled(True)
     self.window.show()
 
 
@@ -475,7 +467,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.sysabsentcheckbox.setChecked(False)
       self.missingcheckbox.setChecked(False)
       self.onlymissingcheckbox.setChecked(False)
-      self.showslicecheckbox.setChecked(False)
+      self.showsliceGroupCheckbox.setChecked(False)
 
 
   def SettingsDialog(self):
@@ -736,10 +728,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     """
     self.unfeedback = True
     self.power_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'])
-
-    self.ManualPowerScalecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] == -1 )
+    self.ManualPowerScalecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] >= 0.0 )
     self.radii_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.scale'])
-    self.showslicecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_mode'])
+    self.showsliceGroupCheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_mode'])
     self.hvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.h'])
     self.kvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.k'])
     self.lvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.l'])
@@ -775,6 +766,18 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.clipTNCSBtn.setChecked( "tncs" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
     self.fixedorientcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.fixorientation'])
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_only_missing'])
+    if self.currentphilstringdict['NGL_HKLviewer.show_real_space_unit_cell'] is not None:
+      self.DrawRealUnitCellBox.setChecked(True)
+      self.unitcellslider.setValue( self.currentphilstringdict['NGL_HKLviewer.show_real_space_unit_cell'])
+    else:
+      self.DrawRealUnitCellBox.setChecked(False)
+    if self.currentphilstringdict['NGL_HKLviewer.show_reciprocal_unit_cell'] is not None:
+      self.DrawReciprocUnitCellBox.setChecked(True)
+      self.reciprocunitcellslider.setValue( self.currentphilstringdict['NGL_HKLviewer.show_reciprocal_unit_cell'])
+    else:
+      self.DrawReciprocUnitCellBox.setChecked(False)
+
+
     self.unfeedback = False
 
     pass
@@ -880,7 +883,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def showSlice(self):
-    if self.showslicecheckbox.isChecked():
+    if self.showsliceGroupCheckbox.isChecked():
+      self.ClipPlaneChkGroupBox.setChecked(False)
       self.PhilToJsRender('NGL_HKLviewer.viewer.slice_mode = True')
       if self.expandP1checkbox.isChecked():
         self.PhilToJsRender("""NGL_HKLviewer.viewer {
@@ -897,6 +901,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.SliceLabelComboBox.setEnabled(True)
       self.sliceindexspinBox.setEnabled(True)
     else:
+      self.ClipPlaneChkGroupBox.setChecked(True)
       self.PhilToJsRender("""NGL_HKLviewer.viewer {
                                                       slice_mode = False
                                                       inbrowser = True
@@ -1107,9 +1112,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def CreateSliceTabs(self):
+    self.SliceReflectionsBox.clicked.connect(self.onSliceReflectionsBoxclicked)
     #self.showslicecheckbox = QCheckBox()
-    self.showslicecheckbox.setText("Show Slice")
-    self.showslicecheckbox.clicked.connect(self.showSlice)
+    #self.showslicecheckbox.setText("Show Slice")
+    self.showsliceGroupCheckbox.clicked.connect(self.showSlice)
 
     #self.sliceindexspinBox = QDoubleSpinBox()
     self.sliceindex = 0
@@ -1259,10 +1265,23 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.clipParallelBtn.setDisabled(True)
 
 
+  def onSliceReflectionsBoxclicked(self):
+    if self.SliceReflectionsBox.isChecked():
+      self.showsliceGroupCheckbox.setEnabled(True)
+      self.ClipPlaneChkGroupBox.setEnabled(True)
+      self.fixedorientcheckbox.setEnabled(True)
+    else:
+      self.showsliceGroupCheckbox.setEnabled(False)
+      self.ClipPlaneChkGroupBox.setEnabled(False)
+      self.fixedorientcheckbox.setEnabled(False)
+
+
+
   def onClipPlaneChkBox(self):
     if self.unfeedback:
       return
     if self.ClipPlaneChkGroupBox.isChecked():
+      self.showsliceGroupCheckbox.setChecked(False)
       self.clipNormalBtn.setDisabled(False)
       self.clipParallelBtn.setDisabled(False)
       #self.ClipBox.setDisabled(False)
@@ -1301,6 +1320,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
       self.PhilToJsRender(philstr)
     else:
+      self.showsliceGroupCheckbox.setChecked(True)
       #self.ClipBox.setDisabled(True)
       self.clipNormalBtn.setDisabled(True)
       self.clipParallelBtn.setDisabled(True)
@@ -1362,17 +1382,19 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def onDrawReciprocUnitCellBoxClick(self):
-    if self.DrawReciprocUnitCellBox.isChecked():
-      self.PhilToJsRender("NGL_HKLviewer.show_reciprocal_unit_cell = %f" %self.reciprocunitcellslider.value())
-    else:
-      self.PhilToJsRender("NGL_HKLviewer.show_reciprocal_unit_cell = None")
+    if not self.unfeedback:
+      if self.DrawReciprocUnitCellBox.isChecked():
+        self.PhilToJsRender("NGL_HKLviewer.show_reciprocal_unit_cell = %f" %self.reciprocunitcellslider.value())
+      else:
+        self.PhilToJsRender("NGL_HKLviewer.show_reciprocal_unit_cell = None")
 
 
   def onDrawUnitCellBoxClick(self):
-    if self.DrawRealUnitCellBox.isChecked():
-      self.PhilToJsRender("NGL_HKLviewer.show_real_space_unit_cell = %f" %self.unitcellslider.value())
-    else:
-      self.PhilToJsRender("NGL_HKLviewer.show_real_space_unit_cell = None")
+    if not self.unfeedback:
+      if self.DrawRealUnitCellBox.isChecked():
+        self.PhilToJsRender("NGL_HKLviewer.show_real_space_unit_cell = %f" %self.unitcellslider.value())
+      else:
+        self.PhilToJsRender("NGL_HKLviewer.show_real_space_unit_cell = None")
 
 
   def onMillerTableCellPressed(self, row, col):
@@ -1524,7 +1546,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     #self.ManualPowerScalecheckbox = QCheckBox()
     #self.ManualPowerScalecheckbox.setText("Manual Power Scaling of Sphere Radii")
-    #self.ManualPowerScalecheckbox.clicked.connect(self.onManualPowerScale)
+    self.ManualPowerScalecheckbox.clicked.connect(self.onManualPowerScale)
 
     #self.power_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
     #self.power_scale_spinBox.setValue(0.33)
@@ -1600,8 +1622,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def CreateOtherBox(self):
     self.DrawRealUnitCellBox.clicked.connect(self.onDrawUnitCellBoxClick)
     self.DrawReciprocUnitCellBox.clicked.connect(self.onDrawReciprocUnitCellBoxClick)
-    self.unitcellslider.valueChanged.connect(self.onUnitcellScale)
-    self.reciprocunitcellslider.valueChanged.connect(self.onReciprocUnitcellScale)
+    self.unitcellslider.sliderReleased.connect(self.onUnitcellScale)
+    #self.unitcellslider.valueChanged.connect(self.onUnitcellScale)
+    self.reciprocunitcellslider.sliderReleased.connect(self.onReciprocUnitcellScale)
+    #self.reciprocunitcellslider.valueChanged.connect(self.onReciprocUnitcellScale)
 
 
   def onUnitcellScale(self):

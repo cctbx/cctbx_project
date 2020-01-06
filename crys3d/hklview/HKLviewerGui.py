@@ -1,15 +1,14 @@
-from __future__ import division
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'HKLviewer.ui',
 # licensing of 'HKLviewer.ui' applies.
 #
-# Created: Sun Dec 22 23:23:48 2019
+# Created: Mon Jan  6 21:17:27 2020
 #      by: pyside2-uic  running on PySide2 5.13.0
 #
 # WARNING! All changes made in this file will be lost!
 
-from PySide2 import QtCore, QtWidgets
+from PySide2 import QtCore, QtGui, QtWidgets
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -121,14 +120,14 @@ class Ui_MainWindow(object):
         self.tab_2.setObjectName("tab_2")
         self.gridLayout_9 = QtWidgets.QGridLayout(self.tab_2)
         self.gridLayout_9.setObjectName("gridLayout_9")
-        self.showslicecheckbox = QtWidgets.QCheckBox(self.tab_2)
+        self.SliceReflectionsBox = QtWidgets.QCheckBox(self.tab_2)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(10)
-        sizePolicy.setHeightForWidth(self.showslicecheckbox.sizePolicy().hasHeightForWidth())
-        self.showslicecheckbox.setSizePolicy(sizePolicy)
-        self.showslicecheckbox.setObjectName("showslicecheckbox")
-        self.gridLayout_9.addWidget(self.showslicecheckbox, 0, 0, 1, 1)
+        sizePolicy.setHeightForWidth(self.SliceReflectionsBox.sizePolicy().hasHeightForWidth())
+        self.SliceReflectionsBox.setSizePolicy(sizePolicy)
+        self.SliceReflectionsBox.setObjectName("SliceReflectionsBox")
+        self.gridLayout_9.addWidget(self.SliceReflectionsBox, 0, 0, 1, 1)
         self.fixedorientcheckbox = QtWidgets.QCheckBox(self.tab_2)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(3)
@@ -337,19 +336,19 @@ class Ui_MainWindow(object):
         self.gridLayout_19.addWidget(self.frame_6, 3, 0, 1, 2)
         self.gridLayout_7.addWidget(self.groupBox_2, 1, 0, 1, 3)
         self.gridLayout_9.addWidget(self.ClipPlaneChkGroupBox, 1, 0, 1, 2)
-        self.groupBox_4 = QtWidgets.QGroupBox(self.tab_2)
+        self.showsliceGroupCheckbox = QtWidgets.QGroupBox(self.tab_2)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.groupBox_4.sizePolicy().hasHeightForWidth())
-        self.groupBox_4.setSizePolicy(sizePolicy)
-        self.groupBox_4.setCheckable(True)
-        self.groupBox_4.setChecked(True)
-        self.groupBox_4.setObjectName("groupBox_4")
-        self.gridLayout_6 = QtWidgets.QGridLayout(self.groupBox_4)
+        sizePolicy.setHeightForWidth(self.showsliceGroupCheckbox.sizePolicy().hasHeightForWidth())
+        self.showsliceGroupCheckbox.setSizePolicy(sizePolicy)
+        self.showsliceGroupCheckbox.setCheckable(True)
+        self.showsliceGroupCheckbox.setChecked(True)
+        self.showsliceGroupCheckbox.setObjectName("showsliceGroupCheckbox")
+        self.gridLayout_6 = QtWidgets.QGridLayout(self.showsliceGroupCheckbox)
         self.gridLayout_6.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_6.setObjectName("gridLayout_6")
-        self.SliceLabelComboBox = QtWidgets.QComboBox(self.groupBox_4)
+        self.SliceLabelComboBox = QtWidgets.QComboBox(self.showsliceGroupCheckbox)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -357,7 +356,7 @@ class Ui_MainWindow(object):
         self.SliceLabelComboBox.setSizePolicy(sizePolicy)
         self.SliceLabelComboBox.setObjectName("SliceLabelComboBox")
         self.gridLayout_6.addWidget(self.SliceLabelComboBox, 0, 0, 1, 1)
-        self.label_3 = QtWidgets.QLabel(self.groupBox_4)
+        self.label_3 = QtWidgets.QLabel(self.showsliceGroupCheckbox)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -367,7 +366,7 @@ class Ui_MainWindow(object):
         self.label_3.setIndent(1)
         self.label_3.setObjectName("label_3")
         self.gridLayout_6.addWidget(self.label_3, 0, 1, 1, 1)
-        self.sliceindexspinBox = QtWidgets.QSpinBox(self.groupBox_4)
+        self.sliceindexspinBox = QtWidgets.QSpinBox(self.showsliceGroupCheckbox)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -375,7 +374,7 @@ class Ui_MainWindow(object):
         self.sliceindexspinBox.setSizePolicy(sizePolicy)
         self.sliceindexspinBox.setObjectName("sliceindexspinBox")
         self.gridLayout_6.addWidget(self.sliceindexspinBox, 0, 2, 1, 1)
-        self.gridLayout_9.addWidget(self.groupBox_4, 2, 0, 1, 2)
+        self.gridLayout_9.addWidget(self.showsliceGroupCheckbox, 2, 0, 1, 2)
         self.functionTabWidget.addTab(self.tab_2, "")
         self.tab_3 = QtWidgets.QWidget()
         self.tab_3.setObjectName("tab_3")
@@ -391,6 +390,8 @@ class Ui_MainWindow(object):
         self.gridLayout_10 = QtWidgets.QGridLayout(self.groupBox_3)
         self.gridLayout_10.setObjectName("gridLayout_10")
         self.radii_scale_spinBox = QtWidgets.QDoubleSpinBox(self.groupBox_3)
+        self.radii_scale_spinBox.setMaximum(5.0)
+        self.radii_scale_spinBox.setSingleStep(0.1)
         self.radii_scale_spinBox.setObjectName("radii_scale_spinBox")
         self.gridLayout_10.addWidget(self.radii_scale_spinBox, 1, 1, 1, 1)
         self.label_10 = QtWidgets.QLabel(self.groupBox_3)
@@ -418,6 +419,7 @@ class Ui_MainWindow(object):
         self.power_scale_spinBox.setMaximum(1.0)
         self.power_scale_spinBox.setSingleStep(0.05)
         self.power_scale_spinBox.setStepType(QtWidgets.QAbstractSpinBox.DefaultStepType)
+        self.power_scale_spinBox.setProperty("value", 0.35)
         self.power_scale_spinBox.setObjectName("power_scale_spinBox")
         self.gridLayout_10.addWidget(self.power_scale_spinBox, 0, 3, 1, 1)
         self.functionTabWidget.addTab(self.tab_3, "")
@@ -500,7 +502,8 @@ class Ui_MainWindow(object):
         self.reciprocunitcellslider.setOrientation(QtCore.Qt.Horizontal)
         self.reciprocunitcellslider.setObjectName("reciprocunitcellslider")
         self.label_2 = QtWidgets.QLabel(self.DrawReciprocUnitCellBox)
-        self.label_2.setGeometry(QtCore.QRect(5, 35, 71, 16))
+        self.label_2.setGeometry(QtCore.QRect(5, 35, 71, 21))
+        self.label_2.setWordWrap(False)
         self.label_2.setObjectName("label_2")
         self.gridLayout_21.addWidget(self.DrawReciprocUnitCellBox, 0, 0, 1, 1)
         self.DrawRealUnitCellBox = QtWidgets.QGroupBox(self.groupBox_6)
@@ -579,7 +582,7 @@ class Ui_MainWindow(object):
         self.onlymissingcheckbox.setText(QtWidgets.QApplication.translate("MainWindow", "Only", None, -1))
         self.SpacegroupLabel.setText(QtWidgets.QApplication.translate("MainWindow", "Space Subgroups", None, -1))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab), QtWidgets.QApplication.translate("MainWindow", "Expansion", None, -1))
-        self.showslicecheckbox.setText(QtWidgets.QApplication.translate("MainWindow", "Slice Reflections", None, -1))
+        self.SliceReflectionsBox.setText(QtWidgets.QApplication.translate("MainWindow", "Slice Reflections", None, -1))
         self.fixedorientcheckbox.setText(QtWidgets.QApplication.translate("MainWindow", "Fix orientation but allow zoom and translation", None, -1))
         self.ClipPlaneChkGroupBox.setTitle(QtWidgets.QApplication.translate("MainWindow", "with a clip plane oriented", None, -1))
         self.clipNormalBtn.setText(QtWidgets.QApplication.translate("MainWindow", "Perpendicular to vector below", None, -1))
@@ -594,7 +597,7 @@ class Ui_MainWindow(object):
         self.label_14.setText(QtWidgets.QApplication.translate("MainWindow", "Distance from origin:", None, -1))
         self.label_15.setText(QtWidgets.QApplication.translate("MainWindow", "Clip Plane Width:", None, -1))
         self.rotavecangle_labeltxt.setText(QtWidgets.QApplication.translate("MainWindow", "Angle rotated around vector ", None, -1))
-        self.groupBox_4.setTitle(QtWidgets.QApplication.translate("MainWindow", "Explicitly with a plane at", None, -1))
+        self.showsliceGroupCheckbox.setTitle(QtWidgets.QApplication.translate("MainWindow", "Explicitly with a plane at", None, -1))
         self.label_3.setText(QtWidgets.QApplication.translate("MainWindow", "equal to", None, -1))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_2), QtWidgets.QApplication.translate("MainWindow", "Slicing", None, -1))
         self.groupBox_3.setTitle(QtWidgets.QApplication.translate("MainWindow", "Radii size of HKL spheres", None, -1))
@@ -608,17 +611,16 @@ class Ui_MainWindow(object):
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_4), QtWidgets.QApplication.translate("MainWindow", "Binning", None, -1))
         self.groupBox_6.setTitle(QtWidgets.QApplication.translate("MainWindow", "Geometry", None, -1))
         self.DrawReciprocUnitCellBox.setTitle(QtWidgets.QApplication.translate("MainWindow", "Show Reciprocal Unit Cell", None, -1))
-        self.label_4.setText(QtWidgets.QApplication.translate("MainWindow", "Twice the size of sphere of reflections", None, -1))
+        self.label_4.setText(QtWidgets.QApplication.translate("MainWindow", "Size of sphere of reflections", None, -1))
         self.label_2.setText(QtWidgets.QApplication.translate("MainWindow", "True to Scale", None, -1))
         self.DrawRealUnitCellBox.setTitle(QtWidgets.QApplication.translate("MainWindow", "Show Real Space Unit Cell", None, -1))
-        self.label_5.setText(QtWidgets.QApplication.translate("MainWindow", "Twice the size of sphere of reflections", None, -1))
+        self.label_5.setText(QtWidgets.QApplication.translate("MainWindow", "Size of sphere of reflections", None, -1))
         self.label_6.setText(QtWidgets.QApplication.translate("MainWindow", "True to Scale", None, -1))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_5), QtWidgets.QApplication.translate("MainWindow", "other", None, -1))
         self.menuFile.setTitle(QtWidgets.QApplication.translate("MainWindow", "File", None, -1))
         self.actionOpen_reflection_file.setText(QtWidgets.QApplication.translate("MainWindow", "Open reflection file...", None, -1))
         self.actionSettings.setText(QtWidgets.QApplication.translate("MainWindow", "Settings", None, -1))
-        self.actiondebug.setText(QtWidgets.QApplication.translate("MainWindow", "debug", None, -1))
+        self.actiondebug.setText(QtWidgets.QApplication.translate("MainWindow", "Debug", None, -1))
 
-
-from PySide2.QtWebEngineWidgets import QWebEngineView
 from HKLviewer import HeaderDataTableWidget
+from PySide2.QtWebEngineWidgets import QWebEngineView
